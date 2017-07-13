@@ -1,193 +1,41 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] ext4: remove unused metadata accounting variables
-Date: Thu, 13 Jul 2017 10:57:08 -0400
-Message-ID: <20170713145708.GA6159@localhost.localdomain>
+From: Stephan =?ISO-8859-1?Q?M=FCller?= <smueller@chronox.de>
+Subject: Re: [PATCH 3/6] fscrypt: use HKDF-SHA512 to derive the per-inode encryption keys
+Date: Thu, 13 Jul 2017 16:54:55 +0200
+Message-ID: <2034167.Brpu2WxA6s@tauon.chronox.de>
+References: <20170712210035.51534-1-ebiggers3@gmail.com> <20170712210035.51534-4-ebiggers3@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7Bit
+Cc: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Alex Cope <alexcope@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: herbert@gondor.apana.org.au
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f194.google.com ([209.85.220.194]:35001 "EHLO
-        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751375AbdGMOxv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jul 2017 10:53:51 -0400
-Received: by mail-qk0-f194.google.com with SMTP id 16so8381831qkg.2
-        for <linux-ext4@vger.kernel.org>; Thu, 13 Jul 2017 07:53:50 -0700 (PDT)
-Content-Disposition: inline
+Received: from mail.eperm.de ([89.247.134.16]:60508 "EHLO mail.eperm.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751201AbdGMOzP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Jul 2017 10:55:15 -0400
+In-Reply-To: <20170712210035.51534-4-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Two variables in ext4_inode_info, i_reserved_meta_blocks and
-i_allocated_meta_blocks, are unused.  Removing them saves a little
-memory per in-memory inode and cleans up clutter in several tracepoints.
-Adjust tracepoint output from ext4_alloc_da_blocks() for consistency
-and fix a typo and whitespace near these changes.
+Am Mittwoch, 12. Juli 2017, 23:00:32 CEST schrieb Eric Biggers:
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- fs/ext4/ext4.h              |  6 ++----
- fs/ext4/super.c             |  2 --
- include/trace/events/ext4.h | 35 ++++++++---------------------------
- 3 files changed, 10 insertions(+), 33 deletions(-)
+Hi Herbert,
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9ebde0c..dcbcd9d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -961,7 +961,7 @@ struct ext4_inode_info {
- 	/*
- 	 * i_block_group is the number of the block group which contains
- 	 * this file's inode.  Constant across the lifetime of the inode,
--	 * it is ued for making block allocation decisions - we try to
-+	 * it is used for making block allocation decisions - we try to
- 	 * place a file's data blocks near its inode block, and new inodes
- 	 * near to their parent directory's inode.
- 	 */
-@@ -1049,10 +1049,8 @@ struct ext4_inode_info {
- 	ext4_group_t	i_last_alloc_group;
- 
- 	/* allocation reservation info for delalloc */
--	/* In case of bigalloc, these refer to clusters rather than blocks */
-+	/* In case of bigalloc, this refer to clusters rather than blocks */
- 	unsigned int i_reserved_data_blocks;
--	unsigned int i_reserved_meta_blocks;
--	unsigned int i_allocated_meta_blocks;
- 	ext4_lblk_t i_da_metadata_calc_last_lblock;
- 	int i_da_metadata_calc_len;
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f666042..94722df 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -978,8 +978,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	ei->i_es_shk_nr = 0;
- 	ei->i_es_shrink_lblk = 0;
- 	ei->i_reserved_data_blocks = 0;
--	ei->i_reserved_meta_blocks = 0;
--	ei->i_allocated_meta_blocks = 0;
- 	ei->i_da_metadata_calc_len = 0;
- 	ei->i_da_metadata_calc_last_lblock = 0;
- 	spin_lock_init(&(ei->i_block_reservation_lock));
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index dfae175..9c3bc38 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -937,21 +937,19 @@ TRACE_EVENT(ext4_alloc_da_blocks,
- 	TP_STRUCT__entry(
- 		__field(	dev_t,	dev			)
- 		__field(	ino_t,	ino			)
--		__field( unsigned int,	data_blocks	)
--		__field( unsigned int,	meta_blocks	)
-+		__field( unsigned int,	data_blocks		)
- 	),
- 
- 	TP_fast_assign(
- 		__entry->dev	= inode->i_sb->s_dev;
- 		__entry->ino	= inode->i_ino;
- 		__entry->data_blocks = EXT4_I(inode)->i_reserved_data_blocks;
--		__entry->meta_blocks = EXT4_I(inode)->i_reserved_meta_blocks;
- 	),
- 
--	TP_printk("dev %d,%d ino %lu data_blocks %u meta_blocks %u",
-+	TP_printk("dev %d,%d ino %lu reserved_data_blocks %u",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
--		  __entry->data_blocks, __entry->meta_blocks)
-+		  __entry->data_blocks)
- );
- 
- TRACE_EVENT(ext4_mballoc_alloc,
-@@ -1153,8 +1151,6 @@ TRACE_EVENT(ext4_da_update_reserve_space,
- 		__field(	__u64,	i_blocks		)
- 		__field(	int,	used_blocks		)
- 		__field(	int,	reserved_data_blocks	)
--		__field(	int,	reserved_meta_blocks	)
--		__field(	int,	allocated_meta_blocks	)
- 		__field(	int,	quota_claim		)
- 		__field(	__u16,	mode			)
- 	),
-@@ -1166,22 +1162,16 @@ TRACE_EVENT(ext4_da_update_reserve_space,
- 		__entry->used_blocks = used_blocks;
- 		__entry->reserved_data_blocks =
- 				EXT4_I(inode)->i_reserved_data_blocks;
--		__entry->reserved_meta_blocks =
--				EXT4_I(inode)->i_reserved_meta_blocks;
--		__entry->allocated_meta_blocks =
--				EXT4_I(inode)->i_allocated_meta_blocks;
- 		__entry->quota_claim = quota_claim;
- 		__entry->mode	= inode->i_mode;
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu mode 0%o i_blocks %llu used_blocks %d "
--		  "reserved_data_blocks %d reserved_meta_blocks %d "
--		  "allocated_meta_blocks %d quota_claim %d",
-+		  "reserved_data_blocks %d quota_claim %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->mode, __entry->i_blocks,
- 		  __entry->used_blocks, __entry->reserved_data_blocks,
--		  __entry->reserved_meta_blocks, __entry->allocated_meta_blocks,
- 		  __entry->quota_claim)
- );
- 
-@@ -1195,7 +1185,6 @@ TRACE_EVENT(ext4_da_reserve_space,
- 		__field(	ino_t,	ino			)
- 		__field(	__u64,	i_blocks		)
- 		__field(	int,	reserved_data_blocks	)
--		__field(	int,	reserved_meta_blocks	)
- 		__field(	__u16,  mode			)
- 	),
- 
-@@ -1204,17 +1193,15 @@ TRACE_EVENT(ext4_da_reserve_space,
- 		__entry->ino	= inode->i_ino;
- 		__entry->i_blocks = inode->i_blocks;
- 		__entry->reserved_data_blocks = EXT4_I(inode)->i_reserved_data_blocks;
--		__entry->reserved_meta_blocks = EXT4_I(inode)->i_reserved_meta_blocks;
- 		__entry->mode	= inode->i_mode;
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu mode 0%o i_blocks %llu "
--		  "reserved_data_blocks %d reserved_meta_blocks %d",
-+		  "reserved_data_blocks %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->mode, __entry->i_blocks,
--		  __entry->reserved_data_blocks,
--		  __entry->reserved_meta_blocks)
-+		  __entry->reserved_data_blocks)
- );
- 
- TRACE_EVENT(ext4_da_release_space,
-@@ -1228,8 +1215,6 @@ TRACE_EVENT(ext4_da_release_space,
- 		__field(	__u64,	i_blocks		)
- 		__field(	int,	freed_blocks		)
- 		__field(	int,	reserved_data_blocks	)
--		__field(	int,	reserved_meta_blocks	)
--		__field(	int,	allocated_meta_blocks	)
- 		__field(	__u16,  mode			)
- 	),
- 
-@@ -1239,19 +1224,15 @@ TRACE_EVENT(ext4_da_release_space,
- 		__entry->i_blocks = inode->i_blocks;
- 		__entry->freed_blocks = freed_blocks;
- 		__entry->reserved_data_blocks = EXT4_I(inode)->i_reserved_data_blocks;
--		__entry->reserved_meta_blocks = EXT4_I(inode)->i_reserved_meta_blocks;
--		__entry->allocated_meta_blocks = EXT4_I(inode)->i_allocated_meta_blocks;
- 		__entry->mode	= inode->i_mode;
- 	),
- 
- 	TP_printk("dev %d,%d ino %lu mode 0%o i_blocks %llu freed_blocks %d "
--		  "reserved_data_blocks %d reserved_meta_blocks %d "
--		  "allocated_meta_blocks %d",
-+		  "reserved_data_blocks %d",
- 		  MAJOR(__entry->dev), MINOR(__entry->dev),
- 		  (unsigned long) __entry->ino,
- 		  __entry->mode, __entry->i_blocks,
--		  __entry->freed_blocks, __entry->reserved_data_blocks,
--		  __entry->reserved_meta_blocks, __entry->allocated_meta_blocks)
-+		  __entry->freed_blocks, __entry->reserved_data_blocks)
- );
- 
- DECLARE_EVENT_CLASS(ext4__bitmap_load,
--- 
-2.1.4
+This patch adds a second KDF to the kernel -- the first is found in the keys 
+subsystem.
+
+The next KDF that may come in is in the TLS scope.
+
+Would it make sense to warm up the KDF patches adding generic KDF support to 
+the kernel crypto API that I supplied some time ago? The advantages would be 
+to have one location of KDF implementations and the benefit of the testmgr.
+
+Ciao
+Stephan
