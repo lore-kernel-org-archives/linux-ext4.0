@@ -1,156 +1,76 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v2] generic: test negative SEEK_HOLE/SEEK_DATA offsets
-Date: Thu, 13 Jul 2017 12:06:41 -0700
-Message-ID: <20170713190641.GA4150@magnolia>
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Subject: Re: Fast symlinks stored slow
+Date: Thu, 13 Jul 2017 21:27:20 +0100
+Message-ID: <20170713202720.GV31999@redhat.com>
+References: <20170712170711.GA19996@redhat.com>
+ <20170712231737.nzi2dv6e6h6yvrsl@thunk.org>
+ <20170713080213.GO31999@redhat.com>
+ <20170713164959.m2hf72b6zqlorn5i@thunk.org>
+ <20170713171335.GT31999@redhat.com>
+ <20170713185037.yz3l6hq3mcc3wppm@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        xfs <linux-xfs@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        fstests <fstests@vger.kernel.org>
-To: Eryu Guan <eguan@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:60650 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752880AbdGMU1W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Jul 2017 16:27:22 -0400
 Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170713185037.yz3l6hq3mcc3wppm@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Check that we get -ENXIO if the user calls SEEK_HOLE/SEEK_DATA with
-a negative file offset.
+On Thu, Jul 13, 2017 at 02:50:37PM -0400, Theodore Ts'o wrote:
+> On Thu, Jul 13, 2017 at 06:13:35PM +0100, Richard W.M. Jones wrote:
+> > In this case we're using libext2fs to build an appliance filesystem,
+> > used to boot a small Linux system which is then run under qemu by
+> > libguestfs.  This appliance is completely rebuilt automatically under
+> > many circumstances, for example a host package upgrade (eg. upgrading
+> > the kernel), so it's not a long-lived filesystem that would cause a
+> > problem.  Rebuilding only takes a few seconds.
+> > 
+> > The process is described in more detail here:
+> > http://libguestfs.org/supermin.1.html#SUPERMIN-APPLIANCES
+> > 
+> > From our point of view the only issue are some prebuilt appliances
+> > which we have provided to other distributions that cannot / don't want
+> > to use supermin (http://download.libguestfs.org/binaries/appliance/)
+> > and at some point I'm going to have to rebuild these using the fixed
+> > supermin.
+> 
+> OK, so the risk is if there are other people who are using supermin to
+> create appliances.  (One potential use case we might need to
+> investigate are services such as SuSE Studio, since it can create
+> turnkey VM appliances for its users.)  If these applianes are
+> distributed end users (as opposed to being automatically rebuilt as in
+> your use case), that's when we would potentially be at risk.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
-v2: use helpers as suggested by Eryu.
----
- src/seek_sanity_test.c |   13 +++++++++
- tests/generic/702      |   70 ++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/702.out  |    2 +
- tests/generic/group    |    1 +
- 4 files changed, 86 insertions(+)
- create mode 100755 tests/generic/702
- create mode 100644 tests/generic/702.out
+I can't speak about SuSE Studio, but supermin appliances aren't
+distributed to end users, but get built on the fly on end user
+machines.
 
-diff --git a/src/seek_sanity_test.c b/src/seek_sanity_test.c
-index a58ec36..e82cb1f 100644
---- a/src/seek_sanity_test.c
-+++ b/src/seek_sanity_test.c
-@@ -274,6 +274,18 @@ static int huge_file_test(int fd, int testnum, off_t filsz)
- 	return ret;
- }
- 
-+/* Make sure we get ENXIO if we pass in a negative offset. */
-+static int test18(int fd, int testnum)
-+{
-+	int ret = 0;
-+
-+	/* file size doesn't matter in this test, set to 0 */
-+	ret += do_lseek(testnum, 1, fd, 0, SEEK_HOLE, -1, -1);
-+	ret += do_lseek(testnum, 2, fd, 0, SEEK_DATA, -1, -1);
-+
-+	return ret;
-+}
-+
- static int test17(int fd, int testnum)
- {
- 	char *buf = NULL;
-@@ -969,6 +981,7 @@ struct testrec seek_tests[] = {
-        { 15, test15, "Test file with unwritten extents, page after unwritten extent" },
-        { 16, test16, "Test file with unwritten extents, non-contiguous dirty pages" },
-        { 17, test17, "Test file with unwritten extents, data-hole-data inside page" },
-+       { 18, test18, "Test file with negative SEEK_{HOLE,DATA} offsets" },
- };
- 
- static int run_test(struct testrec *tr)
-diff --git a/tests/generic/702 b/tests/generic/702
-new file mode 100755
-index 0000000..d251c39
---- /dev/null
-+++ b/tests/generic/702
-@@ -0,0 +1,70 @@
-+#! /bin/bash
-+# FS QA Test No. 702
-+#
-+# Check what happens when SEEK_HOLE/SEEK_DATA are fed negative offsets.
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2017, Oracle and/or its affiliates.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+
-+seq=`basename "$0"`
-+seqres="$RESULT_DIR/$seq"
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1    # failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+    cd /
-+    rm -rf "$tmp".* $testdir/file1
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_test
-+_require_seek_data_hole
-+
-+BASE_TEST_FILE=$TEST_DIR/seek_sanity_testfile
-+
-+_require_test_program "seek_sanity_test"
-+
-+# Disable extent zeroing for ext4 as that change where holes are created
-+if [ "$FSTYP" = "ext4" ]; then
-+	DEV=`_short_dev $TEST_DEV`
-+	echo 0 >/sys/fs/ext4/$DEV/extent_max_zeroout_kb
-+fi
-+
-+_cleanup()
-+{
-+	rm -f $tmp.* $BASE_TEST_FILE.*
-+}
-+
-+$here/src/seek_sanity_test -s 18 -e 18 $BASE_TEST_FILE > $seqres.full 2>&1 ||
-+	_fail "seek sanity check failed!"
-+
-+_check_dmesg
-+# success, all done
-+echo "Silence is golden"
-+status=0
-+exit
-diff --git a/tests/generic/702.out b/tests/generic/702.out
-new file mode 100644
-index 0000000..608d593
---- /dev/null
-+++ b/tests/generic/702.out
-@@ -0,0 +1,2 @@
-+QA output created by 702
-+Silence is golden
-diff --git a/tests/generic/group b/tests/generic/group
-index 3c5a19c..6afd402 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -449,4 +449,5 @@
- 444 auto quick acl
- 445 auto quick rw
- 446 auto quick rw dangerous
-+702 auto quick rw
- 931 auto quick clone
+I think you may be confusing supermin and libguestfs.  Supermin is a
+component we use to make libguestfs work, but it's not how libguestfs
+makes new filesystems.
+
+For example if you write:
+
+  $ guestfish -N disk.img=fs:ext4 -m /dev/sda1 touch /foo : ln-s /foo /bar
+  $ ll disk.img 
+  -rw-rw-r--. 1 rjones rjones 104857600 Jul 13 21:26 disk.img
+
+then the result is a new ext4 filesystem in a disk image, containing a
+symlink.  But it was created using the *kernel* + the symlink(2)
+system call (not using libext2fs), and in all cases it was in the past
+and will be in the future created correctly.
+
+Rich.
+
+-- 
+Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
+Read my programming and virtualization blog: http://rwmj.wordpress.com
+virt-top is 'top' for virtual machines.  Tiny program with many
+powerful monitoring features, net stats, disk stats, logging, etc.
+http://people.redhat.com/~rjones/virt-top
