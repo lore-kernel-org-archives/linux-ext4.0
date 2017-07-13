@@ -1,49 +1,113 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [xfstests PATCH] generic: add test of file mode when setfacl
- fails
-Date: Thu, 13 Jul 2017 04:55:07 -0700
-Message-ID: <20170713115507.GA10435@infradead.org>
-References: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
- <20170712114719.GA14398@infradead.org>
- <20170713094003.GA4959@debian.home>
+From: Miao Xie <miaoxie@huawei.com>
+Subject: Re: [PATCH 1/4] ext4: fix forgetten xattr lock protection in
+ ext4_expand_extra_isize
+Date: Thu, 13 Jul 2017 20:55:55 +0800
+Message-ID: <e7301611-0fed-fbbf-3ab9-49f2287a14eb@huawei.com>
+References: <1499360993-17130-1-git-send-email-miaoxie@huawei.com>
+Reply-To: <miaoxie@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Dave Kleikamp <shaggy@kernel.org>, linux-ext4@vger.kernel.org,
-        jfs-discussion@lists.sourceforge.net,
-        reiserfs-devel@vger.kernel.org, fstests@vger.kernel.org
-To: Ernesto =?iso-8859-1?Q?A=2E_Fern=E1ndez?=
-        <ernesto.mnd.fernandez@gmail.com>
+Content-Type: text/plain; charset="gbk"
+Content-Transfer-Encoding: 7bit
+Cc: <tytso@mit.edu>, <lixi@ddn.com>, <yi.zhang@huawei.com>,
+        <adilger@dilger.ca>, <wshilong@ddn.com>, <sihara@ddn.com>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:42069 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751106AbdGMLzL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jul 2017 07:55:11 -0400
-Content-Disposition: inline
-In-Reply-To: <20170713094003.GA4959@debian.home>
+Received: from szxga03-in.huawei.com ([45.249.212.189]:8923 "EHLO
+        szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751165AbdGMM4r (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Jul 2017 08:56:47 -0400
+In-Reply-To: <1499360993-17130-1-git-send-email-miaoxie@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 13, 2017 at 06:40:04AM -0300, Ernesto A. Fernández wrote:
-> Check that the group permission bits of a file are not altered when setfacl
-> fails. At the time of this patch the test fails for at least ext2, ext4 and
-> jfs. It is not run against reiserfs, since xfstests claims that "attrs are
-> not supported by this filesystem type".
+Ping......
 
-That's odd, as common/config explicitly turns on user xattrs:
-
-        reiserfs)
-                # acls & xattrs aren't turned on by default on reiserfs
-                export MOUNT_OPTIONS="-o acl,user_xattr $REISERFS_MOUNT_OPTIONS"
-
-
+on 2017/7/7 at 1:09, Miao Xie wrote:
+> We should avoid the contention between the i_extra_isize update and
+> the inline data insertion, so move the xattr trylock in front of
+> i_extra_isize update.
 > 
-> The failure to set acls is induced by filling the device, so to save time
-> this should probably be run with a small TEST_DEV.
-
-If you run it on the scratch fs instead of the test fs you can use
-_scratch_mkfs_sized to hand craft a small fs, which would be nice
-to get a decent runtime.
+> Signed-off-by: Miao Xie <miaoxie@huawei.com>
+> Reviewed-by: Wang Shilong <wshilong@ddn.com>
+> ---
+>  fs/ext4/inode.c | 18 ++++++++++++++++--
+>  fs/ext4/xattr.c | 10 ----------
+>  2 files changed, 16 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 5cf82d0..4af3edc 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5639,10 +5639,15 @@ static int ext4_expand_extra_isize(struct inode *inode,
+>  {
+>  	struct ext4_inode *raw_inode;
+>  	struct ext4_xattr_ibody_header *header;
+> +	int no_expand;
+> +	int error;
+>  
+>  	if (EXT4_I(inode)->i_extra_isize >= new_extra_isize)
+>  		return 0;
+>  
+> +	if (ext4_write_trylock_xattr(inode, &no_expand) == 0)
+> +		return 0;
+> +
+>  	raw_inode = ext4_raw_inode(&iloc);
+>  
+>  	header = IHDR(inode, raw_inode);
+> @@ -5654,12 +5659,21 @@ static int ext4_expand_extra_isize(struct inode *inode,
+>  		       EXT4_I(inode)->i_extra_isize, 0,
+>  		       new_extra_isize - EXT4_I(inode)->i_extra_isize);
+>  		EXT4_I(inode)->i_extra_isize = new_extra_isize;
+> +		ext4_write_unlock_xattr(inode, &no_expand);
+>  		return 0;
+>  	}
+>  
+>  	/* try to expand with EAs present */
+> -	return ext4_expand_extra_isize_ea(inode, new_extra_isize,
+> -					  raw_inode, handle);
+> +	error = ext4_expand_extra_isize_ea(inode, new_extra_isize,
+> +					   raw_inode, handle);
+> +	if (error) {
+> +		/*
+> +		 * Inode size expansion failed; don't try again
+> +		 */
+> +		no_expand = 1;
+> +	}
+> +	ext4_write_unlock_xattr(inode, &no_expand);
+> +	return error;
+>  }
+>  
+>  /*
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 5d3c253..12ee5fb 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -1472,10 +1472,6 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+>  	int error = 0, tried_min_extra_isize = 0;
+>  	int s_min_extra_isize = le16_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_min_extra_isize);
+>  	int isize_diff;	/* How much do we need to grow i_extra_isize */
+> -	int no_expand;
+> -
+> -	if (ext4_write_trylock_xattr(inode, &no_expand) == 0)
+> -		return 0;
+>  
+>  retry:
+>  	isize_diff = new_extra_isize - EXT4_I(inode)->i_extra_isize;
+> @@ -1558,16 +1554,10 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+>  	EXT4_I(inode)->i_extra_isize = new_extra_isize;
+>  	brelse(bh);
+>  out:
+> -	ext4_write_unlock_xattr(inode, &no_expand);
+>  	return 0;
+>  
+>  cleanup:
+>  	brelse(bh);
+> -	/*
+> -	 * Inode size expansion failed; don't try again
+> -	 */
+> -	no_expand = 1;
+> -	ext4_write_unlock_xattr(inode, &no_expand);
+>  	return error;
+>  }
+>  
+> 
