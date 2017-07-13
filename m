@@ -1,40 +1,67 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: clean up ext4_remove_blocks() return
-Date: Thu, 13 Jul 2017 18:33:51 -0400
-Message-ID: <20170713223351.iqt4owygisqnm6wm@thunk.org>
-References: <20170713151703.GA6383@localhost.localdomain>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH 1/6] fscrypt: add v2 encryption context and policy
+Date: Thu, 13 Jul 2017 15:58:38 -0700
+Message-ID: <20170713225838.GA73286@gmail.com>
+References: <20170712210035.51534-1-ebiggers3@gmail.com>
+ <20170712210035.51534-2-ebiggers3@gmail.com>
+ <20170713222944.GA23111@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47964 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751350AbdGMWdy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Jul 2017 18:33:54 -0400
+Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Alex Cope <alexcope@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: Michael Halcrow <mhalcrow@google.com>
+Return-path: <linux-crypto-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170713151703.GA6383@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170713222944.GA23111@google.com>
+Sender: linux-crypto-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 13, 2017 at 11:17:03AM -0400, Eric Whitney wrote:
-> ext4_remove_blocks() never returns anything other than 0, signifying
-> success.  Convert the function to void type to make this immediately
-> obvious at the call site.
+Hi Michael,
+
+On Thu, Jul 13, 2017 at 03:29:44PM -0700, Michael Halcrow wrote:
+> On Wed, Jul 12, 2017 at 02:00:30PM -0700, Eric Biggers wrote:
+> > From: Eric Biggers <ebiggers@google.com>
+> > 
+> > Currently, the fscrypt_context (i.e. the encryption xattr) does not
+> > contain a cryptographically secure identifier for the master key's
+> > payload.  Therefore it's not possible to verify that the correct key was
+> > supplied, which is problematic in multi-user scenarios.  To make this
+> > possible, define a new fscrypt_context version (v2) which includes a
+> > key_hash field, and allow userspace to opt-in to it when setting an
+> > encryption policy by setting fscrypt_policy.version to 2.  For now just
+> > zero the new field; a later patch will start setting it for real.
 > 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+> The main concern that comes to mind is potentially blowing past the
+> inline xattr size limit and allocating a new inode block.  The
+> security benefit probably outweighs that concern in this case.
+> 
 
-Actually, what we should do is to bubble errors up from
-ext4_remove_blocks to the callers of ext4_ext_rm_leaf().  At the
-moment it doesn't return any errors, but eventually we should be
-returning errors all the way up to ext4 truncate.
+The way it adds up now for ext4 is:
 
-The reason why it's a little tricky is it's more than just not
-deleting the call to ext4_std_error() and then returning error up to
-the caller.  We need to make sure that file system is in a
-self-consistent state before we return an error up to the caller.
+128 bytes for base inode
++ 32 bytes for i_extra fields
++ 4 bytes for in-inode xattrs header
++ 20 bytes for encryption xattr header + name
++ 28 bytes for encryption xattr value
+----------------------------------
+= 212 bytes total.
 
-Cheers,
+By adding the 16-byte 'key_hash' field it grows to 228 bytes total.  So it still
+fits in a 256-byte inode, though it's getting closer to the limit.  We could
+save 8 bytes by instead using the design where master_key_descriptor is extended
+to 16 bytes and redefined as a cryptographically secure hash.  But as noted,
+that has some significant disadvantages.
 
-					- Ted
- 
+Also note that we don't really have to worry about leaving space for a SELinux
+xattr anymore because with 256-byte inodes + encryption the SELinux xattr is
+already being written to an external block, given that it requires about 52-62
+bytes (at least when using Android's SELinux policy; different SELinux policies
+may use different values), and 212 + 52 > 256.  So if someone wants both xattrs
+in-inode they need to use 512-byte inodes already.
+
+Eric
