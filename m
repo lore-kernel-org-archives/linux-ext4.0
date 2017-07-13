@@ -1,14 +1,11 @@
-From: Herbert Xu <herbert@gondor.apana.org.au>
-Subject: Re: [PATCH 3/6] fscrypt: use HKDF-SHA512 to derive the per-inode
- encryption keys
-Date: Fri, 14 Jul 2017 00:07:54 +0800
-Message-ID: <20170713160753.GA25989@gondor.apana.org.au>
-References: <20170712210035.51534-1-ebiggers3@gmail.com>
- <20170712210035.51534-4-ebiggers3@gmail.com>
- <2034167.Brpu2WxA6s@tauon.chronox.de>
+From: Stephan =?ISO-8859-1?Q?M=FCller?= <smueller@chronox.de>
+Subject: Re: [PATCH 3/6] fscrypt: use HKDF-SHA512 to derive the per-inode encryption keys
+Date: Thu, 13 Jul 2017 18:18:02 +0200
+Message-ID: <4273111.qD8qsi0XUh@tauon.chronox.de>
+References: <20170712210035.51534-1-ebiggers3@gmail.com> <2034167.Brpu2WxA6s@tauon.chronox.de> <20170713160753.GA25989@gondor.apana.org.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7Bit
 Cc: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
@@ -17,31 +14,22 @@ Cc: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         Alex Cope <alexcope@google.com>,
         Eric Biggers <ebiggers@google.com>
-To: Stephan =?iso-8859-1?Q?M=FCller?= <smueller@chronox.de>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <2034167.Brpu2WxA6s@tauon.chronox.de>
-Sender: linux-fsdevel-owner@vger.kernel.org
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Return-path: <linux-crypto-owner@vger.kernel.org>
+In-Reply-To: <20170713160753.GA25989@gondor.apana.org.au>
+Sender: linux-crypto-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 13, 2017 at 04:54:55PM +0200, Stephan Müller wrote:
-> Am Mittwoch, 12. Juli 2017, 23:00:32 CEST schrieb Eric Biggers:
-> 
-> Hi Herbert,
-> 
-> This patch adds a second KDF to the kernel -- the first is found in the keys 
-> subsystem.
-> 
-> The next KDF that may come in is in the TLS scope.
-> 
-> Would it make sense to warm up the KDF patches adding generic KDF support to 
-> the kernel crypto API that I supplied some time ago? The advantages would be 
-> to have one location of KDF implementations and the benefit of the testmgr.
+Am Donnerstag, 13. Juli 2017, 18:07:54 CEST schrieb Herbert Xu:
 
-Sure.  Though I'd like to see what it looks like before I commit :)
+Hi Herbert,
 
-Thanks,
--- 
-Email: Herbert Xu <herbert@gondor.apana.org.au>
-Home Page: http://gondor.apana.org.au/~herbert/
-PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
+> Sure.  Though I'd like to see what it looks like before I commit :)
+
+Naturally. :-)
+
+The patches would create an RNG template support. KDFs are not more than 
+special-purpose RNGs.
+
+Ciao
+Stephan
