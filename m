@@ -1,107 +1,57 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] vfs: in iomap seek_{hole,data}, return -ENXIO for
- negative offsets
-Date: Thu, 13 Jul 2017 10:10:26 -0700
-Message-ID: <20170713171026.GB4151@magnolia>
-References: <20170712173650.GC4212@magnolia>
- <566E0688-E3D4-416A-B496-6B2F0FA3C85C@dilger.ca>
+From: "Richard W.M. Jones" <rjones@redhat.com>
+Subject: Re: Fast symlinks stored slow
+Date: Thu, 13 Jul 2017 18:13:35 +0100
+Message-ID: <20170713171335.GT31999@redhat.com>
+References: <20170712170711.GA19996@redhat.com>
+ <20170712231737.nzi2dv6e6h6yvrsl@thunk.org>
+ <20170713080213.GO31999@redhat.com>
+ <20170713164959.m2hf72b6zqlorn5i@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        xfs <linux-xfs@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:58116 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750881AbdGMRNh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Jul 2017 13:13:37 -0400
 Content-Disposition: inline
-In-Reply-To: <566E0688-E3D4-416A-B496-6B2F0FA3C85C@dilger.ca>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170713164959.m2hf72b6zqlorn5i@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 12, 2017 at 11:08:51PM -0700, Andreas Dilger wrote:
-> On Jul 12, 2017, at 10:36 AM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
+On Thu, Jul 13, 2017 at 12:49:59PM -0400, Theodore Ts'o wrote:
+> On Thu, Jul 13, 2017 at 09:02:13AM +0100, Richard W.M. Jones wrote:
 > > 
-> > In the iomap implementations of SEEK_HOLE and SEEK_DATA, make sure we
-> > return -ENXIO for negative offsets instead of badgering the iomap
-> > provider with garbage requests.
+> > From my point of view it's not too much trouble to recreate these
+> > filesystems, and we've already proposed a fix for supermin so it
+> > creates symlinks properly[1].
 > 
-> Hmm, wouldn't it be useful to be able to seek N bytes before the hole
-> or data?
+> My concern is that people using libguestfs, et.al., on Fedura XX and
+> then try to decide to upgrade to the 4.13 kernel.  So it sounds like
+> the exposure could be pretty large.  Am I wrong?
 
-Yes, but you can do that with a first lseek SEEK_DATA call to position
-us at the start of data followed by a second lseek SEEK_CUR to position
-us at the desired before-data offset.  The offset argument to SEEK DATA
-tells us where to start looking for the next hole/not-hole.
+In this case we're using libext2fs to build an appliance filesystem,
+used to boot a small Linux system which is then run under qemu by
+libguestfs.  This appliance is completely rebuilt automatically under
+many circumstances, for example a host package upgrade (eg. upgrading
+the kernel), so it's not a long-lived filesystem that would cause a
+problem.  Rebuilding only takes a few seconds.
 
-> It would make more sense to verify the result after finding the hole
-> or data and adding the relative offset. It should only be an error if
-> the resulting offset is before the start or after the actual file end.
+The process is described in more detail here:
+http://libguestfs.org/supermin.1.html#SUPERMIN-APPLIANCES
 
-In any case, the manpage says:
+>From our point of view the only issue are some prebuilt appliances
+which we have provided to other distributions that cannot / don't want
+to use supermin (http://download.libguestfs.org/binaries/appliance/)
+and at some point I'm going to have to rebuild these using the fixed
+supermin.
 
-"SEEK_DATA
-Adjust the file offset to the next location in the file greater than or
-equal to offset containing data.  If offset points to data, then the
-file offset is set to offset.
+Rich.
 
-"SEEK_HOLE
-Adjust the file offset to the next hole in the file greater than or
-equal to offset.  If offset points into the middle of a hole, then the
-file offset is set to offset.  If there is no hole past offset, then the
-file offset is adjusted to the end of the file (i.e., there is an
-implicit hole at the end of any file)."
-
-...which to my mind means that offset has to be an absolute file offset.
-Therefore, negative offsets aren't allowed, and we're stuck with that.
-
-Regrettably the ERRORS section doesn't specify the behavior when offset
-is negative, so this patch merely fixes XFS to behave the same way it
-did up to 4.12 (which fwiw matches btrfs behavior).
-
---D
-
-> Of course, if the passed offset > size from the start then
-> there is no way it can get better and that would be grounds for
-> returning early.
-> 
-> Cheers, Andreas
-> 
-> > Inspired-by: Mateusz S <muttdini@gmail.com>
-> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > ---
-> > fs/iomap.c |    8 ++++----
-> > 1 file changed, 4 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/iomap.c b/fs/iomap.c
-> > index 432eed8..16f5c074 100644
-> > --- a/fs/iomap.c
-> > +++ b/fs/iomap.c
-> > @@ -610,8 +610,8 @@ iomap_seek_hole(struct inode *inode, loff_t offset, const struct iomap_ops *ops)
-> > 	loff_t length = size - offset;
-> > 	loff_t ret;
-> > 
-> > -	/* Nothing to be found beyond the end of the file. */
-> > -	if (offset >= size)
-> > +	/* Nothing to be found before or beyond the end of the file. */
-> > +	if (offset < 0 || offset >= size)
-> > 		return -ENXIO;
-> > 
-> > 	while (length > 0) {
-> > @@ -656,8 +656,8 @@ iomap_seek_data(struct inode *inode, loff_t offset, const struct iomap_ops *ops)
-> > 	loff_t length = size - offset;
-> > 	loff_t ret;
-> > 
-> > -	/* Nothing to be found beyond the end of the file. */
-> > -	if (offset >= size)
-> > +	/* Nothing to be found before or beyond the end of the file. */
-> > +	if (offset < 0 || offset >= size)
-> > 		return -ENXIO;
-> > 
-> > 	while (length > 0) {
-> 
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
+-- 
+Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
+Read my programming and virtualization blog: http://rwmj.wordpress.com
+virt-top is 'top' for virtual machines.  Tiny program with many
+powerful monitoring features, net stats, disk stats, logging, etc.
+http://people.redhat.com/~rjones/virt-top
