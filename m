@@ -1,35 +1,59 @@
-From: Stephan =?ISO-8859-1?Q?M=FCller?= <smueller@chronox.de>
-Subject: Re: [PATCH 3/6] fscrypt: use HKDF-SHA512 to derive the per-inode encryption keys
-Date: Thu, 13 Jul 2017 18:18:02 +0200
-Message-ID: <4273111.qD8qsi0XUh@tauon.chronox.de>
-References: <20170712210035.51534-1-ebiggers3@gmail.com> <2034167.Brpu2WxA6s@tauon.chronox.de> <20170713160753.GA25989@gondor.apana.org.au>
+From: Jan Kara <jack@suse.cz>
+Subject: [GIT PULL] ext2, udf, reiserfs fixes for 4.13-rc1
+Date: Thu, 13 Jul 2017 18:18:16 +0200
+Message-ID: <20170713161816.GH5884@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Alex Cope <alexcope@google.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Herbert Xu <herbert@gondor.apana.org.au>
-Return-path: <linux-crypto-owner@vger.kernel.org>
-In-Reply-To: <20170713160753.GA25989@gondor.apana.org.au>
-Sender: linux-crypto-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        reiserfs-devel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:53636 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752517AbdGMQST (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Jul 2017 12:18:19 -0400
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Am Donnerstag, 13. Juli 2017, 18:07:54 CEST schrieb Herbert Xu:
+  Hello Linus,
 
-Hi Herbert,
+  could you please pull from
 
-> Sure.  Though I'd like to see what it looks like before I commit :)
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git for_linus
 
-Naturally. :-)
+to get several ext2, udf, and reiserfs fixes.
 
-The patches would create an RNG template support. KDFs are not more than 
-special-purpose RNGs.
+Top of the tree is 4d9bcaddacf2. The full shortlog is:
 
-Ciao
-Stephan
+Ernesto A. Fernández (1):
+      ext2: Fix memory leak when truncate races ext2_get_blocks
+
+Jan Kara (6):
+      udf: Remove unused UDF_DEFAULT_BLOCKSIZE
+      udf: Fix races with i_size changes during readpage
+      udf: Use i_size_read() in udf_adinicb_writepage()
+      udf: Fix deadlock between writeback and udf_setsize()
+      udf: Use time64_to_tm for timestamp conversion
+      udf: Convert udf_disk_stamp_to_time() to use mktime64()
+
+Jeff Mahoney (2):
+      reiserfs: don't preallocate blocks for extended attributes
+      reiserfs: fix race in prealloc discard
+
+The diffstat is
+
+ fs/ext2/inode.c      |  1 +
+ fs/reiserfs/bitmap.c | 14 ++++++--
+ fs/udf/file.c        | 12 +++++--
+ fs/udf/inode.c       |  4 +--
+ fs/udf/super.c       |  2 --
+ fs/udf/udftime.c     | 98 +++++++---------------------------------------------
+ 6 files changed, 36 insertions(+), 95 deletions(-)
+
+							Thanks
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
