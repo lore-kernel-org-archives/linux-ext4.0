@@ -1,50 +1,99 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Fast symlinks stored slow
-Date: Thu, 13 Jul 2017 14:50:37 -0400
-Message-ID: <20170713185037.yz3l6hq3mcc3wppm@thunk.org>
-References: <20170712170711.GA19996@redhat.com>
- <20170712231737.nzi2dv6e6h6yvrsl@thunk.org>
- <20170713080213.GO31999@redhat.com>
- <20170713164959.m2hf72b6zqlorn5i@thunk.org>
- <20170713171335.GT31999@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] generic: test negative SEEK_HOLE/SEEK_DATA offsets
+Date: Thu, 13 Jul 2017 12:04:50 -0700
+Message-ID: <20170713190450.GC4151@magnolia>
+References: <20170712173923.GD4212@magnolia>
+ <20170713081458.GE2478@eguan.usersys.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
-To: "Richard W.M. Jones" <rjones@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47242 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752415AbdGMSul (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Jul 2017 14:50:41 -0400
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        fstests <fstests@vger.kernel.org>
+To: Eryu Guan <eguan@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170713171335.GT31999@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170713081458.GE2478@eguan.usersys.redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 13, 2017 at 06:13:35PM +0100, Richard W.M. Jones wrote:
-> In this case we're using libext2fs to build an appliance filesystem,
-> used to boot a small Linux system which is then run under qemu by
-> libguestfs.  This appliance is completely rebuilt automatically under
-> many circumstances, for example a host package upgrade (eg. upgrading
-> the kernel), so it's not a long-lived filesystem that would cause a
-> problem.  Rebuilding only takes a few seconds.
+On Thu, Jul 13, 2017 at 04:14:58PM +0800, Eryu Guan wrote:
+> On Wed, Jul 12, 2017 at 10:39:23AM -0700, Darrick J. Wong wrote:
+> > Check that we get -ENXIO if the user calls SEEK_HOLE/SEEK_DATA with
+> > a negative file offset.
 > 
-> The process is described in more detail here:
-> http://libguestfs.org/supermin.1.html#SUPERMIN-APPLIANCES
+> A minor nit, this might be confusing, lseek returns -1 on error, and set
+> errno to ENXIO, no one actually returns -ENXIO.
 > 
-> From our point of view the only issue are some prebuilt appliances
-> which we have provided to other distributions that cannot / don't want
-> to use supermin (http://download.libguestfs.org/binaries/appliance/)
-> and at some point I'm going to have to rebuild these using the fixed
-> supermin.
+> > 
+> > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> > ---
+> >  src/seek_sanity_test.c |   25 +++++++++++++++++
+> >  tests/generic/702      |   70 ++++++++++++++++++++++++++++++++++++++++++++++++
+> >  tests/generic/702.out  |    2 +
+> >  tests/generic/group    |    1 +
+> >  4 files changed, 98 insertions(+)
+> >  create mode 100755 tests/generic/702
+> >  create mode 100644 tests/generic/702.out
+> > 
+> > diff --git a/src/seek_sanity_test.c b/src/seek_sanity_test.c
+> > index a58ec36..547f0a4 100644
+> > --- a/src/seek_sanity_test.c
+> > +++ b/src/seek_sanity_test.c
+> > @@ -274,6 +274,30 @@ static int huge_file_test(int fd, int testnum, off_t filsz)
+> >  	return ret;
+> >  }
+> >  
+> > +/* Make sure we get ENXIO if we pass in a negative offset. */
+> > +static int test18(int fd, int testnum)
+> > +{
+> > +	int ret = 0;
+> > +	off_t pos;
+> > +
+> > +	errno = 0;
+> > +	pos = lseek(fd, -1, SEEK_HOLE);
+> > +	if (pos != -1 || errno != ENXIO) {
+> > +		printf("%02d.1 SEEK_HOLE expected -1 with errno %d, got %jd and %d.\n",
+> > +		       testnum, -ENXIO, pos, -errno);
+> > +		ret++;
+> > +	}
+> > +
+> > +	errno = 0;
+> > +	pos = lseek(fd, -1, SEEK_DATA);
+> > +	if (pos != -1 || errno != ENXIO) {
+> > +		printf("%02d.1 SEEK_DATA expected -1 with errno %d, got %jd and %d.\n",
+> > +		       testnum, -ENXIO, pos, -errno);
+> > +		ret++;
+> > +	}
+> > +	return ret;
+> 
+> Seems cleaner to use do_lseek() helper, e.g.
+> 
+> static int test18(int fd, int testnum)
+> {
+> 	int ret = 0;
+> 
+> 	/* file size doesn't matter in this test, set to 0 */
+> 	ret += do_lseek(testnum, 1, fd, 0, SEEK_HOLE, -1, -1);
+> 	ret += do_lseek(testnum, 2, fd, 0, SEEK_DATA, -1, -1);
+> 	
+> 	return ret;
+> }
+> 
+> And test reports "succ" or "FAIL" as what other subtests do
+> 
+> 18. Test file with negative SEEK_{HOLE,DATA} offsets  
+> 18.01 SEEK_HOLE expected -1 or -1, got 0.                         FAIL
+> 18.02 SEEK_DATA expected -1 with errno -6, got -1.                FAIL
 
-OK, so the risk is if there are other people who are using supermin to
-create appliances.  (One potential use case we might need to
-investigate are services such as SuSE Studio, since it can create
-turnkey VM appliances for its users.)  If these applianes are
-distributed end users (as opposed to being automatically rebuilt as in
-your use case), that's when we would potentially be at risk.
+Sure, will change and resend.
 
-Did I get that right?
+--D
 
-					- Ted
+> 
+> Thanks,
+> Eryu
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
