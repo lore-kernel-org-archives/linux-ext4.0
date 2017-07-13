@@ -1,85 +1,50 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH 3/6] fscrypt: use HKDF-SHA512 to derive the
- per-inode encryption keys
-Date: Thu, 13 Jul 2017 11:10:57 -0700
-Message-ID: <20170713181057.GA143898@gmail.com>
-References: <20170712210035.51534-1-ebiggers3@gmail.com>
-	<20170712210035.51534-4-ebiggers3@gmail.com>
-	<2034167.Brpu2WxA6s@tauon.chronox.de>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Fast symlinks stored slow
+Date: Thu, 13 Jul 2017 14:50:37 -0400
+Message-ID: <20170713185037.yz3l6hq3mcc3wppm@thunk.org>
+References: <20170712170711.GA19996@redhat.com>
+ <20170712231737.nzi2dv6e6h6yvrsl@thunk.org>
+ <20170713080213.GO31999@redhat.com>
+ <20170713164959.m2hf72b6zqlorn5i@thunk.org>
+ <20170713171335.GT31999@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>, herbert@gondor.apana.org.au,
-	Eric Biggers <ebiggers@google.com>, Alex Cope <alexcope@google.com>,
-	linux-f2fs-devel@lists.sourceforge.net,
-	linux-fscrypt@vger.kernel.org, linux-mtd@lists.infradead.org,
-	linux-crypto@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
-To: Stephan =?iso-8859-1?Q?M=FCller?= <smueller@chronox.de>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
+To: "Richard W.M. Jones" <rjones@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:47242 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752415AbdGMSul (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Jul 2017 14:50:41 -0400
 Content-Disposition: inline
-In-Reply-To: <2034167.Brpu2WxA6s@tauon.chronox.de>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
-	<mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170713171335.GT31999@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Stephan,
+On Thu, Jul 13, 2017 at 06:13:35PM +0100, Richard W.M. Jones wrote:
+> In this case we're using libext2fs to build an appliance filesystem,
+> used to boot a small Linux system which is then run under qemu by
+> libguestfs.  This appliance is completely rebuilt automatically under
+> many circumstances, for example a host package upgrade (eg. upgrading
+> the kernel), so it's not a long-lived filesystem that would cause a
+> problem.  Rebuilding only takes a few seconds.
+> 
+> The process is described in more detail here:
+> http://libguestfs.org/supermin.1.html#SUPERMIN-APPLIANCES
+> 
+> From our point of view the only issue are some prebuilt appliances
+> which we have provided to other distributions that cannot / don't want
+> to use supermin (http://download.libguestfs.org/binaries/appliance/)
+> and at some point I'm going to have to rebuild these using the fixed
+> supermin.
 
-On Thu, Jul 13, 2017 at 04:54:55PM +0200, Stephan M=FCller wrote:
-> Am Mittwoch, 12. Juli 2017, 23:00:32 CEST schrieb Eric Biggers:
-> =
+OK, so the risk is if there are other people who are using supermin to
+create appliances.  (One potential use case we might need to
+investigate are services such as SuSE Studio, since it can create
+turnkey VM appliances for its users.)  If these applianes are
+distributed end users (as opposed to being automatically rebuilt as in
+your use case), that's when we would potentially be at risk.
 
-> Hi Herbert,
-> =
+Did I get that right?
 
-> This patch adds a second KDF to the kernel -- the first is found in the k=
-eys =
-
-> subsystem.
-> =
-
-> The next KDF that may come in is in the TLS scope.
-> =
-
-> Would it make sense to warm up the KDF patches adding generic KDF support=
- to =
-
-> the kernel crypto API that I supplied some time ago? The advantages would=
- be =
-
-> to have one location of KDF implementations and the benefit of the testmg=
-r.
-> =
-
-
-That may be a good idea.  Looking at the old thread, I share Herbert's conc=
-ern
-(http://www.spinics.net/lists/linux-crypto/msg21231.html) about there likel=
-y not
-being more than one implementation of each KDF algorithm.  So, perhaps some
-simple helper functions would be more appropriate.  However, making the KDF=
-s be
-covered by self-tests would be very nice.
-
-Also, it seems your patch
-(http://www.spinics.net/lists/linux-crypto/msg21137.html) doesn't allow a s=
-alt
-to be passed in.  In order to fully support HKDF, crypto_rng_reset() (which=
- as I
-understand would be the way to invoke the "extract" step) would somehow nee=
-d to
-accept both the input keying material and salt, both of which are arbitrary
-length binary.
-
-Eric
-
----------------------------------------------------------------------------=
----
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+					- Ted
