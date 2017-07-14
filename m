@@ -1,101 +1,53 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [PATCH v2] generic: test negative SEEK_HOLE/SEEK_DATA offsets
-Date: Fri, 14 Jul 2017 11:41:19 +0800
-Message-ID: <20170714034119.GI2478@eguan.usersys.redhat.com>
-References: <20170713190641.GA4150@magnolia>
+From: Ernesto =?utf-8?Q?A=2E_Fern=C3=A1ndez?=
+        <ernesto.mnd.fernandez@gmail.com>
+Subject: Re: [xfstests PATCH] generic: add test of file mode when setfacl
+ fails
+Date: Fri, 14 Jul 2017 02:40:12 -0300
+Message-ID: <20170714054011.GA4973@debian.home>
+References: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
+ <20170712114719.GA14398@infradead.org>
+ <20170713094003.GA4959@debian.home>
+ <20170713115507.GA10435@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        xfs <linux-xfs@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        fstests <fstests@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: Ernesto =?utf-8?Q?A=2E_Fern=C3=A1ndez?=
+        <ernesto.mnd.fernandez@gmail.com>, Jan Kara <jack@suse.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Dave Kleikamp <shaggy@kernel.org>, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net,
+        reiserfs-devel@vger.kernel.org, fstests@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170713190641.GA4150@magnolia>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20170713115507.GA10435@infradead.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 13, 2017 at 12:06:41PM -0700, Darrick J. Wong wrote:
-> Check that we get -ENXIO if the user calls SEEK_HOLE/SEEK_DATA with
-> a negative file offset.
+On Thu, Jul 13, 2017 at 04:55:07AM -0700, Christoph Hellwig wrote:
+> On Thu, Jul 13, 2017 at 06:40:04AM -0300, Ernesto A. Fernández wrote:
+> > Check that the group permission bits of a file are not altered when setfacl
+> > fails. At the time of this patch the test fails for at least ext2, ext4 and
+> > jfs. It is not run against reiserfs, since xfstests claims that "attrs are
+> > not supported by this filesystem type".
 > 
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
-> v2: use helpers as suggested by Eryu.
-> ---
-[snip]
-> +
-> +seq=`basename "$0"`
-> +seqres="$RESULT_DIR/$seq"
-> +echo "QA output created by $seq"
-> +
-> +here=`pwd`
-> +tmp=/tmp/$$
-> +status=1    # failure is the default!
-> +trap "_cleanup; exit \$status" 0 1 2 3 15
-> +
-> +_cleanup()
-> +{
-> +    cd /
-> +    rm -rf "$tmp".* $testdir/file1
-> +}
+> That's odd, as common/config explicitly turns on user xattrs:
+> 
 
-Just noticed there're two _cleanup()s, I'll remove this one and move the
-one below here.
+xfstests decides if a filesystem supports attributes by trying to set them on
+the root inode, but reiserfs does not allow this. If this is actually the
+intended behaviour of reiserfs then xfstests should use a different check, but
+I'm guessing it's a bug, perhaps in mkfs.reiserfs.
 
-Thanks,
-Eryu
+> 
+> > 
+> > The failure to set acls is induced by filling the device, so to save time
+> > this should probably be run with a small TEST_DEV.
+> 
+> If you run it on the scratch fs instead of the test fs you can use
+> _scratch_mkfs_sized to hand craft a small fs, which would be nice
+> to get a decent runtime.
 
-> +
-> +# get standard environment, filters and checks
-> +. ./common/rc
-> +. ./common/filter
-> +
-> +_supported_fs generic
-> +_supported_os Linux
-> +
-> +_require_test
-> +_require_seek_data_hole
-> +
-> +BASE_TEST_FILE=$TEST_DIR/seek_sanity_testfile
-> +
-> +_require_test_program "seek_sanity_test"
-> +
-> +# Disable extent zeroing for ext4 as that change where holes are created
-> +if [ "$FSTYP" = "ext4" ]; then
-> +	DEV=`_short_dev $TEST_DEV`
-> +	echo 0 >/sys/fs/ext4/$DEV/extent_max_zeroout_kb
-> +fi
-> +
-> +_cleanup()
-> +{
-> +	rm -f $tmp.* $BASE_TEST_FILE.*
-> +}
-> +
-> +$here/src/seek_sanity_test -s 18 -e 18 $BASE_TEST_FILE > $seqres.full 2>&1 ||
-> +	_fail "seek sanity check failed!"
-> +
-> +_check_dmesg
-> +# success, all done
-> +echo "Silence is golden"
-> +status=0
-> +exit
-> diff --git a/tests/generic/702.out b/tests/generic/702.out
-> new file mode 100644
-> index 0000000..608d593
-> --- /dev/null
-> +++ b/tests/generic/702.out
-> @@ -0,0 +1,2 @@
-> +QA output created by 702
-> +Silence is golden
-> diff --git a/tests/generic/group b/tests/generic/group
-> index 3c5a19c..6afd402 100644
-> --- a/tests/generic/group
-> +++ b/tests/generic/group
-> @@ -449,4 +449,5 @@
->  444 auto quick acl
->  445 auto quick rw
->  446 auto quick rw dangerous
-> +702 auto quick rw
->  931 auto quick clone
+That's much better, thank you. I will send a revision soon. For some reason
+_scratch_mkfs_sized did not have support for jfs, but it was trivial to add.
