@@ -1,228 +1,95 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [xfstests PATCH v2] generic: add test of file mode when setfacl
- fails
-Date: Fri, 14 Jul 2017 15:25:29 +0800
-Message-ID: <20170714072529.GM2478@eguan.usersys.redhat.com>
-References: <20170714065925.GA6075@debian.home>
+From: Michael Halcrow <mhalcrow@google.com>
+Subject: Re: [PATCH 2/6] fscrypt: rename ->ci_master_key to
+ ->ci_master_key_descriptor
+Date: Fri, 14 Jul 2017 08:36:15 -0700
+Message-ID: <20170714153615.GA25453@google.com>
+References: <20170712210035.51534-1-ebiggers3@gmail.com>
+ <20170712210035.51534-3-ebiggers3@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: fstests@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        linux-ext4@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
-        reiserfs-devel@vger.kernel.org
-To: Ernesto =?utf-8?Q?A=2E_Fern=C3=A1ndez?=
-        <ernesto.mnd.fernandez@gmail.com>
-Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Alex Cope <alexcope@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170714065925.GA6075@debian.home>
-Sender: reiserfs-devel-owner@vger.kernel.org
+In-Reply-To: <20170712210035.51534-3-ebiggers3@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 14, 2017 at 03:59:28AM -0300, Ernesto A. Fernández wrote:
-> Check that the group permission bits of a file are not altered when setfacl
-> fails. At the time of this patch the test fails for at least ext2, ext4 and
-> jfs.
+On Wed, Jul 12, 2017 at 02:00:31PM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> Also add support for jfs in _scratch_mkfs_sized, which is needed here.
+> In struct fscrypt_info, ->ci_master_key is the master key descriptor,
+> not the master key itself.  In preparation for introducing a struct
+> fscrypt_master_key and making ->ci_master_key point to it, rename the
+> existing ->ci_master_key to ->ci_master_key_descriptor.
 > 
-> Note that this test is not meaningful for all filesystems, because some
-> will still succeed in setting the acls. This does not mean they don't have
-> a bug in how they would handle an error.
-> 
-> Signed-off-by: Ernesto A. Fernández <ernesto.mnd.fernandez@gmail.com>
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+
+Acked-by: Michael Halcrow <mhalcrow@google.com>
+
 > ---
-> Changes in v2:
->   - Use the scratch dev instead of the test dev so we can make a small fs and
->     fill it faster. As suggested by Christoph Hellwig.
->   - Make jfs work with _scratch_mkfs_sized, needed for the above.
->   - Remove the mention to an issue with reiserfs, since I now believe the
->     problem is on their side.
-
-Thanks for the updated patch! Some minor comments inline.
-
+>  fs/crypto/fscrypt_private.h | 2 +-
+>  fs/crypto/keyinfo.c         | 4 ++--
+>  fs/crypto/policy.c          | 5 +++--
+>  3 files changed, 6 insertions(+), 5 deletions(-)
 > 
->  common/rc             |  5 ++-
->  tests/generic/447     | 91 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/447.out |  2 ++
->  tests/generic/group   |  1 +
->  4 files changed, 98 insertions(+), 1 deletion(-)
->  create mode 100755 tests/generic/447
->  create mode 100644 tests/generic/447.out
+> diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+> index ef6909035823..5470aac82cab 100644
+> --- a/fs/crypto/fscrypt_private.h
+> +++ b/fs/crypto/fscrypt_private.h
+> @@ -107,7 +107,7 @@ struct fscrypt_info {
+>  	u8 ci_data_mode;
+>  	u8 ci_filename_mode;
+>  	u8 ci_flags;
+> -	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
+> +	u8 ci_master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
+>  };
+>  
+>  typedef enum {
+> diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+> index 7e664a11340a..5591fd24e4b2 100644
+> --- a/fs/crypto/keyinfo.c
+> +++ b/fs/crypto/keyinfo.c
+> @@ -293,8 +293,8 @@ int fscrypt_get_encryption_info(struct inode *inode)
+>  	crypt_info->ci_data_mode = ctx.contents_encryption_mode;
+>  	crypt_info->ci_filename_mode = ctx.filenames_encryption_mode;
+>  	crypt_info->ci_flags = ctx.flags;
+> -	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
+> -				sizeof(crypt_info->ci_master_key));
+> +	memcpy(crypt_info->ci_master_key_descriptor, ctx.master_key_descriptor,
+> +	       FS_KEY_DESCRIPTOR_SIZE);
+>  
+>  	res = determine_cipher_type(crypt_info, inode, &cipher_str, &keysize);
+>  	if (res)
+> diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
+> index 044f23fadb5a..81c59f8e45c0 100644
+> --- a/fs/crypto/policy.c
+> +++ b/fs/crypto/policy.c
+> @@ -224,7 +224,8 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
+>  	child_ci = child->i_crypt_info;
+>  
+>  	if (parent_ci && child_ci) {
+> -		return memcmp(parent_ci->ci_master_key, child_ci->ci_master_key,
+> +		return memcmp(parent_ci->ci_master_key_descriptor,
+> +			      child_ci->ci_master_key_descriptor,
+>  			      FS_KEY_DESCRIPTOR_SIZE) == 0 &&
+>  			(parent_ci->ci_context_version ==
+>  			 child_ci->ci_context_version) &&
+> @@ -282,7 +283,7 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
+>  	ctx.contents_encryption_mode = ci->ci_data_mode;
+>  	ctx.filenames_encryption_mode = ci->ci_filename_mode;
+>  	ctx.flags = ci->ci_flags;
+> -	memcpy(ctx.master_key_descriptor, ci->ci_master_key,
+> +	memcpy(ctx.master_key_descriptor, ci->ci_master_key_descriptor,
+>  	       FS_KEY_DESCRIPTOR_SIZE);
+>  	get_random_bytes(ctx.nonce, FS_KEY_DERIVATION_NONCE_SIZE);
+>  	if (ctx.version != FSCRYPT_CONTEXT_V1)
+> -- 
+> 2.13.2.932.g7449e964c-goog
 > 
-> diff --git a/common/rc b/common/rc
-> index b505365..a2258be 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -1020,7 +1020,7 @@ _scratch_mkfs_sized()
->      xfs)
->  	def_blksz=`echo $MKFS_OPTIONS|sed -rn 's/.*-b ?size= ?+([0-9]+).*/\1/p'`
->  	;;
-> -    ext2|ext3|ext4|ext4dev|udf|btrfs|reiser4|ocfs2)
-> +    ext2|ext3|ext4|ext4dev|udf|btrfs|reiser4|ocfs2|jfs)
->  	def_blksz=`echo $MKFS_OPTIONS| sed -rn 's/.*-b ?+([0-9]+).*/\1/p'`
->  	;;
->      esac
-> @@ -1068,6 +1068,9 @@ _scratch_mkfs_sized()
->  	(( fssize <= 100 * 1024 * 1024 )) && mixed_opt='--mixed'
->  	$MKFS_BTRFS_PROG $MKFS_OPTIONS $mixed_opt -b $fssize $SCRATCH_DEV
->  	;;
-> +    jfs)
-> +	${MKFS_PROG}.$FSTYP -F $MKFS_OPTIONS -b $blocksize $SCRATCH_DEV $blocks
-> +	;;
->      reiser4)
->  	# mkfs.resier4 requires size in KB as input for creating filesystem
->  	$MKFS_REISER4_PROG $MKFS_OPTIONS -y -b $blocksize $SCRATCH_DEV \
-
-Could you please add jfs support to _scratch_mkfs_sized in a separate
-patch?
-
-> diff --git a/tests/generic/447 b/tests/generic/447
-> new file mode 100755
-> index 0000000..ff81355
-> --- /dev/null
-> +++ b/tests/generic/447
-> @@ -0,0 +1,91 @@
-> +#! /bin/bash
-> +# FS QA Test 447
-> +#
-> +# Fill the device and set as many extended attributes to a file as
-> +# possible. Then call setfacl on it and, if this fails for lack of
-> +# space, test that the permissions remain the same.
-> +#
-> +#-----------------------------------------------------------------------
-> +# Copyright (c) 2017 Ernesto A. Fernandez.  All Rights Reserved.
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License as
-> +# published by the Free Software Foundation.
-> +#
-> +# This program is distributed in the hope that it would be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write the Free Software Foundation,
-> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> +#-----------------------------------------------------------------------
-> +#
-> +
-> +seq=`basename $0`
-> +seqres=$RESULT_DIR/$seq
-> +echo "QA output created by $seq"
-> +
-> +here=`pwd`
-> +tmp=/tmp/$$
-> +status=1	# failure is the default!
-> +trap "_cleanup; exit \$status" 0 1 2 3 15
-> +
-> +_cleanup()
-> +{
-> +	cd /
-> +	_scratch_unmount
-
-This is not needed, SCRATCH_DEV will be unmounted by next test that
-calls _require_scratch.
-
-> +	rm -f $tmp.*
-> +}
-> +
-> +# get standard environment, filters and checks
-> +. ./common/rc
-> +. ./common/filter
-> +. ./common/attr
-> +
-> +# remove previous $seqres.full before test
-> +rm -f $seqres.full
-> +
-> +# real QA test starts here
-> +
-> +# Modify as appropriate.
-> +_supported_fs generic
-> +_supported_os Linux
-> +_require_scratch
-> +_require_test
-> +_require_acls
-> +_require_attrs
-> +
-> +_scratch_mkfs_sized $((50 * 1024 * 1024)) >> $seqres.full 2>&1
-> +_scratch_mount
-
-Because this test is trying to consume all space on $SCRATCH_MNT, it'd
-be good to exit if _scratch_mount fails, otherwise it's filling rootfs.
-
-_scratch_mount || _fail "mount failed"
-
-> +
-> +cd $SCRATCH_MNT
-> +TFILE=testfile.$seq
-
-Hmm, fstests prefer:
-
-TFILE=$SCRATCH_MNT/testfile.$seq
-touch $TFILE
-chmod u_rwx $TFILE
-...
-
-instead of cd to $SCRATCH_MNT.
-
-> +
-> +# Create the test file and choose its permissions
-> +rm -f $TFILE
-
-$SCRATCH_DEV was just created, no need to remove $TFILE here.
-
-> +touch $TFILE
-> +chmod u+rwx $TFILE
-> +chmod go-rwx $TFILE
-> +
-> +# Try to run out of space so setfacl will fail
-> +yes xxxxxxxxxx &> $TFILE
-
-How about just writing 50M to $TFILE?
-
-$XFS_IO_PROG -fc "pwrite 0 50m" $TFILE >>$seqres.full 2>&1
-
-> +i=1
-> +while setfattr -n user.$i $TFILE &> /dev/null; do
-> +	((++i))
-> +done
-> +
-> +if setfacl -m m:r $TFILE &> /dev/null; then
-> +	# setfacl succeeded, so the test was meaningless
-> +	# The filesystem might still have an issue
-> +	status=0
-> +	echo "-rwx------"
-> +	exit
-> +fi
-> +
-> +# Since setfacl failed, the permissions should not have changed
-> +stat -c %A $TFILE
-> +
-> +status=0
-> +exit
-> diff --git a/tests/generic/447.out b/tests/generic/447.out
-> new file mode 100644
-> index 0000000..adec877
-> --- /dev/null
-> +++ b/tests/generic/447.out
-> @@ -0,0 +1,2 @@
-> +QA output created by 447
-> +-rwx------
-> diff --git a/tests/generic/group b/tests/generic/group
-> index 8c1e21a..f11d798 100644
-> --- a/tests/generic/group
-> +++ b/tests/generic/group
-> @@ -449,3 +449,4 @@
->  444 auto quick acl
->  445 auto quick rw
->  446 auto quick rw dangerous
-> +447 acl
-
-Should be in auto and quick group too. Basically auto group means this
-test is a well defined regression test and the run time is less than
-300s, quick group is a subset of auto, and the run time is usually
-within 30s.
-
-Thanks,
-Eryu
