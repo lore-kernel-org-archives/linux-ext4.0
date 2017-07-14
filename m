@@ -1,103 +1,165 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: More thoughts about xattrs, journal credits, and their location
-Date: Fri, 14 Jul 2017 15:13:27 -0700
-Message-ID: <3B21155F-4426-413C-AF16-84E594812530@dilger.ca>
-References: <20170706023819.32272-1-tahsin@google.com>
- <20170706023819.32272-2-tahsin@google.com>
- <20170708050900.afuwwia7c4izliir@thunk.org>
- <20170708153048.3lrrcd43ptx5yuy3@thunk.org>
- <CAAeU0aMZjeX6utQfAPa131mhTPK27W4BtWodXYLPT3pss7Tp-w@mail.gmail.com>
- <522BF129-AE45-4722-BCC3-0DDC6A078EB8@dilger.ca>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_0A54B34E-1FE7-4ECE-B04E-7F72D3B4123C";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:33147 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751131AbdGNWNc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Jul 2017 18:13:32 -0400
-Received: by mail-it0-f67.google.com with SMTP id 188so13573710itx.0
-        for <linux-ext4@vger.kernel.org>; Fri, 14 Jul 2017 15:13:32 -0700 (PDT)
-In-Reply-To: <522BF129-AE45-4722-BCC3-0DDC6A078EB8@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ernesto =?utf-8?Q?A=2E_Fern=C3=A1ndez?=
+        <ernesto.mnd.fernandez@gmail.com>
+Subject: [xfstests PATCH v3] generic: add test of file mode when setfacl fails
+Date: Fri, 14 Jul 2017 19:55:09 -0300
+Message-ID: <20170714225506.GA4414@debian.home>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Eryu Guan <eguan@redhat.com>, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net,
+        reiserfs-devel@vger.kernel.org,
+        Ernesto =?utf-8?Q?A=2E_Fern=C3=A1ndez?=
+        <ernesto.mnd.fernandez@gmail.com>
+To: fstests@vger.kernel.org
+Return-path: <reiserfs-devel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: reiserfs-devel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+Check that the group permission bits of a file are not altered when setfacl
+fails. At the time of this patch the test fails for at least ext2, ext4 and
+jfs.
 
---Apple-Mail=_0A54B34E-1FE7-4ECE-B04E-7F72D3B4123C
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Note that this test is not meaningful for all filesystems, because some
+will still succeed in setting the acls. This does not mean they don't have
+a bug in how they would handle an error.
 
-On Jul 9, 2017, at 14:01, Tahsin Erdogan <tahsin@google.com> wrote:
+Signed-off-by: Ernesto A. Fernández <ernesto.mnd.fernandez@gmail.com>
+---
+Changes in v3:
+  - Several fixes requested by Eryu Guan (thank you for your review), most
+    importantly:
+    - Place the jfs support in a separate patch, already sent.
+    - Make the test fail when the scratch device does not mount, so rootfs
+      won't be filled.
+    - Add the test to auto and quick groups.
+Changes in v2:
+  - Use the scratch dev instead of the test dev so we can make a small fs and
+    fill it faster. As suggested by Christoph Hellwig.
+  - Make jfs work with _scratch_mkfs_sized, needed for the above.
+  - Remove the mention to an issue with reiserfs, since I now believe the
+    problem is on their side.
 
->> What we could do is have ext4_new_inode check to see if there are
->> enough credits to do add the xattr's (if necessary) in a single
->> commit.  If not, what we could do is to add the inode to the orphan
->> list, and then set an inode state flag indicating we have done this.
->> At this point, we *can* break the ext4_new_inode() operation into
->> multiple commits, because if we crash in the middle the inode will be
->> cleaned up when we do the orphan list processing.
->=20
-> This makes sense. Also, we currently add the worst case credit
-> estimates of individual set xattr ops and start a journal handle with
-> the sum of it. A slight optimization is to do this lazily.
-> We can start with enough credits that can get us to a point where it
-> is safe to start a new transaction (safe because of orphan addition).
-> Then opportunistically extend the credits to get us to the next safe
-> point, if that doesn't work, do the orphan add operation and start a
-> new transaction. This should handle the worst case scenario and also
-> optimize for common case. Also this should in general reduce the
-> amount of allocated-but-unused credits which helps parallelism.
+ tests/generic/447     | 88 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/447.out |  2 ++
+ tests/generic/group   |  1 +
+ 3 files changed, 91 insertions(+)
+ create mode 100755 tests/generic/447
+ create mode 100644 tests/generic/447.out
 
-What about accumulating the total xattr size in the credits calculation? =
-In
-most cases we know the xattr sizes in advance, and if the transaction =
-handle
-tracks the total xattr size it can make a good estimate whether the =
-xattrs
-will fit in the inode or not rather than using worst-case credits all =
-the time.
+diff --git a/tests/generic/447 b/tests/generic/447
+new file mode 100755
+index 0000000..c3062c8
+--- /dev/null
++++ b/tests/generic/447
+@@ -0,0 +1,88 @@
++#! /bin/bash
++# FS QA Test 447
++#
++# Fill the device and set as many extended attributes to a file as
++# possible. Then call setfacl on it and, if this fails for lack of
++# space, test that the permissions remain the same.
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2017 Ernesto A. Fernandez.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++. ./common/attr
++
++# remove previous $seqres.full before test
++rm -f $seqres.full
++
++# real QA test starts here
++
++# Modify as appropriate.
++_supported_fs generic
++_supported_os Linux
++_require_scratch
++_require_test
++_require_acls
++_require_attrs
++
++_scratch_mkfs_sized $((50 * 1024 * 1024)) >> $seqres.full 2>&1
++_scratch_mount || _fail "mount failed"
++
++TFILE=$SCRATCH_MNT/testfile.$seq
++
++# Create the test file and choose its permissions
++touch $TFILE
++chmod u+rwx $TFILE
++chmod go-rwx $TFILE
++
++# Try to run out of space so setfacl will fail
++$XFS_IO_PROG -c "pwrite 0 50m" $TFILE >>$seqres.full 2>&1
++i=1
++while setfattr -n user.$i $TFILE &>/dev/null; do
++	((++i))
++done
++
++if setfacl -m m:r $TFILE &>/dev/null; then
++	# setfacl succeeded, so the test was meaningless
++	# The filesystem might still have an issue
++	status=0
++	echo "-rwx------"
++	exit
++fi
++
++# Since setfacl failed, the permissions should not have changed
++stat -c %A $TFILE
++
++status=0
++exit
+diff --git a/tests/generic/447.out b/tests/generic/447.out
+new file mode 100644
+index 0000000..adec877
+--- /dev/null
++++ b/tests/generic/447.out
+@@ -0,0 +1,2 @@
++QA output created by 447
++-rwx------
+diff --git a/tests/generic/group b/tests/generic/group
+index 8c1e21a..a3ec390 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -449,3 +449,4 @@
+ 444 auto quick acl
+ 445 auto quick rw
+ 446 auto quick rw dangerous
++447 auto quick acl
+-- 
+2.1.4
 
->> The downsides of this approach is that it causes the orphan list to =
-be
->> a bottleneck.  So we would definitely not want to do this all time.
->=20
-> Yes and I think lazy extend/restart should mitigate this.
-
-Jan had a patch to improve the orphan list performance that never made =
-it
-into the kernel by having a per-CPU orphan list or similar.
-
-It recall it got hung up on running out of reserved inodes or similar, =
-which
-is an issue we should fix in any case.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_0A54B34E-1FE7-4ECE-B04E-7F72D3B4123C
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZaUIHpIg59Q01vtYRAl+6AJ9NvMuZa6wF+V4cz0hsIONxP+oz8gCeOG2J
-BZPxKCL1Uspt79hbr1R1J9Q=
-=YO3m
------END PGP SIGNATURE-----
-
---Apple-Mail=_0A54B34E-1FE7-4ECE-B04E-7F72D3B4123C--
