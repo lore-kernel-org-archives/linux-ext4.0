@@ -1,67 +1,101 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH 1/6] fscrypt: add v2 encryption context and policy
-Date: Thu, 13 Jul 2017 15:58:38 -0700
-Message-ID: <20170713225838.GA73286@gmail.com>
-References: <20170712210035.51534-1-ebiggers3@gmail.com>
- <20170712210035.51534-2-ebiggers3@gmail.com>
- <20170713222944.GA23111@google.com>
+From: Eryu Guan <eguan@redhat.com>
+Subject: Re: [PATCH v2] generic: test negative SEEK_HOLE/SEEK_DATA offsets
+Date: Fri, 14 Jul 2017 11:41:19 +0800
+Message-ID: <20170714034119.GI2478@eguan.usersys.redhat.com>
+References: <20170713190641.GA4150@magnolia>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Alex Cope <alexcope@google.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Michael Halcrow <mhalcrow@google.com>
-Return-path: <linux-crypto-owner@vger.kernel.org>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        fstests <fstests@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170713222944.GA23111@google.com>
-Sender: linux-crypto-owner@vger.kernel.org
+In-Reply-To: <20170713190641.GA4150@magnolia>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Michael,
-
-On Thu, Jul 13, 2017 at 03:29:44PM -0700, Michael Halcrow wrote:
-> On Wed, Jul 12, 2017 at 02:00:30PM -0700, Eric Biggers wrote:
-> > From: Eric Biggers <ebiggers@google.com>
-> > 
-> > Currently, the fscrypt_context (i.e. the encryption xattr) does not
-> > contain a cryptographically secure identifier for the master key's
-> > payload.  Therefore it's not possible to verify that the correct key was
-> > supplied, which is problematic in multi-user scenarios.  To make this
-> > possible, define a new fscrypt_context version (v2) which includes a
-> > key_hash field, and allow userspace to opt-in to it when setting an
-> > encryption policy by setting fscrypt_policy.version to 2.  For now just
-> > zero the new field; a later patch will start setting it for real.
+On Thu, Jul 13, 2017 at 12:06:41PM -0700, Darrick J. Wong wrote:
+> Check that we get -ENXIO if the user calls SEEK_HOLE/SEEK_DATA with
+> a negative file offset.
 > 
-> The main concern that comes to mind is potentially blowing past the
-> inline xattr size limit and allocating a new inode block.  The
-> security benefit probably outweighs that concern in this case.
-> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+> v2: use helpers as suggested by Eryu.
+> ---
+[snip]
+> +
+> +seq=`basename "$0"`
+> +seqres="$RESULT_DIR/$seq"
+> +echo "QA output created by $seq"
+> +
+> +here=`pwd`
+> +tmp=/tmp/$$
+> +status=1    # failure is the default!
+> +trap "_cleanup; exit \$status" 0 1 2 3 15
+> +
+> +_cleanup()
+> +{
+> +    cd /
+> +    rm -rf "$tmp".* $testdir/file1
+> +}
 
-The way it adds up now for ext4 is:
+Just noticed there're two _cleanup()s, I'll remove this one and move the
+one below here.
 
-128 bytes for base inode
-+ 32 bytes for i_extra fields
-+ 4 bytes for in-inode xattrs header
-+ 20 bytes for encryption xattr header + name
-+ 28 bytes for encryption xattr value
-----------------------------------
-= 212 bytes total.
+Thanks,
+Eryu
 
-By adding the 16-byte 'key_hash' field it grows to 228 bytes total.  So it still
-fits in a 256-byte inode, though it's getting closer to the limit.  We could
-save 8 bytes by instead using the design where master_key_descriptor is extended
-to 16 bytes and redefined as a cryptographically secure hash.  But as noted,
-that has some significant disadvantages.
-
-Also note that we don't really have to worry about leaving space for a SELinux
-xattr anymore because with 256-byte inodes + encryption the SELinux xattr is
-already being written to an external block, given that it requires about 52-62
-bytes (at least when using Android's SELinux policy; different SELinux policies
-may use different values), and 212 + 52 > 256.  So if someone wants both xattrs
-in-inode they need to use 512-byte inodes already.
-
-Eric
+> +
+> +# get standard environment, filters and checks
+> +. ./common/rc
+> +. ./common/filter
+> +
+> +_supported_fs generic
+> +_supported_os Linux
+> +
+> +_require_test
+> +_require_seek_data_hole
+> +
+> +BASE_TEST_FILE=$TEST_DIR/seek_sanity_testfile
+> +
+> +_require_test_program "seek_sanity_test"
+> +
+> +# Disable extent zeroing for ext4 as that change where holes are created
+> +if [ "$FSTYP" = "ext4" ]; then
+> +	DEV=`_short_dev $TEST_DEV`
+> +	echo 0 >/sys/fs/ext4/$DEV/extent_max_zeroout_kb
+> +fi
+> +
+> +_cleanup()
+> +{
+> +	rm -f $tmp.* $BASE_TEST_FILE.*
+> +}
+> +
+> +$here/src/seek_sanity_test -s 18 -e 18 $BASE_TEST_FILE > $seqres.full 2>&1 ||
+> +	_fail "seek sanity check failed!"
+> +
+> +_check_dmesg
+> +# success, all done
+> +echo "Silence is golden"
+> +status=0
+> +exit
+> diff --git a/tests/generic/702.out b/tests/generic/702.out
+> new file mode 100644
+> index 0000000..608d593
+> --- /dev/null
+> +++ b/tests/generic/702.out
+> @@ -0,0 +1,2 @@
+> +QA output created by 702
+> +Silence is golden
+> diff --git a/tests/generic/group b/tests/generic/group
+> index 3c5a19c..6afd402 100644
+> --- a/tests/generic/group
+> +++ b/tests/generic/group
+> @@ -449,4 +449,5 @@
+>  444 auto quick acl
+>  445 auto quick rw
+>  446 auto quick rw dangerous
+> +702 auto quick rw
+>  931 auto quick clone
