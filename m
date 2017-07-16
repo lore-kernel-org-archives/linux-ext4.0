@@ -1,36 +1,47 @@
-From: Saurabh Kadekodi <saukad@cs.cmu.edu>
-Subject: Collecting aged Ext4 profiles
-Date: Sat, 15 Jul 2017 17:14:21 -0700
-Message-ID: <6F8D59B2-0630-4405-BC85-D634B122F3C8@cs.cmu.edu>
-Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
+From: Ram Ramesh <rramesh2400@gmail.com>
+Subject: Which kernel do I need to use ext4 64-bit.
+Date: Sun, 16 Jul 2017 11:26:01 -0500
+Message-ID: <789629f3-d70f-5588-65ec-a45d5c3259a9@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp01.srv.cs.cmu.edu ([128.2.217.200]:56696 "EHLO
-        smtp01.srv.cs.cmu.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751198AbdGPAOZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Jul 2017 20:14:25 -0400
-Received: from [10.0.1.26] (c-24-6-102-209.hsd1.ca.comcast.net [24.6.102.209])
-        (authenticated bits=0)
-        by smtp01.srv.cs.cmu.edu (8.13.6/8.13.6) with ESMTP id v6G0EMLL004747
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-        for <linux-ext4@vger.kernel.org>; Sat, 15 Jul 2017 20:14:24 -0400 (EDT)
+Received: from mail-oi0-f48.google.com ([209.85.218.48]:34180 "EHLO
+        mail-oi0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751216AbdGPQ0D (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Jul 2017 12:26:03 -0400
+Received: by mail-oi0-f48.google.com with SMTP id q4so17730129oif.1
+        for <linux-ext4@vger.kernel.org>; Sun, 16 Jul 2017 09:26:03 -0700 (PDT)
+Received: from [192.168.3.68] ([47.187.202.234])
+        by smtp.googlemail.com with ESMTPSA id p124sm17169633oic.4.2017.07.16.09.26.01
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 16 Jul 2017 09:26:02 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+I asked this question on linux-ext3 and apparently I cannot post it 
+there as moderator has to approve it, and he is neither approving or 
+disapproving my message. May be the list is dormant now and everything 
+happens here. Any way here is my question.
 
-I am a PhD student studying file and storage systems and I am currently conducting research on local file system aging. My research aims at understanding realistic aging patterns and analyzing the effects of aging on file system data structures and its performance. For this purpose, I would like to capture characteristics of naturally aged file systems (i.e. not aged via synthetic workload generators).
+> Is there a kernel version restriction for 64bit ext4 FS creation/use? 
+> Google does not seem to find any info on this. I have mythbuntu  14.04 
+> distro that has
+>> zym [rramesh] 473 > uname -a
+>> Linux zym 3.13.0-119-generic #166-Ubuntu SMP Wed May 3 12:18:55 UTC 
+>> 2017 x86_64 x86_64 x86_64 GNU/Linux
+> Can I create a 64bit ext4 under this kernel and mount/use?
+>
+> BTW, my resize2fs cannot grow the file system beyond 16TB. I assume 
+> this is due to current FS being 32bit. I need to make it 64bit. What 
+> is the best way to go about doing this *on my distro*?
+>> zym [rramesh] 474 > resize2fs
+>> resize2fs 1.42.9 (4-Feb-2014)
+>> Usage: resize2fs [-d debug_flags] [-f] [-F] [-M] [-P] [-p] device 
+>> [new_size]
+>
+> Ramesh 
 
-In order to facilitate this profile capture, I have written a shell / python based profiling tool (fsagestats - https://github.com/saurabhkadekodi/fsagestats)  that does a file system tree walk and captures different characteristics (file age, file size and directory depth) of files and directories and produces distributions. I do not care about file names or data within each file. It also runs e2freefrag in order to understand the level of free space fragmentation, e4defrag in order to capture the fragmentation score, and copies a large file (~ 2GB) and runs filefrag in order to understand the file fragmentation, all of which are directly correlated with the file system performance. It dumps the results in the results dir, which is to be specified when you run fsagestats. You can send me 
- the aging profile by tarring up the results directory and sending it via email.
-
-Since I do not have access to Ext4 systems that see a lot of churn, I am reaching out to the Ext4 community in order to find volunteers willing to run my script and capture their Ext4 aging profile. Please feel free to modify the script as per your installation or as you see fit. Since fsagestats collects no private information, I eventually intend to host these profiles publicly (unless explicitly requested not to) to aid other researchers / enthusiasts.
-
-In case you have any questions on concerns, please let me know.
-
-Thanks,
-Saurabh Kadekodi
-
-PS: cc’ing the response and / or the aging profile to saukad@cs.cmu.edu is greatly appreciated.
+Ramesh
