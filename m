@@ -1,51 +1,101 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: More thoughts about xattrs, journal credits, and their location
-Date: Mon, 17 Jul 2017 16:42:42 +0200
-Message-ID: <20170717144242.GE18199@quack2.suse.cz>
-References: <20170706023819.32272-1-tahsin@google.com>
- <20170706023819.32272-2-tahsin@google.com>
- <20170708050900.afuwwia7c4izliir@thunk.org>
- <20170708153048.3lrrcd43ptx5yuy3@thunk.org>
- <CAAeU0aMZjeX6utQfAPa131mhTPK27W4BtWodXYLPT3pss7Tp-w@mail.gmail.com>
- <522BF129-AE45-4722-BCC3-0DDC6A078EB8@dilger.ca>
- <3B21155F-4426-413C-AF16-84E594812530@dilger.ca>
+Subject: Re: [PATCH 1/5] ext4: preserve i_mode if __ext4_set_acl() fails
+Date: Mon, 17 Jul 2017 17:33:39 +0200
+Message-ID: <20170717153339.GI18199@quack2.suse.cz>
+References: <cover.1499805484.git.ernesto.mnd.fernandez@gmail.com>
+ <52152ec4b83fe0c406475bfee39efafaaa2a88fb.1499805486.git.ernesto.mnd.fernandez@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Tahsin Erdogan <tahsin@google.com>,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: 8bit
+Cc: Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Dave Kleikamp <shaggy@kernel.org>, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net,
+        reiserfs-devel@vger.kernel.org
+To: Ernesto =?iso-8859-1?Q?A=2E_Fern=E1ndez?=
+        <ernesto.mnd.fernandez@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41629 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:46539 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751300AbdGQOmy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 17 Jul 2017 10:42:54 -0400
+        id S1751291AbdGQPds (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 17 Jul 2017 11:33:48 -0400
 Content-Disposition: inline
-In-Reply-To: <3B21155F-4426-413C-AF16-84E594812530@dilger.ca>
+In-Reply-To: <52152ec4b83fe0c406475bfee39efafaaa2a88fb.1499805486.git.ernesto.mnd.fernandez@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 14-07-17 15:13:27, Andreas Dilger wrote:
-> >> The downsides of this approach is that it causes the orphan list to be
-> >> a bottleneck.  So we would definitely not want to do this all time.
-> > 
-> > Yes and I think lazy extend/restart should mitigate this.
+On Wed 12-07-17 06:53:51, Ernesto A. Fernández wrote:
+> When changing a file's acl mask, __ext4_set_acl() will first set the group
+> bits of i_mode to the value of the mask, and only then set the actual
+> extended attribute representing the new acl.
 > 
-> Jan had a patch to improve the orphan list performance that never made it
-> into the kernel by having a per-CPU orphan list or similar.
+> If the second part fails (due to lack of space, for example) and the file
+> had no acl attribute to begin with, the system will from now on assume
+> that the mask permission bits are actual group permission bits, potentially
+> granting access to the wrong users.
 > 
-> It recall it got hung up on running out of reserved inodes or similar, which
-> is an issue we should fix in any case.
+> Prevent this by only changing the inode mode after the acl has been set.
+> 
+> Signed-off-by: Ernesto A. Fernández <ernesto.mnd.fernandez@gmail.com>
 
-Yeah, and I've submitted patches for e2fsprogs to be able to set number of
-reserved inodes however they never got merged. I guess I can refresh those
-patches and resend if there's interest in the functionality and the
-feature...
+This clashes with my fix of another bug in that area [1] but the fixup
+should be straightforward. The patch looks good to me so feel free to add
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+[1] https://www.spinics.net/lists/stable/msg178111.html
 
 								Honza
 
-
+> ---
+>  fs/ext4/acl.c | 15 +++++++++++----
+>  1 file changed, 11 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+> index 09441ae..2985cd0 100644
+> --- a/fs/ext4/acl.c
+> +++ b/fs/ext4/acl.c
+> @@ -189,16 +189,17 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
+>  	void *value = NULL;
+>  	size_t size = 0;
+>  	int error;
+> +	int update_mode = 0;
+> +	umode_t mode = inode->i_mode;
+>  
+>  	switch (type) {
+>  	case ACL_TYPE_ACCESS:
+>  		name_index = EXT4_XATTR_INDEX_POSIX_ACL_ACCESS;
+>  		if (acl) {
+> -			error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
+> +			error = posix_acl_update_mode(inode, &mode, &acl);
+>  			if (error)
+>  				return error;
+> -			inode->i_ctime = current_time(inode);
+> -			ext4_mark_inode_dirty(handle, inode);
+> +			update_mode = 1;
+>  		}
+>  		break;
+>  
+> @@ -221,8 +222,14 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
+>  				      value, size, xattr_flags);
+>  
+>  	kfree(value);
+> -	if (!error)
+> +	if (!error) {
+>  		set_cached_acl(inode, type, acl);
+> +		if (update_mode) {
+> +			inode->i_mode = mode;
+> +			inode->i_ctime = current_time(inode);
+> +			ext4_mark_inode_dirty(handle, inode);
+> +		}
+> +	}
+>  
+>  	return error;
+>  }
+> -- 
+> 2.1.4
+> 
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
