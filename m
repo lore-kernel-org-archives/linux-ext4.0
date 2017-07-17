@@ -1,45 +1,238 @@
-From: Maninder Singh <maninder1.s@samsung.com>
-Subject: [PATCH 1/1] ext4: correcting copy paste error.
-Date: Mon, 17 Jul 2017 11:37:44 +0530
-Message-ID: <1500271664-42794-1-git-send-email-maninder1.s@samsung.com>
-References: <CGME20170717061114epcas5p3b984798b45e9b87ebd8b5586e3bdff9c@epcas5p3.samsung.com>
-Content-Type: text/plain; charset="utf-8"
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        pankaj.m@samsung.com, Maninder Singh <maninder1.s@samsung.com>,
-        Vaneet Narang <v.narang@samsung.com>
-To: tytso@mit.edu, adilger.kernel@dilger.ca
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: [PATCH v2] ext4: make xattr inode reads faster
+Date: Sun, 16 Jul 2017 23:20:12 -0700
+Message-ID: <20170717062012.26331-1-tahsin@google.com>
+References: <705A22C6-4583-47D4-8FB0-B2820F7051F3@dilger.ca>
+Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+        linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout2.samsung.com ([203.254.224.25]:56431 "EHLO
-        mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751260AbdGQGLQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Jul 2017 02:11:16 -0400
-Received: from epcas2p1.samsung.com (unknown [182.195.41.53])
-        by mailout2.samsung.com (KnoxPortal) with ESMTP id 20170717061115epoutp0213df09f924efaace93e8b6f88dcbe797~SCVJdllsJ0300703007epoutp02I
-        for <linux-ext4@vger.kernel.org>; Mon, 17 Jul 2017 06:11:15 +0000 (GMT)
+Received: from mail-pf0-f176.google.com ([209.85.192.176]:36682 "EHLO
+        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751253AbdGQGUQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Jul 2017 02:20:16 -0400
+Received: by mail-pf0-f176.google.com with SMTP id q86so71521476pfl.3
+        for <linux-ext4@vger.kernel.org>; Sun, 16 Jul 2017 23:20:16 -0700 (PDT)
+In-Reply-To: <705A22C6-4583-47D4-8FB0-B2820F7051F3@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Error reported by static tool for copy paste
-issue, fixing the same.
+ext4_xattr_inode_read() currently reads each block sequentially while
+waiting for io operation to complete before moving on to the next
+block. This prevents request merging in block layer.
 
-Signed-off-by: Maninder Singh <maninder1.s@samsung.com>
-Signed-off-by: Vaneet Narang <v.narang@samsung.com>
+Add a ext4_bread_batch() function that starts reads for all blocks
+then optionally waits for them to complete. A similar logic is used
+in ext4_find_entry(), so update that code to use the new function.
+
+Signed-off-by: Tahsin Erdogan <tahsin@google.com>
 ---
- fs/ext4/extents.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+v2:
+ - updated ext4_find_entry() to also use ext4_bread_batch()
+ - added wait parameter to ext4_bread_batch()
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 2a97dff..5d337ca 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5837,7 +5837,7 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
- 			if (e1_blk > lblk1)
- 				next1 = e1_blk;
- 			if (e2_blk > lblk2)
--				next2 = e1_blk;
-+				next2 = e2_blk;
- 			/* Do we have something to swap */
- 			if (next1 == EXT_MAX_BLOCKS || next2 == EXT_MAX_BLOCKS)
- 				goto finish;
+ fs/ext4/ext4.h  |  2 ++
+ fs/ext4/inode.c | 44 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/namei.c | 43 ++++++++++++++-----------------------------
+ fs/ext4/xattr.c | 51 ++++++++++++++++++++++++++++++++-------------------
+ 4 files changed, 92 insertions(+), 48 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9ebde0cd632e..e9440ed605c0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2462,6 +2462,8 @@ extern void ext4_process_freed_data(struct super_block *sb, tid_t commit_tid);
+ int ext4_inode_is_fast_symlink(struct inode *inode);
+ struct buffer_head *ext4_getblk(handle_t *, struct inode *, ext4_lblk_t, int);
+ struct buffer_head *ext4_bread(handle_t *, struct inode *, ext4_lblk_t, int);
++int ext4_bread_batch(struct inode *inode, ext4_lblk_t block, int bh_count,
++		     bool wait, struct buffer_head **bhs);
+ int ext4_get_block_unwritten(struct inode *inode, sector_t iblock,
+ 			     struct buffer_head *bh_result, int create);
+ int ext4_get_block(struct inode *inode, sector_t iblock,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3c600f02673f..70699940e20d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1015,6 +1015,50 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
+ 	return ERR_PTR(-EIO);
+ }
+ 
++/* Read a contiguous batch of blocks. */
++int ext4_bread_batch(struct inode *inode, ext4_lblk_t block, int bh_count,
++		     bool wait, struct buffer_head **bhs)
++{
++	int i, err;
++
++	for (i = 0; i < bh_count; i++) {
++		bhs[i] = ext4_getblk(NULL, inode, block + i, 0 /* map_flags */);
++		if (IS_ERR(bhs[i])) {
++			err = PTR_ERR(bhs[i]);
++			bh_count = i;
++			goto out_brelse;
++		}
++	}
++
++	for (i = 0; i < bh_count; i++)
++		/* Note that NULL bhs[i] is valid because of holes. */
++		if (bhs[i] && !buffer_uptodate(bhs[i]))
++			ll_rw_block(REQ_OP_READ, REQ_META | REQ_PRIO, 1,
++				    &bhs[i]);
++
++	if (!wait)
++		return 0;
++
++	for (i = 0; i < bh_count; i++)
++		if (bhs[i])
++			wait_on_buffer(bhs[i]);
++
++	for (i = 0; i < bh_count; i++) {
++		if (bhs[i] && !buffer_uptodate(bhs[i])) {
++			err = -EIO;
++			goto out_brelse;
++		}
++	}
++	return 0;
++
++out_brelse:
++	for (i = 0; i < bh_count; i++) {
++		brelse(bhs[i]);
++		bhs[i] = NULL;
++	}
++	return err;
++}
++
+ int ext4_walk_page_buffers(handle_t *handle,
+ 			   struct buffer_head *head,
+ 			   unsigned from,
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 13f0cadb1238..2758ff1b940f 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1342,13 +1342,12 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+ 	struct super_block *sb;
+ 	struct buffer_head *bh_use[NAMEI_RA_SIZE];
+ 	struct buffer_head *bh, *ret = NULL;
+-	ext4_lblk_t start, block, b;
++	ext4_lblk_t start, block;
+ 	const u8 *name = d_name->name;
+-	int ra_max = 0;		/* Number of bh's in the readahead
++	size_t ra_max = 0;	/* Number of bh's in the readahead
+ 				   buffer, bh_use[] */
+-	int ra_ptr = 0;		/* Current index into readahead
++	size_t ra_ptr = 0;	/* Current index into readahead
+ 				   buffer */
+-	int num = 0;
+ 	ext4_lblk_t  nblocks;
+ 	int i, namelen, retval;
+ 	struct ext4_filename fname;
+@@ -1411,31 +1410,17 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+ 		if (ra_ptr >= ra_max) {
+ 			/* Refill the readahead buffer */
+ 			ra_ptr = 0;
+-			b = block;
+-			for (ra_max = 0; ra_max < NAMEI_RA_SIZE; ra_max++) {
+-				/*
+-				 * Terminate if we reach the end of the
+-				 * directory and must wrap, or if our
+-				 * search has finished at this block.
+-				 */
+-				if (b >= nblocks || (num && block == start)) {
+-					bh_use[ra_max] = NULL;
+-					break;
+-				}
+-				num++;
+-				bh = ext4_getblk(NULL, dir, b++, 0);
+-				if (IS_ERR(bh)) {
+-					if (ra_max == 0) {
+-						ret = bh;
+-						goto cleanup_and_exit;
+-					}
+-					break;
+-				}
+-				bh_use[ra_max] = bh;
+-				if (bh)
+-					ll_rw_block(REQ_OP_READ,
+-						    REQ_META | REQ_PRIO,
+-						    1, &bh);
++			if (block < start)
++				ra_max = start - block;
++			else
++				ra_max = nblocks - block;
++			ra_max = min(ra_max, ARRAY_SIZE(bh_use));
++			retval = ext4_bread_batch(dir, block, ra_max,
++						  false /* wait */, bh_use);
++			if (retval) {
++				ret = ERR_PTR(retval);
++				ra_max = 0;
++				goto cleanup_and_exit;
+ 			}
+ 		}
+ 		if ((bh = bh_use[ra_ptr++]) == NULL)
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index cff4f41ced61..68b5b4f9fbcb 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -317,28 +317,41 @@ static void ext4_xattr_inode_set_hash(struct inode *ea_inode, u32 hash)
+  */
+ static int ext4_xattr_inode_read(struct inode *ea_inode, void *buf, size_t size)
+ {
+-	unsigned long block = 0;
+-	struct buffer_head *bh;
+-	int blocksize = ea_inode->i_sb->s_blocksize;
+-	size_t csize, copied = 0;
+-	void *copy_pos = buf;
+-
+-	while (copied < size) {
+-		csize = (size - copied) > blocksize ? blocksize : size - copied;
+-		bh = ext4_bread(NULL, ea_inode, block, 0);
+-		if (IS_ERR(bh))
+-			return PTR_ERR(bh);
+-		if (!bh)
+-			return -EFSCORRUPTED;
++	int blocksize = 1 << ea_inode->i_blkbits;
++	int bh_count = (size + blocksize - 1) >> ea_inode->i_blkbits;
++	int tail_size = (size % blocksize) ?: blocksize;
++	struct buffer_head *bhs_inline[8];
++	struct buffer_head **bhs = bhs_inline;
++	int i, ret;
++
++	if (bh_count > ARRAY_SIZE(bhs_inline)) {
++		bhs = kmalloc_array(bh_count, sizeof(*bhs), GFP_NOFS);
++		if (!bhs)
++			return -ENOMEM;
++	}
+ 
+-		memcpy(copy_pos, bh->b_data, csize);
+-		brelse(bh);
++	ret = ext4_bread_batch(ea_inode, 0 /* block */, bh_count,
++			       true /* wait */, bhs);
++	if (ret)
++		goto free_bhs;
+ 
+-		copy_pos += csize;
+-		block += 1;
+-		copied += csize;
++	for (i = 0; i < bh_count; i++) {
++		/* There shouldn't be any holes in ea_inode. */
++		if (!bhs[i]) {
++			ret = -EFSCORRUPTED;
++			goto put_bhs;
++		}
++		memcpy((char *)buf + blocksize * i, bhs[i]->b_data,
++		       i < bh_count - 1 ? blocksize : tail_size);
+ 	}
+-	return 0;
++	ret = 0;
++put_bhs:
++	for (i = 0; i < bh_count; i++)
++		brelse(bhs[i]);
++free_bhs:
++	if (bhs != bhs_inline)
++		kfree(bhs);
++	return ret;
+ }
+ 
+ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
 -- 
-1.9.1
+2.13.2.932.g7449e964c-goog
