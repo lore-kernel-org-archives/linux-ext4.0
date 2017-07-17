@@ -1,57 +1,45 @@
-From: "Liu, Emoly" <emoly.liu@intel.com>
-Subject: RE: [PATCH] ext4: error should be cleared if ea_inode isn't added
- to the cache
-Date: Mon, 17 Jul 2017 02:12:34 +0000
-Message-ID: <07A0E441A926DB4D91D25518F435CC777C9D62FD@SHSMSX104.ccr.corp.intel.com>
-References: <1499831813-13218-1-git-send-email-emoly.liu@intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "tytso@mit.edu" <tytso@mit.edu>
+From: Maninder Singh <maninder1.s@samsung.com>
+Subject: [PATCH 1/1] ext4: correcting copy paste error.
+Date: Mon, 17 Jul 2017 11:37:44 +0530
+Message-ID: <1500271664-42794-1-git-send-email-maninder1.s@samsung.com>
+References: <CGME20170717061114epcas5p3b984798b45e9b87ebd8b5586e3bdff9c@epcas5p3.samsung.com>
+Content-Type: text/plain; charset="utf-8"
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        pankaj.m@samsung.com, Maninder Singh <maninder1.s@samsung.com>,
+        Vaneet Narang <v.narang@samsung.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:58255 "EHLO mga01.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751209AbdGQCMi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 16 Jul 2017 22:12:38 -0400
-In-Reply-To: <1499831813-13218-1-git-send-email-emoly.liu@intel.com>
-Content-Language: en-US
+Received: from mailout2.samsung.com ([203.254.224.25]:56431 "EHLO
+        mailout2.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751260AbdGQGLQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Jul 2017 02:11:16 -0400
+Received: from epcas2p1.samsung.com (unknown [182.195.41.53])
+        by mailout2.samsung.com (KnoxPortal) with ESMTP id 20170717061115epoutp0213df09f924efaace93e8b6f88dcbe797~SCVJdllsJ0300703007epoutp02I
+        for <linux-ext4@vger.kernel.org>; Mon, 17 Jul 2017 06:11:15 +0000 (GMT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Error reported by static tool for copy paste
+issue, fixing the same.
 
-This patch needs to be included into the release along with the ea_inode feature to maintain proper feature compatibility with Lustre.
-Could it be landed as soon as possible?
-
-Thanks,
-Emoly
-
------Original Message-----
-From: Emoly Liu [mailto:emoly.liu@intel.com] 
-Sent: Wednesday, July 12, 2017 11:57 AM
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org; Liu, Emoly <emoly.liu@intel.com>
-Subject: [PATCH] ext4: error should be cleared if ea_inode isn't added to the cache
-
-For Lustre, if ea_inode fails in hash validation but passes parent inode and generation checks, it won't be added to the cache as well as the error "-EFSCORRUPTED" should be cleared, otherwise it will cause "Structure needs cleaning" when running getfattr command.
-
-Signed-off-by: Emoly Liu <emoly.liu@intel.com>
-Intel-bug-id: https://jira.hpdd.intel.com/browse/LU-9723
+Signed-off-by: Maninder Singh <maninder1.s@samsung.com>
+Signed-off-by: Vaneet Narang <v.narang@samsung.com>
 ---
- fs/ext4/xattr.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/ext4/extents.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c index cff4f41..de217a0 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -451,6 +451,7 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 		}
- 		/* Do not add ea_inode to the cache. */
- 		ea_inode_cache = NULL;
-+		err = 0;
- 	} else if (err)
- 		goto out;
- 
---
-1.8.3.1
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 2a97dff..5d337ca 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5837,7 +5837,7 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
+ 			if (e1_blk > lblk1)
+ 				next1 = e1_blk;
+ 			if (e2_blk > lblk2)
+-				next2 = e1_blk;
++				next2 = e2_blk;
+ 			/* Do we have something to swap */
+ 			if (next1 == EXT_MAX_BLOCKS || next2 == EXT_MAX_BLOCKS)
+ 				goto finish;
+-- 
+1.9.1
