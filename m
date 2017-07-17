@@ -1,130 +1,109 @@
-From: Michael Halcrow <mhalcrow@google.com>
-Subject: Re: [PATCH 6/6] fscrypt: for v2 policies, support "fscrypt:" key
- prefix only
-Date: Mon, 17 Jul 2017 10:54:52 -0700
-Message-ID: <20170717175452.GB32282@google.com>
-References: <20170712210035.51534-1-ebiggers3@gmail.com>
- <20170712210035.51534-7-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Alex Cope <alexcope@google.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-crypto-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170712210035.51534-7-ebiggers3@gmail.com>
-Sender: linux-crypto-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: Collecting aged Ext4 profiles
+Date: Mon, 17 Jul 2017 14:08:47 -0600
+Message-ID: <5BCA327F-3BE1-43E0-802B-1656568FD7D2@dilger.ca>
+References: <6F8D59B2-0630-4405-BC85-D634B122F3C8@cs.cmu.edu>
+ <D52E9B43-C169-4C71-BFDA-0100C75FEDC1@dilger.ca>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_7AD5B62A-00F5-46FC-BB4E-7F76687FBAB0";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4@vger.kernel.org
+To: Saurabh Kadekodi <saukad@cs.cmu.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-io0-f171.google.com ([209.85.223.171]:34896 "EHLO
+        mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751317AbdGQUIx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Jul 2017 16:08:53 -0400
+Received: by mail-io0-f171.google.com with SMTP id k71so2688369iod.2
+        for <linux-ext4@vger.kernel.org>; Mon, 17 Jul 2017 13:08:52 -0700 (PDT)
+In-Reply-To: <D52E9B43-C169-4C71-BFDA-0100C75FEDC1@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 12, 2017 at 02:00:35PM -0700, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Since v2 encryption policies are opt-in, take the opportunity to also
-> drop support for the legacy filesystem-specific key description prefixes
-> "ext4:", "f2fs:", and "ubifs:", instead requiring the generic prefix
-> "fscrypt:".  The generic prefix is preferred since it works for all
-> filesystems.  Also there is a performance benefit from not having to
-> search the keyrings twice.
-> 
-> The old prefixes remain supported for v1 encryption policies.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Reviewed-by: Michael Halcrow <mhalcrow@google.com>
+--Apple-Mail=_7AD5B62A-00F5-46FC-BB4E-7F76687FBAB0
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=utf-8
 
-> ---
->  fs/crypto/fscrypt_private.h |  3 +--
->  fs/crypto/keyinfo.c         | 16 ++++------------
->  fs/crypto/policy.c          |  2 +-
->  3 files changed, 6 insertions(+), 15 deletions(-)
-> 
-> diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-> index 4b158717a8c3..201906ff7033 100644
-> --- a/fs/crypto/fscrypt_private.h
-> +++ b/fs/crypto/fscrypt_private.h
-> @@ -167,8 +167,7 @@ extern struct page *fscrypt_alloc_bounce_page(struct fscrypt_ctx *ctx,
->  					      gfp_t gfp_flags);
->  
->  /* keyinfo.c */
-> -extern int fscrypt_compute_key_hash(const struct inode *inode,
-> -				    const struct fscrypt_policy *policy,
-> +extern int fscrypt_compute_key_hash(const struct fscrypt_policy *policy,
->  				    u8 hash[FSCRYPT_KEY_HASH_SIZE]);
->  extern void __exit fscrypt_essiv_cleanup(void);
->  
-> diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-> index bf60e76f9599..e20b5e85c1b3 100644
-> --- a/fs/crypto/keyinfo.c
-> +++ b/fs/crypto/keyinfo.c
-> @@ -385,8 +385,7 @@ find_and_lock_keyring_key(const char *prefix,
->  }
->  
->  static struct fscrypt_master_key *
-> -load_master_key_from_keyring(const struct inode *inode,
-> -			     const u8 descriptor[FS_KEY_DESCRIPTOR_SIZE],
-> +load_master_key_from_keyring(const u8 descriptor[FS_KEY_DESCRIPTOR_SIZE],
->  			     unsigned int min_keysize)
->  {
->  	struct key *keyring_key;
-> @@ -395,11 +394,6 @@ load_master_key_from_keyring(const struct inode *inode,
->  
->  	keyring_key = find_and_lock_keyring_key(FS_KEY_DESC_PREFIX, descriptor,
->  						min_keysize, &payload);
-> -	if (keyring_key == ERR_PTR(-ENOKEY) && inode->i_sb->s_cop->key_prefix) {
-> -		keyring_key = find_and_lock_keyring_key(
-> -					inode->i_sb->s_cop->key_prefix,
-> -					descriptor, min_keysize, &payload);
-> -	}
->  	if (IS_ERR(keyring_key))
->  		return ERR_CAST(keyring_key);
->  
-> @@ -441,8 +435,7 @@ find_or_create_master_key(const struct inode *inode,
->  	/*
->  	 * The needed master key isn't in memory yet.  Load it from the keyring.
->  	 */
-> -	master_key = load_master_key_from_keyring(inode,
-> -						  ctx->master_key_descriptor,
-> +	master_key = load_master_key_from_keyring(ctx->master_key_descriptor,
->  						  min_keysize);
->  	if (IS_ERR(master_key))
->  		return master_key;
-> @@ -676,8 +669,7 @@ void __exit fscrypt_essiv_cleanup(void)
->  	crypto_free_shash(essiv_hash_tfm);
->  }
->  
-> -int fscrypt_compute_key_hash(const struct inode *inode,
-> -			     const struct fscrypt_policy *policy,
-> +int fscrypt_compute_key_hash(const struct fscrypt_policy *policy,
->  			     u8 hash[FSCRYPT_KEY_HASH_SIZE])
->  {
->  	struct fscrypt_master_key *k;
-> @@ -691,7 +683,7 @@ int fscrypt_compute_key_hash(const struct inode *inode,
->  		max(available_modes[policy->contents_encryption_mode].keysize,
->  		    available_modes[policy->filenames_encryption_mode].keysize);
->  
-> -	k = load_master_key_from_keyring(inode, policy->master_key_descriptor,
-> +	k = load_master_key_from_keyring(policy->master_key_descriptor,
->  					 min_keysize);
->  	if (IS_ERR(k))
->  		return PTR_ERR(k);
-> diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-> index 7661c66a3533..cd8c9c7cc9a9 100644
-> --- a/fs/crypto/policy.c
-> +++ b/fs/crypto/policy.c
-> @@ -117,7 +117,7 @@ int fscrypt_ioctl_set_policy(struct file *filp, const void __user *arg)
->  		pr_warn_once("%s (pid %d) is setting less secure v0 encryption policy; recommend upgrading to v2.\n",
->  			     current->comm, current->pid);
->  	} else {
-> -		ret = fscrypt_compute_key_hash(inode, &policy, key_hash);
-> +		ret = fscrypt_compute_key_hash(&policy, key_hash);
->  		if (ret)
->  			return ret;
->  	}
-> -- 
-> 2.13.2.932.g7449e964c-goog
-> 
+On Jul 16, 2017, at 12:34 AM, Andreas Dilger <adilger@dilger.ca> wrote:
+> On Jul 15, 2017, at 18:14, Saurabh Kadekodi <saukad@cs.cmu.edu> wrote:
+>=20
+>> Hi,
+>>=20
+>> I am a PhD student studying file and storage systems and I am =
+currently conducting research on local file system aging. My research =
+aims at understanding realistic aging patterns and analyzing the effects =
+of aging on file system data structures and its performance. For this =
+purpose, I would like to capture characteristics of naturally aged file =
+systems (i.e. not aged via synthetic workload generators).
+>>=20
+>> In order to facilitate this profile capture, I have written a shell / =
+python based profiling tool (fsagestats - =
+https://github.com/saurabhkadekodi/fsagestats)  that does a file system =
+tree walk and captures different characteristics (file age, file size =
+and directory depth) of files and directories and produces =
+distributions. I do not care about file names or data within each file. =
+It also runs e2freefrag in order to understand the level of free space =
+fragmentation, e4defrag in order to capture the fragmentation score, and =
+copies a large file (~ 2GB) and runs filefrag in order to understand the =
+file fragmentation, all of which are directly correlated with the file =
+system performance. It dumps the results in the results dir, which is to =
+be specified when you run fsagestats. You can send me the aging profile =
+by tarring up the results directory and sending it via email.
+>>=20
+>> Since I do not have access to Ext4 systems that see a lot of churn, I =
+am reaching out to the Ext4 community in order to find volunteers =
+willing to run my script and capture their Ext4 aging profile. Please =
+feel free to modify the script as per your installation or as you see =
+fit. Since fsagestats collects no private information, I eventually =
+intend to host these profiles publicly (unless explicitly requested not =
+to) to aid other researchers / enthusiasts.
+>>=20
+>> In case you have any questions on concerns, please let me know.
+>>=20
+>> Thanks,
+>> Saurabh Kadekodi
+>>=20
+>> PS: cc=E2=80=99ing the response and / or the aging profile to =
+saukad@cs.cmu.edu is greatly appreciated.
+>=20
+> How does your fsagestats tool compare to the existing fsstats tool =
+(http://web.cs.dal.ca/~morven/CSCI3120/fsstats)?  If there isn't a =
+significant difference between the two, it would be nice to stick with =
+the existing tool to collect the filesystem information so that the body =
+of data collected continues to grow.
+
+Actually, a slightly better URL is https://github.com/adilger/fsstats =
+which is a
+proper Git repo and includes the original license.  The original project =
+URL
+http://www.pdsi-scidac.org/fsstats/ is no longer functional.  I also =
+have a local
+archive of results from that project if you are interested.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_7AD5B62A-00F5-46FC-BB4E-7F76687FBAB0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZbRlQpIg59Q01vtYRAvkkAKCn+j2ksVF1+jQmYoMO1XHhnclOkQCfYZFO
+2uUTxMkf7o5gcReB1bQUptw=
+=5ggy
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_7AD5B62A-00F5-46FC-BB4E-7F76687FBAB0--
