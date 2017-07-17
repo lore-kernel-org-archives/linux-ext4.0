@@ -1,47 +1,57 @@
-From: Ram Ramesh <rramesh2400@gmail.com>
-Subject: Which kernel do I need to use ext4 64-bit.
-Date: Sun, 16 Jul 2017 11:26:01 -0500
-Message-ID: <789629f3-d70f-5588-65ec-a45d5c3259a9@gmail.com>
+From: "Liu, Emoly" <emoly.liu@intel.com>
+Subject: RE: [PATCH] ext4: error should be cleared if ea_inode isn't added
+ to the cache
+Date: Mon, 17 Jul 2017 02:12:34 +0000
+Message-ID: <07A0E441A926DB4D91D25518F435CC777C9D62FD@SHSMSX104.ccr.corp.intel.com>
+References: <1499831813-13218-1-git-send-email-emoly.liu@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "tytso@mit.edu" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f48.google.com ([209.85.218.48]:34180 "EHLO
-        mail-oi0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751216AbdGPQ0D (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Jul 2017 12:26:03 -0400
-Received: by mail-oi0-f48.google.com with SMTP id q4so17730129oif.1
-        for <linux-ext4@vger.kernel.org>; Sun, 16 Jul 2017 09:26:03 -0700 (PDT)
-Received: from [192.168.3.68] ([47.187.202.234])
-        by smtp.googlemail.com with ESMTPSA id p124sm17169633oic.4.2017.07.16.09.26.01
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Sun, 16 Jul 2017 09:26:02 -0700 (PDT)
+Received: from mga01.intel.com ([192.55.52.88]:58255 "EHLO mga01.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751209AbdGQCMi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 16 Jul 2017 22:12:38 -0400
+In-Reply-To: <1499831813-13218-1-git-send-email-emoly.liu@intel.com>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I asked this question on linux-ext3 and apparently I cannot post it 
-there as moderator has to approve it, and he is neither approving or 
-disapproving my message. May be the list is dormant now and everything 
-happens here. Any way here is my question.
+Hi,
 
-> Is there a kernel version restriction for 64bit ext4 FS creation/use? 
-> Google does not seem to find any info on this. I have mythbuntu  14.04 
-> distro that has
->> zym [rramesh] 473 > uname -a
->> Linux zym 3.13.0-119-generic #166-Ubuntu SMP Wed May 3 12:18:55 UTC 
->> 2017 x86_64 x86_64 x86_64 GNU/Linux
-> Can I create a 64bit ext4 under this kernel and mount/use?
->
-> BTW, my resize2fs cannot grow the file system beyond 16TB. I assume 
-> this is due to current FS being 32bit. I need to make it 64bit. What 
-> is the best way to go about doing this *on my distro*?
->> zym [rramesh] 474 > resize2fs
->> resize2fs 1.42.9 (4-Feb-2014)
->> Usage: resize2fs [-d debug_flags] [-f] [-F] [-M] [-P] [-p] device 
->> [new_size]
->
-> Ramesh 
+This patch needs to be included into the release along with the ea_inode feature to maintain proper feature compatibility with Lustre.
+Could it be landed as soon as possible?
 
-Ramesh
+Thanks,
+Emoly
+
+-----Original Message-----
+From: Emoly Liu [mailto:emoly.liu@intel.com] 
+Sent: Wednesday, July 12, 2017 11:57 AM
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org; Liu, Emoly <emoly.liu@intel.com>
+Subject: [PATCH] ext4: error should be cleared if ea_inode isn't added to the cache
+
+For Lustre, if ea_inode fails in hash validation but passes parent inode and generation checks, it won't be added to the cache as well as the error "-EFSCORRUPTED" should be cleared, otherwise it will cause "Structure needs cleaning" when running getfattr command.
+
+Signed-off-by: Emoly Liu <emoly.liu@intel.com>
+Intel-bug-id: https://jira.hpdd.intel.com/browse/LU-9723
+---
+ fs/ext4/xattr.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c index cff4f41..de217a0 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -451,6 +451,7 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+ 		}
+ 		/* Do not add ea_inode to the cache. */
+ 		ea_inode_cache = NULL;
++		err = 0;
+ 	} else if (err)
+ 		goto out;
+ 
+--
+1.8.3.1
