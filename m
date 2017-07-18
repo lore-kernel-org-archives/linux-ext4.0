@@ -1,76 +1,84 @@
-From: <bfoster@uca.edu>
-Subject: (unknown)
-Date: Tue, 18 Jul 2017 15:56:55 -0000
-Message-ID: <150039341544.17375.5077367063359996878@telenet.ru>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 01/11] ext4: Don't clear SGID when inheriting ACLs
+Date: Tue, 18 Jul 2017 18:16:31 +0200
+Message-ID: <20170718161631.GA27293@quack2.suse.cz>
+References: <20170622133115.16968-1-jack@suse.cz>
+ <20170622133115.16968-2-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: application/zip; name="EMAIL_08011542258_linux-ext4.zip
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 3.170-192-31.telenet.ru ([31.192.170.3]:38151 "HELO telenet.ru"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
-        id S1751412AbdGRP46 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 18 Jul 2017 11:56:58 -0400
-Content-Disposition: attachment
-Subject: 
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Gruenbacher <agruenba@redhat.com>, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170622133115.16968-2-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-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
+On Thu 22-06-17 15:31:05, Jan Kara wrote:
+> When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
+> set, DIR1 is expected to have SGID bit set (and owning group equal to
+> the owning group of 'DIR0'). However when 'DIR0' also has some default
+> ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
+> 'DIR1' to get cleared if user is not member of the owning group.
+> 
+> Fix the problem by moving posix_acl_update_mode() out of
+> __ext4_set_acl() into ext4_set_acl(). That way the function will not be
+> called when inheriting ACLs which is what we want as it prevents SGID
+> bit clearing and the mode has been properly set by posix_acl_create()
+> anyway.
+> 
+> Fixes: 073931017b49d9458aa351605b43a7e34598caef
+> CC: stable@vger.kernel.org
+> CC: linux-ext4@vger.kernel.org
+> CC: "Theodore Ts'o" <tytso@mit.edu>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+
+Ted, can you please pick up this fix? Thanks!
+
+								Honza
+> ---
+>  fs/ext4/acl.c | 16 +++++++++-------
+>  1 file changed, 9 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+> index 3ec0e46de95f..37242af33ff2 100644
+> --- a/fs/ext4/acl.c
+> +++ b/fs/ext4/acl.c
+> @@ -193,13 +193,6 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
+>  	switch (type) {
+>  	case ACL_TYPE_ACCESS:
+>  		name_index = EXT4_XATTR_INDEX_POSIX_ACL_ACCESS;
+> -		if (acl) {
+> -			error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
+> -			if (error)
+> -				return error;
+> -			inode->i_ctime = current_time(inode);
+> -			ext4_mark_inode_dirty(handle, inode);
+> -		}
+>  		break;
+>  
+>  	case ACL_TYPE_DEFAULT:
+> @@ -242,7 +235,16 @@ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+>  	if (IS_ERR(handle))
+>  		return PTR_ERR(handle);
+>  
+> +	if (type == ACL_TYPE_ACCESS && acl) {
+> +		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
+> +		if (error)
+> +			goto out_stop;
+> +		inode->i_ctime = current_time(inode);
+> +		ext4_mark_inode_dirty(handle, inode);
+> +	}
+> +
+>  	error = __ext4_set_acl(handle, inode, type, acl);
+> +out_stop:
+>  	ext4_journal_stop(handle);
+>  	if (error == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+>  		goto retry;
+> -- 
+> 2.12.3
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
