@@ -1,54 +1,64 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 196405] mkdir mishandles st_nlink in ext4 directory with 64997
- subdirectories
-Date: Tue, 18 Jul 2017 23:15:40 +0000
-Message-ID: <bug-196405-13602-yO7S253Leg@https.bugzilla.kernel.org/>
-References: <bug-196405-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Which kernel do I need to use ext4 64-bit.
+Date: Tue, 18 Jul 2017 19:31:59 -0400
+Message-ID: <20170718233159.4dfolbbgrgw3s7a5@thunk.org>
+References: <789629f3-d70f-5588-65ec-a45d5c3259a9@gmail.com>
+ <469EA06D-C08B-463E-9511-4C340BED86C8@dilger.ca>
+ <57c41e8d-8d81-e43b-e57b-e91daa7bba83@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: Ram Ramesh <rramesh2400@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:55768 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752040AbdGRXPt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 18 Jul 2017 19:15:49 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 847CB285FD
-        for <linux-ext4@vger.kernel.org>; Tue, 18 Jul 2017 23:15:49 +0000 (UTC)
-In-Reply-To: <bug-196405-13602@https.bugzilla.kernel.org/>
+Received: from imap.thunk.org ([74.207.234.97]:37206 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752692AbdGRXcB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 18 Jul 2017 19:32:01 -0400
+Content-Disposition: inline
+In-Reply-To: <57c41e8d-8d81-e43b-e57b-e91daa7bba83@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=196405
+On Tue, Jul 18, 2017 at 05:49:31PM -0500, Ram Ramesh wrote:
+> Thanks. I can't update e2fsprogs to 1.43 without knowing that the file
+> system it creates can be mounted on my kernel. I am with ubuntu 14.04 which
+> only has these. I could manually download and build from source or install
+> from another repository only if I know my kernel will support it. So, I
+> really need to know if linux 3.13 support ext4-64bit.
 
---- Comment #8 from Paul Eggert (eggert@cs.ucla.edu) ---
-(In reply to Theodore Tso from comment #1)
-> In order to support a large
-> number of directories, when we have a 16-bit link count field, we use
-> a link count of 1 to mean, "lots".
+Why are you not willing to update to Ubuntu 16.04, or something less
+ancient?  The 64-bit feature is "supported" in the sense that the
+kernel will understand it.  But if you have a paid support contract
+from Canonical, you need to ask them if they will "support" it.  And
+if you are hoping that the upstream kernel development community will
+provide you free "support" for an ancient enterprise distribution, you
+need to understand that this is best efforts only.
 
-Where is this behavior documented? I don't see it mentioned in
-e2fsprogs/doc/libext2fs.texinfo. Where should I look?
+Technically speaking it appears that Linux 3.13 understands the 64-bit
+feature.  Whether there are any critical bugs that have since been
+fixed is a very different question.  Technically speaking, e2fsprogs
+1.42.9 also understands the 64-bit feature, but I *know* that there
+are a number of off-line resize bugs with the 64-bit features in the
+1.42.x e2fsprogs line.
 
-> various userspace utilities that try to optimize
-> directory walking by depending on the directory's link count to
-> understand when they have found all of the subdirectories know that
-> directory link count of 1 means "lots".
+The reason to use 1.43.x is that it will turn on the 64-bit feature
+"automatically".  But you could just also reformat the file system
+using "mke2fs -t ext4 -O 64bit /dev/xxx" using 1.42.x.  Also note that
+depending on which repository that you download e2fsprogs 1.43.x, you
+may need to edit /etc/mke2fs.conf so mke2fs doesn't enable the
+metadata_csum feature by default (which will not be supported by Linux
+3.13).
 
-Although I've been contributing to the GNU core utilities for many years, this
-behavior is news to me. I just checked the GNU coreutils source, and these
-utilities do not know that 1 means "lots". Although the code happens to work,
-it is pure luck. GNU findutils is similar.
+So it might be that the safer thing to do is to build e2fsprogs 1.43.x
+(so you get the latest bug fixes), and then check the /etc/mke2fs.conf
+file to make sure it will create the same sort of file system as 1.42.x.
 
-The GNU C library's fts functions can misbehave on file systems where st_nlink
-undercounts the number of subdirectories. To reproduce the problem, run the
-program fts-test.c (attached to this bug report) in a fresh directory. On an
-ext4 file system, the program outputs "0 needles found (should be 2)" and
-fails, due to the incompatibility between ext4 st_nlink behavior and what the
-GNU C library expects.
+But if this is a critical enterprise/production system, and you are
+expecting support by sending e-mail to linux-ext4@vger.kernel.org, I
+do feel morally bound to dissuade you from doing that unless you are
+prepared to carry most of the support burden yourself.  There is a
+reason why companies pay $$$ to Red Hat or SuSE...
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Cheers,
+
+						- Ted
