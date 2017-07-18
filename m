@@ -1,42 +1,39 @@
-From: Adam Buchbinder <abuchbinder@google.com>
-Subject: [PATCH v2 1/2] e2p: Fix segfault in e2p_os2string.
-Date: Tue, 18 Jul 2017 14:48:22 -0700
-Message-ID: <20170718214823.22649-2-abuchbinder@google.com>
-References: <20170718192919.32406-1-abuchbinder@google.com>
- <20170718214823.22649-1-abuchbinder@google.com>
-Cc: Adam Buchbinder <abuchbinder@google.com>
-To: linux-ext4@vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196405] mkdir mishandles st_nlink in ext4 directory with 64997
+ subdirectories
+Date: Tue, 18 Jul 2017 21:54:52 +0000
+Message-ID: <bug-196405-13602-AfTk7lpbDT@https.bugzilla.kernel.org/>
+References: <bug-196405-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f173.google.com ([209.85.192.173]:34209 "EHLO
-        mail-pf0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753180AbdGRVse (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Jul 2017 17:48:34 -0400
-Received: by mail-pf0-f173.google.com with SMTP id q85so17406197pfq.1
-        for <linux-ext4@vger.kernel.org>; Tue, 18 Jul 2017 14:48:34 -0700 (PDT)
-In-Reply-To: <20170718214823.22649-1-abuchbinder@google.com>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:38656 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752191AbdGRVy7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 18 Jul 2017 17:54:59 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2C070285C2
+        for <linux-ext4@vger.kernel.org>; Tue, 18 Jul 2017 21:54:59 +0000 (UTC)
+In-Reply-To: <bug-196405-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Passing in a negative integer would lead to a segfault, and
-a crafted filesystem image could trigger that.
+https://bugzilla.kernel.org/show_bug.cgi?id=196405
 
-Signed-off-by: Adam Buchbinder <abuchbinder@google.com>
----
- lib/e2p/ostype.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+--- Comment #4 from Andreas Dilger (adilger.kernelbugzilla@dilger.ca) ---
+The limit is implemented as < 65000, which was somewhat below the hard limit of
+the ext4_inode.i_links_count __u16 field of 65535.  There is no hard reason for
+65000 except to allow some margin for detecting overflow, and reserved values
+if there was a need.  I don't think it makes a big practical difference whether
+directory link counts are accurate up to 65000 or 65534 subdirectories, since
+very few systems have this many subdirectories.
 
-diff --git a/lib/e2p/ostype.c b/lib/e2p/ostype.c
-index 7f088446..c5fd8ab3 100644
---- a/lib/e2p/ostype.c
-+++ b/lib/e2p/ostype.c
-@@ -30,7 +30,7 @@ char *e2p_os2string(int os_type)
-         const char	*os;
- 	char 		*ret;
- 
--	if (os_type <= EXT2_OS_LITES)
-+	if (os_type >= 0 && os_type <= EXT2_OS_LITES)
- 		os = os_tab[os_type];
- 	else
- 		os = "(unknown os)";
+In theory, we could add an i_links_count_hi field to extend this to a 32-bit
+value, but it isn't clear if there is a big benefit from doing this?
+
 -- 
-2.14.0.rc0.284.gd933b75aa4-goog
+You are receiving this mail because:
+You are watching the assignee of the bug.
