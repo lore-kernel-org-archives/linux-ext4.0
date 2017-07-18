@@ -1,84 +1,70 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 01/11] ext4: Don't clear SGID when inheriting ACLs
-Date: Tue, 18 Jul 2017 18:16:31 +0200
-Message-ID: <20170718161631.GA27293@quack2.suse.cz>
-References: <20170622133115.16968-1-jack@suse.cz>
- <20170622133115.16968-2-jack@suse.cz>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] ext4: remove timebomb in ext4_decode_extra_time()
+Date: Tue, 18 Jul 2017 09:18:12 -0700
+Message-ID: <20170718161812.GA31492@infradead.org>
+References: <20170614112238.14121-1-hch@lst.de>
+ <20170627140326.GA25210@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Gruenbacher <agruenba@redhat.com>, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([65.50.211.133]:41229 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751353AbdGRQSN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Jul 2017 12:18:13 -0400
 Content-Disposition: inline
-In-Reply-To: <20170622133115.16968-2-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170627140326.GA25210@lst.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 22-06-17 15:31:05, Jan Kara wrote:
-> When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
-> set, DIR1 is expected to have SGID bit set (and owning group equal to
-> the owning group of 'DIR0'). However when 'DIR0' also has some default
-> ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
-> 'DIR1' to get cleared if user is not member of the owning group.
-> 
-> Fix the problem by moving posix_acl_update_mode() out of
-> __ext4_set_acl() into ext4_set_acl(). That way the function will not be
-> called when inheriting ACLs which is what we want as it prevents SGID
-> bit clearing and the mode has been properly set by posix_acl_create()
-> anyway.
-> 
-> Fixes: 073931017b49d9458aa351605b43a7e34598caef
-> CC: stable@vger.kernel.org
-> CC: linux-ext4@vger.kernel.org
-> CC: "Theodore Ts'o" <tytso@mit.edu>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+ping^2?
 
-Ted, can you please pick up this fix? Thanks!
-
-								Honza
-> ---
->  fs/ext4/acl.c | 16 +++++++++-------
->  1 file changed, 9 insertions(+), 7 deletions(-)
+On Tue, Jun 27, 2017 at 04:03:26PM +0200, Christoph Hellwig wrote:
+> ping?
 > 
-> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-> index 3ec0e46de95f..37242af33ff2 100644
-> --- a/fs/ext4/acl.c
-> +++ b/fs/ext4/acl.c
-> @@ -193,13 +193,6 @@ __ext4_set_acl(handle_t *handle, struct inode *inode, int type,
->  	switch (type) {
->  	case ACL_TYPE_ACCESS:
->  		name_index = EXT4_XATTR_INDEX_POSIX_ACL_ACCESS;
-> -		if (acl) {
-> -			error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-> -			if (error)
-> -				return error;
-> -			inode->i_ctime = current_time(inode);
-> -			ext4_mark_inode_dirty(handle, inode);
-> -		}
->  		break;
->  
->  	case ACL_TYPE_DEFAULT:
-> @@ -242,7 +235,16 @@ ext4_set_acl(struct inode *inode, struct posix_acl *acl, int type)
->  	if (IS_ERR(handle))
->  		return PTR_ERR(handle);
->  
-> +	if (type == ACL_TYPE_ACCESS && acl) {
-> +		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-> +		if (error)
-> +			goto out_stop;
-> +		inode->i_ctime = current_time(inode);
-> +		ext4_mark_inode_dirty(handle, inode);
-> +	}
-> +
->  	error = __ext4_set_acl(handle, inode, type, acl);
-> +out_stop:
->  	ext4_journal_stop(handle);
->  	if (error == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
->  		goto retry;
-> -- 
-> 2.12.3
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> On Wed, Jun 14, 2017 at 01:22:38PM +0200, Christoph Hellwig wrote:
+> > Changing behavior based on the version code is a timebomb waiting to
+> > happen, and not easily bisectable.  Drop it and leave any removal
+> > to explicit developer action. (And I don't think file system
+> > should _ever_ remove backwards compatibility that has no explicit
+> > flag, but I'll leave that to the ext4 folks).
+> > 
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> > ---
+> >  fs/ext4/ext4.h | 12 +++---------
+> >  1 file changed, 3 insertions(+), 9 deletions(-)
+> > 
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 32191548abed..d35749e7cf9f 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -838,21 +838,15 @@ static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
+> >  {
+> >  	if (unlikely(sizeof(time->tv_sec) > 4 &&
+> >  			(extra & cpu_to_le32(EXT4_EPOCH_MASK)))) {
+> > -#if LINUX_VERSION_CODE < KERNEL_VERSION(4,20,0)
+> > +
+> >  		/* Handle legacy encoding of pre-1970 dates with epoch
+> > -		 * bits 1,1.  We assume that by kernel version 4.20,
+> > -		 * everyone will have run fsck over the affected
+> > -		 * filesystems to correct the problem.  (This
+> > -		 * backwards compatibility may be removed before this
+> > -		 * time, at the discretion of the ext4 developers.)
+> > +		 * bits 1,1. (This backwards compatibility may be removed
+> > +		 * at the discretion of the ext4 developers.)
+> >  		 */
+> >  		u64 extra_bits = le32_to_cpu(extra) & EXT4_EPOCH_MASK;
+> >  		if (extra_bits == 3 && ((time->tv_sec) & 0x80000000) != 0)
+> >  			extra_bits = 0;
+> >  		time->tv_sec += extra_bits << 32;
+> > -#else
+> > -		time->tv_sec += (u64)(le32_to_cpu(extra) & EXT4_EPOCH_MASK) << 32;
+> > -#endif
+> >  	}
+> >  	time->tv_nsec = (le32_to_cpu(extra) & EXT4_NSEC_MASK) >> EXT4_EPOCH_BITS;
+> >  }
+> > -- 
+> > 2.11.0
+> ---end quoted text---
+---end quoted text---
