@@ -1,11 +1,10 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH 3/6] fscrypt: use HKDF-SHA512 to derive the per-inode
- encryption keys
-Date: Wed, 19 Jul 2017 10:32:37 -0700
-Message-ID: <20170719173237.GA78811@gmail.com>
+Subject: Re: [PATCH 5/6] fscrypt: cache the HMAC transform for each master key
+Date: Wed, 19 Jul 2017 10:37:44 -0700
+Message-ID: <20170719173744.GB78811@gmail.com>
 References: <20170712210035.51534-1-ebiggers3@gmail.com>
- <20170712210035.51534-4-ebiggers3@gmail.com>
- <20170714162440.GB25453@google.com>
+ <20170712210035.51534-6-ebiggers3@gmail.com>
+ <20170717174551.GA32282@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
@@ -16,74 +15,38 @@ Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Alex Cope <alexcope@google.com>,
         Eric Biggers <ebiggers@google.com>
 To: Michael Halcrow <mhalcrow@google.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f195.google.com ([209.85.192.195]:34978 "EHLO
+        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754553AbdGSRhr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Jul 2017 13:37:47 -0400
 Content-Disposition: inline
-In-Reply-To: <20170714162440.GB25453@google.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170717174551.GA32282@google.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 14, 2017 at 09:24:40AM -0700, Michael Halcrow wrote:
-> > +static int hkdf_expand(struct crypto_shash *hmac, u8 context,
-> > +		       const u8 *info, unsigned int infolen,
-> > +		       u8 *okm, unsigned int okmlen)
+On Mon, Jul 17, 2017 at 10:45:51AM -0700, Michael Halcrow wrote:
+> > +/*
+> > + * Get the fscrypt_master_key identified by the specified v2+ encryption
+> > + * context, or create it if not found.
+> > + *
+> > + * Returns the fscrypt_master_key with a reference taken, or an ERR_PTR().
+> > + */
+> > +static struct fscrypt_master_key *
+> > +find_or_create_master_key(const struct inode *inode,
+> > +			  const struct fscrypt_context *ctx,
+> > +			  unsigned int min_keysize)
 > > +{
-> > +	SHASH_DESC_ON_STACK(desc, hmac);
-> > +	int err;
-> > +	const u8 *prev = NULL;
-> > +	unsigned int i;
-> > +	u8 counter = 1;
-> > +	u8 tmp[HKDF_HASHLEN];
+> > +	struct fscrypt_master_key *master_key;
 > > +
-> > +	desc->tfm = hmac;
-> > +	desc->flags = 0;
-> > +
-> > +	if (unlikely(okmlen > 255 * HKDF_HASHLEN))
-> > +		return -EINVAL;
-> > +
-> > +	for (i = 0; i < okmlen; i += HKDF_HASHLEN) {
-> > +
-> > +		err = crypto_shash_init(desc);
-> > +		if (err)
-> > +			goto out;
-> > +
-> > +		if (prev) {
-> > +			err = crypto_shash_update(desc, prev, HKDF_HASHLEN);
-> > +			if (err)
-> > +				goto out;
-> > +		}
-> > +
-> > +		err = crypto_shash_update(desc, &context, 1);
+> > +	if (WARN_ON(ctx->version < FSCRYPT_CONTEXT_V2))
+> > +		return ERR_PTR(-EINVAL);
 > 
-> One potential shortcut would be to just increment context on each
-> iteration rather than maintain the counter.
+> Isn't this a programming error?  If so, consider either BUG_ON() or
+> omit the check.
 > 
 
-That's not a good idea because then it wouldn't be standard HKDF, and it would
-be relying on the "feedback" mode to keep the HMAC inputs unique which isn't
-guaranteed to be sufficient.
-
-> >  
-> > -	res = validate_user_key(crypt_info, &ctx, raw_key, FS_KEY_DESC_PREFIX,
-> > -				keysize);
-> > -	if (res && inode->i_sb->s_cop->key_prefix) {
-> > -		int res2 = validate_user_key(crypt_info, &ctx, raw_key,
-> > -					     inode->i_sb->s_cop->key_prefix,
-> > -					     keysize);
-> > -		if (res2) {
-> > -			if (res2 == -ENOKEY)
-> > -				res = -ENOKEY;
-> > +	if (ctx.version == FSCRYPT_CONTEXT_V1) {
-> > +		res = find_and_derive_key_v1(inode, &ctx, derived_key,
-> > +					     derived_keysize);
-> 
-> Why not make this consistent with the else clause, i.e. doing
-> load_master_key_from_keyring() followed by derive_key_v1()?
-> 
-
-struct fscrypt_master_key contains the HMAC transform but not the raw master
-key.  For the v1 key derivation we need the raw master key.  We could put it in
-the fscrypt_master_key and then try to allow fscrypt_master_key's both with and
-without HMAC transforms depending on the policy versions they are used for, but
-there's no point in doing so currently.
+Yes, but BUG_ON() is discouraged in cases where there is a straightforward way
+to recover from the error.  checkpatch actually warns about using it these days.
 
 Eric
