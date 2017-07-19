@@ -1,84 +1,64 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 1/5] mm: add vm_insert_mixed_mkwrite()
-Date: Wed, 19 Jul 2017 16:16:59 +0200
-Message-ID: <20170719141659.GB15908@quack2.suse.cz>
-References: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
- <20170628220152.28161-2-ross.zwisler@linux.intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] tune2fs: remove dire warning about check intervals
+Date: Wed, 19 Jul 2017 10:42:20 -0400
+Message-ID: <20170719144220.rfs5prb2265mjtyj@thunk.org>
+References: <ce6bff3e-49f4-2bed-67ce-a7be604ce1cf@redhat.com>
+ <CD3439EC-F272-4172-8C7F-229C6DAE06EC@dilger.ca>
+ <20170719011517.tfvnzb7mzfle25hi@thunk.org>
+ <20170719072157.7kjwyltmuvzk2oec@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, linux-kernel@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Hansen <dave.hansen@intel.com>, Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
-	linux-xfs@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
+To: Andreas Dilger <adilger@dilger.ca>,
+        Eric Sandeen <sandeen@redhat.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:40336 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754734AbdGSOmY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 19 Jul 2017 10:42:24 -0400
 Content-Disposition: inline
-In-Reply-To: <20170628220152.28161-2-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170719072157.7kjwyltmuvzk2oec@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 28-06-17 16:01:48, Ross Zwisler wrote:
-> To be able to use the common 4k zero page in DAX we need to have our PTE
-> fault path look more like our PMD fault path where a PTE entry can be
-> marked as dirty and writeable as it is first inserted, rather than waiting
-> for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
-> 
-> Right now we can rely on having a dax_pfn_mkwrite() call because we can
-> distinguish between these two cases in do_wp_page():
-> 
-> 	case 1: 4k zero page => writable DAX storage
-> 	case 2: read-only DAX storage => writeable DAX storage
-> 
-> This distinction is made by via vm_normal_page().  vm_normal_page() returns
-> false for the common 4k zero page, though, just as it does for DAX ptes.
-> Instead of special casing the DAX + 4k zero page case, we will simplify our
-> DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
-> get rid of dax_pfn_mkwrite() completely.
-> 
-> This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
-> and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
-> will do the work that was previously done by wp_page_reuse() as part of the
-> dax_pfn_mkwrite() call path.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+On Wed, Jul 19, 2017 at 09:21:57AM +0200, Lukas Czerner wrote:
+> I am actually worried that with this approach we are, simply by adding
+> complexity, making situation worse than just not running periodic
+> e2fsck.
 
-Just one small comment below.
+How would it make things worse?  If you don't trust lvm or dm-thin to
+create a read-only snapshot, you've got **way** worse problems.  I
+acutally think relying on e2fsck on a r/o snapshot to be much simpler
+than trying to add an on-line file systme check.  That requires much
+more kernel code which almost by definition is higher risk (e.g., to
+bugs of the sort found by AFL) than already-existing userspace code.
 
-> @@ -1658,14 +1658,26 @@ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
->  	if (!pte)
->  		goto out;
->  	retval = -EBUSY;
-> -	if (!pte_none(*pte))
-> -		goto out_unlock;
-> +	if (!pte_none(*pte)) {
-> +		if (mkwrite) {
-> +			entry = *pte;
-> +			goto out_mkwrite;
+> What we should be aiming for I think is the online file system check and
+> scrub. This would of course not replace the need rof e2fsck, but we
+> would be able to catch errors early while fixing some of those that we
+> can. But that's long term. Short term I think we're better off without
+> this snapshotting/checking complexity. Those who are concerned can still
+> enable the time/mount based checks right ?
 
-Can we maybe check here that (pte_pfn(*pte) == pfn_t_to_pfn(pfn)) and
-return -EBUSY otherwise? That way we are sure insert_pfn() isn't doing
-anything we don't expect and if I understand the code right, we need to
-invalidate all zero page mappings at given file offset (via
-unmap_mapping_range()) before mapping an allocated block there and thus the
-case of filling the hole won't be affected by this?
+time/mount-based checks only help if you reboot; the advantage of
+doing a check on read-only snapshot is you can schedule it once a
+week, or once a month, during idle times.  Picking idle times might be
+tricky, but distro's when they decide on a default for running
+updatedb(8) for the locate command.  And whether the crontab entry is
+installed by default, or has to be explicitly enabled by the user, or
+e2croncheck is put in a separate package for distributions to use are
+all distro decisions.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+I would probably go for the last, with a debian-style "recommends" or
+"suggests" dependency for easy discoverability but different
+distributions can do what they like --- including not packaging
+e2croncheck at all.  But in terms of a short-term solution it's really
+not hard to add.  And I don't believe I've heard any reports of
+instability for r/o snapshot functionality.  That's been around for a
+long, long, time at least for LVM snapshots.  dm-thin might be
+considered more flakey, but that reputation seems to apply for dm-thin
+as a whole, as opposed to just its snapshot functionality.  If a user
+is willing to trust their data to dm-thin, are taking a bigger risk by
+using dm-thin snapshots?
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+					- Ted
