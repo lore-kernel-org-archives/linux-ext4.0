@@ -1,92 +1,68 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH v3 1/5] mm: add vm_insert_mixed_mkwrite()
-Date: Wed, 19 Jul 2017 15:58:31 -0600
-Message-ID: <20170719215831.GC10923@linux.intel.com>
-References: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
- <20170628220152.28161-2-ross.zwisler@linux.intel.com>
- <20170719141659.GB15908@quack2.suse.cz>
- <20170719175112.GA24588@linux.intel.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196405] mkdir mishandles st_nlink in ext4 directory with 64997
+ subdirectories
+Date: Wed, 19 Jul 2017 22:22:37 +0000
+Message-ID: <bug-196405-13602-tQb57To7MO@https.bugzilla.kernel.org/>
+References: <bug-196405-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
- Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
- Dave Hansen <dave.hansen-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Jonathan Corbet <corbet-T1hC0tSOHrs@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>, linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170719175112.GA24588-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:47876 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1755553AbdGSWWi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 19 Jul 2017 18:22:38 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 55A302871E
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Jul 2017 22:22:38 +0000 (UTC)
+In-Reply-To: <bug-196405-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 19, 2017 at 11:51:12AM -0600, Ross Zwisler wrote:
-> On Wed, Jul 19, 2017 at 04:16:59PM +0200, Jan Kara wrote:
-> > On Wed 28-06-17 16:01:48, Ross Zwisler wrote:
-> > > To be able to use the common 4k zero page in DAX we need to have our PTE
-> > > fault path look more like our PMD fault path where a PTE entry can be
-> > > marked as dirty and writeable as it is first inserted, rather than waiting
-> > > for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
-> > > 
-> > > Right now we can rely on having a dax_pfn_mkwrite() call because we can
-> > > distinguish between these two cases in do_wp_page():
-> > > 
-> > > 	case 1: 4k zero page => writable DAX storage
-> > > 	case 2: read-only DAX storage => writeable DAX storage
-> > > 
-> > > This distinction is made by via vm_normal_page().  vm_normal_page() returns
-> > > false for the common 4k zero page, though, just as it does for DAX ptes.
-> > > Instead of special casing the DAX + 4k zero page case, we will simplify our
-> > > DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
-> > > get rid of dax_pfn_mkwrite() completely.
-> > > 
-> > > This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
-> > > and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
-> > > will do the work that was previously done by wp_page_reuse() as part of the
-> > > dax_pfn_mkwrite() call path.
-> > > 
-> > > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> > 
-> > Just one small comment below.
-> > 
-> > > @@ -1658,14 +1658,26 @@ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
-> > >  	if (!pte)
-> > >  		goto out;
-> > >  	retval = -EBUSY;
-> > > -	if (!pte_none(*pte))
-> > > -		goto out_unlock;
-> > > +	if (!pte_none(*pte)) {
-> > > +		if (mkwrite) {
-> > > +			entry = *pte;
-> > > +			goto out_mkwrite;
-> > 
-> > Can we maybe check here that (pte_pfn(*pte) == pfn_t_to_pfn(pfn)) and
-> > return -EBUSY otherwise? That way we are sure insert_pfn() isn't doing
-> > anything we don't expect 
-> 
-> Sure, that's fine.  I'll add it as a WARN_ON_ONCE() so it's a very loud
-> failure.  If the pfns don't match I think we're insane (and would have been
-> insane prior to this patch series as well) because we are getting a page fault
-> and somehow have a different PFN already mapped at that location.
+https://bugzilla.kernel.org/show_bug.cgi?id=196405
 
-Umm...well, I added the warning, and during my regression testing hit a case
-where the PFNs didn't match.  (generic/437 with both ext4 & XFS)
+--- Comment #14 from Andreas Dilger (adilger.kernelbugzilla@dilger.ca) ---
+One unfortunate situation is that "getconf LINK_MAX" is invented by glibc based
+on the fstype reported by statfs() and not actually extracted from the kernel. 
+That makes LINK_MAX accurate only in a subset of cases, depending on the
+version of ext2/ext3/ext4 in use and filesystem features enabled, and it
+definitely isn't reporting values from the filesystem on a mount-by-mount
+basis.  I ran into this problem in the past when running the POSIX test suite
+for Lustre, and consider LINK_MAX to be the minimum number of subdirectories
+that can be created in a directory, rather than the maximum.
 
-I've verified that this behavior happens with vanilla v4.12, so it's not a new
-condition introduced by my patch.
+Checking the ext4 code, it is returning -EMLINK for ext4_link() on regular
+files and for ext4_mkdir() for subdirectories, and has been since before it was
+forked from ext3.  I'm not sure where your ENOSPC is coming from.  I found an
+old RHEL6 system that didn't have dir_nlink set to test this, but the feature
+was enabled once the directory passed ~65000 subdirs, so I didn't get an error.
+ I did try testing on a small newly created ext4 filesystem with 1024-byte
+blocks (in case the limit was with the 2-level htree), and hit ENOSPC because I
+ran out of inodes...  32757 has never been a directory limit imposed by
+ext2/3/4, so I suspect you hit a similar problem (11 inodes are reserved by
+ext* for internal use).
 
-I'm off tracking that down - there's a bug lurking somewhere, I think.
+As for wrap-around at 65000 vs. 65001 links, I can agree that is a minor bug
+that could be fixed.  Strangely, in continued testing on my old RHEL6 box (with
+a larger filesystem and dir_nlink disabled) I was able to successfully create
+64998 subdirectories, and ls -l reported 65000 links on the parent directory,
+so it may be that the 64998 overflow is a problem that was added after the
+dir_nlink feature was first created.
+
+
+The most important issue is that nlinks=1 on the directory causing fts() to
+miss entries during scanning.  It doesn't make sense for it to take nlinks=1
+and subtract 2 links for "." and ".." and expect to find "-1" subdirectories. 
+It may be that this causes an unsigned underflow and tools like "find" will not
+stop scanning until they hit 2^32-1 entries or similar?  At least in my tests
+"find" correctly found the "needle" files even if fts-test.c did not.
+
+Also worthy of note, on my Mac (OSX 10.12.5, HFS+ Journaled fs), running
+fts-test.c with 65536 subdirectories has "ls -ld d" reporting 0 links, but
+fts-test.c still passes.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
