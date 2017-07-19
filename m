@@ -1,97 +1,81 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH v3 1/5] mm: add vm_insert_mixed_mkwrite()
-Date: Wed, 19 Jul 2017 11:51:12 -0600
-Message-ID: <20170719175112.GA24588@linux.intel.com>
-References: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
- <20170628220152.28161-2-ross.zwisler@linux.intel.com>
- <20170719141659.GB15908@quack2.suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] tune2fs: remove dire warning about check intervals
+Date: Wed, 19 Jul 2017 10:57:05 -0700
+Message-ID: <20170719175705.GB4211@magnolia>
+References: <ce6bff3e-49f4-2bed-67ce-a7be604ce1cf@redhat.com>
+ <CD3439EC-F272-4172-8C7F-229C6DAE06EC@dilger.ca>
+ <20170719011517.tfvnzb7mzfle25hi@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, Jonathan Corbet <corbet-T1hC0tSOHrs@public.gmane.org>,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Dave Hansen <dave.hansen-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        Eric Sandeen <sandeen@redhat.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        =?utf-8?B?THVrw6HFoQ==?= Czerner <lczerner@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:33483 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753322AbdGSR5T (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Jul 2017 13:57:19 -0400
 Content-Disposition: inline
-In-Reply-To: <20170719141659.GB15908-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170719011517.tfvnzb7mzfle25hi@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 19, 2017 at 04:16:59PM +0200, Jan Kara wrote:
-> On Wed 28-06-17 16:01:48, Ross Zwisler wrote:
-> > To be able to use the common 4k zero page in DAX we need to have our PTE
-> > fault path look more like our PMD fault path where a PTE entry can be
-> > marked as dirty and writeable as it is first inserted, rather than waiting
-> > for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
+On Tue, Jul 18, 2017 at 09:15:17PM -0400, Theodore Ts'o wrote:
+> On Tue, Jul 18, 2017 at 04:28:16PM -0600, Andreas Dilger wrote:
 > > 
-> > Right now we can rely on having a dax_pfn_mkwrite() call because we can
-> > distinguish between these two cases in do_wp_page():
+> > Sigh, I still think this is going in the wrong direction.  I'm happily
+> > running a weekly e2fsck on a snapshot of the filesystem, and then reset
+> > the time and mount-count fields in the superblock with tune2fs.  That
+> > way I never see any warnings, or have slow boots because of a scan, but
+> > I'm also notified if there are ever problems on the filesystem (which
+> > happens occasionally, since I'm sometimes running experimental code).
 > > 
-> > 	case 1: 4k zero page => writable DAX storage
-> > 	case 2: read-only DAX storage => writeable DAX storage
-> > 
-> > This distinction is made by via vm_normal_page().  vm_normal_page() returns
-> > false for the common 4k zero page, though, just as it does for DAX ptes.
-> > Instead of special casing the DAX + 4k zero page case, we will simplify our
-> > DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
-> > get rid of dax_pfn_mkwrite() completely.
-> > 
-> > This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
-> > and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
-> > will do the work that was previously done by wp_page_reuse() as part of the
-> > dax_pfn_mkwrite() call path.
-> > 
-> > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> > Since virtually everyone is using MD/LVM devices these days, I don't
+> > think that is hard to do.  I offered up my "lvcheck" script a few times,
+> > but nobody at RH or on the DM team seemed interested at the time...
+> > I'd also be happy if there was some other similar mechanism included with
+> > the distro to do periodic background checks of the filesystem, rather
+> > than letting them find any problem at some random time.  This is pretty
+> > standard for RAID systems, I think it makes sense for the filesystem too.
 > 
-> Just one small comment below.
+> I've had e2croncheck in the contrib directory for a long time.  I
+> suspect it wouldn't be that hard to make a version of it which scans
+> /proc/mounts, and for those devices that are in an LVM, or dm-thin,
+> and if there is room for a snapshot, it would create a snapshot, run
+> fsck on the snapshot, and if there are any errors, sends an e-mail
+> report to root by default.  (We would need to have some kind of
+> configuration file in /etc to control where to send the reports, what
+> the default snapshot size should be, etc., but if we have intelligent
+> defaults than the config file could be optional.)
 > 
-> > @@ -1658,14 +1658,26 @@ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
-> >  	if (!pte)
-> >  		goto out;
-> >  	retval = -EBUSY;
-> > -	if (!pte_none(*pte))
-> > -		goto out_unlock;
-> > +	if (!pte_none(*pte)) {
-> > +		if (mkwrite) {
-> > +			entry = *pte;
-> > +			goto out_mkwrite;
+> We could try to make it a bit nicer, and then move it to the misc
+> directory and start installing it by default with "make install".
+> That might make it easier for more users to set it up.  Maybe some
+> distros will even decide to install a crontab entry by default.
+
+So... I've had a private debian package for years that does most of
+this.  There are two scripts -- one that uses lvs and blkid to identify
+potential ext4 LVS and calls the second script, which sets up the
+snapshot, runs e2fsck on that, and (optionally) calls fstrim on the
+original fs if the snapshot fscks cleanly.  There's also a udev rules
+script to discourage udev from "managing" /dev/disk/ symlinks to the
+fsck snapshot.  Newer versions of the package integrate systemd support
+to (clumsily) isolate the e2fsck process, send email if things fail, and
+run automatically a la cron.
+
+There are some missing pieces, however -- I didn't modify d-i to reserve
+free space in the VG; there needs to be a monitoring daemon to kill fsck
+and the snapshot if the snapshot exhausts all of its space; a boot time
+script to kill the fsck snapshots if the system happened to go down
+while fsck was in progress.  It also assumes that the fs is idle enough
+that 256M for the snapshot will be sufficient.
+
+I've never bothered to submit any of it because I haven't had the time
+to implement any of those missing bits.
+
+--D
+
 > 
-> Can we maybe check here that (pte_pfn(*pte) == pfn_t_to_pfn(pfn)) and
-> return -EBUSY otherwise? That way we are sure insert_pfn() isn't doing
-> anything we don't expect 
-
-Sure, that's fine.  I'll add it as a WARN_ON_ONCE() so it's a very loud
-failure.  If the pfns don't match I think we're insane (and would have been
-insane prior to this patch series as well) because we are getting a page fault
-and somehow have a different PFN already mapped at that location.
-
-> and if I understand the code right, we need to
-> invalidate all zero page mappings at given file offset (via
-> unmap_mapping_range()) before mapping an allocated block there and thus the
-> case of filling the hole won't be affected by this?
-
-Correct.  Here's the call tree if we already have a zero page mapped and are
-now faulting in an allocated block:
-
-dax_iomap_pte_fault()
-  dax_insert_mapping()
-    dax_insert_mapping_entry()
-      unmap_mapping_range() for our zero page
-    vm_insert_mixed_mkwrite() installs the new PTE. We have pte_none(), so we
-    				skip the new mkwrite goto in insert_pfn().
+> 	     	  	    	      - Ted
