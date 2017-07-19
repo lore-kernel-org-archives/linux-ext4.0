@@ -1,70 +1,63 @@
 From: Lukas Czerner <lczerner@redhat.com>
 Subject: Re: [PATCH] tune2fs: remove dire warning about check intervals
-Date: Wed, 19 Jul 2017 09:21:57 +0200
-Message-ID: <20170719072157.7kjwyltmuvzk2oec@localhost.localdomain>
+Date: Wed, 19 Jul 2017 09:25:40 +0200
+Message-ID: <20170719072540.7yzdlvfbfua4vwqg@localhost.localdomain>
 References: <ce6bff3e-49f4-2bed-67ce-a7be604ce1cf@redhat.com>
- <CD3439EC-F272-4172-8C7F-229C6DAE06EC@dilger.ca>
- <20170719011517.tfvnzb7mzfle25hi@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Eric Sandeen <sandeen@redhat.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57420 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41084 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752751AbdGSHWI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 19 Jul 2017 03:22:08 -0400
+        id S1751822AbdGSHZq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 19 Jul 2017 03:25:46 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id E827961D11
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Jul 2017 07:25:45 +0000 (UTC)
 Content-Disposition: inline
-In-Reply-To: <20170719011517.tfvnzb7mzfle25hi@thunk.org>
+In-Reply-To: <ce6bff3e-49f4-2bed-67ce-a7be604ce1cf@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 18, 2017 at 09:15:17PM -0400, Theodore Ts'o wrote:
-> On Tue, Jul 18, 2017 at 04:28:16PM -0600, Andreas Dilger wrote:
-> > 
-> > Sigh, I still think this is going in the wrong direction.  I'm happily
-> > running a weekly e2fsck on a snapshot of the filesystem, and then reset
-> > the time and mount-count fields in the superblock with tune2fs.  That
-> > way I never see any warnings, or have slow boots because of a scan, but
-> > I'm also notified if there are ever problems on the filesystem (which
-> > happens occasionally, since I'm sometimes running experimental code).
-> > 
-> > Since virtually everyone is using MD/LVM devices these days, I don't
-> > think that is hard to do.  I offered up my "lvcheck" script a few times,
-> > but nobody at RH or on the DM team seemed interested at the time...
-> > I'd also be happy if there was some other similar mechanism included with
-> > the distro to do periodic background checks of the filesystem, rather
-> > than letting them find any problem at some random time.  This is pretty
-> > standard for RAID systems, I think it makes sense for the filesystem too.
+On Tue, Jul 18, 2017 at 04:10:49PM -0500, Eric Sandeen wrote:
+> Time & mount-count based checks have been off by default for quite some
+> time now, but the dire warning about disabling them remains in the
+> tune2fs manpage, which is confusing.  We did "strongly consider
+> the consequences" and disabled it by default, no need to scare the
+> user about it now.
 > 
-> I've had e2croncheck in the contrib directory for a long time.  I
-> suspect it wouldn't be that hard to make a version of it which scans
-> /proc/mounts, and for those devices that are in an LVM, or dm-thin,
-> and if there is room for a snapshot, it would create a snapshot, run
-> fsck on the snapshot, and if there are any errors, sends an e-mail
-> report to root by default.  (We would need to have some kind of
-> configuration file in /etc to control where to send the reports, what
-> the default snapshot size should be, etc., but if we have intelligent
-> defaults than the config file could be optional.)
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
 > 
-> We could try to make it a bit nicer, and then move it to the misc
-> directory and start installing it by default with "make install".
-> That might make it easier for more users to set it up.  Maybe some
-> distros will even decide to install a crontab entry by default.
+> diff --git a/misc/tune2fs.8.in b/misc/tune2fs.8.in
+> index 5c885f9..a8cacc7 100644
+> --- a/misc/tune2fs.8.in
+> +++ b/misc/tune2fs.8.in
+> @@ -134,17 +134,6 @@ Staggering the mount-counts at which filesystems are forcibly
+>  checked will avoid all filesystems being checked at one time
+>  when using journaled filesystems.
+>  .sp
+> -You should strongly consider the consequences of disabling
+> -mount-count-dependent checking entirely.  Bad disk drives, cables,
+> -memory, and kernel bugs could all corrupt a filesystem without
+> -marking the filesystem dirty or in error.  If you are using
+> -journaling on your filesystem, your filesystem will
+> -.B never
+> -be marked dirty, so it will not normally be checked.  A
+> -filesystem error detected by the kernel will still force
+> -an fsck on the next reboot, but it may already be too late
+> -to prevent data loss at that point.
+> -.sp
+>  See also the
+>  .B \-i
+>  option for time-dependent checking.
 > 
-> 	     	  	    	      - Ted
 
-I am actually worried that with this approach we are, simply by adding
-complexity, making situation worse than just not running periodic
-e2fsck.
-
-What we should be aiming for I think is the online file system check and
-scrub. This would of course not replace the need rof e2fsck, but we
-would be able to catch errors early while fixing some of those that we
-can. But that's long term. Short term I think we're better off without
-this snapshotting/checking complexity. Those who are concerned can still
-enable the time/mount based checks right ?
+There is one more paragraph about this in the section about -i option.
+Also I'd not remove it entirely, but adding a note of possible benefits
+of this setting as well as disadvantages.
 
 -Lukas
