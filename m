@@ -1,63 +1,97 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: write() hangs during flush
-Date: Wed, 19 Jul 2017 23:22:12 -0700
-Message-ID: <20170720062212.GC4211@magnolia>
-References: <CAJB88a2J+HY_n8=7nJHp9GQ0jVDJdYLw5TPrBxN-ySqnBXNi9g@mail.gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] tune2fs: remove dire warning about check intervals
+Date: Thu, 20 Jul 2017 10:57:57 +0200
+Message-ID: <20170720085757.nonmo2k6tadbq3bu@rh_laptop>
+References: <ce6bff3e-49f4-2bed-67ce-a7be604ce1cf@redhat.com>
+ <CD3439EC-F272-4172-8C7F-229C6DAE06EC@dilger.ca>
+ <20170719011517.tfvnzb7mzfle25hi@thunk.org>
+ <20170719072157.7kjwyltmuvzk2oec@localhost.localdomain>
+ <20170719144220.rfs5prb2265mjtyj@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Brian Malehorn <bmalehorn@gmail.com>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        Eric Sandeen <sandeen@redhat.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:27777 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933017AbdGTGWP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Jul 2017 02:22:15 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:58896 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S934945AbdGTI6D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Jul 2017 04:58:03 -0400
 Content-Disposition: inline
-In-Reply-To: <CAJB88a2J+HY_n8=7nJHp9GQ0jVDJdYLw5TPrBxN-ySqnBXNi9g@mail.gmail.com>
+In-Reply-To: <20170719144220.rfs5prb2265mjtyj@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 19, 2017 at 11:07:08PM -0700, Brian Malehorn wrote:
-> Hi,
+On Wed, Jul 19, 2017 at 10:42:20AM -0400, Theodore Ts'o wrote:
+> On Wed, Jul 19, 2017 at 09:21:57AM +0200, Lukas Czerner wrote:
+> > I am actually worried that with this approach we are, simply by adding
+> > complexity, making situation worse than just not running periodic
+> > e2fsck.
 > 
-> I'm debugging an issue where write() can sometimes take several
-> seconds to complete. I'm looking for general guidance on why this
-> might happen, and what I can do about it.
-> 
-> While I originally encountered the problem on an embedded device
-> writing to an MMC, I can also reproduce it on my laptop (Ubuntu
-> 16.04):
-> 
->     pv -L 100m /dev/zero |
->       strace -s 8 -T -e trace=write dd bs=32k of=./zero 2>&1 |
->       awk 'substr($NF, 2, length($NF)-2) + 0 > 0.1'
-> 
->     write(1, "\0\0\0\0\0\0\0\0"..., 32768) = 32768 <0.145895>
->     write(1, "\0\0\0\0\0\0\0\0"..., 32768) = 32768 <0.673575>
->     write(1, "\0\0\0\0\0\0\0\0"..., 32768) = 32768 <0.126722>
->     write(1, "\0\0\0\0\0\0\0\0"..., 32768) = 32768 <1.284791>
-> 
-> In the above example, I write 100 MiB / second, and print out any
-> write() that took over 100 ms. In the output, the slowest write was
-> 1.28 seconds. I can provide more details about the setup if needed.
-> 
-> I believe this is happening:
-> 
->   1. accumulate lots of data in cache
->   2. filesystem decides to flush
->   3. nobody can write during flush
->   4. flush flushes "a lot" of data - maybe everything
-> 
-> Do my guesses align with reality, or is there another explanation?
-> 
-> Does anybody have ideas on how to make this more "smooth"? Ideally,
-> I'd like each write() to be slowed down a little bit, rather than
-> 99.99% of writes completing instantly and 0.01% taking over a second.
+> How would it make things worse?  If you don't trust lvm or dm-thin to
+> create a read-only snapshot, you've got **way** worse problems.  I
+> acutally think relying on e2fsck on a r/o snapshot to be much simpler
+> than trying to add an on-line file systme check.  That requires much
+> more kernel code which almost by definition is higher risk (e.g., to
+> bugs of the sort found by AFL) than already-existing userspace code.
 
-/proc/sys/vm/dirty* knobs?
+Because by adding complexity we're introducing bugs, problems and
+unexpected scenarios to what's supposed to be just a caution check. I
+feel like the problems caused by this setup are more likely than file
+system problems that would be caught by this check.
 
---D
+But maybe I did not explain myself very well. I think that the dm-thin
+solution to run e2fsck is great, for those that already run dm-thin and
+those that are aware of what it means it's a great solution. But I was
+under assumption that we're talking about general recommendation -
+that's where I see the problem.
+
+It's not that I do not trust dm-thin, or lvm. They have their problems
+and bugs like everyone else. Not only that, but it comes with some
+caveats, like unresolved ENOSPC handling, or performance problems with
+legacy snapshots. It only takes to run a cron job in just the right time
+for the user to be terribly surprised.
 
 > 
-> Thanks,
-> Brian
+> > What we should be aiming for I think is the online file system check and
+> > scrub. This would of course not replace the need rof e2fsck, but we
+> > would be able to catch errors early while fixing some of those that we
+> > can. But that's long term. Short term I think we're better off without
+> > this snapshotting/checking complexity. Those who are concerned can still
+> > enable the time/mount based checks right ?
+> 
+> time/mount-based checks only help if you reboot; the advantage of
+> doing a check on read-only snapshot is you can schedule it once a
+> week, or once a month, during idle times.  Picking idle times might be
+> tricky, but distro's when they decide on a default for running
+> updatedb(8) for the locate command.  And whether the crontab entry is
+> installed by default, or has to be explicitly enabled by the user, or
+> e2croncheck is put in a separate package for distributions to use are
+> all distro decisions.
+> 
+> I would probably go for the last, with a debian-style "recommends" or
+> "suggests" dependency for easy discoverability but different
+> distributions can do what they like --- including not packaging
+> e2croncheck at all.  But in terms of a short-term solution it's really
+> not hard to add.  And I don't believe I've heard any reports of
+> instability for r/o snapshot functionality.  That's been around for a
+> long, long, time at least for LVM snapshots.  dm-thin might be
+> considered more flakey, but that reputation seems to apply for dm-thin
+> as a whole, as opposed to just its snapshot functionality.  If a user
+> is willing to trust their data to dm-thin, are taking a bigger risk by
+> using dm-thin snapshots?
+
+Right, for those that already use dm-thin that's, I thing, a good solution
+and it's easy enough to do. Having a distribution package to install to
+enable this is also fine. Even though my worry about this potentially
+causing more problems than it sovles still applies.
+
+Again, having this be a general recommendation (as it was the case with
+time/mount based checks) that's what I have much bigger problem with.
+
+Thanks!
+-Lukas
+
+> 
+> 					- Ted
