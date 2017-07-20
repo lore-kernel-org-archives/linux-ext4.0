@@ -1,29 +1,27 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH v3 3/5] dax: use common 4k zero page for dax mmap reads
-Date: Thu, 20 Jul 2017 08:28:40 -0600
-Message-ID: <20170720142840.GB20414@linux.intel.com>
+From: Vivek Goyal <vgoyal-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v3 1/5] mm: add vm_insert_mixed_mkwrite()
+Date: Thu, 20 Jul 2017 11:26:16 -0400
+Message-ID: <20170720152616.GB6664@redhat.com>
 References: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
- <20170628220152.28161-4-ross.zwisler@linux.intel.com>
- <20170719153314.GC15908@quack2.suse.cz>
- <20170719162645.GA26445@linux.intel.com>
- <20170720102723.GB17689@quack2.suse.cz>
+ <20170628220152.28161-2-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
  "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, Jonathan Corbet <corbet-T1hC0tSOHrs@public.gmane.org>,
  linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
  Dave Hansen <dave.hansen-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
  Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
  Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
  linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170720102723.GB17689-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+In-Reply-To: <20170628220152.28161-2-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -35,65 +33,148 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 20, 2017 at 12:27:23PM +0200, Jan Kara wrote:
-> On Wed 19-07-17 10:26:45, Ross Zwisler wrote:
-> > On Wed, Jul 19, 2017 at 05:33:14PM +0200, Jan Kara wrote:
-> > > On Wed 28-06-17 16:01:50, Ross Zwisler wrote:
-> > > > Another major change is that we remove dax_pfn_mkwrite() from our fault
-> > > > flow, and instead rely on the page fault itself to make the PTE dirty and
-> > > > writeable.  The following description from the patch adding the
-> > > > vm_insert_mixed_mkwrite() call explains this a little more:
-> > > > 
-> > > > ***
-> > > >   To be able to use the common 4k zero page in DAX we need to have our PTE
-> > > >   fault path look more like our PMD fault path where a PTE entry can be
-> > > >   marked as dirty and writeable as it is first inserted, rather than
-> > > >   waiting for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
-> > > > 
-> > > >   Right now we can rely on having a dax_pfn_mkwrite() call because we can
-> > > >   distinguish between these two cases in do_wp_page():
-> > > > 
-> > > >   	case 1: 4k zero page => writable DAX storage
-> > > >   	case 2: read-only DAX storage => writeable DAX storage
-> > > > 
-> > > >   This distinction is made by via vm_normal_page().  vm_normal_page()
-> > > >   returns false for the common 4k zero page, though, just as it does for
-> > > >   DAX ptes.  Instead of special casing the DAX + 4k zero page case, we will
-> > > >   simplify our DAX PTE page fault sequence so that it matches our DAX PMD
-> > > >   sequence, and get rid of dax_pfn_mkwrite() completely.
-> > > > 
-> > > >   This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
-> > > >   and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set
-> > > >   insert_pfn() will do the work that was previously done by wp_page_reuse()
-> > > >   as part of the dax_pfn_mkwrite() call path.
-> > > > ***
-> > > 
-> > > Hum, thinking about this in context of this patch... So what if we have
-> > > allocated storage, a process faults it read-only, we map it to page tables
-> > > writeprotected. Then the process writes through mmap to the area - the code
-> > > in handle_pte_fault() ends up in do_wp_page() if I'm reading it right.
-> > 
-> > Yep.
-> > 
-> > > Then, since we are missing ->pfn_mkwrite() handlers, the PTE will be marked
-> > > writeable but radix tree entry stays clean - bug. Am I missing something?
-> > 
-> > I don't think we ever end up with a writeable PTE but with a clean radix tree
-> > entry.  When we get the write fault we do a full fault through
-> > dax_iomap_pte_fault() and dax_insert_mapping().
-> >
-> > dax_insert_mapping() sets up the dirty radix tree entry via
-> > dax_insert_mapping_entry() before it does anything with the page tables via
-> > vm_insert_mixed_mkwrite().
-> > 
-> > So, this mkwrite fault path is exactly the path we would have taken if the
-> > initial read to real storage hadn't happened, and we end up in the same end
-> > state - with a dirty DAX radix tree entry and a writeable PTE.
+On Wed, Jun 28, 2017 at 04:01:48PM -0600, Ross Zwisler wrote:
+> To be able to use the common 4k zero page in DAX we need to have our PTE
+> fault path look more like our PMD fault path where a PTE entry can be
+> marked as dirty and writeable as it is first inserted, rather than waiting
+> for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
 > 
-> Ah sorry, I have missed that it is not that you would not have
-> ->pfn_mkwrite() handler - you still have it but it is the same as standard
-> fault handler now. So maybe can you rephrase the changelog a bit saying
-> that: "We get rid of dax_pfn_mkwrite() helper and use dax_iomap_fault() to
-> handle write-protection faults instead." Thanks!
+> Right now we can rely on having a dax_pfn_mkwrite() call because we can
+> distinguish between these two cases in do_wp_page():
+> 
+> 	case 1: 4k zero page => writable DAX storage
+> 	case 2: read-only DAX storage => writeable DAX storage
+> 
+> This distinction is made by via vm_normal_page().  vm_normal_page() returns
+> false for the common 4k zero page, though, just as it does for DAX ptes.
+> Instead of special casing the DAX + 4k zero page case, we will simplify our
+> DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
+> get rid of dax_pfn_mkwrite() completely.
+> 
+> This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
+> and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
+> will do the work that was previously done by wp_page_reuse() as part of the
+> dax_pfn_mkwrite() call path.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> ---
+>  include/linux/mm.h |  2 ++
+>  mm/memory.c        | 57 +++++++++++++++++++++++++++++++++++++++++++++++++-----
+>  2 files changed, 54 insertions(+), 5 deletions(-)
+> 
+> diff --git a/include/linux/mm.h b/include/linux/mm.h
+> index 6f543a4..096052f 100644
+> --- a/include/linux/mm.h
+> +++ b/include/linux/mm.h
+> @@ -2293,6 +2293,8 @@ int vm_insert_pfn_prot(struct vm_area_struct *vma, unsigned long addr,
+>  			unsigned long pfn, pgprot_t pgprot);
+>  int vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
+>  			pfn_t pfn);
+> +int vm_insert_mixed_mkwrite(struct vm_area_struct *vma, unsigned long addr,
+> +			pfn_t pfn);
+>  int vm_iomap_memory(struct vm_area_struct *vma, phys_addr_t start, unsigned long len);
+>  
+>  
+> diff --git a/mm/memory.c b/mm/memory.c
+> index bb11c47..de4aa71 100644
+> --- a/mm/memory.c
+> +++ b/mm/memory.c
+> @@ -1646,7 +1646,7 @@ int vm_insert_page(struct vm_area_struct *vma, unsigned long addr,
+>  EXPORT_SYMBOL(vm_insert_page);
+>  
+>  static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
+> -			pfn_t pfn, pgprot_t prot)
+> +			pfn_t pfn, pgprot_t prot, bool mkwrite)
+>  {
+>  	struct mm_struct *mm = vma->vm_mm;
+>  	int retval;
+> @@ -1658,14 +1658,26 @@ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
+>  	if (!pte)
+>  		goto out;
+>  	retval = -EBUSY;
+> -	if (!pte_none(*pte))
+> -		goto out_unlock;
+> +	if (!pte_none(*pte)) {
+> +		if (mkwrite) {
+> +			entry = *pte;
+> +			goto out_mkwrite;
+> +		} else
+> +			goto out_unlock;
+> +	}
+>  
+>  	/* Ok, finally just insert the thing.. */
+>  	if (pfn_t_devmap(pfn))
+>  		entry = pte_mkdevmap(pfn_t_pte(pfn, prot));
+>  	else
+>  		entry = pte_mkspecial(pfn_t_pte(pfn, prot));
+> +
+> +out_mkwrite:
+> +	if (mkwrite) {
+> +		entry = pte_mkyoung(entry);
+> +		entry = maybe_mkwrite(pte_mkdirty(entry), vma);
+> +	}
+> +
+>  	set_pte_at(mm, addr, pte, entry);
+>  	update_mmu_cache(vma, addr, pte); /* XXX: why not for insert_page? */
+>  
+> @@ -1736,7 +1748,8 @@ int vm_insert_pfn_prot(struct vm_area_struct *vma, unsigned long addr,
+>  
+>  	track_pfn_insert(vma, &pgprot, __pfn_to_pfn_t(pfn, PFN_DEV));
+>  
+> -	ret = insert_pfn(vma, addr, __pfn_to_pfn_t(pfn, PFN_DEV), pgprot);
+> +	ret = insert_pfn(vma, addr, __pfn_to_pfn_t(pfn, PFN_DEV), pgprot,
+> +			false);
+>  
+>  	return ret;
+>  }
+> @@ -1772,10 +1785,44 @@ int vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
+>  		page = pfn_to_page(pfn_t_to_pfn(pfn));
+>  		return insert_page(vma, addr, page, pgprot);
+>  	}
+> -	return insert_pfn(vma, addr, pfn, pgprot);
+> +	return insert_pfn(vma, addr, pfn, pgprot, false);
+>  }
+>  EXPORT_SYMBOL(vm_insert_mixed);
+>  
+> +int vm_insert_mixed_mkwrite(struct vm_area_struct *vma, unsigned long addr,
+> +			pfn_t pfn)
+> +{
+> +	pgprot_t pgprot = vma->vm_page_prot;
+> +
+> +	BUG_ON(!(vma->vm_flags & VM_MIXEDMAP));
+> +
+> +	if (addr < vma->vm_start || addr >= vma->vm_end)
+> +		return -EFAULT;
+> +
+> +	track_pfn_insert(vma, &pgprot, pfn);
+> +
+> +	/*
+> +	 * If we don't have pte special, then we have to use the pfn_valid()
+> +	 * based VM_MIXEDMAP scheme (see vm_normal_page), and thus we *must*
+> +	 * refcount the page if pfn_valid is true (hence insert_page rather
+> +	 * than insert_pfn).  If a zero_pfn were inserted into a VM_MIXEDMAP
+> +	 * without pte special, it would there be refcounted as a normal page.
+> +	 */
+> +	if (!HAVE_PTE_SPECIAL && !pfn_t_devmap(pfn) && pfn_t_valid(pfn)) {
+> +		struct page *page;
+> +
+> +		/*
+> +		 * At this point we are committed to insert_page()
+> +		 * regardless of whether the caller specified flags that
+> +		 * result in pfn_t_has_page() == false.
+> +		 */
+> +		page = pfn_to_page(pfn_t_to_pfn(pfn));
+> +		return insert_page(vma, addr, page, pgprot);
+> +	}
+> +	return insert_pfn(vma, addr, pfn, pgprot, true);
+> +}
+> +EXPORT_SYMBOL(vm_insert_mixed_mkwrite);
 
-Ah, sure, will do.
+Hi Ross,
+
+vm_insert_mixed_mkwrite() is same as vm_insert_mixed() except this sets
+write parameter to inser_pfn() true. Will it make sense to just add
+mkwrite parameter to vm_insert_mixed() and not add a new helper function.
+(like insert_pfn()).
+
+Vivek
