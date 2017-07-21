@@ -1,192 +1,83 @@
-From: Jerry Lee <leisurelysw24@gmail.com>
-Subject: Re: lockdep detects possible deadlock scenario
-Date: Fri, 21 Jul 2017 09:41:54 +0800
-Message-ID: <CAKQB+fuwY8Ysms2vysGt38kSONdm6mzrgnKReWJdqmQMpwOVww@mail.gmail.com>
-References: <CAKQB+fvfDeqZnLq--aybS9+TmkhgnxOPTjKua6_VWaf3u+ygfw@mail.gmail.com>
- <20170720121607.GA27103@quack2.suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196405] mkdir mishandles st_nlink in ext4 directory with 64997
+ subdirectories
+Date: Fri, 21 Jul 2017 07:48:28 +0000
+Message-ID: <bug-196405-13602-hNTpVIj2cf@https.bugzilla.kernel.org/>
+References: <bug-196405-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        jack@suse.com
-To: Jan Kara <jack@suse.cz>
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f49.google.com ([209.85.215.49]:37748 "EHLO
-        mail-lf0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S965551AbdGUBl5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Jul 2017 21:41:57 -0400
-Received: by mail-lf0-f49.google.com with SMTP id m86so11120206lfi.4
-        for <linux-ext4@vger.kernel.org>; Thu, 20 Jul 2017 18:41:56 -0700 (PDT)
-In-Reply-To: <20170720121607.GA27103@quack2.suse.cz>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:50916 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752650AbdGUHsi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 21 Jul 2017 03:48:38 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 10900286B3
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Jul 2017 07:48:38 +0000 (UTC)
+In-Reply-To: <bug-196405-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan,
+https://bugzilla.kernel.org/show_bug.cgi?id=196405
 
-On 20 July 2017 at 20:16, Jan Kara <jack@suse.cz> wrote:
-> Hi!
->
-> On Thu 20-07-17 19:29:28, Jerry Lee wrote:
->> I hit the following lockdep trace on linux-4.2.8 and I could steadily
->> re-produce it on some of my machine.  Although the trace shows up, the
->> file system works quite well without seeing any operations being stuck
->> on it.  Does it mean that the trace is just a false alarm?  Thanks.
->>
->> BTW, I've saw some similar traces previously in the mailing list and
->> found that the patch, "ext4: add lockdep annotations for i_data_sem
->> (daf647d2dd58)", which is already included in my kernel.
->
-> I don't think that patch is included in the kernel reporting this trace -
-> from the trace ei->i_data_sem obtained on quota file (the first stack
-> trace) did not use the special I_DATA_SEM_QUOTA locking class which commit
-> daf647d2dd58 introduced and it should have... In either case this report
-> is a false positive.
->
->                                                                 Honza
+--- Comment #16 from Paul Eggert (eggert@cs.ucla.edu) ---
+(In reply to Andreas Dilger from comment #14)
+> I did try testing on a small newly created ext4
+> filesystem with 1024-byte blocks (in case the limit was with the 2-level
+> htree), and hit ENOSPC because I ran out of inodes...
 
-You are right that the patch is not included in the linux-4.2.8 kernel
-on the mainstream.  I'm sorry that I didn't clearly describe my setup
-in previous post.  Before I sent the mail, I found the patch and
-back-ported it to my kernel to get rid of possible false positive.
-But, with the patch, I still got the trace.  Does it mean that I miss
-some other patches when directly back-porting the patch on my kernel?
- Thanks for your quick reply.
+Yes, apparently that was my problem too. Thanks for catching that. I fixed
+that, and ran into another problem: disabling dir_nlink is ineffective, i.e.,
+mkdir continues to set the parent directory's link count to 1 when it
+overflows. That is, if I run the following as root:
 
->
->>
->> ======================================================
->> <4>[  205.633705] [ INFO: possible circular locking dependency detected ]
->> <4>[  205.639962] 4.2.8 #3 Tainted: G        W  O
->> <4>[  205.644395] -------------------------------------------------------
->> <4>[  205.650650] rm/19302 is trying to acquire lock:
->> <4>[  205.655174]  (&s->s_dquot.dqio_mutex){+.+...}, at:
->> [<ffffffff81250678>] dquot_commit+0x28/0xc0
->> <4>[  205.663835]
->> <4>[  205.663835] but task is already holding lock:
->> <4>[  205.669659]  (&ei->i_data_sem){++++..}, at: [<ffffffff812b2329>]
->> ext4_truncate+0x379/0x680
->> <4>[  205.677960]
->> <4>[  205.677960] which lock already depends on the new lock.
->> <4>[  205.677960]
->> <4>[  205.686119]
->> <4>[  205.686119] the existing dependency chain (in reverse order) is:
->> <4>[  205.693586]
->> <4>[  205.693586] -> #1 (&ei->i_data_sem){++++..}:
->> <4>[  205.698071]        [<ffffffff810cde05>] lock_acquire+0xd5/0x280
->> <4>[  205.703995]        [<ffffffff81c82727>] down_read+0x47/0x60
->> <4>[  205.709573]        [<ffffffff812acefb>] ext4_map_blocks+0x48b/0x5f0
->> <4>[  205.715845]        [<ffffffff812ad653>] ext4_getblk+0x43/0x190
->> <4>[  205.721682]        [<ffffffff812ad7ae>] ext4_bread+0xe/0xa0
->> <4>[  205.727260]        [<ffffffff812c225d>] ext4_quota_read+0xcd/0x110
->> <4>[  205.733442]        [<ffffffff81254687>] read_blk+0x47/0x50
->> <4>[  205.738933]        [<ffffffff81255452>] find_tree_dqentry+0x42/0x230
->> <4>[  205.745290]        [<ffffffff812555b4>] find_tree_dqentry+0x1a4/0x230
->> <4>[  205.751730]        [<ffffffff812555b4>] find_tree_dqentry+0x1a4/0x230
->> <4>[  205.758172]        [<ffffffff812555b4>] find_tree_dqentry+0x1a4/0x230
->> <4>[  205.764612]        [<ffffffff81255773>] qtree_read_dquot+0x133/0x260
->> <4>[  205.770968]        [<ffffffff81253d89>] v2_read_dquot+0x29/0x30
->> <4>[  205.776892]        [<ffffffff8124f7f6>] dquot_acquire+0xe6/0x130
->> <4>[  205.782902]        [<ffffffff812c1c9a>] ext4_acquire_dquot+0x6a/0xb0
->> <4>[  205.789258]        [<ffffffff81251970>] dqget+0x3c0/0x420
->> <4>[  205.794662]        [<ffffffff81251afd>] __dquot_initialize+0x12d/0x230
->> <4>[  205.801187]        [<ffffffff81251c0e>] dquot_initialize+0xe/0x10
->> <4>[  205.807283]        [<ffffffff812d215b>] ext4_fill_super+0x2d9b/0x3150
->> <4>[  205.813729]        [<ffffffff811e0f00>] mount_bdev+0x180/0x1b0
->> <4>[  205.819566]        [<ffffffff812c18c0>] ext4_mount+0x10/0x20
->> <4>[  205.825230]        [<ffffffff811e17a4>] mount_fs+0x14/0xa0
->> <4>[  205.830719]        [<ffffffff81203736>] vfs_kern_mount+0x66/0x150
->> <4>[  205.836815]        [<ffffffff812066a5>] do_mount+0x1e5/0xd00
->> <4>[  205.842476]        [<ffffffff812074b6>] SyS_mount+0x86/0xc0
->> <4>[  205.848048]        [<ffffffff81c84bd7>]
->> entry_SYSCALL_64_fastpath+0x12/0x6f
->> <4>[  205.855010]
->> <4>[  205.855010] -> #0 (&s->s_dquot.dqio_mutex){+.+...}:
->> <4>[  205.860103]        [<ffffffff810ccccc>] __lock_acquire+0x1fdc/0x23a0
->> <4>[  205.866464]        [<ffffffff810cde05>] lock_acquire+0xd5/0x280
->> <4>[  205.872393]        [<ffffffff81c80990>] mutex_lock_nested+0x60/0x370
->> <4>[  205.878753]        [<ffffffff81250678>] dquot_commit+0x28/0xc0
->> <4>[  205.884594]        [<ffffffff812c1d4e>] ext4_write_dquot+0x6e/0xa0
->> <4>[  205.890783]        [<ffffffff812c1dbe>] ext4_mark_dquot_dirty+0x3e/0x60
->> <4>[  205.897408]        [<ffffffff81250857>] __dquot_free_space+0x147/0x310
->> <4>[  205.903943]        [<ffffffff812ebe0d>] ext4_free_blocks+0x77d/0x1010
->> <4>[  205.910390]        [<ffffffff812dbb66>] ext4_ext_remove_space+0x8f6/0x16a0
->> <4>[  205.917271]        [<ffffffff812de49f>] ext4_ext_truncate+0xaf/0xe0
->> <4>[  205.923547]        [<ffffffff812b23f0>] ext4_truncate+0x440/0x680
->> <4>[  205.929651]        [<ffffffff812b2a9f>] ext4_evict_inode+0x46f/0x730
->> <4>[  205.936017]        [<ffffffff811fe473>] evict+0xb3/0x180
->> <4>[  205.941337]        [<ffffffff811fecc7>] iput+0x187/0x350
->> <4>[  205.946662]        [<ffffffff811f0243>] do_unlinkat+0x163/0x340
->> <4>[  205.952588]        [<ffffffff811f0481>] SyS_unlink+0x11/0x20
->> <4>[  205.958258]        [<ffffffff81c84bd7>]
->> entry_SYSCALL_64_fastpath+0x12/0x6f
->> <4>[  205.965226]
->> <4>[  205.965226] other info that might help us debug this:
->> <4>[  205.965226]
->> <4>[  205.973217]  Possible unsafe locking scenario:
->> <4>[  205.973217]
->> <4>[  205.979127]        CPU0                    CPU1
->> <4>[  205.983652]        ----                    ----
->> <4>[  205.988174]   lock(&ei->i_data_sem);
->> <4>[  205.991772]                                lock(&s->s_dquot.dqio_mutex);
->> <4>[  205.998487]                                lock(&ei->i_data_sem);
->> <4>[  206.004596]   lock(&s->s_dquot.dqio_mutex);
->> <4>[  206.008795]
->> <4>[  206.008795]  *** DEADLOCK ***
->> <4>[  206.008795]
->> <4>[  206.014708] 5 locks held by rm/19302:
->> <4>[  206.018364]  #0:  (sb_writers#10){.+.+.+}, at:
->> [<ffffffff81204bbf>] mnt_want_write+0x1f/0x50
->> <4>[  206.026870]  #1:  (sb_internal){.+.+..}, at:
->> [<ffffffff812b27a9>] ext4_evict_inode+0x179/0x730
->> <4>[  206.035538]  #2:  (jbd2_handle){+.+...}, at:
->> [<ffffffff81306cc1>] start_this_handle+0x191/0x630
->> <4>[  206.044298]  #3:  (&ei->i_data_sem){++++..}, at:
->> [<ffffffff812b2329>] ext4_truncate+0x379/0x680
->> <4>[  206.053052]  #4:  (dquot_srcu){......}, at: [<ffffffff8125076a>]
->> __dquot_free_space+0x5a/0x310
->> <4>[  206.061719]
->> <4>[  206.061719] stack backtrace:
->> <4>[  206.066072] CPU: 0 PID: 19302 Comm: rm Tainted: G        W  O    4.2.8 #3
->> <4>[  206.072848] Hardware name: To be filled by O.E.M. To be filled
->> by O.E.M./MAHOBAY, BIOS QC30AR23 08/14/2014
->> <4>[  206.082486]  ffffffff82effc40 ffff88004cebf7d8 ffffffff81c767eb
->> 0000000000000007
->> <4>[  206.089919]  ffffffff82effc40 ffff88004cebf828 ffffffff81c739cd
->> ffff880044724e08
->> <4>[  206.097364]  ffff88004cebf898 ffff88004cebf828 0000000000000005
->> ffff880044724640
->> <4>[  206.104807] Call Trace:
->> <4>[  206.107257]  [<ffffffff81c767eb>] dump_stack+0x4c/0x65
->> <4>[  206.112393]  [<ffffffff81c739cd>] print_circular_bug+0x202/0x213
->> <4>[  206.118394]  [<ffffffff810ccccc>] __lock_acquire+0x1fdc/0x23a0
->> <4>[  206.124222]  [<ffffffff810cde05>] lock_acquire+0xd5/0x280
->> <4>[  206.129616]  [<ffffffff81250678>] ? dquot_commit+0x28/0xc0
->> <4>[  206.135099]  [<ffffffff81c80990>] mutex_lock_nested+0x60/0x370
->> <4>[  206.140931]  [<ffffffff81250678>] ? dquot_commit+0x28/0xc0
->> <4>[  206.146414]  [<ffffffff812c1d3a>] ? ext4_write_dquot+0x5a/0xa0
->> <4>[  206.152245]  [<ffffffff8130784a>] ? jbd2__journal_start+0x1a/0x20
->> <4>[  206.158766]  [<ffffffff81250678>] dquot_commit+0x28/0xc0
->> <4>[  206.164074]  [<ffffffff812c1d4e>] ext4_write_dquot+0x6e/0xa0
->> <4>[  206.169731]  [<ffffffff812c1dbe>] ext4_mark_dquot_dirty+0x3e/0x60
->> <4>[  206.175821]  [<ffffffff81250857>] __dquot_free_space+0x147/0x310
->> <4>[  206.181825]  [<ffffffff8125076a>] ? __dquot_free_space+0x5a/0x310
->> <4>[  206.187917]  [<ffffffff812ebc62>] ? ext4_free_blocks+0x5d2/0x1010
->> <4>[  206.194005]  [<ffffffff812ebe0d>] ext4_free_blocks+0x77d/0x1010
->> <4>[  206.199920]  [<ffffffff810ca7e1>] ? mark_held_locks+0x71/0x90
->> <4>[  206.205662]  [<ffffffff811cadc6>] ? __kmalloc+0xa6/0x5d0
->> <4>[  206.210972]  [<ffffffff810c8f4d>] ? __lock_is_held+0x4d/0x70
->> <4>[  206.216627]  [<ffffffff812db2ca>] ? ext4_ext_remove_space+0x5a/0x16a0
->> <4>[  206.223061]  [<ffffffff812dbb66>] ext4_ext_remove_space+0x8f6/0x16a0
->> <4>[  206.229412]  [<ffffffff812de49f>] ext4_ext_truncate+0xaf/0xe0
->> <4>[  206.235157]  [<ffffffff812b23f0>] ext4_truncate+0x440/0x680
->> <4>[  206.240723]  [<ffffffff812b2a9f>] ext4_evict_inode+0x46f/0x730
->> <4>[  206.246551]  [<ffffffff811fe473>] evict+0xb3/0x180
->> <4>[  206.251339]  [<ffffffff811fecc7>] iput+0x187/0x350
->> <4>[  206.256129]  [<ffffffff811f0243>] do_unlinkat+0x163/0x340
->> <4>[  206.261525]  [<ffffffff812041c0>] ? mnt_get_count+0x60/0x60
->> <4>[  206.267092]  [<ffffffff81002044>] ? lockdep_sys_exit_thunk+0x12/0x14
->> <4>[  206.273441]  [<ffffffff811f0481>] SyS_unlink+0x11/0x20
->> <4>[  206.278578]  [<ffffffff81c84bd7>] entry_SYSCALL_64_fastpath+0x12/0x6f
->>
-> --
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+# fallocate -l 1G ~eggert/junk/image.iso
+# mkfs.ext4 -O ^dir_nlink -N 110000 ~eggert/junk/image.iso
+# mount ~eggert/junk/image.iso /mnt
+# chmod a+rwx /mnt
+
+and then run the test program in the /mnt directory, the test program still
+fails in the same way, creating a parent directory with st_nlink == 1 in the
+process. Afterwards, the file system's dir_nlink flag is set even though I did
+not set it. (Note added later: I see that Theodore Tso also noticed this
+problem.)
+
+So dir_nlink is not really working for ext4, in the sense that st_nlink cannot
+be made to work in a POSIX-compatible way.
+
+> That makes LINK_MAX accurate only in a subset of cases, depending on
+> the version of ext2/ext3/ext4 in use and filesystem features
+> enabled, and it definitely isn't reporting values from the
+> filesystem on a mount-by-mount basis.
+
+Ouch, I didn't know that. This is another POSIX-compatibility problem, but one
+thing at a time....
+
+> The most important issue is that nlinks=1 on the directory causing fts() to
+> miss entries during scanning.  It doesn't make sense for it to take nlinks=1
+> and subtract 2 links for "." and ".." and expect to find "-1"
+> subdirectories.
+
+No, clearly the glibc code assumes GNU/Linux directories always have a link
+count of at least 2.
+
+> It may be that this causes an unsigned underflow and tools
+> like "find" will not stop scanning until they hit 2^32-1 entries or similar?
+
+I think "find" is OK because it doesn't happen to hit this particular fts bug.
+I think there may well be similar fts bugs elsewhere, though -- possibly bugs
+that "find" could hit.
+
+> Also worthy of note, on my Mac (OSX 10.12.5, HFS+ Journaled fs), running
+> fts-test.c with 65536 subdirectories has "ls -ld d" reporting 0 links, but
+> fts-test.c still passes.
+
+Yes, macOS fts is different. It would not surprise me if it didn't have the bug
+we're talking about (also, it's probably significantly slower).
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
