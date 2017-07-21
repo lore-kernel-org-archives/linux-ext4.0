@@ -1,70 +1,41 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v3 1/5] mm: add vm_insert_mixed_mkwrite()
-Date: Fri, 21 Jul 2017 12:02:19 -0600
-Message-ID: <20170721180219.GB18697@linux.intel.com>
-References: <20170628220152.28161-1-ross.zwisler@linux.intel.com>
- <20170628220152.28161-2-ross.zwisler@linux.intel.com>
- <20170720152616.GB6664@redhat.com>
- <20170720155922.GA21186@linux.intel.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196405] mkdir mishandles st_nlink in ext4 directory with 64997
+ subdirectories
+Date: Fri, 21 Jul 2017 18:34:16 +0000
+Message-ID: <bug-196405-13602-8M3mhc76wz@https.bugzilla.kernel.org/>
+References: <bug-196405-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Vivek Goyal <vgoyal@redhat.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Hansen <dave.hansen@intel.com>, Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
-	linux-xfs@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20170720155922.GA21186@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41306 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751504AbdGUSeS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 21 Jul 2017 14:34:18 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BB7EF28655
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Jul 2017 18:34:17 +0000 (UTC)
+In-Reply-To: <bug-196405-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 20, 2017 at 09:59:22AM -0600, Ross Zwisler wrote:
-> On Thu, Jul 20, 2017 at 11:26:16AM -0400, Vivek Goyal wrote:
-<>
-> > Hi Ross,
-> > 
-> > vm_insert_mixed_mkwrite() is same as vm_insert_mixed() except this sets
-> > write parameter to inser_pfn() true. Will it make sense to just add
-> > mkwrite parameter to vm_insert_mixed() and not add a new helper function.
-> > (like insert_pfn()).
-> > 
-> > Vivek
-> 
-> Yep, this is how my initial implementation worked:
-> 
-> https://lkml.org/lkml/2017/6/7/907
-> 
-> vm_insert_mixed_mkwrite() was the new version that took an extra parameter,
-> and vm_insert_mixed() stuck around as a wrapper that supplied a default value
-> for the new parameter, so existing call sites didn't need to change and didn't
-> need to worry about the new parameter, but so that we didn't duplicate any
-> code.
-> 
-> I changed this to the way that it currently works based on Dan's feedback in
-> that same mail thread.
+https://bugzilla.kernel.org/show_bug.cgi?id=196405
 
-Looking at this again, I agree that duplicating vm_insert_mixed() seems
-undesirable.  For v4 I'll add the flag to vm_insert_mixed() and just update
-all the call sites instead of adding a separate wrapper for the mkwrite case,
-which will fix this duplication and address Dan's naming concerns.
+--- Comment #19 from Andreas Dilger (adilger.kernelbugzilla@dilger.ca) ---
+Ted, I think the right approach is to stop the ext4 kernel code from enabling
+dir_nlink automatically, but continue to set it by default at format time for
+new filesystems.  I suspect the number of users that want to get an error
+returned when their directory grows large is very few, but at least they will
+be able to turn off dir_nlink and/or create the filesystem without this feature
+in the first place.  This will make the dir_nlink feature more consistent with
+other features as well.
 
-Thanks for the review feedback.
+What I also just noticed is that e2fsck does not enable the dir_nlink feature
+in the superblock in case i_links_count > EXT2_LINK_MAX.  I'm just working on a
+patch for this.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
