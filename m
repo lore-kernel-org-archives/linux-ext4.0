@@ -1,104 +1,94 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v4 4/5] dax: remove DAX code from page_cache_tree_insert()
-Date: Fri, 21 Jul 2017 16:39:54 -0600
-Message-ID: <20170721223956.29485-5-ross.zwisler@linux.intel.com>
-References: <20170721223956.29485-1-ross.zwisler@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- David Airlie <airlied-cv59FeDIM0c@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- dri-devel-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Patrik Jakobsson <patrik.r.jakobsson-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-samsung-soc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Joonyoung Shim <jy0922.shim-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Tomi Valkeinen <tomi.valkeinen-l0cyMroinI0@public.gmane.org>,
- Kyungmin Park <kyungmin.park-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
- Krzysztof Kozlowski <krzk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- linux-arm-msm-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- Inki Dae <inki.dae-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-arm-kernel-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
- Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20170721223956.29485-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] ext4: fix dir_nlink behaviour
+Date: Fri, 21 Jul 2017 16:49:27 -0600
+Message-ID: <1500677367-82142-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, eggert@cs.ucla.edu,
+        Andreas Dilger <adilger@dilger.ca>
+To: tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out-so.shaw.ca ([64.59.136.137]:36674 "EHLO
+        smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754156AbdGUW5j (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jul 2017 18:57:39 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Now that we no longer insert struct page pointers in DAX radix trees we can
-remove the special casing for DAX in page_cache_tree_insert().  This also
-allows us to make dax_wake_mapping_entry_waiter() local to fs/dax.c,
-removing it from dax.h.
+The dir_nlink feature has been enabled by default for new ext4
+filesystems since e2fsprogs-1.41 in 2008, and was automatically
+enabled by the kernel for older ext4 filesystems since the
+dir_nlink feature was added with ext4 in kernel 2.6.28+ when
+the subdirectory count exceeded EXT4_LINK_MAX.
 
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Suggested-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+We shouldn't really be enabling filesystem features automatically,
+as this prevents the administrator from disabling the feature at
+format time, or via tune2fs.  This should not affect many users by
+this point, but allows limiting subdirectory counts to those that
+can strictly fit into i_links_count rather than using "1" to
+indicate that the number of links on the directory is not tracked.
+This avoids a bug in glibc fts_read() that incorrectly optimizes
+the directory traversal for such directories.
+
+This also addresses a minor bug in ext4_inc_count() where i_nlinks
+was wrapped at (EXT4_LINK_MAX - 1) links rather than allowing the
+full EXT4_LINK_MAX links on the parent directory (including "."
+and "..") before storing i_links_count = 1.
+
+Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=196405
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- fs/dax.c            |  2 +-
- include/linux/dax.h |  2 --
- mm/filemap.c        | 13 ++-----------
- 3 files changed, 3 insertions(+), 14 deletions(-)
+ fs/ext4/ext4.h  |  3 ++-
+ fs/ext4/namei.c | 21 ++++++++++++---------
+ 2 files changed, 14 insertions(+), 10 deletions(-)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index fb0e4c1..0e27d90 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -127,7 +127,7 @@ static int wake_exceptional_entry_func(wait_queue_entry_t *wait, unsigned int mo
-  * correct waitqueue where tasks might be waiting for that old 'entry' and
-  * wake them.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8e80461..e163b87 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2016,7 +2016,8 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
+ 
+ #define is_dx(dir) (ext4_has_feature_dir_index((dir)->i_sb) && \
+ 		    ext4_test_inode_flag((dir), EXT4_INODE_INDEX))
+-#define EXT4_DIR_LINK_MAX(dir) (!is_dx(dir) && (dir)->i_nlink >= EXT4_LINK_MAX)
++#define EXT4_DIR_LINK_MAX(dir) unlikely((dir)->i_nlink >= EXT4_LINK_MAX && \
++		    !(ext4_has_feature_dir_nlink((dir)->i_sb) && is_dx(dir)))
+ #define EXT4_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2 || (dir)->i_nlink == 1)
+ 
+ /* Legal values for the dx_root hash_version field: */
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index b81f7d4..566c149 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2351,19 +2351,22 @@ static int ext4_delete_entry(handle_t *handle,
+ }
+ 
+ /*
+- * DIR_NLINK feature is set if 1) nlinks > EXT4_LINK_MAX or 2) nlinks == 2,
+- * since this indicates that nlinks count was previously 1.
++ * Set directory link count to 1 if nlinks > EXT4_LINK_MAX, or if nlinks == 2
++ * since this indicates that nlinks count was previously 1 to avoid overflowing
++ * the 16-bit i_links_count field on disk.  Directories with i_nlink == 1 mean
++ * that subdirectory link counts are not being maintained accurately.
++ *
++ * The caller has already checked for i_nlink overflow in case the DIR_LINK
++ * feature is not enabled and returned -EMLINK.  The is_dx() check is a proxy
++ * for checking S_ISDIR(inode) (since the INODE_INDEX feature will not be set
++ * on regular files) and to avoid creating huge/slow non-HTREE directories.
   */
--void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-+static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
- 		pgoff_t index, void *entry, bool wake_all)
+ static void ext4_inc_count(handle_t *handle, struct inode *inode)
  {
- 	struct exceptional_entry_key key;
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 29cced8..afa99bb 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -122,8 +122,6 @@ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
- int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
- int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
- 				      pgoff_t index);
--void dax_wake_mapping_entry_waiter(struct address_space *mapping,
--		pgoff_t index, void *entry, bool wake_all);
- 
- #ifdef CONFIG_FS_DAX
- int __dax_zero_page_range(struct block_device *bdev,
-diff --git a/mm/filemap.c b/mm/filemap.c
-index a497024..1bf1265 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -130,17 +130,8 @@ static int page_cache_tree_insert(struct address_space *mapping,
- 			return -EEXIST;
- 
- 		mapping->nrexceptional--;
--		if (!dax_mapping(mapping)) {
--			if (shadowp)
--				*shadowp = p;
--		} else {
--			/* DAX can replace empty locked entry with a hole */
--			WARN_ON_ONCE(p !=
--				dax_radix_locked_entry(0, RADIX_DAX_EMPTY));
--			/* Wakeup waiters for exceptional entry lock */
--			dax_wake_mapping_entry_waiter(mapping, page->index, p,
--						      true);
+ 	inc_nlink(inode);
+-	if (is_dx(inode) && inode->i_nlink > 1) {
+-		/* limit is 16-bit i_links_count */
+-		if (inode->i_nlink >= EXT4_LINK_MAX || inode->i_nlink == 2) {
+-			set_nlink(inode, 1);
+-			ext4_set_feature_dir_nlink(inode->i_sb);
 -		}
-+		if (shadowp)
-+			*shadowp = p;
- 	}
- 	__radix_tree_replace(&mapping->page_tree, node, slot, page,
- 			     workingset_update_node, mapping);
+-	}
++	if (is_dx(inode) &&
++	    (inode->i_nlink > EXT4_LINK_MAX || inode->i_nlink == 2))
++		set_nlink(inode, 1);
+ }
+ 
+ /*
 -- 
-2.9.4
+1.8.0
