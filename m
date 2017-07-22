@@ -1,94 +1,45 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] ext4: fix dir_nlink behaviour
-Date: Fri, 21 Jul 2017 16:49:27 -0600
-Message-ID: <1500677367-82142-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, eggert@cs.ucla.edu,
-        Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: [RFC] online scrub for ext4
+Date: Fri, 21 Jul 2017 17:26:43 -0700
+Message-ID: <20170722002643.GD4211@magnolia>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-so.shaw.ca ([64.59.136.137]:36674 "EHLO
-        smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754156AbdGUW5j (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jul 2017 18:57:39 -0400
+Received: from aserp1040.oracle.com ([141.146.126.69]:49986 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751464AbdGVA0s (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Jul 2017 20:26:48 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The dir_nlink feature has been enabled by default for new ext4
-filesystems since e2fsprogs-1.41 in 2008, and was automatically
-enabled by the kernel for older ext4 filesystems since the
-dir_nlink feature was added with ext4 in kernel 2.6.28+ when
-the subdirectory count exceeded EXT4_LINK_MAX.
+Hi all,
 
-We shouldn't really be enabling filesystem features automatically,
-as this prevents the administrator from disabling the feature at
-format time, or via tune2fs.  This should not affect many users by
-this point, but allows limiting subdirectory counts to those that
-can strictly fit into i_links_count rather than using "1" to
-indicate that the number of links on the directory is not tracked.
-This avoids a bug in glibc fts_read() that incorrectly optimizes
-the directory traversal for such directories.
+On this week's conference call, we discussed polishing e2croncheck into
+something resembling a workable package, and I mentioned that some time
+ago I'd adapted the script into a more general utility.  I've cleaned up
+the scripts somewhat, so we can use them as a basis for discussion.
 
-This also addresses a minor bug in ext4_inc_count() where i_nlinks
-was wrapped at (EXT4_LINK_MAX - 1) links rather than allowing the
-full EXT4_LINK_MAX links on the parent directory (including "."
-and "..") before storing i_links_count = 1.
+The first mail contains the base script to create the lvm snapshot, fsck
+the snapshot, remove the snapshot, and fstrim the original filesystem.
+It also contains a udev script to discourage it from making symlinks in
+/dev/disk.
 
-Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=196405
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
- fs/ext4/ext4.h  |  3 ++-
- fs/ext4/namei.c | 21 ++++++++++++---------
- 2 files changed, 14 insertions(+), 10 deletions(-)
+The second mail contains a script to identify eligible lvs containing
+ext4 filesystms and call the actual invoker script.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8e80461..e163b87 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2016,7 +2016,8 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len, unsigned blocksize)
- 
- #define is_dx(dir) (ext4_has_feature_dir_index((dir)->i_sb) && \
- 		    ext4_test_inode_flag((dir), EXT4_INODE_INDEX))
--#define EXT4_DIR_LINK_MAX(dir) (!is_dx(dir) && (dir)->i_nlink >= EXT4_LINK_MAX)
-+#define EXT4_DIR_LINK_MAX(dir) unlikely((dir)->i_nlink >= EXT4_LINK_MAX && \
-+		    !(ext4_has_feature_dir_nlink((dir)->i_sb) && is_dx(dir)))
- #define EXT4_DIR_LINK_EMPTY(dir) ((dir)->i_nlink == 2 || (dir)->i_nlink == 1)
- 
- /* Legal values for the dx_root hash_version field: */
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index b81f7d4..566c149 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2351,19 +2351,22 @@ static int ext4_delete_entry(handle_t *handle,
- }
- 
- /*
-- * DIR_NLINK feature is set if 1) nlinks > EXT4_LINK_MAX or 2) nlinks == 2,
-- * since this indicates that nlinks count was previously 1.
-+ * Set directory link count to 1 if nlinks > EXT4_LINK_MAX, or if nlinks == 2
-+ * since this indicates that nlinks count was previously 1 to avoid overflowing
-+ * the 16-bit i_links_count field on disk.  Directories with i_nlink == 1 mean
-+ * that subdirectory link counts are not being maintained accurately.
-+ *
-+ * The caller has already checked for i_nlink overflow in case the DIR_LINK
-+ * feature is not enabled and returned -EMLINK.  The is_dx() check is a proxy
-+ * for checking S_ISDIR(inode) (since the INODE_INDEX feature will not be set
-+ * on regular files) and to avoid creating huge/slow non-HTREE directories.
-  */
- static void ext4_inc_count(handle_t *handle, struct inode *inode)
- {
- 	inc_nlink(inode);
--	if (is_dx(inode) && inode->i_nlink > 1) {
--		/* limit is 16-bit i_links_count */
--		if (inode->i_nlink >= EXT4_LINK_MAX || inode->i_nlink == 2) {
--			set_nlink(inode, 1);
--			ext4_set_feature_dir_nlink(inode->i_sb);
--		}
--	}
-+	if (is_dx(inode) &&
-+	    (inode->i_nlink > EXT4_LINK_MAX || inode->i_nlink == 2))
-+		set_nlink(inode, 1);
- }
- 
- /*
--- 
-1.8.0
+The third mail contains systemd units to manage invocation and
+containment of the scripts.
+
+Note that despite my earlier outline, I don't actually have a boot time
+script that cleans out any leftover fsck snapshots, though it wouldn't
+be difficult to write.
+
+Note also the lack of distro installer/partitioner support -- your ext4
+filesystems /must/ be managed by lvm, and you /must/ have at least 256M
+free in each volume group.  There's no daemon to watch for snapshots
+filling up in order to kill the fsck and snapshot.
+
+--D
