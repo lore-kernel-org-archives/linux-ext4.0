@@ -1,91 +1,37 @@
-From: Dan Williams <dan.j.williams@gmail.com>
-Subject: Re: [PATCH v4 1/5] mm: add mkwrite param to vm_insert_mixed()
-Date: Sat, 22 Jul 2017 09:21:31 -0700
-Message-ID: <CAA9_cmdoEVx88FCuCSOB1Qmom_X8uJPB4-uUx7MA3X5H4fZ=GQ@mail.gmail.com>
-References: <20170721223956.29485-1-ross.zwisler@linux.intel.com> <20170721223956.29485-2-ross.zwisler@linux.intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix dir_nlink behaviour
+Date: Sat, 22 Jul 2017 12:49:45 -0400
+Message-ID: <20170722164945.77z7bmk3rxbfceym@thunk.org>
+References: <1500677367-82142-1-git-send-email-adilger@dilger.ca>
+ <59735561.9020305@partition-saving.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>, Jan Kara <jack@suse.cz>, linux-doc@vger.kernel.org,
-	David Airlie <airlied@linux.ie>, Dave Chinner <david@fromorbit.com>, dri-devel@lists.freedesktop.org,
-	linux-mm <linux-mm@kvack.org>, Andreas Dilger <adilger.kernel@dilger.ca>,
-	Patrik Jakobsson <patrik.r.jakobsson@gmail.com>, Christoph Hellwig <hch@lst.de>,
-	linux-samsung-soc <linux-samsung-soc@vger.kernel.org>,
-	Joonyoung Shim <jy0922.shim@samsung.com>, "Darrick J. Wong" <darrick.wong@oracle.com>,
-	Tomi Valkeinen <tomi.valkeinen@ti.com>, Kyungmin Park <kyungmin.park@samsung.com>,
-	Krzysztof Kozlowski <krzk@kernel.org>, Ingo Molnar <mingo@redhat.com>,
-	ext4 hackers <linux-ext4@vger.kernel.org>, Matthew Wilcox <mawilcox@microsoft.com>,
-	linux-arm-msm@vger.kernel.org, Steven Rostedt <rostedt@goodmis.org>,
-	Inki Dae <inki.
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170721223956.29485-2-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
+        eggert@cs.ucla.edu
+To: Damien Guibouret <damien.guibouret@partition-saving.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50804 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750872AbdGVQtw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 22 Jul 2017 12:49:52 -0400
+Content-Disposition: inline
+In-Reply-To: <59735561.9020305@partition-saving.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 21, 2017 at 3:39 PM, Ross Zwisler
-<ross.zwisler@linux.intel.com> wrote:
-> To be able to use the common 4k zero page in DAX we need to have our PTE
-> fault path look more like our PMD fault path where a PTE entry can be
-> marked as dirty and writeable as it is first inserted, rather than waiting
-> for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
->
-> Right now we can rely on having a dax_pfn_mkwrite() call because we can
-> distinguish between these two cases in do_wp_page():
->
->         case 1: 4k zero page => writable DAX storage
->         case 2: read-only DAX storage => writeable DAX storage
->
-> This distinction is made by via vm_normal_page().  vm_normal_page() returns
-> false for the common 4k zero page, though, just as it does for DAX ptes.
-> Instead of special casing the DAX + 4k zero page case, we will simplify our
-> DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
-> get rid of the dax_pfn_mkwrite() helper.  We will instead use
-> dax_iomap_fault() to handle write-protection faults.
->
-> This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
-> and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
-> will do the work that was previously done by wp_page_reuse() as part of the
-> dax_pfn_mkwrite() call path.
->
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> ---
->  drivers/dax/device.c                    |  2 +-
->  drivers/gpu/drm/exynos/exynos_drm_gem.c |  3 ++-
->  drivers/gpu/drm/gma500/framebuffer.c    |  2 +-
->  drivers/gpu/drm/msm/msm_gem.c           |  3 ++-
->  drivers/gpu/drm/omapdrm/omap_gem.c      |  6 ++++--
->  drivers/gpu/drm/ttm/ttm_bo_vm.c         |  2 +-
->  fs/dax.c                                |  2 +-
->  include/linux/mm.h                      |  2 +-
->  mm/memory.c                             | 27 +++++++++++++++++++++------
->  9 files changed, 34 insertions(+), 15 deletions(-)
->
-> diff --git a/drivers/dax/device.c b/drivers/dax/device.c
-> index e9f3b3e..3973521 100644
-> --- a/drivers/dax/device.c
-> +++ b/drivers/dax/device.c
-> @@ -273,7 +273,7 @@ static int __dev_dax_pte_fault(struct dev_dax *dev_dax, struct vm_fault *vmf)
->
->         pfn = phys_to_pfn_t(phys, dax_region->pfn_flags);
->
-> -       rc = vm_insert_mixed(vmf->vma, vmf->address, pfn);
-> +       rc = vm_insert_mixed(vmf->vma, vmf->address, pfn, false);
+On Sat, Jul 22, 2017 at 03:38:41PM +0200, Damien Guibouret wrote:
+> 
+> If you look at vfs layer, vfs_mkdir does the check against max_links with >=
+> and so if you reach the value, you will never be able to create a new
+> directory even if nlink feature is present. Actually it is not a problem
+> because ext4 does not set the s_max_links value in vfs (do not know why as
+> ext2 set it perhaps because there is no limit if nlink is set?), but it
+> could be some latent bug if someday somebody thinks it could be a good idea
+> to set it.
 
-Ugh, I generally find bool flags unreadable. They place a tax on
-jumping to function definition to recall what true and false mean. If
-we want to go this 'add an argument' route can we at least add an enum
-like:
+We can't set s_max_links precisely because of the dir_nlinks feature.
+So the fact that it is not set today is deliberate, and if someone
+thought it was good idea, I and the other ext4 developers would NAK
+it.
 
-enum {
-    PTE_MKDIRTY,
-    PTE_MKCLEAN,
-};
-
-...to differentiate the two cases?
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+						- Ted
