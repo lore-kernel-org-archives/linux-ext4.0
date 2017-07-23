@@ -1,53 +1,68 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/5] libext2fs: add stricter checks on the inode size in ext2fs_open2()
-Date: Sun, 23 Jul 2017 00:50:33 -0400
-Message-ID: <20170723045035.26019-3-tytso@mit.edu>
-References: <20170723045035.26019-1-tytso@mit.edu>
-Cc: abuchbinder@google.com, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196405] mkdir mishandles st_nlink in ext4 directory with 64997
+ subdirectories
+Date: Sun, 23 Jul 2017 16:23:55 +0000
+Message-ID: <bug-196405-13602-N8MI0y0PDM@https.bugzilla.kernel.org/>
+References: <bug-196405-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51420 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750825AbdGWEup (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 23 Jul 2017 00:50:45 -0400
-In-Reply-To: <20170723045035.26019-1-tytso@mit.edu>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:56960 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751367AbdGWQYC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 23 Jul 2017 12:24:02 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 37B3D27F94
+        for <linux-ext4@vger.kernel.org>; Sun, 23 Jul 2017 16:24:02 +0000 (UTC)
+In-Reply-To: <bug-196405-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-An inode size larger than the block size can cause userspace programs
-to crash.
+https://bugzilla.kernel.org/show_bug.cgi?id=196405
 
-This problem was found using American Fuzzy Lop.
+--- Comment #23 from Theodore Tso (tytso@mit.edu) ---
+For the record, the documentation is not wrong; the maximum link count is 65000
+--- for files.
 
-Reported-by: Adam Buchbinder <abuchbinder@google.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- lib/ext2fs/openfs.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+# touch 1
+# for i in $(seq 2 65000) ; do ln 1 $i ; done
+# ls -l 1
+-rw-r--r-- 65000 root root 0 Jul 23 12:11 1
+# ln 1 65001
+ln: failed to create hard link to '1': Too many links
 
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 0362b2839..da03bc147 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -121,6 +121,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 	blk64_t		group_block, blk;
- 	char		*dest, *cp;
- 	int		group_zero_adjust = 0;
-+	int		inode_size;
- #ifdef WORDS_BIGENDIAN
- 	unsigned int	groups_per_block;
- 	struct ext2_group_desc *gdp;
-@@ -297,7 +298,10 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 		goto cleanup;
- 	}
- 	fs->fragsize = fs->blocksize = EXT2_BLOCK_SIZE(fs->super);
--	if (EXT2_INODE_SIZE(fs->super) < EXT2_GOOD_OLD_INODE_SIZE) {
-+	inode_size = EXT2_INODE_SIZE(fs->super);
-+	if ((inode_size < EXT2_GOOD_OLD_INODE_SIZE) ||
-+	    (inode_size > fs->blocksize) ||
-+	    (inode_size & (inode_size - 1))) {
- 		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
- 		goto cleanup;
- 	}
+The fact dir_nlink happens to let st_nlink go from 64999 to 1 is (1) not an
+overflow, and (2) isn't actually contradicting any documentation, insofar as
+all we say is that dir_nlink no longer limits the number of subdirectories due
+to EXT4_MAX_LINK count.   The documentation is only subtly wrong when it says:
+
+       dir_nlink
+              This ext4 feature allows more than 65000 subdirectories per
+directory.
+
+That is actually a true statement, it *does* allow more than 65000
+subdirectories per directory.  What is not quite true is that without that
+feature, we are limited to 65000 subdirectories.   Today, because with ext4 the
+feature gets silently enabled, and with ext2, the failure happens after the
+64998th subdirectory (because the directory entry for the parent directory plus
+the '.' link counts as an st_nlink).
+
+I'll point out that POSIX/SUSv3 doesn't even guarantee *any* value for st_nlink
+for directories, since hard links to directories are not allowed, and what
+st_nlink means in the absence of hard links, or directories in general, are not
+specified.  So just as GCC developers delight in torturing kernel developers by
+allowing anything random (including launching nethack) for anything which is
+not concretely specified by the C standard, technically speaking a random Linux
+file system could let st_nlink random around randomly, or increase according to
+a fibbonacci or geometric series, etc.   More seriously, for a
+network/clustered file system, if other subdirectories are being created while
+the file walk is taking place (or even in the case of a local file system),
+relying on st_nlink for an optimization is going to be dangerous.  Using d_type
+is going to be ***much*** safer.
+
 -- 
-2.11.0.rc0.7.gbe5a750
+You are receiving this mail because:
+You are watching the assignee of the bug.
