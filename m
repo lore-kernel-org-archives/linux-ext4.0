@@ -1,7 +1,8 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v5 0/5] DAX common 4k zero page
-Date: Mon, 24 Jul 2017 11:06:11 -0600
-Message-ID: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
+Subject: [PATCH v5 1/5] mm: add vm_insert_mixed_mkwrite()
+Date: Mon, 24 Jul 2017 11:06:12 -0600
+Message-ID: <20170724170616.25810-2-ross.zwisler@linux.intel.com>
+References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -17,6 +18,7 @@ Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox
 To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
 	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170724170616.25810-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -28,59 +30,144 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Changes since v4:
- - Added static __vm_insert_mixed() to mm/memory.c that holds the common
-   code for both vm_insert_mixed() and vm_insert_mixed_mkwrite() so we
-   don't have duplicate code and we don't have to pass boolean flags
-   around.  (Dan & Jan)
+To be able to use the common 4k zero page in DAX we need to have our PTE
+fault path look more like our PMD fault path where a PTE entry can be
+marked as dirty and writeable as it is first inserted rather than waiting
+for a follow-up dax_pfn_mkwrite() => finish_mkwrite_fault() call.
 
- - Added a comment for the PFN sanity checking done in the mkwrite case of
-   insert_pfn().
+Right now we can rely on having a dax_pfn_mkwrite() call because we can
+distinguish between these two cases in do_wp_page():
 
- - Added Jan's reviewed-by tags.
+	case 1: 4k zero page => writable DAX storage
+	case 2: read-only DAX storage => writeable DAX storage
 
-This series has passed a full xfstests run on both XFS and ext4.
+This distinction is made by via vm_normal_page().  vm_normal_page() returns
+false for the common 4k zero page, though, just as it does for DAX ptes.
+Instead of special casing the DAX + 4k zero page case we will simplify our
+DAX PTE page fault sequence so that it matches our DAX PMD sequence, and
+get rid of the dax_pfn_mkwrite() helper.  We will instead use
+dax_iomap_fault() to handle write-protection faults.
 
+This means that insert_pfn() needs to follow the lead of insert_pfn_pmd()
+and allow us to pass in a 'mkwrite' flag.  If 'mkwrite' is set insert_pfn()
+will do the work that was previously done by wp_page_reuse() as part of the
+dax_pfn_mkwrite() call path.
+
+Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
+ include/linux/mm.h |  2 ++
+ mm/memory.c        | 50 +++++++++++++++++++++++++++++++++++++++++++-------
+ 2 files changed, 45 insertions(+), 7 deletions(-)
 
-When servicing mmap() reads from file holes the current DAX code allocates
-a page cache page of all zeroes and places the struct page pointer in the
-mapping->page_tree radix tree.  This has three major drawbacks:
-
-1) It consumes memory unnecessarily.  For every 4k page that is read via a
-DAX mmap() over a hole, we allocate a new page cache page.  This means that
-if you read 1GiB worth of pages, you end up using 1GiB of zeroed memory.
-
-2) It is slower than using a common zero page because each page fault has
-more work to do.  Instead of just inserting a common zero page we have to
-allocate a page cache page, zero it, and then insert it.
-
-3) The fact that we had to check for both DAX exceptional entries and for
-page cache pages in the radix tree made the DAX code more complex.
-
-This series solves these issues by following the lead of the DAX PMD code
-and using a common 4k zero page instead.  This reduces memory usage and
-decreases latencies for some workloads, and it simplifies the DAX code,
-removing over 100 lines in total.
-
-Ross Zwisler (5):
-  mm: add vm_insert_mixed_mkwrite()
-  dax: relocate some dax functions
-  dax: use common 4k zero page for dax mmap reads
-  dax: remove DAX code from page_cache_tree_insert()
-  dax: move all DAX radix tree defs to fs/dax.c
-
- Documentation/filesystems/dax.txt |   5 +-
- fs/dax.c                          | 345 ++++++++++++++++----------------------
- fs/ext2/file.c                    |  25 +--
- fs/ext4/file.c                    |  32 +---
- fs/xfs/xfs_file.c                 |   2 +-
- include/linux/dax.h               |  45 -----
- include/linux/mm.h                |   2 +
- include/trace/events/fs_dax.h     |   2 -
- mm/filemap.c                      |  13 +-
- mm/memory.c                       |  50 +++++-
- 10 files changed, 196 insertions(+), 325 deletions(-)
-
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 46b9ac5..483e84c 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -2293,6 +2293,8 @@ int vm_insert_pfn_prot(struct vm_area_struct *vma, unsigned long addr,
+ 			unsigned long pfn, pgprot_t pgprot);
+ int vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
+ 			pfn_t pfn);
++int vm_insert_mixed_mkwrite(struct vm_area_struct *vma, unsigned long addr,
++			pfn_t pfn);
+ int vm_iomap_memory(struct vm_area_struct *vma, phys_addr_t start, unsigned long len);
+ 
+ 
+diff --git a/mm/memory.c b/mm/memory.c
+index 0e517be..b29dd42 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -1646,7 +1646,7 @@ int vm_insert_page(struct vm_area_struct *vma, unsigned long addr,
+ EXPORT_SYMBOL(vm_insert_page);
+ 
+ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
+-			pfn_t pfn, pgprot_t prot)
++			pfn_t pfn, pgprot_t prot, bool mkwrite)
+ {
+ 	struct mm_struct *mm = vma->vm_mm;
+ 	int retval;
+@@ -1658,14 +1658,35 @@ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
+ 	if (!pte)
+ 		goto out;
+ 	retval = -EBUSY;
+-	if (!pte_none(*pte))
+-		goto out_unlock;
++	if (!pte_none(*pte)) {
++		if (mkwrite) {
++			/*
++			 * For read faults on private mappings the PFN passed
++			 * in may not match the PFN we have mapped if the
++			 * mapped PFN is a writeable COW page.  In the mkwrite
++			 * case we are creating a writable PTE for a shared
++			 * mapping and we expect the PFNs to match.
++			 */
++			if (WARN_ON_ONCE(pte_pfn(*pte) != pfn_t_to_pfn(pfn)))
++				goto out_unlock;
++			entry = *pte;
++			goto out_mkwrite;
++		} else
++			goto out_unlock;
++	}
+ 
+ 	/* Ok, finally just insert the thing.. */
+ 	if (pfn_t_devmap(pfn))
+ 		entry = pte_mkdevmap(pfn_t_pte(pfn, prot));
+ 	else
+ 		entry = pte_mkspecial(pfn_t_pte(pfn, prot));
++
++out_mkwrite:
++	if (mkwrite) {
++		entry = pte_mkyoung(entry);
++		entry = maybe_mkwrite(pte_mkdirty(entry), vma);
++	}
++
+ 	set_pte_at(mm, addr, pte, entry);
+ 	update_mmu_cache(vma, addr, pte); /* XXX: why not for insert_page? */
+ 
+@@ -1736,14 +1757,15 @@ int vm_insert_pfn_prot(struct vm_area_struct *vma, unsigned long addr,
+ 
+ 	track_pfn_insert(vma, &pgprot, __pfn_to_pfn_t(pfn, PFN_DEV));
+ 
+-	ret = insert_pfn(vma, addr, __pfn_to_pfn_t(pfn, PFN_DEV), pgprot);
++	ret = insert_pfn(vma, addr, __pfn_to_pfn_t(pfn, PFN_DEV), pgprot,
++			false);
+ 
+ 	return ret;
+ }
+ EXPORT_SYMBOL(vm_insert_pfn_prot);
+ 
+-int vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
+-			pfn_t pfn)
++static int __vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
++			pfn_t pfn, bool mkwrite)
+ {
+ 	pgprot_t pgprot = vma->vm_page_prot;
+ 
+@@ -1772,10 +1794,24 @@ int vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
+ 		page = pfn_to_page(pfn_t_to_pfn(pfn));
+ 		return insert_page(vma, addr, page, pgprot);
+ 	}
+-	return insert_pfn(vma, addr, pfn, pgprot);
++	return insert_pfn(vma, addr, pfn, pgprot, mkwrite);
++}
++
++int vm_insert_mixed(struct vm_area_struct *vma, unsigned long addr,
++			pfn_t pfn)
++{
++	return __vm_insert_mixed(vma, addr, pfn, false);
++
+ }
+ EXPORT_SYMBOL(vm_insert_mixed);
+ 
++int vm_insert_mixed_mkwrite(struct vm_area_struct *vma, unsigned long addr,
++			pfn_t pfn)
++{
++	return __vm_insert_mixed(vma, addr, pfn, true);
++}
++EXPORT_SYMBOL(vm_insert_mixed_mkwrite);
++
+ /*
+  * maps a range of physical memory into the requested pages. the old
+  * mappings are removed. any references to nonexistent pages results
 -- 
 2.9.4
