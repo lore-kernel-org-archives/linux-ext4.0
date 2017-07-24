@@ -1,103 +1,42 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH v5 4/5] dax: remove DAX code from page_cache_tree_insert()
-Date: Mon, 24 Jul 2017 11:06:15 -0600
-Message-ID: <20170724170616.25810-5-ross.zwisler@linux.intel.com>
-References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Christoph Hellwig <hch@lst.de>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.cz>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org,
-	linux-nvdimm@lists.01.org,
-	linux-xfs@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 196405] mkdir mishandles st_nlink in ext4 directory with 64997
+ subdirectories
+Date: Mon, 24 Jul 2017 18:48:05 +0000
+Message-ID: <bug-196405-13602-dlroWt13CZ@https.bugzilla.kernel.org/>
+References: <bug-196405-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:51444 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753577AbdGXSsM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 24 Jul 2017 14:48:12 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id AE122283CF
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2017 18:48:11 +0000 (UTC)
+In-Reply-To: <bug-196405-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Now that we no longer insert struct page pointers in DAX radix trees we can
-remove the special casing for DAX in page_cache_tree_insert().  This also
-allows us to make dax_wake_mapping_entry_waiter() local to fs/dax.c,
-removing it from dax.h.
+https://bugzilla.kernel.org/show_bug.cgi?id=196405
 
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-Suggested-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/dax.c            |  2 +-
- include/linux/dax.h |  2 --
- mm/filemap.c        | 13 ++-----------
- 3 files changed, 3 insertions(+), 14 deletions(-)
+--- Comment #25 from michelbach94@gmail.com ---
+(In reply to Theodore Tso from comment #24)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 8f8bcb8..a0484a1 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -127,7 +127,7 @@ static int wake_exceptional_entry_func(wait_queue_entry_t *wait, unsigned int mo
-  * correct waitqueue where tasks might be waiting for that old 'entry' and
-  * wake them.
-  */
--void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-+static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
- 		pgoff_t index, void *entry, bool wake_all)
- {
- 	struct exceptional_entry_key key;
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 29cced8..afa99bb 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -122,8 +122,6 @@ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
- int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
- int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
- 				      pgoff_t index);
--void dax_wake_mapping_entry_waiter(struct address_space *mapping,
--		pgoff_t index, void *entry, bool wake_all);
- 
- #ifdef CONFIG_FS_DAX
- int __dax_zero_page_range(struct block_device *bdev,
-diff --git a/mm/filemap.c b/mm/filemap.c
-index a497024..1bf1265 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -130,17 +130,8 @@ static int page_cache_tree_insert(struct address_space *mapping,
- 			return -EEXIST;
- 
- 		mapping->nrexceptional--;
--		if (!dax_mapping(mapping)) {
--			if (shadowp)
--				*shadowp = p;
--		} else {
--			/* DAX can replace empty locked entry with a hole */
--			WARN_ON_ONCE(p !=
--				dax_radix_locked_entry(0, RADIX_DAX_EMPTY));
--			/* Wakeup waiters for exceptional entry lock */
--			dax_wake_mapping_entry_waiter(mapping, page->index, p,
--						      true);
--		}
-+		if (shadowp)
-+			*shadowp = p;
- 	}
- 	__radix_tree_replace(&mapping->page_tree, node, slot, page,
- 			     workingset_update_node, mapping);
+There are a couple of things I think you should change.
+
+• Writing the number as "65'000" (fast to read and unambiguous to everyone) or
+"65 000" (SI style) would be better.
+• The comma after the introductory adverb "Normally" is missing.
+• "to regular files as well as directories" instead of "to files as well as
+directories". Remember: Directories are files.
+• Thousands separator, again.
+• If you choose to mention '..', mention '.', too. Or mention neither, idc.
+• It called a "link count", not a "links count".
+
 -- 
-2.9.4
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+You are receiving this mail because:
+You are watching the assignee of the bug.
