@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v5 5/5] dax: move all DAX radix tree defs to fs/dax.c
-Date: Mon, 24 Jul 2017 11:06:16 -0600
-Message-ID: <20170724170616.25810-6-ross.zwisler@linux.intel.com>
+Subject: [PATCH v5 2/5] dax: relocate some dax functions
+Date: Mon, 24 Jul 2017 11:06:13 -0600
+Message-ID: <20170724170616.25810-3-ross.zwisler@linux.intel.com>
 References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -30,122 +30,187 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Now that we no longer insert struct page pointers in DAX radix trees the
-page cache code no longer needs to know anything about DAX exceptional
-entries.  Move all the DAX exceptional entry definitions from dax.h to
-fs/dax.c.
+dax_load_hole() will soon need to call dax_insert_mapping_entry(), so it
+needs to be moved lower in dax.c so the definition exists.
+
+dax_wake_mapping_entry_waiter() will soon be removed from dax.h and be made
+static to dax.c, so we need to move its definition above all its callers.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Suggested-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/dax.c            | 34 ++++++++++++++++++++++++++++++++++
- include/linux/dax.h | 41 -----------------------------------------
- 2 files changed, 34 insertions(+), 41 deletions(-)
+ fs/dax.c | 138 +++++++++++++++++++++++++++++++--------------------------------
+ 1 file changed, 69 insertions(+), 69 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index a0484a1..75760f7 100644
+index 306c2b6..197067f 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -54,6 +54,40 @@ static int __init init_dax_wait_table(void)
+@@ -121,6 +121,31 @@ static int wake_exceptional_entry_func(wait_queue_entry_t *wait, unsigned int mo
  }
- fs_initcall(init_dax_wait_table);
  
-+/*
-+ * We use lowest available bit in exceptional entry for locking, one bit for
-+ * the entry size (PMD) and two more to tell us if the entry is a zero page or
-+ * an empty entry that is just used for locking.  In total four special bits.
-+ *
-+ * If the PMD bit isn't set the entry has size PAGE_SIZE, and if the ZERO_PAGE
-+ * and EMPTY bits aren't set the entry is a normal DAX entry with a filesystem
-+ * block allocation.
+ /*
++ * We do not necessarily hold the mapping->tree_lock when we call this
++ * function so it is possible that 'entry' is no longer a valid item in the
++ * radix tree.  This is okay because all we really need to do is to find the
++ * correct waitqueue where tasks might be waiting for that old 'entry' and
++ * wake them.
 + */
-+#define RADIX_DAX_SHIFT		(RADIX_TREE_EXCEPTIONAL_SHIFT + 4)
-+#define RADIX_DAX_ENTRY_LOCK	(1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
-+#define RADIX_DAX_PMD		(1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
-+#define RADIX_DAX_ZERO_PAGE	(1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
-+#define RADIX_DAX_EMPTY		(1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 3))
-+
-+static unsigned long dax_radix_sector(void *entry)
++void dax_wake_mapping_entry_waiter(struct address_space *mapping,
++		pgoff_t index, void *entry, bool wake_all)
 +{
-+	return (unsigned long)entry >> RADIX_DAX_SHIFT;
++	struct exceptional_entry_key key;
++	wait_queue_head_t *wq;
++
++	wq = dax_entry_waitqueue(mapping, index, entry, &key);
++
++	/*
++	 * Checking for locked entry and prepare_to_wait_exclusive() happens
++	 * under mapping->tree_lock, ditto for entry handling in our callers.
++	 * So at this point all tasks that could have seen our entry locked
++	 * must be in the waitqueue and the following check will see them.
++	 */
++	if (waitqueue_active(wq))
++		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
 +}
 +
-+static void *dax_radix_locked_entry(sector_t sector, unsigned long flags)
-+{
-+	return (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY | flags |
-+			((unsigned long)sector << RADIX_DAX_SHIFT) |
-+			RADIX_DAX_ENTRY_LOCK);
-+}
-+
-+static unsigned int dax_radix_order(void *entry)
-+{
-+	if ((unsigned long)entry & RADIX_DAX_PMD)
-+		return PMD_SHIFT - PAGE_SHIFT;
-+	return 0;
-+}
-+
- static int dax_is_pmd_entry(void *entry)
- {
- 	return (unsigned long)entry & RADIX_DAX_PMD;
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index afa99bb..d0e3272 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -88,33 +88,6 @@ void dax_flush(struct dax_device *dax_dev, pgoff_t pgoff, void *addr,
- 		size_t size);
- void dax_write_cache(struct dax_device *dax_dev, bool wc);
++/*
+  * Check whether the given slot is locked. The function must be called with
+  * mapping->tree_lock held
+  */
+@@ -392,31 +417,6 @@ static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index,
+ 	return entry;
+ }
  
 -/*
-- * We use lowest available bit in exceptional entry for locking, one bit for
-- * the entry size (PMD) and two more to tell us if the entry is a zero page or
-- * an empty entry that is just used for locking.  In total four special bits.
-- *
-- * If the PMD bit isn't set the entry has size PAGE_SIZE, and if the ZERO_PAGE
-- * and EMPTY bits aren't set the entry is a normal DAX entry with a filesystem
-- * block allocation.
+- * We do not necessarily hold the mapping->tree_lock when we call this
+- * function so it is possible that 'entry' is no longer a valid item in the
+- * radix tree.  This is okay because all we really need to do is to find the
+- * correct waitqueue where tasks might be waiting for that old 'entry' and
+- * wake them.
 - */
--#define RADIX_DAX_SHIFT	(RADIX_TREE_EXCEPTIONAL_SHIFT + 4)
--#define RADIX_DAX_ENTRY_LOCK (1 << RADIX_TREE_EXCEPTIONAL_SHIFT)
--#define RADIX_DAX_PMD (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 1))
--#define RADIX_DAX_ZERO_PAGE (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 2))
--#define RADIX_DAX_EMPTY (1 << (RADIX_TREE_EXCEPTIONAL_SHIFT + 3))
--
--static inline unsigned long dax_radix_sector(void *entry)
+-void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+-		pgoff_t index, void *entry, bool wake_all)
 -{
--	return (unsigned long)entry >> RADIX_DAX_SHIFT;
+-	struct exceptional_entry_key key;
+-	wait_queue_head_t *wq;
+-
+-	wq = dax_entry_waitqueue(mapping, index, entry, &key);
+-
+-	/*
+-	 * Checking for locked entry and prepare_to_wait_exclusive() happens
+-	 * under mapping->tree_lock, ditto for entry handling in our callers.
+-	 * So at this point all tasks that could have seen our entry locked
+-	 * must be in the waitqueue and the following check will see them.
+-	 */
+-	if (waitqueue_active(wq))
+-		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
 -}
 -
--static inline void *dax_radix_locked_entry(sector_t sector, unsigned long flags)
--{
--	return (void *)(RADIX_TREE_EXCEPTIONAL_ENTRY | flags |
--			((unsigned long)sector << RADIX_DAX_SHIFT) |
--			RADIX_DAX_ENTRY_LOCK);
--}
--
- ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		const struct iomap_ops *ops);
- int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
-@@ -136,20 +109,6 @@ static inline int __dax_zero_page_range(struct block_device *bdev,
- }
- #endif
- 
--#ifdef CONFIG_FS_DAX_PMD
--static inline unsigned int dax_radix_order(void *entry)
--{
--	if ((unsigned long)entry & RADIX_DAX_PMD)
--		return PMD_SHIFT - PAGE_SHIFT;
--	return 0;
--}
--#else
--static inline unsigned int dax_radix_order(void *entry)
--{
--	return 0;
--}
--#endif
--
- static inline bool dax_mapping(struct address_space *mapping)
+ static int __dax_invalidate_mapping_entry(struct address_space *mapping,
+ 					  pgoff_t index, bool trunc)
  {
- 	return mapping->host && IS_DAX(mapping->host);
+@@ -468,50 +468,6 @@ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
+ 	return __dax_invalidate_mapping_entry(mapping, index, false);
+ }
+ 
+-/*
+- * The user has performed a load from a hole in the file.  Allocating
+- * a new page in the file would cause excessive storage usage for
+- * workloads with sparse files.  We allocate a page cache page instead.
+- * We'll kick it out of the page cache if it's ever written to,
+- * otherwise it will simply fall out of the page cache under memory
+- * pressure without ever having been dirtied.
+- */
+-static int dax_load_hole(struct address_space *mapping, void **entry,
+-			 struct vm_fault *vmf)
+-{
+-	struct inode *inode = mapping->host;
+-	struct page *page;
+-	int ret;
+-
+-	/* Hole page already exists? Return it...  */
+-	if (!radix_tree_exceptional_entry(*entry)) {
+-		page = *entry;
+-		goto finish_fault;
+-	}
+-
+-	/* This will replace locked radix tree entry with a hole page */
+-	page = find_or_create_page(mapping, vmf->pgoff,
+-				   vmf->gfp_mask | __GFP_ZERO);
+-	if (!page) {
+-		ret = VM_FAULT_OOM;
+-		goto out;
+-	}
+-
+-finish_fault:
+-	vmf->page = page;
+-	ret = finish_fault(vmf);
+-	vmf->page = NULL;
+-	*entry = page;
+-	if (!ret) {
+-		/* Grab reference for PTE that is now referencing the page */
+-		get_page(page);
+-		ret = VM_FAULT_NOPAGE;
+-	}
+-out:
+-	trace_dax_load_hole(inode, vmf, ret);
+-	return ret;
+-}
+-
+ static int copy_user_dax(struct block_device *bdev, struct dax_device *dax_dev,
+ 		sector_t sector, size_t size, struct page *to,
+ 		unsigned long vaddr)
+@@ -938,6 +894,50 @@ int dax_pfn_mkwrite(struct vm_fault *vmf)
+ }
+ EXPORT_SYMBOL_GPL(dax_pfn_mkwrite);
+ 
++/*
++ * The user has performed a load from a hole in the file.  Allocating
++ * a new page in the file would cause excessive storage usage for
++ * workloads with sparse files.  We allocate a page cache page instead.
++ * We'll kick it out of the page cache if it's ever written to,
++ * otherwise it will simply fall out of the page cache under memory
++ * pressure without ever having been dirtied.
++ */
++static int dax_load_hole(struct address_space *mapping, void **entry,
++			 struct vm_fault *vmf)
++{
++	struct inode *inode = mapping->host;
++	struct page *page;
++	int ret;
++
++	/* Hole page already exists? Return it...  */
++	if (!radix_tree_exceptional_entry(*entry)) {
++		page = *entry;
++		goto finish_fault;
++	}
++
++	/* This will replace locked radix tree entry with a hole page */
++	page = find_or_create_page(mapping, vmf->pgoff,
++				   vmf->gfp_mask | __GFP_ZERO);
++	if (!page) {
++		ret = VM_FAULT_OOM;
++		goto out;
++	}
++
++finish_fault:
++	vmf->page = page;
++	ret = finish_fault(vmf);
++	vmf->page = NULL;
++	*entry = page;
++	if (!ret) {
++		/* Grab reference for PTE that is now referencing the page */
++		get_page(page);
++		ret = VM_FAULT_NOPAGE;
++	}
++out:
++	trace_dax_load_hole(inode, vmf, ret);
++	return ret;
++}
++
+ static bool dax_range_is_aligned(struct block_device *bdev,
+ 				 unsigned int offset, unsigned int length)
+ {
 -- 
 2.9.4
