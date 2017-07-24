@@ -1,380 +1,60 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH] ext4: backward compatibility support for Lustre ea_inode implementation
-Date: Mon, 24 Jul 2017 13:13:08 -0700
-Message-ID: <20170724201308.25598-1-tahsin@google.com>
-Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
-To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
-        Emoly Liu <emoly.liu@intel.com>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f171.google.com ([209.85.192.171]:33471 "EHLO
-        mail-pf0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751873AbdGXUNN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Jul 2017 16:13:13 -0400
-Received: by mail-pf0-f171.google.com with SMTP id s70so50870930pfs.0
-        for <linux-ext4@vger.kernel.org>; Mon, 24 Jul 2017 13:13:13 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: Re: [PATCH v5 1/5] mm: add vm_insert_mixed_mkwrite()
+Date: Tue, 25 Jul 2017 01:14:00 +0300
+Message-ID: <20170724221400.pcq5zvke7w2yfkxi@node.shutemov.name>
+References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
+ <20170724170616.25810-2-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, linux-kernel@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
+	linux-xfs@vger.kernel.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20170724170616.25810-2-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Original Lustre ea_inode feature did not have ref counts on xattr inodes
-because there was always one parent that referenced it. New
-implementation expects ref count to be initialized which is not true for
-Lustre case. Handle this by detecting Lustre created xattr inode and set
-its ref count to 1.
+On Mon, Jul 24, 2017 at 11:06:12AM -0600, Ross Zwisler wrote:
+> @@ -1658,14 +1658,35 @@ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
+>  	if (!pte)
+>  		goto out;
+>  	retval = -EBUSY;
+> -	if (!pte_none(*pte))
+> -		goto out_unlock;
+> +	if (!pte_none(*pte)) {
+> +		if (mkwrite) {
+> +			/*
+> +			 * For read faults on private mappings the PFN passed
+> +			 * in may not match the PFN we have mapped if the
+> +			 * mapped PFN is a writeable COW page.  In the mkwrite
+> +			 * case we are creating a writable PTE for a shared
+> +			 * mapping and we expect the PFNs to match.
+> +			 */
 
-The quota handling of xattr inodes have also changed with deduplication
-support. New implementation manually manages quotas to support sharing
-across multiple users. A consequence is that, a referencing inode
-incorporates the blocks of xattr inode into its own i_block field.
+Can we?
 
-We need to know how a xattr inode was created so that we can reverse the
-block charges during reference removal. This is handled by introducing a
-EXT4_STATE_LUSTRE_EA_INODE flag. The flag is set on a xattr inode if
-inode appears to have been created by Lustre. During xattr inode reference
-removal, the manual quota uncharge is skipped if the flag is set.
+I guess it's up to filesystem if it wants to reuse the same spot to write
+data or not. I think your assumptions works for ext4 and xfs. I wouldn't
+be that sure for btrfs or other filesystems with CoW support.
 
-Signed-off-by: Tahsin Erdogan <tahsin@google.com>
----
- fs/ext4/ext4.h  |   1 +
- fs/ext4/inode.c |   8 ----
- fs/ext4/xattr.c | 141 +++++++++++++++++++++++++++++++++++++-------------------
- 3 files changed, 94 insertions(+), 56 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e9440ed605c0..21e8b1dea958 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1569,6 +1569,7 @@ enum {
- 					   nolocking */
- 	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
- 	EXT4_STATE_EXT_PRECACHED,	/* extents have been precached */
-+	EXT4_STATE_LUSTRE_EA_INODE,	/* Lustre-style ea_inode */
- };
- 
- #define EXT4_INODE_BIT_FNS(name, field, offset)				\
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 70699940e20d..cebb6e60a8af 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4897,14 +4897,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	brelse(iloc.bh);
- 	ext4_set_inode_flags(inode);
- 
--	if (ei->i_flags & EXT4_EA_INODE_FL) {
--		ext4_xattr_inode_set_class(inode);
--
--		inode_lock(inode);
--		inode->i_flags |= S_NOQUOTA;
--		inode_unlock(inode);
--	}
--
- 	unlock_new_inode(inode);
- 	return inode;
- 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 949b4ea3ff58..415be4a88cc3 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -354,8 +354,10 @@ static int ext4_xattr_inode_read(struct inode *ea_inode, void *buf, size_t size)
- 	return ret;
- }
- 
-+#define EXT4_XATTR_INODE_GET_PARENT(inode) ((__u32)(inode)->i_mtime.tv_sec)
-+
- static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
--				 struct inode **ea_inode)
-+				 u32 ea_inode_hash, struct inode **ea_inode)
- {
- 	struct inode *inode;
- 	int err;
-@@ -385,6 +387,24 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 		goto error;
- 	}
- 
-+	ext4_xattr_inode_set_class(inode);
-+
-+	/*
-+	 * Check whether this is an old Lustre-style xattr inode. Lustre
-+	 * implementation does not have hash validation, rather it has a
-+	 * backpointer from ea_inode to the parent inode.
-+	 */
-+	if (ea_inode_hash != ext4_xattr_inode_get_hash(inode) &&
-+	    EXT4_XATTR_INODE_GET_PARENT(inode) == parent->i_ino &&
-+	    inode->i_generation == parent->i_generation) {
-+		ext4_set_inode_state(inode, EXT4_STATE_LUSTRE_EA_INODE);
-+		ext4_xattr_inode_set_ref(inode, 1);
-+	} else {
-+		inode_lock(inode);
-+		inode->i_flags |= S_NOQUOTA;
-+		inode_unlock(inode);
-+	}
-+
- 	*ea_inode = inode;
- 	return 0;
- error:
-@@ -417,8 +437,6 @@ ext4_xattr_inode_verify_hashes(struct inode *ea_inode,
- 	return 0;
- }
- 
--#define EXT4_XATTR_INODE_GET_PARENT(inode) ((__u32)(inode)->i_mtime.tv_sec)
--
- /*
-  * Read xattr value from the EA inode.
-  */
-@@ -431,7 +449,7 @@ ext4_xattr_inode_get(struct inode *inode, struct ext4_xattr_entry *entry,
- 	int err;
- 
- 	err = ext4_xattr_inode_iget(inode, le32_to_cpu(entry->e_value_inum),
--				    &ea_inode);
-+				    le32_to_cpu(entry->e_hash), &ea_inode);
- 	if (err) {
- 		ea_inode = NULL;
- 		goto out;
-@@ -449,29 +467,20 @@ ext4_xattr_inode_get(struct inode *inode, struct ext4_xattr_entry *entry,
- 	if (err)
- 		goto out;
- 
--	err = ext4_xattr_inode_verify_hashes(ea_inode, entry, buffer, size);
--	/*
--	 * Compatibility check for old Lustre ea_inode implementation. Old
--	 * version does not have hash validation, but it has a backpointer
--	 * from ea_inode to the parent inode.
--	 */
--	if (err == -EFSCORRUPTED) {
--		if (EXT4_XATTR_INODE_GET_PARENT(ea_inode) != inode->i_ino ||
--		    ea_inode->i_generation != inode->i_generation) {
-+	if (!ext4_test_inode_state(ea_inode, EXT4_STATE_LUSTRE_EA_INODE)) {
-+		err = ext4_xattr_inode_verify_hashes(ea_inode, entry, buffer,
-+						     size);
-+		if (err) {
- 			ext4_warning_inode(ea_inode,
- 					   "EA inode hash validation failed");
- 			goto out;
- 		}
--		/* Do not add ea_inode to the cache. */
--		ea_inode_cache = NULL;
--		err = 0;
--	} else if (err)
--		goto out;
- 
--	if (ea_inode_cache)
--		mb_cache_entry_create(ea_inode_cache, GFP_NOFS,
--				      ext4_xattr_inode_get_hash(ea_inode),
--				      ea_inode->i_ino, true /* reusable */);
-+		if (ea_inode_cache)
-+			mb_cache_entry_create(ea_inode_cache, GFP_NOFS,
-+					ext4_xattr_inode_get_hash(ea_inode),
-+					ea_inode->i_ino, true /* reusable */);
-+	}
- out:
- 	iput(ea_inode);
- 	return err;
-@@ -838,10 +847,15 @@ static int ext4_xattr_inode_alloc_quota(struct inode *inode, size_t len)
- 	return err;
- }
- 
--static void ext4_xattr_inode_free_quota(struct inode *inode, size_t len)
-+static void ext4_xattr_inode_free_quota(struct inode *parent,
-+					struct inode *ea_inode,
-+					size_t len)
- {
--	dquot_free_space_nodirty(inode, round_up_cluster(inode, len));
--	dquot_free_inode(inode);
-+	if (ea_inode &&
-+	    ext4_test_inode_state(ea_inode, EXT4_STATE_LUSTRE_EA_INODE))
-+		return;
-+	dquot_free_space_nodirty(parent, round_up_cluster(parent, len));
-+	dquot_free_inode(parent);
- }
- 
- int __ext4_xattr_set_credits(struct super_block *sb, struct inode *inode,
-@@ -1071,7 +1085,9 @@ static int ext4_xattr_inode_inc_ref_all(handle_t *handle, struct inode *parent,
- 		if (!entry->e_value_inum)
- 			continue;
- 		ea_ino = le32_to_cpu(entry->e_value_inum);
--		err = ext4_xattr_inode_iget(parent, ea_ino, &ea_inode);
-+		err = ext4_xattr_inode_iget(parent, ea_ino,
-+					    le32_to_cpu(entry->e_hash),
-+					    &ea_inode);
- 		if (err)
- 			goto cleanup;
- 		err = ext4_xattr_inode_inc_ref(handle, ea_inode);
-@@ -1093,7 +1109,9 @@ static int ext4_xattr_inode_inc_ref_all(handle_t *handle, struct inode *parent,
- 		if (!entry->e_value_inum)
- 			continue;
- 		ea_ino = le32_to_cpu(entry->e_value_inum);
--		err = ext4_xattr_inode_iget(parent, ea_ino, &ea_inode);
-+		err = ext4_xattr_inode_iget(parent, ea_ino,
-+					    le32_to_cpu(entry->e_hash),
-+					    &ea_inode);
- 		if (err) {
- 			ext4_warning(parent->i_sb,
- 				     "cleanup ea_ino %u iget error %d", ea_ino,
-@@ -1131,7 +1149,9 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 		if (!entry->e_value_inum)
- 			continue;
- 		ea_ino = le32_to_cpu(entry->e_value_inum);
--		err = ext4_xattr_inode_iget(parent, ea_ino, &ea_inode);
-+		err = ext4_xattr_inode_iget(parent, ea_ino,
-+					    le32_to_cpu(entry->e_hash),
-+					    &ea_inode);
- 		if (err)
- 			continue;
- 
-@@ -1159,7 +1179,7 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
- 		}
- 
- 		if (!skip_quota)
--			ext4_xattr_inode_free_quota(parent,
-+			ext4_xattr_inode_free_quota(parent, ea_inode,
- 					      le32_to_cpu(entry->e_value_size));
- 
- 		/*
-@@ -1591,6 +1611,7 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 	if (!s->not_found && here->e_value_inum) {
- 		ret = ext4_xattr_inode_iget(inode,
- 					    le32_to_cpu(here->e_value_inum),
-+					    le32_to_cpu(here->e_hash),
- 					    &old_ea_inode);
- 		if (ret) {
- 			old_ea_inode = NULL;
-@@ -1609,7 +1630,7 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 						     &new_ea_inode);
- 		if (ret) {
- 			new_ea_inode = NULL;
--			ext4_xattr_inode_free_quota(inode, i->value_len);
-+			ext4_xattr_inode_free_quota(inode, NULL, i->value_len);
- 			goto out;
- 		}
- 	}
-@@ -1628,13 +1649,13 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 					ext4_warning_inode(new_ea_inode,
- 						  "dec ref new_ea_inode err=%d",
- 						  err);
--				ext4_xattr_inode_free_quota(inode,
-+				ext4_xattr_inode_free_quota(inode, new_ea_inode,
- 							    i->value_len);
- 			}
- 			goto out;
- 		}
- 
--		ext4_xattr_inode_free_quota(inode,
-+		ext4_xattr_inode_free_quota(inode, old_ea_inode,
- 					    le32_to_cpu(here->e_value_size));
- 	}
- 
-@@ -1803,8 +1824,10 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 	struct mb_cache_entry *ce = NULL;
- 	int error = 0;
- 	struct mb_cache *ea_block_cache = EA_BLOCK_CACHE(inode);
--	struct inode *ea_inode = NULL;
--	size_t old_ea_inode_size = 0;
-+	struct inode *ea_inode = NULL, *tmp_inode;
-+	size_t old_ea_inode_quota = 0;
-+	unsigned int ea_ino;
-+
- 
- #define header(x) ((struct ext4_xattr_header *)(x))
- 
-@@ -1866,12 +1889,24 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 			 * like it has an empty value.
- 			 */
- 			if (!s->not_found && s->here->e_value_inum) {
--				/*
--				 * Defer quota free call for previous inode
--				 * until success is guaranteed.
--				 */
--				old_ea_inode_size = le32_to_cpu(
-+				ea_ino = le32_to_cpu(s->here->e_value_inum);
-+				error = ext4_xattr_inode_iget(inode, ea_ino,
-+					      le32_to_cpu(s->here->e_hash),
-+					      &tmp_inode);
-+				if (error)
-+					goto cleanup;
-+
-+				if (!ext4_test_inode_state(tmp_inode,
-+						EXT4_STATE_LUSTRE_EA_INODE)) {
-+					/*
-+					 * Defer quota free call for previous
-+					 * inode until success is guaranteed.
-+					 */
-+					old_ea_inode_quota = le32_to_cpu(
- 							s->here->e_value_size);
-+				}
-+				iput(tmp_inode);
-+
- 				s->here->e_value_inum = 0;
- 				s->here->e_value_size = 0;
- 			}
-@@ -1898,8 +1933,6 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 		goto cleanup;
- 
- 	if (i->value && s->here->e_value_inum) {
--		unsigned int ea_ino;
--
- 		/*
- 		 * A ref count on ea_inode has been taken as part of the call to
- 		 * ext4_xattr_set_entry() above. We would like to drop this
-@@ -1907,7 +1940,9 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 		 * initialized and has its own ref count on the ea_inode.
- 		 */
- 		ea_ino = le32_to_cpu(s->here->e_value_inum);
--		error = ext4_xattr_inode_iget(inode, ea_ino, &ea_inode);
-+		error = ext4_xattr_inode_iget(inode, ea_ino,
-+					      le32_to_cpu(s->here->e_hash),
-+					      &ea_inode);
- 		if (error) {
- 			ea_inode = NULL;
- 			goto cleanup;
-@@ -2056,8 +2091,8 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 		}
- 	}
- 
--	if (old_ea_inode_size)
--		ext4_xattr_inode_free_quota(inode, old_ea_inode_size);
-+	if (old_ea_inode_quota)
-+		ext4_xattr_inode_free_quota(inode, NULL, old_ea_inode_quota);
- 
- 	/* Update the inode. */
- 	EXT4_I(inode)->i_file_acl = new_bh ? new_bh->b_blocknr : 0;
-@@ -2084,7 +2119,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
- 
- 		/* If there was an error, revert the quota charge. */
- 		if (error)
--			ext4_xattr_inode_free_quota(inode,
-+			ext4_xattr_inode_free_quota(inode, ea_inode,
- 						    i_size_read(ea_inode));
- 		iput(ea_inode);
- 	}
-@@ -2807,6 +2842,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 	struct ext4_xattr_ibody_header *header;
- 	struct ext4_iloc iloc = { .bh = NULL };
- 	struct ext4_xattr_entry *entry;
-+	struct inode *ea_inode;
- 	int error;
- 
- 	error = ext4_xattr_ensure_credits(handle, inode, extra_credits,
-@@ -2861,10 +2897,19 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 
- 		if (ext4_has_feature_ea_inode(inode->i_sb)) {
- 			for (entry = BFIRST(bh); !IS_LAST_ENTRY(entry);
--			     entry = EXT4_XATTR_NEXT(entry))
--				if (entry->e_value_inum)
--					ext4_xattr_inode_free_quota(inode,
-+			     entry = EXT4_XATTR_NEXT(entry)) {
-+				if (!entry->e_value_inum)
-+					continue;
-+				error = ext4_xattr_inode_iget(inode,
-+					      le32_to_cpu(entry->e_value_inum),
-+					      le32_to_cpu(entry->e_hash),
-+					      &ea_inode);
-+				if (error)
-+					continue;
-+				ext4_xattr_inode_free_quota(inode, ea_inode,
- 					      le32_to_cpu(entry->e_value_size));
-+				iput(ea_inode);
-+			}
- 
- 		}
- 
 -- 
-2.14.0.rc0.284.gd933b75aa4-goog
+ Kirill A. Shutemov
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
