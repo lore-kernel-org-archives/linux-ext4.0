@@ -1,216 +1,103 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v5 2/5] dax: relocate some dax functions
-Date: Mon, 24 Jul 2017 11:06:13 -0600
-Message-ID: <20170724170616.25810-3-ross.zwisler@linux.intel.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH v5 4/5] dax: remove DAX code from page_cache_tree_insert()
+Date: Mon, 24 Jul 2017 11:06:15 -0600
+Message-ID: <20170724170616.25810-5-ross.zwisler@linux.intel.com>
 References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Jonathan Corbet <corbet-T1hC0tSOHrs@public.gmane.org>,
- Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>, linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20170724170616.25810-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.cz>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-nvdimm@lists.01.org,
+	linux-xfs@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-dax_load_hole() will soon need to call dax_insert_mapping_entry(), so it
-needs to be moved lower in dax.c so the definition exists.
+Now that we no longer insert struct page pointers in DAX radix trees we can
+remove the special casing for DAX in page_cache_tree_insert().  This also
+allows us to make dax_wake_mapping_entry_waiter() local to fs/dax.c,
+removing it from dax.h.
 
-dax_wake_mapping_entry_waiter() will soon be removed from dax.h and be made
-static to dax.c, so we need to move its definition above all its callers.
-
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Suggested-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/dax.c | 138 +++++++++++++++++++++++++++++++--------------------------------
- 1 file changed, 69 insertions(+), 69 deletions(-)
+ fs/dax.c            |  2 +-
+ include/linux/dax.h |  2 --
+ mm/filemap.c        | 13 ++-----------
+ 3 files changed, 3 insertions(+), 14 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 306c2b6..197067f 100644
+index 8f8bcb8..a0484a1 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -121,6 +121,31 @@ static int wake_exceptional_entry_func(wait_queue_entry_t *wait, unsigned int mo
- }
- 
- /*
-+ * We do not necessarily hold the mapping->tree_lock when we call this
-+ * function so it is possible that 'entry' is no longer a valid item in the
-+ * radix tree.  This is okay because all we really need to do is to find the
-+ * correct waitqueue where tasks might be waiting for that old 'entry' and
-+ * wake them.
-+ */
-+void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-+		pgoff_t index, void *entry, bool wake_all)
-+{
-+	struct exceptional_entry_key key;
-+	wait_queue_head_t *wq;
-+
-+	wq = dax_entry_waitqueue(mapping, index, entry, &key);
-+
-+	/*
-+	 * Checking for locked entry and prepare_to_wait_exclusive() happens
-+	 * under mapping->tree_lock, ditto for entry handling in our callers.
-+	 * So at this point all tasks that could have seen our entry locked
-+	 * must be in the waitqueue and the following check will see them.
-+	 */
-+	if (waitqueue_active(wq))
-+		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
-+}
-+
-+/*
-  * Check whether the given slot is locked. The function must be called with
-  * mapping->tree_lock held
+@@ -127,7 +127,7 @@ static int wake_exceptional_entry_func(wait_queue_entry_t *wait, unsigned int mo
+  * correct waitqueue where tasks might be waiting for that old 'entry' and
+  * wake them.
   */
-@@ -392,31 +417,6 @@ static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index,
- 	return entry;
- }
- 
--/*
-- * We do not necessarily hold the mapping->tree_lock when we call this
-- * function so it is possible that 'entry' is no longer a valid item in the
-- * radix tree.  This is okay because all we really need to do is to find the
-- * correct waitqueue where tasks might be waiting for that old 'entry' and
-- * wake them.
-- */
 -void dax_wake_mapping_entry_waiter(struct address_space *mapping,
--		pgoff_t index, void *entry, bool wake_all)
--{
--	struct exceptional_entry_key key;
--	wait_queue_head_t *wq;
--
--	wq = dax_entry_waitqueue(mapping, index, entry, &key);
--
--	/*
--	 * Checking for locked entry and prepare_to_wait_exclusive() happens
--	 * under mapping->tree_lock, ditto for entry handling in our callers.
--	 * So at this point all tasks that could have seen our entry locked
--	 * must be in the waitqueue and the following check will see them.
--	 */
--	if (waitqueue_active(wq))
--		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
--}
--
- static int __dax_invalidate_mapping_entry(struct address_space *mapping,
- 					  pgoff_t index, bool trunc)
++static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+ 		pgoff_t index, void *entry, bool wake_all)
  {
-@@ -468,50 +468,6 @@ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
- 	return __dax_invalidate_mapping_entry(mapping, index, false);
- }
+ 	struct exceptional_entry_key key;
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index 29cced8..afa99bb 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -122,8 +122,6 @@ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
+ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
+ 				      pgoff_t index);
+-void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+-		pgoff_t index, void *entry, bool wake_all);
  
--/*
-- * The user has performed a load from a hole in the file.  Allocating
-- * a new page in the file would cause excessive storage usage for
-- * workloads with sparse files.  We allocate a page cache page instead.
-- * We'll kick it out of the page cache if it's ever written to,
-- * otherwise it will simply fall out of the page cache under memory
-- * pressure without ever having been dirtied.
-- */
--static int dax_load_hole(struct address_space *mapping, void **entry,
--			 struct vm_fault *vmf)
--{
--	struct inode *inode = mapping->host;
--	struct page *page;
--	int ret;
--
--	/* Hole page already exists? Return it...  */
--	if (!radix_tree_exceptional_entry(*entry)) {
--		page = *entry;
--		goto finish_fault;
--	}
--
--	/* This will replace locked radix tree entry with a hole page */
--	page = find_or_create_page(mapping, vmf->pgoff,
--				   vmf->gfp_mask | __GFP_ZERO);
--	if (!page) {
--		ret = VM_FAULT_OOM;
--		goto out;
--	}
--
--finish_fault:
--	vmf->page = page;
--	ret = finish_fault(vmf);
--	vmf->page = NULL;
--	*entry = page;
--	if (!ret) {
--		/* Grab reference for PTE that is now referencing the page */
--		get_page(page);
--		ret = VM_FAULT_NOPAGE;
--	}
--out:
--	trace_dax_load_hole(inode, vmf, ret);
--	return ret;
--}
--
- static int copy_user_dax(struct block_device *bdev, struct dax_device *dax_dev,
- 		sector_t sector, size_t size, struct page *to,
- 		unsigned long vaddr)
-@@ -938,6 +894,50 @@ int dax_pfn_mkwrite(struct vm_fault *vmf)
- }
- EXPORT_SYMBOL_GPL(dax_pfn_mkwrite);
+ #ifdef CONFIG_FS_DAX
+ int __dax_zero_page_range(struct block_device *bdev,
+diff --git a/mm/filemap.c b/mm/filemap.c
+index a497024..1bf1265 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -130,17 +130,8 @@ static int page_cache_tree_insert(struct address_space *mapping,
+ 			return -EEXIST;
  
-+/*
-+ * The user has performed a load from a hole in the file.  Allocating
-+ * a new page in the file would cause excessive storage usage for
-+ * workloads with sparse files.  We allocate a page cache page instead.
-+ * We'll kick it out of the page cache if it's ever written to,
-+ * otherwise it will simply fall out of the page cache under memory
-+ * pressure without ever having been dirtied.
-+ */
-+static int dax_load_hole(struct address_space *mapping, void **entry,
-+			 struct vm_fault *vmf)
-+{
-+	struct inode *inode = mapping->host;
-+	struct page *page;
-+	int ret;
-+
-+	/* Hole page already exists? Return it...  */
-+	if (!radix_tree_exceptional_entry(*entry)) {
-+		page = *entry;
-+		goto finish_fault;
-+	}
-+
-+	/* This will replace locked radix tree entry with a hole page */
-+	page = find_or_create_page(mapping, vmf->pgoff,
-+				   vmf->gfp_mask | __GFP_ZERO);
-+	if (!page) {
-+		ret = VM_FAULT_OOM;
-+		goto out;
-+	}
-+
-+finish_fault:
-+	vmf->page = page;
-+	ret = finish_fault(vmf);
-+	vmf->page = NULL;
-+	*entry = page;
-+	if (!ret) {
-+		/* Grab reference for PTE that is now referencing the page */
-+		get_page(page);
-+		ret = VM_FAULT_NOPAGE;
-+	}
-+out:
-+	trace_dax_load_hole(inode, vmf, ret);
-+	return ret;
-+}
-+
- static bool dax_range_is_aligned(struct block_device *bdev,
- 				 unsigned int offset, unsigned int length)
- {
+ 		mapping->nrexceptional--;
+-		if (!dax_mapping(mapping)) {
+-			if (shadowp)
+-				*shadowp = p;
+-		} else {
+-			/* DAX can replace empty locked entry with a hole */
+-			WARN_ON_ONCE(p !=
+-				dax_radix_locked_entry(0, RADIX_DAX_EMPTY));
+-			/* Wakeup waiters for exceptional entry lock */
+-			dax_wake_mapping_entry_waiter(mapping, page->index, p,
+-						      true);
+-		}
++		if (shadowp)
++			*shadowp = p;
+ 	}
+ 	__radix_tree_replace(&mapping->page_tree, node, slot, page,
+ 			     workingset_update_node, mapping);
 -- 
 2.9.4
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
