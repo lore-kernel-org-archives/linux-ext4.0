@@ -1,236 +1,138 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH v4 2/5] dax: relocate some dax functions
-Date: Mon, 24 Jul 2017 13:35:42 +0200
-Message-ID: <20170724113542.GJ652@quack2.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v4 3/5] dax: use common 4k zero page for dax mmap reads
+Date: Mon, 24 Jul 2017 13:46:22 +0200
+Message-ID: <20170724114622.GK652@quack2.suse.cz>
 References: <20170721223956.29485-1-ross.zwisler@linux.intel.com>
- <20170721223956.29485-3-ross.zwisler@linux.intel.com>
+ <20170721223956.29485-4-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- David Airlie <airlied-cv59FeDIM0c@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- dri-devel-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Patrik Jakobsson <patrik.r.jakobsson-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-samsung-soc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Joonyoung Shim <jy0922.shim-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Tomi Valkeinen <tomi.valkeinen-l0cyMroinI0@public.gmane.org>,
- Kyungmin Park <kyungmin.park-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
- Krzysztof Kozlowski <krzk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- linux-arm-msm-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- Inki Dae <inki.dae-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-arm-kernel-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
- Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Jan Kara <jack@suse.cz>, linux-doc@vger.kernel.org,
+ Dave Chinner <david@fromorbit.com>, dri-devel@lists.freedesktop.org,
+ linux-mm@kvack.org, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Christoph Hellwig <hch@lst.de>, linux-samsung-soc@vger.kernel.org,
+ "Darrick J. Wong" <darrick.wong@oracle.com>,
+ Tomi Valkeinen <tomi.valkeinen@ti.com>,
+ Kyungmin Park <kyungmin.park@samsung.com>,
+ Krzysztof Kozlowski <krzk@kernel.org>, Ingo Molnar <mingo@redhat.com>,
+ linux-ext4@vger.kernel.org, Matthew Wilcox <mawilcox@microsoft.com>,
+ linux-arm-msm@vger.kernel.org, Steven Rostedt <rostedt@goodmis.org>,
+ linux-nvdimm@lists.01.org, Alexander Viro <viro@zeniv.linux.org.uk>,
+ Dan Williams <dan.j.williams@intel.com>, linux-arm-kernel@lists.infradead.org,
+ Theodore Ts'o <tytso@mit.edu>, Jonathan Corbet <corbet@lwn.net>,
+ Seung-Woo Kim <sw0312.kim@samsung.com>, linux-kernel@vger.kernel.org,
+ linux-xfs@v
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <dri-devel-bounces@lists.freedesktop.org>
 Content-Disposition: inline
-In-Reply-To: <20170721223956.29485-3-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170721223956.29485-4-ross.zwisler@linux.intel.com>
+List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
+List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
+List-Post: <mailto:dri-devel@lists.freedesktop.org>
+List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
+List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
+Errors-To: dri-devel-bounces@lists.freedesktop.org
+Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 21-07-17 16:39:52, Ross Zwisler wrote:
-> dax_load_hole() will soon need to call dax_insert_mapping_entry(), so it
-> needs to be moved lower in dax.c so the definition exists.
-> 
-> dax_wake_mapping_entry_waiter() will soon be removed from dax.h and be made
-> static to dax.c, so we need to move its definition above all its callers.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-
-Looks good. You can add:
-
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-
-								Honza
-
-
-> ---
->  fs/dax.c | 138 +++++++++++++++++++++++++++++++--------------------------------
->  1 file changed, 69 insertions(+), 69 deletions(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index c844a51..779dc5e 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -121,6 +121,31 @@ static int wake_exceptional_entry_func(wait_queue_entry_t *wait, unsigned int mo
->  }
->  
->  /*
-> + * We do not necessarily hold the mapping->tree_lock when we call this
-> + * function so it is possible that 'entry' is no longer a valid item in the
-> + * radix tree.  This is okay because all we really need to do is to find the
-> + * correct waitqueue where tasks might be waiting for that old 'entry' and
-> + * wake them.
-> + */
-> +void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-> +		pgoff_t index, void *entry, bool wake_all)
-> +{
-> +	struct exceptional_entry_key key;
-> +	wait_queue_head_t *wq;
-> +
-> +	wq = dax_entry_waitqueue(mapping, index, entry, &key);
-> +
-> +	/*
-> +	 * Checking for locked entry and prepare_to_wait_exclusive() happens
-> +	 * under mapping->tree_lock, ditto for entry handling in our callers.
-> +	 * So at this point all tasks that could have seen our entry locked
-> +	 * must be in the waitqueue and the following check will see them.
-> +	 */
-> +	if (waitqueue_active(wq))
-> +		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
-> +}
-> +
-> +/*
->   * Check whether the given slot is locked. The function must be called with
->   * mapping->tree_lock held
->   */
-> @@ -392,31 +417,6 @@ static void *grab_mapping_entry(struct address_space *mapping, pgoff_t index,
->  	return entry;
->  }
->  
-> -/*
-> - * We do not necessarily hold the mapping->tree_lock when we call this
-> - * function so it is possible that 'entry' is no longer a valid item in the
-> - * radix tree.  This is okay because all we really need to do is to find the
-> - * correct waitqueue where tasks might be waiting for that old 'entry' and
-> - * wake them.
-> - */
-> -void dax_wake_mapping_entry_waiter(struct address_space *mapping,
-> -		pgoff_t index, void *entry, bool wake_all)
-> -{
-> -	struct exceptional_entry_key key;
-> -	wait_queue_head_t *wq;
-> -
-> -	wq = dax_entry_waitqueue(mapping, index, entry, &key);
-> -
-> -	/*
-> -	 * Checking for locked entry and prepare_to_wait_exclusive() happens
-> -	 * under mapping->tree_lock, ditto for entry handling in our callers.
-> -	 * So at this point all tasks that could have seen our entry locked
-> -	 * must be in the waitqueue and the following check will see them.
-> -	 */
-> -	if (waitqueue_active(wq))
-> -		__wake_up(wq, TASK_NORMAL, wake_all ? 0 : 1, &key);
-> -}
-> -
->  static int __dax_invalidate_mapping_entry(struct address_space *mapping,
->  					  pgoff_t index, bool trunc)
->  {
-> @@ -468,50 +468,6 @@ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
->  	return __dax_invalidate_mapping_entry(mapping, index, false);
->  }
->  
-> -/*
-> - * The user has performed a load from a hole in the file.  Allocating
-> - * a new page in the file would cause excessive storage usage for
-> - * workloads with sparse files.  We allocate a page cache page instead.
-> - * We'll kick it out of the page cache if it's ever written to,
-> - * otherwise it will simply fall out of the page cache under memory
-> - * pressure without ever having been dirtied.
-> - */
-> -static int dax_load_hole(struct address_space *mapping, void **entry,
-> -			 struct vm_fault *vmf)
-> -{
-> -	struct inode *inode = mapping->host;
-> -	struct page *page;
-> -	int ret;
-> -
-> -	/* Hole page already exists? Return it...  */
-> -	if (!radix_tree_exceptional_entry(*entry)) {
-> -		page = *entry;
-> -		goto finish_fault;
-> -	}
-> -
-> -	/* This will replace locked radix tree entry with a hole page */
-> -	page = find_or_create_page(mapping, vmf->pgoff,
-> -				   vmf->gfp_mask | __GFP_ZERO);
-> -	if (!page) {
-> -		ret = VM_FAULT_OOM;
-> -		goto out;
-> -	}
-> -
-> -finish_fault:
-> -	vmf->page = page;
-> -	ret = finish_fault(vmf);
-> -	vmf->page = NULL;
-> -	*entry = page;
-> -	if (!ret) {
-> -		/* Grab reference for PTE that is now referencing the page */
-> -		get_page(page);
-> -		ret = VM_FAULT_NOPAGE;
-> -	}
-> -out:
-> -	trace_dax_load_hole(inode, vmf, ret);
-> -	return ret;
-> -}
-> -
->  static int copy_user_dax(struct block_device *bdev, struct dax_device *dax_dev,
->  		sector_t sector, size_t size, struct page *to,
->  		unsigned long vaddr)
-> @@ -938,6 +894,50 @@ int dax_pfn_mkwrite(struct vm_fault *vmf)
->  }
->  EXPORT_SYMBOL_GPL(dax_pfn_mkwrite);
->  
-> +/*
-> + * The user has performed a load from a hole in the file.  Allocating
-> + * a new page in the file would cause excessive storage usage for
-> + * workloads with sparse files.  We allocate a page cache page instead.
-> + * We'll kick it out of the page cache if it's ever written to,
-> + * otherwise it will simply fall out of the page cache under memory
-> + * pressure without ever having been dirtied.
-> + */
-> +static int dax_load_hole(struct address_space *mapping, void **entry,
-> +			 struct vm_fault *vmf)
-> +{
-> +	struct inode *inode = mapping->host;
-> +	struct page *page;
-> +	int ret;
-> +
-> +	/* Hole page already exists? Return it...  */
-> +	if (!radix_tree_exceptional_entry(*entry)) {
-> +		page = *entry;
-> +		goto finish_fault;
-> +	}
-> +
-> +	/* This will replace locked radix tree entry with a hole page */
-> +	page = find_or_create_page(mapping, vmf->pgoff,
-> +				   vmf->gfp_mask | __GFP_ZERO);
-> +	if (!page) {
-> +		ret = VM_FAULT_OOM;
-> +		goto out;
-> +	}
-> +
-> +finish_fault:
-> +	vmf->page = page;
-> +	ret = finish_fault(vmf);
-> +	vmf->page = NULL;
-> +	*entry = page;
-> +	if (!ret) {
-> +		/* Grab reference for PTE that is now referencing the page */
-> +		get_page(page);
-> +		ret = VM_FAULT_NOPAGE;
-> +	}
-> +out:
-> +	trace_dax_load_hole(inode, vmf, ret);
-> +	return ret;
-> +}
-> +
->  static bool dax_range_is_aligned(struct block_device *bdev,
->  				 unsigned int offset, unsigned int length)
->  {
-> -- 
-> 2.9.4
-> 
--- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+T24gRnJpIDIxLTA3LTE3IDE2OjM5OjUzLCBSb3NzIFp3aXNsZXIgd3JvdGU6Cj4gV2hlbiBzZXJ2
+aWNpbmcgbW1hcCgpIHJlYWRzIGZyb20gZmlsZSBob2xlcyB0aGUgY3VycmVudCBEQVggY29kZSBh
+bGxvY2F0ZXMKPiBhIHBhZ2UgY2FjaGUgcGFnZSBvZiBhbGwgemVyb2VzIGFuZCBwbGFjZXMgdGhl
+IHN0cnVjdCBwYWdlIHBvaW50ZXIgaW4gdGhlCj4gbWFwcGluZy0+cGFnZV90cmVlIHJhZGl4IHRy
+ZWUuICBUaGlzIGhhcyB0aHJlZSBtYWpvciBkcmF3YmFja3M6Cj4gCj4gMSkgSXQgY29uc3VtZXMg
+bWVtb3J5IHVubmVjZXNzYXJpbHkuICBGb3IgZXZlcnkgNGsgcGFnZSB0aGF0IGlzIHJlYWQgdmlh
+IGEKPiBEQVggbW1hcCgpIG92ZXIgYSBob2xlLCB3ZSBhbGxvY2F0ZSBhIG5ldyBwYWdlIGNhY2hl
+IHBhZ2UuICBUaGlzIG1lYW5zIHRoYXQKPiBpZiB5b3UgcmVhZCAxR2lCIHdvcnRoIG9mIHBhZ2Vz
+LCB5b3UgZW5kIHVwIHVzaW5nIDFHaUIgb2YgemVyb2VkIG1lbW9yeS4KPiBUaGlzIGlzIGVhc2ls
+eSB2aXNpYmxlIGJ5IGxvb2tpbmcgYXQgdGhlIG92ZXJhbGwgbWVtb3J5IGNvbnN1bXB0aW9uIG9m
+IHRoZQo+IHN5c3RlbSBvciBieSBsb29raW5nIGF0IC9wcm9jL1twaWRdL3NtYXBzOgo+IAo+IAk3
+ZjYyZTcyYjMwMDAtN2Y2MzI3MmIzMDAwIHJ3LXMgMDAwMDAwMDAgMTAzOjAwIDEyICAgL3Jvb3Qv
+ZGF4L2RhdGEKPiAJU2l6ZTogICAgICAgICAgICAxMDQ4NTc2IGtCCj4gCVJzczogICAgICAgICAg
+ICAgMTA0ODU3NiBrQgo+IAlQc3M6ICAgICAgICAgICAgIDEwNDg1NzYga0IKPiAJU2hhcmVkX0Ns
+ZWFuOiAgICAgICAgICAwIGtCCj4gCVNoYXJlZF9EaXJ0eTogICAgICAgICAgMCBrQgo+IAlQcml2
+YXRlX0NsZWFuOiAgIDEwNDg1NzYga0IKPiAJUHJpdmF0ZV9EaXJ0eTogICAgICAgICAwIGtCCj4g
+CVJlZmVyZW5jZWQ6ICAgICAgMTA0ODU3NiBrQgo+IAlBbm9ueW1vdXM6ICAgICAgICAgICAgIDAg
+a0IKPiAJTGF6eUZyZWU6ICAgICAgICAgICAgICAwIGtCCj4gCUFub25IdWdlUGFnZXM6ICAgICAg
+ICAgMCBrQgo+IAlTaG1lbVBtZE1hcHBlZDogICAgICAgIDAga0IKPiAJU2hhcmVkX0h1Z2V0bGI6
+ICAgICAgICAwIGtCCj4gCVByaXZhdGVfSHVnZXRsYjogICAgICAgMCBrQgo+IAlTd2FwOiAgICAg
+ICAgICAgICAgICAgIDAga0IKPiAJU3dhcFBzczogICAgICAgICAgICAgICAwIGtCCj4gCUtlcm5l
+bFBhZ2VTaXplOiAgICAgICAgNCBrQgo+IAlNTVVQYWdlU2l6ZTogICAgICAgICAgIDQga0IKPiAJ
+TG9ja2VkOiAgICAgICAgICAgICAgICAwIGtCCj4gCj4gMikgSXQgaXMgc2xvd2VyIHRoYW4gdXNp
+bmcgYSBjb21tb24gemVybyBwYWdlIGJlY2F1c2UgZWFjaCBwYWdlIGZhdWx0IGhhcwo+IG1vcmUg
+d29yayB0byBkby4gIEluc3RlYWQgb2YganVzdCBpbnNlcnRpbmcgYSBjb21tb24gemVybyBwYWdl
+IHdlIGhhdmUgdG8KPiBhbGxvY2F0ZSBhIHBhZ2UgY2FjaGUgcGFnZSwgemVybyBpdCwgYW5kIHRo
+ZW4gaW5zZXJ0IGl0LiAgSGVyZSBhcmUgdGhlCj4gYXZlcmFnZSBsYXRlbmNpZXMgb2YgZGF4X2xv
+YWRfaG9sZSgpIGFzIG1lYXN1cmVkIGJ5IGZ0cmFjZSBvbiBhIHJhbmRvbSB0ZXN0Cj4gYm94Ogo+
+IAo+IE9sZCBtZXRob2QsIHVzaW5nIHplcm9lZCBwYWdlIGNhY2hlIHBhZ2VzOgkzLjQgdXMKPiBO
+ZXcgbWV0aG9kLCB1c2luZyB0aGUgY29tbW9uIDRrIHplcm8gcGFnZToJMC44IHVzCj4gCj4gVGhp
+cyB3YXMgdGhlIGF2ZXJhZ2UgbGF0ZW5jeSBvdmVyIDEgR2lCIG9mIHNlcXVlbnRpYWwgcmVhZHMg
+ZG9uZSBieSB0aGlzCj4gc2ltcGxlIGZpbyBzY3JpcHQ6Cj4gCj4gICBbZ2xvYmFsXQo+ICAgc2l6
+ZT0xRwo+ICAgZmlsZW5hbWU9L3Jvb3QvZGF4L2RhdGEKPiAgIGZhbGxvY2F0ZT1ub25lCj4gICBb
+aW9dCj4gICBydz1yZWFkCj4gICBpb2VuZ2luZT1tbWFwCj4gCj4gMykgVGhlIGZhY3QgdGhhdCB3
+ZSBoYWQgdG8gY2hlY2sgZm9yIGJvdGggREFYIGV4Y2VwdGlvbmFsIGVudHJpZXMgYW5kIGZvcgo+
+IHBhZ2UgY2FjaGUgcGFnZXMgaW4gdGhlIHJhZGl4IHRyZWUgbWFkZSB0aGUgREFYIGNvZGUgbW9y
+ZSBjb21wbGV4Lgo+IAo+IFNvbHZlIHRoZXNlIGlzc3VlcyBieSBmb2xsb3dpbmcgdGhlIGxlYWQg
+b2YgdGhlIERBWCBQTUQgY29kZSBhbmQgdXNpbmcgYQo+IGNvbW1vbiA0ayB6ZXJvIHBhZ2UgaW5z
+dGVhZC4gIEFzIHdpdGggdGhlIFBNRCBjb2RlIHdlIHdpbGwgbm93IGluc2VydCBhIERBWAo+IGV4
+Y2VwdGlvbmFsIGVudHJ5IGludG8gdGhlIHJhZGl4IHRyZWUgaW5zdGVhZCBvZiBhIHN0cnVjdCBw
+YWdlIHBvaW50ZXIKPiB3aGljaCBhbGxvd3MgdXMgdG8gcmVtb3ZlIGFsbCB0aGUgc3BlY2lhbCBj
+YXNpbmcgaW4gdGhlIERBWCBjb2RlLgo+IAo+IE5vdGUgdGhhdCB3ZSBkbyBzdGlsbCBwcmV0dHkg
+YWdncmVzc2l2ZWx5IGNoZWNrIGZvciByZWd1bGFyIHBhZ2VzIGluIHRoZQo+IERBWCByYWRpeCB0
+cmVlLCBlc3BlY2lhbGx5IHdoZXJlIHdlIHRha2UgYWN0aW9uIGJhc2VkIG9uIHRoZSBiaXRzIHNl
+dCBpbgo+IHRoZSBwYWdlLiAgSWYgd2UgZXZlciBmaW5kIGEgcmVndWxhciBwYWdlIGluIG91ciBy
+YWRpeCB0cmVlIG5vdyB0aGF0IG1vc3QKPiBsaWtlbHkgbWVhbnMgdGhhdCBzb21lb25lIGJlc2lk
+ZXMgREFYIGlzIGluc2VydGluZyBwYWdlcyAod2hpY2ggaGFzCj4gaGFwcGVuZWQgbG90cyBvZiB0
+aW1lcyBpbiB0aGUgcGFzdCksIGFuZCB3ZSB3YW50IHRvIGZpbmQgdGhhdCBvdXQgZWFybHkgYW5k
+Cj4gZmFpbCBsb3VkbHkuCj4gCj4gVGhpcyBzb2x1dGlvbiBhbHNvIHJlbW92ZXMgdGhlIGV4dHJh
+IG1lbW9yeSBjb25zdW1wdGlvbi4gIEhlcmUgaXMgdGhhdCBzYW1lCj4gL3Byb2MvW3BpZF0vc21h
+cHMgYWZ0ZXIgMUdpQiBvZiByZWFkaW5nIGZyb20gYSBob2xlIHdpdGggdGhlIG5ldyBjb2RlOgo+
+IAo+IAk3ZjIwNTRhNzQwMDAtN2YyMDk0YTc0MDAwIHJ3LXMgMDAwMDAwMDAgMTAzOjAwIDEyICAg
+L3Jvb3QvZGF4L2RhdGEKPiAJU2l6ZTogICAgICAgICAgICAxMDQ4NTc2IGtCCj4gCVJzczogICAg
+ICAgICAgICAgICAgICAgMCBrQgo+IAlQc3M6ICAgICAgICAgICAgICAgICAgIDAga0IKPiAJU2hh
+cmVkX0NsZWFuOiAgICAgICAgICAwIGtCCj4gCVNoYXJlZF9EaXJ0eTogICAgICAgICAgMCBrQgo+
+IAlQcml2YXRlX0NsZWFuOiAgICAgICAgIDAga0IKPiAJUHJpdmF0ZV9EaXJ0eTogICAgICAgICAw
+IGtCCj4gCVJlZmVyZW5jZWQ6ICAgICAgICAgICAgMCBrQgo+IAlBbm9ueW1vdXM6ICAgICAgICAg
+ICAgIDAga0IKPiAJTGF6eUZyZWU6ICAgICAgICAgICAgICAwIGtCCj4gCUFub25IdWdlUGFnZXM6
+ICAgICAgICAgMCBrQgo+IAlTaG1lbVBtZE1hcHBlZDogICAgICAgIDAga0IKPiAJU2hhcmVkX0h1
+Z2V0bGI6ICAgICAgICAwIGtCCj4gCVByaXZhdGVfSHVnZXRsYjogICAgICAgMCBrQgo+IAlTd2Fw
+OiAgICAgICAgICAgICAgICAgIDAga0IKPiAJU3dhcFBzczogICAgICAgICAgICAgICAwIGtCCj4g
+CUtlcm5lbFBhZ2VTaXplOiAgICAgICAgNCBrQgo+IAlNTVVQYWdlU2l6ZTogICAgICAgICAgIDQg
+a0IKPiAJTG9ja2VkOiAgICAgICAgICAgICAgICAwIGtCCj4gCj4gT3ZlcmFsbCBzeXN0ZW0gbWVt
+b3J5IGNvbnN1bXB0aW9uIGlzIHNpbWlsYXJseSBpbXByb3ZlZC4KPiAKPiBBbm90aGVyIG1ham9y
+IGNoYW5nZSBpcyB0aGF0IHdlIHJlbW92ZSBkYXhfcGZuX21rd3JpdGUoKSBmcm9tIG91ciBmYXVs
+dAo+IGZsb3csIGFuZCBpbnN0ZWFkIHJlbHkgb24gdGhlIHBhZ2UgZmF1bHQgaXRzZWxmIHRvIG1h
+a2UgdGhlIFBURSBkaXJ0eSBhbmQKPiB3cml0ZWFibGUuICBUaGUgZm9sbG93aW5nIGRlc2NyaXB0
+aW9uIGZyb20gdGhlIHBhdGNoIGFkZGluZyB0aGUKPiB2bV9pbnNlcnRfbWl4ZWRfbWt3cml0ZSgp
+IGNhbGwgZXhwbGFpbnMgdGhpcyBhIGxpdHRsZSBtb3JlOgo+IAo+ICoqKgo+ICAgVG8gYmUgYWJs
+ZSB0byB1c2UgdGhlIGNvbW1vbiA0ayB6ZXJvIHBhZ2UgaW4gREFYIHdlIG5lZWQgdG8gaGF2ZSBv
+dXIgUFRFCj4gICBmYXVsdCBwYXRoIGxvb2sgbW9yZSBsaWtlIG91ciBQTUQgZmF1bHQgcGF0aCB3
+aGVyZSBhIFBURSBlbnRyeSBjYW4gYmUKPiAgIG1hcmtlZCBhcyBkaXJ0eSBhbmQgd3JpdGVhYmxl
+IGFzIGl0IGlzIGZpcnN0IGluc2VydGVkLCByYXRoZXIgdGhhbgo+ICAgd2FpdGluZyBmb3IgYSBm
+b2xsb3ctdXAgZGF4X3Bmbl9ta3dyaXRlKCkgPT4gZmluaXNoX21rd3JpdGVfZmF1bHQoKSBjYWxs
+Lgo+IAo+ICAgUmlnaHQgbm93IHdlIGNhbiByZWx5IG9uIGhhdmluZyBhIGRheF9wZm5fbWt3cml0
+ZSgpIGNhbGwgYmVjYXVzZSB3ZSBjYW4KPiAgIGRpc3Rpbmd1aXNoIGJldHdlZW4gdGhlc2UgdHdv
+IGNhc2VzIGluIGRvX3dwX3BhZ2UoKToKPiAKPiAgICAgICAgICAgY2FzZSAxOiA0ayB6ZXJvIHBh
+Z2UgPT4gd3JpdGFibGUgREFYIHN0b3JhZ2UKPiAgICAgICAgICAgY2FzZSAyOiByZWFkLW9ubHkg
+REFYIHN0b3JhZ2UgPT4gd3JpdGVhYmxlIERBWCBzdG9yYWdlCj4gCj4gICBUaGlzIGRpc3RpbmN0
+aW9uIGlzIG1hZGUgYnkgdmlhIHZtX25vcm1hbF9wYWdlKCkuICB2bV9ub3JtYWxfcGFnZSgpCj4g
+ICByZXR1cm5zIGZhbHNlIGZvciB0aGUgY29tbW9uIDRrIHplcm8gcGFnZSwgdGhvdWdoLCBqdXN0
+IGFzIGl0IGRvZXMgZm9yCj4gICBEQVggcHRlcy4gIEluc3RlYWQgb2Ygc3BlY2lhbCBjYXNpbmcg
+dGhlIERBWCArIDRrIHplcm8gcGFnZSBjYXNlLCB3ZSB3aWxsCj4gICBzaW1wbGlmeSBvdXIgREFY
+IFBURSBwYWdlIGZhdWx0IHNlcXVlbmNlIHNvIHRoYXQgaXQgbWF0Y2hlcyBvdXIgREFYIFBNRAo+
+ICAgc2VxdWVuY2UsIGFuZCBnZXQgcmlkIG9mIHRoZSBkYXhfcGZuX21rd3JpdGUoKSBoZWxwZXIu
+ICBXZSB3aWxsIGluc3RlYWQKPiAgIHVzZSBkYXhfaW9tYXBfZmF1bHQoKSB0byBoYW5kbGUgd3Jp
+dGUtcHJvdGVjdGlvbiBmYXVsdHMuCj4gCj4gICBUaGlzIG1lYW5zIHRoYXQgaW5zZXJ0X3Bmbigp
+IG5lZWRzIHRvIGZvbGxvdyB0aGUgbGVhZCBvZiBpbnNlcnRfcGZuX3BtZCgpCj4gICBhbmQgYWxs
+b3cgdXMgdG8gcGFzcyBpbiBhICdta3dyaXRlJyBmbGFnLiAgSWYgJ21rd3JpdGUnIGlzIHNldAo+
+ICAgaW5zZXJ0X3BmbigpIHdpbGwgZG8gdGhlIHdvcmsgdGhhdCB3YXMgcHJldmlvdXNseSBkb25l
+IGJ5IHdwX3BhZ2VfcmV1c2UoKQo+ICAgYXMgcGFydCBvZiB0aGUgZGF4X3Bmbl9ta3dyaXRlKCkg
+Y2FsbCBwYXRoLgo+ICoqKgo+IAo+IFNpZ25lZC1vZmYtYnk6IFJvc3MgWndpc2xlciA8cm9zcy56
+d2lzbGVyQGxpbnV4LmludGVsLmNvbT4KClRoZSBwYXRjaCBsb29rcyBnb29kIHRvIG1lLiBZb3Ug
+Y2FuIGFkZDoKClJldmlld2VkLWJ5OiBKYW4gS2FyYSA8amFja0BzdXNlLmN6PgoKQW5kIEkgcmVh
+bGx5IGxpa2UgdGhhdCB3ZSd2ZSBnb3QgcmlkIG9mIHRoZXNlIHBhZ2VjYWNoZSBob2xlIHBhZ2Vz
+IQoKCQkJCQkJCQlIb256YQotLSAKSmFuIEthcmEgPGphY2tAc3VzZS5jb20+ClNVU0UgTGFicywg
+Q1IKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KZHJpLWRl
+dmVsIG1haWxpbmcgbGlzdApkcmktZGV2ZWxAbGlzdHMuZnJlZWRlc2t0b3Aub3JnCmh0dHBzOi8v
+bGlzdHMuZnJlZWRlc2t0b3Aub3JnL21haWxtYW4vbGlzdGluZm8vZHJpLWRldmVsCg==
