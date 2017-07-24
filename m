@@ -1,88 +1,85 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH v4 1/5] mm: add mkwrite param to vm_insert_mixed()
-Date: Mon, 24 Jul 2017 09:23:57 -0600
-Message-ID: <20170724152357.GB1639@linux.intel.com>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v4 1/5] mm: add mkwrite param to
+	vm_insert_mixed()
+Date: Mon, 24 Jul 2017 17:59:06 +0200
+Message-ID: <20170724155906.GR652@quack2.suse.cz>
 References: <20170721223956.29485-1-ross.zwisler@linux.intel.com>
  <20170721223956.29485-2-ross.zwisler@linux.intel.com>
  <20170724112530.GI652@quack2.suse.cz>
+ <20170724152357.GB1639@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel@vger.kernel.org,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Christoph Hellwig <hch@lst.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        David Airlie <airlied@linux.ie>,
-        Ingo Molnar <mingo@redhat.com>,
-        Inki Dae <inki.dae@samsung.com>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Joonyoung Shim <jy0922.shim@samsung.com>,
-        Krzysztof Kozlowski <krzk@kernel.org>,
-        Kukjin Kim <kgene@kernel.org>,
-        Kyungmin Park <kyungmin.park@samsung.com>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Patrik Jakobsson <patrik.r.j
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga04.intel.com ([192.55.52.120]:62412 "EHLO mga04.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751671AbdGXPX7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Jul 2017 11:23:59 -0400
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ David Airlie <airlied-cv59FeDIM0c@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ dri-devel-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Patrik Jakobsson <patrik.r.jakobsson-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-samsung-soc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Joonyoung Shim <jy0922.shim-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ Tomi Valkeinen <tomi.valkeinen-l0cyMroinI0@public.gmane.org>,
+ Kyungmin Park <kyungmin.park-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
+ Krzysztof Kozlowski <krzk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ linux-arm-msm-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
+ Inki Dae <inki.dae-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+ Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, linux-arm-kernel-IAPFreCvJWMP3drIcvDWNA@public.gmane.org
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <freedreno-bounces-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170724112530.GI652@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170724152357.GB1639-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/freedreno>,
+ <mailto:freedreno-request-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org?subject=unsubscribe>
+List-Archive: <https://lists.freedesktop.org/archives/freedreno>
+List-Post: <mailto:freedreno-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org>
+List-Help: <mailto:freedreno-request-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/freedreno>,
+ <mailto:freedreno-request-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org?subject=subscribe>
+Errors-To: freedreno-bounces-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org
+Sender: "Freedreno" <freedreno-bounces-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 24, 2017 at 01:25:30PM +0200, Jan Kara wrote:
-> > @@ -1658,14 +1658,28 @@ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
-> >  	if (!pte)
-> >  		goto out;
-> >  	retval = -EBUSY;
-> > -	if (!pte_none(*pte))
-> > -		goto out_unlock;
-> > +	if (!pte_none(*pte)) {
-> > +		if (mkwrite) {
-> > +			if (WARN_ON_ONCE(pte_pfn(*pte) != pfn_t_to_pfn(pfn)))
-> 
-> Is the WARN_ON_ONCE() really appropriate here? Your testcase with private
-> mappings has triggered this situation if I'm right...
-
-Yep, I think this WARN_ON_ONCE() is correct.  The test with private mappings
-had collisions between read-only DAX mappings which were being faulted in via
-insert_pfn(), and read/write COW page cache mappings which were being faulted
-in by wp_page_copy().
-
-I was hitting a false-positive warning when I had the WARN_ON_ONCE() in
-insert_pfn() outside of the mkwrite case, i.e.:
-
-	if (!pte_none(*pte)) {
-		if (WARN_ON_ONCE(pte_pfn(*pte) != pfn_t_to_pfn(pfn)))
-			goto out_unlock;
-		if (mkwrite) {
-			entry = *pte;
-			goto out_mkwrite;
-		} else
-			goto out_unlock;
-	}
-
-This was triggering when one thread was faulting in a read-only DAX mapping
-when another thread had already faulted in a read-write COW page cache page.
-
-The patches I sent out have the warning in the mkwrite case, which would mean
-that we were getting a fault for a read/write PTE in insert_pfn() and the PFN
-didn't match what was already in the PTE.
-
-This can't ever happen in the private mapping case because we will never
-install a read/write PTE for normal storage, only for COW page cache pages.
-Essentially I don't think we should ever be able to hit this warning, and if
-we do I'd like to get the bug report so that I can track down how it was
-happening and make sure that it's safe.  It is in the mkwrite path of
-insert_pfn() which is currently only used by the DAX code.
-
-Does that make sense to you, or would you recommend leaving it out?  (If so,
-why?)
+T24gTW9uIDI0LTA3LTE3IDA5OjIzOjU3LCBSb3NzIFp3aXNsZXIgd3JvdGU6Cj4gT24gTW9uLCBK
+dWwgMjQsIDIwMTcgYXQgMDE6MjU6MzBQTSArMDIwMCwgSmFuIEthcmEgd3JvdGU6Cj4gPiA+IEBA
+IC0xNjU4LDE0ICsxNjU4LDI4IEBAIHN0YXRpYyBpbnQgaW5zZXJ0X3BmbihzdHJ1Y3Qgdm1fYXJl
+YV9zdHJ1Y3QgKnZtYSwgdW5zaWduZWQgbG9uZyBhZGRyLAo+ID4gPiAgCWlmICghcHRlKQo+ID4g
+PiAgCQlnb3RvIG91dDsKPiA+ID4gIAlyZXR2YWwgPSAtRUJVU1k7Cj4gPiA+IC0JaWYgKCFwdGVf
+bm9uZSgqcHRlKSkKPiA+ID4gLQkJZ290byBvdXRfdW5sb2NrOwo+ID4gPiArCWlmICghcHRlX25v
+bmUoKnB0ZSkpIHsKPiA+ID4gKwkJaWYgKG1rd3JpdGUpIHsKPiA+ID4gKwkJCWlmIChXQVJOX09O
+X09OQ0UocHRlX3BmbigqcHRlKSAhPSBwZm5fdF90b19wZm4ocGZuKSkpCj4gPiAKPiA+IElzIHRo
+ZSBXQVJOX09OX09OQ0UoKSByZWFsbHkgYXBwcm9wcmlhdGUgaGVyZT8gWW91ciB0ZXN0Y2FzZSB3
+aXRoIHByaXZhdGUKPiA+IG1hcHBpbmdzIGhhcyB0cmlnZ2VyZWQgdGhpcyBzaXR1YXRpb24gaWYg
+SSdtIHJpZ2h0Li4uCj4gCj4gWWVwLCBJIHRoaW5rIHRoaXMgV0FSTl9PTl9PTkNFKCkgaXMgY29y
+cmVjdC4gIFRoZSB0ZXN0IHdpdGggcHJpdmF0ZSBtYXBwaW5ncwo+IGhhZCBjb2xsaXNpb25zIGJl
+dHdlZW4gcmVhZC1vbmx5IERBWCBtYXBwaW5ncyB3aGljaCB3ZXJlIGJlaW5nIGZhdWx0ZWQgaW4g
+dmlhCj4gaW5zZXJ0X3BmbigpLCBhbmQgcmVhZC93cml0ZSBDT1cgcGFnZSBjYWNoZSBtYXBwaW5n
+cyB3aGljaCB3ZXJlIGJlaW5nIGZhdWx0ZWQKPiBpbiBieSB3cF9wYWdlX2NvcHkoKS4KPiAKPiBJ
+IHdhcyBoaXR0aW5nIGEgZmFsc2UtcG9zaXRpdmUgd2FybmluZyB3aGVuIEkgaGFkIHRoZSBXQVJO
+X09OX09OQ0UoKSBpbgo+IGluc2VydF9wZm4oKSBvdXRzaWRlIG9mIHRoZSBta3dyaXRlIGNhc2Us
+IGkuZS46Cj4gCj4gCWlmICghcHRlX25vbmUoKnB0ZSkpIHsKPiAJCWlmIChXQVJOX09OX09OQ0Uo
+cHRlX3BmbigqcHRlKSAhPSBwZm5fdF90b19wZm4ocGZuKSkpCj4gCQkJZ290byBvdXRfdW5sb2Nr
+Owo+IAkJaWYgKG1rd3JpdGUpIHsKPiAJCQllbnRyeSA9ICpwdGU7Cj4gCQkJZ290byBvdXRfbWt3
+cml0ZTsKPiAJCX0gZWxzZQo+IAkJCWdvdG8gb3V0X3VubG9jazsKPiAJfQo+IAo+IFRoaXMgd2Fz
+IHRyaWdnZXJpbmcgd2hlbiBvbmUgdGhyZWFkIHdhcyBmYXVsdGluZyBpbiBhIHJlYWQtb25seSBE
+QVggbWFwcGluZwo+IHdoZW4gYW5vdGhlciB0aHJlYWQgaGFkIGFscmVhZHkgZmF1bHRlZCBpbiBh
+IHJlYWQtd3JpdGUgQ09XIHBhZ2UgY2FjaGUgcGFnZS4KPiAKPiBUaGUgcGF0Y2hlcyBJIHNlbnQg
+b3V0IGhhdmUgdGhlIHdhcm5pbmcgaW4gdGhlIG1rd3JpdGUgY2FzZSwgd2hpY2ggd291bGQgbWVh
+bgo+IHRoYXQgd2Ugd2VyZSBnZXR0aW5nIGEgZmF1bHQgZm9yIGEgcmVhZC93cml0ZSBQVEUgaW4g
+aW5zZXJ0X3BmbigpIGFuZCB0aGUgUEZOCj4gZGlkbid0IG1hdGNoIHdoYXQgd2FzIGFscmVhZHkg
+aW4gdGhlIFBURS4KPiAKPiBUaGlzIGNhbid0IGV2ZXIgaGFwcGVuIGluIHRoZSBwcml2YXRlIG1h
+cHBpbmcgY2FzZSBiZWNhdXNlIHdlIHdpbGwgbmV2ZXIKPiBpbnN0YWxsIGEgcmVhZC93cml0ZSBQ
+VEUgZm9yIG5vcm1hbCBzdG9yYWdlLCBvbmx5IGZvciBDT1cgcGFnZSBjYWNoZSBwYWdlcy4KPiBF
+c3NlbnRpYWxseSBJIGRvbid0IHRoaW5rIHdlIHNob3VsZCBldmVyIGJlIGFibGUgdG8gaGl0IHRo
+aXMgd2FybmluZywgYW5kIGlmCj4gd2UgZG8gSSdkIGxpa2UgdG8gZ2V0IHRoZSBidWcgcmVwb3J0
+IHNvIHRoYXQgSSBjYW4gdHJhY2sgZG93biBob3cgaXQgd2FzCj4gaGFwcGVuaW5nIGFuZCBtYWtl
+IHN1cmUgdGhhdCBpdCdzIHNhZmUuICBJdCBpcyBpbiB0aGUgbWt3cml0ZSBwYXRoIG9mCj4gaW5z
+ZXJ0X3BmbigpIHdoaWNoIGlzIGN1cnJlbnRseSBvbmx5IHVzZWQgYnkgdGhlIERBWCBjb2RlLgo+
+IAo+IERvZXMgdGhhdCBtYWtlIHNlbnNlIHRvIHlvdSwgb3Igd291bGQgeW91IHJlY29tbWVuZCBs
+ZWF2aW5nIGl0IG91dD8gIChJZiBzbywKPiB3aHk/KQoKQWgsIE9LLCBtYWtlcyBzZW5zZS4gU28g
+ZmVlbCBmcmVlIHRvIGFkZDoKClJldmlld2VkLWJ5OiBKYW4gS2FyYSA8amFja0BzdXNlLmN6PgoK
+CQkJCQkJCQlIb256YQotLSAKSmFuIEthcmEgPGphY2tAc3VzZS5jb20+ClNVU0UgTGFicywgQ1IK
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KRnJlZWRyZW5v
+IG1haWxpbmcgbGlzdApGcmVlZHJlbm9AbGlzdHMuZnJlZWRlc2t0b3Aub3JnCmh0dHBzOi8vbGlz
+dHMuZnJlZWRlc2t0b3Aub3JnL21haWxtYW4vbGlzdGluZm8vZnJlZWRyZW5vCg==
