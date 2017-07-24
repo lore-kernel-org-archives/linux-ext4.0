@@ -1,138 +1,119 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v4 3/5] dax: use common 4k zero page for dax mmap reads
-Date: Mon, 24 Jul 2017 13:46:22 +0200
-Message-ID: <20170724114622.GK652@quack2.suse.cz>
+Subject: Re: [PATCH v4 4/5] dax: remove DAX code from page_cache_tree_insert()
+Date: Mon, 24 Jul 2017 13:47:38 +0200
+Message-ID: <20170724114738.GL652@quack2.suse.cz>
 References: <20170721223956.29485-1-ross.zwisler@linux.intel.com>
- <20170721223956.29485-4-ross.zwisler@linux.intel.com>
+ <20170721223956.29485-5-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Jan Kara <jack@suse.cz>, linux-doc@vger.kernel.org,
- Dave Chinner <david@fromorbit.com>, dri-devel@lists.freedesktop.org,
- linux-mm@kvack.org, Andreas Dilger <adilger.kernel@dilger.ca>,
- Christoph Hellwig <hch@lst.de>, linux-samsung-soc@vger.kernel.org,
- "Darrick J. Wong" <darrick.wong@oracle.com>,
- Tomi Valkeinen <tomi.valkeinen@ti.com>,
- Kyungmin Park <kyungmin.park@samsung.com>,
- Krzysztof Kozlowski <krzk@kernel.org>, Ingo Molnar <mingo@redhat.com>,
- linux-ext4@vger.kernel.org, Matthew Wilcox <mawilcox@microsoft.com>,
- linux-arm-msm@vger.kernel.org, Steven Rostedt <rostedt@goodmis.org>,
- linux-nvdimm@lists.01.org, Alexander Viro <viro@zeniv.linux.org.uk>,
- Dan Williams <dan.j.williams@intel.com>, linux-arm-kernel@lists.infradead.org,
- Theodore Ts'o <tytso@mit.edu>, Jonathan Corbet <corbet@lwn.net>,
- Seung-Woo Kim <sw0312.kim@samsung.com>, linux-kernel@vger.kernel.org,
- linux-xfs@v
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, linux-kernel@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Christoph Hellwig <hch@lst.de>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, David Airlie <airlied@linux.ie>,
+	Ingo Molnar <mingo@redhat.com>, Inki Dae <inki.dae@samsung.com>,
+	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
+	Joonyoung Shim <jy0922.shim@samsung.com>,
+	Krzysztof Kozlowski <krzk@kernel.org>,
+	Kukjin Kim <kgene@kernel.org>,
+	Kyungmin Park <kyungmin.park@samsung.com>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Patrik Jakobsson <patrik.r.jakobsson@gmail.com>,
+	Rob Clark <robdclark@gmail.com>,
+	Seung-Woo Kim <sw0312.kim@samsung.com>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	Tomi Valkeinen <tomi.
 To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <dri-devel-bounces@lists.freedesktop.org>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20170721223956.29485-4-ross.zwisler@linux.intel.com>
-List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
-List-Post: <mailto:dri-devel@lists.freedesktop.org>
-List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
-Errors-To: dri-devel-bounces@lists.freedesktop.org
-Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
+In-Reply-To: <20170721223956.29485-5-ross.zwisler@linux.intel.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gRnJpIDIxLTA3LTE3IDE2OjM5OjUzLCBSb3NzIFp3aXNsZXIgd3JvdGU6Cj4gV2hlbiBzZXJ2
-aWNpbmcgbW1hcCgpIHJlYWRzIGZyb20gZmlsZSBob2xlcyB0aGUgY3VycmVudCBEQVggY29kZSBh
-bGxvY2F0ZXMKPiBhIHBhZ2UgY2FjaGUgcGFnZSBvZiBhbGwgemVyb2VzIGFuZCBwbGFjZXMgdGhl
-IHN0cnVjdCBwYWdlIHBvaW50ZXIgaW4gdGhlCj4gbWFwcGluZy0+cGFnZV90cmVlIHJhZGl4IHRy
-ZWUuICBUaGlzIGhhcyB0aHJlZSBtYWpvciBkcmF3YmFja3M6Cj4gCj4gMSkgSXQgY29uc3VtZXMg
-bWVtb3J5IHVubmVjZXNzYXJpbHkuICBGb3IgZXZlcnkgNGsgcGFnZSB0aGF0IGlzIHJlYWQgdmlh
-IGEKPiBEQVggbW1hcCgpIG92ZXIgYSBob2xlLCB3ZSBhbGxvY2F0ZSBhIG5ldyBwYWdlIGNhY2hl
-IHBhZ2UuICBUaGlzIG1lYW5zIHRoYXQKPiBpZiB5b3UgcmVhZCAxR2lCIHdvcnRoIG9mIHBhZ2Vz
-LCB5b3UgZW5kIHVwIHVzaW5nIDFHaUIgb2YgemVyb2VkIG1lbW9yeS4KPiBUaGlzIGlzIGVhc2ls
-eSB2aXNpYmxlIGJ5IGxvb2tpbmcgYXQgdGhlIG92ZXJhbGwgbWVtb3J5IGNvbnN1bXB0aW9uIG9m
-IHRoZQo+IHN5c3RlbSBvciBieSBsb29raW5nIGF0IC9wcm9jL1twaWRdL3NtYXBzOgo+IAo+IAk3
-ZjYyZTcyYjMwMDAtN2Y2MzI3MmIzMDAwIHJ3LXMgMDAwMDAwMDAgMTAzOjAwIDEyICAgL3Jvb3Qv
-ZGF4L2RhdGEKPiAJU2l6ZTogICAgICAgICAgICAxMDQ4NTc2IGtCCj4gCVJzczogICAgICAgICAg
-ICAgMTA0ODU3NiBrQgo+IAlQc3M6ICAgICAgICAgICAgIDEwNDg1NzYga0IKPiAJU2hhcmVkX0Ns
-ZWFuOiAgICAgICAgICAwIGtCCj4gCVNoYXJlZF9EaXJ0eTogICAgICAgICAgMCBrQgo+IAlQcml2
-YXRlX0NsZWFuOiAgIDEwNDg1NzYga0IKPiAJUHJpdmF0ZV9EaXJ0eTogICAgICAgICAwIGtCCj4g
-CVJlZmVyZW5jZWQ6ICAgICAgMTA0ODU3NiBrQgo+IAlBbm9ueW1vdXM6ICAgICAgICAgICAgIDAg
-a0IKPiAJTGF6eUZyZWU6ICAgICAgICAgICAgICAwIGtCCj4gCUFub25IdWdlUGFnZXM6ICAgICAg
-ICAgMCBrQgo+IAlTaG1lbVBtZE1hcHBlZDogICAgICAgIDAga0IKPiAJU2hhcmVkX0h1Z2V0bGI6
-ICAgICAgICAwIGtCCj4gCVByaXZhdGVfSHVnZXRsYjogICAgICAgMCBrQgo+IAlTd2FwOiAgICAg
-ICAgICAgICAgICAgIDAga0IKPiAJU3dhcFBzczogICAgICAgICAgICAgICAwIGtCCj4gCUtlcm5l
-bFBhZ2VTaXplOiAgICAgICAgNCBrQgo+IAlNTVVQYWdlU2l6ZTogICAgICAgICAgIDQga0IKPiAJ
-TG9ja2VkOiAgICAgICAgICAgICAgICAwIGtCCj4gCj4gMikgSXQgaXMgc2xvd2VyIHRoYW4gdXNp
-bmcgYSBjb21tb24gemVybyBwYWdlIGJlY2F1c2UgZWFjaCBwYWdlIGZhdWx0IGhhcwo+IG1vcmUg
-d29yayB0byBkby4gIEluc3RlYWQgb2YganVzdCBpbnNlcnRpbmcgYSBjb21tb24gemVybyBwYWdl
-IHdlIGhhdmUgdG8KPiBhbGxvY2F0ZSBhIHBhZ2UgY2FjaGUgcGFnZSwgemVybyBpdCwgYW5kIHRo
-ZW4gaW5zZXJ0IGl0LiAgSGVyZSBhcmUgdGhlCj4gYXZlcmFnZSBsYXRlbmNpZXMgb2YgZGF4X2xv
-YWRfaG9sZSgpIGFzIG1lYXN1cmVkIGJ5IGZ0cmFjZSBvbiBhIHJhbmRvbSB0ZXN0Cj4gYm94Ogo+
-IAo+IE9sZCBtZXRob2QsIHVzaW5nIHplcm9lZCBwYWdlIGNhY2hlIHBhZ2VzOgkzLjQgdXMKPiBO
-ZXcgbWV0aG9kLCB1c2luZyB0aGUgY29tbW9uIDRrIHplcm8gcGFnZToJMC44IHVzCj4gCj4gVGhp
-cyB3YXMgdGhlIGF2ZXJhZ2UgbGF0ZW5jeSBvdmVyIDEgR2lCIG9mIHNlcXVlbnRpYWwgcmVhZHMg
-ZG9uZSBieSB0aGlzCj4gc2ltcGxlIGZpbyBzY3JpcHQ6Cj4gCj4gICBbZ2xvYmFsXQo+ICAgc2l6
-ZT0xRwo+ICAgZmlsZW5hbWU9L3Jvb3QvZGF4L2RhdGEKPiAgIGZhbGxvY2F0ZT1ub25lCj4gICBb
-aW9dCj4gICBydz1yZWFkCj4gICBpb2VuZ2luZT1tbWFwCj4gCj4gMykgVGhlIGZhY3QgdGhhdCB3
-ZSBoYWQgdG8gY2hlY2sgZm9yIGJvdGggREFYIGV4Y2VwdGlvbmFsIGVudHJpZXMgYW5kIGZvcgo+
-IHBhZ2UgY2FjaGUgcGFnZXMgaW4gdGhlIHJhZGl4IHRyZWUgbWFkZSB0aGUgREFYIGNvZGUgbW9y
-ZSBjb21wbGV4Lgo+IAo+IFNvbHZlIHRoZXNlIGlzc3VlcyBieSBmb2xsb3dpbmcgdGhlIGxlYWQg
-b2YgdGhlIERBWCBQTUQgY29kZSBhbmQgdXNpbmcgYQo+IGNvbW1vbiA0ayB6ZXJvIHBhZ2UgaW5z
-dGVhZC4gIEFzIHdpdGggdGhlIFBNRCBjb2RlIHdlIHdpbGwgbm93IGluc2VydCBhIERBWAo+IGV4
-Y2VwdGlvbmFsIGVudHJ5IGludG8gdGhlIHJhZGl4IHRyZWUgaW5zdGVhZCBvZiBhIHN0cnVjdCBw
-YWdlIHBvaW50ZXIKPiB3aGljaCBhbGxvd3MgdXMgdG8gcmVtb3ZlIGFsbCB0aGUgc3BlY2lhbCBj
-YXNpbmcgaW4gdGhlIERBWCBjb2RlLgo+IAo+IE5vdGUgdGhhdCB3ZSBkbyBzdGlsbCBwcmV0dHkg
-YWdncmVzc2l2ZWx5IGNoZWNrIGZvciByZWd1bGFyIHBhZ2VzIGluIHRoZQo+IERBWCByYWRpeCB0
-cmVlLCBlc3BlY2lhbGx5IHdoZXJlIHdlIHRha2UgYWN0aW9uIGJhc2VkIG9uIHRoZSBiaXRzIHNl
-dCBpbgo+IHRoZSBwYWdlLiAgSWYgd2UgZXZlciBmaW5kIGEgcmVndWxhciBwYWdlIGluIG91ciBy
-YWRpeCB0cmVlIG5vdyB0aGF0IG1vc3QKPiBsaWtlbHkgbWVhbnMgdGhhdCBzb21lb25lIGJlc2lk
-ZXMgREFYIGlzIGluc2VydGluZyBwYWdlcyAod2hpY2ggaGFzCj4gaGFwcGVuZWQgbG90cyBvZiB0
-aW1lcyBpbiB0aGUgcGFzdCksIGFuZCB3ZSB3YW50IHRvIGZpbmQgdGhhdCBvdXQgZWFybHkgYW5k
-Cj4gZmFpbCBsb3VkbHkuCj4gCj4gVGhpcyBzb2x1dGlvbiBhbHNvIHJlbW92ZXMgdGhlIGV4dHJh
-IG1lbW9yeSBjb25zdW1wdGlvbi4gIEhlcmUgaXMgdGhhdCBzYW1lCj4gL3Byb2MvW3BpZF0vc21h
-cHMgYWZ0ZXIgMUdpQiBvZiByZWFkaW5nIGZyb20gYSBob2xlIHdpdGggdGhlIG5ldyBjb2RlOgo+
-IAo+IAk3ZjIwNTRhNzQwMDAtN2YyMDk0YTc0MDAwIHJ3LXMgMDAwMDAwMDAgMTAzOjAwIDEyICAg
-L3Jvb3QvZGF4L2RhdGEKPiAJU2l6ZTogICAgICAgICAgICAxMDQ4NTc2IGtCCj4gCVJzczogICAg
-ICAgICAgICAgICAgICAgMCBrQgo+IAlQc3M6ICAgICAgICAgICAgICAgICAgIDAga0IKPiAJU2hh
-cmVkX0NsZWFuOiAgICAgICAgICAwIGtCCj4gCVNoYXJlZF9EaXJ0eTogICAgICAgICAgMCBrQgo+
-IAlQcml2YXRlX0NsZWFuOiAgICAgICAgIDAga0IKPiAJUHJpdmF0ZV9EaXJ0eTogICAgICAgICAw
-IGtCCj4gCVJlZmVyZW5jZWQ6ICAgICAgICAgICAgMCBrQgo+IAlBbm9ueW1vdXM6ICAgICAgICAg
-ICAgIDAga0IKPiAJTGF6eUZyZWU6ICAgICAgICAgICAgICAwIGtCCj4gCUFub25IdWdlUGFnZXM6
-ICAgICAgICAgMCBrQgo+IAlTaG1lbVBtZE1hcHBlZDogICAgICAgIDAga0IKPiAJU2hhcmVkX0h1
-Z2V0bGI6ICAgICAgICAwIGtCCj4gCVByaXZhdGVfSHVnZXRsYjogICAgICAgMCBrQgo+IAlTd2Fw
-OiAgICAgICAgICAgICAgICAgIDAga0IKPiAJU3dhcFBzczogICAgICAgICAgICAgICAwIGtCCj4g
-CUtlcm5lbFBhZ2VTaXplOiAgICAgICAgNCBrQgo+IAlNTVVQYWdlU2l6ZTogICAgICAgICAgIDQg
-a0IKPiAJTG9ja2VkOiAgICAgICAgICAgICAgICAwIGtCCj4gCj4gT3ZlcmFsbCBzeXN0ZW0gbWVt
-b3J5IGNvbnN1bXB0aW9uIGlzIHNpbWlsYXJseSBpbXByb3ZlZC4KPiAKPiBBbm90aGVyIG1ham9y
-IGNoYW5nZSBpcyB0aGF0IHdlIHJlbW92ZSBkYXhfcGZuX21rd3JpdGUoKSBmcm9tIG91ciBmYXVs
-dAo+IGZsb3csIGFuZCBpbnN0ZWFkIHJlbHkgb24gdGhlIHBhZ2UgZmF1bHQgaXRzZWxmIHRvIG1h
-a2UgdGhlIFBURSBkaXJ0eSBhbmQKPiB3cml0ZWFibGUuICBUaGUgZm9sbG93aW5nIGRlc2NyaXB0
-aW9uIGZyb20gdGhlIHBhdGNoIGFkZGluZyB0aGUKPiB2bV9pbnNlcnRfbWl4ZWRfbWt3cml0ZSgp
-IGNhbGwgZXhwbGFpbnMgdGhpcyBhIGxpdHRsZSBtb3JlOgo+IAo+ICoqKgo+ICAgVG8gYmUgYWJs
-ZSB0byB1c2UgdGhlIGNvbW1vbiA0ayB6ZXJvIHBhZ2UgaW4gREFYIHdlIG5lZWQgdG8gaGF2ZSBv
-dXIgUFRFCj4gICBmYXVsdCBwYXRoIGxvb2sgbW9yZSBsaWtlIG91ciBQTUQgZmF1bHQgcGF0aCB3
-aGVyZSBhIFBURSBlbnRyeSBjYW4gYmUKPiAgIG1hcmtlZCBhcyBkaXJ0eSBhbmQgd3JpdGVhYmxl
-IGFzIGl0IGlzIGZpcnN0IGluc2VydGVkLCByYXRoZXIgdGhhbgo+ICAgd2FpdGluZyBmb3IgYSBm
-b2xsb3ctdXAgZGF4X3Bmbl9ta3dyaXRlKCkgPT4gZmluaXNoX21rd3JpdGVfZmF1bHQoKSBjYWxs
-Lgo+IAo+ICAgUmlnaHQgbm93IHdlIGNhbiByZWx5IG9uIGhhdmluZyBhIGRheF9wZm5fbWt3cml0
-ZSgpIGNhbGwgYmVjYXVzZSB3ZSBjYW4KPiAgIGRpc3Rpbmd1aXNoIGJldHdlZW4gdGhlc2UgdHdv
-IGNhc2VzIGluIGRvX3dwX3BhZ2UoKToKPiAKPiAgICAgICAgICAgY2FzZSAxOiA0ayB6ZXJvIHBh
-Z2UgPT4gd3JpdGFibGUgREFYIHN0b3JhZ2UKPiAgICAgICAgICAgY2FzZSAyOiByZWFkLW9ubHkg
-REFYIHN0b3JhZ2UgPT4gd3JpdGVhYmxlIERBWCBzdG9yYWdlCj4gCj4gICBUaGlzIGRpc3RpbmN0
-aW9uIGlzIG1hZGUgYnkgdmlhIHZtX25vcm1hbF9wYWdlKCkuICB2bV9ub3JtYWxfcGFnZSgpCj4g
-ICByZXR1cm5zIGZhbHNlIGZvciB0aGUgY29tbW9uIDRrIHplcm8gcGFnZSwgdGhvdWdoLCBqdXN0
-IGFzIGl0IGRvZXMgZm9yCj4gICBEQVggcHRlcy4gIEluc3RlYWQgb2Ygc3BlY2lhbCBjYXNpbmcg
-dGhlIERBWCArIDRrIHplcm8gcGFnZSBjYXNlLCB3ZSB3aWxsCj4gICBzaW1wbGlmeSBvdXIgREFY
-IFBURSBwYWdlIGZhdWx0IHNlcXVlbmNlIHNvIHRoYXQgaXQgbWF0Y2hlcyBvdXIgREFYIFBNRAo+
-ICAgc2VxdWVuY2UsIGFuZCBnZXQgcmlkIG9mIHRoZSBkYXhfcGZuX21rd3JpdGUoKSBoZWxwZXIu
-ICBXZSB3aWxsIGluc3RlYWQKPiAgIHVzZSBkYXhfaW9tYXBfZmF1bHQoKSB0byBoYW5kbGUgd3Jp
-dGUtcHJvdGVjdGlvbiBmYXVsdHMuCj4gCj4gICBUaGlzIG1lYW5zIHRoYXQgaW5zZXJ0X3Bmbigp
-IG5lZWRzIHRvIGZvbGxvdyB0aGUgbGVhZCBvZiBpbnNlcnRfcGZuX3BtZCgpCj4gICBhbmQgYWxs
-b3cgdXMgdG8gcGFzcyBpbiBhICdta3dyaXRlJyBmbGFnLiAgSWYgJ21rd3JpdGUnIGlzIHNldAo+
-ICAgaW5zZXJ0X3BmbigpIHdpbGwgZG8gdGhlIHdvcmsgdGhhdCB3YXMgcHJldmlvdXNseSBkb25l
-IGJ5IHdwX3BhZ2VfcmV1c2UoKQo+ICAgYXMgcGFydCBvZiB0aGUgZGF4X3Bmbl9ta3dyaXRlKCkg
-Y2FsbCBwYXRoLgo+ICoqKgo+IAo+IFNpZ25lZC1vZmYtYnk6IFJvc3MgWndpc2xlciA8cm9zcy56
-d2lzbGVyQGxpbnV4LmludGVsLmNvbT4KClRoZSBwYXRjaCBsb29rcyBnb29kIHRvIG1lLiBZb3Ug
-Y2FuIGFkZDoKClJldmlld2VkLWJ5OiBKYW4gS2FyYSA8amFja0BzdXNlLmN6PgoKQW5kIEkgcmVh
-bGx5IGxpa2UgdGhhdCB3ZSd2ZSBnb3QgcmlkIG9mIHRoZXNlIHBhZ2VjYWNoZSBob2xlIHBhZ2Vz
-IQoKCQkJCQkJCQlIb256YQotLSAKSmFuIEthcmEgPGphY2tAc3VzZS5jb20+ClNVU0UgTGFicywg
-Q1IKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KZHJpLWRl
-dmVsIG1haWxpbmcgbGlzdApkcmktZGV2ZWxAbGlzdHMuZnJlZWRlc2t0b3Aub3JnCmh0dHBzOi8v
-bGlzdHMuZnJlZWRlc2t0b3Aub3JnL21haWxtYW4vbGlzdGluZm8vZHJpLWRldmVsCg==
+On Fri 21-07-17 16:39:54, Ross Zwisler wrote:
+> Now that we no longer insert struct page pointers in DAX radix trees we can
+> remove the special casing for DAX in page_cache_tree_insert().  This also
+> allows us to make dax_wake_mapping_entry_waiter() local to fs/dax.c,
+> removing it from dax.h.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Suggested-by: Jan Kara <jack@suse.cz>
+
+Looks good. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+
+> ---
+>  fs/dax.c            |  2 +-
+>  include/linux/dax.h |  2 --
+>  mm/filemap.c        | 13 ++-----------
+>  3 files changed, 3 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/dax.c b/fs/dax.c
+> index fb0e4c1..0e27d90 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -127,7 +127,7 @@ static int wake_exceptional_entry_func(wait_queue_entry_t *wait, unsigned int mo
+>   * correct waitqueue where tasks might be waiting for that old 'entry' and
+>   * wake them.
+>   */
+> -void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+> +static void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+>  		pgoff_t index, void *entry, bool wake_all)
+>  {
+>  	struct exceptional_entry_key key;
+> diff --git a/include/linux/dax.h b/include/linux/dax.h
+> index 29cced8..afa99bb 100644
+> --- a/include/linux/dax.h
+> +++ b/include/linux/dax.h
+> @@ -122,8 +122,6 @@ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+>  int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
+>  int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
+>  				      pgoff_t index);
+> -void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+> -		pgoff_t index, void *entry, bool wake_all);
+>  
+>  #ifdef CONFIG_FS_DAX
+>  int __dax_zero_page_range(struct block_device *bdev,
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index a497024..1bf1265 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -130,17 +130,8 @@ static int page_cache_tree_insert(struct address_space *mapping,
+>  			return -EEXIST;
+>  
+>  		mapping->nrexceptional--;
+> -		if (!dax_mapping(mapping)) {
+> -			if (shadowp)
+> -				*shadowp = p;
+> -		} else {
+> -			/* DAX can replace empty locked entry with a hole */
+> -			WARN_ON_ONCE(p !=
+> -				dax_radix_locked_entry(0, RADIX_DAX_EMPTY));
+> -			/* Wakeup waiters for exceptional entry lock */
+> -			dax_wake_mapping_entry_waiter(mapping, page->index, p,
+> -						      true);
+> -		}
+> +		if (shadowp)
+> +			*shadowp = p;
+>  	}
+>  	__radix_tree_replace(&mapping->page_tree, node, slot, page,
+>  			     workingset_update_node, mapping);
+> -- 
+> 2.9.4
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
