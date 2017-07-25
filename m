@@ -1,55 +1,56 @@
-From: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-Subject: Re: [PATCH v5 1/5] mm: add vm_insert_mixed_mkwrite()
-Date: Tue, 25 Jul 2017 14:15:22 +0200
-Message-ID: <20170725121522.GA13457@lst.de>
-References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
- <20170724170616.25810-2-ross.zwisler@linux.intel.com>
- <20170724221400.pcq5zvke7w2yfkxi@node.shutemov.name>
- <20170725080158.GA5374@lst.de> <20170725093508.GA19943@quack2.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v4 3/3] ext4: Add IOMAP_REPORT support for inline data
+Date: Tue, 25 Jul 2017 14:16:44 +0200
+Message-ID: <20170725121644.GF19943@quack2.suse.cz>
+References: <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com>
+ <1499462881-4238-4-git-send-email-agruenba@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Jonathan Corbet <corbet-T1hC0tSOHrs@public.gmane.org>,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
- linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
- Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- "Kirill A. Shutemov" <kirill-oKw7cIdHH8eLwutG50LtGA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@lst.de>, Jan Kara <jack@suse.cz>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:47654 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750732AbdGYMQw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Jul 2017 08:16:52 -0400
 Content-Disposition: inline
-In-Reply-To: <20170725093508.GA19943-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1499462881-4238-4-git-send-email-agruenba@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 25, 2017 at 11:35:08AM +0200, Jan Kara wrote:
-> On Tue 25-07-17 10:01:58, Christoph Hellwig wrote:
-> > On Tue, Jul 25, 2017 at 01:14:00AM +0300, Kirill A. Shutemov wrote:
-> > > I guess it's up to filesystem if it wants to reuse the same spot to write
-> > > data or not. I think your assumptions works for ext4 and xfs. I wouldn't
-> > > be that sure for btrfs or other filesystems with CoW support.
-> > 
-> > Or XFS with reflinks for that matter.  Which currently can't be
-> > combined with DAX, but I had a somewhat working version a few month
-> > ago.
+On Fri 07-07-17 23:28:01, Andreas Gruenbacher wrote:
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 82f3f7d..e2b0a8a 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3361,8 +3361,13 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  	bool delalloc = false;
+>  	int ret;
+>  
+> -	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
+> -		return -ERANGE;
+> +	if (ext4_has_inline_data(inode)) {
+> +		if (WARN_ON_ONCE(!(flags & IOMAP_REPORT)))
+> +			return -ERANGE;
+> +		if (!ext4_inline_data_iomap(inode, iomap) &&
+> +		    offset < iomap->length)
+
+Hum, what's the thinking behind this "offset < iomap->length" check? If it
+fails, we'd just fall through to the normal case which I'm not sure is
+guaranteed to be safe? Shouldn't we return error instead?
+
+								Honza
+
+> +			return 0;
+> +	}
+>  
+>  	map.m_lblk = first_block;
+>  	map.m_len = last_block - first_block + 1;
+> -- 
+> 2.7.5
 > 
-> But in cases like COW when the block mapping changes, the process
-> must run unmap_mapping_range() before installing the new PTE so that all
-> processes mapping this file offset actually refault and see the new
-> mapping. So this would go through pte_none() case. Am I missing something?
-
-Yes, for DAX COW mappings we'd probably need something like this, unlike
-the pagecache COW handling for which only the underlying block change,
-but not the page.
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
