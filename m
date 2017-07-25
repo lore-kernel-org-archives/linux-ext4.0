@@ -1,50 +1,77 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH v4 3/3] ext4: Add IOMAP_REPORT support for inline data
-Date: Tue, 25 Jul 2017 14:19:01 +0200
-Message-ID: <CAHc6FU59B+s9rktG8PmDJvqnag-hQMcwJC57N-ZVFF2JwjAAPg@mail.gmail.com>
-References: <CAHc6FU4u+G1gtZVr3CUbJi2i+GwWhfDUOZemQ4Nnde=uiOmjXA@mail.gmail.com>
- <1499462881-4238-4-git-send-email-agruenba@redhat.com> <20170725121644.GF19943@quack2.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 5/5] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
+Date: Tue, 25 Jul 2017 14:45:11 +0200
+Message-ID: <20170725124511.GG19943@quack2.suse.cz>
+References: <20170629135420.21357-1-hch@lst.de>
+ <20170629135420.21357-6-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Christoph Hellwig <hch@lst.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-xfs@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Gruenbacher <agruenba@redhat.com>, Jan Kara <jack@suse.cz>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ua0-f169.google.com ([209.85.217.169]:34446 "EHLO
-        mail-ua0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750839AbdGYMTC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Jul 2017 08:19:02 -0400
-Received: by mail-ua0-f169.google.com with SMTP id q25so82521821uah.1
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Jul 2017 05:19:02 -0700 (PDT)
-In-Reply-To: <20170725121644.GF19943@quack2.suse.cz>
+Received: from mx2.suse.de ([195.135.220.15]:50456 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750897AbdGYMpP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Jul 2017 08:45:15 -0400
+Content-Disposition: inline
+In-Reply-To: <20170629135420.21357-6-hch@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 25, 2017 at 2:16 PM, Jan Kara <jack@suse.cz> wrote:
-> On Fri 07-07-17 23:28:01, Andreas Gruenbacher wrote:
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 82f3f7d..e2b0a8a 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -3361,8 +3361,13 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
->>       bool delalloc = false;
->>       int ret;
->>
->> -     if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
->> -             return -ERANGE;
->> +     if (ext4_has_inline_data(inode)) {
->> +             if (WARN_ON_ONCE(!(flags & IOMAP_REPORT)))
->> +                     return -ERANGE;
->> +             if (!ext4_inline_data_iomap(inode, iomap) &&
->> +                 offset < iomap->length)
->
-> Hum, what's the thinking behind this "offset < iomap->length" check? If it
-> fails, we'd just fall through to the normal case which I'm not sure is
-> guaranteed to be safe? Shouldn't we return error instead?
+On Thu 29-06-17 06:54:20, Christoph Hellwig wrote:
+> @@ -3359,6 +3358,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  	unsigned long first_block = offset >> blkbits;
+>  	unsigned long last_block = (offset + length - 1) >> blkbits;
+>  	struct ext4_map_blocks map;
+> +	bool delalloc = false;
+>  	int ret;
+>  
+>  	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
+> @@ -3369,6 +3369,27 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  
+>  	if (!(flags & IOMAP_WRITE)) {
+>  		ret = ext4_map_blocks(NULL, inode, &map, 0);
+> +		if (!ret) {
+> +			struct extent_status es = {};
+> +
+> +			ext4_es_find_delayed_extent_range(inode, map.m_lblk,
+> +					map.m_lblk + map.m_len - 1, &es);
+> +			/* Is delalloc data before next block in extent tree? */
+> +			if (es.es_len && es.es_lblk < map.m_lblk + map.m_len) {
+> +				ext4_lblk_t offset = 0;
+> +
+> +				if (es.es_lblk < map.m_lblk)
+> +					offset = map.m_lblk - es.es_lblk;
+> +				map.m_lblk = es.es_lblk + offset;
+> +				map.m_pblk = ext4_es_pblock(&es) + offset;
 
-Indeed. I'll send out an updated patch queue including this and
-several other changes shortly.
+This is wrong for delalloc extent - adding offset to some magic block
+value...
 
-Thanks,
-Andreas
+> +				map.m_len = es.es_len - offset;
+> +				if (ext4_es_status(&es) & EXTENT_STATUS_UNWRITTEN)
+> +					map.m_flags |= EXT4_MAP_UNWRITTEN;
+> +				if (ext4_es_status(&es) & EXTENT_STATUS_DELAYED)
+> +					delalloc = true;
+> +				ret = 1;
+> +			}
+> +		}
+
+Also the delalloc handling seems to be wrong that if we have file as:
+
+HD
+
+where H is hole, D is delalloc block, and iomap is called at offset 0, we
+should be getting back "hole at 0" back but instead you will return
+"delalloc at 1".
+
+We deal with a similar situation in ext4_da_map_blocks() so it would be
+good if we could reuse that one rather than reimplementing it here. But
+factoring the necessary functionality out isn't that easy.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
