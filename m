@@ -1,77 +1,67 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 5/5] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
-Date: Tue, 25 Jul 2017 14:45:11 +0200
-Message-ID: <20170725124511.GG19943@quack2.suse.cz>
-References: <20170629135420.21357-1-hch@lst.de>
- <20170629135420.21357-6-hch@lst.de>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v5 1/5] mm: add vm_insert_mixed_mkwrite()
+Date: Tue, 25 Jul 2017 14:50:37 +0200
+Message-ID: <20170725125037.GH19943@quack2.suse.cz>
+References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
+ <20170724170616.25810-2-ross.zwisler@linux.intel.com>
+ <20170724221400.pcq5zvke7w2yfkxi@node.shutemov.name>
+ <20170725080158.GA5374@lst.de>
+ <20170725093508.GA19943@quack2.suse.cz>
+ <20170725121522.GA13457@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Gruenbacher <agruenba@redhat.com>, Jan Kara <jack@suse.cz>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:50456 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750897AbdGYMpP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Jul 2017 08:45:15 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Jonathan Corbet <corbet-T1hC0tSOHrs@public.gmane.org>,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Steven Rostedt <rostedt-nx8X9YLhiw1AfugRpC6u6w@public.gmane.org>,
+ linux-doc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, "Kirill A. Shutemov" <kirill-oKw7cIdHH8eLwutG50LtGA@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+To: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170629135420.21357-6-hch@lst.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170725121522.GA13457-jcswGhMUV9g@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 29-06-17 06:54:20, Christoph Hellwig wrote:
-> @@ -3359,6 +3358,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
->  	unsigned long first_block = offset >> blkbits;
->  	unsigned long last_block = (offset + length - 1) >> blkbits;
->  	struct ext4_map_blocks map;
-> +	bool delalloc = false;
->  	int ret;
->  
->  	if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
-> @@ -3369,6 +3369,27 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
->  
->  	if (!(flags & IOMAP_WRITE)) {
->  		ret = ext4_map_blocks(NULL, inode, &map, 0);
-> +		if (!ret) {
-> +			struct extent_status es = {};
-> +
-> +			ext4_es_find_delayed_extent_range(inode, map.m_lblk,
-> +					map.m_lblk + map.m_len - 1, &es);
-> +			/* Is delalloc data before next block in extent tree? */
-> +			if (es.es_len && es.es_lblk < map.m_lblk + map.m_len) {
-> +				ext4_lblk_t offset = 0;
-> +
-> +				if (es.es_lblk < map.m_lblk)
-> +					offset = map.m_lblk - es.es_lblk;
-> +				map.m_lblk = es.es_lblk + offset;
-> +				map.m_pblk = ext4_es_pblock(&es) + offset;
+On Tue 25-07-17 14:15:22, Christoph Hellwig wrote:
+> On Tue, Jul 25, 2017 at 11:35:08AM +0200, Jan Kara wrote:
+> > On Tue 25-07-17 10:01:58, Christoph Hellwig wrote:
+> > > On Tue, Jul 25, 2017 at 01:14:00AM +0300, Kirill A. Shutemov wrote:
+> > > > I guess it's up to filesystem if it wants to reuse the same spot to write
+> > > > data or not. I think your assumptions works for ext4 and xfs. I wouldn't
+> > > > be that sure for btrfs or other filesystems with CoW support.
+> > > 
+> > > Or XFS with reflinks for that matter.  Which currently can't be
+> > > combined with DAX, but I had a somewhat working version a few month
+> > > ago.
+> > 
+> > But in cases like COW when the block mapping changes, the process
+> > must run unmap_mapping_range() before installing the new PTE so that all
+> > processes mapping this file offset actually refault and see the new
+> > mapping. So this would go through pte_none() case. Am I missing something?
+> 
+> Yes, for DAX COW mappings we'd probably need something like this, unlike
+> the pagecache COW handling for which only the underlying block change,
+> but not the page.
 
-This is wrong for delalloc extent - adding offset to some magic block
-value...
-
-> +				map.m_len = es.es_len - offset;
-> +				if (ext4_es_status(&es) & EXTENT_STATUS_UNWRITTEN)
-> +					map.m_flags |= EXT4_MAP_UNWRITTEN;
-> +				if (ext4_es_status(&es) & EXTENT_STATUS_DELAYED)
-> +					delalloc = true;
-> +				ret = 1;
-> +			}
-> +		}
-
-Also the delalloc handling seems to be wrong that if we have file as:
-
-HD
-
-where H is hole, D is delalloc block, and iomap is called at offset 0, we
-should be getting back "hole at 0" back but instead you will return
-"delalloc at 1".
-
-We deal with a similar situation in ext4_da_map_blocks() so it would be
-good if we could reuse that one rather than reimplementing it here. But
-factoring the necessary functionality out isn't that easy.
+Right. So again nothing where the WARN_ON should trigger. That being said I
+don't care about the WARN_ON too deeply but it can help to catch DAX bugs
+so if we can keep it I'd prefer to do so...
 
 								Honza
 -- 
-Jan Kara <jack@suse.com>
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
 SUSE Labs, CR
