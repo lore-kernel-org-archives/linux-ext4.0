@@ -1,165 +1,67 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: bcache with existing ext4 filesystem
-Date: Tue, 25 Jul 2017 15:46:04 +0200
-Message-ID: <20170725134604.GA26445@amd>
-References: <20170724185703.GA31422@amd>
- <64c810cf-a95c-f862-f25a-ebd7419b2632@thelounge.net>
- <20170724191548.GA32425@amd>
- <20170724192718.t7n5zgualz5lillg@thunk.org>
- <20170724200451.GA4318@amd>
- <20170725045156.kbyaxj4mmi75yyt5@thunk.org>
+From: "Kirill A. Shutemov" <kirill@shutemov.name>
+Subject: Re: [PATCH v5 1/5] mm: add vm_insert_mixed_mkwrite()
+Date: Tue, 25 Jul 2017 17:31:20 +0300
+Message-ID: <20170725143120.fyjcxwsoff34vqoj@node.shutemov.name>
+References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
+ <20170724170616.25810-2-ross.zwisler@linux.intel.com>
+ <20170724221400.pcq5zvke7w2yfkxi@node.shutemov.name>
+ <20170725080158.GA5374@lst.de>
+ <20170725093508.GA19943@quack2.suse.cz>
+ <20170725121522.GA13457@lst.de>
+ <20170725125037.GH19943@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="9jxsPFA5p3P2qPhR"
-To: Theodore Ts'o <tytso@mit.edu>,
-        Reindl Harald <h.reindl@thelounge.net>,
-        linux-ext4@vger.kernel.org,
-        kernel list <linux-kernel@vger.kernel.org>,
-        kent.overstreet@gmail.com, linux-bcache@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@lst.de>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Ingo Molnar <mingo@redhat.com>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Matthew Wilcox <mawilcox@microsoft.com>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-doc-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170725045156.kbyaxj4mmi75yyt5@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20170725125037.GH19943@quack2.suse.cz>
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Jul 25, 2017 at 02:50:37PM +0200, Jan Kara wrote:
+> On Tue 25-07-17 14:15:22, Christoph Hellwig wrote:
+> > On Tue, Jul 25, 2017 at 11:35:08AM +0200, Jan Kara wrote:
+> > > On Tue 25-07-17 10:01:58, Christoph Hellwig wrote:
+> > > > On Tue, Jul 25, 2017 at 01:14:00AM +0300, Kirill A. Shutemov wrote:
+> > > > > I guess it's up to filesystem if it wants to reuse the same spot to write
+> > > > > data or not. I think your assumptions works for ext4 and xfs. I wouldn't
+> > > > > be that sure for btrfs or other filesystems with CoW support.
+> > > > 
+> > > > Or XFS with reflinks for that matter.  Which currently can't be
+> > > > combined with DAX, but I had a somewhat working version a few month
+> > > > ago.
+> > > 
+> > > But in cases like COW when the block mapping changes, the process
+> > > must run unmap_mapping_range() before installing the new PTE so that all
+> > > processes mapping this file offset actually refault and see the new
+> > > mapping. So this would go through pte_none() case. Am I missing something?
+> > 
+> > Yes, for DAX COW mappings we'd probably need something like this, unlike
+> > the pagecache COW handling for which only the underlying block change,
+> > but not the page.
+> 
+> Right. So again nothing where the WARN_ON should trigger.
 
---9jxsPFA5p3P2qPhR
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Yes. I was confused on how COW is handled.
 
-Hi!
+Acked-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
 
-> > Question for you was... Is the first 1KiB of each ext4 filesystem still
-> > free and "reserved for a bootloader"?
->=20
-> Yes.
->=20
-> > If I needed more for bcache superblock (8KiB, IIRC), would that be
-> > easy to accomplish on existing filesystem?
->=20
-> Huh?  Why would the bcache superblock matter when you're talking about
-> the ext4 layout?  The bcache superblock will be on the bcache
-> device/partition, and the ext4 superblock will be on the ext4
-> device/partition.
-
-So this is what I came up with so far. With SSD in USB2 envelope (and
-previous version of the patch), git diff goes from 9seconds to
-3seconds; not too bad. git diff on (different) ssd is 1.5seconds.
-
-Warning: this is rather dangerous, as it is easy to make cache go
-out-of-sync with data partition. To solve that...
-
-Is there some field in ext2 superblock that changes every time
-filesystem is changed? Is mtime changed by fsck/badblocks/...?
-
-Best regards,
-							Pavel
-
-
-
-diff --git a/drivers/md/bcache/super.c b/drivers/md/bcache/super.c
-index e57353e..f8c0aef 100644
---- a/drivers/md/bcache/super.c
-+++ b/drivers/md/bcache/super.c
-@@ -6,6 +6,7 @@
-  * Copyright 2012 Google, Inc.
-  */
-=20
-+#define DEBUG
- #include "bcache.h"
- #include "btree.h"
- #include "debug.h"
-@@ -67,7 +68,7 @@ static const char *read_super(struct cache_sb *sb, struct=
- block_device *bdev,
- {
- 	const char *err;
- 	struct cache_sb *s;
--	struct buffer_head *bh =3D __bread(bdev, 1, SB_SIZE);
-+	struct buffer_head *bh =3D __bread(bdev, SB_SECTOR/8, SB_SIZE);
- 	unsigned i;
-=20
- 	if (!bh)
-@@ -95,10 +96,11 @@ static const char *read_super(struct cache_sb *sb, stru=
-ct block_device *bdev,
- 	pr_debug("read sb version %llu, flags %llu, seq %llu, journal size %u",
- 		 sb->version, sb->flags, sb->seq, sb->keys);
-=20
--	err =3D "Not a bcache superblock";
-+	err =3D "Not a bcache superblock: offset";
- 	if (sb->offset !=3D SB_SECTOR)
- 		goto err;
-=20
-+	err =3D "Not a bcache superblock: magic";=09
- 	if (memcmp(sb->magic, bcache_magic, 16))
- 		goto err;
-=20
-@@ -124,7 +126,7 @@ static const char *read_super(struct cache_sb *sb, stru=
-ct block_device *bdev,
- 	case BCACHE_SB_VERSION_BDEV:
- 		sb->data_offset	=3D BDEV_DATA_START_DEFAULT;
- 		break;
--	case BCACHE_SB_VERSION_BDEV_WITH_OFFSET:
-+//	case BCACHE_SB_VERSION_BDEV_WITH_OFFSET:
- 		sb->data_offset	=3D le64_to_cpu(s->data_offset);
-=20
- 		err =3D "Bad data offset";
-@@ -132,6 +134,15 @@ static const char *read_super(struct cache_sb *sb, str=
-uct block_device *bdev,
- 			goto err;
-=20
- 		break;
-+	case BCACHE_SB_VERSION_BDEV_WITH_OFFSET:
-+	case BCACHE_SB_VERSION_BDEV_EXT4_LITE:
-+		sb->data_offset	=3D le64_to_cpu(s->data_offset);
-+		printk("Size of sb is %d\n", sizeof(*sb));
-+		WARN_ON(sizeof(*sb) > 1024);
-+		if (sizeof(*sb) > 1024)
-+			goto err;
-+		break;
-+
- 	case BCACHE_SB_VERSION_CDEV:
- 	case BCACHE_SB_VERSION_CDEV_WITH_UUID:
- 		sb->nbuckets	=3D le64_to_cpu(s->nbuckets);
-diff --git a/include/uapi/linux/bcache.h b/include/uapi/linux/bcache.h
-index e3bb063..b1ef80c 100644
---- a/include/uapi/linux/bcache.h
-+++ b/include/uapi/linux/bcache.h
-@@ -142,12 +142,13 @@ static inline struct bkey *bkey_idx(const struct bkey=
- *k, unsigned nr_keys)
- #define BCACHE_SB_VERSION_BDEV		1
- #define BCACHE_SB_VERSION_CDEV_WITH_UUID 3
- #define BCACHE_SB_VERSION_BDEV_WITH_OFFSET 4
--#define BCACHE_SB_MAX_VERSION		4
-+#define BCACHE_SB_VERSION_BDEV_EXT4_LITE	5
-+#define BCACHE_SB_MAX_VERSION		5
-=20
--#define SB_SECTOR			8
-+#define SB_SECTOR			0
- #define SB_SIZE				4096
- #define SB_LABEL_SIZE			32
--#define SB_JOURNAL_BUCKETS		256U
-+#define SB_JOURNAL_BUCKETS		64U
- /* SB_JOURNAL_BUCKETS must be divisible by BITS_PER_LONG */
- #define MAX_CACHES_PER_SET		8
-=20
-
-
---=20
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blo=
-g.html
-
---9jxsPFA5p3P2qPhR
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAll3S5wACgkQMOfwapXb+vJyawCfSXHk+gsMjnKHm84F6esL6338
-F7gAnjVytXE/lqs4bXJfir/tVkdf/0yw
-=AMyk
------END PGP SIGNATURE-----
-
---9jxsPFA5p3P2qPhR--
+-- 
+ Kirill A. Shutemov
