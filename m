@@ -1,72 +1,114 @@
-From: Damien Guibouret <damien.guibouret@partition-saving.com>
-Subject: Remove useless test and initialisation in name to hash computation
-Date: Tue, 25 Jul 2017 20:40:03 +0200
-Message-ID: <59779083.7000501@partition-saving.com>
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Subject: [PATCH 4.12 084/196] ext2: Dont clear SGID when inheriting ACLs
+Date: Tue, 25 Jul 2017 12:21:23 -0700
+Message-ID: <20170725192050.718870004@linuxfoundation.org>
+References: <20170725192046.422343510@linuxfoundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp4-g21.free.fr ([212.27.42.4]:24968 "EHLO smtp4-g21.free.fr"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750885AbdGYSgH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Jul 2017 14:36:07 -0400
-Received: from [192.168.103.118] (unknown [82.230.26.21])
-        by smtp4-g21.free.fr (Postfix) with ESMTP id BF89219F58A
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Jul 2017 20:36:05 +0200 (CEST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        stable@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Jan Kara <jack@suse.cz>
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170725192046.422343510@linuxfoundation.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+4.12-stable review patch.  If anyone has any objections, please let me know.
 
-I think there is a minor improvment that could be performed on name to hash 
-computation in hash.c. Before first byte modulo 4 the computed value is 
-reinitialised, but it is already correctly initialised before loop and after 
-having processed last byte modulo 4. So the test and initialisation seems useless.
+------------------
 
-For the kernel, this lead to following change (sorry I do not have a git version 
-of it, so it is a simple diff):
----------------------------------------------------------------
---- fs/ext4/hash.c.orig 2017-07-24 20:41:53.000000000 +0200
-+++ fs/ext4/hash.c      2017-07-24 20:42:23.000000000 +0200
-@@ -79,8 +79,6 @@ static void str2hashbuf_signed(const cha
-         if (len > num*4)
-                 len = num * 4;
-         for (i = 0; i < len; i++) {
--               if ((i % 4) == 0)
--                       val = pad;
-                 val = ((int) scp[i]) + (val << 8);
-                 if ((i % 4) == 3) {
-                         *buf++ = val;
-@@ -107,8 +105,6 @@ static void str2hashbuf_unsigned(const c
-         if (len > num*4)
-                 len = num * 4;
-         for (i = 0; i < len; i++) {
--               if ((i % 4) == 0)
--                       val = pad;
-                 val = ((int) ucp[i]) + (val << 8);
-                 if ((i % 4) == 3) {
-                         *buf++ = val;
----------------------------------------------------------------
+From: Jan Kara <jack@suse.cz>
 
-For e2fsprogs, the 2 functions are combined in one, so there is only one change:
----------------------------------------------------------------
-diff --git a/lib/ext2fs/dirhash.c b/lib/ext2fs/dirhash.c
-index c4ac94e..4ba3f35 100644
---- a/lib/ext2fs/dirhash.c
-+++ b/lib/ext2fs/dirhash.c
-@@ -154,8 +154,6 @@ static void str2hashbuf(const char *msg, int len, __u32 
-*buf, int num,
-      if (len > num*4)
-          len = num * 4;
-      for (i=0; i < len; i++) {
--        if ((i % 4) == 0)
--            val = pad;
-          if (unsigned_flag)
-              c = (int) ucp[i];
-          else
----------------------------------------------------------------
+commit a992f2d38e4ce17b8c7d1f7f67b2de0eebdea069 upstream.
 
-Regards,
+When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
+set, DIR1 is expected to have SGID bit set (and owning group equal to
+the owning group of 'DIR0'). However when 'DIR0' also has some default
+ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
+'DIR1' to get cleared if user is not member of the owning group.
 
-Damien
+Fix the problem by creating __ext2_set_acl() function that does not call
+posix_acl_update_mode() and use it when inheriting ACLs. That prevents
+SGID bit clearing and the mode has been properly set by
+posix_acl_create() anyway.
+
+Fixes: 073931017b49d9458aa351605b43a7e34598caef
+CC: linux-ext4@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ fs/ext2/acl.c |   36 ++++++++++++++++++++++--------------
+ 1 file changed, 22 insertions(+), 14 deletions(-)
+
+--- a/fs/ext2/acl.c
++++ b/fs/ext2/acl.c
+@@ -175,11 +175,8 @@ ext2_get_acl(struct inode *inode, int ty
+ 	return acl;
+ }
+ 
+-/*
+- * inode->i_mutex: down
+- */
+-int
+-ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
++static int
++__ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ {
+ 	int name_index;
+ 	void *value = NULL;
+@@ -189,13 +186,6 @@ ext2_set_acl(struct inode *inode, struct
+ 	switch(type) {
+ 		case ACL_TYPE_ACCESS:
+ 			name_index = EXT2_XATTR_INDEX_POSIX_ACL_ACCESS;
+-			if (acl) {
+-				error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
+-				if (error)
+-					return error;
+-				inode->i_ctime = current_time(inode);
+-				mark_inode_dirty(inode);
+-			}
+ 			break;
+ 
+ 		case ACL_TYPE_DEFAULT:
+@@ -222,6 +212,24 @@ ext2_set_acl(struct inode *inode, struct
+ }
+ 
+ /*
++ * inode->i_mutex: down
++ */
++int
++ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
++{
++	int error;
++
++	if (type == ACL_TYPE_ACCESS && acl) {
++		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
++		if (error)
++			return error;
++		inode->i_ctime = current_time(inode);
++		mark_inode_dirty(inode);
++	}
++	return __ext2_set_acl(inode, acl, type);
++}
++
++/*
+  * Initialize the ACLs of a new inode. Called from ext2_new_inode.
+  *
+  * dir->i_mutex: down
+@@ -238,12 +246,12 @@ ext2_init_acl(struct inode *inode, struc
+ 		return error;
+ 
+ 	if (default_acl) {
+-		error = ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
++		error = __ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
+ 		posix_acl_release(default_acl);
+ 	}
+ 	if (acl) {
+ 		if (!error)
+-			error = ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
++			error = __ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
+ 		posix_acl_release(acl);
+ 	}
+ 	return error;
