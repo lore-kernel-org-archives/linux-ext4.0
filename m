@@ -1,114 +1,73 @@
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Subject: [PATCH 4.9 062/125] ext2: Dont clear SGID when inheriting ACLs
-Date: Tue, 25 Jul 2017 12:19:37 -0700
-Message-ID: <20170725192017.746783564@linuxfoundation.org>
-References: <20170725192014.314851996@linuxfoundation.org>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: bcache with existing ext4 filesystem
+Date: Tue, 25 Jul 2017 22:55:27 +0200
+Message-ID: <20170725205526.GA31280@amd>
+References: <20170724185703.GA31422@amd>
+ <64c810cf-a95c-f862-f25a-ebd7419b2632@thelounge.net>
+ <20170724191548.GA32425@amd>
+ <20170724192718.t7n5zgualz5lillg@thunk.org>
+ <20170724200451.GA4318@amd>
+ <20170725045156.kbyaxj4mmi75yyt5@thunk.org>
+ <20170725134604.GA26445@amd>
+ <20170725180225.2k3o6xtdnhygrhia@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        stable@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Jan Kara <jack@suse.cz>
-To: linux-kernel@vger.kernel.org
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="DocE+STaALJfprDB"
+To: Theodore Ts'o <tytso@mit.edu>,
+        Reindl Harald <h.reindl@thelounge.net>,
+        linux-ext4@vger.kernel.org,
+        kernel list <linux-kernel@vger.kernel.org>,
+        kent.overstreet@gmail.com, linux-bcache@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170725192014.314851996@linuxfoundation.org>
+Content-Disposition: inline
+In-Reply-To: <20170725180225.2k3o6xtdnhygrhia@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-4.9-stable review patch.  If anyone has any objections, please let me know.
 
-------------------
+--DocE+STaALJfprDB
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-From: Jan Kara <jack@suse.cz>
+On Tue 2017-07-25 14:02:25, Theodore Ts'o wrote:
+> On Tue, Jul 25, 2017 at 03:46:04PM +0200, Pavel Machek wrote:
+> >=20
+> > Is there some field in ext2 superblock that changes every time
+> > filesystem is changed? Is mtime changed by fsck/badblocks/...?
+>=20
+> No, there isn't.  If we were writing the superblock every time the
+> file system is changed it would be ***extremely*** flash unfriendly.
+> It would also be a scalability bottleneck, it would cause us to pay an
+> extra HDD seek, etc.  So it's a really bad Bad BAD idea, and so we
+> don't do it.
 
-commit a992f2d38e4ce17b8c7d1f7f67b2de0eebdea069 upstream.
+Ok, I did not mean "every time" when I said "every time". That would
+be too heavy.
 
-When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
-set, DIR1 is expected to have SGID bit set (and owning group equal to
-the owning group of 'DIR0'). However when 'DIR0' also has some default
-ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
-'DIR1' to get cleared if user is not member of the owning group.
+I mean... is there something changed by the regular mount (like mtime)
+plus by operations like fsck and badblocks?
 
-Fix the problem by creating __ext2_set_acl() function that does not call
-posix_acl_update_mode() and use it when inheriting ACLs. That prevents
-SGID bit clearing and the mode has been properly set by
-posix_acl_create() anyway.
+In particular, does fsck change mtime when it writes to the
+filesystem?
 
-Fixes: 073931017b49d9458aa351605b43a7e34598caef
-CC: linux-ext4@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Thanks,
+									Pavel
+--=20
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blo=
+g.html
 
----
- fs/ext2/acl.c |   36 ++++++++++++++++++++++--------------
- 1 file changed, 22 insertions(+), 14 deletions(-)
+--DocE+STaALJfprDB
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
 
---- a/fs/ext2/acl.c
-+++ b/fs/ext2/acl.c
-@@ -175,11 +175,8 @@ ext2_get_acl(struct inode *inode, int ty
- 	return acl;
- }
- 
--/*
-- * inode->i_mutex: down
-- */
--int
--ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+static int
-+__ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
- 	int name_index;
- 	void *value = NULL;
-@@ -189,13 +186,6 @@ ext2_set_acl(struct inode *inode, struct
- 	switch(type) {
- 		case ACL_TYPE_ACCESS:
- 			name_index = EXT2_XATTR_INDEX_POSIX_ACL_ACCESS;
--			if (acl) {
--				error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
--				if (error)
--					return error;
--				inode->i_ctime = current_time(inode);
--				mark_inode_dirty(inode);
--			}
- 			break;
- 
- 		case ACL_TYPE_DEFAULT:
-@@ -222,6 +212,24 @@ ext2_set_acl(struct inode *inode, struct
- }
- 
- /*
-+ * inode->i_mutex: down
-+ */
-+int
-+ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+{
-+	int error;
-+
-+	if (type == ACL_TYPE_ACCESS && acl) {
-+		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-+		if (error)
-+			return error;
-+		inode->i_ctime = current_time(inode);
-+		mark_inode_dirty(inode);
-+	}
-+	return __ext2_set_acl(inode, acl, type);
-+}
-+
-+/*
-  * Initialize the ACLs of a new inode. Called from ext2_new_inode.
-  *
-  * dir->i_mutex: down
-@@ -238,12 +246,12 @@ ext2_init_acl(struct inode *inode, struc
- 		return error;
- 
- 	if (default_acl) {
--		error = ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
-+		error = __ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
- 		posix_acl_release(default_acl);
- 	}
- 	if (acl) {
- 		if (!error)
--			error = ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
-+			error = __ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
- 		posix_acl_release(acl);
- 	}
- 	return error;
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iEYEARECAAYFAll3sD4ACgkQMOfwapXb+vKXDgCfQFpuErVEMAjgavomMw/yJjIc
+bNAAnRsdkB1MyQq7JpggFTauTT9DqBi6
+=m8za
+-----END PGP SIGNATURE-----
+
+--DocE+STaALJfprDB--
