@@ -1,67 +1,51 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCH v5 1/5] mm: add vm_insert_mixed_mkwrite()
-Date: Tue, 25 Jul 2017 17:31:20 +0300
-Message-ID: <20170725143120.fyjcxwsoff34vqoj@node.shutemov.name>
-References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
- <20170724170616.25810-2-ross.zwisler@linux.intel.com>
- <20170724221400.pcq5zvke7w2yfkxi@node.shutemov.name>
- <20170725080158.GA5374@lst.de>
- <20170725093508.GA19943@quack2.suse.cz>
- <20170725121522.GA13457@lst.de>
- <20170725125037.GH19943@quack2.suse.cz>
+From: Jens Axboe <axboe@kernel.dk>
+Subject: Re: bfq/ext4 disk IO hangs forever on resume
+Date: Tue, 25 Jul 2017 08:47:43 -0600
+Message-ID: <6c2bd97a-455e-8078-9441-cb53a7f7fa60@kernel.dk>
+References: <20170625230756.68b4de21.alex_y_xu@yahoo.ca>
+ <20170725085128.GA20040@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@lst.de>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel@vger.kernel.org,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Ingo Molnar <mingo@redhat.com>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170725125037.GH19943@quack2.suse.cz>
-Sender: linux-doc-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Paolo Valente <paolo.valente@linaro.org>,
+        linux-block@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, Alex Xu <alex_y_xu@yahoo.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170725085128.GA20040@quack2.suse.cz>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 25, 2017 at 02:50:37PM +0200, Jan Kara wrote:
-> On Tue 25-07-17 14:15:22, Christoph Hellwig wrote:
-> > On Tue, Jul 25, 2017 at 11:35:08AM +0200, Jan Kara wrote:
-> > > On Tue 25-07-17 10:01:58, Christoph Hellwig wrote:
-> > > > On Tue, Jul 25, 2017 at 01:14:00AM +0300, Kirill A. Shutemov wrote:
-> > > > > I guess it's up to filesystem if it wants to reuse the same spot to write
-> > > > > data or not. I think your assumptions works for ext4 and xfs. I wouldn't
-> > > > > be that sure for btrfs or other filesystems with CoW support.
-> > > > 
-> > > > Or XFS with reflinks for that matter.  Which currently can't be
-> > > > combined with DAX, but I had a somewhat working version a few month
-> > > > ago.
-> > > 
-> > > But in cases like COW when the block mapping changes, the process
-> > > must run unmap_mapping_range() before installing the new PTE so that all
-> > > processes mapping this file offset actually refault and see the new
-> > > mapping. So this would go through pte_none() case. Am I missing something?
-> > 
-> > Yes, for DAX COW mappings we'd probably need something like this, unlike
-> > the pagecache COW handling for which only the underlying block change,
-> > but not the page.
+On 07/25/2017 02:51 AM, Jan Kara wrote:
+> Hello,
 > 
-> Right. So again nothing where the WARN_ON should trigger.
+> On Sun 25-06-17 23:07:56, Alex Xu wrote:
+>> I get hangs when resuming when using bfq-mq with ext4 on 4.12-rc6+
+>> (currently a4fd8b3accf43d407472e34403d4b0a4df5c0e71).
+>>
+>> Steps to reproduce:
+>> 1. boot computer
+>> 2. systemctl suspend
+>> 3. wait few seconds
+>> 4. press power button
+>> 5. type "ls" into console or SSH or do anything that does disk IO
+>>
+>> Expected results:
+>> Command is executed.
+>>
+>> Actual results:
+>> Command hangs.
+>>
+>> lockdep has no comments, but sysrq-d shows that i_mutex_dir_key and
+>> jbd2_handle are held by multiple processes, leading me to suspect that
+>> ext4 is at least partially involved. [0]
+> 
+> Can you still reproduce this?
 
-Yes. I was confused on how COW is handled.
+Can you try with this patch added:
 
-Acked-by: Kirill A. Shutemov <kirill.shutemov@linux.intel.com>
+http://git.kernel.dk/cgit/linux-block/commit/?h=for-linus&id=765e40b675a9566459ddcb8358ad16f3b8344bbe
 
 -- 
- Kirill A. Shutemov
+Jens Axboe
