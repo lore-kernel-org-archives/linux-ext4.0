@@ -1,8 +1,8 @@
 From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Subject: [PATCH 4.12 084/196] ext2: Dont clear SGID when inheriting ACLs
-Date: Tue, 25 Jul 2017 12:21:23 -0700
-Message-ID: <20170725192050.718870004@linuxfoundation.org>
-References: <20170725192046.422343510@linuxfoundation.org>
+Subject: [PATCH 4.9 062/125] ext2: Dont clear SGID when inheriting ACLs
+Date: Tue, 25 Jul 2017 12:19:37 -0700
+Message-ID: <20170725192017.746783564@linuxfoundation.org>
+References: <20170725192014.314851996@linuxfoundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
@@ -10,11 +10,11 @@ Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
         Jan Kara <jack@suse.cz>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170725192046.422343510@linuxfoundation.org>
+In-Reply-To: <20170725192014.314851996@linuxfoundation.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-4.12-stable review patch.  If anyone has any objections, please let me know.
+4.9-stable review patch.  If anyone has any objections, please let me know.
 
 ------------------
 
