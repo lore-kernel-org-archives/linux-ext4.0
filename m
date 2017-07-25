@@ -1,84 +1,72 @@
-From: Eric Wheeler <bcache@lists.ewheeler.net>
-Subject: Re: bcache with existing ext4 filesystem
-Date: Tue, 25 Jul 2017 18:13:09 +0000 (UTC)
-Message-ID: <alpine.LRH.2.11.1707251810091.9683@mail.ewheeler.net>
-References: <20170724185703.GA31422@amd> <64c810cf-a95c-f862-f25a-ebd7419b2632@thelounge.net> <20170724191548.GA32425@amd> <20170724192718.t7n5zgualz5lillg@thunk.org> <20170724200451.GA4318@amd> <20170725045156.kbyaxj4mmi75yyt5@thunk.org> <20170725064304.GA11723@amd>
- <20170725103248.GA12869@suse.com> <20170725111210.GA5667@amd>
+From: Damien Guibouret <damien.guibouret@partition-saving.com>
+Subject: Remove useless test and initialisation in name to hash computation
+Date: Tue, 25 Jul 2017 20:40:03 +0200
+Message-ID: <59779083.7000501@partition-saving.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Vojtech Pavlik <vojtech@ucw.cz>, Theodore Ts'o <tytso@mit.edu>,
-        Reindl Harald <h.reindl@thelounge.net>,
-        linux-ext4@vger.kernel.org,
-        kernel list <linux-kernel@vger.kernel.org>,
-        kent.overstreet@gmail.com, linux-bcache@vger.kernel.org
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170725111210.GA5667@amd>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp4-g21.free.fr ([212.27.42.4]:24968 "EHLO smtp4-g21.free.fr"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750885AbdGYSgH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Jul 2017 14:36:07 -0400
+Received: from [192.168.103.118] (unknown [82.230.26.21])
+        by smtp4-g21.free.fr (Postfix) with ESMTP id BF89219F58A
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Jul 2017 20:36:05 +0200 (CEST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 25 Jul 2017, Pavel Machek wrote:
+Hello,
 
-> On Tue 2017-07-25 12:32:48, Vojtech Pavlik wrote:
-> > On Tue, Jul 25, 2017 at 08:43:04AM +0200, Pavel Machek wrote:
-> > > On Tue 2017-07-25 00:51:56, Theodore Ts'o wrote:
-> > > > On Mon, Jul 24, 2017 at 10:04:51PM +0200, Pavel Machek wrote:
-> > > > > Question for you was... Is the first 1KiB of each ext4 filesystem still
-> > > > > free and "reserved for a bootloader"?
-> > > > 
-> > > > Yes.
-> > > 
-> > > Thanks.
-> > > 
-> > > > > If I needed more for bcache superblock (8KiB, IIRC), would that be
-> > > > > easy to accomplish on existing filesystem?
-> > > > 
-> > > > Huh?  Why would the bcache superblock matter when you're talking about
-> > > > the ext4 layout?  The bcache superblock will be on the bcache
-> > > > device/partition, and the ext4 superblock will be on the ext4
-> > > > device/partition.
-> > > 
-> > > I'd like to enable bcache on already existing ext4 partition. AFAICT
-> > > normal situation, even on the backing device, is:
-> > > 
-> > > | 8KiB bcache superblock | 1KiB reserved | ext4 superblock | 400GB data |
-> > > 
-> > > Unfortunately, that would mean shifting 400GB data 8KB forward, and
-> > > compatibility problems. So I'd prefer adding bcache superblock into
-> > > the reserved space, so I can have caching _and_ compatibility with
-> > > grub2 etc (and avoid 400GB move):
-> > 
-> > The common way to do that is to move the beginning of the partition,
-> > assuming your ext4 lives in a partition.
-> 
-> Well... if I move the partition, grub2 (etc) will be unable to access
-> data on it. (Plus I do not have free space before some of the
-> partitions I'd like to be cached).
+I think there is a minor improvment that could be performed on name to hash 
+computation in hash.c. Before first byte modulo 4 the computed value is 
+reinitialised, but it is already correctly initialised before loop and after 
+having processed last byte modulo 4. So the test and initialisation seems useless.
 
-Why not use dm-linear and prepend space for the bcache superblock?  If 
-this is your boot device, then you would need to write a custom 
-initrd hook too.
+For the kernel, this lead to following change (sorry I do not have a git version 
+of it, so it is a simple diff):
+---------------------------------------------------------------
+--- fs/ext4/hash.c.orig 2017-07-24 20:41:53.000000000 +0200
++++ fs/ext4/hash.c      2017-07-24 20:42:23.000000000 +0200
+@@ -79,8 +79,6 @@ static void str2hashbuf_signed(const cha
+         if (len > num*4)
+                 len = num * 4;
+         for (i = 0; i < len; i++) {
+-               if ((i % 4) == 0)
+-                       val = pad;
+                 val = ((int) scp[i]) + (val << 8);
+                 if ((i % 4) == 3) {
+                         *buf++ = val;
+@@ -107,8 +105,6 @@ static void str2hashbuf_unsigned(const c
+         if (len > num*4)
+                 len = num * 4;
+         for (i = 0; i < len; i++) {
+-               if ((i % 4) == 0)
+-                       val = pad;
+                 val = ((int) ucp[i]) + (val << 8);
+                 if ((i % 4) == 3) {
+                         *buf++ = val;
+---------------------------------------------------------------
 
-Note that if bcache comes up without its cache, you will need to:
-	echo 1 > /sys/block/sdX/bcache/running
+For e2fsprogs, the 2 functions are combined in one, so there is only one change:
+---------------------------------------------------------------
+diff --git a/lib/ext2fs/dirhash.c b/lib/ext2fs/dirhash.c
+index c4ac94e..4ba3f35 100644
+--- a/lib/ext2fs/dirhash.c
++++ b/lib/ext2fs/dirhash.c
+@@ -154,8 +154,6 @@ static void str2hashbuf(const char *msg, int len, __u32 
+*buf, int num,
+      if (len > num*4)
+          len = num * 4;
+      for (i=0; i < len; i++) {
+-        if ((i % 4) == 0)
+-            val = pad;
+          if (unsigned_flag)
+              c = (int) ucp[i];
+          else
+---------------------------------------------------------------
 
-This is of course unsafe with writeback but should be fine with 
-writethrough.
+Regards,
 
-
---
-Eric Wheeler
-
-
-> 
-> > I don't see how overlapping the ext4 and the bcache backing device
-> > starts would give you what you want, because bcache assumes the
-> > backing device data starts with an offset.
-> 
-> My plan is to make offset 0. AFAICT bcache superblock can be shrunk.
-> 
-> 									Pavel
-> -- 
-> (english) http://www.livejournal.com/~pavelmachek
-> (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
-> 
+Damien
