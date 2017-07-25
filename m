@@ -1,58 +1,64 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v5 1/5] mm: add vm_insert_mixed_mkwrite()
-Date: Tue, 25 Jul 2017 11:35:08 +0200
-Message-ID: <20170725093508.GA19943@quack2.suse.cz>
-References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
- <20170724170616.25810-2-ross.zwisler@linux.intel.com>
- <20170724221400.pcq5zvke7w2yfkxi@node.shutemov.name>
- <20170725080158.GA5374@lst.de>
+Subject: Re: [PATCH] ext4: correct comment references to ext4_ext_direct_IO()
+Date: Tue, 25 Jul 2017 12:56:20 +0200
+Message-ID: <20170725105620.GB20040@quack2.suse.cz>
+References: <20170714210426.GB12793@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Kirill A. Shutemov" <kirill@shutemov.name>,
-	Ross Zwisler <ross.zwisler@linux.intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org,
-	"Darrick J. Wong" <darrick.wong@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Dan Williams <dan.j.williams@intel.com>,
-	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>,
-	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
-	Matthew Wilcox <mawilcox@microsoft.com>,
-	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
-	linux-xfs@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:40384 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751723AbdGYK4W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Jul 2017 06:56:22 -0400
 Content-Disposition: inline
-In-Reply-To: <20170725080158.GA5374@lst.de>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170714210426.GB12793@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 25-07-17 10:01:58, Christoph Hellwig wrote:
-> On Tue, Jul 25, 2017 at 01:14:00AM +0300, Kirill A. Shutemov wrote:
-> > I guess it's up to filesystem if it wants to reuse the same spot to write
-> > data or not. I think your assumptions works for ext4 and xfs. I wouldn't
-> > be that sure for btrfs or other filesystems with CoW support.
+On Fri 14-07-17 17:04:26, Eric Whitney wrote:
+> Commit 914f82a32d0268847 "ext4: refactor direct IO code" deleted
+> ext4_ext_direct_IO(), but references to that function remain in
+> comments.  Update them to refer to ext4_direct_IO_write().
 > 
-> Or XFS with reflinks for that matter.  Which currently can't be
-> combined with DAX, but I had a somewhat working version a few month
-> ago.
+> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 
-But in cases like COW when the block mapping changes, the process
-must run unmap_mapping_range() before installing the new PTE so that all
-processes mapping this file offset actually refault and see the new
-mapping. So this would go through pte_none() case. Am I missing something?
+Looks good to me. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
+
+> ---
+>  fs/ext4/inode.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3c600f0..2e6c022 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -892,7 +892,7 @@ static int ext4_dio_get_block_unwritten_async(struct inode *inode,
+>  /*
+>   * Get block function for non-AIO DIO writes when we create unwritten extent if
+>   * blocks are not allocated yet. The extent will be converted to written
+> - * after IO is complete from ext4_ext_direct_IO() function.
+> + * after IO is complete by ext4_direct_IO_write().
+>   */
+>  static int ext4_dio_get_block_unwritten_sync(struct inode *inode,
+>  		sector_t iblock, struct buffer_head *bh_result,	int create)
+> @@ -907,7 +907,7 @@ static int ext4_dio_get_block_unwritten_sync(struct inode *inode,
+>  
+>  	/*
+>  	 * Mark inode as having pending DIO writes to unwritten extents.
+> -	 * ext4_ext_direct_IO() checks this flag and converts extents to
+> +	 * ext4_direct_IO_write() checks this flag and converts extents to
+>  	 * written.
+>  	 */
+>  	if (!ret && buffer_unwritten(bh_result))
+> -- 
+> 2.1.4
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
