@@ -1,45 +1,58 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 196405] mkdir mishandles st_nlink in ext4 directory with 64997
- subdirectories
-Date: Tue, 25 Jul 2017 09:05:59 +0000
-Message-ID: <bug-196405-13602-mHgHf1tdbZ@https.bugzilla.kernel.org/>
-References: <bug-196405-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v5 1/5] mm: add vm_insert_mixed_mkwrite()
+Date: Tue, 25 Jul 2017 11:35:08 +0200
+Message-ID: <20170725093508.GA19943@quack2.suse.cz>
+References: <20170724170616.25810-1-ross.zwisler@linux.intel.com>
+ <20170724170616.25810-2-ross.zwisler@linux.intel.com>
+ <20170724221400.pcq5zvke7w2yfkxi@node.shutemov.name>
+ <20170725080158.GA5374@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:50562 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750860AbdGYJGA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Jul 2017 05:06:00 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 3A68528587
-        for <linux-ext4@vger.kernel.org>; Tue, 25 Jul 2017 09:06:00 +0000 (UTC)
-In-Reply-To: <bug-196405-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Kirill A. Shutemov" <kirill@shutemov.name>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org,
+	"Darrick J. Wong" <darrick.wong@oracle.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Dan Williams <dan.j.williams@intel.com>,
+	Dave Chinner <david@fromorbit.com>, Ingo Molnar <mingo@redhat.com>,
+	Jan Kara <jack@suse.cz>, Jonathan Corbet <corbet@lwn.net>,
+	Matthew Wilcox <mawilcox@microsoft.com>,
+	Steven Rostedt <rostedt@goodmis.org>, linux-doc@vger.kernel.org,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org, linux-nvdimm@lists.01.org,
+	linux-xfs@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20170725080158.GA5374@lst.de>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=196405
+On Tue 25-07-17 10:01:58, Christoph Hellwig wrote:
+> On Tue, Jul 25, 2017 at 01:14:00AM +0300, Kirill A. Shutemov wrote:
+> > I guess it's up to filesystem if it wants to reuse the same spot to write
+> > data or not. I think your assumptions works for ext4 and xfs. I wouldn't
+> > be that sure for btrfs or other filesystems with CoW support.
+> 
+> Or XFS with reflinks for that matter.  Which currently can't be
+> combined with DAX, but I had a somewhat working version a few month
+> ago.
 
---- Comment #27 from Paul Eggert (eggert@cs.ucla.edu) ---
-(In reply to Theodore Tso from comment #22)
-> Paul is asserting that there is vast
-> amount of breakage because ext4 can return an st_nlinks value of 1 on a
-> directory, to the extent that he believes we should withdrawing the
-> dir_nlinks feature.
+But in cases like COW when the block mapping changes, the process
+must run unmap_mapping_range() before installing the new PTE so that all
+processes mapping this file offset actually refault and see the new
+mapping. So this would go through pte_none() case. Am I missing something?
 
-I think this gets my most recent proposal backwards. At the end of Comment 17,
-I proposed that the ext4 code act as if dir_nlink is always set. That's what
-the code has been doing for a decade anyway. All that's missing is
-documentation which says "the dir_nlink setting is irrelevant, and the file
-system always acts as if dir_nlink is set", or words to that effect.
-
-Although in hindsight perhaps the dir_nlink flag should have been implemented
-properly, it wasn't and there's little point to implementing it properly now:
-every application using ext4 must work with the current behavior anyway.
-
+								Honza
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
