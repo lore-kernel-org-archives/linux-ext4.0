@@ -1,64 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: correct comment references to ext4_ext_direct_IO()
-Date: Tue, 25 Jul 2017 12:56:20 +0200
-Message-ID: <20170725105620.GB20040@quack2.suse.cz>
-References: <20170714210426.GB12793@localhost.localdomain>
+From: Vojtech Pavlik <vojtech@ucw.cz>
+Subject: Re: bcache with existing ext4 filesystem
+Date: Tue, 25 Jul 2017 12:32:48 +0200
+Message-ID: <20170725103248.GA12869@suse.com>
+References: <20170724185703.GA31422@amd>
+ <64c810cf-a95c-f862-f25a-ebd7419b2632@thelounge.net>
+ <20170724191548.GA32425@amd>
+ <20170724192718.t7n5zgualz5lillg@thunk.org>
+ <20170724200451.GA4318@amd>
+ <20170725045156.kbyaxj4mmi75yyt5@thunk.org>
+ <20170725064304.GA11723@amd>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
-To: Eric Whitney <enwlinux@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40384 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751723AbdGYK4W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 25 Jul 2017 06:56:22 -0400
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Reindl Harald <h.reindl@thelounge.net>,
+        linux-ext4@vger.kernel.org,
+        kernel list <linux-kernel@vger.kernel.org>,
+        kent.overstreet@gmail.com, linux-bcache@vger.kernel.org
+To: Pavel Machek <pavel@ucw.cz>
+Return-path: <linux-bcache-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170714210426.GB12793@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170725064304.GA11723@amd>
+Sender: linux-bcache-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 14-07-17 17:04:26, Eric Whitney wrote:
-> Commit 914f82a32d0268847 "ext4: refactor direct IO code" deleted
-> ext4_ext_direct_IO(), but references to that function remain in
-> comments.  Update them to refer to ext4_direct_IO_write().
+On Tue, Jul 25, 2017 at 08:43:04AM +0200, Pavel Machek wrote:
+> On Tue 2017-07-25 00:51:56, Theodore Ts'o wrote:
+> > On Mon, Jul 24, 2017 at 10:04:51PM +0200, Pavel Machek wrote:
+> > > Question for you was... Is the first 1KiB of each ext4 filesystem still
+> > > free and "reserved for a bootloader"?
+> > 
+> > Yes.
 > 
-> Signed-off-by: Eric Whitney <enwlinux@gmail.com>
-
-Looks good to me. You can add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/ext4/inode.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
+> Thanks.
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 3c600f0..2e6c022 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -892,7 +892,7 @@ static int ext4_dio_get_block_unwritten_async(struct inode *inode,
->  /*
->   * Get block function for non-AIO DIO writes when we create unwritten extent if
->   * blocks are not allocated yet. The extent will be converted to written
-> - * after IO is complete from ext4_ext_direct_IO() function.
-> + * after IO is complete by ext4_direct_IO_write().
->   */
->  static int ext4_dio_get_block_unwritten_sync(struct inode *inode,
->  		sector_t iblock, struct buffer_head *bh_result,	int create)
-> @@ -907,7 +907,7 @@ static int ext4_dio_get_block_unwritten_sync(struct inode *inode,
->  
->  	/*
->  	 * Mark inode as having pending DIO writes to unwritten extents.
-> -	 * ext4_ext_direct_IO() checks this flag and converts extents to
-> +	 * ext4_direct_IO_write() checks this flag and converts extents to
->  	 * written.
->  	 */
->  	if (!ret && buffer_unwritten(bh_result))
-> -- 
-> 2.1.4
+> > > If I needed more for bcache superblock (8KiB, IIRC), would that be
+> > > easy to accomplish on existing filesystem?
+> > 
+> > Huh?  Why would the bcache superblock matter when you're talking about
+> > the ext4 layout?  The bcache superblock will be on the bcache
+> > device/partition, and the ext4 superblock will be on the ext4
+> > device/partition.
 > 
+> I'd like to enable bcache on already existing ext4 partition. AFAICT
+> normal situation, even on the backing device, is:
+> 
+> | 8KiB bcache superblock | 1KiB reserved | ext4 superblock | 400GB data |
+> 
+> Unfortunately, that would mean shifting 400GB data 8KB forward, and
+> compatibility problems. So I'd prefer adding bcache superblock into
+> the reserved space, so I can have caching _and_ compatibility with
+> grub2 etc (and avoid 400GB move):
+
+The common way to do that is to move the beginning of the partition,
+assuming your ext4 lives in a partition.
+
+I don't see how overlapping the ext4 and the bcache backing device
+starts would give you what you want, because bcache assumes the
+backing device data starts with an offset.
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Vojtech Pavlik
