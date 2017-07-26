@@ -1,37 +1,68 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/10 v2] Ranged pagevec lookup
-Date: Wed, 26 Jul 2017 13:46:54 +0200
-Message-ID: <20170726114704.7626-1-jack@suse.cz>
+Subject: [PATCH 06/10] ext4: Use pagevec_lookup_range() in writeback code
+Date: Wed, 26 Jul 2017 13:47:00 +0200
+Message-ID: <20170726114704.7626-7-jack@suse.cz>
+References: <20170726114704.7626-1-jack@suse.cz>
 Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>,
-        "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Nadia Yvette Chambers <nyc@holomorphy.com>,
-        linux-fsdevel@vger.kernel.org
+        "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: <linux-mm@kvack.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54157 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:54159 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751534AbdGZLr1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1751538AbdGZLr1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Wed, 26 Jul 2017 07:47:27 -0400
+In-Reply-To: <20170726114704.7626-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Both occurences of pagevec_lookup() actually want only pages from a
+given range. Use pagevec_lookup_range() for the lookup.
 
-This patch series was split out of the larger series to clean up pagevec APIs
-and provide ranged lookups. In this series I make pagevec_lookup() update the
-index (to be consistent with pagevec_lookup_tag() and also as a preparation
-for ranged lookups), provide ranged variant of pagevec_lookup() and use it
-in places where it makes sense. This not only removes some common code but
-is also a measurable performance win for some use cases (see patch 4/10) where
-radix tree is sparse and searching & grabing of a page after the end of the
-range has measurable overhead.
+CC: "Theodore Ts'o" <tytso@mit.edu>
+CC: linux-ext4@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 12 +++++-------
+ 1 file changed, 5 insertions(+), 7 deletions(-)
 
-Andrew, can you please consider merging this series?
-
-Full series including dependencies can be also obtained from my git tree:
-
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git find_get_pages_range
-
-Opinions and review welcome!
-
-								Honza
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 68d0166d5ebc..eb86c1baf40c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1676,13 +1676,13 @@ static void mpage_release_unused_pages(struct mpage_da_data *mpd,
+ 
+ 	pagevec_init(&pvec, 0);
+ 	while (index <= end) {
+-		nr_pages = pagevec_lookup(&pvec, mapping, &index, PAGEVEC_SIZE);
++		nr_pages = pagevec_lookup_range(&pvec, mapping, &index, end,
++						PAGEVEC_SIZE);
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+-			if (page->index > end)
+-				break;
++
+ 			BUG_ON(!PageLocked(page));
+ 			BUG_ON(PageWriteback(page));
+ 			if (invalidate) {
+@@ -2303,15 +2303,13 @@ static int mpage_map_and_submit_buffers(struct mpage_da_data *mpd)
+ 
+ 	pagevec_init(&pvec, 0);
+ 	while (start <= end) {
+-		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, &start,
+-					  PAGEVEC_SIZE);
++		nr_pages = pagevec_lookup_range(&pvec, inode->i_mapping,
++						&start, end, PAGEVEC_SIZE);
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+ 
+-			if (page->index > end)
+-				break;
+ 			bh = head = page_buffers(page);
+ 			do {
+ 				if (lblk < mpd->map.m_lblk)
+-- 
+2.12.3
