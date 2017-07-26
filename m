@@ -1,291 +1,100 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH v2 5/7] fscrypt: verify that the correct master key was supplied
-Date: Wed, 26 Jul 2017 11:19:27 -0700
-Message-ID: <20170726181929.99880-6-ebiggers3@gmail.com>
+Subject: [PATCH v2 2/7] fscrypt: rename ->ci_master_key to
+ ->ci_master_key_descriptor
+Date: Wed, 26 Jul 2017 11:19:24 -0700
+Message-ID: <20170726181929.99880-3-ebiggers3@gmail.com>
 References: <20170726181929.99880-1-ebiggers3@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Alex Cope <alexcope@google.com>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Eric Biggers <ebiggers@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
+ Michael Halcrow <mhalcrow@google.com>, Alex Cope <alexcope@google.com>,
+ linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+ linux-crypto@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
 To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
 In-Reply-To: <20170726181929.99880-1-ebiggers3@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Currently, while a fscrypt master key is required to have a certain
-description in the keyring, its payload is never verified to be correct.
-While sufficient for well-behaved userspace, this is insecure in a
-multi-user system where a user has been given only read-only access to
-an encrypted file or directory.  Specifically, if an encrypted file or
-directory does not yet have its key cached by the kernel, the first user
-who accesses it can provide an arbitrary key in their own keyring, which
-the kernel will then associate with the inode and use for read(),
-write(), readdir(), etc. by other users as well.
-
-Consequently, it's trivial for a user with *read-only* access to an
-encrypted file or directory to make it appear as garbage to everyone.
-Creative users might be able to accomplish more sophisticated attacks by
-careful choice of the key, e.g. choosing a key causes certain bytes of
-file contents to have certain values or that causes filenames containing
-the '/' character to appear.
-
-Solve the problem for v2 encryption policies by storing a "hash" of the
-master encryption key in the encryption xattr and verifying it before
-accepting the user-provided key.  We generate the "hash" using
-HKDF-SHA512 by passing a distinct application-specific info string.
-This produces a value which is cryptographically isolated and can be
-stored in the clear without leaking any information about the master key
-or any other derived keys (in a computational sense).  Reusing HKDF is
-better than doing e.g. SHA-512(master_key) because it avoids passing the
-same key into different cryptographic primitives.
-
-We make the hash field 16 bytes long, as this should provide sufficient
-collision and preimage resistance while not wasting too much space for
-the encryption xattr.
+In struct fscrypt_info, ->ci_master_key is the master key descriptor,
+not the master key itself.  In preparation for introducing a struct
+fscrypt_master_key and making ->ci_master_key point to it, rename the
+existing ->ci_master_key to ->ci_master_key_descriptor.
 
 Acked-by: Michael Halcrow <mhalcrow@google.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/fscrypt_private.h |  4 ++++
- fs/crypto/keyinfo.c         | 46 +++++++++++++++++++++++++++++++++++++
- fs/crypto/policy.c          | 55 ++++++++++++++++++++++++++++++++++++---------
- 3 files changed, 95 insertions(+), 10 deletions(-)
+ fs/crypto/fscrypt_private.h | 2 +-
+ fs/crypto/keyinfo.c         | 4 ++--
+ fs/crypto/policy.c          | 5 +++--
+ 3 files changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-index b5881cb26e8f..f9469a71cc29 100644
+index 8329fb905ac6..4b0205accae9 100644
 --- a/fs/crypto/fscrypt_private.h
 +++ b/fs/crypto/fscrypt_private.h
-@@ -94,6 +94,7 @@ fscrypt_valid_context_format(const struct fscrypt_context *ctx, int size)
-  */
- struct fscrypt_master_key {
- 	struct crypto_shash	*mk_hmac;
-+	u8			mk_hash[FSCRYPT_KEY_HASH_SIZE];
+@@ -110,7 +110,7 @@ struct fscrypt_info {
+ 	u8 ci_data_mode;
+ 	u8 ci_filename_mode;
+ 	u8 ci_flags;
+-	u8 ci_master_key[FS_KEY_DESCRIPTOR_SIZE];
++	u8 ci_master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
  };
  
- /*
-@@ -157,6 +158,9 @@ extern struct page *fscrypt_alloc_bounce_page(struct fscrypt_ctx *ctx,
- 					      gfp_t gfp_flags);
- 
- /* keyinfo.c */
-+extern int fscrypt_compute_key_hash(const struct inode *inode,
-+				    const struct fscrypt_policy *policy,
-+				    u8 hash[FSCRYPT_KEY_HASH_SIZE]);
- extern void __exit fscrypt_essiv_cleanup(void);
- 
- #endif /* _FSCRYPT_PRIVATE_H */
+ typedef enum {
 diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 3164e1c74196..a9514078cf9d 100644
+index 7e664a11340a..5591fd24e4b2 100644
 --- a/fs/crypto/keyinfo.c
 +++ b/fs/crypto/keyinfo.c
-@@ -39,8 +39,11 @@ static struct crypto_shash *essiv_hash_tfm;
-  *
-  * Keys derived with different info strings are cryptographically isolated from
-  * each other --- knowledge of one derived key doesn't reveal any others.
-+ * (This property is particularly important for the derived key used as the
-+ * "key hash", as that is stored in the clear.)
-  */
- #define HKDF_CONTEXT_PER_FILE_KEY	1
-+#define HKDF_CONTEXT_KEY_HASH		2
+@@ -293,8 +293,8 @@ int fscrypt_get_encryption_info(struct inode *inode)
+ 	crypt_info->ci_data_mode = ctx.contents_encryption_mode;
+ 	crypt_info->ci_filename_mode = ctx.filenames_encryption_mode;
+ 	crypt_info->ci_flags = ctx.flags;
+-	memcpy(crypt_info->ci_master_key, ctx.master_key_descriptor,
+-				sizeof(crypt_info->ci_master_key));
++	memcpy(crypt_info->ci_master_key_descriptor, ctx.master_key_descriptor,
++	       FS_KEY_DESCRIPTOR_SIZE);
  
- /*
-  * HKDF consists of two steps:
-@@ -211,6 +214,12 @@ alloc_master_key(const struct fscrypt_key *payload)
- 	err = crypto_shash_setkey(k->mk_hmac, prk, sizeof(prk));
- 	if (err)
- 		goto fail;
-+
-+	/* Calculate the "key hash" */
-+	err = hkdf_expand(k->mk_hmac, HKDF_CONTEXT_KEY_HASH, NULL, 0,
-+			  k->mk_hash, FSCRYPT_KEY_HASH_SIZE);
-+	if (err)
-+		goto fail;
- out:
- 	memzero_explicit(prk, sizeof(prk));
- 	return k;
-@@ -536,6 +545,31 @@ void __exit fscrypt_essiv_cleanup(void)
- 	crypto_free_shash(essiv_hash_tfm);
- }
- 
-+int fscrypt_compute_key_hash(const struct inode *inode,
-+			     const struct fscrypt_policy *policy,
-+			     u8 hash[FSCRYPT_KEY_HASH_SIZE])
-+{
-+	struct fscrypt_master_key *k;
-+	unsigned int min_keysize;
-+
-+	/*
-+	 * Require that the master key be long enough for both the
-+	 * contents and filenames encryption modes.
-+	 */
-+	min_keysize =
-+		max(available_modes[policy->contents_encryption_mode].keysize,
-+		    available_modes[policy->filenames_encryption_mode].keysize);
-+
-+	k = load_master_key_from_keyring(inode, policy->master_key_descriptor,
-+					 min_keysize);
-+	if (IS_ERR(k))
-+		return PTR_ERR(k);
-+
-+	memcpy(hash, k->mk_hash, FSCRYPT_KEY_HASH_SIZE);
-+	put_master_key(k);
-+	return 0;
-+}
-+
- int fscrypt_get_encryption_info(struct inode *inode)
- {
- 	struct fscrypt_info *crypt_info;
-@@ -612,6 +646,18 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 			goto out;
- 		}
- 
-+		/*
-+		 * Make sure the master key we found has the correct hash.
-+		 * Buggy or malicious userspace may provide the wrong key.
-+		 */
-+		if (memcmp(crypt_info->ci_master_key->mk_hash, ctx.key_hash,
-+			   FSCRYPT_KEY_HASH_SIZE)) {
-+			pr_warn_ratelimited("fscrypt: wrong encryption key supplied for inode %lu\n",
-+					    inode->i_ino);
-+			res = -ENOKEY;
-+			goto out;
-+		}
-+
- 		res = derive_key_hkdf(crypt_info->ci_master_key, &ctx,
- 				      derived_key, derived_keysize);
- 	}
+ 	res = determine_cipher_type(crypt_info, inode, &cipher_str, &keysize);
+ 	if (res)
 diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-index d1e58798da3c..c0a047559736 100644
+index d6beb48f08fc..fe525da9e79c 100644
 --- a/fs/crypto/policy.c
 +++ b/fs/crypto/policy.c
-@@ -42,7 +42,8 @@ static u8 context_version_for_policy(const struct fscrypt_policy *policy)
-  */
- static bool is_encryption_context_consistent_with_policy(
- 				const struct fscrypt_context *ctx,
--				const struct fscrypt_policy *policy)
-+				const struct fscrypt_policy *policy,
-+				const u8 key_hash[FSCRYPT_KEY_HASH_SIZE])
- {
- 	return (ctx->version == context_version_for_policy(policy)) &&
- 		(memcmp(ctx->master_key_descriptor,
-@@ -52,11 +53,14 @@ static bool is_encryption_context_consistent_with_policy(
- 		(ctx->contents_encryption_mode ==
- 		 policy->contents_encryption_mode) &&
- 		(ctx->filenames_encryption_mode ==
--		 policy->filenames_encryption_mode);
-+		 policy->filenames_encryption_mode) &&
-+		(ctx->version == FSCRYPT_CONTEXT_V1 ||
-+		 (memcmp(ctx->key_hash, key_hash, FSCRYPT_KEY_HASH_SIZE) == 0));
- }
+@@ -226,7 +226,8 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
+ 	child_ci = child->i_crypt_info;
  
- static int create_encryption_context_from_policy(struct inode *inode,
--				const struct fscrypt_policy *policy)
-+				const struct fscrypt_policy *policy,
-+				const u8 key_hash[FSCRYPT_KEY_HASH_SIZE])
- {
- 	struct fscrypt_context ctx;
- 
-@@ -69,7 +73,7 @@ static int create_encryption_context_from_policy(struct inode *inode,
- 	BUILD_BUG_ON(sizeof(ctx.nonce) != FS_KEY_DERIVATION_NONCE_SIZE);
- 	get_random_bytes(ctx.nonce, FS_KEY_DERIVATION_NONCE_SIZE);
- 	if (ctx.version != FSCRYPT_CONTEXT_V1)
--		memset(ctx.key_hash, 0, FSCRYPT_KEY_HASH_SIZE);
-+		memcpy(ctx.key_hash, key_hash, FSCRYPT_KEY_HASH_SIZE);
- 
- 	return inode->i_sb->s_cop->set_context(inode, &ctx,
- 					       fscrypt_context_size(&ctx),
-@@ -82,6 +86,7 @@ int fscrypt_ioctl_set_policy(struct file *filp, const void __user *arg)
- 	struct inode *inode = file_inode(filp);
- 	int ret;
- 	struct fscrypt_context ctx;
-+	u8 key_hash[FSCRYPT_KEY_HASH_SIZE];
- 
- 	if (copy_from_user(&policy, arg, sizeof(policy)))
- 		return -EFAULT;
-@@ -100,6 +105,25 @@ int fscrypt_ioctl_set_policy(struct file *filp, const void __user *arg)
- 	if (policy.flags & ~FS_POLICY_FLAGS_VALID)
- 		return -EINVAL;
- 
-+	if (policy.version == FS_POLICY_VERSION_ORIGINAL) {
-+		/*
-+		 * Originally no key verification was implemented, which was
-+		 * insufficient for scenarios where multiple users share
-+		 * encrypted files.  The new encryption policy version fixes
-+		 * this and also implements an improved key derivation function.
-+		 * So as long as the key can be in the keyring at the time the
-+		 * policy is set and compatibility with old kernels isn't
-+		 * required, it's recommended to use the new policy version
-+		 * (fscrypt_policy.version = 2).
-+		 */
-+		pr_warn_once("%s (pid %d) is setting less secure v0 encryption policy; recommend upgrading to v2.\n",
-+			     current->comm, current->pid);
-+	} else {
-+		ret = fscrypt_compute_key_hash(inode, &policy, key_hash);
-+		if (ret)
-+			return ret;
-+	}
-+
- 	ret = mnt_want_write_file(filp);
- 	if (ret)
- 		return ret;
-@@ -114,10 +138,12 @@ int fscrypt_ioctl_set_policy(struct file *filp, const void __user *arg)
- 			ret = -ENOTEMPTY;
- 		else
- 			ret = create_encryption_context_from_policy(inode,
--								    &policy);
-+								    &policy,
-+								    key_hash);
- 	} else if (ret >= 0 && fscrypt_valid_context_format(&ctx, ret) &&
- 		   is_encryption_context_consistent_with_policy(&ctx,
--								&policy)) {
-+								&policy,
-+								key_hash)) {
- 		/* The file already uses the same encryption policy. */
- 		ret = 0;
- 	} else if (ret >= 0 || ret == -ERANGE) {
-@@ -234,7 +260,11 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
- 			(parent_ci->ci_data_mode == child_ci->ci_data_mode) &&
- 			(parent_ci->ci_filename_mode ==
- 			 child_ci->ci_filename_mode) &&
--			(parent_ci->ci_flags == child_ci->ci_flags);
-+			(parent_ci->ci_flags == child_ci->ci_flags) &&
-+			(parent_ci->ci_context_version == FSCRYPT_CONTEXT_V1 ||
-+			 (memcmp(parent_ci->ci_master_key->mk_hash,
-+				 child_ci->ci_master_key->mk_hash,
-+				 FSCRYPT_KEY_HASH_SIZE) == 0));
- 	}
- 
- 	res = cops->get_context(parent, &parent_ctx, sizeof(parent_ctx));
-@@ -253,7 +283,10 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
- 		 child_ctx.contents_encryption_mode) &&
- 		(parent_ctx.filenames_encryption_mode ==
- 		 child_ctx.filenames_encryption_mode) &&
--		(parent_ctx.flags == child_ctx.flags);
-+		(parent_ctx.flags == child_ctx.flags) &&
-+		(parent_ctx.version == FSCRYPT_CONTEXT_V1 ||
-+		 (memcmp(parent_ctx.key_hash, child_ctx.key_hash,
-+			 FSCRYPT_KEY_HASH_SIZE) == 0));
- }
- EXPORT_SYMBOL(fscrypt_has_permitted_context);
- 
-@@ -288,8 +321,10 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
- 	memcpy(ctx.master_key_descriptor, ci->ci_master_key_descriptor,
+ 	if (parent_ci && child_ci) {
+-		return memcmp(parent_ci->ci_master_key, child_ci->ci_master_key,
++		return memcmp(parent_ci->ci_master_key_descriptor,
++			      child_ci->ci_master_key_descriptor,
+ 			      FS_KEY_DESCRIPTOR_SIZE) == 0 &&
+ 			(parent_ci->ci_context_version ==
+ 			 child_ci->ci_context_version) &&
+@@ -284,7 +285,7 @@ int fscrypt_inherit_context(struct inode *parent, struct inode *child,
+ 	ctx.contents_encryption_mode = ci->ci_data_mode;
+ 	ctx.filenames_encryption_mode = ci->ci_filename_mode;
+ 	ctx.flags = ci->ci_flags;
+-	memcpy(ctx.master_key_descriptor, ci->ci_master_key,
++	memcpy(ctx.master_key_descriptor, ci->ci_master_key_descriptor,
  	       FS_KEY_DESCRIPTOR_SIZE);
  	get_random_bytes(ctx.nonce, FS_KEY_DERIVATION_NONCE_SIZE);
--	if (ctx.version != FSCRYPT_CONTEXT_V1)
--		memset(ctx.key_hash, 0, FSCRYPT_KEY_HASH_SIZE);
-+	if (ctx.version != FSCRYPT_CONTEXT_V1) {
-+		memcpy(ctx.key_hash, ci->ci_master_key->mk_hash,
-+		       FSCRYPT_KEY_HASH_SIZE);
-+	}
- 
- 	BUILD_BUG_ON(sizeof(ctx) != FSCRYPT_SET_CONTEXT_MAX_SIZE);
- 	res = parent->i_sb->s_cop->set_context(child, &ctx,
+ 	if (ctx.version != FSCRYPT_CONTEXT_V1)
 -- 
 2.14.0.rc0.400.g1c36432dff-goog
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
