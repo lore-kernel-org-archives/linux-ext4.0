@@ -1,115 +1,106 @@
-From: Eric Wheeler <bcache@lists.ewheeler.net>
-Subject: Re: bcache with existing ext4 filesystem
-Date: Wed, 26 Jul 2017 19:16:27 +0000 (UTC)
-Message-ID: <alpine.LRH.2.11.1707261912090.9683@mail.ewheeler.net>
-References: <20170724185703.GA31422@amd> <64c810cf-a95c-f862-f25a-ebd7419b2632@thelounge.net> <20170724191548.GA32425@amd> <20170724192718.t7n5zgualz5lillg@thunk.org> <20170724200451.GA4318@amd> <20170725045156.kbyaxj4mmi75yyt5@thunk.org> <20170725064304.GA11723@amd>
- <20170725103248.GA12869@suse.com> <20170725111210.GA5667@amd> <alpine.LRH.2.11.1707251810091.9683@mail.ewheeler.net> <20170725220221.GA32240@amd> <alpine.LRH.2.11.1707261728460.9683@mail.ewheeler.net> <7a56e100-8702-7c39-bfed-f419f0230e6e@gmail.com>
+From: Damien Guibouret <damien.guibouret@partition-saving.com>
+Subject: Re: Remove useless test and initialisation in name to hash computation
+Date: Wed, 26 Jul 2017 21:56:18 +0200
+Message-ID: <5978F3E2.50906@partition-saving.com>
+References: <59779083.7000501@partition-saving.com> <20170726114228.v3uow2jpklazxton@rh_laptop>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Pavel Machek <pavel@ucw.cz>, Vojtech Pavlik <vojtech@ucw.cz>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Reindl Harald <h.reindl@thelounge.net>,
-        linux-ext4@vger.kernel.org,
-        kernel list <linux-kernel@vger.kernel.org>,
-        kent.overstreet@gmail.com, linux-bcache@vger.kernel.org
-To: "Austin S. Hemmelgarn" <ahferroin7@gmail.com>
-Return-path: <linux-bcache-owner@vger.kernel.org>
-In-Reply-To: <7a56e100-8702-7c39-bfed-f419f0230e6e@gmail.com>
-Sender: linux-bcache-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp4-g21.free.fr ([212.27.42.4]:11620 "EHLO smtp4-g21.free.fr"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750918AbdGZTwV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 26 Jul 2017 15:52:21 -0400
+In-Reply-To: <20170726114228.v3uow2jpklazxton@rh_laptop>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 26 Jul 2017, Austin S. Hemmelgarn wrote:
-
-> On 2017-07-26 13:41, Eric Wheeler wrote:
-> > On Wed, 26 Jul 2017, Pavel Machek wrote:
-> > 
-> > > Hi!
-> > >
-> > > > > > > Unfortunately, that would mean shifting 400GB data 8KB forward,
-> > > > > > > and
-> > > > > > > compatibility problems. So I'd prefer adding bcache superblock
-> > > > > > > into
-> > > > > > > the reserved space, so I can have caching _and_ compatibility with
-> > > > > > > grub2 etc (and avoid 400GB move):
-> > > > > >
-> > > > > > The common way to do that is to move the beginning of the partition,
-> > > > > > assuming your ext4 lives in a partition.
-> > > > >
-> > > > > Well... if I move the partition, grub2 (etc) will be unable to access
-> > > > > data on it. (Plus I do not have free space before some of the
-> > > > > partitions I'd like to be cached).
-> > > >
-> > > > Why not use dm-linear and prepend space for the bcache superblock?  If
-> > > > this is your boot device, then you would need to write a custom
-> > > > initrd hook too.
-> > >
-> > > Thanks for a pointer. That would actually work, but I'd have to be
-> > > very, very careful using it...
-> > >
-> > > ...because if I, or systemd or some kind of automounter sees the
-> > > underlying device (sda4) and writes to it (it is valid ext4 after
-> > > all), I'll have inconsistent base device and cache ... and that will
-> > > be asking for major problems (even in writethrough mode).
-> > 
-> > Sigh.  Gone are the days when distributions would only mount filesystems
-> > if you ask them to.
-> This is only an issue if:
-> 1. You are crazy and have your desktop set up to auto-mount stuff on insertion
-> (instead of on-access), or you're using a brain-dead desktop that doesn't let
-> you turn this functionality off.
-> or:
-> 2. You are mounting by filesystem label or filesystem UUID (/dev/mapper/* and
-> /dev/<vgname>/<lvname> links are more than sufficiently stable unless you're
-> changing the storage stack all the time).  This is of course almost always the
-> case these days because for some reason the big distros assume that the device
-> mapper links aren't stable or aren't safe to use.
-> or:
-> 3. You're working with a multi-device BTRFS volume (and in that case, it's not
-> an issue of auto-mounting it, but an issue of buggy kernel behavior combined
-> with the 'scan everything for BTRFS' udev rule that's now upstream in udev).
-> > 
-> > If this is a desktop, then I'm not sure what to suggest.  But for server
-> > with no GUI, turn off the grub2 osprober (GRUB_DISABLE_OS_PROBER="true" in
-> > /etc/sysconfig/grub).  If this was LVM, then I would suggest also setting
-> > global_filter in lvm.conf.  If you find other places that need poked to
-> > prevent automounting then please let me know!
-> Nope, just those and what I mentioned above under 1 and 2.
-> > 
-> > As for ext4 feature bits, can they be arbitrarily named? (I think they are
-> > bits, so maybe not).  Maybe propose a patch to ext4 to provide a
-> > "disable_mount" feature.  This would prevent mounting altogether, and you
-> > would set/clear it when you care to.  A strange feature indeed.  Doing
-> > this as an obscure feature on a single filesystem doesn't quite seem
-> > right.
-> In the case of ext4, you can use the MMP feature (with the associated minor
-> overhead) to enforce this.
-
-Neat!  However, MMP might not get flagged if bcache is in writeback mode 
-and caches the superblock update.  He would need to set MMP on the backing 
-device explicitly, which might work but seems like a bad idea for 
-consistency.  Writethrough would be fine.
-  
-Given the earlier precautions and sanity over which volume should be 
-mounted (eg, by device name not UUID), then he should be ok if mounting 
-neither by label nor uuid.
-
--Eric
-
-> > 
-> > 
-> > It might be better to have a block-layer device-mount mask so devices that
-> > are allowed to be mounted can be whitelisted on the kernel cmdline or
-> > something.  blk.allow_mount=8:16,253:*,...  or blk.disallow_mount=8:32 (or
-> > probably both).
-> > 
-> > Just ideas, but it would be great to allow mounting only those
-> > major/minors which are authorized, particularly with increasingly complex
-> > block-device stacks.
-> If it's not explicitly created as a mount unit, fstab entry, or automount
-> entry, and you're not using a brain-dead desktop, and you're not using FS
-> labels or UUID's to mount, it _really_ isn't an issue except on BTRFS, and for
-> that this would provide _no_ benefit, because the issue there results from
-> confusion over which device to use combined with the assumption that a UUID
-> stored on the device is sufficient to uniquely identify a filesystem.
+Lukas Czerner wrote:
+> On Tue, Jul 25, 2017 at 08:40:03PM +0200, Damien Guibouret wrote:
+> 
+>>Hello,
+>>
+>>I think there is a minor improvment that could be performed on name to hash
+>>computation in hash.c. Before first byte modulo 4 the computed value is
+>>reinitialised, but it is already correctly initialised before loop and after
+>>having processed last byte modulo 4. So the test and initialisation seems
+>>useless.
+>>
+>>For the kernel, this lead to following change (sorry I do not have a git
+>>version of it, so it is a simple diff):
+>>---------------------------------------------------------------
+>>--- fs/ext4/hash.c.orig 2017-07-24 20:41:53.000000000 +0200
+>>+++ fs/ext4/hash.c      2017-07-24 20:42:23.000000000 +0200
+>>@@ -79,8 +79,6 @@ static void str2hashbuf_signed(const cha
+>>        if (len > num*4)
+>>                len = num * 4;
+>>        for (i = 0; i < len; i++) {
+>>-               if ((i % 4) == 0)
+>>-                       val = pad;
+>>                val = ((int) scp[i]) + (val << 8);
+>>                if ((i % 4) == 3) {
+>>                        *buf++ = val;
+>>@@ -107,8 +105,6 @@ static void str2hashbuf_unsigned(const c
+>>        if (len > num*4)
+>>                len = num * 4;
+>>        for (i = 0; i < len; i++) {
+>>-               if ((i % 4) == 0)
+>>-                       val = pad;
+>>                val = ((int) ucp[i]) + (val << 8);
+>>                if ((i % 4) == 3) {
+>>                        *buf++ = val;
+>>---------------------------------------------------------------
+>>
+>>For e2fsprogs, the 2 functions are combined in one, so there is only one change:
+>>---------------------------------------------------------------
+>>diff --git a/lib/ext2fs/dirhash.c b/lib/ext2fs/dirhash.c
+>>index c4ac94e..4ba3f35 100644
+>>--- a/lib/ext2fs/dirhash.c
+>>+++ b/lib/ext2fs/dirhash.c
+>>@@ -154,8 +154,6 @@ static void str2hashbuf(const char *msg, int len, __u32
+>>*buf, int num,
+>>     if (len > num*4)
+>>         len = num * 4;
+>>     for (i=0; i < len; i++) {
+>>-        if ((i % 4) == 0)
+>>-            val = pad;
+>>         if (unsigned_flag)
+>>             c = (int) ucp[i];
+>>         else
+>>---------------------------------------------------------------
 > 
 > 
+> Hi Damien,
+> 
+> the change looks ok to me, have you done any testing to quantify the
+> improvement, or validate the change ?
+> 
+>>From my limited testing the improvement seems to be around 11% for me
+> which would be nice to have. Also my test on 466k strings looks ok
+> as well.
+> 
+> Are you willing to send out properly formated patch for kernel and
+> e2fsprogs ?
+> 
+> Thanks!
+> -Lukas
+> 
+> 
+>>Regards,
+>>
+>>Damien
+> 
+> 
+Hello,
+
+I just called old and new versions of functions with two different inputs (one 
+multiple of 4 and one not) and check results were equals, nothing more. So not 
+very formal, just a quick check but that allows covering all the code of these 
+functions. For timing measurement I did nothing.
+I will see to prepare a more official patch this week-end.
+
+Regards,
+
+Damien
