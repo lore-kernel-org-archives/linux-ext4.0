@@ -1,102 +1,98 @@
-From: Eric Wheeler <bcache@lists.ewheeler.net>
-Subject: Re: bcache with existing ext4 filesystem
-Date: Wed, 26 Jul 2017 17:41:30 +0000 (UTC)
-Message-ID: <alpine.LRH.2.11.1707261728460.9683@mail.ewheeler.net>
-References: <20170724185703.GA31422@amd> <64c810cf-a95c-f862-f25a-ebd7419b2632@thelounge.net> <20170724191548.GA32425@amd> <20170724192718.t7n5zgualz5lillg@thunk.org> <20170724200451.GA4318@amd> <20170725045156.kbyaxj4mmi75yyt5@thunk.org> <20170725064304.GA11723@amd>
- <20170725103248.GA12869@suse.com> <20170725111210.GA5667@amd> <alpine.LRH.2.11.1707251810091.9683@mail.ewheeler.net> <20170725220221.GA32240@amd>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Vojtech Pavlik <vojtech@ucw.cz>, Theodore Ts'o <tytso@mit.edu>,
-        Reindl Harald <h.reindl@thelounge.net>,
-        linux-ext4@vger.kernel.org,
-        kernel list <linux-kernel@vger.kernel.org>,
-        kent.overstreet@gmail.com, linux-bcache@vger.kernel.org
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-bcache-owner@vger.kernel.org>
-In-Reply-To: <20170725220221.GA32240@amd>
-Sender: linux-bcache-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH v2 0/7] fscrypt: key verification and KDF improvement
+Date: Wed, 26 Jul 2017 11:19:22 -0700
+Message-ID: <20170726181929.99880-1-ebiggers3@gmail.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Alex Cope <alexcope@google.com>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:34273 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750867AbdGZSWL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Jul 2017 14:22:11 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 26 Jul 2017, Pavel Machek wrote:
+From: Eric Biggers <ebiggers@google.com>
 
-> Hi!
-> 
-> > > > > Unfortunately, that would mean shifting 400GB data 8KB forward, and
-> > > > > compatibility problems. So I'd prefer adding bcache superblock into
-> > > > > the reserved space, so I can have caching _and_ compatibility with
-> > > > > grub2 etc (and avoid 400GB move):
-> > > > 
-> > > > The common way to do that is to move the beginning of the partition,
-> > > > assuming your ext4 lives in a partition.
-> > > 
-> > > Well... if I move the partition, grub2 (etc) will be unable to access
-> > > data on it. (Plus I do not have free space before some of the
-> > > partitions I'd like to be cached).
-> > 
-> > Why not use dm-linear and prepend space for the bcache superblock?  If 
-> > this is your boot device, then you would need to write a custom 
-> > initrd hook too.
-> 
-> Thanks for a pointer. That would actually work, but I'd have to be
-> very, very careful using it...
-> 
-> ...because if I, or systemd or some kind of automounter sees the
-> underlying device (sda4) and writes to it (it is valid ext4 after
-> all), I'll have inconsistent base device and cache ... and that will
-> be asking for major problems (even in writethrough mode).
+This patch series solves two major problems which filesystem-level
+encryption has currently.  First, the user-supplied master keys are not
+verified, which means a malicious user can provide the wrong key for
+another user's file and cause a DOS attack or worse.  This flaw has been
+criticized in the past [1].  Second, the KDF (Key Derivation Function)
+used to derive per-file keys is ad-hoc and nonstandard.  While it meets
+the primary security requirement, it's inflexible and is missing some
+useful properties such as non-reversibility, which is important under
+some threat models.  This weakness was noted by Unterluggauer and
+Mangard (2016) [2] who also demonstrated an EM attack against the
+current AES-based KDF.
 
-Sigh.  Gone are the days when distributions would only mount filesystems 
-if you ask them to.  
+These problems are solved together by introducing a new encryption
+policy version where the KDF is changed to HKDF-SHA512, i.e. RFC-5869
+[3] with SHA-512 as the underlying hash function.  HKDF is used to
+derive the per-file keys as well as to generate a "key hash" which is
+stored on-disk to allow key verification.  The HMAC transform for each
+master key is pre-keyed and cached, which in practice makes the new KDF
+about as fast or even faster than the old one which did not use the
+crypto API efficiently.
 
-If this is a desktop, then I'm not sure what to suggest.  But for server 
-with no GUI, turn off the grub2 osprober (GRUB_DISABLE_OS_PROBER="true" in 
-/etc/sysconfig/grub).  If this was LVM, then I would suggest also setting 
-global_filter in lvm.conf.  If you find other places that need poked to 
-prevent automounting then please let me know!
+Please give special consideration to the choice and usage of crypto
+algorithms and any other on-disk format and API changes, since we will
+be locked into these once merged.
 
-As for ext4 feature bits, can they be arbitrarily named? (I think they are 
-bits, so maybe not).  Maybe propose a patch to ext4 to provide a 
-"disable_mount" feature.  This would prevent mounting altogether, and you 
-would set/clear it when you care to.  A strange feature indeed.  Doing 
-this as an obscure feature on a single filesystem doesn't quite seem 
-right.
+As a sanity check, I have verified the new on-disk format on ext4 by
+dumping the encryption xattr and contents of an encrypted regular file
+using debugfs, then reproducing the key_hash field and the encrypted
+contents in userspace using the RFC-6234 example code and OpenSSL for
+HKDF-SHA512 and AES-256-XTS respectively --- given the master key and
+unencrypted file contents.
 
+All these changes are independent of filesystem and encryption mode,
+i.e. the "v2" encryption policies can be used on any fscrypt-capable
+filesystem (ext4, f2fs, or ubifs currently) and with any of the
+supported encryption modes.
 
-It might be better to have a block-layer device-mount mask so devices that 
-are allowed to be mounted can be whitelisted on the kernel cmdline or 
-something.  blk.allow_mount=8:16,253:*,...  or blk.disallow_mount=8:32 (or 
-probably both).
+Changes since v1:
+    - Validate encryption modes and flags earlier in
+      fscrypt_ioctl_set_policy(), since the modes are used in
+      fscrypt_compute_key_hash().
+    - Various cleanups
+    - Base on v4.13-rc2
 
-Just ideas, but it would be great to allow mounting only those 
-major/minors which are authorized, particularly with increasingly complex 
-block-device stacks.  
+References:
+  [1] https://blog.quarkslab.com/a-glimpse-of-ext4-filesystem-level-encryption.html
 
+  [2] Unterluggauer and Mangard (2016).  "Exploiting the Physical
+      Disparity: Side-Channel Attacks on Memory Encryption".
+      https://eprint.iacr.org/2016/473.pdf
 
---
-Eric Wheeler
+  [3] RFC 5869. "HMAC-based Extract-and-Expand Key Derivation Function
+      (HKDF)".  https://tools.ietf.org/html/rfc5869
 
+Eric Biggers (7):
+  fscrypt: add v2 encryption context and policy
+  fscrypt: rename ->ci_master_key to ->ci_master_key_descriptor
+  fscrypt: use HKDF-SHA512 to derive the per-inode encryption keys
+  fscrypt: validate modes and flags earlier when setting policy
+  fscrypt: verify that the correct master key was supplied
+  fscrypt: cache the HMAC transform for each master key
+  fscrypt: for v2 policies, support "fscrypt:" key prefix only
 
+ fs/crypto/Kconfig              |   2 +
+ fs/crypto/fscrypt_private.h    | 113 +++++--
+ fs/crypto/keyinfo.c            | 668 ++++++++++++++++++++++++++++++++++-------
+ fs/crypto/policy.c             | 138 ++++++---
+ fs/super.c                     |   4 +
+ include/linux/fs.h             |   5 +
+ include/linux/fscrypt_common.h |   2 +-
+ include/uapi/linux/fs.h        |   6 +
+ 8 files changed, 779 insertions(+), 159 deletions(-)
 
-
-> 
-> Actually, this already would be usable, if we killed content of cache
-> device on every mount. Hmmm. I have reasonably long uptimes these days.
-> 
-> If possible, I'd like something more clever: bcache saves mtime of the
-> ext4 filesystem on shutdown. If the mtime does not match on the next
-> startup, it means someone fsck-ed the filesystem or mounted it
-> directly or something, and cache is invalid.
-> 
-> Bonus would be some kind of interlock with "incompatible feature"
-> bits. If the bcache has dirty data in write-back cache, it would be
-> nice to have "incompatible feature" bit set, so that tools that don't
-> have access to the cache refuse to touch it.
-> 
-> Best regards,
-> 
-> 									Pavel
-> 
-> -- 
-> (english) http://www.livejournal.com/~pavelmachek
-> (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
-> 
+-- 
+2.14.0.rc0.400.g1c36432dff-goog
