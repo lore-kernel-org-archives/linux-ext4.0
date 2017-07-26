@@ -1,110 +1,49 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: bcache with existing ext4 filesystem
-Date: Wed, 26 Jul 2017 22:01:28 +0200
-Message-ID: <20170726200128.GB26445@amd>
-References: <20170724191548.GA32425@amd>
- <20170724192718.t7n5zgualz5lillg@thunk.org>
- <20170724200451.GA4318@amd>
- <20170725045156.kbyaxj4mmi75yyt5@thunk.org>
- <20170725064304.GA11723@amd>
- <20170725103248.GA12869@suse.com>
- <20170725111210.GA5667@amd>
- <alpine.LRH.2.11.1707251810091.9683@mail.ewheeler.net>
- <20170725220221.GA32240@amd>
- <alpine.LRH.2.11.1707261728460.9683@mail.ewheeler.net>
+From: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Subject: Re: nowait aio return value
+Date: Wed, 26 Jul 2017 16:19:34 -0500
+Message-ID: <08dcc9f7-2460-c262-3194-062a25052bc3@suse.de>
+References: <04be5a78-3428-c09e-bc63-5061fa568ea5@akamai.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="SkvwRMAIpAhPCcCJ"
-Cc: Vojtech Pavlik <vojtech@ucw.cz>, Theodore Ts'o <tytso@mit.edu>,
-        Reindl Harald <h.reindl@thelounge.net>,
-        linux-ext4@vger.kernel.org,
-        kernel list <linux-kernel@vger.kernel.org>,
-        kent.overstreet@gmail.com, linux-bcache@vger.kernel.org
-To: Eric Wheeler <bcache@lists.ewheeler.net>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: jack@suse.cz, axboe@kernel.dk, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Jason Baron <jbaron@akamai.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <alpine.LRH.2.11.1707261728460.9683@mail.ewheeler.net>
+In-Reply-To: <04be5a78-3428-c09e-bc63-5061fa568ea5@akamai.com>
+Content-Language: en-US
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi Jason,
 
---SkvwRMAIpAhPCcCJ
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On 07/26/2017 01:45 PM, Jason Baron wrote:
+> Hi,
+> 
+> In testing nowait aio on ext4, I found that when appending to a file
+> the return value is EAGAIN/EWOULDBLOCK, because as mentioned in the
+> commit this will potentially trigger an allocation. However, the EAGAIN,
+> seems somewhat misleading to me, in that if I continuously try the
+> write, it will never succeed.
+> 
+> The relevant commit is:
+> 728fbc0 ext4: nowait aio support
+> 
+> As you can see there, failure to get the inode lock is treated as
+> EAGAIN, which seems more appropriate to me, as its very likely
+> to succeed on subsequent calls.
+> 
+> Perhaps, it could be switched to -EINVAL, or something else?
+> 
 
-Hi!
+Thanks for testing this.
 
-> > > > > > Unfortunately, that would mean shifting 400GB data 8KB forward,=
- and
-> > > > > > compatibility problems. So I'd prefer adding bcache superblock =
-into
-> > > > > > the reserved space, so I can have caching _and_ compatibility w=
-ith
-> > > > > > grub2 etc (and avoid 400GB move):
-> > > > >=20
-> > > > > The common way to do that is to move the beginning of the partiti=
-on,
-> > > > > assuming your ext4 lives in a partition.
-> > > >=20
-> > > > Well... if I move the partition, grub2 (etc) will be unable to acce=
-ss
-> > > > data on it. (Plus I do not have free space before some of the
-> > > > partitions I'd like to be cached).
-> > >=20
-> > > Why not use dm-linear and prepend space for the bcache superblock?  I=
-f=20
-> > > this is your boot device, then you would need to write a custom=20
-> > > initrd hook too.
-> >=20
-> > Thanks for a pointer. That would actually work, but I'd have to be
-> > very, very careful using it...
-> >=20
-> > ...because if I, or systemd or some kind of automounter sees the
-> > underlying device (sda4) and writes to it (it is valid ext4 after
-> > all), I'll have inconsistent base device and cache ... and that will
-> > be asking for major problems (even in writethrough mode).
->=20
-> Sigh.  Gone are the days when distributions would only mount filesystems=
-=20
-> if you ask them to. =20
->=20
-> If this is a desktop, then I'm not sure what to suggest.  But for
+I would suggest read it as -EWOULDBLOCK. The idea is to pass on
+IOCB_NOWAIT when we don't want the I/O process to wait, and if it does
+return -EWOULDBLOCK. If it returns EWOULDBLOCK in case of allocation,
+you may want to allocate your file space before performing the I/O.
 
-This is a desktop.
+I would return EINVAL in case the parameters passed are incorrect.
 
-> with no GUI, turn off the grub2 osprober (GRUB_DISABLE_OS_PROBER=3D"true"=
- in=20
-> /etc/sysconfig/grub).  If this was LVM, then I would suggest also setting=
-=20
-> global_filter in lvm.conf.  If you find other places that need poked to=
-=20
-> prevent automounting then please let me know!
->=20
-> As for ext4 feature bits, can they be arbitrarily named? (I think they ar=
-e=20
-> bits, so maybe not).  Maybe propose a patch to ext4 to provide a
-
-Hmm. I guess I could just set "read-only compatible" bit "this device
-has a cache"... but last time I checked, ext3 still replayed log
-during read-only mount...
-									Pavel
-
---=20
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blo=
-g.html
-
---SkvwRMAIpAhPCcCJ
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAll49RgACgkQMOfwapXb+vLQhACgjaZfHPlSYwonv0xAmxC4sz9c
-1lMAnRfZvA13ZUBLCD5HB8lJhFgMe+oH
-=2ipz
------END PGP SIGNATURE-----
-
---SkvwRMAIpAhPCcCJ--
+-- 
+Goldwyn
