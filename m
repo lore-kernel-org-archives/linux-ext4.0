@@ -1,195 +1,145 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 5/7] dax, iomap: Add support for synchronous faults
-Date: Thu, 27 Jul 2017 15:12:43 +0200
-Message-ID: <20170727131245.28279-6-jack@suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 7/7] ext4: Support for synchronous DAX faults
+Date: Thu, 27 Jul 2017 15:12:45 +0200
+Message-ID: <20170727131245.28279-8-jack@suse.cz>
 References: <20170727131245.28279-1-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20170727131245.28279-1-jack-AlSwsSmVLrQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Cc: <linux-ext4@vger.kernel.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Andy Lutomirski <luto@kernel.org>, linux-nvdimm@lists.01.org,
+        <linux-xfs@vger.kernel.org>, Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>
+To: <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:52509 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751482AbdG0NMv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 27 Jul 2017 09:12:51 -0400
+In-Reply-To: <20170727131245.28279-1-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Add a flag to iomap interface informing the caller that inode needs
-fdstasync(2) for returned extent to become persistent and use it in DAX
-fault code so that we map such extents only read only. We propagate the
-information that the page table entry has been inserted write-protected
-from dax_iomap_fault() with a new VM_FAULT_RO flag. Filesystem fault
-handler is then responsible for calling fdatasync(2) and updating page
-tables to map pfns read-write. dax_iomap_fault() also takes care of
-updating vmf->orig_pte to match the PTE that was inserted so that we can
-safely recheck that PTE did not change while write-enabling it.
+We return IOMAP_F_NEEDDSYNC flag from ext4_iomap_begin() for a
+synchronous write fault when inode has some uncommitted metadata
+changes. In the fault handler ext4_dax_fault() we then detect this case,
+call vfs_fsync_range() to make sure all metadata is committed, and call
+dax_pfn_mkwrite() to mark PTE as writeable. Note that this will also
+dirty corresponding radix tree entry which is what we want - fsync(2)
+will still provide data integrity guarantees for applications not using
+userspace flushing. And applications using userspace flushing can avoid
+calling fsync(2) and thus avoid the performance overhead.
 
-Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/dax.c              | 42 +++++++++++++++++++++++++++++++++++-------
- include/linux/iomap.h |  2 ++
- include/linux/mm.h    |  2 ++
- 3 files changed, 39 insertions(+), 7 deletions(-)
+ fs/ext4/file.c       | 35 +++++++++++++++++++++++++++++------
+ fs/ext4/inode.c      |  4 ++++
+ fs/jbd2/journal.c    | 16 ++++++++++++++++
+ include/linux/jbd2.h |  1 +
+ 4 files changed, 50 insertions(+), 6 deletions(-)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 9658975b926a..8a6cf158c691 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -829,7 +829,7 @@ static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
- }
- 
- static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
--			      loff_t pos, void *entry)
-+			      loff_t pos, void *entry, bool force_ro)
- {
- 	const sector_t sector = dax_iomap_sector(iomap, pos);
- 	struct vm_area_struct *vma = vmf->vma;
-@@ -858,7 +858,7 @@ static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
- 		return PTR_ERR(ret);
- 
- 	trace_dax_insert_mapping(mapping->host, vmf, ret);
--	if (vmf->flags & FAULT_FLAG_WRITE)
-+	if ((vmf->flags & FAULT_FLAG_WRITE) && !force_ro)
- 		rc = vm_insert_mixed_mkwrite(vma, vaddr, pfn);
- 	else
- 		rc = vm_insert_mixed(vma, vaddr, pfn);
-@@ -870,6 +870,14 @@ static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
- 	vmf_ret = dax_fault_return(rc);
- 	if (iomap->flags & IOMAP_F_NEW)
- 		vmf_ret |= VM_FAULT_MAJOR;
-+	if (!rc && (vmf->flags & FAULT_FLAG_WRITE) && force_ro) {
-+		vmf_ret |= VM_FAULT_RO;
-+		/*
-+		 * Hack: Store PFN here so that we can pass it to
-+		 * vm_insert_mixed_mkwrite() when changing PTE to RW.
-+		 */
-+		vmf->orig_pte = pfn_t_pte(pfn, vma->vm_page_prot);
-+	}
- 	return vmf_ret;
- }
- 
-@@ -1092,6 +1100,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- 	int error;
- 	int vmf_ret = 0;
- 	void *entry;
-+	bool force_ro;
- 
- 	trace_dax_pte_fault(inode, vmf, vmf_ret);
- 	/*
-@@ -1167,13 +1176,15 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- 		goto finish_iomap;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index d401403e5095..b221d0b546b0 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -287,16 +287,39 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
+ 		down_read(&EXT4_I(inode)->i_mmap_sem);
+ 		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
+ 					       EXT4_DATA_TRANS_BLOCKS(sb));
++		if (IS_ERR(handle)) {
++			up_read(&EXT4_I(inode)->i_mmap_sem);
++			sb_end_pagefault(sb);
++			return VM_FAULT_SIGBUS;
++		}
+ 	} else {
+ 		down_read(&EXT4_I(inode)->i_mmap_sem);
+ 	}
+-	if (!IS_ERR(handle))
+-		result = dax_iomap_fault(vmf, pe_size, false, &ext4_iomap_ops);
+-	else
+-		result = VM_FAULT_SIGBUS;
++	result = dax_iomap_fault(vmf, pe_size, IS_SYNC(inode), &ext4_iomap_ops);
+ 	if (write) {
+-		if (!IS_ERR(handle))
+-			ext4_journal_stop(handle);
++		ext4_journal_stop(handle);
++		/* Write fault but PFN mapped only RO? */
++		if (result & VM_FAULT_RO) {
++			int err;
++			loff_t start = ((loff_t)vmf->pgoff) << PAGE_SHIFT;
++			size_t len = 0;
++
++			if (pe_size == PE_SIZE_PTE)
++				len = PAGE_SIZE;
++#ifdef CONFIG_FS_DAX_PMD
++			else if (pe_size == PE_SIZE_PMD)
++				len = HPAGE_PMD_SIZE;
++			else
++				WARN_ON_ONCE(1);
++#endif
++			WARN_ON_ONCE(!IS_SYNC(inode));
++			err = vfs_fsync_range(vmf->vma->vm_file, start,
++					      start + len - 1, 1);
++			if (err)
++				result = VM_FAULT_SIGBUS;
++			else
++				result = dax_pfn_mkwrite(vmf, pe_size);
++		}
+ 		up_read(&EXT4_I(inode)->i_mmap_sem);
+ 		sb_end_pagefault(sb);
+ 	} else {
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3c600f02673f..e68231bb227c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3429,6 +3429,10 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
  	}
  
-+	force_ro = (vmf->flags & FAULT_FLAG_WRITE) && sync &&
-+			(iomap.flags & IOMAP_F_NEEDDSYNC);
- 	switch (iomap.type) {
- 	case IOMAP_MAPPED:
- 		if (iomap.flags & IOMAP_F_NEW) {
- 			count_vm_event(PGMAJFAULT);
- 			count_memcg_event_mm(vmf->vma->vm_mm, PGMAJFAULT);
- 		}
--		vmf_ret = dax_insert_mapping(vmf, &iomap, pos, entry);
-+		vmf_ret = dax_insert_mapping(vmf, &iomap, pos, entry, force_ro);
- 		goto finish_iomap;
- 	case IOMAP_UNWRITTEN:
- 	case IOMAP_HOLE:
-@@ -1219,7 +1230,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- #define PG_PMD_COLOUR	((PMD_SIZE >> PAGE_SHIFT) - 1)
+ 	iomap->flags = 0;
++	if ((flags & IOMAP_FAULT) && (flags & IOMAP_WRITE) && IS_SYNC(inode) &&
++	    !jbd2_transaction_committed(EXT4_SB(inode->i_sb)->s_journal,
++					EXT4_I(inode)->i_datasync_tid))
++		iomap->flags |= IOMAP_F_NEEDDSYNC;
+ 	bdev = inode->i_sb->s_bdev;
+ 	iomap->bdev = bdev;
+ 	if (blk_queue_dax(bdev->bd_queue))
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 7d5ef3bf3f3e..e0f436c42d67 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -738,6 +738,22 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid)
+ 	return err;
+ }
  
- static int dax_pmd_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
--		loff_t pos, void *entry)
-+		loff_t pos, void *entry, bool force_ro)
- {
- 	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
- 	const sector_t sector = dax_iomap_sector(iomap, pos);
-@@ -1232,6 +1243,7 @@ static int dax_pmd_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
- 	pgoff_t pgoff;
- 	pfn_t pfn;
- 	int id;
-+	int result;
- 
- 	if (bdev_dax_pgoff(bdev, sector, size, &pgoff) != 0)
- 		goto fallback;
-@@ -1256,8 +1268,19 @@ static int dax_pmd_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
- 		goto fallback;
- 
- 	trace_dax_pmd_insert_mapping(inode, vmf, length, pfn, ret);
--	return vmf_insert_pfn_pmd(vmf->vma, vmf->address, vmf->pmd,
--			pfn, vmf->flags & FAULT_FLAG_WRITE);
-+	result = vmf_insert_pfn_pmd(vmf->vma, vmf->address, vmf->pmd,
-+			pfn, (vmf->flags & FAULT_FLAG_WRITE) && !force_ro);
-+	/* Did we insert RO PMD despite the fault being a write one? */
-+	if (!(result & VM_FAULT_ERROR) && (vmf->flags & FAULT_FLAG_WRITE) &&
-+	    force_ro) {
-+		result |= VM_FAULT_RO;
-+		/*
-+		 * Hack: Store PFN here so that we can pass it to
-+		 * vmf_insert_pfn_pmd() when changing PMD to RW.
-+		 */
-+		vmf->orig_pte = pfn_t_pte(pfn, vmf->vma->vm_page_prot);
-+	}
-+	return result;
- 
- unlock_fallback:
- 	dax_read_unlock(id);
-@@ -1320,6 +1343,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, bool sync,
- 	void *entry;
- 	loff_t pos;
- 	int error;
-+	bool force_ro;
- 
- 	/*
- 	 * Check whether offset isn't beyond end of file now. Caller is
-@@ -1385,9 +1409,13 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, bool sync,
- 	if (iomap.offset + iomap.length < pos + PMD_SIZE)
- 		goto finish_iomap;
- 
-+	force_ro = (vmf->flags & FAULT_FLAG_WRITE) && sync &&
-+			(iomap.flags & IOMAP_F_NEEDDSYNC);
++/* Return 1 when transaction with given tid has already committed. */
++int jbd2_transaction_committed(journal_t *journal, tid_t tid)
++{
++	int ret = 1;
 +
- 	switch (iomap.type) {
- 	case IOMAP_MAPPED:
--		result = dax_pmd_insert_mapping(vmf, &iomap, pos, entry);
-+		result = dax_pmd_insert_mapping(vmf, &iomap, pos, entry,
-+						force_ro);
- 		break;
- 	case IOMAP_UNWRITTEN:
- 	case IOMAP_HOLE:
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index f64dc6ce5161..957463602f6e 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -22,6 +22,8 @@ struct vm_fault;
-  * Flags for all iomap mappings:
-  */
- #define IOMAP_F_NEW	0x01	/* blocks have been newly allocated */
-+#define IOMAP_F_NEEDDSYNC	0x02	/* inode needs fdatasync for storage to
-+					 * become persistent */
- 
++	read_lock(&journal->j_state_lock);
++	if (journal->j_running_transaction &&
++	    journal->j_running_transaction->t_tid == tid)
++		ret = 0;
++	if (journal->j_committing_transaction &&
++	    journal->j_committing_transaction->t_tid == tid)
++		ret = 0;
++	read_unlock(&journal->j_state_lock);
++	return ret;
++}
++
  /*
-  * Flags that only need to be reported for IOMAP_REPORT requests:
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index fa036093e76c..5085647d9f2f 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1142,6 +1142,8 @@ static inline void clear_page_pfmemalloc(struct page *page)
- #define VM_FAULT_RETRY	0x0400	/* ->fault blocked, must retry */
- #define VM_FAULT_FALLBACK 0x0800	/* huge page fault failed, fall back to small */
- #define VM_FAULT_DONE_COW   0x1000	/* ->fault has fully handled COW */
-+#define VM_FAULT_RO	0x2000		/* Write fault was handled just by
-+					 * inserting RO page table entry for DAX */
- 
- #define VM_FAULT_ERROR	(VM_FAULT_OOM | VM_FAULT_SIGBUS | VM_FAULT_SIGSEGV | \
- 			 VM_FAULT_HWPOISON | VM_FAULT_HWPOISON_LARGE | \
+  * When this function returns the transaction corresponding to tid
+  * will be completed.  If the transaction has currently running, start
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 606b6bce3a5b..296d1e0ea87b 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1367,6 +1367,7 @@ int jbd2_log_start_commit(journal_t *journal, tid_t tid);
+ int __jbd2_log_start_commit(journal_t *journal, tid_t tid);
+ int jbd2_journal_start_commit(journal_t *journal, tid_t *tid);
+ int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
++int jbd2_transaction_committed(journal_t *journal, tid_t tid);
+ int jbd2_complete_transaction(journal_t *journal, tid_t tid);
+ int jbd2_log_do_checkpoint(journal_t *journal);
+ int jbd2_trans_will_send_data_barrier(journal_t *journal, tid_t tid);
 -- 
 2.12.3
