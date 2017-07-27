@@ -1,8 +1,7 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 3/7] dax: Simplify arguments of dax_insert_mapping()
-Date: Thu, 27 Jul 2017 15:12:41 +0200
-Message-ID: <20170727131245.28279-4-jack@suse.cz>
-References: <20170727131245.28279-1-jack@suse.cz>
+Subject: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
+Date: Thu, 27 Jul 2017 15:12:38 +0200
+Message-ID: <20170727131245.28279-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -12,7 +11,6 @@ Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Jan Kara <j
  linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 To: <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20170727131245.28279-1-jack-AlSwsSmVLrQ@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -24,97 +22,54 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-dax_insert_mapping() has lots of arguments and a lot of them is actuall
-duplicated by passing vm_fault structure as well. Change the function to
-take the same arguments as dax_pmd_insert_mapping().
+Hello,
 
-Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
----
- fs/dax.c | 32 ++++++++++++++++----------------
- 1 file changed, 16 insertions(+), 16 deletions(-)
+after last discussions about whether / how to make flushing of DAX mappings
+possible from userspace so that they can be flushed on finer than page
+granularity and also avoid the overhead of a syscall, I've decided to give
+a stab at implementing "synchronous page faults" idea for ext4 so that
+we can see whether that is reasonably possible to implement and how would
+such implementation look like. This patch set is the result.
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 44d9cce4399b..0673efd72f53 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -814,23 +814,30 @@ int dax_writeback_mapping_range(struct address_space *mapping,
- }
- EXPORT_SYMBOL_GPL(dax_writeback_mapping_range);
- 
--static int dax_insert_mapping(struct address_space *mapping,
--		struct block_device *bdev, struct dax_device *dax_dev,
--		sector_t sector, size_t size, void *entry,
--		struct vm_area_struct *vma, struct vm_fault *vmf)
-+static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
-+{
-+	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
-+}
-+
-+static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
-+			      loff_t pos, void *entry)
- {
-+	const sector_t sector = dax_iomap_sector(iomap, pos);
-+	struct vm_area_struct *vma = vmf->vma;
-+	struct address_space *mapping = vma->vm_file->f_mapping;
- 	unsigned long vaddr = vmf->address;
- 	void *ret, *kaddr;
- 	pgoff_t pgoff;
- 	int id, rc;
- 	pfn_t pfn;
- 
--	rc = bdev_dax_pgoff(bdev, sector, size, &pgoff);
-+	rc = bdev_dax_pgoff(iomap->bdev, sector, PAGE_SIZE, &pgoff);
- 	if (rc)
- 		return rc;
- 
- 	id = dax_read_lock();
--	rc = dax_direct_access(dax_dev, pgoff, PHYS_PFN(size), &kaddr, &pfn);
-+	rc = dax_direct_access(iomap->dax_dev, pgoff, PHYS_PFN(PAGE_SIZE),
-+			       &kaddr, &pfn);
- 	if (rc < 0) {
- 		dax_read_unlock(id);
- 		return rc;
-@@ -930,11 +937,6 @@ int __dax_zero_page_range(struct block_device *bdev,
- }
- EXPORT_SYMBOL_GPL(__dax_zero_page_range);
- 
--static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
--{
--	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
--}
--
- static loff_t
- dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 		struct iomap *iomap)
-@@ -1076,7 +1078,6 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- 	struct inode *inode = mapping->host;
- 	unsigned long vaddr = vmf->address;
- 	loff_t pos = (loff_t)vmf->pgoff << PAGE_SHIFT;
--	sector_t sector;
- 	struct iomap iomap = { 0 };
- 	unsigned flags = IOMAP_FAULT;
- 	int error, major = 0;
-@@ -1129,9 +1130,9 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- 		goto error_finish_iomap;
- 	}
- 
--	sector = dax_iomap_sector(&iomap, pos);
--
- 	if (vmf->cow_page) {
-+		sector_t sector = dax_iomap_sector(&iomap, pos);
-+
- 		switch (iomap.type) {
- 		case IOMAP_HOLE:
- 		case IOMAP_UNWRITTEN:
-@@ -1164,8 +1165,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- 			count_memcg_event_mm(vmf->vma->vm_mm, PGMAJFAULT);
- 			major = VM_FAULT_MAJOR;
- 		}
--		error = dax_insert_mapping(mapping, iomap.bdev, iomap.dax_dev,
--				sector, PAGE_SIZE, entry, vmf->vma, vmf);
-+		error = dax_insert_mapping(vmf, &iomap, pos, entry);
- 		/* -EBUSY is fine, somebody else faulted on the same PTE */
- 		if (error == -EBUSY)
- 			error = 0;
--- 
-2.12.3
+So the functionality this patches implement: We have an inode flag (currently
+I abuse S_SYNC inode flag for this and IMHO it kind of makes sense but if
+people hate that I'm certainly open to using new flag in the final
+implementation) that marks inode as requiring synchronous page faults.
+The guarantee provided by this flag on inode is: While a block is writeably
+mapped into page tables, it is guaranteed to be visible in the file at that
+offset also after a crash.
+
+How I implement this is that ->iomap_begin() indicates by a flag that inode
+block mapping metadata is unstable and may need flushing (use the same test as
+whether fdatasync() has metadata to write). If yes, DAX maps page table entries
+read-only and returns special flag VM_FAULT_RO to the filesystem fault handler.
+The handler then calls fdatasync() (vfs_fsync_range()) for the affected range
+and after that calls DAX code to write-enable the page table entries.
+
+>From my (fairly limited) knowledge of XFS it seems XFS should be able to do the
+same and it should be even possible for filesystem to implement safe remapping
+of a file offset to a different block (i.e. break reflink, do defrag, or
+similar stuff) like:
+
+1) Block page faults
+2) fdatasync() remapped range (there can be outstanding data modifications
+   not yet flushed)
+3) unmap_mapping_range()
+4) Now remap blocks
+5) Unblock page faults
+
+Basically we do the same on events like punch hole so there is not much new
+there.
+
+There are couple of open questions with this implementation:
+
+1) Is it worth the hassle?
+2) Is S_SYNC good flag to use or should we use a new inode flag?
+3) VM_FAULT_RO and especially passing of resulting 'pfn' from
+   dax_iomap_fault() through filesystem fault handler to dax_pfn_mkwrite() in
+   vmf->orig_pte is a bit of a hack. So far I'm not sure how to refactor
+   things to make this cleaner.
+
+Anyway, here are the patches, comments are welcome.
+
+								Honza
