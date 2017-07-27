@@ -1,62 +1,106 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 5/7] dax, iomap: Add support for synchronous faults
-Date: Thu, 27 Jul 2017 16:42:45 -0600
-Message-ID: <20170727224245.GF22000@linux.intel.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH 6/7] dax: Implement dax_pfn_mkwrite()
+Date: Thu, 27 Jul 2017 16:53:22 -0600
+Message-ID: <20170727225322.GG22000@linux.intel.com>
 References: <20170727131245.28279-1-jack@suse.cz>
- <20170727131245.28279-6-jack@suse.cz>
+ <20170727131245.28279-7-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Andy Lutomirski <luto@kernel.org>, linux-nvdimm@lists.01.org,
-        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170727131245.28279-6-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20170727131245.28279-7-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 27, 2017 at 03:12:43PM +0200, Jan Kara wrote:
-> Add a flag to iomap interface informing the caller that inode needs
-> fdstasync(2) for returned extent to become persistent and use it in DAX
-> fault code so that we map such extents only read only. We propagate the
-> information that the page table entry has been inserted write-protected
-> from dax_iomap_fault() with a new VM_FAULT_RO flag. Filesystem fault
-> handler is then responsible for calling fdatasync(2) and updating page
-> tables to map pfns read-write. dax_iomap_fault() also takes care of
-> updating vmf->orig_pte to match the PTE that was inserted so that we can
-> safely recheck that PTE did not change while write-enabling it.
+On Thu, Jul 27, 2017 at 03:12:44PM +0200, Jan Kara wrote:
+> Implement a function that marks existing page table entry (PTE or PMD)
+> as writeable and takes care of marking it dirty in the radix tree. This
+> function will be used to finish synchronous page fault where the page
+> table entry is first inserted as read-only and then needs to be marked
+> as read-write.
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-<>
-> @@ -1385,9 +1409,13 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, bool sync,
->  	if (iomap.offset + iomap.length < pos + PMD_SIZE)
->  		goto finish_iomap;
->  
-> +	force_ro = (vmf->flags & FAULT_FLAG_WRITE) && sync &&
-> +			(iomap.flags & IOMAP_F_NEEDDSYNC);
+> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> ---
+>  fs/dax.c            | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+>  include/linux/dax.h |  1 +
+>  2 files changed, 49 insertions(+)
+> 
+> diff --git a/fs/dax.c b/fs/dax.c
+> index 8a6cf158c691..90b763c86dc2 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -1485,3 +1485,51 @@ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+>  	}
+>  }
+>  EXPORT_SYMBOL_GPL(dax_iomap_fault);
+> +
+> +/**
+> + * dax_pfn_mkwrite - make page table entry writeable on a DAX file
+> + * @vmf: The description of the fault
+> + * @pe_size: size of entry to be marked writeable
+> + *
+> + * This function mark PTE or PMD entry as writeable in page tables for mmaped
+> + * DAX file. It takes care of marking corresponding radix tree entry as dirty
+> + * as well.
+> + */
+> +int dax_pfn_mkwrite(struct vm_fault *vmf, enum page_entry_size pe_size)
 
-I already mentioned this in my response to your cover letter, but I think that
-we can just lean really heavily on IOMAP_F_NEEDDSYNC and have that let us know
-that we are doing sync faults and that the fault is a write.  That simplifies
-a few things in this patch, with the above just becoming:
+I wonder if this incarnation of this function should be named something other
+than *_pfn_mkwrite so that it's clear that unlike in previous versions of the
+codd, this version isn't supposed to be called via
+vm_operations_struct->pfn_mkwrite, but is instead a helper for sync faults?
+Maybe just dax_mkwrite()?
 
-	force_ro = (iomap.flags & IOMAP_F_NEEDDSYNC);
+> +{
+> +	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
+> +	void *entry, **slot;
+> +	pgoff_t index = vmf->pgoff;
+> +	pfn_t pfn = pfn_to_pfn_t(pte_pfn(vmf->orig_pte));
+> +	int vmf_ret, error;
+> +
+> +	spin_lock_irq(&mapping->tree_lock);
+> +	entry = get_unlocked_mapping_entry(mapping, index, &slot);
+> +	/* Did we race with someone splitting entry or so? */
+> +	if (!entry || (pe_size == PE_SIZE_PTE && !dax_is_pte_entry(entry)) ||
+> +	    (pe_size == PE_SIZE_PMD && !dax_is_pmd_entry(entry))) {
+> +		put_unlocked_mapping_entry(mapping, index, entry);
+> +		spin_unlock_irq(&mapping->tree_lock);
 
-> diff --git a/include/linux/mm.h b/include/linux/mm.h
-> index fa036093e76c..5085647d9f2f 100644
-> --- a/include/linux/mm.h
-> +++ b/include/linux/mm.h
-> @@ -1142,6 +1142,8 @@ static inline void clear_page_pfmemalloc(struct page *page)
->  #define VM_FAULT_RETRY	0x0400	/* ->fault blocked, must retry */
->  #define VM_FAULT_FALLBACK 0x0800	/* huge page fault failed, fall back to small */
->  #define VM_FAULT_DONE_COW   0x1000	/* ->fault has fully handled COW */
-> +#define VM_FAULT_RO	0x2000		/* Write fault was handled just by
-> +					 * inserting RO page table entry for DAX */
+The previous version of this function had tracepoints in this failure path and
+in the successful completion path.  I use this kind of tracing daily for
+debugging, so lets add it back in.
 
-I wonder if we should name this flag something a little stronger and more
-specific to its usage with respect to DAX and sync faults?  Maybe
-"VM_FAULT_NEEDDSYNC" for consistency with the iomap flag?
+> +		return VM_FAULT_NOPAGE;
+> +	}
+> +	radix_tree_tag_set(&mapping->page_tree, index, PAGECACHE_TAG_DIRTY);
+> +	entry = lock_slot(mapping, slot);
+> +	spin_unlock_irq(&mapping->tree_lock);
+> +	switch (pe_size) {
+> +	case PE_SIZE_PTE:
+> +		error = vm_insert_mixed_mkwrite(vmf->vma, vmf->address, pfn);
+
+This path goes through the 'mkwrite' branch in insert_pfn() where we validate
+that the PFN we are about to map matches the one pointed to by the existing
+PTE, but I don't see any checks in this path that validate against
+vmf->orig_pte?
+
+This kind of check was done by the old
+dax_pfn_mkwrite()->finish_mkwrite_fault() path via the pte_same() check in
+finish_mkwrite_fault().
+
+Do we need to add an equivalent check somewhere in this path, since we're
+going through the trouble of setting vmf->orig_pte in the DAX fault handlers?
