@@ -1,39 +1,47 @@
-From: Damien Guibouret <damien.guibouret@partition-saving.com>
-Subject: [PATCH] e2fsprogs - dirhash.c: remove useless test and assignment in strtohash
-Date: Thu, 27 Jul 2017 22:53:54 +0200
-Message-ID: <1501188834-4499-1-git-send-email-damien.guibouret@partition-saving.com>
-Cc: Damien Guibouret <damien.guibouret@partition-saving.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp4-g21.free.fr ([212.27.42.4]:3146 "EHLO smtp4-g21.free.fr"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751042AbdG0Ut4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 27 Jul 2017 16:49:56 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: Re: xattr hash error in 4.13-rc with overlayfs over ext4
+Date: Thu, 27 Jul 2017 13:54:06 -0700
+Message-ID: <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com>
+References: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
+ <CAAeU0aM-1UFJJvX3zF1wUjBeG8BGC+S0wn7PhiDZevTscvmkXg@mail.gmail.com>
+ <CAJfpegvL2iR1PZ+3S=VGtbUiVPQ-EnW28KwE4wCzMJwWptNYKg@mail.gmail.com> <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Return-path: <linux-unionfs-owner@vger.kernel.org>
+In-Reply-To: <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com>
+Sender: linux-unionfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On transformation of str to hash, computed value is initialised before
-first byte modulo 4. But it is already initialised before entering loop
-and after processing last byte modulo 4. So the corresponding test and
-initialisation could be removed.
+Still no luck reproducing the error. I am using the test script below
+at v4.13-rc2. Do you mind checking my script to see what I am missing?
 
-Signed-off-by: Damien Guibouret <damien.guibouret@partition-saving.com>
----
- lib/ext2fs/dirhash.c | 2 --
- 1 file changed, 2 deletions(-)
+#!/bin/bash
+set -ex
 
-diff --git a/lib/ext2fs/dirhash.c b/lib/ext2fs/dirhash.c
-index c4ac94e..4ba3f35 100644
---- a/lib/ext2fs/dirhash.c
-+++ b/lib/ext2fs/dirhash.c
-@@ -154,8 +154,6 @@ static void str2hashbuf(const char *msg, int len, __u32 *buf, int num,
- 	if (len > num*4)
- 		len = num * 4;
- 	for (i=0; i < len; i++) {
--		if ((i % 4) == 0)
--			val = pad;
- 		if (unsigned_flag)
- 			c = (int) ucp[i];
- 		else
--- 
-2.5.0
+while grep /dev/sdb /proc/mounts;do umount /dev/sdb; done
+mke2fs -F -t ext4 /dev/sdb
+mount /dev/sdb /mnt/sdb
+cd /mnt/sdb
+
+mkdir xattrhashtest
+cd xattrhashtest/
+mkdir upper lower work mnt
+cd lower/
+echo foo > bar
+ln bar baz
+cd ..
+mount -t overlay overlay -olowerdir=lower,upperdir=upper,workdir=work mnt
+cd mnt/
+echo xxx >> bar
+
+cd /root
+umount overlay
+umount /dev/sdb
+
+e2fsck -f -n /dev/sdb
+echo done
