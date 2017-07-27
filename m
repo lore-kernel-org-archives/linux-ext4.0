@@ -1,42 +1,27 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
-Date: Thu, 27 Jul 2017 10:09:07 -0400
-Message-ID: <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
-References: <20170727131245.28279-1-jack@suse.cz>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: Re: xattr hash error in 4.13-rc with overlayfs over ext4
+Date: Thu, 27 Jul 2017 11:20:36 -0700
+Message-ID: <CAAeU0aM-1UFJJvX3zF1wUjBeG8BGC+S0wn7PhiDZevTscvmkXg@mail.gmail.com>
+References: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <linux-fsdevel@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-nvdimm@lists.01.org, Dave Chinner <david@fromorbit.com>,
-        linux-xfs@vger.kernel.org, Andy Lutomirski <luto@kernel.org>,
-        linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58842 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751579AbdG0OJJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 27 Jul 2017 10:09:09 -0400
-In-Reply-To: <20170727131245.28279-1-jack@suse.cz> (Jan Kara's message of
-        "Thu, 27 Jul 2017 15:12:38 +0200")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Return-path: <linux-unionfs-owner@vger.kernel.org>
+In-Reply-To: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
+Sender: linux-unionfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Jan Kara <jack@suse.cz> writes:
+Hi Miklos,
+I made a first attempt to reproduce the failure but did not get lucky.
 
-Hi, Jan,
+> Inode 3093, i_blocks is 16, should be 8.  Fix<y>? yes
+Does this inode correspond to foo, bar or a preexisting file?
 
-Thanks for looking into this!
+Do you mind sharing the output of the following command?
+debugfs -R "stat <3093>" /dev/${ext4_dev}
 
-> There are couple of open questions with this implementation:
->
-> 1) Is it worth the hassle?
-> 2) Is S_SYNC good flag to use or should we use a new inode flag?
-> 3) VM_FAULT_RO and especially passing of resulting 'pfn' from
->    dax_iomap_fault() through filesystem fault handler to dax_pfn_mkwrite() in
->    vmf->orig_pte is a bit of a hack. So far I'm not sure how to refactor
->    things to make this cleaner.
-
-4) How does an application discover that it is safe to flush from
-   userspace?
-
--Jeff
+thanks
