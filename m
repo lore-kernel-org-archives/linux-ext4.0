@@ -1,162 +1,140 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/7] dax: Add sync argument to dax_iomap_fault()
-Date: Thu, 27 Jul 2017 15:12:40 +0200
-Message-ID: <20170727131245.28279-3-jack@suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: [PATCH 4/7] dax: Make dax_insert_mapping() return VM_FAULT_ state
+Date: Thu, 27 Jul 2017 15:12:42 +0200
+Message-ID: <20170727131245.28279-5-jack@suse.cz>
 References: <20170727131245.28279-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Andy Lutomirski <luto@kernel.org>, linux-nvdimm@lists.01.org,
-        <linux-xfs@vger.kernel.org>, Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>
-To: <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52460 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751413AbdG0NMt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 27 Jul 2017 09:12:49 -0400
-In-Reply-To: <20170727131245.28279-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170727131245.28279-1-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Add 'sync' argument to dax_iomap_fault(). It will be used to communicate
-the fact that synchronous fault is requested.
+Currently dax_insert_mapping() returns normal error code which is later
+converted to VM_FAULT_ state. Since we will need to do more state
+modifications specific to dax_insert_mapping() it does not make sense to
+push them up to the caller of dax_insert_mapping(). Instead make
+dax_insert_mapping() return VM_FAULT_ state the same way as
+dax_pmd_insert_mapping() does that.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/dax.c            | 12 ++++++------
- fs/ext2/file.c      |  2 +-
- fs/ext4/file.c      |  2 +-
- fs/xfs/xfs_file.c   |  8 ++++----
- include/linux/dax.h |  2 +-
- 5 files changed, 13 insertions(+), 13 deletions(-)
+ fs/dax.c | 45 +++++++++++++++++++++++++--------------------
+ 1 file changed, 25 insertions(+), 20 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 75760f7bdf5d..44d9cce4399b 100644
+index 0673efd72f53..9658975b926a 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -1069,7 +1069,7 @@ static int dax_fault_return(int error)
- 	return VM_FAULT_SIGBUS;
+@@ -814,6 +814,15 @@ int dax_writeback_mapping_range(struct address_space *mapping,
  }
+ EXPORT_SYMBOL_GPL(dax_writeback_mapping_range);
  
--static int dax_iomap_pte_fault(struct vm_fault *vmf,
-+static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- 			       const struct iomap_ops *ops)
++static int dax_fault_return(int error)
++{
++	if (error == 0)
++		return VM_FAULT_NOPAGE;
++	if (error == -ENOMEM)
++		return VM_FAULT_OOM;
++	return VM_FAULT_SIGBUS;
++}
++
+ static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
  {
- 	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
-@@ -1300,7 +1300,7 @@ static int dax_pmd_load_hole(struct vm_fault *vmf, struct iomap *iomap,
- 	return VM_FAULT_FALLBACK;
- }
+ 	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
+@@ -828,7 +837,7 @@ static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+ 	unsigned long vaddr = vmf->address;
+ 	void *ret, *kaddr;
+ 	pgoff_t pgoff;
+-	int id, rc;
++	int id, rc, vmf_ret;
+ 	pfn_t pfn;
  
--static int dax_iomap_pmd_fault(struct vm_fault *vmf,
-+static int dax_iomap_pmd_fault(struct vm_fault *vmf, bool sync,
- 			       const struct iomap_ops *ops)
- {
- 	struct vm_area_struct *vma = vmf->vma;
-@@ -1422,7 +1422,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
- 	return result;
- }
- #else
--static int dax_iomap_pmd_fault(struct vm_fault *vmf,
-+static int dax_iomap_pmd_fault(struct vm_fault *vmf, bool sync,
- 			       const struct iomap_ops *ops)
- {
- 	return VM_FAULT_FALLBACK;
-@@ -1440,13 +1440,13 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
-  * successfully.
-  */
- int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
--		    const struct iomap_ops *ops)
-+		    bool sync, const struct iomap_ops *ops)
- {
- 	switch (pe_size) {
- 	case PE_SIZE_PTE:
--		return dax_iomap_pte_fault(vmf, ops);
-+		return dax_iomap_pte_fault(vmf, sync, ops);
- 	case PE_SIZE_PMD:
--		return dax_iomap_pmd_fault(vmf, ops);
-+		return dax_iomap_pmd_fault(vmf, sync, ops);
- 	default:
- 		return VM_FAULT_FALLBACK;
- 	}
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index ff3a3636a5ca..430e6ecf4e0e 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -99,7 +99,7 @@ static int ext2_dax_fault(struct vm_fault *vmf)
- 	}
- 	down_read(&ei->dax_sem);
+ 	rc = bdev_dax_pgoff(iomap->bdev, sector, PAGE_SIZE, &pgoff);
+@@ -850,9 +859,18 @@ static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
  
--	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &ext2_iomap_ops);
-+	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, false, &ext2_iomap_ops);
- 
- 	up_read(&ei->dax_sem);
+ 	trace_dax_insert_mapping(mapping->host, vmf, ret);
  	if (vmf->flags & FAULT_FLAG_WRITE)
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 9dda70edba74..d401403e5095 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -291,7 +291,7 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
- 		down_read(&EXT4_I(inode)->i_mmap_sem);
- 	}
- 	if (!IS_ERR(handle))
--		result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops);
-+		result = dax_iomap_fault(vmf, pe_size, false, &ext4_iomap_ops);
+-		return vm_insert_mixed_mkwrite(vma, vaddr, pfn);
++		rc = vm_insert_mixed_mkwrite(vma, vaddr, pfn);
  	else
- 		result = VM_FAULT_SIGBUS;
- 	if (write) {
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 62db8ffa83b9..9fc8b5668578 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -1032,7 +1032,7 @@ xfs_filemap_page_mkwrite(
- 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+-		return vm_insert_mixed(vma, vaddr, pfn);
++		rc = vm_insert_mixed(vma, vaddr, pfn);
++
++	/* -EBUSY is fine, somebody else faulted on the same PTE */
++	if (rc == -EBUSY)
++		rc = 0;
++
++	vmf_ret = dax_fault_return(rc);
++	if (iomap->flags & IOMAP_F_NEW)
++		vmf_ret |= VM_FAULT_MAJOR;
++	return vmf_ret;
+ }
  
- 	if (IS_DAX(inode)) {
--		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &xfs_iomap_ops);
-+		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, false, &xfs_iomap_ops);
- 	} else {
- 		ret = iomap_page_mkwrite(vmf, &xfs_iomap_ops);
- 		ret = block_page_mkwrite_return(ret);
-@@ -1059,7 +1059,7 @@ xfs_filemap_fault(
+ /*
+@@ -1062,15 +1080,6 @@ dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ }
+ EXPORT_SYMBOL_GPL(dax_iomap_rw);
  
- 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
- 	if (IS_DAX(inode))
--		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &xfs_iomap_ops);
-+		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, false, &xfs_iomap_ops);
- 	else
- 		ret = filemap_fault(vmf);
- 	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
-@@ -1094,7 +1094,7 @@ xfs_filemap_huge_fault(
+-static int dax_fault_return(int error)
+-{
+-	if (error == 0)
+-		return VM_FAULT_NOPAGE;
+-	if (error == -ENOMEM)
+-		return VM_FAULT_OOM;
+-	return VM_FAULT_SIGBUS;
+-}
+-
+ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
+ 			       const struct iomap_ops *ops)
+ {
+@@ -1080,7 +1089,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
+ 	loff_t pos = (loff_t)vmf->pgoff << PAGE_SHIFT;
+ 	struct iomap iomap = { 0 };
+ 	unsigned flags = IOMAP_FAULT;
+-	int error, major = 0;
++	int error;
+ 	int vmf_ret = 0;
+ 	void *entry;
+ 
+@@ -1163,13 +1172,9 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
+ 		if (iomap.flags & IOMAP_F_NEW) {
+ 			count_vm_event(PGMAJFAULT);
+ 			count_memcg_event_mm(vmf->vma->vm_mm, PGMAJFAULT);
+-			major = VM_FAULT_MAJOR;
+ 		}
+-		error = dax_insert_mapping(vmf, &iomap, pos, entry);
+-		/* -EBUSY is fine, somebody else faulted on the same PTE */
+-		if (error == -EBUSY)
+-			error = 0;
+-		break;
++		vmf_ret = dax_insert_mapping(vmf, &iomap, pos, entry);
++		goto finish_iomap;
+ 	case IOMAP_UNWRITTEN:
+ 	case IOMAP_HOLE:
+ 		if (!(vmf->flags & FAULT_FLAG_WRITE)) {
+@@ -1184,7 +1189,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
  	}
  
- 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
--	ret = dax_iomap_fault(vmf, pe_size, &xfs_iomap_ops);
-+	ret = dax_iomap_fault(vmf, pe_size, false, &xfs_iomap_ops);
- 	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
- 
- 	if (vmf->flags & FAULT_FLAG_WRITE)
-@@ -1130,7 +1130,7 @@ xfs_filemap_pfn_mkwrite(
- 	if (vmf->pgoff >= size)
- 		ret = VM_FAULT_SIGBUS;
- 	else if (IS_DAX(inode))
--		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &xfs_iomap_ops);
-+		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, false, &xfs_iomap_ops);
- 	xfs_iunlock(ip, XFS_MMAPLOCK_SHARED);
- 	sb_end_pagefault(inode->i_sb);
- 	return ret;
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index d0e32729ad1e..98950f4d127e 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -91,7 +91,7 @@ void dax_write_cache(struct dax_device *dax_dev, bool wc);
- ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		const struct iomap_ops *ops);
- int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
--		    const struct iomap_ops *ops);
-+		    bool sync, const struct iomap_ops *ops);
- int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
- int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
- 				      pgoff_t index);
+  error_finish_iomap:
+-	vmf_ret = dax_fault_return(error) | major;
++	vmf_ret = dax_fault_return(error);
+  finish_iomap:
+ 	if (ops->iomap_end) {
+ 		int copied = PAGE_SIZE;
 -- 
 2.12.3
