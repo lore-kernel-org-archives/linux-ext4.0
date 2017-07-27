@@ -1,54 +1,34 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
-Date: Thu, 27 Jul 2017 15:57:13 -0600
-Message-ID: <20170727215713.GA22000@linux.intel.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH 1/7] mm: Remove VM_FAULT_HWPOISON_LARGE_MASK
+Date: Thu, 27 Jul 2017 15:57:57 -0600
+Message-ID: <20170727215757.GB22000@linux.intel.com>
 References: <20170727131245.28279-1-jack@suse.cz>
- <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
+ <20170727131245.28279-2-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-xfs@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Andy Lutomirski <luto@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20170727131245.28279-2-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 27, 2017 at 10:09:07AM -0400, Jeff Moyer wrote:
-> Jan Kara <jack@suse.cz> writes:
+On Thu, Jul 27, 2017 at 03:12:39PM +0200, Jan Kara wrote:
+> It is unused.
 > 
-> Hi, Jan,
-> 
-> Thanks for looking into this!
-> 
-> > There are couple of open questions with this implementation:
-> >
-> > 1) Is it worth the hassle?
-> > 2) Is S_SYNC good flag to use or should we use a new inode flag?
-> > 3) VM_FAULT_RO and especially passing of resulting 'pfn' from
-> >    dax_iomap_fault() through filesystem fault handler to dax_pfn_mkwrite() in
-> >    vmf->orig_pte is a bit of a hack. So far I'm not sure how to refactor
-> >    things to make this cleaner.
-> 
-> 4) How does an application discover that it is safe to flush from
->    userspace?
+> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
-I think that we would be best off with a new flag available via
-lsattr(1)/chattr(1).  This would have the following advantages:
-
-1) We could only set the flag if the inode supported DAX (either via the mount
-option or via the individual DAX flag).  This would give NVML et al. one
-central way to detect whether it was safe to flush from userspace because the
-FS supported synchronous faults.
-
-2) Defining a new flag prevents any confusion about whether the kernel version
-you have supports sync faults.  Otherwise NVML would have to do something like
-look at the trio of (kernel version, S_SYNC flag, mount/inode option for DAX)
-which is complex and of course breaks for OS kernel versions.
-
-3) Defining the flag in a generic way via lsattr/chattr opens the door for the
-same API and flag to be used by other filesystems in the future.
+Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
