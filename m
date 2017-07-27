@@ -1,75 +1,162 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
-Date: Thu, 27 Jul 2017 15:12:38 +0200
-Message-ID: <20170727131245.28279-1-jack@suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/7] dax: Add sync argument to dax_iomap_fault()
+Date: Thu, 27 Jul 2017 15:12:40 +0200
+Message-ID: <20170727131245.28279-3-jack@suse.cz>
+References: <20170727131245.28279-1-jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Andy Lutomirski <luto@kernel.org>, linux-nvdimm@lists.01.org,
+        <linux-xfs@vger.kernel.org>, Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>
+To: <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:52460 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751413AbdG0NMt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 27 Jul 2017 09:12:49 -0400
+In-Reply-To: <20170727131245.28279-1-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Add 'sync' argument to dax_iomap_fault(). It will be used to communicate
+the fact that synchronous fault is requested.
 
-after last discussions about whether / how to make flushing of DAX mappings
-possible from userspace so that they can be flushed on finer than page
-granularity and also avoid the overhead of a syscall, I've decided to give
-a stab at implementing "synchronous page faults" idea for ext4 so that
-we can see whether that is reasonably possible to implement and how would
-such implementation look like. This patch set is the result.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/dax.c            | 12 ++++++------
+ fs/ext2/file.c      |  2 +-
+ fs/ext4/file.c      |  2 +-
+ fs/xfs/xfs_file.c   |  8 ++++----
+ include/linux/dax.h |  2 +-
+ 5 files changed, 13 insertions(+), 13 deletions(-)
 
-So the functionality this patches implement: We have an inode flag (currently
-I abuse S_SYNC inode flag for this and IMHO it kind of makes sense but if
-people hate that I'm certainly open to using new flag in the final
-implementation) that marks inode as requiring synchronous page faults.
-The guarantee provided by this flag on inode is: While a block is writeably
-mapped into page tables, it is guaranteed to be visible in the file at that
-offset also after a crash.
-
-How I implement this is that ->iomap_begin() indicates by a flag that inode
-block mapping metadata is unstable and may need flushing (use the same test as
-whether fdatasync() has metadata to write). If yes, DAX maps page table entries
-read-only and returns special flag VM_FAULT_RO to the filesystem fault handler.
-The handler then calls fdatasync() (vfs_fsync_range()) for the affected range
-and after that calls DAX code to write-enable the page table entries.
-
->From my (fairly limited) knowledge of XFS it seems XFS should be able to do the
-same and it should be even possible for filesystem to implement safe remapping
-of a file offset to a different block (i.e. break reflink, do defrag, or
-similar stuff) like:
-
-1) Block page faults
-2) fdatasync() remapped range (there can be outstanding data modifications
-   not yet flushed)
-3) unmap_mapping_range()
-4) Now remap blocks
-5) Unblock page faults
-
-Basically we do the same on events like punch hole so there is not much new
-there.
-
-There are couple of open questions with this implementation:
-
-1) Is it worth the hassle?
-2) Is S_SYNC good flag to use or should we use a new inode flag?
-3) VM_FAULT_RO and especially passing of resulting 'pfn' from
-   dax_iomap_fault() through filesystem fault handler to dax_pfn_mkwrite() in
-   vmf->orig_pte is a bit of a hack. So far I'm not sure how to refactor
-   things to make this cleaner.
-
-Anyway, here are the patches, comments are welcome.
-
-								Honza
+diff --git a/fs/dax.c b/fs/dax.c
+index 75760f7bdf5d..44d9cce4399b 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1069,7 +1069,7 @@ static int dax_fault_return(int error)
+ 	return VM_FAULT_SIGBUS;
+ }
+ 
+-static int dax_iomap_pte_fault(struct vm_fault *vmf,
++static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
+ 			       const struct iomap_ops *ops)
+ {
+ 	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
+@@ -1300,7 +1300,7 @@ static int dax_pmd_load_hole(struct vm_fault *vmf, struct iomap *iomap,
+ 	return VM_FAULT_FALLBACK;
+ }
+ 
+-static int dax_iomap_pmd_fault(struct vm_fault *vmf,
++static int dax_iomap_pmd_fault(struct vm_fault *vmf, bool sync,
+ 			       const struct iomap_ops *ops)
+ {
+ 	struct vm_area_struct *vma = vmf->vma;
+@@ -1422,7 +1422,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
+ 	return result;
+ }
+ #else
+-static int dax_iomap_pmd_fault(struct vm_fault *vmf,
++static int dax_iomap_pmd_fault(struct vm_fault *vmf, bool sync,
+ 			       const struct iomap_ops *ops)
+ {
+ 	return VM_FAULT_FALLBACK;
+@@ -1440,13 +1440,13 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
+  * successfully.
+  */
+ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+-		    const struct iomap_ops *ops)
++		    bool sync, const struct iomap_ops *ops)
+ {
+ 	switch (pe_size) {
+ 	case PE_SIZE_PTE:
+-		return dax_iomap_pte_fault(vmf, ops);
++		return dax_iomap_pte_fault(vmf, sync, ops);
+ 	case PE_SIZE_PMD:
+-		return dax_iomap_pmd_fault(vmf, ops);
++		return dax_iomap_pmd_fault(vmf, sync, ops);
+ 	default:
+ 		return VM_FAULT_FALLBACK;
+ 	}
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index ff3a3636a5ca..430e6ecf4e0e 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -99,7 +99,7 @@ static int ext2_dax_fault(struct vm_fault *vmf)
+ 	}
+ 	down_read(&ei->dax_sem);
+ 
+-	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &ext2_iomap_ops);
++	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, false, &ext2_iomap_ops);
+ 
+ 	up_read(&ei->dax_sem);
+ 	if (vmf->flags & FAULT_FLAG_WRITE)
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 9dda70edba74..d401403e5095 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -291,7 +291,7 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
+ 		down_read(&EXT4_I(inode)->i_mmap_sem);
+ 	}
+ 	if (!IS_ERR(handle))
+-		result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops);
++		result = dax_iomap_fault(vmf, pe_size, false, &ext4_iomap_ops);
+ 	else
+ 		result = VM_FAULT_SIGBUS;
+ 	if (write) {
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 62db8ffa83b9..9fc8b5668578 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1032,7 +1032,7 @@ xfs_filemap_page_mkwrite(
+ 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+ 
+ 	if (IS_DAX(inode)) {
+-		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &xfs_iomap_ops);
++		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, false, &xfs_iomap_ops);
+ 	} else {
+ 		ret = iomap_page_mkwrite(vmf, &xfs_iomap_ops);
+ 		ret = block_page_mkwrite_return(ret);
+@@ -1059,7 +1059,7 @@ xfs_filemap_fault(
+ 
+ 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+ 	if (IS_DAX(inode))
+-		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &xfs_iomap_ops);
++		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, false, &xfs_iomap_ops);
+ 	else
+ 		ret = filemap_fault(vmf);
+ 	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+@@ -1094,7 +1094,7 @@ xfs_filemap_huge_fault(
+ 	}
+ 
+ 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+-	ret = dax_iomap_fault(vmf, pe_size, &xfs_iomap_ops);
++	ret = dax_iomap_fault(vmf, pe_size, false, &xfs_iomap_ops);
+ 	xfs_iunlock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
+ 
+ 	if (vmf->flags & FAULT_FLAG_WRITE)
+@@ -1130,7 +1130,7 @@ xfs_filemap_pfn_mkwrite(
+ 	if (vmf->pgoff >= size)
+ 		ret = VM_FAULT_SIGBUS;
+ 	else if (IS_DAX(inode))
+-		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &xfs_iomap_ops);
++		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, false, &xfs_iomap_ops);
+ 	xfs_iunlock(ip, XFS_MMAPLOCK_SHARED);
+ 	sb_end_pagefault(inode->i_sb);
+ 	return ret;
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index d0e32729ad1e..98950f4d127e 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -91,7 +91,7 @@ void dax_write_cache(struct dax_device *dax_dev, bool wc);
+ ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 		const struct iomap_ops *ops);
+ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+-		    const struct iomap_ops *ops);
++		    bool sync, const struct iomap_ops *ops);
+ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
+ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
+ 				      pgoff_t index);
+-- 
+2.12.3
