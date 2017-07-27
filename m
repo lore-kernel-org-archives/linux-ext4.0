@@ -1,47 +1,54 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: xattr hash error in 4.13-rc with overlayfs over ext4
-Date: Thu, 27 Jul 2017 13:54:06 -0700
-Message-ID: <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com>
-References: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
- <CAAeU0aM-1UFJJvX3zF1wUjBeG8BGC+S0wn7PhiDZevTscvmkXg@mail.gmail.com>
- <CAJfpegvL2iR1PZ+3S=VGtbUiVPQ-EnW28KwE4wCzMJwWptNYKg@mail.gmail.com> <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
+Date: Thu, 27 Jul 2017 15:57:13 -0600
+Message-ID: <20170727215713.GA22000@linux.intel.com>
+References: <20170727131245.28279-1-jack@suse.cz>
+ <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Return-path: <linux-unionfs-owner@vger.kernel.org>
-In-Reply-To: <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com>
-Sender: linux-unionfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-xfs@vger.kernel.org,
+        linux-nvdimm@lists.01.org, Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jeff Moyer <jmoyer@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Still no luck reproducing the error. I am using the test script below
-at v4.13-rc2. Do you mind checking my script to see what I am missing?
+On Thu, Jul 27, 2017 at 10:09:07AM -0400, Jeff Moyer wrote:
+> Jan Kara <jack@suse.cz> writes:
+> 
+> Hi, Jan,
+> 
+> Thanks for looking into this!
+> 
+> > There are couple of open questions with this implementation:
+> >
+> > 1) Is it worth the hassle?
+> > 2) Is S_SYNC good flag to use or should we use a new inode flag?
+> > 3) VM_FAULT_RO and especially passing of resulting 'pfn' from
+> >    dax_iomap_fault() through filesystem fault handler to dax_pfn_mkwrite() in
+> >    vmf->orig_pte is a bit of a hack. So far I'm not sure how to refactor
+> >    things to make this cleaner.
+> 
+> 4) How does an application discover that it is safe to flush from
+>    userspace?
 
-#!/bin/bash
-set -ex
+I think that we would be best off with a new flag available via
+lsattr(1)/chattr(1).  This would have the following advantages:
 
-while grep /dev/sdb /proc/mounts;do umount /dev/sdb; done
-mke2fs -F -t ext4 /dev/sdb
-mount /dev/sdb /mnt/sdb
-cd /mnt/sdb
+1) We could only set the flag if the inode supported DAX (either via the mount
+option or via the individual DAX flag).  This would give NVML et al. one
+central way to detect whether it was safe to flush from userspace because the
+FS supported synchronous faults.
 
-mkdir xattrhashtest
-cd xattrhashtest/
-mkdir upper lower work mnt
-cd lower/
-echo foo > bar
-ln bar baz
-cd ..
-mount -t overlay overlay -olowerdir=lower,upperdir=upper,workdir=work mnt
-cd mnt/
-echo xxx >> bar
+2) Defining a new flag prevents any confusion about whether the kernel version
+you have supports sync faults.  Otherwise NVML would have to do something like
+look at the trio of (kernel version, S_SYNC flag, mount/inode option for DAX)
+which is complex and of course breaks for OS kernel versions.
 
-cd /root
-umount overlay
-umount /dev/sdb
-
-e2fsck -f -n /dev/sdb
-echo done
+3) Defining the flag in a generic way via lsattr/chattr opens the door for the
+same API and flag to be used by other filesystems in the future.
