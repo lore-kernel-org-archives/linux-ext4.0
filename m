@@ -1,49 +1,43 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: Re: nowait aio return value
-Date: Wed, 26 Jul 2017 16:19:34 -0500
-Message-ID: <08dcc9f7-2460-c262-3194-062a25052bc3@suse.de>
-References: <04be5a78-3428-c09e-bc63-5061fa568ea5@akamai.com>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: xattr hash error in 4.13-rc with overlayfs over ext4
+Date: Thu, 27 Jul 2017 14:37:35 +0200
+Message-ID: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: jack@suse.cz, axboe@kernel.dk, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Jason Baron <jbaron@akamai.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
+To: Tahsin Erdogan <tahsin@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <04be5a78-3428-c09e-bc63-5061fa568ea5@akamai.com>
-Content-Language: en-US
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Jason,
+I get the following error on fsck:
 
-On 07/26/2017 01:45 PM, Jason Baron wrote:
-> Hi,
-> 
-> In testing nowait aio on ext4, I found that when appending to a file
-> the return value is EAGAIN/EWOULDBLOCK, because as mentioned in the
-> commit this will potentially trigger an allocation. However, the EAGAIN,
-> seems somewhat misleading to me, in that if I continuously try the
-> write, it will never succeed.
-> 
-> The relevant commit is:
-> 728fbc0 ext4: nowait aio support
-> 
-> As you can see there, failure to get the inode lock is treated as
-> EAGAIN, which seems more appropriate to me, as its very likely
-> to succeed on subsequent calls.
-> 
-> Perhaps, it could be switched to -EINVAL, or something else?
-> 
+Pass 1: Checking inodes, blocks, and sizes
+Extended attribute in inode 3093 has a hash (2257320705) which is invalid
+Clear<y>? yes
+Inode 3093, i_blocks is 16, should be 8.  Fix<y>? yes
 
-Thanks for testing this.
+To reproduce:
 
-I would suggest read it as -EWOULDBLOCK. The idea is to pass on
-IOCB_NOWAIT when we don't want the I/O process to wait, and if it does
-return -EWOULDBLOCK. If it returns EWOULDBLOCK in case of allocation,
-you may want to allocate your file space before performing the I/O.
+[mount ext4 image]
+mkdir xattrhashtest
+cd xattrhashtest/
+mkdir upper lower work mnt
+cd lower/
+echo foo > bar
+ln bar baz
+mount -t overlay overlay -olowerdir=lower,upperdir=upper,workdir=work mnt
+cd mnt/
+echo xxx >> bar
+[umount and fsck]
 
-I would return EINVAL in case the parameters passed are incorrect.
+Reverting commit daf8328172df ("ext4: eliminate xattr entry e_hash
+recalculation for removes") fixes it.
 
--- 
-Goldwyn
+Might be an ext4 or overlayfs bug.  Let me know what you think.
+
+Thanks,
+Miklos
