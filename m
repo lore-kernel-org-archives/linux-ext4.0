@@ -1,7 +1,7 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 4/7] dax: Make dax_insert_mapping() return VM_FAULT_ state
-Date: Thu, 27 Jul 2017 15:12:42 +0200
-Message-ID: <20170727131245.28279-5-jack@suse.cz>
+Subject: [PATCH 5/7] dax, iomap: Add support for synchronous faults
+Date: Thu, 27 Jul 2017 15:12:43 +0200
+Message-ID: <20170727131245.28279-6-jack@suse.cz>
 References: <20170727131245.28279-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -24,117 +24,172 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Currently dax_insert_mapping() returns normal error code which is later
-converted to VM_FAULT_ state. Since we will need to do more state
-modifications specific to dax_insert_mapping() it does not make sense to
-push them up to the caller of dax_insert_mapping(). Instead make
-dax_insert_mapping() return VM_FAULT_ state the same way as
-dax_pmd_insert_mapping() does that.
+Add a flag to iomap interface informing the caller that inode needs
+fdstasync(2) for returned extent to become persistent and use it in DAX
+fault code so that we map such extents only read only. We propagate the
+information that the page table entry has been inserted write-protected
+from dax_iomap_fault() with a new VM_FAULT_RO flag. Filesystem fault
+handler is then responsible for calling fdatasync(2) and updating page
+tables to map pfns read-write. dax_iomap_fault() also takes care of
+updating vmf->orig_pte to match the PTE that was inserted so that we can
+safely recheck that PTE did not change while write-enabling it.
 
 Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/dax.c | 45 +++++++++++++++++++++++++--------------------
- 1 file changed, 25 insertions(+), 20 deletions(-)
+ fs/dax.c              | 42 +++++++++++++++++++++++++++++++++++-------
+ include/linux/iomap.h |  2 ++
+ include/linux/mm.h    |  2 ++
+ 3 files changed, 39 insertions(+), 7 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 0673efd72f53..9658975b926a 100644
+index 9658975b926a..8a6cf158c691 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -814,6 +814,15 @@ int dax_writeback_mapping_range(struct address_space *mapping,
+@@ -829,7 +829,7 @@ static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
  }
- EXPORT_SYMBOL_GPL(dax_writeback_mapping_range);
  
-+static int dax_fault_return(int error)
-+{
-+	if (error == 0)
-+		return VM_FAULT_NOPAGE;
-+	if (error == -ENOMEM)
-+		return VM_FAULT_OOM;
-+	return VM_FAULT_SIGBUS;
-+}
-+
- static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
+ static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+-			      loff_t pos, void *entry)
++			      loff_t pos, void *entry, bool force_ro)
  {
- 	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
-@@ -828,7 +837,7 @@ static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
- 	unsigned long vaddr = vmf->address;
- 	void *ret, *kaddr;
- 	pgoff_t pgoff;
--	int id, rc;
-+	int id, rc, vmf_ret;
- 	pfn_t pfn;
- 
- 	rc = bdev_dax_pgoff(iomap->bdev, sector, PAGE_SIZE, &pgoff);
-@@ -850,9 +859,18 @@ static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+ 	const sector_t sector = dax_iomap_sector(iomap, pos);
+ 	struct vm_area_struct *vma = vmf->vma;
+@@ -858,7 +858,7 @@ static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+ 		return PTR_ERR(ret);
  
  	trace_dax_insert_mapping(mapping->host, vmf, ret);
- 	if (vmf->flags & FAULT_FLAG_WRITE)
--		return vm_insert_mixed_mkwrite(vma, vaddr, pfn);
-+		rc = vm_insert_mixed_mkwrite(vma, vaddr, pfn);
+-	if (vmf->flags & FAULT_FLAG_WRITE)
++	if ((vmf->flags & FAULT_FLAG_WRITE) && !force_ro)
+ 		rc = vm_insert_mixed_mkwrite(vma, vaddr, pfn);
  	else
--		return vm_insert_mixed(vma, vaddr, pfn);
-+		rc = vm_insert_mixed(vma, vaddr, pfn);
-+
-+	/* -EBUSY is fine, somebody else faulted on the same PTE */
-+	if (rc == -EBUSY)
-+		rc = 0;
-+
-+	vmf_ret = dax_fault_return(rc);
-+	if (iomap->flags & IOMAP_F_NEW)
-+		vmf_ret |= VM_FAULT_MAJOR;
-+	return vmf_ret;
+ 		rc = vm_insert_mixed(vma, vaddr, pfn);
+@@ -870,6 +870,14 @@ static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+ 	vmf_ret = dax_fault_return(rc);
+ 	if (iomap->flags & IOMAP_F_NEW)
+ 		vmf_ret |= VM_FAULT_MAJOR;
++	if (!rc && (vmf->flags & FAULT_FLAG_WRITE) && force_ro) {
++		vmf_ret |= VM_FAULT_RO;
++		/*
++		 * Hack: Store PFN here so that we can pass it to
++		 * vm_insert_mixed_mkwrite() when changing PTE to RW.
++		 */
++		vmf->orig_pte = pfn_t_pte(pfn, vma->vm_page_prot);
++	}
+ 	return vmf_ret;
  }
  
- /*
-@@ -1062,15 +1080,6 @@ dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
- }
- EXPORT_SYMBOL_GPL(dax_iomap_rw);
- 
--static int dax_fault_return(int error)
--{
--	if (error == 0)
--		return VM_FAULT_NOPAGE;
--	if (error == -ENOMEM)
--		return VM_FAULT_OOM;
--	return VM_FAULT_SIGBUS;
--}
--
- static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- 			       const struct iomap_ops *ops)
- {
-@@ -1080,7 +1089,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- 	loff_t pos = (loff_t)vmf->pgoff << PAGE_SHIFT;
- 	struct iomap iomap = { 0 };
- 	unsigned flags = IOMAP_FAULT;
--	int error, major = 0;
-+	int error;
+@@ -1092,6 +1100,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
+ 	int error;
  	int vmf_ret = 0;
  	void *entry;
++	bool force_ro;
  
-@@ -1163,13 +1172,9 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
+ 	trace_dax_pte_fault(inode, vmf, vmf_ret);
+ 	/*
+@@ -1167,13 +1176,15 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
+ 		goto finish_iomap;
+ 	}
+ 
++	force_ro = (vmf->flags & FAULT_FLAG_WRITE) && sync &&
++			(iomap.flags & IOMAP_F_NEEDDSYNC);
+ 	switch (iomap.type) {
+ 	case IOMAP_MAPPED:
  		if (iomap.flags & IOMAP_F_NEW) {
  			count_vm_event(PGMAJFAULT);
  			count_memcg_event_mm(vmf->vma->vm_mm, PGMAJFAULT);
--			major = VM_FAULT_MAJOR;
  		}
--		error = dax_insert_mapping(vmf, &iomap, pos, entry);
--		/* -EBUSY is fine, somebody else faulted on the same PTE */
--		if (error == -EBUSY)
--			error = 0;
--		break;
-+		vmf_ret = dax_insert_mapping(vmf, &iomap, pos, entry);
-+		goto finish_iomap;
+-		vmf_ret = dax_insert_mapping(vmf, &iomap, pos, entry);
++		vmf_ret = dax_insert_mapping(vmf, &iomap, pos, entry, force_ro);
+ 		goto finish_iomap;
  	case IOMAP_UNWRITTEN:
  	case IOMAP_HOLE:
- 		if (!(vmf->flags & FAULT_FLAG_WRITE)) {
-@@ -1184,7 +1189,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
- 	}
+@@ -1219,7 +1230,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, bool sync,
+ #define PG_PMD_COLOUR	((PMD_SIZE >> PAGE_SHIFT) - 1)
  
-  error_finish_iomap:
--	vmf_ret = dax_fault_return(error) | major;
-+	vmf_ret = dax_fault_return(error);
-  finish_iomap:
- 	if (ops->iomap_end) {
- 		int copied = PAGE_SIZE;
+ static int dax_pmd_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+-		loff_t pos, void *entry)
++		loff_t pos, void *entry, bool force_ro)
+ {
+ 	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
+ 	const sector_t sector = dax_iomap_sector(iomap, pos);
+@@ -1232,6 +1243,7 @@ static int dax_pmd_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+ 	pgoff_t pgoff;
+ 	pfn_t pfn;
+ 	int id;
++	int result;
+ 
+ 	if (bdev_dax_pgoff(bdev, sector, size, &pgoff) != 0)
+ 		goto fallback;
+@@ -1256,8 +1268,19 @@ static int dax_pmd_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+ 		goto fallback;
+ 
+ 	trace_dax_pmd_insert_mapping(inode, vmf, length, pfn, ret);
+-	return vmf_insert_pfn_pmd(vmf->vma, vmf->address, vmf->pmd,
+-			pfn, vmf->flags & FAULT_FLAG_WRITE);
++	result = vmf_insert_pfn_pmd(vmf->vma, vmf->address, vmf->pmd,
++			pfn, (vmf->flags & FAULT_FLAG_WRITE) && !force_ro);
++	/* Did we insert RO PMD despite the fault being a write one? */
++	if (!(result & VM_FAULT_ERROR) && (vmf->flags & FAULT_FLAG_WRITE) &&
++	    force_ro) {
++		result |= VM_FAULT_RO;
++		/*
++		 * Hack: Store PFN here so that we can pass it to
++		 * vmf_insert_pfn_pmd() when changing PMD to RW.
++		 */
++		vmf->orig_pte = pfn_t_pte(pfn, vmf->vma->vm_page_prot);
++	}
++	return result;
+ 
+ unlock_fallback:
+ 	dax_read_unlock(id);
+@@ -1320,6 +1343,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, bool sync,
+ 	void *entry;
+ 	loff_t pos;
+ 	int error;
++	bool force_ro;
+ 
+ 	/*
+ 	 * Check whether offset isn't beyond end of file now. Caller is
+@@ -1385,9 +1409,13 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, bool sync,
+ 	if (iomap.offset + iomap.length < pos + PMD_SIZE)
+ 		goto finish_iomap;
+ 
++	force_ro = (vmf->flags & FAULT_FLAG_WRITE) && sync &&
++			(iomap.flags & IOMAP_F_NEEDDSYNC);
++
+ 	switch (iomap.type) {
+ 	case IOMAP_MAPPED:
+-		result = dax_pmd_insert_mapping(vmf, &iomap, pos, entry);
++		result = dax_pmd_insert_mapping(vmf, &iomap, pos, entry,
++						force_ro);
+ 		break;
+ 	case IOMAP_UNWRITTEN:
+ 	case IOMAP_HOLE:
+diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+index f64dc6ce5161..957463602f6e 100644
+--- a/include/linux/iomap.h
++++ b/include/linux/iomap.h
+@@ -22,6 +22,8 @@ struct vm_fault;
+  * Flags for all iomap mappings:
+  */
+ #define IOMAP_F_NEW	0x01	/* blocks have been newly allocated */
++#define IOMAP_F_NEEDDSYNC	0x02	/* inode needs fdatasync for storage to
++					 * become persistent */
+ 
+ /*
+  * Flags that only need to be reported for IOMAP_REPORT requests:
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index fa036093e76c..5085647d9f2f 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1142,6 +1142,8 @@ static inline void clear_page_pfmemalloc(struct page *page)
+ #define VM_FAULT_RETRY	0x0400	/* ->fault blocked, must retry */
+ #define VM_FAULT_FALLBACK 0x0800	/* huge page fault failed, fall back to small */
+ #define VM_FAULT_DONE_COW   0x1000	/* ->fault has fully handled COW */
++#define VM_FAULT_RO	0x2000		/* Write fault was handled just by
++					 * inserting RO page table entry for DAX */
+ 
+ #define VM_FAULT_ERROR	(VM_FAULT_OOM | VM_FAULT_SIGBUS | VM_FAULT_SIGSEGV | \
+ 			 VM_FAULT_HWPOISON | VM_FAULT_HWPOISON_LARGE | \
 -- 
 2.12.3
