@@ -1,39 +1,136 @@
-From: Sahitya Tummala <stummala@codeaurora.org>
-Subject: e2fsck on encrypted directories
-Date: Fri, 28 Jul 2017 15:32:24 +0530
-Message-ID: <23b72f10-bbe6-1e7d-89b6-7b8bebab8d13@codeaurora.org>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 6/7] dax: Implement dax_pfn_mkwrite()
+Date: Fri, 28 Jul 2017 12:37:00 +0200
+Message-ID: <20170728103659.GE29433@quack2.suse.cz>
+References: <20170727131245.28279-1-jack@suse.cz>
+ <20170727131245.28279-7-jack@suse.cz>
+ <20170727225322.GG22000@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.codeaurora.org ([198.145.29.96]:50510 "EHLO
-        smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751071AbdG1KC2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Jul 2017 06:02:28 -0400
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170727225322.GG22000-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
+On Thu 27-07-17 16:53:22, Ross Zwisler wrote:
+> On Thu, Jul 27, 2017 at 03:12:44PM +0200, Jan Kara wrote:
+> > Implement a function that marks existing page table entry (PTE or PMD)
+> > as writeable and takes care of marking it dirty in the radix tree. This
+> > function will be used to finish synchronous page fault where the page
+> > table entry is first inserted as read-only and then needs to be marked
+> > as read-write.
+> > 
+> > Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> > ---
+> >  fs/dax.c            | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+> >  include/linux/dax.h |  1 +
+> >  2 files changed, 49 insertions(+)
+> > 
+> > diff --git a/fs/dax.c b/fs/dax.c
+> > index 8a6cf158c691..90b763c86dc2 100644
+> > --- a/fs/dax.c
+> > +++ b/fs/dax.c
+> > @@ -1485,3 +1485,51 @@ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+> >  	}
+> >  }
+> >  EXPORT_SYMBOL_GPL(dax_iomap_fault);
+> > +
+> > +/**
+> > + * dax_pfn_mkwrite - make page table entry writeable on a DAX file
+> > + * @vmf: The description of the fault
+> > + * @pe_size: size of entry to be marked writeable
+> > + *
+> > + * This function mark PTE or PMD entry as writeable in page tables for mmaped
+> > + * DAX file. It takes care of marking corresponding radix tree entry as dirty
+> > + * as well.
+> > + */
+> > +int dax_pfn_mkwrite(struct vm_fault *vmf, enum page_entry_size pe_size)
+> 
+> I wonder if this incarnation of this function should be named something other
+> than *_pfn_mkwrite so that it's clear that unlike in previous versions of the
+> codd, this version isn't supposed to be called via
+> vm_operations_struct->pfn_mkwrite, but is instead a helper for sync faults?
+> Maybe just dax_mkwrite()?
 
-I got a question on usage of e2fsck with -D option on EXT4 FS, where
-file based encryption is enabled. Is this option supposed to work on
-encrypted directories?
+Yeah, I'll change the name.
 
-I have encountered a case where e2fsck gets stuck
-in duplicate_search_and_fix() due to strncmp checks done in this function
-on encrypted file names, which may contain NUL characters.
+> > +{
+> > +	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
+> > +	void *entry, **slot;
+> > +	pgoff_t index = vmf->pgoff;
+> > +	pfn_t pfn = pfn_to_pfn_t(pte_pfn(vmf->orig_pte));
+> > +	int vmf_ret, error;
+> > +
+> > +	spin_lock_irq(&mapping->tree_lock);
+> > +	entry = get_unlocked_mapping_entry(mapping, index, &slot);
+> > +	/* Did we race with someone splitting entry or so? */
+> > +	if (!entry || (pe_size == PE_SIZE_PTE && !dax_is_pte_entry(entry)) ||
+> > +	    (pe_size == PE_SIZE_PMD && !dax_is_pmd_entry(entry))) {
+> > +		put_unlocked_mapping_entry(mapping, index, entry);
+> > +		spin_unlock_irq(&mapping->tree_lock);
+> 
+> The previous version of this function had tracepoints in this failure path and
+> in the successful completion path.  I use this kind of tracing daily for
+> debugging, so lets add it back in.
 
-Also, even without -D option passed, there can be a case of duplicate 
-entries (i.e.,
-ctx->dirs_to_hash is not NULL). In this case too we may see the same issue
-in duplicate_search_and_fix() if the directory is encrypted.
-Is my understanding correct? Please share your comments.
+OK, I will add the tracepoints.
 
-Thanks,
-Sahitya.
+> > +		return VM_FAULT_NOPAGE;
+> > +	}
+> > +	radix_tree_tag_set(&mapping->page_tree, index, PAGECACHE_TAG_DIRTY);
+> > +	entry = lock_slot(mapping, slot);
+> > +	spin_unlock_irq(&mapping->tree_lock);
+> > +	switch (pe_size) {
+> > +	case PE_SIZE_PTE:
+> > +		error = vm_insert_mixed_mkwrite(vmf->vma, vmf->address, pfn);
+> 
+> This path goes through the 'mkwrite' branch in insert_pfn() where we validate
+> that the PFN we are about to map matches the one pointed to by the existing
+> PTE, but I don't see any checks in this path that validate against
+> vmf->orig_pte?
 
+Yeah, and that's deliberate. The current PTE (or PMD in PMD fault case) is
+the read-only entry installed by dax_iomap_fault() a while ago. We pass the
+PFN we map there in vmf->orig_pte (in a very crude way) and in this function
+we extract it and pass it to vm_insert_mixed_mkwrite() to verify PFN didn't
+change (which would be a bug) and make the PTE writeable. We cannot use
+vmf->orig_pte directly for verification as that is just entry we
+constructed for passing the PFN, not the real entry. And ultimately I want
+to get rid of this hack and just pass PFN in some other way and leave
+vmf->orig_pte untouched (which would then be pte_none()).
+
+> This kind of check was done by the old
+> dax_pfn_mkwrite()->finish_mkwrite_fault() path via the pte_same() check in
+> finish_mkwrite_fault().
+
+Yes, but here the situation is special - we actually know PTE has changed
+from pte_none() to the read-only PTE. I was thinking about not changing the
+PTE at all during the initial dax_iomap_fault() call (i.e., not mapping the
+block read-only), just pass the PFN to the filesystem call handler, and
+then install directly writeable PTE with that PFN in the new DAX helper.
+Then we could also perform the orig_pte check.
+
+What I dislike about this option is that dax_iomap_fault() would in some
+cases not install the PTE and in other cases it would. However I guess it
+is not such a huge difference from dax_iomap_fault() sometimes mapping the
+entry read-only so maybe this is a cleaner way to go.
+
+								Honza
 -- 
-Qualcomm India Private Limited, on behalf of Qualcomm Innovation Center, Inc.
-Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a Linux Foundation Collaborative Project.
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
