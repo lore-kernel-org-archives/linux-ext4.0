@@ -1,56 +1,76 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 6/7] dax: Implement dax_pfn_mkwrite()
-Date: Thu, 27 Jul 2017 17:04:40 -0600
-Message-ID: <20170727230440.GI22000@linux.intel.com>
-References: <20170727131245.28279-1-jack@suse.cz>
- <20170727131245.28279-7-jack@suse.cz>
- <20170727225322.GG22000@linux.intel.com>
+From: Andy Lutomirski <luto@kernel.org>
+Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
+Date: Thu, 27 Jul 2017 19:05:24 -0700
+Message-ID: <CALCETrVzxrQ76BXEfo4kcRFyQmxbrMwCLE17yPyTJzz0tUs+Dg@mail.gmail.com>
+References: <20170727131245.28279-1-jack@suse.cz> <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
+ <20170727215713.GA22000@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
 To: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org,
-        Dan Williams <dan.j.williams@intel.com>,
-        Andy Lutomirski <luto@kernel.org>, linux-nvdimm@lists.01.org,
-        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170727225322.GG22000@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+        Jeff Moyer <jmoyer@redhat.com>, Jan Kara <jack@suse.cz>,
+        linux-xfs@vger.kernel.org,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:48380 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751754AbdG1CFr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 27 Jul 2017 22:05:47 -0400
+Received: from mail-ua0-f177.google.com (mail-ua0-f177.google.com [209.85.217.177])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 790C522CB3
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Jul 2017 02:05:46 +0000 (UTC)
+Received: by mail-ua0-f177.google.com with SMTP id 80so153691566uas.0
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Jul 2017 19:05:46 -0700 (PDT)
+In-Reply-To: <20170727215713.GA22000@linux.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 27, 2017 at 04:53:22PM -0600, Ross Zwisler wrote:
-> On Thu, Jul 27, 2017 at 03:12:44PM +0200, Jan Kara wrote:
-> > Implement a function that marks existing page table entry (PTE or PMD)
-> > as writeable and takes care of marking it dirty in the radix tree. This
-> > function will be used to finish synchronous page fault where the page
-> > table entry is first inserted as read-only and then needs to be marked
-> > as read-write.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-<>
-> > +	radix_tree_tag_set(&mapping->page_tree, index, PAGECACHE_TAG_DIRTY);
-> > +	entry = lock_slot(mapping, slot);
-> > +	spin_unlock_irq(&mapping->tree_lock);
-> > +	switch (pe_size) {
-> > +	case PE_SIZE_PTE:
-> > +		error = vm_insert_mixed_mkwrite(vmf->vma, vmf->address, pfn);
-> 
-> This path goes through the 'mkwrite' branch in insert_pfn() where we validate
-> that the PFN we are about to map matches the one pointed to by the existing
-> PTE, but I don't see any checks in this path that validate against
-> vmf->orig_pte?
-> 
-> This kind of check was done by the old
-> dax_pfn_mkwrite()->finish_mkwrite_fault() path via the pte_same() check in
-> finish_mkwrite_fault().
-> 
-> Do we need to add an equivalent check somewhere in this path, since we're
-> going through the trouble of setting vmf->orig_pte in the DAX fault handlers?
+On Thu, Jul 27, 2017 at 2:57 PM, Ross Zwisler
+<ross.zwisler@linux.intel.com> wrote:
+> On Thu, Jul 27, 2017 at 10:09:07AM -0400, Jeff Moyer wrote:
+>> Jan Kara <jack@suse.cz> writes:
+>>
+>> Hi, Jan,
+>>
+>> Thanks for looking into this!
+>>
+>> > There are couple of open questions with this implementation:
+>> >
+>> > 1) Is it worth the hassle?
+>> > 2) Is S_SYNC good flag to use or should we use a new inode flag?
+>> > 3) VM_FAULT_RO and especially passing of resulting 'pfn' from
+>> >    dax_iomap_fault() through filesystem fault handler to dax_pfn_mkwrite() in
+>> >    vmf->orig_pte is a bit of a hack. So far I'm not sure how to refactor
+>> >    things to make this cleaner.
+>>
+>> 4) How does an application discover that it is safe to flush from
+>>    userspace?
+>
+> I think that we would be best off with a new flag available via
+> lsattr(1)/chattr(1).  This would have the following advantages:
+>
+> 1) We could only set the flag if the inode supported DAX (either via the mount
+> option or via the individual DAX flag).  This would give NVML et al. one
+> central way to detect whether it was safe to flush from userspace because the
+> FS supported synchronous faults.
+>
+> 2) Defining a new flag prevents any confusion about whether the kernel version
+> you have supports sync faults.  Otherwise NVML would have to do something like
+> look at the trio of (kernel version, S_SYNC flag, mount/inode option for DAX)
+> which is complex and of course breaks for OS kernel versions.
+>
+> 3) Defining the flag in a generic way via lsattr/chattr opens the door for the
+> same API and flag to be used by other filesystems in the future.
 
-Or, actually, does the fact that we do the PFN based sanity check in
-insert_pfn() mean that we don't actually need to set vmf->orig_pte in the DAX
-fault handlers at all?  We already sanity check the PFN of the RW PTE we
-insert against what is already in the page table, and maybe we don't need to
-keep another copy around in vmf->orig_pte to verify against?
+I would advocate using a new fcntl() instead of lsattr for the
+following reason: ISTM the fact that it's an *inode* flag in this
+patchset is a bit of an implementation detail.  I can easily imagine a
+future implementation that makes it per-struct-file instead.  A
+fcntl() that asks "can I flush from userspace" would still work under
+than scenario.
