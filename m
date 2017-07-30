@@ -1,76 +1,64 @@
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-Subject: Re: [PATCH] ext4: Fix SEEK_HOLE/SEEK_DATA for blocksize < pagesize
-Date: Fri, 28 Jul 2017 13:40:25 +0200
-Message-ID: <CAHpGcM+Ts=8Yu_4n-MbQaimxdJFCMAvMhLXucJDifivJcvr9YQ@mail.gmail.com>
-References: <20170728111637.12473-1-jack@suse.cz>
+From: Matthew Wilcox <willy@infradead.org>
+Subject: Re: [ext2] Mislabeled quadratic probing?
+Date: Sat, 29 Jul 2017 19:37:18 -0700
+Message-ID: <20170730023718.GH15980@bombadil.infradead.org>
+References: <07c8955b-0ead-9dd9-978e-767d5dec6712@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f194.google.com ([209.85.161.194]:36794 "EHLO
-        mail-yw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751071AbdG1Lk1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Jul 2017 07:40:27 -0400
-In-Reply-To: <20170728111637.12473-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>, jack@suse.com,
+        tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Sean Anderson <seanga2@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <07c8955b-0ead-9dd9-978e-767d5dec6712@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-2017-07-28 13:16 GMT+02:00 Jan Kara <jack@suse.cz>:
-> ext4_find_unwritten_pgoff() does not properly handle a situation when
-> starting index is in the middle of a page and blocksize < pagesize. The
-> following command shows the bug on filesystem with 1k blocksize:
->
->   xfs_io -f -c "falloc 0 4k" \
->             -c "pwrite 1k 1k" \
->             -c "pwrite 3k 1k" \
->             -c "seek -a -r 0" foo
->
-> In this example, neither lseek(fd, 1024, SEEK_HOLE) nor lseek(fd, 2048,
-> SEEK_DATA) will return the correct result.
->
-> Fix the problem by neglecting buffers in a page before starting offset.
+On Sat, Jul 29, 2017 at 10:24:29AM -0400, Sean Anderson wrote:
+> Hi,
+> 
+> I was reading through the ext2 inode allocation code, and found the
+> following snippet in fs/ext2/ialloc.c:find_group_other
+> 
+> /*
+>  * Use a quadratic hash to find a group with a free inode and some
+>  * free blocks.
+>  */
+> for (i = 1; i < ngroups; i <<= 1) {
+>         group += i;
+>         if (group >= ngroups)
+>                 group -= ngroups;
+>         desc = ext2_get_group_desc (sb, group, NULL);
+>         if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+>                         le16_to_cpu(desc->bg_free_blocks_count))
+>                 goto found;
+> }
+> 
+> As I understand it, quadratic probing starting at a hash H would try
+> positions H+1, H+4, H+9, H+16, H+25, etc. Here, however, the algorithm
+> appears to try positions H+1, H+3, H+7, H+15, H+31, etc., which appears
+> to be some form of exponential probing. I was unable to find the patch
+> which introduced this code, but it appears that it was introduced in
+> v2.4.14.3, and before that linear probing was used. Clearly, this code
+> works, and I can't really find any compelling arguments to switch to
+> quadratic probing proper. I suspect it was done this way to avoid a
+> multiply or an extra subtract on every loop. Can anyone shed some light
+> on the choice (and apparent mislabel) of this algorithm?
 
-This looks correct as a minimal fix for 4.13. We can later switch to
-page_cache_seek_hole_data which does the same thing as
-ext4_find_unwritten_pgoff, or directly to iomap_seek_{hole,data}.
+It can't have been to avoid an arithmetic operation.  The quadratic
+hash would simply be s/<<= 1/+= 2/ which is going to be equal cost on
+basically every CPU.
 
-> Reported-by: Andreas Gruenbacher <agruenba@redhat.com>
-> CC: stable@vger.kernel.org
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/file.c | 3 +++
->  1 file changed, 3 insertions(+)
->
-> This is an easy fix for the SEEK_HOLE/SEEK_DATA bug Andreas found. Longer
-> term we want to move ext4 to use page_cache_seek_hole_data() however for
-> stable backporting this is more suitable.
->
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index b221d0b546b0..8ba34cbe8fe7 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -530,6 +530,8 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
->                                 lastoff = page_offset(page);
->                                 bh = head = page_buffers(page);
->                                 do {
-> +                                       if (lastoff + bh->b_size <= startoff)
-> +                                               goto next;
->                                         if (buffer_uptodate(bh) ||
->                                             buffer_unwritten(bh)) {
->                                                 if (whence == SEEK_DATA)
-> @@ -544,6 +546,7 @@ static int ext4_find_unwritten_pgoff(struct inode *inode,
->                                                 unlock_page(page);
->                                                 goto out;
->                                         }
-> +next:
->                                         lastoff += bh->b_size;
->                                         bh = bh->b_this_page;
->                                 } while (bh != head);
-> --
-> 2.12.3
+The biggest danger I see here is that we're only going to test 32
+groups before falling back to linear probing (we'll shift the single
+'1' bit out of 'i' in 32 steps).  That might be a performance problem,
+but it should hit quite rarely.
 
-Thanks,
-Andreas
+The danger in changing it is that we'll end up with new files created in
+a directory choosing a different block group from files created in that
+directory using an old kernel.  And that could be a worse performance
+impact.
+
+I think we'd need to see some benchmarks ... Ted, any suggestions for
+something which might show a difference between these two approaches
+to hashing?
