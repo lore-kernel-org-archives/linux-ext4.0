@@ -1,34 +1,29 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: convert swap_inode_data() over to use swap() on
- most of the fields
-Date: Mon, 31 Jul 2017 00:56:22 -0400
-Message-ID: <20170731045622.ez4tjhuvmjrpvizc@thunk.org>
-References: <20170705163207.1263-1-jlayton@kernel.org>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Subject: Re: xattr hash error in 4.13-rc with overlayfs over ext4
+Date: Mon, 31 Jul 2017 18:08:21 +0200
+Message-ID: <CAJfpegvy274dZ0ZzY+qpaLwREi0QU9jNt=vE0pBpQ8W2wWCx1w@mail.gmail.com>
+References: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
+ <CAAeU0aM-1UFJJvX3zF1wUjBeG8BGC+S0wn7PhiDZevTscvmkXg@mail.gmail.com>
+ <CAJfpegvL2iR1PZ+3S=VGtbUiVPQ-EnW28KwE4wCzMJwWptNYKg@mail.gmail.com>
+ <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com> <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Jeff Layton <jlayton@kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47492 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751800AbdGaFlA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 31 Jul 2017 01:41:00 -0400
-Content-Disposition: inline
-In-Reply-To: <20170705163207.1263-1-jlayton@kernel.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
+To: Tahsin Erdogan <tahsin@google.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 05, 2017 at 12:32:07PM -0400, Jeff Layton wrote:
-> From: Jeff Layton <jlayton@redhat.com>
-> 
-> For some odd reason, it forces a byte-by-byte copy of each field. A
-> plain old swap() on most of these fields would be more efficient. We
-> do need to retain the memswap of i_data however as that field is an array.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> Reviewed-by: Jan Kara <jack@suse.cz>
+On Thu, Jul 27, 2017 at 10:54 PM, Tahsin Erdogan <tahsin@google.com> wrote:
+> Still no luck reproducing the error. I am using the test script below
+> at v4.13-rc2. Do you mind checking my script to see what I am missing?
 
-Thanks, applied.
+Don't know.   I can reliably reproduce it under UML, but not with a
+VM.  What the hell is going on?
 
-					- Ted
+Thanks,
+Miklos
