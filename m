@@ -1,49 +1,71 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: xattr hash error in 4.13-rc with overlayfs over ext4
-Date: Tue, 1 Aug 2017 13:34:34 +0300
-Message-ID: <CAOQ4uxjtLVuuYyDZ7csJeb_xbMiWHDHs21tgQoB7bbLWC6DUew@mail.gmail.com>
-References: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
- <CAAeU0aM-1UFJJvX3zF1wUjBeG8BGC+S0wn7PhiDZevTscvmkXg@mail.gmail.com>
- <CAJfpegvL2iR1PZ+3S=VGtbUiVPQ-EnW28KwE4wCzMJwWptNYKg@mail.gmail.com>
- <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com>
- <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com> <CAJfpegvy274dZ0ZzY+qpaLwREi0QU9jNt=vE0pBpQ8W2wWCx1w@mail.gmail.com>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
+Date: Tue, 1 Aug 2017 03:52:19 -0700
+Message-ID: <20170801105219.GA6742@infradead.org>
+References: <20170727131245.28279-1-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Tahsin Erdogan <tahsin@google.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Return-path: <linux-unionfs-owner@vger.kernel.org>
-In-Reply-To: <CAJfpegvy274dZ0ZzY+qpaLwREi0QU9jNt=vE0pBpQ8W2wWCx1w@mail.gmail.com>
-Sender: linux-unionfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170727131245.28279-1-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 31, 2017 at 7:08 PM, Miklos Szeredi <miklos@szeredi.hu> wrote:
-> On Thu, Jul 27, 2017 at 10:54 PM, Tahsin Erdogan <tahsin@google.com> wrote:
->> Still no luck reproducing the error. I am using the test script below
->> at v4.13-rc2. Do you mind checking my script to see what I am missing?
->
-> Don't know.   I can reliably reproduce it under UML, but not with a
-> VM.  What the hell is going on?
->
+On Thu, Jul 27, 2017 at 03:12:38PM +0200, Jan Kara wrote:
+> So the functionality this patches implement: We have an inode flag (currently
+> I abuse S_SYNC inode flag for this and IMHO it kind of makes sense but if
+> people hate that I'm certainly open to using new flag in the final
+> implementation) that marks inode as requiring synchronous page faults.
+> The guarantee provided by this flag on inode is: While a block is writeably
+> mapped into page tables, it is guaranteed to be visible in the file at that
+> offset also after a crash.
 
-Is it the same ext4 image for UML and VM? same image size? same mkfs version?
+I think the right interface for page fault behavior is a mmap
+flag, MAP_SYNC or similar, which will be optional and a failure of
+a MAP_SYNC mmap will indicated that this behavior can't be provided
+for the given file descriptor.
 
-What inode size do you have in UML setup? e.g.:
+> >From my (fairly limited) knowledge of XFS it seems XFS should be able to do the
+> same and it should be even possible for filesystem to implement safe remapping
+> of a file offset to a different block (i.e. break reflink, do defrag, or
+> similar stuff) like:
 
-dumpe2fs -h /dev/sda3|grep Inode.size
-dumpe2fs 1.42.13 (17-May-2015)
-Inode size:          256
+It should.  But what I'm worried about for both ext4 and XFS is the
+worst case behavior that the page faul path can now hit, e.g. flushing
+a potentially full log.  Do you have any numbers of how long your
+ext4 page faults take with this in the worst case?
 
-have extra_isize feature? (not sure if that matters)
+> There are couple of open questions with this implementation:
+> 
+> 1) Is it worth the hassle?
 
-dumpe2fs -h /dev/sda3|grep isize
-dumpe2fs 1.42.13 (17-May-2015)
-Filesystem features:      has_journal ext_attr resize_inode dir_index
-filetype needs_recovery extent flex_bg sparse_super large_file
-huge_file uninit_bg dir_nlink extra_isize
-Required extra isize:     28
-Desired extra isize:      28
+For that I'd really like to see performance numbers.  And compared to
+the immutable nightmare that Dan proposed this looks orders of magnitude
+better.
+
+> 2) Is S_SYNC good flag to use or should we use a new inode flag?
+
+I think the right interface is mmap as said above.  But even if not
+we should not simply reuse existing flags with a well defined (although
+not particular useful) behavior.
+
+> 3) VM_FAULT_RO and especially passing of resulting 'pfn' from
+>    dax_iomap_fault() through filesystem fault handler to dax_pfn_mkwrite() in
+>    vmf->orig_pte is a bit of a hack. So far I'm not sure how to refactor
+>    things to make this cleaner.
+
+I'll take a look.
