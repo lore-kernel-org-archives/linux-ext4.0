@@ -1,119 +1,118 @@
-From: Kees Cook <keescook@chromium.org>
-Subject: Re: [PATCH 1/2] ext4: fix warning about stack corruption
-Date: Tue, 1 Aug 2017 11:26:47 -0700
-Message-ID: <CAGXu5jJ06O6KZYU=Y-=Lb7a9+utK13gD0hujfbiS0qy3mj_bCQ@mail.gmail.com>
-References: <20170726185219.GA57833@beast> <20170801120438.1582336-1-arnd@arndb.de>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: e2fsck on encrypted directories
+Date: Tue, 1 Aug 2017 12:18:45 -0700
+Message-ID: <20170801191845.GA135269@gmail.com>
+References: <23b72f10-bbe6-1e7d-89b6-7b8bebab8d13@codeaurora.org>
+ <20170801143343.7kphdxfvw7qzth3z@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>
-To: Arnd Bergmann <arnd@arndb.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: Sahitya Tummala <stummala@codeaurora.org>,
+        linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f46.google.com ([209.85.214.46]:37595 "EHLO
-        mail-it0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751928AbdHAS0t (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Aug 2017 14:26:49 -0400
-Received: by mail-it0-f46.google.com with SMTP id v127so12757656itd.0
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Aug 2017 11:26:49 -0700 (PDT)
-In-Reply-To: <20170801120438.1582336-1-arnd@arndb.de>
+Received: from mail-pg0-f68.google.com ([74.125.83.68]:32965 "EHLO
+        mail-pg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752259AbdHATSs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Aug 2017 15:18:48 -0400
+Received: by mail-pg0-f68.google.com with SMTP id u185so3898569pgb.0
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Aug 2017 12:18:48 -0700 (PDT)
+Content-Disposition: inline
+In-Reply-To: <20170801143343.7kphdxfvw7qzth3z@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 1, 2017 at 5:04 AM, Arnd Bergmann <arnd@arndb.de> wrote:
-> After commit 62d1034f53e3 ("fortify: use WARN instead of BUG for now"),
-> we get a warning about possible stack overflow from a memcpy that
-> was not strictly bounded to the size of the local variable:
->
->     inlined from 'ext4_mb_seq_groups_show' at fs/ext4/mballoc.c:2322:2:
-> include/linux/string.h:309:9: error: '__builtin_memcpy': writing between 161 and 1116 bytes into a region of size 160 overflows the destination [-Werror=stringop-overflow=]
->
-> We actually had a bug here that would have been found by the warning,
-> but it was already fixed last year in commit 30a9d7afe70e ("ext4: fix
-> stack memory corruption with 64k block size").
->
-> This replaces the fixed-length structure on the stack with a variable-length
-> structure, using the correct upper bound that tells the compiler that
-> everything is really fine here. I also change the loop count to check
-> for the same upper bound for consistency, but the existing code is
-> already correct here.
->
-> Note that while clang won't allow certain kinds of variable-length arrays
-> in structures, this particular instance is fine, as the array is at the
-> end of the structure, and the size is strictly bounded.
->
-> There is one remaining issue with the function that I'm not addressing
-> here: With s_blocksize_bits==16, we don't actually print the last two
-> members of the array, as we loop though just the first 14 members.
-> This could be easily addressed by adding two extra columns in the output,
-> but that could in theory break parsers in user space, and should be
-> a separate patch if we decide to modify it.
->
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-
-Acked-by: Kees Cook <keescook@chromium.org>
-
--Kees
-
+On Tue, Aug 01, 2017 at 10:33:43AM -0400, Theodore Ts'o wrote:
+> On Fri, Jul 28, 2017 at 03:32:24PM +0530, Sahitya Tummala wrote:
+> > Hi Ted,
+> > 
+> > I got a question on usage of e2fsck with -D option on EXT4 FS, where
+> > file based encryption is enabled. Is this option supposed to work on
+> > encrypted directories?
+> > 
+> > I have encountered a case where e2fsck gets stuck
+> > in duplicate_search_and_fix() due to strncmp checks done in this function
+> > on encrypted file names, which may contain NUL characters.
+> > 
+> > Also, even without -D option passed, there can be a case of duplicate
+> > entries (i.e.,
+> > ctx->dirs_to_hash is not NULL). In this case too we may see the same issue
+> > in duplicate_search_and_fix() if the directory is encrypted.
+> > Is my understanding correct? Please share your comments.
+> 
+> Thanks, your understanding is indeed correct.  Thanks for pointing
+> this out.  The following patch should fix the problem; can you
+> confirm, if you have a convenient test case?
+> 
+> 					- Ted
+> 
+> From 5b8d7c51e51aef7879150b07f3967da4028862f3 Mon Sep 17 00:00:00 2001
+> From: Theodore Ts'o <tytso@mit.edu>
+> Date: Tue, 1 Aug 2017 10:26:11 -0400
+> Subject: [PATCH] e2fsck: fix e2fsck -D for encrypted directories
+> 
+> If the directory entry is encrypted there may be embedded NUL
+> characters; hence, we should use memcmp instead of strncmp when
+> comparing strings.  Otherwise, e2fsck can erroneously report that a
+> directory have duplicant entries when doing an e2fsck -D check.
+> 
+> Reported-by: Sahitya Tummala <stummala@codeaurora.org>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > ---
->  fs/ext4/mballoc.c | 11 ++++++-----
->  1 file changed, 6 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 581e357e8406..803cab1939fe 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2295,9 +2295,12 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
->         int err, buddy_loaded = 0;
->         struct ext4_buddy e4b;
->         struct ext4_group_info *grinfo;
-> +       unsigned char blocksize_bits = min_t(unsigned char,
-> +                                            sb->s_blocksize_bits,
-> +                                            EXT4_MAX_BLOCK_LOG_SIZE);
->         struct sg {
->                 struct ext4_group_info info;
-> -               ext4_grpblk_t counters[EXT4_MAX_BLOCK_LOG_SIZE + 2];
-> +               ext4_grpblk_t counters[blocksize_bits + 2];
->         } sg;
->
->         group--;
-> @@ -2306,8 +2309,6 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
->                               " 2^0   2^1   2^2   2^3   2^4   2^5   2^6  "
->                               " 2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]\n");
->
-> -       i = (sb->s_blocksize_bits + 2) * sizeof(sg.info.bb_counters[0]) +
-> -               sizeof(struct ext4_group_info);
->         grinfo = ext4_get_group_info(sb, group);
->         /* Load the group info in memory only if not already loaded. */
->         if (unlikely(EXT4_MB_GRP_NEED_INIT(grinfo))) {
-> @@ -2319,7 +2320,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
->                 buddy_loaded = 1;
->         }
->
-> -       memcpy(&sg, ext4_get_group_info(sb, group), i);
-> +       memcpy(&sg, ext4_get_group_info(sb, group), sizeof(sg));
->
->         if (buddy_loaded)
->                 ext4_mb_unload_buddy(&e4b);
-> @@ -2327,7 +2328,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
->         seq_printf(seq, "#%-5u: %-5u %-5u %-5u [", group, sg.info.bb_free,
->                         sg.info.bb_fragments, sg.info.bb_first_free);
->         for (i = 0; i <= 13; i++)
-> -               seq_printf(seq, " %-5u", i <= sb->s_blocksize_bits + 1 ?
-> +               seq_printf(seq, " %-5u", i <= blocksize_bits + 1 ?
->                                 sg.info.bb_counters[i] : 0);
->         seq_printf(seq, " ]\n");
->
-> --
-> 2.9.0
->
+>  e2fsck/rehash.c | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
+> index 22a58f333..77129e50d 100644
+> --- a/e2fsck/rehash.c
+> +++ b/e2fsck/rehash.c
+> @@ -219,7 +219,7 @@ static EXT2_QSORT_TYPE name_cmp(const void *a, const void *b)
+>  	if (min_len > he_b_len)
+>  		min_len = he_b_len;
+>  
+> -	ret = strncmp(he_a->dir->name, he_b->dir->name, min_len);
+> +	ret = memcmp(he_a->dir->name, he_b->dir->name, min_len);
+>  	if (ret == 0) {
+>  		if (he_a_len > he_b_len)
+>  			ret = 1;
+> @@ -386,7 +386,7 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
+>  		if (!ent->dir->inode ||
+>  		    (ext2fs_dirent_name_len(ent->dir) !=
+>  		     ext2fs_dirent_name_len(prev->dir)) ||
+> -		    strncmp(ent->dir->name, prev->dir->name,
+> +		    memcmp(ent->dir->name, prev->dir->name,
+>  			     ext2fs_dirent_name_len(ent->dir)))
+>  			continue;
+>  		pctx.dirent = ent->dir;
+> @@ -404,7 +404,7 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
+>  			if ((i==j) ||
+>  			    (new_len !=
+>  			     (unsigned) ext2fs_dirent_name_len(fd->harray[j].dir)) ||
+> -			    strncmp(new_name, fd->harray[j].dir->name, new_len))
+> +			    memcmp(new_name, fd->harray[j].dir->name, new_len))
+>  				continue;
+>  			mutate_name(new_name, &new_len);
+>  
 
+Reviewed-by: Eric Biggers <ebiggers@google.com>
 
+Also, here are some commands that reproduce e2fsck getting stuck (usually; it's
+not guaranteed):
 
--- 
-Kees Cook
-Pixel Security
+	mkfs.ext4 -F -O encrypt /dev/vdc
+	mount /vdc
+	mkdir /vdc/edir
+	echo | e4crypt add_key /vdc/edir
+	cd /vdc/edir
+	for b in $(seq -f "aaaabbbbcccc%04.0feeeeffffgggghhhh" 64); do
+		seq -f "${b}%04.0f" 32
+	done | xargs touch
+	cd /
+	umount /vdc
+	e2fsck -f -D /dev/vdc
+
+It uses some different prefixes to try to get an '\0' in the first 16 bytes,
+then for each one tries some different suffixes.  It seems what was happening is
+that when a "duplicate" was detected, mutate_name() only changed the part after
+the '\0', so it remained a "duplicate" and it looped endlessly.
+
+Eric
