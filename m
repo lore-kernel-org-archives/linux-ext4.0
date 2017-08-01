@@ -1,29 +1,44 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
-Subject: Re: xattr hash error in 4.13-rc with overlayfs over ext4
-Date: Mon, 31 Jul 2017 18:08:21 +0200
-Message-ID: <CAJfpegvy274dZ0ZzY+qpaLwREi0QU9jNt=vE0pBpQ8W2wWCx1w@mail.gmail.com>
-References: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
- <CAAeU0aM-1UFJJvX3zF1wUjBeG8BGC+S0wn7PhiDZevTscvmkXg@mail.gmail.com>
- <CAJfpegvL2iR1PZ+3S=VGtbUiVPQ-EnW28KwE4wCzMJwWptNYKg@mail.gmail.com>
- <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com> <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: [PATCH] ext4: release discard bio after sending discard commands
+Date: Tue, 01 Aug 2017 11:29:28 +0900
+Message-ID: <1501554568-13815-1-git-send-email-daeho.jeong@samsung.com>
+References: <CGME20170801022917epcas2p49ee3e7d5ac5cba8746253429888b6d1c@epcas2p4.samsung.com>
+Cc: Daeho Jeong <daeho.jeong@samsung.com>
+To: jack@suse.com, tytso@mit.edu, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mailout4.samsung.com ([203.254.224.34]:27871 "EHLO
+        mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751676AbdHAC3U (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Jul 2017 22:29:20 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 27, 2017 at 10:54 PM, Tahsin Erdogan <tahsin@google.com> wrote:
-> Still no luck reproducing the error. I am using the test script below
-> at v4.13-rc2. Do you mind checking my script to see what I am missing?
+We've changed the discard command handling into parallel manner.
+But, in this change, I forgot decreasing the usage count of the bio
+which was used to send discard request. I'm sorry about that.
 
-Don't know.   I can reliably reproduce it under UML, but not with a
-VM.  What the hell is going on?
+Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+Fixes: a015434480dc ("ext4: send parallel discards on commit
+completions")
+---
+ fs/ext4/mballoc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Thanks,
-Miklos
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index ab70b69e644c..88317b0cf7b8 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2892,8 +2892,10 @@ void ext4_process_freed_data(struct super_block *sb, tid_t commit_tid)
+ 				break;
+ 		}
+ 
+-		if (discard_bio)
++		if (discard_bio) {
+ 			submit_bio_wait(discard_bio);
++			bio_put(discard_bio);
++		}
+ 	}
+ 
+ 	list_for_each_entry_safe(entry, tmp, &freed_data_list, efd_list)
+-- 
+2.13.0
