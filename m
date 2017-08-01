@@ -1,56 +1,97 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
-Date: Tue, 1 Aug 2017 13:26:03 +0200
-Message-ID: <20170801112603.GG4215@quack2.suse.cz>
-References: <20170727131245.28279-1-jack@suse.cz>
- <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
- <20170727215713.GA22000@linux.intel.com>
- <CALCETrVzxrQ76BXEfo4kcRFyQmxbrMwCLE17yPyTJzz0tUs+Dg@mail.gmail.com>
- <20170728093821.GB29433@quack2.suse.cz>
- <20170801110241.GE6742@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
- Linux FS Devel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170801110241.GE6742-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH 1/2] ext4: fix warning about stack corruption
+Date: Tue,  1 Aug 2017 14:04:03 +0200
+Message-ID: <20170801120438.1582336-1-arnd@arndb.de>
+References: <20170726185219.GA57833@beast>
+Cc: Kees Cook <keescook@chromium.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Arnd Bergmann <arnd@arndb.de>, Jan Kara <jack@suse.cz>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170726185219.GA57833@beast>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 01-08-17 04:02:41, Christoph Hellwig wrote:
-> On Fri, Jul 28, 2017 at 11:38:21AM +0200, Jan Kara wrote:
-> > Well, you are right I can make the implementation work with struct file
-> > flag as well - let's call it O_DAXDSYNC. However there are filesystem
-> > operations where you may need to answer question: Is there any fd with
-> > O_DAXDSYNC open against this inode (for operations that change file offset
-> > -> block mapping)? And in that case inode flag is straightforward while
-> > file flag is a bit awkward (you need to implement counter of fd's with that
-> > flag in the inode).
-> 
-> We can still keep and inode flag as the internal implementation
-> detail.  As mentioned earlier the right flag to control behavior
-> of a mapping is an mmap flag.  And the initial naive implementation
-> would simply mark the inode as sync once the first MAP_SYNC open happens
-> on it.  We could then move to more precise tracking if/when needed.
+After commit 62d1034f53e3 ("fortify: use WARN instead of BUG for now"),
+we get a warning about possible stack overflow from a memcpy that
+was not strictly bounded to the size of the local variable:
 
-OK, makes sense and I like the MAP_SYNC proposal. I'll change it in my
-implementation.
+    inlined from 'ext4_mb_seq_groups_show' at fs/ext4/mballoc.c:2322:2:
+include/linux/string.h:309:9: error: '__builtin_memcpy': writing between 161 and 1116 bytes into a region of size 160 overflows the destination [-Werror=stringop-overflow=]
 
-								Honza
+We actually had a bug here that would have been found by the warning,
+but it was already fixed last year in commit 30a9d7afe70e ("ext4: fix
+stack memory corruption with 64k block size").
+
+This replaces the fixed-length structure on the stack with a variable-length
+structure, using the correct upper bound that tells the compiler that
+everything is really fine here. I also change the loop count to check
+for the same upper bound for consistency, but the existing code is
+already correct here.
+
+Note that while clang won't allow certain kinds of variable-length arrays
+in structures, this particular instance is fine, as the array is at the
+end of the structure, and the size is strictly bounded.
+
+There is one remaining issue with the function that I'm not addressing
+here: With s_blocksize_bits==16, we don't actually print the last two
+members of the array, as we loop though just the first 14 members.
+This could be easily addressed by adding two extra columns in the output,
+but that could in theory break parsers in user space, and should be
+a separate patch if we decide to modify it.
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/ext4/mballoc.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 581e357e8406..803cab1939fe 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2295,9 +2295,12 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 	int err, buddy_loaded = 0;
+ 	struct ext4_buddy e4b;
+ 	struct ext4_group_info *grinfo;
++	unsigned char blocksize_bits = min_t(unsigned char,
++					     sb->s_blocksize_bits,
++					     EXT4_MAX_BLOCK_LOG_SIZE);
+ 	struct sg {
+ 		struct ext4_group_info info;
+-		ext4_grpblk_t counters[EXT4_MAX_BLOCK_LOG_SIZE + 2];
++		ext4_grpblk_t counters[blocksize_bits + 2];
+ 	} sg;
+ 
+ 	group--;
+@@ -2306,8 +2309,6 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 			      " 2^0   2^1   2^2   2^3   2^4   2^5   2^6  "
+ 			      " 2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]\n");
+ 
+-	i = (sb->s_blocksize_bits + 2) * sizeof(sg.info.bb_counters[0]) +
+-		sizeof(struct ext4_group_info);
+ 	grinfo = ext4_get_group_info(sb, group);
+ 	/* Load the group info in memory only if not already loaded. */
+ 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grinfo))) {
+@@ -2319,7 +2320,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 		buddy_loaded = 1;
+ 	}
+ 
+-	memcpy(&sg, ext4_get_group_info(sb, group), i);
++	memcpy(&sg, ext4_get_group_info(sb, group), sizeof(sg));
+ 
+ 	if (buddy_loaded)
+ 		ext4_mb_unload_buddy(&e4b);
+@@ -2327,7 +2328,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 	seq_printf(seq, "#%-5u: %-5u %-5u %-5u [", group, sg.info.bb_free,
+ 			sg.info.bb_fragments, sg.info.bb_first_free);
+ 	for (i = 0; i <= 13; i++)
+-		seq_printf(seq, " %-5u", i <= sb->s_blocksize_bits + 1 ?
++		seq_printf(seq, " %-5u", i <= blocksize_bits + 1 ?
+ 				sg.info.bb_counters[i] : 0);
+ 	seq_printf(seq, " ]\n");
+ 
 -- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+2.9.0
