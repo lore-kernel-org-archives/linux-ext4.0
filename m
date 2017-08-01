@@ -1,91 +1,64 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsck on encrypted directories
-Date: Tue, 1 Aug 2017 10:33:43 -0400
-Message-ID: <20170801143343.7kphdxfvw7qzth3z@thunk.org>
-References: <23b72f10-bbe6-1e7d-89b6-7b8bebab8d13@codeaurora.org>
+From: <sterrenplan.kampen@deltasteur.nl>
+Subject: (unknown)
+Date: Tue, 01 Aug 2017 16:33:55 -0000
+Message-ID: <150160523508.17373.1003139706537830758@tolcom.ru>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Sahitya Tummala <stummala@codeaurora.org>
+Content-Type: application/zip; name="EMAIL_26553892905555_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53758 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751352AbdHAOdq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 1 Aug 2017 10:33:46 -0400
-Content-Disposition: inline
-In-Reply-To: <23b72f10-bbe6-1e7d-89b6-7b8bebab8d13@codeaurora.org>
+Received: from rv-cl-88-200-216-162.pool.tolcom.ru ([88.200.216.162]:44727
+        "HELO tolcom.ru" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1751884AbdHAQd7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Aug 2017 12:33:59 -0400
+Subject: 
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 28, 2017 at 03:32:24PM +0530, Sahitya Tummala wrote:
-> Hi Ted,
-> 
-> I got a question on usage of e2fsck with -D option on EXT4 FS, where
-> file based encryption is enabled. Is this option supposed to work on
-> encrypted directories?
-> 
-> I have encountered a case where e2fsck gets stuck
-> in duplicate_search_and_fix() due to strncmp checks done in this function
-> on encrypted file names, which may contain NUL characters.
-> 
-> Also, even without -D option passed, there can be a case of duplicate
-> entries (i.e.,
-> ctx->dirs_to_hash is not NULL). In this case too we may see the same issue
-> in duplicate_search_and_fix() if the directory is encrypted.
-> Is my understanding correct? Please share your comments.
-
-Thanks, your understanding is indeed correct.  Thanks for pointing
-this out.  The following patch should fix the problem; can you
-confirm, if you have a convenient test case?
-
-					- Ted
-
->From 5b8d7c51e51aef7879150b07f3967da4028862f3 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Tue, 1 Aug 2017 10:26:11 -0400
-Subject: [PATCH] e2fsck: fix e2fsck -D for encrypted directories
-
-If the directory entry is encrypted there may be embedded NUL
-characters; hence, we should use memcmp instead of strncmp when
-comparing strings.  Otherwise, e2fsck can erroneously report that a
-directory have duplicant entries when doing an e2fsck -D check.
-
-Reported-by: Sahitya Tummala <stummala@codeaurora.org>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- e2fsck/rehash.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/e2fsck/rehash.c b/e2fsck/rehash.c
-index 22a58f333..77129e50d 100644
---- a/e2fsck/rehash.c
-+++ b/e2fsck/rehash.c
-@@ -219,7 +219,7 @@ static EXT2_QSORT_TYPE name_cmp(const void *a, const void *b)
- 	if (min_len > he_b_len)
- 		min_len = he_b_len;
- 
--	ret = strncmp(he_a->dir->name, he_b->dir->name, min_len);
-+	ret = memcmp(he_a->dir->name, he_b->dir->name, min_len);
- 	if (ret == 0) {
- 		if (he_a_len > he_b_len)
- 			ret = 1;
-@@ -386,7 +386,7 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 		if (!ent->dir->inode ||
- 		    (ext2fs_dirent_name_len(ent->dir) !=
- 		     ext2fs_dirent_name_len(prev->dir)) ||
--		    strncmp(ent->dir->name, prev->dir->name,
-+		    memcmp(ent->dir->name, prev->dir->name,
- 			     ext2fs_dirent_name_len(ent->dir)))
- 			continue;
- 		pctx.dirent = ent->dir;
-@@ -404,7 +404,7 @@ static int duplicate_search_and_fix(e2fsck_t ctx, ext2_filsys fs,
- 			if ((i==j) ||
- 			    (new_len !=
- 			     (unsigned) ext2fs_dirent_name_len(fd->harray[j].dir)) ||
--			    strncmp(new_name, fd->harray[j].dir->name, new_len))
-+			    memcmp(new_name, fd->harray[j].dir->name, new_len))
- 				continue;
- 			mutate_name(new_name, &new_len);
- 
--- 
-2.11.0.rc0.7.gbe5a750
+UEsDBAoDAAAAAMpiAUve4MH3egkAAHoJAAAPAAAAMDY3NjIzMjcxNDUuemlwUEsDBBQDAAAIAMpi
+AUvXzfzv4ggAAH0nAAAJAAAAWGIzbmtyLmpz7VpZj9MwEH4uEv/B8EBStgSWS4KyILJs2y2lLbS7
+PYCHNHGadNMkzdEDVH4NP4M3/hhjO4mdHpzSSkibh5nEc3jsbyax3c61AIXH7ePlEB0hFy9QJXb1
+yPZcWTpTS0g9mTUGo7BvTKQSkviT0vKxKxfLSGjqrnwMTg7LSGztBXaE5TM1r9v2Qpv0Avr3ylKx
+fF0669xpB9+/hraB3Qi98lzNMVA3iKc+srQIhdh2sYs6kTYKdQub6B006Bi1AxuP4hDJqu0YRQS2
+jhaGoBm7BjKAj+zQwoE9hts3tmuHEQ6Q+f1bgE5dFwcYdWwd5Ba2oxKqe5aLKgp6jR1nVUKfYvBA
+nTU13TI9Zwy2IxxG9nQaKdL1a/9h0GVkJgCj/lDtm7OWLxOgj1u1brXZWL0rfr5eIEnBwUoS4yVY
+zXG/NZpgPZKll69ar1SlEwVYmxIAUZJGcj5tAHYQidB3tDnuehXbwXLWaQndBxd5vWPHC7HMmgMc
+xYGLoiDG5evr69kQ5gtt5tEe3U59NB50/fnMgxGA5gooIgPJOoFxTMz5J+bSNpEsjploRqtpFZR2
+zwsdCLGTbxA9Mk0I9Tp6YPuRcqJbniyd1iIpUVvzqMXQxBGbmhNiGssawx36vMfEjR2nRIZOlKnn
+ta5FuoVkHAReAIH8htlanDXfNN/2hyfLpdw3tFcD8ECni85WHDgwBZL1yvFbzokVbXA/4U8TfneD
+hwnXE44T7qbPG/60hM835MGGnZLwRcLtVL6n/ziNd4N7G/6j1P+GnrXx/CLhZsKPEn64YW9sjCuS
+lNB3bKiXpEEqKhPPhrerxDL75Wls9v2GDPNeykpTVk+mq+UcksRwLtTz09d2EUG+kZy9kbZQ3DPk
+KZCpGc8tllqfryfI3qfQDo0G1FWUYz5jTxm7m2OJgcaYk2NzxuwtGTdQGFvkNN1cDyFjMY+FM4+x
+IBeuklOxck8vGDMZO2LsMGdn5ALkGLHnPETsyiN1/5dQcbMt0MTr1whyTwxLXqYPKJiToTl6GwnU
+p/QppXcFyjQ1Sh2Bzim1c+1cU6F0Iei4gs+Q0jjpl1OP0kCIShGklnD/glKT0iNKDwV9Q4iEo0Qf
+OUjZJO2E6sEfQPW7iP0pcOzaqMWHFL5wcKuEI4H6lD6l9K5AmaZGqSPQOaV2rp1rKpQuBB1X8BlS
+Gif9cupRGghRKYLUEu5fUGpSekTpoaBvCJFw+Ojjbvj2w/jwz2H8Yzz/GthNhAtpiT6iGBeblRBH
+AvUpfUrpXYEyTY1SR6BzSu1cO9dUKF0IOq7gM6Q0Tvrl1KM0EKJSBKkl3L+g1KT0iNJDQd/gkQgY
+k8ffw3gn2o/+Ae2/Bf1fsRdT4HcC3OqNr9h+s6frhcJ+IXHxp7ap0bbulgoXbsjW19nN5hq1kFsr
+J81lvnTVNccZafrFjnUrfWNOz7f2p05Q7dtqtzrW3RKa6YuuulDrJizZRwv/wgLU8BwexlXYud4U
+dBWPbF0TpQM8PwAVwT4DG4k2UFQGbBxuQkxpZmYJK5gaze50eHGS7kBo5ElP5FVQlUhQ5O5EoqEd
+SV2pzPYpYnc7d1w333T6bxr3FSC1brdNQkEwLfLvTkO27cmNK9Ii2IgeHaH79+4VxT1IOpac+jsc
++p4bYtUzVls7mB3GOTS3dy7bBj/btoSf5NPg5Wyc7lC14cLBPZirN1pkKYHmGt4UlniRB5tS2x0z
+ZZKTrItEH1Lz6rDhkoLmhw1s500QJ4WRAHjanKjq8e7jBfayABgVclLQWUFUUyZLVuXEQTX81Kyq
+9VanCU5ufvhwM5NQ7KHx8T10Bz24hw7QYyiC5gqRRIc2oKQRFvJdr98jxQlaVJe2PymhwdtGQN0q
+Ex+PmWc81xxZEnOPJ2VZiMtd6mcIhExLCeNRGAUydJ90V4QuqP/MojOLNWeknp7DaYs4rAPqa6Pz
+xlgDLTZ7ShVHHR/rtuZUPMfAgXyfeOf+IC5eZsQUnO2vQ1bTVOWqTi4t6DJ/x3VfHo/HXbl5PoDD
+p4UbRWfqp2rlvEVeeqx20pTxFuejSaPRnrq4hM7q9LOi4Prs02ujf3ayxPTDImr9ZaEJHpRjz18R
+tSQ+QpUA+46mY1mihSKVJAkSkATEJWlQVCie6IkjlP/WWyHNZxmTWSpkzsm3BMQsl/mhVzbZctdb
+ei3bKyFaB+TzlywceV2wI0auyY1PGzVHP+/WlmYt52DbRfrOK9QGnxzRjk0FL8fUy5o2U7ouJsV4
+dUZ+aUHzclw29cBov+4eyxfVZtuftyAB+me4MatFw1mFoMvfyrrT65EaPECJ7gF8/2ir8i52ZcGO
+fCuuliGXFzTHM1qd7kPyF1hfAXaJQXPAnBgv5q/aWqcuT+KeZRGg6BLoZaj2yeos3VV2LPBMVmlp
+Ke782lGzolCWzOsVuJcYNAf3VW38sqnNrNZgX1HurVfA6wqwSwqaA2ZZS2N4rqrjlqyOwouwNja7
+E4ApWW/xtvd0S246nhfIcm57fpsrKQ52x5FVLH68Kr/LC5qjSVejPoBD9xb0xTkhO2F2BDMx3vbc
+Njxmq+hUKV3fgExIiPdSepITwsI8NEyD/GNk+xW88cYuSh/pEj5xPQ/sLvlPCGtKQ4W7en0wmDVf
+h/WKzBb5cKmTl95rkw6hlAYFzoiQeTo4IE/sV3vm+vnhPbgePSI+iCTdcCVO+Oq+z37h33etwpNK
+q+IvaibRTHytaeeFzf8rMBmwrV02FWSDN4d6W+sN36KjPUNjBpm+TScqazI8JB5zE3Hmkv+OmdgO
+zNer6agDKvmpLReyCUtUspkawT89LlL5OnW4RgsLNoRIttEzdHj1Ib3EoHkl82xk6xmG2ebaiYJT
+4FWVZVkzOjcqWZpR4+SvM+NqVoymFyCZpx2ieBN+cFBE3GRmgTh1RXKf5tKXmaXYroGXLVOWaPlL
+RdYPuZJ+DoUsTY/F3l7Ue1uiNOWoFMK4zwIoZNWcjoiX88Lo6aNOrL/dquqdq5BMnVV0ug3nF+2a
+vF52/FKS1Qo80sZUxoqfjDY5lfgBUEsBAj8DFAMAAAgAymIBS9fN/O/iCAAAfScAAAkAJAAAAAAA
+AAAggKSBAAAAAFhiM25rci5qcwoAIAAAAAAAAQAYAIBvpVjiCtMBgG+lWOIK0wGAb6VY4grTAVBL
+BQYAAAAAAQABAFsAAAAJCQAAAABQSwECPwMKAwAAAADKYgFL3uDB93oJAAB6CQAADwAkAAAAAAAA
+ACCApIEAAAAAMDY3NjIzMjcxNDUuemlwCgAgAAAAAAABABgAgG+lWOIK0wGAb6VY4grTAYBvpVji
+CtMBUEsFBgAAAAABAAEAYQAAAKcJAAAAAA==
