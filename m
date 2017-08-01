@@ -1,68 +1,73 @@
-From: <editor@coastreporter.net>
-Subject: (unknown)
-Date: Tue, 01 Aug 2017 21:03:16 -0000
-Message-ID: <150162139685.20847.10700649290754234578@vnpt.vn>
+From: Daeho Jeong <daeho.jeong@samsung.com>
+Subject: Re: Re: [PATCH] ext4: release discard bio after sending discard
+ commands
+Date: Tue, 01 Aug 2017 23:31:38 +0000
+Message-ID: <20170801233138epcms1p4e0d111bd6757201e7df26a281c9d7dd4@epcms1p4>
+References: <20170801090909.GB4215@quack2.suse.cz>
+        <1501554568-13815-1-git-send-email-daeho.jeong@samsung.com>
+        <CGME20170801022917epcas2p49ee3e7d5ac5cba8746253429888b6d1c@epcms1p4>
+Reply-To: daeho.jeong@samsung.com
 Mime-Version: 1.0
-Content-Type: application/zip; name="EMAIL_5749719396757_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8BIT
+Cc: "jack@suse.com" <jack@suse.com>, "tytso@mit.edu" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>, Daeho Jeong <daeho.jeong@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static.vnpt.vn ([123.16.223.199]:48953 "HELO vnpt.vn"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1752415AbdHAVDU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 1 Aug 2017 17:03:20 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mailout1.samsung.com ([203.254.224.24]:59953 "EHLO
+        mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750999AbdHAXbl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Aug 2017 19:31:41 -0400
+Received: from epcas1p3.samsung.com (unknown [182.195.41.47])
+        by mailout1.samsung.com (KnoxPortal) with ESMTP id 20170801233139epoutp012ef010eababe86ededf8c475a105102d~W3M08ZEyt0379903799epoutp01Q
+        for <linux-ext4@vger.kernel.org>; Tue,  1 Aug 2017 23:31:39 +0000 (GMT)
+In-Reply-To: <20170801090909.GB4215@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
+
+> > We've changed the discard command handling into parallel manner.
+
+> > But, in this change, I forgot decreasing the usage count of the bio
+
+> > which was used to send discard request. I'm sorry about that.
+
+> > 
+
+> > Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+
+> > Fixes: a015434480dc ("ext4: send parallel discards on commit
+
+> > completions")
+
+ 
+
+> Why do you think this is needed? submit_bio_wait() consumes the reference
+
+> that you've got from __blkdev_issue_discard()...
+
+>  
+
+>                                                                Honza
+
+
+
+Hi Jan,
+
+
+
+I thought like you, but submit_bio_wait() doesn't consume the reference
+
+of the bio and the bio cannot be released after the I/O has been completed.
+
+The caller of submit_bio_wait() should invoke bio_put() in person.
+
+You can see what we have to do after calling submit_bio_wait() in
+
+fs/crypto/bio.c.
+
+
+
+Actually, in our device, I can see that the slab memory grows gradually
+
+because of the unreleased discard bios.
