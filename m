@@ -1,64 +1,119 @@
-From: <sterrenplan.kampen@deltasteur.nl>
-Subject: (unknown)
-Date: Tue, 01 Aug 2017 16:33:55 -0000
-Message-ID: <150160523508.17373.1003139706537830758@tolcom.ru>
+From: Kees Cook <keescook@chromium.org>
+Subject: Re: [PATCH 1/2] ext4: fix warning about stack corruption
+Date: Tue, 1 Aug 2017 11:26:47 -0700
+Message-ID: <CAGXu5jJ06O6KZYU=Y-=Lb7a9+utK13gD0hujfbiS0qy3mj_bCQ@mail.gmail.com>
+References: <20170726185219.GA57833@beast> <20170801120438.1582336-1-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: application/zip; name="EMAIL_26553892905555_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>
+To: Arnd Bergmann <arnd@arndb.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-cl-88-200-216-162.pool.tolcom.ru ([88.200.216.162]:44727
-        "HELO tolcom.ru" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with SMTP id S1751884AbdHAQd7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Aug 2017 12:33:59 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mail-it0-f46.google.com ([209.85.214.46]:37595 "EHLO
+        mail-it0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751928AbdHAS0t (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Aug 2017 14:26:49 -0400
+Received: by mail-it0-f46.google.com with SMTP id v127so12757656itd.0
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Aug 2017 11:26:49 -0700 (PDT)
+In-Reply-To: <20170801120438.1582336-1-arnd@arndb.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
-CtMBUEsFBgAAAAABAAEAYQAAAKcJAAAAAA==
+On Tue, Aug 1, 2017 at 5:04 AM, Arnd Bergmann <arnd@arndb.de> wrote:
+> After commit 62d1034f53e3 ("fortify: use WARN instead of BUG for now"),
+> we get a warning about possible stack overflow from a memcpy that
+> was not strictly bounded to the size of the local variable:
+>
+>     inlined from 'ext4_mb_seq_groups_show' at fs/ext4/mballoc.c:2322:2:
+> include/linux/string.h:309:9: error: '__builtin_memcpy': writing between 161 and 1116 bytes into a region of size 160 overflows the destination [-Werror=stringop-overflow=]
+>
+> We actually had a bug here that would have been found by the warning,
+> but it was already fixed last year in commit 30a9d7afe70e ("ext4: fix
+> stack memory corruption with 64k block size").
+>
+> This replaces the fixed-length structure on the stack with a variable-length
+> structure, using the correct upper bound that tells the compiler that
+> everything is really fine here. I also change the loop count to check
+> for the same upper bound for consistency, but the existing code is
+> already correct here.
+>
+> Note that while clang won't allow certain kinds of variable-length arrays
+> in structures, this particular instance is fine, as the array is at the
+> end of the structure, and the size is strictly bounded.
+>
+> There is one remaining issue with the function that I'm not addressing
+> here: With s_blocksize_bits==16, we don't actually print the last two
+> members of the array, as we loop though just the first 14 members.
+> This could be easily addressed by adding two extra columns in the output,
+> but that could in theory break parsers in user space, and should be
+> a separate patch if we decide to modify it.
+>
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+
+Acked-by: Kees Cook <keescook@chromium.org>
+
+-Kees
+
+> ---
+>  fs/ext4/mballoc.c | 11 ++++++-----
+>  1 file changed, 6 insertions(+), 5 deletions(-)
+>
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 581e357e8406..803cab1939fe 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2295,9 +2295,12 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+>         int err, buddy_loaded = 0;
+>         struct ext4_buddy e4b;
+>         struct ext4_group_info *grinfo;
+> +       unsigned char blocksize_bits = min_t(unsigned char,
+> +                                            sb->s_blocksize_bits,
+> +                                            EXT4_MAX_BLOCK_LOG_SIZE);
+>         struct sg {
+>                 struct ext4_group_info info;
+> -               ext4_grpblk_t counters[EXT4_MAX_BLOCK_LOG_SIZE + 2];
+> +               ext4_grpblk_t counters[blocksize_bits + 2];
+>         } sg;
+>
+>         group--;
+> @@ -2306,8 +2309,6 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+>                               " 2^0   2^1   2^2   2^3   2^4   2^5   2^6  "
+>                               " 2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]\n");
+>
+> -       i = (sb->s_blocksize_bits + 2) * sizeof(sg.info.bb_counters[0]) +
+> -               sizeof(struct ext4_group_info);
+>         grinfo = ext4_get_group_info(sb, group);
+>         /* Load the group info in memory only if not already loaded. */
+>         if (unlikely(EXT4_MB_GRP_NEED_INIT(grinfo))) {
+> @@ -2319,7 +2320,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+>                 buddy_loaded = 1;
+>         }
+>
+> -       memcpy(&sg, ext4_get_group_info(sb, group), i);
+> +       memcpy(&sg, ext4_get_group_info(sb, group), sizeof(sg));
+>
+>         if (buddy_loaded)
+>                 ext4_mb_unload_buddy(&e4b);
+> @@ -2327,7 +2328,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+>         seq_printf(seq, "#%-5u: %-5u %-5u %-5u [", group, sg.info.bb_free,
+>                         sg.info.bb_fragments, sg.info.bb_first_free);
+>         for (i = 0; i <= 13; i++)
+> -               seq_printf(seq, " %-5u", i <= sb->s_blocksize_bits + 1 ?
+> +               seq_printf(seq, " %-5u", i <= blocksize_bits + 1 ?
+>                                 sg.info.bb_counters[i] : 0);
+>         seq_printf(seq, " ]\n");
+>
+> --
+> 2.9.0
+>
+
+
+
+-- 
+Kees Cook
+Pixel Security
