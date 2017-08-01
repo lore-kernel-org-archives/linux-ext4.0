@@ -1,60 +1,49 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: release discard bio after sending discard commands
-Date: Tue, 1 Aug 2017 11:09:09 +0200
-Message-ID: <20170801090909.GB4215@quack2.suse.cz>
-References: <CGME20170801022917epcas2p49ee3e7d5ac5cba8746253429888b6d1c@epcas2p4.samsung.com>
- <1501554568-13815-1-git-send-email-daeho.jeong@samsung.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: xattr hash error in 4.13-rc with overlayfs over ext4
+Date: Tue, 1 Aug 2017 13:34:34 +0300
+Message-ID: <CAOQ4uxjtLVuuYyDZ7csJeb_xbMiWHDHs21tgQoB7bbLWC6DUew@mail.gmail.com>
+References: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
+ <CAAeU0aM-1UFJJvX3zF1wUjBeG8BGC+S0wn7PhiDZevTscvmkXg@mail.gmail.com>
+ <CAJfpegvL2iR1PZ+3S=VGtbUiVPQ-EnW28KwE4wCzMJwWptNYKg@mail.gmail.com>
+ <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com>
+ <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com> <CAJfpegvy274dZ0ZzY+qpaLwREi0QU9jNt=vE0pBpQ8W2wWCx1w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Daeho Jeong <daeho.jeong@samsung.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52472 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751368AbdHAJJL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 1 Aug 2017 05:09:11 -0400
-Content-Disposition: inline
-In-Reply-To: <1501554568-13815-1-git-send-email-daeho.jeong@samsung.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Tahsin Erdogan <tahsin@google.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
+To: Miklos Szeredi <miklos@szeredi.hu>
+Return-path: <linux-unionfs-owner@vger.kernel.org>
+In-Reply-To: <CAJfpegvy274dZ0ZzY+qpaLwREi0QU9jNt=vE0pBpQ8W2wWCx1w@mail.gmail.com>
+Sender: linux-unionfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 01-08-17 11:29:28, Daeho Jeong wrote:
-> We've changed the discard command handling into parallel manner.
-> But, in this change, I forgot decreasing the usage count of the bio
-> which was used to send discard request. I'm sorry about that.
-> 
-> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-> Fixes: a015434480dc ("ext4: send parallel discards on commit
-> completions")
+On Mon, Jul 31, 2017 at 7:08 PM, Miklos Szeredi <miklos@szeredi.hu> wrote:
+> On Thu, Jul 27, 2017 at 10:54 PM, Tahsin Erdogan <tahsin@google.com> wrote:
+>> Still no luck reproducing the error. I am using the test script below
+>> at v4.13-rc2. Do you mind checking my script to see what I am missing?
+>
+> Don't know.   I can reliably reproduce it under UML, but not with a
+> VM.  What the hell is going on?
+>
 
-Why do you think this is needed? submit_bio_wait() consumes the reference
-that you've got from __blkdev_issue_discard()...
+Is it the same ext4 image for UML and VM? same image size? same mkfs version?
 
-								Honza
-> ---
->  fs/ext4/mballoc.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index ab70b69e644c..88317b0cf7b8 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2892,8 +2892,10 @@ void ext4_process_freed_data(struct super_block *sb, tid_t commit_tid)
->  				break;
->  		}
->  
-> -		if (discard_bio)
-> +		if (discard_bio) {
->  			submit_bio_wait(discard_bio);
-> +			bio_put(discard_bio);
-> +		}
->  	}
->  
->  	list_for_each_entry_safe(entry, tmp, &freed_data_list, efd_list)
-> -- 
-> 2.13.0
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+What inode size do you have in UML setup? e.g.:
+
+dumpe2fs -h /dev/sda3|grep Inode.size
+dumpe2fs 1.42.13 (17-May-2015)
+Inode size:          256
+
+have extra_isize feature? (not sure if that matters)
+
+dumpe2fs -h /dev/sda3|grep isize
+dumpe2fs 1.42.13 (17-May-2015)
+Filesystem features:      has_journal ext_attr resize_inode dir_index
+filetype needs_recovery extent flex_bg sparse_super large_file
+huge_file uninit_bg dir_nlink extra_isize
+Required extra isize:     28
+Desired extra isize:      28
