@@ -1,28 +1,127 @@
-From: "Singer Valve" <jmarcos@luc.edu>
-Subject: Re: Extremely important and Urgent
-Date: Tue, 01 Aug 2017 20:46:09 -0700
-Message-ID: <BN6PR05MB293233BFED3E4A216437A02FB1B00__27364.0453503051$1501645577$gmane$org@BN6PR05MB2932.namprd05.prod.outlook.com>
-Reply-To: E.Chabrelie@qq.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: Recipients <jmarcos@luc.edu>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH] ext4: reduce lock contention in __ext4_new_inode
+Date: Wed,  2 Aug 2017 12:41:38 +0800
+Message-ID: <20170802044138.44693-1-wshilong@ddn.com>
+Cc: tytso@mit.edu, wshilong@ddn.com, adilger@dilger.ca, sihara@ddn.com,
+        lixi@ddn.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-dm3nam03hn0224.outbound.protection.outlook.com ([104.47.41.224]:18504
-        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751768AbdHBDqF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 1 Aug 2017 23:46:05 -0400
-Content-Description: Mail message body
+Received: from mail-pf0-f195.google.com ([209.85.192.195]:33062 "EHLO
+        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751058AbdHBEmC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2017 00:42:02 -0400
+Received: by mail-pf0-f195.google.com with SMTP id c65so4634609pfl.0
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Aug 2017 21:42:02 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I am getting in touch with you regarding an extremely important and urgent =
-matter.
+From: Wang Shilong <wshilong@ddn.com>
 
-If you would oblige me the opportunity, I shall provide you with details up=
-on your response.
+While running number of creating file threads concurrently,
+we found heavy lock contention on group spinlock:
 
-Faithfully, =
+FUNC                           TOTAL_TIME(us)       COUNT        AVG(us)
+ext4_create                    1707443399           1440000      1185.72
+_raw_spin_lock                 1317641501           180899929    7.28
+jbd2__journal_start            287821030            1453950      197.96
+jbd2_journal_get_write_access  33441470             73077185     0.46
+ext4_add_nondir                29435963             1440000      20.44
+ext4_add_entry                 26015166             1440049      18.07
+ext4_dx_add_entry              25729337             1432814      17.96
+ext4_mark_inode_dirty          12302433             5774407      2.13
 
-Ms. Singer Valve
+most of cpu time blames to _raw_spin_lock, here is some testing
+numbers with/without patch.
+
+Test environment:
+Server : SuperMicro Sever (2 x E5-2690 v3@2.60GHz, 128GB 2133MHz
+	 DDR4 Memory, 8GbFC)
+Storage : 2 x RAID1 (DDN SFA7700X, 4 x Toshiba PX02SMU020 200GB
+	  Read Intensive SSD)
+
+format command:
+	mkfs.ext4 -J size=4096
+
+test command:
+	mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \
+		-r -i 5 -v -p 10 -u
+
+Kernel version: 4.13.0-rc3
+
+Test  1,440,000 files with 48 directories by 48 processes:
+
+Without patch:
+
+File Creation	File removal
+79,033 		289,569 ops/per second
+81,463 		285,359
+79,875 		288,475
+79,917 		284,624
+79,420 		290,91
+
+With patch:
+File Creation	File removal
+302,600 	312,813 ops/per second
+295,644 	316,557
+288,125 	306,961
+302,960 	310,517
+295,175 	311,927
+
+Now create and removal performaces are similar, and creation
+performaces are improved more than 3x with large journal size.
+In default journal size, performances are improved by 50%.
+
+Tested-by: Shuichi Ihara <sihara@ddn.com>
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+ fs/ext4/ialloc.c | 13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 507bfb3..18aeaf4 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -761,6 +761,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	ext4_group_t flex_group;
+ 	struct ext4_group_info *grp;
+ 	int encrypt = 0;
++	unsigned attemp;
+ 
+ 	/* Cannot create files in a deleted directory */
+ 	if (!dir || !dir->i_nlink)
+@@ -917,6 +918,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 			continue;
+ 		}
+ 
++		attemp = 0;
+ repeat_in_this_group:
+ 		ino = ext4_find_next_zero_bit((unsigned long *)
+ 					      inode_bitmap_bh->b_data,
+@@ -933,6 +935,9 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 			ino++;
+ 			goto next_inode;
+ 		}
++
++		attemp++;
++
+ 		if (!handle) {
+ 			BUG_ON(nblocks <= 0);
+ 			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
+@@ -957,8 +962,14 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 		if (!ret2)
+ 			goto got; /* we grabbed the inode! */
+ next_inode:
+-		if (ino < EXT4_INODES_PER_GROUP(sb))
++		if (ino < EXT4_INODES_PER_GROUP(sb)) {
++			/* Lock contention, relax a bit */
++			if (attemp >= 2) {
++				schedule_timeout_uninterruptible(msecs_to_jiffies(1));
++				attemp = 0;
++			}
+ 			goto repeat_in_this_group;
++		}
+ next_group:
+ 		if (++group == ngroups)
+ 			group = 0;
+-- 
+2.9.3
