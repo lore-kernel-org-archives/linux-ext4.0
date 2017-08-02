@@ -1,68 +1,133 @@
-From: <Erma@awzn.com>
-Subject: (unknown)
-Date: Wed, 02 Aug 2017 15:40:21 -0000
-Message-ID: <150168842127.22644.16986195605487787719@hinet.net>
-Mime-Version: 1.0
-Content-Type: application/zip; name="EMAIL_61204_linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: <Bland@lmmd.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH] ext4: introduce per-inode DAX flag
+Date: Wed,  2 Aug 2017 18:09:46 +0200
+Message-ID: <1501690186-17607-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 125-224-96-131.dynamic-ip.hinet.net ([125.224.96.131]:60042
-        "HELO hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with SMTP id S1751067AbdHBPk2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2017 11:40:28 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mx1.redhat.com ([209.132.183.28]:58590 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752428AbdHBQJv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 2 Aug 2017 12:09:51 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 89C23C0587F5
+        for <linux-ext4@vger.kernel.org>; Wed,  2 Aug 2017 16:09:50 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
-CgAAAAA=
+Currently it's only possible to enable, or disable DAX via mount option
+on ext4. However some applications may only want to enable DAX for
+certain files on a file system.
+
+This patch introduces new user visible and user modifiable ext4 inode
+flag EXT4_DAX_FL. This flag is also added into EXT4_FL_INHERITED which
+means that new inodes created in a directory with EXT4_DAX_FL set will
+automatically inherit the inode flag.
+
+With this patch ext4 is on par with xfs when it comes to per inode DAX
+enablement.
+
+Note that there are some changes due to this patch to consider. Regural
+users are now able to set up their files to use DAX which was previously
+only possible by mounting the file system with -o dax option. Any IO
+done to the file with the flag se will fail in case the block device is
+not DAX enabled.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/ext4.h  | 10 ++++++----
+ fs/ext4/inode.c |  6 +++---
+ fs/ext4/ioctl.c |  7 ++++++-
+ 3 files changed, 15 insertions(+), 8 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9ebde0c..689d003 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -395,14 +395,15 @@ struct flex_groups {
+ #define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
+ #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
+ #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
++#define EXT4_DAX_FL			0x00100000 /* Use DAX for IO */
+ #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+ #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+ #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
+ #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+ 
+-#define EXT4_FL_USER_VISIBLE		0x304BDFFF /* User visible flags */
+-#define EXT4_FL_USER_MODIFIABLE		0x204BC0FF /* User modifiable flags */
++#define EXT4_FL_USER_VISIBLE		0x305BDFFF /* User visible flags */
++#define EXT4_FL_USER_MODIFIABLE		0x205BC0FF /* User modifiable flags */
+ 
+ /* Flags we can manipulate with through EXT4_IOC_FSSETXATTR */
+ #define EXT4_FL_XFLAG_VISIBLE		(EXT4_SYNC_FL | \
+@@ -410,14 +411,15 @@ struct flex_groups {
+ 					 EXT4_APPEND_FL | \
+ 					 EXT4_NODUMP_FL | \
+ 					 EXT4_NOATIME_FL | \
+-					 EXT4_PROJINHERIT_FL)
++					 EXT4_PROJINHERIT_FL |\
++					 EXT4_DAX_FL)
+ 
+ /* Flags that should be inherited by new inodes from their parent. */
+ #define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
+ 			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
+ 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
+ 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL |\
+-			   EXT4_PROJINHERIT_FL)
++			   EXT4_PROJINHERIT_FL | EXT4_DAX_FL)
+ 
+ /* Flags that are appropriate for regular files (all but dir-specific ones). */
+ #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3c600f0..051c4db5 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4555,9 +4555,9 @@ void ext4_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_NOATIME;
+ 	if (flags & EXT4_DIRSYNC_FL)
+ 		new_fl |= S_DIRSYNC;
+-	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode) &&
+-	    !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
+-	    !ext4_encrypted_inode(inode))
++	if ((test_opt(inode->i_sb, DAX) || flags & EXT4_DAX_FL) &&
++	    S_ISREG(inode->i_mode) && !ext4_should_journal_data(inode) &&
++	    !ext4_has_inline_data(inode) && !ext4_encrypted_inode(inode))
+ 		new_fl |= S_DAX;
+ 	inode_set_flags(inode, new_fl,
+ 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 42b3a73..a46b606 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -424,12 +424,15 @@ static inline __u32 ext4_iflags_to_xflags(unsigned long iflags)
+ 		xflags |= FS_XFLAG_NOATIME;
+ 	if (iflags & EXT4_PROJINHERIT_FL)
+ 		xflags |= FS_XFLAG_PROJINHERIT;
++	if (iflags & EXT4_DAX_FL)
++		xflags |= FS_XFLAG_DAX;
+ 	return xflags;
+ }
+ 
+ #define EXT4_SUPPORTED_FS_XFLAGS (FS_XFLAG_SYNC | FS_XFLAG_IMMUTABLE | \
+ 				  FS_XFLAG_APPEND | FS_XFLAG_NODUMP | \
+-				  FS_XFLAG_NOATIME | FS_XFLAG_PROJINHERIT)
++				  FS_XFLAG_NOATIME | FS_XFLAG_PROJINHERIT | \
++				  FS_XFLAG_DAX)
+ 
+ /* Transfer xflags flags to internal */
+ static inline unsigned long ext4_xflags_to_iflags(__u32 xflags)
+@@ -448,6 +451,8 @@ static inline unsigned long ext4_xflags_to_iflags(__u32 xflags)
+ 		iflags |= EXT4_NOATIME_FL;
+ 	if (xflags & FS_XFLAG_PROJINHERIT)
+ 		iflags |= EXT4_PROJINHERIT_FL;
++	if (xflags & FS_XFLAG_DAX)
++		iflags |= EXT4_DAX_FL;
+ 
+ 	return iflags;
+ }
+-- 
+2.7.5
