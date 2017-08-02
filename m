@@ -1,127 +1,50 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH] ext4: reduce lock contention in __ext4_new_inode
-Date: Wed,  2 Aug 2017 12:41:38 +0800
-Message-ID: <20170802044138.44693-1-wshilong@ddn.com>
-Cc: tytso@mit.edu, wshilong@ddn.com, adilger@dilger.ca, sihara@ddn.com,
-        lixi@ddn.com
-To: linux-ext4@vger.kernel.org
+From: Sahitya Tummala <stummala@codeaurora.org>
+Subject: Re: e2fsck on encrypted directories
+Date: Wed, 2 Aug 2017 12:43:27 +0530
+Message-ID: <045b2521-e3bb-7a5c-3bee-cc3d7308b254@codeaurora.org>
+References: <23b72f10-bbe6-1e7d-89b6-7b8bebab8d13@codeaurora.org>
+ <20170801143343.7kphdxfvw7qzth3z@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f195.google.com ([209.85.192.195]:33062 "EHLO
-        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751058AbdHBEmC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2017 00:42:02 -0400
-Received: by mail-pf0-f195.google.com with SMTP id c65so4634609pfl.0
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Aug 2017 21:42:02 -0700 (PDT)
+Received: from smtp.codeaurora.org ([198.145.29.96]:32786 "EHLO
+        smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751154AbdHBHNb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2017 03:13:31 -0400
+In-Reply-To: <20170801143343.7kphdxfvw7qzth3z@thunk.org>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Wang Shilong <wshilong@ddn.com>
 
-While running number of creating file threads concurrently,
-we found heavy lock contention on group spinlock:
+On 8/1/2017 8:03 PM, Theodore Ts'o wrote:
+> On Fri, Jul 28, 2017 at 03:32:24PM +0530, Sahitya Tummala wrote:
+>> Hi Ted,
+>>
+>> I got a question on usage of e2fsck with -D option on EXT4 FS, where
+>> file based encryption is enabled. Is this option supposed to work on
+>> encrypted directories?
+>>
+>> I have encountered a case where e2fsck gets stuck
+>> in duplicate_search_and_fix() due to strncmp checks done in this function
+>> on encrypted file names, which may contain NUL characters.
+>>
+>> Also, even without -D option passed, there can be a case of duplicate
+>> entries (i.e.,
+>> ctx->dirs_to_hash is not NULL). In this case too we may see the same issue
+>> in duplicate_search_and_fix() if the directory is encrypted.
+>> Is my understanding correct? Please share your comments.
+> Thanks, your understanding is indeed correct.  Thanks for pointing
+> this out.  The following patch should fix the problem; can you
+> confirm, if you have a convenient test case?
 
-FUNC                           TOTAL_TIME(us)       COUNT        AVG(us)
-ext4_create                    1707443399           1440000      1185.72
-_raw_spin_lock                 1317641501           180899929    7.28
-jbd2__journal_start            287821030            1453950      197.96
-jbd2_journal_get_write_access  33441470             73077185     0.46
-ext4_add_nondir                29435963             1440000      20.44
-ext4_add_entry                 26015166             1440049      18.07
-ext4_dx_add_entry              25729337             1432814      17.96
-ext4_mark_inode_dirty          12302433             5774407      2.13
+Thanks for the patch. I could reproduce this issue only once so far. I 
+have already
+tried the proposed fix and it works fine.
 
-most of cpu time blames to _raw_spin_lock, here is some testing
-numbers with/without patch.
-
-Test environment:
-Server : SuperMicro Sever (2 x E5-2690 v3@2.60GHz, 128GB 2133MHz
-	 DDR4 Memory, 8GbFC)
-Storage : 2 x RAID1 (DDN SFA7700X, 4 x Toshiba PX02SMU020 200GB
-	  Read Intensive SSD)
-
-format command:
-	mkfs.ext4 -J size=4096
-
-test command:
-	mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \
-		-r -i 5 -v -p 10 -u
-
-Kernel version: 4.13.0-rc3
-
-Test  1,440,000 files with 48 directories by 48 processes:
-
-Without patch:
-
-File Creation	File removal
-79,033 		289,569 ops/per second
-81,463 		285,359
-79,875 		288,475
-79,917 		284,624
-79,420 		290,91
-
-With patch:
-File Creation	File removal
-302,600 	312,813 ops/per second
-295,644 	316,557
-288,125 	306,961
-302,960 	310,517
-295,175 	311,927
-
-Now create and removal performaces are similar, and creation
-performaces are improved more than 3x with large journal size.
-In default journal size, performances are improved by 50%.
-
-Tested-by: Shuichi Ihara <sihara@ddn.com>
-Signed-off-by: Wang Shilong <wshilong@ddn.com>
----
- fs/ext4/ialloc.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 507bfb3..18aeaf4 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -761,6 +761,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	ext4_group_t flex_group;
- 	struct ext4_group_info *grp;
- 	int encrypt = 0;
-+	unsigned attemp;
- 
- 	/* Cannot create files in a deleted directory */
- 	if (!dir || !dir->i_nlink)
-@@ -917,6 +918,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 			continue;
- 		}
- 
-+		attemp = 0;
- repeat_in_this_group:
- 		ino = ext4_find_next_zero_bit((unsigned long *)
- 					      inode_bitmap_bh->b_data,
-@@ -933,6 +935,9 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 			ino++;
- 			goto next_inode;
- 		}
-+
-+		attemp++;
-+
- 		if (!handle) {
- 			BUG_ON(nblocks <= 0);
- 			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
-@@ -957,8 +962,14 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 		if (!ret2)
- 			goto got; /* we grabbed the inode! */
- next_inode:
--		if (ino < EXT4_INODES_PER_GROUP(sb))
-+		if (ino < EXT4_INODES_PER_GROUP(sb)) {
-+			/* Lock contention, relax a bit */
-+			if (attemp >= 2) {
-+				schedule_timeout_uninterruptible(msecs_to_jiffies(1));
-+				attemp = 0;
-+			}
- 			goto repeat_in_this_group;
-+		}
- next_group:
- 		if (++group == ngroups)
- 			group = 0;
 -- 
-2.9.3
+Qualcomm India Private Limited, on behalf of Qualcomm Innovation Center, Inc.
+Qualcomm Innovation Center, Inc. is a member of Code Aurora Forum, a Linux Foundation Collaborative Project.
