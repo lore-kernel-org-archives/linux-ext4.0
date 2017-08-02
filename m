@@ -1,53 +1,68 @@
-From: Carlos Maiolino <cmaiolino@redhat.com>
-Subject: Re: How to install set_encpolicy for xfs_io
-Date: Wed, 2 Aug 2017 13:25:58 +0200
-Message-ID: <20170802112558.bogzbht7n7dlfpzk@hades.localdomain>
-References: <20170802084855.52xnbunchkggipbz@linux>
+From: <Erma@awzn.com>
+Subject: (unknown)
+Date: Wed, 02 Aug 2017 15:40:21 -0000
+Message-ID: <150168842127.22644.16986195605487787719@hinet.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Dai Xiang <xiangx.dai@intel.com>
+Content-Type: application/zip; name="EMAIL_61204_linux-ext4.zip"
+Content-Transfer-Encoding: base64
+To: <Bland@lmmd.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56200 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752958AbdHBL0C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 2 Aug 2017 07:26:02 -0400
-Content-Disposition: inline
-In-Reply-To: <20170802084855.52xnbunchkggipbz@linux>
+Received: from 125-224-96-131.dynamic-ip.hinet.net ([125.224.96.131]:60042
+        "HELO hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1751067AbdHBPk2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2017 11:40:28 -0400
+Subject: 
+Content-Disposition: attachment
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-
-> Hi!
-> 
-> When i do test with xfstests using ext4 fs, a issue occur and do not
-> find how to fix:
-> 
-> FSTYP         -- ext4
-> PLATFORM      -- Linux/x86_64 local 4.13.0-rc3
-> MKFS_OPTIONS  -- /dev/sda8
-> MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda8 /fs/scratch
-> 
-> ext4/024	 [not run] xfs_io set_encpolicy support is missing
-> <===
-> Not run: ext4/024
-> Passed all 0 tests
->
-
-set_encpolicy was added to xfsprogs 4.10, I don't know if your distro ships it
-already, if not, you'll need to compile it by yourself from:
-
-git://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
-
-cheers.
-
-> I use v4.7 xfsprogs and xfstests commit is a00c51a0.
-> 
-> How can i install set_encpolicy?
-> 
-> Thanks
-> Xiang
-
--- 
-Carlos
+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
+CgAAAAA=
