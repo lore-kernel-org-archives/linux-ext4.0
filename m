@@ -1,45 +1,63 @@
-From: Daeho Jeong <daeho.jeong@samsung.com>
-Subject: [PATCH] ext4: release discard bio after sending discard commands
-Date: Thu, 03 Aug 2017 10:21:36 +0900
-Message-ID: <1501723296-21336-1-git-send-email-daeho.jeong@samsung.com>
-References: <CGME20170803012120epcas2p1dddb2f7e1ee7b26172142ec40246a09f@epcas2p1.samsung.com>
-Cc: Daeho Jeong <daeho.jeong@samsung.com>
-To: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org
+From: Dai Xiang <xiangx.dai@intel.com>
+Subject: Re: How to install set_encpolicy for xfs_io
+Date: Thu, 3 Aug 2017 09:34:33 +0800
+Message-ID: <20170803013433.qki2jn7jg3j4fjcs@hqi2-mobl3.ccr.corp.intel.com>
+References: <20170802084855.52xnbunchkggipbz@linux>
+ <20170802112558.bogzbht7n7dlfpzk@hades.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:35333 "EHLO
-        mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751185AbdHCBVX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Aug 2017 21:21:23 -0400
+Received: from mga06.intel.com ([134.134.136.31]:19301 "EHLO mga06.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751727AbdHCBee (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 2 Aug 2017 21:34:34 -0400
+Content-Disposition: inline
+In-Reply-To: <20170802112558.bogzbht7n7dlfpzk@hades.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We've changed the discard command handling into parallel manner.
-But, in this change, I forgot decreasing the usage count of the bio
-which was used to send discard request. I'm sorry about that.
+On Wed, Aug 02, 2017 at 01:25:58PM +0200, Carlos Maiolino wrote:
+> Hi,
+> 
+> > Hi!
+> > 
+> > When i do test with xfstests using ext4 fs, a issue occur and do not
+> > find how to fix:
+> > 
+> > FSTYP         -- ext4
+> > PLATFORM      -- Linux/x86_64 local 4.13.0-rc3
+> > MKFS_OPTIONS  -- /dev/sda8
+> > MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda8 /fs/scratch
+> > 
+> > ext4/024	 [not run] xfs_io set_encpolicy support is missing
+> > <===
+> > Not run: ext4/024
+> > Passed all 0 tests
+> >
+> 
+> set_encpolicy was added to xfsprogs 4.10, I don't know if your distro ships it
+> already, if not, you'll need to compile it by yourself from:
+> 
+> git://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
 
-Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Fixes: a015434480dc ("ext4: send parallel discards on commit
-completions")
----
- fs/ext4/mballoc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+I always use below link to download the xfsprogs:
+git://oss.sgi.com/xfs/cmds/xfsprogs
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ab70b69e644c..88317b0cf7b8 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2892,8 +2892,10 @@ void ext4_process_freed_data(struct super_block *sb, tid_t commit_tid)
- 				break;
- 		}
- 
--		if (discard_bio)
-+		if (discard_bio) {
- 			submit_bio_wait(discard_bio);
-+			bio_put(discard_bio);
-+		}
- 	}
- 
- 	list_for_each_entry_safe(entry, tmp, &freed_data_list, efd_list)
--- 
-2.13.0
+What the difference between them? Does it mean above link has
+abandoned?
+
+Thanks
+
+> 
+> cheers.
+> 
+> > I use v4.7 xfsprogs and xfstests commit is a00c51a0.
+> > 
+> > How can i install set_encpolicy?
+> > 
+> > Thanks
+> > Xiang
+> 
+> -- 
+> Carlos
