@@ -1,77 +1,81 @@
-From: Colin Walters <walters@verbum.org>
-Subject: Re: [PATCH] vfs: freeze filesystems just prior to reboot
-Date: Thu, 03 Aug 2017 16:24:50 -0400
-Message-ID: <1501791890.2285873.1062452112.61520C55@webmail.messagingengine.com>
-References: <20170519002032.GA21202@birch.djwong.org>
- <1495202431.1896310.982081664.066926F8@webmail.messagingengine.com>
- <20170519190115.GJ4519@birch.djwong.org>
+From: Dai Xiang <xiangx.dai@intel.com>
+Subject: Re: How to install set_encpolicy for xfs_io
+Date: Fri, 4 Aug 2017 09:49:27 +0800
+Message-ID: <20170804014927.edt3ulvqi22qsbem@haikuoyu-mobl4.ccr.corp.intel.com>
+References: <20170802084855.52xnbunchkggipbz@linux>
+ <20170802112558.bogzbht7n7dlfpzk@hades.localdomain>
+ <20170803013433.qki2jn7jg3j4fjcs@hqi2-mobl3.ccr.corp.intel.com>
+ <c2c93913-9d4e-8a50-f7d3-1c88db7595f2@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: xfs <linux-xfs@vger.kernel.org>,
-        "linux-fsdevel" <linux-fsdevel@vger.kernel.org>,
-        "linux-ext4" <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Nikolay Borisov <n.borisov.lkml@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out1-smtp.messagingengine.com ([66.111.4.25]:52507 "EHLO
-        out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751743AbdHCUYv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Aug 2017 16:24:51 -0400
-In-Reply-To: <20170519190115.GJ4519@birch.djwong.org>
+Received: from mga02.intel.com ([134.134.136.20]:5441 "EHLO mga02.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751811AbdHDBt3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 3 Aug 2017 21:49:29 -0400
+Content-Disposition: inline
+In-Reply-To: <c2c93913-9d4e-8a50-f7d3-1c88db7595f2@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Resurrecting this thread:
-
-On Fri, May 19, 2017, at 03:01 PM, Darrick J. Wong wrote:
-> On Fri, May 19, 2017 at 10:00:31AM -0400, Colin Walters wrote:
-> > On Thu, May 18, 2017, at 08:20 PM, Darrick J. Wong wrote:
-> > 
-> > > Therefore, add a reboot hook to freeze all filesystems (which in general
-> > > will induce ext4/xfs/btrfs to checkpoint the log) just prior to reboot.
-> > > This is an unfortunate and insufficient workaround for multiple layers
-> > > of inadequate external software, but at least it will reduce boot time
-> > > surprises for the "OS updater failed to disengage the filesystem before
-> > > rebooting" case.
-> > 
-> > As a maintainer of one of those userspace tools
-> > (https://github.com/ostreedev/ostree), which I don't think is the one
-> > in question here, but likely has the same issue - I'd like to have
-> > some sort of API to fix this - maybe flush the journal *without*
-> > remounting r/o?
+On Thu, Aug 03, 2017 at 09:27:34AM +0300, Nikolay Borisov wrote:
 > 
-> The convention (at least among ext4 and xfs) is that fs freeze should be
-> checkpointing the journal.
+> 
+> On  3.08.2017 04:34, Dai Xiang wrote:
+> > On Wed, Aug 02, 2017 at 01:25:58PM +0200, Carlos Maiolino wrote:
+> >> Hi,
+> >>
+> >>> Hi!
+> >>>
+> >>> When i do test with xfstests using ext4 fs, a issue occur and do not
+> >>> find how to fix:
+> >>>
+> >>> FSTYP         -- ext4
+> >>> PLATFORM      -- Linux/x86_64 local 4.13.0-rc3
+> >>> MKFS_OPTIONS  -- /dev/sda8
+> >>> MOUNT_OPTIONS -- -o acl,user_xattr /dev/sda8 /fs/scratch
+> >>>
+> >>> ext4/024	 [not run] xfs_io set_encpolicy support is missing
+> >>> <===
+> >>> Not run: ext4/024
+> >>> Passed all 0 tests
+> >>>
+> >>
+> >> set_encpolicy was added to xfsprogs 4.10, I don't know if your distro ships it
+> >> already, if not, you'll need to compile it by yourself from:
+> >>
+> >> git://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git
+> > 
+> > I always use below link to download the xfsprogs:
+> > git://oss.sgi.com/xfs/cmds/xfsprogs
+> > 
+> > What the difference between them? Does it mean above link has
+> > abandoned?
+> 
+> SGI have essentially abandoned all xfs-related infrastructure hosting.
+> As a result the mailing list got moved to kernel.org infrastructure and
+> the development branches as well. I'd suggest to always use the xfs
+> repos hosted on git.kernel.org
 
-OK, so I finally implemented this:
-https://github.com/ostreedev/ostree/pull/1049
+I want to install xfsprogs to a specified path but i do not find
+configure but configure.ac, how can i use it?
 
-I had to go to some awkward lengths to try to make this safe; everything
-in libostree is designed to be "crash only" - we're an update system
-that doesn't install a SIGINT/SIGTERM handler, we just let the kernel
-kill us, and that should always be safe.  But if we're interrupted right after
-we invoke FIFREEZE we'd leave the fs frozen.  
-
-Any objections to something like an ioctl (fd, FIFREEZETHAW, 0) ?
-
-I was thinking about this more though, and while this obviously helps,
-it's still just narrowing a window; if we have a system crash after
-writing the config but before we've done a freeze-thaw, we still
-have the journaled data problem.
- 
-in the end probably the real fix is probably something like storing
-multiple copies of the bootloader config with checksums that grub
-can verify.  Basically teach grub to try really hard to extract known-good
-data from the FS.  For file-level consistency that'd be pretty easy,
-we could have e.g. 
-/boot/efi/grub.cfg
-/boot/efi/grub.cfg.checksum (sha256 of grub.cfg)
-/boot/efi/grub.cfg.orig
-/boot/efi/grub.cfg.orig.checksum (sha256 of grub.cfg.orig)
-etc.
-
-But what I don't know offhand without diving a lot more into XFS
-internals is how resilient such a scheme would be against the
-outstanding journal writes for the directory.  (Maybe it's more
-resilient to use separate /boot/efi/grub-new and /boot/efi/grub-old
-dirs?)
+Thanks
+> 
+> > 
+> > Thanks
+> > 
+> >>
+> >> cheers.
+> >>
+> >>> I use v4.7 xfsprogs and xfstests commit is a00c51a0.
+> >>>
+> >>> How can i install set_encpolicy?
+> >>>
+> >>> Thanks
+> >>> Xiang
+> >>
+> >> -- 
+> >> Carlos
