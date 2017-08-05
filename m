@@ -1,59 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: reduce lock contention in __ext4_new_inode
-Date: Sat, 5 Aug 2017 13:03:53 -0400
-Message-ID: <20170805170353.sorq6n6qrfeadhop@thunk.org>
-References: <20170805030436.32314-1-wshilong@ddn.com>
+Subject: Re: [PATCH] ext4: release discard bio after sending discard commands
+Date: Sat, 5 Aug 2017 13:13:55 -0400
+Message-ID: <20170805171355.psfk5uvnen5gkcho@thunk.org>
+References: <CGME20170803012120epcas2p1dddb2f7e1ee7b26172142ec40246a09f@epcas2p1.samsung.com>
+ <1501723296-21336-1-git-send-email-daeho.jeong@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, wshilong@ddn.com, adilger@dilger.ca,
-        sihara@ddn.com, lixi@ddn.com
-To: Wang Shilong <wangshilong1991@gmail.com>
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: Daeho Jeong <daeho.jeong@samsung.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40710 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:40736 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751419AbdHERD5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 5 Aug 2017 13:03:57 -0400
+        id S1751340AbdHERN7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 5 Aug 2017 13:13:59 -0400
 Content-Disposition: inline
-In-Reply-To: <20170805030436.32314-1-wshilong@ddn.com>
+In-Reply-To: <1501723296-21336-1-git-send-email-daeho.jeong@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 05, 2017 at 11:04:36AM +0800, Wang Shilong wrote:
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 507bfb3..19323ea 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -957,8 +957,13 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
->  		if (!ret2)
->  			goto got; /* we grabbed the inode! */
->  next_inode:
-> -		if (ino < EXT4_INODES_PER_GROUP(sb))
-> +		if (ino < EXT4_INODES_PER_GROUP(sb)) {
-> +			/* Lock contention, relax a bit */
-> +			if (ext4_fs_is_busy(sbi))
-> +				schedule_timeout_uninterruptible(
-> +						msecs_to_jiffies(1));
->  			goto repeat_in_this_group;
-> +		}
->  next_group:
->  		if (++group == ngroups)
->  			group = 0;
+On Thu, Aug 03, 2017 at 10:21:36AM +0900, Daeho Jeong wrote:
+> We've changed the discard command handling into parallel manner.
+> But, in this change, I forgot decreasing the usage count of the bio
+> which was used to send discard request. I'm sorry about that.
+> 
+> Signed-off-by: Daeho Jeong <daeho.jeong@samsung.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> Fixes: a015434480dc ("ext4: send parallel discards on commit
+> completions")
 
-We should probably ne not even doing the lock contention in the case
-where the reason why we've jumped to next_inode is because we failed
-the recently_deleted() test.  But that can be fixed by changing the
-"goto next_inode" in the recently_deleted() codepath with:
+Thanks, applied.
 
-			if (ino < EXT4_INODES_PER_GROUP(sb))
-				goto repeat_in_this_group;
-
-Also while I agree that it's better to use ext4_fs_is_busy(), the
-exact details of when we will sleep for a second are different.  So it
-would be good for you to rerun your benchmarks; since the numbers in
-your v1 and v2 patch were the same, it's not clear to me that you did
-rerun them.  Can you confirm one way or another?  And rerun them for
-the v3 version of the patch?
-
-Many thanks,
-
-						- Ted
+					- Ted
