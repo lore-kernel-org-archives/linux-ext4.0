@@ -1,49 +1,160 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] vfs: freeze filesystems just prior to reboot
-Date: Sat, 5 Aug 2017 08:45:28 -0700
-Message-ID: <20170805154528.GI24087@magnolia>
-References: <20170519002032.GA21202@birch.djwong.org>
- <1495202431.1896310.982081664.066926F8@webmail.messagingengine.com>
- <20170519190115.GJ4519@birch.djwong.org>
- <1501791890.2285873.1062452112.61520C55@webmail.messagingengine.com>
- <20170805141621.GA10457@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Release of e2fsprogs 1.43.5
+Date: Sat, 5 Aug 2017 12:34:09 -0400
+Message-ID: <20170805163409.y5ifkldbmwzy4hge@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Colin Walters <walters@verbum.org>,
-        xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:40668 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751434AbdHEQeL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 5 Aug 2017 12:34:11 -0400
 Content-Disposition: inline
-In-Reply-To: <20170805141621.GA10457@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 05, 2017 at 07:16:21AM -0700, Christoph Hellwig wrote:
-> > Any objections to something like an ioctl (fd, FIFREEZETHAW, 0) ?
-> 
-> It's going to be completely trivial, which argues for it.  The only
-> points left woul be bikeshedding over the name, and how to describe
-> its semantics.
+I've released e2fsprogs 1.43.5 in all of the usual places; it's tagged
+in the git trees on git.kernel.org, github, and sourceforge, and
+available for download at:
 
-FSCHECKPOINT?  Since that's your requirement anyway...
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.43.5
 
-"Ensures that all filesystem metadata (which may be in a journal
-somewhere) has been checkpointed back to disk." ?
+and
 
---D
+http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.43.5.tar.gz
 
-> > in the end probably the real fix is probably something like storing
-> > multiple copies of the bootloader config with checksums that grub
-> > can verify.  Basically teach grub to try really hard to extract known-good
-> > data from the FS.  For file-level consistency that'd be pretty easy,
-> > we could have e.g. 
-> 
-> The real answer is to have a filesystem that does the above for you
-> for the boot partition, e.g. one where the kernel and grub have
-> a common consistency protocol for.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The release notes for 1.43.5 can be found below.
+
+E2fsprogs 1.43.5 (August 4, 2017)
+=================================
+
+Fix a bug which could cause e2fsck to loop forever when rebuilding an
+encrypted directory with entries with identical prefixes up to an
+embedded NUL character.
+
+Fix build when configured with --disable-threads or --enable-profile.
+
+Fix ext2fs_sync_device() so it returns the proper error code if the
+BLKFLSBUF ioctl fails for some reason.
+
+Fix a potential crash in tune2fs when enabling project quota when the
+file system has no inodes by fixing error handling in the
+quota_write_inode() in libsupport.
+
+Fix a bug in debugfs's "ls -p" handling which could cause it to print
+garbage after a file name in a directory entry.
+
+Fix a number of bugs in debugfs, dumpe2fs, e2fsck, tune2fs, and
+resize2fs where a carefully/maliciously corrupted file systems (found
+by American Fuzzy Lop) could these programs to crash or hang.
+(Addresses Debian Bug #868489)
+
+E2fsck no longer issues some harmless bitmap warnings caused by a
+corrupted file system; since those corruptions will be fixed up by
+e2fsck later, there's no point issuing these internal warnings.
+
+E2fsck will now notice invalid quota inode numbers, and offer to fix
+them.
+
+Fix a regression introduced in e2fsprogs 1.43 which broke mke2fs's
+hugefile creation so that they aren't contiguous.  (Addresses Google
+Bugs 62791459 and 638037607)
+
+Fix how backup superblocks are written in big endian systems so they
+are all correctly byte swapped.
+
+Fixed tune2fs's support for enabling and disabling project quota.
+
+The badblock program now properly handles languages which have
+multi-column wide character such as Chinese.  (Addresses Debian Bug:
+#860926)
+
+The mke2fs -U option now accepts "null", "clear", "random", or "time"
+just as tune2fs's -U option.
+
+Fix e2fsck's -E bmap2extent feature (which converts a file to use
+extents from indirect block maps) so that it handles sparse files correctly.
+
+Fix libext2fs to correctly handle accounting for an external xattr
+block on bigalloc file systems.
+
+Fix e2fsck to correctly handle quota accounting when deleting files
+that have mnultiply-claimed blocks pass 1b.
+
+Fix potential buffer overrun bug in e2fsck when using 128 byte inodes.
+(Addresses Google Bug 37326362).
+
+E2fsck's extent tree optimization can now be disabled via an
+command-line extended option or via an e2fsck.conf configuration
+parameter.
+
+The e2fsck program now properly updates the quota accounting when
+optimizing the extent tree.  (Addresses Google Bug 36391645)
+
+Fix some error handling in e4crypt when operating on keyring ID's.
+
+Fix e2fsck's quota handling when the bigalloc feature is enabled.
+
+The libext2fs file system now uses readahead when opening file systems
+to speed up opening very large file systems with the meta_bg option.
+
+If e2fsck logging is enabled, e2fsck will report the exit code in the
+last line of the log file.
+
+Debugfs can now open file systems with a bad sueprblock checksum, and
+the show_super_stats command will print the expected checksum.
+
+Fix a regression introduced in e2fsprogs 1.43.4 where tune2fs was not
+able to correctly enable the quota feature.  (Addresses Debian Bug
+#855417)
+
+E2fsck will only return an exit status code of 1 if it has fixed a
+file system corruption.  If it only performed an optimal optimization
+of internal file system metadata, it will now return 0.
+
+Fix e2fsck so it won't check inode fields of deleted inodes.  This was
+mostly harmless, but the addition of a check in 1.43.4 to enforce the
+requirement that inline data inodes have a system.data attribute
+caused a regression in xfstests generic/079.  Fix this and a number of
+other checks which could lead to false positive reports of file system
+corruption.
+
+Removed a debugging printf in libsupport which could result to some
+extraneous and confusing output if the user specifies a quota type.
+
+The debugfs logdump command now accepts a new -S option which will
+cause it to print information about the journal superblock.
+
+Added a missing space in debugfs's ls -l output to separate the size
+and date fields.
+
+Update the Czech, Danish, Dutch, French, Hungarian, Polish, Serbian,
+Spanish, Swedish, Ukrainian, and Vietnamese translations.
+
+Update various man pages.  (Addresses Debian Bugs #867895 and #865584)
+
+Fix various compiler and UBSAN warnings.
+
+Fixed various Debian Packaging Issues.  (Addresses Debian Bugs
+#864144 and #866623)
+
+
+Programming notes
+-----------------
+
+The blkid library can now recognize exfat file systems.
+
+Add new test, j_recover_csum3_64bit, which checks to make sure we
+correctly recovering 64-bit journals using the v3 checksum format.
+
+Fix portability assumption in tests; don't depend on the existence of
+/dev/stdin.
+
+Fix portability with newer versions of glibc and with Cygwin builds on
+Windows 8 and Windows 10.
+
+Clean up the comments in problem.c match the message that will
+actually be printed.
+
+Removed an unused an obsolete header file.
