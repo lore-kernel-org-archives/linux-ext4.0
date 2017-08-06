@@ -1,36 +1,49 @@
-From: Tahsin Erdogan <tahsin@google.com>
-Subject: Re: xattr hash error in 4.13-rc with overlayfs over ext4
-Date: Sun, 6 Aug 2017 13:05:41 -0700
-Message-ID: <CAAeU0aMZ12Ff5dghWwB=EWtNFSZz=iWaMBsP75pqYdypNpg8zA@mail.gmail.com>
-References: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
- <CAAeU0aM-1UFJJvX3zF1wUjBeG8BGC+S0wn7PhiDZevTscvmkXg@mail.gmail.com>
- <CAJfpegvL2iR1PZ+3S=VGtbUiVPQ-EnW28KwE4wCzMJwWptNYKg@mail.gmail.com>
- <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com>
- <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com>
- <CAJfpegvy274dZ0ZzY+qpaLwREi0QU9jNt=vE0pBpQ8W2wWCx1w@mail.gmail.com>
- <CAOQ4uxjtLVuuYyDZ7csJeb_xbMiWHDHs21tgQoB7bbLWC6DUew@mail.gmail.com>
- <CAJfpegvK9AhRVDhABWS=MkBSEfd9oGmOxTPVYSfPWGbTAbEhVw@mail.gmail.com> <ce8741f2-bc8c-430d-2192-c2776afa0379@gmail.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: [PATCH 1/2] ext4: fix warning about stack corruption
+Date: Sun, 6 Aug 2017 22:34:14 +0200
+Message-ID: <CAK8P3a0UWU_0dccmnZmP7zPaPbzo_c7X5YkYk=g07cHbmoRY_A@mail.gmail.com>
+References: <20170726185219.GA57833@beast> <20170801120438.1582336-1-arnd@arndb.de>
+ <20170806015324.yg7gc45c77zemtlh@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Miklos Szeredi <miklos@szeredi.hu>,
-        Amir Goldstein <amir73il@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
-To: "zhangyi (F)" <yizhang089@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <ce8741f2-bc8c-430d-2192-c2776afa0379@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>, Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Kees Cook <keescook@chromium.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        linux-ext4@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170806015324.yg7gc45c77zemtlh@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Aug 6, 2017 at 5:47 AM, zhangyi (F) <yizhang089@gmail.com> wrote:
-> I think the root cause of this problem is the hash value not updated
-> when we overwrite the same xattr, please see ext4_xattr_set_entry():
+On Sun, Aug 6, 2017 at 3:53 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Tue, Aug 01, 2017 at 02:04:03PM +0200, Arnd Bergmann wrote:
+>> There is one remaining issue with the function that I'm not addressing
+>> here: With s_blocksize_bits==16, we don't actually print the last two
+>> members of the array, as we loop though just the first 14 members.
+>> This could be easily addressed by adding two extra columns in the output,
+>> but that could in theory break parsers in user space, and should be
+>> a separate patch if we decide to modify it.
+>
+> Actually, the counters array is blocksize_bits+2 in length.  So for
+> all block sizes greater than 4k (blocksize_bits == 12), we're not
+> iterating over all of the free space counters maintained by mballoc.
 
-Yes, you are right. Thanks a lot for finding the root cause.
+Ah, makes sense.
 
-I just sent out a fix: ("[PATCH] ext4: add missing xattr hash update")
+> However, since most Linux systems run architectures where the page
+> size is 4k, and the Linux VM really doesn't easily support file system
+> block sizes greater than the page size, this really isn't an issue
+> except on Itanics and Power systems.
 
-http://patchwork.ozlabs.org/patch/798445/
+Red Hat also build their arm64 kernels with 64k pages for some odd
+reason I could never quite understand.
+
+> Thanks, I'll apply this patch.
+
+Thanks!
+
+     Arnd
