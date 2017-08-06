@@ -1,30 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: make xattr inode reads faster
-Date: Sun, 6 Aug 2017 00:14:57 -0400
-Message-ID: <20170806041457.3sedyg67nnvypwhx@thunk.org>
-References: <705A22C6-4583-47D4-8FB0-B2820F7051F3@dilger.ca>
- <20170717062012.26331-1-tahsin@google.com>
+Subject: Re: [PATCH 1/4] ext4: fix forgetten xattr lock protection in
+ ext4_expand_extra_isize
+Date: Sun, 6 Aug 2017 00:28:22 -0400
+Message-ID: <20170806042822.4qu56ztznvw73mqw@thunk.org>
+References: <1499360993-17130-1-git-send-email-miaoxie@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Tahsin Erdogan <tahsin@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, lixi@ddn.com, yi.zhang@huawei.com,
+        adilger@dilger.ca, wshilong@ddn.com, sihara@ddn.com
+To: Miao Xie <miaoxie@huawei.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41404 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751223AbdHFE21 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 6 Aug 2017 00:28:27 -0400
 Content-Disposition: inline
-In-Reply-To: <20170717062012.26331-1-tahsin@google.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <1499360993-17130-1-git-send-email-miaoxie@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jul 16, 2017 at 11:20:12PM -0700, Tahsin Erdogan wrote:
-> ext4_xattr_inode_read() currently reads each block sequentially while
-> waiting for io operation to complete before moving on to the next
-> block. This prevents request merging in block layer.
+On Fri, Jul 07, 2017 at 01:09:50AM +0800, Miao Xie wrote:
+> We should avoid the contention between the i_extra_isize update and
+> the inline data insertion, so move the xattr trylock in front of
+> i_extra_isize update.
 > 
-> Add a ext4_bread_batch() function that starts reads for all blocks
-> then optionally waits for them to complete. A similar logic is used
-> in ext4_find_entry(), so update that code to use the new function.
-> 
-> Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+> Signed-off-by: Miao Xie <miaoxie@huawei.com>
+> Reviewed-by: Wang Shilong <wshilong@ddn.com>
 
 Thanks, applied.
 
