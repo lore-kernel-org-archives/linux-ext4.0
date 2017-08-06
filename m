@@ -1,30 +1,28 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix incorrect n_blocks_count result when resizing
- file system to size larger than 2^32 blocks
-Date: Sun, 6 Aug 2017 01:18:56 -0400
-Message-ID: <20170806051856.k4ftzkslzciujxnv@thunk.org>
-References: <CAA1ppbjN3LdNdixNWb_OdA36UtZy1VDZHKySLpyt_O2rj-a35w@mail.gmail.com>
+Subject: Re: [PATCH 1/1] ext4: correcting copy paste error.
+Date: Sun, 6 Aug 2017 01:33:27 -0400
+Message-ID: <20170806053327.c7utk6vewmcas5cm@thunk.org>
+References: <CGME20170717061114epcas5p3b984798b45e9b87ebd8b5586e3bdff9c@epcas5p3.samsung.com>
+ <1500271664-42794-1-git-send-email-maninder1.s@samsung.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jerry Lee <jerrylee@qnap.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41506 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751179AbdHFFS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 6 Aug 2017 01:18:58 -0400
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, pankaj.m@samsung.com,
+        Vaneet Narang <v.narang@samsung.com>
+To: Maninder Singh <maninder1.s@samsung.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAA1ppbjN3LdNdixNWb_OdA36UtZy1VDZHKySLpyt_O2rj-a35w@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1500271664-42794-1-git-send-email-maninder1.s@samsung.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 28, 2017 at 02:23:55PM +0800, Jerry Lee wrote:
-> On 32-bit platform, the value of n_blcoks_count may be wrong during the
-> file system is resized to size larger than 2^32 blocks.  This may caused
-> the superblock being corrupted with zero blocks count.
+On Mon, Jul 17, 2017 at 11:37:44AM +0530, Maninder Singh wrote:
+> Error reported by static tool for copy paste
+> issue, fixing the same.
 > 
-> Signed-off-by: Jerry Lee <jerrylee@qnap.com>
+> Signed-off-by: Maninder Singh <maninder1.s@samsung.com>
+> Signed-off-by: Vaneet Narang <v.narang@samsung.com>
 
 Thanks, applied.
 
-				- Ted
+					- Ted
