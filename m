@@ -1,72 +1,49 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: Re: [PATCH v2] ext4: reduce lock contention in __ext4_new_inode
-Date: Sun, 6 Aug 2017 08:15:50 +0800
-Message-ID: <CAP9B-QmWafivoY9HxQhob6MBYOQm=CPXm_fgj7sfvBSz82Q9zA@mail.gmail.com>
-References: <20170805030436.32314-1-wshilong@ddn.com> <20170805170353.sorq6n6qrfeadhop@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] ext4: fix warning about stack corruption
+Date: Sat, 5 Aug 2017 21:53:24 -0400
+Message-ID: <20170806015324.yg7gc45c77zemtlh@thunk.org>
+References: <20170726185219.GA57833@beast>
+ <20170801120438.1582336-1-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Wang Shilong <wshilong@ddn.com>, adilger@dilger.ca,
-        Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f196.google.com ([209.85.161.196]:33782 "EHLO
-        mail-yw0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751214AbdHFAPv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Aug 2017 20:15:51 -0400
-Received: by mail-yw0-f196.google.com with SMTP id u207so3047216ywc.0
-        for <linux-ext4@vger.kernel.org>; Sat, 05 Aug 2017 17:15:51 -0700 (PDT)
-In-Reply-To: <20170805170353.sorq6n6qrfeadhop@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Kees Cook <keescook@chromium.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Arnd Bergmann <arnd@arndb.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170801120438.1582336-1-arnd@arndb.de>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Aug 6, 2017 at 1:03 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Sat, Aug 05, 2017 at 11:04:36AM +0800, Wang Shilong wrote:
->> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
->> index 507bfb3..19323ea 100644
->> --- a/fs/ext4/ialloc.c
->> +++ b/fs/ext4/ialloc.c
->> @@ -957,8 +957,13 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
->>               if (!ret2)
->>                       goto got; /* we grabbed the inode! */
->>  next_inode:
->> -             if (ino < EXT4_INODES_PER_GROUP(sb))
->> +             if (ino < EXT4_INODES_PER_GROUP(sb)) {
->> +                     /* Lock contention, relax a bit */
->> +                     if (ext4_fs_is_busy(sbi))
->> +                             schedule_timeout_uninterruptible(
->> +                                             msecs_to_jiffies(1));
->>                       goto repeat_in_this_group;
->> +             }
->>  next_group:
->>               if (++group == ngroups)
->>                       group = 0;
->
-> We should probably ne not even doing the lock contention in the case
-> where the reason why we've jumped to next_inode is because we failed
-> the recently_deleted() test.  But that can be fixed by changing the
-> "goto next_inode" in the recently_deleted() codepath with:
->
->                         if (ino < EXT4_INODES_PER_GROUP(sb))
->                                 goto repeat_in_this_group;
->
+On Tue, Aug 01, 2017 at 02:04:03PM +0200, Arnd Bergmann wrote:
+> There is one remaining issue with the function that I'm not addressing
+> here: With s_blocksize_bits==16, we don't actually print the last two
+> members of the array, as we loop though just the first 14 members.
+> This could be easily addressed by adding two extra columns in the output,
+> but that could in theory break parsers in user space, and should be
+> a separate patch if we decide to modify it.
 
-Yup, you are right, i thought about that in the first patch, but missed
-it when v2.
+Actually, the counters array is blocksize_bits+2 in length.  So for
+all block sizes greater than 4k (blocksize_bits == 12), we're not
+iterating over all of the free space counters maintained by mballoc.
+However, since most Linux systems run architectures where the page
+size is 4k, and the Linux VM really doesn't easily support file system
+block sizes greater than the page size, this really isn't an issue
+except on Itanics and Power systems.
 
+I very much doubt there are userspace parsers who depend on this,
+since far too many programmers subscribe to the "All the world's an
+x86" theory, in direct contravention of Henry Spencer's Tenth
+commandment:
 
-> Also while I agree that it's better to use ext4_fs_is_busy(), the
-> exact details of when we will sleep for a second are different.  So it
-> would be good for you to rerun your benchmarks; since the numbers in
-> your v1 and v2 patch were the same, it's not clear to me that you did
-> rerun them.  Can you confirm one way or another?  And rerun them for
-> the v3 version of the patch?
+	https://www.lysator.liu.se/c/ten-commandments.html
 
-We indeed should rerun benchmark, thanks for your timely feedback, will
-rebenchmark as you suggested.
+But indeed, it's a separate patch for another day.
 
+Thanks, I'll apply this patch.
 
->
-> Many thanks,
->
->                                                 - Ted
+						- Ted
