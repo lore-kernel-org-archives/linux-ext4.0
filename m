@@ -1,66 +1,36 @@
 From: Tahsin Erdogan <tahsin@google.com>
-Subject: [PATCH] ext4: add missing xattr hash update
-Date: Sun,  6 Aug 2017 13:03:19 -0700
-Message-ID: <20170806200319.21077-1-tahsin@google.com>
-Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
-To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        zhangyi <yizhang089@gmail.com>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f44.google.com ([74.125.83.44]:34915 "EHLO
-        mail-pg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751353AbdHFUD0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Aug 2017 16:03:26 -0400
-Received: by mail-pg0-f44.google.com with SMTP id v189so26042546pgd.2
-        for <linux-ext4@vger.kernel.org>; Sun, 06 Aug 2017 13:03:26 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: Re: xattr hash error in 4.13-rc with overlayfs over ext4
+Date: Sun, 6 Aug 2017 13:05:41 -0700
+Message-ID: <CAAeU0aMZ12Ff5dghWwB=EWtNFSZz=iWaMBsP75pqYdypNpg8zA@mail.gmail.com>
+References: <CAJfpegvQhuMnt=2TtfYSiMV=DTLLLbOfrvcR2xQrmvyPU9wSNg@mail.gmail.com>
+ <CAAeU0aM-1UFJJvX3zF1wUjBeG8BGC+S0wn7PhiDZevTscvmkXg@mail.gmail.com>
+ <CAJfpegvL2iR1PZ+3S=VGtbUiVPQ-EnW28KwE4wCzMJwWptNYKg@mail.gmail.com>
+ <CAJfpegtLsnDFwMFMMxUf2yUcr2AG57PgUZSAR7M8gzbOEp16Mg@mail.gmail.com>
+ <CAAeU0aOC7i6dTEBKRAP3N_HUKR0CQOW4j_MhftkfC9FSXHdCAw@mail.gmail.com>
+ <CAJfpegvy274dZ0ZzY+qpaLwREi0QU9jNt=vE0pBpQ8W2wWCx1w@mail.gmail.com>
+ <CAOQ4uxjtLVuuYyDZ7csJeb_xbMiWHDHs21tgQoB7bbLWC6DUew@mail.gmail.com>
+ <CAJfpegvK9AhRVDhABWS=MkBSEfd9oGmOxTPVYSfPWGbTAbEhVw@mail.gmail.com> <ce8741f2-bc8c-430d-2192-c2776afa0379@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: Miklos Szeredi <miklos@szeredi.hu>,
+        Amir Goldstein <amir73il@gmail.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        "linux-unionfs@vger.kernel.org" <linux-unionfs@vger.kernel.org>
+To: "zhangyi (F)" <yizhang089@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <ce8741f2-bc8c-430d-2192-c2776afa0379@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-When updating an extended attribute, if the padded value sizes are the
-same, a shortcut is taken to avoid the bulk of the work. This was fine
-until the xattr hash update was moved inside ext4_xattr_set_entry().
-With that change, the hash update got missed in the shortcut case.
+On Sun, Aug 6, 2017 at 5:47 AM, zhangyi (F) <yizhang089@gmail.com> wrote:
+> I think the root cause of this problem is the hash value not updated
+> when we overwrite the same xattr, please see ext4_xattr_set_entry():
 
-Thanks to ZhangYi (yizhang089@gmail.com) for root causing the problem.
+Yes, you are right. Thanks a lot for finding the root cause.
 
-Fixes: daf8328172df ("ext4: eliminate xattr entry e_hash recalculation for removes")
+I just sent out a fix: ("[PATCH] ext4: add missing xattr hash update")
 
-Reported-by: Miklos Szeredi <miklos@szeredi.hu>
-Signed-off-by: Tahsin Erdogan <tahsin@google.com>
----
- fs/ext4/xattr.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 82a5af9f6668..3dd970168448 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1543,7 +1543,7 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 			/* Clear padding bytes. */
- 			memset(val + i->value_len, 0, new_size - i->value_len);
- 		}
--		return 0;
-+		goto update_hash;
- 	}
- 
- 	/* Compute min_offs and last. */
-@@ -1707,6 +1707,7 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 		here->e_value_size = cpu_to_le32(i->value_len);
- 	}
- 
-+update_hash:
- 	if (i->value) {
- 		__le32 hash = 0;
- 
-@@ -1725,7 +1726,8 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
- 						     here->e_name_len,
- 						     &crc32c_hash, 1);
- 		} else if (is_block) {
--			__le32 *value = s->base + min_offs - new_size;
-+			__le32 *value = s->base + le16_to_cpu(
-+							here->e_value_offs);
- 
- 			hash = ext4_xattr_hash_entry(here->e_name,
- 						     here->e_name_len, value,
--- 
-2.14.0.rc1.383.gd1ce394fe2-goog
+http://patchwork.ozlabs.org/patch/798445/
