@@ -1,46 +1,72 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix dir_nlink behaviour
-Date: Sat, 5 Aug 2017 19:53:06 -0400
-Message-ID: <20170805235306.diur6x753xbk4b3f@thunk.org>
-References: <1500677367-82142-1-git-send-email-adilger@dilger.ca>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: Re: [PATCH v2] ext4: reduce lock contention in __ext4_new_inode
+Date: Sun, 6 Aug 2017 08:15:50 +0800
+Message-ID: <CAP9B-QmWafivoY9HxQhob6MBYOQm=CPXm_fgj7sfvBSz82Q9zA@mail.gmail.com>
+References: <20170805030436.32314-1-wshilong@ddn.com> <20170805170353.sorq6n6qrfeadhop@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, eggert@cs.ucla.edu
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Wang Shilong <wshilong@ddn.com>, adilger@dilger.ca,
+        Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41172 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751207AbdHEXxK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 5 Aug 2017 19:53:10 -0400
-Content-Disposition: inline
-In-Reply-To: <1500677367-82142-1-git-send-email-adilger@dilger.ca>
+Received: from mail-yw0-f196.google.com ([209.85.161.196]:33782 "EHLO
+        mail-yw0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751214AbdHFAPv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Aug 2017 20:15:51 -0400
+Received: by mail-yw0-f196.google.com with SMTP id u207so3047216ywc.0
+        for <linux-ext4@vger.kernel.org>; Sat, 05 Aug 2017 17:15:51 -0700 (PDT)
+In-Reply-To: <20170805170353.sorq6n6qrfeadhop@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 21, 2017 at 04:49:27PM -0600, Andreas Dilger wrote:
-> The dir_nlink feature has been enabled by default for new ext4
-> filesystems since e2fsprogs-1.41 in 2008, and was automatically
-> enabled by the kernel for older ext4 filesystems since the
-> dir_nlink feature was added with ext4 in kernel 2.6.28+ when
-> the subdirectory count exceeded EXT4_LINK_MAX.
-> 
-> We shouldn't really be enabling filesystem features automatically,
-> as this prevents the administrator from disabling the feature at
-> format time, or via tune2fs.  This should not affect many users by
-> this point, but allows limiting subdirectory counts to those that
-> can strictly fit into i_links_count rather than using "1" to
-> indicate that the number of links on the directory is not tracked.
-> This avoids a bug in glibc fts_read() that incorrectly optimizes
-> the directory traversal for such directories.
-> 
-> This also addresses a minor bug in ext4_inc_count() where i_nlinks
-> was wrapped at (EXT4_LINK_MAX - 1) links rather than allowing the
-> full EXT4_LINK_MAX links on the parent directory (including "."
-> and "..") before storing i_links_count = 1.
-> 
-> Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=196405
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+On Sun, Aug 6, 2017 at 1:03 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Sat, Aug 05, 2017 at 11:04:36AM +0800, Wang Shilong wrote:
+>> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+>> index 507bfb3..19323ea 100644
+>> --- a/fs/ext4/ialloc.c
+>> +++ b/fs/ext4/ialloc.c
+>> @@ -957,8 +957,13 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>>               if (!ret2)
+>>                       goto got; /* we grabbed the inode! */
+>>  next_inode:
+>> -             if (ino < EXT4_INODES_PER_GROUP(sb))
+>> +             if (ino < EXT4_INODES_PER_GROUP(sb)) {
+>> +                     /* Lock contention, relax a bit */
+>> +                     if (ext4_fs_is_busy(sbi))
+>> +                             schedule_timeout_uninterruptible(
+>> +                                             msecs_to_jiffies(1));
+>>                       goto repeat_in_this_group;
+>> +             }
+>>  next_group:
+>>               if (++group == ngroups)
+>>                       group = 0;
+>
+> We should probably ne not even doing the lock contention in the case
+> where the reason why we've jumped to next_inode is because we failed
+> the recently_deleted() test.  But that can be fixed by changing the
+> "goto next_inode" in the recently_deleted() codepath with:
+>
+>                         if (ino < EXT4_INODES_PER_GROUP(sb))
+>                                 goto repeat_in_this_group;
+>
 
-Thanks, applied.
+Yup, you are right, i thought about that in the first patch, but missed
+it when v2.
 
-					- Ted
+
+> Also while I agree that it's better to use ext4_fs_is_busy(), the
+> exact details of when we will sleep for a second are different.  So it
+> would be good for you to rerun your benchmarks; since the numbers in
+> your v1 and v2 patch were the same, it's not clear to me that you did
+> rerun them.  Can you confirm one way or another?  And rerun them for
+> the v3 version of the patch?
+
+We indeed should rerun benchmark, thanks for your timely feedback, will
+rebenchmark as you suggested.
+
+
+>
+> Many thanks,
+>
+>                                                 - Ted
