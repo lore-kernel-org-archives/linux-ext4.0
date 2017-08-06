@@ -1,56 +1,66 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: Re: [PATCH 2/2] ext4, project: fix typo comments for quota credits reservation
-Date: Sun, 6 Aug 2017 21:01:45 +0800
-Message-ID: <CAP9B-Qn8gfTxN_xe+gZ6ET9RwZ_n6g0_+YA4wCX9NDaYibFnsQ@mail.gmail.com>
-References: <20170630035253.63358-1-wshilong@ddn.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Li Xi <lixi@ddn.com>, adilger@dilger.ca,
-        Wang Shilong <wshilong@ddn.com>,
-        Shuichi Ihara <sihara@ddn.com>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: Tahsin Erdogan <tahsin@google.com>
+Subject: [PATCH] ext4: add missing xattr hash update
+Date: Sun,  6 Aug 2017 13:03:19 -0700
+Message-ID: <20170806200319.21077-1-tahsin@google.com>
+Cc: linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        zhangyi <yizhang089@gmail.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f196.google.com ([209.85.161.196]:37613 "EHLO
-        mail-yw0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751277AbdHFNBq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Aug 2017 09:01:46 -0400
-Received: by mail-yw0-f196.google.com with SMTP id s143so3465006ywg.4
-        for <linux-ext4@vger.kernel.org>; Sun, 06 Aug 2017 06:01:46 -0700 (PDT)
-In-Reply-To: <20170630035253.63358-1-wshilong@ddn.com>
+Received: from mail-pg0-f44.google.com ([74.125.83.44]:34915 "EHLO
+        mail-pg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751353AbdHFUD0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Aug 2017 16:03:26 -0400
+Received: by mail-pg0-f44.google.com with SMTP id v189so26042546pgd.2
+        for <linux-ext4@vger.kernel.org>; Sun, 06 Aug 2017 13:03:26 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+When updating an extended attribute, if the padded value sizes are the
+same, a shortcut is taken to avoid the bulk of the work. This was fine
+until the xattr hash update was moved inside ext4_xattr_set_entry().
+With that change, the hash update got missed in the shortcut case.
 
-how about this small typo fix. ^_^
+Thanks to ZhangYi (yizhang089@gmail.com) for root causing the problem.
 
-On Fri, Jun 30, 2017 at 11:52 AM, Wang Shilong
-<wangshilong1991@gmail.com> wrote:
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
-> ---
->  fs/ext4/ext4_jbd2.h | 8 ++++----
->  1 file changed, 4 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-> index f976111..6dd20c8 100644
-> --- a/fs/ext4/ext4_jbd2.h
-> +++ b/fs/ext4/ext4_jbd2.h
-> @@ -43,10 +43,10 @@
->  #define EXT4_XATTR_TRANS_BLOCKS                6U
->
->  /* Define the minimum size for a transaction which modifies data.  This
-> - * needs to take into account the fact that we may end up modifying two
-> - * quota files too (one for the group, one for the user quota).  The
-> - * superblock only gets updated once, of course, so don't bother
-> - * counting that again for the quota updates. */
-> + * needs to take into account the fact that we may end up modifying three
-> + * quota files too (one for the group, one for the user quota, one for the
-> + * project).  The superblock only gets updated once, of course, so don't
-> + * bother counting that again for the quota updates. */
->
->  #define EXT4_DATA_TRANS_BLOCKS(sb)     (EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + \
->                                          EXT4_XATTR_TRANS_BLOCKS - 2 + \
-> --
-> 2.9.3
->
+Fixes: daf8328172df ("ext4: eliminate xattr entry e_hash recalculation for removes")
+
+Reported-by: Miklos Szeredi <miklos@szeredi.hu>
+Signed-off-by: Tahsin Erdogan <tahsin@google.com>
+---
+ fs/ext4/xattr.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 82a5af9f6668..3dd970168448 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1543,7 +1543,7 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+ 			/* Clear padding bytes. */
+ 			memset(val + i->value_len, 0, new_size - i->value_len);
+ 		}
+-		return 0;
++		goto update_hash;
+ 	}
+ 
+ 	/* Compute min_offs and last. */
+@@ -1707,6 +1707,7 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+ 		here->e_value_size = cpu_to_le32(i->value_len);
+ 	}
+ 
++update_hash:
+ 	if (i->value) {
+ 		__le32 hash = 0;
+ 
+@@ -1725,7 +1726,8 @@ static int ext4_xattr_set_entry(struct ext4_xattr_info *i,
+ 						     here->e_name_len,
+ 						     &crc32c_hash, 1);
+ 		} else if (is_block) {
+-			__le32 *value = s->base + min_offs - new_size;
++			__le32 *value = s->base + le16_to_cpu(
++							here->e_value_offs);
+ 
+ 			hash = ext4_xattr_hash_entry(here->e_name,
+ 						     here->e_name_len, value,
+-- 
+2.14.0.rc1.383.gd1ce394fe2-goog
