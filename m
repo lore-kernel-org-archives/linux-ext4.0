@@ -1,73 +1,30 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH] ext4: fix clang build regression
-Date: Mon,  7 Aug 2017 12:56:51 +0200
-Message-ID: <20170807105701.3835991-1-arnd@arndb.de>
-Cc: Stefan Agner <stefan@agner.ch>, Arnd Bergmann <arnd@arndb.de>,
-        Jan Kara <jack@suse.cz>, Daeho Jeong <daeho.jeong@samsung.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
+Date: Mon, 7 Aug 2017 14:12:12 +0200
+Message-ID: <20170807121212.nuiho4afmdjf5vsd@rh_laptop>
+References: <1501690186-17607-1-git-send-email-lczerner@redhat.com>
+ <20170805084601.GA12425@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([212.227.126.134]:52412 "EHLO
-        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752606AbdHGK5a (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2017 06:57:30 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:51116 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753024AbdHGMMQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 7 Aug 2017 08:12:16 -0400
+Content-Disposition: inline
+In-Reply-To: <20170805084601.GA12425@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-As Stefan pointed out, I misremembered what clang can do specifically,
-and it turns out that the variable-length array at the end of the
-structure did not work (a flexible array would have worked here
-but not solved the problem):
+On Sat, Aug 05, 2017 at 01:46:01AM -0700, Christoph Hellwig wrote:
+> Please don't do this until we have a coherent DAX plan.  So far
+> the flag in XFS seems like a massive mistake and we need to get
+> rid of it instead of adding it to more file systems.
 
-fs/ext4/mballoc.c:2303:17: error: fields must have a constant size:
-'variable length array in structure' extension will never be supported
-                ext4_grpblk_t counters[blocksize_bits + 2];
+Hi, pardon my ignorance, but can you point me to the discussion where
+this was decided ? I must have missed it and I can't find it.
 
-This reverts part of my previous patch, using a fixed-size array
-again, but keeping the check for the array overflow.
-
-Fixes: 2df2c3402fc8 ("ext4: fix warning about stack corruption")
-Reported-by: Stefan Agner <stefan@agner.ch>
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- fs/ext4/mballoc.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 5a1052627a81..701085620cd8 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2300,7 +2300,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
- 					     EXT4_MAX_BLOCK_LOG_SIZE);
- 	struct sg {
- 		struct ext4_group_info info;
--		ext4_grpblk_t counters[blocksize_bits + 2];
-+		ext4_grpblk_t counters[EXT4_MAX_BLOCK_LOG_SIZE + 2];
- 	} sg;
- 
- 	group--;
-@@ -2309,6 +2309,9 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
- 			      " 2^0   2^1   2^2   2^3   2^4   2^5   2^6  "
- 			      " 2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]\n");
- 
-+	i = (blocksize_bits + 2) * sizeof(sg.info.bb_counters[0]) +
-+		sizeof(struct ext4_group_info);
-+
- 	grinfo = ext4_get_group_info(sb, group);
- 	/* Load the group info in memory only if not already loaded. */
- 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grinfo))) {
-@@ -2320,7 +2323,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
- 		buddy_loaded = 1;
- 	}
- 
--	memcpy(&sg, ext4_get_group_info(sb, group), sizeof(sg));
-+	memcpy(&sg, ext4_get_group_info(sb, group), i);
- 
- 	if (buddy_loaded)
- 		ext4_mb_unload_buddy(&e4b);
--- 
-2.9.0
+Thanks!
+-Lukas
