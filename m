@@ -1,46 +1,73 @@
-From: Dai Xiang <xiangx.dai@intel.com>
-Subject: Re: How to enable CONFIG_EXT4_ENCRYPTION
-Date: Mon, 7 Aug 2017 17:51:26 +0800
-Message-ID: <20170807095126.hyhrrnr4vrj3ne4k@linux>
-References: <20170807032502.2tiyjybtqrn6odab@linux>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Xiang Dai <xiangx.dai@intel.com>
-To: linux-ext4@vger.kernel.org
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH] ext4: fix clang build regression
+Date: Mon,  7 Aug 2017 12:56:51 +0200
+Message-ID: <20170807105701.3835991-1-arnd@arndb.de>
+Cc: Stefan Agner <stefan@agner.ch>, Arnd Bergmann <arnd@arndb.de>,
+        Jan Kara <jack@suse.cz>, Daeho Jeong <daeho.jeong@samsung.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.31]:8005 "EHLO mga06.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752367AbdHGJv2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 7 Aug 2017 05:51:28 -0400
-Content-Disposition: inline
-In-Reply-To: <20170807032502.2tiyjybtqrn6odab@linux>
+Received: from mout.kundenserver.de ([212.227.126.134]:52412 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752606AbdHGK5a (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Aug 2017 06:57:30 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 07, 2017 at 11:25:02AM +0800, Dai Xiang wrote:
-> Hi!
-> 
-> I use xfstests with ext4 fs to test, and i found a skip:
-> 
-> ext4/024         [not run] kernel does not support ext4 encryption
+As Stefan pointed out, I misremembered what clang can do specifically,
+and it turns out that the variable-length array at the end of the
+structure did not work (a flexible array would have worked here
+but not solved the problem):
 
-i print the cmd:
-/usr/sbin/xfs_io -i -c set_encpolicy /fs/scratch/tmpdir
-/fs/scratch/tmpdir: failed to set encryption policy: Inappropriate
-ioctl for device <===
+fs/ext4/mballoc.c:2303:17: error: fields must have a constant size:
+'variable length array in structure' extension will never be supported
+                ext4_grpblk_t counters[blocksize_bits + 2];
 
-Seems do not related to kconfig?
+This reverts part of my previous patch, using a fixed-size array
+again, but keeping the check for the array overflow.
 
-/dev/vdd on /fs/scratch type ext4 (rw,relatime,data=ordered)
-df -T /dev/vdd
-Filesystem     Type  Size  Used Avail Use% Mounted on
-/dev/vdd       ext4  251G   86G  154G  36% /fs/scratch
-> 
-> I have rebuild config with CONFIG_FS_ENCRYPTION and CONFIG_EXT4_ENCRYPTION.
-> I try to set them both y and both m, but two ways both do not set and do not find related failure log.
-> I use v4.13-rc3 kernel to build.
-> 
-> Do i miss some dependence kconfig?
-> 
-> Thanks
-> Xiang
+Fixes: 2df2c3402fc8 ("ext4: fix warning about stack corruption")
+Reported-by: Stefan Agner <stefan@agner.ch>
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/ext4/mballoc.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 5a1052627a81..701085620cd8 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2300,7 +2300,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 					     EXT4_MAX_BLOCK_LOG_SIZE);
+ 	struct sg {
+ 		struct ext4_group_info info;
+-		ext4_grpblk_t counters[blocksize_bits + 2];
++		ext4_grpblk_t counters[EXT4_MAX_BLOCK_LOG_SIZE + 2];
+ 	} sg;
+ 
+ 	group--;
+@@ -2309,6 +2309,9 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 			      " 2^0   2^1   2^2   2^3   2^4   2^5   2^6  "
+ 			      " 2^7   2^8   2^9   2^10  2^11  2^12  2^13  ]\n");
+ 
++	i = (blocksize_bits + 2) * sizeof(sg.info.bb_counters[0]) +
++		sizeof(struct ext4_group_info);
++
+ 	grinfo = ext4_get_group_info(sb, group);
+ 	/* Load the group info in memory only if not already loaded. */
+ 	if (unlikely(EXT4_MB_GRP_NEED_INIT(grinfo))) {
+@@ -2320,7 +2323,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+ 		buddy_loaded = 1;
+ 	}
+ 
+-	memcpy(&sg, ext4_get_group_info(sb, group), sizeof(sg));
++	memcpy(&sg, ext4_get_group_info(sb, group), i);
+ 
+ 	if (buddy_loaded)
+ 		ext4_mb_unload_buddy(&e4b);
+-- 
+2.9.0
