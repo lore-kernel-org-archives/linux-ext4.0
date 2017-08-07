@@ -1,57 +1,46 @@
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: Re: [PATCH 1/2] ext4: fix warning about stack corruption
-Date: Mon, 07 Aug 2017 12:12:33 +0530
-Message-ID: <1591040.QxnHWsmrMC@localhost.localdomain>
-References: <20170726185219.GA57833@beast> <20170801120438.1582336-1-arnd@arndb.de>
+From: Dai Xiang <xiangx.dai@intel.com>
+Subject: Re: How to enable CONFIG_EXT4_ENCRYPTION
+Date: Mon, 7 Aug 2017 17:51:26 +0800
+Message-ID: <20170807095126.hyhrrnr4vrj3ne4k@linux>
+References: <20170807032502.2tiyjybtqrn6odab@linux>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Kees Cook <keescook@chromium.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20170801120438.1582336-1-arnd@arndb.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Xiang Dai <xiangx.dai@intel.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga06.intel.com ([134.134.136.31]:8005 "EHLO mga06.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752367AbdHGJv2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 7 Aug 2017 05:51:28 -0400
+Content-Disposition: inline
+In-Reply-To: <20170807032502.2tiyjybtqrn6odab@linux>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday, August 1, 2017 5:34:03 PM IST Arnd Bergmann wrote:
-> After commit 62d1034f53e3 ("fortify: use WARN instead of BUG for now"),
-> we get a warning about possible stack overflow from a memcpy that
-> was not strictly bounded to the size of the local variable:
+On Mon, Aug 07, 2017 at 11:25:02AM +0800, Dai Xiang wrote:
+> Hi!
 > 
->     inlined from 'ext4_mb_seq_groups_show' at fs/ext4/mballoc.c:2322:2:
-> include/linux/string.h:309:9: error: '__builtin_memcpy': writing between 161 and 1116 bytes into a region of size 160 overflows the destination [-Werror=stringop-overflow=]
+> I use xfstests with ext4 fs to test, and i found a skip:
 > 
-> We actually had a bug here that would have been found by the warning,
-> but it was already fixed last year in commit 30a9d7afe70e ("ext4: fix
-> stack memory corruption with 64k block size").
-> 
-> This replaces the fixed-length structure on the stack with a variable-length
-> structure, using the correct upper bound that tells the compiler that
-> everything is really fine here. I also change the loop count to check
-> for the same upper bound for consistency, but the existing code is
-> already correct here.
-> 
-> Note that while clang won't allow certain kinds of variable-length arrays
-> in structures, this particular instance is fine, as the array is at the
-> end of the structure, and the size is strictly bounded.
-> 
-> There is one remaining issue with the function that I'm not addressing
-> here: With s_blocksize_bits==16, we don't actually print the last two
-> members of the array, as we loop though just the first 14 members.
-> This could be easily addressed by adding two extra columns in the output,
-> but that could in theory break parsers in user space, and should be
-> a separate patch if we decide to modify it.
-> 
+> ext4/024         [not run] kernel does not support ext4 encryption
 
-I executed xfstests on a ppc64 machine with both 4k and 64k block size 
-combination.
+i print the cmd:
+/usr/sbin/xfs_io -i -c set_encpolicy /fs/scratch/tmpdir
+/fs/scratch/tmpdir: failed to set encryption policy: Inappropriate
+ioctl for device <===
 
-Tested-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Seems do not related to kconfig?
 
--- 
-chandan
+/dev/vdd on /fs/scratch type ext4 (rw,relatime,data=ordered)
+df -T /dev/vdd
+Filesystem     Type  Size  Used Avail Use% Mounted on
+/dev/vdd       ext4  251G   86G  154G  36% /fs/scratch
+> 
+> I have rebuild config with CONFIG_FS_ENCRYPTION and CONFIG_EXT4_ENCRYPTION.
+> I try to set them both y and both m, but two ways both do not set and do not find related failure log.
+> I use v4.13-rc3 kernel to build.
+> 
+> Do i miss some dependence kconfig?
+> 
+> Thanks
+> Xiang
