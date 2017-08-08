@@ -1,71 +1,162 @@
-From: Dai Xiang <xiangx.dai@intel.com>
-Subject: Re: How to enable CONFIG_EXT4_ENCRYPTION
-Date: Tue, 8 Aug 2017 11:22:37 +0800
-Message-ID: <20170808032237.ukfjpgz32wn7x2zh@linux>
-References: <20170807032502.2tiyjybtqrn6odab@linux>
- <20170807095126.hyhrrnr4vrj3ne4k@linux>
- <20170807134942.u3ep5ivfq4ublueb@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH v4] ext4: reduce lock contention in __ext4_new_inode
+Date: Tue,  8 Aug 2017 13:05:17 +0800
+Message-ID: <20170808050517.7160-1-wshilong@ddn.com>
+Cc: tytso@mit.edu, wshilong@ddn.com, adilger@dilger.ca, sihara@ddn.com,
+        lixi@ddn.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:44469 "EHLO mga03.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751834AbdHHDWj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 7 Aug 2017 23:22:39 -0400
-Content-Disposition: inline
-In-Reply-To: <20170807134942.u3ep5ivfq4ublueb@thunk.org>
+Received: from mail-pg0-f67.google.com ([74.125.83.67]:36560 "EHLO
+        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750736AbdHHFFp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Aug 2017 01:05:45 -0400
+Received: by mail-pg0-f67.google.com with SMTP id y129so2077018pgy.3
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Aug 2017 22:05:45 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 07, 2017 at 09:49:42AM -0400, Theodore Ts'o wrote:
-> On Mon, Aug 07, 2017 at 05:51:26PM +0800, Dai Xiang wrote:
-> > On Mon, Aug 07, 2017 at 11:25:02AM +0800, Dai Xiang wrote:
-> > > Hi!
-> > > 
-> > > I use xfstests with ext4 fs to test, and i found a skip:
-> > > 
-> > > ext4/024         [not run] kernel does not support ext4 encryption
-> 
-> Yeah, the message printed is misleading, and should be fixed.
-> Checking to see whether the kernel supports encryption can be done by
-> checking for the existence of the file:
-> 
-> /sys/fs/ext4/features/encryption
-> 
-> > i print the cmd:
-> > /usr/sbin/xfs_io -i -c set_encpolicy /fs/scratch/tmpdir
-> > /fs/scratch/tmpdir: failed to set encryption policy: Inappropriate
-> > ioctl for device <===
-> > 
-> > Seems do not related to kconfig?
-> 
-> Yes, the issue is that you need to create the file system (or set via
-> tune2fs) the feature flag "encrypt".  To best test the read/write
-> paths, you should set the mount option test_dummy_encryption.  The
-> kvm-xfstests and gce-xfstests framework do all of this automatically.
-> From xfstests-bld/kvm-xfstests/test-appliance/files/root/cfg/fs/ext4/encrypt:
-> 
-> SIZE=small
-> export EXT_MKFS_OPTIONS="-O encrypt"
-> export EXT_MOUNT_OPTIONS="test_dummy_encryption"
-> REQUIRE_FEATURE=encryption
-> TESTNAME="Ext4 encryption"
+From: Wang Shilong <wshilong@ddn.com>
 
-I just want to use mkfs and mount to enable this feature, could you
-help give me an example about it?
+While running number of creating file threads concurrently,
+we found heavy lock contention on group spinlock:
 
-Thanks
-Xiang
+FUNC                           TOTAL_TIME(us)       COUNT        AVG(us)
+ext4_create                    1707443399           1440000      1185.72
+_raw_spin_lock                 1317641501           180899929    7.28
+jbd2__journal_start            287821030            1453950      197.96
+jbd2_journal_get_write_access  33441470             73077185     0.46
+ext4_add_nondir                29435963             1440000      20.44
+ext4_add_entry                 26015166             1440049      18.07
+ext4_dx_add_entry              25729337             1432814      17.96
+ext4_mark_inode_dirty          12302433             5774407      2.13
 
-> 
-> There are a number tests that are known to fail; primarily having to
-> do with quota support, which doesn't play well with
-> test_dummy_encryption (that's more of a test problem than anything
-> else).  See the encrypt.exclude file in that directory for more
-> details.
-> 
-> Cheers,
-> 
-> 					- Ted
+most of cpu time blames to _raw_spin_lock, here is some testing
+numbers with/without patch.
+
+Test environment:
+Server : SuperMicro Sever (2 x E5-2690 v3@2.60GHz, 128GB 2133MHz
+         DDR4 Memory, 8GbFC)
+Storage : 2 x RAID1 (DDN SFA7700X, 4 x Toshiba PX02SMU020 200GB
+          Read Intensive SSD)
+
+format command:
+        mkfs.ext4 -J size=4096
+
+test command:
+        mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \
+                -r -i 1 -v -p 10 -u #first run to load inode
+
+        mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \
+                -r -i 5 -v -p 10 -u
+
+Kernel version: 4.13.0-rc3
+
+Test  1,440,000 files with 48 directories by 48 processes:
+
+Without patch:
+
+File Creation   File removal
+79,033          289,569 ops/per second
+81,463          285,359
+79,875          288,475
+79,917          284,624
+79,420          290,91
+
+with patch:
+File Creation   File removal
+691,528		296,574 ops/per second
+691,946		297,106
+692,030		296,238
+691,005		299,249
+692,871		300,664
+
+Creation performance is improved more than 8X with large
+journal size. The main problem here is we test bitmap
+and do some check and journal operations which could be
+slept, then we test and set with lock hold, this could
+be racy, and make 'inode' steal by other process.
+
+However, after first try, we could confirm handle has
+been started and inode bitmap journaled too, then
+we could find and set bit with lock hold directly, this
+will mostly gurateee success with second try.
+
+This patch dosen't change logic if it comes to
+no journal mode, luckily this is not normal
+use cases i believe.
+
+Tested-by: Shuichi Ihara <sihara@ddn.com>
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+v3->v4: codes cleanup and avoid sleep.
+---
+ fs/ext4/ialloc.c | 30 +++++++++++++++++++++++++++++-
+ 1 file changed, 29 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 507bfb3..23380f39 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -761,6 +761,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 	ext4_group_t flex_group;
+ 	struct ext4_group_info *grp;
+ 	int encrypt = 0;
++	bool hold_lock;
+ 
+ 	/* Cannot create files in a deleted directory */
+ 	if (!dir || !dir->i_nlink)
+@@ -917,17 +918,40 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 			continue;
+ 		}
+ 
++		hold_lock = false;
+ repeat_in_this_group:
++		/* if @hold_lock is ture, that means, journal
++		 * is properly setup and inode bitmap buffer has
++		 * been journaled already, we can directly hold
++		 * lock and set bit if found, this will mostly
++		 * gurantee forward progress for each thread.
++		 */
++		if (hold_lock)
++			ext4_lock_group(sb, group);
++
+ 		ino = ext4_find_next_zero_bit((unsigned long *)
+ 					      inode_bitmap_bh->b_data,
+ 					      EXT4_INODES_PER_GROUP(sb), ino);
+-		if (ino >= EXT4_INODES_PER_GROUP(sb))
++		if (ino >= EXT4_INODES_PER_GROUP(sb)) {
++			if (hold_lock)
++				ext4_unlock_group(sb, group);
+ 			goto next_group;
++		}
+ 		if (group == 0 && (ino+1) < EXT4_FIRST_INO(sb)) {
++			if (hold_lock)
++				ext4_unlock_group(sb, group);
+ 			ext4_error(sb, "reserved inode found cleared - "
+ 				   "inode=%lu", ino + 1);
+ 			continue;
+ 		}
++
++		if (hold_lock) {
++			ext4_set_bit(ino, inode_bitmap_bh->b_data);
++			ext4_unlock_group(sb, group);
++			ino++;
++			goto got;
++		}
++
+ 		if ((EXT4_SB(sb)->s_journal == NULL) &&
+ 		    recently_deleted(sb, group, ino)) {
+ 			ino++;
+@@ -950,6 +974,10 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 			ext4_std_error(sb, err);
+ 			goto out;
+ 		}
++
++		if (EXT4_SB(sb)->s_journal)
++			hold_lock = true;
++
+ 		ext4_lock_group(sb, group);
+ 		ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
+ 		ext4_unlock_group(sb, group);
+-- 
+2.9.3
