@@ -1,98 +1,22 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Don't clear SGID when inheriting ACLs
-Date: Tue,  8 Aug 2017 14:44:42 +0200
-Message-ID: <20170808124442.8963-3-jack@suse.cz>
-References: <20170808124442.8963-1-jack@suse.cz>
+Subject: [PATCH 0/2] ext4: ACL fixes for 4.12
+Date: Tue,  8 Aug 2017 14:44:40 +0200
+Message-ID: <20170808124442.8963-1-jack@suse.cz>
 Cc: Ted Tso <tytso@mit.edu>, <linux-ext4@vger.kernel.org>,
-        gregkh@linuxfoundation.org, Jan Kara <jack@suse.cz>
+        gregkh@linuxfoundation.org
 To: stable@vger.kernel.org
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20170808124442.8963-1-jack@suse.cz>
-Sender: stable-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:50209 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752010AbdHHMos (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 8 Aug 2017 08:44:48 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
-set, DIR1 is expected to have SGID bit set (and owning group equal to
-the owning group of 'DIR0'). However when 'DIR0' also has some default
-ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
-'DIR1' to get cleared if user is not member of the owning group.
 
-Fix the problem by moving posix_acl_update_mode() out of
-__ext4_set_acl() into ext4_set_acl(). That way the function will not be
-called when inheriting ACLs which is what we want as it prevents SGID
-bit clearing and the mode has been properly set by posix_acl_create()
-anyway.
+Hello,
 
-Fixes: 073931017b49d9458aa351605b43a7e34598caef
-Cc: stable@vger.kernel.org
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Andreas Gruenbacher <agruenba@redhat.com>
+here are two ext4 ACL fixes with context fixed up so that they apply to
+4.12 kernel. Please apply them to 4.12-stable. Thanks!
 
----
- fs/ext4/acl.c |   28 +++++++++++++++-------------
- 1 file changed, 15 insertions(+), 13 deletions(-)
-
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -189,18 +189,10 @@ __ext4_set_acl(handle_t *handle, struct
- 	void *value = NULL;
- 	size_t size = 0;
- 	int error;
--	int update_mode = 0;
--	umode_t mode = inode->i_mode;
- 
- 	switch (type) {
- 	case ACL_TYPE_ACCESS:
- 		name_index = EXT4_XATTR_INDEX_POSIX_ACL_ACCESS;
--		if (acl) {
--			error = posix_acl_update_mode(inode, &mode, &acl);
--			if (error)
--				return error;
--			update_mode = 1;
--		}
- 		break;
- 
- 	case ACL_TYPE_DEFAULT:
-@@ -224,11 +216,6 @@ __ext4_set_acl(handle_t *handle, struct
- 	kfree(value);
- 	if (!error) {
- 		set_cached_acl(inode, type, acl);
--		if (update_mode) {
--			inode->i_mode = mode;
--			inode->i_ctime = current_time(inode);
--			ext4_mark_inode_dirty(handle, inode);
--		}
- 	}
- 
- 	return error;
-@@ -239,6 +226,8 @@ ext4_set_acl(struct inode *inode, struct
- {
- 	handle_t *handle;
- 	int error, retries = 0;
-+	umode_t mode = inode->i_mode;
-+	int update_mode = 0;
- 
- 	error = dquot_initialize(inode);
- 	if (error)
-@@ -249,7 +238,20 @@ retry:
- 	if (IS_ERR(handle))
- 		return PTR_ERR(handle);
- 
-+	if ((type == ACL_TYPE_ACCESS) && acl) {
-+		error = posix_acl_update_mode(inode, &mode, &acl);
-+		if (error)
-+			goto out_stop;
-+		update_mode = 1;
-+	}
-+
- 	error = __ext4_set_acl(handle, inode, type, acl);
-+	if (!error && update_mode) {
-+		inode->i_mode = mode;
-+		inode->i_ctime = current_time(inode);
-+		ext4_mark_inode_dirty(handle, inode);
-+	}
-+out_stop:
- 	ext4_journal_stop(handle);
- 	if (error == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
+								Honza
