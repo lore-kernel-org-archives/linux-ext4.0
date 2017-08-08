@@ -1,53 +1,67 @@
-From: Dai Xiang <xiangx.dai@intel.com>
-Subject: Re: How to enable CONFIG_EXT4_ENCRYPTION
-Date: Tue, 8 Aug 2017 14:03:20 +0800
-Message-ID: <20170808060320.sh4pe4abekxhkonh@linux>
-References: <20170807032502.2tiyjybtqrn6odab@linux>
- <20170807095126.hyhrrnr4vrj3ne4k@linux>
- <20170807134942.u3ep5ivfq4ublueb@thunk.org>
- <20170807193138.GA46084@gmail.com>
- <20170808012738.6rlknzovmyhjn4rg@linux>
- <20170808055013.GA593@zzz.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:49292 "EHLO mga14.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750776AbdHHGEW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 8 Aug 2017 02:04:22 -0400
-Content-Disposition: inline
-In-Reply-To: <20170808055013.GA593@zzz.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH v3 40/49] ext4: convert to bio_for_each_segment_all_sp()
+Date: Tue,  8 Aug 2017 16:45:39 +0800
+Message-ID: <20170808084548.18963-41-ming.lei@redhat.com>
+References: <20170808084548.18963-1-ming.lei@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        Ming Lei <ming.lei@redhat.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+To: Jens Axboe <axboe@fb.com>, Christoph Hellwig <hch@infradead.org>,
+        Huang Ying <ying.huang@intel.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Return-path: <linux-block-owner@vger.kernel.org>
+In-Reply-To: <20170808084548.18963-1-ming.lei@redhat.com>
+Sender: linux-block-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 07, 2017 at 10:50:13PM -0700, Eric Biggers wrote:
-> On Tue, Aug 08, 2017 at 09:27:38AM +0800, Dai Xiang wrote:
-> > > 
-> > > Actually, this is one of the tests in the "encrypt" group, which format the
-> > > scratch device with "-O encrypt".  So I believe the printed message is correct.
-> > > Are you 100% sure that CONFIG_EXT4_ENCRYPTION is enabled in your kernel config
-> > > and that you are running the correct kernel?
-> > 
-> > I use v4.13-rc3 kernerl, and i find this info refer to https://wiki.archlinux.org/index.php/ext4#Using_file-based_encryption:
-> > 
-> > Ext4 forbids encrypting the root (/) directory and will produce an error on kernel 4.13 and later
-> > 
-> > Does it impact?
-> > 
-> 
-> No, the tests do not try to encrypt the root directory.  Can you please double
-> check that the kernel you're testing actually has CONFIG_EXT4_ENCRYPTION
-> enabled?
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ fs/ext4/page-io.c  | 3 ++-
+ fs/ext4/readpage.c | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-oh, I see, i miss them, but i have a new question:
-
-I have set CONFIG_FS_ENCRYPTION and CONFIG_EXT4_ENCRYPTION both y, but
-after build the config do not include them, and what make me confused
-is that there is no failure log about them.
-
-Did i miss some dependence kconfigs or conflict kconfigs?
-
-> 
-> Eric
+diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+index c2fce4478cca..5a36ad110f14 100644
+--- a/fs/ext4/page-io.c
++++ b/fs/ext4/page-io.c
+@@ -62,8 +62,9 @@ static void ext4_finish_bio(struct bio *bio)
+ {
+ 	int i;
+ 	struct bio_vec *bvec;
++	struct bvec_iter_all bia;
+ 
+-	bio_for_each_segment_all(bvec, bio, i) {
++	bio_for_each_segment_all_sp(bvec, bio, i, bia) {
+ 		struct page *page = bvec->bv_page;
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 		struct page *data_page = NULL;
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index 40a5497b0f60..6bd33c4c1f7f 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -71,6 +71,7 @@ static void mpage_end_io(struct bio *bio)
+ {
+ 	struct bio_vec *bv;
+ 	int i;
++	struct bvec_iter_all bia;
+ 
+ 	if (ext4_bio_encrypted(bio)) {
+ 		if (bio->bi_status) {
+@@ -80,7 +81,7 @@ static void mpage_end_io(struct bio *bio)
+ 			return;
+ 		}
+ 	}
+-	bio_for_each_segment_all(bv, bio, i) {
++	bio_for_each_segment_all_sp(bv, bio, i, bia) {
+ 		struct page *page = bv->bv_page;
+ 
+ 		if (!bio->bi_status) {
+-- 
+2.9.4
