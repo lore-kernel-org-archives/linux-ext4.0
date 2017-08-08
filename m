@@ -1,67 +1,39 @@
-From: Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH v3 40/49] ext4: convert to bio_for_each_segment_all_sp()
-Date: Tue,  8 Aug 2017 16:45:39 +0800
-Message-ID: <20170808084548.18963-41-ming.lei@redhat.com>
-References: <20170808084548.18963-1-ming.lei@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        Ming Lei <ming.lei@redhat.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-To: Jens Axboe <axboe@fb.com>, Christoph Hellwig <hch@infradead.org>,
-        Huang Ying <ying.huang@intel.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <linux-block-owner@vger.kernel.org>
-In-Reply-To: <20170808084548.18963-1-ming.lei@redhat.com>
-Sender: linux-block-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
+Date: Tue, 8 Aug 2017 11:00:16 +0200
+Message-ID: <20170808090016.lxfbcrhoybmyfvlc@rh_laptop>
+References: <1501690186-17607-1-git-send-email-lczerner@redhat.com>
+ <20170805084601.GA12425@infradead.org>
+ <20170807121212.nuiho4afmdjf5vsd@rh_laptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:43094 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752113AbdHHJAT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 8 Aug 2017 05:00:19 -0400
+Content-Disposition: inline
+In-Reply-To: <20170807121212.nuiho4afmdjf5vsd@rh_laptop>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- fs/ext4/page-io.c  | 3 ++-
- fs/ext4/readpage.c | 3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+On Mon, Aug 07, 2017 at 02:12:12PM +0200, Lukas Czerner wrote:
+> On Sat, Aug 05, 2017 at 01:46:01AM -0700, Christoph Hellwig wrote:
+> > Please don't do this until we have a coherent DAX plan.  So far
+> > the flag in XFS seems like a massive mistake and we need to get
+> > rid of it instead of adding it to more file systems.
+> 
+> Hi, pardon my ignorance, but can you point me to the discussion where
+> this was decided ? I must have missed it and I can't find it.
+> 
+> Thanks!
+> -Lukas
 
-diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-index c2fce4478cca..5a36ad110f14 100644
---- a/fs/ext4/page-io.c
-+++ b/fs/ext4/page-io.c
-@@ -62,8 +62,9 @@ static void ext4_finish_bio(struct bio *bio)
- {
- 	int i;
- 	struct bio_vec *bvec;
-+	struct bvec_iter_all bia;
- 
--	bio_for_each_segment_all(bvec, bio, i) {
-+	bio_for_each_segment_all_sp(bvec, bio, i, bia) {
- 		struct page *page = bvec->bv_page;
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 		struct page *data_page = NULL;
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index 40a5497b0f60..6bd33c4c1f7f 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -71,6 +71,7 @@ static void mpage_end_io(struct bio *bio)
- {
- 	struct bio_vec *bv;
- 	int i;
-+	struct bvec_iter_all bia;
- 
- 	if (ext4_bio_encrypted(bio)) {
- 		if (bio->bi_status) {
-@@ -80,7 +81,7 @@ static void mpage_end_io(struct bio *bio)
- 			return;
- 		}
- 	}
--	bio_for_each_segment_all(bv, bio, i) {
-+	bio_for_each_segment_all_sp(bv, bio, i, bia) {
- 		struct page *page = bv->bv_page;
- 
- 		if (!bio->bi_status) {
--- 
-2.9.4
+So I've read the thread where you talk about this. I do not see anything
+about it being a masive mistake. I only see that you're confident that's
+it's a wrong thing to do. Like you're ever not confident about
+something;) Care to elaborate on what's wrong with it and why we do not
+want it ? On the surface it does look like a usefull option to have.
+
+-Lukas
