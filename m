@@ -1,44 +1,57 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
-Date: Fri, 11 Aug 2017 03:03:27 -0700
-Message-ID: <20170811100327.GD7064@infradead.org>
-References: <20170727131245.28279-1-jack@suse.cz>
- <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
- <20170727215713.GA22000@linux.intel.com>
- <CALCETrVzxrQ76BXEfo4kcRFyQmxbrMwCLE17yPyTJzz0tUs+Dg@mail.gmail.com>
- <20170728093821.GB29433@quack2.suse.cz>
- <20170801110241.GE6742@infradead.org>
- <20170801112603.GG4215@quack2.suse.cz>
- <CAPcyv4hdOsuA6cqRCnOZMLMXvycwZevg06xOVZz3u0kupm2Drw@mail.gmail.com>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
+Date: Fri, 11 Aug 2017 14:11:32 +0200
+Message-ID: <20170811121132.bj5y77scrvkgy7uo@rh_laptop>
+References: <1501690186-17607-1-git-send-email-lczerner@redhat.com>
+ <20170805084601.GA12425@infradead.org>
+ <20170807121212.nuiho4afmdjf5vsd@rh_laptop>
+ <20170808090016.lxfbcrhoybmyfvlc@rh_laptop>
+ <20170811100147.GB7064@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- linux-nvdimm <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
- Linux FS Devel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:42962 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752610AbdHKMLf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Aug 2017 08:11:35 -0400
 Content-Disposition: inline
-In-Reply-To: <CAPcyv4hdOsuA6cqRCnOZMLMXvycwZevg06xOVZz3u0kupm2Drw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170811100147.GB7064@infradead.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gTW9uLCBBdWcgMDcsIDIwMTcgYXQgMDU6MjQ6MDhQTSAtMDcwMCwgRGFuIFdpbGxpYW1zIHdy
-b3RlOgo+IERvZXMgc3lzX21tYXAoKSByZWplY3QgdW5rbm93biBmbGFnIHZhbHVlcyB0b2RheT8g
-SSdtIGVpdGhlciBub3QKPiBsb29raW5nIGluIHRoZSByaWdodCBwbGFjZSBvciBpdCdzIG1pc3Np
-bmcgYW5kIHdlJ2xsIG5lZWQgc29tZQo+IGludGVyZmFjZS9tZWNoYW5pc20gdG8gY2hlY2sgaWYg
-TUFQX1NZTkMgaXMgaG9ub3JlZC4KCkl0IGRvZXNuJ3Qgc2VlbSB0byByZWplY3QgdW5rbm93biBm
-bGFncy4KClRoZSBsYWNrIG9mIGZsYWdzIGNoZWNraW5nIHN0cmlrZXMgYmFjayBvbmNlIG1vcmUs
-IHNpZ2jhuasuCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-CkxpbnV4LW52ZGltbSBtYWlsaW5nIGxpc3QKTGludXgtbnZkaW1tQGxpc3RzLjAxLm9yZwpodHRw
-czovL2xpc3RzLjAxLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2xpbnV4LW52ZGltbQo=
+On Fri, Aug 11, 2017 at 03:01:47AM -0700, Christoph Hellwig wrote:
+> On Tue, Aug 08, 2017 at 11:00:16AM +0200, Lukas Czerner wrote:
+> > So I've read the thread where you talk about this. I do not see anything
+> > about it being a masive mistake. I only see that you're confident that's
+> > it's a wrong thing to do. Like you're ever not confident about
+> > something;) Care to elaborate on what's wrong with it and why we do not
+> > want it ? On the surface it does look like a usefull option to have.
+> 
+> The problem is that DAX is an implementation detail on how to write
+> data back.  It has absolutely no user visible semantics.  Encoding
+> such a detail in the on-disk format is not a good idea.
+
+Thanks, for the answer. I do not know too much about the DAX enabled HW.
+However I do know that there is some variety to it, some can be faster
+than DRAM, some can be slower, or on-par with DRAM. Some can be more
+expensive, hence probably smaller, some cheaper and bigger. What about
+latency and throughput can there be difference as well ?
+
+That said, it seems to me that there can be some user choice involved in
+this at least based on the fact that when DAX is used system memory is not
+used.
+
+So for example when DAX HW is slower than system memory, user can make
+a choice to exclude some inodes to speed up particular workload, while
+saving system memory where it does not matter as much.
+
+Also can this flag play a role in situation of hierarchical, or heterogeneous
+storage where dax enabled hardware is used ? Seems to me that it might.
+
+What I am trying to say is that while you say that it has no user
+visible semantics, it does have effect on the system that should not be
+simply ignored.
+
+-Lukas
