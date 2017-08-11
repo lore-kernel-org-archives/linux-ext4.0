@@ -1,36 +1,44 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] vfs: freeze filesystems just prior to reboot
-Date: Fri, 11 Aug 2017 03:02:30 -0700
-Message-ID: <20170811100230.GC7064@infradead.org>
-References: <20170519002032.GA21202@birch.djwong.org>
- <1495202431.1896310.982081664.066926F8@webmail.messagingengine.com>
- <20170519190115.GJ4519@birch.djwong.org>
- <1501791890.2285873.1062452112.61520C55@webmail.messagingengine.com>
- <20170805141621.GA10457@infradead.org>
- <20170805154528.GI24087@magnolia>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
+Date: Fri, 11 Aug 2017 03:03:27 -0700
+Message-ID: <20170811100327.GD7064@infradead.org>
+References: <20170727131245.28279-1-jack@suse.cz>
+ <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
+ <20170727215713.GA22000@linux.intel.com>
+ <CALCETrVzxrQ76BXEfo4kcRFyQmxbrMwCLE17yPyTJzz0tUs+Dg@mail.gmail.com>
+ <20170728093821.GB29433@quack2.suse.cz>
+ <20170801110241.GE6742@infradead.org>
+ <20170801112603.GG4215@quack2.suse.cz>
+ <CAPcyv4hdOsuA6cqRCnOZMLMXvycwZevg06xOVZz3u0kupm2Drw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Colin Walters <walters@verbum.org>,
-        xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:50363 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751932AbdHKKCd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Aug 2017 06:02:33 -0400
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ linux-nvdimm <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+ Linux FS Devel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170805154528.GI24087@magnolia>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAPcyv4hdOsuA6cqRCnOZMLMXvycwZevg06xOVZz3u0kupm2Drw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Aug 05, 2017 at 08:45:28AM -0700, Darrick J. Wong wrote:
-> FSCHECKPOINT?  Since that's your requirement anyway...
-> 
-> "Ensures that all filesystem metadata (which may be in a journal
-> somewhere) has been checkpointed back to disk." ?
-
-What about a file system that is entirely log structured and just
-garbage collects some times?
+T24gTW9uLCBBdWcgMDcsIDIwMTcgYXQgMDU6MjQ6MDhQTSAtMDcwMCwgRGFuIFdpbGxpYW1zIHdy
+b3RlOgo+IERvZXMgc3lzX21tYXAoKSByZWplY3QgdW5rbm93biBmbGFnIHZhbHVlcyB0b2RheT8g
+SSdtIGVpdGhlciBub3QKPiBsb29raW5nIGluIHRoZSByaWdodCBwbGFjZSBvciBpdCdzIG1pc3Np
+bmcgYW5kIHdlJ2xsIG5lZWQgc29tZQo+IGludGVyZmFjZS9tZWNoYW5pc20gdG8gY2hlY2sgaWYg
+TUFQX1NZTkMgaXMgaG9ub3JlZC4KCkl0IGRvZXNuJ3Qgc2VlbSB0byByZWplY3QgdW5rbm93biBm
+bGFncy4KClRoZSBsYWNrIG9mIGZsYWdzIGNoZWNraW5nIHN0cmlrZXMgYmFjayBvbmNlIG1vcmUs
+IHNpZ2jhuasuCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+CkxpbnV4LW52ZGltbSBtYWlsaW5nIGxpc3QKTGludXgtbnZkaW1tQGxpc3RzLjAxLm9yZwpodHRw
+czovL2xpc3RzLjAxLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2xpbnV4LW52ZGltbQo=
