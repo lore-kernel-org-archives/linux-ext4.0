@@ -1,44 +1,67 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
-Date: Sun, 13 Aug 2017 10:08:41 -0700
-Message-ID: <CAA9_cmd=fVP5n=Z=QThZEbCnWptNv2Amv6W7ujGG+O7VtXPs6g@mail.gmail.com>
-References: <20170727131245.28279-1-jack@suse.cz> <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
- <20170727215713.GA22000@linux.intel.com> <CALCETrVzxrQ76BXEfo4kcRFyQmxbrMwCLE17yPyTJzz0tUs+Dg@mail.gmail.com>
- <20170728093821.GB29433@quack2.suse.cz> <20170801110241.GE6742@infradead.org>
- <20170801112603.GG4215@quack2.suse.cz> <CAPcyv4hdOsuA6cqRCnOZMLMXvycwZevg06xOVZz3u0kupm2Drw@mail.gmail.com>
- <20170811100327.GD7064@infradead.org> <CAPcyv4hgqh8tHeWDNRnJnvwDh7hiFU8+3O0VWAHFQOEvPna11Q@mail.gmail.com>
- <20170813092556.GA19019@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-xfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Dave Chinner <david@fromorbit.com>,
-        Andy Lutomirski <luto@kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] libsupport: fix 32-bit quota test failures
+Date: Sun, 13 Aug 2017 15:20:40 -0400
+Message-ID: <20170813192040.25875-1-tytso@mit.edu>
+References: <20170811212310.GA19995@localhost.localdomain>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f67.google.com ([74.125.82.67]:38597 "EHLO
-        mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751000AbdHMRIo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Aug 2017 13:08:44 -0400
-In-Reply-To: <20170813092556.GA19019@infradead.org>
+Received: from imap.thunk.org ([74.207.234.97]:38906 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750955AbdHMTUp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 13 Aug 2017 15:20:45 -0400
+In-Reply-To: <20170811212310.GA19995@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Aug 13, 2017 at 2:25 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Sat, Aug 12, 2017 at 07:44:14PM -0700, Dan Williams wrote:
->> How about MAP_SYNC == (MAP_SHARED|MAP_PRIVATE)? On older kernels that
->> should get -EINVAL, and on new kernels it means SYNC+SHARED.
->
-> Cute trick, but I'd hate to waster it just for our little flag.
->
-> How about:
->
-> #define __MAP_VALIDATE          MAP_SHARED|MAP_PRIVATE
-> #define MAP_SYNC                0x??? | __MAP_VALIDATE
->
-> so that we can reuse that trick for any new flag?
+On 32-bit platform some of the util_dqblk structures have a type of
+long long.  So we need to use %lld and casts to make sure the right
+thing happens on both 32-bit and 64-bit platforms.
 
-Yes, even better. I think that effectively kicks the need for mmap3()
-down the road a bit.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ lib/support/mkquota.c | 22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
+
+diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
+index 00f3a406e..931a839dd 100644
+--- a/lib/support/mkquota.c
++++ b/lib/support/mkquota.c
+@@ -50,11 +50,13 @@ static void print_dquot(const char *desc, struct dquot *dq)
+ {
+ 	if (desc)
+ 		fprintf(stderr, "%s: ", desc);
+-	fprintf(stderr, "%u %ld:%ld:%ld %ld:%ld:%ld\n",
+-		dq->dq_id, dq->dq_dqb.dqb_curspace,
+-		dq->dq_dqb.dqb_bsoftlimit, dq->dq_dqb.dqb_bhardlimit,
+-		dq->dq_dqb.dqb_curinodes,
+-		dq->dq_dqb.dqb_isoftlimit, dq->dq_dqb.dqb_ihardlimit);
++	fprintf(stderr, "%u %lld:%lld:%lld %lld:%lld:%lld\n",
++		dq->dq_id, (long long) dq->dq_dqb.dqb_curspace,
++		(long long) dq->dq_dqb.dqb_bsoftlimit,
++		(long long) dq->dq_dqb.dqb_bhardlimit,
++		(long long) dq->dq_dqb.dqb_curinodes,
++		(long long) dq->dq_dqb.dqb_isoftlimit,
++		(long long) dq->dq_dqb.dqb_ihardlimit);
+ }
+ #else
+ static void print_dquot(const char *desc EXT2FS_ATTR((unused)),
+@@ -524,11 +526,11 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
+ 	    dq->dq_dqb.dqb_curinodes != dquot->dq_dqb.dqb_curinodes) {
+ 		scan_data->usage_is_inconsistent = 1;
+ 		fprintf(stderr, "[QUOTA WARNING] Usage inconsistent for ID %u:"
+-			"actual (%ld, %ld) != expected (%ld, %ld)\n",
+-			dq->dq_id, dq->dq_dqb.dqb_curspace,
+-			dq->dq_dqb.dqb_curinodes,
+-			dquot->dq_dqb.dqb_curspace,
+-			dquot->dq_dqb.dqb_curinodes);
++			"actual (%lld, %lld) != expected (%lld, %lld)\n",
++			dq->dq_id, (long long) dq->dq_dqb.dqb_curspace,
++			(long long) dq->dq_dqb.dqb_curinodes,
++			(long long) dquot->dq_dqb.dqb_curspace,
++			(long long) dquot->dq_dqb.dqb_curinodes);
+ 	}
+ 
+ 	if (scan_data->update_limits) {
+-- 
+2.11.0.rc0.7.gbe5a750
