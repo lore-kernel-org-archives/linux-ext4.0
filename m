@@ -1,52 +1,48 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
-Date: Mon, 14 Aug 2017 10:30:12 +0200
-Message-ID: <20170814083012.GB16353@quack2.suse.cz>
-References: <x49zibq3rb0.fsf@segfault.boston.devel.redhat.com>
- <20170727215713.GA22000@linux.intel.com>
- <CALCETrVzxrQ76BXEfo4kcRFyQmxbrMwCLE17yPyTJzz0tUs+Dg@mail.gmail.com>
- <20170728093821.GB29433@quack2.suse.cz>
- <20170801110241.GE6742@infradead.org>
- <20170801112603.GG4215@quack2.suse.cz>
- <CAPcyv4hdOsuA6cqRCnOZMLMXvycwZevg06xOVZz3u0kupm2Drw@mail.gmail.com>
- <20170811100327.GD7064@infradead.org>
- <CAPcyv4hgqh8tHeWDNRnJnvwDh7hiFU8+3O0VWAHFQOEvPna11Q@mail.gmail.com>
- <20170813092556.GA19019@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix clang build regression
+Date: Mon, 14 Aug 2017 08:29:38 -0400
+Message-ID: <20170814122938.caz2j2rqjcuxfqoz@thunk.org>
+References: <20170807105701.3835991-1-arnd@arndb.de>
+ <48473218.z3lFQE8RDq@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Dave Chinner <david@fromorbit.com>, linux-xfs@vger.kernel.org,
-        Andy Lutomirski <luto@kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Arnd Bergmann <arnd@arndb.de>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Stefan Agner <stefan@agner.ch>, Jan Kara <jack@suse.cz>,
+        Daeho Jeong <daeho.jeong@samsung.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Konstantin Khlebnikov <khlebnikov@yandex-team.ru>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170813092556.GA19019@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <48473218.z3lFQE8RDq@localhost.localdomain>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun 13-08-17 02:25:56, Christoph Hellwig wrote:
-> On Sat, Aug 12, 2017 at 07:44:14PM -0700, Dan Williams wrote:
-> > How about MAP_SYNC == (MAP_SHARED|MAP_PRIVATE)? On older kernels that
-> > should get -EINVAL, and on new kernels it means SYNC+SHARED.
+On Sat, Aug 12, 2017 at 02:09:29PM +0530, Chandan Rajendra wrote:
+> On Monday, August 7, 2017 4:26:51 PM IST Arnd Bergmann wrote:
+> > As Stefan pointed out, I misremembered what clang can do specifically,
+> > and it turns out that the variable-length array at the end of the
+> > structure did not work (a flexible array would have worked here
+> > but not solved the problem):
+> > 
+> > fs/ext4/mballoc.c:2303:17: error: fields must have a constant size:
+> > 'variable length array in structure' extension will never be supported
+> >                 ext4_grpblk_t counters[blocksize_bits + 2];
+> > 
+> > This reverts part of my previous patch, using a fixed-size array
+> > again, but keeping the check for the array overflow.
+> > 
+> > Fixes: 2df2c3402fc8 ("ext4: fix warning about stack corruption")
+> > Reported-by: Stefan Agner <stefan@agner.ch>
+> > Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 > 
-> Cute trick, but I'd hate to waster it just for our little flag.
+> I executed xfstests on a ppc64 machine with both 4k and 64k block size 
+> combination.
 > 
-> How about:
-> 
-> #define __MAP_VALIDATE		MAP_SHARED|MAP_PRIVATE
-> #define MAP_SYNC		0x??? | __MAP_VALIDATE
-> 
-> so that we can reuse that trick for any new flag?
+> Tested-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 
-Heh, that's such an ugly hack that it is cute ;)... I'll use this
-definition of MAP_SYNC in my patches and send new version of the series
-(probably today in the afternoon if the testing goes fine).
+Thanks, applied.
 
-								Honza
-
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+						- Ted
