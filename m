@@ -1,67 +1,204 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] libsupport: fix 32-bit quota test failures
-Date: Sun, 13 Aug 2017 15:20:40 -0400
-Message-ID: <20170813192040.25875-1-tytso@mit.edu>
-References: <20170811212310.GA19995@localhost.localdomain>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Wang Shilong <wshilong@ddn.com>
+Subject: RE: quota: dqio_mutex design
+Date: Mon, 14 Aug 2017 03:24:10 +0000
+Message-ID: <3ED34739A4E85E4F894367D57617CDEFEDA3EC9B@LAX-EX-MB2.datadirect.datadirectnet.com>
+References: <10928956.Fla3vXZ7d9@panda>
+ <20170801130242.GH4215@quack2.suse.cz>
+ <20170802162552.GA30353@quack2.suse.cz> <1691224.ooLB1CWbbI@panda>
+ <CAP9B-QmBKVOfmT3=5wR9_P23+r6KGW_rfzJES4Y6pkjSofvPGg@mail.gmail.com>
+ <20170803143657.GB23093@quack2.suse.cz>
+ <CAP9B-QknSSZ0wpakdiANmhNBkSA6oaa=vPC_XmwAnus1Qg+n5Q@mail.gmail.com>,<20170808160635.GA23565@quack2.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: Andrew Perepechko <anserper@yandex.ru>,
+        Shuichi Ihara <sihara@ddn.com>, "Li Xi" <lixi@ddn.com>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>, Wang Shilong <wangshilong1991@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38906 "EHLO imap.thunk.org"
+Received: from legacy.ddn.com ([64.47.133.206]:55970 "EHLO legacy.ddn.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750955AbdHMTUp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 13 Aug 2017 15:20:45 -0400
-In-Reply-To: <20170811212310.GA19995@localhost.localdomain>
+        id S1751097AbdHNDYN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 13 Aug 2017 23:24:13 -0400
+In-Reply-To: <20170808160635.GA23565@quack2.suse.cz>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 32-bit platform some of the util_dqblk structures have a type of
-long long.  So we need to use %lld and casts to make sure the right
-thing happens on both 32-bit and 64-bit platforms.
+Hello Jan,
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- lib/support/mkquota.c | 22 ++++++++++++----------
- 1 file changed, 12 insertions(+), 10 deletions(-)
+   We have tested your patches, in generally, it helped in our case. Noticed,
+our test case is only one user with many process create/remove file.
 
-diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
-index 00f3a406e..931a839dd 100644
---- a/lib/support/mkquota.c
-+++ b/lib/support/mkquota.c
-@@ -50,11 +50,13 @@ static void print_dquot(const char *desc, struct dquot *dq)
- {
- 	if (desc)
- 		fprintf(stderr, "%s: ", desc);
--	fprintf(stderr, "%u %ld:%ld:%ld %ld:%ld:%ld\n",
--		dq->dq_id, dq->dq_dqb.dqb_curspace,
--		dq->dq_dqb.dqb_bsoftlimit, dq->dq_dqb.dqb_bhardlimit,
--		dq->dq_dqb.dqb_curinodes,
--		dq->dq_dqb.dqb_isoftlimit, dq->dq_dqb.dqb_ihardlimit);
-+	fprintf(stderr, "%u %lld:%lld:%lld %lld:%lld:%lld\n",
-+		dq->dq_id, (long long) dq->dq_dqb.dqb_curspace,
-+		(long long) dq->dq_dqb.dqb_bsoftlimit,
-+		(long long) dq->dq_dqb.dqb_bhardlimit,
-+		(long long) dq->dq_dqb.dqb_curinodes,
-+		(long long) dq->dq_dqb.dqb_isoftlimit,
-+		(long long) dq->dq_dqb.dqb_ihardlimit);
- }
- #else
- static void print_dquot(const char *desc EXT2FS_ATTR((unused)),
-@@ -524,11 +526,11 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
- 	    dq->dq_dqb.dqb_curinodes != dquot->dq_dqb.dqb_curinodes) {
- 		scan_data->usage_is_inconsistent = 1;
- 		fprintf(stderr, "[QUOTA WARNING] Usage inconsistent for ID %u:"
--			"actual (%ld, %ld) != expected (%ld, %ld)\n",
--			dq->dq_id, dq->dq_dqb.dqb_curspace,
--			dq->dq_dqb.dqb_curinodes,
--			dquot->dq_dqb.dqb_curspace,
--			dquot->dq_dqb.dqb_curinodes);
-+			"actual (%lld, %lld) != expected (%lld, %lld)\n",
-+			dq->dq_id, (long long) dq->dq_dqb.dqb_curspace,
-+			(long long) dq->dq_dqb.dqb_curinodes,
-+			(long long) dquot->dq_dqb.dqb_curspace,
-+			(long long) dquot->dq_dqb.dqb_curinodes);
- 	}
- 
- 	if (scan_data->update_limits) {
--- 
-2.11.0.rc0.7.gbe5a750
+
+	4.13.0-rc3 without any patches					
+	no Quota		-O quota'		-O quota, project'	
+	File Creation	File Unlink	File Creation	File Unlink	File Creation	File Unlink
+0	93,068 	         296,028 	            86,860 	285,131 	           85,199 	        189,653 
+1	79,501 	         280,921 	            91,079 	277,349 	          186,279 	170,982 
+2	79,932 	         299,750 	            90,246 	274,457 	           133,922 	191,677 
+3	80,146 	         297,525 	            86,416 	272,160 	           192,354 	198,869 
+
+	4.13.0-rc3/w Jan Kara patch					
+	no Quota		-O quota'		-O quota, project'	
+	File Creation	File Unlink	File Creation	File Unlink	File Creation	File Unlink  
+0	73,057 	        311,217 	         74,898 	          286,120 	 81,217 	        288,138  ops/per second
+1	78,872             312,471 	         76,470 	          277,033 	 77,014 	        288,057 
+2	79,170             291,440 	         76,174              283,525 	 73,686            283,526 
+3	79,941             309,168            78,493              277,331          78,751            281,377 
+
+	4.13.0-rc3/with https://patchwork.ozlabs.org/patch/799014/				
+	no Quota		-O quota'		-O quota, project'	
+	File Creation	File Unlink	File Creation	File Unlink	File Creation	File Unlink
+0	100,319 	        322,746 	         87,480 	         302,579 	         84,569 	        218,969 
+1	728,424 	        299,808            312,766           293,471           219,198          199,389 
+2	729,410           300,930            315,590           289,664           218,283          197,871 
+3	727,555           298,797 	         316,837 	         289,108           213,095          213,458 
+						
+	4.13.0-rc3/w https://patchwork.ozlabs.org/patch/799014/ + Jan Kara patch					
+	no Quota		-O quota'		-O quota, project'	
+	File Creation	File Unlink	File Creation	File Unlink	File Creation	File Unlink
+0	100,312 	         324,871 	         87,076 	         267,303 	          86,258 	        288,137 
+1	707,524 	         298,892           361,963           252,493            421,919 	282,492 
+2	707,792            298,162           363,450           264,923            397,723 	283,675 
+3	707,420            302,552 	         354,013 	         266,638 	          421,537 	281,763 
+
+
+In conclusion, your patches helped a lot for our testing, noticed, please ignored test0 running
+for creation, the first time testing will loaded inode cache in memory, we used test1-3 to compare.
+
+With extra patch applied, your patches improved File creation(quota+project) 2X, File unlink
+1.5X.
+
+Thanks,
+Shilong
+
+________________________________________
+From: Jan Kara [jack@suse.cz]
+Sent: Wednesday, August 09, 2017 0:06
+To: Wang Shilong
+Cc: Jan Kara; Andrew Perepechko; Shuichi Ihara; Wang Shilong; Li Xi; Ext4 Developers List; linux-fsdevel@vger.kernel.org
+Subject: Re: quota: dqio_mutex design
+
+Hi,
+
+On Thu 03-08-17 22:39:51, Wang Shilong wrote:
+> Please send me patches, we could test and response you!
+
+So I finally have something which isn't obviously wrong (it survives basic
+testing and gives me improvements for some workloads). I have pushed out
+the patches to:
+
+git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git quota_scaling
+
+I'd be happy if you can share your results with my patches. I have not yet
+figured out a safe way to reduce the contention on dq_lock during update of
+on-disk structure when lot of processes bang single dquot. I have
+experimental patch but it didn't bring any benefit in my testing - I'll
+rebase it on top of other patches I have send it to you for some testing.
+
+                                                                Honza
+
+> On Thu, Aug 3, 2017 at 10:36 PM, Jan Kara <jack@suse.cz> wrote:
+> > Hello!
+> >
+> > On Thu 03-08-17 19:31:04, Wang Shilong wrote:
+> >> We DDN is investigating the same issue!
+> >>
+> >> Some comments comes:
+> >>
+> >> On Thu, Aug 3, 2017 at 1:52 AM, Andrew Perepechko <anserper@yandex.ru> wrote:
+> >> >> On Tue 01-08-17 15:02:42, Jan Kara wrote:
+> >> >> > Hi Andrew,
+> >> >> >
+> >> >> I've been experimenting with this today but this idea didn't bring any
+> >> >> benefit in my testing. Was your setup with multiple users or a single user?
+> >> >> Could you give some testing to my patches to see whether they bring some
+> >> >> benefit to you?
+> >> >>
+> >> >>                                                               Honza
+> >> >
+> >> > Hi Jan!
+> >> >
+> >> > My setup was with a single user. Unfortunately, it may take some time before
+> >> > I can try a patched kernel other than RHEL6 or RHEL7 with the same test,
+> >> > we have a lot of dependencies on these kernels.
+> >> >
+> >> > The actual test we ran was mdtest.
+> >> >
+> >> > By the way, we had 15+% performance improvement in creates from the
+> >> > change that was discussed earlier in this thread:
+> >> >
+> >> >            EXT4_SB(dquot->dq_sb)->s_qf_names[GRPQUOTA]) {
+> >> > +              if (test_bit(DQ_MOD_B, &dquot->dq_flags))
+> >> > +                       return 0;
+> >>
+> >> I don't think this is right, as far as i understand, journal quota need go
+> >> together with quota space change update inside same transaction, this will
+> >> break consistency if power off or RO happen.
+> >>
+> >> Here is some ideas that i have thought:
+> >>
+> >> 1) switch dqio_mutex to a read/write lock, especially, i think most of
+> >> time journal quota updates is in-place update, that means we don't need
+> >> change quota tree in memory, firstly try read lock, retry with write lock if
+> >> there is real tree change.
+> >>
+> >> 2)another is similar idea of Andrew's walkaround, but we need make correct
+> >> fix, maintain dirty list for per transaction, and gurantee quota updates are
+> >> flushed when commit transaction, this might be complex, i am not very
+> >> familiar with JBD2 codes.
+> >>
+> >> It will be really nice if we could fix this regression, as we see 20% performace
+> >> regression.
+> >
+> > So I have couple of patches:
+> >
+> > 1) I convert dqio_mutex do rw semaphore and use it in exclusive mode only
+> > when quota tree is going to change. We also use dq_lock to serialize writes
+> > of dquot - you cannot have two writes happening in parallel as that could
+> > result in stale data being on disk. This patch brings benefit when there
+> > are multiple users - now they don't contend on common lock. It shows
+> > advantage in my testing so I plan to merge these patches. When the
+> > contention is on a structure for single user this change however doesn't
+> > bring much (the performance change is in statistical noise in my testing).
+> >
+> > 2) I have patches to remove some contention on dq_list_lock by not using
+> > dirty list for tracking dquots in ext4 (and thus avoid dq_list_lock
+> > completely in quota modification path). This does not bring measurable
+> > benefit in my testing even on ramdisk but lockstat data for dq_list_lock
+> > looks much better after this - it seems lock contention just shifted to
+> > dq_data_lock - I'll try to address that as well and see whether I'll be
+> > able to measure some advantage.
+> >
+> > 3) I have patches to convert dquot dirty bit to sequence counter so that
+> > in commit_dqblk() we can check whether dquot state we wanted to write is
+> > already on disk. Note that this is different from Andrew's approach in that
+> > we do wait for dquot to be actually written before returning. We just don't
+> > repeat the write unnecessarily. However this didn't bring any measurable
+> > benefit in my testing so unless I'll be able to confirm it benefits some
+> > workloads I won't merge this change.
+> >
+> > If you can experiment with your workloads, I can send you patches. I'd be
+> > keen on having some performance data from real setups...
+> >
+> >                                                                 Honza
+> >
+> >>
+> >> Thanks,
+> >> Shilong
+> >>
+> >> >                dquot_mark_dquot_dirty(dquot);
+> >> >                return ext4_write_dquot(dquot);
+> >> >
+> >> > The idea was that if we know that some thread is somewhere between
+> >> > mark_dirty and clear_dirty, then we can avoid blocking on dqio_mutex,
+> >> > since that thread will update the ondisk dquot for us.
+> >> >
+> > --
+> > Jan Kara <jack@suse.com>
+> > SUSE Labs, CR
+--
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
