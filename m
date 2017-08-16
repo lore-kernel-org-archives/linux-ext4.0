@@ -1,219 +1,180 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v4] ext4: reduce lock contention in __ext4_new_inode
-Date: Wed, 16 Aug 2017 18:42:11 +0200
-Message-ID: <20170816164211.GA31117@quack2.suse.cz>
-References: <20170808050517.7160-1-wshilong@ddn.com>
+From: Vijay Chidambaram <vvijay03@gmail.com>
+Subject: Re: CrashMonkey: A Framework to Systematically Test File-System Crash Consistency
+Date: Wed, 16 Aug 2017 14:06:46 -0500
+Message-ID: <CAPaz=EJzXy+x4fKUyVtW_D49qSX-Xc1aqsnx8dLdMsVW=F+aXw@mail.gmail.com>
+References: <CAPaz=E+-+C-LXtADm99epmVEszpfT70Ep39tKedfPi1AN-P7tA@mail.gmail.com>
+ <20170815173349.GA17774@li70-116.members.linode.com> <CAPaz=E+sPDK3uWYCepmYPMT2+nvTgA2C_OSyPY0a51iM=bBCsQ@mail.gmail.com>
+ <CAOQ4uxhkT05yHfQz0csruH-mz_hTamMABh3eZaNmzjXX02J1=A@mail.gmail.com>
+ <CAPaz=E+D7wpkXRx7=M9+7d=TUFpbG7MetK-nkECtWQXwO-Z8gA@mail.gmail.com> <20170816130607.GA1347@destiny>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, wshilong@ddn.com,
-        adilger@dilger.ca, sihara@ddn.com, lixi@ddn.com
-To: Wang Shilong <wangshilong1991@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:46495 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752318AbdHPQmO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 16 Aug 2017 12:42:14 -0400
-Content-Disposition: inline
-In-Reply-To: <20170808050517.7160-1-wshilong@ddn.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Amir Goldstein <amir73il@gmail.com>,
+        Ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-btrfs@vger.kernel.org, Ashlie Martinez <ashmrtn@utexas.edu>,
+        kernel-team@fb.com
+To: Josef Bacik <josef@toxicpanda.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+In-Reply-To: <20170816130607.GA1347@destiny>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 08-08-17 13:05:17, Wang Shilong wrote:
-> From: Wang Shilong <wshilong@ddn.com>
-> 
-> While running number of creating file threads concurrently,
-> we found heavy lock contention on group spinlock:
-> 
-> FUNC                           TOTAL_TIME(us)       COUNT        AVG(us)
-> ext4_create                    1707443399           1440000      1185.72
-> _raw_spin_lock                 1317641501           180899929    7.28
-> jbd2__journal_start            287821030            1453950      197.96
-> jbd2_journal_get_write_access  33441470             73077185     0.46
-> ext4_add_nondir                29435963             1440000      20.44
-> ext4_add_entry                 26015166             1440049      18.07
-> ext4_dx_add_entry              25729337             1432814      17.96
-> ext4_mark_inode_dirty          12302433             5774407      2.13
-> 
-> most of cpu time blames to _raw_spin_lock, here is some testing
-> numbers with/without patch.
-> 
-> Test environment:
-> Server : SuperMicro Sever (2 x E5-2690 v3@2.60GHz, 128GB 2133MHz
->          DDR4 Memory, 8GbFC)
-> Storage : 2 x RAID1 (DDN SFA7700X, 4 x Toshiba PX02SMU020 200GB
->           Read Intensive SSD)
-> 
-> format command:
->         mkfs.ext4 -J size=4096
-> 
-> test command:
->         mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \
->                 -r -i 1 -v -p 10 -u #first run to load inode
-> 
->         mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \
->                 -r -i 5 -v -p 10 -u
-> 
-> Kernel version: 4.13.0-rc3
-> 
-> Test  1,440,000 files with 48 directories by 48 processes:
-> 
-> Without patch:
-> 
-> File Creation   File removal
-> 79,033          289,569 ops/per second
-> 81,463          285,359
-> 79,875          288,475
-> 79,917          284,624
-> 79,420          290,91
-> 
-> with patch:
-> File Creation   File removal
-> 691,528		296,574 ops/per second
-> 691,946		297,106
-> 692,030		296,238
-> 691,005		299,249
-> 692,871		300,664
-> 
-> Creation performance is improved more than 8X with large
-> journal size. The main problem here is we test bitmap
-> and do some check and journal operations which could be
-> slept, then we test and set with lock hold, this could
-> be racy, and make 'inode' steal by other process.
-> 
-> However, after first try, we could confirm handle has
-> been started and inode bitmap journaled too, then
-> we could find and set bit with lock hold directly, this
-> will mostly gurateee success with second try.
-> 
-> This patch dosen't change logic if it comes to
-> no journal mode, luckily this is not normal
-> use cases i believe.
-> 
-> Tested-by: Shuichi Ihara <sihara@ddn.com>
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
+Hi Josef,
 
-The results look great and the code looks correct however I dislike the
-somewhat complex codeflow with your hold_lock variable. So how about
-cleaning up the code as follows:
+Thank you for the detailed reply -- I think it provides several
+pointers for our future work. It sounds like we have a similar vision
+for where we want this to go, though we may disagree about how to
+implement this :) This is exciting!
 
-Create function like
+I agree that we should be building off existing work if it is a good
+option. We might end up using log-writes, but for now we see several
+problems:
 
-unsigned long find_inode_bit(struct super_block *sb, ext4_group_t group,
-		struct buffer_head *bitmap, unsigned long start_ino)
-{
-	unsigned long ino;
+- The log-writes code is not documented well. As you have mentioned,
+at this point, only you know how it works, and we are not seeing a lot
+of adoption by other developers of log-writes as well.
 
-next:
-	ino = ext4_find_next_zero_bit(...);
-	if (ino >= EXT4_INODES_PER_GROUP(sb))
-		return 0;
-	if (group == 0 && (ino+1) < EXT4_FIRST_INO(sb)) {
-		...
-		return 0;
-	}
-	if ((EXT4_SB(sb)->s_journal == NULL) &&
-                    recently_deleted(sb, group, ino)) {
-		start_ino = ino + 1;
-		if (start_ino < EXT4_INODES_PER_GROUP(sb))
-			goto next;
-	}
-	return ino;
-}
+- I don't think our requirements exactly match what log-writes
+provides. For example, at some point we want to introduce checkpoints
+so that we can co-relate a crash state with file-system state at the
+time of crash. We also want to add functionality to guide creation of
+random crash states (see below). This might require changing
+log-writes significantly. I don't know if that would be a good idea.
 
-Then you can use this function from __ext4_new_inode() when looking for
-free ino and also in case test_and_set_bit() fails you could just do:
+Regarding random crashes, there is a lot of complexity there that
+log-writes couldn't handle without significant changes. For example,
+just randomly generating crash states and testing each state is
+unlikely to catch bugs. We need a more nuanced way of doing this. We
+plan to add a lot of functionality to CrashMonkey to (a) let the user
+guide crash-state generation (b) focus on "interesting" states (by
+re-ordering or dropping metadata). All of this will likely require
+adding more sophistication to the kernel module. I don't think we want
+to take log-writes and add a lot of extra functionality.
 
-ext4_lock_group(sb, group);
-ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
-if (ret2) {
-	/* Someone already took the bit. Repeat the search with lock held.*/
-	ino = find_inode_bit(sb, group, inode_bitmap_bh, ino);
-	if (ino) {
-		ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
-		WARN_ON_ONCE(!ret2);
-	}
-}
-ext4_unlock_group(sb, group);
+Regarding logging writes, I think there is a difference in approach
+between log-writes and CrashMonkey. We don't really care about the
+completion order since the device may anyway re-order the writes after
+that point. Thus, the set of crash states generated by CrashMonkey is
+bound only by FUA and FLUSH flags. It sounds as if log-writes focuses
+on a more restricted set of crash states.
 
-And that's it, no strange bool variables and conditional locking. And as a
-bonus it also works for nojournal mode in the same way.
+CrashMonkey works with the 4.4 kernel, and we will try and keep up
+with changes to the kernel that breaks CrashMonkey. CrashMonkey is
+useless without the user-space component, so users will be needing to
+compile some code anyway. I do not believe it will matter much whether
+it is in-tree or not, as long as it compiles with the latest kernel.
 
-								Honza
+Regarding discard, multi-device support, and application-level crash
+consistency, this is on our road-map too! Our current priority is to
+build enough scaffolding to reproduce a known crash-consistency bug
+(such as the delayed allocation bug of ext4), and then go on and try
+to find new bugs in newer file systems like btrfs.
 
-> ---
-> v3->v4: codes cleanup and avoid sleep.
-> ---
->  fs/ext4/ialloc.c | 30 +++++++++++++++++++++++++++++-
->  1 file changed, 29 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 507bfb3..23380f39 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -761,6 +761,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
->  	ext4_group_t flex_group;
->  	struct ext4_group_info *grp;
->  	int encrypt = 0;
-> +	bool hold_lock;
->  
->  	/* Cannot create files in a deleted directory */
->  	if (!dir || !dir->i_nlink)
-> @@ -917,17 +918,40 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
->  			continue;
->  		}
->  
-> +		hold_lock = false;
->  repeat_in_this_group:
-> +		/* if @hold_lock is ture, that means, journal
-> +		 * is properly setup and inode bitmap buffer has
-> +		 * been journaled already, we can directly hold
-> +		 * lock and set bit if found, this will mostly
-> +		 * gurantee forward progress for each thread.
-> +		 */
-> +		if (hold_lock)
-> +			ext4_lock_group(sb, group);
-> +
->  		ino = ext4_find_next_zero_bit((unsigned long *)
->  					      inode_bitmap_bh->b_data,
->  					      EXT4_INODES_PER_GROUP(sb), ino);
-> -		if (ino >= EXT4_INODES_PER_GROUP(sb))
-> +		if (ino >= EXT4_INODES_PER_GROUP(sb)) {
-> +			if (hold_lock)
-> +				ext4_unlock_group(sb, group);
->  			goto next_group;
-> +		}
->  		if (group == 0 && (ino+1) < EXT4_FIRST_INO(sb)) {
-> +			if (hold_lock)
-> +				ext4_unlock_group(sb, group);
->  			ext4_error(sb, "reserved inode found cleared - "
->  				   "inode=%lu", ino + 1);
->  			continue;
->  		}
-> +
-> +		if (hold_lock) {
-> +			ext4_set_bit(ino, inode_bitmap_bh->b_data);
-> +			ext4_unlock_group(sb, group);
-> +			ino++;
-> +			goto got;
-> +		}
-> +
->  		if ((EXT4_SB(sb)->s_journal == NULL) &&
->  		    recently_deleted(sb, group, ino)) {
->  			ino++;
-> @@ -950,6 +974,10 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
->  			ext4_std_error(sb, err);
->  			goto out;
->  		}
-> +
-> +		if (EXT4_SB(sb)->s_journal)
-> +			hold_lock = true;
-> +
->  		ext4_lock_group(sb, group);
->  		ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
->  		ext4_unlock_group(sb, group);
-> -- 
-> 2.9.3
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Adding CrashMonkey into the kernel is not a priority at this point (I
+don't think CrashMonkey is useful enough at this point to do so). When
+CrashMonkey becomes useful enough to do so, we will perhaps add the
+device_wrapper as a DM target to enable adoption.
+
+Our hope currently is that developers like Ari will try out
+CrashMonkey in its current form, which will guide us as to what
+functionality to add to CrashMonkey to find bugs more effectively.
+
+Thanks,
+Vijay
+
+On Wed, Aug 16, 2017 at 8:06 AM, Josef Bacik <josef@toxicpanda.com> wrote:
+> On Tue, Aug 15, 2017 at 08:44:16PM -0500, Vijay Chidambaram wrote:
+>> Hi Amir,
+>>
+>> I neglected to mention this earlier: CrashMonkey does not require
+>> recompiling the kernel (it is a stand-alone kernel module), and has
+>> been tested with the kernel 4.4. It should work with future kernel
+>> versions as long as there are no changes to the bio structure.
+>>
+>> As it is, I believe CrashMonkey is compatible with the current kernel.
+>> It certainly provides functionality beyond log-writes (the ability to
+>> replay a subset of writes between FLUSH/FUA), and we intend to add
+>> more functionality in the future.
+>>
+>> Right now, CrashMonkey does not do random sampling among possible
+>> crash states -- it will simply test a given number of unique states.
+>> Thus, right now I don't think it is very effective in finding
+>> crash-consistency bugs. But the entire infrastructure to profile a
+>> workload, construct crash states, and test them with fsck is present.
+>>
+>> I'd be grateful if you could try it and give us feedback on what make
+>> testing easier/more useful for you. As I mentioned before, this is a
+>> work-in-progress, so we are happy to incorporate feedback.
+>>
+>
+> Sorry I was travelling yesterday so I couldn't give this my full attention.
+> Everything you guys do is already accomplished with dm-log-writes.  If you look
+> at the example scripts I've provided
+>
+> https://github.com/josefbacik/log-writes/blob/master/replay-individual-faster.sh
+> https://github.com/josefbacik/log-writes/blob/master/replay-fsck-wrapper.sh
+>
+> The first initiates the replay, and points at the second script to run after
+> each entry is replayed.  The whole point of this stuff was to make it as
+> flexible as possible.  The way we use it is to replay, create a snapshot of the
+> replay, mount, unmount, fsck, delete the snapshot and carry on to the next
+> position in the log.
+>
+> There is nothing keeping us from generating random crash points, this has been
+> something on my list of things to do forever.  All that would be required would
+> be to hold the entries between flush/fua events in memory, and then replay them
+> in whatever order you deemed fit.  That's the only functionality missing from my
+> replay-log stuff that CrashMonkey has.
+>
+> The other part of this is getting user space applications to do more thorough
+> checking of consistency that it expects, which I implemented here
+>
+> https://github.com/josefbacik/fstests/commit/70d41e17164b2afc9a3f2ae532f084bf64cb4a07
+>
+> fsx will randomly do operations to a file, and every time it fsync()'s it saves
+> it's state and marks the log.  Then we can go back and replay the log to the
+> mark and md5sum the file to make sure it matches the saved state.  This
+> infrastructure was meant to be as simple as possible so the possiblities for
+> crash consistency testing were endless.  One of the next areas we plan to use
+> this in Facebook is just for application consistency, so we can replay the fs
+> and verify the application works in whatever state the fs is at any given point.
+>
+> I looked at your code and you are logging entries at submit time, not completion
+> time.  The reason I do those crazy acrobatics is because we have had bugs in
+> previous kernels where we were not waiting for io completion of important
+> metadata before writing out the super block, so logging only at completion
+> allows us to catch that class of problems.
+>
+> The other thing CrashMonkey is missing is DISCARD support.  We fuck up discard
+> support constantly, and being able to replay discards to make sure we're not
+> discarding important data is very important.
+>
+> I'm not trying to shit on your project, obviously it's a good idea, that's why I
+> did it years ago ;).  The community is going to use what is easiest to use, and
+> modprobe dm-log-writes is a lot easier than compiling and insmod'ing an out of
+> tree driver.  Also your driver won't work on upstream kernels because of the way
+> the bio flags were changed recently, which is why we prefer using upstream
+> solutions.
+>
+> If you guys want to get this stuff used then it would be better at this point to
+> build on top of what we already have.  Just off the top of my head we need
+>
+> 1) Random replay support for replay-log.  This is probably a day or two worth of
+> work for a student.
+>
+> 2) Documentation, because right now I'm the only one who knows how this works.
+>
+> 3) My patches need to actually be pushed into upstream fstests.  This would be
+> the largest win because then all the fs developers would be running the tests
+> by default.
+>
+> 4) Multi-device support.  One thing that would be good to have and is a dream of
+> mine is to connect multiple devices to one log, so we can do things like make
+> sure mdraid or btrfs's raid consistency.  We could do super evil things like
+> only replay one device, or replay alternating writes on each device.  This would
+> be a larger project but would be super helpful.
+>
+> Thanks,
+>
+> Josef
