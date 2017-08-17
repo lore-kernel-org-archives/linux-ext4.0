@@ -1,7 +1,8 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [RFC PATCH 0/13 v2] dax, ext4: Synchronous page faults
-Date: Thu, 17 Aug 2017 18:08:02 +0200
-Message-ID: <20170817160815.30466-1-jack@suse.cz>
+Subject: [PATCH 01/13] mm: Remove VM_FAULT_HWPOISON_LARGE_MASK
+Date: Thu, 17 Aug 2017 18:08:03 +0200
+Message-ID: <20170817160815.30466-2-jack@suse.cz>
+References: <20170817160815.30466-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -10,6 +11,7 @@ Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Boaz Harros
  Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 To: <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170817160815.30466-1-jack-AlSwsSmVLrQ@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -21,98 +23,27 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+It is unused.
 
-here is second version of my patches to implement synchronous page faults for
-DAX mappings to make flushing of DAX mappings possible from userspace so that
-they can be flushed on finer than page granularity and also avoid the overhead
-of a syscall.
+Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+---
+ include/linux/mm.h | 2 --
+ 1 file changed, 2 deletions(-)
 
-We use a new mmap flag MAP_SYNC to indicate that page faults for the mapping
-should be synchronous.  The guarantee provided by this flag is: While a block
-is writeably mapped into page tables of this mapping, it is guaranteed to be
-visible in the file at that offset also after a crash.
-
-How I implement this is that ->iomap_begin() indicates by a flag that inode
-block mapping metadata is unstable and may need flushing (use the same test as
-whether fdatasync() has metadata to write). If yes, DAX fault handler refrains
-from inserting / write-enabling the page table entry and returns special flag
-VM_FAULT_NEEDDSYNC together with a PFN to map to the filesystem fault handler.
-The handler then calls fdatasync() (vfs_fsync_range()) for the affected range
-and after that calls DAX code to update the page table entry appropriately.
-
->From my (fairly limited) knowledge of XFS it seems XFS should be able to do the
-same and it should be even possible for filesystem to implement safe remapping
-of a file offset to a different block (i.e. break reflink, do defrag, or
-similar stuff) like:
-
-1) Block page faults
-2) fdatasync() remapped range (there can be outstanding data modifications
-   not yet flushed)
-3) unmap_mapping_range()
-4) Now remap blocks
-5) Unblock page faults
-
-Basically we do the same on events like punch hole so there is not much new
-there.
-
-Note that the implementation of MAP_SYNC flag is pretty crude for now just to
-enable testing since Dan is working in the same area to implement another mmap
-flag. Once the decision on how to implement new mmap flag is settled, I can
-clean up that patch.
-
-I did some basic performance testing on the patches over ramdisk - timed
-latency of page faults when faulting 512 pages. I did several tests: with file
-preallocated / with file empty, with background file copying going on / without
-it, with / without MAP_SYNC (so that we get comparison).  The results are
-(numbers are in microseconds):
-
-File preallocated, no background load no MAP_SYNC:
-min=5 avg=6 max=42
-4 - 7 us: 398
-8 - 15 us: 110
-16 - 31 us: 2
-32 - 63 us: 2
-
-File preallocated, no background load, MAP_SYNC:
-min=10 avg=10 max=43
-8 - 15 us: 509
-16 - 31 us: 2
-32 - 63 us: 1
-
-File empty, no background load, no MAP_SYNC:
-min=21 avg=23 max=76
-16 - 31 us: 503
-32 - 63 us: 8
-64 - 127 us: 1
-
-File empty, no background load, MAP_SYNC:
-min=91 avg=108 max=234
-64 - 127 us: 467
-128 - 255 us: 45
-
-File empty, background load, no MAP_SYNC:
-min=21 avg=23 max=67
-16 - 31 us: 507
-32 - 63 us: 4
-64 - 127 us: 1
-
-File empty, background load, MAP_SYNC:
-min=94 avg=112 max=181
-64 - 127 us: 489
-128 - 255 us: 23
-
-So here we can see the difference between MAP_SYNC vs non MAP_SYNC is about
-100-200 us when we need to wait for transaction commit in this setup. 
-
-Anyway, here are the patches, comments are welcome.
-
-Changes since v1:
-* switched to using mmap flag MAP_SYNC
-* cleaned up fault handlers to avoid passing pfn in vmf->orig_pte
-* switched to not touching page tables before we are ready to insert final
-  entry as it was unnecessary and not really simplifying anything
-* renamed fault flag to VM_FAULT_NEEDDSYNC
-* other smaller fixes found by reviewers
-
-								Honza
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 483e84cf9fc6..fa036093e76c 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1143,8 +1143,6 @@ static inline void clear_page_pfmemalloc(struct page *page)
+ #define VM_FAULT_FALLBACK 0x0800	/* huge page fault failed, fall back to small */
+ #define VM_FAULT_DONE_COW   0x1000	/* ->fault has fully handled COW */
+ 
+-#define VM_FAULT_HWPOISON_LARGE_MASK 0xf000 /* encodes hpage index for large hwpoison */
+-
+ #define VM_FAULT_ERROR	(VM_FAULT_OOM | VM_FAULT_SIGBUS | VM_FAULT_SIGSEGV | \
+ 			 VM_FAULT_HWPOISON | VM_FAULT_HWPOISON_LARGE | \
+ 			 VM_FAULT_FALLBACK)
+-- 
+2.12.3
