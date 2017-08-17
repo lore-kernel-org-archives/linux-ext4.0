@@ -1,111 +1,121 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
-Date: Thu, 17 Aug 2017 18:08:09 +0200
-Message-ID: <20170817160809.GA28850@quack2.suse.cz>
-References: <20170727215713.GA22000@linux.intel.com>
- <CALCETrVzxrQ76BXEfo4kcRFyQmxbrMwCLE17yPyTJzz0tUs+Dg@mail.gmail.com>
- <20170728093821.GB29433@quack2.suse.cz>
- <20170801110241.GE6742@infradead.org>
- <20170801112603.GG4215@quack2.suse.cz>
- <CAPcyv4hdOsuA6cqRCnOZMLMXvycwZevg06xOVZz3u0kupm2Drw@mail.gmail.com>
- <20170811100327.GD7064@infradead.org>
- <CAPcyv4hgqh8tHeWDNRnJnvwDh7hiFU8+3O0VWAHFQOEvPna11Q@mail.gmail.com>
- <20170813092556.GA19019@infradead.org>
- <ccf82f19-7693-25da-eaa6-a654830ca81e@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Jan Kara <jack@suse.cz>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Dave Chinner <david@fromorbit.com>, linux-xfs@vger.kernel.org,
-        Andy Lutomirski <luto@kernel.org>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Y2038 bug in ext4 recently_deleted() function
+Date: Thu, 17 Aug 2017 15:51:41 -0600
+Message-ID: <BCA34CA8-FDDF-49FA-A5B4-9CCCEAC0C8D0@dilger.ca>
+References: <20170808050517.7160-1-wshilong@ddn.com>
+ <20170816164211.GA31117@quack2.suse.cz>
+ <3ED34739A4E85E4F894367D57617CDEFEDA401CE@LAX-EX-MB2.datadirect.datadirectnet.com>
+ <20170817091959.GB7644@quack2.suse.cz>
+ <20170817092153.GA14074@quack2.suse.cz>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_770854FE-2373-45C0-9E7F-AF1B4755902A";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Wang Shilong <wshilong@ddn.com>,
+        Wang Shilong <wangshilong1991@gmail.com>,
         "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        Amit Golander <amitg@netapp.com>
-To: Boaz Harrosh <boazh@netapp.com>
+        Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>,
+        Jan Kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>,
+        Deepa Dinamani <deepa.kernel@gmail.com>,
+        Arnd Bergmann <arnd@arndb.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53962 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752936AbdHQQQc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 17 Aug 2017 12:16:32 -0400
-Content-Disposition: inline
-In-Reply-To: <ccf82f19-7693-25da-eaa6-a654830ca81e@netapp.com>
+Received: from mail-io0-f182.google.com ([209.85.223.182]:35200 "EHLO
+        mail-io0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752632AbdHQVvu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Aug 2017 17:51:50 -0400
+Received: by mail-io0-f182.google.com with SMTP id m88so27413517iod.2
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Aug 2017 14:51:49 -0700 (PDT)
+In-Reply-To: <20170817092153.GA14074@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 14-08-17 17:04:17, Boaz Harrosh wrote:
-> 
-> Thank you Jan, I'm patiently waiting for this MAP_SYNC flag since I asked for
-> it in 2014. I'm so glad its time is finally do.
-> 
-> Thank you for working on this. Please CC me on future patches.
-> (note the new Netapp email)
-> 
-> On 13/08/17 12:25, Christoph Hellwig wrote:
-> > On Sat, Aug 12, 2017 at 07:44:14PM -0700, Dan Williams wrote:
-> >> How about MAP_SYNC == (MAP_SHARED|MAP_PRIVATE)? On older kernels that
-> >> should get -EINVAL, and on new kernels it means SYNC+SHARED.
-> > 
-> > Cute trick, but I'd hate to waster it just for our little flag.
-> > 
-> > How about:
-> > 
-> > #define __MAP_VALIDATE		MAP_SHARED|MAP_PRIVATE
-> > #define MAP_SYNC		0x??? | __MAP_VALIDATE
-> > 
-> > so that we can reuse that trick for any new flag?
-> > 
-> 
-> YES! And please create a mask for all new flags and in validation
-> code if ((m_flags & __MAP_VALIDATE) == __MAP_VALIDATE) then you
-> want that (m_flags & __MAP_NEWFLAGS) does not come empty, this
-> way you actually preserve the old check that SHARED and PRIVATE
-> do not co exist.
 
-For now I did just a crude hack. Dan is working on new mmap syscall which
-checks flags which will be cleaner...
+--Apple-Mail=_770854FE-2373-45C0-9E7F-AF1B4755902A
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-> Few Comments on this new MAP_ flag
-> 
-> 0] The name at least needs to be MAP_MSYNC because only meta-data is
->     synced not the data pointed to. That is the responsibility of the app
+On Aug 17, 2017, at 3:21 AM, Jan Kara <jack@suse.cz> wrote:
+>=20
+> On Thu 17-08-17 11:19:59, Jan Kara wrote:
+>> Hi Shilong!
+>>=20
+>> On Thu 17-08-17 06:23:26, Wang Shilong wrote:
+>>>     thanks for good suggestion, just one question we could not hold =
+lock
+>>> with nojounal mode, how about something attached one?
+>>>=20
+>>> please let me know if you have better taste for it, much =
+appreciated!
+>>=20
+>> Thanks for quickly updating the patch! Is the only reason why you =
+cannot
+>> hold the lock in the nojournal mode that sb_getblk() might sleep? The
+>> attached patch should fix that so that you don't have to special-case =
+the
+>> nojournal mode anymore.
+>=20
+> Forgot to attach the patch - here it is. Feel free to include it in =
+your
+> series as a preparatory patch.
 
-So we actually do normal fdatasync() call so we do flush data as well. This
-way we don't have to be afraid of stale data exposure or other strange
-effects. So I've kept the name to be MAP_SYNC.
+Strange, I never even knew recently_deleted() existed, even though it =
+was
+added to the tree 4 years ago yesterday.  It looks like this is only =
+used
+with the no-journal code, which I don't really interact with.
 
-> 1] This flag you have named MAP_SYNC but it is very much related to
->    dax and the ability for user-mode to "flush" the data pointed by this
->    now "synced" meta data.
->    For example in ext4, this flag set on an inode that is *not* IS_DAX
->    should fail the mmap. Because there is no point of synced meta if the
->    data is actually in page-cache and we know for sure it was not yet synced,
->    And there is no way for user-mode to directly "sync" the data as well.
+One thing I did notice when looking at it is that there is a Y2038 bug =
+in
+recently_deleted(), as it is comparing 32-bit i_dtime directly with =
+64-bit
+get_seconds().  To fix this, it would be possible to either use a =
+wrapped
+32-bit comparison, like time_after() for jiffies, something like:
 
-Yes, done.
+	u32 now, dtime;
 
-> 2] The code should be constructed that the default check for the MAP_SYNC
->    should fail, and only Hopped in FSs are allowed.
->    (So not to modify all Implementations of file_operations->mmap() )
+	/* assume dtime is within the past 30 years, see time_after() */
+        now =3D get_seconds();
+	if (dtime && (dtime - now < 0) && (dtime + recentcy - now < 0))
+		ret =3D 1;
 
-Agreed but for now I've skipped this as I wait for new mmap syscall and
-how Dan implements flag checking there.
+or use i_ctime_extra to implicitly extend i_dtime beyond 2038, something =
+like:
 
-> 3] /dev/pmem could start serving DAX pages in mmap, if asked for MAP_MSYNC
->    (which is also an API that says "I know I need to cl_flush". See 1. )
+	/* assume dtime epoch same as ctime, see EXT4_INODE_GET_XTIME() =
+*/
+	dtime =3D le32_to_cpu(raw_inode->i_dtime);
+	if (EXT4_INODE_SIZE(sb) > EXT4_GOOD_OLD_INODE_SIZE &&
+	    offsetof(typeof(*raw_inode), i_ctime_extra) + 4 <=3D
+	    EXT4_GOOD_OLD_INODE_SIZE + =
+le32_to_cpu(raw_inode->i_extra_isize))
+                dtime +=3D (long)(le32_to_cpu(raw_inode->i_ctime_extra) =
+&
+				EXT4_EPOCH_MASK) << 32;
 
-MAP_SYNC is rather more like: I can also use clflush instead of
-fdatasync(2). And this is rather important as all legacy applications are
-100% safe in the new scheme.
- 
-> 4] Once we have this flag. And properly implemented at least in one FS
->    and optionally in /dev/pmemX we no longer have any justification for
->    /dev/daxX and it can die a slow and happy death.
+Cheers, Andreas
 
-This will be more complex I guess - see MAP_DIRECT proposal...
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+
+
+
+
+--Apple-Mail=_770854FE-2373-45C0-9E7F-AF1B4755902A
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZlg/vpIg59Q01vtYRAp4zAKDy8UsM/cV91s92HH1hawDeZ+0pSQCfbF0C
+S2G7TL2k52zBTdTz9zQr9i0=
+=gbZi
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_770854FE-2373-45C0-9E7F-AF1B4755902A--
