@@ -1,7 +1,8 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 01/13] mm: Remove VM_FAULT_HWPOISON_LARGE_MASK
-Date: Thu, 17 Aug 2017 18:08:03 +0200
-Message-ID: <20170817160815.30466-2-jack@suse.cz>
+Subject: [PATCH 04/13] dax: Create local variable for VMA in
+ dax_iomap_pte_fault()
+Date: Thu, 17 Aug 2017 18:08:06 +0200
+Message-ID: <20170817160815.30466-5-jack@suse.cz>
 References: <20170817160815.30466-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -23,27 +24,35 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-It is unused.
+There are already two users and more are coming.
 
-Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- include/linux/mm.h | 2 --
- 1 file changed, 2 deletions(-)
+ fs/dax.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 483e84cf9fc6..fa036093e76c 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1143,8 +1143,6 @@ static inline void clear_page_pfmemalloc(struct page *page)
- #define VM_FAULT_FALLBACK 0x0800	/* huge page fault failed, fall back to small */
- #define VM_FAULT_DONE_COW   0x1000	/* ->fault has fully handled COW */
- 
--#define VM_FAULT_HWPOISON_LARGE_MASK 0xf000 /* encodes hpage index for large hwpoison */
--
- #define VM_FAULT_ERROR	(VM_FAULT_OOM | VM_FAULT_SIGBUS | VM_FAULT_SIGSEGV | \
- 			 VM_FAULT_HWPOISON | VM_FAULT_HWPOISON_LARGE | \
- 			 VM_FAULT_FALLBACK)
+diff --git a/fs/dax.c b/fs/dax.c
+index 1122356f8b88..75aa0d9fb39f 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1097,7 +1097,8 @@ static int dax_fault_return(int error)
+ static int dax_iomap_pte_fault(struct vm_fault *vmf,
+ 			       const struct iomap_ops *ops)
+ {
+-	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
++	struct vm_area_struct *vma = vmf->vma;
++	struct address_space *mapping = vma->vm_file->f_mapping;
+ 	struct inode *inode = mapping->host;
+ 	unsigned long vaddr = vmf->address;
+ 	loff_t pos = (loff_t)vmf->pgoff << PAGE_SHIFT;
+@@ -1185,7 +1186,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
+ 	case IOMAP_MAPPED:
+ 		if (iomap.flags & IOMAP_F_NEW) {
+ 			count_vm_event(PGMAJFAULT);
+-			count_memcg_event_mm(vmf->vma->vm_mm, PGMAJFAULT);
++			count_memcg_event_mm(vma->vm_mm, PGMAJFAULT);
+ 			major = VM_FAULT_MAJOR;
+ 		}
+ 		error = dax_insert_mapping(vmf, &iomap, pos, entry);
 -- 
 2.12.3
