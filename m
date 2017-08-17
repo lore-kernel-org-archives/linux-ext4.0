@@ -1,7 +1,7 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 10/13] mm: Wire up MAP_SYNC
-Date: Thu, 17 Aug 2017 18:08:12 +0200
-Message-ID: <20170817160815.30466-11-jack@suse.cz>
+Subject: [PATCH 11/13] dax, iomap: Add support for synchronous faults
+Date: Thu, 17 Aug 2017 18:08:13 +0200
+Message-ID: <20170817160815.30466-12-jack@suse.cz>
 References: <20170817160815.30466-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -23,89 +23,108 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Pretty crude for now...
+Add a flag to iomap interface informing the caller that inode needs
+fdstasync(2) for returned extent to become persistent and use it in DAX
+fault code so that we map such extents only read only. We propagate the
+information that the page table entry has been inserted write-protected
+from dax_iomap_fault() with a new VM_FAULT_RO flag. Filesystem fault
+handler is then responsible for calling fdatasync(2) and updating page
+tables to map pfns read-write. dax_iomap_fault() also takes care of
+updating vmf->orig_pte to match the PTE that was inserted so that we can
+safely recheck that PTE did not change while write-enabling it.
 
 Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/ext4/file.c                  | 2 ++
- include/linux/mm.h              | 1 +
- include/linux/mman.h            | 3 ++-
- include/uapi/asm-generic/mman.h | 1 +
- mm/mmap.c                       | 5 +++++
- 5 files changed, 11 insertions(+), 1 deletion(-)
+ fs/dax.c              | 31 +++++++++++++++++++++++++++++++
+ include/linux/iomap.h |  2 ++
+ include/linux/mm.h    |  6 +++++-
+ 3 files changed, 38 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index f84bb29e941e..850037e140d7 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -340,6 +340,8 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
- 		vma->vm_flags |= VM_MIXEDMAP | VM_HUGEPAGE;
- 	} else {
- 		vma->vm_ops = &ext4_file_vm_ops;
-+		if (vma->vm_flags & VM_SYNC)
-+			return -EOPNOTSUPP;
- 	}
- 	return 0;
- }
+diff --git a/fs/dax.c b/fs/dax.c
+index bc040e654cc9..ca88fc356786 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1177,6 +1177,22 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
+ 			goto error_finish_iomap;
+ 		}
+ 
++		/*
++		 * If we are doing synchronous page fault and inode needs fsync,
++		 * we can insert PTE into page tables only after that happens.
++		 * Skip insertion for now and return the pfn so that caller can
++		 * insert it after fsync is done.
++		 */
++		if (write && (vma->vm_flags & VM_SYNC) &&
++		    (iomap.flags & IOMAP_F_NEEDDSYNC)) {
++			if (WARN_ON_ONCE(!pfnp)) {
++				error = -EIO;
++				goto error_finish_iomap;
++			}
++			*pfnp = pfn;
++			vmf_ret = VM_FAULT_NEEDDSYNC | major;
++			goto finish_iomap;
++		}
+ 		trace_dax_insert_mapping(inode, vmf, entry);
+ 		if (write)
+ 			error = vm_insert_mixed_mkwrite(vma, vaddr, pfn);
+@@ -1362,6 +1378,21 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
+ 		if (IS_ERR(entry))
+ 			goto finish_iomap;
+ 
++		/*
++		 * If we are doing synchronous page fault and inode needs fsync,
++		 * we can insert PMD into page tables only after that happens.
++		 * Skip insertion for now and return the pfn so that caller can
++		 * insert it after fsync is done.
++		 */
++		if (write && (vmf->vma->vm_flags & VM_SYNC) &&
++		    (iomap.flags & IOMAP_F_NEEDDSYNC)) {
++			if (WARN_ON_ONCE(!pfnp))
++				goto finish_iomap;
++			*pfnp = pfn;
++			result = VM_FAULT_NEEDDSYNC;
++			goto finish_iomap;
++		}
++
+ 		trace_dax_pmd_insert_mapping(inode, vmf, PMD_SIZE, pfn, entry);
+ 		result = vmf_insert_pfn_pmd(vma, vmf->address, vmf->pmd, pfn,
+ 					    write);
+diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+index f64dc6ce5161..957463602f6e 100644
+--- a/include/linux/iomap.h
++++ b/include/linux/iomap.h
+@@ -22,6 +22,8 @@ struct vm_fault;
+  * Flags for all iomap mappings:
+  */
+ #define IOMAP_F_NEW	0x01	/* blocks have been newly allocated */
++#define IOMAP_F_NEEDDSYNC	0x02	/* inode needs fdatasync for storage to
++					 * become persistent */
+ 
+ /*
+  * Flags that only need to be reported for IOMAP_REPORT requests:
 diff --git a/include/linux/mm.h b/include/linux/mm.h
-index fa036093e76c..d0fb385414a4 100644
+index d0fb385414a4..20e95c3a7701 100644
 --- a/include/linux/mm.h
 +++ b/include/linux/mm.h
-@@ -188,6 +188,7 @@ extern unsigned int kobjsize(const void *objp);
- #define VM_ACCOUNT	0x00100000	/* Is a VM accounted object */
- #define VM_NORESERVE	0x00200000	/* should the VM suppress accounting */
- #define VM_HUGETLB	0x00400000	/* Huge TLB Page VM */
-+#define VM_SYNC		0x00800000	/* Synchronous page faults */
- #define VM_ARCH_1	0x01000000	/* Architecture-specific flag */
- #define VM_ARCH_2	0x02000000
- #define VM_DONTDUMP	0x04000000	/* Do not include in the core dump */
-diff --git a/include/linux/mman.h b/include/linux/mman.h
-index c8367041fafd..c38279b651e5 100644
---- a/include/linux/mman.h
-+++ b/include/linux/mman.h
-@@ -86,7 +86,8 @@ calc_vm_flag_bits(unsigned long flags)
- {
- 	return _calc_vm_trans(flags, MAP_GROWSDOWN,  VM_GROWSDOWN ) |
- 	       _calc_vm_trans(flags, MAP_DENYWRITE,  VM_DENYWRITE ) |
--	       _calc_vm_trans(flags, MAP_LOCKED,     VM_LOCKED    );
-+	       _calc_vm_trans(flags, MAP_LOCKED,     VM_LOCKED    ) |
-+	       _calc_vm_trans(flags, MAP_SYNC,	     VM_SYNC      );
- }
+@@ -1143,6 +1143,9 @@ static inline void clear_page_pfmemalloc(struct page *page)
+ #define VM_FAULT_RETRY	0x0400	/* ->fault blocked, must retry */
+ #define VM_FAULT_FALLBACK 0x0800	/* huge page fault failed, fall back to small */
+ #define VM_FAULT_DONE_COW   0x1000	/* ->fault has fully handled COW */
++#define VM_FAULT_NEEDDSYNC  0x2000	/* ->fault did not modify page tables
++					 * and needs fsync() to complete (for
++					 * synchronous page faults in DAX) */
  
- unsigned long vm_commit_limit(void);
-diff --git a/include/uapi/asm-generic/mman.h b/include/uapi/asm-generic/mman.h
-index 7162cd4cca73..00e55627d2df 100644
---- a/include/uapi/asm-generic/mman.h
-+++ b/include/uapi/asm-generic/mman.h
-@@ -12,6 +12,7 @@
- #define MAP_NONBLOCK	0x10000		/* do not block on IO */
- #define MAP_STACK	0x20000		/* give out an address that is best suited for process/thread stacks */
- #define MAP_HUGETLB	0x40000		/* create a huge page mapping */
-+#define MAP_SYNC	0x80000		/* perform synchronous page faults for the mapping */
+ #define VM_FAULT_ERROR	(VM_FAULT_OOM | VM_FAULT_SIGBUS | VM_FAULT_SIGSEGV | \
+ 			 VM_FAULT_HWPOISON | VM_FAULT_HWPOISON_LARGE | \
+@@ -1160,7 +1163,8 @@ static inline void clear_page_pfmemalloc(struct page *page)
+ 	{ VM_FAULT_LOCKED,		"LOCKED" }, \
+ 	{ VM_FAULT_RETRY,		"RETRY" }, \
+ 	{ VM_FAULT_FALLBACK,		"FALLBACK" }, \
+-	{ VM_FAULT_DONE_COW,		"DONE_COW" }
++	{ VM_FAULT_DONE_COW,		"DONE_COW" }, \
++	{ VM_FAULT_NEEDDSYNC,		"NEEDDSYNC" }
  
- /* Bits [26:31] are reserved, see mman-common.h for MAP_HUGETLB usage */
- 
-diff --git a/mm/mmap.c b/mm/mmap.c
-index f19efcf75418..18453c04b09f 100644
---- a/mm/mmap.c
-+++ b/mm/mmap.c
-@@ -1423,12 +1423,17 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
- 				return -ENODEV;
- 			if (vm_flags & (VM_GROWSDOWN|VM_GROWSUP))
- 				return -EINVAL;
-+			if (!(vm_flags & VM_SHARED) && (vm_flags & VM_SYNC))
-+				return -EINVAL;
- 			break;
- 
- 		default:
- 			return -EINVAL;
- 		}
- 	} else {
-+		if (vm_flags & VM_SYNC)
-+			return -EINVAL;
-+
- 		switch (flags & MAP_TYPE) {
- 		case MAP_SHARED:
- 			if (vm_flags & (VM_GROWSDOWN|VM_GROWSUP))
+ /* Encode hstate index for a hwpoisoned large page */
+ #define VM_FAULT_SET_HINDEX(x) ((x) << 12)
 -- 
 2.12.3
