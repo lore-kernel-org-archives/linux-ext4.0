@@ -1,8 +1,8 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 04/13] dax: Create local variable for VMA in
- dax_iomap_pte_fault()
-Date: Thu, 17 Aug 2017 18:08:06 +0200
-Message-ID: <20170817160815.30466-5-jack@suse.cz>
+Subject: [PATCH 05/13] dax: Create local variable for vmf->flags &
+ FAULT_FLAG_WRITE test
+Date: Thu, 17 Aug 2017 18:08:07 +0200
+Message-ID: <20170817160815.30466-6-jack@suse.cz>
 References: <20170817160815.30466-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -32,27 +32,34 @@ Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
  1 file changed, 3 insertions(+), 2 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 1122356f8b88..75aa0d9fb39f 100644
+index 75aa0d9fb39f..7c150eddc01a 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -1097,7 +1097,8 @@ static int dax_fault_return(int error)
- static int dax_iomap_pte_fault(struct vm_fault *vmf,
- 			       const struct iomap_ops *ops)
- {
--	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
-+	struct vm_area_struct *vma = vmf->vma;
-+	struct address_space *mapping = vma->vm_file->f_mapping;
- 	struct inode *inode = mapping->host;
- 	unsigned long vaddr = vmf->address;
- 	loff_t pos = (loff_t)vmf->pgoff << PAGE_SHIFT;
-@@ -1185,7 +1186,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
- 	case IOMAP_MAPPED:
- 		if (iomap.flags & IOMAP_F_NEW) {
- 			count_vm_event(PGMAJFAULT);
--			count_memcg_event_mm(vmf->vma->vm_mm, PGMAJFAULT);
-+			count_memcg_event_mm(vma->vm_mm, PGMAJFAULT);
- 			major = VM_FAULT_MAJOR;
+@@ -1105,6 +1105,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
+ 	struct iomap iomap = { 0 };
+ 	unsigned flags = IOMAP_FAULT;
+ 	int error, major = 0;
++	bool write = vmf->flags & FAULT_FLAG_WRITE;
+ 	int vmf_ret = 0;
+ 	void *entry;
+ 
+@@ -1119,7 +1120,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
+ 		goto out;
+ 	}
+ 
+-	if ((vmf->flags & FAULT_FLAG_WRITE) && !vmf->cow_page)
++	if (write && !vmf->cow_page)
+ 		flags |= IOMAP_WRITE;
+ 
+ 	entry = grab_mapping_entry(mapping, vmf->pgoff, 0);
+@@ -1196,7 +1197,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
+ 		break;
+ 	case IOMAP_UNWRITTEN:
+ 	case IOMAP_HOLE:
+-		if (!(vmf->flags & FAULT_FLAG_WRITE)) {
++		if (!write) {
+ 			vmf_ret = dax_load_hole(mapping, entry, vmf);
+ 			goto finish_iomap;
  		}
- 		error = dax_insert_mapping(vmf, &iomap, pos, entry);
 -- 
 2.12.3
