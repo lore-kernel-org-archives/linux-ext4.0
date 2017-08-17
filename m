@@ -1,40 +1,157 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 08/13] dax: Fix comment describing dax_iomap_fault()
-Date: Thu, 17 Aug 2017 18:08:10 +0200
-Message-ID: <20170817160815.30466-9-jack@suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: [PATCH 03/13] dax: Factor out getting of pfn out of iomap
+Date: Thu, 17 Aug 2017 18:08:05 +0200
+Message-ID: <20170817160815.30466-4-jack@suse.cz>
 References: <20170817160815.30466-1-jack@suse.cz>
-Cc: linux-nvdimm@lists.01.org, Andy Lutomirski <luto@kernel.org>,
-        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Boaz Harrosh <boazh@netapp.com>, Jan Kara <jack@suse.cz>
-To: <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170817160815.30466-1-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Boaz Harrosh <boazh-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170817160815.30466-1-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Add missing argument description.
+Factor out code to get pfn out of iomap that is shared between PTE and
+PMD fault path.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/dax.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/dax.c | 81 +++++++++++++++++++++++++++++++++-------------------------------
+ 1 file changed, 42 insertions(+), 39 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 54d2a9161f71..85ea49bbbdbf 100644
+index fbbb6d176987..1122356f8b88 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -1414,7 +1414,8 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
- /**
-  * dax_iomap_fault - handle a page fault on a DAX file
-  * @vmf: The description of the fault
-- * @ops: iomap ops passed from the file system
-+ * @pe_size: Size of the page to fault in
-+ * @ops: Iomap ops passed from the file system
-  *
-  * When a page fault occurs, filesystems may call this helper in
-  * their fault handler for DAX files. dax_iomap_fault() assumes the caller
+@@ -819,30 +819,53 @@ static sector_t dax_iomap_sector(struct iomap *iomap, loff_t pos)
+ 	return iomap->blkno + (((pos & PAGE_MASK) - iomap->offset) >> 9);
+ }
+ 
+-static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+-			      loff_t pos, void *entry)
++static int dax_iomap_pfn(struct iomap *iomap, loff_t pos, size_t size,
++			 pfn_t *pfnp)
+ {
+ 	const sector_t sector = dax_iomap_sector(iomap, pos);
+-	struct vm_area_struct *vma = vmf->vma;
+-	struct address_space *mapping = vma->vm_file->f_mapping;
+-	unsigned long vaddr = vmf->address;
+-	void *ret, *kaddr;
+ 	pgoff_t pgoff;
++	void *kaddr;
+ 	int id, rc;
+-	pfn_t pfn;
++	long length;
+ 
+-	rc = bdev_dax_pgoff(iomap->bdev, sector, PAGE_SIZE, &pgoff);
++	rc = bdev_dax_pgoff(iomap->bdev, sector, size, &pgoff);
+ 	if (rc)
+ 		return rc;
+-
+ 	id = dax_read_lock();
+-	rc = dax_direct_access(iomap->dax_dev, pgoff, PHYS_PFN(PAGE_SIZE),
+-			       &kaddr, &pfn);
+-	if (rc < 0) {
+-		dax_read_unlock(id);
+-		return rc;
++	length = dax_direct_access(iomap->dax_dev, pgoff, PHYS_PFN(size),
++				   &kaddr, pfnp);
++	if (length < 0) {
++		rc = length;
++		goto out;
+ 	}
++	rc = -EINVAL;
++	if (PFN_PHYS(length) < size)
++		goto out;
++	if (pfn_t_to_pfn(*pfnp) & (PHYS_PFN(size)-1))
++		goto out;
++	/* For larger pages we need devmap */
++	if (length > 1 && !pfn_t_devmap(*pfnp))
++		goto out;
++	rc = 0;
++out:
+ 	dax_read_unlock(id);
++	return rc;
++}
++
++static int dax_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
++			      loff_t pos, void *entry)
++{
++	const sector_t sector = dax_iomap_sector(iomap, pos);
++	struct vm_area_struct *vma = vmf->vma;
++	struct address_space *mapping = vma->vm_file->f_mapping;
++	unsigned long vaddr = vmf->address;
++	void *ret;
++	int rc;
++	pfn_t pfn;
++
++	rc = dax_iomap_pfn(iomap, pos, PAGE_SIZE, &pfn);
++	if (rc < 0)
++		return rc;
+ 
+ 	ret = dax_insert_mapping_entry(mapping, vmf, entry, sector, 0);
+ 	if (IS_ERR(ret))
+@@ -1218,44 +1241,24 @@ static int dax_pmd_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+ {
+ 	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
+ 	const sector_t sector = dax_iomap_sector(iomap, pos);
+-	struct dax_device *dax_dev = iomap->dax_dev;
+-	struct block_device *bdev = iomap->bdev;
+ 	struct inode *inode = mapping->host;
+-	const size_t size = PMD_SIZE;
+-	void *ret = NULL, *kaddr;
+-	long length = 0;
+-	pgoff_t pgoff;
++	void *ret = NULL;
+ 	pfn_t pfn;
+-	int id;
++	int rc;
+ 
+-	if (bdev_dax_pgoff(bdev, sector, size, &pgoff) != 0)
++	rc = dax_iomap_pfn(iomap, pos, PMD_SIZE, &pfn);
++	if (rc < 0)
+ 		goto fallback;
+ 
+-	id = dax_read_lock();
+-	length = dax_direct_access(dax_dev, pgoff, PHYS_PFN(size), &kaddr, &pfn);
+-	if (length < 0)
+-		goto unlock_fallback;
+-	length = PFN_PHYS(length);
+-
+-	if (length < size)
+-		goto unlock_fallback;
+-	if (pfn_t_to_pfn(pfn) & PG_PMD_COLOUR)
+-		goto unlock_fallback;
+-	if (!pfn_t_devmap(pfn))
+-		goto unlock_fallback;
+-	dax_read_unlock(id);
+-
+ 	ret = dax_insert_mapping_entry(mapping, vmf, entry, sector,
+ 			RADIX_DAX_PMD);
+ 	if (IS_ERR(ret))
+ 		goto fallback;
+ 
+-	trace_dax_pmd_insert_mapping(inode, vmf, length, pfn, ret);
++	trace_dax_pmd_insert_mapping(inode, vmf, PMD_SIZE, pfn, ret);
+ 	return vmf_insert_pfn_pmd(vmf->vma, vmf->address, vmf->pmd,
+ 			pfn, vmf->flags & FAULT_FLAG_WRITE);
+ 
+-unlock_fallback:
+-	dax_read_unlock(id);
+ fallback:
+ 	trace_dax_pmd_insert_mapping_fallback(inode, vmf, length, pfn, ret);
+ 	return VM_FAULT_FALLBACK;
 -- 
 2.12.3
