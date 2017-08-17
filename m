@@ -1,134 +1,325 @@
-From: Vijay Chidambaram <vvijay03@gmail.com>
-Subject: Re: CrashMonkey: A Framework to Systematically Test File-System Crash Consistency
-Date: Wed, 16 Aug 2017 15:36:54 -0500
-Message-ID: <CAPaz=EJ7WZ9Ou89izVaY=exFxaHD0Q84gwqjxC3-DQn7y8RpTg@mail.gmail.com>
-References: <CAPaz=E+-+C-LXtADm99epmVEszpfT70Ep39tKedfPi1AN-P7tA@mail.gmail.com>
- <20170815173349.GA17774@li70-116.members.linode.com> <CAPaz=E+sPDK3uWYCepmYPMT2+nvTgA2C_OSyPY0a51iM=bBCsQ@mail.gmail.com>
- <CAOQ4uxhkT05yHfQz0csruH-mz_hTamMABh3eZaNmzjXX02J1=A@mail.gmail.com>
- <CAPaz=E+D7wpkXRx7=M9+7d=TUFpbG7MetK-nkECtWQXwO-Z8gA@mail.gmail.com>
- <20170816130607.GA1347@destiny> <CAPaz=EJzXy+x4fKUyVtW_D49qSX-Xc1aqsnx8dLdMsVW=F+aXw@mail.gmail.com>
- <CAOQ4uxipcTQBUC_yb5cMT5gsytp0h8QGfK3utVV_8vGHjuk70Q@mail.gmail.com>
+From: Wang Shilong <wshilong@ddn.com>
+Subject: RE: [PATCH v4] ext4: reduce lock contention in __ext4_new_inode
+Date: Thu, 17 Aug 2017 06:23:26 +0000
+Message-ID: <3ED34739A4E85E4F894367D57617CDEFEDA401CE@LAX-EX-MB2.datadirect.datadirectnet.com>
+References: <20170808050517.7160-1-wshilong@ddn.com>,<20170816164211.GA31117@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Josef Bacik <josef@toxicpanda.com>,
-        Ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Btrfs <linux-btrfs@vger.kernel.org>,
-        Ashlie Martinez <ashmrtn@utexas.edu>, kernel-team@fb.com
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <CAOQ4uxipcTQBUC_yb5cMT5gsytp0h8QGfK3utVV_8vGHjuk70Q@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed;
+        boundary="_002_3ED34739A4E85E4F894367D57617CDEFEDA401CELAXEXMB2datadir_"
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "tytso@mit.edu" <tytso@mit.edu>,
+        "adilger@dilger.ca" <adilger@dilger.ca>,
+        Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>
+To: Jan Kara <jack@suse.cz>, Wang Shilong <wangshilong1991@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from legacy.ddn.com ([64.47.133.206]:54934 "EHLO legacy.ddn.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750943AbdHQGX3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 17 Aug 2017 02:23:29 -0400
+In-Reply-To: <20170816164211.GA31117@quack2.suse.cz>
+Content-Language: en-US
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Amir,
+--_002_3ED34739A4E85E4F894367D57617CDEFEDA401CELAXEXMB2datadir_
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: quoted-printable
 
-That's a fair response. I certainly did not mean to add more work on
-your end :) Using dm-log-writes for now is a reasonable approach.
+Hi Jan,=0A=
+=0A=
+     thanks for good suggestion, just one question we could not hold lock=
+=0A=
+with nojounal mode, how about something attached one?=0A=
+=0A=
+please let me know if you have better taste for it, much appreciated!=0A=
+=0A=
+=0A=
+Thanks,=0A=
+Shilong=0A=
+=0A=
+=0A=
+________________________________________=0A=
+From: Jan Kara [jack@suse.cz]=0A=
+Sent: Thursday, August 17, 2017 0:42=0A=
+To: Wang Shilong=0A=
+Cc: linux-ext4@vger.kernel.org; tytso@mit.edu; Wang Shilong; adilger@dilger=
+.ca; Shuichi Ihara; Li Xi=0A=
+Subject: Re: [PATCH v4] ext4: reduce lock contention in __ext4_new_inode=0A=
+=0A=
+On Tue 08-08-17 13:05:17, Wang Shilong wrote:=0A=
+> From: Wang Shilong <wshilong@ddn.com>=0A=
+>=0A=
+> While running number of creating file threads concurrently,=0A=
+> we found heavy lock contention on group spinlock:=0A=
+>=0A=
+> FUNC                           TOTAL_TIME(us)       COUNT        AVG(us)=
+=0A=
+> ext4_create                    1707443399           1440000      1185.72=
+=0A=
+> _raw_spin_lock                 1317641501           180899929    7.28=0A=
+> jbd2__journal_start            287821030            1453950      197.96=
+=0A=
+> jbd2_journal_get_write_access  33441470             73077185     0.46=0A=
+> ext4_add_nondir                29435963             1440000      20.44=0A=
+> ext4_add_entry                 26015166             1440049      18.07=0A=
+> ext4_dx_add_entry              25729337             1432814      17.96=0A=
+> ext4_mark_inode_dirty          12302433             5774407      2.13=0A=
+>=0A=
+> most of cpu time blames to _raw_spin_lock, here is some testing=0A=
+> numbers with/without patch.=0A=
+>=0A=
+> Test environment:=0A=
+> Server : SuperMicro Sever (2 x E5-2690 v3@2.60GHz, 128GB 2133MHz=0A=
+>          DDR4 Memory, 8GbFC)=0A=
+> Storage : 2 x RAID1 (DDN SFA7700X, 4 x Toshiba PX02SMU020 200GB=0A=
+>           Read Intensive SSD)=0A=
+>=0A=
+> format command:=0A=
+>         mkfs.ext4 -J size=3D4096=0A=
+>=0A=
+> test command:=0A=
+>         mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \=0A=
+>                 -r -i 1 -v -p 10 -u #first run to load inode=0A=
+>=0A=
+>         mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \=0A=
+>                 -r -i 5 -v -p 10 -u=0A=
+>=0A=
+> Kernel version: 4.13.0-rc3=0A=
+>=0A=
+> Test  1,440,000 files with 48 directories by 48 processes:=0A=
+>=0A=
+> Without patch:=0A=
+>=0A=
+> File Creation   File removal=0A=
+> 79,033          289,569 ops/per second=0A=
+> 81,463          285,359=0A=
+> 79,875          288,475=0A=
+> 79,917          284,624=0A=
+> 79,420          290,91=0A=
+>=0A=
+> with patch:=0A=
+> File Creation   File removal=0A=
+> 691,528               296,574 ops/per second=0A=
+> 691,946               297,106=0A=
+> 692,030               296,238=0A=
+> 691,005               299,249=0A=
+> 692,871               300,664=0A=
+>=0A=
+> Creation performance is improved more than 8X with large=0A=
+> journal size. The main problem here is we test bitmap=0A=
+> and do some check and journal operations which could be=0A=
+> slept, then we test and set with lock hold, this could=0A=
+> be racy, and make 'inode' steal by other process.=0A=
+>=0A=
+> However, after first try, we could confirm handle has=0A=
+> been started and inode bitmap journaled too, then=0A=
+> we could find and set bit with lock hold directly, this=0A=
+> will mostly gurateee success with second try.=0A=
+>=0A=
+> This patch dosen't change logic if it comes to=0A=
+> no journal mode, luckily this is not normal=0A=
+> use cases i believe.=0A=
+>=0A=
+> Tested-by: Shuichi Ihara <sihara@ddn.com>=0A=
+> Signed-off-by: Wang Shilong <wshilong@ddn.com>=0A=
+=0A=
+The results look great and the code looks correct however I dislike the=0A=
+somewhat complex codeflow with your hold_lock variable. So how about=0A=
+cleaning up the code as follows:=0A=
+=0A=
+Create function like=0A=
+=0A=
+unsigned long find_inode_bit(struct super_block *sb, ext4_group_t group,=0A=
+                struct buffer_head *bitmap, unsigned long start_ino)=0A=
+{=0A=
+        unsigned long ino;=0A=
+=0A=
+next:=0A=
+        ino =3D ext4_find_next_zero_bit(...);=0A=
+        if (ino >=3D EXT4_INODES_PER_GROUP(sb))=0A=
+                return 0;=0A=
+        if (group =3D=3D 0 && (ino+1) < EXT4_FIRST_INO(sb)) {=0A=
+                ...=0A=
+                return 0;=0A=
+        }=0A=
+        if ((EXT4_SB(sb)->s_journal =3D=3D NULL) &&=0A=
+                    recently_deleted(sb, group, ino)) {=0A=
+                start_ino =3D ino + 1;=0A=
+                if (start_ino < EXT4_INODES_PER_GROUP(sb))=0A=
+                        goto next;=0A=
+        }=0A=
+        return ino;=0A=
+}=0A=
+=0A=
+Then you can use this function from __ext4_new_inode() when looking for=0A=
+free ino and also in case test_and_set_bit() fails you could just do:=0A=
+=0A=
+ext4_lock_group(sb, group);=0A=
+ret2 =3D ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);=0A=
+if (ret2) {=0A=
+        /* Someone already took the bit. Repeat the search with lock held.*=
+/=0A=
+        ino =3D find_inode_bit(sb, group, inode_bitmap_bh, ino);=0A=
+        if (ino) {=0A=
+                ret2 =3D ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data=
+);=0A=
+                WARN_ON_ONCE(!ret2);=0A=
+        }=0A=
+}=0A=
+ext4_unlock_group(sb, group);=0A=
+=0A=
+And that's it, no strange bool variables and conditional locking. And as a=
+=0A=
+bonus it also works for nojournal mode in the same way.=0A=
+=0A=
+                                                                Honza=0A=
+=0A=
+> ---=0A=
+> v3->v4: codes cleanup and avoid sleep.=0A=
+> ---=0A=
+>  fs/ext4/ialloc.c | 30 +++++++++++++++++++++++++++++-=0A=
+>  1 file changed, 29 insertions(+), 1 deletion(-)=0A=
+>=0A=
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c=0A=
+> index 507bfb3..23380f39 100644=0A=
+> --- a/fs/ext4/ialloc.c=0A=
+> +++ b/fs/ext4/ialloc.c=0A=
+> @@ -761,6 +761,7 @@ struct inode *__ext4_new_inode(handle_t *handle, stru=
+ct inode *dir,=0A=
+>       ext4_group_t flex_group;=0A=
+>       struct ext4_group_info *grp;=0A=
+>       int encrypt =3D 0;=0A=
+> +     bool hold_lock;=0A=
+>=0A=
+>       /* Cannot create files in a deleted directory */=0A=
+>       if (!dir || !dir->i_nlink)=0A=
+> @@ -917,17 +918,40 @@ struct inode *__ext4_new_inode(handle_t *handle, st=
+ruct inode *dir,=0A=
+>                       continue;=0A=
+>               }=0A=
+>=0A=
+> +             hold_lock =3D false;=0A=
+>  repeat_in_this_group:=0A=
+> +             /* if @hold_lock is ture, that means, journal=0A=
+> +              * is properly setup and inode bitmap buffer has=0A=
+> +              * been journaled already, we can directly hold=0A=
+> +              * lock and set bit if found, this will mostly=0A=
+> +              * gurantee forward progress for each thread.=0A=
+> +              */=0A=
+> +             if (hold_lock)=0A=
+> +                     ext4_lock_group(sb, group);=0A=
+> +=0A=
+>               ino =3D ext4_find_next_zero_bit((unsigned long *)=0A=
+>                                             inode_bitmap_bh->b_data,=0A=
+>                                             EXT4_INODES_PER_GROUP(sb), in=
+o);=0A=
+> -             if (ino >=3D EXT4_INODES_PER_GROUP(sb))=0A=
+> +             if (ino >=3D EXT4_INODES_PER_GROUP(sb)) {=0A=
+> +                     if (hold_lock)=0A=
+> +                             ext4_unlock_group(sb, group);=0A=
+>                       goto next_group;=0A=
+> +             }=0A=
+>               if (group =3D=3D 0 && (ino+1) < EXT4_FIRST_INO(sb)) {=0A=
+> +                     if (hold_lock)=0A=
+> +                             ext4_unlock_group(sb, group);=0A=
+>                       ext4_error(sb, "reserved inode found cleared - "=0A=
+>                                  "inode=3D%lu", ino + 1);=0A=
+>                       continue;=0A=
+>               }=0A=
+> +=0A=
+> +             if (hold_lock) {=0A=
+> +                     ext4_set_bit(ino, inode_bitmap_bh->b_data);=0A=
+> +                     ext4_unlock_group(sb, group);=0A=
+> +                     ino++;=0A=
+> +                     goto got;=0A=
+> +             }=0A=
+> +=0A=
+>               if ((EXT4_SB(sb)->s_journal =3D=3D NULL) &&=0A=
+>                   recently_deleted(sb, group, ino)) {=0A=
+>                       ino++;=0A=
+> @@ -950,6 +974,10 @@ struct inode *__ext4_new_inode(handle_t *handle, str=
+uct inode *dir,=0A=
+>                       ext4_std_error(sb, err);=0A=
+>                       goto out;=0A=
+>               }=0A=
+> +=0A=
+> +             if (EXT4_SB(sb)->s_journal)=0A=
+> +                     hold_lock =3D true;=0A=
+> +=0A=
+>               ext4_lock_group(sb, group);=0A=
+>               ret2 =3D ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data=
+);=0A=
+>               ext4_unlock_group(sb, group);=0A=
+> --=0A=
+> 2.9.3=0A=
+>=0A=
+--=0A=
+Jan Kara <jack@suse.com>=0A=
+SUSE Labs, CR=0A=
 
-Like I mentioned before, I think there is further work involved in
-getting CrashMonkey to a useful point (where it finds at least known
-bugs). Once this is done, I'd be happy to rework the device_wrapper as
-a DM target (or perhaps as a modification of log-writes) for upstream.
-I'm not sure how feasible it would be to keep functionality in-kernel
-simple, but we will try our best.
+--_002_3ED34739A4E85E4F894367D57617CDEFEDA401CELAXEXMB2datadir_
+Content-Type: application/octet-stream; name="modfied.patch"
+Content-Description: modfied.patch
+Content-Disposition: attachment; filename="modfied.patch"; size=3156;
+	creation-date="Thu, 17 Aug 2017 06:22:27 GMT";
+	modification-date="Thu, 17 Aug 2017 06:22:27 GMT"
+Content-Transfer-Encoding: base64
 
-We will keep this goal in mind as we continue development, so that we
-don't make any decisions that will prevent us from going the DM target
-route later.
-Thanks,
-Vijay
+ZGlmZiAtLWdpdCBhL2ZzL2V4dDQvaWFsbG9jLmMgYi9mcy9leHQ0L2lhbGxvYy5jCmluZGV4IDBh
+OWI0OGYuLmEzOTEyY2YgMTAwNjQ0Ci0tLSBhL2ZzL2V4dDQvaWFsbG9jLmMKKysrIGIvZnMvZXh0
+NC9pYWxsb2MuYwpAQCAtNzMwLDYgKzczMCwzOSBAQCBzdGF0aWMgaW50IHJlY2VudGx5X2RlbGV0
+ZWQoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwgZXh0NF9ncm91cF90IGdyb3VwLCBpbnQgaW5vKQog
+CXJldHVybiByZXQ7CiB9CiAKK3N0YXRpYyB1bnNpZ25lZCBsb25nIGZpbmRfaW5vZGVfYml0KHN0
+cnVjdCBzdXBlcl9ibG9jayAqc2IsCisJCQkJICAgIGV4dDRfZ3JvdXBfdCBncm91cCwKKwkJCQkg
+ICAgc3RydWN0IGJ1ZmZlcl9oZWFkICpiaXRtYXAsCisJCQkJICAgIHVuc2lnbmVkIGxvbmcgaW5v
+LCBib29sIGdycF9sb2NrZWQpCit7CituZXh0OgorCWlubyA9IGV4dDRfZmluZF9uZXh0X3plcm9f
+Yml0KCh1bnNpZ25lZCBsb25nICopCisJCQkJICAgICAgYml0bWFwLT5iX2RhdGEsCisJCQkJICAg
+ICAgRVhUNF9JTk9ERVNfUEVSX0dST1VQKHNiKSwgaW5vKTsKKwlpZiAoaW5vID49IEVYVDRfSU5P
+REVTX1BFUl9HUk9VUChzYikpCisJCXJldHVybiAwOworCisJaWYgKGdyb3VwID09IDAgJiYgKGlu
+byArIDEpIDwgRVhUNF9GSVJTVF9JTk8oc2IpKSB7CisJCWlmIChncnBfbG9ja2VkKQorCQkJZXh0
+NF91bmxvY2tfZ3JvdXAoc2IsIGdyb3VwKTsKKwkJZXh0NF9lcnJvcihzYiwgInJlc2VydmVkIGlu
+b2RlIGZvdW5kIGNsZWFyZWQgLSAiCisJCQkgICAgICAgImlub2RlPSVsdSIsIGlubyArIDEpOwor
+CQlpZiAoZ3JwX2xvY2tlZCkKKwkJCWV4dDRfbG9ja19ncm91cChzYiwgZ3JvdXApOworCQlyZXR1
+cm4gMDsKKwl9CisKKwlpZiAoKEVYVDRfU0Ioc2IpLT5zX2pvdXJuYWwgPT0gTlVMTCkgJiYKKwkg
+ICAgcmVjZW50bHlfZGVsZXRlZChzYiwgZ3JvdXAsIGlubykpIHsKKwkJaW5vKys7CisJCWlmIChp
+bm8gPCBFWFQ0X0lOT0RFU19QRVJfR1JPVVAoc2IpKQorCQkJZ290byBuZXh0OworCQlyZXR1cm4g
+MDsKKwl9CisKKwlyZXR1cm4gaW5vOworfQorCiAvKgogICogVGhlcmUgYXJlIHR3byBwb2xpY2ll
+cyBmb3IgYWxsb2NhdGluZyBhbiBpbm9kZS4gIElmIHRoZSBuZXcgaW5vZGUgaXMKICAqIGEgZGly
+ZWN0b3J5LCB0aGVuIGEgZm9yd2FyZCBzZWFyY2ggaXMgbWFkZSBmb3IgYSBibG9jayBncm91cCB3
+aXRoIGJvdGgKQEAgLTkxMCwyMSArOTQzLDExIEBAIHN0cnVjdCBpbm9kZSAqX19leHQ0X25ld19p
+bm9kZShoYW5kbGVfdCAqaGFuZGxlLCBzdHJ1Y3QgaW5vZGUgKmRpciwKIAkJfQogCiByZXBlYXRf
+aW5fdGhpc19ncm91cDoKLQkJaW5vID0gZXh0NF9maW5kX25leHRfemVyb19iaXQoKHVuc2lnbmVk
+IGxvbmcgKikKLQkJCQkJICAgICAgaW5vZGVfYml0bWFwX2JoLT5iX2RhdGEsCi0JCQkJCSAgICAg
+IEVYVDRfSU5PREVTX1BFUl9HUk9VUChzYiksIGlubyk7Ci0JCWlmIChpbm8gPj0gRVhUNF9JTk9E
+RVNfUEVSX0dST1VQKHNiKSkKLQkJCWdvdG8gbmV4dF9ncm91cDsKLQkJaWYgKGdyb3VwID09IDAg
+JiYgKGlubysxKSA8IEVYVDRfRklSU1RfSU5PKHNiKSkgewotCQkJZXh0NF9lcnJvcihzYiwgInJl
+c2VydmVkIGlub2RlIGZvdW5kIGNsZWFyZWQgLSAiCi0JCQkJICAgImlub2RlPSVsdSIsIGlubyAr
+IDEpOworCQlpbm8gPSBmaW5kX2lub2RlX2JpdChzYiwgZ3JvdXAsIGlub2RlX2JpdG1hcF9iaCwK
+KwkJCQkgICAgIGlubywgZmFsc2UpOworCQlpZiAoIWlubykKIAkJCWdvdG8gbmV4dF9ncm91cDsK
+LQkJfQotCQlpZiAoKEVYVDRfU0Ioc2IpLT5zX2pvdXJuYWwgPT0gTlVMTCkgJiYKLQkJICAgIHJl
+Y2VudGx5X2RlbGV0ZWQoc2IsIGdyb3VwLCBpbm8pKSB7Ci0JCQlpbm8rKzsKLQkJCWdvdG8gbmV4
+dF9pbm9kZTsKLQkJfQorCiAJCWlmICghaGFuZGxlKSB7CiAJCQlCVUdfT04obmJsb2NrcyA8PSAw
+KTsKIAkJCWhhbmRsZSA9IF9fZXh0NF9qb3VybmFsX3N0YXJ0X3NiKGRpci0+aV9zYiwgbGluZV9u
+bywKQEAgLTkzNiwxOSArOTU5LDM3IEBAIHN0cnVjdCBpbm9kZSAqX19leHQ0X25ld19pbm9kZSho
+YW5kbGVfdCAqaGFuZGxlLCBzdHJ1Y3QgaW5vZGUgKmRpciwKIAkJCQlnb3RvIG91dDsKIAkJCX0K
+IAkJfQorCiAJCUJVRkZFUl9UUkFDRShpbm9kZV9iaXRtYXBfYmgsICJnZXRfd3JpdGVfYWNjZXNz
+Iik7CiAJCWVyciA9IGV4dDRfam91cm5hbF9nZXRfd3JpdGVfYWNjZXNzKGhhbmRsZSwgaW5vZGVf
+Yml0bWFwX2JoKTsKIAkJaWYgKGVycikgewogCQkJZXh0NF9zdGRfZXJyb3Ioc2IsIGVycik7CiAJ
+CQlnb3RvIG91dDsKIAkJfQorCiAJCWV4dDRfbG9ja19ncm91cChzYiwgZ3JvdXApOwogCQlyZXQy
+ID0gZXh0NF90ZXN0X2FuZF9zZXRfYml0KGlubywgaW5vZGVfYml0bWFwX2JoLT5iX2RhdGEpOwor
+CQlpZiAocmV0MiAmJiBFWFQ0X1NCKHNiKS0+c19qb3VybmFsID09IE5VTEwpIHsKKwkJCS8qIFNv
+bWVvbmUgYWxyZWFkeSB0b29rIHRoZSBiaXQuIFJlcGVhdCB0aGUgc2VhcmNoCisJCQkgKiB3aXRo
+IGxvY2sgaGVsZCwgZnVuY3Rpb24gbWlnaHQgc2xlZXAgaW4gdHdvIGNhc2VzOgorCQkJICogMSkg
+bm8gam91cm5hbCBtb2RlLgorCQkJICogMikgam91cm5hbCBtb2RlIGJ1dCBoaXQgbG9naWMgZXJy
+b3IuCisJCQkgKiBvbmx5IGhvbGQgbG9jayBpbiBqb3VybmFsIG1vZGUsIGJ1dCBzdGlsbCBuZWVk
+CisJCQkgKiB0YWtlIGNhcmUgb2YgZXJyb3IgY2FzZS4KKwkJCSAqLworCQkJaW5vID0gZmluZF9p
+bm9kZV9iaXQoc2IsIGdyb3VwLCBpbm9kZV9iaXRtYXBfYmgsCisJCQkJCSAgICAgaW5vLCB0cnVl
+KTsKKwkJCWlmIChpbm8pIHsKKwkJCQlyZXQyID0gZXh0NF90ZXN0X2FuZF9zZXRfYml0KGlubywK
+KwkJCQkJCWlub2RlX2JpdG1hcF9iaC0+Yl9kYXRhKTsKKwkJCQlXQVJOX09OX09OQ0UoIXJldDIp
+OworCQkJfQorCQl9CiAJCWV4dDRfdW5sb2NrX2dyb3VwKHNiLCBncm91cCk7CiAJCWlubysrOwkJ
+LyogdGhlIGlub2RlIGJpdG1hcCBpcyB6ZXJvLWJhc2VkICovCiAJCWlmICghcmV0MikKIAkJCWdv
+dG8gZ290OyAvKiB3ZSBncmFiYmVkIHRoZSBpbm9kZSEgKi8KLW5leHRfaW5vZGU6CisKIAkJaWYg
+KGlubyA8IEVYVDRfSU5PREVTX1BFUl9HUk9VUChzYikpCiAJCQlnb3RvIHJlcGVhdF9pbl90aGlz
+X2dyb3VwOwogbmV4dF9ncm91cDoK
 
-
-On Wed, Aug 16, 2017 at 3:27 PM, Amir Goldstein <amir73il@gmail.com> wrote:
-> On Wed, Aug 16, 2017 at 10:06 PM, Vijay Chidambaram <vvijay03@gmail.com> wrote:
->> Hi Josef,
->>
->> Thank you for the detailed reply -- I think it provides several
->> pointers for our future work. It sounds like we have a similar vision
->> for where we want this to go, though we may disagree about how to
->> implement this :) This is exciting!
->>
->> I agree that we should be building off existing work if it is a good
->> option. We might end up using log-writes, but for now we see several
->> problems:
->>
->> - The log-writes code is not documented well. As you have mentioned,
->> at this point, only you know how it works, and we are not seeing a lot
->> of adoption by other developers of log-writes as well.
->>
->> - I don't think our requirements exactly match what log-writes
->> provides. For example, at some point we want to introduce checkpoints
->> so that we can co-relate a crash state with file-system state at the
->> time of crash. We also want to add functionality to guide creation of
->> random crash states (see below). This might require changing
->> log-writes significantly. I don't know if that would be a good idea.
->>
->> Regarding random crashes, there is a lot of complexity there that
->> log-writes couldn't handle without significant changes. For example,
->> just randomly generating crash states and testing each state is
->> unlikely to catch bugs. We need a more nuanced way of doing this. We
->> plan to add a lot of functionality to CrashMonkey to (a) let the user
->> guide crash-state generation (b) focus on "interesting" states (by
->> re-ordering or dropping metadata). All of this will likely require
->> adding more sophistication to the kernel module. I don't think we want
->> to take log-writes and add a lot of extra functionality.
->>
->> Regarding logging writes, I think there is a difference in approach
->> between log-writes and CrashMonkey. We don't really care about the
->> completion order since the device may anyway re-order the writes after
->> that point. Thus, the set of crash states generated by CrashMonkey is
->> bound only by FUA and FLUSH flags. It sounds as if log-writes focuses
->> on a more restricted set of crash states.
->>
->> CrashMonkey works with the 4.4 kernel, and we will try and keep up
->> with changes to the kernel that breaks CrashMonkey. CrashMonkey is
->> useless without the user-space component, so users will be needing to
->> compile some code anyway. I do not believe it will matter much whether
->> it is in-tree or not, as long as it compiles with the latest kernel.
->>
->> Regarding discard, multi-device support, and application-level crash
->> consistency, this is on our road-map too! Our current priority is to
->> build enough scaffolding to reproduce a known crash-consistency bug
->> (such as the delayed allocation bug of ext4), and then go on and try
->> to find new bugs in newer file systems like btrfs.
->>
->> Adding CrashMonkey into the kernel is not a priority at this point (I
->> don't think CrashMonkey is useful enough at this point to do so). When
->> CrashMonkey becomes useful enough to do so, we will perhaps add the
->> device_wrapper as a DM target to enable adoption.
->>
->> Our hope currently is that developers like Ari will try out
->> CrashMonkey in its current form, which will guide us as to what
->> functionality to add to CrashMonkey to find bugs more effectively.
->>
->
-> Vijay,
->
-> I can only speak for myself, but I think I represent other filesystem
-> developers with this response:
-> - Often with competing projects the end
-> results is always for the best when project members cooperate to combine
-> the best of both projects.
-> - Some of your project goals (e.g. user guided crash states) sound very
-> intriguing
-> - IMO you are severely underestimating the pros in mainlined
-> kernel code for other developers. If you find the dm-log-writes target
-> is lacking functionality it would be MUCH better if you work to improve it.
-> Even more - it would be far better if you make sure that your userspace
-> tools can work also with the reduced functionality in mainline kernel.
-> - If you choose to complete your academic research before crossing over
-> to existing code base, that is a reasonable choice for you to make, but
-> the reasonable choice for me to make is to try Joseph's tools from his
-> repo (even if not documented) and *only* if it doesn't meet my needs
-> I would make the extra effort to try out  CrashMonkey.
-> - AFAIK the state of filesystem crash consistency testing tools is so bright
-> (maybe except in Facebook ;) , so my priority is to get *some* automated
-> testing tools in motion
->
-> In any case, I'm glad this discussion started and I hope it would expedite
-> the adoption of crash testing tools.
-> I wish you all the best with your project.
->
-> Amir.
+--_002_3ED34739A4E85E4F894367D57617CDEFEDA401CELAXEXMB2datadir_--
