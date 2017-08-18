@@ -1,173 +1,186 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: Y2038 bug in ext4 recently_deleted() function
-Date: Fri, 18 Aug 2017 10:09:07 -0600
-Message-ID: <AB3E8CB7-76CE-4F1D-B47C-57D63E56E6D7@dilger.ca>
-References: <20170808050517.7160-1-wshilong@ddn.com>
- <20170816164211.GA31117@quack2.suse.cz>
- <3ED34739A4E85E4F894367D57617CDEFEDA401CE@LAX-EX-MB2.datadirect.datadirectnet.com>
- <20170817091959.GB7644@quack2.suse.cz>
- <20170817092153.GA14074@quack2.suse.cz>
- <BCA34CA8-FDDF-49FA-A5B4-9CCCEAC0C8D0@dilger.ca>
- <CABeXuvqtDdtjgjEznXPgdUfaZiG-KJ3AURpT_AuUACcPATaoDw@mail.gmail.com>
- <CAK8P3a2mu9SGdZhWX59OhSK-fokSEpjKsK4_HC1OC-XxZU8eTw@mail.gmail.com>
- <CABeXuvpHvyOq09JQW0XtrJ4fGZNBjmC=MBDRS2eKoVsmpi3g4Q@mail.gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_0351BD39-2D53-4966-82E7-5A808BCE8156";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Arnd Bergmann <arnd@arndb.de>, Theodore Ts'o <tytso@mit.edu>,
-        Wang Shilong <wshilong@ddn.com>,
-        Wang Shilong <wangshilong1991@gmail.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>,
-        Jan Kara <jack@suse.cz>
-To: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: [PATCH] e2fsck: set dir_nlink feature if large dir exists
+Date: Fri, 18 Aug 2017 12:19:42 -0600
+Message-ID: <1503080382-37376-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f180.google.com ([209.85.223.180]:38226 "EHLO
-        mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750987AbdHRQJ3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Aug 2017 12:09:29 -0400
-Received: by mail-io0-f180.google.com with SMTP id g71so34393508ioe.5
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Aug 2017 09:09:28 -0700 (PDT)
-In-Reply-To: <CABeXuvpHvyOq09JQW0XtrJ4fGZNBjmC=MBDRS2eKoVsmpi3g4Q@mail.gmail.com>
+Received: from smtp-out-no.shaw.ca ([64.59.134.9]:54550 "EHLO
+        smtp-out-no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751807AbdHRS1v (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Aug 2017 14:27:51 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+If there is a directory with more than EXT2_LINK_MAX (65000)
+subdirectories, but the DIR_NLINK feature is not set in the
+superblock, the feature should be set before continuing on
+to change the on-disk directory link count to 1.
 
---Apple-Mail=_0351BD39-2D53-4966-82E7-5A808BCE8156
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+While most filesystems should have DIR_NLINK set (it was set
+by default for all ext4 filesystems, and the kernel before
+4.12 automatically set it if the directory link count grew
+too large), it is possible that this flag is lost due to disk
+corruption or for an upgraded filesystem.  We no longer want
+the kernel to automatically enable this feature.
 
+Addresses: https://bugzilla.kernel.org/show_bug.cgi?id=196405
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+---
+ e2fsck/pass4.c           | 12 +++++++++-
+ e2fsck/problem.c         |  5 ++++
+ e2fsck/problem.h         |  3 +++
+ tests/f_large_dir/expect |  7 ++++--
+ tests/f_large_dir/script | 60 ++++++++++++++++++++++++++++++------------------
+ 5 files changed, 62 insertions(+), 25 deletions(-)
 
-> On Aug 18, 2017, at 9:38 AM, Deepa Dinamani <deepa.kernel@gmail.com> =
-wrote:
->=20
-> On Fri, Aug 18, 2017 at 2:31 AM, Arnd Bergmann <arnd@arndb.de> wrote:
->> On Fri, Aug 18, 2017 at 3:23 AM, Deepa Dinamani =
-<deepa.kernel@gmail.com> wrote:
->>>=20
->>>> One thing I did notice when looking at it is that there is a Y2038 =
-bug in
->>>> recently_deleted(), as it is comparing 32-bit i_dtime directly with =
-64-bit
->>>> get_seconds().
->>>=20
->>> I don't think dtime has widened on the disk layout for ext4 =
-according
->>> to https://ext4.wiki.kernel.org/index.php/Ext4_Disk_Layout. So I am
->>> not sure how fixing the internal implementation would be useful =
-until
->>> we do that. Is there a plan for that?
->>>=20
->>> As far as get_seconds() is concerned, get_seconds() returns unsigned
->>> long which is 64 bits on a 64 bit arch and 32 bit on a 32 bit arch.
->>> Since dtime variable is declared as unsigned long in this function,
->>> same holds for the size of this variable.
->>>=20
->>> There is no y2038 problem on a 64 bit machine.
->>=20
->> I think what Andreas was saying is that it's actually the opposite:
->> on a 32-bit machine, the code will work correctly for 32-bit unsigned
->> long values as long as 'dtime' and 'now' are in the same epoch,
->> e.g. both are before 2106 or both are after.
->> On 64-bit systems it's always wrong after 2106.
->=20
-> There is some confusion here.
-> I was only referring to the current implementation:
->=20
-> static int recently_deleted(struct super_block *sb, ext4_group_t =
-group, int ino)
-> {
-> .
-> .
-> .
->   unsigned long dtime, now;
->   int offset, ret =3D 0, recentcy =3D RECENTCY_MIN;
-> .
-> .
-> .
->    offset =3D (ino % inodes_per_block) * EXT4_INODE_SIZE(sb);
->    raw_inode =3D (struct ext4_inode *) (bh->b_data + offset);
->    dtime =3D le32_to_cpu(raw_inode->i_dtime);
->    now =3D get_seconds();
->    if (buffer_dirty(bh))
->    recentcy +=3D RECENTCY_DIRTY;
->=20
->    if (dtime && (dtime < now) && (now < dtime + recentcy))
->         ret =3D 1;
-> .
-> .
-> .
-> }
->=20
-> In the above implementation, I do not see any problem on a 64 bit =
-machine.
-> The only problem is that dtime on disk representation is signed 32 =
-bits only.
-> If that were not a problem then this would be fine from time =
-prespective.
-
-The 32-bit dtime is the root of the problem.  There is no plan to extend
-the dtime field on disk, because it is used so little (mostly as a =
-boolean
-value, and for forensics).
-
->>> So moving to the case of a 32 bit machine:
->>>=20
->>> get_seconds() can return values until year 2106. And, recentcy at =
-max
->>> can only be 35. Analyzing the current line:
->>>=20
->>> if (dtime && (dtime < now) && (now < dtime + recentcy))
->>>=20
->>> The above equation should work fine at least until 35 seconds before
->>> y2038 deadline.
->>=20
->> Since it's all unsigned arithmetic, it should be fine until 2106.
->> However, we should get rid of get_seconds() long before then
->> and use ktime_get_real_seconds() instead, as most other users
->> of get_seconds() are (more) broken.
->=20
-> Dtime on disk representation again breaks this for certain values in
-> 2038 even though everything is unsigned.
->=20
-> I was just saying that whatever we do here depends on how dtime on
-> disk is interpreted.
->=20
-> Agree that ktime_get_real_seconds() should be used here. But, the way
-> we handle new values would rely on this new interpretation of dtime.
-> Also, using time64_t variables on stack only matters after this. Once
-> the types are corrected, maybe the comparison expression need not
-> change at all (after new dtime interpretation is in place).
-
-There will not be a new dtime format on disk, but since the calculation
-here only depends on relative times (within a few minutes), then it =
-would
-be fine to use only 32-bit timestamps, and truncate off the high bits
-from get_seconds()/ktime_get_real_seconds().
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_0351BD39-2D53-4966-82E7-5A808BCE8156
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZlxEnpIg59Q01vtYRAvCHAKCwwBVIbVO8QfWniUoCtXeUP9nDzwCePrak
-lhSiPHQ1uZ+9F+qEesajkvY=
-=/GD2
------END PGP SIGNATURE-----
-
---Apple-Mail=_0351BD39-2D53-4966-82E7-5A808BCE8156--
+diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
+index 663f87a..d0ff8e9 100644
+--- a/e2fsck/pass4.c
++++ b/e2fsck/pass4.c
+@@ -170,6 +170,7 @@ void e2fsck_pass4(e2fsck_t ctx)
+ #endif
+ 	struct problem_context	pctx;
+ 	__u16	link_count, link_counted;
++	int dir_nlink_fs;
+ 	char	*buf = 0;
+ 	dgrp_t	group, maxgroup;
+ 
+@@ -193,6 +194,8 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 	if (!(ctx->options & E2F_OPT_PREEN))
+ 		fix_problem(ctx, PR_4_PASS_HEADER, &pctx);
+ 
++	dir_nlink_fs = ext2fs_has_feature_dir_nlink(fs->super);
++
+ 	group = 0;
+ 	maxgroup = fs->group_desc_count;
+ 	if (ctx->progress)
+@@ -249,8 +252,15 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 					    &link_counted);
+ 		}
+ 		isdir = ext2fs_test_inode_bitmap2(ctx->inode_dir_map, i);
+-		if (isdir && (link_counted > EXT2_LINK_MAX))
++		if (isdir && (link_counted > EXT2_LINK_MAX)) {
++			if (!dir_nlink_fs &&
++			    fix_problem(ctx, PR_4_DIR_NLINK_FEATURE, &pctx)) {
++				ext2fs_set_feature_dir_nlink(fs->super);
++				ext2fs_mark_super_dirty(fs);
++				dir_nlink_fs = 1;
++			}
+ 			link_counted = 1;
++		}
+ 		if (link_counted != link_count) {
+ 			e2fsck_read_inode_full(ctx, i, EXT2_INODE(inode),
+ 					       inode_size, "pass4");
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 9706933..25c1de9 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1873,6 +1873,11 @@ static struct e2fsck_problem problem_table[] = {
+ 	  N_("@a @i %i ref count is %N, @s %n. "),
+ 	  PROMPT_FIX, PR_PREEN_OK },
+ 
++	/* directory exceeds max links, but no DIR_NLINK feature in superblock*/
++	{ PR_4_DIR_NLINK_FEATURE,
++	  N_("@d exceeds max links, but no DIR_NLINK feature in @S.\n"),
++	  PROMPT_FIX, 0 },
++
+ 	/* Pass 5 errors */
+ 
+ 	/* Pass 5: Checking group summary information */
+diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+index f30f8f0..07ed0a7 100644
+--- a/e2fsck/problem.h
++++ b/e2fsck/problem.h
+@@ -1134,6 +1134,9 @@ struct problem_context {
+ /* Extended attribute inode ref count wrong */
+ #define PR_4_EA_INODE_REF_COUNT		0x040005
+ 
++/* directory exceeds max links, but no DIR_NLINK feature in superblock */
++#define PR_4_DIR_NLINK_FEATURE		0x040006
++
+ /*
+  * Pass 5 errors
+  */
+diff --git a/tests/f_large_dir/expect b/tests/f_large_dir/expect
+index b099460..4b9ca6f 100644
+--- a/tests/f_large_dir/expect
++++ b/tests/f_large_dir/expect
+@@ -3,10 +3,13 @@ Pass 2: Checking directory structure
+ Pass 3: Checking directory connectivity
+ Pass 3A: Optimizing directories
+ Pass 4: Checking reference counts
+-Inode 13 ref count is 1, should be 47245.  Fix? yes
++Directory exceeds max links, but no DIR_NLINK feature in superblock.
++Fix? yes
++
++Inode 12 ref count is 65012, should be 1.  Fix? yes
+ 
+ Pass 5: Checking group summary information
+ 
+ test.img: ***** FILE SYSTEM WAS MODIFIED *****
+-test.img: 13/115368 files (0.0% non-contiguous), 32817/460800 blocks
++test.img: 65023/65104 files (0.0% non-contiguous), 96668/100937 blocks
+ Exit status is 1
+diff --git a/tests/f_large_dir/script b/tests/f_large_dir/script
+index 0b5fdff..a10fe16 100644
+--- a/tests/f_large_dir/script
++++ b/tests/f_large_dir/script
+@@ -5,43 +5,59 @@ E2FSCK=../e2fsck/e2fsck
+ NAMELEN=255
+ DIRENT_SZ=8
+ BLOCKSZ=1024
++INODESZ=128
+ DIRENT_PER_LEAF=$((BLOCKSZ / (NAMELEN + DIRENT_SZ)))
+ HEADER=32
+ INDEX_SZ=8
+ INDEX_L1=$(((BLOCKSZ - HEADER) / INDEX_SZ))
+ INDEX_L2=$(((BLOCKSZ - DIRENT_SZ) / INDEX_SZ))
+ ENTRIES=$((INDEX_L1 * INDEX_L2 * DIRENT_PER_LEAF))
++DIRBLK=$((2 + INDEX_L1 * INDEX_L2))
++EXT4_LINK_MAX=65000
++[ $ENTRIES -lt $((EXT4_LINK_MAX + 10)) ] && ENTRIES=$((EXT4_LINK_MAX + 10))
++FSIZE=$(((DIRBLK + EXT4_LINK_MAX * ((BLOCKSZ + INODESZ) / BLOCKSZ)) * 5 / 4))
+ 
+-cp /dev/null $OUT
+-$MKE2FS -b 1024 -O large_dir,uninit_bg,dir_nlink -F $TMPFILE 460800 \
+-	> /dev/null 2>&1
++> $OUT
++$MKE2FS -b 1024 -O large_dir,uninit_bg -N $((ENTRIES + 50)) \
++	-I $INODESZ -F $TMPFILE $FSIZE > $OUT 2>&1
++RC=$?
++if [ $RC -eq 0 ]; then
+ {
+-	echo "feature large_dir"
++	START=$SECONDS
+ 	echo "mkdir /foo"
+ 	echo "cd /foo"
+-	touch foofile
+-	echo "write foofile foofile"
++	touch $TMPFILE.tmp
++	echo "write $TMPFILE.tmp foofile"
+ 	i=0
+-	while test $i  -lt $ENTRIES ; do
+-	    if test $(( i % DIRENT_PER_LEAF )) -eq 0 ; then
+-		echo "expand ./"
++	while test $i -lt $ENTRIES ; do
++	    if test $((i % DIRENT_PER_LEAF)) -eq 0; then
++	    	echo "expand ./"
+ 	    fi
+-	    if test $(( i % 5000 )) -eq 0 -a $i -gt 0 ; then
+-		>&2 echo "$test_name: $i processed"
++	    if test $((i % 5000)) -eq 0 -a $i -gt 0; then
++		ELAPSED=$((SECONDS - START))
++		RATE=$((i / ELAPSED))
++		>&2 echo "$test_name: $i processed in ${ELAPSED}s @ $RATE/s"
+ 	    fi
+-	    printf "ln foofile %0255X\n" $i
+-	    i=$(($i + 1))
++	    if test $i -lt $((EXT4_LINK_MAX + 10)); then
++		printf "mkdir d%0254u\n" $i
++	    else
++		printf "ln foofile f%0254u\n" $i
++	    fi
++	    i=$((i + 1))
+ 	done
+-} | $DEBUGFS -w -f /dev/stdin $TMPFILE > /dev/null 2>&1
