@@ -1,71 +1,34 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
- encryption
-Date: Fri, 18 Aug 2017 15:06:52 -0600
-Message-ID: <8EA94C5A-A3F7-48BC-91BE-3C0BD17D7927@dilger.ca>
-References: <20170818194730.61575-1-ebiggers3@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_9142F810-BF1E-4FCD-B59A-DFBC65DA2F9F";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-fscrypt@vger.kernel.org, linux-doc@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170818194730.61575-1-ebiggers3@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 03/13] dax: Factor out getting of pfn out of iomap
+Date: Fri, 18 Aug 2017 16:06:25 -0600
+Message-ID: <20170818220625.GB32627@linux.intel.com>
+References: <20170817160815.30466-1-jack@suse.cz>
+ <20170817160815.30466-4-jack@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
+        Andy Lutomirski <luto@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Boaz Harrosh <boazh@netapp.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga09.intel.com ([134.134.136.24]:51586 "EHLO mga09.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752412AbdHRWG1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 18 Aug 2017 18:06:27 -0400
+Content-Disposition: inline
+In-Reply-To: <20170817160815.30466-4-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, Aug 17, 2017 at 06:08:05PM +0200, Jan Kara wrote:
+> Factor out code to get pfn out of iomap that is shared between PTE and
+> PMD fault path.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
---Apple-Mail=_9142F810-BF1E-4FCD-B59A-DFBC65DA2F9F
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
+Yep, this looks correct to me.
 
-On Aug 18, 2017, at 1:47 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
-> +Key hierarchy
-> +=============
-> +
-> +Master Keys
-> +-----------
-> +
-> +Userspace should generate master keys either using a cryptographically
-> +secure random number generator, e.g. by reading from ``/dev/urandom``
-> +or calling getrandom(), or by using a KDF (Key Derivation Function).
-> +Note that whenever a KDF is used to "stretch" a lower-entropy secret
-> +such as a passphrase, it is critical that a KDF designed for this
-> +purpose be used, such as scrypt, PBKDF2, or Argon2.
-
-One minor suggestion - when generating a master key for a filesystem,
-I'd think it is preferable to use /dev/random instead of /dev/urandom
-to ensure there is enough entropy.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_9142F810-BF1E-4FCD-B59A-DFBC65DA2F9F
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZl1bzpIg59Q01vtYRAiT+AKCc+13VtpBGDFhtCOJ8WDmEkYFxogCgyFGw
-iriWUBdsXr50Ehp/uEDHOT8=
-=OMjh
------END PGP SIGNATURE-----
-
---Apple-Mail=_9142F810-BF1E-4FCD-B59A-DFBC65DA2F9F--
+Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
