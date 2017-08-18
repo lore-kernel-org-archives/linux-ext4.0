@@ -1,33 +1,71 @@
-From: Alex Xu <alex_y_xu@yahoo.ca>
-Subject: Re: bfq/ext4 disk IO hangs forever on resume
-Date: Fri, 18 Aug 2017 16:29:20 -0400
-Message-ID: <20170818162920.6bd377ad.alex_y_xu@yahoo.ca>
-References: <20170625230756.68b4de21.alex_y_xu@yahoo.ca>
-        <CACVXFVNA+Wk+zL_yDEzxAwjC_vOeFBNa40s5mCAEG5w4v7ftTg@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>
-To: Ming Lei <tom.leiming@gmail.com>, Jens Axboe <axboe@kernel.dk>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CACVXFVNA+Wk+zL_yDEzxAwjC_vOeFBNa40s5mCAEG5w4v7ftTg@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
+ encryption
+Date: Fri, 18 Aug 2017 15:06:52 -0600
+Message-ID: <8EA94C5A-A3F7-48BC-91BE-3C0BD17D7927@dilger.ca>
+References: <20170818194730.61575-1-ebiggers3@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_9142F810-BF1E-4FCD-B59A-DFBC65DA2F9F";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-fscrypt@vger.kernel.org, linux-doc@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170818194730.61575-1-ebiggers3@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 25 Jul 2017 20:18:07 +0800
-Ming Lei <tom.leiming@gmail.com> wrote as excerpted:
 
-> On Mon, Jun 26, 2017 at 11:07 AM, Alex Xu <alex_y_xu@yahoo.ca> wrote:
-> > Hi,
-> >
-> > I get hangs when resuming when using bfq-mq with ext4 on 4.12-rc6+
-> > (currently a4fd8b3accf43d407472e34403d4b0a4df5c0e71).  
-> 
-> Please test the following patch to see if it can help your issue:
-> 
-> https://git.kernel.org/pub/scm/linux/kernel/git/axboe/linux-block.git/commit/?h=for-linus&id=765e40b675a9566459ddcb8358ad16f3b8344bbe
-> 
+--Apple-Mail=_9142F810-BF1E-4FCD-B59A-DFBC65DA2F9F
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-I tried 4.13-rc3+ (including that commit) and still have (seemingly)
-the same issue.
+On Aug 18, 2017, at 1:47 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> +Key hierarchy
+> +=============
+> +
+> +Master Keys
+> +-----------
+> +
+> +Userspace should generate master keys either using a cryptographically
+> +secure random number generator, e.g. by reading from ``/dev/urandom``
+> +or calling getrandom(), or by using a KDF (Key Derivation Function).
+> +Note that whenever a KDF is used to "stretch" a lower-entropy secret
+> +such as a passphrase, it is critical that a KDF designed for this
+> +purpose be used, such as scrypt, PBKDF2, or Argon2.
+
+One minor suggestion - when generating a master key for a filesystem,
+I'd think it is preferable to use /dev/random instead of /dev/urandom
+to ensure there is enough entropy.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_9142F810-BF1E-4FCD-B59A-DFBC65DA2F9F
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZl1bzpIg59Q01vtYRAiT+AKCc+13VtpBGDFhtCOJ8WDmEkYFxogCgyFGw
+iriWUBdsXr50Ehp/uEDHOT8=
+=OMjh
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_9142F810-BF1E-4FCD-B59A-DFBC65DA2F9F--
