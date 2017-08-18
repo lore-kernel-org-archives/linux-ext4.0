@@ -1,282 +1,673 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] e2fsck: set dir_nlink feature if large dir exists
-Date: Fri, 18 Aug 2017 12:45:21 -0600
-Message-ID: <3016732A-E5AA-4EE7-980A-05323CD346A6@dilger.ca>
-References: <1503080382-37376-1-git-send-email-adilger@dilger.ca>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_5E84B4BC-E542-4482-98C7-95AECE9244F2";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH] fscrypt: add a documentation file for filesystem-level encryption
+Date: Fri, 18 Aug 2017 12:47:30 -0700
+Message-ID: <20170818194730.61575-1-ebiggers3@gmail.com>
+Cc: linux-doc@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:38746 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750971AbdHRSpa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Aug 2017 14:45:30 -0400
-Received: by mail-io0-f195.google.com with SMTP id g71so29480ioe.5
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Aug 2017 11:45:30 -0700 (PDT)
-In-Reply-To: <1503080382-37376-1-git-send-email-adilger@dilger.ca>
+Received: from mail-pg0-f66.google.com ([74.125.83.66]:38171 "EHLO
+        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752662AbdHRTul (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Aug 2017 15:50:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Eric Biggers <ebiggers@google.com>
 
---Apple-Mail=_5E84B4BC-E542-4482-98C7-95AECE9244F2
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Perhaps long overdue, add a documentation file for filesystem-level
+encryption, a.k.a. fscrypt or fs/crypto/, to the Documentation
+directory.  The new file is based loosely on the latest version of the
+"EXT4 Encryption Design Document (public version)" Google Doc, but with
+many improvements made, including:
 
-On Aug 18, 2017, at 12:19 PM, Andreas Dilger <adilger@dilger.ca> wrote:
->=20
-> If there is a directory with more than EXT2_LINK_MAX (65000)
-> subdirectories, but the DIR_NLINK feature is not set in the
-> superblock, the feature should be set before continuing on
-> to change the on-disk directory link count to 1.
->=20
-> While most filesystems should have DIR_NLINK set (it was set
-> by default for all ext4 filesystems, and the kernel before
-> 4.12 automatically set it if the directory link count grew
-> too large), it is possible that this flag is lost due to disk
-> corruption or for an upgraded filesystem.  We no longer want
-> the kernel to automatically enable this feature.
->=20
-> Addresses: https://bugzilla.kernel.org/show_bug.cgi?id=3D196405
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
-> ---
+- Reflect the reality that it is not specific to ext4 anymore.
+- More thoroughly document the design and user-visible API/behavior.
+- Replace outdated information, such as the outdated explanation of how
+  encrypted filenames are hashed for indexed directories and how
+  encrypted filenames are presented to userspace without the key.
+  (This was changed just before release.)
 
-Note that this is using the f_large_dir test for verification,
-since it was already creating a directory with 48k entries in
-it and already took ages to run because directory processing
-in libext2fs is O(n^2) (it took about 2h to finish in my VM).
-The alternative is storing a 100MB image file (though it may
-be possible to compress it significantly).
+For now the focus is on the design and user-visible API/behavior, not on
+how to add encryption support to a filesystem --- since the internal API
+is still pretty messy and any standalone documentation for it would
+become outdated as things get refactored over time.
 
-I'm working on a patch to improve the debugfs "expand" command
-so that it can insert multiple directory blocks at once, rather
-than one-at-a-time (after a full directory scan).  That at least
-fixes half of the problem.
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ Documentation/filesystems/fscrypt.rst | 587 ++++++++++++++++++++++++++++++++++
+ Documentation/filesystems/index.rst   |  11 +
+ MAINTAINERS                           |   1 +
+ 3 files changed, 599 insertions(+)
+ create mode 100644 Documentation/filesystems/fscrypt.rst
 
-Cheers, Andreas
-
-> e2fsck/pass4.c           | 12 +++++++++-
-> e2fsck/problem.c         |  5 ++++
-> e2fsck/problem.h         |  3 +++
-> tests/f_large_dir/expect |  7 ++++--
-> tests/f_large_dir/script | 60 =
-++++++++++++++++++++++++++++++------------------
-> 5 files changed, 62 insertions(+), 25 deletions(-)
->=20
-> diff --git a/e2fsck/pass4.c b/e2fsck/pass4.c
-> index 663f87a..d0ff8e9 100644
-> --- a/e2fsck/pass4.c
-> +++ b/e2fsck/pass4.c
-> @@ -170,6 +170,7 @@ void e2fsck_pass4(e2fsck_t ctx)
-> #endif
-> 	struct problem_context	pctx;
-> 	__u16	link_count, link_counted;
-> +	int dir_nlink_fs;
-> 	char	*buf =3D 0;
-> 	dgrp_t	group, maxgroup;
->=20
-> @@ -193,6 +194,8 @@ void e2fsck_pass4(e2fsck_t ctx)
-> 	if (!(ctx->options & E2F_OPT_PREEN))
-> 		fix_problem(ctx, PR_4_PASS_HEADER, &pctx);
->=20
-> +	dir_nlink_fs =3D ext2fs_has_feature_dir_nlink(fs->super);
-> +
-> 	group =3D 0;
-> 	maxgroup =3D fs->group_desc_count;
-> 	if (ctx->progress)
-> @@ -249,8 +252,15 @@ void e2fsck_pass4(e2fsck_t ctx)
-> 					    &link_counted);
-> 		}
-> 		isdir =3D ext2fs_test_inode_bitmap2(ctx->inode_dir_map, =
-i);
-> -		if (isdir && (link_counted > EXT2_LINK_MAX))
-> +		if (isdir && (link_counted > EXT2_LINK_MAX)) {
-> +			if (!dir_nlink_fs &&
-> +			    fix_problem(ctx, PR_4_DIR_NLINK_FEATURE, =
-&pctx)) {
-> +				ext2fs_set_feature_dir_nlink(fs->super);
-> +				ext2fs_mark_super_dirty(fs);
-> +				dir_nlink_fs =3D 1;
-> +			}
-> 			link_counted =3D 1;
-> +		}
-> 		if (link_counted !=3D link_count) {
-> 			e2fsck_read_inode_full(ctx, i, =
-EXT2_INODE(inode),
-> 					       inode_size, "pass4");
-> diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-> index 9706933..25c1de9 100644
-> --- a/e2fsck/problem.c
-> +++ b/e2fsck/problem.c
-> @@ -1873,6 +1873,11 @@ static struct e2fsck_problem problem_table[] =3D =
-{
-> 	  N_("@a @i %i ref count is %N, @s %n. "),
-> 	  PROMPT_FIX, PR_PREEN_OK },
->=20
-> +	/* directory exceeds max links, but no DIR_NLINK feature in =
-superblock*/
-> +	{ PR_4_DIR_NLINK_FEATURE,
-> +	  N_("@d exceeds max links, but no DIR_NLINK feature in @S.\n"),
-> +	  PROMPT_FIX, 0 },
-> +
-> 	/* Pass 5 errors */
->=20
-> 	/* Pass 5: Checking group summary information */
-> diff --git a/e2fsck/problem.h b/e2fsck/problem.h
-> index f30f8f0..07ed0a7 100644
-> --- a/e2fsck/problem.h
-> +++ b/e2fsck/problem.h
-> @@ -1134,6 +1134,9 @@ struct problem_context {
-> /* Extended attribute inode ref count wrong */
-> #define PR_4_EA_INODE_REF_COUNT		0x040005
->=20
-> +/* directory exceeds max links, but no DIR_NLINK feature in =
-superblock */
-> +#define PR_4_DIR_NLINK_FEATURE		0x040006
-> +
-> /*
->  * Pass 5 errors
->  */
-> diff --git a/tests/f_large_dir/expect b/tests/f_large_dir/expect
-> index b099460..4b9ca6f 100644
-> --- a/tests/f_large_dir/expect
-> +++ b/tests/f_large_dir/expect
-> @@ -3,10 +3,13 @@ Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 3A: Optimizing directories
-> Pass 4: Checking reference counts
-> -Inode 13 ref count is 1, should be 47245.  Fix? yes
-> +Directory exceeds max links, but no DIR_NLINK feature in superblock.
-> +Fix? yes
-> +
-> +Inode 12 ref count is 65012, should be 1.  Fix? yes
->=20
-> Pass 5: Checking group summary information
->=20
-> test.img: ***** FILE SYSTEM WAS MODIFIED *****
-> -test.img: 13/115368 files (0.0% non-contiguous), 32817/460800 blocks
-> +test.img: 65023/65104 files (0.0% non-contiguous), 96668/100937 =
-blocks
-> Exit status is 1
-> diff --git a/tests/f_large_dir/script b/tests/f_large_dir/script
-> index 0b5fdff..a10fe16 100644
-> --- a/tests/f_large_dir/script
-> +++ b/tests/f_large_dir/script
-> @@ -5,43 +5,59 @@ E2FSCK=3D../e2fsck/e2fsck
-> NAMELEN=3D255
-> DIRENT_SZ=3D8
-> BLOCKSZ=3D1024
-> +INODESZ=3D128
-> DIRENT_PER_LEAF=3D$((BLOCKSZ / (NAMELEN + DIRENT_SZ)))
-> HEADER=3D32
-> INDEX_SZ=3D8
-> INDEX_L1=3D$(((BLOCKSZ - HEADER) / INDEX_SZ))
-> INDEX_L2=3D$(((BLOCKSZ - DIRENT_SZ) / INDEX_SZ))
-> ENTRIES=3D$((INDEX_L1 * INDEX_L2 * DIRENT_PER_LEAF))
-> +DIRBLK=3D$((2 + INDEX_L1 * INDEX_L2))
-> +EXT4_LINK_MAX=3D65000
-> +[ $ENTRIES -lt $((EXT4_LINK_MAX + 10)) ] && ENTRIES=3D$((EXT4_LINK_MAX =
-+ 10))
-> +FSIZE=3D$(((DIRBLK + EXT4_LINK_MAX * ((BLOCKSZ + INODESZ) / BLOCKSZ)) =
-* 5 / 4))
->=20
-> -cp /dev/null $OUT
-> -$MKE2FS -b 1024 -O large_dir,uninit_bg,dir_nlink -F $TMPFILE 460800 \
-> -	> /dev/null 2>&1
-> +> $OUT
-> +$MKE2FS -b 1024 -O large_dir,uninit_bg -N $((ENTRIES + 50)) \
-> +	-I $INODESZ -F $TMPFILE $FSIZE > $OUT 2>&1
-> +RC=3D$?
-> +if [ $RC -eq 0 ]; then
-> {
-> -	echo "feature large_dir"
-> +	START=3D$SECONDS
-> 	echo "mkdir /foo"
-> 	echo "cd /foo"
-> -	touch foofile
-> -	echo "write foofile foofile"
-> +	touch $TMPFILE.tmp
-> +	echo "write $TMPFILE.tmp foofile"
-> 	i=3D0
-> -	while test $i  -lt $ENTRIES ; do
-> -	    if test $(( i % DIRENT_PER_LEAF )) -eq 0 ; then
-> -		echo "expand ./"
-> +	while test $i -lt $ENTRIES ; do
-> +	    if test $((i % DIRENT_PER_LEAF)) -eq 0; then
-> +	    	echo "expand ./"
-> 	    fi
-> -	    if test $(( i % 5000 )) -eq 0 -a $i -gt 0 ; then
-> -		>&2 echo "$test_name: $i processed"
-> +	    if test $((i % 5000)) -eq 0 -a $i -gt 0; then
-> +		ELAPSED=3D$((SECONDS - START))
-> +		RATE=3D$((i / ELAPSED))
-> +		>&2 echo "$test_name: $i processed in ${ELAPSED}s @ =
-$RATE/s"
-> 	    fi
-> -	    printf "ln foofile %0255X\n" $i
-> -	    i=3D$(($i + 1))
-> +	    if test $i -lt $((EXT4_LINK_MAX + 10)); then
-> +		printf "mkdir d%0254u\n" $i
-> +	    else
-> +		printf "ln foofile f%0254u\n" $i
-> +	    fi
-> +	    i=3D$((i + 1))
-> 	done
-> -} | $DEBUGFS -w -f /dev/stdin $TMPFILE > /dev/null 2>&1
-> -
-> -$E2FSCK -yfD $TMPFILE > $OUT.new 2>&1
-> -status=3D$?
-> -echo Exit status is $status >> $OUT.new
-> -sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new >> $OUT
-> -rm -f $OUT.new
-> +} | $DEBUGFS -w -f /dev/stdin $TMPFILE > $OUT
-> +	RC=3D$?
-> +fi
-> +if [ $RC -eq 0 ]; then
-> +	$E2FSCK -yfD $TMPFILE > $OUT.new 2>&1
-> +	status=3D$?
-> +	echo "Exit status is $status" >> $OUT.new
-> +	sed -f $cmd_dir/filter.sed -e "s;$TMPFILE;test.img;" $OUT.new > =
-$OUT
-> +	rm -f $OUT.new
->=20
-> -cmp -s $OUT $EXP
-> -RC=3D$?
-> +	cmp -s $OUT $EXP
-> +	RC=3D$?
-> +fi
-> if [ $RC -eq 0 ]; then
-> 	echo "$test_name: $test_description: ok"
-> 	touch $test_name.ok
-> --
-> 1.8.0
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_5E84B4BC-E542-4482-98C7-95AECE9244F2
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZlzXEpIg59Q01vtYRAqynAKDVCAHOT8uqdPhgA8wmHc7yPc8GCACgjD7V
-CVooJ/iNmbpVjD/PXfodoB8=
-=YcMf
------END PGP SIGNATURE-----
-
---Apple-Mail=_5E84B4BC-E542-4482-98C7-95AECE9244F2--
+diff --git a/Documentation/filesystems/fscrypt.rst b/Documentation/filesystems/fscrypt.rst
+new file mode 100644
+index 000000000000..633d859a0ab1
+--- /dev/null
++++ b/Documentation/filesystems/fscrypt.rst
+@@ -0,0 +1,587 @@
++=====================================
++Filesystem-level encryption (fscrypt)
++=====================================
++
++Introduction
++============
++
++fscrypt is a library which filesystems can hook into to support
++transparent encryption of files and directories.
++
++Note: "fscrypt" in this document refers to the kernel-level portion,
++implemented in ``fs/crypto/``, as opposed to the userspace tool
++`fscrypt <https://github.com/google/fscrypt>`_.  This document only
++covers the kernel-level portion.  For command-line examples of how to
++use encryption, see the documentation for the userspace tool `fscrypt
++<https://github.com/google/fscrypt>`_.
++
++Unlike dm-crypt, fscrypt operates at the filesystem level rather than
++at the block device level.  This allows it to encrypt different files
++with different keys and to have unencrypted files on the same
++filesystem.  This is useful for multi-user systems where each user's
++data-at-rest needs to be cryptographically isolated from the others.
++However, except for filenames, fscrypt does not encrypt filesystem
++metadata.
++
++Unlike eCryptfs, which is a stacked filesystem, fscrypt is integrated
++directly into supported filesystems --- currently ext4, F2FS, and
++UBIFS.  This allows encrypted files to be read and written without
++caching both the decrypted and encrypted pages in the pagecache,
++thereby halving the memory used and bringing it in line with
++unencrypted files.  Similarly, half as many dentries and inodes are
++needed.  eCryptfs also limits filenames to 143 bytes, causing
++application compatibility issues; fscrypt allows the full 255 bytes
++(NAME_MAX).  Finally, unlike eCryptfs, the fscrypt API can be used by
++unprivileged users, with no need to mount anything.
++
++fscrypt does not support encrypting files in-place.  Instead, it
++supports marking an empty directory as encrypted.  Then, after
++userspace provides the key, all regular files, directories, and
++symbolic links created in that directory tree are transparently
++encrypted.
++
++Threat model
++============
++
++Offline attacks
++---------------
++
++Provided that userspace chooses a strong encryption key, fscrypt
++protects the confidentiality of file contents and filenames in the
++event of a single point-in-time permanent offline compromise of the
++block device content.  fscrypt does not protect the confidentiality of
++non-filename metadata, e.g. file sizes, file permissions, file
++timestamps, and extended attributes.  Also, the existence and location
++of holes (unallocated blocks which logically contain all zeroes) in
++files is not protected.
++
++fscrypt is not guaranteed to protect confidentiality or authenticity
++if an attacker is able to manipulate the filesystem offline prior to
++an authorized user later accessing the filesystem.
++
++Online attacks
++--------------
++
++fscrypt (and storage encryption in general) can only provide limited
++protection, if any at all, against online attacks.  In detail:
++
++fscrypt is only resistant to side-channel attacks, such as timing or
++electromagnetic attacks, to the extent that the underlying Linux
++Cryptographic API algorithms are.  If a vulnerable algorithm is used,
++such as a table-based implementation of AES, it may be possible for an
++attacker to mount a side channel attack against the online system.
++
++After an encryption key has been provided, fscrypt is not designed to
++hide the plaintext file contents or filenames from other users on the
++same system, regardless of the visibility of the keyring key.
++Instead, existing access control mechanisms such as file mode bits,
++POSIX ACLs, or SELinux should be used for this purpose.  Also note
++that as long as the encryption keys are *anywhere* in memory, an
++online attacker can necessarily compromise them by mounting a physical
++attack or by exploiting any kernel security vulnerability which
++provides an arbitrary memory read primitive.
++
++While it is ostensibly possible to "evict" keys from the system,
++recently accessed encrypted files will remain accessible at least
++until the filesystem is unmounted or the VFS caches are dropped, e.g.
++using ``echo 2 > /proc/sys/vm/drop_caches``.  Even after that, if the
++RAM is compromised before being powered off, it will likely still be
++possible to recover portions of the plaintext file contents, if not
++some of the encryption keys as well.  (Since Linux v4.12, all
++in-kernel keys related to fscrypt are sanitized before being freed.
++However, userspace would need to do its part as well.)
++
++Currently, fscrypt does not prevent a user from maliciously providing
++an incorrect key for another user's existing encrypted files.  A
++protection against this is planned.
++
++Key hierarchy
++=============
++
++Master Keys
++-----------
++
++Each encrypted directory tree is protected by a *master key*.  Master
++keys can be up to 64 bytes long, and must be at least as long as the
++greater of the key length needed by the contents and filenames
++encryption modes being used.  For example, if AES-256-XTS is used for
++contents encryption, the master key must be 64 bytes (512 bits).  Note
++that the XTS mode is defined to require a key twice as long as that
++required by the underlying block cipher.
++
++To "unlock" an encrypted directory tree, userspace must provide the
++appropriate master key.  There can be any number of master keys, each
++of which protects any number of directory trees on any number of
++filesystems.
++
++Userspace should generate master keys either using a cryptographically
++secure random number generator, e.g. by reading from ``/dev/urandom``
++or calling getrandom(), or by using a KDF (Key Derivation Function).
++Note that whenever a KDF is used to "stretch" a lower-entropy secret
++such as a passphrase, it is critical that a KDF designed for this
++purpose be used, such as scrypt, PBKDF2, or Argon2.
++
++Per-file keys
++-------------
++
++Master keys are not used to encrypt file contents or names directly.
++Instead, a unique key is derived for each encrypted file, including
++each regular file, directory, and symbolic link.  This has several
++advantages:
++
++- In cryptosystems, the same key material should never be used for
++  different purposes.  Using the master key as both an XTS key for
++  contents encryption and as a CTS-CBC key for filenames encryption
++  would violate this rule.
++- Per-file keys simplify the choice of IVs (Initialization Vectors)
++  for contents encryption.  Without per-file keys, to ensure IV
++  uniqueness both the inode and logical block number would need to be
++  encoded in the IVs.  This would make it impossible to renumber
++  inodes, which e.g. ``resize2fs`` can do when resizing an ext4
++  filesystem.  With per-file keys, it is sufficient to encode just the
++  logical block number in the IVs.
++- Per-file keys strengthen the encryption of filenames, where IVs are
++  reused out of necessity.  With a unique key per directory, IV reuse
++  is limited to within a single directory.
++- Per-file keys allow individual files to be securely erased simply by
++  securely erasing their keys.  (Not yet implemented.)
++
++A KDF (Key Derivation Function) is used to derive per-file keys from
++the master key.  This is done instead of wrapping a randomly-generated
++key for each file because it reduces the size of the encryption xattr,
++which for some filesystems makes the xattr more likely to fit in-line
++in the filesystem's inode table.  With a KDF, only a 16-byte nonce is
++required --- long enough to make key reuse extremely unlikely.  A
++wrapped key, on the other hand, would need to be up to 64 bytes ---
++the length of an AES-256-XTS key.  Furthermore, currently there is no
++requirement to support unlocking a file with multiple alternative
++master keys or to support rotating master keys.  Instead, the master
++keys may be wrapped in userspace, e.g. as done by the `fscrypt
++<https://github.com/google/fscrypt>`_ tool.
++
++The current KDF encrypts the master key using the 16-byte nonce as an
++AES-128-ECB key.  The output is used as the derived key.  If the
++output is longer than needed, then it is truncated to the needed
++length.  Truncation is the norm for directories and symlinks, since
++those use the CTS-CBC encryption mode which requires a key half as
++long as that required by the XTS encryption mode.
++
++Note: this KDF meets the primary security requirement, which is to
++produce unique derived keys that preserve the entropy of the master
++key, assuming that the master key is already a good pseudorandom key.
++However, it is nonstandard and has some theoretical problems such as
++being reversible, so it is generally considered to be a mistake!  It
++may be replaced with HKDF or another more standard KDF in the future.
++
++Encryption modes and usage
++==========================
++
++fscrypt allows one encryption mode to be specified for file contents
++and one encryption mode to be specified for filenames.  Different
++directory trees are permitted to use different encryption modes.
++Currently, the following pairs of encryption modes are supported:
++
++- AES-256-XTS for contents and AES-256-CTS-CBC for filenames
++- AES-128-CBC for contents and AES-128-CTS-CBC for filenames
++
++It is strongly recommended to use AES-256-XTS for contents encryption.
++AES-128-CBC was added only for low-powered embedded devices with
++crypto accelerators such as CAAM or CESA that do not support XTS.
++
++New encryption modes can be added relatively easily, without changes
++to individual filesystems.  However, authenticated encryption (AE)
++modes are not currently supported because of the difficulty of dealing
++with ciphertext expansion.
++
++For file contents, each filesystem block is encrypted independently.
++Currently, only the case where the filesystem block size is equal to
++the system's page size (usually 4096 bytes) is supported.  With the
++XTS mode of operation (recommended), the logical block number within
++the file is used as the IV.  With the CBC mode of operation (not
++recommended), ESSIV is used; specifically, the IV for CBC is the
++logical block number encrypted with AES-256, where the AES-256 key is
++the SHA-256 hash of the inode's data encryption key.
++
++For filenames, the full filename is encrypted at once.  Because of the
++requirements to retain support for efficient directory lookups and
++filenames of up to 255 bytes, a constant initialization vector (IV) is
++used.  However, each encrypted directory uses a unique key, which
++limits IV reuse to within a single directory.
++
++Since filenames are encrypted with the CTS-CBC mode of operation, the
++plaintext and ciphertext filenames need not be multiples of the AES
++block size, i.e. 16 bytes.  However, the minimum size that can be
++encrypted is 16 bytes, so shorter filenames are NUL-padded to 16 bytes
++before being encrypted.  In addition, to reduce leakage of filename
++lengths via their ciphertexts, all filenames are NUL-padded to the
++next 4, 8, 16, or 32-byte boundary (configurable).  32 is recommended
++since this provides the best confidentiality, at the cost of making
++directory entries consume slightly more space.  Note that since NUL
++(``\0``) is not otherwise a valid character in filenames, the padding
++will never produce duplicate plaintexts.
++
++Symbolic link targets are considered a type of filename and are
++encrypted in the same way as filenames in directory entries.  Each
++symlink also uses a unique key; hence, the hardcoded IV is not a
++problem for symlinks.
++
++User API
++========
++
++Setting an encryption policy
++----------------------------
++
++The FS_IOC_SET_ENCRYPTION_POLICY ioctl sets an encryption policy on an
++empty directory or verifies that a directory or regular file already
++has the specified encryption policy.  It takes in a pointer to a
++:c:type:`struct fscrypt_policy`, defined as follows::
++
++    #define FS_KEY_DESCRIPTOR_SIZE  8
++
++    struct fscrypt_policy {
++            __u8 version;
++            __u8 contents_encryption_mode;
++            __u8 filenames_encryption_mode;
++            __u8 flags;
++            __u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
++    };
++
++This structure must be initialized as follows:
++
++- ``version`` must be 0.
++
++- ``contents_encryption_mode`` and ``filenames_encryption_mode`` must
++  be set to constants from ``<linux/fs.h>`` which identify the
++  encryption modes to use.  If unsure, use
++  FS_ENCRYPTION_MODE_AES_256_XTS (1) for ``contents_encryption_mode``
++  and FS_ENCRYPTION_MODE_AES_256_CTS (4) for
++  ``filenames_encryption_mode``.
++
++- ``flags`` must be set to a value from ``<linux/fs.h>`` which
++  identifies the amount of NUL-padding to use when encrypting
++  filenames.  If unsure, use FS_POLICY_FLAGS_PAD_32 (0x3).
++
++- ``master_key_descriptor`` specifies how to find the master key in
++  the keyring; see `Adding keys`_.  It is up to userspace to choose a
++  unique ``master_key_descriptor`` for each master key.  The e4crypt
++  and fscrypt tools use the first 8 bytes of
++  ``SHA-512(SHA-512(master_key))``, but this particular scheme is not
++  required.  Also, the master key need not be in the keyring yet when
++  FS_IOC_SET_ENCRYPTION_POLICY is executed.  However, it must be added
++  before any files can be created in the encrypted directory.
++
++If the file is not yet encrypted, then FS_IOC_SET_ENCRYPTION_POLICY
++verifies that the file is an empty directory.  If so, the specified
++encryption policy is assigned to the directory, turning it into an
++encrypted directory.  After that, and after providing the
++corresponding master key as described in `Adding keys`_, all regular
++files, directories (recursively), and symlinks created in the
++directory will be encrypted, inheriting the same encryption policy.
++The filenames in the directory's entries will be encrypted as well.
++
++Alternatively, if the file is already encrypted, then
++FS_IOC_SET_ENCRYPTION_POLICY validates that the specified encryption
++policy exactly matches the actual one.  If they match, then the ioctl
++returns 0.  Otherwise, it fails with EEXIST.  This works on both
++regular files and directories, including nonempty directories.
++
++Note that the ext4 filesystem does not allow the root directory to be
++encrypted, even if it is empty.  Users who want to encrypt an entire
++filesystem with one key should consider using dm-crypt instead.
++
++FS_IOC_SET_ENCRYPTION_POLICY can fail with the following errors:
++
++- ``EACCES``: the file is not owned by the process's uid, nor does the
++  process have the CAP_FOWNER capability in a namespace with the file
++  owner's uid mapped
++- ``EEXIST``: the file is already encrypted with an encryption policy
++  different from the one specified
++- ``EINVAL``: an invalid encryption policy was specified (invalid
++  version, mode(s), or flags)
++- ``ENOTDIR``: the file is unencrypted and is a regular file, not a
++  directory
++- ``ENOTEMPTY``: the file is unencrypted and is a nonempty directory
++- ``ENOTTY``: this type of filesystem does not implement encryption
++- ``EOPNOTSUPP``: the kernel was not configured with encryption
++  support for this filesystem, or the filesystem superblock has not
++  had encryption enabled on it.  (For example, to use encryption on an
++  ext4 filesystem, CONFIG_EXT4_ENCRYPTION must be enabled in the
++  kernel config, and the superblock must have had the "encrypt"
++  feature flag enabled using ``tune2fs -O encrypt`` or ``mkfs.ext4 -O
++  encrypt``.)
++- ``EPERM``: this directory may not be encrypted, e.g. because it is
++  the root directory of an ext4 filesystem
++- ``EROFS``: the filesystem is readonly
++
++Getting an encryption policy
++----------------------------
++
++The FS_IOC_GET_ENCRYPTION_POLICY ioctl retrieves the :c:type:`struct
++fscrypt_policy`, if any, for a directory or regular file.  See above
++for the struct definition.  No additional permissions are required
++beyond the ability to open the file.
++
++FS_IOC_GET_ENCRYPTION_POLICY can fail with the following errors:
++
++- ``EINVAL``: the file is encrypted, but it uses an unrecognized
++  encryption context format
++- ``ENODATA``: the file is not encrypted
++- ``ENOTTY``: this type of filesystem does not implement encryption
++- ``EOPNOTSUPP``: the kernel was not configured with encryption
++  support for this filesystem
++
++Note: if you only need to know whether a file is encrypted or not, on
++most filesystems it is also possible to use the FS_IOC_GETFLAGS ioctl
++and check for FS_ENCRYPT_FL, or to use the statx() system call and
++check for STATX_ATTR_ENCRYPTED in stx_attributes.
++
++Getting the per-filesystem salt
++-------------------------------
++
++Some filesystems, such as ext4 and F2FS, also support the deprecated
++ioctl FS_IOC_GET_ENCRYPTION_PWSALT.  This ioctl retrieves a randomly
++generated 16-byte value stored in the filesystem superblock.  This
++value is intended to used as a salt when deriving an encryption key
++from a passphrase or other low-entropy user credential.
++
++FS_IOC_GET_ENCRYPTION_PWSALT is deprecated.  Instead, prefer to
++generate and manage any needed salt(s) in userspace.
++
++Adding keys
++-----------
++
++To provide a master key, userspace must add it to an appropriate
++keyring using the add_key() system call (see:
++``Documentation/security/keys/core.rst``).  The key type must be
++"logon"; keys of this type are kept in kernel memory and cannot be
++read back by userspace.  The key description must be "fscrypt:"
++followed by the 16-character lower case hex representation of the
++``master_key_descriptor`` that was set in the encryption policy.  The
++key payload must conform to the following structure::
++
++    #define FS_MAX_KEY_SIZE 64
++
++    struct fscrypt_key {
++            u32 mode;
++            u8 raw[FS_MAX_KEY_SIZE];
++            u32 size;
++    };
++
++``mode`` is ignored; just set it to 0.  The actual key is provided in
++``raw`` with ``size`` indicating its size in bytes.  That is, the
++bytes ``raw[0..size-1]`` (inclusive) are the actual key.
++
++The key description prefix "fscrypt:" may alternatively be replaced
++with a filesystem-specific prefix such as "ext4:".  However, the
++filesystem-specific prefixes are deprecated and should not be used in
++new programs.
++
++There are several different types of keyrings in which encryption keys
++may be placed, such as a session keyring, a user session keyring, or a
++user keyring.  Each key must be placed in a keyring that is "attached"
++to all processes that might need to access files encrypted with it, in
++the sense that request_key() will find the key.  Generally, if only
++processes belonging to a specific user need to access a given
++encrypted directory and no session keyring has been installed, then
++that directory's key should be placed in that user's user session
++keyring or user keyring.  Otherwise, a session keyring should be
++installed if needed, and the key should be linked into that session
++keyring, or in a keyring linked into that session keyring.
++
++Note: introducing the complex visibility semantics of keyrings here
++was arguably a mistake --- especially given that by design, after any
++process successfully opens an encrypted file (thereby setting up the
++per-file key), possessing the keyring key is not actually required for
++any process to read/write the file until its in-memory inode is
++evicted.  In the future there probably should be a way to provide keys
++directly to the filesystem instead, which would make the intended
++semantics clearer.
++
++Access semantics
++================
++
++With the key
++------------
++
++With the encryption key, encrypted regular files, directories, and
++symlinks behave very similarly to their unencrypted counterparts ---
++after all, the encryption is intended to be transparent.  However,
++astute users may notice some differences in behavior:
++
++- Unencrypted files, or files encrypted with a different encryption
++  policy (i.e. different key, modes, or flags), cannot be renamed or
++  linked into an encrypted directory; see `Encryption policy
++  enforcement`_.  Attempts to do so will fail with EPERM.  However,
++  encrypted files can be renamed within an encrypted directory, or
++  into an unencrypted directory.
++
++- Direct I/O is not supported on encrypted files.  Attempts to use
++  direct I/O on such files will fall back to buffered I/O.
++
++- The fallocate operations FALLOC_FL_COLLAPSE_RANGE,
++  FALLOC_FL_INSERT_RANGE, and FALLOC_FL_ZERO_RANGE are not supported
++  on encrypted files and will fail with EOPNOTSUPP.
++
++- Online defragmentation of encrypted files is not supported.  The
++  EXT4_IOC_MOVE_EXT and F2FS_IOC_MOVE_RANGE ioctls will fail with
++  EOPNOTSUPP.
++
++- The ext4 filesystem does not support data journaling with encrypted
++  regular files.  It will fall back to ordered data mode instead.
++
++- DAX (Direct Access) is not supported on encrypted files.
++
++- The st_size of an encrypted symlink will not necessarily give the
++  length of the symlink target as required by POSIX.  It will actually
++  give the length of the ciphertext, which may be slightly longer than
++  the plaintext due to the NUL-padding.
++
++Note that mmap *is* supported.  This is possible because the pagecache
++for an encrypted file contains the plaintext, not the ciphertext.
++
++Without the key
++---------------
++
++Some filesystem operations may be performed on encrypted regular
++files, directories, and symlinks even before their encryption key has
++been provided:
++
++- File metadata may be read, e.g. using stat().
++
++- Directories may be listed, in which case the filenames will be
++  listed in an encoded form derived from their ciphertext.  The
++  current encoding algorithm is described in `Filename hashing and
++  encoding`_.  The algorithm is subject to change, but it is
++  guaranteed that the presented filenames will be no longer than
++  NAME_MAX bytes, will not contain the ``/`` or ``\0`` characters, and
++  will uniquely identify directory entries.
++
++  The ``.`` and ``..`` directory entries are special.  They are always
++  present and are not encrypted or encoded.
++
++- Files may be deleted.  That is, nondirectory files may be deleted
++  with unlink() as usual, and empty directories may be deleted with
++  rmdir() as usual.  Therefore, ``rm`` and ``rm -r`` will work as
++  expected.
++
++- Symlink targets may be read and followed, but they will be presented
++  in encrypted form, similar to filenames in directories.  Hence, they
++  are unlikely to point to anywhere useful.
++
++Without the key, regular files cannot be opened or truncated.
++Attempts to do so will fail with ENOKEY.  This implies that any
++regular file operations that require a file descriptor, such as
++read(), write(), mmap(), fallocate(), and ioctl(), are also forbidden.
++Note that currently there is no way to read or back up raw encrypted
++contents at the file level.
++
++Also without the key, files of any type (including directories) cannot
++be created or linked into an encrypted directory, nor can a name in an
++encrypted directory be the source or target of a rename, nor can an
++O_TMPFILE temporary file be created in an encrypted directory.  All
++such operations will fail with ENOKEY.
++
++Encryption policy enforcement
++=============================
++
++After an encryption policy has been set on a directory, all regular
++files, directories, and symbolic links created in that directory
++(recursively) will inherit that encryption policy.  Special files ---
++that is, named pipes, device nodes, and UNIX domain sockets --- will
++not be encrypted.
++
++Except for those special files, it is forbidden to have unencrypted
++files, or files encrypted with a different encryption policy, in an
++encrypted directory tree.  Attempts to link or rename such a file into
++an encrypted directory will fail with EPERM.  This is also enforced
++during ->lookup() to provide limited protection against offline
++attacks that try to disable or downgrade encryption in known locations
++where applications may later write sensitive data.
++
++Implementation details
++======================
++
++Encryption context
++------------------
++
++An encryption policy is represented on-disk by a :c:type:`struct
++fscrypt_context`.  It is up to individual filesystems to decide where
++to store it, but normally it would be stored in a hidden extended
++attribute.  It should *not* be exposed by the xattr-related system
++calls such as getxattr().  The struct is defined as follows::
++
++    #define FS_KEY_DESCRIPTOR_SIZE  8
++    #define FS_KEY_DERIVATION_NONCE_SIZE 16
++
++    struct fscrypt_context {
++            u8 format;
++            u8 contents_encryption_mode;
++            u8 filenames_encryption_mode;
++            u8 flags;
++            u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
++            u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
++    };
++
++Note that :c:type:`struct fscrypt_context` contains the same
++information as :c:type:`struct fscrypt_policy` (see `Setting an
++encryption policy`_), except that :c:type:`struct fscrypt_context`
++also contains a nonce.  The nonce is randomly generated by the kernel
++and is used to derive the inode's encryption key as described in
++`Per-file keys`_.
++
++Data path changes
++-----------------
++
++For the read path (->readpage()) of regular files, filesystems can
++read the ciphertext into the page cache and decrypt it in-place.  The
++page lock must be held until decryption has finished, to prevent the
++page from becoming visible to userspace prematurely.
++
++For the write path (->writepage()) of regular files, filesystems
++cannot encrypt data in-place in the page cache, since the cached
++plaintext must be preserved.  Instead, filesystems must encrypt into a
++temporary buffer or "bounce page", then write out the temporary
++buffer.  Some filesystems, such as UBIFS, already use temporary
++buffers regardless of encryption.  Other filesystems, such as ext4 and
++F2FS, have to allocate bounce pages specially for encryption.
++
++Filename hashing and encoding
++-----------------------------
++
++Modern filesystems accelerate directory lookups by using indexed
++directories.  An indexed directory is organized as a tree keyed by
++filename hashes.  When a ->lookup() is requested, the filesystem
++normally hashes the filename being looked up so that it can quickly
++find the corresponding directory entry, if any.
++
++With encryption, lookups must be supported and efficient both with and
++without the encryption key.  Clearly, it would not work to hash the
++plaintext filenames, since the plaintext filenames are unavailable
++without the key.  (Hashing the plaintext filenames would also make it
++impossible for the filesystem's fsck tool to optimize encrypted
++directories.)  Instead, filesystems hash the ciphertext filenames,
++i.e. the bytes actually stored on-disk in the directory entries.  When
++asked to do a ->lookup() with the key, the filesystem just encrypts
++the user-supplied name to get the ciphertext.
++
++Lookups without the key are more complicated.  The raw ciphertext may
++contain the ``\0`` and ``/`` characters, which are illegal in
++filenames.  Therefore, readdir() must base64-encode the ciphertext for
++presentation.  For most filenames, this works fine; on ->lookup(), the
++filesystem just base64-decodes the user-supplied name to get back to
++the raw ciphertext.
++
++However, for very long filenames, base64 encoding would cause the
++filename length to exceed NAME_MAX.  To prevent this, readdir()
++actually presents long filenames in an abbreviated form which encodes
++a strong "hash" of the ciphertext filename, along with the optional
++filesystem-specific hash(es) needed for directory lookups.  This
++allows the filesystem to still, with a high degree of confidence, map
++the filename given in ->lookup() back to a particular directory entry
++that was previously listed by readdir().  See :c:type:`struct
++fscrypt_digested_name` in the source for more details.
++
++Note that the precise way that filenames are presented to userspace
++without the key is subject to change in the future.  It is only meant
++as a way to temporarily present valid filenames so that commands like
++``rm -r`` work as expected on encrypted directories.
+diff --git a/Documentation/filesystems/index.rst b/Documentation/filesystems/index.rst
+index 256e10eedba4..53b89d0edc15 100644
+--- a/Documentation/filesystems/index.rst
++++ b/Documentation/filesystems/index.rst
+@@ -315,3 +315,14 @@ exported for use by modules.
+    :internal:
+ 
+ .. kernel-doc:: fs/pipe.c
++
++Encryption API
++==============
++
++A library which filesystems can hook into to support transparent
++encryption of files and directories.
++
++.. toctree::
++    :maxdepth: 2
++
++    fscrypt
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 6f7721d1634c..806748e4942c 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -5558,6 +5558,7 @@ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/tytso/fscrypt.git
+ S:	Supported
+ F:	fs/crypto/
+ F:	include/linux/fscrypt*.h
++F:	Documentation/filesystems/fscrypt.rst
+ 
+ FUJITSU FR-V (FRV) PORT
+ S:	Orphan
+-- 
+2.14.1.480.gb18f417b89-goog
