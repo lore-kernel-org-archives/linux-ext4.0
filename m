@@ -1,27 +1,33 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 08/13] dax: Fix comment describing dax_iomap_fault()
-Date: Fri, 18 Aug 2017 16:12:59 -0600
-Message-ID: <20170818221259.GG32627@linux.intel.com>
-References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-9-jack@suse.cz>
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Subject: [PATCH 0/2] fs-ext4: Adjustments for two function implementations
+Date: Sat, 19 Aug 2017 13:46:23 +0200
+Message-ID: <ca49a6dc-f2ee-d427-5f16-052706277b38@users.sourceforge.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
-        Andy Lutomirski <luto@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Boaz Harrosh <boazh@netapp.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170817160815.30466-9-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: LKML <linux-kernel@vger.kernel.org>,
+        kernel-janitors@vger.kernel.org
+To: linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Language: en-GB
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 17, 2017 at 06:08:10PM +0200, Jan Kara wrote:
-> Add missing argument description.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Sat, 19 Aug 2017 13:35:43 +0200
 
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Two update suggestions were taken into account
+from static source code analysis.
+
+Markus Elfring (2):
+  Delete an error message for a failed memory allocation in ext4_multi_mount_protect()
+  Improve a size determination in two functions
+
+ fs/ext4/dir.c | 2 +-
+ fs/ext4/mmp.c | 7 +++----
+ 2 files changed, 4 insertions(+), 5 deletions(-)
+
+-- 
+2.14.0
