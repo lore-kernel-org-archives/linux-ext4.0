@@ -1,58 +1,39 @@
-From: Eric Sandeen <esandeen@redhat.com>
-Subject: Re: [PATCH 1/2] ext4: Delete an error message for a failed memory
- allocation in ext4_multi_mount_protect()
-Date: Sat, 19 Aug 2017 12:08:29 -0500
-Message-ID: <b21f6c3d-2cad-3f72-f410-f608ea5f4cea@redhat.com>
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Subject: Re: ext4: Delete an error message for a failed memory allocation in
+ ext4_multi_mount_protect()
+Date: Sat, 19 Aug 2017 20:00:31 +0200
+Message-ID: <e522d9a5-4d5a-b4a1-fe94-bb3aae4c5976@users.sourceforge.net>
 References: <ca49a6dc-f2ee-d427-5f16-052706277b38@users.sourceforge.net>
  <5bf432ae-398d-718c-8105-3092a240a8ef@users.sourceforge.net>
-Reply-To: sandeen@redhat.com
+ <b21f6c3d-2cad-3f72-f410-f608ea5f4cea@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: LKML <linux-kernel@vger.kernel.org>,
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Theodore Ts'o <tytso@mit.edu>,
+        LKML <linux-kernel@vger.kernel.org>,
         kernel-janitors@vger.kernel.org
-To: SF Markus Elfring <elfring@users.sourceforge.net>,
-        linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Theodore Ts'o <tytso@mit.edu>
+To: Eric Sandeen <esandeen@redhat.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <5bf432ae-398d-718c-8105-3092a240a8ef@users.sourceforge.net>
-Content-Language: en-US
+In-Reply-To: <b21f6c3d-2cad-3f72-f410-f608ea5f4cea@redhat.com>
+Content-Language: en-GB
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 8/19/17 6:47 AM, SF Markus Elfring wrote:
-> From: Markus Elfring <elfring@users.sourceforge.net>
-> Date: Sat, 19 Aug 2017 13:04:50 +0200
+>> Omit an extra message for a memory allocation failure in this function.
 > 
-> Omit an extra message for a memory allocation failure in this function.
+> I might be dense, but what makes this message "extra?"
+> 
+> (I suppose kmalloc squawks too if it fails,
 
-I might be dense, but what makes this message "extra?"
+Do you find the default allocation failure report sufficient?
 
-(I suppose kmalloc squawks too if it fails, but is Coccinelle
-now warning about explicit memory allocation failure warnings?)
 
--Eric
- 
-> This issue was detected by using the Coccinelle software.
-> 
-> Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
-> ---
->  fs/ext4/mmp.c | 5 ++---
->  1 file changed, 2 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-> index eb9835638680..1ce00453f612 100644
-> --- a/fs/ext4/mmp.c
-> +++ b/fs/ext4/mmp.c
-> @@ -371,7 +371,6 @@ int ext4_multi_mount_protect(struct super_block *sb,
-> -	if (!mmpd_data) {
-> -		ext4_warning(sb, "not enough memory for mmpd_data");
-> +	if (!mmpd_data)
->  		goto failed;
-> -	}
-> +
->  	mmpd_data->sb = sb;
->  	mmpd_data->bh = bh;
->  
-> 
+> but is Coccinelle now warning about explicit memory allocation failure warnings?)
+
+This software tool can help to find source code places for further
+development considerations. Would you like to clarify a corresponding
+search pattern a bit more?
+
+Regards,
+Markus
