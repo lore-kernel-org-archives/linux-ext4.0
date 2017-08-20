@@ -1,48 +1,76 @@
 From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH 1/3] ext4: Do not unnecessarily allocate buffer in recently_deleted()
-Date: Sun, 20 Aug 2017 19:52:09 +0800
-Message-ID: <20170820115209.56957-1-wshilong@ddn.com>
-Cc: Jan Kara <jack@suse.cz>
+Subject: [PATCH 2/3] ext4: cleanup goto next group
+Date: Sun, 20 Aug 2017 19:53:25 +0800
+Message-ID: <20170820115325.57015-1-wshilong@ddn.com>
+Cc: sihara@ddn.com, lixi@ddn.com, wshilong@ddn.com
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f66.google.com ([74.125.83.66]:33813 "EHLO
-        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752866AbdHTLwa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Aug 2017 07:52:30 -0400
-Received: by mail-pg0-f66.google.com with SMTP id i12so4659905pgr.1
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Aug 2017 04:52:30 -0700 (PDT)
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:33461 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752769AbdHTLxs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Aug 2017 07:53:48 -0400
+Received: by mail-pg0-f65.google.com with SMTP id n4so5079929pgn.0
+        for <linux-ext4@vger.kernel.org>; Sun, 20 Aug 2017 04:53:48 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+From: Wang Shilong <wshilong@ddn.com>
 
-From: Jan Kara <jack@suse.cz>
+avoid duplicated codes, also we need goto
+next group in case we found reserved inode.
 
-In recently_deleted() function we want to check whether inode is still
-cached in buffer cache. Use sb_find_get_block() for that instead of
-sb_getblk() to avoid unnecessary allocation of bdev page and buffer
-heads.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- fs/ext4/ialloc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/ialloc.c | 20 ++++++--------------
+ 1 file changed, 6 insertions(+), 14 deletions(-)
 
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 507bfb3..0d03e73 100644
+index 0d03e73..9e6eb1c 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -707,9 +707,9 @@ static int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
- 	if (unlikely(!gdp))
- 		return 0;
- 
--	bh = sb_getblk(sb, ext4_inode_table(sb, gdp) +
-+	bh = sb_find_get_block(sb, ext4_inode_table(sb, gdp) +
- 		       (ino / inodes_per_block));
--	if (unlikely(!bh) || !buffer_uptodate(bh))
-+	if (!bh || !buffer_uptodate(bh))
+@@ -892,19 +892,13 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
  		/*
- 		 * If the block is not in the buffer cache, then it
- 		 * must have been written out.
+ 		 * Check free inodes count before loading bitmap.
+ 		 */
+-		if (ext4_free_inodes_count(sb, gdp) == 0) {
+-			if (++group == ngroups)
+-				group = 0;
+-			continue;
+-		}
++		if (ext4_free_inodes_count(sb, gdp) == 0)
++			goto next_group;
+ 
+ 		grp = ext4_get_group_info(sb, group);
+ 		/* Skip groups with already-known suspicious inode tables */
+-		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
+-			if (++group == ngroups)
+-				group = 0;
+-			continue;
+-		}
++		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp))
++			goto next_group;
+ 
+ 		brelse(inode_bitmap_bh);
+ 		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
+@@ -912,9 +906,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp) ||
+ 		    IS_ERR(inode_bitmap_bh)) {
+ 			inode_bitmap_bh = NULL;
+-			if (++group == ngroups)
+-				group = 0;
+-			continue;
++			goto next_group;
+ 		}
+ 
+ repeat_in_this_group:
+@@ -926,7 +918,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ 		if (group == 0 && (ino+1) < EXT4_FIRST_INO(sb)) {
+ 			ext4_error(sb, "reserved inode found cleared - "
+ 				   "inode=%lu", ino + 1);
+-			continue;
++			goto next_group;
+ 		}
+ 		if ((EXT4_SB(sb)->s_journal == NULL) &&
+ 		    recently_deleted(sb, group, ino)) {
 -- 
 2.9.3
