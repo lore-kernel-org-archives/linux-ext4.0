@@ -1,63 +1,103 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
- encryption
-Date: Mon, 21 Aug 2017 17:02:14 -0400
-Message-ID: <20170821210214.34ksroseab4mjgph@thunk.org>
-References: <20170818194730.61575-1-ebiggers3@gmail.com>
- <9dcef6c6-a758-ea57-0d51-55f33e365931@oracle.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: Re: [PATCH 11/13] dax, iomap: Add support for synchronous faults
+Date: Mon, 21 Aug 2017 15:09:16 -0600
+Message-ID: <20170821210916.GF26220@linux.intel.com>
+References: <20170817160815.30466-1-jack@suse.cz>
+ <20170817160815.30466-12-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org,
-        linux-doc@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Anand Jain <anand.jain@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38590 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753663AbdHUVCT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 21 Aug 2017 17:02:19 -0400
+Cc: linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
+        Andy Lutomirski <luto@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Boaz Harrosh <boazh@netapp.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <9dcef6c6-a758-ea57-0d51-55f33e365931@oracle.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170817160815.30466-12-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 21, 2017 at 09:44:11PM +0800, Anand Jain wrote:
+On Thu, Aug 17, 2017 at 06:08:13PM +0200, Jan Kara wrote:
+> Add a flag to iomap interface informing the caller that inode needs
+> fdstasync(2) for returned extent to become persistent and use it in DAX
+> fault code so that we map such extents only read only. We propagate the
+> information that the page table entry has been inserted write-protected
+> from dax_iomap_fault() with a new VM_FAULT_RO flag. Filesystem fault
+> handler is then responsible for calling fdatasync(2) and updating page
+> tables to map pfns read-write. dax_iomap_fault() also takes care of
+> updating vmf->orig_pte to match the PTE that was inserted so that we can
+> safely recheck that PTE did not change while write-enabling it.
 > 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/dax.c              | 31 +++++++++++++++++++++++++++++++
+>  include/linux/iomap.h |  2 ++
+>  include/linux/mm.h    |  6 +++++-
+>  3 files changed, 38 insertions(+), 1 deletion(-)
 > 
-> > +fscrypt is not guaranteed to protect confidentiality or authenticity
-> > +if an attacker is able to manipulate the filesystem offline prior to
-> > +an authorized user later accessing the filesystem.
-> 
->  How does fscrypt / Android protect against Evil Maid attack. ?
+> diff --git a/fs/dax.c b/fs/dax.c
+> index bc040e654cc9..ca88fc356786 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -1177,6 +1177,22 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
+>  			goto error_finish_iomap;
+>  		}
+>  
+> +		/*
+> +		 * If we are doing synchronous page fault and inode needs fsync,
+> +		 * we can insert PTE into page tables only after that happens.
+> +		 * Skip insertion for now and return the pfn so that caller can
+> +		 * insert it after fsync is done.
+> +		 */
+> +		if (write && (vma->vm_flags & VM_SYNC) &&
+> +		    (iomap.flags & IOMAP_F_NEEDDSYNC)) {
+> +			if (WARN_ON_ONCE(!pfnp)) {
+> +				error = -EIO;
+> +				goto error_finish_iomap;
+> +			}
+> +			*pfnp = pfn;
+> +			vmf_ret = VM_FAULT_NEEDDSYNC | major;
+> +			goto finish_iomap;
+> +		}
 
-In order to answer that question it's important to be specific about
-threat model is like; exactly what powers does the Evil Maid actually
-have?
+Sorry for the second reply, but I spotted this during my testing.
 
-One of the stronger form of the Evil Maid attack posits that the Evil
-Made can remove the device from your hotel room, modify the hardware
-undetectably (up to and including desoldering the flash chip so it can
-be read and write directly), then replace it back to your hotel room,
-wait for you to login, and then later on, steal your phone and
-desolder the flash chip again.
+The radix tree entry is inserted and marked as dirty by the
+dax_insert_mapping_entry() call a few lines above this newly added block.
 
-This sort of attack is going to require a combination of hardware and
-software features.  Without talking about future product features on
-any specific future device being shipped by Google or any other
-company --- theoretically, if the keys are stored a hardware device
-which only disgorges the keys sends them directly to the in-line
-crypto engine without letting the keys be visible to the Linux kernel
-(or the Host CPU in any way at all), then it makes these sorts of Evil
-Maid much more difficult.
+I think that this patch should prevent the radix tree entry that we insert
+from being marked as dirty, and let the dax_insert_pfn_mkwrite() handler do
+that work.  Right now it is being made dirty twice, which we don't need.
 
-Of course, if the Evil Maid can somehow insert something to tap the
-communications channel between the key storage device and the
-inline-crypto engine, then all bets are off.  Presumably, though, this
-could be made harder; for example, by putting them on the
-system-on-a-chip.
+Just inserting the entry as clean here and then marking it as dirty later in
+dax_insert_pfn_mkwrite() keeps the radix tree entry dirty state consistent
+with the PTE dirty state.  It also solves an issue we have right now where the
+newly inserted dirty entry will immediately be flushed as part of the
+vfs_fsync_range() call that the filesystem will do before
+dax_insert_pfn_mkwrite(). 
 
-					- Ted
-					
+For example, here's a trace of a PMD write fault on a completely sparse file:
+
+  dax_pmd_fault: dev 259:0 ino 0xc shared WRITE|ALLOW_RETRY|KILLABLE|USER
+  address 0x7feab8e00000 vm_start 0x7feab8e00000 vm_end 0x7feab9000000 pgoff
+  0x0 max_pgoff 0x1ff 
+  
+  dax_pmd_fault_done: dev 259:0 ino 0xc shared WRITE|ALLOW_RETRY|KILLABLE|USER
+  address 0x7feab8e00000 vm_start 0x7feab8e00000 vm_end 0x7feab9000000 pgoff
+  0x0 max_pgoff 0x1ff NEEDDSYNC
+  
+  dax_writeback_range: dev 259:0 ino 0xc pgoff 0x0-0x1ff
+  
+  dax_writeback_one: dev 259:0 ino 0xc pgoff 0x0 pglen 0x200
+  
+  dax_writeback_range_done: dev 259:0 ino 0xc pgoff 0x1-0x1ff
+  
+  dax_insert_pfn_mkwrite: dev 259:0 ino 0xc shared
+  WRITE|ALLOW_RETRY|KILLABLE|USER address 0x7feab8e00000 pgoff 0x0 NOPAGE
+
+The PMD that we are writing back with dax_writeback_one() is the one that we
+just made dirty via the first 1/2 of the sync fault, before we've installed a
+page table entry.  This fix might speed up some of your test measurements as
+well.
