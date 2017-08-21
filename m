@@ -1,104 +1,74 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH 10/13] mm: Wire up MAP_SYNC
-Date: Mon, 21 Aug 2017 15:57:03 -0600
-Message-ID: <20170821215703.GA24473@linux.intel.com>
-References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-11-jack@suse.cz>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
+ encryption
+Date: Mon, 21 Aug 2017 15:33:37 -0700
+Message-ID: <20170821223337.GA8847@gmail.com>
+References: <20170818194730.61575-1-ebiggers3@gmail.com>
+ <8EA94C5A-A3F7-48BC-91BE-3C0BD17D7927@dilger.ca>
+ <20170820023227.slfqjq6dbcva74du@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Boaz Harrosh <boazh-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-fscrypt@vger.kernel.org,
+        linux-doc@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-doc-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170817160815.30466-11-jack-AlSwsSmVLrQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170820023227.slfqjq6dbcva74du@thunk.org>
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 17, 2017 at 06:08:12PM +0200, Jan Kara wrote:
-> Pretty crude for now...
+On Sat, Aug 19, 2017 at 10:32:27PM -0400, Theodore Ts'o wrote:
+> On Fri, Aug 18, 2017 at 03:06:52PM -0600, Andreas Dilger wrote:
+> > On Aug 18, 2017, at 1:47 PM, Eric Biggers <ebiggers3@gmail.com> wrote:
+> > > +Key hierarchy
+> > > +=============
+> > > +
+> > > +Master Keys
+> > > +-----------
+> > > +
+> > > +Userspace should generate master keys either using a cryptographically
+> > > +secure random number generator, e.g. by reading from ``/dev/urandom``
+> > > +or calling getrandom(), or by using a KDF (Key Derivation Function).
+> > > +Note that whenever a KDF is used to "stretch" a lower-entropy secret
+> > > +such as a passphrase, it is critical that a KDF designed for this
+> > > +purpose be used, such as scrypt, PBKDF2, or Argon2.
+> > 
+> > One minor suggestion - when generating a master key for a filesystem,
+> > I'd think it is preferable to use /dev/random instead of /dev/urandom
+> > to ensure there is enough entropy.
 > 
-> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> I would just say "use getrandom" and be done with it.  More
+> importantly, we probably just want to direct users to use either
+> https://github.com/google/fscrypt or Android key management system at
+> the beginning of the file.
+> 
+> If the readers of this documentation file need to be told how to get
+> good random number generators, they're very likely to make any number
+> of other basic security mistakes.  If people don't think the fscrypt
+> user program isn't user-friendly or flexible enough to encompass their
+> use case, it's probably better to encourage them to submit
+> enhancements to an existing open source key management system such as
+> google/fscrypt.  If we minimize the number of userspace
+> implementations, the easier it will be to make sure they are
+> appropriately audited for security issues...
+> 
 
-One other thing that should probably be wired up before this is all said and
-done is the VmFlag string in /proc/<pid>/smaps.  Right now when we set this
-flag it ends up as ??:
+Yes, the intent wasn't really to start a debate about /dev/random vs.
+/dev/urandom vs. getrandom().  I'll probably just remove the text "e.g. by
+reading from /dev/urandom or calling getrandom()".
 
-7f44e6cbd000-7f44e6dbd000 rw-s 00000000 103:00 12              /root/dax/data
-Size:               1024 kB
-Rss:                   0 kB
-Pss:                   0 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         0 kB
-Private_Dirty:         0 kB
-Referenced:            0 kB
-Anonymous:             0 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Locked:                0 kB
-VmFlags: rd wr sh mr mw me ms ?? mm hg 
+I agree that we should recommend the 'fscrypt' userspace tool more strongly as
+well.  I did mention it at the beginning of the document, but I didn't
+explicitly say something like "use this instead of writing your own tool".
 
-The quick one-liner at the end of this patch changes that to:
+Either way, the kernel API should still be fully documented.  And part of that
+is documenting that the master key needs to be a good pseudorandom key.
+Otherwise I could imagine someone mistakenly thinking that the filesystem does
+key stretching for them, for example.  (Yes, that person probably wouldn't read
+the documentation and would screw up anyway, but we might as well try.)
 
-7fe30e87f000-7fe30e97f000 rw-s 00000000 103:00 12               /root/dax/data
-Size:               1024 kB
-Rss:                   0 kB
-Pss:                   0 kB
-Shared_Clean:          0 kB
-Shared_Dirty:          0 kB
-Private_Clean:         0 kB
-Private_Dirty:         0 kB
-Referenced:            0 kB
-Anonymous:             0 kB
-LazyFree:              0 kB
-AnonHugePages:         0 kB
-ShmemPmdMapped:        0 kB
-Shared_Hugetlb:        0 kB
-Private_Hugetlb:       0 kB
-Swap:                  0 kB
-SwapPss:               0 kB
-KernelPageSize:        4 kB
-MMUPageSize:           4 kB
-Locked:                0 kB
-VmFlags: rd wr sh mr mw me ms sf mm hg
-
-I think that of software can rely on this flag for userspace flushing without
-worrying about any new TOCTOU races because there isn't a way to unset the
-VM_SYNC flag once it is set - it should be valid as long as the mmap() remains
-open and the mmap'd address is valid.
-
---- 8< ---
- fs/proc/task_mmu.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index b836fd6..a2a82ed 100644
---- a/fs/proc/task_mmu.c
-+++ b/fs/proc/task_mmu.c
-@@ -650,6 +650,7 @@ static void show_smap_vma_flags(struct seq_file *m, struct vm_area_struct *vma)
- 		[ilog2(VM_ACCOUNT)]	= "ac",
- 		[ilog2(VM_NORESERVE)]	= "nr",
- 		[ilog2(VM_HUGETLB)]	= "ht",
-+		[ilog2(VM_SYNC)]	= "sf",
- 		[ilog2(VM_ARCH_1)]	= "ar",
- 		[ilog2(VM_DONTDUMP)]	= "dd",
- #ifdef CONFIG_MEM_SOFT_DIRTY
+Eric
