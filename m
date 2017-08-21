@@ -1,114 +1,102 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 13/13] ext4: Support for synchronous DAX faults
-Date: Mon, 21 Aug 2017 13:19:48 -0600
-Message-ID: <20170821191948.GD26220@linux.intel.com>
-References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-14-jack@suse.cz>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [RFC PATCH 0/7] dax, ext4: Synchronous page faults
+Date: Mon, 21 Aug 2017 13:57:51 -0600
+Message-ID: <20170821195751.GE26220@linux.intel.com>
+References: <CALCETrVzxrQ76BXEfo4kcRFyQmxbrMwCLE17yPyTJzz0tUs+Dg@mail.gmail.com>
+ <20170728093821.GB29433@quack2.suse.cz>
+ <20170801110241.GE6742@infradead.org>
+ <20170801112603.GG4215@quack2.suse.cz>
+ <CAPcyv4hdOsuA6cqRCnOZMLMXvycwZevg06xOVZz3u0kupm2Drw@mail.gmail.com>
+ <20170811100327.GD7064@infradead.org>
+ <CAPcyv4hgqh8tHeWDNRnJnvwDh7hiFU8+3O0VWAHFQOEvPna11Q@mail.gmail.com>
+ <20170813092556.GA19019@infradead.org>
+ <ccf82f19-7693-25da-eaa6-a654830ca81e@netapp.com>
+ <CAPcyv4jWW5EH8KrGWe-9oAT7RvFryh1ci6CcGeDb-zcOS9QMxw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
-        Andy Lutomirski <luto@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Boaz Harrosh <boazh@netapp.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:7396 "EHLO mga03.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753600AbdHUTTu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 21 Aug 2017 15:19:50 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+ "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+ Linux FS Devel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Boaz Harrosh <boazh-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>, Amit Golander <amitg-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170817160815.30466-14-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAPcyv4jWW5EH8KrGWe-9oAT7RvFryh1ci6CcGeDb-zcOS9QMxw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 17, 2017 at 06:08:15PM +0200, Jan Kara wrote:
-> We return IOMAP_F_NEEDDSYNC flag from ext4_iomap_begin() for a
-> synchronous write fault when inode has some uncommitted metadata
-> changes. In the fault handler ext4_dax_fault() we then detect this case,
-> call vfs_fsync_range() to make sure all metadata is committed, and call
-> dax_pfn_mkwrite() to mark PTE as writeable. Note that this will also
-
-Need to fix up the above line a little -
-s/dax_pfn_mkwrite/dax_insert_pfn_mkwrite/, and we insert the PTE as well as
-make it writeable.
-
-> dirty corresponding radix tree entry which is what we want - fsync(2)
-> will still provide data integrity guarantees for applications not using
-> userspace flushing. And applications using userspace flushing can avoid
-> calling fsync(2) and thus avoid the performance overhead.
+On Mon, Aug 14, 2017 at 09:03:59AM -0700, Dan Williams wrote:
+> On Mon, Aug 14, 2017 at 7:04 AM, Boaz Harrosh <boazh-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org> wrote:
+> >
+> > Thank you Jan, I'm patiently waiting for this MAP_SYNC flag since I asked for
+> > it in 2014. I'm so glad its time is finally do.
+> >
+> > Thank you for working on this. Please CC me on future patches.
+> > (note the new Netapp email)
+> >
+> > On 13/08/17 12:25, Christoph Hellwig wrote:
+> >> On Sat, Aug 12, 2017 at 07:44:14PM -0700, Dan Williams wrote:
+> >>> How about MAP_SYNC == (MAP_SHARED|MAP_PRIVATE)? On older kernels that
+> >>> should get -EINVAL, and on new kernels it means SYNC+SHARED.
+> >>
+> >> Cute trick, but I'd hate to waster it just for our little flag.
+> >>
+> >> How about:
+> >>
+> >> #define __MAP_VALIDATE                MAP_SHARED|MAP_PRIVATE
+> >> #define MAP_SYNC              0x??? | __MAP_VALIDATE
+> >>
+> >> so that we can reuse that trick for any new flag?
+> >>
+> >
+> > YES! And please create a mask for all new flags and in validation
+> > code if ((m_flags & __MAP_VALIDATE) == __MAP_VALIDATE) then you
+> > want that (m_flags & __MAP_NEWFLAGS) does not come empty, this
+> > way you actually preserve the old check that SHARED and PRIVATE
+> > do not co exist.
+> >
+> > Few Comments on this new MAP_ flag
+> >
+> > 0] The name at least needs to be MAP_MSYNC because only meta-data is
+> >     synced not the data pointed to. That is the responsibility of the app
+> >
+> > 1] This flag you have named MAP_SYNC but it is very much related to
+> >    dax and the ability for user-mode to "flush" the data pointed by this
+> >    now "synced" meta data.
+> >    For example in ext4, this flag set on an inode that is *not* IS_DAX
+> >    should fail the mmap. Because there is no point of synced meta if the
+> >    data is actually in page-cache and we know for sure it was not yet synced,
+> >    And there is no way for user-mode to directly "sync" the data as well.
+> >
+> > 2] The code should be constructed that the default check for the MAP_SYNC
+> >    should fail, and only Hopped in FSs are allowed.
+> >    (So not to modify all Implementations of file_operations->mmap() )
+> >
+> > 3] /dev/pmem could start serving DAX pages in mmap, if asked for MAP_MSYNC
+> >    (which is also an API that says "I know I need to cl_flush". See 1. )
+> >
+> > 4] Once we have this flag. And properly implemented at least in one FS
+> >    and optionally in /dev/pmemX we no longer have any justification for
+> >    /dev/daxX and it can die a slow and happy death.
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/file.c       | 36 ++++++++++++++++++++++++++++++------
->  fs/ext4/inode.c      |  4 ++++
->  fs/jbd2/journal.c    | 17 +++++++++++++++++
->  include/linux/jbd2.h |  1 +
->  4 files changed, 52 insertions(+), 6 deletions(-)
+> I'm all for replacing /dev/dax with filesystem equivalent
+> functionality, but I don't think MAP_SYNC gets us fully there. That's
+> what the MAP_DIRECT proposal [1] is meant to address.
 > 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 850037e140d7..3765c4ed1368 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -280,6 +280,7 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
->  	struct inode *inode = file_inode(vmf->vma->vm_file);
->  	struct super_block *sb = inode->i_sb;
->  	bool write = vmf->flags & FAULT_FLAG_WRITE;
-> +	pfn_t pfn;
->  
->  	if (write) {
->  		sb_start_pagefault(sb);
-> @@ -287,16 +288,39 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
->  		down_read(&EXT4_I(inode)->i_mmap_sem);
->  		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
->  					       EXT4_DATA_TRANS_BLOCKS(sb));
-> +		if (IS_ERR(handle)) {
-> +			up_read(&EXT4_I(inode)->i_mmap_sem);
-> +			sb_end_pagefault(sb);
-> +			return VM_FAULT_SIGBUS;
-> +		}
->  	} else {
->  		down_read(&EXT4_I(inode)->i_mmap_sem);
->  	}
-> -	if (!IS_ERR(handle))
-> -		result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops, NULL);
-> -	else
-> -		result = VM_FAULT_SIGBUS;
-> +	result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops, &pfn);
->  	if (write) {
-> -		if (!IS_ERR(handle))
-> -			ext4_journal_stop(handle);
-> +		ext4_journal_stop(handle);
-> +		/* Write fault but PFN mapped only RO? */
+> [1]: https://lkml.org/lkml/2017/8/13/160
 
-The above comment is out of date.
-
-> +		if (result & VM_FAULT_NEEDDSYNC) {
-> +			int err;
-> +			loff_t start = ((loff_t)vmf->pgoff) << PAGE_SHIFT;
-> +			size_t len = 0;
-> +
-> +			if (pe_size == PE_SIZE_PTE)
-> +				len = PAGE_SIZE;
-> +#ifdef CONFIG_FS_DAX_PMD
-> +			else if (pe_size == PE_SIZE_PMD)
-> +				len = HPAGE_PMD_SIZE;
-
-In fs/dax.c we always use PMD_SIZE.  It looks like HPAGE_PMD_SIZE and PMD_SIZE
-are always the same (from include/linux/huge_mm.h, the only defintion of
-HPAGE_PMD_SIZE):
-
-#define HPAGE_PMD_SHIFT PMD_SHIFT
-#define HPAGE_PMD_SIZE	((1UL) << HPAGE_PMD_SHIFT)
-
-and AFAICT PMD_SIZE is defined to be 1<<PMD_SHIFT for all architectures as
-well.  I don't understand why we have both?
-
-In any case, neither HPAGE_PMD_SIZE nor PMD_SIZE are used anywhere else in the
-ext4 code, so can we use PMD_SIZE here for consistency?  If they ever did
-manage to be different, I think we'd want PMD_SIZE anyway.
-
-With those nits and an updated changelog:
-
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+I think we may also need to get DAX working on raw block devices again before
+/dev/dax can go away.  AFAIK some customers still prefer to use DAX on a
+per-device basis and not have a filesystem.
