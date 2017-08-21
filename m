@@ -1,173 +1,92 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH 3/3 v5] ext4: reduce lock contention in __ext4_new_inode
-Date: Sun, 20 Aug 2017 19:54:37 +0800
-Message-ID: <20170820115437.57074-1-wshilong@ddn.com>
-Cc: sihara@ddn.com, tytso@mit.edu, adilger@dilger.ca, lixi@ddn.com,
-        wshilong@ddn.com, jack@suse.cz
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/3] ext4: cleanup goto next group
+Date: Mon, 21 Aug 2017 09:58:31 +0200
+Message-ID: <20170821075831.GA20202@quack2.suse.cz>
+References: <20170820115325.57015-1-wshilong@ddn.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, sihara@ddn.com, lixi@ddn.com,
+        wshilong@ddn.com
+To: Wang Shilong <wangshilong1991@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f67.google.com ([74.125.83.67]:37219 "EHLO
-        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752769AbdHTLy7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 20 Aug 2017 07:54:59 -0400
-Received: by mail-pg0-f67.google.com with SMTP id 83so19982109pgb.4
-        for <linux-ext4@vger.kernel.org>; Sun, 20 Aug 2017 04:54:59 -0700 (PDT)
+Received: from mx2.suse.de ([195.135.220.15]:40668 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751916AbdHUH6d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 21 Aug 2017 03:58:33 -0400
+Content-Disposition: inline
+In-Reply-To: <20170820115325.57015-1-wshilong@ddn.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Wang Shilong <wshilong@ddn.com>
+On Sun 20-08-17 19:53:25, Wang Shilong wrote:
+> From: Wang Shilong <wshilong@ddn.com>
+> 
+> avoid duplicated codes, also we need goto
+> next group in case we found reserved inode.
+> 
+> Signed-off-by: Wang Shilong <wshilong@ddn.com>
 
-While running number of creating file threads concurrently,
-we found heavy lock contention on group spinlock:
+Looks good. You can add:
 
-FUNC                           TOTAL_TIME(us)       COUNT        AVG(us)
-ext4_create                    1707443399           1440000      1185.72
-_raw_spin_lock                 1317641501           180899929    7.28
-jbd2__journal_start            287821030            1453950      197.96
-jbd2_journal_get_write_access  33441470             73077185     0.46
-ext4_add_nondir                29435963             1440000      20.44
-ext4_add_entry                 26015166             1440049      18.07
-ext4_dx_add_entry              25729337             1432814      17.96
-ext4_mark_inode_dirty          12302433             5774407      2.13
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-most of cpu time blames to _raw_spin_lock, here is some testing
-numbers with/without patch.
+								Honza
 
-Test environment:
-Server : SuperMicro Sever (2 x E5-2690 v3@2.60GHz, 128GB 2133MHz
-         DDR4 Memory, 8GbFC)
-Storage : 2 x RAID1 (DDN SFA7700X, 4 x Toshiba PX02SMU020 200GB
-          Read Intensive SSD)
-
-format command:
-        mkfs.ext4 -J size=4096
-
-test command:
-        mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \
-                -r -i 1 -v -p 10 -u #first run to load inode
-
-        mpirun -np 48 mdtest -n 30000 -d /ext4/mdtest.out -F -C \
-                -r -i 3 -v -p 10 -u
-
-Kernel version: 4.13.0-rc3
-
-Test  1,440,000 files with 48 directories by 48 processes:
-
-Without patch:
-
-File Creation   File removal
-79,033          289,569 ops/per second
-81,463          285,359
-79,875          288,475
-
-With patch:
-File Creation   File removal
-810669		301694
-812805		302711
-813965		297670
-
-Creation performance is improved more than 10X with large
-journal size. The main problem here is we test bitmap
-and do some check and journal operations which could be
-slept, then we test and set with lock hold, this could
-be racy, and make 'inode' steal by other process.
-
-However, after first try, we could confirm handle has
-been started and inode bitmap journaled too, then
-we could find and set bit with lock hold directly, this
-will mostly gurateee success with second try.
-
-Tested-by: Shuichi Ihara <sihara@ddn.com>
-Signed-off-by: Wang Shilong <wshilong@ddn.com>
----
-v4->v5: better refactor codes as Jan Kara suggested.
----
- fs/ext4/ialloc.c | 50 +++++++++++++++++++++++++++++++++++++++-----------
- 1 file changed, 39 insertions(+), 11 deletions(-)
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 9e6eb1c..fb83a36 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -730,6 +730,27 @@ static int recently_deleted(struct super_block *sb, ext4_group_t group, int ino)
- 	return ret;
- }
- 
-+static int find_inode_bit(struct super_block *sb, ext4_group_t group,
-+			  struct buffer_head *bitmap, unsigned long *ino)
-+{
-+next:
-+	*ino = ext4_find_next_zero_bit((unsigned long *)
-+				       bitmap->b_data,
-+				       EXT4_INODES_PER_GROUP(sb), *ino);
-+	if (*ino >= EXT4_INODES_PER_GROUP(sb))
-+		return 0;
-+
-+	if ((EXT4_SB(sb)->s_journal == NULL) &&
-+	    recently_deleted(sb, group, *ino)) {
-+		*ino = *ino + 1;
-+		if (*ino < EXT4_INODES_PER_GROUP(sb))
-+			goto next;
-+		return 0;
-+	}
-+
-+	return 1;
-+}
-+
- /*
-  * There are two policies for allocating an inode.  If the new inode is
-  * a directory, then a forward search is made for a block group with both
-@@ -910,21 +931,16 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 		}
- 
- repeat_in_this_group:
--		ino = ext4_find_next_zero_bit((unsigned long *)
--					      inode_bitmap_bh->b_data,
--					      EXT4_INODES_PER_GROUP(sb), ino);
--		if (ino >= EXT4_INODES_PER_GROUP(sb))
-+		ret2 = find_inode_bit(sb, group, inode_bitmap_bh, &ino);
-+		if (!ret2)
- 			goto next_group;
--		if (group == 0 && (ino+1) < EXT4_FIRST_INO(sb)) {
-+
-+		if (group == 0 && (ino + 1) < EXT4_FIRST_INO(sb)) {
- 			ext4_error(sb, "reserved inode found cleared - "
- 				   "inode=%lu", ino + 1);
- 			goto next_group;
- 		}
--		if ((EXT4_SB(sb)->s_journal == NULL) &&
--		    recently_deleted(sb, group, ino)) {
--			ino++;
--			goto next_inode;
--		}
-+
- 		if (!handle) {
- 			BUG_ON(nblocks <= 0);
- 			handle = __ext4_journal_start_sb(dir->i_sb, line_no,
-@@ -944,11 +960,23 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 		}
- 		ext4_lock_group(sb, group);
- 		ret2 = ext4_test_and_set_bit(ino, inode_bitmap_bh->b_data);
-+		if (ret2) {
-+			/* Someone already took the bit. Repeat the search
-+			 * with lock held.
-+			 */
-+			ret2 = find_inode_bit(sb, group, inode_bitmap_bh, &ino);
-+			if (ret2) {
-+				ext4_set_bit(ino, inode_bitmap_bh->b_data);
-+				ret2 = 0;
-+			} else {
-+				ret2 = 1; /* we didn't grab the inode */
-+			}
-+		}
- 		ext4_unlock_group(sb, group);
- 		ino++;		/* the inode bitmap is zero-based */
- 		if (!ret2)
- 			goto got; /* we grabbed the inode! */
--next_inode:
-+
- 		if (ino < EXT4_INODES_PER_GROUP(sb))
- 			goto repeat_in_this_group;
- next_group:
+> ---
+>  fs/ext4/ialloc.c | 20 ++++++--------------
+>  1 file changed, 6 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 0d03e73..9e6eb1c 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -892,19 +892,13 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>  		/*
+>  		 * Check free inodes count before loading bitmap.
+>  		 */
+> -		if (ext4_free_inodes_count(sb, gdp) == 0) {
+> -			if (++group == ngroups)
+> -				group = 0;
+> -			continue;
+> -		}
+> +		if (ext4_free_inodes_count(sb, gdp) == 0)
+> +			goto next_group;
+>  
+>  		grp = ext4_get_group_info(sb, group);
+>  		/* Skip groups with already-known suspicious inode tables */
+> -		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp)) {
+> -			if (++group == ngroups)
+> -				group = 0;
+> -			continue;
+> -		}
+> +		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp))
+> +			goto next_group;
+>  
+>  		brelse(inode_bitmap_bh);
+>  		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
+> @@ -912,9 +906,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>  		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp) ||
+>  		    IS_ERR(inode_bitmap_bh)) {
+>  			inode_bitmap_bh = NULL;
+> -			if (++group == ngroups)
+> -				group = 0;
+> -			continue;
+> +			goto next_group;
+>  		}
+>  
+>  repeat_in_this_group:
+> @@ -926,7 +918,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>  		if (group == 0 && (ino+1) < EXT4_FIRST_INO(sb)) {
+>  			ext4_error(sb, "reserved inode found cleared - "
+>  				   "inode=%lu", ino + 1);
+> -			continue;
+> +			goto next_group;
+>  		}
+>  		if ((EXT4_SB(sb)->s_journal == NULL) &&
+>  		    recently_deleted(sb, group, ino)) {
+> -- 
+> 2.9.3
+> 
 -- 
-2.9.3
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
