@@ -1,10 +1,10 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH 10/13] mm: Wire up MAP_SYNC
-Date: Tue, 22 Aug 2017 11:34:38 +0200
-Message-ID: <20170822093438.GC4909@quack2.suse.cz>
+Date: Tue, 22 Aug 2017 11:36:25 +0200
+Message-ID: <20170822093625.GD4909@quack2.suse.cz>
 References: <20170817160815.30466-1-jack@suse.cz>
  <20170817160815.30466-11-jack@suse.cz>
- <20170821215703.GA24473@linux.intel.com>
+ <20170821213704.GG26220@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
@@ -15,27 +15,34 @@ Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
         Boaz Harrosh <boazh@netapp.com>
 To: Ross Zwisler <ross.zwisler@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:46148 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:46405 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S932322AbdHVJel (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Aug 2017 05:34:41 -0400
+        id S932205AbdHVJg1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Aug 2017 05:36:27 -0400
 Content-Disposition: inline
-In-Reply-To: <20170821215703.GA24473@linux.intel.com>
+In-Reply-To: <20170821213704.GG26220@linux.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 21-08-17 15:57:03, Ross Zwisler wrote:
-> On Thu, Aug 17, 2017 at 06:08:12PM +0200, Jan Kara wrote:
-> > Pretty crude for now...
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
+On Mon 21-08-17 15:37:04, Ross Zwisler wrote:
+> > diff --git a/mm/mmap.c b/mm/mmap.c
+> > index f19efcf75418..18453c04b09f 100644
+> > --- a/mm/mmap.c
+> > +++ b/mm/mmap.c
+> > @@ -1423,12 +1423,17 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
+> >  				return -ENODEV;
+> >  			if (vm_flags & (VM_GROWSDOWN|VM_GROWSUP))
+> >  				return -EINVAL;
+> > +			if (!(vm_flags & VM_SHARED) && (vm_flags & VM_SYNC))
+> > +				return -EINVAL;
 > 
-> One other thing that should probably be wired up before this is all said and
-> done is the VmFlag string in /proc/<pid>/smaps.  Right now when we set this
-> flag it ends up as ??:
+> I know this will be reworked with Dan's new mmap() interface, but I was
+> curious what the !(vm_flags & VM_SHARED) check here was for.  We're in a
+> MAP_PRIVATE case, so is it ever possible for VM_SHARED to be set in vm_flags?
+> I tried to make this happen with some various test scenarios, but wasn't able.
 
-Thanks. Patch folded so that I don't forget about this when updating the
-patch to the new interface :).
+I was also caught by this :). Check how MAP_SHARED case above falls through
+to the MAP_PRIVATE case...
 
 								Honza
 -- 
