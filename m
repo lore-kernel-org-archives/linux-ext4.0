@@ -1,50 +1,101 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 10/13] mm: Wire up MAP_SYNC
-Date: Tue, 22 Aug 2017 11:36:25 +0200
-Message-ID: <20170822093625.GD4909@quack2.suse.cz>
-References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-11-jack@suse.cz>
- <20170821213704.GG26220@linux.intel.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+Subject: Re: [PATCH] ext4: fix incorrect quotaoff if the quota feature is
+ enabled
+Date: Tue, 22 Aug 2017 17:38:57 +0800
+Message-ID: <5a483e73-3bfb-a4a9-ea0b-c68024d1c0e1@huawei.com>
+References: <1503384097-19206-1-git-send-email-yi.zhang@huawei.com>
+ <20170822092205.GA4909@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Andy Lutomirski <luto@kernel.org>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Boaz Harrosh <boazh@netapp.com>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: 7bit
+Cc: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <miaoxie@huawei.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:46405 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S932205AbdHVJg1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Aug 2017 05:36:27 -0400
-Content-Disposition: inline
-In-Reply-To: <20170821213704.GG26220@linux.intel.com>
+Received: from szxga04-in.huawei.com ([45.249.212.190]:4989 "EHLO
+        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932295AbdHVJjK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 05:39:10 -0400
+In-Reply-To: <20170822092205.GA4909@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 21-08-17 15:37:04, Ross Zwisler wrote:
-> > diff --git a/mm/mmap.c b/mm/mmap.c
-> > index f19efcf75418..18453c04b09f 100644
-> > --- a/mm/mmap.c
-> > +++ b/mm/mmap.c
-> > @@ -1423,12 +1423,17 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
-> >  				return -ENODEV;
-> >  			if (vm_flags & (VM_GROWSDOWN|VM_GROWSUP))
-> >  				return -EINVAL;
-> > +			if (!(vm_flags & VM_SHARED) && (vm_flags & VM_SYNC))
-> > +				return -EINVAL;
+On 2017/8/22 17:22, Jan Kara Wrote:
+> On Tue 22-08-17 14:41:37, zhangyi (F) wrote:
+>> Current ext4 quota should always "usage enabled" if the
+>> quota feautre is enabled. But in ext4_orphan_cleanup(), it
+>> turn quota off directly (used for the older quota), so
+>> we cannot turn it on again via "quotaon" unless umount and
+>> remount ext4.
+>>
+>> Simple reproduce:
+>>
+>>   mkfs.ext4 -O project,quota /dev/vdb1
+>>   mount -o prjquota /dev/vdb1 /mnt
+>>   chattr -p 123 /mnt
+>>   chattr +P /mnt
+>>   touch /mnt/aa /mnt/bb
+>>   exec 100<>/mnt/aa
+>>   rm -f /mnt/aa
+>>   sync
+>>   echo c > /proc/sysrq-trigger
+>>
+>>   #reboot and mount
+>>   mount -o prjquota /dev/vdb1 /mnt
+>>   #query status
+>>   quotaon -Ppv /dev/vdb1
+>>   #output
+>>   quotaon: Cannot find mountpoint for device /dev/vdb1
+>>   quotaon: No correct mountpoint specified.
+>>
+>> This patch avoid incorrect quotaoff when ext4 has quota
+>> feautre. We also take care about the "quota on" part in
+>> ext4_orphan_cleanup(), it is used for journalled quota
+>> and not invoked if quota feature is enabled, so it's not
+>> affected.
+>>
+>> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+>> ---
+>>  fs/ext4/super.c | 10 ++++++----
+>>  1 file changed, 6 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>> index d61a70e2..c1b23b1 100644
+>> --- a/fs/ext4/super.c
+>> +++ b/fs/ext4/super.c
+>> @@ -2510,10 +2510,12 @@ static void ext4_orphan_cleanup(struct super_block *sb,
+>>  		ext4_msg(sb, KERN_INFO, "%d truncate%s cleaned up",
+>>  		       PLURAL(nr_truncates));
+>>  #ifdef CONFIG_QUOTA
+>> -	/* Turn quotas off */
+>> -	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+>> -		if (sb_dqopt(sb)->files[i])
+>> -			dquot_quota_off(sb, i);
+>> +	if (!ext4_has_feature_quota(sb)) {
+>> +		/* Turn quotas off */
+>> +		for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+>> +			if (sb_dqopt(sb)->files[i])
+>> +				dquot_quota_off(sb, i);
+>> +		}
 > 
-> I know this will be reworked with Dan's new mmap() interface, but I was
-> curious what the !(vm_flags & VM_SHARED) check here was for.  We're in a
-> MAP_PRIVATE case, so is it ever possible for VM_SHARED to be set in vm_flags?
-> I tried to make this happen with some various test scenarios, but wasn't able.
+> So this should work however I'd prefer if we kept the test symmetric to the
+> place where we turn quotas on for orphan cleanup. I.e. something like:
+> 
+> 	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+> 		/* Old style journalled quotas enabled for orphan cleanup? */
+> 		if (EXT4_SB(sb)->s_qf_names[i] && sb_dqopt(sb)->files[i])
+> 			dquot_quota_off(sb, i);
+> 	}
+> 
 
-I was also caught by this :). Check how MAP_SHARED case above falls through
-to the MAP_PRIVATE case...
+Yes, looks better, good suggestion, thanks!
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> Also when looking at this code I've noticed that quota does not get enabled
+> if we use quota feature and we do orphan replay on read-only filesystem.
+> Could you fix that by handling this case in ext4_orphan_cleanup() as well?
+> Thanks!
+
+Sure, I will fix it as well.
+
+Thanks,
+ZhangYi.
