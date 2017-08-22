@@ -1,87 +1,76 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: Y2038 bug in ext4 recently_deleted() function
-Date: Tue, 22 Aug 2017 21:35:46 +0200
-Message-ID: <CAK8P3a3_2u0KpagBcc0mG6fxCnftqaMyXgYhL2z8GoBWqfSrhA@mail.gmail.com>
-References: <20170808050517.7160-1-wshilong@ddn.com> <20170816164211.GA31117@quack2.suse.cz>
- <3ED34739A4E85E4F894367D57617CDEFEDA401CE@LAX-EX-MB2.datadirect.datadirectnet.com>
- <20170817091959.GB7644@quack2.suse.cz> <20170817092153.GA14074@quack2.suse.cz>
- <BCA34CA8-FDDF-49FA-A5B4-9CCCEAC0C8D0@dilger.ca> <CABeXuvqtDdtjgjEznXPgdUfaZiG-KJ3AURpT_AuUACcPATaoDw@mail.gmail.com>
- <CAK8P3a2mu9SGdZhWX59OhSK-fokSEpjKsK4_HC1OC-XxZU8eTw@mail.gmail.com>
- <CABeXuvpHvyOq09JQW0XtrJ4fGZNBjmC=MBDRS2eKoVsmpi3g4Q@mail.gmail.com>
- <AB3E8CB7-76CE-4F1D-B47C-57D63E56E6D7@dilger.ca> <CAK8P3a2eY=yZM+mpUcFWHCD-DqSMvk+YtnVx1YAkJGbR_dXJTA@mail.gmail.com>
- <E653F063-745E-409F-BD3E-04E1B810A97C@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Deepa Dinamani <deepa.kernel@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Wang Shilong <wshilong@ddn.com>,
-        Wang Shilong <wangshilong1991@gmail.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>,
-        Jan Kara <jack@suse.cz>
-To: Andreas Dilger <adilger@dilger.ca>
+From: Randy Dodgen <dodgen@google.com>
+Subject: [PATCH] Fix ext4 fault handling when mounted with -o dax,ro
+Date: Tue, 22 Aug 2017 15:24:34 -0700
+Message-ID: <20170822222434.146233-1-dodgen@google.com>
+Cc: Randy Dodgen <dodgen@google.com>
+To: tytso@google.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f67.google.com ([209.85.218.67]:32945 "EHLO
-        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752675AbdHVTfr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 15:35:47 -0400
-Received: by mail-oi0-f67.google.com with SMTP id r200so5788630oie.0
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Aug 2017 12:35:47 -0700 (PDT)
-In-Reply-To: <E653F063-745E-409F-BD3E-04E1B810A97C@dilger.ca>
+Received: from mail-pf0-f175.google.com ([209.85.192.175]:35042 "EHLO
+        mail-pf0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752814AbdHVWY5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 18:24:57 -0400
+Received: by mail-pf0-f175.google.com with SMTP id x137so230623pfd.2
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Aug 2017 15:24:57 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 22, 2017 at 6:20 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> On Aug 22, 2017, at 9:18 AM, Arnd Bergmann <arnd@arndb.de> wrote:
->>
->> On Fri, Aug 18, 2017 at 6:09 PM, Andreas Dilger <adilger@dilger.ca> wrote:
->>>
->>>>>> So moving to the case of a 32 bit machine:
->>>>>>
->>>>>> get_seconds() can return values until year 2106. And, recentcy at max
->>>>>> can only be 35. Analyzing the current line:
->>>>>>
->>>>>> if (dtime && (dtime < now) && (now < dtime + recentcy))
->>>>>>
->>>>>> The above equation should work fine at least until 35 seconds before
->>>>>> y2038 deadline.
->>>>>
->>>>> Since it's all unsigned arithmetic, it should be fine until 2106.
->>>>> However, we should get rid of get_seconds() long before then
->>>>> and use ktime_get_real_seconds() instead, as most other users
->>>>> of get_seconds() are (more) broken.
->>>>
->>>> Dtime on disk representation again breaks this for certain values in
->>>> 2038 even though everything is unsigned.
->>>>
->>>> I was just saying that whatever we do here depends on how dtime on
->>>> disk is interpreted.
->>>>
->>>> Agree that ktime_get_real_seconds() should be used here. But, the way
->>>> we handle new values would rely on this new interpretation of dtime.
->>>> Also, using time64_t variables on stack only matters after this. Once
->>>> the types are corrected, maybe the comparison expression need not
->>>> change at all (after new dtime interpretation is in place).
->>>
->>> There will not be a new dtime format on disk, but since the calculation
->>> here only depends on relative times (within a few minutes), then it would
->>> be fine to use only 32-bit timestamps, and truncate off the high bits
->>> from get_seconds()/ktime_get_real_seconds().
->>
->> Agreed.
->>
->> Are you planning to apply your fix for it then? I think your first
->> suggestion is all we need, aside from the three  minor comments
->> I had.
->
-> Do you think it is worthwhile to introduce a "time_after32()" helper for this?
-> I suspect that this will also be useful for other parts of the kernel that
-> deal with relative 32-bit timestamps.
+If an ext4 filesystem is mounted with both the DAX and read-only
+options, executables on that filesystem will fail to start (claiming
+'Segmentation fault') due to the fault handler returning
+VM_FAULT_SIGBUS.
 
-I can't think of any other one at the moment. The RTC code may need a
-similar check somewhere but it's more likely that they want something
-slightly different.
+This is due to the DAX fault handler (see ext4_dax_huge_fault)
+attempting to write to the journal when FAULT_FLAG_WRITE is set. This is
+the wrong behavior for write faults which will lead to a COW page; in
+particular, this fails for readonly mounts.
 
-No objections to introducing a time_after32() from my side if only
-for documentation purposes, but we probably won't use it elsewhere.
+This changes replicates some check from dax_iomap_fault to more
+precisely reason about when a journal-write is needed.
 
-       Arnd
+It might be the case that this could be better handled in
+ext4_iomap_begin / ext4_iomap_end (called via iomap_ops inside
+dax_iomap_fault). These is some overlap already (e.g. grabbing journal
+handles).
+---
+ fs/ext4/file.c | 26 +++++++++++++++++++++++++-
+ 1 file changed, 25 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 0d7cf0cc9b87..d512fb85a3e3 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -279,7 +279,31 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
+ 	handle_t *handle = NULL;
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+ 	struct super_block *sb = inode->i_sb;
+-	bool write = vmf->flags & FAULT_FLAG_WRITE;
++	bool write;
++
++	/*
++	 * We have to distinguish real writes from writes which will result in a
++	 * COW page
++	 * - COW writes need to fall-back to installing PTEs. See
++	 *   dax_iomap_pmd_fault.
++	 * - COW writes should *not* poke the journal (the file will not be
++	 *   changed). Doing so would cause unintended failures when mounted
++	 *   read-only.
++	 */
++	if (pe_size == PE_SIZE_PTE) {
++		/* See dax_iomap_pte_fault. */
++		write = (vmf->flags & FAULT_FLAG_WRITE) && !vmf->cow_page;
++	} else if (pe_size == PE_SIZE_PMD) {
++		/* See dax_iomap_pmd_fault. */
++		write = vmf->flags & FAULT_FLAG_WRITE;
++		if (write && !(vmf->vma->vm_flags & VM_SHARED)) {
++			split_huge_pmd(vmf->vma, vmf->pmd, vmf->address);
++			count_vm_event(THP_FAULT_FALLBACK);
++			return VM_FAULT_FALLBACK;
++		}
++	} else {
++		return VM_FAULT_FALLBACK;
++	}
+ 
+ 	if (write) {
+ 		sb_start_pagefault(sb);
+-- 
+2.14.1.480.gb18f417b89-goog
