@@ -1,91 +1,57 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 13/13] ext4: Support for synchronous DAX faults
-Date: Tue, 22 Aug 2017 12:18:04 +0200
-Message-ID: <20170822101804.GG4909@quack2.suse.cz>
-References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-14-jack@suse.cz>
- <20170821191948.GD26220@linux.intel.com>
+From: Anton Blanchard <anton@ozlabs.org>
+Subject: Re: [PATCH 1/2] ext4: fix warning about stack corruption
+Date: Tue, 22 Aug 2017 21:08:49 +1000
+Message-ID: <20170822210849.0edb91cc@kryten>
+References: <20170726185219.GA57833@beast>
+        <20170801120438.1582336-1-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Boaz Harrosh <boazh-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170821191948.GD26220-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Kees Cook <keescook@chromium.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Arnd Bergmann <arnd@arndb.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ozlabs.org ([103.22.144.67]:36147 "EHLO ozlabs.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932350AbdHVLIx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Aug 2017 07:08:53 -0400
+In-Reply-To: <20170801120438.1582336-1-arnd@arndb.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 21-08-17 13:19:48, Ross Zwisler wrote:
-> On Thu, Aug 17, 2017 at 06:08:15PM +0200, Jan Kara wrote:
-> > We return IOMAP_F_NEEDDSYNC flag from ext4_iomap_begin() for a
-> > synchronous write fault when inode has some uncommitted metadata
-> > changes. In the fault handler ext4_dax_fault() we then detect this case,
-> > call vfs_fsync_range() to make sure all metadata is committed, and call
-> > dax_pfn_mkwrite() to mark PTE as writeable. Note that this will also
+Hi Arnd,
+
+> After commit 62d1034f53e3 ("fortify: use WARN instead of BUG for
+> now"), we get a warning about possible stack overflow from a memcpy
+> that was not strictly bounded to the size of the local variable:
 > 
-> Need to fix up the above line a little -
-> s/dax_pfn_mkwrite/dax_insert_pfn_mkwrite/, and we insert the PTE as well as
-> make it writeable.
-
-Fixed up, thanks.
-
-> >  	if (write) {
-> > -		if (!IS_ERR(handle))
-> > -			ext4_journal_stop(handle);
-> > +		ext4_journal_stop(handle);
-> > +		/* Write fault but PFN mapped only RO? */
+>     inlined from 'ext4_mb_seq_groups_show' at
+> fs/ext4/mballoc.c:2322:2: include/linux/string.h:309:9: error:
+> '__builtin_memcpy': writing between 161 and 1116 bytes into a region
+> of size 160 overflows the destination [-Werror=stringop-overflow=]
 > 
-> The above comment is out of date.
-
-Fixed.
-
-> > +		if (result & VM_FAULT_NEEDDSYNC) {
-> > +			int err;
-> > +			loff_t start = ((loff_t)vmf->pgoff) << PAGE_SHIFT;
-> > +			size_t len = 0;
-> > +
-> > +			if (pe_size == PE_SIZE_PTE)
-> > +				len = PAGE_SIZE;
-> > +#ifdef CONFIG_FS_DAX_PMD
-> > +			else if (pe_size == PE_SIZE_PMD)
-> > +				len = HPAGE_PMD_SIZE;
+> We actually had a bug here that would have been found by the warning,
+> but it was already fixed last year in commit 30a9d7afe70e ("ext4: fix
+> stack memory corruption with 64k block size").
 > 
-> In fs/dax.c we always use PMD_SIZE.  It looks like HPAGE_PMD_SIZE and PMD_SIZE
-> are always the same (from include/linux/huge_mm.h, the only defintion of
-> HPAGE_PMD_SIZE):
+> This replaces the fixed-length structure on the stack with a
+> variable-length structure, using the correct upper bound that tells
+> the compiler that everything is really fine here. I also change the
+> loop count to check for the same upper bound for consistency, but the
+> existing code is already correct here.
 > 
-> #define HPAGE_PMD_SHIFT PMD_SHIFT
-> #define HPAGE_PMD_SIZE	((1UL) << HPAGE_PMD_SHIFT)
-> 
-> and AFAICT PMD_SIZE is defined to be 1<<PMD_SHIFT for all architectures as
-> well.  I don't understand why we have both?
-> 
-> In any case, neither HPAGE_PMD_SIZE nor PMD_SIZE are used anywhere else in the
-> ext4 code, so can we use PMD_SIZE here for consistency?  If they ever did
-> manage to be different, I think we'd want PMD_SIZE anyway.
+> Note that while clang won't allow certain kinds of variable-length
+> arrays in structures, this particular instance is fine, as the array
+> is at the end of the structure, and the size is strictly bounded.
 
-Yeah, I've changed that to PMD_SIZE.
+Unfortunately it doesn't appear to work, at least with ppc64le clang:
 
-> With those nits and an updated changelog:
-> 
-> Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+fs/ext4/mballoc.c:2303:17: error: fields must have a constant size: 'variable length array in structure' extension will never be supported
+	ext4_grpblk_t counters[blocksize_bits + 2];
 
-Thanks!
-
-								Honza
-
--- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+Anton
