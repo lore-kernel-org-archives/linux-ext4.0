@@ -1,65 +1,87 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
- encryption
-Date: Tue, 22 Aug 2017 10:36:00 -0700
-Message-ID: <20170822173600.GB9587@gmail.com>
-References: <20170818194730.61575-1-ebiggers3@gmail.com>
- <9dcef6c6-a758-ea57-0d51-55f33e365931@oracle.com>
- <20170821230821.GB8847@gmail.com>
- <7a34337d-3214-0a8a-5521-7727364cceb4@oracle.com>
- <20170822030730.GB3577@zzz.localdomain>
- <a84707f9-b9b9-fe7e-b2f5-d5edfcb9c91a@oracle.com>
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: Re: Y2038 bug in ext4 recently_deleted() function
+Date: Tue, 22 Aug 2017 21:35:46 +0200
+Message-ID: <CAK8P3a3_2u0KpagBcc0mG6fxCnftqaMyXgYhL2z8GoBWqfSrhA@mail.gmail.com>
+References: <20170808050517.7160-1-wshilong@ddn.com> <20170816164211.GA31117@quack2.suse.cz>
+ <3ED34739A4E85E4F894367D57617CDEFEDA401CE@LAX-EX-MB2.datadirect.datadirectnet.com>
+ <20170817091959.GB7644@quack2.suse.cz> <20170817092153.GA14074@quack2.suse.cz>
+ <BCA34CA8-FDDF-49FA-A5B4-9CCCEAC0C8D0@dilger.ca> <CABeXuvqtDdtjgjEznXPgdUfaZiG-KJ3AURpT_AuUACcPATaoDw@mail.gmail.com>
+ <CAK8P3a2mu9SGdZhWX59OhSK-fokSEpjKsK4_HC1OC-XxZU8eTw@mail.gmail.com>
+ <CABeXuvpHvyOq09JQW0XtrJ4fGZNBjmC=MBDRS2eKoVsmpi3g4Q@mail.gmail.com>
+ <AB3E8CB7-76CE-4F1D-B47C-57D63E56E6D7@dilger.ca> <CAK8P3a2eY=yZM+mpUcFWHCD-DqSMvk+YtnVx1YAkJGbR_dXJTA@mail.gmail.com>
+ <E653F063-745E-409F-BD3E-04E1B810A97C@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>, linux-fscrypt@vger.kernel.org,
-        linux-doc@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Anand Jain <anand.jain@oracle.com>
-Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <a84707f9-b9b9-fe7e-b2f5-d5edfcb9c91a@oracle.com>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: Deepa Dinamani <deepa.kernel@gmail.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, Wang Shilong <wshilong@ddn.com>,
+        Wang Shilong <wangshilong1991@gmail.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>,
+        Jan Kara <jack@suse.cz>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oi0-f67.google.com ([209.85.218.67]:32945 "EHLO
+        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752675AbdHVTfr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 15:35:47 -0400
+Received: by mail-oi0-f67.google.com with SMTP id r200so5788630oie.0
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Aug 2017 12:35:47 -0700 (PDT)
+In-Reply-To: <E653F063-745E-409F-BD3E-04E1B810A97C@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 22, 2017 at 11:35:20PM +0800, Anand Jain wrote:
-> >>
-> >>   I think AE is the only good solution for this, File-name encryption at
-> >>this stage won't solve any kind of Evil Maid attack, (as it was quoted
-> >>somewhere else in ML).
-> >>
-> >>
-> >>  Further, below,  is define but not used.
-> >>-----
-> >>  #define FS_AES_256_GCM_KEY_SIZE		32
-> >>-----
-> >>
-> >
-> >Yes, authenticated encryption with AES-256-GCM was in an older version of the
-> >ext4 encryption design document.  But unfortunately it was never really thought
-> >through. The primary problem, even ignoring rollback protection, is that there
-> >is nowhere to store the per-block metadata (GCM authentication tag and IV) *and*
-> >have it updated atomicly with the block contents.  Recently, dm-integrity solves
-> >this at the block device layer, but it uses data journaling which is very
-> >inefficient.  This maybe could be implemented more efficiently on a COW
-> >filesystem like BTRFS.  But even after that, another problem is that
-> >authenticated encryption of file contents only would not stop an attacker from
-> >swapping around blocks, files, directories, or creating links, etc.
-> 
-> 
->  Some of the problems to be solved in this area are quite
-> interesting and challenging and IMO BTRFS fits nicely. Per extent AE
-> for BTRFS is drafted, it needs scrutiny and constructive feedback.
-> 
-> Thanks, Anand
-> 
-> 
-> >Eric
-> >
+On Tue, Aug 22, 2017 at 6:20 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+> On Aug 22, 2017, at 9:18 AM, Arnd Bergmann <arnd@arndb.de> wrote:
+>>
+>> On Fri, Aug 18, 2017 at 6:09 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+>>>
+>>>>>> So moving to the case of a 32 bit machine:
+>>>>>>
+>>>>>> get_seconds() can return values until year 2106. And, recentcy at max
+>>>>>> can only be 35. Analyzing the current line:
+>>>>>>
+>>>>>> if (dtime && (dtime < now) && (now < dtime + recentcy))
+>>>>>>
+>>>>>> The above equation should work fine at least until 35 seconds before
+>>>>>> y2038 deadline.
+>>>>>
+>>>>> Since it's all unsigned arithmetic, it should be fine until 2106.
+>>>>> However, we should get rid of get_seconds() long before then
+>>>>> and use ktime_get_real_seconds() instead, as most other users
+>>>>> of get_seconds() are (more) broken.
+>>>>
+>>>> Dtime on disk representation again breaks this for certain values in
+>>>> 2038 even though everything is unsigned.
+>>>>
+>>>> I was just saying that whatever we do here depends on how dtime on
+>>>> disk is interpreted.
+>>>>
+>>>> Agree that ktime_get_real_seconds() should be used here. But, the way
+>>>> we handle new values would rely on this new interpretation of dtime.
+>>>> Also, using time64_t variables on stack only matters after this. Once
+>>>> the types are corrected, maybe the comparison expression need not
+>>>> change at all (after new dtime interpretation is in place).
+>>>
+>>> There will not be a new dtime format on disk, but since the calculation
+>>> here only depends on relative times (within a few minutes), then it would
+>>> be fine to use only 32-bit timestamps, and truncate off the high bits
+>>> from get_seconds()/ktime_get_real_seconds().
+>>
+>> Agreed.
+>>
+>> Are you planning to apply your fix for it then? I think your first
+>> suggestion is all we need, aside from the three  minor comments
+>> I had.
+>
+> Do you think it is worthwhile to introduce a "time_after32()" helper for this?
+> I suspect that this will also be useful for other parts of the kernel that
+> deal with relative 32-bit timestamps.
 
-Where is the code?  Is there a design document, and it is it readable by people
-not as familiar with btrfs?  Is the API compatible with ext4, f2fs, and ubifs?
+I can't think of any other one at the moment. The RTC code may need a
+similar check somewhere but it's more likely that they want something
+slightly different.
 
-Eric
+No objections to introducing a time_after32() from my side if only
+for documentation purposes, but we probably won't use it elsewhere.
+
+       Arnd
