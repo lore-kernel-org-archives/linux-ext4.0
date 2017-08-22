@@ -1,122 +1,65 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH 10/13] mm: Wire up MAP_SYNC
-Date: Tue, 22 Aug 2017 10:27:19 -0700
-Message-ID: <CAPcyv4jpM_4fY+f+0i6ysnQ=0i2W9eq1pUCO0axYTHKbOtaufg@mail.gmail.com>
-References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-11-jack@suse.cz>
- <20170821215703.GA24473@linux.intel.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
+ encryption
+Date: Tue, 22 Aug 2017 10:36:00 -0700
+Message-ID: <20170822173600.GB9587@gmail.com>
+References: <20170818194730.61575-1-ebiggers3@gmail.com>
+ <9dcef6c6-a758-ea57-0d51-55f33e365931@oracle.com>
+ <20170821230821.GB8847@gmail.com>
+ <7a34337d-3214-0a8a-5521-7727364cceb4@oracle.com>
+ <20170822030730.GB3577@zzz.localdomain>
+ <a84707f9-b9b9-fe7e-b2f5-d5edfcb9c91a@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
- linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
- Boaz Harrosh <boazh-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20170821215703.GA24473-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>, linux-fscrypt@vger.kernel.org,
+        linux-doc@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: Anand Jain <anand.jain@oracle.com>
+Return-path: <linux-doc-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <a84707f9-b9b9-fe7e-b2f5-d5edfcb9c91a@oracle.com>
+Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 21, 2017 at 2:57 PM, Ross Zwisler
-<ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> wrote:
-> On Thu, Aug 17, 2017 at 06:08:12PM +0200, Jan Kara wrote:
->> Pretty crude for now...
->>
->> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
->
-> One other thing that should probably be wired up before this is all said and
-> done is the VmFlag string in /proc/<pid>/smaps.  Right now when we set this
-> flag it ends up as ??:
->
-> 7f44e6cbd000-7f44e6dbd000 rw-s 00000000 103:00 12              /root/dax/data
-> Size:               1024 kB
-> Rss:                   0 kB
-> Pss:                   0 kB
-> Shared_Clean:          0 kB
-> Shared_Dirty:          0 kB
-> Private_Clean:         0 kB
-> Private_Dirty:         0 kB
-> Referenced:            0 kB
-> Anonymous:             0 kB
-> LazyFree:              0 kB
-> AnonHugePages:         0 kB
-> ShmemPmdMapped:        0 kB
-> Shared_Hugetlb:        0 kB
-> Private_Hugetlb:       0 kB
-> Swap:                  0 kB
-> SwapPss:               0 kB
-> KernelPageSize:        4 kB
-> MMUPageSize:           4 kB
-> Locked:                0 kB
-> VmFlags: rd wr sh mr mw me ms ?? mm hg
->
-> The quick one-liner at the end of this patch changes that to:
->
-> 7fe30e87f000-7fe30e97f000 rw-s 00000000 103:00 12               /root/dax/data
-> Size:               1024 kB
-> Rss:                   0 kB
-> Pss:                   0 kB
-> Shared_Clean:          0 kB
-> Shared_Dirty:          0 kB
-> Private_Clean:         0 kB
-> Private_Dirty:         0 kB
-> Referenced:            0 kB
-> Anonymous:             0 kB
-> LazyFree:              0 kB
-> AnonHugePages:         0 kB
-> ShmemPmdMapped:        0 kB
-> Shared_Hugetlb:        0 kB
-> Private_Hugetlb:       0 kB
-> Swap:                  0 kB
-> SwapPss:               0 kB
-> KernelPageSize:        4 kB
-> MMUPageSize:           4 kB
-> Locked:                0 kB
-> VmFlags: rd wr sh mr mw me ms sf mm hg
->
-> I think that of software can rely on this flag for userspace flushing without
-> worrying about any new TOCTOU races because there isn't a way to unset the
-> VM_SYNC flag once it is set - it should be valid as long as the mmap() remains
-> open and the mmap'd address is valid.
->
-> --- 8< ---
->  fs/proc/task_mmu.c | 1 +
->  1 file changed, 1 insertion(+)
->
-> diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-> index b836fd6..a2a82ed 100644
-> --- a/fs/proc/task_mmu.c
-> +++ b/fs/proc/task_mmu.c
-> @@ -650,6 +650,7 @@ static void show_smap_vma_flags(struct seq_file *m, struct vm_area_struct *vma)
->                 [ilog2(VM_ACCOUNT)]     = "ac",
->                 [ilog2(VM_NORESERVE)]   = "nr",
->                 [ilog2(VM_HUGETLB)]     = "ht",
-> +               [ilog2(VM_SYNC)]        = "sf",
->                 [ilog2(VM_ARCH_1)]      = "ar",
->                 [ilog2(VM_DONTDUMP)]    = "dd",
->  #ifdef CONFIG_MEM_SOFT_DIRTY
+On Tue, Aug 22, 2017 at 11:35:20PM +0800, Anand Jain wrote:
+> >>
+> >>   I think AE is the only good solution for this, File-name encryption at
+> >>this stage won't solve any kind of Evil Maid attack, (as it was quoted
+> >>somewhere else in ML).
+> >>
+> >>
+> >>  Further, below,  is define but not used.
+> >>-----
+> >>  #define FS_AES_256_GCM_KEY_SIZE		32
+> >>-----
+> >>
+> >
+> >Yes, authenticated encryption with AES-256-GCM was in an older version of the
+> >ext4 encryption design document.  But unfortunately it was never really thought
+> >through. The primary problem, even ignoring rollback protection, is that there
+> >is nowhere to store the per-block metadata (GCM authentication tag and IV) *and*
+> >have it updated atomicly with the block contents.  Recently, dm-integrity solves
+> >this at the block device layer, but it uses data journaling which is very
+> >inefficient.  This maybe could be implemented more efficiently on a COW
+> >filesystem like BTRFS.  But even after that, another problem is that
+> >authenticated encryption of file contents only would not stop an attacker from
+> >swapping around blocks, files, directories, or creating links, etc.
+> 
+> 
+>  Some of the problems to be solved in this area are quite
+> interesting and challenging and IMO BTRFS fits nicely. Per extent AE
+> for BTRFS is drafted, it needs scrutiny and constructive feedback.
+> 
+> Thanks, Anand
+> 
+> 
+> >Eric
+> >
 
-So, I'm not sure I agree with this. I'm explicitly *not* advertising
-MAP_DIRECT in ->vm_flags in my patches because we've seen applications
-try to use smaps as an API rather than a debug tool. The toctou race
-is fundamentally unsolvable unless you trust the agent that setup the
-mapping will not tear it down while you've observed the sync flag.
-Otherwise, if you do trust that the mapping will not be torn down then
-userspace can already just trust itself and not rely on the kernel to
-communicate the flag state.
+Where is the code?  Is there a design document, and it is it readable by people
+not as familiar with btrfs?  Is the API compatible with ext4, f2fs, and ubifs?
 
-I'm not against adding it, but the reasoning should be for debug and
-not an api guarantee that applications will rely on, and unfortunately
-I think we've seen that applications will rely on smaps no matter how
-we document it.
+Eric
