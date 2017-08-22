@@ -1,77 +1,103 @@
-From: "zhangyi (F)" <yi.zhang@huawei.com>
-Subject: [PATCH] ext4: fix incorrect quotaoff if the quota feature is enabled
-Date: Tue, 22 Aug 2017 14:41:37 +0800
-Message-ID: <1503384097-19206-1-git-send-email-yi.zhang@huawei.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: fix incorrect quotaoff if the quota feature is
+ enabled
+Date: Tue, 22 Aug 2017 11:22:05 +0200
+Message-ID: <20170822092205.GA4909@quack2.suse.cz>
+References: <1503384097-19206-1-git-send-email-yi.zhang@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <yi.zhang@huawei.com>,
-        <miaoxie@huawei.com>, <jack@suse.cz>
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, miaoxie@huawei.com, jack@suse.cz
+To: "zhangyi (F)" <yi.zhang@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga04-in.huawei.com ([45.249.212.190]:4976 "EHLO
-        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752736AbdHVGg5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 02:36:57 -0400
+Received: from mx2.suse.de ([195.135.220.15]:44255 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S932370AbdHVJWH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Aug 2017 05:22:07 -0400
+Content-Disposition: inline
+In-Reply-To: <1503384097-19206-1-git-send-email-yi.zhang@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Current ext4 quota should always "usage enabled" if the
-quota feautre is enabled. But in ext4_orphan_cleanup(), it
-turn quota off directly (used for the older quota), so
-we cannot turn it on again via "quotaon" unless umount and
-remount ext4.
+On Tue 22-08-17 14:41:37, zhangyi (F) wrote:
+> Current ext4 quota should always "usage enabled" if the
+> quota feautre is enabled. But in ext4_orphan_cleanup(), it
+> turn quota off directly (used for the older quota), so
+> we cannot turn it on again via "quotaon" unless umount and
+> remount ext4.
+> 
+> Simple reproduce:
+> 
+>   mkfs.ext4 -O project,quota /dev/vdb1
+>   mount -o prjquota /dev/vdb1 /mnt
+>   chattr -p 123 /mnt
+>   chattr +P /mnt
+>   touch /mnt/aa /mnt/bb
+>   exec 100<>/mnt/aa
+>   rm -f /mnt/aa
+>   sync
+>   echo c > /proc/sysrq-trigger
+> 
+>   #reboot and mount
+>   mount -o prjquota /dev/vdb1 /mnt
+>   #query status
+>   quotaon -Ppv /dev/vdb1
+>   #output
+>   quotaon: Cannot find mountpoint for device /dev/vdb1
+>   quotaon: No correct mountpoint specified.
+> 
+> This patch avoid incorrect quotaoff when ext4 has quota
+> feautre. We also take care about the "quota on" part in
+> ext4_orphan_cleanup(), it is used for journalled quota
+> and not invoked if quota feature is enabled, so it's not
+> affected.
+> 
+> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+> ---
+>  fs/ext4/super.c | 10 ++++++----
+>  1 file changed, 6 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index d61a70e2..c1b23b1 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2510,10 +2510,12 @@ static void ext4_orphan_cleanup(struct super_block *sb,
+>  		ext4_msg(sb, KERN_INFO, "%d truncate%s cleaned up",
+>  		       PLURAL(nr_truncates));
+>  #ifdef CONFIG_QUOTA
+> -	/* Turn quotas off */
+> -	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+> -		if (sb_dqopt(sb)->files[i])
+> -			dquot_quota_off(sb, i);
+> +	if (!ext4_has_feature_quota(sb)) {
+> +		/* Turn quotas off */
+> +		for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+> +			if (sb_dqopt(sb)->files[i])
+> +				dquot_quota_off(sb, i);
+> +		}
 
-Simple reproduce:
+So this should work however I'd prefer if we kept the test symmetric to the
+place where we turn quotas on for orphan cleanup. I.e. something like:
 
-  mkfs.ext4 -O project,quota /dev/vdb1
-  mount -o prjquota /dev/vdb1 /mnt
-  chattr -p 123 /mnt
-  chattr +P /mnt
-  touch /mnt/aa /mnt/bb
-  exec 100<>/mnt/aa
-  rm -f /mnt/aa
-  sync
-  echo c > /proc/sysrq-trigger
+	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+		/* Old style journalled quotas enabled for orphan cleanup? */
+		if (EXT4_SB(sb)->s_qf_names[i] && sb_dqopt(sb)->files[i])
+			dquot_quota_off(sb, i);
+	}
 
-  #reboot and mount
-  mount -o prjquota /dev/vdb1 /mnt
-  #query status
-  quotaon -Ppv /dev/vdb1
-  #output
-  quotaon: Cannot find mountpoint for device /dev/vdb1
-  quotaon: No correct mountpoint specified.
+Also when looking at this code I've noticed that quota does not get enabled
+if we use quota feature and we do orphan replay on read-only filesystem.
+Could you fix that by handling this case in ext4_orphan_cleanup() as well?
+Thanks!
 
-This patch avoid incorrect quotaoff when ext4 has quota
-feautre. We also take care about the "quota on" part in
-ext4_orphan_cleanup(), it is used for journalled quota
-and not invoked if quota feature is enabled, so it's not
-affected.
+								Honza
 
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
----
- fs/ext4/super.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d61a70e2..c1b23b1 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2510,10 +2510,12 @@ static void ext4_orphan_cleanup(struct super_block *sb,
- 		ext4_msg(sb, KERN_INFO, "%d truncate%s cleaned up",
- 		       PLURAL(nr_truncates));
- #ifdef CONFIG_QUOTA
--	/* Turn quotas off */
--	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
--		if (sb_dqopt(sb)->files[i])
--			dquot_quota_off(sb, i);
-+	if (!ext4_has_feature_quota(sb)) {
-+		/* Turn quotas off */
-+		for (i = 0; i < EXT4_MAXQUOTAS; i++) {
-+			if (sb_dqopt(sb)->files[i])
-+				dquot_quota_off(sb, i);
-+		}
- 	}
- #endif
- 	sb->s_flags = s_flags; /* Restore MS_RDONLY status */
+>  	}
+>  #endif
+>  	sb->s_flags = s_flags; /* Restore MS_RDONLY status */
+> -- 
+> 2.5.0
+> 
 -- 
-2.5.0
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
