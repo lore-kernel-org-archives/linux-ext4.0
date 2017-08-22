@@ -1,60 +1,77 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
- encryption
-Date: Mon, 21 Aug 2017 23:07:57 -0400
-Message-ID: <20170822030757.z5da7up5k7gnrfja@thunk.org>
-References: <20170818194730.61575-1-ebiggers3@gmail.com>
- <9dcef6c6-a758-ea57-0d51-55f33e365931@oracle.com>
- <20170821230821.GB8847@gmail.com>
- <7a34337d-3214-0a8a-5521-7727364cceb4@oracle.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+Subject: [PATCH] ext4: fix incorrect quotaoff if the quota feature is enabled
+Date: Tue, 22 Aug 2017 14:41:37 +0800
+Message-ID: <1503384097-19206-1-git-send-email-yi.zhang@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org,
-        linux-doc@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Anand Jain <anand.jain@oracle.com>
+Content-Type: text/plain
+Cc: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <yi.zhang@huawei.com>,
+        <miaoxie@huawei.com>, <jack@suse.cz>
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39290 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754381AbdHVDIC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 21 Aug 2017 23:08:02 -0400
-Content-Disposition: inline
-In-Reply-To: <7a34337d-3214-0a8a-5521-7727364cceb4@oracle.com>
+Received: from szxga04-in.huawei.com ([45.249.212.190]:4976 "EHLO
+        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752736AbdHVGg5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 02:36:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 22, 2017 at 10:22:13AM +0800, Anand Jain wrote:
-> 
->   I think AE is the only good solution for this, File-name encryption at
-> this stage won't solve any kind of Evil Maid attack, (as it was quoted
-> somewhere else in ML).
+Current ext4 quota should always "usage enabled" if the
+quota feautre is enabled. But in ext4_orphan_cleanup(), it
+turn quota off directly (used for the older quota), so
+we cannot turn it on again via "quotaon" unless umount and
+remount ext4.
 
-AE doesn't help at all against the Evil Maid attack, since the Evil
-Maid is trying get the user's keying material, and what kind of
-encryption you are using is pretty much irrelevant.
+Simple reproduce:
 
-The typical attack (where the user's keys are available to the host
-CPU) involves compromising the system software --- and system software
-is public (everyone can get a copy of the Android system image for a
-particular device), so encryption is pointless.  That's why the system
-image is protected using dm-verity, which provides data integrity, but
-not confidentiality.
+  mkfs.ext4 -O project,quota /dev/vdb1
+  mount -o prjquota /dev/vdb1 /mnt
+  chattr -p 123 /mnt
+  chattr +P /mnt
+  touch /mnt/aa /mnt/bb
+  exec 100<>/mnt/aa
+  rm -f /mnt/aa
+  sync
+  echo c > /proc/sysrq-trigger
 
-The bootloader will protect against installing a new system image
-unless you have the private key of the handset manufacturer to sign
-said system image.  But the Evil Maid can carry out a "chip off"
-attack, where flash chip is desoldered and the system image, and the
-dm-verity information can be written directly without the bootloader
-being able to prevent it.
+  #reboot and mount
+  mount -o prjquota /dev/vdb1 /mnt
+  #query status
+  quotaon -Ppv /dev/vdb1
+  #output
+  quotaon: Cannot find mountpoint for device /dev/vdb1
+  quotaon: No correct mountpoint specified.
 
-This is why using AE isn't going to help you.  Sure, the Evil Maid
-could try to diddle directories and use complicated crypto attacks.
-But why bother when they can just simply steal the user's keys, at
-which point all the AE in the world doesn't help a whit.
+This patch avoid incorrect quotaoff when ext4 has quota
+feautre. We also take care about the "quota on" part in
+ext4_orphan_cleanup(), it is used for journalled quota
+and not invoked if quota feature is enabled, so it's not
+affected.
 
-Cheers,
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+---
+ fs/ext4/super.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-						- Ted
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d61a70e2..c1b23b1 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2510,10 +2510,12 @@ static void ext4_orphan_cleanup(struct super_block *sb,
+ 		ext4_msg(sb, KERN_INFO, "%d truncate%s cleaned up",
+ 		       PLURAL(nr_truncates));
+ #ifdef CONFIG_QUOTA
+-	/* Turn quotas off */
+-	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+-		if (sb_dqopt(sb)->files[i])
+-			dquot_quota_off(sb, i);
++	if (!ext4_has_feature_quota(sb)) {
++		/* Turn quotas off */
++		for (i = 0; i < EXT4_MAXQUOTAS; i++) {
++			if (sb_dqopt(sb)->files[i])
++				dquot_quota_off(sb, i);
++		}
+ 	}
+ #endif
+ 	sb->s_flags = s_flags; /* Restore MS_RDONLY status */
+-- 
+2.5.0
