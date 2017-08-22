@@ -1,71 +1,51 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: Y2038 bug in ext4 recently_deleted() function
-Date: Tue, 22 Aug 2017 17:18:14 +0200
-Message-ID: <CAK8P3a2eY=yZM+mpUcFWHCD-DqSMvk+YtnVx1YAkJGbR_dXJTA@mail.gmail.com>
-References: <20170808050517.7160-1-wshilong@ddn.com> <20170816164211.GA31117@quack2.suse.cz>
- <3ED34739A4E85E4F894367D57617CDEFEDA401CE@LAX-EX-MB2.datadirect.datadirectnet.com>
- <20170817091959.GB7644@quack2.suse.cz> <20170817092153.GA14074@quack2.suse.cz>
- <BCA34CA8-FDDF-49FA-A5B4-9CCCEAC0C8D0@dilger.ca> <CABeXuvqtDdtjgjEznXPgdUfaZiG-KJ3AURpT_AuUACcPATaoDw@mail.gmail.com>
- <CAK8P3a2mu9SGdZhWX59OhSK-fokSEpjKsK4_HC1OC-XxZU8eTw@mail.gmail.com>
- <CABeXuvpHvyOq09JQW0XtrJ4fGZNBjmC=MBDRS2eKoVsmpi3g4Q@mail.gmail.com> <AB3E8CB7-76CE-4F1D-B47C-57D63E56E6D7@dilger.ca>
+From: Anand Jain <anand.jain@oracle.com>
+Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
+ encryption
+Date: Tue, 22 Aug 2017 23:33:51 +0800
+Message-ID: <7d4a9f66-7473-2e36-09bb-79d7885301bd@oracle.com>
+References: <20170818194730.61575-1-ebiggers3@gmail.com>
+ <9a86b7af-5e07-9b6f-958a-bd72ab28926e@oracle.com>
+ <20170822025545.GA3577@zzz.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Deepa Dinamani <deepa.kernel@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Wang Shilong <wshilong@ddn.com>,
-        Wang Shilong <wangshilong1991@gmail.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>,
-        Jan Kara <jack@suse.cz>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f51.google.com ([209.85.218.51]:34774 "EHLO
-        mail-oi0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932815AbdHVPSP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 11:18:15 -0400
-Received: by mail-oi0-f51.google.com with SMTP id j144so61048297oib.1
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Aug 2017 08:18:14 -0700 (PDT)
-In-Reply-To: <AB3E8CB7-76CE-4F1D-B47C-57D63E56E6D7@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-fscrypt@vger.kernel.org, linux-doc@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170822025545.GA3577@zzz.localdomain>
+Content-Language: en-US
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Aug 18, 2017 at 6:09 PM, Andreas Dilger <adilger@dilger.ca> wrote:
->
->>>> So moving to the case of a 32 bit machine:
->>>>
->>>> get_seconds() can return values until year 2106. And, recentcy at max
->>>> can only be 35. Analyzing the current line:
->>>>
->>>> if (dtime && (dtime < now) && (now < dtime + recentcy))
->>>>
->>>> The above equation should work fine at least until 35 seconds before
->>>> y2038 deadline.
->>>
->>> Since it's all unsigned arithmetic, it should be fine until 2106.
->>> However, we should get rid of get_seconds() long before then
->>> and use ktime_get_real_seconds() instead, as most other users
->>> of get_seconds() are (more) broken.
+
+
+On 08/22/2017 10:55 AM, Eric Biggers wrote:
+> On Tue, Aug 22, 2017 at 10:22:30AM +0800, Anand Jain wrote:
 >>
->> Dtime on disk representation again breaks this for certain values in
->> 2038 even though everything is unsigned.
+>> Hi Eric,
 >>
->> I was just saying that whatever we do here depends on how dtime on
->> disk is interpreted.
+>>    How about a section on the threat model specific to the file-name ?
 >>
->> Agree that ktime_get_real_seconds() should be used here. But, the way
->> we handle new values would rely on this new interpretation of dtime.
->> Also, using time64_t variables on stack only matters after this. Once
->> the types are corrected, maybe the comparison expression need not
->> change at all (after new dtime interpretation is in place).
->
-> There will not be a new dtime format on disk, but since the calculation
-> here only depends on relative times (within a few minutes), then it would
-> be fine to use only 32-bit timestamps, and truncate off the high bits
-> from get_seconds()/ktime_get_real_seconds().
+>>    (Sorry if I am missing something).
+>>
+>> Thanks, Anand
+> 
+> It's already mentioned that filenames are encrypted: "fscrypt protects the
+> confidentiality of file contents and filenames in the event of a single
+> point-in-time permanent offline compromise of the block device content."
+> There's not much more to it than that; all the other points in the "Threat
+> model" section (offline manipulations, timing attacks, access control, key
+> eviction, etc.) are essentially the same between contents and filenames
+> encryption.
 
-Agreed.
+  Do you think if application does not keep the sensitive information in 
+the file-name, would that remove the file-name from the list of items 
+that should be protected ?
 
-Are you planning to apply your fix for it then? I think your first
-suggestion is all we need, aside from the three  minor comments
-I had.
-
-       Arnd
+Thanks, Anand
