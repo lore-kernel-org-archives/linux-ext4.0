@@ -1,101 +1,91 @@
-From: "zhangyi (F)" <yi.zhang@huawei.com>
-Subject: Re: [PATCH] ext4: fix incorrect quotaoff if the quota feature is
- enabled
-Date: Tue, 22 Aug 2017 17:38:57 +0800
-Message-ID: <5a483e73-3bfb-a4a9-ea0b-c68024d1c0e1@huawei.com>
-References: <1503384097-19206-1-git-send-email-yi.zhang@huawei.com>
- <20170822092205.GA4909@quack2.suse.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 11/13] dax, iomap: Add support for synchronous faults
+Date: Tue, 22 Aug 2017 11:46:55 +0200
+Message-ID: <20170822094655.GE4909@quack2.suse.cz>
+References: <20170817160815.30466-1-jack@suse.cz>
+ <20170817160815.30466-12-jack@suse.cz>
+ <20170821185830.GB26220@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
-        <adilger.kernel@dilger.ca>, <miaoxie@huawei.com>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+        linux-nvdimm@lists.01.org, Andy Lutomirski <luto@kernel.org>,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Boaz Harrosh <boazh@netapp.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga04-in.huawei.com ([45.249.212.190]:4989 "EHLO
-        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932295AbdHVJjK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 05:39:10 -0400
-In-Reply-To: <20170822092205.GA4909@quack2.suse.cz>
+Received: from mx2.suse.de ([195.135.220.15]:47766 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S932305AbdHVJq5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Aug 2017 05:46:57 -0400
+Content-Disposition: inline
+In-Reply-To: <20170821185830.GB26220@linux.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2017/8/22 17:22, Jan Kara Wrote:
-> On Tue 22-08-17 14:41:37, zhangyi (F) wrote:
->> Current ext4 quota should always "usage enabled" if the
->> quota feautre is enabled. But in ext4_orphan_cleanup(), it
->> turn quota off directly (used for the older quota), so
->> we cannot turn it on again via "quotaon" unless umount and
->> remount ext4.
->>
->> Simple reproduce:
->>
->>   mkfs.ext4 -O project,quota /dev/vdb1
->>   mount -o prjquota /dev/vdb1 /mnt
->>   chattr -p 123 /mnt
->>   chattr +P /mnt
->>   touch /mnt/aa /mnt/bb
->>   exec 100<>/mnt/aa
->>   rm -f /mnt/aa
->>   sync
->>   echo c > /proc/sysrq-trigger
->>
->>   #reboot and mount
->>   mount -o prjquota /dev/vdb1 /mnt
->>   #query status
->>   quotaon -Ppv /dev/vdb1
->>   #output
->>   quotaon: Cannot find mountpoint for device /dev/vdb1
->>   quotaon: No correct mountpoint specified.
->>
->> This patch avoid incorrect quotaoff when ext4 has quota
->> feautre. We also take care about the "quota on" part in
->> ext4_orphan_cleanup(), it is used for journalled quota
->> and not invoked if quota feature is enabled, so it's not
->> affected.
->>
->> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
->> ---
->>  fs/ext4/super.c | 10 ++++++----
->>  1 file changed, 6 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index d61a70e2..c1b23b1 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -2510,10 +2510,12 @@ static void ext4_orphan_cleanup(struct super_block *sb,
->>  		ext4_msg(sb, KERN_INFO, "%d truncate%s cleaned up",
->>  		       PLURAL(nr_truncates));
->>  #ifdef CONFIG_QUOTA
->> -	/* Turn quotas off */
->> -	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
->> -		if (sb_dqopt(sb)->files[i])
->> -			dquot_quota_off(sb, i);
->> +	if (!ext4_has_feature_quota(sb)) {
->> +		/* Turn quotas off */
->> +		for (i = 0; i < EXT4_MAXQUOTAS; i++) {
->> +			if (sb_dqopt(sb)->files[i])
->> +				dquot_quota_off(sb, i);
->> +		}
+On Mon 21-08-17 12:58:30, Ross Zwisler wrote:
+> On Thu, Aug 17, 2017 at 06:08:13PM +0200, Jan Kara wrote:
+> > Add a flag to iomap interface informing the caller that inode needs
+> > fdstasync(2) for returned extent to become persistent and use it in DAX
+> > fault code so that we map such extents only read only. We propagate the
+> > information that the page table entry has been inserted write-protected
+> > from dax_iomap_fault() with a new VM_FAULT_RO flag. Filesystem fault
+> > handler is then responsible for calling fdatasync(2) and updating page
+> > tables to map pfns read-write. dax_iomap_fault() also takes care of
+> > updating vmf->orig_pte to match the PTE that was inserted so that we can
+> > safely recheck that PTE did not change while write-enabling it.
 > 
-> So this should work however I'd prefer if we kept the test symmetric to the
-> place where we turn quotas on for orphan cleanup. I.e. something like:
+> This changelog needs a little love.  s/VM_FAULT_RO/VM_FAULT_NEEDDSYNC/, the
+> new path doesn't do the RO mapping, but instead just does the entire RW
+> mapping after the fdatasync is complete, the vmf->orig_pte manipulation went
+> away, etc.
+
+Yeah, fixed. Thanks for noticing.
+
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/dax.c              | 31 +++++++++++++++++++++++++++++++
+> >  include/linux/iomap.h |  2 ++
+> >  include/linux/mm.h    |  6 +++++-
+> >  3 files changed, 38 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/dax.c b/fs/dax.c
+> > index bc040e654cc9..ca88fc356786 100644
+> > --- a/fs/dax.c
+> > +++ b/fs/dax.c
+> > @@ -1177,6 +1177,22 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
+> >  			goto error_finish_iomap;
+> >  		}
+> >  
+> > +		/*
+> > +		 * If we are doing synchronous page fault and inode needs fsync,
+> > +		 * we can insert PTE into page tables only after that happens.
+> > +		 * Skip insertion for now and return the pfn so that caller can
+> > +		 * insert it after fsync is done.
+> > +		 */
+> > +		if (write && (vma->vm_flags & VM_SYNC) &&
+> > +		    (iomap.flags & IOMAP_F_NEEDDSYNC)) {
 > 
-> 	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
-> 		/* Old style journalled quotas enabled for orphan cleanup? */
-> 		if (EXT4_SB(sb)->s_qf_names[i] && sb_dqopt(sb)->files[i])
-> 			dquot_quota_off(sb, i);
-> 	}
+> Just a small nit, but I don't think we really need to check for 'write' here.
+> The fact that IOMAP_F_NEEDDSYNC is set tells us that we are doing a write.
 > 
+> 	if ((flags & IOMAP_WRITE) &&
+> 	    !jbd2_transaction_committed(EXT4_SB(inode->i_sb)->s_journal,
+> 					EXT4_I(inode)->i_datasync_tid))
+> 		iomap->flags |= IOMAP_F_NEEDDSYNC;
+> 
+> Ditto for the PMD case.
 
-Yes, looks better, good suggestion, thanks!
+OK, done.
 
-> Also when looking at this code I've noticed that quota does not get enabled
-> if we use quota feature and we do orphan replay on read-only filesystem.
-> Could you fix that by handling this case in ext4_orphan_cleanup() as well?
-> Thanks!
+> With that one simplification and a cleaned up changelog, you can add:
+> 
+> Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 
-Sure, I will fix it as well.
+Thanks.
 
-Thanks,
-ZhangYi.
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
