@@ -1,85 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck: improve performance of region_allocate()
-Date: Tue, 22 Aug 2017 08:45:05 -0400
-Message-ID: <20170822124505.xr7wnxonsbml3mgh@thunk.org>
-References: <20170819011635.1815929-1-dsp@fb.com>
- <20170822022948.nyn6fessudjaj5xh@thunk.org>
- <a4b31ace-3a54-051d-75df-b47452c789cb@uls.co.za>
+From: Geert Lorang <geert.lorang@luciad.com>
+Subject: ext4_mb_generate_buddy block bitmap and bg descriptor inconsistent
+Date: Tue, 22 Aug 2017 15:25:46 +0200
+Message-ID: <8e22ed00-f290-04de-15ba-eb6580e66ce8@luciad.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Doug Porter <dsp@fb.com>, linux-ext4@vger.kernel.org,
-        Omar Sandoval <osandov@fb.com>
-To: Jaco Kroon <jaco@uls.co.za>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40814 "EHLO imap.thunk.org"
+Received: from relay.luciad.com ([91.216.20.195]:53502 "EHLO relay.luciad.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932773AbdHVMpL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Aug 2017 08:45:11 -0400
-Content-Disposition: inline
-In-Reply-To: <a4b31ace-3a54-051d-75df-b47452c789cb@uls.co.za>
+        id S932791AbdHVNZs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Aug 2017 09:25:48 -0400
+Received: from [IPv6:2001:67c:1cc:152:9122:f2ca:1601:4ba4] (unknown [IPv6:2001:67c:1cc:152:9122:f2ca:1601:4ba4])
+        by relay.luciad.com (Postfix) with ESMTPSA id AFB0317E1F
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Aug 2017 15:25:46 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 22, 2017 at 11:36:54AM +0200, Jaco Kroon wrote:
-> 
-> Unfortunately I'm having trouble with inline formatting of the patch, so I
-> have attached it instead of providing inline (sorry - I know that makes
-> discussion difficult).  Was originally emailed to you as a series of three
-> independent patches, with the below as 0001.  We still need to discuss the
-> other optimization.
+Hi,
 
-Yeah, sorry for not getting back to you.  I took a long weekend
-vacation and this week has been super busy at work, so I haven't had a
-chance to pursue the approach I've outlined in an earlier message ---
-that is, instead of optimizing the region code (your patch and my
-patch, where your patch is more general, but mine is simpler and only
-optimizes the one case that is important for optimizing CPU
-performance) or replacing it with an rbtree (Doug's patch), but
-instead removing it altogether and replacing it with some better check
-that avoids needing the memory usage altogether.
+We have some QEMU virtual machines that go randomly into read-only state 
+where the ext4 filesystem aborts with:
+ext4_mb_generate_buddy:757: group X, block bitmap and bg descriptor 
+inconsistent: Y vs 32768 free clusters
 
-> The attached improves CPU performance from O(e*h) to O(e) and memory from
-> O(h) to O(1).  The patch below does similar for CPU but nothing for memory
-> (In my case it took fsck down by a significant margin).
+I know this has been discussed extensively already in the past e.g.
 
-I thought you were saying you had some false positives (where it was
-causing e2fsck to complain about some valid extent trees in your file
-system)?  That's why I've not acted on your proposed patch until I had
-time to study the code more closely to understand what was going on
-with the errors I thought you had reported.
+https://bugzilla.kernel.org/show_bug.cgi?id=102731
+https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=818502
+https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1423672
 
-> Ted - the provided patch by Doug may still improve performance for the other
-> uses of region.c as well, but the impact will probably not be as severe
-> since (as far as I know) there are usually not a great many number of EAs
-> for each file.
+Now the difference with those reports and our case is that the last 
+number of the inconsistency (grp->bb_free) is *always* 32768 + We're 
+sure the proposed patch is applied on both host & guest.
 
-Correct; we are limited to at most 64k if the new (experimental)
-ea_inode feature is enabled; and without that feature, we are limited
-to the 4k block size.  So I'm not particularly worried about the xattr
-region use case.
+Is there anyone that can provide some insights in what /might/ be going 
+on? E.g. what does this error actually mean and/or why it would always 
+be exactly 32768?
+It think it's unlikely something is wrong in the ext4 code - I'm just 
+trying to reproduce the problem so we can figure out what's going on here.
 
-Indeed, the region code was originally designed and implemented for
-the xattr use case, and the use of a linked list approach was
-deliberately chosen for simplicity because normally there are only a
-handful of xattrs, and how they are laid out (keys contiguously
-growing from one direction, values contiguously grown from the other
-direction) is very friendly for that particular use case.  Hence, in
-the common, non-error case, there are only going to be two entries on
-the linked list when handling xattrs.
+My apologies if this does not belong on this list.
 
-
-As far as the other (icount) optimization is concerned, that's on my
-todo list but I'm trying to understand how much of a win it's going to
-be on a densly hard linked file system, and whether the complexity due
-to the handling the potential increased memory usage is worth it.  If
-we leave to be something that has to be manually enabled using
-/etc/e2fsck.conf, very few people will use it.  If we need to somehow
-figure out how it's safe / necessary to activate the icount
-optimization, especially if there are potentially multiple fsck's
-running in parallel, this starts to get really complicated.  So
-perhaps all we can do is leave it as a manually enabled option, but I
-still need to think about that a bit.
-
-Cheers,
-
-						- Ted
+Thanks,
+Geert
