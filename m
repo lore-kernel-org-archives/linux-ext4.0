@@ -1,125 +1,56 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] ext4: fix quota inconsistency during orphan cleanup
- for read-only mounts
-Date: Wed, 23 Aug 2017 12:06:03 +0200
-Message-ID: <20170823100603.GD2100@quack2.suse.cz>
-References: <1503479638-16977-1-git-send-email-yi.zhang@huawei.com>
- <1503479638-16977-2-git-send-email-yi.zhang@huawei.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, jack@suse.cz, tytso@mit.edu,
-        adilger.kernel@dilger.ca, miaoxie@huawei.com
-To: "zhangyi (F)" <yi.zhang@huawei.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 3/5] tune2fs: do not enable project feature or quota if inode size is 128 bytes
+Date: Wed, 23 Aug 2017 11:42:08 -0400
+Message-ID: <20170823154210.8756-3-tytso@mit.edu>
+References: <20170823154210.8756-1-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34023 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1753756AbdHWKGF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 23 Aug 2017 06:06:05 -0400
-Content-Disposition: inline
-In-Reply-To: <1503479638-16977-2-git-send-email-yi.zhang@huawei.com>
+Received: from imap.thunk.org ([74.207.234.97]:45878 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754139AbdHWPmS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 23 Aug 2017 11:42:18 -0400
+In-Reply-To: <20170823154210.8756-1-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 23-08-17 17:13:58, zhangyi (F) wrote:
-> Quota does not get enabled for read-only mounts if filesystem
-> has quota feature, so that quotas cannot updated during orphan
-> cleanup, which will lead to quota inconsistency.
-> 
-> This patch turn on quotas during orphan cleanup for this case,
-> make sure quotas can be updated correctly.
-> 
-> Reported-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+Don't allow the user to enable the project feature (or project quota)
+if the inode size is 128 bytes.
 
-Looks good. You can add:
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ misc/tune2fs.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-
-> ---
->  fs/ext4/super.c | 38 +++++++++++++++++++++++++++++++-------
->  1 file changed, 31 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index cade5c8..c9e7be5 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2404,6 +2404,7 @@ static void ext4_orphan_cleanup(struct super_block *sb,
->  	unsigned int s_flags = sb->s_flags;
->  	int ret, nr_orphans = 0, nr_truncates = 0;
->  #ifdef CONFIG_QUOTA
-> +	int quota_update = 0;
->  	int i;
->  #endif
->  	if (!es->s_last_orphan) {
-> @@ -2442,14 +2443,32 @@ static void ext4_orphan_cleanup(struct super_block *sb,
->  #ifdef CONFIG_QUOTA
->  	/* Needed for iput() to work correctly and not trash data */
->  	sb->s_flags |= MS_ACTIVE;
-> -	/* Turn on journaled quotas so that they are updated correctly */
-> +
-> +	/*
-> +	 * Turn on quotas which were not enabled for read-only mounts if
-> +	 * filesystem has quota feature, so that they are updated correctly.
-> +	 */
-> +	if (ext4_has_feature_quota(sb) && (s_flags & MS_RDONLY)) {
-> +		int ret = ext4_enable_quotas(sb);
-> +
-> +		if (!ret)
-> +			quota_update = 1;
-> +		else
-> +			ext4_msg(sb, KERN_ERR,
-> +				"Cannot turn on quotas: error %d", ret);
-> +	}
-> +
-> +	/* Turn on journaled quotas used for old sytle */
->  	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
->  		if (EXT4_SB(sb)->s_qf_names[i]) {
->  			int ret = ext4_quota_on_mount(sb, i);
-> -			if (ret < 0)
-> +
-> +			if (!ret)
-> +				quota_update = 1;
-> +			else
->  				ext4_msg(sb, KERN_ERR,
->  					"Cannot turn on journaled "
-> -					"quota: error %d", ret);
-> +					"quota: type %d: error %d", i, ret);
->  		}
->  	}
->  #endif
-> @@ -2510,10 +2529,12 @@ static void ext4_orphan_cleanup(struct super_block *sb,
->  		ext4_msg(sb, KERN_INFO, "%d truncate%s cleaned up",
->  		       PLURAL(nr_truncates));
->  #ifdef CONFIG_QUOTA
-> -	/* Turn off journaled quotas if they were enabled for orphan cleanup */
-> -	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
-> -		if (EXT4_SB(sb)->s_qf_names[i] && sb_dqopt(sb)->files[i])
-> -			dquot_quota_off(sb, i);
-> +	/* Turn off quotas if they were enabled for orphan cleanup */
-> +	if (quota_update) {
-> +		for (i = 0; i < EXT4_MAXQUOTAS; i++) {
-> +			if (sb_dqopt(sb)->files[i])
-> +				dquot_quota_off(sb, i);
-> +		}
->  	}
->  #endif
->  	sb->s_flags = s_flags; /* Restore MS_RDONLY status */
-> @@ -5512,6 +5533,9 @@ static int ext4_enable_quotas(struct super_block *sb)
->  				DQUOT_USAGE_ENABLED |
->  				(quota_mopt[type] ? DQUOT_LIMITS_ENABLED : 0));
->  			if (err) {
-> +				for (type--; type >= 0; type--)
-> +					dquot_quota_off(sb, type);
-> +
->  				ext4_warning(sb,
->  					"Failed to enable quota tracking "
->  					"(type=%d, err=%d). Please run "
-> -- 
-> 2.5.0
-> 
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 85435674d..99c17cc47 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -1310,6 +1310,11 @@ mmp_error:
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_RO_INCOMPAT,
+ 		       EXT4_FEATURE_RO_COMPAT_PROJECT)) {
++		if (fs->super->s_inode_size == EXT2_GOOD_OLD_INODE_SIZE) {
++			fprintf(stderr, _("Cannot enable project feature; "
++					  "inode size too small.\n"));
++			exit(1);
++		}
+ 		Q_flag = 1;
+ 		quota_enable[PRJQUOTA] = QOPT_ENABLE;
+ 	}
+@@ -1497,6 +1502,13 @@ static void handle_quota_options(ext2_filsys fs)
+ 		/* Nothing to do. */
+ 		return;
+ 
++	if (quota_enable[PRJQUOTA] == QOPT_ENABLE &&
++	    fs->super->s_inode_size == EXT2_GOOD_OLD_INODE_SIZE) {
++		fprintf(stderr, _("Cannot enable project quota; "
++				  "inode size too small.\n"));
++		exit(1);
++	}
++
+ 	for (qtype = 0; qtype < MAXQUOTAS; qtype++) {
+ 		if (quota_enable[qtype] == QOPT_ENABLE)
+ 			qtype_bits |= 1 << qtype;
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.11.0.rc0.7.gbe5a750
