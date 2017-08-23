@@ -1,74 +1,55 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 13/13] ext4: Support for synchronous DAX faults
-Date: Wed, 23 Aug 2017 11:37:14 -0700
-Message-ID: <20170823183714.GH13778@infradead.org>
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [PATCH 10/13] mm: Wire up MAP_SYNC
+Date: Wed, 23 Aug 2017 11:43:49 -0700
+Message-ID: <20170823184349.GA12660@infradead.org>
 References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-14-jack@suse.cz>
+ <20170817160815.30466-11-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        Boaz Harrosh <boazh@netapp.com>, linux-nvdimm@lists.01.org,
-        linux-xfs@vger.kernel.org, Andy Lutomirski <luto@kernel.org>,
-        linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:53429 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932396AbdHWShP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Aug 2017 14:37:15 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Boaz Harrosh <boazh-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170817160815.30466-14-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170817160815.30466-11-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-> +	pfn_t pfn;
->  
->  	if (write) {
->  		sb_start_pagefault(sb);
-> @@ -287,16 +288,39 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
->  		down_read(&EXT4_I(inode)->i_mmap_sem);
->  		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
->  					       EXT4_DATA_TRANS_BLOCKS(sb));
-> +		if (IS_ERR(handle)) {
-> +			up_read(&EXT4_I(inode)->i_mmap_sem);
-> +			sb_end_pagefault(sb);
-> +			return VM_FAULT_SIGBUS;
-> +		}
+On Thu, Aug 17, 2017 at 06:08:12PM +0200, Jan Kara wrote:
+> Pretty crude for now...
+> 
+> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> ---
+>  fs/ext4/file.c                  | 2 ++
+>  include/linux/mm.h              | 1 +
+>  include/linux/mman.h            | 3 ++-
+>  include/uapi/asm-generic/mman.h | 1 +
+>  mm/mmap.c                       | 5 +++++
+>  5 files changed, 11 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index f84bb29e941e..850037e140d7 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -340,6 +340,8 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+>  		vma->vm_flags |= VM_MIXEDMAP | VM_HUGEPAGE;
 >  	} else {
->  		down_read(&EXT4_I(inode)->i_mmap_sem);
+>  		vma->vm_ops = &ext4_file_vm_ops;
+> +		if (vma->vm_flags & VM_SYNC)
+> +			return -EOPNOTSUPP;
 >  	}
-> -	if (!IS_ERR(handle))
-> -		result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops, NULL);
-> -	else
-> -		result = VM_FAULT_SIGBUS;
-> +	result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops, &pfn);
 
-Maybe split the error handling refactor into a simple prep patch to
-make this one more readable?
+So each mmap instance would need to reject the flag explicitly?
 
-> +		/* Write fault but PFN mapped only RO? */
-> +		if (result & VM_FAULT_NEEDDSYNC) {
-> +			int err;
-> +			loff_t start = ((loff_t)vmf->pgoff) << PAGE_SHIFT;
-> +			size_t len = 0;
-> +
-> +			if (pe_size == PE_SIZE_PTE)
-> +				len = PAGE_SIZE;
-> +#ifdef CONFIG_FS_DAX_PMD
-> +			else if (pe_size == PE_SIZE_PMD)
-> +				len = HPAGE_PMD_SIZE;
-> +#endif
-> +			else
-> +				WARN_ON_ONCE(1);
-> +			err = vfs_fsync_range(vmf->vma->vm_file, start,
-> +					      start + len - 1, 1);
-> +			if (err)
-> +				result = VM_FAULT_SIGBUS;
-> +			else
-> +				result = dax_insert_pfn_mkwrite(vmf, pe_size,
-> +								pfn);
-> +		}
-
-I think this needs to become a helper exported from the DAX code,
-way too much magic inside the file system as-is.
+Or do I misunderstand this VM_SYNC flag?
