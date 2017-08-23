@@ -1,31 +1,28 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
-Subject: Re: [PATCH 06/13] dax: Inline dax_insert_mapping() into the callsite
-Date: Wed, 23 Aug 2017 11:31:39 -0700
-Message-ID: <20170823183139.GD13778@infradead.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 07/13] dax: Inline dax_pmd_insert_mapping() into the
+ callsite
+Date: Wed, 23 Aug 2017 11:32:09 -0700
+Message-ID: <20170823183209.GE13778@infradead.org>
 References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-7-jack@suse.cz>
+ <20170817160815.30466-8-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
- Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Boaz Harrosh <boazh-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org>
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Boaz Harrosh <boazh@netapp.com>, linux-nvdimm@lists.01.org,
+        linux-xfs@vger.kernel.org, Andy Lutomirski <luto@kernel.org>,
+        linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([65.50.211.133]:41151 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932396AbdHWScJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Aug 2017 14:32:09 -0400
 Content-Disposition: inline
-In-Reply-To: <20170817160815.30466-7-jack-AlSwsSmVLrQ@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170817160815.30466-8-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Looks fine,
 
-Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
