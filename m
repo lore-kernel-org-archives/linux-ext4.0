@@ -1,18 +1,23 @@
-From: Randy Dodgen <dodgen@google.com>
-Subject: [PATCH] Fix ext4 fault handling when mounted with -o dax,ro
-Date: Tue, 22 Aug 2017 15:24:34 -0700
-Message-ID: <20170822222434.146233-1-dodgen@google.com>
-Cc: Randy Dodgen <dodgen@google.com>
-To: tytso@google.com, linux-ext4@vger.kernel.org
+From: rdodgen@gmail.com
+Subject: [PATCH v2] Fix ext4 fault handling when mounted with -o dax,ro
+Date: Tue, 22 Aug 2017 20:37:04 -0700
+Message-ID: <bea6897723e5bf09d893b2ca40263a894a284a5a.1503459187.git.dodgen@google.com>
+References: <20170822222434.146233-1-dodgen@google.com>
+Cc: Randy Dodgen <dodgen@google.com>, linux-nvdimm@lists.01.org
+To: tytso@mit.edu, linux-ext4@vger.kernel.org,
+        ross.zwisler@linux.intel.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f175.google.com ([209.85.192.175]:35042 "EHLO
-        mail-pf0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752814AbdHVWY5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 18:24:57 -0400
-Received: by mail-pf0-f175.google.com with SMTP id x137so230623pfd.2
-        for <linux-ext4@vger.kernel.org>; Tue, 22 Aug 2017 15:24:57 -0700 (PDT)
+Received: from mail-pg0-f66.google.com ([74.125.83.66]:37893 "EHLO
+        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753142AbdHWDhu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Aug 2017 23:37:50 -0400
+Received: by mail-pg0-f66.google.com with SMTP id t3so521501pgt.5
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Aug 2017 20:37:50 -0700 (PDT)
+In-Reply-To: <20170822222434.146233-1-dodgen@google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+From: Randy Dodgen <dodgen@google.com>
 
 If an ext4 filesystem is mounted with both the DAX and read-only
 options, executables on that filesystem will fail to start (claiming
@@ -31,7 +36,13 @@ It might be the case that this could be better handled in
 ext4_iomap_begin / ext4_iomap_end (called via iomap_ops inside
 dax_iomap_fault). These is some overlap already (e.g. grabbing journal
 handles).
+
+Signed-off-by: Randy Dodgen <dodgen@google.com>
 ---
+
+I'm resending for some DMARC-proofing (thanks Ted for the explanation), a
+missing Signed-off-by, and some extra cc's. Oops!
+
  fs/ext4/file.c | 26 +++++++++++++++++++++++++-
  1 file changed, 25 insertions(+), 1 deletion(-)
 
