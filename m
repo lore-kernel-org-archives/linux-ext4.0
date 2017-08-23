@@ -1,68 +1,79 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 1/5] mke2fs.conf: remove legacy entry for ext4dev
-Date: Wed, 23 Aug 2017 10:17:09 -0700
-Message-ID: <20170823171709.GA32397@magnolia>
-References: <20170823154210.8756-1-tytso@mit.edu>
+From: linux-ext4-owner@vger.kernel.org
+Subject: =?utf-8?B?4piFZ3otc2FsZXMtLeKAnEpFQyB3b3Js?=
+        =?utf-8?B?ZCAyMDE4IOS4lueVjOWkjeWQiOadkOaWmeWxleiniOWPiuS8muiuruKAneWwhg==?=
+        =?utf-8?B?5LqO4oCcM+aciDA2LTA45pel4oCd5Zyo4oCc5rOV5Zu95be06buO4oCd5Li+6KGM?=
+        =?utf-8?B?ICAgIO+8iOWcsOWPs1AxLUwtTWXvvIk=?=
+Date: Thu, 24 Aug 2017 01:39:56 +0800
+Message-ID: <20170824014008817553@endville.com>
+Reply-To: <EMAILQUNFA@163.COM>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain;
+        charset="utf-8"
+Content-Transfer-Encoding: base64
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:44808 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932109AbdHWRRO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Aug 2017 13:17:14 -0400
-Content-Disposition: inline
-In-Reply-To: <20170823154210.8756-1-tytso@mit.edu>
+Received: from [122.227.206.166] ([122.227.206.166]:12150 "EHLO
+        mail.endville.com" rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org
+        with ESMTP id S932111AbdHWRxA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Aug 2017 13:53:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 23, 2017 at 11:42:06AM -0400, Theodore Ts'o wrote:
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> ---
->  misc/mke2fs.conf.in  | 5 -----
->  tests/mke2fs.conf.in | 5 -----
->  2 files changed, 10 deletions(-)
-> 
-> diff --git a/misc/mke2fs.conf.in b/misc/mke2fs.conf.in
-> index 812f7c742..d0066b78b 100644
-> --- a/misc/mke2fs.conf.in
-> +++ b/misc/mke2fs.conf.in
-> @@ -14,11 +14,6 @@
->  		features = has_journal,extent,huge_file,flex_bg,uninit_bg,64bit,dir_nlink,extra_isize
->  		inode_size = 256
->  	}
-> -	ext4dev = {
-> -		features = has_journal,extent,huge_file,flex_bg,uninit_bg,inline_data,64bit,dir_nlink,extra_isize
-> -		inode_size = 256
-> -		options = test_fs=1
-
-LOL, that was still there?? :)
-
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-
---D
-
-> -	}
->  	small = {
->  		blocksize = 1024
->  		inode_size = 128
-> diff --git a/tests/mke2fs.conf.in b/tests/mke2fs.conf.in
-> index c06050d8d..ee246ba8b 100644
-> --- a/tests/mke2fs.conf.in
-> +++ b/tests/mke2fs.conf.in
-> @@ -17,11 +17,6 @@
->  		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize
->  		inode_size = 256
->  	}
-> -	ext4dev = {
-> -		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize
-> -		inode_size = 256
-> -		options = test_fs=1
-> -	}
->  	small = {
->  		blocksize = 1024
->  		inode_size = 128
-> -- 
-> 2.11.0.rc0.7.gbe5a750
-> 
+5bCK5pWs55qEIGd6LXNhbGVzQHJpc2hhbi5jb20uY24g5LyB5Lia6aKG5a+8L+WFrOWPuOi0n+i0
+o+S6ui/kuJrnlYzkuJPlrrbvvIzmgqjlpb3vvJoNCuOAgOOAgA0K44CA44CA5paw5p2Q5paZ5Li6
+MjHkuJbnuqrkuInlpKflhbHmgKflhbPplK7mioDmnK/kuYvkuIDvvIzlt7LmiJDkuLrlhajnkIPn
+u4/mtY7ov4XpgJ/lop7plb/nmoTmupDliqjlipvlkozmj5DljYfmoLjlv4Pnq57kuonlipvnmoTm
+iJjnlaXnhKbngrnjgILmnZDmlpnkvZzkuLrliLbpgKDkuJrnmoTln7rnoYDvvIznibnliKvmmK/m
+lrDmnZDmlpnnoJTnqbblkozkuqfkuJrlj5HlsZXnmoTmsLTlubPkuI7op4TmqKHvvIzlt7Lnu4/m
+iJDkuLrooaHph4/kuIDkuKrlm73lrrbnp5HmioDov5vmraXlkoznu7zlkIjlrp7lipvnmoTph43o
+poHmoIflv5fjgILlnKjmlrDmnZDmlpnlj5HlsZXkuI7lupTnlKjkuK3vvIzlpI3lkIjmnZDmlpnl
+jaDmnInnm7jlvZPph43opoHnmoTlnLDkvY3vvIznibnliKvlub/ms5vnmoTlupTnlKjlnKjmsb3o
+vabjgIHkuqTpgJrjgIHpo47og73jgIHoiKrnqbrjgIHoiKrlpKnjgIHlhbXlmajjgIHoiLnoiLbj
+gIHlm73pmLLjgIHmnLrmorDjgIHnlLXlrZDjgIHljJblt6XjgIHlu7rnrZHjgIHlhpzkuJrjgIHm
+uJTkuJrjgIHnurrnu4fjgIHov5DliqjlmajmnZDnrYnpoobln5/vvIzkuIDnm7TmmK/kuJbnlYzl
+kITlm73kvJjlhYjlj5HlsZXlkoznq57kuonmv4Dng4jnmoTph43opoHooYzkuJrjgIINCuOAgOOA
+gA0K44CA44CA4oCcSkVD5LiW55WM5aSN5ZCI5p2Q5paZ5bGV6KeI5Y+K5Lya6K6u4oCd77yISkVD
+IHdvcmxkIENvbXBvc2l0ZXMgU2hvdyAmIENvbmZlcmVuY2Vz77yJ5Yib5Yqe5LqOMTk2M+W5tO+8
+jOavj+W5tOS4vuWKnuS4gOWxiu+8jOiHszIwMTflubTmgLvlhbHkuL7lip7kuoY1MuWxiu+8jOS4
+u+WKnuWNleS9jeaYr+azleWbvUpFQ+WkjeWQiOadkOaWmeWPkeWxleS/g+i/m+S8mi9KRUPpm4bl
+m6LvvIzkuK3lm73mgLvlsZXlm6LlsZXllYbnu4Tnu4fljZXkvY3kuLrmmKDlvrflm73pmYXkvJrl
+sZXpm4blm6LkuK3lm73ku6PooajlpITvvIzlnKjljJfkuqzjgIHkuIrmtbfnrYnlnLDorr7mnInl
+iIbmlK/mnLrmnoTvvIzotJ/otKPor6XlsZXkvJrlnKjkuK3lm73nmoTmjqjlub/lkozmi5vllYbl
+t6XkvZzvvIhKRUPkuK3lm73mgLvlsZXlm6LmiqXlkI3ng63nur/vvJo0MDAwLTY4MC04NjDovaw4
+MTQ044CBNTIyMO+8ieOAgkpFQ+WkjeWQiOadkOaWmeWxleW3suaIkOS4uuS4lueVjOS4iuWOhuWP
+suacgOaCoOS5heOAgeinhOaooeacgOWkp+eahOWkjeWQiOadkOaWmeihjOS4muS4k+S4muWxlein
+iOS8mu+8jOWxleekuuWSjOWPjeaYoOS6huW9k+WJjeWkjeWQiOadkOaWmeihjOS4mueahOacgOaW
+sOaKgOacr+WSjOW6lOeUqOaIkOaenOOAgg0K44CA44CADQrjgIDjgIDkuLrkuoblop7ov5vlm73l
+hoXlpJblpI3lkIjmnZDmlpnooYzkuJrnmoTkuqTmtYHkuI7lkIjkvZzvvIzlkIzml7blsZXnpLrm
+iJHlm73lpI3lkIjmnZDmlpnkuqfkuJrnmoTlj5HlsZXkuI7miJDlsLHvvIzluK7liqnlooPlhoXk
+vIHkuJrlvIDmi5Plm73lhoXlpJbluILlnLrvvIzkuK3lm73lm73pmYXlpI3mnZDljY/kvJrjgIHm
+mKDlvrflm73pmYXkvJrlsZXpm4blm6LvvIhZT05EIEVYUE/vvInkuK3lm73ku6PooajlpITlt7Lo
+v5HljYHlubTnu4Tnu4fkuK3lm73kvIHkuJrlj4LkuI7or6XlsZXkvJrvvIzkuLrkuK3lm73lpI3l
+kIjmnZDmlpnpm4blm6LjgIHkuK3mnZDnp5HmioDjgIHkuK3pkqLpm4blm6LjgIHkuK3lm73lu7rm
+nZDpm4blm6LjgIHkuK3lm73llYbpo57jgIHljJfkuqznjrvpkqLpmaLjgIHkuIrmtbfmnbDkuovm
+nbDmlrDmnZDmlpnpm4blm6LjgIHph43luoblm73pmYXlpI3lkIjmnZDmlpnjgIHkuK3ljZfmjqfo
+gqHpm4blm6LjgIHnp6bnmoflspvogIDljY7njrvnkoPpkqLjgIHng5/lj7DmsKjnurbjgIHlpKnp
+qazpm4blm6LjgIHljY7kuJznkIblt6XlpKflrabjgIHlk4jlsJTmu6jlt6XkuJrlpKflrabjgIHl
+t6jnn7Ppm4blm6LjgIHkuK3lhrbpm4blm6LjgIHph5HlhYnpm4blm6LjgIHmsZ/oi4/mgZLnpZ7n
+uqTnu7TmnZDmlpnjgIHph43luoblpKflrabjgIHkuIrmtbfnjrvnkoPpkqLnoJTnqbbpmaLjgIHk
+uK3ljZflpKflrabjgIHlk4jlsJTmu6jnjrvnkoPpkqLnoJTnqbbpmaLnrYnkvJflpJrooYzkuJrl
+t6jlpLTlkoznn6XlkI3mnLrmnoTmj5DkvpvkuobkvJjotKjpq5jmlYjnmoTlooPlpJblsZXotLjm
+nI3liqHjgIINCuOAgOOAgA0K44CA44CA4oCcSkVDIHdvcmxkIDIwMTgg56ys5LqU5Y2B5LiJ5LiW
+55WM5aSN5ZCI5p2Q5paZ5bGV6KeI5Y+K5Lya6K6u4oCd5bCG5LqO4oCcM+aciDA2LTA45pel4oCd
+5Zyo4oCc5rOV5Zu95be06buO5bGV6KeI5Lya6K6u5Lit5b+D4oCd5YaN5bqm5Li+6KGM77yM5oiR
+5Lus6K+a6YKA5YWo5Zu95ZCE5Zyw5aSN5ZCI5p2Q5paZ5Y+K5paw5p2Q5paZ55u45YWz5Y2V5L2N
+5LiO5Lia55WM5Lq65aOr5Yqg5YWl5ZKx5Lus55qE5Lit5Zu95oC75bGV5Zui5YmN5b6A5Y+C5bGV
+5Y+C6KeC44CC44CA44CADQrjgIDjgIANCuOAgOOAgOacieWFs+WPguWxleWPguinguKAnEpFQ+S4
+lueVjOWkjeWQiOadkOaWmeWxleKAneS6i+WunO+8jOivt+iBlOe7nOOAkOS4reWbveaAu+WxleWb
+ouOAkee7hOWKnuaWueKAlOKAlCDlhajlm73nu5/kuIDlrqLmnI3ng63nur/vvJo0MDAwLTU4MC04
+NTDvvIjovaw1MjIw44CBODE0NOOAgTg4ODjvvInjgIEwMTDigJQ2OTIzLTY5NDTvvJsg6YKu566x
+L1FR77yaMTI4MDkzOTUjcXEuY29t77ybIOW+ruS/oe+8miBDYW5aaGFuWGlhb1hp77yI5Y+C5bGV
+5raI5oGv77yJ44CBWmhhblNoYW5nWmhpSmlh77yI5bGV5ZWG5LmL5a6277yJ77ybIOW+ruWNmu+8
+mmh0dHA6Ly93ZWliby5jb20vamVjc2hvd++8iOWxleS8mu+8ieOAgWh0dHA6Ly93ZWliby5jb20v
+eWluZ2RlaHVpemhhbu+8iOWFrOWPuO+8ieOAgg0K44CA44CADQrjgIDjgIDlj4LliqBKRUPlsZXk
+vJrmmK/kuIDkuKrlpI3lkIjmnZDmlpnlj4rmlrDmnZDmlpnkvIHkuJrotbDlkJHlm73pmYXljJbn
+moTmoIflv5flkozpgJTlvoTvvIENCuOAgOOAgA0K44CA44CADQrjgIDjgIANCuOAgOOAgA0KX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX+OAgOOAgA0K77yI55m+5LiH576k5Y+R57O757uffOS4uuaC
+qOWPkemAgXzlpoLkuI3luIzmnJvlho3mlLbliLDmraTooYzkuJrotYTorq986K+35Zue5aSN4oCc
+VEQrSkVD4oCd6Iez6YKu566xMTA1NTgwMDgxMkBxcS5jb23vvIkNCg==
