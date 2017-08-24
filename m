@@ -1,38 +1,41 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4: Delete an error message for a failed memory allocation in
- ext4_multi_mount_protect()
-Date: Thu, 24 Aug 2017 13:44:45 -0400
-Message-ID: <20170824174445.gfrkr35m4vcfuoat@thunk.org>
+Subject: Re: [PATCH 2/2] ext4: Improve a size determination in two functions
+Date: Thu, 24 Aug 2017 13:50:39 -0400
+Message-ID: <20170824175039.jc6m6pjb5ar6lozm@thunk.org>
 References: <ca49a6dc-f2ee-d427-5f16-052706277b38@users.sourceforge.net>
- <5bf432ae-398d-718c-8105-3092a240a8ef@users.sourceforge.net>
- <b21f6c3d-2cad-3f72-f410-f608ea5f4cea@redhat.com>
- <e522d9a5-4d5a-b4a1-fe94-bb3aae4c5976@users.sourceforge.net>
+ <c1941b22-bdab-fccf-06e2-2f9fc50daec1@users.sourceforge.net>
+ <0d7fe1c1-f1f4-3c2f-0e2a-4c8545947714@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <esandeen@redhat.com>, linux-ext4@vger.kernel.org,
+Cc: SF Markus Elfring <elfring@users.sourceforge.net>,
+        linux-ext4@vger.kernel.org,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         LKML <linux-kernel@vger.kernel.org>,
         kernel-janitors@vger.kernel.org
-To: SF Markus Elfring <elfring@users.sourceforge.net>
+To: sandeen@redhat.com
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <e522d9a5-4d5a-b4a1-fe94-bb3aae4c5976@users.sourceforge.net>
+In-Reply-To: <0d7fe1c1-f1f4-3c2f-0e2a-4c8545947714@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Aug 19, 2017 at 08:00:31PM +0200, SF Markus Elfring wrote:
-> >> Omit an extra message for a memory allocation failure in this function.
+On Sat, Aug 19, 2017 at 08:49:20PM -0500, Eric Sandeen wrote:
+> On 8/19/17 6:48 AM, SF Markus Elfring wrote:
+> > From: Markus Elfring <elfring@users.sourceforge.net>
+> > Date: Sat, 19 Aug 2017 13:14:26 +0200
 > > 
-> > I might be dense, but what makes this message "extra?"
+> > Replace the specification of data structures by pointer dereferences
+> > as the parameter for the operator "sizeof" to make the corresponding size
+> > determination a bit safer according to the Linux coding style convention.
 > > 
-> > (I suppose kmalloc squawks too if it fails,
+> > This issue was detected by using the Coccinelle software.
+> > 
+> > Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
 > 
-> Do you find the default allocation failure report sufficient?
+> Looks good,
+> 
+> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
->From a helpdesk reporting situation, having a more specific message
-when there is a MMP failure causing the mount to fail is definitely
-useful.
-
-So, NACK.
+Thanks, applied.
 
 					- Ted
