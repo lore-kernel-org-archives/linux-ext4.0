@@ -1,40 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] ext4: Improve a size determination in two functions
-Date: Thu, 24 Aug 2017 13:50:39 -0400
-Message-ID: <20170824175039.jc6m6pjb5ar6lozm@thunk.org>
-References: <ca49a6dc-f2ee-d427-5f16-052706277b38@users.sourceforge.net>
- <c1941b22-bdab-fccf-06e2-2f9fc50daec1@users.sourceforge.net>
- <0d7fe1c1-f1f4-3c2f-0e2a-4c8545947714@redhat.com>
+Subject: Re: [PATCH, resend] ext4: remove timebomb in ext4_decode_extra_time()
+Date: Thu, 24 Aug 2017 14:10:44 -0400
+Message-ID: <20170824181044.ooqdyuaz4uhy3anm@thunk.org>
+References: <20170821081115.2722-1-hch@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: SF Markus Elfring <elfring@users.sourceforge.net>,
-        linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        LKML <linux-kernel@vger.kernel.org>,
-        kernel-janitors@vger.kernel.org
-To: sandeen@redhat.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:51244 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752640AbdHXSKr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Aug 2017 14:10:47 -0400
 Content-Disposition: inline
-In-Reply-To: <0d7fe1c1-f1f4-3c2f-0e2a-4c8545947714@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170821081115.2722-1-hch@lst.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 19, 2017 at 08:49:20PM -0500, Eric Sandeen wrote:
-> On 8/19/17 6:48 AM, SF Markus Elfring wrote:
-> > From: Markus Elfring <elfring@users.sourceforge.net>
-> > Date: Sat, 19 Aug 2017 13:14:26 +0200
-> > 
-> > Replace the specification of data structures by pointer dereferences
-> > as the parameter for the operator "sizeof" to make the corresponding size
-> > determination a bit safer according to the Linux coding style convention.
-> > 
-> > This issue was detected by using the Coccinelle software.
-> > 
-> > Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+On Mon, Aug 21, 2017 at 10:11:15AM +0200, Christoph Hellwig wrote:
+> Changing behavior based on the version code is a timebomb waiting to
+> happen, and not easily bisectable.  Drop it and leave any removal
+> to explicit developer action. (And I don't think file system
+> should _ever_ remove backwards compatibility that has no explicit
+> flag, but I'll leave that to the ext4 folks).
 > 
-> Looks good,
-> 
-> Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Reviewed-by: Eric Biggers <ebiggers@google.com>
 
 Thanks, applied.
 
