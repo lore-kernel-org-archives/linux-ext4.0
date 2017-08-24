@@ -1,62 +1,81 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 10/13] mm: Wire up MAP_SYNC
-Date: Thu, 24 Aug 2017 09:16:24 +0200
-Message-ID: <20170824071624.GB20465@quack2.suse.cz>
+Subject: Re: [PATCH 13/13] ext4: Support for synchronous DAX faults
+Date: Thu, 24 Aug 2017 09:18:19 +0200
+Message-ID: <20170824071819.GC20465@quack2.suse.cz>
 References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-11-jack@suse.cz>
- <20170823184349.GA12660@infradead.org>
+ <20170817160815.30466-14-jack@suse.cz>
+ <20170823183714.GH13778@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Andy Lutomirski <luto@kernel.org>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Boaz Harrosh <boazh@netapp.com>
+        Boaz Harrosh <boazh@netapp.com>, linux-nvdimm@lists.01.org,
+        linux-xfs@vger.kernel.org, Andy Lutomirski <luto@kernel.org>,
+        linux-ext4@vger.kernel.org
 To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170823184349.GA12660@infradead.org>
+In-Reply-To: <20170823183714.GH13778@infradead.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 23-08-17 11:43:49, Christoph Hellwig wrote:
-> On Thu, Aug 17, 2017 at 06:08:12PM +0200, Jan Kara wrote:
-> > Pretty crude for now...
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/ext4/file.c                  | 2 ++
-> >  include/linux/mm.h              | 1 +
-> >  include/linux/mman.h            | 3 ++-
-> >  include/uapi/asm-generic/mman.h | 1 +
-> >  mm/mmap.c                       | 5 +++++
-> >  5 files changed, 11 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> > index f84bb29e941e..850037e140d7 100644
-> > --- a/fs/ext4/file.c
-> > +++ b/fs/ext4/file.c
-> > @@ -340,6 +340,8 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
-> >  		vma->vm_flags |= VM_MIXEDMAP | VM_HUGEPAGE;
+On Wed 23-08-17 11:37:14, Christoph Hellwig wrote:
+> > +	pfn_t pfn;
+> >  
+> >  	if (write) {
+> >  		sb_start_pagefault(sb);
+> > @@ -287,16 +288,39 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
+> >  		down_read(&EXT4_I(inode)->i_mmap_sem);
+> >  		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
+> >  					       EXT4_DATA_TRANS_BLOCKS(sb));
+> > +		if (IS_ERR(handle)) {
+> > +			up_read(&EXT4_I(inode)->i_mmap_sem);
+> > +			sb_end_pagefault(sb);
+> > +			return VM_FAULT_SIGBUS;
+> > +		}
 > >  	} else {
-> >  		vma->vm_ops = &ext4_file_vm_ops;
-> > +		if (vma->vm_flags & VM_SYNC)
-> > +			return -EOPNOTSUPP;
+> >  		down_read(&EXT4_I(inode)->i_mmap_sem);
 > >  	}
+> > -	if (!IS_ERR(handle))
+> > -		result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops, NULL);
+> > -	else
+> > -		result = VM_FAULT_SIGBUS;
+> > +	result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops, &pfn);
 > 
-> So each mmap instance would need to reject the flag explicitly?
-> 
-> Or do I misunderstand this VM_SYNC flag?
+> Maybe split the error handling refactor into a simple prep patch to
+> make this one more readable?
 
-Yes, if this should be cleaned up, then each mmap instance not supporting
-it would need to reject it. However Dan has in his version of mmap()
-syscall a mask of supported flags so when I switch to that, it would be
-just opt-in. Or I could just reject VM_SYNC for any !IS_DAX inode so then
-only ext2 & xfs would need to reject it... But the biggest problem with
-this patch is that we need to settle on a safe way of adding new mmap flag.
+OK, will do.
+
+> > +		/* Write fault but PFN mapped only RO? */
+> > +		if (result & VM_FAULT_NEEDDSYNC) {
+> > +			int err;
+> > +			loff_t start = ((loff_t)vmf->pgoff) << PAGE_SHIFT;
+> > +			size_t len = 0;
+> > +
+> > +			if (pe_size == PE_SIZE_PTE)
+> > +				len = PAGE_SIZE;
+> > +#ifdef CONFIG_FS_DAX_PMD
+> > +			else if (pe_size == PE_SIZE_PMD)
+> > +				len = HPAGE_PMD_SIZE;
+> > +#endif
+> > +			else
+> > +				WARN_ON_ONCE(1);
+> > +			err = vfs_fsync_range(vmf->vma->vm_file, start,
+> > +					      start + len - 1, 1);
+> > +			if (err)
+> > +				result = VM_FAULT_SIGBUS;
+> > +			else
+> > +				result = dax_insert_pfn_mkwrite(vmf, pe_size,
+> > +								pfn);
+> > +		}
+> 
+> I think this needs to become a helper exported from the DAX code,
+> way too much magic inside the file system as-is.
+
+Good point, there isn't anything fs specific in there.
 
 								Honza
+
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
