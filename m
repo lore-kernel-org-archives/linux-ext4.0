@@ -1,38 +1,32 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 11/13] dax, iomap: Add support for synchronous faults
-Date: Thu, 24 Aug 2017 18:45:54 +0200
-Message-ID: <20170824164554.GA14410@quack2.suse.cz>
-References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-12-jack@suse.cz>
- <20170824122720.GA9961@infradead.org>
- <20170824123451.GA6187@quack2.suse.cz>
- <20170824133809.GA29607@infradead.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 3/3 v5] ext4: reduce lock contention in __ext4_new_inode
+Date: Thu, 24 Aug 2017 13:07:10 -0400
+Message-ID: <20170824170710.x7cdtfef6oblift2@thunk.org>
+References: <20170820115437.57074-1-wshilong@ddn.com>
+ <20170821080220.GA19196@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Andy Lutomirski <luto@kernel.org>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Boaz Harrosh <boazh@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Wang Shilong <wangshilong1991@gmail.com>,
+        linux-ext4@vger.kernel.org, sihara@ddn.com, adilger@dilger.ca,
+        lixi@ddn.com, wshilong@ddn.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50992 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753391AbdHXRHR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Aug 2017 13:07:17 -0400
 Content-Disposition: inline
-In-Reply-To: <20170824133809.GA29607@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170821080220.GA19196@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 24-08-17 06:38:09, Christoph Hellwig wrote:
-> On Thu, Aug 24, 2017 at 02:34:51PM +0200, Jan Kara wrote:
-> > In a subtle but important way ;). The main difference is that if the extent
-> > has been already allocated by previous write, but the changing transaction
-> > is not yet committed, we will return IOMAP_F_NEEDDSYNC but not IOMAP_F_NEW.
-> 
-> Ok.  How about a IOMAP_F_DIRTY flag and a better explanation?
+On Mon, Aug 21, 2017 at 10:02:20AM +0200, Jan Kara wrote:
+> On Sun 20-08-17 19:54:37, Wang Shilong wrote:
+> > From: Wang Shilong <wshilong@ddn.com>
+> > 
+> > While running number of creating file threads concurrently,
+> > we found heavy lock contention on group spinlock:
 
-OK, will change it.
+Thanks, applied.  Many thanks for all of your work!!
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+		       	      	      - Ted
