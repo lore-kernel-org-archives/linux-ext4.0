@@ -1,34 +1,94 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 11/13] dax, iomap: Add support for synchronous faults
-Date: Thu, 24 Aug 2017 06:38:09 -0700
-Message-ID: <20170824133809.GA29607@infradead.org>
-References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-12-jack@suse.cz>
- <20170824122720.GA9961@infradead.org>
- <20170824123451.GA6187@quack2.suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v3] Fix ext4 fault handling when mounted with -o dax,ro
+Date: Thu, 24 Aug 2017 16:45:44 +0200
+Message-ID: <20170824144544.GE8969@quack2.suse.cz>
+References: <CAC9jV4pfQr=z9dHqtnTP8kAXGReeLDZWAAAfW2a7KRsK22UWkA@mail.gmail.com>
+ <416a465a9fbe1d27085883dbf652c115cd195697.1503523424.git.dodgen@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
-        Andy Lutomirski <luto@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Boaz Harrosh <boazh@netapp.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:51644 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752892AbdHXNiL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Aug 2017 09:38:11 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, Randy Dodgen <dodgen-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+To: rdodgen-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170824123451.GA6187@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <416a465a9fbe1d27085883dbf652c115cd195697.1503523424.git.dodgen-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Aug 24, 2017 at 02:34:51PM +0200, Jan Kara wrote:
-> In a subtle but important way ;). The main difference is that if the extent
-> has been already allocated by previous write, but the changing transaction
-> is not yet committed, we will return IOMAP_F_NEEDDSYNC but not IOMAP_F_NEW.
+On Wed 23-08-17 14:26:52, rdodgen-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org wrote:
+> From: Randy Dodgen <dodgen-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>
+> 
+> If an ext4 filesystem is mounted with both the DAX and read-only
+> options, executables on that filesystem will fail to start (claiming
+> 'Segmentation fault') due to the fault handler returning
+> VM_FAULT_SIGBUS.
+> 
+> This is due to the DAX fault handler (see ext4_dax_huge_fault)
+> attempting to write to the journal when FAULT_FLAG_WRITE is set. This is
+> the wrong behavior for write faults which will lead to a COW page; in
+> particular, this fails for readonly mounts.
+> 
+> This change avoids journal writes for faults that are expected to COW.
+> 
+> It might be the case that this could be better handled in
+> ext4_iomap_begin / ext4_iomap_end (called via iomap_ops inside
+> dax_iomap_fault). These is some overlap already (e.g. grabbing journal
+> handles).
+> 
+> Signed-off-by: Randy Dodgen <dodgen-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>
 
-Ok.  How about a IOMAP_F_DIRTY flag and a better explanation?
+Thanks for the verbose comment :). The patch looks good to me. You can add:
+
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+
+								Honza
+
+> ---
+> 
+> This version is simplified as suggested by Ross; all fault sizes and fallbacks
+> are handled by dax_iomap_fault.
+> 
+>  fs/ext4/file.c | 15 ++++++++++++++-
+>  1 file changed, 14 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 0d7cf0cc9b87..dc1e1fb6b54c 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -279,7 +279,20 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
+>  	handle_t *handle = NULL;
+>  	struct inode *inode = file_inode(vmf->vma->vm_file);
+>  	struct super_block *sb = inode->i_sb;
+> -	bool write = vmf->flags & FAULT_FLAG_WRITE;
+> +
+> +	/*
+> +	 * We have to distinguish real writes from writes which will result in a
+> +	 * COW page; COW writes should *not* poke the journal (the file will not
+> +	 * be changed). Doing so would cause unintended failures when mounted
+> +	 * read-only.
+> +	 *
+> +	 * We check for VM_SHARED rather than vmf->cow_page since the latter is
+> +	 * unset for pe_size != PE_SIZE_PTE (i.e. only in do_cow_fault); for
+> +	 * other sizes, dax_iomap_fault will handle splitting / fallback so that
+> +	 * we eventually come back with a COW page.
+> +	 */
+> +	bool write = (vmf->flags & FAULT_FLAG_WRITE) &&
+> +		(vmf->vma->vm_flags & VM_SHARED);
+>  
+>  	if (write) {
+>  		sb_start_pagefault(sb);
+> -- 
+> 2.14.1.342.g6490525c54-goog
+> 
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
