@@ -1,30 +1,42 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4/hash.c: remove useless test and assignment in strtohash
-Date: Thu, 24 Aug 2017 15:13:07 -0400
-Message-ID: <20170824191307.wv5mrksfhty7gp2e@thunk.org>
-References: <1501188807-4459-1-git-send-email-damien.guibouret@partition-saving.com>
+From: Dan Carpenter <dan.carpenter@oracle.com>
+Subject: Re: [PATCH 1/2] ext4: Delete an error message for a failed memory
+ allocation in ext4_multi_mount_protect()
+Date: Thu, 24 Aug 2017 22:16:45 +0300
+Message-ID: <20170824191645.ha3bw5n24lqcpxd7@mwanda>
+References: <ca49a6dc-f2ee-d427-5f16-052706277b38@users.sourceforge.net>
+ <5bf432ae-398d-718c-8105-3092a240a8ef@users.sourceforge.net>
+ <b21f6c3d-2cad-3f72-f410-f608ea5f4cea@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Damien Guibouret <damien.guibouret@partition-saving.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51402 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752974AbdHXTNJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Aug 2017 15:13:09 -0400
+Cc: SF Markus Elfring <elfring@users.sourceforge.net>,
+        linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        LKML <linux-kernel@vger.kernel.org>,
+        kernel-janitors@vger.kernel.org
+To: sandeen@redhat.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1501188807-4459-1-git-send-email-damien.guibouret@partition-saving.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <b21f6c3d-2cad-3f72-f410-f608ea5f4cea@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 27, 2017 at 10:53:27PM +0200, Damien Guibouret wrote:
-> On transformation of str to hash, computed value is initialised before
-> first byte modulo 4. But it is already initialised before entering loop
-> and after processing last byte modulo 4. So the corresponding test and
-> initialisation could be removed.
+On Sat, Aug 19, 2017 at 12:08:29PM -0500, Eric Sandeen wrote:
+> On 8/19/17 6:47 AM, SF Markus Elfring wrote:
+> > From: Markus Elfring <elfring@users.sourceforge.net>
+> > Date: Sat, 19 Aug 2017 13:04:50 +0200
+> > 
+> > Omit an extra message for a memory allocation failure in this function.
 > 
-> Signed-off-by: Damien Guibouret <damien.guibouret@partition-saving.com>
+> I might be dense, but what makes this message "extra?"
+> 
+> (I suppose kmalloc squawks too if it fails, but is Coccinelle
+> now warning about explicit memory allocation failure warnings?)
+> 
 
-Thanks, applied.
+Yeah...  Checkpatch complains that the kmalloc squawks is enough.
+"WARNING: Possible unnecessary 'out of memory' message".  This
+allocation is small so it's guaranteed to succeed in current kernels.
 
-					- Ted
+regards,
+dan carpenter
