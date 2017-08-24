@@ -1,10 +1,10 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 13/13] ext4: Support for synchronous DAX faults
-Date: Thu, 24 Aug 2017 09:18:19 +0200
-Message-ID: <20170824071819.GC20465@quack2.suse.cz>
+Subject: Re: [PATCH 09/13] dax: Allow dax_iomap_fault() to return pfn
+Date: Thu, 24 Aug 2017 09:26:54 +0200
+Message-ID: <20170824072654.GD20465@quack2.suse.cz>
 References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-14-jack@suse.cz>
- <20170823183714.GH13778@infradead.org>
+ <20170817160815.30466-10-jack@suse.cz>
+ <20170823183400.GG13778@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
@@ -14,68 +14,39 @@ Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
 To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170823183714.GH13778@infradead.org>
+In-Reply-To: <20170823183400.GG13778@infradead.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 23-08-17 11:37:14, Christoph Hellwig wrote:
-> > +	pfn_t pfn;
-> >  
-> >  	if (write) {
-> >  		sb_start_pagefault(sb);
-> > @@ -287,16 +288,39 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
-> >  		down_read(&EXT4_I(inode)->i_mmap_sem);
-> >  		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
-> >  					       EXT4_DATA_TRANS_BLOCKS(sb));
-> > +		if (IS_ERR(handle)) {
-> > +			up_read(&EXT4_I(inode)->i_mmap_sem);
-> > +			sb_end_pagefault(sb);
-> > +			return VM_FAULT_SIGBUS;
-> > +		}
-> >  	} else {
-> >  		down_read(&EXT4_I(inode)->i_mmap_sem);
-> >  	}
-> > -	if (!IS_ERR(handle))
-> > -		result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops, NULL);
-> > -	else
-> > -		result = VM_FAULT_SIGBUS;
-> > +	result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops, &pfn);
+On Wed 23-08-17 11:34:00, Christoph Hellwig wrote:
+> > @@ -1416,6 +1416,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
+> >   * @vmf: The description of the fault
+> >   * @pe_size: Size of the page to fault in
+> >   * @ops: Iomap ops passed from the file system
+> > + * @pfnp: PFN to insert for synchronous faults if fsync is required
+> >   *
+> >   * When a page fault occurs, filesystems may call this helper in
+> >   * their fault handler for DAX files. dax_iomap_fault() assumes the caller
+> > @@ -1423,13 +1424,13 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
+> >   * successfully.
+> >   */
+> >  int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+> > -		    const struct iomap_ops *ops)
+> > +		    const struct iomap_ops *ops, pfn_t *pfnp)
 > 
-> Maybe split the error handling refactor into a simple prep patch to
-> make this one more readable?
+> Please keep the iomap_ops argument the last one for the exported
+> function (and probably all others for consistency).
 
-OK, will do.
+Hum, I wanted the output argument to be the last one. But I don't care
+much. Swapped.
 
-> > +		/* Write fault but PFN mapped only RO? */
-> > +		if (result & VM_FAULT_NEEDDSYNC) {
-> > +			int err;
-> > +			loff_t start = ((loff_t)vmf->pgoff) << PAGE_SHIFT;
-> > +			size_t len = 0;
-> > +
-> > +			if (pe_size == PE_SIZE_PTE)
-> > +				len = PAGE_SIZE;
-> > +#ifdef CONFIG_FS_DAX_PMD
-> > +			else if (pe_size == PE_SIZE_PMD)
-> > +				len = HPAGE_PMD_SIZE;
-> > +#endif
-> > +			else
-> > +				WARN_ON_ONCE(1);
-> > +			err = vfs_fsync_range(vmf->vma->vm_file, start,
-> > +					      start + len - 1, 1);
-> > +			if (err)
-> > +				result = VM_FAULT_SIGBUS;
-> > +			else
-> > +				result = dax_insert_pfn_mkwrite(vmf, pe_size,
-> > +								pfn);
-> > +		}
+> Otherwise looks good:
 > 
-> I think this needs to become a helper exported from the DAX code,
-> way too much magic inside the file system as-is.
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-Good point, there isn't anything fs specific in there.
+Thanks!
 
 								Honza
-
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
