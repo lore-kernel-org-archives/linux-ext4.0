@@ -1,104 +1,34 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH 1/2] libext2fs: Prevent allocating inode table from already used blocks
-Date: Thu, 24 Aug 2017 15:35:38 +0200
-Message-ID: <1503581739-6385-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 11/13] dax, iomap: Add support for synchronous faults
+Date: Thu, 24 Aug 2017 06:38:09 -0700
+Message-ID: <20170824133809.GA29607@infradead.org>
+References: <20170817160815.30466-1-jack@suse.cz>
+ <20170817160815.30466-12-jack@suse.cz>
+ <20170824122720.GA9961@infradead.org>
+ <20170824123451.GA6187@quack2.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
+        Andy Lutomirski <luto@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Boaz Harrosh <boazh@netapp.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20967 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751112AbdHXNfq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Aug 2017 09:35:46 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id EEC7981DE8
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Aug 2017 13:35:45 +0000 (UTC)
+Received: from bombadil.infradead.org ([65.50.211.133]:51644 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752892AbdHXNiL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Aug 2017 09:38:11 -0400
+Content-Disposition: inline
+In-Reply-To: <20170824123451.GA6187@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Currently it's possible for ext2fs_allocate_group_table() to place inode
-tables to blocks that are already occupied by different inode table.
-This can be reproduced by resize2fs on the file system where we need to
-move more than one inode table to a different location due to increase
-in group descriptor blocks, inode and block bitmaps.
+On Thu, Aug 24, 2017 at 02:34:51PM +0200, Jan Kara wrote:
+> In a subtle but important way ;). The main difference is that if the extent
+> has been already allocated by previous write, but the changing transaction
+> is not yet committed, we will return IOMAP_F_NEEDDSYNC but not IOMAP_F_NEW.
 
-Best way I can reproduce this is to create big enough file system with
-huge amount of inodes and without resize_inode
-
-mke2fs -F -b 1024 -i 1024 -O ^resize_inode -t ext4 /dev/loop0 1024000
-resize2fs /dev/loop0 10240000
-
-e2fsck -fn /dev/loop0 | less
-e2fsck 1.43.5 (04-Aug-2017)
-ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
-e2fsck: Group descriptors look bad... trying backup blocks...
-e2fsck: The journal superblock is corrupt while checking journal for /dev/loop0
-e2fsck: Cannot proceed with file system check
-Superblock has an invalid journal (inode 8).
-Clear? no
-
-/dev/loop0: ********** WARNING: Filesystem still has errors **********
-
-None of the settings are strictly necessary and it can be reproducer in
-various ways. This is just an example of one easy way to reproduce this.
-
-This bug was introduced with commit fccdbac39454 ("libext2fs: optimize
-ext2fs_allocate_group_table()") and is caused by the fact that wrong
-bitmap is used to mark the blocks as used.
-
-Fix this by using ext2fs_mark_block_bitmap_range2() in both (flex_bg and
-non flex_bg) cases and handle flex_bg case manually instead of relying
-on ext2fs_block_alloc_stats_range() because there is no way in that
-function to use different bitmap than fs->block_map.
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
----
- lib/ext2fs/alloc_tables.c | 32 ++++++++++++++++++++++++++------
- 1 file changed, 26 insertions(+), 6 deletions(-)
-
-diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
-index da0b15b..407283f 100644
---- a/lib/ext2fs/alloc_tables.c
-+++ b/lib/ext2fs/alloc_tables.c
-@@ -222,12 +222,32 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
- 						bmap, &new_blk);
- 		if (retval)
- 			return retval;
--		if (flexbg_size)
--			ext2fs_block_alloc_stats_range(fs, new_blk,
--				       fs->inode_blocks_per_group, +1);
--		else
--			ext2fs_mark_block_bitmap_range2(fs->block_map,
--					new_blk, fs->inode_blocks_per_group);
-+
-+		ext2fs_mark_block_bitmap_range2(bmap,
-+			new_blk, fs->inode_blocks_per_group);
-+		if (flexbg_size) {
-+			blk64_t num, blk;
-+			num = fs->inode_blocks_per_group;
-+			blk = new_blk;
-+			while (num) {
-+				int gr = ext2fs_group_of_blk2(fs, blk);
-+				last_blk = ext2fs_group_last_block2(fs, gr);
-+				blk64_t n = num;
-+
-+				if (blk + num > last_blk)
-+					n = last_blk - blk + 1;
-+
-+				ext2fs_bg_free_blocks_count_set(fs, gr,
-+					ext2fs_bg_free_blocks_count(fs, gr) -
-+					n/EXT2FS_CLUSTER_RATIO(fs));
-+				ext2fs_bg_flags_clear(fs, gr,
-+					EXT2_BG_BLOCK_UNINIT);
-+				ext2fs_group_desc_csum_set(fs, gr);
-+				ext2fs_free_blocks_count_add(fs->super, -n);
-+				blk += n;
-+				num -= n;
-+			}
-+		}
- 		ext2fs_inode_table_loc_set(fs, group, new_blk);
- 	}
- 	ext2fs_group_desc_csum_set(fs, group);
--- 
-2.7.5
+Ok.  How about a IOMAP_F_DIRTY flag and a better explanation?
