@@ -1,7 +1,7 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Subject: Re: [PATCH v3] Fix ext4 fault handling when mounted with -o dax,ro
-Date: Thu, 24 Aug 2017 16:45:44 +0200
-Message-ID: <20170824144544.GE8969@quack2.suse.cz>
+Date: Thu, 24 Aug 2017 09:11:38 -0600
+Message-ID: <20170824151138.GA25588@linux.intel.com>
 References: <CAC9jV4pfQr=z9dHqtnTP8kAXGReeLDZWAAAfW2a7KRsK22UWkA@mail.gmail.com>
  <416a465a9fbe1d27085883dbf652c115cd195697.1503523424.git.dodgen@google.com>
 Mime-Version: 1.0
@@ -24,7 +24,7 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 23-08-17 14:26:52, rdodgen-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org wrote:
+On Wed, Aug 23, 2017 at 02:26:52PM -0700, rdodgen-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org wrote:
 > From: Randy Dodgen <dodgen-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>
 > 
 > If an ext4 filesystem is mounted with both the DAX and read-only
@@ -46,49 +46,6 @@ On Wed 23-08-17 14:26:52, rdodgen-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org wrote:
 > 
 > Signed-off-by: Randy Dodgen <dodgen-hpIqsD4AKlfQT0dZR+AlfA@public.gmane.org>
 
-Thanks for the verbose comment :). The patch looks good to me. You can add:
+Cool, looks good from the DAX point of view.  You can add:
 
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-
-								Honza
-
-> ---
-> 
-> This version is simplified as suggested by Ross; all fault sizes and fallbacks
-> are handled by dax_iomap_fault.
-> 
->  fs/ext4/file.c | 15 ++++++++++++++-
->  1 file changed, 14 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 0d7cf0cc9b87..dc1e1fb6b54c 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -279,7 +279,20 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
->  	handle_t *handle = NULL;
->  	struct inode *inode = file_inode(vmf->vma->vm_file);
->  	struct super_block *sb = inode->i_sb;
-> -	bool write = vmf->flags & FAULT_FLAG_WRITE;
-> +
-> +	/*
-> +	 * We have to distinguish real writes from writes which will result in a
-> +	 * COW page; COW writes should *not* poke the journal (the file will not
-> +	 * be changed). Doing so would cause unintended failures when mounted
-> +	 * read-only.
-> +	 *
-> +	 * We check for VM_SHARED rather than vmf->cow_page since the latter is
-> +	 * unset for pe_size != PE_SIZE_PTE (i.e. only in do_cow_fault); for
-> +	 * other sizes, dax_iomap_fault will handle splitting / fallback so that
-> +	 * we eventually come back with a COW page.
-> +	 */
-> +	bool write = (vmf->flags & FAULT_FLAG_WRITE) &&
-> +		(vmf->vma->vm_flags & VM_SHARED);
->  
->  	if (write) {
->  		sb_start_pagefault(sb);
-> -- 
-> 2.14.1.342.g6490525c54-goog
-> 
--- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
