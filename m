@@ -1,44 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 13/13] ext4: Support for synchronous DAX faults
-Date: Thu, 24 Aug 2017 14:36:15 +0200
-Message-ID: <20170824123615.GB6187@quack2.suse.cz>
-References: <20170817160815.30466-1-jack@suse.cz>
- <20170817160815.30466-14-jack@suse.cz>
- <20170824123126.GA21282@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Andy Lutomirski <luto@kernel.org>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Boaz Harrosh <boazh@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170824123126.GA21282@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: [PATCH 2/2] libext2fs: Skip start_blk adjustment when stride and flex_bg is set
+Date: Thu, 24 Aug 2017 15:35:39 +0200
+Message-ID: <1503581739-6385-2-git-send-email-lczerner@redhat.com>
+References: <1503581739-6385-1-git-send-email-lczerner@redhat.com>
+Cc: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:54906 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751112AbdHXNfr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Aug 2017 09:35:47 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id E82D11F56A
+        for <linux-ext4@vger.kernel.org>; Thu, 24 Aug 2017 13:35:46 +0000 (UTC)
+In-Reply-To: <1503581739-6385-1-git-send-email-lczerner@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 24-08-17 05:31:26, Christoph Hellwig wrote:
-> On Thu, Aug 17, 2017 at 06:08:15PM +0200, Jan Kara wrote:
-> > We return IOMAP_F_NEEDDSYNC flag from ext4_iomap_begin() for a
-> > synchronous write fault when inode has some uncommitted metadata
-> > changes. In the fault handler ext4_dax_fault() we then detect this case,
-> > call vfs_fsync_range() to make sure all metadata is committed, and call
-> > dax_pfn_mkwrite() to mark PTE as writeable. Note that this will also
-> > dirty corresponding radix tree entry which is what we want - fsync(2)
-> > will still provide data integrity guarantees for applications not using
-> > userspace flushing. And applications using userspace flushing can avoid
-> > calling fsync(2) and thus avoid the performance overhead.
-> 
-> Why is this only wiered up for the huge_fault handler and not the
-> regular?
+Currently some stride optimization is done in
+ext2fs_allocate_group_table() by adjusting start_blk block where we
+start allocating block, or inode bitmaps.
 
-We do handle both. Just ext4 naming is a bit confusing and ext4_dax_fault()
-uses ext4_dax_huge_fault() for handling.
+However in flex_bg case this is currently useless since the values are
+going to be overridden anyway. Moreover in flex_bg case the group might
+already be full and the stride optimization will fail. As a result file
+system resize might fail needlessly in some situations.
 
-								Honza
+It can be shown by this example:
+
+mke2fs -b 1024 -i 1024 -E stride=8192 -t ext4 /dev/loop0 1024000
+resize2fs /dev/loop0 102400000
+resize2fs 1.43.5 (04-Aug-2017)
+Resizing the filesystem on /dev/loop0 to 102400000 (1k) blocks.
+./resize/resize2fs: Could not allocate block in ext2 filesystem while trying to resize /dev/loop0
+Please run 'e2fsck -fy /dev/loop0' to fix the filesystem
+after the aborted resize operation.
+
+Fix this by not doing the stride adjustment in case of flex_bg.
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ lib/ext2fs/alloc_tables.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
+index 407283f..0a36630 100644
+--- a/lib/ext2fs/alloc_tables.c
++++ b/lib/ext2fs/alloc_tables.c
+@@ -107,7 +107,7 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+ 	/*
+ 	 * Allocate the block and inode bitmaps, if necessary
+ 	 */
+-	if (fs->stride) {
++	if (fs->stride && !flexbg_size) {
+ 		retval = ext2fs_get_free_blocks2(fs, group_blk, last_blk,
+ 						 1, bmap, &start_blk);
+ 		if (retval)
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.7.5
