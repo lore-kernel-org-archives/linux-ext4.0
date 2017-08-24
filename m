@@ -1,121 +1,23 @@
-From: Jaco Kroon <jaco@uls.co.za>
-Subject: Re: [PATCH] e2fsck: improve performance of region_allocate()
-Date: Thu, 24 Aug 2017 10:18:11 +0200
-Message-ID: <e7bdd31c-79fc-cb03-84bc-b5a9df44df0a@uls.co.za>
-References: <20170819011635.1815929-1-dsp@fb.com>
- <20170822022948.nyn6fessudjaj5xh@thunk.org>
- <a4b31ace-3a54-051d-75df-b47452c789cb@uls.co.za>
- <20170823232135.s54yfvs3zia2dnva@thunk.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 11/13] dax, iomap: Add support for synchronous faults
+Date: Thu, 24 Aug 2017 05:27:20 -0700
+Message-ID: <20170824122720.GA9961@infradead.org>
+References: <20170817160815.30466-1-jack@suse.cz>
+ <20170817160815.30466-12-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Doug Porter <dsp@fb.com>, linux-ext4@vger.kernel.org,
-        Omar Sandoval <osandov@fb.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from othala.uls.co.za ([154.73.34.12]:32779 "EHLO othala.uls.co.za"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751283AbdHXISb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Aug 2017 04:18:31 -0400
-In-Reply-To: <20170823232135.s54yfvs3zia2dnva@thunk.org>
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org,
+        Andy Lutomirski <luto@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Boaz Harrosh <boazh@netapp.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170817160815.30466-12-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
-
-On 24/08/2017 01:21, Theodore Ts'o wrote:
-> Jaco, here's the version of your patch I plan to use.  Please take a
-> look.
->
-> The only real changes are mostly whitespace and formatting.
-Variable name change + formatting :).
->
-> By the way, it would be nice if you could send me permission to add a
->
-> Signed-off-by: Jaco Kroon <jaco@uls.co.za>
-Approved.
-
-Kind Regards,
-Jaco
-
->
-> See http://elinux.org/Developer_Certificate_Of_Origin for an
-> explanation of what this means.
->
-> 						- Ted
->
-> commit 320d436c006dc2550ebd01084b6e823f0cea8bc2
-> Author: Jaco Kroon <jaco@uls.co.za>
-> Date:   Wed Aug 23 13:54:25 2017 -0400
->
->      e2fsck: optimize out the use region_t in scan_extent_node()
->      
->      Since extents have a guarantee of being monotonically increasing we
->      merely need to check that block n+1 starts after block n.  This is a
->      simple enough check and we can perform this by calculating the next
->      expected logical block instead of using the region usage tracking data
->      abstraction.
->      
->      Signed-off-by: Theodore Ts'o <tytso@mit.edu>
->
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 8044beed6..bc26beb99 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -96,7 +96,7 @@ struct process_block_struct {
->   	struct problem_context *pctx;
->   	ext2fs_block_bitmap fs_meta_blocks;
->   	e2fsck_t	ctx;
-> -	region_t	region;
-> +	blk64_t		next_lblock;
->   	struct extent_tree_info	eti;
->   };
->   
-> @@ -2628,9 +2628,18 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
->   			  (1U << (21 - ctx->fs->super->s_log_block_size))))
->   			problem = PR_1_TOOBIG_DIR;
->   
-> -		if (is_leaf && problem == 0 && extent.e_len > 0 &&
-> -		    region_allocate(pb->region, extent.e_lblk, extent.e_len))
-> -			problem = PR_1_EXTENT_COLLISION;
-> +		if (is_leaf && problem == 0 && extent.e_len > 0) {
-> +#if 0
-> +			printf("extent_region(ino=%u, expect=%llu, "
-> +			       "lblk=%llu, len=%u)\n",
-> +			       pb->ino, pb->next_lblock,
-> +			       extent.e_lblk, extent.e_len);
-> +#endif
-> +			if (extent.e_lblk < pb->next_lblock)
-> +				problem = PR_1_EXTENT_COLLISION;
-> +			else if (extent.e_lblk + extent.e_len > pb->next_lblock)
-> +				pb->next_lblock = extent.e_lblk + extent.e_len;
-> +		}
->   
->   		/*
->   		 * Uninitialized blocks in a directory?  Clear the flag and
-> @@ -2963,13 +2972,7 @@ static void check_blocks_extents(e2fsck_t ctx, struct problem_context *pctx,
->   	memset(pb->eti.ext_info, 0, sizeof(pb->eti.ext_info));
->   	pb->eti.ino = pb->ino;
->   
-> -	pb->region = region_create(0, info.max_lblk);
-> -	if (!pb->region) {
-> -		ext2fs_extent_free(ehandle);
-> -		fix_problem(ctx, PR_1_EXTENT_ALLOC_REGION_ABORT, pctx);
-> -		ctx->flags |= E2F_FLAG_ABORT;
-> -		return;
-> -	}
-> +	pb->next_lblock = 0;
->   
->   	eof_lblk = ((EXT2_I_SIZE(inode) + fs->blocksize - 1) >>
->   		EXT2_BLOCK_SIZE_BITS(fs->super)) - 1;
-> @@ -2982,8 +2985,6 @@ static void check_blocks_extents(e2fsck_t ctx, struct problem_context *pctx,
->   				   "check_blocks_extents");
->   		pctx->errcode = 0;
->   	}
-> -	region_free(pb->region);
-> -	pb->region = NULL;
->   	ext2fs_extent_free(ehandle);
->   
->   	/* Rebuild unless it's a dir and we're rehashing it */
->
+Just curious:  how does IOMAP_F_NEEDDSYNC practically differ
+from IOMAP_F_NEW?
