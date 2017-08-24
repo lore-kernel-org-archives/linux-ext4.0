@@ -1,42 +1,62 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: Re: [PATCH 1/2] ext4: Delete an error message for a failed memory
- allocation in ext4_multi_mount_protect()
-Date: Thu, 24 Aug 2017 22:16:45 +0300
-Message-ID: <20170824191645.ha3bw5n24lqcpxd7@mwanda>
-References: <ca49a6dc-f2ee-d427-5f16-052706277b38@users.sourceforge.net>
- <5bf432ae-398d-718c-8105-3092a240a8ef@users.sourceforge.net>
- <b21f6c3d-2cad-3f72-f410-f608ea5f4cea@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/2] ext4: fix incorrect quotaoff if the quota feature is
+ enabled
+Date: Thu, 24 Aug 2017 15:20:42 -0400
+Message-ID: <20170824192042.jxcwte2qouetd5tr@thunk.org>
+References: <1503479638-16977-1-git-send-email-yi.zhang@huawei.com>
+ <20170823100000.GC2100@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: SF Markus Elfring <elfring@users.sourceforge.net>,
-        linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        LKML <linux-kernel@vger.kernel.org>,
-        kernel-janitors@vger.kernel.org
-To: sandeen@redhat.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: "zhangyi (F)" <yi.zhang@huawei.com>, linux-ext4@vger.kernel.org,
+        adilger.kernel@dilger.ca, miaoxie@huawei.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:51446 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751317AbdHXTUr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Aug 2017 15:20:47 -0400
 Content-Disposition: inline
-In-Reply-To: <b21f6c3d-2cad-3f72-f410-f608ea5f4cea@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20170823100000.GC2100@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 19, 2017 at 12:08:29PM -0500, Eric Sandeen wrote:
-> On 8/19/17 6:47 AM, SF Markus Elfring wrote:
-> > From: Markus Elfring <elfring@users.sourceforge.net>
-> > Date: Sat, 19 Aug 2017 13:04:50 +0200
+On Wed, Aug 23, 2017 at 12:00:00PM +0200, Jan Kara wrote:
+> On Wed 23-08-17 17:13:57, zhangyi (F) wrote:
+> > Current ext4 quota should always "usage enabled" if the
+> > quota feautre is enabled. But in ext4_orphan_cleanup(), it
+> > turn quotas off directly (used for the older journaled
+> > quota), so we cannot turn it on again via "quotaon" unless
+> > umount and remount ext4.
 > > 
-> > Omit an extra message for a memory allocation failure in this function.
+> > Simple reproduce:
+> > 
+> >   mkfs.ext4 -O project,quota /dev/vdb1
+> >   mount -o prjquota /dev/vdb1 /mnt
+> >   chattr -p 123 /mnt
+> >   chattr +P /mnt
+> >   touch /mnt/aa /mnt/bb
+> >   exec 100<>/mnt/aa
+> >   rm -f /mnt/aa
+> >   sync
+> >   echo c > /proc/sysrq-trigger
+> > 
+> >   #reboot and mount
+> >   mount -o prjquota /dev/vdb1 /mnt
+> >   #query status
+> >   quotaon -Ppv /dev/vdb1
+> >   #output
+> >   quotaon: Cannot find mountpoint for device /dev/vdb1
+> >   quotaon: No correct mountpoint specified.
+> > 
+> > This patch add check for journaled quotas to avoid incorrect
+> > quotaoff when ext4 has quota feautre.
+> > 
+> > Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
 > 
-> I might be dense, but what makes this message "extra?"
+> Looks good. You can add:
 > 
-> (I suppose kmalloc squawks too if it fails, but is Coccinelle
-> now warning about explicit memory allocation failure warnings?)
-> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Yeah...  Checkpatch complains that the kmalloc squawks is enough.
-"WARNING: Possible unnecessary 'out of memory' message".  This
-allocation is small so it's guaranteed to succeed in current kernels.
+Thanks, applied.
 
-regards,
-dan carpenter
+					- Ted
