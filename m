@@ -1,34 +1,63 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v3] Fix ext4 fault handling when mounted with -o dax,ro
-Date: Fri, 25 Aug 2017 00:28:44 -0700
-Message-ID: <20170825072843.GA4220@infradead.org>
-References: <CAC9jV4pfQr=z9dHqtnTP8kAXGReeLDZWAAAfW2a7KRsK22UWkA@mail.gmail.com>
- <416a465a9fbe1d27085883dbf652c115cd195697.1503523424.git.dodgen@google.com>
- <20170824160144.GA14287@infradead.org>
- <20170824205727.yyhzblj372eyvkde@thunk.org>
+Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
+Date: Fri, 25 Aug 2017 00:54:15 -0700
+Message-ID: <20170825075415.GA748@infradead.org>
+References: <1501690186-17607-1-git-send-email-lczerner@redhat.com>
+ <20170805084601.GA12425@infradead.org>
+ <20170807121212.nuiho4afmdjf5vsd@rh_laptop>
+ <20170808090016.lxfbcrhoybmyfvlc@rh_laptop>
+ <20170811100147.GB7064@infradead.org>
+ <20170811121132.bj5y77scrvkgy7uo@rh_laptop>
+ <20170811125849.GA15300@infradead.org>
+ <20170811134130.o46y5jpekrpj5qvw@rh_laptop>
+ <20170824182057.amdirlrbugezrahy@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, rdodgen@gmail.com,
-        linux-ext4@vger.kernel.org, ross.zwisler@linux.intel.com,
-        Randy Dodgen <dodgen@google.com>, linux-nvdimm@lists.01.org
+Cc: Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org,
+        Lukas Czerner <lczerner@redhat.com>, linux-xfs@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:53378 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:58280 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754403AbdHYH2t (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2017 03:28:49 -0400
+        with ESMTP id S1754521AbdHYHyQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Aug 2017 03:54:16 -0400
 Content-Disposition: inline
-In-Reply-To: <20170824205727.yyhzblj372eyvkde@thunk.org>
+In-Reply-To: <20170824182057.amdirlrbugezrahy@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 24, 2017 at 04:57:27PM -0400, Theodore Ts'o wrote:
-> Yeah, agreed, that's the cleaner way of doing that.  It does mean
-> we'll have sweep through all of the file systems so that they DTRT
-> with this new FAULT_FLAG_ALLOC, though, right?
+On Thu, Aug 24, 2017 at 02:20:57PM -0400, Theodore Ts'o wrote:
+> The counter-argument is that system administrators do need to have a
+> way to signal that they would like the file system to "do something
+> different" on a per-file basis, and no one else has come up with
+> another way of doing things.  Furthermore, it would be highly
+> desirable if the system adminisator can provide this per-file system
+> hint with requiring changes to the application.  (For example, by
+> adding madvise/fadvise hints.)
 
-I think the only ones that it matters for for now are the DAX
-fault handlers.  So we can add the new flag, check it in ext2, ext4
-and xfs for now and we're done.  But if we eventually want to
-phase out the ->page_mkwrite handler it would be useful for other
-file systems as well.
+We can always add some sort of inode or subtree advice.  It's just
+the binary flag that encodes a specific implementation that is
+very bad in the long run.
+
+> Is that a fair summary of the argument?
+
+Otherwise yet.
+
+> I have two additional questions I'd like to ask at this point.
+> 
+> 1)  Has there been any other difficulty that XFS has had due to the
+> fact that they have this DAX flag added?  e.g., are there any
+> operational, or practical code maintainability issues at stake here?
+> Or is this mostly an design philosophy debate?
+
+It hasn't yet.  It will create really annoying problems once we
+use raw DAX access for metadata, which I had prototype a while ago
+and plan to finnally get in in the next months.
+
+> 2) Are there any users using the DAX flag with XFS such that, if XFS
+> were to remove the DAX flag support, those users would complain
+> bitterly?
+
+I don't know of anyone that actually uses the flag.  If someone did
+that would probably run into problems like changing that changing it
+on a file that's currently mmaped would crash an burn badly.
