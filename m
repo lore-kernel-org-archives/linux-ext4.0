@@ -1,71 +1,92 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] tests: report if a test is taking a long time
-Date: Fri, 25 Aug 2017 23:19:48 -0600
-Message-ID: <1503724788-84776-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsck: add optimization for heavily hard-linked file
+ systems
+Date: Sat, 26 Aug 2017 11:33:14 -0400
+Message-ID: <20170826153313.le7biqxzg7mz6f32@thunk.org>
+References: <20170819011635.1815929-1-dsp@fb.com>
+ <20170822022948.nyn6fessudjaj5xh@thunk.org>
+ <a4b31ace-3a54-051d-75df-b47452c789cb@uls.co.za>
+ <20170822124505.xr7wnxonsbml3mgh@thunk.org>
+ <00f408c1-215e-39e2-dec4-8f05eb604f97@uls.co.za>
+ <20170823232351.643l4wg7pvnnxyts@thunk.org>
+ <48660f5d-2e53-f0ff-e0e5-169a1d2d631f@uls.co.za>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Doug Porter <dsp@fb.com>, linux-ext4@vger.kernel.org,
+        Omar Sandoval <osandov@fb.com>
+To: Jaco Kroon <jaco@uls.co.za>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-so.shaw.ca ([64.59.136.139]:49791 "EHLO
-        smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750737AbdHZFTu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2017 01:19:50 -0400
+Received: from imap.thunk.org ([74.207.234.97]:57090 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751010AbdHZPdS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 26 Aug 2017 11:33:18 -0400
+Content-Disposition: inline
+In-Reply-To: <48660f5d-2e53-f0ff-e0e5-169a1d2d631f@uls.co.za>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Print out a message if a test takes longer than 60s, with a
-reminder to potentially add is_slow_test to that test, so
-that it is easier to find which tests are taking a long time,
-especially if running with "make -j check" or similar.
+On Thu, Aug 24, 2017 at 11:08:52AM +0200, Jaco Kroon wrote:
+> > +#define E2F_OPT_ICOUNT_FULLMAP	0x20000 /* don't optimize extents */
+> description here seems wrong?  Perhaps "use fullmap for inode link count" ?
 
-Add an exclusion for r_expand_full on MacOS since HFS+ does
-not support sparse devices and doesn't like large test images.
+Oops, fixed.
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
- tests/r_expand_full/script | 6 ++++++
- tests/test_one.in          | 6 ++++++
- 2 files changed, 12 insertions(+)
+> > --- a/e2fsck/pass1.c
+> > +++ b/e2fsck/pass1.c
+> > @@ -711,6 +711,7 @@ extern errcode_t e2fsck_setup_icount(e2fsck_t ctx, const char *icount_name,
+> >   	errcode_t		retval;
+> >   	char			*tdb_dir;
+> >   	int			enable;
+> > +	int			full_map;
+> >   	*ret = 0;
+> > @@ -734,6 +735,8 @@ extern errcode_t e2fsck_setup_icount(e2fsck_t ctx, const char *icount_name,
+> >   	}
+> >   	e2fsck_set_bitmap_type(ctx->fs, EXT2FS_BMAP64_RBTREE, icount_name,
+> >   			       &save_type);
+> > +	if (ctx->options & E2F_OPT_ICOUNT_FULLMAP)
+> > +		flags |= EXT2_ICOUNT_OPT_FULLMAP;
+> >   	retval = ext2fs_create_icount2(ctx->fs, flags, 0, hint, ret);
+> >   	ctx->fs->default_bitmap_type = save_type;
+> >   	return retval;
+> This isn't used for pass1 (I did originally use full_map either way then
+> decided to only use it for pass2) - and we to receive flags coming into this
+> function - shouldn't this perhaps rather go into pass2.c (e2fsck_pass2
+> function to be more specific)?  This really is cosmetic imho.
 
-diff --git a/tests/r_expand_full/script b/tests/r_expand_full/script
-index a2c09db..2fd4461 100644
---- a/tests/r_expand_full/script
-+++ b/tests/r_expand_full/script
-@@ -23,6 +23,12 @@ cat > $CONF << ENDL
- 	}
- ENDL
- 
-+if [ $(uname -s) = "Darwin" ]; then
-+	# creates a 786MB filesystem
-+	echo "$test_name: $DESCRIPTION: skipped for HFS+ (no sparse files)"
-+	return 0
-+fi
-+
- echo "resize2fs test" > $OUT
- 
- MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 786432 >> $OUT 2>&1
-diff --git a/tests/test_one.in b/tests/test_one.in
-index 35465b6..d046380 100644
---- a/tests/test_one.in
-+++ b/tests/test_one.in
-@@ -61,6 +61,7 @@ fi
- rm -f $test_name.ok $test_name.failed
- #echo -e -n "$test_name: $test_description:\r"
- 
-+start=$SECONDS
- if [ -f $test_dir/script ]; then
- 	. $test_dir/script
- else
-@@ -72,6 +73,11 @@ else
- 		echo "$test_name: Missing test script $default_script!"
- 	fi
- fi
-+elapsed=$((SECONDS - start))
-+if [ $elapsed -gt 60 -a ! -f $test_dir/is_slow_test ]; then
-+	echo "$test_name:  *** took $elapsed seconds to finish ***"
-+	echo "$test_name:  consider adding $test_dir/is_slow_test"
-+fi
- 
- if [ "$SKIP_UNLINK" != "true" ] ; then
- 	rm -f $TMPFILE
--- 
-1.8.0
+The e2fsck_setup_icount() function is used for both pass1 and pass2.
+
+> > diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> > index ff961483b..939862f1a 100644
+> > --- a/e2fsck/unix.c
+> > +++ b/e2fsck/unix.c
+> > @@ -709,9 +709,18 @@ static void parse_extended_opts(e2fsck_t ctx, const char *opts)
+> >   		} else if (strcmp(token, "nodiscard") == 0) {
+> >   			ctx->options &= ~E2F_OPT_DISCARD;
+> >   			continue;
+> > +		} else if (strcmp(token, "optimize_extents") == 0) {
+> > +			ctx->options &= ~E2F_OPT_NOOPT_EXTENTS;
+> > +			continue;
+> unrelated, but makes sense :).
+
+Yes, this was a cleanup I was doing as I weant.
+
+> > +		if (!retval) {
+> > +			memset(icount->fullmap, 0,
+> > +			*sizeof(__u32)*  * fs->super->s_inodes_count); <-------
+> this of course should be sizeof(__u16), or sizeof(*count->fullmap) which
+> will track the type pointed to.  It might be better practice to store
+> "sizeof(*icount->fullmap) * fs->super->s_inodes_count" to a variable and
+> just re-use it.
+
+Good point.  Fixed.
+
+> >   		goto errout;
+> > +
+> Extra line can be removed.
+> >   	if (flags & EXT2_ICOUNT_OPT_INCREMENT) {
+
+Removed.
+
+Thanks for taking a look at the patch!
+
+						- Ted
