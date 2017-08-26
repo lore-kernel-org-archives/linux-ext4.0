@@ -1,59 +1,62 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
-Date: Sat, 26 Aug 2017 09:33:58 +1000
-Message-ID: <20170825233358.GC17782@dastard>
-References: <20170807121212.nuiho4afmdjf5vsd@rh_laptop>
- <20170808090016.lxfbcrhoybmyfvlc@rh_laptop>
- <20170811100147.GB7064@infradead.org>
- <20170811121132.bj5y77scrvkgy7uo@rh_laptop>
- <20170811125849.GA15300@infradead.org>
- <20170811134130.o46y5jpekrpj5qvw@rh_laptop>
- <20170824182057.amdirlrbugezrahy@thunk.org>
- <20170825075415.GA748@infradead.org>
- <20170825151445.ycf5xomoxvebgaez@thunk.org>
- <20170825154032.GA1827@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Lukas Czerner <lczerner@redhat.com>, linux-xfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] misc: quiet llvm build warnings
+Date: Fri, 25 Aug 2017 23:14:41 -0600
+Message-ID: <1503724481-84704-1-git-send-email-adilger@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:36093 "EHLO
-        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S933035AbdHYXeB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 25 Aug 2017 19:34:01 -0400
-Content-Disposition: inline
-In-Reply-To: <20170825154032.GA1827@infradead.org>
+Received: from smtp-out-so.shaw.ca ([64.59.136.138]:49516 "EHLO
+        smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750736AbdHZFOo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2017 01:14:44 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 25, 2017 at 08:40:32AM -0700, Christoph Hellwig wrote:
-> On Fri, Aug 25, 2017 at 11:14:45AM -0400, Theodore Ts'o wrote:
-> > > I don't know of anyone that actually uses the flag.  If someone did
-> > > that would probably run into problems like changing that changing it
-> > > on a file that's currently mmaped would crash an burn badly.
-> > 
-> > Crash and burn meaning the *kernel* will crash and burn?  Or will data
-> > be damaged?
-> > 
-> > Given that, maybe XFS should withdraw support for the DAX and hope no
-> > one is actually using it?
-> 
-> Nah, -o dax works very well.  It's just the flag instead of the -o dax
-> option or rather switching it on a mapped file will probably be very dangerous.
+Quiet some relatively harmless build warnings:
 
-In what way is it dangerous, Christoph?
+mkquota.c:527:15: warning: format specifies type 'long' but the
+	argument has type 'qsize_t' (aka 'long long') [-Wformat]
+		dq->dq_id, dq->dq_dqb.dqb_curspace,
+			   ^~~~~~~~~~~~~~~~~~~~~~~
 
-Changing to/form DAX is simply a case of syncing the data and then
-invalidating the existing mappings and letting the new faults go
-direct or through the page cache. The mapping invalidation
-requirements are no different to what we need to do to punch a hole
-in a mapped file...
+tune2fs.c:928:18: warning: '&&' within '||' [-Wlogical-op-parentheses]
+	if (pass == 1 && (inode->i_flags & EXT4_EA_INODE_FL) ||
+	    ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~
+tune2fs.c:928:18: place parentheses around '&&' to silence warning
 
-Cheers,
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+---
+ lib/support/mkquota.c | 2 +-
+ misc/tune2fs.c        | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-Dave.
+diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
+index 11a878e..4251e46 100644
+--- a/lib/support/mkquota.c
++++ b/lib/support/mkquota.c
+@@ -523,7 +523,7 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
+ 	    dq->dq_dqb.dqb_curinodes != dquot->dq_dqb.dqb_curinodes) {
+ 		scan_data->usage_is_inconsistent = 1;
+ 		fprintf(stderr, "[QUOTA WARNING] Usage inconsistent for ID %u:"
+-			"actual (%ld, %ld) != expected (%ld, %ld)\n",
++			"actual (%lld, %lld) != expected (%lld, %lld)\n",
+ 			dq->dq_id, dq->dq_dqb.dqb_curspace,
+ 			dq->dq_dqb.dqb_curinodes,
+ 			dquot->dq_dqb.dqb_curspace,
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 9b53dc2..c7c1d6d 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -925,8 +925,8 @@ static void rewrite_inodes(ext2_filsys fs)
+ 			if (!ino)
+ 				break;
+ 
+-			if (pass == 1 && (inode->i_flags & EXT4_EA_INODE_FL) ||
+-			    pass == 2 && !(inode->i_flags & EXT4_EA_INODE_FL))
++			if ((pass == 1 && (inode->i_flags & EXT4_EA_INODE_FL))||
++			    (pass == 2 && !(inode->i_flags & EXT4_EA_INODE_FL)))
+ 				rewrite_one_inode(&ctx, ino, inode);
+ 		} while (ino);
+ 
 -- 
-Dave Chinner
-david@fromorbit.com
+1.8.0
