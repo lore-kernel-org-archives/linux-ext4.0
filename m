@@ -1,62 +1,71 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] misc: quiet llvm build warnings
-Date: Fri, 25 Aug 2017 23:14:41 -0600
-Message-ID: <1503724481-84704-1-git-send-email-adilger@dilger.ca>
+Subject: [PATCH] tests: report if a test is taking a long time
+Date: Fri, 25 Aug 2017 23:19:48 -0600
+Message-ID: <1503724788-84776-1-git-send-email-adilger@dilger.ca>
 Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-so.shaw.ca ([64.59.136.138]:49516 "EHLO
+Received: from smtp-out-so.shaw.ca ([64.59.136.139]:49791 "EHLO
         smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750736AbdHZFOo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2017 01:14:44 -0400
+        with ESMTP id S1750737AbdHZFTu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Aug 2017 01:19:50 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Quiet some relatively harmless build warnings:
+Print out a message if a test takes longer than 60s, with a
+reminder to potentially add is_slow_test to that test, so
+that it is easier to find which tests are taking a long time,
+especially if running with "make -j check" or similar.
 
-mkquota.c:527:15: warning: format specifies type 'long' but the
-	argument has type 'qsize_t' (aka 'long long') [-Wformat]
-		dq->dq_id, dq->dq_dqb.dqb_curspace,
-			   ^~~~~~~~~~~~~~~~~~~~~~~
-
-tune2fs.c:928:18: warning: '&&' within '||' [-Wlogical-op-parentheses]
-	if (pass == 1 && (inode->i_flags & EXT4_EA_INODE_FL) ||
-	    ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~
-tune2fs.c:928:18: place parentheses around '&&' to silence warning
+Add an exclusion for r_expand_full on MacOS since HFS+ does
+not support sparse devices and doesn't like large test images.
 
 Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- lib/support/mkquota.c | 2 +-
- misc/tune2fs.c        | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ tests/r_expand_full/script | 6 ++++++
+ tests/test_one.in          | 6 ++++++
+ 2 files changed, 12 insertions(+)
 
-diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
-index 11a878e..4251e46 100644
---- a/lib/support/mkquota.c
-+++ b/lib/support/mkquota.c
-@@ -523,7 +523,7 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
- 	    dq->dq_dqb.dqb_curinodes != dquot->dq_dqb.dqb_curinodes) {
- 		scan_data->usage_is_inconsistent = 1;
- 		fprintf(stderr, "[QUOTA WARNING] Usage inconsistent for ID %u:"
--			"actual (%ld, %ld) != expected (%ld, %ld)\n",
-+			"actual (%lld, %lld) != expected (%lld, %lld)\n",
- 			dq->dq_id, dq->dq_dqb.dqb_curspace,
- 			dq->dq_dqb.dqb_curinodes,
- 			dquot->dq_dqb.dqb_curspace,
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 9b53dc2..c7c1d6d 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -925,8 +925,8 @@ static void rewrite_inodes(ext2_filsys fs)
- 			if (!ino)
- 				break;
+diff --git a/tests/r_expand_full/script b/tests/r_expand_full/script
+index a2c09db..2fd4461 100644
+--- a/tests/r_expand_full/script
++++ b/tests/r_expand_full/script
+@@ -23,6 +23,12 @@ cat > $CONF << ENDL
+ 	}
+ ENDL
  
--			if (pass == 1 && (inode->i_flags & EXT4_EA_INODE_FL) ||
--			    pass == 2 && !(inode->i_flags & EXT4_EA_INODE_FL))
-+			if ((pass == 1 && (inode->i_flags & EXT4_EA_INODE_FL))||
-+			    (pass == 2 && !(inode->i_flags & EXT4_EA_INODE_FL)))
- 				rewrite_one_inode(&ctx, ino, inode);
- 		} while (ino);
++if [ $(uname -s) = "Darwin" ]; then
++	# creates a 786MB filesystem
++	echo "$test_name: $DESCRIPTION: skipped for HFS+ (no sparse files)"
++	return 0
++fi
++
+ echo "resize2fs test" > $OUT
  
+ MKE2FS_CONFIG=$CONF $MKE2FS -F -T ext4h $TMPFILE 786432 >> $OUT 2>&1
+diff --git a/tests/test_one.in b/tests/test_one.in
+index 35465b6..d046380 100644
+--- a/tests/test_one.in
++++ b/tests/test_one.in
+@@ -61,6 +61,7 @@ fi
+ rm -f $test_name.ok $test_name.failed
+ #echo -e -n "$test_name: $test_description:\r"
+ 
++start=$SECONDS
+ if [ -f $test_dir/script ]; then
+ 	. $test_dir/script
+ else
+@@ -72,6 +73,11 @@ else
+ 		echo "$test_name: Missing test script $default_script!"
+ 	fi
+ fi
++elapsed=$((SECONDS - start))
++if [ $elapsed -gt 60 -a ! -f $test_dir/is_slow_test ]; then
++	echo "$test_name:  *** took $elapsed seconds to finish ***"
++	echo "$test_name:  consider adding $test_dir/is_slow_test"
++fi
+ 
+ if [ "$SKIP_UNLINK" != "true" ] ; then
+ 	rm -f $TMPFILE
 -- 
 1.8.0
