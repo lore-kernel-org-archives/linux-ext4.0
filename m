@@ -1,105 +1,126 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
-Date: Mon, 28 Aug 2017 00:38:54 -0700
-Message-ID: <20170828073853.GA23262@infradead.org>
-References: <20170808090016.lxfbcrhoybmyfvlc@rh_laptop>
- <20170811100147.GB7064@infradead.org>
- <20170811121132.bj5y77scrvkgy7uo@rh_laptop>
- <20170811125849.GA15300@infradead.org>
- <20170811134130.o46y5jpekrpj5qvw@rh_laptop>
- <20170824182057.amdirlrbugezrahy@thunk.org>
- <20170825075415.GA748@infradead.org>
- <20170825151445.ycf5xomoxvebgaez@thunk.org>
- <20170825154032.GA1827@infradead.org>
- <20170825233358.GC17782@dastard>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v2 2/2] ext2, ext4: use the super_block dax_device
+Date: Mon, 28 Aug 2017 10:27:24 +0200
+Message-ID: <20170828082724.GA12609@quack2.suse.cz>
+References: <150389211501.25151.6477753201827914462.stgit@dwillia2-desk3.amr.corp.intel.com>
+ <150389212595.25151.10721705529768874001.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Lukas Czerner <lczerner@redhat.com>, linux-xfs@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:33999 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750767AbdH1Hi4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Aug 2017 03:38:56 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Jan Kara <jack-IBi9RG/b67k@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jack-AlSwsSmVLrQ@public.gmane.org,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hch-jcswGhMUV9g@public.gmane.org
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170825233358.GC17782@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <150389212595.25151.10721705529768874001.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Aug 26, 2017 at 09:33:58AM +1000, Dave Chinner wrote:
-> > Nah, -o dax works very well.  It's just the flag instead of the -o dax
-> > option or rather switching it on a mapped file will probably be very dangerous.
+On Sun 27-08-17 20:48:46, Dan Williams wrote:
+> The ->iomap_begin() operation is a hot path, and now that mount_bdev()
+> arranges for the dax_device to be populated in the super_block, we can
+> just reference that attribute directly rather than perform a new lookup.
 > 
-> In what way is it dangerous, Christoph?
+> Cc: Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+> Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+> Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+> Reported-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+> Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 
-When I run the following script as a normal user:
+Looks good. You can add:
 
-FSXDIR=~/xfstests/ltp/
-FILE=/mnt/foo
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
-${FSXDIR}/fsx $FILE &
+								Honza
 
-while true; do
-    xfs_io -c 'chattr +x' $FILE
-    xfs_io -c 'chattr -x' $FILE
-done
 
-I get this nice little crash:
-
-root@testvm:~# sh test.sh
-skipping zero size read
-skipping insert range behind EOF
-truncating to largest ever: 0x3a290
-zero_range to largest ever: 0x3a8d1
-zero_range to largest ever: 0x3fe3e
-zero_range to largest ever: 0x40000
-[  344.898390] BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
-[  344.899306] IP: iomap_page_mkwrite+0x17/0xf0
-[  344.899795] PGD 7db37067
-[  344.899796] P4D 7db37067
-[  344.900099] PUD 78c61067
-[  344.900389] PMD 0
-[  344.900665]
-[  344.901075] Oops: 0000 [#1] SMP
-[  344.901536] Modules linked in:
-[  344.901716] CPU: 3 PID: 6052 Comm: fsx Not tainted 4.12.0+ #2199
-[  344.901716] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS rel-1.10.2-0-g5f4c7b1-prebuilt.qemu-project.org 04/01/2014
-[  344.901716] task: ffff880079a0da00 task.stack: ffffc900068a4000
-[  344.901716] RIP: 0010:iomap_page_mkwrite+0x17/0xf0
-[  344.901716] RSP: 0000:ffffc900068a7d38 EFLAGS: 00010246
-[  344.901716] RAX: ffff8800798dd0d0 RBX: 0000000000000200 RCX: 0000000000000001
-[  344.901716] RDX: 0000000070eb898e RSI: ffffffff82109010 RDI: ffffc900068a7df0
-[  344.901716] RBP: ffffc900068a7d60 R08: ffffffff82ff9fa8 R09: 0000000000000000
-[  344.901716] R10: ffffc900068a7cb0 R11: ffffffff8159b5cc R12: ffffffff82109010
-[  344.901716] R13: 0000000000000000 R14: ffffc900068a7df0 R15: ffff88007da89580
-[  344.901716] FS:  00007f76bc863700(0000) GS:ffff88007fd80000(0000) knlGS:0000000000000000
-[  344.901716] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  344.901716] CR2: 0000000000000020 CR3: 000000007d90b000 CR4: 00000000000006e0
-[  344.901716] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[  344.901716] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-[  344.901716] Call Trace:
-[  344.901716]  xfs_filemap_page_mkwrite+0x90/0x1d0
-[  344.901716]  xfs_filemap_fault+0x114/0x180
-[  344.901716]  __do_fault+0x19/0x60
-[  344.901716]  __handle_mm_fault+0x68f/0xaf0
-[  344.901716]  handle_mm_fault+0x82/0x130
-[  344.901716]  __do_page_fault+0x222/0x4d0
-[  344.901716]  trace_do_page_fault+0x85/0x210
-[  344.901716]  do_async_page_fault+0x14/0x60
-[  344.901716]  async_page_fault+0x28/0x30
-[  344.901716] RIP: 0033:0x7f76bbd14049
-[  344.901716] RSP: 002b:00007ffcdd6c7fe8 EFLAGS: 00010206
-[  344.901716] RAX: 000000000002f144 RBX: 0000000000000fd9 RCX: 000000000000fd98
-[  344.901716] RDX: 0000000000007ecc RSI: 00007f76bc80efe9 RDI: 00007f76bc7d7fd9
-[  344.901716] RBP: 00007f76bc7d7000 R08: 0000000000000003 R09: 000000000002e000
-[  344.901716] R10: 0000000000000001 R11: 0000000000000206 R12: 0000000000007ecc
-[  344.901716] R13: 000000000002efd9 R14: 0000000000008ea5 R15: 0000000000000000
-[  344.901716] Code: 50 ff ff ff 5d c3 0f 1f 40 00 66 2e 0f 1f 84 00 00 00 00 00 55 48 89 e5 41 57 41 56 41 55 41 54 49 89 f4 53 4c 8b 6f 48 48 8b 07 <49> 8b 55 20 48 8b 80 a0 00 00 00 4c 8b 70 20 48 8d 42 ff 83 e2
-[  344.901716] RIP: iomap_page_mkwrite+0x17/0xf0 RSP: ffffc900068a7d38
-[  344.901716] CR2: 0000000000000020
-[  344.924264] ---[ end trace c4e8d3bdccf6912b ]---
-[  344.924834] Kernel panic - not syncing: Fatal exception
-[  344.925504] Kernel Offset: disabled
-[  344.925884] ---[ end Kernel panic - not syncing: Fatal exception
+> ---
+>  fs/ext2/inode.c |   10 ++--------
+>  fs/ext4/inode.c |   10 ++--------
+>  2 files changed, 4 insertions(+), 16 deletions(-)
+> 
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index 30163d007b2f..7102b77a83c6 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -800,7 +800,6 @@ int ext2_get_block(struct inode *inode, sector_t iblock,
+>  static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  		unsigned flags, struct iomap *iomap)
+>  {
+> -	struct block_device *bdev;
+>  	unsigned int blkbits = inode->i_blkbits;
+>  	unsigned long first_block = offset >> blkbits;
+>  	unsigned long max_blocks = (length + (1 << blkbits) - 1) >> blkbits;
+> @@ -814,13 +813,9 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  		return ret;
+>  
+>  	iomap->flags = 0;
+> -	bdev = inode->i_sb->s_bdev;
+> -	iomap->bdev = bdev;
+> +	iomap->bdev = inode->i_sb->s_bdev;
+>  	iomap->offset = (u64)first_block << blkbits;
+> -	if (blk_queue_dax(bdev->bd_queue))
+> -		iomap->dax_dev = fs_dax_get_by_host(bdev->bd_disk->disk_name);
+> -	else
+> -		iomap->dax_dev = NULL;
+> +	iomap->dax_dev = inode->i_sb->s_daxdev;
+>  
+>  	if (ret == 0) {
+>  		iomap->type = IOMAP_HOLE;
+> @@ -842,7 +837,6 @@ static int
+>  ext2_iomap_end(struct inode *inode, loff_t offset, loff_t length,
+>  		ssize_t written, unsigned flags, struct iomap *iomap)
+>  {
+> -	fs_put_dax(iomap->dax_dev);
+>  	if (iomap->type == IOMAP_MAPPED &&
+>  	    written < length &&
+>  	    (flags & IOMAP_WRITE))
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c774bdc22759..311690522366 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3404,7 +3404,6 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
+>  static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  			    unsigned flags, struct iomap *iomap)
+>  {
+> -	struct block_device *bdev;
+>  	unsigned int blkbits = inode->i_blkbits;
+>  	unsigned long first_block = offset >> blkbits;
+>  	unsigned long last_block = (offset + length - 1) >> blkbits;
+> @@ -3473,12 +3472,8 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  	}
+>  
+>  	iomap->flags = 0;
+> -	bdev = inode->i_sb->s_bdev;
+> -	iomap->bdev = bdev;
+> -	if (blk_queue_dax(bdev->bd_queue))
+> -		iomap->dax_dev = fs_dax_get_by_host(bdev->bd_disk->disk_name);
+> -	else
+> -		iomap->dax_dev = NULL;
+> +	iomap->bdev = inode->i_sb->s_bdev;
+> +	iomap->dax_dev = inode->i_sb->s_daxdev;
+>  	iomap->offset = first_block << blkbits;
+>  
+>  	if (ret == 0) {
+> @@ -3511,7 +3506,6 @@ static int ext4_iomap_end(struct inode *inode, loff_t offset, loff_t length,
+>  	int blkbits = inode->i_blkbits;
+>  	bool truncate = false;
+>  
+> -	fs_put_dax(iomap->dax_dev);
+>  	if (!(flags & IOMAP_WRITE) || (flags & IOMAP_FAULT))
+>  		return 0;
+>  
+> 
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
