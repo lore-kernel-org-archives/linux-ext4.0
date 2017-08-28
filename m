@@ -1,60 +1,85 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
- encryption
-Date: Mon, 28 Aug 2017 10:22:25 -0400
-Message-ID: <20170828142225.5qr5sasarjqps64m@thunk.org>
-References: <20170818194730.61575-1-ebiggers3@gmail.com>
- <9a86b7af-5e07-9b6f-958a-bd72ab28926e@oracle.com>
- <20170822025545.GA3577@zzz.localdomain>
- <7d4a9f66-7473-2e36-09bb-79d7885301bd@oracle.com>
- <20170822170720.GA9587@gmail.com>
- <9e3f608d-5410-b8f7-cdf0-93045be7a995@oracle.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH] Documentation: fix little inconsistencies
+Date: Mon, 28 Aug 2017 09:17:07 -0700
+Message-ID: <20170828161707.GA4750@magnolia>
+References: <20170828094638.GA15378@amd>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org,
-        linux-doc@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Anand Jain <anand.jain@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org,
+        tytso@mit.edu, corbet@lwn.net, linux-ext4@vger.kernel.org,
+        Andrew Morton <akpm@osdl.org>
+To: Pavel Machek <pavel@ucw.cz>
 Return-path: <linux-doc-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <9e3f608d-5410-b8f7-cdf0-93045be7a995@oracle.com>
+In-Reply-To: <20170828094638.GA15378@amd>
 Sender: linux-doc-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 28, 2017 at 08:18:46PM +0800, Anand Jain wrote:
-> > If *no* applications care whether the filenames are encrypted or not, sure.
-> > But are you absolutely sure that no applications care?  How do you know?  And what
-> > is the advantage of not encrypting the filenames anyway?  It is better to
-> > encrypt by default.
-> > 
->  File-name is a kind of File-system semantic and altering based on the on
-> the user key context does not guarantee the system will be compatible with
-> all their legacy applications.
+On Mon, Aug 28, 2017 at 11:46:39AM +0200, Pavel Machek wrote:
+> Fix little inconsistencies in Documentation: make case and spacing
+> match surrounding text, fix ascii-art.
+> 
+> Signed-off-by: Pavel Machek <pavel@ucw.cz>
+> 
+> diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+> index 5a8f7f4..75236c0 100644
+> --- a/Documentation/filesystems/ext4.txt
+> +++ b/Documentation/filesystems/ext4.txt
+> @@ -94,10 +94,10 @@ Note: More extensive information for getting started with ext4 can be
+>  * ability to pack bitmaps and inode tables into larger virtual groups via the
+>    flex_bg feature
+>  * large file support
+> -* Inode allocation using large virtual block groups via flex_bg
+> +* inode allocation using large virtual block groups via flex_bg
+>  * delayed allocation
+>  * large block (up to pagesize) support
+> -* efficient new ordered mode in JBD2 and ext4(avoid using buffer head to force
+> +* efficient new ordered mode in JBD2 and ext4 (avoid using buffer head to force
+>    the ordering)
+>  
+>  [1] Filesystems with a block size of 1k may see a limit imposed by the
+> @@ -105,7 +105,7 @@ directory hash tree having a maximum depth of two.
+>  
+>  2.2 Candidate features for future inclusion
+>  
+> -* Online defrag (patches available but not well tested)
+> +* online defrag (patches available but not well tested)
+>  * reduced mke2fs time via lazy itable initialization in conjunction with
+>    the uninit_bg feature (capability to do this is available in e2fsprogs
+>    but a kernel thread to do lazy zeroing of unused inode table blocks
+> @@ -602,7 +602,7 @@ Table of Ext4 specific ioctls
+>  			      bitmaps and inode table, the userspace tool thus
+>  			      just passes the new number of blocks.
+>  
+> -EXT4_IOC_SWAP_BOOT	      Swap i_blocks and associated attributes
+> + EXT4_IOC_SWAP_BOOT	      Swap i_blocks and associated attributes
+>  			      (like i_blocks, i_size, i_flags, ...) from
+>  			      the specified inode with inode
+>  			      EXT4_BOOT_LOADER_INO (#5). This is typically
+> diff --git a/Documentation/networking/switchdev.txt b/Documentation/networking/switchdev.txt
+> index 5e40e1f..6309e90 100644
+> --- a/Documentation/networking/switchdev.txt
+> +++ b/Documentation/networking/switchdev.txt
+> @@ -29,7 +29,7 @@ with SR-IOV or soft switches, such as OVS, are possible.
+>                        sw1p1  +  sw1p3  +  sw1p5  +          eth1
+>                          +    |    +    |    +    |            +
+>                          |    |    |    |    |    |            |
+> -                     +--+----+----+----+-+--+----+---+  +-----+-----+
+> +                     +--+----+----+----+----+----+---+  +-----+-----+
 
-In theory we could make it optional whether or not file names are
-encrypted.  But that means extra complexity, and extra complexity
-means potential bugs and vulnerabilities --- both potential
-implementation bugs, vulnerabilities caused by users getting confused
-by how they configure the system settings.  So in general with
-security systems it's better to limit the complexity to the bare
-minimum.
+Except for this last part, looks ok.
 
-The only case which you've come up with in terms of potential
-vulnerabilities is backup and restore, and backup and restore is
-complicated for a number of numbers, since you need to be able to
-backup and restore not just the file name and the encrypted data
-blocks, but also the encrypted per-file key.  So getting this right
-will almost certainly require that the backup/restore software be
-fscrypt aware.
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Hence, making the encryption of the filenames optional doesn't just to
-make life easier for backup/restore isn't a compelling argument, since
-the backup/restore program is going to have to have special case
-handling for fscrypt protected file systems *anyway*.
+--D
 
-Cheers,
+>                       |         Switch driver         |  |    mgmt   |
+>                       |        (this document)        |  |   driver  |
+>                       |                               |  |           |
+> 
+> -- 
+> (english) http://www.livejournal.com/~pavelmachek
+> (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
 
-					- Ted
+
