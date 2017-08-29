@@ -1,115 +1,91 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: Re: [PATCH] Documentation: fix little inconsistencies
-Date: Tue, 29 Aug 2017 09:27:08 +0200
-Message-ID: <20170829072708.GA30643@amd>
-References: <20170828094638.GA15378@amd>
- <20170828161707.GA4750@magnolia>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [PATCH 5/5] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
+Date: Tue, 29 Aug 2017 15:46:07 +0200
+Message-ID: <CAHc6FU5e7SaEtZGVRPWdnLBHZ72dqd-3JTOHjJsPMQ=mOe9ZbA@mail.gmail.com>
+References: <20170629135420.21357-1-hch@lst.de> <20170629135420.21357-6-hch@lst.de>
+ <20170725124511.GG19943@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="qDbXVdCdHGoSgWSk"
-Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org,
-        tytso@mit.edu, corbet@lwn.net, linux-ext4@vger.kernel.org,
-        Andrew Morton <akpm@osdl.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170828161707.GA4750@magnolia>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: Christoph Hellwig <hch@lst.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-xfs@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-vk0-f50.google.com ([209.85.213.50]:35225 "EHLO
+        mail-vk0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751288AbdH2NqI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Aug 2017 09:46:08 -0400
+Received: by mail-vk0-f50.google.com with SMTP id z187so9613337vkd.2
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Aug 2017 06:46:08 -0700 (PDT)
+In-Reply-To: <20170725124511.GG19943@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Jan,
 
---qDbXVdCdHGoSgWSk
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+On Tue, Jul 25, 2017 at 2:45 PM, Jan Kara <jack@suse.cz> wrote:
+> On Thu 29-06-17 06:54:20, Christoph Hellwig wrote:
+>> @@ -3359,6 +3358,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>>       unsigned long first_block = offset >> blkbits;
+>>       unsigned long last_block = (offset + length - 1) >> blkbits;
+>>       struct ext4_map_blocks map;
+>> +     bool delalloc = false;
+>>       int ret;
+>>
+>>       if (WARN_ON_ONCE(ext4_has_inline_data(inode)))
+>> @@ -3369,6 +3369,27 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>>
+>>       if (!(flags & IOMAP_WRITE)) {
+>>               ret = ext4_map_blocks(NULL, inode, &map, 0);
+>> +             if (!ret) {
+>> +                     struct extent_status es = {};
+>> +
+>> +                     ext4_es_find_delayed_extent_range(inode, map.m_lblk,
+>> +                                     map.m_lblk + map.m_len - 1, &es);
+>> +                     /* Is delalloc data before next block in extent tree? */
+>> +                     if (es.es_len && es.es_lblk < map.m_lblk + map.m_len) {
+>> +                             ext4_lblk_t offset = 0;
+>> +
+>> +                             if (es.es_lblk < map.m_lblk)
+>> +                                     offset = map.m_lblk - es.es_lblk;
+>> +                             map.m_lblk = es.es_lblk + offset;
+>> +                             map.m_pblk = ext4_es_pblock(&es) + offset;
+>
+> This is wrong for delalloc extent - adding offset to some magic block
+> value...
 
+Right.
 
+>> +                             map.m_len = es.es_len - offset;
+>> +                             if (ext4_es_status(&es) & EXTENT_STATUS_UNWRITTEN)
+>> +                                     map.m_flags |= EXT4_MAP_UNWRITTEN;
+>> +                             if (ext4_es_status(&es) & EXTENT_STATUS_DELAYED)
+>> +                                     delalloc = true;
+>> +                             ret = 1;
+>> +                     }
+>> +             }
+>
+> Also the delalloc handling seems to be wrong that if we have file as:
+>
+> HD
+>
+> where H is hole, D is delalloc block, and iomap is called at offset 0, we
+> should be getting back "hole at 0" back but instead you will return
+> "delalloc at 1".
+>
+> We deal with a similar situation in ext4_da_map_blocks() so it would be
+> good if we could reuse that one rather than reimplementing it here. But
+> factoring the necessary functionality out isn't that easy.
 
-> > index 5e40e1f..6309e90 100644
-> > --- a/Documentation/networking/switchdev.txt
-> > +++ b/Documentation/networking/switchdev.txt
-> > @@ -29,7 +29,7 @@ with SR-IOV or soft switches, such as OVS, are possib=
-le.
-> >  =E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89sw1p1=E2=80=89 +  sw1=
-p3  + =E2=80=89sw1p5  +  =E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=
-=80=89=E2=80=89=E2=80=89eth1
-> >  =E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89+=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=E2=80=89+=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=E2=80=89+=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89+
-> >  =E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89|
-> > -=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89+--+----+----+----+-+--+----+-=
---+=E2=80=89=E2=80=89+-----+-----+
-> > +=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89+--+----+----+----+----+----+-=
---+=E2=80=89=E2=80=89+-----+-----+
->=20
-> Except for this last part, looks ok.
+I've tried to figure out where the issue might be, and I really don't see any.
 
-Anything wrong here? It is fixing extra '+' in the ascii art...
-									Pavel
+It may be confusing that ext4_iomap_begin doesn't split up
+IOMAP_UNWRITTEN maps into holes and data as ext4_find_unwritten_pgoff
+did. This splitting is instead done generically in
+iomap_seek_{hole,data} for IOMAP_UNWRITTEN maps using
+page_cache_seek_hole_data.
 
-> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
->=20
-> --D
->=20
-> >  =E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89Switch=E2=80=89driver=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=
-=80=89|=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=E2=80=89mgmt=E2=80=89=
-=E2=80=89=E2=80=89|
-> >  =E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89(this=E2=80=89document)=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=
-=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89driver=E2=80=89=E2=80=89|
-> >  =E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=
-=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=
-=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89|=E2=80=89=E2=80=89|=E2=80=89=E2=80=89=E2=80=89=
-=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89=E2=80=89|
-> >=20
-> > --=20
-> > (english) http://www.livejournal.com/~pavelmachek
-> > (cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses=
-/blog.html
->=20
+I'll post an improved version of this patch queue shortly.
 
---=20
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blo=
-g.html
-
---qDbXVdCdHGoSgWSk
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAlmlF0wACgkQMOfwapXb+vJW2wCeIxV/bXfM0ul4yfv1+p65D/RV
-KNMAnjkBrj2+ULe5CpIxT8KoUqrCxaMi
-=m6cL
------END PGP SIGNATURE-----
-
---qDbXVdCdHGoSgWSk--
+Thanks,
+Andreas
