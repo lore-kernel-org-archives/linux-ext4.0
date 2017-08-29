@@ -1,518 +1,119 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH 4/4] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
-Date: Tue, 29 Aug 2017 16:29:42 +0200
-Message-ID: <20170829142942.21594-5-agruenba@redhat.com>
-References: <20170829142942.21594-1-agruenba@redhat.com>
-Cc: linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@lst.de>,
-        Andreas Gruenbacher <agruenba@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20170829142942.21594-1-agruenba@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
+Date: Tue, 29 Aug 2017 17:49:22 +0200
+Message-ID: <20170829154922.GA24592@quack2.suse.cz>
+References: <20170811121132.bj5y77scrvkgy7uo@rh_laptop>
+ <20170811125849.GA15300@infradead.org>
+ <20170811134130.o46y5jpekrpj5qvw@rh_laptop>
+ <20170824182057.amdirlrbugezrahy@thunk.org>
+ <20170825075415.GA748@infradead.org>
+ <20170825151445.ycf5xomoxvebgaez@thunk.org>
+ <20170825154032.GA1827@infradead.org>
+ <20170825233358.GC17782@dastard>
+ <20170828073853.GA23262@infradead.org>
+ <20170828101014.GD17782@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Lukas Czerner <lczerner@redhat.com>, linux-xfs@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:47412 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752195AbdH2PtZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 29 Aug 2017 11:49:25 -0400
+Content-Disposition: inline
+In-Reply-To: <20170828101014.GD17782@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Christoph Hellwig <hch@lst.de>
+On Mon 28-08-17 20:10:14, Dave Chinner wrote:
+> On Mon, Aug 28, 2017 at 12:38:54AM -0700, Christoph Hellwig wrote:
+> > On Sat, Aug 26, 2017 at 09:33:58AM +1000, Dave Chinner wrote:
+> > > > Nah, -o dax works very well.  It's just the flag instead of the -o dax
+> > > > option or rather switching it on a mapped file will probably be very dangerous.
+> > > 
+> > > In what way is it dangerous, Christoph?
+> > 
+> > When I run the following script as a normal user:
+> > 
+> > FSXDIR=~/xfstests/ltp/
+> > FILE=/mnt/foo
+> > 
+> > ${FSXDIR}/fsx $FILE &
+> > 
+> > while true; do
+> >     xfs_io -c 'chattr +x' $FILE
+> >     xfs_io -c 'chattr -x' $FILE
+> > done
+> >
+> > I get this nice little crash:
+> 
+> Can you please package that up into an xfstest?
+> 
+> > root@testvm:~# sh test.sh
+> > skipping zero size read
+> > skipping insert range behind EOF
+> > truncating to largest ever: 0x3a290
+> > zero_range to largest ever: 0x3a8d1
+> > zero_range to largest ever: 0x3fe3e
+> > zero_range to largest ever: 0x40000
+> > [  344.898390] BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
+> > [  344.899306] IP: iomap_page_mkwrite+0x17/0xf0
+> > [  344.899795] PGD 7db37067
+> > [  344.899796] P4D 7db37067
+> > [  344.900099] PUD 78c61067
+> > [  344.900389] PMD 0
+> > [  344.900665]
+> > [  344.901075] Oops: 0000 [#1] SMP
+> > [  344.901536] Modules linked in:
+> > [  344.901716] CPU: 3 PID: 6052 Comm: fsx Not tainted 4.12.0+ #2199
+> > [  344.901716] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS rel-1.10.2-0-g5f4c7b1-prebuilt.qemu-project.org 04/01/2014
+> > [  344.901716] task: ffff880079a0da00 task.stack: ffffc900068a4000
+> > [  344.901716] RIP: 0010:iomap_page_mkwrite+0x17/0xf0
+> > [  344.901716] RSP: 0000:ffffc900068a7d38 EFLAGS: 00010246
+> > [  344.901716] RAX: ffff8800798dd0d0 RBX: 0000000000000200 RCX: 0000000000000001
+> > [  344.901716] RDX: 0000000070eb898e RSI: ffffffff82109010 RDI: ffffc900068a7df0
+> > [  344.901716] RBP: ffffc900068a7d60 R08: ffffffff82ff9fa8 R09: 0000000000000000
+> > [  344.901716] R10: ffffc900068a7cb0 R11: ffffffff8159b5cc R12: ffffffff82109010
+> > [  344.901716] R13: 0000000000000000 R14: ffffc900068a7df0 R15: ffff88007da89580
+>                       ^^^^^^^^^^^^^^^^
+> 
+> vmf->page is null.
+> 
+> Which means IS_DAX changed half way through a fault, despite us
+> holding the MMAPLOCK and protecting all the filesystem side of the
+> fault code from races.
+> 
+> Seems to me that even allowing filesystems to switch between
+> different mapping tree behaviours based on an inode flag is a
+> fundamentally broken model. The fault action that needs to taken by
+> the filesystem has already been predetermined by the fault
+> processing that has already occurred and placed into the contents of
+> the vmf we've been passed.
 
-Switch to the iomap_seek_hole and iomap_seek_data helpers for
-implementing lseek SEEK_HOLE / SEEK_DATA, and remove all the code that
-isn't needed any more.
+I don't think the problem is actually within MM in this particular case.
+The problem seems to be that xfs_filemap_fault() checks IS_DAX without
+holding MMAPLOCK and so it can change after that test and before the test
+in xfs_filemap_page_mkwrite().
 
-Note that with this patch, ext4 will now always depend on the iomap code
-instead of only when CONFIG_DAX is enabled, and it requires adding a
-call into the extent status tree for iomap_begin as well to properly
-deal with delalloc extents.
+> Hence I think that if we need to process the fault as a DAX fault
+> then the vmf needs to tell us that, not require us to look up an
+> inode flag to determine what to do. ANd if the inode flag changes,
+> then that needs to be propagated through the mapping and VMAs in a
+> sane fashion, not just run an invalidation from the filesystem. I
+> don't know enough about the VM code to say anything useful about how
+> this needs to be set up, but it's clear that mapping invalidation
+> and behaviour swaps can't be completely serialised against page
+> faults from the filesystem side.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-[Minor fixes and cleanups by Andreas]
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
----
- fs/ext4/Kconfig |   1 +
- fs/ext4/ext4.h  |   3 -
- fs/ext4/file.c  | 271 +++-----------------------------------------------------
- fs/ext4/inode.c | 100 ++++++---------------
- 4 files changed, 43 insertions(+), 332 deletions(-)
+But there is no difference in vmf setup from generic MM side. In particular
+vmf->page is set by the ->fault handler and then it is passed to
+->page_mkwrite handler. And changes to mapping behavior between these two
+callbacks should be prevented by the page lock / radix entry lock...
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index e38039fd96ff..73b850f5659c 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -37,6 +37,7 @@ config EXT4_FS
- 	select CRC16
- 	select CRYPTO
- 	select CRYPTO_CRC32C
-+	select FS_IOMAP
- 	help
- 	  This is the next generation of the ext3 filesystem.
- 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 017e55942a49..f295fce7a9c8 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2515,9 +2515,6 @@ extern void ext4_da_update_reserve_space(struct inode *inode,
- 					int used, int quota_claim);
- extern int ext4_issue_zeroout(struct inode *inode, ext4_lblk_t lblk,
- 			      ext4_fsblk_t pblk, ext4_lblk_t len);
--extern int ext4_get_next_extent(struct inode *inode, ext4_lblk_t lblk,
--				unsigned int map_len,
--				struct extent_status *result);
- 
- /* indirect.c */
- extern int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 0d7cf0cc9b87..bc7a901c8b3f 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -20,6 +20,7 @@
- 
- #include <linux/time.h>
- #include <linux/fs.h>
-+#include <linux/iomap.h>
- #include <linux/mount.h>
- #include <linux/path.h>
- #include <linux/dax.h>
-@@ -455,256 +456,6 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- }
- 
- /*
-- * Here we use ext4_map_blocks() to get a block mapping for a extent-based
-- * file rather than ext4_ext_walk_space() because we can introduce
-- * SEEK_DATA/SEEK_HOLE for block-mapped and extent-mapped file at the same
-- * function.  When extent status tree has been fully implemented, it will
-- * track all extent status for a file and we can directly use it to
-- * retrieve the offset for SEEK_DATA/SEEK_HOLE.
-- */
--
--/*
-- * When we retrieve the offset for SEEK_DATA/SEEK_HOLE, we would need to
-- * lookup page cache to check whether or not there has some data between
-- * [startoff, endoff] because, if this range contains an unwritten extent,
-- * we determine this extent as a data or a hole according to whether the
-- * page cache has data or not.
-- */
--static int ext4_find_unwritten_pgoff(struct inode *inode,
--				     int whence,
--				     ext4_lblk_t end_blk,
--				     loff_t *offset)
--{
--	struct pagevec pvec;
--	unsigned int blkbits;
--	pgoff_t index;
--	pgoff_t end;
--	loff_t endoff;
--	loff_t startoff;
--	loff_t lastoff;
--	int found = 0;
--
--	blkbits = inode->i_sb->s_blocksize_bits;
--	startoff = *offset;
--	lastoff = startoff;
--	endoff = (loff_t)end_blk << blkbits;
--
--	index = startoff >> PAGE_SHIFT;
--	end = (endoff - 1) >> PAGE_SHIFT;
--
--	pagevec_init(&pvec, 0);
--	do {
--		int i, num;
--		unsigned long nr_pages;
--
--		num = min_t(pgoff_t, end - index, PAGEVEC_SIZE - 1) + 1;
--		nr_pages = pagevec_lookup(&pvec, inode->i_mapping, index,
--					  (pgoff_t)num);
--		if (nr_pages == 0)
--			break;
--
--		for (i = 0; i < nr_pages; i++) {
--			struct page *page = pvec.pages[i];
--			struct buffer_head *bh, *head;
--
--			/*
--			 * If current offset is smaller than the page offset,
--			 * there is a hole at this offset.
--			 */
--			if (whence == SEEK_HOLE && lastoff < endoff &&
--			    lastoff < page_offset(pvec.pages[i])) {
--				found = 1;
--				*offset = lastoff;
--				goto out;
--			}
--
--			if (page->index > end)
--				goto out;
--
--			lock_page(page);
--
--			if (unlikely(page->mapping != inode->i_mapping)) {
--				unlock_page(page);
--				continue;
--			}
--
--			if (!page_has_buffers(page)) {
--				unlock_page(page);
--				continue;
--			}
--
--			if (page_has_buffers(page)) {
--				lastoff = page_offset(page);
--				bh = head = page_buffers(page);
--				do {
--					if (lastoff + bh->b_size <= startoff)
--						goto next;
--					if (buffer_uptodate(bh) ||
--					    buffer_unwritten(bh)) {
--						if (whence == SEEK_DATA)
--							found = 1;
--					} else {
--						if (whence == SEEK_HOLE)
--							found = 1;
--					}
--					if (found) {
--						*offset = max_t(loff_t,
--							startoff, lastoff);
--						unlock_page(page);
--						goto out;
--					}
--next:
--					lastoff += bh->b_size;
--					bh = bh->b_this_page;
--				} while (bh != head);
--			}
--
--			lastoff = page_offset(page) + PAGE_SIZE;
--			unlock_page(page);
--		}
--
--		/* The no. of pages is less than our desired, we are done. */
--		if (nr_pages < num)
--			break;
--
--		index = pvec.pages[i - 1]->index + 1;
--		pagevec_release(&pvec);
--	} while (index <= end);
--
--	if (whence == SEEK_HOLE && lastoff < endoff) {
--		found = 1;
--		*offset = lastoff;
--	}
--out:
--	pagevec_release(&pvec);
--	return found;
--}
--
--/*
-- * ext4_seek_data() retrieves the offset for SEEK_DATA.
-- */
--static loff_t ext4_seek_data(struct file *file, loff_t offset, loff_t maxsize)
--{
--	struct inode *inode = file->f_mapping->host;
--	struct extent_status es;
--	ext4_lblk_t start, last, end;
--	loff_t dataoff, isize;
--	int blkbits;
--	int ret;
--
--	inode_lock(inode);
--
--	isize = i_size_read(inode);
--	if (offset >= isize) {
--		inode_unlock(inode);
--		return -ENXIO;
--	}
--
--	blkbits = inode->i_sb->s_blocksize_bits;
--	start = offset >> blkbits;
--	last = start;
--	end = isize >> blkbits;
--	dataoff = offset;
--
--	do {
--		ret = ext4_get_next_extent(inode, last, end - last + 1, &es);
--		if (ret <= 0) {
--			/* No extent found -> no data */
--			if (ret == 0)
--				ret = -ENXIO;
--			inode_unlock(inode);
--			return ret;
--		}
--
--		last = es.es_lblk;
--		if (last != start)
--			dataoff = (loff_t)last << blkbits;
--		if (!ext4_es_is_unwritten(&es))
--			break;
--
--		/*
--		 * If there is a unwritten extent at this offset,
--		 * it will be as a data or a hole according to page
--		 * cache that has data or not.
--		 */
--		if (ext4_find_unwritten_pgoff(inode, SEEK_DATA,
--					      es.es_lblk + es.es_len, &dataoff))
--			break;
--		last += es.es_len;
--		dataoff = (loff_t)last << blkbits;
--		cond_resched();
--	} while (last <= end);
--
--	inode_unlock(inode);
--
--	if (dataoff > isize)
--		return -ENXIO;
--
--	return vfs_setpos(file, dataoff, maxsize);
--}
--
--/*
-- * ext4_seek_hole() retrieves the offset for SEEK_HOLE.
-- */
--static loff_t ext4_seek_hole(struct file *file, loff_t offset, loff_t maxsize)
--{
--	struct inode *inode = file->f_mapping->host;
--	struct extent_status es;
--	ext4_lblk_t start, last, end;
--	loff_t holeoff, isize;
--	int blkbits;
--	int ret;
--
--	inode_lock(inode);
--
--	isize = i_size_read(inode);
--	if (offset >= isize) {
--		inode_unlock(inode);
--		return -ENXIO;
--	}
--
--	blkbits = inode->i_sb->s_blocksize_bits;
--	start = offset >> blkbits;
--	last = start;
--	end = isize >> blkbits;
--	holeoff = offset;
--
--	do {
--		ret = ext4_get_next_extent(inode, last, end - last + 1, &es);
--		if (ret < 0) {
--			inode_unlock(inode);
--			return ret;
--		}
--		/* Found a hole? */
--		if (ret == 0 || es.es_lblk > last) {
--			if (last != start)
--				holeoff = (loff_t)last << blkbits;
--			break;
--		}
--		/*
--		 * If there is a unwritten extent at this offset,
--		 * it will be as a data or a hole according to page
--		 * cache that has data or not.
--		 */
--		if (ext4_es_is_unwritten(&es) &&
--		    ext4_find_unwritten_pgoff(inode, SEEK_HOLE,
--					      last + es.es_len, &holeoff))
--			break;
--
--		last += es.es_len;
--		holeoff = (loff_t)last << blkbits;
--		cond_resched();
--	} while (last <= end);
--
--	inode_unlock(inode);
--
--	if (holeoff > isize)
--		holeoff = isize;
--
--	return vfs_setpos(file, holeoff, maxsize);
--}
--
--/*
-  * ext4_llseek() handles both block-mapped and extent-mapped maxbytes values
-  * by calling generic_file_llseek_size() with the appropriate maxbytes
-  * value for each.
-@@ -720,18 +471,24 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int whence)
- 		maxbytes = inode->i_sb->s_maxbytes;
- 
- 	switch (whence) {
--	case SEEK_SET:
--	case SEEK_CUR:
--	case SEEK_END:
-+	default:
- 		return generic_file_llseek_size(file, offset, whence,
- 						maxbytes, i_size_read(inode));
--	case SEEK_DATA:
--		return ext4_seek_data(file, offset, maxbytes);
- 	case SEEK_HOLE:
--		return ext4_seek_hole(file, offset, maxbytes);
-+		inode_lock_shared(inode);
-+		offset = iomap_seek_hole(inode, offset, &ext4_iomap_ops);
-+		inode_unlock_shared(inode);
-+		break;
-+	case SEEK_DATA:
-+		inode_lock_shared(inode);
-+		offset = iomap_seek_data(inode, offset, &ext4_iomap_ops);
-+		inode_unlock_shared(inode);
-+		break;
- 	}
- 
--	return -EINVAL;
-+	if (offset < 0)
-+		return offset;
-+	return vfs_setpos(file, offset, maxbytes);
- }
- 
- const struct file_operations ext4_file_operations = {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ab6ab835255e..f5895ea6ac70 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3400,7 +3400,6 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
- 		return try_to_free_buffers(page);
- }
- 
--#ifdef CONFIG_FS_DAX
- static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 			    unsigned flags, struct iomap *iomap)
- {
-@@ -3409,6 +3408,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 	unsigned long first_block = offset >> blkbits;
- 	unsigned long last_block = (offset + length - 1) >> blkbits;
- 	struct ext4_map_blocks map;
-+	bool delalloc = false;
- 	int ret;
- 
- 	if ((flags & IOMAP_REPORT) && ext4_has_inline_data(inode)) {
-@@ -3425,6 +3425,29 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 
- 	if (!(flags & IOMAP_WRITE)) {
- 		ret = ext4_map_blocks(NULL, inode, &map, 0);
-+		if (ret < 0)
-+			return ret;
-+		if (!ret) {
-+			struct extent_status es = {};
-+
-+			ext4_es_find_delayed_extent_range(inode, map.m_lblk,
-+					map.m_lblk + map.m_len - 1, &es);
-+			/* Is delalloc data before next block in extent tree? */
-+			if (es.es_len && es.es_lblk < map.m_lblk + map.m_len) {
-+				ext4_lblk_t offs = 0;
-+
-+				if (es.es_lblk < map.m_lblk)
-+					offs = map.m_lblk - es.es_lblk;
-+				map.m_lblk = es.es_lblk + offs;
-+				map.m_pblk = ext4_es_pblock(&es) + offs;
-+				map.m_len = es.es_len - offs;
-+				if (ext4_es_is_unwritten(&es))
-+					map.m_flags |= EXT4_MAP_UNWRITTEN;
-+				if (ext4_es_is_delayed(&es))
-+					delalloc = true;
-+				ret = 1;
-+			}
-+		}
- 	} else {
- 		int dio_credits;
- 		handle_t *handle;
-@@ -3486,11 +3509,14 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 	else
- 		iomap->dax_dev = NULL;
- 	iomap->offset = first_block << blkbits;
-+	iomap->length = (u64)map.m_len << blkbits;
- 
- 	if (ret == 0) {
- 		iomap->type = IOMAP_HOLE;
- 		iomap->addr = IOMAP_NULL_ADDR;
--		iomap->length = (u64)map.m_len << blkbits;
-+	} else if (delalloc) {
-+		iomap->type = IOMAP_DELALLOC;
-+		iomap->addr = IOMAP_NULL_ADDR;
- 	} else {
- 		if (map.m_flags & EXT4_MAP_MAPPED) {
- 			iomap->type = IOMAP_MAPPED;
-@@ -3501,7 +3527,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 			return -EIO;
- 		}
- 		iomap->addr = (u64)map.m_pblk << blkbits;
--		iomap->length = (u64)map.m_len << blkbits;
- 	}
- 
- 	if (map.m_flags & EXT4_MAP_NEW)
-@@ -3567,8 +3592,6 @@ const struct iomap_ops ext4_iomap_ops = {
- 	.iomap_end		= ext4_iomap_end,
- };
- 
--#endif
--
- static int ext4_end_io_dio(struct kiocb *iocb, loff_t offset,
- 			    ssize_t size, void *private)
- {
-@@ -6132,70 +6155,3 @@ int ext4_filemap_fault(struct vm_fault *vmf)
- 
- 	return err;
- }
--
--/*
-- * Find the first extent at or after @lblk in an inode that is not a hole.
-- * Search for @map_len blocks at most. The extent is returned in @result.
-- *
-- * The function returns 1 if we found an extent. The function returns 0 in
-- * case there is no extent at or after @lblk and in that case also sets
-- * @result->es_len to 0. In case of error, the error code is returned.
-- */
--int ext4_get_next_extent(struct inode *inode, ext4_lblk_t lblk,
--			 unsigned int map_len, struct extent_status *result)
--{
--	struct ext4_map_blocks map;
--	struct extent_status es = {};
--	int ret;
--
--	map.m_lblk = lblk;
--	map.m_len = map_len;
--
--	/*
--	 * For non-extent based files this loop may iterate several times since
--	 * we do not determine full hole size.
--	 */
--	while (map.m_len > 0) {
--		ret = ext4_map_blocks(NULL, inode, &map, 0);
--		if (ret < 0)
--			return ret;
--		/* There's extent covering m_lblk? Just return it. */
--		if (ret > 0) {
--			int status;
--
--			ext4_es_store_pblock(result, map.m_pblk);
--			result->es_lblk = map.m_lblk;
--			result->es_len = map.m_len;
--			if (map.m_flags & EXT4_MAP_UNWRITTEN)
--				status = EXTENT_STATUS_UNWRITTEN;
--			else
--				status = EXTENT_STATUS_WRITTEN;
--			ext4_es_store_status(result, status);
--			return 1;
--		}
--		ext4_es_find_delayed_extent_range(inode, map.m_lblk,
--						  map.m_lblk + map.m_len - 1,
--						  &es);
--		/* Is delalloc data before next block in extent tree? */
--		if (es.es_len && es.es_lblk < map.m_lblk + map.m_len) {
--			ext4_lblk_t offset = 0;
--
--			if (es.es_lblk < lblk)
--				offset = lblk - es.es_lblk;
--			result->es_lblk = es.es_lblk + offset;
--			ext4_es_store_pblock(result,
--					     ext4_es_pblock(&es) + offset);
--			result->es_len = es.es_len - offset;
--			ext4_es_store_status(result, ext4_es_status(&es));
--
--			return 1;
--		}
--		/* There's a hole at m_lblk, advance us after it */
--		map.m_lblk += map.m_len;
--		map_len -= map.m_len;
--		map.m_len = map_len;
--		cond_resched();
--	}
--	result->es_len = 0;
--	return 0;
--}
+								Honza
 -- 
-2.13.3
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
