@@ -1,40 +1,99 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [PATCH] ext4: avoid Y2038 overflow in recently_deleted()
-Date: Wed, 30 Aug 2017 23:03:08 +0200
-Message-ID: <CAK8P3a1WHVqwK6veXcruHQ=roub6ivnffpBWCw=XcTzF9=ev1A@mail.gmail.com>
-References: <1503686915-57151-1-git-send-email-adilger@dilger.ca>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH v3 1/4] dax: introduce a fs_dax_get_by_bdev() helper
+Date: Wed, 30 Aug 2017 14:39:51 -0700
+Message-ID: <20170830213951.GU4757@magnolia>
+References: <150412222686.10177.8031279869867070772.stgit@dwillia2-desk3.amr.corp.intel.com>
+ <150412223265.10177.11004612169458058274.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@lst.de>,
+        linux-nvdimm@lists.01.org
+To: Dan Williams <dan.j.williams@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f66.google.com ([209.85.218.66]:37322 "EHLO
-        mail-oi0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750814AbdH3VDJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Aug 2017 17:03:09 -0400
-Received: by mail-oi0-f66.google.com with SMTP id b184so6612395oih.4
-        for <linux-ext4@vger.kernel.org>; Wed, 30 Aug 2017 14:03:09 -0700 (PDT)
-In-Reply-To: <1503686915-57151-1-git-send-email-adilger@dilger.ca>
+Received: from userp1040.oracle.com ([156.151.31.81]:17359 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751519AbdH3VkG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Aug 2017 17:40:06 -0400
+Content-Disposition: inline
+In-Reply-To: <150412223265.10177.11004612169458058274.stgit@dwillia2-desk3.amr.corp.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 25, 2017 at 8:48 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> Avoid a 32-bit time overflow in recently_deleted() since i_dtime
-> (inode deletion time) is stored only as a 32-bit value on disk.
-> Since i_dtime isn't used for much beyond a boolean value in e2fsck
-> and is otherwise only used in this function in the kernel, there is
-> no benefit to use more space in the inode for this field on disk.
->
-> Instead, compare only the relative deletion time with the low
-> 32 bits of the time using the newly-added time_before32() helper,
-> which is similar to time_before() and time_after() for jiffies.
->
-> Increase RECENTCY_DIRTY to 300s based on Ted's comments about
-> usage experience at Google.
->
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
-> Change-Id: I7402e1b3d49ea326f872ec8324933f42b502b9be
+On Wed, Aug 30, 2017 at 12:43:52PM -0700, Dan Williams wrote:
+> Add a helper that can replace the following common pattern:
+> 
+> 	if (blk_queue_dax(bdev->bd_queue))
+> 		fs_dax_get_by_host(bdev->bd_disk->disk_name);
+> 
+> This will be used to move dax_device lookup from iomap-operation time to
+> fs-mount time.
+> 
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: Christoph Hellwig <hch@lst.de>
+> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 
-Reviewed-by: Arnd Bergmann <arnd@arndb.de>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Sorry for the late reply.
+> ---
+>  drivers/dax/super.c |   10 ++++++++++
+>  include/linux/dax.h |    6 ++++++
+>  2 files changed, 16 insertions(+)
+> 
+> diff --git a/drivers/dax/super.c b/drivers/dax/super.c
+> index 938eb4868f7f..b699aac268a6 100644
+> --- a/drivers/dax/super.c
+> +++ b/drivers/dax/super.c
+> @@ -46,6 +46,8 @@ void dax_read_unlock(int id)
+>  EXPORT_SYMBOL_GPL(dax_read_unlock);
+>  
+>  #ifdef CONFIG_BLOCK
+> +#include <linux/blkdev.h>
+> +
+>  int bdev_dax_pgoff(struct block_device *bdev, sector_t sector, size_t size,
+>  		pgoff_t *pgoff)
+>  {
+> @@ -59,6 +61,14 @@ int bdev_dax_pgoff(struct block_device *bdev, sector_t sector, size_t size,
+>  }
+>  EXPORT_SYMBOL(bdev_dax_pgoff);
+>  
+> +struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev)
+> +{
+> +	if (!blk_queue_dax(bdev->bd_queue))
+> +		return NULL;
+> +	return fs_dax_get_by_host(bdev->bd_disk->disk_name);
+> +}
+> +EXPORT_SYMBOL_GPL(fs_dax_get_by_bdev);
+> +
+>  /**
+>   * __bdev_dax_supported() - Check if the device supports dax for filesystem
+>   * @sb: The superblock of the device
+> diff --git a/include/linux/dax.h b/include/linux/dax.h
+> index df97b7af7e2c..ac8afa18f707 100644
+> --- a/include/linux/dax.h
+> +++ b/include/linux/dax.h
+> @@ -57,6 +57,7 @@ static inline void fs_put_dax(struct dax_device *dax_dev)
+>  	put_dax(dax_dev);
+>  }
+>  
+> +struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev);
+>  #else
+>  static inline int bdev_dax_supported(struct super_block *sb, int blocksize)
+>  {
+> @@ -71,6 +72,11 @@ static inline struct dax_device *fs_dax_get_by_host(const char *host)
+>  static inline void fs_put_dax(struct dax_device *dax_dev)
+>  {
+>  }
+> +
+> +static inline struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev)
+> +{
+> +	return NULL;
+> +}
+>  #endif
+>  
+>  int dax_read_lock(void);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
