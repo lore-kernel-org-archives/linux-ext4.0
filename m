@@ -1,41 +1,40 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/4] iomap: Switch from blkno to disk offset
-Date: Wed, 30 Aug 2017 17:00:00 +0200
-Message-ID: <20170830150000.GC5920@quack2.suse.cz>
-References: <20170829142942.21594-1-agruenba@redhat.com>
- <20170829142942.21594-2-agruenba@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
+Date: Wed, 30 Aug 2017 11:00:19 -0400
+Message-ID: <20170830150019.cwrnum6zmrieqhdp@thunk.org>
+References: <20170825075415.GA748@infradead.org>
+ <20170825151445.ycf5xomoxvebgaez@thunk.org>
+ <20170825154032.GA1827@infradead.org>
+ <20170825233358.GC17782@dastard>
+ <20170828073853.GA23262@infradead.org>
+ <20170828101014.GD17782@dastard>
+ <20170829154922.GA24592@quack2.suse.cz>
+ <20170829225717.GG10621@dastard>
+ <20170830100059.GC28354@quack2.suse.cz>
+ <20170830123450.GA14976@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>
-To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+        linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>,
+        linux-xfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:37661 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751382AbdH3PAD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 30 Aug 2017 11:00:03 -0400
+Received: from imap.thunk.org ([74.207.234.97]:41638 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751868AbdH3PA1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 30 Aug 2017 11:00:27 -0400
 Content-Disposition: inline
-In-Reply-To: <20170829142942.21594-2-agruenba@redhat.com>
+In-Reply-To: <20170830123450.GA14976@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 29-08-17 16:29:39, Andreas Gruenbacher wrote:
-> Replace iomap->blkno, the sector number, with iomap->addr, the disk
-> offset in bytes.  For invalid disk offsets, use the special value
-> IOMAP_NULL_ADDR instead of IOMAP_NULL_BLOCK.  This allows to use iomap
-> for mappings which are not block aligned, such as inline data on ext4
-> and stuffed inodes on gfs2.
-> 
-> Tested on xfs and ext4 with xfstests; seems to be working correctly.
-> 
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+Bringing this discussion back to the "ext4: introduce per-inode DAX
+flag" patch, it sounds to me that I should _not_ apply this patch
+until we figure out to fix this for reals.  Does this sound fair?
 
-The patch looks good to me. You can add:
+If we think it's completely unfixable, then maybe XFS should consider
+(temporarily) withdrawing the per-file DAX support before there is a
+userspace and you have to support it forever, but that's between the
+NVM/dax and XFS folks to figure out.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+					- Ted
