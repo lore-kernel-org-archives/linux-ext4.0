@@ -1,40 +1,75 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
-Date: Wed, 30 Aug 2017 11:00:19 -0400
-Message-ID: <20170830150019.cwrnum6zmrieqhdp@thunk.org>
-References: <20170825075415.GA748@infradead.org>
- <20170825151445.ycf5xomoxvebgaez@thunk.org>
- <20170825154032.GA1827@infradead.org>
- <20170825233358.GC17782@dastard>
- <20170828073853.GA23262@infradead.org>
- <20170828101014.GD17782@dastard>
- <20170829154922.GA24592@quack2.suse.cz>
- <20170829225717.GG10621@dastard>
- <20170830100059.GC28354@quack2.suse.cz>
- <20170830123450.GA14976@infradead.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/4] iomap: Add IOMAP_F_DATA_INLINE flag
+Date: Wed, 30 Aug 2017 17:03:57 +0200
+Message-ID: <20170830150357.GD5920@quack2.suse.cz>
+References: <20170829142942.21594-1-agruenba@redhat.com>
+ <20170829142942.21594-3-agruenba@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-        linux-ext4@vger.kernel.org, Lukas Czerner <lczerner@redhat.com>,
-        linux-xfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>
+To: Andreas Gruenbacher <agruenba@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41638 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751868AbdH3PA1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 30 Aug 2017 11:00:27 -0400
+Received: from mx2.suse.de ([195.135.220.15]:38104 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751455AbdH3PEA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 30 Aug 2017 11:04:00 -0400
 Content-Disposition: inline
-In-Reply-To: <20170830123450.GA14976@infradead.org>
+In-Reply-To: <20170829142942.21594-3-agruenba@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Bringing this discussion back to the "ext4: introduce per-inode DAX
-flag" patch, it sounds to me that I should _not_ apply this patch
-until we figure out to fix this for reals.  Does this sound fair?
+On Tue 29-08-17 16:29:40, Andreas Gruenbacher wrote:
+> Add a new IOMAP_F_DATA_INLINE flag to indicate that a mapping is in a
+> disk area that contains data as well as metadata.  In iomap_fiemap, map
+> this flag to FIEMAP_EXTENT_DATA_INLINE.
+> 
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 
-If we think it's completely unfixable, then maybe XFS should consider
-(temporarily) withdrawing the per-file DAX support before there is a
-userspace and you have to support it forever, but that's between the
-NVM/dax and XFS folks to figure out.
+Looks good to me. You can add:
 
-					- Ted
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/iomap.c            | 2 ++
+>  include/linux/iomap.h | 5 +++--
+>  2 files changed, 5 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/iomap.c b/fs/iomap.c
+> index 7bc1797c2292..f0a263482a0e 100644
+> --- a/fs/iomap.c
+> +++ b/fs/iomap.c
+> @@ -510,6 +510,8 @@ static int iomap_to_fiemap(struct fiemap_extent_info *fi,
+>  		flags |= FIEMAP_EXTENT_MERGED;
+>  	if (iomap->flags & IOMAP_F_SHARED)
+>  		flags |= FIEMAP_EXTENT_SHARED;
+> +	if (iomap->flags & IOMAP_F_DATA_INLINE)
+> +		flags |= FIEMAP_EXTENT_DATA_INLINE;
+>  
+>  	return fiemap_fill_next_extent(fi, iomap->offset,
+>  			iomap->addr != IOMAP_NULL_ADDR ? iomap->addr : 0,
+> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+> index 7b8a615fa021..2b0790dbd6ea 100644
+> --- a/include/linux/iomap.h
+> +++ b/include/linux/iomap.h
+> @@ -26,8 +26,9 @@ struct vm_fault;
+>  /*
+>   * Flags that only need to be reported for IOMAP_REPORT requests:
+>   */
+> -#define IOMAP_F_MERGED	0x10	/* contains multiple blocks/extents */
+> -#define IOMAP_F_SHARED	0x20	/* block shared with another file */
+> +#define IOMAP_F_MERGED		0x10	/* contains multiple blocks/extents */
+> +#define IOMAP_F_SHARED		0x20	/* block shared with another file */
+> +#define IOMAP_F_DATA_INLINE	0x40	/* data inline in the inode */
+>  
+>  /*
+>   * Magic value for addr:
+> -- 
+> 2.13.3
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
