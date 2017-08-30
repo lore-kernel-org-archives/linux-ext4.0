@@ -1,47 +1,53 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH] vfs: Return -ENXIO for negative SEEK_HOLE / SEEK_DATA offsets
-Date: Wed, 30 Aug 2017 16:13:13 +0200
-Message-ID: <20170830141313.11283-1-agruenba@redhat.com>
-Cc: Andreas Gruenbacher <agruenba@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        stable@vger.kernel.org
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
+From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Subject: Re: [fstests PATCH] generic: add test for executables on read-only
+ DAX mounts
+Date: Wed, 30 Aug 2017 07:51:03 -0700
+Message-ID: <20170830145103.GA10163@infradead.org>
+References: <20170829213721.GA27686@linux.intel.com>
+ <20170829223715.26507-1-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, Eryu Guan <eguan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Randy Dodgen <rdodgen-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+ fstests-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170829223715.26507-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-In generic_file_llseek_size, return -ENXIO for negative offsets as well.
+> The above patch fixes an issue with ext4 where executables cannot be run on
+> read-only filesystems mounted with the DAX option.
+> 
+> This issue does not appear to be present in ext2 or XFS, as they both pass
+> the test.  I've also confirmed outside of the test that they are both
+> indeed able to execute binaries on read-only DAX mounts.
 
-Fixes xfstest generic/448.
+It works for me on XFS.  But I don't really understand why, as the fault
+handler doesn't look very different.
 
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-Cc: stable@vger.kernel.org
----
- fs/read_write.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Maybe the problem is that in ext4_journal_start_sb will fail on
+a read-only fs?
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 0cc7033aa413..52872c1e57dd 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -112,7 +112,7 @@ generic_file_llseek_size(struct file *file, loff_t offset, int whence,
- 		 * In the generic case the entire file is data, so as long as
- 		 * offset isn't at the end of the file then the offset is data.
- 		 */
--		if (offset >= eof)
-+		if ((unsigned long long)offset >= eof)
- 			return -ENXIO;
- 		break;
- 	case SEEK_HOLE:
-@@ -120,7 +120,7 @@ generic_file_llseek_size(struct file *file, loff_t offset, int whence,
- 		 * There is a virtual hole at the end of the file, so as long as
- 		 * offset isn't i_size or larger, return i_size.
- 		 */
--		if (offset >= eof)
-+		if ((unsigned long long)offset >= eof)
- 			return -ENXIO;
- 		offset = eof;
- 		break;
--- 
-2.13.3
+Even for xfs/ext2 it would seem odd that things like sb_start_pagefault
+just work. 
+
+> +LS=$(which ls --skip-alias --skip-functions) 2>/dev/null
+> +if [ $? -ne 0 ]; then
+> +	status=$?
+> +	echo "Couldn't find 'ls'!?"
+> +	exit
+> +fi
+
+These checks all fail for me..
