@@ -1,51 +1,65 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: e2fsck: set dir_nlink feature if large dir exists
-Date: Wed, 30 Aug 2017 11:13:32 -0400
-Message-ID: <20170830151332.2ikr5dfox3aeebyd@thunk.org>
-References: <1503080382-37376-1-git-send-email-adilger@dilger.ca>
- <20170830022000.b7mgzksytvcwirx5@thunk.org>
- <604C57FC-C3A6-478F-BDA6-E8550555C70F@dilger.ca>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
+Date: Wed, 30 Aug 2017 17:29:31 +0200
+Message-ID: <20170830152931.GE5920@quack2.suse.cz>
+References: <20170825075415.GA748@infradead.org>
+ <20170825151445.ycf5xomoxvebgaez@thunk.org>
+ <20170825154032.GA1827@infradead.org>
+ <20170825233358.GC17782@dastard>
+ <20170828073853.GA23262@infradead.org>
+ <20170828101014.GD17782@dastard>
+ <20170829154922.GA24592@quack2.suse.cz>
+ <20170829225717.GG10621@dastard>
+ <20170830100059.GC28354@quack2.suse.cz>
+ <20170830123450.GA14976@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Lukas Czerner <lczerner@redhat.com>, linux-xfs@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41822 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751332AbdH3PNe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 30 Aug 2017 11:13:34 -0400
+Received: from mx2.suse.de ([195.135.220.15]:40830 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751733AbdH3P3f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 30 Aug 2017 11:29:35 -0400
 Content-Disposition: inline
-In-Reply-To: <604C57FC-C3A6-478F-BDA6-E8550555C70F@dilger.ca>
+In-Reply-To: <20170830123450.GA14976@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 30, 2017 at 01:43:30AM -0600, Andreas Dilger wrote:
-> > The f_large_dir test is now failing after I apply this patch:
+On Wed 30-08-17 05:34:50, Christoph Hellwig wrote:
+> On Wed, Aug 30, 2017 at 12:00:59PM +0200, Jan Kara wrote:
+> > /dev/ram0 /mnt xfs rw,relatime,attr2,dax,inode64,noquota 0 0
 > > 
-> > debugfs 1.43.6 (29-Aug-2017)
-> > ./test_one: 38: /usr/projects/e2fsprogs/e2fsprogs/tests/f_large_dir/script: arithmetic expression: division by zero: "i / ELAPSED"
-> > f_large_dir: optimize 3 level htree directories: failed
+> > marvin5:~/:[0]# ls /mnt/
+> > fsxfile  fsxfile.fsxgood  fsxfile.fsxlog
+> > 
+> > marvin5:~/:[0]# ./xfsprogs-dev/io/xfs_io -c 'lsattr' /mnt/fsxfile
+> > -p-------------- /mnt/fsxfile 
+> > 
+> > marvin5:~/:[0]# ./xfsprogs-dev/io/xfs_io -c 'chattr +x' /mnt/fsxfile
+> > 
+> > marvin5:~/:[0]# ./xfsprogs-dev/io/xfs_io -c 'lsattr' /mnt/fsxfile
+> > -p-------------- /mnt/fsxfile 
+> > 
+> > No DAX flag set and no error... What am I doing wrong?
 > 
-> You must have a faster test system than I do...
+> Odd.  Even on a non-DAX device the flag sticks for me:
+> 
+> root@testvm:~# mount /dev/sda /mnt/
+> root@testvm:~# touch foo
+> root@testvm:~# cd /mnt/
+> root@testvm:/mnt# xfs_io -c 'chattr +x' foo
+> root@testvm:/mnt# xfs_io -c 'lsattr' foo
+> --------------x- foo
 
-I'm using a ramdisk for /tmp.  I suspect that's what is making all the
-difference.  Otherwise it's just a normal Lenovo T470 laptop....
+OK, tracked this down. I had the XFS filesystem created so that
+ip->i_d.di_version < 3 check in xfs_set_diflags() was true and so the flag
+got silently ignored. I'd hope to get error in such case but whatever...
 
-> On a related note, I was trying to implement the optimization for
-> more efficient ext2fs_link() insertion, but this has proven to be
-> much more complex than I expected.  I was thinking I would just
-> call the link_proc() function directly to handle insertion of the
-> new name, using block number of the previous caller.  However, this
-> function depends on the directory leaf buffers having been read
-> from disk, and being passed a dirent pointer to the free space after
-> being called through a series of callback indirections.
+								Honza
 
-I think it's more trouble than it's worth to preseve the existing
-link_proc() function.  I'd recommend out to be just what is necessary
-to do the directory entry insert, and make that a helper function
-which is called by link_proc() and the shortcut handling code in
-ext2fs_link().
-
-Cheers,
-
-						- Ted
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
