@@ -1,40 +1,33 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: misc: quiet llvm build warnings
-Date: Wed, 30 Aug 2017 01:57:26 -0400
-Message-ID: <20170830055726.luyavt77vmxuimfm@thunk.org>
-References: <1503724481-84704-1-git-send-email-adilger@dilger.ca>
+Subject: Re: tests: report if a test is taking a long time
+Date: Wed, 30 Aug 2017 02:07:37 -0400
+Message-ID: <20170830060737.yx5tyty5dr55pens@thunk.org>
+References: <1503724788-84776-1-git-send-email-adilger@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:39698 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:39764 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750758AbdH3F53 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 30 Aug 2017 01:57:29 -0400
+        id S1750756AbdH3GHj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 30 Aug 2017 02:07:39 -0400
 Content-Disposition: inline
-In-Reply-To: <1503724481-84704-1-git-send-email-adilger@dilger.ca>
+In-Reply-To: <1503724788-84776-1-git-send-email-adilger@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 25, 2017 at 11:14:41PM -0600, Andreas Dilger wrote:
-> Quiet some relatively harmless build warnings:
+On Fri, Aug 25, 2017 at 11:19:48PM -0600, Andreas Dilger wrote:
+> Print out a message if a test takes longer than 60s, with a
+> reminder to potentially add is_slow_test to that test, so
+> that it is easier to find which tests are taking a long time,
+> especially if running with "make -j check" or similar.
 > 
-> mkquota.c:527:15: warning: format specifies type 'long' but the
-> 	argument has type 'qsize_t' (aka 'long long') [-Wformat]
-> 		dq->dq_id, dq->dq_dqb.dqb_curspace,
-> 			   ^~~~~~~~~~~~~~~~~~~~~~~
-> 
-> tune2fs.c:928:18: warning: '&&' within '||' [-Wlogical-op-parentheses]
-> 	if (pass == 1 && (inode->i_flags & EXT4_EA_INODE_FL) ||
-> 	    ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~
-> tune2fs.c:928:18: place parentheses around '&&' to silence warning
+> Add an exclusion for r_expand_full on MacOS since HFS+ does
+> not support sparse devices and doesn't like large test images.
 > 
 > Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 
-The mkquota.c is already fixed on the maint branch, but I've applied
-the tune2fs fix to the master/next branch.
-
-Thanks,
+Thanks, applied.
 
 					- Ted
