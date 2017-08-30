@@ -1,314 +1,180 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH 2/2] ext2fs: improve expand_dir performance
-Date: Wed, 30 Aug 2017 01:47:25 -0600
-Message-ID: <1504079245-49002-2-git-send-email-adilger@dilger.ca>
-References: <1504079245-49002-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
+Date: Wed, 30 Aug 2017 12:00:59 +0200
+Message-ID: <20170830100059.GC28354@quack2.suse.cz>
+References: <20170811134130.o46y5jpekrpj5qvw@rh_laptop>
+ <20170824182057.amdirlrbugezrahy@thunk.org>
+ <20170825075415.GA748@infradead.org>
+ <20170825151445.ycf5xomoxvebgaez@thunk.org>
+ <20170825154032.GA1827@infradead.org>
+ <20170825233358.GC17782@dastard>
+ <20170828073853.GA23262@infradead.org>
+ <20170828101014.GD17782@dastard>
+ <20170829154922.GA24592@quack2.suse.cz>
+ <20170829225717.GG10621@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Lukas Czerner <lczerner@redhat.com>, linux-xfs@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-so.shaw.ca ([64.59.136.139]:60430 "EHLO
-        smtp-out-so.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751295AbdH3Hr1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Aug 2017 03:47:27 -0400
-In-Reply-To: <1504079245-49002-1-git-send-email-adilger@dilger.ca>
+Received: from mx2.suse.de ([195.135.220.15]:33234 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751321AbdH3KBD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 30 Aug 2017 06:01:03 -0400
+Content-Disposition: inline
+In-Reply-To: <20170829225717.GG10621@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Previously, ext2fs_expand_dir() in mke2fs and debugfs could
-only add one block at a time after scanning the whole directory,
-which was very slow if a large number of directory leaf blocks
-are being added at once (in particular for the f_large_dir test).
+On Wed 30-08-17 08:57:17, Dave Chinner wrote:
+> On Tue, Aug 29, 2017 at 05:49:22PM +0200, Jan Kara wrote:
+> > On Mon 28-08-17 20:10:14, Dave Chinner wrote:
+> > > On Mon, Aug 28, 2017 at 12:38:54AM -0700, Christoph Hellwig wrote:
+> > > > On Sat, Aug 26, 2017 at 09:33:58AM +1000, Dave Chinner wrote:
+> > > > > > Nah, -o dax works very well.  It's just the flag instead of the -o dax
+> > > > > > option or rather switching it on a mapped file will probably be very dangerous.
+> > > > > 
+> > > > > In what way is it dangerous, Christoph?
+> > > > 
+> > > > When I run the following script as a normal user:
+> > > > 
+> > > > FSXDIR=~/xfstests/ltp/
+> > > > FILE=/mnt/foo
+> > > > 
+> > > > ${FSXDIR}/fsx $FILE &
+> > > > 
+> > > > while true; do
+> > > >     xfs_io -c 'chattr +x' $FILE
+> > > >     xfs_io -c 'chattr -x' $FILE
+> > > > done
+> > > >
+> > > > I get this nice little crash:
+> > > 
+> > > Can you please package that up into an xfstest?
+> > > 
+> > > > root@testvm:~# sh test.sh
+> > > > skipping zero size read
+> > > > skipping insert range behind EOF
+> > > > truncating to largest ever: 0x3a290
+> > > > zero_range to largest ever: 0x3a8d1
+> > > > zero_range to largest ever: 0x3fe3e
+> > > > zero_range to largest ever: 0x40000
+> > > > [  344.898390] BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
+> > > > [  344.899306] IP: iomap_page_mkwrite+0x17/0xf0
+> > > > [  344.899795] PGD 7db37067
+> > > > [  344.899796] P4D 7db37067
+> > > > [  344.900099] PUD 78c61067
+> > > > [  344.900389] PMD 0
+> > > > [  344.900665]
+> > > > [  344.901075] Oops: 0000 [#1] SMP
+> > > > [  344.901536] Modules linked in:
+> > > > [  344.901716] CPU: 3 PID: 6052 Comm: fsx Not tainted 4.12.0+ #2199
+> > > > [  344.901716] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS rel-1.10.2-0-g5f4c7b1-prebuilt.qemu-project.org 04/01/2014
+> > > > [  344.901716] task: ffff880079a0da00 task.stack: ffffc900068a4000
+> > > > [  344.901716] RIP: 0010:iomap_page_mkwrite+0x17/0xf0
+> > > > [  344.901716] RSP: 0000:ffffc900068a7d38 EFLAGS: 00010246
+> > > > [  344.901716] RAX: ffff8800798dd0d0 RBX: 0000000000000200 RCX: 0000000000000001
+> > > > [  344.901716] RDX: 0000000070eb898e RSI: ffffffff82109010 RDI: ffffc900068a7df0
+> > > > [  344.901716] RBP: ffffc900068a7d60 R08: ffffffff82ff9fa8 R09: 0000000000000000
+> > > > [  344.901716] R10: ffffc900068a7cb0 R11: ffffffff8159b5cc R12: ffffffff82109010
+> > > > [  344.901716] R13: 0000000000000000 R14: ffffc900068a7df0 R15: ffff88007da89580
+> > >                       ^^^^^^^^^^^^^^^^
+> > > 
+> > > vmf->page is null.
+> > > 
+> > > Which means IS_DAX changed half way through a fault, despite us
+> > > holding the MMAPLOCK and protecting all the filesystem side of the
+> > > fault code from races.
+> > > 
+> > > Seems to me that even allowing filesystems to switch between
+> > > different mapping tree behaviours based on an inode flag is a
+> > > fundamentally broken model. The fault action that needs to taken by
+> > > the filesystem has already been predetermined by the fault
+> > > processing that has already occurred and placed into the contents of
+> > > the vmf we've been passed.
+> > 
+> > I don't think the problem is actually within MM in this particular case.
+> > The problem seems to be that xfs_filemap_fault() checks IS_DAX without
+> > holding MMAPLOCK and so it can change after that test and before the test
+> > in xfs_filemap_page_mkwrite().
+> 
+> First thing I did was fix that, and it still paniced with vmf->page
+> = null in iomap_page_mkwrite, then I realised it was irrelevant
 
-Add a new ext2fs_expand_dir2() function that takes the number
-of blocks to add to the directory and add them all at once, and
-call that from mke2fs (to create lost+found) and debugfs (with
-an optional 3rd argument to the "expand_dir" command).
+OK, drat.
 
-Fix expand_dir_proc() to expand inline directories before trying
-to add more blocks, to distinguish between adding blocks and
-clusters, and not count added indirect/index blocks as leaves.
+> because if it can change between xfs_filemap_fault() and
+> xfs_filemap_page_mkwrite() it can change anytime in the fault path
+> we are not holding the MMAPLOCK....
 
-Have create_lost_and_found() round up to a full bigalloc chunk,
-as there is little benefit if unused blocks in the same chunk
-are left "free" since they can't be used for anything else.
+Agreed but...
 
-This speeds up f_large_dir with 65000 files from 4232s to 4141s.
+> > > Hence I think that if we need to process the fault as a DAX fault
+> > > then the vmf needs to tell us that, not require us to look up an
+> > > inode flag to determine what to do. ANd if the inode flag changes,
+> > > then that needs to be propagated through the mapping and VMAs in a
+> > > sane fashion, not just run an invalidation from the filesystem. I
+> > > don't know enough about the VM code to say anything useful about how
+> > > this needs to be set up, but it's clear that mapping invalidation
+> > > and behaviour swaps can't be completely serialised against page
+> > > faults from the filesystem side.
+> > 
+> > But there is no difference in vmf setup from generic MM side. In particular
+> > vmf->page is set by the ->fault handler and then it is passed to
+> > ->page_mkwrite handler.
+> 
+> Yes there is. DAX can call the .fault() handler directly from
+> handle_pte_fault() for write faults on DAX when there is no pte
+> installed. In which case vmf->page is null because we don't go
+> through do_wp_page() to install the page we faulted on in the vmf
+> before calling .page_mkwrite().
+> 
+> IOWs, if we fault between the invalidation in the IS_DAX changing
+> code and dropping the MMAPLOCK once the transaction inode change is
+> complete, then that fault will find an empty pte. It will then call
+> ->filemap_fault with vmf->page = NULL, and block on the MMAPLOCK
+> until the filesystem transaction is complete. Then it checks
+> IS_DAX, finds it's not set, so assumes that we have a page cache
+> fault, not a DAX fault....
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
- debugfs/debugfs.8.in     |  9 ++++++--
- debugfs/debugfs.c        | 23 +++++++++++++++++----
- lib/ext2fs/expanddir.c   | 53 ++++++++++++++++++++++++++++++++----------------
- lib/ext2fs/ext2fs.h      |  2 ++
- misc/mke2fs.c            | 27 +++++++++++++-----------
- tests/f_large_dir/script |  4 +---
- 6 files changed, 79 insertions(+), 39 deletions(-)
+So if you get to xfs_filemap_fault(), lock MMAPLOCK, then check IS_DAX() -
+not set - then you go to filemap_fault() which is perfectly fine with
+vmf->page being NULL. What am I missing?
 
-diff --git a/debugfs/debugfs.8.in b/debugfs/debugfs.8.in
-index 87d487e..e3f54c1 100644
---- a/debugfs/debugfs.8.in
-+++ b/debugfs/debugfs.8.in
-@@ -316,9 +316,14 @@ Remove the extended attribute
- .I attr_name
- from the file \fIfilespec\fR.
- .TP
--.BI expand_dir " filespec"
-+.B expand_dir
-+.I filespec
-+.RI [ blocks_to_add ]
- Expand the directory
--.IR filespec .
-+.I filespec
-+by
-+.I blocks_to_add
-+blocks, or 1 block if unspecified.
- .TP
- .BI fallocate " filespec start_block [end_block]
- Allocate and map uninitialized blocks into \fIfilespec\fR between
-diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
-index 0a4b536..868cbbd 100644
---- a/debugfs/debugfs.c
-+++ b/debugfs/debugfs.c
-@@ -1965,15 +1965,30 @@ void do_show_debugfs_params(int argc EXT2FS_ATTR((unused)),
- #ifndef READ_ONLY
- void do_expand_dir(int argc, char *argv[])
- {
--	ext2_ino_t inode;
-+	ext2_ino_t ino;
-+	int add_blocks;
- 	int retval;
- 
--	if (common_inode_args_process(argc, argv, &inode, CHECK_FS_RW))
-+	if (common_args_process(argc, argv, 2, 3, argv[0],
-+				"<file> [blocks_to_add]",
-+				CHECK_FS_RW | CHECK_FS_BITMAPS))
-+		return;
-+
-+	ino = string_to_inode(argv[1]);
-+	if (!ino)
- 		return;
- 
--	retval = ext2fs_expand_dir(current_fs, inode);
-+	if (argc == 3) {
-+		add_blocks = parse_ulong(argv[2], argv[1], "blocks_to_add",
-+					 &retval);
-+		if (retval)
-+			return;
-+	} else {
-+		add_blocks = 1;
-+	}
-+	retval = ext2fs_expand_dir2(current_fs, ino, add_blocks);
- 	if (retval)
--		com_err("ext2fs_expand_dir", retval, 0);
-+		com_err("ext2fs_expand_dir2", retval, 0);
- 	return;
- }
- 
-diff --git a/lib/ext2fs/expanddir.c b/lib/ext2fs/expanddir.c
-index 9f02312..d88861e 100644
---- a/lib/ext2fs/expanddir.c
-+++ b/lib/ext2fs/expanddir.c
-@@ -21,11 +21,13 @@
- #include "ext2fsP.h"
- 
- struct expand_dir_struct {
--	int		done;
--	int		newblocks;
-+	unsigned	done:1;
-+	unsigned	clusters_added;
- 	blk64_t		goal;
- 	errcode_t	err;
- 	ext2_ino_t	dir;
-+	unsigned	blocks_to_add;
-+	unsigned	blocks_added;
- };
- 
- static int expand_dir_proc(ext2_filsys	fs,
-@@ -35,7 +37,7 @@ static int expand_dir_proc(ext2_filsys	fs,
- 			   int		ref_offset EXT2FS_ATTR((unused)),
- 			   void		*priv_data)
- {
--	struct expand_dir_struct *es = (struct expand_dir_struct *) priv_data;
-+	struct expand_dir_struct *es = priv_data;
- 	blk64_t	new_blk;
- 	char		*block;
- 	errcode_t	retval;
-@@ -46,30 +48,33 @@ static int expand_dir_proc(ext2_filsys	fs,
- 		return 0;
- 	}
- 	if (blockcnt &&
--	    (EXT2FS_B2C(fs, es->goal) == EXT2FS_B2C(fs, es->goal+1)))
--		new_blk = es->goal+1;
--	else {
-+	    (EXT2FS_B2C(fs, es->goal) == EXT2FS_B2C(fs, es->goal + 1))) {
-+		new_blk = es->goal + 1;
-+	} else {
- 		es->goal &= ~EXT2FS_CLUSTER_MASK(fs);
- 		retval = ext2fs_new_block2(fs, es->goal, 0, &new_blk);
- 		if (retval) {
- 			es->err = retval;
- 			return BLOCK_ABORT;
- 		}
--		es->newblocks++;
-+		es->clusters_added++;
- 		ext2fs_block_alloc_stats2(fs, new_blk, +1);
- 	}
- 	if (blockcnt > 0) {
-+		es->blocks_added++;
- 		retval = ext2fs_new_dir_block(fs, 0, 0, &block);
- 		if (retval) {
- 			es->err = retval;
- 			return BLOCK_ABORT;
- 		}
--		es->done = 1;
-+		es->done = (es->blocks_added >= es->blocks_to_add);
- 		retval = ext2fs_write_dir_block4(fs, new_blk, block, 0,
- 						 es->dir);
- 		ext2fs_free_mem(&block);
--	} else
-+	} else {
-+		/* indirect or index block */
- 		retval = ext2fs_zero_blocks2(fs, new_blk, 1, NULL, NULL);
-+	}
- 	if (blockcnt >= 0)
- 		es->goal = new_blk;
- 	if (retval) {
-@@ -84,10 +89,11 @@ static int expand_dir_proc(ext2_filsys	fs,
- 		return BLOCK_CHANGED;
- }
- 
--errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir)
-+errcode_t ext2fs_expand_dir2(ext2_filsys fs, ext2_ino_t dir,
-+			     unsigned blocks_to_add)
- {
- 	errcode_t	retval;
--	struct expand_dir_struct es;
-+	struct expand_dir_struct es = { 0 };
- 	struct ext2_inode	inode;
- 
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
-@@ -98,6 +104,9 @@ errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir)
- 	if (!fs->block_map)
- 		return EXT2_ET_NO_BLOCK_BITMAP;
- 
-+	if (blocks_to_add > fs->super->s_free_blocks_count)
-+		return EXT2_ET_DIR_NO_SPACE;
-+
- 	retval = ext2fs_check_directory(fs, dir);
- 	if (retval)
- 		return retval;
-@@ -106,16 +115,19 @@ errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir)
- 	if (retval)
- 		return retval;
- 
--	es.done = 0;
--	es.err = 0;
-+	/* expand inode inline data before starting iteration */
-+	if (inode.i_flags & EXT4_INLINE_DATA_FL) {
-+		retval = ext2fs_inline_data_expand(fs, dir);
-+		if (retval)
-+			return retval;
-+		blocks_to_add--;
-+	}
- 	es.goal = ext2fs_find_inode_goal(fs, dir, &inode, 0);
--	es.newblocks = 0;
- 	es.dir = dir;
-+	es.blocks_to_add = blocks_to_add;
- 
- 	retval = ext2fs_block_iterate3(fs, dir, BLOCK_FLAG_APPEND,
- 				       0, expand_dir_proc, &es);
--	if (retval == EXT2_ET_INLINE_DATA_CANT_ITERATE)
--		return ext2fs_inline_data_expand(fs, dir);
- 
- 	if (es.err)
- 		return es.err;
-@@ -129,8 +141,8 @@ errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir)
- 	if (retval)
- 		return retval;
- 
--	inode.i_size += fs->blocksize;
--	ext2fs_iblk_add_blocks(fs, &inode, es.newblocks);
-+	inode.i_size += fs->blocksize * es.blocks_added;
-+	ext2fs_iblk_add_blocks(fs, &inode, es.clusters_added);
- 
- 	retval = ext2fs_write_inode(fs, dir, &inode);
- 	if (retval)
-@@ -138,3 +150,8 @@ errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir)
- 
- 	return 0;
- }
-+
-+errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir)
-+{
-+	return ext2fs_expand_dir2(fs, dir, 1);
-+}
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index b734f1a..0267660 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1194,6 +1194,8 @@ extern errcode_t ext2fs_dup_handle(ext2_filsys src, ext2_filsys *dest);
- 
- /* expanddir.c */
- extern errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir);
-+extern errcode_t ext2fs_expand_dir2(ext2_filsys fs, ext2_ino_t dir,
-+				    unsigned blocks_to_add);
- 
- /* ext_attr.c */
- extern __u32 ext2fs_ext_attr_hash_entry(struct ext2_ext_attr_entry *entry,
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index 85d88ed..2a83040 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -507,18 +507,21 @@ static void create_lost_and_found(ext2_filsys fs)
- 		exit(1);
- 	}
- 
--	for (i=1; i < EXT2_NDIR_BLOCKS; i++) {
--		/* Ensure that lost+found is at least 2 blocks, so we always
--		 * test large empty blocks for big-block filesystems.  */
--		if ((lpf_size += fs->blocksize) >= 16*1024 &&
--		    lpf_size >= 2 * fs->blocksize)
--			break;
--		retval = ext2fs_expand_dir(fs, ino);
--		if (retval) {
--			com_err("ext2fs_expand_dir", retval, "%s",
--				_("while expanding /lost+found"));
--			exit(1);
--		}
-+	/* Ensure that lost+found is at least 2 blocks, so we always
-+	 * test large empty blocks for big-block filesystems.  */
-+	lpf_size = EXT2_NDIR_BLOCKS;
-+	if (lpf_size * fs->blocksize > 16 * 1024)
-+		lpf_size = 16 * 1024 / fs->blocksize;
-+	if (lpf_size < 2)
-+		lpf_size = 2;
-+
-+	/* round up size to full cluster, no point in making it smaller */
-+	lpf_size = EXT2FS_C2B(fs, EXT2FS_B2C(fs, lpf_size - 1) + 1);
-+	retval = ext2fs_expand_dir2(fs, ino, lpf_size - 1 /* initial block */);
-+	if (retval) {
-+		com_err("ext2fs_expand_dir", retval, "%s",
-+			_("while expanding /lost+found"));
-+		exit(1);
- 	}
- }
- 
-diff --git a/tests/f_large_dir/script b/tests/f_large_dir/script
-index b25e106..1824778 100644
---- a/tests/f_large_dir/script
-+++ b/tests/f_large_dir/script
-@@ -32,11 +32,9 @@ if [ $RC -eq 0 ]; then
- 	echo "cd /foo"
- 	touch $TMPFILE.tmp
- 	echo "write $TMPFILE.tmp foofile"
-+	echo "expand ./ $((DIRBLK))"
- 	i=0
- 	while test $i -lt $ENTRIES ; do
--	    if test $((i % DIRENT_PER_LEAF)) -eq 0; then
--	    	echo "expand ./"
--	    fi
- 	    if test $((i % 5000)) -eq 0 -a $SECONDS -ne $START; then
- 		ELAPSED=$((SECONDS - START))
- 		RATE=$((i / ELAPSED))
+The oops can happen if you call iomap_page_mkwrite() with vmf->page set
+to NULL. However I don't see how that is possible after all IS_DAX checks
+are under MMAPLOCK - iomap_page_mkwrite() cannot be called through
+xfs_filemap_fault() anymore once DAX checks are consistent. And if it gets
+called through xfs_filemap_page_mkwrite(), it means that
+xfs_filemap_fault() was called before and must have returned
+VM_FAULT_LOCKED which means that it has set vmf->page to a correct page.
+[sorry, the page lock and entry lock I was speaking about in my previous
+email was indeed wrong]
+
+I've tried to reproduce this on my machine but for some reason setting of
+per-inode DAX flag does not work. I have (with today's checkout of
+xfsprogs):
+
+marvin5:~/:[0]# cat /proc/mounts
+...
+/dev/ram0 /mnt xfs rw,relatime,attr2,dax,inode64,noquota 0 0
+
+marvin5:~/:[0]# ls /mnt/
+fsxfile  fsxfile.fsxgood  fsxfile.fsxlog
+
+marvin5:~/:[0]# ./xfsprogs-dev/io/xfs_io -c 'lsattr' /mnt/fsxfile
+-p-------------- /mnt/fsxfile 
+
+marvin5:~/:[0]# ./xfsprogs-dev/io/xfs_io -c 'chattr +x' /mnt/fsxfile
+
+marvin5:~/:[0]# ./xfsprogs-dev/io/xfs_io -c 'lsattr' /mnt/fsxfile
+-p-------------- /mnt/fsxfile 
+
+No DAX flag set and no error... What am I doing wrong?
+
+								Honza
 -- 
-1.8.0
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
