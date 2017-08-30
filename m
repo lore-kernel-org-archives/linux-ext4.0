@@ -1,9 +1,8 @@
-From: Jan Kara <jack@suse.cz>
+From: Lukas Czerner <lczerner@redhat.com>
 Subject: Re: [PATCH] ext4: introduce per-inode DAX flag
-Date: Wed, 30 Aug 2017 17:29:31 +0200
-Message-ID: <20170830152931.GE5920@quack2.suse.cz>
-References: <20170825075415.GA748@infradead.org>
- <20170825151445.ycf5xomoxvebgaez@thunk.org>
+Date: Wed, 30 Aug 2017 17:30:48 +0200
+Message-ID: <20170830153048.pslde7hv5rp5zibw@rh_laptop>
+References: <20170825151445.ycf5xomoxvebgaez@thunk.org>
  <20170825154032.GA1827@infradead.org>
  <20170825233358.GC17782@dastard>
  <20170828073853.GA23262@infradead.org>
@@ -12,54 +11,39 @@ References: <20170825075415.GA748@infradead.org>
  <20170829225717.GG10621@dastard>
  <20170830100059.GC28354@quack2.suse.cz>
  <20170830123450.GA14976@infradead.org>
+ <20170830150019.cwrnum6zmrieqhdp@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Lukas Czerner <lczerner@redhat.com>, linux-xfs@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
+        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40830 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751733AbdH3P3f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 30 Aug 2017 11:29:35 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:42098 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751463AbdH3Paw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 30 Aug 2017 11:30:52 -0400
 Content-Disposition: inline
-In-Reply-To: <20170830123450.GA14976@infradead.org>
+In-Reply-To: <20170830150019.cwrnum6zmrieqhdp@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 30-08-17 05:34:50, Christoph Hellwig wrote:
-> On Wed, Aug 30, 2017 at 12:00:59PM +0200, Jan Kara wrote:
-> > /dev/ram0 /mnt xfs rw,relatime,attr2,dax,inode64,noquota 0 0
-> > 
-> > marvin5:~/:[0]# ls /mnt/
-> > fsxfile  fsxfile.fsxgood  fsxfile.fsxlog
-> > 
-> > marvin5:~/:[0]# ./xfsprogs-dev/io/xfs_io -c 'lsattr' /mnt/fsxfile
-> > -p-------------- /mnt/fsxfile 
-> > 
-> > marvin5:~/:[0]# ./xfsprogs-dev/io/xfs_io -c 'chattr +x' /mnt/fsxfile
-> > 
-> > marvin5:~/:[0]# ./xfsprogs-dev/io/xfs_io -c 'lsattr' /mnt/fsxfile
-> > -p-------------- /mnt/fsxfile 
-> > 
-> > No DAX flag set and no error... What am I doing wrong?
+On Wed, Aug 30, 2017 at 11:00:19AM -0400, Theodore Ts'o wrote:
+> Bringing this discussion back to the "ext4: introduce per-inode DAX
+> flag" patch, it sounds to me that I should _not_ apply this patch
+> until we figure out to fix this for reals.  Does this sound fair?
 > 
-> Odd.  Even on a non-DAX device the flag sticks for me:
+> If we think it's completely unfixable, then maybe XFS should consider
+> (temporarily) withdrawing the per-file DAX support before there is a
+> userspace and you have to support it forever, but that's between the
+> NVM/dax and XFS folks to figure out.
 > 
-> root@testvm:~# mount /dev/sda /mnt/
-> root@testvm:~# touch foo
-> root@testvm:~# cd /mnt/
-> root@testvm:/mnt# xfs_io -c 'chattr +x' foo
-> root@testvm:/mnt# xfs_io -c 'lsattr' foo
-> --------------x- foo
+> 					- Ted
 
-OK, tracked this down. I had the XFS filesystem created so that
-ip->i_d.di_version < 3 check in xfs_set_diflags() was true and so the flag
-got silently ignored. I'd hope to get error in such case but whatever...
+Hi Ted,
 
-								Honza
+I agree, this still has some issues even for ext4. Let's see what we can
+do about that and I'll revisit it later.
 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Thanks!
+-Lukas
