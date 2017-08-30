@@ -1,75 +1,51 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/4] iomap: Add IOMAP_F_DATA_INLINE flag
-Date: Wed, 30 Aug 2017 17:03:57 +0200
-Message-ID: <20170830150357.GD5920@quack2.suse.cz>
-References: <20170829142942.21594-1-agruenba@redhat.com>
- <20170829142942.21594-3-agruenba@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: e2fsck: set dir_nlink feature if large dir exists
+Date: Wed, 30 Aug 2017 11:13:32 -0400
+Message-ID: <20170830151332.2ikr5dfox3aeebyd@thunk.org>
+References: <1503080382-37376-1-git-send-email-adilger@dilger.ca>
+ <20170830022000.b7mgzksytvcwirx5@thunk.org>
+ <604C57FC-C3A6-478F-BDA6-E8550555C70F@dilger.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>
-To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38104 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751455AbdH3PEA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 30 Aug 2017 11:04:00 -0400
+Received: from imap.thunk.org ([74.207.234.97]:41822 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751332AbdH3PNe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 30 Aug 2017 11:13:34 -0400
 Content-Disposition: inline
-In-Reply-To: <20170829142942.21594-3-agruenba@redhat.com>
+In-Reply-To: <604C57FC-C3A6-478F-BDA6-E8550555C70F@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 29-08-17 16:29:40, Andreas Gruenbacher wrote:
-> Add a new IOMAP_F_DATA_INLINE flag to indicate that a mapping is in a
-> disk area that contains data as well as metadata.  In iomap_fiemap, map
-> this flag to FIEMAP_EXTENT_DATA_INLINE.
+On Wed, Aug 30, 2017 at 01:43:30AM -0600, Andreas Dilger wrote:
+> > The f_large_dir test is now failing after I apply this patch:
+> > 
+> > debugfs 1.43.6 (29-Aug-2017)
+> > ./test_one: 38: /usr/projects/e2fsprogs/e2fsprogs/tests/f_large_dir/script: arithmetic expression: division by zero: "i / ELAPSED"
+> > f_large_dir: optimize 3 level htree directories: failed
 > 
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> You must have a faster test system than I do...
 
-Looks good to me. You can add:
+I'm using a ramdisk for /tmp.  I suspect that's what is making all the
+difference.  Otherwise it's just a normal Lenovo T470 laptop....
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+> On a related note, I was trying to implement the optimization for
+> more efficient ext2fs_link() insertion, but this has proven to be
+> much more complex than I expected.  I was thinking I would just
+> call the link_proc() function directly to handle insertion of the
+> new name, using block number of the previous caller.  However, this
+> function depends on the directory leaf buffers having been read
+> from disk, and being passed a dirent pointer to the free space after
+> being called through a series of callback indirections.
 
-								Honza
+I think it's more trouble than it's worth to preseve the existing
+link_proc() function.  I'd recommend out to be just what is necessary
+to do the directory entry insert, and make that a helper function
+which is called by link_proc() and the shortcut handling code in
+ext2fs_link().
 
-> ---
->  fs/iomap.c            | 2 ++
->  include/linux/iomap.h | 5 +++--
->  2 files changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/iomap.c b/fs/iomap.c
-> index 7bc1797c2292..f0a263482a0e 100644
-> --- a/fs/iomap.c
-> +++ b/fs/iomap.c
-> @@ -510,6 +510,8 @@ static int iomap_to_fiemap(struct fiemap_extent_info *fi,
->  		flags |= FIEMAP_EXTENT_MERGED;
->  	if (iomap->flags & IOMAP_F_SHARED)
->  		flags |= FIEMAP_EXTENT_SHARED;
-> +	if (iomap->flags & IOMAP_F_DATA_INLINE)
-> +		flags |= FIEMAP_EXTENT_DATA_INLINE;
->  
->  	return fiemap_fill_next_extent(fi, iomap->offset,
->  			iomap->addr != IOMAP_NULL_ADDR ? iomap->addr : 0,
-> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-> index 7b8a615fa021..2b0790dbd6ea 100644
-> --- a/include/linux/iomap.h
-> +++ b/include/linux/iomap.h
-> @@ -26,8 +26,9 @@ struct vm_fault;
->  /*
->   * Flags that only need to be reported for IOMAP_REPORT requests:
->   */
-> -#define IOMAP_F_MERGED	0x10	/* contains multiple blocks/extents */
-> -#define IOMAP_F_SHARED	0x20	/* block shared with another file */
-> +#define IOMAP_F_MERGED		0x10	/* contains multiple blocks/extents */
-> +#define IOMAP_F_SHARED		0x20	/* block shared with another file */
-> +#define IOMAP_F_DATA_INLINE	0x40	/* data inline in the inode */
->  
->  /*
->   * Magic value for addr:
-> -- 
-> 2.13.3
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Cheers,
+
+						- Ted
