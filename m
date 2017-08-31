@@ -1,84 +1,86 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH] fscrypt: add a documentation file for filesystem-level
- encryption
-Date: Thu, 31 Aug 2017 11:14:42 -0700
-Message-ID: <20170831181442.GD5023@gmail.com>
-References: <20170818194730.61575-1-ebiggers3@gmail.com>
- <9dcef6c6-a758-ea57-0d51-55f33e365931@oracle.com>
- <20170821230821.GB8847@gmail.com>
- <7a34337d-3214-0a8a-5521-7727364cceb4@oracle.com>
- <20170822030730.GB3577@zzz.localdomain>
- <a84707f9-b9b9-fe7e-b2f5-d5edfcb9c91a@oracle.com>
- <20170822173600.GB9587@gmail.com>
- <94e45437-c71c-1d45-ffcb-2cf2447261b8@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>, linux-fscrypt@vger.kernel.org,
-        linux-doc@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Anand Jain <anand.jain@oracle.com>
-Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <94e45437-c71c-1d45-ffcb-2cf2447261b8@oracle.com>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: e2fsck: set dir_nlink feature if large dir exists
+Date: Thu, 31 Aug 2017 12:17:59 -0600
+Message-ID: <6FF8BA29-74A3-483D-A194-C5AD3A4E3BF2@dilger.ca>
+References: <1503080382-37376-1-git-send-email-adilger@dilger.ca>
+ <20170830022000.b7mgzksytvcwirx5@thunk.org>
+ <604C57FC-C3A6-478F-BDA6-E8550555C70F@dilger.ca>
+ <20170830151332.2ikr5dfox3aeebyd@thunk.org>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_D6320DDB-5460-4383-BEAC-292B2CADB05B";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-io0-f181.google.com ([209.85.223.181]:36740 "EHLO
+        mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750911AbdHaSSL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Aug 2017 14:18:11 -0400
+Received: by mail-io0-f181.google.com with SMTP id f99so3371210ioi.3
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Aug 2017 11:18:11 -0700 (PDT)
+In-Reply-To: <20170830151332.2ikr5dfox3aeebyd@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 28, 2017 at 08:18:55PM +0800, Anand Jain wrote:
-> 
-> 
-> On 08/23/2017 01:36 AM, Eric Biggers wrote:
-> >On Tue, Aug 22, 2017 at 11:35:20PM +0800, Anand Jain wrote:
-> >>>>
-> >>>>   I think AE is the only good solution for this, File-name encryption at
-> >>>>this stage won't solve any kind of Evil Maid attack, (as it was quoted
-> >>>>somewhere else in ML).
-> >>>>
-> >>>>
-> >>>>  Further, below,  is define but not used.
-> >>>>-----
-> >>>>  #define FS_AES_256_GCM_KEY_SIZE		32
-> >>>>-----
-> >>>>
-> >>>
-> >>>Yes, authenticated encryption with AES-256-GCM was in an older version of the
-> >>>ext4 encryption design document.  But unfortunately it was never really thought
-> >>>through. The primary problem, even ignoring rollback protection, is that there
-> >>>is nowhere to store the per-block metadata (GCM authentication tag and IV) *and*
-> >>>have it updated atomicly with the block contents.  Recently, dm-integrity solves
-> >>>this at the block device layer, but it uses data journaling which is very
-> >>>inefficient.  This maybe could be implemented more efficiently on a COW
-> >>>filesystem like BTRFS.  But even after that, another problem is that
-> >>>authenticated encryption of file contents only would not stop an attacker from
-> >>>swapping around blocks, files, directories, or creating links, etc.
-> >>
-> >>
-> >>  Some of the problems to be solved in this area are quite
-> >>interesting and challenging and IMO BTRFS fits nicely. Per extent AE
-> >>for BTRFS is drafted, it needs scrutiny and constructive feedback.
-> >>
-> >>Thanks, Anand
-> >>
-> >>
-> >>>Eric
-> >>>
-> >
-> >Where is the code?  Is there a design document, and it is it readable by people
-> >not as familiar with btrfs?  Is the API compatible with ext4, f2fs, and ubifs?
-> >
-> >Eric
-> 
->  (sorry for the delay in replay due to my vacation).
-> 
->  Eric, No code yet, proposed encryption method is seeking review.
-> Link sent to you.
-> 
-> Thanks, Anand
 
-Thanks, I'll review it when I have time.  Can you please consider sending out a
-public link to linux-fscrypt, linux-fsdevel, linux-btrfs, etc. so that other
-people can review it too?
+--Apple-Mail=_D6320DDB-5460-4383-BEAC-292B2CADB05B
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-Eric
+On Aug 30, 2017, at 9:13 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> 
+> On Wed, Aug 30, 2017 at 01:43:30AM -0600, Andreas Dilger wrote:
+>> On a related note, I was trying to implement the optimization for
+>> more efficient ext2fs_link() insertion, but this has proven to be
+>> much more complex than I expected.  I was thinking I would just
+>> call the link_proc() function directly to handle insertion of the
+>> new name, using block number of the previous caller.  However, this
+>> function depends on the directory leaf buffers having been read
+>> from disk, and being passed a dirent pointer to the free space after
+>> being called through a series of callback indirections.
+> 
+> I think it's more trouble than it's worth to preseve the existing
+> link_proc() function.  I'd recommend out to be just what is necessary
+> to do the directory entry insert, and make that a helper function
+> which is called by link_proc() and the shortcut handling code in
+> ext2fs_link().
+
+I looked at implementing it this way, but unfortunately that doesn't
+appear workable since ext2fs_link() never gets the block numbers to
+be able to do this.  I'd essentially have to reimplement all of the
+block and directory leaf processing in ext2fs_dir_iterate2() to get
+figure out where to store the first entries in the directory.
+
+What I'm looking at now is add a new ext2fs_dir_iterate3() function
+that passes *blocknr and blockcnt to the link_proc() and unlink_proc()
+callback functions so they can be stored in struct_ext2_filsys, and
+used to shortcut the iteration in ext2fs_link() for multiple inserts.
+It is added to unlink_proc() so that we can reset the saved state if
+entries are being deleted.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_D6320DDB-5460-4383-BEAC-292B2CADB05B
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZqFLcpIg59Q01vtYRArpQAKDJo6wJqt56IYokOAou9j7SN4bKzgCfY+BL
+z8lnPdVDn8M34YJnxIW5KCE=
+=jkVJ
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_D6320DDB-5460-4383-BEAC-292B2CADB05B--
