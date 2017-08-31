@@ -1,145 +1,64 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [fstests v2] generic: add test for executables on read-only DAX mounts
-Date: Wed, 30 Aug 2017 22:09:10 -0600
-Message-ID: <20170831040910.25015-1-ross.zwisler@linux.intel.com>
-References: <20170830105930.GE27835@eguan.usersys.redhat.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org,
-        linux-fsdevel@vger.kernel.org, Randy Dodgen <rdodgen@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Theodore Ts'o <tytso@mit.edu>
-To: fstests@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <20170830105930.GE27835@eguan.usersys.redhat.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v3 3/4] ext2: perform dax_device lookup at mount
+Date: Thu, 31 Aug 2017 10:22:53 +0200
+Message-ID: <20170831082253.GD7897@quack2.suse.cz>
+References: <150412222686.10177.8031279869867070772.stgit@dwillia2-desk3.amr.corp.intel.com>
+ <150412224334.10177.12994820445044936627.stgit@dwillia2-desk3.amr.corp.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, linux-nvdimm@lists.01.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Theodore Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>
+To: Dan Williams <dan.j.williams@intel.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:56156 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751541AbdHaIXf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 31 Aug 2017 04:23:35 -0400
+Content-Disposition: inline
+In-Reply-To: <150412224334.10177.12994820445044936627.stgit@dwillia2-desk3.amr.corp.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This adds a regression test for the following kernel patch:
+On Wed 30-08-17 12:44:03, Dan Williams wrote:
+> The ->iomap_begin() operation is a hot path, so cache the
+> fs_dax_get_by_host() result at mount time to avoid the incurring the
+> hash lookup overhead on a per-i/o basis.
+> 
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> Cc: Jan Kara <jack@suse.cz>
+> Reported-by: Christoph Hellwig <hch@lst.de>
+> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
 
-commit 42d4a99b09cb ("ext4: fix fault handling when mounted with -o dax,ro")
+Looks good to me (and it looks even cleaner than your previous approach).
+Just one nit below. You can add:
 
-The above patch fixes an issue with ext4 where executables cannot be run on
-read-only filesystems mounted with the DAX option.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-This issue does not appear to be present in ext2 or XFS, as they both pass
-the test.  I've also confirmed outside of the test that they are both
-indeed able to execute binaries on read-only DAX mounts.
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index 7b1bc9059863..d9dd999568c2 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -144,6 +144,7 @@ static void ext2_put_super (struct super_block * sb)
+>  	int db_count;
+>  	int i;
+>  	struct ext2_sb_info *sbi = EXT2_SB(sb);
+> +	struct dax_device *dax_dev = sbi->s_daxdev;
+>  
+>  	ext2_quota_off_umount(sb);
+>  
+> @@ -172,6 +173,7 @@ static void ext2_put_super (struct super_block * sb)
+>  	sb->s_fs_info = NULL;
+>  	kfree(sbi->s_blockgroup_lock);
+>  	kfree(sbi);
+> +	fs_put_dax(dax_dev);
 
-Thanks to Randy Dodgen for the bug report and reproduction steps.
+The local variable looks superfluous here. I'd just do
+	fs_put_dax(sbi->s_daxdev);
 
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-Cc: Randy Dodgen <rdodgen@gmail.com>
-Cc: Christoph Hellwig <hch@infradead.org>
-Cc: Theodore Ts'o <tytso@mit.edu>
-
----
-
-Changes in v2:
- - A bunch of cleanup and simplifications from Eryu.
----
- tests/generic/451     | 73 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/451.out |  3 +++
- tests/generic/group   |  1 +
- 3 files changed, 77 insertions(+)
- create mode 100755 tests/generic/451
- create mode 100644 tests/generic/451.out
-
-diff --git a/tests/generic/451 b/tests/generic/451
-new file mode 100755
-index 0000000..785c52e
---- /dev/null
-+++ b/tests/generic/451
-@@ -0,0 +1,73 @@
-+#! /bin/bash
-+# FS QA Test 451
-+#
-+# This is a regression test for kernel patch:
-+#   commit 42d4a99b09cb ("ext4: fix fault handling when mounted with -o dax,ro")
-+# created by Ross Zwisler <ross.zwisler@linux.intel.com>
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2017 Intel Corporation.  All Rights Reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# remove previous $seqres.full before test
-+rm -f $seqres.full
-+
-+# Modify as appropriate.
-+_supported_fs generic
-+_supported_os Linux
-+_require_scratch
-+
-+# we need to be able to execute binaries on scratch
-+_exclude_scratch_mount_option "noexec"
-+
-+# real QA test starts here
-+# format and mount
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount >> $seqres.full 2>&1
-+
-+LS=$(which ls --skip-alias --skip-functions)
-+SCRATCH_LS=$SCRATCH_MNT/ls_on_scratch
-+cp $LS $SCRATCH_LS
-+
-+$SCRATCH_LS $SCRATCH_LS | _filter_scratch
-+
-+_scratch_remount ro
-+
-+$SCRATCH_LS $SCRATCH_LS | _filter_scratch
-+
-+# success, all done
-+status=0
-+exit
-diff --git a/tests/generic/451.out b/tests/generic/451.out
-new file mode 100644
-index 0000000..70e3126
---- /dev/null
-+++ b/tests/generic/451.out
-@@ -0,0 +1,3 @@
-+QA output created by 451
-+SCRATCH_MNT/ls_on_scratch
-+SCRATCH_MNT/ls_on_scratch
-diff --git a/tests/generic/group b/tests/generic/group
-index 044ec3f..45f5789 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -453,3 +453,4 @@
- 448 auto quick rw
- 449 auto quick acl enospc
- 450 auto quick rw
-+451 auto quick
+								Honza
 -- 
-2.9.5
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
