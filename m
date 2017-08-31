@@ -1,64 +1,43 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH v3 3/4] ext2: perform dax_device lookup at mount
-Date: Thu, 31 Aug 2017 07:20:55 -0700
-Message-ID: <CAPcyv4jo=_++oEMnep-H+=fJSKT9PKhJWrqj-3UrDCy5bPjBnA@mail.gmail.com>
-References: <150412222686.10177.8031279869867070772.stgit@dwillia2-desk3.amr.corp.intel.com>
- <150412224334.10177.12994820445044936627.stgit@dwillia2-desk3.amr.corp.intel.com>
- <20170831082253.GD7897@quack2.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: avoid Y2038 overflow in recently_deleted()
+Date: Thu, 31 Aug 2017 11:18:36 -0400
+Message-ID: <20170831151836.3jjkmeqoqc5islia@thunk.org>
+References: <1503686915-57151-1-git-send-email-adilger@dilger.ca>
+ <CAK8P3a1WHVqwK6veXcruHQ=roub6ivnffpBWCw=XcTzF9=ev1A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-xfs@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>,
-        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Theodore Ts'o" <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: Arnd Bergmann <arnd@arndb.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f44.google.com ([209.85.218.44]:36070 "EHLO
-        mail-oi0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751463AbdHaOU4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Aug 2017 10:20:56 -0400
-Received: by mail-oi0-f44.google.com with SMTP id t75so6635147oie.3
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Aug 2017 07:20:56 -0700 (PDT)
-In-Reply-To: <20170831082253.GD7897@quack2.suse.cz>
+Received: from imap.thunk.org ([74.207.234.97]:45698 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751276AbdHaPSk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 31 Aug 2017 11:18:40 -0400
+Content-Disposition: inline
+In-Reply-To: <CAK8P3a1WHVqwK6veXcruHQ=roub6ivnffpBWCw=XcTzF9=ev1A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 31, 2017 at 1:22 AM, Jan Kara <jack@suse.cz> wrote:
-> On Wed 30-08-17 12:44:03, Dan Williams wrote:
->> The ->iomap_begin() operation is a hot path, so cache the
->> fs_dax_get_by_host() result at mount time to avoid the incurring the
->> hash lookup overhead on a per-i/o basis.
->>
->> Cc: "Theodore Ts'o" <tytso@mit.edu>
->> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
->> Cc: Jan Kara <jack@suse.cz>
->> Reported-by: Christoph Hellwig <hch@lst.de>
->> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
->
-> Looks good to me (and it looks even cleaner than your previous approach).
-> Just one nit below. You can add:
->
-> Reviewed-by: Jan Kara <jack@suse.cz>
->
->> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
->> index 7b1bc9059863..d9dd999568c2 100644
->> --- a/fs/ext2/super.c
->> +++ b/fs/ext2/super.c
->> @@ -144,6 +144,7 @@ static void ext2_put_super (struct super_block * sb)
->>       int db_count;
->>       int i;
->>       struct ext2_sb_info *sbi = EXT2_SB(sb);
->> +     struct dax_device *dax_dev = sbi->s_daxdev;
->>
->>       ext2_quota_off_umount(sb);
->>
->> @@ -172,6 +173,7 @@ static void ext2_put_super (struct super_block * sb)
->>       sb->s_fs_info = NULL;
->>       kfree(sbi->s_blockgroup_lock);
->>       kfree(sbi);
->> +     fs_put_dax(dax_dev);
->
-> The local variable looks superfluous here. I'd just do
->         fs_put_dax(sbi->s_daxdev);
+On Wed, Aug 30, 2017 at 11:03:08PM +0200, Arnd Bergmann wrote:
+> On Fri, Aug 25, 2017 at 8:48 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+> > Avoid a 32-bit time overflow in recently_deleted() since i_dtime
+> > (inode deletion time) is stored only as a 32-bit value on disk.
+> > Since i_dtime isn't used for much beyond a boolean value in e2fsck
+> > and is otherwise only used in this function in the kernel, there is
+> > no benefit to use more space in the inode for this field on disk.
+> >
+> > Instead, compare only the relative deletion time with the low
+> > 32 bits of the time using the newly-added time_before32() helper,
+> > which is similar to time_before() and time_after() for jiffies.
+> >
+> > Increase RECENTCY_DIRTY to 300s based on Ted's comments about
+> > usage experience at Google.
+> >
+> > Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+> > Change-Id: I7402e1b3d49ea326f872ec8324933f42b502b9be
+> 
+> Reviewed-by: Arnd Bergmann <arnd@arndb.de>
 
-Ok... and move that before the kfree(sbi).
+Thanks, applied.
+
+					- Ted
