@@ -1,25 +1,37 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH v3 2/4] xfs: perform dax_device lookup at mount
-Date: Thu, 31 Aug 2017 11:56:36 +0200
-Message-ID: <20170831095636.GB21443@lst.de>
-References: <150412222686.10177.8031279869867070772.stgit@dwillia2-desk3.amr.corp.intel.com> <150412223801.10177.4972035211701096310.stgit@dwillia2-desk3.amr.corp.intel.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [fstests PATCH] generic: add test for executables on read-only
+ DAX mounts
+Date: Thu, 31 Aug 2017 06:09:33 -0700
+Message-ID: <20170831130933.GB19544@infradead.org>
+References: <20170829213721.GA27686@linux.intel.com>
+ <20170829223715.26507-1-ross.zwisler@linux.intel.com>
+ <20170830145103.GA10163@infradead.org>
+ <20170831040255.GB17095@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Christoph Hellwig <hch@lst.de>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:54319 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751250AbdHaJ4h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 31 Aug 2017 05:56:37 -0400
+To: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Christoph Hellwig <hch@infradead.org>, fstests@vger.kernel.org,
+        Eryu Guan <eguan@redhat.com>, linux-ext4@vger.kernel.org,
+        linux-nvdimm@lists.01.org, linux-fsdevel@vger.kernel.org,
+        Randy Dodgen <rdodgen@gmail.com>, Theodore Ts'o <tytso@mit.edu>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <150412223801.10177.4972035211701096310.stgit@dwillia2-desk3.amr.corp.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170831040255.GB17095@linux.intel.com>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-We don't really need the dax_device for the log device (yet), but
-acquiring it seems harmless, so:
+On Wed, Aug 30, 2017 at 10:02:55PM -0600, Ross Zwisler wrote:
+> > > +LS=$(which ls --skip-alias --skip-functions) 2>/dev/null
+> > > +if [ $? -ne 0 ]; then
+> > > +	status=$?
+> > > +	echo "Couldn't find 'ls'!?"
+> > > +	exit
+> > > +fi
+> > 
+> > These checks all fail for me..
+> 
+> Huh...really?  I'll send out v2 in a second, but if that fails for you as well
+> can you try and give me a hint as to what's going wrong with the test in your
+> setup?
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+The v2 one works fine for me.
