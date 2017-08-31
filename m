@@ -1,259 +1,65 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v3 2/4] xfs: perform dax_device lookup at mount
-Date: Wed, 30 Aug 2017 14:42:37 -0700
-Message-ID: <20170830214237.GV4757@magnolia>
-References: <150412222686.10177.8031279869867070772.stgit@dwillia2-desk3.amr.corp.intel.com>
- <150412223801.10177.4972035211701096310.stgit@dwillia2-desk3.amr.corp.intel.com>
+From: Ashlie Martinez <ashmrtn@utexas.edu>
+Subject: [RFC][PATCH] fstest: regression test for ext4 crash consistency bug
+Date: Wed, 30 Aug 2017 20:28:16 -0500
+Message-ID: <7f4519d6-9e3f-c036-b72d-8a387bf657d3@utexas.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Christoph Hellwig <hch@lst.de>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:18497 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750761AbdH3Vmn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Aug 2017 17:42:43 -0400
-Content-Disposition: inline
-In-Reply-To: <150412223801.10177.4972035211701096310.stgit@dwillia2-desk3.amr.corp.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mti.edu, eguan@redhat.com, jbacik@fb.com, vvijay03@gmail.com,
+        fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: amir73il@gmail.com
+Return-path: <fstests-owner@vger.kernel.org>
+In-Reply-To: 
+Content-Language: en-US
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 30, 2017 at 12:43:58PM -0700, Dan Williams wrote:
-> The ->iomap_begin() operation is a hot path, so cache the
-> fs_dax_get_by_host() result at mount time to avoid the incurring the
-> hash lookup overhead on a per-i/o basis.
-> 
-> Cc: "Darrick J. Wong" <darrick.wong@oracle.com>
-> Reported-by: Christoph Hellwig <hch@lst.de>
-> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+Amir,
 
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+I have been working on CrashMonkey more and I have jerry-rigged together 
+a test in CrashMonkey that calls into `fsx` with the minimal test case 
+you made. I am able to reproduce the ext4 error that you found along 
+with a few other potential errors.
 
-> ---
->  fs/xfs/xfs_aops.c  |   13 +++++++++++++
->  fs/xfs/xfs_aops.h  |    1 +
->  fs/xfs/xfs_buf.c   |    4 +++-
->  fs/xfs/xfs_buf.h   |    3 ++-
->  fs/xfs/xfs_iomap.c |   10 +---------
->  fs/xfs/xfs_super.c |   25 +++++++++++++++++++++----
->  6 files changed, 41 insertions(+), 15 deletions(-)
-> 
-> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-> index 6bf120bb1a17..78185f3b10b2 100644
-> --- a/fs/xfs/xfs_aops.c
-> +++ b/fs/xfs/xfs_aops.c
-> @@ -80,6 +80,19 @@ xfs_find_bdev_for_inode(
->  		return mp->m_ddev_targp->bt_bdev;
->  }
->  
-> +struct dax_device *
-> +xfs_find_daxdev_for_inode(
-> +	struct inode		*inode)
-> +{
-> +	struct xfs_inode	*ip = XFS_I(inode);
-> +	struct xfs_mount	*mp = ip->i_mount;
-> +
-> +	if (XFS_IS_REALTIME_INODE(ip))
-> +		return mp->m_rtdev_targp->bt_daxdev;
-> +	else
-> +		return mp->m_ddev_targp->bt_daxdev;
-> +}
-> +
->  /*
->   * We're now finished for good with this page.  Update the page state via the
->   * associated buffer_heads, paying attention to the start and end offsets that
-> diff --git a/fs/xfs/xfs_aops.h b/fs/xfs/xfs_aops.h
-> index cc174ec6c2fd..88c85ea63da0 100644
-> --- a/fs/xfs/xfs_aops.h
-> +++ b/fs/xfs/xfs_aops.h
-> @@ -59,5 +59,6 @@ int	xfs_setfilesize(struct xfs_inode *ip, xfs_off_t offset, size_t size);
->  
->  extern void xfs_count_page_state(struct page *, int *, int *);
->  extern struct block_device *xfs_find_bdev_for_inode(struct inode *);
-> +extern struct dax_device *xfs_find_daxdev_for_inode(struct inode *);
->  
->  #endif /* __XFS_AOPS_H__ */
-> diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-> index 72f038492ba8..6deb86c845d1 100644
-> --- a/fs/xfs/xfs_buf.c
-> +++ b/fs/xfs/xfs_buf.c
-> @@ -1802,7 +1802,8 @@ xfs_setsize_buftarg_early(
->  xfs_buftarg_t *
->  xfs_alloc_buftarg(
->  	struct xfs_mount	*mp,
-> -	struct block_device	*bdev)
-> +	struct block_device	*bdev,
-> +	struct dax_device	*dax_dev)
->  {
->  	xfs_buftarg_t		*btp;
->  
-> @@ -1811,6 +1812,7 @@ xfs_alloc_buftarg(
->  	btp->bt_mount = mp;
->  	btp->bt_dev =  bdev->bd_dev;
->  	btp->bt_bdev = bdev;
-> +	btp->bt_daxdev = dax_dev;
->  
->  	if (xfs_setsize_buftarg_early(btp, bdev))
->  		goto error;
-> diff --git a/fs/xfs/xfs_buf.h b/fs/xfs/xfs_buf.h
-> index 20721261dae5..bf71507ddb16 100644
-> --- a/fs/xfs/xfs_buf.h
-> +++ b/fs/xfs/xfs_buf.h
-> @@ -108,6 +108,7 @@ typedef unsigned int xfs_buf_flags_t;
->  typedef struct xfs_buftarg {
->  	dev_t			bt_dev;
->  	struct block_device	*bt_bdev;
-> +	struct dax_device	*bt_daxdev;
->  	struct xfs_mount	*bt_mount;
->  	unsigned int		bt_meta_sectorsize;
->  	size_t			bt_meta_sectormask;
-> @@ -385,7 +386,7 @@ xfs_buf_update_cksum(struct xfs_buf *bp, unsigned long cksum_offset)
->   *	Handling of buftargs.
->   */
->  extern xfs_buftarg_t *xfs_alloc_buftarg(struct xfs_mount *,
-> -			struct block_device *);
-> +			struct block_device *, struct dax_device *);
->  extern void xfs_free_buftarg(struct xfs_mount *, struct xfs_buftarg *);
->  extern void xfs_wait_buftarg(xfs_buftarg_t *);
->  extern int xfs_setsize_buftarg(xfs_buftarg_t *, unsigned int);
-> diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-> index 813394c62849..7c934e407332 100644
-> --- a/fs/xfs/xfs_iomap.c
-> +++ b/fs/xfs/xfs_iomap.c
-> @@ -69,6 +69,7 @@ xfs_bmbt_to_iomap(
->  	iomap->offset = XFS_FSB_TO_B(mp, imap->br_startoff);
->  	iomap->length = XFS_FSB_TO_B(mp, imap->br_blockcount);
->  	iomap->bdev = xfs_find_bdev_for_inode(VFS_I(ip));
-> +	iomap->dax_dev = xfs_find_daxdev_for_inode(VFS_I(ip));
->  }
->  
->  xfs_extlen_t
-> @@ -976,7 +977,6 @@ xfs_file_iomap_begin(
->  	int			nimaps = 1, error = 0;
->  	bool			shared = false, trimmed = false;
->  	unsigned		lockmode;
-> -	struct block_device	*bdev;
->  
->  	if (XFS_FORCED_SHUTDOWN(mp))
->  		return -EIO;
-> @@ -1087,13 +1087,6 @@ xfs_file_iomap_begin(
->  
->  	xfs_bmbt_to_iomap(ip, iomap, &imap);
->  
-> -	/* optionally associate a dax device with the iomap bdev */
-> -	bdev = iomap->bdev;
-> -	if (blk_queue_dax(bdev->bd_queue))
-> -		iomap->dax_dev = fs_dax_get_by_host(bdev->bd_disk->disk_name);
-> -	else
-> -		iomap->dax_dev = NULL;
-> -
->  	if (shared)
->  		iomap->flags |= IOMAP_F_SHARED;
->  	return 0;
-> @@ -1171,7 +1164,6 @@ xfs_file_iomap_end(
->  	unsigned		flags,
->  	struct iomap		*iomap)
->  {
-> -	fs_put_dax(iomap->dax_dev);
->  	if ((flags & IOMAP_WRITE) && iomap->type == IOMAP_DELALLOC)
->  		return xfs_file_iomap_end_delalloc(XFS_I(inode), offset,
->  				length, written, iomap);
-> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-> index 38aaacdbb8b3..ee4225c65f0c 100644
-> --- a/fs/xfs/xfs_super.c
-> +++ b/fs/xfs/xfs_super.c
-> @@ -714,17 +714,26 @@ STATIC void
->  xfs_close_devices(
->  	struct xfs_mount	*mp)
->  {
-> +	struct dax_device *dax_ddev = mp->m_ddev_targp->bt_daxdev;
-> +
->  	if (mp->m_logdev_targp && mp->m_logdev_targp != mp->m_ddev_targp) {
->  		struct block_device *logdev = mp->m_logdev_targp->bt_bdev;
-> +		struct dax_device *dax_logdev = mp->m_logdev_targp->bt_daxdev;
-> +
->  		xfs_free_buftarg(mp, mp->m_logdev_targp);
->  		xfs_blkdev_put(logdev);
-> +		fs_put_dax(dax_logdev);
->  	}
->  	if (mp->m_rtdev_targp) {
->  		struct block_device *rtdev = mp->m_rtdev_targp->bt_bdev;
-> +		struct dax_device *dax_rtdev = mp->m_rtdev_targp->bt_daxdev;
-> +
->  		xfs_free_buftarg(mp, mp->m_rtdev_targp);
->  		xfs_blkdev_put(rtdev);
-> +		fs_put_dax(dax_rtdev);
->  	}
->  	xfs_free_buftarg(mp, mp->m_ddev_targp);
-> +	fs_put_dax(dax_ddev);
->  }
->  
->  /*
-> @@ -742,6 +751,8 @@ xfs_open_devices(
->  	struct xfs_mount	*mp)
->  {
->  	struct block_device	*ddev = mp->m_super->s_bdev;
-> +	struct dax_device	*dax_ddev = fs_dax_get_by_bdev(ddev);
-> +	struct dax_device	*dax_logdev = NULL, *dax_rtdev = NULL;
->  	struct block_device	*logdev = NULL, *rtdev = NULL;
->  	int			error;
->  
-> @@ -752,6 +763,7 @@ xfs_open_devices(
->  		error = xfs_blkdev_get(mp, mp->m_logname, &logdev);
->  		if (error)
->  			goto out;
-> +		dax_logdev = fs_dax_get_by_bdev(logdev);
->  	}
->  
->  	if (mp->m_rtname) {
-> @@ -765,24 +777,25 @@ xfs_open_devices(
->  			error = -EINVAL;
->  			goto out_close_rtdev;
->  		}
-> +		dax_rtdev = fs_dax_get_by_bdev(rtdev);
->  	}
->  
->  	/*
->  	 * Setup xfs_mount buffer target pointers
->  	 */
->  	error = -ENOMEM;
-> -	mp->m_ddev_targp = xfs_alloc_buftarg(mp, ddev);
-> +	mp->m_ddev_targp = xfs_alloc_buftarg(mp, ddev, dax_ddev);
->  	if (!mp->m_ddev_targp)
->  		goto out_close_rtdev;
->  
->  	if (rtdev) {
-> -		mp->m_rtdev_targp = xfs_alloc_buftarg(mp, rtdev);
-> +		mp->m_rtdev_targp = xfs_alloc_buftarg(mp, rtdev, dax_rtdev);
->  		if (!mp->m_rtdev_targp)
->  			goto out_free_ddev_targ;
->  	}
->  
->  	if (logdev && logdev != ddev) {
-> -		mp->m_logdev_targp = xfs_alloc_buftarg(mp, logdev);
-> +		mp->m_logdev_targp = xfs_alloc_buftarg(mp, logdev, dax_logdev);
->  		if (!mp->m_logdev_targp)
->  			goto out_free_rtdev_targ;
->  	} else {
-> @@ -798,10 +811,14 @@ xfs_open_devices(
->  	xfs_free_buftarg(mp, mp->m_ddev_targp);
->   out_close_rtdev:
->  	xfs_blkdev_put(rtdev);
-> +	fs_put_dax(dax_rtdev);
->   out_close_logdev:
-> -	if (logdev && logdev != ddev)
-> +	if (logdev && logdev != ddev) {
->  		xfs_blkdev_put(logdev);
-> +		fs_put_dax(dax_logdev);
-> +	}
->   out:
-> +	fs_put_dax(dax_ddev);
->  	return error;
->  }
->  
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+A quick point, I run fsck with `-yf` instead of `-nf` that xfstests runs 
+with. The reason for this is that CrashMonkey would like to report on 
+fixable and unfixable errors in the future.
+
+Running the ported test case, I find that CrashMonkey encounters the 
+following errors:
+1. Incorrect inode size and incorrect free data block and inode counts 
+(fixable)
+2. incorrect free data block and inode counts (fixable)
+3. `Superblock needs_recovery flag is clear, but journal has data` 
+notice along with errors present in case 1
+4. `Superblock needs_recovery flag is clear, but journal has data` 
+notice with no other errors
+
+For the incorrect i_size errors, I get the output `Inode 12, i_size is 
+147456, should be 163840.` which I can also reproduce with your 501 
+xfstests test case.
+
+When free data blocks and inode errors occur, the message is `Free 
+blocks count wrong (8795, counted=8714).` and `Free inodes count wrong 
+(2549, counted=2546).`
+
+I have not had a chance to look into the above errors to find their root 
+causes.
+
+In total, CrashMonkey ran 1000 different tests. Of those, 344 passed 
+without fsck complaining. The remaining 656 tests saw fsck complain 
+about something. All of these tests consisted of unique sequences of 
+bios, but may contain equivalent crash states.
+
+The larger range of test results is due to the fact that CrashMonkey 
+runs many tests from just the single workload you made. These tests 
+consist of replaying some number of bio write operations, so it tests 
+states different than you 500 xfstest which I believe only replays to 
+sync operations (i.e. it never stops replay before a recorded fsync).
+
+If you're interested, you can find the CrashMonkey code (and branch) at 
+https://github.com/utsaslab/crashmonkey/tree/ext4_regression_bug. If you 
+would like to run it, you should clone and build you xfstest in your 
+home directory so that the jerry-rigged CrashMonkey test case can find 
+it. Directions for running this test case in CrashMonkey should be at 
+the top of the README.
