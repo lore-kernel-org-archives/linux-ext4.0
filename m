@@ -1,37 +1,64 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [fstests PATCH] generic: add test for executables on read-only
- DAX mounts
-Date: Thu, 31 Aug 2017 06:09:33 -0700
-Message-ID: <20170831130933.GB19544@infradead.org>
-References: <20170829213721.GA27686@linux.intel.com>
- <20170829223715.26507-1-ross.zwisler@linux.intel.com>
- <20170830145103.GA10163@infradead.org>
- <20170831040255.GB17095@linux.intel.com>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH v3 3/4] ext2: perform dax_device lookup at mount
+Date: Thu, 31 Aug 2017 07:20:55 -0700
+Message-ID: <CAPcyv4jo=_++oEMnep-H+=fJSKT9PKhJWrqj-3UrDCy5bPjBnA@mail.gmail.com>
+References: <150412222686.10177.8031279869867070772.stgit@dwillia2-desk3.amr.corp.intel.com>
+ <150412224334.10177.12994820445044936627.stgit@dwillia2-desk3.amr.corp.intel.com>
+ <20170831082253.GD7897@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Christoph Hellwig <hch@infradead.org>, fstests@vger.kernel.org,
-        Eryu Guan <eguan@redhat.com>, linux-ext4@vger.kernel.org,
-        linux-nvdimm@lists.01.org, linux-fsdevel@vger.kernel.org,
-        Randy Dodgen <rdodgen@gmail.com>, Theodore Ts'o <tytso@mit.edu>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170831040255.GB17095@linux.intel.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-xfs@vger.kernel.org, linux-ext4 <linux-ext4@vger.kernel.org>,
+        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "Theodore Ts'o" <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oi0-f44.google.com ([209.85.218.44]:36070 "EHLO
+        mail-oi0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751463AbdHaOU4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Aug 2017 10:20:56 -0400
+Received: by mail-oi0-f44.google.com with SMTP id t75so6635147oie.3
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Aug 2017 07:20:56 -0700 (PDT)
+In-Reply-To: <20170831082253.GD7897@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 30, 2017 at 10:02:55PM -0600, Ross Zwisler wrote:
-> > > +LS=$(which ls --skip-alias --skip-functions) 2>/dev/null
-> > > +if [ $? -ne 0 ]; then
-> > > +	status=$?
-> > > +	echo "Couldn't find 'ls'!?"
-> > > +	exit
-> > > +fi
-> > 
-> > These checks all fail for me..
-> 
-> Huh...really?  I'll send out v2 in a second, but if that fails for you as well
-> can you try and give me a hint as to what's going wrong with the test in your
-> setup?
+On Thu, Aug 31, 2017 at 1:22 AM, Jan Kara <jack@suse.cz> wrote:
+> On Wed 30-08-17 12:44:03, Dan Williams wrote:
+>> The ->iomap_begin() operation is a hot path, so cache the
+>> fs_dax_get_by_host() result at mount time to avoid the incurring the
+>> hash lookup overhead on a per-i/o basis.
+>>
+>> Cc: "Theodore Ts'o" <tytso@mit.edu>
+>> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+>> Cc: Jan Kara <jack@suse.cz>
+>> Reported-by: Christoph Hellwig <hch@lst.de>
+>> Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+>
+> Looks good to me (and it looks even cleaner than your previous approach).
+> Just one nit below. You can add:
+>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+>
+>> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+>> index 7b1bc9059863..d9dd999568c2 100644
+>> --- a/fs/ext2/super.c
+>> +++ b/fs/ext2/super.c
+>> @@ -144,6 +144,7 @@ static void ext2_put_super (struct super_block * sb)
+>>       int db_count;
+>>       int i;
+>>       struct ext2_sb_info *sbi = EXT2_SB(sb);
+>> +     struct dax_device *dax_dev = sbi->s_daxdev;
+>>
+>>       ext2_quota_off_umount(sb);
+>>
+>> @@ -172,6 +173,7 @@ static void ext2_put_super (struct super_block * sb)
+>>       sb->s_fs_info = NULL;
+>>       kfree(sbi->s_blockgroup_lock);
+>>       kfree(sbi);
+>> +     fs_put_dax(dax_dev);
+>
+> The local variable looks superfluous here. I'd just do
+>         fs_put_dax(sbi->s_daxdev);
 
-The v2 one works fine for me.
+Ok... and move that before the kfree(sbi).
