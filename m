@@ -1,66 +1,46 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [RFC][PATCH] fstest: regression test for ext4 crash consistency bug
-Date: Fri, 1 Sep 2017 17:59:15 +0300
-Message-ID: <CAOQ4uxh0KzHRXphxsOU14z8rFa-x2YMV-x5BH8JtXqt+Vvgm3w@mail.gmail.com>
-References: <7f4519d6-9e3f-c036-b72d-8a387bf657d3@utexas.edu>
- <CAOQ4uxgRafGec=HFq1strxC5NM0jwNgbu5ZyP1g+c64=b399+A@mail.gmail.com>
- <CAOQ4uxgOu5yNV3zQ9WnJU_AQtpe9G9cxQQL52fWsXd=5bvGLaQ@mail.gmail.com> <CAFk8rvYC4wTw15CF0wTdYLXLBp-FL+Y0xDtcins+uHu5gfrm-A@mail.gmail.com>
+From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH] fsmap: fix documentation of FMR_OF_LAST
+Date: Fri, 1 Sep 2017 08:07:16 -0700
+Message-ID: <20170901150716.GW3775@magnolia>
+References: <20170831204918.GA7404@magnolia>
+ <20170901080904.GA32746@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Eryu Guan <eguan@redhat.com>, Josef Bacik <jbacik@fb.com>,
-        Vijay Chidambaram <vvijay03@gmail.com>,
-        fstests <fstests@vger.kernel.org>,
-        Ext4 <linux-ext4@vger.kernel.org>, Theodore Tso <tytso@mit.edu>
-To: Ashlie Martinez <ashmrtn@utexas.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-yw0-f174.google.com ([209.85.161.174]:36152 "EHLO
-        mail-yw0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752069AbdIAO7Q (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Sep 2017 10:59:16 -0400
-In-Reply-To: <CAFk8rvYC4wTw15CF0wTdYLXLBp-FL+Y0xDtcins+uHu5gfrm-A@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+        linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170901080904.GA32746-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 1, 2017 at 3:21 PM, Ashlie Martinez <ashmrtn@utexas.edu> wrote:
-> Apologies for spam, resending plain text so it appears in the archives.
->
->
-...
->>>> When free data blocks and inode errors occur, the message is `Free blocks
->>>> count wrong (8795, counted=8714).` and `Free inodes count wrong (2549,
->>>> counted=2546).`
->>>>
->>>> I have not had a chance to look into the above errors to find their root
->>>> causes.
->>>>
->>>
->>> I believe this is what you get when you fsck -yf before trying to mount when
->>> the orphan list is not empty. You should avoid doing that.
->
-> Do you know what the kernel does when a file system like that is mounted? The
-> link you posted below has a comment about the kernel checking the file system
-> faster than fsck can. Do you know how it accomplishes this? Should the
-> mount -o errors=remount-ro; unmount sequence be done for all file systems or
-> just a select few for which the kernel knows how to handle? Does following the
-> mount/unmount, check sequence just mean that the kernel will silently (from the
-> perspective of normal users) fix some issues with the file system much like
-> fsck does when it is run (though perhaps less thoroughly than fsck)?
->
+On Fri, Sep 01, 2017 at 01:09:04AM -0700, Christoph Hellwig wrote:
+> On Thu, Aug 31, 2017 at 01:49:18PM -0700, Darrick J. Wong wrote:
+> > The FMR_OF_LAST flag is set on the last fsmap record being returned for
+> > the dataset requested, contrary to what the header file says.  Fix the
+> > docs to reflect the behavior of all fsmap implementations.
+> 
+> Hmm.  What's the point of the flag then given that you can trivially
+> deduce the last entry from fmh_entries?
 
-mount/umount does several things.
-among other things, its starts with replaying the journal.
-with journalling file systems this is essential to the point that it is really
-not safe to fsck before replaying the journal. So e2fsck -y will in fact
-replay the journal, but it will do a much worse job (much slower) the
-the kernel does when replaying the journal (too hard to explain why).
-BTW e2fsck -n will not replay the journal so it may report phantom
-errors or refuse to run?
+fmh_entries is the number of records returned, not the number of records
+in the dataset.  If, for example, you allocate space for 100 records and
+perform a query for a block that has been reflinked 1000 times, the
+dataset size is 1000 but fmh_entries is set to 100.  The lack of a LAST
+flag on the 100th record tells you that there's more records to return.
 
-HOWEVER, the comment I referred you to in Android code refers
-to the efficiency of the kernel with cleaning up the "orphan inode list".
-If you open N files, unlink them sync and crash the kernel will cleanup
-the disk space used by those N files on next mount.
-e2fsck will "zap" those files and then fix all the inode and block counter
-and report they were wrong, like you reported above.
+If however you allocate space for 100 records and the block is reflinked
+exactly 100 times, there's no way (without the flag) for userspace to
+know that record 100 is the end of the dataset, so the only thing it can
+do is to fsmap_advance() and try the query again, only to receive zero
+results.  Granted I don't think fsmap queries are all /that/ expensive,
+but it's trivial for the kernel to set the flag.
 
-Amir.
+--D
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
