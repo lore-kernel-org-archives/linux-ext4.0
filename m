@@ -1,766 +1,724 @@
-From: Michael Halcrow <mhalcrow@google.com>
-Subject: Re: [PATCH v2] fscrypt: add a documentation file for
- filesystem-level encryption
-Date: Fri, 1 Sep 2017 17:12:28 -0700
-Message-ID: <20170902001228.GA27020@google.com>
-References: <20170901000217.36965-1-ebiggers3@gmail.com>
+From: <nbensoncole81@yahoo.com.hk>
+Subject: (unknown)
+Date: Sat, 02 Sep 2017 02:47:55 -0000
+Message-ID: <150432047541.2427.1051862756478070309@70-89-221-229-navigant-consulting-il.hfc.comcastbusiness.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fscrypt@vger.kernel.org, linux-doc@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20170901000217.36965-1-ebiggers3@gmail.com>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: application/msword; name="624346.doc"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 70-89-221-229-navigant-consulting-il.hfc.comcastbusiness.net ([70.89.221.229]:2365
+        "HELO 70-89-221-229-navigant-consulting-il.hfc.comcastbusiness.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+        id S1750941AbdIBCsB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 1 Sep 2017 22:48:01 -0400
+Content-Disposition: attachment
+Subject: 
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 31, 2017 at 05:02:17PM -0700, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Perhaps long overdue, add a documentation file for filesystem-level
-> encryption, a.k.a. fscrypt or fs/crypto/, to the Documentation
-> directory.  The new file is based loosely on the latest version of the
-> "EXT4 Encryption Design Document (public version)" Google Doc, but with
-> many improvements made, including:
-> 
-> - Reflect the reality that it is not specific to ext4 anymore.
-> - More thoroughly document the design and user-visible API/behavior.
-> - Replace outdated information, such as the outdated explanation of how
->   encrypted filenames are hashed for indexed directories and how
->   encrypted filenames are presented to userspace without the key.
->   (This was changed just before release.)
-> 
-> For now the focus is on the design and user-visible API/behavior, not on
-> how to add encryption support to a filesystem --- since the internal API
-> is still pretty messy and any standalone documentation for it would
-> become outdated as things get refactored over time.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
-
-Reviewed-by: Michael Halcrow <mhalcrow@google.com>
-
-> ---
-> Changes since v1:
-> - Mention that using existing userspace tools is preferred
-> - Don't start an argument about the best way to get random numbers
-> - Make it clear that backup/restore of encrypted files without key is
->   not supported yet
-> - Mention a reason why the encryption xattr should not be exposed
->   via the xattr system calls
-> 
->  Documentation/filesystems/fscrypt.rst | 597 ++++++++++++++++++++++++++++++++++
->  Documentation/filesystems/index.rst   |  11 +
->  MAINTAINERS                           |   1 +
->  3 files changed, 609 insertions(+)
->  create mode 100644 Documentation/filesystems/fscrypt.rst
-> 
-> diff --git a/Documentation/filesystems/fscrypt.rst b/Documentation/filesystems/fscrypt.rst
-> new file mode 100644
-> index 000000000000..ec4cad049dde
-> --- /dev/null
-> +++ b/Documentation/filesystems/fscrypt.rst
-> @@ -0,0 +1,597 @@
-> +=====================================
-> +Filesystem-level encryption (fscrypt)
-> +=====================================
-> +
-> +Introduction
-> +============
-> +
-> +fscrypt is a library which filesystems can hook into to support
-> +transparent encryption of files and directories.
-> +
-> +Note: "fscrypt" in this document refers to the kernel-level portion,
-> +implemented in ``fs/crypto/``, as opposed to the userspace tool
-> +`fscrypt <https://github.com/google/fscrypt>`_.  This document only
-> +covers the kernel-level portion.  For command-line examples of how to
-> +use encryption, see the documentation for the userspace tool `fscrypt
-> +<https://github.com/google/fscrypt>`_.  Also, it is strongly
-> +recommended to use the fscrypt userspace tool, or other existing
-> +userspace tools such as Android's key management system, over using
-> +the kernel's API directly.  Using existing tools reduces the chance of
-> +introducing your own security bugs.  (Nevertheless, for completeness
-> +this documentation covers the kernel's API anyway.)
-> +
-> +Unlike dm-crypt, fscrypt operates at the filesystem level rather than
-> +at the block device level.  This allows it to encrypt different files
-> +with different keys and to have unencrypted files on the same
-> +filesystem.  This is useful for multi-user systems where each user's
-> +data-at-rest needs to be cryptographically isolated from the others.
-> +However, except for filenames, fscrypt does not encrypt filesystem
-> +metadata.
-> +
-> +Unlike eCryptfs, which is a stacked filesystem, fscrypt is integrated
-> +directly into supported filesystems --- currently ext4, F2FS, and
-> +UBIFS.  This allows encrypted files to be read and written without
-> +caching both the decrypted and encrypted pages in the pagecache,
-> +thereby halving the memory used and bringing it in line with
-
-"nearly halving"?
-
-I don't have the telemetry on this, but memory usage could spike when
-a large number of pages flush at once since writes use intermediate
-pages.
-
-> +unencrypted files.
->
-> Similarly, half as many dentries and inodes are
-> +needed.  eCryptfs also limits filenames to 143 bytes, causing
-
-"encrypted filenames"
-
-You can use eCryptfs without filename encryption.
-
-> +application compatibility issues; fscrypt allows the full 255 bytes
-> +(NAME_MAX).  Finally, unlike eCryptfs, the fscrypt API can be used by
-> +unprivileged users, with no need to mount anything.
-> +
-> +fscrypt does not support encrypting files in-place.  Instead, it
-> +supports marking an empty directory as encrypted.  Then, after
-> +userspace provides the key, all regular files, directories, and
-> +symbolic links created in that directory tree are transparently
-> +encrypted.
-> +
-> +Threat model
-> +============
-> +
-> +Offline attacks
-> +---------------
-> +
-> +Provided that userspace chooses a strong encryption key, fscrypt
-> +protects the confidentiality of file contents and filenames in the
-> +event of a single point-in-time permanent offline compromise of the
-> +block device content.  fscrypt does not protect the confidentiality of
-> +non-filename metadata, e.g. file sizes, file permissions, file
-> +timestamps, and extended attributes.  Also, the existence and location
-> +of holes (unallocated blocks which logically contain all zeroes) in
-> +files is not protected.
-> +
-> +fscrypt is not guaranteed to protect confidentiality or authenticity
-> +if an attacker is able to manipulate the filesystem offline prior to
-> +an authorized user later accessing the filesystem.
-> +
-> +Online attacks
-> +--------------
-> +
-> +fscrypt (and storage encryption in general) can only provide limited
-> +protection, if any at all, against online attacks.  In detail:
-> +
-> +fscrypt is only resistant to side-channel attacks, such as timing or
-> +electromagnetic attacks, to the extent that the underlying Linux
-> +Cryptographic API algorithms are.  If a vulnerable algorithm is used,
-> +such as a table-based implementation of AES, it may be possible for an
-> +attacker to mount a side channel attack against the online system.
-
-Conservatively, I'd go a step further and say that even if the kernel
-crypto API were to mitigate all side channel attacks, we don't make
-any claims as to whether encryption key material (or data for that
-matter) would be vulnerable from code in fs/crypto or the individual
-filesystems.
-
-> +
-> +After an encryption key has been provided, fscrypt is not designed to
-> +hide the plaintext file contents or filenames from other users on the
-> +same system, regardless of the visibility of the keyring key.
-> +Instead, existing access control mechanisms such as file mode bits,
-> +POSIX ACLs, or SELinux should be used for this purpose.  Also note
-
-Suggest replacing "SELinux" with "LSMs."  Also do you think we should
-mention namespaces?
-
-> +that as long as the encryption keys are *anywhere* in memory, an
-> +online attacker can necessarily compromise them by mounting a physical
-> +attack or by exploiting any kernel security vulnerability which
-> +provides an arbitrary memory read primitive.
-
-Or hooking into a FireWire port and doing DMA?
-
-> +
-> +While it is ostensibly possible to "evict" keys from the system,
-> +recently accessed encrypted files will remain accessible at least
-> +until the filesystem is unmounted or the VFS caches are dropped, e.g.
-> +using ``echo 2 > /proc/sys/vm/drop_caches``.  Even after that, if the
-> +RAM is compromised before being powered off, it will likely still be
-> +possible to recover portions of the plaintext file contents, if not
-> +some of the encryption keys as well.  (Since Linux v4.12, all
-> +in-kernel keys related to fscrypt are sanitized before being freed.
-> +However, userspace would need to do its part as well.)
-> +
-> +Currently, fscrypt does not prevent a user from maliciously providing
-> +an incorrect key for another user's existing encrypted files.  A
-> +protection against this is planned.
-
-How's the review for that patch coming along?
-
-> +
-> +Key hierarchy
-> +=============
-> +
-> +Master Keys
-> +-----------
-> +
-> +Each encrypted directory tree is protected by a *master key*.  Master
-> +keys can be up to 64 bytes long, and must be at least as long as the
-> +greater of the key length needed by the contents and filenames
-> +encryption modes being used.  For example, if AES-256-XTS is used for
-> +contents encryption, the master key must be 64 bytes (512 bits).  Note
-> +that the XTS mode is defined to require a key twice as long as that
-> +required by the underlying block cipher.
-> +
-> +To "unlock" an encrypted directory tree, userspace must provide the
-> +appropriate master key.  There can be any number of master keys, each
-> +of which protects any number of directory trees on any number of
-> +filesystems.
-> +
-> +Userspace should generate master keys either using a cryptographically
-> +secure random number generator, or by using a KDF (Key Derivation
-> +Function).  Note that whenever a KDF is used to "stretch" a
-> +lower-entropy secret such as a passphrase, it is critical that a KDF
-> +designed for this purpose be used, such as scrypt, PBKDF2, or Argon2.
-> +
-> +Per-file keys
-> +-------------
-> +
-> +Master keys are not used to encrypt file contents or names directly.
-> +Instead, a unique key is derived for each encrypted file, including
-> +each regular file, directory, and symbolic link.  This has several
-> +advantages:
-> +
-> +- In cryptosystems, the same key material should never be used for
-> +  different purposes.  Using the master key as both an XTS key for
-> +  contents encryption and as a CTS-CBC key for filenames encryption
-> +  would violate this rule.
-> +- Per-file keys simplify the choice of IVs (Initialization Vectors)
-> +  for contents encryption.  Without per-file keys, to ensure IV
-> +  uniqueness both the inode and logical block number would need to be
-> +  encoded in the IVs.  This would make it impossible to renumber
-> +  inodes, which e.g. ``resize2fs`` can do when resizing an ext4
-> +  filesystem.  With per-file keys, it is sufficient to encode just the
-> +  logical block number in the IVs.
-> +- Per-file keys strengthen the encryption of filenames, where IVs are
-> +  reused out of necessity.  With a unique key per directory, IV reuse
-> +  is limited to within a single directory.
-
-Side note: Alex's HEH patchset addresses this.  Is there interest in
-the community for us to push for a merge at this point?
-
-https://www.spinics.net/lists/linux-crypto/msg22411.html
-
-> +- Per-file keys allow individual files to be securely erased simply by
-> +  securely erasing their keys.  (Not yet implemented.)
-
-A.K.A. "crypto-shredding."
-
-> +
-> +A KDF (Key Derivation Function) is used to derive per-file keys from
-> +the master key.  This is done instead of wrapping a randomly-generated
-> +key for each file because it reduces the size of the encryption xattr,
-> +which for some filesystems makes the xattr more likely to fit in-line
-> +in the filesystem's inode table.  With a KDF, only a 16-byte nonce is
-> +required --- long enough to make key reuse extremely unlikely.  A
-> +wrapped key, on the other hand, would need to be up to 64 bytes ---
-> +the length of an AES-256-XTS key.  Furthermore, currently there is no
-> +requirement to support unlocking a file with multiple alternative
-> +master keys or to support rotating master keys.  Instead, the master
-> +keys may be wrapped in userspace, e.g. as done by the `fscrypt
-> +<https://github.com/google/fscrypt>`_ tool.
-> +
-> +The current KDF encrypts the master key using the 16-byte nonce as an
-> +AES-128-ECB key.  The output is used as the derived key.  If the
-> +output is longer than needed, then it is truncated to the needed
-> +length.  Truncation is the norm for directories and symlinks, since
-> +those use the CTS-CBC encryption mode which requires a key half as
-> +long as that required by the XTS encryption mode.
-> +
-> +Note: this KDF meets the primary security requirement, which is to
-> +produce unique derived keys that preserve the entropy of the master
-> +key, assuming that the master key is already a good pseudorandom key.
-> +However, it is nonstandard and has some theoretical problems such as
-> +being reversible, so it is generally considered to be a mistake!  It
-
-Being reversible isn't theoretical -- it's trivially reversible *if*
-you can exploit kernel memory.  The attack I'm concerned about is that
-an adversary is somehow able to get to an inode key but isn't able to
-get to the master key.  Exploiting kernel memory wasn't in my
-adversarial model at the time, and when I suggested going to something
-like HKDF, Ted convinced me that it would be too painful since he had
-already merged the code.
-
-Regardless, I'm happy to call it a mistake.
-
-> +may be replaced with HKDF or another more standard KDF in the future.
-
-Again, I should point out that your patchset that includes migrating
-to HKDF is still pending merge.  I'd like to see that go in soon.
-
-> +
-> +Encryption modes and usage
-> +==========================
-> +
-> +fscrypt allows one encryption mode to be specified for file contents
-> +and one encryption mode to be specified for filenames.  Different
-> +directory trees are permitted to use different encryption modes.
-> +Currently, the following pairs of encryption modes are supported:
-> +
-> +- AES-256-XTS for contents and AES-256-CTS-CBC for filenames
-> +- AES-128-CBC for contents and AES-128-CTS-CBC for filenames
-> +
-> +It is strongly recommended to use AES-256-XTS for contents encryption.
-> +AES-128-CBC was added only for low-powered embedded devices with
-> +crypto accelerators such as CAAM or CESA that do not support XTS.
-> +
-> +New encryption modes can be added relatively easily, without changes
-> +to individual filesystems.  However, authenticated encryption (AE)
-> +modes are not currently supported because of the difficulty of dealing
-> +with ciphertext expansion.
-> +
-> +For file contents, each filesystem block is encrypted independently.
-> +Currently, only the case where the filesystem block size is equal to
-> +the system's page size (usually 4096 bytes) is supported.  With the
-> +XTS mode of operation (recommended), the logical block number within
-> +the file is used as the IV.  With the CBC mode of operation (not
-> +recommended), ESSIV is used; specifically, the IV for CBC is the
-> +logical block number encrypted with AES-256, where the AES-256 key is
-> +the SHA-256 hash of the inode's data encryption key.
-> +
-> +For filenames, the full filename is encrypted at once.  Because of the
-> +requirements to retain support for efficient directory lookups and
-> +filenames of up to 255 bytes, a constant initialization vector (IV) is
-> +used.  However, each encrypted directory uses a unique key, which
-> +limits IV reuse to within a single directory.
-
-This might be a good place to mention that when there are common
-filename prefixes in a directory, the ciphertext prefixes will
-collide.
-
-Again, addressed with the HEH patchset.
-
-> +
-> +Since filenames are encrypted with the CTS-CBC mode of operation, the
-> +plaintext and ciphertext filenames need not be multiples of the AES
-> +block size, i.e. 16 bytes.  However, the minimum size that can be
-> +encrypted is 16 bytes, so shorter filenames are NUL-padded to 16 bytes
-> +before being encrypted.  In addition, to reduce leakage of filename
-> +lengths via their ciphertexts, all filenames are NUL-padded to the
-> +next 4, 8, 16, or 32-byte boundary (configurable).  32 is recommended
-> +since this provides the best confidentiality, at the cost of making
-> +directory entries consume slightly more space.  Note that since NUL
-> +(``\0``) is not otherwise a valid character in filenames, the padding
-> +will never produce duplicate plaintexts.
-> +
-> +Symbolic link targets are considered a type of filename and are
-> +encrypted in the same way as filenames in directory entries.  Each
-> +symlink also uses a unique key; hence, the hardcoded IV is not a
-> +problem for symlinks.
-> +
-> +User API
-> +========
-> +
-> +Setting an encryption policy
-> +----------------------------
-> +
-> +The FS_IOC_SET_ENCRYPTION_POLICY ioctl sets an encryption policy on an
-> +empty directory or verifies that a directory or regular file already
-
-While outside our stated adversarial model, I would do more to
-emphasize that a trusted environment should explicitly validate all
-existing policies prior to access.
-
-For example, code protected by Android's validated boot chain
-validates the user data directory policies before use.
-
-> +has the specified encryption policy.  It takes in a pointer to a
-> +:c:type:`struct fscrypt_policy`, defined as follows::
-> +
-> +    #define FS_KEY_DESCRIPTOR_SIZE  8
-> +
-> +    struct fscrypt_policy {
-> +            __u8 version;
-> +            __u8 contents_encryption_mode;
-> +            __u8 filenames_encryption_mode;
-> +            __u8 flags;
-> +            __u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
-> +    };
-> +
-> +This structure must be initialized as follows:
-> +
-> +- ``version`` must be 0.
-> +
-> +- ``contents_encryption_mode`` and ``filenames_encryption_mode`` must
-> +  be set to constants from ``<linux/fs.h>`` which identify the
-> +  encryption modes to use.  If unsure, use
-> +  FS_ENCRYPTION_MODE_AES_256_XTS (1) for ``contents_encryption_mode``
-> +  and FS_ENCRYPTION_MODE_AES_256_CTS (4) for
-> +  ``filenames_encryption_mode``.
-> +
-> +- ``flags`` must be set to a value from ``<linux/fs.h>`` which
-> +  identifies the amount of NUL-padding to use when encrypting
-> +  filenames.  If unsure, use FS_POLICY_FLAGS_PAD_32 (0x3).
-> +
-> +- ``master_key_descriptor`` specifies how to find the master key in
-> +  the keyring; see `Adding keys`_.  It is up to userspace to choose a
-> +  unique ``master_key_descriptor`` for each master key.  The e4crypt
-> +  and fscrypt tools use the first 8 bytes of
-> +  ``SHA-512(SHA-512(master_key))``, but this particular scheme is not
-> +  required.  Also, the master key need not be in the keyring yet when
-> +  FS_IOC_SET_ENCRYPTION_POLICY is executed.  However, it must be added
-> +  before any files can be created in the encrypted directory.
-> +
-> +If the file is not yet encrypted, then FS_IOC_SET_ENCRYPTION_POLICY
-> +verifies that the file is an empty directory.  If so, the specified
-> +encryption policy is assigned to the directory, turning it into an
-> +encrypted directory.  After that, and after providing the
-> +corresponding master key as described in `Adding keys`_, all regular
-> +files, directories (recursively), and symlinks created in the
-> +directory will be encrypted, inheriting the same encryption policy.
-> +The filenames in the directory's entries will be encrypted as well.
-> +
-> +Alternatively, if the file is already encrypted, then
-> +FS_IOC_SET_ENCRYPTION_POLICY validates that the specified encryption
-> +policy exactly matches the actual one.  If they match, then the ioctl
-> +returns 0.  Otherwise, it fails with EEXIST.  This works on both
-> +regular files and directories, including nonempty directories.
-> +
-> +Note that the ext4 filesystem does not allow the root directory to be
-> +encrypted, even if it is empty.  Users who want to encrypt an entire
-> +filesystem with one key should consider using dm-crypt instead.
-> +
-> +FS_IOC_SET_ENCRYPTION_POLICY can fail with the following errors:
-> +
-> +- ``EACCES``: the file is not owned by the process's uid, nor does the
-> +  process have the CAP_FOWNER capability in a namespace with the file
-> +  owner's uid mapped
-> +- ``EEXIST``: the file is already encrypted with an encryption policy
-> +  different from the one specified
-> +- ``EINVAL``: an invalid encryption policy was specified (invalid
-> +  version, mode(s), or flags)
-> +- ``ENOTDIR``: the file is unencrypted and is a regular file, not a
-> +  directory
-> +- ``ENOTEMPTY``: the file is unencrypted and is a nonempty directory
-> +- ``ENOTTY``: this type of filesystem does not implement encryption
-> +- ``EOPNOTSUPP``: the kernel was not configured with encryption
-> +  support for this filesystem, or the filesystem superblock has not
-> +  had encryption enabled on it.  (For example, to use encryption on an
-> +  ext4 filesystem, CONFIG_EXT4_ENCRYPTION must be enabled in the
-> +  kernel config, and the superblock must have had the "encrypt"
-> +  feature flag enabled using ``tune2fs -O encrypt`` or ``mkfs.ext4 -O
-> +  encrypt``.)
-> +- ``EPERM``: this directory may not be encrypted, e.g. because it is
-> +  the root directory of an ext4 filesystem
-> +- ``EROFS``: the filesystem is readonly
-> +
-> +Getting an encryption policy
-> +----------------------------
-> +
-> +The FS_IOC_GET_ENCRYPTION_POLICY ioctl retrieves the :c:type:`struct
-> +fscrypt_policy`, if any, for a directory or regular file.  See above
-> +for the struct definition.  No additional permissions are required
-> +beyond the ability to open the file.
-> +
-> +FS_IOC_GET_ENCRYPTION_POLICY can fail with the following errors:
-> +
-> +- ``EINVAL``: the file is encrypted, but it uses an unrecognized
-> +  encryption context format
-> +- ``ENODATA``: the file is not encrypted
-> +- ``ENOTTY``: this type of filesystem does not implement encryption
-> +- ``EOPNOTSUPP``: the kernel was not configured with encryption
-> +  support for this filesystem
-> +
-> +Note: if you only need to know whether a file is encrypted or not, on
-> +most filesystems it is also possible to use the FS_IOC_GETFLAGS ioctl
-> +and check for FS_ENCRYPT_FL, or to use the statx() system call and
-> +check for STATX_ATTR_ENCRYPTED in stx_attributes.
-> +
-> +Getting the per-filesystem salt
-> +-------------------------------
-> +
-> +Some filesystems, such as ext4 and F2FS, also support the deprecated
-> +ioctl FS_IOC_GET_ENCRYPTION_PWSALT.  This ioctl retrieves a randomly
-> +generated 16-byte value stored in the filesystem superblock.  This
-> +value is intended to used as a salt when deriving an encryption key
-> +from a passphrase or other low-entropy user credential.
-> +
-> +FS_IOC_GET_ENCRYPTION_PWSALT is deprecated.  Instead, prefer to
-> +generate and manage any needed salt(s) in userspace.
-> +
-> +Adding keys
-> +-----------
-> +
-> +To provide a master key, userspace must add it to an appropriate
-> +keyring using the add_key() system call (see:
-> +``Documentation/security/keys/core.rst``).  The key type must be
-> +"logon"; keys of this type are kept in kernel memory and cannot be
-> +read back by userspace.  The key description must be "fscrypt:"
-> +followed by the 16-character lower case hex representation of the
-> +``master_key_descriptor`` that was set in the encryption policy.  The
-> +key payload must conform to the following structure::
-> +
-> +    #define FS_MAX_KEY_SIZE 64
-> +
-> +    struct fscrypt_key {
-> +            u32 mode;
-> +            u8 raw[FS_MAX_KEY_SIZE];
-> +            u32 size;
-> +    };
-> +
-> +``mode`` is ignored; just set it to 0.  The actual key is provided in
-> +``raw`` with ``size`` indicating its size in bytes.  That is, the
-> +bytes ``raw[0..size-1]`` (inclusive) are the actual key.
-> +
-> +The key description prefix "fscrypt:" may alternatively be replaced
-> +with a filesystem-specific prefix such as "ext4:".  However, the
-> +filesystem-specific prefixes are deprecated and should not be used in
-> +new programs.
-> +
-> +There are several different types of keyrings in which encryption keys
-> +may be placed, such as a session keyring, a user session keyring, or a
-> +user keyring.  Each key must be placed in a keyring that is "attached"
-> +to all processes that might need to access files encrypted with it, in
-> +the sense that request_key() will find the key.  Generally, if only
-> +processes belonging to a specific user need to access a given
-> +encrypted directory and no session keyring has been installed, then
-> +that directory's key should be placed in that user's user session
-> +keyring or user keyring.  Otherwise, a session keyring should be
-> +installed if needed, and the key should be linked into that session
-> +keyring, or in a keyring linked into that session keyring.
-> +
-> +Note: introducing the complex visibility semantics of keyrings here
-> +was arguably a mistake --- especially given that by design, after any
-> +process successfully opens an encrypted file (thereby setting up the
-> +per-file key), possessing the keyring key is not actually required for
-> +any process to read/write the file until its in-memory inode is
-> +evicted.  In the future there probably should be a way to provide keys
-> +directly to the filesystem instead, which would make the intended
-> +semantics clearer.
-> +
-> +Access semantics
-> +================
-> +
-> +With the key
-> +------------
-> +
-> +With the encryption key, encrypted regular files, directories, and
-> +symlinks behave very similarly to their unencrypted counterparts ---
-> +after all, the encryption is intended to be transparent.  However,
-> +astute users may notice some differences in behavior:
-> +
-> +- Unencrypted files, or files encrypted with a different encryption
-> +  policy (i.e. different key, modes, or flags), cannot be renamed or
-> +  linked into an encrypted directory; see `Encryption policy
-> +  enforcement`_.  Attempts to do so will fail with EPERM.  However,
-> +  encrypted files can be renamed within an encrypted directory, or
-> +  into an unencrypted directory.
-> +
-> +- Direct I/O is not supported on encrypted files.  Attempts to use
-> +  direct I/O on such files will fall back to buffered I/O.
-> +
-> +- The fallocate operations FALLOC_FL_COLLAPSE_RANGE,
-> +  FALLOC_FL_INSERT_RANGE, and FALLOC_FL_ZERO_RANGE are not supported
-> +  on encrypted files and will fail with EOPNOTSUPP.
-> +
-> +- Online defragmentation of encrypted files is not supported.  The
-> +  EXT4_IOC_MOVE_EXT and F2FS_IOC_MOVE_RANGE ioctls will fail with
-> +  EOPNOTSUPP.
-> +
-> +- The ext4 filesystem does not support data journaling with encrypted
-> +  regular files.  It will fall back to ordered data mode instead.
-> +
-> +- DAX (Direct Access) is not supported on encrypted files.
-> +
-> +- The st_size of an encrypted symlink will not necessarily give the
-> +  length of the symlink target as required by POSIX.  It will actually
-> +  give the length of the ciphertext, which may be slightly longer than
-> +  the plaintext due to the NUL-padding.
-> +
-> +Note that mmap *is* supported.  This is possible because the pagecache
-> +for an encrypted file contains the plaintext, not the ciphertext.
-> +
-> +Without the key
-> +---------------
-> +
-> +Some filesystem operations may be performed on encrypted regular
-> +files, directories, and symlinks even before their encryption key has
-> +been provided:
-> +
-> +- File metadata may be read, e.g. using stat().
-> +
-> +- Directories may be listed, in which case the filenames will be
-> +  listed in an encoded form derived from their ciphertext.  The
-> +  current encoding algorithm is described in `Filename hashing and
-> +  encoding`_.  The algorithm is subject to change, but it is
-> +  guaranteed that the presented filenames will be no longer than
-> +  NAME_MAX bytes, will not contain the ``/`` or ``\0`` characters, and
-> +  will uniquely identify directory entries.
-> +
-> +  The ``.`` and ``..`` directory entries are special.  They are always
-> +  present and are not encrypted or encoded.
-> +
-> +- Files may be deleted.  That is, nondirectory files may be deleted
-> +  with unlink() as usual, and empty directories may be deleted with
-> +  rmdir() as usual.  Therefore, ``rm`` and ``rm -r`` will work as
-> +  expected.
-> +
-> +- Symlink targets may be read and followed, but they will be presented
-> +  in encrypted form, similar to filenames in directories.  Hence, they
-> +  are unlikely to point to anywhere useful.
-> +
-> +Without the key, regular files cannot be opened or truncated.
-> +Attempts to do so will fail with ENOKEY.  This implies that any
-> +regular file operations that require a file descriptor, such as
-> +read(), write(), mmap(), fallocate(), and ioctl(), are also forbidden.
-> +
-> +Also without the key, files of any type (including directories) cannot
-> +be created or linked into an encrypted directory, nor can a name in an
-> +encrypted directory be the source or target of a rename, nor can an
-> +O_TMPFILE temporary file be created in an encrypted directory.  All
-> +such operations will fail with ENOKEY.
-> +
-> +It is not currently possible to backup and restore encrypted files
-> +without the encryption key.  This would require special APIs which
-> +have not yet been implemented.
-> +
-> +Encryption policy enforcement
-> +=============================
-> +
-> +After an encryption policy has been set on a directory, all regular
-> +files, directories, and symbolic links created in that directory
-> +(recursively) will inherit that encryption policy.  Special files ---
-> +that is, named pipes, device nodes, and UNIX domain sockets --- will
-> +not be encrypted.
-> +
-> +Except for those special files, it is forbidden to have unencrypted
-> +files, or files encrypted with a different encryption policy, in an
-> +encrypted directory tree.  Attempts to link or rename such a file into
-> +an encrypted directory will fail with EPERM.  This is also enforced
-> +during ->lookup() to provide limited protection against offline
-> +attacks that try to disable or downgrade encryption in known locations
-> +where applications may later write sensitive data.
-> +
-> +Implementation details
-> +======================
-> +
-> +Encryption context
-> +------------------
-> +
-> +An encryption policy is represented on-disk by a :c:type:`struct
-> +fscrypt_context`.  It is up to individual filesystems to decide where
-> +to store it, but normally it would be stored in a hidden extended
-> +attribute.  It should *not* be exposed by the xattr-related system
-> +calls such as getxattr() and setxattr() because of the special
-> +semantics of the encryption xattr.  (In particular, there would be
-> +much confusion if an encryption policy were to be added to or removed
-> +from anything other than an empty directory.)  The struct is defined
-> +as follows::
-> +
-> +    #define FS_KEY_DESCRIPTOR_SIZE  8
-> +    #define FS_KEY_DERIVATION_NONCE_SIZE 16
-> +
-> +    struct fscrypt_context {
-> +            u8 format;
-> +            u8 contents_encryption_mode;
-> +            u8 filenames_encryption_mode;
-> +            u8 flags;
-> +            u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
-> +            u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
-> +    };
-> +
-> +Note that :c:type:`struct fscrypt_context` contains the same
-> +information as :c:type:`struct fscrypt_policy` (see `Setting an
-> +encryption policy`_), except that :c:type:`struct fscrypt_context`
-> +also contains a nonce.  The nonce is randomly generated by the kernel
-> +and is used to derive the inode's encryption key as described in
-> +`Per-file keys`_.
-> +
-> +Data path changes
-> +-----------------
-> +
-> +For the read path (->readpage()) of regular files, filesystems can
-> +read the ciphertext into the page cache and decrypt it in-place.  The
-> +page lock must be held until decryption has finished, to prevent the
-> +page from becoming visible to userspace prematurely.
-> +
-> +For the write path (->writepage()) of regular files, filesystems
-> +cannot encrypt data in-place in the page cache, since the cached
-> +plaintext must be preserved.  Instead, filesystems must encrypt into a
-> +temporary buffer or "bounce page", then write out the temporary
-> +buffer.  Some filesystems, such as UBIFS, already use temporary
-> +buffers regardless of encryption.  Other filesystems, such as ext4 and
-> +F2FS, have to allocate bounce pages specially for encryption.
-> +
-> +Filename hashing and encoding
-> +-----------------------------
-> +
-> +Modern filesystems accelerate directory lookups by using indexed
-> +directories.  An indexed directory is organized as a tree keyed by
-> +filename hashes.  When a ->lookup() is requested, the filesystem
-> +normally hashes the filename being looked up so that it can quickly
-> +find the corresponding directory entry, if any.
-> +
-> +With encryption, lookups must be supported and efficient both with and
-> +without the encryption key.  Clearly, it would not work to hash the
-> +plaintext filenames, since the plaintext filenames are unavailable
-> +without the key.  (Hashing the plaintext filenames would also make it
-> +impossible for the filesystem's fsck tool to optimize encrypted
-> +directories.)  Instead, filesystems hash the ciphertext filenames,
-> +i.e. the bytes actually stored on-disk in the directory entries.  When
-> +asked to do a ->lookup() with the key, the filesystem just encrypts
-> +the user-supplied name to get the ciphertext.
-> +
-> +Lookups without the key are more complicated.  The raw ciphertext may
-> +contain the ``\0`` and ``/`` characters, which are illegal in
-> +filenames.  Therefore, readdir() must base64-encode the ciphertext for
-> +presentation.  For most filenames, this works fine; on ->lookup(), the
-> +filesystem just base64-decodes the user-supplied name to get back to
-> +the raw ciphertext.
-> +
-> +However, for very long filenames, base64 encoding would cause the
-> +filename length to exceed NAME_MAX.  To prevent this, readdir()
-> +actually presents long filenames in an abbreviated form which encodes
-> +a strong "hash" of the ciphertext filename, along with the optional
-> +filesystem-specific hash(es) needed for directory lookups.  This
-> +allows the filesystem to still, with a high degree of confidence, map
-> +the filename given in ->lookup() back to a particular directory entry
-> +that was previously listed by readdir().  See :c:type:`struct
-> +fscrypt_digested_name` in the source for more details.
-> +
-> +Note that the precise way that filenames are presented to userspace
-> +without the key is subject to change in the future.  It is only meant
-> +as a way to temporarily present valid filenames so that commands like
-> +``rm -r`` work as expected on encrypted directories.
-> diff --git a/Documentation/filesystems/index.rst b/Documentation/filesystems/index.rst
-> index 256e10eedba4..53b89d0edc15 100644
-> --- a/Documentation/filesystems/index.rst
-> +++ b/Documentation/filesystems/index.rst
-> @@ -315,3 +315,14 @@ exported for use by modules.
->     :internal:
->  
->  .. kernel-doc:: fs/pipe.c
-> +
-> +Encryption API
-> +==============
-> +
-> +A library which filesystems can hook into to support transparent
-> +encryption of files and directories.
-> +
-> +.. toctree::
-> +    :maxdepth: 2
-> +
-> +    fscrypt
-> diff --git a/MAINTAINERS b/MAINTAINERS
-> index 1c3feffb1c1c..beee181ec84e 100644
-> --- a/MAINTAINERS
-> +++ b/MAINTAINERS
-> @@ -5558,6 +5558,7 @@ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/tytso/fscrypt.git
->  S:	Supported
->  F:	fs/crypto/
->  F:	include/linux/fscrypt*.h
-> +F:	Documentation/filesystems/fscrypt.rst
->  
->  FUJITSU FR-V (FRV) PORT
->  S:	Orphan
-> -- 
-> 2.14.1.581.gf28d330327-goog
-> 
+UEsDBBQABgAIAAAAIQBTbDf7ywEAANIGAAATAAgCW0NvbnRlbnRfVHlwZXNdLnhtbCCiBAIooAAC
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC0
+Vclu2zAQvRfIPwi8BhKdHIqgsJxD4h6bAHWQM0WNbDbiAnLsxH+foWQLrWNLytKLAC1vmTcz1PT6
+RdfJBnxQ1uTsIpuwBIy0pTLLnD0sfqZXLAkoTClqayBnWwjsenb2bbrYOggJoU3I2QrR/eA8yBVo
+ETLrwNCbynotkG79kjshn8QS+OVk8p1LaxAMphg52Gx6C5VY15jMX+hx66RQhiU37XdRKmfCuVpJ
+gWSUb0yZ6ZDaqlISsk0h7r39AxIZP0rmzPKATOloJj4/jvBQhwPIof6/Raa7AjNCNh7DSrlwTimc
+UIhvThe4w91RZ7wqIbkXHn8JTTHwZ+tLXlq51hRh1k+zyylCsg6ihfR2bkRRA6UolNm7PKlm1roA
+TyMxQu4glrZFnXZ04ryVEALR6TrrqAdNBNzWEL7eQcvbJ0/uab5c4DQCn9aHOOMllCnF4MCjgm5K
+TubfWnxUuJpXFY35mBRoPZq2v8H2VdrMVgBEas4YkXc2e888aIE2+lagGBH2vswdYpAZ6YQC3lwv
+RtD3F9jQDEpWdIot4rZ9Wu/N9nTUgyaeofj93/r6F3mfkW6PpPUfCGN/wkb0ke3hzR9p9goAAP//
+AwBQSwMEFAAGAAgAAAAhAB6RGrfzAAAATgIAAAsACAJfcmVscy8ucmVscyCiBAIooAACAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACMkttKA0EM
+hu8F32HIfTfbCiLS2d5IoXci6wOEmewBdw7MpNq+vaMgulDbXub058tP1puDm9Q7pzwGr2FZ1aDY
+m2BH32t4bbeLB1BZyFuagmcNR86waW5v1i88kZShPIwxq6Lis4ZBJD4iZjOwo1yFyL5UupAcSQlT
+j5HMG/WMq7q+x/RXA5qZptpZDWln70C1x1g2X9YOXTcafgpm79jLiRXIB2Fv2S5iKmxJxnKNain1
+LBpsMM8lnZFirAo24Gmi1fVE/1+LjoUsCaEJic/zfHWcA1peD3TZonnHrzsfIVksFn17+0ODsy9o
+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
+AhCAQLUIoOGq5Q+sgQAEIAABCEAAAjYE/j+3UfezOKbgiAAAAABJRU5ErkJgglBLAwQUAAYACAAA
+ACEACBRg78AAAAAVAQAAHgAAAHdvcmQvX3JlbHMvdmJhUHJvamVjdC5iaW4ucmVsc2zPPWsDMQwG
+4L3Q/2C093TpUEo5X5ZSyFqS7qqtuzM5W8Yy+fj3MXRpSkdJvI+kYXuJqzlx0SDJwqbrwXBy4kOa
+LRz2H0+vYLRS8rRKYgtXVtiOjw/DJ69UW0iXkNU0JamFpdb8hqhu4UjaSebUJpOUSLWVZcZM7kgz
+43Pfv2D5bcB4Z5qdt1B2fgNmf81t8x87BldEZaqdk4gyTcH9p+JZiv/6pneq1CQqM1cLp59G144D
+HAe8e2a8AQAA//8DAFBLAwQUAAYACAAAACEAr9+qDs4KAABJLQAAEQAAAHdvcmQvc2V0dGluZ3Mu
+eG1snFptcyO3Df7emf4Hj/o1F/MdpBsnw9e0naTtxMkPWEtrW3OSVrOSz7n++mIl65y7PpvJ9JNl
+YkGCwEMABPHNd79uN1cf+vGwHna3C/m1WFz1u+WwWu8ebxe//Nze+cXV4djtVt1m2PW3i4/9YfHd
+t3/+0zcvN4f+eOTPDlc8xe5wM9wunsfdzWH51G+7w7vtejkOh+Hh+G45bG+Gh4f1sn/9s3jlGG8X
+T8fj/ub6+pXp62Hf73i2h2HcdsfD18P4eH3mLMPyedvvjtdKCHc99pvuyAIfntb7w2W27f87Gy/1
+dJnkw+9t4sN2c/nuRYrf+/J1uy/DuPrE8UfEmxj247DsDwfW7HZz3u62W+8u0xw2f2Sesz5/WN+P
+3fjxN5N8y2b7zzBsr15u9v24ZIWyzYVYXE+E1fqw33QfU7d8/zgOz7vV3VO378+k/qF73hx/7u7v
+jsOeuT90LAcJf+ZcPnVjtzz2492+W7Lgedgdx2Fz+W41/HM45mG7H3lfrxz8X3c8zc3QWx2m9acf
+Pw3D8cImBBllqjpzTNQ3ipAuhle5v6AokqFCHq2DCJBiRCTMY1RSeB1jYsE8Vlg5R0m6QQmsDsZh
+irFNYgpR0ZDihIhYaidIRMxD2WMJSHnCPF4Jh/fjVfYJruOpCSx1MFphnmA/ofQLa0chK9ZO1EFh
+KyRlrYWyJZXDK6a/WCdpXQzmsUnjdTKJiilVxoR10JTBuJZCNgmllsI0C3UgBdHldH++H6YEC20q
+pQkFnhIpSTaIEKY0jSVQIumC9CaVLBpiVGrjLObRlAPUmzRkLJ7NmqigTaU1LeL9OKoJ+h3JJpUQ
+BzKrUgjutFqH/Y5sfHwwT1MZr6OEThmiSikjsd6YoGd4jPUJSqCcLgKeRuWtD1AH7CsjRqLKqkbo
+KVTWNUL7qMIUzFPZxUMcqKqqgehV1VrC+6kkLN5PE8FAVKlma4azaU5QCEo9URq0nBaaJMSbZotm
+KIGWlBJEr1ZKBnh+tBYmQV1rbRQ+25pB5bDUViTsybUVWWd0FrQ1pmAJeBUFbarZbhbr2kkizENS
+V7yOl6Lh2bxsHmJHe8Vyw/1EQQ1bO+qoZnhMI2ztJITG+0k6z+w0sbOc4WFnhWXLDDesnUxxRoLK
+DhvGH81xaUaCJpOC3sVwgoL9jhFKZxiZjBRFQCQaR4Gg5TgsJAmtbbwoCmrHeJkNXsfrhHMk420W
+eKdB6wZxwHGJcAw2USeCujZZmIp3mk1JeJ3My2Ce4izOnkyhis+c4UgfoH2sUoQzB6uMTVDXlicL
+UDarlfOYxwjtYLZhjS0Jy2YVhzN0gq3VjjDFyYjzA0uWcB5vPUdAiB3rTVEZSuDtzJmzQVQPbWqj
+nPG9Nirr8X6StBn6HVukL1jXhXzDGq0iKGy55lqE6HVCBgdnc8I46ZB2nNR8Y4AUTniwr3JKJZzH
+O8W5MjynTlmX5ygtQY06rVWF3sVppyL0ym4KgAXuhzNYHGWcoWKwDiw17OOdU7VBaztnvMf2cRzS
+4clypDjBhVITGwHi2gXBlxnIE1RMWG8cMwPeKWcUONK6bAW+N06UGexUvkpg+3D+WKB9SMqKoyZJ
+ig6ilxTfkOFOSekQoa5JMXagfUgz4vFsfD3FGf58DYUN1xzENRmK+MZCVjVcXSHrkoMIYWdZcaWE
+nOCrOEIIMXwNtoJ3CVuOgpYS80TdcDZI0VRcXaHImsM2TSLmGYomnEFSkSbDjIuqKziPp8oZPrS2
+58qYg3rznNdhXXttZ+ouXlMSEIneCK6IIPt4I2OA1mZKw5bzRgt8A/OG6wcVrmNVzXinzjZckfHO
+ZY9n88Lj6pfnWwGOtEwxMzv1tkZsH0++YI0GZbA/8MkYjANfjI7YCtWQnKE4LkshjQZhrYyYQqXB
+2QJfKSu0AhctNUZIMGTx7TBY5fE5Dc5ojN5AXOSCeAtsH+yVAwMOx5IQbI4QISFxEgstFxJph7WT
+uMqGZctcc8CzFaHzDMW0DCNgKDRTCQ5VOBx/QpUzUTNUxacb4qBSwPEniqlag3iisFFAn8gX5ISr
+x1HO3dH5YuRxth61cDjzjlw1xPlbNFwjhuiNhpSAEYMpM9F5ojQ8G6chOFeOXMHAGVd0wkuYdUan
+SoB4i84Srj1xEuISzLg4mGWBpSaux2PLRSUIxqwYTdEG4iDSTDSLXB/FcTtybCSsg+ICvqPHKoyE
+5ydy1MQ5UmycjGEdNBUb9Jax2YZrkInRi3kSp8q4TsHOxXuo0aSlx9lGsrpYiINkXcHZEydiFee9
+yRmFT2NylPHNNXkVJPRIyXNlDOqNyyQG55YpmJnaYIoqCIiqFLkKCnGdkuJaPUJiykLg7CllDrR4
+P8W1hGcr1PDNNTXyDvqQzAjB1VamJOzjuegfKzyNWbqMvUtWkpMUpIOsBYcGTDGE7wtZW64OYh7i
+wj+kGJEJ64Crx3WGwu+0mGJdwDXi7LTAbyx5uiLj2bgSjDGaiTUK0Zs9P/tGuNNAFt8kcpEZ1wJy
+sVTgCc7VEX7Ty/wmgeshTPEey9asxbeCIkxuEAdFMkSgTyxaR/wCxa5/phpRtGX9IL0VTRXXVKfk
+NkLLsdqMhnGh8L0Rv+0WJ7l6CyVwU+0UUji3xJXtQoKhiHnIYoQUL2XGEgSZcCwpUc68Lpc4l/uX
+bLiEDWXLXACEuC7ZcU4MeYog3LNQiqwJ66DwAyr0B6Uai9/NStOEc8vSuDIGZatCFXyCq9D8MIP2
+w5SA7yWcKpOHqOKH3ZlKY5VcR8LrKEYiRHzlrBNX3avh1B/6+GpVdDA/qNbw3Qju1FGZkY24xgU9
+RfUi43fa6l3DkbYGrgVgCYLiJxsoW+AkDWK0ct0FZ941Os4H4Wzco4NPfU1zd3R+xo8e3s2YMvOS
+Xws/l2OEMK7xXbMJyShFUjdutcAni5/NLH4PbkpkHAE5hY3YXzflAr7l8INNw1lnM5bbMKDU1s50
+9jTHuoao4kfNgt/0GlHEUZMpFdfFmtcFn9PGeKsQby1q52coNuGspkWKM5bLUzkcaqdoZ+E55ZKU
+w7G+Ve1xN1Crxs9Yu/G7DJagcRA+4fr63DjHHXTbm6mT8d/j5VfjLryr7blVL3fb+3HdXf049Tpy
+29325n58n9a7C/2+557L/reUu+f7C/HduzPhsO02m8adfhcCtzmeKVPrYOkfThNvfuzGx7eZT8d/
+ezPC0VX/8I9Ps03tiP34Pbce7s+zvozd/u+7FQ9fFpTmHFa2N+vd8Yf19jJ+eL6/u3DtuOXxNyTu
+Y/zXh3Ga8PpNQS83R+5S7ScN/dDtHi99hePzu59+mT59uVluxrupk7X/sdvvuaWRP7l/lLeLzfrx
+6SgX/O+R/1t14/vTP/eP6pWmTjT+b6Kd/umW087469cf0wfnn/zV64+3MX0Z029j5jJm3sbsZcy+
+jbnLmJvGnj5yj+dmvXvPHaOXn9P4w7DZDC/96m+XwdvF/wydlXCYGkDZrlPvJwNsuDkNsNFOA1cf
+bvpfuYG0X62P3CS8X6+23a+3C75ji8X08XLYcB/v+Pz5d6fRw+3iL0Jwz6P6avq76vivWvLt4nSo
+rr9Y6NPK3J06PB8/m2+iTQvvPxu9WnXHjltbT2Z/ne3MzDDgzuXP98Wtr/1yzeC++7i9f2tb/eqs
+hM36cLzr99zhehxGVt+p9fWvp5nfeqC//S8AAAD//wMAUEsDBBQABgAIAAAAIQC0cXQKegEAADMD
+AAAQAAAAd29yZC92YmFEYXRhLnhtbJySXU/CMBSG7038D0vvWYeJxCxshABGjYKR8QNKV1h17Wna
+bpN/b/fpxwUhXq1rz3ne077vdPYpcq9k2nCQERr7AfKYpJByeYzQLrkf3SHPWCJTkoNkEToxg2bx
+9dW0kiws92RbKLUklniOI01YupLMWhVibGjGBDE+KCbd4QG0INb96iMWRH8UakRBKGL5nufcnvBN
+EExQh4EIFVqGHWIkONVg4GDrlhAOB05Z9+k79CW6becSaCGYtI0i1ix3M4A0GVemp4n/0twVsx5S
+nrtEKfK+rlKXqKWaVM4UkbdjV6BTpYEyY9zusj0ciOPgnHb3gDVi6LhkhN+a/SSCcDlg6oj88X8w
+z3fm4VYb16jvi7i3iJtACZqaYeXVERPEWb8mwnFf3zZPq0XiJw+P2+VmsXtZrRN/vks2i+fNdoWa
+ctlWanhn1PpJxk3vtj8vLCxyMKyt3K8k1SdlIxS4zNdSVLjI304Qjqe4kW6GaZY/gh5/AQAA//8D
+AFBLAwQUAAYACAAAACEAuJUgLB0IAACbPQAADwAAAHdvcmQvc3R5bGVzLnhtbMRbzW7bRhC+F+g7
+ELw7tiRbaowogX/ixkB+HMtGzytyZRGmSJVLxXZu6bUP0HufoChQoAjQPoP8Rp2dJSmKFMUZk0FP
+Mpe7883szHyzkndevLqf+dYnGSkvDIZ259mebcnACV0vuBna11dnOz/YlopF4Ao/DOTQfpDKfvXy
+++9e3B2q+MGXygIBgTqMhvY0jueHu7vKmcqZUM/CuQzg3SSMZiKGx+hmN5xMPEeehs5iJoN4t7u3
+19+NpC9iAFdTb67sRNodRdpdGLnzKHSkUqDtzDfyZsIL7Jegnhs6p3IiFn6s9GN0ESWPyRN+nIVB
+rKy7Q6Ecz7sCxcHEmReE0ZujQHk2vJFCxUfKExtfTvWsjW8cFeekHXuuZ+9qRPUZZH4S/tDudtOR
+E63B2pgvgpt0LFrsXF7nNRnaMti5HumhMcgd2iLaGR1pYbtoZvqZM3e+Zjw8oSpz4cDGgRgxiSU4
+EPyhhfqednR30E8fLhc+DIhFHCYgKADA8mLhsbDj4Ffw8shECbyVk7ehcyvdUQwvhjZiweD1+UXk
+hZEXPwzt5881JgyO5Mx747mu1EGZjF0HU8+VP01lcK2kuxr/eIYhlkh0wkUQg/r9AUaBr9zX946c
+6xAD0YHQHn6vF/harMrhoEILb6WNGSig4uDPKWTH+HAjylQKnUYW6r8VCK1eNAbqaovyBqBclq69
+5iL2m4s4aC4Cg7fZXgyaawHk2dQjJjZyUUl3ahw6Jvjy+9B7viVk9YpSFNWuKAVN7YpSjNSuKIVE
+7YpSBNSuKDm8dkXJv7UrSu7cusIRSFzFKOrhbpAS+8qLfanXbyWgTkOqS0qNdSEicROJ+dTShbWo
+9jayHC3GMU1VpNOnk+UojsLgpnZHoDrr1H0yJ7+ezadCeXCiqdn6bsOtvxJjX1o/Rp5bC3Vggq9k
+Ex5MNpawC184chr6roysK3lvPMpY/z60RuaUUatcQ7e+9W6msTWaYsmtBetXbHr1Thj5bz2Fe7A1
+mfoVptQJJ/mwXxGX1cLfSddbzNKtIZxG+obPGW4uQKCK27doX7uonF21VmgHUEww5YJvAson6G+K
+C1++9jFFf1OKniifoL8pXE+Uj/Gx3b9spjkV0a1FSq8BO3dPQj+MJgs/zYFaehiwMziDoJnATuJM
+PokkBuwMXqNP68hx4JsbJU7ZvljxKAOF7Q6DgslGt4XtlALtdRgWsR1UwOoysJpxLQOITbqX8pOn
+f3jiFgNk6eysWZvOvYodgBJEOkN/XIRx/Rm6W8F5VJTzAH4uUdKiofUqMo+KlsSTqXcMHzcrfAyg
+ZhWQAdSsFDKAKuKj+syT1UQ6SPPiyMBi03JWxTDsyMw8YDNzBsQrAS3VTcL5qyJ7q2OhXDcJKGwH
+lesmAYXtnUIty+omAau1uknAqqga1T7KcyrHKHbdzANlJwGCRe2QNwGoHfImALVD3gSg5uRdD9Ie
+eROw2NyQcWqevAlAOIXzVT8DypM3AYjNDYbtkt+M0rqHUrZ/uW2BvAkobAeVyZuAwvZOFXkTsHAK
+JxIKWBnVEbDaIW8CUDvkTQBqh7wJQO2QNwGoHfImADUn73qQ9sibgMXmhoxT8+RNAGLTQwaUJ28C
+EE7hcMNG8sas/+bkTUBhO6hM3gQUtncKhJodUglYbAcVsDLyJmDhFE4wJFgY3Byj2iFvgkXtkDcB
+qB3yJgC1Q94EoObkXQ/SHnkTsNjckHFqnrwJQGx6yIDy5E0AYnPDRvLGZPzm5E1AYTuoTN4EFLZ3
+CoSa8RwBi+2gAlZG3gQsjJfG5E0AwilPBeJY1A55Eyxqh7wJQO2QNwGoOXnXg7RH3gQsNjdknJon
+bwIQmx4yoDx5E4DY3LCRvDFHvjl5E1DYDiqTNwGF7Z0CoWbkTcBiO6iAlVEdAasd8iYAYWA2Jm8C
+EE55AhBmEcdN7ZA3waJ2yJsA1Jy860HaI28CFpsbMk7NkzcBiE0PGVCevAlAbG7Q92zhvij5emqn
+Igio9wzSWw1kwG6Fk6iAiYGXciIj6GSS9bdDGgKmFjIQK8KDauJxGN5atIvdvYoAIUN5Y98L8Ur3
+A97SyTUi9AZbOgmuPpxYb0wDTGkdhtT6zRvoHsq3C2F7km4cAj3jhzm07MzTm+VaGjQI6b6upAUI
++9DOoSFIYMePbvGBOdhPlTT64L9sE0D8G9rd3HTO3t7ZoHt6jMaAGiitjO9MQQEH2qS24e+VFKi4
+GI9KrLoyUlWSC/KrY5SZt3ZNE4aqtYz1ZfBtGnZKGpotsvAaufFnWS9oy0JN6hTL7lPh7Hjsm0Yz
++OM80PsNbX34vzPjUvdeGLHw/kT6/jsR6X2Pw3n1VF9OYvO2s4d1sCBqHMZxOKteH+E1cdRkkwDY
+2bwy5lEbUb3lwWI2lhH0eW3b9u6GbTe3XY2Hs6wCzTFwqTterddawqxSpFfSBEvb6jIdKjQW0GH3
+QTfMoTaJn8qBATfrcH51bg32u/uvk07HpO/Qw1jQnhzaA2h/QAkO9ItAg8FC+EnDAIyCcWmnYUVW
+Vhi5XzLyWPh+CB2A2MSwxUTofbzNrD4wqpXNpnoH2jHXiKZ73D06SJI82QxVbMLEBElaMPezh80t
+mEm7J3ys9bEO7SsxDWdCRyR2qOYHHJU94T6sGlI7fWOv+rxqSDVj4Ahon92WBWv06CwUJOFI83eJ
+og9Krln+vvxr+fXxy+Mv1vLPx1+X/yz/ffyy/Lr821r+Bg9/LL8atYoxmQTOmseScCR7rNo9aO//
+sLFpQquX/wEAAP//AwBQSwMEFAAGAAgAAAAhAG4n+769AgAA2AoAABIAAAB3b3JkL251bWJlcmlu
+Zy54bWy0lltv2jAUgN8n7T+gSHuEJJBwU6FaRZE6tdM0sR9gEkOs+RLZJpR/v+M4SSFNU2DihRCf
+mz+f43Nyd//KaCfDUhHBZ47f85wO5pGICd/OnD+rZXfsdJRGPEZUcDxzDlg59/OvX+72U75jayxB
+sQM+uJpmIE60Tqeuq6IEM6R6IsUchBshGdLwKrcuQ/LvLu1GgqVIkzWhRB/cvucNncKNmDk7yaeF
+iy4jkRRKbLQxmYrNhkS4eJQW8py41nIhoh3DXOcRXYkp7EFwlZBUld7Ytd4AMSmdZG0QGaOl3j49
+J1os0R7OmVG77b2QcSpFhJWC1YUVVh59ry12cYDGRWVxzhZOY5Y7YYjwyo0pj1r+q+T1IHmuje0a
+V28gcBZzKCa0VlqiSP/csc7J21M8c7xchSsSgyxDFFYm4TAcDUPHNcZsRzV5xhmmq0OKS53ksJYk
+fjEyamRWV7OUlhqDIAweg8XYSmhmBAQeJiL81SmNZs54FD5+fxjaPcBVkLo0960d3IMlqxZjHBGG
+imDga4VfK9k3v1eF+hGVbijeaLuc/pIGh3DDaZbhRnrjfC8J4tv8To76nlF299NCW1ojuRRcK7BL
+CAe7GG8QkBequQ6YwH5MgGNS/43UC/yJ5/mTfAUuCdwNc6f9/PQ/J6dij+Uz1hrLivKEvn85fRCc
+0g8gD0f0zUj9d0gP/4P0WzDEm4kGTUSSbJOPE9r3AcGkqUyoDwn+FGlQR/KWVyK11mfQxNNan/1x
+rT7PylBQx7ld0YUXIwHBaYbOQgrfId2q6IZNRO1FFwyga1xcdDCSyyZoW8Ntim7UxNNadKF3TVsY
+1XFuV3Tjy5FGtbZwVtHBx9lphvxbFd2kiai96IZBrTV80OmgiR9NfzOfYKICF/ya4W/Hz5HGk5mO
+9iugaJygmU9EeNov0vk/AAAA//8DAFBLAwQUAAYACAAAACEA0iBhvZABAADoAgAAEQAIAWRvY1By
+b3BzL2NvcmUueG1sIKIEASigAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAhJJLa9wwFIX3
+hf4Ho01XHtmeTtIYj0IfzKYdCMShoTtVupkRsSQj3cTxv68kz7hOKWSpe44+zn001y+6y57BeWXN
+lpSrgmRghJXKHLbkrt3ln0jmkRvJO2tgS0bw5Jq9f9eIvhbWwY2zPThU4LNAMr4W/ZYcEfuaUi+O
+oLlfBYcJ4oN1mmN4ugPtuXjkB6BVUVxQDcglR04jMO9nIjkhpZiR/ZPrEkAKCh1oMOhpuSrpXy+C
+0/6/H5KycGqFYx96OsVdsqWYxNn94tVsHIZhNaxTjJC/pPf7H7ep1VyZOCsBhDVS1KiwA9aqDsaG
+zu+oCAccrWOfnfI824sP37kykExnKQ74EcbBOunZnf7tG7qsRLnjHvdhVQ8K5JeRcamVSa5/hOh1
+8KzijtnmqkqeuRDypMFMoUBmodV6GsxZ+bn++q3dEVYV5WVebPKqaquqXl/WRfErhn71P7Y+FfQp
+25vEq7wo23JTf7x4TTwD2HRtBsO6b5Hjk2c7ZZQ/gky9CLuUTqXlbbI/AAAA//8DAFBLAwQUAAYA
+CAAAACEAlHnargMCAABUBAAAEAAIAWRvY1Byb3BzL2FwcC54bWwgogQBKKAAAQAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAACkVM2O0zAQviPxDlHuW6elLKhyvUJdoT0AW6nZ3bNxJq2FY1u2t9ry
+LrwDQkJw4R3ySIzjNk2XFQfIIfrmJzPjbz6HXjw0KtuC89LoeT4eFXkGWphK6vU8vynfnr3OMx+4
+rrgyGub5Dnx+wZ4/o0tnLLggwWdYQvt5vgnBzgjxYgMN9yMMa4zUxjU8oOnWxNS1FHBpxH0DOpBJ
+UZwTeAigK6jObF8wTxVn2/CvRSsj4nz+ttxZHJjREhqreAD2IY6jKOkdtDSBq1I2wM5fTTHQm3TJ
+1+DZmJIE6J1xlWeTCSUJ0cWGOy4CssfGLzBvYNM31iopeEBe2XspnPGmDtl1x0AWv6dkmEKRlRWI
+eyfDjhWUDE36Tuo0SAI4mONrx+1mP11v0ZXgChZ4dFZz5YGSo4NeAY9rXXKJ89JtmG1BBOMyLz/j
+Yqd59pF7iITN8y13kuuAxMW0ZHRYWR8cK2VQWBtjye7gMG2I5TRSiLkI/pqYarVf2q/tj/Ybvn+1
+P9vv/98m9k5Hxf6nJHQH8dc1Ehqe4GQy5KQbLzEyOPUenlIxiPeNH7VamMZyvcOJeoTL/eRvbGku
+o1D3+zt1DhR3J8NmZbmIwniJkjxqbxChK1QoVCimQ72jg17hqp2KTfFbvYbqkPNnIKr5Nv0k2Hgy
+KvDp5Hvw4RXpby/7DQAA//8DAFBLAwQUAAYACAAAACEAlB74xsYBAAAgBQAAEgAAAHdvcmQvZm9u
+dFRhYmxlLnhtbJyTwW6jMBCG7yv1HZDvLYbQbhuVVF22OfZQ0QeYEBMsYRt5nLB5+x1skrRKs00W
+BILf42H45p/Hpz+qjTbCojQ6Z8kNZ5HQlVlKvcrZezm/vmcROtBLaI0WOdsKZE+zqx+P/bQ22mFE
++zVObc4a57ppHGPVCAV4Yzqhaa02VoGjV7uKTV3LSvw21VoJ7eKU87vYihYcfRsb2SEbs/XnZOuN
+XXbWVAKRilVtyKdAajYbq4v6qQZFVZdSCYxeRR+9GQUhoANtUCQUs4E2Zzyl845P+C3P6ErpKWPx
+kKlqwKJwu8CiCHINSrbbnWp9Xh/fSVc1O30DVsKiFWEPyhUtrHHBc/bCOU+f53MWlCRnBSk/77Nk
+VFIqKhwPozLZK9QmKszn8SFJyEMK5Rl38eGbcejTEZECWrmw0qM6JjH3BAYiGXGg+wUksJeIIf4C
+Ejz9SCKjX3gu9sqBxI7NP0g8eKLnkyihod6dAPGLLDEgGEyRnQTBPWoi/ckSH0Bo40q7FuW2E5dY
+ZGzk5GCRfWuDaQ5gvCHIWKfBcO7hnQ+mAEUOOUVmGJLAZRiayyzyf8NybBGefWGR70kk31pknBqc
+/QUAAP//AwBQSwMEFAAGAAgAAAAhACiHcaXPAAAAHwEAABQAAAB3b3JkL3dlYlNldHRpbmdzLnht
+bIyPy04DMQxF90j8wyh7moFFhUadqYRQ2VCoxGOfZjydSIkd2YHQfj3msWHH8tpXx8er9UeKzTuw
+BMLeXC5a0wB6GgMeevPyvLm4No0Uh6OLhNCbI4hZD+dnq9pV2D9BKdqURikoHfdmLiV31oqfITlZ
+UAbU3UScXNHIB0vTFDzckn9LgMVete3SMkRX1EDmkMX80up/aJV4zEweRFQkxR9ecgHNoI6US0jh
+BBviG6YqwPZrrPeOj/i6vf9OLkaqu4c7DfbPW8MnAAAA//8DAFBLAwQUAAYACAAAACEA04sWT8EH
+AABhPQAAGgAAAHdvcmQvc3R5bGVzV2l0aEVmZmVjdHMueG1stJttU9s4EMff38x9B4/fQ0ig5Mo0
+7VDoAzNtjzYw91qxFaLBtnx+IHCf/laSrRg7tndj91WJY+1vV7v6r6DSuw/PYeA88SQVMlq40+MT
+1+GRJ30RPSzc+7vPR3+5TpqxyGeBjPjCfeGp++H9n3+8216k2UvAUwcMROnFNvYW7ibL4ovJJPU2
+PGTpcSi8RKZynR17MpzI9Vp4fLKViT+ZnUxP9E9xIj2epkC7YtETS93CXNi0JmMeAWstk5Bl6bFM
+HiYhSx7z+AisxywTKxGI7AVsn5yXZuTCzZPoonDoyDqkhlwYh4p/yhFJI4o9XDPyWnp5yKNMEycJ
+D8AHGaUbEe/CONQahLgpXXrqCuIpDMr3tvH0rMGzIWNycJ2wLaRiZ7Bhbs9k+GZQGJh5UPndZbVu
+cXrSFUyREWXC+oBx4TWz9CRkIrJmDpua6uTCehhS318SmcfWnVgMs3YTPVpbalkSPDs51yuvGlpK
+MtBYussNi7nrhN7FzUMkE7YKwKPt9MxRFem+B6nwpXfN1ywPslR9TG6T4mPxSf/zWUZZ6mwvWOoJ
+cQcSAlZCAQa/XkapcOEbztLsMhWs+uWn4pn6fqNerH5pR3ppVjH4UfjCnSho+h8Me2LBwp3NyidX
+yolXzwIWPZTPeHR0v6w6s3DtoxXYXbgsOVpeKmMTHWn5byXi+FX88Em7EjMPFh9w2DrjoEMgZIoT
+CJXg2RxEzXz4lav5ZXkmC4g2ALCqWfhYm3SQJxCrpRFt+Javv0nvkfvLDL5YuJoFD+9vbhMhE1DS
+hfv2rWLCwyUPxVfh+1z1iOLZfbQRPv9nw6P7lPu75z8/a4UuLHoyjzJw/3yuCyFI/U/PHo+VUoLp
+iKkk/1ADQMYgHRWOdigXO2/MgxpVP/y3RE5NDvdSNpypruZo/ztBOup8MGimIqoGoO2SfD0dbuJs
+uIk3w03o4h02F/PhXsBeZmhGTG1UqhKf1Ex6pviq83D6tqNk1YhGFfWOaBRN74hGjfSOaJRE74hG
+BfSOaCS8d0Qjv70jGunsHOExLVz1KjrVs4Fa2HciC6BV9ijddKDUFa3GuWUJe0hYvHFUb6273SWW
+y3yV4VzVcnq4WC6zRKodZ8+MQHdWS/dgTf4UxhuWCtiY94EGTv2d2v04XxIBO9ge1BtTfI2Y9MZk
+bwu7DZjHNzLweeLc8WeTUcL4H9JZml1Gr3MD0/pNPGwyBzaGquX2ws5bJr19Joz9byLVc9DZzc9b
+QukzjsrheUtdthv/zn2Rh+XUIHYj50bPCWmuIbSL3VN0plLUXF29UagEYEIw7YIegraP8N80F7p9
+lWOM/6YVHWgf4b9pXAfa1/XRnV+y0lzDX1Yc1PKak9fulQxkss6Dcg30ysOcvIItAhcCeRFb+yiR
+mJNX8Cv5dC49D35zw9QpORc7HSVQyOkwFL3Y8LGQk1KTvSkhInKCaqwZgTVMawkgsuj+4k9C/R2Y
+2gy0Stu9Zu9yPm2ZAWhBqD30z1xm/XvoWYvmYSk3Efy5JOUOjnbasvKwtKKeTL8j5HhY4yOAhnVA
+AmhYKySAWuqjfc9jeyIeMrw5ElhkWbZdTJcdWpnnZGW2IFoLGKlvIvZfLau3vRaafRNBISeo2TcR
+FHJ2ar3M9k0Ea7S+iWC1dI32HFU1lRIUuW9WQXYngIhoHPFGgMYRbwRoHPFGgIaLdz9kPPFGsMja
+YDW1Kt4IkH6F8qu+BVXFGwEia4NRu+JvRmXf01a6f7kdQbwRFHKCmuKNoJCz0ybeCJZ+hVIJNZaV
+OgRrHPFGgMYRbwRoHPFGgMYRbwRoHPFGgIaLdz9kPPFGsMjaYDW1Kt4IEFkeLKgq3giQfoWiDXvF
+W6/63y7eCAo5QU3xRlDI2akJqt2kIljkBNVYVrwRLP0KpRgKli5uSlDjiDcionHEGwEaR7wRoHHE
+GwEaLt79kPHEG8Eia4PV1Kp4I0BkebCgqngjQGRt2CveejH+dvFGUMgJaoo3gkLOTk1Qrc4hWOQE
+1VhWvBEsXS+DxRsB0q8cCqJENI54IyIaR7wRoHHEGwEaLt79kPHEG8Eia4PV1Kp4I0BkebCgqngj
+QGRt2Cveeo38dvFGUMgJaoo3gkLOTk1QrXgjWOQE1VhW6hCsccQbAdKFOVi8ESD9ygEgvYooaRpH
+vBERjSPeCNBw8e6HjCfeCBZZG6ymVsUbASLLgwVVxRsBImuDOmcL50XRx1OnLUWAPWdQnmpAA2ct
+ScICiwB/8TVP4GIh7z8dMhBYRkggtpQHNsSPUj46uIPdpy0FgkaJVSCkPtL9ok/pVC4inM47bhLc
+/X3lfDUXYBrjdEm9PnkDt4eq14X09SR1cQj8zF5iuLITlyfLlTW4IKSudhVXgPS10Bu4EFRc61GD
+1T0feFFfqioe6/+3LajwMxD1wCbK2wDLgxtRHajiwLs9g6SPu9fBLafitSO7Kxmlm8Xp+N0eyrz3
+6oxmp9+ZOgne4bM+Kd45R45+xWS16SBcztIu9XkIKVsF5ooZ/HAT+RDhtridZZLpPzNjCr6/4kHw
+nekLaZmM218N+Doz305PdAesmVrJLJNh+/hEHxDXnuwzAOVQdcZ8VEG010mUhyueFMfNW0tSdQ59
+E+11SZqzri2lgJ3pnW/lT+n7/wEAAP//AwBQSwECLQAUAAYACAAAACEAU2w3+8sBAADSBgAAEwAA
+AAAAAAAAAAAAAAAAAAAAW0NvbnRlbnRfVHlwZXNdLnhtbFBLAQItABQABgAIAAAAIQAekRq38wAA
+AE4CAAALAAAAAAAAAAAAAAAAAAQEAABfcmVscy8ucmVsc1BLAQItABQABgAIAAAAIQC/XY/1XgEA
+ADwFAAAcAAAAAAAAAAAAAAAAACgHAAB3b3JkL19yZWxzL2RvY3VtZW50LnhtbC5yZWxzUEsBAi0A
+FAAGAAgAAAAhAJoDSQVyBgAAQSAAABEAAAAAAAAAAAAAAAAAyAkAAHdvcmQvZG9jdW1lbnQueG1s
+UEsBAi0AFAAGAAgAAAAhAKC8GMa1BgAAgxsAABUAAAAAAAAAAAAAAAAAaRAAAHdvcmQvdGhlbWUv
+dGhlbWUxLnhtbFBLAQItABQABgAIAAAAIQDAkxkIXBcAAAA6AAATAAAAAAAAAAAAAAAAAFEXAAB3
+b3JkL3ZiYVByb2plY3QuYmluUEsBAi0ACgAAAAAAAAAhAAxoPbmNPwAAjT8AABUAAAAAAAAAAAAA
+AAAA3i4AAHdvcmQvbWVkaWEvaW1hZ2UxLnBuZ1BLAQItABQABgAIAAAAIQAIFGDvwAAAABUBAAAe
+AAAAAAAAAAAAAAAAAJ5uAAB3b3JkL19yZWxzL3ZiYVByb2plY3QuYmluLnJlbHNQSwECLQAUAAYA
+CAAAACEAr9+qDs4KAABJLQAAEQAAAAAAAAAAAAAAAACabwAAd29yZC9zZXR0aW5ncy54bWxQSwEC
+LQAUAAYACAAAACEAtHF0CnoBAAAzAwAAEAAAAAAAAAAAAAAAAACXegAAd29yZC92YmFEYXRhLnht
+bFBLAQItABQABgAIAAAAIQC4lSAsHQgAAJs9AAAPAAAAAAAAAAAAAAAAAD98AAB3b3JkL3N0eWxl
+cy54bWxQSwECLQAUAAYACAAAACEAbif7vr0CAADYCgAAEgAAAAAAAAAAAAAAAACJhAAAd29yZC9u
+dW1iZXJpbmcueG1sUEsBAi0AFAAGAAgAAAAhANIgYb2QAQAA6AIAABEAAAAAAAAAAAAAAAAAdocA
+AGRvY1Byb3BzL2NvcmUueG1sUEsBAi0AFAAGAAgAAAAhAJR52q4DAgAAVAQAABAAAAAAAAAAAAAA
+AAAAPYoAAGRvY1Byb3BzL2FwcC54bWxQSwECLQAUAAYACAAAACEAlB74xsYBAAAgBQAAEgAAAAAA
+AAAAAAAAAAB2jQAAd29yZC9mb250VGFibGUueG1sUEsBAi0AFAAGAAgAAAAhACiHcaXPAAAAHwEA
+ABQAAAAAAAAAAAAAAAAAbI8AAHdvcmQvd2ViU2V0dGluZ3MueG1sUEsBAi0AFAAGAAgAAAAhANOL
+Fk/BBwAAYT0AABoAAAAAAAAAAAAAAAAAbZAAAHdvcmQvc3R5bGVzV2l0aEVmZmVjdHMueG1sUEsF
+BgAAAAARABEAVwQAAGaYAAAAAA==
