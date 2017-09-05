@@ -1,90 +1,99 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH 5/9] ext4: ext4_change_inode_journal_flag error handling
-Date: Tue,  5 Sep 2017 16:35:37 -0600
-Message-ID: <20170905223541.20594-6-ross.zwisler@linux.intel.com>
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [PATCH 1/9] ext4: remove duplicate extended attributes defs
+Date: Tue,  5 Sep 2017 16:35:33 -0600
+Message-ID: <20170905223541.20594-2-ross.zwisler@linux.intel.com>
 References: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20170905223541.20594-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Christoph Hellwig <hch@lst.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org,
+        linux-xfs@vger.kernel.org, Li Xi <lixi@ddn.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Dave Chinner <dchinner@redhat.com>
+To: Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga01.intel.com ([192.55.52.88]:31464 "EHLO mga01.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753979AbdIEWgQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 5 Sep 2017 18:36:16 -0400
+In-Reply-To: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Rework the error handling in ext4_change_inode_journal_flag() so that
-multiple paths can re-use portions of the same cleanup code via gotos
-instead of each path doing their own cleanup.  This will benefit later
-patches that add more paths to this function that must be unwound on error.
+The following commit:
 
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-CC: stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+commit 9b7365fc1c82 ("ext4: add FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
+interface support")
+
+added several defines related to extended attributes to ext4.h.  They were
+added within an #ifndef FS_IOC_FSGETXATTR block with the comment:
+
+/* Until the uapi changes get merged for project quota... */
+
+Those uapi changes were merged by this commit:
+
+commit 334e580a6f97 ("fs: XFS_IOC_FS[SG]SETXATTR to FS_IOC_FS[SG]ETXATTR
+promotion")
+
+so all the definitions needed by ext4 are available in
+include/uapi/linux/fs.h.  Remove the duplicates from ext4.h.
+
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Cc: Li Xi <lixi@ddn.com>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@dilger.ca>
+Cc: Jan Kara <jack@suse.cz>
+Cc: Dave Chinner <dchinner@redhat.com>
 ---
- fs/ext4/inode.c | 24 +++++++++++++-----------
- 1 file changed, 13 insertions(+), 11 deletions(-)
+ fs/ext4/ext4.h | 37 -------------------------------------
+ 1 file changed, 37 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 864fb94..d218991 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5953,11 +5953,8 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
- 	if (val) {
- 		down_write(&EXT4_I(inode)->i_mmap_sem);
- 		err = filemap_write_and_wait(inode->i_mapping);
--		if (err < 0) {
--			up_write(&EXT4_I(inode)->i_mmap_sem);
--			ext4_inode_resume_unlocked_dio(inode);
--			return err;
--		}
-+		if (err < 0)
-+			goto out_unlock;
- 	}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index a2bb7d2..c950278 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -644,43 +644,6 @@ enum {
+ #define EXT4_IOC_GET_ENCRYPTION_PWSALT	FS_IOC_GET_ENCRYPTION_PWSALT
+ #define EXT4_IOC_GET_ENCRYPTION_POLICY	FS_IOC_GET_ENCRYPTION_POLICY
  
- 	percpu_down_write(&sbi->s_journal_flag_rwsem);
-@@ -5975,12 +5972,8 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
- 		ext4_set_inode_flag(inode, EXT4_INODE_JOURNAL_DATA);
- 	else {
- 		err = jbd2_journal_flush(journal);
--		if (err < 0) {
--			jbd2_journal_unlock_updates(journal);
--			percpu_up_write(&sbi->s_journal_flag_rwsem);
--			ext4_inode_resume_unlocked_dio(inode);
--			return err;
--		}
-+		if (err < 0)
-+			goto out_journal_unlock;
- 		ext4_clear_inode_flag(inode, EXT4_INODE_JOURNAL_DATA);
- 	}
- 	ext4_set_aops(inode);
-@@ -6009,6 +6002,15 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
- 	ext4_std_error(inode->i_sb, err);
- 
- 	return err;
-+
-+out_journal_unlock:
-+	jbd2_journal_unlock_updates(journal);
-+	percpu_up_write(&sbi->s_journal_flag_rwsem);
-+out_unlock:
-+	if (val)
-+		up_write(&EXT4_I(inode)->i_mmap_sem);
-+	ext4_inode_resume_unlocked_dio(inode);
-+	return err;
- }
- 
- static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
--- 
-2.9.5
+-#ifndef FS_IOC_FSGETXATTR
+-/* Until the uapi changes get merged for project quota... */
+-
+-#define FS_IOC_FSGETXATTR		_IOR('X', 31, struct fsxattr)
+-#define FS_IOC_FSSETXATTR		_IOW('X', 32, struct fsxattr)
+-
+-/*
+- * Structure for FS_IOC_FSGETXATTR and FS_IOC_FSSETXATTR.
+- */
+-struct fsxattr {
+-	__u32		fsx_xflags;	/* xflags field value (get/set) */
+-	__u32		fsx_extsize;	/* extsize field value (get/set)*/
+-	__u32		fsx_nextents;	/* nextents field value (get)	*/
+-	__u32		fsx_projid;	/* project identifier (get/set) */
+-	unsigned char	fsx_pad[12];
+-};
+-
+-/*
+- * Flags for the fsx_xflags field
+- */
+-#define FS_XFLAG_REALTIME	0x00000001	/* data in realtime volume */
+-#define FS_XFLAG_PREALLOC	0x00000002	/* preallocated file extents */
+-#define FS_XFLAG_IMMUTABLE	0x00000008	/* file cannot be modified */
+-#define FS_XFLAG_APPEND		0x00000010	/* all writes append */
+-#define FS_XFLAG_SYNC		0x00000020	/* all writes synchronous */
+-#define FS_XFLAG_NOATIME	0x00000040	/* do not update access time */
+-#define FS_XFLAG_NODUMP		0x00000080	/* do not include in backups */
+-#define FS_XFLAG_RTINHERIT	0x00000100	/* create with rt bit set */
+-#define FS_XFLAG_PROJINHERIT	0x00000200	/* create with parents projid */
+-#define FS_XFLAG_NOSYMLINKS	0x00000400	/* disallow symlink creation */
+-#define FS_XFLAG_EXTSIZE	0x00000800	/* extent size allocator hint */
+-#define FS_XFLAG_EXTSZINHERIT	0x00001000	/* inherit inode extent size */
+-#define FS_XFLAG_NODEFRAG	0x00002000  	/* do not defragment */
+-#define FS_XFLAG_FILESTREAM	0x00004000	/* use filestream allocator */
+-#define FS_XFLAG_HASATTR	0x80000000	/* no DIFLAG for this */
+-#endif /* !defined(FS_IOC_FSGETXATTR) */
