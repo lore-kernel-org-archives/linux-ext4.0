@@ -1,18 +1,20 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH 0/9] add ext4 per-inode DAX flag
-Date: Tue,  5 Sep 2017 16:35:32 -0600
-Message-ID: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
+Subject: [PATCH 8/9] ext4: add sanity check for encryption + DAX
+Date: Tue,  5 Sep 2017 16:35:40 -0600
+Message-ID: <20170905223541.20594-9-ross.zwisler@linux.intel.com>
+References: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
  Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+ stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
 To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
 	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170905223541.20594-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -24,35 +26,60 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-The original intent of this series was to add a per-inode DAX flag to ext4
-so that it would be consistent with XFS.  In my travels I found and fixed
-several related issues in both ext4 and XFS.
+We prevent DAX from being used on inodes which are using ext4's built in
+encryption via a check in ext4_should_use_dax().  We do have what appears
+to be an unsafe transition of S_DAX in ext4_set_context(), though, where
+S_DAX can get disabled without us doing a proper writeback + invalidate.
 
-I'm not fully happy with the ways that ext4 DAX interacts with conflicting
-features (journaling, inline data and encryption).  My goal with this
-series was to make all these interactions as consistent as possilble, and
-of course to make them safe.  If anyone has ideas for improvements, I'm
-very open.
+I actually think we are safe in this case because of the following:
 
-Ross Zwisler (9):
-  ext4: remove duplicate extended attributes defs
-  xfs: always use DAX if mount option is used
-  xfs: validate bdev support for DAX inode flag
-  ext4: add ext4_should_use_dax()
-  ext4: ext4_change_inode_journal_flag error handling
-  ext4: safely transition S_DAX on journaling changes
-  ext4: prevent data corruption with inline data + DAX
-  ext4: add sanity check for encryption + DAX
-  ext4: add per-inode DAX flag
+1) You can't encrypt an existing file.  Encryption can only be set on an
+empty directory, with new inodes in that directory being created with
+encryption turned on, so I don't think it's possible to turn encryption on
+for a file that has open DAX mmaps or outstanding I/Os.
 
- fs/ext4/ext4.h      | 47 ++++++---------------------------------------
- fs/ext4/ext4_jbd2.h | 16 ++++++++++++++++
- fs/ext4/inline.c    | 10 ----------
- fs/ext4/inode.c     | 45 ++++++++++++++++++++++++-------------------
- fs/ext4/ioctl.c     | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/ext4/super.c     |  8 ++++++++
- fs/xfs/xfs_ioctl.c  | 14 +++++++++++---
- 7 files changed, 119 insertions(+), 76 deletions(-)
+2) There is no way to turn encryption off on a given file.  Once an inode
+is encrypted, it stays encrypted for the life of that inode, so we don't
+have to worry about the case where we turn encryption off and S_DAX
+suddenly turns on.
 
+3) The only way we end up in ext4_set_context() to turn on encryption is
+when we are creating a new file in the encrypted directory.  This happens
+as part of ext4_create() before the inode has been allowed to do any I/O.
+Here's the call tree:
+
+ ext4_create()
+   __ext4_new_inode()
+	 ext4_set_inode_flags() // sets S_DAX
+	 fscrypt_inherit_context()
+		fscrypt_get_encryption_info();
+		ext4_set_context() // sets EXT4_INODE_ENCRYPT, clears S_DAX
+
+So, I actually think it's safe to transition S_DAX in ext4_set_context()
+without any locking, writebacks or invalidations.  I've added a
+WARN_ON_ONCE() sanity check to make sure that we are notified if we ever
+encounter a case where we are encrypting an inode that already has data,
+in which case we need to add code to safely transition S_DAX.
+
+Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+CC: stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+---
+ fs/ext4/super.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d549dfb..6604a18 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1159,6 +1159,9 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
+ 	if (inode->i_ino == EXT4_ROOT_INO)
+ 		return -EPERM;
+ 
++	if (WARN_ON_ONCE(IS_DAX(inode) && i_size_read(inode)))
++		return -EINVAL;
++
+ 	res = ext4_convert_inline_data(inode);
+ 	if (res)
+ 		return res;
 -- 
 2.9.5
