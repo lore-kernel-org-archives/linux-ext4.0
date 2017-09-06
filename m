@@ -1,20 +1,22 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH 7/9] ext4: prevent data corruption with inline data + DAX
-Date: Tue,  5 Sep 2017 16:35:39 -0600
-Message-ID: <20170905223541.20594-8-ross.zwisler@linux.intel.com>
+From: Eric Sandeen <esandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH 0/9] add ext4 per-inode DAX flag
+Date: Tue, 5 Sep 2017 21:12:35 -0500
+Message-ID: <f856f8fd-3697-adb1-198b-a9ae2fce405f@redhat.com>
 References: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
+Reply-To: sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 In-Reply-To: <20170905223541.20594-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Content-Language: en-US
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -26,102 +28,47 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-If an inode has inline data it is currently prevented from using DAX by a
-check in ext4_should_use_dax().  When the inode grows inline data via
-ext4_create_inline_data() or removes its inline data via
-ext4_destroy_inline_data_nolock(), the value of S_DAX can change.
+On 9/5/17 5:35 PM, Ross Zwisler wrote:
+> The original intent of this series was to add a per-inode DAX flag to ext4
+> so that it would be consistent with XFS.  In my travels I found and fixed
+> several related issues in both ext4 and XFS.
 
-Currently these changes are unsafe because we don't hold off page faults
-and I/O, write back dirty radix tree entries and invalidate all mappings.
-This work is done in XFS via xfs_ioctl_setattr_dax_invalidate(), for
-example.  This unsafe transitioning of S_DAX could potentially lead to data
-corruption.
+Hi Ross -
 
-Fix this issue by preventing the DAX mount option from being used on
-filesystems that were created to support inline data.  Inline data is an
-option given to mkfs.ext4.
+hch had a lot of reasons to nuke the dax flag from orbit, and we just
+/disabled/ it in xfs due to its habit of crashing the kernel...
+so a couple questions:
 
-We prevent DAX from being used with inline data as opposed to trying to
-safely manage the transition of S_DAX because of the locking complexities:
+1) does this series pass hch's "test the per-inode DAX flag" fstest?
+2) do we have an agreement that we need this flag at all, or is this
+   just a parity item because xfs has^whad a per-inode flag?
 
-1) filemap_write_and_wait() eventually calls ext4_writepages(), which
-acquires the sbi->s_journal_flag_rwsem.  This lock ranks above the
-jbdw_handle which is eventually taken by ext4_journal_start().  This
-essentially means that the writeback has to happen outside of the context
-of an active journal handle (outside of ext4_journal_start() to
-ext4_journal_stop().)
+Thanks,
+-Eric
 
-2) To lock out page faults we take a write lock on the ei->i_mmap_sem, and
-this lock again ranks above the jbd2_handle taken by ext4_journal_start().
-So, as with the writeback code in 1) above we have to take ei->i_mmap_sem
-outside of the context of an active journal handle.
-
-We are able to work around both of these restrictions and safely transition
-S_DAX when we change the journaling mode, but for inline data it's much
-harder because each of ext4_create_inline_data() and
-ext4_destroy_inline_data_nolock() are passed in journal handles that have
-already been started.
-
-To be able to safely writeback and invalidate our dirty inode data we'd
-either need to uplevel the locking, writeback and invalidate into all the
-callers of those two functions, or we'd need to stop our current journal
-handle, do the appropriate locking, writeback and invalidate, unlock and
-restart the journal handle.
-
-These both seem too complex, and I don't know if we have a valid use case
-where we need to combine a filesystem with inline data and DAX, so just
-prevent them from being used together.
-
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-CC: stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
----
- fs/ext4/inline.c | 10 ----------
- fs/ext4/super.c  |  5 +++++
- 2 files changed, 5 insertions(+), 10 deletions(-)
-
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 28c5c3a..fd95019 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -302,11 +302,6 @@ static int ext4_create_inline_data(handle_t *handle,
- 	EXT4_I(inode)->i_inline_size = len + EXT4_MIN_INLINE_DATA_SIZE;
- 	ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
- 	ext4_set_inode_flag(inode, EXT4_INODE_INLINE_DATA);
--	/*
--	 * Propagate changes to inode->i_flags as well - e.g. S_DAX may
--	 * get cleared
--	 */
--	ext4_set_inode_flags(inode);
- 	get_bh(is.iloc.bh);
- 	error = ext4_mark_iloc_dirty(handle, inode, &is.iloc);
- 
-@@ -451,11 +446,6 @@ static int ext4_destroy_inline_data_nolock(handle_t *handle,
- 		}
- 	}
- 	ext4_clear_inode_flag(inode, EXT4_INODE_INLINE_DATA);
--	/*
--	 * Propagate changes to inode->i_flags as well - e.g. S_DAX may
--	 * get set.
--	 */
--	ext4_set_inode_flags(inode);
- 
- 	get_bh(is.iloc.bh);
- 	error = ext4_mark_iloc_dirty(handle, inode, &is.iloc);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d61a70e2..d549dfb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3686,6 +3686,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	}
- 
- 	if (sbi->s_mount_opt & EXT4_MOUNT_DAX) {
-+		if (ext4_has_feature_inline_data(sb)) {
-+			ext4_msg(sb, KERN_ERR, "Cannot use DAX on a filesystem"
-+					" that may contain inline data");
-+			goto failed_mount;
-+		}
- 		err = bdev_dax_supported(sb, blocksize);
- 		if (err)
- 			goto failed_mount;
--- 
-2.9.5
+> I'm not fully happy with the ways that ext4 DAX interacts with conflicting
+> features (journaling, inline data and encryption).  My goal with this
+> series was to make all these interactions as consistent as possilble, and
+> of course to make them safe.  If anyone has ideas for improvements, I'm
+> very open.
+> 
+> Ross Zwisler (9):
+>   ext4: remove duplicate extended attributes defs
+>   xfs: always use DAX if mount option is used
+>   xfs: validate bdev support for DAX inode flag
+>   ext4: add ext4_should_use_dax()
+>   ext4: ext4_change_inode_journal_flag error handling
+>   ext4: safely transition S_DAX on journaling changes
+>   ext4: prevent data corruption with inline data + DAX
+>   ext4: add sanity check for encryption + DAX
+>   ext4: add per-inode DAX flag
+> 
+>  fs/ext4/ext4.h      | 47 ++++++---------------------------------------
+>  fs/ext4/ext4_jbd2.h | 16 ++++++++++++++++
+>  fs/ext4/inline.c    | 10 ----------
+>  fs/ext4/inode.c     | 45 ++++++++++++++++++++++++-------------------
+>  fs/ext4/ioctl.c     | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++--
+>  fs/ext4/super.c     |  8 ++++++++
+>  fs/xfs/xfs_ioctl.c  | 14 +++++++++++---
+>  7 files changed, 119 insertions(+), 76 deletions(-)
+> 
