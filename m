@@ -1,74 +1,117 @@
-From: Eric Sandeen <esandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH 0/9] add ext4 per-inode DAX flag
-Date: Tue, 5 Sep 2017 21:12:35 -0500
-Message-ID: <f856f8fd-3697-adb1-198b-a9ae2fce405f@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/9] ext4: remove duplicate extended attributes defs
+Date: Wed, 6 Sep 2017 09:29:24 +0200
+Message-ID: <20170906072924.GA27916@quack2.suse.cz>
 References: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
-Reply-To: sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
+ <20170905223541.20594-2-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20170905223541.20594-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Content-Language: en-US
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Christoph Hellwig <hch@lst.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org,
+        linux-xfs@vger.kernel.org, Li Xi <lixi@ddn.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Dave Chinner <dchinner@redhat.com>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170905223541.20594-2-ross.zwisler@linux.intel.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 9/5/17 5:35 PM, Ross Zwisler wrote:
-> The original intent of this series was to add a per-inode DAX flag to ext4
-> so that it would be consistent with XFS.  In my travels I found and fixed
-> several related issues in both ext4 and XFS.
-
-Hi Ross -
-
-hch had a lot of reasons to nuke the dax flag from orbit, and we just
-/disabled/ it in xfs due to its habit of crashing the kernel...
-so a couple questions:
-
-1) does this series pass hch's "test the per-inode DAX flag" fstest?
-2) do we have an agreement that we need this flag at all, or is this
-   just a parity item because xfs has^whad a per-inode flag?
-
-Thanks,
--Eric
-
-> I'm not fully happy with the ways that ext4 DAX interacts with conflicting
-> features (journaling, inline data and encryption).  My goal with this
-> series was to make all these interactions as consistent as possilble, and
-> of course to make them safe.  If anyone has ideas for improvements, I'm
-> very open.
+On Tue 05-09-17 16:35:33, Ross Zwisler wrote:
+> The following commit:
 > 
-> Ross Zwisler (9):
->   ext4: remove duplicate extended attributes defs
->   xfs: always use DAX if mount option is used
->   xfs: validate bdev support for DAX inode flag
->   ext4: add ext4_should_use_dax()
->   ext4: ext4_change_inode_journal_flag error handling
->   ext4: safely transition S_DAX on journaling changes
->   ext4: prevent data corruption with inline data + DAX
->   ext4: add sanity check for encryption + DAX
->   ext4: add per-inode DAX flag
+> commit 9b7365fc1c82 ("ext4: add FS_IOC_FSSETXATTR/FS_IOC_FSGETXATTR
+> interface support")
 > 
->  fs/ext4/ext4.h      | 47 ++++++---------------------------------------
->  fs/ext4/ext4_jbd2.h | 16 ++++++++++++++++
->  fs/ext4/inline.c    | 10 ----------
->  fs/ext4/inode.c     | 45 ++++++++++++++++++++++++-------------------
->  fs/ext4/ioctl.c     | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++--
->  fs/ext4/super.c     |  8 ++++++++
->  fs/xfs/xfs_ioctl.c  | 14 +++++++++++---
->  7 files changed, 119 insertions(+), 76 deletions(-)
+> added several defines related to extended attributes to ext4.h.  They were
+> added within an #ifndef FS_IOC_FSGETXATTR block with the comment:
 > 
+> /* Until the uapi changes get merged for project quota... */
+> 
+> Those uapi changes were merged by this commit:
+> 
+> commit 334e580a6f97 ("fs: XFS_IOC_FS[SG]SETXATTR to FS_IOC_FS[SG]ETXATTR
+> promotion")
+> 
+> so all the definitions needed by ext4 are available in
+> include/uapi/linux/fs.h.  Remove the duplicates from ext4.h.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> Cc: Li Xi <lixi@ddn.com>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Cc: Andreas Dilger <adilger@dilger.ca>
+> Cc: Jan Kara <jack@suse.cz>
+> Cc: Dave Chinner <dchinner@redhat.com>
+
+Yeah, good cleanup. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/ext4/ext4.h | 37 -------------------------------------
+>  1 file changed, 37 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index a2bb7d2..c950278 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -644,43 +644,6 @@ enum {
+>  #define EXT4_IOC_GET_ENCRYPTION_PWSALT	FS_IOC_GET_ENCRYPTION_PWSALT
+>  #define EXT4_IOC_GET_ENCRYPTION_POLICY	FS_IOC_GET_ENCRYPTION_POLICY
+>  
+> -#ifndef FS_IOC_FSGETXATTR
+> -/* Until the uapi changes get merged for project quota... */
+> -
+> -#define FS_IOC_FSGETXATTR		_IOR('X', 31, struct fsxattr)
+> -#define FS_IOC_FSSETXATTR		_IOW('X', 32, struct fsxattr)
+> -
+> -/*
+> - * Structure for FS_IOC_FSGETXATTR and FS_IOC_FSSETXATTR.
+> - */
+> -struct fsxattr {
+> -	__u32		fsx_xflags;	/* xflags field value (get/set) */
+> -	__u32		fsx_extsize;	/* extsize field value (get/set)*/
+> -	__u32		fsx_nextents;	/* nextents field value (get)	*/
+> -	__u32		fsx_projid;	/* project identifier (get/set) */
+> -	unsigned char	fsx_pad[12];
+> -};
+> -
+> -/*
+> - * Flags for the fsx_xflags field
+> - */
+> -#define FS_XFLAG_REALTIME	0x00000001	/* data in realtime volume */
+> -#define FS_XFLAG_PREALLOC	0x00000002	/* preallocated file extents */
+> -#define FS_XFLAG_IMMUTABLE	0x00000008	/* file cannot be modified */
+> -#define FS_XFLAG_APPEND		0x00000010	/* all writes append */
+> -#define FS_XFLAG_SYNC		0x00000020	/* all writes synchronous */
+> -#define FS_XFLAG_NOATIME	0x00000040	/* do not update access time */
+> -#define FS_XFLAG_NODUMP		0x00000080	/* do not include in backups */
+> -#define FS_XFLAG_RTINHERIT	0x00000100	/* create with rt bit set */
+> -#define FS_XFLAG_PROJINHERIT	0x00000200	/* create with parents projid */
+> -#define FS_XFLAG_NOSYMLINKS	0x00000400	/* disallow symlink creation */
+> -#define FS_XFLAG_EXTSIZE	0x00000800	/* extent size allocator hint */
+> -#define FS_XFLAG_EXTSZINHERIT	0x00001000	/* inherit inode extent size */
+> -#define FS_XFLAG_NODEFRAG	0x00002000  	/* do not defragment */
+> -#define FS_XFLAG_FILESTREAM	0x00004000	/* use filestream allocator */
+> -#define FS_XFLAG_HASATTR	0x80000000	/* no DIFLAG for this */
+> -#endif /* !defined(FS_IOC_FSGETXATTR) */
+> -
+>  #define EXT4_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
+>  #define EXT4_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
+>  
+> -- 
+> 2.9.5
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
