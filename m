@@ -1,66 +1,108 @@
-From: Wolfgang Walter <linux@stwm.de>
-Subject: Re: JBD2: Spotted dirty metadata buffer....
-Date: Wed, 06 Sep 2017 14:46:48 +0200
-Message-ID: <14919146.PgSzFZYKi6@stwm.de>
-References: <1744886.OgPgGFoXj7@stwm.de> <6EBBE85C-8A87-4D8B-9897-3D67D4B6D732@dilger.ca> <10283498.RxsF1TCk0q@stwm.de>
+From: Ruoxin Jiang <rj2394@columbia.edu>
+Subject: Ext4 Bug Report
+Date: Wed, 6 Sep 2017 11:58:19 -0400
+Message-ID: <CAFzqJcYcZHFzSJEGKrjHy3HgwDfiDHg5_wbj6GM7g+4sFPZkDQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: 8BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <10283498.RxsF1TCk0q@stwm.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed; boundary="001a11444ab2a9fbe505588769c8"
+Cc: Suman Jana <sumanj@gmail.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from outprodmail01.cc.columbia.edu ([128.59.72.39]:38908 "EHLO
+        outprodmail01.cc.columbia.edu" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S932157AbdIFQOe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Sep 2017 12:14:34 -0400
+Received: from hazelnut (hazelnut.cc.columbia.edu [128.59.213.250])
+        by outprodmail01.cc.columbia.edu (8.14.4/8.14.4) with ESMTP id v86Fu8bv036275
+        for <linux-ext4@vger.kernel.org>; Wed, 6 Sep 2017 11:58:21 -0400
+Received: from hazelnut (localhost.localdomain [127.0.0.1])
+        by hazelnut (Postfix) with ESMTP id DD6BE6D
+        for <linux-ext4@vger.kernel.org>; Wed,  6 Sep 2017 11:58:21 -0400 (EDT)
+Received: from sendprodmail04.cc.columbia.edu (sendprodmail04.cc.columbia.edu [128.59.72.16])
+        by hazelnut (Postfix) with ESMTP id BDE967E
+        for <linux-ext4@vger.kernel.org>; Wed,  6 Sep 2017 11:58:21 -0400 (EDT)
+Received: from mail-wr0-f197.google.com (mail-wr0-f197.google.com [209.85.128.197])
+        by sendprodmail04.cc.columbia.edu (8.14.4/8.14.4) with ESMTP id v86FwL1s058982
+        (version=TLSv1/SSLv3 cipher=AES128-GCM-SHA256 bits=128 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Wed, 6 Sep 2017 11:58:21 -0400
+Received: by mail-wr0-f197.google.com with SMTP id w12so7930753wrc.2
+        for <linux-ext4@vger.kernel.org>; Wed, 06 Sep 2017 08:58:21 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Am Montag, 28. November 2016, 12:26:38 schrieb Wolfgang Walter:
-> Am Mittwoch, 23. November 2016, 16:40:07 schrieb Andreas Dilger:
-> > On Nov 23, 2016, at 3:43 AM, Wolfgang Walter <linux@stwm.de> wrote:
-> > > Am Dienstag, 22. November 2016, 16:02:53 schrieben Sie:
-> > >> On Nov 22, 2016, at 6:56 AM, Wolfgang Walter <linux@stwm.de> wrote:
-> > >>> Am Montag, 21. November 2016, 17:49:36 schrieben Sie:
-> > >>>> On Nov 21, 2016, at 8:28 AM, Wolfgang Walter <linux@stwm.de> wrote:
-> > >>>>> Hello,
-> 
-> [snip]
-> 
-> > Stepping back a bit - does this problem only happen with an external
-> > journal device, or does it also happen with an internal journal?
-> > 
-> 
-> So I tried that this weekend. I got again these messages 
-> 
-> JBD2: Spotted dirty metadata buffer (dev = dm-22, blocknr = 241763277). There's a risk of filesystem corruption in case of system crash.
-> 
-> So this also happens with an internal journal.
-> 
+--001a11444ab2a9fbe505588769c8
+Content-Type: text/plain; charset="UTF-8"
 
-[snip]
+Hello,
 
-I last tried with 4.9.46 and I still see that problem when rsyncing data to the filesystem: errors similar to
+We are researchers from Columbia University, New York. As part of our
+current research we have found some semantic discrepancies between
+ext4 and the POSIX specification/other popular filesystems.
 
-JBD2: Spotted dirty metadata buffer (dev = dm-25, blocknr = 1008028301). There's a risk of filesystem corruption in case of system 
+We have attached two cases. The first one involves a direct access
+read starting from file EOF. Ext4 behavior in this case seems to
+violate the POSIX standard. In directory 2, we discovered that ext4
+and other popular filesystems (xfs/btrfs/f2fs) return different error
+codes for the same lseek syscall.
 
-A later filesystem check does not show any errors.
+In each directory, you will find a Readme describing the issue and
+pointing to the code that may cause the problem. For your convenience,
+we also included test programs (min.cpp) and instructions in Readme to
+help reproduce the issues.
 
+We would appreciate very much if you could confirm the
+two cases at your conveniences.
 
-With 4.9.46 stable kernels I also sometimes get the following error:
+Thanks,
+Amy
 
-EXT4-fs error (device dm-25): ext4_iget:4501: inode #74061557: comm rsync: checksum invalid
-or
-EXT4-fs error (device dm-25): ext4_iget:4501: inode #155844677: comm nfsd: checksum invalid
+--001a11444ab2a9fbe505588769c8
+Content-Type: application/x-gzip; name="ext4_issues.tar.gz"
+Content-Disposition: attachment; filename="ext4_issues.tar.gz"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_j7977phf0
 
-A filesystem check then says that the inode itselfs seems ok but the checksum is indeed wrong.
-
-As these inodes are inodes of very small files.
-
-So I finally copied all away and reinitialized the filesystem. But this time without -O inline_data
-
-Since then all works fine. So I assume there is a proplem with inodes and inline-data (at least until 4.9.46), maybe only with data=journal.
-
-Regards,
--- 
-Wolfgang Walter
-Studentenwerk München
-Anstalt des öffentlichen Rechts
+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
+/RdJHTcEADoAAA==
+--001a11444ab2a9fbe505588769c8--
