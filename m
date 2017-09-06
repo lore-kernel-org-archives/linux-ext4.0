@@ -1,117 +1,111 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH 6/9] ext4: safely transition S_DAX on journaling changes
-Date: Wed, 6 Sep 2017 11:09:46 -0600
-Message-ID: <20170906170946.GC17663@linux.intel.com>
-References: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
- <20170905223541.20594-7-ross.zwisler@linux.intel.com>
- <20170906094700.GC27916@quack2.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170906094700.GC27916-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: JBD2: Spotted dirty metadata buffer....
+Date: Wed, 6 Sep 2017 12:07:11 -0600
+Message-ID: <77A4A0E4-C85C-4A9A-AB20-78754F95FEEC@dilger.ca>
+References: <1744886.OgPgGFoXj7@stwm.de>
+ <6EBBE85C-8A87-4D8B-9897-3D67D4B6D732@dilger.ca>
+ <10283498.RxsF1TCk0q@stwm.de> <14919146.PgSzFZYKi6@stwm.de>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_9843D89D-7F06-44CE-B0E0-78292E7E0D0A";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>
+To: Wolfgang Walter <linux@stwm.de>, Tao Ma <boyu.mt@taobao.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <14919146.PgSzFZYKi6@stwm.de>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 06, 2017 at 11:47:00AM +0200, Jan Kara wrote:
-> On Tue 05-09-17 16:35:38, Ross Zwisler wrote:
-> > The IOCTL path which switches the journaling mode for an inode is currently
-> > unsafe because it doesn't properly do a writeback and invalidation on the
-> > inode.  In XFS, for example, safe transitions of S_DAX are handled by
-> > xfs_ioctl_setattr_dax_invalidate() which locks out page faults and I/O,
-> > does a writeback via filemap_write_and_wait() and an invalidation via
-> > invalidate_inode_pages2().
-> > 
-> > Without this in place we can see the following kernel warning when we try
-> > and insert a DAX exceptional entry but find that a dirty page cache page is
-> > still in the mapping->radix_tree:
-> > 
-> >  WARNING: CPU: 4 PID: 1052 at mm/filemap.c:262 __delete_from_page_cache+0x375/0x550
-> >  Modules linked in: dax_pmem nd_pmem device_dax nd_btt nfit libnvdimm
-> >  CPU: 4 PID: 1052 Comm: small Not tainted 4.13.0-rc6-00055-gac26931 #3
-> >  Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.9.3-1.fc25 04/01/2014
-> >  task: ffff88020ccd0000 task.stack: ffffc900021d4000
-> >  RIP: 0010:__delete_from_page_cache+0x375/0x550
-> >  RSP: 0000:ffffc900021d7b90 EFLAGS: 00010002
-> >  RAX: 002fffc00001123d RBX: ffffffffffffffff RCX: ffff8801d9440d68
-> >  RDX: 0000000000000000 RSI: ffffffff81fd5b84 RDI: ffffffff81f6f0e5
-> >  RBP: ffffc900021d7be0 R08: 0000000000000000 R09: ffff8801f9938c70
-> >  R10: 0000000000000021 R11: ffff8801f9938c91 R12: ffff8801d9440d70
-> >  R13: ffffea0007fdda80 R14: 0000000000000001 R15: ffff8801d9440d68
-> >  FS:  00007feacc041700(0000) GS:ffff880211800000(0000) knlGS:0000000000000000
-> >  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> >  CR2: 0000000010420000 CR3: 000000020cfd8000 CR4: 00000000000006e0
-> >  Call Trace:
-> >   dax_insert_mapping_entry+0x158/0x2c0
-> >   dax_iomap_fault+0x1020/0x1bb0
-> >   ext4_dax_huge_fault+0xc8/0x160
-> >   ext4_dax_fault+0x10/0x20
-> >   __do_fault+0x20/0x110
-> >   __handle_mm_fault+0x97d/0x1120
-> >   handle_mm_fault+0x188/0x2f0
-> >   __do_page_fault+0x28f/0x590
-> >   trace_do_page_fault+0x58/0x2c0
-> >   do_async_page_fault+0x2c/0x90
-> >   async_page_fault+0x28/0x30
-> > 
-> > I'm pretty sure we could make a test that shows userspace visible data
-> > corruption as well in this scenario.
-> > 
-> > Make it safe to change the journaling mode and turn on or off S_DAX by
-> > adding locking to properly lock out page faults (i_mmap_sem) and then doing
-> > the writeback and invalidate.  I/O is already held off because all callers
-> > of ext4_ioctl_setflags() hold the inode lock.
-> 
-> Yeah, this is a good point. It is just that this is not enough as I
-> discovered in [1]. You also need to tear down & recreate VMAs when changing
-> DAX flag which is a bit tricky. So for now I think returning EBUSY when
-> file is mmaped and we'd like to flip DAX flag is the best solution. Hmm?
-> 
-> [1] https://www.spinics.net/lists/linux-xfs/msg09859.html
 
-Yea, thanks for the link, I totally missed this discussion (obviously). 
+--Apple-Mail=_9843D89D-7F06-44CE-B0E0-78292E7E0D0A
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Cool, I'll rework this for v2.
+On Sep 6, 2017, at 6:46 AM, Wolfgang Walter <linux@stwm.de> wrote:
+>=20
+> Am Montag, 28. November 2016, 12:26:38 schrieb Wolfgang Walter:
+>> Am Mittwoch, 23. November 2016, 16:40:07 schrieb Andreas Dilger:
+>>> Stepping back a bit - does this problem only happen with an external
+>>> journal device, or does it also happen with an internal journal?
+>>=20
+>> So I tried that this weekend. I got again these messages
+>>=20
+>> JBD2: Spotted dirty metadata buffer (dev =3D dm-22, blocknr =3D =
+241763277). There's a risk of filesystem corruption in case of system =
+crash.
+>>=20
+>> So this also happens with an internal journal.
+>>=20
+>=20
+> [snip]
+>=20
+> I last tried with 4.9.46 and I still see that problem when rsyncing =
+data to the filesystem: errors similar to
+>=20
+> JBD2: Spotted dirty metadata buffer (dev =3D dm-25, blocknr =3D =
+1008028301). There's a risk of filesystem corruption in case of system =
+crash.
+>=20
+> A later filesystem check does not show any errors.
+>=20
+>=20
+> With 4.9.46 stable kernels I also sometimes get the following error:
+>=20
+> EXT4-fs error (device dm-25): ext4_iget:4501: inode #74061557: comm =
+rsync: checksum invalid
+> or
+> EXT4-fs error (device dm-25): ext4_iget:4501: inode #155844677: comm =
+nfsd: checksum invalid
+>=20
+> A filesystem check then says that the inode itselfs seems ok but the =
+checksum is indeed wrong.
+>=20
+> As these inodes are inodes of very small files.
+>=20
+> So I finally copied all away and reinitialized the filesystem. But =
+this time without -O inline_data
+>=20
+> Since then all works fine. So I assume there is a proplem with inodes =
+and inline-data (at least until 4.9.46), maybe only with data=3Djournal.
 
-> > The locking for this new code is complex because of the following:
-> > 
-> > 1) filemap_write_and_wait() eventually calls ext4_writepages(), which
-> > acquires the sbi->s_journal_flag_rwsem.  This lock ranks above the
-> > jbdw_handle which is eventually taken by ext4_journal_start().  This
-> > essentially means that the writeback has to happen outside of the context
-> > of an active journal handle (outside of ext4_journal_start() to
-> > ext4_journal_stop().)
-> > 
-> > 2) To lock out page faults we take a write lock on the ei->i_mmap_sem, and
-> > this lock again ranks above the jbd2_handle taken by ext4_journal_start().
-> > So, as with the writeback code in 1) above we have to take ei->i_mmap_sem
-> > outside of the context of an active journal handle.
-> 
-> Welcome to the joy of fs locking ;)
+Add Tao Ma, since he is the original inline data author, and it appears =
+that Taobao
+is using this feature so are probably interested in fixing any =
+corruption.
 
-:)  Well, I feel like I learned a lot more about ext4 during this patch set!
+Wolfgang, it would be useful if you could figure out what type of block =
+the reported
+blocknr=3D1008028301 is.  You can use "debugfs -c -R 'icheck 1008028301' =
+/dev/dm-25".
+I'd suspect, given that this is an inline data problem, that this is an =
+inode table
+block, but it is good to be sure.  It would also be useful to see if =
+this inode
+number correlates to one of the inodes that have bad checksums.
 
-> > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> > CC: stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> 
-> 								Honza
-> 
-> -- 
-> Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-> SUSE Labs, CR
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_9843D89D-7F06-44CE-B0E0-78292E7E0D0A
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZsDlPpIg59Q01vtYRAhbxAJ9uox29/P02R+YcftUIZttWHKe4jgCg2/za
+EGh5FbLK+x55eApz5Xhmoqo=
+=+Rgv
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_9843D89D-7F06-44CE-B0E0-78292E7E0D0A--
