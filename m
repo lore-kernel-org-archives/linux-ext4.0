@@ -1,111 +1,86 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: JBD2: Spotted dirty metadata buffer....
-Date: Wed, 6 Sep 2017 12:07:11 -0600
-Message-ID: <77A4A0E4-C85C-4A9A-AB20-78754F95FEEC@dilger.ca>
-References: <1744886.OgPgGFoXj7@stwm.de>
- <6EBBE85C-8A87-4D8B-9897-3D67D4B6D732@dilger.ca>
- <10283498.RxsF1TCk0q@stwm.de> <14919146.PgSzFZYKi6@stwm.de>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_9843D89D-7F06-44CE-B0E0-78292E7E0D0A";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>
-To: Wolfgang Walter <linux@stwm.de>, Tao Ma <boyu.mt@taobao.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <14919146.PgSzFZYKi6@stwm.de>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Ext4 Bug Report
+Date: Wed, 6 Sep 2017 15:28:15 -0400
+Message-ID: <20170906192815.orfe2pr6vkakix6u@thunk.org>
+References: <CAFzqJcYcZHFzSJEGKrjHy3HgwDfiDHg5_wbj6GM7g+4sFPZkDQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Suman Jana <sumanj@gmail.com>
+To: Ruoxin Jiang <rj2394@columbia.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:34834 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752255AbdIFT2S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 6 Sep 2017 15:28:18 -0400
+Content-Disposition: inline
+In-Reply-To: <CAFzqJcYcZHFzSJEGKrjHy3HgwDfiDHg5_wbj6GM7g+4sFPZkDQ@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Sep 06, 2017 at 11:58:19AM -0400, Ruoxin Jiang wrote:
+> 
+> We are researchers from Columbia University, New York. As part of our
+> current research we have found some semantic discrepancies between
+> ext4 and the POSIX specification/other popular filesystems.
+> 
+> We have attached two cases. The first one involves a direct access
+> read starting from file EOF. Ext4 behavior in this case seems to
+> violate the POSIX standard. In directory 2, we discovered that ext4
+> and other popular filesystems (xfs/btrfs/f2fs) return different error
+> codes for the same lseek syscall.
 
---Apple-Mail=_9843D89D-7F06-44CE-B0E0-78292E7E0D0A
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Hi,
 
-On Sep 6, 2017, at 6:46 AM, Wolfgang Walter <linux@stwm.de> wrote:
->=20
-> Am Montag, 28. November 2016, 12:26:38 schrieb Wolfgang Walter:
->> Am Mittwoch, 23. November 2016, 16:40:07 schrieb Andreas Dilger:
->>> Stepping back a bit - does this problem only happen with an external
->>> journal device, or does it also happen with an internal journal?
->>=20
->> So I tried that this weekend. I got again these messages
->>=20
->> JBD2: Spotted dirty metadata buffer (dev =3D dm-22, blocknr =3D =
-241763277). There's a risk of filesystem corruption in case of system =
-crash.
->>=20
->> So this also happens with an internal journal.
->>=20
->=20
-> [snip]
->=20
-> I last tried with 4.9.46 and I still see that problem when rsyncing =
-data to the filesystem: errors similar to
->=20
-> JBD2: Spotted dirty metadata buffer (dev =3D dm-25, blocknr =3D =
-1008028301). There's a risk of filesystem corruption in case of system =
-crash.
->=20
-> A later filesystem check does not show any errors.
->=20
->=20
-> With 4.9.46 stable kernels I also sometimes get the following error:
->=20
-> EXT4-fs error (device dm-25): ext4_iget:4501: inode #74061557: comm =
-rsync: checksum invalid
-> or
-> EXT4-fs error (device dm-25): ext4_iget:4501: inode #155844677: comm =
-nfsd: checksum invalid
->=20
-> A filesystem check then says that the inode itselfs seems ok but the =
-checksum is indeed wrong.
->=20
-> As these inodes are inodes of very small files.
->=20
-> So I finally copied all away and reinitialized the filesystem. But =
-this time without -O inline_data
->=20
-> Since then all works fine. So I assume there is a proplem with inodes =
-and inline-data (at least until 4.9.46), maybe only with data=3Djournal.
+Thanks for your report.
 
-Add Tao Ma, since he is the original inline data author, and it appears =
-that Taobao
-is using this feature so are probably interested in fixing any =
-corruption.
+First, I commend your use of a relatively new kernel.  The fact that
+you mentioned that some file systems were using iomap means that you
+must be using a relatively new kernel, since iomap was only first
+introduced in 4.8.  Many researchers tend to use far more obsolete
+kernels, so it's nice to see the fact that this was done on a
+relatively new kernel.  That being said, it would have been nice if
+you specified exactly what Linux kernel you did your testing against.
 
-Wolfgang, it would be useful if you could figure out what type of block =
-the reported
-blocknr=3D1008028301 is.  You can use "debugfs -c -R 'icheck 1008028301' =
-/dev/dm-25".
-I'd suspect, given that this is an inline data problem, that this is an =
-inode table
-block, but it is good to be sure.  It would also be useful to see if =
-this inode
-number correlates to one of the inodes that have bad checksums.
+Second, I agree that it is better that file systems on Linux should,
+ideally have behaviour that is made consistent with each other
+whenever possible.  And so changing ext4 to return the same error
+codes or have the same behavior is in general a good thing, all other
+things being equal.  We probably will convert ext4 to use iomap for at
+least O_Direct operations at some point in the future, which will help
+promote this.
 
-Cheers, Andreas
+>From a technical, spec-lawyering, niggling sort of way, I'm not sure
+I'd consider the first case to be a violation of the POSIX
+specification, however.  If you specify an open flag which is not
+specified in POSIX, the behavior of system calls when used against
+that file descriptor might not be fully compliant with the
+specification.  The most obvious example of this is O_NOATIME.  If the
+file descriptor is opened with that flag, then reads will not cause
+atime to change.  This is obviously "in violation" of POSIX, which
+mandates that atime is always modified when a file is read.  But, as
+Charles Dickens once write, sometimes, "the law is an ass".
 
+Similarly, in POSIX 2001, O_CLOEXEC was not yet part of the standard,
+but I don't think anyone would have argued with a straight face that
+because Linux implemented O_CLOEXEC, the fact that a file descriptor
+created with this flag would get closed across an exec meant, ipso
+facto, that Linux was "in violation of the Posix standard".
+Fortunately, for people who might think that, by POSIX 2008, O_CLEXEC
+*was* added to the spec, so that's no longer an issue.  We still
+"violate the POSIX" spec with respect to O_NOATIME, however...
 
+It's for this reason that I would argue that ext4 isn't necessarily
+violating the specification when O_DIRECT is used, because O_DIRECT is
+not defined by POSIX or the Single Unix Specification, and as
+discussed above, non-standard flags can make system calls behave in
+ways that are different from what is specified in POSIX specification.
+(Another example: the O_PATH flag.)
 
+It's still valid to say that ext4 should change to be consistent with
+other file systems, and I agree with the changes you proposed in your
+Readme.md files.  I'm just quibbling about whether or not this can be
+technically considered a "POSIX Violation".
 
+Best regards,
 
-
---Apple-Mail=_9843D89D-7F06-44CE-B0E0-78292E7E0D0A
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZsDlPpIg59Q01vtYRAhbxAJ9uox29/P02R+YcftUIZttWHKe4jgCg2/za
-EGh5FbLK+x55eApz5Xhmoqo=
-=+Rgv
------END PGP SIGNATURE-----
-
---Apple-Mail=_9843D89D-7F06-44CE-B0E0-78292E7E0D0A--
+					- Ted
