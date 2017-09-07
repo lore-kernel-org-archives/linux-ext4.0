@@ -1,123 +1,131 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: [PATCH 0/9] add ext4 per-inode DAX flag
-Date: Fri, 8 Sep 2017 09:25:43 +1000
-Message-ID: <20170907232543.GB17782@dastard>
-References: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
- <f856f8fd-3697-adb1-198b-a9ae2fce405f@redhat.com>
- <20170906170754.GB17663@linux.intel.com>
- <CAPcyv4hfhDT9NFRXL+MT5epiqWHJ0RLraV4P3CZ4EJM6L-s0Nw@mail.gmail.com>
- <20170907211303.GA23212@linux.intel.com>
- <5F58D3F5-D93B-4648-AE01-8A46956FBB4B@dilger.ca>
- <20170907215148.GA12669@linux.intel.com>
- <20170907221201.GZ17782@dastard>
- <20170907221900.GB12669@linux.intel.com>
+From: Ruoxin Jiang <rj2394@columbia.edu>
+Subject: Re: Ext4 Bug Report
+Date: Thu, 7 Sep 2017 19:31:09 -0400
+Message-ID: <CAFzqJcZYTi7-V1nd-yhnvrdCkdqp1tGAN4wmUODEXQc5Fi73Fw@mail.gmail.com>
+References: <CAFzqJcYcZHFzSJEGKrjHy3HgwDfiDHg5_wbj6GM7g+4sFPZkDQ@mail.gmail.com>
+ <20170906192815.orfe2pr6vkakix6u@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20170907221900.GB12669-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-ext4@vger.kernel.org, Suman Jana <sumanj@gmail.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from outprodmail02.cc.columbia.edu ([128.59.72.51]:54121 "EHLO
+        outprodmail02.cc.columbia.edu" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750966AbdIGXbM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 7 Sep 2017 19:31:12 -0400
+Received: from hazelnut (hazelnut.cc.columbia.edu [128.59.213.250])
+        by outprodmail02.cc.columbia.edu (8.14.4/8.14.4) with ESMTP id v87NRQq1040436
+        for <linux-ext4@vger.kernel.org>; Thu, 7 Sep 2017 19:31:12 -0400
+Received: from hazelnut (localhost.localdomain [127.0.0.1])
+        by hazelnut (Postfix) with ESMTP id EB4126D
+        for <linux-ext4@vger.kernel.org>; Thu,  7 Sep 2017 19:31:11 -0400 (EDT)
+Received: from sendprodmail02.cc.columbia.edu (sendprodmail02.cc.columbia.edu [128.59.72.14])
+        by hazelnut (Postfix) with ESMTP id D46777E
+        for <linux-ext4@vger.kernel.org>; Thu,  7 Sep 2017 19:31:11 -0400 (EDT)
+Received: from mail-wm0-f69.google.com (mail-wm0-f69.google.com [74.125.82.69])
+        by sendprodmail02.cc.columbia.edu (8.14.4/8.14.4) with ESMTP id v87NVBqv027102
+        (version=TLSv1/SSLv3 cipher=AES128-GCM-SHA256 bits=128 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Thu, 7 Sep 2017 19:31:11 -0400
+Received: by mail-wm0-f69.google.com with SMTP id p17so637572wmd.3
+        for <linux-ext4@vger.kernel.org>; Thu, 07 Sep 2017 16:31:11 -0700 (PDT)
+In-Reply-To: <20170906192815.orfe2pr6vkakix6u@thunk.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 07, 2017 at 04:19:00PM -0600, Ross Zwisler wrote:
-> On Fri, Sep 08, 2017 at 08:12:01AM +1000, Dave Chinner wrote:
-> > On Thu, Sep 07, 2017 at 03:51:48PM -0600, Ross Zwisler wrote:
-> > > On Thu, Sep 07, 2017 at 03:26:10PM -0600, Andreas Dilger wrote:
-> > > > However, I wonder if this could
-> > > > be prevented at runtime, and only allow S_DAX to be set when the inode is
-> > > > first instantiated, and wouldn't be allowed to change after that?  Setting
-> > > > or clearing the per-inode DAX flag might still be allowed, but it wouldn't
-> > > > be enabled until the inode is next fetched into cache?  Similarly, for
-> > > > inodes that have conflicting features (e.g. inline data or encryption)
-> > > > would not be allowed to enable S_DAX.
-> > > 
-> > > Ooh, this seems interesting.  This would ensure that S_DAX transitions
-> > > couldn't ever race with I/Os or mmaps().  I had some other ideas for how to
-> > > handle this, but I think your idea is more promising. :)
-> > 
-> > IMO, that's an awful admin interface - it can't be done on demand
-> > (i.e. when needed) because we can't force an inode to be evicted
-> > from the cache. And then we have the "why the hell did that just
-> > change" problem if an inode is evicted due to memory pressure and
-> > then immediately reinstantiated by the running workload. That's a
-> > recipe for driving admins insane...
-> > 
-> > > I guess with this solution we'd need:
-> > > 
-> > > a) A good way of letting the user detect the state where they had set the DAX
-> > > inode flag, but that it wasn't yet in use by the inode.
-> > > 
-> > > b) A reliable way of flushing the inode from the filesystem cache, so that the
-> > > next time an open() happens they get the new behavior.  The way I usually do
-> > > this is via umount/remount, but there is probably already a way to do this?
-> > 
-> > Not if it's referenced. And if it's not referenced, then the only
-> > hammer we have is Brutus^Wdrop_caches. That's not an option for
-> > production machines.
-> > 
-> > Neat idea, but one I'd already thought of and discarded as "not
-> > practical from an admin perspective".
-> 
-> Okay, so other ideas (which you have also probably already though of) include:
-> 
-> 1) Just return -EBUSY if anyone tries to change the DAX flag of an inode with
-> open mappings or any open file handles.
+Hi Ted,
 
-You have to have an open fd to change the flag. :)
+Thank you for your prompt reply! The Linux kernel we tested against is
+Linux 4.13.0-rc6, and the current latest version is 4.13.0-rc7.
 
-> To prevent TOCTOU races we'd have to
-> do some additional locking while actually changing the flag.
+We totally agree with your assessment on non-standard flags. As you
+pointed out, the O_DIRECT flag is documented in Linux man page but not
+in POSIX specification (and we should have checked this). Even for
+some documented flags, the POSIX specification does not list their
+behavior completely or clearly.
 
-I think that make sense - the fundamental problem is that the
-mappings are different between dax and non-dax, and that we can't
-properly lock out page faults to to prevent sending a racing
-page fault down the wrong path.
+We believe it's beneficial to maintain consistency among different
+filesystems, so that developers on one filesystem won't bring the
+wrong expectation to work on a different one. The consistency can also
+prevent some potential semantic bugs.
 
-> 2) Be more drastic and follow the flow of ext4 file based encryption, only
-> allowing the inode flag to be set by an admin on an empty directory.  Files in
-> that directory will inherit it when they are created, and we don't provide a
-> way to clear.  If you want your file to not use DAX, move it to a different
-> directory (which I think for ext4 encryption turns it into a new inode).
+Thanks for explaining the matter and we hope our findings could help
+with your future development on ext4 :)
 
-Seems like the wrong model to me - moving application data files
-is a PITA because you've also go to change the app config to point
-at the new location...
+Best,
+Amy
 
-> Other ideas?
+On Wed, Sep 6, 2017 at 3:28 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Wed, Sep 06, 2017 at 11:58:19AM -0400, Ruoxin Jiang wrote:
+>>
+>> We are researchers from Columbia University, New York. As part of our
+>> current research we have found some semantic discrepancies between
+>> ext4 and the POSIX specification/other popular filesystems.
+>>
+>> We have attached two cases. The first one involves a direct access
+>> read starting from file EOF. Ext4 behavior in this case seems to
+>> violate the POSIX standard. In directory 2, we discovered that ext4
+>> and other popular filesystems (xfs/btrfs/f2fs) return different error
+>> codes for the same lseek syscall.
+>
+> Hi,
+>
+> Thanks for your report.
+>
+> First, I commend your use of a relatively new kernel.  The fact that
+> you mentioned that some file systems were using iomap means that you
+> must be using a relatively new kernel, since iomap was only first
+> introduced in 4.8.  Many researchers tend to use far more obsolete
+> kernels, so it's nice to see the fact that this was done on a
+> relatively new kernel.  That being said, it would have been nice if
+> you specified exactly what Linux kernel you did your testing against.
+>
+> Second, I agree that it is better that file systems on Linux should,
+> ideally have behaviour that is made consistent with each other
+> whenever possible.  And so changing ext4 to return the same error
+> codes or have the same behavior is in general a good thing, all other
+> things being equal.  We probably will convert ext4 to use iomap for at
+> least O_Direct operations at some point in the future, which will help
+> promote this.
+>
+> From a technical, spec-lawyering, niggling sort of way, I'm not sure
+> I'd consider the first case to be a violation of the POSIX
+> specification, however.  If you specify an open flag which is not
+> specified in POSIX, the behavior of system calls when used against
+> that file descriptor might not be fully compliant with the
+> specification.  The most obvious example of this is O_NOATIME.  If the
+> file descriptor is opened with that flag, then reads will not cause
+> atime to change.  This is obviously "in violation" of POSIX, which
+> mandates that atime is always modified when a file is read.  But, as
+> Charles Dickens once write, sometimes, "the law is an ass".
+>
+> Similarly, in POSIX 2001, O_CLOEXEC was not yet part of the standard,
+> but I don't think anyone would have argued with a straight face that
+> because Linux implemented O_CLOEXEC, the fact that a file descriptor
+> created with this flag would get closed across an exec meant, ipso
+> facto, that Linux was "in violation of the Posix standard".
+> Fortunately, for people who might think that, by POSIX 2008, O_CLEXEC
+> *was* added to the spec, so that's no longer an issue.  We still
+> "violate the POSIX" spec with respect to O_NOATIME, however...
+>
+> It's for this reason that I would argue that ext4 isn't necessarily
+> violating the specification when O_DIRECT is used, because O_DIRECT is
+> not defined by POSIX or the Single Unix Specification, and as
+> discussed above, non-standard flags can make system calls behave in
+> ways that are different from what is specified in POSIX specification.
+> (Another example: the O_PATH flag.)
+>
+> It's still valid to say that ext4 should change to be consistent with
+> other file systems, and I agree with the changes you proposed in your
+> Readme.md files.  I'm just quibbling about whether or not this can be
+> technically considered a "POSIX Violation".
+>
+> Best regards,
+>
+>                                         - Ted
 
-IMO, we need to fix the page fault path so we don't look at inode
-flags to determine processing behaviour during the fault. Fault
-processing as DAX or non-dax needs to be determined by the page
-fault code and communicated to the fs via the vmf as the contents
-of the vmf for a dax fault can be invalid for a non-dax fault. Fixing
-that problem (i.e. make DAX is a property of the mapping and
-instantiate it from the inode only at mmap() time) means all the
-page fault vs inode flag race problems go away and we have a model
-that is much more robust if we want to expand it in future.
 
-Combine that with -EBUSY when there are active mappings as you've
-proposed above and I think we've got a much more solid solution to
-the problem.
 
--Dave.
 -- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+Ruoxin(Amy) Jiang
+Columbia University, M.S. Computer Science
+347-277-5455
