@@ -1,52 +1,75 @@
-From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH 0/9] add ext4 per-inode DAX flag
-Date: Fri, 8 Sep 2017 11:39:13 -0400
-Message-ID: <20170908153913.jjhzogjs5zpeea5v@thunk.org>
-References: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
- <f856f8fd-3697-adb1-198b-a9ae2fce405f@redhat.com>
- <20170906170754.GB17663@linux.intel.com>
- <CAPcyv4hfhDT9NFRXL+MT5epiqWHJ0RLraV4P3CZ4EJM6L-s0Nw@mail.gmail.com>
- <20170907211303.GA23212@linux.intel.com>
- <5F58D3F5-D93B-4648-AE01-8A46956FBB4B@dilger.ca>
- <20170907215148.GA12669@linux.intel.com>
- <20170907221201.GZ17782@dastard>
- <20170907221900.GB12669@linux.intel.com>
- <20170907232543.GB17782@dastard>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH 0/3] fscrypto: Return -EXDEV for link, rename, and
+ cross-rename between incompat contexts
+Date: Fri, 8 Sep 2017 16:12:23 -0700
+Message-ID: <20170908231223.GA71686@gmail.com>
+References: <20170908001204.18174-1-mhalcrow@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org
+To: Michael Halcrow <mhalcrow@google.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170907232543.GB17782@dastard>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170908001204.18174-1-mhalcrow@google.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 08, 2017 at 09:25:43AM +1000, Dave Chinner wrote:
-> > Okay, so other ideas (which you have also probably already though of) include:
-> > 
-> > 1) Just return -EBUSY if anyone tries to change the DAX flag of an inode with
-> > open mappings or any open file handles.
+Hi Michael,
+
+On Thu, Sep 07, 2017 at 05:12:01PM -0700, Michael Halcrow wrote:
+> Currently file systems support fscrypto will return -EPERM when the
+> user attempts to link, rename, or cross-rename between two directories
+> that have incompatible encryption policy contexts.  User space tools
+> will fail the operation when receiving this errno.  With -EXDEV, user
+> space tools will typically fall back to copy-and-delete instead.
+
+Mention 'mv' as an example to make it more concrete?
+
+> Our original motivation for returning -EPERM was to force users to try
+> harder when doing these operations, hopefully making them think more
+> carefully about whether what they're doing is secure.  One security
+> concern is that when moving files between unencrypted locations into
+> encrypted locations, the data in the unencrypted location will remain
+> in the clear on the storage device until the freed blocks are
+> overwritten at some arbitrary point in the future (if ever).  Moving
+> files from encrypted locations into unencrypted locations is also
+> (perhaps more obviously) problematic.
 > 
-> You have to have an open fd to change the flag. :)
+> Whether making things fail will have the intended effect on users is
+> up for debate.  Meanwhile I've had at least one person tell me their
+> userspace tools are failing and that they would prefer seeing the same
+> sort of behavior that they see when (for example) moving files from
+> one project quota hierarchy to another (ext4 returns -EXDEV).
 
-What if we only allow the S_DAX flag to be *set*, when i_size and
-i_blocks is zero?  We could also require that only one file descriptor
-be open against the inode, and that it be opened O_RDONLY.
+There are arguments in favor of this, but I'm worried that people will think
+they can encrypt their files by "moving" them into an encrypted directory.  In
+fact, the unencrypted data will still be on-disk in the free blocks.  When
+people say they want 'mv' to work, do they actually understand that it usually
+defeats the purpose of encryption?  Or are they naively assuming that deleting a
+file means its data is gone forever?
 
-						- Ted
+In any case, if we actually do this we'd need to document that mv-ing files into
+an encrypted directory is a bad idea, although it would be of limited use since
+users rarely read documentation.
+
+> Michael Halcrow (3):
+>   ext4 crypto: Return -EXDEV for link, rename, and cross-rename between
+>     incompat contexts
+>   F2FS crypto: Return -EXDEV for link, rename, and cross-rename between
+>     incompat contexts
+>   UBIFS crypto: Return -EXDEV for link, rename, and cross-rename between
+>     incompat contexts
+
+Nits for if we do end up doing this: remove "cross-rename" from the subjects to
+shorten them a bit (cross-rename is a type of rename), then add more detail to
+the patch descriptions, even if that requires duplicating some text.  The cover
+letter doesn't get recorded in the commit history, only the actual commits do.
+
+Note: I'm also working on a patchset which adds helper functions
+fscrypt_prepare_link() and fscrypt_prepare_rename().  After that, this error
+will be chosen by the shared code, rather than individual filesystems.
+
+Eric
