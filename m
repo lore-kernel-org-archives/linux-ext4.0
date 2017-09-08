@@ -1,72 +1,139 @@
-From: Michael Halcrow via Linux-f2fs-devel
- <linux-f2fs-devel@lists.sourceforge.net>
-Subject: [PATCH 2/3] F2FS crypto: Return -EXDEV for link, rename,
- and cross-rename between incompat contexts
-Date: Thu,  7 Sep 2017 17:12:03 -0700
-Message-ID: <20170908001204.18174-3-mhalcrow@google.com>
-References: <20170908001204.18174-1-mhalcrow@google.com>
-Reply-To: Michael Halcrow <mhalcrow@google.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/9] add ext4 per-inode DAX flag
+Date: Fri, 8 Sep 2017 11:48:52 +0200
+Message-ID: <20170908094852.GA30332@quack2.suse.cz>
+References: <20170905223541.20594-1-ross.zwisler@linux.intel.com>
+ <f856f8fd-3697-adb1-198b-a9ae2fce405f@redhat.com>
+ <20170906170754.GB17663@linux.intel.com>
+ <CAPcyv4hfhDT9NFRXL+MT5epiqWHJ0RLraV4P3CZ4EJM6L-s0Nw@mail.gmail.com>
+ <20170907211303.GA23212@linux.intel.com>
+ <5F58D3F5-D93B-4648-AE01-8A46956FBB4B@dilger.ca>
+ <20170907215148.GA12669@linux.intel.com>
+ <20170907221201.GZ17782@dastard>
+ <20170907221900.GB12669@linux.intel.com>
+ <20170907232543.GB17782@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
- linux-ext4@vger.kernel.org, tytso@mit.edu,
- linux-f2fs-devel@lists.sourceforge.net
-To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <20170908001204.18174-1-mhalcrow@google.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Eric Sandeen <sandeen@redhat.com>,
+        Lukas Czerner <lczerner@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Theodore Ts'o <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>,
+        Jan Kara <jack@suse.cz>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+        xfs <linux-xfs@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170907232543.GB17782@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Gives user space the opportunity to fall back to copy-and-delete.
+On Fri 08-09-17 09:25:43, Dave Chinner wrote:
+> On Thu, Sep 07, 2017 at 04:19:00PM -0600, Ross Zwisler wrote:
+> > On Fri, Sep 08, 2017 at 08:12:01AM +1000, Dave Chinner wrote:
+> > > On Thu, Sep 07, 2017 at 03:51:48PM -0600, Ross Zwisler wrote:
+> > > > On Thu, Sep 07, 2017 at 03:26:10PM -0600, Andreas Dilger wrote:
+> > > > > However, I wonder if this could
+> > > > > be prevented at runtime, and only allow S_DAX to be set when the inode is
+> > > > > first instantiated, and wouldn't be allowed to change after that?  Setting
+> > > > > or clearing the per-inode DAX flag might still be allowed, but it wouldn't
+> > > > > be enabled until the inode is next fetched into cache?  Similarly, for
+> > > > > inodes that have conflicting features (e.g. inline data or encryption)
+> > > > > would not be allowed to enable S_DAX.
+> > > > 
+> > > > Ooh, this seems interesting.  This would ensure that S_DAX transitions
+> > > > couldn't ever race with I/Os or mmaps().  I had some other ideas for how to
+> > > > handle this, but I think your idea is more promising. :)
+> > > 
+> > > IMO, that's an awful admin interface - it can't be done on demand
+> > > (i.e. when needed) because we can't force an inode to be evicted
+> > > from the cache. And then we have the "why the hell did that just
+> > > change" problem if an inode is evicted due to memory pressure and
+> > > then immediately reinstantiated by the running workload. That's a
+> > > recipe for driving admins insane...
+> > > 
+> > > > I guess with this solution we'd need:
+> > > > 
+> > > > a) A good way of letting the user detect the state where they had set the DAX
+> > > > inode flag, but that it wasn't yet in use by the inode.
+> > > > 
+> > > > b) A reliable way of flushing the inode from the filesystem cache, so that the
+> > > > next time an open() happens they get the new behavior.  The way I usually do
+> > > > this is via umount/remount, but there is probably already a way to do this?
+> > > 
+> > > Not if it's referenced. And if it's not referenced, then the only
+> > > hammer we have is Brutus^Wdrop_caches. That's not an option for
+> > > production machines.
+> > > 
+> > > Neat idea, but one I'd already thought of and discarded as "not
+> > > practical from an admin perspective".
+> > 
+> > Okay, so other ideas (which you have also probably already though of) include:
+> > 
+> > 1) Just return -EBUSY if anyone tries to change the DAX flag of an inode with
+> > open mappings or any open file handles.
+> 
+> You have to have an open fd to change the flag. :)
 
-Signed-off-by: Michael Halcrow <mhalcrow@google.com>
----
- fs/f2fs/namei.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Yeah, open file handles don't matter and we can serialize against IO in
+progress, that's not a big deal. Established mappings are difficult to deal
+with.
 
-diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
-index 760d85223c81..689c671cf8b8 100644
---- a/fs/f2fs/namei.c
-+++ b/fs/f2fs/namei.c
-@@ -202,7 +202,7 @@ static int f2fs_link(struct dentry *old_dentry, struct inode *dir,
- 
- 	if (f2fs_encrypted_inode(dir) &&
- 			!fscrypt_has_permitted_context(dir, inode))
--		return -EPERM;
-+		return -EXDEV;
- 
- 	err = dquot_initialize(dir);
- 	if (err)
-@@ -720,7 +720,7 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 
- 	if ((old_dir != new_dir) && f2fs_encrypted_inode(new_dir) &&
- 			!fscrypt_has_permitted_context(new_dir, old_inode)) {
--		err = -EPERM;
-+		err = -EXDEV;
- 		goto out;
- 	}
- 
-@@ -910,7 +910,7 @@ static int f2fs_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
- 			(old_dir != new_dir) &&
- 			(!fscrypt_has_permitted_context(new_dir, old_inode) ||
- 			 !fscrypt_has_permitted_context(old_dir, new_inode)))
--		return -EPERM;
-+		return -EXDEV;
- 
- 	err = dquot_initialize(old_dir);
- 	if (err)
+> > To prevent TOCTOU races we'd have to
+> > do some additional locking while actually changing the flag.
+> 
+> I think that make sense - the fundamental problem is that the
+> mappings are different between dax and non-dax, and that we can't
+> properly lock out page faults to to prevent sending a racing
+> page fault down the wrong path.
+> 
+> > 2) Be more drastic and follow the flow of ext4 file based encryption, only
+> > allowing the inode flag to be set by an admin on an empty directory.  Files in
+> > that directory will inherit it when they are created, and we don't provide a
+> > way to clear.  If you want your file to not use DAX, move it to a different
+> > directory (which I think for ext4 encryption turns it into a new inode).
+> 
+> Seems like the wrong model to me - moving application data files
+> is a PITA because you've also go to change the app config to point
+> at the new location...
+
+Agreed.
+
+> > Other ideas?
+> 
+> IMO, we need to fix the page fault path so we don't look at inode
+> flags to determine processing behaviour during the fault. Fault
+> processing as DAX or non-dax needs to be determined by the page
+> fault code and communicated to the fs via the vmf as the contents
+> of the vmf for a dax fault can be invalid for a non-dax fault. Fixing
+> that problem (i.e. make DAX is a property of the mapping and
+> instantiate it from the inode only at mmap() time) means all the
+> page fault vs inode flag race problems go away and we have a model
+> that is much more robust if we want to expand it in future.
+
+In fact, the real problem is only with .page_mkwrite and .pfn_mkwrite
+callbacks. For those setup of 'vmf' differs. For .fault or .huge_fault the
+vmf is the same regardless whether we do DAX or non-DAX fault. But it seems
+difficult to me to determine DAX / non-DAX fault in vmf since locks
+necessary to stabilize S_DAX flag are acquired only in filesystem-specific
+handlers (and the locks themselves are fs specific).
+
+So the only way I see of dealing safely with these races is careful
+checking in .page_mkwrite and .pfn_mkwrite after necessary locks are
+obtained and bail out doing nothing if state is inconsistent. VM will retry
+the fault and we'll get to the correct handler next time.
+
+But if we disallow any mappings when switching S_DAX flag, then all the
+above is moot and there can be no races... We just have to be sure to block
+new mappings of the file while switching the flag.
+
+								Honza
 -- 
-2.14.1.581.gf28d330327-goog
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
