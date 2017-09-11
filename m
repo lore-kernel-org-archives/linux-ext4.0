@@ -1,84 +1,76 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: New release of kvm-xfstests / gce-xfstests images
-Date: Sun, 10 Sep 2017 01:39:19 -0400
-Message-ID: <20170910053919.bqkwuniz5galo2yd@thunk.org>
+From: ankijain@codeaurora.org
+Subject: Kernel panic in ext4_ext_drop_refs
+Date: Mon, 11 Sep 2017 10:40:23 +0530
+Message-ID: <c5d90b6ba6826fb0d6ab245befdfc405@codeaurora.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII;
+ format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47530 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750853AbdIJFjV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 10 Sep 2017 01:39:21 -0400
-Content-Disposition: inline
+Received: from smtp.codeaurora.org ([198.145.29.96]:46126 "EHLO
+        smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750715AbdIKFKY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2017 01:10:24 -0400
+Received: from mail.codeaurora.org (localhost.localdomain [127.0.0.1])
+        by smtp.codeaurora.org (Postfix) with ESMTP id 296386071D
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2017 05:10:23 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've released a new version of kvm-xfstests images at:
+Hi
 
-https://www.kernel.org/pub/linux/kernel/people/tytso/kvm-xfstests
+We are facing  issue use after free/un-initialized in ext4 delayed 
+allocation path for write request to a file.
 
-This has the latest updates from xfstests, xfsprogs, fio, quota,
-e2fsprogs, et. al.  See the README file on www.kernel.org for the
-details.  In addition, the images are now based on new Debian Stable
-release (Stretch).
+Details:
+machine arm64
+kernel : 4.9.40
 
-Also of interest is in this release in the associated xfstests-bld
-tree[1] is two new features.  The first is android-xfstests[2], for
-which Eric Biggers and I will be giving a presentation[3] at the Open
-Source Summit 2017 in Los Angelos this coming Monday[4].
+Issue detail:
+Panic is occurred while accessing uninitialized/free path variable 
+inside ext4_ext_drop_refs()
+ext4_ext_drop_refs(
+     path = 0xFFFFFFC757A85C00 -> (
+       p_block = 0x6B6B6B6B6B6B6B6B,
+       p_depth = 0x6B6B,
+       p_maxdepth = 0x6B6B,
+       p_ext = 0x6B6B6B6B6B6B6B6B,
+       p_idx = 0x6B6B6B6B6B6B6B6B,
+       p_hdr = 0x6B6B6B6B6B6B6B6B,
+       p_bh = 0x6B6B6B6B6B6B6B6B))
 
-[1] https://git.kernel.org/pub/scm/fs/ext2/xfstests-bld.git/
-[2] https://github.com/tytso/xfstests-bld/blob/master/Documentation/android-xfstests.md
-[3] https://thunk.org/android-xfstests
-[4] https://ossna2017.sched.com/event/242a6d0fe1d669366446fe518e9717f6
+This path variable is representing extent path from root extent to leaf 
+of requested logical block of file.
+we have allocated memory for this path variable inside 
+ext4_find_extent() locally and trying to free it inside 
+ext4_ext_drop_refs().
+http://elixir.free-electrons.com/linux/v4.9.40/source/fs/ext4/extents.c#L894 
+   ----> allocation happen without any error.
+http://elixir.free-electrons.com/linux/v4.9.40/source/fs/ext4/extents.c#L4620 
+  ----> trying to free previously allocated memory.
 
-In addition, the xfstests-bld tree has a new feature (in Beta status),
-a lightweight test manager (LTM).  The LTM is a great piece of work
-implemented by Jason Liu, an intern at Google this past summer.
+Device is running in low memory condition.
+	PAGES        TOTAL      PERCENTAGE
+  FREE     6720      26.2 MB    0% of TOTAL MEM
 
-(I originally proposed calling it the "Lightweight Gce-xfstests Test
-Manager", but Jason thought the acronym was too cute by half.  :-)
+could anyone help us to find, in which scenario this path variable can 
+get free/uninitialized before ext4_ext_drop_refs()?
 
-The way LTM works is instead running the command "gce-xfstests -c
-ext4/all -g auto", you first launch the LTM VM using the command
-"gce-xfstests launch-ltm".  Then you ask the LTM server to launch
-multiple VM's for you using a command such as:
-
-	gce-xfstests ltm -c ext4/all,xfs/all -g auto
-
-The LTM server will then launch separate VM's for each file system
-config (in this case, it will launch 11 ext4 test VM's, and 2 xfs test
-VM's), spreading them out across multiple GCE zones and regions based
-on the project's GCE quotas.  The LTM server will monitor the VM's,
-and if one of the test kernel crashes or deadlocks, the LTM server
-will take care of killing the VM and saving the serial console output
-so the kernel developer can analyze crash/deadlock.  Once all of the
-test VM's are finished, the LTM server will collate the results and
-send a single e-mail report to the kernel developer.
-
-This reduces the time it takes for me to run a complete regression
-test of all of the ext4 test configs from 23 hours down to about 3.
-
-Finally, at the moment, I have two XFS test configurations (4k and
-1k), and only one (default) test config for btrfs, f2fs, overlayfs,
-etc.  If you are a file system developer and you have your favorite fs
-test configs, I invite you to contribute them to me, and I would be
-happy to add it to kvm/gce/android-xfstests.  The config file for a
-configuration are pretty simple.  For example, please see [5] and [6].
-
-[5] https://github.com/tytso/xfstests-bld/blob/master/kvm-xfstests/test-appliance/files/root/fs/ext4/cfg/encrypt
-[6] https://github.com/tytso/xfstests-bld/blob/master/kvm-xfstests/test-appliance/files/root/fs/xfs/cfg/1k
-
-If you haven't tried gce-xfstests yet, please give it a try!
-Information can be found here[7].  And if you are looking for a
-quickstart on kvm-xfstests, that can be found here[8].
-
-[7] https://github.com/tytso/xfstests-bld/blob/master/Documentation/gce-xfstests.md
-[8] https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md
-
-Cheers,
-
-					- Ted
-					
+Unable to handle kernel paging request at virtual address 6b6b6b6b6b6bcb
+<1>[ 4072.876804] pgd = ffffffc7b6c91000
+<1>[ 4072.885604] [6b6b6b6b6b6bcb] *pgd=0000000000000000
+  __brelse+0x18/0x50
+  ext4_ext_drop_refs+0x3c/0x5c
+  ext4_ext_map_blocks+0x418/0x1b34
+  ext4_da_get_block_prep+0x200/0x4fc
+  __block_write_begin_int+0x160/0x630
+  __block_write_begin+0x3c/0x48fs stack.
+  ext4_da_write_begin+0x17c/0x574block layer issue (from ritesh)
+  generic_perform_write+0xc8/0x1d4uid issue
+  __generic_file_write_iter+0x15c/0x1a8
+  ext4_file_write_iter+0x108/0x354
+  new_sync_write+0xd8/0x124
+  vfs_write+0x15c/0x1d0
+  SyS_pwrite64+0xb0/0xc8
+  __sys_trace_return+0x0/0x4
