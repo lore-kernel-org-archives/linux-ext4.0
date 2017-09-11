@@ -1,76 +1,65 @@
-From: ankijain@codeaurora.org
-Subject: Kernel panic in ext4_ext_drop_refs
-Date: Mon, 11 Sep 2017 10:40:23 +0530
-Message-ID: <c5d90b6ba6826fb0d6ab245befdfc405@codeaurora.org>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 0/9] add ext4 per-inode DAX flag
+Date: Mon, 11 Sep 2017 10:47:33 +0200
+Message-ID: <20170911084733.GB7120@quack2.suse.cz>
+References: <f856f8fd-3697-adb1-198b-a9ae2fce405f@redhat.com>
+ <20170906170754.GB17663@linux.intel.com>
+ <CAPcyv4hfhDT9NFRXL+MT5epiqWHJ0RLraV4P3CZ4EJM6L-s0Nw@mail.gmail.com>
+ <20170907211303.GA23212@linux.intel.com>
+ <5F58D3F5-D93B-4648-AE01-8A46956FBB4B@dilger.ca>
+ <20170907215148.GA12669@linux.intel.com>
+ <20170907221201.GZ17782@dastard>
+ <20170907221900.GB12669@linux.intel.com>
+ <20170907232543.GB17782@dastard>
+ <20170908153913.jjhzogjs5zpeea5v@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.codeaurora.org ([198.145.29.96]:46126 "EHLO
-        smtp.codeaurora.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750715AbdIKFKY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Sep 2017 01:10:24 -0400
-Received: from mail.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by smtp.codeaurora.org (Postfix) with ESMTP id 296386071D
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Sep 2017 05:10:23 +0000 (UTC)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170908153913.jjhzogjs5zpeea5v-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-Hi
+On Fri 08-09-17 11:39:13, Ted Tso wrote:
+> On Fri, Sep 08, 2017 at 09:25:43AM +1000, Dave Chinner wrote:
+> > > Okay, so other ideas (which you have also probably already though of) include:
+> > > 
+> > > 1) Just return -EBUSY if anyone tries to change the DAX flag of an inode with
+> > > open mappings or any open file handles.
+> > 
+> > You have to have an open fd to change the flag. :)
+> 
+> What if we only allow the S_DAX flag to be *set*, when i_size and
+> i_blocks is zero?  We could also require that only one file descriptor
+> be open against the inode, and that it be opened O_RDONLY.
 
-We are facing  issue use after free/un-initialized in ext4 delayed 
-allocation path for write request to a file.
+We could do something like that but IMHO it will be a pain to use (e.g.
+think how difficult it would be to switch your existing database to use DAX
+for data files). We can make transition reliable whenever
+inode->i_mapping->i_mmap RB tree is empty (effectively: whenever the file
+is not mmaped). And that should be relaxed enough for most usecases... But
+I agree that it will be somewhat tricky to prevent creation of new mappings
+while we are switching S_DAX flag so it needs more though.
 
-Details:
-machine arm64
-kernel : 4.9.40
-
-Issue detail:
-Panic is occurred while accessing uninitialized/free path variable 
-inside ext4_ext_drop_refs()
-ext4_ext_drop_refs(
-     path = 0xFFFFFFC757A85C00 -> (
-       p_block = 0x6B6B6B6B6B6B6B6B,
-       p_depth = 0x6B6B,
-       p_maxdepth = 0x6B6B,
-       p_ext = 0x6B6B6B6B6B6B6B6B,
-       p_idx = 0x6B6B6B6B6B6B6B6B,
-       p_hdr = 0x6B6B6B6B6B6B6B6B,
-       p_bh = 0x6B6B6B6B6B6B6B6B))
-
-This path variable is representing extent path from root extent to leaf 
-of requested logical block of file.
-we have allocated memory for this path variable inside 
-ext4_find_extent() locally and trying to free it inside 
-ext4_ext_drop_refs().
-http://elixir.free-electrons.com/linux/v4.9.40/source/fs/ext4/extents.c#L894 
-   ----> allocation happen without any error.
-http://elixir.free-electrons.com/linux/v4.9.40/source/fs/ext4/extents.c#L4620 
-  ----> trying to free previously allocated memory.
-
-Device is running in low memory condition.
-	PAGES        TOTAL      PERCENTAGE
-  FREE     6720      26.2 MB    0% of TOTAL MEM
-
-could anyone help us to find, in which scenario this path variable can 
-get free/uninitialized before ext4_ext_drop_refs()?
-
-Unable to handle kernel paging request at virtual address 6b6b6b6b6b6bcb
-<1>[ 4072.876804] pgd = ffffffc7b6c91000
-<1>[ 4072.885604] [6b6b6b6b6b6bcb] *pgd=0000000000000000
-  __brelse+0x18/0x50
-  ext4_ext_drop_refs+0x3c/0x5c
-  ext4_ext_map_blocks+0x418/0x1b34
-  ext4_da_get_block_prep+0x200/0x4fc
-  __block_write_begin_int+0x160/0x630
-  __block_write_begin+0x3c/0x48fs stack.
-  ext4_da_write_begin+0x17c/0x574block layer issue (from ritesh)
-  generic_perform_write+0xc8/0x1d4uid issue
-  __generic_file_write_iter+0x15c/0x1a8
-  ext4_file_write_iter+0x108/0x354
-  new_sync_write+0xd8/0x124
-  vfs_write+0x15c/0x1d0
-  SyS_pwrite64+0xb0/0xc8
-  __sys_trace_return+0x0/0x4
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
