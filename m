@@ -1,97 +1,87 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 3/5] ext4: add sanity check for encryption + DAX
-Date: Tue, 12 Sep 2017 08:45:00 +0200
-Message-ID: <20170912064500.GC16554@quack2.suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v2 4/5] ext4: add ext4_should_use_dax()
+Date: Tue, 12 Sep 2017 08:46:12 +0200
+Message-ID: <20170912064612.GD16554@quack2.suse.cz>
 References: <20170912050526.7627-1-ross.zwisler@linux.intel.com>
- <20170912050526.7627-4-ross.zwisler@linux.intel.com>
+ <20170912050526.7627-5-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-        linux-kernel@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Christoph Hellwig <hch@lst.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>, linux-ext4@vger.kernel.org,
-        linux-nvdimm@lists.01.org, stable@vger.kernel.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <stable-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170912050526.7627-4-ross.zwisler@linux.intel.com>
-Sender: stable-owner@vger.kernel.org
+In-Reply-To: <20170912050526.7627-5-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 11-09-17 23:05:24, Ross Zwisler wrote:
-> We prevent DAX from being used on inodes which are using ext4's built in
-> encryption via a check in ext4_set_inode_flags().  We do have what appears
-> to be an unsafe transition of S_DAX in ext4_set_context(), though, where
-> S_DAX can get disabled without us doing a proper writeback + invalidate.
+On Mon 11-09-17 23:05:25, Ross Zwisler wrote:
+> This helper, in the spirit of ext4_should_dioread_nolock() et al., replaces
+> the complex conditional in ext4_set_inode_flags().
 > 
-> There are also issues with mm-level races when changing the value of S_DAX,
-> as well as issues with the VM_MIXEDMAP flag:
-> 
-> https://www.spinics.net/lists/linux-xfs/msg09859.html
-> 
-> I actually think we are safe in this case because of the following:
-> 
-> 1) You can't encrypt an existing file.  Encryption can only be set on an
-> empty directory, with new inodes in that directory being created with
-> encryption turned on, so I don't think it's possible to turn encryption on
-> for a file that has open DAX mmaps or outstanding I/Os.
-> 
-> 2) There is no way to turn encryption off on a given file.  Once an inode
-> is encrypted, it stays encrypted for the life of that inode, so we don't
-> have to worry about the case where we turn encryption off and S_DAX
-> suddenly turns on.
-> 
-> 3) The only way we end up in ext4_set_context() to turn on encryption is
-> when we are creating a new file in the encrypted directory.  This happens
-> as part of ext4_create() before the inode has been allowed to do any I/O.
-> Here's the call tree:
-> 
->  ext4_create()
->    __ext4_new_inode()
-> 	 ext4_set_inode_flags() // sets S_DAX
-> 	 fscrypt_inherit_context()
-> 		fscrypt_get_encryption_info();
-> 		ext4_set_context() // sets EXT4_INODE_ENCRYPT, clears S_DAX
-> 
-> So, I actually think it's safe to transition S_DAX in ext4_set_context()
-> without any locking, writebacks or invalidations.  I've added a
-> WARN_ON_ONCE() sanity check to make sure that we are notified if we ever
-> encounter a case where we are encrypting an inode that already has data,
-> in which case we need to add code to safely transition S_DAX.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> CC: stable@vger.kernel.org
+> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 
-Looks good to me - and frankly I think we can drop the stable CC here...
-Anyway, you can add:
+Yeah, makes sense to me. You can add:
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
 								Honza
 
 > ---
->  fs/ext4/super.c | 3 +++
->  1 file changed, 3 insertions(+)
+>  fs/ext4/inode.c | 19 ++++++++++++++++---
+>  1 file changed, 16 insertions(+), 3 deletions(-)
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 4251e50..c090780 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1159,6 +1159,9 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
->  	if (inode->i_ino == EXT4_ROOT_INO)
->  		return -EPERM;
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 3207333..525dd63 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4577,6 +4577,21 @@ int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc)
+>  		!ext4_test_inode_state(inode, EXT4_STATE_XATTR));
+>  }
 >  
-> +	if (WARN_ON_ONCE(IS_DAX(inode) && i_size_read(inode)))
-> +		return -EINVAL;
+> +static bool ext4_should_use_dax(struct inode *inode)
+> +{
+> +	if (!test_opt(inode->i_sb, DAX))
+> +		return false;
+> +	if (!S_ISREG(inode->i_mode))
+> +		return false;
+> +	if (ext4_should_journal_data(inode))
+> +		return false;
+> +	if (ext4_has_inline_data(inode))
+> +		return false;
+> +	if (ext4_encrypted_inode(inode))
+> +		return false;
+> +	return true;
+> +}
 > +
->  	res = ext4_convert_inline_data(inode);
->  	if (res)
->  		return res;
+>  void ext4_set_inode_flags(struct inode *inode)
+>  {
+>  	unsigned int flags = EXT4_I(inode)->i_flags;
+> @@ -4592,9 +4607,7 @@ void ext4_set_inode_flags(struct inode *inode)
+>  		new_fl |= S_NOATIME;
+>  	if (flags & EXT4_DIRSYNC_FL)
+>  		new_fl |= S_DIRSYNC;
+> -	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode) &&
+> -	    !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
+> -	    !ext4_encrypted_inode(inode))
+> +	if (ext4_should_use_dax(inode))
+>  		new_fl |= S_DAX;
+>  	inode_set_flags(inode, new_fl,
+>  			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
 > -- 
 > 2.9.5
 > 
 -- 
-Jan Kara <jack@suse.com>
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
 SUSE Labs, CR
