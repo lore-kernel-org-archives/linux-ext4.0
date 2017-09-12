@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH 2/3] ext4: test for DAX + journaling corruption
-Date: Mon, 11 Sep 2017 22:45:20 -0600
-Message-ID: <20170912044521.22644-2-ross.zwisler@linux.intel.com>
+Subject: [PATCH 3/3] ext4: test for inline data + DAX corruption
+Date: Mon, 11 Sep 2017 22:45:21 -0600
+Message-ID: <20170912044521.22644-3-ross.zwisler@linux.intel.com>
 References: <20170912044521.22644-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -30,57 +30,57 @@ List-Id: linux-ext4.vger.kernel.org
 
 Add a regression test for the following kernel commit:
 
-  ext4: prevent data corruption with journaling + DAX
+  ext4: prevent data corruption with inline data + DAX
 
-The test passes if either we successfully compare the data between the mmap
-with journaling turned on and the one with journaling turned off, or if we
-fail the chattr command to turn on or off journaling.  The latter is how we
-prevent this issue in the kernel.
+The test passes either if we don't encounter corruption, or if mounting
+with DAX + inline data fails.  The latter is the way that we prevent this
+issue in the kernel.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 ---
- .gitignore                          |  1 +
- src/Makefile                        |  2 +-
- src/t_ext4_dax_journal_corruption.c | 93 +++++++++++++++++++++++++++++++++++++
- tests/ext4/030                      | 68 +++++++++++++++++++++++++++
- tests/ext4/030.out                  |  2 +
- tests/ext4/group                    |  1 +
- 6 files changed, 166 insertions(+), 1 deletion(-)
- create mode 100644 src/t_ext4_dax_journal_corruption.c
- create mode 100755 tests/ext4/030
- create mode 100644 tests/ext4/030.out
+ .gitignore                         |  1 +
+ src/Makefile                       |  3 +-
+ src/t_ext4_dax_inline_corruption.c | 70 +++++++++++++++++++++++++++++++
+ tests/ext4/031                     | 84 ++++++++++++++++++++++++++++++++++++++
+ tests/ext4/031.out                 |  2 +
+ tests/ext4/group                   |  1 +
+ 6 files changed, 160 insertions(+), 1 deletion(-)
+ create mode 100644 src/t_ext4_dax_inline_corruption.c
+ create mode 100755 tests/ext4/031
+ create mode 100644 tests/ext4/031.out
 
 diff --git a/.gitignore b/.gitignore
-index 2accc37..4bdc5bf 100644
+index 4bdc5bf..37670e6 100644
 --- a/.gitignore
 +++ b/.gitignore
-@@ -154,6 +154,7 @@
- /src/t_mmap_stale_pmd
+@@ -155,6 +155,7 @@
  /src/t_mmap_cow_race
  /src/t_mmap_fallocate
-+/src/t_ext4_dax_journal_corruption
+ /src/t_ext4_dax_journal_corruption
++/src/t_ext4_dax_inline_corruption
  
  # dmapi/ binaries
  /dmapi/src/common/cmd/read_invis
 diff --git a/src/Makefile b/src/Makefile
-index b8aff49..e6558e2 100644
+index e6558e2..bcfae01 100644
 --- a/src/Makefile
 +++ b/src/Makefile
-@@ -13,7 +13,7 @@ TARGETS = dirstress fill fill2 getpagesize holes lstat64 \
+@@ -13,7 +13,8 @@ TARGETS = dirstress fill fill2 getpagesize holes lstat64 \
  	multi_open_unlink dmiperf unwritten_sync genhashnames t_holes \
  	t_mmap_writev t_truncate_cmtime dirhash_collide t_rename_overwrite \
  	holetest t_truncate_self t_mmap_dio af_unix t_mmap_stale_pmd \
--	t_mmap_cow_race t_mmap_fallocate fsync-err
-+	t_mmap_cow_race t_mmap_fallocate fsync-err t_ext4_dax_journal_corruption
+-	t_mmap_cow_race t_mmap_fallocate fsync-err t_ext4_dax_journal_corruption
++	t_mmap_cow_race t_mmap_fallocate fsync-err t_ext4_dax_journal_corruption \
++	t_ext4_dax_inline_corruption
  
  LINUX_TARGETS = xfsctl bstat t_mtab getdevicesize preallo_rw_pattern_reader \
  	preallo_rw_pattern_writer ftrunc trunc fs_perms testx looptest \
-diff --git a/src/t_ext4_dax_journal_corruption.c b/src/t_ext4_dax_journal_corruption.c
+diff --git a/src/t_ext4_dax_inline_corruption.c b/src/t_ext4_dax_inline_corruption.c
 new file mode 100644
-index 0000000..e0d63f8
+index 0000000..4b7d893
 --- /dev/null
-+++ b/src/t_ext4_dax_journal_corruption.c
-@@ -0,0 +1,93 @@
++++ b/src/t_ext4_dax_inline_corruption.c
+@@ -0,0 +1,70 @@
 +#include <errno.h>
 +#include <fcntl.h>
 +#include <stdio.h>
@@ -101,57 +101,34 @@ index 0000000..e0d63f8
 +	exit(1);
 +}
 +
-+void chattr_cmd(char *chattr, char *cmd, char *file)
-+{
-+	int ret;
-+	char command[STRLEN];
-+
-+	ret = snprintf(command, STRLEN, "%s %s %s 2>/dev/null", chattr, cmd, file);
-+	if (ret < 0)
-+		err_exit("snprintf");
-+
-+	ret = system(command);
-+	if (ret) /* Success - the kernel fix is to have this chattr fail */
-+		exit(77);
-+}
-+
 +int main(int argc, char *argv[])
 +{
 +	int fd, err, len = PAGE(1);
-+	char *data, *dax_data, *chattr, *file;
++	char *dax_data, *data;
 +	char string[STRLEN];
 +
-+	if (argc < 3) {
-+		printf("Usage: %s <chattr program> <file>\n", basename(argv[0]));
++	if (argc < 2) {
++		printf("Usage: %s <file>\n", basename(argv[0]));
 +		exit(0);
 +	}
-+
-+	chattr = argv[1];
-+	file = argv[2];
 +
 +	srand(time(NULL));
 +	snprintf(string, STRLEN, "random number %d\n", rand());
 +
-+	fd = open(file, O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
++	fd = open(argv[1], O_RDWR);
 +	if (fd < 0)
 +		err_exit("fd");
-+
-+	/* begin with journaling off and DAX on */
-+	chattr_cmd(chattr, "-j", file);
-+
-+	ftruncate(fd, 0);
-+	fallocate(fd, 0, 0, len);
-+
-+	dax_data = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, 0);
-+	if (!dax_data)
-+		err_exit("mmap dax_data");
-+
-+	/* turns on journaling, and turns off DAX */
-+	chattr_cmd(chattr, "+j", file);
 +
 +	data = mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
 +	if (!data)
 +		err_exit("mmap data");
++
++	/* this fallocate turns off inline data and turns on DAX */
++	fallocate(fd, 0, 0, PAGE(2));
++
++	dax_data = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, 0);
++	if (!dax_data)
++		err_exit("mmap dax_data");
 +
 +	/*
 +	 * Write the data using the non-DAX mapping, and try and read it back
@@ -161,30 +138,30 @@ index 0000000..e0d63f8
 +	if (strcmp(dax_data, string) != 0)
 +		printf("Data miscompare\n");
 +
-+	err = munmap(data, len);
-+	if (err < 0)
-+		err_exit("munmap data");
-+
 +	err = munmap(dax_data, len);
 +	if (err < 0)
 +		err_exit("munmap dax_data");
++
++	err = munmap(data, len);
++	if (err < 0)
++		err_exit("munmap data");
 +
 +	err = close(fd);
 +	if (err < 0)
 +		err_exit("close");
 +	return 0;
 +}
-diff --git a/tests/ext4/030 b/tests/ext4/030
+diff --git a/tests/ext4/031 b/tests/ext4/031
 new file mode 100755
-index 0000000..3ac4952
+index 0000000..95a5c65
 --- /dev/null
-+++ b/tests/ext4/030
-@@ -0,0 +1,68 @@
++++ b/tests/ext4/031
+@@ -0,0 +1,84 @@
 +#! /bin/bash
-+# FS QA Test ext4/030
++# FS QA Test ext4/031
 +#
 +# This is a regression test for kernel patch:
-+#   ext4: prevent data corruption with journaling + DAX
++#   ext4: prevent data corruption with inline data + DAX
 +# created by Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 +#
 +#-----------------------------------------------------------------------
@@ -231,40 +208,56 @@ index 0000000..3ac4952
 +_supported_os Linux
 +_supported_fs ext4
 +_require_scratch_dax
-+_require_test_program "t_ext4_dax_journal_corruption"
++_require_test_program "t_ext4_dax_inline_corruption"
 +
 +# real QA test starts here
-+_scratch_mkfs > $seqres.full 2>&1
-+_scratch_mount "-o dax,nodelalloc" >> $seqres.full 2>&1
++_scratch_mkfs_ext4 -O inline_data > $seqres.full 2>&1
 +
-+src/t_ext4_dax_journal_corruption $CHATTR_PROG $SCRATCH_MNT/testfile
++TESTFILE=$SCRATCH_MNT/testfile
 +
-+if [[ $? != 0 && $? != 77 ]]; then
-+	echo "Test failed, status $?"
-+	exit 1
++# DAX needs to be off so we can create an inode with inline data
++SAVE_MOUNT_OPTIONS="$MOUNT_OPTIONS"
++MOUNT_OPTIONS=""
++_scratch_mount  >> $seqres.full 2>&1
++
++echo "Need to make some inline data..." > $TESTFILE
++
++export MOUNT_OPTIONS="$SAVE_MOUNT_OPTIONS"
++
++_scratch_unmount >> $seqres.full 2>&1
++_scratch_mount "-o dax" >> $seqres.full 2>&1
++
++if [[ $? != 0 ]]; then
++	# _require_scratch_dax already verified that we could mount with DAX.
++	# Failure here is expected because we have inline data.
++	echo "Silence is golden"
++	status=0
++	exit
 +fi
++
++src/t_ext4_dax_inline_corruption $TESTFILE
 +
 +# success, all done
 +echo "Silence is golden"
 +status=0
 +exit
-diff --git a/tests/ext4/030.out b/tests/ext4/030.out
+diff --git a/tests/ext4/031.out b/tests/ext4/031.out
 new file mode 100644
-index 0000000..06a1c8f
+index 0000000..b3d0bb0
 --- /dev/null
-+++ b/tests/ext4/030.out
++++ b/tests/ext4/031.out
 @@ -0,0 +1,2 @@
-+QA output created by 030
++QA output created by 031
 +Silence is golden
 diff --git a/tests/ext4/group b/tests/ext4/group
-index 257bb64..ef768df 100644
+index ef768df..396f963 100644
 --- a/tests/ext4/group
 +++ b/tests/ext4/group
-@@ -32,6 +32,7 @@
- 027 auto quick fsmap
+@@ -33,6 +33,7 @@
  028 auto quick fsmap
  029 auto quick fsmap
-+030 auto quick
+ 030 auto quick
++031 auto quick
  271 auto rw quick
  301 aio auto ioctl rw stress defrag
  302 aio auto ioctl rw stress defrag
