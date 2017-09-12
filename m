@@ -1,82 +1,117 @@
-From: Simon Ruderich <simon@ruderich.org>
-Subject: Re: Unexpected writes seen on a Read-only, DAX enabled EXT4 fs
-Date: Tue, 12 Sep 2017 11:03:49 +0200
-Message-ID: <20170912090349.6ow4bv56px2uoqw3@ruderich.org>
-References: <2036030243.251059.1504977026265.ref@mail.yahoo.com>
- <2036030243.251059.1504977026265@mail.yahoo.com>
- <20170911182112.GA20005@linux.intel.com>
- <9F35007B-F0D9-4FB9-A52D-604E410AB389@dilger.ca>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH 1/2] libext2fs: Prevent allocating inode table from
+ already used blocks
+Date: Tue, 12 Sep 2017 13:20:29 +0200
+Message-ID: <20170912112029.jqkzpjt7hnnh6xu5@rh_laptop>
+References: <1503581739-6385-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512; protocol="application/pgp-signature"; boundary="=_zucker.schokokeks.org-32653-1505207029-0001-2"
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Soccer Liu <soccer_liu@yahoo.com>, linux-ext4@vger.kernel.org,
-        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zucker2.schokokeks.org ([178.63.68.90]:35483 "EHLO
-        zucker2.schokokeks.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751430AbdILJIz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Sep 2017 05:08:55 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:37298 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751289AbdILLUc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 12 Sep 2017 07:20:32 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id E30EA4E4C3
+        for <linux-ext4@vger.kernel.org>; Tue, 12 Sep 2017 11:20:31 +0000 (UTC)
+Received: from rh_laptop (unknown [10.43.17.67])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 65D5E6F9FA
+        for <linux-ext4@vger.kernel.org>; Tue, 12 Sep 2017 11:20:31 +0000 (UTC)
 Content-Disposition: inline
-In-Reply-To: <9F35007B-F0D9-4FB9-A52D-604E410AB389@dilger.ca>
+In-Reply-To: <1503581739-6385-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a MIME-formatted message.  If you see this text it means that your
-E-mail software does not support MIME-formatted messages.
+On Thu, Aug 24, 2017 at 03:35:38PM +0200, Lukas Czerner wrote:
+> Currently it's possible for ext2fs_allocate_group_table() to place inode
+> tables to blocks that are already occupied by different inode table.
+> This can be reproduced by resize2fs on the file system where we need to
+> move more than one inode table to a different location due to increase
+> in group descriptor blocks, inode and block bitmaps.
+> 
+> Best way I can reproduce this is to create big enough file system with
+> huge amount of inodes and without resize_inode
+> 
+> mke2fs -F -b 1024 -i 1024 -O ^resize_inode -t ext4 /dev/loop0 1024000
+> resize2fs /dev/loop0 10240000
+> 
+> e2fsck -fn /dev/loop0 | less
+> e2fsck 1.43.5 (04-Aug-2017)
+> ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
+> e2fsck: Group descriptors look bad... trying backup blocks...
+> e2fsck: The journal superblock is corrupt while checking journal for /dev/loop0
+> e2fsck: Cannot proceed with file system check
+> Superblock has an invalid journal (inode 8).
+> Clear? no
+> 
+> /dev/loop0: ********** WARNING: Filesystem still has errors **********
+> 
+> None of the settings are strictly necessary and it can be reproducer in
+> various ways. This is just an example of one easy way to reproduce this.
+> 
+> This bug was introduced with commit fccdbac39454 ("libext2fs: optimize
+> ext2fs_allocate_group_table()") and is caused by the fact that wrong
+> bitmap is used to mark the blocks as used.
+> 
+> Fix this by using ext2fs_mark_block_bitmap_range2() in both (flex_bg and
+> non flex_bg) cases and handle flex_bg case manually instead of relying
+> on ext2fs_block_alloc_stats_range() because there is no way in that
+> function to use different bitmap than fs->block_map.
 
---=_zucker.schokokeks.org-32653-1505207029-0001-2
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+ping
 
-On Mon, Sep 11, 2017 at 02:31:41PM -0600, Andreas Dilger wrote:
-> On Sep 11, 2017, at 12:21 PM, Ross Zwisler wrote:
->>
->> On Sat, Sep 09, 2017 at 05:10:26PM +0000, Soccer Liu wrote:
->>> [snip]
->>>
->>> Based on the following Mount documentation below, I did mount this ext =
-fs
->>> with ro and noloadAre there any other options that I could use to total=
-ly
->>> eliminate those unexpected writes?
->
-> [snip]
->
-> Also, ext4 journal recovery will be done on the filesystem regardless of
-> whether it is mounted read-only or not.
-
-I thought the noload option should prevent journal recovery and
-thus be truly read-only. At least it worked on a read-only device
-for me.
-
-Regards
-Simon
---=20
-+ privacy is necessary
-+ using gnupg http://gnupg.org
-+ public key id: 0x92FEFDB7E44C32F9
-
---=_zucker.schokokeks.org-32653-1505207029-0001-2
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCgAdFiEEO7rfWMMObpFkF3n0kv79t+RMMvkFAlm3oukACgkQkv79t+RM
-MvkljhAAgL8vaZnFbstn2XSYgs7IZCUABJLur5cKUUwUFryZ/WDzWAQATaZvXh3V
-PP0i4X+sTKGMQPOqseu2mScFk+eauceN+T3NGkgGn9r3q95AbamLt7JPd/dnK1oG
-rRUB/kkEJlP69UAYbZQLgPcjzywy8RTqpntUWhFpNa9Kp/4KbreqR8vIJGL8Atzp
-gr1WC+mH7f6jwD4J/cB7NVRxReFgS3pY/dXm2JJvCMPcHE0x9dRSLtgE9jPSYktK
-ztMYXj243fJ+KCr1swlY8+UAfdvr2kpWXONGlcA33fPXVV90tBtnjSiXkm7Tm+fa
-+ZEmSOnCVGqKfVnWMJY6A9icrNv1lcMAAI7yt4YZXYCfiBG/9Bz3Zz36GNLKv46s
-zT0fsHNlBME/p8DsIOOIY4I2xTeDwsCwDcBmKb4lt1ylE8sgqjd1NGLW9WhoLFxj
-FN0Vk7zbuh6XDTowC2knfz2cZdYdtbqLmZHkXquuDRfPpASkoPUzkZZfHni0OpTT
-bNV+QNMs8ulZjMkfXun8LpwVaXdIq1hv82Xl5bfaRNCdaxG3JNHuCIaR6BetstNb
-L+AdPHrDoiZmOxhDW5RsHVVZMNe5ygQ1ENnUe6thIUa2A1V5djkDdraK/WG6BL3r
-YYF+OZ3K+ZpebTMpGgqGye+W7H2Jwrjjqeo0GBfv/yf+M1WKY/Y=
-=xnvw
------END PGP SIGNATURE-----
-
---=_zucker.schokokeks.org-32653-1505207029-0001-2--
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  lib/ext2fs/alloc_tables.c | 32 ++++++++++++++++++++++++++------
+>  1 file changed, 26 insertions(+), 6 deletions(-)
+> 
+> diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
+> index da0b15b..407283f 100644
+> --- a/lib/ext2fs/alloc_tables.c
+> +++ b/lib/ext2fs/alloc_tables.c
+> @@ -222,12 +222,32 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
+>  						bmap, &new_blk);
+>  		if (retval)
+>  			return retval;
+> -		if (flexbg_size)
+> -			ext2fs_block_alloc_stats_range(fs, new_blk,
+> -				       fs->inode_blocks_per_group, +1);
+> -		else
+> -			ext2fs_mark_block_bitmap_range2(fs->block_map,
+> -					new_blk, fs->inode_blocks_per_group);
+> +
+> +		ext2fs_mark_block_bitmap_range2(bmap,
+> +			new_blk, fs->inode_blocks_per_group);
+> +		if (flexbg_size) {
+> +			blk64_t num, blk;
+> +			num = fs->inode_blocks_per_group;
+> +			blk = new_blk;
+> +			while (num) {
+> +				int gr = ext2fs_group_of_blk2(fs, blk);
+> +				last_blk = ext2fs_group_last_block2(fs, gr);
+> +				blk64_t n = num;
+> +
+> +				if (blk + num > last_blk)
+> +					n = last_blk - blk + 1;
+> +
+> +				ext2fs_bg_free_blocks_count_set(fs, gr,
+> +					ext2fs_bg_free_blocks_count(fs, gr) -
+> +					n/EXT2FS_CLUSTER_RATIO(fs));
+> +				ext2fs_bg_flags_clear(fs, gr,
+> +					EXT2_BG_BLOCK_UNINIT);
+> +				ext2fs_group_desc_csum_set(fs, gr);
+> +				ext2fs_free_blocks_count_add(fs->super, -n);
+> +				blk += n;
+> +				num -= n;
+> +			}
+> +		}
+>  		ext2fs_inode_table_loc_set(fs, group, new_blk);
+>  	}
+>  	ext2fs_group_desc_csum_set(fs, group);
+> -- 
+> 2.7.5
+> 
