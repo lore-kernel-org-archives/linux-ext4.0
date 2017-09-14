@@ -1,84 +1,71 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 4/4] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
-Date: Thu, 14 Sep 2017 15:14:31 +0200
-Message-ID: <20170914131431.GA26021@quack2.suse.cz>
-References: <20170914095047.23935-1-agruenba@redhat.com>
- <20170914095047.23935-5-agruenba@redhat.com>
- <20170914120229.GA22886@quack2.suse.cz>
- <CAHpGcMJY2PZJYLzUS5ejcnfSVkeO-GKL7z1fRONs1AUdyiaULg@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: 8bit
-Cc: Jan Kara <jack@suse.cz>, Andreas Gruenbacher <agruenba@redhat.com>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Christoph Hellwig <hch@lst.de>
-To: Andreas =?iso-8859-1?Q?Gr=FCnbacher?=
-        <andreas.gruenbacher@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33498 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751131AbdINNOd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 14 Sep 2017 09:14:33 -0400
-Content-Disposition: inline
-In-Reply-To: <CAHpGcMJY2PZJYLzUS5ejcnfSVkeO-GKL7z1fRONs1AUdyiaULg@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH 04/15] ext4: Use pagevec_lookup_range_tag()
+Date: Thu, 14 Sep 2017 15:18:08 +0200
+Message-ID: <20170914131819.26266-5-jack@suse.cz>
+References: <20170914131819.26266-1-jack@suse.cz>
+Cc: <linux-fsdevel@vger.kernel.org>,
+	linux-f2fs-devel@lists.sourceforge.net,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	ceph-devel@vger.kernel.org,
+	"Yan, Zheng" <zyan@redhat.com>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	Jan Kara <jack@suse.cz>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: <linux-mm@kvack.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20170914131819.26266-1-jack@suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 14-09-17 14:47:28, Andreas Grünbacher wrote:
-> 2017-09-14 14:02 GMT+02:00 Jan Kara <jack@suse.cz>:
-> > On Thu 14-09-17 11:50:47, Andreas Gruenbacher wrote:
-> >> @@ -3422,9 +3422,38 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
-> >>       map.m_lblk = first_block;
-> >>       map.m_len = last_block - first_block + 1;
-> >>
-> >> -     if (!(flags & IOMAP_WRITE)) {
-> >> +     if (flags & IOMAP_REPORT) {
-> >>               ret = ext4_map_blocks(NULL, inode, &map, 0);
-> >> -     } else {
-> >> +             if (ret < 0)
-> >> +                     return ret;
-> >> +
-> >> +             if (ret == 0) {
-> >> +                     ext4_lblk_t end = map.m_lblk + map.m_len - 1;
-> >> +                     struct extent_status es;
-> >> +
-> >> +                     ext4_es_find_delayed_extent_range(inode, map.m_lblk, end, &es);
-> >> +
-> >> +                     if (!es.es_len || es.es_lblk > end) {
-> >> +                             /* entire range is a hole */
-> >> +                     } else if (es.es_lblk > map.m_lblk) {
-> >> +                             /* range starts with a hole */
-> >> +                             map.m_len = es.es_lblk - map.m_lblk;
-> >> +                     } else {
-> >> +                             ext4_lblk_t offs = 0;
-> >> +
-> >> +                             if (es.es_lblk < map.m_lblk)
-> >> +                                     offs = map.m_lblk - es.es_lblk;
-> >> +                             map.m_lblk = es.es_lblk + offs;
-> >> +                             map.m_pblk = ext4_es_pblock(&es) + offs;
-> >> +                             map.m_len = es.es_len - offs;
-> >> +                             if (ext4_es_is_unwritten(&es))
-> >> +                                     map.m_flags |= EXT4_MAP_UNWRITTEN;
-> >
-> > This is not possible. If there is unwritten extent at map->m_lblk, then
-> > ext4_map_blocks() could not have possibly returned 0. So just delete this
-> > condition and set map.m_pblk to 0 since delalloc extent has no physical
-> > position.
-> >
-> >> +                             if (ext4_es_is_delayed(&es))
-> >> +                                     delalloc = true;
-> >
-> > Also ext4_es_is_delayed(&es) is guaranteed to be true since you've looked
-> > it up by ext4_es_find_delayed_extent_range(). So just set delalloc = true
-> > unconditionally.
-> 
-> Since map.m_pblk is never used in the delalloc case, we can leave it
-> undefined above as well.
+We want only pages from given range in ext4_writepages(). Use
+pagevec_lookup_range_tag() instead of pagevec_lookup_tag() and remove
+unnecessary code.
 
-Yeah, that's fine by me as well.
+CC: "Theodore Ts'o" <tytso@mit.edu>
+CC: linux-ext4@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
 
-								Honza
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 31db875bc7a1..69f11233d0d6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2619,8 +2619,8 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 	mpd->map.m_len = 0;
+ 	mpd->next_page = index;
+ 	while (index <= end) {
+-		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
+-			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
++		nr_pages = pagevec_lookup_range_tag(&pvec, mapping, &index, end,
++				tag, PAGEVEC_SIZE);
+ 		if (nr_pages == 0)
+ 			goto out;
+ 
+@@ -2628,16 +2628,6 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			struct page *page = pvec.pages[i];
+ 
+ 			/*
+-			 * At this point, the page may be truncated or
+-			 * invalidated (changing page->mapping to NULL), or
+-			 * even swizzled back from swapper_space to tmpfs file
+-			 * mapping. However, page->index will not change
+-			 * because we have a reference on the page.
+-			 */
+-			if (page->index > end)
+-				goto out;
+-
+-			/*
+ 			 * Accumulated enough dirty pages? This doesn't apply
+ 			 * to WB_SYNC_ALL mode. For integrity sync we have to
+ 			 * keep going because someone may be concurrently
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.12.3
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
