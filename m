@@ -1,57 +1,77 @@
-From: Simon Ruderich <simon@ruderich.org>
-Subject: [PATCH] ext4: mention noload when recovering on read-only device
-Date: Thu, 14 Sep 2017 12:23:06 +0200
-Message-ID: <977f189abb1ff382dedd6916b7140081d47d3e8d.1505383806.git.simon@ruderich.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v2 4/4] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
+Date: Thu, 14 Sep 2017 14:02:29 +0200
+Message-ID: <20170914120229.GA22886@quack2.suse.cz>
+References: <20170914095047.23935-1-agruenba@redhat.com>
+ <20170914095047.23935-5-agruenba@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>
+To: Andreas Gruenbacher <agruenba@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zucker2.schokokeks.org ([178.63.68.90]:40949 "EHLO
-        zucker2.schokokeks.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751526AbdINKXI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Sep 2017 06:23:08 -0400
+Received: from mx2.suse.de ([195.135.220.15]:55179 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751413AbdINMCb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 14 Sep 2017 08:02:31 -0400
 Content-Disposition: inline
+In-Reply-To: <20170914095047.23935-5-agruenba@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Help the user to find the appropriate mount option to continue mounting
-the file system on a read-only device if the journal requires recovery.
+On Thu 14-09-17 11:50:47, Andreas Gruenbacher wrote:
+> @@ -3422,9 +3422,38 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  	map.m_lblk = first_block;
+>  	map.m_len = last_block - first_block + 1;
+>  
+> -	if (!(flags & IOMAP_WRITE)) {
+> +	if (flags & IOMAP_REPORT) {
+>  		ret = ext4_map_blocks(NULL, inode, &map, 0);
+> -	} else {
+> +		if (ret < 0)
+> +			return ret;
+> +
+> +		if (ret == 0) {
+> +			ext4_lblk_t end = map.m_lblk + map.m_len - 1;
+> +			struct extent_status es;
+> +
+> +			ext4_es_find_delayed_extent_range(inode, map.m_lblk, end, &es);
+> +
+> +			if (!es.es_len || es.es_lblk > end) {
+> +				/* entire range is a hole */
+> +			} else if (es.es_lblk > map.m_lblk) {
+> +				/* range starts with a hole */
+> +				map.m_len = es.es_lblk - map.m_lblk;
+> +			} else {
+> +				ext4_lblk_t offs = 0;
+> +
+> +				if (es.es_lblk < map.m_lblk)
+> +					offs = map.m_lblk - es.es_lblk;
+> +				map.m_lblk = es.es_lblk + offs;
+> +				map.m_pblk = ext4_es_pblock(&es) + offs;
+> +				map.m_len = es.es_len - offs;
+> +				if (ext4_es_is_unwritten(&es))
+> +					map.m_flags |= EXT4_MAP_UNWRITTEN;
 
-Signed-off-by: Simon Ruderich <simon@ruderich.org>
----
-Hello,
+This is not possible. If there is unwritten extent at map->m_lblk, then
+ext4_map_blocks() could not have possibly returned 0. So just delete this
+condition and set map.m_pblk to 0 since delalloc extent has no physical
+possition.
 
-I tried to mount an ext4 which required recovery from a read-only
-device and stumbled over this error. I freaked out for a second
-(trying to restore from a backup) and it took me a (short) while
-to figure out what to do and I thought it would be useful to give
-the user a hand by pointing to the required mount option.
+> +				if (ext4_es_is_delayed(&es))
+> +					delalloc = true;
 
-Regards
-Simon
+Also ext4_es_is_delayed(&es) is guaranteed to be true since you've looked
+it up by ext4_es_find_delayed_extent_range(). So just set delalloc = true
+unconditionally.
 
- fs/ext4/super.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Otherwise the patch looks good so after fixing up these small issues feel
+free to add:
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d61a70e2193a..f497b79da5cc 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4589,7 +4589,8 @@ static int ext4_load_journal(struct super_block *sb,
- 					"required on readonly filesystem");
- 			if (really_read_only) {
- 				ext4_msg(sb, KERN_ERR, "write access "
--					"unavailable, cannot proceed");
-+					"unavailable, cannot proceed "
-+					"(try mounting with noload)");
- 				return -EROFS;
- 			}
- 			ext4_msg(sb, KERN_INFO, "write access will "
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
 -- 
-2.14.1
-
--- 
-+ privacy is necessary
-+ using gnupg http://gnupg.org
-+ public key id: 0x92FEFDB7E44C32F9
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
