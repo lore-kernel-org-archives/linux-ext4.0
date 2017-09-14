@@ -1,42 +1,40 @@
-From: ChunYu Wang <chunwang@redhat.com>
-Subject: Re: kernel BUG at fs/ext4/fsync.c:LINE!
-Date: Fri, 15 Sep 2017 02:22:01 +0800
-Message-ID: <CAOm2TWzK0VugZo5ZpWLj5c+f3M0mKPxecjs1oA1g86v1e3kGFA@mail.gmail.com>
-References: <CACbyUSr1AEJ3E+wB7a1ftuxH4sSK=i5v1Z+KUJ0TMygUrtdPRQ@mail.gmail.com>
- <CAOm2TWy7OJ0MAAbQ+U4deNuMtL9nwRv5nauEpOj-Ry8=uPVoog@mail.gmail.com> <CE0032C8-A8FE-42C2-BFD8-06411B393FF3@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: inconsistent lock state in jbd2_trans_will_send_data_barrier
+Date: Thu, 14 Sep 2017 17:09:49 -0400
+Message-ID: <20170914210949.g4haruzjnmsicnmb@thunk.org>
+References: <CACbyUSoP1zouetuKE9o5yHjNPMDbdz7hHg8ej-9wLs-EyhF2=w@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: GeneBlue <geneblue.mail@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        syzkaller <syzkaller@googlegroups.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qt0-f173.google.com ([209.85.216.173]:53771 "EHLO
-        mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751316AbdINSWC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Sep 2017 14:22:02 -0400
-Received: by mail-qt0-f173.google.com with SMTP id 47so163331qts.10
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Sep 2017 11:22:02 -0700 (PDT)
-In-Reply-To: <CE0032C8-A8FE-42C2-BFD8-06411B393FF3@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: peterz@infradead.org, mingo@redhat.com,
+        linux-kernel@vger.kernel.org, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, syzkaller <syzkaller@googlegroups.com>
+To: GeneBlue <geneblue.mail@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CACbyUSoP1zouetuKE9o5yHjNPMDbdz7hHg8ej-9wLs-EyhF2=w@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 15, 2017 at 12:41 AM, Andreas Dilger <adilger@dilger.ca> wrote:
-> I don't think a reproducer is needed.  It looks like the fsync callpath
-> is happening from an IRQ context due to IO completion, and then re-entering
-> the filesystem while a transaction is already started.  It looks like the
-> original IO was submitted with AIO based on the functions on the IRQ stack,
-> which is likely why nobody has hit it (AIO isn't very commonly used).
->
-> That said, I don't follow the reasoning behind the convoluted series of AIO
-> callbacks that has IO _completion_ calling vfs_fsync_range() and re-entering
-> the filesystem to flush out more data?
+On Thu, Sep 14, 2017 at 07:56:16PM +0800, GeneBlue wrote:
+> Hi:
+>   ext4_fill_super+0x8670/0xa720 fs/ext4/super.c:4005
+>   mount_bdev+0x2d7/0x390 fs/super.c:1119
+>   ext4_mount+0x34/0x40 fs/ext4/super.c:5683
+>   mount_fs+0x9d/0x2d0 fs/super.c:1222
+>   vfs_kern_mount+0x7a/0x3f0 fs/namespace.c:977
+>   do_new_mount fs/namespace.c:2454 [inline]
+>   do_mount+0x3d6/0x2710 fs/namespace.c:2776
+>   SYSC_mount fs/namespace.c:2992 [inline]
+>   SyS_mount+0xab/0x120 fs/namespace.c:2969
+>   do_mount_root init/do_mounts.c:366 [inline]
+>   mount_block_root+0x3a2/0x5ec init/do_mounts.c:396
+>   mount_root+0x1b5/0x1e5 init/do_mounts.c:541
+>   prepare_namespace+0x18f/0x1cc init/do_mounts.c:600
+>   kernel_init_freeable+0x52d/0x54b init/main.c:1075
+>   kernel_init+0x13/0x170 init/main.c:984
+>   ret_from_fork+0x2a/0x40 arch/x86/entry/entry_64.S:425
 
-Thanks for analyzing, and I do think the syzkaller reproducer(in fact,
-log) may also answer your question and help positioning the precise
-issue trigger in-depth. Moreover, for me, I am not professional enough
-to analyze such a complex problem with call trace and code only :)
+What kernel version, what did you do to provoke this (do you have a
+clean repro), etc.?
 
-- ChunYu
+					- Ted
