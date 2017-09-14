@@ -1,107 +1,113 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: Unexpected writes seen on a Read-only, DAX enabled EXT4 fs
-Date: Mon, 11 Sep 2017 12:21:12 -0600
-Message-ID: <20170911182112.GA20005@linux.intel.com>
-References: <2036030243.251059.1504977026265.ref@mail.yahoo.com>
- <2036030243.251059.1504977026265@mail.yahoo.com>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [PATCH 4/4] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
+Date: Thu, 14 Sep 2017 11:17:24 +0200
+Message-ID: <CAHc6FU4aDVF7fhYVfShnRyg=0P=8T7mJ9D59r2CC1i2OO-SEeQ@mail.gmail.com>
+References: <20170829142942.21594-1-agruenba@redhat.com> <20170829142942.21594-5-agruenba@redhat.com>
+ <20170830145921.GB5920@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-Cc: "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-To: Soccer Liu <soccer_liu-/E1597aS9LQAvxtiuMwx3w@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <2036030243.251059.1504977026265-sAHhhX/85wgbqTNvkayDYw@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@lst.de>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170830145921.GB5920@quack2.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Sep 09, 2017 at 05:10:26PM +0000, Soccer Liu wrote:
-> Hi:
-> =A0 I was surprised to see a few write operations called into
-> ext4_dax_huge_fault with FAULT_FLAG_WRITE set on vmf->flags
-> Are those writes expected at all?
-> static int ext4_dax_huge_fault(struct vm_fault *vmf,
->  enum page_entry_size pe_size)
-> {
+Jan,
+
+On Wed, Aug 30, 2017 at 4:59 PM, Jan Kara <jack@suse.cz> wrote:
+> On Tue 29-08-17 16:29:42, Andreas Gruenbacher wrote:
+>> From: Christoph Hellwig <hch@lst.de>
+>>
+>> Switch to the iomap_seek_hole and iomap_seek_data helpers for
+>> implementing lseek SEEK_HOLE / SEEK_DATA, and remove all the code that
+>> isn't needed any more.
+>>
+>> Note that with this patch, ext4 will now always depend on the iomap code
+>> instead of only when CONFIG_DAX is enabled, and it requires adding a
+>> call into the extent status tree for iomap_begin as well to properly
+>> deal with delalloc extents.
+>>
+>> Signed-off-by: Christoph Hellwig <hch@lst.de>
+>> [Minor fixes and cleanups by Andreas]
+>> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+>
 > ...
->  bool write =3D vmf->flags & FAULT_FLAG_WRITE;
-> Based on the following Mount documentation below, I did mount this ext fs
-> with ro and noloadAre there any other options that I could use to totally
-> eliminate those unexpected writes?
->    =
+>
+>> @@ -3425,6 +3425,29 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>>
+>>       if (!(flags & IOMAP_WRITE)) {
+>>               ret = ext4_map_blocks(NULL, inode, &map, 0);
+>> +             if (ret < 0)
+>> +                     return ret;
+>
+> One general question about IOMAP_REPORT: When there is unwritten extent, we
+> use page_cache_seek_hole_data() to determine what is actually a hole and
+> what is data. We could use exactly the same function to determine what is a
+> hole and what is data in an IOMAP_HOLE extent, couldn't we? Now I
+> understand that a filesystem is supposed to return IOMAP_DELALLOC extent if
+> there is delayed allocation data covering queried offset so probably it's
+> not a great idea to use that however it still seems a bit like an
+> unnecessary duplication...
 
->    - -r, --read-only
->       - Mount the filesystem read-only. A synonym is -o ro.Note that,
->       depending on the filesystem type, state and kernel behavior, the
->       system may still write to the device. For example, Ext3 or ext4 will
->       replay itsjournal if the filesystem is dirty. To prevent this kind =
-of
->       write access, you may want to mount ext3 or ext4 filesystem with
->       "ro,noload" mount options or setthe block device to read-only mode,
->       see command blockdev(8).  -    =
+There is no point in scanning the page cache on filesystems that don't
+support delayed allocation, so it does make sense to distinguish the
+two types of mappings.
 
-> =
+>> +             if (!ret) {
+>
+> Please go to this branch only for IOMAP_REPORT case to avoid unnecessary
+> overhead for DAX mappings...
+>
+>> +                     struct extent_status es = {};
+>> +
+>> +                     ext4_es_find_delayed_extent_range(inode, map.m_lblk,
+>> +                                     map.m_lblk + map.m_len - 1, &es);
+>> +                     /* Is delalloc data before next block in extent tree? */
+>> +                     if (es.es_len && es.es_lblk < map.m_lblk + map.m_len) {
+>
+> And this is still wrong - I have actually verified that with attached patch
+> that disables caching of extents (so it is equivalent to *very* aggresive
+> slab reclaim happening). With that patch applied you'll get:
+>
+> kvm0:~ # rm /mnt/file; xfs_io -f -c "pwrite 4096 4096" -c "seek -a 0"
+> /mnt/file
+> wrote 4096/4096 bytes at offset 4096
+> 4 KiB, 1 ops; 0.0000 sec (16.693 MiB/sec and 4273.5043 ops/sec)
+> Whence  Result
+> DATA    0
+> HOLE    8192
+>
+> Which is obviously wrong - hole should be 0, data should be 4096.
+>
+> And the reason why this is wrong is that when we are asked to map things at
+> first_block and there is a hole at that offset, we need to just truncate
+> the hole extent returned by ext4_map_blocks() by possibly following
+> delalloc allocation. But we still need to return that there *is a hole* at
+> first_block. But your patch seems to try to return the delalloc extent
+> instead which is wrong.
 
-> Related DMESG output...
-> =
+Got it, thanks for the debug patch. I'll send a fixed version of the series.
 
-> [=A0=A0=A0 0.891653] EXT4-fs (pmem0): DAX enabled. Warning: EXPERIMENTAL,=
- use at your own risk
-> [=A0=A0=A0 0.892736] EXT4-fs (pmem0): mounted filesystem without journal.=
- Opts: noload,dax
-> [=A0=A0=A0 0.898293] EXT4-fs (sda): mounted filesystem without journal. O=
-pts: (null)
-> [=A0=A0=A0 0.902574] random: fast init done
-> [=A0=A0=A0 0.926157] IPVS: ftp: loaded support on port[0] =3D 21
-> // My private debug messages
-> [=A0=A0=A0 0.997224] EXT4-fs (pmem0): write is 1 handle =3D 0xfffffffffff=
-fffe2 <--read-only device=A0
-> [=A0=A0=A0 0.998052] EXT4-fs (pmem0): write is 1 handle =3D 0xfffffffffff=
-fffe2
-> [=A0=A0=A0 0.998787] EXT4-fs (pmem0): write is 1 handle =3D 0xfffffffffff=
-fffe2
-> [=A0=A0=A0 0.999720] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0=A0 1.004626] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0=A0 1.005359] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0=A0 1.006128] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0=A0 1.006824] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0=A0 1.007499] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0=A0 1.008149] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0=A0 7.320626] random: crng init done
-> [=A0=A0 18.780447] EXT4-fs: 53 callbacks suppressed
-> [=A0=A0 18.781900] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0 18.783392] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0 18.790661] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0 18.792042] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0 18.793321] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0 18.795005] EXT4-fs (pmem0): write is 0 handle =3D 0x0
-> [=A0=A0 18.795204] EXT4-fs (pmem0): write is 1 handle =3D 0xfffffffffffff=
-fe2
-> [=A0=A0 18.795209] EXT4-fs (pmem0): write is 1 handle =3D 0xfffffffffffff=
-fe2
-> [=A0=A0 18.795213] EXT4-fs (pmem0): write is 1 handle =3D 0xfffffffffffff=
-fe2
-> [=A0=A0 18.795257] EXT4-fs (pmem0): write is 0 handle =3D 0x0
+>> +                             ext4_lblk_t offs = 0;
+>> +
+>> +                             if (es.es_lblk < map.m_lblk)
+>> +                                     offs = map.m_lblk - es.es_lblk;
+>> +                             map.m_lblk = es.es_lblk + offs;
+>> +                             map.m_pblk = ext4_es_pblock(&es) + offs;
+>> +                             map.m_len = es.es_len - offs;
+>> +                             if (ext4_es_is_unwritten(&es))
+>> +                                     map.m_flags |= EXT4_MAP_UNWRITTEN;
+>> +                             if (ext4_es_is_delayed(&es))
+>> +                                     delalloc = true;
+>> +                             ret = 1;
+>> +                     }
+>> +             }
+>>       } else {
+>>               int dio_credits;
+>>               handle_t *handle;
 
-Adding the ext4 list.
-
-I'm pretty sure that this is ext4/mm behavior that is independent of DAX.  =
-DAX
-doesn't really have any impact on whether or not write page faults happen o=
-n a
-RO ext4 filesystem, though this fix from Randy Dodgen:
-
-https://www.spinics.net/lists/linux-ext4/msg58075.html
-
-shows that FAULT_FLAG_WRITE can be set on DAX read-only ext4 mounts when
-executing binaries, though in this case the write is going to a COW page.
-
-- Ross
+Thanks,
+Andreas
