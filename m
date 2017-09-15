@@ -1,54 +1,59 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC] Ext4 case insensitive proposal
-Date: Thu, 14 Sep 2017 19:11:30 -0400
-Message-ID: <20170914231130.5t6ndiaortuo42av@thunk.org>
-References: <871snrvu3r.fsf@dilma.collabora.co.uk>
+From: Soccer Liu <soccer_liu-/E1597aS9LQAvxtiuMwx3w@public.gmane.org>
+Subject: Re: Unexpected writes seen on a Read-only, DAX enabled EXT4 fs
+Date: Fri, 15 Sep 2017 00:45:42 +0000 (UTC)
+Message-ID: <562539845.2477035.1505436342929@mail.yahoo.com>
+References: <2036030243.251059.1504977026265.ref@mail.yahoo.com>
+ <2036030243.251059.1504977026265@mail.yahoo.com>
+ <20170911182112.GA20005@linux.intel.com>
+ <9F35007B-F0D9-4FB9-A52D-604E410AB389@dilger.ca>
+ <20170912090349.6ow4bv56px2uoqw3@ruderich.org>
+Reply-To: Soccer Liu <soccer_liu-/E1597aS9LQAvxtiuMwx3w@public.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43088 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751392AbdINXLm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 14 Sep 2017 19:11:42 -0400
-Content-Disposition: inline
-In-Reply-To: <871snrvu3r.fsf@dilma.collabora.co.uk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+To: Simon Ruderich <simon-Ezk2jvNqUrNg9hUCZPvPmw@public.gmane.org>, Andreas Dilger <adilger-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20170912090349.6ow4bv56px2uoqw3-Ezk2jvNqUrNg9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Sep 01, 2017 at 02:57:44AM -0300, Gabriel Krisman Bertazi wrote:
-> 
-> As a follow-up on the discussions held in this list after Ted's proposal
-> on case-insensitive support for ext4 last year, I've implemented a my
-> version of it to learn my way through the ext4 code, and to get started
-> on the task.  As my goal would be a slightly more complex approach, with
-> at least UTF-8 support for lookups, I'd like to hear from you about my
-> current implementation and the following proposal, as well as if there
-> is anyone currently working on anything like this, so we could
-> coordinate efforts.
-> 
-> Regarding the Unicode proposal (shivers), I am aware of Ben and
-> Olaf's proposal from 2014, and I plan to work on top of that to get it
-> updated and upstream.
-> 
-> Please, let me know your thoughts.
-> 
-> * Current Implementation
-> 
-> Simple learning experience to get the wheel spinning, based on Ted Ts'o
-> initial proposal back in 2016 [1].  It supports ASCII-case folding only
-> and doesn't rely on on-disk modifications.
-
-This isn't a complete implementation of my proposal.  In particular
-one of the things which is missing is:
-
-   1.  If case-insensitivity is enabled, override the default dcache hash
-   and compare operations to ones that are case insensitive in ext4's
-   dcache_operations structure.
-
-This is needed so there is a single dcache entry for case-folded file
-names.
-
-						- Ted
-						
+VGhhbmtzIGZvciB0aGUgcmVwbGllcy4KQWZ0ZXIgc29tZSBkaWdnaW5ncywgSSBmb3VuZCB0aGUg
+d3JpdGVzIHRoYXQgSSB3YXMgc2VlaW5nIHdhcyBmb3Igbm90IHRoZSByZWFsIHdyaXRlcywgaW5z
+dGVhZCB0aGV5IGFyZSB0aG9zZSBDT1cgd3JpdGVzIG1lbnRpb25lZCBpbiB0aGUgZm9sbG93aW5n
+IGNvbW1pdC4KImV4dDQ6IGZpeCBmYXVsdCBoYW5kbGluZyB3aGVuIG1vdW50ZWQgd2l0aCAtbyBk
+YXgscm8gImh0dHBzOi8vZ2l0aHViLmNvbS90b3J2YWxkcy9saW51eC9jb21taXQvZmQ5NmI4ZGE2
+OGQzMmE5NDAzNzI2ZGIwOWIyMjlmNGI1YWM4NDljNyNkaWZmLWY5NTllNTBjYmQxNzgwOWU3NzNl
+ZjdiODlhMzhkM2NhCkkgd2FzIGhpdHRpbmcgdGhpcyBleGFjdGx5IGlzc3VlIG9uIERBWCBlbmFi
+bGVkIHJlYWRvbmx5IGVtdWxhdGVkIFBNRU0gZGV2aWNlcy4gKGEgcmVncmVzc2lvbiBmcm9twqBo
+dHRwczovL2dpdC5rZXJuZWwub3JnL3B1Yi9zY20vbGludXgva2VybmVsL2dpdC9zdGFibGUvbGlu
+dXgtc3RhYmxlLmdpdC9jb21taXQvP2g9bGludXgtNC4xMS55JmlkPTVhMzY1MWI0YTkyY2JjNTIz
+MGQ2N2QyY2U4N2ZiM2Y3MzczYzc2NjUgKQpXaXRoIGFib3ZlwqAgZml4LCBpdCdzIGFsbCBnb29k
+IG5vdy4KVGhhbmtzQ2hlbmctbWVhbgogCgogICAgT24gVHVlc2RheSwgU2VwdGVtYmVyIDEyLCAy
+MDE3IDI6MDMgQU0sIFNpbW9uIFJ1ZGVyaWNoIDxzaW1vbkBydWRlcmljaC5vcmc+IHdyb3RlOgog
+CgogT24gTW9uLCBTZXAgMTEsIDIwMTcgYXQgMDI6MzE6NDFQTSAtMDYwMCwgQW5kcmVhcyBEaWxn
+ZXIgd3JvdGU6Cj4gT24gU2VwIDExLCAyMDE3LCBhdCAxMjoyMSBQTSwgUm9zcyBad2lzbGVyIHdy
+b3RlOgo+Pgo+PiBPbiBTYXQsIFNlcCAwOSwgMjAxNyBhdCAwNToxMDoyNlBNICswMDAwLCBTb2Nj
+ZXIgTGl1IHdyb3RlOgo+Pj4gW3NuaXBdCj4+Pgo+Pj4gQmFzZWQgb24gdGhlIGZvbGxvd2luZyBN
+b3VudCBkb2N1bWVudGF0aW9uIGJlbG93LCBJIGRpZCBtb3VudCB0aGlzIGV4dCBmcwo+Pj4gd2l0
+aCBybyBhbmQgbm9sb2FkQXJlIHRoZXJlIGFueSBvdGhlciBvcHRpb25zIHRoYXQgSSBjb3VsZCB1
+c2UgdG8gdG90YWxseQo+Pj4gZWxpbWluYXRlIHRob3NlIHVuZXhwZWN0ZWQgd3JpdGVzPwo+Cj4g
+W3NuaXBdCj4KPiBBbHNvLCBleHQ0IGpvdXJuYWwgcmVjb3Zlcnkgd2lsbCBiZSBkb25lIG9uIHRo
+ZSBmaWxlc3lzdGVtIHJlZ2FyZGxlc3Mgb2YKPiB3aGV0aGVyIGl0IGlzIG1vdW50ZWQgcmVhZC1v
+bmx5IG9yIG5vdC4KCkkgdGhvdWdodCB0aGUgbm9sb2FkIG9wdGlvbiBzaG91bGQgcHJldmVudCBq
+b3VybmFsIHJlY292ZXJ5IGFuZAp0aHVzIGJlIHRydWx5IHJlYWQtb25seS4gQXQgbGVhc3QgaXQg
+d29ya2VkIG9uIGEgcmVhZC1vbmx5IGRldmljZQpmb3IgbWUuCgpSZWdhcmRzClNpbW9uCi0tIAor
+IHByaXZhY3kgaXMgbmVjZXNzYXJ5CisgdXNpbmcgZ251cGcgaHR0cDovL2dudXBnLm9yZworIHB1
+YmxpYyBrZXkgaWQ6IDB4OTJGRUZEQjdFNDRDMzJGOQoKICAgCl9fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fCkxpbnV4LW52ZGltbSBtYWlsaW5nIGxpc3QKTGlu
+dXgtbnZkaW1tQGxpc3RzLjAxLm9yZwpodHRwczovL2xpc3RzLjAxLm9yZy9tYWlsbWFuL2xpc3Rp
+bmZvL2xpbnV4LW52ZGltbQo=
