@@ -1,89 +1,31 @@
-From: Pavel Machek <pavel@ucw.cz>
-Subject: [PATCH] Documentation: fix little inconsistencies
-Date: Sat, 16 Sep 2017 13:48:37 +0200
-Message-ID: <20170916114837.GA5459@amd>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Sun, 17 Sep 2017 12:12:01 +0000
+Message-ID: <bug-89511-13602-6yfL4URtix@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="oyUTqETQ0mS9luUI"
-Cc: Andrew Morton <akpm@osdl.org>
-To: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org,
-        tytso@mit.edu, corbet@lwn.net, trivial@kernel.org,
-        linux-ext4@vger.kernel.org
-Return-path: <linux-doc-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:47958 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750824AbdIQMME (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 17 Sep 2017 08:12:04 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9D66028B20
+        for <linux-ext4@vger.kernel.org>; Sun, 17 Sep 2017 12:12:03 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
---oyUTqETQ0mS9luUI
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+--- Comment #72 from Markus Rathgeb (maggu2810@gmail.com) ---
+The status is still set to NEEDINFO.
+Which one is missing?
 
-
-Fix little inconsistencies in Documentation: make case and spacing
-match surrounding text.
-
-Signed-off-by: Pavel Machek <pavel@ucw.cz>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-
-
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems=
-/ext4.txt
-index 5a8f7f4..75236c0 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -94,10 +94,10 @@ Note: More extensive information for getting started wi=
-th ext4 can be
- * ability to pack bitmaps and inode tables into larger virtual groups via =
-the
-   flex_bg feature
- * large file support
--* Inode allocation using large virtual block groups via flex_bg
-+* inode allocation using large virtual block groups via flex_bg
- * delayed allocation
- * large block (up to pagesize) support
--* efficient new ordered mode in JBD2 and ext4(avoid using buffer head to f=
-orce
-+* efficient new ordered mode in JBD2 and ext4 (avoid using buffer head to =
-force
-   the ordering)
-=20
- [1] Filesystems with a block size of 1k may see a limit imposed by the
-@@ -105,7 +105,7 @@ directory hash tree having a maximum depth of two.
-=20
- 2.2 Candidate features for future inclusion
-=20
--* Online defrag (patches available but not well tested)
-+* online defrag (patches available but not well tested)
- * reduced mke2fs time via lazy itable initialization in conjunction with
-   the uninit_bg feature (capability to do this is available in e2fsprogs
-   but a kernel thread to do lazy zeroing of unused inode table blocks
-@@ -602,7 +602,7 @@ Table of Ext4 specific ioctls
- 			      bitmaps and inode table, the userspace tool thus
- 			      just passes the new number of blocks.
-=20
--EXT4_IOC_SWAP_BOOT	      Swap i_blocks and associated attributes
-+ EXT4_IOC_SWAP_BOOT	      Swap i_blocks and associated attributes
- 			      (like i_blocks, i_size, i_flags, ...) from
- 			      the specified inode with inode
- 			      EXT4_BOOT_LOADER_INO (#5). This is typically
-
---=20
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blo=
-g.html
-
---oyUTqETQ0mS9luUI
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iEYEARECAAYFAlm9D5UACgkQMOfwapXb+vIYGACfWPZ8zRzB949hmZOQtXmw/oVq
-sakAoI5ZS10Bf4shZWBYLW116n7+VKNo
-=SDuG
------END PGP SIGNATURE-----
-
---oyUTqETQ0mS9luUI--
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
