@@ -1,31 +1,56 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 89511] USB-storage mount error
-Date: Sun, 17 Sep 2017 12:12:01 +0000
-Message-ID: <bug-89511-13602-6yfL4URtix@https.bugzilla.kernel.org/>
-References: <bug-89511-13602@https.bugzilla.kernel.org/>
+From: RAJESH DASARI <raajeshdasari@gmail.com>
+Subject: File system corruption after reboot, when rootfs in mounted over nfs
+Date: Mon, 18 Sep 2017 16:14:35 +0530
+Message-ID: <CAPXMrf_s10K_b+Eg0emNH_gdQDe-sScyDzgiUhnnj+SYzHK4EA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:47958 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750824AbdIQMME (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 17 Sep 2017 08:12:04 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9D66028B20
-        for <linux-ext4@vger.kernel.org>; Sun, 17 Sep 2017 12:12:03 +0000 (UTC)
-In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
+Received: from mail-io0-f171.google.com ([209.85.223.171]:54449 "EHLO
+        mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751686AbdIRKog (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Sep 2017 06:44:36 -0400
+Received: by mail-io0-f171.google.com with SMTP id h66so984323ioh.11
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Sep 2017 03:44:36 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=89511
+Hi ,
 
---- Comment #72 from Markus Rathgeb (maggu2810@gmail.com) ---
-The status is still set to NEEDINFO.
-Which one is missing?
+Could some one please help me with the below issue.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+I have  booted a mips based hardware with linux (4.4.36 kernel
+)image(over tftp) and rootfs over nfs by passing nfsroot command line
+option to the kernel.
+
+rootfs is mounted under / in my hardware environment.
+
+192.168.113.254:/rootfs / type nfs
+(rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.113.254,mountvers=3,mountproto=tcp,local_lock=all,addr=192.168.113.254)
+
+I have a hard disk and i am mounting  it on /mnt , this /mnt directory
+is part of nfsroot.
+
+e2fsck -f -y /dev/sda1 -> disk is clean with no errors.
+
+mount -t ext2 /dev/sda1 /mnt  (mount was successful ,mounting ext2 using ext4)
+touch /mnt/test.log  -> this command is failing.
+umount /mnt
+reboot
+
+when i was executing the above commands in a loop i see that /dev/sda1
+file system is getting corrupted. touch command is failing with
+"ext4_find_dest_de:1809: inode #2: block 771: comm touch: bad entry in
+directory: rec_len %4 !=0 -offset =0(0),
+inode=4278190080,rec_len=54507,name_len=229 touch : cannot touch
+/mnt/test.log structure needs clearing" error. I am able to reproduce
+this issue always when i boot rootfs over nfs , if i boot from hard
+disk , i am not noticing the issue .
+
+
+
+Could someone please help me on this , what could cause the ext4 file
+system corruption.
+
+Thanks,
+Rajesh Dasari.
