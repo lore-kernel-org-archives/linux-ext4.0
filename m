@@ -1,56 +1,47 @@
-From: RAJESH DASARI <raajeshdasari@gmail.com>
-Subject: File system corruption after reboot, when rootfs in mounted over nfs
-Date: Mon, 18 Sep 2017 16:14:35 +0530
-Message-ID: <CAPXMrf_s10K_b+Eg0emNH_gdQDe-sScyDzgiUhnnj+SYzHK4EA@mail.gmail.com>
+From: Eryu Guan <eguan@redhat.com>
+Subject: [4.14-rc1 bug] fstests generic/441 failure on ext2
+Date: Mon, 18 Sep 2017 19:23:12 +0800
+Message-ID: <20170918112312.GN8034@eguan.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Jeff Layton <jlayton@redhat.com>
+To: linux-fsdevel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f171.google.com ([209.85.223.171]:54449 "EHLO
-        mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751686AbdIRKog (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Sep 2017 06:44:36 -0400
-Received: by mail-io0-f171.google.com with SMTP id h66so984323ioh.11
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Sep 2017 03:44:36 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:40314 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755239AbdIRLXO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 18 Sep 2017 07:23:14 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi ,
+Hi all,
 
-Could some one please help me with the below issue.
+With ext2 driven by ext4 module (or ext4 without journal, I haven't
+tested ext2 module, but I guess the result is the same), v4.14-rc1
+kernel starts to fail fstests generic/441 as:
 
-I have  booted a mips based hardware with linux (4.4.36 kernel
-)image(over tftp) and rootfs over nfs by passing nfsroot command line
-option to the kernel.
++First fsync after reopen of fd[0] failed: Input/output error
 
-rootfs is mounted under / in my hardware environment.
+git bisect shows that this is uncovered by commit ffb959bbdf92 ("mm:
+remove optimizations based on i_size in mapping writeback waits"), which
+removed (i_size == 0) check in filemap_fdatawait().
 
-192.168.113.254:/rootfs / type nfs
-(rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.113.254,mountvers=3,mountproto=tcp,local_lock=all,addr=192.168.113.254)
+I say "uncovered" because test fails with 4.13 kernel too if we re-open
+the test file without O_TRUNC flag in src/fsync-err.c (so file size is
+not zero, and fails the i_size == 0 check).
 
-I have a hard disk and i am mounting  it on /mnt , this /mnt directory
-is part of nfsroot.
+The EIO was returned by sync_inode_metadata() in __generic_file_fsync(),
+the call trace is like:
 
-e2fsck -f -y /dev/sda1 -> disk is clean with no errors.
-
-mount -t ext2 /dev/sda1 /mnt  (mount was successful ,mounting ext2 using ext4)
-touch /mnt/test.log  -> this command is failing.
-umount /mnt
-reboot
-
-when i was executing the above commands in a loop i see that /dev/sda1
-file system is getting corrupted. touch command is failing with
-"ext4_find_dest_de:1809: inode #2: block 771: comm touch: bad entry in
-directory: rec_len %4 !=0 -offset =0(0),
-inode=4278190080,rec_len=54507,name_len=229 touch : cannot touch
-/mnt/test.log structure needs clearing" error. I am able to reproduce
-this issue always when i boot rootfs over nfs , if i boot from hard
-disk , i am not noticing the issue .
-
-
-
-Could someone please help me on this , what could cause the ext4 file
-system corruption.
+do_fsync
+ vfs_fsync_range
+  ext4_sync_file
+   __generic_file_fsync
+    sync_inode_metadata
+     writeback_single_inode
+      __writeback_single_inode
+       filemap_fdatawait  => EIO here
 
 Thanks,
-Rajesh Dasari.
+Eryu
