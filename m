@@ -1,56 +1,43 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v3 4/4] ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
-Date: Mon, 18 Sep 2017 11:59:37 -0700
-Message-ID: <20170918185937.GO6540@magnolia>
-References: <20170914140619.29826-1-agruenba@redhat.com>
- <20170914211519.aieumj734uazwlmj@thunk.org>
- <CAHc6FU6X29Pr6gA+d0L3WuoCY1XwNjQ9aTYUuAp84-O-ff_xGQ@mail.gmail.com>
+From: Markus Trippelsdorf <markus@trippelsdorf.de>
+Subject: mounting with lazytime doesn't work on ext4
+Date: Mon, 18 Sep 2017 21:26:44 +0200
+Message-ID: <20170918192644.GA232@x4>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>
-To: Andreas Gruenbacher <agruenba@redhat.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:27760 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750886AbdIRS7u (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Sep 2017 14:59:50 -0400
+Received: from ud10.udmedia.de ([194.117.254.50]:52642 "EHLO
+        mail.ud10.udmedia.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750711AbdIRTd1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Sep 2017 15:33:27 -0400
 Content-Disposition: inline
-In-Reply-To: <CAHc6FU6X29Pr6gA+d0L3WuoCY1XwNjQ9aTYUuAp84-O-ff_xGQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 18, 2017 at 07:52:32PM +0200, Andreas Gruenbacher wrote:
-> On Thu, Sep 14, 2017 at 11:15 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > On Thu, Sep 14, 2017 at 04:06:19PM +0200, Andreas Gruenbacher wrote:
-> >> From: Christoph Hellwig <hch@lst.de>
-> >>
-> >> Here we go, after another round of xfstests.
-> >>
-> >> The next question, since it touches vfs infrastructure, is which tree
-> >> this patch queue should be merged through.  Al?
-> >
-> > Discussions with Darrick before he went on vacation/honeymoon was that
-> > up until now changes to fs/iomap.c had been going through XFS, but
-> > since these changes didn't affect XFS, and the rest of the patch
-> > series touches ext4 and ext4 functionality, that he was OK with
-> > running this patch series through the ext4 tree.
-> 
-> That sure works for me.
+I switched back to ext4 yesterday, because my btrfs fs got corrupted.
+However mounting with lazytime doesn't work, neither specifying it in
+/etc/fstab nor a manual remount. It looks like the option is simply
+ignored.
 
-Me too.
+Strace shows, e.g.:
 
-(Back from vacation, weeding his way through 2400 emails...)
+ # mount -o lazytime /boot
+mount("/dev/sdc2", "/boot", "ext4", MS_LAZYTIME, NULL) = 0 
+EXT4-fs (sdc2): mounted filesystem with ordered data mode. Opts: (null) 
+/dev/sdc2 on /boot type ext4 (rw,relatime,data=ordered)
 
---D
+ # mount -o remount,lazytime /var
+mount("/dev/sdb2", "/var", 0x12c4460, MS_REMOUNT|MS_NOATIME|MS_LAZYTIME, NULL) = 0 
+EXT4-fs (sdb2): re-mounted. Opts: (null)
+/dev/sdb2 on /var type ext4 (rw,noatime,data=ordered)
 
-> 
-> Andreas
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+When I set "sb->s_flags |= MS_LAZYTIME;" unconditionally in
+fs/ext4/super.c:5057 (just deleting the if statement), then lazytime
+gets used when I remount.
+
+I'm running the latest git tree (4.14.0-rc1).
+
+-- 
+Markus
