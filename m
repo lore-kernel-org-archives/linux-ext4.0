@@ -1,43 +1,36 @@
-From: Markus Trippelsdorf <markus@trippelsdorf.de>
-Subject: mounting with lazytime doesn't work on ext4
-Date: Mon, 18 Sep 2017 21:26:44 +0200
-Message-ID: <20170918192644.GA232@x4>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 89511] USB-storage mount error
+Date: Mon, 18 Sep 2017 20:59:11 +0000
+Message-ID: <bug-89511-13602-lDORXjdt0Q@https.bugzilla.kernel.org/>
+References: <bug-89511-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ud10.udmedia.de ([194.117.254.50]:52642 "EHLO
-        mail.ud10.udmedia.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750711AbdIRTd1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Sep 2017 15:33:27 -0400
-Content-Disposition: inline
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:58070 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750714AbdIRVAC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 18 Sep 2017 17:00:02 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id C9B1428CDA
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Sep 2017 21:00:01 +0000 (UTC)
+In-Reply-To: <bug-89511-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I switched back to ext4 yesterday, because my btrfs fs got corrupted.
-However mounting with lazytime doesn't work, neither specifying it in
-/etc/fstab nor a manual remount. It looks like the option is simply
-ignored.
+https://bugzilla.kernel.org/show_bug.cgi?id=89511
 
-Strace shows, e.g.:
+--- Comment #73 from Alan Stern (stern@rowland.harvard.edu) ---
+I don't know.  The email thread at
+<https://marc.info/?t=143498500900006&r=1&w=2> just died out, with no
+resolution.  As far as I know, nothing has been done to fix this.
 
- # mount -o lazytime /boot
-mount("/dev/sdc2", "/boot", "ext4", MS_LAZYTIME, NULL) = 0 
-EXT4-fs (sdc2): mounted filesystem with ordered data mode. Opts: (null) 
-/dev/sdc2 on /boot type ext4 (rw,relatime,data=ordered)
-
- # mount -o remount,lazytime /var
-mount("/dev/sdb2", "/var", 0x12c4460, MS_REMOUNT|MS_NOATIME|MS_LAZYTIME, NULL) = 0 
-EXT4-fs (sdb2): re-mounted. Opts: (null)
-/dev/sdb2 on /var type ext4 (rw,noatime,data=ordered)
-
-When I set "sb->s_flags |= MS_LAZYTIME;" unconditionally in
-fs/ext4/super.c:5057 (just deleting the if statement), then lazytime
-gets used when I remount.
-
-I'm running the latest git tree (4.14.0-rc1).
+I can take care of the usb-storage driver, but the underlying issues affect the
+SCSI and filesystem layers, which means other maintainers will have to be
+involved.
 
 -- 
-Markus
+You are receiving this mail because:
+You are watching the assignee of the bug.
