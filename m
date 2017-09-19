@@ -1,84 +1,63 @@
-From: Markus Trippelsdorf <markus@trippelsdorf.de>
-Subject: Re: mounting with lazytime doesn't work on ext4
-Date: Tue, 19 Sep 2017 13:03:53 +0200
-Message-ID: <20170919110353.GA233@x4>
-References: <20170918192644.GA232@x4>
- <20170919110021.3yn6n4ot3whh6myi@rh_laptop>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: File system corruption after reboot, when rootfs in mounted over
+ nfs
+Date: Tue, 19 Sep 2017 09:25:18 -0400
+Message-ID: <20170919132518.krlzjckc4z46ichy@thunk.org>
+References: <CAPXMrf_s10K_b+Eg0emNH_gdQDe-sScyDzgiUhnnj+SYzHK4EA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: RAJESH DASARI <raajeshdasari@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ud10.udmedia.de ([194.117.254.50]:43468 "EHLO
-        mail.ud10.udmedia.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751408AbdISLDy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Sep 2017 07:03:54 -0400
+Received: from imap.thunk.org ([74.207.234.97]:56738 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750822AbdISN1e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 19 Sep 2017 09:27:34 -0400
 Content-Disposition: inline
-In-Reply-To: <20170919110021.3yn6n4ot3whh6myi@rh_laptop>
+In-Reply-To: <CAPXMrf_s10K_b+Eg0emNH_gdQDe-sScyDzgiUhnnj+SYzHK4EA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2017.09.19 at 13:00 +0200, Lukas Czerner wrote:
-> On Mon, Sep 18, 2017 at 09:26:44PM +0200, Markus Trippelsdorf wrote:
-> > I switched back to ext4 yesterday, because my btrfs fs got corrupted.
-> > However mounting with lazytime doesn't work, neither specifying it in
-> > /etc/fstab nor a manual remount. It looks like the option is simply
-> > ignored.
-> > 
-> > Strace shows, e.g.:
-> > 
-> >  # mount -o lazytime /boot
-> > mount("/dev/sdc2", "/boot", "ext4", MS_LAZYTIME, NULL) = 0 
-> > EXT4-fs (sdc2): mounted filesystem with ordered data mode. Opts: (null) 
-> > /dev/sdc2 on /boot type ext4 (rw,relatime,data=ordered)
-> > 
-> >  # mount -o remount,lazytime /var
-> > mount("/dev/sdb2", "/var", 0x12c4460, MS_REMOUNT|MS_NOATIME|MS_LAZYTIME, NULL) = 0 
-> > EXT4-fs (sdb2): re-mounted. Opts: (null)
-> > /dev/sdb2 on /var type ext4 (rw,noatime,data=ordered)
-> > 
-> > When I set "sb->s_flags |= MS_LAZYTIME;" unconditionally in
-> > fs/ext4/super.c:5057 (just deleting the if statement), then lazytime
-> > gets used when I remount.
-> > 
-> > I'm running the latest git tree (4.14.0-rc1).
+On Mon, Sep 18, 2017 at 04:14:35PM +0530, RAJESH DASARI wrote:
 > 
-> Hi,
+> Could some one please help me with the below issue.
 > 
-> I can't really see the problem on my system (4.14.0-rc1)
+> I have  booted a mips based hardware with linux (4.4.36 kernel
+> )image(over tftp) and rootfs over nfs by passing nfsroot command line
+> option to the kernel.
 > 
-> # mount -o lazytime /dev/vdb /mnt/test
-> # mount | grep vdb
-> /dev/vdb on /mnt/test type ext4 (rw,relatime,lazytime,seclabel,data=ordered)
+> rootfs is mounted under / in my hardware environment.
 > 
-> Log says:
-> EXT4-fs (vdb): mounted filesystem with ordered data mode. Opts: lazytime
+> 192.168.113.254:/rootfs / type nfs
+> (rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.113.254,mountvers=3,mountproto=tcp,local_lock=all,addr=192.168.113.254)
 > 
-> or even via remount
+> I have a hard disk and i am mounting  it on /mnt , this /mnt directory
+> is part of nfsroot.
 > 
-> # mount /dev/vdb /mnt/test
-> # mount | grep vdb
-> /dev/vdb on /mnt/test type ext4 (rw,relatime,seclabel,data=ordered)
-> # mount -o remount,lazytime /mnt/test
-> # mount | grep vdb
-> /dev/vdb on /mnt/test type ext4 (rw,relatime,lazytime,seclabel,data=ordered)
+> e2fsck -f -y /dev/sda1 -> disk is clean with no errors.
 > 
-> Log says:
-> EXT4-fs (vdb): re-mounted. Opts: data=ordered,lazytime
+> mount -t ext2 /dev/sda1 /mnt  (mount was successful ,mounting ext2 using ext4)
+> touch /mnt/test.log  -> this command is failing.
+> umount /mnt
+> reboot
 > 
-> This is probably because I have older version of util-linux that did
-> now knew about MS_LAZYTIME so it passed "lazytime" option down to the
-> filesystem. So we're definitelly missing something in kernel for this to
-> work properly.
-> 
-> Indeed with newer version of util-linux, specifically the one containing
-> commit v2.26-169-g8c7f073 I can reproduce.
+> when i was executing the above commands in a loop i see that /dev/sda1
+> file system is getting corrupted.
 
-Yes. It took me some time to figure out that this is a very recent Linux
-regression (since commit e462ec50cb5). I've have send a simple patch to
-fix the issue.
+The above commands include running e2fsck?  Then it sounds like there
+is some kind of device driver bug.
 
--- 
-Markus
+What if you include an e2fsck -f -y /dev/sda1 after the umount?  Can
+you capture the output from that e2fsck run?
+
+> I am able to reproduce
+> this issue always when i boot rootfs over nfs , if i boot from hard
+> disk , i am not noticing the issue .
+
+Is it exactly the same kernel in both cases?
+
+More detailed logs would certainly be helpful.  There's not enough
+detail in your description to do anything other than guess, since
+we're not mind readers....
+
+						- Ted
