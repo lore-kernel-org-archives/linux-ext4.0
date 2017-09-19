@@ -1,24 +1,27 @@
 From: Markus Trippelsdorf <markus@trippelsdorf.de>
-Subject: [PATCH] VFS: Handle lazytime in do_mount()
-Date: Tue, 19 Sep 2017 12:18:19 +0200
-Message-ID: <20170919101819.GA233@x4>
+Subject: [PATCH v2] VFS: Handle lazytime in do_mount()
+Date: Tue, 19 Sep 2017 12:37:24 +0200
+Message-ID: <20170919103724.GA239@x4>
 References: <20170918192644.GA232@x4>
  <20170919083506.GA233@x4>
+ <20170919101819.GA233@x4>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
         linux-ext4@vger.kernel.org,
         Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        David Howells <dhowells@redhat.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20170919083506.GA233@x4>
+In-Reply-To: <20170919101819.GA233@x4>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The lazytime option didn't get passed on when using current util-linux,
-which passes MS_LAZYTIME in the mountflags directly.
+Since commit e462ec50cb5fa ("VFS: Differentiate mount flags (MS_*) from
+internal superblock flags") the lazytime mount option didn't get passed
+on anymore.
 
 Fix the issue by handling the option in do_mount().
 
@@ -37,7 +40,7 @@ index 54059b142d6b..b633838b8f02 100644
  			    SB_SILENT |
 -			    SB_POSIXACL);
 +			    SB_POSIXACL |
-+			    MS_LAZYTIME);
++			    SB_LAZYTIME);
  
  	if (flags & MS_REMOUNT)
  		retval = do_remount(&path, flags, sb_flags, mnt_flags,
