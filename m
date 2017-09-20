@@ -1,94 +1,115 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [4.14-rc1 bug] fstests generic/441 failure on ext2
-Date: Wed, 20 Sep 2017 13:12:21 +0200
-Message-ID: <20170920111221.GA11106@quack2.suse.cz>
-References: <20170918112312.GN8034@eguan.usersys.redhat.com>
- <1505736624.5567.21.camel@redhat.com>
- <20170919145727.GA5540@quack2.suse.cz>
- <1505833751.28765.5.camel@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eryu Guan <eguan@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Jan Kara <jack@suse.com>
-To: Jeff Layton <jlayton@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58314 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751902AbdITLRq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 Sep 2017 07:17:46 -0400
-Content-Disposition: inline
-In-Reply-To: <1505833751.28765.5.camel@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Kees Cook <keescook@chromium.org>
+Subject: [PATCH v3 07/31] ext4: Define usercopy region in ext4_inode_cache slab cache
+Date: Wed, 20 Sep 2017 13:45:13 -0700
+Message-ID: <1505940337-79069-8-git-send-email-keescook@chromium.org>
+References: <1505940337-79069-1-git-send-email-keescook@chromium.org>
+Cc: Kees Cook <keescook@chromium.org>,
+	David Windsor <dave@nullcore.net>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-mm@kvack.org,
+	kernel-hardening@lists.openwall.com
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1505940337-79069-1-git-send-email-keescook@chromium.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 19-09-17 11:09:11, Jeff Layton wrote:
-> On Tue, 2017-09-19 at 16:57 +0200, Jan Kara wrote:
-> > On Mon 18-09-17 08:10:24, Jeff Layton wrote:
-> > > On Mon, 2017-09-18 at 19:23 +0800, Eryu Guan wrote:
-> > > > Hi all,
-> > > > 
-> > > > With ext2 driven by ext4 module (or ext4 without journal, I haven't
-> > > > tested ext2 module, but I guess the result is the same), v4.14-rc1
-> > > > kernel starts to fail fstests generic/441 as:
-> > > > 
-> > > > +First fsync after reopen of fd[0] failed: Input/output error
-> > > > 
-> > > > git bisect shows that this is uncovered by commit ffb959bbdf92 ("mm:
-> > > > remove optimizations based on i_size in mapping writeback waits"), which
-> > > > removed (i_size == 0) check in filemap_fdatawait().
-> > > > 
-> > > > I say "uncovered" because test fails with 4.13 kernel too if we re-open
-> > > > the test file without O_TRUNC flag in src/fsync-err.c (so file size is
-> > > > not zero, and fails the i_size == 0 check).
-> > > > 
-> > > > The EIO was returned by sync_inode_metadata() in __generic_file_fsync(),
-> > > > the call trace is like:
-> > > > 
-> > > > do_fsync
-> > > >  vfs_fsync_range
-> > > >   ext4_sync_file
-> > > >    __generic_file_fsync
-> > > >     sync_inode_metadata
-> > > >      writeback_single_inode
-> > > >       __writeback_single_inode
-> > > >        filemap_fdatawait  => EIO here
-> > > > 
-> > > > Thanks,
-> > > > Eryu
-> > > 
-> > > (cc'ing Jan and linux-fsdevel)
-> > > 
-> > > Thanks for the bug report. The analysis looks spot-on.
-> > > 
-> > > So yeah...we have this "legacy" filemap_fdatawait call in
-> > > __writeback_single_inode, and that is returning -EIO, likely because
-> > > AS_EIO was set on the inode from the earlier wb errors.
-> > > 
-> > > That error return is pretty sketchy since it could be cleared at any
-> > > time, and pretty much everything we care about here is now using
-> > > errseq_t for error reporting at fsync. I don't think we really care too
-> > > much about that flag in this codepath anymore.
-> > 
-> > So I agree fsync(2) path is covered but that fdatawait() call is also
-> > responsible for reporting error e.g. for write_inode_now() calls and there
-> > we still have some unconverted users. So for now I don't have a better
-> > solution than to live with this additional somewhat stale EIO error. Or
-> > possibly we can have truncate to 0 clear writeback error which would mask
-> > the problem again and kind of makes sense...
-> > 
-> > 
-> 
-> Another thought would be to have file_check_and_advance_wb_err (and
-> maybe filemap_check_wb_err) also clear AS_EIO and AS_ENOSPC. That sort
-> of makes sense since legacy users would have cleared those flags.
-> 
-> I had a patch that did that at one point, but dropped it since it didn't
-> seem necessary. That might be the best fix for this though.
+From: David Windsor <dave@nullcore.net>
 
-Yeah, that would be also a workable option.
+The ext4 symlink pathnames, stored in struct ext4_inode_info.i_data
+and therefore contained in the ext4_inode_cache slab cache, need
+to be copied to/from userspace.
 
-								Honza
+cache object allocation:
+    fs/ext4/super.c:
+        ext4_alloc_inode(...):
+            struct ext4_inode_info *ei;
+            ...
+            ei = kmem_cache_alloc(ext4_inode_cachep, GFP_NOFS);
+            ...
+            return &ei->vfs_inode;
+
+    include/trace/events/ext4.h:
+            #define EXT4_I(inode) \
+                (container_of(inode, struct ext4_inode_info, vfs_inode))
+
+    fs/ext4/namei.c:
+        ext4_symlink(...):
+            ...
+            inode->i_link = (char *)&EXT4_I(inode)->i_data;
+
+example usage trace:
+    readlink_copy+0x43/0x70
+    vfs_readlink+0x62/0x110
+    SyS_readlinkat+0x100/0x130
+
+    fs/namei.c:
+        readlink_copy(..., link):
+            ...
+            copy_to_user(..., link, len)
+
+        (inlined into vfs_readlink)
+        generic_readlink(dentry, ...):
+            struct inode *inode = d_inode(dentry);
+            const char *link = inode->i_link;
+            ...
+            readlink_copy(..., link);
+
+In support of usercopy hardening, this patch defines a region in the
+ext4_inode_cache slab cache in which userspace copy operations are
+allowed.
+
+This region is known as the slab cache's usercopy region. Slab caches can
+now check that each copy operation involving cache-managed memory falls
+entirely within the slab's usercopy region.
+
+This patch is modified from Brad Spengler/PaX Team's PAX_USERCOPY
+whitelisting code in the last public patch of grsecurity/PaX based on my
+understanding of the code. Changes or omissions from the original code are
+mine and don't reflect the original grsecurity/PaX code.
+
+Signed-off-by: David Windsor <dave@nullcore.net>
+[kees: adjust commit log, provide usage trace]
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Signed-off-by: Kees Cook <keescook@chromium.org>
+---
+ fs/ext4/super.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b104096fce9e..b5d393321b7b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1036,11 +1036,13 @@ static void init_once(void *foo)
+ 
+ static int __init init_inodecache(void)
+ {
+-	ext4_inode_cachep = kmem_cache_create("ext4_inode_cache",
+-					     sizeof(struct ext4_inode_info),
+-					     0, (SLAB_RECLAIM_ACCOUNT|
+-						SLAB_MEM_SPREAD|SLAB_ACCOUNT),
+-					     init_once);
++	ext4_inode_cachep = kmem_cache_create_usercopy("ext4_inode_cache",
++				sizeof(struct ext4_inode_info), 0,
++				(SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD|
++					SLAB_ACCOUNT),
++				offsetof(struct ext4_inode_info, i_data),
++				sizeof_field(struct ext4_inode_info, i_data),
++				init_once);
+ 	if (ext4_inode_cachep == NULL)
+ 		return -ENOMEM;
+ 	return 0;
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.7.4
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
