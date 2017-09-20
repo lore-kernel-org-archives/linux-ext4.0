@@ -1,8 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 06/25] fscrypt: new helper function -
- fscrypt_file_open()
-Date: Wed, 20 Sep 2017 15:45:46 -0700
-Message-ID: <20170920224605.22030-7-ebiggers3@gmail.com>
+Subject: [PATCH 04/25] fscrypt: remove unneeded empty
+ fscrypt_operations structs
+Date: Wed, 20 Sep 2017 15:45:44 -0700
+Message-ID: <20170920224605.22030-5-ebiggers3@gmail.com>
 References: <20170920224605.22030-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,113 +26,91 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add a helper function which prepares to open a regular file which may be
-encrypted.  It handles setting up the file's encryption key, then
-checking that the file's encryption policy matches that of its parent
-directory (if the parent directory is encrypted).  It may be set as the
-->open() method or it can be called from another ->open() method.
+In the case where a filesystem has been configured without encryption
+support, there is no longer any need to initialize ->s_cop at all, since
+none of the methods are ever called.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/Makefile              |  2 +-
- fs/crypto/hooks.c               | 49 +++++++++++++++++++++++++++++++++++++++++
- include/linux/fscrypt_notsupp.h |  7 ++++++
- include/linux/fscrypt_supp.h    |  2 ++
- 4 files changed, 59 insertions(+), 1 deletion(-)
- create mode 100644 fs/crypto/hooks.c
+ fs/ext4/super.c  | 5 ++---
+ fs/f2fs/super.c  | 5 ++---
+ fs/ubifs/super.c | 7 ++-----
+ 3 files changed, 6 insertions(+), 11 deletions(-)
 
-diff --git a/fs/crypto/Makefile b/fs/crypto/Makefile
-index 9f6607f17b53..cb496989a6b6 100644
---- a/fs/crypto/Makefile
-+++ b/fs/crypto/Makefile
-@@ -1,4 +1,4 @@
- obj-$(CONFIG_FS_ENCRYPTION)	+= fscrypto.o
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bc63cdf194e3..04f3670748e7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1244,9 +1244,6 @@ static const struct fscrypt_operations ext4_cryptops = {
+ 	.empty_dir		= ext4_empty_dir,
+ 	.max_namelen		= ext4_max_namelen,
+ };
+-#else
+-static const struct fscrypt_operations ext4_cryptops = {
+-};
+ #endif
  
--fscrypto-y := crypto.o fname.o policy.o keyinfo.o
-+fscrypto-y := crypto.o fname.o hooks.o keyinfo.o policy.o
- fscrypto-$(CONFIG_BLOCK) += bio.o
-diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
-new file mode 100644
-index 000000000000..069088e91ea9
---- /dev/null
-+++ b/fs/crypto/hooks.c
-@@ -0,0 +1,49 @@
-+/*
-+ * fs/crypto/hooks.c
-+ *
-+ * Encryption hooks for higher-level filesystem operations.
-+ */
-+
-+#include <linux/ratelimit.h>
-+#include "fscrypt_private.h"
-+
-+/**
-+ * fscrypt_file_open - prepare to open a possibly-encrypted regular file
-+ * @inode: the inode being opened
-+ * @filp: the struct file being set up
-+ *
-+ * Currently, an encrypted regular file can only be opened if its encryption key
-+ * is available; access to the raw encrypted contents is not supported.
-+ * Therefore, we first set up the inode's encryption key (if not already done)
-+ * and return an error if it's unavailable.
-+ *
-+ * We also verify that if the parent directory (from the path via which the file
-+ * is being opened) is encrypted, then the inode being opened uses the same
-+ * encryption policy.  This is needed as part of the enforcement that all files
-+ * in an encrypted directory tree use the same encryption policy, as a
-+ * protection against certain types of offline attacks.  Note that this check is
-+ * needed even when opening an *unencrypted* file, since it's forbidden to have
-+ * an unencrypted file in an encrypted directory.
-+ *
-+ * Return: 0 on success, -ENOKEY if the key is missing, or another -errno code
-+ */
-+int fscrypt_file_open(struct inode *inode, struct file *filp)
-+{
-+	int err;
-+	struct dentry *dir;
-+
-+	err = fscrypt_require_key(inode);
-+	if (err)
-+		return err;
-+
-+	dir = dget_parent(file_dentry(filp));
-+	if (IS_ENCRYPTED(d_inode(dir)) &&
-+	    !fscrypt_has_permitted_context(d_inode(dir), inode)) {
-+		pr_warn_ratelimited("fscrypt: inconsistent encryption contexts: %lu/%lu",
-+				    d_inode(dir)->i_ino, inode->i_ino);
-+		err = -EPERM;
-+	}
-+	dput(dir);
-+	return err;
-+}
-+EXPORT_SYMBOL_GPL(fscrypt_file_open);
-diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
-index 3cfc953fef71..99e8ee6f2ce4 100644
---- a/include/linux/fscrypt_notsupp.h
-+++ b/include/linux/fscrypt_notsupp.h
-@@ -182,4 +182,11 @@ static inline int fscrypt_require_key(struct inode *inode)
- 	return 0;
+ #ifdef CONFIG_QUOTA
+@@ -3998,7 +3995,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sb->s_op = &ext4_sops;
+ 	sb->s_export_op = &ext4_export_ops;
+ 	sb->s_xattr = ext4_xattr_handlers;
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 	sb->s_cop = &ext4_cryptops;
++#endif
+ #ifdef CONFIG_QUOTA
+ 	sb->dq_op = &ext4_quota_operations;
+ 	if (ext4_has_feature_quota(sb))
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 1cb41f711ab8..c1c7183b3527 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1597,9 +1597,6 @@ static const struct fscrypt_operations f2fs_cryptops = {
+ 	.empty_dir	= f2fs_empty_dir,
+ 	.max_namelen	= f2fs_max_namelen,
+ };
+-#else
+-static const struct fscrypt_operations f2fs_cryptops = {
+-};
+ #endif
+ 
+ static struct inode *f2fs_nfs_get_inode(struct super_block *sb,
+@@ -2318,7 +2315,9 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
+ #endif
+ 
+ 	sb->s_op = &f2fs_sops;
++#ifdef CONFIG_F2FS_FS_ENCRYPTION
+ 	sb->s_cop = &f2fs_cryptops;
++#endif
+ 	sb->s_xattr = f2fs_xattr_handlers;
+ 	sb->s_export_op = &f2fs_export_ops;
+ 	sb->s_magic = F2FS_SUPER_MAGIC;
+diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
+index adaca6088836..7503e7cdf870 100644
+--- a/fs/ubifs/super.c
++++ b/fs/ubifs/super.c
+@@ -2007,11 +2007,6 @@ static struct ubifs_info *alloc_ubifs_info(struct ubi_volume_desc *ubi)
+ 	return c;
  }
  
-+static inline int fscrypt_file_open(struct inode *inode, struct file *filp)
-+{
-+	if (IS_ENCRYPTED(inode))
-+		return -EOPNOTSUPP;
-+	return 0;
-+}
-+
- #endif	/* _LINUX_FSCRYPT_NOTSUPP_H */
-diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
-index b6d4b5d303a3..521f15adf83c 100644
---- a/include/linux/fscrypt_supp.h
-+++ b/include/linux/fscrypt_supp.h
-@@ -170,4 +170,6 @@ static inline int fscrypt_require_key(struct inode *inode)
- 	return 0;
- }
+-#ifndef CONFIG_UBIFS_FS_ENCRYPTION
+-const struct fscrypt_operations ubifs_crypt_operations = {
+-};
+-#endif
+-
+ static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
+ {
+ 	struct ubifs_info *c = sb->s_fs_info;
+@@ -2054,7 +2049,9 @@ static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
+ 		sb->s_maxbytes = c->max_inode_sz = MAX_LFS_FILESIZE;
+ 	sb->s_op = &ubifs_super_operations;
+ 	sb->s_xattr = ubifs_xattr_handlers;
++#ifdef CONFIG_UBIFS_FS_ENCRYPTION
+ 	sb->s_cop = &ubifs_crypt_operations;
++#endif
  
-+extern int fscrypt_file_open(struct inode *inode, struct file *filp);
-+
- #endif	/* _LINUX_FSCRYPT_SUPP_H */
+ 	mutex_lock(&c->umount_mutex);
+ 	err = mount_ubifs(c);
 -- 
 2.14.1.821.g8fa685d3b7-goog
 
