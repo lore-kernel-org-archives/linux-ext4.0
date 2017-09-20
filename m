@@ -1,120 +1,145 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 04/25] fscrypt: remove unneeded empty
- fscrypt_operations structs
-Date: Wed, 20 Sep 2017 15:45:44 -0700
-Message-ID: <20170920224605.22030-5-ebiggers3@gmail.com>
+Subject: [PATCH 08/25] fscrypt: new helper function - fscrypt_prepare_rename()
+Date: Wed, 20 Sep 2017 15:45:48 -0700
+Message-ID: <20170920224605.22030-9-ebiggers3@gmail.com>
 References: <20170920224605.22030-1-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
- Michael Halcrow <mhalcrow@google.com>, linux-f2fs-devel@lists.sourceforge.net,
- linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
- Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Eric Biggers <ebiggers@google.com>
 To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f195.google.com ([209.85.192.195]:36358 "EHLO
+        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751795AbdITWrB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Sep 2017 18:47:01 -0400
 In-Reply-To: <20170920224605.22030-1-ebiggers3@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Eric Biggers <ebiggers@google.com>
 
-In the case where a filesystem has been configured without encryption
-support, there is no longer any need to initialize ->s_cop at all, since
-none of the methods are ever called.
+Introduce a helper function which prepares to rename a file into a
+possibly encrypted directory.  It handles loading the encryption keys
+for the source and target directories if needed, and it handles
+enforcing that if the target directory (and the source directory for a
+cross-rename) is encrypted, then the file being moved into the directory
+has the same encryption policy as its containing directory.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/super.c  | 5 ++---
- fs/f2fs/super.c  | 5 ++---
- fs/ubifs/super.c | 7 ++-----
- 3 files changed, 6 insertions(+), 11 deletions(-)
+ fs/crypto/hooks.c               | 30 ++++++++++++++++++++++++++++++
+ include/linux/fscrypt_notsupp.h | 11 +++++++++++
+ include/linux/fscrypt_supp.h    | 39 +++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 80 insertions(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bc63cdf194e3..04f3670748e7 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1244,9 +1244,6 @@ static const struct fscrypt_operations ext4_cryptops = {
- 	.empty_dir		= ext4_empty_dir,
- 	.max_namelen		= ext4_max_namelen,
- };
--#else
--static const struct fscrypt_operations ext4_cryptops = {
--};
- #endif
- 
- #ifdef CONFIG_QUOTA
-@@ -3998,7 +3995,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sb->s_op = &ext4_sops;
- 	sb->s_export_op = &ext4_export_ops;
- 	sb->s_xattr = ext4_xattr_handlers;
-+#ifdef CONFIG_EXT4_FS_ENCRYPTION
- 	sb->s_cop = &ext4_cryptops;
-+#endif
- #ifdef CONFIG_QUOTA
- 	sb->dq_op = &ext4_quota_operations;
- 	if (ext4_has_feature_quota(sb))
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index 1cb41f711ab8..c1c7183b3527 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -1597,9 +1597,6 @@ static const struct fscrypt_operations f2fs_cryptops = {
- 	.empty_dir	= f2fs_empty_dir,
- 	.max_namelen	= f2fs_max_namelen,
- };
--#else
--static const struct fscrypt_operations f2fs_cryptops = {
--};
- #endif
- 
- static struct inode *f2fs_nfs_get_inode(struct super_block *sb,
-@@ -2318,7 +2315,9 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
- #endif
- 
- 	sb->s_op = &f2fs_sops;
-+#ifdef CONFIG_F2FS_FS_ENCRYPTION
- 	sb->s_cop = &f2fs_cryptops;
-+#endif
- 	sb->s_xattr = f2fs_xattr_handlers;
- 	sb->s_export_op = &f2fs_export_ops;
- 	sb->s_magic = F2FS_SUPER_MAGIC;
-diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
-index adaca6088836..7503e7cdf870 100644
---- a/fs/ubifs/super.c
-+++ b/fs/ubifs/super.c
-@@ -2007,11 +2007,6 @@ static struct ubifs_info *alloc_ubifs_info(struct ubi_volume_desc *ubi)
- 	return c;
+diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
+index 8b90217320dd..822cb78f9b45 100644
+--- a/fs/crypto/hooks.c
++++ b/fs/crypto/hooks.c
+@@ -62,3 +62,33 @@ int __fscrypt_prepare_link(struct inode *inode, struct inode *dir)
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(__fscrypt_prepare_link);
++
++int __fscrypt_prepare_rename(struct inode *old_dir, struct dentry *old_dentry,
++			     struct inode *new_dir, struct dentry *new_dentry,
++			     unsigned int flags)
++{
++	int err;
++
++	err = fscrypt_require_key(old_dir);
++	if (err)
++		return err;
++
++	err = fscrypt_require_key(new_dir);
++	if (err)
++		return err;
++
++	if (old_dir != new_dir) {
++		if (IS_ENCRYPTED(new_dir) &&
++		    !fscrypt_has_permitted_context(new_dir,
++						   d_inode(old_dentry)))
++			return -EPERM;
++
++		if ((flags & RENAME_EXCHANGE) &&
++		    IS_ENCRYPTED(old_dir) &&
++		    !fscrypt_has_permitted_context(old_dir,
++						   d_inode(new_dentry)))
++			return -EPERM;
++	}
++	return 0;
++}
++EXPORT_SYMBOL_GPL(__fscrypt_prepare_rename);
+diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
+index 2cb400440be3..a88a2959cd8c 100644
+--- a/include/linux/fscrypt_notsupp.h
++++ b/include/linux/fscrypt_notsupp.h
+@@ -198,4 +198,15 @@ static inline int fscrypt_prepare_link(struct dentry *old_dentry,
+ 	return 0;
  }
  
--#ifndef CONFIG_UBIFS_FS_ENCRYPTION
--const struct fscrypt_operations ubifs_crypt_operations = {
--};
--#endif
--
- static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
- {
- 	struct ubifs_info *c = sb->s_fs_info;
-@@ -2054,7 +2049,9 @@ static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
- 		sb->s_maxbytes = c->max_inode_sz = MAX_LFS_FILESIZE;
- 	sb->s_op = &ubifs_super_operations;
- 	sb->s_xattr = ubifs_xattr_handlers;
-+#ifdef CONFIG_UBIFS_FS_ENCRYPTION
- 	sb->s_cop = &ubifs_crypt_operations;
-+#endif
++static inline int fscrypt_prepare_rename(struct inode *old_dir,
++					 struct dentry *old_dentry,
++					 struct inode *new_dir,
++					 struct dentry *new_dentry,
++					 unsigned int flags)
++{
++	if (IS_ENCRYPTED(old_dir) || IS_ENCRYPTED(new_dir))
++		return -EOPNOTSUPP;
++	return 0;
++}
++
+ #endif	/* _LINUX_FSCRYPT_NOTSUPP_H */
+diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
+index ebc0cc41aaf9..fa062d41b39a 100644
+--- a/include/linux/fscrypt_supp.h
++++ b/include/linux/fscrypt_supp.h
+@@ -201,4 +201,43 @@ static inline int fscrypt_prepare_link(struct dentry *old_dentry,
+ 	return 0;
+ }
  
- 	mutex_lock(&c->umount_mutex);
- 	err = mount_ubifs(c);
++extern int __fscrypt_prepare_rename(struct inode *old_dir,
++				    struct dentry *old_dentry,
++				    struct inode *new_dir,
++				    struct dentry *new_dentry,
++				    unsigned int flags);
++
++/**
++ * fscrypt_prepare_rename - prepare for a rename between possibly-encrypted directories
++ * @old_dir: source directory
++ * @old_dentry: dentry for source file
++ * @new_dir: target directory
++ * @new_dentry: dentry for target location (may be negative unless exchanging)
++ * @flags: rename flags (we care at least about %RENAME_EXCHANGE)
++ *
++ * Prepare for ->rename() where the source and/or target directories may be
++ * encrypted.  A new link can only be added to an encrypted directory if the
++ * directory's encryption key is available --- since otherwise we'd have no way
++ * to encrypt the filename.  A rename to an existing name, on the other hand,
++ * *is* cryptographically possible without the key.  However, we take the more
++ * conservative approach and just forbid all no-key renames.
++ *
++ * We also verify that the rename will not violate the constraint that all files
++ * in an encrypted directory tree use the same encryption policy.
++ *
++ * Return: 0 on success, -ENOKEY if an encryption key is missing, -EPERM if the
++ * rename would cause inconsistent encryption policies, or another -errno code.
++ */
++static inline int fscrypt_prepare_rename(struct inode *old_dir,
++					 struct dentry *old_dentry,
++					 struct inode *new_dir,
++					 struct dentry *new_dentry,
++					 unsigned int flags)
++{
++	if (IS_ENCRYPTED(old_dir) || IS_ENCRYPTED(new_dir))
++		return __fscrypt_prepare_rename(old_dir, old_dentry,
++						new_dir, new_dentry, flags);
++	return 0;
++}
++
+ #endif	/* _LINUX_FSCRYPT_SUPP_H */
 -- 
 2.14.1.821.g8fa685d3b7-goog
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
