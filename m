@@ -1,114 +1,67 @@
-From: Kees Cook <keescook@chromium.org>
-Subject: [PATCH v3 08/31] ext2: Define usercopy region in ext2_inode_cache slab cache
-Date: Wed, 20 Sep 2017 13:45:14 -0700
-Message-ID: <1505940337-79069-9-git-send-email-keescook@chromium.org>
-References: <1505940337-79069-1-git-send-email-keescook@chromium.org>
-Cc: Kees Cook <keescook@chromium.org>,
-	David Windsor <dave@nullcore.net>,
-	Jan Kara <jack@suse.com>,
-	linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	netdev@vger.kernel.org,
-	linux-mm@kvack.org,
-	kernel-hardening@lists.openwall.com
-To: linux-kernel@vger.kernel.org
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1505940337-79069-1-git-send-email-keescook@chromium.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] ext4: don't unconditionally zero blocks on dax writes
+Date: Wed, 20 Sep 2017 16:44:44 -0500
+Message-ID: <51f1e5a8-0276-5963-afba-b10c6e194b52@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:44960 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751378AbdITVop (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Sep 2017 17:44:45 -0400
+Content-Language: en-US
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: David Windsor <dave@nullcore.net>
+The conversion to iomap seems to have lost the ability to
+conditionally /not/ prezero dax blocks.  This leads to
+double writes which cuts throughput in half in some
+cases.
 
-The ext2 symlink pathnames, stored in struct ext2_inode_info.i_data and
-therefore contained in the ext2_inode_cache slab cache, need to be copied
-to/from userspace.
+This puts back the old conditional zeroing logic.
 
-cache object allocation:
-    fs/ext2/super.c:
-        ext2_alloc_inode(...):
-            struct ext2_inode_info *ei;
-            ...
-            ei = kmem_cache_alloc(ext2_inode_cachep, GFP_NOFS);
-            ...
-            return &ei->vfs_inode;
-
-    fs/ext2/ext2.h:
-        EXT2_I(struct inode *inode):
-            return container_of(inode, struct ext2_inode_info, vfs_inode);
-
-    fs/ext2/namei.c:
-        ext2_symlink(...):
-            ...
-            inode->i_link = (char *)&EXT2_I(inode)->i_data;
-
-example usage trace:
-    readlink_copy+0x43/0x70
-    vfs_readlink+0x62/0x110
-    SyS_readlinkat+0x100/0x130
-
-    fs/namei.c:
-        readlink_copy(..., link):
-            ...
-            copy_to_user(..., link, len);
-
-        (inlined into vfs_readlink)
-        generic_readlink(dentry, ...):
-            struct inode *inode = d_inode(dentry);
-            const char *link = inode->i_link;
-            ...
-            readlink_copy(..., link);
-
-In support of usercopy hardening, this patch defines a region in the
-ext2_inode_cache slab cache in which userspace copy operations are
-allowed.
-
-This region is known as the slab cache's usercopy region. Slab caches can
-now check that each copy operation involving cache-managed memory falls
-entirely within the slab's usercopy region.
-
-This patch is modified from Brad Spengler/PaX Team's PAX_USERCOPY
-whitelisting code in the last public patch of grsecurity/PaX based on my
-understanding of the code. Changes or omissions from the original code are
-mine and don't reflect the original grsecurity/PaX code.
-
-Signed-off-by: David Windsor <dave@nullcore.net>
-[kees: adjust commit log, provide usage trace]
-Cc: Jan Kara <jack@suse.com>
-Cc: linux-ext4@vger.kernel.org
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Acked-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
- fs/ext2/super.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 1458706bd2ec..789c29987b36 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -220,11 +220,13 @@ static void init_once(void *foo)
+I might be completely missing something here, i.e. whether
+the change may have been intentional, etc.  The patch is
+only lightly tested but a which check here seems to DTRT.
+
+Thanks,
+-Eric
+
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c774bdc..9179a59 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3423,6 +3423,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 		int dio_credits;
+ 		handle_t *handle;
+ 		int retries = 0;
++		int flags;
  
- static int __init init_inodecache(void)
- {
--	ext2_inode_cachep = kmem_cache_create("ext2_inode_cache",
--					     sizeof(struct ext2_inode_info),
--					     0, (SLAB_RECLAIM_ACCOUNT|
--						SLAB_MEM_SPREAD|SLAB_ACCOUNT),
--					     init_once);
-+	ext2_inode_cachep = kmem_cache_create_usercopy("ext2_inode_cache",
-+				sizeof(struct ext2_inode_info), 0,
-+				(SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD|
-+					SLAB_ACCOUNT),
-+				offsetof(struct ext2_inode_info, i_data),
-+				sizeof_field(struct ext2_inode_info, i_data),
-+				init_once);
- 	if (ext2_inode_cachep == NULL)
- 		return -ENOMEM;
- 	return 0;
--- 
-2.7.4
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+ 		/* Trim mapping request to maximum we can map at once for DIO */
+ 		if (map.m_len > DIO_MAX_BLOCKS)
+@@ -3440,8 +3441,16 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 		if (IS_ERR(handle))
+ 			return PTR_ERR(handle);
+ 
+-		ret = ext4_map_blocks(handle, inode, &map,
+-				      EXT4_GET_BLOCKS_CREATE_ZERO);
++		/*
++		 * We can avoid zeroing for aligned DAX writes beyond EOF. Other
++		 * writes need zeroing either because they can race with page
++		 * faults or because they use partial blocks.
++		 */
++		flags = EXT4_GET_BLOCKS_PRE_IO | EXT4_GET_BLOCKS_CREATE;
++		if (round_down(offset, 1<<inode->i_blkbits) < inode->i_size ||
++					!ext4_aligned_io(inode, offset, length))
++			flags |= EXT4_GET_BLOCKS_ZERO;
++		ret = ext4_map_blocks(handle, inode, &map, flags);
+ 		if (ret < 0) {
+ 			ext4_journal_stop(handle);
+ 			if (ret == -ENOSPC &&
