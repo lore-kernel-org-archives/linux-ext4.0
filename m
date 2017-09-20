@@ -1,117 +1,129 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 03/25] fscrypt: remove ->is_encrypted()
-Date: Wed, 20 Sep 2017 15:45:43 -0700
-Message-ID: <20170920224605.22030-4-ebiggers3@gmail.com>
+Subject: [PATCH 02/25] fscrypt: switch from ->is_encrypted() to
+ IS_ENCRYPTED()
+Date: Wed, 20 Sep 2017 15:45:42 -0700
+Message-ID: <20170920224605.22030-3-ebiggers3@gmail.com>
 References: <20170920224605.22030-1-ebiggers3@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Eric Biggers <ebiggers@google.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
+ Michael Halcrow <mhalcrow@google.com>, linux-f2fs-devel@lists.sourceforge.net,
+ linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
+ Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
 To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:36333 "EHLO
-        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751872AbdITWqz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Sep 2017 18:46:55 -0400
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
 In-Reply-To: <20170920224605.22030-1-ebiggers3@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Now that all callers of fscrypt_operations.is_encrypted() have been
-switched to IS_ENCRYPTED(), remove ->is_encrypted().
+IS_ENCRYPTED() now gives the same information as
+i_sb->s_cop->is_encrypted() but is more efficient, since IS_ENCRYPTED()
+is just a simple flag check.  Prepare to remove ->is_encrypted() by
+switching all callers to IS_ENCRYPTED().
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/super.c                | 2 --
- fs/f2fs/super.c                | 2 --
- fs/ubifs/crypto.c              | 1 -
- fs/ubifs/super.c               | 1 -
- fs/ubifs/ubifs.h               | 9 ++-------
- include/linux/fscrypt_common.h | 1 -
- 6 files changed, 2 insertions(+), 14 deletions(-)
+ fs/crypto/crypto.c              | 2 +-
+ fs/crypto/fname.c               | 3 +--
+ fs/crypto/keyinfo.c             | 2 +-
+ fs/crypto/policy.c              | 6 +++---
+ include/linux/fscrypt_notsupp.h | 2 +-
+ 5 files changed, 7 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index dcfb19539871..bc63cdf194e3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1241,13 +1241,11 @@ static const struct fscrypt_operations ext4_cryptops = {
- 	.get_context		= ext4_get_context,
- 	.set_context		= ext4_set_context,
- 	.dummy_context		= ext4_dummy_context,
--	.is_encrypted		= ext4_encrypted_inode,
- 	.empty_dir		= ext4_empty_dir,
- 	.max_namelen		= ext4_max_namelen,
- };
- #else
- static const struct fscrypt_operations ext4_cryptops = {
--	.is_encrypted		= ext4_encrypted_inode,
- };
- #endif
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index c7835df7e7b8..608f6bbe0f31 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -340,7 +340,7 @@ static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+ 		return -ECHILD;
  
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index 89f61eb3d167..1cb41f711ab8 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -1594,13 +1594,11 @@ static const struct fscrypt_operations f2fs_cryptops = {
- 	.key_prefix	= "f2fs:",
- 	.get_context	= f2fs_get_context,
- 	.set_context	= f2fs_set_context,
--	.is_encrypted	= f2fs_encrypted_inode,
- 	.empty_dir	= f2fs_empty_dir,
- 	.max_namelen	= f2fs_max_namelen,
- };
- #else
- static const struct fscrypt_operations f2fs_cryptops = {
--	.is_encrypted	= f2fs_encrypted_inode,
- };
- #endif
+ 	dir = dget_parent(dentry);
+-	if (!d_inode(dir)->i_sb->s_cop->is_encrypted(d_inode(dir))) {
++	if (!IS_ENCRYPTED(d_inode(dir))) {
+ 		dput(dir);
+ 		return 0;
+ 	}
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index ad9f814fdead..2878289b3ed2 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -382,8 +382,7 @@ int fscrypt_setup_filename(struct inode *dir, const struct qstr *iname,
+ 	memset(fname, 0, sizeof(struct fscrypt_name));
+ 	fname->usr_fname = iname;
  
-diff --git a/fs/ubifs/crypto.c b/fs/ubifs/crypto.c
-index 114ba455bac3..8880fa7733d8 100644
---- a/fs/ubifs/crypto.c
-+++ b/fs/ubifs/crypto.c
-@@ -87,7 +87,6 @@ const struct fscrypt_operations ubifs_crypt_operations = {
- 	.key_prefix		= "ubifs:",
- 	.get_context		= ubifs_crypt_get_context,
- 	.set_context		= ubifs_crypt_set_context,
--	.is_encrypted		= __ubifs_crypt_is_encrypted,
- 	.empty_dir		= ubifs_crypt_empty_dir,
- 	.max_namelen		= ubifs_crypt_max_namelen,
- };
-diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
-index 5496b17b959c..adaca6088836 100644
---- a/fs/ubifs/super.c
-+++ b/fs/ubifs/super.c
-@@ -2009,7 +2009,6 @@ static struct ubifs_info *alloc_ubifs_info(struct ubi_volume_desc *ubi)
+-	if (!dir->i_sb->s_cop->is_encrypted(dir) ||
+-				fscrypt_is_dot_dotdot(iname)) {
++	if (!IS_ENCRYPTED(dir) || fscrypt_is_dot_dotdot(iname)) {
+ 		fname->disk_name.name = (unsigned char *)iname->name;
+ 		fname->disk_name.len = iname->len;
+ 		return 0;
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index 018c588c7ac3..236a68d4ea72 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -268,7 +268,7 @@ int fscrypt_get_encryption_info(struct inode *inode)
+ 	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
+ 	if (res < 0) {
+ 		if (!fscrypt_dummy_context_enabled(inode) ||
+-		    inode->i_sb->s_cop->is_encrypted(inode))
++		    IS_ENCRYPTED(inode))
+ 			return res;
+ 		/* Fake up a context for an unencrypted directory */
+ 		memset(&ctx, 0, sizeof(ctx));
+diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
+index ce07a86200f3..6a63b8a0d46c 100644
+--- a/fs/crypto/policy.c
++++ b/fs/crypto/policy.c
+@@ -109,7 +109,7 @@ int fscrypt_ioctl_get_policy(struct file *filp, void __user *arg)
+ 	struct fscrypt_policy policy;
+ 	int res;
  
- #ifndef CONFIG_UBIFS_FS_ENCRYPTION
- const struct fscrypt_operations ubifs_crypt_operations = {
--	.is_encrypted		= __ubifs_crypt_is_encrypted,
- };
- #endif
+-	if (!inode->i_sb->s_cop->is_encrypted(inode))
++	if (!IS_ENCRYPTED(inode))
+ 		return -ENODATA;
  
-diff --git a/fs/ubifs/ubifs.h b/fs/ubifs/ubifs.h
-index cd43651f1731..7b17b70cbf33 100644
---- a/fs/ubifs/ubifs.h
-+++ b/fs/ubifs/ubifs.h
-@@ -1835,18 +1835,13 @@ int ubifs_decrypt(const struct inode *inode, struct ubifs_data_node *dn,
+ 	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
+@@ -166,11 +166,11 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
+ 		return 1;
  
- extern const struct fscrypt_operations ubifs_crypt_operations;
+ 	/* No restrictions if the parent directory is unencrypted */
+-	if (!cops->is_encrypted(parent))
++	if (!IS_ENCRYPTED(parent))
+ 		return 1;
  
--static inline bool __ubifs_crypt_is_encrypted(struct inode *inode)
-+static inline bool ubifs_crypt_is_encrypted(const struct inode *inode)
+ 	/* Encrypted directories must not contain unencrypted files */
+-	if (!cops->is_encrypted(child))
++	if (!IS_ENCRYPTED(child))
+ 		return 0;
+ 
+ 	/*
+diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
+index ec406aed2f2f..3f1325ec4646 100644
+--- a/include/linux/fscrypt_notsupp.h
++++ b/include/linux/fscrypt_notsupp.h
+@@ -97,7 +97,7 @@ static inline int fscrypt_setup_filename(struct inode *dir,
+ 					 const struct qstr *iname,
+ 					 int lookup, struct fscrypt_name *fname)
  {
--	struct ubifs_inode *ui = ubifs_inode(inode);
-+	const struct ubifs_inode *ui = ubifs_inode(inode);
+-	if (dir->i_sb->s_cop->is_encrypted(dir))
++	if (IS_ENCRYPTED(dir))
+ 		return -EOPNOTSUPP;
  
- 	return ui->flags & UBIFS_CRYPT_FL;
- }
- 
--static inline bool ubifs_crypt_is_encrypted(const struct inode *inode)
--{
--	return __ubifs_crypt_is_encrypted((struct inode *)inode);
--}
+ 	memset(fname, 0, sizeof(struct fscrypt_name));
+-- 
+2.14.1.821.g8fa685d3b7-goog
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
