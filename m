@@ -1,8 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 10/25] fscrypt: new helper function -
- fscrypt_prepare_setattr()
-Date: Wed, 20 Sep 2017 15:45:50 -0700
-Message-ID: <20170920224605.22030-11-ebiggers3@gmail.com>
+Subject: [PATCH 13/25] ext4: switch to fscrypt_prepare_rename()
+Date: Wed, 20 Sep 2017 15:45:53 -0700
+Message-ID: <20170920224605.22030-14-ebiggers3@gmail.com>
 References: <20170920224605.22030-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,67 +25,82 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Introduce a helper function for filesystems to call when processing
-->setattr() on a possibly-encrypted inode.  It handles enforcing that an
-encrypted file can only be truncated if its encryption key is available.
-
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/linux/fscrypt_notsupp.h |  8 ++++++++
- include/linux/fscrypt_supp.h    | 25 +++++++++++++++++++++++++
- 2 files changed, 33 insertions(+)
+ fs/ext4/namei.c | 33 +++++++--------------------------
+ 1 file changed, 7 insertions(+), 26 deletions(-)
 
-diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
-index e9b437605f9c..b0dd2d1756b2 100644
---- a/include/linux/fscrypt_notsupp.h
-+++ b/include/linux/fscrypt_notsupp.h
-@@ -218,4 +218,12 @@ static inline int fscrypt_prepare_lookup(struct inode *dir,
- 	return 0;
- }
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index b2058500f1dc..b2fbc2b87bcf 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3516,12 +3516,6 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 			EXT4_I(old_dentry->d_inode)->i_projid)))
+ 		return -EXDEV;
  
-+static inline int fscrypt_prepare_setattr(struct dentry *dentry,
-+					  struct iattr *attr)
-+{
-+	if (IS_ENCRYPTED(d_inode(dentry)) && (attr->ia_valid & ATTR_SIZE))
-+		return -EOPNOTSUPP;
-+	return 0;
-+}
-+
- #endif	/* _LINUX_FSCRYPT_NOTSUPP_H */
-diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
-index 2b99bc01c59b..bdd01e02435b 100644
---- a/include/linux/fscrypt_supp.h
-+++ b/include/linux/fscrypt_supp.h
-@@ -270,4 +270,29 @@ static inline int fscrypt_prepare_lookup(struct inode *dir,
- 	return 0;
- }
+-	if ((ext4_encrypted_inode(old_dir) &&
+-	     !fscrypt_has_encryption_key(old_dir)) ||
+-	    (ext4_encrypted_inode(new_dir) &&
+-	     !fscrypt_has_encryption_key(new_dir)))
+-		return -ENOKEY;
+-
+ 	retval = dquot_initialize(old.dir);
+ 	if (retval)
+ 		return retval;
+@@ -3550,13 +3544,6 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (!old.bh || le32_to_cpu(old.de->inode) != old.inode->i_ino)
+ 		goto end_rename;
  
-+/**
-+ * fscrypt_prepare_setattr - prepare to change a possibly-encrypted inode's attributes
-+ * @dentry: dentry through which the inode is being changed
-+ * @attr: attributes to change
-+ *
-+ * Prepare for ->setattr() on a possibly-encrypted inode.  On an encrypted file,
-+ * most attribute changes are allowed even without the encryption key.  However,
-+ * without the encryption key we do have to forbid truncates.  This is needed
-+ * because the size being truncated to may not be a multiple of the filesystem
-+ * block size, and in that case we'd have to decrypt the final block, zero the
-+ * portion past i_size, and re-encrypt it.  (We *could* allow truncating to a
-+ * filesystem block boundary, but it's simpler to just forbid all truncates ---
-+ * and we already forbid all other contents modifications without the key.)
-+ *
-+ * Return: 0 on success, -ENOKEY if the key is missing, or another -errno code
-+ * if a problem occurred while setting up the encryption key.
-+ */
-+static inline int fscrypt_prepare_setattr(struct dentry *dentry,
-+					  struct iattr *attr)
-+{
-+	if (IS_ENCRYPTED(d_inode(dentry)) && (attr->ia_valid & ATTR_SIZE))
-+		return fscrypt_require_key(d_inode(dentry));
-+	return 0;
-+}
+-	if ((old.dir != new.dir) &&
+-	    ext4_encrypted_inode(new.dir) &&
+-	    !fscrypt_has_permitted_context(new.dir, old.inode)) {
+-		retval = -EPERM;
+-		goto end_rename;
+-	}
+-
+ 	new.bh = ext4_find_entry(new.dir, &new.dentry->d_name,
+ 				 &new.de, &new.inlined);
+ 	if (IS_ERR(new.bh)) {
+@@ -3722,19 +3709,6 @@ static int ext4_cross_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	int retval;
+ 	struct timespec ctime;
+ 
+-	if ((ext4_encrypted_inode(old_dir) &&
+-	     !fscrypt_has_encryption_key(old_dir)) ||
+-	    (ext4_encrypted_inode(new_dir) &&
+-	     !fscrypt_has_encryption_key(new_dir)))
+-		return -ENOKEY;
+-
+-	if ((ext4_encrypted_inode(old_dir) ||
+-	     ext4_encrypted_inode(new_dir)) &&
+-	    (old_dir != new_dir) &&
+-	    (!fscrypt_has_permitted_context(new_dir, old.inode) ||
+-	     !fscrypt_has_permitted_context(old_dir, new.inode)))
+-		return -EPERM;
+-
+ 	if ((ext4_test_inode_flag(new_dir, EXT4_INODE_PROJINHERIT) &&
+ 	     !projid_eq(EXT4_I(new_dir)->i_projid,
+ 			EXT4_I(old_dentry->d_inode)->i_projid)) ||
+@@ -3861,12 +3835,19 @@ static int ext4_rename2(struct inode *old_dir, struct dentry *old_dentry,
+ 			struct inode *new_dir, struct dentry *new_dentry,
+ 			unsigned int flags)
+ {
++	int err;
 +
- #endif	/* _LINUX_FSCRYPT_SUPP_H */
+ 	if (unlikely(ext4_forced_shutdown(EXT4_SB(old_dir->i_sb))))
+ 		return -EIO;
+ 
+ 	if (flags & ~(RENAME_NOREPLACE | RENAME_EXCHANGE | RENAME_WHITEOUT))
+ 		return -EINVAL;
+ 
++	err = fscrypt_prepare_rename(old_dir, old_dentry, new_dir, new_dentry,
++				     flags);
++	if (err)
++		return err;
++
+ 	if (flags & RENAME_EXCHANGE) {
+ 		return ext4_cross_rename(old_dir, old_dentry,
+ 					 new_dir, new_dentry);
 -- 
 2.14.1.821.g8fa685d3b7-goog
 
