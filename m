@@ -1,7 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 01/25] fs, fscrypt: add an S_ENCRYPTED inode flag
-Date: Wed, 20 Sep 2017 15:45:41 -0700
-Message-ID: <20170920224605.22030-2-ebiggers3@gmail.com>
+Subject: [PATCH 03/25] fscrypt: remove ->is_encrypted()
+Date: Wed, 20 Sep 2017 15:45:43 -0700
+Message-ID: <20170920224605.22030-4-ebiggers3@gmail.com>
 References: <20170920224605.22030-1-ebiggers3@gmail.com>
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
@@ -10,186 +10,108 @@ Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Michael Halcrow <mhalcrow@google.com>,
         Eric Biggers <ebiggers@google.com>
 To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f194.google.com ([209.85.192.194]:36333 "EHLO
+        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751872AbdITWqz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Sep 2017 18:46:55 -0400
 In-Reply-To: <20170920224605.22030-1-ebiggers3@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Eric Biggers <ebiggers@google.com>
 
-Introduce a flag S_ENCRYPTED which can be set in ->i_flags to indicate
-that the inode is encrypted using the fscrypt (fs/crypto/) mechanism.
-
-Checking this flag will give the same information that
-inode->i_sb->s_cop->is_encrypted(inode) currently does, but will be more
-efficient.  This will be useful for adding higher-level helper functions
-for filesystems to use.  For example we'll be able to replace this:
-
-	if (ext4_encrypted_inode(inode)) {
-		ret = fscrypt_get_encryption_info(inode);
-		if (ret)
-			return ret;
-		if (!fscrypt_has_encryption_key(inode))
-			return -ENOKEY;
-	}
-
-with this:
-
-	ret = fscrypt_require_key(inode);
-	if (ret)
-		return ret;
-
-... since we'll be able to retain the fast path for unencrypted files as
-a single flag check, using an inline function.  This wasn't possible
-before because we'd have had to frequently call through the
-->i_sb->s_cop->is_encrypted function pointer, even when the encryption
-support was disabled or not being used.
-
-Note: we don't define S_ENCRYPTED to 0 if CONFIG_FS_ENCRYPTION is
-disabled because we want to continue to return an error if an encrypted
-file is accessed without encryption support, rather than pretending that
-it is unencrypted.
+Now that all callers of fscrypt_operations.is_encrypted() have been
+switched to IS_ENCRYPTED(), remove ->is_encrypted().
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/inode.c    | 7 +++++--
- fs/ext4/super.c    | 8 ++++++--
- fs/f2fs/f2fs.h     | 1 +
- fs/f2fs/inode.c    | 5 ++++-
- fs/ubifs/ioctl.c   | 5 ++++-
- fs/ubifs/xattr.c   | 1 +
- include/linux/fs.h | 2 ++
- 7 files changed, 23 insertions(+), 6 deletions(-)
+ fs/ext4/super.c                | 2 --
+ fs/f2fs/super.c                | 2 --
+ fs/ubifs/crypto.c              | 1 -
+ fs/ubifs/super.c               | 1 -
+ fs/ubifs/ubifs.h               | 9 ++-------
+ include/linux/fscrypt_common.h | 1 -
+ 6 files changed, 2 insertions(+), 14 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 31db875bc7a1..d5a471939fbc 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4589,10 +4589,13 @@ void ext4_set_inode_flags(struct inode *inode)
- 		new_fl |= S_DIRSYNC;
- 	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode) &&
- 	    !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
--	    !ext4_encrypted_inode(inode))
-+	    !(flags & EXT4_ENCRYPT_FL))
- 		new_fl |= S_DAX;
-+	if (flags & EXT4_ENCRYPT_FL)
-+		new_fl |= S_ENCRYPTED;
- 	inode_set_flags(inode, new_fl,
--			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
-+			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
-+			S_ENCRYPTED);
- }
- 
- static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b104096fce9e..dcfb19539871 100644
+index dcfb19539871..bc63cdf194e3 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -1181,7 +1181,8 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 			ext4_clear_inode_state(inode,
- 					EXT4_STATE_MAY_INLINE_DATA);
- 			/*
--			 * Update inode->i_flags - e.g. S_DAX may get disabled
-+			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-+			 * S_DAX may be disabled
- 			 */
- 			ext4_set_inode_flags(inode);
- 		}
-@@ -1206,7 +1207,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 				    ctx, len, 0);
- 	if (!res) {
- 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
--		/* Update inode->i_flags - e.g. S_DAX may get disabled */
-+		/*
-+		 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-+		 * S_DAX may be disabled
-+		 */
- 		ext4_set_inode_flags(inode);
- 		res = ext4_mark_inode_dirty(handle, inode);
- 		if (res)
-diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-index 9a7c90386947..beaefddf2ff8 100644
---- a/fs/f2fs/f2fs.h
-+++ b/fs/f2fs/f2fs.h
-@@ -2949,6 +2949,7 @@ static inline void f2fs_set_encrypted_inode(struct inode *inode)
- {
- #ifdef CONFIG_F2FS_FS_ENCRYPTION
- 	file_set_encrypt(inode);
-+	inode->i_flags |= S_ENCRYPTED;
- #endif
- }
- 
-diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
-index 50c88e37ed66..53fb08810ee9 100644
---- a/fs/f2fs/inode.c
-+++ b/fs/f2fs/inode.c
-@@ -43,8 +43,11 @@ void f2fs_set_inode_flags(struct inode *inode)
- 		new_fl |= S_NOATIME;
- 	if (flags & FS_DIRSYNC_FL)
- 		new_fl |= S_DIRSYNC;
-+	if (f2fs_encrypted_inode(inode))
-+		new_fl |= S_ENCRYPTED;
- 	inode_set_flags(inode, new_fl,
--			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC);
-+			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|
-+			S_ENCRYPTED);
- }
- 
- static void __get_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
-diff --git a/fs/ubifs/ioctl.c b/fs/ubifs/ioctl.c
-index fdc311246807..0164bcc827f8 100644
---- a/fs/ubifs/ioctl.c
-+++ b/fs/ubifs/ioctl.c
-@@ -38,7 +38,8 @@ void ubifs_set_inode_flags(struct inode *inode)
- {
- 	unsigned int flags = ubifs_inode(inode)->flags;
- 
--	inode->i_flags &= ~(S_SYNC | S_APPEND | S_IMMUTABLE | S_DIRSYNC);
-+	inode->i_flags &= ~(S_SYNC | S_APPEND | S_IMMUTABLE | S_DIRSYNC |
-+			    S_ENCRYPTED);
- 	if (flags & UBIFS_SYNC_FL)
- 		inode->i_flags |= S_SYNC;
- 	if (flags & UBIFS_APPEND_FL)
-@@ -47,6 +48,8 @@ void ubifs_set_inode_flags(struct inode *inode)
- 		inode->i_flags |= S_IMMUTABLE;
- 	if (flags & UBIFS_DIRSYNC_FL)
- 		inode->i_flags |= S_DIRSYNC;
-+	if (flags & UBIFS_CRYPT_FL)
-+		inode->i_flags |= S_ENCRYPTED;
- }
- 
- /*
-diff --git a/fs/ubifs/xattr.c b/fs/ubifs/xattr.c
-index c13eae819cbc..5ddc89d564fd 100644
---- a/fs/ubifs/xattr.c
-+++ b/fs/ubifs/xattr.c
-@@ -170,6 +170,7 @@ static int create_xattr(struct ubifs_info *c, struct inode *host,
- 	err = ubifs_jnl_update(c, host, nm, inode, 0, 1);
- 	if (err)
- 		goto out_cancel;
-+	ubifs_set_inode_flags(host);
- 	mutex_unlock(&host_ui->ui_mutex);
- 
- 	ubifs_release_budget(c, &req);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 339e73742e73..055d2fbf8eca 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1853,6 +1853,7 @@ struct super_operations {
+@@ -1241,13 +1241,11 @@ static const struct fscrypt_operations ext4_cryptops = {
+ 	.get_context		= ext4_get_context,
+ 	.set_context		= ext4_set_context,
+ 	.dummy_context		= ext4_dummy_context,
+-	.is_encrypted		= ext4_encrypted_inode,
+ 	.empty_dir		= ext4_empty_dir,
+ 	.max_namelen		= ext4_max_namelen,
+ };
  #else
- #define S_DAX		0	/* Make all the DAX code disappear */
+ static const struct fscrypt_operations ext4_cryptops = {
+-	.is_encrypted		= ext4_encrypted_inode,
+ };
  #endif
-+#define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
  
- /*
-  * Note that nosuid etc flags are inode-specific: setting some file-system
-@@ -1892,6 +1893,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
- #define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
- #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
- #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
-+#define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 89f61eb3d167..1cb41f711ab8 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1594,13 +1594,11 @@ static const struct fscrypt_operations f2fs_cryptops = {
+ 	.key_prefix	= "f2fs:",
+ 	.get_context	= f2fs_get_context,
+ 	.set_context	= f2fs_set_context,
+-	.is_encrypted	= f2fs_encrypted_inode,
+ 	.empty_dir	= f2fs_empty_dir,
+ 	.max_namelen	= f2fs_max_namelen,
+ };
+ #else
+ static const struct fscrypt_operations f2fs_cryptops = {
+-	.is_encrypted	= f2fs_encrypted_inode,
+ };
+ #endif
  
- #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
- 				 (inode)->i_rdev == WHITEOUT_DEV)
--- 
-2.14.1.821.g8fa685d3b7-goog
+diff --git a/fs/ubifs/crypto.c b/fs/ubifs/crypto.c
+index 114ba455bac3..8880fa7733d8 100644
+--- a/fs/ubifs/crypto.c
++++ b/fs/ubifs/crypto.c
+@@ -87,7 +87,6 @@ const struct fscrypt_operations ubifs_crypt_operations = {
+ 	.key_prefix		= "ubifs:",
+ 	.get_context		= ubifs_crypt_get_context,
+ 	.set_context		= ubifs_crypt_set_context,
+-	.is_encrypted		= __ubifs_crypt_is_encrypted,
+ 	.empty_dir		= ubifs_crypt_empty_dir,
+ 	.max_namelen		= ubifs_crypt_max_namelen,
+ };
+diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
+index 5496b17b959c..adaca6088836 100644
+--- a/fs/ubifs/super.c
++++ b/fs/ubifs/super.c
+@@ -2009,7 +2009,6 @@ static struct ubifs_info *alloc_ubifs_info(struct ubi_volume_desc *ubi)
+ 
+ #ifndef CONFIG_UBIFS_FS_ENCRYPTION
+ const struct fscrypt_operations ubifs_crypt_operations = {
+-	.is_encrypted		= __ubifs_crypt_is_encrypted,
+ };
+ #endif
+ 
+diff --git a/fs/ubifs/ubifs.h b/fs/ubifs/ubifs.h
+index cd43651f1731..7b17b70cbf33 100644
+--- a/fs/ubifs/ubifs.h
++++ b/fs/ubifs/ubifs.h
+@@ -1835,18 +1835,13 @@ int ubifs_decrypt(const struct inode *inode, struct ubifs_data_node *dn,
+ 
+ extern const struct fscrypt_operations ubifs_crypt_operations;
+ 
+-static inline bool __ubifs_crypt_is_encrypted(struct inode *inode)
++static inline bool ubifs_crypt_is_encrypted(const struct inode *inode)
+ {
+-	struct ubifs_inode *ui = ubifs_inode(inode);
++	const struct ubifs_inode *ui = ubifs_inode(inode);
+ 
+ 	return ui->flags & UBIFS_CRYPT_FL;
+ }
+ 
+-static inline bool ubifs_crypt_is_encrypted(const struct inode *inode)
+-{
+-	return __ubifs_crypt_is_encrypted((struct inode *)inode);
+-}
