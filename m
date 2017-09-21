@@ -1,47 +1,61 @@
-From: Eric Whitney <enwlinux@gmail.com>
-Subject: generic/232 test failures on 4.14-rc1
-Date: Thu, 21 Sep 2017 11:48:46 -0400
-Message-ID: <20170921154846.re5vcyn3bugdbie5@localhost.localdomain>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCH 00/25] fscrypt: add some higher-level helper functions
+Date: Thu, 21 Sep 2017 10:47:05 -0700
+Message-ID: <20170921174705.GA29643@gmail.com>
+References: <20170920224605.22030-1-ebiggers3@gmail.com>
+ <20170921064502.GR10621@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f169.google.com ([209.85.220.169]:57049 "EHLO
-        mail-qk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751647AbdIUPsv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Sep 2017 11:48:51 -0400
-Received: by mail-qk0-f169.google.com with SMTP id g128so1283587qke.13
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Sep 2017 08:48:50 -0700 (PDT)
+Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20170921064502.GR10621@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-I'm seeing generic/232 fail from time to time when running a 4.14-rc1 kernel
-on xfstest-bld's most recent kvm-xfstests test appliance.  In one set of
-trials, it failed in the same manner 4 out of 10 times when running the 4k test
-configuration for ext4.
+Hi Dave,
 
-The failure bisects to "quota: Do not acquire dqio_sem for dquot overwrites in
-v2 format" (ab2b86360f6e).  When this patch was reverted in a 4.14-rc1 kernel,
-the failure did not reoccur in a series of 20 trials.
+On Thu, Sep 21, 2017 at 04:45:02PM +1000, Dave Chinner wrote:
+> fscrypto: clean up include file mess
+> 
+> From: Dave Chinner <dchinner@redhat.com>
+> 
+> Filesystems have to include different header files based on whether
+> they are compiled with encryption support or not. That's nasty and
+> messy.
+> 
+> Instead, rationalise the headers so we have a single include
+> fscrypt.h and let it decide what internal implementation to include
+> based on the __FS_HAS_ENCRYPTION define. Filesystems set
+> __FS_HAS_ENCRYPTION before including linux/fscrypt.h if they are
+> built with encryption support.
+> 
+> Add guards to prevent fscrypt_supp.h and fscrypt_notsupp.h from
+> being directly included by filesystems.
 
-Example output from the failed test:
+This looks good; we probably should have done it that way originally.  This will
+allow us to have the inline functions like fscrypt_prepare_rename() defined in
+fscrypt.h, and then have supp/notsupp versions of __fscrypt_prepare_rename()
+instead --- so common checks like for IS_ENCRYPTED() will be in one place only.
 
-QA output created by 232
+One nit:
 
-Testing fsstress
+> +#ifdef CONFIG_EXT4_FS_ENCRYPTION
+> +#define __FS_HAS_ENCRYPTION 1
+> +#endif
+> +#include <linux/fscrypt.h>
 
-seed = S
-Comparing user usage
-218a219
-> #3740     --       4       0       0              1     0     0       
-245a247
-> #45       --       0       0       0              1     0     0     
+How about doing
 
-Note:  I'm also seeing a similar failure for generic/233, but the patch
-containing the root cause likely comes somewhere after ab2b86360f6e.  I'll post
-another bug report once I locate it.
+	#define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_EXT4_FS_ENCRYPTION)
 
-Thanks,
+(and likewise for f2fs and ubifs), then checking '#if __FS_HAS_ENCRYPTION'
+rather than '#ifdef __FS_HAS_ENCRYPTION'?
+
 Eric
