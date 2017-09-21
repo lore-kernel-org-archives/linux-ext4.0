@@ -1,90 +1,65 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 23/25] ubifs: switch to fscrypt_prepare_rename()
-Date: Wed, 20 Sep 2017 15:46:03 -0700
-Message-ID: <20170920224605.22030-24-ebiggers3@gmail.com>
-References: <20170920224605.22030-1-ebiggers3@gmail.com>
+From: RAJESH DASARI <raajeshdasari@gmail.com>
+Subject: Re: File system corruption after reboot, when rootfs in mounted over nfs
+Date: Thu, 21 Sep 2017 09:41:57 +0530
+Message-ID: <CAPXMrf-4kyxVWngN=RFu3gDsSCVbCt-SThmG31EFC6dHgg20Hw@mail.gmail.com>
+References: <CAPXMrf_s10K_b+Eg0emNH_gdQDe-sScyDzgiUhnnj+SYzHK4EA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
- Michael Halcrow <mhalcrow@google.com>, linux-f2fs-devel@lists.sourceforge.net,
- linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
- Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
-To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <20170920224605.22030-1-ebiggers3@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-it0-f51.google.com ([209.85.214.51]:51338 "EHLO
+        mail-it0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750930AbdIUEL6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Sep 2017 00:11:58 -0400
+Received: by mail-it0-f51.google.com with SMTP id o200so5138870itg.0
+        for <linux-ext4@vger.kernel.org>; Wed, 20 Sep 2017 21:11:58 -0700 (PDT)
+In-Reply-To: <CAPXMrf_s10K_b+Eg0emNH_gdQDe-sScyDzgiUhnnj+SYzHK4EA@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Biggers <ebiggers@google.com>
+Could someone please respond to my query.
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ubifs/dir.c | 20 +++++++-------------
- 1 file changed, 7 insertions(+), 13 deletions(-)
-
-diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
-index 09e6c56b11bc..7bf847d79b4a 100644
---- a/fs/ubifs/dir.c
-+++ b/fs/ubifs/dir.c
-@@ -1353,12 +1353,6 @@ static int do_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (unlink)
- 		ubifs_assert(inode_is_locked(new_inode));
- 
--	if (old_dir != new_dir) {
--		if (ubifs_crypt_is_encrypted(new_dir) &&
--		    !fscrypt_has_permitted_context(new_dir, old_inode))
--			return -EPERM;
--	}
--
- 	if (unlink && is_dir) {
- 		err = ubifs_check_dir_empty(new_inode);
- 		if (err)
-@@ -1573,13 +1567,6 @@ static int ubifs_xrename(struct inode *old_dir, struct dentry *old_dentry,
- 
- 	ubifs_assert(fst_inode && snd_inode);
- 
--	if ((ubifs_crypt_is_encrypted(old_dir) ||
--	    ubifs_crypt_is_encrypted(new_dir)) &&
--	    (old_dir != new_dir) &&
--	    (!fscrypt_has_permitted_context(new_dir, fst_inode) ||
--	     !fscrypt_has_permitted_context(old_dir, snd_inode)))
--		return -EPERM;
--
- 	err = fscrypt_setup_filename(old_dir, &old_dentry->d_name, 0, &fst_nm);
- 	if (err)
- 		return err;
-@@ -1624,12 +1611,19 @@ static int ubifs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 			struct inode *new_dir, struct dentry *new_dentry,
- 			unsigned int flags)
- {
-+	int err;
-+
- 	if (flags & ~(RENAME_NOREPLACE | RENAME_WHITEOUT | RENAME_EXCHANGE))
- 		return -EINVAL;
- 
- 	ubifs_assert(inode_is_locked(old_dir));
- 	ubifs_assert(inode_is_locked(new_dir));
- 
-+	err = fscrypt_prepare_rename(old_dir, old_dentry, new_dir, new_dentry,
-+				     flags);
-+	if (err)
-+		return err;
-+
- 	if (flags & RENAME_EXCHANGE)
- 		return ubifs_xrename(old_dir, old_dentry, new_dir, new_dentry);
- 
--- 
-2.14.1.821.g8fa685d3b7-goog
+Thanks,
+Rajesh Dasari.
 
 
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+On Mon, Sep 18, 2017 at 4:14 PM, RAJESH DASARI <raajeshdasari@gmail.com> wrote:
+> Hi ,
+>
+> Could some one please help me with the below issue.
+>
+> I have  booted a mips based hardware with linux (4.4.36 kernel
+> )image(over tftp) and rootfs over nfs by passing nfsroot command line
+> option to the kernel.
+>
+> rootfs is mounted under / in my hardware environment.
+>
+> 192.168.113.254:/rootfs / type nfs
+> (rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.113.254,mountvers=3,mountproto=tcp,local_lock=all,addr=192.168.113.254)
+>
+> I have a hard disk and i am mounting  it on /mnt , this /mnt directory
+> is part of nfsroot.
+>
+> e2fsck -f -y /dev/sda1 -> disk is clean with no errors.
+>
+> mount -t ext2 /dev/sda1 /mnt  (mount was successful ,mounting ext2 using ext4)
+> touch /mnt/test.log  -> this command is failing.
+> umount /mnt
+> reboot
+>
+> when i was executing the above commands in a loop i see that /dev/sda1
+> file system is getting corrupted. touch command is failing with
+> "ext4_find_dest_de:1809: inode #2: block 771: comm touch: bad entry in
+> directory: rec_len %4 !=0 -offset =0(0),
+> inode=4278190080,rec_len=54507,name_len=229 touch : cannot touch
+> /mnt/test.log structure needs clearing" error. I am able to reproduce
+> this issue always when i boot rootfs over nfs , if i boot from hard
+> disk , i am not noticing the issue .
+>
+>
+>
+> Could someone please help me on this , what could cause the ext4 file
+> system corruption.
+>
+> Thanks,
+> Rajesh Dasari.
