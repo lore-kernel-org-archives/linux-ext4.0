@@ -1,109 +1,47 @@
-From: Chao Yu <chao@kernel.org>
-Subject: Re: [f2fs-dev] [PATCH 00/25] fscrypt: add some higher-level helper
- functions
-Date: Thu, 21 Sep 2017 22:19:49 +0800
-Message-ID: <d7d91976-65b9-63d9-f34e-b322a9d0c472@kernel.org>
-References: <20170920224605.22030-1-ebiggers3@gmail.com>
+From: Eric Whitney <enwlinux@gmail.com>
+Subject: generic/232 test failures on 4.14-rc1
+Date: Thu, 21 Sep 2017 11:48:46 -0400
+Message-ID: <20170921154846.re5vcyn3bugdbie5@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Eric Biggers <ebiggers@google.com>,
-        Michael Halcrow <mhalcrow@google.com>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: jack@suse.cz
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:53162 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751629AbdIUOUa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 21 Sep 2017 10:20:30 -0400
-In-Reply-To: <20170920224605.22030-1-ebiggers3@gmail.com>
-Content-Language: en-US
+Received: from mail-qk0-f169.google.com ([209.85.220.169]:57049 "EHLO
+        mail-qk0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751647AbdIUPsv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Sep 2017 11:48:51 -0400
+Received: by mail-qk0-f169.google.com with SMTP id g128so1283587qke.13
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Sep 2017 08:48:50 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2017/9/21 6:45, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> This series reduces code duplication among ext4, f2fs, and ubifs by
-> introducing a S_ENCRYPTED inode flag (so we don't have to call back into
-> the filesystem to test the filesystem-specific inode flag), then
-> introducing new helper functions that are called at the beginning of the
-> open, link, rename, lookup, and setattr operations.
-> 
-> In the future we maybe should even call these new helpers from the VFS
-> so that each individual filesystem doesn't have to do it.  But that's
-> not possible currently because fs/crypto/ can be built as a module.
-> 
-> Making changes like this is a bit challenging due to interdependencies
-> between fscrypt and the individual filesystems, all of which have
-> different maintainers.  For now my intent is that patches 1-10 be taken
-> through the fscrypt tree --- though it's not perfect since patches 1-4
-> do make some changes to each filesystem, as everyone must set
-> S_ENCRYPTED before we can use it everywhere in the shared code.  But
-> afterwards, patches 11-25 can be picked up by the individual filesystems
-> to switch to the new helpers.
+I'm seeing generic/232 fail from time to time when running a 4.14-rc1 kernel
+on xfstest-bld's most recent kvm-xfstests test appliance.  In one set of
+trials, it failed in the same manner 4 out of 10 times when running the 4k test
+configuration for ext4.
 
-For all patches touching f2fs, looks good to me, feel free to add:
+The failure bisects to "quota: Do not acquire dqio_sem for dquot overwrites in
+v2 format" (ab2b86360f6e).  When this patch was reverted in a 4.14-rc1 kernel,
+the failure did not reoccur in a series of 20 trials.
 
-Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Example output from the failed test:
 
-> 
-> Eric Biggers (25):
->   fs, fscrypt: add an S_ENCRYPTED inode flag
->   fscrypt: switch from ->is_encrypted() to IS_ENCRYPTED()
->   fscrypt: remove ->is_encrypted()
->   fscrypt: remove unneeded empty fscrypt_operations structs
->   fscrypt: new helper function - fscrypt_require_key()
->   fscrypt: new helper function - fscrypt_file_open()
->   fscrypt: new helper function - fscrypt_prepare_link()
->   fscrypt: new helper function - fscrypt_prepare_rename()
->   fscrypt: new helper function - fscrypt_prepare_lookup()
->   fscrypt: new helper function - fscrypt_prepare_setattr()
->   ext4: switch to fscrypt_file_open()
->   ext4: switch to fscrypt_prepare_link()
->   ext4: switch to fscrypt_prepare_rename()
->   ext4: switch to fscrypt_prepare_lookup()
->   ext4: switch to fscrypt_prepare_setattr()
->   f2fs: switch to fscrypt_file_open()
->   f2fs: switch to fscrypt_prepare_link()
->   f2fs: switch to fscrypt_prepare_rename()
->   f2fs: switch to fscrypt_prepare_lookup()
->   f2fs: switch to fscrypt_prepare_setattr()
->   ubifs: switch to fscrypt_file_open()
->   ubifs: switch to fscrypt_prepare_link()
->   ubifs: switch to fscrypt_prepare_rename()
->   ubifs: switch to fscrypt_prepare_lookup()
->   ubifs: switch to fscrypt_prepare_setattr()
-> 
->  fs/crypto/Makefile              |   2 +-
->  fs/crypto/crypto.c              |   2 +-
->  fs/crypto/fname.c               |   3 +-
->  fs/crypto/hooks.c               | 112 +++++++++++++++++++++++++++++
->  fs/crypto/keyinfo.c             |   2 +-
->  fs/crypto/policy.c              |   6 +-
->  fs/ext4/file.c                  |  23 ++----
->  fs/ext4/inode.c                 |  19 +++--
->  fs/ext4/namei.c                 |  62 +++++-----------
->  fs/ext4/super.c                 |  15 ++--
->  fs/f2fs/f2fs.h                  |   1 +
->  fs/f2fs/file.c                  |  30 ++------
->  fs/f2fs/inode.c                 |   5 +-
->  fs/f2fs/namei.c                 |  54 ++++----------
->  fs/f2fs/super.c                 |   7 +-
->  fs/ubifs/crypto.c               |   1 -
->  fs/ubifs/dir.c                  |  43 ++++-------
->  fs/ubifs/file.c                 |  41 ++---------
->  fs/ubifs/ioctl.c                |   5 +-
->  fs/ubifs/super.c                |   8 +--
->  fs/ubifs/ubifs.h                |   9 +--
->  fs/ubifs/xattr.c                |   1 +
->  include/linux/fs.h              |   2 +
->  include/linux/fscrypt_common.h  |   1 -
->  include/linux/fscrypt_notsupp.h |  54 +++++++++++++-
->  include/linux/fscrypt_supp.h    | 153 ++++++++++++++++++++++++++++++++++++++++
->  26 files changed, 418 insertions(+), 243 deletions(-)
->  create mode 100644 fs/crypto/hooks.c
-> 
+QA output created by 232
+
+Testing fsstress
+
+seed = S
+Comparing user usage
+218a219
+> #3740     --       4       0       0              1     0     0       
+245a247
+> #45       --       0       0       0              1     0     0     
+
+Note:  I'm also seeing a similar failure for generic/233, but the patch
+containing the root cause likely comes somewhere after ab2b86360f6e.  I'll post
+another bug report once I locate it.
+
+Thanks,
+Eric
