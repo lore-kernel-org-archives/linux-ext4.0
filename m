@@ -1,83 +1,108 @@
-From: linux-ext4-owner@vger.kernel.org
-Subject: =?utf-8?B?4piFMTQ4MDUwMDgxMiAtLeKAnEpFQyB3?=
-        =?utf-8?B?b3JsZCAyMDE4IOS4lueVjOWkjeWQiOadkOaWmeWxleiniOWPiuS8mg==?=
-        =?utf-8?B?6K6u4oCd5bCG5LqO4oCcM+aciDA2LTA45pel4oCd5Zyo4oCc5rOV5Zu95be06buO?=
-        =?utf-8?B?4oCd5Li+6KGMICAgIO+8iOWcsOWPs1AxLUwtTWXvvIk=?=
-Date: Sat, 23 Sep 2017 00:16:07 +0800
-Message-ID: <20170923001620552265@zsins.com>
-Reply-To: <EMAILQUNFA@163.COM>
+From: Jaco Kroon <jaco@uls.co.za>
+Subject: fragmentation optimization
+Date: Sat, 23 Sep 2017 09:49:25 +0200
+Message-ID: <6f6eb640-cd31-7080-a575-b7c6c4dd9e3f@uls.co.za>
 Mime-Version: 1.0
-Content-Type: text/plain;
-        charset="utf-8"
-Content-Transfer-Encoding: base64
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.thpmg.com.cn ([123.157.157.210]:35074 "EHLO
-        SPAM2.zsins.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1750762AbdIWHKr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Sep 2017 03:10:47 -0400
-Received: from SPAM2.zsins.com (localhost [127.0.0.2] (may be forged))
-        by SPAM2.zsins.com with ESMTP id v8MGXbdO042489
-        for <linux-ext4@vger.kernel.org>; Sat, 23 Sep 2017 00:33:37 +0800 (GMT-8)
-        (envelope-from info@zsins.com)
+Received: from othala.uls.co.za ([154.73.34.12]:42954 "EHLO othala.uls.co.za"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750814AbdIWHtv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 23 Sep 2017 03:49:51 -0400
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-5bCK5pWs55qEIDE0ODA1MDA4MTJAUVEuY29tIOS8geS4mumihuWvvC/lhazlj7jotJ/otKPkurov
-5Lia55WM5LiT5a6277yM5oKo5aW977yaDQrjgIDjgIANCuOAgOOAgOaWsOadkOaWmeS4ujIx5LiW
-57qq5LiJ5aSn5YWx5oCn5YWz6ZSu5oqA5pyv5LmL5LiA77yM5bey5oiQ5Li65YWo55CD57uP5rWO
-6L+F6YCf5aKe6ZW/55qE5rqQ5Yqo5Yqb5ZKM5o+Q5Y2H5qC45b+D56ue5LqJ5Yqb55qE5oiY55Wl
-54Sm54K544CC5p2Q5paZ5L2c5Li65Yi26YCg5Lia55qE5Z+656GA77yM54m55Yir5piv5paw5p2Q
-5paZ56CU56m25ZKM5Lqn5Lia5Y+R5bGV55qE5rC05bmz5LiO6KeE5qih77yM5bey57uP5oiQ5Li6
-6KGh6YeP5LiA5Liq5Zu95a6256eR5oqA6L+b5q2l5ZKM57u85ZCI5a6e5Yqb55qE6YeN6KaB5qCH
-5b+X44CC5Zyo5paw5p2Q5paZ5Y+R5bGV5LiO5bqU55So5Lit77yM5aSN5ZCI5p2Q5paZ5Y2g5pyJ
-55u45b2T6YeN6KaB55qE5Zyw5L2N77yM54m55Yir5bm/5rOb55qE5bqU55So5Zyo5rG96L2m44CB
-5Lqk6YCa44CB6aOO6IO944CB6Iiq56m644CB6Iiq5aSp44CB5YW15Zmo44CB6Ii56Ii244CB5Zu9
-6Ziy44CB5py65qKw44CB55S15a2Q44CB5YyW5bel44CB5bu6562R44CB5Yac5Lia44CB5riU5Lia
-44CB57q657uH44CB6L+Q5Yqo5Zmo5p2Q562J6aKG5Z+f77yM5LiA55u05piv5LiW55WM5ZCE5Zu9
-5LyY5YWI5Y+R5bGV5ZKM56ue5LqJ5r+A54OI55qE6YeN6KaB6KGM5Lia44CCDQrjgIDjgIANCuOA
-gOOAgOKAnEpFQ+S4lueVjOWkjeWQiOadkOaWmeWxleiniOWPiuS8muiuruKAne+8iEpFQyB3b3Js
-ZCBDb21wb3NpdGVzIFNob3cgJiBDb25mZXJlbmNlc++8ieWIm+WKnuS6jjE5NjPlubTvvIzmr4/l
-ubTkuL7lip7kuIDlsYrvvIzoh7MyMDE35bm05oC75YWx5Li+5Yqe5LqGNTLlsYrvvIzkuLvlip7l
-jZXkvY3mmK/ms5Xlm71KRUPlpI3lkIjmnZDmlpnlj5HlsZXkv4Pov5vkvJovSkVD6ZuG5Zui77yM
-5Lit5Zu95oC75bGV5Zui5bGV5ZWG57uE57uH5Y2V5L2N5Li65pig5b635Zu96ZmF5Lya5bGV6ZuG
-5Zui5Lit5Zu95Luj6KGo5aSE77yM5Zyo5YyX5Lqs44CB5LiK5rW3562J5Zyw6K6+5pyJ5YiG5pSv
-5py65p6E77yM6LSf6LSj6K+l5bGV5Lya5Zyo5Lit5Zu955qE5o6o5bm/5ZKM5oub5ZWG5bel5L2c
-77yISkVD5Lit5Zu95oC75bGV5Zui5oql5ZCN54Ot57q/77yaNDAwMC02ODAtODYw6L2sODE0NOOA
-gTUyMjDvvInjgIJKRUPlpI3lkIjmnZDmlpnlsZXlt7LmiJDkuLrkuJbnlYzkuIrljoblj7LmnIDm
-gqDkuYXjgIHop4TmqKHmnIDlpKfnmoTlpI3lkIjmnZDmlpnooYzkuJrkuJPkuJrlsZXop4jkvJrv
-vIzlsZXnpLrlkozlj43mmKDkuoblvZPliY3lpI3lkIjmnZDmlpnooYzkuJrnmoTmnIDmlrDmioDm
-nK/lkozlupTnlKjmiJDmnpzjgIINCuOAgOOAgA0K44CA44CA5Li65LqG5aKe6L+b5Zu95YaF5aSW
-5aSN5ZCI5p2Q5paZ6KGM5Lia55qE5Lqk5rWB5LiO5ZCI5L2c77yM5ZCM5pe25bGV56S65oiR5Zu9
-5aSN5ZCI5p2Q5paZ5Lqn5Lia55qE5Y+R5bGV5LiO5oiQ5bCx77yM5biu5Yqp5aKD5YaF5LyB5Lia
-5byA5ouT5Zu95YaF5aSW5biC5Zy677yM5Lit5Zu95Zu96ZmF5aSN5p2Q5Y2P5Lya44CB5pig5b63
-5Zu96ZmF5Lya5bGV6ZuG5Zui77yIWU9ORCBFWFBP77yJ5Lit5Zu95Luj6KGo5aSE5bey6L+R5Y2B
-5bm057uE57uH5Lit5Zu95LyB5Lia5Y+C5LiO6K+l5bGV5Lya77yM5Li65Lit5Zu95aSN5ZCI5p2Q
-5paZ6ZuG5Zui44CB5Lit5p2Q56eR5oqA44CB5Lit6ZKi6ZuG5Zui44CB5Lit5Zu95bu65p2Q6ZuG
-5Zui44CB5Lit5Zu95ZWG6aOe44CB5YyX5Lqs54676ZKi6Zmi44CB5LiK5rW35p2w5LqL5p2w5paw
-5p2Q5paZ6ZuG5Zui44CB6YeN5bqG5Zu96ZmF5aSN5ZCI5p2Q5paZ44CB5Lit5Y2X5o6n6IKh6ZuG
-5Zui44CB56em55qH5bKb6ICA5Y2O546755KD6ZKi44CB54Of5Y+w5rCo57q244CB5aSp6ams6ZuG
-5Zui44CB5Y2O5Lic55CG5bel5aSn5a2m44CB5ZOI5bCU5ruo5bel5Lia5aSn5a2m44CB5beo55+z
-6ZuG5Zui44CB5Lit5Ya26ZuG5Zui44CB6YeR5YWJ6ZuG5Zui44CB5rGf6IuP5oGS56We57qk57u0
-5p2Q5paZ44CB6YeN5bqG5aSn5a2m44CB5LiK5rW3546755KD6ZKi56CU56m26Zmi44CB5Lit5Y2X
-5aSn5a2m44CB5ZOI5bCU5ruo546755KD6ZKi56CU56m26Zmi562J5LyX5aSa6KGM5Lia5beo5aS0
-5ZKM55+l5ZCN5py65p6E5o+Q5L6b5LqG5LyY6LSo6auY5pWI55qE5aKD5aSW5bGV6LS45pyN5Yqh
-44CCDQrjgIDjgIANCuOAgOOAgOKAnEpFQyB3b3JsZCAyMDE4IOesrOS6lOWNgeS4ieS4lueVjOWk
-jeWQiOadkOaWmeWxleiniOWPiuS8muiuruKAneWwhuS6juKAnDPmnIgwNi0wOOaXpeKAneWcqOKA
-nOazleWbveW3tOm7juWxleiniOS8muiuruS4reW/g+KAneWGjeW6puS4vuihjO+8jOaIkeS7rOiv
-mumCgOWFqOWbveWQhOWcsOWkjeWQiOadkOaWmeWPiuaWsOadkOaWmeebuOWFs+WNleS9jeS4juS4
-mueVjOS6uuWjq+WKoOWFpeWSseS7rOeahOS4reWbveaAu+WxleWbouWJjeW+gOWPguWxleWPguin
-guOAguOAgOOAgA0K44CA44CADQrjgIDjgIDmnInlhbPlj4LlsZXlj4Lop4LigJxKRUPkuJbnlYzl
-pI3lkIjmnZDmlpnlsZXigJ3kuovlrpzvvIzor7fogZTnu5zjgJDkuK3lm73mgLvlsZXlm6LjgJHn
-u4Tlip7mlrnigJTigJQg5YWo5Zu957uf5LiA5a6i5pyN54Ot57q/77yaNDAwMC01ODAtODUw77yI
-6L2sNTIyMOOAgTgxNDTjgIE4ODg477yJ44CBMDEw4oCUNjkyMy02OTQ077ybIOmCrueusS9RUe+8
-mjEyODA5Mzk1I3FxLmNvbe+8myDlvq7kv6HvvJogQ2FuWmhhblhpYW9Yae+8iOWPguWxlea2iOaB
-r++8ieOAgVpoYW5TaGFuZ1poaUppYe+8iOWxleWVhuS5i+Wutu+8ie+8myDlvq7ljZrvvJpodHRw
-Oi8vd2VpYm8uY29tL2plY3Nob3fvvIjlsZXkvJrvvInjgIFodHRwOi8vd2VpYm8uY29tL3lpbmdk
-ZWh1aXpoYW7vvIjlhazlj7jvvInjgIINCuOAgOOAgA0K44CA44CA5Y+C5YqgSkVD5bGV5Lya5piv
-5LiA5Liq5aSN5ZCI5p2Q5paZ5Y+K5paw5p2Q5paZ5LyB5Lia6LWw5ZCR5Zu96ZmF5YyW55qE5qCH
-5b+X5ZKM6YCU5b6E77yBDQrjgIDjgIANCuOAgOOAgA0K44CA44CADQrjgIDjgIANCl9fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX1/jgIDjgIANCu+8iOeZvuS4h+e+pOWPkeezu+e7n3zkuLrmgqjlj5Hp
-gIF85aaC5LiN5biM5pyb5YaN5pS25Yiw5q2k6KGM5Lia6LWE6K6vfOivt+WbnuWkjeKAnFREK0pF
-Q+KAneiHs+mCrueusTEwNTU4MDA4MTJAcXEuY29t77yJDQo=
+Hi Ted, Everyone,
+
+During our last discussions you mentioned the following (2017/08/16 5:06 
+SAST/GMT+2):
+
+"One other thought.  There is an ext4 block allocator optimization
+"feature" which is biting us here.  At the moment we have an
+optimization where if there is small "hole" in the logical block
+number space, we leave a "hole" in the physical blocks allocated to
+the file."
+
+You proceeded to provide the example regarding writing of object files 
+as per binutils (ld specifically).
+
+As per the data I provided you previously rsync (with --sparse) is 
+generating a lot of "holes" for us due to this.  As a result I end up 
+with a rather insane amount of fragmentation:
+
+Blocksize: 4096 bytes
+Total blocks: 13153337344
+Free blocks: 1272662587 (9.7%)
+
+Min. free extent: 4 KB
+Max. free extent: 17304 KB
+Avg. free extent: 44 KB
+Num. free extent: 68868260
+
+HISTOGRAM OF FREE EXTENT SIZES:
+Extent Size Range :  Free extents   Free Blocks  Percent
+     4K...    8K-  :      28472490      28472490    2.24%
+     8K...   16K-  :      27005860      55030426    4.32%
+    16K...   32K-  :       2595993      14333888    1.13%
+    32K...   64K-  :       2888720      32441623    2.55%
+    64K...  128K-  :       2745121      62071861    4.88%
+   128K...  256K-  :       2303439     103166554    8.11%
+   256K...  512K-  :       1518463     134776388   10.59%
+   512K... 1024K-  :        902691     163108612   12.82%
+     1M...    2M-  :        314858     105445496    8.29%
+     2M...    4M-  :         97174      64620009    5.08%
+     4M...    8M-  :         22501      28760501    2.26%
+     8M...   16M-  :           945       2069807    0.16%
+    16M...   32M-  :             5         21155    0.00%
+
+Based on the behavior I notice by watching how rsync works[1] I greatly 
+suspect that writes are sequential from start of file to end of file.  
+Regarding the above "feature" you further proceeded to mention:
+
+"However, it obviously doesn't do the right thing for rsync --sparse,
+and these days, thanks to delayed allocation, so long as binutils can
+finish writing the blocks within 30 seconds, it doesn't matter if GNU
+ld writes the blocks in a completely random order, since we will only
+attempt to do the writeback to the disk after all of the holes in the
+.o file have been filled in.  So perhaps we should turn off this ext4
+block allocator optimization if delayed allocation is enabled (which
+is the default these days)."
+
+You mentioned a few pros and cons of this approach as well, and also 
+mentioned that it won't help my existing filesystem, however, I suspect 
+it might in combination with a e4defrag sweep (which if it takes a few 
+weeks in the background that's fine by me).  Also, I suspect disabling 
+this might help avoid future holes, and since persistence of files 
+varies (from a week to a year) I suspect it may help to over time slowly 
+improve performance.
+
+I'm also relatively comfortable to make the 30s write limit even longer 
+(as you pointed out the files causing the problems are typically 300GB+ 
+even though on average my files are very small), permitting that I won't 
+introduce additional file-system corruption risk.  Also keeping in mind 
+that I run anything from 10 to 20 concurrent rsync instances at any 
+point in time.
+
+I would like to attempt such a patch, so if you (or someone else) could 
+possibly point me in an appropriate direction of where to start work on 
+this I would really appreciate the help.
+
+Another approach for me may be to simply switch off --sparse since 
+especially now I'm unsure of it's benefit.  I'm guessing that I could do 
+a sweep of all inodes to determine how much space is really being saved 
+by this.
+
+Kind Regards,
+Jaco
+
+[1] My observed behaviour when syncing a file (without --inplace which 
+is in my opinion a bad idea in general unless you're severely space 
+constrained, and then I honestly don't know how this situation would be 
+affected) is that rsync will create a new file, and then the file size 
+of this file will grow slowly (not, not disk usage, but size as reported 
+by ls) until it reaches the file size of the new file, and at this point 
+rsync will use rename(2) to replace the old file with the new one (which 
+is the right approach).
