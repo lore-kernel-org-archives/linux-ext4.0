@@ -1,180 +1,107 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: Jaco Kroon <jaco@uls.co.za>
 Subject: Re: fragmentation optimization
-Date: Sat, 23 Sep 2017 11:12:34 -0600
-Message-ID: <333A80A7-9254-41C8-ACCE-5094CFD050EA@dilger.ca>
+Date: Sun, 24 Sep 2017 21:01:04 +0200
+Message-ID: <7820e328-ee34-27f1-2a70-1e40da85dd1c@uls.co.za>
 References: <6f6eb640-cd31-7080-a575-b7c6c4dd9e3f@uls.co.za>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_EE8B45EF-8898-41FD-B8CD-3A942A4A6C77";
- protocol="application/pgp-signature"; micalg=pgp-sha1
+ <333A80A7-9254-41C8-ACCE-5094CFD050EA@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
         Theodore Ts'o <tytso@mit.edu>
-To: Jaco Kroon <jaco@uls.co.za>
+To: Andreas Dilger <adilger@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f50.google.com ([209.85.214.50]:52743 "EHLO
-        mail-it0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751382AbdIWRMo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Sep 2017 13:12:44 -0400
-Received: by mail-it0-f50.google.com with SMTP id c195so3680435itb.1
-        for <linux-ext4@vger.kernel.org>; Sat, 23 Sep 2017 10:12:44 -0700 (PDT)
-In-Reply-To: <6f6eb640-cd31-7080-a575-b7c6c4dd9e3f@uls.co.za>
+Received: from othala.uls.co.za ([154.73.34.12]:44633 "EHLO othala.uls.co.za"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752728AbdIXTBW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 24 Sep 2017 15:01:22 -0400
+In-Reply-To: <333A80A7-9254-41C8-ACCE-5094CFD050EA@dilger.ca>
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi Andreas,
 
---Apple-Mail=_EE8B45EF-8898-41FD-B8CD-3A942A4A6C77
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Sep 23, 2017, at 1:49 AM, Jaco Kroon <jaco@uls.co.za> wrote:
->=20
-> Hi Ted, Everyone,
->=20
-> During our last discussions you mentioned the following (2017/08/16 =
-5:06 SAST/GMT+2):
->=20
-> "One other thought.  There is an ext4 block allocator optimization
-> "feature" which is biting us here.  At the moment we have an
-> optimization where if there is small "hole" in the logical block
-> number space, we leave a "hole" in the physical blocks allocated to
-> the file."
->=20
-> You proceeded to provide the example regarding writing of object files =
-as per binutils (ld specifically).
->=20
-> As per the data I provided you previously rsync (with --sparse) is =
-generating a lot of "holes" for us due to this.  As a result I end up =
-with a rather insane amount of fragmentation:
->=20
-> Blocksize: 4096 bytes
-> Total blocks: 13153337344
-> Free blocks: 1272662587 (9.7%)
->=20
-> Min. free extent: 4 KB
-> Max. free extent: 17304 KB
-> Avg. free extent: 44 KB
-> Num. free extent: 68868260
->=20
-> HISTOGRAM OF FREE EXTENT SIZES:
-> Extent Size Range :  Free extents   Free Blocks  Percent
->    4K...    8K-  :      28472490      28472490    2.24%
->    8K...   16K-  :      27005860      55030426    4.32%
->   16K...   32K-  :       2595993      14333888    1.13%
->   32K...   64K-  :       2888720      32441623    2.55%
->   64K...  128K-  :       2745121      62071861    4.88%
->  128K...  256K-  :       2303439     103166554    8.11%
->  256K...  512K-  :       1518463     134776388   10.59%
->  512K... 1024K-  :        902691     163108612   12.82%
->    1M...    2M-  :        314858     105445496    8.29%
->    2M...    4M-  :         97174      64620009    5.08%
->    4M...    8M-  :         22501      28760501    2.26%
->    8M...   16M-  :           945       2069807    0.16%
->   16M...   32M-  :             5         21155    0.00%
->=20
-> Based on the behavior I notice by watching how rsync works[1] I =
-greatly suspect that writes are sequential from start of file to end of =
-file.  Regarding the above "feature" you further proceeded to mention:
->=20
-> "However, it obviously doesn't do the right thing for rsync --sparse,
-> and these days, thanks to delayed allocation, so long as binutils can
-> finish writing the blocks within 30 seconds, it doesn't matter if GNU
-> ld writes the blocks in a completely random order, since we will only
-> attempt to do the writeback to the disk after all of the holes in the
-> .o file have been filled in.  So perhaps we should turn off this ext4
-> block allocator optimization if delayed allocation is enabled (which
-> is the default these days)."
->=20
-> You mentioned a few pros and cons of this approach as well, and also =
-mentioned that it won't help my existing filesystem, however, I suspect =
-it might in combination with a e4defrag sweep (which if it takes a few =
-weeks in the background that's fine by me).  Also, I suspect disabling =
-this might help avoid future holes, and since persistence of files =
-varies (from a week to a year) I suspect it may help to over time slowly =
-improve performance.
->=20
-> I'm also relatively comfortable to make the 30s write limit even =
-longer (as you pointed out the files causing the problems are typically =
-300GB+ even though on average my files are very small), permitting that =
-I won't introduce additional file-system corruption risk.  Also keeping =
-in mind that I run anything from 10 to 20 concurrent rsync instances at =
-any point in time.
-
-The 30s limit is imposed by the VFS, which begins flushing dirty data =
-pages
-from memory if they are old, if some other mechanism hasn't done it =
-sooner.
-
-> I would like to attempt such a patch, so if you (or someone else) =
-could possibly point me in an appropriate direction of where to start =
-work on this I would really appreciate the help.
->=20
-> Another approach for me may be to simply switch off --sparse since =
-especially now I'm unsure of it's benefit.  I'm guessing that I could do =
-a sweep of all inodes to determine how much space is really being saved =
-by this.
-
-You can do this on a per-file basis with the "filefrag" utility to =
-determine how
-many extents the file is written in.  Anything reporting only 1 extent =
-can be
-ignored since it can't get better. Even on large files there will be =
-multiple
-extents (maximum extent size is 128MB, but may be limited to ~122MB =
-depending on
-formatting options).  That said, anything larger than ~4MB doesn't =
-improve the
-I/O performance in any significant way because the HDD seek rate 100/sec =
-* 4MB/s
-exceeds the disk bandwidth.
-
-The other option is the "fsstats" utility =
-(https://github.com/adilger/fsstats
-though I didn't write it) will scan the whole filesystem/tree and report =
-all
-kinds of useful stats, but most importantly how many files are sparse.
+Thanks for the feedback.
 
 
-> [1] My observed behaviour when syncing a file (without --inplace which =
-is in my opinion a bad idea in general unless you're severely space =
-constrained, and then I honestly don't know how this situation would be =
-affected) is that rsync will create a new file, and then the file size =
-of this file will grow slowly (not, not disk usage, but size as reported =
-by ls) until it reaches the file size of the new file, and at this point =
-rsync will use rename(2) to replace the old file with the new one (which =
-is the right approach).
+On 23/09/2017 19:12, Andreas Dilger wrote:
+> -- snip --
+>> I'm also relatively comfortable to make the 30s write limit even longer (as you pointed out the files causing the problems are typically 300GB+ even though on average my files are very small), permitting that I won't introduce additional file-system corruption risk.  Also keeping in mind that I run anything from 10 to 20 concurrent rsync instances at any point in time.
+> The 30s limit is imposed by the VFS, which begins flushing dirty data pages
+> from memory if they are old, if some other mechanism hasn't done it sooner.
+Understood.  Not a major issue, nor do I think I really have enough RAM 
+to cache for much longer than that anyway (32GB, of which rsync 
+processes can trivially consume around 12-16GB, 16GB remaining, and 
+there is till a lot of read caches that needs to be handled (directory 
+structures etc ...)
+>> I would like to attempt such a patch, so if you (or someone else) could possibly point me in an appropriate direction of where to start work on this I would really appreciate the help.
+>>
+>> Another approach for me may be to simply switch off --sparse since especially now I'm unsure of it's benefit.  I'm guessing that I could do a sweep of all inodes to determine how much space is really being saved by this.
+> You can do this on a per-file basis with the "filefrag" utility to determine how
+> many extents the file is written in.  Anything reporting only 1 extent can be
+> ignored since it can't get better. Even on large files there will be multiple
+> extents (maximum extent size is 128MB, but may be limited to ~122MB depending on
+> formatting options).  That said, anything larger than ~4MB doesn't improve the
+> I/O performance in any significant way because the HDD seek rate 100/sec * 4MB/s
+> exceeds the disk bandwidth.
+> The other option is the "fsstats" utility (https://github.com/adilger/fsstats
+> though I didn't write it) will scan the whole filesystem/tree and report all
+> kinds of useful stats, but most importantly how many files are sparse.
+Thanks.  filefrag looks  One could also use stat to determine this saving:
 
-The reason the size is growing, but not the blocks count, is because of =
-delayed
-allocation.  The ext4 code will keep the dirty pages only in memory =
-until they
-need to be written (due to age or memory pressure), to better determine =
-what to
-allocate on disk.  This lets it fit small files into small free chunks =
-on disk,
-and large files get (multiple) large free chunks of disk.
+# stat -c "%i %h %s %b" filename
+635047698 15 98304 72
 
-Cheers, Andreas
+So the first number is just because in case where %h is >1 you'd need to 
+keep track of inodes already checked.  With 100m files that may get 
+quite a big set so filtering %h==1 may be a good idea. Given the above 
+the file size is 98304 and 72 * 512 == 36864, so (assuming we've got 4K 
+blocks) 98304 implies 24 blocks in terms of virtual space, and 72 / 8 
+implies 9 blocks actually allocated. Based on that file it's quite a 
+saving in terms of %, but in terms of actual GB ... time will tell.  
+Going to take a few days to
 
+Switching off --sparse may not be quite as trivial unless I can simply 
+force it off on the recipient side (I do use forced command for ssh 
+authorized keys ... so can modify the command to be executed).
 
+Either way ... I think that Ted is right, the "feature" whereby holes 
+are left on disk might be causing problems in this case and even if it's 
+a mount option to optionally disable it, I think it would be a good 
+thing to have that control.  Having the default value of that option be 
+dependent on delayed allocation is up for debate, but based on the 
+binutils scenario the "feature" is definitely a good idea without 
+delayed allocation.
+>> [1] My observed behaviour when syncing a file (without --inplace which is in my opinion a bad idea in general unless you're severely space constrained, and then I honestly don't know how this situation would be affected) is that rsync will create a new file, and then the file size of this file will grow slowly (not, not disk usage, but size as reported by ls) until it reaches the file size of the new file, and at this point rsync will use rename(2) to replace the old file with the new one (which is the right approach).
+> The reason the size is growing, but not the blocks count, is because of delayed
+> allocation.  The ext4 code will keep the dirty pages only in memory until they
+> need to be written (due to age or memory pressure), to better determine what to
+> allocate on disk.  This lets it fit small files into small free chunks on disk,
+> and large files get (multiple) large free chunks of disk.
+I merely looked at the size reported, I never did check the block size.  
+I know that the size implied by disk blocks won't exceed the size 
+reported by ls by more than filesystem block size (typically 4K).  So 
+merely looking at the file size which is increasing the assumption was 
+that allocated blocks would also increase over time (even if delayed, 
+doesn't matter).  A hole that's left will however never allocate a 
+block, for example:
 
+$ dd if=/dev/zero bs=4096 seek=9 count=1 of=foo
+1+0 records in
+1+0 records out
+4096 bytes (4.1 kB, 4.0 KiB) copied, 2.0499e-05 s, 200 MB/s
+$ ls -la foo
+-rw-r--r-- 1 jkroon jkroon 40960 Sep 24 20:54 foo
+$ du -sh foo
+4.0K    foo
 
+Now, if a process were to write to block 0, then skip a block, and then 
+write to block one, with the current scheme that would leave a block 
+physically on disk open, which in my case is undesirable, but given VMs 
+again, may be desirable.  So this is not a simple debate. I think an 
+explicit mount option to disable the feature whereby physical blocks is 
+skipped is probably the best (initially at least) approach.
 
-
---Apple-Mail=_EE8B45EF-8898-41FD-B8CD-3A942A4A6C77
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZxpYEpIg59Q01vtYRAtU/AJ4tmvmQT3s3ITzqoTN/X9H27rbPHQCeMhXx
-xpzCWk3VWFlapmNXTiXjSHs=
-=wPfT
------END PGP SIGNATURE-----
-
---Apple-Mail=_EE8B45EF-8898-41FD-B8CD-3A942A4A6C77--
+Kind Regards,
+Jaco
