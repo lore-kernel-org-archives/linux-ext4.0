@@ -1,58 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: File system corruption after reboot, when rootfs in mounted over
- nfs
-Date: Mon, 25 Sep 2017 10:23:32 -0400
-Message-ID: <20170925142332.ekcugi2mimb6k4s5@thunk.org>
-References: <CAPXMrf_s10K_b+Eg0emNH_gdQDe-sScyDzgiUhnnj+SYzHK4EA@mail.gmail.com>
- <20170919132518.krlzjckc4z46ichy@thunk.org>
- <CAPXMrf8ykZ_h84+O67fe6640rN6gTPT+YvCCVrMY+jBKzEu=3w@mail.gmail.com>
- <CAPXMrf87tQMUqw0yXncNvYa4z3Sojv-6VbMjLo1By_n-EETo6w@mail.gmail.com>
- <CAPXMrf9a++uRh-euVD-CJdxbHjH1Fi5=fv73aFxYug0E6bpFbw@mail.gmail.com>
+From: Jeff Layton <jlayton@poochiereds.net>
+Subject: Re: [PATCH] mm: have filemap_check_and_advance_wb_err clear
+ AS_EIO/AS_ENOSPC
+Date: Mon, 25 Sep 2017 15:53:12 -0400
+Message-ID: <1506369192.2530.1.camel@poochiereds.net>
+References: <20170918112312.GN8034@eguan.usersys.redhat.com>
+         <20170922133331.28812-1-jlayton@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: RAJESH DASARI <raajeshdasari@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47228 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933355AbdIYOXe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 25 Sep 2017 10:23:34 -0400
-Content-Disposition: inline
-In-Reply-To: <CAPXMrf9a++uRh-euVD-CJdxbHjH1Fi5=fv73aFxYug0E6bpFbw@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Eryu Guan <eguan@redhat.com>, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, Jeff Layton <jlayton@kernel.org>,
+        linux-fsdevel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20170922133331.28812-1-jlayton@kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Sep 25, 2017 at 12:18:40PM +0530, RAJESH DASARI wrote:
-> the below steps were executed in a loop for 100 times. I am seeing the
-> issue after executing for around 40 iterations.
->     1) e2fsck -y -n /dev/sda1
+On Fri, 2017-09-22 at 09:33 -0400, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@redhat.com>
+> 
+> Eryu noticed that he could sometimes get a leftover error reported when
+> it shouldn't be on fsync with ext2 and non-journalled ext4. The problem
+> is that writeback_single_inode still uses filemap_fdatawait. That picks
+> up a previously set AS_EIO flag, which would ordinarily have been
+> cleared before.
+> 
+> Since we're mostly using this function as a replacement for
+> filemap_check_errors, have filemap_check_and_advance_wb_err clear AS_EIO
+> and AS_ENOSPC when reporting an error. That should allow the new
+> function to better emulate the behavior of the old with respect to these
+> flags.
+> 
+> Reported-by: Eryu Guan <eguan@redhat.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  mm/filemap.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
+> 
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index 870971e20967..404722ea0fdd 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -620,6 +620,14 @@ int file_check_and_advance_wb_err(struct file *file)
+>  		trace_file_check_and_advance_wb_err(file, old);
+>  		spin_unlock(&file->f_lock);
+>  	}
+> +
+> +	/*
+> +	 * We're mostly using this function as a drop in replacement for
+> +	 * filemap_check_errors. Clear AS_EIO/AS_ENOSPC to emulate the effect
+> +	 * that the legacy code would have had on these flags.
+> +	 */
+> +	clear_bit(AS_EIO, &mapping->flags);
+> +	clear_bit(AS_ENOSPC, &mapping->flags);
+>  	return err;
+>  }
+>  EXPORT_SYMBOL(file_check_and_advance_wb_err);
 
-Are you really using "e2fsck -y -n"?  That makes no sense.
+Andrew, would you mind picking this patch up? It seems to work fine for
+me, but it wouldn't hurt to let it stew in linux-next for a bit.
 
-The options "-f -y" would make sense; as would "-f -n".  I'm going to
-assume it really was "-f -y" given your other comments, but being
-precise is also really important.  You also didn't mention what
-version of e2fsck/e2fsprogs you are using, which might be useful, but
-given this is a flaky bug, it really doesn't matter, since it's almost
-certainly a hardare problem or a device driver problem.
-
->      2) mount -t ext2 /dev/sda1 /mnt
->      3) touch /mnt/test.log
->      4) umount /mnt
->      5) e2fsck -y -n /dev/sda1
->      6)reboot
-> i tried to mount the hard disk as ext2 as my hard disk partition was
-> formatted as ext2 device.
-
-I would suggest doing a series of differential diagnosis.  For
-example, replacing the hard drive with another hard drive.  Moving
-your hard drive to another system, and seeing if you can reproduce the
-problem there.  Simply reseating the cables might help.
-
-But this is not a software problem, but clearly a hardware problem,
-and so you're probably better office finding someone local who can
-help you walk through debugging a hardware problem.
-
-Cheers,
-
-					- Ted
+Thanks,
+-- 
+Jeff Layton <jlayton@poochiereds.net>
