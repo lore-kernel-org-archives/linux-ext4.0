@@ -1,146 +1,71 @@
-From: RAJESH DASARI <raajeshdasari@gmail.com>
-Subject: Re: File system corruption after reboot, when rootfs in mounted over nfs
-Date: Mon, 25 Sep 2017 12:18:40 +0530
-Message-ID: <CAPXMrf9a++uRh-euVD-CJdxbHjH1Fi5=fv73aFxYug0E6bpFbw@mail.gmail.com>
-References: <CAPXMrf_s10K_b+Eg0emNH_gdQDe-sScyDzgiUhnnj+SYzHK4EA@mail.gmail.com>
- <20170919132518.krlzjckc4z46ichy@thunk.org> <CAPXMrf8ykZ_h84+O67fe6640rN6gTPT+YvCCVrMY+jBKzEu=3w@mail.gmail.com>
- <CAPXMrf87tQMUqw0yXncNvYa4z3Sojv-6VbMjLo1By_n-EETo6w@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] mm: have filemap_check_and_advance_wb_err clear
+ AS_EIO/AS_ENOSPC
+Date: Mon, 25 Sep 2017 10:17:48 +0200
+Message-ID: <20170925081748.GA5741@quack2.suse.cz>
+References: <20170918112312.GN8034@eguan.usersys.redhat.com>
+ <20170922133331.28812-1-jlayton@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f45.google.com ([209.85.214.45]:56717 "EHLO
-        mail-it0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932578AbdIYGsl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Sep 2017 02:48:41 -0400
-Received: by mail-it0-f45.google.com with SMTP id g18so5751480itg.5
-        for <linux-ext4@vger.kernel.org>; Sun, 24 Sep 2017 23:48:41 -0700 (PDT)
-In-Reply-To: <CAPXMrf87tQMUqw0yXncNvYa4z3Sojv-6VbMjLo1By_n-EETo6w@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, Eryu Guan <eguan@redhat.com>,
+        Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Jeff Layton <jlayton@kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170922133331.28812-1-jlayton@kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Added some more information.
+On Fri 22-09-17 09:33:31, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@redhat.com>
+> 
+> Eryu noticed that he could sometimes get a leftover error reported when
+> it shouldn't be on fsync with ext2 and non-journalled ext4. The problem
+> is that writeback_single_inode still uses filemap_fdatawait. That picks
+> up a previously set AS_EIO flag, which would ordinarily have been
+> cleared before.
+> 
+> Since we're mostly using this function as a replacement for
+> filemap_check_errors, have filemap_check_and_advance_wb_err clear AS_EIO
+> and AS_ENOSPC when reporting an error. That should allow the new
+> function to better emulate the behavior of the old with respect to these
+> flags.
+> 
+> Reported-by: Eryu Guan <eguan@redhat.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-Thanks,
-Rajesh.
+Looks good. You can add:
 
-On Mon, Sep 25, 2017 at 11:05 AM, RAJESH DASARI <raajeshdasari@gmail.com> wrote:
->  Thanks Ted for your reply , Please find my response in line and
-> please let me know if any other logs are needed.
->
-> Thanks,
-> Rajesh Dasari.
->
->
-> On Mon, Sep 25, 2017 at 10:53 AM, RAJESH DASARI <raajeshdasari@gmail.com> wrote:
->> Thanks,
->> Rajesh Dasari.
->>
->>
->> On Tue, Sep 19, 2017 at 6:55 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->>> On Mon, Sep 18, 2017 at 04:14:35PM +0530, RAJESH DASARI wrote:
->>>>
->>>> Could some one please help me with the below issue.
->>>>
->>>> I have  booted a mips based hardware with linux (4.4.36 kernel
->>>> )image(over tftp) and rootfs over nfs by passing nfsroot command line
->>>> option to the kernel.
->>>>
->>>> rootfs is mounted under / in my hardware environment.
->>>>
->>>> 192.168.113.254:/rootfs / type nfs
->>>> (rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.113.254,mountvers=3,mountproto=tcp,local_lock=all,addr=192.168.113.254)
->>>>
->>>> I have a hard disk and i am mounting  it on /mnt , this /mnt directory
->>>> is part of nfsroot.
->>>>
->>>> e2fsck -f -y /dev/sda1 -> disk is clean with no errors.
->>>>
->>>> mount -t ext2 /dev/sda1 /mnt  (mount was successful ,mounting ext2 using ext4)
->>>> touch /mnt/test.log  -> this command is failing.
->>>> umount /mnt
->>>> reboot
->>>>
->>>> when i was executing the above commands in a loop i see that /dev/sda1
->>>> file system is getting corrupted.
->>>
->>> The above commands include running e2fsck?  Then it sounds like there
->>> is some kind of device driver bug.
->       yeah. e2fsck command also included and all the above commands
-> were executed in a loop.
->>
->>>
->>> What if you include an e2fsck -f -y /dev/sda1 after the umount?  Can
->>> you capture the output from that e2fsck run?
+Reviewed-by: Jan Kara <jack@suse.cz>
 
- I tried running e2fsck after unmount also , i still see the issue.
-Here is the output of e2fsck after
-     unmount .
+								Honza
 
-e2fsck -f -y /dev/sda1
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information /dev/sda1: 12/262144 files
-(0.0% non-contiguous), 18510/1048576 blocks
-
-e2fsck return code was 0. after executing e2fsck, i rebooted the node
-and i ran e2fsck again, output of this command same as the previous
-e2fsck o/p and e2fsck didn't return any errors ,  But
-when i  mount the Hard disk it is failed with the below error.
-
-[ 87.685184] EXT4-fs (sda1): mounting ext2 file system using the ext4
-subsystem [ 87.694393] EXT4-fs error (device sda1): ext4_iget:4337:
-inode #2: comm mount: bad extended attribute block 4278190080 [
-87.707920] EXT4-fs (sda1): get root inode failed [ 87.712639] EXT4-fs
-(sda1): mount failed mount: mounting /dev/sda1 on /mnt failed:
-Structure needs cleaning
-
-the below steps were executed in a loop for 100 times. I am seeing the
-issue after executing for around 40 iterations.
-    1) e2fsck -y -n /dev/sda1
-     2) mount -t ext2 /dev/sda1 /mnt
-     3) touch /mnt/test.log
-     4) umount /mnt
-     5) e2fsck -y -n /dev/sda1
-     6)reboot
-i tried to mount the hard disk as ext2 as my hard disk partition was
-formatted as ext2 device.
-
-I also formatted the hard disk as ext4 device and tried the above
-steps (this time i mounted as ext4 only) , i still see the issue but
-this time with a different error ,
-mount command failed with the below error.
-EXT4-fs (sda1): no journal found
-
-the below ext4 kernel config options were used to build the kernel.
-
-CONFIG_EXT4_FS=y
-CONFIG_EXT4_USE_FOR_EXT2=y
-CONFIG_EXT4_FS_POSIX_ACL=y
-CONFIG_EXT4_FS_SECURITY=y
-
-As i mentioned in my previous mail, when i boot the node from
-HDD(kernel and rootfs both are booted from HDD) and  executed  steps 1
-to 6 in a loop for 100 times ,  i am not noticing any issue. I am
-seeing this issue continuously when i boot the node from nfs (kernel
-is loaded from tftp and rootfs is over nfs).
-
->
->
->
->>>
->>>> I am able to reproduce
->>>> this issue always when i boot rootfs over nfs , if i boot from hard
->>>> disk , i am not noticing the issue .
->>>
->>> Is it exactly the same kernel in both cases?
-    Kernel version and steps executed hardware environment everything
-is same in both the cases.
->>>
->>> More detailed logs would certainly be helpful.  There's not enough
->>> detail in your description to do anything other than guess, since
->>> we're not mind readers....
->>>
->>>                                                 - Ted
+> ---
+>  mm/filemap.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
+> 
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index 870971e20967..404722ea0fdd 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -620,6 +620,14 @@ int file_check_and_advance_wb_err(struct file *file)
+>  		trace_file_check_and_advance_wb_err(file, old);
+>  		spin_unlock(&file->f_lock);
+>  	}
+> +
+> +	/*
+> +	 * We're mostly using this function as a drop in replacement for
+> +	 * filemap_check_errors. Clear AS_EIO/AS_ENOSPC to emulate the effect
+> +	 * that the legacy code would have had on these flags.
+> +	 */
+> +	clear_bit(AS_EIO, &mapping->flags);
+> +	clear_bit(AS_ENOSPC, &mapping->flags);
+>  	return err;
+>  }
+>  EXPORT_SYMBOL(file_check_and_advance_wb_err);
+> -- 
+> 2.13.5
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
