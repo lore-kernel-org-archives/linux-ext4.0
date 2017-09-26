@@ -1,116 +1,123 @@
-From: Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [RFC][PATCH] fstest: regression test for ext4 crash consistency bug
-Date: Tue, 26 Sep 2017 14:48:27 +0300
-Message-ID: <CAOQ4uxispZ9WYDOt+dgYNs7rcFDopc6u0VHQvyAmw9y+D3UOmg@mail.gmail.com>
-References: <1503830683-21455-1-git-send-email-amir73il@gmail.com>
- <59C8D147.1060608@cn.fujitsu.com> <CAOQ4uxgnK3mGKG+owRUNGyDVOCeicArwaufGgwXaSVxC26+peQ@mail.gmail.com>
- <59CA2FDF.5020806@cn.fujitsu.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: generic/232 test failures on 4.14-rc1
+Date: Tue, 26 Sep 2017 14:58:31 +0200
+Message-ID: <20170926125831.GC13627@quack2.suse.cz>
+References: <20170921154846.re5vcyn3bugdbie5@localhost.localdomain>
+ <20170925135946.GB8004@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Eryu Guan <eguan@redhat.com>,
-        Josef Bacik <jbacik@fb.com>, fstests <fstests@vger.kernel.org>,
-        Ext4 <linux-ext4@vger.kernel.org>
-To: Xiao Yang <yangx.jy@cn.fujitsu.com>
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <59CA2FDF.5020806@cn.fujitsu.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/mixed; boundary="wac7ysb48OaltWcw"
+Cc: linux-ext4@vger.kernel.org, jack@suse.cz
+To: Eric Whitney <enwlinux@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:37046 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S965798AbdIZM6d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 26 Sep 2017 08:58:33 -0400
+Content-Disposition: inline
+In-Reply-To: <20170925135946.GB8004@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 26, 2017 at 1:45 PM, Xiao Yang <yangx.jy@cn.fujitsu.com> wrote:
-> On 2017/09/25 18:53, Amir Goldstein wrote:
->>
->> On Mon, Sep 25, 2017 at 12:49 PM, Xiao Yang<yangx.jy@cn.fujitsu.com>
->> wrote:
->>>
->>> On 2017/08/27 18:44, Amir Goldstein wrote:
->>>>
->>>> This test is motivated by a bug found in ext4 during random crash
->>>> consistency tests.
->>>>
->>>> This test uses device mapper flakey target to demonstrate the bug
->>>> found using device mapper log-writes target.
->>>>
->>>> Signed-off-by: Amir Goldstein<amir73il@gmail.com>
->>>> ---
->>>>
->>>> Ted,
->>>>
->>>> While working on crash consistency xfstests [1], I stubmled on what
->>>> appeared to be an ext4 crash consistency bug.
->>>>
->>>> The tests I used rely on the log-writes dm target code written
->>>> by Josef Bacik, which had little exposure to the wide community
->>>> as far as I know.  I wanted to prove to myself that the found
->>>> inconsistency was not due to a test bug, so I bisected the failed
->>>> test to the minimal operations that trigger the failure and wrote
->>>> a small independent test to reproduce the issue using dm flakey target.
->>>>
->>>> The following fsck error is reliably reproduced by replaying some fsx
->>>> ops
->>>> on overlapping file regions, then emulating a crash, followed by mount,
->>>> umount and fsck -nf:
->>>>
->>>>    ./ltp/fsx -d --replay-ops /tmp/8995.fsxops /mnt/scratch/testfile
->>>>    1 write 0x137dd thru    0x21445 (0xdc69 bytes)
->>>>    2 falloc        from 0xb531 to 0x16ade (0xb5ad bytes)
->>>>    3 collapse      from 0x1c000 to 0x20000, (0x4000 bytes)
->>>>    4 write 0x3e5ec thru    0x3ffff (0x1a14 bytes)
->>>>    5 zero  from 0x20fac to 0x27d48, (0x6d9c bytes)
->>>>    6 mapwrite      0x216ad thru    0x23dfb (0x274f bytes)
->>>>    All 7 operations completed A-OK!
->>>>    _check_generic_filesystem: filesystem on /dev/mapper/ssd-scratch is
->>>> inconsistent
->>>>    *** fsck.ext4 output ***
->>>>    fsck from util-linux 2.27.1
->>>>    e2fsck 1.42.13 (17-May-2015)
->>>>    Pass 1: Checking inodes, blocks, and sizes
->>>>    Inode 12, end of extent exceeds allowed value
->>>>            (logical block 33, physical block 33441, len 7)
->>>>    Clear? no
->>>>    Inode 12, i_blocks is 184, should be 128.  Fix? no
->>>
->>> Hi Amir,
->>>
->>> I always get the following output when running your xfstests test case
->>> 501.
->>
->> Now merged as test generic/456
->>
->>>
->>> ---------------------------------------------------------------------------
->>> e2fsck 1.42.9 (28-Dec-2013)
->>> Pass 1: Checking inodes, blocks, and sizes
->>> Inode 12, i_size is 147456, should be 163840. Fix? no
->>>
->>> ---------------------------------------------------------------------------
->>>
->>> Could you tell me how to get the expected output as you reported?
->>
->> I can't say I am doing anything special, but I can say that I get the
->> same output as you did when running the test inside kvm-xfstests.
->> Actually, I could not reproduce ANY of the the crash consistency bugs
->> inside kvm-xfstests. Must be something to do with different timing of
->> IO with KVM+virtio disks??
->>
->> When running on my laptop (Ubuntu 16.04 with latest kernel)
->> on a 10G SSD volume, I always get the error reported above.
->> I just re-verified with latest stable e2fsprogs (1.43.6).
->
-> Hi Amir,
->
-> I tested generic/456 with KVM+virtio disks and SATA volumes on some kernels
 
-I don't understand. Did you also test without KVM?
-Otherwise I suggest that you test without KVM/virtio.
+--wac7ysb48OaltWcw
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> (including
-> v3.10.0, the latest kernel), but i still got the same output as i reported.
->
-> Could you determine whether the two different outputs are caused by the same
-> bug
-> or not ?
+On Mon 25-09-17 15:59:46, Jan Kara wrote:
+> On Thu 21-09-17 11:48:46, Eric Whitney wrote:
+> > I'm seeing generic/232 fail from time to time when running a 4.14-rc1 kernel
+> > on xfstest-bld's most recent kvm-xfstests test appliance.  In one set of
+> > trials, it failed in the same manner 4 out of 10 times when running the 4k test
+> > configuration for ext4.
+> > 
+> > The failure bisects to "quota: Do not acquire dqio_sem for dquot overwrites in
+> > v2 format" (ab2b86360f6e).  When this patch was reverted in a 4.14-rc1 kernel,
+> > the failure did not reoccur in a series of 20 trials.
+> 
+> Thanks for debugging this! I'd just note that the commit hash of that
+> change is different for me - d2faa415166b2883428efa92f451774ef44373ac.
+> 
+> > Example output from the failed test:
+> > 
+> > QA output created by 232
+> > 
+> > Testing fsstress
+> > 
+> > seed = S
+> > Comparing user usage
+> > 218a219
+> > > #3740     --       4       0       0              1     0     0       
+> > 245a247
+> > > #45       --       0       0       0              1     0     0     
+> > 
+> > Note:  I'm also seeing a similar failure for generic/233, but the patch
+> > containing the root cause likely comes somewhere after ab2b86360f6e.  I'll post
+> > another bug report once I locate it.
+> 
+> I'll try to debug this further. Thanks for report!
 
-No idea if those are 2 symptoms of the same bug or 2 different bugs
-I did not investigate the root cause.
+Attached patch fixes the problem for me. I'll merge it through my tree.
 
-Amir.
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--wac7ysb48OaltWcw
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-quota-Fix-quota-corruption-with-generic-232-test.patch"
+
+>From a0ae41c2a9c204374eafd24a928e4352841bd905 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Tue, 26 Sep 2017 10:36:05 +0200
+Subject: [PATCH] quota: Fix quota corruption with generic/232 test
+
+Eric has reported that since commit d2faa415166b "quota: Do not acquire
+dqio_sem for dquot overwrites in v2 format" test generic/232
+occasionally fails due to quota information being incorrect. Indeed that
+commit was too eager to remove dqio_sem completely from the path that
+just overwrites quota structure with updated information. Although that
+is innocent on its own, another process that inserts new quota structure
+to the same block can perform read-modify-write cycle of that block thus
+effectively discarding quota information update if they race in a wrong
+way.
+
+Fix the problem by acquiring dqio_sem for reading for overwrites of
+quota structure. Note that it *is* possible to completely avoid taking
+dqio_sem in the overwrite path however that will require modifying path
+inserting / deleting quota structures to avoid RMW cycles of the full
+block and for now it is not clear whether it is worth the hassle.
+
+Fixes: d2faa415166b2883428efa92f451774ef44373ac
+Reported-by: Eric Whitney <enwlinux@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/quota/quota_v2.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/fs/quota/quota_v2.c b/fs/quota/quota_v2.c
+index c0187cda2c1e..a73e5b34db41 100644
+--- a/fs/quota/quota_v2.c
++++ b/fs/quota/quota_v2.c
+@@ -328,12 +328,16 @@ static int v2_write_dquot(struct dquot *dquot)
+ 	if (!dquot->dq_off) {
+ 		alloc = true;
+ 		down_write(&dqopt->dqio_sem);
++	} else {
++		down_read(&dqopt->dqio_sem);
+ 	}
+ 	ret = qtree_write_dquot(
+ 			sb_dqinfo(dquot->dq_sb, dquot->dq_id.type)->dqi_priv,
+ 			dquot);
+ 	if (alloc)
+ 		up_write(&dqopt->dqio_sem);
++	else
++		up_read(&dqopt->dqio_sem);
+ 	return ret;
+ }
+ 
+-- 
+2.12.3
+
+
+--wac7ysb48OaltWcw--
