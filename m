@@ -1,82 +1,37 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH] chattr: add maximum value check for project
-Date: Wed, 27 Sep 2017 12:21:15 +0800
-Message-ID: <20170927042115.6711-1-wshilong@ddn.com>
-Cc: sihara@ddn.com, Wang Shilong <wshilong@ddn.com>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: generic/232 test failures on 4.14-rc1
+Date: Wed, 27 Sep 2017 11:34:39 +0200
+Message-ID: <20170927093439.GB25746@quack2.suse.cz>
+References: <20170921154846.re5vcyn3bugdbie5@localhost.localdomain>
+ <20170925135946.GB8004@quack2.suse.cz>
+ <20170926125831.GC13627@quack2.suse.cz>
+ <20170926214152.tfyxaardy7rsn6md@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: Eric Whitney <enwlinux@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f196.google.com ([209.85.192.196]:34941 "EHLO
-        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1031435AbdI0EVe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Sep 2017 00:21:34 -0400
-Received: by mail-pf0-f196.google.com with SMTP id i23so5881201pfi.2
-        for <linux-ext4@vger.kernel.org>; Tue, 26 Sep 2017 21:21:34 -0700 (PDT)
+Received: from mx2.suse.de ([195.135.220.15]:47204 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752560AbdI0JmF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 27 Sep 2017 05:42:05 -0400
+Content-Disposition: inline
+In-Reply-To: <20170926214152.tfyxaardy7rsn6md@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Wang Shilong <wshilong@ddn.com>
+On Tue 26-09-17 17:41:52, Eric Whitney wrote:
+> Hi Honza:
+> 
+> That patch works for me - 100 out of 100 trials of generic/232 passed
+> successfully running a modified 4.14-rc1 kernel on kvm-xfstests' ext4 4k
+> test configuration.
+> 
+> Tested-by: Eric Whitney <enwlinux@gmail.com>
 
-See following output:
-[root@mds03 client]# chattr -R +P -p 4294967296 testdir/
-[root@mds03 client]# lsattr -dp testdir/
-    0 ----------------P testdir/
-[root@mds03 client]# chattr -R +P -p 4294967297 testdir/
-[root@mds03 client]# lsattr -dp testdir/
-    1 ----------------P testdir/
+Thanks for testing!
 
-Reported-by: Shuichi Ihara <sihara@ddn.com>
-Signed-off-by: Wang Shilong <wshilong@ddn.com>
----
- lib/ext2fs/ext2_fs.h |  2 ++
- misc/chattr.c        | 11 ++++++++---
- misc/mke2fs.c        |  2 --
- 3 files changed, 10 insertions(+), 5 deletions(-)
-
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 3b55000..99f89ec 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -75,6 +75,8 @@
-  */
- #define EXT2_LINK_MAX		65000
- 
-+#define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
-+
- /*
-  * Macro-instructions used to manage several block sizes
-  */
-diff --git a/misc/chattr.c b/misc/chattr.c
-index a5b401a..bab20e8 100644
---- a/misc/chattr.c
-+++ b/misc/chattr.c
-@@ -152,13 +152,18 @@ static int decode_arg (int * i, int argc, char ** argv)
- 			if (*p == 'p') {
- 				(*i)++;
- 				if (*i >= argc)
--					usage ();
--				project = strtol (argv[*i], &tmp, 0);
-+					usage();
-+				project = strtol(argv[*i], &tmp, 0);
- 				if (*tmp) {
- 					com_err (program_name, 0,
- 						 _("bad project - %s\n"),
- 						 argv[*i]);
--					usage ();
-+					usage();
-+				}
-+				if (project > MAX_32_NUM) {
-+					com_err(program_name, 0,
-+						_("Kernel does not support set project ID this large"));
-+					exit(1);
- 				}
- 				set_project = 1;
- 				continue;
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index d585a9e..22812cd 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -63,8 +63,6 @@ extern int optind;
- 
- #define STRIDE_LENGTH 8
- 
--#define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
