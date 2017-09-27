@@ -1,27 +1,28 @@
-From: Eric Whitney <enwlinux@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: generic/232 test failures on 4.14-rc1
-Date: Tue, 26 Sep 2017 17:41:52 -0400
-Message-ID: <20170926214152.tfyxaardy7rsn6md@localhost.localdomain>
+Date: Tue, 26 Sep 2017 18:19:29 -0700
+Message-ID: <20170927011929.GA5010@magnolia>
 References: <20170921154846.re5vcyn3bugdbie5@localhost.localdomain>
  <20170925135946.GB8004@quack2.suse.cz>
  <20170926125831.GC13627@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org
+Cc: Eric Whitney <enwlinux@gmail.com>, linux-ext4@vger.kernel.org,
+        xfs <linux-xfs@vger.kernel.org>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qk0-f172.google.com ([209.85.220.172]:44302 "EHLO
-        mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1032282AbdIZVl4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Sep 2017 17:41:56 -0400
-Received: by mail-qk0-f172.google.com with SMTP id b23so11550489qkg.1
-        for <linux-ext4@vger.kernel.org>; Tue, 26 Sep 2017 14:41:56 -0700 (PDT)
+Received: from aserp1040.oracle.com ([141.146.126.69]:35516 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S965519AbdI0BTj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Sep 2017 21:19:39 -0400
 Content-Disposition: inline
 In-Reply-To: <20170926125831.GC13627@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Jan Kara <jack@suse.cz>:
+[cc xfs list]
+
+On Tue, Sep 26, 2017 at 02:58:31PM +0200, Jan Kara wrote:
 > On Mon 25-09-17 15:59:46, Jan Kara wrote:
 > > On Thu 21-09-17 11:48:46, Eric Whitney wrote:
 > > > I'm seeing generic/232 fail from time to time when running a 4.14-rc1 kernel
@@ -56,6 +57,17 @@ List-ID: <linux-ext4.vger.kernel.org>
 > > I'll try to debug this further. Thanks for report!
 > 
 > Attached patch fixes the problem for me. I'll merge it through my tree.
+
+Hi Jan,
+
+Ever since 4.14-rc1, I've noticed the same problem (intermittent
+failures of generic/{232,233,270}) that Eric Whitney was complaining
+about when running xfstests against XFS.  I'll try a proper bisect
+tomorrow, but given the big locking rework I wonder if that rings any
+bells for you?
+
+--D
+
 > 
 > 								Honza
 > -- 
@@ -114,14 +126,3 @@ List-ID: <linux-ext4.vger.kernel.org>
 > -- 
 > 2.12.3
 > 
-
-Hi Honza:
-
-That patch works for me - 100 out of 100 trials of generic/232 passed
-successfully running a modified 4.14-rc1 kernel on kvm-xfstests' ext4 4k
-test configuration.
-
-Tested-by: Eric Whitney <enwlinux@gmail.com>
-
-Thanks!
-Eric
