@@ -1,77 +1,67 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: generic/232 test failures on 4.14-rc1
-Date: Wed, 27 Sep 2017 11:33:15 +0200
-Message-ID: <20170927093315.GA25746@quack2.suse.cz>
-References: <20170921154846.re5vcyn3bugdbie5@localhost.localdomain>
- <20170925135946.GB8004@quack2.suse.cz>
- <20170926125831.GC13627@quack2.suse.cz>
- <20170927011929.GA5010@magnolia>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Eric Whitney <enwlinux@gmail.com>,
-        linux-ext4@vger.kernel.org, xfs <linux-xfs@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47208 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752016AbdI0JmG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 27 Sep 2017 05:42:06 -0400
-Content-Disposition: inline
-In-Reply-To: <20170927011929.GA5010@magnolia>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH 04/15] ext4: Use pagevec_lookup_range_tag()
+Date: Wed, 27 Sep 2017 18:03:23 +0200
+Message-ID: <20170927160334.29513-5-jack@suse.cz>
+References: <20170927160334.29513-1-jack@suse.cz>
+Cc: <linux-mm@kvack.org>,
+	<linux-fsdevel@vger.kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20170927160334.29513-1-jack@suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Darrick!
+We want only pages from given range in ext4_writepages(). Use
+pagevec_lookup_range_tag() instead of pagevec_lookup_tag() and remove
+unnecessary code.
 
-On Tue 26-09-17 18:19:29, Darrick J. Wong wrote:
-> On Tue, Sep 26, 2017 at 02:58:31PM +0200, Jan Kara wrote:
-> > On Mon 25-09-17 15:59:46, Jan Kara wrote:
-> > > On Thu 21-09-17 11:48:46, Eric Whitney wrote:
-> > > > I'm seeing generic/232 fail from time to time when running a 4.14-rc1 kernel
-> > > > on xfstest-bld's most recent kvm-xfstests test appliance.  In one set of
-> > > > trials, it failed in the same manner 4 out of 10 times when running the 4k test
-> > > > configuration for ext4.
-> > > > 
-> > > > The failure bisects to "quota: Do not acquire dqio_sem for dquot overwrites in
-> > > > v2 format" (ab2b86360f6e).  When this patch was reverted in a 4.14-rc1 kernel,
-> > > > the failure did not reoccur in a series of 20 trials.
-> > > 
-> > > Thanks for debugging this! I'd just note that the commit hash of that
-> > > change is different for me - d2faa415166b2883428efa92f451774ef44373ac.
-> > > 
-> > > > Example output from the failed test:
-> > > > 
-> > > > QA output created by 232
-> > > > 
-> > > > Testing fsstress
-> > > > 
-> > > > seed = S
-> > > > Comparing user usage
-> > > > 218a219
-> > > > > #3740     --       4       0       0              1     0     0       
-> > > > 245a247
-> > > > > #45       --       0       0       0              1     0     0     
-> > > > 
-> > > > Note:  I'm also seeing a similar failure for generic/233, but the patch
-> > > > containing the root cause likely comes somewhere after ab2b86360f6e.  I'll post
-> > > > another bug report once I locate it.
-> > > 
-> > > I'll try to debug this further. Thanks for report!
-> > 
-> > Attached patch fixes the problem for me. I'll merge it through my tree.
-> 
-> Ever since 4.14-rc1, I've noticed the same problem (intermittent
-> failures of generic/{232,233,270}) that Eric Whitney was complaining
-> about when running xfstests against XFS.  I'll try a proper bisect
-> tomorrow, but given the big locking rework I wonder if that rings any
-> bells for you?
+CC: "Theodore Ts'o" <tytso@mit.edu>
+CC: linux-ext4@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c | 14 ++------------
+ 1 file changed, 2 insertions(+), 12 deletions(-)
 
-Hum, no idea. XFS uses its own thing for quotas so my changes don't
-influence it at all. I don't know much about XFS internal quota
-implementation so I don't have a good guess what could have caused the
-breakage you see. I'm sorry.
-
-								Honza
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 31db875bc7a1..69f11233d0d6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2619,8 +2619,8 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 	mpd->map.m_len = 0;
+ 	mpd->next_page = index;
+ 	while (index <= end) {
+-		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index, tag,
+-			      min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1);
++		nr_pages = pagevec_lookup_range_tag(&pvec, mapping, &index, end,
++				tag, PAGEVEC_SIZE);
+ 		if (nr_pages == 0)
+ 			goto out;
+ 
+@@ -2628,16 +2628,6 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			struct page *page = pvec.pages[i];
+ 
+ 			/*
+-			 * At this point, the page may be truncated or
+-			 * invalidated (changing page->mapping to NULL), or
+-			 * even swizzled back from swapper_space to tmpfs file
+-			 * mapping. However, page->index will not change
+-			 * because we have a reference on the page.
+-			 */
+-			if (page->index > end)
+-				goto out;
+-
+-			/*
+ 			 * Accumulated enough dirty pages? This doesn't apply
+ 			 * to WB_SYNC_ALL mode. For integrity sync we have to
+ 			 * keep going because someone may be concurrently
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.12.3
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
