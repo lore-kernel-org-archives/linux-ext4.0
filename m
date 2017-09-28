@@ -1,26 +1,47 @@
-From: Jonathan Corbet <corbet@lwn.net>
-Subject: Re: [PATCH] Documentation: fix little inconsistencies
-Date: Tue, 26 Sep 2017 14:30:42 -0600
-Message-ID: <20170926143042.3c5f7ca4@lwn.net>
-References: <20170916114837.GA5459@amd>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2 3/4] ext4: Add iomap support for inline data
+Date: Thu, 28 Sep 2017 13:57:48 -0400
+Message-ID: <20170928175748.23b7wkjiqavpunvj@thunk.org>
+References: <20170914095047.23935-1-agruenba@redhat.com>
+ <20170914095047.23935-4-agruenba@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 8bit
-Cc: linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org,
-        tytso@mit.edu, trivial@kernel.org, linux-ext4@vger.kernel.org,
-        Andrew Morton <akpm@osdl.org>
-To: Pavel Machek <pavel@ucw.cz>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <20170916114837.GA5459@amd>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@lst.de>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:43328 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752467AbdI1R5z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 28 Sep 2017 13:57:55 -0400
+Content-Disposition: inline
+In-Reply-To: <20170914095047.23935-4-agruenba@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 16 Sep 2017 13:48:37 +0200
-Pavel Machek <pavel@ucw.cz> wrote:
+On Thu, Sep 14, 2017 at 11:50:46AM +0200, Andreas Gruenbacher wrote:
+> +int ext4_inline_data_iomap(struct inode *inode, struct iomap *iomap)
+> +{
+> +	__u64 addr;
+> +	int error = -EAGAIN;
+> +	struct ext4_iloc iloc;
+> +
+> +	down_read(&EXT4_I(inode)->xattr_sem);
+> +	if (!ext4_has_inline_data(inode))
+> +		goto out;
+	....
+> +out:
+> +	up_read(&EXT4_I(inode)->xattr_sem);
+> +	return error;
+> +}
 
-> Fix little inconsistencies in Documentation: make case and spacing
-> match surrounding text.
 
-Applied to the docs tree, thanks.
+If we race with the inline data flag getting cleared,
+ext4_iomap_begin() will return with -EAGAIN.  As near as I can tell,
+this will get reflected all the way up to userspace, instead of having
+the retry happen in the kernel.  Is this intentional?
 
-jon
+It looks like a user visible change, no?
+
+						- Ted
