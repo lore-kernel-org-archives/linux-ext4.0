@@ -1,99 +1,63 @@
-From: Nikolay Borisov <nborisov@suse.com>
-Subject: [PATCH] ext4: Use symbolic constants for well-known pow 2 sizes
-Date: Fri, 29 Sep 2017 16:58:50 +0300
-Message-ID: <1506693530-11800-1-git-send-email-nborisov@suse.com>
-Cc: tytso@mit.edu, Nikolay Borisov <nborisov@suse.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47451 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751224AbdI2N7B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 29 Sep 2017 09:59:01 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH v2 0/5] ext4: DAX data corruption fixes
+Date: Fri, 29 Sep 2017 11:37:52 -0600
+Message-ID: <20170929173752.GA6155@linux.intel.com>
+References: <20170912050526.7627-1-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20170912050526.7627-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-No functional changes, just makes the code a bit more readable. Also fix 1
-trailing whitespace
+On Mon, Sep 11, 2017 at 11:05:21PM -0600, Ross Zwisler wrote:
+> This series prevents a pair of data corruptions with ext4 + DAX.  The first
+> such corruption happens when combining the inline data feature with DAX,
+> and the second happens when combining data journaling with DAX.
+> 
+> Both can be reliably reproduced with the fstests that I have posted here:
+> 
+> https://patchwork.kernel.org/patch/9948377/
+> https://patchwork.kernel.org/patch/9948381/
+> 
+> My opinion is that the first three patches in this series should be applied
+> to the v4.14 RC series and backported to stable.  The last two patches in
+> this series are just cleanup and can probably wait until v4.15.
+> 
+> Ross Zwisler (5):
+>   ext4: prevent data corruption with inline data + DAX
+>   ext4: prevent data corruption with journaling + DAX
+>   ext4: add sanity check for encryption + DAX
+>   ext4: add ext4_should_use_dax()
+>   ext4: remove duplicate extended attributes defs
+> 
+>  fs/ext4/ext4.h   | 37 -------------------------------------
+>  fs/ext4/inline.c | 10 ----------
+>  fs/ext4/inode.c  | 24 ++++++++++++++++--------
+>  fs/ext4/ioctl.c  | 16 +++++++++++++---
+>  fs/ext4/super.c  |  8 ++++++++
+>  5 files changed, 37 insertions(+), 58 deletions(-)
 
-Signed-off-by: Nikolay Borisov <nborisov@suse.com>
----
- fs/ext4/mballoc.c | 43 ++++++++++++++++++++++---------------------
- 1 file changed, 22 insertions(+), 21 deletions(-)
+Hey Ted,
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 701085620cd8..27d77bf9f766 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -28,6 +28,7 @@
- #include <linux/slab.h>
- #include <linux/backing-dev.h>
- #include <trace/events/ext4.h>
-+#include <linux/sizes.h>
- 
- #ifdef CONFIG_EXT4_DEBUG
- ushort ext4_mballoc_debug __read_mostly;
-@@ -2407,7 +2408,7 @@ int ext4_mb_alloc_groupinfo(struct super_block *sb, ext4_group_t ngroups)
- 	}
- 	sbi->s_group_info = new_groupinfo;
- 	sbi->s_group_info_size = size / sizeof(*sbi->s_group_info);
--	ext4_debug("allocated s_groupinfo array for %d meta_bg's\n", 
-+	ext4_debug("allocated s_groupinfo array for %d meta_bg's\n",
- 		   sbi->s_group_info_size);
- 	return 0;
- }
-@@ -3136,33 +3137,33 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
- 	/* first, try to predict filesize */
- 	/* XXX: should this table be tunable? */
- 	start_off = 0;
--	if (size <= 16 * 1024) {
--		size = 16 * 1024;
--	} else if (size <= 32 * 1024) {
--		size = 32 * 1024;
--	} else if (size <= 64 * 1024) {
--		size = 64 * 1024;
--	} else if (size <= 128 * 1024) {
--		size = 128 * 1024;
--	} else if (size <= 256 * 1024) {
--		size = 256 * 1024;
--	} else if (size <= 512 * 1024) {
--		size = 512 * 1024;
--	} else if (size <= 1024 * 1024) {
--		size = 1024 * 1024;
--	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, 2 * 1024)) {
-+	if (size <= SZ_16) {
-+		size = SZ_16;
-+	} else if (size <= SZ_32) {
-+		size = SZ_32;
-+	} else if (size <= SZ_64) {
-+		size = SZ_64;
-+	} else if (size <= SZ_128) {
-+		size = SZ_128;
-+	} else if (size <= SZ_256) {
-+		size = SZ_256;
-+	} else if (size <= SZ_512) {
-+		size = SZ_512;
-+	} else if (size <= SZ_1K) {
-+		size = SZ_1K;
-+	} else if (NRL_CHECK_SIZE(size, SZ_4M, max, SZ_2K)) {
- 		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
- 						(21 - bsbits)) << 21;
--		size = 2 * 1024 * 1024;
--	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, 4 * 1024)) {
-+		size = SZ_2M;
-+	} else if (NRL_CHECK_SIZE(size, SZ_8M, max, SZ_4K)) {
- 		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
- 							(22 - bsbits)) << 22;
--		size = 4 * 1024 * 1024;
-+		size = SZ_4M;
- 	} else if (NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,
--					(8<<20)>>bsbits, max, 8 * 1024)) {
-+					(8<<20)>>bsbits, max, SZ_8K)) {
- 		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
- 							(23 - bsbits)) << 23;
--		size = 8 * 1024 * 1024;
-+		size = SZ_8M;
- 	} else {
- 		start_off = (loff_t) ac->ac_o_ex.fe_logical << bsbits;
- 		size	  = (loff_t) EXT4_C2B(EXT4_SB(ac->ac_sb),
--- 
-2.7.4
+I just wanted to ping this series, and see if at least the data corruption
+fixes were headed for v4.14?  I don't think these have been merged into any of
+the ext4 branches yet.
+
+Thanks,
+- Ross
