@@ -1,44 +1,60 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 197069] systemd service with ProtectHome=yes causes ELOOP when
- accessing /home
-Date: Sat, 30 Sep 2017 05:28:25 +0000
-Message-ID: <bug-197069-13602-sDmO464eaG@https.bugzilla.kernel.org/>
-References: <bug-197069-13602@https.bugzilla.kernel.org/>
+From: Markus Trippelsdorf <markus@trippelsdorf.de>
+Subject: Re: [PATCH v2] VFS: Handle lazytime in do_mount()
+Date: Sat, 30 Sep 2017 09:10:22 +0200
+Message-ID: <20170930071022.GA238@x4>
+References: <20170918192644.GA232@x4>
+ <20170919083506.GA233@x4>
+ <20170919101819.GA233@x4>
+ <20170919103724.GA239@x4>
+ <20170919152500.ce62nirm7gu3lqvq@rh_laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:45632 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750724AbdI3F2e (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 30 Sep 2017 01:28:34 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B88802977F
-        for <linux-ext4@vger.kernel.org>; Sat, 30 Sep 2017 05:28:33 +0000 (UTC)
-In-Reply-To: <bug-197069-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        David Howells <dhowells@redhat.com>
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20170919152500.ce62nirm7gu3lqvq@rh_laptop>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=197069
+On 2017.09.19 at 17:25 +0200, Lukas Czerner wrote:
+> On Tue, Sep 19, 2017 at 12:37:24PM +0200, Markus Trippelsdorf wrote:
+> > Since commit e462ec50cb5fa ("VFS: Differentiate mount flags (MS_*) from
+> > internal superblock flags") the lazytime mount option didn't get passed
+> > on anymore.
+> > 
+> > Fix the issue by handling the option in do_mount().
+> > 
+> > Signed-off-by: Markus Trippelsdorf <markus@trippelsdorf.de>
+> > ---
+> >  fs/namespace.c | 3 ++-
+> >  1 file changed, 2 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/namespace.c b/fs/namespace.c
+> > index 54059b142d6b..b633838b8f02 100644
+> > --- a/fs/namespace.c
+> > +++ b/fs/namespace.c
+> > @@ -2823,7 +2823,8 @@ long do_mount(const char *dev_name, const char __user *dir_name,
+> >  			    SB_MANDLOCK |
+> >  			    SB_DIRSYNC |
+> >  			    SB_SILENT |
+> > -			    SB_POSIXACL);
+> > +			    SB_POSIXACL |
+> > +			    SB_LAZYTIME);
+> 
+> Looks good. Although I still think that this can be per mountpoint options.
+> 
+> Regardless of that, you can add
+> Reviewed-by: Lukas Czerner <lczerner@redhat.com>
 
-Theodore Tso (tytso@mit.edu) changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|REOPENED                    |RESOLVED
-         Resolution|---                         |INVALID
-
---- Comment #4 from Theodore Tso (tytso@mit.edu) ---
-According to Centos, it's not a bug in the Centos kernel.  That's why they
-closed it.
-
-And it's not an ext4 bug, which is why I'm closing it here.
-
-Opening bugs in random bug trackers is not going to help you win friends, and
-it's certainly not going to help you get it anyone to look at it.
+Ping?
+Al could you please take look? 
+Thanks.
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Markus
