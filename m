@@ -1,58 +1,59 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH v2 3/4] ext4: Add iomap support for inline data
-Date: Mon, 2 Oct 2017 16:39:59 +0200
-Message-ID: <CAHc6FU4iEYQb7TV-kqFUt4Z6qTkRO1NgWixdeQ-BYBDTk6v3EA@mail.gmail.com>
-References: <20170914095047.23935-1-agruenba@redhat.com> <20170914095047.23935-4-agruenba@redhat.com>
- <20170928175748.23b7wkjiqavpunvj@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 build errors
+Date: Mon, 2 Oct 2017 10:55:17 -0400
+Message-ID: <20171002145517.652p7p7q4vv5rqcc@thunk.org>
+References: <1506954181.985.9.camel@infinera.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@lst.de>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Joakim Tjernlund <Joakim.Tjernlund@infinera.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ua0-f181.google.com ([209.85.217.181]:55415 "EHLO
-        mail-ua0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751336AbdJBOkA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Oct 2017 10:40:00 -0400
-Received: by mail-ua0-f181.google.com with SMTP id b11so3370729uae.12
-        for <linux-ext4@vger.kernel.org>; Mon, 02 Oct 2017 07:39:59 -0700 (PDT)
-In-Reply-To: <20170928175748.23b7wkjiqavpunvj@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:53186 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751188AbdJBOzT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 2 Oct 2017 10:55:19 -0400
+Content-Disposition: inline
+In-Reply-To: <1506954181.985.9.camel@infinera.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 28, 2017 at 7:57 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Thu, Sep 14, 2017 at 11:50:46AM +0200, Andreas Gruenbacher wrote:
->> +int ext4_inline_data_iomap(struct inode *inode, struct iomap *iomap)
->> +{
->> +     __u64 addr;
->> +     int error = -EAGAIN;
->> +     struct ext4_iloc iloc;
->> +
->> +     down_read(&EXT4_I(inode)->xattr_sem);
->> +     if (!ext4_has_inline_data(inode))
->> +             goto out;
->         ....
->> +out:
->> +     up_read(&EXT4_I(inode)->xattr_sem);
->> +     return error;
->> +}
->
->
-> If we race with the inline data flag getting cleared,
-> ext4_iomap_begin() will return with -EAGAIN.
+On Mon, Oct 02, 2017 at 02:23:02PM +0000, Joakim Tjernlund wrote:
+> Hi ext4 devs
+> 
+> Adding the patch last in this mail cause lots of build errors in ext4, here is a few:
 
-Actually, in that case, ext4_iomap_begin will treat the file as non-inline.
-It will not return -EAGAIN.
+Why did you need this patch to fix problems in VirtualBox?
 
-> As near as I can tell,
-> this will get reflected all the way up to userspace, instead of having
-> the retry happen in the kernel.  Is this intentional?
->
-> It looks like a user visible change, no?
+Cleaning this up is going to be a little tricky, because one of the
+implications the void * declaration in the __set_bit_le() declaration
+is that there isn't any particular alignment requirement with the __le
+functions.  But the long * declaration implies that the bitmaps have
+to be aligned to sizeof(long).
 
-That would be a bug.
+For the ext4 bitmap, we use it on bh->b_data, for which we can safely
+assume is long-aligned.  But the mballoc buddy bitmaps use
+mb_set_bit() in ways that are _not_ guaranteed to be long aligned.
 
-Thanks,
-Andreas
+So fixing this is going to be a bit painful, and will likely result in
+a performance regression for ext4.  We can make our own version that
+open codes it as C functions --- but then we lose all of the
+architecture optimized bitop functions.
+
+I believe the reason why the standard bitop functions are made long *
+aligned is that on some BE architectures --- I suspect it was PowerPC
+but I'm not 100% sure about that --- the native bitop functions
+required a long * alignment.  Fortunately all of the little endian
+architectures didn't have these alignment restrictions, so we could
+keep the __set_bit_le functions to not have any long alignment
+restrictions.
+
+The fact that bitop and the bitop_le functions are not the same
+is... inelegant, but if it represents a practical optimization that is
+possible on LE systems but not on BE systems (where bitop_le gets open
+coded in C, in an inefficient way, but oh, well, BE systems aren't for
+the cool kids anyway :-), I have to ask whether it's really worth it
+to do the cleanup.
+
+Cheers,
+
+					- Ted
