@@ -1,56 +1,116 @@
-From: Joakim Tjernlund <Joakim.Tjernlund@infinera.com>
-Subject: Re: [EXTERNAL]Re: [EXTERNAL]Re: ext4 build errors
-Date: Mon, 2 Oct 2017 20:12:58 +0000
-Message-ID: <1506975177.24473.15.camel@infinera.com>
-References: <1506954181.985.9.camel@infinera.com>
-         <20171002145517.652p7p7q4vv5rqcc@thunk.org>
-         <1506957332.985.22.camel@infinera.com>
-         <20171002165408.fhgsykuwautesn4v@thunk.org>
-         <1506965229.24473.9.camel@infinera.com>
-         <20171002184035.hwbkntpuup7ikqyv@thunk.org>
+From: Drake Cai <dcai.xff@gmail.com>
+Subject: Odd EXT4 corruption
+Date: Mon, 2 Oct 2017 23:10:56 -0700
+Message-ID: <CAD2SNyrVU-jeQCBRgfq7zGLZjZsa3_PDr=XSCfT=prNryZSYcg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-15"
-Content-Transfer-Encoding: quoted-printable
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: "tytso@mit.edu" <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-co1nam03on0072.outbound.protection.outlook.com ([104.47.40.72]:27520
-        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751062AbdJBUNE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 2 Oct 2017 16:13:04 -0400
-In-Reply-To: <20171002184035.hwbkntpuup7ikqyv@thunk.org>
-Content-Language: en-US
-Content-ID: <6A7AE3550F42ED4AAAB47F2A1934A75A@infinera.com>
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:47792 "EHLO
+        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750797AbdJCGK5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Oct 2017 02:10:57 -0400
+Received: by mail-qt0-f194.google.com with SMTP id z50so6119974qtj.4
+        for <linux-ext4@vger.kernel.org>; Mon, 02 Oct 2017 23:10:57 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2017-10-02 at 14:40 -0400, Theodore Ts'o wrote:
-> On Mon, Oct 02, 2017 at 05:27:12PM +0000, Joakim Tjernlund wrote:
-> > > This is why void * is the right thing --- it's not a u32 or a long.
-> > > It's a bit array.  And in the case of the mb buddy bitmap, it's not
-> > > necessarily going to start on a a byte boundary which is a multiple o=
-f
-> > > 4 or 8.
-> >=20
-> > For ext4 it might be right but I was using "you" in a wider scope,
-> > the rest of kernel src.
->=20
-> So let's take this up to a high level of the problem.  For the bitops
-> functions, there are two sorts of users.  Those that want to operate
-> on an integer type (either a u32 or a long), and those that operate on
-> bitarrays.  Most of the integer users are using the bitops for
-> in-memory state flags.  Most of the bitarray use cases are for things
-> like ext4's allocation bitmaps, where the on-disk format needs to be
-> portable across architectures --- and that's where bitops_le tends to
-> be used.
->=20
-> Taking a quick look at the output of "git grep set_bit_le", most of
-> the users are just like ext4, where it's being used for a bitarray.
-> So my argument I think *does* apply much more widely.
+As I was trying to install a new distribution I accidentally gdisk'd
+/dev/sda instead of /dev/sdc and deleted all of the partitions off of
+my device. I also wrote to the device a new GPT partition table label
+with a 2G EFI partition and a Linux Filesystem partition that filled
+the rest of the disk. I later then deleted the two partitions and made
+an ext4 partition that filled the rest of the disk. At this point
+forwards, I decided to do a complete dd backup of the 1.8TiB drive and
+am now working on the backed up identical drive (also 1.8TiB). I never
+mkfs'ed the device so the data in theory should all be there.
 
-OK, I can see that. It is just that __set_bit_le is impl. using=20
-__set_bit(long nr, volatile unsigned long *addr) and that implies, to me,
-that the memory should be long aligned.=20
+I have also used TestDisk and PhotoRec respectively. TestDisk fails to
+detect this weird situation and PhotoRec generates way too many files
+for it to be of use.
 
- Jocke=
+The disk in question was originally formatted with Gnome's Disk
+Utility with no partitioning and just an ext4 filesystem. Mountings of
+the device on the superblock backups blocks 65536, 131072, etc (but
+not 32768) are successful.
+
+However, after mounting, while the first directory of folders exists,
+when any following directories are entered ls shows a "Structure needs
+cleaning" error for the majority of the files and folders. Running
+e2fsck with the superblock backups failed to fix the problem but left
+me with 29GiB of the original 1TiB of data (the folders & files
+without "Structure needs cleaning" errors) of the 1.8TiB drive.
+Lost+Found did not contain any of the remaining data either.
+
+A friend on IRC tried reproducing my exact steps (creating drive,
+adding content, gdisking and attempting to mount/fsck) on his own
+setup and also came to the same error of "Structure needs cleaning"
+for directories.
+
+I did a little more digging into GPT and EXT4 and realized using gdisk
+meant I overwrote the first 33792 bytes of the EXT4 filesystem. I'm
+having a little trouble understanding whether or not I overwote the
+GDT blocks which I was not using or if I overwrote some crucial data &
+inode bitmaps or possibly even inode table blocks. I should have only
+overwritten 8 or so blocks to my judgement. I'm not too sure whether
+or not GDT blocks come before bitmap or inode table blocks or are
+variable to be more precise.
+
+I've attached below the output of tune2fs of the device.
+
+So far this is as far as I have got. Does anyone have any ideas on how
+I could salvage the rest of the data? Any help is appreciated.
+
+Thank you.
+
+====================
+
+tune2fs 1.43.4 (31-Jan-2017)
+Filesystem volume name:   <none>
+Last mounted on:          <not available>
+Filesystem UUID:          57e8dc69-003e-4d43-a912-adcbc09d8110
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index
+filetype extent 64bit flex_bg sparse_super large_file huge_file
+dir_nlink extra_isize metadata_csum
+Filesystem flags:         signed_directory_hash
+Default mount options:    user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              122101760
+Block count:              488378646
+Reserved block count:     24418932
+Free blocks:              480431423
+Free inodes:              122101749
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Group descriptor size:    64
+Reserved GDT blocks:      1024
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8192
+Inode blocks per group:   512
+Flex block group size:    16
+Filesystem created:       Mon Oct  2 20:55:33 2017
+Last mount time:          Mon Oct  2 20:56:09 2017
+Last write time:          Mon Oct  2 20:56:16 2017
+Mount count:              2
+Maximum mount count:      -1
+Last checked:             Mon Oct  2 20:55:33 2017
+Check interval:           0 (<none>)
+Lifetime writes:          1054 MB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:              256
+Required extra isize:     32
+Desired extra isize:      32
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      cbf62753-15ca-4878-9a9e-6594eeaabc85
+Journal backup:           inode blocks
+Checksum type:            crc32c
+Checksum:                 0x87d53c7b
