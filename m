@@ -1,214 +1,32 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 187051] "orphan list check failed" error in ext4
-Date: Tue, 03 Oct 2017 22:44:25 +0000
-Message-ID: <bug-187051-13602-kNQAQ7sxlp@https.bugzilla.kernel.org/>
+Date: Wed, 04 Oct 2017 12:35:56 +0000
+Message-ID: <bug-187051-13602-I3smzr19oR@https.bugzilla.kernel.org/>
 References: <bug-187051-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:45196 "EHLO
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:37080 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750865AbdJCWo1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Oct 2017 18:44:27 -0400
+        by vger.kernel.org with ESMTP id S1751699AbdJDMf6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Oct 2017 08:35:58 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5457A223A0
-        for <linux-ext4@vger.kernel.org>; Tue,  3 Oct 2017 22:44:27 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9385228AE8
+        for <linux-ext4@vger.kernel.org>; Wed,  4 Oct 2017 12:35:57 +0000 (UTC)
 In-Reply-To: <bug-187051-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=187051
 
-Tomasz Goliński (tomaszg@math.uwb.edu.pl) changed:
+Hussam Al-Tayeb (me@hussam.eu.org) changed:
 
            What    |Removed                     |Added
 ----------------------------------------------------------------------------
-                 CC|                            |tomaszg@math.uwb.edu.pl
-
---- Comment #20 from Tomasz Goliński (tomaszg@math.uwb.edu.pl) ---
-I just saw a similar error on 4.13.3 kernel. In my case inode in question was a
-file. It's the first time I see this error and I haven't changed anything in
-the machine for a while (aside from updating the kernel few weeks ago).
-
-uname -a
-Linux htpc 4.13.3-gentoo #2 SMP PREEMPT Tue Sep 26 14:10:32 CEST 2017 x86_64
-AMD Athlon 5370 APU with Radeon R3 AuthenticAMD GNU/Linux
-
-dmesg:
-
-[280833.904264] EXT4-fs (sda1): Inode 154567855 (ffff880100005f80): orphan list
-check failed!
-[280833.904276] ffff880100005f80: 0001f30a 00000004 00000000 00000000 
-................
-[280833.904278] ffff880100005f90: 00000001 24d8e41a 00000000 00000000 
-.......$........
-[280833.904280] ffff880100005fa0: 00000000 00000000 00000000 00000000 
-................
-[280833.904282] ffff880100005fb0: 00000000 00000000 00000000 00000000 
-................
-[280833.904284] ffff880100005fc0: 00000000 00000000 000049b4 00000000 
-.........I......
-[280833.904286] ffff880100005fd0: 00080000 00000080 00000000 00000000 
-................
-[280833.904288] ffff880100005fe0: 00005fe0 ffff8801 00005fe0 ffff8801 
-._......._......
-[280833.904290] ffff880100005ff0: 00000000 00000000 00000000 00000000 
-................
-[280833.904292] ffff880100006000: 004f6d2c ffff8801 00006000 ffff8801 
-,mO......`......
-[280833.904294] ffff880100006010: 000009a8 00000000 00000000 00000000 
-................
-[280833.904296] ffff880100006020: 00006020 ffff8801 00006020 ffff8801   `......
-`......
-[280833.904297] ffff880100006030: 00000000 00000000 00000000 00000000 
-................
-[280833.904299] ffff880100006040: 00000000 00000000 00006048 ffff8801 
-........H`......
-[280833.904301] ffff880100006050: 00006048 ffff8801 00000000 00000000 
-H`..............
-[280833.904303] ffff880100006060: 00000000 00000000 000d81a4 000000fa 
-................
-[280833.904305] ffff880100006070: 000000fa 00001000 ffffffff ffffffff 
-................
-[280833.904306] ffff880100006080: ffffffff ffffffff 81617100 ffffffff 
-.........qa.....
-[280833.904308] ffff880100006090: 39c42000 ffff8801 000061c8 ffff8801  .
-.9.....a......
-[280833.904310] ffff8801000060a0: 093684af 00000000 00000001 00000000 
-..6.............
-[280833.904312] ffff8801000060b0: 000009a8 00000000 59d0f5d4 00000000 
-...........Y....
-[280833.904314] ffff8801000060c0: 1e1a23d3 00000000 59cf614a 00000000 
-.#......Ja.Y....
-[280833.904315] ffff8801000060d0: 00000000 00000000 59d0f5d4 00000000 
-...........Y....
-[280833.904317] ffff8801000060e0: 1e1a23d3 00000000 00000000 00000000 
-.#..............
-[280833.904353] ffff8801000060f0: 0000000c 00000000 00000008 00000000 
-................
-[280833.904355] ffff880100006100: 00000060 00000000 00000000 00000000 
-`...............
-[280833.904357] ffff880100006110: 00006110 ffff8801 00006110 ffff8801 
-.a.......a......
-[280833.904359] ffff880100006120: 00000000 00000000 00000000 00000000 
-................
-[280833.904360] ffff880100006130: 0569d91c 00000001 00000000 00000000 
-..i.............
-[280833.904363] ffff880100006140: 00000000 00000000 00000000 00000000 
-................
-[280833.904364] ffff880100006150: 00006150 ffff8801 00006150 ffff8801 
-Pa......Pa......
-[280833.904366] ffff880100006160: 00006160 ffff8801 00006160 ffff8801 
-`a......`a......
-[280833.904368] ffff880100006170: 00006170 ffff8801 00006170 ffff8801 
-pa......pa......
-[280833.904370] ffff880100006180: 00006180 ffff8801 00006180 ffff8801 
-.a.......a......
-[280833.904372] ffff880100006190: 00000000 00000000 811a0610 ffffffff 
-................
-[280833.904373] ffff8801000061a0: 00000001 00000000 00000000 00000000 
-................
-[280833.904375] ffff8801000061b0: 00000000 00000000 816171c0 ffffffff 
-.........qa.....
-[280833.904377] ffff8801000061c0: 00000000 00000000 00006068 ffff8801 
-........h`......
-[280833.904379] ffff8801000061d0: 01180020 00000000 00000000 00000000  
-...............
-[280833.904380] ffff8801000061e0: 00000000 00000000 00000000 00000000 
-................
-[280833.904382] ffff8801000061f0: 00000000 00000000 000061f8 ffff8801 
-.........a......
-[280833.904384] ffff880100006200: 000061f8 ffff8801 00000000 00000000 
-.a..............
-[280833.904385] ffff880100006210: 00000000 00000000 00000000 00000000 
-................
-[280833.904387] ffff880100006220: 00000000 00000000 00000001 00000000 
-................
-[280833.904389] ffff880100006230: 81617ac0 ffffffff 00000010 00000000 
-.za.............
-[280833.904391] ffff880100006240: 00000000 014200ca 00006248 ffff8801 
-......B.Hb......
-[280833.904392] ffff880100006250: 00006248 ffff8801 00000000 00000000 
-Hb..............
-[280833.904394] ffff880100006260: 00000000 00000000 00006268 ffff8801 
-........hb......
-[280833.904396] ffff880100006270: 00006268 ffff8801 00000000 00000000 
-hb..............
-[280833.904398] ffff880100006280: 36640dc5 00000000 00000000 00000000 
-..d6............
-[280833.904399] ffff880100006290: 00000000 00000000 00000000 00000000 
-................
-[280833.904401] ffff8801000062a0: 00000000 00000000 59d0f5d4 00000000 
-...........Y....
-[280833.904403] ffff8801000062b0: 1e1a23d3 00000000 000062b8 ffff8801 
-.#.......b......
-[280833.904405] ffff8801000062c0: 000062b8 ffff8801 00000000 00000000 
-.b..............
-[280833.904407] ffff8801000062d0: 00000000 00000000 00000000 00000000 
-................
-[280833.904409] ffff8801000062e0: 00000000 00000000 000062e8 ffff8801 
-.........b......
-[280833.904411] ffff8801000062f0: 000062e8 ffff8801 00000000 00000000 
-.b..............
-[280833.904412] ffff880100006300: 00000000 ffffffff 00000000 00000000 
-................
-[280833.904414] ffff880100006310: 00000000 00000020 00000000 00000000  ....
-...........
-[280833.904416] ffff880100006320: 00006320 ffff8801 00006320 ffff8801   c......
-c......
-[280833.904418] ffff880100006330: ffffffe0 0000000f 00006338 ffff8801 
-........8c......
-[280833.904419] ffff880100006340: 00006338 ffff8801 8119bbe0 ffffffff 
-8c..............
-[280833.904421] ffff880100006350: 00000000 00000000 00213ce0 00213ce0 
-.........<!..<!.
-[280833.904423] ffff880100006360: 00000000 00000000                    ........
-[280833.904429] CPU: 1 PID: 211 Comm: khugepaged Not tainted 4.13.3-gentoo #2
-[280833.904430] Hardware name: To Be Filled By O.E.M. To Be Filled By
-O.E.M./AM1H-ITX, BIOS P1.50 04/29/2015
-[280833.904432] Call Trace:
-[280833.904445]  ? dump_stack+0x46/0x5e
-[280833.904450]  ? ext4_destroy_inode+0x81/0x88
-[280833.904454]  ? dispose_list+0x30/0x40
-[280833.904456]  ? prune_icache_sb+0x48/0x58
-[280833.904460]  ? super_cache_scan+0x133/0x180
-[280833.904466]  ? shrink_slab.part.8.constprop.22+0x19e/0x250
-[280833.904468]  ? shrink_node+0x58/0x190
-[280833.904470]  ? try_to_free_pages+0x15a/0x320
-[280833.904475]  ? __alloc_pages_nodemask+0x3db/0xaf0
-[280833.904481]  ? collect_expired_timers+0xb0/0xb0
-[280833.904485]  ? khugepaged+0x256/0x1590
-[280833.904491]  ? do_wait_intr+0x80/0x80
-[280833.904496]  ? kthread+0xf2/0x128
-[280833.904498]  ? collapse_shmem.isra.4+0xa20/0xa20
-[280833.904500]  ? kthread_create_on_node+0x40/0x40
-[280833.904504]  ? call_usermodehelper_exec_async+0x134/0x138
-[280833.904507]  ? ret_from_fork+0x22/0x30
-
-debugfs:  stat <154567855>
-
-Inode: 154567855   Type: regular    Mode:  0644   Flags: 0x80000
-Generation: 912526789    Version: 0x00000000:00000001
-User:   250   Group:   250   Project:     0   Size: 2472
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 8
-Fragment:  Address: 0    Number: 0    Size: 0
- ctime: 0x59d0f5d4:78688f4c -- Sun Oct  1 16:04:04 2017
- atime: 0x59d0f5d4:78688f4c -- Sun Oct  1 16:04:04 2017
- mtime: 0x59cf614a:00000000 -- Sat Sep 30 11:18:02 2017
-crtime: 0x59d0f5d4:78688f4c -- Sun Oct  1 16:04:04 2017
-Size of extra inode fields: 32
-EXTENTS:
-(0):618193946
-
-
-debugfs -R 'ncheck 154567855' /dev/sda1
-debugfs 1.43.3 (04-Sep-2016)
-Inode   Pathname
-154567855      
-/usr/portage/metadata/md5-cache/dev-ruby/faraday_middleware-multi_json-0.0.6-r1
+             Status|RESOLVED                    |REOPENED
+         Resolution|INVALID                     |---
 
 -- 
 You are receiving this mail because:
