@@ -1,184 +1,334 @@
-From: Ashlie Martinez <ashmrtn@utexas.edu>
+From: Amir Goldstein <amir73il@gmail.com>
 Subject: Re: [RFC][PATCH] fstest: regression test for ext4 crash consistency bug
-Date: Thu, 5 Oct 2017 10:04:23 -0500
-Message-ID: <CAFk8rvbi3MHbRBtaZVTJKDcORaDTtMpwy2X2ZdXTZt=LE5smZw@mail.gmail.com>
+Date: Thu, 5 Oct 2017 22:10:14 +0300
+Message-ID: <CAOQ4uxgc77_P472KEyHfAXSOE6DD7c=2VrJWBJT6ahiSYb=iJQ@mail.gmail.com>
 References: <1503830683-21455-1-git-send-email-amir73il@gmail.com>
  <59C8D147.1060608@cn.fujitsu.com> <CAOQ4uxgnK3mGKG+owRUNGyDVOCeicArwaufGgwXaSVxC26+peQ@mail.gmail.com>
- <CAFk8rvYvrGo6SjA6e0yj0XL_BARMmZoofB5kESM4EY4S2n-==w@mail.gmail.com> <59D5DEE0.6080506@cn.fujitsu.com>
+ <CAFk8rvYvrGo6SjA6e0yj0XL_BARMmZoofB5kESM4EY4S2n-==w@mail.gmail.com>
+ <59D5DEE0.6080506@cn.fujitsu.com> <CAFk8rvbi3MHbRBtaZVTJKDcORaDTtMpwy2X2ZdXTZt=LE5smZw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Amir Goldstein <amir73il@gmail.com>,
+Content-Type: multipart/mixed; boundary="f403045e628865e1bc055ad17998"
+Cc: Xiao Yang <yangx.jy@cn.fujitsu.com>,
         "Theodore Ts'o" <tytso@mit.edu>, Eryu Guan <eguan@redhat.com>,
         Josef Bacik <jbacik@fb.com>, fstests <fstests@vger.kernel.org>,
         Ext4 <linux-ext4@vger.kernel.org>,
         Vijay Chidambaram <vvijay03@gmail.com>
-To: Xiao Yang <yangx.jy@cn.fujitsu.com>
+To: Ashlie Martinez <ashmrtn@utexas.edu>
 Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <59D5DEE0.6080506@cn.fujitsu.com>
+In-Reply-To: <CAFk8rvbi3MHbRBtaZVTJKDcORaDTtMpwy2X2ZdXTZt=LE5smZw@mail.gmail.com>
 Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Oct 5, 2017 at 2:27 AM, Xiao Yang <yangx.jy@cn.fujitsu.com> wrote:
-> On 2017/09/30 22:15, Ashlie Martinez wrote:
->>
->> Hi Xiao,
->>
->> I am a student at the University of Texas at Austin. Some researchers
->> in the computer science department at UT, myself included, have
->> recently been working to develop a file system crash consistency test
->> harness called CrashMonkey [1][2]. I have been working on the
->> CrashMonkey project since it was started late last year. With
->> CrashMonkey we have also been able to reproduce the incorrect i_size
->> error you noted but we have not been able to reproduce the other
->> output that Amir found. CrashMonkey works by logging and replaying
->> operations for a workload, so it should not be sensitive to
->> differences in timing that could be caused by things like KVM+virtio.
->> I also did a few experiments with Amir's new xfstests test 456 (both
->> with and without KVM and virtio) and I was unable to reproduce the
->> output noted in the xfstest. I have not spent a lot of time looking
->> into the cause of the bug that Amir found and it is rather unfortunate
->> that I was unable to reproduce it with either xfstests or CrashMonkey.
->
-> Hi Ashlie,
->
-> Thanks for your detailed comments.
->
-> 1) Do you think the output that Amir noted in xfstests is a false positive?
+--f403045e628865e1bc055ad17998
+Content-Type: text/plain; charset="UTF-8"
 
-It almost seems that way, though to be honest, I don't think I know
-enough about 1. the setup used by Amir and 2. all the internal working
-of KVM+virtio to say for sure. One thing I have identified as being a
-potential source of false positives is code in the kernel to remap the
-block number sent to device drives to something relative to the start
-of a block device, not the start of a partition. I'm thinking this
-could cause trouble if 1. a partition higher than the first partition
-is monitored by dm-log-writes, 2. the block numbers are recorded
-verbatim in dm-log-writes, and 3. the dm-log-writes log is replayed on
-a different device with different partitions (or possibly the same
-device, but a different partition). I know some other undergrad
-students at UT on the CrashMonkey team are looking into this right
-now, but I have not had time to test this myself. The offending code
-in the kernel is in the completely misnamed
-`generic_make_request_checks` function which has given the CrashMonkey
-team trouble in the past. Links to that function and the remapping
-function it calls are below.
+On Thu, Oct 5, 2017 at 6:04 PM, Ashlie Martinez <ashmrtn@utexas.edu> wrote:
+> On Thu, Oct 5, 2017 at 2:27 AM, Xiao Yang <yangx.jy@cn.fujitsu.com> wrote:
+>> On 2017/09/30 22:15, Ashlie Martinez wrote:
+>>>
+>>> Hi Xiao,
+>>>
+>>> I am a student at the University of Texas at Austin. Some researchers
+>>> in the computer science department at UT, myself included, have
+>>> recently been working to develop a file system crash consistency test
+>>> harness called CrashMonkey [1][2]. I have been working on the
+>>> CrashMonkey project since it was started late last year. With
+>>> CrashMonkey we have also been able to reproduce the incorrect i_size
+>>> error you noted but we have not been able to reproduce the other
+>>> output that Amir found. CrashMonkey works by logging and replaying
+>>> operations for a workload, so it should not be sensitive to
+>>> differences in timing that could be caused by things like KVM+virtio.
+>>> I also did a few experiments with Amir's new xfstests test 456 (both
+>>> with and without KVM and virtio) and I was unable to reproduce the
+>>> output noted in the xfstest. I have not spent a lot of time looking
+>>> into the cause of the bug that Amir found and it is rather unfortunate
+>>> that I was unable to reproduce it with either xfstests or CrashMonkey.
+>>
+>> Hi Ashlie,
+>>
+>> Thanks for your detailed comments.
+>>
+>> 1) Do you think the output that Amir noted in xfstests is a false positive?
+>
+> It almost seems that way, though to be honest, I don't think I know
+> enough about 1. the setup used by Amir and 2. all the internal working
+> of KVM+virtio to say for sure.
 
-http://elixir.free-electrons.com/linux/latest/source/block/blk-core.c#L2041
-http://elixir.free-electrons.com/linux/latest/source/block/blk-core.c#L1902
+I believe you misread my email.
+The problem was NOT reproduced on KVM+virtio.
+The problem *is* reproduced on a 10G LVM volume over SSD on
+Ubuntu 16.04 with latest kernel and latest e2fsprogs.
 
->
-> 2) About the output that both i and you reproduced,  did you look into it
-> and find its root cause?
+There is no use in speculating why the problem doesn't happen on your
+systems. If the issue reproduces on A system (2 systems actually that I tested)
+that it is a problem.
 
-I have not looked to find the root cause of the issue that we both
-reliably reproduce.
+Attached is an e2image dump of the inconsistent file system following test
+generic/456 on my system.  I would have attached the image sooner,
+but since on my system problem reproduces 100% on the time, I did not think
+that was a need. Without an ext4 developer looking into this image, I don't
+really see the point in further discussion.
 
+I would be interesting to get more test samples from people running the test
+on other systems. If only some people see the error
+"end of extent exceeds allowed value"
+it would be interesting to find the commonality between those setups.
+
+> One thing I have identified as being a
+> potential source of false positives is code in the kernel to remap the
+> block number sent to device drives to something relative to the start
+> of a block device, not the start of a partition. I'm thinking this
+> could cause trouble if 1. a partition higher than the first partition
+> is monitored by dm-log-writes, 2. the block numbers are recorded
+> verbatim in dm-log-writes, and 3. the dm-log-writes log is replayed on
+> a different device with different partitions (or possibly the same
+> device, but a different partition).
+
+You do realize that the test generic/456 is not using dm-log-writes at all.
+I intentionally took it out of the equation and used the even dumber dm-flakey
+target to demonstrate the crash inconsistency.
+
+> I know some other undergrad
+> students at UT on the CrashMonkey team are looking into this right
+> now, but I have not had time to test this myself. The offending code
+> in the kernel is in the completely misnamed
+> `generic_make_request_checks` function which has given the CrashMonkey
+> team trouble in the past. Links to that function and the remapping
+> function it calls are below.
 >
-> Thanks,
-> Xiao Yang
->>
->> At any rate, CrashMonkey is still under development, so it does have
->> some caveats. First, we are running with a fixed random seed in our
->> default RandomPermuter (used to generate crash states) to aid
->> development. Second, the branch with the reproduction of this ext4
->> regression bug in CrashMonkey [3] will yield a few false positives due
->> to the way CrashMonkey works and how fsx runs. These false positives
->> are due to CrashMonkey generating crash states where the directories
->> for files used for the test have not be fsync-ed in the file system.
->> The top of the README in the CrashMonkey branch with this bug
->> reproduction outlines how we determined these were false positives
->>
->> [1] https://github.com/utsaslab/crashmonkey
->> [2]
->> https://www.usenix.org/conference/hotstorage17/program/presentation/martinez
->> [3] https://github.com/utsaslab/crashmonkey/tree/ext4_regression_bug
->>
->>
->> On Mon, Sep 25, 2017 at 5:53 AM, Amir Goldstein<amir73il@gmail.com>
->> wrote:
->>>
->>> On Mon, Sep 25, 2017 at 12:49 PM, Xiao Yang<yangx.jy@cn.fujitsu.com>
->>> wrote:
->>>>
->>>> On 2017/08/27 18:44, Amir Goldstein wrote:
->>>>>
->>>>> This test is motivated by a bug found in ext4 during random crash
->>>>> consistency tests.
->>>>>
->>>>> This test uses device mapper flakey target to demonstrate the bug
->>>>> found using device mapper log-writes target.
->>>>>
->>>>> Signed-off-by: Amir Goldstein<amir73il@gmail.com>
->>>>> ---
->>>>>
->>>>> Ted,
->>>>>
->>>>> While working on crash consistency xfstests [1], I stubmled on what
->>>>> appeared to be an ext4 crash consistency bug.
->>>>>
->>>>> The tests I used rely on the log-writes dm target code written
->>>>> by Josef Bacik, which had little exposure to the wide community
->>>>> as far as I know.  I wanted to prove to myself that the found
->>>>> inconsistency was not due to a test bug, so I bisected the failed
->>>>> test to the minimal operations that trigger the failure and wrote
->>>>> a small independent test to reproduce the issue using dm flakey target.
->>>>>
->>>>> The following fsck error is reliably reproduced by replaying some fsx
->>>>> ops
->>>>> on overlapping file regions, then emulating a crash, followed by mount,
->>>>> umount and fsck -nf:
->>>>>
->>>>>    ./ltp/fsx -d --replay-ops /tmp/8995.fsxops /mnt/scratch/testfile
->>>>>    1 write 0x137dd thru    0x21445 (0xdc69 bytes)
->>>>>    2 falloc        from 0xb531 to 0x16ade (0xb5ad bytes)
->>>>>    3 collapse      from 0x1c000 to 0x20000, (0x4000 bytes)
->>>>>    4 write 0x3e5ec thru    0x3ffff (0x1a14 bytes)
->>>>>    5 zero  from 0x20fac to 0x27d48, (0x6d9c bytes)
->>>>>    6 mapwrite      0x216ad thru    0x23dfb (0x274f bytes)
->>>>>    All 7 operations completed A-OK!
->>>>>    _check_generic_filesystem: filesystem on /dev/mapper/ssd-scratch is
->>>>> inconsistent
->>>>>    *** fsck.ext4 output ***
->>>>>    fsck from util-linux 2.27.1
->>>>>    e2fsck 1.42.13 (17-May-2015)
->>>>>    Pass 1: Checking inodes, blocks, and sizes
->>>>>    Inode 12, end of extent exceeds allowed value
->>>>>            (logical block 33, physical block 33441, len 7)
->>>>>    Clear? no
->>>>>    Inode 12, i_blocks is 184, should be 128.  Fix? no
->>>>
->>>> Hi Amir,
->>>>
->>>> I always get the following output when running your xfstests test case
->>>> 501.
->>>
->>> Now merged as test generic/456
->>>
->>>>
->>>> ---------------------------------------------------------------------------
->>>> e2fsck 1.42.9 (28-Dec-2013)
->>>> Pass 1: Checking inodes, blocks, and sizes
->>>> Inode 12, i_size is 147456, should be 163840. Fix? no
->>>>
->>>> ---------------------------------------------------------------------------
->>>>
->>>> Could you tell me how to get the expected output as you reported?
->>>
->>> I can't say I am doing anything special, but I can say that I get the
->>> same output as you did when running the test inside kvm-xfstests.
->>> Actually, I could not reproduce ANY of the the crash consistency bugs
->>> inside kvm-xfstests. Must be something to do with different timing of
->>> IO with KVM+virtio disks??
->>>
->>> When running on my laptop (Ubuntu 16.04 with latest kernel)
->>> on a 10G SSD volume, I always get the error reported above.
->>> I just re-verified with latest stable e2fsprogs (1.43.6).
->>>
->>> Amir.
->>
->>
->> .
->>
+> http://elixir.free-electrons.com/linux/latest/source/block/blk-core.c#L2041
+> http://elixir.free-electrons.com/linux/latest/source/block/blk-core.c#L1902
 >
+>>
+>> 2) About the output that both i and you reproduced,  did you look into it
+>> and find its root cause?
 >
+> I have not looked to find the root cause of the issue that we both
+> reliably reproduce.
 >
+
+Now you have a broken file system image and the exact set of operations
+that led to it. That's should be a pretty big lead for investigation.
+
+Amir.
+
+--f403045e628865e1bc055ad17998
+Content-Type: application/x-bzip2; name="ext4-crash.qcow2.bz2"
+Content-Disposition: attachment; filename="ext4-crash.qcow2.bz2"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_j8etnbrn0
+
+QlpoOTFBWSZTWW+IreIAkV5/////////////////////////////////////////////4E0/fAAE
+AngAAA2YACeHQoCgbc4AAAAAAAAAAAAAAAAd4PgAPgAAAAAAAAAAAAAEADkABQAIZDAAkACN7BwA
+IDkAOgABQFAFAMD3QAAAAAAAAAAAAAAADgA0AAFAAADpSp+ogxDRoYQAA0GEyAfqgANNADQDEMhg
+gABp//71VKntVJo0GgNNNAGmmmENDE0DTQaNMjQANAaABo0AaN///qn+qqqqDSpRqf//qqlJ/6qj
+0//VVUTPU00jR/qpoNP/VSP1Qf+qoP/0qoAD/1VAAAAAAAAAAAAAAAAAAAH+qgAAAAAAAAAAD9UG
+lPep6pU0qAAAADQPUAAAAAAAAAAAAAaAAAAMgAAAAAAAADIAAAAAAAFVU//9qlUqPUaaABo0AAaa
+BgmgADQGjQaGgDTJpgjIANDEAAaaA0aYQBoBoAAxNGQaAA0xAAAAyAEKSSJoJPSaZIxMmNKfsg/S
+n+qio96TRqN+qJPJDJskeoyeoyNGmR6mmgaPU09NR6j36ooaAA9RtTRsoNNqGajaR6jR6g0B6mQa
+ZGT1ADQDTZI9Tym0agVVQoAAJ6mm1MR+qZoTDUnlT80BT0MmHqmBJ4EwBMTTJgABTwTAE0wAmAJt
+AAmCYRiYBMmn6kyngAAmmAjIwmaVMHrah6Zkk8AICAuyVpUgTJhU+bRNUCYJSQJZBQYKzkD5EbHd
+7e2I6oSPX4D57T8oS+ch5jq49eMiZKTrymTE96A8xCEQBEDERABEKRCGC9gJDkIesRoiCRfDOXGk
+dsMeyMGSGiOUhU6hRInLCJ+/l5ITzYwpjCi0Aryyi9gkB5A/Tn2xo2OuHKd8EdkIPK813WuoSPAh
+VBOpKICeRIPUNjAUESIQUE+P3WIZIqgndQqCJzEB/agABPopQ+7j62VAE5AkFQTkhRBPlzzH/DY9
+X4oqqHJ6n8PvKdCB7GW4YKP6/zuAdXs3zXmtlPXEJ5r5e91KPMEJ8qe85M4d4eXPTBY8nL2/VGKv
+agOaUebl6+gDuBIebgTxYVE36DAHmPHwXxiA8SAP43j4CdgOwR6DQjy3MZGKHZgD8hAHo4E7n0Jn
+AgDv4A9JAHkwh311iRO5KHpYA9NAHlXdEr24A+YgD5mAPTyBHQQp8EKhBD4PfQgoMEPaghToIVGD
+AFSghU4IVSCENEhIBQ4MAfDBCoQZCq1aj1elVisysrVP+KTP+VuuV2Tq9IISv2CE+OCWGj1OkrAr
+sKV2Kx2SW2WUWaz2i0/JarXbPltvx/Nbrf89wuNyuduul1u13vF5nN6vd8vsnL9f4T/t0hF9xzAy
+ZgsHCYS6QvowuCvuGw+IxMrxUFi8Zjfpx0Z9WPyFsS1i/mW1dVzWphFzXJe1/VgmFZYZkclk8plc
+tl8x6z68zms3nM7m89n8WyMhoND9mYyZopHR6TS6bT6i8s80EzanVexq9ZC1v267X7DY0Zsvu2e0
+2m1mG22v3/hJ23g7jcbn8d1KN3vN7vqk3u/4HB/LhcOX/nxP0i8X9eNx5XA/9Zxx+RyeVy+Zzedz
++h0el0+p1et0+v2P27P79rt+u7nd73fk5AgQIEA/Cj4fxPw/h/+//nxfpP/vxvj9Y+P/+z8SVRVU
+PkT+J+L+N8ncXgB3f0uHloR9T04hEi7QbSp7bhrhtlScoAk2mtjapJrWiVOMybSa1cqTWtEqLdSK
+klLcqpKipUpblRUqq6jNaJJNa0VItyRUkp2dqkVJJPwTbWrlSa1oqmbetm0q9XJWtaKkW5IqVIty
+RUqRbkpUqVz2a0VJrWipFuSKlSLckVKrabUt1IqVUW5VKlSLdVFSpFuSKlSLckVKk9vNprVyTWtF
+SLckVKkW5IqVItyRUqtpNotyRUlRbkipUi3JFSpFuSKlVtJtJ+Wa0STWtFVtNotyRUqRbkipM2qm
+7kipUi3UipUi3JFSpFuSKlSLckVKqLcqKlSLckVKkW5IqVItqiqqqqqqqqqqkW1VVbkVFVVVVuKi
+qqqqqqqtLcnjpw83t7ed6t7is1rWtauKi3IqKqyb01omtaFVVtUVVVVW1RbVFVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVpVVVVVVVVVVVVVW1RVVVVVVVWoqq7RVxVVe3zWTWrrWrioqrSqqpFtb
+ioqqqqqqqqqqqqqqtqi3FRVVVVVVVSLaqqqqqqqv9Z/yb8/zN/f35V55dJZW7y6Sy+FmHluElNJL
+MSXqyWdks9JZ+S0El9klPJKSkpKSkpKSj6HAS0mqCwwwiPND6AXY2NjDDDAwMNgNgIDRoiNjCIw0
+OGGjDDCIww2Dw+3wDw/D4BGPA4HBcFv7+6bpu3bt27du1u3ZgBtIFgAAAG0CwADYLgAAAAAAGTMz
+MmZmZMzMyZmVmS8y8yZmZkzMzJmZmTMypmTMzMmZmZMzMyZmZkzMzJmZmTM2kzMkklwy6zaBYAbB
+YAbBYAAAAAAG0CwAAAAAAAIAAAAbBcAIAAAAAAEAAAANoFgAAAAAAAGwWAAAAAAAAAG0C4AVIAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAABtKlVVQ2o2kkkkCzaAAAAAAAAGwWAABsFwANgs2C5Ul
+VVVVSAAAAAAHPJujKriU25IOuOGMIKJJ1WAwlgiKKICebrcvDrcnJycnJycnAOQYogiRDRCmcnJy
+cABAEyZkm+bpmTfv379+8AAZIkm7M3TdmZNwAABMyAAADJkzIAAAJkwAAAZk6JumInZid2d2d2an
+dndndnTJgj0emyPR6PR6PR6PTpHo9Ho9Ho9HoaHNEFAIcPq6vD8MAASZAAABmZ4ubpk379+/fvAA
+EkyAAADJJAAABJkAAAEmQAAASTAAACUwICdIJLErStK0rQ0NDSx6qGhoaZJkhoaZvUQ0OdU8ZOqd
+U6p4idU6p1TqnVOqdUs6u/m7MnV1dXV4fhgADJPHzxs7+anRmTWta1oAAZJqampqdGZNa1rWgABm
+TU1NTU6Mma1rWtAADJNTdNTU1Ozkk1rWtaAAGSampqanRMzWta1oAAZJqampqdGZNa1rWgABkmpq
+amp0Zk1rWtaAAGSam6am6dqdqdqdqdU6p1Tv50zqnVOqWVDQ00TVDQ0NDQ0NDTNDQ0NDQ0NDTJDg
+QEOHDhxvhgADJPHzxs8TNTozJrWta0AAMk1NTU1OjMmta1rQAAyTU1NTU6Mya1rWtAADJmpqamp0
+Zk1rWtaAAEyampqanRmTWta1oAAZJqampqdGZNa1rWgABkmpqamp0Zk1rWtaAAGZ303ZPzJJ5bPN
+J9jJ2JmZum6Zum6KMQoQRGz1jujDujsHMdg7B353535zHdnfnfo5GIxHI5M01RyORyORyORyZo5H
+I5HI5HI5MkNGzjE4jMhCEIQhCEIQhCEIQhCEIQmZMmTIQhCEIQhCEIQhCEJ2Z2Z2Z2Z2Z2Z2Z2Z2
+Z2Z0STq6urq8d44AATMgAAAkyAAADJkAAAGTIAAAJMgAAAkyAAACTIAAAJJgAAAkyAAACTIAAAMm
+AAACQAAASAAACQAAASAAACQAAATAAABIAAAJIAAAJAAABIAAAJgAAAkAAAEgAAAkAAAEgAAAyTyy
+bsm/fv3794AAzO+m52AAAEwAAASQAAASAAADMgAAAkAAAGQAAASAAACQAAAZAAABkAAAEgAAAkAA
+AEgAAAkAAAEgAAAkAAAEgAAAkAAAEgAAAkAAAEgAAAkAAAEgAAA8rm7N+/fv37wABIAAAJAAABIA
+AAJAAABMAAAEgAAAkAAAEgAAAkAAAEgAAAkAAAGQAAASAAACQAAASAAACQAAASQAAATAAABIAAAJ
+gDAACSAAACQAAATAAABIAwAAmAAACQAAASAAACQAAASAAACQAAASAAACQAAAZAAABMAAAEgAAAkA
+AAEgAAAkAAAEwAAASAAACQAAASAAADPBm6TdN08Cbs7Xa7Xa7XaAAPZOXb7f/N/b/O/A4fTfL/Ee
+9dPrvb7ltttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+ttttttttttttttttttttttttttvb6enp6enp6enp6enp6b27bbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbfB8DwPA8B23Tv379/T0+BJJknc7nc7nc7gAAmQAAmQAAkAAM
+AAMwAAwAAwAAwAAyAAGAAEgABIAAYAAYAAYAAYAAZAADIAAZAADIAASQAAyAAGQAAyAAGQAAyQAA
+yAAGQAAyAAGQAAyAAGQAAkk8TN2SZv379+/eAZgABgABIAAYAASAAGAAGAAGAAGAAGAAGQAAwAAw
+AAwAAwAAwAAwAAkAAMAAMAAJAACQAATdm4ABgABO+3OwABgABgABIAAYAAYAAZAAHfRm4ABgABgA
+BgABgABgABIAAYAAYAAYAAYAAYAAYAAYAAZAACQAAmTvtzsAAYAAYAAYAAYAAYAAYAAYAAYAAYAA
+YAAYAAYAAYAAYAATfPCnk08KdGta1rQBgABgABgABgABgABgABgABgABkAAMAAMAAMmZmZAEgCZJ
+JIAgCQAAwAAwAAwAAwAB5zvzfv379+8AkAAMAAb9+b9+/fv3gEgCAMAAJAACQAAkyZmZmZIAAYAA
+YAAYAAYAA6O+823yfsTok3zsySd2bt0nR8nO3IeKXNw6/U89vy+X36/Mb933e+/fb795vvvv5zff
+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
+V3bdQ2IURUlaVtq19VlMFsax5E6b9HpMsjtvoblfGKRF9Slrm1Rq7OgctqFcS9/58DGpwzaVq676
+jPUTFWG3UBh03aFS2hSdJm3fqsjyNKwDGsezaHAqCDwEHpy9ClcFR0ESaewkjCpuBqHNu+/l3Lpu
+yrHXsVHulHwm31UjZNRPeXRp9807+XZQ7tVczt63vcxko+u9HL9G+bSR+Px6THdrkcrh9H/Pov+6
+4evzfxea02/UV//Oht7RYbHyuDZMlI8ywSN7teJ7j67jmthJf9/u4dm6YLnXe2+DwYW45H7/68d9
+ymK22Jkfp3GawvVo9K3+w7n4cOzYTL6uTQkJinOeZ13FZhlWlat23jd9124btynBcl2XMcNJM63L
++nifc4bRPI9n2dBChQoUKFChQoUID5OszAAAB8rWZgAAA3jWZgAAA43XA62NjYAAAAAAAAAAAAAG
+9azMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr
+rJVVVVVVVVVVVVVVQqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr1mlPdiE/wZPbkxMFp6rgHuSMgPhQ
+FL/yJBTX4Nmta2faK2gAAGy1uetjY2AAAB83WZgAAA61rMwAAAdS1mYAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVdTsAkIdeApaBOkkOZLsnuz15rqdVo2cAAHvNZmAAA
+DvuszAAAB5rWZgAAA4PWZgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVyvdCF3xRQThAeWgaWkD1p92eKds/uHDlFl+Qx1IClpeYohO7L4B9Ge3PaG3MCXKFBAgnUgKWhf
+dEH0J8I9IfjzZ6ghEBKoIgwYECDBICEgp1o0KZIMtZdJ0c1L22dZxoWoahpWfaomh6UzXRBDKoIZ
+FBQIEDTNIhQJUgIKCgXywUE/b/AzRAebhK83DkLhHsD7g9YfOm3VFgOWApaF5Bj5PwfPmo9kfXn1
+xseV1M/QHWBcDshQUUSdeApaBNHqSMPQ/g+cPRG3so5C/VH4R68+gNuAJCHXgKWgD+hPel5XzOOG
+u05gAA7xrMwAAAdG1mYAAAON1mYAAAPY6zMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+qqqqqqqqqqqqqqquXrCz3oUEB14ClpX2RcOWuXMzMzMzMzMHk9ZmAAAD/eszAAABvGszAAAB4XWZ
+gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVV
+VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVy9YGA6sBS0r2T2ZnyD2
+p6090bdQEu7Cgh5oClpcKID2Z/3P0R9ObcoH5ggz7yP7pIdWApaF7/vA+zocNMJTPoKCmyFUVTVN
+UlMR6pqiqKpqm99UlTTFAQD15p4Xg9fg+t9PXfC7nX2/KvC6/Fdfc6/G9fjuvyfr8o6/KevzHr6+
+vr6+vzfr9C4ZwmTdN0wvyx1wyCXxYClpB2FgMgKWlfDITQLbBQQ7QFLQB4ZA7CyGoCloXY8HOQge
+ABbBRDEPCApaQdAymQFLSuxCaALYKCHaApaQdAkBkBS0L5J6XxszAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzMzXKXgHfHfnnjzp2zieGcT0R6A8+
+eAeCd0Ih5knvRC74KCHvoCloXCU0AQGoClpXvCE0CWwUEO0BS0g6FgMgKWlDYhNCFsFBBH2uHCAp
+aX74lDgIQGoClpfeEchDykJwAtBQQ8IClpB0CfDMA1AUtCYQ8T3x9sfL7JzEnTVAk0AID10ajUaj
+XqJwnCbpum6cJwmKcJkICToKAPWl0hMIcskJXITSQmshM5xGSEZIerIRsh68h68hOZD2JCfUqkUi
+kUikUikUieO29swhcQMCAIgIIAgkCIBiAIJCAiEoKFKE58ApaAwSgKFKGhSISTQJAagKWhfXH/Q4
+mngLL2S5ICloQ0DAZAUtIGAEhkBS0gYMBkBS0gYDAZAUtKaJO0WwsBtAUtKGCk/GJdQFLSvaI2FJ
+eQtoClpA0DetJdQFLSBoEvuS/hG2LS0hsDf9TWLS0hoQslpaXlP0fjusLgN/FNn54OXZaWkOAl/4
+PNZ4E77ozN27M3bszucuxv7/bbbw9vC28LbxG2222222222222222223a7nc7nc7nc7nc7XaEven
+h4tLSGhbiRqWlpDQpeMfPm2lpaQ2Fog0axaWl/qxsN6M2xaWkNAl6M1i0tLzMbCXcI2lpaQ0Dds+
+0dtLS0hsJZLS0vhkaBtS0tL/xP6zhsAXsuGLS0v98g2Av1b+aHDcMMO4YBgdjuYc0tLS/ZEHMBfX
+coHMRykBseSEfyT1wdXS0tIcwDOS0tL+fI0LJqWlpfwT1phsLbS0tL+sL1F5kIO8OTr955bo6Ojm
+6PM970dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHR0dHqPB7YBPiS0tL4j8U8Q0cAb6k7Jy6WlpD
+YEj5g1i0tIaBvZn9c5DhstLSHAUsl/7GYtIaEYyWlpDAY9PrFpaQ0AWS0tLwI0JYaxaWkNAFktLS
++7jQNqWlpDBS2NYtLSGhSyWlpfRkaELUtLSGAF1D6x/tnDZaWkOApu7G7M3bszduzOXk3Y6OXLly
+5cuXLly5cuXLly5cuXLly5cuXLly5cvI8uXkeR5HkeR5Ha9+dsAzrHh4tLSGgC8B7W2lpaQ2Eslp
+aQwbJaWl8Ug0LZrFpaQ0CWS0tIYAWS0tIYA37E1i0tIaFL4prFpaX4IjFsAZj7whAw2lpaXB7OeZ
+LkELhLS190QGhb8U2xaWkNCl7c1i0tIaEvsTWLS0vqj3JhwELaWlpfLl/oAtpm71yeC7OZu3Zm7d
+JOjbbueM22222222222222222222228fttt6HudzueJ3O53O56T0ng+CIR1w8LFpaQ0IXvTWLS0h
+oEtjWLS0hoBvoD3ptpaWgPqi4AF84bYtLS8oQ7Al9WPUHhpaWkNhZ0PsD6MOU5OC0tL1COUb7M2x
+aWl98RsI32BG0hS0vqSDYEu7OYw7fvh5dLS0hyAN82ZrS0tLkchGClhrFpaQ0N+7Pnx7B6U5OCFL
+SHIIXnTgOfWlwlpaX+Ie/MOUC+4PfHtjl2WlpfhP2QGHKCXuDQfKnyx/SI745uVaWl70OUT5TXV8
+x+R58+fPnz58+fPnz8u58+fPnz58+fPnz58+fkOfHnz58+fPnw4STd5luzN25aQwW/OmsWlpcCNC
+F6c2xaWl7ojYUvJPHPqB8YOXgtLSHIDeqPVHvzYdDw4LS0hoAuoWpaWkNCN1SNS0tIaBslpaXqEa
+BuQP259Qe0OXgtLSHIAWS0tL1CNDalpaUwGyWlpDAb8v96O2lpaXgfVh7AiCICIiEiGAIh17k+1F
+zmELkOXFpaQ0CWS0tL8CNAe4MV2lpaWABlrLCQAVSJkZPJ4DgU3RUb4OtKYVJhQD0yiT9CFElEBB
+iSiJEiRIkSZxIkSJEiRPViRkSJEiRIkSJEiR8SJEiRIkSJ8Pw2GRi2OrW6o1Op6nSe/cIsXCVWq4
+rFRdZaM9bIsS9RbXFi5GLFwcXA4KLFs0WLdtTgYui133RcpmLtlL1pr3eb/d8FcM3gLtf7/Fy+Jw
+OJvt8i4eLFi4fHxcPptNposXBkWLF2WEbDa/VvYui3mz2u52+a3G8z8WLF0ujixYu+kTb6nn8CLu
+v652x7vR/Lu/v0fv8Hn/fh8/g73wd7lSW8/Tp8XidjtcTudbzcDi9Lqdfy9vqfp5+v2e5JdTmdTu
+djxd/sd/s+bseL+P78Pj8/l7fo8nl73h9Hp9Ml5PH5pKS8f/76T6W7Dx48vHjx499MOAAAAHe73e
+73e73e73kuHDhw4cOHDhw4cOHDhw4cOHDhw4cOHDhw4cOHDhw4cOHDhw4AAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAB48vAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqqqqqqqqqqqqq
+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+qqqqqqqqqqqqqqqqqqqqqrvjx3ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973
+ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973v
+e973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve973ve
+973ve973vtnfLy+L8fs/Hr+v5eXret5eX8vx6vHvvjy9v9m9fwAAAAAAAAAAA++gAAAAA+EH5kAA
+BwAAAAAHxwAAAAAAAAAAAPovogAAHgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAd8eX
+jw9o+k9cD6cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH/oAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPbHl5et63l5fB+O/WPXfkvHswAAfEeAB+08eA
+/U+PD08AAB7X4AAAAAAAAAAAAAPhvHw3p6enp6enp6enp6enp6enp6er1er1er1er1er2XsvZey8
+/Pz8/Pz8/Pz8/Pz8/Pz8/Pbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbnjy8b7N4+mbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbfjNttttttttttttttttttttttttttttttttt
+tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
+tttttttttttttttuc5znOc5znOc5znOc5znOc5znOc5znOc5znOc5znOc5znOc5znOc5znOc5znO
+c5znOc5znOc5znOc5znOc5znOc5znOc5znOc5znOc5znOc36j1vLy9b1vHke0BPpjWlpDQB6s1pa
+R0J9Ma0tIaF9Wa0tIaDzxrS0hoH5s7822WlNgT3B7422WkNgPnT4JtstIbA+fPYmtpaE2F+ePQG2
+y0hsL5s1paQ0D6w+9O9OHBaQ4CHSfsjbZaA226enk6enp6enp6envenp6enp6enp6enp6enj4nT0
+9PT09PT09PT09PT4PgiHsTieJstL4kcBI8I2xaX5x/AcOAhHjnDFpfMEbCMfaG2LS7H42HAUj9oK
+cMWlNCEdstS0hoQjyjWLSGhSPTHUNtLS9xjgDGpaXYjQJGpaRwSMlpDAI8c1i0hoY2NYtIaEIyWk
+MFjJaX4jGgGNWZu3STseJ228Vtrbbbbbbxe22222222222222223kNtttttttttvJeCLH3h4eLSn
+24p2PE0cgkCHCWlMFjsmsWkNCmYtIYDZLuHqDWkNhD7o1paQ0AF0GsWl5SNhNYtIYK5i0hgujWlp
+DQBmLSGAZi0hgsZLSGCGYtLojQmsWkPMmgDWlpd7XV1vvvvvvvvvvvvvvvvvvvvvvvvv53ffz+/g
+b7777777+D4IvYPC0tL3QRsIaxaQwHMWgPuSNCmsWkMFdg1paQ0OYtLojR+TIc0bYtCaAPUGtLSn
+0hbAmsWkMEMxaQwCyWkMBzFpeBGgfau2loTQhsa0tL3GNgHWLS7EaBwNaWl69tvvvvvvvvvvvvvv
+vvvvvvvvvvvvvvv2vQb777777779vtg+0fA9f2+Bh4mLSnILmLSGC5i0hgB2TWlpDQOYtIbGgTWl
+pDBcxaQwCyWl2I0L+uNG2y0hsD7o1paQ0L/5NaWkNAP7g1paQ0IZi0hgGYtIYB8M1paA7JbAUJa3
+Zm7dJOO7szjx7d48ePHjx48ePHjx48ePHjx48ePHjx48fI8ePHjx8w4+N43b7YPhYtL80fpRgwgg
++iCDgA3CWl8sEaFw1paQ0IZi0hgBmLSGCmg1paQ0CeSKBy7bLSGwjwNaWkNAGYtIYLo1paQ0C5i0
+uiNCmsWkME0a0tIaBzFpDBdBrS0hoXMWl6nP3uuHPz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz8/Pz+c
+5+fn9Dz8/Pz8/Pz8/a7QDAeFLSGCBmLSGA5i0hgmYtIYAZi0hgDmLSGA5i0hghmLSGA+nHWlpTQO
+YtIYKZi0hghmLSGAUMgqmQlAIBgPvDWgKE0LmLSH1RoDWlpePHOzwOPHjx48ePHjx48ePHjx48eP
+Hjx48ePHjx48ePHjx48ePHteAL4WLS/YEaENYtL9YRoX6k/HHDZaXwyPRBQnICRyHDZaQ2FslpDA
+DMWhME/yOtLS/EI2EtS0BykaBPNGjbZaQ2E/2GalpDQn+EzUtIiqqHtZNgD6c20tL9eCMbC9+baW
+kNCH4B1TbZaQ2BzFoDxS0L9KdRfsfU+8Pv/v+CdY63VWl0isSgv8pfjf68EfJOH+DRyyH30Bsf/x
+dyRThQkG+IreIA==
+--f403045e628865e1bc055ad17998--
