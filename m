@@ -1,41 +1,50 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 187051] "orphan list check failed" error in ext4
-Date: Thu, 05 Oct 2017 02:27:33 +0000
-Message-ID: <bug-187051-13602-G67D6hiuEM@https.bugzilla.kernel.org/>
-References: <bug-187051-13602@https.bugzilla.kernel.org/>
+From: eru@netti.fi
+Subject: [PATCH] tune2fs: prevent crash if error in journal recovery
+Date: Thu, 05 Oct 2017 08:25:50 +0300
+Message-ID: <96fd009e4552b48cd9d4e4f776dc7d20@be409.mail.saunalahti.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+Content-Type: text/plain; charset=US-ASCII;
+ format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:57808 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751213AbdJEC1h (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Oct 2017 22:27:37 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BB1A428C06
-        for <linux-ext4@vger.kernel.org>; Thu,  5 Oct 2017 02:27:36 +0000 (UTC)
-In-Reply-To: <bug-187051-13602@https.bugzilla.kernel.org/>
+Received: from gw01.mail.saunalahti.fi ([195.197.172.115]:41104 "EHLO
+        gw01.mail.saunalahti.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750802AbdJEFZx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Oct 2017 01:25:53 -0400
+Received: from cfwo-20-2.mail.saunalahti.fi (cfwo-20.mail.saunalahti.fi [62.142.5.102])
+        by gw01.mail.saunalahti.fi (Postfix) with ESMTP id A97E440088
+        for <linux-ext4@vger.kernel.org>; Thu,  5 Oct 2017 08:25:51 +0300 (EEST)
+Received: from localhost (localhost [127.0.0.1])
+        by cfwo-20-2.mail.saunalahti.fi (Postfix) with ESMTP id 23DD82007E
+        for <linux-ext4@vger.kernel.org>; Thu,  5 Oct 2017 08:25:51 +0300 (EEST)
+Received: from webmail.elisa.fi (wm-web17.pa.saunalahti.fi [195.197.1.110])
+        by cfwo-20-2.mail.saunalahti.fi (Postfix) with ESMTP id C2ECA20077
+        for <linux-ext4@vger.kernel.org>; Thu,  5 Oct 2017 08:25:50 +0300 (EEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=187051
+Prevent coredump if tunefs calls ext2fs_run_ext3_journal(), and this 
+then
+fails for some reason while calling ext2fs_open2(). Such failure makes
+the fs pointer NULL.
 
---- Comment #21 from Theodore Tso (tytso@mit.edu) ---
-Can you try to see if you can reliably reproduce the problem?   
+Signed-off-by: Erkki Ruohtula <eru@netti.fi>
+---
 
-And then can you see if you can reproduce it on some other hardware?
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index ecba2ea..6538032 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -3367,6 +3367,9 @@ closefs:
+  #endif
+  	}
 
-Note that one of the reasons why it's unfortunate when people reopen bugs,
-especially when the original reporter has concluded it was probably caused by a
-hardware issue in his case, is that it can sometimes be hard to disambiguate
-data from the first report and successive reports.   (This is why I hate it
-when Ubuntu users, in particular, glom on to reports by googling by symptom,
-and assume that just because it has the same symptom, that it must be related
-to every other problem with the same symptom, and all pile onto the same
-Launchpad bug.  It's also why I believe Launchpad is mostly hopeless for a
-developer....)
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+-	convert_64bit(fs, feature_64bit);
+-	return (ext2fs_close_free(&fs) ? 1 : 0);
++	if (fs) {
++		convert_64bit(fs, feature_64bit);
++		return (ext2fs_close_free(&fs) ? 1 : 0);
++	}
++	return 1;
+  }
