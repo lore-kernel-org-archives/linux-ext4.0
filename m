@@ -1,50 +1,70 @@
-From: eru@netti.fi
-Subject: [PATCH] tune2fs: prevent crash if error in journal recovery
-Date: Thu, 05 Oct 2017 08:25:50 +0300
-Message-ID: <96fd009e4552b48cd9d4e4f776dc7d20@be409.mail.saunalahti.fi>
+From: Eryu Guan <eguan@redhat.com>
+Subject: [v4.14-rc3 bug] scheduling while atomic in generic/451 test on extN
+Date: Thu, 5 Oct 2017 14:07:00 +0800
+Message-ID: <20171005060700.GF8034@eguan.usersys.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gw01.mail.saunalahti.fi ([195.197.172.115]:41104 "EHLO
-        gw01.mail.saunalahti.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750802AbdJEFZx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Oct 2017 01:25:53 -0400
-Received: from cfwo-20-2.mail.saunalahti.fi (cfwo-20.mail.saunalahti.fi [62.142.5.102])
-        by gw01.mail.saunalahti.fi (Postfix) with ESMTP id A97E440088
-        for <linux-ext4@vger.kernel.org>; Thu,  5 Oct 2017 08:25:51 +0300 (EEST)
-Received: from localhost (localhost [127.0.0.1])
-        by cfwo-20-2.mail.saunalahti.fi (Postfix) with ESMTP id 23DD82007E
-        for <linux-ext4@vger.kernel.org>; Thu,  5 Oct 2017 08:25:51 +0300 (EEST)
-Received: from webmail.elisa.fi (wm-web17.pa.saunalahti.fi [195.197.1.110])
-        by cfwo-20-2.mail.saunalahti.fi (Postfix) with ESMTP id C2ECA20077
-        for <linux-ext4@vger.kernel.org>; Thu,  5 Oct 2017 08:25:50 +0300 (EEST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Prevent coredump if tunefs calls ext2fs_run_ext3_journal(), and this 
-then
-fails for some reason while calling ext2fs_open2(). Such failure makes
-the fs pointer NULL.
+Hi all,
 
-Signed-off-by: Erkki Ruohtula <eru@netti.fi>
----
+I hit "scheduling while atomic" bug by running fstests generic/451 on
+extN filesystems in v4.14-rc3 testing, but it didn't reproduce for me on
+every host I tried, but I've seen it multiple times on multiple hosts. A
+test vm of mine with 4 vcpus and 8G memory reproduced the bug reliably,
+while a bare metal host with 8 cpus and 8G mem couldn't.
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index ecba2ea..6538032 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -3367,6 +3367,9 @@ closefs:
-  #endif
-  	}
+This is due to commit 332391a9935d ("fs: Fix page cache inconsistency
+when mixing buffered and AIO DIO"), which defers AIO DIO io completion
+to a workqueue if the inode has mapped pages and does page cache
+invalidation in process context. I think that the problem is that the
+pages can be mapped after the dio->inode->i_mapping->nrpages check, so
+we're doing page cache invalidation, which could sleep, in interrupt
+context, thus "scheduling while atomic" bug happens.
 
--	convert_64bit(fs, feature_64bit);
--	return (ext2fs_close_free(&fs) ? 1 : 0);
-+	if (fs) {
-+		convert_64bit(fs, feature_64bit);
-+		return (ext2fs_close_free(&fs) ? 1 : 0);
-+	}
-+	return 1;
-  }
+Defering all AIO DIO completion to workqueue unconditionally (as what
+the iomap based path does) fixed the problem for me. But there're
+performance concerns to do so in the original discussions.
+
+https://www.spinics.net/lists/linux-fsdevel/msg112669.html
+
+Thanks,
+Eryu
+
+[17087.868644] BUG: scheduling while atomic: swapper/0/0/0x00000100 
+[17087.875363] Modules linked in: dm_thin_pool dm_persistent_data dm_bio_prison dm_snapshot dm_bufio loop dm_flakey dm_mod ses enclosure ext4 mbcache jbd2 intel_rapl sb_edac x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm irqbypass crct10dif_pclmul crc32_pclmul mpt3sas ghash_clmulni_intel raid_class sg scsi_transport_sas pcbc ipmi_ssif shpchp aesni_intel crypto_simd iTCO_wdt glue_helper ipmi_si cryptd iTCO_vendor_support cdc_ether ipmi_devintf ipmi_msghandler usbnet mii pcspkr acpi_pad wmi dcdbas joydev acpi_power_meter lpc_ich mei_me mei nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c mgag200 drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops sd_mod igb ttm ahci ptp libahci drm libata pps_core crc32c_intel dca megaraid_sas i2c_algo_bit i2c_core [
+ last unloaded: scsi_debug] 
+[17087.955757] CPU: 0 PID: 0 Comm: swapper/0 Tainted: G        W       4.14.0-rc3 #1 
+[17087.964110] Hardware name: Dell Inc. PowerEdge R620/01W23F, BIOS 2.5.4 01/22/2016 
+[17087.972460] Call Trace: 
+[17087.975189]  <IRQ> 
+[17087.977441]  dump_stack+0x63/0x89 
+[17087.981143]  __schedule_bug+0x62/0x70 
+[17087.985232]  __schedule+0x7bb/0x890 
+[17087.989125]  schedule+0x36/0x80 
+[17087.992629]  io_schedule+0x16/0x40 
+[17087.996429]  __lock_page+0x10a/0x150 
+[17088.000420]  ? page_cache_tree_insert+0xb0/0xb0 
+[17088.005470]  invalidate_inode_pages2_range+0x240/0x500 
+[17088.011208]  ? kmem_cache_free+0x1ad/0x1c0 
+[17088.015778]  ? mempool_free_slab+0x17/0x20 
+[17088.020347]  ? mempool_free+0x2b/0x80 
+[17088.024438]  dio_complete+0x14f/0x1d0 
+[17088.028526]  dio_bio_end_aio+0xcb/0x120 
+[17088.032800]  bio_endio+0xa1/0x120 
+[17088.036501]  blk_update_request+0xb7/0x310 
+[17088.041076]  scsi_end_request+0x34/0x200 
+[17088.045454]  scsi_io_completion+0x133/0x5f0 
+[17088.050123]  scsi_finish_command+0xd9/0x120 
+[17088.054782]  scsi_softirq_done+0x145/0x170 
+[17088.059355]  blk_done_softirq+0xa1/0xd0 
+[17088.063627]  __do_softirq+0xc9/0x269 
+[17088.067619]  irq_exit+0xd9/0xf0 
+[17088.071123]  do_IRQ+0x51/0xd0 
+[17088.074434]  common_interrupt+0x9d/0x9d 
+[17088.078713]  </IRQ> 
