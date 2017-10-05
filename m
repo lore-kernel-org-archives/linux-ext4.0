@@ -1,146 +1,37 @@
-From: <jeffrey.faulkenberg@triadunit2.org>
-Subject: (unknown)
-Date: Thu, 05 Oct 2017 10:20:20 -0000
-Message-ID: <150719882032.28561.9539964251392554794@vnpt.vn>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 187051] "orphan list check failed" error in ext4
+Date: Thu, 05 Oct 2017 11:00:59 +0000
+Message-ID: <bug-187051-13602-YMrAIWMwTA@https.bugzilla.kernel.org/>
+References: <bug-187051-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: application/zip; name="SHOP-92491235258linux-ext4.zip"
-Content-Transfer-Encoding: base64
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from static.vnpt.vn ([14.160.32.95]:31624 "HELO vnpt.vn"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1751413AbdJEKUZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 5 Oct 2017 06:20:25 -0400
-Subject: 
-Content-Disposition: attachment
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:39700 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751931AbdJELBF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Oct 2017 07:01:05 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 638D328C66
+        for <linux-ext4@vger.kernel.org>; Thu,  5 Oct 2017 11:01:05 +0000 (UTC)
+In-Reply-To: <bug-187051-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-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
+https://bugzilla.kernel.org/show_bug.cgi?id=187051
+
+--- Comment #22 from Tomasz Goliński (tomaszg@math.uwb.edu.pl) ---
+I can't reproduce it. So far it was only a single occurrence and I don't even
+know what caused it. It was also during compilation but it didn't see any
+problem, only the information in the log.
+
+I didn't want to reopen the problem and I'm well aware that it is to transient
+to be debugged in a systematic way. In light of this I didn't want to open a
+new bug, it would be mostly pointless. However since it is something that
+"should never happen" another example of it might (or might not ;) ) shed some
+light on the issue.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
