@@ -1,72 +1,41 @@
-From: Kees Cook <keescook@chromium.org>
-Subject: [PATCH] ext4: Convert timers to use timer_setup()
-Date: Wed, 4 Oct 2017 17:52:54 -0700
-Message-ID: <20171005005254.GA23668@beast>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 187051] "orphan list check failed" error in ext4
+Date: Thu, 05 Oct 2017 02:27:33 +0000
+Message-ID: <bug-187051-13602-G67D6hiuEM@https.bugzilla.kernel.org/>
+References: <bug-187051-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, Thomas Gleixner <tglx@linutronix.de>
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:57808 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751213AbdJEC1h (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Oct 2017 22:27:37 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BB1A428C06
+        for <linux-ext4@vger.kernel.org>; Thu,  5 Oct 2017 02:27:36 +0000 (UTC)
+In-Reply-To: <bug-187051-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-In preparation for unconditionally passing the struct timer_list pointer to
-all timer callbacks, switch to using the new timer_setup() and from_timer()
-to pass the timer pointer explicitly.
+https://bugzilla.kernel.org/show_bug.cgi?id=187051
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
-Cc: Thomas Gleixner <tglx@linutronix.de>
-Signed-off-by: Kees Cook <keescook@chromium.org>
----
-This requires commit 686fef928bba ("timer: Prepare to change timer
-callback argument type") in v4.14-rc3, but should be otherwise
-stand-alone.
----
- fs/ext4/super.c | 14 +++++---------
- 1 file changed, 5 insertions(+), 9 deletions(-)
+--- Comment #21 from Theodore Tso (tytso@mit.edu) ---
+Can you try to see if you can reliably reproduce the problem?   
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b104096fce9e..1bc7ff8157d8 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2791,14 +2791,11 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
-  * This function is called once a day if we have errors logged
-  * on the file system
-  */
--static void print_daily_error_info(unsigned long arg)
-+static void print_daily_error_info(struct timer_list *t)
- {
--	struct super_block *sb = (struct super_block *) arg;
--	struct ext4_sb_info *sbi;
--	struct ext4_super_block *es;
--
--	sbi = EXT4_SB(sb);
--	es = sbi->s_es;
-+	struct ext4_sb_info *sbi = from_timer(sbi, t, s_err_report);
-+	struct super_block *sb = sbi->s_sb;
-+	struct ext4_super_block *es = sbi->s_es;
- 
- 	if (es->s_error_count)
- 		/* fsck newer than v1.41.13 is needed to clean this condition. */
-@@ -3980,8 +3977,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
- 	spin_lock_init(&sbi->s_next_gen_lock);
- 
--	setup_timer(&sbi->s_err_report, print_daily_error_info,
--		(unsigned long) sb);
-+	timer_setup(&sbi->s_err_report, print_daily_error_info, 0);
- 
- 	/* Register extent status tree shrinker */
- 	if (ext4_es_register_shrinker(sbi))
--- 
-2.7.4
+And then can you see if you can reproduce it on some other hardware?
 
+Note that one of the reasons why it's unfortunate when people reopen bugs,
+especially when the original reporter has concluded it was probably caused by a
+hardware issue in his case, is that it can sometimes be hard to disambiguate
+data from the first report and successive reports.   (This is why I hate it
+when Ubuntu users, in particular, glom on to reports by googling by symptom,
+and assume that just because it has the same symptom, that it must be related
+to every other problem with the same symptom, and all pile onto the same
+Launchpad bug.  It's also why I believe Launchpad is mostly hopeless for a
+developer....)
 
 -- 
-Kees Cook
-Pixel Security
+You are receiving this mail because:
+You are watching the assignee of the bug.
