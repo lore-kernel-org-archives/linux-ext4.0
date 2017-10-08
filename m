@@ -1,57 +1,52 @@
 From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH] ext2/super: Fix a possible sleep-in-atomic bug in
- parse_options
-Date: Mon, 9 Oct 2017 09:20:07 +1100
-Message-ID: <20171008222007.GX15067@dastard>
-References: <1507339246-13067-1-git-send-email-baijiaju1990@163.com>
+Subject: Re: [PATCH] ext4/026: skip test if kernel does not support the
+ ea_inode feature
+Date: Mon, 9 Oct 2017 09:40:10 +1100
+Message-ID: <20171008224010.GY15067@dastard>
+References: <20171008192324.20477-1-tytso@mit.edu>
+ <20171008214117.GU15067@dastard>
+ <20171008215110.qxhel7nkcsifybu2@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: viro@zeniv.linux.org.uk, jack@suse.com, sagi@grimberg.me,
-        james.smart@broadcom.com, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Jia-Ju Bai <baijiaju1990@163.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: fstests@vger.kernel.org,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1507339246-13067-1-git-send-email-baijiaju1990@163.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20171008215110.qxhel7nkcsifybu2@thunk.org>
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Oct 07, 2017 at 09:20:46AM +0800, Jia-Ju Bai wrote:
-> The kernel may sleep under a spinlock, and the function call path is:
-> ext2_remount
->   parse_options
->     match_int
->       match_number (lib/parser.c)
->         kmalloc(GFP_KERNEL) --> may sleep
+On Sun, Oct 08, 2017 at 05:51:10PM -0400, Theodore Ts'o wrote:
+> On Mon, Oct 09, 2017 at 08:41:17AM +1100, Dave Chinner wrote:
+> > On Sun, Oct 08, 2017 at 03:23:24PM -0400, Theodore Ts'o wrote:
+> > > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> > > ---
+> > >  tests/ext4/026 | 3 ++-
+> > >  1 file changed, 2 insertions(+), 1 deletion(-)
+> > > 
+> > > diff --git a/tests/ext4/026 b/tests/ext4/026
+> > > index 94a737ce..ba77f36e 100755
+> > > --- a/tests/ext4/026
+> > > +++ b/tests/ext4/026
+> > > @@ -53,7 +53,8 @@ _require_attrs
+> > >  _require_ext4_mkfs_feature ea_inode
+> > >  
+> > >  _scratch_mkfs_ext4 -O ea_inode >/dev/null 2>&1
+> > > -_scratch_mount
+> > > +_scratch_mount >/dev/null 2>&1 \
+> > > +	|| _notrun "kernel doesn't support ea_inode feature on $FSTYP"
+> > 
+> > Needs to be in a _requires check?
 > 
-> To fix it, GFP_KERNEL is replaced with GFP_ATOMIC.
-> This bug is found by my static analysis tool and my code review.
-> 
-> Signed-off-by: Jia-Ju Bai <baijiaju1990@163.com>
-> ---
->  lib/parser.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/lib/parser.c b/lib/parser.c
-> index 3278958..bc6e2ce 100644
-> --- a/lib/parser.c
-> +++ b/lib/parser.c
-> @@ -133,7 +133,7 @@ static int match_number(substring_t *s, int *result, int base)
->  	long val;
->  	size_t len = s->to - s->from;
->  
-> -	buf = kmalloc(len + 1, GFP_KERNEL);
-> +	buf = kmalloc(len + 1, GFP_ATOMIC);
+> There's only one test currently testing ea_inode at the moment, but
+> sure, I can make it into a _requires check.
 
-That seems like the wrong thing to do.
-
-The problem is that ext2_remount is running it's internal
-parse_options() under a spinlock, rather than doing the parsing with
-no locks held and then only taking the locks when it needs to change
-the superblock state.
-
-At a quick glance, I don't see any other filesystem with the same
-problem....
+I note there's a _require_ext4_mkfs_feature check above. Perhaps
+just turn that into a _require_ext4_feature that checks both mkfs
+and whether the kernel supports the functionality? That's typically
+what we've done in the past - one _require rule to check all
+aspects of support needed to use the feature...
 
 Cheers,
 
