@@ -1,40 +1,34 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: skip project quota tests if the kernel does not support them
-Date: Sun,  8 Oct 2017 15:27:46 -0400
-Message-ID: <20171008192746.20709-1-tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>
-To: fstests@vger.kernel.org
+From: Nicolas Dechesne <nicolas.dechesne@linaro.org>
+Subject: e2fsprogs: building ext2simg
+Date: Sun, 8 Oct 2017 22:04:21 +0200
+Message-ID: <CAP71WjzSUxbK1mpv_bTuZd6W4xV2zNEEQN0GtmEp7iMTyhi9zA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49634 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753408AbdJHT1t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 8 Oct 2017 15:27:49 -0400
+Received: from mail-qk0-f178.google.com ([209.85.220.178]:50051 "EHLO
+        mail-qk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753058AbdJHUEn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Oct 2017 16:04:43 -0400
+Received: by mail-qk0-f178.google.com with SMTP id s14so8725646qks.6
+        for <linux-ext4@vger.kernel.org>; Sun, 08 Oct 2017 13:04:42 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In _scratch_enable_pquota, use _notrun if the file system with project
-quotas enable can't be mounted, since that indicates the kernel
-doesn't support that feature.
+hi,
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- common/quota | 3 +++
- 1 file changed, 3 insertions(+)
+ext2simg.c file was moved from android (system/extras) into e2fsprogs.
+however it seems that it cannot be compiled outside of android (it
+uses sparse/sparse.h). some distro used to build/package this utility
+(e.g. debian has it in android-tools-fsutils).
 
-diff --git a/common/quota b/common/quota
-index f49728c2..d027a8c1 100644
---- a/common/quota
-+++ b/common/quota
-@@ -119,6 +119,9 @@ _scratch_enable_pquota()
- 	[ "$FSTYP" != "ext4" ] && return
- 
- 	tune2fs -O quota,project $SCRATCH_DEV >>$seqres.full 2>&1
-+	_scratch_mount >/dev/null 2>&1 \
-+		|| _notrun "kernel doesn't support project feature on $FSTYP"
-+	_scratch_unmount
- }
- 
- #
--- 
-2.11.0.rc0.7.gbe5a750
+what was the main reason why it was moved into e2fsprogs in the first
+place, given that it cannot be compiled (easily) outside of AOSP?
+
+Also, the commit that brought this file has the following reference:
+
+    From AOSP commit: c1b7d19958dc3dbe53810811ea3dcc4f04f85c73
+
+However I don't think this commit in AOSP.
+
+thanks!
