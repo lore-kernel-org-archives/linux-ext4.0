@@ -1,85 +1,78 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Josef Bacik <josef@toxicpanda.com>
 Subject: Re: [ANNOUNCE] fsperf: a simple fs/block performance testing
  framework
-Date: Mon, 9 Oct 2017 08:52:59 -0400
-Message-ID: <20171009125259.idxdvcom6krozywt@thunk.org>
+Date: Mon, 9 Oct 2017 08:54:16 -0400
+Message-ID: <20171009125415.wrfd5rp5zlf4qsgm@destiny>
 References: <20171006210956.vf326sydjiphsefo@destiny>
  <20171009005137.GA3666@dastard>
  <20171009022509.rz6goq3sec5ppxrr@destiny>
- <20171009051731.GK3666@dastard>
- <20171009065434.GD10593@eguan.usersys.redhat.com>
+ <20171009034335.pwehn4kz3cwjy6o7@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-        Josef Bacik <josef@toxicpanda.com>,
+Cc: Josef Bacik <josef@toxicpanda.com>,
+        Dave Chinner <david@fromorbit.com>,
         linux-fsdevel@vger.kernel.org, kernel-team@fb.com,
         linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
-To: Eryu Guan <eguan@redhat.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20171009065434.GD10593@eguan.usersys.redhat.com>
+In-Reply-To: <20171009034335.pwehn4kz3cwjy6o7@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 09, 2017 at 02:54:34PM +0800, Eryu Guan wrote:
-> I have no problem either if python is really needed, after all this is a
-> very useful infrastructure improvement. But the python version problem
-> brought up by Ted made me a bit nervous, we need to work that round
-> carefully.
+On Sun, Oct 08, 2017 at 11:43:35PM -0400, Theodore Ts'o wrote:
+> On Sun, Oct 08, 2017 at 10:25:10PM -0400, Josef Bacik wrote:
+> > 
+> > Probably should have led with that shouldn't I have?  There's nothing keeping me
+> > from doing it, but I didn't want to try and shoehorn in a python thing into
+> > fstests.  I need python to do the sqlite and the json parsing to dump into the
+> > sqlite database.
 > 
-> OTOH, I'm just curious, what is the specific reason that python is a
-> hard requirement? If we can use perl, that'll be much easier for
-> fstests.
+> What version of python are you using?  From inspection it looks like
+> some variant of python 3.x (you're using print as a function w/o using
+> "from __future import print_function") but it's not immediately
+> obvious from the top-level fsperf shell script what version of python
+> your scripts are dependant upon.
+> 
+> This could potentially be a bit of a portability issue across various
+> distributions --- RHEL doesn't ship with Python 3.x at all, and on
+> Debian you need to use python3 to get python 3.x, since
+> /usr/bin/python still points at Python 2.7 by default.  So I could see
+> this as a potential issue for xfstests.
+> 
+> I'm currently using Python 2.7 in my wrapper scripts for, among other
+> things, to parse xUnit XML format and create nice summaries like this:
+> 
+> ext4/4k: 337 tests, 6 failures, 21 skipped, 3814 seconds
+>   Failures: generic/232 generic/233 generic/361 generic/388
+>     generic/451 generic/459
+> 
+> So I'm not opposed to python, but I will note that if you are using
+> modules from the Python Package Index, and they are modules which are
+> not packaged by your distribution (so you're using pip or easy_install
+> to pull them off the network), it does make doing hermetic builds from
+> trusted sources to be a bit trickier.
+> 
+> If you have a secops team who wants to know the provenance of software
+> which get thrown in production data centers (and automated downloading
+> from random external sources w/o any code review makes them break out
+> in hives), use of PyPI adds a new wrinkle.  It's not impossible to
+> solve, by any means, but it's something to consider.
+>
 
-Note that perl has its own versioning issues (but it's been easier
-given that Perl has been frozen so long waiting for Godot^H^H^H^H^H
-Perl6).  It's for similar reasons that Python 2.7 is nice and stable.
-Python 2 is frozen while Python 3 caught up.  The only downside is
-that Python 2.7 is now deprecated, and will stop getting security
-updates from Python Core in 2020.
+I purposefully used as little as possible, just json and sqlite, and I tried to
+use as little python3 isms as possible.  Any rpm based systems should have these
+libraries already installed, I agree that using any of the PyPI stuff is a pain
+and is a non-starter for me as I want to make it as easy as possible to get
+running.
 
-I'll note that Python 3.6 has some nice features that aren't in Python
-3.5 --- but Debian Stable only has Python 3.5, and Debian Unstable has
-Python 3.6.  Which is why I said, "it looks like you're using some
-variant of Python 3.x", but it wasn't obvious what version exactly was
-required by fsperf.  This version instability in Python and Perl is
-way Larry McVoy ended up using Tcl for Bitkeeper, by the way.  That
-was the only thing that was guaranteed to work everywhere, exactly the
-same, without random changes added by Perl/Python innovations...
+Where do you fall on the including it in xfstests question?  I expect that the
+perf stuff would be run more as maintainers put their pull requests together to
+make sure things haven't regressed.  To that end I was going to wire up
+xfstests-bld to run this as well.  Whatever you and Dave prefer is what I'll do,
+I'll use it wherever it ends up so you two are the ones that get to decide.
+Thanks,
 
-It's a little easier for me with gce/kvm-xfstests, since I'm using a
-Debian Stable images/chroots, and I don't even going to _pretend_ that
-I care about cross-distro portability for the Test Appliance VM's that
-xfstests-bld creates.  But I suspect this will be more of an issue
-with xfstests.
-
-Also, the same issues around versioning / "DLL hell" and provenance of
-various high-level package/modules exists with Perl just as much with
-Python.  Just substitute CPAN with PyPI.  And again, some of the
-popular Perl packages have been packaged by the distro's to solve the
-versioning / provenance problem, but exactly _which_ packages /
-modules are packaged varies from distro to distro.  (Hopefully the
-most popular ones will be packaged by both Red Hat, SuSE and Debian
-derivitives, but you'll have to check for each package / module you
-want to use.)
-
-One way of solving the problem is just including those Perl / Python
-package modules in the sources of xfstests itself; that way you're not
-depending on which version of a particular module / package is
-available on a distro, and you're also not randomly downloading
-software over the network and hoping it works / hasn't been taken over
-by some hostile state power.  (I'd be much happier if PyPI or CPAN
-used SHA checksums of what you expect to be downloaded; even if you
-use Easy_Install's requirements.txt, you're still trusting PyPI to
-give you what it thinks is version of Junitparser 1.0.0.)
-
-This is why I've dropped my own copy of junitparser into the git repo
-of xfstests-bld.  It's the "ship your own version of the DLL" solution
-to the "DLL hell" problem, but it was the best I could come up with,
-especially since Debian hadn't packaged the Junitparser python module.
-I also figured it was much better at lowering the blood pressure of
-the friendly local secops types.  :-)
-
-     	      	 	   	      - Ted
+Josef
