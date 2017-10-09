@@ -1,78 +1,136 @@
 From: Eryu Guan <eguan@redhat.com>
-Subject: Re: [PATCH] ext4/026: skip test if kernel does not support the
- ea_inode feature
-Date: Mon, 9 Oct 2017 14:37:01 +0800
-Message-ID: <20171009063701.GC10593@eguan.usersys.redhat.com>
-References: <20171008192324.20477-1-tytso@mit.edu>
- <20171008214117.GU15067@dastard>
- <20171008215110.qxhel7nkcsifybu2@thunk.org>
- <20171008224010.GY15067@dastard>
- <CAOQ4uxgHY+yyOcFX2mtWHX3oz9rtSidLM1_Ni3q-Lw-DcnHxLA@mail.gmail.com>
+Subject: Re: [ANNOUNCE] fsperf: a simple fs/block performance testing
+ framework
+Date: Mon, 9 Oct 2017 14:54:34 +0800
+Message-ID: <20171009065434.GD10593@eguan.usersys.redhat.com>
+References: <20171006210956.vf326sydjiphsefo@destiny>
+ <20171009005137.GA3666@dastard>
+ <20171009022509.rz6goq3sec5ppxrr@destiny>
+ <20171009051731.GK3666@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, Theodore Ts'o <tytso@mit.edu>,
-        fstests <fstests@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <fstests-owner@vger.kernel.org>
+Cc: Josef Bacik <josef@toxicpanda.com>, linux-fsdevel@vger.kernel.org,
+        kernel-team@fb.com, linux-btrfs@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        tytso@mit.edu
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAOQ4uxgHY+yyOcFX2mtWHX3oz9rtSidLM1_Ni3q-Lw-DcnHxLA@mail.gmail.com>
-Sender: fstests-owner@vger.kernel.org
+In-Reply-To: <20171009051731.GK3666@dastard>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 09, 2017 at 09:00:18AM +0300, Amir Goldstein wrote:
-> On Mon, Oct 9, 2017 at 1:40 AM, Dave Chinner <david@fromorbit.com> wrote:
-> > On Sun, Oct 08, 2017 at 05:51:10PM -0400, Theodore Ts'o wrote:
-> >> On Mon, Oct 09, 2017 at 08:41:17AM +1100, Dave Chinner wrote:
-> >> > On Sun, Oct 08, 2017 at 03:23:24PM -0400, Theodore Ts'o wrote:
-> >> > > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> >> > > ---
-> >> > >  tests/ext4/026 | 3 ++-
-> >> > >  1 file changed, 2 insertions(+), 1 deletion(-)
-> >> > >
-> >> > > diff --git a/tests/ext4/026 b/tests/ext4/026
-> >> > > index 94a737ce..ba77f36e 100755
-> >> > > --- a/tests/ext4/026
-> >> > > +++ b/tests/ext4/026
-> >> > > @@ -53,7 +53,8 @@ _require_attrs
-> >> > >  _require_ext4_mkfs_feature ea_inode
-> >> > >
-> >> > >  _scratch_mkfs_ext4 -O ea_inode >/dev/null 2>&1
-> >> > > -_scratch_mount
-> >> > > +_scratch_mount >/dev/null 2>&1 \
-> >> > > + || _notrun "kernel doesn't support ea_inode feature on $FSTYP"
-> >> >
-> >> > Needs to be in a _requires check?
-> >>
-> >> There's only one test currently testing ea_inode at the moment, but
-> >> sure, I can make it into a _requires check.
-> >
-> > I note there's a _require_ext4_mkfs_feature check above. Perhaps
-> > just turn that into a _require_ext4_feature that checks both mkfs
-> > and whether the kernel supports the functionality? That's typically
-> > what we've done in the past - one _require rule to check all
-> > aspects of support needed to use the feature...
-> >
-
-Agreed, I think we can make _require_ext4_bigalloc() more generic, turn
-it into _require_scratch_ext4_feature(), and take use of
-_require_ext4_mkfs_feature() in the new helper to do the userspace
-check. And use the new helper in ext4/003 ext4/02[56] and ext4/306.
-
+On Mon, Oct 09, 2017 at 04:17:31PM +1100, Dave Chinner wrote:
+> On Sun, Oct 08, 2017 at 10:25:10PM -0400, Josef Bacik wrote:
+> > On Mon, Oct 09, 2017 at 11:51:37AM +1100, Dave Chinner wrote:
+> > > On Fri, Oct 06, 2017 at 05:09:57PM -0400, Josef Bacik wrote:
+> > > > Hello,
+> > > > 
+> > > > One thing that comes up a lot every LSF is the fact that we have no general way
+> > > > that we do performance testing.  Every fs developer has a set of scripts or
+> > > > things that they run with varying degrees of consistency, but nothing central
+> > > > that we all use.  I for one am getting tired of finding regressions when we are
+> > > > deploying new kernels internally, so I wired this thing up to try and address
+> > > > this need.
+> > > > 
+> > > > We all hate convoluted setups, the more brain power we have to put in to setting
+> > > > something up the less likely we are to use it, so I took the xfstests approach
+> > > > of making it relatively simple to get running and relatively easy to add new
+> > > > tests.  For right now the only thing this framework does is run fio scripts.  I
+> > > > chose fio because it already gathers loads of performance data about it's runs.
+> > > > We have everything we need there, latency, bandwidth, cpu time, and all broken
+> > > > down by reads, writes, and trims.  I figure most of us are familiar enough with
+> > > > fio and how it works to make it relatively easy to add new tests to the
+> > > > framework.
+> > > > 
+> > > > I've posted my code up on github, you can get it here
+> > > > 
+> > > > https://github.com/josefbacik/fsperf
+> > > > 
+> > > > All (well most) of the results from fio are stored in a local sqlite database.
+> > > > Right now the comparison stuff is very crude, it simply checks against the
+> > > > previous run and it only checks a few of the keys by default.  You can check
+> > > > latency if you want, but while writing this stuff up it seemed that latency was
+> > > > too variable from run to run to be useful in a "did my thing regress or improve"
+> > > > sort of way.
+> > > > 
+> > > > The configuration is brain dead simple, the README has examples.  All you need
+> > > > to do is make your local.cfg, run ./setup and then run ./fsperf and you are good
+> > > > to go.
+> > > 
+> > > Why re-invent the test infrastructure? Why not just make it a
+> > > tests/perf subdir in fstests?
+> > > 
+> > 
+> > Probably should have led with that shouldn't I have?  There's nothing keeping me
+> > from doing it, but I didn't want to try and shoehorn in a python thing into
+> > fstests.  I need python to do the sqlite and the json parsing to dump into the
+> > sqlite database.
+> > 
+> > Now if you (and others) are not opposed to this being dropped into tests/perf
+> > then I'll work that up.  But it's definitely going to need to be done in python.
+> > I know you yourself have said you aren't opposed to using python in the past, so
+> > if that's still the case then I can definitely wire it all up.
 > 
-> 
-> At the time when I introduced _require_scratch_overlay_feature Eryu
-> requested that I make it generic , so please hook
-> _require_scratch_ext4_feature to the generic helper.
+> I have no problems with people using python for stuff like this but,
+> OTOH, I'm not the fstests maintainer anymore :P
 
-BTW, the generic helper is _require_scratch_feature().
+I have no problem either if python is really needed, after all this is a
+very useful infrastructure improvement. But the python version problem
+brought up by Ted made me a bit nervous, we need to work that round
+carefully.
+
+OTOH, I'm just curious, what is the specific reason that python is a
+hard requirement? If we can use perl, that'll be much easier for
+fstests.
+
+BTW, opinions from key fs developers/fstests users, like you, are also
+very important and welcomed :)
 
 Thanks,
 Eryu
 
-> Btw there is a cleanup patch factoring out
-> _require_scratch_overlay_feature helper which has not been merged yet
+> 
+> > > > The plan is to add lots of workloads as we discover regressions and such.  We
+> > > > don't want anything that takes too long to run otherwise people won't run this,
+> > > > so the existing tests don't take much longer than a few minutes each.  I will be
+> > > > adding some more comparison options so you can compare against averages of all
+> > > > previous runs and such.
+> > > 
+> > > Yup, that fits exactly into what fstests is for... :P
+> > > 
+> > > Integrating into fstests means it will be immediately available to
+> > > all fs developers, it'll run on everything that everyone already has
+> > > setup for filesystem testing, and it will have familiar mkfs/mount
+> > > option setup behaviour so there's no new hoops for everyone to jump
+> > > through to run it...
+> > > 
+> > 
+> > TBF I specifically made it as easy as possible because I know we all hate trying
+> > to learn new shit.
+> 
+> Yeah, it's also hard to get people to change their workflows to add
+> a whole new test harness into them. It's easy if it's just a new
+> command to an existing workflow :P
+> 
+> > I figured this was different enough to warrant a separate
+> > project, especially since I'm going to add block device jobs so Jens can test
+> > block layer things.  If we all agree we'd rather see this in fstests then I'm
+> > happy to do that too.  Thanks,
+> 
+> I'm not fussed either way - it's a good discussion to have, though.
+> 
+> If I want to add tests (e.g. my time-honoured fsmark tests), where
+> should I send patches?
+> 
+> Cheers,
+> 
+> Dave.
+> -- 
+> Dave Chinner
+> david@fromorbit.com
 > --
-> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
