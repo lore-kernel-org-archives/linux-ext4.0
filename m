@@ -1,117 +1,146 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH v2 03/11] fscrypt: switch from ->is_encrypted() to IS_ENCRYPTED()
-Date: Mon,  9 Oct 2017 12:15:36 -0700
-Message-ID: <20171009191544.43656-4-ebiggers3@gmail.com>
+Subject: [PATCH v2 07/11] fscrypt: new helper function -
+ fscrypt_file_open()
+Date: Mon,  9 Oct 2017 12:15:40 -0700
+Message-ID: <20171009191544.43656-8-ebiggers3@gmail.com>
 References: <20171009191544.43656-1-ebiggers3@gmail.com>
-Cc: Jaegeuk Kim <jaegeuk@kernel.org>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
-To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f195.google.com ([209.85.192.195]:38202 "EHLO
-        mail-pf0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754691AbdJITTC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Oct 2017 15:19:02 -0400
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Eric Biggers <ebiggers@google.com>, linux-f2fs-devel@lists.sourceforge.net,
+ linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
+ Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
+To: linux-fscrypt@vger.kernel.org,
+	"Theodore Y . Ts'o" <tytso@mit.edu>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
 In-Reply-To: <20171009191544.43656-1-ebiggers3@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-IS_ENCRYPTED() now gives the same information as
-i_sb->s_cop->is_encrypted() but is more efficient, since IS_ENCRYPTED()
-is just a simple flag check.  Prepare to remove ->is_encrypted() by
-switching all callers to IS_ENCRYPTED().
+Add a helper function which prepares to open a regular file which may be
+encrypted.  It handles setting up the file's encryption key, then
+checking that the file's encryption policy matches that of its parent
+directory (if the parent directory is encrypted).  It may be set as the
+->open() method or it can be called from another ->open() method.
 
 Acked-by: Dave Chinner <dchinner@redhat.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/crypto.c              | 2 +-
- fs/crypto/fname.c               | 3 +--
- fs/crypto/keyinfo.c             | 2 +-
- fs/crypto/policy.c              | 6 +++---
- include/linux/fscrypt_notsupp.h | 2 +-
- 5 files changed, 7 insertions(+), 8 deletions(-)
+ fs/crypto/Makefile              |  2 +-
+ fs/crypto/hooks.c               | 49 +++++++++++++++++++++++++++++++++++++++++
+ include/linux/fscrypt_notsupp.h |  9 ++++++++
+ include/linux/fscrypt_supp.h    |  3 +++
+ 4 files changed, 62 insertions(+), 1 deletion(-)
+ create mode 100644 fs/crypto/hooks.c
 
-diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
-index c7835df7e7b8..608f6bbe0f31 100644
---- a/fs/crypto/crypto.c
-+++ b/fs/crypto/crypto.c
-@@ -340,7 +340,7 @@ static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
- 		return -ECHILD;
+diff --git a/fs/crypto/Makefile b/fs/crypto/Makefile
+index 9f6607f17b53..cb496989a6b6 100644
+--- a/fs/crypto/Makefile
++++ b/fs/crypto/Makefile
+@@ -1,4 +1,4 @@
+ obj-$(CONFIG_FS_ENCRYPTION)	+= fscrypto.o
  
- 	dir = dget_parent(dentry);
--	if (!d_inode(dir)->i_sb->s_cop->is_encrypted(d_inode(dir))) {
-+	if (!IS_ENCRYPTED(d_inode(dir))) {
- 		dput(dir);
- 		return 0;
- 	}
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index ad9f814fdead..2878289b3ed2 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -382,8 +382,7 @@ int fscrypt_setup_filename(struct inode *dir, const struct qstr *iname,
- 	memset(fname, 0, sizeof(struct fscrypt_name));
- 	fname->usr_fname = iname;
- 
--	if (!dir->i_sb->s_cop->is_encrypted(dir) ||
--				fscrypt_is_dot_dotdot(iname)) {
-+	if (!IS_ENCRYPTED(dir) || fscrypt_is_dot_dotdot(iname)) {
- 		fname->disk_name.name = (unsigned char *)iname->name;
- 		fname->disk_name.len = iname->len;
- 		return 0;
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 018c588c7ac3..236a68d4ea72 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -268,7 +268,7 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
- 	if (res < 0) {
- 		if (!fscrypt_dummy_context_enabled(inode) ||
--		    inode->i_sb->s_cop->is_encrypted(inode))
-+		    IS_ENCRYPTED(inode))
- 			return res;
- 		/* Fake up a context for an unencrypted directory */
- 		memset(&ctx, 0, sizeof(ctx));
-diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
-index ce07a86200f3..6a63b8a0d46c 100644
---- a/fs/crypto/policy.c
-+++ b/fs/crypto/policy.c
-@@ -109,7 +109,7 @@ int fscrypt_ioctl_get_policy(struct file *filp, void __user *arg)
- 	struct fscrypt_policy policy;
- 	int res;
- 
--	if (!inode->i_sb->s_cop->is_encrypted(inode))
-+	if (!IS_ENCRYPTED(inode))
- 		return -ENODATA;
- 
- 	res = inode->i_sb->s_cop->get_context(inode, &ctx, sizeof(ctx));
-@@ -166,11 +166,11 @@ int fscrypt_has_permitted_context(struct inode *parent, struct inode *child)
- 		return 1;
- 
- 	/* No restrictions if the parent directory is unencrypted */
--	if (!cops->is_encrypted(parent))
-+	if (!IS_ENCRYPTED(parent))
- 		return 1;
- 
- 	/* Encrypted directories must not contain unencrypted files */
--	if (!cops->is_encrypted(child))
-+	if (!IS_ENCRYPTED(child))
- 		return 0;
- 
- 	/*
+-fscrypto-y := crypto.o fname.o policy.o keyinfo.o
++fscrypto-y := crypto.o fname.o hooks.o keyinfo.o policy.o
+ fscrypto-$(CONFIG_BLOCK) += bio.o
+diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
+new file mode 100644
+index 000000000000..069088e91ea9
+--- /dev/null
++++ b/fs/crypto/hooks.c
+@@ -0,0 +1,49 @@
++/*
++ * fs/crypto/hooks.c
++ *
++ * Encryption hooks for higher-level filesystem operations.
++ */
++
++#include <linux/ratelimit.h>
++#include "fscrypt_private.h"
++
++/**
++ * fscrypt_file_open - prepare to open a possibly-encrypted regular file
++ * @inode: the inode being opened
++ * @filp: the struct file being set up
++ *
++ * Currently, an encrypted regular file can only be opened if its encryption key
++ * is available; access to the raw encrypted contents is not supported.
++ * Therefore, we first set up the inode's encryption key (if not already done)
++ * and return an error if it's unavailable.
++ *
++ * We also verify that if the parent directory (from the path via which the file
++ * is being opened) is encrypted, then the inode being opened uses the same
++ * encryption policy.  This is needed as part of the enforcement that all files
++ * in an encrypted directory tree use the same encryption policy, as a
++ * protection against certain types of offline attacks.  Note that this check is
++ * needed even when opening an *unencrypted* file, since it's forbidden to have
++ * an unencrypted file in an encrypted directory.
++ *
++ * Return: 0 on success, -ENOKEY if the key is missing, or another -errno code
++ */
++int fscrypt_file_open(struct inode *inode, struct file *filp)
++{
++	int err;
++	struct dentry *dir;
++
++	err = fscrypt_require_key(inode);
++	if (err)
++		return err;
++
++	dir = dget_parent(file_dentry(filp));
++	if (IS_ENCRYPTED(d_inode(dir)) &&
++	    !fscrypt_has_permitted_context(d_inode(dir), inode)) {
++		pr_warn_ratelimited("fscrypt: inconsistent encryption contexts: %lu/%lu",
++				    d_inode(dir)->i_ino, inode->i_ino);
++		err = -EPERM;
++	}
++	dput(dir);
++	return err;
++}
++EXPORT_SYMBOL_GPL(fscrypt_file_open);
 diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
-index 2d0b6960831e..7b390e356f7f 100644
+index 7b390e356f7f..162da6517ac4 100644
 --- a/include/linux/fscrypt_notsupp.h
 +++ b/include/linux/fscrypt_notsupp.h
-@@ -100,7 +100,7 @@ static inline int fscrypt_setup_filename(struct inode *dir,
- 					 const struct qstr *iname,
- 					 int lookup, struct fscrypt_name *fname)
- {
--	if (dir->i_sb->s_cop->is_encrypted(dir))
-+	if (IS_ENCRYPTED(dir))
- 		return -EOPNOTSUPP;
+@@ -177,4 +177,13 @@ static inline int fscrypt_zeroout_range(const struct inode *inode, pgoff_t lblk,
+ 	return -EOPNOTSUPP;
+ }
  
- 	memset(fname, 0, sizeof(struct fscrypt_name));
++/* hooks.c */
++
++static inline int fscrypt_file_open(struct inode *inode, struct file *filp)
++{
++	if (IS_ENCRYPTED(inode))
++		return -EOPNOTSUPP;
++	return 0;
++}
++
+ #endif	/* _LINUX_FSCRYPT_NOTSUPP_H */
+diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
+index 5a90e5ef4687..fd2f6decaee4 100644
+--- a/include/linux/fscrypt_supp.h
++++ b/include/linux/fscrypt_supp.h
+@@ -143,4 +143,7 @@ extern void fscrypt_pullback_bio_page(struct page **, bool);
+ extern int fscrypt_zeroout_range(const struct inode *, pgoff_t, sector_t,
+ 				 unsigned int);
+ 
++/* hooks.c */
++extern int fscrypt_file_open(struct inode *inode, struct file *filp);
++
+ #endif	/* _LINUX_FSCRYPT_SUPP_H */
 -- 
 2.14.2.920.gcf0c67979c-goog
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
