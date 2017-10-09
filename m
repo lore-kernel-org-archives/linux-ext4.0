@@ -1,78 +1,42 @@
-From: Josef Bacik <josef@toxicpanda.com>
-Subject: Re: [ANNOUNCE] fsperf: a simple fs/block performance testing
- framework
-Date: Mon, 9 Oct 2017 08:54:16 -0400
-Message-ID: <20171009125415.wrfd5rp5zlf4qsgm@destiny>
-References: <20171006210956.vf326sydjiphsefo@destiny>
- <20171009005137.GA3666@dastard>
- <20171009022509.rz6goq3sec5ppxrr@destiny>
- <20171009034335.pwehn4kz3cwjy6o7@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: e2fsprogs: building ext2simg
+Date: Mon, 9 Oct 2017 08:59:02 -0400
+Message-ID: <20171009125902.66u7hsgxsueedquq@thunk.org>
+References: <CAP71WjzSUxbK1mpv_bTuZd6W4xV2zNEEQN0GtmEp7iMTyhi9zA@mail.gmail.com>
+ <20171008212752.ljga227riyq7exzb@thunk.org>
+ <CAP71WjwVdqmLEq1NGWK36JkEd-i05YcAu4jeY6GFjsk6TS=Mtg@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <josef@toxicpanda.com>,
-        Dave Chinner <david@fromorbit.com>,
-        linux-fsdevel@vger.kernel.org, kernel-team@fb.com,
-        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Nicolas Dechesne <nicolas.dechesne@linaro.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:52080 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754049AbdJIM7F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 9 Oct 2017 08:59:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20171009034335.pwehn4kz3cwjy6o7@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CAP71WjwVdqmLEq1NGWK36JkEd-i05YcAu4jeY6GFjsk6TS=Mtg@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 08, 2017 at 11:43:35PM -0400, Theodore Ts'o wrote:
-> On Sun, Oct 08, 2017 at 10:25:10PM -0400, Josef Bacik wrote:
-> > 
-> > Probably should have led with that shouldn't I have?  There's nothing keeping me
-> > from doing it, but I didn't want to try and shoehorn in a python thing into
-> > fstests.  I need python to do the sqlite and the json parsing to dump into the
-> > sqlite database.
+On Mon, Oct 09, 2017 at 10:24:46AM +0200, Nicolas Dechesne wrote:
 > 
-> What version of python are you using?  From inspection it looks like
-> some variant of python 3.x (you're using print as a function w/o using
-> "from __future import print_function") but it's not immediately
-> obvious from the top-level fsperf shell script what version of python
-> your scripts are dependant upon.
-> 
-> This could potentially be a bit of a portability issue across various
-> distributions --- RHEL doesn't ship with Python 3.x at all, and on
-> Debian you need to use python3 to get python 3.x, since
-> /usr/bin/python still points at Python 2.7 by default.  So I could see
-> this as a potential issue for xfstests.
-> 
-> I'm currently using Python 2.7 in my wrapper scripts for, among other
-> things, to parse xUnit XML format and create nice summaries like this:
-> 
-> ext4/4k: 337 tests, 6 failures, 21 skipped, 3814 seconds
->   Failures: generic/232 generic/233 generic/361 generic/388
->     generic/451 generic/459
-> 
-> So I'm not opposed to python, but I will note that if you are using
-> modules from the Python Package Index, and they are modules which are
-> not packaged by your distribution (so you're using pip or easy_install
-> to pull them off the network), it does make doing hermetic builds from
-> trusted sources to be a bit trickier.
-> 
-> If you have a secops team who wants to know the provenance of software
-> which get thrown in production data centers (and automated downloading
-> from random external sources w/o any code review makes them break out
-> in hives), use of PyPI adds a new wrinkle.  It's not impossible to
-> solve, by any means, but it's something to consider.
->
+> The problems appears as soon as I upgrade from e2fsprogs 1.42.12-2+b1
+> (the version in Jessie) to either the version in Stretch or the
+> version in jessie-backport. So it looks like e2fsprogrs 1.43, breaks
+> something with existing ext2simg (I am using ext2simg from
+> android-tools-fsutils, so the 'old' one).
 
-I purposefully used as little as possible, just json and sqlite, and I tried to
-use as little python3 isms as possible.  Any rpm based systems should have these
-libraries already installed, I agree that using any of the PyPI stuff is a pain
-and is a non-starter for me as I want to make it as easy as possible to get
-running.
+So *that* shouldn't have happened.  I do try to keep the ABI/API of
+the libext2fs shared library stable, even across major version
+numbers.  That being said, I suspect ext2simg was doing something that
+made it highly dependent on the internal implementation detalis of
+libext2fs.  It would be interesting to know what in the world that
+was, so I can try to avoid that in the future.  But I've always viewed
+many of these tools to be quite highly fragile, so I'm not sure
+there's much we can do to fix this in terms of changing what libext2fs
+is doing.  But if I can fix/improve the backwards compatibility
+problem from libext2fs's side, I'm certainly willing to entertain that
+notion.
 
-Where do you fall on the including it in xfstests question?  I expect that the
-perf stuff would be run more as maintainers put their pull requests together to
-make sure things haven't regressed.  To that end I was going to wire up
-xfstests-bld to run this as well.  Whatever you and Dave prefer is what I'll do,
-I'll use it wherever it ends up so you two are the ones that get to decide.
-Thanks,
-
-Josef
+						- Ted
