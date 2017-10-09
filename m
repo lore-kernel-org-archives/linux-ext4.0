@@ -1,21 +1,21 @@
 From: Ben Hutchings <ben@decadent.org.uk>
-Subject: [PATCH 3.2 48/74] ext2: Don't clear SGID when inheriting ACLs
-Date: Mon, 09 Oct 2017 13:30:34 +0100
-Message-ID: <lsq.1507552234.482387091@decadent.org.uk>
-References: <lsq.1507552233.547064726@decadent.org.uk>
+Subject: [PATCH 3.16 117/192] ext2: Don't clear SGID when inheriting ACLs
+Date: Mon, 09 Oct 2017 13:44:24 +0100
+Message-ID: <lsq.1507553064.613763738@decadent.org.uk>
+References: <lsq.1507553063.449494954@decadent.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8bit
-Cc: akpm@linux-foundation.org, "Jan Kara" <jack@suse.cz>,
-        linux-ext4@vger.kernel.org
+Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+        "Jan Kara" <jack@suse.cz>
 To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <lsq.1507552233.547064726@decadent.org.uk>
+In-Reply-To: <lsq.1507553063.449494954@decadent.org.uk>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-3.2.94-rc1 review patch.  If anyone has any objections, please let me know.
+3.16.49-rc1 review patch.  If anyone has any objections, please let me know.
 
 ------------------
 
@@ -37,10 +37,7 @@ posix_acl_create() anyway.
 Fixes: 073931017b49d9458aa351605b43a7e34598caef
 CC: linux-ext4@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
-[bwh: Backported to 3.2:
- - Keep using CURRENT_TIME_SEC
- - Change parameter order of ext2_set_acl() to match upstream
- - Adjust context]
+[bwh: Backported to 3.16: keep using CURRENT_TIME_SEC]
 Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
 ---
  fs/ext2/acl.c | 36 ++++++++++++++++++++++--------------
@@ -48,20 +45,21 @@ Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
 
 --- a/fs/ext2/acl.c
 +++ b/fs/ext2/acl.c
-@@ -174,11 +174,8 @@ ext2_get_acl(struct inode *inode, int ty
+@@ -178,11 +178,8 @@ ext2_get_acl(struct inode *inode, int ty
  	return acl;
  }
  
 -/*
 - * inode->i_mutex: down
 - */
- static int
--ext2_set_acl(struct inode *inode, int type, struct posix_acl *acl)
+-int
+-ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
++static int
 +__ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
  {
  	int name_index;
  	void *value = NULL;
-@@ -193,13 +190,6 @@ ext2_set_acl(struct inode *inode, int ty
+@@ -192,13 +189,6 @@ ext2_set_acl(struct inode *inode, struct
  	switch(type) {
  		case ACL_TYPE_ACCESS:
  			name_index = EXT2_XATTR_INDEX_POSIX_ACL_ACCESS;
@@ -75,13 +73,13 @@ Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
  			break;
  
  		case ACL_TYPE_DEFAULT:
-@@ -226,6 +216,24 @@ ext2_set_acl(struct inode *inode, int ty
+@@ -225,6 +215,24 @@ ext2_set_acl(struct inode *inode, struct
  }
  
  /*
 + * inode->i_mutex: down
 + */
-+static int
++int
 +ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
 +{
 +	int error;
@@ -100,39 +98,18 @@ Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
   * Initialize the ACLs of a new inode. Called from ext2_new_inode.
   *
   * dir->i_mutex: down
-@@ -248,7 +256,7 @@ ext2_init_acl(struct inode *inode, struc
- 	}
- 	if (test_opt(inode->i_sb, POSIX_ACL) && acl) {
- 		if (S_ISDIR(inode->i_mode)) {
--			error = ext2_set_acl(inode, ACL_TYPE_DEFAULT, acl);
-+			error = __ext2_set_acl(inode, acl, ACL_TYPE_DEFAULT);
- 			if (error)
- 				goto cleanup;
- 		}
-@@ -257,7 +265,7 @@ ext2_init_acl(struct inode *inode, struc
- 			return error;
- 		if (error > 0) {
- 			/* This is an extended ACL */
--			error = ext2_set_acl(inode, ACL_TYPE_ACCESS, acl);
-+			error = __ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
- 		}
- 	}
- cleanup:
-@@ -295,7 +303,7 @@ ext2_acl_chmod(struct inode *inode)
- 	error = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
- 	if (error)
+@@ -241,12 +249,12 @@ ext2_init_acl(struct inode *inode, struc
  		return error;
--	error = ext2_set_acl(inode, ACL_TYPE_ACCESS, acl);
-+	error = ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
- 	posix_acl_release(acl);
+ 
+ 	if (default_acl) {
+-		error = ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
++		error = __ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
+ 		posix_acl_release(default_acl);
+ 	}
+ 	if (acl) {
+ 		if (!error)
+-			error = ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
++			error = __ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
+ 		posix_acl_release(acl);
+ 	}
  	return error;
- }
-@@ -378,7 +386,7 @@ ext2_xattr_set_acl(struct dentry *dentry
- 	} else
- 		acl = NULL;
- 
--	error = ext2_set_acl(dentry->d_inode, type, acl);
-+	error = ext2_set_acl(dentry->d_inode, acl, type);
- 
- release_and_out:
- 	posix_acl_release(acl);
