@@ -1,85 +1,105 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH v2 00/11] fscrypt: add some higher-level helper functions
-Date: Mon,  9 Oct 2017 12:15:33 -0700
-Message-ID: <20171009191544.43656-1-ebiggers3@gmail.com>
+Subject: [PATCH v2 05/11] fscrypt: remove unneeded empty fscrypt_operations structs
+Date: Mon,  9 Oct 2017 12:15:38 -0700
+Message-ID: <20171009191544.43656-6-ebiggers3@gmail.com>
+References: <20171009191544.43656-1-ebiggers3@gmail.com>
 Cc: Jaegeuk Kim <jaegeuk@kernel.org>, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
 To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:35670 "EHLO
-        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754005AbdJITS4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Oct 2017 15:18:56 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20171009191544.43656-1-ebiggers3@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-This series prepares to reduce code duplication among ext4, f2fs, and
-ubifs by introducing a S_ENCRYPTED inode flag (so we don't have to call
-back into the filesystem to test the filesystem-specific inode flag),
-then introducing new helper functions that are called at the beginning
-of the open, link, rename, lookup, and setattr operations.
+In the case where a filesystem has been configured without encryption
+support, there is no longer any need to initialize ->s_cop at all, since
+none of the methods are ever called.
 
-In the future we maybe should even call these new helpers from the VFS
-so that each individual filesystem doesn't have to do it.  But that's
-not possible currently because fs/crypto/ can be built as a module.
+Reviewed-by: Chao Yu <yuchao0@huawei.com>
+Acked-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/super.c  | 5 ++---
+ fs/f2fs/super.c  | 5 ++---
+ fs/ubifs/super.c | 7 ++-----
+ 3 files changed, 6 insertions(+), 11 deletions(-)
 
-The patches to switch the filesystems over to use the helper functions
-were included in v1 of this patchset.  They are not included now since
-I'm planning to get them picked up by the individual filesystem
-maintainers after this goes in.
-
-Changes since v1:
-    - Added Dave Chinner's patch to make fscrypt.h include
-      fscrypt_supp.h or fscrypt_notsupp.h, then reorganized the helpers
-      so that most are defined in fscrypt.h.
-    - As noted above, for now omitted the patches to switch the
-      individual filesystems over to the new helpers.
-
-Dave Chinner (1):
-  fscrypt: clean up include file mess
-
-Eric Biggers (10):
-  fs, fscrypt: add an S_ENCRYPTED inode flag
-  fscrypt: switch from ->is_encrypted() to IS_ENCRYPTED()
-  fscrypt: remove ->is_encrypted()
-  fscrypt: remove unneeded empty fscrypt_operations structs
-  fscrypt: new helper function - fscrypt_require_key()
-  fscrypt: new helper function - fscrypt_file_open()
-  fscrypt: new helper function - fscrypt_prepare_link()
-  fscrypt: new helper function - fscrypt_prepare_rename()
-  fscrypt: new helper function - fscrypt_prepare_lookup()
-  fscrypt: new helper function - fscrypt_prepare_setattr()
-
- fs/crypto/Makefile              |   2 +-
- fs/crypto/crypto.c              |   2 +-
- fs/crypto/fname.c               |   3 +-
- fs/crypto/fscrypt_private.h     |   3 +-
- fs/crypto/hooks.c               | 112 +++++++++++++++
- fs/crypto/keyinfo.c             |   2 +-
- fs/crypto/policy.c              |   6 +-
- fs/ext4/ext4.h                  |   8 +-
- fs/ext4/inode.c                 |   7 +-
- fs/ext4/super.c                 |  15 +-
- fs/f2fs/f2fs.h                  |   9 +-
- fs/f2fs/inode.c                 |   5 +-
- fs/f2fs/super.c                 |   7 +-
- fs/ubifs/crypto.c               |   1 -
- fs/ubifs/ioctl.c                |   5 +-
- fs/ubifs/super.c                |   8 +-
- fs/ubifs/ubifs.h                |  18 +--
- fs/ubifs/xattr.c                |   1 +
- include/linux/fs.h              |   2 +
- include/linux/fscrypt.h         | 293 ++++++++++++++++++++++++++++++++++++++++
- include/linux/fscrypt_common.h  | 141 -------------------
- include/linux/fscrypt_notsupp.h |  39 +++++-
- include/linux/fscrypt_supp.h    |  17 ++-
- 23 files changed, 505 insertions(+), 201 deletions(-)
- create mode 100644 fs/crypto/hooks.c
- create mode 100644 include/linux/fscrypt.h
- delete mode 100644 include/linux/fscrypt_common.h
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bc63cdf194e3..04f3670748e7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1244,9 +1244,6 @@ static const struct fscrypt_operations ext4_cryptops = {
+ 	.empty_dir		= ext4_empty_dir,
+ 	.max_namelen		= ext4_max_namelen,
+ };
+-#else
+-static const struct fscrypt_operations ext4_cryptops = {
+-};
+ #endif
+ 
+ #ifdef CONFIG_QUOTA
+@@ -3998,7 +3995,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sb->s_op = &ext4_sops;
+ 	sb->s_export_op = &ext4_export_ops;
+ 	sb->s_xattr = ext4_xattr_handlers;
++#ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 	sb->s_cop = &ext4_cryptops;
++#endif
+ #ifdef CONFIG_QUOTA
+ 	sb->dq_op = &ext4_quota_operations;
+ 	if (ext4_has_feature_quota(sb))
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 1cb41f711ab8..c1c7183b3527 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1597,9 +1597,6 @@ static const struct fscrypt_operations f2fs_cryptops = {
+ 	.empty_dir	= f2fs_empty_dir,
+ 	.max_namelen	= f2fs_max_namelen,
+ };
+-#else
+-static const struct fscrypt_operations f2fs_cryptops = {
+-};
+ #endif
+ 
+ static struct inode *f2fs_nfs_get_inode(struct super_block *sb,
+@@ -2318,7 +2315,9 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
+ #endif
+ 
+ 	sb->s_op = &f2fs_sops;
++#ifdef CONFIG_F2FS_FS_ENCRYPTION
+ 	sb->s_cop = &f2fs_cryptops;
++#endif
+ 	sb->s_xattr = f2fs_xattr_handlers;
+ 	sb->s_export_op = &f2fs_export_ops;
+ 	sb->s_magic = F2FS_SUPER_MAGIC;
+diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
+index adaca6088836..7503e7cdf870 100644
+--- a/fs/ubifs/super.c
++++ b/fs/ubifs/super.c
+@@ -2007,11 +2007,6 @@ static struct ubifs_info *alloc_ubifs_info(struct ubi_volume_desc *ubi)
+ 	return c;
+ }
+ 
+-#ifndef CONFIG_UBIFS_FS_ENCRYPTION
+-const struct fscrypt_operations ubifs_crypt_operations = {
+-};
+-#endif
+-
+ static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
+ {
+ 	struct ubifs_info *c = sb->s_fs_info;
+@@ -2054,7 +2049,9 @@ static int ubifs_fill_super(struct super_block *sb, void *data, int silent)
+ 		sb->s_maxbytes = c->max_inode_sz = MAX_LFS_FILESIZE;
+ 	sb->s_op = &ubifs_super_operations;
+ 	sb->s_xattr = ubifs_xattr_handlers;
++#ifdef CONFIG_UBIFS_FS_ENCRYPTION
+ 	sb->s_cop = &ubifs_crypt_operations;
++#endif
+ 
+ 	mutex_lock(&c->umount_mutex);
+ 	err = mount_ubifs(c);
 -- 
 2.14.2.920.gcf0c67979c-goog
