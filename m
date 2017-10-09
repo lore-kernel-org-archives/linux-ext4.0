@@ -1,62 +1,56 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH v2 11/11] fscrypt: new helper function - fscrypt_prepare_setattr()
-Date: Mon,  9 Oct 2017 12:15:44 -0700
-Message-ID: <20171009191544.43656-12-ebiggers3@gmail.com>
-References: <20171009191544.43656-1-ebiggers3@gmail.com>
-Cc: Jaegeuk Kim <jaegeuk@kernel.org>, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
-To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20171009191544.43656-1-ebiggers3@gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Subject: Re: [PATCH v3] fscrypt: add a documentation file for
+ filesystem-level encryption
+Date: Mon, 9 Oct 2017 13:33:33 -0700
+Message-ID: <20171009203333.GC67463@gmail.com>
+References: <20170909001512.72431-1-ebiggers3@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Eric Biggers <ebiggers@google.com>, linux-doc@vger.kernel.org,
+ linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+ linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>, linux-fscrypt@vger.kernel.org
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Content-Disposition: inline
+In-Reply-To: <20170909001512.72431-1-ebiggers3@gmail.com>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+On Fri, Sep 08, 2017 at 05:15:12PM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> Perhaps long overdue, add a documentation file for filesystem-level
+> encryption, a.k.a. fscrypt or fs/crypto/, to the Documentation
+> directory.  The new file is based loosely on the latest version of the
+> "EXT4 Encryption Design Document (public version)" Google Doc, but with
+> many improvements made, including:
+> 
+> - Reflect the reality that it is not specific to ext4 anymore.
+> - More thoroughly document the design and user-visible API/behavior.
+> - Replace outdated information, such as the outdated explanation of how
+>   encrypted filenames are hashed for indexed directories and how
+>   encrypted filenames are presented to userspace without the key.
+>   (This was changed just before release.)
+> 
+> For now the focus is on the design and user-visible API/behavior, not on
+> how to add encryption support to a filesystem --- since the internal API
+> is still pretty messy and any standalone documentation for it would
+> become outdated as things get refactored over time.
+> 
+> Reviewed-by: Michael Halcrow <mhalcrow@google.com>
 
-Introduce a helper function for filesystems to call when processing
-->setattr() on a possibly-encrypted inode.  It handles enforcing that an
-encrypted file can only be truncated if its encryption key is available.
+Ted, are you interested in taking this through the fscrypt tree for v4.15?
 
-Acked-by: Dave Chinner <dchinner@redhat.com>
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- include/linux/fscrypt.h | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+Eric
 
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 2327859c8cd2..53437bfdfcbc 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -265,4 +265,29 @@ static inline int fscrypt_prepare_lookup(struct inode *dir,
- 	return 0;
- }
- 
-+/**
-+ * fscrypt_prepare_setattr - prepare to change a possibly-encrypted inode's attributes
-+ * @dentry: dentry through which the inode is being changed
-+ * @attr: attributes to change
-+ *
-+ * Prepare for ->setattr() on a possibly-encrypted inode.  On an encrypted file,
-+ * most attribute changes are allowed even without the encryption key.  However,
-+ * without the encryption key we do have to forbid truncates.  This is needed
-+ * because the size being truncated to may not be a multiple of the filesystem
-+ * block size, and in that case we'd have to decrypt the final block, zero the
-+ * portion past i_size, and re-encrypt it.  (We *could* allow truncating to a
-+ * filesystem block boundary, but it's simpler to just forbid all truncates ---
-+ * and we already forbid all other contents modifications without the key.)
-+ *
-+ * Return: 0 on success, -ENOKEY if the key is missing, or another -errno code
-+ * if a problem occurred while setting up the encryption key.
-+ */
-+static inline int fscrypt_prepare_setattr(struct dentry *dentry,
-+					  struct iattr *attr)
-+{
-+	if (attr->ia_valid & ATTR_SIZE)
-+		return fscrypt_require_key(d_inode(dentry));
-+	return 0;
-+}
-+
- #endif	/* _LINUX_FSCRYPT_H */
--- 
-2.14.2.920.gcf0c67979c-goog
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
