@@ -1,117 +1,210 @@
-From: Josef Bacik <josef@toxicpanda.com>
-Subject: Re: [ANNOUNCE] fsperf: a simple fs/block performance testing
- framework
-Date: Mon, 9 Oct 2017 17:15:02 -0400
-Message-ID: <20171009211501.vnyol76nzl4rma42@destiny>
-References: <20171006210956.vf326sydjiphsefo@destiny>
- <20171009005137.GA3666@dastard>
- <20171009022509.rz6goq3sec5ppxrr@destiny>
- <20171009051731.GK3666@dastard>
- <20171009130050.ufnmdhslc53bwpgc@destiny>
- <20171009210920.GO3666@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <josef@toxicpanda.com>, linux-fsdevel@vger.kernel.org,
-        kernel-team@fb.com, linux-btrfs@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171009210920.GO3666@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Tejun Heo <tj@kernel.org>
+Subject: [PATCH 1/3] cgroup, writeback: replace SB_I_CGROUPWB with per-inode S_CGROUPWB
+Date: Mon,  9 Oct 2017 14:29:09 -0700
+Message-ID: <20171009212911.473208-2-tj@kernel.org>
+References: <20171009212911.473208-1-tj@kernel.org>
+Cc: kernel-team@fb.com, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, Tejun Heo <tj@kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+To: jack@suse.cz, axboe@kernel.dk, clm@fb.com, jbacik@fb.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20171009212911.473208-1-tj@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 10, 2017 at 08:09:20AM +1100, Dave Chinner wrote:
-> On Mon, Oct 09, 2017 at 09:00:51AM -0400, Josef Bacik wrote:
-> > On Mon, Oct 09, 2017 at 04:17:31PM +1100, Dave Chinner wrote:
-> > > On Sun, Oct 08, 2017 at 10:25:10PM -0400, Josef Bacik wrote:
-> > > > > Integrating into fstests means it will be immediately available to
-> > > > > all fs developers, it'll run on everything that everyone already has
-> > > > > setup for filesystem testing, and it will have familiar mkfs/mount
-> > > > > option setup behaviour so there's no new hoops for everyone to jump
-> > > > > through to run it...
-> > > > > 
-> > > > 
-> > > > TBF I specifically made it as easy as possible because I know we all hate trying
-> > > > to learn new shit.
-> > > 
-> > > Yeah, it's also hard to get people to change their workflows to add
-> > > a whole new test harness into them. It's easy if it's just a new
-> > > command to an existing workflow :P
-> > > 
-> > 
-> > Agreed, so if you probably won't run this outside of fstests then I'll add it to
-> > xfstests.  I envision this tool as being run by maintainers to verify their pull
-> > requests haven't regressed since the last set of patches, as well as by anybody
-> > trying to fix performance problems.  So it's way more important to me that you,
-> > Ted, and all the various btrfs maintainers will run it than anybody else.
-> > 
-> > > > I figured this was different enough to warrant a separate
-> > > > project, especially since I'm going to add block device jobs so Jens can test
-> > > > block layer things.  If we all agree we'd rather see this in fstests then I'm
-> > > > happy to do that too.  Thanks,
-> > > 
-> > > I'm not fussed either way - it's a good discussion to have, though.
-> > > 
-> > > If I want to add tests (e.g. my time-honoured fsmark tests), where
-> > > should I send patches?
-> > > 
-> > 
-> > I beat you to that!  I wanted to avoid adding fs_mark to the suite because it
-> > means parsing another different set of outputs, so I added a new ioengine to fio
-> > for this
-> > 
-> > http://www.spinics.net/lists/fio/msg06367.html
-> > 
-> > and added a fio job to do 500k files
-> > 
-> > https://github.com/josefbacik/fsperf/blob/master/tests/500kemptyfiles.fio
-> > 
-> > The test is disabled by default for now because obviously the fio support hasn't
-> > landed yet.
-> 
-> That seems .... misguided. fio is good, but it's not a universal
-> solution.
-> 
-> > I'd _like_ to expand fio for cases we come up with that aren't possible, as
-> > there's already a ton of measurements that are taken, especially around
-> > latencies.
-> 
-> To be properly useful it needs to support more than just fio to run
-> tests. Indeed, it's largely useless to me if that's all it can do or
-> it's a major pain to add support for different tools like fsmark.
-> 
-> e.g.  my typical perf regression test that you see the concurrnet
-> fsmark create workload is actually a lot more. It does:
-> 
-> 	fsmark to create 50m zero length files
-> 	umount,
-> 	run parallel xfs_repair (excellent mmap_sem/page fault punisher)
-> 	mount
-> 	run parallel find -ctime (readdir + lookup traversal)
-> 	unmount, mount
-> 	run parallel ls -R (readdir + dtype traversal)
-> 	unmount, mount
-> 	parallel rm -rf of 50m files
-> 
-> I have variants that use small 4k files or large files rather than
-> empty files, taht use different fsync patterns to stress the
-> log, use grep -R to traverse the data as well as
-> the directory/inode structure instead of find, etc.
-> 
-> > That said I'm not opposed to throwing new stuff in there, it just
-> > means we have to add stuff to parse the output and store it in the database in a
-> > consistent way, which seems like more of a pain than just making fio do what we
-> > need it to.  Thanks,
-> 
-> fio is not going to be able to replace the sort of perf tests I run
-> from week to week. If that's all it's going to do then it's not
-> directly useful to me...
-> 
+Currently, filesystem can indiate cgroup writeback support per
+superblock; however, depending on the filesystem, especially if inodes
+are used to carry metadata, it can be useful to indicate cgroup
+writeback support per inode.
 
-Agreed, I'm just going to add this stuff to fstests since I'd like to be able to
-use the _require stuff to make sure we only run stuff we have support for.  I'll
-wire that up this week and send patches along.  Thanks,
+This patch replaces the superblock flag SB_I_CGROUPWB with per-inode
+S_CGROUPWB, so that cgroup writeback can be enabled selectively.
 
-Josef
+* block_dev sets the new flag in bdget() when initializing new inode.
+
+* ext2/4 set the new flag in ext?_set_inode_flags() function.
+
+* btrfs sets the new flag in btrfs_update_iflags() function.  Note
+  that this automatically excludes btree_inode which doesn't use
+  btrfs_update_iflags() during initialization.  This is an intended
+  behavior change.
+
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Cc: Jan Kara <jack@suse.cz>
+Cc: Jens Axboe <axboe@kernel.dk>
+Cc: Chris Mason <clm@fb.com>
+Cc: Josef Bacik <jbacik@fb.com>
+Cc: linux-btrfs@vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+---
+ fs/block_dev.c              | 3 +--
+ fs/btrfs/ioctl.c            | 4 +++-
+ fs/btrfs/super.c            | 1 -
+ fs/ext2/inode.c             | 3 ++-
+ fs/ext2/super.c             | 1 -
+ fs/ext4/inode.c             | 5 ++++-
+ fs/ext4/super.c             | 2 --
+ include/linux/backing-dev.h | 2 +-
+ include/linux/fs.h          | 3 ++-
+ 9 files changed, 13 insertions(+), 11 deletions(-)
+
+diff --git a/fs/block_dev.c b/fs/block_dev.c
+index 93d088f..ff9c282 100644
+--- a/fs/block_dev.c
++++ b/fs/block_dev.c
+@@ -800,8 +800,6 @@ static struct dentry *bd_mount(struct file_system_type *fs_type,
+ {
+ 	struct dentry *dent;
+ 	dent = mount_pseudo(fs_type, "bdev:", &bdev_sops, NULL, BDEVFS_MAGIC);
+-	if (!IS_ERR(dent))
+-		dent->d_sb->s_iflags |= SB_I_CGROUPWB;
+ 	return dent;
+ }
+ 
+@@ -893,6 +891,7 @@ struct block_device *bdget(dev_t dev)
+ 		inode->i_mode = S_IFBLK;
+ 		inode->i_rdev = dev;
+ 		inode->i_bdev = bdev;
++		inode->i_flags |= S_CGROUPWB;
+ 		inode->i_data.a_ops = &def_blk_aops;
+ 		mapping_set_gfp_mask(&inode->i_data, GFP_USER);
+ 		spin_lock(&bdev_lock);
+diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+index 6c7a49f..117cc63 100644
+--- a/fs/btrfs/ioctl.c
++++ b/fs/btrfs/ioctl.c
+@@ -150,9 +150,11 @@ void btrfs_update_iflags(struct inode *inode)
+ 		new_fl |= S_NOATIME;
+ 	if (ip->flags & BTRFS_INODE_DIRSYNC)
+ 		new_fl |= S_DIRSYNC;
++	new_fl |= S_CGROUPWB;
+ 
+ 	set_mask_bits(&inode->i_flags,
+-		      S_SYNC | S_APPEND | S_IMMUTABLE | S_NOATIME | S_DIRSYNC,
++		      S_SYNC | S_APPEND | S_IMMUTABLE | S_NOATIME | S_DIRSYNC |
++		      S_CGROUPWB,
+ 		      new_fl);
+ }
+ 
+diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
+index 35a128a..46a1488 100644
+--- a/fs/btrfs/super.c
++++ b/fs/btrfs/super.c
+@@ -1136,7 +1136,6 @@ static int btrfs_fill_super(struct super_block *sb,
+ 	sb->s_flags |= MS_POSIXACL;
+ #endif
+ 	sb->s_flags |= MS_I_VERSION;
+-	sb->s_iflags |= SB_I_CGROUPWB;
+ 
+ 	err = super_setup_bdi(sb);
+ 	if (err) {
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 4dca6f3..3c5d822 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -1372,7 +1372,7 @@ void ext2_set_inode_flags(struct inode *inode)
+ 	unsigned int flags = EXT2_I(inode)->i_flags;
+ 
+ 	inode->i_flags &= ~(S_SYNC | S_APPEND | S_IMMUTABLE | S_NOATIME |
+-				S_DIRSYNC | S_DAX);
++				S_DIRSYNC | S_DAX | S_CGROUPWB);
+ 	if (flags & EXT2_SYNC_FL)
+ 		inode->i_flags |= S_SYNC;
+ 	if (flags & EXT2_APPEND_FL)
+@@ -1385,6 +1385,7 @@ void ext2_set_inode_flags(struct inode *inode)
+ 		inode->i_flags |= S_DIRSYNC;
+ 	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode))
+ 		inode->i_flags |= S_DAX;
++	inode->i_flags |= S_CGROUPWB;
+ }
+ 
+ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 1458706..e6ba669e 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -922,7 +922,6 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+ 		((EXT2_SB(sb)->s_mount_opt & EXT2_MOUNT_POSIX_ACL) ?
+ 		 MS_POSIXACL : 0);
+-	sb->s_iflags |= SB_I_CGROUPWB;
+ 
+ 	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV &&
+ 	    (EXT2_HAS_COMPAT_FEATURE(sb, ~0U) ||
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 31db875..344f12b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4591,8 +4591,11 @@ void ext4_set_inode_flags(struct inode *inode)
+ 	    !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
+ 	    !ext4_encrypted_inode(inode))
+ 		new_fl |= S_DAX;
++	if (test_opt(inode->i_sb, DATA_FLAGS) != EXT4_MOUNT_JOURNAL_DATA)
++		new_fl |= S_CGROUPWB;
+ 	inode_set_flags(inode, new_fl,
+-			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
++			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
++			S_CGROUPWB);
+ }
+ 
+ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b104096..44ddf1d 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3620,8 +3620,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		}
+ 		if (test_opt(sb, DELALLOC))
+ 			clear_opt(sb, DELALLOC);
+-	} else {
+-		sb->s_iflags |= SB_I_CGROUPWB;
+ 	}
+ 
+ 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index 854e1bd..7274de0 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -246,7 +246,7 @@ static inline bool inode_cgwb_enabled(struct inode *inode)
+ 		cgroup_subsys_on_dfl(io_cgrp_subsys) &&
+ 		bdi_cap_account_dirty(bdi) &&
+ 		(bdi->capabilities & BDI_CAP_CGROUP_WRITEBACK) &&
+-		(inode->i_sb->s_iflags & SB_I_CGROUPWB);
++		IS_CGROUPWB(inode);
+ }
+ 
+ /**
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 13dab19..be2d8a6 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1308,7 +1308,6 @@ extern int send_sigurg(struct fown_struct *fown);
+ #define UMOUNT_UNUSED	0x80000000	/* Flag guaranteed to be unused */
+ 
+ /* sb->s_iflags */
+-#define SB_I_CGROUPWB	0x00000001	/* cgroup-aware writeback enabled */
+ #define SB_I_NOEXEC	0x00000002	/* Ignore executables on this fs */
+ #define SB_I_NODEV	0x00000004	/* Ignore devices on this fs */
+ 
+@@ -1853,6 +1852,7 @@ struct super_operations {
+ #else
+ #define S_DAX		0	/* Make all the DAX code disappear */
+ #endif
++#define S_CGROUPWB	16384	/* Enable cgroup writeback for this inode */
+ 
+ /*
+  * Note that nosuid etc flags are inode-specific: setting some file-system
+@@ -1892,6 +1892,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
+ #define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
+ #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
+ #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
++#define IS_CGROUPWB(inode)	((inode)->i_flags & S_CGROUPWB)
+ 
+ #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
+ 				 (inode)->i_rdev == WHITEOUT_DEV)
+-- 
+2.9.5
