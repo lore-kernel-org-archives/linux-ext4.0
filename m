@@ -1,126 +1,110 @@
-From: Ben Hutchings <ben@decadent.org.uk>
-Subject: [PATCH 3.2 50/74] ext3: Don't clear SGID when inheriting ACLs
-Date: Mon, 09 Oct 2017 13:30:34 +0100
-Message-ID: <lsq.1507552234.684260090@decadent.org.uk>
-References: <lsq.1507552233.547064726@decadent.org.uk>
+From: David Sterba <dsterba@suse.cz>
+Subject: Re: [ANNOUNCE] fsperf: a simple fs/block performance testing
+ framework
+Date: Mon, 9 Oct 2017 16:40:15 +0200
+Message-ID: <20171009144015.GD3521@twin.jikos.cz>
+References: <20171006210956.vf326sydjiphsefo@destiny>
+Reply-To: dsterba@suse.cz
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
-Cc: akpm@linux-foundation.org, "Jan Kara" <jack@suse.cz>,
-        linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, kernel-team@fb.com,
+        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Josef Bacik <josef@toxicpanda.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <lsq.1507552233.547064726@decadent.org.uk>
+In-Reply-To: <20171006210956.vf326sydjiphsefo@destiny>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-3.2.94-rc1 review patch.  If anyone has any objections, please let me know.
+On Fri, Oct 06, 2017 at 05:09:57PM -0400, Josef Bacik wrote:
+> One thing that comes up a lot every LSF is the fact that we have no general way
+> that we do performance testing.  Every fs developer has a set of scripts or
+> things that they run with varying degrees of consistency, but nothing central
+> that we all use.  I for one am getting tired of finding regressions when we are
+> deploying new kernels internally, so I wired this thing up to try and address
+> this need.
+> 
+> We all hate convoluted setups, the more brain power we have to put in to setting
+> something up the less likely we are to use it, so I took the xfstests approach
+> of making it relatively simple to get running and relatively easy to add new
+> tests.  For right now the only thing this framework does is run fio scripts.  I
+> chose fio because it already gathers loads of performance data about it's runs.
+> We have everything we need there, latency, bandwidth, cpu time, and all broken
+> down by reads, writes, and trims.  I figure most of us are familiar enough with
+> fio and how it works to make it relatively easy to add new tests to the
+> framework.
+> 
+> I've posted my code up on github, you can get it here
+> 
+> https://github.com/josefbacik/fsperf
 
-------------------
+Let me propose an existing framework that is capable of what is in
+fsperf, and much more. I'ts Mel Gorman's mmtests
+http://github.com/gormanm/mmtests .
 
-From: Ben Hutchings <ben@decadent.org.uk>
+I've been using it for a year or so, built a few scripts on top of that to
+help me set up configs for specific machines or run tests in sequences.
 
-Based on Jan Kara's fix for ext2 (commit a992f2d38e4c), from which the
-following description is taken:
+What are the capabilities regarding filesystem tests:
 
-> When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
-> set, DIR1 is expected to have SGID bit set (and owning group equal to
-> the owning group of 'DIR0'). However when 'DIR0' also has some default
-> ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
-> 'DIR1' to get cleared if user is not member of the owning group.
->
-> Fix the problem by creating __ext2_set_acl() function that does not call
-> posix_acl_update_mode() and use it when inheriting ACLs. That prevents
-> SGID bit clearing and the mode has been properly set by
-> posix_acl_create() anyway.
+* create and mount filesystems (based on configs)
+* start various workloads, that are possibly adapted to the machine
+  (cpu, memory), there are many types, we'd be interested in those
+  touching filesystems
+* gather system statistics - cpu, memory, IO, latency there are scripts
+  that understand the output of various benchmarking tools (fio, dbench,
+  ffsb, tiobench, bonnie, fs_mark, iozone, blogbench, ...)
+* export the results into plain text or html, with tables and graphs
+* it is already able to compare results of several runs, with
+  statistical indicators
 
-Fixes: 073931017b49 ("posix_acl: Clear SGID bit when setting file permissions")
-Cc: linux-ext4@vger.kernel.org
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
----
- fs/ext3/acl.c | 36 ++++++++++++++++++++++--------------
- 1 file changed, 22 insertions(+), 14 deletions(-)
+The testsuite is actively used and maintained, which means that the
+efforts are mosly on the configuration side. From users' perspective
+this means to spend time with the setup and the rest will work as
+expected. Ie. you don't have to start debugging the suite because there
+are some version mismatches.
 
---- a/fs/ext3/acl.c
-+++ b/fs/ext3/acl.c
-@@ -178,14 +178,9 @@ ext3_get_acl(struct inode *inode, int ty
- 	return acl;
- }
- 
--/*
-- * Set the access or default ACL of an inode.
-- *
-- * inode->i_mutex: down unless called from ext3_new_inode
-- */
- static int
--ext3_set_acl(handle_t *handle, struct inode *inode, int type,
--	     struct posix_acl *acl)
-+__ext3_set_acl(handle_t *handle, struct inode *inode, int type,
-+	       struct posix_acl *acl)
- {
- 	int name_index;
- 	void *value = NULL;
-@@ -198,13 +193,6 @@ ext3_set_acl(handle_t *handle, struct in
- 	switch(type) {
- 		case ACL_TYPE_ACCESS:
- 			name_index = EXT3_XATTR_INDEX_POSIX_ACL_ACCESS;
--			if (acl) {
--				error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
--				if (error)
--					return error;
--				inode->i_ctime = CURRENT_TIME_SEC;
--				ext3_mark_inode_dirty(handle, inode);
--			}
- 			break;
- 
- 		case ACL_TYPE_DEFAULT:
-@@ -234,6 +222,27 @@ ext3_set_acl(handle_t *handle, struct in
- }
- 
- /*
-+ * Set the access or default ACL of an inode.
-+ *
-+ * inode->i_mutex: down
-+ */
-+static int
-+ext3_set_acl(handle_t *handle, struct inode *inode, int type,
-+	     struct posix_acl *acl)
-+{
-+	int error;
-+
-+	if (type == ACL_TYPE_ACCESS && acl) {
-+		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-+		if (error)
-+			return error;
-+		inode->i_ctime = CURRENT_TIME_SEC;
-+		ext3_mark_inode_dirty(handle, inode);
-+	}
-+	return __ext3_set_acl(handle, inode, type, acl);
-+}
-+
-+/*
-  * Initialize the ACLs of a new inode. Called from ext3_new_inode.
-  *
-  * dir->i_mutex: down
-@@ -256,8 +265,8 @@ ext3_init_acl(handle_t *handle, struct i
- 	}
- 	if (test_opt(inode->i_sb, POSIX_ACL) && acl) {
- 		if (S_ISDIR(inode->i_mode)) {
--			error = ext3_set_acl(handle, inode,
--					     ACL_TYPE_DEFAULT, acl);
-+			error = __ext3_set_acl(handle, inode,
-+					       ACL_TYPE_DEFAULT, acl);
- 			if (error)
- 				goto cleanup;
- 		}
-@@ -267,7 +276,7 @@ ext3_init_acl(handle_t *handle, struct i
- 
- 		if (error > 0) {
- 			/* This is an extended ACL */
--			error = ext3_set_acl(handle, inode, ACL_TYPE_ACCESS, acl);
-+			error = __ext3_set_acl(handle, inode, ACL_TYPE_ACCESS, acl);
- 		}
- 	}
- cleanup:
+> All (well most) of the results from fio are stored in a local sqlite database.
+> Right now the comparison stuff is very crude, it simply checks against the
+> previous run and it only checks a few of the keys by default.  You can check
+> latency if you want, but while writing this stuff up it seemed that latency was
+> too variable from run to run to be useful in a "did my thing regress or improve"
+> sort of way.
+> 
+> The configuration is brain dead simple, the README has examples.  All you need
+> to do is make your local.cfg, run ./setup and then run ./fsperf and you are good
+> to go.
+> 
+> The plan is to add lots of workloads as we discover regressions and such.  We
+> don't want anything that takes too long to run otherwise people won't run this,
+> so the existing tests don't take much longer than a few minutes each.
+
+Sorry, this is IMO the wrong approach to benchmarking. Can you exercise
+the filesystem enough in a few minutes? Can you write at least 2 times
+memory size of data to the filesystem? Everything works fine when it's
+from caches and the filesystem is fresh. With that you can simply start
+using phoronix-test-suite and be done, with the same quality of results
+we all roll eyes about.
+
+Targeted tests using fio are fine and I understand the need to keep it
+minimal. mmtests have support for fio and any jobfile can be used,
+internally implemented with the 'fio --cmdline' option that will
+transform it to a shell variable that's passed to fio in the end.
+
+As proposed in the thread, why not use xfstests? It could be suitable
+for the configs, mkfs/mount and running but I think it would need a lot
+of work to enhance the result gathering and presentation. Essentially
+duplicating mmtests from that side.
+
+I was positively surprised by various performance monitors that I was
+not primarily interested in, like memory allocations or context
+switches.  This gives deeper insights into the system and may help
+analyzing the benchmark results.
+
+Side note: you can run xfstests from mmtests, ie. the machine/options
+confugration is shared.
+
+I'm willing to write more about the actual usage of mmtests, but at this
+point I'm proposing the whole framework for consideration.
