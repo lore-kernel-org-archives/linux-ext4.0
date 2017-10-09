@@ -1,71 +1,126 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Ext4 support for LTS kernels (was: Re: [PATCH 3.14] ext4: fix data
- exposure after a crash)
-Date: Mon, 9 Oct 2017 09:20:04 -0400
-Message-ID: <20171009132004.y6rale4k7oll3hab@thunk.org>
-References: <146507681324370@kroah.com>
- <1467153108-104061-1-git-send-email-george_davis@mentor.com>
- <20160629074600.GB14082@quack2.suse.cz>
- <dcfd784fe927475fb98356abbea36179@SGPMBX1004.APAC.bosch.com>
- <20171009110537.GH17917@quack2.suse.cz>
+From: Ben Hutchings <ben@decadent.org.uk>
+Subject: [PATCH 3.2 50/74] ext3: Don't clear SGID when inheriting ACLs
+Date: Mon, 09 Oct 2017 13:30:34 +0100
+Message-ID: <lsq.1507552234.684260090@decadent.org.uk>
+References: <lsq.1507552233.547064726@decadent.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "HUANG Weller (CM/ESW12-CN)" <Weller.Huang@cn.bosch.com>,
-        "George G. Davis" <george_davis@mentor.com>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        "Behme Dirk (CM/ESO2)" <Dirk.Behme@de.bosch.com>,
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+Cc: akpm@linux-foundation.org, "Jan Kara" <jack@suse.cz>,
         linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <stable-owner@vger.kernel.org>
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20171009110537.GH17917@quack2.suse.cz>
-Sender: stable-owner@vger.kernel.org
+In-Reply-To: <lsq.1507552233.547064726@decadent.org.uk>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 09, 2017 at 01:05:37PM +0200, Jan Kara wrote:
-> On Fri 06-10-17 10:04:41, HUANG Weller (CM/ESW12-CN) wrote:
-> > I checked the latest 3.14 source code 3.14.79. I didn't found the below patch.
-> 
-> Well, I'm not sure who runs the 3.14 stable tree (it's not listed at
-> kernel.org). It's up to him to pick up patches...
+3.2.94-rc1 review patch.  If anyone has any objections, please let me know.
 
-The announcement of 3.14's End of Life as a stable kernel series was
-announced in September 2016.  As far as I know, the fact that 3.14 is
-no longer listed on kernel.org means that no one is maintaining 3.14
-after Greg K-H declared it to be EOL'ed.
+------------------
 
-On a side note, I just recently finished an effort to update the ext4
-patches for 3.14, 4.1, 4.4, and 4.9.  I've sent those backports and
-cherry pick requests to stable@vger.kernel.org.  For details of my
-work, at:
+From: Ben Hutchings <ben@decadent.org.uk>
 
-https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+Based on Jan Kara's fix for ext2 (commit a992f2d38e4c), from which the
+following description is taken:
 
-There are testing notes in the signed git tags:
+> When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
+> set, DIR1 is expected to have SGID bit set (and owning group equal to
+> the owning group of 'DIR0'). However when 'DIR0' also has some default
+> ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
+> 'DIR1' to get cleared if user is not member of the owning group.
+>
+> Fix the problem by creating __ext2_set_acl() function that does not call
+> posix_acl_update_mode() and use it when inheriting ACLs. That prevents
+> SGID bit clearing and the mode has been properly set by
+> posix_acl_create() anyway.
 
-ext4-4.9.54-1
-   - https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/tag/?h=ext4-4.9.54-1
-ext4-4.4.91-1
-   - https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/tag/?h=ext4-4.4.91-1
-ext4-4.1.44-1
-   - https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/tag/?h=ext4-4.1.44-1
-ext4-3.18.74-1
-   - https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/tag/?h=ext4-3.18.74-1
+Fixes: 073931017b49 ("posix_acl: Clear SGID bit when setting file permissions")
+Cc: linux-ext4@vger.kernel.org
+Cc: Jan Kara <jack@suse.cz>
+Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+---
+ fs/ext3/acl.c | 36 ++++++++++++++++++++++--------------
+ 1 file changed, 22 insertions(+), 14 deletions(-)
 
-.... and on a "when Ted has time / interest basis", the ext4-3.18,
-ext4-4.1, ext4-4.4, and ext-4.9 branches in the above repo will be
-updated with a rebase against the latest LTS kernel and whatever
-patches are needed to minimize xfstests failures that haven't yet
-gotten accepted into the LTS kernel versions.
-
-Getting changes into android-common and/or various SOC's BSP kernels
-is left as an exercise to the reader.
-
-I suspect that at some point soon, when 4.14 becomes released and
-becomes a LTS kernel, I'm going to drop ext4-4.1 and replace it with
-ext4-4.14, since very few people seem to be using the 4.1 LTS kernel,
-and my time / effort is limited.  If someone is interested in helping
-out, please contact me.
-
-					- Ted
+--- a/fs/ext3/acl.c
++++ b/fs/ext3/acl.c
+@@ -178,14 +178,9 @@ ext3_get_acl(struct inode *inode, int ty
+ 	return acl;
+ }
+ 
+-/*
+- * Set the access or default ACL of an inode.
+- *
+- * inode->i_mutex: down unless called from ext3_new_inode
+- */
+ static int
+-ext3_set_acl(handle_t *handle, struct inode *inode, int type,
+-	     struct posix_acl *acl)
++__ext3_set_acl(handle_t *handle, struct inode *inode, int type,
++	       struct posix_acl *acl)
+ {
+ 	int name_index;
+ 	void *value = NULL;
+@@ -198,13 +193,6 @@ ext3_set_acl(handle_t *handle, struct in
+ 	switch(type) {
+ 		case ACL_TYPE_ACCESS:
+ 			name_index = EXT3_XATTR_INDEX_POSIX_ACL_ACCESS;
+-			if (acl) {
+-				error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
+-				if (error)
+-					return error;
+-				inode->i_ctime = CURRENT_TIME_SEC;
+-				ext3_mark_inode_dirty(handle, inode);
+-			}
+ 			break;
+ 
+ 		case ACL_TYPE_DEFAULT:
+@@ -234,6 +222,27 @@ ext3_set_acl(handle_t *handle, struct in
+ }
+ 
+ /*
++ * Set the access or default ACL of an inode.
++ *
++ * inode->i_mutex: down
++ */
++static int
++ext3_set_acl(handle_t *handle, struct inode *inode, int type,
++	     struct posix_acl *acl)
++{
++	int error;
++
++	if (type == ACL_TYPE_ACCESS && acl) {
++		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
++		if (error)
++			return error;
++		inode->i_ctime = CURRENT_TIME_SEC;
++		ext3_mark_inode_dirty(handle, inode);
++	}
++	return __ext3_set_acl(handle, inode, type, acl);
++}
++
++/*
+  * Initialize the ACLs of a new inode. Called from ext3_new_inode.
+  *
+  * dir->i_mutex: down
+@@ -256,8 +265,8 @@ ext3_init_acl(handle_t *handle, struct i
+ 	}
+ 	if (test_opt(inode->i_sb, POSIX_ACL) && acl) {
+ 		if (S_ISDIR(inode->i_mode)) {
+-			error = ext3_set_acl(handle, inode,
+-					     ACL_TYPE_DEFAULT, acl);
++			error = __ext3_set_acl(handle, inode,
++					       ACL_TYPE_DEFAULT, acl);
+ 			if (error)
+ 				goto cleanup;
+ 		}
+@@ -267,7 +276,7 @@ ext3_init_acl(handle_t *handle, struct i
+ 
+ 		if (error > 0) {
+ 			/* This is an extended ACL */
+-			error = ext3_set_acl(handle, inode, ACL_TYPE_ACCESS, acl);
++			error = __ext3_set_acl(handle, inode, ACL_TYPE_ACCESS, acl);
+ 		}
+ 	}
+ cleanup:
