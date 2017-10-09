@@ -1,211 +1,246 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH v2 02/11] fs,
- fscrypt: add an S_ENCRYPTED inode flag
-Date: Mon,  9 Oct 2017 12:15:35 -0700
-Message-ID: <20171009191544.43656-3-ebiggers3@gmail.com>
+Subject: [PATCH v2 01/11] fscrypt: clean up include file mess
+Date: Mon,  9 Oct 2017 12:15:34 -0700
+Message-ID: <20171009191544.43656-2-ebiggers3@gmail.com>
 References: <20171009191544.43656-1-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Biggers <ebiggers@google.com>, linux-f2fs-devel@lists.sourceforge.net,
- linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
- Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
-To: linux-fscrypt@vger.kernel.org,
-	"Theodore Y . Ts'o" <tytso@mit.edu>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Cc: Jaegeuk Kim <jaegeuk@kernel.org>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Dave Chinner <dchinner@redhat.com>,
+        Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20171009191544.43656-1-ebiggers3@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+From: Dave Chinner <dchinner@redhat.com>
 
-Introduce a flag S_ENCRYPTED which can be set in ->i_flags to indicate
-that the inode is encrypted using the fscrypt (fs/crypto/) mechanism.
+Filesystems have to include different header files based on whether they
+are compiled with encryption support or not. That's nasty and messy.
 
-Checking this flag will give the same information that
-inode->i_sb->s_cop->is_encrypted(inode) currently does, but will be more
-efficient.  This will be useful for adding higher-level helper functions
-for filesystems to use.  For example we'll be able to replace this:
+Instead, rationalise the headers so we have a single include fscrypt.h
+and let it decide what internal implementation to include based on the
+__FS_HAS_ENCRYPTION define.  Filesystems set __FS_HAS_ENCRYPTION to 1
+before including linux/fscrypt.h if they are built with encryption
+support.  Otherwise, they must set __FS_HAS_ENCRYPTION to 0.
 
-	if (ext4_encrypted_inode(inode)) {
-		ret = fscrypt_get_encryption_info(inode);
-		if (ret)
-			return ret;
-		if (!fscrypt_has_encryption_key(inode))
-			return -ENOKEY;
-	}
+Add guards to prevent fscrypt_supp.h and fscrypt_notsupp.h from being
+directly included by filesystems.
 
-with this:
-
-	ret = fscrypt_require_key(inode);
-	if (ret)
-		return ret;
-
-... since we'll be able to retain the fast path for unencrypted files as
-a single flag check, using an inline function.  This wasn't possible
-before because we'd have had to frequently call through the
-->i_sb->s_cop->is_encrypted function pointer, even when the encryption
-support was disabled or not being used.
-
-Note: we don't define S_ENCRYPTED to 0 if CONFIG_FS_ENCRYPTION is
-disabled because we want to continue to return an error if an encrypted
-file is accessed without encryption support, rather than pretending that
-it is unencrypted.
-
-Reviewed-by: Chao Yu <yuchao0@huawei.com>
-Acked-by: Dave Chinner <dchinner@redhat.com>
+Signed-off-by: Dave Chinner <dchinner@redhat.com>
+[EB: use 1 and 0 rather than defined/undefined]
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/inode.c    | 7 +++++--
- fs/ext4/super.c    | 8 ++++++--
- fs/f2fs/f2fs.h     | 1 +
- fs/f2fs/inode.c    | 5 ++++-
- fs/ubifs/ioctl.c   | 5 ++++-
- fs/ubifs/xattr.c   | 1 +
- include/linux/fs.h | 2 ++
- 7 files changed, 23 insertions(+), 6 deletions(-)
+ fs/crypto/fscrypt_private.h                   |  3 +-
+ fs/ext4/ext4.h                                |  8 ++----
+ fs/f2fs/f2fs.h                                |  8 ++----
+ fs/ubifs/ubifs.h                              |  9 +++---
+ include/linux/{fscrypt_common.h => fscrypt.h} | 41 ++++++++++++++++++---------
+ include/linux/fscrypt_notsupp.h               |  7 +++--
+ include/linux/fscrypt_supp.h                  |  7 +++--
+ 7 files changed, 49 insertions(+), 34 deletions(-)
+ rename include/linux/{fscrypt_common.h => fscrypt.h} (80%)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 31db875bc7a1..d5a471939fbc 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4589,10 +4589,13 @@ void ext4_set_inode_flags(struct inode *inode)
- 		new_fl |= S_DIRSYNC;
- 	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode) &&
- 	    !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
--	    !ext4_encrypted_inode(inode))
-+	    !(flags & EXT4_ENCRYPT_FL))
- 		new_fl |= S_DAX;
-+	if (flags & EXT4_ENCRYPT_FL)
-+		new_fl |= S_ENCRYPTED;
- 	inode_set_flags(inode, new_fl,
--			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
-+			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
-+			S_ENCRYPTED);
- }
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index a1d5021c31ef..a180981ee6d7 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -11,7 +11,8 @@
+ #ifndef _FSCRYPT_PRIVATE_H
+ #define _FSCRYPT_PRIVATE_H
  
- static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index b104096fce9e..dcfb19539871 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1181,7 +1181,8 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 			ext4_clear_inode_state(inode,
- 					EXT4_STATE_MAY_INLINE_DATA);
- 			/*
--			 * Update inode->i_flags - e.g. S_DAX may get disabled
-+			 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-+			 * S_DAX may be disabled
- 			 */
- 			ext4_set_inode_flags(inode);
- 		}
-@@ -1206,7 +1207,10 @@ static int ext4_set_context(struct inode *inode, const void *ctx, size_t len,
- 				    ctx, len, 0);
- 	if (!res) {
- 		ext4_set_inode_flag(inode, EXT4_INODE_ENCRYPT);
--		/* Update inode->i_flags - e.g. S_DAX may get disabled */
-+		/*
-+		 * Update inode->i_flags - S_ENCRYPTED will be enabled,
-+		 * S_DAX may be disabled
-+		 */
- 		ext4_set_inode_flags(inode);
- 		res = ext4_mark_inode_dirty(handle, inode);
- 		if (res)
+-#include <linux/fscrypt_supp.h>
++#define __FS_HAS_ENCRYPTION 1
++#include <linux/fscrypt.h>
+ #include <crypto/hash.h>
+ 
+ /* Encryption parameters */
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e2abe01c8c6b..ca6d6166b85c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -33,17 +33,15 @@
+ #include <linux/percpu_counter.h>
+ #include <linux/ratelimit.h>
+ #include <crypto/hash.h>
+-#ifdef CONFIG_EXT4_FS_ENCRYPTION
+-#include <linux/fscrypt_supp.h>
+-#else
+-#include <linux/fscrypt_notsupp.h>
+-#endif
+ #include <linux/falloc.h>
+ #include <linux/percpu-rwsem.h>
+ #ifdef __KERNEL__
+ #include <linux/compat.h>
+ #endif
+ 
++#define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_EXT4_FS_ENCRYPTION)
++#include <linux/fscrypt.h>
++
+ /*
+  * The fourth extended filesystem constants/structures
+  */
 diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-index fc53aebaf3ae..34d6e9ae8422 100644
+index 9a7c90386947..fc53aebaf3ae 100644
 --- a/fs/f2fs/f2fs.h
 +++ b/fs/f2fs/f2fs.h
-@@ -2947,6 +2947,7 @@ static inline void f2fs_set_encrypted_inode(struct inode *inode)
- {
- #ifdef CONFIG_F2FS_FS_ENCRYPTION
- 	file_set_encrypt(inode);
-+	inode->i_flags |= S_ENCRYPTED;
- #endif
- }
+@@ -23,13 +23,11 @@
+ #include <linux/bio.h>
+ #include <linux/blkdev.h>
+ #include <linux/quotaops.h>
+-#ifdef CONFIG_F2FS_FS_ENCRYPTION
+-#include <linux/fscrypt_supp.h>
+-#else
+-#include <linux/fscrypt_notsupp.h>
+-#endif
+ #include <crypto/hash.h>
  
-diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
-index 50c88e37ed66..53fb08810ee9 100644
---- a/fs/f2fs/inode.c
-+++ b/fs/f2fs/inode.c
-@@ -43,8 +43,11 @@ void f2fs_set_inode_flags(struct inode *inode)
- 		new_fl |= S_NOATIME;
- 	if (flags & FS_DIRSYNC_FL)
- 		new_fl |= S_DIRSYNC;
-+	if (f2fs_encrypted_inode(inode))
-+		new_fl |= S_ENCRYPTED;
- 	inode_set_flags(inode, new_fl,
--			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC);
-+			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|
-+			S_ENCRYPTED);
- }
- 
- static void __get_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
-diff --git a/fs/ubifs/ioctl.c b/fs/ubifs/ioctl.c
-index fdc311246807..0164bcc827f8 100644
---- a/fs/ubifs/ioctl.c
-+++ b/fs/ubifs/ioctl.c
-@@ -38,7 +38,8 @@ void ubifs_set_inode_flags(struct inode *inode)
- {
- 	unsigned int flags = ubifs_inode(inode)->flags;
- 
--	inode->i_flags &= ~(S_SYNC | S_APPEND | S_IMMUTABLE | S_DIRSYNC);
-+	inode->i_flags &= ~(S_SYNC | S_APPEND | S_IMMUTABLE | S_DIRSYNC |
-+			    S_ENCRYPTED);
- 	if (flags & UBIFS_SYNC_FL)
- 		inode->i_flags |= S_SYNC;
- 	if (flags & UBIFS_APPEND_FL)
-@@ -47,6 +48,8 @@ void ubifs_set_inode_flags(struct inode *inode)
- 		inode->i_flags |= S_IMMUTABLE;
- 	if (flags & UBIFS_DIRSYNC_FL)
- 		inode->i_flags |= S_DIRSYNC;
-+	if (flags & UBIFS_CRYPT_FL)
-+		inode->i_flags |= S_ENCRYPTED;
- }
- 
- /*
-diff --git a/fs/ubifs/xattr.c b/fs/ubifs/xattr.c
-index c13eae819cbc..5ddc89d564fd 100644
---- a/fs/ubifs/xattr.c
-+++ b/fs/ubifs/xattr.c
-@@ -170,6 +170,7 @@ static int create_xattr(struct ubifs_info *c, struct inode *host,
- 	err = ubifs_jnl_update(c, host, nm, inode, 0, 1);
- 	if (err)
- 		goto out_cancel;
-+	ubifs_set_inode_flags(host);
- 	mutex_unlock(&host_ui->ui_mutex);
- 
- 	ubifs_release_budget(c, &req);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 13dab191a23e..3efd5ded21c9 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1853,6 +1853,7 @@ struct super_operations {
++#define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_F2FS_FS_ENCRYPTION)
++#include <linux/fscrypt.h>
++
+ #ifdef CONFIG_F2FS_CHECK_FS
+ #define f2fs_bug_on(sbi, condition)	BUG_ON(condition)
  #else
- #define S_DAX		0	/* Make all the DAX code disappear */
- #endif
-+#define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
+diff --git a/fs/ubifs/ubifs.h b/fs/ubifs/ubifs.h
+index cd43651f1731..6a346d4af98f 100644
+--- a/fs/ubifs/ubifs.h
++++ b/fs/ubifs/ubifs.h
+@@ -38,12 +38,11 @@
+ #include <linux/backing-dev.h>
+ #include <linux/security.h>
+ #include <linux/xattr.h>
+-#ifdef CONFIG_UBIFS_FS_ENCRYPTION
+-#include <linux/fscrypt_supp.h>
+-#else
+-#include <linux/fscrypt_notsupp.h>
+-#endif
+ #include <linux/random.h>
++
++#define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_UBIFS_FS_ENCRYPTION)
++#include <linux/fscrypt.h>
++
+ #include "ubifs-media.h"
  
+ /* Version of this UBIFS implementation */
+diff --git a/include/linux/fscrypt_common.h b/include/linux/fscrypt.h
+similarity index 80%
+rename from include/linux/fscrypt_common.h
+rename to include/linux/fscrypt.h
+index 97f738628b36..bfc962e62078 100644
+--- a/include/linux/fscrypt_common.h
++++ b/include/linux/fscrypt.h
+@@ -1,14 +1,17 @@
  /*
-  * Note that nosuid etc flags are inode-specific: setting some file-system
-@@ -1892,6 +1893,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
- #define IS_AUTOMOUNT(inode)	((inode)->i_flags & S_AUTOMOUNT)
- #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
- #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
-+#define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
+- * fscrypt_common.h: common declarations for per-file encryption
++ * fscrypt.h: declarations for per-file encryption
++ *
++ * Filesystems that implement per-file encryption include this header
++ * file with the __FS_HAS_ENCRYPTION set according to whether that filesystem
++ * is being built with encryption support or not.
+  *
+  * Copyright (C) 2015, Google, Inc.
+  *
+  * Written by Michael Halcrow, 2015.
+  * Modified by Jaegeuk Kim, 2015.
+  */
+-
+-#ifndef _LINUX_FSCRYPT_COMMON_H
+-#define _LINUX_FSCRYPT_COMMON_H
++#ifndef _LINUX_FSCRYPT_H
++#define _LINUX_FSCRYPT_H
  
- #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
- 				 (inode)->i_rdev == WHITEOUT_DEV)
+ #include <linux/key.h>
+ #include <linux/fs.h>
+@@ -119,23 +122,35 @@ static inline bool fscrypt_is_dot_dotdot(const struct qstr *str)
+ 	return false;
+ }
+ 
++#if __FS_HAS_ENCRYPTION
++
+ static inline struct page *fscrypt_control_page(struct page *page)
+ {
+-#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+ 	return ((struct fscrypt_ctx *)page_private(page))->w.control_page;
+-#else
++}
++
++static inline bool fscrypt_has_encryption_key(const struct inode *inode)
++{
++	return (inode->i_crypt_info != NULL);
++}
++
++#include <linux/fscrypt_supp.h>
++
++#else /* !__FS_HAS_ENCRYPTION */
++
++static inline struct page *fscrypt_control_page(struct page *page)
++{
+ 	WARN_ON_ONCE(1);
+ 	return ERR_PTR(-EINVAL);
+-#endif
+ }
+ 
+-static inline int fscrypt_has_encryption_key(const struct inode *inode)
++static inline bool fscrypt_has_encryption_key(const struct inode *inode)
+ {
+-#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
+-	return (inode->i_crypt_info != NULL);
+-#else
+ 	return 0;
+-#endif
+ }
+ 
+-#endif	/* _LINUX_FSCRYPT_COMMON_H */
++#include <linux/fscrypt_notsupp.h>
++#endif /* __FS_HAS_ENCRYPTION */
++
++
++#endif	/* _LINUX_FSCRYPT_H */
+diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
+index ec406aed2f2f..2d0b6960831e 100644
+--- a/include/linux/fscrypt_notsupp.h
++++ b/include/linux/fscrypt_notsupp.h
+@@ -3,13 +3,16 @@
+  *
+  * This stubs out the fscrypt functions for filesystems configured without
+  * encryption support.
++ *
++ * Do not include this file directly. Use fscrypt.h instead!
+  */
++#ifndef _LINUX_FSCRYPT_H
++#error "Incorrect include of linux/fscrypt_notsupp.h!"
++#endif
+ 
+ #ifndef _LINUX_FSCRYPT_NOTSUPP_H
+ #define _LINUX_FSCRYPT_NOTSUPP_H
+ 
+-#include <linux/fscrypt_common.h>
+-
+ /* crypto.c */
+ static inline struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *inode,
+ 						  gfp_t gfp_flags)
+diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
+index 32e2fcf13b01..5a90e5ef4687 100644
+--- a/include/linux/fscrypt_supp.h
++++ b/include/linux/fscrypt_supp.h
+@@ -1,14 +1,15 @@
+ /*
+  * fscrypt_supp.h
+  *
+- * This is included by filesystems configured with encryption support.
++ * Do not include this file directly. Use fscrypt.h instead!
+  */
++#ifndef _LINUX_FSCRYPT_H
++#error "Incorrect include of linux/fscrypt_supp.h!"
++#endif
+ 
+ #ifndef _LINUX_FSCRYPT_SUPP_H
+ #define _LINUX_FSCRYPT_SUPP_H
+ 
+-#include <linux/fscrypt_common.h>
+-
+ /* crypto.c */
+ extern struct kmem_cache *fscrypt_info_cachep;
+ extern struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *, gfp_t);
 -- 
 2.14.2.920.gcf0c67979c-goog
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
