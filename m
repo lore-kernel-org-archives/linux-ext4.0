@@ -1,68 +1,85 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [ANNOUNCE] fsperf: a simple fs/block performance testing
- framework
-Date: Mon, 9 Oct 2017 11:14:49 -0400
-Message-ID: <20171009151449.u2j57ifaoqke3hx2@thunk.org>
-References: <20171006210956.vf326sydjiphsefo@destiny>
- <20171009005137.GA3666@dastard>
- <20171009022509.rz6goq3sec5ppxrr@destiny>
- <20171009034335.pwehn4kz3cwjy6o7@thunk.org>
- <20171009125415.wrfd5rp5zlf4qsgm@destiny>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-fsdevel@vger.kernel.org,
-        kernel-team@fb.com, linux-btrfs@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Josef Bacik <josef@toxicpanda.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171009125415.wrfd5rp5zlf4qsgm@destiny>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH v2 00/11] fscrypt: add some higher-level helper functions
+Date: Mon,  9 Oct 2017 12:15:33 -0700
+Message-ID: <20171009191544.43656-1-ebiggers3@gmail.com>
+Cc: Jaegeuk Kim <jaegeuk@kernel.org>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f193.google.com ([209.85.192.193]:35670 "EHLO
+        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754005AbdJITS4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Oct 2017 15:18:56 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 09, 2017 at 08:54:16AM -0400, Josef Bacik wrote:
-> I purposefully used as little as possible, just json and sqlite, and I tried to
-> use as little python3 isms as possible.  Any rpm based systems should have these
-> libraries already installed, I agree that using any of the PyPI stuff is a pain
-> and is a non-starter for me as I want to make it as easy as possible to get
-> running.
-> 
-> Where do you fall on the including it in xfstests question?  I expect that the
-> perf stuff would be run more as maintainers put their pull requests together to
-> make sure things haven't regressed.  To that end I was going to wire up
-> xfstests-bld to run this as well.  Whatever you and Dave prefer is what I'll do,
-> I'll use it wherever it ends up so you two are the ones that get to decide.
+From: Eric Biggers <ebiggers@google.com>
 
-I'm currently using Python 2.7 mainly because the LTM subsystem in
-gce-xfstests was implemented using that version of Python, and my
-initial efforts to port it to Python 3 were... not smooth.  (Because
-it was doing authentication, I got bit by the Python 2 vs Python 3
-"bytes vs. strings vs. unicode" transition especially hard.)
+This series prepares to reduce code duplication among ext4, f2fs, and
+ubifs by introducing a S_ENCRYPTED inode flag (so we don't have to call
+back into the filesystem to test the filesystem-specific inode flag),
+then introducing new helper functions that are called at the beginning
+of the open, link, rename, lookup, and setattr operations.
 
-So I'm going to be annoyed by needing to package Python 2.7 and Python
-3.5 in my test VM's, but I can deal, and this will probably be the
-forcing function for me to figure out how make that jump.  To be
-honest, the bigger issue I'm going to have to figure out is how to
-manage the state in the sqlite database across disposable VM's running
-in parallel.  And the assumption being made with having a static
-sqllite database on a test machine is that the hardware capabilities
-of the are static, and that's not true with a VM, whether it's running
-via Qemu or in some cloud environment.
+In the future we maybe should even call these new helpers from the VFS
+so that each individual filesystem doesn't have to do it.  But that's
+not possible currently because fs/crypto/ can be built as a module.
 
-I'm not going to care that much about Python 3 not being available on
-enterprise distro's, but I could see that being annoying for some
-folks.  I'll let them worry about that.
+The patches to switch the filesystems over to use the helper functions
+were included in v1 of this patchset.  They are not included now since
+I'm planning to get them picked up by the individual filesystem
+maintainers after this goes in.
 
-The main thing I think we'll need to worry about once we let Python
-into xfstests is to be pretty careful about specifying what version of
-Python the scripts need to be portable against (Python 3.3?  3.4?
-3.5?) and what versions of python packages get imported.
+Changes since v1:
+    - Added Dave Chinner's patch to make fscrypt.h include
+      fscrypt_supp.h or fscrypt_notsupp.h, then reorganized the helpers
+      so that most are defined in fscrypt.h.
+    - As noted above, for now omitted the patches to switch the
+      individual filesystems over to the new helpers.
 
-The bottom line is that I'm personally supportive of adding Python and
-fsperf to xfstests.  We just need to be careful about the portability
-concerns, not just now, but any time we check in new Python code.  And
-having some documented Python style guidelines, and adding unit tests
-so we can notice potential portability breakages would be a good idea.
+Dave Chinner (1):
+  fscrypt: clean up include file mess
 
-	      	   	    	     - Ted
+Eric Biggers (10):
+  fs, fscrypt: add an S_ENCRYPTED inode flag
+  fscrypt: switch from ->is_encrypted() to IS_ENCRYPTED()
+  fscrypt: remove ->is_encrypted()
+  fscrypt: remove unneeded empty fscrypt_operations structs
+  fscrypt: new helper function - fscrypt_require_key()
+  fscrypt: new helper function - fscrypt_file_open()
+  fscrypt: new helper function - fscrypt_prepare_link()
+  fscrypt: new helper function - fscrypt_prepare_rename()
+  fscrypt: new helper function - fscrypt_prepare_lookup()
+  fscrypt: new helper function - fscrypt_prepare_setattr()
+
+ fs/crypto/Makefile              |   2 +-
+ fs/crypto/crypto.c              |   2 +-
+ fs/crypto/fname.c               |   3 +-
+ fs/crypto/fscrypt_private.h     |   3 +-
+ fs/crypto/hooks.c               | 112 +++++++++++++++
+ fs/crypto/keyinfo.c             |   2 +-
+ fs/crypto/policy.c              |   6 +-
+ fs/ext4/ext4.h                  |   8 +-
+ fs/ext4/inode.c                 |   7 +-
+ fs/ext4/super.c                 |  15 +-
+ fs/f2fs/f2fs.h                  |   9 +-
+ fs/f2fs/inode.c                 |   5 +-
+ fs/f2fs/super.c                 |   7 +-
+ fs/ubifs/crypto.c               |   1 -
+ fs/ubifs/ioctl.c                |   5 +-
+ fs/ubifs/super.c                |   8 +-
+ fs/ubifs/ubifs.h                |  18 +--
+ fs/ubifs/xattr.c                |   1 +
+ include/linux/fs.h              |   2 +
+ include/linux/fscrypt.h         | 293 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/fscrypt_common.h  | 141 -------------------
+ include/linux/fscrypt_notsupp.h |  39 +++++-
+ include/linux/fscrypt_supp.h    |  17 ++-
+ 23 files changed, 505 insertions(+), 201 deletions(-)
+ create mode 100644 fs/crypto/hooks.c
+ create mode 100644 include/linux/fscrypt.h
+ delete mode 100644 include/linux/fscrypt_common.h
+
+-- 
+2.14.2.920.gcf0c67979c-goog
