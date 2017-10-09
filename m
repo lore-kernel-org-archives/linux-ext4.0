@@ -1,60 +1,113 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [ANNOUNCE] fsperf: a simple fs/block performance testing
  framework
-Date: Sun, 8 Oct 2017 23:43:35 -0400
-Message-ID: <20171009034335.pwehn4kz3cwjy6o7@thunk.org>
+Date: Mon, 9 Oct 2017 16:17:31 +1100
+Message-ID: <20171009051731.GK3666@dastard>
 References: <20171006210956.vf326sydjiphsefo@destiny>
  <20171009005137.GA3666@dastard>
  <20171009022509.rz6goq3sec5ppxrr@destiny>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-fsdevel@vger.kernel.org,
-        kernel-team@fb.com, linux-btrfs@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, kernel-team@fb.com,
+        linux-btrfs@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
 To: Josef Bacik <josef@toxicpanda.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-block-owner@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <20171009022509.rz6goq3sec5ppxrr@destiny>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-block-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Sun, Oct 08, 2017 at 10:25:10PM -0400, Josef Bacik wrote:
+> On Mon, Oct 09, 2017 at 11:51:37AM +1100, Dave Chinner wrote:
+> > On Fri, Oct 06, 2017 at 05:09:57PM -0400, Josef Bacik wrote:
+> > > Hello,
+> > > 
+> > > One thing that comes up a lot every LSF is the fact that we have no general way
+> > > that we do performance testing.  Every fs developer has a set of scripts or
+> > > things that they run with varying degrees of consistency, but nothing central
+> > > that we all use.  I for one am getting tired of finding regressions when we are
+> > > deploying new kernels internally, so I wired this thing up to try and address
+> > > this need.
+> > > 
+> > > We all hate convoluted setups, the more brain power we have to put in to setting
+> > > something up the less likely we are to use it, so I took the xfstests approach
+> > > of making it relatively simple to get running and relatively easy to add new
+> > > tests.  For right now the only thing this framework does is run fio scripts.  I
+> > > chose fio because it already gathers loads of performance data about it's runs.
+> > > We have everything we need there, latency, bandwidth, cpu time, and all broken
+> > > down by reads, writes, and trims.  I figure most of us are familiar enough with
+> > > fio and how it works to make it relatively easy to add new tests to the
+> > > framework.
+> > > 
+> > > I've posted my code up on github, you can get it here
+> > > 
+> > > https://github.com/josefbacik/fsperf
+> > > 
+> > > All (well most) of the results from fio are stored in a local sqlite database.
+> > > Right now the comparison stuff is very crude, it simply checks against the
+> > > previous run and it only checks a few of the keys by default.  You can check
+> > > latency if you want, but while writing this stuff up it seemed that latency was
+> > > too variable from run to run to be useful in a "did my thing regress or improve"
+> > > sort of way.
+> > > 
+> > > The configuration is brain dead simple, the README has examples.  All you need
+> > > to do is make your local.cfg, run ./setup and then run ./fsperf and you are good
+> > > to go.
+> > 
+> > Why re-invent the test infrastructure? Why not just make it a
+> > tests/perf subdir in fstests?
+> > 
 > 
 > Probably should have led with that shouldn't I have?  There's nothing keeping me
 > from doing it, but I didn't want to try and shoehorn in a python thing into
 > fstests.  I need python to do the sqlite and the json parsing to dump into the
 > sqlite database.
+> 
+> Now if you (and others) are not opposed to this being dropped into tests/perf
+> then I'll work that up.  But it's definitely going to need to be done in python.
+> I know you yourself have said you aren't opposed to using python in the past, so
+> if that's still the case then I can definitely wire it all up.
 
-What version of python are you using?  From inspection it looks like
-some variant of python 3.x (you're using print as a function w/o using
-"from __future import print_function") but it's not immediately
-obvious from the top-level fsperf shell script what version of python
-your scripts are dependant upon.
+I have no problems with people using python for stuff like this but,
+OTOH, I'm not the fstests maintainer anymore :P
 
-This could potentially be a bit of a portability issue across various
-distributions --- RHEL doesn't ship with Python 3.x at all, and on
-Debian you need to use python3 to get python 3.x, since
-/usr/bin/python still points at Python 2.7 by default.  So I could see
-this as a potential issue for xfstests.
+> > > The plan is to add lots of workloads as we discover regressions and such.  We
+> > > don't want anything that takes too long to run otherwise people won't run this,
+> > > so the existing tests don't take much longer than a few minutes each.  I will be
+> > > adding some more comparison options so you can compare against averages of all
+> > > previous runs and such.
+> > 
+> > Yup, that fits exactly into what fstests is for... :P
+> > 
+> > Integrating into fstests means it will be immediately available to
+> > all fs developers, it'll run on everything that everyone already has
+> > setup for filesystem testing, and it will have familiar mkfs/mount
+> > option setup behaviour so there's no new hoops for everyone to jump
+> > through to run it...
+> > 
+> 
+> TBF I specifically made it as easy as possible because I know we all hate trying
+> to learn new shit.
 
-I'm currently using Python 2.7 in my wrapper scripts for, among other
-things, to parse xUnit XML format and create nice summaries like this:
+Yeah, it's also hard to get people to change their workflows to add
+a whole new test harness into them. It's easy if it's just a new
+command to an existing workflow :P
 
-ext4/4k: 337 tests, 6 failures, 21 skipped, 3814 seconds
-  Failures: generic/232 generic/233 generic/361 generic/388
-    generic/451 generic/459
+> I figured this was different enough to warrant a separate
+> project, especially since I'm going to add block device jobs so Jens can test
+> block layer things.  If we all agree we'd rather see this in fstests then I'm
+> happy to do that too.  Thanks,
 
-So I'm not opposed to python, but I will note that if you are using
-modules from the Python Package Index, and they are modules which are
-not packaged by your distribution (so you're using pip or easy_install
-to pull them off the network), it does make doing hermetic builds from
-trusted sources to be a bit trickier.
+I'm not fussed either way - it's a good discussion to have, though.
 
-If you have a secops team who wants to know the provenance of software
-which get thrown in production data centers (and automated downloading
-from random external sources w/o any code review makes them break out
-in hives), use of PyPI adds a new wrinkle.  It's not impossible to
-solve, by any means, but it's something to consider.
+If I want to add tests (e.g. my time-honoured fsmark tests), where
+should I send patches?
 
-       	      	       		    - Ted
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
