@@ -1,164 +1,129 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH v2 09/11] fscrypt: new helper function -
- fscrypt_prepare_rename()
-Date: Mon,  9 Oct 2017 12:15:42 -0700
-Message-ID: <20171009191544.43656-10-ebiggers3@gmail.com>
+Subject: [PATCH v2 10/11] fscrypt: new helper function - fscrypt_prepare_lookup()
+Date: Mon,  9 Oct 2017 12:15:43 -0700
+Message-ID: <20171009191544.43656-11-ebiggers3@gmail.com>
 References: <20171009191544.43656-1-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Biggers <ebiggers@google.com>, linux-f2fs-devel@lists.sourceforge.net,
- linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
- Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
-To: linux-fscrypt@vger.kernel.org,
-	"Theodore Y . Ts'o" <tytso@mit.edu>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Cc: Jaegeuk Kim <jaegeuk@kernel.org>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:34989 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754858AbdJITTL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Oct 2017 15:19:11 -0400
 In-Reply-To: <20171009191544.43656-1-ebiggers3@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Eric Biggers <ebiggers@google.com>
 
-Introduce a helper function which prepares to rename a file into a
-possibly encrypted directory.  It handles loading the encryption keys
-for the source and target directories if needed, and it handles
-enforcing that if the target directory (and the source directory for a
-cross-rename) is encrypted, then the file being moved into the directory
-has the same encryption policy as its containing directory.
+Introduce a helper function which prepares to look up the given dentry
+in the given directory.  If the directory is encrypted, it handles
+loading the directory's encryption key, setting the dentry's ->d_op to
+fscrypt_d_ops, and setting DCACHE_ENCRYPTED_WITH_KEY if the directory's
+encryption key is available.
+
+Note: once all filesystems switch over to this, we'll be able to move
+fscrypt_d_ops and fscrypt_set_encrypted_dentry() to fscrypt_private.h.
 
 Acked-by: Dave Chinner <dchinner@redhat.com>
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/hooks.c               | 30 ++++++++++++++++++++++++++++++
- include/linux/fscrypt.h         | 33 +++++++++++++++++++++++++++++++++
- include/linux/fscrypt_notsupp.h |  9 +++++++++
- include/linux/fscrypt_supp.h    |  5 +++++
- 4 files changed, 77 insertions(+)
+ fs/crypto/hooks.c               | 18 ++++++++++++++++++
+ include/linux/fscrypt.h         | 28 ++++++++++++++++++++++++++++
+ include/linux/fscrypt_notsupp.h |  6 ++++++
+ include/linux/fscrypt_supp.h    |  1 +
+ 4 files changed, 53 insertions(+)
 
 diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
-index 8b90217320dd..822cb78f9b45 100644
+index 822cb78f9b45..9f5fb2eb9cf7 100644
 --- a/fs/crypto/hooks.c
 +++ b/fs/crypto/hooks.c
-@@ -62,3 +62,33 @@ int __fscrypt_prepare_link(struct inode *inode, struct inode *dir)
+@@ -92,3 +92,21 @@ int __fscrypt_prepare_rename(struct inode *old_dir, struct dentry *old_dentry,
  	return 0;
  }
- EXPORT_SYMBOL_GPL(__fscrypt_prepare_link);
+ EXPORT_SYMBOL_GPL(__fscrypt_prepare_rename);
 +
-+int __fscrypt_prepare_rename(struct inode *old_dir, struct dentry *old_dentry,
-+			     struct inode *new_dir, struct dentry *new_dentry,
-+			     unsigned int flags)
++int __fscrypt_prepare_lookup(struct inode *dir, struct dentry *dentry)
 +{
-+	int err;
++	int err = fscrypt_get_encryption_info(dir);
 +
-+	err = fscrypt_require_key(old_dir);
 +	if (err)
 +		return err;
 +
-+	err = fscrypt_require_key(new_dir);
-+	if (err)
-+		return err;
-+
-+	if (old_dir != new_dir) {
-+		if (IS_ENCRYPTED(new_dir) &&
-+		    !fscrypt_has_permitted_context(new_dir,
-+						   d_inode(old_dentry)))
-+			return -EPERM;
-+
-+		if ((flags & RENAME_EXCHANGE) &&
-+		    IS_ENCRYPTED(old_dir) &&
-+		    !fscrypt_has_permitted_context(old_dir,
-+						   d_inode(new_dentry)))
-+			return -EPERM;
++	if (fscrypt_has_encryption_key(dir)) {
++		spin_lock(&dentry->d_lock);
++		dentry->d_flags |= DCACHE_ENCRYPTED_WITH_KEY;
++		spin_unlock(&dentry->d_lock);
 +	}
++
++	d_set_d_op(dentry, &fscrypt_d_ops);
 +	return 0;
 +}
-+EXPORT_SYMBOL_GPL(__fscrypt_prepare_rename);
++EXPORT_SYMBOL_GPL(__fscrypt_prepare_lookup);
 diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 9c9a53f99327..c422367baed9 100644
+index c422367baed9..2327859c8cd2 100644
 --- a/include/linux/fscrypt.h
 +++ b/include/linux/fscrypt.h
-@@ -204,4 +204,37 @@ static inline int fscrypt_prepare_link(struct dentry *old_dentry,
+@@ -237,4 +237,32 @@ static inline int fscrypt_prepare_rename(struct inode *old_dir,
  	return 0;
  }
  
 +/**
-+ * fscrypt_prepare_rename - prepare for a rename between possibly-encrypted directories
-+ * @old_dir: source directory
-+ * @old_dentry: dentry for source file
-+ * @new_dir: target directory
-+ * @new_dentry: dentry for target location (may be negative unless exchanging)
-+ * @flags: rename flags (we care at least about %RENAME_EXCHANGE)
++ * fscrypt_prepare_lookup - prepare to lookup a name in a possibly-encrypted directory
++ * @dir: directory being searched
++ * @dentry: filename being looked up
++ * @flags: lookup flags
 + *
-+ * Prepare for ->rename() where the source and/or target directories may be
-+ * encrypted.  A new link can only be added to an encrypted directory if the
-+ * directory's encryption key is available --- since otherwise we'd have no way
-+ * to encrypt the filename.  A rename to an existing name, on the other hand,
-+ * *is* cryptographically possible without the key.  However, we take the more
-+ * conservative approach and just forbid all no-key renames.
++ * Prepare for ->lookup() in a directory which may be encrypted.  Lookups can be
++ * done with or without the directory's encryption key; without the key,
++ * filenames are presented in encrypted form.  Therefore, we'll try to set up
++ * the directory's encryption key, but even without it the lookup can continue.
 + *
-+ * We also verify that the rename will not violate the constraint that all files
-+ * in an encrypted directory tree use the same encryption policy.
++ * To allow invalidating stale dentries if the directory's encryption key is
++ * added later, we also install a custom ->d_revalidate() method and use the
++ * DCACHE_ENCRYPTED_WITH_KEY flag to indicate whether a given dentry is a
++ * plaintext name (flag set) or a ciphertext name (flag cleared).
 + *
-+ * Return: 0 on success, -ENOKEY if an encryption key is missing, -EPERM if the
-+ * rename would cause inconsistent encryption policies, or another -errno code.
++ * Return: 0 on success, -errno if a problem occurred while setting up the
++ * encryption key
 + */
-+static inline int fscrypt_prepare_rename(struct inode *old_dir,
-+					 struct dentry *old_dentry,
-+					 struct inode *new_dir,
-+					 struct dentry *new_dentry,
++static inline int fscrypt_prepare_lookup(struct inode *dir,
++					 struct dentry *dentry,
 +					 unsigned int flags)
 +{
-+	if (IS_ENCRYPTED(old_dir) || IS_ENCRYPTED(new_dir))
-+		return __fscrypt_prepare_rename(old_dir, old_dentry,
-+						new_dir, new_dentry, flags);
++	if (IS_ENCRYPTED(dir))
++		return __fscrypt_prepare_lookup(dir, dentry);
 +	return 0;
 +}
 +
  #endif	/* _LINUX_FSCRYPT_H */
 diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
-index d7d1039eb6b5..6af378d8126e 100644
+index 6af378d8126e..c4c6bf2c390e 100644
 --- a/include/linux/fscrypt_notsupp.h
 +++ b/include/linux/fscrypt_notsupp.h
-@@ -192,4 +192,13 @@ static inline int __fscrypt_prepare_link(struct inode *inode,
+@@ -201,4 +201,10 @@ static inline int __fscrypt_prepare_rename(struct inode *old_dir,
  	return -EOPNOTSUPP;
  }
  
-+static inline int __fscrypt_prepare_rename(struct inode *old_dir,
-+					   struct dentry *old_dentry,
-+					   struct inode *new_dir,
-+					   struct dentry *new_dentry,
-+					   unsigned int flags)
++static inline int __fscrypt_prepare_lookup(struct inode *dir,
++					   struct dentry *dentry)
 +{
 +	return -EOPNOTSUPP;
 +}
 +
  #endif	/* _LINUX_FSCRYPT_NOTSUPP_H */
 diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
-index 80706283da75..40f35073145f 100644
+index 40f35073145f..2db5e9706f60 100644
 --- a/include/linux/fscrypt_supp.h
 +++ b/include/linux/fscrypt_supp.h
-@@ -146,5 +146,10 @@ extern int fscrypt_zeroout_range(const struct inode *, pgoff_t, sector_t,
- /* hooks.c */
- extern int fscrypt_file_open(struct inode *inode, struct file *filp);
- extern int __fscrypt_prepare_link(struct inode *inode, struct inode *dir);
-+extern int __fscrypt_prepare_rename(struct inode *old_dir,
-+				    struct dentry *old_dentry,
-+				    struct inode *new_dir,
-+				    struct dentry *new_dentry,
-+				    unsigned int flags);
+@@ -151,5 +151,6 @@ extern int __fscrypt_prepare_rename(struct inode *old_dir,
+ 				    struct inode *new_dir,
+ 				    struct dentry *new_dentry,
+ 				    unsigned int flags);
++extern int __fscrypt_prepare_lookup(struct inode *dir, struct dentry *dentry);
  
  #endif	/* _LINUX_FSCRYPT_SUPP_H */
 -- 
 2.14.2.920.gcf0c67979c-goog
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
