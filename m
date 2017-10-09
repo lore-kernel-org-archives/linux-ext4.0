@@ -1,108 +1,147 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [FOR STABLE 4.1] ext4 crypto: don't regenerate the per-inode
- encryption key unnecessarily
-Date: Sun, 8 Oct 2017 20:02:22 -0400
-Message-ID: <20171009000222.opub5o74zl5beqqg@thunk.org>
-References: <20171008180953.rpnxvpggqggc334m@thunk.org>
- <20171008191749.GA26458@zzz.localdomain>
- <20171008203449.ys4sg5xztbzxx6ik@thunk.org>
- <20171008215216.GA1602@zzz.localdomain>
+From: Ashlie Martinez <ashmrtn@utexas.edu>
+Subject: Re: [PATCH] ext4: fix interaction between i_size, fallocate, and
+ delalloc after a crash
+Date: Sun, 8 Oct 2017 19:37:37 -0500
+Message-ID: <CAFk8rvY1M3NJ=h=i5YtKu+5H7Q9wNR0CLO21fuNYz=X7i4LeQA@mail.gmail.com>
+References: <1503830683-21455-1-git-send-email-amir73il@gmail.com>
+ <59C8D147.1060608@cn.fujitsu.com> <CAOQ4uxgnK3mGKG+owRUNGyDVOCeicArwaufGgwXaSVxC26+peQ@mail.gmail.com>
+ <CAFk8rvYvrGo6SjA6e0yj0XL_BARMmZoofB5kESM4EY4S2n-==w@mail.gmail.com>
+ <59D5DEE0.6080506@cn.fujitsu.com> <CAFk8rvbi3MHbRBtaZVTJKDcORaDTtMpwy2X2ZdXTZt=LE5smZw@mail.gmail.com>
+ <CAOQ4uxgc77_P472KEyHfAXSOE6DD7c=2VrJWBJT6ahiSYb=iJQ@mail.gmail.com>
+ <CAFk8rvYtyraezVEP1e3LFEE+9t5YoRH2YwjKxex8hgSY74Lw7A@mail.gmail.com> <20171007032917.bntgnubthdstmrrt@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: stable@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Biggers <ebiggers3@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Amir Goldstein <amir73il@gmail.com>,
+        Xiao Yang <yangx.jy@cn.fujitsu.com>,
+        Eryu Guan <eguan@redhat.com>, Josef Bacik <jbacik@fb.com>,
+        fstests <fstests@vger.kernel.org>,
+        Ext4 <linux-ext4@vger.kernel.org>,
+        Vijay Chidambaram <vvijay03@gmail.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50042 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752060AbdJIACY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 8 Oct 2017 20:02:24 -0400
-Content-Disposition: inline
-In-Reply-To: <20171008215216.GA1602@zzz.localdomain>
+Received: from mail-vk0-f45.google.com ([209.85.213.45]:56672 "EHLO
+        mail-vk0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751263AbdJIAhi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 8 Oct 2017 20:37:38 -0400
+Received: by mail-vk0-f45.google.com with SMTP id q190so11942910vkd.13
+        for <linux-ext4@vger.kernel.org>; Sun, 08 Oct 2017 17:37:38 -0700 (PDT)
+In-Reply-To: <20171007032917.bntgnubthdstmrrt@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 08, 2017 at 02:52:16PM -0700, Eric Biggers wrote:
-> But yes, it's
-> nice at least making it so that xfstests doesn't crash the kernel.  We should
-> probably also backport 9a200d075e5d ("ext4: require encryption feature for
-> EXT4_IOC_SET_ENCRYPTION_POLICY") so that if someone happens to have
-> CONFIG_EXT4_FS_ENCRYPTION turned on in their kernel, random unprivileged users
-> can't reach all the buggy code on any ext4 filesystem.
+Ted,
 
-Yeah, that's a good idea.  I'll send a request to
-stable@vger.kernel.org.  Commit 9a200d075e5d applies cleanly to 4.1,
-so that should be straightforward.
+Thanks for looking into this more. The information about what was
+causing the output Amir saw will certainly help us improve CrashMonkey
+so we can detect bugs better in the future!
 
-> By the way, just looking at ext4_generate_encryption_key() in 4.1, there are
-> three different bugs in how it's accessing the keyring, and all allow an
-> unprivileged user to cause a kernel oops.  The first two were fixed upstream by
-> 687c3c36e754 ("ext4 crypto: replace some BUG_ON()'s with error checks") and
-> db7730e3091a ("ext4 crypto: add missing locking for keyring_key access").  The
-> last will be fixed by "fscrypt: fix dereference of NULL user_key_payload" which
-> still needs to be applied.  (It's part of a series which fixes the same bug in 5
-> different places; I'll probably need to resend the patches individually to the
-> different maintainers unless the keyrings maintainer wants to take the whole
-> series.)
+Best,
+Ashlie
 
-Well, I'm not particulary motivated to backport those fixes to 4.1,
-but if you or someone else wants to do the backport, I certainly won't
-complain.
-
-Personally, though, if I have more time to work on the LTS kernels,
-cleaning up the 3.18.x test failures is higher on my priority list,
-since it might actually help some Android devices still stuck on 3.18.
-(See below for the current state of the LTS kernels with my backports
-and fixups to xfstests to fix some false positives due to the older
-kernels not supporting ea_inode and project quotas.)
-
-Of the failures in 4.9 and 4.4, generic/082 and generic/338 are
-relatively minor quota bugs that aren't going to affect Android's use
-of quota.  generic/441 tests the new error handling code, and we're
-not likely to backport that to LTS kernels.  generic/451 is a buffered
-vs. AIO/DIO race test, which I suspect won't be worth fixing except by
-changing the Direct I/O paths to uses the new iomap infrastructure.
-generic/456 will be fixed in the next merge window and backported to
-the LTS kernels.  And generic/459 is a dm-thin problem.
-
-So the only real problem children is 3.18 and 4.1, and my motivation
-to clean up 4.1 is minimal.
-
-      	    	       	      - Ted
-
-KERNEL:    kernel 4.9.52-xfstests-00005-gc9dacd33bdcf #4 SMP Sun Oct 8 15:47:09 EDT 2017 x86_64
-CMDLINE:   --kernel /build/ext4-4.9-64 -c 4k -g auto
-CPUS:      2
-MEM:       7680
-
-ext4/4k: 339 tests, 5 failures, 38 skipped, 3024 seconds
-  Failures: generic/082 generic/441 generic/451 generic/456
-    generic/459
-Totals: 339 tests, 38 skipped, 5 failures, 0 errors, 2932s
-
-
-KERNEL:    kernel 4.4.89-xfstests-00004-g85c293dc2ed8 #5 SMP Sun Oct 8 15:55:01 EDT 2017 x86_64
-CMDLINE:   --kernel /build/ext4-4.4-64 -c 4k -g auto -X generic/269
-
-ext4/4k: 338 tests, 5 failures, 49 skipped, 3361 seconds
-  Failures: generic/382 generic/441 generic/451 generic/456
-    generic/459
-Totals: 338 tests, 49 skipped, 5 failures, 0 errors, 3261s
-
-
-KERNEL:    kernel 4.1.44-xfstests-00009-gd899706494c1 #6 SMP Sun Oct 8 16:38:13 EDT 2017 x86_64
-CMDLINE:   --kernel /build/ext4-4.1-64 -c 4k -g auto -X generic/269
-
-ext4/4k: 338 tests, 14 failures, 55 skipped, 3353 seconds
-  Failures: ext4/022 ext4/025 generic/313 generic/382 generic/395
-    generic/397 generic/398 generic/429 generic/435 generic/440
-    generic/441 generic/451 generic/456 generic/459
-Totals: 338 tests, 55 skipped, 14 failures, 0 errors, 3270s
-
-
-KERNEL:    kernel 3.18.73-xfstests-00006-gc80a32d5a966 #2 SMP Sun Oct 8 16:35:31 EDT 2017 x86_64
-CMDLINE:   --kernel /build/ext4-3.18-64 -c 4k -g auto -X generic/269 -X ext4/022
-
-ext4/4k: 337 tests, 9 failures, 67 skipped, 3254 seconds
-  Failures: ext4/001 ext4/025 generic/313 generic/382 generic/441
-    generic/450 generic/451 generic/456 generic/459
-Totals: 337 tests, 67 skipped, 9 failures, 0 errors, 3178s
+On Fri, Oct 6, 2017 at 10:29 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Thu, Oct 05, 2017 at 07:34:10PM -0500, Ashlie Martinez wrote:
+>> >> It almost seems that way, though to be honest, I don't think I know
+>> >> enough about 1. the setup used by Amir and 2. all the internal working
+>> >> of KVM+virtio to say for sure.
+>> >
+>> > I believe you misread my email.
+>> > The problem was NOT reproduced on KVM+virtio.
+>> > The problem *is* reproduced on a 10G LVM volume over SSD on
+>> > Ubuntu 16.04 with latest kernel and latest e2fsprogs.
+>
+> I was able to reproduce it using both kvm-xfstests[1] and gce-xfstests[2].
+>
+> [1] https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-xfstests.md
+> [2] https://thunk.org/gce-xfstests
+>
+> It did turn out to be timing related, and it requires that a journal
+> commit take place after fsstress runs, but it can *not* be triggered
+> by a sync/fsync (as this would cause the delayed allocation writes to
+> be forced out to disk, and that makes the problem go away).
+>
+> I initially tried using xfs_io as a replacement for fsstress (since it
+> is more flexible and would allow me to more easily run experiments),
+> but it turns out xfs_io was too fast/efficient, and so using xfs_io to
+> execute the same system calls (verified by strace) would not replicate
+> the problem.
+>
+>> > Now you have a broken file system image and the exact set of operations
+>> > that led to it. That's should be a pretty big lead for investigation.
+>
+> It was indeed a big lead for investigation (thanks, Amir!), but it
+> still took me several hours before I was finally able to figure out
+> the problem.  The patch and the commit description should explain what
+> was going on.
+>
+> I'll leave it to Ashlie and Vijay to investigate how to improve Crash
+> Monkey so it can better find problems like this automatically.  Since
+> you now have a clear reproducer (you can use generic/456 and run it on
+> gce-xfstests, using is a standard cloud VM configuration) and an
+> explanation of the bug and the four-line fix, I suspect this might be
+> good grist for follow-on research after your Hot Storage '17 workshop
+> paper.  :-)
+>
+> Best regards,
+>
+>                                         - Ted
+>
+>
+> commit 3912e7b44cf77e9452d4d0cb6c1da9c7043bb7f1
+> Author: Theodore Ts'o <tytso@mit.edu>
+> Date:   Fri Oct 6 23:09:55 2017 -0400
+>
+>     ext4: fix interaction between i_size, fallocate, and delalloc after a crash
+>
+>     If there are pending writes subject to delayed allocation, then i_size
+>     will show size after the writes have completed, while i_disksize
+>     contains the value of i_size on the disk (since the writes have not
+>     been persisted to disk).
+>
+>     If fallocate(2) is called with the FALLOC_FL_KEEP_SIZE flag, either
+>     with or without the FALLOC_FL_ZERO_RANGE flag set, and the new size
+>     after the fallocate(2) is between i_size and i_disksize, then after a
+>     crash, if a journal commit has resulted in the changes made by the
+>     fallocate() call to be persisted after a crash, but the delayed
+>     allocation write has not resolved itself, i_size would not be updated,
+>     and this would cause the following e2fsck complaint:
+>
+>     Inode 12, end of extent exceeds allowed value
+>             (logical block 33, physical block 33441, len 7)
+>
+>     This can only take place on a sparse file, where the fallocate(2) call
+>     is allocating blocks in a range which is before a pending delayed
+>     allocation write which is extending i_size.  Since this situation is
+>     quite rare, and the window in which the crash must take place is
+>     typically < 30 seconds, in practice this condition will rarely happen.
+>
+>     Nevertheless, it can be triggered in testing, and in particular by
+>     xfstests generic/456.
+>
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+>     Reported-by: Amir Goldstein <amir73il@gmail.com>
+>     Cc: stable@vger.kernel.org
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 97f0fd06728d..07bca11749d4 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -4794,7 +4794,8 @@ static long ext4_zero_range(struct file *file, loff_t offset,
+>         }
+>
+>         if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+> -            offset + len > i_size_read(inode)) {
+> +           (offset + len > i_size_read(inode) ||
+> +            offset + len > EXT4_I(inode)->i_disksize)) {
+>                 new_size = offset + len;
+>                 ret = inode_newsize_ok(inode, new_size);
+>                 if (ret)
+> @@ -4965,7 +4966,8 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>         }
+>
+>         if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+> -            offset + len > i_size_read(inode)) {
+> +           (offset + len > i_size_read(inode) ||
+> +            offset + len > EXT4_I(inode)->i_disksize)) {
+>                 new_size = offset + len;
+>                 ret = inode_newsize_ok(inode, new_size);
+>                 if (ret)
