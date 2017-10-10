@@ -1,73 +1,93 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/3] cgroup, writeback: replace SB_I_CGROUPWB with
- per-inode S_CGROUPWB
-Date: Tue, 10 Oct 2017 10:56:21 +0200
-Message-ID: <20171010085621.GE775@quack2.suse.cz>
-References: <20171009212911.473208-1-tj@kernel.org>
- <20171009212911.473208-2-tj@kernel.org>
+From: Mel Gorman <mgorman@techsingularity.net>
+Subject: Re: [ANNOUNCE] fsperf: a simple fs/block performance testing
+ framework
+Date: Tue, 10 Oct 2017 10:00:53 +0100
+Message-ID: <20171010090053.nygtcdda2soiw3mq@techsingularity.net>
+References: <20171006210956.vf326sydjiphsefo@destiny>
+ <20171009005137.GA3666@dastard>
+ <20171009022509.rz6goq3sec5ppxrr@destiny>
+ <20171009051731.GK3666@dastard>
+ <20171009130050.ufnmdhslc53bwpgc@destiny>
+ <20171009210920.GO3666@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, axboe@kernel.dk, clm@fb.com, jbacik@fb.com,
-        kernel-team@fb.com, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-To: Tejun Heo <tj@kernel.org>
+Content-Type: text/plain; charset=iso-8859-15
+Cc: Josef Bacik <josef@toxicpanda.com>, linux-fsdevel@vger.kernel.org,
+        kernel-team@fb.com, linux-btrfs@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20171009212911.473208-2-tj@kernel.org>
+In-Reply-To: <20171009210920.GO3666@dastard>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 09-10-17 14:29:09, Tejun Heo wrote:
-> Currently, filesystem can indiate cgroup writeback support per
-> superblock; however, depending on the filesystem, especially if inodes
-> are used to carry metadata, it can be useful to indicate cgroup
-> writeback support per inode.
+On Tue, Oct 10, 2017 at 08:09:20AM +1100, Dave Chinner wrote:
+> > I'd _like_ to expand fio for cases we come up with that aren't possible, as
+> > there's already a ton of measurements that are taken, especially around
+> > latencies.
 > 
-> This patch replaces the superblock flag SB_I_CGROUPWB with per-inode
-> S_CGROUPWB, so that cgroup writeback can be enabled selectively.
+> To be properly useful it needs to support more than just fio to run
+> tests. Indeed, it's largely useless to me if that's all it can do or
+> it's a major pain to add support for different tools like fsmark.
 > 
-> * block_dev sets the new flag in bdget() when initializing new inode.
+> e.g.  my typical perf regression test that you see the concurrnet
+> fsmark create workload is actually a lot more. It does:
 > 
-> * ext2/4 set the new flag in ext?_set_inode_flags() function.
+> 	fsmark to create 50m zero length files
+> 	umount,
+> 	run parallel xfs_repair (excellent mmap_sem/page fault punisher)
+> 	mount
+> 	run parallel find -ctime (readdir + lookup traversal)
+> 	unmount, mount
+> 	run parallel ls -R (readdir + dtype traversal)
+> 	unmount, mount
+> 	parallel rm -rf of 50m files
 > 
-> * btrfs sets the new flag in btrfs_update_iflags() function.  Note
->   that this automatically excludes btree_inode which doesn't use
->   btrfs_update_iflags() during initialization.  This is an intended
->   behavior change.
+> I have variants that use small 4k files or large files rather than
+> empty files, taht use different fsync patterns to stress the
+> log, use grep -R to traverse the data as well as
+> the directory/inode structure instead of find, etc.
 > 
-> Signed-off-by: Tejun Heo <tj@kernel.org>
-> Cc: Jan Kara <jack@suse.cz>
-> Cc: Jens Axboe <axboe@kernel.dk>
-> Cc: Chris Mason <clm@fb.com>
-> Cc: Josef Bacik <jbacik@fb.com>
-> Cc: linux-btrfs@vger.kernel.org
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: linux-ext4@vger.kernel.org
 
-...
+FWIW, this is partially implemented in mmtests as
+configs/config-global-dhp__io-xfsrepair. It covers the fsmark and
+xfs_repair part and an example report is
 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 31db875..344f12b 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4591,8 +4591,11 @@ void ext4_set_inode_flags(struct inode *inode)
->  	    !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
->  	    !ext4_encrypted_inode(inode))
->  		new_fl |= S_DAX;
-> +	if (test_opt(inode->i_sb, DATA_FLAGS) != EXT4_MOUNT_JOURNAL_DATA)
-> +		new_fl |= S_CGROUPWB;
+http://beta.suse.com/private/mgorman/results/home/marvin/openSUSE-LEAP-42.2/global-dhp__io-xfsrepair-xfs/delboy/#xfsrepair
 
-Use ext4_should_journal_data(inode) here? Ext4 can be journalling data also
-because of per-inode flag.
+(ignore 4.12.603, it's 4.12.3-stable with some additional patches that were
+pending for -stable at the time the test was executed). That config was
+added after a discussion with you a few years ago and I've kept it since as
+it has been useful in a number of contexts. Adding additional tests to cover
+parallel find, parallel ls and parallel rm would be relatively trivial but
+it's not there. This is a test that doesn't have proper graphing support
+but it could be added in 10-15 minutes as xfsrepair is the primary metric
+and it's simply reported as elapsed time.
 
-Otherwise the patch looks good. You can add:
+fsmark is also covered albeit not necessarily with parameters everyone wants
+as configs/config-global-dhp__io-metadata in mmtests.  Example report is
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+http://beta.suse.com/private/mgorman/results/home/marvin/openSUSE-LEAP-42.2/global-dhp__io-metadata-xfs/delboy/#fsmark-threaded
 
-								Honza
+mmtests has been modified multiple times as according as methodologies
+were improved and it's far from perfect but it seems to me that fsperf
+is going to end up reimplementing a lot of it.
+
+It's not perfect as there are multiple quality-of-implementation issues
+as it often takes the shortest path to being able to collect data but
+it improves over time. When a test is found to be flawed, it's fixed and
+historical data is discarded. It doesn't store data in sqlite or anything
+fancy, just the raw logs are preserved and reports generated as required. In
+terms of tools required, the core is just bash scripts. Some of the tests
+require a number of packages to be installed but not all of them. It uses a
+tool to install packages if they are missing but the naming is all based on
+opensuse. It *can* map opensuse package names to fedora and debian but the
+mappings are not up-to-date as I do not personally run those distributions.
+
+Even with the quality-of-implementation issues, it seems to me that it
+covers a lot of the requirements that fsperf aims for.
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Mel Gorman
+SUSE Labs
