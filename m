@@ -1,62 +1,99 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [v4.14-rc1 regression] ext4 failed fstests generic/233 quota test
-Date: Tue, 10 Oct 2017 14:49:51 +0200
-Message-ID: <20171010124951.GE3667@quack2.suse.cz>
-References: <20171008054236.GA10593@eguan.usersys.redhat.com>
- <20171010114323.GD3667@quack2.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Jan Kara <jack@suse.cz>, Eric Whitney <enwlinux@gmail.com>
-To: Eryu Guan <eguan@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171010114323.GD3667@quack2.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH] quota: Generate warnings for DQUOT_SPACE_NOFAIL allocations
+Date: Tue, 10 Oct 2017 14:57:24 +0200
+Message-ID: <20171010125724.14156-1-jack@suse.cz>
+Cc: Eryu Guan <eguan@redhat.com>, <linux-ext4@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>, stable@vger.kernel.org
+To: <linux-fsdevel@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:57089 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756065AbdJJM53 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 10 Oct 2017 08:57:29 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 10-10-17 13:43:23, Jan Kara wrote:
-> Hi Eryu,
-> 
-> On Sun 08-10-17 13:42:36, Eryu Guan wrote:
-> > After generic/232 failure has been reported and resolved[1], I still
-> > could see fstests generic/233 failure on ext4 with v4.14-rc3 kernel.
-> > This is not 100% reproduced (block usage needs to exceed soft limit) but
-> > reliably.
-> > 
-> >  seed = S
-> >  Comparing user usage
-> > -Comparing group usage
-> > +4c4
-> > +< #1001     +-   32064   32000   32000            998  1000  1000       
-> > +---
-> > +> #1001     +-   32064   32000   32000  7days     998  1000  1000
-> > 
-> > Grace time was not printed by repquota right after the fsstress run when
-> > we exceeded the block soft limit, and only printed after a quotacheck
-> > was run.  With v4.13 kernel, block grace time could be printed
-> > immediately after the fsstress run.
-> 
-> Well, I'd rather interpret the results as "the grace time didn't get set by
-> the failing kernel, only quotacheck would set it". This configuration with
-> softlimit == hardlimit is a bit ambiguous (as effectively softlimit and
-> grace time are unused) and I might have shortcut setting of grace time in
-> this case somewhere (which would be harmless). But still it warrants closer
-> investigation. I'll have a look.
-> 
-> > git bisect pointed the first bad to commit 7b9ca4c61bc2 ("quota: Reduce
-> > contention on dq_data_lock"). And I've confirmed the bisection result by
-> > converting the commit in question and running generic/233 for 20
-> > iterations without a failure.
-> 
-> Thanks for digging into this!
+Eryu has reported that since commit 7b9ca4c61bc2 "quota: Reduce
+contention on dq_data_lock" test generic/233 occasionally fails. This is
+caused by the fact that since that commit we don't generate warning and
+set grace time for quota allocations that have DQUOT_SPACE_NOFAIL set
+(these are for example some metadata allocations in ext4). We need these
+allocations to behave regularly wrt warning generation and grace time
+setting so fix the code to return to the original behavior.
 
-OK, I've reproduced the issue (although it took me several xfstests run to
-hit this) and it is a real bug in handling of DQUOT_ALLOC_NOFAIL quota
-allocations. I'll send a fix shortly once testing completes.
+Reported-by: Eryu Guan <eguan@redhat.com>
+CC: stable@vger.kernel.org
+Fixes: 7b9ca4c61bc278b771fb57d6290a31ab1fc7fdac
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/quota/dquot.c | 27 ++++++++++++++++-----------
+ 1 file changed, 16 insertions(+), 11 deletions(-)
 
-								Honza
+I plan to queue this patch into my tree and send it to Linus for -rc5.
 
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 50b0556a124f..52ad15192e72 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -1297,21 +1297,18 @@ static int dquot_add_space(struct dquot *dquot, qsize_t space,
+ 	spin_lock(&dquot->dq_dqb_lock);
+ 	if (!sb_has_quota_limits_enabled(sb, dquot->dq_id.type) ||
+ 	    test_bit(DQ_FAKE_B, &dquot->dq_flags))
+-		goto add;
++		goto finish;
+ 
+ 	tspace = dquot->dq_dqb.dqb_curspace + dquot->dq_dqb.dqb_rsvspace
+ 		+ space + rsv_space;
+ 
+-	if (flags & DQUOT_SPACE_NOFAIL)
+-		goto add;
+-
+ 	if (dquot->dq_dqb.dqb_bhardlimit &&
+ 	    tspace > dquot->dq_dqb.dqb_bhardlimit &&
+             !ignore_hardlimit(dquot)) {
+ 		if (flags & DQUOT_SPACE_WARN)
+ 			prepare_warning(warn, dquot, QUOTA_NL_BHARDWARN);
+ 		ret = -EDQUOT;
+-		goto out;
++		goto finish;
+ 	}
+ 
+ 	if (dquot->dq_dqb.dqb_bsoftlimit &&
+@@ -1322,7 +1319,7 @@ static int dquot_add_space(struct dquot *dquot, qsize_t space,
+ 		if (flags & DQUOT_SPACE_WARN)
+ 			prepare_warning(warn, dquot, QUOTA_NL_BSOFTLONGWARN);
+ 		ret = -EDQUOT;
+-		goto out;
++		goto finish;
+ 	}
+ 
+ 	if (dquot->dq_dqb.dqb_bsoftlimit &&
+@@ -1338,13 +1335,21 @@ static int dquot_add_space(struct dquot *dquot, qsize_t space,
+ 			 * be always printed
+ 			 */
+ 			ret = -EDQUOT;
+-			goto out;
++			goto finish;
+ 		}
+ 	}
+-add:
+-	dquot->dq_dqb.dqb_rsvspace += rsv_space;
+-	dquot->dq_dqb.dqb_curspace += space;
+-out:
++finish:
++	/*
++	 * We have to be careful and go through warning generation & grace time
++	 * setting even if DQUOT_SPACE_NOFAIL is set. That's why we check it
++	 * only here...
++	 */
++	if (flags & DQUOT_SPACE_NOFAIL)
++		ret = 0;
++	if (!ret) {
++		dquot->dq_dqb.dqb_rsvspace += rsv_space;
++		dquot->dq_dqb.dqb_curspace += space;
++	}
+ 	spin_unlock(&dquot->dq_dqb_lock);
+ 	return ret;
+ }
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.12.3
