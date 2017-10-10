@@ -1,93 +1,83 @@
-From: Mel Gorman <mgorman@techsingularity.net>
-Subject: Re: [ANNOUNCE] fsperf: a simple fs/block performance testing
- framework
-Date: Tue, 10 Oct 2017 10:00:53 +0100
-Message-ID: <20171010090053.nygtcdda2soiw3mq@techsingularity.net>
-References: <20171006210956.vf326sydjiphsefo@destiny>
- <20171009005137.GA3666@dastard>
- <20171009022509.rz6goq3sec5ppxrr@destiny>
- <20171009051731.GK3666@dastard>
- <20171009130050.ufnmdhslc53bwpgc@destiny>
- <20171009210920.GO3666@dastard>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd2: Convert timers to use timer_setup()
+Date: Tue, 10 Oct 2017 13:20:50 +0200
+Message-ID: <20171010112050.GB3667@quack2.suse.cz>
+References: <20171005004846.GA23025@beast>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-Cc: Josef Bacik <josef@toxicpanda.com>, linux-fsdevel@vger.kernel.org,
-        kernel-team@fb.com, linux-btrfs@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        Thomas Gleixner <tglx@linutronix.de>
+To: Kees Cook <keescook@chromium.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20171009210920.GO3666@dastard>
+In-Reply-To: <20171005004846.GA23025@beast>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 10, 2017 at 08:09:20AM +1100, Dave Chinner wrote:
-> > I'd _like_ to expand fio for cases we come up with that aren't possible, as
-> > there's already a ton of measurements that are taken, especially around
-> > latencies.
+On Wed 04-10-17 17:48:46, Kees Cook wrote:
+> In preparation for unconditionally passing the struct timer_list pointer to
+> all timer callbacks, switch to using the new timer_setup() and from_timer()
+> to pass the timer pointer explicitly.
 > 
-> To be properly useful it needs to support more than just fio to run
-> tests. Indeed, it's largely useless to me if that's all it can do or
-> it's a major pain to add support for different tools like fsmark.
+> Cc: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: Jan Kara <jack@suse.com>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: Thomas Gleixner <tglx@linutronix.de>
+> Signed-off-by: Kees Cook <keescook@chromium.org>
+
+The patch looks good to me. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+
+> ---
+> This requires commit 686fef928bba ("timer: Prepare to change timer
+> callback argument type") in v4.14-rc3, but should be otherwise
+> stand-alone.
+> ---
+>  fs/jbd2/journal.c | 9 ++++-----
+>  1 file changed, 4 insertions(+), 5 deletions(-)
 > 
-> e.g.  my typical perf regression test that you see the concurrnet
-> fsmark create workload is actually a lot more. It does:
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 7d5ef3bf3f3e..d2a85c9720e9 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -165,11 +165,11 @@ static void jbd2_superblock_csum_set(journal_t *j, journal_superblock_t *sb)
+>   * Helper function used to manage commit timeouts
+>   */
+>  
+> -static void commit_timeout(unsigned long __data)
+> +static void commit_timeout(struct timer_list *t)
+>  {
+> -	struct task_struct * p = (struct task_struct *) __data;
+> +	journal_t *journal = from_timer(journal, t, j_commit_timer);
+>  
+> -	wake_up_process(p);
+> +	wake_up_process(journal->j_task);
+>  }
+>  
+>  /*
+> @@ -197,8 +197,7 @@ static int kjournald2(void *arg)
+>  	 * Set up an interval timer which can be used to trigger a commit wakeup
+>  	 * after the commit interval expires
+>  	 */
+> -	setup_timer(&journal->j_commit_timer, commit_timeout,
+> -			(unsigned long)current);
+> +	timer_setup(&journal->j_commit_timer, commit_timeout, 0);
+>  
+>  	set_freezable();
+>  
+> -- 
+> 2.7.4
 > 
-> 	fsmark to create 50m zero length files
-> 	umount,
-> 	run parallel xfs_repair (excellent mmap_sem/page fault punisher)
-> 	mount
-> 	run parallel find -ctime (readdir + lookup traversal)
-> 	unmount, mount
-> 	run parallel ls -R (readdir + dtype traversal)
-> 	unmount, mount
-> 	parallel rm -rf of 50m files
 > 
-> I have variants that use small 4k files or large files rather than
-> empty files, taht use different fsync patterns to stress the
-> log, use grep -R to traverse the data as well as
-> the directory/inode structure instead of find, etc.
+> -- 
+> Kees Cook
+> Pixel Security
 > 
-
-FWIW, this is partially implemented in mmtests as
-configs/config-global-dhp__io-xfsrepair. It covers the fsmark and
-xfs_repair part and an example report is
-
-http://beta.suse.com/private/mgorman/results/home/marvin/openSUSE-LEAP-42.2/global-dhp__io-xfsrepair-xfs/delboy/#xfsrepair
-
-(ignore 4.12.603, it's 4.12.3-stable with some additional patches that were
-pending for -stable at the time the test was executed). That config was
-added after a discussion with you a few years ago and I've kept it since as
-it has been useful in a number of contexts. Adding additional tests to cover
-parallel find, parallel ls and parallel rm would be relatively trivial but
-it's not there. This is a test that doesn't have proper graphing support
-but it could be added in 10-15 minutes as xfsrepair is the primary metric
-and it's simply reported as elapsed time.
-
-fsmark is also covered albeit not necessarily with parameters everyone wants
-as configs/config-global-dhp__io-metadata in mmtests.  Example report is
-
-http://beta.suse.com/private/mgorman/results/home/marvin/openSUSE-LEAP-42.2/global-dhp__io-metadata-xfs/delboy/#fsmark-threaded
-
-mmtests has been modified multiple times as according as methodologies
-were improved and it's far from perfect but it seems to me that fsperf
-is going to end up reimplementing a lot of it.
-
-It's not perfect as there are multiple quality-of-implementation issues
-as it often takes the shortest path to being able to collect data but
-it improves over time. When a test is found to be flawed, it's fixed and
-historical data is discarded. It doesn't store data in sqlite or anything
-fancy, just the raw logs are preserved and reports generated as required. In
-terms of tools required, the core is just bash scripts. Some of the tests
-require a number of packages to be installed but not all of them. It uses a
-tool to install packages if they are missing but the naming is all based on
-opensuse. It *can* map opensuse package names to fedora and debian but the
-mappings are not up-to-date as I do not personally run those distributions.
-
-Even with the quality-of-implementation issues, it seems to me that it
-covers a lot of the requirements that fsperf aims for.
-
 -- 
-Mel Gorman
-SUSE Labs
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
