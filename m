@@ -1,83 +1,59 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: Convert timers to use timer_setup()
-Date: Tue, 10 Oct 2017 13:20:50 +0200
-Message-ID: <20171010112050.GB3667@quack2.suse.cz>
-References: <20171005004846.GA23025@beast>
+Subject: Re: [v4.14-rc1 regression] ext4 failed fstests generic/233 quota test
+Date: Tue, 10 Oct 2017 13:43:23 +0200
+Message-ID: <20171010114323.GD3667@quack2.suse.cz>
+References: <20171008054236.GA10593@eguan.usersys.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-        Thomas Gleixner <tglx@linutronix.de>
-To: Kees Cook <keescook@chromium.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Jan Kara <jack@suse.cz>, Eric Whitney <enwlinux@gmail.com>
+To: Eryu Guan <eguan@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:45035 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751415AbdJJLnY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 10 Oct 2017 07:43:24 -0400
 Content-Disposition: inline
-In-Reply-To: <20171005004846.GA23025@beast>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20171008054236.GA10593@eguan.usersys.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 04-10-17 17:48:46, Kees Cook wrote:
-> In preparation for unconditionally passing the struct timer_list pointer to
-> all timer callbacks, switch to using the new timer_setup() and from_timer()
-> to pass the timer pointer explicitly.
+Hi Eryu,
+
+On Sun 08-10-17 13:42:36, Eryu Guan wrote:
+> After generic/232 failure has been reported and resolved[1], I still
+> could see fstests generic/233 failure on ext4 with v4.14-rc3 kernel.
+> This is not 100% reproduced (block usage needs to exceed soft limit) but
+> reliably.
 > 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Jan Kara <jack@suse.com>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Thomas Gleixner <tglx@linutronix.de>
-> Signed-off-by: Kees Cook <keescook@chromium.org>
+>  seed = S
+>  Comparing user usage
+> -Comparing group usage
+> +4c4
+> +< #1001     +-   32064   32000   32000            998  1000  1000       
+> +---
+> +> #1001     +-   32064   32000   32000  7days     998  1000  1000
+> 
+> Grace time was not printed by repquota right after the fsstress run when
+> we exceeded the block soft limit, and only printed after a quotacheck
+> was run.  With v4.13 kernel, block grace time could be printed
+> immediately after the fsstress run.
 
-The patch looks good to me. You can add:
+Well, I'd rather interpret the results as "the grace time didn't get set by
+the failing kernel, only quotacheck would set it". This configuration with
+softlimit == hardlimit is a bit ambiguous (as effectively softlimit and
+grace time are unused) and I might have shortcut setting of grace time in
+this case somewhere (which would be harmless). But still it warrants closer
+investigation. I'll have a look.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+> git bisect pointed the first bad to commit 7b9ca4c61bc2 ("quota: Reduce
+> contention on dq_data_lock"). And I've confirmed the bisection result by
+> converting the commit in question and running generic/233 for 20
+> iterations without a failure.
+
+Thanks for digging into this!
 
 								Honza
-
-
-> ---
-> This requires commit 686fef928bba ("timer: Prepare to change timer
-> callback argument type") in v4.14-rc3, but should be otherwise
-> stand-alone.
-> ---
->  fs/jbd2/journal.c | 9 ++++-----
->  1 file changed, 4 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 7d5ef3bf3f3e..d2a85c9720e9 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -165,11 +165,11 @@ static void jbd2_superblock_csum_set(journal_t *j, journal_superblock_t *sb)
->   * Helper function used to manage commit timeouts
->   */
->  
-> -static void commit_timeout(unsigned long __data)
-> +static void commit_timeout(struct timer_list *t)
->  {
-> -	struct task_struct * p = (struct task_struct *) __data;
-> +	journal_t *journal = from_timer(journal, t, j_commit_timer);
->  
-> -	wake_up_process(p);
-> +	wake_up_process(journal->j_task);
->  }
->  
->  /*
-> @@ -197,8 +197,7 @@ static int kjournald2(void *arg)
->  	 * Set up an interval timer which can be used to trigger a commit wakeup
->  	 * after the commit interval expires
->  	 */
-> -	setup_timer(&journal->j_commit_timer, commit_timeout,
-> -			(unsigned long)current);
-> +	timer_setup(&journal->j_commit_timer, commit_timeout, 0);
->  
->  	set_freezable();
->  
-> -- 
-> 2.7.4
-> 
-> 
-> -- 
-> Kees Cook
-> Pixel Security
-> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
