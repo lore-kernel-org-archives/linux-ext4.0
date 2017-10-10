@@ -1,322 +1,117 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH] tests: shorten test descriptions to fit in 80 columns
-Date: Tue, 10 Oct 2017 16:43:46 -0600
-Message-ID: <1507675426-70319-1-git-send-email-adilger@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
+Subject: Re: [PATCH] misc: quiet llvm build warnings
+Date: Tue, 10 Oct 2017 16:44:38 -0600
+Message-ID: <9EE2BF96-AAC7-4FCC-A08F-C95D2FDB4030@dilger.ca>
+References: <1507675283-70118-1-git-send-email-adilger@dilger.ca>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_14519D95-4BD4-466E-B9EC-3829277D264B";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out-no.shaw.ca ([64.59.134.12]:35243 "EHLO
-        smtp-out-no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756645AbdJJWos (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Oct 2017 18:44:48 -0400
+Received: from mail-it0-f65.google.com ([209.85.214.65]:55836 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755549AbdJJWoo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Oct 2017 18:44:44 -0400
+Received: by mail-it0-f65.google.com with SMTP id l196so576829itl.4
+        for <linux-ext4@vger.kernel.org>; Tue, 10 Oct 2017 15:44:44 -0700 (PDT)
+In-Reply-To: <1507675283-70118-1-git-send-email-adilger@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-While not critical to functionality, it is easier to see the pass/fail
-status of each test if they are not wrapped onto the next line.
-Shorten test descriptions so the name+description fit in 80 columns.
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
----
- tests/e_brel_bma/name                            | 2 +-
- tests/e_irel_ima/name                            | 2 +-
- tests/f_bigalloc_symlink_with_xattr/name         | 2 +-
- tests/f_boundscheck/name                         | 2 +-
- tests/f_convert_bmap_and_extent/name             | 2 +-
- tests/f_deleted_inode_bad_csum/name              | 2 +-
- tests/f_dir_bad_csum/name                        | 2 +-
- tests/f_htree_bad_csum/name                      | 2 +-
- tests/f_hugedir_blocks/name                      | 2 +-
- tests/f_jnl_etb_alloc_fail/name                  | 2 +-
- tests/f_rebuild_csum_rootdir/name                | 2 +-
- tests/f_uninit_ext_past_eof2/name                | 2 +-
- tests/f_write_ea_toosmall_extra_isize/name       | 2 +-
- tests/j_corrupt_ext_jnl_sb_block/name            | 2 +-
- tests/j_corrupt_ext_jnl_sb_csum/name             | 2 +-
- tests/j_ext_long_revoke_trans/name               | 2 +-
- tests/j_long_revoke_trans_mcsum_32bit/name       | 2 +-
- tests/j_long_revoke_trans_mcsum_64bit/name       | 2 +-
- tests/j_long_trans_mcsum_32bit/name              | 2 +-
- tests/j_long_trans_mcsum_64bit/name              | 2 +-
- tests/j_short_revoke_trans_mcsum_64bit/name      | 2 +-
- tests/j_short_trans_mcsum_64bit/name             | 2 +-
- tests/j_short_trans_old_csum/name                | 2 +-
- tests/j_short_trans_open_recover/name            | 2 +-
- tests/j_short_trans_recover_mcsum_64bit/name     | 2 +-
- tests/j_short_uncommitted_trans_mcsum_64bit/name | 2 +-
- tests/m_hugefile_slack/name                      | 2 +-
- tests/r_32to64bit_expand_full/name               | 2 +-
- tests/r_32to64bit_move_itable/name               | 2 +-
- tests/t_change_uuid_mcsum_seed_mounted/script    | 2 +-
- tests/t_disable_changed_csum_seed/script         | 2 +-
- tests/t_disable_changed_csum_seed_mounted/script | 2 +-
- tests/u_revert_64bitmcsum_onefile/script         | 2 +-
- tests/u_revert_all_onefile/script                | 2 +-
- tests/u_revert_upgrade_to_64bitmcsum/script      | 2 +-
- 35 files changed, 35 insertions(+), 35 deletions(-)
+--Apple-Mail=_14519D95-4BD4-466E-B9EC-3829277D264B
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-diff --git a/tests/e_brel_bma/name b/tests/e_brel_bma/name
-index d745587..9843871 100644
---- a/tests/e_brel_bma/name
-+++ b/tests/e_brel_bma/name
-@@ -1 +1 @@
--block relocation table using the memory array implementation
-+block relocation table using memory array implementation
-diff --git a/tests/e_irel_ima/name b/tests/e_irel_ima/name
-index 6efd72e..d19d277 100644
---- a/tests/e_irel_ima/name
-+++ b/tests/e_irel_ima/name
-@@ -1 +1 @@
--inode relocation table using the memory array implementation
-+inode relocation table using memory array implementation
-diff --git a/tests/f_bigalloc_symlink_with_xattr/name b/tests/f_bigalloc_symlink_with_xattr/name
-index f612796..8adbd9a 100644
---- a/tests/f_bigalloc_symlink_with_xattr/name
-+++ b/tests/f_bigalloc_symlink_with_xattr/name
-@@ -1 +1 @@
--fast symlink with external xattr block on bigalloc filesystem
-+fast symlink + xattr block on bigalloc fs
-diff --git a/tests/f_boundscheck/name b/tests/f_boundscheck/name
-index 192d279..7d71be5 100644
---- a/tests/f_boundscheck/name
-+++ b/tests/f_boundscheck/name
-@@ -1 +1 @@
--infinite loop due to off by one error when finding free space for inode table relocation
-+infinite loop when finding table free space
-diff --git a/tests/f_convert_bmap_and_extent/name b/tests/f_convert_bmap_and_extent/name
-index c9394c6..1a58794 100644
---- a/tests/f_convert_bmap_and_extent/name
-+++ b/tests/f_convert_bmap_and_extent/name
-@@ -1 +1 @@
--convert blockmap and extents files to extents files
-+convert blockmap to extents files
-diff --git a/tests/f_deleted_inode_bad_csum/name b/tests/f_deleted_inode_bad_csum/name
-index 516701a..c034ace 100644
---- a/tests/f_deleted_inode_bad_csum/name
-+++ b/tests/f_deleted_inode_bad_csum/name
-@@ -1 +1 @@
--deleted inode with a bad csum that wasn't getting fixed (metadata_csum)
-+deleted inode with bad metadata_csum wasn't fixed
-diff --git a/tests/f_dir_bad_csum/name b/tests/f_dir_bad_csum/name
-index 140ae45..6397e9d 100644
---- a/tests/f_dir_bad_csum/name
-+++ b/tests/f_dir_bad_csum/name
-@@ -1 +1 @@
--dir block w/ missing/bad csum, no tail, or dir block corruption (metadata_csum)
-+dir block w/ missing/bad csum/tail or block corruption
-diff --git a/tests/f_htree_bad_csum/name b/tests/f_htree_bad_csum/name
-index ebfc3ea..3388353 100644
---- a/tests/f_htree_bad_csum/name
-+++ b/tests/f_htree_bad_csum/name
-@@ -1 +1 @@
--htree block w/ missing/bad csum, bad protective dirent, or htree index corruption (metadata_csum)
-+htree block bad csum/tail dirent/htree index corruption
-diff --git a/tests/f_hugedir_blocks/name b/tests/f_hugedir_blocks/name
-index d74761b..58b7916 100644
---- a/tests/f_hugedir_blocks/name
-+++ b/tests/f_hugedir_blocks/name
-@@ -1 +1 @@
--crash e2fsck with a dir with an impossibly high logical blk offset
-+dir crashes e2fsck with impossible logical blk offset
-diff --git a/tests/f_jnl_etb_alloc_fail/name b/tests/f_jnl_etb_alloc_fail/name
-index 7651fdc..d9bce1c 100644
---- a/tests/f_jnl_etb_alloc_fail/name
-+++ b/tests/f_jnl_etb_alloc_fail/name
-@@ -1 +1 @@
--can't allocate extent tree block while recreating journal
-+can't allocate extent tree block recreating journal
-diff --git a/tests/f_rebuild_csum_rootdir/name b/tests/f_rebuild_csum_rootdir/name
-index b246f48..5ea2097 100644
---- a/tests/f_rebuild_csum_rootdir/name
-+++ b/tests/f_rebuild_csum_rootdir/name
-@@ -1 +1 @@
--force fsck to rebuild a corrupted rootdir w/ metadata_csum
-+force rebuild corrupted rootdir w/ metadata_csum
-diff --git a/tests/f_uninit_ext_past_eof2/name b/tests/f_uninit_ext_past_eof2/name
-index 352a0f5..025cc44 100644
---- a/tests/f_uninit_ext_past_eof2/name
-+++ b/tests/f_uninit_ext_past_eof2/name
-@@ -1 +1 @@
--fallocated extents after nonzero i_size and total extents > 4
-+fallocate extents w/ nonzero i_size and extents > 4
-diff --git a/tests/f_write_ea_toosmall_extra_isize/name b/tests/f_write_ea_toosmall_extra_isize/name
-index 718c12c..a1ebc7f 100644
---- a/tests/f_write_ea_toosmall_extra_isize/name
-+++ b/tests/f_write_ea_toosmall_extra_isize/name
-@@ -1 +1 @@
--write EA when i_extra_size is too small to make sense
-+write EA when i_extra_size is too small
-diff --git a/tests/j_corrupt_ext_jnl_sb_block/name b/tests/j_corrupt_ext_jnl_sb_block/name
-index a5188be..35f1689 100644
---- a/tests/j_corrupt_ext_jnl_sb_block/name
-+++ b/tests/j_corrupt_ext_jnl_sb_block/name
-@@ -1 +1 @@
--corrupt external journal fs superblock block (metadata_csum)
-+corrupt mcsum ext jnl fs superblock block
-diff --git a/tests/j_corrupt_ext_jnl_sb_csum/name b/tests/j_corrupt_ext_jnl_sb_csum/name
-index c182f81..7e73971 100644
---- a/tests/j_corrupt_ext_jnl_sb_csum/name
-+++ b/tests/j_corrupt_ext_jnl_sb_csum/name
-@@ -1 +1 @@
--corrupt external journal fs superblock csum (metadata_csum)
-+corrupt external journal superblock metadata_csum
-diff --git a/tests/j_ext_long_revoke_trans/name b/tests/j_ext_long_revoke_trans/name
-index 777010d..932a5bd 100644
---- a/tests/j_ext_long_revoke_trans/name
-+++ b/tests/j_ext_long_revoke_trans/name
-@@ -1 +1 @@
--revoked transaction nuking free space w/ ext. journal
-+revoke trans nuking free space w/ ext. journal
-diff --git a/tests/j_long_revoke_trans_mcsum_32bit/name b/tests/j_long_revoke_trans_mcsum_32bit/name
-index 3d78c07..1aca67d 100644
---- a/tests/j_long_revoke_trans_mcsum_32bit/name
-+++ b/tests/j_long_revoke_trans_mcsum_32bit/name
-@@ -1 +1 @@
--revoked transaction nuking free space on 32bit,metadata_csum
-+revoked trans nuking free space 32bit,mcsum
-diff --git a/tests/j_long_revoke_trans_mcsum_64bit/name b/tests/j_long_revoke_trans_mcsum_64bit/name
-index 809900b..0fa20fe 100644
---- a/tests/j_long_revoke_trans_mcsum_64bit/name
-+++ b/tests/j_long_revoke_trans_mcsum_64bit/name
-@@ -1 +1 @@
--revoked transaction nuking free space on 64bit,metadata_csum
-+revoke trans nuking free space 64bit,mcsum
-diff --git a/tests/j_long_trans_mcsum_32bit/name b/tests/j_long_trans_mcsum_32bit/name
-index ac43f51..d4473d9 100644
---- a/tests/j_long_trans_mcsum_32bit/name
-+++ b/tests/j_long_trans_mcsum_32bit/name
-@@ -1 +1 @@
--transaction nuking free space on 32bit,metadata_csum
-+trans nuking free space 32bit,meta_csum
-diff --git a/tests/j_long_trans_mcsum_64bit/name b/tests/j_long_trans_mcsum_64bit/name
-index 9dab338..e204e79 100644
---- a/tests/j_long_trans_mcsum_64bit/name
-+++ b/tests/j_long_trans_mcsum_64bit/name
-@@ -1 +1 @@
--transaction nuking free space on 64bit,metadata_csum
-+trans nuking free space 64bit,meta_csum
-diff --git a/tests/j_short_revoke_trans_mcsum_64bit/name b/tests/j_short_revoke_trans_mcsum_64bit/name
-index fb286fd..de05e51 100644
---- a/tests/j_short_revoke_trans_mcsum_64bit/name
-+++ b/tests/j_short_revoke_trans_mcsum_64bit/name
-@@ -1 +1 @@
--revoke blocks of transaction nuking the bitmaps on 64bit,metadata_csum
-+revoke trans nuking bmap 64bit,meta_csum
-diff --git a/tests/j_short_trans_mcsum_64bit/name b/tests/j_short_trans_mcsum_64bit/name
-index 4751cc2..da839e9 100644
---- a/tests/j_short_trans_mcsum_64bit/name
-+++ b/tests/j_short_trans_mcsum_64bit/name
-@@ -1 +1 @@
--transaction nuking the bitmaps on 64bit,metadata_csum
-+trans nuking bitmaps 64bit,meta_csum
-diff --git a/tests/j_short_trans_old_csum/name b/tests/j_short_trans_old_csum/name
-index 2e81f94..435e9bc 100644
---- a/tests/j_short_trans_old_csum/name
-+++ b/tests/j_short_trans_old_csum/name
-@@ -1 +1 @@
--transaction nuking the bitmaps with old journal checksum (v1)
-+trans nuking bitmaps v1 journal csum
-diff --git a/tests/j_short_trans_open_recover/name b/tests/j_short_trans_open_recover/name
-index 892e95c..c6bb568 100644
---- a/tests/j_short_trans_open_recover/name
-+++ b/tests/j_short_trans_open_recover/name
-@@ -1 +1 @@
--ensure we can't recover the journal with journal open
-+don't recover open journal
-diff --git a/tests/j_short_trans_recover_mcsum_64bit/name b/tests/j_short_trans_recover_mcsum_64bit/name
-index 7ccdcb0..01b4acd 100644
---- a/tests/j_short_trans_recover_mcsum_64bit/name
-+++ b/tests/j_short_trans_recover_mcsum_64bit/name
-@@ -1 +1 @@
--uncommitted transaction nuking the bitmaps on 64bit,metadata_csum (debugfs recover)
-+uncommitted trans nuking bmap 64bit,mcsum
-diff --git a/tests/j_short_uncommitted_trans_mcsum_64bit/name b/tests/j_short_uncommitted_trans_mcsum_64bit/name
-index 9771f4b..9113950 100644
---- a/tests/j_short_uncommitted_trans_mcsum_64bit/name
-+++ b/tests/j_short_uncommitted_trans_mcsum_64bit/name
-@@ -1 +1 @@
--uncommitted transaction nuking the bitmaps on 64bit,metadata_csum
-+uncommitted trans nuking bmap 64b,mcsum
-diff --git a/tests/m_hugefile_slack/name b/tests/m_hugefile_slack/name
-index 8d51fd6..fd4e4d0 100644
---- a/tests/m_hugefile_slack/name
-+++ b/tests/m_hugefile_slack/name
-@@ -1 +1 @@
--mke2fs creating a hugefile fs with a lot of slack
-+mke2fs create hugefile fs with slack
-diff --git a/tests/r_32to64bit_expand_full/name b/tests/r_32to64bit_expand_full/name
-index 2f04601..34b08c7 100644
---- a/tests/r_32to64bit_expand_full/name
-+++ b/tests/r_32to64bit_expand_full/name
-@@ -1 +1 @@
--convert a totally full filesystem to 64bit, then expand
-+convert+expand full fs to 64bit
-diff --git a/tests/r_32to64bit_move_itable/name b/tests/r_32to64bit_move_itable/name
-index 7e6bb25..7dc2155 100644
---- a/tests/r_32to64bit_move_itable/name
-+++ b/tests/r_32to64bit_move_itable/name
-@@ -1 +1 @@
--convert 32bit fs to 64bit fs, forcing inode table move
-+convert 32 to 64bit w/ itable move
-diff --git a/tests/t_change_uuid_mcsum_seed_mounted/script b/tests/t_change_uuid_mcsum_seed_mounted/script
-index 05b0bd7..2b437fb 100755
---- a/tests/t_change_uuid_mcsum_seed_mounted/script
-+++ b/tests/t_change_uuid_mcsum_seed_mounted/script
-@@ -1,4 +1,4 @@
--test_description="change uuid on a metadata-csum with mcsum-seed"
-+test_description="change meta-csum uuid with mcsum-seed"
- 
- trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
- dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-diff --git a/tests/t_disable_changed_csum_seed/script b/tests/t_disable_changed_csum_seed/script
-index 9443731..bd48925 100755
---- a/tests/t_disable_changed_csum_seed/script
-+++ b/tests/t_disable_changed_csum_seed/script
-@@ -1,4 +1,4 @@
--test_description="disable csum seed via tune2fs after changing uuid"
-+test_description="tune2fs disable csum seed after uuid change"
- 
- trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
- dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-diff --git a/tests/t_disable_changed_csum_seed_mounted/script b/tests/t_disable_changed_csum_seed_mounted/script
-index 3be6dd9..203253c 100755
---- a/tests/t_disable_changed_csum_seed_mounted/script
-+++ b/tests/t_disable_changed_csum_seed_mounted/script
-@@ -1,4 +1,4 @@
--test_description="disable csum seed on mounted fs via tune2fs after changing uuid"
-+test_description="mounted tune2fs disable csum+uuid"
- 
- trap "rm -rf $TMPFILE $TMPFILE.conf" EXIT INT QUIT
- dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
-diff --git a/tests/u_revert_64bitmcsum_onefile/script b/tests/u_revert_64bitmcsum_onefile/script
-index f1d7c2b..6249ff2 100644
---- a/tests/u_revert_64bitmcsum_onefile/script
-+++ b/tests/u_revert_64bitmcsum_onefile/script
-@@ -1,4 +1,4 @@
--test_description="convert fs to 64bit,metadata_csum and revert as one undo file"
-+test_description="convert fs to 64bit,mcsum and revert undo file"
- if test -x $RESIZE2FS_EXE -a -x $E2UNDO_EXE; then
- 
- TDB_FILE=${TMPDIR:-/tmp}/resize2fs-$(basename $TMPFILE).e2undo
-diff --git a/tests/u_revert_all_onefile/script b/tests/u_revert_all_onefile/script
-index 27b3b23..6911ec6 100644
---- a/tests/u_revert_all_onefile/script
-+++ b/tests/u_revert_all_onefile/script
-@@ -1,4 +1,4 @@
--test_description="convert fs to 64bit,metadata_csum and revert as one undo file"
-+test_description="convert 64bit,mcsum and revert undo file"
- if test -x $RESIZE2FS_EXE -a -x $E2UNDO_EXE; then
- 
- TDB_FILE=${TMPDIR:-/tmp}/resize2fs-$(basename $TMPFILE).e2undo
-diff --git a/tests/u_revert_upgrade_to_64bitmcsum/script b/tests/u_revert_upgrade_to_64bitmcsum/script
-index 6120d00..6599b05 100644
---- a/tests/u_revert_upgrade_to_64bitmcsum/script
-+++ b/tests/u_revert_upgrade_to_64bitmcsum/script
-@@ -1,4 +1,4 @@
--test_description="convert fs to 64bit,metadata_csum and revert both changes"
-+test_description="convert 64bit,mcsum and revert both"
- if test -x $RESIZE2FS_EXE -a -x $E2UNDO_EXE; then
- 
- TDB_FILE=${TMPDIR:-/tmp}/resize2fs-$(basename $TMPFILE).e2undo
--- 
-1.8.0
+On Oct 10, 2017, at 4:41 PM, Andreas Dilger <adilger@dilger.ca> wrote:
+>=20
+> Quiet some relatively harmless build warnings:
+>=20
+> mkquota.c:527:15: warning: format specifies type 'long' but the
+> 	argument has type 'qsize_t' (aka 'long long') [-Wformat]
+> 		dq->dq_id, dq->dq_dqb.dqb_curspace,
+> 			   ^~~~~~~~~~~~~~~~~~~~~~~
+>=20
+> tune2fs.c:928:18: warning: '&&' within '||' [-Wlogical-op-parentheses]
+> 	if (pass =3D=3D 1 && (inode->i_flags & EXT4_EA_INODE_FL) ||
+> 	    ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~
+> tune2fs.c:928:18: place parentheses around '&&' to silence warning
+
+Sorry, please ignore this one, it was sent from an old branch and has
+already been merged.
+
+Cheers, Andreas
+
+> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+> ---
+> lib/support/mkquota.c | 2 +-
+> misc/tune2fs.c        | 4 ++--
+> 2 files changed, 3 insertions(+), 3 deletions(-)
+>=20
+> diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
+> index 11a878e..4251e46 100644
+> --- a/lib/support/mkquota.c
+> +++ b/lib/support/mkquota.c
+> @@ -523,7 +523,7 @@ static int scan_dquots_callback(struct dquot =
+*dquot, void *cb_data)
+> 	    dq->dq_dqb.dqb_curinodes !=3D dquot->dq_dqb.dqb_curinodes) {
+> 		scan_data->usage_is_inconsistent =3D 1;
+> 		fprintf(stderr, "[QUOTA WARNING] Usage inconsistent for =
+ID %u:"
+> -			"actual (%ld, %ld) !=3D expected (%ld, %ld)\n",
+> +			"actual (%lld, %lld) !=3D expected (%lld, =
+%lld)\n",
+> 			dq->dq_id, dq->dq_dqb.dqb_curspace,
+> 			dq->dq_dqb.dqb_curinodes,
+> 			dquot->dq_dqb.dqb_curspace,
+> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+> index 9b53dc2..c7c1d6d 100644
+> --- a/misc/tune2fs.c
+> +++ b/misc/tune2fs.c
+> @@ -925,8 +925,8 @@ static void rewrite_inodes(ext2_filsys fs)
+> 			if (!ino)
+> 				break;
+>=20
+> -			if (pass =3D=3D 1 && (inode->i_flags & =
+EXT4_EA_INODE_FL) ||
+> -			    pass =3D=3D 2 && !(inode->i_flags & =
+EXT4_EA_INODE_FL))
+> +			if ((pass =3D=3D 1 && (inode->i_flags & =
+EXT4_EA_INODE_FL))||
+> +			    (pass =3D=3D 2 && !(inode->i_flags & =
+EXT4_EA_INODE_FL)))
+> 				rewrite_one_inode(&ctx, ino, inode);
+> 		} while (ino);
+>=20
+> --
+> 1.8.0
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_14519D95-4BD4-466E-B9EC-3829277D264B
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZ3U1WpIg59Q01vtYRArBsAKDfhpLdWPm0we4v6JKUgM6NTQ3k0gCcC+Ws
+Mz3sz0o6nST0F/kqLl6DmiY=
+=tPre
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_14519D95-4BD4-466E-B9EC-3829277D264B--
