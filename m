@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 10/19] dax: Allow dax_iomap_fault() to return pfn
-Date: Wed, 11 Oct 2017 22:05:54 +0200
-Message-ID: <20171011200603.27442-11-jack@suse.cz>
+Subject: [PATCH 08/19] dax: Inline dax_pmd_insert_mapping() into the callsite
+Date: Wed, 11 Oct 2017 22:05:52 +0200
+Message-ID: <20171011200603.27442-9-jack@suse.cz>
 References: <20171011200603.27442-1-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
@@ -11,146 +11,106 @@ Cc: <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58304 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752275AbdJKUGU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 11 Oct 2017 16:06:20 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20171011200603.27442-1-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-For synchronous page fault dax_iomap_fault() will need to return PFN
-which will then need to be inserted into page tables after fsync()
-completes. Add necessary parameter to dax_iomap_fault().
+dax_pmd_insert_mapping() has only one callsite and we will need to
+further fine tune what it does for synchronous faults. Just inline it
+into the callsite so that we don't have to pass awkward bools around.
 
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/dax.c            | 13 +++++++------
- fs/ext2/file.c      |  2 +-
- fs/ext4/file.c      |  2 +-
- fs/xfs/xfs_file.c   |  4 ++--
- include/linux/dax.h |  2 +-
- 5 files changed, 12 insertions(+), 11 deletions(-)
+ fs/dax.c                      | 47 +++++++++++++++++--------------------------
+ include/trace/events/fs_dax.h |  1 -
+ 2 files changed, 19 insertions(+), 29 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 5214ed9ba508..5ddf15161390 100644
+index 5b20c6456926..675fab8ec41f 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -1079,7 +1079,7 @@ static int dax_fault_return(int error)
- 	return VM_FAULT_SIGBUS;
+@@ -1235,33 +1235,11 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
  }
  
--static int dax_iomap_pte_fault(struct vm_fault *vmf,
-+static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
- 			       const struct iomap_ops *ops)
- {
- 	struct vm_area_struct *vma = vmf->vma;
-@@ -1280,7 +1280,7 @@ static int dax_pmd_load_hole(struct vm_fault *vmf, struct iomap *iomap,
- 	return VM_FAULT_FALLBACK;
- }
+ #ifdef CONFIG_FS_DAX_PMD
+-static int dax_pmd_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
+-		loff_t pos, void *entry)
+-{
+-	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
+-	const sector_t sector = dax_iomap_sector(iomap, pos);
+-	struct inode *inode = mapping->host;
+-	void *ret = NULL;
+-	pfn_t pfn = {};
+-	int rc;
+-
+-	rc = dax_iomap_pfn(iomap, pos, PMD_SIZE, &pfn);
+-	if (rc < 0)
+-		goto fallback;
+-
+-	ret = dax_insert_mapping_entry(mapping, vmf, entry, sector,
+-			RADIX_DAX_PMD);
+-	if (IS_ERR(ret))
+-		goto fallback;
+-
+-	trace_dax_pmd_insert_mapping(inode, vmf, PMD_SIZE, pfn, ret);
+-	return vmf_insert_pfn_pmd(vmf->vma, vmf->address, vmf->pmd,
+-			pfn, vmf->flags & FAULT_FLAG_WRITE);
+-
+-fallback:
+-	trace_dax_pmd_insert_mapping_fallback(inode, vmf, PMD_SIZE, pfn, ret);
+-	return VM_FAULT_FALLBACK;
+-}
++/*
++ * The 'colour' (ie low bits) within a PMD of a page offset.  This comes up
++ * more often than one might expect in the below functions.
++ */
++#define PG_PMD_COLOUR	((PMD_SIZE >> PAGE_SHIFT) - 1)
  
--static int dax_iomap_pmd_fault(struct vm_fault *vmf,
-+static int dax_iomap_pmd_fault(struct vm_fault *vmf, pfn_t *pfnp,
- 			       const struct iomap_ops *ops)
- {
- 	struct vm_area_struct *vma = vmf->vma;
-@@ -1425,7 +1425,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
- 	return result;
- }
- #else
--static int dax_iomap_pmd_fault(struct vm_fault *vmf,
-+static int dax_iomap_pmd_fault(struct vm_fault *vmf, pfn_t *pfnp,
- 			       const struct iomap_ops *ops)
- {
- 	return VM_FAULT_FALLBACK;
-@@ -1436,6 +1436,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
-  * dax_iomap_fault - handle a page fault on a DAX file
-  * @vmf: The description of the fault
-  * @pe_size: Size of the page to fault in
-+ * @pfnp: PFN to insert for synchronous faults if fsync is required
-  * @ops: Iomap ops passed from the file system
-  *
-  * When a page fault occurs, filesystems may call this helper in
-@@ -1444,13 +1445,13 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
-  * successfully.
-  */
- int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
--		    const struct iomap_ops *ops)
-+		    pfn_t *pfnp, const struct iomap_ops *ops)
- {
- 	switch (pe_size) {
- 	case PE_SIZE_PTE:
--		return dax_iomap_pte_fault(vmf, ops);
-+		return dax_iomap_pte_fault(vmf, pfnp, ops);
- 	case PE_SIZE_PMD:
--		return dax_iomap_pmd_fault(vmf, ops);
-+		return dax_iomap_pmd_fault(vmf, pfnp, ops);
- 	default:
- 		return VM_FAULT_FALLBACK;
- 	}
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index ff3a3636a5ca..d2bb7c96307d 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -99,7 +99,7 @@ static int ext2_dax_fault(struct vm_fault *vmf)
- 	}
- 	down_read(&ei->dax_sem);
+ static int dax_pmd_load_hole(struct vm_fault *vmf, struct iomap *iomap,
+ 		void *entry)
+@@ -1317,6 +1295,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
+ 	void *entry;
+ 	loff_t pos;
+ 	int error;
++	pfn_t pfn;
  
--	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &ext2_iomap_ops);
-+	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, NULL, &ext2_iomap_ops);
+ 	/*
+ 	 * Check whether offset isn't beyond end of file now. Caller is
+@@ -1394,7 +1373,19 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
  
- 	up_read(&ei->dax_sem);
- 	if (vmf->flags & FAULT_FLAG_WRITE)
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index b1da660ac3bc..3cec0b95672f 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -306,7 +306,7 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
- 		down_read(&EXT4_I(inode)->i_mmap_sem);
- 	}
- 	if (!IS_ERR(handle))
--		result = dax_iomap_fault(vmf, pe_size, &ext4_iomap_ops);
-+		result = dax_iomap_fault(vmf, pe_size, NULL, &ext4_iomap_ops);
- 	else
- 		result = VM_FAULT_SIGBUS;
- 	if (write) {
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 309e26c9dddb..7c6b8def6eed 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -1040,7 +1040,7 @@ __xfs_filemap_fault(
+ 	switch (iomap.type) {
+ 	case IOMAP_MAPPED:
+-		result = dax_pmd_insert_mapping(vmf, &iomap, pos, entry);
++		error = dax_iomap_pfn(&iomap, pos, PMD_SIZE, &pfn);
++		if (error < 0)
++			goto finish_iomap;
++
++		entry = dax_insert_mapping_entry(mapping, vmf, entry,
++						dax_iomap_sector(&iomap, pos),
++						RADIX_DAX_PMD);
++		if (IS_ERR(entry))
++			goto finish_iomap;
++
++		trace_dax_pmd_insert_mapping(inode, vmf, PMD_SIZE, pfn, entry);
++		result = vmf_insert_pfn_pmd(vma, vmf->address, vmf->pmd, pfn,
++					    write);
+ 		break;
+ 	case IOMAP_UNWRITTEN:
+ 	case IOMAP_HOLE:
+diff --git a/include/trace/events/fs_dax.h b/include/trace/events/fs_dax.h
+index fbc4a06f7310..88a9d19b8ff8 100644
+--- a/include/trace/events/fs_dax.h
++++ b/include/trace/events/fs_dax.h
+@@ -148,7 +148,6 @@ DEFINE_EVENT(dax_pmd_insert_mapping_class, name, \
+ 	TP_ARGS(inode, vmf, length, pfn, radix_entry))
  
- 	xfs_ilock(XFS_I(inode), XFS_MMAPLOCK_SHARED);
- 	if (IS_DAX(inode)) {
--		ret = dax_iomap_fault(vmf, pe_size, &xfs_iomap_ops);
-+		ret = dax_iomap_fault(vmf, pe_size, NULL, &xfs_iomap_ops);
- 	} else {
- 		if (write_fault)
- 			ret = iomap_page_mkwrite(vmf, &xfs_iomap_ops);
-@@ -1111,7 +1111,7 @@ xfs_filemap_pfn_mkwrite(
- 	if (vmf->pgoff >= size)
- 		ret = VM_FAULT_SIGBUS;
- 	else if (IS_DAX(inode))
--		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, &xfs_iomap_ops);
-+		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, NULL, &xfs_iomap_ops);
- 	xfs_iunlock(ip, XFS_MMAPLOCK_SHARED);
- 	sb_end_pagefault(inode->i_sb);
- 	return ret;
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 122197124b9d..e7fa4b8f45bc 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -95,7 +95,7 @@ bool dax_write_cache_enabled(struct dax_device *dax_dev);
- ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		const struct iomap_ops *ops);
- int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
--		    const struct iomap_ops *ops);
-+		    pfn_t *pfnp, const struct iomap_ops *ops);
- int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
- int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
- 				      pgoff_t index);
+ DEFINE_PMD_INSERT_MAPPING_EVENT(dax_pmd_insert_mapping);
+-DEFINE_PMD_INSERT_MAPPING_EVENT(dax_pmd_insert_mapping_fallback);
+ 
+ DECLARE_EVENT_CLASS(dax_pte_fault_class,
+ 	TP_PROTO(struct inode *inode, struct vm_fault *vmf, int result),
 -- 
 2.12.3
