@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 08/19] dax: Inline dax_pmd_insert_mapping() into the callsite
-Date: Wed, 11 Oct 2017 22:05:52 +0200
-Message-ID: <20171011200603.27442-9-jack@suse.cz>
+Subject: [PATCH 19/19] xfs: Add support for MAP_SYNC flag
+Date: Wed, 11 Oct 2017 22:06:03 +0200
+Message-ID: <20171011200603.27442-20-jack@suse.cz>
 References: <20171011200603.27442-1-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
@@ -16,101 +16,74 @@ In-Reply-To: <20171011200603.27442-1-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-dax_pmd_insert_mapping() has only one callsite and we will need to
-further fine tune what it does for synchronous faults. Just inline it
-into the callsite so that we don't have to pass awkward bools around.
+Now when everything is prepared, add support in xfs to accept MAP_SYNC
+as an mmap(2) flag.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/dax.c                      | 47 +++++++++++++++++--------------------------
- include/trace/events/fs_dax.h |  1 -
- 2 files changed, 19 insertions(+), 29 deletions(-)
+ fs/ext4/file.c    |  1 +
+ fs/xfs/xfs_file.c | 23 +++++++++++++++++++++++
+ 2 files changed, 24 insertions(+)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 5b20c6456926..675fab8ec41f 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -1235,33 +1235,11 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index f013cda84b3d..6b597cc6b29d 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -26,6 +26,7 @@
+ #include <linux/quotaops.h>
+ #include <linux/pagevec.h>
+ #include <linux/uio.h>
++#include <linux/mman.h>
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+ #include "xattr.h"
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index c45f24ffab22..fb135224476d 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -44,6 +44,7 @@
+ #include <linux/falloc.h>
+ #include <linux/pagevec.h>
+ #include <linux/backing-dev.h>
++#include <linux/mman.h>
+ 
+ static const struct vm_operations_struct xfs_file_vm_ops;
+ 
+@@ -1142,6 +1143,27 @@ xfs_file_mmap(
+ 	return 0;
  }
  
- #ifdef CONFIG_FS_DAX_PMD
--static int dax_pmd_insert_mapping(struct vm_fault *vmf, struct iomap *iomap,
--		loff_t pos, void *entry)
--{
--	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
--	const sector_t sector = dax_iomap_sector(iomap, pos);
--	struct inode *inode = mapping->host;
--	void *ret = NULL;
--	pfn_t pfn = {};
--	int rc;
--
--	rc = dax_iomap_pfn(iomap, pos, PMD_SIZE, &pfn);
--	if (rc < 0)
--		goto fallback;
--
--	ret = dax_insert_mapping_entry(mapping, vmf, entry, sector,
--			RADIX_DAX_PMD);
--	if (IS_ERR(ret))
--		goto fallback;
--
--	trace_dax_pmd_insert_mapping(inode, vmf, PMD_SIZE, pfn, ret);
--	return vmf_insert_pfn_pmd(vmf->vma, vmf->address, vmf->pmd,
--			pfn, vmf->flags & FAULT_FLAG_WRITE);
--
--fallback:
--	trace_dax_pmd_insert_mapping_fallback(inode, vmf, PMD_SIZE, pfn, ret);
--	return VM_FAULT_FALLBACK;
--}
-+/*
-+ * The 'colour' (ie low bits) within a PMD of a page offset.  This comes up
-+ * more often than one might expect in the below functions.
-+ */
-+#define PG_PMD_COLOUR	((PMD_SIZE >> PAGE_SHIFT) - 1)
- 
- static int dax_pmd_load_hole(struct vm_fault *vmf, struct iomap *iomap,
- 		void *entry)
-@@ -1317,6 +1295,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
- 	void *entry;
- 	loff_t pos;
- 	int error;
-+	pfn_t pfn;
- 
- 	/*
- 	 * Check whether offset isn't beyond end of file now. Caller is
-@@ -1394,7 +1373,19 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf,
- 
- 	switch (iomap.type) {
- 	case IOMAP_MAPPED:
--		result = dax_pmd_insert_mapping(vmf, &iomap, pos, entry);
-+		error = dax_iomap_pfn(&iomap, pos, PMD_SIZE, &pfn);
-+		if (error < 0)
-+			goto finish_iomap;
++#define XFS_MAP_SUPPORTED (LEGACY_MAP_MASK | MAP_SYNC)
 +
-+		entry = dax_insert_mapping_entry(mapping, vmf, entry,
-+						dax_iomap_sector(&iomap, pos),
-+						RADIX_DAX_PMD);
-+		if (IS_ERR(entry))
-+			goto finish_iomap;
++static int
++xfs_file_mmap_validate(
++	struct file		*filp,
++	struct vm_area_struct	*vma,
++	unsigned long		map_flags)
++{
++	if (map_flags & ~XFS_MAP_SUPPORTED)
++		return -EOPNOTSUPP;
 +
-+		trace_dax_pmd_insert_mapping(inode, vmf, PMD_SIZE, pfn, entry);
-+		result = vmf_insert_pfn_pmd(vma, vmf->address, vmf->pmd, pfn,
-+					    write);
- 		break;
- 	case IOMAP_UNWRITTEN:
- 	case IOMAP_HOLE:
-diff --git a/include/trace/events/fs_dax.h b/include/trace/events/fs_dax.h
-index fbc4a06f7310..88a9d19b8ff8 100644
---- a/include/trace/events/fs_dax.h
-+++ b/include/trace/events/fs_dax.h
-@@ -148,7 +148,6 @@ DEFINE_EVENT(dax_pmd_insert_mapping_class, name, \
- 	TP_ARGS(inode, vmf, length, pfn, radix_entry))
- 
- DEFINE_PMD_INSERT_MAPPING_EVENT(dax_pmd_insert_mapping);
--DEFINE_PMD_INSERT_MAPPING_EVENT(dax_pmd_insert_mapping_fallback);
- 
- DECLARE_EVENT_CLASS(dax_pte_fault_class,
- 	TP_PROTO(struct inode *inode, struct vm_fault *vmf, int result),
++	/*
++	 * We don't support synchronous mappings for non-DAX files. At least
++	 * until someone comes with a sensible use case.
++	 */
++	if (!IS_DAX(file_inode(filp)) && (map_flags & MAP_SYNC))
++		return -EOPNOTSUPP;
++
++	return xfs_file_mmap(filp, vma);
++}
++
+ const struct file_operations xfs_file_operations = {
+ 	.llseek		= xfs_file_llseek,
+ 	.read_iter	= xfs_file_read_iter,
+@@ -1153,6 +1175,7 @@ const struct file_operations xfs_file_operations = {
+ 	.compat_ioctl	= xfs_file_compat_ioctl,
+ #endif
+ 	.mmap		= xfs_file_mmap,
++	.mmap_validate	= xfs_file_mmap_validate,
+ 	.open		= xfs_file_open,
+ 	.release	= xfs_file_release,
+ 	.fsync		= xfs_file_fsync,
 -- 
 2.12.3
