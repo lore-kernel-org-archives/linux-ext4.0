@@ -1,41 +1,84 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 0/19 v3] dax, ext4, xfs: Synchronous page faults
-Date: Thu, 12 Oct 2017 09:43:31 +1100
-Message-ID: <20171011224331.GB3666@dastard>
-References: <20171011200603.27442-1-jack@suse.cz>
- <CAPcyv4g6tjyUy_zxVVze+C+xZiT89qa1GiSoVjhH3G-6r3eXDA@mail.gmail.com>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH 19/19] xfs: Add support for MAP_SYNC flag
+Date: Wed, 11 Oct 2017 15:54:51 -0700
+Message-ID: <CAPcyv4jW1sz8415MBfvXkAL9wb-YQyop_o+B9gFnJ3f3xrXMzw@mail.gmail.com>
+References: <20171011200603.27442-1-jack@suse.cz> <20171011200603.27442-20-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-ext4 <linux-ext4@vger.kernel.org>,
         linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
         Ross Zwisler <ross.zwisler@linux.intel.com>,
         Ted Tso <tytso@mit.edu>,
         "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAPcyv4g6tjyUy_zxVVze+C+xZiT89qa1GiSoVjhH3G-6r3eXDA@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-oi0-f44.google.com ([209.85.218.44]:50262 "EHLO
+        mail-oi0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750778AbdJKWyw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Oct 2017 18:54:52 -0400
+Received: by mail-oi0-f44.google.com with SMTP id q4so5691266oic.7
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Oct 2017 15:54:51 -0700 (PDT)
+In-Reply-To: <20171011200603.27442-20-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 11, 2017 at 02:18:06PM -0700, Dan Williams wrote:
-> On Wed, Oct 11, 2017 at 1:05 PM, Jan Kara <jack@suse.cz> wrote:
-> > Anyway, here are the patches and AFAICT the series is pretty much complete
-> > so we can start thinking how to merge this. Changes to ext4 / XFS are pretty
-> > minimal so either tree is fine I guess. Comments are welcome.
-> 
-> I'd like to propose taking this through the nvdimm tree. Some of these
-> changes make the MAP_DIRECT support for ext4 easier, so I'd like to
-> rebase that support on top and carry both.
+On Wed, Oct 11, 2017 at 1:06 PM, Jan Kara <jack@suse.cz> wrote:
+> Now when everything is prepared, add support in xfs to accept MAP_SYNC
+> as an mmap(2) flag.
+>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/file.c    |  1 +
+>  fs/xfs/xfs_file.c | 23 +++++++++++++++++++++++
+>  2 files changed, 24 insertions(+)
+>
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index f013cda84b3d..6b597cc6b29d 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -26,6 +26,7 @@
+>  #include <linux/quotaops.h>
+>  #include <linux/pagevec.h>
+>  #include <linux/uio.h>
+> +#include <linux/mman.h>
+>  #include "ext4.h"
+>  #include "ext4_jbd2.h"
+>  #include "xattr.h"
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index c45f24ffab22..fb135224476d 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -44,6 +44,7 @@
+>  #include <linux/falloc.h>
+>  #include <linux/pagevec.h>
+>  #include <linux/backing-dev.h>
+> +#include <linux/mman.h>
+>
+>  static const struct vm_operations_struct xfs_file_vm_ops;
+>
+> @@ -1142,6 +1143,27 @@ xfs_file_mmap(
+>         return 0;
+>  }
+>
+> +#define XFS_MAP_SUPPORTED (LEGACY_MAP_MASK | MAP_SYNC)
+> +
+> +static int
+> +xfs_file_mmap_validate(
+> +       struct file             *filp,
+> +       struct vm_area_struct   *vma,
+> +       unsigned long           map_flags)
+> +{
+> +       if (map_flags & ~XFS_MAP_SUPPORTED)
+> +               return -EOPNOTSUPP;
+> +
+> +       /*
+> +        * We don't support synchronous mappings for non-DAX files. At least
+> +        * until someone comes with a sensible use case.
+> +        */
+> +       if (!IS_DAX(file_inode(filp)) && (map_flags & MAP_SYNC))
+> +               return -EOPNOTSUPP;
 
-This functionality needs to be exercised and stressed by fstests
-in some way before it gets merged.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Same comment about using EPERM here. That's also what I'm returning in
+the MAP_DIRECT case when the inode is a reflink inode and does not
+support MAP_DIRECT.
