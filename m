@@ -1,8 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 11/19] dax: Allow tuning whether dax_insert_mapping_entry() dirties entry
-Date: Wed, 11 Oct 2017 22:05:55 +0200
-Message-ID: <20171011200603.27442-12-jack@suse.cz>
-References: <20171011200603.27442-1-jack@suse.cz>
+Subject: [PATCH 0/19 v3] dax, ext4, xfs: Synchronous page faults
+Date: Wed, 11 Oct 2017 22:05:44 +0200
+Message-ID: <20171011200603.27442-1-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
         Dan Williams <dan.j.williams@intel.com>,
@@ -11,86 +10,105 @@ Cc: <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20171011200603.27442-1-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:58251 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752386AbdJKUGR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Oct 2017 16:06:17 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Currently we dirty radix tree entry whenever dax_insert_mapping_entry()
-gets called for a write fault. With synchronous page faults we would
-like to insert clean radix tree entry and dirty it only once we call
-fdatasync() and update page tables to same some unnecessary cache
-flushing. Add 'dirty' argument to dax_insert_mapping_entry() for that.
+Hello,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/dax.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+here is the third version of my patches to implement synchronous page faults
+for DAX mappings to make flushing of DAX mappings possible from userspace so
+that they can be flushed on finer than page granularity and also avoid the
+overhead of a syscall.
 
-diff --git a/fs/dax.c b/fs/dax.c
-index 5ddf15161390..efc210ff6665 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -526,13 +526,13 @@ static int copy_user_dax(struct block_device *bdev, struct dax_device *dax_dev,
- static void *dax_insert_mapping_entry(struct address_space *mapping,
- 				      struct vm_fault *vmf,
- 				      void *entry, sector_t sector,
--				      unsigned long flags)
-+				      unsigned long flags, bool dirty)
- {
- 	struct radix_tree_root *page_tree = &mapping->page_tree;
- 	void *new_entry;
- 	pgoff_t index = vmf->pgoff;
- 
--	if (vmf->flags & FAULT_FLAG_WRITE)
-+	if (dirty)
- 		__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
- 
- 	if (dax_is_zero_entry(entry) && !(flags & RADIX_DAX_ZERO_PAGE)) {
-@@ -569,7 +569,7 @@ static void *dax_insert_mapping_entry(struct address_space *mapping,
- 		entry = new_entry;
- 	}
- 
--	if (vmf->flags & FAULT_FLAG_WRITE)
-+	if (dirty)
- 		radix_tree_tag_set(page_tree, index, PAGECACHE_TAG_DIRTY);
- 
- 	spin_unlock_irq(&mapping->tree_lock);
-@@ -881,7 +881,7 @@ static int dax_load_hole(struct address_space *mapping, void *entry,
- 	}
- 
- 	entry2 = dax_insert_mapping_entry(mapping, vmf, entry, 0,
--			RADIX_DAX_ZERO_PAGE);
-+			RADIX_DAX_ZERO_PAGE, false);
- 	if (IS_ERR(entry2)) {
- 		ret = VM_FAULT_SIGBUS;
- 		goto out;
-@@ -1182,7 +1182,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
- 
- 		entry = dax_insert_mapping_entry(mapping, vmf, entry,
- 						 dax_iomap_sector(&iomap, pos),
--						 0);
-+						 0, write);
- 		if (IS_ERR(entry)) {
- 			error = PTR_ERR(entry);
- 			goto error_finish_iomap;
-@@ -1258,7 +1258,7 @@ static int dax_pmd_load_hole(struct vm_fault *vmf, struct iomap *iomap,
- 		goto fallback;
- 
- 	ret = dax_insert_mapping_entry(mapping, vmf, entry, 0,
--			RADIX_DAX_PMD | RADIX_DAX_ZERO_PAGE);
-+			RADIX_DAX_PMD | RADIX_DAX_ZERO_PAGE, false);
- 	if (IS_ERR(ret))
- 		goto fallback;
- 
-@@ -1379,7 +1379,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, pfn_t *pfnp,
- 
- 		entry = dax_insert_mapping_entry(mapping, vmf, entry,
- 						dax_iomap_sector(&iomap, pos),
--						RADIX_DAX_PMD);
-+						RADIX_DAX_PMD, write);
- 		if (IS_ERR(entry))
- 			goto finish_iomap;
- 
--- 
-2.12.3
+We use a new mmap flag MAP_SYNC to indicate that page faults for the mapping
+should be synchronous.  The guarantee provided by this flag is: While a block
+is writeably mapped into page tables of this mapping, it is guaranteed to be
+visible in the file at that offset also after a crash.
+
+How I implement this is that ->iomap_begin() indicates by a flag that inode
+block mapping metadata is unstable and may need flushing (use the same test as
+whether fdatasync() has metadata to write). If yes, DAX fault handler refrains
+from inserting / write-enabling the page table entry and returns special flag
+VM_FAULT_NEEDDSYNC together with a PFN to map to the filesystem fault handler.
+The handler then calls fdatasync() (vfs_fsync_range()) for the affected range
+and after that calls DAX code to update the page table entry appropriately.
+
+The first patch in this series is taken from Dan Williams' series for
+MAP_DIRECT so that we get a reliable way of detecting whether MAP_SYNC is
+supported or not.
+
+I did some basic performance testing on the patches over ramdisk - timed
+latency of page faults when faulting 512 pages. I did several tests: with file
+preallocated / with file empty, with background file copying going on / without
+it, with / without MAP_SYNC (so that we get comparison).  The results are
+(numbers are in microseconds):
+
+File preallocated, no background load no MAP_SYNC:
+min=9 avg=10 max=46
+8 - 15 us: 508
+16 - 31 us: 3
+32 - 63 us: 1
+
+File preallocated, no background load, MAP_SYNC:
+min=9 avg=10 max=47
+8 - 15 us: 508
+16 - 31 us: 2
+32 - 63 us: 2
+
+File empty, no background load, no MAP_SYNC:
+min=21 avg=22 max=70
+16 - 31 us: 506
+32 - 63 us: 5
+64 - 127 us: 1
+
+File empty, no background load, MAP_SYNC:
+min=40 avg=124 max=242
+32 - 63 us: 1
+64 - 127 us: 333
+128 - 255 us: 178
+
+File empty, background load, no MAP_SYNC:
+min=21 avg=23 max=67
+16 - 31 us: 507
+32 - 63 us: 4
+64 - 127 us: 1
+
+File empty, background load, MAP_SYNC:
+min=94 avg=112 max=181
+64 - 127 us: 489
+128 - 255 us: 23
+
+So here we can see the difference between MAP_SYNC vs non MAP_SYNC is about
+100-200 us when we need to wait for transaction commit in this setup. 
+
+Anyway, here are the patches and AFAICT the series is pretty much complete
+so we can start thinking how to merge this. Changes to ext4 / XFS are pretty
+minimal so either tree is fine I guess. Comments are welcome.
+
+Changes since v2:
+* avoid unnecessary flushing of faulted page (Ross) - I've realized it makes no
+  sense to remeasure my benchmark results (after actually doing that and seeing
+  no difference, sigh) since I use ramdisk and not real PMEM HW and so flushes
+  are ignored.
+* handle nojournal mode of ext4
+* other smaller cleanups & fixes (Ross)
+* factor larger part of finishing of synchronous fault into a helper (Christoph)
+* reorder pfnp argument of dax_iomap_fault() (Christoph)
+* add XFS support from Christoph
+* use proper MAP_SYNC support in mmap(2)
+* rebased on top of 4.14-rc4
+
+Changes since v1:
+* switched to using mmap flag MAP_SYNC
+* cleaned up fault handlers to avoid passing pfn in vmf->orig_pte
+* switched to not touching page tables before we are ready to insert final
+  entry as it was unnecessary and not really simplifying anything
+* renamed fault flag to VM_FAULT_NEEDDSYNC
+* other smaller fixes found by reviewers
+
+								Honza
