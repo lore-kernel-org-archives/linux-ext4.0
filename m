@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 06/19] dax: Create local variable for vmf->flags & FAULT_FLAG_WRITE test
-Date: Wed, 11 Oct 2017 22:05:50 +0200
-Message-ID: <20171011200603.27442-7-jack@suse.cz>
+Subject: [PATCH 02/19] mm: Remove VM_FAULT_HWPOISON_LARGE_MASK
+Date: Wed, 11 Oct 2017 22:05:46 +0200
+Message-ID: <20171011200603.27442-3-jack@suse.cz>
 References: <20171011200603.27442-1-jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
         Christoph Hellwig <hch@infradead.org>,
@@ -11,49 +11,30 @@ Cc: <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
         "Darrick J. Wong" <darrick.wong@oracle.com>,
         Jan Kara <jack@suse.cz>
 To: <linux-fsdevel@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:58337 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1757609AbdJKUGV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 11 Oct 2017 16:06:21 -0400
 In-Reply-To: <20171011200603.27442-1-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-There are already two users and more are coming.
+It is unused.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/dax.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ include/linux/mm.h | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/dax.c b/fs/dax.c
-index c09465884bbe..5ea71381dba0 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -1116,6 +1116,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
- 	struct iomap iomap = { 0 };
- 	unsigned flags = IOMAP_FAULT;
- 	int error, major = 0;
-+	bool write = vmf->flags & FAULT_FLAG_WRITE;
- 	int vmf_ret = 0;
- 	void *entry;
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index 38f6ed954dde..55a9d2d109d9 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -1182,8 +1182,6 @@ static inline void clear_page_pfmemalloc(struct page *page)
+ #define VM_FAULT_FALLBACK 0x0800	/* huge page fault failed, fall back to small */
+ #define VM_FAULT_DONE_COW   0x1000	/* ->fault has fully handled COW */
  
-@@ -1130,7 +1131,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
- 		goto out;
- 	}
- 
--	if ((vmf->flags & FAULT_FLAG_WRITE) && !vmf->cow_page)
-+	if (write && !vmf->cow_page)
- 		flags |= IOMAP_WRITE;
- 
- 	entry = grab_mapping_entry(mapping, vmf->pgoff, 0);
-@@ -1207,7 +1208,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf,
- 		break;
- 	case IOMAP_UNWRITTEN:
- 	case IOMAP_HOLE:
--		if (!(vmf->flags & FAULT_FLAG_WRITE)) {
-+		if (!write) {
- 			vmf_ret = dax_load_hole(mapping, entry, vmf);
- 			goto finish_iomap;
- 		}
--- 
-2.12.3
+-#define VM_FAULT_HWPOISON_LARGE_MASK 0xf000 /* encodes hpage index for large hwpoison */
