@@ -1,66 +1,72 @@
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: Re: [RFC] Ext4 case insensitive proposal
-Date: Thu, 12 Oct 2017 03:36:47 -0300
-Message-ID: <874lr4q3cw.fsf@dilma.collabora.co.uk>
-References: <871snrvu3r.fsf@dilma.collabora.co.uk>
-        <20170914231130.5t6ndiaortuo42av@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 17/19] ext4: Add support for MAP_SYNC flag
+Date: Thu, 12 Oct 2017 15:42:09 +0200
+Message-ID: <20171012134209.GE29293@quack2.suse.cz>
+References: <20171011200603.27442-1-jack@suse.cz>
+ <20171011200603.27442-18-jack@suse.cz>
+ <CAPcyv4gZw0QCG08Qs8dP8TMhgXo0_KcVq-33uhaG8QuwxXT=Wg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Ted Tso <tytso@mit.edu>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Dan Williams <dan.j.williams@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:38086 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750774AbdJLGgy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Oct 2017 02:36:54 -0400
-In-Reply-To: <20170914231130.5t6ndiaortuo42av@thunk.org> (Theodore Ts'o's
-        message of "Thu, 14 Sep 2017 19:11:30 -0400")
+Received: from mx2.suse.de ([195.135.220.15]:38147 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751004AbdJLNmM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 12 Oct 2017 09:42:12 -0400
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4gZw0QCG08Qs8dP8TMhgXo0_KcVq-33uhaG8QuwxXT=Wg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o <tytso@mit.edu> writes:
+On Wed 11-10-17 15:11:21, Dan Williams wrote:
+> On Wed, Oct 11, 2017 at 1:06 PM, Jan Kara <jack@suse.cz> wrote:
+> > Now when everything is prepared, add support in ext4 to accept MAP_SYNC
+> > as an mmap(2) flag.
+> >
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/ext4/file.c | 20 ++++++++++++++++++++
+> >  1 file changed, 20 insertions(+)
+> >
+> > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> > index 61a8788168f3..f013cda84b3d 100644
+> > --- a/fs/ext4/file.c
+> > +++ b/fs/ext4/file.c
+> > @@ -364,6 +364,25 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+> >         return 0;
+> >  }
+> >
+> > +#define EXT4_SUPPORTED_MAP_FLAGS (LEGACY_MAP_MASK | MAP_SYNC)
+> > +
+> > +static int ext4_file_mmap_validate(struct file *file,
+> > +                                  struct vm_area_struct *vma,
+> > +                                  unsigned long map_flags)
+> > +{
+> > +       if (map_flags & ~EXT4_SUPPORTED_MAP_FLAGS)
+> > +               return -EOPNOTSUPP;
+> > +
+> > +       /*
+> > +        * We don't support synchronous mappings for non-DAX files. At least
+> > +        * until someone comes with a sensible use case.
+> > +        */
+> > +       if (!IS_DAX(file_inode(file)) && (map_flags & MAP_SYNC))
+> > +               return -EOPNOTSUPP;
+> 
+> Perhaps EPERM instead to differentiate the unsupported flags case?
+> There's precedent for mmap returning EPERM for reasons other than
+> incompatible PROT flags.
 
-Hi Ted,
+Hum, I could make it EINVAL. EPERM looks just too bogus to me.
 
-> This isn't a complete implementation of my proposal.  In particular
-> one of the things which is missing is:
->
->    1.  If case-insensitivity is enabled, override the default dcache hash
->    and compare operations to ones that are case insensitive in ext4's
->    dcache_operations structure.
->
-> This is needed so there is a single dcache entry for case-folded file
-> names.
+								Honza
 
-Sorry for the delay in replying.  In fact, the dcache hash operations
-were part of my original patch, but I dropped it before submitting in
-favor of d_add_ci(), which I expected would prevent duplication of the
-same elements, differing only by case in the dentry cache.
-
-I have shared it in a different branch if you want to take a look.
-
-git://git.collabora.com/git/user/krisman/linux.git -b ext4-insensitive-dcache-patch
-
-Despite that, I've been learning my way in the VFS subsystem,
-investigating the suggestion made by you and HCH on the thread I
-mentioned:
-
-> I talked to Christoph at the Plumbers Closing party, and he suggested
-> that we get something simple in first which (a) assumes no on-disk
-> format changes, (b) does everything in the VFS layer, by using a
-> MS_CASE_FOLD, uses a case-insensitive dentry hash, and which degrades
-> to a brute force search in the VFS by using readdir interfaces if the
-> direct lookup does not succeed, and (c) at least initially assumes
-> only ASCII.
-
-My current question on this approach is how the MS_CASE_FOLD could be
-exposed to userspace.  It is not any system call that can receive a new
-flag to request an insensitive lookup.  In this case, are you
-considering a new set of system calls to perform case-insensitive
-lookups, some per-process thing or another approach I'm not considering?
-Can you provide me with more information on this?
-
-Thanks for helping out on reviewing my code.
-
---
-Gabriel Krisman Bertazi
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
