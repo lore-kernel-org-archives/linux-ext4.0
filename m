@@ -1,20 +1,20 @@
 From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH v2 2/5] ext4: prevent data corruption with journaling + DAX
-Date: Thu, 12 Oct 2017 11:55:22 -0400
-Message-ID: <20171012155522.nqnvemlarbxxnrcw@thunk.org>
+Subject: Re: [PATCH v2 4/5] ext4: add ext4_should_use_dax()
+Date: Thu, 12 Oct 2017 12:01:28 -0400
+Message-ID: <20171012160128.qzmsttp7mw3c4q22@thunk.org>
 References: <20170912050526.7627-1-ross.zwisler@linux.intel.com>
- <20170912050526.7627-3-ross.zwisler@linux.intel.com>
+ <20170912050526.7627-5-ross.zwisler@linux.intel.com>
+ <20170912064612.GD16554@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20170912050526.7627-3-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+In-Reply-To: <20170912064612.GD16554-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -26,24 +26,17 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Sep 11, 2017 at 11:05:23PM -0600, Ross Zwisler wrote:
-> The current code has the potential for data corruption when changing an
-> inode's journaling mode, as that can result in a subsequent unsafe change
-> in S_DAX.
+On Tue, Sep 12, 2017 at 08:46:12AM +0200, Jan Kara wrote:
+> On Mon 11-09-17 23:05:25, Ross Zwisler wrote:
+> > This helper, in the spirit of ext4_should_dioread_nolock() et al., replaces
+> > the complex conditional in ext4_set_inode_flags().
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 > 
-> I've captured an instance of this data corruption in the following fstest:
+> Yeah, makes sense to me. You can add:
 > 
-> https://patchwork.kernel.org/patch/9948377/
-> 
-> Prevent this data corruption from happening by disallowing changes to the
-> journaling mode if the '-o dax' mount option was used.  This means that for
-> a given filesystem we could have a mix of inodes using either DAX or
-> data journaling, but whatever state the inodes are in will be held for the
-> duration of the mount.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> Suggested-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
 Thanks, applied.
 
-						- Ted
+					- Ted
