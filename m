@@ -1,86 +1,88 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Convert timers to use timer_setup()
-Date: Thu, 12 Oct 2017 16:58:26 +0200
-Message-ID: <20171012145826.GC31488@quack2.suse.cz>
-References: <20171005005254.GA23668@beast>
+Subject: Re: [v4.14-rc3 bug] scheduling while atomic in generic/451 test on
+ extN
+Date: Thu, 12 Oct 2017 17:07:40 +0200
+Message-ID: <20171012150740.GD31488@quack2.suse.cz>
+References: <20171005060700.GF8034@eguan.usersys.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, Thomas Gleixner <tglx@linutronix.de>
-To: Kees Cook <keescook@chromium.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        lczerner@redhat.com
+To: Eryu Guan <eguan@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:48584 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751040AbdJLPHm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 12 Oct 2017 11:07:42 -0400
 Content-Disposition: inline
-In-Reply-To: <20171005005254.GA23668@beast>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20171005060700.GF8034@eguan.usersys.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 04-10-17 17:52:54, Kees Cook wrote:
-> In preparation for unconditionally passing the struct timer_list pointer to
-> all timer callbacks, switch to using the new timer_setup() and from_timer()
-> to pass the timer pointer explicitly.
+Hi Eryu!
+
+On Thu 05-10-17 14:07:00, Eryu Guan wrote:
+> I hit "scheduling while atomic" bug by running fstests generic/451 on
+> extN filesystems in v4.14-rc3 testing, but it didn't reproduce for me on
+> every host I tried, but I've seen it multiple times on multiple hosts. A
+> test vm of mine with 4 vcpus and 8G memory reproduced the bug reliably,
+> while a bare metal host with 8 cpus and 8G mem couldn't.
 > 
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Thomas Gleixner <tglx@linutronix.de>
-> Signed-off-by: Kees Cook <keescook@chromium.org>
+> This is due to commit 332391a9935d ("fs: Fix page cache inconsistency
+> when mixing buffered and AIO DIO"), which defers AIO DIO io completion
+> to a workqueue if the inode has mapped pages and does page cache
+> invalidation in process context. I think that the problem is that the
+> pages can be mapped after the dio->inode->i_mapping->nrpages check, so
+> we're doing page cache invalidation, which could sleep, in interrupt
+> context, thus "scheduling while atomic" bug happens.
+> 
+> Defering all AIO DIO completion to workqueue unconditionally (as what
+> the iomap based path does) fixed the problem for me. But there're
+> performance concerns to do so in the original discussions.
+> 
+> https://www.spinics.net/lists/linux-fsdevel/msg112669.html
 
-The patch looks good. You can add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+Thanks for report and the detailed analysis. I think your analysis is
+correct and the nrpages check in dio_bio_end_aio() is racy. My solution to
+this would be to pass to dio_complete() as an argument whether invalidation
+is required or not (and set it to true for deferred completion and to false
+when we decide not to defer completion since nrpages is 0 at that moment).
+Lukas?
 
 								Honza
 
-
-> ---
-> This requires commit 686fef928bba ("timer: Prepare to change timer
-> callback argument type") in v4.14-rc3, but should be otherwise
-> stand-alone.
-> ---
->  fs/ext4/super.c | 14 +++++---------
->  1 file changed, 5 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index b104096fce9e..1bc7ff8157d8 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2791,14 +2791,11 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
->   * This function is called once a day if we have errors logged
->   * on the file system
->   */
-> -static void print_daily_error_info(unsigned long arg)
-> +static void print_daily_error_info(struct timer_list *t)
->  {
-> -	struct super_block *sb = (struct super_block *) arg;
-> -	struct ext4_sb_info *sbi;
-> -	struct ext4_super_block *es;
-> -
-> -	sbi = EXT4_SB(sb);
-> -	es = sbi->s_es;
-> +	struct ext4_sb_info *sbi = from_timer(sbi, t, s_err_report);
-> +	struct super_block *sb = sbi->s_sb;
-> +	struct ext4_super_block *es = sbi->s_es;
->  
->  	if (es->s_error_count)
->  		/* fsck newer than v1.41.13 is needed to clean this condition. */
-> @@ -3980,8 +3977,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
->  	spin_lock_init(&sbi->s_next_gen_lock);
->  
-> -	setup_timer(&sbi->s_err_report, print_daily_error_info,
-> -		(unsigned long) sb);
-> +	timer_setup(&sbi->s_err_report, print_daily_error_info, 0);
->  
->  	/* Register extent status tree shrinker */
->  	if (ext4_es_register_shrinker(sbi))
-> -- 
-> 2.7.4
-> 
-> 
-> -- 
-> Kees Cook
-> Pixel Security
+> [17087.868644] BUG: scheduling while atomic: swapper/0/0/0x00000100 
+> [17087.875363] Modules linked in: dm_thin_pool dm_persistent_data dm_bio_prison dm_snapshot dm_bufio loop dm_flakey dm_mod ses enclosure ext4 mbcache jbd2 intel_rapl sb_edac x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm irqbypass crct10dif_pclmul crc32_pclmul mpt3sas ghash_clmulni_intel raid_class sg scsi_transport_sas pcbc ipmi_ssif shpchp aesni_intel crypto_simd iTCO_wdt glue_helper ipmi_si cryptd iTCO_vendor_support cdc_ether ipmi_devintf ipmi_msghandler usbnet mii pcspkr acpi_pad wmi dcdbas joydev acpi_power_meter lpc_ich mei_me mei nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c mgag200 drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops sd_mod igb ttm ahci ptp libahci drm libata pps_core crc32c_intel dca megaraid_sas i2c_algo_bit i2c_core
+  [last unloaded: scsi_debug] 
+> [17087.955757] CPU: 0 PID: 0 Comm: swapper/0 Tainted: G        W       4.14.0-rc3 #1 
+> [17087.964110] Hardware name: Dell Inc. PowerEdge R620/01W23F, BIOS 2.5.4 01/22/2016 
+> [17087.972460] Call Trace: 
+> [17087.975189]  <IRQ> 
+> [17087.977441]  dump_stack+0x63/0x89 
+> [17087.981143]  __schedule_bug+0x62/0x70 
+> [17087.985232]  __schedule+0x7bb/0x890 
+> [17087.989125]  schedule+0x36/0x80 
+> [17087.992629]  io_schedule+0x16/0x40 
+> [17087.996429]  __lock_page+0x10a/0x150 
+> [17088.000420]  ? page_cache_tree_insert+0xb0/0xb0 
+> [17088.005470]  invalidate_inode_pages2_range+0x240/0x500 
+> [17088.011208]  ? kmem_cache_free+0x1ad/0x1c0 
+> [17088.015778]  ? mempool_free_slab+0x17/0x20 
+> [17088.020347]  ? mempool_free+0x2b/0x80 
+> [17088.024438]  dio_complete+0x14f/0x1d0 
+> [17088.028526]  dio_bio_end_aio+0xcb/0x120 
+> [17088.032800]  bio_endio+0xa1/0x120 
+> [17088.036501]  blk_update_request+0xb7/0x310 
+> [17088.041076]  scsi_end_request+0x34/0x200 
+> [17088.045454]  scsi_io_completion+0x133/0x5f0 
+> [17088.050123]  scsi_finish_command+0xd9/0x120 
+> [17088.054782]  scsi_softirq_done+0x145/0x170 
+> [17088.059355]  blk_done_softirq+0xa1/0xd0 
+> [17088.063627]  __do_softirq+0xc9/0x269 
+> [17088.067619]  irq_exit+0xd9/0xf0 
+> [17088.071123]  do_IRQ+0x51/0xd0 
+> [17088.074434]  common_interrupt+0x9d/0x9d 
+> [17088.078713]  </IRQ> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
