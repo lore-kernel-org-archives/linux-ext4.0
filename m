@@ -1,9 +1,9 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 12/19] mm: Define MAP_SYNC and VM_SYNC flags
-Date: Fri, 13 Oct 2017 00:12:58 -0700
-Message-ID: <20171013071258.GC9105@infradead.org>
+Subject: Re: [PATCH 13/19] dax, iomap: Add support for synchronous faults
+Date: Fri, 13 Oct 2017 00:14:58 -0700
+Message-ID: <20171013071458.GD9105@infradead.org>
 References: <20171011200603.27442-1-jack@suse.cz>
- <20171011200603.27442-13-jack@suse.cz>
+ <20171011200603.27442-14-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -13,11 +13,15 @@ Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         Ted Tso <tytso@mit.edu>,
         "Darrick J. Wong" <darrick.wong@oracle.com>
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([65.50.211.133]:59853 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750722AbdJMHO6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Oct 2017 03:14:58 -0400
 Content-Disposition: inline
-In-Reply-To: <20171011200603.27442-13-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20171011200603.27442-14-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Looks fine,
 
