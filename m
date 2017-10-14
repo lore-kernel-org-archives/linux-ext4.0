@@ -1,43 +1,61 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 0/19 v3] dax, ext4, xfs: Synchronous page faults
-Date: Fri, 13 Oct 2017 16:53:04 -0600
-Message-ID: <20171013225304.GF29081@linux.intel.com>
-References: <20171011200603.27442-1-jack@suse.cz>
- <CAPcyv4g6tjyUy_zxVVze+C+xZiT89qa1GiSoVjhH3G-6r3eXDA@mail.gmail.com>
- <20171011224331.GB3666@dastard>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [1/2] libext2fs: Prevent allocating inode table from already
+ used blocks
+Date: Sat, 14 Oct 2017 10:50:34 -0400
+Message-ID: <20171014145034.v2gxdeihhyxgjebr@thunk.org>
+References: <1503581739-6385-1-git-send-email-lczerner@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Ted Tso <tytso@mit.edu>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Dave Chinner <david@fromorbit.com>
+Cc: linux-ext4@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.31]:1305 "EHLO mga06.intel.com"
+Received: from imap.thunk.org ([74.207.234.97]:47332 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751339AbdJMWxG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 13 Oct 2017 18:53:06 -0400
+        id S1753198AbdJNOuh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 14 Oct 2017 10:50:37 -0400
 Content-Disposition: inline
-In-Reply-To: <20171011224331.GB3666@dastard>
+In-Reply-To: <1503581739-6385-1-git-send-email-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 12, 2017 at 09:43:31AM +1100, Dave Chinner wrote:
-> On Wed, Oct 11, 2017 at 02:18:06PM -0700, Dan Williams wrote:
-> > On Wed, Oct 11, 2017 at 1:05 PM, Jan Kara <jack@suse.cz> wrote:
-> > > Anyway, here are the patches and AFAICT the series is pretty much complete
-> > > so we can start thinking how to merge this. Changes to ext4 / XFS are pretty
-> > > minimal so either tree is fine I guess. Comments are welcome.
-> > 
-> > I'd like to propose taking this through the nvdimm tree. Some of these
-> > changes make the MAP_DIRECT support for ext4 easier, so I'd like to
-> > rebase that support on top and carry both.
+On Thu, Aug 24, 2017 at 03:35:38PM +0200, Lukas Czerner wrote:
+> Currently it's possible for ext2fs_allocate_group_table() to place inode
+> tables to blocks that are already occupied by different inode table.
+> This can be reproduced by resize2fs on the file system where we need to
+> move more than one inode table to a different location due to increase
+> in group descriptor blocks, inode and block bitmaps.
 > 
-> This functionality needs to be exercised and stressed by fstests
-> in some way before it gets merged.
+> Best way I can reproduce this is to create big enough file system with
+> huge amount of inodes and without resize_inode
+> 
+> mke2fs -F -b 1024 -i 1024 -O ^resize_inode -t ext4 /dev/loop0 1024000
+> resize2fs /dev/loop0 10240000
+> 
+> e2fsck -fn /dev/loop0 | less
+> e2fsck 1.43.5 (04-Aug-2017)
+> ext2fs_check_desc: Corrupt group descriptor: bad block for inode table
+> e2fsck: Group descriptors look bad... trying backup blocks...
+> e2fsck: The journal superblock is corrupt while checking journal for /dev/loop0
+> e2fsck: Cannot proceed with file system check
+> Superblock has an invalid journal (inode 8).
+> Clear? no
+> 
+> /dev/loop0: ********** WARNING: Filesystem still has errors **********
+> 
+> None of the settings are strictly necessary and it can be reproducer in
+> various ways. This is just an example of one easy way to reproduce this.
+> 
+> This bug was introduced with commit fccdbac39454 ("libext2fs: optimize
+> ext2fs_allocate_group_table()") and is caused by the fact that wrong
+> bitmap is used to mark the blocks as used.
+> 
+> Fix this by using ext2fs_mark_block_bitmap_range2() in both (flex_bg and
+> non flex_bg) cases and handle flex_bg case manually instead of relying
+> on ext2fs_block_alloc_stats_range() because there is no way in that
+> function to use different bitmap than fs->block_map.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 
-I can work on making an fstest for this set, unless someone else has already
-started.
+Thanks, applied.  Apologies for taking so long to apply this.
+
+		  	    	       - Ted
