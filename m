@@ -1,73 +1,126 @@
-From: Kilian Cavalotti <kilian.cavalotti.work@gmail.com>
-Subject: Re: Recover from a "deleted inode referenced" situation
-Date: Sat, 14 Oct 2017 18:16:14 -0700
-Message-ID: <CAJz=VjEiP9-bepzSoZm-TeUWY=Pc=m3gXFH2rRJtFqKR6PXTMA@mail.gmail.com>
-References: <CAJz=VjEUqxMNo6zShYaV5ffioxaj6+a5Av0imtfdtCDf7wqY=A@mail.gmail.com>
- <32D25551-5517-4B17-B89B-2A1D60249ABA@dilger.ca> <CAJz=VjG+7Q0j7erfNC8ocwnkkgtrDXK-Ma_pRLSu7yiGZXH88w@mail.gmail.com>
- <CAJz=VjEOnU=wsdjmHitxQsTXvW7AMgYRiKFJPGq_imPUbu5+GQ@mail.gmail.com> <2938B452-C59B-4D39-AE6F-1741A38B28A7@dilger.ca>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: tune2fs: prevent crash if error in journal recovery
+Date: Sun, 15 Oct 2017 00:39:27 -0400
+Message-ID: <20171015043927.ntqqt43kbxgvbcbk@thunk.org>
+References: <96fd009e4552b48cd9d4e4f776dc7d20@be409.mail.saunalahti.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+To: eru@netti.fi
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f67.google.com ([74.125.82.67]:53681 "EHLO
-        mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751138AbdJOBQg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Oct 2017 21:16:36 -0400
-Received: by mail-wm0-f67.google.com with SMTP id q132so27695866wmd.2
-        for <linux-ext4@vger.kernel.org>; Sat, 14 Oct 2017 18:16:35 -0700 (PDT)
-In-Reply-To: <2938B452-C59B-4D39-AE6F-1741A38B28A7@dilger.ca>
+Received: from imap.thunk.org ([74.207.234.97]:48106 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750704AbdJOEjc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 15 Oct 2017 00:39:32 -0400
+Content-Disposition: inline
+In-Reply-To: <96fd009e4552b48cd9d4e4f776dc7d20@be409.mail.saunalahti.fi>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas,
+On Thu, Oct 05, 2017 at 08:25:50AM +0300, eru@netti.fi wrote:
+> Prevent coredump if tunefs calls ext2fs_run_ext3_journal(), and this 
+> then
+> fails for some reason while calling ext2fs_open2(). Such failure makes
+> the fs pointer NULL.
+> 
+> Signed-off-by: Erkki Ruohtula <eru@netti.fi>
 
-On Fri, Oct 13, 2017 at 11:40 AM, Andreas Dilger <adilger@dilger.ca> wrote:
-> The findsuper comment was potentially misleading, as I was mixing up your
-> problem with one in another thread where the partition table was clobbered.
+Hi,
 
-Gotcha. Learned about it though, so it was still useful. ;)
+Thanks for reporting this issue and sending a patch.  It turns out
+there were more problems hiding ext2fs_run_ext3_journal() than just
+the one you pointed out, and so the clean up was more extensive.
 
->>      1024           0  17983724322816   95590400  4096    0  Thu Nov
->> 26 23:22:42 2015 12c2c019 1.42.6-5644
->
-> This is likely to be the proper superblock, but it has a bit of a
-> strange label.  Looks like a really old e2fsprogs build version?
+    	    	    	     	- Ted
 
-Yes, the filesystem label name is for some reason the version of mkfs
-that created it. The volume is from a Synology NAS, I assume that's
-how they do things.
+commit 6ae16a6814f47c96c261519380df7a7820c8f468
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sun Oct 15 00:22:20 2017 -0400
 
-> No, this looks like the _start_ of a filesystem image, but there is
-> no real guarantee that the blocks in the file are allocated contiguously
-> in the actual filesystem, so your "dd" is unlikely to work properly.
-> The filesystem itself is 773376 * 4KB ~= 3GB in size, and if it was
-> originally created as a sparse file there is little chance those blocks
-> were allocated contiguously.  The findsuper utility is meant to locate
-> superblocks in a block device to help recover from partition table woes.
+    misc: clean up error handling for ext2fs_run_ext3_journal()
+    
+    The ext2fs_run_ext3_journal() function is in debugfs/journal.c, and in
+    some error conditions cases may close the passed-in file system handle.
+    
+    Clean up the both the function so that it reliably clears the file
+    system handle if it has been freed, and its callers so that they do
+    not crash by dereferencing a null pointer if it has been freed.
+    
+    Reported-by: Erkki Ruohtula <eru@netti.fi>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 
-Aaah, right, got it.
-
-> If you still have access to some of the files, you should consider to
-> copy them out of the filesystem.  Next, I would recommend to make an
-> LVM snapshot and run e2fsck on that to see what else you get out of it.
-> Depending on the amount and type of corruption, that may take a very
-> long time on a 20TB filesystem, and not be worthwhile to wait for.
-
-I did that actually: I was able to salvage about 2.3 TB of data that
-was still accessible from a read-only mount. Then, I created a
-snapshot (although with mdraid, not LVM, but same idea), and fsck'ed
-the filesystem: fsck found about 800GB more, but not many intact
-directories. I was hoping that some of the top directories that got
-lost could be found relatively intact in lost+found/ but I ended up
-with a pretty flat hierarchy of things there, with directories at most
-maybe 3-4 levels deep. I'll need to spend some time trying to put
-pieces together from what fsck recovered.
-
-But unfortunately there's another ~17TB of data that fsck didin't
-find. That seems like a lot of data lost from just replaying a
-corrupted journal... :(
-
-Cheers,
--- 
-Kilian
+diff --git a/debugfs/journal.c b/debugfs/journal.c
+index 9997c7c7c..56a68be52 100644
+--- a/debugfs/journal.c
++++ b/debugfs/journal.c
+@@ -793,14 +793,14 @@ errcode_t ext2fs_run_ext3_journal(ext2_filsys *fsp)
+ 		kbytes_written = stats->bytes_written >> 10;
+ 
+ 	ext2fs_mmp_stop(fs);
+-	fsname = strdup(fs->device_name);
++	fsname = fs->device_name;
++	fs->device_name = NULL;
+ 	fsflags = fs->flags;
+ 	fsblocksize = fs->blocksize;
+ 	ext2fs_free(fs);
+-	retval = ext2fs_open(fsname, fsflags,
+-			     0, fsblocksize, io_ptr,
+-			     fsp);
+-	free(fsname);
++	*fsp = NULL;
++	retval = ext2fs_open(fsname, fsflags, 0, fsblocksize, io_ptr, fsp);
++	ext2fs_free_mem(&fsname);
+ 	if (retval)
+ 		return retval;
+ 
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index b5897685c..f14cefbad 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -3759,7 +3759,7 @@ int main(int argc, char *argv[])
+ 		fctx.err_fp = fopen(logfile, "a");
+ 		if (!fctx.err_fp) {
+ 			perror(logfile);
+-			goto out_nofs;
++			goto out;
+ 		}
+ 	} else
+ 		fctx.err_fp = stderr;
+@@ -3780,7 +3780,7 @@ int main(int argc, char *argv[])
+ 	if (err) {
+ 		printf(_("%s: %s.\n"), fctx.device, error_message(err));
+ 		printf(_("Please run e2fsck -fy %s.\n"), fctx.device);
+-		goto out_nofs;
++		goto out;
+ 	}
+ 	fctx.fs = global_fs;
+ 	global_fs->priv_data = &fctx;
+@@ -3869,12 +3869,12 @@ int main(int argc, char *argv[])
+ 
+ 	ret = 0;
+ out:
+-	err = ext2fs_close(global_fs);
+-	if (err)
+-		com_err(argv[0], err, "while closing fs");
+-	global_fs = NULL;
+-out_nofs:
+-
++	if (global_fs) {
++		err = ext2fs_close(global_fs);
++		if (err)
++			com_err(argv[0], err, "while closing fs");
++		global_fs = NULL;
++	}
+ 	return ret;
+ }
+ 
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index 3e7ca23e1..db06003e0 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -465,9 +465,6 @@ static void request_fsck_afterwards(ext2_filsys fs)
+ 
+ static void convert_64bit(ext2_filsys fs, int direction)
+ {
+-	if (!direction)
+-		return;
