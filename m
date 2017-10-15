@@ -1,126 +1,67 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: tune2fs: prevent crash if error in journal recovery
-Date: Sun, 15 Oct 2017 00:39:27 -0400
-Message-ID: <20171015043927.ntqqt43kbxgvbcbk@thunk.org>
-References: <96fd009e4552b48cd9d4e4f776dc7d20@be409.mail.saunalahti.fi>
+Subject: Re: Recover from a "deleted inode referenced" situation
+Date: Sun, 15 Oct 2017 08:48:00 -0400
+Message-ID: <20171015124800.zjsqu623rivp27qv@thunk.org>
+References: <CAJz=VjEUqxMNo6zShYaV5ffioxaj6+a5Av0imtfdtCDf7wqY=A@mail.gmail.com>
+ <32D25551-5517-4B17-B89B-2A1D60249ABA@dilger.ca>
+ <CAJz=VjG+7Q0j7erfNC8ocwnkkgtrDXK-Ma_pRLSu7yiGZXH88w@mail.gmail.com>
+ <CAJz=VjEOnU=wsdjmHitxQsTXvW7AMgYRiKFJPGq_imPUbu5+GQ@mail.gmail.com>
+ <2938B452-C59B-4D39-AE6F-1741A38B28A7@dilger.ca>
+ <CAJz=VjEiP9-bepzSoZm-TeUWY=Pc=m3gXFH2rRJtFqKR6PXTMA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: eru@netti.fi
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: Kilian Cavalotti <kilian.cavalotti.work@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48106 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:48654 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750704AbdJOEjc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 15 Oct 2017 00:39:32 -0400
+        id S1750836AbdJOMsE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 15 Oct 2017 08:48:04 -0400
 Content-Disposition: inline
-In-Reply-To: <96fd009e4552b48cd9d4e4f776dc7d20@be409.mail.saunalahti.fi>
+In-Reply-To: <CAJz=VjEiP9-bepzSoZm-TeUWY=Pc=m3gXFH2rRJtFqKR6PXTMA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 05, 2017 at 08:25:50AM +0300, eru@netti.fi wrote:
-> Prevent coredump if tunefs calls ext2fs_run_ext3_journal(), and this 
-> then
-> fails for some reason while calling ext2fs_open2(). Such failure makes
-> the fs pointer NULL.
-> 
-> Signed-off-by: Erkki Ruohtula <eru@netti.fi>
+On Sat, Oct 14, 2017 at 06:16:14PM -0700, Kilian Cavalotti wrote:
+> But unfortunately there's another ~17TB of data that fsck didin't
+> find. That seems like a lot of data lost from just replaying a
+> corrupted journal... :(
 
-Hi,
+It wasn't from replaying a journal, corrupted or not.  Andreas was
+mistaken there; remounting the file system read/write would not have
+triggered a journal replay; if the journal needed replaying it would
+have been replayed on the read-only mount.
 
-Thanks for reporting this issue and sending a patch.  It turns out
-there were more problems hiding ext2fs_run_ext3_journal() than just
-the one you pointed out, and so the clean up was more extensive.
+There are two possibilities about what could have happened; one is
+that the file system was already badly corrupted, but your copy
+command hadn't started hitting the corrupted portion of the file
+system, and so it was coincidence that the r/w remount happened right
+before the errors started getting flagged.
 
-    	    	    	     	- Ted
+The second possibility is that is that the allocation bitmaps were
+corrupted, and shortly after you remounted read/write something stated
+to write into your file system, and since the part of the inode table
+areas was marked as "available" the write into the file system ended
+up smashing the inode table.  (More modern kernels enable the
+block_validity option by default, which would have prevented this; but
+if you were using an older kernel, it would not have enabled this
+feature by default.)
 
-commit 6ae16a6814f47c96c261519380df7a7820c8f468
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sun Oct 15 00:22:20 2017 -0400
+Since the problem started with the resize, I'm actually guessing the
+first is more likely.  Especially if you were using an older version
+of e2fsprogs/resize2fs, and if you were doing an off-line resize
+(i.e., the file system was unmounted at the time).  There were a
+number of bugs with older versions of e2fsprogs with file systems
+larger than 16TB (hence, the 64-bit file system feature was enabled)
+associated with off-line resize, and the manisfestation of these bugs
+includes portions of the inode table getting smashed.
 
-    misc: clean up error handling for ext2fs_run_ext3_journal()
-    
-    The ext2fs_run_ext3_journal() function is in debugfs/journal.c, and in
-    some error conditions cases may close the passed-in file system handle.
-    
-    Clean up the both the function so that it reliably clears the file
-    system handle if it has been freed, and its callers so that they do
-    not crash by dereferencing a null pointer if it has been freed.
-    
-    Reported-by: Erkki Ruohtula <eru@netti.fi>
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Unfortunately, there may not be a lot we can do, if that's the case.  :-(
 
-diff --git a/debugfs/journal.c b/debugfs/journal.c
-index 9997c7c7c..56a68be52 100644
---- a/debugfs/journal.c
-+++ b/debugfs/journal.c
-@@ -793,14 +793,14 @@ errcode_t ext2fs_run_ext3_journal(ext2_filsys *fsp)
- 		kbytes_written = stats->bytes_written >> 10;
- 
- 	ext2fs_mmp_stop(fs);
--	fsname = strdup(fs->device_name);
-+	fsname = fs->device_name;
-+	fs->device_name = NULL;
- 	fsflags = fs->flags;
- 	fsblocksize = fs->blocksize;
- 	ext2fs_free(fs);
--	retval = ext2fs_open(fsname, fsflags,
--			     0, fsblocksize, io_ptr,
--			     fsp);
--	free(fsname);
-+	*fsp = NULL;
-+	retval = ext2fs_open(fsname, fsflags, 0, fsblocksize, io_ptr, fsp);
-+	ext2fs_free_mem(&fsname);
- 	if (retval)
- 		return retval;
- 
-diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index b5897685c..f14cefbad 100644
---- a/misc/fuse2fs.c
-+++ b/misc/fuse2fs.c
-@@ -3759,7 +3759,7 @@ int main(int argc, char *argv[])
- 		fctx.err_fp = fopen(logfile, "a");
- 		if (!fctx.err_fp) {
- 			perror(logfile);
--			goto out_nofs;
-+			goto out;
- 		}
- 	} else
- 		fctx.err_fp = stderr;
-@@ -3780,7 +3780,7 @@ int main(int argc, char *argv[])
- 	if (err) {
- 		printf(_("%s: %s.\n"), fctx.device, error_message(err));
- 		printf(_("Please run e2fsck -fy %s.\n"), fctx.device);
--		goto out_nofs;
-+		goto out;
- 	}
- 	fctx.fs = global_fs;
- 	global_fs->priv_data = &fctx;
-@@ -3869,12 +3869,12 @@ int main(int argc, char *argv[])
- 
- 	ret = 0;
- out:
--	err = ext2fs_close(global_fs);
--	if (err)
--		com_err(argv[0], err, "while closing fs");
--	global_fs = NULL;
--out_nofs:
--
-+	if (global_fs) {
-+		err = ext2fs_close(global_fs);
-+		if (err)
-+			com_err(argv[0], err, "while closing fs");
-+		global_fs = NULL;
-+	}
- 	return ret;
- }
- 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 3e7ca23e1..db06003e0 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -465,9 +465,6 @@ static void request_fsck_afterwards(ext2_filsys fs)
- 
- static void convert_64bit(ext2_filsys fs, int direction)
- {
--	if (!direction)
--		return;
+This is probably not a great time to remind people about the value of
+backups, especially off-site backups (even if software was 100%
+bug-free, what if there was a fire at your home/work)?
+
+Sorry,
+
+						- Ted
