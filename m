@@ -1,8 +1,8 @@
-From: Ashlie Martinez <ashmrtn@utexas.edu>
+From: Amir Goldstein <amir73il@gmail.com>
 Subject: Re: [PATCH] ext4: fix interaction between i_size, fallocate, and
  delalloc after a crash
-Date: Mon, 16 Oct 2017 14:32:02 -0500
-Message-ID: <CAFk8rvZoOcU4Di8mkV_uPd3e4ccqPrB5kg2Y5WufhJX6W73k7w@mail.gmail.com>
+Date: Tue, 17 Oct 2017 00:11:40 +0300
+Message-ID: <CAOQ4uxiKdRq1KyiEW-d9rp+hWQanVzMXQa1vW2JHmhtEVM1-GA@mail.gmail.com>
 References: <1503830683-21455-1-git-send-email-amir73il@gmail.com>
  <59C8D147.1060608@cn.fujitsu.com> <CAOQ4uxgnK3mGKG+owRUNGyDVOCeicArwaufGgwXaSVxC26+peQ@mail.gmail.com>
  <CAFk8rvYvrGo6SjA6e0yj0XL_BARMmZoofB5kESM4EY4S2n-==w@mail.gmail.com>
@@ -10,7 +10,8 @@ References: <1503830683-21455-1-git-send-email-amir73il@gmail.com>
  <CAOQ4uxgc77_P472KEyHfAXSOE6DD7c=2VrJWBJT6ahiSYb=iJQ@mail.gmail.com>
  <CAFk8rvYtyraezVEP1e3LFEE+9t5YoRH2YwjKxex8hgSY74Lw7A@mail.gmail.com>
  <20171007032917.bntgnubthdstmrrt@thunk.org> <59DDFC47.3050300@cn.fujitsu.com>
- <CAFk8rvbi6eDn4P7rfBr6+90xbsQcfEBJAp0wQh+tczNEwdMTpw@mail.gmail.com> <CAOQ4uxjtf8_y7Hmb4GU9YN7DvMa7WNtpeRzGoK5m2=Vw=ChStA@mail.gmail.com>
+ <CAFk8rvbi6eDn4P7rfBr6+90xbsQcfEBJAp0wQh+tczNEwdMTpw@mail.gmail.com>
+ <CAOQ4uxjtf8_y7Hmb4GU9YN7DvMa7WNtpeRzGoK5m2=Vw=ChStA@mail.gmail.com> <CAFk8rvZoOcU4Di8mkV_uPd3e4ccqPrB5kg2Y5WufhJX6W73k7w@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Cc: Xiao Yang <yangx.jy@cn.fujitsu.com>, Theodore Tso <tytso@mit.edu>,
@@ -18,232 +19,67 @@ Cc: Xiao Yang <yangx.jy@cn.fujitsu.com>, Theodore Tso <tytso@mit.edu>,
         fstests <fstests@vger.kernel.org>,
         Ext4 <linux-ext4@vger.kernel.org>,
         Vijay Chidambaram <vvijay03@gmail.com>
-To: Amir Goldstein <amir73il@gmail.com>
+To: Ashlie Martinez <ashmrtn@utexas.edu>
 Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <CAOQ4uxjtf8_y7Hmb4GU9YN7DvMa7WNtpeRzGoK5m2=Vw=ChStA@mail.gmail.com>
+In-Reply-To: <CAFk8rvZoOcU4Di8mkV_uPd3e4ccqPrB5kg2Y5WufhJX6W73k7w@mail.gmail.com>
 Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Amir,
-
-I know this is a bit late, but I've spent some time working through
-the disk image that you provided (so that I could determine how/if I
-could modify CrashMonkey to catch errors like this) and I don't think
-I understand what state the disk image reflects. After digging around
-the journal of the disk image you provided, I found that the first 10
-journal blocks are used, with the journal superblock being placed in
-the very first block of the journal. The journal superblock says that
-the first journal transaction ID that should be in the journal is
-transaction ID 4. However, dumping the other journal blocks, I found
-that the next block is a descriptor block for transaction ID 2. The
-rest of the journal blocks are data blocks for that transaction plus a
-transaction commit block. This seems a little odd considering that the
-journal refers to a 4th transaction, which I have not been able to
-find (I quickly dumped the first 50 blocks in debugfs and found the
-rest to contain only zeros).
-
-With this in mind, I looked back at the xfstests code for controlling
-the dm_flakey device. What I realized is the `nolockfs` flag is
-provided both when it switches from the real device to the flakey
-device that drops writes and when it switches from the flakey device
-back to the real device. I know there is a call to umount once the
-flakey device that drops writes is inserted, but do you think it is
-possible that the flakey device is swapped back to the real device
-before all the writes forced out by umount have made it to the flakey
-device? Unfortunately I still don't have a local machine that is
-capable of reproducing your test results and I have not made any gce
-test appliance images to test this yet, so I'm not sure if this is a
-valid theory.
-
-On Wed, Oct 11, 2017 at 8:34 AM, Amir Goldstein <amir73il@gmail.com> wrote:
+On Mon, Oct 16, 2017 at 10:32 PM, Ashlie Martinez <ashmrtn@utexas.edu> wrote:
+> Amir,
 >
-> On Wed, Oct 11, 2017 at 4:17 PM, Ashlie Martinez <ashmrtn@utexas.edu> wrote:
-> > On Wed, Oct 11, 2017 at 6:11 AM, Xiao Yang <yangx.jy@cn.fujitsu.com> wrote:
-> >> On 2017/10/07 11:29, Theodore Ts'o wrote:
-> >>>
-> >>> On Thu, Oct 05, 2017 at 07:34:10PM -0500, Ashlie Martinez wrote:
-> >>>>>>
-> >>>>>> It almost seems that way, though to be honest, I don't think I know
-> >>>>>> enough about 1. the setup used by Amir and 2. all the internal working
-> >>>>>> of KVM+virtio to say for sure.
-> >>>>>
-> >>>>> I believe you misread my email.
-> >>>>> The problem was NOT reproduced on KVM+virtio.
-> >>>>> The problem *is* reproduced on a 10G LVM volume over SSD on
-> >>>>> Ubuntu 16.04 with latest kernel and latest e2fsprogs.
-> >>>
-> >>> I was able to reproduce it using both kvm-xfstests[1] and gce-xfstests[2].
-> >>>
-> >>> [1]
-> >>> https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-xfstests.md
-> >>> [2] https://thunk.org/gce-xfstests
-> >>>
-> >>> It did turn out to be timing related, and it requires that a journal
-> >>> commit take place after fsstress runs, but it can *not* be triggered
-> >>> by a sync/fsync (as this would cause the delayed allocation writes to
-> >>> be forced out to disk, and that makes the problem go away).
-> >
-> > Amir,
-> >
-> > I was actually looking into why only some machines can reproduce the
-> > output from generic/456 and I found that I was a little unsure about
-> > exactly how the test itself was operating. I'm not an expert on how
-> > device mapper works, so I was wondering if you could help shed some
-> > light on it.
-> >
-> > From what I've surmised from the test case, it replays the workload
-> > you specified with fsx and then immediately inserts the dm_flakey
-> > table and device in place of the hard disk *while requests are still
-> > in flight* (see nolockfs flag in dmsetup which is used by dm_flakey
-> > calls). The flakey device drops all requests sent to it. The flakey
-> > device is then unmounted (to force all pending writes out), the dm
-> > table changed once again back to the original backing block device,
-> > and then mounted again.
-> >
-> > Is this summary of the test case correct? If it is, then perhaps the
-> > reason why it is so hard for some people to reproduce the exact bug
-> > output you saw is because there does not appear to be anything in the
-> > test case that specifies the timing for when dm_flakey should begin
-> > dropping requests. Since the flakey device could be inserted any time
-> > after fsx completes, but writes are still pending, it seems like the
-> > test creates a race condition between inserting dm_flakey and a kernel
-> > thread waking up to persist writes. This race condition would likely
-> > be affected by things like having > 1 core on the VM or hardware (so
-> > that dm_flakey could be inserted at the same time a kernel thread on
-> > another core is trying to persist writes) the test is running on,
-> > system load, dirty writeback times, etc.
-> >
-> > Do you have any thoughts on the above?
+> I know this is a bit late, but I've spent some time working through
+> the disk image that you provided (so that I could determine how/if I
+> could modify CrashMonkey to catch errors like this) and I don't think
+> I understand what state the disk image reflects.
+
+The disk image SHOULD reflect a state on a disk after the power was
+cut in the middle of mounted fs. Then power came back on, filesystem
+was mounted, journal recovered, then filesystem was cleanly unmounted.
+At this stage, I don't expect there should be anything interesting in the
+journal.
+
+> After digging around
+> the journal of the disk image you provided, I found that the first 10
+> journal blocks are used, with the journal superblock being placed in
+> the very first block of the journal. The journal superblock says that
+> the first journal transaction ID that should be in the journal is
+> transaction ID 4. However, dumping the other journal blocks, I found
+> that the next block is a descriptor block for transaction ID 2. The
+> rest of the journal blocks are data blocks for that transaction plus a
+> transaction commit block. This seems a little odd considering that the
+> journal refers to a 4th transaction, which I have not been able to
+> find (I quickly dumped the first 50 blocks in debugfs and found the
+> rest to contain only zeros).
 >
-> Sounds about right.
-> Having more cores to the VM was my first guess as the reason.
-> Note that all the bugs I found so far depended on some timing between
-> processes or kernel threads, so crash monkey trying all io completion
-> combinations would not have helped. Maybe it would help to find other
-> bugs though.
+
+I did not spend time analyzing the image, so I'll take your word for it,
+but I can't help you understand your findings.
+
+> With this in mind, I looked back at the xfstests code for controlling
+> the dm_flakey device. What I realized is the `nolockfs` flag is
+> provided both when it switches from the real device to the flakey
+> device that drops writes and when it switches from the flakey device
+> back to the real device. I know there is a call to umount once the
+> flakey device that drops writes is inserted, but do you think it is
+> possible that the flakey device is swapped back to the real device
+> before all the writes forced out by umount have made it to the flakey
+> device?
+
+I believe umount call should be blocked until all writes have been flushed
+out to flakey device.
+
+> Unfortunately I still don't have a local machine that is
+> capable of reproducing your test results and I have not made any gce
+> test appliance images to test this yet, so I'm not sure if this is a
+> valid theory.
 >
-> >
-> >>>
-> >>> I initially tried using xfs_io as a replacement for fsstress (since it
-> >>> is more flexible and would allow me to more easily run experiments),
-> >>> but it turns out xfs_io was too fast/efficient, and so using xfs_io to
-> >>> execute the same system calls (verified by strace) would not replicate
-> >>> the problem.
-> >>>
-> >>>>> Now you have a broken file system image and the exact set of operations
-> >>>>> that led to it. That's should be a pretty big lead for investigation.
-> >>>
-> >>> It was indeed a big lead for investigation (thanks, Amir!), but it
-> >>> still took me several hours before I was finally able to figure out
-> >>> the problem.  The patch and the commit description should explain what
-> >>> was going on.
-> >>>
-> >>> I'll leave it to Ashlie and Vijay to investigate how to improve Crash
-> >>> Monkey so it can better find problems like this automatically.  Since
-> >>> you now have a clear reproducer (you can use generic/456 and run it on
-> >>> gce-xfstests, using is a standard cloud VM configuration) and an
-> >>> explanation of the bug and the four-line fix, I suspect this might be
-> >>> good grist for follow-on research after your Hot Storage '17 workshop
-> >>> paper.  :-)
-> >>>
-> >>> Best regards,
-> >>>
-> >>>                                         - Ted
-> >>>
-> >>>
-> >>> commit 3912e7b44cf77e9452d4d0cb6c1da9c7043bb7f1
-> >>> Author: Theodore Ts'o<tytso@mit.edu>
-> >>> Date:   Fri Oct 6 23:09:55 2017 -0400
-> >>>
-> >>>      ext4: fix interaction between i_size, fallocate, and delalloc after a
-> >>> crash
-> >>
-> >> Hi Theodore,
-> >>
-> >> After applying your patch, generic/456 always passes on my system which just
-> >> triggers the output[2].
-> >> So i could believe this two different outputs[1][2] are triggered by
-> >> different environments, but they
-> >> are caused by the same bug which your patch fixes.  Is this right?
-> >>
-> >> [1] Inode 12, end of extent exceeds allowed value(logical block 33, physical
-> >> block 33441, len 7)Clear? no
-> >>       Inode 12, i_blocks is 184, should be 128. Fix? no
-> >> [2] Inode 12, i_size is 147456, should be 163840. Fix? no
-> >>
-> >> Sorry, i am not familiar with ext4.
-> >>
-> >> Thanks,
-> >> Xiao Yang
-> >>>
-> >>>
-> >>>      If there are pending writes subject to delayed allocation, then
-> >>> i_size
-> >>>      will show size after the writes have completed, while i_disksize
-> >>>      contains the value of i_size on the disk (since the writes have not
-> >>>      been persisted to disk).
-> >>>
-> >>>      If fallocate(2) is called with the FALLOC_FL_KEEP_SIZE flag, either
-> >>>      with or without the FALLOC_FL_ZERO_RANGE flag set, and the new size
-> >>>      after the fallocate(2) is between i_size and i_disksize, then after a
-> >>>      crash, if a journal commit has resulted in the changes made by the
-> >>>      fallocate() call to be persisted after a crash, but the delayed
-> >>>      allocation write has not resolved itself, i_size would not be
-> >>> updated,
-> >>>      and this would cause the following e2fsck complaint:
-> >>>
-> >>>      Inode 12, end of extent exceeds allowed value
-> >>>              (logical block 33, physical block 33441, len 7)
-> >>>
-> >>>      This can only take place on a sparse file, where the fallocate(2)
-> >>> call
-> >>>      is allocating blocks in a range which is before a pending delayed
-> >>>      allocation write which is extending i_size.  Since this situation is
-> >>>      quite rare, and the window in which the crash must take place is
-> >>>      typically<  30 seconds, in practice this condition will rarely
-> >>> happen.
-> >>>
-> >>>      Nevertheless, it can be triggered in testing, and in particular by
-> >>>      xfstests generic/456.
-> >>>
-> >>>      Signed-off-by: Theodore Ts'o<tytso@mit.edu>
-> >>>      Reported-by: Amir Goldstein<amir73il@gmail.com>
-> >>>      Cc: stable@vger.kernel.org
-> >>>
-> >>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> >>> index 97f0fd06728d..07bca11749d4 100644
-> >>> --- a/fs/ext4/extents.c
-> >>> +++ b/fs/ext4/extents.c
-> >>> @@ -4794,7 +4794,8 @@ static long ext4_zero_range(struct file *file,
-> >>> loff_t offset,
-> >>>         }
-> >>>
-> >>>         if (!(mode&  FALLOC_FL_KEEP_SIZE)&&
-> >>> -            offset + len>  i_size_read(inode)) {
-> >>> +           (offset + len>  i_size_read(inode) ||
-> >>> +            offset + len>  EXT4_I(inode)->i_disksize)) {
-> >>>                 new_size = offset + len;
-> >>>                 ret = inode_newsize_ok(inode, new_size);
-> >>>                 if (ret)
-> >>> @@ -4965,7 +4966,8 @@ long ext4_fallocate(struct file *file, int mode,
-> >>> loff_t offset, loff_t len)
-> >>>         }
-> >>>
-> >>>         if (!(mode&  FALLOC_FL_KEEP_SIZE)&&
-> >>> -            offset + len>  i_size_read(inode)) {
-> >>> +           (offset + len>  i_size_read(inode) ||
-> >>> +            offset + len>  EXT4_I(inode)->i_disksize)) {
-> >>>                 new_size = offset + len;
-> >>>                 ret = inode_newsize_ok(inode, new_size);
-> >>>                 if (ret)
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe fstests" in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>
-> >>>
-> >>> .
-> >>>
-> >>
-> >>
-> >>
+
+Ted explained that the bug related to very specific timing of flusher
+thread vs. fallocate thread.
+I was under the impression that CrashMonkey can only reorder writes
+between recorded FLUSH requests, so I am not really sure how you intent to
+modify CrashMonkey to catch this bug.
+
+Cheers,
+Amir.
