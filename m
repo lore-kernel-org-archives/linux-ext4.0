@@ -1,58 +1,95 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [PATCH 01/19] mm: introduce MAP_SHARED_VALIDATE, a mechanism to
- safely define new mmap flags
-Date: Tue, 17 Oct 2017 12:38:14 -0700
-Message-ID: <CAPcyv4gY9fU-T0V0kJBOU9RzCVaagF5NnrDbkyLUJ9iuMdfuOg@mail.gmail.com>
-References: <20171011200603.27442-1-jack@suse.cz> <20171011200603.27442-2-jack@suse.cz>
- <20171013071203.GA9105@infradead.org> <1507996677.21357.1.camel@intel.com>
- <20171016074504.GA7316@infradead.org> <20171017115047.GD24136@quack2.suse.cz>
+From: Vijay Chidambaram <vvijay03@gmail.com>
+Subject: Re: [PATCH] ext4: fix interaction between i_size, fallocate, and
+ delalloc after a crash
+Date: Tue, 17 Oct 2017 18:16:24 -0500
+Message-ID: <CAPaz=EJ7jOG1Ji2w7+7Z82nfMvYR7C6puDoaQQ5fpM=UysBPjg@mail.gmail.com>
+References: <CAOQ4uxgc77_P472KEyHfAXSOE6DD7c=2VrJWBJT6ahiSYb=iJQ@mail.gmail.com>
+ <CAFk8rvYtyraezVEP1e3LFEE+9t5YoRH2YwjKxex8hgSY74Lw7A@mail.gmail.com>
+ <20171007032917.bntgnubthdstmrrt@thunk.org> <59DDFC47.3050300@cn.fujitsu.com>
+ <CAFk8rvbi6eDn4P7rfBr6+90xbsQcfEBJAp0wQh+tczNEwdMTpw@mail.gmail.com>
+ <CAOQ4uxjtf8_y7Hmb4GU9YN7DvMa7WNtpeRzGoK5m2=Vw=ChStA@mail.gmail.com>
+ <CAFk8rvZoOcU4Di8mkV_uPd3e4ccqPrB5kg2Y5WufhJX6W73k7w@mail.gmail.com>
+ <CAOQ4uxiKdRq1KyiEW-d9rp+hWQanVzMXQa1vW2JHmhtEVM1-GA@mail.gmail.com>
+ <20171017000925.jdh6j66ejnebbckg@thunk.org> <CAPaz=E+jFuOmRk8+EmVhNawwogNzW3VkciFrCc0Fk23OfGbwuA@mail.gmail.com>
+ <20171017144117.ispjgvwrespix5z3@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: "hch@infradead.org" <hch@infradead.org>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-        "darrick.wong@oracle.com" <darrick.wong@oracle.com>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "luto@kernel.org" <luto@kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        "ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "tytso@mit.edu" <tytso@mit.edu>, "arnd@arndb.de" <arnd@arndb.de>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-oi0-f53.google.com ([209.85.218.53]:51353 "EHLO
-        mail-oi0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1759579AbdJQTiP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Oct 2017 15:38:15 -0400
-Received: by mail-oi0-f53.google.com with SMTP id j126so5017943oib.8
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Oct 2017 12:38:15 -0700 (PDT)
-In-Reply-To: <20171017115047.GD24136@quack2.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Amir Goldstein <amir73il@gmail.com>,
+        Ashlie Martinez <ashmrtn@utexas.edu>,
+        Eryu Guan <eguan@redhat.com>,
+        Ext4 <linux-ext4@vger.kernel.org>, Josef Bacik <jbacik@fb.com>,
+        Xiao Yang <yangx.jy@cn.fujitsu.com>,
+        fstests <fstests@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <fstests-owner@vger.kernel.org>
+In-Reply-To: <20171017144117.ispjgvwrespix5z3@thunk.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 17, 2017 at 4:50 AM, Jan Kara <jack@suse.cz> wrote:
-> On Mon 16-10-17 00:45:04, Christoph Hellwig wrote:
->> > How about the following incremental update? It allows ->mmap_validate()
->> > to be used as a full replacement for ->mmap() and it limits the error
->> > code freedom to a centralized mmap_status_errno() routine:
->>
->> Nah - my earlier comment was simply misinformed because I didn't
->> read the whole patch and the _validate name mislead me.
->>
->> So I think the current calling conventions are ok, I'd just like a
->> better name (mmap_flags maybe?) and avoid the need the file system
->> also has to implement ->mmap.
+Amir, thank you for providing io recording, this is really useful!
+Most of our work in recent weeks has driven by your input and your
+posts to the mailing list!
+
+Ted, I agree with your characterization of the bug. Its true that
+CrashMonkey will be missing context for certain bugs, and for those
+kinds of bugs, we will probably have a different project :)
+
+But for now, we are trying to widen the scope of CrashMonkey as much
+as we can. I think for the current bug, we can handle it in the
+following way:
+1. run CrashMonkey with the smallest journal possible
+2. in the setup phase of CrashMonkey, do N random metadata operations
+(that will fill up some percentage of the journal space)
+3. run the test workload and collect the IO trace
+
+We will do steps 2 and 3 with different N. For this bug, there must be
+a particular N that will force the micro-transaction to be at the end
+of the journal tx, revealing the bug.
+
+In general, it might be good for CrashMonkey to force the metadata
+from the test workload to be distributed across different journal
+transactions. The trick is to do it without modifying the file system
+itself.
+
+Thanks,
+Vijay
+
+On Tue, Oct 17, 2017 at 9:41 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Tue, Oct 17, 2017 at 12:43:20AM +0000, Vijay Chidambaram wrote:
+>> It does expand our already-large search space, but our first order of
+>> business is making sure CrashMonkey can reproduce every crash-consistency
+>> bug reported in recent times (mostly by Amir :) ). So for now we were just
+>> analyzing the bug and trying to understand it, but it looks like the
+>> post-recovery image is not very useful for this.
 >
-> OK, I can do that. But I had just realized that if MAP_DIRECT isn't going
-> to end up using mmap(2) interface but something else (and I'm not sure
-> where discussions on this matter ended), we don't need flags argument for
-> ->mmap at all. MAP_SYNC uses a VMA flag anyway and thus it is fine with the
-> current ->mmap interface. We still need some opt-in mechanism for
-> MAP_SHARED_VALIDATE though (probably supported mmap flags as Dan had in one
-> version of his patch). Thoughts on which way to go for now?
-
-The "supported mmap flags" approach also solves the problem you raised
-about MAP_SYNC being silently accepted by an ->mmap() handler that
-does not know about the new flag. I.e. leading userpace to potentially
-assume an invalid data consistency model. I'll revive that approach
-now that the MAP_DIRECT problem is going to be solved via a different
-interface.
+> Right, the post-recovery (after the journal replayed) is not very
+> useful.  Unfortunately, the pre-recovery (after the power cut, but
+> before the journal replay) I suspect won't be terribly interesting
+> either.  It will show that the corruption is baked into the journal
+> --- which is to say, the problem wasn't in whether the calls to the
+> jbd2 layer were correct --- but rather, that one of the file system
+> mutations in a specific jbd2 handle's "micro-transaction" left the
+> file system is an inconsistent state.
+>
+> Not a terrible inconsistency, and it would be quickly papered over in
+> a follow-up handle --- but one where if the handle which left the file
+> system in an inconsistent state, and the handle which cleaned it up
+> were in different transactions, and the power cut happened after the
+> first transaction, the file system be left in a state where e2fsck
+> would complain.
+>
+> So if you have the I/O trace where the handles in question were
+> assigned to the right (wrong) set of transactions, then yes, you'll
+> see the problem, just as the xfstest will see the problem.
+>
+> But if you want to improve the CrashMonkey's search of the problem
+> space, it will require higher-level logging, because this is really a
+> different sort of bug.  CrashMonkey will find (a) bugs in jbd2, and
+> (b) bugs in how the jbd2 layer is called.  This bug is really a bug in
+> ext4 implementation, because it is in *how* the file system was
+> mutated that temporarily left it in an inconsistent state, and that's
+> a different thing from (a) or (b).  Which is great --- it's arguably
+> additional research work that can be segregated into a different
+> "Minimum Publishable Unit".  :-)
+>
+>                                         - Ted
