@@ -1,54 +1,56 @@
-From: Kilian Cavalotti <kilian.cavalotti.work@gmail.com>
-Subject: Re: Recover from a "deleted inode referenced" situation
-Date: Tue, 17 Oct 2017 08:32:52 -0700
-Message-ID: <CAJz=VjF_BGVuCrhDbQA7H3nwVLVF2PyWppwCe5mV6DDPAZ6UWQ@mail.gmail.com>
-References: <CAJz=VjEUqxMNo6zShYaV5ffioxaj6+a5Av0imtfdtCDf7wqY=A@mail.gmail.com>
- <32D25551-5517-4B17-B89B-2A1D60249ABA@dilger.ca> <CAJz=VjG+7Q0j7erfNC8ocwnkkgtrDXK-Ma_pRLSu7yiGZXH88w@mail.gmail.com>
- <CAJz=VjEOnU=wsdjmHitxQsTXvW7AMgYRiKFJPGq_imPUbu5+GQ@mail.gmail.com>
- <2938B452-C59B-4D39-AE6F-1741A38B28A7@dilger.ca> <CAJz=VjEiP9-bepzSoZm-TeUWY=Pc=m3gXFH2rRJtFqKR6PXTMA@mail.gmail.com>
- <20171015124800.zjsqu623rivp27qv@thunk.org> <CAJz=VjFWWZoTH1+BEnFwk=8CK0ZZtOAQW7hzE6JhX8A5pZWW6g@mail.gmail.com>
- <20171016012852.pz63e7hd67c7ipy5@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Release of e2fsprogs 1.43.7
+Date: Tue, 17 Oct 2017 12:42:46 -0400
+Message-ID: <20171017164246.atxwp33wategeiba@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wm0-f65.google.com ([74.125.82.65]:52214 "EHLO
-        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1763147AbdJQPdO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Oct 2017 11:33:14 -0400
-Received: by mail-wm0-f65.google.com with SMTP id f4so4785778wme.0
-        for <linux-ext4@vger.kernel.org>; Tue, 17 Oct 2017 08:33:13 -0700 (PDT)
-In-Reply-To: <20171016012852.pz63e7hd67c7ipy5@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:57602 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754644AbdJQQmr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 17 Oct 2017 12:42:47 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 15, 2017 at 6:28 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->> Is there any possibility that the filesystem could appear to be
->> resized (extended) with the actual inode table still referencing the
->> pre-resize one?
->
-> It's possible, I suppose.  If the vendor script unmounted the file
-> system and then attempted to run e2fsck -fy to fix the file system,
-> perhaps.  In which case the damage could also have been done by the
-> e2fsck -fy run, depending on how badly the file system was corrupted
-> before this whole procedure was started.
+I've released e2fsprogs 1.43.7 in all of the usual places; it's tagged
+in the git trees on git.kernel.org, github, and sourceforge, and
+available for download at:
 
-In that case, is there any way to re-shrink the filesystem to its
-pre-expansion size, and try to read the pre-expansion inode table from
-another superblock? Or did the r/w remount over-write all the existing
-superblocks with the same new, corrupted information?
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.43.7
 
-> But that would imply that the NAS box would have to stop serving the
-> file system, and it would have been pretty obviously an off-line
-> procedure.
+and
 
-Well, I have this elements that point in that direction:
-1. the online resize2fs tentative aborted (I have that logged),
-2. the filesystem has been expanded (I can see it now),
-3. it definitely stopped serving the filesystem at some point.
+http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.43.7.tar.gz
 
+The release notes for 1.43.7 can be found below.
 
-Cheers,
--- 
-Kilian
+E2fsprogs 1.43.7 (October 16, 2017)
+===================================
+
+Fix the error handling code in debugfs, fuse2fs and tune2fs so errors
+trying to replay the journal won't accidentally result in a seg fault
+if reopening the file system after the journal replay fails for some
+reason.
+
+Fix resize2fs to avoid it from either failing or corrupting the file
+system image in certain corner cases when doing an off-line resize.
+
+Fix many spelling mistakes in various man pages, code comments, and
+program messages.
+
+Fix e2fsck and debugfs so that maliciously corrupted file systems will
+not cause buffer overflows.  (Addresses Debian Bugs: #873757, #878104)
+
+Update German translation.  (Addresses Debian Bug: #833514)
+
+Fixed various Debian Packaging Issues.  (Addresses Debian Bugs:
+#873812, #873813, #876551)
+
+Programming notes
+-----------------
+
+Test descritions have been shorted to fit in 80 columns.
+
+Fix various tests to avoid leaving temp files in /tmp.
