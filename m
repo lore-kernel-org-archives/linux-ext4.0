@@ -1,59 +1,58 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Recover from a "deleted inode referenced" situation
-Date: Tue, 17 Oct 2017 12:48:04 -0400
-Message-ID: <20171017164804.nh5e5x4dwfvmk25c@thunk.org>
-References: <CAJz=VjEUqxMNo6zShYaV5ffioxaj6+a5Av0imtfdtCDf7wqY=A@mail.gmail.com>
- <32D25551-5517-4B17-B89B-2A1D60249ABA@dilger.ca>
- <CAJz=VjG+7Q0j7erfNC8ocwnkkgtrDXK-Ma_pRLSu7yiGZXH88w@mail.gmail.com>
- <CAJz=VjEOnU=wsdjmHitxQsTXvW7AMgYRiKFJPGq_imPUbu5+GQ@mail.gmail.com>
- <2938B452-C59B-4D39-AE6F-1741A38B28A7@dilger.ca>
- <CAJz=VjEiP9-bepzSoZm-TeUWY=Pc=m3gXFH2rRJtFqKR6PXTMA@mail.gmail.com>
- <20171015124800.zjsqu623rivp27qv@thunk.org>
- <CAJz=VjFWWZoTH1+BEnFwk=8CK0ZZtOAQW7hzE6JhX8A5pZWW6g@mail.gmail.com>
- <20171016012852.pz63e7hd67c7ipy5@thunk.org>
- <CAJz=VjF_BGVuCrhDbQA7H3nwVLVF2PyWppwCe5mV6DDPAZ6UWQ@mail.gmail.com>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH 01/19] mm: introduce MAP_SHARED_VALIDATE, a mechanism to
+ safely define new mmap flags
+Date: Tue, 17 Oct 2017 12:38:14 -0700
+Message-ID: <CAPcyv4gY9fU-T0V0kJBOU9RzCVaagF5NnrDbkyLUJ9iuMdfuOg@mail.gmail.com>
+References: <20171011200603.27442-1-jack@suse.cz> <20171011200603.27442-2-jack@suse.cz>
+ <20171013071203.GA9105@infradead.org> <1507996677.21357.1.camel@intel.com>
+ <20171016074504.GA7316@infradead.org> <20171017115047.GD24136@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
-To: Kilian Cavalotti <kilian.cavalotti.work@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Cc: "hch@infradead.org" <hch@infradead.org>,
+        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+        "darrick.wong@oracle.com" <darrick.wong@oracle.com>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "luto@kernel.org" <luto@kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "tytso@mit.edu" <tytso@mit.edu>, "arnd@arndb.de" <arnd@arndb.de>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57706 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1763378AbdJQQsG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 17 Oct 2017 12:48:06 -0400
-Content-Disposition: inline
-In-Reply-To: <CAJz=VjF_BGVuCrhDbQA7H3nwVLVF2PyWppwCe5mV6DDPAZ6UWQ@mail.gmail.com>
+Received: from mail-oi0-f53.google.com ([209.85.218.53]:51353 "EHLO
+        mail-oi0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1759579AbdJQTiP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Oct 2017 15:38:15 -0400
+Received: by mail-oi0-f53.google.com with SMTP id j126so5017943oib.8
+        for <linux-ext4@vger.kernel.org>; Tue, 17 Oct 2017 12:38:15 -0700 (PDT)
+In-Reply-To: <20171017115047.GD24136@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 17, 2017 at 08:32:52AM -0700, Kilian Cavalotti wrote:
-> On Sun, Oct 15, 2017 at 6:28 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> >> Is there any possibility that the filesystem could appear to be
-> >> resized (extended) with the actual inode table still referencing the
-> >> pre-resize one?
-> >
-> > It's possible, I suppose.  If the vendor script unmounted the file
-> > system and then attempted to run e2fsck -fy to fix the file system,
-> > perhaps.  In which case the damage could also have been done by the
-> > e2fsck -fy run, depending on how badly the file system was corrupted
-> > before this whole procedure was started.
-> 
-> In that case, is there any way to re-shrink the filesystem to its
-> pre-expansion size, and try to read the pre-expansion inode table from
-> another superblock? Or did the r/w remount over-write all the existing
-> superblocks with the same new, corrupted information?
+On Tue, Oct 17, 2017 at 4:50 AM, Jan Kara <jack@suse.cz> wrote:
+> On Mon 16-10-17 00:45:04, Christoph Hellwig wrote:
+>> > How about the following incremental update? It allows ->mmap_validate()
+>> > to be used as a full replacement for ->mmap() and it limits the error
+>> > code freedom to a centralized mmap_status_errno() routine:
+>>
+>> Nah - my earlier comment was simply misinformed because I didn't
+>> read the whole patch and the _validate name mislead me.
+>>
+>> So I think the current calling conventions are ok, I'd just like a
+>> better name (mmap_flags maybe?) and avoid the need the file system
+>> also has to implement ->mmap.
+>
+> OK, I can do that. But I had just realized that if MAP_DIRECT isn't going
+> to end up using mmap(2) interface but something else (and I'm not sure
+> where discussions on this matter ended), we don't need flags argument for
+> ->mmap at all. MAP_SYNC uses a VMA flag anyway and thus it is fine with the
+> current ->mmap interface. We still need some opt-in mechanism for
+> MAP_SHARED_VALIDATE though (probably supported mmap flags as Dan had in one
+> version of his patch). Thoughts on which way to go for now?
 
-Unfortunately, if this is what happened, then the true damage was done
-when the file system was remounted read/write, and because the
-allocation bitmaps were incorrect, portions of the inode table were
-overwritten with file data.  (As I mentioned, with modern file systems
-there is a safety check which is now enabled by default which will
-notice when there is an attempt to allocate blocks that are part of
-the inode table, and stop this Very Bad Thing from happening.  It does
-take a tiny bit of extra CPU overhead, but we ultimately decided It
-Was Worth It.  Unfortunately, it was not enabled by default in the
-3.10 kernel.)
-
-There's not really any recovery possible in that case, unfortunately.  :-(
-
-	    	       			    - Ted
+The "supported mmap flags" approach also solves the problem you raised
+about MAP_SYNC being silently accepted by an ->mmap() handler that
+does not know about the new flag. I.e. leading userpace to potentially
+assume an invalid data consistency model. I'll revive that approach
+now that the MAP_DIRECT problem is going to be solved via a different
+interface.
