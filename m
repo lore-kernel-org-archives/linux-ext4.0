@@ -1,82 +1,51 @@
-From: Dmitry Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext4: improve smp scalability for inode generation
-Date: Wed, 18 Oct 2017 21:08:21 +0300
-Message-ID: <87376gpbvu.fsf@openvz.org>
-References: <8760bcpdc8.fsf@openvz.org>
+From: Kilian Cavalotti <kilian.cavalotti.work@gmail.com>
+Subject: Re: Recover from a "deleted inode referenced" situation
+Date: Wed, 18 Oct 2017 11:39:43 -0700
+Message-ID: <CAJz=VjG8J4W52NhUvB9AE+EYAboAkazan+jZM-Lc15HRmWCD0w@mail.gmail.com>
+References: <CAJz=VjEUqxMNo6zShYaV5ffioxaj6+a5Av0imtfdtCDf7wqY=A@mail.gmail.com>
+ <32D25551-5517-4B17-B89B-2A1D60249ABA@dilger.ca> <CAJz=VjG+7Q0j7erfNC8ocwnkkgtrDXK-Ma_pRLSu7yiGZXH88w@mail.gmail.com>
+ <CAJz=VjEOnU=wsdjmHitxQsTXvW7AMgYRiKFJPGq_imPUbu5+GQ@mail.gmail.com>
+ <2938B452-C59B-4D39-AE6F-1741A38B28A7@dilger.ca> <CAJz=VjEiP9-bepzSoZm-TeUWY=Pc=m3gXFH2rRJtFqKR6PXTMA@mail.gmail.com>
+ <20171015124800.zjsqu623rivp27qv@thunk.org> <CAJz=VjFWWZoTH1+BEnFwk=8CK0ZZtOAQW7hzE6JhX8A5pZWW6g@mail.gmail.com>
+ <20171016012852.pz63e7hd67c7ipy5@thunk.org> <CAJz=VjF_BGVuCrhDbQA7H3nwVLVF2PyWppwCe5mV6DDPAZ6UWQ@mail.gmail.com>
+ <20171017164804.nh5e5x4dwfvmk25c@thunk.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-Cc: tytso@mit.edu
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: Andreas Dilger <adilger@dilger.ca>, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f68.google.com ([209.85.215.68]:52884 "EHLO
-        mail-lf0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750853AbdJRSEf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Oct 2017 14:04:35 -0400
-Received: by mail-lf0-f68.google.com with SMTP id b190so6766736lfg.9
-        for <linux-ext4@vger.kernel.org>; Wed, 18 Oct 2017 11:04:34 -0700 (PDT)
-In-Reply-To: <8760bcpdc8.fsf@openvz.org>
+Received: from mail-wm0-f66.google.com ([74.125.82.66]:45855 "EHLO
+        mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750932AbdJRSkF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Oct 2017 14:40:05 -0400
+Received: by mail-wm0-f66.google.com with SMTP id q124so11658938wmb.0
+        for <linux-ext4@vger.kernel.org>; Wed, 18 Oct 2017 11:40:05 -0700 (PDT)
+In-Reply-To: <20171017164804.nh5e5x4dwfvmk25c@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-
-
-Dmitry Monakhov <dmonakhov@openvz.org> writes:
-
-> ->s_next_generation is protected by s_next_gen_lock but it usage
-> pattern is very primitive and can be replaced with atomic_ops
+On Tue, Oct 17, 2017 at 9:48 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> Unfortunately, if this is what happened, then the true damage was done
+> when the file system was remounted read/write, and because the
+> allocation bitmaps were incorrect, portions of the inode table were
+> overwritten with file data.  (As I mentioned, with modern file systems
+> there is a safety check which is now enabled by default which will
+> notice when there is an attempt to allocate blocks that are part of
+> the inode table, and stop this Very Bad Thing from happening.  It does
+> take a tiny bit of extra CPU overhead, but we ultimately decided It
+> Was Worth It.  Unfortunately, it was not enabled by default in the
+> 3.10 kernel.)
 >
-> This significantly improve creation/unlink scenario on SMP systems,
-> for example lat_fs_create_unlink test [1] on x2 E5-2680 (32vcpu) system
-> shows ~20% improvement.
-> | nr_tsk | wo/ patch | w/ patch |
-> |--------+-----------+----------|
-> |      1 |       137 |      140 |
-> |      2 |       224 |      233 |
-> |      4 |       356 |      372 |
-> |      8 |       439 |      519 |
-> |     16 |       443 |      585 |
-> |     32 |       598 |      695 |
-> |     64 |       559 |      707 |
-> |    128 |       385 |      437 |
+> There's not really any recovery possible in that case, unfortunately.  :-(
 
-FYI with lazytime enabled lat_fs_create_unlink is ~16x times slower.
-The reason is quite obvious ext4_update_other_inodes_time() increase
-lock contention for inode_hash_lock (4k/256) times.
+Argh.
 
-->ext4_do_update_inode
-  ->ext4_update_other_inodes_time
-    for (i = 0; i < inodes_per_block; i++, ino++, buf += inode_size)
-      ->find_inode_nowait
-        ->spin_lock(&inode_hash_lock) -> 16x contention increase
+Well, thanks for the explanation, at least I think I have a better
+understanding of how things unfolded, now. I'm glad that this safety
+check is enabled by default now, and I'm gonna keep repeating myself
+"never ever mount read-write when you have a doubt" while I'm waiting
+for the carving tools to scan my blocks.
 
-inode_hash_lock is known problem. I have patches to convert inode_hash_table
-per bucket lock similar to dentry_hash, but this require massige changes in
-various filesystems so will require a lot of time to be merged.
-
-Currently lazytime amplify it significantly. May be it is reasonable to
-use spin_trylock inside find_inode_nowait to make it true lightweight hint?
-
-
---=-=-=
-Content-Type: text/x-patch
-Content-Disposition: inline; filename=lazytime_trylock.patch
-
-diff --git a/fs/inode.c b/fs/inode.c
-index d1e35b5..a5b1cba1 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1360,7 +1360,9 @@ struct inode *find_inode_nowait(struct super_block *sb,
- 	struct inode *inode, *ret_inode = NULL;
- 	int mval;
- 
--	spin_lock(&inode_hash_lock);
-+	if (!spin_trylock(&inode_hash_lock))
-+		return NULL;
-+
- 	hlist_for_each_entry(inode, head, i_hash) {
- 		if (inode->i_sb != sb)
- 			continue;
-
---=-=-=--
+Thanks again!
+-- 
+Kilian
