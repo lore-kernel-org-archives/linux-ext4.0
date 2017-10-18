@@ -1,75 +1,43 @@
-From: Eric Sandeen <esandeen@redhat.com>
-Subject: Re: Release of e2fsprogs 1.43.7
-Date: Tue, 17 Oct 2017 20:27:51 -0500
-Message-ID: <8ce9cce1-85e6-b7f3-3f09-feeb8d87811b@redhat.com>
-References: <20171017164246.atxwp33wategeiba@thunk.org>
-Reply-To: sandeen@redhat.com
+From: "hch@infradead.org" <hch@infradead.org>
+Subject: Re: [PATCH 01/19] mm: introduce MAP_SHARED_VALIDATE, a mechanism to
+ safely define new mmap flags
+Date: Tue, 17 Oct 2017 23:59:38 -0700
+Message-ID: <20171018065938.GA15310@infradead.org>
+References: <20171011200603.27442-1-jack@suse.cz>
+ <20171011200603.27442-2-jack@suse.cz>
+ <20171013071203.GA9105@infradead.org>
+ <1507996677.21357.1.camel@intel.com>
+ <20171016074504.GA7316@infradead.org>
+ <20171017115047.GD24136@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-To: Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37348 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1762071AbdJRB1w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 17 Oct 2017 21:27:52 -0400
-In-Reply-To: <20171017164246.atxwp33wategeiba@thunk.org>
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "hch@infradead.org" <hch@infradead.org>,
+        "Williams, Dan J" <dan.j.williams@intel.com>,
+        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+        "darrick.wong@oracle.com" <darrick.wong@oracle.com>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "luto@kernel.org" <luto@kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "ross.zwisler@linux.intel.com" <ross.zwisler@linux.intel.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "tytso@mit.edu" <tytso@mit.edu>, "arnd@arndb.de" <arnd@arndb.de>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20171017115047.GD24136@quack2.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 10/17/17 11:42 AM, Theodore Ts'o wrote:
-> I've released e2fsprogs 1.43.7 in all of the usual places; it's tagged
-> in the git trees on git.kernel.org, github, and sourceforge, and
-> available for download at:
-> 
-> ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.43.7
+On Tue, Oct 17, 2017 at 01:50:47PM +0200, Jan Kara wrote:
+> OK, I can do that. But I had just realized that if MAP_DIRECT isn't going
+> to end up using mmap(2) interface but something else (and I'm not sure
+> where discussions on this matter ended), we don't need flags argument for
+> ->mmap at all. MAP_SYNC uses a VMA flag anyway and thus it is fine with the
+> current ->mmap interface. We still need some opt-in mechanism for
+> MAP_SHARED_VALIDATE though (probably supported mmap flags as Dan had in one
+> version of his patch). Thoughts on which way to go for now?
 
-note, that URL doesn't exist anymore.  no more ftp.
-
-now:
-
-https://www.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.43.7/
-
-> and
-> 
-> http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.43.7.tar.gz
-
-FWIW, the tarball on kernel.org is a few source files short of a full deck.
-
-It extracts into e2fsprogs-libs-1.43.7/ and does indeed seem to include
-only libraries.
-
--Eric
- 
-> The release notes for 1.43.7 can be found below.
-> 
-> E2fsprogs 1.43.7 (October 16, 2017)
-> ===================================
-> 
-> Fix the error handling code in debugfs, fuse2fs and tune2fs so errors
-> trying to replay the journal won't accidentally result in a seg fault
-> if reopening the file system after the journal replay fails for some
-> reason.
-> 
-> Fix resize2fs to avoid it from either failing or corrupting the file
-> system image in certain corner cases when doing an off-line resize.
-> 
-> Fix many spelling mistakes in various man pages, code comments, and
-> program messages.
-> 
-> Fix e2fsck and debugfs so that maliciously corrupted file systems will
-> not cause buffer overflows.  (Addresses Debian Bugs: #873757, #878104)
-> 
-> Update German translation.  (Addresses Debian Bug: #833514)
-> 
-> Fixed various Debian Packaging Issues.  (Addresses Debian Bugs:
-> #873812, #873813, #876551)
-> 
-> Programming notes
-> -----------------
-> 
-> Test descritions have been shorted to fit in 80 columns.
-> 
-> Fix various tests to avoid leaving temp files in /tmp.
-> 
+Yes, I'd much prefer the mmap_flags in file_operations.  The other
+option would be a new FMODE_* flag which is what Al did for various
+other optional features, but I generally thing that is a confusing
+interface.
