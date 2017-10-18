@@ -1,32 +1,37 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Release of e2fsprogs 1.43.7
-Date: Wed, 18 Oct 2017 10:39:20 -0400
-Message-ID: <20171018143920.wixfkcsbn6xo2vsl@thunk.org>
-References: <20171017164246.atxwp33wategeiba@thunk.org>
- <8ce9cce1-85e6-b7f3-3f09-feeb8d87811b@redhat.com>
+Subject: Re: [PATCH] jbd2: Convert timers to use timer_setup()
+Date: Wed, 18 Oct 2017 12:44:05 -0400
+Message-ID: <20171018164405.4gaigxecovw7jkny@thunk.org>
+References: <20171005004846.GA23025@beast>
+ <20171010112050.GB3667@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: sandeen@redhat.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33768 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751739AbdJROj0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 18 Oct 2017 10:39:26 -0400
+Cc: Kees Cook <keescook@chromium.org>, linux-kernel@vger.kernel.org,
+        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        Thomas Gleixner <tglx@linutronix.de>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <8ce9cce1-85e6-b7f3-3f09-feeb8d87811b@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20171010112050.GB3667@quack2.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Oct 17, 2017 at 08:27:51PM -0500, Eric Sandeen wrote:
-> FWIW, the tarball on kernel.org is a few source files short of a full deck.
+On Tue, Oct 10, 2017 at 01:20:50PM +0200, Jan Kara wrote:
+> On Wed 04-10-17 17:48:46, Kees Cook wrote:
+> > In preparation for unconditionally passing the struct timer_list pointer to
+> > all timer callbacks, switch to using the new timer_setup() and from_timer()
+> > to pass the timer pointer explicitly.
+> > 
+> > Cc: "Theodore Ts'o" <tytso@mit.edu>
+> > Cc: Jan Kara <jack@suse.com>
+> > Cc: linux-ext4@vger.kernel.org
+> > Cc: Thomas Gleixner <tglx@linutronix.de>
+> > Signed-off-by: Kees Cook <keescook@chromium.org>
 > 
-> It extracts into e2fsprogs-libs-1.43.7/ and does indeed seem to include
-> only libraries.
+> The patch looks good to me. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Oops!  I screwed up the "kup put commands" and uploaded
-e2fsprogs-libs-1.43.7.tar.gz on top of e2fsprogs-1.43.7.tar.gz.
+Applied, thanks.
 
-Thanks for letting me know.  I've just fixed it.
-
-					- Ted
+						- Ted
