@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [PATCH 2/2] dm log writes: add support for DAX
-Date: Thu, 19 Oct 2017 23:24:04 -0600
-Message-ID: <20171020052404.13762-2-ross.zwisler@linux.intel.com>
+Subject: [fstests PATCH] generic: add test for DAX MAP_SYNC support
+Date: Thu, 19 Oct 2017 23:29:43 -0600
+Message-ID: <20171020052943.15104-1-ross.zwisler@linux.intel.com>
 References: <20171020052404.13762-1-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
         Alasdair Kergon <agk@redhat.com>,
@@ -12,170 +12,270 @@ Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
         linux-nvdimm@lists.01.org, linux-raid@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-To: linux-kernel@vger.kernel.org, Josef Bacik <jbacik@fb.com>
-Return-path: <linux-raid-owner@vger.kernel.org>
+To: linux-kernel@vger.kernel.org, Josef Bacik <jbacik@fb.com>,
+        Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
 In-Reply-To: <20171020052404.13762-1-ross.zwisler@linux.intel.com>
-Sender: linux-raid-owner@vger.kernel.org
+Sender: fstests-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Now that we have the ability log filesystem writes using a flat buffer, add
-support for DAX.  Unfortunately we can't easily track data that has been
-written via mmap() now that the dax_flush() abstraction was removed by this
-commit:
+Add a test that exercises DAX's new MAP_SYNC flag.
 
-commit c3ca015fab6d ("dax: remove the pmem_dax_ops->flush abstraction")
+This test creates a file and writes to it via an mmap(), but never syncs
+via fsync/msync.  This process is tracked via dm-log-writes, then replayed.
 
-Otherwise we could just treat each flush as a big write, and store the data
-that is being synced to media.  It may be worthwhile to add the dax_flush()
-entry point back, just as a notifier so we can do this logging.
+If MAP_SYNC is working the dm-log-writes replay will show the test file
+with the same size that we wrote via the mmap() because each allocating
+page fault included an implicit metadata sync.  If MAP_SYNC isn't working
+(which you can test by fiddling with the parameters to mmap()) the file
+will be smaller or missing entirely.
 
-The motivation for this support is the need for an xfstest that can test
-the new MAP_SYNC DAX flag.  By logging the filesystem activity with
-dm-log-writes we can show that the MAP_SYNC page faults are writing out
-their metadata as they happen, instead of requiring an explicit
-msync/fsync.
+Note that dm-log-writes doesn't track the data that we write via the
+mmap(), so we can't do any data integrity checking.  We can only verify
+that the metadata writes for the page faults happened.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
 
-Here's a link to Jan's latest MAP_SYNC set, which can be used for the
-fstest:
+For this test to run successfully you'll need both Jan's MAP_SYNC series:
 
 https://www.spinics.net/lists/linux-xfs/msg11852.html
 
-MAP_SYNC is not needed for basic DAX+dm-log-writes functionality.
+and my series adding DAX support to dm-log-writes:
+
+https://lists.01.org/pipermail/linux-nvdimm/2017-October/012972.html
 
 ---
- drivers/md/dm-log-writes.c | 90 +++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 89 insertions(+), 1 deletion(-)
+ .gitignore            |  1 +
+ common/dmlogwrites    |  1 -
+ src/Makefile          |  3 +-
+ src/t_map_sync.c      | 74 +++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/466     | 77 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/466.out |  3 ++
+ tests/generic/group   |  1 +
+ 7 files changed, 158 insertions(+), 2 deletions(-)
+ create mode 100644 src/t_map_sync.c
+ create mode 100755 tests/generic/466
+ create mode 100644 tests/generic/466.out
 
-diff --git a/drivers/md/dm-log-writes.c b/drivers/md/dm-log-writes.c
-index c65f9d1..6a8d352 100644
---- a/drivers/md/dm-log-writes.c
-+++ b/drivers/md/dm-log-writes.c
-@@ -10,9 +10,11 @@
- #include <linux/init.h>
- #include <linux/blkdev.h>
- #include <linux/bio.h>
-+#include <linux/dax.h>
- #include <linux/slab.h>
- #include <linux/kthread.h>
- #include <linux/freezer.h>
-+#include <linux/uio.h>
+diff --git a/.gitignore b/.gitignore
+index 2014c08..9fc0695 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -119,6 +119,7 @@
+ /src/t_getcwd
+ /src/t_holes
+ /src/t_immutable
++/src/t_map_sync
+ /src/t_mmap_cow_race
+ /src/t_mmap_dio
+ /src/t_mmap_fallocate
+diff --git a/common/dmlogwrites b/common/dmlogwrites
+index 247c744..5b57df9 100644
+--- a/common/dmlogwrites
++++ b/common/dmlogwrites
+@@ -23,7 +23,6 @@ _require_log_writes()
+ 	[ -z "$LOGWRITES_DEV" -o ! -b "$LOGWRITES_DEV" ] && \
+ 		_notrun "This test requires a valid \$LOGWRITES_DEV"
  
- #define DM_MSG_PREFIX "log-writes"
- 
-@@ -609,6 +611,50 @@ static int log_mark(struct log_writes_c *lc, char *data)
- 	return 0;
+-	_exclude_scratch_mount_option dax
+ 	_require_dm_target log-writes
+ 	_require_test_program "log-writes/replay-log"
  }
+diff --git a/src/Makefile b/src/Makefile
+index 3eb25b1..af7e7e9 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -13,7 +13,8 @@ TARGETS = dirstress fill fill2 getpagesize holes lstat64 \
+ 	multi_open_unlink dmiperf unwritten_sync genhashnames t_holes \
+ 	t_mmap_writev t_truncate_cmtime dirhash_collide t_rename_overwrite \
+ 	holetest t_truncate_self t_mmap_dio af_unix t_mmap_stale_pmd \
+-	t_mmap_cow_race t_mmap_fallocate fsync-err t_mmap_write_ro
++	t_mmap_cow_race t_mmap_fallocate fsync-err t_mmap_write_ro \
++	t_map_sync
  
-+static int log_dax(struct log_writes_c *lc, sector_t sector, size_t bytes,
-+		struct iov_iter *i)
+ LINUX_TARGETS = xfsctl bstat t_mtab getdevicesize preallo_rw_pattern_reader \
+ 	preallo_rw_pattern_writer ftrunc trunc fs_perms testx looptest \
+diff --git a/src/t_map_sync.c b/src/t_map_sync.c
+new file mode 100644
+index 0000000..8190f3c
+--- /dev/null
++++ b/src/t_map_sync.c
+@@ -0,0 +1,74 @@
++#include <errno.h>
++#include <fcntl.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <unistd.h>
++
++#define MiB(a) ((a)*1024*1024)
++
++/*
++ * These two defines were added to the kernel via commits entitled
++ * "mm: Define MAP_SYNC and VM_SYNC flags" and
++ * "mm: introduce MAP_SHARED_VALIDATE, a mechanism to safely define new mmap
++ * flags", respectively.
++ */
++#define MAP_SYNC 0x80000
++#define MAP_SHARED_VALIDATE 0x3
++
++void err_exit(char *op)
 +{
-+	struct pending_block *block;
++	fprintf(stderr, "%s: %s\n", op, strerror(errno));
++	exit(1);
++}
 +
-+	if (!bytes)
-+		return 0;
++int main(int argc, char *argv[])
++{
++	int page_size = getpagesize();
++	int len = MiB(1);
++	int i, fd, err;
++	char *data;
 +
-+	block = kzalloc(sizeof(struct pending_block), GFP_KERNEL);
-+	if (!block) {
-+		DMERR("Error allocating dax pending block");
-+		return -ENOMEM;
++	if (argc < 2) {
++		printf("Usage: %s <file>\n", basename(argv[0]));
++		exit(0);
 +	}
 +
-+	block->data = kzalloc(bytes, GFP_KERNEL);
-+	if (!block->data) {
-+		DMERR("Error allocating dax data space");
-+		kfree(block);
-+		return -ENOMEM;
-+	}
++	fd = open(argv[1], O_RDWR|O_CREAT, S_IRUSR|S_IWUSR);
++	if (fd < 0)
++		err_exit("fd");
 +
-+	/* write data provided via the iterator */
-+	if (!copy_from_iter(block->data, bytes, i)) {
-+		DMERR("Error copying dax data");
-+		kfree(block->data);
-+		kfree(block);
-+		return -EIO;
-+	}
++	ftruncate(fd, 0);
++	ftruncate(fd, len);
 +
-+	/* rewind the iterator so that the block driver can use it */
-+	iov_iter_revert(i, bytes);
++	data = mmap(NULL, len, PROT_READ|PROT_WRITE,
++			MAP_SHARED_VALIDATE|MAP_SYNC, fd, 0);
++	if (data == MAP_FAILED)
++		err_exit("mmap");
 +
-+	block->datalen = bytes;
-+	block->sector = bio_to_dev_sectors(lc, sector);
-+	block->nr_sectors = ALIGN(bytes, lc->sectorsize) >> lc->sectorshift;
++	/*
++	 * We intentionally don't sync 'fd' manually.  If MAP_SYNC is working
++	 * these allocating page faults will cause the filesystem to sync its
++	 * metadata so that when we replay the dm-log-writes log the test file
++	 * will be 1 MiB in size.
++	 *
++	 * dm-log-writes doesn't track the data that we write via the mmap(),
++	 * so we can't check that, we can only verify that the metadata writes
++	 * happened.
++	 */
++	for (i = 0; i < len; i+=page_size)
++		data[i] = 0xff;
 +
-+	atomic_inc(&lc->pending_blocks);
-+	spin_lock_irq(&lc->blocks_lock);
-+	list_add_tail(&block->list, &lc->unflushed_blocks);
-+	spin_unlock_irq(&lc->blocks_lock);
-+	wake_up_process(lc->log_kthread);
++	err = munmap(data, len);
++	if (err < 0)
++		err_exit("munmap");
++
++	err = close(fd);
++	if (err < 0)
++		err_exit("close");
++
 +	return 0;
 +}
+diff --git a/tests/generic/466 b/tests/generic/466
+new file mode 100755
+index 0000000..f39e6dc
+--- /dev/null
++++ b/tests/generic/466
+@@ -0,0 +1,77 @@
++#! /bin/bash
++# FS QA Test No. 466
++#
++# Use md_log_writes to verify that MAP_SYNC actually syncs metadata during
++# page faults.
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2017 Intel Corporation.  All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
 +
- static void log_writes_dtr(struct dm_target *ti)
- {
- 	struct log_writes_c *lc = ti->private;
-@@ -874,9 +920,49 @@ static void log_writes_io_hints(struct dm_target *ti, struct queue_limits *limit
- 	limits->io_min = limits->physical_block_size;
- }
- 
-+static long log_writes_dax_direct_access(struct dm_target *ti, pgoff_t pgoff,
-+		long nr_pages, void **kaddr, pfn_t *pfn)
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
 +{
-+	struct log_writes_c *lc = ti->private;
-+	struct block_device *bdev = lc->dev->bdev;
-+	struct dax_device *dax_dev = lc->dev->dax_dev;
-+	sector_t sector = pgoff * PAGE_SECTORS;
-+	int ret;
-+
-+	ret = bdev_dax_pgoff(bdev, sector, nr_pages * PAGE_SIZE, &pgoff);
-+	if (ret)
-+		return ret;
-+	return dax_direct_access(dax_dev, pgoff, nr_pages, kaddr, pfn);
++	_log_writes_cleanup
 +}
 +
-+static size_t log_writes_dax_copy_from_iter(struct dm_target *ti,
-+		pgoff_t pgoff, void *addr, size_t bytes, struct iov_iter *i)
-+{
-+	struct log_writes_c *lc = ti->private;
-+	struct block_device *bdev = lc->dev->bdev;
-+	struct dax_device *dax_dev = lc->dev->dax_dev;
-+	sector_t sector = pgoff * PAGE_SECTORS;
-+	int err;
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++. ./common/dmlogwrites
 +
-+	if (bdev_dax_pgoff(bdev, sector, ALIGN(bytes, PAGE_SIZE), &pgoff))
-+		return 0;
++# remove previous $seqres.full before test
++rm -f $seqres.full
 +
-+	/* Don't bother doing anything if logging has been disabled */
-+	if (!lc->logging_enabled)
-+		goto dax_copy;
++# real QA test starts here
++_supported_fs generic
++_supported_os Linux
++_require_log_writes
++_require_scratch_dax
++_require_test_program "t_map_sync"
 +
-+	err = log_dax(lc, sector, bytes, i);
-+	if (err) {
-+		DMWARN("Error %d logging DAX write", err);
-+		return 0;
-+	}
-+dax_copy:
-+	return dax_copy_from_iter(dax_dev, pgoff, addr, bytes, i);
-+}
++_log_writes_init
++_log_writes_mkfs >> $seqres.full 2>&1
++_log_writes_mount -o dax
 +
- static struct target_type log_writes_target = {
- 	.name   = "log-writes",
--	.version = {1, 0, 0},
-+	.version = {1, 0, 1},
- 	.module = THIS_MODULE,
- 	.ctr    = log_writes_ctr,
- 	.dtr    = log_writes_dtr,
-@@ -887,6 +973,8 @@ static struct target_type log_writes_target = {
- 	.message = log_writes_message,
- 	.iterate_devices = log_writes_iterate_devices,
- 	.io_hints = log_writes_io_hints,
-+	.direct_access = log_writes_dax_direct_access,
-+	.dax_copy_from_iter = log_writes_dax_copy_from_iter,
- };
- 
- static int __init dm_log_writes_init(void)
++src/t_map_sync $SCRATCH_MNT/test
++
++# Unmount the scratch dir and tear down the log writes target
++_log_writes_mark last
++_log_writes_unmount
++_log_writes_remove
++_check_scratch_fs
++
++# check pre umount
++_log_writes_replay_log last
++_scratch_mount
++
++# We should see $SCRATCH_MNT/test as 1MiB in size
++du -sh $SCRATCH_MNT/test | _filter_scratch | _filter_spaces
++
++_scratch_unmount
++_check_scratch_fs
++
++echo "Silence is golden"
++status=0
++exit
+diff --git a/tests/generic/466.out b/tests/generic/466.out
+new file mode 100644
+index 0000000..4c54d7a
+--- /dev/null
++++ b/tests/generic/466.out
+@@ -0,0 +1,3 @@
++QA output created by 466
++1.0M SCRATCH_MNT/test
++Silence is golden
+diff --git a/tests/generic/group b/tests/generic/group
+index fbe0a7f..65328c6 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -468,3 +468,4 @@
+ 463 auto quick clone dangerous
+ 464 auto rw
+ 465 auto rw quick aio
++466 auto quick dax
 -- 
 2.9.5
-
