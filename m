@@ -1,69 +1,65 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 01/17] mm: introduce MAP_SHARED_VALIDATE, a mechanism to
- safely define new mmap flags
-Date: Fri, 20 Oct 2017 00:27:07 -0700
-Message-ID: <20171020072707.GA18000@infradead.org>
-References: <20171019125817.11580-1-jack@suse.cz>
- <20171019125817.11580-2-jack@suse.cz>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 197335] New: Inode exhaustion should be logged to dmesg
+Date: Fri, 20 Oct 2017 19:11:30 +0000
+Message-ID: <bug-197335-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Arnd Bergmann <arnd@arndb.de>, linux-nvdimm@lists.01.org,
-        linux-api@vger.kernel.org, linux-xfs@vger.kernel.org,
-        Andy Lutomirski <luto@kernel.org>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171019125817.11580-2-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:57704 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751028AbdJTTLb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 20 Oct 2017 15:11:31 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 741CE28F40
+        for <linux-ext4@vger.kernel.org>; Fri, 20 Oct 2017 19:11:31 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
->  	if (file) {
->  		struct inode *inode = file_inode(file);
-> +		unsigned long flags_mask = file->f_op->mmap_supported_flags;
-> +
-> +		if (!flags_mask)
-> +			flags_mask = LEGACY_MAP_MASK;
->  
->  		switch (flags & MAP_TYPE) {
->  		case MAP_SHARED:
-> +			/*
-> +			 * Silently ignore unsupported flags - MAP_SHARED has
-> +			 * traditionally behaved like that and we don't want
-> +			 * to break compatibility.
-> +			 */
-> +			flags &= flags_mask;
-> +			/*
-> +			 * Force use of MAP_SHARED_VALIDATE with non-legacy
-> +			 * flags. E.g. MAP_SYNC is dangerous to use with
-> +			 * MAP_SHARED as you don't know which consistency model
-> +			 * you will get.
-> +			 */
-> +			flags &= LEGACY_MAP_MASK;
-> +			/* fall through */
-> +		case MAP_SHARED_VALIDATE:
-> +			if (flags & ~flags_mask)
-> +				return -EOPNOTSUPP;
+https://bugzilla.kernel.org/show_bug.cgi?id=197335
 
-Hmmm.  I'd expect this to worth more like:
+            Bug ID: 197335
+           Summary: Inode exhaustion should be logged to dmesg
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.14.0-rc1
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: enhancement
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: teamathena.nitc@gmail.com
+        Regression: No
 
-		case MAP_SHARED:
-			/* Ignore all new flags that need validation: */
-			flags &= LEGACY_MAP_MASK;
-			/*FALLTHROUGH*/
-		case MAP_SHARED_VALIDATE:
-			if (flags & ~file->f_op->mmap_supported_flags)
-				return -EOPNOTSUPP;
+Problem: If the system runs out of inodes, the error messages show "No space on
+disk". This is misleading to the user as the disk may still have space. Logging
+to dmesg can help the user correctly identify the problem.
 
-with the legacy mask always implicitly support as indicated in my
-comment to the XFS patch.
+Bug #1665833 from https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1665833
 
-Although even the ignoring in MAP_SHARED seems dangerous, but I guess
-we need that to keep strict backwards compatibility.  In world I'd
-rather do
 
-	case MAP_SHARED:
-		if (flags & ~LEGACY_MAP_MASK)
-			return -EINVAL;
+My server just became unusable, because it ran out of inodes (something that
+shouldn't happen on a relatively normal installation). The root-cause was a
+misbehaving CRM program creating way too many session files and never deleting
+them. However, while debugging, it would have been really really helpful if
+there were something in the logfiles. But it just failed silently: the lack of
+any error message makes diagnosing this error condition 100x harder than it
+should be. We get messages about being out of disk-space, but that's not
+helpful, especially when "df -h" shows it not to be true.
+
+So, the bug report/feature request is this: when the kernel cannot create a new
+file due to a shortage of inodes, it should emit a message to that effect, at
+least in dmesg (and ideally also to syslog).
+
+[For anyone else who chances upon this bug report, you can tell if you have run
+out of inodes with "df -i", and you can find the offending directories with:
+"find / -xdev -size +100k -type d" ]
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
