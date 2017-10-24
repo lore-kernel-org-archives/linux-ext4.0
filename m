@@ -1,43 +1,32 @@
-From: Mike Snitzer <snitzer@redhat.com>
-Subject: Re: [PATCH 1/2] dm log writes: Add support for inline data buffers
-Date: Tue, 24 Oct 2017 15:14:32 -0400
-Message-ID: <20171024191431.GA22902@redhat.com>
-References: <20171020052404.13762-1-ross.zwisler@linux.intel.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 197045] renameat2 rename_noreplace
+Date: Tue, 24 Oct 2017 19:22:10 +0000
+Message-ID: <bug-197045-13602-QXwwiX9iFo@https.bugzilla.kernel.org/>
+References: <bug-197045-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, Josef Bacik <jbacik@fb.com>,
-        Alasdair Kergon <agk@redhat.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
-        Shaohua Li <shli@kernel.org>, dm-devel@redhat.com,
-        linux-nvdimm@lists.01.org, linux-raid@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171020052404.13762-1-ross.zwisler@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:38072 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751280AbdJXTWZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 24 Oct 2017 15:22:25 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B04CA289F6
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Oct 2017 19:22:24 +0000 (UTC)
+In-Reply-To: <bug-197045-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 20 2017 at  1:24am -0400,
-Ross Zwisler <ross.zwisler@linux.intel.com> wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=197045
 
-> Currently dm-log-writes supports writing filesystem data via BIOs, and
-> writing internal metadata from a flat buffer via write_metadata().
-> 
-> For DAX writes, though, we won't have a BIO, but will instead have an
-> iterator that we'll want to use to fill a flat data buffer.
-> 
-> So, create write_inline_data() which allows us to write filesystem data
-> using a flat buffer as a source, and wire it up in log_one_block().
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+--- Comment #5 from Elvis Stansvik (elvstone@gmail.com) ---
+Martin: I've just discovered that I only see this problem when on my eCryptfs
+encrypted home directory, not when testing in e.g. /tmp (unencrypted). Are you
+also using eCryptfs?
 
-Hi,
-
-I picked this up but tweaked some whitespace and couple style nits, see:
-https://git.kernel.org/pub/scm/linux/kernel/git/device-mapper/linux-dm.git/commit/?h=for-4.15/dm&id=6a697d036324c7fbe63fb49599027269006161e7
-
-Thanks,
-Mike
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
