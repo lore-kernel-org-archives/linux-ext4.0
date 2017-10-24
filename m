@@ -1,29 +1,30 @@
 From: bugzilla-daemon@bugzilla.kernel.org
 Subject: [Bug 197045] renameat2 rename_noreplace
-Date: Tue, 24 Oct 2017 20:25:57 +0000
-Message-ID: <bug-197045-13602-Hl03W2O2k6@https.bugzilla.kernel.org/>
+Date: Tue, 24 Oct 2017 21:03:06 +0000
+Message-ID: <bug-197045-13602-7hZ2reRh1h@https.bugzilla.kernel.org/>
 References: <bug-197045-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42116 "EHLO
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:48892 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751336AbdJXUZ6 (ORCPT
+        by vger.kernel.org with ESMTP id S1751811AbdJXVDK (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 24 Oct 2017 16:25:58 -0400
+        Tue, 24 Oct 2017 17:03:10 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9FA2E28A73
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Oct 2017 20:25:57 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D472228A8D
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Oct 2017 21:03:09 +0000 (UTC)
 In-Reply-To: <bug-197045-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=197045
 
---- Comment #9 from Elvis Stansvik (elvstone@gmail.com) ---
-Scratch that, it's obviously not that easy.
+--- Comment #10 from Thiago Macieira (thiago@macieira.org) ---
+No, it seems that non-local filesystems need specific code to guarante
+RENAME_NOREPLACE, so the EINVAL error is legitimate.
 
 -- 
 You are receiving this mail because:
