@@ -1,34 +1,78 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 197045] renameat2 rename_noreplace
-Date: Tue, 24 Oct 2017 21:42:06 +0000
-Message-ID: <bug-197045-13602-h4GPZrvH2g@https.bugzilla.kernel.org/>
-References: <bug-197045-13602@https.bugzilla.kernel.org/>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 17/17] xfs: support for synchronous DAX faults
+Date: Wed, 25 Oct 2017 09:23:22 +1100
+Message-ID: <20171024222322.GX3666@dastard>
+References: <20171024152415.22864-1-jack@suse.cz>
+ <20171024152415.22864-18-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53966 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751277AbdJXVmJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 24 Oct 2017 17:42:09 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B709428A5F
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Oct 2017 21:42:08 +0000 (UTC)
-In-Reply-To: <bug-197045-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dan Williams <dan.j.williams@intel.com>,
+	Ross Zwisler <ross.zwisler@linux.intel.com>,
+	Christoph Hellwig <hch@infradead.org>, linux-ext4@vger.kernel.org,
+	linux-nvdimm@lists.01.org, linux-fsdevel@vger.kernel.org,
+	linux-xfs@vger.kernel.org, linux-api@vger.kernel.org,
+	linux-mm@kvack.org, Christoph Hellwig <hch@lst.de>
+To: Jan Kara <jack@suse.cz>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20171024152415.22864-18-jack@suse.cz>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=197045
+On Tue, Oct 24, 2017 at 05:24:14PM +0200, Jan Kara wrote:
+> From: Christoph Hellwig <hch@lst.de>
+> 
+> Return IOMAP_F_DIRTY from xfs_file_iomap_begin() when asked to prepare
+> blocks for writing and the inode is pinned, and has dirty fields other
+> than the timestamps.
 
---- Comment #13 from Elvis Stansvik (elvstone@gmail.com) ---
-Indeed, I'll file an LP bug and try to ping Tyler. Who knows, perhaps they're
-already planning to switch to encrypted ext4 (thanks for testing that Ted).
+That's "fdatasync dirty", not "fsync dirty".
 
-And thanks to Thiago for being so quick with the Qt fix (I ran into this
-behavior by way of Qt).
+IOMAP_F_DIRTY needs a far better description of it's semantics than
+"/* block mapping is not yet on persistent storage */" so we know
+exactly what filesystems are supposed to be implementing here. I
+suspect that what it really is meant to say is:
 
+/*
+ * IOMAP_F_DIRTY indicates the inode has uncommitted metadata to
+ * written data and requires fdatasync to commit to persistent storage.
+ */
+
+[....]
+
+> diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+> index f179bdf1644d..b43be199fbdf 100644
+> --- a/fs/xfs/xfs_iomap.c
+> +++ b/fs/xfs/xfs_iomap.c
+> @@ -33,6 +33,7 @@
+>  #include "xfs_error.h"
+>  #include "xfs_trans.h"
+>  #include "xfs_trans_space.h"
+> +#include "xfs_inode_item.h"
+>  #include "xfs_iomap.h"
+>  #include "xfs_trace.h"
+>  #include "xfs_icache.h"
+> @@ -1086,6 +1087,10 @@ xfs_file_iomap_begin(
+>  		trace_xfs_iomap_found(ip, offset, length, 0, &imap);
+>  	}
+>  
+> +	if ((flags & IOMAP_WRITE) && xfs_ipincount(ip) &&
+> +	    (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP))
+> +		iomap->flags |= IOMAP_F_DIRTY;
+
+This is the very definition of an inode that is "fdatasync dirty".
+
+Hmmmm, shouldn't this also be set for read faults, too?
+
+Cheers,
+
+Dave.
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Dave Chinner
+david@fromorbit.com
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
