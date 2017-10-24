@@ -1,49 +1,93 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 197045] renameat2 rename_noreplace
-Date: Tue, 24 Oct 2017 12:29:42 +0000
-Message-ID: <bug-197045-13602-0WYLoK3uXE@https.bugzilla.kernel.org/>
-References: <bug-197045-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 01/17] mm: introduce MAP_SHARED_VALIDATE, a mechanism to
+ safely define new mmap flags
+Date: Tue, 24 Oct 2017 15:08:08 +0200
+Message-ID: <20171024130808.GC8556@quack2.suse.cz>
+References: <20171019125817.11580-1-jack@suse.cz>
+ <20171019125817.11580-2-jack@suse.cz>
+ <20171020072707.GA18000@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34696 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932267AbdJXM3n (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 24 Oct 2017 08:29:43 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D757328414
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Oct 2017 12:29:42 +0000 (UTC)
-In-Reply-To: <bug-197045-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20171020072707.GA18000-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=197045
+On Fri 20-10-17 00:27:07, Christoph Hellwig wrote:
+> >  	if (file) {
+> >  		struct inode *inode = file_inode(file);
+> > +		unsigned long flags_mask = file->f_op->mmap_supported_flags;
+> > +
+> > +		if (!flags_mask)
+> > +			flags_mask = LEGACY_MAP_MASK;
+> >  
+> >  		switch (flags & MAP_TYPE) {
+> >  		case MAP_SHARED:
+> > +			/*
+> > +			 * Silently ignore unsupported flags - MAP_SHARED has
+> > +			 * traditionally behaved like that and we don't want
+> > +			 * to break compatibility.
+> > +			 */
+> > +			flags &= flags_mask;
+> > +			/*
+> > +			 * Force use of MAP_SHARED_VALIDATE with non-legacy
+> > +			 * flags. E.g. MAP_SYNC is dangerous to use with
+> > +			 * MAP_SHARED as you don't know which consistency model
+> > +			 * you will get.
+> > +			 */
+> > +			flags &= LEGACY_MAP_MASK;
+> > +			/* fall through */
+> > +		case MAP_SHARED_VALIDATE:
+> > +			if (flags & ~flags_mask)
+> > +				return -EOPNOTSUPP;
+> 
+> Hmmm.  I'd expect this to worth more like:
+> 
+> 		case MAP_SHARED:
+> 			/* Ignore all new flags that need validation: */
+> 			flags &= LEGACY_MAP_MASK;
+> 			/*FALLTHROUGH*/
+> 		case MAP_SHARED_VALIDATE:
+> 			if (flags & ~file->f_op->mmap_supported_flags)
+> 				return -EOPNOTSUPP;
+> 
+> with the legacy mask always implicitly support as indicated in my
+> comment to the XFS patch.
 
---- Comment #3 from Elvis Stansvik (elvstone@gmail.com) ---
-I'm hit by this on 4.10 a well (the default kernel on Ubuntu 16.04).
+I was thinking about this. Originally I thought that mmap_supported_flags
+would allow also to declare some legacy flags as unsupported and also it
+seemed as a nicer symmetric interface to me. But I guess the need to mask
+out legacy flags is mostly theoretical so I'm fine giving that up. So I'll
+change this as you suggest.
 
-I attached a full test case showing.
+> Although even the ignoring in MAP_SHARED seems dangerous, but I guess
+> we need that to keep strict backwards compatibility.  In world I'd
+> rather do
+> 
+> 	case MAP_SHARED:
+> 		if (flags & ~LEGACY_MAP_MASK)
+> 			return -EINVAL;
 
-Example run:
+Yes, I think just ignoring new flags for MAP_SHARED is safer...
 
-
-> [estan@newton renameat2tc]$ gcc renameat2.c 
-> [estan@newton renameat2tc]$ touch foo
-> [estan@newton renameat2tc]$ ./a.out foo bar
-> Invalid argument
-> [estan@newton renameat2tc]$ uname -a
-> Linux newton 4.10.0-37-generic #41~16.04.1-Ubuntu SMP Fri Oct 6 22:42:59 UTC
-> 2017 x86_64 x86_64 x86_64 GNU/Linux
-> [estan@newton renameat2tc]$ mount | grep " / "
-> /dev/sda1 on / type ext4 (rw,noatime,discard,errors=remount-ro,data=ordered)
-
-The reason I discovered it was that Qt recently started using this syscall,
-which in turn made Qt Creator (a Qt application) fail to write its config
-files.
+								Honza
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
