@@ -1,124 +1,96 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] mmap.2: Add description of MAP_SHARED_VALIDATE and
- MAP_SYNC
-Date: Thu, 26 Oct 2017 15:24:02 +0200
-Message-ID: <20171026132402.GB31161@quack2.suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 17/17] xfs: support for synchronous DAX faults
+Date: Thu, 26 Oct 2017 17:48:04 +0200
+Message-ID: <20171026154804.GF31161@quack2.suse.cz>
 References: <20171024152415.22864-1-jack@suse.cz>
- <20171024152415.22864-19-jack@suse.cz>
- <20171024211007.GA1611@linux.intel.com>
+ <20171024152415.22864-18-jack@suse.cz>
+ <20171024222322.GX3666@dastard>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="GvXjxJ+pjyke8COw"
-Cc: Jan Kara <jack@suse.cz>, Dan Williams <dan.j.williams@intel.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-mm@kvack.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40200 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932217AbdJZNYE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 26 Oct 2017 09:24:04 -0400
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+ linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20171024211007.GA1611@linux.intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20171024222322.GX3666@dastard>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-
---GvXjxJ+pjyke8COw
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Tue 24-10-17 15:10:07, Ross Zwisler wrote:
-> On Tue, Oct 24, 2017 at 05:24:15PM +0200, Jan Kara wrote:
-> > Signed-off-by: Jan Kara <jack@suse.cz>
+On Wed 25-10-17 09:23:22, Dave Chinner wrote:
+> On Tue, Oct 24, 2017 at 05:24:14PM +0200, Jan Kara wrote:
+> > From: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+> > 
+> > Return IOMAP_F_DIRTY from xfs_file_iomap_begin() when asked to prepare
+> > blocks for writing and the inode is pinned, and has dirty fields other
+> > than the timestamps.
 > 
-> This looks unchanged since the previous version?
+> That's "fdatasync dirty", not "fsync dirty".
 
-Ah, thanks for checking. I forgot to commit modifications. Attached is
-really updated patch.
+Correct.
+
+> IOMAP_F_DIRTY needs a far better description of it's semantics than
+> "/* block mapping is not yet on persistent storage */" so we know
+> exactly what filesystems are supposed to be implementing here. I
+> suspect that what it really is meant to say is:
+> 
+> /*
+>  * IOMAP_F_DIRTY indicates the inode has uncommitted metadata to
+>  * written data and requires fdatasync to commit to persistent storage.
+>  */
+
+I'll update the comment. Thanks!
+
+> [....]
+> 
+> > diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+> > index f179bdf1644d..b43be199fbdf 100644
+> > --- a/fs/xfs/xfs_iomap.c
+> > +++ b/fs/xfs/xfs_iomap.c
+> > @@ -33,6 +33,7 @@
+> >  #include "xfs_error.h"
+> >  #include "xfs_trans.h"
+> >  #include "xfs_trans_space.h"
+> > +#include "xfs_inode_item.h"
+> >  #include "xfs_iomap.h"
+> >  #include "xfs_trace.h"
+> >  #include "xfs_icache.h"
+> > @@ -1086,6 +1087,10 @@ xfs_file_iomap_begin(
+> >  		trace_xfs_iomap_found(ip, offset, length, 0, &imap);
+> >  	}
+> >  
+> > +	if ((flags & IOMAP_WRITE) && xfs_ipincount(ip) &&
+> > +	    (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP))
+> > +		iomap->flags |= IOMAP_F_DIRTY;
+> 
+> This is the very definition of an inode that is "fdatasync dirty".
+> 
+> Hmmmm, shouldn't this also be set for read faults, too?
+
+No, read faults don't need to set IOMAP_F_DIRTY since user cannot write any
+data to the page which he'd then like to be persistent. The only reason why
+I thought it could be useful for a while was that it would be nice to make
+MAP_SYNC mapping provide the guarantee that data you see now is the data
+you'll see after a crash but we cannot provide that guarantee for RO
+mapping anyway if someone else has the page mapped as well. So I just
+decided not to return IOMAP_F_DIRTY for read faults.
+
+But now that I look at XFS implementation again, it misses handling
+of VM_FAULT_NEEDSYNC in xfs_filemap_pfn_mkwrite() (ext4 gets this right).
+I'll fix this by using __xfs_filemap_fault() for xfs_filemap_pfn_mkwrite()
+as well since it mostly duplicates it anyway... Thanks for inquiring!
 
 								Honza
 -- 
-Jan Kara <jack@suse.com>
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
 SUSE Labs, CR
-
---GvXjxJ+pjyke8COw
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-mmap.2-Add-description-of-MAP_SHARED_VALIDATE-and-MA.patch"
-
->From 59eeec2998ed9b3840aab951f213148cb1d053a5 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Thu, 19 Oct 2017 14:44:55 +0200
-Subject: [PATCH] mmap.2: Add description of MAP_SHARED_VALIDATE and MAP_SYNC
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- man2/mmap.2 | 35 ++++++++++++++++++++++++++++++++++-
- 1 file changed, 34 insertions(+), 1 deletion(-)
-
-diff --git a/man2/mmap.2 b/man2/mmap.2
-index 47c3148653be..b38ee6809327 100644
---- a/man2/mmap.2
-+++ b/man2/mmap.2
-@@ -125,6 +125,21 @@ are carried through to the underlying file.
- to the underlying file requires the use of
- .BR msync (2).)
- .TP
-+.BR MAP_SHARED_VALIDATE " (since Linux 4.15)"
-+The same as
-+.B MAP_SHARED
-+except that
-+.B MAP_SHARED
-+mappings ignore unknown flags in
-+.IR flags .
-+In contrast when creating mapping of
-+.B MAP_SHARED_VALIDATE
-+mapping type, the kernel verifies all passed flags are known and fails the
-+mapping with
-+.BR EOPNOTSUPP
-+otherwise. This mapping type is also required to be able to use some mapping
-+flags.
-+.TP
- .B MAP_PRIVATE
- Create a private copy-on-write mapping.
- Updates to the mapping are not visible to other processes
-@@ -134,7 +149,10 @@ It is unspecified whether changes made to the file after the
- .BR mmap ()
- call are visible in the mapped region.
- .PP
--Both of these flags are described in POSIX.1-2001 and POSIX.1-2008.
-+.B MAP_SHARED
-+and
-+.B MAP_PRIVATE
-+are described in POSIX.1-2001 and POSIX.1-2008.
- .PP
- In addition, zero or more of the following values can be ORed in
- .IR flags :
-@@ -352,6 +370,21 @@ option.
- Because of the security implications,
- that option is normally enabled only on embedded devices
- (i.e., devices where one has complete control of the contents of user memory).
-+.TP
-+.BR MAP_SYNC " (since Linux 4.15)"
-+This flags is available only with
-+.B MAP_SHARED_VALIDATE
-+mapping type. Mappings of
-+.B MAP_SHARED
-+type will silently ignore this flag.
-+This flag is supported only for files supporting DAX (direct mapping of persistent
-+memory). For other files, creating mapping with this flag results in
-+.B EOPNOTSUPP
-+error. Shared file mappings with this flag provide the guarantee that while
-+some memory is writeably mapped in the address space of the process, it will
-+be visible in the same file at the same offset even after the system crashes or
-+is rebooted. This allows users of such mappings to make data modifications
-+persistent in a more efficient way using appropriate CPU instructions.
- .PP
- Of the above flags, only
- .B MAP_FIXED
--- 
-2.12.3
-
-
---GvXjxJ+pjyke8COw--
