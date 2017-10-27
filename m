@@ -1,111 +1,194 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 17/17] xfs: support for synchronous DAX faults
-Date: Fri, 27 Oct 2017 12:08:34 +0200
-Message-ID: <20171027100834.GH31161@quack2.suse.cz>
-References: <20171024152415.22864-1-jack@suse.cz>
- <20171024152415.22864-18-jack@suse.cz>
- <20171024222322.GX3666@dastard>
- <20171026154804.GF31161@quack2.suse.cz>
- <20171026211611.GC3666@dastard>
+From: Michael Halcrow <mhalcrow@google.com>
+Subject: Re: [RFC PATCH 01/25] fs, fscrypt: move uapi definitions to new
+ header <linux/fscrypt.h>
+Date: Fri, 27 Oct 2017 11:01:41 -0700
+Message-ID: <20171027180141.GA10611@google.com>
+References: <20171023214058.128121-1-ebiggers3@gmail.com>
+ <20171023214058.128121-2-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, Dan Williams <dan.j.williams@intel.com>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-mm@kvack.org,
-        Christoph Hellwig <hch@lst.de>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33855 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751158AbdJ0KIh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 27 Oct 2017 06:08:37 -0400
+Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-api@vger.kernel.org,
+        keyrings@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Gwendal Grignou <gwendal@chromium.org>,
+        Ryo Hashimoto <hashimoto@chromium.org>,
+        Sarthak Kukreti <sarthakkukreti@chromium.org>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20171026211611.GC3666@dastard>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20171023214058.128121-2-ebiggers3@gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri 27-10-17 08:16:11, Dave Chinner wrote:
-> On Thu, Oct 26, 2017 at 05:48:04PM +0200, Jan Kara wrote:
-> > > > diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-> > > > index f179bdf1644d..b43be199fbdf 100644
-> > > > --- a/fs/xfs/xfs_iomap.c
-> > > > +++ b/fs/xfs/xfs_iomap.c
-> > > > @@ -33,6 +33,7 @@
-> > > >  #include "xfs_error.h"
-> > > >  #include "xfs_trans.h"
-> > > >  #include "xfs_trans_space.h"
-> > > > +#include "xfs_inode_item.h"
-> > > >  #include "xfs_iomap.h"
-> > > >  #include "xfs_trace.h"
-> > > >  #include "xfs_icache.h"
-> > > > @@ -1086,6 +1087,10 @@ xfs_file_iomap_begin(
-> > > >  		trace_xfs_iomap_found(ip, offset, length, 0, &imap);
-> > > >  	}
-> > > >  
-> > > > +	if ((flags & IOMAP_WRITE) && xfs_ipincount(ip) &&
-> > > > +	    (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP))
-> > > > +		iomap->flags |= IOMAP_F_DIRTY;
-> > > 
-> > > This is the very definition of an inode that is "fdatasync dirty".
-> > > 
-> > > Hmmmm, shouldn't this also be set for read faults, too?
-> > 
-> > No, read faults don't need to set IOMAP_F_DIRTY since user cannot write any
-> > data to the page which he'd then like to be persistent. The only reason why
-> > I thought it could be useful for a while was that it would be nice to make
-> > MAP_SYNC mapping provide the guarantee that data you see now is the data
-> > you'll see after a crash
+On Mon, Oct 23, 2017 at 02:40:34PM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> Isn't that the entire point of MAP_SYNC? i.e. That when we return
-> from a page fault, the app knows that the data and it's underlying
-> extent is on persistent storage?
+> There are going to be more filesystem encryption definitions added, and
+> we don't want to use a disproportionate amount of space in <linux/fs.h>
+> for filesystem encryption stuff.  So move the fscrypt definitions to a
+> new header <linux/fscrypt.h>.
 > 
-> > but we cannot provide that guarantee for RO
-> > mapping anyway if someone else has the page mapped as well. So I just
-> > decided not to return IOMAP_F_DIRTY for read faults.
+> For compatibility with existing userspace programs which may be
+> including <linux/fs.h>, <linux/fs.h> still includes the new header.
+> (It's debatable whether we really need this, though; the filesystem
+> encryption API is new enough that most if not all programs that are
+> using it have to declare it themselves anyway.)
 > 
-> If there are multiple MAP_SYNC mappings to the inode, I would have
-> expected that they all sync all of the data/metadata on every page
-> fault, regardless of who dirtied the inode. An RO mapping doesn't
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
-Well, they all do sync regardless of who dirtied the inode on every *write*
-fault.
+Reviewed-by: Michael Halcrow <mhalcrow@google.com>
 
-> mean the data/metadata on the inode can't change, it just means it
-> can't change through that mapping.  Running fsync() to guarantee the
-> persistence of that data/metadata doesn't actually changing any
-> data....
+> ---
+>  include/linux/fscrypt.h      |  2 +-
+>  include/uapi/linux/fs.h      | 50 +++--------------------------------------
+>  include/uapi/linux/fscrypt.h | 53 ++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 57 insertions(+), 48 deletions(-)
+>  create mode 100644 include/uapi/linux/fscrypt.h
 > 
-> IOWs, if read faults don't guarantee the mapped range has stable
-> extents on a MAP_SYNC mapping, then I think MAP_SYNC is broken
-> because it's not giving consistent guarantees to userspace. Yes, it
-> works fine when only one MAP_SYNC mapping is modifying the inode,
-> but the moment we have concurrent operations on the inode that
-> aren't MAP_SYNC or O_SYNC this goes out the window....
-
-MAP_SYNC as I've implemented it provides guarantees only for data the
-process has actually written. I agree with that and it was a conscious
-decision. In my opinion that covers most usecases, provides reasonably
-simple semantics (i.e., if you write data through MAP_SYNC mapping, you can
-persist it just using CPU instructions), and reasonable performance.
-
-Now you seem to suggest the semantics should be: "Data you have read from or
-written to a MAP_SYNC mapping can be persisted using CPU instructions." And
-from implementation POV we can do that rather easily (just rip out the
-IOMAP_WRITE checks). But I'm unsure whether this additional guarantee would
-be useful enough to justify the slowdown of read faults? I was not able to
-come up with a good usecase and so I've decided for current semantics. What
-do other people think?
-
-And now that I've spelled out exact semantics I don't think your comparison
-that you can fsync() data you didn't write quite matches - with MAP_SYNC
-you will have to at least read the data to be able to persist it and you
-don't have that requirement for fsync() either...
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+> index 53437bfdfcbc..f7aa7d62e235 100644
+> --- a/include/linux/fscrypt.h
+> +++ b/include/linux/fscrypt.h
+> @@ -19,7 +19,7 @@
+>  #include <linux/bio.h>
+>  #include <linux/dcache.h>
+>  #include <crypto/skcipher.h>
+> -#include <uapi/linux/fs.h>
+> +#include <uapi/linux/fscrypt.h>
+>  
+>  #define FS_CRYPTO_BLOCK_SIZE		16
+>  
+> diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+> index 56235dddea7d..6ecd3ee9960c 100644
+> --- a/include/uapi/linux/fs.h
+> +++ b/include/uapi/linux/fs.h
+> @@ -12,6 +12,9 @@
+>  #include <linux/limits.h>
+>  #include <linux/ioctl.h>
+>  #include <linux/types.h>
+> +#ifndef __KERNEL__
+> +#include <linux/fscrypt.h>
+> +#endif
+>  
+>  /*
+>   * It's silly to have NR_OPEN bigger than NR_FILE, but you can change
+> @@ -253,53 +256,6 @@ struct fsxattr {
+>  #define FS_IOC_FSGETXATTR		_IOR ('X', 31, struct fsxattr)
+>  #define FS_IOC_FSSETXATTR		_IOW ('X', 32, struct fsxattr)
+>  
+> -/*
+> - * File system encryption support
+> - */
+> -/* Policy provided via an ioctl on the topmost directory */
+> -#define FS_KEY_DESCRIPTOR_SIZE	8
+> -
+> -#define FS_POLICY_FLAGS_PAD_4		0x00
+> -#define FS_POLICY_FLAGS_PAD_8		0x01
+> -#define FS_POLICY_FLAGS_PAD_16		0x02
+> -#define FS_POLICY_FLAGS_PAD_32		0x03
+> -#define FS_POLICY_FLAGS_PAD_MASK	0x03
+> -#define FS_POLICY_FLAGS_VALID		0x03
+> -
+> -/* Encryption algorithms */
+> -#define FS_ENCRYPTION_MODE_INVALID		0
+> -#define FS_ENCRYPTION_MODE_AES_256_XTS		1
+> -#define FS_ENCRYPTION_MODE_AES_256_GCM		2
+> -#define FS_ENCRYPTION_MODE_AES_256_CBC		3
+> -#define FS_ENCRYPTION_MODE_AES_256_CTS		4
+> -#define FS_ENCRYPTION_MODE_AES_128_CBC		5
+> -#define FS_ENCRYPTION_MODE_AES_128_CTS		6
+> -
+> -struct fscrypt_policy {
+> -	__u8 version;
+> -	__u8 contents_encryption_mode;
+> -	__u8 filenames_encryption_mode;
+> -	__u8 flags;
+> -	__u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
+> -};
+> -
+> -#define FS_IOC_SET_ENCRYPTION_POLICY	_IOR('f', 19, struct fscrypt_policy)
+> -#define FS_IOC_GET_ENCRYPTION_PWSALT	_IOW('f', 20, __u8[16])
+> -#define FS_IOC_GET_ENCRYPTION_POLICY	_IOW('f', 21, struct fscrypt_policy)
+> -
+> -/* Parameters for passing an encryption key into the kernel keyring */
+> -#define FS_KEY_DESC_PREFIX		"fscrypt:"
+> -#define FS_KEY_DESC_PREFIX_SIZE		8
+> -
+> -/* Structure that userspace passes to the kernel keyring */
+> -#define FS_MAX_KEY_SIZE			64
+> -
+> -struct fscrypt_key {
+> -	__u32 mode;
+> -	__u8 raw[FS_MAX_KEY_SIZE];
+> -	__u32 size;
+> -};
+> -
+>  /*
+>   * Inode flags (FS_IOC_GETFLAGS / FS_IOC_SETFLAGS)
+>   *
+> diff --git a/include/uapi/linux/fscrypt.h b/include/uapi/linux/fscrypt.h
+> new file mode 100644
+> index 000000000000..c09209fc42ea
+> --- /dev/null
+> +++ b/include/uapi/linux/fscrypt.h
+> @@ -0,0 +1,53 @@
+> +#ifndef _UAPI_LINUX_FSCRYPT_H
+> +#define _UAPI_LINUX_FSCRYPT_H
+> +
+> +#include <linux/types.h>
+> +
+> +/*
+> + * File system encryption support
+> + */
+> +/* Policy provided via an ioctl on the topmost directory */
+> +#define FS_KEY_DESCRIPTOR_SIZE	8
+> +
+> +#define FS_POLICY_FLAGS_PAD_4		0x00
+> +#define FS_POLICY_FLAGS_PAD_8		0x01
+> +#define FS_POLICY_FLAGS_PAD_16		0x02
+> +#define FS_POLICY_FLAGS_PAD_32		0x03
+> +#define FS_POLICY_FLAGS_PAD_MASK	0x03
+> +#define FS_POLICY_FLAGS_VALID		0x03
+> +
+> +/* Encryption algorithms */
+> +#define FS_ENCRYPTION_MODE_INVALID		0
+> +#define FS_ENCRYPTION_MODE_AES_256_XTS		1
+> +#define FS_ENCRYPTION_MODE_AES_256_GCM		2
+> +#define FS_ENCRYPTION_MODE_AES_256_CBC		3
+> +#define FS_ENCRYPTION_MODE_AES_256_CTS		4
+> +#define FS_ENCRYPTION_MODE_AES_128_CBC		5
+> +#define FS_ENCRYPTION_MODE_AES_128_CTS		6
+> +
+> +struct fscrypt_policy {
+> +	__u8 version;
+> +	__u8 contents_encryption_mode;
+> +	__u8 filenames_encryption_mode;
+> +	__u8 flags;
+> +	__u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
+> +};
+> +
+> +#define FS_IOC_SET_ENCRYPTION_POLICY	_IOR('f', 19, struct fscrypt_policy)
+> +#define FS_IOC_GET_ENCRYPTION_PWSALT	_IOW('f', 20, __u8[16])
+> +#define FS_IOC_GET_ENCRYPTION_POLICY	_IOW('f', 21, struct fscrypt_policy)
+> +
+> +/* Parameters for passing an encryption key into the kernel keyring */
+> +#define FS_KEY_DESC_PREFIX		"fscrypt:"
+> +#define FS_KEY_DESC_PREFIX_SIZE		8
+> +
+> +/* Structure that userspace passes to the kernel keyring */
+> +#define FS_MAX_KEY_SIZE			64
+> +
+> +struct fscrypt_key {
+> +	__u32 mode;
+> +	__u8 raw[FS_MAX_KEY_SIZE];
+> +	__u32 size;
+> +};
+> +
+> +#endif /* _UAPI_LINUX_FSCRYPT_H */
+> -- 
+> 2.15.0.rc0.271.g36b669edcc-goog
+> 
