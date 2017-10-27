@@ -1,172 +1,175 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [RFC][PATCH 0/8] 64bit inode e2fsprogs support
-Date: Fri, 27 Oct 2017 16:04:56 -0600
-Message-ID: <FFFDF5AA-E79F-46F0-99B6-0E38DB1943BA@dilger.ca>
+Subject: Re: [RFC PATCH 2/8]  e2fsck: add support for dirdata feature
+Date: Fri, 27 Oct 2017 17:13:09 -0600
+Message-ID: <E5C7221F-6A40-4FF4-9CC2-476B035BB037@dilger.ca>
 References: <20171027172254.14137-1-artem.blagodarenko@gmail.com>
+ <20171027172254.14137-3-artem.blagodarenko@gmail.com>
 Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_F1F0C91C-2AF8-4449-AC3B-22176900968B";
+ boundary="Apple-Mail=_936413CE-59DD-4021-AD46-3E0894E3BF4C";
  protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        alexey.lyashkov@gmail.com
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        Alexey Lyashkov <alexey.lyashkov@gmail.com>
 To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:53670 "EHLO
+Received: from mail-io0-f194.google.com ([209.85.223.194]:53281 "EHLO
         mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751304AbdJ0WFC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Oct 2017 18:05:02 -0400
-Received: by mail-io0-f194.google.com with SMTP id 189so15660296iow.10
-        for <linux-ext4@vger.kernel.org>; Fri, 27 Oct 2017 15:05:01 -0700 (PDT)
-In-Reply-To: <20171027172254.14137-1-artem.blagodarenko@gmail.com>
+        with ESMTP id S1751907AbdJ0XNQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Oct 2017 19:13:16 -0400
+Received: by mail-io0-f194.google.com with SMTP id 189so15900538iow.10
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Oct 2017 16:13:16 -0700 (PDT)
+In-Reply-To: <20171027172254.14137-3-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_F1F0C91C-2AF8-4449-AC3B-22176900968B
+--Apple-Mail=_936413CE-59DD-4021-AD46-3E0894E3BF4C
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-
-> On Oct 27, 2017, at 11:22 AM, Artem Blagodarenko =
+On Oct 27, 2017, at 11:22 AM, Artem Blagodarenko =
 <artem.blagodarenko@gmail.com> wrote:
+> From: Andreas Dilger <andreas.dilger@intel.com>
 >=20
-> Andreas Dilger (2):
->  e2fsck: add support for dirdata feature
->  tests: add basic tests for dirdata feature
+>    Add support for the INCOMPAT_DIRDATA feature, which allows
+>    storing extra data in the directory entry beyond the name.
+>    This allows the Lustre File IDentifier to be accessed in
+>    an efficient manner, and would be useful for expanding a
+>    filesystem to allow more than 2^32 inodes in the future.
 >=20
-> Artem Blagodarenko (5):
->  e2fsck Fix access after free for dx_db structure
->  LU-9309 debugfs: 64bit inode support
->  LU-9309 ext2fs: add EXT4_FEATURE_INCOMPAT_64INODE suport
->  LU-9309 quota: swaping s_prj_quota_inum superblock field
->  LU-9309 quota: quota 64bit inode number cleanup
+>      LU-1774 e2fsck: e2fsck -D does not change dirdata content
 >=20
-> Bobi Jam (1):
->  LU-1774 tests: e2fsck -D does not change dirdata
+>      Fix dir optimization to preserver dirdata content for dot
+>      and dotdot entries.
 
-We probably don't want to keep the LU ticket number in the patch
-description.  What we've been doing for Lustre patches going into
-the upstream kernel is to add a tag:
+(typo) s/preserver/preserve/
 
-Lustre-bug: https://jira.hpdd.intel.com/browse/LU-9309
+> +int e2fsck_check_dirent_data(e2fsck_t ctx, struct ext2_dir_entry *de,
+> +			     unsigned int offset, struct problem_context =
+*pctx)
+> +{
+> +	if (!(ctx->fs->super->s_feature_incompat &
+> +			EXT4_FEATURE_INCOMPAT_DIRDATA)) {
+> +		if ((de->name_len >> 8) & ~EXT2_FT_MASK) {
+> +			/* clear dirent extra data flags. */
+> +			if (fix_problem(ctx, PR_2_CLEAR_DIRDATA, pctx)) =
+{
+> +				de->name_len &=3D (EXT2_FT_MASK << 8) |
+> +						EXT2_NAME_LEN;
+> +				return 2;
+> +			}
+> +		}
+> +		return 1;
+> +	}
+> +	if ((de->name_len >> 8) & ~EXT2_FT_MASK) {
+> +		if (de->rec_len >=3D EXT2_DIR_REC_LEN(de) ||
+> +		    de->rec_len + offset =3D=3D =
+EXT2_BLOCK_SIZE(ctx->fs->super)) {
+> +			if (ext2_get_dirent_dirdata_size(de,
+> +							 =
+EXT2_DIRENT_LUFID) =3D=3D
+> +			    EXT2_DIRENT_LUFID_SIZE)
+> +				return 0;
 
-so that this information is maintained in a more useful way.
+One thing that we've been thinking about recently is to store multiple =
+FIDs
+in the dirent to allow metadata replication (i.e. the dirent refers to =
+inodes
+on two different servers).  It would be better to change this check to =
+be:
+
+			if (ext2_get_dirent_dirdata_size(de, =
+EXT2_DIRENT_LUFID)%
+			    EXT2_DIRENT_LUFID_SIZE =3D=3D 1 /* size */ + =
+1 /* NUL */)
+
+and change
+
+#define EXT2_DIRENT_LUFID_SIZE 16
+
+so that the dirdata size can be a multiple of 16, with 1 byte for the =
+record
+size. The current EXT2_DIRENT_LUFID_SIZE is defined as 17 + 1, which I =
+think
+is misleading.  The actual size stored on disk is 17 (16 + =
+sizeof(lu_fid))
+and the extra "+ 1" is added by ext2_get_dirent_dirdata_size(), but I =
+don't
+think the NUL after the name should be included in LUFID_SIZE.  That =
+wasn't
+important when there was only a single FID and a single dirdata entry, =
+but
+it makes sense to fix this when landing this patch upstream.
+
+> +		}
+> +		/* just clear dirent data flags for now, we should fix =
+FID data
+> +		 * in lustre specific pass.
+> +		 */
+> +		if (fix_problem(ctx, PR_2_CLEAR_DIRDATA, pctx)) {
+> +			ext2_fix_dirent_dirdata(de);
+> +			if (ext2_get_dirent_dirdata_size(de,
+> +							 =
+EXT2_DIRENT_LUFID) !=3D
+> +			    EXT2_DIRENT_LUFID_SIZE)
+
+> +				de->name_len &=3D ~(EXT2_DIRENT_LUFID << =
+8);
+> +
+> +			return 2;
+> +		}
+> +	}
+> +	return 1;
+> +}
+> diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+> index 2bb8d4e2..1891756b 100644
+> --- a/e2fsck/problem.c
+> +++ b/e2fsck/problem.c
+> @@ -1671,6 +1671,11 @@ static struct e2fsck_problem problem_table[] =3D =
+{
+> 	  N_("Encrypted @E is too short.\n"),
+> 	  PROMPT_CLEAR, 0 },
+>=20
+> +	/* Directory entry dirdata length set incorrectly */
+> +	{ PR_2_CLEAR_DIRDATA,
+> +	  N_("@E dirdata length set incorrectly.\n"),
+> +	  PROMPT_CLEAR, PR_PREEN_OK },
+> +
+> 	/* Pass 3 errors */
+>=20
+> 	/* Pass 3: Checking directory connectivity */
+> diff --git a/e2fsck/problem.h b/e2fsck/problem.h
+> index 49a8c3ad..96862522 100644
+> --- a/e2fsck/problem.h
+> +++ b/e2fsck/problem.h
+> @@ -1004,6 +1004,9 @@ struct problem_context {
+> /* Encrypted directory entry is too short */
+> #define PR_2_BAD_ENCRYPTED_NAME		0x020050
+>=20
+> +/* Directory dirdata flag set */
+
+Please make this comment match the error message in problem.c:
+
+/* Entry dirdata length set incorrectly */
+
+> +#define PR_2_CLEAR_DIRDATA		0x02f000
+
+This should use the next (or at least close) problem number,
+otherwise it is prone to getting the entries in the wrong
+numerical order, which will fail.  We only had such a large
+value in the Lustre e2fsprogs tree to avoid conflicts from
+other patches landing upstream.
+
 
 Cheers, Andreas
 
->=20
-> debugfs/debugfs.c                 |   2 +-
-> debugfs/htree.c                   |   2 +-
-> debugfs/ls.c                      |  47 +++-
-> debugfs/set_fields.c              |   4 +
-> debugfs/util.c                    |   4 +-
-> e2fsck/e2fsck.c                   |   4 +-
-> e2fsck/e2fsck.h                   |   4 +-
-> e2fsck/extents.c                  |   8 +-
-> e2fsck/journal.c                  |   2 +-
-> e2fsck/pass1.c                    |  29 +--
-> e2fsck/pass1b.c                   |   2 +-
-> e2fsck/pass2.c                    | 144 ++++++++---
-> e2fsck/pass3.c                    |   8 +
-> e2fsck/pass4.c                    |   2 +-
-> e2fsck/pass5.c                    |  20 +-
-> e2fsck/problem.c                  |   5 +
-> e2fsck/problem.h                  |   3 +
-> e2fsck/quota.c                    |  10 +-
-> e2fsck/rehash.c                   |  96 ++++---
-> e2fsck/super.c                    |  17 +-
-> e2fsck/unix.c                     |  17 +-
-> ext2ed/inode_com.c                |   2 +-
-> ext2ed/super_com.c                |   6 +-
-> lib/e2p/feature.c                 |   2 +
-> lib/e2p/ls.c                      |   8 +-
-> lib/ext2fs/alloc.c                |   8 +-
-> lib/ext2fs/alloc_stats.c          |   5 +-
-> lib/ext2fs/badblocks.c            |  92 +++----
-> lib/ext2fs/bb_compat.c            |   6 +-
-> lib/ext2fs/bb_inode.c             |  14 +-
-> lib/ext2fs/bitmaps.c              |   2 +-
-> lib/ext2fs/dirblock.c             |  34 +++
-> lib/ext2fs/ext2_fs.h              |  27 +-
-> lib/ext2fs/ext2fs.h               | 116 +++++++--
-> lib/ext2fs/ext2fsP.h              |   8 +-
-> lib/ext2fs/extent.c               |   2 +-
-> lib/ext2fs/freefs.c               |   4 +-
-> lib/ext2fs/gen_bitmap64.c         |   2 +-
-> lib/ext2fs/get_num_dirs.c         |   4 +-
-> lib/ext2fs/icount.c               |   7 +-
-> lib/ext2fs/initialize.c           |  17 +-
-> lib/ext2fs/inline_data.c          |  16 +-
-> lib/ext2fs/inode.c                |   8 +-
-> lib/ext2fs/lfsck.h                |  40 +++
-> lib/ext2fs/link.c                 |  10 +-
-> lib/ext2fs/newdir.c               |   4 +-
-> lib/ext2fs/openfs.c               |   4 +-
-> lib/ext2fs/rw_bitmaps.c           |   2 +-
-> lib/ext2fs/swapfs.c               |   6 +
-> lib/ext2fs/tst_bitmaps.c          |   7 +-
-> lib/ext2fs/tst_iscan.c            |   2 +-
-> lib/ext2fs/tst_super_size.c       |   5 +
-> lib/ext2fs/write_bb_file.c        |   2 +-
-> lib/support/mkquota.c             |  10 +-
-> lib/support/quotaio.c             |   2 +-
-> lib/support/quotaio.h             |  47 +++-
-> misc/badblocks.c                  |  34 +--
-> misc/dumpe2fs.c                   |   2 +-
-> misc/findsuper.c                  |   6 +-
-> misc/fuse2fs.c                    |   6 +-
-> misc/mke2fs.c                     |  28 ++-
-> misc/tune2fs.c                    |  15 +-
-> resize/main.c                     |   3 +-
-> resize/resize2fs.c                |  27 +-
-> tests/f_dir_optimize/expect.1     | 511 =
-++++++++++++++++++++++++++++++++++++++
-> tests/f_dir_optimize/expect.2     | 511 =
-++++++++++++++++++++++++++++++++++++++
-> tests/f_dir_optimize/image.gz     | Bin 0 -> 102520 bytes
-> tests/f_dir_optimize/name         |   1 +
-> tests/f_dir_optimize/script       |  36 +++
-> tests/f_dirdata/expect.1          |  15 ++
-> tests/f_dirdata/expect.2          |   7 +
-> tests/f_dirdata/image.gz          | Bin 0 -> 72169 bytes
-> tests/f_dirdata/name              |   1 +
-> tests/f_dirdata_optimize/expect.1 |  10 +
-> tests/f_dirdata_optimize/expect.2 |   7 +
-> tests/f_dirdata_optimize/image.gz | Bin 0 -> 32121 bytes
-> tests/f_dirdata_optimize/name     |   1 +
-> tests/f_dirdata_optimize/script   |   3 +
-> tests/progs/test_icount.c         |   4 +-
-> 79 files changed, 1837 insertions(+), 352 deletions(-)
-> create mode 100644 lib/ext2fs/lfsck.h
-> create mode 100644 tests/f_dir_optimize/expect.1
-> create mode 100644 tests/f_dir_optimize/expect.2
-> create mode 100644 tests/f_dir_optimize/image.gz
-> create mode 100644 tests/f_dir_optimize/name
-> create mode 100644 tests/f_dir_optimize/script
-> create mode 100644 tests/f_dirdata/expect.1
-> create mode 100644 tests/f_dirdata/expect.2
-> create mode 100644 tests/f_dirdata/image.gz
-> create mode 100644 tests/f_dirdata/name
-> create mode 100644 tests/f_dirdata_optimize/expect.1
-> create mode 100644 tests/f_dirdata_optimize/expect.2
-> create mode 100644 tests/f_dirdata_optimize/image.gz
-> create mode 100644 tests/f_dirdata_optimize/name
-> create mode 100644 tests/f_dirdata_optimize/script
->=20
-> --
-> 2.13.5 (Apple Git-94)
->=20
-
-
-Cheers, Andreas
 
 
 
 
 
-
---Apple-Mail=_F1F0C91C-2AF8-4449-AC3B-22176900968B
+--Apple-Mail=_936413CE-59DD-4021-AD46-3E0894E3BF4C
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -177,9 +180,9 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iD8DBQFZ862IpIg59Q01vtYRAt8kAJ476CqtcamcC/r9oBYypl4kyFzwJgCgpWjq
-oYovJV4YhsC8iy4JyPbQ5N4=
-=t25v
+iD8DBQFZ872GpIg59Q01vtYRAlNfAJ9NVLguAyKnhrryBXo9Xsag5JO2egCg56pv
+ajqJ07lS3JP5QvMeGbXfO+c=
+=hQ4E
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_F1F0C91C-2AF8-4449-AC3B-22176900968B--
+--Apple-Mail=_936413CE-59DD-4021-AD46-3E0894E3BF4C--
