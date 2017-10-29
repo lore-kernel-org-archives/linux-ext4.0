@@ -1,91 +1,38 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [RFC PATCH 1/8] e2fsck Fix access after free for dx_db structure
-Date: Sat, 28 Oct 2017 00:05:30 -0600
-Message-ID: <C4A81921-AC45-4E77-A0D9-16241A2AD14E@dilger.ca>
-References: <20171027172254.14137-1-artem.blagodarenko@gmail.com>
- <20171027172254.14137-2-artem.blagodarenko@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_E81FAEF0-86CD-48DA-8C03-8B7471E2999A";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        Alexey Lyashkov <alexey.lyashkov@gmail.com>
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+From: Hedemann Harald <laundry@bestwesternpremierdubai.com>
+Subject: Urgent Reply Needed
+Date: Sun, 29 Oct 2017 09:40:48 +0100
+Message-ID: <00d2663abbf38123f21c66e9b515320f__43529.421350877$1509267049$gmane$org@bestwesternpremierdubai.com>
+Reply-To: hedemannharald@gmail.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII;
+ format=flowed
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f177.google.com ([209.85.223.177]:46262 "EHLO
-        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751199AbdJ1GFf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Oct 2017 02:05:35 -0400
-Received: by mail-io0-f177.google.com with SMTP id 101so16966731ioj.3
-        for <linux-ext4@vger.kernel.org>; Fri, 27 Oct 2017 23:05:35 -0700 (PDT)
-In-Reply-To: <20171027172254.14137-2-artem.blagodarenko@gmail.com>
+Received: from smtp01-smtp-4.daemonmail.net ([216.104.162.134]:36216 "EHLO
+        smtp01-smtp-4.daemonmail.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751080AbdJ2Iuf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 29 Oct 2017 04:50:35 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_E81FAEF0-86CD-48DA-8C03-8B7471E2999A
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
 
-On Oct 27, 2017, at 11:22 AM, Artem Blagodarenko =
-<artem.blagodarenko@gmail.com> wrote:
->=20
-> dx_db structure is freed after fixing of PR_2_HTREE_BAD_ROOT
-> problem. Next code block use this structure to unerstand if leaf
-> is beeng processed.
->=20
-> if dx_db is freed then root block is beendg processad and if_leaf
-> need to be set to 0.
+-- 
+Hi, compliments of the best of moment!
 
-This looks like a generic bugfix and should probably be submitted
-separately?
+There is a viable business opportunity in our company to supply the raw
+materials we use in our production which I've been buying from your
+region in my former capacity as purchase officer of our company. I
+require partnership of a reliable and trustworthy individuals in your
+region, the raw materials is hugely available in your region.
 
-Cheers, Andreas
+The opportunity will not interfere with your present job as it doesn't
+matter your area of specialization.
 
-> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-> ---
-> e2fsck/pass2.c | 2 +-
-> 1 file changed, 1 insertion(+), 1 deletion(-)
->=20
-> diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-> index 09b79c3b..f3b49ec8 100644
-> --- a/e2fsck/pass2.c
-> +++ b/e2fsck/pass2.c
-> @@ -1109,7 +1109,7 @@ inline_read_fail:
-> 			    ((fs->blocksize - (8 + dx_csum_size)) /
-> 			     sizeof(struct ext2_dx_entry))))
-> 			dx_db->type =3D DX_DIRBLOCK_NODE;
-> -		is_leaf =3D (dx_db->type =3D=3D DX_DIRBLOCK_LEAF);
-> +		is_leaf =3D dx_db ? (dx_db->type =3D=3D =
-DX_DIRBLOCK_LEAF) : 0;
-> 	}
-> out_htree:
->=20
-> --
-> 2.13.5 (Apple Git-94)
->=20
+Should you desire to know more about the opportunity, kindly write me
+back to enable me avail you the full details of the offer.
 
-
-
-
-
-
-
---Apple-Mail=_E81FAEF0-86CD-48DA-8C03-8B7471E2999A
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFZ9B4qpIg59Q01vtYRAvpoAJ0WzSpnr+h7ZFGojcVImrrv487gewCfVTB/
-5F5/c2QgH5qH+uWx0q0K6n4=
-=Q/ib
------END PGP SIGNATURE-----
-
---Apple-Mail=_E81FAEF0-86CD-48DA-8C03-8B7471E2999A--
+Thanks and Regards
+Mr.Hedemann Harald
