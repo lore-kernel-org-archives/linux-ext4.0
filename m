@@ -1,38 +1,50 @@
-From: Hedemann Harald <laundry@bestwesternpremierdubai.com>
-Subject: Urgent Reply Needed
-Date: Sun, 29 Oct 2017 09:40:48 +0100
-Message-ID: <00d2663abbf38123f21c66e9b515320f__43529.421350877$1509267049$gmane$org@bestwesternpremierdubai.com>
-Reply-To: hedemannharald@gmail.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v3] fscrypt: add a documentation file for
+ filesystem-level encryption
+Date: Sun, 29 Oct 2017 06:24:06 -0400
+Message-ID: <20171029102406.hc6zzeepgbntwesx@thunk.org>
+References: <20170909001512.72431-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Content-Transfer-Encoding: 7bit
-To: undisclosed-recipients:;
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fscrypt@vger.kernel.org, linux-doc@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp01-smtp-4.daemonmail.net ([216.104.162.134]:36216 "EHLO
-        smtp01-smtp-4.daemonmail.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751080AbdJ2Iuf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 29 Oct 2017 04:50:35 -0400
+Received: from imap.thunk.org ([74.207.234.97]:40554 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751310AbdJ2KYS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 29 Oct 2017 06:24:18 -0400
+Content-Disposition: inline
+In-Reply-To: <20170909001512.72431-1-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Sep 08, 2017 at 05:15:12PM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> Perhaps long overdue, add a documentation file for filesystem-level
+> encryption, a.k.a. fscrypt or fs/crypto/, to the Documentation
+> directory.  The new file is based loosely on the latest version of the
+> "EXT4 Encryption Design Document (public version)" Google Doc, but with
+> many improvements made, including:
+> 
+> - Reflect the reality that it is not specific to ext4 anymore.
+> - More thoroughly document the design and user-visible API/behavior.
+> - Replace outdated information, such as the outdated explanation of how
+>   encrypted filenames are hashed for indexed directories and how
+>   encrypted filenames are presented to userspace without the key.
+>   (This was changed just before release.)
+> 
+> For now the focus is on the design and user-visible API/behavior, not on
+> how to add encryption support to a filesystem --- since the internal API
+> is still pretty messy and any standalone documentation for it would
+> become outdated as things get refactored over time.
+> 
+> Reviewed-by: Michael Halcrow <mhalcrow@google.com>
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
+Applied, thanks.
 
--- 
-Hi, compliments of the best of moment!
-
-There is a viable business opportunity in our company to supply the raw
-materials we use in our production which I've been buying from your
-region in my former capacity as purchase officer of our company. I
-require partnership of a reliable and trustworthy individuals in your
-region, the raw materials is hugely available in your region.
-
-The opportunity will not interfere with your present job as it doesn't
-matter your area of specialization.
-
-Should you desire to know more about the opportunity, kindly write me
-back to enable me avail you the full details of the offer.
-
-Thanks and Regards
-Mr.Hedemann Harald
+					- Ted
