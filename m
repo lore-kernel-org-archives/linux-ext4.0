@@ -1,67 +1,115 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Add support for online resizing with bigalloc.
-Date: Sun, 29 Oct 2017 11:06:09 -0400
-Message-ID: <20171029150609.ngislvfqc3gwysuy@thunk.org>
-References: <20171025044208.86545-1-harshads@google.com>
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
+ optimization
+Date: Mon, 30 Oct 2017 09:21:16 -0400
+Message-ID: <1509369676.5412.20.camel@redhat.com>
+References: <20170330064724.GA21542@quack2.suse.cz>
+         <1490872308.2694.1.camel@redhat.com> <20170330161231.GA9824@fieldses.org>
+         <1490898932.2667.1.camel@redhat.com> <20170404183138.GC14303@fieldses.org>
+         <878tnfiq7v.fsf@notabene.neil.brown.name>
+         <20170405080551.GC8899@quack2.suse.cz>
+         <20170405181409.GC28681@fieldses.org> <20170511185942.GD25434@fieldses.org>
+         <87r2zvkp9c.fsf@notabene.neil.brown.name>
+         <20170512162115.GH7704@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: harshads <harshads@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40938 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750916AbdJ2PoW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 29 Oct 2017 11:44:22 -0400
-Content-Disposition: inline
-In-Reply-To: <20171025044208.86545-1-harshads@google.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        NeilBrown <neil@brown.name>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20170512162115.GH7704@fieldses.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-(If you work for a company which supports enterprise distros, please
-keep reading.  I have a question for you below.) 
-
-On Tue, Oct 24, 2017 at 09:42:08PM -0700, harshads wrote:
-> This patch adds support for online resizing on bigalloc file system by
-> implementing EXT4_IOC_RESIZE_FS ioctl. Old resize interfaces (add
-> block groups and extend last block group) are left untouched. Tests
-> performed with cluster sizes of 1, 2, 4 and 8 blocks (of size 4k) per
-> cluster. I will add these tests to xfstests.
+On Fri, 2017-05-12 at 12:21 -0400, J. Bruce Fields wrote:
+> On Fri, May 12, 2017 at 08:22:23AM +1000, NeilBrown wrote:
+> > On Thu, May 11 2017, J. Bruce Fields wrote:
+> > > +static inline u64 nfsd4_change_attribute(struct inode *inode)
+> > > +{
+> > > +	u64 chattr;
+> > > +
+> > > +	chattr = inode->i_ctime.tv_sec << 30;
+> > > +	chattr += inode->i_ctime.tv_nsec;
+> > > +	chattr += inode->i_version;
+> > > +	return chattr;
+> > 
+> > So if I chmod a file, all clients will need to flush the content from their cache?
+> > Maybe they already do?  Maybe it is a boring corner case?
 > 
-> Signed-off-by: Harshad Shirwadkar <harshads@google.com>
+> Yeah, that's the assumption, maybe it's wrong.  I can't recall
+> complaints about anyone bitten by that case.
+> 
 
-Can you talk more about what sort of testing you have done?  What file
-system sizes did you use?
+I'm pretty sure that's required by the RFC. The change attribute changes
+with both data and metadata changes, and there is no way to tell what
+sort of change it was. You have to dump everything out of the cache when
+it changes.
 
-I'm guessing you didn't test the old resize ioctls, because they are
-currently broken.  I did a quick test because the code paths that are
-touched by this patch are also used by the old resize ioctls, and the
-following is failing:
+> > >  /*
+> > >   * Fill in the pre_op attr for the wcc data
+> > >   */
+> > > @@ -253,7 +263,7 @@ fill_pre_wcc(struct svc_fh *fhp)
+> > >  		fhp->fh_pre_mtime = inode->i_mtime;
+> > >  		fhp->fh_pre_ctime = inode->i_ctime;
+> > >  		fhp->fh_pre_size  = inode->i_size;
+> > > -		fhp->fh_pre_change = inode->i_version;
+> > > +		fhp->fh_pre_change = nfsd4_change_attribute(inode);
+> > >  		fhp->fh_pre_saved = true;
+> > >  	}
+> > >  }
+> > > --- a/fs/nfsd/nfs3xdr.c
+> > > +++ b/fs/nfsd/nfs3xdr.c
+> > > @@ -260,7 +260,7 @@ void fill_post_wcc(struct svc_fh *fhp)
+> > >  		printk("nfsd: inode locked twice during operation.\n");
+> > >  
+> > >  	err = fh_getattr(fhp, &fhp->fh_post_attr);
+> > > -	fhp->fh_post_change = d_inode(fhp->fh_dentry)->i_version;
+> > > +	fhp->fh_post_change = nfsd4_change_attribute(d_inode(fhp->fh_dentry));
+> > >  	if (err) {
+> > >  		fhp->fh_post_saved = false;
+> > >  		/* Grab the ctime anyway - set_change_info might use it */
+> > > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > > index 26780d53a6f9..a09532d4a383 100644
+> > > --- a/fs/nfsd/nfs4xdr.c
+> > > +++ b/fs/nfsd/nfs4xdr.c
+> > > @@ -1973,7 +1973,7 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
+> > >  		*p++ = cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
+> > >  		*p++ = 0;
+> > >  	} else if (IS_I_VERSION(inode)) {
+> > > -		p = xdr_encode_hyper(p, inode->i_version);
+> > > +		p = xdr_encode_hyper(p, nfsd4_change_attribute(inode));
+> > >  	} else {
+> > >  		*p++ = cpu_to_be32(stat->ctime.tv_sec);
+> > >  		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
+> > 
+> > It is *really* confusing to find that fh_post_change is only set in nfs3
+> > code, and only used in nfs4 code.
+> 
+> Yup.
+> 
+> > It is probably time to get a 'version' field in 'struct kstat'.
+> 
+> The pre/post_wcc code doesn't seem to be doing an explicit stat, I
+> wonder if that matters?
+> 
 
-mke2fs -t ext4 -Fq /dev/vdc 1G
-mount /dev/vdc
-export RESIZE2FS_KERNEL_VERSION=3.2.0
-strace -o /tmp/st-$RESIZE2FS_KERNEL_VERSION resize2fs /dev/vdc 5G
-umount /dev/vdc
+Probably not for now. We only use this for namespace altering operations
+anyway (create, link, unlink, and rename).
 
->From a quick check, and it looks like this broke sometime between 4.1
-and 4.4.  It works on 3.18 and 4.1, and but it failed for me in 4.4.
+The post code does do a fh_getattr. It's only the pre-op i_version that
+comes out of the cache. Only btrfs, xfs, and ext4 have a real i_version
+counter today, and they just scrape that info out of the in-core inode.
+So while not completely atomic, you should see a difference in the
+change_info4 during any of those operations.
 
-The 4.1 kernel was released in June 2015, and 4.4 kernel was released
-in January 2016.  E2fsprogs v1.42 started using the new resize ioctl,
-which was released in November 2011.  So if we take an enterprise
-distro which was initially released > 5-6 years ago, and it upgrades
-to a kernel newer than 4.1-4.4, the resize2fs from e2fsprogs 1.41.x
-(or earlier) will not be able to do online resize.
+FWIW, userland cephfs now supports a cluster-coherent change attribute,
+though the kernel client still needs some work before we can implement
+it there. Eventually we'll add that, and at that point we might need to
+have nfsd do a getattr in the pre part as well.
 
-The question is whether or not we care at this point.  We could use
-the observation that our lack of good testing, sometime in second half
-of 2015, we broke online resize backwards compatibility with e2fsprogs
-from before 2011, given that no one screamed --- perhaps we can just
-rip out support for the old resize ioctls entirely.
-
-Or we can try to fix the old resize ioctl's, and then add better
-resize testing to xfstests.
-
-What do the maintainers from the enterprise distro's think?
-
-						- Ted
+-- 
+Jeff Layton <jlayton@redhat.com>
