@@ -1,34 +1,116 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 197335] Inode exhaustion should be logged to dmesg
-Date: Tue, 31 Oct 2017 15:25:52 +0000
-Message-ID: <bug-197335-13602-kRHFExstzj@https.bugzilla.kernel.org/>
-References: <bug-197335-13602@https.bugzilla.kernel.org/>
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 17/17] xfs: support for synchronous DAX faults
+Date: Tue, 31 Oct 2017 14:50:01 -0700
+Message-ID: <CAPcyv4gBVyZ8KhB2s1M0BdhC1=HAean6Mb6oV7zsJBx0-t3bhw@mail.gmail.com>
+References: <20171024152415.22864-1-jack@suse.cz>
+ <20171024152415.22864-18-jack@suse.cz>
+ <20171024222322.GX3666@dastard> <20171026154804.GF31161@quack2.suse.cz>
+ <20171026211611.GC3666@dastard> <20171027100834.GH31161@quack2.suse.cz>
+ <20171031151907.GB26128@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:43456 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751524AbdJaPZ5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 31 Oct 2017 11:25:57 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A883928B6E
-        for <linux-ext4@vger.kernel.org>; Tue, 31 Oct 2017 15:25:56 +0000 (UTC)
-In-Reply-To: <bug-197335-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Linux MM <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>,
+ linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20171031151907.GB26128-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=197335
+On Tue, Oct 31, 2017 at 8:19 AM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
+> On Fri 27-10-17 12:08:34, Jan Kara wrote:
+>> On Fri 27-10-17 08:16:11, Dave Chinner wrote:
+>> > On Thu, Oct 26, 2017 at 05:48:04PM +0200, Jan Kara wrote:
+>> > > > > diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+>> > > > > index f179bdf1644d..b43be199fbdf 100644
+>> > > > > --- a/fs/xfs/xfs_iomap.c
+>> > > > > +++ b/fs/xfs/xfs_iomap.c
+>> > > > > @@ -33,6 +33,7 @@
+>> > > > >  #include "xfs_error.h"
+>> > > > >  #include "xfs_trans.h"
+>> > > > >  #include "xfs_trans_space.h"
+>> > > > > +#include "xfs_inode_item.h"
+>> > > > >  #include "xfs_iomap.h"
+>> > > > >  #include "xfs_trace.h"
+>> > > > >  #include "xfs_icache.h"
+>> > > > > @@ -1086,6 +1087,10 @@ xfs_file_iomap_begin(
+>> > > > >               trace_xfs_iomap_found(ip, offset, length, 0, &imap);
+>> > > > >       }
+>> > > > >
+>> > > > > +     if ((flags & IOMAP_WRITE) && xfs_ipincount(ip) &&
+>> > > > > +         (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP))
+>> > > > > +             iomap->flags |= IOMAP_F_DIRTY;
+>> > > >
+>> > > > This is the very definition of an inode that is "fdatasync dirty".
+>> > > >
+>> > > > Hmmmm, shouldn't this also be set for read faults, too?
+>> > >
+>> > > No, read faults don't need to set IOMAP_F_DIRTY since user cannot write any
+>> > > data to the page which he'd then like to be persistent. The only reason why
+>> > > I thought it could be useful for a while was that it would be nice to make
+>> > > MAP_SYNC mapping provide the guarantee that data you see now is the data
+>> > > you'll see after a crash
+>> >
+>> > Isn't that the entire point of MAP_SYNC? i.e. That when we return
+>> > from a page fault, the app knows that the data and it's underlying
+>> > extent is on persistent storage?
+>> >
+>> > > but we cannot provide that guarantee for RO
+>> > > mapping anyway if someone else has the page mapped as well. So I just
+>> > > decided not to return IOMAP_F_DIRTY for read faults.
+>> >
+>> > If there are multiple MAP_SYNC mappings to the inode, I would have
+>> > expected that they all sync all of the data/metadata on every page
+>> > fault, regardless of who dirtied the inode. An RO mapping doesn't
+>>
+>> Well, they all do sync regardless of who dirtied the inode on every *write*
+>> fault.
+>>
+>> > mean the data/metadata on the inode can't change, it just means it
+>> > can't change through that mapping.  Running fsync() to guarantee the
+>> > persistence of that data/metadata doesn't actually changing any
+>> > data....
+>> >
+>> > IOWs, if read faults don't guarantee the mapped range has stable
+>> > extents on a MAP_SYNC mapping, then I think MAP_SYNC is broken
+>> > because it's not giving consistent guarantees to userspace. Yes, it
+>> > works fine when only one MAP_SYNC mapping is modifying the inode,
+>> > but the moment we have concurrent operations on the inode that
+>> > aren't MAP_SYNC or O_SYNC this goes out the window....
+>>
+>> MAP_SYNC as I've implemented it provides guarantees only for data the
+>> process has actually written. I agree with that and it was a conscious
+>> decision. In my opinion that covers most usecases, provides reasonably
+>> simple semantics (i.e., if you write data through MAP_SYNC mapping, you can
+>> persist it just using CPU instructions), and reasonable performance.
+>>
+>> Now you seem to suggest the semantics should be: "Data you have read from or
+>> written to a MAP_SYNC mapping can be persisted using CPU instructions." And
+>> from implementation POV we can do that rather easily (just rip out the
+>> IOMAP_WRITE checks). But I'm unsure whether this additional guarantee would
+>> be useful enough to justify the slowdown of read faults? I was not able to
+>> come up with a good usecase and so I've decided for current semantics. What
+>> do other people think?
+>
+> Nobody commented on this for couple of days so how do we proceed? I would
+> prefer to go just with a guarantee for data written and we can always make
+> the guarantee stronger (i.e. apply it also for read data) when some user
+> comes with a good usecase?
 
---- Comment #2 from Team Athena (teamathena.nitc@gmail.com) ---
-Created attachment 260449
-  --> https://bugzilla.kernel.org/attachment.cgi?id=260449&action=edit
-Make a log in dmesg when file creation fails due to no free inode
-
-Uses a ext4_warning to log to dmesg
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+I think it is easier to strengthen the guarantee than loosen it later
+especially since it is not yet clear that we have a use case for the
+stronger semantic. At least the initial motivation for MAP_SYNC was
+for writers.
