@@ -1,143 +1,109 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH] ext4: Add support for online resizing with bigalloc.
-Date: Mon, 30 Oct 2017 16:14:08 -0700
-Message-ID: <20171030231408.GA4902@magnolia>
-References: <20171025044208.86545-1-harshads@google.com>
- <20171029150609.ngislvfqc3gwysuy@thunk.org>
- <CAMCMpYJfJECSUOr_bp+k3o=jH18ShkHcOT9fK0o=FaHZkwUtZA@mail.gmail.com>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 17/17] xfs: support for synchronous DAX faults
+Date: Tue, 31 Oct 2017 16:19:07 +0100
+Message-ID: <20171031151907.GB26128@quack2.suse.cz>
+References: <20171024152415.22864-1-jack@suse.cz>
+ <20171024152415.22864-18-jack@suse.cz>
+ <20171024222322.GX3666@dastard>
+ <20171026154804.GF31161@quack2.suse.cz>
+ <20171026211611.GC3666@dastard>
+ <20171027100834.GH31161@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Harshad Shirwadkar <harshads@google.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:31890 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753131AbdJ3XOO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Oct 2017 19:14:14 -0400
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+        Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
+        Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org,
+        Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <CAMCMpYJfJECSUOr_bp+k3o=jH18ShkHcOT9fK0o=FaHZkwUtZA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20171027100834.GH31161-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Oct 30, 2017 at 02:01:46PM -0700, Harshad Shirwadkar wrote:
-> On Sun, Oct 29, 2017 at 8:06 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > (If you work for a company which supports enterprise distros, please
-> > keep reading.  I have a question for you below.)
-> >
-> > On Tue, Oct 24, 2017 at 09:42:08PM -0700, harshads wrote:
-> >> This patch adds support for online resizing on bigalloc file system by
-> >> implementing EXT4_IOC_RESIZE_FS ioctl. Old resize interfaces (add
-> >> block groups and extend last block group) are left untouched. Tests
-> >> performed with cluster sizes of 1, 2, 4 and 8 blocks (of size 4k) per
-> >> cluster. I will add these tests to xfstests.
-> >>
-> >> Signed-off-by: Harshad Shirwadkar <harshads@google.com>
-> >
-> > Can you talk more about what sort of testing you have done?  What file
-> > system sizes did you use?
+On Fri 27-10-17 12:08:34, Jan Kara wrote:
+> On Fri 27-10-17 08:16:11, Dave Chinner wrote:
+> > On Thu, Oct 26, 2017 at 05:48:04PM +0200, Jan Kara wrote:
+> > > > > diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+> > > > > index f179bdf1644d..b43be199fbdf 100644
+> > > > > --- a/fs/xfs/xfs_iomap.c
+> > > > > +++ b/fs/xfs/xfs_iomap.c
+> > > > > @@ -33,6 +33,7 @@
+> > > > >  #include "xfs_error.h"
+> > > > >  #include "xfs_trans.h"
+> > > > >  #include "xfs_trans_space.h"
+> > > > > +#include "xfs_inode_item.h"
+> > > > >  #include "xfs_iomap.h"
+> > > > >  #include "xfs_trace.h"
+> > > > >  #include "xfs_icache.h"
+> > > > > @@ -1086,6 +1087,10 @@ xfs_file_iomap_begin(
+> > > > >  		trace_xfs_iomap_found(ip, offset, length, 0, &imap);
+> > > > >  	}
+> > > > >  
+> > > > > +	if ((flags & IOMAP_WRITE) && xfs_ipincount(ip) &&
+> > > > > +	    (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP))
+> > > > > +		iomap->flags |= IOMAP_F_DIRTY;
+> > > > 
+> > > > This is the very definition of an inode that is "fdatasync dirty".
+> > > > 
+> > > > Hmmmm, shouldn't this also be set for read faults, too?
+> > > 
+> > > No, read faults don't need to set IOMAP_F_DIRTY since user cannot write any
+> > > data to the page which he'd then like to be persistent. The only reason why
+> > > I thought it could be useful for a while was that it would be nice to make
+> > > MAP_SYNC mapping provide the guarantee that data you see now is the data
+> > > you'll see after a crash
+> > 
+> > Isn't that the entire point of MAP_SYNC? i.e. That when we return
+> > from a page fault, the app knows that the data and it's underlying
+> > extent is on persistent storage?
+> > 
+> > > but we cannot provide that guarantee for RO
+> > > mapping anyway if someone else has the page mapped as well. So I just
+> > > decided not to return IOMAP_F_DIRTY for read faults.
+> > 
+> > If there are multiple MAP_SYNC mappings to the inode, I would have
+> > expected that they all sync all of the data/metadata on every page
+> > fault, regardless of who dirtied the inode. An RO mapping doesn't
 > 
-> In my testing, I have tried to ensure that all different code paths
-> that resize IOCTL triggers get executed. At a high level, these
-> different code paths are - 1) extending last block group, 2) adding
-> new block groups 3) conversion of file system to meta-bg.
-> I performed tests with combinations of different cluster sizes (1, 2,
-> 4, 8 block(s) per cluster) and different file system sizes. Following
-> csv table lists all the tests that were performed and were successful
-> with new resize IOCTL.
+> Well, they all do sync regardless of who dirtied the inode on every *write*
+> fault.
 > 
-> Cluster size (# 4K blocks), Original Size(# clusters), Final Size(# clusters)
-> 1, 16384(64M), 24576(96M)
-> 1, 24576(96M), 32767(128M)
-> 1, 24576(96M), 32768(128M)
-> 1, 24576(96M), 32769(128M)
-> 1, 24576(96M), 49152(192M)
-> 1, 24576(96M), 65536(256M)
-> 1, 24576(96M), 491521(1.9G)
-> 1, 24576(96M), 507904(~1.9G)
-> 1, 24576(96M), 527488(2G)
-> 1, 24576(96M), 5274880(20G)
-> 2, 16384(128M), 24576(192M)
-> 2, 24576(192M), 32767(256M)
-> 2, 24576(192M), 32768(256M)
-> 2, 24576(192M), 32769(256M)
-> 2, 24576(192M), 49152(384M)
-> 2, 24576(192M), 65536(512M)
-> 2, 24576(192M), 491521(3.8G)
-> 2, 24576(192M), 507904(3.8G)
-> 2, 24576(192M), 527488(4G)
-> 2, 24576(192M), 5274880(40G)
-> 4, 16384(256M), 24576(384M)
-> 4, 24576(384M), 32767(512M)
-> 4, 24576(384M), 32768(512M)
-> 4, 24576(384M), 32769(512M)
-> 4, 24576(384M), 49152(768M)
-> 4, 24576(384M), 65536(1G)
-> 4, 24576(384M), 491521(7.6G)
-> 4, 24576(384M), 507904(7.6G)
-> 4, 24576(384M), 527488(8G)
-> 4, 24576(384M), 5274880(80G)
-> 8, 16384(512M), 24576(768M)
-> 8, 24576(768M), 32767(1G)
-> 8, 24576(768M), 32768(1G)
-> 8, 24576(768M), 32769(1G)
-> 8, 24576(768M), 49152(1.5G)
-> 8, 24576(768M), 65536(2G)
-> 8, 24576(768M), 491521(15.2G)
-> 8, 24576(768M), 507904(15.2G)
-> 8, 24576(768M), 527488(16G)
-> 8, 24576(768M), 5274880(160G)
+> > mean the data/metadata on the inode can't change, it just means it
+> > can't change through that mapping.  Running fsync() to guarantee the
+> > persistence of that data/metadata doesn't actually changing any
+> > data....
+> > 
+> > IOWs, if read faults don't guarantee the mapped range has stable
+> > extents on a MAP_SYNC mapping, then I think MAP_SYNC is broken
+> > because it's not giving consistent guarantees to userspace. Yes, it
+> > works fine when only one MAP_SYNC mapping is modifying the inode,
+> > but the moment we have concurrent operations on the inode that
+> > aren't MAP_SYNC or O_SYNC this goes out the window....
 > 
-> >
-> > I'm guessing you didn't test the old resize ioctls, because they are
-> > currently broken.  I did a quick test because the code paths that are
-> > touched by this patch are also used by the old resize ioctls, and the
-> > following is failing:
+> MAP_SYNC as I've implemented it provides guarantees only for data the
+> process has actually written. I agree with that and it was a conscious
+> decision. In my opinion that covers most usecases, provides reasonably
+> simple semantics (i.e., if you write data through MAP_SYNC mapping, you can
+> persist it just using CPU instructions), and reasonable performance.
 > 
-> Yes, you are right. Also in the latest kernel, there are code-paths
-> that are present only for the old resize IOCTLs and I have not touch
-> them yet. Let's see what others have to say and then I can fix those
-> if required.
-> 
-> Thanks,
-> Harshad.
-> 
-> >
-> > mke2fs -t ext4 -Fq /dev/vdc 1G
-> > mount /dev/vdc
-> > export RESIZE2FS_KERNEL_VERSION=3.2.0
-> > strace -o /tmp/st-$RESIZE2FS_KERNEL_VERSION resize2fs /dev/vdc 5G
-> > umount /dev/vdc
-> >
-> > From a quick check, and it looks like this broke sometime between 4.1
-> > and 4.4.  It works on 3.18 and 4.1, and but it failed for me in 4.4.
-> >
-> > The 4.1 kernel was released in June 2015, and 4.4 kernel was released
-> > in January 2016.  E2fsprogs v1.42 started using the new resize ioctl,
-> > which was released in November 2011.  So if we take an enterprise
-> > distro which was initially released > 5-6 years ago, and it upgrades
-> > to a kernel newer than 4.1-4.4, the resize2fs from e2fsprogs 1.41.x
-> > (or earlier) will not be able to do online resize.
-> >
-> > The question is whether or not we care at this point.  We could use
-> > the observation that our lack of good testing, sometime in second half
-> > of 2015, we broke online resize backwards compatibility with e2fsprogs
-> > from before 2011, given that no one screamed --- perhaps we can just
-> > rip out support for the old resize ioctls entirely.
+> Now you seem to suggest the semantics should be: "Data you have read from or
+> written to a MAP_SYNC mapping can be persisted using CPU instructions." And
+> from implementation POV we can do that rather easily (just rip out the
+> IOMAP_WRITE checks). But I'm unsure whether this additional guarantee would
+> be useful enough to justify the slowdown of read faults? I was not able to
+> come up with a good usecase and so I've decided for current semantics. What
+> do other people think?
 
-How about deprecate the old resize ioctls if you have any of the new
-features that landed in e2fsprogs after online-resize2fs gained the
-ability to call the new resize ioctl?
+Nobody commented on this for couple of days so how do we proceed? I would
+prefer to go just with a guarantee for data written and we can always make
+the guarantee stronger (i.e. apply it also for read data) when some user
+comes with a good usecase?
 
-In other words, if your e2fsprogs is new enough to know about bigalloc,
-it's new enough to call the new resize ioctl, so we can have the old
-ioctl return EOPNOTSUPP if bigalloc is enabled.
-
---D
-
-> >
-> > Or we can try to fix the old resize ioctl's, and then add better
-> > resize testing to xfstests.
-> >
-> > What do the maintainers from the enterprise distro's think?
-> >
-> >                                                 - Ted
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
