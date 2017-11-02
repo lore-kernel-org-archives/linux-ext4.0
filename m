@@ -1,77 +1,55 @@
-From: Bart Van Assche <Bart.VanAssche@wdc.com>
-Subject: 4.14: ext4 circular locking dependency complaint
-Date: Thu, 2 Nov 2017 16:59:59 +0000
-Message-ID: <1509641998.2484.16.camel@wdc.com>
+From: mfe555 <mfe555@web.de>
+Subject: Significant difference in 'file size' and 'disk usage' for single
+ files
+Date: Thu, 2 Nov 2017 20:17:25 +0100
+Message-ID: <472fde11-654a-4826-0256-46149e90216e@web.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+Cc: mfe555@web.de
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from esa4.hgst.iphmx.com ([216.71.154.42]:64271 "EHLO
-        esa4.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751303AbdKBRAB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Nov 2017 13:00:01 -0400
+Received: from mout.web.de ([212.227.15.14]:60430 "EHLO mout.web.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932571AbdKBTRU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 2 Nov 2017 15:17:20 -0400
 Content-Language: en-US
-Content-ID: <919DD71BA3C97F48B2442F129411AE60@namprd04.prod.outlook.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-SGVsbG8sDQoNCldoaWxlIHRlc3Rpbmcga2VybmVsIHY0LjE0LXJjNyBJIGVuY291bnRlcmVkIHRo
-ZSBsb2NrZWRwIGNvbXBsYWludCBzaG93bg0KYmVsb3cuIElzIHRoaXMgYSBrbm93biBpc3N1ZT8N
-Cg0KVGhhbmtzLA0KDQpCYXJ0Lg0KDQo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT0NCldBUk5JTkc6IHBvc3NpYmxlIGNpcmN1bGFyIGxvY2tpbmcg
-ZGVwZW5kZW5jeSBkZXRlY3RlZA0KNC4xNC4wLXJjNy1kYmcrICMzIFRhaW50ZWQ6IEcgICAgICAg
-IFcgICAgICANCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLQ0Ka3dvcmtlci8xNjowLzIwMTk0IGlzIHRyeWluZyB0byBhY3F1aXJlIGxvY2s6DQog
-KCZzYi0+c190eXBlLT5pX211dGV4X2tleSMxNCl7Ky4rLn0sIGF0OiBbPGZmZmZmZmZmODEyNTU2
-YTk+XSBfX2dlbmVyaWNfZmlsZV9mc3luYysweDQ5LzB4YzANCg0KYnV0IHRhc2sgaXMgYWxyZWFk
-eSBob2xkaW5nIGxvY2s6DQogKCgmZGlvLT5jb21wbGV0ZV93b3JrKSl7Ky4rLn0sIGF0OiBbPGZm
-ZmZmZmZmODEwODNiODU+XSBwcm9jZXNzX29uZV93b3JrKzB4MTk1LzB4NjYwDQoNCndoaWNoIGxv
-Y2sgYWxyZWFkeSBkZXBlbmRzIG9uIHRoZSBuZXcgbG9jay4NCg0KDQp0aGUgZXhpc3RpbmcgZGVw
-ZW5kZW5jeSBjaGFpbiAoaW4gcmV2ZXJzZSBvcmRlcikgaXM6DQoNCi0+ICMyICgoJmRpby0+Y29t
-cGxldGVfd29yaykpeysuKy59Og0KICAgICAgIGxvY2tfYWNxdWlyZSsweDk1LzB4MWYwDQogICAg
-ICAgcHJvY2Vzc19vbmVfd29yaysweDFlNy8weDY2MA0KICAgICAgIHdvcmtlcl90aHJlYWQrMHgz
-ZC8weDNiMA0KICAgICAgIGt0aHJlYWQrMHgxM2EvMHgxNTANCiAgICAgICByZXRfZnJvbV9mb3Jr
-KzB4MjcvMHg0MA0KDQotPiAjMSAoImRpby8lcyJzYi0+c19pZCl7Ky4rLn06DQogICAgICAgbG9j
-a19hY3F1aXJlKzB4OTUvMHgxZjANCiAgICAgICBmbHVzaF93b3JrcXVldWUrMHg5OC8weDUwMA0K
-ICAgICAgIGRyYWluX3dvcmtxdWV1ZSsweGIwLzB4MTkwDQogICAgICAgZGVzdHJveV93b3JrcXVl
-dWUrMHgxOC8weDI2MA0KICAgICAgIHNiX2luaXRfZGlvX2RvbmVfd3ErMHg1NC8weDYwDQogICAg
-ICAgZG9fYmxvY2tkZXZfZGlyZWN0X0lPKzB4MWM4NS8weDJmNjANCiAgICAgICBfX2Jsb2NrZGV2
-X2RpcmVjdF9JTysweDJlLzB4MzANCiAgICAgICBleHQ0X2RpcmVjdF9JTysweDJlOS8weDdiMCBb
-ZXh0NF0NCiAgICAgICBnZW5lcmljX2ZpbGVfZGlyZWN0X3dyaXRlKzB4YTMvMHgxNjANCiAgICAg
-ICBfX2dlbmVyaWNfZmlsZV93cml0ZV9pdGVyKzB4YmUvMHgxZDANCiAgICAgICBleHQ0X2ZpbGVf
-d3JpdGVfaXRlcisweDFkZC8weDNkMCBbZXh0NF0NCiAgICAgICBhaW9fd3JpdGUrMHhmMC8weDE3
-MA0KICAgICAgIGRvX2lvX3N1Ym1pdCsweDcwNy8weDliMA0KICAgICAgIFN5U19pb19zdWJtaXQr
-MHgxMC8weDIwDQogICAgICAgZW50cnlfU1lTQ0FMTF82NF9mYXN0cGF0aCsweDE4LzB4YWQNCg0K
-LT4gIzAgKCZzYi0+c190eXBlLT5pX211dGV4X2tleSMxNCl7Ky4rLn06DQogICAgICAgX19sb2Nr
-X2FjcXVpcmUrMHgxMjQ4LzB4MTMyMA0KICAgICAgIGxvY2tfYWNxdWlyZSsweDk1LzB4MWYwDQog
-ICAgICAgZG93bl93cml0ZSsweDNiLzB4NzANCiAgICAgICBfX2dlbmVyaWNfZmlsZV9mc3luYysw
-eDQ5LzB4YzANCiAgICAgICBleHQ0X3N5bmNfZmlsZSsweDJhYy8weDU4MCBbZXh0NF0NCiAgICAg
-ICB2ZnNfZnN5bmNfcmFuZ2UrMHg0Yi8weGIwDQogICAgICAgZGlvX2NvbXBsZXRlKzB4MjE0LzB4
-MjMwDQogICAgICAgZGlvX2Fpb19jb21wbGV0ZV93b3JrKzB4MWMvMHgyMA0KICAgICAgIHByb2Nl
-c3Nfb25lX3dvcmsrMHgyMGEvMHg2NjANCiAgICAgICB3b3JrZXJfdGhyZWFkKzB4M2QvMHgzYjAN
-CiAgICAgICBrdGhyZWFkKzB4MTNhLzB4MTUwDQogICAgICAgcmV0X2Zyb21fZm9yaysweDI3LzB4
-NDANCg0Kb3RoZXIgaW5mbyB0aGF0IG1pZ2h0IGhlbHAgdXMgZGVidWcgdGhpczoNCg0KQ2hhaW4g
-ZXhpc3RzIG9mOg0KICAmc2ItPnNfdHlwZS0+aV9tdXRleF9rZXkjMTQgLS0+ICJkaW8vJXMic2It
-PnNfaWQgLS0+ICgmZGlvLT5jb21wbGV0ZV93b3JrKQ0KDQogUG9zc2libGUgdW5zYWZlIGxvY2tp
-bmcgc2NlbmFyaW86DQoNCiAgICAgICBDUFUwICAgICAgICAgICAgICAgICAgICBDUFUxDQogICAg
-ICAgLS0tLSAgICAgICAgICAgICAgICAgICAgLS0tLQ0KICBsb2NrKCgmZGlvLT5jb21wbGV0ZV93
-b3JrKSk7DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbG9jaygiZGlvLyVzInNiLT5z
-X2lkKTsNCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBsb2NrKCgmZGlvLT5jb21wbGV0
-ZV93b3JrKSk7DQogIGxvY2soJnNiLT5zX3R5cGUtPmlfbXV0ZXhfa2V5IzE0KTsNCg0KICoqKiBE
-RUFETE9DSyAqKioNCg0KMiBsb2NrcyBoZWxkIGJ5IGt3b3JrZXIvMTY6MC8yMDE5NDoNCiAjMDog
-ICgiZGlvLyVzInNiLT5zX2lkKXsrLisufSwgYXQ6IFs8ZmZmZmZmZmY4MTA4M2I4NT5dIHByb2Nl
-c3Nfb25lX3dvcmsrMHgxOTUvMHg2NjANCiAjMTogICgoJmRpby0+Y29tcGxldGVfd29yaykpeysu
-Ky59LCBhdDogWzxmZmZmZmZmZjgxMDgzYjg1Pl0gcHJvY2Vzc19vbmVfd29yaysweDE5NS8weDY2
-MA0KDQpzdGFjayBiYWNrdHJhY2U6DQpDUFU6IDE2IFBJRDogMjAxOTQgQ29tbToga3dvcmtlci8x
-NjowIFRhaW50ZWQ6IEcgICAgICAgIFcgICAgICAgNC4xNC4wLXJjNy1kYmcrICMzDQpIYXJkd2Fy
-ZSBuYW1lOiBEZWxsIEluYy4gUG93ZXJFZGdlIFI3MjAvMFZXVDkwLCBCSU9TIDEuMy42IDA5LzEx
-LzIwMTINCldvcmtxdWV1ZTogZGlvL2RtLTAgZGlvX2Fpb19jb21wbGV0ZV93b3JrDQpDYWxsIFRy
-YWNlOg0KIGR1bXBfc3RhY2srMHg3MC8weDllDQogcHJpbnRfY2lyY3VsYXJfYnVnLmlzcmEuMzkr
-MHgxZDgvMHgxZTYNCiBfX2xvY2tfYWNxdWlyZSsweDEyNDgvMHgxMzIwDQogbG9ja19hY3F1aXJl
-KzB4OTUvMHgxZjANCiBkb3duX3dyaXRlKzB4M2IvMHg3MA0KIF9fZ2VuZXJpY19maWxlX2ZzeW5j
-KzB4NDkvMHhjMA0KIGV4dDRfc3luY19maWxlKzB4MmFjLzB4NTgwIFtleHQ0XQ0KIHZmc19mc3lu
-Y19yYW5nZSsweDRiLzB4YjANCiBkaW9fY29tcGxldGUrMHgyMTQvMHgyMzANCiBkaW9fYWlvX2Nv
-bXBsZXRlX3dvcmsrMHgxYy8weDIwDQogcHJvY2Vzc19vbmVfd29yaysweDIwYS8weDY2MA0KIHdv
-cmtlcl90aHJlYWQrMHgzZC8weDNiMA0KIGt0aHJlYWQrMHgxM2EvMHgxNTANCiByZXRfZnJvbV9m
-b3JrKzB4MjcvMHg0MA==
+Hi, I'm using ext4 on a Linux based Enigma2 set-top box, kernel 4.8.3.
+
+When creating a fresh file, there is a significant difference in file 
+size (ls -la) and disk usage (du). When making two copies of the file ..
+
+gbquad:/hdd/test# cp file file.copy1
+gbquad:/hdd/test# cp file file.copy2
+gbquad:/hdd/test# ls -la
+-rw-------    1 root     root     581821460 Nov  1 18:52 file
+-rw-------    1 root     root     581821460 Nov  1 18:56 file.copy1
+-rw-------    1 root     root     581821460 Nov  1 18:57 file.copy2
+gbquad:/hdd/test# du *
+607232  file
+658176  file.copy1
+644864  file.copy2
+
+... all three files show an overhead in the ~10% range, and the overhead 
+is different for these files although their md5sums are equal.
+
+When deleting a file (rm), the overhead remains occupied on the disk. 
+For example, after deleting "file", "df" reports approx. 581821460 more 
+bytes free, not 607232 kbytes more free space. The overhead (607232 kB - 
+581821460 B = approx. 39 MB) remains blocked.
+
+When re-booting, the blocked space becomes free again, and in addition 
+the overhead of those files that were not deleted also disappears, so 
+that after a reboot the'file size' and 'disk usage' match for all files 
+(except for rounding up to some block size).
+
+A colleague and I have observed this on two different "kernel 4.8.3" 
+boxes and three ext4 disks, but not on a "kernel 3.14" box also using ext4.
+
+Can anyone help me with this ?
+
+Thanks a lot
+Lukas
