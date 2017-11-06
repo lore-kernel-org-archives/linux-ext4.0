@@ -1,84 +1,103 @@
-From: Andrew Zhu Aday <andrew.aday@columbia.edu>
-Subject: Re: KASAN: use-after-free in move_expired_inodes
-Date: Sat, 4 Nov 2017 17:02:34 -0400
-Message-ID: <CAHAAGFnSeXrqmO+CpP40NK=yTU7nPANXyqxbcHLaheX+rvTThw@mail.gmail.com>
-References: <CAASgV=tSiiiXgCzuk03AyvrLS72zJxzF1rL4JkFgLnxBDzqhug@mail.gmail.com>
- <CAASgV=uFkfFg3HeG_GnHWbCc=-OFq6nqH7bDKQt2HymdD+wiDA@mail.gmail.com>
- <CAASgV=vQpA4c96o-G4tng_KaYWDj+hKn5AW2OEzfGqT=9J9CzQ@mail.gmail.com> <CAHAAGFm+md4QVKQFmAKgbHXhvSjyxu1asDj2QEucRzh+_ENFmw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Shankara Pailoor <sp3485@columbia.edu>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v2] e2fsck: Fix access after free for dx_db structure
+Date: Sun, 5 Nov 2017 22:49:55 -0700
+Message-ID: <E7D16B41-815E-4A97-9FF0-02BA3B46C892@dilger.ca>
+References: <20171104172218.79017-1-artem.blagodarenko@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_CAC0C020-BCA7-43C6-BFF2-66884C6CD64E";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from outprodmail02.cc.columbia.edu ([128.59.72.51]:48236 "EHLO
-        outprodmail02.cc.columbia.edu" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751534AbdKDVCi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Nov 2017 17:02:38 -0400
-Received: from hazelnut (hazelnut.cc.columbia.edu [128.59.213.250])
-        by outprodmail02.cc.columbia.edu (8.14.4/8.14.4) with ESMTP id vA4Kw5hC040770
-        for <linux-ext4@vger.kernel.org>; Sat, 4 Nov 2017 17:02:37 -0400
-Received: from hazelnut (localhost.localdomain [127.0.0.1])
-        by hazelnut (Postfix) with ESMTP id F14286D
-        for <linux-ext4@vger.kernel.org>; Sat,  4 Nov 2017 17:02:37 -0400 (EDT)
-Received: from sendprodmail03.cc.columbia.edu (sendprodmail03.cc.columbia.edu [128.59.72.15])
-        by hazelnut (Postfix) with ESMTP id D2C897E
-        for <linux-ext4@vger.kernel.org>; Sat,  4 Nov 2017 17:02:37 -0400 (EDT)
-Received: from mail-lf0-f69.google.com (mail-lf0-f69.google.com [209.85.215.69])
-        by sendprodmail03.cc.columbia.edu (8.14.4/8.14.4) with ESMTP id vA4L2aVM041224
-        (version=TLSv1/SSLv3 cipher=AES128-GCM-SHA256 bits=128 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Sat, 4 Nov 2017 17:02:37 -0400
-Received: by mail-lf0-f69.google.com with SMTP id t5so1800244lfe.1
-        for <linux-ext4@vger.kernel.org>; Sat, 04 Nov 2017 14:02:37 -0700 (PDT)
-In-Reply-To: <CAHAAGFm+md4QVKQFmAKgbHXhvSjyxu1asDj2QEucRzh+_ENFmw@mail.gmail.com>
+Received: from mail-it0-f49.google.com ([209.85.214.49]:53311 "EHLO
+        mail-it0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750715AbdKFFuQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Nov 2017 00:50:16 -0500
+Received: by mail-it0-f49.google.com with SMTP id n195so3772956itg.2
+        for <linux-ext4@vger.kernel.org>; Sun, 05 Nov 2017 21:50:16 -0800 (PST)
+In-Reply-To: <20171104172218.79017-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-cc shankara
 
-On Sat, Nov 4, 2017 at 4:05 PM, Andrew Zhu Aday
-<andrew.aday@columbia.edu> wrote:
-> ---------- Forwarded message ----------
-> From: Shankara Pailoor <sp3485@columbia.edu>
-> Date: Tue, Oct 31, 2017 at 10:05 PM
-> Subject: Fwd: KASAN: use-after-free in move_expired_inodes
-> To: Andrew Zhu Aday <andrew.aday@columbia.edu>
->
->
-> ---------- Forwarded message ----------
-> From: Shankara Pailoor <sp3485@columbia.edu>
-> Date: Tue, Oct 31, 2017 at 10:04 PM
-> Subject: Re: KASAN: use-after-free in move_expired_inodes
-> To: LKML <linux-kernel@vger.kernel.org>, viro@zeniv.linux.org.uk,
-> linux-fsdevel@vger.kernel.org
->
->
-> Hi Al, etc,
->
-> I was unable to find a reproducer but I was looking at
-> move_expired_inodes (fs/fs-writeback.c 1093.c) and how do you ensure
-> that the inode can't be freed after retrieving it from the work queue?
-> Any insights would be appreciated.
->
-> Regards,
-> Shankara
->
-> On Tue, Oct 31, 2017 at 9:24 AM, Shankara Pailoor <sp3485@columbia.edu> wrote:
->> Hi,
->>
->> We got the following error:
->>
->> BUG: KASAN: use-after-free in move_expired_inodes+0xce6/0xdf0
->> Write of size 8 at addr ffff8800a3a36bf8 by task kworker/u8:0/5
->>
->> while fuzzing with Syzkaller on 4.14-rc4 on x86_64. Included is the
->> trace of the crash along with the programs running around the time of
->> the crash.
->>
->> Programs can be found here: https://pastebin.com/RYGtNn3z
->>
->> Stack trace here: https://pastebin.com/SaJXWMg3
->>
->> We don't have a C reproducer but we will send one if we have it.
->>
->> Regards,
->> Shankara
+--Apple-Mail=_CAC0C020-BCA7-43C6-BFF2-66884C6CD64E
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Nov 4, 2017, at 11:22 AM, Artem Blagodarenko =
+<artem.blagodarenko@gmail.com> wrote:
+>=20
+> dx_db structure is freed after fixing of PR_2_HTREE_BAD_ROOT
+> problem. Next code block use this structure to unerstand if leaf
+> is beeng processed.
+>=20
+> If dx_db is freed, then root block is being processed and if_leaf
+> need to be set to 0.
+>=20
+> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+
+> ---
+> e2fsck/pass2.c | 7 ++++---
+> 1 file changed, 4 insertions(+), 3 deletions(-)
+>=20
+> diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+> index 09c16179..1b0504c8 100644
+> --- a/e2fsck/pass2.c
+> +++ b/e2fsck/pass2.c
+> @@ -1095,7 +1095,7 @@ inline_read_fail:
+> 			    fix_problem(ctx, PR_2_HTREE_BAD_ROOT, =
+&cd->pctx)) {
+> 				clear_htree(ctx, ino);
+> 				dx_dir->numblocks =3D 0;
+> -				dx_db =3D 0;
+> +				dx_db =3D NULL;
+> 			}
+> 			dx_dir->hashversion =3D root->hash_version;
+> 			if ((dx_dir->hashversion <=3D EXT2_HASH_TEA) &&
+> @@ -1107,9 +1107,10 @@ inline_read_fail:
+> 			   (ext2fs_dirent_name_len(dirent) =3D=3D 0) &&
+> 			   (ext2fs_le16_to_cpu(limit->limit) =3D=3D
+> 			    ((fs->blocksize - (8 + dx_csum_size)) /
+> -			     sizeof(struct ext2_dx_entry))))
+> +			     sizeof(struct ext2_dx_entry)))) {
+> 			dx_db->type =3D DX_DIRBLOCK_NODE;
+> -		is_leaf =3D (dx_db->type =3D=3D DX_DIRBLOCK_LEAF);
+> +		}
+> +		is_leaf =3D dx_db ? (dx_db->type =3D=3D =
+DX_DIRBLOCK_LEAF) : 0;
+> 	}
+> out_htree:
+>=20
+> --
+> 2.13.5 (Apple Git-94)
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_CAC0C020-BCA7-43C6-BFF2-66884C6CD64E
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZ//gKpIg59Q01vtYRAtudAJ0dp8AIcRotnP2jDTewFWvJ4RPqjQCePb9/
+3OrD9EjLbtr+2W2+Er97nCs=
+=GtoL
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_CAC0C020-BCA7-43C6-BFF2-66884C6CD64E--
