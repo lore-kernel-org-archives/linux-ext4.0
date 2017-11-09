@@ -1,105 +1,72 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: improve smp scalability for inode generation
-Date: Wed, 8 Nov 2017 22:23:20 -0500
-Message-ID: <20171109032320.dnuhngfcvldliysz@thunk.org>
-References: <8760bcpdc8.fsf@openvz.org>
- <00F078D1-39E9-4F16-8B5B-6952645846E5@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dmitry Monakhov <dmonakhov@openvz.org>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@dilger.ca>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH] debugfs: fix ncheck program output
+Date: Thu,  9 Nov 2017 15:59:34 +0900
+Message-ID: <1510210774-4251-1-git-send-email-wshilong1991@gmail.com>
+Cc: qian@ddn.com
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:54384 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751653AbdKIDXY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 8 Nov 2017 22:23:24 -0500
-Content-Disposition: inline
-In-Reply-To: <00F078D1-39E9-4F16-8B5B-6952645846E5@dilger.ca>
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:55733 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751225AbdKIG7k (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Nov 2017 01:59:40 -0500
+Received: by mail-pg0-f65.google.com with SMTP id 207so1183337pgc.12
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Nov 2017 22:59:40 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dmitry, can you try benchmarking this patch?
+From: Qian Yingjin <qian@ddn.com>
 
-Thanks!!
+Fix the bug that print the inode number not the program name
+when reporting bad inode name during checking in ncheck.
+Minor bug fix: it should reduce iw->inodes_left when found
+matched inode number.
 
-						- Ted
+Signed-off-by: Qian Yingjin <qian@ddn.com>
+---
+ debugfs/ncheck.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-commit f0e922e7235e1b5ba6fd964e2cf8dafed3248a15
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Wed Nov 8 22:21:58 2017 -0500
-
-    ext4: improve smp scalability for inode generation
-    
-    ->s_next_generation is protected by s_next_gen_lock but its usage
-    pattern is very primitive.  We don't actually need sequentailly
-    increasing new generation numbers, so let's use prandom_u32() instead.
-    
-    Reported-by: Dmitry Monakhov <dmonakhov@openvz.org>
-    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 53ce95b52fd8..5e6d7b6f50c7 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1355,8 +1355,6 @@ struct ext4_sb_info {
- 	int s_first_ino;
- 	unsigned int s_inode_readahead_blks;
- 	unsigned int s_inode_goal;
--	spinlock_t s_next_gen_lock;
--	u32 s_next_generation;
- 	u32 s_hash_seed[4];
- 	int s_def_hash_version;
- 	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index ee823022aa34..da79eb5dba40 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1138,9 +1138,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 			   inode->i_ino);
- 		goto out;
+diff --git a/debugfs/ncheck.c b/debugfs/ncheck.c
+index 5d9b5d2..dc4ab56 100644
+--- a/debugfs/ncheck.c
++++ b/debugfs/ncheck.c
+@@ -81,6 +81,7 @@ static int ncheck_proc(struct ext2_dir_entry *dirent,
+ 				}
+ 			}
+ 			putc('\n', stdout);
++			iw->inodes_left--;
+ 		}
  	}
--	spin_lock(&sbi->s_next_gen_lock);
--	inode->i_generation = sbi->s_next_generation++;
--	spin_unlock(&sbi->s_next_gen_lock);
-+	inode->i_generation = prandom_u32();
- 
- 	/* Precompute checksum seed for inode metadata */
- 	if (ext4_has_metadata_csum(sb)) {
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 144bbda2b808..98ad8172dfd3 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -17,6 +17,7 @@
- #include <linux/uuid.h>
- #include <linux/uaccess.h>
- #include <linux/delay.h>
-+#include <linux/random.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
- #include <linux/fsmap.h>
-@@ -157,10 +158,8 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 
- 	inode->i_ctime = inode_bl->i_ctime = current_time(inode);
- 
--	spin_lock(&sbi->s_next_gen_lock);
--	inode->i_generation = sbi->s_next_generation++;
--	inode_bl->i_generation = sbi->s_next_generation++;
--	spin_unlock(&sbi->s_next_gen_lock);
-+	inode->i_generation = prandom_u32();
-+	inode_bl->i_generation = prandom_u32();
- 
- 	ext4_discard_preallocations(inode);
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3a278faf5868..9f2e3eb5131f 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3982,8 +3982,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (!iw->inodes_left)
+@@ -111,10 +112,8 @@ void do_ncheck(int argc, char **argv)
+ 			goto print_usage;
+ 		}
  	}
+-	argc -= optind;
+-	argv += optind;
  
- 	sbi->s_gdb_count = db_count;
--	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
--	spin_lock_init(&sbi->s_next_gen_lock);
+-	if (argc < 1) {
++	if (argc <= 1) {
+ 	print_usage:
+ 		com_err(argv[0], 0, "Usage: ncheck [-c] <inode number> ...");
+ 		return;
+@@ -122,6 +121,8 @@ void do_ncheck(int argc, char **argv)
+ 	if (check_fs_open(argv[0]))
+ 		return;
  
- 	timer_setup(&sbi->s_err_report, print_daily_error_info, 0);
- 
++	argc -= optind;
++	argv += optind;
+ 	iw.iarray = malloc(sizeof(ext2_ino_t) * argc);
+ 	if (!iw.iarray) {
+ 		com_err("ncheck", ENOMEM,
+@@ -133,7 +134,7 @@ void do_ncheck(int argc, char **argv)
+ 	for (i=0; i < argc; i++) {
+ 		iw.iarray[i] = strtol(argv[i], &tmp, 0);
+ 		if (*tmp) {
+-			com_err(argv[0], 0, "Bad inode - %s", argv[i]);
++			com_err("ncheck", 0, "Bad inode - %s", argv[i]);
+ 			goto error_out;
+ 		}
+ 	}
+-- 
+1.7.1
