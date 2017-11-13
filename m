@@ -1,48 +1,37 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 151491] free space lossage on busy system with bigalloc enabled
- and 128KB cluster
-Date: Mon, 13 Nov 2017 16:27:31 +0000
-Message-ID: <bug-151491-13602-mLYG2gZynJ@https.bugzilla.kernel.org/>
-References: <bug-151491-13602@https.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Suggestion: don't default to ext4 lazy init (or warn about it)
+Date: Mon, 13 Nov 2017 12:08:55 -0500
+Message-ID: <20171113170855.hfyu6pzf44km4noo@thunk.org>
+References: <CDF2F321-7726-417D-8163-2909B9DB9B19@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Eduard Rozenberg <edrozenberg@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34434 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752786AbdKMQ2V (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 13 Nov 2017 11:28:21 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D6B4C29176
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Nov 2017 16:28:20 +0000 (UTC)
-In-Reply-To: <bug-151491-13602@https.bugzilla.kernel.org/>
+Received: from imap.thunk.org ([74.207.234.97]:40610 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753854AbdKMRI6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 13 Nov 2017 12:08:58 -0500
+Content-Disposition: inline
+In-Reply-To: <CDF2F321-7726-417D-8163-2909B9DB9B19@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=151491
+On Mon, Nov 13, 2017 at 07:00:38AM -0800, Eduard Rozenberg wrote:
+> As I understand:
+> * There is no way to force it to speed up
 
-Betacentauri (betacentauri@arcor.de) changed:
+It is possible to speed it up.  Unmount the flie system, and then
+mount it with the additional mount option "init_itable=0".  From
+Documentation/filesystems/ext4.txt:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |betacentauri@arcor.de
-
---- Comment #6 from Betacentauri (betacentauri@arcor.de) ---
-First result:
-When I revert this commit
-https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/fs/ext4?h=v4.1&id=9d21c9fa2cc24e2a195a79c27b6550e1a96051a4
-in a 4.1 ARM kernel the problem doesn't occur any longer.
-Scripts for replicating in the kvm-xfstests environment will follow later.
+init_itable=n		The lazy itable init code will wait n times the
+			number of milliseconds it took to zero out the
+			previous block group's inode table.  This
+			minimizes the impact on the system performance
+			while file system's inode table is being initialized.
 
 
-By the way: The setup boxes fischreiher and me are talking about use only
-slightly adapted upstream kernel to support broadcom hardware. fs directory in
-kernel sources is not changed.
+Hope this helps,
 
-Frank
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+						- Ted
