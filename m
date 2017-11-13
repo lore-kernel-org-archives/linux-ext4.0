@@ -1,52 +1,48 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [GIT PULL] ext4 updates for 4.15
-Date: Mon, 13 Nov 2017 11:25:34 -0500
-Message-ID: <20171113162534.5xta72w2boeaxk3s@thunk.org>
-References: <20171113031502.f6mctmlmgk5psh77@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 151491] free space lossage on busy system with bigalloc enabled
+ and 128KB cluster
+Date: Mon, 13 Nov 2017 16:27:31 +0000
+Message-ID: <bug-151491-13602-mLYG2gZynJ@https.bugzilla.kernel.org/>
+References: <bug-151491-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171113031502.f6mctmlmgk5psh77@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34434 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752786AbdKMQ2V (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 13 Nov 2017 11:28:21 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D6B4C29176
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Nov 2017 16:28:20 +0000 (UTC)
+In-Reply-To: <bug-151491-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-I forgot to mention, there's a merge conflict when pulling the ext4
-and fscrypt trees.  The fixup is relatively straightforward:
+https://bugzilla.kernel.org/show_bug.cgi?id=151491
 
-commit daf886f04e60eda3bbc957e79d81d72965afd947
-Merge: a0b3bc855374 232530680290
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sun Nov 12 22:03:15 2017 -0500
+Betacentauri (betacentauri@arcor.de) changed:
 
-    Merge tag 'ext4_for_linus' into test
-    
-    Add support for online resizing of file systems with bigalloc.  Fix a
-    two data corruption bugs involving DAX, as well as a corruption bug
-    after a crash during a racing fallocate and delayed allocation.
-    Finally, a number of cleanups and optimizations.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |betacentauri@arcor.de
 
-diff --cc fs/ext4/inode.c
-index 617c7feced24,9f836e2ec18c..737c43d724fb
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@@ -4587,15 -4640,10 +4640,13 @@@ void ext4_set_inode_flags(struct inode 
-  		new_fl |= S_NOATIME;
-  	if (flags & EXT4_DIRSYNC_FL)
-  		new_fl |= S_DIRSYNC;
-- 	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode) &&
-- 	    !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
-- 	    !(flags & EXT4_ENCRYPT_FL))
-+ 	if (ext4_should_use_dax(inode))
-  		new_fl |= S_DAX;
- +	if (flags & EXT4_ENCRYPT_FL)
- +		new_fl |= S_ENCRYPTED;
-  	inode_set_flags(inode, new_fl,
- -			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
- +			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
- +			S_ENCRYPTED);
-  }
-  
-  static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
+--- Comment #6 from Betacentauri (betacentauri@arcor.de) ---
+First result:
+When I revert this commit
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/fs/ext4?h=v4.1&id=9d21c9fa2cc24e2a195a79c27b6550e1a96051a4
+in a 4.1 ARM kernel the problem doesn't occur any longer.
+Scripts for replicating in the kvm-xfstests environment will follow later.
+
+
+By the way: The setup boxes fischreiher and me are talking about use only
+slightly adapted upstream kernel to support broadcom hardware. fs directory in
+kernel sources is not changed.
+
+Frank
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
