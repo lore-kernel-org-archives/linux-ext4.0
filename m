@@ -1,64 +1,52 @@
-From: Eduard Rozenberg <edrozenberg@gmail.com>
-Subject: Suggestion: don't default to ext4 lazy init (or warn about it)
-Date: Mon, 13 Nov 2017 07:00:38 -0800
-Message-ID: <CDF2F321-7726-417D-8163-2909B9DB9B19@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.11\))
-Content-Type: text/plain;
-        charset=us-ascii
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f180.google.com ([209.85.192.180]:54146 "EHLO
-        mail-pf0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753160AbdKMPAm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Nov 2017 10:00:42 -0500
-Received: by mail-pf0-f180.google.com with SMTP id b6so11746246pff.10
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Nov 2017 07:00:41 -0800 (PST)
-Received: from [192.168.1.119] (c-67-180-167-218.hsd1.ca.comcast.net. [67.180.167.218])
-        by smtp.gmail.com with ESMTPSA id y197sm32261754pfg.103.2017.11.13.07.00.39
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 13 Nov 2017 07:00:39 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [GIT PULL] ext4 updates for 4.15
+Date: Mon, 13 Nov 2017 11:25:34 -0500
+Message-ID: <20171113162534.5xta72w2boeaxk3s@thunk.org>
+References: <20171113031502.f6mctmlmgk5psh77@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20171113031502.f6mctmlmgk5psh77@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-My first post to lkml so please go easy on me :).
+I forgot to mention, there's a merge conflict when pulling the ext4
+and fscrypt trees.  The fixup is relatively straightforward:
 
-After mkfs.ext4 on a 20TB volume, the process
-ext4lazyinit is now grinding away on the disks
-for several hours, and potentially days more
-according to other threads I've read. By design 
-it is using very little I/O (500-1000 K/s) even
-though the volume is capable of 200-500 MB/s
-and the system is doing nothing ATM.
+commit daf886f04e60eda3bbc957e79d81d72965afd947
+Merge: a0b3bc855374 232530680290
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sun Nov 12 22:03:15 2017 -0500
 
-The constant grinding noise (with HDD's) that
-this causes is disruptive in a home or office 
-environment. Lazy init may also cause undue 
-worry to users running systems 'at home' -
-"could the fs get corrupted if power goes out
-while lazy init is going on?"
+    Merge tag 'ext4_for_linus' into test
+    
+    Add support for online resizing of file systems with bigalloc.  Fix a
+    two data corruption bugs involving DAX, as well as a corruption bug
+    after a crash during a racing fallocate and delayed allocation.
+    Finally, a number of cleanups and optimizations.
 
-As I understand:
-* There is no way to monitor its % completion
-* There is no way to force it to speed up
-* Would require a reformat to disable the lazy feature
-
-If I knew I would have disabled lazy init during mkfs
-but now I've copied TB's of data to the drive and
-would much rather not have to start over.
-
-Would suggest either a clear warning at mkfs ("using 
-lazy init by default...") or default lazy init to off.
-Defaulting to off will cause the least surprise to
-most Linux users. For those who have some real
-issue with the standard upfront init times they can
-easily search for and enable the lazy init feature.
-
-Personally have never had an issue with upfront
-init even on 10-30 TB volumes. Enterprises with
-PB volumes can do a bit of reading and enable
-lazy init even if it defaults to off.
-
-Thank you,
---Ed
+diff --cc fs/ext4/inode.c
+index 617c7feced24,9f836e2ec18c..737c43d724fb
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@@ -4587,15 -4640,10 +4640,13 @@@ void ext4_set_inode_flags(struct inode 
+  		new_fl |= S_NOATIME;
+  	if (flags & EXT4_DIRSYNC_FL)
+  		new_fl |= S_DIRSYNC;
+- 	if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode) &&
+- 	    !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
+- 	    !(flags & EXT4_ENCRYPT_FL))
++ 	if (ext4_should_use_dax(inode))
+  		new_fl |= S_DAX;
+ +	if (flags & EXT4_ENCRYPT_FL)
+ +		new_fl |= S_ENCRYPTED;
+  	inode_set_flags(inode, new_fl,
+ -			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX);
+ +			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
+ +			S_ENCRYPTED);
+  }
+  
+  static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
