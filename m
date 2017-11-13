@@ -1,37 +1,33 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Suggestion: don't default to ext4 lazy init (or warn about it)
-Date: Mon, 13 Nov 2017 12:08:55 -0500
-Message-ID: <20171113170855.hfyu6pzf44km4noo@thunk.org>
-References: <CDF2F321-7726-417D-8163-2909B9DB9B19@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 151491] free space lossage on busy system with bigalloc enabled
+ and 128KB cluster
+Date: Mon, 13 Nov 2017 17:27:41 +0000
+Message-ID: <bug-151491-13602-LTgEPhjuNz@https.bugzilla.kernel.org/>
+References: <bug-151491-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eduard Rozenberg <edrozenberg@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40610 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753854AbdKMRI6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 13 Nov 2017 12:08:58 -0500
-Content-Disposition: inline
-In-Reply-To: <CDF2F321-7726-417D-8163-2909B9DB9B19@gmail.com>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:51544 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753990AbdKMR1n (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 13 Nov 2017 12:27:43 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id F0ABC28F36
+        for <linux-ext4@vger.kernel.org>; Mon, 13 Nov 2017 17:27:42 +0000 (UTC)
+In-Reply-To: <bug-151491-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 13, 2017 at 07:00:38AM -0800, Eduard Rozenberg wrote:
-> As I understand:
-> * There is no way to force it to speed up
+https://bugzilla.kernel.org/show_bug.cgi?id=151491
 
-It is possible to speed it up.  Unmount the flie system, and then
-mount it with the additional mount option "init_itable=0".  From
-Documentation/filesystems/ext4.txt:
+--- Comment #7 from Betacentauri (betacentauri@arcor.de) ---
+Created attachment 260631
+  --> https://bugzilla.kernel.org/attachment.cgi?id=260631&action=edit
+Test script
 
-init_itable=n		The lazy itable init code will wait n times the
-			number of milliseconds it took to zero out the
-			previous block group's inode table.  This
-			minimizes the impact on the system performance
-			while file system's inode table is being initialized.
-
-
-Hope this helps,
-
-						- Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
