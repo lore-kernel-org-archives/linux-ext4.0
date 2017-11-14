@@ -1,40 +1,50 @@
-From: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH] fs, dax: unify IOMAP_F_DIRTY read vs write handling
  policy in the dax core
-Date: Mon, 13 Nov 2017 21:59:24 -0800
-Message-ID: <20171114055924.GA15810@infradead.org>
+Date: Mon, 13 Nov 2017 22:01:29 -0800
+Message-ID: <20171114060129.GB15810@infradead.org>
 References: <151062258598.8554.8157038002895095232.stgit@dwillia2-desk3.amr.corp.intel.com>
+ <20171114041228.GA4094@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-nvdimm@lists.01.org, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Christoph Hellwig <hch@lst.de>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([65.50.211.133]:43173 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751597AbdKNGBe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Nov 2017 01:01:34 -0500
 Content-Disposition: inline
-In-Reply-To: <151062258598.8554.8157038002895095232.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20171114041228.GA4094@dastard>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> -	if ((flags & IOMAP_WRITE) && xfs_ipincount(ip) &&
-> -	    (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP))
-> -		iomap->flags |= IOMAP_F_DIRTY;
-> +	if (xfs_ipincount(ip))
-> +		if (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP)
-> +			iomap->flags |= IOMAP_F_DIRTY;
+On Tue, Nov 14, 2017 at 03:12:28PM +1100, Dave Chinner wrote:
+> On Mon, Nov 13, 2017 at 05:27:54PM -0800, Dan Williams wrote:
+> > diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+> > index b43be199fbdf..888b60189983 100644
+> > --- a/fs/xfs/xfs_iomap.c
+> > +++ b/fs/xfs/xfs_iomap.c
+> > @@ -1087,9 +1087,9 @@ xfs_file_iomap_begin(
+> >  		trace_xfs_iomap_found(ip, offset, length, 0, &imap);
+> >  	}
+> >  
+> > -	if ((flags & IOMAP_WRITE) && xfs_ipincount(ip) &&
+> > -	    (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP))
+> > -		iomap->flags |= IOMAP_F_DIRTY;
+> > +	if (xfs_ipincount(ip))
+> > +		if (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP)
+> > +			iomap->flags |= IOMAP_F_DIRTY;
+> 
+> Please make a helper for this, and use it in xfs_file_fsync() where
+> the same dirty checks are done. e.g.
 
-Please don't split up the conditional and make it harder to read.
-
-With that fixed up this looks fine to me:
-
-Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Let's keep that sort of cleanup separate.  I initially considered
+it when doing the MAP_SYNC work, but fsync works a little different
+in that it looks at ili_last_lsn, so your little helper below won't
+work as-is.  You can send it as an incremental patch later and we
+can see if we can come up with something workable.
