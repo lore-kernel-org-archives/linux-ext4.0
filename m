@@ -1,283 +1,70 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v2 7/7] quota: quota 64bit inode number cleanup
-Date: Tue, 14 Nov 2017 12:59:01 -0800
-Message-ID: <20171114205901.GB5105@magnolia>
-References: <20171114070440.79510-1-artem.blagodarenko@gmail.com>
- <20171114070440.79510-8-artem.blagodarenko@gmail.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] ext4 updates for 4.15
+Date: Tue, 14 Nov 2017 12:59:17 -0800
+Message-ID: <CA+55aFxbTtsf-WUhH0uY2=dzrn7BjsNuqFT0POD+pViyMwQBfg@mail.gmail.com>
+References: <20171113031502.f6mctmlmgk5psh77@thunk.org> <20171113162534.5xta72w2boeaxk3s@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+To: "Theodore Ts'o" <tytso@mit.edu>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:49058 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756615AbdKNU7G (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Nov 2017 15:59:06 -0500
-Content-Disposition: inline
-In-Reply-To: <20171114070440.79510-8-artem.blagodarenko@gmail.com>
+Received: from mail-io0-f173.google.com ([209.85.223.173]:50404 "EHLO
+        mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756615AbdKNU7T (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Nov 2017 15:59:19 -0500
+In-Reply-To: <20171113162534.5xta72w2boeaxk3s@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 14, 2017 at 10:04:40AM +0300, Artem Blagodarenko wrote:
-> Quota stores inodes numbers and beed to be fixed
-> to store 64bit inodes.
-> 
-> This patch makes quota 64bit inode ready.
-> 
-> Lustre-bug: https://jira.hpdd.intel.com/browse/LU-9309
-> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-> ---
->  e2fsck/pass1.c        |  2 +-
->  e2fsck/quota.c        |  8 ++++----
->  e2fsck/unix.c         |  2 +-
->  lib/e2p/ls.c          |  4 ++--
->  lib/ext2fs/swapfs.c   |  1 +
->  lib/support/mkquota.c | 10 +++-------
->  lib/support/quotaio.c |  2 +-
->  lib/support/quotaio.h | 39 +++++++++++++++++++++++++++++++--------
->  misc/tune2fs.c        |  4 ++--
->  9 files changed, 46 insertions(+), 26 deletions(-)
-> 
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 24f8e215..702dd1bf 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -1130,7 +1130,7 @@ static int quota_inum_is_super(struct ext2_super_block *sb, ext2_ino_t ino)
->  	enum quota_type qtype;
->  
->  	for (qtype = 0; qtype < MAXQUOTAS; qtype++)
-> -		if (*quota_sb_inump(sb, qtype) == ino)
-> +		if (quota_sb_inum(sb, qtype) == ino)
->  			return 1;
->  
->  	return 0;
-> diff --git a/e2fsck/quota.c b/e2fsck/quota.c
-> index 529e87ef..130240a4 100644
-> --- a/e2fsck/quota.c
-> +++ b/e2fsck/quota.c
-> @@ -72,13 +72,13 @@ void e2fsck_hide_quota(e2fsck_t ctx)
->  
->  	for (qtype = 0; qtype < MAXQUOTAS; qtype++) {
->  		pctx.dir = 2;	/* This is a guess, but it's a good one */
-> -		pctx.ino = *quota_sb_inump(sb, qtype);
-> +		pctx.ino = quota_sb_inum(sb, qtype);
->  		pctx.num = qtype;
->  		quota_ino = quota_type2inum(qtype, fs->super);
->  		if (pctx.ino && (pctx.ino != quota_ino) &&
->  		    fix_problem(ctx, PR_0_HIDE_QUOTA, &pctx)) {
->  			move_quota_inode(fs, pctx.ino, quota_ino, qtype);
-> -			*quota_sb_inump(sb, qtype) = quota_ino;
-> +			quota_set_sb_inump(sb, qtype, quota_ino);
->  			ext2fs_mark_super_dirty(fs);
->  		}
->  	}
-> @@ -97,7 +97,7 @@ void e2fsck_validate_quota_inodes(e2fsck_t ctx)
->  	clear_problem_context(&pctx);
->  
->  	for (qtype = 0; qtype < MAXQUOTAS; qtype++) {
-> -		pctx.ino = *quota_sb_inump(sb, qtype);
-> +		pctx.ino = quota_sb_inum(sb, qtype);
->  		pctx.num = qtype;
->  		if (pctx.ino &&
->  		    ((pctx.ino == EXT2_BAD_INO) ||
-> @@ -110,7 +110,7 @@ void e2fsck_validate_quota_inodes(e2fsck_t ctx)
->  		     (pctx.ino == EXT4_REPLICA_INO) ||
->  		     (pctx.ino > ext2fs_get_inodes_count(fs->super))) &&
->  		    fix_problem(ctx, PR_0_INVALID_QUOTA_INO, &pctx)) {
-> -			*quota_sb_inump(sb, qtype) = 0;
-> +			quota_set_sb_inump(sb, qtype, 0);
->  			ext2fs_mark_super_dirty(fs);
->  		}
->  	}
-> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> index 38bc63e5..0d1a450c 100644
-> --- a/e2fsck/unix.c
-> +++ b/e2fsck/unix.c
-> @@ -1862,7 +1862,7 @@ no_journal:
->  		int needs_writeout;
->  
->  		for (qtype = 0; qtype < MAXQUOTAS; qtype++) {
-> -			if (*quota_sb_inump(sb, qtype) == 0)
-> +			if (quota_sb_inum(sb, qtype) != 0)
->  				continue;
->  			needs_writeout = 0;
->  			pctx.num = qtype;
-> diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-> index 45437520..416f382c 100644
-> --- a/lib/e2p/ls.c
-> +++ b/lib/e2p/ls.c
-> @@ -453,10 +453,10 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
->  			sb->s_mmp_update_interval);
->  	}
->  	for (qtype = 0; qtype < MAXQUOTAS; qtype++) {
-> -		if (*quota_sb_inump(sb, qtype) != 0)
-> +		if (quota_sb_inum(sb, qtype) != 0)
->  			fprintf(f, "%-26s%u\n",
->  				quota_type2prefix(qtype),
-> -				*quota_sb_inump(sb, qtype));
-> +				quota_sb_inum(sb, qtype));
->  	}
->  
->  	if (ext2fs_has_feature_metadata_csum(sb)) {
-> diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
-> index 60cdf124..22cd50ec 100644
-> --- a/lib/ext2fs/swapfs.c
-> +++ b/lib/ext2fs/swapfs.c
-> @@ -82,6 +82,7 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
->  		ext2fs_swab64(sb->s_snapshot_r_blocks_count);
->  	sb->s_snapshot_list = ext2fs_swab32(sb->s_snapshot_list);
->  	sb->s_prj_quota_inum = ext2fs_swab32(sb->s_prj_quota_inum);
-> +	sb->s_prj_quota_inum_hi = ext2fs_swab32(sb->s_prj_quota_inum_hi);
+On Mon, Nov 13, 2017 at 8:25 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> I forgot to mention, there's a merge conflict when pulling the ext4
+> and fscrypt trees.  The fixup is relatively straightforward:
 
-Wasn't this in the last patch?
+It doesn't actually look all that straightforward, and in particular,
+the resolution you sent me doesn't actually seem correct:
 
->  	sb->s_usr_quota_inum = ext2fs_swab32(sb->s_usr_quota_inum);
->  	sb->s_grp_quota_inum = ext2fs_swab32(sb->s_grp_quota_inum);
->  	sb->s_overhead_blocks = ext2fs_swab32(sb->s_overhead_blocks);
-> diff --git a/lib/support/mkquota.c b/lib/support/mkquota.c
-> index e65c95b7..791fae05 100644
-> --- a/lib/support/mkquota.c
-> +++ b/lib/support/mkquota.c
-> @@ -93,13 +93,9 @@ int quota_file_exists(ext2_filsys fs, enum quota_type qtype)
->   */
->  void quota_set_sb_inum(ext2_filsys fs, ext2_ino_t ino, enum quota_type qtype)
->  {
-> -	ext2_ino_t *inump;
-> -
-> -	inump = quota_sb_inump(fs->super, qtype);
-> -
->  	log_debug("setting quota ino in superblock: ino=%u, type=%d", ino,
->  		 qtype);
-> -	*inump = ino;
-> +	quota_set_sb_inump(fs->super, qtype, ino);
->  	ext2fs_mark_super_dirty(fs);
->  }
->  
-> @@ -113,8 +109,8 @@ errcode_t quota_remove_inode(ext2_filsys fs, enum quota_type qtype)
->  		log_debug("Couldn't read bitmaps: %s", error_message(retval));
->  		return retval;
->  	}
-> +	qf_ino = quota_sb_inum(fs->super, qtype);
->  
-> -	qf_ino = *quota_sb_inump(fs->super, qtype);
->  	if (qf_ino == 0)
->  		return 0;
->  	retval = quota_inode_truncate(fs, qf_ino);
-> @@ -308,7 +304,7 @@ errcode_t quota_init_context(quota_ctx_t *qctx, ext2_filsys fs,
->  			if (((1 << qtype) & qtype_bits) == 0)
->  				continue;
->  		} else {
-> -			if (*quota_sb_inump(fs->super, qtype) == 0)
-> +			if (quota_sb_inum(fs->super, qtype) == 0)
->  				continue;
->  		}
->  		err = ext2fs_get_mem(sizeof(dict_t), &dict);
-> diff --git a/lib/support/quotaio.c b/lib/support/quotaio.c
-> index 2daf1785..a26576b5 100644
-> --- a/lib/support/quotaio.c
-> +++ b/lib/support/quotaio.c
-> @@ -230,7 +230,7 @@ errcode_t quota_file_open(quota_ctx_t qctx, struct quota_handle *h,
->  		return err;
->  
->  	if (qf_ino == 0)
-> -		qf_ino = *quota_sb_inump(fs->super, qtype);
-> +		qf_ino = quota_sb_inum(fs->super, qtype);
->  
->  	log_debug("Opening quota ino=%u, type=%d", qf_ino, qtype);
->  	err = ext2fs_file_open(fs, qf_ino, flags, &e2_file);
-> diff --git a/lib/support/quotaio.h b/lib/support/quotaio.h
-> index 60689700..7c65673e 100644
-> --- a/lib/support/quotaio.h
-> +++ b/lib/support/quotaio.h
-> @@ -245,21 +245,44 @@ int parse_quota_types(const char *in_str, unsigned int *qtype_bits,
->   * This allows the caller to get or set the quota inode by type without the
->   * need for the quota array to be contiguous in the superblock.
->   */
-> -static inline ext2_ino_t *quota_sb_inump(struct ext2_super_block *sb,
-> -					 enum quota_type qtype)
-> +static inline ext2_ino_t quota_sb_inum(struct ext2_super_block *sb,
-> +					enum quota_type qtype)
->  {
-> +	ext2_ino_t quota_inum = 0;
-> +
->  	switch (qtype) {
->  	case USRQUOTA:
-> -		return &sb->s_usr_quota_inum;
-> +		quota_inum = sb->s_usr_quota_inum;
-> +		break;
->  	case GRPQUOTA:
-> -		return &sb->s_grp_quota_inum;
-> +		quota_inum = sb->s_grp_quota_inum;
+>                 new_fl |= S_NOATIME;
+>         if (flags & EXT4_DIRSYNC_FL)
+>                 new_fl |= S_DIRSYNC;
+> -       if (test_opt(inode->i_sb, DAX) && S_ISREG(inode->i_mode) &&
+> -           !ext4_should_journal_data(inode) && !ext4_has_inline_data(inode) &&
+> -           !(flags & EXT4_ENCRYPT_FL))
+> +       if (ext4_should_use_dax(inode))
+>                 new_fl |= S_DAX;
 
-It seems kinda strange that the user/group quota inode number has to be
-below 2^32 yet the project quota inode doesn't have this restriction?
+This now loses the "!(flags & EXT4_ENCRYPT_FL)" test when it sets S_DAX.
 
-Oh, right, the user/group quota are supposed to be inum 3 and 4 whereas
-the project inode number can float.  Never mind.
+Yes, in ext4_should_use_dax(), it has this code
 
-> +		break;
->  	case PRJQUOTA:
-> -		return &sb->s_prj_quota_inum;
-> -	default:
-> -		return NULL;
-> +		quota_inum = sb->s_prj_quota_inum;
-> +		if (ext2fs_has_feature_inode64(sb))
-> +			quota_inum |= (__u64)sb->s_prj_quota_inum_hi << 32;
-> +		break;
->  	}
->  
-> -	return NULL;
-> +	return quota_inum;
-> +}
-> +
-> +static inline void quota_set_sb_inump(struct ext2_super_block *sb,
-> +				      enum quota_type qtype, ext2_ino64_t ino)
+        if (ext4_encrypted_inode(inode))
+                return false;
 
-quota_set_sb_inum and quota_sb_inum?
+but that test was what commit 2ee6a576be56 changed in favor of just
+checking !(flags & EXT4_ENCRYPT_FL).
 
-How about quota_{get,set}_sb_inum since they're a pair?
+So that suggested merge resolkution actually undoes some of that
+commit 2ee6a576be56.
 
---D
+Of course,
 
-> +{
-> +	switch (qtype) {
-> +	case USRQUOTA:
-> +		sb->s_usr_quota_inum = ino;
-> +		break;
-> +	case GRPQUOTA:
-> +		sb->s_grp_quota_inum = ino;
-> +		break;
-> +	case PRJQUOTA:
-> +		if (ext2fs_has_feature_inode64(sb))
-> +			sb->s_prj_quota_inum_hi =  (__u32)(ino >> 32);
-> +		sb->s_prj_quota_inum = ino;
-> +		break;
-> +	}
->  }
->  
->  #endif /* GUARD_QUOTAIO_H */
-> diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> index 3538ab9c..0368340b 100644
-> --- a/misc/tune2fs.c
-> +++ b/misc/tune2fs.c
-> @@ -1640,7 +1640,7 @@ static void handle_quota_options(ext2_filsys fs)
->  
->  	for (qtype = 0 ; qtype < MAXQUOTAS; qtype++) {
->  		if (quota_enable[qtype] == QOPT_ENABLE &&
-> -		    *quota_sb_inump(fs->super, qtype) == 0) {
-> +		    quota_sb_inum(fs->super, qtype) == 0) {
->  			if ((qf_ino = quota_file_exists(fs, qtype)) > 0) {
->  				retval = quota_update_limits(qctx, qf_ino,
->  							     qtype);
-> @@ -1687,7 +1687,7 @@ static void handle_quota_options(ext2_filsys fs)
->  	/* Clear Quota feature if all quota types disabled. */
->  	if (!qtype_bits) {
->  		for (qtype = 0 ; qtype < MAXQUOTAS; qtype++)
-> -			if (*quota_sb_inump(fs->super, qtype))
-> +			if (quota_sb_inum(fs->super, qtype))
->  				break;
->  		if (qtype == MAXQUOTAS) {
->  			ext2fs_clear_feature_quota(fs->super);
-> -- 
-> 2.13.6 (Apple Git-96)
-> 
+        (flags & EXT4_ENCRYPT_FL)
+
+_should_ be the same as
+
+        ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT);
+
+so It does seem to be harmless, but it's a bit dodgy.
+
+I'll do that suggested resolution, but I have to say that the ext4 bit
+testing is incredibly broken and non-obvious. Just as an example:
+
+  fs/ext4/ext4.h:#define EXT4_ENCRYPT_FL                  0x00000800
+/* encrypted file */
+  fs/ext4/ext4.h: EXT4_INODE_ENCRYPT      = 11,   /* Encrypted file */
+
+yeah, it's the same bit, but it sure as hell isn't obvious. Why the
+two totally different ways to define that data?
+
+            Linus
