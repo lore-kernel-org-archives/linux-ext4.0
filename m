@@ -1,32 +1,123 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 151491] free space lossage on busy system with bigalloc enabled
- and 128KB cluster
-Date: Mon, 13 Nov 2017 17:39:41 +0000
-Message-ID: <bug-151491-13602-HPLdhJTkyP@https.bugzilla.kernel.org/>
-References: <bug-151491-13602@https.bugzilla.kernel.org/>
+From: Dan Williams <dan.j.williams@intel.com>
+Subject: [PATCH] fs,
+ dax: unify IOMAP_F_DIRTY read vs write handling policy in the dax
+ core
+Date: Mon, 13 Nov 2017 17:27:54 -0800
+Message-ID: <151062258598.8554.8157038002895095232.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Dave Chinner <david@fromorbit.com>, linux-xfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, Christoph Hellwig <hch@lst.de>
+To: linux-nvdimm@lists.01.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:56016 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754138AbdKMRjn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 13 Nov 2017 12:39:43 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id AEEB328DA5
-        for <linux-ext4@vger.kernel.org>; Mon, 13 Nov 2017 17:39:42 +0000 (UTC)
-In-Reply-To: <bug-151491-13602@https.bugzilla.kernel.org/>
+Received: from mga05.intel.com ([192.55.52.43]:19006 "EHLO mga05.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750807AbdKNBgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 13 Nov 2017 20:36:09 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=151491
+While reviewing whether MAP_SYNC should strengthen its current guarantee
+of syncing writes from the initiating process to also include
+third-party readers observing dirty metadata, Dave pointed out that the
+check of IOMAP_WRITE is misplaced.
 
---- Comment #9 from Betacentauri (betacentauri@arcor.de) ---
-Forgot to say that the script is for the kvm-xfstests environment. And the
-output already shows the output of that environment.
+The policy of what to with IOMAP_F_DIRTY should be separated from the
+generic filesystem mechanism of reporting dirty metadata. Move this
+policy to the fs-dax core to simplify the per-filesystem iomap handlers,
+and further centralize code that implements the MAP_SYNC policy. This
+otherwise should not change behavior, it just makes it easier to change
+behavior in the future.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Cc: Jan Kara <jack@suse.cz>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Darrick J. Wong <darrick.wong@oracle.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>
+Reported-by: Dave Chinner <david@fromorbit.com>
+Signed-off-by: Dan Williams <dan.j.williams@intel.com>
+---
+This is an additional cleanup I want to include in the 4.15 merge
+request for the MAP_SYNC feature. Please review, I'm looking to send the
+pull request towards the end of the week.
+
+
+ fs/dax.c           |   15 +++++++++++++--
+ fs/ext4/inode.c    |    2 +-
+ fs/xfs/xfs_iomap.c |    6 +++---
+ 3 files changed, 17 insertions(+), 6 deletions(-)
+
+diff --git a/fs/dax.c b/fs/dax.c
+index 78233c716757..27ba300660ff 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -1079,6 +1079,17 @@ static int dax_fault_return(int error)
+ 	return VM_FAULT_SIGBUS;
+ }
+ 
++/*
++ * MAP_SYNC on a dax mapping guarantees dirty metadata is
++ * flushed on write-faults (non-cow), but not read-faults.
++ */
++static bool dax_fault_is_synchronous(unsigned long flags,
++		struct vm_area_struct *vma, struct iomap *iomap)
++{
++	return (flags & IOMAP_WRITE) && (vma->vm_flags & VM_SYNC)
++		&& (iomap->flags & IOMAP_F_DIRTY);
++}
++
+ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+ 			       const struct iomap_ops *ops)
+ {
+@@ -1170,7 +1181,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+ 		goto finish_iomap;
+ 	}
+ 
+-	sync = (vma->vm_flags & VM_SYNC) && (iomap.flags & IOMAP_F_DIRTY);
++	sync = dax_fault_is_synchronous(flags, vma, &iomap);
+ 
+ 	switch (iomap.type) {
+ 	case IOMAP_MAPPED:
+@@ -1390,7 +1401,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, pfn_t *pfnp,
+ 	if (iomap.offset + iomap.length < pos + PMD_SIZE)
+ 		goto finish_iomap;
+ 
+-	sync = (vma->vm_flags & VM_SYNC) && (iomap.flags & IOMAP_F_DIRTY);
++	sync = dax_fault_is_synchronous(iomap_flags, vma, &iomap);
+ 
+ 	switch (iomap.type) {
+ 	case IOMAP_MAPPED:
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 13a198924a0f..ee4d907a4251 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3479,7 +3479,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	}
+ 
+ 	iomap->flags = 0;
+-	if ((flags & IOMAP_WRITE) && ext4_inode_datasync_dirty(inode))
++	if (ext4_inode_datasync_dirty(inode))
+ 		iomap->flags |= IOMAP_F_DIRTY;
+ 	iomap->bdev = inode->i_sb->s_bdev;
+ 	iomap->dax_dev = sbi->s_daxdev;
+diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+index b43be199fbdf..888b60189983 100644
+--- a/fs/xfs/xfs_iomap.c
++++ b/fs/xfs/xfs_iomap.c
+@@ -1087,9 +1087,9 @@ xfs_file_iomap_begin(
+ 		trace_xfs_iomap_found(ip, offset, length, 0, &imap);
+ 	}
+ 
+-	if ((flags & IOMAP_WRITE) && xfs_ipincount(ip) &&
+-	    (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP))
+-		iomap->flags |= IOMAP_F_DIRTY;
++	if (xfs_ipincount(ip))
++		if (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP)
++			iomap->flags |= IOMAP_F_DIRTY;
+ 
+ 	xfs_bmbt_to_iomap(ip, iomap, &imap);
+ 
