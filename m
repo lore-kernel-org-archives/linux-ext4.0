@@ -1,20 +1,20 @@
 From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH] fs, dax: unify IOMAP_F_DIRTY read vs write handling
- policy in the dax core
-Date: Mon, 13 Nov 2017 18:14:16 -0800
-Message-ID: <20171114021416.GG25227@magnolia>
-References: <151062258598.8554.8157038002895095232.stgit@dwillia2-desk3.amr.corp.intel.com>
+Subject: Re: [PATCH 17/18] xfs: Implement xfs_filemap_pfn_mkwrite() using
+ __xfs_filemap_fault()
+Date: Mon, 13 Nov 2017 18:19:13 -0800
+Message-ID: <20171114021913.GH25227@magnolia>
+References: <20171101153648.30166-1-jack@suse.cz>
+ <20171101153648.30166-18-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+ linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <151062258598.8554.8157038002895095232.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+In-Reply-To: <20171101153648.30166-18-jack-AlSwsSmVLrQ@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -26,116 +26,82 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 13, 2017 at 05:27:54PM -0800, Dan Williams wrote:
-> While reviewing whether MAP_SYNC should strengthen its current guarantee
-> of syncing writes from the initiating process to also include
-> third-party readers observing dirty metadata, Dave pointed out that the
-> check of IOMAP_WRITE is misplaced.
+On Wed, Nov 01, 2017 at 04:36:46PM +0100, Jan Kara wrote:
+> xfs_filemap_pfn_mkwrite() duplicates a lot of __xfs_filemap_fault().
+> It will also need to handle flushing for synchronous page faults. So
+> just make that function use __xfs_filemap_fault().
 > 
-> The policy of what to with IOMAP_F_DIRTY should be separated from the
-> generic filesystem mechanism of reporting dirty metadata. Move this
-> policy to the fs-dax core to simplify the per-filesystem iomap handlers,
-> and further centralize code that implements the MAP_SYNC policy. This
-> otherwise should not change behavior, it just makes it easier to change
-> behavior in the future.
+> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
-Yes, this was what I was looking for on my last read-through. :)
-
-> Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> Cc: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-> Cc: Darrick J. Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-> Cc: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> Reported-by: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-> Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-> ---
-> This is an additional cleanup I want to include in the 4.15 merge
-> request for the MAP_SYNC feature. Please review, I'm looking to send the
-> pull request towards the end of the week.
-> 
-> 
->  fs/dax.c           |   15 +++++++++++++--
->  fs/ext4/inode.c    |    2 +-
->  fs/xfs/xfs_iomap.c |    6 +++---
->  3 files changed, 17 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 78233c716757..27ba300660ff 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -1079,6 +1079,17 @@ static int dax_fault_return(int error)
->  	return VM_FAULT_SIGBUS;
->  }
->  
-> +/*
-> + * MAP_SYNC on a dax mapping guarantees dirty metadata is
-> + * flushed on write-faults (non-cow), but not read-faults.
-> + */
-> +static bool dax_fault_is_synchronous(unsigned long flags,
-> +		struct vm_area_struct *vma, struct iomap *iomap)
-> +{
-> +	return (flags & IOMAP_WRITE) && (vma->vm_flags & VM_SYNC)
-> +		&& (iomap->flags & IOMAP_F_DIRTY);
-> +}
-> +
->  static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
->  			       const struct iomap_ops *ops)
->  {
-> @@ -1170,7 +1181,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
->  		goto finish_iomap;
->  	}
->  
-> -	sync = (vma->vm_flags & VM_SYNC) && (iomap.flags & IOMAP_F_DIRTY);
-> +	sync = dax_fault_is_synchronous(flags, vma, &iomap);
->  
->  	switch (iomap.type) {
->  	case IOMAP_MAPPED:
-> @@ -1390,7 +1401,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, pfn_t *pfnp,
->  	if (iomap.offset + iomap.length < pos + PMD_SIZE)
->  		goto finish_iomap;
->  
-> -	sync = (vma->vm_flags & VM_SYNC) && (iomap.flags & IOMAP_F_DIRTY);
-> +	sync = dax_fault_is_synchronous(iomap_flags, vma, &iomap);
->  
->  	switch (iomap.type) {
->  	case IOMAP_MAPPED:
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 13a198924a0f..ee4d907a4251 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3479,7 +3479,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
->  	}
->  
->  	iomap->flags = 0;
-> -	if ((flags & IOMAP_WRITE) && ext4_inode_datasync_dirty(inode))
-> +	if (ext4_inode_datasync_dirty(inode))
->  		iomap->flags |= IOMAP_F_DIRTY;
->  	iomap->bdev = inode->i_sb->s_bdev;
->  	iomap->dax_dev = sbi->s_daxdev;
-> diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-> index b43be199fbdf..888b60189983 100644
-> --- a/fs/xfs/xfs_iomap.c
-> +++ b/fs/xfs/xfs_iomap.c
-> @@ -1087,9 +1087,9 @@ xfs_file_iomap_begin(
->  		trace_xfs_iomap_found(ip, offset, length, 0, &imap);
->  	}
->  
-> -	if ((flags & IOMAP_WRITE) && xfs_ipincount(ip) &&
-> -	    (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP))
-> -		iomap->flags |= IOMAP_F_DIRTY;
-> +	if (xfs_ipincount(ip))
-> +		if (ip->i_itemp->ili_fsync_fields & ~XFS_ILOG_TIMESTAMP)
-
-Why not if (xfs_ipincount(ip) && (ip->... & ~XFS_ILOG_TIMESTAMP)) ?
-
-Otherwise looks ok (just this patch, will rvb the rest separately),
+Looks ok,
 Reviewed-by: Darrick J. Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
 
---D
-
-> +			iomap->flags |= IOMAP_F_DIRTY;
+> ---
+>  fs/xfs/xfs_file.c  | 29 ++++-------------------------
+>  fs/xfs/xfs_trace.h |  2 --
+>  2 files changed, 4 insertions(+), 27 deletions(-)
+> 
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index 7c6b8def6eed..4496b45678de 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -1085,37 +1085,16 @@ xfs_filemap_page_mkwrite(
+>  }
 >  
->  	xfs_bmbt_to_iomap(ip, iomap, &imap);
+>  /*
+> - * pfn_mkwrite was originally inteneded to ensure we capture time stamp
+> - * updates on write faults. In reality, it's need to serialise against
+> - * truncate similar to page_mkwrite. Hence we cycle the XFS_MMAPLOCK_SHARED
+> - * to ensure we serialise the fault barrier in place.
+> + * pfn_mkwrite was originally intended to ensure we capture time stamp updates
+> + * on write faults. In reality, it needs to serialise against truncate and
+> + * prepare memory for writing so handle is as standard write fault.
+>   */
+>  static int
+>  xfs_filemap_pfn_mkwrite(
+>  	struct vm_fault		*vmf)
+>  {
 >  
+> -	struct inode		*inode = file_inode(vmf->vma->vm_file);
+> -	struct xfs_inode	*ip = XFS_I(inode);
+> -	int			ret = VM_FAULT_NOPAGE;
+> -	loff_t			size;
+> -
+> -	trace_xfs_filemap_pfn_mkwrite(ip);
+> -
+> -	sb_start_pagefault(inode->i_sb);
+> -	file_update_time(vmf->vma->vm_file);
+> -
+> -	/* check if the faulting page hasn't raced with truncate */
+> -	xfs_ilock(ip, XFS_MMAPLOCK_SHARED);
+> -	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
+> -	if (vmf->pgoff >= size)
+> -		ret = VM_FAULT_SIGBUS;
+> -	else if (IS_DAX(inode))
+> -		ret = dax_iomap_fault(vmf, PE_SIZE_PTE, NULL, &xfs_iomap_ops);
+> -	xfs_iunlock(ip, XFS_MMAPLOCK_SHARED);
+> -	sb_end_pagefault(inode->i_sb);
+> -	return ret;
+> -
+> +	return __xfs_filemap_fault(vmf, PE_SIZE_PTE, true);
+>  }
+>  
+>  static const struct vm_operations_struct xfs_file_vm_ops = {
+> diff --git a/fs/xfs/xfs_trace.h b/fs/xfs/xfs_trace.h
+> index bb5514688d47..6333ad09e0f3 100644
+> --- a/fs/xfs/xfs_trace.h
+> +++ b/fs/xfs/xfs_trace.h
+> @@ -688,8 +688,6 @@ DEFINE_INODE_EVENT(xfs_inode_set_cowblocks_tag);
+>  DEFINE_INODE_EVENT(xfs_inode_clear_cowblocks_tag);
+>  DEFINE_INODE_EVENT(xfs_inode_free_cowblocks_invalid);
+>  
+> -DEFINE_INODE_EVENT(xfs_filemap_pfn_mkwrite);
+> -
+>  TRACE_EVENT(xfs_filemap_fault,
+>  	TP_PROTO(struct xfs_inode *ip, enum page_entry_size pe_size,
+>  		 bool write_fault),
+> -- 
+> 2.12.3
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
