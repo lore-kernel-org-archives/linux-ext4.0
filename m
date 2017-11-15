@@ -1,59 +1,85 @@
-From: Eryu Guan <eguan@redhat.com>
-Subject: [PATCH] ext4: fix fdatasync(2) after fallocate(2) operation
-Date: Wed, 15 Nov 2017 19:54:19 +0800
-Message-ID: <20171115115419.21862-1-eguan@redhat.com>
-Cc: Theodore Ts'o <tytso@mit.edu>, Eryu Guan <eguan@redhat.com>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51828 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757171AbdKOLyp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 15 Nov 2017 06:54:45 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Vivek Goyal <vgoyal@redhat.com>
+Subject: Re: [PATCH v6 12/15] ovl: Fix encryption status of a metacopy only
+ file
+Date: Wed, 15 Nov 2017 15:53:02 -0500
+Message-ID: <20171115205302.GF13895@redhat.com>
+References: <20171109205019.11409-1-vgoyal@redhat.com>
+ <20171109205019.11409-13-vgoyal@redhat.com>
+ <CAOQ4uxjrfhoCh1gnQM04xkgNNWzxUs2S20NXGFwhfAPg4=D4Xw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: overlayfs <linux-unionfs@vger.kernel.org>,
+        Miklos Szeredi <miklos@szeredi.hu>, linux-ext4@vger.kernel.org
+To: Amir Goldstein <amir73il@gmail.com>
+Return-path: <linux-unionfs-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CAOQ4uxjrfhoCh1gnQM04xkgNNWzxUs2S20NXGFwhfAPg4=D4Xw@mail.gmail.com>
+Sender: linux-unionfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Currently, fallocate(2) with KEEP_SIZE followed by a fdatasync(2)
-then crash, we'll see wrong allocated block number (stat -c %b), the
-blocks allocated beyond EOF are all lost. fstests generic/468
-exposes this bug.
+On Fri, Nov 10, 2017 at 11:09:26AM +0200, Amir Goldstein wrote:
+> On Thu, Nov 9, 2017 at 10:50 PM, Vivek Goyal <vgoyal@redhat.com> wrote:
+> > If file is metacopy only, it is possible that lower is encrypted while
+> > other is not. In that case, report file as encrypted (despite the fact
+> > that only data is encrypted while metadata is not).
+> 
+> Better consult ext4 guys or find out which user tools care about this
+> flag and what they could do in response to this flag.
 
-Commit 67a7d5f561f4 ("ext4: fix fdatasync(2) after extent
-manipulation operations") fixed all the other extent manipulation
-operation paths such as hole punch, zero range, collapse range etc.,
-but forgot the fallocate case.
+[ CCing ext4 maling list ]
 
-So similarly, fix it by recording the correct journal tid in ext4
-inode in fallocate(2) path, so that ext4_sync_file() will wait for
-the right tid to be committed on fdatasync(2).
+> 
+> When I commented that we need to see what do to about all these
+> flags I just gave encrypted flag as an example.
+> 
+> On a hunch I would say that we need a mask of statx flags that are
+> readonly attributes of the data itself and that mask should probably
+> contain encrypted and compressed to begin with.
 
-Signed-off-by: Eryu Guan <eguan@redhat.com>
----
+I thought encrypted flag is representing metadata also (and not just 
+data). Is that not the case.
 
-Note that fstests case generic/468 has not been pushed to upstream yet,
-please find it at
-https://patchwork.kernel.org/patch/7284531/
+> I don't see a reason for 2 separate patches and certainly not for
+> 2 separate helpers.
 
-So the final test seq number can be different, though it's unlikely to
-change. If changed I'll send an updated patch.
+I will merge the two patches. I am not sure about the mask thing though.
+We can probably start with encryption and compression flags for now and
+make it more generic down the line (using that mask).
 
-I've tested this patch with the pending generic/468 test and a auto
-group run of fstests with default ext4 configuration (data=ordered and
-4k block size), test results all look good.
+> 
+> >
+> > Signed-off-by: Vivek Goyal <vgoyal@redhat.com>
+> > ---
+> >  fs/overlayfs/inode.c | 14 +++++++++++++-
+> >  1 file changed, 13 insertions(+), 1 deletion(-)
+> >
+> > diff --git a/fs/overlayfs/inode.c b/fs/overlayfs/inode.c
+> > index 7ba19a97a8da..15713d4ac2dd 100644
+> > --- a/fs/overlayfs/inode.c
+> > +++ b/fs/overlayfs/inode.c
+> > @@ -66,6 +66,16 @@ int ovl_setattr(struct dentry *dentry, struct iattr *attr)
+> >         return err;
+> >  }
+> >
+> > +static void ovl_stat_set_encryption(struct kstat *ustat, struct kstat *lstat) {
+> > +       if (!((lstat->attributes_mask & STATX_ATTR_ENCRYPTED) &&
+> > +           (lstat->attributes & STATX_ATTR_ENCRYPTED)))
+> > +               return;
+> > +
+> > +       ustat->attributes |= STATX_ATTR_ENCRYPTED;
+> > +       ustat->attributes_mask |= STATX_ATTR_ENCRYPTED;
+> > +}
+> > +
+> 
+> 
+> This looks buggy. you set STATX_ATTR_ENCRYPTED even if lower
+> doesn't have STATX_ATTR_ENCRYPTED in attributes nor in attributes_mask.
 
- fs/ext4/extents.c | 1 +
- 1 file changed, 1 insertion(+)
+Hmm.., I am not able to see where is the bug. Did you notice the "!"
+in if condition.
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 07bca11749d4..c941251ac0c0 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4722,6 +4722,7 @@ static int ext4_alloc_file_blocks(struct file *file, ext4_lblk_t offset,
- 						    EXT4_INODE_EOFBLOCKS);
- 		}
- 		ext4_mark_inode_dirty(handle, inode);
-+		ext4_update_inode_fsync_trans(handle, inode, 1);
- 		ret2 = ext4_journal_stop(handle);
- 		if (ret2)
- 			break;
--- 
-2.13.6
+We will set STATX_ATTR_ENCRYPTED in attributes_mask and attributes 
+only if lower has STATX_ATTR_ENCRYPTED set both in ->attributes_mask
+and ->attributes.
+
+Vivek
