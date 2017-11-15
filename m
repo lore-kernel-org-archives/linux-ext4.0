@@ -1,78 +1,56 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [GIT PULL] ext4 updates for 4.15
-Date: Tue, 14 Nov 2017 17:11:47 -0800
-Message-ID: <CA+55aFw99_LwZNsUe3Nep=Gf+N5fj7eOSAr7s2vRDC+N1Yz6Mg@mail.gmail.com>
-References: <20171113031502.f6mctmlmgk5psh77@thunk.org> <20171113162534.5xta72w2boeaxk3s@thunk.org>
- <CA+55aFxbTtsf-WUhH0uY2=dzrn7BjsNuqFT0POD+pViyMwQBfg@mail.gmail.com> <20171115005656.6znjpa3ktqdre6dp@thunk.org>
+From: " M,Shakour Rosarita" <hassanamira04@gmail.com>
+Subject: Hello Dear...
+Date: Wed, 15 Nov 2017 11:34:09 +0000
+Message-ID: <CADmkupiA2objgsQxK=03WmWJhZVp3+F-yDxXOLOm2rgTnpKhzw__17543.4899436825$1510745715$gmane$org@mail.gmail.com>
+Reply-To: mshakourrosarita22@gmail.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-To: "Theodore Ts'o" <tytso@mit.edu>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Content-Transfer-Encoding: quoted-printable
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f41.google.com ([209.85.214.41]:35872 "EHLO
-        mail-it0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754110AbdKOBLt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Nov 2017 20:11:49 -0500
-In-Reply-To: <20171115005656.6znjpa3ktqdre6dp@thunk.org>
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:48962 "EHLO
+        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1757689AbdKOLeK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Nov 2017 06:34:10 -0500
+Received: by mail-qt0-f194.google.com with SMTP id f8so33544151qta.5
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Nov 2017 03:34:10 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 14, 2017 at 4:56 PM, Theodore Ts'o <tytso@mit.edu> wrote:
->
->    The e2fsprogs user space libraries all use
-> EXT4_*_FL, and we can't change that without breaking applications
-> depending on userspace, but we can keep things consistent in the
-> kernel, and that probably means completely converting away from
-> EXT4_*_FL, if possible.
+Hello Dear...
 
-So I don't think you'd necessarily need to convert from one to the
-other, but wouldn't it be nice if you at least defined one in terms of
-the other, ie something like
+I know that this message will come to you as a surprise. I hoped that
+you will not expose or betray this trust and confident that I am about
+to repose on you, my name is M, Shakour Rosarita. I am 19 years old
+Girl, female, from Tartu Syria, (never married) 61 kg, white in
+complexion, and I am currently living in the refugee camp here in
+Abidjan Ivory Coast, My late beloved father M,Shakour Hassin was a
+renowned businessman and owner of Natour Petrol Station in Syria, he
+was killed in a stampede riot in Tartu, Syria.
+When I got the news about my parents. I fled to a nearby country
+Jordan before I joined a ferry to Africa and came to Abidjan capital
+city Ivory Coast West Africa find safety here.
+I came in 2015 to Abidjan and I now live in refugee camps here as
+refugees are allowed freely to enter here without, My late father
+deposited (US$6.200.000.00m) My late father kept the money at the bank
+of Africa, I want you to help me transfer the money to your hand so
+that you will help me bring me into your country for my continue
+education.
 
-  #define EXT4_ENCRYPT_FL (1u << EXT4_INODE_ENCRYPT)
+I sent my pictures here for you to see. Who I am seriously looking for
+a good-person in my life, so I want to hear from you soon and learn
+more about you.
 
-so that when you grep for one you see how they are directly related.
-
-Now it was much less obvious, and I was nervous because that whole
-series did introduce _different_ bits that were not in the same space
-at all, and encoded the same thing (ie that S_ENCRYPTED bit).
-
-Maybe this normally doesn't come up, but it was not all that obvious,
-particularly since there was a lot of indirection:
-
- ext4_encrypted_inode() ->
-    ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT) ->
-        EXT4_INODE_BIT_FNS()
-
-That EXT4_INODE_BIT_FNS thing was really fascinating to see.
-
-So just confirming that yes,
-
-   ext4_encrypted_inode()
-
-is the same thing as
-
-   EXT4_I(inode)->i_flags & EXT4_ENCRYPT_FL
-
-was a real adventure.
-
-Making it clear that EXT4_ENCRYPT_FL and EXT4_INODE_ENCRYPT are the
-same bit would maybe have lessened the confusion at least a tiny bit.
-
-Of course, not having five different ways to test the same bit would
-have been even better.
-
-Ok, I'm exaggerating.
-
-But there really does seem to be a lot of different ways to check
-i_flags bits, with some uses checking it directly, the places
-_setting_ it using ext4_set_inode_flag(), and then other testers using
-bit-specific helper.
-
-And that somewhat confusing model seems to be true of pretty much all the bits.
-
-As long as you can keep track of it, I guess it's fine.
-
-            Linus
+I am an open-minded and friendly girl to share a good time with you
+and have fun and enjoy on the go, bird watching, the rest of our
+lives. My Hobbies, tourism books, dance, music, soccer, tennis,
+swimming and cinema.
+I would just think about you, including your dose and doesn=E2=80=99t .I
+believe we will do well together, and live like one family.
+Thank you and God bless you, for you in your promise to help me here,
+looking forward to your reply by the grace of God and have a good day.
+I hope you send me your photos as well? I await your next reply in
+faith please reply through my private email at
+(mshakourrosarita22@gmail.com):
+Thanks.
+Ms Rosarita
