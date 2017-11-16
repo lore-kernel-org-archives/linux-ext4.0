@@ -1,85 +1,54 @@
-From: Vivek Goyal <vgoyal@redhat.com>
-Subject: Re: [PATCH v6 12/15] ovl: Fix encryption status of a metacopy only
- file
-Date: Wed, 15 Nov 2017 15:53:02 -0500
-Message-ID: <20171115205302.GF13895@redhat.com>
-References: <20171109205019.11409-1-vgoyal@redhat.com>
- <20171109205019.11409-13-vgoyal@redhat.com>
- <CAOQ4uxjrfhoCh1gnQM04xkgNNWzxUs2S20NXGFwhfAPg4=D4Xw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: overlayfs <linux-unionfs@vger.kernel.org>,
-        Miklos Szeredi <miklos@szeredi.hu>, linux-ext4@vger.kernel.org
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <linux-unionfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAOQ4uxjrfhoCh1gnQM04xkgNNWzxUs2S20NXGFwhfAPg4=D4Xw@mail.gmail.com>
-Sender: linux-unionfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [PATCH v2 0/4] e2image -b option to pass superblock number
+Date: Thu, 16 Nov 2017 16:55:42 +0300
+Message-ID: <20171116135546.9991-1-artem.blagodarenko@gmail.com>
+Cc: adilger.kernel@dilger.ca
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lf0-f66.google.com ([209.85.215.66]:53853 "EHLO
+        mail-lf0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S935116AbdKPNzw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Nov 2017 08:55:52 -0500
+Received: by mail-lf0-f66.google.com with SMTP id 73so15957611lfu.10
+        for <linux-ext4@vger.kernel.org>; Thu, 16 Nov 2017 05:55:51 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 10, 2017 at 11:09:26AM +0200, Amir Goldstein wrote:
-> On Thu, Nov 9, 2017 at 10:50 PM, Vivek Goyal <vgoyal@redhat.com> wrote:
-> > If file is metacopy only, it is possible that lower is encrypted while
-> > other is not. In that case, report file as encrypted (despite the fact
-> > that only data is encrypted while metadata is not).
-> 
-> Better consult ext4 guys or find out which user tools care about this
-> flag and what they could do in response to this flag.
+There was a discussion about possibility of using
+superblock backup for creating images with e2image.
 
-[ CCing ext4 maling list ]
+https://www.spinics.net/lists/linux-ext4/msg30583.html
 
-> 
-> When I commented that we need to see what do to about all these
-> flags I just gave encrypted flag as an example.
-> 
-> On a hunch I would say that we need a mask of statx flags that are
-> readonly attributes of the data itself and that mask should probably
-> contain encrypted and compressed to begin with.
+Now our customer faced with situation then it would be
+useful to have image file from partition with broken
+superblock.
 
-I thought encrypted flag is representing metadata also (and not just 
-data). Is that not the case.
+Here is set of patches that adds this functionality.
 
-> I don't see a reason for 2 separate patches and certainly not for
-> 2 separate helpers.
+This is the second version of the patch set. Changes since v1:
+* code style fixes
+* moving common code to ext2fs_open2
+* added  "-B blocksize" option
+* fixes in test script
 
-I will merge the two patches. I am not sure about the mask thing though.
-We can probably start with encryption and compression flags for now and
-make it more generic down the line (using that mask).
+Artem Blagodarenko (4):
+  ext2fs: opening filesystem code refactoring
+  e2image: add -b option to use supperblock backup
+  tests: add test for e2image -b option
+  man: add -b option to e2image
 
-> 
-> >
-> > Signed-off-by: Vivek Goyal <vgoyal@redhat.com>
-> > ---
-> >  fs/overlayfs/inode.c | 14 +++++++++++++-
-> >  1 file changed, 13 insertions(+), 1 deletion(-)
-> >
-> > diff --git a/fs/overlayfs/inode.c b/fs/overlayfs/inode.c
-> > index 7ba19a97a8da..15713d4ac2dd 100644
-> > --- a/fs/overlayfs/inode.c
-> > +++ b/fs/overlayfs/inode.c
-> > @@ -66,6 +66,16 @@ int ovl_setattr(struct dentry *dentry, struct iattr *attr)
-> >         return err;
-> >  }
-> >
-> > +static void ovl_stat_set_encryption(struct kstat *ustat, struct kstat *lstat) {
-> > +       if (!((lstat->attributes_mask & STATX_ATTR_ENCRYPTED) &&
-> > +           (lstat->attributes & STATX_ATTR_ENCRYPTED)))
-> > +               return;
-> > +
-> > +       ustat->attributes |= STATX_ATTR_ENCRYPTED;
-> > +       ustat->attributes_mask |= STATX_ATTR_ENCRYPTED;
-> > +}
-> > +
-> 
-> 
-> This looks buggy. you set STATX_ATTR_ENCRYPTED even if lower
-> doesn't have STATX_ATTR_ENCRYPTED in attributes nor in attributes_mask.
+ e2fsck/unix.c               |  28 +++-------------------------
+ lib/ext2fs/openfs.c         |  36 +++++++++++++++++++++++++++++++++++-
+ misc/dumpe2fs.c             |  17 +++--------------
+ misc/e2image.8.in           |  32 ++++++++++++++++++++++++++++++++
+ misc/e2image.c              |  44 ++++++++++++++++++++++++++++++++++++++------
+ tests/i_zero_super/expect   |  22 ++++++++++++++++++++++
+ tests/i_zero_super/image.gz | Bin 0 -> 13262 bytes
+ tests/i_zero_super/script   |  33 +++++++++++++++++++++++++++++++++
+ 8 files changed, 166 insertions(+), 46 deletions(-)
+ create mode 100644 tests/i_zero_super/expect
+ create mode 100644 tests/i_zero_super/image.gz
+ create mode 100644 tests/i_zero_super/script
 
-Hmm.., I am not able to see where is the bug. Did you notice the "!"
-in if condition.
-
-We will set STATX_ATTR_ENCRYPTED in attributes_mask and attributes 
-only if lower has STATX_ATTR_ENCRYPTED set both in ->attributes_mask
-and ->attributes.
-
-Vivek
+-- 
+2.13.6 (Apple Git-96)
