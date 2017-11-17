@@ -1,56 +1,144 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: ext4 SMR patches
-Date: Fri, 17 Nov 2017 14:08:49 -0700
-Message-ID: <A43AD360-35A6-4874-A4D2-8618ADAAE886@dilger.ca>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_971D4E2E-CE3A-457F-BEB8-70095D0F9B34";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f177.google.com ([209.85.223.177]:38461 "EHLO
-        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933612AbdKQVIz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Nov 2017 16:08:55 -0500
-Received: by mail-io0-f177.google.com with SMTP id h205so9352760iof.5
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Nov 2017 13:08:55 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Liu Bo <bo.li.liu@oracle.com>
+Subject: Re: [PATCH v2] iomap: report collisions between directio and
+ buffered writes to userspace
+Date: Fri, 17 Nov 2017 14:56:41 -0800
+Message-ID: <20171117225640.GA11918@dhcp-10-11-180-142.int.fusionio.com>
+References: <20171117193925.GM5119@magnolia>
+Reply-To: bo.li.liu@oracle.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs <linux-xfs@vger.kernel.org>, Ilya Dryomov <idryomov@gmail.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Brian Foster <bfoster@redhat.com>,
+        holger@applied-asynchrony.com,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20171117193925.GM5119@magnolia>
+Sender: linux-btrfs-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Fri, Nov 17, 2017 at 11:39:25AM -0800, Darrick J. Wong wrote:
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> 
+> If two programs simultaneously try to write to the same part of a file
+> via direct IO and buffered IO, there's a chance that the post-diowrite
+> pagecache invalidation will fail on the dirty page.  When this happens,
+> the dio write succeeded, which means that the page cache is no longer
+> coherent with the disk!
+> 
+> Programs are not supposed to mix IO types and this is a clear case of
+> data corruption, so store an EIO which will be reflected to userspace
+> during the next fsync.  Replace the WARN_ON with a ratelimited pr_crit
+> so that the developers have /some/ kind of breadcrumb to track down the
+> offending program(s) and file(s) involved.
+>
 
---Apple-Mail=_971D4E2E-CE3A-457F-BEB8-70095D0F9B34
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
+Looks good to me, thanks for addressing the warning.
 
-Hi Ted,
-is there any update on the SMR patches for ext4?  Do you know where the
-most recent version of the SMR patch is available and/or could you repost
-to the list?  I was talking to some users/developers that were interested
-in testing, updating, and landing the patch if possible.
+Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
 
-Cheers, Andreas
+Thanks,
 
+-liubo
 
-
-
-
-
---Apple-Mail=_971D4E2E-CE3A-457F-BEB8-70095D0F9B34
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFaD0/ipIg59Q01vtYRAlMCAKDc1+hJe/KKm0rF5tPYb03JJA46NwCfUDf8
-enK4pE0Xb8JssQ6CVaNqk7A=
-=Mg9I
------END PGP SIGNATURE-----
-
---Apple-Mail=_971D4E2E-CE3A-457F-BEB8-70095D0F9B34--
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> ---
+>  fs/direct-io.c     |   24 +++++++++++++++++++++++-
+>  fs/iomap.c         |   12 ++++++++++--
+>  include/linux/fs.h |    1 +
+>  3 files changed, 34 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/direct-io.c b/fs/direct-io.c
+> index 98fe132..ef5d12a 100644
+> --- a/fs/direct-io.c
+> +++ b/fs/direct-io.c
+> @@ -219,6 +219,27 @@ static inline struct page *dio_get_page(struct dio *dio,
+>  	return dio->pages[sdio->head];
+>  }
+>  
+> +/*
+> + * Warn about a page cache invalidation failure during a direct io write.
+> + */
+> +void dio_warn_stale_pagecache(struct file *filp)
+> +{
+> +	static DEFINE_RATELIMIT_STATE(_rs, 30 * HZ, DEFAULT_RATELIMIT_BURST);
+> +	char pathname[128];
+> +	struct inode *inode = file_inode(filp);
+> +	char *path;
+> +
+> +	errseq_set(&inode->i_mapping->wb_err, -EIO);
+> +	if (__ratelimit(&_rs)) {
+> +		path = file_path(filp, pathname, sizeof(pathname));
+> +		if (IS_ERR(path))
+> +			path = "(unknown)";
+> +		pr_crit("Page cache invalidation failure on direct I/O.  Possible data corruption due to collision with buffered I/O!\n");
+> +		pr_crit("File: %s PID: %d Comm: %.20s\n", path, current->pid,
+> +			current->comm);
+> +	}
+> +}
+> +
+>  /**
+>   * dio_complete() - called when all DIO BIO I/O has been completed
+>   * @offset: the byte offset in the file of the completed operation
+> @@ -290,7 +311,8 @@ static ssize_t dio_complete(struct dio *dio, ssize_t ret, unsigned int flags)
+>  		err = invalidate_inode_pages2_range(dio->inode->i_mapping,
+>  					offset >> PAGE_SHIFT,
+>  					(offset + ret - 1) >> PAGE_SHIFT);
+> -		WARN_ON_ONCE(err);
+> +		if (err)
+> +			dio_warn_stale_pagecache(dio->iocb->ki_filp);
+>  	}
+>  
+>  	if (!(dio->flags & DIO_SKIP_DIO_COUNT))
+> diff --git a/fs/iomap.c b/fs/iomap.c
+> index 5011a96..028f329 100644
+> --- a/fs/iomap.c
+> +++ b/fs/iomap.c
+> @@ -753,7 +753,8 @@ static ssize_t iomap_dio_complete(struct iomap_dio *dio)
+>  		err = invalidate_inode_pages2_range(inode->i_mapping,
+>  				offset >> PAGE_SHIFT,
+>  				(offset + dio->size - 1) >> PAGE_SHIFT);
+> -		WARN_ON_ONCE(err);
+> +		if (err)
+> +			dio_warn_stale_pagecache(iocb->ki_filp);
+>  	}
+>  
+>  	inode_dio_end(file_inode(iocb->ki_filp));
+> @@ -1012,9 +1013,16 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+>  	if (ret)
+>  		goto out_free_dio;
+>  
+> +	/*
+> +	 * Try to invalidate cache pages for the range we're direct
+> +	 * writing.  If this invalidation fails, tough, the write will
+> +	 * still work, but racing two incompatible write paths is a
+> +	 * pretty crazy thing to do, so we don't support it 100%.
+> +	 */
+>  	ret = invalidate_inode_pages2_range(mapping,
+>  			start >> PAGE_SHIFT, end >> PAGE_SHIFT);
+> -	WARN_ON_ONCE(ret);
+> +	if (ret)
+> +		dio_warn_stale_pagecache(iocb->ki_filp);
+>  	ret = 0;
+>  
+>  	if (iov_iter_rw(iter) == WRITE && !is_sync_kiocb(iocb) &&
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 2690864..0e5f060 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2976,6 +2976,7 @@ enum {
+>  };
+>  
+>  void dio_end_io(struct bio *bio);
+> +void dio_warn_stale_pagecache(struct file *filp);
+>  
+>  ssize_t __blockdev_direct_IO(struct kiocb *iocb, struct inode *inode,
+>  			     struct block_device *bdev, struct iov_iter *iter,
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
