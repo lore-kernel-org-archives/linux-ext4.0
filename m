@@ -1,123 +1,64 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH v2 4/4] man: add -b option to e2image
-Date: Mon, 20 Nov 2017 12:59:27 -0700
-Message-ID: <DE1A9D39-BB63-43D0-B6DF-B885D4B76048@dilger.ca>
-References: <20171116135546.9991-1-artem.blagodarenko@gmail.com>
- <20171116135546.9991-5-artem.blagodarenko@gmail.com>
+Subject: Re: [PATCH v2 4/7] debugfs: 64bit inode support
+Date: Mon, 20 Nov 2017 13:22:49 -0700
+Message-ID: <4C5A042E-350C-4C9A-A2EE-80B571ACD7C1@dilger.ca>
+References: <20171114070440.79510-1-artem.blagodarenko@gmail.com>
+ <20171114070440.79510-5-artem.blagodarenko@gmail.com>
 Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_5CEAECF8-6DF3-4615-B728-1AC9D22E7B28";
+ boundary="Apple-Mail=_6E3EC6BB-BC3A-4D9A-832C-CF31E200D101";
  protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        Artem Blagodarenko <artem.blagodarenko@seagate.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
 To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:42815 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752288AbdKTT7c (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Nov 2017 14:59:32 -0500
-Received: by mail-io0-f193.google.com with SMTP id u42so16972646ioi.9
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2017 11:59:31 -0800 (PST)
-In-Reply-To: <20171116135546.9991-5-artem.blagodarenko@gmail.com>
+Received: from mail-io0-f194.google.com ([209.85.223.194]:44554 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751299AbdKTUWy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Nov 2017 15:22:54 -0500
+Received: by mail-io0-f194.google.com with SMTP id w127so17043693iow.11
+        for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2017 12:22:53 -0800 (PST)
+In-Reply-To: <20171114070440.79510-5-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Apple-Mail=_5CEAECF8-6DF3-4615-B728-1AC9D22E7B28
+--Apple-Mail=_6E3EC6BB-BC3A-4D9A-832C-CF31E200D101
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Nov 16, 2017, at 6:55 AM, Artem Blagodarenko =
+On Nov 14, 2017, at 12:04 AM, Artem Blagodarenko =
 <artem.blagodarenko@gmail.com> wrote:
 >=20
-> From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+> New dirdata type EXT2_DIRENT_INODE is added.
 >=20
-> Add manual page for e2image -b option.
->=20
+> Lustre-bug: https://jira.hpdd.intel.com/browse/LU-9309
 > Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+> ---
+> debugfs/ls.c         | 6 ++++--
+> lib/ext2fs/ext2_fs.h | 1 +
+> 2 files changed, 5 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/debugfs/ls.c b/debugfs/ls.c
+> index 5655933e..b67c0800 100644
+> --- a/debugfs/ls.c
+> +++ b/debugfs/ls.c
+> @@ -64,11 +64,13 @@ static void list_dirdata(struct list_dir_struct =
+*ls,
+>=20
+> 		dlen =3D data[0];
+>=20
+> -		if (dirdata_mask =3D=3D EXT2_DIRENT_LUFID) {
+> +		if (dirdata_mask =3D=3D EXT2_DIRENT_INODE)
+> +			fprintf(ls->f, "ino64:%04\n", *(__u32 *)(data + =
+1));
+> +		else if (dirdata_mask =3D=3D EXT2_DIRENT_LUFID) {
 
-Personally, I would include this into the patch that adds this option,
-but it looks fine as-is.
+(style) add {} around first part of if/else if needed on any part.
+
+Looks fine otherwise.  You could add my:
 
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-> ---
-> misc/e2image.8.in | 32 ++++++++++++++++++++++++++++++++
-> 1 file changed, 32 insertions(+)
->=20
-> diff --git a/misc/e2image.8.in b/misc/e2image.8.in
-> index f28a76ea..d6125bb4 100644
-> --- a/misc/e2image.8.in
-> +++ b/misc/e2image.8.in
-> @@ -11,6 +11,14 @@ e2image \- Save critical ext2/ext3/ext4 filesystem =
-metadata to a file
-> .B \-r|Q
-> ]
-> [
-> +.B \-b
-> +.I superblock
-> +]
-> +[
-> +.B \-B
-> +.I blocksize
-> +]
-> +[
-> .B \-fr
-> ]
-> .I device
-> @@ -167,6 +175,22 @@ the
-> option will prevent analysis of problems related to hash-tree indexed
-> directories.
-> .PP
-> +Option
-> +.B \-b
-> +.I superblock
-> +can be used to get image from partition with broken primary =
-superblock.
-> +The partition is copied as is including broken primary superblock.
-> +.PP
-> +Option
-> +.B \-B
-> +.I blocksize
-> +can be used to set superblock block size. Normally,  e2fsck  will  =
-search
-> +for  the superblock at various different block sizes in an attempt to =
-find
-> +the appropriate blocksize. This search can be fooled in some cases.  =
-This
-> +option forces e2fsck to only try locating the superblock at a =
-particular
-> +blocksize. If the superblock is not found, e2fsck will terminate with =
-a
-> +fatal error.
-> +.PP
-> Note that this will work even if you substitute "/dev/hda1" for =
-another raw
-> disk image, or QCOW2 image previously created by
-> .BR e2image .
-> @@ -217,6 +241,14 @@ This can be useful to write a qcow2 image =
-containing all data to a
-> sparse image file where it can be loop mounted, or to a disk =
-partition.
-> Note that this may not work with qcow2 images not generated by =
-e2image.
-> .PP
-> +Options
-> +.B \-b
-> +.I superblock
-> +and
-> +.B \-B
-> +.I blocksize
-> +can be used same way as for raw images.
-> +.PP
-> .SH INCLUDING DATA
-> Normally
-> .B e2image
-> --
-> 2.13.6 (Apple Git-96)
->=20
-
 
 Cheers, Andreas
 
@@ -126,7 +67,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_5CEAECF8-6DF3-4615-B728-1AC9D22E7B28
+--Apple-Mail=_6E3EC6BB-BC3A-4D9A-832C-CF31E200D101
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -137,9 +78,9 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iD8DBQFaEzQfpIg59Q01vtYRAgeZAKCXyaNGkw38j2hd5epx4Wo53pONSQCg4uLB
-tb8Eq29tg9fBLc2vm4Cs/mM=
-=GlvP
+iD8DBQFaEzmZpIg59Q01vtYRAosGAJ9BKuU5yX7JvOnazMAE6chpvwfgmACggWF4
+6pSJxJX9ufhDt61fRJYaXdI=
+=G5ow
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_5CEAECF8-6DF3-4615-B728-1AC9D22E7B28--
+--Apple-Mail=_6E3EC6BB-BC3A-4D9A-832C-CF31E200D101--
