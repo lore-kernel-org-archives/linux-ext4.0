@@ -1,66 +1,145 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 151491] free space lossage on busy system with bigalloc enabled
- and 128KB cluster
-Date: Mon, 20 Nov 2017 17:59:39 +0000
-Message-ID: <bug-151491-13602-mEzjLuTl2m@https.bugzilla.kernel.org/>
-References: <bug-151491-13602@https.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH v2 1/4] ext2fs: opening filesystem code refactoring
+Date: Mon, 20 Nov 2017 12:42:34 -0700
+Message-ID: <472F8A4A-63CF-4286-BD9A-5BE4981D2443@dilger.ca>
+References: <20171116135546.9991-1-artem.blagodarenko@gmail.com>
+ <20171116135546.9991-2-artem.blagodarenko@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_EB04C767-A7A1-443B-B036-C15A9CDA48D6";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+        Artem Blagodarenko <artem.blagodarenko@seagate.com>
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:32816 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751781AbdKTR7k (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 20 Nov 2017 12:59:40 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 4161C29456
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2017 17:59:40 +0000 (UTC)
-In-Reply-To: <bug-151491-13602@https.bugzilla.kernel.org/>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:40143 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752107AbdKTTmZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Nov 2017 14:42:25 -0500
+Received: by mail-it0-f66.google.com with SMTP id 72so13102591itl.5
+        for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2017 11:42:24 -0800 (PST)
+In-Reply-To: <20171116135546.9991-2-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=151491
 
---- Comment #13 from Betacentauri (betacentauri@arcor.de) ---
-The ARM machine I use has very little free memory. So that fits to your
-analysis. 
-With your information I could also reproduce it in the xfstests environment
-with nodelalloc. But only 2 times. I set memory in the virtual machine to 256MB
-(in config.kvm). Then I mounted the filesystem with nodelalloc and executed
-this little script several times:
+--Apple-Mail=_EB04C767-A7A1-443B-B036-C15A9CDA48D6
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-#!/bin/bash
+On Nov 16, 2017, at 6:55 AM, Artem Blagodarenko =
+<artem.blagodarenko@gmail.com> wrote:
+>=20
+> From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+>=20
+> There are similar opening filesystem code in different utilities.
+>=20
+> The patch moves this code to ext2fs_try_open_fs().
+> This function make one of the action based on parameters:
+> 1) open filesystem with given superblock, superblock size
+> 2) open filesystem with given superblock, but try to
+> find right block size
+> 3) open filesystem with default superblock and block size
+>=20
+> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+> ---
+> e2fsck/unix.c       | 28 +++-------------------------
+> lib/ext2fs/ext2fs.h |  4 ++++
+> lib/ext2fs/openfs.c | 36 +++++++++++++++++++++++++++++++++++-
+> misc/dumpe2fs.c     | 17 +++--------------
+> 4 files changed, 45 insertions(+), 40 deletions(-)
+>=20
+> diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+> index 6774e32c..c394ec80 100644
+> --- a/lib/ext2fs/ext2fs.h
+> +++ b/lib/ext2fs/ext2fs.h
+> @@ -1588,6 +1588,10 @@ extern errcode_t ext2fs_open2(const char *name, =
+const char *io_options,
+> 			      int flags, int superblock,
+> 			      unsigned int block_size, io_manager =
+manager,
+> 			      ext2_filsys *ret_fs);
+> +extern errcode_t ext2fs_try_open_fs(char *filesystem_name, char =
+*io_options,
+> +			     blk64_t superblock, int blocksize, int =
+flags,
+> +			     io_manager io_ptr, ext2_filsys *ret_fs);
 
-i=0
-while [ $i -lt 10 ]; do
- dd if=/dev/zero of=./test$i bs=1M count=200 > /dev/null
- cp test$i testx_$i
- sync
- let i=i+1
- echo $i
-done
+This ext2fs_try_open_fs() function is declared here, but isn't added in =
+this
+patch.  It is removed in the next patch, but should really have been =
+removed
+here instead.
 
-Result was this:
-root@kvm-xfstests:/media/test# ls -las
-total 4097028
-   256 drwxr-xr-x 3 root root      4096 Nov 20 17:43 .
-     4 drwxr-xr-x 3 root root      4096 Nov 20 17:33 ..
-   256 -rwxr-xr-x 1 root root       155 Nov 20 17:48 h.sh
-   256 drwx------ 2 root root     16384 Nov 20 17:26 lost+found
-204800 -rw-r--r-- 1 root root 209715200 Nov 20 17:48 test0
-205056 -rw-r--r-- 1 root root 209715200 Nov 20 17:48 test1
-204800 -rw-r--r-- 1 root root 209715200 Nov 20 17:48 test2
-204800 -rw-r--r-- 1 root root 209715200 Nov 20 17:48 test3
-204800 -rw-r--r-- 1 root root 209715200 Nov 20 17:48 test4
-...
+> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+> index f74cd245..585ad766 100644
+> --- a/lib/ext2fs/openfs.c
+> +++ b/lib/ext2fs/openfs.c
+> @@ -497,6 +497,40 @@ cleanup:
+> 	return retval;
+> }
+>=20
+> +errcode_t ext2fs_open2(const char *name, const char *io_options,
+> +		       int flags, int superblock,
+> +		       unsigned int block_size, io_manager manager,
+> +		       ext2_filsys *ret_fs)
+> +{
+> +	errcode_t retval;
+> +
+> +	*ret_fs =3D NULL;
+> +	if (superblock && block_size) {
+> +		retval =3D __ext2fs_open2(name, io_options,
+> +				      flags, superblock, block_size,
+> +				      manager, ret_fs);
+> +	} else if (superblock) {
+> +		int block_size;
+> +
+> +		for (block_size =3D EXT2_MIN_BLOCK_SIZE;
+> +		     block_size <=3D EXT2_MAX_BLOCK_SIZE; block_size *=3D =
+2) {
+> +			if (*ret_fs) {
+> +				ext2fs_free(*ret_fs);
+> +				*ret_fs =3D NULL;
+> +			}
+> +			retval =3D __ext2fs_open2(name,
+> +					      io_options, flags,
+> +					      superblock, block_size,
+> +					      manager, ret_fs);
+> +			if (!retval)
+> +				break;
+> +		}
+> +	} else
+> +		retval =3D __ext2fs_open2(name, io_options,
+> +				      flags, 0, 0, manager, ret_fs);
 
-One file has size 205056. But I cannot really reproduce it.
+I still think it would be useful to automatically try to open the backup
+superblocks, if no superblock number is specified.  That could be done
+in a separate patch.
 
-So better focus on fixing the bug than on trying to reproduce it with
-nodelalloc. If I find a way to reproduce, I'll let you know ;-)
+In general, it looks like a good cleanup of the code.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_EB04C767-A7A1-443B-B036-C15A9CDA48D6
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFaEzArpIg59Q01vtYRApIhAKDiqW9zxnxOigiB8wTcWM7GKuk8XACgnW4W
+rIMELZG9eCAnnv0aTtRr09Y=
+=8Lop
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_EB04C767-A7A1-443B-B036-C15A9CDA48D6--
