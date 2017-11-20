@@ -1,47 +1,54 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 151491] free space lossage on busy system with bigalloc enabled
- and 128KB cluster
-Date: Mon, 20 Nov 2017 15:50:09 +0000
-Message-ID: <bug-151491-13602-4iiHF8y1RA@https.bugzilla.kernel.org/>
-References: <bug-151491-13602@https.bugzilla.kernel.org/>
+From: Matthew Wilcox <willy@infradead.org>
+Subject: Re: [PATCH v2] iomap: report collisions between directio and
+ buffered writes to userspace
+Date: Mon, 20 Nov 2017 08:18:29 -0800
+Message-ID: <20171120161829.GA25991@bombadil.infradead.org>
+References: <20171117193925.GM5119@magnolia>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:60056 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751301AbdKTPuM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 20 Nov 2017 10:50:12 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9229528D6A
-        for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2017 15:50:11 +0000 (UTC)
-In-Reply-To: <bug-151491-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs <linux-xfs@vger.kernel.org>, Ilya Dryomov <idryomov@gmail.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Dave Chinner <david@fromorbit.com>,
+        Brian Foster <bfoster@redhat.com>,
+        holger@applied-asynchrony.com,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20171117193925.GM5119@magnolia>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=151491
+On Fri, Nov 17, 2017 at 11:39:25AM -0800, Darrick J. Wong wrote:
+> If two programs simultaneously try to write to the same part of a file
+> via direct IO and buffered IO, there's a chance that the post-diowrite
+> pagecache invalidation will fail on the dirty page.  When this happens,
+> the dio write succeeded, which means that the page cache is no longer
+> coherent with the disk!
 
---- Comment #12 from Eric Whitney (enwlinux@gmail.com) ---
-After many attempts, I'm unable to reproduce the newly reported behavior for
-the delalloc workaround in comment 11 on my x86-64 test system (which is not an
-xfstests-bld test appliance) running either a current 4.14 kernel or an older
-Debian Jessie 4.8 kernel.  I consistently get a reported value of 10240 1k
-units, which is correct for the reported size.
+This seems like a good opportunity to talk about what I've been working
+on for solving this problem.  The XArray is going to introduce a set
+of entries which can be stored to locations in the page cache that I'm
+calling 'wait entries'.
 
-However, in the process of running my trials I arrived at a simpler reproducer
-that should be helpful in identifying the source of the original space
-reporting problem.  There's no need to copy the first test file if the test
-system's free memory is sufficiently limited relative to the size of the test
-file - a simple sequential write of a single test file suffices.  In fact, the
-tighter the free memory, the more likely the problem occurs and the likelihood
-of larger reporting errors increases.  A test system with ample free memory
-won't exhibit the problem at all.
+When starting direct IO, the page cache will insert a wait entry in each
+of the indices covered by the I/O (and do the usual invalidation dance).
+At the end of direct IO, it will remove the wait entry and wake up any
+threads waiting on those entries.
 
-I'm getting workable kernel traces with the simpler reproducer, and the free
-memory-related behavior suggests a direction, so I'll see where that takes me.
+During lookup, any thread which encounters a wait entry (pagefaults,
+buffered reads, buffered writes) will sleep on the indicated wait queue.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+I don't know what a direct IO thread should do when encountering a wait
+entry.  Fail the I/O?  Sleep like any other lookup would?  Go ahead and
+issue the I/O anyway?  (uhm, I see a lot of problems with implementing
+that third option.)
+
+I'm currently planning on using 256 'wait entries', one for each
+PAGE_WAIT_TABLE_SIZE, and sharing those wait queue heads.  Maybe that's
+overengineering the solution.
+
+Anyway, I need to get the basics of the XArray finished off before I do
+this, but it'd be great if somebody pointed out why this doesn't work
+before I implement it.
