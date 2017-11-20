@@ -1,144 +1,47 @@
-From: Liu Bo <bo.li.liu@oracle.com>
-Subject: Re: [PATCH v2] iomap: report collisions between directio and
- buffered writes to userspace
-Date: Fri, 17 Nov 2017 14:56:41 -0800
-Message-ID: <20171117225640.GA11918@dhcp-10-11-180-142.int.fusionio.com>
-References: <20171117193925.GM5119@magnolia>
-Reply-To: bo.li.liu@oracle.com
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 151491] free space lossage on busy system with bigalloc enabled
+ and 128KB cluster
+Date: Mon, 20 Nov 2017 15:50:09 +0000
+Message-ID: <bug-151491-13602-4iiHF8y1RA@https.bugzilla.kernel.org/>
+References: <bug-151491-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: xfs <linux-xfs@vger.kernel.org>, Ilya Dryomov <idryomov@gmail.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Dave Chinner <david@fromorbit.com>,
-        Brian Foster <bfoster@redhat.com>,
-        holger@applied-asynchrony.com,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171117193925.GM5119@magnolia>
-Sender: linux-btrfs-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:60056 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751301AbdKTPuM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 20 Nov 2017 10:50:12 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9229528D6A
+        for <linux-ext4@vger.kernel.org>; Mon, 20 Nov 2017 15:50:11 +0000 (UTC)
+In-Reply-To: <bug-151491-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 17, 2017 at 11:39:25AM -0800, Darrick J. Wong wrote:
-> From: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> If two programs simultaneously try to write to the same part of a file
-> via direct IO and buffered IO, there's a chance that the post-diowrite
-> pagecache invalidation will fail on the dirty page.  When this happens,
-> the dio write succeeded, which means that the page cache is no longer
-> coherent with the disk!
-> 
-> Programs are not supposed to mix IO types and this is a clear case of
-> data corruption, so store an EIO which will be reflected to userspace
-> during the next fsync.  Replace the WARN_ON with a ratelimited pr_crit
-> so that the developers have /some/ kind of breadcrumb to track down the
-> offending program(s) and file(s) involved.
->
+https://bugzilla.kernel.org/show_bug.cgi?id=151491
 
-Looks good to me, thanks for addressing the warning.
+--- Comment #12 from Eric Whitney (enwlinux@gmail.com) ---
+After many attempts, I'm unable to reproduce the newly reported behavior for
+the delalloc workaround in comment 11 on my x86-64 test system (which is not an
+xfstests-bld test appliance) running either a current 4.14 kernel or an older
+Debian Jessie 4.8 kernel.  I consistently get a reported value of 10240 1k
+units, which is correct for the reported size.
 
-Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
+However, in the process of running my trials I arrived at a simpler reproducer
+that should be helpful in identifying the source of the original space
+reporting problem.  There's no need to copy the first test file if the test
+system's free memory is sufficiently limited relative to the size of the test
+file - a simple sequential write of a single test file suffices.  In fact, the
+tighter the free memory, the more likely the problem occurs and the likelihood
+of larger reporting errors increases.  A test system with ample free memory
+won't exhibit the problem at all.
 
-Thanks,
+I'm getting workable kernel traces with the simpler reproducer, and the free
+memory-related behavior suggests a direction, so I'll see where that takes me.
 
--liubo
-
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> ---
->  fs/direct-io.c     |   24 +++++++++++++++++++++++-
->  fs/iomap.c         |   12 ++++++++++--
->  include/linux/fs.h |    1 +
->  3 files changed, 34 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/direct-io.c b/fs/direct-io.c
-> index 98fe132..ef5d12a 100644
-> --- a/fs/direct-io.c
-> +++ b/fs/direct-io.c
-> @@ -219,6 +219,27 @@ static inline struct page *dio_get_page(struct dio *dio,
->  	return dio->pages[sdio->head];
->  }
->  
-> +/*
-> + * Warn about a page cache invalidation failure during a direct io write.
-> + */
-> +void dio_warn_stale_pagecache(struct file *filp)
-> +{
-> +	static DEFINE_RATELIMIT_STATE(_rs, 30 * HZ, DEFAULT_RATELIMIT_BURST);
-> +	char pathname[128];
-> +	struct inode *inode = file_inode(filp);
-> +	char *path;
-> +
-> +	errseq_set(&inode->i_mapping->wb_err, -EIO);
-> +	if (__ratelimit(&_rs)) {
-> +		path = file_path(filp, pathname, sizeof(pathname));
-> +		if (IS_ERR(path))
-> +			path = "(unknown)";
-> +		pr_crit("Page cache invalidation failure on direct I/O.  Possible data corruption due to collision with buffered I/O!\n");
-> +		pr_crit("File: %s PID: %d Comm: %.20s\n", path, current->pid,
-> +			current->comm);
-> +	}
-> +}
-> +
->  /**
->   * dio_complete() - called when all DIO BIO I/O has been completed
->   * @offset: the byte offset in the file of the completed operation
-> @@ -290,7 +311,8 @@ static ssize_t dio_complete(struct dio *dio, ssize_t ret, unsigned int flags)
->  		err = invalidate_inode_pages2_range(dio->inode->i_mapping,
->  					offset >> PAGE_SHIFT,
->  					(offset + ret - 1) >> PAGE_SHIFT);
-> -		WARN_ON_ONCE(err);
-> +		if (err)
-> +			dio_warn_stale_pagecache(dio->iocb->ki_filp);
->  	}
->  
->  	if (!(dio->flags & DIO_SKIP_DIO_COUNT))
-> diff --git a/fs/iomap.c b/fs/iomap.c
-> index 5011a96..028f329 100644
-> --- a/fs/iomap.c
-> +++ b/fs/iomap.c
-> @@ -753,7 +753,8 @@ static ssize_t iomap_dio_complete(struct iomap_dio *dio)
->  		err = invalidate_inode_pages2_range(inode->i_mapping,
->  				offset >> PAGE_SHIFT,
->  				(offset + dio->size - 1) >> PAGE_SHIFT);
-> -		WARN_ON_ONCE(err);
-> +		if (err)
-> +			dio_warn_stale_pagecache(iocb->ki_filp);
->  	}
->  
->  	inode_dio_end(file_inode(iocb->ki_filp));
-> @@ -1012,9 +1013,16 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
->  	if (ret)
->  		goto out_free_dio;
->  
-> +	/*
-> +	 * Try to invalidate cache pages for the range we're direct
-> +	 * writing.  If this invalidation fails, tough, the write will
-> +	 * still work, but racing two incompatible write paths is a
-> +	 * pretty crazy thing to do, so we don't support it 100%.
-> +	 */
->  	ret = invalidate_inode_pages2_range(mapping,
->  			start >> PAGE_SHIFT, end >> PAGE_SHIFT);
-> -	WARN_ON_ONCE(ret);
-> +	if (ret)
-> +		dio_warn_stale_pagecache(iocb->ki_filp);
->  	ret = 0;
->  
->  	if (iov_iter_rw(iter) == WRITE && !is_sync_kiocb(iocb) &&
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 2690864..0e5f060 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -2976,6 +2976,7 @@ enum {
->  };
->  
->  void dio_end_io(struct bio *bio);
-> +void dio_warn_stale_pagecache(struct file *filp);
->  
->  ssize_t __blockdev_direct_IO(struct kiocb *iocb, struct inode *inode,
->  			     struct block_device *bdev, struct iov_iter *iter,
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
