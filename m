@@ -1,138 +1,137 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH v3] iomap: report collisions between directio and  buffered
- writes to userspace
-Date: Tue, 21 Nov 2017 12:34:16 -0800
-Message-ID: <20171121203416.GE2135@magnolia>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v2] iomap: report collisions between directio and
+ buffered writes to userspace
+Date: Wed, 22 Nov 2017 09:28:06 +1100
+Message-ID: <20171121222806.GQ5858@dastard>
+References: <20171117193925.GM5119@magnolia>
+ <20171120161829.GA25991@bombadil.infradead.org>
+ <20171120202606.GN5858@dastard>
+ <20171120215100.GB8933@bombadil.infradead.org>
+ <20171120222749.GO5858@dastard>
+ <20171121013753.GA12441@magnolia>
+ <20171121043240.GB8774@bombadil.infradead.org>
+ <20171121064815.GP5858@dastard>
+ <20171121125253.GA1484@bombadil.infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <willy@infradead.org>,
-        Dave Chinner <david@fromorbit.com>,
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
         xfs <linux-xfs@vger.kernel.org>,
         Ilya Dryomov <idryomov@gmail.com>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         Brian Foster <bfoster@redhat.com>,
         holger@applied-asynchrony.com,
         linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>, bo.li.liu@oracle.com,
-        viro@ZenIV.linux.org.uk
-To: torvalds@linux-foundation.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:51250 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751238AbdKUUe4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Nov 2017 15:34:56 -0500
+        linux-btrfs <linux-btrfs@vger.kernel.org>
+To: Matthew Wilcox <willy@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20171121125253.GA1484@bombadil.infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Darrick J. Wong <darrick.wong@oracle.com>
+On Tue, Nov 21, 2017 at 04:52:53AM -0800, Matthew Wilcox wrote:
+> On Tue, Nov 21, 2017 at 05:48:15PM +1100, Dave Chinner wrote:
+> > On Mon, Nov 20, 2017 at 08:32:40PM -0800, Matthew Wilcox wrote:
+> > > On Mon, Nov 20, 2017 at 05:37:53PM -0800, Darrick J. Wong wrote:
+> > > > On Tue, Nov 21, 2017 at 09:27:49AM +1100, Dave Chinner wrote:
+> > > > > First thing I noticed was that "xa" as a prefix is already quite
+> > > > > widely used in XFS - it's shorthand for "XFS AIL". Indeed, xa_lock
+> > >
+> > > The X stands for 'eXpandable' or 'eXtending'.  I really don't want to
+> > > use more than a two-letter acronym for whatever the XArray ends up being
+> > > called.  One of the problems with the radix tree is that everything has
+> > > that 11-character 'radix_tree_' prefix; just replacing that with 'xa_'
+> > > makes a huge improvement to readability.
+> > 
+> > Yeah, understood. That's why
+> > we have very little clear
+> > prefix namespace left.... :/
+> > 
+> > [ somedays I write something that looks sorta like a haiku, and from
+> > that point on everything just starts falling out of my brain that
+> > way. I blame Eric for this today! :P ]
+> 
+> When the namespace is
+> tight we must consider the
+> competing users.
+> 
+> The earliest us'r
+> has a claim to a prefix
+> we are used to it.
+> 
+> Also a more wide-
+> spread user has a claim to
+> a shorter prefix.
+> 
+> Would you mind changing
+> your prefix to one only
+> one letter longer?
 
-If two programs simultaneously try to write to the same part of a file
-via direct IO and buffered IO, there's a chance that the post-diowrite
-pagecache invalidation will fail on the dirty page.  When this happens,
-the dio write succeeded, which means that the page cache is no longer
-coherent with the disk!
+We can do something
+like that, though Darrick has the
+final say in it.
 
-Programs are not supposed to mix IO types and this is a clear case of
-data corruption, so store an EIO which will be reflected to userspace
-during the next fsync.  Replace the WARN_ON with a ratelimited pr_crit
-so that the developers have /some/ kind of breadcrumb to track down the
-offending program(s) and file(s) involved.
+> ... ok, I give up ;-)
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
----
-v3: increase ratelimit period to 30s
-v2: fix old and new dio paths
----
- fs/direct-io.c     |   24 +++++++++++++++++++++++-
- fs/iomap.c         |   12 ++++++++++--
- include/linux/fs.h |    1 +
- 3 files changed, 34 insertions(+), 3 deletions(-)
+Top marks for effort :)
 
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index 98fe132..ef5d12a 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -219,6 +219,27 @@ static inline struct page *dio_get_page(struct dio *dio,
- 	return dio->pages[sdio->head];
- }
- 
-+/*
-+ * Warn about a page cache invalidation failure during a direct io write.
-+ */
-+void dio_warn_stale_pagecache(struct file *filp)
-+{
-+	static DEFINE_RATELIMIT_STATE(_rs, 30 * HZ, DEFAULT_RATELIMIT_BURST);
-+	char pathname[128];
-+	struct inode *inode = file_inode(filp);
-+	char *path;
-+
-+	errseq_set(&inode->i_mapping->wb_err, -EIO);
-+	if (__ratelimit(&_rs)) {
-+		path = file_path(filp, pathname, sizeof(pathname));
-+		if (IS_ERR(path))
-+			path = "(unknown)";
-+		pr_crit("Page cache invalidation failure on direct I/O.  Possible data corruption due to collision with buffered I/O!\n");
-+		pr_crit("File: %s PID: %d Comm: %.20s\n", path, current->pid,
-+			current->comm);
-+	}
-+}
-+
- /**
-  * dio_complete() - called when all DIO BIO I/O has been completed
-  * @offset: the byte offset in the file of the completed operation
-@@ -290,7 +311,8 @@ static ssize_t dio_complete(struct dio *dio, ssize_t ret, unsigned int flags)
- 		err = invalidate_inode_pages2_range(dio->inode->i_mapping,
- 					offset >> PAGE_SHIFT,
- 					(offset + ret - 1) >> PAGE_SHIFT);
--		WARN_ON_ONCE(err);
-+		if (err)
-+			dio_warn_stale_pagecache(dio->iocb->ki_filp);
- 	}
- 
- 	if (!(dio->flags & DIO_SKIP_DIO_COUNT))
-diff --git a/fs/iomap.c b/fs/iomap.c
-index 5011a96..028f329 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -753,7 +753,8 @@ static ssize_t iomap_dio_complete(struct iomap_dio *dio)
- 		err = invalidate_inode_pages2_range(inode->i_mapping,
- 				offset >> PAGE_SHIFT,
- 				(offset + dio->size - 1) >> PAGE_SHIFT);
--		WARN_ON_ONCE(err);
-+		if (err)
-+			dio_warn_stale_pagecache(iocb->ki_filp);
- 	}
- 
- 	inode_dio_end(file_inode(iocb->ki_filp));
-@@ -1012,9 +1013,16 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	if (ret)
- 		goto out_free_dio;
- 
-+	/*
-+	 * Try to invalidate cache pages for the range we're direct
-+	 * writing.  If this invalidation fails, tough, the write will
-+	 * still work, but racing two incompatible write paths is a
-+	 * pretty crazy thing to do, so we don't support it 100%.
-+	 */
- 	ret = invalidate_inode_pages2_range(mapping,
- 			start >> PAGE_SHIFT, end >> PAGE_SHIFT);
--	WARN_ON_ONCE(ret);
-+	if (ret)
-+		dio_warn_stale_pagecache(iocb->ki_filp);
- 	ret = 0;
- 
- 	if (iov_iter_rw(iter) == WRITE && !is_sync_kiocb(iocb) &&
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2690864..0e5f060 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2976,6 +2976,7 @@ enum {
- };
- 
- void dio_end_io(struct bio *bio);
-+void dio_warn_stale_pagecache(struct file *filp);
- 
- ssize_t __blockdev_direct_IO(struct kiocb *iocb, struct inode *inode,
- 			     struct block_device *bdev, struct iov_iter *iter,
+> All your current usage of the xa_ prefix looks somewhat like this:
+> 
+> fs/xfs/xfs_trans_ail.c: spin_lock(&ailp->xa_lock);
+> 
+> with honourable mentions to:
+> fs/xfs/xfs_log.c:	spin_lock(&mp->m_ail->xa_lock);
+> 
+> Would you mind if I bolt a patch on to the front of the series called
+> something like "free up xa_ namespace" that renamed your xa_* to ail_*?
+> There are no uses of the 'ail_' prefix in the kernel today.
+> 
+> I don't think that
+> 	spin_lock(&ailp->ail_lock);
+> loses any readability.
+
+Not sure that's going to work - there's an "xa_ail" member for the
+AIL list head. That would now read in places:
+
+	if (list_empty(&ailp->ail_ail))
+
+I'd be inclined to just drop the "xa_" prefix from the XFS
+structure.  There is no information loss by removing the prefix in
+the XFS code because the pointer name tells us what structure it is
+pointing at.
+
+> 
+> By the way, what does AIL stand for?  It'd be nice if it were spelled out
+> in at least one of the header files, maybe fs/xfs/xfs_trans_priv.h?
+
+Active Item List. See the section "Tracking Changes" in
+Documentation/filesystems/xfs-delayed-logging-design.txt for the
+full rundown, but in short:
+
+"The log item is already used to track the log items that have been
+written to the log but not yet written to disk. Such log items are
+considered "active" and as such are stored in the Active Item List
+(AIL) which is a LSN-ordered double linked list. Items are inserted
+into this list during log buffer IO completion, after which they are
+unpinned and can be written to disk."
+
+The lack of comments describing the AIL is historic - it's never
+been documented in the code, nor has the whole relogging concept it
+implements. I wrote the document above when introducing the CIL
+(Commited Item List) because almost no-one actively working on XFS
+understood how the whole journalling subsystem worked in any detail.
+
+> > Zoetrope Array.
+> > Labyrinth of illusion.
+> > Structure never ends.
+> 
+> Thank you for making me look up zoetrope ;-)
+
+My pleasure :)
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
