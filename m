@@ -1,153 +1,275 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v2] iomap: report collisions between directio and
- buffered writes to userspace
-Date: Tue, 21 Nov 2017 16:05:06 -0800
-Message-ID: <20171122000506.GF2135@magnolia>
-References: <20171117193925.GM5119@magnolia>
- <20171120161829.GA25991@bombadil.infradead.org>
- <20171120202606.GN5858@dastard>
- <20171120215100.GB8933@bombadil.infradead.org>
- <20171120222749.GO5858@dastard>
- <20171121013753.GA12441@magnolia>
- <20171121043240.GB8774@bombadil.infradead.org>
- <20171121064815.GP5858@dastard>
- <20171121125253.GA1484@bombadil.infradead.org>
- <20171121222806.GQ5858@dastard>
+From: Vlastimil Babka <vbabka-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 01/18] mm: introduce MAP_SHARED_VALIDATE, a mechanism to
+ safely define new mmap flags
+Date: Wed, 22 Nov 2017 13:02:09 +0100
+Message-ID: <638b3b80-5cb9-97c2-5055-fef3a1ec25b9@suse.cz>
+References: <20171101153648.30166-1-jack@suse.cz>
+ <20171101153648.30166-2-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <willy@infradead.org>,
-        xfs <linux-xfs@vger.kernel.org>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Brian Foster <bfoster@redhat.com>,
-        holger@applied-asynchrony.com,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171121222806.GQ5858@dastard>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
+        Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+        linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org, linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        "Darrick J . Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+        Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>,
+        Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+        Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+        Michal Hocko <mhocko-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+        Matthew Wilcox <willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+        Kees Cook <keescook-F7+t8E8rja9g9hUCZPvPmw@public.gmane.org>,
+        Florian Weimer <fweimer-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+        John Hubbard <jhubbard-DDmLM1+adcrQT0dZR+AlfA@public.gmane.org>,
+        "Kirill A. Shutemov" <kirill.shutemov-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20171101153648.30166-2-jack-AlSwsSmVLrQ@public.gmane.org>
+Content-Language: en-US
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 22, 2017 at 09:28:06AM +1100, Dave Chinner wrote:
-> On Tue, Nov 21, 2017 at 04:52:53AM -0800, Matthew Wilcox wrote:
-> > On Tue, Nov 21, 2017 at 05:48:15PM +1100, Dave Chinner wrote:
-> > > On Mon, Nov 20, 2017 at 08:32:40PM -0800, Matthew Wilcox wrote:
-> > > > On Mon, Nov 20, 2017 at 05:37:53PM -0800, Darrick J. Wong wrote:
-> > > > > On Tue, Nov 21, 2017 at 09:27:49AM +1100, Dave Chinner wrote:
-> > > > > > First thing I noticed was that "xa" as a prefix is already quite
-> > > > > > widely used in XFS - it's shorthand for "XFS AIL". Indeed, xa_lock
-> > > >
-> > > > The X stands for 'eXpandable' or 'eXtending'.  I really don't want to
-> > > > use more than a two-letter acronym for whatever the XArray ends up being
-> > > > called.  One of the problems with the radix tree is that everything has
-> > > > that 11-character 'radix_tree_' prefix; just replacing that with 'xa_'
-> > > > makes a huge improvement to readability.
-> > > 
-> > > Yeah, understood. That's why
-> > > we have very little clear
-> > > prefix namespace left.... :/
-> > > 
-> > > [ somedays I write something that looks sorta like a haiku, and from
-> > > that point on everything just starts falling out of my brain that
-> > > way. I blame Eric for this today! :P ]
-> > 
-> > When the namespace is
-> > tight we must consider the
-> > competing users.
-> > 
-> > The earliest us'r
-> > has a claim to a prefix
-> > we are used to it.
-> > 
-> > Also a more wide-
-> > spread user has a claim to
-> > a shorter prefix.
-> > 
-> > Would you mind changing
-> > your prefix to one only
-> > one letter longer?
+On 11/01/2017 04:36 PM, Jan Kara wrote:
+> From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 > 
-> We can do something
-> like that, though Darrick has the
-> final say in it.
+> The mmap(2) syscall suffers from the ABI anti-pattern of not validating
+> unknown flags. However, proposals like MAP_SYNC need a mechanism to
+> define new behavior that is known to fail on older kernels without the
+> support. Define a new MAP_SHARED_VALIDATE flag pattern that is
+> guaranteed to fail on all legacy mmap implementations.
 
-Keep this up and soon
-I'll require patch changelogs
-Written in Haiku. :P
+So I'm trying to make sense of this together with Michal's attempt for
+MAP_FIXED_SAFE [1] where he has to introduce a completely new flag
+instead of flag modifier exactly for the reason of not validating
+unknown flags. And my conclusion is that because MAP_SHARED_VALIDATE
+implies MAP_SHARED and excludes MAP_PRIVATE, MAP_FIXED_SAFE as a
+modifier cannot build on top of this. Wouldn't thus it be really better
+long-term to introduce mmap3 at this point? ...
 
-(j/k)
+Vlastimil
 
-Everyone in the US, have a happy Thanksgiving!
+[1] https://marc.info/?l=linux-arch&m=151083448322336&w=2
 
---D
-
-> > ... ok, I give up ;-)
+> It is worth noting that the original proposal was for a standalone
+> MAP_VALIDATE flag. However, when that  could not be supported by all
+> archs Linus observed:
 > 
-> Top marks for effort :)
+>     I see why you *think* you want a bitmap. You think you want
+>     a bitmap because you want to make MAP_VALIDATE be part of MAP_SYNC
+>     etc, so that people can do
 > 
-> > All your current usage of the xa_ prefix looks somewhat like this:
-> > 
-> > fs/xfs/xfs_trans_ail.c: spin_lock(&ailp->xa_lock);
-> > 
-> > with honourable mentions to:
-> > fs/xfs/xfs_log.c:	spin_lock(&mp->m_ail->xa_lock);
-> > 
-> > Would you mind if I bolt a patch on to the front of the series called
-> > something like "free up xa_ namespace" that renamed your xa_* to ail_*?
-> > There are no uses of the 'ail_' prefix in the kernel today.
-> > 
-> > I don't think that
-> > 	spin_lock(&ailp->ail_lock);
-> > loses any readability.
+>     ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED
+> 		    | MAP_SYNC, fd, 0);
 > 
-> Not sure that's going to work - there's an "xa_ail" member for the
-> AIL list head. That would now read in places:
+>     and "know" that MAP_SYNC actually takes.
 > 
-> 	if (list_empty(&ailp->ail_ail))
+>     And I'm saying that whole wish is bogus. You're fundamentally
+>     depending on special semantics, just make it explicit. It's already
+>     not portable, so don't try to make it so.
 > 
-> I'd be inclined to just drop the "xa_" prefix from the XFS
-> structure.  There is no information loss by removing the prefix in
-> the XFS code because the pointer name tells us what structure it is
-> pointing at.
+>     Rename that MAP_VALIDATE as MAP_SHARED_VALIDATE, make it have a value
+>     of 0x3, and make people do
 > 
-> > 
-> > By the way, what does AIL stand for?  It'd be nice if it were spelled out
-> > in at least one of the header files, maybe fs/xfs/xfs_trans_priv.h?
+>     ret = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED_VALIDATE
+> 		    | MAP_SYNC, fd, 0);
 > 
-> Active Item List. See the section "Tracking Changes" in
-> Documentation/filesystems/xfs-delayed-logging-design.txt for the
-> full rundown, but in short:
+>     and then the kernel side is easier too (none of that random garbage
+>     playing games with looking at the "MAP_VALIDATE bit", but just another
+>     case statement in that map type thing.
 > 
-> "The log item is already used to track the log items that have been
-> written to the log but not yet written to disk. Such log items are
-> considered "active" and as such are stored in the Active Item List
-> (AIL) which is a LSN-ordered double linked list. Items are inserted
-> into this list during log buffer IO completion, after which they are
-> unpinned and can be written to disk."
+>     Boom. Done.
 > 
-> The lack of comments describing the AIL is historic - it's never
-> been documented in the code, nor has the whole relogging concept it
-> implements. I wrote the document above when introducing the CIL
-> (Commited Item List) because almost no-one actively working on XFS
-> understood how the whole journalling subsystem worked in any detail.
+> Similar to ->fallocate() we also want the ability to validate the
+> support for new flags on a per ->mmap() 'struct file_operations'
+> instance basis.  Towards that end arrange for flags to be generically
+> validated against a mmap_supported_flags exported by 'struct
+> file_operations'. By default all existing flags are implicitly
+> supported, but new flags require MAP_SHARED_VALIDATE and
+> per-instance-opt-in.
 > 
-> > > Zoetrope Array.
-> > > Labyrinth of illusion.
-> > > Structure never ends.
-> > 
-> > Thank you for making me look up zoetrope ;-)
+> Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> Cc: Arnd Bergmann <arnd-r2nGTMty4D4@public.gmane.org>
+> Cc: Andy Lutomirski <luto-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+> Cc: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+> Suggested-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+> Suggested-by: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+> Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> ---
+>  arch/alpha/include/uapi/asm/mman.h           |  1 +
+>  arch/mips/include/uapi/asm/mman.h            |  1 +
+>  arch/parisc/include/uapi/asm/mman.h          |  1 +
+>  arch/xtensa/include/uapi/asm/mman.h          |  1 +
+>  include/linux/fs.h                           |  1 +
+>  include/linux/mman.h                         | 39 ++++++++++++++++++++++++++++
+>  include/uapi/asm-generic/mman-common.h       |  1 +
+>  mm/mmap.c                                    | 15 +++++++++++
+>  tools/include/uapi/asm-generic/mman-common.h |  1 +
+>  9 files changed, 61 insertions(+)
 > 
-> My pleasure :)
+> diff --git a/arch/alpha/include/uapi/asm/mman.h b/arch/alpha/include/uapi/asm/mman.h
+> index 3b26cc62dadb..f6d118aaedb9 100644
+> --- a/arch/alpha/include/uapi/asm/mman.h
+> +++ b/arch/alpha/include/uapi/asm/mman.h
+> @@ -11,6 +11,7 @@
+>  
+>  #define MAP_SHARED	0x01		/* Share changes */
+>  #define MAP_PRIVATE	0x02		/* Changes are private */
+> +#define MAP_SHARED_VALIDATE 0x03	/* share + validate extension flags */
+>  #define MAP_TYPE	0x0f		/* Mask for type of mapping (OSF/1 is _wrong_) */
+>  #define MAP_FIXED	0x100		/* Interpret addr exactly */
+>  #define MAP_ANONYMOUS	0x10		/* don't use a file */
+> diff --git a/arch/mips/include/uapi/asm/mman.h b/arch/mips/include/uapi/asm/mman.h
+> index da3216007fe0..93268e4cd3c7 100644
+> --- a/arch/mips/include/uapi/asm/mman.h
+> +++ b/arch/mips/include/uapi/asm/mman.h
+> @@ -28,6 +28,7 @@
+>   */
+>  #define MAP_SHARED	0x001		/* Share changes */
+>  #define MAP_PRIVATE	0x002		/* Changes are private */
+> +#define MAP_SHARED_VALIDATE 0x003	/* share + validate extension flags */
+>  #define MAP_TYPE	0x00f		/* Mask for type of mapping */
+>  #define MAP_FIXED	0x010		/* Interpret addr exactly */
+>  
+> diff --git a/arch/parisc/include/uapi/asm/mman.h b/arch/parisc/include/uapi/asm/mman.h
+> index 775b5d5e41a1..bca652aa1677 100644
+> --- a/arch/parisc/include/uapi/asm/mman.h
+> +++ b/arch/parisc/include/uapi/asm/mman.h
+> @@ -11,6 +11,7 @@
+>  
+>  #define MAP_SHARED	0x01		/* Share changes */
+>  #define MAP_PRIVATE	0x02		/* Changes are private */
+> +#define MAP_SHARED_VALIDATE 0x03	/* share + validate extension flags */
+>  #define MAP_TYPE	0x03		/* Mask for type of mapping */
+>  #define MAP_FIXED	0x04		/* Interpret addr exactly */
+>  #define MAP_ANONYMOUS	0x10		/* don't use a file */
+> diff --git a/arch/xtensa/include/uapi/asm/mman.h b/arch/xtensa/include/uapi/asm/mman.h
+> index b15b278aa314..9ab426374714 100644
+> --- a/arch/xtensa/include/uapi/asm/mman.h
+> +++ b/arch/xtensa/include/uapi/asm/mman.h
+> @@ -35,6 +35,7 @@
+>   */
+>  #define MAP_SHARED	0x001		/* Share changes */
+>  #define MAP_PRIVATE	0x002		/* Changes are private */
+> +#define MAP_SHARED_VALIDATE 0x003	/* share + validate extension flags */
+>  #define MAP_TYPE	0x00f		/* Mask for type of mapping */
+>  #define MAP_FIXED	0x010		/* Interpret addr exactly */
+>  
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 13dab191a23e..57added3201d 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1701,6 +1701,7 @@ struct file_operations {
+>  	long (*unlocked_ioctl) (struct file *, unsigned int, unsigned long);
+>  	long (*compat_ioctl) (struct file *, unsigned int, unsigned long);
+>  	int (*mmap) (struct file *, struct vm_area_struct *);
+> +	unsigned long mmap_supported_flags;
+>  	int (*open) (struct inode *, struct file *);
+>  	int (*flush) (struct file *, fl_owner_t id);
+>  	int (*release) (struct inode *, struct file *);
+> diff --git a/include/linux/mman.h b/include/linux/mman.h
+> index c8367041fafd..94b63b4d71ff 100644
+> --- a/include/linux/mman.h
+> +++ b/include/linux/mman.h
+> @@ -7,6 +7,45 @@
+>  #include <linux/atomic.h>
+>  #include <uapi/linux/mman.h>
+>  
+> +/*
+> + * Arrange for legacy / undefined architecture specific flags to be
+> + * ignored by default in LEGACY_MAP_MASK.
+> + */
+> +#ifndef MAP_32BIT
+> +#define MAP_32BIT 0
+> +#endif
+> +#ifndef MAP_HUGE_2MB
+> +#define MAP_HUGE_2MB 0
+> +#endif
+> +#ifndef MAP_HUGE_1GB
+> +#define MAP_HUGE_1GB 0
+> +#endif
+> +#ifndef MAP_UNINITIALIZED
+> +#define MAP_UNINITIALIZED 0
+> +#endif
+> +
+> +/*
+> + * The historical set of flags that all mmap implementations implicitly
+> + * support when a ->mmap_validate() op is not provided in file_operations.
+> + */
+> +#define LEGACY_MAP_MASK (MAP_SHARED \
+> +		| MAP_PRIVATE \
+> +		| MAP_FIXED \
+> +		| MAP_ANONYMOUS \
+> +		| MAP_DENYWRITE \
+> +		| MAP_EXECUTABLE \
+> +		| MAP_UNINITIALIZED \
+> +		| MAP_GROWSDOWN \
+> +		| MAP_LOCKED \
+> +		| MAP_NORESERVE \
+> +		| MAP_POPULATE \
+> +		| MAP_NONBLOCK \
+> +		| MAP_STACK \
+> +		| MAP_HUGETLB \
+> +		| MAP_32BIT \
+> +		| MAP_HUGE_2MB \
+> +		| MAP_HUGE_1GB)
+> +
+>  extern int sysctl_overcommit_memory;
+>  extern int sysctl_overcommit_ratio;
+>  extern unsigned long sysctl_overcommit_kbytes;
+> diff --git a/include/uapi/asm-generic/mman-common.h b/include/uapi/asm-generic/mman-common.h
+> index 203268f9231e..8ce7f5a0800f 100644
+> --- a/include/uapi/asm-generic/mman-common.h
+> +++ b/include/uapi/asm-generic/mman-common.h
+> @@ -16,6 +16,7 @@
+>  
+>  #define MAP_SHARED	0x01		/* Share changes */
+>  #define MAP_PRIVATE	0x02		/* Changes are private */
+> +#define MAP_SHARED_VALIDATE 0x03	/* share + validate extension flags */
+>  #define MAP_TYPE	0x0f		/* Mask for type of mapping */
+>  #define MAP_FIXED	0x10		/* Interpret addr exactly */
+>  #define MAP_ANONYMOUS	0x20		/* don't use a file */
+> diff --git a/mm/mmap.c b/mm/mmap.c
+> index 680506faceae..924839fac0e6 100644
+> --- a/mm/mmap.c
+> +++ b/mm/mmap.c
+> @@ -1387,9 +1387,24 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
+>  
+>  	if (file) {
+>  		struct inode *inode = file_inode(file);
+> +		unsigned long flags_mask;
+> +
+> +		flags_mask = LEGACY_MAP_MASK | file->f_op->mmap_supported_flags;
+>  
+>  		switch (flags & MAP_TYPE) {
+>  		case MAP_SHARED:
+> +			/*
+> +			 * Force use of MAP_SHARED_VALIDATE with non-legacy
+> +			 * flags. E.g. MAP_SYNC is dangerous to use with
+> +			 * MAP_SHARED as you don't know which consistency model
+> +			 * you will get. We silently ignore unsupported flags
+> +			 * with MAP_SHARED to preserve backward compatibility.
+> +			 */
+> +			flags &= LEGACY_MAP_MASK;
+> +			/* fall through */
+> +		case MAP_SHARED_VALIDATE:
+> +			if (flags & ~flags_mask)
+> +				return -EOPNOTSUPP;
+>  			if ((prot&PROT_WRITE) && !(file->f_mode&FMODE_WRITE))
+>  				return -EACCES;
+>  
+> diff --git a/tools/include/uapi/asm-generic/mman-common.h b/tools/include/uapi/asm-generic/mman-common.h
+> index 203268f9231e..8ce7f5a0800f 100644
+> --- a/tools/include/uapi/asm-generic/mman-common.h
+> +++ b/tools/include/uapi/asm-generic/mman-common.h
+> @@ -16,6 +16,7 @@
+>  
+>  #define MAP_SHARED	0x01		/* Share changes */
+>  #define MAP_PRIVATE	0x02		/* Changes are private */
+> +#define MAP_SHARED_VALIDATE 0x03	/* share + validate extension flags */
+>  #define MAP_TYPE	0x0f		/* Mask for type of mapping */
+>  #define MAP_FIXED	0x10		/* Interpret addr exactly */
+>  #define MAP_ANONYMOUS	0x20		/* don't use a file */
 > 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
