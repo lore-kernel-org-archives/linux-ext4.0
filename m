@@ -1,90 +1,95 @@
-From: Helge Deller <deller@gmx.de>
-Subject: Re: [PATCH 01/18] mm: introduce MAP_SHARED_VALIDATE, a mechanism to
- safely define new mmap flags
-Date: Sat, 25 Nov 2017 19:45:21 +0100
-Message-ID: <09f54d38-7cb5-343d-a017-2d71a793d05c@gmx.de>
-References: <20171101153648.30166-1-jack@suse.cz>
- <20171101153648.30166-2-jack@suse.cz>
- <638b3b80-5cb9-97c2-5055-fef3a1ec25b9@suse.cz>
- <CAPcyv4gGRHWc6AH5Enb7njtmqHgd=g+0-mYMdd5wWjJMW0+d7g@mail.gmail.com>
- <20171122195318.GA29485@bombadil.infradead.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: regression: 4.13 cannot follow symlinks on some ext3 fs
+Date: Sun, 26 Nov 2017 09:32:02 +1100
+Message-ID: <20171125223202.GL4094@dastard>
+References: <20171123203330.GN2482@two.firstfloor.org>
+ <20171123222317.bq2v26zm5i2jspui@thunk.org>
+ <20171123233101.GP2482@two.firstfloor.org>
+ <700971AC-BDE2-4993-BD56-7497AD8A0FC4@dilger.ca>
+ <20171124020435.GQ2482@two.firstfloor.org>
+ <C656DD8B-7521-4281-8D55-4416A3C75161@dilger.ca>
+ <20171124165102.GS2482@two.firstfloor.org>
+ <706E8F37-95C7-4321-AACA-2ED11F82E625@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: Vlastimil Babka <vbabka@suse.cz>, Jan Kara <jack@suse.cz>,
- Ross Zwisler <ross.zwisler@linux.intel.com>,
- Christoph Hellwig <hch@infradead.org>,
- linux-fsdevel <linux-fsdevel@vger.kernel.org>,
- "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
- Linux MM <linux-mm@kvack.org>, Linux API <linux-api@vger.kernel.org>,
- linux-ext4 <linux-ext4@vger.kernel.org>,
- linux-xfs <linux-xfs@vger.kernel.org>,
- "Darrick J . Wong" <darrick.wong@oracle.com>, Arnd Bergmann <arnd@arndb.de>,
- Andy Lutomirski <luto@kernel.org>, Andrew Morton
- <akpm@linux-foundation.org>, Michal Hocko <mhocko@kernel.org>,
- Kees Cook <keescook@chromium.org>, Florian Weimer <fweimer@redhat.com>,
- John Hubbard <jhubbard@nvidia.com>,
- "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
- linux-parisc@vger.kernel.org
-To: Matthew Wilcox <willy@infradead.org>,
- Dan Williams <dan.j.williams@intel.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20171122195318.GA29485@bombadil.infradead.org>
-Content-Language: en-US
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andi Kleen <andi@firstfloor.org>, Theodore Ts'o <tytso@mit.edu>,
+        Tahsin Erdogan <tahsin@google.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <706E8F37-95C7-4321-AACA-2ED11F82E625@dilger.ca>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 22.11.2017 20:53, Matthew Wilcox wrote:
-> On Wed, Nov 22, 2017 at 08:52:37AM -0800, Dan Williams wrote:
->> On Wed, Nov 22, 2017 at 4:02 AM, Vlastimil Babka <vbabka@suse.cz> wrote:
->>> On 11/01/2017 04:36 PM, Jan Kara wrote:
->>>> From: Dan Williams <dan.j.williams@intel.com>
->>>>
->>>> The mmap(2) syscall suffers from the ABI anti-pattern of not validating
->>>> unknown flags. However, proposals like MAP_SYNC need a mechanism to
->>>> define new behavior that is known to fail on older kernels without the
->>>> support. Define a new MAP_SHARED_VALIDATE flag pattern that is
->>>> guaranteed to fail on all legacy mmap implementations.
->>>
->>> So I'm trying to make sense of this together with Michal's attempt for
->>> MAP_FIXED_SAFE [1] where he has to introduce a completely new flag
->>> instead of flag modifier exactly for the reason of not validating
->>> unknown flags. And my conclusion is that because MAP_SHARED_VALIDATE
->>> implies MAP_SHARED and excludes MAP_PRIVATE, MAP_FIXED_SAFE as a
->>> modifier cannot build on top of this. Wouldn't thus it be really better
->>> long-term to introduce mmap3 at this point? ...
->>
->> We have room to define MAP_PRIVATE_VALIDATE in MAP_TYPE on every arch
->> except parisc. Can we steal an extra bit for MAP_TYPE from somewhere
->> else on parisc?
+On Fri, Nov 24, 2017 at 03:03:37PM -0700, Andreas Dilger wrote:
+> On Nov 24, 2017, at 9:51 AM, Andi Kleen <andi@firstfloor.org> wrote:
+> > 
+> >> We checked old kernels, and old e2fsprogs, and didn't see any cases
+> >> where fast (<= 60 chars) symlinks were created using external blocks.
+> >> It seems that _something_ did create them, and it would be good to
+> >> figure that out so we can determine if it is a widespread problem
+> > 
+> > I assume it was the original kernel.
+> > 
+> >> 
+> >> I think e2fsck can fix this quite easily, and there really isn't
+> >> an easy way to revert to the old method if the large xattr feature
+> >> is enabled.  If you are willing to run a new kernel, you should also
+> >> be willing to run a new e2fsck.
+> > 
+> > It's obviously not enabled on ext3.
+> > 
+> >> We could probably add a fallback to the old mechanism (and print
+> >> a one-time warning to upgrade to a newer e2fsck) if an external fast
+> >> symlink is found and the large xattr  feature is not enabled, which
+> >> would give more time to fix this (hopefully rare in the wild) case.
+> > 
+> > If the old kernel created it, then likely all the
+> > /lib{,64}/ld-linux.so.2 symlinks have that, which breaks all ELF
+> > executables. I suspect in these old file systems it's not particularly rare.
 > 
-> It looks like 0x08 should work.
+> Sure, but not many people are going to be running a 4.14 kernel with
+> a 2007 system. 
 
-I posted an RFC to the parisc mailing list for that:
-https://patchwork.kernel.org/patch/9970553/
+I have multiple test VMs with root ext3 filesystems that date back
+that far. Looks like the original install the root fs image was
+derived from came from around 2006:
 
-Basically this is (for parisc only):
--#define MAP_TYPE	0x03		/* Mask for type of mapping */
-+#define MAP_TYPE	(MAP_SHARED|MAP_PRIVATE|MAP_RESRVD1|MAP_RESRVD2) /* Mask for type of mapping */
- #define MAP_FIXED	0x04		/* Interpret addr exactly */
-+#define MAP_RESRVD1	0x08		/* reserved for 3rd bit of MAP_TYPE */
- #define MAP_ANONYMOUS	0x10		/* don't use a file */
-+#define MAP_RESRVD2	0x20		/* reserved for 4th bit of MAP_TYPE */
+$ ls -lt /etc |tail -1
+-rw-r--r--  1 root root       9 Aug  8  2006 host.conf
+$ ls -lt /usr/bin |tail -2
+-rwxr-xr-x 1 root   root         2038 Jun 18  2006 defoma-hints
+-rwxr-xr-x 1 root   root         1761 Jun 18  2006 dh_installdefoma
+$ uname -a
+Linux test4 4.14.0-dgc #211 SMP PREEMPT Thu Nov 23 16:49:31 AEDT 2017 x86_64 GNU/Linux
+$
 
-> But I don't have an HPUX machine around
-> to check that HP didn't use that bit for something else.
+These VMs are in use 24x7, and have been since they were created way
+back when. When something in ext3 breaks, I tend to notice it and
+report it.
 
-We completely dropped support for HPUX binaries, so it's not relvant any longer. 
+They don't have any whacky symlinks around, but the modern ext4 code
+does try to eat these filesystems every so often. Extended operation
+at ENOSPC will eventually corrupt the rootfs and crash the kernel,
+and then I play the "e2fsck doesn't detect corruption, kernel does"
+game to get them fixed up and working again....
 
-> It'd probably help to cc the linux-parisc mailing list when asking
-> questions about PARISC, eh?
+> > Requiring new e2fsck on old systems is a bad idea.
+> 
+> Any worse an idea than running a new kernel on an old system?
+> Newer e2fsck fixes a lot of bugs that are present in older
+> e2fsck as well...
 
-Yes, please.
+I'm running with everything up to date (debian unstable) on these
+VMs, they are just an old filesystem because some distros have had
+reliable rolling updates for the entire life of these VMs. :P
 
-Helge
+Cheers,
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
