@@ -1,43 +1,90 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: regression: 4.13 cannot follow symlinks on some ext3 fs
-Date: Fri, 24 Nov 2017 22:54:23 -0500
-Message-ID: <20171125035423.4rskbrgluqtxztag@thunk.org>
-References: <20171123203330.GN2482@two.firstfloor.org>
- <20171123222317.bq2v26zm5i2jspui@thunk.org>
- <20171123233101.GP2482@two.firstfloor.org>
- <700971AC-BDE2-4993-BD56-7497AD8A0FC4@dilger.ca>
- <20171124020435.GQ2482@two.firstfloor.org>
- <C656DD8B-7521-4281-8D55-4416A3C75161@dilger.ca>
- <20171124165102.GS2482@two.firstfloor.org>
+From: Helge Deller <deller@gmx.de>
+Subject: Re: [PATCH 01/18] mm: introduce MAP_SHARED_VALIDATE, a mechanism to
+ safely define new mmap flags
+Date: Sat, 25 Nov 2017 19:45:21 +0100
+Message-ID: <09f54d38-7cb5-343d-a017-2d71a793d05c@gmx.de>
+References: <20171101153648.30166-1-jack@suse.cz>
+ <20171101153648.30166-2-jack@suse.cz>
+ <638b3b80-5cb9-97c2-5055-fef3a1ec25b9@suse.cz>
+ <CAPcyv4gGRHWc6AH5Enb7njtmqHgd=g+0-mYMdd5wWjJMW0+d7g@mail.gmail.com>
+ <20171122195318.GA29485@bombadil.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Tahsin Erdogan <tahsin@google.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andi Kleen <andi@firstfloor.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171124165102.GS2482@two.firstfloor.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: Vlastimil Babka <vbabka@suse.cz>, Jan Kara <jack@suse.cz>,
+ Ross Zwisler <ross.zwisler@linux.intel.com>,
+ Christoph Hellwig <hch@infradead.org>,
+ linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+ "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
+ Linux MM <linux-mm@kvack.org>, Linux API <linux-api@vger.kernel.org>,
+ linux-ext4 <linux-ext4@vger.kernel.org>,
+ linux-xfs <linux-xfs@vger.kernel.org>,
+ "Darrick J . Wong" <darrick.wong@oracle.com>, Arnd Bergmann <arnd@arndb.de>,
+ Andy Lutomirski <luto@kernel.org>, Andrew Morton
+ <akpm@linux-foundation.org>, Michal Hocko <mhocko@kernel.org>,
+ Kees Cook <keescook@chromium.org>, Florian Weimer <fweimer@redhat.com>,
+ John Hubbard <jhubbard@nvidia.com>,
+ "Kirill A. Shutemov" <kirill.shutemov@linux.intel.com>,
+ linux-parisc@vger.kernel.org
+To: Matthew Wilcox <willy@infradead.org>,
+ Dan Williams <dan.j.williams@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20171122195318.GA29485@bombadil.infradead.org>
+Content-Language: en-US
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Nov 24, 2017 at 08:51:02AM -0800, Andi Kleen wrote:
-> > I think e2fsck can fix this quite easily, and there really isn't
-> > an easy way to revert to the old method if the large xattr feature
-> > is enabled.  If you are willing to run a new kernel, you should also
-> > be willing to run a new e2fsck.
+On 22.11.2017 20:53, Matthew Wilcox wrote:
+> On Wed, Nov 22, 2017 at 08:52:37AM -0800, Dan Williams wrote:
+>> On Wed, Nov 22, 2017 at 4:02 AM, Vlastimil Babka <vbabka@suse.cz> wrote:
+>>> On 11/01/2017 04:36 PM, Jan Kara wrote:
+>>>> From: Dan Williams <dan.j.williams@intel.com>
+>>>>
+>>>> The mmap(2) syscall suffers from the ABI anti-pattern of not validating
+>>>> unknown flags. However, proposals like MAP_SYNC need a mechanism to
+>>>> define new behavior that is known to fail on older kernels without the
+>>>> support. Define a new MAP_SHARED_VALIDATE flag pattern that is
+>>>> guaranteed to fail on all legacy mmap implementations.
+>>>
+>>> So I'm trying to make sense of this together with Michal's attempt for
+>>> MAP_FIXED_SAFE [1] where he has to introduce a completely new flag
+>>> instead of flag modifier exactly for the reason of not validating
+>>> unknown flags. And my conclusion is that because MAP_SHARED_VALIDATE
+>>> implies MAP_SHARED and excludes MAP_PRIVATE, MAP_FIXED_SAFE as a
+>>> modifier cannot build on top of this. Wouldn't thus it be really better
+>>> long-term to introduce mmap3 at this point? ...
+>>
+>> We have room to define MAP_PRIVATE_VALIDATE in MAP_TYPE on every arch
+>> except parisc. Can we steal an extra bit for MAP_TYPE from somewhere
+>> else on parisc?
 > 
-> It's obviously not enabled on ext3.
+> It looks like 0x08 should work.
 
-Yes, I think it's clear we need to enable a backwards compatibility
-support for ext3 file systems, or even all ext4 file systems that
-don't have the large xattr feature.
+I posted an RFC to the parisc mailing list for that:
+https://patchwork.kernel.org/patch/9970553/
 
-We could have e2fsck offer to fix it, so long as it is being run
-manually (e.g., not in preen mode), since it does have the benefit of
-releasing unnecessarily allocated 4k blocks for symlinks which are <
-60 bytes.
+Basically this is (for parisc only):
+-#define MAP_TYPE	0x03		/* Mask for type of mapping */
++#define MAP_TYPE	(MAP_SHARED|MAP_PRIVATE|MAP_RESRVD1|MAP_RESRVD2) /* Mask for type of mapping */
+ #define MAP_FIXED	0x04		/* Interpret addr exactly */
++#define MAP_RESRVD1	0x08		/* reserved for 3rd bit of MAP_TYPE */
+ #define MAP_ANONYMOUS	0x10		/* don't use a file */
++#define MAP_RESRVD2	0x20		/* reserved for 4th bit of MAP_TYPE */
 
-						- Ted
+> But I don't have an HPUX machine around
+> to check that HP didn't use that bit for something else.
+
+We completely dropped support for HPUX binaries, so it's not relvant any longer. 
+
+> It'd probably help to cc the linux-parisc mailing list when asking
+> questions about PARISC, eh?
+
+Yes, please.
+
+Helge
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
