@@ -1,7 +1,7 @@
-From: Reindl Harald <h.reindl@thelounge.net>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: regression: 4.13 cannot follow symlinks on some ext3 fs
-Date: Sat, 25 Nov 2017 23:45:07 +0100
-Message-ID: <d5020ffd-a174-8a57-5b0f-1b6424e74467@thelounge.net>
+Date: Sun, 26 Nov 2017 10:40:26 -0500
+Message-ID: <20171126154026.2cyhh3vsvhnszhvs@thunk.org>
 References: <20171123203330.GN2482@two.firstfloor.org>
  <20171123222317.bq2v26zm5i2jspui@thunk.org>
  <20171123233101.GP2482@two.firstfloor.org>
@@ -12,34 +12,44 @@ References: <20171123203330.GN2482@two.firstfloor.org>
  <706E8F37-95C7-4321-AACA-2ED11F82E625@dilger.ca>
  <20171125223202.GL4094@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andi Kleen <andi@firstfloor.org>, Theodore Ts'o <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        Andi Kleen <andi@firstfloor.org>,
         Tahsin Erdogan <tahsin@google.com>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-ext4 <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>,
-        Andreas Dilger <adilger@dilger.ca>
+To: Dave Chinner <david@fromorbit.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
 In-Reply-To: <20171125223202.GL4094@dastard>
-Content-Language: de-CH
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-Am 25.11.2017 um 23:32 schrieb Dave Chinner:
-> On Fri, Nov 24, 2017 at 03:03:37PM -0700, Andreas Dilger wrote:
->> Any worse an idea than running a new kernel on an old system?
->> Newer e2fsck fixes a lot of bugs that are present in older
->> e2fsck as well...
+On Sun, Nov 26, 2017 at 09:32:02AM +1100, Dave Chinner wrote:
 > 
+> They don't have any whacky symlinks around, but the modern ext4 code
+> does try to eat these filesystems every so often. Extended operation
+> at ENOSPC will eventually corrupt the rootfs and crash the kernel,
+> and then I play the "e2fsck doesn't detect corruption, kernel does"
+> game to get them fixed up and working again....
+
+If you have stack dumps or file system images which e2fsck doesn't
+detect any problems but the kernels do, please do feel free send
+reports to the ext4 mailing list.
+
 > I'm running with everything up to date (debian unstable) on these
 > VMs, they are just an old filesystem because some distros have had
 > reliable rolling updates for the entire life of these VMs. :P
 
-but why not update the FS to ext4?
+Or if you can make the VM's available and tell me how you are
+using/exercising them, I can try to see if I can repro the problem.
 
-our whole infrastructure was installed with Fedora 9 on ext3 (currently 
-running F26, yum/dnf dist-upgrades) but any FS including the rootfs was 
-converted to ext4 in 2010
+I am wondering how you are running into ENOSPC on the root file
+systems; I take this is much more than running xfstests?  Are you
+running some benchmarks that are logging into the root, and that's
+triggering the ENOSPC condition?
+
+Thanks,
+
+						- Ted
