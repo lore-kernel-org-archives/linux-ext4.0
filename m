@@ -1,52 +1,39 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 1/2] generic/458: document the fix commit
-Date: Mon, 27 Nov 2017 08:47:49 -0800
-Message-ID: <20171127164749.GA19370@magnolia>
-References: <1511419423-7905-1-git-send-email-amir73il@gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: regression: 4.13 cannot follow symlinks on some ext3 fs
+Date: Mon, 27 Nov 2017 12:11:26 -0500
+Message-ID: <20171127171125.dlrw7fng7p7onufl@thunk.org>
+References: <20171123222317.bq2v26zm5i2jspui@thunk.org>
+ <20171123233101.GP2482@two.firstfloor.org>
+ <700971AC-BDE2-4993-BD56-7497AD8A0FC4@dilger.ca>
+ <20171124020435.GQ2482@two.firstfloor.org>
+ <C656DD8B-7521-4281-8D55-4416A3C75161@dilger.ca>
+ <20171124165102.GS2482@two.firstfloor.org>
+ <706E8F37-95C7-4321-AACA-2ED11F82E625@dilger.ca>
+ <20171125223202.GL4094@dastard>
+ <20171126154026.2cyhh3vsvhnszhvs@thunk.org>
+ <20171126211427.GO4094@dastard>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Eryu Guan <eguan@redhat.com>,
-        Josef Bacik <jbacik@fb.com>, fstests@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:31224 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752777AbdK0Qr7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Nov 2017 11:47:59 -0500
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        Andi Kleen <andi@firstfloor.org>,
+        Tahsin Erdogan <tahsin@google.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1511419423-7905-1-git-send-email-amir73il@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20171126211427.GO4094@dastard>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Nov 23, 2017 at 08:43:42AM +0200, Amir Goldstein wrote:
-> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+On Mon, Nov 27, 2017 at 08:14:27AM +1100, Dave Chinner wrote:
+> Of course. I've done that every time I've come acros these sorts of
+> problems.
 
-Looks ok,
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+The most recent report I was able to find was against 4.7-rc6, in July
+2016.  Have you been able to reproduce it more recently than that?
 
-> ---
->  tests/generic/458 | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/tests/generic/458 b/tests/generic/458
-> index 7b408cb..730561f 100755
-> --- a/tests/generic/458
-> +++ b/tests/generic/458
-> @@ -4,6 +4,9 @@
->  # Regression test for xfs leftover CoW extents after truncate
->  # and umount
->  #
-> +# Fixed by commit 3af423b03435 ("xfs: evict CoW fork extents when performing
-> +# finsert/fcollapse")
-> +#
->  #-----------------------------------------------------------------------
->  # Copyright (C) 2017 CTERA Networks. All Rights Reserved.
->  # Author: Amir Goldstein <amir73il@gmail.com>
-> -- 
-> 2.7.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe fstests" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers,
+
+						- Ted
