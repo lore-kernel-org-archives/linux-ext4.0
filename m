@@ -1,39 +1,56 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: regression: 4.13 cannot follow symlinks on some ext3 fs
-Date: Mon, 27 Nov 2017 12:11:26 -0500
-Message-ID: <20171127171125.dlrw7fng7p7onufl@thunk.org>
-References: <20171123222317.bq2v26zm5i2jspui@thunk.org>
- <20171123233101.GP2482@two.firstfloor.org>
- <700971AC-BDE2-4993-BD56-7497AD8A0FC4@dilger.ca>
- <20171124020435.GQ2482@two.firstfloor.org>
- <C656DD8B-7521-4281-8D55-4416A3C75161@dilger.ca>
- <20171124165102.GS2482@two.firstfloor.org>
- <706E8F37-95C7-4321-AACA-2ED11F82E625@dilger.ca>
- <20171125223202.GL4094@dastard>
- <20171126154026.2cyhh3vsvhnszhvs@thunk.org>
- <20171126211427.GO4094@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Andi Kleen <andi@firstfloor.org>,
-        Tahsin Erdogan <tahsin@google.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
+From: Andi Kleen <andi@firstfloor.org>
+Subject: [PATCH] ext4: Support fast symlinks from ext3 file systems
+Date: Mon, 27 Nov 2017 09:37:09 -0800
+Message-ID: <20171127173709.20787-1-andi@firstfloor.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Andi Kleen <ak@linux.intel.com>
+To: tytso@mit.edu
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171126211427.GO4094@dastard>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 27, 2017 at 08:14:27AM +1100, Dave Chinner wrote:
-> Of course. I've done that every time I've come acros these sorts of
-> problems.
+From: Andi Kleen <ak@linux.intel.com>
 
-The most recent report I was able to find was against 4.7-rc6, in July
-2016.  Have you been able to reproduce it more recently than that?
+dbb3c27f5b91c4 (ext4: change fast symlink test to not rely on i_blocks)
+broke ~10 years old ext3 file systems created by 2.6.17. Any ELF
+executable fails because the /lib/ld-linux.so.2 fast symlink
+cannot be read anymore.
 
-Cheers,
+The patch assumed fast symlinks were created in a specific way,
+but that's not true on these really old file systems.
 
-						- Ted
+The new behavior is apparently needed only with the large EA inode
+feature.
+
+Revert to the old behavior if the large EA inode feature is not set.
+
+This makes my old VM boot again.
+
+Fixes: dbb3c27f5b91c4 (ext4: change fast symlink test to not rely ...)
+Signed-off-by: Andi Kleen <ak@linux.intel.com>
+---
+ fs/ext4/inode.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 0992d76f7ab1..6b82b0ff5e0b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -149,6 +149,15 @@ static int ext4_meta_trans_blocks(struct inode *inode, int lblocks,
+  */
+ int ext4_inode_is_fast_symlink(struct inode *inode)
+ {
++	if (!(EXT4_I(inode)->i_flags & EXT4_EA_INODE_FL)) {
++		int ea_blocks = EXT4_I(inode)->i_file_acl ?
++				EXT4_CLUSTER_SIZE(inode->i_sb) >> 9 : 0;
++
++		if (ext4_has_inline_data(inode))
++			return 0;
++
++		return (S_ISLNK(inode->i_mode) && inode->i_blocks - ea_blocks == 0);
++	}
+ 	return S_ISLNK(inode->i_mode) && inode->i_size &&
+ 	       (inode->i_size < EXT4_N_BLOCKS * 4);
+ }
+-- 
+2.13.6
