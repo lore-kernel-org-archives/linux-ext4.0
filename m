@@ -1,36 +1,59 @@
-From: sunqiuyang <sunqiuyang@huawei.com>
-Subject: [PATCH 1/1] ext4: remove redundant assignment in ext4_iomap_begin()
-Date: Mon, 27 Nov 2017 17:21:27 +0800
-Message-ID: <20171127092127.26193-1-sunqiuyang@huawei.com>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH RESEND] mke2fs: Fix German translation of mke2fs
+Date: Mon, 27 Nov 2017 10:51:19 +0100
+Message-ID: <20171127095119.6213-1-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <sunqiuyang@huawei.com>
-To: <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-        <linux-ext4@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+Cc: <linux-ext4@vger.kernel.org>, Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:35292 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751591AbdK0JvZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 27 Nov 2017 04:51:25 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Qiuyang Sun <sunqiuyang@huawei.com>
+When a device mke2fs should work on already contains an ext? filesystem,
+mke2fs prints a warning. In German translation the warning doesn't end
+with a date string (which is terminated by a newline) and thus the
+output comes out mangled like:
 
-This line will not change the value of map.m_lblk in any case.
+mke2fs 1.42.12 (29-Aug-2014)
+/dev/disk/by-label/WD20_SL12 hat ein ext3-Dateisystem mit Namen
+„WD20_SL12“
+        zuletzt auf /WD20_SL12 auf Tue Jan 27 09:01:44 2015
+ eingehängtTrotzdem fortfahren? (j,n)
+^^^^^^^^^^^^^ here
 
-Signed-off-by: Qiuyang Sun <sunqiuyang@huawei.com>
+Fix the translation to end the printed string with a newline and avoid
+superfluous space at the beginning of the line.
+
+Reviewed-by: Bernd Schubert <bernd.schubert@fastmail.fm>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c | 1 -
- 1 file changed, 1 deletion(-)
+ po/de.po | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 9f836e2..d4a42b1 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3443,7 +3443,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+Ted, can you please merge this fix? Somehow it keeps getting ignored.
+
+diff --git a/po/de.po b/po/de.po
+index 4bbaaf9b611d..8a1ee2d716c2 100644
+--- a/po/de.po
++++ b/po/de.po
+@@ -8610,9 +8610,11 @@ msgid "Bad magic value in profile_file_data_t"
+ msgstr "Ungültige magische Zahl im profile_file_data_t"
  
- 				if (es.es_lblk < map.m_lblk)
- 					offs = map.m_lblk - es.es_lblk;
--				map.m_lblk = es.es_lblk + offs;
- 				map.m_len = es.es_len - offs;
- 				delalloc = true;
- 			}
+ #: lib/support/plausible.c:118
++# The second %s refers to a date string ending with a newline. Make the
++# translated string end with a newline as well to maintain output compatibility.
+ #, c-format
+ msgid "\tlast mounted on %s on %s"
+-msgstr "\tzuletzt auf %s auf %s eingehängt"
++msgstr "\tzuletzt auf %s auf %seingehängt.\n"
+ 
+ #: lib/support/plausible.c:121
+ #, c-format
 -- 
-2.5.0
+2.12.3
