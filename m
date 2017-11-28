@@ -1,172 +1,51 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 3/3] fs/ext4: create ext4_kset dynamically
-Date: Mon, 27 Nov 2017 16:44:35 -0700
-Message-ID: <7CD43048-B60A-43B2-BB18-F2B1432C111D@dilger.ca>
-References: <20171127231801.27652-1-sirmy15@gmail.com>
- <20171127231801.27652-4-sirmy15@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_4E2CE268-9281-4C2B-B432-AED4DABC2693";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: Theodore Ts'o <tytso@mit.edu>,
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: regression: 4.13 cannot follow symlinks on some ext3 fs
+Date: Tue, 28 Nov 2017 11:42:13 +1100
+Message-ID: <20171128004213.GQ4094@dastard>
+References: <20171123233101.GP2482@two.firstfloor.org>
+ <700971AC-BDE2-4993-BD56-7497AD8A0FC4@dilger.ca>
+ <20171124020435.GQ2482@two.firstfloor.org>
+ <C656DD8B-7521-4281-8D55-4416A3C75161@dilger.ca>
+ <20171124165102.GS2482@two.firstfloor.org>
+ <706E8F37-95C7-4321-AACA-2ED11F82E625@dilger.ca>
+ <20171125223202.GL4094@dastard>
+ <20171126154026.2cyhh3vsvhnszhvs@thunk.org>
+ <20171126211427.GO4094@dastard>
+ <20171127171125.dlrw7fng7p7onufl@thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger@dilger.ca>,
+        Andi Kleen <andi@firstfloor.org>,
+        Tahsin Erdogan <tahsin@google.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         linux-ext4 <linux-ext4@vger.kernel.org>
-To: Riccardo Schirone <sirmy15@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:40909 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751731AbdK0Xok (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Nov 2017 18:44:40 -0500
-Received: by mail-it0-f65.google.com with SMTP id t1so6068623ite.5
-        for <linux-ext4@vger.kernel.org>; Mon, 27 Nov 2017 15:44:39 -0800 (PST)
-In-Reply-To: <20171127231801.27652-4-sirmy15@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20171127171125.dlrw7fng7p7onufl@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-
---Apple-Mail=_4E2CE268-9281-4C2B-B432-AED4DABC2693
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Nov 27, 2017, at 4:18 PM, Riccardo Schirone <sirmy15@gmail.com> wrote:
+On Mon, Nov 27, 2017 at 12:11:26PM -0500, Theodore Ts'o wrote:
+> On Mon, Nov 27, 2017 at 08:14:27AM +1100, Dave Chinner wrote:
+> > Of course. I've done that every time I've come acros these sorts of
+> > problems.
 > 
-> ksets contain a kobject and they should always be allocated dynamically,
-> because it is unknown to whoever creates them when ksets can be
-> released.
-> 
-> Signed-off-by: Riccardo Schirone <sirmy15@gmail.com>
-> ---
-> fs/ext4/sysfs.c | 37 +++++++++++++++++++++++--------------
-> 1 file changed, 23 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-> index c447f23cc876..a33b406b8feb 100644
-> --- a/fs/ext4/sysfs.c
-> +++ b/fs/ext4/sysfs.c
-> @@ -329,6 +329,13 @@ static void ext4_sb_release(struct kobject *kobj)
-> 	complete(&sbi->s_kobj_unregister);
-> }
-> 
-> +static void ext4_kset_release(struct kobject *kobj)
-> +{
-> +	struct kset *kset = container_of(kobj, struct kset, kobj);
-> +
-> +	kfree(kset);
-> +}
-> +
-> static const struct sysfs_ops ext4_attr_ops = {
-> 	.show	= ext4_attr_show,
-> 	.store	= ext4_attr_store,
-> @@ -342,11 +349,10 @@ static struct kobj_type ext4_sb_ktype = {
-> 
-> static struct kobj_type ext4_ktype = {
-> 	.sysfs_ops	= &ext4_attr_ops,
-> +	.release	= ext4_kset_release,
-> };
-> 
-> -static struct kset ext4_kset = {
-> -	.kobj   = {.ktype = &ext4_ktype},
-> -};
-> +static struct kset *ext4_kset;
-> 
-> static struct kobj_type ext4_feat_ktype = {
-> 	.default_attrs	= ext4_feat_attrs,
-> @@ -391,7 +397,7 @@ int ext4_register_sysfs(struct super_block *sb)
-> 	const struct ext4_proc_files *p;
-> 	int err;
-> 
-> -	sbi->s_kobj.kset = &ext4_kset;
-> +	sbi->s_kobj.kset = ext4_kset;
-> 	init_completion(&sbi->s_kobj_unregister);
-> 	err = kobject_init_and_add(&sbi->s_kobj, &ext4_sb_ktype, NULL,
-> 				   "%s", sb->s_id);
-> @@ -429,13 +435,16 @@ int __init ext4_init_sysfs(void)
-> {
-> 	int ret;
-> 
-> -	kobject_set_name(&ext4_kset.kobj, "ext4");
-> -	ext4_kset.kobj.parent = fs_kobj;
-> -	ret = kset_register(&ext4_kset);
-> -	if (ret) {
-> -		kset_unregister(&ext4_kset);
-> -		return ret;
-> -	}
-> +	ext4_kset = kzalloc(sizeof(*ext4_kset), GFP_KERNEL);
-> +	if (!ext4_kset)
-> +		return -ENOMEM;
-> +
-> +	kobject_set_name(&ext4_kset->kobj, "ext4");
-> +	ext4_kset->kobj.parent = fs_kobj;
-> +	ext4_kset->kobj.ktype = &ext4_ktype;
-> +	ret = kset_register(ext4_kset);
-> +	if (ret)
-> +		goto kset_err;
-> 
-> 	ext4_feat = kzalloc(sizeof(*ext4_feat), GFP_KERNEL);
-> 	if (!ext4_feat) {
-> @@ -443,7 +452,7 @@ int __init ext4_init_sysfs(void)
-> 		goto kset_err;
-> 	}
-> 
-> -	ext4_feat->kset = &ext4_kset;
-> +	ext4_feat->kset = ext4_kset;
-> 	ret = kobject_init_and_add(ext4_feat, &ext4_feat_ktype,
-> 				   NULL, "features");
-> 	if (ret)
-> @@ -455,14 +464,14 @@ int __init ext4_init_sysfs(void)
-> feat_err:
-> 	kobject_put(ext4_feat);
-> kset_err:
-> -	kset_unregister(&ext4_kset);
-> +	kset_unregister(ext4_kset);
+> The most recent report I was able to find was against 4.7-rc6, in July
+> 2016.  Have you been able to reproduce it more recently than that?
 
+I hit it once a couple of months ago, but I was was busy with much
+higher priority stuff at the time (sorting out a CVE-worthy bug fix)
+so it slipped off my radar pretty rapidly after I recovered the test
+system and kept doing what I needed to do...
 
-It would be prudent in this case to set "ext4_kset = NULL" here
-so that it isn't cleaned up again somewhere else.  Otherwise,
-it seems possible that ext4_kset could be cleaned up twice.
+So, yeah, the problems are still there, I just don't run my root
+filesystems out of space very often. Like I said - maybe once or
+twice a year is the typical frequency this happens.
 
-Otherwise, the whole premise of this patch seems flawed.
+Cheers,
 
-> 	return ret;
-> }
-> 
-> void ext4_exit_sysfs(void)
-> {
-> 	kobject_put(ext4_feat);
-> -	kset_unregister(&ext4_kset);
-> +	kset_unregister(ext4_kset);
-
-Same here.
-
-> 	remove_proc_entry(proc_dirname, NULL);
-> 	ext4_proc_root = NULL;
-> }
-> --
-> 2.14.3
-> 
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_4E2CE268-9281-4C2B-B432-AED4DABC2693
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFaHKNjpIg59Q01vtYRAqnMAKC/bZxtWLWSiI/uwgTwdzb+mewx4QCg5Kfr
-onYkSpK9yTSe8O6oUgJQ180=
-=e8kO
------END PGP SIGNATURE-----
-
---Apple-Mail=_4E2CE268-9281-4C2B-B432-AED4DABC2693--
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
