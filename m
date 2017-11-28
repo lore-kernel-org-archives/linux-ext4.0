@@ -1,64 +1,51 @@
 From: "Riccardo S." <sirmy15@gmail.com>
-Subject: Re: [PATCH 1/3] fs/ext4: release kobject/kset even when
- init/register fail
-Date: Tue, 28 Nov 2017 12:03:39 +0100
-Message-ID: <20171128110339.GD83442@rschirone-mbp.local>
+Subject: Re: [PATCH 0/3] Improve kobject handling in fs/ext4
+Date: Tue, 28 Nov 2017 11:50:11 +0100
+Message-ID: <20171128105011.GB83442@rschirone-mbp.local>
 References: <20171127231801.27652-1-sirmy15@gmail.com>
- <20171127231801.27652-2-sirmy15@gmail.com>
- <C79E8778-794D-4B40-92EA-65862E290B4B@dilger.ca>
+ <20171128035105.lec6u6y4p3qwgjde@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
         gregkh@linuxfoundation.org
-To: Andreas Dilger <adilger@dilger.ca>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wr0-f196.google.com ([209.85.128.196]:40198 "EHLO
-        mail-wr0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753221AbdK1LDq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Nov 2017 06:03:46 -0500
-Received: by mail-wr0-f196.google.com with SMTP id s41so23981598wrc.7
-        for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2017 03:03:46 -0800 (PST)
+Received: from mail-wm0-f66.google.com ([74.125.82.66]:44561 "EHLO
+        mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933699AbdK1KuT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Nov 2017 05:50:19 -0500
+Received: by mail-wm0-f66.google.com with SMTP id r68so871411wmr.3
+        for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2017 02:50:18 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <C79E8778-794D-4B40-92EA-65862E290B4B@dilger.ca>
+In-Reply-To: <20171128035105.lec6u6y4p3qwgjde@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/27, Andreas Dilger wrote:
-> On Nov 27, 2017, at 4:17 PM, Riccardo Schirone <sirmy15@gmail.com> wrote:
-> > 
-> > Even when kobject_init_and_add/kset_register fail, the kobject has been
-> > already initialized and the refcount set to 1. Thus it is necessary to
-> > release the kobject/kset, to avoid the memory associated with it hanging
-> > around forever.
+On 11/27, Theodore Ts'o wrote:
+> On Tue, Nov 28, 2017 at 12:17:58AM +0100, Riccardo Schirone wrote:
+> > This patch tries to correctly use kobjects in fs/ext4. In particular it
+> > allocates kobjects/ksets dynamically, instead of statically, and improve
+> > error handling in case kobject_* functions fail.
 > 
-> This seems like a bad programming model.  It doesn't make sense if the
-> "init" or "register" function returns an error that you would still have
-> to call "put" or "unregister" on the object.  Why not just handle the
-> cleanup at the end of "kobject_init_and_add()" or "kobject_register()"
-> if there is an error instead of putting the burden on every caller?
+> I don't see the point of allocating the kobjects in question
+> dynamically?  There is only one of them, so why not use static
+> allocation?  What is "incorrect" about not doing dynamically allocated
+> kobjects/ksets?
 > 
-> If open() returns an error, I don't need to call close(), and if malloc()
-> fails I don't need to call free(), etc.
+> Regards,
 > 
-> Cheers, Andreas
-> 
+> 						- Ted
 
-I agree it seems weird at first, but it looks to me the examples you
-made involve the *creation* of new objects, so it makes sense that the
-function, in case of errors, does not create them at all.
+According to Documentation/kobject.txt that's how they should be
+allocated.  The reason for this being they are dynamic objects, so you
+don't really know what is their life time. Other parts of the kernel
+could get a reference to those kobjects (since they are registered in
+the system) and it's not said the module is the last one to access them.
 
-In this case though the kobject_init_and_add is really just a shortcut
-for kobject_init + kobject_add and none of these functions create
-something for you. It's the caller's job to allocate the necessary
-memory, so I think that's the reason why it's still the caller that
-calls kobject_put when there's something wrong.
+If you declare them statically, what would happen when you remove the
+module that statically defines them? What if there's still someone
+holding a reference to one of those kobjects?
 
-Instead, in kobject_create_and_add, where the creation of the kobject is
-inside the function, the kobject is cleaned up if something wrong
-happens.
-
-Those are my thoughts anyway.
 Regards,
 
 
