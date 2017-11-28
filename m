@@ -1,81 +1,77 @@
-From: Ashlie Martinez <ashmrtn@utexas.edu>
+From: Theodore Ts'o <tytso@mit.edu>
 Subject: Re: ext4 fix for interaction between i_size, fallocate, and delalloc
  after a crash
-Date: Tue, 28 Nov 2017 07:04:54 -0600
-Message-ID: <CAFk8rvbxaQ72rvOg6NXDQYG1rXtuZsdzJ5SrbR=C6ftAU0YyPA@mail.gmail.com>
+Date: Tue, 28 Nov 2017 15:45:26 -0500
+Message-ID: <20171128204525.ijpis74t75f4bbsc@thunk.org>
 References: <CAFk8rvZYEN4kGP9dF_FQxhP+UGfAY55uKrdsGr4-6ztWSoUp6w@mail.gmail.com>
- <20171122180317.nvymp7eedhswga7l@thunk.org> <CAFk8rvZ=EAUcAzxgi4bk+Qh2Y3ACZEv8unaowi0jvPNRB97XMA@mail.gmail.com>
+ <20171122180317.nvymp7eedhswga7l@thunk.org>
+ <CAFk8rvZ=EAUcAzxgi4bk+Qh2Y3ACZEv8unaowi0jvPNRB97XMA@mail.gmail.com>
  <20171127161137.4ghjcxfklpurk2eo@thunk.org>
+ <CAFk8rvbxaQ72rvOg6NXDQYG1rXtuZsdzJ5SrbR=C6ftAU0YyPA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
 Cc: Vijay Chidambaram <vvijay03@gmail.com>,
         Ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Ashlie Martinez <ashmrtn@utexas.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-vk0-f48.google.com ([209.85.213.48]:36682 "EHLO
-        mail-vk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751893AbdK1NEz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Nov 2017 08:04:55 -0500
-Received: by mail-vk0-f48.google.com with SMTP id p144so176700vkp.3
-        for <linux-ext4@vger.kernel.org>; Tue, 28 Nov 2017 05:04:55 -0800 (PST)
-In-Reply-To: <20171127161137.4ghjcxfklpurk2eo@thunk.org>
+Received: from imap.thunk.org ([74.207.234.97]:38502 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752456AbdK1Upa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 28 Nov 2017 15:45:30 -0500
+Content-Disposition: inline
+In-Reply-To: <CAFk8rvbxaQ72rvOg6NXDQYG1rXtuZsdzJ5SrbR=C6ftAU0YyPA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 27, 2017 at 10:11 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> On Mon, Nov 27, 2017 at 08:31:07AM -0600, Ashlie Martinez wrote:
->> Ted,
->>
->> Thank you very much for taking the time to lay all of this out for me
->> (and throwing some humor and youtube links to boot), despite how busy
->> you were (I hope everything is alright!). I see now why the fix works
->> and what was going wrong. It appears I was confused about the order of
->> operations being performed in the test based on what I read in another
->> email. I believe in another email somewhere I read that the fallocate
->> was before a delayed write so I was thinking something like fallocate
->> then write. I see now that it is write with delayed allocation
->> (resolved after fallocate) and then fallocate. With that piece of
->> information everything else about the test, delayed allocation, and
->> the fix make sense.
->
-> Sorry, "before" was misleading.  When I used the word "before", I was
-> speaking of the order that the operations hit the disk.  The confusion
-> comes from the fact that the delayed allocation write was *issued*
-> before the fallocate, but in terms of when they are committed to disk,
-> the fallocate commits *first*, and then 25-30 seconds later, the
-> delayed allocation write is resolved and then committed to disk.
+On Tue, Nov 28, 2017 at 07:04:54AM -0600, Ashlie Martinez wrote:
+> No biggie, part of the reason this was so hard for me to wrap my head
+> around is I don't have a physical machine that I can reproduce this on
+> (and I never got around to getting a GCE instance to test on). Not
+> being able to poke around a reproducing system makes it a little bit
+> harder for me to reason about :)
 
-No biggie, part of the reason this was so hard for me to wrap my head
-around is I don't have a physical machine that I can reproduce this on
-(and I never got around to getting a GCE instance to test on). Not
-being able to poke around a reproducing system makes it a little bit
-harder for me to reason about :)
+This does reproduce easily using kvm-xfstests[1]; using gce-xfstests
+was not necessary.  That's actually how I debugged it, since kvm
+starts up in under 5 seconds, while starting up a cloud VM takes a bit
+longer.  So if you want a quick edit/compile/debug cycle, or if you
+attach a debugger to the running kernel, using kvm-xfstests is the
+right tool to use.  99% of the command syntax and test appliance
+implementation is the same between kvm-xfstests and gce-xfstests.
 
->
-> It's the difference between the order that the operations are issued
-> and when they are committed to disk which is what caused the bug; and
-> the problem reproduction relies on crashing/aborting the file system
-> between the time that the two operations would have been committed.
->
-> Hopefully this will be helpful in terms of finding a way to create
-> automated file system testing systems that can detect bugs similar to
-> this one.  I can imagine that if you ever want to extend this to
-> database testing, a similar technique might be used to detect
-> transactions which close in a different order than how they were
-> issued, or dealing transactions which end up getting rolled back.
->
+[1] https://github.com/tytso/xfstests-bld/blob/master/Documentation/kvm-quickstart.md
 
-Vijay and I are hopeful that we can find some reliable way to
-reproduce this in CrashMonkey. It has also showed us a class of timing
-bugs that we can't find with the current iteration of CrashMonkey, but
-we hope we can expand what we have to find them in the future.
+I've been trying to promote the use of kvm-xfstests for researchers
+who are interested in doing file system work.  So if you can help
+promote {kvm,gce}-xfstests amongst your fellow students and
+professors, that would be great!
 
->                                                 - Ted
->
-> P.S.  I see you have some Google internships under your belt, so I'm
-> sure you know the drill, but I hope you'll consider us for another
-> future internship experience.   :-)
 
-Haha it's always been nice to be a little bit spoiled while interning
-there for a summer. I hope I can make way back there for another
-internship etc. eventually :)
+You can run the reproducer automatically via "kvm-xfstests -c 4k
+generic/456".  But you can also run "kvm-xfstests shell", and then run
+the following commands;
+
+kvm-xfstests# export FSTESTSET=generic/456
+kvm-xfstests# ./runtests.sh
+
+You can then edit the test script to add debugging commands; it can be
+found in /root/xfstests/tests/generic/456 and then rerun the tests
+using the "./runtests.sh" script.
+
+Sorry, the only editor available is /bin/ed.  If you want to use some
+other editor, and are willing to build your own test-appliance VM
+image instead of just downloading the rebuilt test applinace image,
+you can add it to the xfstests-packages file in the
+kvm-xfstests/test-appliance directory, and generate your own test
+appliance.  See [2] for more details.
+
+[2] https://github.com/tytso/xfstests-bld/blob/master/Documentation/building-rootfs.md
+
+This is actually how I figured out what was happening; I added
+commands such as "debugfs -R 'stat <11>'" so I could see was going on
+with the file system before the _flakey_drop_and_remount statement,
+and then varied the number of operations in the fsx operations to
+replay list.
+
+Regards,
+
+						- Ted
