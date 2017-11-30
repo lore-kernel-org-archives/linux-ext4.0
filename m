@@ -1,73 +1,65 @@
-From: Theodore Ts'o <tytso@mit.edu>
+From: Amir Goldstein <amir73il@gmail.com>
 Subject: Re: ext4 fix for interaction between i_size, fallocate, and delalloc
  after a crash
-Date: Wed, 29 Nov 2017 23:46:49 -0500
-Message-ID: <20171130044649.xfgwhd2wzdc5mwql@thunk.org>
-References: <CAFk8rvZ=EAUcAzxgi4bk+Qh2Y3ACZEv8unaowi0jvPNRB97XMA@mail.gmail.com>
- <20171127161137.4ghjcxfklpurk2eo@thunk.org>
- <CAFk8rvbxaQ72rvOg6NXDQYG1rXtuZsdzJ5SrbR=C6ftAU0YyPA@mail.gmail.com>
- <20171128204525.ijpis74t75f4bbsc@thunk.org>
- <CAFk8rvZQopSupfc3nakAR+1ORbHSZF+ypzhZA12w=g=MNstHrA@mail.gmail.com>
- <20171129061307.f6hekryi3bppo26y@thunk.org>
- <CAOQ4uxiU3gu5+CRTSKig8r-Bpk=W0-J5N+MBL7s6XSrNUMrAKA@mail.gmail.com>
- <CAFk8rvY9_-GxghCA43G9JoVqw-8NTG7-oRxEcV_cudcgDcy=rQ@mail.gmail.com>
- <20171130004816.pdzfqjluchtvfq6u@thunk.org>
- <CAFk8rvakptuN_rP5CRfLNNLEwntkvvcbdjn55O_E-RQyLUB=MQ@mail.gmail.com>
+Date: Thu, 30 Nov 2017 08:46:34 +0200
+Message-ID: <CAOQ4uxi9DVH1LbMMQ8ZOKBpGq5XBRmJk4=BmgdDTaP1P+6rcbQ@mail.gmail.com>
+References: <CAFk8rvZYEN4kGP9dF_FQxhP+UGfAY55uKrdsGr4-6ztWSoUp6w@mail.gmail.com>
+ <20171122180317.nvymp7eedhswga7l@thunk.org> <CAFk8rvZ=EAUcAzxgi4bk+Qh2Y3ACZEv8unaowi0jvPNRB97XMA@mail.gmail.com>
+ <20171127161137.4ghjcxfklpurk2eo@thunk.org> <CAFk8rvbxaQ72rvOg6NXDQYG1rXtuZsdzJ5SrbR=C6ftAU0YyPA@mail.gmail.com>
+ <20171128204525.ijpis74t75f4bbsc@thunk.org> <CAFk8rvZQopSupfc3nakAR+1ORbHSZF+ypzhZA12w=g=MNstHrA@mail.gmail.com>
+ <20171129061307.f6hekryi3bppo26y@thunk.org> <CAOQ4uxiU3gu5+CRTSKig8r-Bpk=W0-J5N+MBL7s6XSrNUMrAKA@mail.gmail.com>
+ <20171130002408.5w4axekvcdrbag53@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Amir Goldstein <amir73il@gmail.com>,
+Content-Type: text/plain; charset="UTF-8"
+Cc: Ashlie Martinez <ashmrtn@utexas.edu>,
         Vijay Chidambaram <vvijay03@gmail.com>,
         Ext4 <linux-ext4@vger.kernel.org>
-To: Ashlie Martinez <ashmrtn@utexas.edu>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45504 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751032AbdK3Eqx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 29 Nov 2017 23:46:53 -0500
-Content-Disposition: inline
-In-Reply-To: <CAFk8rvakptuN_rP5CRfLNNLEwntkvvcbdjn55O_E-RQyLUB=MQ@mail.gmail.com>
+Received: from mail-yb0-f180.google.com ([209.85.213.180]:40652 "EHLO
+        mail-yb0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750898AbdK3Gqf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 30 Nov 2017 01:46:35 -0500
+Received: by mail-yb0-f180.google.com with SMTP id p128so2334923yba.7
+        for <linux-ext4@vger.kernel.org>; Wed, 29 Nov 2017 22:46:35 -0800 (PST)
+In-Reply-To: <20171130002408.5w4axekvcdrbag53@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 29, 2017 at 07:46:08PM -0600, Ashlie Martinez wrote:
-> > 5.  Since I'm too lazy to wait 120 seconds, just force everything to disk:
-> >
-> >         sync
-> 
-> I believe you said in an earlier email that sync would erase any trace
-> of the bug Amir found as it resolves the delayed allocation.
+On Thu, Nov 30, 2017 at 2:24 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Wed, Nov 29, 2017 at 10:07:39AM +0200, Amir Goldstein wrote:
+>> If you could work out how to fix the test to catch the bug in kvm-xfstests
+>> that would be nice.
+>
+> One question, how did you actually test it using kvm-xfstests?  The
+> kvm-xfstests image that I had up on www.kernel.org did not have
+> generic/456.  It was dated from September 2017, so it didn't have that
+> test.  Since the publically available image didn't have generic/456,
+> did you create your own image some how?
 
-Right, but you're waiting 120 seconds, which is enough time that it
-would resolve the delayed allocation.  So that's why I was trying to
-replicate your Crashmonkey experiment.
+Of course. I am using my own image and update xfstests frequently.
 
-And since you stated that you waited 120 seconds as the last step,
-there should have been a barrier, and no I/O operations for
-Crashmonkey to rearrange.  This is why I believe what I listed should
-be exactly the same as your Crashmonkey test, if I understood it
-correctly.
+>
+> I just updated the test appliance yesterday, so it does now.  The
+> version stamp on it is:
+>
+> e2fsprogs       v1.43.6-85-g7595699d0 (Wed, 6 Sep 2017 22:04:14 -0400)
+> fio             fio-3.2 (Fri, 3 Nov 2017 15:23:49 -0600)
+> quota           4d81e8b (Mon, 16 Oct 2017 09:42:44 +0200)
+> stress-ng       977ae35 (Wed, 6 Sep 2017 23:45:03 -0400)
+> xfsprogs        v4.14.0-rc2-1-g19ca9b0b (Mon, 27 Nov 2017 10:56:21 -0600)
+> xfstests-bld    0b27af9 (Tue, 28 Nov 2017 16:28:51 -0500)
+> xfstests        linux-v3.8-1797-g4f1eaa02 (Tue, 28 Nov 2017 15:49:06 -0500)
+>
+> Can you try the latest version of the kvm-xfststs test appliance image
+> that is on www.kernel.org, with the latest xfstests-bld git repo to
+> drive it?
 
-What you said was that you ran the following operations on the test
-file:
+It works with latest image.
+456 fails on old kernel and pass on v4.15-rc1.
 
-1.      write 0x137dd 0xdc69 0x0
-2.      fallocate 0xb531 0xb5ad 0x21446
-3.      collapse_range 0x1c000 0x4000 0x21446
-	<sleep 30>
-4.      write 0x3e5ec 0x1a14 0x21446
-5.      zero_range 0x20fac 0x6d9c 0x40000 keep_size
-	<sleep 120>
+When I get to it, I will also check dm-log-write tests with latest image
+and rebuild my image from scratch to see if that changes anything.
 
-So what was the block I/O trace?  What operations was crashmonkey
-actually reordering?  There **really** shouldn't have been any....
-
-Can you send the block I/O trace that was observed when you did the
-following, a complete output of dumpe2fs on the file system, and a
-debugfs stat output on the test file?
-
-						- Ted
-
-P.S.  I did read the Crashmonkey paper, so I'm aware of what
-Crashmonkey does.  I'm just confused about your workload, since the
-120 second sleep should have meant there was a barrier followed by
-nothing else, making for a *very* boring crashmonkey replay.
+Thanks,
+Amir.
