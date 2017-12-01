@@ -1,36 +1,79 @@
-From: piaojun <piaojun@huawei.com>
-Subject: [PATCH] ext4: no need flush workqueue before destroying it
-Date: Fri, 1 Dec 2017 15:44:00 +0800
-Message-ID: <5A210840.1020807@huawei.com>
+From: linux-ext4-owner@vger.kernel.org
+Subject: =?utf-8?B?4piFIGxpbnRvbmRvd250b3duIC0t4oCc?=
+        =?utf-8?B?MjAxOOS4lueVjOWkjeWQiOadkOaWmeWxleiniOWPiuS8muiuruKAneWwhuS6juKAnDM=?=
+        =?utf-8?B?5pyI4oCd5Zyo4oCc5rOV5Zu95be06buO4oCd5Li+6KGMICAgIO+8iOWcsOWPs1Ax?=
+        =?utf-8?B?LUwtTWXvvIk=?=
+Date: Sat, 2 Dec 2017 04:52:26 +0800
+Message-ID: <20171202045235430641__47873.058243613$1512161964$gmane$org@swust.edu.cn>
+Reply-To: <EMAILQUNFA@163.COM>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain;
+        charset="utf-8"
+Content-Transfer-Encoding: base64
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga04-in.huawei.com ([45.249.212.190]:11464 "EHLO
-        szxga04-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751250AbdLAHoJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Dec 2017 02:44:09 -0500
+Received: from cns1-135.icoremail.net ([120.31.129.135]:47189 "HELO
+        gzxxg-sdnproxy-1.icoremail.net" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with SMTP id S1751522AbdLAU7P (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Dec 2017 15:59:15 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-destroy_workqueue() will do flushing work for us.
-
-Signed-off-by: Jun Piao <piaojun@huawei.com>
----
- fs/ext4/super.c | 1 -
- 1 file changed, 1 deletion(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0556cd0..2f46b0b 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -870,7 +870,6 @@ static void ext4_put_super(struct super_block *sb)
- 	ext4_unregister_li_request(sb);
- 	ext4_quota_off_umount(sb);
-
--	flush_workqueue(sbi->rsv_conversion_wq);
- 	destroy_workqueue(sbi->rsv_conversion_wq);
-
- 	if (sbi->s_journal) {
--- 
+5bCK5pWs55qEIGxpbnRvbmRvd250b3duQG1lZ2FnYXRlLmNvbSDkvIHkuJrpooblr7wv5YWs5Y+4
+6LSf6LSj5Lq6L+S4mueVjOS4k+Wutu+8jOaCqOWlve+8mg0K44CA44CADQrjgIDjgIDmlrDmnZDm
+lpnkuLoyMeS4lue6quS4ieWkp+WFseaAp+WFs+mUruaKgOacr+S5i+S4gO+8jOW3suaIkOS4uuWF
+qOeQg+e7j+a1jui/hemAn+WinumVv+eahOa6kOWKqOWKm+WSjOaPkOWNh+aguOW/g+ernuS6ieWK
+m+eahOaImOeVpeeEpueCueOAguadkOaWmeS9nOS4uuWItumAoOS4mueahOWfuuehgO+8jOeJueWI
+q+aYr+aWsOadkOaWmeeglOeptuWSjOS6p+S4muWPkeWxleeahOawtOW5s+S4juinhOaooe+8jOW3
+sue7j+aIkOS4uuihoemHj+S4gOS4quWbveWutuenkeaKgOi/m+atpeWSjOe7vOWQiOWunuWKm+ea
+hOmHjeimgeagh+W/l+OAguWcqOaWsOadkOaWmeWPkeWxleS4juW6lOeUqOS4re+8jOWkjeWQiOad
+kOaWmeWNoOacieebuOW9k+mHjeimgeeahOWcsOS9je+8jOeJueWIq+W5v+azm+eahOW6lOeUqOWc
+qOaxvei9puOAgeS6pOmAmuOAgemjjuiDveOAgeiIquepuuOAgeiIquWkqeOAgeWFteWZqOOAgeiI
+ueiItuOAgeWbvemYsuOAgeacuuaisOOAgeeUteWtkOOAgeWMluW3peOAgeW7uuetkeOAgeWGnOS4
+muOAgea4lOS4muOAgee6uue7h+OAgei/kOWKqOWZqOadkOetiemihuWfn++8jOS4gOebtOaYr+S4
+lueVjOWQhOWbveS8mOWFiOWPkeWxleWSjOernuS6iea/gOeDiOeahOmHjeimgeihjOS4muOAgg0K
+44CA44CADQrjgIDjgIDigJxKRUPkuJbnlYzlpI3lkIjmnZDmlpnlsZXop4jlj4rkvJrorq7igJ3v
+vIhKRUMgd29ybGQgQ29tcG9zaXRlcyBTaG93ICYgQ29uZmVyZW5jZXPvvInliJvlip7kuo4xOTYz
+5bm077yM5q+P5bm05Li+5Yqe5LiA5bGK77yM6IezMjAxN+W5tOaAu+WFseS4vuWKnuS6hjUy5bGK
+77yM5Li75Yqe5Y2V5L2N5piv5rOV5Zu9SkVD5aSN5ZCI5p2Q5paZ5Y+R5bGV5L+D6L+b5LyaL0pF
+Q+mbhuWbou+8jOS4reWbveaAu+WxleWbouWxleWVhue7hOe7h+WNleS9jeS4uuaYoOW+t+WbvemZ
+heS8muWxlembhuWbouS4reWbveS7o+ihqOWkhO+8jOWcqOWMl+S6rOOAgeS4iua1t+etieWcsOiu
+vuacieWIhuaUr+acuuaehO+8jOi0n+i0o+ivpeWxleS8muWcqOS4reWbveeahOaOqOW5v+WSjOaL
+m+WVhuW3peS9nO+8iEpFQ+S4reWbveaAu+WxleWbouaKpeWQjeeDree6v++8mjQwMDAtNjgwLTg2
+MOi9rDgxNDTjgIE1MjIw77yJ44CCSkVD5aSN5ZCI5p2Q5paZ5bGV5bey5oiQ5Li65LiW55WM5LiK
+5Y6G5Y+y5pyA5oKg5LmF44CB6KeE5qih5pyA5aSn55qE5aSN5ZCI5p2Q5paZ6KGM5Lia5LiT5Lia
+5bGV6KeI5Lya77yM5bGV56S65ZKM5Y+N5pig5LqG5b2T5YmN5aSN5ZCI5p2Q5paZ6KGM5Lia55qE
+5pyA5paw5oqA5pyv5ZKM5bqU55So5oiQ5p6c44CCDQrjgIDjgIANCuOAgOOAgOS4uuS6huWinui/
+m+WbveWGheWkluWkjeWQiOadkOaWmeihjOS4mueahOS6pOa1geS4juWQiOS9nO+8jOWQjOaXtuWx
+leekuuaIkeWbveWkjeWQiOadkOaWmeS6p+S4mueahOWPkeWxleS4juaIkOWwse+8jOW4ruWKqeWi
+g+WGheS8geS4muW8gOaLk+WbveWGheWkluW4guWcuu+8jOS4reWbveWbvemZheWkjeadkOWNj+S8
+muOAgeaYoOW+t+WbvemZheS8muWxlembhuWbou+8iFlPTkQgRVhQT++8ieS4reWbveS7o+ihqOWk
+hOW3sui/keWNgeW5tOe7hOe7h+S4reWbveS8geS4muWPguS4juivpeWxleS8mu+8jOS4uuS4reWb
+veWkjeWQiOadkOaWmembhuWbouOAgeS4readkOenkeaKgOOAgeS4remSoumbhuWbouOAgeS4reWb
+veW7uuadkOmbhuWbouOAgeS4reWbveWVhumjnuOAgeWMl+S6rOeOu+mSoumZouOAgeS4iua1t+ad
+sOS6i+adsOaWsOadkOaWmembhuWbouOAgemHjeW6huWbvemZheWkjeWQiOadkOaWmeOAgeS4reWN
+l+aOp+iCoembhuWbouOAgeenpueah+Wym+iAgOWNjueOu+eSg+mSouOAgeeDn+WPsOawqOe6tuOA
+geWkqemprOmbhuWbouOAgeWNjuS4nOeQhuW3peWkp+WtpuOAgeWTiOWwlOa7qOW3peS4muWkp+Wt
+puOAgeW3qOefs+mbhuWbouOAgeS4reWGtumbhuWbouOAgemHkeWFiembhuWbouOAgeaxn+iLj+aB
+kuelnue6pOe7tOadkOaWmeOAgemHjeW6huWkp+WtpuOAgeS4iua1t+eOu+eSg+mSoueglOeptumZ
+ouOAgeS4reWNl+Wkp+WtpuOAgeWTiOWwlOa7qOeOu+eSg+mSoueglOeptumZouetieS8l+Wkmuih
+jOS4muW3qOWktOWSjOefpeWQjeacuuaehOaPkOS+m+S6huS8mOi0qOmrmOaViOeahOWig+WkluWx
+lei0uOacjeWKoeOAgg0K44CA44CADQrjgIDjgIDigJxKRUMgd29ybGQgMjAxOCDnrKzkupTljYHk
+uInkuJbnlYzlpI3lkIjmnZDmlpnlsZXop4jlj4rkvJrorq7igJ3lsIbkuo7igJwz5pyIMDYtMDjm
+l6XigJ3lnKjigJzms5Xlm73lt7Tpu47lsZXop4jkvJrorq7kuK3lv4PigJ3lho3luqbkuL7ooYzv
+vIzmiJHku6zor5rpgoDlhajlm73lkITlnLDlpI3lkIjmnZDmlpnlj4rmlrDmnZDmlpnnm7jlhbPl
+jZXkvY3kuI7kuJrnlYzkurrlo6vliqDlhaXlkrHku6znmoTkuK3lm73mgLvlsZXlm6LliY3lvoDl
+j4LlsZXlj4Lop4LjgILjgIDjgIANCuOAgOOAgA0K44CA44CA5pyJ5YWz5Y+C5bGV5Y+C6KeC4oCc
+SkVD5LiW55WM5aSN5ZCI5p2Q5paZ5bGV4oCd5LqL5a6c77yM6K+36IGU57uc44CQ5Lit5Zu95oC7
+5bGV5Zui44CR57uE5Yqe5pa54oCU4oCUIOWFqOWbvee7n+S4gOWuouacjeeDree6v++8mjQwMDAt
+NTgwLTg1MO+8iOi9rDUyMjDjgIE4MTQ044CBODg4OO+8ieOAgTAxMOKAlDY5MjMtNjk0NO+8myDp
+gq7nrrEvUVHvvJoxMjgwOTM5NSNxcS5jb23vvJsg5b6u5L+h77yaIENhblpoYW5YaWFvWGnvvIjl
+j4LlsZXmtojmga/vvInjgIFaaGFuU2hhbmdaaGlKaWHvvIjlsZXllYbkuYvlrrbvvInvvJsg5b6u
+5Y2a77yaaHR0cDovL3dlaWJvLmNvbS9qZWNzaG9377yI5bGV5Lya77yJ44CBaHR0cDovL3dlaWJv
+LmNvbS95aW5nZGVodWl6aGFu77yI5YWs5Y+477yJ44CCDQrjgIDjgIANCuOAgOOAgOWPguWKoEpF
+Q+WxleS8muaYr+S4gOS4quWkjeWQiOadkOaWmeWPiuaWsOadkOaWmeS8geS4mui1sOWQkeWbvemZ
+heWMlueahOagh+W/l+WSjOmAlOW+hO+8gQ0K44CA44CADQrjgIDjgIANCuOAgOOAgA0K44CA44CA
+DQpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19f44CA44CADQrvvIjnmb7kuIfnvqTlj5Hns7vnu598
+5Li65oKo5Y+R6YCBfOWmguS4jeW4jOacm+WGjeaUtuWIsOatpOihjOS4mui1hOiur3zor7flm57l
+pI3igJxURCtKRUPigJ3oh7Ppgq7nrrExMDU1ODAwODEyQHFxLmNvbe+8iQ0K
