@@ -1,79 +1,113 @@
-From: linux-ext4-owner@vger.kernel.org
-Subject: =?utf-8?B?4piFIGxpbnRvbmRvd250b3duIC0t4oCc?=
-        =?utf-8?B?MjAxOOS4lueVjOWkjeWQiOadkOaWmeWxleiniOWPiuS8muiuruKAneWwhuS6juKAnDM=?=
-        =?utf-8?B?5pyI4oCd5Zyo4oCc5rOV5Zu95be06buO4oCd5Li+6KGMICAgIO+8iOWcsOWPs1Ax?=
-        =?utf-8?B?LUwtTWXvvIk=?=
-Date: Sat, 2 Dec 2017 04:52:26 +0800
-Message-ID: <20171202045235430641__47873.058243613$1512161964$gmane$org@swust.edu.cn>
-Reply-To: <EMAILQUNFA@163.COM>
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Subject: Testing Ext4 encryption with fstests
+Date: Sat, 02 Dec 2017 08:44:29 +0530
+Message-ID: <2008991.n3x73QCyP8@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain;
-        charset="utf-8"
-Content-Transfer-Encoding: base64
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7Bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cns1-135.icoremail.net ([120.31.129.135]:47189 "HELO
-        gzxxg-sdnproxy-1.icoremail.net" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with SMTP id S1751522AbdLAU7P (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Dec 2017 15:59:15 -0500
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:54438 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1751031AbdLBDN3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Dec 2017 22:13:29 -0500
+Received: from pps.filterd (m0098413.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.21/8.16.0.21) with SMTP id vB239R4d059545
+        for <linux-ext4@vger.kernel.org>; Fri, 1 Dec 2017 22:13:28 -0500
+Received: from e06smtp13.uk.ibm.com (e06smtp13.uk.ibm.com [195.75.94.109])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 2ekhfn4vbp-1
+        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Fri, 01 Dec 2017 22:13:28 -0500
+Received: from localhost
+        by e06smtp13.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Sat, 2 Dec 2017 03:13:26 -0000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-5bCK5pWs55qEIGxpbnRvbmRvd250b3duQG1lZ2FnYXRlLmNvbSDkvIHkuJrpooblr7wv5YWs5Y+4
-6LSf6LSj5Lq6L+S4mueVjOS4k+Wutu+8jOaCqOWlve+8mg0K44CA44CADQrjgIDjgIDmlrDmnZDm
-lpnkuLoyMeS4lue6quS4ieWkp+WFseaAp+WFs+mUruaKgOacr+S5i+S4gO+8jOW3suaIkOS4uuWF
-qOeQg+e7j+a1jui/hemAn+WinumVv+eahOa6kOWKqOWKm+WSjOaPkOWNh+aguOW/g+ernuS6ieWK
-m+eahOaImOeVpeeEpueCueOAguadkOaWmeS9nOS4uuWItumAoOS4mueahOWfuuehgO+8jOeJueWI
-q+aYr+aWsOadkOaWmeeglOeptuWSjOS6p+S4muWPkeWxleeahOawtOW5s+S4juinhOaooe+8jOW3
-sue7j+aIkOS4uuihoemHj+S4gOS4quWbveWutuenkeaKgOi/m+atpeWSjOe7vOWQiOWunuWKm+ea
-hOmHjeimgeagh+W/l+OAguWcqOaWsOadkOaWmeWPkeWxleS4juW6lOeUqOS4re+8jOWkjeWQiOad
-kOaWmeWNoOacieebuOW9k+mHjeimgeeahOWcsOS9je+8jOeJueWIq+W5v+azm+eahOW6lOeUqOWc
-qOaxvei9puOAgeS6pOmAmuOAgemjjuiDveOAgeiIquepuuOAgeiIquWkqeOAgeWFteWZqOOAgeiI
-ueiItuOAgeWbvemYsuOAgeacuuaisOOAgeeUteWtkOOAgeWMluW3peOAgeW7uuetkeOAgeWGnOS4
-muOAgea4lOS4muOAgee6uue7h+OAgei/kOWKqOWZqOadkOetiemihuWfn++8jOS4gOebtOaYr+S4
-lueVjOWQhOWbveS8mOWFiOWPkeWxleWSjOernuS6iea/gOeDiOeahOmHjeimgeihjOS4muOAgg0K
-44CA44CADQrjgIDjgIDigJxKRUPkuJbnlYzlpI3lkIjmnZDmlpnlsZXop4jlj4rkvJrorq7igJ3v
-vIhKRUMgd29ybGQgQ29tcG9zaXRlcyBTaG93ICYgQ29uZmVyZW5jZXPvvInliJvlip7kuo4xOTYz
-5bm077yM5q+P5bm05Li+5Yqe5LiA5bGK77yM6IezMjAxN+W5tOaAu+WFseS4vuWKnuS6hjUy5bGK
-77yM5Li75Yqe5Y2V5L2N5piv5rOV5Zu9SkVD5aSN5ZCI5p2Q5paZ5Y+R5bGV5L+D6L+b5LyaL0pF
-Q+mbhuWbou+8jOS4reWbveaAu+WxleWbouWxleWVhue7hOe7h+WNleS9jeS4uuaYoOW+t+WbvemZ
-heS8muWxlembhuWbouS4reWbveS7o+ihqOWkhO+8jOWcqOWMl+S6rOOAgeS4iua1t+etieWcsOiu
-vuacieWIhuaUr+acuuaehO+8jOi0n+i0o+ivpeWxleS8muWcqOS4reWbveeahOaOqOW5v+WSjOaL
-m+WVhuW3peS9nO+8iEpFQ+S4reWbveaAu+WxleWbouaKpeWQjeeDree6v++8mjQwMDAtNjgwLTg2
-MOi9rDgxNDTjgIE1MjIw77yJ44CCSkVD5aSN5ZCI5p2Q5paZ5bGV5bey5oiQ5Li65LiW55WM5LiK
-5Y6G5Y+y5pyA5oKg5LmF44CB6KeE5qih5pyA5aSn55qE5aSN5ZCI5p2Q5paZ6KGM5Lia5LiT5Lia
-5bGV6KeI5Lya77yM5bGV56S65ZKM5Y+N5pig5LqG5b2T5YmN5aSN5ZCI5p2Q5paZ6KGM5Lia55qE
-5pyA5paw5oqA5pyv5ZKM5bqU55So5oiQ5p6c44CCDQrjgIDjgIANCuOAgOOAgOS4uuS6huWinui/
-m+WbveWGheWkluWkjeWQiOadkOaWmeihjOS4mueahOS6pOa1geS4juWQiOS9nO+8jOWQjOaXtuWx
-leekuuaIkeWbveWkjeWQiOadkOaWmeS6p+S4mueahOWPkeWxleS4juaIkOWwse+8jOW4ruWKqeWi
-g+WGheS8geS4muW8gOaLk+WbveWGheWkluW4guWcuu+8jOS4reWbveWbvemZheWkjeadkOWNj+S8
-muOAgeaYoOW+t+WbvemZheS8muWxlembhuWbou+8iFlPTkQgRVhQT++8ieS4reWbveS7o+ihqOWk
-hOW3sui/keWNgeW5tOe7hOe7h+S4reWbveS8geS4muWPguS4juivpeWxleS8mu+8jOS4uuS4reWb
-veWkjeWQiOadkOaWmembhuWbouOAgeS4readkOenkeaKgOOAgeS4remSoumbhuWbouOAgeS4reWb
-veW7uuadkOmbhuWbouOAgeS4reWbveWVhumjnuOAgeWMl+S6rOeOu+mSoumZouOAgeS4iua1t+ad
-sOS6i+adsOaWsOadkOaWmembhuWbouOAgemHjeW6huWbvemZheWkjeWQiOadkOaWmeOAgeS4reWN
-l+aOp+iCoembhuWbouOAgeenpueah+Wym+iAgOWNjueOu+eSg+mSouOAgeeDn+WPsOawqOe6tuOA
-geWkqemprOmbhuWbouOAgeWNjuS4nOeQhuW3peWkp+WtpuOAgeWTiOWwlOa7qOW3peS4muWkp+Wt
-puOAgeW3qOefs+mbhuWbouOAgeS4reWGtumbhuWbouOAgemHkeWFiembhuWbouOAgeaxn+iLj+aB
-kuelnue6pOe7tOadkOaWmeOAgemHjeW6huWkp+WtpuOAgeS4iua1t+eOu+eSg+mSoueglOeptumZ
-ouOAgeS4reWNl+Wkp+WtpuOAgeWTiOWwlOa7qOeOu+eSg+mSoueglOeptumZouetieS8l+Wkmuih
-jOS4muW3qOWktOWSjOefpeWQjeacuuaehOaPkOS+m+S6huS8mOi0qOmrmOaViOeahOWig+WkluWx
-lei0uOacjeWKoeOAgg0K44CA44CADQrjgIDjgIDigJxKRUMgd29ybGQgMjAxOCDnrKzkupTljYHk
-uInkuJbnlYzlpI3lkIjmnZDmlpnlsZXop4jlj4rkvJrorq7igJ3lsIbkuo7igJwz5pyIMDYtMDjm
-l6XigJ3lnKjigJzms5Xlm73lt7Tpu47lsZXop4jkvJrorq7kuK3lv4PigJ3lho3luqbkuL7ooYzv
-vIzmiJHku6zor5rpgoDlhajlm73lkITlnLDlpI3lkIjmnZDmlpnlj4rmlrDmnZDmlpnnm7jlhbPl
-jZXkvY3kuI7kuJrnlYzkurrlo6vliqDlhaXlkrHku6znmoTkuK3lm73mgLvlsZXlm6LliY3lvoDl
-j4LlsZXlj4Lop4LjgILjgIDjgIANCuOAgOOAgA0K44CA44CA5pyJ5YWz5Y+C5bGV5Y+C6KeC4oCc
-SkVD5LiW55WM5aSN5ZCI5p2Q5paZ5bGV4oCd5LqL5a6c77yM6K+36IGU57uc44CQ5Lit5Zu95oC7
-5bGV5Zui44CR57uE5Yqe5pa54oCU4oCUIOWFqOWbvee7n+S4gOWuouacjeeDree6v++8mjQwMDAt
-NTgwLTg1MO+8iOi9rDUyMjDjgIE4MTQ044CBODg4OO+8ieOAgTAxMOKAlDY5MjMtNjk0NO+8myDp
-gq7nrrEvUVHvvJoxMjgwOTM5NSNxcS5jb23vvJsg5b6u5L+h77yaIENhblpoYW5YaWFvWGnvvIjl
-j4LlsZXmtojmga/vvInjgIFaaGFuU2hhbmdaaGlKaWHvvIjlsZXllYbkuYvlrrbvvInvvJsg5b6u
-5Y2a77yaaHR0cDovL3dlaWJvLmNvbS9qZWNzaG9377yI5bGV5Lya77yJ44CBaHR0cDovL3dlaWJv
-LmNvbS95aW5nZGVodWl6aGFu77yI5YWs5Y+477yJ44CCDQrjgIDjgIANCuOAgOOAgOWPguWKoEpF
-Q+WxleS8muaYr+S4gOS4quWkjeWQiOadkOaWmeWPiuaWsOadkOaWmeS8geS4mui1sOWQkeWbvemZ
-heWMlueahOagh+W/l+WSjOmAlOW+hO+8gQ0K44CA44CADQrjgIDjgIANCuOAgOOAgA0K44CA44CA
-DQpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19f44CA44CADQrvvIjnmb7kuIfnvqTlj5Hns7vnu598
-5Li65oKo5Y+R6YCBfOWmguS4jeW4jOacm+WGjeaUtuWIsOatpOihjOS4mui1hOiur3zor7flm57l
-pI3igJxURCtKRUPigJ3oh7Ppgq7nrrExMDU1ODAwODEyQHFxLmNvbe+8iQ0K
+Hi,
+
+I have now got an initial version of patch to get encryption to work on
+blocksize < pagesize
+(https://github.com/chandanr/linux/commit/343ef14a6c33fd3fc4bda11a2ffa6de8cd695f04).
+There is still some error handling code to be written.
+
+My fstests local.config has,
+
+export TEST_DEV=/dev/loop0
+export TEST_DIR=/mnt/btrfs-xfstest-test
+export SCRATCH_DEV=/dev/loop1
+export SCRATCH_MNT=/mnt/btrfs-xfstest-scratch
+MKFS_OPTIONS="-O encrypt"
+EXT_MOUNT_OPTIONS="-o test_dummy_encryption"
+export FSTYPE=ext4
+
+With the latest linux-next next-20171201 (i.e. without my changes applied)
+on x86 I see some tests fail and also filesystem consistency almost always 
+fails. E.g.
+
+_check_generic_filesystem: filesystem on /dev/loop0 is inconsistent
+(see /root/xfstests-dev/results//check.full for details)
+generic/011 1s ... 0s
+_check_generic_filesystem: filesystem on /dev/loop0 is inconsistent
+(see /root/xfstests-dev/results//generic/011.full for details)
+Ran: generic/011
+Failures: generic/011
+Failed 1 of 1 tests
+
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 localhost 4.13.0-next-20170905-gf165385
+MKFS_OPTIONS  -- -O encrypt /dev/loop1
+MOUNT_OPTIONS -- -o acl,user_xattr -o test_dummy_encryption /dev/loop1 /mnt/btrfs-xfstest-scratch
+
+_check_generic_filesystem: filesystem on /dev/loop0 is inconsistent
+(see /root/xfstests-dev/results//check.full for details)
+generic/012 0s ... [failed, exit status 1] - output mismatch (see /root/xfstests-dev/results//generic/012.out.bad)
+    --- tests/generic/012.out   2016-11-22 09:11:59.000000000 +0530
+    +++ /root/xfstests-dev/results//generic/012.out.bad 2017-12-01 11:14:08.826594934 +0530
+    @@ -47,3 +47,5 @@
+        14. data -> hole @ 0
+     0: [0..95]: extent
+     f1894a71ac539f6f90426d98a4990a47
+    +_check_generic_filesystem: filesystem on /dev/loop0 is inconsistent
+    +(see /root/xfstests-dev/results//generic/012.full for details)
+    ...
+    (Run 'diff -u tests/generic/012.out /root/xfstests-dev/results//generic/012.out.bad'  to see the entire diff)
+_check_generic_filesystem: filesystem on /dev/loop0 is inconsistent
+(see /root/xfstests-dev/results//generic/012.full for details)
+Ran: generic/012
+Failures: generic/012
+Failed 1 of 1 tests
+
+FSTYP         -- ext4
+PLATFORM      -- Linux/x86_64 localhost 4.13.0-next-20170905-gf165385
+MKFS_OPTIONS  -- -O encrypt /dev/loop1
+MOUNT_OPTIONS -- -o acl,user_xattr -o test_dummy_encryption /dev/loop1 /mnt/btrfs-xfstest-scratch
+
+
+_check_generic_filesystem: filesystem on /dev/loop0 is inconsistent
+(see /root/xfstests-dev/results//check.full for details)
+generic/013 2s ... [failed, exit status 1] - output mismatch (see /root/xfstests-dev/results//generic/013.out.bad)
+    --- tests/generic/013.out   2016-11-22 09:11:59.000000000 +0530
+    +++ /root/xfstests-dev/results//generic/013.out.bad 2017-12-01 11:14:09.724595573 +0530
+    @@ -1,14 +1,5 @@
+     QA output created by 013
+     brevity is wit...
+    -
+    ------------------------------------------------
+    -fsstress.1 : -r
+    ------------------------------------------------
+    -
+    ...
+    (Run 'diff -u tests/generic/013.out /root/xfstests-dev/results//generic/013.out.bad'  to see the entire diff)
+_check_generic_filesystem: filesystem on /dev/loop0 is inconsistent
+(see /root/xfstests-dev/results//generic/013.full for details)
+Ran: generic/013
+Failures: generic/013
+Failed 1 of 1 tests
+
+Please let me know if the test setup described above is incorrect.
+
+-- 
+chandan
