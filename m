@@ -1,87 +1,59 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: regression: 4.13 cannot follow symlinks on some ext3 fs
-Date: Mon, 4 Dec 2017 17:35:26 +0100
-Message-ID: <20171204163526.GD17047@quack2.suse.cz>
-References: <20171123203330.GN2482@two.firstfloor.org>
- <20171123222317.bq2v26zm5i2jspui@thunk.org>
- <20171123233101.GP2482@two.firstfloor.org>
- <700971AC-BDE2-4993-BD56-7497AD8A0FC4@dilger.ca>
- <20171124020435.GQ2482@two.firstfloor.org>
- <C656DD8B-7521-4281-8D55-4416A3C75161@dilger.ca>
- <20171124165102.GS2482@two.firstfloor.org>
- <706E8F37-95C7-4321-AACA-2ED11F82E625@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andi Kleen <andi@firstfloor.org>, Theodore Ts'o <tytso@mit.edu>,
-        Tahsin Erdogan <tahsin@google.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <706E8F37-95C7-4321-AACA-2ED11F82E625@dilger.ca>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [PATCH v3 0/4] e2image -b option to pass superblock number
+Date: Mon,  4 Dec 2017 22:35:26 +0300
+Message-ID: <20171204193530.54888-1-artem.blagodarenko@gmail.com>
+Cc: adilger.kernel@dilger.ca
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lf0-f68.google.com ([209.85.215.68]:38285 "EHLO
+        mail-lf0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751104AbdLDTfh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Dec 2017 14:35:37 -0500
+Received: by mail-lf0-f68.google.com with SMTP id e137so20540116lfg.5
+        for <linux-ext4@vger.kernel.org>; Mon, 04 Dec 2017 11:35:36 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 24-11-17 15:03:37, Andreas Dilger wrote:
-> On Nov 24, 2017, at 9:51 AM, Andi Kleen <andi@firstfloor.org> wrote:
-> > 
-> >> We checked old kernels, and old e2fsprogs, and didn't see any cases
-> >> where fast (<= 60 chars) symlinks were created using external blocks.
-> >> It seems that _something_ did create them, and it would be good to
-> >> figure that out so we can determine if it is a widespread problem
-> > 
-> > I assume it was the original kernel.
-> > 
-> >> 
-> >> I think e2fsck can fix this quite easily, and there really isn't
-> >> an easy way to revert to the old method if the large xattr feature
-> >> is enabled.  If you are willing to run a new kernel, you should also
-> >> be willing to run a new e2fsck.
-> > 
-> > It's obviously not enabled on ext3.
-> > 
-> >> We could probably add a fallback to the old mechanism (and print
-> >> a one-time warning to upgrade to a newer e2fsck) if an external fast
-> >> symlink is found and the large xattr  feature is not enabled, which
-> >> would give more time to fix this (hopefully rare in the wild) case.
-> > 
-> > If the old kernel created it, then likely all the
-> > /lib{,64}/ld-linux.so.2 symlinks have that, which breaks all ELF
-> > executables. I suspect in these old file systems it's not particularly rare.
-> 
-> Sure, but not many people are going to be running a 4.14 kernel with
-> a 2007 system.  Could you please run the updated find command to see
-> whether this is an isolated case, or if it is a common case:
-> 
-> find / -type l -size -60c -print0 | xargs -0r ls -dils | awk '$2 != 0 { print }'
-> 
-> It would also be useful if anyone else reading this that has an old
-> system (2005-2011 install date) ran the same to see if any such
-> symlinks are found.  To see when the root filesystem was created, run:
-> 
-> dumpe2fs -h $(df -P / | awk '/dev/ { print $1 }') 2>&1 | grep created
+There was a discussion about possibility of using
+superblock backup for creating images with e2image.
 
-I have one fs image around from:
+https://www.spinics.net/lists/linux-ext4/msg30583.html
 
-Filesystem created:       Tue Nov 15 04:43:22 2005
+Now our customer faced with situation then it would be
+useful to have image file from partition with broken
+superblock.
 
-and it indeed does have these problematic symlinks as well:
+Here is set of patches that adds this functionality.
 
-none):~# l /usr/share/terminfo/x/xterm-r5
-lrwxrwxrwx 1 root root 24 May 19  2006 /usr/share/terminfo/x/xterm-r5 ->
-/lib/terminfo/x/xterm-r5
-(none):~# stat /usr/share/terminfo/x/xterm-r5
-  File: `/usr/share/terminfo/x/xterm-r5' -> `/lib/terminfo/x/xterm-r5'
-  Size: 24        	Blocks: 8          IO Block: 4096   symbolic link
-Device: 6200h/25088d	Inode: 98027       Links: 1
-Access: (0777/lrwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
-Access: 2017-12-04 16:27:29.000000000 +0000
-Modify: 2006-05-19 21:12:53.000000000 +0000
-Change: 2006-05-19 21:12:53.000000000 +0000
+This is third version of the patch set. Changes since v2:
+* Moved ext2fs_try_open_fs() deletions
+* automatically try to open the backup superblocks
+* Options are sorted in alphabetical order
+* run_e2fsck is used for test
+* manual is added into the patch that adds this option
 
-								Honza
+Artem Blagodarenko (4):
+  ext2fs: opening filesystem code refactoring
+  e2image: add -b option to use supperblock backup
+  tests: add test for e2image -b option
+  ext2fs: automaticlly open backup superblocks
+
+ e2fsck/e2fsck.h             |   2 -
+ e2fsck/message.c            |   3 +-
+ e2fsck/unix.c               |  44 +++++--------
+ e2fsck/util.c               |  73 ---------------------
+ lib/ext2fs/ext2fs.h         |   8 +++
+ lib/ext2fs/openfs.c         | 152 +++++++++++++++++++++++++++++++++++++++++++-
+ misc/dumpe2fs.c             |  17 +----
+ misc/e2image.8.in           |  32 ++++++++++
+ misc/e2image.c              |  50 +++++++++++++--
+ tests/i_zero_super/expect.1 |  22 +++++++
+ tests/i_zero_super/image.gz | Bin 0 -> 13262 bytes
+ tests/i_zero_super/script   |  11 ++++
+ 12 files changed, 288 insertions(+), 126 deletions(-)
+ create mode 100644 tests/i_zero_super/expect.1
+ create mode 100644 tests/i_zero_super/image.gz
+ create mode 100644 tests/i_zero_super/script
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.13.6 (Apple Git-96)
