@@ -1,117 +1,343 @@
 From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Subject: [PATCH v3 3/4] tests: add test for e2image -b option
-Date: Mon,  4 Dec 2017 22:35:29 +0300
-Message-ID: <20171204193530.54888-4-artem.blagodarenko@gmail.com>
+Subject: [PATCH v3 4/4] ext2fs: automaticlly open backup superblocks
+Date: Mon,  4 Dec 2017 22:35:30 +0300
+Message-ID: <20171204193530.54888-5-artem.blagodarenko@gmail.com>
 References: <20171204193530.54888-1-artem.blagodarenko@gmail.com>
-Cc: adilger.kernel@dilger.ca,
-        Artem Blagodarenko <artem.blagodarenko@seagate.com>
+Cc: adilger.kernel@dilger.ca
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f67.google.com ([209.85.215.67]:40248 "EHLO
+Received: from mail-lf0-f67.google.com ([209.85.215.67]:46033 "EHLO
         mail-lf0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751840AbdLDTfo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Dec 2017 14:35:44 -0500
-Received: by mail-lf0-f67.google.com with SMTP id t197so20501467lfe.7
-        for <linux-ext4@vger.kernel.org>; Mon, 04 Dec 2017 11:35:43 -0800 (PST)
+        with ESMTP id S1751104AbdLDTfq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Dec 2017 14:35:46 -0500
+Received: by mail-lf0-f67.google.com with SMTP id f13so20450834lff.12
+        for <linux-ext4@vger.kernel.org>; Mon, 04 Dec 2017 11:35:45 -0800 (PST)
 In-Reply-To: <20171204193530.54888-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Artem Blagodarenko <artem.blagodarenko@seagate.com>
+e2image and e2fsck automatically try to open some backup superblocks,
+if only blocksize is set or passed superblock can't be opened.
+Try few backup superblocks (e.g. {1, 3, 5,7, 9} * blocksize * 8).
 
-The test makes raw image from partition with broken super block
-and executes e2fsck.
+This code is moved to library.
 
 Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 ---
- tests/i_zero_super/expect.1 |  22 ++++++++++++++++++++++
- tests/i_zero_super/image.gz | Bin 0 -> 13262 bytes
- tests/i_zero_super/script   |  11 +++++++++++
- 3 files changed, 33 insertions(+)
+ e2fsck/e2fsck.h     |   2 -
+ e2fsck/message.c    |   3 +-
+ e2fsck/unix.c       |  16 ++++++--
+ e2fsck/util.c       |  73 ---------------------------------
+ lib/ext2fs/ext2fs.h |   8 ++++
+ lib/ext2fs/openfs.c | 116 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ misc/e2image.c      |  10 ++++-
+ 7 files changed, 146 insertions(+), 82 deletions(-)
 
-diff --git a/tests/i_zero_super/expect.1 b/tests/i_zero_super/expect.1
-new file mode 100644
-index 00000000..fda32b96
---- /dev/null
-+++ b/tests/i_zero_super/expect.1
-@@ -0,0 +1,22 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+Free blocks count wrong for group #0 (7987, counted=7982).
-+Fix? no
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 9eee4bc2..9cd3910e 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -634,8 +634,6 @@ extern void e2fsck_write_inode_full(e2fsck_t ctx, unsigned long ino,
+ #ifdef MTRACE
+ extern void mtrace_print(char *mesg);
+ #endif
+-extern blk64_t get_backup_sb(e2fsck_t ctx, ext2_filsys fs,
+-			   const char *name, io_manager manager);
+ extern int ext2_file_type(unsigned int mode);
+ extern int write_all(int fd, char *buf, size_t count);
+ void dump_mmp_msg(struct mmp_struct *mmp, const char *msg);
+diff --git a/e2fsck/message.c b/e2fsck/message.c
+index 727f71d5..df408917 100644
+--- a/e2fsck/message.c
++++ b/e2fsck/message.c
+@@ -465,7 +465,8 @@ static _INLINE_ void expand_percent_expression(FILE *f, ext2_filsys fs,
+ 		fprintf(f, "%*lld", width, (long long) ctx->blkcount);
+ 		break;
+ 	case 'S':
+-		fprintf(f, "%llu", get_backup_sb(NULL, fs, NULL, NULL));
++		fprintf(f, "%llu", ext2fs_first_backup_sb(NULL, NULL, fs,
++							  NULL, NULL));
+ 		break;
+ 	case 's':
+ 		fprintf(f, "%*s", width, ctx->str ? ctx->str : "NULL");
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 2865f37a..888a2fce 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1471,11 +1471,19 @@ restart:
+ 				retval ? _("Superblock invalid,") :
+ 				_("Group descriptors look bad..."));
+ 			orig_superblock = ctx->superblock;
+-			get_backup_sb(ctx, fs, ctx->filesystem_name, io_ptr);
+-			if (fs)
+-				ext2fs_close_free(&fs);
+ 			orig_retval = retval;
+-			retval = try_open_fs(ctx, flags, io_ptr, &fs);
++			retval = ext2fs_try_backups(ctx->filesystem_name,
++						    ctx->io_options,
++						    flags,
++						    &ctx->superblock,
++						    &ctx->blocksize, io_ptr,
++						    &fs);
++			if (retval == 0) {
++				fs->priv_data = ctx;
++				e2fsck_set_bitmap_type(fs,
++						       EXT2FS_BMAP64_RBTREE,
++						       "default", NULL);
++			}
+ 			if ((orig_retval == 0) && retval != 0) {
+ 				if (fs)
+ 					ext2fs_close_free(&fs);
+diff --git a/e2fsck/util.c b/e2fsck/util.c
+index ed947025..b1c638c5 100644
+--- a/e2fsck/util.c
++++ b/e2fsck/util.c
+@@ -548,79 +548,6 @@ void mtrace_print(char *mesg)
+ }
+ #endif
+ 
+-blk64_t get_backup_sb(e2fsck_t ctx, ext2_filsys fs, const char *name,
+-		      io_manager manager)
+-{
+-	struct ext2_super_block *sb;
+-	io_channel		io = NULL;
+-	void			*buf = NULL;
+-	int			blocksize;
+-	blk64_t			superblock, ret_sb = 8193;
+-
+-	if (fs && fs->super) {
+-		ret_sb = (fs->super->s_blocks_per_group +
+-			  fs->super->s_first_data_block);
+-		if (ctx) {
+-			ctx->superblock = ret_sb;
+-			ctx->blocksize = fs->blocksize;
+-		}
+-		return ret_sb;
+-	}
+-
+-	if (ctx) {
+-		if (ctx->blocksize) {
+-			ret_sb = ctx->blocksize * 8;
+-			if (ctx->blocksize == 1024)
+-				ret_sb++;
+-			ctx->superblock = ret_sb;
+-			return ret_sb;
+-		}
+-		ctx->superblock = ret_sb;
+-		ctx->blocksize = 1024;
+-	}
+-
+-	if (!name || !manager)
+-		goto cleanup;
+-
+-	if (manager->open(name, 0, &io) != 0)
+-		goto cleanup;
+-
+-	if (ext2fs_get_mem(SUPERBLOCK_SIZE, &buf))
+-		goto cleanup;
+-	sb = (struct ext2_super_block *) buf;
+-
+-	for (blocksize = EXT2_MIN_BLOCK_SIZE;
+-	     blocksize <= EXT2_MAX_BLOCK_SIZE ; blocksize *= 2) {
+-		superblock = blocksize*8;
+-		if (blocksize == 1024)
+-			superblock++;
+-		io_channel_set_blksize(io, blocksize);
+-		if (io_channel_read_blk64(io, superblock,
+-					-SUPERBLOCK_SIZE, buf))
+-			continue;
+-#ifdef WORDS_BIGENDIAN
+-		if (sb->s_magic == ext2fs_swab16(EXT2_SUPER_MAGIC))
+-			ext2fs_swap_super(sb);
+-#endif
+-		if ((sb->s_magic == EXT2_SUPER_MAGIC) &&
+-		    (EXT2_BLOCK_SIZE(sb) == blocksize)) {
+-			ret_sb = superblock;
+-			if (ctx) {
+-				ctx->superblock = superblock;
+-				ctx->blocksize = blocksize;
+-			}
+-			break;
+-		}
+-	}
+-
+-cleanup:
+-	if (io)
+-		io_channel_close(io);
+-	if (buf)
+-		ext2fs_free_mem(&buf);
+-	return (ret_sb);
+-}
+-
+ /*
+  * Given a mode, return the ext2 file type
+  */
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 6774e32c..942b46ea 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -1584,6 +1584,14 @@ extern int ext2fs_journal_sb_start(int blocksize);
+ extern errcode_t ext2fs_open(const char *name, int flags, int superblock,
+ 			     unsigned int block_size, io_manager manager,
+ 			     ext2_filsys *ret_fs);
++extern blk64_t ext2fs_first_backup_sb(blk64_t *superblock,
++				      unsigned int *blocksize,
++				      ext2_filsys fs, const char *name,
++				      io_manager manager);
++extern errcode_t ext2fs_try_backups(const char *name, const char *io_options,
++				    int flags, blk64_t *superblock,
++				    unsigned int *block_size,
++				    io_manager manager, ext2_filsys *ret_fs);
+ extern errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 			      int flags, int superblock,
+ 			      unsigned int block_size, io_manager manager,
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 585ad766..d0e1d3bd 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -497,6 +497,122 @@ cleanup:
+ 	return retval;
+ }
+ 
++blk64_t ext2fs_first_backup_sb(blk64_t *superblock, unsigned int *block_size,
++			       ext2_filsys fs, const char *name,
++			       io_manager manager)
++{
++	struct ext2_super_block *sb;
++	io_channel		io = NULL;
++	void			*buf = NULL;
++	int			try_blocksize;
++	blk64_t			try_superblock, ret_sb = 8193;
 +
-+Free blocks count wrong (11602, counted=11597).
-+Fix? no
++	if (fs && fs->super) {
++		ret_sb = (fs->super->s_blocks_per_group +
++			  fs->super->s_first_data_block);
++		*superblock = ret_sb;
++		*block_size = fs->blocksize;
++		return ret_sb;
++	}
 +
-+Free inodes count wrong for group #0 (1493, counted=1488).
-+Fix? no
++	if (*block_size) {
++		ret_sb = *block_size * 8;
++		if (*block_size == 1024)
++			ret_sb++;
++		*superblock = ret_sb;
++		return ret_sb;
++	}
 +
-+Free inodes count wrong (2997, counted=2992).
-+Fix? no
++	*superblock = ret_sb;
++	*block_size = 1024;
 +
++	if (!name || !manager)
++		goto cleanup;
 +
-+test_filesys: ********** WARNING: Filesystem still has errors **********
++	if (manager->open(name, 0, &io) != 0)
++		goto cleanup;
 +
-+test_filesys: 11/3008 files (0.0% non-contiguous), 398/12000 blocks
-+Exit status is 4
-diff --git a/tests/i_zero_super/image.gz b/tests/i_zero_super/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..eea9140194f4dd9ec9dc8bb7b9e2215b950587d2
-GIT binary patch
-literal 13262
-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
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/i_zero_super/script b/tests/i_zero_super/script
-new file mode 100644
-index 00000000..6b02d86d
---- /dev/null
-+++ b/tests/i_zero_super/script
-@@ -0,0 +1,11 @@
-+if test -x $E2IMAGE_EXE; then
++	if (ext2fs_get_mem(SUPERBLOCK_SIZE, &buf))
++		goto cleanup;
++	sb = (struct ext2_super_block *) buf;
 +
-+ONE_PASS_ONLY=true
-+FSCK_OPT="-n -b 8193 -f"
-+PREP_CMD="$E2IMAGE_EXE -r -b 8193 -B 1024 $TMPFILE $TMPFILE.raw; \
-+	  mv $TMPFILE.raw $TMPFILE"
-+. $cmd_dir/run_e2fsck
++	for (try_blocksize = EXT2_MIN_BLOCK_SIZE;
++	     try_blocksize <= EXT2_MAX_BLOCK_SIZE ; try_blocksize *= 2) {
++		try_superblock = try_blocksize*8;
++		if (try_blocksize == 1024)
++			try_superblock++;
++		io_channel_set_blksize(io, try_blocksize);
++		if (io_channel_read_blk64(io, try_superblock,
++					-SUPERBLOCK_SIZE, buf))
++			continue;
++#ifdef WORDS_BIGENDIAN
++		if (sb->s_magic == ext2fs_swab16(EXT2_SUPER_MAGIC))
++			ext2fs_swap_super(sb);
++#endif
++		if ((sb->s_magic == EXT2_SUPER_MAGIC) &&
++		    (EXT2_BLOCK_SIZE(sb) == try_blocksize)) {
++			ret_sb = try_superblock;
++			*superblock = try_superblock;
++			*block_size = try_blocksize;
++			break;
++		}
++	}
 +
-+else
-+	echo "$test_name: $test_description: skipped"
-+fi
++cleanup:
++	if (io)
++		io_channel_close(io);
++	if (buf)
++		ext2fs_free_mem(&buf);
++	return ret_sb;
++}
++
++errcode_t ext2fs_try_backups(const char *name, const char *io_options,
++			    int flags, blk64_t *superblock,
++			    unsigned int *block_size, io_manager manager,
++			    ext2_filsys *ret_fs)
++{
++	errcode_t retval;
++	blk64_t try_block_number;
++	unsigned int i;
++
++	/*
++	 * Get first superblock location based on heuristic.
++	 * Blocksize is also returned and used to find next
++	 * superblock copy location.
++	 */
++	try_block_number = ext2fs_first_backup_sb(superblock, block_size,
++						  *ret_fs, name, manager);
++	retval = ext2fs_open2(name,
++			      io_options, flags,
++			      try_block_number, *block_size,
++			      manager, ret_fs);
++	if (!retval)
++		return 0;
++
++	/*
++	 * Trt 3d, 5th, 7th, 9th superblock copy
++	 */
++	for (i = 3; i <= 9; i += 2) {
++		try_block_number = (i * (*block_size) * 8);
++		if (*block_size == 1024)
++			try_block_number++;
++		if (*ret_fs) {
++			ext2fs_free(*ret_fs);
++			*ret_fs = NULL;
++		}
++		retval = ext2fs_open2(name,
++				      io_options, flags,
++				      try_block_number, *block_size,
++				      manager, ret_fs);
++		if (!retval) {
++			*superblock = try_block_number;
++			break;
++		}
++	}
++
++	return retval;
++}
++
+ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 		       int flags, int superblock,
+ 		       unsigned int block_size, io_manager manager,
+diff --git a/misc/e2image.c b/misc/e2image.c
+index b1b7a17d..069768e1 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -1611,8 +1611,14 @@ int main (int argc, char ** argv)
+ 	}
+ 	sprintf(offset_opt, "offset=%llu", source_offset);
+ 	retval = ext2fs_open2(device_name, offset_opt, open_flag,
+-				    superblock, blocksize, unix_io_manager,
+-				    &fs);
++			      superblock, blocksize, unix_io_manager, &fs);
++	if (retval & (superblock | blocksize)) {
++		printf(_("Try backups in other location.\n"));
++		retval = ext2fs_try_backups(device_name, offset_opt, open_flag,
++					    &superblock, &blocksize,
++					    unix_io_manager, &fs);
++		printf(_("Use superblock %i.\n"), superblock);
++	}
+         if (retval) {
+ 		com_err (program_name, retval, _("while trying to open %s"),
+ 			 device_name);
 -- 
 2.13.6 (Apple Git-96)
