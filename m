@@ -1,37 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 2/2] generic/456: document the fix commit
-Date: Sun, 3 Dec 2017 19:28:39 -0500
-Message-ID: <20171204002838.kicldlczz645hwfw@thunk.org>
-References: <1511419423-7905-1-git-send-email-amir73il@gmail.com>
- <1511419423-7905-2-git-send-email-amir73il@gmail.com>
+From: piaojun <piaojun@huawei.com>
+Subject: Re: [PATCH] ext4: no need flush workqueue before destroying it
+Date: Mon, 4 Dec 2017 08:43:13 +0800
+Message-ID: <5A249A21.7090305@huawei.com>
+References: <5A210840.1020807@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eryu Guan <eguan@redhat.com>, Josef Bacik <jbacik@fb.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        fstests@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Amir Goldstein <amir73il@gmail.com>
-Return-path: <fstests-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1511419423-7905-2-git-send-email-amir73il@gmail.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+To: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from szxga06-in.huawei.com ([45.249.212.32]:44719 "EHLO huawei.com"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752079AbdLDAnb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 3 Dec 2017 19:43:31 -0500
+In-Reply-To: <5A210840.1020807@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 23, 2017 at 08:43:43AM +0200, Amir Goldstein wrote:
-> Add a link to Ted's post with more details about the bug
-> and the fix.
+Hi Ted,
+
+Could you help reviewing my patch?
+
+thanks,
+Jun
+
+On 2017/12/1 15:44, piaojun wrote:
+> destroy_workqueue() will do flushing work for us.
 > 
-> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-
-I'm OK with this, so:
-
-Reviewed-by: Theodore Ts'o <tytso@mit.edu>
-
-> It may be better to include a digest of the refered post embedded
-> in the test. For now, I just added the link to mailing list archive.
-> Maybe Ted can add the digest later.
-
-Eryu can chime in if he links, but in general we haven't included long
-discourses describing the bug in xfstests, so I don't think that's
-really necessary.
-
-					- Ted
+> Signed-off-by: Jun Piao <piaojun@huawei.com>
+> ---
+>  fs/ext4/super.c | 1 -
+>  1 file changed, 1 deletion(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 0556cd0..2f46b0b 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -870,7 +870,6 @@ static void ext4_put_super(struct super_block *sb)
+>  	ext4_unregister_li_request(sb);
+>  	ext4_quota_off_umount(sb);
+> 
+> -	flush_workqueue(sbi->rsv_conversion_wq);
+>  	destroy_workqueue(sbi->rsv_conversion_wq);
+> 
+>  	if (sbi->s_journal) {
+> 
