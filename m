@@ -1,41 +1,37 @@
-From: Eryu Guan <guaneryu@gmail.com>
-Subject: Re: Testing Ext4 encryption with fstests
-Date: Sun, 3 Dec 2017 14:22:10 +0800
-Message-ID: <20171203062210.GA2775@eguan.usersys.redhat.com>
-References: <2008991.n3x73QCyP8@localhost.localdomain>
- <20171203024449.foyydafswblqceou@thunk.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 2/2] generic/456: document the fix commit
+Date: Sun, 3 Dec 2017 19:28:39 -0500
+Message-ID: <20171204002838.kicldlczz645hwfw@thunk.org>
+References: <1511419423-7905-1-git-send-email-amir73il@gmail.com>
+ <1511419423-7905-2-git-send-email-amir73il@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f50.google.com ([74.125.83.50]:45156 "EHLO
-        mail-pg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752092AbdLCGWS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Dec 2017 01:22:18 -0500
-Received: by mail-pg0-f50.google.com with SMTP id m25so6220572pgv.12
-        for <linux-ext4@vger.kernel.org>; Sat, 02 Dec 2017 22:22:18 -0800 (PST)
+Cc: Eryu Guan <eguan@redhat.com>, Josef Bacik <jbacik@fb.com>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        fstests@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Amir Goldstein <amir73il@gmail.com>
+Return-path: <fstests-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20171203024449.foyydafswblqceou@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1511419423-7905-2-git-send-email-amir73il@gmail.com>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
-
-On Sat, Dec 02, 2017 at 09:44:49PM -0500, Theodore Ts'o wrote:
-> On Sat, Dec 02, 2017 at 08:44:29AM +0530, Chandan Rajendra wrote:
-...
+On Thu, Nov 23, 2017 at 08:43:43AM +0200, Amir Goldstein wrote:
+> Add a link to Ted's post with more details about the bug
+> and the fix.
 > 
-> generic/466 and generic/468 are new tests that are failing on the
-> standard 4k config as well as the encrypt case.  On my todo list to
-> look at more closely and triage.
+> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 
-I've sent a patch to fix generic/468 failure on Nov. 15th, would you
-please take a look and review it?
+I'm OK with this, so:
 
-ext4: fix fdatasync(2) after fallocate(2) operation
-https://patchwork.ozlabs.org/patch/838141/
+Reviewed-by: Theodore Ts'o <tytso@mit.edu>
 
-Thanks,
-Eryu
+> It may be better to include a digest of the refered post embedded
+> in the test. For now, I just added the link to mailing list archive.
+> Maybe Ted can add the digest later.
+
+Eryu can chime in if he links, but in general we haven't included long
+discourses describing the bug in xfstests, so I don't think that's
+really necessary.
+
+					- Ted
