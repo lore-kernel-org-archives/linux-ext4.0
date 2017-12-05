@@ -1,38 +1,31 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH v2] e2fsck: Fix access after free for dx_db structure
-Date: Mon, 4 Dec 2017 22:11:32 -0500
-Message-ID: <20171205031132.fzzhak5d3zgexwp3@thunk.org>
-References: <20171104172218.79017-1-artem.blagodarenko@gmail.com>
- <E7D16B41-815E-4A97-9FF0-02BA3B46C892@dilger.ca>
+Subject: Re: [PATCH] e2freefrag: print 64bit free blocks count
+Date: Mon, 4 Dec 2017 22:18:14 -0500
+Message-ID: <20171205031814.ovzmjgw5bzgv6qnq@thunk.org>
+References: <C26C67884C4B7A48980D574635594864033FC0E1@BPXM20GP.gisp.nec.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@dilger.ca>
+Cc: "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33400 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:33428 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751852AbdLEDLe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 4 Dec 2017 22:11:34 -0500
+        id S1751852AbdLEDSS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 4 Dec 2017 22:18:18 -0500
 Content-Disposition: inline
-In-Reply-To: <E7D16B41-815E-4A97-9FF0-02BA3B46C892@dilger.ca>
+In-Reply-To: <C26C67884C4B7A48980D574635594864033FC0E1@BPXM20GP.gisp.nec.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 05, 2017 at 10:49:55PM -0700, Andreas Dilger wrote:
-> On Nov 4, 2017, at 11:22 AM, Artem Blagodarenko <artem.blagodarenko@gmail.com> wrote:
-> > 
-> > dx_db structure is freed after fixing of PR_2_HTREE_BAD_ROOT
-> > problem. Next code block use this structure to unerstand if leaf
-> > is beeng processed.
-> > 
-> > If dx_db is freed, then root block is being processed and if_leaf
-> > need to be set to 0.
-> > 
-> > Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+On Tue, Dec 05, 2017 at 12:15:38AM +0000, Kazuya Mio wrote:
+> e2freefrag prints incorrect free blocks count when the number of free blocks
+> is larger than 2^32. 
+> To fix this problem, e2freefrag uses ext2fs_free_blocks_count(),
+> not fs->super->s_free_blocks_count.
 > 
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+> Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 
 Thanks, applied.
 
-						- Ted
+					- Ted
