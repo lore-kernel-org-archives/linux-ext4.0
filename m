@@ -1,73 +1,41 @@
-From: David Gstir <david@sigma-star.at>
-Subject: Re: [PATCH] fscrypt: add support for ChaCha20 contents encryption
-Date: Mon, 11 Dec 2017 17:11:41 +0100
-Message-ID: <899E2752-1AD9-4DF4-ABC7-E0D1582AF292@sigma-star.at>
-References: <20171208013838.105034-1-ebiggers3@gmail.com>
- <CAHmME9ob8eG1yS=jkGHFnYDq+FtiJCP38CKpzUs0Z33R8_0Msw@mail.gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Content-Type: text/plain;
-        charset=us-ascii
-Content-Transfer-Encoding: 8BIT
-Cc: Eric Biggers <ebiggers3@gmail.com>, linux-fscrypt@vger.kernel.org,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Paul Crowley <paulcrowley@google.com>,
-        Martin Willi <martin@strongswan.org>,
-        Ard Biesheuvel <ard.biesheuvel@linaro.org>,
-        Eric Biggers <ebiggers@google.com>,
-        Richard Weinberger <richard@nod.at>
-To: "Jason A. Donenfeld" <Jason@zx2c4.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: add missing error check in __ext4_new_inode()
+Date: Mon, 11 Dec 2017 12:52:47 -0500
+Message-ID: <20171211175247.5564-1-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.sigma-star.at ([95.130.255.111]:45996 "EHLO
-        mail.sigma-star.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752599AbdLKQLq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Dec 2017 11:11:46 -0500
-In-Reply-To: <CAHmME9ob8eG1yS=jkGHFnYDq+FtiJCP38CKpzUs0Z33R8_0Msw@mail.gmail.com>
+Received: from imap.thunk.org ([74.207.234.97]:59506 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751274AbdLKRwv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 11 Dec 2017 12:52:51 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+It's possible for ext4_get_acl() to return an ERR_PTR.  So we need to
+add a check for this case in __ext4_new_inode().  Otherwise on an
+error we can end up oops the kernel.
 
-> On 08.12.2017, at 03:51, Jason A. Donenfeld <Jason@zx2c4.com> wrote:
-> 
-> Hi Eric,
-> 
-> Nice to see more use of ChaCha20. However...
-> 
-> Can we skip over the "sort of worse than XTS, but not having _real_
-> authentication sucks anyway in either case, so whatever" and move
-> directly to, "linux finally supports authenticated encryption for disk
-> encryption!"? This would be a big deal and would actually be a
-> noticeable security improvement, instead of a potentially dubious step
-> sidewaysbackish.
+This was getting triggered by xfstests generic/388, which is a test
+which exercises the shutdown code path.
 
-Out of curiosity, does anybody know of any specific attacks that authenticated
-encryption for disk encryption would solve as opposed to just using encryption
-with AES-XTS?
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/ialloc.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-To my knowledge the XTS mode is frowned upon [1], but I don't know of any
-serious flaws that would eg. allow an attacker to modify file contents
-without a *serious* amount of effort. CBC is another story though [2].
-
-Don't get me wrong, I'd like to have authenticated encryption too.
-In fact we are currently working on a concept for adding authentication to
-UBIFS (I'll share more details as soon as its in a presentable state).
-However, the reason for this is mainly because UBIFS does *not* operate on
-the block layer, so dm-integrity/dm-verity is not an option and fscrypt
-only protects the confidentiality of file contents and filenames.
-This means that the filesystem index is unprotected which makes it rather
-easy to move files around - eg. replace /bin/bash with something completely
-different without knowing the fscrypt master key or any derived key.
-
-For the general use case though (eg. securing *really important* files on my desktop),
-I'd use authenticated encryption at a higher layer to get more flexibility
-to eg. easily use explicit IVs over implicit ones derived from block/sector
-number. But maybe there are some uses cases I didn't think of just now... :)
-
-David
-
-[1] https://sockpuppet.org/blog/2014/04/30/you-dont-want-xts/
-[2] http://www.jakoblell.com/blog/2013/12/22/practical-malleability-attack-against-cbc-encrypted-luks-partitions/
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index b4267d72f249..b32cf263750d 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -816,6 +816,8 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+ #ifdef CONFIG_EXT4_FS_POSIX_ACL
+ 		struct posix_acl *p = get_acl(dir, ACL_TYPE_DEFAULT);
+ 
++		if (IS_ERR(p))
++			return ERR_CAST(p);
+ 		if (p) {
+ 			int acl_size = p->a_count * sizeof(ext4_acl_entry);
+ 
+-- 
+2.11.0.rc0.7.gbe5a750
