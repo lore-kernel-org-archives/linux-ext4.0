@@ -1,62 +1,55 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [PATCH] fscrypt: add support for ChaCha20 contents encryption
-Date: Sun, 10 Dec 2017 10:59:51 -0800
-Message-ID: <20171210185831.GA1170@zzz.localdomain>
-References: <20171208013838.105034-1-ebiggers3@gmail.com>
- <CAH8yC8knEBwum3Ka3x+8sT3qhtHT2FLb4Bo6DzjPKFC0hw4KQA@mail.gmail.com>
+From: Herbert Xu <herbert@gondor.apana.org.au>
+Subject: Re: [RFC PATCH] crypto: chacha20 - add implementation using 96-bit
+ nonce
+Date: Mon, 11 Dec 2017 17:55:35 +1100
+Message-ID: <20171211065535.GA8457@gondor.apana.org.au>
+References: <20171208115502.21775-1-ard.biesheuvel@linaro.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fscrypt@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+Cc: linux-crypto@vger.kernel.org, ard.biesheuvel@linaro.org,
+        ebiggers@google.com, linux-fscrypt@vger.kernel.org, tytso@mit.edu,
         linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Michael Halcrow <mhalcrow@google.com>,
-        Paul Crowley <paulcrowley@google.com>,
-        Martin Willi <martin@strongswan.org>,
-        Ard Biesheuvel <ard.biesheuvel@linaro.org>,
-        David Gstir <david@sigma-star.at>,
-        "Jason A . Donenfeld" <Jason@zx2c4.com>,
-        Eric Biggers <ebiggers@google.com>
-To: Jeffrey Walton <noloader@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f193.google.com ([209.85.192.193]:36957 "EHLO
-        mail-pf0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751991AbdLJS7z (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Dec 2017 13:59:55 -0500
+        jaegeuk@kernel.org, mhalcrow@google.com, paulcrowley@google.com,
+        martin@strongswan.org, david@sigma-star.at, Jason@zx2c4.com,
+        smueller@chronox.de
+To: Ard Biesheuvel <ard.biesheuvel@linaro.org>
+Return-path: <linux-crypto-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <CAH8yC8knEBwum3Ka3x+8sT3qhtHT2FLb4Bo6DzjPKFC0hw4KQA@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20171208115502.21775-1-ard.biesheuvel@linaro.org>
+Sender: linux-crypto-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 08, 2017 at 07:48:54PM -0500, Jeffrey Walton wrote:
-> > Still, a stream cipher is sufficient to protect data confidentiality in
-> > the event of a single point-in-time permanent offline compromise of the
-> > disk, which currently is the primary threat model for fscrypt.  Thus,
-> > when the alternative is quite literally *no encryption*, we might as
-> > well use a stream cipher.
-> 
-> The "single point in time" requirement is kind of interesting. I
-> believe you are saying the scheme lacks semantic security.
+Ard Biesheuvel <ard.biesheuvel@linaro.org> wrote:
+> As pointed out by Eric [0], the way RFC7539 was interpreted when creating
+> our implementation of ChaCha20 creates a risk of IV reuse when using a
+> little endian counter as the IV generator. The reason is that the low end
+> bits of the counter get mapped onto the ChaCha20 block counter, which
+> advances every 64 bytes. This means that the counter value that gets
+> selected as IV for the next input block will collide with the ChaCha20
+> block counter of the previous block, basically recreating the same
+> keystream but shifted by 64 bytes.
 
-Well, it is semantically secure when looking at encryptions/decryptions done in
-the context of different blocks (different IVs) but not semantically secure when
-looking at encryptions/decryptions done in the context of the same block (same
-IV).  But in that regard it is the same as the other modes such as AES-XTS or
-AES-CBC.  So I think you are missing the point, which is that a stream cipher
-fails more catastrophically than the other modes when IVs are reused.
+As Eric pointed out for steram ciphers such as chacha20 our policy
+is to expose the raw IV in the base algorithm, and then layer
+more restrictive implementations on top that can then be used
+in different scenarios such as IPsec or disk encryption.
 
-> 
-> Forgive my ignorance... Does that mean this cipher should not be used
-> when backups are in effect; or sync'ing to <insert favorite cloud
-> provider> happens?
+For example, with CTR, ctr(aes) is the base algorithm and places
+no restrictions on the IV, while rfc3686(ctr(aes)) is the more
+restrictive version that's used by IPsec.
 
-Normally backup or sync software will operate on the plaintext, which makes
-whatever type of filesystem-level or disk encryption you happen to be using
-irrelevant.  But at a more abstract level, intentional copies (in addition to
-"unintentional" copies that may be done by the filesystem or flash storage) are
-certainly a way that you could end up with multiple ciphertexts for the same
-block in existence at the same time, so that would indeed need to be accounted
-for in the assumptions.
+Within the kernel I don't really see an issue with abuse because
+all users are hopefully reviewed by the community.  If you're
+worried about incorrect use in user-space we could think about
+restricting access to these base implementations.
 
-Eric
+For chacha20 we did not add a restrictive template because the
+primary user IPsec uses it only through AEAD where the IV restriction
+is in place.
+
+Cheers,
+-- 
+Email: Herbert Xu <herbert@gondor.apana.org.au>
+Home Page: http://gondor.apana.org.au/~herbert/
+PGP Key: http://gondor.apana.org.au/~herbert/pubkey.txt
