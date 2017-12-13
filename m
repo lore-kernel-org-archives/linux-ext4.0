@@ -1,7 +1,7 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: [PATCH 2/2] ext4: Fix ENOSPC handling in DAX page fault handler
-Date: Wed, 13 Dec 2017 10:13:52 +0100
-Message-ID: <20171213091352.23448-3-jack@suse.cz>
+Subject: [PATCH 1/2] dax: Pass detailed error code from dax_iomap_fault()
+Date: Wed, 13 Dec 2017 10:13:51 +0100
+Message-ID: <20171213091352.23448-2-jack@suse.cz>
 References: <20171213091352.23448-1-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -22,53 +22,183 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-When allocation of underlying block for a page fault fails, we fail the
-fault with SIGBUS. However we may well hit ENOSPC just due to lots of
-free blocks being held by the running / committing transaction. So
-propagate the error from ext4_iomap_begin() and implement do standard
-allocation retry loop in ext4_dax_huge_fault().
+Ext4 needs to pass through error from its iomap handler to the page
+fault handler so that it can properly detect ENOSPC and force
+transaction commit and retry the fault (and block allocation). Add
+argument to dax_iomap_fault() for passing such error.
 
 Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/ext4/file.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ fs/dax.c            | 25 +++++++++++++++----------
+ fs/ext2/file.c      |  2 +-
+ fs/ext4/file.c      |  2 +-
+ fs/xfs/xfs_file.c   |  2 +-
+ include/linux/dax.h |  2 +-
+ 5 files changed, 19 insertions(+), 14 deletions(-)
 
+diff --git a/fs/dax.c b/fs/dax.c
+index 78b72c48374e..5bab8210599a 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -872,7 +872,7 @@ static int dax_iomap_pfn(struct iomap *iomap, loff_t pos, size_t size,
+  * point to real DAX storage instead.
+  */
+ static int dax_load_hole(struct address_space *mapping, void *entry,
+-			 struct vm_fault *vmf)
++			 struct vm_fault *vmf, int *errp)
+ {
+ 	struct inode *inode = mapping->host;
+ 	unsigned long vaddr = vmf->address;
+@@ -890,6 +890,8 @@ static int dax_load_hole(struct address_space *mapping, void *entry,
+ 			RADIX_DAX_ZERO_PAGE, false);
+ 	if (IS_ERR(entry2)) {
+ 		ret = VM_FAULT_SIGBUS;
++		if (errp)
++			*errp = PTR_ERR(entry2);
+ 		goto out;
+ 	}
+ 
+@@ -1076,10 +1078,12 @@ dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ }
+ EXPORT_SYMBOL_GPL(dax_iomap_rw);
+ 
+-static int dax_fault_return(int error)
++static int dax_fault_return(int error, int *errp)
+ {
+ 	if (error == 0)
+ 		return VM_FAULT_NOPAGE;
++	if (errp)
++		*errp = error;
+ 	if (error == -ENOMEM)
+ 		return VM_FAULT_OOM;
+ 	return VM_FAULT_SIGBUS;
+@@ -1096,7 +1100,7 @@ static bool dax_fault_is_synchronous(unsigned long flags,
+ 		&& (iomap->flags & IOMAP_F_DIRTY);
+ }
+ 
+-static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
++static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp, int *errp,
+ 			       const struct iomap_ops *ops)
+ {
+ 	struct vm_area_struct *vma = vmf->vma;
+@@ -1129,7 +1133,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+ 
+ 	entry = grab_mapping_entry(mapping, vmf->pgoff, 0);
+ 	if (IS_ERR(entry)) {
+-		vmf_ret = dax_fault_return(PTR_ERR(entry));
++		vmf_ret = dax_fault_return(PTR_ERR(entry), errp);
+ 		goto out;
+ 	}
+ 
+@@ -1151,7 +1155,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+ 	 */
+ 	error = ops->iomap_begin(inode, pos, PAGE_SIZE, flags, &iomap);
+ 	if (error) {
+-		vmf_ret = dax_fault_return(error);
++		vmf_ret = dax_fault_return(error, errp);
+ 		goto unlock_entry;
+ 	}
+ 	if (WARN_ON_ONCE(iomap.offset + iomap.length < pos + PAGE_SIZE)) {
+@@ -1236,7 +1240,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+ 	case IOMAP_UNWRITTEN:
+ 	case IOMAP_HOLE:
+ 		if (!write) {
+-			vmf_ret = dax_load_hole(mapping, entry, vmf);
++			vmf_ret = dax_load_hole(mapping, entry, vmf, errp);
+ 			goto finish_iomap;
+ 		}
+ 		/*FALLTHRU*/
+@@ -1247,7 +1251,7 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+ 	}
+ 
+  error_finish_iomap:
+-	vmf_ret = dax_fault_return(error) | major;
++	vmf_ret = dax_fault_return(error, errp) | major;
+  finish_iomap:
+ 	if (ops->iomap_end) {
+ 		int copied = PAGE_SIZE;
+@@ -1489,6 +1493,7 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, pfn_t *pfnp,
+  * @vmf: The description of the fault
+  * @pe_size: Size of the page to fault in
+  * @pfnp: PFN to insert for synchronous faults if fsync is required
++ * @errp: Storage for detailed error code in case of error
+  * @ops: Iomap ops passed from the file system
+  *
+  * When a page fault occurs, filesystems may call this helper in
+@@ -1497,11 +1502,11 @@ static int dax_iomap_pmd_fault(struct vm_fault *vmf, pfn_t *pfnp,
+  * successfully.
+  */
+ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+-		    pfn_t *pfnp, const struct iomap_ops *ops)
++		    pfn_t *pfnp, int *errp, const struct iomap_ops *ops)
+ {
+ 	switch (pe_size) {
+ 	case PE_SIZE_PTE:
+-		return dax_iomap_pte_fault(vmf, pfnp, ops);
++		return dax_iomap_pte_fault(vmf, pfnp, errp, ops);
+ 	case PE_SIZE_PMD:
+ 		return dax_iomap_pmd_fault(vmf, pfnp, ops);
+ 	default:
+@@ -1547,7 +1552,7 @@ static int dax_insert_pfn_mkwrite(struct vm_fault *vmf,
+ 	switch (pe_size) {
+ 	case PE_SIZE_PTE:
+ 		error = vm_insert_mixed_mkwrite(vmf->vma, vmf->address, pfn);
+-		vmf_ret = dax_fault_return(error);
++		vmf_ret = dax_fault_return(error, NULL);
+ 		break;
+ #ifdef CONFIG_FS_DAX_PMD
+ 	case PE_SIZE_PMD:
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 2da67699dc33..09640220fda8 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -100,7 +100,7 @@ static int ext2_dax_fault(struct vm_fault *vmf)
+ 	}
+ 	down_read(&ei->dax_sem);
+ 
+-	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, NULL, &ext2_iomap_ops);
++	ret = dax_iomap_fault(vmf, PE_SIZE_PTE, NULL, NULL, &ext2_iomap_ops);
+ 
+ 	up_read(&ei->dax_sem);
+ 	if (vmf->flags & FAULT_FLAG_WRITE)
 diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 1c7cd882d998..fb6f023622fe 100644
+index a0ae27b1bc66..1c7cd882d998 100644
 --- a/fs/ext4/file.c
 +++ b/fs/ext4/file.c
-@@ -280,7 +280,8 @@ ext4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- static int ext4_dax_huge_fault(struct vm_fault *vmf,
- 		enum page_entry_size pe_size)
- {
--	int result;
-+	int result, error = 0;
-+	int retries = 0;
- 	handle_t *handle = NULL;
- 	struct inode *inode = file_inode(vmf->vma->vm_file);
- 	struct super_block *sb = inode->i_sb;
-@@ -304,6 +305,7 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
- 		sb_start_pagefault(sb);
- 		file_update_time(vmf->vma->vm_file);
- 		down_read(&EXT4_I(inode)->i_mmap_sem);
-+retry:
- 		handle = ext4_journal_start_sb(sb, EXT4_HT_WRITE_PAGE,
- 					       EXT4_DATA_TRANS_BLOCKS(sb));
- 		if (IS_ERR(handle)) {
-@@ -314,9 +316,13 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
+@@ -314,7 +314,7 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
  	} else {
  		down_read(&EXT4_I(inode)->i_mmap_sem);
  	}
--	result = dax_iomap_fault(vmf, pe_size, &pfn, NULL, &ext4_iomap_ops);
-+	result = dax_iomap_fault(vmf, pe_size, &pfn, &error, &ext4_iomap_ops);
+-	result = dax_iomap_fault(vmf, pe_size, &pfn, &ext4_iomap_ops);
++	result = dax_iomap_fault(vmf, pe_size, &pfn, NULL, &ext4_iomap_ops);
  	if (write) {
  		ext4_journal_stop(handle);
-+
-+		if ((result & VM_FAULT_ERROR) && error == -ENOSPC &&
-+		    ext4_should_retry_alloc(sb, &retries))
-+			goto retry;
  		/* Handling synchronous page fault? */
- 		if (result & VM_FAULT_NEEDDSYNC)
- 			result = dax_finish_sync_fault(vmf, pe_size, pfn);
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index 8601275cc5e6..9ea08326f876 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1048,7 +1048,7 @@ __xfs_filemap_fault(
+ 	if (IS_DAX(inode)) {
+ 		pfn_t pfn;
+ 
+-		ret = dax_iomap_fault(vmf, pe_size, &pfn, &xfs_iomap_ops);
++		ret = dax_iomap_fault(vmf, pe_size, &pfn, NULL, &xfs_iomap_ops);
+ 		if (ret & VM_FAULT_NEEDDSYNC)
+ 			ret = dax_finish_sync_fault(vmf, pe_size, pfn);
+ 	} else {
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index 5258346c558c..0185ecdae135 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -96,7 +96,7 @@ bool dax_write_cache_enabled(struct dax_device *dax_dev);
+ ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 		const struct iomap_ops *ops);
+ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+-		    pfn_t *pfnp, const struct iomap_ops *ops);
++		    pfn_t *pfnp, int *errp, const struct iomap_ops *ops);
+ int dax_finish_sync_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+ 			  pfn_t pfn);
+ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
 -- 
 2.12.3
