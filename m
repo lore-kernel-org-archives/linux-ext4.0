@@ -1,122 +1,46 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] mm: save/restore current->journal_info in handle_mm_fault
-Date: Thu, 14 Dec 2017 17:53:14 +0100
-Message-ID: <20171214165314.GB1930@quack2.suse.cz>
-References: <20171214105527.5885-1-zyan@redhat.com>
- <20171214134338.GA1474@quack2.suse.cz>
- <CAAM7YA=ThWbBpOe1wgeYjGt3ogr9kT6uy3UpqSn94XqbhjOHJw@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 0/5] e2fsprogs: Update man pages, usage texts, and docs.
+Date: Thu, 14 Dec 2017 12:24:33 -0500
+Message-ID: <20171214172433.i5hny5mt2j653zer@thunk.org>
+References: <cover.1513233071.git.tgnottingham@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, "Yan, Zheng" <zyan@redhat.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-	ceph-devel <ceph-devel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	linux-btrfs <linux-btrfs@vger.kernel.org>, linux-mm@kvack.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
-	stable@vger.kernel.org
-To: "Yan, Zheng" <ukernel@gmail.com>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: linux-ext4@vger.kernel.org
+To: Tyson Nottingham <tgnottingham@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:45654 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753412AbdLNRYg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 14 Dec 2017 12:24:36 -0500
 Content-Disposition: inline
-In-Reply-To: <CAAM7YA=ThWbBpOe1wgeYjGt3ogr9kT6uy3UpqSn94XqbhjOHJw@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <cover.1513233071.git.tgnottingham@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 14-12-17 22:30:26, Yan, Zheng wrote:
-> On Thu, Dec 14, 2017 at 9:43 PM, Jan Kara <jack@suse.cz> wrote:
-> > On Thu 14-12-17 18:55:27, Yan, Zheng wrote:
-> >> We recently got an Oops report:
-> >>
-> >> BUG: unable to handle kernel NULL pointer dereference at (null)
-> >> IP: jbd2__journal_start+0x38/0x1a2
-> >> [...]
-> >> Call Trace:
-> >>   ext4_page_mkwrite+0x307/0x52b
-> >>   _ext4_get_block+0xd8/0xd8
-> >>   do_page_mkwrite+0x6e/0xd8
-> >>   handle_mm_fault+0x686/0xf9b
-> >>   mntput_no_expire+0x1f/0x21e
-> >>   __do_page_fault+0x21d/0x465
-> >>   dput+0x4a/0x2f7
-> >>   page_fault+0x22/0x30
-> >>   copy_user_generic_string+0x2c/0x40
-> >>   copy_page_to_iter+0x8c/0x2b8
-> >>   generic_file_read_iter+0x26e/0x845
-> >>   timerqueue_del+0x31/0x90
-> >>   ceph_read_iter+0x697/0xa33 [ceph]
-> >>   hrtimer_cancel+0x23/0x41
-> >>   futex_wait+0x1c8/0x24d
-> >>   get_futex_key+0x32c/0x39a
-> >>   __vfs_read+0xe0/0x130
-> >>   vfs_read.part.1+0x6c/0x123
-> >>   handle_mm_fault+0x831/0xf9b
-> >>   __fget+0x7e/0xbf
-> >>   SyS_read+0x4d/0xb5
-> >>
-> >> ceph_read_iter() uses current->journal_info to pass context info to
-> >> ceph_readpages(). Because ceph_readpages() needs to know if its caller
-> >> has already gotten capability of using page cache (distinguish read
-> >> from readahead/fadvise). ceph_read_iter() set current->journal_info,
-> >> then calls generic_file_read_iter().
-> >>
-> >> In above Oops, page fault happened when copying data to userspace.
-> >> Page fault handler called ext4_page_mkwrite(). Ext4 code read
-> >> current->journal_info and assumed it is journal handle.
-> >>
-> >> I checked other filesystems, btrfs probably suffers similar problem
-> >> for its readpage. (page fault happens when write() copies data from
-> >> userspace memory and the memory is mapped to a file in btrfs.
-> >> verify_parent_transid() can be called during readpage)
-> >>
-> >> Cc: stable@vger.kernel.org
-> >> Signed-off-by: "Yan, Zheng" <zyan@redhat.com>
-> >
-> > I agree with the analysis but the patch is too ugly too live. Ceph just
-> > should not be abusing current->journal_info for passing information between
-> > two random functions or when it does a hackery like this, it should just
-> > make sure the pieces hold together. Poluting generic code to accommodate
-> > this hack in Ceph is not acceptable. Also bear in mind there are likely
-> > other code paths (e.g. memory reclaim) which could recurse into another
-> > filesystem confusing it with non-NULL current->journal_info in the same
-> > way.
-> 
-> But ...
-> 
-> some filesystem set journal_info in its write_begin(), then clear it
-> in write_end(). If buffer for write is mapped to another filesystem,
-> current->journal can leak to the later filesystem's page_readpage().
-> The later filesystem may read current->journal and treat it as its own
-> journal handle.  Besides, most filesystem's vm fault handle is
-> filemap_fault(), filemap also may tigger memory reclaim.
+On Wed, Dec 13, 2017 at 11:13:08PM -0800, Tyson Nottingham wrote:
+> These patches add missing feature descriptions and command arguments to
+> man pages and usage texts. They also fix some minor typos.
 
-Did you really observe this? Because write path uses
-iov_iter_copy_from_user_atomic() which does not allow page faults to
-happen. All page faulting happens in iov_iter_fault_in_readable() before
-->write_begin() is called. And the recursion problems like you mention
-above are exactly the reason why things are done in a more complicated way
-like this.
+Thanks so much for working on the e2fsprogs documentation!  It is an
+often an underappreciated work, and I'm glad to have someone working
+to improve the documentation.
 
-> >
-> > In this particular case I'm not sure why does ceph pass 'filp' into
-> > readpage() / readpages() handler when it already gets that pointer as part
-> > of arguments...
-> 
-> It actually a flag which tells ceph_readpages() if its caller is
-> ceph_read_iter or readahead/fadvise/madvise. because when there are
-> multiple clients read/write a file a the same time, page cache should
-> be disabled.
+> The patches are based off of the master branch of e2fsprogs. Should I be
+> working from a different branch? Also, I did not update any of the
+> localization files. Do I need to worry about handling that?
 
-I'm not sure I understand the reasoning properly but from what you say
-above it rather seems the 'hint' should be stored in the inode (or possibly
-struct file)?
+The maint branch corresponds to the 1.43.x release series, and the
+master and next branches present what will (soon) become the 1.44(.x)
+release.  There will be at least one more 1.43.x release before I
+release 1.44, so it's not that of an issue.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+I can handle trying to apply these patches to the maint branch,
+pulling out the feature improvements that only appear in the master
+branch and applying that in a separate patch for the master branch.
+But in the future, it would be preferable for bug fixes and doc fixes
+to be done against the maint branch (if applicable).  The master/next
+branch will get fixes via git merges.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Cheers,
+
+					- Ted
