@@ -1,75 +1,113 @@
-From: Chao Yu <yuchao0@huawei.com>
-Subject: Re: [PATCH] fs/*/Kconfig: drop links to 404-compliant
- http://acl.bestbits.at
-Date: Thu, 14 Dec 2017 18:39:40 +0800
-Message-ID: <8b0816ac-186e-77ec-68d9-d28e90d0d5d1@huawei.com>
-References: <20171213053825.10903-1-kilobyte@angband.pl>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: 7bit
-To: Adam Borowski <kilobyte@angband.pl>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        <linux-fsdevel@vger.kernel.org>, Jan Kara <jack@suse.com>,
-        Jonathan Corbet <corbet@lwn.net>, <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        "Ron Minnich" <rminnich@sandia.gov>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        <v9fs-developer@lists.sourceforge.net>,
-        David Sterba <dsterba@suse.com>, <linux-btrfs@vger.kernel.org>,
-        "Yan, Zheng" <zyan@redhat.com>, Sage Weil <sage@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        <ceph-devel@vger.kernel.org>, Steve French <sfrench@samba.org>,
-        <linux-cifs@vger.kernel.org>, Jaegeuk Kim <jaegeuk@kernel.org>,
-        <linux-f2fs-devel@lists.sourceforge.net>,
-        David Wo
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga07-in.huawei.com ([45.249.212.35]:44808 "EHLO huawei.com"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750795AbdLNKkG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 14 Dec 2017 05:40:06 -0500
-In-Reply-To: <20171213053825.10903-1-kilobyte@angband.pl>
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Yan, Zheng" <zyan@redhat.com>
+Subject: [PATCH] mm: save/restore current->journal_info in handle_mm_fault
+Date: Thu, 14 Dec 2017 18:55:27 +0800
+Message-ID: <20171214105527.5885-1-zyan@redhat.com>
+Cc: viro@zeniv.linux.org.uk,
+	jlayton@redhat.com,
+	"Yan, Zheng" <zyan@redhat.com>,
+	stable@vger.kernel.org
+To: linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	ceph-devel@vger.kernel.org,
+	linux-ext4@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-mm@kvack.org,
+	akpm@linux-foundation.org
+Return-path: <owner-linux-mm@kvack.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 2017/12/13 13:38, Adam Borowski wrote:
-> This link is replicated in most filesystems' config stanzas.  Referring
-> to an archived version of that site is pointless as it mostly deals with
-> patches; user documentation is available elsewhere.
-> 
-> Signed-off-by: Adam Borowski <kilobyte@angband.pl>
+We recently got an Oops report:
 
-[skip]
+BUG: unable to handle kernel NULL pointer dereference at (null)
+IP: jbd2__journal_start+0x38/0x1a2
+[...]
+Call Trace:
+  ext4_page_mkwrite+0x307/0x52b
+  _ext4_get_block+0xd8/0xd8
+  do_page_mkwrite+0x6e/0xd8
+  handle_mm_fault+0x686/0xf9b
+  mntput_no_expire+0x1f/0x21e
+  __do_page_fault+0x21d/0x465
+  dput+0x4a/0x2f7
+  page_fault+0x22/0x30
+  copy_user_generic_string+0x2c/0x40
+  copy_page_to_iter+0x8c/0x2b8
+  generic_file_read_iter+0x26e/0x845
+  timerqueue_del+0x31/0x90
+  ceph_read_iter+0x697/0xa33 [ceph]
+  hrtimer_cancel+0x23/0x41
+  futex_wait+0x1c8/0x24d
+  get_futex_key+0x32c/0x39a
+  __vfs_read+0xe0/0x130
+  vfs_read.part.1+0x6c/0x123
+  handle_mm_fault+0x831/0xf9b
+  __fget+0x7e/0xbf
+  SyS_read+0x4d/0xb5
 
-> diff --git a/fs/f2fs/Kconfig b/fs/f2fs/Kconfig
-> index 378c221d68a9..9a20ef42fadd 100644
-> --- a/fs/f2fs/Kconfig
-> +++ b/fs/f2fs/Kconfig
-> @@ -35,8 +35,7 @@ config F2FS_FS_XATTR
->  	default y
->  	help
->  	  Extended attributes are name:value pairs associated with inodes by
-> -	  the kernel or by users (see the attr(5) manual page, or visit
-> -	  <http://acl.bestbits.at/> for details).
-> +	  the kernel or by users (see the attr(5) manual page for details).
->  
->  	  If unsure, say N.
->  
-> @@ -49,9 +48,6 @@ config F2FS_FS_POSIX_ACL
->  	  Posix Access Control Lists (ACLs) support permissions for users and
->  	  groups beyond the owner/group/world scheme.
->  
-> -	  To learn more about Access Control Lists, visit the POSIX ACLs for
-> -	  Linux website <http://acl.bestbits.at/>.
-> -
->  	  If you don't know what Access Control Lists are, say N
->  
->  config F2FS_FS_SECURITY
+ceph_read_iter() uses current->journal_info to pass context info to
+ceph_readpages(). Because ceph_readpages() needs to know if its caller
+has already gotten capability of using page cache (distinguish read
+from readahead/fadvise). ceph_read_iter() set current->journal_info,
+then calls generic_file_read_iter().
 
-Looks good to me.
+In above Oops, page fault happened when copying data to userspace.
+Page fault handler called ext4_page_mkwrite(). Ext4 code read
+current->journal_info and assumed it is journal handle.
 
-Acked-by: Chao Yu <yuchao0@huawei.com>
+I checked other filesystems, btrfs probably suffers similar problem
+for its readpage. (page fault happens when write() copies data from
+userspace memory and the memory is mapped to a file in btrfs.
+verify_parent_transid() can be called during readpage)
 
-Thanks,
+Cc: stable@vger.kernel.org
+Signed-off-by: "Yan, Zheng" <zyan@redhat.com>
+---
+ mm/memory.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/mm/memory.c b/mm/memory.c
+index a728bed16c20..db2a50233c49 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -4044,6 +4044,7 @@ int handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
+ 		unsigned int flags)
+ {
+ 	int ret;
++	void *old_journal_info;
+ 
+ 	__set_current_state(TASK_RUNNING);
+ 
+@@ -4065,11 +4066,24 @@ int handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
+ 	if (flags & FAULT_FLAG_USER)
+ 		mem_cgroup_oom_enable();
+ 
++	/*
++	 * Fault can happen when filesystem A's read_iter()/write_iter()
++	 * copies data to/from userspace. Filesystem A may have set
++	 * current->journal_info. If the userspace memory is MAP_SHARED
++	 * mapped to a file in filesystem B, we later may call filesystem
++	 * B's vm operation. Filesystem B may also want to read/set
++	 * current->journal_info.
++	 */
++	old_journal_info = current->journal_info;
++	current->journal_info = NULL;
++
+ 	if (unlikely(is_vm_hugetlb_page(vma)))
+ 		ret = hugetlb_fault(vma->vm_mm, vma, address, flags);
+ 	else
+ 		ret = __handle_mm_fault(vma, address, flags);
+ 
++	current->journal_info = old_journal_info;
++
+ 	if (flags & FAULT_FLAG_USER) {
+ 		mem_cgroup_oom_disable();
+ 		/*
+-- 
+2.13.6
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
