@@ -1,53 +1,122 @@
-From: David Sterba <dsterba@suse.cz>
-Subject: Re: [PATCH] fs/*/Kconfig: drop links to 404-compliant
- http://acl.bestbits.at
-Date: Thu, 14 Dec 2017 01:44:28 +0100
-Message-ID: <20171214004428.GF3553@twin.jikos.cz>
-References: <20171213053825.10903-1-kilobyte@angband.pl>
-Reply-To: dsterba@suse.cz
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] mm: save current->journal_info before calling
+ fault/page_mkwrite
+Date: Wed, 13 Dec 2017 16:59:23 -0800
+Message-ID: <20171213165923.0ea4eb3e996b7d8bf1fff72f@linux-foundation.org>
+References: <20171213035836.916-1-zyan@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Latchesar Ionkov <lucho@ionkov.net>, Dave Kleikamp <shaggy@kernel.org>,
- jfs-discussion@lists.sourceforge.net,
- Andreas Dilger <adilger.kernel@dilger.ca>, linux-xfs@vger.kernel.org,
- linux-cifs@vger.kernel.org, Sage Weil <sage@redhat.com>,
- Jonathan Corbet <corbet@lwn.net>, v9fs-developer@lists.sourceforge.net,
- Ilya Dryomov <idryomov@gmail.com>, linux-ext4@vger.kernel.org,
- Eric Van Hensbergen <ericvh@gmail.com>, reiserfs-devel@vger.kernel.org,
- Alexander Viro <viro@zeniv.linux.org.uk>, linux-mtd@lists.infradead.org,
- David Sterba <dsterba@suse.com>, Jaegeuk Kim <jaegeuk@kernel.org>,
- ceph-devel@vger.kernel.org, "Yan, Zheng" <zyan@redhat.com>,
- Theodore Ts'o <tytso@mit.edu>, "Darrick J. Wong" <darrick.wong@oracle.com>,
- linux-f2fs-devel@lists.sourceforge.net, Steve French <sfrench@samba.org>,
- Jan Kara <jack@suse.com>, linux-fsdevel@vger.kernel.org,
- Ron Minnich <rminnich@sandia.gov
-To: Adam Borowski <kilobyte@angband.pl>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-Content-Disposition: inline
-In-Reply-To: <20171213053825.10903-1-kilobyte@angband.pl>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        viro@zeniv.linux.org.uk, jlayton@redhat.com, linux-mm@kvack.org
+To: "Yan, Zheng" <zyan@redhat.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20171213035836.916-1-zyan@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Dec 13, 2017 at 06:38:25AM +0100, Adam Borowski wrote:
-> This link is replicated in most filesystems' config stanzas.  Referring
-> to an archived version of that site is pointless as it mostly deals with
-> patches; user documentation is available elsewhere.
+On Wed, 13 Dec 2017 11:58:36 +0800 "Yan, Zheng" <zyan@redhat.com> wrote:
+
+> We recently got an Oops report:
 > 
-> Signed-off-by: Adam Borowski <kilobyte@angband.pl>
-> ---
+> BUG: unable to handle kernel NULL pointer dereference at (null)
+> IP: jbd2__journal_start+0x38/0x1a2
+> [...]
+> Call Trace:
+>   ext4_page_mkwrite+0x307/0x52b
+>   _ext4_get_block+0xd8/0xd8
+>   do_page_mkwrite+0x6e/0xd8
+>   handle_mm_fault+0x686/0xf9b
+>   mntput_no_expire+0x1f/0x21e
+>   __do_page_fault+0x21d/0x465
+>   dput+0x4a/0x2f7
+>   page_fault+0x22/0x30
+>   copy_user_generic_string+0x2c/0x40
+>   copy_page_to_iter+0x8c/0x2b8
+>   generic_file_read_iter+0x26e/0x845
+>   timerqueue_del+0x31/0x90
+>   ceph_read_iter+0x697/0xa33 [ceph]
+>   hrtimer_cancel+0x23/0x41
+>   futex_wait+0x1c8/0x24d
+>   get_futex_key+0x32c/0x39a
+>   __vfs_read+0xe0/0x130
+>   vfs_read.part.1+0x6c/0x123
+>   handle_mm_fault+0x831/0xf9b
+>   __fget+0x7e/0xbf
+>   SyS_read+0x4d/0xb5
+> 
+> The reason is that page fault can happen when one filesystem copies
+> data from/to userspace, the filesystem may set current->journal_info.
+> If the userspace memory is mapped to a file on another filesystem,
+> the later filesystem may also want to use current->journal_info.
+> 
 
->  fs/btrfs/Kconfig                   |  3 ---
+whoops.
 
-Acked-by: David Sterba <dsterba@suse.com>
+A cc:stable will be needed here...
 
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+A filesystem doesn't "copy data from/to userspace".  I assume here
+we're referring to a read() where the source is a pagecache page for
+filesystem A and the destination is a MAP_SHARED page in filesystem B?
+
+But in that case I don't see why filesystem A would have a live
+->journal_info?  It's just doing a read.
+
+So can we please have more detailed info on the exact scenario here?
+
+> --- a/mm/memory.c
+> +++ b/mm/memory.c
+> @@ -2347,12 +2347,22 @@ static int do_page_mkwrite(struct vm_fault *vmf)
+>  {
+>  	int ret;
+>  	struct page *page = vmf->page;
+> +	void *old_journal_info = current->journal_info;
+>  	unsigned int old_flags = vmf->flags;
+>  
+> +	/*
+> +	 * If the fault happens during read_iter() copies data to
+> +	 * userspace, filesystem may have set current->journal_info.
+> +	 * If the userspace memory is mapped to a file on another
+> +	 * filesystem, page_mkwrite() of the later filesystem may
+> +	 * want to access/modify current->journal_info.
+> +	 */
+> +	current->journal_info = NULL;
+>  	vmf->flags = FAULT_FLAG_WRITE|FAULT_FLAG_MKWRITE;
+>  
+>  	ret = vmf->vma->vm_ops->page_mkwrite(vmf);
+> -	/* Restore original flags so that caller is not surprised */
+> +	/* Restore original journal_info and flags */
+> +	current->journal_info = old_journal_info;
+>  	vmf->flags = old_flags;
+>  	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE)))
+>  		return ret;
+> @@ -3191,9 +3201,20 @@ static int do_anonymous_page(struct vm_fault *vmf)
+>  static int __do_fault(struct vm_fault *vmf)
+>  {
+>  	struct vm_area_struct *vma = vmf->vma;
+> +	void *old_journal_info = current->journal_info;
+>  	int ret;
+>  
+> +	/*
+> +	 * If the fault happens during write_iter() copies data from
+> +	 * userspace, filesystem may have set current->journal_info.
+> +	 * If the userspace memory is mapped to a file on another
+> +	 * filesystem, fault handler of the later filesystem may want
+> +	 * to access/modify current->journal_info.
+> +	 */
+> +	current->journal_info = NULL;
+>  	ret = vma->vm_ops->fault(vmf);
+> +	/* Restore original journal_info */
+> +	current->journal_info = old_journal_info;
+>  	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY |
+>  			    VM_FAULT_DONE_COW)))
+>  		return ret;
+
+Can you explain why you chose these two sites?  Rather than, for
+example, way up in handle_mm_fault()?
+
+It's hard to believe that a fault handler will alter ->journal_info if
+it is handling a read fault, so perhaps we only need to do this for a
+write fault?  Although such an optimization probably isn't worthwhile. 
+The whole thing is only about three instructions.
