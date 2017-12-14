@@ -1,63 +1,44 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] mm: save current->journal_info before calling
- fault/page_mkwrite
-Date: Wed, 13 Dec 2017 18:30:22 -0800
-Message-ID: <20171213183022.adce31de7c5e704b4315e472@linux-foundation.org>
-References: <20171213035836.916-1-zyan@redhat.com>
-	<20171213165923.0ea4eb3e996b7d8bf1fff72f@linux-foundation.org>
-	<91E1F854-7CE7-4E98-BA87-7E4E55243109@redhat.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] libext2fs: add missing swab for superblock, add checks
+Date: Wed, 13 Dec 2017 22:41:21 -0500
+Message-ID: <20171214034121.bmusgiypnn6iu77d@thunk.org>
+References: <1513208834-37777-1-git-send-email-adilger@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-fsdevel
- <linux-fsdevel@vger.kernel.org>, ceph-devel@vger.kernel.org,
- linux-ext4@vger.kernel.org, viro@zeniv.linux.org.uk, jlayton@redhat.com,
- linux-mm@kvack.org
-To: "Yan, Zheng" <zyan@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <91E1F854-7CE7-4E98-BA87-7E4E55243109@redhat.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@dilger.ca>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:42918 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751917AbdLNDlX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 13 Dec 2017 22:41:23 -0500
+Content-Disposition: inline
+In-Reply-To: <1513208834-37777-1-git-send-email-adilger@dilger.ca>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 14 Dec 2017 10:20:18 +0800 "Yan, Zheng" <zyan@redhat.com> wrote:
-
-> >> +	/*
-> >> +	 * If the fault happens during write_iter() copies data from
-> >> +	 * userspace, filesystem may have set current->journal_info.
-> >> +	 * If the userspace memory is mapped to a file on another
-> >> +	 * filesystem, fault handler of the later filesystem may want
-> >> +	 * to access/modify current->journal_info.
-> >> +	 */
-> >> +	current->journal_info = NULL;
-> >> 	ret = vma->vm_ops->fault(vmf);
-> >> +	/* Restore original journal_info */
-> >> +	current->journal_info = old_journal_info;
-> >> 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY |
-> >> 			    VM_FAULT_DONE_COW)))
-> >> 		return ret;
-> > 
-> > Can you explain why you chose these two sites?  Rather than, for
-> > example, way up in handle_mm_fault()?
+On Wed, Dec 13, 2017 at 04:47:14PM -0700, Andreas Dilger wrote:
+> Several recently-added fields in struct ext2_super_block were
+> not being swabbed in ext2fs_swap_super(), in particular:
 > 
-> I think they are the only two places that code can enter another filesystem
-
-hm.  Maybe.  At this point in time.  I'm feeling that doing the
-save/restore at the highest level is better.  It's cheap.
-
-> > 
-> > It's hard to believe that a fault handler will alter ->journal_info if
-> > it is handling a read fault, so perhaps we only need to do this for a
-> > write fault?  Although such an optimization probably isn't worthwhile. 
-> > The whole thing is only about three instructions.
+>    s_raid_stride, s_raid_stripe_width, s_{first,last}_error_*
+>    s_lpf_ino, s_prj_quota_inum
 > 
-> ceph uses current->journal_info for both read/write operations. I think btrfs also read current->journal_info during read-only operation. (I mentioned this in my previous reply)
+> Add swabbing for these missing fields.  Reorder the swabbing
+> on other fields so that they are in struct order, and add
+> comments for fields that do not need swabbing, so it is easier
+> to see that all fields are being handled.
+> 
+> Since this seems to be a fairly common occurrence, add compile
+> time checks to ext2fs_swap_super(), ext2fs_swap_inode_large(),
+> and ext2fs_swap_group_desc2() via a new EXT2FS_BUILD_BUG_ON()
+> macro to cause a compile warning if fields are used from these
+> structs without a corresponding change to the swab functions.
+> 
+> Lustre-bug: https://jira.hpdd.intel.com/browse/LU-9309
+> Reported-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 
-Quite a lot of filesystems use ->journal_info.  Arguably it should be
-the fs's responsibility to restore the old journal_info value after
-having used it.  But that's a ton of changes :(
+Applied, thanks.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+						- Ted
