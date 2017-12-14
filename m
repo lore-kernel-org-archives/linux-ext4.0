@@ -1,20 +1,20 @@
-From: Michal Hocko <mhocko@kernel.org>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH] mm: save/restore current->journal_info in handle_mm_fault
-Date: Thu, 14 Dec 2017 14:30:41 +0100
-Message-ID: <20171214133041.GO16951@dhcp22.suse.cz>
+Date: Thu, 14 Dec 2017 14:43:38 +0100
+Message-ID: <20171214134338.GA1474@quack2.suse.cz>
 References: <20171214105527.5885-1-zyan@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-btrfs@vger.kernel.org, linux-mm@kvack.org,
-	akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-	jlayton@redhat.com, stable@vger.kernel.org
+        ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-mm@kvack.org,
+        akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
+        jlayton@redhat.com, stable@vger.kernel.org
 To: "Yan, Zheng" <zyan@redhat.com>
-Return-path: <owner-linux-mm@kvack.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
 In-Reply-To: <20171214105527.5885-1-zyan@redhat.com>
-Sender: owner-linux-mm@kvack.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Thu 14-12-17 18:55:27, Yan, Zheng wrote:
@@ -64,17 +64,21 @@ On Thu 14-12-17 18:55:27, Yan, Zheng wrote:
 > Cc: stable@vger.kernel.org
 > Signed-off-by: "Yan, Zheng" <zyan@redhat.com>
 
-I am not an FS expert so (ab)using journal_info for unrelated purposes
-might be acceptable in general but hooking into the generic PF path like
-this is just too ugly to live. Can this be limited to a FS code so that
-not everybody has to pay additional cycles? With a big fat warning that
-(ab)users might want to find a better way to comunicate their internal
-stuff.
+I agree with the analysis but the patch is too ugly too live. Ceph just
+should not be abusing current->journal_info for passing information between
+two random functions or when it does a hackery like this, it should just
+make sure the pieces hold together. Poluting generic code to accommodate
+this hack in Ceph is not acceptable. Also bear in mind there are likely
+other code paths (e.g. memory reclaim) which could recurse into another
+filesystem confusing it with non-NULL current->journal_info in the same
+way.
 
-> ---
->  mm/memory.c | 14 ++++++++++++++
->  1 file changed, 14 insertions(+)
-> 
+In this particular case I'm not sure why does ceph pass 'filp' into
+readpage() / readpages() handler when it already gets that pointer as part
+of arguments...
+
+								Honza
+
 > diff --git a/mm/memory.c b/mm/memory.c
 > index a728bed16c20..db2a50233c49 100644
 > --- a/mm/memory.c
@@ -115,18 +119,6 @@ stuff.
 > -- 
 > 2.13.6
 > 
-> --
-> To unsubscribe, send a message with 'unsubscribe linux-mm' in
-> the body to majordomo@kvack.org.  For more info on Linux MM,
-> see: http://www.linux-mm.org/ .
-> Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
-
 -- 
-Michal Hocko
-SUSE Labs
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
