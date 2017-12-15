@@ -1,7 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 19/24] fscrypt: remove fscrypt_fname_usr_to_disk()
-Date: Fri, 15 Dec 2017 09:42:20 -0800
-Message-ID: <20171215174225.31583-20-ebiggers3@gmail.com>
+Subject: [PATCH 22/24] fscrypt: define
+ fscrypt_fname_alloc_buffer() to be for presented names
+Date: Fri, 15 Dec 2017 09:42:23 -0800
+Message-ID: <20171215174225.31583-23-ebiggers3@gmail.com>
 References: <20171215174225.31583-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -24,88 +25,91 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-fscrypt_fname_usr_to_disk() sounded very generic but was actually only
-used to encrypt symlinks.  Remove it now that all filesystems have been
-switched over to fscrypt_encrypt_symlink().
+Previously fscrypt_fname_alloc_buffer() was used to allocate buffers for
+both presented (decrypted or encoded) and encrypted filenames.  That was
+confusing, because it had to allocate the worst-case size for either,
+e.g. including NUL-padding even when it was meaningless.
+
+But now that fscrypt_setup_filename() no longer calls it, it is only
+used in the ->get_link() and ->readdir() paths, which specifically want
+a buffer for presented filenames.  Therefore, switch the behavior over
+to allocating the buffer for presented filenames only.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/fname.c               | 29 -----------------------------
- include/linux/fscrypt_notsupp.h |  7 -------
- include/linux/fscrypt_supp.h    |  2 --
- 3 files changed, 38 deletions(-)
+ fs/crypto/fname.c               | 29 ++++++++++++++---------------
+ include/linux/fscrypt_notsupp.h |  2 +-
+ 2 files changed, 15 insertions(+), 16 deletions(-)
 
 diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index 62f13d533439..cae7d1bcc8c5 100644
+index 65424b89a1d1..44ddd094b7c5 100644
 --- a/fs/crypto/fname.c
 +++ b/fs/crypto/fname.c
-@@ -311,35 +311,6 @@ int fscrypt_fname_disk_to_usr(struct inode *inode,
- }
- EXPORT_SYMBOL(fscrypt_fname_disk_to_usr);
+@@ -204,37 +204,36 @@ u32 fscrypt_fname_encrypted_size(const struct inode *inode, u32 ilen)
+ EXPORT_SYMBOL(fscrypt_fname_encrypted_size);
  
--/**
-- * fscrypt_fname_usr_to_disk() - converts a filename from user space to disk
-- * space
-- *
-- * The caller must have allocated sufficient memory for the @oname string.
-- *
-- * Return: 0 on success, -errno on failure
-- */
--int fscrypt_fname_usr_to_disk(struct inode *inode,
--			const struct qstr *iname,
--			struct fscrypt_str *oname)
--{
--	if (fscrypt_is_dot_dotdot(iname)) {
--		oname->name[0] = '.';
--		oname->name[iname->len - 1] = '.';
--		oname->len = iname->len;
--		return 0;
--	}
--	if (inode->i_crypt_info)
--		return fname_encrypt(inode, iname, oname);
--	/*
--	 * Without a proper key, a user is not allowed to modify the filenames
--	 * in a directory. Consequently, a user space name cannot be mapped to
--	 * a disk-space name
--	 */
--	return -ENOKEY;
--}
--EXPORT_SYMBOL(fscrypt_fname_usr_to_disk);
--
  /**
-  * fscrypt_setup_filename() - prepare to search a possibly encrypted directory
-  * @dir: the directory that will be searched
+- * fscrypt_fname_crypto_alloc_obuff() -
++ * fscrypt_fname_alloc_buffer - allocate a buffer for presented filenames
+  *
+- * Allocates an output buffer that is sufficient for the crypto operation
+- * specified by the context and the direction.
++ * Allocate a buffer that is large enough to hold any decrypted or encoded
++ * filename (null-terminated), for the given maximum encrypted filename length.
++ *
++ * Return: 0 on success, -errno on failure
+  */
+ int fscrypt_fname_alloc_buffer(const struct inode *inode,
+-				u32 ilen, struct fscrypt_str *crypto_str)
++			       u32 max_encrypted_len,
++			       struct fscrypt_str *crypto_str)
+ {
+-	u32 olen = fscrypt_fname_encrypted_size(inode, ilen);
+ 	const u32 max_encoded_len =
+ 		max_t(u32, BASE64_CHARS(FSCRYPT_FNAME_MAX_UNDIGESTED_SIZE),
+ 		      1 + BASE64_CHARS(sizeof(struct fscrypt_digested_name)));
++	u32 max_presented_len;
+ 
+-	crypto_str->len = olen;
+-	olen = max(olen, max_encoded_len);
++	max_presented_len = max(max_encoded_len, max_encrypted_len);
+ 
+-	/*
+-	 * Allocated buffer can hold one more character to null-terminate the
+-	 * string
+-	 */
+-	crypto_str->name = kmalloc(olen + 1, GFP_NOFS);
+-	if (!(crypto_str->name))
++	crypto_str->name = kmalloc(max_presented_len + 1, GFP_NOFS);
++	if (!crypto_str->name)
+ 		return -ENOMEM;
++	crypto_str->len = max_presented_len;
+ 	return 0;
+ }
+ EXPORT_SYMBOL(fscrypt_fname_alloc_buffer);
+ 
+ /**
+- * fscrypt_fname_crypto_free_buffer() -
++ * fscrypt_fname_free_buffer - free the buffer for presented filenames
+  *
+- * Frees the buffer allocated for crypto operation.
++ * Free the buffer allocated by fscrypt_fname_alloc_buffer().
+  */
+ void fscrypt_fname_free_buffer(struct fscrypt_str *crypto_str)
+ {
 diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
-index dd106640c6ea..0962f504aa91 100644
+index 0962f504aa91..c9592e307df5 100644
 --- a/include/linux/fscrypt_notsupp.h
 +++ b/include/linux/fscrypt_notsupp.h
-@@ -159,13 +159,6 @@ static inline int fscrypt_fname_disk_to_usr(struct inode *inode,
- 	return -EOPNOTSUPP;
+@@ -140,7 +140,7 @@ static inline u32 fscrypt_fname_encrypted_size(const struct inode *inode,
  }
  
--static inline int fscrypt_fname_usr_to_disk(struct inode *inode,
--					    const struct qstr *iname,
--					    struct fscrypt_str *oname)
--{
--	return -EOPNOTSUPP;
--}
--
- static inline bool fscrypt_match_name(const struct fscrypt_name *fname,
- 				      const u8 *de_name, u32 de_name_len)
+ static inline int fscrypt_fname_alloc_buffer(const struct inode *inode,
+-					     u32 ilen,
++					     u32 max_encrypted_len,
+ 					     struct fscrypt_str *crypto_str)
  {
-diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
-index dc2babf3f7d3..e00191deb0d6 100644
---- a/include/linux/fscrypt_supp.h
-+++ b/include/linux/fscrypt_supp.h
-@@ -113,8 +113,6 @@ extern int fscrypt_fname_alloc_buffer(const struct inode *, u32,
- extern void fscrypt_fname_free_buffer(struct fscrypt_str *);
- extern int fscrypt_fname_disk_to_usr(struct inode *, u32, u32,
- 			const struct fscrypt_str *, struct fscrypt_str *);
--extern int fscrypt_fname_usr_to_disk(struct inode *, const struct qstr *,
--			struct fscrypt_str *);
- 
- #define FSCRYPT_FNAME_MAX_UNDIGESTED_SIZE	32
- 
+ 	return -EOPNOTSUPP;
 -- 
 2.15.1
 
