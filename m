@@ -1,7 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 03/24] fscrypt: move fscrypt_info_cachep declaration to fscrypt_private.h
-Date: Fri, 15 Dec 2017 09:42:04 -0800
-Message-ID: <20171215174225.31583-4-ebiggers3@gmail.com>
+Subject: [PATCH 05/24] fscrypt: split fscrypt_dummy_context_enabled() into supp/notsupp versions
+Date: Fri, 15 Dec 2017 09:42:06 -0800
+Message-ID: <20171215174225.31583-6-ebiggers3@gmail.com>
 References: <20171215174225.31583-1-ebiggers3@gmail.com>
 Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
@@ -9,48 +9,80 @@ Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
         linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
 To: linux-fscrypt@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:44937 "EHLO
-        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755824AbdLORqm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Dec 2017 12:46:42 -0500
+Received: from mail-pg0-f66.google.com ([74.125.83.66]:41726 "EHLO
+        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755929AbdLORqo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Dec 2017 12:46:44 -0500
 In-Reply-To: <20171215174225.31583-1-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Eric Biggers <ebiggers@google.com>
 
-The fscrypt_info kmem_cache is internal to fscrypt; filesystems don't
-need to access it.  So move its declaration into fscrypt_private.h.
+fscrypt_dummy_context_enabled() accesses ->s_cop, which now is only set
+when the filesystem is built with encryption support.  This didn't
+actually matter because no filesystems called it.  However, it will
+start being used soon, so fix it by moving it from fscrypt.h to
+fscrypt_supp.h and stubbing it out in fscrypt_notsupp.h.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/fscrypt_private.h  | 1 +
- include/linux/fscrypt_supp.h | 1 -
- 2 files changed, 1 insertion(+), 1 deletion(-)
+ include/linux/fscrypt.h         | 8 --------
+ include/linux/fscrypt_notsupp.h | 5 +++++
+ include/linux/fscrypt_supp.h    | 6 ++++++
+ 3 files changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-index c0b4f5597e1a..823c43a00bf7 100644
---- a/fs/crypto/fscrypt_private.h
-+++ b/fs/crypto/fscrypt_private.h
-@@ -72,6 +72,7 @@ typedef enum {
- #define FS_CTX_HAS_BOUNCE_BUFFER_FL		0x00000002
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index 0f94d087a6d1..b671a4eef47f 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -75,14 +75,6 @@ struct fscrypt_operations {
+ /* Maximum value for the third parameter of fscrypt_operations.set_context(). */
+ #define FSCRYPT_SET_CONTEXT_MAX_SIZE	28
  
- /* crypto.c */
-+extern struct kmem_cache *fscrypt_info_cachep;
- extern int fscrypt_initialize(unsigned int cop_flags);
- extern struct workqueue_struct *fscrypt_read_workqueue;
- extern int fscrypt_do_page_crypto(const struct inode *inode,
-diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
-index ad40780d4653..33d641e27c18 100644
---- a/include/linux/fscrypt_supp.h
-+++ b/include/linux/fscrypt_supp.h
-@@ -17,7 +17,6 @@ static inline bool fscrypt_has_encryption_key(const struct inode *inode)
+-static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
+-{
+-	if (inode->i_sb->s_cop->dummy_context &&
+-				inode->i_sb->s_cop->dummy_context(inode))
+-		return true;
+-	return false;
+-}
+-
+ static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
+ 					u32 filenames_mode)
+ {
+diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
+index 812dc701a5b3..81e02201b215 100644
+--- a/include/linux/fscrypt_notsupp.h
++++ b/include/linux/fscrypt_notsupp.h
+@@ -19,6 +19,11 @@ static inline bool fscrypt_has_encryption_key(const struct inode *inode)
+ 	return false;
  }
  
++static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
++{
++	return false;
++}
++
  /* crypto.c */
--extern struct kmem_cache *fscrypt_info_cachep;
+ static inline struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *inode,
+ 						  gfp_t gfp_flags)
+diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
+index fd6ee089ced0..e7dfa2974906 100644
+--- a/include/linux/fscrypt_supp.h
++++ b/include/linux/fscrypt_supp.h
+@@ -31,6 +31,12 @@ static inline bool fscrypt_has_encryption_key(const struct inode *inode)
+ 	return (inode->i_crypt_info != NULL);
+ }
+ 
++static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
++{
++	return inode->i_sb->s_cop->dummy_context &&
++		inode->i_sb->s_cop->dummy_context(inode);
++}
++
+ /* crypto.c */
  extern struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *, gfp_t);
  extern void fscrypt_release_ctx(struct fscrypt_ctx *);
- extern struct page *fscrypt_encrypt_page(const struct inode *, struct page *,
 -- 
 2.15.1
