@@ -1,8 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 17/24] ubifs: switch to fscrypt ->symlink()
- helper functions
-Date: Fri, 15 Dec 2017 09:42:18 -0800
-Message-ID: <20171215174225.31583-18-ebiggers3@gmail.com>
+Subject: [PATCH 24/24] fscrypt: document symlink length
+ restriction
+Date: Fri, 15 Dec 2017 09:42:25 -0800
+Message-ID: <20171215174225.31583-25-ebiggers3@gmail.com>
 References: <20171215174225.31583-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -25,111 +25,35 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
+Document that encryption reduces the maximum length of a symlink target
+slightly.
+
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ubifs/dir.c | 55 ++++++++++++-------------------------------------------
- 1 file changed, 12 insertions(+), 43 deletions(-)
+ Documentation/filesystems/fscrypt.rst | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
-index ef820f803176..518c10255881 100644
---- a/fs/ubifs/dir.c
-+++ b/fs/ubifs/dir.c
-@@ -1149,38 +1149,24 @@ static int ubifs_symlink(struct inode *dir, struct dentry *dentry,
- 	struct ubifs_info *c = dir->i_sb->s_fs_info;
- 	int err, len = strlen(symname);
- 	int sz_change = CALC_DENT_SIZE(len);
--	struct fscrypt_str disk_link = FSTR_INIT((char *)symname, len + 1);
--	struct fscrypt_symlink_data *sd = NULL;
-+	struct fscrypt_str disk_link;
- 	struct ubifs_budget_req req = { .new_ino = 1, .new_dent = 1,
- 					.new_ino_d = ALIGN(len, 8),
- 					.dirtied_ino = 1 };
- 	struct fscrypt_name nm;
+diff --git a/Documentation/filesystems/fscrypt.rst b/Documentation/filesystems/fscrypt.rst
+index 776ddc655f79..cfbc18f0d9c9 100644
+--- a/Documentation/filesystems/fscrypt.rst
++++ b/Documentation/filesystems/fscrypt.rst
+@@ -448,8 +448,14 @@ astute users may notice some differences in behavior:
  
--	if (ubifs_crypt_is_encrypted(dir)) {
--		err = fscrypt_get_encryption_info(dir);
--		if (err)
--			goto out_budg;
--
--		if (!fscrypt_has_encryption_key(dir)) {
--			err = -EPERM;
--			goto out_budg;
--		}
-+	dbg_gen("dent '%pd', target '%s' in dir ino %lu", dentry,
-+		symname, dir->i_ino);
+ - The st_size of an encrypted symlink will not necessarily give the
+   length of the symlink target as required by POSIX.  It will actually
+-  give the length of the ciphertext, which may be slightly longer than
+-  the plaintext due to the NUL-padding.
++  give the length of the ciphertext, which will be slightly longer
++  than the plaintext due to NUL-padding and an extra 2-byte overhead.
++
++- The maximum length of an encrypted symlink is 2 bytes shorter than
++  the maximum length of an unencrypted symlink.  For example, on an
++  EXT4 filesystem with a 4K block size, unencrypted symlinks can be up
++  to 4095 bytes long, while encrypted symlinks can only be up to 4093
++  bytes long (both lengths excluding the terminating null).
  
--		disk_link.len = (fscrypt_fname_encrypted_size(dir, len) +
--				sizeof(struct fscrypt_symlink_data));
--	}
-+	err = fscrypt_prepare_symlink(dir, symname, len, UBIFS_MAX_INO_DATA,
-+				      &disk_link);
-+	if (err)
-+		return err;
- 
- 	/*
- 	 * Budget request settings: new inode, new direntry and changing parent
- 	 * directory inode.
- 	 */
--
--	dbg_gen("dent '%pd', target '%s' in dir ino %lu", dentry,
--		symname, dir->i_ino);
--
--	if (disk_link.len > UBIFS_MAX_INO_DATA)
--		return -ENAMETOOLONG;
--
- 	err = ubifs_budget_space(c, &req);
- 	if (err)
- 		return err;
-@@ -1202,36 +1188,20 @@ static int ubifs_symlink(struct inode *dir, struct dentry *dentry,
- 		goto out_inode;
- 	}
- 
--	if (ubifs_crypt_is_encrypted(dir)) {
--		struct qstr istr = QSTR_INIT(symname, len);
--		struct fscrypt_str ostr;
--
--		sd = kzalloc(disk_link.len, GFP_NOFS);
--		if (!sd) {
--			err = -ENOMEM;
--			goto out_inode;
--		}
--
--		ostr.name = sd->encrypted_path;
--		ostr.len = disk_link.len;
--
--		err = fscrypt_fname_usr_to_disk(inode, &istr, &ostr);
-+	if (IS_ENCRYPTED(inode)) {
-+		disk_link.name = ui->data; /* encrypt directly into ui->data */
-+		err = fscrypt_encrypt_symlink(inode, symname, len, &disk_link);
- 		if (err)
- 			goto out_inode;
--
--		sd->len = cpu_to_le16(ostr.len);
--		disk_link.name = (char *)sd;
- 	} else {
-+		memcpy(ui->data, disk_link.name, disk_link.len);
- 		inode->i_link = ui->data;
- 	}
- 
--	memcpy(ui->data, disk_link.name, disk_link.len);
--	((char *)ui->data)[disk_link.len - 1] = '\0';
--
- 	/*
- 	 * The terminating zero byte is not written to the flash media and it
- 	 * is put just to make later in-memory string processing simpler. Thus,
--	 * data length is @len, not @len + %1.
-+	 * data length is @disk_link.len - 1, not @disk_link.len.
- 	 */
- 	ui->data_len = disk_link.len - 1;
- 	inode->i_size = ubifs_inode(inode)->ui_size = disk_link.len - 1;
-@@ -1265,7 +1235,6 @@ static int ubifs_symlink(struct inode *dir, struct dentry *dentry,
- 	fscrypt_free_filename(&nm);
- out_budg:
- 	ubifs_release_budget(c, &req);
--	kfree(sd);
- 	return err;
- }
- 
+ Note that mmap *is* supported.  This is possible because the pagecache
+ for an encrypted file contains the plaintext, not the ciphertext.
 -- 
 2.15.1
 
