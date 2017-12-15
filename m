@@ -1,68 +1,88 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] mm: save/restore current->journal_info in handle_mm_fault
-Date: Fri, 15 Dec 2017 11:33:48 +0100
-Message-ID: <20171215103348.GB7419@quack2.suse.cz>
-References: <20171214105527.5885-1-zyan@redhat.com>
- <20171214134338.GA1474@quack2.suse.cz>
- <CAAM7YA=ThWbBpOe1wgeYjGt3ogr9kT6uy3UpqSn94XqbhjOHJw@mail.gmail.com>
- <20171214165314.GB1930@quack2.suse.cz>
- <CAAM7YA=aKMgyi67nwamzNj82nhmsWoUPXWGuXxiMx2Ay1vZK3Q@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, "Yan, Zheng" <zyan@redhat.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-	ceph-devel <ceph-devel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	linux-btrfs <linux-btrfs@vger.kernel.org>, linux-mm@kvack.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
-	stable@vger.kernel.org
-To: "Yan, Zheng" <ukernel@gmail.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <CAAM7YA=aKMgyi67nwamzNj82nhmsWoUPXWGuXxiMx2Ay1vZK3Q@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH 00/24] fscrypt: symlink helpers and fscrypt.h cleanup
+Date: Fri, 15 Dec 2017 09:42:01 -0800
+Message-ID: <20171215174225.31583-1-ebiggers3@gmail.com>
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers3@gmail.com>
+To: linux-fscrypt@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f46.google.com ([74.125.83.46]:45754 "EHLO
+        mail-pg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755409AbdLORqi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Dec 2017 12:46:38 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 15-12-17 09:17:42, Yan, Zheng wrote:
-> On Fri, Dec 15, 2017 at 12:53 AM, Jan Kara <jack@suse.cz> wrote:
-> >> >
-> >> > In this particular case I'm not sure why does ceph pass 'filp' into
-> >> > readpage() / readpages() handler when it already gets that pointer as part
-> >> > of arguments...
-> >>
-> >> It actually a flag which tells ceph_readpages() if its caller is
-> >> ceph_read_iter or readahead/fadvise/madvise. because when there are
-> >> multiple clients read/write a file a the same time, page cache should
-> >> be disabled.
-> >
-> > I'm not sure I understand the reasoning properly but from what you say
-> > above it rather seems the 'hint' should be stored in the inode (or possibly
-> > struct file)?
-> >
-> 
-> The capability of using page cache is hold by the process who got it.
-> ceph_read_iter() first gets the capability, calls
-> generic_file_read_iter(), then release the capability. The capability
-> can not be easily stored in inode or file because it can be revoked by
-> server any time if caller does not hold it
+This series introduces helper functions in fscrypt that filesystems can
+call to simplify handling of encrypted symlinks.  The helpers also fix a
+couple subtle bugs, such as incorrectly rejecting symlinks that are very
+close to the maximum length, and accidentally leaving the "." and ".."
+symlink targets unencrypted (they need to be special in directory
+entries, but not in symlink targets).
 
-OK, understood. But using storage in task_struct (such as journal_info) is
-problematic as it has hard to fix recursion issues as the bug you're trying
-to fix shows (it is difficult to track down all the paths that can recurse
-into another filesystem which will clobber the stored info). So either you
-have to come up with some scheme to safely use current->journal_info (by
-somehow tracking owner as Andreas suggests) and convert all users to it or
-you have to come up with some scheme propagating the information through
-the inode / file->private_data and use it in Ceph.
+Patches 1-9 are mostly cleanup to trim down fscrypt.h, moving stuff into
+more appropriate places depending on whether it is needed only
+internally by fscrypt, or only by filesystems supporting encryption,
+etc.  I was going to send these out as a separate series, but there is a
+dependency because the symlink helpers depend on
+fscrypt_dummy_context_enabled() having been fixed to work correctly in
+the "notsupp" case.
 
-								Honza
+Patch 10 introduces the helpers for ->symlink() and patch 11 introduces
+a helper for ->get_link().
+
+Patches 12-18 switch ext4, f2fs, and ubifs over to the symlink helpers,
+and patches 19-24 clean things up in fscrypt as a consequence of all the
+filesystems having been switched over to the symlink helpers.  Note that
+as with the previous round of fscrypt helpers it may take an extra
+development cycle to get the filesystem-specific patches in through the
+filesystem-specific trees, so please consider patches 1-11 the ones that
+may be applied right away, and the rest as the future plans.
+
+Eric Biggers (24):
+  fscrypt: move fscrypt_has_encryption_key() to supp/notsupp headers
+  fscrypt: move fscrypt_control_page() to supp/notsupp headers
+  fscrypt: move fscrypt_info_cachep declaration to fscrypt_private.h
+  fscrypt: move fscrypt_ctx declaration to fscrypt_supp.h
+  fscrypt: split fscrypt_dummy_context_enabled() into supp/notsupp
+    versions
+  fscrypt: move fscrypt_operations declaration to fscrypt_supp.h
+  fscrypt: move fscrypt_valid_enc_modes() to fscrypt_private.h
+  fscrypt: move fscrypt_is_dot_dotdot() to fs/crypto/fname.c
+  fscrypt: trim down fscrypt.h includes
+  fscrypt: new helper functions for ->symlink()
+  fscrypt: new helper function - fscrypt_get_symlink()
+  ext4: switch to fscrypt ->symlink() helper functions
+  ext4: switch to fscrypt_get_symlink()
+  f2fs: switch to fscrypt ->symlink() helper functions
+  f2fs: switch to fscrypt_get_symlink()
+  ubifs: free the encrypted symlink target
+  ubifs: switch to fscrypt ->symlink() helper functions
+  ubifs: switch to fscrypt_get_symlink()
+  fscrypt: remove fscrypt_fname_usr_to_disk()
+  fscrypt: move fscrypt_symlink_data to fscrypt_private.h
+  fscrypt: calculate NUL-padding length in one place only
+  fscrypt: define fscrypt_fname_alloc_buffer() to be for presented names
+  fscrypt: fix up fscrypt_fname_encrypted_size() for internal use
+  fscrypt: document symlink length restriction
+
+ Documentation/filesystems/fscrypt.rst |  10 +-
+ fs/crypto/crypto.c                    |   1 +
+ fs/crypto/fname.c                     | 140 ++++++++++++---------------
+ fs/crypto/fscrypt_private.h           |  31 ++++++
+ fs/crypto/hooks.c                     | 154 ++++++++++++++++++++++++++++++
+ fs/crypto/keyinfo.c                   |   1 +
+ fs/ext4/namei.c                       |  58 +++---------
+ fs/ext4/symlink.c                     |  43 ++-------
+ fs/f2fs/namei.c                       | 132 +++++---------------------
+ fs/ubifs/dir.c                        |  63 +++---------
+ fs/ubifs/file.c                       |  36 +------
+ include/linux/fscrypt.h               | 174 +++++++++++++---------------------
+ include/linux/fscrypt_notsupp.h       |  56 +++++++----
+ include/linux/fscrypt_supp.h          |  66 ++++++++++++-
+ 14 files changed, 488 insertions(+), 477 deletions(-)
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+2.15.1
