@@ -1,7 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 04/24] fscrypt: move fscrypt_ctx declaration to fscrypt_supp.h
-Date: Fri, 15 Dec 2017 09:42:05 -0800
-Message-ID: <20171215174225.31583-5-ebiggers3@gmail.com>
+Subject: [PATCH 07/24] fscrypt: move fscrypt_valid_enc_modes() to fscrypt_private.h
+Date: Fri, 15 Dec 2017 09:42:08 -0800
+Message-ID: <20171215174225.31583-8-ebiggers3@gmail.com>
 References: <20171215174225.31583-1-ebiggers3@gmail.com>
 Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
@@ -9,81 +9,69 @@ Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
         linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
 To: linux-fscrypt@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f67.google.com ([74.125.83.67]:32923 "EHLO
+Received: from mail-pg0-f67.google.com ([74.125.83.67]:34650 "EHLO
         mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755851AbdLORqn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Dec 2017 12:46:43 -0500
+        with ESMTP id S1755977AbdLORqq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Dec 2017 12:46:46 -0500
 In-Reply-To: <20171215174225.31583-1-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Eric Biggers <ebiggers@google.com>
 
-Filesystems only ever access 'struct fscrypt_ctx' through fscrypt
-functions.  But when a filesystem is built without encryption support,
-these functions are all stubbed out, so the declaration of fscrypt_ctx
-is unneeded.  Therefore, move it from fscrypt.h to fscrypt_supp.h.
+The encryption modes are validated by fs/crypto/, not by individual
+filesystems.  Therefore, move fscrypt_valid_enc_modes() from fscrypt.h
+to fscrypt_private.h.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/linux/fscrypt.h      | 16 +---------------
- include/linux/fscrypt_supp.h | 15 +++++++++++++++
- 2 files changed, 16 insertions(+), 15 deletions(-)
+ fs/crypto/fscrypt_private.h | 14 ++++++++++++++
+ include/linux/fscrypt.h     | 14 --------------
+ 2 files changed, 14 insertions(+), 14 deletions(-)
 
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index 823c43a00bf7..2b848e7c92f0 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -71,6 +71,20 @@ typedef enum {
+ #define FS_CTX_REQUIRES_FREE_ENCRYPT_FL		0x00000001
+ #define FS_CTX_HAS_BOUNCE_BUFFER_FL		0x00000002
+ 
++static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
++					   u32 filenames_mode)
++{
++	if (contents_mode == FS_ENCRYPTION_MODE_AES_128_CBC &&
++	    filenames_mode == FS_ENCRYPTION_MODE_AES_128_CTS)
++		return true;
++
++	if (contents_mode == FS_ENCRYPTION_MODE_AES_256_XTS &&
++	    filenames_mode == FS_ENCRYPTION_MODE_AES_256_CTS)
++		return true;
++
++	return false;
++}
++
+ /* crypto.c */
+ extern struct kmem_cache *fscrypt_info_cachep;
+ extern int fscrypt_initialize(unsigned int cop_flags);
 diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index c23b2f16129a..0f94d087a6d1 100644
+index 33b95a91f720..2e4dce0365cf 100644
 --- a/include/linux/fscrypt.h
 +++ b/include/linux/fscrypt.h
-@@ -24,23 +24,9 @@
+@@ -57,20 +57,6 @@ struct fscrypt_name {
+ /* Maximum value for the third parameter of fscrypt_operations.set_context(). */
+ #define FSCRYPT_SET_CONTEXT_MAX_SIZE	28
  
- #define FS_CRYPTO_BLOCK_SIZE		16
- 
-+struct fscrypt_ctx;
- struct fscrypt_info;
- 
--struct fscrypt_ctx {
--	union {
--		struct {
--			struct page *bounce_page;	/* Ciphertext page */
--			struct page *control_page;	/* Original page  */
--		} w;
--		struct {
--			struct bio *bio;
--			struct work_struct work;
--		} r;
--		struct list_head free_list;	/* Free list */
--	};
--	u8 flags;				/* Flags */
--};
+-static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
+-					u32 filenames_mode)
+-{
+-	if (contents_mode == FS_ENCRYPTION_MODE_AES_128_CBC &&
+-	    filenames_mode == FS_ENCRYPTION_MODE_AES_128_CTS)
+-		return true;
 -
- /**
-  * For encrypted symlinks, the ciphertext length is stored at the beginning
-  * of the string in little-endian format.
-diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
-index 33d641e27c18..fd6ee089ced0 100644
---- a/include/linux/fscrypt_supp.h
-+++ b/include/linux/fscrypt_supp.h
-@@ -11,6 +11,21 @@
- #ifndef _LINUX_FSCRYPT_SUPP_H
- #define _LINUX_FSCRYPT_SUPP_H
- 
-+struct fscrypt_ctx {
-+	union {
-+		struct {
-+			struct page *bounce_page;	/* Ciphertext page */
-+			struct page *control_page;	/* Original page  */
-+		} w;
-+		struct {
-+			struct bio *bio;
-+			struct work_struct work;
-+		} r;
-+		struct list_head free_list;	/* Free list */
-+	};
-+	u8 flags;				/* Flags */
-+};
-+
- static inline bool fscrypt_has_encryption_key(const struct inode *inode)
- {
- 	return (inode->i_crypt_info != NULL);
--- 
-2.15.1
+-	if (contents_mode == FS_ENCRYPTION_MODE_AES_256_XTS &&
+-	    filenames_mode == FS_ENCRYPTION_MODE_AES_256_CTS)
+-		return true;
+-
+-	return false;
+-}
