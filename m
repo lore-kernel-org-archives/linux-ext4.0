@@ -1,133 +1,46 @@
-From: "Yan, Zheng" <ukernel@gmail.com>
-Subject: Re: [PATCH] mm: save/restore current->journal_info in handle_mm_fault
-Date: Fri, 15 Dec 2017 09:17:42 +0800
-Message-ID: <CAAM7YA=aKMgyi67nwamzNj82nhmsWoUPXWGuXxiMx2Ay1vZK3Q@mail.gmail.com>
-References: <20171214105527.5885-1-zyan@redhat.com> <20171214134338.GA1474@quack2.suse.cz>
- <CAAM7YA=ThWbBpOe1wgeYjGt3ogr9kT6uy3UpqSn94XqbhjOHJw@mail.gmail.com> <20171214165314.GB1930@quack2.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Yan, Zheng" <zyan@redhat.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>, ceph-devel <ceph-devel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, linux-btrfs <linux-btrfs@vger.kernel.org>,
-	linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>,
-	Al Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>, stable@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20171214165314.GB1930@quack2.suse.cz>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+From: zhouzhouyi@gmail.com
+Subject: [PATCH] FS: EXT4: syn error in __ext4_grp_locked_error
+Date: Fri, 15 Dec 2017 02:32:16 +0000
+Message-ID: <1513305136-27652-1-git-send-email-zhouzhouyi@gmail.com>
+Cc: Zhouyi Zhou <zhouzhouyi@gmail.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:42803 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754594AbdLOCcd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Dec 2017 21:32:33 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 15, 2017 at 12:53 AM, Jan Kara <jack@suse.cz> wrote:
-> On Thu 14-12-17 22:30:26, Yan, Zheng wrote:
->> On Thu, Dec 14, 2017 at 9:43 PM, Jan Kara <jack@suse.cz> wrote:
->> > On Thu 14-12-17 18:55:27, Yan, Zheng wrote:
->> >> We recently got an Oops report:
->> >>
->> >> BUG: unable to handle kernel NULL pointer dereference at (null)
->> >> IP: jbd2__journal_start+0x38/0x1a2
->> >> [...]
->> >> Call Trace:
->> >>   ext4_page_mkwrite+0x307/0x52b
->> >>   _ext4_get_block+0xd8/0xd8
->> >>   do_page_mkwrite+0x6e/0xd8
->> >>   handle_mm_fault+0x686/0xf9b
->> >>   mntput_no_expire+0x1f/0x21e
->> >>   __do_page_fault+0x21d/0x465
->> >>   dput+0x4a/0x2f7
->> >>   page_fault+0x22/0x30
->> >>   copy_user_generic_string+0x2c/0x40
->> >>   copy_page_to_iter+0x8c/0x2b8
->> >>   generic_file_read_iter+0x26e/0x845
->> >>   timerqueue_del+0x31/0x90
->> >>   ceph_read_iter+0x697/0xa33 [ceph]
->> >>   hrtimer_cancel+0x23/0x41
->> >>   futex_wait+0x1c8/0x24d
->> >>   get_futex_key+0x32c/0x39a
->> >>   __vfs_read+0xe0/0x130
->> >>   vfs_read.part.1+0x6c/0x123
->> >>   handle_mm_fault+0x831/0xf9b
->> >>   __fget+0x7e/0xbf
->> >>   SyS_read+0x4d/0xb5
->> >>
->> >> ceph_read_iter() uses current->journal_info to pass context info to
->> >> ceph_readpages(). Because ceph_readpages() needs to know if its caller
->> >> has already gotten capability of using page cache (distinguish read
->> >> from readahead/fadvise). ceph_read_iter() set current->journal_info,
->> >> then calls generic_file_read_iter().
->> >>
->> >> In above Oops, page fault happened when copying data to userspace.
->> >> Page fault handler called ext4_page_mkwrite(). Ext4 code read
->> >> current->journal_info and assumed it is journal handle.
->> >>
->> >> I checked other filesystems, btrfs probably suffers similar problem
->> >> for its readpage. (page fault happens when write() copies data from
->> >> userspace memory and the memory is mapped to a file in btrfs.
->> >> verify_parent_transid() can be called during readpage)
->> >>
->> >> Cc: stable@vger.kernel.org
->> >> Signed-off-by: "Yan, Zheng" <zyan@redhat.com>
->> >
->> > I agree with the analysis but the patch is too ugly too live. Ceph just
->> > should not be abusing current->journal_info for passing information between
->> > two random functions or when it does a hackery like this, it should just
->> > make sure the pieces hold together. Poluting generic code to accommodate
->> > this hack in Ceph is not acceptable. Also bear in mind there are likely
->> > other code paths (e.g. memory reclaim) which could recurse into another
->> > filesystem confusing it with non-NULL current->journal_info in the same
->> > way.
->>
->> But ...
->>
->> some filesystem set journal_info in its write_begin(), then clear it
->> in write_end(). If buffer for write is mapped to another filesystem,
->> current->journal can leak to the later filesystem's page_readpage().
->> The later filesystem may read current->journal and treat it as its own
->> journal handle.  Besides, most filesystem's vm fault handle is
->> filemap_fault(), filemap also may tigger memory reclaim.
->
-> Did you really observe this? Because write path uses
-> iov_iter_copy_from_user_atomic() which does not allow page faults to
-> happen. All page faulting happens in iov_iter_fault_in_readable() before
-> ->write_begin() is called. And the recursion problems like you mention
-> above are exactly the reason why things are done in a more complicated way
-> like this.
+From: Zhouyi Zhou <zhouzhouyi@gmail.com>
 
-I think you are right.
+In function __ext4_grp_locked_error,   __save_error_info
+is called to save error info in super block block, but does not sync
+that information to disk to info the subsequence fsck after reboot.
 
->
->> >
->> > In this particular case I'm not sure why does ceph pass 'filp' into
->> > readpage() / readpages() handler when it already gets that pointer as part
->> > of arguments...
->>
->> It actually a flag which tells ceph_readpages() if its caller is
->> ceph_read_iter or readahead/fadvise/madvise. because when there are
->> multiple clients read/write a file a the same time, page cache should
->> be disabled.
->
-> I'm not sure I understand the reasoning properly but from what you say
-> above it rather seems the 'hint' should be stored in the inode (or possibly
-> struct file)?
->
+This patch sync the error information to disk. After this patch,
+I think there is no obvious EXT4 error handle branche which leads to
+"Remounting filesystem read-only" will leave the disk partition miss
+the subsequence fsck.
 
-The capability of using page cache is hold by the process who got it.
-ceph_read_iter() first gets the capability, calls
-generic_file_read_iter(), then release the capability. The capability
-can not be easily stored in inode or file because it can be revoked by
-server any time if caller does not hold it
+Compiled in x86_64 Linux
+Signed-off-by: Zhouyi Zhou <zhouzhouyi@gmail.com>
+---
+ fs/ext4/super.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Regards
-Yan, Zheng
-
-
->                                                                 Honza
-> --
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7c46693..7159438 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -742,6 +742,7 @@ __acquires(bitlock)
+ 	}
+ 
+ 	ext4_unlock_group(sb, grp);
++	ext4_commit_super(sb, 1);
+ 	ext4_handle_error(sb);
+ 	/*
+ 	 * We only get here in the ERRORS_RO case; relocking the group
+-- 
+2.1.4
