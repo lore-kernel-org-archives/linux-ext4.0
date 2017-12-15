@@ -1,8 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 22/24] fscrypt: define
- fscrypt_fname_alloc_buffer() to be for presented names
-Date: Fri, 15 Dec 2017 09:42:23 -0800
-Message-ID: <20171215174225.31583-23-ebiggers3@gmail.com>
+Subject: [PATCH 18/24] ubifs: switch to fscrypt_get_symlink()
+Date: Fri, 15 Dec 2017 09:42:19 -0800
+Message-ID: <20171215174225.31583-19-ebiggers3@gmail.com>
 References: <20171215174225.31583-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -25,91 +24,67 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Previously fscrypt_fname_alloc_buffer() was used to allocate buffers for
-both presented (decrypted or encoded) and encrypted filenames.  That was
-confusing, because it had to allocate the worst-case size for either,
-e.g. including NUL-padding even when it was meaningless.
-
-But now that fscrypt_setup_filename() no longer calls it, it is only
-used in the ->get_link() and ->readdir() paths, which specifically want
-a buffer for presented filenames.  Therefore, switch the behavior over
-to allocating the buffer for presented filenames only.
-
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/fname.c               | 29 ++++++++++++++---------------
- include/linux/fscrypt_notsupp.h |  2 +-
- 2 files changed, 15 insertions(+), 16 deletions(-)
+ fs/ubifs/file.c | 36 ++----------------------------------
+ 1 file changed, 2 insertions(+), 34 deletions(-)
 
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index 65424b89a1d1..44ddd094b7c5 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -204,37 +204,36 @@ u32 fscrypt_fname_encrypted_size(const struct inode *inode, u32 ilen)
- EXPORT_SYMBOL(fscrypt_fname_encrypted_size);
- 
- /**
-- * fscrypt_fname_crypto_alloc_obuff() -
-+ * fscrypt_fname_alloc_buffer - allocate a buffer for presented filenames
-  *
-- * Allocates an output buffer that is sufficient for the crypto operation
-- * specified by the context and the direction.
-+ * Allocate a buffer that is large enough to hold any decrypted or encoded
-+ * filename (null-terminated), for the given maximum encrypted filename length.
-+ *
-+ * Return: 0 on success, -errno on failure
-  */
- int fscrypt_fname_alloc_buffer(const struct inode *inode,
--				u32 ilen, struct fscrypt_str *crypto_str)
-+			       u32 max_encrypted_len,
-+			       struct fscrypt_str *crypto_str)
+diff --git a/fs/ubifs/file.c b/fs/ubifs/file.c
+index dfe85069586e..3cfc578c42ea 100644
+--- a/fs/ubifs/file.c
++++ b/fs/ubifs/file.c
+@@ -1662,49 +1662,17 @@ static const char *ubifs_get_link(struct dentry *dentry,
+ 					    struct inode *inode,
+ 					    struct delayed_call *done)
  {
--	u32 olen = fscrypt_fname_encrypted_size(inode, ilen);
- 	const u32 max_encoded_len =
- 		max_t(u32, BASE64_CHARS(FSCRYPT_FNAME_MAX_UNDIGESTED_SIZE),
- 		      1 + BASE64_CHARS(sizeof(struct fscrypt_digested_name)));
-+	u32 max_presented_len;
+-	int err;
+-	struct fscrypt_symlink_data *sd;
+ 	struct ubifs_inode *ui = ubifs_inode(inode);
+-	struct fscrypt_str cstr;
+-	struct fscrypt_str pstr;
  
--	crypto_str->len = olen;
--	olen = max(olen, max_encoded_len);
-+	max_presented_len = max(max_encoded_len, max_encrypted_len);
+-	if (!ubifs_crypt_is_encrypted(inode))
++	if (!IS_ENCRYPTED(inode))
+ 		return ui->data;
  
--	/*
--	 * Allocated buffer can hold one more character to null-terminate the
--	 * string
--	 */
--	crypto_str->name = kmalloc(olen + 1, GFP_NOFS);
--	if (!(crypto_str->name))
-+	crypto_str->name = kmalloc(max_presented_len + 1, GFP_NOFS);
-+	if (!crypto_str->name)
- 		return -ENOMEM;
-+	crypto_str->len = max_presented_len;
- 	return 0;
- }
- EXPORT_SYMBOL(fscrypt_fname_alloc_buffer);
+ 	if (!dentry)
+ 		return ERR_PTR(-ECHILD);
  
- /**
-- * fscrypt_fname_crypto_free_buffer() -
-+ * fscrypt_fname_free_buffer - free the buffer for presented filenames
-  *
-- * Frees the buffer allocated for crypto operation.
-+ * Free the buffer allocated by fscrypt_fname_alloc_buffer().
-  */
- void fscrypt_fname_free_buffer(struct fscrypt_str *crypto_str)
- {
-diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
-index 0962f504aa91..c9592e307df5 100644
---- a/include/linux/fscrypt_notsupp.h
-+++ b/include/linux/fscrypt_notsupp.h
-@@ -140,7 +140,7 @@ static inline u32 fscrypt_fname_encrypted_size(const struct inode *inode,
+-	err = fscrypt_get_encryption_info(inode);
+-	if (err)
+-		return ERR_PTR(err);
+-
+-	sd = (struct fscrypt_symlink_data *)ui->data;
+-	cstr.name = sd->encrypted_path;
+-	cstr.len = le16_to_cpu(sd->len);
+-
+-	if (cstr.len == 0)
+-		return ERR_PTR(-ENOENT);
+-
+-	if ((cstr.len + sizeof(struct fscrypt_symlink_data) - 1) > ui->data_len)
+-		return ERR_PTR(-EIO);
+-
+-	err = fscrypt_fname_alloc_buffer(inode, cstr.len, &pstr);
+-	if (err)
+-		return ERR_PTR(err);
+-
+-	err = fscrypt_fname_disk_to_usr(inode, 0, 0, &cstr, &pstr);
+-	if (err) {
+-		fscrypt_fname_free_buffer(&pstr);
+-		return ERR_PTR(err);
+-	}
+-
+-	pstr.name[pstr.len] = '\0';
+-
+-	set_delayed_call(done, kfree_link, pstr.name);
+-	return pstr.name;
++	return fscrypt_get_symlink(inode, ui->data, ui->data_len, done);
  }
  
- static inline int fscrypt_fname_alloc_buffer(const struct inode *inode,
--					     u32 ilen,
-+					     u32 max_encrypted_len,
- 					     struct fscrypt_str *crypto_str)
- {
- 	return -EOPNOTSUPP;
+-
+ const struct address_space_operations ubifs_file_address_operations = {
+ 	.readpage       = ubifs_readpage,
+ 	.writepage      = ubifs_writepage,
 -- 
 2.15.1
 
