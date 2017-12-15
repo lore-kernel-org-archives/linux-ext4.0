@@ -1,7 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 05/24] fscrypt: split fscrypt_dummy_context_enabled() into supp/notsupp versions
-Date: Fri, 15 Dec 2017 09:42:06 -0800
-Message-ID: <20171215174225.31583-6-ebiggers3@gmail.com>
+Subject: [PATCH 09/24] fscrypt: trim down fscrypt.h includes
+Date: Fri, 15 Dec 2017 09:42:10 -0800
+Message-ID: <20171215174225.31583-10-ebiggers3@gmail.com>
 References: <20171215174225.31583-1-ebiggers3@gmail.com>
 Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
@@ -9,80 +9,97 @@ Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
         linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>
 To: linux-fscrypt@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f66.google.com ([74.125.83.66]:41726 "EHLO
-        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755929AbdLORqo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Dec 2017 12:46:44 -0500
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:46641 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755996AbdLORqs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Dec 2017 12:46:48 -0500
 In-Reply-To: <20171215174225.31583-1-ebiggers3@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Eric Biggers <ebiggers@google.com>
 
-fscrypt_dummy_context_enabled() accesses ->s_cop, which now is only set
-when the filesystem is built with encryption support.  This didn't
-actually matter because no filesystems called it.  However, it will
-start being used soon, so fix it by moving it from fscrypt.h to
-fscrypt_supp.h and stubbing it out in fscrypt_notsupp.h.
+fscrypt.h included way too many other headers, given that it is included
+by filesystems both with and without encryption support.  Trim down the
+includes list by moving the needed includes into more appropriate
+places, and removing the unneeded ones.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/linux/fscrypt.h         | 8 --------
- include/linux/fscrypt_notsupp.h | 5 +++++
- include/linux/fscrypt_supp.h    | 6 ++++++
- 3 files changed, 11 insertions(+), 8 deletions(-)
+ fs/crypto/crypto.c           | 1 +
+ fs/crypto/fname.c            | 1 +
+ fs/crypto/keyinfo.c          | 1 +
+ include/linux/fscrypt.h      | 6 ------
+ include/linux/fscrypt_supp.h | 3 +++
+ 5 files changed, 6 insertions(+), 6 deletions(-)
 
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index 732a786cce9d..ce654526c0fb 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -27,6 +27,7 @@
+ #include <linux/dcache.h>
+ #include <linux/namei.h>
+ #include <crypto/aes.h>
++#include <crypto/skcipher.h>
+ #include "fscrypt_private.h"
+ 
+ static unsigned int num_prealloc_crypto_pages = 32;
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index b8c5061553b1..52d4dbe1e8e7 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -13,6 +13,7 @@
+ 
+ #include <linux/scatterlist.h>
+ #include <linux/ratelimit.h>
++#include <crypto/skcipher.h>
+ #include "fscrypt_private.h"
+ 
+ static inline bool fscrypt_is_dot_dotdot(const struct qstr *str)
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index 5e6e846f5a24..c115eac4b4cf 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -14,6 +14,7 @@
+ #include <linux/ratelimit.h>
+ #include <crypto/aes.h>
+ #include <crypto/sha.h>
++#include <crypto/skcipher.h>
+ #include "fscrypt_private.h"
+ 
+ static struct crypto_shash *essiv_hash_tfm;
 diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 0f94d087a6d1..b671a4eef47f 100644
+index 3045fc49d3ca..071ebabfc287 100644
 --- a/include/linux/fscrypt.h
 +++ b/include/linux/fscrypt.h
-@@ -75,14 +75,6 @@ struct fscrypt_operations {
- /* Maximum value for the third parameter of fscrypt_operations.set_context(). */
- #define FSCRYPT_SET_CONTEXT_MAX_SIZE	28
+@@ -14,13 +14,7 @@
+ #ifndef _LINUX_FSCRYPT_H
+ #define _LINUX_FSCRYPT_H
  
--static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
--{
--	if (inode->i_sb->s_cop->dummy_context &&
--				inode->i_sb->s_cop->dummy_context(inode))
--		return true;
--	return false;
--}
--
- static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
- 					u32 filenames_mode)
- {
-diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
-index 812dc701a5b3..81e02201b215 100644
---- a/include/linux/fscrypt_notsupp.h
-+++ b/include/linux/fscrypt_notsupp.h
-@@ -19,6 +19,11 @@ static inline bool fscrypt_has_encryption_key(const struct inode *inode)
- 	return false;
- }
+-#include <linux/key.h>
+ #include <linux/fs.h>
+-#include <linux/mm.h>
+-#include <linux/bio.h>
+-#include <linux/dcache.h>
+-#include <crypto/skcipher.h>
+-#include <uapi/linux/fs.h>
  
-+static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
-+{
-+	return false;
-+}
-+
- /* crypto.c */
- static inline struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *inode,
- 						  gfp_t gfp_flags)
+ #define FS_CRYPTO_BLOCK_SIZE		16
+ 
 diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
-index fd6ee089ced0..e7dfa2974906 100644
+index ce61caf26f40..562a9bc04560 100644
 --- a/include/linux/fscrypt_supp.h
 +++ b/include/linux/fscrypt_supp.h
-@@ -31,6 +31,12 @@ static inline bool fscrypt_has_encryption_key(const struct inode *inode)
- 	return (inode->i_crypt_info != NULL);
- }
+@@ -11,6 +11,9 @@
+ #ifndef _LINUX_FSCRYPT_SUPP_H
+ #define _LINUX_FSCRYPT_SUPP_H
  
-+static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
-+{
-+	return inode->i_sb->s_cop->dummy_context &&
-+		inode->i_sb->s_cop->dummy_context(inode);
-+}
++#include <linux/mm.h>
++#include <linux/slab.h>
 +
- /* crypto.c */
- extern struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *, gfp_t);
- extern void fscrypt_release_ctx(struct fscrypt_ctx *);
+ /*
+  * fscrypt superblock flags
+  */
 -- 
 2.15.1
