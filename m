@@ -1,8 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 08/24] fscrypt: move fscrypt_is_dot_dotdot() to
- fs/crypto/fname.c
-Date: Fri, 15 Dec 2017 09:42:09 -0800
-Message-ID: <20171215174225.31583-9-ebiggers3@gmail.com>
+Subject: [PATCH 12/24] ext4: switch to fscrypt ->symlink() helper
+ functions
+Date: Fri, 15 Dec 2017 09:42:13 -0800
+Message-ID: <20171215174225.31583-13-ebiggers3@gmail.com>
 References: <20171215174225.31583-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -25,60 +25,123 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Only fs/crypto/fname.c cares about treating the "." and ".." filenames
-specially with regards to encryption, so move fscrypt_is_dot_dotdot()
-from fscrypt.h to there.
-
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/fname.c       | 11 +++++++++++
- include/linux/fscrypt.h | 11 -----------
- 2 files changed, 11 insertions(+), 11 deletions(-)
+ fs/ext4/namei.c | 58 +++++++++++++++------------------------------------------
+ 1 file changed, 15 insertions(+), 43 deletions(-)
 
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index 305541bcd108..b8c5061553b1 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -15,6 +15,17 @@
- #include <linux/ratelimit.h>
- #include "fscrypt_private.h"
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 798b3ac680db..e291bb90a233 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -3052,39 +3052,19 @@ static int ext4_symlink(struct inode *dir,
+ 	struct inode *inode;
+ 	int err, len = strlen(symname);
+ 	int credits;
+-	bool encryption_required;
+ 	struct fscrypt_str disk_link;
+-	struct fscrypt_symlink_data *sd = NULL;
  
-+static inline bool fscrypt_is_dot_dotdot(const struct qstr *str)
-+{
-+	if (str->len == 1 && str->name[0] == '.')
-+		return true;
-+
-+	if (str->len == 2 && str->name[0] == '.' && str->name[1] == '.')
-+		return true;
-+
-+	return false;
-+}
-+
- /**
-  * fname_encrypt() - encrypt a filename
-  *
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 2e4dce0365cf..3045fc49d3ca 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -57,17 +57,6 @@ struct fscrypt_name {
- /* Maximum value for the third parameter of fscrypt_operations.set_context(). */
- #define FSCRYPT_SET_CONTEXT_MAX_SIZE	28
+ 	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
+ 		return -EIO;
  
--static inline bool fscrypt_is_dot_dotdot(const struct qstr *str)
--{
--	if (str->len == 1 && str->name[0] == '.')
--		return true;
+-	disk_link.len = len + 1;
+-	disk_link.name = (char *) symname;
 -
--	if (str->len == 2 && str->name[0] == '.' && str->name[1] == '.')
--		return true;
+-	encryption_required = (ext4_encrypted_inode(dir) ||
+-			       DUMMY_ENCRYPTION_ENABLED(EXT4_SB(dir->i_sb)));
+-	if (encryption_required) {
+-		err = fscrypt_get_encryption_info(dir);
+-		if (err)
+-			return err;
+-		if (!fscrypt_has_encryption_key(dir))
+-			return -ENOKEY;
+-		disk_link.len = (fscrypt_fname_encrypted_size(dir, len) +
+-				 sizeof(struct fscrypt_symlink_data));
+-		sd = kzalloc(disk_link.len, GFP_KERNEL);
+-		if (!sd)
+-			return -ENOMEM;
+-	}
 -
--	return false;
--}
+-	if (disk_link.len > dir->i_sb->s_blocksize) {
+-		err = -ENAMETOOLONG;
+-		goto err_free_sd;
+-	}
++	err = fscrypt_prepare_symlink(dir, symname, len, dir->i_sb->s_blocksize,
++				      &disk_link);
++	if (err)
++		return err;
+ 
+ 	err = dquot_initialize(dir);
+ 	if (err)
+-		goto err_free_sd;
++		return err;
+ 
+ 	if ((disk_link.len > EXT4_N_BLOCKS * 4)) {
+ 		/*
+@@ -3113,27 +3093,18 @@ static int ext4_symlink(struct inode *dir,
+ 	if (IS_ERR(inode)) {
+ 		if (handle)
+ 			ext4_journal_stop(handle);
+-		err = PTR_ERR(inode);
+-		goto err_free_sd;
++		return PTR_ERR(inode);
+ 	}
+ 
+-	if (encryption_required) {
+-		struct qstr istr;
+-		struct fscrypt_str ostr =
+-			FSTR_INIT(sd->encrypted_path, disk_link.len);
 -
- #if __FS_HAS_ENCRYPTION
- #include <linux/fscrypt_supp.h>
- #else
+-		istr.name = (const unsigned char *) symname;
+-		istr.len = len;
+-		err = fscrypt_fname_usr_to_disk(inode, &istr, &ostr);
++	if (IS_ENCRYPTED(inode)) {
++		err = fscrypt_encrypt_symlink(inode, symname, len, &disk_link);
+ 		if (err)
+ 			goto err_drop_inode;
+-		sd->len = cpu_to_le16(ostr.len);
+-		disk_link.name = (char *) sd;
+ 		inode->i_op = &ext4_encrypted_symlink_inode_operations;
+ 	}
+ 
+ 	if ((disk_link.len > EXT4_N_BLOCKS * 4)) {
+-		if (!encryption_required)
++		if (!IS_ENCRYPTED(inode))
+ 			inode->i_op = &ext4_symlink_inode_operations;
+ 		inode_nohighmem(inode);
+ 		ext4_set_aops(inode);
+@@ -3175,7 +3146,7 @@ static int ext4_symlink(struct inode *dir,
+ 	} else {
+ 		/* clear the extent format for fast symlink */
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
+-		if (!encryption_required) {
++		if (!IS_ENCRYPTED(inode)) {
+ 			inode->i_op = &ext4_fast_symlink_inode_operations;
+ 			inode->i_link = (char *)&EXT4_I(inode)->i_data;
+ 		}
+@@ -3190,16 +3161,17 @@ static int ext4_symlink(struct inode *dir,
+ 
+ 	if (handle)
+ 		ext4_journal_stop(handle);
+-	kfree(sd);
+-	return err;
++	goto out_free_encrypted_link;
++
+ err_drop_inode:
+ 	if (handle)
+ 		ext4_journal_stop(handle);
+ 	clear_nlink(inode);
+ 	unlock_new_inode(inode);
+ 	iput(inode);
+-err_free_sd:
+-	kfree(sd);
++out_free_encrypted_link:
++	if (disk_link.name != (unsigned char *)symname)
++		kfree(disk_link.name);
+ 	return err;
+ }
+ 
 -- 
 2.15.1
 
