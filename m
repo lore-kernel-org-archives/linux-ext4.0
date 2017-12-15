@@ -1,151 +1,72 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 12/24] ext4: switch to fscrypt ->symlink() helper
- functions
-Date: Fri, 15 Dec 2017 09:42:13 -0800
-Message-ID: <20171215174225.31583-13-ebiggers3@gmail.com>
+Subject: [PATCH 16/24] ubifs: free the encrypted symlink target
+Date: Fri, 15 Dec 2017 09:42:17 -0800
+Message-ID: <20171215174225.31583-17-ebiggers3@gmail.com>
 References: <20171215174225.31583-1-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Y . Ts'o" <tytso@mit.edu>, Eric Biggers <ebiggers@google.com>,
- linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
- Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org
+Cc: "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>,
+        stable@vger.kernel.org
 To: linux-fscrypt@vger.kernel.org
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Return-path: <stable-owner@vger.kernel.org>
 In-Reply-To: <20171215174225.31583-1-ebiggers3@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
+ubifs_symlink() forgot to free the kmalloc()'ed buffer holding the
+encrypted symlink target, creating a memory leak.  Fix it.
+
+(UBIFS could actually encrypt directly into ui->data, removing the
+temporary buffer, but that is left for the patch that switches to use
+the symlink helper functions.)
+
+Fixes: ca7f85be8d6c ("ubifs: Add support for encrypted symlinks")
+Cc: <stable@vger.kernel.org> # v4.10+
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/namei.c | 58 +++++++++++++++------------------------------------------
- 1 file changed, 15 insertions(+), 43 deletions(-)
+ fs/ubifs/dir.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 798b3ac680db..e291bb90a233 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -3052,39 +3052,19 @@ static int ext4_symlink(struct inode *dir,
- 	struct inode *inode;
- 	int err, len = strlen(symname);
- 	int credits;
--	bool encryption_required;
- 	struct fscrypt_str disk_link;
--	struct fscrypt_symlink_data *sd = NULL;
+diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
+index 417fe0b29f23..ef820f803176 100644
+--- a/fs/ubifs/dir.c
++++ b/fs/ubifs/dir.c
+@@ -1216,10 +1216,8 @@ static int ubifs_symlink(struct inode *dir, struct dentry *dentry,
+ 		ostr.len = disk_link.len;
  
- 	if (unlikely(ext4_forced_shutdown(EXT4_SB(dir->i_sb))))
- 		return -EIO;
+ 		err = fscrypt_fname_usr_to_disk(inode, &istr, &ostr);
+-		if (err) {
+-			kfree(sd);
++		if (err)
+ 			goto out_inode;
+-		}
  
--	disk_link.len = len + 1;
--	disk_link.name = (char *) symname;
--
--	encryption_required = (ext4_encrypted_inode(dir) ||
--			       DUMMY_ENCRYPTION_ENABLED(EXT4_SB(dir->i_sb)));
--	if (encryption_required) {
--		err = fscrypt_get_encryption_info(dir);
--		if (err)
--			return err;
--		if (!fscrypt_has_encryption_key(dir))
--			return -ENOKEY;
--		disk_link.len = (fscrypt_fname_encrypted_size(dir, len) +
--				 sizeof(struct fscrypt_symlink_data));
--		sd = kzalloc(disk_link.len, GFP_KERNEL);
--		if (!sd)
--			return -ENOMEM;
--	}
--
--	if (disk_link.len > dir->i_sb->s_blocksize) {
--		err = -ENAMETOOLONG;
--		goto err_free_sd;
--	}
-+	err = fscrypt_prepare_symlink(dir, symname, len, dir->i_sb->s_blocksize,
-+				      &disk_link);
-+	if (err)
-+		return err;
+ 		sd->len = cpu_to_le16(ostr.len);
+ 		disk_link.name = (char *)sd;
+@@ -1251,11 +1249,10 @@ static int ubifs_symlink(struct inode *dir, struct dentry *dentry,
+ 		goto out_cancel;
+ 	mutex_unlock(&dir_ui->ui_mutex);
  
- 	err = dquot_initialize(dir);
- 	if (err)
--		goto err_free_sd;
-+		return err;
+-	ubifs_release_budget(c, &req);
+ 	insert_inode_hash(inode);
+ 	d_instantiate(dentry, inode);
+-	fscrypt_free_filename(&nm);
+-	return 0;
++	err = 0;
++	goto out_fname;
  
- 	if ((disk_link.len > EXT4_N_BLOCKS * 4)) {
- 		/*
-@@ -3113,27 +3093,18 @@ static int ext4_symlink(struct inode *dir,
- 	if (IS_ERR(inode)) {
- 		if (handle)
- 			ext4_journal_stop(handle);
--		err = PTR_ERR(inode);
--		goto err_free_sd;
-+		return PTR_ERR(inode);
- 	}
- 
--	if (encryption_required) {
--		struct qstr istr;
--		struct fscrypt_str ostr =
--			FSTR_INIT(sd->encrypted_path, disk_link.len);
--
--		istr.name = (const unsigned char *) symname;
--		istr.len = len;
--		err = fscrypt_fname_usr_to_disk(inode, &istr, &ostr);
-+	if (IS_ENCRYPTED(inode)) {
-+		err = fscrypt_encrypt_symlink(inode, symname, len, &disk_link);
- 		if (err)
- 			goto err_drop_inode;
--		sd->len = cpu_to_le16(ostr.len);
--		disk_link.name = (char *) sd;
- 		inode->i_op = &ext4_encrypted_symlink_inode_operations;
- 	}
- 
- 	if ((disk_link.len > EXT4_N_BLOCKS * 4)) {
--		if (!encryption_required)
-+		if (!IS_ENCRYPTED(inode))
- 			inode->i_op = &ext4_symlink_inode_operations;
- 		inode_nohighmem(inode);
- 		ext4_set_aops(inode);
-@@ -3175,7 +3146,7 @@ static int ext4_symlink(struct inode *dir,
- 	} else {
- 		/* clear the extent format for fast symlink */
- 		ext4_clear_inode_flag(inode, EXT4_INODE_EXTENTS);
--		if (!encryption_required) {
-+		if (!IS_ENCRYPTED(inode)) {
- 			inode->i_op = &ext4_fast_symlink_inode_operations;
- 			inode->i_link = (char *)&EXT4_I(inode)->i_data;
- 		}
-@@ -3190,16 +3161,17 @@ static int ext4_symlink(struct inode *dir,
- 
- 	if (handle)
- 		ext4_journal_stop(handle);
--	kfree(sd);
--	return err;
-+	goto out_free_encrypted_link;
-+
- err_drop_inode:
- 	if (handle)
- 		ext4_journal_stop(handle);
- 	clear_nlink(inode);
- 	unlock_new_inode(inode);
- 	iput(inode);
--err_free_sd:
--	kfree(sd);
-+out_free_encrypted_link:
-+	if (disk_link.name != (unsigned char *)symname)
-+		kfree(disk_link.name);
+ out_cancel:
+ 	dir->i_size -= sz_change;
+@@ -1268,6 +1265,7 @@ static int ubifs_symlink(struct inode *dir, struct dentry *dentry,
+ 	fscrypt_free_filename(&nm);
+ out_budg:
+ 	ubifs_release_budget(c, &req);
++	kfree(sd);
  	return err;
  }
  
 -- 
 2.15.1
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
