@@ -1,32 +1,68 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 3/5] Add missing information to debugfs man pages and
- usage texts.
-Date: Thu, 14 Dec 2017 23:50:00 -0500
-Message-ID: <20171215045000.rbotvarpae57jdsy@thunk.org>
-References: <cover.1513233071.git.tgnottingham@gmail.com>
- <dbdaf88970cb0d465913b7e82d43925592202865.1513233071.git.tgnottingham@gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] mm: save/restore current->journal_info in handle_mm_fault
+Date: Fri, 15 Dec 2017 11:33:48 +0100
+Message-ID: <20171215103348.GB7419@quack2.suse.cz>
+References: <20171214105527.5885-1-zyan@redhat.com>
+ <20171214134338.GA1474@quack2.suse.cz>
+ <CAAM7YA=ThWbBpOe1wgeYjGt3ogr9kT6uy3UpqSn94XqbhjOHJw@mail.gmail.com>
+ <20171214165314.GB1930@quack2.suse.cz>
+ <CAAM7YA=aKMgyi67nwamzNj82nhmsWoUPXWGuXxiMx2Ay1vZK3Q@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Tyson Nottingham <tgnottingham@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:47754 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754679AbdLOEuC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 14 Dec 2017 23:50:02 -0500
+Cc: Jan Kara <jack@suse.cz>, "Yan, Zheng" <zyan@redhat.com>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+	ceph-devel <ceph-devel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	linux-btrfs <linux-btrfs@vger.kernel.org>, linux-mm@kvack.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Al Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
+	stable@vger.kernel.org
+To: "Yan, Zheng" <ukernel@gmail.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <dbdaf88970cb0d465913b7e82d43925592202865.1513233071.git.tgnottingham@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <CAAM7YA=aKMgyi67nwamzNj82nhmsWoUPXWGuXxiMx2Ay1vZK3Q@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Dec 13, 2017 at 11:13:11PM -0800, Tyson Nottingham wrote:
-> Add descriptions for dump_unused, get_quota, list_quota,
-> set_current_time, show_debugfs_params, and supported_features
-> commands to debugfs man page. Add various missing command
-> arguments and correct a few typos in man page and usage texts.
+On Fri 15-12-17 09:17:42, Yan, Zheng wrote:
+> On Fri, Dec 15, 2017 at 12:53 AM, Jan Kara <jack@suse.cz> wrote:
+> >> >
+> >> > In this particular case I'm not sure why does ceph pass 'filp' into
+> >> > readpage() / readpages() handler when it already gets that pointer as part
+> >> > of arguments...
+> >>
+> >> It actually a flag which tells ceph_readpages() if its caller is
+> >> ceph_read_iter or readahead/fadvise/madvise. because when there are
+> >> multiple clients read/write a file a the same time, page cache should
+> >> be disabled.
+> >
+> > I'm not sure I understand the reasoning properly but from what you say
+> > above it rather seems the 'hint' should be stored in the inode (or possibly
+> > struct file)?
+> >
 > 
-> Signed-off-by: Tyson Nottingham <tgnottingham@gmail.com>
+> The capability of using page cache is hold by the process who got it.
+> ceph_read_iter() first gets the capability, calls
+> generic_file_read_iter(), then release the capability. The capability
+> can not be easily stored in inode or file because it can be revoked by
+> server any time if caller does not hold it
 
-Applied to the maint branch, thanks.
+OK, understood. But using storage in task_struct (such as journal_info) is
+problematic as it has hard to fix recursion issues as the bug you're trying
+to fix shows (it is difficult to track down all the paths that can recurse
+into another filesystem which will clobber the stored info). So either you
+have to come up with some scheme to safely use current->journal_info (by
+somehow tracking owner as Andreas suggests) and convert all users to it or
+you have to come up with some scheme propagating the information through
+the inode / file->private_data and use it in Ceph.
 
-						- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
