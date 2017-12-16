@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 11/19] nfsd: convert to new i_version API
-Date: Sat, 16 Dec 2017 08:46:48 -0500
-Message-ID: <20171216134656.15561-12-jlayton@kernel.org>
+Subject: [PATCH v2 17/19] xfs: avoid setting XFS_ILOG_CORE if i_version doesn't need incrementing
+Date: Sat, 16 Dec 2017 08:46:54 -0500
+Message-ID: <20171216134656.15561-18-jlayton@kernel.org>
 References: <20171216134656.15561-1-jlayton@kernel.org>
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
@@ -13,33 +13,48 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 In-Reply-To: <20171216134656.15561-1-jlayton@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Jeff Layton <jlayton@redhat.com>
 
-Mostly just making sure we use the "get" wrappers so we know when
-it is being fetched for later use.
+If XFS_ILOG_CORE is already set then go ahead and increment it.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfsfh.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/xfs/xfs_trans_inode.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index 43f31cf49bae..7dedda5e3ed4 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -259,7 +259,7 @@ static inline u64 nfsd4_change_attribute(struct inode *inode)
- 	chattr =  inode->i_ctime.tv_sec;
- 	chattr <<= 30;
- 	chattr += inode->i_ctime.tv_nsec;
--	chattr += inode->i_version;
-+	chattr += inode_query_iversion(inode);
- 	return chattr;
- }
+diff --git a/fs/xfs/xfs_trans_inode.c b/fs/xfs/xfs_trans_inode.c
+index b41a92d18140..18635c5b5dc6 100644
+--- a/fs/xfs/xfs_trans_inode.c
++++ b/fs/xfs/xfs_trans_inode.c
+@@ -110,15 +110,17 @@ xfs_trans_log_inode(
  
+ 	/*
+ 	 * First time we log the inode in a transaction, bump the inode change
+-	 * counter if it is configured for this to occur. We don't use
+-	 * inode_inc_version() because there is no need for extra locking around
+-	 * i_version as we already hold the inode locked exclusively for
+-	 * metadata modification.
++	 * counter if it is configured for this to occur. While we have the
++	 * inode locked exclusively for metadata modification, we can usually
++	 * avoid setting XFS_ILOG_CORE if no one has queried the value since
++	 * the last time it was incremented. If we have XFS_ILOG_CORE already
++	 * set however, then go ahead and bump the i_version counter
++	 * unconditionally.
+ 	 */
+ 	if (!(ip->i_itemp->ili_item.li_desc->lid_flags & XFS_LID_DIRTY) &&
+ 	    IS_I_VERSION(VFS_I(ip))) {
+-		inode_inc_iversion(VFS_I(ip));
+-		flags |= XFS_ILOG_CORE;
++		if (inode_maybe_inc_iversion(VFS_I(ip), flags & XFS_ILOG_CORE))
++			flags |= XFS_ILOG_CORE;
+ 	}
+ 
+ 	tp->t_flags |= XFS_TRANS_DIRTY;
 -- 
 2.14.3
+
