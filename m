@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 02/19] fs: don't take the i_lock in inode_inc_iversion
-Date: Sat, 16 Dec 2017 08:46:39 -0500
-Message-ID: <20171216134656.15561-3-jlayton@kernel.org>
+Subject: [PATCH v2 05/19] afs: convert to new i_version API
+Date: Sat, 16 Dec 2017 08:46:42 -0500
+Message-ID: <20171216134656.15561-6-jlayton@kernel.org>
 References: <20171216134656.15561-1-jlayton@kernel.org>
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
@@ -13,54 +13,61 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20171216134656.15561-1-jlayton@kernel.org>
-Sender: linux-btrfs-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Jeff Layton <jlayton@redhat.com>
 
-The rationale for taking the i_lock when incrementing this value is
-lost in antiquity. The readers of the field don't take it (at least
-not universally), so my assumption is that it was only done here to
-serialize incrementors.
+For AFS, it's generally treated as an opaque value, so we use the
+*_raw variants of the API here.
 
-If that is indeed the case, then we can drop the i_lock from this
-codepath and treat it as a atomic64_t for the purposes of
-incrementing it. This allows us to use inode_inc_iversion without
-any danger of lock inversion.
-
-Note that the read side is not fetched atomically with this change.
-The assumption here is that that is not a critical issue since the
-i_version is not fully synchronized with anything else anyway.
+Note that AFS has quite a different definition for this counter. AFS
+only increments it on changes to the data, not for the metadata. We'll
+need to reconcile that somehow if we ever want to present this to
+userspace via statx.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- include/linux/fs.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/afs/fsclient.c | 2 +-
+ fs/afs/inode.c    | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-I'm not dead-set on this patch, but I was a little leery of adding
-the i_lock into all of the places that do inode->i_version++ today,
-even as an interim step. We can probably drop this patch if it's too
-ugly to live...
-
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 5001e77342fd..c234fac4bb77 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2136,9 +2136,9 @@ inode_set_iversion_queried(struct inode *inode, const u64 new)
- static inline bool
- inode_maybe_inc_iversion(struct inode *inode, bool force)
- {
--	spin_lock(&inode->i_lock);
--	inode->i_version++;
--	spin_unlock(&inode->i_lock);
-+	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
-+
-+	atomic64_inc(ivp);
- 	return true;
- }
+diff --git a/fs/afs/fsclient.c b/fs/afs/fsclient.c
+index b90ef39ae914..67ed9bb5fe31 100644
+--- a/fs/afs/fsclient.c
++++ b/fs/afs/fsclient.c
+@@ -124,7 +124,7 @@ static void xdr_decode_AFSFetchStatus(const __be32 **_bp,
+ 		vnode->vfs_inode.i_ctime.tv_sec	= status->mtime_client;
+ 		vnode->vfs_inode.i_mtime	= vnode->vfs_inode.i_ctime;
+ 		vnode->vfs_inode.i_atime	= vnode->vfs_inode.i_ctime;
+-		vnode->vfs_inode.i_version	= data_version;
++		inode_set_iversion_raw(&vnode->vfs_inode, data_version);
+ 	}
  
+ 	expected_version = status->data_version;
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index 3415eb7484f6..af9577210a46 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -89,7 +89,7 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
+ 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
+ 	inode->i_blocks		= 0;
+ 	inode->i_generation	= vnode->fid.unique;
+-	inode->i_version	= vnode->status.data_version;
++	inode_set_iversion_raw(inode, vnode->status.data_version);
+ 	inode->i_mapping->a_ops	= &afs_fs_aops;
+ 
+ 	read_sequnlock_excl(&vnode->cb_lock);
+@@ -218,7 +218,7 @@ struct inode *afs_iget_autocell(struct inode *dir, const char *dev_name,
+ 	inode->i_ctime.tv_nsec	= 0;
+ 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
+ 	inode->i_blocks		= 0;
+-	inode->i_version	= 0;
++	inode_set_iversion_raw(inode, 0);
+ 	inode->i_generation	= 0;
+ 
+ 	set_bit(AFS_VNODE_PSEUDODIR, &vnode->flags);
 -- 
 2.14.3
-
