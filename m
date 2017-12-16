@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 04/19] affs: convert to new i_version API
-Date: Sat, 16 Dec 2017 08:46:41 -0500
-Message-ID: <20171216134656.15561-5-jlayton@kernel.org>
+Subject: [PATCH v2 03/19] fat: convert to new i_version API
+Date: Sat, 16 Dec 2017 08:46:40 -0500
+Message-ID: <20171216134656.15561-4-jlayton@kernel.org>
 References: <20171216134656.15561-1-jlayton@kernel.org>
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
@@ -22,67 +22,189 @@ From: Jeff Layton <jlayton@redhat.com>
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/affs/amigaffs.c | 4 ++--
- fs/affs/dir.c      | 4 ++--
- fs/affs/super.c    | 2 +-
- 3 files changed, 5 insertions(+), 5 deletions(-)
+ fs/fat/dir.c         |  2 +-
+ fs/fat/inode.c       |  8 ++++----
+ fs/fat/namei_msdos.c |  6 +++---
+ fs/fat/namei_vfat.c  | 20 ++++++++++----------
+ 4 files changed, 18 insertions(+), 18 deletions(-)
 
-diff --git a/fs/affs/amigaffs.c b/fs/affs/amigaffs.c
-index 0f0e6925e97d..085a93bea1e2 100644
---- a/fs/affs/amigaffs.c
-+++ b/fs/affs/amigaffs.c
-@@ -60,7 +60,7 @@ affs_insert_hash(struct inode *dir, struct buffer_head *bh)
- 	affs_brelse(dir_bh);
- 
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
+diff --git a/fs/fat/dir.c b/fs/fat/dir.c
+index b833ffeee1e1..221d85529c5f 100644
+--- a/fs/fat/dir.c
++++ b/fs/fat/dir.c
+@@ -1055,7 +1055,7 @@ int fat_remove_entries(struct inode *dir, struct fat_slot_info *sinfo)
+ 	brelse(bh);
+ 	if (err)
+ 		return err;
 -	dir->i_version++;
 +	inode_inc_iversion(dir);
- 	mark_inode_dirty(dir);
  
- 	return 0;
-@@ -114,7 +114,7 @@ affs_remove_hash(struct inode *dir, struct buffer_head *rem_bh)
- 	affs_brelse(bh);
+ 	if (nr_slots) {
+ 		/*
+diff --git a/fs/fat/inode.c b/fs/fat/inode.c
+index 20a0a89eaca5..a444336c1eed 100644
+--- a/fs/fat/inode.c
++++ b/fs/fat/inode.c
+@@ -507,7 +507,7 @@ int fat_fill_inode(struct inode *inode, struct msdos_dir_entry *de)
+ 	MSDOS_I(inode)->i_pos = 0;
+ 	inode->i_uid = sbi->options.fs_uid;
+ 	inode->i_gid = sbi->options.fs_gid;
+-	inode->i_version++;
++	inode_inc_iversion(inode);
+ 	inode->i_generation = get_seconds();
  
- 	dir->i_mtime = dir->i_ctime = current_time(dir);
+ 	if ((de->attr & ATTR_DIR) && !IS_FREE(de->name)) {
+@@ -590,7 +590,7 @@ struct inode *fat_build_inode(struct super_block *sb,
+ 		goto out;
+ 	}
+ 	inode->i_ino = iunique(sb, MSDOS_ROOT_INO);
+-	inode->i_version = 1;
++	inode_set_iversion(inode, 1);
+ 	err = fat_fill_inode(inode, de);
+ 	if (err) {
+ 		iput(inode);
+@@ -1377,7 +1377,7 @@ static int fat_read_root(struct inode *inode)
+ 	MSDOS_I(inode)->i_pos = MSDOS_ROOT_INO;
+ 	inode->i_uid = sbi->options.fs_uid;
+ 	inode->i_gid = sbi->options.fs_gid;
+-	inode->i_version++;
++	inode_inc_iversion(inode);
+ 	inode->i_generation = 0;
+ 	inode->i_mode = fat_make_mode(sbi, ATTR_DIR, S_IRWXUGO);
+ 	inode->i_op = sbi->dir_ops;
+@@ -1828,7 +1828,7 @@ int fat_fill_super(struct super_block *sb, void *data, int silent, int isvfat,
+ 	if (!root_inode)
+ 		goto out_fail;
+ 	root_inode->i_ino = MSDOS_ROOT_INO;
+-	root_inode->i_version = 1;
++	inode_set_iversion(root_inode, 1);
+ 	error = fat_read_root(root_inode);
+ 	if (error < 0) {
+ 		iput(root_inode);
+diff --git a/fs/fat/namei_msdos.c b/fs/fat/namei_msdos.c
+index d24d2758a363..7b71c1b242ce 100644
+--- a/fs/fat/namei_msdos.c
++++ b/fs/fat/namei_msdos.c
+@@ -480,7 +480,7 @@ static int do_msdos_rename(struct inode *old_dir, unsigned char *old_name,
+ 			} else
+ 				mark_inode_dirty(old_inode);
+ 
+-			old_dir->i_version++;
++			inode_inc_iversion(old_dir);
+ 			old_dir->i_ctime = old_dir->i_mtime = current_time(old_dir);
+ 			if (IS_DIRSYNC(old_dir))
+ 				(void)fat_sync_inode(old_dir);
+@@ -508,7 +508,7 @@ static int do_msdos_rename(struct inode *old_dir, unsigned char *old_name,
+ 			goto out;
+ 		new_i_pos = sinfo.i_pos;
+ 	}
+-	new_dir->i_version++;
++	inode_inc_iversion(new_dir);
+ 
+ 	fat_detach(old_inode);
+ 	fat_attach(old_inode, new_i_pos);
+@@ -540,7 +540,7 @@ static int do_msdos_rename(struct inode *old_dir, unsigned char *old_name,
+ 	old_sinfo.bh = NULL;
+ 	if (err)
+ 		goto error_dotdot;
+-	old_dir->i_version++;
++	inode_inc_iversion(old_dir);
+ 	old_dir->i_ctime = old_dir->i_mtime = ts;
+ 	if (IS_DIRSYNC(old_dir))
+ 		(void)fat_sync_inode(old_dir);
+diff --git a/fs/fat/namei_vfat.c b/fs/fat/namei_vfat.c
+index 02c066663a3a..fe1bb65149c8 100644
+--- a/fs/fat/namei_vfat.c
++++ b/fs/fat/namei_vfat.c
+@@ -46,7 +46,7 @@ static int vfat_revalidate_shortname(struct dentry *dentry)
+ {
+ 	int ret = 1;
+ 	spin_lock(&dentry->d_lock);
+-	if (vfat_d_version(dentry) != d_inode(dentry->d_parent)->i_version)
++	if (inode_cmp_iversion(d_inode(dentry->d_parent), vfat_d_version(dentry)))
+ 		ret = 0;
+ 	spin_unlock(&dentry->d_lock);
+ 	return ret;
+@@ -759,7 +759,7 @@ static struct dentry *vfat_lookup(struct inode *dir, struct dentry *dentry,
+ out:
+ 	mutex_unlock(&MSDOS_SB(sb)->s_lock);
+ 	if (!inode)
+-		vfat_d_version_set(dentry, dir->i_version);
++		vfat_d_version_set(dentry, inode_query_iversion(dir));
+ 	return d_splice_alias(inode, dentry);
+ error:
+ 	mutex_unlock(&MSDOS_SB(sb)->s_lock);
+@@ -781,7 +781,7 @@ static int vfat_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+ 	err = vfat_add_entry(dir, &dentry->d_name, 0, 0, &ts, &sinfo);
+ 	if (err)
+ 		goto out;
 -	dir->i_version++;
 +	inode_inc_iversion(dir);
- 	mark_inode_dirty(dir);
  
- 	return retval;
-diff --git a/fs/affs/dir.c b/fs/affs/dir.c
-index a105e77df2c1..1a8c7b067c44 100644
---- a/fs/affs/dir.c
-+++ b/fs/affs/dir.c
-@@ -80,7 +80,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
- 	 * we can jump directly to where we left off.
- 	 */
- 	ino = (u32)(long)file->private_data;
--	if (ino && file->f_version == inode->i_version) {
-+	if (ino && inode_cmp_iversion(inode, file->f_version) == 0) {
- 		pr_debug("readdir() left off=%d\n", ino);
- 		goto inside;
+ 	inode = fat_build_inode(sb, sinfo.de, sinfo.i_pos);
+ 	brelse(sinfo.bh);
+@@ -789,7 +789,7 @@ static int vfat_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+ 		err = PTR_ERR(inode);
+ 		goto out;
  	}
-@@ -130,7 +130,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
- 		} while (ino);
+-	inode->i_version++;
++	inode_inc_iversion(inode);
+ 	inode->i_mtime = inode->i_atime = inode->i_ctime = ts;
+ 	/* timestamp is already written, so mark_inode_dirty() is unneeded. */
+ 
+@@ -823,7 +823,7 @@ static int vfat_rmdir(struct inode *dir, struct dentry *dentry)
+ 	clear_nlink(inode);
+ 	inode->i_mtime = inode->i_atime = current_time(inode);
+ 	fat_detach(inode);
+-	vfat_d_version_set(dentry, dir->i_version);
++	vfat_d_version_set(dentry, inode_query_iversion(dir));
+ out:
+ 	mutex_unlock(&MSDOS_SB(sb)->s_lock);
+ 
+@@ -849,7 +849,7 @@ static int vfat_unlink(struct inode *dir, struct dentry *dentry)
+ 	clear_nlink(inode);
+ 	inode->i_mtime = inode->i_atime = current_time(inode);
+ 	fat_detach(inode);
+-	vfat_d_version_set(dentry, dir->i_version);
++	vfat_d_version_set(dentry, inode_query_iversion(dir));
+ out:
+ 	mutex_unlock(&MSDOS_SB(sb)->s_lock);
+ 
+@@ -875,7 +875,7 @@ static int vfat_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 	err = vfat_add_entry(dir, &dentry->d_name, 1, cluster, &ts, &sinfo);
+ 	if (err)
+ 		goto out_free;
+-	dir->i_version++;
++	inode_inc_iversion(dir);
+ 	inc_nlink(dir);
+ 
+ 	inode = fat_build_inode(sb, sinfo.de, sinfo.i_pos);
+@@ -885,7 +885,7 @@ static int vfat_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 		/* the directory was completed, just return a error */
+ 		goto out;
  	}
- done:
--	file->f_version = inode->i_version;
-+	file->f_version = inode_query_iversion(inode);
- 	file->private_data = (void *)(long)ino;
- 	affs_brelse(fh_bh);
+-	inode->i_version++;
++	inode_inc_iversion(inode);
+ 	set_nlink(inode, 2);
+ 	inode->i_mtime = inode->i_atime = inode->i_ctime = ts;
+ 	/* timestamp is already written, so mark_inode_dirty() is unneeded. */
+@@ -951,7 +951,7 @@ static int vfat_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 			goto out;
+ 		new_i_pos = sinfo.i_pos;
+ 	}
+-	new_dir->i_version++;
++	inode_inc_iversion(new_dir);
  
-diff --git a/fs/affs/super.c b/fs/affs/super.c
-index 1117e36134cc..70596d4084de 100644
---- a/fs/affs/super.c
-+++ b/fs/affs/super.c
-@@ -102,7 +102,7 @@ static struct inode *affs_alloc_inode(struct super_block *sb)
- 	if (!i)
- 		return NULL;
- 
--	i->vfs_inode.i_version = 1;
-+	inode_set_iversion(&i->vfs_inode, 1);
- 	i->i_lc = NULL;
- 	i->i_ext_bh = NULL;
- 	i->i_pa_cnt = 0;
+ 	fat_detach(old_inode);
+ 	fat_attach(old_inode, new_i_pos);
+@@ -979,7 +979,7 @@ static int vfat_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	old_sinfo.bh = NULL;
+ 	if (err)
+ 		goto error_dotdot;
+-	old_dir->i_version++;
++	inode_inc_iversion(old_dir);
+ 	old_dir->i_ctime = old_dir->i_mtime = ts;
+ 	if (IS_DIRSYNC(old_dir))
+ 		(void)fat_sync_inode(old_dir);
 -- 
 2.14.3
