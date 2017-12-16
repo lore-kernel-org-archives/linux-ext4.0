@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 08/19] ext2: convert to new i_version API
-Date: Sat, 16 Dec 2017 08:46:45 -0500
-Message-ID: <20171216134656.15561-9-jlayton@kernel.org>
+Subject: [PATCH v2 02/19] fs: don't take the i_lock in inode_inc_iversion
+Date: Sat, 16 Dec 2017 08:46:39 -0500
+Message-ID: <20171216134656.15561-3-jlayton@kernel.org>
 References: <20171216134656.15561-1-jlayton@kernel.org>
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
@@ -13,73 +13,54 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 In-Reply-To: <20171216134656.15561-1-jlayton@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Jeff Layton <jlayton@redhat.com>
 
+The rationale for taking the i_lock when incrementing this value is
+lost in antiquity. The readers of the field don't take it (at least
+not universally), so my assumption is that it was only done here to
+serialize incrementors.
+
+If that is indeed the case, then we can drop the i_lock from this
+codepath and treat it as a atomic64_t for the purposes of
+incrementing it. This allows us to use inode_inc_iversion without
+any danger of lock inversion.
+
+Note that the read side is not fetched atomically with this change.
+The assumption here is that that is not a critical issue since the
+i_version is not fully synchronized with anything else anyway.
+
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/ext2/dir.c   | 8 ++++----
- fs/ext2/super.c | 4 ++--
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ include/linux/fs.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 987647986f47..c99f14fec3f3 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -92,7 +92,7 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
- 	struct inode *dir = mapping->host;
- 	int err = 0;
- 
--	dir->i_version++;
-+	inode_inc_iversion(dir);
- 	block_write_end(NULL, mapping, pos, len, len, page, NULL);
- 
- 	if (pos+len > dir->i_size) {
-@@ -293,7 +293,7 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 	unsigned long npages = dir_pages(inode);
- 	unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
- 	unsigned char *types = NULL;
--	int need_revalidate = file->f_version != inode->i_version;
-+	bool need_revalidate = inode_cmp_iversion(inode, file->f_version);
- 
- 	if (pos > inode->i_size - EXT2_DIR_REC_LEN(1))
- 		return 0;
-@@ -319,8 +319,8 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 				offset = ext2_validate_entry(kaddr, offset, chunk_mask);
- 				ctx->pos = (n<<PAGE_SHIFT) + offset;
- 			}
--			file->f_version = inode->i_version;
--			need_revalidate = 0;
-+			file->f_version = inode_query_iversion(inode);
-+			need_revalidate = false;
- 		}
- 		de = (ext2_dirent *)(kaddr+offset);
- 		limit = kaddr + ext2_last_byte(inode, n) - EXT2_DIR_REC_LEN(1);
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 7646818ab266..dd7c3c81d918 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -184,7 +184,7 @@ static struct inode *ext2_alloc_inode(struct super_block *sb)
- 	if (!ei)
- 		return NULL;
- 	ei->i_block_alloc_info = NULL;
--	ei->vfs_inode.i_version = 1;
-+	inode_set_iversion(&ei->vfs_inode, 1);
- #ifdef CONFIG_QUOTA
- 	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
- #endif
-@@ -1569,7 +1569,7 @@ static ssize_t ext2_quota_write(struct super_block *sb, int type,
- 		return err;
- 	if (inode->i_size < off+len-towrite)
- 		i_size_write(inode, off+len-towrite);
+I'm not dead-set on this patch, but I was a little leery of adding
+the i_lock into all of the places that do inode->i_version++ today,
+even as an interim step. We can probably drop this patch if it's too
+ugly to live...
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5001e77342fd..c234fac4bb77 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2136,9 +2136,9 @@ inode_set_iversion_queried(struct inode *inode, const u64 new)
+ static inline bool
+ inode_maybe_inc_iversion(struct inode *inode, bool force)
+ {
+-	spin_lock(&inode->i_lock);
 -	inode->i_version++;
-+	inode_inc_iversion(inode);
- 	inode->i_mtime = inode->i_ctime = current_time(inode);
- 	mark_inode_dirty(inode);
- 	return len - towrite;
+-	spin_unlock(&inode->i_lock);
++	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
++
++	atomic64_inc(ivp);
+ 	return true;
+ }
+ 
 -- 
 2.14.3
+
