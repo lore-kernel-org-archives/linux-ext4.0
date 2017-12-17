@@ -1,82 +1,481 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: delayed inode update for the consistency of file
- size after a crash
-Date: Sat, 16 Dec 2017 18:32:39 -0500
-Message-ID: <20171216233239.oy4mcyjuq6hjugnx@thunk.org>
-References: <20171216043326.GA12365@son-VirtualBox>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Seongbae Son <seongbae.son@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171216043326.GA12365@son-VirtualBox>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH] ext4: fix up remaining files with SPDX cleanups
+Date: Sat, 16 Dec 2017 19:20:40 -0500
+Message-ID: <20171217002040.14533-1-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:54728 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751512AbdLQAUn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 16 Dec 2017 19:20:43 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 16, 2017 at 01:33:26PM +0900, Seongbae Son wrote:
-> > > Details can be found as follows.
-> > >
-> > > Son et al. "Guaranteeing the Metadata Update Atomicity in EXT4 Filesystem”,
-> > > In Proc. of APSYS 2017, Mumbai, India
-> 
-> > This is behind a paywall, so I can't access it.  I am sorry I wasn't
-> > on the program committee, or I would have pointed this out while the
-> > paper was being reviewed.
-> 
-> Thanks for your quick answer.
-> I am sorry about that. I could not think about the paywall.
+A number of ext4 source files were skipped due because their copyright
+permission statements didn't match the expected text used by the
+automated conversion utilities.  I've added SPDX tags for the rest.
 
-If you want to send me a PDF of the paper, I'm happy to look at it.
+While looking at some of these files, I've noticed that we have quite
+a bit of variation on the licenses that were used --- in particular
+some of the Red Hat licenses on the jbd2 files use a GPL2+ license,
+and we have some files that have a LGPL-2.1 license (which was quite
+surprising).
 
-> I have performed the above scenario to xfs, btrfs, f2fs, and zfs.
-> As the test result, all of the four file systems does not have the problem
-> that fileA in which fsync() was not executed has the wrong file size
-> after a system crash. So, I think, the portability of applications might be
-> okay even though EXT4 guarantees the consistency between the file size and
-> the data blocks of the file that fsync() is not executed after a system crash.
+I've not attempted to do any license changes.  Even if it is perfectly
+legal to relicense to GPL 2.0-only for consistency's sake, that should
+be done with ext4 developer community discussion.
 
-So first of all, there are more file systems than xfs, btrfs, f2fs,
-and zfs, and there are more operating systems than Linux and Solaris.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/acl.h            |  2 +-
+ fs/ext4/ext4.h           |  2 +-
+ fs/ext4/ext4_extents.h   | 14 +-------------
+ fs/ext4/ext4_jbd2.h      |  5 +----
+ fs/ext4/extents.c        | 14 +-------------
+ fs/ext4/extents_status.h |  2 +-
+ fs/ext4/fsmap.c          | 15 +--------------
+ fs/ext4/fsmap.h          | 15 +--------------
+ fs/ext4/hash.c           |  6 +-----
+ fs/ext4/inline.c         | 10 +---------
+ fs/ext4/mballoc.c        | 14 +-------------
+ fs/ext4/mballoc.h        |  2 +-
+ fs/ext4/migrate.c        |  9 +--------
+ fs/ext4/move_extent.c    | 10 +---------
+ fs/ext4/super.c          |  1 +
+ fs/ext4/truncate.h       |  2 +-
+ fs/ext4/xattr.h          |  2 +-
+ fs/jbd2/checkpoint.c     |  5 +----
+ fs/jbd2/commit.c         |  5 +----
+ fs/jbd2/journal.c        |  5 +----
+ fs/jbd2/recovery.c       |  5 +----
+ fs/jbd2/revoke.c         |  5 +----
+ fs/jbd2/transaction.c    |  5 +----
+ 23 files changed, 23 insertions(+), 132 deletions(-)
 
-Secondly, your patch doesn't solve the problem.  Updating the
-timestamps without putting the changes in a transaction is no
-guarantee; if some other process does some operation such as chmod,
-et. al, the inode timestamps will get updated ahead of time.  Worse,
-you are updating the i_size in a separate handle, right *before* the
-write request is submitted.  So if a transaction commit gets started
-immediately after call to ext4_journal_stop() which was added in
-mpage_process_page_bufs(), it's still possible for i_size to be
-updated and be visible after a crash, without the data block being
-updated.  It's a narrower race window, but it's still there.
-
-Furthermore, the patch is huge because the introduction of the new
-functions _ext4_update_time(), ext4_update_time(),
-_generic_file_write_iter() have included a large amount of extra lines
-of code which are copied from elsewhere --- e.g., this is "reverse
-code factoring" --- and it makes the resulting source less
-maintainable.  And the fact that it forces every single write which
-affects the last block in the file to be written *twice* means that it
-has really unfortunate real performance impacts for workloads which
-are appending to a file (e.g., any kind of log file).
-
-If you really want to solve this problem, what needs to be done is
-that update of the timestamp and i_size needs to be moved to an I/O
-completion handler.  We do this already to convert unwritten requests
-to be written in fs/ext4/page_io.c.  See ext4_put_io_end_defer() in
-fs/ext4/page_io.c; if we need to convert unwritten extents the
-EXT4_IO_END_UNWRITTEN flag is set, and ext4_add_complete_io() tacks
-the io_end queue onto a workqueue.  This infrastructure could be made
-more general so that it can do other work after the I/O has been
-completed, including the i_size update.
-
-I'm not really convinced it's worth it, but this would be a much more
-efficient way of solving the problem, and it would avoid need to clone
-a large amount of code both in ext4 and in the generic mm/filemap.c
-file.
-
-Best regards,
-
-					- Ted
+diff --git a/fs/ext4/acl.h b/fs/ext4/acl.h
+index a48fc5ae2701..9b63f5416a2f 100644
+--- a/fs/ext4/acl.h
++++ b/fs/ext4/acl.h
+@@ -1,4 +1,4 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
++// SPDX-License-Identifier: GPL-2.0
+ /*
+   File: fs/ext4/acl.h
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 4e091eae38b1..891d7636a9d0 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1,4 +1,4 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  *  ext4.h
+  *
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index 8ecf84b8f5a1..98fb0c119c68 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -1,19 +1,7 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  * Copyright (c) 2003-2006, Cluster File Systems, Inc, info@clusterfs.com
+  * Written by Alex Tomas <alex@clusterfs.com>
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License version 2 as
+- * published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-
+  */
+ 
+ #ifndef _EXT4_EXTENTS
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 48143e32411c..15b6dd733780 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * ext4_jbd2.h
+  *
+@@ -5,10 +6,6 @@
+  *
+  * Copyright 1998--1999 Red Hat corp --- All Rights Reserved
+  *
+- * This file is part of the Linux kernel and is made available under
+- * the terms of the GNU General Public License, version 2, or at your
+- * option, any later version, incorporated herein by reference.
+- *
+  * Ext4-specific journaling extensions.
+  */
+ 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c941251ac0c0..054416e9d827 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  * Copyright (c) 2003-2006, Cluster File Systems, Inc, info@clusterfs.com
+  * Written by Alex Tomas <alex@clusterfs.com>
+@@ -5,19 +6,6 @@
+  * Architecture independence:
+  *   Copyright (c) 2005, Bull S.A.
+  *   Written by Pierre Peiffer <pierre.peiffer@bull.net>
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License version 2 as
+- * published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-
+  */
+ 
+ /*
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index ca90fc96f47e..8efdeb903d6b 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -1,4 +1,4 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  *  fs/ext4/extents_status.h
+  *
+diff --git a/fs/ext4/fsmap.c b/fs/ext4/fsmap.c
+index 7ec340898598..e871c4bf18e9 100644
+--- a/fs/ext4/fsmap.c
++++ b/fs/ext4/fsmap.c
+@@ -1,21 +1,8 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * Copyright (C) 2017 Oracle.  All Rights Reserved.
+  *
+  * Author: Darrick J. Wong <darrick.wong@oracle.com>
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public License
+- * as published by the Free Software Foundation; either version 2
+- * of the License, or (at your option) any later version.
+- *
+- * This program is distributed in the hope that it would be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write the Free Software Foundation,
+- * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
+  */
+ #include "ext4.h"
+ #include <linux/fsmap.h>
+diff --git a/fs/ext4/fsmap.h b/fs/ext4/fsmap.h
+index 9a2cd367cc66..68c8001fee85 100644
+--- a/fs/ext4/fsmap.h
++++ b/fs/ext4/fsmap.h
+@@ -1,21 +1,8 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * Copyright (C) 2017 Oracle.  All Rights Reserved.
+  *
+  * Author: Darrick J. Wong <darrick.wong@oracle.com>
+- *
+- * This program is free software; you can redistribute it and/or
+- * modify it under the terms of the GNU General Public License
+- * as published by the Free Software Foundation; either version 2
+- * of the License, or (at your option) any later version.
+- *
+- * This program is distributed in the hope that it would be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write the Free Software Foundation,
+- * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
+  */
+ #ifndef __EXT4_FSMAP_H__
+ #define	__EXT4_FSMAP_H__
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index 00c6dd29e621..e22dcfab308b 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -1,12 +1,8 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  *  linux/fs/ext4/hash.c
+  *
+  * Copyright (C) 2002 by Theodore Ts'o
+- *
+- * This file is released under the GPL v2.
+- *
+- * This file may be redistributed under the terms of the GNU Public
+- * License.
+  */
+ 
+ #include <linux/fs.h>
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 1367553c43bb..8b1f2901a5df 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1,15 +1,7 @@
++// SPDX-License-Identifier: LGPL-2.1
+ /*
+  * Copyright (c) 2012 Taobao.
+  * Written by Tao Ma <boyu.mt@taobao.com>
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of version 2.1 of the GNU Lesser General Public License
+- * as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+  */
+ 
+ #include <linux/iomap.h>
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index d9f8b90a93ed..1a7ea5f9276f 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1,19 +1,7 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  * Copyright (c) 2003-2006, Cluster File Systems, Inc, info@clusterfs.com
+  * Written by Alex Tomas <alex@clusterfs.com>
+- *
+- * This program is free software; you can redistribute it and/or modify
+- * it under the terms of the GNU General Public License version 2 as
+- * published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+- *
+- * You should have received a copy of the GNU General Public License
+- * along with this program; if not, write to the Free Software
+- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-
+  */
+ 
+ 
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index dcf52540f379..88c98f17e3d9 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -1,4 +1,4 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  *  fs/ext4/mballoc.h
+  *
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index cf5181b62df1..61a9d1927817 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -1,15 +1,8 @@
++// SPDX-License-Identifier: LGPL-2.1
+ /*
+  * Copyright IBM Corporation, 2007
+  * Author Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+  *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of version 2.1 of the GNU Lesser General Public License
+- * as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it would be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+- *
+  */
+ 
+ #include <linux/slab.h>
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index 9bb36909ec92..b96e4bd3b3ec 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -1,16 +1,8 @@
++// SPDX-License-Identifier: LGPL-2.1
+ /*
+  * Copyright (c) 2008,2009 NEC Software Tohoku, Ltd.
+  * Written by Takashi Sato <t-sato@yk.jp.nec.com>
+  *            Akira Fujita <a-fujita@rs.jp.nec.com>
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of version 2.1 of the GNU Lesser General Public License
+- * as published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it will be useful,
+- * but WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+- * GNU General Public License for more details.
+  */
+ 
+ #include <linux/fs.h>
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7c46693a14d7..e5b9a305ff72 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  *  linux/fs/ext4/super.c
+  *
+diff --git a/fs/ext4/truncate.h b/fs/ext4/truncate.h
+index b64a9fa0ff41..0cb13badf473 100644
+--- a/fs/ext4/truncate.h
++++ b/fs/ext4/truncate.h
+@@ -1,4 +1,4 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
++// SPDX-License-Identifier: GPL-2.0
+ /*
+  * linux/fs/ext4/truncate.h
+  *
+diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
+index f8cc07588ac9..dd54c4f995c8 100644
+--- a/fs/ext4/xattr.h
++++ b/fs/ext4/xattr.h
+@@ -1,4 +1,4 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
++// SPDX-License-Identifier: GPL-2.0
+ /*
+   File: fs/ext4/xattr.h
+ 
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 4055f51617ef..c125d662777c 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * linux/fs/jbd2/checkpoint.c
+  *
+@@ -5,10 +6,6 @@
+  *
+  * Copyright 1999 Red Hat Software --- All Rights Reserved
+  *
+- * This file is part of the Linux kernel and is made available under
+- * the terms of the GNU General Public License, version 2, or at your
+- * option, any later version, incorporated herein by reference.
+- *
+  * Checkpoint routines for the generic filesystem journaling code.
+  * Part of the ext2fs journaling system.
+  *
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 3c1c31321d9b..8de0e7723316 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * linux/fs/jbd2/commit.c
+  *
+@@ -5,10 +6,6 @@
+  *
+  * Copyright 1998 Red Hat corp --- All Rights Reserved
+  *
+- * This file is part of the Linux kernel and is made available under
+- * the terms of the GNU General Public License, version 2, or at your
+- * option, any later version, incorporated herein by reference.
+- *
+  * Journal commit routines for the generic filesystem journaling code;
+  * part of the ext2fs journaling system.
+  */
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 67546c7ad473..3fbf48ec2188 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * linux/fs/jbd2/journal.c
+  *
+@@ -5,10 +6,6 @@
+  *
+  * Copyright 1998 Red Hat corp --- All Rights Reserved
+  *
+- * This file is part of the Linux kernel and is made available under
+- * the terms of the GNU General Public License, version 2, or at your
+- * option, any later version, incorporated herein by reference.
+- *
+  * Generic filesystem journal-writing code; part of the ext2fs
+  * journaling system.
+  *
+diff --git a/fs/jbd2/recovery.c b/fs/jbd2/recovery.c
+index 02dd3360cb20..f99910b69c78 100644
+--- a/fs/jbd2/recovery.c
++++ b/fs/jbd2/recovery.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * linux/fs/jbd2/recovery.c
+  *
+@@ -5,10 +6,6 @@
+  *
+  * Copyright 1999-2000 Red Hat Software --- All Rights Reserved
+  *
+- * This file is part of the Linux kernel and is made available under
+- * the terms of the GNU General Public License, version 2, or at your
+- * option, any later version, incorporated herein by reference.
+- *
+  * Journal recovery routines for the generic filesystem journaling code;
+  * part of the ext2fs journaling system.
+  */
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index f9aefcda5854..696ef15ec942 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * linux/fs/jbd2/revoke.c
+  *
+@@ -5,10 +6,6 @@
+  *
+  * Copyright 2000 Red Hat corp --- All Rights Reserved
+  *
+- * This file is part of the Linux kernel and is made available under
+- * the terms of the GNU General Public License, version 2, or at your
+- * option, any later version, incorporated herein by reference.
+- *
+  * Journal revoke routines for the generic filesystem journaling code;
+  * part of the ext2fs journaling system.
+  *
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 8b08044b3120..881a9e09ca4e 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1,3 +1,4 @@
++// SPDX-License-Identifier: GPL-2.0+
+ /*
+  * linux/fs/jbd2/transaction.c
+  *
+@@ -5,10 +6,6 @@
+  *
+  * Copyright 1998 Red Hat corp --- All Rights Reserved
+  *
+- * This file is part of the Linux kernel and is made available under
+- * the terms of the GNU General Public License, version 2, or at your
+- * option, any later version, incorporated herein by reference.
+- *
+  * Generic filesystem transaction handling code; part of the ext2fs
+  * journaling system.
+  *
+-- 
+2.11.0.rc0.7.gbe5a750
