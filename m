@@ -1,88 +1,185 @@
-From: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
-Subject: [QUESTION] Locking for the transaction buffers
-Date: Mon, 18 Dec 2017 18:08:34 +0100
-Message-ID: <8ced83bc-4afa-998e-8015-bab5e2441c49@tu-dortmund.de>
+From: Jeff Layton <jlayton@kernel.org>
+Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
+Date: Mon, 18 Dec 2017 14:35:20 -0500
+Message-ID: <1513625720.3422.68.camel@kernel.org>
+References: <20171218151156.14565-1-jlayton@kernel.org>
+         <20171218151156.14565-20-jlayton@kernel.org>
+         <20171218163418.GF30350@quack2.suse.cz>
+         <1513617740.3422.30.camel@kernel.org> <20171218173651.GB12454@fieldses.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="bcdBGlqLL6ffj7vHXckRlENXFDdSSf9AE"
-Cc: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.hrz.uni-dortmund.de ([129.217.128.51]:65400 "EHLO
-        unimail.uni-dortmund.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932756AbdLRSAI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Dec 2017 13:00:08 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+To: "J. Bruce Fields" <bfields@fieldses.org>, Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20171218173651.GB12454@fieldses.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---bcdBGlqLL6ffj7vHXckRlENXFDdSSf9AE
-Content-Type: multipart/mixed; boundary="nJ6QnTdoVleVmf3uN6QwWF39iVWpn3IUd";
- protected-headers="v1"
-From: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
-To: linux-ext4@vger.kernel.org
-Cc: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>
-Message-ID: <8ced83bc-4afa-998e-8015-bab5e2441c49@tu-dortmund.de>
-Subject: [QUESTION] Locking for the transaction buffers
+On Mon, 2017-12-18 at 12:36 -0500, J. Bruce Fields wrote:
+> On Mon, Dec 18, 2017 at 12:22:20PM -0500, Jeff Layton wrote:
+> > On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
+> > > On Mon 18-12-17 10:11:56, Jeff Layton wrote:
+> > > >  static inline bool
+> > > >  inode_maybe_inc_iversion(struct inode *inode, bool force)
+> > > >  {
+> > > > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
+> > > > +	u64 cur, old, new;
+> > > >  
+> > > > -	atomic64_inc(ivp);
+> > > > +	cur = (u64)atomic64_read(&inode->i_version);
+> > > > +	for (;;) {
+> > > > +		/* If flag is clear then we needn't do anything */
+> > > > +		if (!force && !(cur & I_VERSION_QUERIED))
+> > > > +			return false;
+> > > 
+> > > The fast path here misses any memory barrier. Thus it seems this query
+> > > could be in theory reordered before any store that happened to modify the
+> > > inode? Or maybe we could race and miss the fact that in fact this i_version
+> > > has already been queried? But maybe there's some higher level locking that
+> > > makes sure this is all a non-issue... But in that case it would deserve
+> > > some comment I guess.
+> > > 
+> > 
+> > There's no higher-level locking. Getting locking out of this codepath is
+> > a good thing IMO. The larger question here is whether we really care
+> > about ordering this with anything else.
+> > 
+> > The i_version, as implemented today, is not ordered with actual changes
+> > to the inode. We only take the i_lock today when modifying it, not when
+> > querying it. It's possible today that you could see the results of a
+> > change and then do a fetch of the i_version that doesn't show an
+> > increment vs. a previous change.
+> > 
+> > It'd be nice if this were atomic with the actual changes that it
+> > represents, but I think that would be prohibitively expensive. That may
+> > be something we need to address. I'm not sure we really want to do it as
+> > part of this patchset though.
+> 
+> I don't think we need full atomicity, but we *do* need the i_version
+> increment to be seen as ordered after the inode change.  That should be
+> relatively inexpensive, yes?
+> 
+> Otherwise an inode change could be overlooked indefinitely, because a
+> client could cache the old contents with the new i_version value and
+> never see the i_version change again as long as the inode isn't touched
+> again.
+> 
+> (If the client instead caches new data with the old inode version, there
+> may be an unnecessary cache invalidation next time the client queries
+> the change attribute.  That's a performance bug, but not really a
+> correctness problem, at least for clients depending only on
+> close-to-open semantics: they'll only depend on seeing the new change
+> attribute after the change has been flushed to disk.  The performance
+> problem should be mitigated by the race being very rare.)
 
---nJ6QnTdoVleVmf3uN6QwWF39iVWpn3IUd
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: quoted-printable
+Perhaps something like this patch squashed into #19?
 
-Hi developers,
+This should tighten up the initial loads and stores, like Jan was
+suggesting (I think). The increments are done via cmpxchg so they
+already have a full implied barrier (IIUC), and we don't exit the loop
+until it succeeds or it looks like the flag is set.
 
-I'm studying the locking in the JBD2 subsystem (v4.15-rc4). Doing so, I
-came across the jbd2_journal_commit_transaction function
-where severals lists, e.g., t_forget or t_buffers, are flushed in a
-while loop.
-According to the documentation in inlcude/linux/jbd2.h, the j_list_lock
-lock is the appropriate lock.
-However, it is only used in one out of three cases:
-In fs/jbd2/commit.c:903, the while loop is protected using the
-j_list_lock lock. Whereas it is not used at line 464 and 561.
-In contrast to that, the insert and remove operations to any of these
-lists are protected by that lock.
+To be clear though:
 
-Can you please tell me why that lock is not used at line 464 and 561?
+This series does not try to order the i_version update with any other
+inode metadata or data (though we generally do update it after a write
+is done, rather than before or during).
 
-Thanks in advance!
+Inode field updates are not at all synchronized either and this series
+does not change that. A stat() is also generally done locklessly so you
+can easily get a half-baked attributes there if you hit the timing
+wrong.
 
-Regards,
-Alex
+-------------------------8<--------------------------
 
---=20
-Technische Universit=C3=A4t Dortmund
-Alexander Lochmann                PGP key: 0xBC3EF6FD
-Otto-Hahn-Str. 16                 phone:  +49.231.7556141
-D-44227 Dortmund                  fax:    +49.231.7556116
-http://ess.cs.tu-dortmund.de/Staff/al
+[PATCH] SQUASH: add memory barriers around i_version accesses
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/iversion.h | 40 +++++++++++++++++++++-------------------
+ 1 file changed, 21 insertions(+), 19 deletions(-)
 
---nJ6QnTdoVleVmf3uN6QwWF39iVWpn3IUd--
-
---bcdBGlqLL6ffj7vHXckRlENXFDdSSf9AE
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQI/BAEBCAApBQJaN/YSIhxhbGV4YW5kZXIubG9jaG1hbm5AdHUtZG9ydG11bmQu
-ZGUACgkQWT7tBbw+9v17gw/+ONxZL6rMDiz/BlE/SBWHNJsYuS4dgrkNBje0/ZAf
-2ExxxfdKNAXFOZtW7bxdCNLkLYEWSjIrbBwmQD5JnFLm8tq9o1sIQiGjv5fpEfPN
-oYlweU85atVnBScBLOvHPh9jLbg7U9Bs1TG4zd3SPA0ikc8C1/7mbHjEylEyxyBe
-zqnVg/lpKuSpM6BL4UpSaaWYKLfr5+rrTxAN2Enr4Lx5allkARVkedL5KF2Cadmz
-l8KMcDrxOkGrU+FHFqlqzrAzIMTKKMRB2g37qUGd0SoGvDx/N11TRt46vWJjo2ve
-lBlsTP+EVQmF2aYcl5T6Yqu+2Rh5IXoRU8XL6DtYwOvJnwYz37CsfUGueBcSBdut
-eEr+TWcqFDYBYUX82nJdhmb5d0fjFKUkVoOEbBVDN2B9yWqz+m2/Dptqog0/fjlo
-W4THmxc+5bLyjh7xgmQJ2EfTcng45gehamQyMbAEDpxZTXIKspsSGwyhKSAu2x8g
-vqDBvWlePsidxEBLEPJNUoottcYvSuvwSTENNSv/HlYOxlgTveNBJUFlPDKYCYaU
-I4pebscTXeFW0BmYuoWXAm7GgdiuKDN62+asVarnCHjtZBprrW7NA5TfERrmdWoK
-jdYd+laSA+OykQIMPDmAkwywdb1tO56Q697UOn76r1oWqHUlbOuCQu9sUH35Updj
-pf4=
-=A9Du
------END PGP SIGNATURE-----
-
---bcdBGlqLL6ffj7vHXckRlENXFDdSSf9AE--
+diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+index a9fbf99709df..39ec9aa9e08e 100644
+--- a/include/linux/iversion.h
++++ b/include/linux/iversion.h
+@@ -87,6 +87,25 @@ static inline void
+ inode_set_iversion_raw(struct inode *inode, const u64 val)
+ {
+ 	atomic64_set(&inode->i_version, val);
++	smp_wmb();
++}
++
++/**
++ * inode_peek_iversion_raw - grab a "raw" iversion value
++ * @inode: inode from which i_version should be read
++ *
++ * Grab a "raw" inode->i_version value and return it. The i_version is not
++ * flagged or converted in any way. This is mostly used to access a self-managed
++ * i_version.
++ *
++ * With those filesystems, we want to treat the i_version as an entirely
++ * opaque value.
++ */
++static inline u64
++inode_peek_iversion_raw(const struct inode *inode)
++{
++	smp_rmb();
++	return atomic64_read(&inode->i_version);
+ }
+ 
+ /**
+@@ -152,7 +171,7 @@ inode_maybe_inc_iversion(struct inode *inode, bool force)
+ {
+ 	u64 cur, old, new;
+ 
+-	cur = (u64)atomic64_read(&inode->i_version);
++	cur = inode_peek_iversion_raw(inode);
+ 	for (;;) {
+ 		/* If flag is clear then we needn't do anything */
+ 		if (!force && !(cur & I_VERSION_QUERIED))
+@@ -183,23 +202,6 @@ inode_inc_iversion(struct inode *inode)
+ 	inode_maybe_inc_iversion(inode, true);
+ }
+ 
+-/**
+- * inode_peek_iversion_raw - grab a "raw" iversion value
+- * @inode: inode from which i_version should be read
+- *
+- * Grab a "raw" inode->i_version value and return it. The i_version is not
+- * flagged or converted in any way. This is mostly used to access a self-managed
+- * i_version.
+- *
+- * With those filesystems, we want to treat the i_version as an entirely
+- * opaque value.
+- */
+-static inline u64
+-inode_peek_iversion_raw(const struct inode *inode)
+-{
+-	return atomic64_read(&inode->i_version);
+-}
+-
+ /**
+  * inode_iversion_need_inc - is the i_version in need of being incremented?
+  * @inode: inode to check
+@@ -248,7 +250,7 @@ inode_query_iversion(struct inode *inode)
+ {
+ 	u64 cur, old, new;
+ 
+-	cur = atomic64_read(&inode->i_version);
++	cur = inode_peek_iversion_raw(inode);
+ 	for (;;) {
+ 		/* If flag is already set, then no need to swap */
+ 		if (cur & I_VERSION_QUERIED)
+-- 
+2.14.3
