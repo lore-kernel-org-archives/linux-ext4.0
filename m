@@ -1,26 +1,29 @@
-From: Citi Financial <dorkoper@student.pg.edu.pl>
-Subject: (brak tematu)
-Date: Mon, 18 Dec 2017 03:05:43 +0100
-Message-ID: <4b363967e0892bf174ff460d130db98c@student.pg.edu.pl>
-Reply-To: citifinancialservice9@gmail.com
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] ext4: delayed inode update for the consistency of file
+ size after a crash
+Date: Mon, 18 Dec 2017 04:32:02 -0800
+Message-ID: <20171218123202.GA25645@infradead.org>
+References: <20171216043326.GA12365@son-VirtualBox>
+ <20171216233239.oy4mcyjuq6hjugnx@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: 8bit
-To: undisclosed-recipients:;
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.student.pg.edu.pl ([153.19.40.202]:54058 "EHLO
-        smtp.student.pg.edu.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1757194AbdLRCNI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Dec 2017 21:13:08 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Ts'o <tytso@mit.edu>,
+        Seongbae Son <seongbae.son@gmail.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20171216233239.oy4mcyjuq6hjugnx@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+> that update of the timestamp and i_size needs to be moved to an I/O
+> completion handler.  We do this already to convert unwritten requests
+> to be written in fs/ext4/page_io.c.  See ext4_put_io_end_defer() in
+> fs/ext4/page_io.c; if we need to convert unwritten extents the
+> EXT4_IO_END_UNWRITTEN flag is set, and ext4_add_complete_io() tacks
+> the io_end queue onto a workqueue.  This infrastructure could be made
+> more general so that it can do other work after the I/O has been
+> completed, including the i_size update.
 
-
--- 
-Wir bieten Kredite an alle in Not mit 3% Zinssatz, keine Sicherheiten
-beteiligt, überprüfen wir nicht auch Kredit-Scores, erhalten schnelle 
-und zuverlässige Darlehen
-innerhalb von 3 Tagen garantieren. E-Mail jetzt für weitere 
-Informationen.
+That's what we do for the i_size update in XFS.
