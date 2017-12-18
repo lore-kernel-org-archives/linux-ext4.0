@@ -1,10 +1,11 @@
 From: Jeff Layton <jlayton@kernel.org>
-Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
-Date: Mon, 18 Dec 2017 12:22:20 -0500
-Message-ID: <1513617740.3422.30.camel@kernel.org>
+Subject: Re: [PATCH v3 16/19] fs: only set S_VERSION when updating times if
+ necessary
+Date: Mon, 18 Dec 2017 12:25:38 -0500
+Message-ID: <1513617938.3422.31.camel@kernel.org>
 References: <20171218151156.14565-1-jlayton@kernel.org>
-         <20171218151156.14565-20-jlayton@kernel.org>
-         <20171218163418.GF30350@quack2.suse.cz>
+         <20171218151156.14565-17-jlayton@kernel.org>
+         <20171218160736.GE30350@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
@@ -20,99 +21,96 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20171218163418.GF30350@quack2.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20171218160736.GE30350@quack2.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
-> On Mon 18-12-17 10:11:56, Jeff Layton wrote:
-> >  static inline bool
-> >  inode_maybe_inc_iversion(struct inode *inode, bool force)
-> >  {
-> > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
-> > +	u64 cur, old, new;
+On Mon, 2017-12-18 at 17:07 +0100, Jan Kara wrote:
+> On Mon 18-12-17 10:11:53, Jeff Layton wrote:
+> > From: Jeff Layton <jlayton@redhat.com>
+> > 
+> > We only really need to update i_version if someone has queried for it
+> > since we last incremented it. By doing that, we can avoid having to
+> > update the inode if the times haven't changed.
+> > 
+> > If the times have changed, then we go ahead and forcibly increment the
+> > counter, under the assumption that we'll be going to the storage
+> > anyway, and the increment itself is relatively cheap.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/inode.c | 20 ++++++++++++++------
+> >  1 file changed, 14 insertions(+), 6 deletions(-)
+> > 
+> > diff --git a/fs/inode.c b/fs/inode.c
+> > index 03102d6ef044..83f6cfc3cde7 100644
+> > --- a/fs/inode.c
+> > +++ b/fs/inode.c
+> > @@ -19,6 +19,7 @@
+> >  #include <linux/ratelimit.h>
+> >  #include <linux/list_lru.h>
+> >  #include <trace/events/writeback.h>
+> > +#include <linux/iversion.h>
+> >  #include "internal.h"
 > >  
-> > -	atomic64_inc(ivp);
-> > +	cur = (u64)atomic64_read(&inode->i_version);
-> > +	for (;;) {
-> > +		/* If flag is clear then we needn't do anything */
-> > +		if (!force && !(cur & I_VERSION_QUERIED))
-> > +			return false;
-> 
-> The fast path here misses any memory barrier. Thus it seems this query
-> could be in theory reordered before any store that happened to modify the
-> inode? Or maybe we could race and miss the fact that in fact this i_version
-> has already been queried? But maybe there's some higher level locking that
-> makes sure this is all a non-issue... But in that case it would deserve
-> some comment I guess.
-> 
-
-There's no higher-level locking. Getting locking out of this codepath is
-a good thing IMO. The larger question here is whether we really care
-about ordering this with anything else.
-
-The i_version, as implemented today, is not ordered with actual changes
-to the inode. We only take the i_lock today when modifying it, not when
-querying it. It's possible today that you could see the results of a
-change and then do a fetch of the i_version that doesn't show an
-increment vs. a previous change.
-
-It'd be nice if this were atomic with the actual changes that it
-represents, but I think that would be prohibitively expensive. That may
-be something we need to address. I'm not sure we really want to do it as
-part of this patchset though.
-
-> > +
-> > +		/* Since lowest bit is flag, add 2 to avoid it */
-> > +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
-> > +
-> > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
-> > +		if (likely(old == cur))
-> > +			break;
-> > +		cur = old;
+> >  /*
+> > @@ -1634,17 +1635,24 @@ static int relatime_need_update(const struct path *path, struct inode *inode,
+> >  int generic_update_time(struct inode *inode, struct timespec *time, int flags)
+> >  {
+> >  	int iflags = I_DIRTY_TIME;
+> > +	bool dirty = false;
+> >  
+> > -	if (flags & S_ATIME)
+> > +	if (flags & S_ATIME) {
+> >  		inode->i_atime = *time;
+> > +		dirty |= !(inode->i_sb->s_flags & SB_LAZYTIME);
 > > +	}
-> >  	return true;
-> >  }
-> >  
-> 
-> ...
-> 
-> >  static inline u64
-> >  inode_query_iversion(struct inode *inode)
-> >  {
-> > -	return inode_peek_iversion(inode);
-> > +	u64 cur, old, new;
-> > +
-> > +	cur = atomic64_read(&inode->i_version);
-> > +	for (;;) {
-> > +		/* If flag is already set, then no need to swap */
-> > +		if (cur & I_VERSION_QUERIED)
-> > +			break;
-> > +
-> > +		new = cur | I_VERSION_QUERIED;
-> > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
-> > +		if (old == cur)
-> > +			break;
-> > +		cur = old;
+> >  	if (flags & S_VERSION)
+> > -		inode_inc_iversion(inode);
+> > -	if (flags & S_CTIME)
+> > +		dirty |= inode_maybe_inc_iversion(inode, dirty);
+> > +	if (flags & S_CTIME) {
+> >  		inode->i_ctime = *time;
+> > -	if (flags & S_MTIME)
+> > +		dirty = true;
+> > +	}
+> > +	if (flags & S_MTIME) {
+> >  		inode->i_mtime = *time;
+> > +		dirty = true;
 > > +	}
 > 
-> Why not just use atomic64_or() here?
+> The SB_LAZYTIME handling is wrong here. That option is not only about atime
+> handling but rather about all inode time stamps. So you rather need
+> something like:
+> 
+> 	if (flags & (S_ATIME | S_CTIME | S_MTIME) &&
+> 	    !(inode->i_sb->s_flags & SB_LAZYTIME))
+> 		dirty = true;
+> 
+> 								Honza
 > 
 
-If the cmpxchg fails, then either:
+Thanks. I misunderstood that. Will fix.
 
-1) it was incremented
-2) someone flagged it QUERIED
+> >  
+> > -	if (!(inode->i_sb->s_flags & SB_LAZYTIME) || (flags & S_VERSION))
+> > +	if (dirty)
+> >  		iflags |= I_DIRTY_SYNC;
+> >  	__mark_inode_dirty(inode, iflags);
+> >  	return 0;
+> > @@ -1863,7 +1871,7 @@ int file_update_time(struct file *file)
+> >  	if (!timespec_equal(&inode->i_ctime, &now))
+> >  		sync_it |= S_CTIME;
+> >  
+> > -	if (IS_I_VERSION(inode))
+> > +	if (IS_I_VERSION(inode) && inode_iversion_need_inc(inode))
+> >  		sync_it |= S_VERSION;
+> >  
+> >  	if (!sync_it)
+> > -- 
+> > 2.14.3
+> > 
 
-If an increment happened then we don't need to flag it as QUERIED if
-we're returning an older value. If we use atomic64_or, then we can't
-tell if an increment happened so we'd end up potentially flagging it
-more than necessary.
-
-In principle, either outcome is technically OK and we don't have to loop
-if the cmpxchg doesn't work. That said, if we think there might be a
-later i_version available, then I think we probably want to try to query
-it again so we can return as late a one as possible.
 -- 
 Jeff Layton <jlayton@kernel.org>
