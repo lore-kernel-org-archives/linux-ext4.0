@@ -1,185 +1,35 @@
-From: Jeff Layton <jlayton@kernel.org>
-Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
-Date: Mon, 18 Dec 2017 14:35:20 -0500
-Message-ID: <1513625720.3422.68.camel@kernel.org>
-References: <20171218151156.14565-1-jlayton@kernel.org>
-         <20171218151156.14565-20-jlayton@kernel.org>
-         <20171218163418.GF30350@quack2.suse.cz>
-         <1513617740.3422.30.camel@kernel.org> <20171218173651.GB12454@fieldses.org>
+From: "Sandra Younes" <mamg7610885@angel.ocn.ne.jp>
+Subject: Re: Distress Call Please don't ignore
+Date: Mon, 18 Dec 2017 23:44:52 +0200
+Message-ID: <201712182144.vBILifkb018467__34905.6243467659$1513633996$gmane$org@mf-smf-ucb016.ocn.ad.jp>
+Reply-To: <tdavalvse@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain;
+        charset="Windows-1251"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org, neilb@suse.de,
-        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-To: "J. Bruce Fields" <bfields@fieldses.org>, Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20171218173651.GB12454@fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mbkd0125.ocn.ad.jp ([153.149.230.26]:50054 "EHLO
+        mbkd0125.ocn.ad.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S935229AbdLRVzA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Dec 2017 16:55:00 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2017-12-18 at 12:36 -0500, J. Bruce Fields wrote:
-> On Mon, Dec 18, 2017 at 12:22:20PM -0500, Jeff Layton wrote:
-> > On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
-> > > On Mon 18-12-17 10:11:56, Jeff Layton wrote:
-> > > >  static inline bool
-> > > >  inode_maybe_inc_iversion(struct inode *inode, bool force)
-> > > >  {
-> > > > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
-> > > > +	u64 cur, old, new;
-> > > >  
-> > > > -	atomic64_inc(ivp);
-> > > > +	cur = (u64)atomic64_read(&inode->i_version);
-> > > > +	for (;;) {
-> > > > +		/* If flag is clear then we needn't do anything */
-> > > > +		if (!force && !(cur & I_VERSION_QUERIED))
-> > > > +			return false;
-> > > 
-> > > The fast path here misses any memory barrier. Thus it seems this query
-> > > could be in theory reordered before any store that happened to modify the
-> > > inode? Or maybe we could race and miss the fact that in fact this i_version
-> > > has already been queried? But maybe there's some higher level locking that
-> > > makes sure this is all a non-issue... But in that case it would deserve
-> > > some comment I guess.
-> > > 
-> > 
-> > There's no higher-level locking. Getting locking out of this codepath is
-> > a good thing IMO. The larger question here is whether we really care
-> > about ordering this with anything else.
-> > 
-> > The i_version, as implemented today, is not ordered with actual changes
-> > to the inode. We only take the i_lock today when modifying it, not when
-> > querying it. It's possible today that you could see the results of a
-> > change and then do a fetch of the i_version that doesn't show an
-> > increment vs. a previous change.
-> > 
-> > It'd be nice if this were atomic with the actual changes that it
-> > represents, but I think that would be prohibitively expensive. That may
-> > be something we need to address. I'm not sure we really want to do it as
-> > part of this patchset though.
-> 
-> I don't think we need full atomicity, but we *do* need the i_version
-> increment to be seen as ordered after the inode change.  That should be
-> relatively inexpensive, yes?
-> 
-> Otherwise an inode change could be overlooked indefinitely, because a
-> client could cache the old contents with the new i_version value and
-> never see the i_version change again as long as the inode isn't touched
-> again.
-> 
-> (If the client instead caches new data with the old inode version, there
-> may be an unnecessary cache invalidation next time the client queries
-> the change attribute.  That's a performance bug, but not really a
-> correctness problem, at least for clients depending only on
-> close-to-open semantics: they'll only depend on seeing the new change
-> attribute after the change has been flushed to disk.  The performance
-> problem should be mitigated by the race being very rare.)
+Good Day,
 
-Perhaps something like this patch squashed into #19?
+Forgive my indignation if this message comes to you as a surprise and may offend your personality for contacting you without your prior consent and writing through this channel.
 
-This should tighten up the initial loads and stores, like Jan was
-suggesting (I think). The increments are done via cmpxchg so they
-already have a full implied barrier (IIUC), and we don't exit the loop
-until it succeeds or it looks like the flag is set.
+I came across your name and contact on the course of my personal searching when i was searching for a foreign reliable partner. I was assured of your capability and reliability after going true your profile.
 
-To be clear though:
+I'm (Miss. Sandra) from Benghazi libya, My father of blessed memory by name late General Abdel Fattah Younes who was shot death by Islamist-linked militia within the anti-Gaddafi forces on 28th July, 2011 and after two days later my mother with my two brothers was killed one early morning by the rebels as result of civil war that is going on in my country Libya, then after the burial of my parents, my uncles conspired and sold my father's properties and left nothing for me. On a faithful morning, I opened my father's briefcase and discover a document which he has deposited ($6.250M USD) in a bank in a Turkish Bank which has a small branch in Canada with my name as the legitimate/next of kin. Meanwhile i have located the bank,and have also discussed the possiblity of transfering the fund. M
+ y father left a clause to the bank that i must introduce a trusted foreign partner who would be my trustee to help me invest this fund; hence the need for your assistance,i request that you be my t
+rustee and assist me in e
 
-This series does not try to order the i_version update with any other
-inode metadata or data (though we generally do update it after a write
-is done, rather than before or during).
+You will also be responsible for the investment and management of the fund for me and also you will help me get a good school where i will further my education.
+I agreed to give you 40% of the $6.250M once the transfer is done. this is my true life story, I will be glad to receive your respond soonest for more details to enable us start and champion the transfer less than 14 banking days as i was informed by the bank manager.
 
-Inode field updates are not at all synchronized either and this series
-does not change that. A stat() is also generally done locklessly so you
-can easily get a half-baked attributes there if you hit the timing
-wrong.
+Thanks for giving me your attention,
 
--------------------------8<--------------------------
-
-[PATCH] SQUASH: add memory barriers around i_version accesses
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/iversion.h | 40 +++++++++++++++++++++-------------------
- 1 file changed, 21 insertions(+), 19 deletions(-)
-
-diff --git a/include/linux/iversion.h b/include/linux/iversion.h
-index a9fbf99709df..39ec9aa9e08e 100644
---- a/include/linux/iversion.h
-+++ b/include/linux/iversion.h
-@@ -87,6 +87,25 @@ static inline void
- inode_set_iversion_raw(struct inode *inode, const u64 val)
- {
- 	atomic64_set(&inode->i_version, val);
-+	smp_wmb();
-+}
-+
-+/**
-+ * inode_peek_iversion_raw - grab a "raw" iversion value
-+ * @inode: inode from which i_version should be read
-+ *
-+ * Grab a "raw" inode->i_version value and return it. The i_version is not
-+ * flagged or converted in any way. This is mostly used to access a self-managed
-+ * i_version.
-+ *
-+ * With those filesystems, we want to treat the i_version as an entirely
-+ * opaque value.
-+ */
-+static inline u64
-+inode_peek_iversion_raw(const struct inode *inode)
-+{
-+	smp_rmb();
-+	return atomic64_read(&inode->i_version);
- }
- 
- /**
-@@ -152,7 +171,7 @@ inode_maybe_inc_iversion(struct inode *inode, bool force)
- {
- 	u64 cur, old, new;
- 
--	cur = (u64)atomic64_read(&inode->i_version);
-+	cur = inode_peek_iversion_raw(inode);
- 	for (;;) {
- 		/* If flag is clear then we needn't do anything */
- 		if (!force && !(cur & I_VERSION_QUERIED))
-@@ -183,23 +202,6 @@ inode_inc_iversion(struct inode *inode)
- 	inode_maybe_inc_iversion(inode, true);
- }
- 
--/**
-- * inode_peek_iversion_raw - grab a "raw" iversion value
-- * @inode: inode from which i_version should be read
-- *
-- * Grab a "raw" inode->i_version value and return it. The i_version is not
-- * flagged or converted in any way. This is mostly used to access a self-managed
-- * i_version.
-- *
-- * With those filesystems, we want to treat the i_version as an entirely
-- * opaque value.
-- */
--static inline u64
--inode_peek_iversion_raw(const struct inode *inode)
--{
--	return atomic64_read(&inode->i_version);
--}
--
- /**
-  * inode_iversion_need_inc - is the i_version in need of being incremented?
-  * @inode: inode to check
-@@ -248,7 +250,7 @@ inode_query_iversion(struct inode *inode)
- {
- 	u64 cur, old, new;
- 
--	cur = atomic64_read(&inode->i_version);
-+	cur = inode_peek_iversion_raw(inode);
- 	for (;;) {
- 		/* If flag is already set, then no need to swap */
- 		if (cur & I_VERSION_QUERIED)
--- 
-2.14.3
+Yours sincerely,
+Miss. Sandra Younes
