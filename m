@@ -1,29 +1,57 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] ext4: delayed inode update for the consistency of file
- size after a crash
-Date: Mon, 18 Dec 2017 04:32:02 -0800
-Message-ID: <20171218123202.GA25645@infradead.org>
-References: <20171216043326.GA12365@son-VirtualBox>
- <20171216233239.oy4mcyjuq6hjugnx@thunk.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 198187] New: jbd2_log_wait_commit hangs
+Date: Mon, 18 Dec 2017 12:56:48 +0000
+Message-ID: <bug-198187-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Ts'o <tytso@mit.edu>,
-        Seongbae Son <seongbae.son@gmail.com>,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171216233239.oy4mcyjuq6hjugnx@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:45514 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1759476AbdLRM4u (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 18 Dec 2017 07:56:50 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 32A1528EA4
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Dec 2017 12:56:50 +0000 (UTC)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> that update of the timestamp and i_size needs to be moved to an I/O
-> completion handler.  We do this already to convert unwritten requests
-> to be written in fs/ext4/page_io.c.  See ext4_put_io_end_defer() in
-> fs/ext4/page_io.c; if we need to convert unwritten extents the
-> EXT4_IO_END_UNWRITTEN flag is set, and ext4_add_complete_io() tacks
-> the io_end queue onto a workqueue.  This infrastructure could be made
-> more general so that it can do other work after the I/O has been
-> completed, including the i_size update.
+https://bugzilla.kernel.org/show_bug.cgi?id=198187
 
-That's what we do for the i_size update in XFS.
+            Bug ID: 198187
+           Summary: jbd2_log_wait_commit hangs
+           Product: File System
+           Version: 2.5
+    Kernel Version: >=4.13
+          Hardware: Intel
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: lav@yar.ru
+        Regression: No
+
+sometimes, a process stucks in jbd2_log_wait_commit wait state. After that, any
+"sync" and probably fsync calls stuck too. The symptom is LA growing to insane
+values. On one server the most common stuck process is logrotate in a lxc
+container. I could not log in to two other affected servers. Another few
+servers at my disposal do not exhibit this behaviour. There is no disk related
+messages in the log or dmesg. Nothing suspicious at all in the log. Graceful
+reboot hangs too.
+
+The problem started with 4.13.8 and did not occur in 4.12.8.
+
+Here is the dnf history info after which the problem started to occur:
+    Erase    kernel-4.12.8-200.fc25.i686              @updates/25
+    Install  kernel-4.13.8-100.fc25.i686              @updates/25
+
+kernel downgrade fixes the problem.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
