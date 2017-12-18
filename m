@@ -1,73 +1,49 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [QUESTION] Getting block bitmap
-Date: Mon, 18 Dec 2017 15:48:27 -0700
-Message-ID: <A4596CEA-D8B5-440B-A3D9-90BC9DD7B26A@dilger.ca>
-References: <CAExFE6=Oj27M-6x++VGC6DNhao539CtjiPjmGgfk6LDRRVzufA@mail.gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_57AD9490-DF7A-4221-B8A5-EF919DAA066E";
- protocol="application/pgp-signature"; micalg=pgp-sha1
-Cc: linux-ext4@vger.kernel.org
-To: Sayan Ghosh <sgdgp.2014@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 198187] jbd2_log_wait_commit hangs
+Date: Mon, 18 Dec 2017 23:39:10 +0000
+Message-ID: <bug-198187-13602-uWQarARA54@https.bugzilla.kernel.org/>
+References: <bug-198187-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f181.google.com ([209.85.223.181]:44755 "EHLO
-        mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S936213AbdLRWsi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Dec 2017 17:48:38 -0500
-Received: by mail-io0-f181.google.com with SMTP id w127so11545236iow.11
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Dec 2017 14:48:38 -0800 (PST)
-In-Reply-To: <CAExFE6=Oj27M-6x++VGC6DNhao539CtjiPjmGgfk6LDRRVzufA@mail.gmail.com>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:58154 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1759867AbdLRXjL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 18 Dec 2017 18:39:11 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B8FED28E05
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Dec 2017 23:39:10 +0000 (UTC)
+In-Reply-To: <bug-198187-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=198187
 
---Apple-Mail=_57AD9490-DF7A-4221-B8A5-EF919DAA066E
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Theodore Tso (tytso@mit.edu) changed:
 
-On Dec 18, 2017, at 10:43 AM, Sayan Ghosh <sgdgp.2014@gmail.com> wrote:
->=20
-> Hello,
->=20
->     bh =3D ext4_read_block_bitmap(sb,block_group);
->=20
-> This function return the buffer head for the block/page with the block =
-bitmap
->=20
->     char *block_bmap =3D bh->b_data;
->=20
-> Doing this does not give the block bitmap string
->=20
-> What is the process to get the block bitmap in string or array form?
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-What do you mean "block bitmap string"?
+--- Comment #1 from Theodore Tso (tytso@mit.edu) ---
+How often/frequently/reliably does the problem reproduce?
 
-It probably makes sense for you to look at how bh->b_data is being used =
-in
-the places where ext4_read_block_bitmap() is being called.
+Can you get console messages either from dmesg or copied from a serial console
+(if you have serial console monitoring)?   Also useful would be to get the
+output from the following magic sysrq sequences: sysrq-l and sysrq-t  (this
+involves using the break key if you are using a serial console, which is the
+most desirable way to get the output since there is a huge amount of ouput).
 
-Cheers, Andreas
+Also, please let us know what the hardware configuration is, since it's
+possible this is related to change in a block device driver.
 
+Finally, please file a bug with Fedora since this may be something which is
+caused by a Fedora specific patch and the Fedora kernel maintainers are more
+likely to be able to notice clustering of symptoms from Fedora users.
 
-
-
-
-
---Apple-Mail=_57AD9490-DF7A-4221-B8A5-EF919DAA066E
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iD8DBQFaOEW9pIg59Q01vtYRAs2fAJ48wmHddRUyOPZbgLdzrr2QlxUTfwCgzNgs
-AbVixDkH01xnFtdhEj+XvBg=
-=tfsZ
------END PGP SIGNATURE-----
-
---Apple-Mail=_57AD9490-DF7A-4221-B8A5-EF919DAA066E--
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
