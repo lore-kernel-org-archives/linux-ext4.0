@@ -1,132 +1,73 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
-Date: Tue, 19 Dec 2017 09:07:59 +1100
-Message-ID: <20171218220759.GF4094@dastard>
-References: <20171218151156.14565-1-jlayton@kernel.org>
- <20171218151156.14565-20-jlayton@kernel.org>
- <20171218163418.GF30350@quack2.suse.cz>
- <1513617740.3422.30.camel@kernel.org>
- <20171218173651.GB12454@fieldses.org>
- <1513625720.3422.68.camel@kernel.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Jan Kara <jack@suse.cz>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org, neilb@suse.de,
-        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, linux-btrfs@vger.kernel.org, clm@fb.com,
-        jbacik@fb.com, dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-To: Jeff Layton <jlayton@kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1513625720.3422.68.camel@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [QUESTION] Getting block bitmap
+Date: Mon, 18 Dec 2017 15:48:27 -0700
+Message-ID: <A4596CEA-D8B5-440B-A3D9-90BC9DD7B26A@dilger.ca>
+References: <CAExFE6=Oj27M-6x++VGC6DNhao539CtjiPjmGgfk6LDRRVzufA@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_57AD9490-DF7A-4221-B8A5-EF919DAA066E";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Cc: linux-ext4@vger.kernel.org
+To: Sayan Ghosh <sgdgp.2014@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-io0-f181.google.com ([209.85.223.181]:44755 "EHLO
+        mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S936213AbdLRWsi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Dec 2017 17:48:38 -0500
+Received: by mail-io0-f181.google.com with SMTP id w127so11545236iow.11
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Dec 2017 14:48:38 -0800 (PST)
+In-Reply-To: <CAExFE6=Oj27M-6x++VGC6DNhao539CtjiPjmGgfk6LDRRVzufA@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 18, 2017 at 02:35:20PM -0500, Jeff Layton wrote:
-> [PATCH] SQUASH: add memory barriers around i_version accesses
 
-Why explicit memory barriers rather than annotating the operations
-with the required semantics and getting the barriers the arch
-requires automatically?  I suspect this should be using
-atomic_read_acquire() and atomic_cmpxchg_release(), because AFAICT
-the atomic_cmpxchg needs to have release semantics to match the
-acquire semantics needed for the load of the current value.
+--Apple-Mail=_57AD9490-DF7A-4221-B8A5-EF919DAA066E
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
->From include/linux/atomics.h:
+On Dec 18, 2017, at 10:43 AM, Sayan Ghosh <sgdgp.2014@gmail.com> wrote:
+>=20
+> Hello,
+>=20
+>     bh =3D ext4_read_block_bitmap(sb,block_group);
+>=20
+> This function return the buffer head for the block/page with the block =
+bitmap
+>=20
+>     char *block_bmap =3D bh->b_data;
+>=20
+> Doing this does not give the block bitmap string
+>=20
+> What is the process to get the block bitmap in string or array form?
 
- * For compound atomics performing both a load and a store, ACQUIRE
- * semantics apply only to the load and RELEASE semantics only to the
- * store portion of the operation. Note that a failed cmpxchg_acquire
- * does -not- imply any memory ordering constraints.
+What do you mean "block bitmap string"?
 
-Memory barriers hurt my brain. :/
+It probably makes sense for you to look at how bh->b_data is being used =
+in
+the places where ext4_read_block_bitmap() is being called.
 
-At minimum, shouldn't the atomic op specific barriers be used rather
-than full memory barriers? i.e:
+Cheers, Andreas
 
-> diff --git a/include/linux/iversion.h b/include/linux/iversion.h
-> index a9fbf99709df..39ec9aa9e08e 100644
-> --- a/include/linux/iversion.h
-> +++ b/include/linux/iversion.h
-> @@ -87,6 +87,25 @@ static inline void
->  inode_set_iversion_raw(struct inode *inode, const u64 val)
->  {
->  	atomic64_set(&inode->i_version, val);
-> +	smp_wmb();
 
-	smp_mb__after_atomic();
-.....
-> +static inline u64
-> +inode_peek_iversion_raw(const struct inode *inode)
-> +{
-> +	smp_rmb();
 
-	smp_mb__before_atomic();
 
-> +	return atomic64_read(&inode->i_version);
->  }
 
-And, of course, these will require comments explaining what they
-match with and what they are ordering.
 
-> @@ -152,7 +171,7 @@ inode_maybe_inc_iversion(struct inode *inode, bool force)
->  {
->  	u64 cur, old, new;
->  
-> -	cur = (u64)atomic64_read(&inode->i_version);
-> +	cur = inode_peek_iversion_raw(inode);
->  	for (;;) {
->  		/* If flag is clear then we needn't do anything */
->  		if (!force && !(cur & I_VERSION_QUERIED))
+--Apple-Mail=_57AD9490-DF7A-4221-B8A5-EF919DAA066E
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
 
-cmpxchg in this loop needs a release barrier so everyone will
-see the change?
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
 
-> @@ -183,23 +202,6 @@ inode_inc_iversion(struct inode *inode)
->  	inode_maybe_inc_iversion(inode, true);
->  }
->  
-> -/**
-> - * inode_peek_iversion_raw - grab a "raw" iversion value
-> - * @inode: inode from which i_version should be read
-> - *
-> - * Grab a "raw" inode->i_version value and return it. The i_version is not
-> - * flagged or converted in any way. This is mostly used to access a self-managed
-> - * i_version.
-> - *
-> - * With those filesystems, we want to treat the i_version as an entirely
-> - * opaque value.
-> - */
-> -static inline u64
-> -inode_peek_iversion_raw(const struct inode *inode)
-> -{
-> -	return atomic64_read(&inode->i_version);
-> -}
-> -
->  /**
->   * inode_iversion_need_inc - is the i_version in need of being incremented?
->   * @inode: inode to check
-> @@ -248,7 +250,7 @@ inode_query_iversion(struct inode *inode)
->  {
->  	u64 cur, old, new;
->  
-> -	cur = atomic64_read(&inode->i_version);
-> +	cur = inode_peek_iversion_raw(inode);
->  	for (;;) {
->  		/* If flag is already set, then no need to swap */
->  		if (cur & I_VERSION_QUERIED)
+iD8DBQFaOEW9pIg59Q01vtYRAs2fAJ48wmHddRUyOPZbgLdzrr2QlxUTfwCgzNgs
+AbVixDkH01xnFtdhEj+XvBg=
+=tfsZ
+-----END PGP SIGNATURE-----
 
-cmpxchg in this loop needs a release barrier so everyone will
-see the change on load?
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+--Apple-Mail=_57AD9490-DF7A-4221-B8A5-EF919DAA066E--
