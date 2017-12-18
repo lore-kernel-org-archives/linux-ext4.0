@@ -1,177 +1,89 @@
-From: Jeff Layton <jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Subject: [PATCH v3 12/19] ocfs2: convert to new i_version API
-Date: Mon, 18 Dec 2017 10:11:49 -0500
-Message-ID: <20171218151156.14565-13-jlayton@kernel.org>
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v3 16/19] fs: only set S_VERSION when updating times if necessary
+Date: Mon, 18 Dec 2017 10:11:53 -0500
+Message-ID: <20171218151156.14565-17-jlayton@kernel.org>
 References: <20171218151156.14565-1-jlayton@kernel.org>
-Cc: linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org,
-        linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org,
-        jack-l3A5Bk7waGM@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-        adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
-        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, clm-b10kYP2dOMg@public.gmane.org, jbacik-b10kYP2dOMg@public.gmane.org,
-        dsterba-IBi9RG/b67k@public.gmane.org, linux-integrity-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        zohar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, dmitry.kasatkin-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
-        linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-        jaltman-hRzEac23uH1Wk0Htik3J/w@public.gmane.org
-To: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20171218151156.14565-1-jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20171218151156.14565-1-jlayton@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+From: Jeff Layton <jlayton@redhat.com>
 
-Signed-off-by: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+We only really need to update i_version if someone has queried for it
+since we last incremented it. By doing that, we can avoid having to
+update the inode if the times haven't changed.
+
+If the times have changed, then we go ahead and forcibly increment the
+counter, under the assumption that we'll be going to the storage
+anyway, and the increment itself is relatively cheap.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/ocfs2/dir.c          | 15 ++++++++-------
- fs/ocfs2/inode.c        |  3 ++-
- fs/ocfs2/namei.c        |  3 ++-
- fs/ocfs2/quota_global.c |  3 ++-
- 4 files changed, 14 insertions(+), 10 deletions(-)
+ fs/inode.c | 20 ++++++++++++++------
+ 1 file changed, 14 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ocfs2/dir.c b/fs/ocfs2/dir.c
-index febe6312ceff..32f9c72dff17 100644
---- a/fs/ocfs2/dir.c
-+++ b/fs/ocfs2/dir.c
-@@ -42,6 +42,7 @@
- #include <linux/highmem.h>
- #include <linux/quotaops.h>
- #include <linux/sort.h>
+diff --git a/fs/inode.c b/fs/inode.c
+index 03102d6ef044..83f6cfc3cde7 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -19,6 +19,7 @@
+ #include <linux/ratelimit.h>
+ #include <linux/list_lru.h>
+ #include <trace/events/writeback.h>
 +#include <linux/iversion.h>
+ #include "internal.h"
  
- #include <cluster/masklog.h>
- 
-@@ -1174,7 +1175,7 @@ static int __ocfs2_delete_entry(handle_t *handle, struct inode *dir,
- 				le16_add_cpu(&pde->rec_len,
- 						le16_to_cpu(de->rec_len));
- 			de->inode = 0;
--			dir->i_version++;
-+			inode_inc_iversion(dir);
- 			ocfs2_journal_dirty(handle, bh);
- 			goto bail;
- 		}
-@@ -1729,7 +1730,7 @@ int __ocfs2_add_entry(handle_t *handle,
- 			if (ocfs2_dir_indexed(dir))
- 				ocfs2_recalc_free_list(dir, handle, lookup);
- 
--			dir->i_version++;
-+			inode_inc_iversion(dir);
- 			ocfs2_journal_dirty(handle, insert_bh);
- 			retval = 0;
- 			goto bail;
-@@ -1775,7 +1776,7 @@ static int ocfs2_dir_foreach_blk_id(struct inode *inode,
- 		 * readdir(2), then we might be pointing to an invalid
- 		 * dirent right now.  Scan from the start of the block
- 		 * to make sure. */
--		if (*f_version != inode->i_version) {
-+		if (inode_cmp_iversion(inode, *f_version)) {
- 			for (i = 0; i < i_size_read(inode) && i < offset; ) {
- 				de = (struct ocfs2_dir_entry *)
- 					(data->id_data + i);
-@@ -1791,7 +1792,7 @@ static int ocfs2_dir_foreach_blk_id(struct inode *inode,
- 				i += le16_to_cpu(de->rec_len);
- 			}
- 			ctx->pos = offset = i;
--			*f_version = inode->i_version;
-+			*f_version = inode_query_iversion(inode);
- 		}
- 
- 		de = (struct ocfs2_dir_entry *) (data->id_data + ctx->pos);
-@@ -1869,7 +1870,7 @@ static int ocfs2_dir_foreach_blk_el(struct inode *inode,
- 		 * readdir(2), then we might be pointing to an invalid
- 		 * dirent right now.  Scan from the start of the block
- 		 * to make sure. */
--		if (*f_version != inode->i_version) {
-+		if (inode_cmp_iversion(inode, *f_version)) {
- 			for (i = 0; i < sb->s_blocksize && i < offset; ) {
- 				de = (struct ocfs2_dir_entry *) (bh->b_data + i);
- 				/* It's too expensive to do a full
-@@ -1886,7 +1887,7 @@ static int ocfs2_dir_foreach_blk_el(struct inode *inode,
- 			offset = i;
- 			ctx->pos = (ctx->pos & ~(sb->s_blocksize - 1))
- 				| offset;
--			*f_version = inode->i_version;
-+			*f_version = inode_query_iversion(inode);
- 		}
- 
- 		while (ctx->pos < i_size_read(inode)
-@@ -1940,7 +1941,7 @@ static int ocfs2_dir_foreach_blk(struct inode *inode, u64 *f_version,
-  */
- int ocfs2_dir_foreach(struct inode *inode, struct dir_context *ctx)
+ /*
+@@ -1634,17 +1635,24 @@ static int relatime_need_update(const struct path *path, struct inode *inode,
+ int generic_update_time(struct inode *inode, struct timespec *time, int flags)
  {
--	u64 version = inode->i_version;
-+	u64 version = inode_query_iversion(inode);
- 	ocfs2_dir_foreach_blk(inode, &version, ctx, true);
+ 	int iflags = I_DIRTY_TIME;
++	bool dirty = false;
+ 
+-	if (flags & S_ATIME)
++	if (flags & S_ATIME) {
+ 		inode->i_atime = *time;
++		dirty |= !(inode->i_sb->s_flags & SB_LAZYTIME);
++	}
+ 	if (flags & S_VERSION)
+-		inode_inc_iversion(inode);
+-	if (flags & S_CTIME)
++		dirty |= inode_maybe_inc_iversion(inode, dirty);
++	if (flags & S_CTIME) {
+ 		inode->i_ctime = *time;
+-	if (flags & S_MTIME)
++		dirty = true;
++	}
++	if (flags & S_MTIME) {
+ 		inode->i_mtime = *time;
++		dirty = true;
++	}
+ 
+-	if (!(inode->i_sb->s_flags & SB_LAZYTIME) || (flags & S_VERSION))
++	if (dirty)
+ 		iflags |= I_DIRTY_SYNC;
+ 	__mark_inode_dirty(inode, iflags);
  	return 0;
- }
-diff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c
-index 1a1e0078ab38..d51b80edd972 100644
---- a/fs/ocfs2/inode.c
-+++ b/fs/ocfs2/inode.c
-@@ -28,6 +28,7 @@
- #include <linux/highmem.h>
- #include <linux/pagemap.h>
- #include <linux/quotaops.h>
-+#include <linux/iversion.h>
+@@ -1863,7 +1871,7 @@ int file_update_time(struct file *file)
+ 	if (!timespec_equal(&inode->i_ctime, &now))
+ 		sync_it |= S_CTIME;
  
- #include <asm/byteorder.h>
+-	if (IS_I_VERSION(inode))
++	if (IS_I_VERSION(inode) && inode_iversion_need_inc(inode))
+ 		sync_it |= S_VERSION;
  
-@@ -302,7 +303,7 @@ void ocfs2_populate_inode(struct inode *inode, struct ocfs2_dinode *fe,
- 	OCFS2_I(inode)->ip_attr = le32_to_cpu(fe->i_attr);
- 	OCFS2_I(inode)->ip_dyn_features = le16_to_cpu(fe->i_dyn_features);
- 
--	inode->i_version = 1;
-+	inode_set_iversion(inode, 1);
- 	inode->i_generation = le32_to_cpu(fe->i_generation);
- 	inode->i_rdev = huge_decode_dev(le64_to_cpu(fe->id1.dev1.i_rdev));
- 	inode->i_mode = le16_to_cpu(fe->i_mode);
-diff --git a/fs/ocfs2/namei.c b/fs/ocfs2/namei.c
-index 3b0a10d9b36f..c801eddc4bf3 100644
---- a/fs/ocfs2/namei.c
-+++ b/fs/ocfs2/namei.c
-@@ -41,6 +41,7 @@
- #include <linux/slab.h>
- #include <linux/highmem.h>
- #include <linux/quotaops.h>
-+#include <linux/iversion.h>
- 
- #include <cluster/masklog.h>
- 
-@@ -1520,7 +1521,7 @@ static int ocfs2_rename(struct inode *old_dir,
- 			mlog_errno(status);
- 			goto bail;
- 		}
--		new_dir->i_version++;
-+		inode_inc_iversion(new_dir);
- 
- 		if (S_ISDIR(new_inode->i_mode))
- 			ocfs2_set_links_count(newfe, 0);
-diff --git a/fs/ocfs2/quota_global.c b/fs/ocfs2/quota_global.c
-index b39d14cbfa34..d03411784aaf 100644
---- a/fs/ocfs2/quota_global.c
-+++ b/fs/ocfs2/quota_global.c
-@@ -12,6 +12,7 @@
- #include <linux/writeback.h>
- #include <linux/workqueue.h>
- #include <linux/llist.h>
-+#include <linux/iversion.h>
- 
- #include <cluster/masklog.h>
- 
-@@ -289,7 +290,7 @@ ssize_t ocfs2_quota_write(struct super_block *sb, int type,
- 		mlog_errno(err);
- 		return err;
- 	}
--	gqinode->i_version++;
-+	inode_query_iversion(gqinode);
- 	ocfs2_mark_inode_dirty(handle, gqinode, oinfo->dqi_gqi_bh);
- 	return len;
- }
+ 	if (!sync_it)
 -- 
 2.14.3
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
