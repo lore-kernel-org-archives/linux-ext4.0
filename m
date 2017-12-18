@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v3 08/19] ext2: convert to new i_version API
-Date: Mon, 18 Dec 2017 10:11:45 -0500
-Message-ID: <20171218151156.14565-9-jlayton@kernel.org>
+Subject: [PATCH v3 07/19] exofs: switch to new i_version API
+Date: Mon, 18 Dec 2017 10:11:44 -0500
+Message-ID: <20171218151156.14565-8-jlayton@kernel.org>
 References: <20171218151156.14565-1-jlayton@kernel.org>
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
@@ -22,44 +22,43 @@ List-Id: linux-ext4.vger.kernel.org
 From: Jeff Layton <jlayton@redhat.com>
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext2/dir.c   | 9 +++++----
- fs/ext2/super.c | 5 +++--
- 2 files changed, 8 insertions(+), 6 deletions(-)
+ fs/exofs/dir.c   | 9 +++++----
+ fs/exofs/super.c | 3 ++-
+ 2 files changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 987647986f47..4111085a129f 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -26,6 +26,7 @@
- #include <linux/buffer_head.h>
- #include <linux/pagemap.h>
- #include <linux/swap.h>
+diff --git a/fs/exofs/dir.c b/fs/exofs/dir.c
+index 98233a97b7b8..c5a53fcc43ea 100644
+--- a/fs/exofs/dir.c
++++ b/fs/exofs/dir.c
+@@ -31,6 +31,7 @@
+  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+  */
+ 
 +#include <linux/iversion.h>
+ #include "exofs.h"
  
- typedef struct ext2_dir_entry_2 ext2_dirent;
- 
-@@ -92,7 +93,7 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
+ static inline unsigned exofs_chunk_size(struct inode *inode)
+@@ -60,7 +61,7 @@ static int exofs_commit_chunk(struct page *page, loff_t pos, unsigned len)
  	struct inode *dir = mapping->host;
  	int err = 0;
  
 -	dir->i_version++;
 +	inode_inc_iversion(dir);
- 	block_write_end(NULL, mapping, pos, len, len, page, NULL);
  
- 	if (pos+len > dir->i_size) {
-@@ -293,7 +294,7 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
+ 	if (!PageUptodate(page))
+ 		SetPageUptodate(page);
+@@ -241,7 +242,7 @@ exofs_readdir(struct file *file, struct dir_context *ctx)
+ 	unsigned long n = pos >> PAGE_SHIFT;
  	unsigned long npages = dir_pages(inode);
- 	unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
- 	unsigned char *types = NULL;
--	int need_revalidate = file->f_version != inode->i_version;
+ 	unsigned chunk_mask = ~(exofs_chunk_size(inode)-1);
+-	int need_revalidate = (file->f_version != inode->i_version);
 +	bool need_revalidate = inode_cmp_iversion(inode, file->f_version);
  
- 	if (pos > inode->i_size - EXT2_DIR_REC_LEN(1))
+ 	if (pos > inode->i_size - EXOFS_DIR_REC_LEN(1))
  		return 0;
-@@ -319,8 +320,8 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 				offset = ext2_validate_entry(kaddr, offset, chunk_mask);
+@@ -264,8 +265,8 @@ exofs_readdir(struct file *file, struct dir_context *ctx)
+ 								chunk_mask);
  				ctx->pos = (n<<PAGE_SHIFT) + offset;
  			}
 -			file->f_version = inode->i_version;
@@ -67,37 +66,28 @@ index 987647986f47..4111085a129f 100644
 +			file->f_version = inode_query_iversion(inode);
 +			need_revalidate = false;
  		}
- 		de = (ext2_dirent *)(kaddr+offset);
- 		limit = kaddr + ext2_last_byte(inode, n) - EXT2_DIR_REC_LEN(1);
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 7646818ab266..554c98b8a93a 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -33,6 +33,7 @@
- #include <linux/quotaops.h>
- #include <linux/uaccess.h>
- #include <linux/dax.h>
+ 		de = (struct exofs_dir_entry *)(kaddr + offset);
+ 		limit = kaddr + exofs_last_byte(inode, n) -
+diff --git a/fs/exofs/super.c b/fs/exofs/super.c
+index 819624cfc8da..7e244093c0e5 100644
+--- a/fs/exofs/super.c
++++ b/fs/exofs/super.c
+@@ -38,6 +38,7 @@
+ #include <linux/module.h>
+ #include <linux/exportfs.h>
+ #include <linux/slab.h>
 +#include <linux/iversion.h>
- #include "ext2.h"
- #include "xattr.h"
- #include "acl.h"
-@@ -184,7 +185,7 @@ static struct inode *ext2_alloc_inode(struct super_block *sb)
- 	if (!ei)
+ 
+ #include "exofs.h"
+ 
+@@ -159,7 +160,7 @@ static struct inode *exofs_alloc_inode(struct super_block *sb)
+ 	if (!oi)
  		return NULL;
- 	ei->i_block_alloc_info = NULL;
--	ei->vfs_inode.i_version = 1;
-+	inode_set_iversion(&ei->vfs_inode, 1);
- #ifdef CONFIG_QUOTA
- 	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
- #endif
-@@ -1569,7 +1570,7 @@ static ssize_t ext2_quota_write(struct super_block *sb, int type,
- 		return err;
- 	if (inode->i_size < off+len-towrite)
- 		i_size_write(inode, off+len-towrite);
--	inode->i_version++;
-+	inode_inc_iversion(inode);
- 	inode->i_mtime = inode->i_ctime = current_time(inode);
- 	mark_inode_dirty(inode);
- 	return len - towrite;
+ 
+-	oi->vfs_inode.i_version = 1;
++	inode_set_iversion(&oi->vfs_inode, 1);
+ 	return &oi->vfs_inode;
+ }
+ 
 -- 
 2.14.3
