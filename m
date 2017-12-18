@@ -1,11 +1,13 @@
-From: Jan Kara <jack@suse.cz>
+From: Jeff Layton <jlayton@kernel.org>
 Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
-Date: Mon, 18 Dec 2017 17:34:18 +0100
-Message-ID: <20171218163418.GF30350@quack2.suse.cz>
+Date: Mon, 18 Dec 2017 12:22:20 -0500
+Message-ID: <1513617740.3422.30.camel@kernel.org>
 References: <20171218151156.14565-1-jlayton@kernel.org>
- <20171218151156.14565-20-jlayton@kernel.org>
+         <20171218151156.14565-20-jlayton@kernel.org>
+         <20171218163418.GF30350@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
         bfields@fieldses.org, neilb@suse.de, jack@suse.de,
@@ -17,71 +19,100 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com
-To: Jeff Layton <jlayton@kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171218151156.14565-20-jlayton@kernel.org>
+In-Reply-To: <20171218163418.GF30350@quack2.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 18-12-17 10:11:56, Jeff Layton wrote:
->  static inline bool
->  inode_maybe_inc_iversion(struct inode *inode, bool force)
->  {
-> -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
-> +	u64 cur, old, new;
->  
-> -	atomic64_inc(ivp);
-> +	cur = (u64)atomic64_read(&inode->i_version);
-> +	for (;;) {
-> +		/* If flag is clear then we needn't do anything */
-> +		if (!force && !(cur & I_VERSION_QUERIED))
-> +			return false;
+On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
+> On Mon 18-12-17 10:11:56, Jeff Layton wrote:
+> >  static inline bool
+> >  inode_maybe_inc_iversion(struct inode *inode, bool force)
+> >  {
+> > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
+> > +	u64 cur, old, new;
+> >  
+> > -	atomic64_inc(ivp);
+> > +	cur = (u64)atomic64_read(&inode->i_version);
+> > +	for (;;) {
+> > +		/* If flag is clear then we needn't do anything */
+> > +		if (!force && !(cur & I_VERSION_QUERIED))
+> > +			return false;
+> 
+> The fast path here misses any memory barrier. Thus it seems this query
+> could be in theory reordered before any store that happened to modify the
+> inode? Or maybe we could race and miss the fact that in fact this i_version
+> has already been queried? But maybe there's some higher level locking that
+> makes sure this is all a non-issue... But in that case it would deserve
+> some comment I guess.
+> 
 
-The fast path here misses any memory barrier. Thus it seems this query
-could be in theory reordered before any store that happened to modify the
-inode? Or maybe we could race and miss the fact that in fact this i_version
-has already been queried? But maybe there's some higher level locking that
-makes sure this is all a non-issue... But in that case it would deserve
-some comment I guess.
+There's no higher-level locking. Getting locking out of this codepath is
+a good thing IMO. The larger question here is whether we really care
+about ordering this with anything else.
 
-> +
-> +		/* Since lowest bit is flag, add 2 to avoid it */
-> +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
-> +
-> +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
-> +		if (likely(old == cur))
-> +			break;
-> +		cur = old;
-> +	}
->  	return true;
->  }
->  
+The i_version, as implemented today, is not ordered with actual changes
+to the inode. We only take the i_lock today when modifying it, not when
+querying it. It's possible today that you could see the results of a
+change and then do a fetch of the i_version that doesn't show an
+increment vs. a previous change.
 
-...
+It'd be nice if this were atomic with the actual changes that it
+represents, but I think that would be prohibitively expensive. That may
+be something we need to address. I'm not sure we really want to do it as
+part of this patchset though.
 
->  static inline u64
->  inode_query_iversion(struct inode *inode)
->  {
-> -	return inode_peek_iversion(inode);
-> +	u64 cur, old, new;
-> +
-> +	cur = atomic64_read(&inode->i_version);
-> +	for (;;) {
-> +		/* If flag is already set, then no need to swap */
-> +		if (cur & I_VERSION_QUERIED)
-> +			break;
-> +
-> +		new = cur | I_VERSION_QUERIED;
-> +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
-> +		if (old == cur)
-> +			break;
-> +		cur = old;
-> +	}
+> > +
+> > +		/* Since lowest bit is flag, add 2 to avoid it */
+> > +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
+> > +
+> > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+> > +		if (likely(old == cur))
+> > +			break;
+> > +		cur = old;
+> > +	}
+> >  	return true;
+> >  }
+> >  
+> 
+> ...
+> 
+> >  static inline u64
+> >  inode_query_iversion(struct inode *inode)
+> >  {
+> > -	return inode_peek_iversion(inode);
+> > +	u64 cur, old, new;
+> > +
+> > +	cur = atomic64_read(&inode->i_version);
+> > +	for (;;) {
+> > +		/* If flag is already set, then no need to swap */
+> > +		if (cur & I_VERSION_QUERIED)
+> > +			break;
+> > +
+> > +		new = cur | I_VERSION_QUERIED;
+> > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+> > +		if (old == cur)
+> > +			break;
+> > +		cur = old;
+> > +	}
+> 
+> Why not just use atomic64_or() here?
+> 
 
-Why not just use atomic64_or() here?
+If the cmpxchg fails, then either:
 
-								Honza
+1) it was incremented
+2) someone flagged it QUERIED
+
+If an increment happened then we don't need to flag it as QUERIED if
+we're returning an older value. If we use atomic64_or, then we can't
+tell if an increment happened so we'd end up potentially flagging it
+more than necessary.
+
+In principle, either outcome is technically OK and we don't have to loop
+if the cmpxchg doesn't work. That said, if we think there might be a
+later i_version available, then I think we probably want to try to query
+it again so we can return as late a one as possible.
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Jeff Layton <jlayton@kernel.org>
