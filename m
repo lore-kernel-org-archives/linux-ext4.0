@@ -1,85 +1,31 @@
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
-Date: Mon, 18 Dec 2017 12:36:51 -0500
-Message-ID: <20171218173651.GB12454@fieldses.org>
-References: <20171218151156.14565-1-jlayton@kernel.org>
- <20171218151156.14565-20-jlayton@kernel.org>
- <20171218163418.GF30350@quack2.suse.cz>
- <1513617740.3422.30.camel@kernel.org>
+From: Sayan Ghosh <sgdgp.2014@gmail.com>
+Subject: [QUESTION] Getting block bitmap
+Date: Mon, 18 Dec 2017 23:13:39 +0530
+Message-ID: <CAExFE6=Oj27M-6x++VGC6DNhao539CtjiPjmGgfk6LDRRVzufA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-To: Jeff Layton <jlayton@kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1513617740.3422.30.camel@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-it0-f41.google.com ([209.85.214.41]:32784 "EHLO
+        mail-it0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S936782AbdLRRoV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Dec 2017 12:44:21 -0500
+Received: by mail-it0-f41.google.com with SMTP id o130so5920286itg.0
+        for <linux-ext4@vger.kernel.org>; Mon, 18 Dec 2017 09:44:20 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 18, 2017 at 12:22:20PM -0500, Jeff Layton wrote:
-> On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
-> > On Mon 18-12-17 10:11:56, Jeff Layton wrote:
-> > >  static inline bool
-> > >  inode_maybe_inc_iversion(struct inode *inode, bool force)
-> > >  {
-> > > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
-> > > +	u64 cur, old, new;
-> > >  
-> > > -	atomic64_inc(ivp);
-> > > +	cur = (u64)atomic64_read(&inode->i_version);
-> > > +	for (;;) {
-> > > +		/* If flag is clear then we needn't do anything */
-> > > +		if (!force && !(cur & I_VERSION_QUERIED))
-> > > +			return false;
-> > 
-> > The fast path here misses any memory barrier. Thus it seems this query
-> > could be in theory reordered before any store that happened to modify the
-> > inode? Or maybe we could race and miss the fact that in fact this i_version
-> > has already been queried? But maybe there's some higher level locking that
-> > makes sure this is all a non-issue... But in that case it would deserve
-> > some comment I guess.
-> > 
-> 
-> There's no higher-level locking. Getting locking out of this codepath is
-> a good thing IMO. The larger question here is whether we really care
-> about ordering this with anything else.
-> 
-> The i_version, as implemented today, is not ordered with actual changes
-> to the inode. We only take the i_lock today when modifying it, not when
-> querying it. It's possible today that you could see the results of a
-> change and then do a fetch of the i_version that doesn't show an
-> increment vs. a previous change.
-> 
-> It'd be nice if this were atomic with the actual changes that it
-> represents, but I think that would be prohibitively expensive. That may
-> be something we need to address. I'm not sure we really want to do it as
-> part of this patchset though.
+Hello,
 
-I don't think we need full atomicity, but we *do* need the i_version
-increment to be seen as ordered after the inode change.  That should be
-relatively inexpensive, yes?
+bh = ext4_read_block_bitmap(sb,block_group);
 
-Otherwise an inode change could be overlooked indefinitely, because a
-client could cache the old contents with the new i_version value and
-never see the i_version change again as long as the inode isn't touched
-again.
+This function return the buffer head for the block/page with the block bitmap
 
-(If the client instead caches new data with the old inode version, there
-may be an unnecessary cache invalidation next time the client queries
-the change attribute.  That's a performance bug, but not really a
-correctness problem, at least for clients depending only on
-close-to-open semantics: they'll only depend on seeing the new change
-attribute after the change has been flushed to disk.  The performance
-problem should be mitigated by the race being very rare.)
+char *block_bmap = bh->b_data;
 
---b.
+Doing this does not give the block bitmap string
+
+What is the process to get the block bitmap in string or array form?
+
+Regards,
+Sayan
