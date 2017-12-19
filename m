@@ -1,132 +1,72 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
-Date: Tue, 19 Dec 2017 10:29:47 +0100
-Message-ID: <20171219092947.GC2277@quack2.suse.cz>
-References: <20171218151156.14565-1-jlayton@kernel.org>
- <20171218151156.14565-20-jlayton@kernel.org>
- <20171218163418.GF30350@quack2.suse.cz>
- <1513617740.3422.30.camel@kernel.org>
+Subject: Re: [PATCH 0/2] ext4: Fix ENOSPC handling for DAX faults
+Date: Tue, 19 Dec 2017 15:30:51 +0100
+Message-ID: <20171219143051.GA25754@quack2.suse.cz>
+References: <20171213091352.23448-1-jack@suse.cz>
+ <20171215193625.GA5454@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-To: Jeff Layton <jlayton@kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+        Ted Tso <tytso@mit.edu>,
+        Dan Williams <dan.j.williams@intel.com>,
+        linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1513617740.3422.30.camel@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20171215193625.GA5454@linux.intel.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 18-12-17 12:22:20, Jeff Layton wrote:
-> On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
-> > On Mon 18-12-17 10:11:56, Jeff Layton wrote:
-> > >  static inline bool
-> > >  inode_maybe_inc_iversion(struct inode *inode, bool force)
-> > >  {
-> > > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
-> > > +	u64 cur, old, new;
-> > >  
-> > > -	atomic64_inc(ivp);
-> > > +	cur = (u64)atomic64_read(&inode->i_version);
-> > > +	for (;;) {
-> > > +		/* If flag is clear then we needn't do anything */
-> > > +		if (!force && !(cur & I_VERSION_QUERIED))
-> > > +			return false;
+On Fri 15-12-17 12:36:25, Ross Zwisler wrote:
+> On Wed, Dec 13, 2017 at 10:13:50AM +0100, Jan Kara wrote:
+> > Hello,
 > > 
-> > The fast path here misses any memory barrier. Thus it seems this query
-> > could be in theory reordered before any store that happened to modify the
-> > inode? Or maybe we could race and miss the fact that in fact this i_version
-> > has already been queried? But maybe there's some higher level locking that
-> > makes sure this is all a non-issue... But in that case it would deserve
-> > some comment I guess.
+> > these two patches fix handling of ENOSPC during DAX faults. The problem is
+> > that currently running transaction may be holding lots of already freed
+> > blocks which can be reallocated only once the transaction commits. Standard
+> > retry logic in ext4_iomap_end() does not work for DAX page fault handler
+> > since we hold current transaction open in ext4_dax_huge_fault() and thus
+> > retry logic cannot force the running transaction and as a result application
+> > gets SIGBUS due to premature ENOSPC error.
 > > 
+> > These two patches fix the problem. I'm not too happy about patch 1/2 passing
+> > additional info (error code) from the fault handler but I don't see an
+> > easy better option since we want to also pass back special return values
+> > like VM_FAULT_FALLBACK. Comments are welcome.
 > 
-> There's no higher-level locking. Getting locking out of this codepath is
-> a good thing IMO. The larger question here is whether we really care
-> about ordering this with anything else.
+> I also don't love having two error codes coming back out of the DAX fault
+> handlers.  I'm worried that we'll end up forgetting to set errp in some cases,
+> and will only set the VM_FAULT_* error code.
 > 
-> The i_version, as implemented today, is not ordered with actual changes
-> to the inode. We only take the i_lock today when modifying it, not when
-> querying it. It's possible today that you could see the results of a
-> change and then do a fetch of the i_version that doesn't show an
-> increment vs. a previous change.
+> I wonder if a better way to solve this would be to define a new
+> VM_FAULT_NOSPC, just like we have VM_FAULT_OOM for ENOMEM errors?  Essentially
+> what it seems like we are saying is that the very general return of just
+> VM_FAULT_SIGBUS doesn't provide us enough information, and that being able to
+> distinguish that from ENOSPC errors would be useful.
 
-Yeah, so I don't suggest that you should fix unrelated issues but original
-i_lock protection did actually provide memory barriers (although
-semi-permeable, but in practice they are very often enough) and your patch
-removing those could have changed a theoretical issue to a practical
-problem. So at least preserving that original acquire-release semantics
-of i_version handling would be IMHO good.
+Yes, we need to propagate more information than just VM_FAULT_SIGBUS from
+->iomap_begin() down into the page fault handler.
 
-> It'd be nice if this were atomic with the actual changes that it
-> represents, but I think that would be prohibitively expensive. That may
-> be something we need to address. I'm not sure we really want to do it as
-> part of this patchset though.
+> With that flag we would have 2 choices:
 > 
-> > > +
-> > > +		/* Since lowest bit is flag, add 2 to avoid it */
-> > > +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
-> > > +
-> > > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
-> > > +		if (likely(old == cur))
-> > > +			break;
-> > > +		cur = old;
-> > > +	}
-> > >  	return true;
-> > >  }
-> > >  
-> > 
-> > ...
-> > 
-> > >  static inline u64
-> > >  inode_query_iversion(struct inode *inode)
-> > >  {
-> > > -	return inode_peek_iversion(inode);
-> > > +	u64 cur, old, new;
-> > > +
-> > > +	cur = atomic64_read(&inode->i_version);
-> > > +	for (;;) {
-> > > +		/* If flag is already set, then no need to swap */
-> > > +		if (cur & I_VERSION_QUERIED)
-> > > +			break;
-> > > +
-> > > +		new = cur | I_VERSION_QUERIED;
-> > > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
-> > > +		if (old == cur)
-> > > +			break;
-> > > +		cur = old;
-> > > +	}
-> > 
-> > Why not just use atomic64_or() here?
-> > 
+> 1) Add VM_FAULT_NOSPC to the VM_FAULT_ERROR mask, and then update things like
+> mm_fault_error() appropriately so, like the other errors in this class, it
+> results in SIGBUS, or
 > 
-> If the cmpxchg fails, then either:
+> 2) Just always return (VM_FAULT_NOSPC|VM_FAULT_SIGBUS), which I think would
+> mean that you wouldn't need to alter mm_fault_error() et al.
 > 
-> 1) it was incremented
-> 2) someone flagged it QUERIED
-> 
-> If an increment happened then we don't need to flag it as QUERIED if
-> we're returning an older value. If we use atomic64_or, then we can't
-> tell if an increment happened so we'd end up potentially flagging it
-> more than necessary.
-> 
-> In principle, either outcome is technically OK and we don't have to loop
-> if the cmpxchg doesn't work. That said, if we think there might be a
-> later i_version available, then I think we probably want to try to query
-> it again so we can return as late a one as possible.
+> Do either of these sound appealing?
 
-OK, makes sense. I'm just a bit vary of cmpxchg loops as they tend to
-behave pretty badly in contended cases but I guess i_version won't be
-hammered *that* hard.
+What I don't like about VM_FAULT_NOSPC is that it is polluting generic
+VM_FAULT_ namespace for something that just needs to be propagated from one
+ext4 function to another through the DAX helper function. In particular
+generic MM has nothing to do with such error.
+
+If forgetting to set *errp is your only concern, I think I can address that
+by making the argument there 'int *iomap_ret' and storing there return from
+->iomap_begin() unconditionally. That will work for ext4 as well and we
+won't forget to set it. Thoughts?
 
 								Honza
 -- 
