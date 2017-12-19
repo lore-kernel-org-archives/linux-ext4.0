@@ -1,74 +1,82 @@
-From: Jan Kara <jack@suse.cz>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 Subject: Re: [PATCH 0/2] ext4: Fix ENOSPC handling for DAX faults
-Date: Tue, 19 Dec 2017 15:30:51 +0100
-Message-ID: <20171219143051.GA25754@quack2.suse.cz>
+Date: Tue, 19 Dec 2017 09:42:34 -0700
+Message-ID: <20171219164234.GA924@linux.intel.com>
 References: <20171213091352.23448-1-jack@suse.cz>
  <20171215193625.GA5454@linux.intel.com>
+ <20171219143051.GA25754@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        Ted Tso <tytso@mit.edu>,
-        Dan Williams <dan.j.williams@intel.com>,
-        linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Ted Tso <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20171215193625.GA5454@linux.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <20171219143051.GA25754-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 15-12-17 12:36:25, Ross Zwisler wrote:
-> On Wed, Dec 13, 2017 at 10:13:50AM +0100, Jan Kara wrote:
-> > Hello,
+On Tue, Dec 19, 2017 at 03:30:51PM +0100, Jan Kara wrote:
+> On Fri 15-12-17 12:36:25, Ross Zwisler wrote:
+> > On Wed, Dec 13, 2017 at 10:13:50AM +0100, Jan Kara wrote:
+> > > Hello,
+> > > 
+> > > these two patches fix handling of ENOSPC during DAX faults. The problem is
+> > > that currently running transaction may be holding lots of already freed
+> > > blocks which can be reallocated only once the transaction commits. Standard
+> > > retry logic in ext4_iomap_end() does not work for DAX page fault handler
+> > > since we hold current transaction open in ext4_dax_huge_fault() and thus
+> > > retry logic cannot force the running transaction and as a result application
+> > > gets SIGBUS due to premature ENOSPC error.
+> > > 
+> > > These two patches fix the problem. I'm not too happy about patch 1/2 passing
+> > > additional info (error code) from the fault handler but I don't see an
+> > > easy better option since we want to also pass back special return values
+> > > like VM_FAULT_FALLBACK. Comments are welcome.
 > > 
-> > these two patches fix handling of ENOSPC during DAX faults. The problem is
-> > that currently running transaction may be holding lots of already freed
-> > blocks which can be reallocated only once the transaction commits. Standard
-> > retry logic in ext4_iomap_end() does not work for DAX page fault handler
-> > since we hold current transaction open in ext4_dax_huge_fault() and thus
-> > retry logic cannot force the running transaction and as a result application
-> > gets SIGBUS due to premature ENOSPC error.
+> > I also don't love having two error codes coming back out of the DAX fault
+> > handlers.  I'm worried that we'll end up forgetting to set errp in some cases,
+> > and will only set the VM_FAULT_* error code.
 > > 
-> > These two patches fix the problem. I'm not too happy about patch 1/2 passing
-> > additional info (error code) from the fault handler but I don't see an
-> > easy better option since we want to also pass back special return values
-> > like VM_FAULT_FALLBACK. Comments are welcome.
+> > I wonder if a better way to solve this would be to define a new
+> > VM_FAULT_NOSPC, just like we have VM_FAULT_OOM for ENOMEM errors?  Essentially
+> > what it seems like we are saying is that the very general return of just
+> > VM_FAULT_SIGBUS doesn't provide us enough information, and that being able to
+> > distinguish that from ENOSPC errors would be useful.
 > 
-> I also don't love having two error codes coming back out of the DAX fault
-> handlers.  I'm worried that we'll end up forgetting to set errp in some cases,
-> and will only set the VM_FAULT_* error code.
+> Yes, we need to propagate more information than just VM_FAULT_SIGBUS from
+> ->iomap_begin() down into the page fault handler.
 > 
-> I wonder if a better way to solve this would be to define a new
-> VM_FAULT_NOSPC, just like we have VM_FAULT_OOM for ENOMEM errors?  Essentially
-> what it seems like we are saying is that the very general return of just
-> VM_FAULT_SIGBUS doesn't provide us enough information, and that being able to
-> distinguish that from ENOSPC errors would be useful.
-
-Yes, we need to propagate more information than just VM_FAULT_SIGBUS from
-->iomap_begin() down into the page fault handler.
-
-> With that flag we would have 2 choices:
+> > With that flag we would have 2 choices:
+> > 
+> > 1) Add VM_FAULT_NOSPC to the VM_FAULT_ERROR mask, and then update things like
+> > mm_fault_error() appropriately so, like the other errors in this class, it
+> > results in SIGBUS, or
+> > 
+> > 2) Just always return (VM_FAULT_NOSPC|VM_FAULT_SIGBUS), which I think would
+> > mean that you wouldn't need to alter mm_fault_error() et al.
+> > 
+> > Do either of these sound appealing?
 > 
-> 1) Add VM_FAULT_NOSPC to the VM_FAULT_ERROR mask, and then update things like
-> mm_fault_error() appropriately so, like the other errors in this class, it
-> results in SIGBUS, or
+> What I don't like about VM_FAULT_NOSPC is that it is polluting generic
+> VM_FAULT_ namespace for something that just needs to be propagated from one
+> ext4 function to another through the DAX helper function. In particular
+> generic MM has nothing to do with such error.
 > 
-> 2) Just always return (VM_FAULT_NOSPC|VM_FAULT_SIGBUS), which I think would
-> mean that you wouldn't need to alter mm_fault_error() et al.
-> 
-> Do either of these sound appealing?
+> If forgetting to set *errp is your only concern, I think I can address that
+> by making the argument there 'int *iomap_ret' and storing there return from
+> ->iomap_begin() unconditionally. That will work for ext4 as well and we
+> won't forget to set it. Thoughts?
 
-What I don't like about VM_FAULT_NOSPC is that it is polluting generic
-VM_FAULT_ namespace for something that just needs to be propagated from one
-ext4 function to another through the DAX helper function. In particular
-generic MM has nothing to do with such error.
-
-If forgetting to set *errp is your only concern, I think I can address that
-by making the argument there 'int *iomap_ret' and storing there return from
-->iomap_begin() unconditionally. That will work for ext4 as well and we
-won't forget to set it. Thoughts?
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Yea, this sounds nicer to me.  Less chance we'll forget to set it somewhere,
+and it's much more specific about the error that it's trying to capture.
+Sounds good.
