@@ -1,157 +1,123 @@
-From: Jeff Layton <jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
-Date: Tue, 19 Dec 2017 12:14:30 -0500
-Message-ID: <1513703670.20392.21.camel@kernel.org>
-References: <20171218151156.14565-1-jlayton@kernel.org>
-         <20171218151156.14565-20-jlayton@kernel.org>
-         <20171218163418.GF30350@quack2.suse.cz>
-         <1513617740.3422.30.camel@kernel.org>
-         <20171219092947.GC2277@quack2.suse.cz>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: BUG: unable to handle kernel NULL pointer dereference in
+ rb_insert_color
+Date: Tue, 19 Dec 2017 13:59:06 -0800
+Message-ID: <20171219215906.GA12465@gmail.com>
+References: <94eb2c1170ce36bd770560ad6d3a@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org, jack-l3A5Bk7waGM@public.gmane.org,
-        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-        adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
-        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, clm-b10kYP2dOMg@public.gmane.org, jbacik-b10kYP2dOMg@public.gmane.org,
-        dsterba-IBi9RG/b67k@public.gmane.org, linux-integrity-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        zohar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, dmitry.kasatkin-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
-        linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-        jaltman-hRzEac23uH1Wk0Htik3J/w@public.gmane.org
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20171219092947.GC2277-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+To: syzbot
+        <bot+eb13811afcefe99cfe45081054e7883f569f949d@syzkaller.appspotmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <94eb2c1170ce36bd770560ad6d3a@google.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 2017-12-19 at 10:29 +0100, Jan Kara wrote:
-> On Mon 18-12-17 12:22:20, Jeff Layton wrote:
-> > On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
-> > > On Mon 18-12-17 10:11:56, Jeff Layton wrote:
-> > > >  static inline bool
-> > > >  inode_maybe_inc_iversion(struct inode *inode, bool force)
-> > > >  {
-> > > > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
-> > > > +	u64 cur, old, new;
-> > > >  
-> > > > -	atomic64_inc(ivp);
-> > > > +	cur = (u64)atomic64_read(&inode->i_version);
-> > > > +	for (;;) {
-> > > > +		/* If flag is clear then we needn't do anything */
-> > > > +		if (!force && !(cur & I_VERSION_QUERIED))
-> > > > +			return false;
-> > > 
-> > > The fast path here misses any memory barrier. Thus it seems this query
-> > > could be in theory reordered before any store that happened to modify the
-> > > inode? Or maybe we could race and miss the fact that in fact this i_version
-> > > has already been queried? But maybe there's some higher level locking that
-> > > makes sure this is all a non-issue... But in that case it would deserve
-> > > some comment I guess.
-> > > 
-> > 
-> > There's no higher-level locking. Getting locking out of this codepath is
-> > a good thing IMO. The larger question here is whether we really care
-> > about ordering this with anything else.
-> > 
-> > The i_version, as implemented today, is not ordered with actual changes
-> > to the inode. We only take the i_lock today when modifying it, not when
-> > querying it. It's possible today that you could see the results of a
-> > change and then do a fetch of the i_version that doesn't show an
-> > increment vs. a previous change.
+On Tue, Dec 19, 2017 at 12:41:01AM -0800, syzbot wrote:
+> Hello,
 > 
-> Yeah, so I don't suggest that you should fix unrelated issues but original
-> i_lock protection did actually provide memory barriers (although
-> semi-permeable, but in practice they are very often enough) and your patch
-> removing those could have changed a theoretical issue to a practical
-> problem. So at least preserving that original acquire-release semantics
-> of i_version handling would be IMHO good.
+> syzkaller hit the following crash on
+> 6084b576dca2e898f5c101baef151f7bfdbb606d
+> git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/master
+> compiler: gcc (GCC) 7.1.1 20170620
+> .config is attached
+> Raw console output is attached.
 > 
-
-Agreed. I've no objection to memory barriers here and I'm looking at
-that, I just need to go over Dave's comments and memory-barriers.txt
-(again!) to make sure I get them right.
-
-> > It'd be nice if this were atomic with the actual changes that it
-> > represents, but I think that would be prohibitively expensive. That may
-> > be something we need to address. I'm not sure we really want to do it as
-> > part of this patchset though.
-> > 
-> > > > +
-> > > > +		/* Since lowest bit is flag, add 2 to avoid it */
-> > > > +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
-> > > > +
-> > > > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
-> > > > +		if (likely(old == cur))
-> > > > +			break;
-> > > > +		cur = old;
-> > > > +	}
-> > > >  	return true;
-> > > >  }
-> > > >  
-> > > 
-> > > ...
-> > > 
-> > > >  static inline u64
-> > > >  inode_query_iversion(struct inode *inode)
-> > > >  {
-> > > > -	return inode_peek_iversion(inode);
-> > > > +	u64 cur, old, new;
-> > > > +
-> > > > +	cur = atomic64_read(&inode->i_version);
-> > > > +	for (;;) {
-> > > > +		/* If flag is already set, then no need to swap */
-> > > > +		if (cur & I_VERSION_QUERIED)
-> > > > +			break;
-> > > > +
-> > > > +		new = cur | I_VERSION_QUERIED;
-> > > > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
-> > > > +		if (old == cur)
-> > > > +			break;
-> > > > +		cur = old;
-> > > > +	}
-> > > 
-> > > Why not just use atomic64_or() here?
-> > > 
-> > 
-> > If the cmpxchg fails, then either:
-> > 
-> > 1) it was incremented
-> > 2) someone flagged it QUERIED
-> > 
-> > If an increment happened then we don't need to flag it as QUERIED if
-> > we're returning an older value. If we use atomic64_or, then we can't
-> > tell if an increment happened so we'd end up potentially flagging it
-> > more than necessary.
-> > 
-> > In principle, either outcome is technically OK and we don't have to loop
-> > if the cmpxchg doesn't work. That said, if we think there might be a
-> > later i_version available, then I think we probably want to try to query
-> > it again so we can return as late a one as possible.
+> Unfortunately, I don't have any reproducer for this bug yet.
 > 
-> OK, makes sense. I'm just a bit vary of cmpxchg loops as they tend to
-> behave pretty badly in contended cases but I guess i_version won't be
-> hammered *that* hard.
 > 
+> sctp: [Deprecated]: syz-executor6 (pid 4202) Use of int in max_burst
+> socket option.
+> Use struct sctp_assoc_value instead
+> BUG: unable to handle kernel NULL pointer dereference at 0000000000000008
+> sctp: [Deprecated]: syz-executor4 (pid 4240) Use of int in max_burst
+> socket option.
+> Use struct sctp_assoc_value instead
+> sctp: [Deprecated]: syz-executor4 (pid 4240) Use of int in max_burst
+> socket option.
+> Use struct sctp_assoc_value instead
+> IP: __rb_insert lib/rbtree.c:126 [inline]
+> IP: rb_insert_color+0x17/0x190 lib/rbtree.c:452
+> PGD 0 P4D 0
+> Oops: 0000 [#1] SMP
+> Dumping ftrace buffer:
+>    (ftrace buffer empty)
+> Modules linked in:
+> CPU: 0 PID: 4244 Comm: modprobe Not tainted 4.15.0-rc3-next-20171214+ #67
+> Hardware name: Google Google Compute Engine/Google Compute Engine,
+> BIOS Google 01/01/2011
+> RIP: 0010:__rb_insert lib/rbtree.c:126 [inline]
+> RIP: 0010:rb_insert_color+0x17/0x190 lib/rbtree.c:452
+> RSP: 0018:ffffc900010a7c08 EFLAGS: 00010246
+> RAX: 0000000000000000 RBX: 0000000000000000 RCX: ffffffff814ddcb9
+> RDX: ffff8801ebedf988 RSI: ffff8801ebfd6400 RDI: ffff88021413a408
+> RBP: ffffc900010a7c08 R08: 000000000002bcf8 R09: ffff88021413a400
+> R10: 0000000000000000 R11: 0000000000000000 R12: ffff88021413a400
+> R13: ffff8801ebedf990 R14: 00000000a34fc52a R15: ffff8801ebedf988
+> FS:  00007f85a5155700(0000) GS:ffff88021fc00000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 0000000000000008 CR3: 00000001eaccd006 CR4: 00000000001606f0
+> DR0: 0000000020000000 DR1: 0000000020000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000600
+> Call Trace:
+>  ext4_htree_store_dirent+0x122/0x160 fs/ext4/dir.c:488
+>  htree_dirblock_to_tree+0x112/0x300 fs/ext4/namei.c:1019
+>  ext4_htree_fill_tree+0xdf/0x410 fs/ext4/namei.c:1096
+>  ext4_dx_readdir fs/ext4/dir.c:575 [inline]
+>  ext4_readdir+0x8cf/0xd70 fs/ext4/dir.c:122
+>  iterate_dir+0xb8/0x200 fs/readdir.c:51
+>  SYSC_getdents fs/readdir.c:231 [inline]
+>  SyS_getdents+0xcc/0x1b0 fs/readdir.c:212
+>  entry_SYSCALL_64_fastpath+0x1f/0x96
+> RIP: 0033:0x7f85a4a45575
+> RSP: 002b:00007ffc9b5be120 EFLAGS: 00000246 ORIG_RAX: 000000000000004e
+> RAX: ffffffffffffffda RBX: 00007f85a4d23e98 RCX: 00007f85a4a45575
+> RDX: 0000000000008000 RSI: 00005633094701e0 RDI: 0000000000000000
+> RBP: 00007f85a4d23e40 R08: 00005633094701e0 R09: 00007f85a4d23e90
+> R10: 0000000000000000 R11: 0000000000000246 R12: 00005633094701b0
+> R13: 0000000000018e21 R14: 0000000000000000 R15: 0000000000000004
+> Code: 48 85 d2 75 eb 5d c3 31 c0 5d c3 66 0f 1f 84 00 00 00 00 00 55
+> 48 8b 17 48 89 e5 48 85 d2 0f 84 4c 01 00 00 48 8b 02 a8 01 75 5e
+> <48> 8b 48 08 49 89 c0 48 39 d1 74 54 48 85 c9 74 09 f6 01 01 0f
+> RIP: __rb_insert lib/rbtree.c:126 [inline] RSP: ffffc900010a7c08
+> RIP: rb_insert_color+0x17/0x190 lib/rbtree.c:452 RSP: ffffc900010a7c08
+> CR2: 0000000000000008
+> BUG: unable to handle kernel paging request at 0000000100000001
+> ---[ end trace c403bd3ebad2ccb0 ]---
 
-That's the principle I'm operating under here, and I think it's valid
-for almost all workloads. Incrementing the i_version on parallel writes
-should be mostly uncontended now, whereas they at had to serialize on
-the i_lock before.
+The line number in lib/rbtree.c seems to be slightly off.  Looking at the
+disassembly:
 
-The pessimal case here, I think is parallel increments and queries. We
-may see that sort of workload under knfsd, but I'm fine with giving
-knfsd a small performance hit to help performance on other workloads.
+	ffffffff825b5ea0 <rb_insert_color>:
+	ffffffff825b5ea0:       55                      push   %rbp
+	ffffffff825b5ea1:       48 8b 17                mov    (%rdi),%rdx
+	ffffffff825b5ea4:       48 89 e5                mov    %rsp,%rbp
+	ffffffff825b5ea7:       48 85 d2                test   %rdx,%rdx
+	ffffffff825b5eaa:       0f 84 4c 01 00 00       je     ffffffff825b5ffc <rb_insert_color+0x15c>
+	ffffffff825b5eb0:       48 8b 02                mov    (%rdx),%rax
+	ffffffff825b5eb3:       a8 01                   test   $0x1,%al
+	ffffffff825b5eb5:       75 5e                   jne    ffffffff825b5f15 <rb_insert_color+0x75>
+	ffffffff825b5eb7:       48 8b 48 08             mov    0x8(%rax),%rcx
 
-While we're on the subject of looping here, should I add a cpu_relax()
-into these loops?
+It crashed on 'mov 0x8(%rax),%rcx' which corresponds to
+'tmp = gparent->rb_right;' at lib/rbtree.c:131.  So 'parent' was the root node,
+but its color was red, while it is supposed to be black.
 
-Thanks for the review so far!
--- 
-Jeff Layton <jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+No idea how that happened, but it's almost certainly not an ext4 bug.  In fact
+there is another report of this same crash that has a different call trace:
+
+	Call Trace:
+	 key_alloc_serial security/keys/key.c:170 [inline]
+	 key_alloc+0x54c/0x5b0 security/keys/key.c:319
+	 keyring_alloc+0x4d/0xb0 security/keys/keyring.c:503
+	 install_process_keyring_to_cred.part.3+0x38/0x80 security/keys/process_keys.c:192
+	 install_process_keyring_to_cred security/keys/process_keys.c:634 [inline]
+	 install_process_keyring security/keys/process_keys.c:217 [inline]
+	 lookup_user_key+0x4ed/0x7c0 security/keys/process_keys.c:574
+	 SYSC_add_key security/keys/keyctl.c:114 [inline]
+	 SyS_add_key+0xec/0x260 security/keys/keyctl.c:62
+	 entry_SYSCALL_64_fastpath+0x1f/0x96
