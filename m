@@ -1,49 +1,134 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 198187] jbd2_log_wait_commit hangs
-Date: Mon, 18 Dec 2017 23:39:10 +0000
-Message-ID: <bug-198187-13602-uWQarARA54@https.bugzilla.kernel.org/>
-References: <bug-198187-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
+Date: Tue, 19 Dec 2017 10:29:47 +0100
+Message-ID: <20171219092947.GC2277@quack2.suse.cz>
+References: <20171218151156.14565-1-jlayton@kernel.org>
+ <20171218151156.14565-20-jlayton@kernel.org>
+ <20171218163418.GF30350@quack2.suse.cz>
+ <1513617740.3422.30.camel@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:58154 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1759867AbdLRXjL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 18 Dec 2017 18:39:11 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B8FED28E05
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Dec 2017 23:39:10 +0000 (UTC)
-In-Reply-To: <bug-198187-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+To: Jeff Layton <jlayton@kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1513617740.3422.30.camel@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=198187
+On Mon 18-12-17 12:22:20, Jeff Layton wrote:
+> On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
+> > On Mon 18-12-17 10:11:56, Jeff Layton wrote:
+> > >  static inline bool
+> > >  inode_maybe_inc_iversion(struct inode *inode, bool force)
+> > >  {
+> > > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
+> > > +	u64 cur, old, new;
+> > >  
+> > > -	atomic64_inc(ivp);
+> > > +	cur = (u64)atomic64_read(&inode->i_version);
+> > > +	for (;;) {
+> > > +		/* If flag is clear then we needn't do anything */
+> > > +		if (!force && !(cur & I_VERSION_QUERIED))
+> > > +			return false;
+> > 
+> > The fast path here misses any memory barrier. Thus it seems this query
+> > could be in theory reordered before any store that happened to modify the
+> > inode? Or maybe we could race and miss the fact that in fact this i_version
+> > has already been queried? But maybe there's some higher level locking that
+> > makes sure this is all a non-issue... But in that case it would deserve
+> > some comment I guess.
+> > 
+> 
+> There's no higher-level locking. Getting locking out of this codepath is
+> a good thing IMO. The larger question here is whether we really care
+> about ordering this with anything else.
+> 
+> The i_version, as implemented today, is not ordered with actual changes
+> to the inode. We only take the i_lock today when modifying it, not when
+> querying it. It's possible today that you could see the results of a
+> change and then do a fetch of the i_version that doesn't show an
+> increment vs. a previous change.
 
-Theodore Tso (tytso@mit.edu) changed:
+Yeah, so I don't suggest that you should fix unrelated issues but original
+i_lock protection did actually provide memory barriers (although
+semi-permeable, but in practice they are very often enough) and your patch
+removing those could have changed a theoretical issue to a practical
+problem. So at least preserving that original acquire-release semantics
+of i_version handling would be IMHO good.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+> It'd be nice if this were atomic with the actual changes that it
+> represents, but I think that would be prohibitively expensive. That may
+> be something we need to address. I'm not sure we really want to do it as
+> part of this patchset though.
+> 
+> > > +
+> > > +		/* Since lowest bit is flag, add 2 to avoid it */
+> > > +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
+> > > +
+> > > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+> > > +		if (likely(old == cur))
+> > > +			break;
+> > > +		cur = old;
+> > > +	}
+> > >  	return true;
+> > >  }
+> > >  
+> > 
+> > ...
+> > 
+> > >  static inline u64
+> > >  inode_query_iversion(struct inode *inode)
+> > >  {
+> > > -	return inode_peek_iversion(inode);
+> > > +	u64 cur, old, new;
+> > > +
+> > > +	cur = atomic64_read(&inode->i_version);
+> > > +	for (;;) {
+> > > +		/* If flag is already set, then no need to swap */
+> > > +		if (cur & I_VERSION_QUERIED)
+> > > +			break;
+> > > +
+> > > +		new = cur | I_VERSION_QUERIED;
+> > > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+> > > +		if (old == cur)
+> > > +			break;
+> > > +		cur = old;
+> > > +	}
+> > 
+> > Why not just use atomic64_or() here?
+> > 
+> 
+> If the cmpxchg fails, then either:
+> 
+> 1) it was incremented
+> 2) someone flagged it QUERIED
+> 
+> If an increment happened then we don't need to flag it as QUERIED if
+> we're returning an older value. If we use atomic64_or, then we can't
+> tell if an increment happened so we'd end up potentially flagging it
+> more than necessary.
+> 
+> In principle, either outcome is technically OK and we don't have to loop
+> if the cmpxchg doesn't work. That said, if we think there might be a
+> later i_version available, then I think we probably want to try to query
+> it again so we can return as late a one as possible.
 
---- Comment #1 from Theodore Tso (tytso@mit.edu) ---
-How often/frequently/reliably does the problem reproduce?
+OK, makes sense. I'm just a bit vary of cmpxchg loops as they tend to
+behave pretty badly in contended cases but I guess i_version won't be
+hammered *that* hard.
 
-Can you get console messages either from dmesg or copied from a serial console
-(if you have serial console monitoring)?   Also useful would be to get the
-output from the following magic sysrq sequences: sysrq-l and sysrq-t  (this
-involves using the break key if you are using a serial console, which is the
-most desirable way to get the output since there is a huge amount of ouput).
-
-Also, please let us know what the hardware configuration is, since it's
-possible this is related to change in a block device driver.
-
-Finally, please file a bug with Fedora since this may be something which is
-caused by a Fedora specific patch and the Fedora kernel maintainers are more
-likely to be able to notice clustering of symptoms from Fedora users.
-
+								Honza
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
