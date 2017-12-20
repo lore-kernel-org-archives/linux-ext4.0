@@ -1,192 +1,61 @@
-From: Jeff Layton <jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
-Date: Wed, 20 Dec 2017 09:03:06 -0500
-Message-ID: <1513778586.4513.18.camel@kernel.org>
-References: <20171218151156.14565-1-jlayton@kernel.org>
-         <20171218151156.14565-20-jlayton@kernel.org>
-         <20171218163418.GF30350@quack2.suse.cz>
-         <1513617740.3422.30.camel@kernel.org> <20171218173651.GB12454@fieldses.org>
-         <1513625720.3422.68.camel@kernel.org> <20171218220759.GF4094@dastard>
+From: Jonathan Corbet <corbet@lwn.net>
+Subject: Re: [PATCH acks] fs/*/Kconfig: drop links to 404-compliant
+ http://acl.bestbits.at
+Date: Wed, 20 Dec 2017 07:14:22 -0700
+Message-ID: <20171220071422.5177d2cf@lwn.net>
+References: <20171213053825.10903-1-kilobyte@angband.pl>
+        <20171220135852.7662-1-kilobyte@angband.pl>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
-        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org,
-        jack-l3A5Bk7waGM@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-        adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, clm-b10kYP2dOMg@public.gmane.org,
-        jbacik-b10kYP2dOMg@public.gmane.org, dsterba-IBi9RG/b67k@public.gmane.org, linux-integrity-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        zohar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, dmitry.kasatkin-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
-        linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-        jaltman-hRzEac23uH1Wk0Htik3J/w@public.gmane.org
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20171218220759.GF4094@dastard>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8bit
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        v9fs-developer@lists.sourceforge.net, Sage Weil <sage@redhat.com>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org
+To: Adam Borowski <kilobyte@angband.pl>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ms.lwn.net ([45.79.88.28]:52928 "EHLO ms.lwn.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754931AbdLTOOY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Dec 2017 09:14:24 -0500
+In-Reply-To: <20171220135852.7662-1-kilobyte@angband.pl>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2017-12-19 at 09:07 +1100, Dave Chinner wrote:
-> On Mon, Dec 18, 2017 at 02:35:20PM -0500, Jeff Layton wrote:
-> > [PATCH] SQUASH: add memory barriers around i_version accesses
+On Wed, 20 Dec 2017 14:58:52 +0100
+Adam Borowski <kilobyte@angband.pl> wrote:
+
+> This link is replicated in most filesystems' config stanzas.  Referring
+> to an archived version of that site is pointless as it mostly deals with
+> patches; user documentation is available elsewhere.
 > 
-> Why explicit memory barriers rather than annotating the operations
-> with the required semantics and getting the barriers the arch
-> requires automatically?  I suspect this should be using
-> atomic_read_acquire() and atomic_cmpxchg_release(), because AFAICT
-> the atomic_cmpxchg needs to have release semantics to match the
-> acquire semantics needed for the load of the current value.
+> Signed-off-by: Adam Borowski <kilobyte@angband.pl>
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+> Acked-by: Jan Kara <jack@suse.cz>
+> Acked-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+> Acked-by: David Sterba <dsterba@suse.com>
+> Acked-by: "Yan, Zheng" <zyan@redhat.com>
+> Acked-by: Chao Yu <yuchao0@huawei.com>
+> Acked-by: Jaegeuk Kim <jaegeuk@kernel.org>
+> Acked-by: Steve French <smfrench@gmail.com>
+> ---
+> No changes, acks added (Dave Kleikamp's came without CCs).
 > 
-> From include/linux/atomics.h:
-> 
->  * For compound atomics performing both a load and a store, ACQUIRE
->  * semantics apply only to the load and RELEASE semantics only to the
->  * store portion of the operation. Note that a failed cmpxchg_acquire
->  * does -not- imply any memory ordering constraints.
-> 
-> Memory barriers hurt my brain. :/
-> 
-> At minimum, shouldn't the atomic op specific barriers be used rather
-> than full memory barriers? i.e:
-> 
+> Acked: btrfs ceph cifs ext2 f2fs jfs xfs.
+> No ack: . 9p ext4 hfsplus jffs2 reiserfs -- but there's no point in caring
+> this much for a trivial doc update, molesting the maintainers further is a
+> waste of their time.
 
-They hurt my brain too. Yes, definitely atomic-specific barriers should
-be used here instead, since this is an atomic64_t now.
+So how would you like this to go upstream?  I can certainly take it
+through docs, but it seems like vfs might be the first choice...?
 
-After going over the docs again...my understanding has always been that
-you primarily need memory barriers to order accesses to different areas
-of memory.
+Thanks,
 
-As Jan and I were discussing in the other thread, i_version is not
-synchronized with anything else. In this code, we're only dealing with a
-single 64-bit word. I don't think there are any races there wrt the API
-itself.
-
-The "legacy" inode_inc_iversion() however _does_ have implied memory
-barriers from the i_lock. There could be some subtle de-facto ordering
-there, so I think we probably do want some barriers in here if only to
-preserve that. It's not likely to cost much, and may save us tracking
-down some fiddly bugs.
-
-What about this patch? Note that I've only added barriers to
-inode_maybe_inc_iversion. I don't see that we need it for the other
-functions, but please do tell me if I'm wrong there:
-
---------------------8<---------------------------
-
-[PATCH] SQUASH: add memory barriers around i_version accesses
-
-Signed-off-by: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
----
- include/linux/iversion.h | 53 +++++++++++++++++++++++++++++-------------------
- 1 file changed, 32 insertions(+), 21 deletions(-)
-
-diff --git a/include/linux/iversion.h b/include/linux/iversion.h
-index a9fbf99709df..02187a3bec3b 100644
---- a/include/linux/iversion.h
-+++ b/include/linux/iversion.h
-@@ -89,6 +89,23 @@ inode_set_iversion_raw(struct inode *inode, const u64 val)
- 	atomic64_set(&inode->i_version, val);
- }
- 
-+/**
-+ * inode_peek_iversion_raw - grab a "raw" iversion value
-+ * @inode: inode from which i_version should be read
-+ *
-+ * Grab a "raw" inode->i_version value and return it. The i_version is not
-+ * flagged or converted in any way. This is mostly used to access a self-managed
-+ * i_version.
-+ *
-+ * With those filesystems, we want to treat the i_version as an entirely
-+ * opaque value.
-+ */
-+static inline u64
-+inode_peek_iversion_raw(const struct inode *inode)
-+{
-+	return atomic64_read(&inode->i_version);
-+}
-+
- /**
-  * inode_set_iversion - set i_version to a particular value
-  * @inode: inode to set
-@@ -152,7 +169,16 @@ inode_maybe_inc_iversion(struct inode *inode, bool force)
- {
- 	u64 cur, old, new;
- 
--	cur = (u64)atomic64_read(&inode->i_version);
-+	/*
-+	 * The i_version field is not strictly ordered with any other inode
-+	 * information, but the legacy inode_inc_iversion code used a spinlock
-+	 * to serialize increments.
-+	 *
-+	 * This code adds full memory barriers to ensure that any de-facto
-+	 * ordering with other info is preserved.
-+	 */
-+	smp_mb__before_atomic();
-+	cur = inode_peek_iversion_raw(inode);
- 	for (;;) {
- 		/* If flag is clear then we needn't do anything */
- 		if (!force && !(cur & I_VERSION_QUERIED))
-@@ -162,8 +188,10 @@ inode_maybe_inc_iversion(struct inode *inode, bool force)
- 		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
- 
- 		old = atomic64_cmpxchg(&inode->i_version, cur, new);
--		if (likely(old == cur))
-+		if (likely(old == cur)) {
-+			smp_mb__after_atomic();
- 			break;
-+		}
- 		cur = old;
- 	}
- 	return true;
-@@ -183,23 +211,6 @@ inode_inc_iversion(struct inode *inode)
- 	inode_maybe_inc_iversion(inode, true);
- }
- 
--/**
-- * inode_peek_iversion_raw - grab a "raw" iversion value
-- * @inode: inode from which i_version should be read
-- *
-- * Grab a "raw" inode->i_version value and return it. The i_version is not
-- * flagged or converted in any way. This is mostly used to access a self-managed
-- * i_version.
-- *
-- * With those filesystems, we want to treat the i_version as an entirely
-- * opaque value.
-- */
--static inline u64
--inode_peek_iversion_raw(const struct inode *inode)
--{
--	return atomic64_read(&inode->i_version);
--}
--
- /**
-  * inode_iversion_need_inc - is the i_version in need of being incremented?
-  * @inode: inode to check
-@@ -248,7 +259,7 @@ inode_query_iversion(struct inode *inode)
- {
- 	u64 cur, old, new;
- 
--	cur = atomic64_read(&inode->i_version);
-+	cur = inode_peek_iversion_raw(inode);
- 	for (;;) {
- 		/* If flag is already set, then no need to swap */
- 		if (cur & I_VERSION_QUERIED)
-@@ -256,7 +267,7 @@ inode_query_iversion(struct inode *inode)
- 
- 		new = cur | I_VERSION_QUERIED;
- 		old = atomic64_cmpxchg(&inode->i_version, cur, new);
--		if (old == cur)
-+		if (likely(old == cur))
- 			break;
- 		cur = old;
- 	}
--- 
-2.14.3
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+jon
