@@ -1,344 +1,192 @@
-From: Adam Borowski <kilobyte@angband.pl>
-Subject: [PATCH acks] fs/*/Kconfig: drop links to 404-compliant http://acl.bestbits.at
-Date: Wed, 20 Dec 2017 14:58:52 +0100
-Message-ID: <20171220135852.7662-1-kilobyte@angband.pl>
-References: <20171213053825.10903-1-kilobyte@angband.pl>
-Cc: Adam Borowski <kilobyte@angband.pl>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Jonathan Corbet <corbet@lwn.net>,
-        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        v9fs-developer@lists.sourceforge.net, Sage Weil <sage@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        linux-mtd@lists.infradead.org, reiserfs-devel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20171213053825.10903-1-kilobyte@angband.pl>
-Sender: linux-fsdevel-owner@vger.kernel.org
+From: Jeff Layton <jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
+Date: Wed, 20 Dec 2017 09:03:06 -0500
+Message-ID: <1513778586.4513.18.camel@kernel.org>
+References: <20171218151156.14565-1-jlayton@kernel.org>
+         <20171218151156.14565-20-jlayton@kernel.org>
+         <20171218163418.GF30350@quack2.suse.cz>
+         <1513617740.3422.30.camel@kernel.org> <20171218173651.GB12454@fieldses.org>
+         <1513625720.3422.68.camel@kernel.org> <20171218220759.GF4094@dastard>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: "J. Bruce Fields" <bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org>,
+        linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org,
+        jack-l3A5Bk7waGM@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
+        adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, clm-b10kYP2dOMg@public.gmane.org,
+        jbacik-b10kYP2dOMg@public.gmane.org, dsterba-IBi9RG/b67k@public.gmane.org, linux-integrity-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        zohar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, dmitry.kasatkin-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
+        linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+        jaltman-hRzEac23uH1Wk0Htik3J/w@public.gmane.org
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20171218220759.GF4094@dastard>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-This link is replicated in most filesystems' config stanzas.  Referring
-to an archived version of that site is pointless as it mostly deals with
-patches; user documentation is available elsewhere.
+On Tue, 2017-12-19 at 09:07 +1100, Dave Chinner wrote:
+> On Mon, Dec 18, 2017 at 02:35:20PM -0500, Jeff Layton wrote:
+> > [PATCH] SQUASH: add memory barriers around i_version accesses
+> 
+> Why explicit memory barriers rather than annotating the operations
+> with the required semantics and getting the barriers the arch
+> requires automatically?  I suspect this should be using
+> atomic_read_acquire() and atomic_cmpxchg_release(), because AFAICT
+> the atomic_cmpxchg needs to have release semantics to match the
+> acquire semantics needed for the load of the current value.
+> 
+> From include/linux/atomics.h:
+> 
+>  * For compound atomics performing both a load and a store, ACQUIRE
+>  * semantics apply only to the load and RELEASE semantics only to the
+>  * store portion of the operation. Note that a failed cmpxchg_acquire
+>  * does -not- imply any memory ordering constraints.
+> 
+> Memory barriers hurt my brain. :/
+> 
+> At minimum, shouldn't the atomic op specific barriers be used rather
+> than full memory barriers? i.e:
+> 
 
-Signed-off-by: Adam Borowski <kilobyte@angband.pl>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-Acked-by: Jan Kara <jack@suse.cz>
-Acked-by: Dave Kleikamp <dave.kleikamp@oracle.com>
-Acked-by: David Sterba <dsterba@suse.com>
-Acked-by: "Yan, Zheng" <zyan@redhat.com>
-Acked-by: Chao Yu <yuchao0@huawei.com>
-Acked-by: Jaegeuk Kim <jaegeuk@kernel.org>
-Acked-by: Steve French <smfrench@gmail.com>
+They hurt my brain too. Yes, definitely atomic-specific barriers should
+be used here instead, since this is an atomic64_t now.
+
+After going over the docs again...my understanding has always been that
+you primarily need memory barriers to order accesses to different areas
+of memory.
+
+As Jan and I were discussing in the other thread, i_version is not
+synchronized with anything else. In this code, we're only dealing with a
+single 64-bit word. I don't think there are any races there wrt the API
+itself.
+
+The "legacy" inode_inc_iversion() however _does_ have implied memory
+barriers from the i_lock. There could be some subtle de-facto ordering
+there, so I think we probably do want some barriers in here if only to
+preserve that. It's not likely to cost much, and may save us tracking
+down some fiddly bugs.
+
+What about this patch? Note that I've only added barriers to
+inode_maybe_inc_iversion. I don't see that we need it for the other
+functions, but please do tell me if I'm wrong there:
+
+--------------------8<---------------------------
+
+[PATCH] SQUASH: add memory barriers around i_version accesses
+
+Signed-off-by: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 ---
-No changes, acks added (Dave Kleikamp's came without CCs).
+ include/linux/iversion.h | 53 +++++++++++++++++++++++++++++-------------------
+ 1 file changed, 32 insertions(+), 21 deletions(-)
 
-Acked: btrfs ceph cifs ext2 f2fs jfs xfs.
-No ack: . 9p ext4 hfsplus jffs2 reiserfs -- but there's no point in caring
-this much for a trivial doc update, molesting the maintainers further is a
-waste of their time.
-
-
- Documentation/filesystems/ext2.txt |  2 --
- Documentation/filesystems/ext4.txt |  7 +++----
- fs/9p/Kconfig                      |  3 ---
- fs/Kconfig                         |  6 +-----
- fs/btrfs/Kconfig                   |  3 ---
- fs/ceph/Kconfig                    |  3 ---
- fs/cifs/Kconfig                    | 15 +++++++--------
- fs/ext2/Kconfig                    |  6 +-----
- fs/ext4/Kconfig                    |  3 ---
- fs/f2fs/Kconfig                    |  6 +-----
- fs/hfsplus/Kconfig                 |  3 ---
- fs/jffs2/Kconfig                   |  6 +-----
- fs/jfs/Kconfig                     |  3 ---
- fs/reiserfs/Kconfig                |  6 +-----
- fs/xfs/Kconfig                     |  3 ---
- 15 files changed, 15 insertions(+), 60 deletions(-)
-
-diff --git a/Documentation/filesystems/ext2.txt b/Documentation/filesystems/ext2.txt
-index 55755395d3dc..81c0becab225 100644
---- a/Documentation/filesystems/ext2.txt
-+++ b/Documentation/filesystems/ext2.txt
-@@ -49,12 +49,10 @@ sb=n				Use alternate superblock at this location.
+diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+index a9fbf99709df..02187a3bec3b 100644
+--- a/include/linux/iversion.h
++++ b/include/linux/iversion.h
+@@ -89,6 +89,23 @@ inode_set_iversion_raw(struct inode *inode, const u64 val)
+ 	atomic64_set(&inode->i_version, val);
+ }
  
- user_xattr			Enable "user." POSIX Extended Attributes
- 				(requires CONFIG_EXT2_FS_XATTR).
--				See also http://acl.bestbits.at
- nouser_xattr			Don't support "user." extended attributes.
++/**
++ * inode_peek_iversion_raw - grab a "raw" iversion value
++ * @inode: inode from which i_version should be read
++ *
++ * Grab a "raw" inode->i_version value and return it. The i_version is not
++ * flagged or converted in any way. This is mostly used to access a self-managed
++ * i_version.
++ *
++ * With those filesystems, we want to treat the i_version as an entirely
++ * opaque value.
++ */
++static inline u64
++inode_peek_iversion_raw(const struct inode *inode)
++{
++	return atomic64_read(&inode->i_version);
++}
++
+ /**
+  * inode_set_iversion - set i_version to a particular value
+  * @inode: inode to set
+@@ -152,7 +169,16 @@ inode_maybe_inc_iversion(struct inode *inode, bool force)
+ {
+ 	u64 cur, old, new;
  
- acl				Enable POSIX Access Control Lists support
- 				(requires CONFIG_EXT2_FS_POSIX_ACL).
--				See also http://acl.bestbits.at
- noacl				Don't support POSIX ACLs.
+-	cur = (u64)atomic64_read(&inode->i_version);
++	/*
++	 * The i_version field is not strictly ordered with any other inode
++	 * information, but the legacy inode_inc_iversion code used a spinlock
++	 * to serialize increments.
++	 *
++	 * This code adds full memory barriers to ensure that any de-facto
++	 * ordering with other info is preserved.
++	 */
++	smp_mb__before_atomic();
++	cur = inode_peek_iversion_raw(inode);
+ 	for (;;) {
+ 		/* If flag is clear then we needn't do anything */
+ 		if (!force && !(cur & I_VERSION_QUERIED))
+@@ -162,8 +188,10 @@ inode_maybe_inc_iversion(struct inode *inode, bool force)
+ 		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
  
- nobh				Do not attach buffer_heads to file pagecache.
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 75236c0c2ac2..8cd63e16f171 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -202,15 +202,14 @@ inode_readahead_blks=n	This tuning parameter controls the maximum
- 			the buffer cache.  The default value is 32 blocks.
+ 		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+-		if (likely(old == cur))
++		if (likely(old == cur)) {
++			smp_mb__after_atomic();
+ 			break;
++		}
+ 		cur = old;
+ 	}
+ 	return true;
+@@ -183,23 +211,6 @@ inode_inc_iversion(struct inode *inode)
+ 	inode_maybe_inc_iversion(inode, true);
+ }
  
- nouser_xattr		Disables Extended User Attributes.  See the
--			attr(5) manual page and http://acl.bestbits.at/
--			for more information about extended attributes.
-+			attr(5) manual page for more information about
-+			extended attributes.
- 
- noacl			This option disables POSIX Access Control List
- 			support. If ACL support is enabled in the kernel
- 			configuration (CONFIG_EXT4_FS_POSIX_ACL), ACL is
- 			enabled by default on mount. See the acl(5) manual
--			page and http://acl.bestbits.at/ for more information
--			about acl.
-+			page for more information about acl.
- 
- bsddf		(*)	Make 'df' act like BSD.
- minixdf			Make 'df' act like Minix.
-diff --git a/fs/9p/Kconfig b/fs/9p/Kconfig
-index 6489e1fc1afd..11045d8e356a 100644
---- a/fs/9p/Kconfig
-+++ b/fs/9p/Kconfig
-@@ -25,9 +25,6 @@ config 9P_FS_POSIX_ACL
- 	  POSIX Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the POSIX ACLs for
--	  Linux website <http://acl.bestbits.at/>.
+-/**
+- * inode_peek_iversion_raw - grab a "raw" iversion value
+- * @inode: inode from which i_version should be read
+- *
+- * Grab a "raw" inode->i_version value and return it. The i_version is not
+- * flagged or converted in any way. This is mostly used to access a self-managed
+- * i_version.
+- *
+- * With those filesystems, we want to treat the i_version as an entirely
+- * opaque value.
+- */
+-static inline u64
+-inode_peek_iversion_raw(const struct inode *inode)
+-{
+-	return atomic64_read(&inode->i_version);
+-}
 -
- 	  If you don't know what Access Control Lists are, say N
+ /**
+  * inode_iversion_need_inc - is the i_version in need of being incremented?
+  * @inode: inode to check
+@@ -248,7 +259,7 @@ inode_query_iversion(struct inode *inode)
+ {
+ 	u64 cur, old, new;
  
- endif
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 7aee6d699fd6..0ed56752f208 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -167,17 +167,13 @@ config TMPFS_POSIX_ACL
- 	  files for sound to work properly.  In short, if you're not sure,
- 	  say Y.
+-	cur = atomic64_read(&inode->i_version);
++	cur = inode_peek_iversion_raw(inode);
+ 	for (;;) {
+ 		/* If flag is already set, then no need to swap */
+ 		if (cur & I_VERSION_QUERIED)
+@@ -256,7 +267,7 @@ inode_query_iversion(struct inode *inode)
  
--	  To learn more about Access Control Lists, visit the POSIX ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- config TMPFS_XATTR
- 	bool "Tmpfs extended attributes"
- 	depends on TMPFS
- 	default n
- 	help
- 	  Extended attributes are name:value pairs associated with inodes by
--	  the kernel or by users (see the attr(5) manual page, or visit
--	  <http://acl.bestbits.at/> for details).
-+	  the kernel or by users (see the attr(5) manual page for details).
- 
- 	  Currently this enables support for the trusted.* and
- 	  security.* namespaces.
-diff --git a/fs/btrfs/Kconfig b/fs/btrfs/Kconfig
-index 2e558227931a..273351ee4c46 100644
---- a/fs/btrfs/Kconfig
-+++ b/fs/btrfs/Kconfig
-@@ -38,9 +38,6 @@ config BTRFS_FS_POSIX_ACL
- 	  POSIX Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the POSIX ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  If you don't know what Access Control Lists are, say N
- 
- config BTRFS_FS_CHECK_INTEGRITY
-diff --git a/fs/ceph/Kconfig b/fs/ceph/Kconfig
-index 264e9bf83ff3..52095f473464 100644
---- a/fs/ceph/Kconfig
-+++ b/fs/ceph/Kconfig
-@@ -34,7 +34,4 @@ config CEPH_FS_POSIX_ACL
- 	  POSIX Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the POSIX ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  If you don't know what Access Control Lists are, say N
-diff --git a/fs/cifs/Kconfig b/fs/cifs/Kconfig
-index d5b2e12b5d02..e73d25f4b97a 100644
---- a/fs/cifs/Kconfig
-+++ b/fs/cifs/Kconfig
-@@ -108,14 +108,13 @@ config CIFS_XATTR
-         depends on CIFS
-         help
-           Extended attributes are name:value pairs associated with inodes by
--          the kernel or by users (see the attr(5) manual page, or visit
--          <http://acl.bestbits.at/> for details).  CIFS maps the name of
--          extended attributes beginning with the user namespace prefix
--          to SMB/CIFS EAs. EAs are stored on Windows servers without the
--          user namespace prefix, but their names are seen by Linux cifs clients
--          prefaced by the user namespace prefix. The system namespace
--          (used by some filesystems to store ACLs) is not supported at
--          this time.
-+          the kernel or by users (see the attr(5) manual page for details).
-+          CIFS maps the name of extended attributes beginning with the user
-+          namespace prefix to SMB/CIFS EAs.  EAs are stored on Windows
-+          servers without the user namespace prefix, but their names are
-+          seen by Linux cifs clients prefaced by the user namespace prefix.
-+          The system namespace (used by some filesystems to store ACLs) is
-+          not supported at this time.
- 
-           If unsure, say Y.
- 
-diff --git a/fs/ext2/Kconfig b/fs/ext2/Kconfig
-index c634874e12d9..894e4c53d1d2 100644
---- a/fs/ext2/Kconfig
-+++ b/fs/ext2/Kconfig
-@@ -13,8 +13,7 @@ config EXT2_FS_XATTR
- 	depends on EXT2_FS
- 	help
- 	  Extended attributes are name:value pairs associated with inodes by
--	  the kernel or by users (see the attr(5) manual page, or visit
--	  <http://acl.bestbits.at/> for details).
-+	  the kernel or by users (see the attr(5) manual page for details).
- 
- 	  If unsure, say N.
- 
-@@ -26,9 +25,6 @@ config EXT2_FS_POSIX_ACL
- 	  Posix Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the Posix ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  If you don't know what Access Control Lists are, say N
- 
- config EXT2_FS_SECURITY
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 73b850f5659c..a453cc87082b 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -82,9 +82,6 @@ config EXT4_FS_POSIX_ACL
- 	  POSIX Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the POSIX ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  If you don't know what Access Control Lists are, say N
- 
- config EXT4_FS_SECURITY
-diff --git a/fs/f2fs/Kconfig b/fs/f2fs/Kconfig
-index 378c221d68a9..9a20ef42fadd 100644
---- a/fs/f2fs/Kconfig
-+++ b/fs/f2fs/Kconfig
-@@ -35,8 +35,7 @@ config F2FS_FS_XATTR
- 	default y
- 	help
- 	  Extended attributes are name:value pairs associated with inodes by
--	  the kernel or by users (see the attr(5) manual page, or visit
--	  <http://acl.bestbits.at/> for details).
-+	  the kernel or by users (see the attr(5) manual page for details).
- 
- 	  If unsure, say N.
- 
-@@ -49,9 +48,6 @@ config F2FS_FS_POSIX_ACL
- 	  Posix Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the POSIX ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  If you don't know what Access Control Lists are, say N
- 
- config F2FS_FS_SECURITY
-diff --git a/fs/hfsplus/Kconfig b/fs/hfsplus/Kconfig
-index 24bc20fd42f7..7cc8b4acf66a 100644
---- a/fs/hfsplus/Kconfig
-+++ b/fs/hfsplus/Kconfig
-@@ -20,9 +20,6 @@ config HFSPLUS_FS_POSIX_ACL
- 	  POSIX Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the POSIX ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  It needs to understand that POSIX ACLs are treated only under
- 	  Linux. POSIX ACLs doesn't mean something under Mac OS X.
- 	  Mac OS X beginning with version 10.4 ("Tiger") support NFSv4 ACLs,
-diff --git a/fs/jffs2/Kconfig b/fs/jffs2/Kconfig
-index d8bb6c411e96..ad850c5bf2ca 100644
---- a/fs/jffs2/Kconfig
-+++ b/fs/jffs2/Kconfig
-@@ -68,8 +68,7 @@ config JFFS2_FS_XATTR
- 	default n
- 	help
- 	  Extended attributes are name:value pairs associated with inodes by
--	  the kernel or by users (see the attr(5) manual page, or visit
--	  <http://acl.bestbits.at/> for details).
-+	  the kernel or by users (see the attr(5) manual page for details).
- 
- 	  If unsure, say N.
- 
-@@ -82,9 +81,6 @@ config JFFS2_FS_POSIX_ACL
- 	  Posix Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the Posix ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  If you don't know what Access Control Lists are, say N
- 
- config JFFS2_FS_SECURITY
-diff --git a/fs/jfs/Kconfig b/fs/jfs/Kconfig
-index 57cef19951db..851de78fdabb 100644
---- a/fs/jfs/Kconfig
-+++ b/fs/jfs/Kconfig
-@@ -16,9 +16,6 @@ config JFS_POSIX_ACL
- 	  Posix Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the Posix ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  If you don't know what Access Control Lists are, say N
- 
- config JFS_SECURITY
-diff --git a/fs/reiserfs/Kconfig b/fs/reiserfs/Kconfig
-index 7cd46666ba2c..86e71c0caf48 100644
---- a/fs/reiserfs/Kconfig
-+++ b/fs/reiserfs/Kconfig
-@@ -57,8 +57,7 @@ config REISERFS_FS_XATTR
- 	depends on REISERFS_FS
- 	help
- 	  Extended attributes are name:value pairs associated with inodes by
--	  the kernel or by users (see the attr(5) manual page, or visit
--	  <http://acl.bestbits.at/> for details).
-+	  the kernel or by users (see the attr(5) manual page for details).
- 
- 	  If unsure, say N.
- 
-@@ -70,9 +69,6 @@ config REISERFS_FS_POSIX_ACL
- 	  Posix Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the Posix ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  If you don't know what Access Control Lists are, say N
- 
- config REISERFS_FS_SECURITY
-diff --git a/fs/xfs/Kconfig b/fs/xfs/Kconfig
-index f42fcf1b5465..46bcf0e649f5 100644
---- a/fs/xfs/Kconfig
-+++ b/fs/xfs/Kconfig
-@@ -48,9 +48,6 @@ config XFS_POSIX_ACL
- 	  POSIX Access Control Lists (ACLs) support permissions for users and
- 	  groups beyond the owner/group/world scheme.
- 
--	  To learn more about Access Control Lists, visit the POSIX ACLs for
--	  Linux website <http://acl.bestbits.at/>.
--
- 	  If you don't know what Access Control Lists are, say N.
- 
- config XFS_RT
+ 		new = cur | I_VERSION_QUERIED;
+ 		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+-		if (old == cur)
++		if (likely(old == cur))
+ 			break;
+ 		cur = old;
+ 	}
 -- 
-2.15.1
+2.14.3
+
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
