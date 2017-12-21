@@ -1,55 +1,64 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH 1/1] ext4: remove redundant assignment in
- ext4_iomap_begin()
-Date: Thu, 21 Dec 2017 11:47:50 -0500
-Message-ID: <20171221164750.GD27177@thunk.org>
-References: <20171127092127.26193-1-sunqiuyang@huawei.com>
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 1/2] dax: Pass detailed error code from dax_iomap_fault()
+Date: Thu, 21 Dec 2017 09:12:52 -0800
+Message-ID: <CAPcyv4jYKqEr+y8Uon3ddSvqskAiT_xKMNgnY7=UJkE=3xEM5A@mail.gmail.com>
+References: <20171221163055.3943-1-jack@suse.cz>
+ <20171221163055.3943-2-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-To: sunqiuyang <sunqiuyang@huawei.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46130 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752522AbdLUQry (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 21 Dec 2017 11:47:54 -0500
-Content-Disposition: inline
-In-Reply-To: <20171127092127.26193-1-sunqiuyang@huawei.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Ted Tso <tytso-3s7WtUTddSA@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20171221163055.3943-2-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Nov 27, 2017 at 05:21:27PM +0800, sunqiuyang wrote:
-> From: Qiuyang Sun <sunqiuyang@huawei.com>
-> 
-> This line will not change the value of map.m_lblk in any case.
-
-I don't see that it is absolutely guaranteed.  And if you are
-depending on ext4_es_find_delayed_extent() returns, then (a) the
-following line which adjusts map.m_len could also be dropped, and (b)
-we should add a WARN_ON to make the code robust against future changes
-to the above function.
-
-						- Ted
-
-> 
-> Signed-off-by: Qiuyang Sun <sunqiuyang@huawei.com>
+On Thu, Dec 21, 2017 at 8:30 AM, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org> wrote:
+> Ext4 needs to pass through error from its iomap handler to the page
+> fault handler so that it can properly detect ENOSPC and force
+> transaction commit and retry the fault (and block allocation). Add
+> argument to dax_iomap_fault() for passing such error.
+>
+> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 > ---
->  fs/ext4/inode.c | 1 -
->  1 file changed, 1 deletion(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 9f836e2..d4a42b1 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3443,7 +3443,6 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
->  
->  				if (es.es_lblk < map.m_lblk)
->  					offs = map.m_lblk - es.es_lblk;
-> -				map.m_lblk = es.es_lblk + offs;
->  				map.m_len = es.es_len - offs;
->  				delalloc = true;
->  			}
-> -- 
-> 2.5.0
-> 
+>  fs/dax.c            | 9 ++++++---
+>  fs/ext2/file.c      | 2 +-
+>  fs/ext4/file.c      | 2 +-
+>  fs/xfs/xfs_file.c   | 2 +-
+>  include/linux/dax.h | 2 +-
+>  5 files changed, 10 insertions(+), 7 deletions(-)
+>
+> diff --git a/fs/dax.c b/fs/dax.c
+> index 95981591977a..f3afa1d6156c 100644
+> --- a/fs/dax.c
+> +++ b/fs/dax.c
+> @@ -1096,7 +1096,7 @@ static bool dax_fault_is_synchronous(unsigned long flags,
+>  }
+>
+>  static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+> -                              const struct iomap_ops *ops)
+> +                              int *iomap_errp, const struct iomap_ops *ops)
+>  {
+>         struct vm_area_struct *vma = vmf->vma;
+>         struct address_space *mapping = vma->vm_file->f_mapping;
+> @@ -1149,6 +1149,8 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+>          * that we never have to deal with more than a single extent here.
+>          */
+>         error = ops->iomap_begin(inode, pos, PAGE_SIZE, flags, &iomap);
+> +       if (iomap_errp)
+> +               *iomap_errp = error;
+
+Since we already have 'struct iomap' tracking the state of the iomap
+should we track the error status there as well?  I.e. move the on
+stack allocation of struct iomap to the per-fs dax fault handlers.
