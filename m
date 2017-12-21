@@ -1,34 +1,38 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: Re: [PATCH 1/2] dax: Pass detailed error code from dax_iomap_fault()
-Date: Thu, 21 Dec 2017 10:16:44 -0700
-Message-ID: <20171221171644.GB2158@linux.intel.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH 2/2] ext4: Fix ENOSPC handling in DAX page fault handler
+Date: Thu, 21 Dec 2017 10:17:01 -0700
+Message-ID: <20171221171701.GC2158@linux.intel.com>
 References: <20171221163055.3943-1-jack@suse.cz>
- <20171221163055.3943-2-jack@suse.cz>
+ <20171221163055.3943-3-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        linux-fsdevel@vger.kernel.org, linux-nvdimm@lists.01.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:10668 "EHLO mga11.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751838AbdLURQq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 21 Dec 2017 12:16:46 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Ted Tso <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20171221163055.3943-2-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20171221163055.3943-3-jack-AlSwsSmVLrQ@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 21, 2017 at 05:30:54PM +0100, Jan Kara wrote:
-> Ext4 needs to pass through error from its iomap handler to the page
-> fault handler so that it can properly detect ENOSPC and force
-> transaction commit and retry the fault (and block allocation). Add
-> argument to dax_iomap_fault() for passing such error.
+On Thu, Dec 21, 2017 at 05:30:55PM +0100, Jan Kara wrote:
+> When allocation of underlying block for a page fault fails, we fail the
+> fault with SIGBUS. However we may well hit ENOSPC just due to lots of
+> free blocks being held by the running / committing transaction. So
+> propagate the error from ext4_iomap_begin() and implement do standard
+> allocation retry loop in ext4_dax_huge_fault().
 > 
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
-I like how much simpler this version is.  Looks good.
+Looks good.
 
-Reviewed-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Reviewed-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
