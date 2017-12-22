@@ -1,31 +1,35 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] misc: add e2mmpstatus utility
-Date: Fri, 22 Dec 2017 12:17:16 -0500
-Message-ID: <20171222171716.GB29153@thunk.org>
-References: <1513934564-89598-1-git-send-email-adilger@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Shuichi Ihara <sihara@ddn.com>,
-        Li Xi <lixi@ddn.com>, Wang Shilong <wshilong@ddn.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50764 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755826AbdLVRRU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 22 Dec 2017 12:17:20 -0500
-Content-Disposition: inline
-In-Reply-To: <1513934564-89598-1-git-send-email-adilger@dilger.ca>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: [PATCH] ext4: use a slightly bigger file system in ext4/021
+Date: Fri, 22 Dec 2017 13:26:07 -0500
+Message-ID: <20171222182607.7745-1-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>
+To: fstests@vger.kernel.org
+Return-path: <fstests-owner@vger.kernel.org>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 22, 2017 at 02:22:44AM -0700, Andreas Dilger wrote:
-> From: Shuichi Ihara <sihara@ddn.com>
-> 
-> e2mmpstatus is an MMP helper utility to read status from an MMP block.
-> It outputs the latest MMP updated nodename and time for the device.
+An 8 MB file system may not be big enough for certain file system
+configurations --- in particular, if the inode size is 2048 bytes.
+Make the test file system 10MB instead.
 
-Why not include this into dumpe2fs?  Maybe dumpe2fs -m to just print
-the MMP information and include the MMP nodetime and time for either
-the full dumpe2fs or dumpe2fs -h output?
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ tests/ext4/021 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-						- Ted
+diff --git a/tests/ext4/021 b/tests/ext4/021
+index 8a780873..e46b43be 100755
+--- a/tests/ext4/021
++++ b/tests/ext4/021
+@@ -50,7 +50,7 @@ _require_scratch
+ _require_dumpe2fs
+ 
+ # 8M in bytes
+-fssize=$((8 * 1024 * 1024))
++fssize=$((10 * 1024 * 1024))
+ _scratch_mkfs_sized $fssize >> $seqres.full 2>&1
+ _require_metadata_journaling $SCRATCH_DEV
+ 
+-- 
+2.11.0.rc0.7.gbe5a750
