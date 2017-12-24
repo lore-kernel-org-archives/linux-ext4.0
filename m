@@ -1,29 +1,17 @@
 From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: [PATCH v4 00/18] dax: fix dma vs truncate/hole-punch
-Date: Sat, 23 Dec 2017 16:56:00 -0800
-Message-ID: <151407695916.38751.2866053440557472361.stgit@dwillia2-desk3.amr.corp.intel.com>
+Subject: [PATCH v4 13/18] ext4: use DEFINE_FSDAX_AOPS
+Date: Sat, 23 Dec 2017 16:57:10 -0800
+Message-ID: <151407703002.38751.15305085717541373826.stgit@dwillia2-desk3.amr.corp.intel.com>
+References: <151407695916.38751.2866053440557472361.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Michal Hocko <mhocko-IBi9RG/b67k@public.gmane.org>, jack-AlSwsSmVLrQ@public.gmane.org,
- Peter Zijlstra <peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
- Benjamin Herrenschmidt <benh-XVmvHMARGAS8U2dJNN8I7kB+6BGkLq7r@public.gmane.org>,
- Dave Hansen <dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
- Heiko Carstens <heiko.carstens-tA70FqPdS9bQT0dZR+AlfA@public.gmane.org>,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, hch-jcswGhMUV9g@public.gmane.org,
- Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, Michael Ellerman <mpe-Gsx/Oe8HsFggBc27wqDAHg@public.gmane.org>,
- Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Martin Schwidefsky <schwidefsky-tA70FqPdS9bQT0dZR+AlfA@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- =?utf-8?b?SsOpcsO0bWU=?= Glisse <jglisse-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
- Gerald Schaefer <gerald.schaefer-tA70FqPdS9bQT0dZR+AlfA@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Jan Kara <jack-IBi9RG/b67k@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Paul Mackerras <paulus-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>,
- "Kirill A. Shutem
+Cc: jack-AlSwsSmVLrQ@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hch-jcswGhMUV9g@public.gmane.org
 To: akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <151407695916.38751.2866053440557472361.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -35,144 +23,41 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Changes since v3 [1]:
-* Kill the i_daxdma_lock, and do not impose any new locking constraints
-  on filesystem implementations (Dave)
+In preparation for the dax implementation to start associating dax pages
+to inodes via page->mapping, we need to provide a 'struct
+address_space_operations' instance for dax. Otherwise, direct-I/O
+triggers incorrect page cache assumptions and warnings.
 
-* Reuse the existing i_mmap_lock for synchronizing against
-  get_user_pages() by unmapping and causing punch-hole/truncate to
-  re-fault the page before get_user_pages() can elevate the page reference
-  count (Jan)
-
-* Create a dax-specifc address_space_operations instance for each
-  filesystem. This allows page->mapping to be set for dax pages. (Jan).
-
-* Change the ext4 and ext2 policy of 'mount -o dax' vs a device that
-  does not support dax. This converts any environments that may have
-  been using 'page-less' dax back to using page cache.
-
-* Rename wait_on_devmap_idle() to wait_on_atomic_one(), a generic
-  facility for waiting for an atomic counter to reach a value of '1'.
-
-[1]: https://lwn.net/Articles/737273/
-
+Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 ---
+ fs/ext4/inode.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-Background:
-
-get_user_pages() pins file backed memory pages for access by dma
-devices. However, it only pins the memory pages not the page-to-file
-offset association. If a file is truncated the pages are mapped out of
-the file and dma may continue indefinitely into a page that is owned by
-a device driver. This breaks coherency of the file vs dma, but the
-assumption is that if userspace wants the file-space truncated it does
-not matter what data is inbound from the device, it is not relevant
-anymore. The only expectation is that dma can safely continue while the
-filesystem reallocates the block(s).
-
-Problem:
-
-This expectation that dma can safely continue while the filesystem
-changes the block map is broken by dax. With dax the target dma page
-*is* the filesystem block. The model of leaving the page pinned for dma,
-but truncating the file block out of the file, means that the filesytem
-is free to reallocate a block under active dma to another file and now
-the expected data-incoherency situation has turned into active
-data-corruption.
-
-Solution:
-
-Defer all filesystem operations (fallocate(), truncate()) on a dax mode
-file while any page/block in the file is under active dma. This solution
-assumes that dma is transient. Cases where dma operations are known to
-not be transient, like RDMA, have been explicitly disabled via
-commits like 5f1d43de5416 "IB/core: disable memory registration of
-filesystem-dax vmas".
-
-The dax_flush_dma() routine is called by filesystems with a lock held
-against mm faults (i_mmap_lock). It then invalidates all mappings to
-trigger any subsequent get_user_pages() to block on i_mmap_lock. Finally
-it scans/rescans all pages in the mapping until it observes all pages
-idle.
-
-So far this solution only targets xfs since it already implements
-xfs_break_layouts in all the locations that would need this
-synchronization. It applies on top of the vmem_altmap / dev_pagemap
-reworks from Christoph.
-
----
-
-Dan Williams (18):
-      mm, dax: introduce pfn_t_special()
-      ext4: auto disable dax instead of failing mount
-      ext2: auto disable dax instead of failing mount
-      dax: require 'struct page' by default for filesystem dax
-      dax: stop using VM_MIXEDMAP for dax
-      dax: stop using VM_HUGEPAGE for dax
-      dax: store pfns in the radix
-      tools/testing/nvdimm: add 'bio_delay' mechanism
-      mm, dax: enable filesystems to trigger dev_pagemap ->page_free callbacks
-      mm, dev_pagemap: introduce CONFIG_DEV_PAGEMAP_OPS
-      fs, dax: introduce DEFINE_FSDAX_AOPS
-      xfs: use DEFINE_FSDAX_AOPS
-      ext4: use DEFINE_FSDAX_AOPS
-      ext2: use DEFINE_FSDAX_AOPS
-      mm, fs, dax: use page->mapping to warn if dma collides with truncate
-      wait_bit: introduce {wait_on,wake_up}_atomic_one
-      mm, fs, dax: dax_flush_dma, handle dma vs block-map-change collisions
-      xfs, dax: wire up dax_flush_dma support via a new xfs_sync_dma helper
-
-
- arch/powerpc/platforms/Kconfig        |    1 
- arch/powerpc/sysdev/axonram.c         |    2 
- drivers/dax/device.c                  |    1 
- drivers/dax/super.c                   |  100 ++++++++++-
- drivers/nvdimm/pmem.c                 |    3 
- drivers/s390/block/Kconfig            |    1 
- drivers/s390/block/dcssblk.c          |    3 
- fs/Kconfig                            |    8 +
- fs/dax.c                              |  295 ++++++++++++++++++++++++++++-----
- fs/ext2/ext2.h                        |    1 
- fs/ext2/file.c                        |    1 
- fs/ext2/inode.c                       |   23 ++-
- fs/ext2/namei.c                       |   18 --
- fs/ext2/super.c                       |   13 +
- fs/ext4/file.c                        |    1 
- fs/ext4/inode.c                       |    6 +
- fs/ext4/super.c                       |   15 +-
- fs/xfs/Makefile                       |    3 
- fs/xfs/xfs_aops.c                     |    2 
- fs/xfs/xfs_aops.h                     |    1 
- fs/xfs/xfs_dma.c                      |   81 +++++++++
- fs/xfs/xfs_dma.h                      |   24 +++
- fs/xfs/xfs_file.c                     |    8 -
- fs/xfs/xfs_ioctl.c                    |    7 -
- fs/xfs/xfs_iops.c                     |   12 +
- fs/xfs/xfs_super.c                    |   20 +-
- include/linux/dax.h                   |   70 +++++++-
- include/linux/memremap.h              |   28 +--
- include/linux/mm.h                    |   62 +++++--
- include/linux/pfn_t.h                 |   13 +
- include/linux/vma.h                   |   23 +++
- include/linux/wait_bit.h              |   13 +
- kernel/memremap.c                     |   30 +++
- kernel/sched/wait_bit.c               |   59 ++++++-
- mm/Kconfig                            |    5 +
- mm/gup.c                              |    5 +
- mm/hmm.c                              |   13 -
- mm/huge_memory.c                      |    6 -
- mm/ksm.c                              |    3 
- mm/madvise.c                          |    2 
- mm/memory.c                           |   22 ++
- mm/migrate.c                          |    3 
- mm/mlock.c                            |    5 -
- mm/mmap.c                             |    8 -
- mm/swap.c                             |    3 
- tools/testing/nvdimm/Kbuild           |    1 
- tools/testing/nvdimm/test/iomap.c     |   62 +++++++
- tools/testing/nvdimm/test/nfit.c      |   34 ++++
- tools/testing/nvdimm/test/nfit_test.h |    1 
- 49 files changed, 918 insertions(+), 203 deletions(-)
- create mode 100644 fs/xfs/xfs_dma.c
- create mode 100644 fs/xfs/xfs_dma.h
- create mode 100644 include/linux/vma.h
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7df2c5644e59..065d11f43cb3 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3928,6 +3928,8 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.error_remove_page	= generic_error_remove_page,
+ };
+ 
++static DEFINE_FSDAX_AOPS(ext4_dax_aops, ext4_writepages);
++
+ void ext4_set_aops(struct inode *inode)
+ {
+ 	switch (ext4_inode_journal_mode(inode)) {
+@@ -3940,7 +3942,9 @@ void ext4_set_aops(struct inode *inode)
+ 	default:
+ 		BUG();
+ 	}
+-	if (test_opt(inode->i_sb, DELALLOC))
++	if (IS_DAX(inode))
++		inode->i_mapping->a_ops = &ext4_dax_aops;
++	else if (test_opt(inode->i_sb, DELALLOC))
+ 		inode->i_mapping->a_ops = &ext4_da_aops;
+ 	else
+ 		inode->i_mapping->a_ops = &ext4_aops;
