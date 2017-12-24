@@ -1,179 +1,178 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH v4 14/19] xfs: convert to new i_version API
-Date: Fri, 22 Dec 2017 16:05:14 -0800
-Message-ID: <20171223000514.GE12613@magnolia>
-References: <20171222120556.7435-1-jlayton@kernel.org>
- <20171222120556.7435-15-jlayton@kernel.org>
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: [PATCH v4 00/18] dax: fix dma vs truncate/hole-punch
+Date: Sat, 23 Dec 2017 16:56:00 -0800
+Message-ID: <151407695916.38751.2866053440557472361.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        david@fromorbit.com, linux-btrfs@vger.kernel.org, clm@fb.com,
-        jbacik@fb.com, dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-To: Jeff Layton <jlayton@kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171222120556.7435-15-jlayton@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Michal Hocko <mhocko-IBi9RG/b67k@public.gmane.org>, jack-AlSwsSmVLrQ@public.gmane.org,
+ Peter Zijlstra <peterz-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>,
+ Benjamin Herrenschmidt <benh-XVmvHMARGAS8U2dJNN8I7kB+6BGkLq7r@public.gmane.org>,
+ Dave Hansen <dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
+ Heiko Carstens <heiko.carstens-tA70FqPdS9bQT0dZR+AlfA@public.gmane.org>,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, hch-jcswGhMUV9g@public.gmane.org,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>, Michael Ellerman <mpe-Gsx/Oe8HsFggBc27wqDAHg@public.gmane.org>,
+ Ingo Molnar <mingo-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Martin Schwidefsky <schwidefsky-tA70FqPdS9bQT0dZR+AlfA@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ =?utf-8?b?SsOpcsO0bWU=?= Glisse <jglisse-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+ Gerald Schaefer <gerald.schaefer-tA70FqPdS9bQT0dZR+AlfA@public.gmane.org>, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Jan Kara <jack-IBi9RG/b67k@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Paul Mackerras <paulus-eUNUBHrolfbYtjvyW6yDsg@public.gmane.org>,
+ "Kirill A. Shutem
+To: akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 22, 2017 at 07:05:51AM -0500, Jeff Layton wrote:
-> From: Jeff Layton <jlayton@redhat.com>
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/xfs/libxfs/xfs_inode_buf.c | 7 +++++--
->  fs/xfs/xfs_icache.c           | 5 +++--
->  fs/xfs/xfs_inode.c            | 3 ++-
->  fs/xfs/xfs_inode_item.c       | 3 ++-
->  fs/xfs/xfs_trans_inode.c      | 4 +++-
->  5 files changed, 15 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/xfs/libxfs/xfs_inode_buf.c b/fs/xfs/libxfs/xfs_inode_buf.c
-> index 6b7989038d75..b9c0bf80669c 100644
-> --- a/fs/xfs/libxfs/xfs_inode_buf.c
-> +++ b/fs/xfs/libxfs/xfs_inode_buf.c
-> @@ -32,6 +32,8 @@
->  #include "xfs_ialloc.h"
->  #include "xfs_dir2.h"
->  
-> +#include <linux/iversion.h>
+Changes since v3 [1]:
+* Kill the i_daxdma_lock, and do not impose any new locking constraints
+  on filesystem implementations (Dave)
 
-/me wonders if these ought to be in fs/xfs/xfs_linux.h since this is
-libxfs, but seeing as I already let that horse escape I might as well
-clean it up separately.
+* Reuse the existing i_mmap_lock for synchronizing against
+  get_user_pages() by unmapping and causing punch-hole/truncate to
+  re-fault the page before get_user_pages() can elevate the page reference
+  count (Jan)
 
-Looks ok,
-Acked-by: Darrick J. Wong <darrick.wong@oracle.com>
+* Create a dax-specifc address_space_operations instance for each
+  filesystem. This allows page->mapping to be set for dax pages. (Jan).
 
---D
+* Change the ext4 and ext2 policy of 'mount -o dax' vs a device that
+  does not support dax. This converts any environments that may have
+  been using 'page-less' dax back to using page cache.
 
-> +
->  /*
->   * Check that none of the inode's in the buffer have a next
->   * unlinked field of 0.
-> @@ -264,7 +266,8 @@ xfs_inode_from_disk(
->  	to->di_flags	= be16_to_cpu(from->di_flags);
->  
->  	if (to->di_version == 3) {
-> -		inode->i_version = be64_to_cpu(from->di_changecount);
-> +		inode_set_iversion_queried(inode,
-> +					   be64_to_cpu(from->di_changecount));
->  		to->di_crtime.t_sec = be32_to_cpu(from->di_crtime.t_sec);
->  		to->di_crtime.t_nsec = be32_to_cpu(from->di_crtime.t_nsec);
->  		to->di_flags2 = be64_to_cpu(from->di_flags2);
-> @@ -314,7 +317,7 @@ xfs_inode_to_disk(
->  	to->di_flags = cpu_to_be16(from->di_flags);
->  
->  	if (from->di_version == 3) {
-> -		to->di_changecount = cpu_to_be64(inode->i_version);
-> +		to->di_changecount = cpu_to_be64(inode_peek_iversion(inode));
->  		to->di_crtime.t_sec = cpu_to_be32(from->di_crtime.t_sec);
->  		to->di_crtime.t_nsec = cpu_to_be32(from->di_crtime.t_nsec);
->  		to->di_flags2 = cpu_to_be64(from->di_flags2);
-> diff --git a/fs/xfs/xfs_icache.c b/fs/xfs/xfs_icache.c
-> index 43005fbe8b1e..4c315adb05e6 100644
-> --- a/fs/xfs/xfs_icache.c
-> +++ b/fs/xfs/xfs_icache.c
-> @@ -37,6 +37,7 @@
->  
->  #include <linux/kthread.h>
->  #include <linux/freezer.h>
-> +#include <linux/iversion.h>
->  
->  /*
->   * Allocate and initialise an xfs_inode.
-> @@ -293,14 +294,14 @@ xfs_reinit_inode(
->  	int		error;
->  	uint32_t	nlink = inode->i_nlink;
->  	uint32_t	generation = inode->i_generation;
-> -	uint64_t	version = inode->i_version;
-> +	uint64_t	version = inode_peek_iversion(inode);
->  	umode_t		mode = inode->i_mode;
->  
->  	error = inode_init_always(mp->m_super, inode);
->  
->  	set_nlink(inode, nlink);
->  	inode->i_generation = generation;
-> -	inode->i_version = version;
-> +	inode_set_iversion_queried(inode, version);
->  	inode->i_mode = mode;
->  	return error;
->  }
-> diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
-> index 801274126648..dfc5e60d8af3 100644
-> --- a/fs/xfs/xfs_inode.c
-> +++ b/fs/xfs/xfs_inode.c
-> @@ -16,6 +16,7 @@
->   * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
->   */
->  #include <linux/log2.h>
-> +#include <linux/iversion.h>
->  
->  #include "xfs.h"
->  #include "xfs_fs.h"
-> @@ -833,7 +834,7 @@ xfs_ialloc(
->  	ip->i_d.di_flags = 0;
->  
->  	if (ip->i_d.di_version == 3) {
-> -		inode->i_version = 1;
-> +		inode_set_iversion(inode, 1);
->  		ip->i_d.di_flags2 = 0;
->  		ip->i_d.di_cowextsize = 0;
->  		ip->i_d.di_crtime.t_sec = (int32_t)tv.tv_sec;
-> diff --git a/fs/xfs/xfs_inode_item.c b/fs/xfs/xfs_inode_item.c
-> index 6ee5c3bf19ad..7571abf5dfb3 100644
-> --- a/fs/xfs/xfs_inode_item.c
-> +++ b/fs/xfs/xfs_inode_item.c
-> @@ -30,6 +30,7 @@
->  #include "xfs_buf_item.h"
->  #include "xfs_log.h"
->  
-> +#include <linux/iversion.h>
->  
->  kmem_zone_t	*xfs_ili_zone;		/* inode log item zone */
->  
-> @@ -354,7 +355,7 @@ xfs_inode_to_log_dinode(
->  	to->di_next_unlinked = NULLAGINO;
->  
->  	if (from->di_version == 3) {
-> -		to->di_changecount = inode->i_version;
-> +		to->di_changecount = inode_peek_iversion(inode);
->  		to->di_crtime.t_sec = from->di_crtime.t_sec;
->  		to->di_crtime.t_nsec = from->di_crtime.t_nsec;
->  		to->di_flags2 = from->di_flags2;
-> diff --git a/fs/xfs/xfs_trans_inode.c b/fs/xfs/xfs_trans_inode.c
-> index daa7615497f9..225544327c4f 100644
-> --- a/fs/xfs/xfs_trans_inode.c
-> +++ b/fs/xfs/xfs_trans_inode.c
-> @@ -28,6 +28,8 @@
->  #include "xfs_inode_item.h"
->  #include "xfs_trace.h"
->  
-> +#include <linux/iversion.h>
-> +
->  /*
->   * Add a locked inode to the transaction.
->   *
-> @@ -117,7 +119,7 @@ xfs_trans_log_inode(
->  	 */
->  	if (!(ip->i_itemp->ili_item.li_desc->lid_flags & XFS_LID_DIRTY) &&
->  	    IS_I_VERSION(VFS_I(ip))) {
-> -		VFS_I(ip)->i_version++;
-> +		inode_inc_iversion(VFS_I(ip));
->  		flags |= XFS_ILOG_CORE;
->  	}
->  
-> -- 
-> 2.14.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+* Rename wait_on_devmap_idle() to wait_on_atomic_one(), a generic
+  facility for waiting for an atomic counter to reach a value of '1'.
+
+[1]: https://lwn.net/Articles/737273/
+
+---
+
+Background:
+
+get_user_pages() pins file backed memory pages for access by dma
+devices. However, it only pins the memory pages not the page-to-file
+offset association. If a file is truncated the pages are mapped out of
+the file and dma may continue indefinitely into a page that is owned by
+a device driver. This breaks coherency of the file vs dma, but the
+assumption is that if userspace wants the file-space truncated it does
+not matter what data is inbound from the device, it is not relevant
+anymore. The only expectation is that dma can safely continue while the
+filesystem reallocates the block(s).
+
+Problem:
+
+This expectation that dma can safely continue while the filesystem
+changes the block map is broken by dax. With dax the target dma page
+*is* the filesystem block. The model of leaving the page pinned for dma,
+but truncating the file block out of the file, means that the filesytem
+is free to reallocate a block under active dma to another file and now
+the expected data-incoherency situation has turned into active
+data-corruption.
+
+Solution:
+
+Defer all filesystem operations (fallocate(), truncate()) on a dax mode
+file while any page/block in the file is under active dma. This solution
+assumes that dma is transient. Cases where dma operations are known to
+not be transient, like RDMA, have been explicitly disabled via
+commits like 5f1d43de5416 "IB/core: disable memory registration of
+filesystem-dax vmas".
+
+The dax_flush_dma() routine is called by filesystems with a lock held
+against mm faults (i_mmap_lock). It then invalidates all mappings to
+trigger any subsequent get_user_pages() to block on i_mmap_lock. Finally
+it scans/rescans all pages in the mapping until it observes all pages
+idle.
+
+So far this solution only targets xfs since it already implements
+xfs_break_layouts in all the locations that would need this
+synchronization. It applies on top of the vmem_altmap / dev_pagemap
+reworks from Christoph.
+
+---
+
+Dan Williams (18):
+      mm, dax: introduce pfn_t_special()
+      ext4: auto disable dax instead of failing mount
+      ext2: auto disable dax instead of failing mount
+      dax: require 'struct page' by default for filesystem dax
+      dax: stop using VM_MIXEDMAP for dax
+      dax: stop using VM_HUGEPAGE for dax
+      dax: store pfns in the radix
+      tools/testing/nvdimm: add 'bio_delay' mechanism
+      mm, dax: enable filesystems to trigger dev_pagemap ->page_free callbacks
+      mm, dev_pagemap: introduce CONFIG_DEV_PAGEMAP_OPS
+      fs, dax: introduce DEFINE_FSDAX_AOPS
+      xfs: use DEFINE_FSDAX_AOPS
+      ext4: use DEFINE_FSDAX_AOPS
+      ext2: use DEFINE_FSDAX_AOPS
+      mm, fs, dax: use page->mapping to warn if dma collides with truncate
+      wait_bit: introduce {wait_on,wake_up}_atomic_one
+      mm, fs, dax: dax_flush_dma, handle dma vs block-map-change collisions
+      xfs, dax: wire up dax_flush_dma support via a new xfs_sync_dma helper
+
+
+ arch/powerpc/platforms/Kconfig        |    1 
+ arch/powerpc/sysdev/axonram.c         |    2 
+ drivers/dax/device.c                  |    1 
+ drivers/dax/super.c                   |  100 ++++++++++-
+ drivers/nvdimm/pmem.c                 |    3 
+ drivers/s390/block/Kconfig            |    1 
+ drivers/s390/block/dcssblk.c          |    3 
+ fs/Kconfig                            |    8 +
+ fs/dax.c                              |  295 ++++++++++++++++++++++++++++-----
+ fs/ext2/ext2.h                        |    1 
+ fs/ext2/file.c                        |    1 
+ fs/ext2/inode.c                       |   23 ++-
+ fs/ext2/namei.c                       |   18 --
+ fs/ext2/super.c                       |   13 +
+ fs/ext4/file.c                        |    1 
+ fs/ext4/inode.c                       |    6 +
+ fs/ext4/super.c                       |   15 +-
+ fs/xfs/Makefile                       |    3 
+ fs/xfs/xfs_aops.c                     |    2 
+ fs/xfs/xfs_aops.h                     |    1 
+ fs/xfs/xfs_dma.c                      |   81 +++++++++
+ fs/xfs/xfs_dma.h                      |   24 +++
+ fs/xfs/xfs_file.c                     |    8 -
+ fs/xfs/xfs_ioctl.c                    |    7 -
+ fs/xfs/xfs_iops.c                     |   12 +
+ fs/xfs/xfs_super.c                    |   20 +-
+ include/linux/dax.h                   |   70 +++++++-
+ include/linux/memremap.h              |   28 +--
+ include/linux/mm.h                    |   62 +++++--
+ include/linux/pfn_t.h                 |   13 +
+ include/linux/vma.h                   |   23 +++
+ include/linux/wait_bit.h              |   13 +
+ kernel/memremap.c                     |   30 +++
+ kernel/sched/wait_bit.c               |   59 ++++++-
+ mm/Kconfig                            |    5 +
+ mm/gup.c                              |    5 +
+ mm/hmm.c                              |   13 -
+ mm/huge_memory.c                      |    6 -
+ mm/ksm.c                              |    3 
+ mm/madvise.c                          |    2 
+ mm/memory.c                           |   22 ++
+ mm/migrate.c                          |    3 
+ mm/mlock.c                            |    5 -
+ mm/mmap.c                             |    8 -
+ mm/swap.c                             |    3 
+ tools/testing/nvdimm/Kbuild           |    1 
+ tools/testing/nvdimm/test/iomap.c     |   62 +++++++
+ tools/testing/nvdimm/test/nfit.c      |   34 ++++
+ tools/testing/nvdimm/test/nfit_test.h |    1 
+ 49 files changed, 918 insertions(+), 203 deletions(-)
+ create mode 100644 fs/xfs/xfs_dma.c
+ create mode 100644 fs/xfs/xfs_dma.h
+ create mode 100644 include/linux/vma.h
