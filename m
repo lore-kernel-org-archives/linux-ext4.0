@@ -1,68 +1,73 @@
-From: rong zhao <zhaorbox@gmail.com>
-Subject: Question about enlarge ext4 more than 16T
-Date: Tue, 26 Dec 2017 18:09:47 +0800
-Message-ID: <CAOHr082HDDUt6xwtjrfdTaCOr+zBmrPbUZqO0gy-f4qShZqm5g@mail.gmail.com>
+From: Jayashree Mohan <jayashree2912@gmail.com>
+Subject: Incorrect block count during stat of a file if fallocate follows a
+ buffered write.
+Date: Tue, 26 Dec 2017 16:07:22 -0600
+Message-ID: <CA+EzBbAmiKdBMBZRFU_YXVj1CS-U-SAB=xjR82Xu6qou+EN5jQ@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
+Cc: tytso@mit.edu,
+        Vijaychidambaram Velayudhan Pillai <vijay@cs.utexas.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:44535 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750728AbdLZKJs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Dec 2017 05:09:48 -0500
-Received: by mail-io0-f195.google.com with SMTP id w127so32191289iow.11
-        for <linux-ext4@vger.kernel.org>; Tue, 26 Dec 2017 02:09:48 -0800 (PST)
+Received: from mail-vk0-f43.google.com ([209.85.213.43]:42466 "EHLO
+        mail-vk0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750822AbdLZWHX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Dec 2017 17:07:23 -0500
+Received: by mail-vk0-f43.google.com with SMTP id 189so22191288vkc.9
+        for <linux-ext4@vger.kernel.org>; Tue, 26 Dec 2017 14:07:23 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Hi,
+I am Jayashree Mohan, a PhD student at the University of Texas at
+Austin, working with Prof. Vijay Chidambaram. I've been working on the
+Crashmonkey project, which is a test harness for file system crash
+consistency[1].
 
-  Recently, I met a problem when extending ext4.
+While trying to reproduce some of the reported bugs on ext4 using
+CrashMonkey we stumbled upon the following issue:
+Whenever a fallocate follows a buffered write(delayed allocated), with
+fallocate overlapping with a certain range of the write, the block
+count reported by stat of the file is incorrect until the write is
+resolved.
 
+Consider the following workload(The number within the braces indicate
+the start and end offsets)
+1. Write (79581 - 136029)
+2. Fallocate (46385 - 92886)
 
+If we now stat the file, the result is as follows :
 
-At first, I cannot format ext4 more than 16T, then I upgraded
-e2fsprogs to version 1.43.7 which is the latest stable version.
+1. Stat after Write (79581 - 136029)
+  File: '/mnt/5gbdisk/only-fallocate.txt'
+  Size: 136029        Blocks: 120        IO Block: 4096   regular file
+Device: 810h/2064d    Inode: 14          Links: 1
 
-I can create more than 16T by command:
+2. Stat after fallocate (46385 - 92886)
+  File: '/mnt/5gbdisk/only-fallocate.txt'
+  Size: 136029        Blocks: 216        IO Block: 4096   regular file
+Device: 810h/2064d    Inode: 14          Links: 1
 
-mke2fs -O 64bit -t ext4 /dev/mapper/xxx
+3. Stat 30 seconds later, after the checkpoint
+  File: '/mnt/5gbdisk/only-fallocate.txt'
+  Size: 136029        Blocks: 184        IO Block: 4096   regular file
+Device: 810h/2064d    Inode: 14          Links: 1
 
-After format it, I mount it under folder /nfs/xxx, it works good.
+So we see here that the actual block count should be 184, as there is
+an overlapping region between the buffered write(120 blocks) and
+fallocate(96 blocks). Note that there are 32 overlapping blocks in the
+above workload(Blocks are in units of 512B). However until the write
+is resolved, the block count is shown to be 216, which is just the sum
+of the blocks reserved for writes and fallocate(120+96=216), without
+consideration for the overlap(120+96-32 = 184).
 
-Then I find I cannot extend it online, steps:
+So, if any program stats the file before the write is resolved (the 30
+sec checkpoint interval), the block count returned seems to be
+incorrect.
 
-1. lvextend to extend LVM size
-2. resize2fs /dev/mapper/xxx, it reports cannot online resize
-3. "dumpe2fs /dev/mapper/xxx | grep feature" command shows this
-filesystem has no resize_inode flag
+Let me know if I am missing some detail.
 
-I tried many times and find if I created more than 16T, it has no
-resize_inode flag, seems they are opposite, cannot enable at the same
-time.
+[1] https://github.com/utsaslab/crashmonkey
 
-I find this page: https://bugzilla.redhat.com/show_bug.cgi?id=982871
-
-According to this page, it seems on rhel7, it should be able to
-enlarge online, but unfortunately, I failed on rhel6 and I can only
-have rhel6.
-
-If I umount /nfs/xxx first, then resize2fs can work expectedly,
-however, this indicates we must stop our service for about 15~30
-minutes. This is what I do not want.
-
-
-Then I see there is an old patch talking about this issue:
-
-https://patchwork.ozlabs.org/patch/256822/
-
->From this patch, it seems that extend ext4 for more than 16T is
-possible, but I always fail on redhat 6.7.
-
-At last, let me make a summary of my question:
-1. if I create an ext4 FS more than 16T, it has no resize_inode flag,
-so I cannot extend it online
-2. if I create an ext4 FS less than 16T, even with -O 64bit option, I
-cannot extend it to more than 16T, I tried online and offline
-
-Please suggest, thank you very much.
+Thanks,
+Jayashree
