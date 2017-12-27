@@ -1,33 +1,33 @@
-From: Sean Fu <fxinrong@gmail.com>
-Subject: [PATCH] ext4: Remove repeated test in ext4_file_read_iter.
-Date: Wed, 27 Dec 2017 16:19:58 +0800
-Message-ID: <1514362798-5850-1-git-send-email-fxinrong@gmail.com>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Sean Fu <fxinrong@gmail.com>
-To: tytso@mit.edu
+From: "Sra. Angel Rania" <sra.angelrania83@gmail.com>
+Subject: Re: You will definetely be interested...
+Date: Wed, 27 Dec 2017 10:17:06 +0000
+Message-ID: <CAKx+QTtL6hVN3Sv0baZHHBnMxgEeMprK=PALd6GuhxU+MNPauw__1836.6759330549$1514369787$gmane$org@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pl0-f67.google.com ([209.85.160.67]:40241 "EHLO
-        mail-pl0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751243AbdL0IUF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Dec 2017 03:20:05 -0500
+Received: from mail-qk0-f193.google.com ([209.85.220.193]:39704 "EHLO
+        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751932AbdL0KRJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Dec 2017 05:17:09 -0500
+Received: by mail-qk0-f193.google.com with SMTP id u184so45930871qkd.6
+        for <linux-ext4@vger.kernel.org>; Wed, 27 Dec 2017 02:17:08 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-generic_file_read_iter has done the count test.
-So ext4_file_read_iter don't need to test the count repeatedly.
+Hi Dear,
 
-Signed-off-by: Sean Fu <fxinrong@gmail.com>
----
- fs/ext4/file.c | 3 ---
- 1 file changed, 3 deletions(-)
+Reading your profile has given me courage in search of a reasponsable
+and trust worthy Fellow. The past has treated me so awfully but now I
+am ready to move on despite of my health condition. I will like to
+have a sincere and important discussion with you that will be in your
+favor likewise to you and your environment especially to your close
+family. Endeavor to reply me and I have attached my picture in case
+you long to know who emailed you. I will be waiting to hear from you
+as soon as possble.
+Thanks for paying attention to my mail and will appreciate so much if
+I receive a reply from you for understable details.
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index a0ae27b..87ca13e 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -67,9 +67,6 @@ static ssize_t ext4_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
- 	if (unlikely(ext4_forced_shutdown(EXT4_SB(file_inode(iocb->ki_filp)->i_sb))))
- 		return -EIO;
- 
--	if (!iov_iter_count(to))
--		return 0; /* skip atime */
+Thanks,
+
+Mrs. Rania Hassan
