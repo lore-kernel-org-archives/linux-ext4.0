@@ -1,103 +1,108 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Question about enlarge ext4 more than 16T
-Date: Thu, 28 Dec 2017 19:58:22 -0500
-Message-ID: <20171229005822.GD30269@thunk.org>
-References: <CAOHr082HDDUt6xwtjrfdTaCOr+zBmrPbUZqO0gy-f4qShZqm5g@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org
-To: rong zhao <zhaorbox@gmail.com>
+From: Palmer Dabbelt <palmer@dabbelt.com>
+Subject: [PATCH] Rename copy_file_range to _copy_file_range
+Date: Thu, 28 Dec 2017 18:18:28 -0800
+Message-ID: <20171229021828.5661-1-palmer@dabbelt.com>
+Cc: patches@groups.riscv.org, Palmer Dabbelt <palmer@dabbelt.com>
+To: linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34034 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751293AbdL2A6Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 28 Dec 2017 19:58:25 -0500
-Content-Disposition: inline
-In-Reply-To: <CAOHr082HDDUt6xwtjrfdTaCOr+zBmrPbUZqO0gy-f4qShZqm5g@mail.gmail.com>
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:32991 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751345AbdL2CTH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Dec 2017 21:19:07 -0500
+Received: by mail-pf0-f196.google.com with SMTP id y89so21640585pfk.0
+        for <linux-ext4@vger.kernel.org>; Thu, 28 Dec 2017 18:19:07 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 26, 2017 at 06:09:47PM +0800, rong zhao wrote:
-> I find this page: https://bugzilla.redhat.com/show_bug.cgi?id=982871
-> 
-> According to this page, it seems on rhel7, it should be able to
-> enlarge online, but unfortunately, I failed on rhel6 and I can only
-> have rhel6...
-> 
-> From this patch, it seems that extend ext4 for more than 16T is
-> possible, but I always fail on redhat 6.7.
-> 
-> At last, let me make a summary of my question:
-> 1. if I create an ext4 FS more than 16T, it has no resize_inode flag,
-> so I cannot extend it online
-> 2. if I create an ext4 FS less than 16T, even with -O 64bit option, I
-> cannot extend it to more than 16T, I tried online and offline
+As of 2.27, glibc will have a copy_file_range library call to wrap the
+new copy_file_range system call.  This conflicts with the function in
+misc/create_inode.c, which this patch renames _copy_file_range.
 
-In order to support file system sizes larger than 16T, it's necessary
-to have block numbers which are larger than 32-bits.  In other words,
-it is necessary to support 64-bit block numbers.  Not all kernels and
-versions of e2fsprogs can support the 64-bit filesystem feature.
+Full disclosure: I found this when building e2fsprogs for RISC-V with a
+glibc-2.27 prerelease, so it's very possible I screwed something up
+here.  Here's the relevant glibc commit:
 
-I'm not a Red Hat expert; I'm an upstream developer and person who
-uses and a Debian developer.  I used to have the headache of dealing
-with Enterprise Linux Distributions, their arbitrary limitations, and
-the arbitrary limtations of the I/T departments who require enterprise
-distributions when I worked for IBM.  Blessedly, I no longer have to
-deal with this headache now that I work for Google.  :-) So I can't
-really speak to what RHEL 6 and RHEL 7 support.  You'll need to talk
-to someone official from Red Hat.
+    commit bad7a0c81f501fbbcc79af9eaa4b8254441c4a1f
+    Author: Florian Weimer <fweimer@redhat.com>
+    Date:   Fri Dec 22 10:55:40 2017 +0100
 
-I can say that historically, Red Hat has chosen not to support file
-system upgrades because they have corner cases which can be dangerous.
-So for example, with the right version of e2fsprogs, you *can* add the
-64-bit feature as an off-line feature using tune2fs.  However, this
-requires rewriting the block group descriptors, which is a core file
-system data structure in place.  If you crash in the middle of that
-operation, due to a power glitch, or an accidental control-C of the
-program, etc., your file system will be very badly scrambled.  If you
-have enabled the creation of an e2undo file, you *might* be able to
-recover, but conversion of a file system that does not have the 64-bit
-feature, to one that does, is one which is fraught with danger, and so
-I generally recommend that people do a full backup before attempting
-this operation.  And if it succeeds, you can be happy, but if it
-doesn't, you can fall back to recreating the file system with the
-64-bit feature set, and then restore from backups.
+        copy_file_range: New function to copy file data
 
-For resizing file systems < 16TB, the resize_inode feature is used, as
-you have noted.  Beyond 16TB, we use a different scheme that involves
-use of the meta_bg feature, which is turned on automatically when you
-try to resize beyond 16TB by resize2fs or the kernel.  Support for
-this resize feature is dependant on the having a sufficiently new
-version of the kernel (for online resize) and e2fsprogs (for online
-and off-line resize).
+        The semantics are based on the Linux system call, but a very close
+        emulation in user space is provided.
+    ...
+    diff --git a/posix/unistd.h b/posix/unistd.h
+    index 32b0f4898fd2..65317c79fd39 100644
+    --- a/posix/unistd.h
+    +++ b/posix/unistd.h
+    @@ -1105,7 +1105,12 @@ extern int lockf64 (int __fd, int __cmd, __off64_t __len) __wur;
+            do __result = (long int) (expression);                                \
+            while (__result == -1L && errno == EINTR);                            \
+            __result; }))
+    -#endif
+    +
+    +/* Copy LENGTH bytes from INFD to OUTFD.  */
+    +ssize_t copy_file_range (int __infd, __off64_t *__pinoff,
+    +                        int __outfd, __off64_t *__poutoff,
+    +                        size_t __length, unsigned int __flags);
+    +#endif /* __USE_GNU */
 
-For better or worse, the customers (or the paranoid I/T departments of
-those customers, which amounts to the same thing) have mandated that
-they don't want risk by adding new code (or new versions which contain
-new code), because new code is scary.  That is, except for whatever
-favorite features might be required by that one specific customer.
-Unfortunately, that "favorite feature" varies from customer to
-customer, so what do you expect Red Hat to do?  As a result, if you
-are stuck on RHEL 6 because of corporate policy, then some features
-may simply not be available to you.  Having a customer complain about
-this when they were the ones who mandated the use of an enterprise
-distro is frustrating, and it's one of the reasons why I'm glad I no
-longer work at IBM and have to deal customers who embodies such
-contradictions.
+Signed-off-by: Palmer Dabbelt <palmer@dabbelt.com>
+---
+ misc/create_inode.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-As the old Chinese saying goes, "You can't expect a horse that goes
-fast, but also want it to not eat grass."  :-)
-
-又要马儿跑，又要马儿不吃草
-
-At Google, we regularly update to new kernels, and yes, it takes
-effort --- but we've learned the hard way that staying stuck on
-ancient kernel is a form of technical debt, which one has to pay back
-sooner or later, if you want either the latest features, or to support
-the latest hardware.
-
-Best regards,
-
-      	     	  	    	     	 - Ted
-					 
+diff --git a/misc/create_inode.c b/misc/create_inode.c
+index a07f8328e5f9..94fa13f8b3d0 100644
+--- a/misc/create_inode.c
++++ b/misc/create_inode.c
+@@ -398,9 +398,9 @@ static ssize_t my_pread(int fd, void *buf, size_t count, off_t offset)
+ }
+ #endif /* !defined HAVE_PREAD64 && !defined HAVE_PREAD */
+ 
+-static errcode_t copy_file_range(ext2_filsys fs, int fd, ext2_file_t e2_file,
+-				 off_t start, off_t end, char *buf,
+-				 char *zerobuf)
++static errcode_t _copy_file_range(ext2_filsys fs, int fd, ext2_file_t e2_file,
++				  off_t start, off_t end, char *buf,
++				  char *zerobuf)
+ {
+ 	off_t off, bpos;
+ 	ssize_t got, blen;
+@@ -472,8 +472,8 @@ static errcode_t try_lseek_copy(ext2_filsys fs, int fd, struct stat *statbuf,
+ 
+ 		data_blk = data & ~(fs->blocksize - 1);
+ 		hole_blk = (hole + (fs->blocksize - 1)) & ~(fs->blocksize - 1);
+-		err = copy_file_range(fs, fd, e2_file, data_blk, hole_blk, buf,
+-				      zerobuf);
++		err = _copy_file_range(fs, fd, e2_file, data_blk, hole_blk, buf,
++				       zerobuf);
+ 		if (err)
+ 			return err;
+ 
+@@ -523,9 +523,9 @@ static errcode_t try_fiemap_copy(ext2_filsys fs, int fd, ext2_file_t e2_file,
+ 			goto out;
+ 		for (i = 0, ext = ext_buf; i < fiemap_buf->fm_mapped_extents;
+ 		     i++, ext++) {
+-			err = copy_file_range(fs, fd, e2_file, ext->fe_logical,
+-					      ext->fe_logical + ext->fe_length,
+-					      buf, zerobuf);
++			err = _copy_file_range(fs, fd, e2_file, ext->fe_logical,
++					       ext->fe_logical + ext->fe_length,
++					       buf, zerobuf);
+ 			if (err)
+ 				goto out;
+ 		}
+@@ -576,8 +576,8 @@ static errcode_t copy_file(ext2_filsys fs, int fd, struct stat *statbuf,
+ 		goto out;
+ #endif
+ 
+-	err = copy_file_range(fs, fd, e2_file, 0, statbuf->st_size, buf,
+-			      zerobuf);
++	err = _copy_file_range(fs, fd, e2_file, 0, statbuf->st_size, buf,
++			       zerobuf);
+ out:
+ 	ext2fs_free_mem(&zerobuf);
+ 	ext2fs_free_mem(&buf);
+-- 
+2.13.6
