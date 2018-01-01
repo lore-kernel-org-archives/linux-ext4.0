@@ -1,45 +1,19 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] misc: add e2mmpstatus utility
-Date: Fri, 29 Dec 2017 20:57:04 -0500
-Message-ID: <20171230015704.GE11757@thunk.org>
-References: <1513934564-89598-1-git-send-email-adilger@dilger.ca>
- <20171222171716.GB29153@thunk.org>
- <F976B3B9-90C4-446E-B8D4-49571CA535A4@dilger.ca>
+From: foundation@gmail.com
+Subject: =?utf-8?q?Spende_von_=E2=82=AC_3=2E400=2E000=2C00_EUR?=
+Date: Mon, 01 Jan 2018 20:20:27 +0200
+Message-ID: <20180101184114.966362708A45@wsbmail01.wsb.wroclaw.pl>
+Reply-To: roycockrumpovertyfoundation@gmail.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-        Shuichi Ihara <sihara@ddn.com>, Li Xi <lixi@ddn.com>,
-        Wang Shilong <wshilong@ddn.com>
-To: Andreas Dilger <adilger@dilger.ca>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8BIT
+To: Recipients <foundation@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36632 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750800AbdL3B5H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 29 Dec 2017 20:57:07 -0500
-Content-Disposition: inline
-In-Reply-To: <F976B3B9-90C4-446E-B8D4-49571CA535A4@dilger.ca>
+Received: from mail.wsb.wroclaw.pl ([95.143.242.162]:36107 "EHLO
+        wsbmail01.wsb.wroclaw.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751583AbeAASVZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Jan 2018 13:21:25 -0500
+Content-Description: Mail message body
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 29, 2017 at 04:02:04PM -0700, Andreas Dilger wrote:
-> > Why not include this into dumpe2fs?  Maybe dumpe2fs -m to just print
-> > the MMP information and include the MMP nodetime and time for either
-> > the full dumpe2fs or dumpe2fs -h output?
-> 
-> That would definitely be an option.  The mmpstatus utility was written by
-> DDN, and I'm passing it on after some code cleanup.
-> 
-> I think it would be reasonable to include the other MMP fields into the
-> dumpe2fs output, and then run the full MMP activity check if called with
-> "-m" or named as "mmpstatus".  I don't want dumpe2fs to be blocked on
-> the MMP update checking all the time, since that can be slow.
-
-SGTM.
-
-> I'll see if I can get a patch out in the next couple of days.
-
-Many thanks!!
-
-Cheers,
-
-				- Ted
+Hallo, ich Roy Cockrum, 58, aus Knoxville, Tennessee Vereinigte Staaten von Amerika, du hast eine Wohltätigkeitsspende von € 3.400.000,00 EUR, ich gewann die America Lotterie in Amerika im Wert von $ 259,9 Millionen, und ich gebe einen Teil davon Zu fünf glücklichen Leuten und Wohltätigkeitshäusern in Gelübde, um die Armut vor dieser Welt zu beseitigen, ich kämpfe gegen die Armut. Kontaktieren Sie mich für weitere Details: roycockrumpovertyfoundation@gmail.com
