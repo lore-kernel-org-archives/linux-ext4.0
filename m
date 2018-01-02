@@ -1,19 +1,28 @@
-From: foundation@gmail.com
-Subject: =?utf-8?q?Spende_von_=E2=82=AC_3=2E400=2E000=2C00_EUR?=
-Date: Mon, 01 Jan 2018 20:20:27 +0200
-Message-ID: <20180101184114.966362708A45@wsbmail01.wsb.wroclaw.pl>
-Reply-To: roycockrumpovertyfoundation@gmail.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v2] Rename copy_file_range to copy_file_chunk
+Date: Mon, 1 Jan 2018 23:41:22 -0500
+Message-ID: <20180102044122.GI2532@thunk.org>
+References: <20171229035539.GB11757@thunk.org>
+ <20171229181951.24886-1-palmer@dabbelt.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8BIT
-To: Recipients <foundation@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, patches@groups.riscv.org
+To: Palmer Dabbelt <palmer@dabbelt.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wsb.wroclaw.pl ([95.143.242.162]:36107 "EHLO
-        wsbmail01.wsb.wroclaw.pl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751583AbeAASVZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Jan 2018 13:21:25 -0500
-Content-Description: Mail message body
+Received: from imap.thunk.org ([74.207.234.97]:41598 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750819AbeABElY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 1 Jan 2018 23:41:24 -0500
+Content-Disposition: inline
+In-Reply-To: <20171229181951.24886-1-palmer@dabbelt.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hallo, ich Roy Cockrum, 58, aus Knoxville, Tennessee Vereinigte Staaten von Amerika, du hast eine Wohltätigkeitsspende von € 3.400.000,00 EUR, ich gewann die America Lotterie in Amerika im Wert von $ 259,9 Millionen, und ich gebe einen Teil davon Zu fünf glücklichen Leuten und Wohltätigkeitshäusern in Gelübde, um die Armut vor dieser Welt zu beseitigen, ich kämpfe gegen die Armut. Kontaktieren Sie mich für weitere Details: roycockrumpovertyfoundation@gmail.com
+On Fri, Dec 29, 2017 at 10:19:51AM -0800, Palmer Dabbelt wrote:
+> As of 2.27, glibc will have a copy_file_range library call to wrap the
+> new copy_file_range system call.  This conflicts with the function in
+> misc/create_inode.c, which this patch renames _copy_file_range.
+
+Thanks, applied.
+
+					- Ted
