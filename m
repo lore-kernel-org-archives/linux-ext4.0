@@ -1,60 +1,77 @@
-From: Julia Lawall <julia.lawall@lip6.fr>
-Subject: Re: [Cluster-devel] [PATCH 00/12] drop unneeded newline
-Date: Tue, 2 Jan 2018 16:16:30 +0100 (CET)
-Message-ID: <alpine.DEB.2.20.1801021615510.23552@hadrien>
-References: <1514386305-7402-1-git-send-email-Julia.Lawall@lip6.fr>
- <1878806802.2632123.1514901158666.JavaMail.zimbra@redhat.com>
- <1019862289.2632779.1514901387442.JavaMail.zimbra@redhat.com>
- <alpine.DEB.2.20.1801021458360.24055@hadrien>
- <1514905900.4242.4.camel@wdc.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH v4 16/19] fs: only set S_VERSION when updating times if
+ necessary
+Date: Tue, 2 Jan 2018 17:50:34 +0100
+Message-ID: <20180102165034.GA4911@quack2.suse.cz>
+References: <20171222120556.7435-1-jlayton@kernel.org>
+ <20171222120556.7435-17-jlayton@kernel.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "dev@openvswitch.org" <dev@openvswitch.org>,
- "linux-s390@vger.kernel.org" <linux-s390@vger.kernel.org>,
- "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
- "dccp@vger.kernel.org" <dccp@vger.kernel.org>,
- "alexander.shishkin@linux.intel.com" <alexander.shishkin@linux.intel.com>,
- "esc.storagedev@microsemi.com" <esc.storagedev@microsemi.com>,
- "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
- "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
- "amd-gfx@lists.freedesktop.org" <amd-gfx@lists.freedesktop.org>,
- "cluster-devel@redhat.com" <cluster-devel@redhat.com>,
- "julia.lawall@lip6.fr" <julia.lawall@lip6.fr>,
- "dri-devel@lists.freedesktop.org" <dri-devel@lists.freedesktop.org>,
- "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
- "rpeterso@redhat.com" <rpeterso@redhat.com>,
- "namhyung@kernel.org" <namhyung@kernel.org>,
- "linux-ext4@vger.kernel.
-To: Bart Van Assche <Bart.VanAssche@wdc.com>
-Return-path: <dri-devel-bounces@lists.freedesktop.org>
-In-Reply-To: <1514905900.4242.4.camel@wdc.com>
-List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
-List-Post: <mailto:dri-devel@lists.freedesktop.org>
-List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
-Errors-To: dri-devel-bounces@lists.freedesktop.org
-Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+To: Jeff Layton <jlayton@kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20171222120556.7435-17-jlayton@kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-CgpPbiBUdWUsIDIgSmFuIDIwMTgsIEJhcnQgVmFuIEFzc2NoZSB3cm90ZToKCj4gT24gVHVlLCAy
-MDE4LTAxLTAyIGF0IDE1OjAwICswMTAwLCBKdWxpYSBMYXdhbGwgd3JvdGU6Cj4gPiBPbiBUdWUs
-IDIgSmFuIDIwMTgsIEJvYiBQZXRlcnNvbiB3cm90ZToKPiA+ID4gLS0tLS0gT3JpZ2luYWwgTWVz
-c2FnZSAtLS0tLQo+ID4gPiA+IC0tLS0tIE9yaWdpbmFsIE1lc3NhZ2UgLS0tLS0KPiA+ID4gPgo+
-ID4gPiBTdGlsbCwgdGhlIEdGUzIgYW5kIERMTSBjb2RlIGhhcyBhIHBsZXRob3JhIG9mIGJyb2tl
-bi11cCBwcmludGsgbWVzc2FnZXMsCj4gPiA+IGFuZCBJIGRvbid0IGxpa2UgdGhlIHRob3VnaHQg
-b2YgcmUtY29tYmluaW5nIHRoZW0gYWxsLgo+ID4KPiA+IEFjdHVhbGx5LCB0aGUgcG9pbnQgb2Yg
-dGhlIHBhdGNoIHdhcyB0byByZW1vdmUgdGhlIHVubmVjZXNzYXJ5IFxuIGF0IHRoZQo+ID4gZW5k
-IG9mIHRoZSBzdHJpbmcsIGJlY2F1c2UgbG9nX3ByaW50IHdpbGwgYWRkIGFub3RoZXIgb25lLiAg
-SWYgeW91IHByZWZlcgo+ID4gdG8ga2VlcCB0aGUgc3RyaW5nIGJyb2tlbiB1cCwgSSBjYW4gcmVz
-ZW5kIHRoZSBwYXRjaCBpbiB0aGF0IGZvcm0sIGJ1dAo+ID4gd2l0aG91dCB0aGUgdW5uZWNlc3Nh
-cnkgXG4uCj4KPiBQbGVhc2UgY29tYmluZSBhbnkgdXNlci12aXNpYmxlIHN0cmluZ3MgaW50byBh
-IHNpbmdsZSBsaW5lIGZvciB3aGljaCB0aGUKPiB1bm5lZWRlZCBuZXdsaW5lIGlzIGRyb3BwZWQg
-c2luY2UgdGhlc2Ugc3RyaW5ncyBhcmUgbW9kaWZpZWQgYW55d2F5IGJ5Cj4geW91ciBwYXRjaC4K
-ClRoYXQgaXMgd2hhdCB0aGUgc3VibWl0dGVkIHBhdGNoICgyLzEyIHNwZWNpZmljYWxseSkgZGlk
-LgoKanVsaWEKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18K
-ZHJpLWRldmVsIG1haWxpbmcgbGlzdApkcmktZGV2ZWxAbGlzdHMuZnJlZWRlc2t0b3Aub3JnCmh0
-dHBzOi8vbGlzdHMuZnJlZWRlc2t0b3Aub3JnL21haWxtYW4vbGlzdGluZm8vZHJpLWRldmVsCg==
+On Fri 22-12-17 07:05:53, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@redhat.com>
+> 
+> We only really need to update i_version if someone has queried for it
+> since we last incremented it. By doing that, we can avoid having to
+> update the inode if the times haven't changed.
+> 
+> If the times have changed, then we go ahead and forcibly increment the
+> counter, under the assumption that we'll be going to the storage
+> anyway, and the increment itself is relatively cheap.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/inode.c | 10 +++++++---
+>  1 file changed, 7 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/inode.c b/fs/inode.c
+> index 19e72f500f71..2fa920188759 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -1635,17 +1635,21 @@ static int relatime_need_update(const struct path *path, struct inode *inode,
+>  int generic_update_time(struct inode *inode, struct timespec *time, int flags)
+>  {
+>  	int iflags = I_DIRTY_TIME;
+> +	bool dirty = false;
+>  
+>  	if (flags & S_ATIME)
+>  		inode->i_atime = *time;
+>  	if (flags & S_VERSION)
+> -		inode_inc_iversion(inode);
+> +		dirty |= inode_maybe_inc_iversion(inode, dirty);
+>  	if (flags & S_CTIME)
+>  		inode->i_ctime = *time;
+>  	if (flags & S_MTIME)
+>  		inode->i_mtime = *time;
+> +	if ((flags & (S_ATIME | S_CTIME | S_MTIME)) &&
+> +	    !(inode->i_sb->s_flags & SB_LAZYTIME))
+> +		dirty = true;
+
+When you pass 'dirty' to inode_maybe_inc_iversion(), it is always false.
+Maybe this condition should be at the beginning of the function? Once you
+fix that the patch looks good so you can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
