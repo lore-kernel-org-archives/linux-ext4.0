@@ -1,30 +1,76 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: Incorrect block count during stat of a file if fallocate follows
- a buffered write.
-Date: Tue, 2 Jan 2018 13:52:40 -0500
-Message-ID: <20180102185240.GC2367@thunk.org>
-References: <CA+EzBbAmiKdBMBZRFU_YXVj1CS-U-SAB=xjR82Xu6qou+EN5jQ@mail.gmail.com>
- <CA+EzBbAbdJAU4v_Wb5c1kkgWA=fU0HLz_XmV9Y4NUit1HUiGeQ@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] dax: Pass detailed error code from dax_iomap_fault()
+Date: Tue, 2 Jan 2018 19:54:40 +0100
+Message-ID: <20180102185440.GD4911@quack2.suse.cz>
+References: <20171221163055.3943-1-jack@suse.cz>
+ <20171221163055.3943-2-jack@suse.cz>
+ <CAPcyv4jYKqEr+y8Uon3ddSvqskAiT_xKMNgnY7=UJkE=3xEM5A@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-        Vijaychidambaram Velayudhan Pillai <vijay@cs.utexas.edu>
-To: Jayashree Mohan <jayashree2912@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4 <linux-ext4@vger.kernel.org>,
+        Ted Tso <tytso@mit.edu>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nvdimm@lists.01.org
+To: Dan Williams <dan.j.williams@intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43958 "EHLO imap.thunk.org"
+Received: from mx2.suse.de ([195.135.220.15]:44177 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751141AbeABSwn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 2 Jan 2018 13:52:43 -0500
+        id S1750912AbeABSyp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 2 Jan 2018 13:54:45 -0500
 Content-Disposition: inline
-In-Reply-To: <CA+EzBbAbdJAU4v_Wb5c1kkgWA=fU0HLz_XmV9Y4NUit1HUiGeQ@mail.gmail.com>
+In-Reply-To: <CAPcyv4jYKqEr+y8Uon3ddSvqskAiT_xKMNgnY7=UJkE=3xEM5A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 02, 2018 at 11:39:22AM -0600, Jayashree Mohan wrote:
-> I wasn't sure if you missed this mail in your inbox. So I wanted to
-> send a gentle reminder about the same.
+On Thu 21-12-17 09:12:52, Dan Williams wrote:
+> On Thu, Dec 21, 2017 at 8:30 AM, Jan Kara <jack@suse.cz> wrote:
+> > Ext4 needs to pass through error from its iomap handler to the page
+> > fault handler so that it can properly detect ENOSPC and force
+> > transaction commit and retry the fault (and block allocation). Add
+> > argument to dax_iomap_fault() for passing such error.
+> >
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > ---
+> >  fs/dax.c            | 9 ++++++---
+> >  fs/ext2/file.c      | 2 +-
+> >  fs/ext4/file.c      | 2 +-
+> >  fs/xfs/xfs_file.c   | 2 +-
+> >  include/linux/dax.h | 2 +-
+> >  5 files changed, 10 insertions(+), 7 deletions(-)
+> >
+> > diff --git a/fs/dax.c b/fs/dax.c
+> > index 95981591977a..f3afa1d6156c 100644
+> > --- a/fs/dax.c
+> > +++ b/fs/dax.c
+> > @@ -1096,7 +1096,7 @@ static bool dax_fault_is_synchronous(unsigned long flags,
+> >  }
+> >
+> >  static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+> > -                              const struct iomap_ops *ops)
+> > +                              int *iomap_errp, const struct iomap_ops *ops)
+> >  {
+> >         struct vm_area_struct *vma = vmf->vma;
+> >         struct address_space *mapping = vma->vm_file->f_mapping;
+> > @@ -1149,6 +1149,8 @@ static int dax_iomap_pte_fault(struct vm_fault *vmf, pfn_t *pfnp,
+> >          * that we never have to deal with more than a single extent here.
+> >          */
+> >         error = ops->iomap_begin(inode, pos, PAGE_SIZE, flags, &iomap);
+> > +       if (iomap_errp)
+> > +               *iomap_errp = error;
+> 
+> Since we already have 'struct iomap' tracking the state of the iomap
+> should we track the error status there as well?  I.e. move the on
+> stack allocation of struct iomap to the per-fs dax fault handlers.
 
-Ack, I have seen it.  I've just hadn't gotten to it yet, but it is
-definitely on my queue!
+I don't think that's really adequate. Firstly because at least part of
+struct iomap needs to be initialized inside dax_iomap_fault() and secondly
+because by the time dax_iomap_fault() returns, mapping information in struct
+iomap may be invalid (as we unlocked radix tree entry). So I think it is
+really better to pass back only the error code and keep struct iomap
+internal to dax_iomap_fault().
 
-						- Ted
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
