@@ -1,89 +1,90 @@
-From: Jeff Layton <jlayton@kernel.org>
-Subject: Re: [PATCH v4 16/19] fs: only set S_VERSION when updating times if
- necessary
-Date: Tue, 02 Jan 2018 14:03:16 -0500
-Message-ID: <1514919796.3462.23.camel@kernel.org>
-References: <20171222120556.7435-1-jlayton@kernel.org>
-         <20171222120556.7435-17-jlayton@kernel.org>
-         <20180102165034.GA4911@quack2.suse.cz>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Release of e2fsprogs 1.43.8
+Date: Tue, 2 Jan 2018 15:00:22 -0500
+Message-ID: <20180102200022.GA12939@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20180102165034.GA4911@quack2.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:44150 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751014AbeABUAY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 2 Jan 2018 15:00:24 -0500
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2018-01-02 at 17:50 +0100, Jan Kara wrote:
-> On Fri 22-12-17 07:05:53, Jeff Layton wrote:
-> > From: Jeff Layton <jlayton@redhat.com>
-> > 
-> > We only really need to update i_version if someone has queried for it
-> > since we last incremented it. By doing that, we can avoid having to
-> > update the inode if the times haven't changed.
-> > 
-> > If the times have changed, then we go ahead and forcibly increment the
-> > counter, under the assumption that we'll be going to the storage
-> > anyway, and the increment itself is relatively cheap.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/inode.c | 10 +++++++---
-> >  1 file changed, 7 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/fs/inode.c b/fs/inode.c
-> > index 19e72f500f71..2fa920188759 100644
-> > --- a/fs/inode.c
-> > +++ b/fs/inode.c
-> > @@ -1635,17 +1635,21 @@ static int relatime_need_update(const struct path *path, struct inode *inode,
-> >  int generic_update_time(struct inode *inode, struct timespec *time, int flags)
-> >  {
-> >  	int iflags = I_DIRTY_TIME;
-> > +	bool dirty = false;
-> >  
-> >  	if (flags & S_ATIME)
-> >  		inode->i_atime = *time;
-> >  	if (flags & S_VERSION)
-> > -		inode_inc_iversion(inode);
-> > +		dirty |= inode_maybe_inc_iversion(inode, dirty);
-> >  	if (flags & S_CTIME)
-> >  		inode->i_ctime = *time;
-> >  	if (flags & S_MTIME)
-> >  		inode->i_mtime = *time;
-> > +	if ((flags & (S_ATIME | S_CTIME | S_MTIME)) &&
-> > +	    !(inode->i_sb->s_flags & SB_LAZYTIME))
-> > +		dirty = true;
-> 
-> When you pass 'dirty' to inode_maybe_inc_iversion(), it is always false.
-> Maybe this condition should be at the beginning of the function? Once you
-> fix that the patch looks good so you can add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> 
+I've released e2fsprogs 1.43.8 in all of the usual places; it's tagged
+in the git trees on git.kernel.org, github, and sourceforge, and
+available for download at:
 
-Thanks for the review! I've fixed it in my tree. I'll not re-post the
-set unless I have to make another significant change or someone requests
-it.
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.43.8
 
-I did make one other change, and that was to drop the "const" qualifiers
-on the integer arguments in the new API. David Howells pointed out that
-they don't really help anything, and the prototypes look cleaner without
-them.
+and
 
-This set is now in linux-next as well, so I'm going to try to get this
-merged into v4.16, assuming no problems between now and the merge
-window.
--- 
-Jeff Layton <jlayton@kernel.org>
+http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.43.8.tar.gz
+
+
+n.b.  There is a known bug which causes a build failure on big endian
+systems.  Unfortunately it was only noticed after the release was
+tagged, uploaded, and sent off to the Debian autobuilders:
+
+https://buildd.debian.org/status/package.php?p=e2fsprogs
+
+A patch for this will be showing up in the maint branch very shortly:
+
+https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=886119
+
+The release notes for 1.43.8 can be found below.
+
+                                    - Ted
+
+E2fsprogs 1.43.8 (January 1, 2018)
+==================================
+
+Fix a bug where updated bitmap checks might not be written to disk.
+(Addresses Debian Bug: #883869)
+
+Some newly added fields in the superblocks were not getting byte
+swapped (which were not noticed since big endian systems are amazingly
+unpopular).  Fix them and compile-time checks to avoid this class of
+bugs from happening in the future.  (Lustre Bug #9309)
+
+Fix a potential use after free bug in e2fsck when fixing a corrupted
+root node in directory hash tree.
+
+Fix a bug in e2fsck where a badly/maliciously corrupted superblock
+(which is not fixed due to the -n option, for example) can cause a
+floating point exception when printing the summary statistics.
+(Addresses Debian Bug: #879220)
+
+Fix debugfs's ncheck command so that it correctly prints the inode
+number when printing an error message.
+
+Fix a bug in e2freefrag where it could print an incorrect free blocks
+count on a file system with the 64-bit block number feature.
+
+Update the German, Serbian, Spanish, and Ukrainian translations.
+
+Fix a bug where resize2fs's free blocks sanity check could fail with a
+false positive and refuse to check a file system with the 64-bit block
+number feature.
+
+Fix and clarify various man pages and documentations.  Also fixed up
+some random usage texts that were incorrect.  (Addresses Debian Bugs:
+#880483)
+
+Fixed various Debian Packaging Issues.  (Addresses Debian Bugs: #880207,
+#881408, #881590, #881591)
+
+Programming notes
+-----------------
+
+Fix various compiler warnings.
+
+Clean up Makefile output.
+
+Fix compatibility problems with glibc 2.27 casued by a collision with
+copy_file_range().
+
+				    
