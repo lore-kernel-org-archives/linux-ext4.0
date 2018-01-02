@@ -1,70 +1,49 @@
-From: Julia Lawall <julia.lawall-L2FTfq7BK8M@public.gmane.org>
+From: Bart Van Assche <Bart.VanAssche@wdc.com>
 Subject: Re: [Cluster-devel] [PATCH 00/12] drop unneeded newline
-Date: Tue, 2 Jan 2018 15:00:46 +0100 (CET)
-Message-ID: <alpine.DEB.2.20.1801021458360.24055@hadrien>
+Date: Tue, 2 Jan 2018 15:11:42 +0000
+Message-ID: <1514905900.4242.4.camel@wdc.com>
 References: <1514386305-7402-1-git-send-email-Julia.Lawall@lip6.fr>
-	<1878806802.2632123.1514901158666.JavaMail.zimbra@redhat.com>
-	<1019862289.2632779.1514901387442.JavaMail.zimbra@redhat.com>
+         <1878806802.2632123.1514901158666.JavaMail.zimbra@redhat.com>
+         <1019862289.2632779.1514901387442.JavaMail.zimbra@redhat.com>
+         <alpine.DEB.2.20.1801021458360.24055@hadrien>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: dev-yBygre7rU0TnMu66kgdUjQ@public.gmane.org, linux-s390-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	dccp-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Alexander Shishkin <alexander.shishkin-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>,
-	netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, kernel-janitors-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, dri-devel-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org,
-	cluster-devel-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, amd-gfx-PD4FTy7X32lNgt0PjOBp9y5qC8QIuHrW@public.gmane.org,
-	esc storagedev <esc.storagedev-dzo6w/eZyo2tG0bUXCXiUA@public.gmane.org>,
-	Namhyung Kim <namhyung-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Jiri Olsa <jolsa-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-arm-kernel-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
-	linux-media-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Bob Peterson <rpeterso-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-In-Reply-To: <1019862289.2632779.1514901387442.JavaMail.zimbra-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-List-Unsubscribe: <https://mail.openvswitch.org/mailman/options/ovs-dev>,
-	<mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://mail.openvswitch.org/pipermail/ovs-dev/>
-List-Post: <mailto:ovs-dev-yBygre7rU0TnMu66kgdUjQ@public.gmane.org>
-List-Help: <mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=help>
-List-Subscribe: <https://mail.openvswitch.org/mailman/listinfo/ovs-dev>,
-	<mailto:ovs-dev-request-yBygre7rU0TnMu66kgdUjQ@public.gmane.org?subject=subscribe>
-Sender: ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org
-Errors-To: ovs-dev-bounces-yBygre7rU0TnMu66kgdUjQ@public.gmane.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-s390@vger.kernel.org" <linux-s390@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jolsa@redhat.com" <jolsa@redhat.com>,
+        "linux-media@vger.kernel.org" <linux-media@vger.kernel.org>,
+        "amd-gfx@lists.freedesktop.org" <amd-gfx@lists.freedesktop.org>,
+        "namhyung@kernel.org" <namhyung@kernel.org>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        "esc.storagedev@microsemi.com" <esc.storagedev@microsemi.com>,
+        "dri-devel@lists.freedesktop.org" <dri-devel@lists.freedesktop.org>,
+        "alexander.shishkin@linux.intel.com"
+        <alexander.shishkin@linux.intel.com>,
+        "dev@openvswitch.org" <dev@openvswitch.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-arm-kernel@li
+To: "rpeterso@redhat.com" <rpeterso@redhat.com>,
+        "julia.lawall@lip6.fr" <julia.lawall@lip6.fr>
+Return-path: <kernel-janitors-owner@vger.kernel.org>
+In-Reply-To: <alpine.DEB.2.20.1801021458360.24055@hadrien>
+Content-Language: en-US
+Content-ID: <393EABA14D4C8A408D6445306BCE9BFE@namprd04.prod.outlook.com>
+Sender: kernel-janitors-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
-
-On Tue, 2 Jan 2018, Bob Peterson wrote:
-
-> ----- Original Message -----
-> | ----- Original Message -----
-> | | Drop newline at the end of a message string when the printing function adds
-> | | a newline.
-> |
-> | Hi Julia,
-> |
-> | NACK.
-> |
-> | As much as it's a pain when searching the source code for output strings,
-> | this patch set goes against the accepted Linux coding style document. See:
-> |
-> | https://www.kernel.org/doc/html/v4.10/process/coding-style.html#breaking-long-lines-and-strings
-> |
-> | Regards,
-> |
-> | Bob Peterson
-> |
-> |
-> Hm. I guess I stand corrected. The document reads:
->
-> "However, never break user-visible strings such as printk messages, because that breaks the ability to grep for them."
->
-> Still, the GFS2 and DLM code has a plethora of broken-up printk messages,
-> and I don't like the thought of re-combining them all.
-
-Actually, the point of the patch was to remove the unnecessary \n at the
-end of the string, because log_print will add another one.  If you prefer
-to keep the string broken up, I can resend the patch in that form, but
-without the unnecessary \n.
-
-julia
+T24gVHVlLCAyMDE4LTAxLTAyIGF0IDE1OjAwICswMTAwLCBKdWxpYSBMYXdhbGwgd3JvdGU6DQo+
+IE9uIFR1ZSwgMiBKYW4gMjAxOCwgQm9iIFBldGVyc29uIHdyb3RlOg0KPiA+IC0tLS0tIE9yaWdp
+bmFsIE1lc3NhZ2UgLS0tLS0NCj4gPiA+IC0tLS0tIE9yaWdpbmFsIE1lc3NhZ2UgLS0tLS0NCj4g
+PiA+DQo+ID4gU3RpbGwsIHRoZSBHRlMyIGFuZCBETE0gY29kZSBoYXMgYSBwbGV0aG9yYSBvZiBi
+cm9rZW4tdXAgcHJpbnRrIG1lc3NhZ2VzLA0KPiA+IGFuZCBJIGRvbid0IGxpa2UgdGhlIHRob3Vn
+aHQgb2YgcmUtY29tYmluaW5nIHRoZW0gYWxsLg0KPiANCj4gQWN0dWFsbHksIHRoZSBwb2ludCBv
+ZiB0aGUgcGF0Y2ggd2FzIHRvIHJlbW92ZSB0aGUgdW5uZWNlc3NhcnkgXG4gYXQgdGhlDQo+IGVu
+ZCBvZiB0aGUgc3RyaW5nLCBiZWNhdXNlIGxvZ19wcmludCB3aWxsIGFkZCBhbm90aGVyIG9uZS4g
+IElmIHlvdSBwcmVmZXINCj4gdG8ga2VlcCB0aGUgc3RyaW5nIGJyb2tlbiB1cCwgSSBjYW4gcmVz
+ZW5kIHRoZSBwYXRjaCBpbiB0aGF0IGZvcm0sIGJ1dA0KPiB3aXRob3V0IHRoZSB1bm5lY2Vzc2Fy
+eSBcbi4NCg0KUGxlYXNlIGNvbWJpbmUgYW55IHVzZXItdmlzaWJsZSBzdHJpbmdzIGludG8gYSBz
+aW5nbGUgbGluZSBmb3Igd2hpY2ggdGhlDQp1bm5lZWRlZCBuZXdsaW5lIGlzIGRyb3BwZWQgc2lu
+Y2UgdGhlc2Ugc3RyaW5ncyBhcmUgbW9kaWZpZWQgYW55d2F5IGJ5DQp5b3VyIHBhdGNoLg0KDQpU
+aGFua3MsDQoNCkJhcnQu
