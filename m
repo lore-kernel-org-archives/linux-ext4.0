@@ -1,39 +1,41 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 04/12] ext2: drop unneeded newline
-Date: Tue, 2 Jan 2018 14:42:30 +0100
-Message-ID: <20180102134230.GA30307@quack2.suse.cz>
+From: Bob Peterson <rpeterso@redhat.com>
+Subject: Re: [Cluster-devel] [PATCH 00/12] drop unneeded newline
+Date: Tue, 2 Jan 2018 08:52:38 -0500 (EST)
+Message-ID: <1878806802.2632123.1514901158666.JavaMail.zimbra@redhat.com>
 References: <1514386305-7402-1-git-send-email-Julia.Lawall@lip6.fr>
- <1514386305-7402-5-git-send-email-Julia.Lawall@lip6.fr>
- <20171228043042.GB30269@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Julia Lawall <Julia.Lawall@lip6.fr>, Jan Kara <jack@suse.com>,
-        kernel-janitors@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:50017 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751495AbeABNmd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 2 Jan 2018 08:42:33 -0500
-Content-Disposition: inline
-In-Reply-To: <20171228043042.GB30269@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: dev@openvswitch.org, linux-s390@vger.kernel.org,
+ linux-media@vger.kernel.org, linux-scsi@vger.kernel.org, dccp@vger.kernel.org,
+ Alexander Shishkin <alexander.shishkin@linux.intel.com>,
+ netdev@vger.kernel.org, kernel-janitors@vger.kernel.org,
+ linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org,
+ cluster-devel@redhat.com, amd-gfx@lists.freedesktop.org,
+ Namhyung Kim <namhyung@kernel.org>, linux-ext4@vger.kernel.org,
+ Jiri Olsa <jolsa@redhat.com>, linux-arm-kernel@lists.infradead.org,
+ esc storagedev <esc.storagedev@microsemi.com>
+To: Julia Lawall <Julia.Lawall@lip6.fr>
+Return-path: <dri-devel-bounces@lists.freedesktop.org>
+In-Reply-To: <1514386305-7402-1-git-send-email-Julia.Lawall@lip6.fr>
+List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
+List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
+List-Post: <mailto:dri-devel@lists.freedesktop.org>
+List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
+List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
+Errors-To: dri-devel-bounces@lists.freedesktop.org
+Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 27-12-17 23:30:42, Ted Tso wrote:
-> On Wed, Dec 27, 2017 at 03:51:37PM +0100, Julia Lawall wrote:
-> > ext2_msg prints a newline at the end of the message string, so the message
-> > string does not need to include a newline explicitly.  Done using
-> > Coccinelle.
-> > 
-> > Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
-> 
-> Reviewed-by: Theodore Ts'o <tytso@mit.edu>
-
-Thanks. I've picked up the patch to my tree.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+LS0tLS0gT3JpZ2luYWwgTWVzc2FnZSAtLS0tLQp8IERyb3AgbmV3bGluZSBhdCB0aGUgZW5kIG9m
+IGEgbWVzc2FnZSBzdHJpbmcgd2hlbiB0aGUgcHJpbnRpbmcgZnVuY3Rpb24gYWRkcwp8IGEgbmV3
+bGluZS4KCkhpIEp1bGlhLAoKTkFDSy4KCkFzIG11Y2ggYXMgaXQncyBhIHBhaW4gd2hlbiBzZWFy
+Y2hpbmcgdGhlIHNvdXJjZSBjb2RlIGZvciBvdXRwdXQgc3RyaW5ncywKdGhpcyBwYXRjaCBzZXQg
+Z29lcyBhZ2FpbnN0IHRoZSBhY2NlcHRlZCBMaW51eCBjb2Rpbmcgc3R5bGUgZG9jdW1lbnQuIFNl
+ZToKCmh0dHBzOi8vd3d3Lmtlcm5lbC5vcmcvZG9jL2h0bWwvdjQuMTAvcHJvY2Vzcy9jb2Rpbmct
+c3R5bGUuaHRtbCNicmVha2luZy1sb25nLWxpbmVzLWFuZC1zdHJpbmdzCgpSZWdhcmRzLAoKQm9i
+IFBldGVyc29uCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+CmRyaS1kZXZlbCBtYWlsaW5nIGxpc3QKZHJpLWRldmVsQGxpc3RzLmZyZWVkZXNrdG9wLm9yZwpo
+dHRwczovL2xpc3RzLmZyZWVkZXNrdG9wLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2RyaS1kZXZlbAo=
