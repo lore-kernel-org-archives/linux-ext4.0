@@ -1,36 +1,29 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH v4 00/18] dax: fix dma vs truncate/hole-punch
-Date: Thu, 4 Jan 2018 09:17:55 +0100
-Message-ID: <20180104081755.GD2548@lst.de>
+From: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Subject: Re: [PATCH v4 13/18] ext4: use DEFINE_FSDAX_AOPS
+Date: Thu, 4 Jan 2018 09:29:24 +0100
+Message-ID: <20180104082924.GI2548@lst.de>
 References: <151407695916.38751.2866053440557472361.stgit@dwillia2-desk3.amr.corp.intel.com>
+ <151407703002.38751.15305085717541373826.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, Michal Hocko <mhocko@suse.com>,
-        jack@suse.cz, Peter Zijlstra <peterz@infradead.org>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-        Dave Hansen <dave.hansen@linux.intel.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>, hch@lst.de,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Michael Ellerman <mpe@ellerman.id.au>,
-        Jeff Moyer <jmoyer@redhat.com>, Ingo Molnar <mingo@redhat.com>,
-        ross.zwisler@linux.intel.com, linux-ext4@vger.kernel.org,
-        Heiko Carstens <heiko.carstens@de.ibm.com>,
-        linux-fsdevel@vger.kernel.org,
-        =?iso-8859-1?B?Suly9G1l?= Glisse <jglisse@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Gerald Schaefer <gerald.schaefer@de.ibm.com>,
-        linux-nvdimm@lists.01.org, Theodore Ts'o <tytso@mit.edu>,
-To: Dan Williams <dan.j.williams@intel.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: jack-AlSwsSmVLrQ@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, hch-jcswGhMUV9g@public.gmane.org,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+ akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <151407695916.38751.2866053440557472361.stgit@dwillia2-desk3.amr.corp.intel.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <151407703002.38751.15305085717541373826.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-> So far this solution only targets xfs since it already implements
-> xfs_break_layouts in all the locations that would need this
-> synchronization. It applies on top of the vmem_altmap / dev_pagemap
-> reworks from Christoph.
-
-Those got a rebase since your posting of this series, btw.
+Same comment as for XFS applies here as well.
