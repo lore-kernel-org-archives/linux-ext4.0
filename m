@@ -1,61 +1,38 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: fix incorrect indentation of if statement
-Date: Thu, 4 Jan 2018 16:40:18 +0100
-Message-ID: <20180104154018.GB2170@quack2.suse.cz>
-References: <20171129142059.21898-1-colin.king@canonical.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 198187] jbd2_log_wait_commit hangs
+Date: Thu, 04 Jan 2018 16:10:12 +0000
+Message-ID: <bug-198187-13602-WhJz5wfqxa@https.bugzilla.kernel.org/>
+References: <bug-198187-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Colin King <colin.king@canonical.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20171129142059.21898-1-colin.king@canonical.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:52852 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752036AbeADQKP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jan 2018 11:10:15 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id C1CB32873D
+        for <linux-ext4@vger.kernel.org>; Thu,  4 Jan 2018 16:10:14 +0000 (UTC)
+In-Reply-To: <bug-198187-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 29-11-17 14:20:59, Colin King wrote:
-> From: Colin Ian King <colin.king@canonical.com>
-> 
-> The indentation is incorrect and spaces need replacing with a tab
-> on the if statement.
-> 
-> Cleans up smatch warning:
-> fs/ext4/namei.c:3220 ext4_link() warn: inconsistent indenting
-> 
-> Signed-off-by: Colin Ian King <colin.king@canonical.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=198187
 
-This seems to fall through cracks. The patch looks good. You can add:
+Jan Kara (jack@suse.cz) changed:
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |jack@suse.cz
 
-								Honza
+--- Comment #6 from Jan Kara (jack@suse.cz) ---
+As Ted said we'd need sysrq output to debug this further. Actually output from
+sysrq-w should be enough. So if this happens again, can you please trigger it
+(either by running 'echo w >/proc/sysrq-trigger' or by pressing appropriate key
+combination on serial console) and post output from dmesg after it? Thanks.
 
-
-> ---
->  fs/ext4/namei.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 798b3ac680db..d3fabc553c65 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -3217,8 +3217,8 @@ static int ext4_link(struct dentry *old_dentry,
->  	if (err)
->  		return err;
->  
-> -       if ((ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) &&
-> -	   (!projid_eq(EXT4_I(dir)->i_projid,
-> +	if ((ext4_test_inode_flag(dir, EXT4_INODE_PROJINHERIT)) &&
-> +	    (!projid_eq(EXT4_I(dir)->i_projid,
->  		       EXT4_I(old_dentry->d_inode)->i_projid)))
->  		return -EXDEV;
->  
-> -- 
-> 2.14.1
-> 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
