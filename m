@@ -1,38 +1,49 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 198187] jbd2_log_wait_commit hangs
-Date: Thu, 04 Jan 2018 16:10:12 +0000
-Message-ID: <bug-198187-13602-WhJz5wfqxa@https.bugzilla.kernel.org/>
-References: <bug-198187-13602@https.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [QUESTION] Locking for the transaction buffers
+Date: Thu, 4 Jan 2018 17:21:08 +0100
+Message-ID: <20180104162108.GD2170@quack2.suse.cz>
+References: <8ced83bc-4afa-998e-8015-bab5e2441c49@tu-dortmund.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+        Horst Schirmeier <horst.schirmeier@tu-dortmund.de>
+To: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:52852 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752036AbeADQKP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jan 2018 11:10:15 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id C1CB32873D
-        for <linux-ext4@vger.kernel.org>; Thu,  4 Jan 2018 16:10:14 +0000 (UTC)
-In-Reply-To: <bug-198187-13602@https.bugzilla.kernel.org/>
+Received: from mx2.suse.de ([195.135.220.15]:52172 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753523AbeADQVL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 4 Jan 2018 11:21:11 -0500
+Content-Disposition: inline
+In-Reply-To: <8ced83bc-4afa-998e-8015-bab5e2441c49@tu-dortmund.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=198187
+Hi,
 
-Jan Kara (jack@suse.cz) changed:
+On Mon 18-12-17 18:08:34, Alexander Lochmann wrote:
+> I'm studying the locking in the JBD2 subsystem (v4.15-rc4). Doing so, I
+> came across the jbd2_journal_commit_transaction function
+> where severals lists, e.g., t_forget or t_buffers, are flushed in a
+> while loop.
+> According to the documentation in inlcude/linux/jbd2.h, the j_list_lock
+> lock is the appropriate lock.
+> However, it is only used in one out of three cases:
+> In fs/jbd2/commit.c:903, the while loop is protected using the
+> j_list_lock lock. Whereas it is not used at line 464 and 561.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jack@suse.cz
+We are in a situation where all updates to the transaction have finished
+and we are starting to commit the transaction. In such situation nobody
+should be touching transaction's t_reserved_list or t_buffers_list. OTOH
+transaction's t_forget list can still be modified as buffers can be
+attached to that list even while transaction is committing (usually those
+are buffers that can be discarded once the transaction commits).
 
---- Comment #6 from Jan Kara (jack@suse.cz) ---
-As Ted said we'd need sysrq output to debug this further. Actually output from
-sysrq-w should be enough. So if this happens again, can you please trigger it
-(either by running 'echo w >/proc/sysrq-trigger' or by pressing appropriate key
-combination on serial console) and post output from dmesg after it? Thanks.
+> In contrast to that, the insert and remove operations to any of these
+> lists are protected by that lock.
 
+Yes, they need to serialize against each other.
+
+								Honza
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
