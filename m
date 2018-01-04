@@ -1,157 +1,172 @@
-From: Dave Chinner <david@fromorbit.com>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: Filesystem crashes due to pages without buffers
-Date: Thu, 4 Jan 2018 21:08:25 +1100
-Message-ID: <20180104100825.GH30682@dastard>
+Date: Thu, 4 Jan 2018 12:33:01 +0100
+Message-ID: <20180104113301.GE29010@quack2.suse.cz>
 References: <20180103100430.GE4911@quack2.suse.cz>
- <20180104055919.GG30682@dastard>
- <20180104085244.GA29010@quack2.suse.cz>
+ <CAPcyv4grBxGs0cnFVyRx29t0xhG5EBTy_nP=qhsVh5=8nusNsw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Dan Williams <dan.j.williams@intel.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Linux MM <linux-mm@kvack.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-xfs <linux-xfs@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Dan Williams <dan.j.williams@intel.com>
+Return-path: <owner-linux-mm@kvack.org>
 Content-Disposition: inline
-In-Reply-To: <20180104085244.GA29010@quack2.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
+In-Reply-To: <CAPcyv4grBxGs0cnFVyRx29t0xhG5EBTy_nP=qhsVh5=8nusNsw@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 04, 2018 at 09:52:44AM +0100, Jan Kara wrote:
-> On Thu 04-01-18 16:59:19, Dave Chinner wrote:
-> > On Wed, Jan 03, 2018 at 11:04:30AM +0100, Jan Kara wrote:
-> > > Hello,
-> > > 
-> > > Over the years I have seen so far unexplained crashed in filesystem's
-> > > (ext4, xfs) writeback path due to dirty pages without buffers attached to
-> > > them (see [1] and [2] for relatively recent reports). This was confusing as
-> > > reclaim takes care not to strip buffers from a dirty page and both
-> > > filesystems do add buffers to a page when it is first written to - in
-> > > ->page_mkwrite() and ->write_begin callbacks.
-> > > 
-> > > Recently I have come across a code path that is probably leading to this
-> > > inconsistent state and I'd like to discuss how to best fix the problem
-> > > because it's not obvious to me. Consider the following race:
-> > > 
-> > > CPU1					CPU2
-> > > 
-> > > addr = mmap(file1, MAP_SHARED, ...);
-> > > fd2 = open(file2, O_DIRECT | O_RDONLY);
-> > > read(fd2, addr, len)
-> > >   do_direct_IO()
-> > >     page = dio_get_page()
-> > >       dio_refill_pages()
-> > >         iov_iter_get_pages()
-> > > 	  get_user_pages_fast()
-> > >             - page fault
-> > >               ->page_mkwrite()
-> > >                 block_page_mkwrite()
-> > >                   lock_page(page);
-> > >                   - attaches buffers to page
-> > >                   - makes sure blocks are allocated
-> > >                   set_page_dirty(page)
-> > >               - install writeable PTE
-> > >               unlock_page(page);
-> > >     submit_page_section(page)
-> > >       - submits bio with 'page' as a buffer
-> > > 					kswapd reclaims pages:
-> > > 					...
-> > > 					shrink_page_list()
-> > > 					  trylock_page(page) - this is the
-> > > 					    page CPU1 has just faulted in
-> > > 					  try_to_unmap(page)
-> > > 					  pageout(page);
-> > > 					    clear_page_dirty_for_io(page);
-> > > 					    ->writepage()
-> > > 					  - let's assume page got written
-> > > 					    out fast enough, alternatively
-> > > 					    we could get to the same path as
-> > > 					    soon as the page IO completes
-> > > 					  if (page_has_private(page)) {
-> > > 					    try_to_release_page(page)
-> > > 					      - reclaims buffers from the
-> > > 					        page
-> > > 					   __remove_mapping(page)
-> > > 					     - fails as DIO code still
-> > > 					       holds page reference
-> > > ...
-> > > 
-> > > eventually read completes
-> > >   dio_bio_complete(bio)
-> > >     set_page_dirty_lock(page)
-> > >       Bummer, we've just marked the page as dirty without having buffers.
-> > >       Eventually writeback will find it and filesystem will complain...
-> > > 
-> > > Am I missing something?
-> > 
-> > My first question is why is kswapd trying to reclaim a page with an
-> > elevated active reference count? i.e. there are active references
-> > the VM *doesn't own* to the page, which means that there may well
-> > a user that expects the state on the page (e.g. the page private
-> > data that the active reference instantiated!) to remain intact until
-> > it drops it's active reference.
+On Wed 03-01-18 20:56:32, Dan Williams wrote:
+> On Wed, Jan 3, 2018 at 2:04 AM, Jan Kara <jack@suse.cz> wrote:
+> > Hello,
+> >
+> > Over the years I have seen so far unexplained crashed in filesystem's
+> > (ext4, xfs) writeback path due to dirty pages without buffers attached to
+> > them (see [1] and [2] for relatively recent reports). This was confusing as
+> > reclaim takes care not to strip buffers from a dirty page and both
+> > filesystems do add buffers to a page when it is first written to - in
+> > ->page_mkwrite() and ->write_begin callbacks.
+> >
+> > Recently I have come across a code path that is probably leading to this
+> > inconsistent state and I'd like to discuss how to best fix the problem
+> > because it's not obvious to me. Consider the following race:
+> >
+> > CPU1                                    CPU2
+> >
+> > addr = mmap(file1, MAP_SHARED, ...);
+> > fd2 = open(file2, O_DIRECT | O_RDONLY);
+> > read(fd2, addr, len)
+> >   do_direct_IO()
+> >     page = dio_get_page()
+> >       dio_refill_pages()
+> >         iov_iter_get_pages()
+> >           get_user_pages_fast()
+> >             - page fault
+> >               ->page_mkwrite()
+> >                 block_page_mkwrite()
+> >                   lock_page(page);
+> >                   - attaches buffers to page
+> >                   - makes sure blocks are allocated
+> >                   set_page_dirty(page)
+> >               - install writeable PTE
+> >               unlock_page(page);
+> >     submit_page_section(page)
+> >       - submits bio with 'page' as a buffer
+> >                                         kswapd reclaims pages:
+> >                                         ...
+> >                                         shrink_page_list()
+> >                                           trylock_page(page) - this is the
+> >                                             page CPU1 has just faulted in
+> >                                           try_to_unmap(page)
+> >                                           pageout(page);
+> >                                             clear_page_dirty_for_io(page);
+> >                                             ->writepage()
+> >                                           - let's assume page got written
+> >                                             out fast enough, alternatively
+> >                                             we could get to the same path as
+> >                                             soon as the page IO completes
+> >                                           if (page_has_private(page)) {
+> >                                             try_to_release_page(page)
+> >                                               - reclaims buffers from the
+> >                                                 page
+> >                                            __remove_mapping(page)
+> >                                              - fails as DIO code still
+> >                                                holds page reference
+> > ...
+> >
+> > eventually read completes
+> >   dio_bio_complete(bio)
+> >     set_page_dirty_lock(page)
+> >       Bummer, we've just marked the page as dirty without having buffers.
+> >       Eventually writeback will find it and filesystem will complain...
+> >
+> > Am I missing something?
+> >
+> > The problem here is that filesystems fundamentally assume that a page can
+> > be written to only between ->write_begin - ->write_end (in this interval
+> > the page is locked), or between ->page_mkwrite - ->writepage and above is
+> > an example where this does not hold because when a page reference is
+> > acquired through get_user_pages(), page can get written to by the holder of
+> > the reference and dirtied even after it has been unmapped from page tables
+> > and ->writepage has been called. This is not only a cosmetic issue leading
+> > to assertion failure but it can also lead to data loss, data corruption, or
+> > other unpleasant surprises as filesystems assume page contents cannot be
+> > modified until either ->write_begin() or ->page_mkwrite gets called and
+> > those calls are serialized by proper locking with problematic operations
+> > such as hole punching etc.
+> >
+> > I'm not sure how to fix this problem. We could 'simulate' a writeable page
+> > fault in set_page_dirty_lock(). It is a bit ugly since we don't have a
+> > virtual address of the fault, don't hold mmap_sem, etc., possibly
+> > expensive, but it would make filesystems happy. Data stored by GUP user
+> > (e.g. read by DIO in the above case) could still get lost if someone e.g.
+> > punched hole under the buffer or otherwise messed with the underlying
+> > storage of the page while DIO was running but arguably users could expect
+> > such outcome.
+> >
+> > Another possible solution would be to make sure page is writeably mapped
+> > until GUP user drops its reference. That would be arguably cleaner but
+> > probably that would mean we have to track number of writeable GUP page
+> > references separately (no space space in struct page is a problem here) and
+> > block page_mkclean() until they are dropped. Also for long term GUP users
+> > like Infiniband or V4L we'd have to come up with some solution as we should
+> > not block page_mkclean() for so long.
 > 
-> Page private data (and most of page state) is protected by a page lock, not
-> by a page reference. So reclaim (which is holding the page lock) is free to
-> try to reclaim page private data by calling ->releasepage callback.
+> Do we need to block page_mkclean, or could we defer buffer reclaiming
+> to the last put of the page?
 
-Page private data is "owned" by whoever put the private data there.
-Manipulating the fields and state that says there is private data on
-the page is protected by the page lock.
+As I wrote to Dave the problem is no so much with reclaiming of buffers but
+with the fact filesystems don't expect page can be dirtied after
+page_mkclean() is finished.
 
-> That being said you are right that the attempt to reclaim a page with
-> active references is futile. But the problem is that we don't know how many
-> page references are actually left before we unmap the page from page tables
-> (each page table entry holds a page reference) and free page private data
-> (as that may hold page reference as well - e.g. attach_page_buffers()
-> acquires page reference). So checking page references in advance is
-> difficult.
-
-perhaps we need separate accounting of internal and active
-references (kinda like superblocks), where active references prevent
-reclaim because they require the current state to be maintained
-until the reference is dropped, whilst internal references simply
-prevent the page from being freed until they are released.
-
-> Furthermore the core of the problem is not in the fact that page buffers
-> are reclaimed. That just makes it visible. The real problem is that page can
-> be written to by a GUP user while it is neither writeably mapped in page
-> tables nor prepared with ->write_begin. So a similar race violating
-> filesystem's assumptions can be like:
+> I think once we have the "register memory with lease" mechanism for
+> Infiniband we could expand it to the page cache case. The problem is
+> the regression this would cause with userspace that expects it can
+> maintain file backed memory registrations indefinitely.
 > 
-> CPU1					CPU2
+> What are the implications of holding off page_mkclean or release
+> buffers indefinitely?
+
+Bad. You cannot write the page to disk until page_mkclean() finishes as
+page_mkclean() is part of clear_page_dirty_for_io(). And we really do need
+that functionality there e.g. to make sure tail of the last page in the
+file is properly zeroed out, storage with DIF/DIX can compute checksum of
+the data safely before submitting it to the device etc.
+
+> Is an indefinite / interruptible sleep waiting for the 'put' event of
+> a get_user_pages() page unacceptable? The current case that the file
+> contents will not be coherent with respect to in-flight RDMA, perhaps
+> waiting for that to complete is better than cleaning buffers from the
+> page prematurely.
+
+Yeah, indefinite sleep is really a no-go.
+
+> > As a side note DAX needs some solution for GUP users as well. The problems
+> > are similar there in nature, just much easier to hit. So at least a
+> > solution for long-term GUP users can (and I strongly believe should) be
+> > shared between standard and DAX paths.
 > 
-> addr = mmap(file1, MAP_SHARED, ...);
-> fd2 = open(file2, O_DIRECT | O_RDONLY);
-> read(fd2, addr, len)
->   do_direct_IO()
->     ...
->     page = get_user_pages_fast()
->       - page fault handled
->     submit_page_section(page)
->       - submits bio with 'page' as a buffer
-> 					ordinary writeback:
-> 					writepages(file1)
-> 					  clear_page_dirty_for_io(page)
-> 					    - page gets writeprotected in
-> 					      page tables
-> ...
-> eventually read completes
->   dio_bio_complete(bio)
->     set_page_dirty_lock(page)
-> 
-> And a race like this is enough to cause data corruption if we are unlucky.
+> In the DAX case we rely on the fact that when the page goes idle we
+> only need to worry about the filesytem block map changing, the page
+> won't get reallocated somewhere else. We can't use page idle as an
+> event in this case, however, if the page reference count is one then
+> the DIO code can know that it has the page exclusively, so maybe DAX
+> and non-DAX can share the page count == 1 event notification.
 
-Hmmm. if that's the case then we probably need a page flag to
-indicate the page cannot be cleaned, unmapped or reclaimed by
-anything until the GUP reference owner clears that flag. It seems
-analagous to the PageWriteback flag and teh way we avoid certain
-things when we know the page is under IO (e.g. immediate reclaim
-:P).
+The races I describe do not need to involve truncate / hole punching. It is
+just enough to race with page writeback. So page references are of no use
+here. We would have to specifically track number of references acquired by
+GUP or something like that. So what I wanted to share with DAX is the
+long-term pin handling, the rest is unclear for now.
 
-Cheers,
-
-Dave.
+								Honza
 -- 
-Dave Chinner
-david@fromorbit.com
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
