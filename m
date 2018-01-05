@@ -1,106 +1,146 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH v2 01/11] fscrypt: move
- fscrypt_has_encryption_key() to supp/notsupp headers
-Date: Fri,  5 Jan 2018 10:44:52 -0800
-Message-ID: <20180105184502.48473-2-ebiggers3@gmail.com>
+Subject: [PATCH v2 11/11] fscrypt: new helper function - fscrypt_get_symlink()
+Date: Fri,  5 Jan 2018 10:45:02 -0800
+Message-ID: <20180105184502.48473-12-ebiggers3@gmail.com>
 References: <20180105184502.48473-1-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>,
- linux-f2fs-devel@lists.sourceforge.net
-To: linux-fscrypt@vger.kernel.org,
-	"Theodore Y . Ts'o" <tytso@mit.edu>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
+        Eric Biggers <ebiggers@google.com>
+To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:45154 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752623AbeAES5f (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jan 2018 13:57:35 -0500
 In-Reply-To: <20180105184502.48473-1-ebiggers3@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Eric Biggers <ebiggers@google.com>
 
-fscrypt_has_encryption_key() is already split into two versions
-depending on whether the filesystem is being built with encryption
-support or not.  Move them into the appropriate headers.
+Filesystems also have duplicate code to support ->get_link() on
+encrypted symlinks.  Factor it out into a new function
+fscrypt_get_symlink().  It takes in the contents of the encrypted
+symlink on-disk and provides the target (decrypted or encoded) that
+should be returned from ->get_link().
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/linux/fscrypt.h         | 10 ----------
- include/linux/fscrypt_notsupp.h |  5 +++++
- include/linux/fscrypt_supp.h    |  5 +++++
- 3 files changed, 10 insertions(+), 10 deletions(-)
+ fs/crypto/hooks.c               | 73 +++++++++++++++++++++++++++++++++++++++++
+ include/linux/fscrypt_notsupp.h |  8 +++++
+ include/linux/fscrypt_supp.h    |  3 ++
+ 3 files changed, 84 insertions(+)
 
-diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-index 08b4b40c5aa8..d1c891b5bd9c 100644
---- a/include/linux/fscrypt.h
-+++ b/include/linux/fscrypt.h
-@@ -129,11 +129,6 @@ static inline struct page *fscrypt_control_page(struct page *page)
- 	return ((struct fscrypt_ctx *)page_private(page))->w.control_page;
+diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
+index 4b83e4af2e41..8900e348ba6e 100644
+--- a/fs/crypto/hooks.c
++++ b/fs/crypto/hooks.c
+@@ -200,3 +200,76 @@ int __fscrypt_encrypt_symlink(struct inode *inode, const char *target,
+ 	return 0;
  }
- 
--static inline bool fscrypt_has_encryption_key(const struct inode *inode)
--{
--	return (inode->i_crypt_info != NULL);
--}
--
- #include <linux/fscrypt_supp.h>
- 
- #else /* !__FS_HAS_ENCRYPTION */
-@@ -144,11 +139,6 @@ static inline struct page *fscrypt_control_page(struct page *page)
- 	return ERR_PTR(-EINVAL);
- }
- 
--static inline bool fscrypt_has_encryption_key(const struct inode *inode)
--{
--	return 0;
--}
--
- #include <linux/fscrypt_notsupp.h>
- #endif /* __FS_HAS_ENCRYPTION */
- 
+ EXPORT_SYMBOL_GPL(__fscrypt_encrypt_symlink);
++
++/**
++ * fscrypt_get_symlink - get the target of an encrypted symlink
++ * @inode: the symlink inode
++ * @caddr: the on-disk contents of the symlink
++ * @max_size: size of @caddr buffer
++ * @done: if successful, will be set up to free the returned target
++ *
++ * If the symlink's encryption key is available, we decrypt its target.
++ * Otherwise, we encode its target for presentation.
++ *
++ * This may sleep, so the filesystem must have dropped out of RCU mode already.
++ *
++ * Return: the presentable symlink target or an ERR_PTR()
++ */
++const char *fscrypt_get_symlink(struct inode *inode, const void *caddr,
++				unsigned int max_size,
++				struct delayed_call *done)
++{
++	const struct fscrypt_symlink_data *sd;
++	struct fscrypt_str cstr, pstr;
++	int err;
++
++	/* This is for encrypted symlinks only */
++	if (WARN_ON(!IS_ENCRYPTED(inode)))
++		return ERR_PTR(-EINVAL);
++
++	/*
++	 * Try to set up the symlink's encryption key, but we can continue
++	 * regardless of whether the key is available or not.
++	 */
++	err = fscrypt_get_encryption_info(inode);
++	if (err)
++		return ERR_PTR(err);
++
++	/*
++	 * For historical reasons, encrypted symlink targets are prefixed with
++	 * the ciphertext length, even though this is redundant with i_size.
++	 */
++
++	if (max_size < sizeof(*sd))
++		return ERR_PTR(-EUCLEAN);
++	sd = caddr;
++	cstr.name = (unsigned char *)sd->encrypted_path;
++	cstr.len = le16_to_cpu(sd->len);
++
++	if (cstr.len == 0)
++		return ERR_PTR(-EUCLEAN);
++
++	if (cstr.len + sizeof(*sd) - 1 > max_size)
++		return ERR_PTR(-EUCLEAN);
++
++	err = fscrypt_fname_alloc_buffer(inode, cstr.len, &pstr);
++	if (err)
++		return ERR_PTR(err);
++
++	err = fscrypt_fname_disk_to_usr(inode, 0, 0, &cstr, &pstr);
++	if (err)
++		goto err_kfree;
++
++	err = -EUCLEAN;
++	if (pstr.name[0] == '\0')
++		goto err_kfree;
++
++	pstr.name[pstr.len] = '\0';
++	set_delayed_call(done, kfree_link, pstr.name);
++	return pstr.name;
++
++err_kfree:
++	kfree(pstr.name);
++	return ERR_PTR(err);
++}
++EXPORT_SYMBOL_GPL(fscrypt_get_symlink);
 diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
-index 63e58808519a..52e330285457 100644
+index 02ec0aa894d8..dd106640c6ea 100644
 --- a/include/linux/fscrypt_notsupp.h
 +++ b/include/linux/fscrypt_notsupp.h
-@@ -14,6 +14,11 @@
- #ifndef _LINUX_FSCRYPT_NOTSUPP_H
- #define _LINUX_FSCRYPT_NOTSUPP_H
+@@ -239,4 +239,12 @@ static inline int __fscrypt_encrypt_symlink(struct inode *inode,
+ 	return -EOPNOTSUPP;
+ }
  
-+static inline bool fscrypt_has_encryption_key(const struct inode *inode)
++static inline const char *fscrypt_get_symlink(struct inode *inode,
++					      const void *caddr,
++					      unsigned int max_size,
++					      struct delayed_call *done)
 +{
-+	return false;
++	return ERR_PTR(-EOPNOTSUPP);
 +}
 +
- /* crypto.c */
- static inline struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *inode,
- 						  gfp_t gfp_flags)
+ #endif	/* _LINUX_FSCRYPT_NOTSUPP_H */
 diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
-index cf9e9fc02f0a..79bb8beae018 100644
+index 7e0b67ccd816..dc2babf3f7d3 100644
 --- a/include/linux/fscrypt_supp.h
 +++ b/include/linux/fscrypt_supp.h
-@@ -11,6 +11,11 @@
- #ifndef _LINUX_FSCRYPT_SUPP_H
- #define _LINUX_FSCRYPT_SUPP_H
+@@ -211,5 +211,8 @@ extern int __fscrypt_prepare_symlink(struct inode *dir, unsigned int len,
+ extern int __fscrypt_encrypt_symlink(struct inode *inode, const char *target,
+ 				     unsigned int len,
+ 				     struct fscrypt_str *disk_link);
++extern const char *fscrypt_get_symlink(struct inode *inode, const void *caddr,
++				       unsigned int max_size,
++				       struct delayed_call *done);
  
-+static inline bool fscrypt_has_encryption_key(const struct inode *inode)
-+{
-+	return (inode->i_crypt_info != NULL);
-+}
-+
- /* crypto.c */
- extern struct kmem_cache *fscrypt_info_cachep;
- extern struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *, gfp_t);
+ #endif	/* _LINUX_FSCRYPT_SUPP_H */
 -- 
 2.16.0.rc0.223.g4a4ac83678-goog
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
