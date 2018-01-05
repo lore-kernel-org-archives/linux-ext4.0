@@ -1,47 +1,100 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: ext4, quota, projectid:  limits without capablity
-Date: Fri, 5 Jan 2018 14:20:20 -0500
-Message-ID: <20180105192020.GB8287@thunk.org>
-References: <c18ff577-be92-40ea-93ae-4401ce2107da.yuanliang.wyl@alibaba-inc.com>
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Subject: Re: [PATCH v2 05/11] fscrypt: split fscrypt_dummy_context_enabled()
+ into supp/notsupp versions
+Date: Fri, 5 Jan 2018 12:40:09 -0800
+Message-ID: <20180105204009.GA72343@jaegeuk-macbookpro.roam.corp.google.com>
+References: <20180105184502.48473-1-ebiggers3@gmail.com>
+ <20180105184502.48473-6-ebiggers3@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: "adilger.kernel" <adilger.kernel@dilger.ca>,
-        pkuelelixi <pkuelelixi@gmail.com>, jack <jack@suse.cz>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>
-To: =?utf-8?B?546L5YWD6Imv?= <yuanliang.wyl@alibaba-inc.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
+        Eric Biggers <ebiggers@google.com>
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:34246 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751312AbeAEUkK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 5 Jan 2018 15:40:10 -0500
 Content-Disposition: inline
-In-Reply-To: <c18ff577-be92-40ea-93ae-4401ce2107da.yuanliang.wyl@alibaba-inc.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20180105184502.48473-6-ebiggers3@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 05, 2018 at 03:23:43PM +0800, 王元良 wrote:
+On 01/05, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> hi,  all
-> We use projectid for space restrictions inside the container, share the same hard link between the host and multiple containers.
-> But I encountered a problem, as follows, are the following modifications feasible ?
+> fscrypt_dummy_context_enabled() accesses ->s_cop, which now is only set
+> when the filesystem is built with encryption support.  This didn't
+> actually matter because no filesystems called it.  However, it will
+> start being used soon, so fix it by moving it from fscrypt.h to
+> fscrypt_supp.h and stubbing it out in fscrypt_notsupp.h.
 
-I'm not sure what the problem that you encoutered.  So it's hard to
-judge the modification, especially since you didn't send it in a
-proper unified diff format.
+Ted, do we have a chance to get rid of this dummy_context? If there exists
+backward compatibility issue, please never mind tho.
 
-It looks like you are trying to allow root to avoid the restriction an
-entire directory hierarchy (all files and subdirectories) must have
-the same project ID.  There are a couple of problems with this.  For
-example, you only do this for the link case, but we enforce the same
-restriction in other places, such as the rename case.
+Thanks,
 
-The current restrictions are to make life simpler for users.  The
-restrictions are also part of the xfstests regression test, so I'm
-fairly certain will cause a test failure.
-
-So this is something I wouldn't want to do without general agreement
-across all of the file systems developers, since it breaks the
-fundamental model of how project IDs are presented to users, and could
-end up making things extremely confusing.  So the best way to do this
-is for you to give much more details about why you want this change,
-and what is the larger context of what is you are trying to do.
-
-    	    	       	       	  - Ted
+> 
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  include/linux/fscrypt.h         | 8 --------
+>  include/linux/fscrypt_notsupp.h | 5 +++++
+>  include/linux/fscrypt_supp.h    | 6 ++++++
+>  3 files changed, 11 insertions(+), 8 deletions(-)
+> 
+> diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+> index 0f94d087a6d1..b671a4eef47f 100644
+> --- a/include/linux/fscrypt.h
+> +++ b/include/linux/fscrypt.h
+> @@ -75,14 +75,6 @@ struct fscrypt_operations {
+>  /* Maximum value for the third parameter of fscrypt_operations.set_context(). */
+>  #define FSCRYPT_SET_CONTEXT_MAX_SIZE	28
+>  
+> -static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
+> -{
+> -	if (inode->i_sb->s_cop->dummy_context &&
+> -				inode->i_sb->s_cop->dummy_context(inode))
+> -		return true;
+> -	return false;
+> -}
+> -
+>  static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
+>  					u32 filenames_mode)
+>  {
+> diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
+> index 812dc701a5b3..81e02201b215 100644
+> --- a/include/linux/fscrypt_notsupp.h
+> +++ b/include/linux/fscrypt_notsupp.h
+> @@ -19,6 +19,11 @@ static inline bool fscrypt_has_encryption_key(const struct inode *inode)
+>  	return false;
+>  }
+>  
+> +static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
+> +{
+> +	return false;
+> +}
+> +
+>  /* crypto.c */
+>  static inline struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *inode,
+>  						  gfp_t gfp_flags)
+> diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
+> index fd6ee089ced0..e7dfa2974906 100644
+> --- a/include/linux/fscrypt_supp.h
+> +++ b/include/linux/fscrypt_supp.h
+> @@ -31,6 +31,12 @@ static inline bool fscrypt_has_encryption_key(const struct inode *inode)
+>  	return (inode->i_crypt_info != NULL);
+>  }
+>  
+> +static inline bool fscrypt_dummy_context_enabled(struct inode *inode)
+> +{
+> +	return inode->i_sb->s_cop->dummy_context &&
+> +		inode->i_sb->s_cop->dummy_context(inode);
+> +}
+> +
+>  /* crypto.c */
+>  extern struct fscrypt_ctx *fscrypt_get_ctx(const struct inode *, gfp_t);
+>  extern void fscrypt_release_ctx(struct fscrypt_ctx *);
+> -- 
+> 2.16.0.rc0.223.g4a4ac83678-goog
