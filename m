@@ -1,49 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [QUESTION] Locking for the transaction buffers
-Date: Thu, 4 Jan 2018 17:21:08 +0100
-Message-ID: <20180104162108.GD2170@quack2.suse.cz>
-References: <8ced83bc-4afa-998e-8015-bab5e2441c49@tu-dortmund.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-        Horst Schirmeier <horst.schirmeier@tu-dortmund.de>
-To: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+From: Tyson Nottingham <tgnottingham@gmail.com>
+Subject: [PATCH 0/3] ext4: clean up inode flag definitions
+Date: Fri,  5 Jan 2018 01:23:22 -0800
+Message-ID: <cover.1515135646.git.tgnottingham@gmail.com>
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+        Tyson Nottingham <tgnottingham@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52172 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753523AbeADQVL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 4 Jan 2018 11:21:11 -0500
-Content-Disposition: inline
-In-Reply-To: <8ced83bc-4afa-998e-8015-bab5e2441c49@tu-dortmund.de>
+Received: from mail-pf0-f196.google.com ([209.85.192.196]:38220 "EHLO
+        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751260AbeAEJYF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jan 2018 04:24:05 -0500
+Received: by mail-pf0-f196.google.com with SMTP id u25so1980823pfg.5
+        for <linux-ext4@vger.kernel.org>; Fri, 05 Jan 2018 01:24:05 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+This is my first patch to ext4 and the kernel. It's simple, but you
+might give it extra scrutiny since I'm new and all.
 
-On Mon 18-12-17 18:08:34, Alexander Lochmann wrote:
-> I'm studying the locking in the JBD2 subsystem (v4.15-rc4). Doing so, I
-> came across the jbd2_journal_commit_transaction function
-> where severals lists, e.g., t_forget or t_buffers, are flushed in a
-> while loop.
-> According to the documentation in inlcude/linux/jbd2.h, the j_list_lock
-> lock is the appropriate lock.
-> However, it is only used in one out of three cases:
-> In fs/jbd2/commit.c:903, the while loop is protected using the
-> j_list_lock lock. Whereas it is not used at line 464 and 561.
+I'm working off the dev branch of git://git.kernel.org/pub/scm/linux/
+kernel/git/tytso/ext4.git. Let me know if that's the wrong place to be.
 
-We are in a situation where all updates to the transaction have finished
-and we are starting to commit the transaction. In such situation nobody
-should be touching transaction's t_reserved_list or t_buffers_list. OTOH
-transaction's t_forget list can still be modified as buffers can be
-attached to that list even while transaction is committing (usually those
-are buffers that can be discarded once the transaction commits).
+Thanks,
+Tyson
 
-> In contrast to that, the insert and remove operations to any of these
-> lists are protected by that lock.
+Tyson Nottingham (3):
+  ext4: move inode flags enum in preparation for cleanup
+  ext4: define inode flags in terms of enum values
+  ext4: define visible/modifiable flag masks in terms of inode flags
 
-Yes, they need to serialize against each other.
+ fs/ext4/ext4.h  | 210 +++++++++++++++++++++++++++-----------------------------
+ fs/ext4/super.c |   3 -
+ 2 files changed, 103 insertions(+), 110 deletions(-)
 
-								Honza
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.7.4
