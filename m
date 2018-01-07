@@ -1,623 +1,210 @@
-From: "Tobin C. Harding" <me@tobin.cc>
-Subject: [PATCH] jbd2: fix sphinx kerel-doc build warnings for journal_s
-Date: Sun,  7 Jan 2018 11:46:14 +1100
-Message-ID: <1515285974-29373-1-git-send-email-me@tobin.cc>
-Cc: "Tobin C. Harding" <me@tobin.cc>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Krzysztof Kozlowski <krzk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Subject: Re: [PATCH v4 19/19] fs: handle inode->i_version more efficiently
+Date: Sun, 7 Jan 2018 13:44:52 +0100
+Message-ID: <CAJKOXPd8ojTjiGF3nKQKWtVrEsjWfjvg6rLL+RGnbu_SZMDu7g@mail.gmail.com>
+References: <20171222120556.7435-1-jlayton@kernel.org> <20171222120556.7435-20-jlayton@kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org, jack-l3A5Bk7waGM@public.gmane.org,
+        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
+        adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
+        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, clm-b10kYP2dOMg@public.gmane.org, jbacik-b10kYP2dOMg@public.gmane.org,
+        dsterba-IBi9RG/b67k@public.gmane.org, linux-integrity-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        zohar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, dmitry.kasatkin-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
+        linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
+        jaltman-hRzEac23uH1Wk0Htik3J/w@public.gmane.org, linux-samsung-soc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+        Marek Szyprowski <m.szyprowski-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
+        =?UTF-8?B?QmFydMWCb21pZWogxbtvxYJuaWVya2lld2ljeg==?=
+        <b.zolnierkie-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>,
+        Sylwester Nawrocki <s.nawrocki-Sze3O3UU22JBDgjK7y7TUQ@public.gmane.org>
+To: Jeff Layton <jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20171222120556.7435-20-jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-Sphinx emits various warnings when building make target 'htmldocs'.
+On Fri, Dec 22, 2017 at 1:05 PM, Jeff Layton <jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org> wrote:
+> From: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+>
+> Since i_version is mostly treated as an opaque value, we can exploit that
+> fact to avoid incrementing it when no one is watching. With that change,
+> we can avoid incrementing the counter on writes, unless someone has
+> queried for it since it was last incremented. If the a/c/mtime don't
+> change, and the i_version hasn't changed, then there's no need to dirty
+> the inode metadata on a write.
+>
+> Convert the i_version counter to an atomic64_t, and use the lowest order
+> bit to hold a flag that will tell whether anyone has queried the value
+> since it was last incremented.
+>
+> When we go to maybe increment it, we fetch the value and check the flag
+> bit.  If it's clear then we don't need to do anything if the update
+> isn't being forced.
+>
+> If we do need to update, then we increment the counter by 2, and clear
+> the flag bit, and then use a CAS op to swap it into place. If that
+> works, we return true. If it doesn't then do it again with the value
+> that we fetch from the CAS operation.
+>
+> On the query side, if the flag is already set, then we just shift the
+> value down by 1 bit and return it. Otherwise, we set the flag in our
+> on-stack value and again use cmpxchg to swap it into place if it hasn't
+> changed. If it has, then we use the value from the cmpxchg as the new
+> "old" value and try again.
+>
+> This method allows us to avoid incrementing the counter on writes (and
+> dirtying the metadata) under typical workloads. We only need to increment
+> if it has been queried since it was last changed.
+>
+> Signed-off-by: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+> ---
+>  include/linux/fs.h       |   2 +-
+>  include/linux/iversion.h | 208 ++++++++++++++++++++++++++++++++++-------------
+>  2 files changed, 154 insertions(+), 56 deletions(-)
+>
 
-Currently struct journal_s definition contains duplicate documentation,
-some as kernel-docs and some as standard c89 comments.  We can reduce
-duplication while cleaning up the kernel-docs. 
+Hi,
 
-Move all kernel-docs to right above each struct member.  Use the set of
-all existing comments (kernel-doc and c89).
+On recent linux-next my ARM/Exynos boards fail to boot over nfsroot.
+This commit popped up through bisect (log at the end). Systemd
+timeouts on some device-specific services, including mounting ext4
+/home:
 
-Signed-off-by: Tobin C. Harding <me@tobin.cc>
----
+[ *** ] (1 of 4) A start job is running for…ress polling (1min 41s / no limit)
+[ TIME ] Timed out waiting for device dev-ttySAC2.device.
+Jan 07 13:29:38 [DEPEND] Dependency failed for Serial Getty on ttySAC2.
+Jan 07 13:29:38 [ TIME ] Timed out waiting for device
+dev-disk-by\x2dlabel-home.device.
+Jan 07 13:29:38 [DEPEND] Dependency failed for /home.
+Jan 07 13:29:38 [DEPEND] Dependency failed for Local File Systems.
+Jan 07 13:29:38 [DEPEND] Dependency failed for File System Check on
+/dev/disk/by-label/home.
+Jan 07 13:30:02 [ *** ] (1 of 2) A start job is running for…ress
+polling (1min 53s / no limit)
 
-This patch only fixes 6 of the 24 warnings. If this work is deemed useful I
-can do the rest. If there is a way to fix the warnings that is cleaner
-than this please say so.
+Kernel command line:
+console=tty1 console=ttySAC2,115200n8
+ip=192.168.1.11:192.168.1.10:192.168.1.1:255.255.255.0::eth0:none
+nfsrootdebug root=/dev/nfs
+nfsroot=192.168.1.10:/srv/nfs/odroidxu3,vers=4,nolock rootwait rw
+smsc95xx.macaddr=00:1e:06:61:7a:93 no_console_suspend
 
-thanks,
-Tobin.
+/home is /dev/mmcblk1p2:
+kozik@odroidxu3:~$ tune2fs -l /dev/mmcblk1p2
+tune2fs 1.43.7 (16-Oct-2017)
+Filesystem volume name:   home
+Last mounted on:          /home
+Filesystem UUID:          3f9dbeba-2738-45d3-807e-c1b2e21128ed
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index
+filetype needs_recovery extent flex_bg sparse_super large_file
+uninit_bg dir_nlink extra_isize
+Filesystem flags:         signed_directory_hash
+Default mount options:    user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              1430800
+Block count:              5717760
+Reserved block count:     285888
+Free blocks:              5467576
+Free inodes:              1428301
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      1022
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8176
+Inode blocks per group:   511
+Flex block group size:    16
+Filesystem created:       Thu May 21 12:17:05 2015
+Last mount time:          Thu Dec 21 13:31:26 2017
+Last write time:          Thu Dec 21 13:31:26 2017
+Mount count:              1
+Maximum mount count:      -1
+Last checked:             Thu Dec 21 13:31:25 2017
+Check interval:           0 (<none>)
+Lifetime writes:          126 GB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:           256
+Required extra isize:     28
+Desired extra isize:      28
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      42e17e23-86b2-4356-ad63-78aa51651d03
+Journal backup:           inode blocks
 
- include/linux/jbd2.h | 401 ++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 269 insertions(+), 132 deletions(-)
 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 296d1e0ea87b..fb9cd4fcc0e0 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -729,228 +729,281 @@ jbd2_time_diff(unsigned long start, unsigned long end)
- /**
-  * struct journal_s - The journal_s type is the concrete type associated with
-  *     journal_t.
-- * @j_flags:  General journaling state flags
-- * @j_errno:  Is there an outstanding uncleared error on the journal (from a
-- *     prior abort)?
-- * @j_sb_buffer: First part of superblock buffer
-- * @j_superblock: Second part of superblock buffer
-- * @j_format_version: Version of the superblock format
-- * @j_state_lock: Protect the various scalars in the journal
-- * @j_barrier_count:  Number of processes waiting to create a barrier lock
-- * @j_barrier: The barrier lock itself
-- * @j_running_transaction: The current running transaction..
-- * @j_committing_transaction: the transaction we are pushing to disk
-- * @j_checkpoint_transactions: a linked circular list of all transactions
-- *  waiting for checkpointing
-- * @j_wait_transaction_locked: Wait queue for waiting for a locked transaction
-- *  to start committing, or for a barrier lock to be released
-- * @j_wait_done_commit: Wait queue for waiting for commit to complete
-- * @j_wait_commit: Wait queue to trigger commit
-- * @j_wait_updates: Wait queue to wait for updates to complete
-- * @j_wait_reserved: Wait queue to wait for reserved buffer credits to drop
-- * @j_checkpoint_mutex: Mutex for locking against concurrent checkpoints
-- * @j_head: Journal head - identifies the first unused block in the journal
-- * @j_tail: Journal tail - identifies the oldest still-used block in the
-- *  journal.
-- * @j_free: Journal free - how many free blocks are there in the journal?
-- * @j_first: The block number of the first usable block
-- * @j_last: The block number one beyond the last usable block
-- * @j_dev: Device where we store the journal
-- * @j_blocksize: blocksize for the location where we store the journal.
-- * @j_blk_offset: starting block offset for into the device where we store the
-- *     journal
-- * @j_fs_dev: Device which holds the client fs.  For internal journal this will
-- *     be equal to j_dev
-- * @j_reserved_credits: Number of buffers reserved from the running transaction
-- * @j_maxlen: Total maximum capacity of the journal region on disk.
-- * @j_list_lock: Protects the buffer lists and internal buffer state.
-- * @j_inode: Optional inode where we store the journal.  If present, all journal
-- *     block numbers are mapped into this inode via bmap().
-- * @j_tail_sequence:  Sequence number of the oldest transaction in the log
-- * @j_transaction_sequence: Sequence number of the next transaction to grant
-- * @j_commit_sequence: Sequence number of the most recently committed
-- *  transaction
-- * @j_commit_request: Sequence number of the most recent transaction wanting
-- *     commit
-- * @j_uuid: Uuid of client object.
-- * @j_task: Pointer to the current commit thread for this journal
-- * @j_max_transaction_buffers:  Maximum number of metadata buffers to allow in a
-- *     single compound commit transaction
-- * @j_commit_interval: What is the maximum transaction lifetime before we begin
-- *  a commit?
-- * @j_commit_timer:  The timer used to wakeup the commit thread
-- * @j_revoke_lock: Protect the revoke table
-- * @j_revoke: The revoke table - maintains the list of revoked blocks in the
-- *     current transaction.
-- * @j_revoke_table: alternate revoke tables for j_revoke
-- * @j_wbuf: array of buffer_heads for jbd2_journal_commit_transaction
-- * @j_wbufsize: maximum number of buffer_heads allowed in j_wbuf, the
-- *	number that will fit in j_blocksize
-- * @j_last_sync_writer: most recent pid which did a synchronous write
-- * @j_history_lock: Protect the transactions statistics history
-- * @j_proc_entry: procfs entry for the jbd statistics directory
-- * @j_stats: Overall statistics
-- * @j_private: An opaque pointer to fs-private information.
-- * @j_trans_commit_map: Lockdep entity to track transaction commit dependencies
-  */
--
- struct journal_s
- {
--	/* General journaling state flags [j_state_lock] */
-+	/**
-+	 * @j_flags:
-+	 *
-+	 * General journaling state flags [j_state_lock]
-+	 */
- 	unsigned long		j_flags;
- 
--	/*
-+	/**
-+	 * @j_errno:
-+	 *
- 	 * Is there an outstanding uncleared error on the journal (from a prior
- 	 * abort)? [j_state_lock]
- 	 */
- 	int			j_errno;
- 
--	/* The superblock buffer */
-+	/**
-+	 * @j_sb_buffer:
-+	 *
-+	 * The first part of the superblock buffer.
-+	 */
- 	struct buffer_head	*j_sb_buffer;
-+
-+	/**
-+	 * @j_superblock:
-+	 *
-+	 * The second part of the superblock buffer.
-+	 */
- 	journal_superblock_t	*j_superblock;
- 
--	/* Version of the superblock format */
-+	/**
-+	 * @j_format_version:
-+	 *
-+	 * Version of the superblock format.
-+	 */
- 	int			j_format_version;
- 
--	/*
--	 * Protect the various scalars in the journal
-+	/**
-+	 * @j_state_lock:
-+	 *
-+	 * Protect the various scalars in the journal.
- 	 */
- 	rwlock_t		j_state_lock;
- 
--	/*
-+	/**
-+	 * @j_barrier_count:
-+	 *
- 	 * Number of processes waiting to create a barrier lock [j_state_lock]
- 	 */
- 	int			j_barrier_count;
- 
--	/* The barrier lock itself */
-+	/**
-+	 * @j_barrier:
-+	 *
-+	 * The barrier lock itself.
-+	 */
- 	struct mutex		j_barrier;
- 
--	/*
-+	/**
-+	 * @j_running_transaction:
-+	 *
- 	 * Transactions: The current running transaction...
- 	 * [j_state_lock] [caller holding open handle]
- 	 */
- 	transaction_t		*j_running_transaction;
- 
--	/*
-+	/**
-+	 * @j_committing_transaction:
-+	 *
- 	 * the transaction we are pushing to disk
- 	 * [j_state_lock] [caller holding open handle]
- 	 */
- 	transaction_t		*j_committing_transaction;
- 
--	/*
-+	/**
-+	 * @j_checkpoint_transactions:
-+	 *
- 	 * ... and a linked circular list of all transactions waiting for
- 	 * checkpointing. [j_list_lock]
- 	 */
- 	transaction_t		*j_checkpoint_transactions;
- 
--	/*
-+	/**
-+	 * @j_wait_transaction_locked:
-+	 *
- 	 * Wait queue for waiting for a locked transaction to start committing,
--	 * or for a barrier lock to be released
-+	 * or for a barrier lock to be released.
- 	 */
- 	wait_queue_head_t	j_wait_transaction_locked;
- 
--	/* Wait queue for waiting for commit to complete */
-+	/**
-+	 * @j_wait_done_commit:
-+	 *
-+	 * Wait queue for waiting for commit to complete.
-+	 */
- 	wait_queue_head_t	j_wait_done_commit;
- 
--	/* Wait queue to trigger commit */
-+	/**
-+	 * @j_wait_commit:
-+	 *
-+	 * Wait queue to trigger commit.
-+	 */
- 	wait_queue_head_t	j_wait_commit;
- 
--	/* Wait queue to wait for updates to complete */
-+	/**
-+	 * @j_wait_updates:
-+	 *
-+	 * Wait queue to wait for updates to complete.
-+	 */
- 	wait_queue_head_t	j_wait_updates;
- 
--	/* Wait queue to wait for reserved buffer credits to drop */
-+	/**
-+	 * @j_wait_reserved:
-+	 *
-+	 * Wait queue to wait for reserved buffer credits to drop.
-+	 */
- 	wait_queue_head_t	j_wait_reserved;
- 
--	/* Semaphore for locking against concurrent checkpoints */
-+	/**
-+	 * @j_checkpoint_mutex:
-+	 *
-+	 * Semaphore for locking against concurrent checkpoints.
-+	 */
- 	struct mutex		j_checkpoint_mutex;
- 
--	/*
-+	/**
-+	 * @j_chkpt_bhs:
-+	 *
- 	 * List of buffer heads used by the checkpoint routine.  This
- 	 * was moved from jbd2_log_do_checkpoint() to reduce stack
- 	 * usage.  Access to this array is controlled by the
--	 * j_checkpoint_mutex.  [j_checkpoint_mutex]
-+	 * @j_checkpoint_mutex.  [j_checkpoint_mutex]
- 	 */
- 	struct buffer_head	*j_chkpt_bhs[JBD2_NR_BATCH];
--	
--	/*
-+
-+	/**
-+	 * @j_head:
-+	 *
- 	 * Journal head: identifies the first unused block in the journal.
- 	 * [j_state_lock]
- 	 */
- 	unsigned long		j_head;
- 
--	/*
-+	/**
-+	 * @j_tail:
-+	 *
- 	 * Journal tail: identifies the oldest still-used block in the journal.
- 	 * [j_state_lock]
- 	 */
- 	unsigned long		j_tail;
- 
--	/*
-+	/**
-+	 * @j_free:
-+	 *
- 	 * Journal free: how many free blocks are there in the journal?
- 	 * [j_state_lock]
- 	 */
- 	unsigned long		j_free;
- 
--	/*
--	 * Journal start and end: the block numbers of the first usable block
--	 * and one beyond the last usable block in the journal. [j_state_lock]
-+	/**
-+	 * @j_first:
-+	 *
-+	 * The block number of the first usable block in the journal
-+	 * [j_state_lock].
- 	 */
- 	unsigned long		j_first;
-+
-+	/**
-+	 * @j_last:
-+	 *
-+	 * The block number one beyond the last usable block in the
-+	 * journal [j_state_lock].
-+	 */
- 	unsigned long		j_last;
- 
--	/*
--	 * Device, blocksize and starting block offset for the location where we
--	 * store the journal.
-+	/**
-+	 * @j_dev:
-+	 *
-+	 * Device where we store the journal.
- 	 */
- 	struct block_device	*j_dev;
-+
-+	/**
-+	 * @j_blocksize:
-+	 *
-+	 * Block size for the location where we store the journal.
-+	 */
- 	int			j_blocksize;
-+
-+	/**
-+	 * @j_blk_offset:
-+	 *
-+	 * Starting block offset into the device where we store the journal.
-+	 */
- 	unsigned long long	j_blk_offset;
-+
-+	/**
-+	 * @j_devname:
-+	 *
-+	 * Journal device name.
-+	 */
- 	char			j_devname[BDEVNAME_SIZE+24];
- 
--	/*
-+	/**
-+	 * @j_fs_dev:
-+	 *
- 	 * Device which holds the client fs.  For internal journal this will be
- 	 * equal to j_dev.
- 	 */
- 	struct block_device	*j_fs_dev;
- 
--	/* Total maximum capacity of the journal region on disk. */
-+	/**
-+	 * @j_maxlen:
-+	 *
-+	 * Total maximum capacity of the journal region on disk.
-+	 */
- 	unsigned int		j_maxlen;
- 
--	/* Number of buffers reserved from the running transaction */
-+	/**
-+	 * @j_reserved_credits:
-+	 *
-+	 * Number of buffers reserved from the running transaction.
-+	 */
- 	atomic_t		j_reserved_credits;
- 
--	/*
-+	/**
-+	 * @j_list_lock:
-+	 *
- 	 * Protects the buffer lists and internal buffer state.
- 	 */
- 	spinlock_t		j_list_lock;
- 
--	/* Optional inode where we store the journal.  If present, all */
--	/* journal block numbers are mapped into this inode via */
--	/* bmap(). */
-+	/**
-+	 * @j_inode:
-+	 *
-+	 * Optional inode where we store the journal.  If present, all
-+	 * journal block numbers are mapped into this inode via bmap().
-+	 */
- 	struct inode		*j_inode;
- 
--	/*
-+	/**
-+	 * @j_tail_sequence:
-+	 *
- 	 * Sequence number of the oldest transaction in the log [j_state_lock]
- 	 */
- 	tid_t			j_tail_sequence;
- 
--	/*
-+	/**
-+	 * @j_transaction_sequence:
-+	 *
- 	 * Sequence number of the next transaction to grant [j_state_lock]
- 	 */
- 	tid_t			j_transaction_sequence;
- 
--	/*
-+	/**
-+	 * @j_commit_sequence:
-+	 *
- 	 * Sequence number of the most recently committed transaction
- 	 * [j_state_lock].
- 	 */
- 	tid_t			j_commit_sequence;
- 
--	/*
-+	/**
-+	 * @j_commit_request:
-+	 *
- 	 * Sequence number of the most recent transaction wanting commit
- 	 * [j_state_lock]
- 	 */
- 	tid_t			j_commit_request;
- 
--	/*
-+	/**
-+	 * @j_uuid:
-+	 *
- 	 * Journal uuid: identifies the object (filesystem, LVM volume etc)
- 	 * backed by this journal.  This will eventually be replaced by an array
- 	 * of uuids, allowing us to index multiple devices within a single
-@@ -958,85 +1011,169 @@ struct journal_s
- 	 */
- 	__u8			j_uuid[16];
- 
--	/* Pointer to the current commit thread for this journal */
-+	/**
-+	 * @j_task:
-+	 *
-+	 * Pointer to the current commit thread for this journal.
-+	 */
- 	struct task_struct	*j_task;
- 
--	/*
-+	/**
-+	 * @j_max_transaction_buffers:
-+	 *
- 	 * Maximum number of metadata buffers to allow in a single compound
--	 * commit transaction
-+	 * commit transaction.
- 	 */
- 	int			j_max_transaction_buffers;
- 
--	/*
-+	/**
-+	 * @j_commit_interval:
-+	 *
- 	 * What is the maximum transaction lifetime before we begin a commit?
- 	 */
- 	unsigned long		j_commit_interval;
- 
--	/* The timer used to wakeup the commit thread: */
-+	/**
-+	 * @j_commit_timer:
-+	 *
-+	 * The timer used to wakeup the commit thread.
-+	 */
- 	struct timer_list	j_commit_timer;
- 
--	/*
--	 * The revoke table: maintains the list of revoked blocks in the
--	 * current transaction.  [j_revoke_lock]
-+	/**
-+	 * @j_revoke_lock:
-+	 *
-+	 * Protect the revoke table.
- 	 */
- 	spinlock_t		j_revoke_lock;
-+
-+	/**
-+	 * @j_revoke:
-+	 *
-+	 * The revoke table - maintains the list of revoked blocks in the
-+	 * current transaction.
-+	 */
- 	struct jbd2_revoke_table_s *j_revoke;
-+
-+	/**
-+	 * @j_revoke_table:
-+	 *
-+	 * Alternate revoke tables for j_revoke.
-+	 */
- 	struct jbd2_revoke_table_s *j_revoke_table[2];
- 
--	/*
--	 * array of bhs for jbd2_journal_commit_transaction
-+	/**
-+	 * @j_wbuf:
-+	 *
-+	 * Array of bhs for jbd2_journal_commit_transaction.
- 	 */
- 	struct buffer_head	**j_wbuf;
-+
-+	/**
-+	 * @j_wbufsize:
-+	 *
-+	 * Size of @j_wbuf array.
-+	 */
- 	int			j_wbufsize;
- 
--	/*
--	 * this is the pid of hte last person to run a synchronous operation
--	 * through the journal
-+	/**
-+	 * @j_last_sync_writer:
-+	 *
-+	 * The pid of the last person to run a synchronous operation
-+	 * through the journal.
- 	 */
- 	pid_t			j_last_sync_writer;
- 
--	/*
--	 * the average amount of time in nanoseconds it takes to commit a
-+	/**
-+	 * @j_average_commit_time:
-+	 *
-+	 * The average amount of time in nanoseconds it takes to commit a
- 	 * transaction to disk. [j_state_lock]
- 	 */
- 	u64			j_average_commit_time;
- 
--	/*
--	 * minimum and maximum times that we should wait for
--	 * additional filesystem operations to get batched into a
--	 * synchronous handle in microseconds
-+	/**
-+	 * @j_min_batch_time:
-+	 *
-+	 * Minimum time that we should wait for additional filesystem operations
-+	 * to get batched into a synchronous handle in microseconds.
- 	 */
- 	u32			j_min_batch_time;
-+
-+	/**
-+	 * @j_max_batch_time:
-+	 *
-+	 * Maximum time that we should wait for additional filesystem operations
-+	 * to get batched into a synchronous handle in microseconds.
-+	 */
- 	u32			j_max_batch_time;
- 
--	/* This function is called when a transaction is closed */
-+	/**
-+	 * @j_commit_callback:
-+	 *
-+	 * This function is called when a transaction is closed.
-+	 */
- 	void			(*j_commit_callback)(journal_t *,
- 						     transaction_t *);
- 
- 	/*
- 	 * Journal statistics
- 	 */
-+
-+	/**
-+	 * @j_history_lock:
-+	 *
-+	 * Protect the transactions statistics history.
-+	 */
- 	spinlock_t		j_history_lock;
-+
-+	/**
-+	 * @j_proc_entry:
-+	 *
-+	 * procfs entry for the jbd statistics directory.
-+	 */
- 	struct proc_dir_entry	*j_proc_entry;
-+
-+	/**
-+	 * @j_stats:
-+	 *
-+	 * Overall statistics.
-+	 */
- 	struct transaction_stats_s j_stats;
- 
--	/* Failed journal commit ID */
-+	/**
-+	 * @j_failed_commit:
-+	 *
-+	 * Failed journal commit ID.
-+	 */
- 	unsigned int		j_failed_commit;
- 
--	/*
-+	/**
-+	 * @j_private:
-+	 *
- 	 * An opaque pointer to fs-private information.  ext3 puts its
--	 * superblock pointer here
-+	 * superblock pointer here.
- 	 */
- 	void *j_private;
- 
--	/* Reference to checksum algorithm driver via cryptoapi */
-+	/**
-+	 * @j_chksum_driver:
-+	 *
-+	 * Reference to checksum algorithm driver via cryptoapi.
-+	 */
- 	struct crypto_shash *j_chksum_driver;
- 
--	/* Precomputed journal UUID checksum for seeding other checksums */
-+	/**
-+	 * @j_csum_seed:
-+	 *
-+	 * Precomputed journal UUID checksum for seeding other checksums.
-+	 */
- 	__u32 j_csum_seed;
- 
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
--	/*
-+	/**
-+	 * @j_trans_commit_map:
-+	 *
- 	 * Lockdep entity to track transaction commit dependencies. Handles
- 	 * hold this "lock" for read, when we wait for commit, we acquire the
- 	 * "lock" for writing. This matches the properties of jbd2 journalling
--- 
-2.7.4
+Full dmesg log:
+http://www.krzk.eu/#/builders/1/builds/1258/steps/10/logs/serial0
+
+The regular boot from rootfs on SD card also fails - but without any
+serial console logs (just "Starting kernel...") so the real cause is
+unknown.
+
+Any hints?
+
+Best regards,
+Krzysztof
+
+
+bisect log:
+# bad: [73005e1a35fd67c644b0645c9e4c1efabd0fe62c] Add linux-next
+specific files for 20180103
+# good: [30a7acd573899fd8b8ac39236eff6468b195ac7d] Linux 4.15-rc6
+git bisect start 'next/master' 'next/stable'
+# bad: [c1d290f9ce8daa2b0a79d2fe48c1b7c3c5370f5a] Merge
+remote-tracking branch 'crypto/master'
+git bisect bad c1d290f9ce8daa2b0a79d2fe48c1b7c3c5370f5a
+# bad: [55695d94f0915121d106cd2d1ab94983a32f3e9a] Merge
+remote-tracking branch 'hid/for-next'
+git bisect bad 55695d94f0915121d106cd2d1ab94983a32f3e9a
+# good: [cffae1eead0dd91be1a3069a8348127bb00158f3] Merge
+remote-tracking branch 'realtek/for-next'
+git bisect good cffae1eead0dd91be1a3069a8348127bb00158f3
+# good: [5f889f1176dc99636c6bf8af7c286decc888c007] Merge
+remote-tracking branch 'btrfs/next'
+git bisect good 5f889f1176dc99636c6bf8af7c286decc888c007
+# good: [984c35877f36bee305e43a1c58176169854d85cf] Merge
+remote-tracking branch 'xfs/for-next'
+git bisect good 984c35877f36bee305e43a1c58176169854d85cf
+# bad: [f9fec502daea2a869232b6dff33ba3de79dd0d61] Merge
+remote-tracking branch 'printk/for-next'
+git bisect bad f9fec502daea2a869232b6dff33ba3de79dd0d61
+# good: [c71d227fc4133f949dae620ed5e3a250b43f2415] make kernel-side
+POLL... arch-independent
+git bisect good c71d227fc4133f949dae620ed5e3a250b43f2415
+# good: [416d20e8c31107f5dfd45d1d80d1e6c8e4871180] Merge branches
+'work.get_user_pages_fast', 'work.wmci', 'work.sock_recvmsg',
+'misc.netdrv', 'misc.poll', 'work.mqueue', 'work.whack-a-mole' and
+'work.misc' into for-next
+git bisect good 416d20e8c31107f5dfd45d1d80d1e6c8e4871180
+# good: [325a1de4a691512a48c1426b943a7b0b9f8d6744] xfs: convert to new
+i_version API
+git bisect good 325a1de4a691512a48c1426b943a7b0b9f8d6744
+# good: [a94fe10fb114c169e7ddaecd8251521886409121] checkpatch: add
+pF/pf deprecation warning
+git bisect good a94fe10fb114c169e7ddaecd8251521886409121
+# good: [6b3911dffd1184fdcd63299a5fee59ac000f2067] btrfs: only dirty
+the inode in btrfs_update_time if something was changed
+git bisect good 6b3911dffd1184fdcd63299a5fee59ac000f2067
+# bad: [448f8c749a7a0ae03505823910ec45a112678048] Merge
+remote-tracking branch 'iversion/iversion-next'
+git bisect bad 448f8c749a7a0ae03505823910ec45a112678048
+# bad: [8618bff776758ebff5b55211e7b5a60a0fc119a5] fs: handle
+inode->i_version more efficiently
+git bisect bad 8618bff776758ebff5b55211e7b5a60a0fc119a5
+# first bad commit: [8618bff776758ebff5b55211e7b5a60a0fc119a5] fs:
+handle inode->i_version more efficiently
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
