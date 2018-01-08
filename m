@@ -1,51 +1,35 @@
-From: Jiang Biao <jiang.biao2@zte.com.cn>
-Subject: [PATCH] fs/mbcache: make sure mb_cache_count() not return negative value.
-Date: Mon, 8 Jan 2018 10:00:42 +0800
-Message-ID: <1515376842-66291-1-git-send-email-jiang.biao2@zte.com.cn>
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, ebiggers@google.com,
-        akpm@linux-foundation.org, jack@suse.cz, jiang.biao2@zte.com.cn,
-        zhong.weidong@zte.com.cn
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] ext4.h: Fixed alignment and minor code cleanup.
+Date: Sun, 7 Jan 2018 23:57:29 -0500
+Message-ID: <20180108045729.GG17380@thunk.org>
+References: <1513800558.15997.3.camel@petroskoutoupis.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+To: Petros Koutoupis <petros@petroskoutoupis.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37668 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755359AbeAHE5c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 7 Jan 2018 23:57:32 -0500
+Content-Disposition: inline
+In-Reply-To: <1513800558.15997.3.camel@petroskoutoupis.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-When running ltp stress test for 7*24 hours, vmscan occasionally emits the
-following warning continuously:
+On Wed, Dec 20, 2017 at 02:09:18PM -0600, Petros Koutoupis wrote:
+> Minor code cleanup: Fixed alignment and a reduction of lines in header file.
+> 
+> Signed-off-by: Petros Koutoupis <petros@petroskoutoupis.com>
 
-mb_cache_scan+0x0/0x3f0 negative objects to delete
-nr=-9232265467809300450
-....
+The patch is whitespace damaged, unfortunately.
 
-Trace info shows the freeable(mb_cache_count returns) is -1, which causes
-the continuous accumulation and overflow of total_scan.
+Also, the cleanup actually isn't the best cleanup.  We should really
+be changing ext4_chksum() to take a struct super instead of a struct
+ext4_sb_info, so we can call ext4_std_error() so we can properly log
+an error without immediately crashing the kernel.  The chksum
+shouldn't really ever fail, but if it does, calling ext4_error() is
+better than bringing down the whole system with a BUG_ON.
 
-This patch makes sure that mb_cache_count() not return a negative value,
-which makes the mbcache shrinker more robust.
-
-Signed-off-by: Jiang Biao <jiang.biao2@zte.com.cn>
-CC: "Theodore Ts'o" <tytso@mit.edu>
-CC: Eric Biggers <ebiggers@google.com>
-CC: Andrew Morton <akpm@linux-foundation.org>
-CC: Jan Kara <jack@suse.cz>
----
- fs/mbcache.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/fs/mbcache.c b/fs/mbcache.c
-index b8b8b9c..c758458 100644
---- a/fs/mbcache.c
-+++ b/fs/mbcache.c
-@@ -238,7 +238,9 @@ void mb_cache_entry_delete(struct mb_cache *cache, u32 key, u64 value)
- 			spin_lock(&cache->c_list_lock);
- 			if (!list_empty(&entry->e_list)) {
- 				list_del_init(&entry->e_list);
--				cache->c_entry_count--;
-+				/*Make sure c_entry_count is not zero before dec*/
-+				if (cache->c_entry_count != 0)
-+					cache->c_entry_count--;
- 				atomic_dec(&entry->e_refcnt);
- 			}
- 			spin_unlock(&cache->c_list_lock);
--- 
-2.7.4
+Cheers,
+						- Ted
