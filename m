@@ -1,49 +1,56 @@
-From: Jeff Layton <jlayton@kernel.org>
-Subject: Re: [PATCH v4 19/19] fs: handle inode->i_version more efficiently
-Date: Mon, 08 Jan 2018 08:46:24 -0500
-Message-ID: <1515419184.3486.21.camel@kernel.org>
-References: <20171222120556.7435-1-jlayton@kernel.org>
-         <20171222120556.7435-20-jlayton@kernel.org>
-         <20180108133025.GA31867@bombadil.infradead.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd2: fix sphinx kerel-doc build warnings for journal_s
+Date: Mon, 8 Jan 2018 16:16:04 +0100
+Message-ID: <20180108151604.v4kfq47dc4cpcdxw@quack2.suse.cz>
+References: <1515285974-29373-1-git-send-email-me@tobin.cc>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-To: Matthew Wilcox <willy@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Tobin C. Harding" <me@tobin.cc>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180108133025.GA31867@bombadil.infradead.org>
+Content-Disposition: inline
+In-Reply-To: <1515285974-29373-1-git-send-email-me@tobin.cc>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 2018-01-08 at 05:30 -0800, Matthew Wilcox wrote:
-> On Fri, Dec 22, 2017 at 07:05:56AM -0500, Jeff Layton wrote:
-> > +	cur = inode_peek_iversion_raw(inode);
-> > +	for (;;) {
-> > +		/* If flag is clear then we needn't do anything */
-> > +		if (!force && !(cur & I_VERSION_QUERIED))
-> > +			return false;
-> > +		/* Since lowest bit is flag, add 2 to avoid it */
-> > +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
+On Sun 07-01-18 11:46:14, Tobin C. Harding wrote:
+> Sphinx emits various warnings when building make target 'htmldocs'.
 > 
-> Isn't this an extraordinarily complicated way of spelling:
+> Currently struct journal_s definition contains duplicate documentation,
+> some as kernel-docs and some as standard c89 comments.  We can reduce
+> duplication while cleaning up the kernel-docs. 
 > 
-> 		new = cur + 1;
+> Move all kernel-docs to right above each struct member.  Use the set of
+> all existing comments (kernel-doc and c89).
 > 
-> We know 'cur' has I_VERSION_QUERIED set, so clearing that bit and adding
-> two is going to be the same as adding 1 ... right?
-> 
+> Signed-off-by: Tobin C. Harding <me@tobin.cc>
 
-It would be, but if "force" is true, then I_VERSION_QUERIED may not be
-set.
+This is probably better than having documentation in two places so:
+
+Acked-by: Jan Kara <jack@suse.cz>
+
+Just one nit below:
+
+>  struct journal_s
+>  {
+> -	/* General journaling state flags [j_state_lock] */
+> +	/**
+> +	 * @j_flags:
+> +	 *
+> +	 * General journaling state flags [j_state_lock]
+> +	 */
+
+Won't it be possible in cases like this to fold the name and description
+into one line? Like:
+
+	/**
+	 * @j_flags: General journaling state flags [j_state_lock]
+	 */
+
+That would save a lot of vertical space...
+
+								Honza
 -- 
-Jeff Layton <jlayton@kernel.org>
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
