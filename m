@@ -1,7 +1,7 @@
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v5 08/19] ext2: convert to new i_version API
-Date: Tue,  9 Jan 2018 09:10:48 -0500
-Message-ID: <20180109141059.25929-9-jlayton@kernel.org>
+Subject: [PATCH v5 18/19] btrfs: only dirty the inode in btrfs_update_time if something was changed
+Date: Tue,  9 Jan 2018 09:10:58 -0500
+Message-ID: <20180109141059.25929-19-jlayton@kernel.org>
 References: <20180109141059.25929-1-jlayton@kernel.org>
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
@@ -14,90 +14,50 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com, krzk@kernel.org
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20180109141059.25929-1-jlayton@kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 From: Jeff Layton <jlayton@redhat.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/ext2/dir.c   | 9 +++++----
- fs/ext2/super.c | 5 +++--
- 2 files changed, 8 insertions(+), 6 deletions(-)
+At this point, we know that "now" and the file times may differ, and we
+suspect that the i_version has been flagged to be bumped. Attempt to
+bump the i_version, and only mark the inode dirty if that actually
+occurred or if one of the times was updated.
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 987647986f47..4111085a129f 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -26,6 +26,7 @@
- #include <linux/buffer_head.h>
- #include <linux/pagemap.h>
- #include <linux/swap.h>
-+#include <linux/iversion.h>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: David Sterba <dsterba@suse.com>
+---
+ fs/btrfs/inode.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index ac8692849a81..76245323a7c8 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -6107,19 +6107,20 @@ static int btrfs_update_time(struct inode *inode, struct timespec *now,
+ 			     int flags)
+ {
+ 	struct btrfs_root *root = BTRFS_I(inode)->root;
++	bool dirty = flags & ~S_VERSION;
  
- typedef struct ext2_dir_entry_2 ext2_dirent;
+ 	if (btrfs_root_readonly(root))
+ 		return -EROFS;
  
-@@ -92,7 +93,7 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
- 	struct inode *dir = mapping->host;
- 	int err = 0;
+ 	if (flags & S_VERSION)
+-		inode_inc_iversion(inode);
++		dirty |= inode_maybe_inc_iversion(inode, dirty);
+ 	if (flags & S_CTIME)
+ 		inode->i_ctime = *now;
+ 	if (flags & S_MTIME)
+ 		inode->i_mtime = *now;
+ 	if (flags & S_ATIME)
+ 		inode->i_atime = *now;
+-	return btrfs_dirty_inode(inode);
++	return dirty ? btrfs_dirty_inode(inode) : 0;
+ }
  
--	dir->i_version++;
-+	inode_inc_iversion(dir);
- 	block_write_end(NULL, mapping, pos, len, len, page, NULL);
- 
- 	if (pos+len > dir->i_size) {
-@@ -293,7 +294,7 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 	unsigned long npages = dir_pages(inode);
- 	unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
- 	unsigned char *types = NULL;
--	int need_revalidate = file->f_version != inode->i_version;
-+	bool need_revalidate = inode_cmp_iversion(inode, file->f_version);
- 
- 	if (pos > inode->i_size - EXT2_DIR_REC_LEN(1))
- 		return 0;
-@@ -319,8 +320,8 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 				offset = ext2_validate_entry(kaddr, offset, chunk_mask);
- 				ctx->pos = (n<<PAGE_SHIFT) + offset;
- 			}
--			file->f_version = inode->i_version;
--			need_revalidate = 0;
-+			file->f_version = inode_query_iversion(inode);
-+			need_revalidate = false;
- 		}
- 		de = (ext2_dirent *)(kaddr+offset);
- 		limit = kaddr + ext2_last_byte(inode, n) - EXT2_DIR_REC_LEN(1);
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 7646818ab266..554c98b8a93a 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -33,6 +33,7 @@
- #include <linux/quotaops.h>
- #include <linux/uaccess.h>
- #include <linux/dax.h>
-+#include <linux/iversion.h>
- #include "ext2.h"
- #include "xattr.h"
- #include "acl.h"
-@@ -184,7 +185,7 @@ static struct inode *ext2_alloc_inode(struct super_block *sb)
- 	if (!ei)
- 		return NULL;
- 	ei->i_block_alloc_info = NULL;
--	ei->vfs_inode.i_version = 1;
-+	inode_set_iversion(&ei->vfs_inode, 1);
- #ifdef CONFIG_QUOTA
- 	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
- #endif
-@@ -1569,7 +1570,7 @@ static ssize_t ext2_quota_write(struct super_block *sb, int type,
- 		return err;
- 	if (inode->i_size < off+len-towrite)
- 		i_size_write(inode, off+len-towrite);
--	inode->i_version++;
-+	inode_inc_iversion(inode);
- 	inode->i_mtime = inode->i_ctime = current_time(inode);
- 	mark_inode_dirty(inode);
- 	return len - towrite;
+ /*
 -- 
 2.14.3
