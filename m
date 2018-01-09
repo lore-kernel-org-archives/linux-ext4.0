@@ -1,63 +1,72 @@
-From: harshads <harshads@google.com>
-Subject: [PATCH] ext4: Fix a race in the ext4 shutdown path.
-Date: Tue,  9 Jan 2018 14:52:57 -0800
-Message-ID: <20180109225257.93785-1-harshads@google.com>
-Cc: tytso@mit.edu, harshads <harshads@google.com>
-To: linux-ext4@vger.kernel.org
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v5 19/19] fs: handle inode->i_version more efficiently
+Date: Wed, 10 Jan 2018 09:55:56 +1100
+Message-ID: <20180109225556.GM16421@dastard>
+References: <20180109141059.25929-1-jlayton@kernel.org>
+ <20180109141059.25929-20-jlayton@kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, linux-btrfs@vger.kernel.org, clm@fb.com,
+        jbacik@fb.com, dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com, krzk@kernel.org
+To: Jeff Layton <jlayton@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f66.google.com ([74.125.83.66]:40325 "EHLO
-        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752178AbeAIWx1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jan 2018 17:53:27 -0500
-Received: by mail-pg0-f66.google.com with SMTP id q12so9043230pgt.7
-        for <linux-ext4@vger.kernel.org>; Tue, 09 Jan 2018 14:53:27 -0800 (PST)
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:55747 "EHLO
+        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752009AbeAIW4C (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jan 2018 17:56:02 -0500
+Content-Disposition: inline
+In-Reply-To: <20180109141059.25929-20-jlayton@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch fixes a race between the shutdown path and bio completion
-handling. In the ext4 direct io path with async io, after submitting a
-bio to the block layer, if journal starting fails,
-ext4_direct_IO_write() would bail out pretending that the IO
-failed. The caller would have had no way of knowing whether or not the
-IO was successfully submitted. So instead, we return -EIOCBQUEUED in
-this case. Now, the caller knows that the IO was submitted.  The bio
-completion handler takes care of the error.
+On Tue, Jan 09, 2018 at 09:10:59AM -0500, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@redhat.com>
+> 
+> Since i_version is mostly treated as an opaque value, we can exploit that
+> fact to avoid incrementing it when no one is watching. With that change,
+> we can avoid incrementing the counter on writes, unless someone has
+> queried for it since it was last incremented. If the a/c/mtime don't
+> change, and the i_version hasn't changed, then there's no need to dirty
+> the inode metadata on a write.
+> 
+> Convert the i_version counter to an atomic64_t, and use the lowest order
+> bit to hold a flag that will tell whether anyone has queried the value
+> since it was last incremented.
+> 
+> When we go to maybe increment it, we fetch the value and check the flag
+> bit.  If it's clear then we don't need to do anything if the update
+> isn't being forced.
+> 
+> If we do need to update, then we increment the counter by 2, and clear
+> the flag bit, and then use a CAS op to swap it into place. If that
+> works, we return true. If it doesn't then do it again with the value
+> that we fetch from the CAS operation.
+> 
+> On the query side, if the flag is already set, then we just shift the
+> value down by 1 bit and return it. Otherwise, we set the flag in our
+> on-stack value and again use cmpxchg to swap it into place if it hasn't
+> changed. If it has, then we use the value from the cmpxchg as the new
+> "old" value and try again.
+> 
+> This method allows us to avoid incrementing the counter on writes (and
+> dirtying the metadata) under typical workloads. We only need to increment
+> if it has been queried since it was last changed.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Tested: Ran the shutdown xfstest test 461 in loop for over 2 hours across
-4 machines resulting in over 400 runs. Verified that the race didn't
-occur. Usually the race was seen in about 20-30 iterations.
+Documentation helps a lot in understanding all this. Thanks for
+adding it into the patch!
 
-Signed-off-by: Harshad Shirwadkar <harshads@google.com>
----
- fs/ext4/inode.c | 16 ++++++++++++----
- 1 file changed, 12 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 534a9130f625..4c2f8b57bdc7 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3767,10 +3767,18 @@ static ssize_t ext4_direct_IO_write(struct kiocb *iocb, struct iov_iter *iter)
- 		/* Credits for sb + inode write */
- 		handle = ext4_journal_start(inode, EXT4_HT_INODE, 2);
- 		if (IS_ERR(handle)) {
--			/* This is really bad luck. We've written the data
--			 * but cannot extend i_size. Bail out and pretend
--			 * the write failed... */
--			ret = PTR_ERR(handle);
-+			/*
-+			 * We wrote the data but cannot extend
-+			 * i_size. Bail out. In async io case, we do
-+			 * not return error here because we have
-+			 * already submmitted the corresponding
-+			 * bio. Returning error here makes the caller
-+			 * think that this IO is done and failed
-+			 * resulting in race with bio's completion
-+			 * handler.
-+			 */
-+			if (!ret)
-+				ret = PTR_ERR(handle);
- 			if (inode->i_nlink)
- 				ext4_orphan_del(NULL, inode);
- 
+Acked-by: Dave Chinner <dchinner@redhat.com>
 -- 
-2.16.0.rc1.238.g530d649a79-goog
+Dave Chinner
+david@fromorbit.com
