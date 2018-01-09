@@ -1,184 +1,56 @@
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v5 00/19] fs: rework and optimize i_version handling in filesystems
-Date: Tue,  9 Jan 2018 09:10:40 -0500
-Message-ID: <20180109141059.25929-1-jlayton@kernel.org>
-Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com, krzk@kernel.org
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [RFC PATCH] ext4: don't split xattr inode refcounts across i_ctime and i_version fields
+Date: Tue,  9 Jan 2018 09:47:01 -0500
+Message-ID: <20180109144701.27387-1-jlayton@kernel.org>
+Cc: linux-ext4@vger.kernel.org, dhowells@redhat.com
+To: adilger.kernel@dilger.ca, tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:47300 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756991AbeAIOrD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 9 Jan 2018 09:47:03 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jeff Layton <jlayton@redhat.com>
 
-v5:
-- don't corrupt refcounts stashed in i_version of ext4 xattr inodes
-- add raw variants of inc and cmp functions, and have nfs use them
+This patch is based on top of the i_version rework that I'm flogging
+upstream. It's just a cleanup of some nastiness I noticed while in there.
 
-v4:
-- fix SB_LAZYTIME handling in generic_update_time
-- add memory barriers to patch to convert i_version field to atomic64_t
+This code uses the i_ctime and i_version fields to each store half of
+a refcount. I suspect it was done this way long ago when the i_version
+field was a 32 bits, and was never changed when the field was converted
+to a 64 bit value.
 
-v3:
-- move i_version handling functions to new header file
-- document that the kernel-managed i_version implementation will appear to
-  increase over time
-- fix inode_cmp_iversion to handle wraparound correctly
+Change the code to just store the refcount in the i_version field rather
+than splitting it across both fields.
 
-v2:
-- xfs should use inode_peek_iversion instead of inode_peek_iversion_raw
-- rework file_update_time patch
-- don't dirty inode when only S_ATIME is set and SB_LAZYTIME is enabled
-- better comments and documentation
+Cc: David Howells <dhowells@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/ext4/xattr.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-I think this is now approaching merge readiness.
-
-Special thanks to Jan Kara and Dave Chinner who helped me tighten up the
-memory barriers in the final patch, and Krzysztof Kozlowski for help in
-tracking down a set of bugs in the NFS client patch.
-
-tl;dr: I think we can greatly reduce the cost of the inode->i_version
-counter, by exploiting the fact that we don't need to increment it if no
-one is looking at it. We can also clean up the code to prepare to
-eventually expose this value via statx().
-
-Note that this set relies on a few patches that are in other trees. The
-full stack that I've been testing with is here:
-
-    https://git.kernel.org/pub/scm/linux/kernel/git/jlayton/linux.git/log/?h=iversion
-
-The inode->i_version field is supposed to be a value that changes
-whenever there is any data or metadata change to the inode. Some
-filesystems use it internally to detect directory changes during
-readdir. knfsd will use it if the filesystem has MS_I_VERSION set. IMA
-will also use it to optimize away some remeasurement if it's available.
-NFS and AFS just use it to store an opaque change attribute from the
-server.
-
-Only btrfs, ext4, and xfs increment it for data changes. Because of
-this, these filesystems must log the inode to disk whenever the
-i_version counter changes. That has a non-zero performance impact,
-especially on write-heavy workloads, because we end up dirtying the
-inode metadata on every write, not just when the times change.
-
-It turns out though that none of these users of i_version require that
-it change on every change to the file. The only real requirement is that
-it be different if something changed since the last time we queried for
-it.
-
-If we keep track of when something queries the value, we can avoid
-bumping the counter and an on-disk update when nothing else has changed
-if no one has queried it since it was last incremented.
-
-This patchset changes the code to only bump the i_version counter when
-it's strictly necessary, or when we're updating the inode metadata
-anyway (e.g. when times change).
-
-It takes the approach of converting the existing accessors of i_version
-to use a new API, while leaving the underlying implementation mostly the
-same.  The last patch then converts the existing implementation to keep
-track of whether the value has been queried since it was last
-incremented. It then uses that to avoid incrementing the counter when
-it can.
-
-With this, we reduce inode metadata updates across all 3 filesystems
-down to roughly the frequency of the timestamp granularity, particularly
-when it's not being queried (the vastly common case).
-
-I can see measurable performance gains on xfs and ext4 with iversion
-enabled, when streaming small (4k) I/Os.
-
-btrfs shows some slight gain in testing, but not quite the magnitude
-that xfs and ext4 show. I'm not sure why yet and would appreciate some
-input from btrfs folks.
-
-My goal is to get this into linux-next fairly soon. If it shows no
-problems then we can look at merging it for 4.16, or 4.17 if all of the
-prequisite patches are not yet merged.
-
-Jeff Layton (19):
-  fs: new API for handling inode->i_version
-  fs: don't take the i_lock in inode_inc_iversion
-  fat: convert to new i_version API
-  affs: convert to new i_version API
-  afs: convert to new i_version API
-  btrfs: convert to new i_version API
-  exofs: switch to new i_version API
-  ext2: convert to new i_version API
-  ext4: convert to new i_version API
-  nfs: convert to new i_version API
-  nfsd: convert to new i_version API
-  ocfs2: convert to new i_version API
-  ufs: use new i_version API
-  xfs: convert to new i_version API
-  IMA: switch IMA over to new i_version API
-  fs: only set S_VERSION when updating times if necessary
-  xfs: avoid setting XFS_ILOG_CORE if i_version doesn't need
-    incrementing
-  btrfs: only dirty the inode in btrfs_update_time if something was
-    changed
-  fs: handle inode->i_version more efficiently
-
- fs/affs/amigaffs.c                |   5 +-
- fs/affs/dir.c                     |   5 +-
- fs/affs/super.c                   |   3 +-
- fs/afs/fsclient.c                 |   3 +-
- fs/afs/inode.c                    |   5 +-
- fs/btrfs/delayed-inode.c          |   7 +-
- fs/btrfs/file.c                   |   1 +
- fs/btrfs/inode.c                  |  12 +-
- fs/btrfs/ioctl.c                  |   1 +
- fs/btrfs/tree-log.c               |   4 +-
- fs/btrfs/xattr.c                  |   1 +
- fs/exofs/dir.c                    |   9 +-
- fs/exofs/super.c                  |   3 +-
- fs/ext2/dir.c                     |   9 +-
- fs/ext2/super.c                   |   5 +-
- fs/ext4/dir.c                     |   9 +-
- fs/ext4/inline.c                  |   7 +-
- fs/ext4/inode.c                   |  13 +-
- fs/ext4/ioctl.c                   |   3 +-
- fs/ext4/namei.c                   |   5 +-
- fs/ext4/super.c                   |   3 +-
- fs/ext4/xattr.c                   |   5 +-
- fs/fat/dir.c                      |   3 +-
- fs/fat/inode.c                    |   9 +-
- fs/fat/namei_msdos.c              |   7 +-
- fs/fat/namei_vfat.c               |  22 +--
- fs/inode.c                        |  11 +-
- fs/nfs/delegation.c               |   3 +-
- fs/nfs/fscache-index.c            |   5 +-
- fs/nfs/inode.c                    |  18 +-
- fs/nfs/nfs4proc.c                 |  10 +-
- fs/nfs/nfstrace.h                 |   5 +-
- fs/nfs/write.c                    |   8 +-
- fs/nfsd/nfsfh.h                   |   3 +-
- fs/ocfs2/dir.c                    |  15 +-
- fs/ocfs2/inode.c                  |   3 +-
- fs/ocfs2/namei.c                  |   3 +-
- fs/ocfs2/quota_global.c           |   3 +-
- fs/ufs/dir.c                      |   9 +-
- fs/ufs/inode.c                    |   3 +-
- fs/ufs/super.c                    |   3 +-
- fs/xfs/libxfs/xfs_inode_buf.c     |   7 +-
- fs/xfs/xfs_icache.c               |   5 +-
- fs/xfs/xfs_inode.c                |   3 +-
- fs/xfs/xfs_inode_item.c           |   3 +-
- fs/xfs/xfs_trans_inode.c          |  16 +-
- include/linux/fs.h                |  17 +-
- include/linux/iversion.h          | 335 ++++++++++++++++++++++++++++++++++++++
- security/integrity/ima/ima_api.c  |   3 +-
- security/integrity/ima/ima_main.c |   3 +-
- 50 files changed, 518 insertions(+), 135 deletions(-)
- create mode 100644 include/linux/iversion.h
-
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 63656dbafdc4..6ea78dd367ca 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -294,14 +294,12 @@ ext4_xattr_inode_hash(struct ext4_sb_info *sbi, const void *buffer, size_t size)
+ 
+ static u64 ext4_xattr_inode_get_ref(struct inode *ea_inode)
+ {
+-	return ((u64)ea_inode->i_ctime.tv_sec << 32) |
+-		(u32) inode_peek_iversion_raw(ea_inode);
++	return inode_peek_iversion_raw(ea_inode);
+ }
+ 
+ static void ext4_xattr_inode_set_ref(struct inode *ea_inode, u64 ref_count)
+ {
+-	ea_inode->i_ctime.tv_sec = (u32)(ref_count >> 32);
+-	inode_set_iversion_raw(ea_inode, ref_count & 0xffffffff);
++	inode_set_iversion_raw(ea_inode, ref_count);
+ }
+ 
+ static u32 ext4_xattr_inode_get_hash(struct inode *ea_inode)
 -- 
 2.14.3
