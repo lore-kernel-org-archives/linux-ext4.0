@@ -1,60 +1,54 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH v2] fs/mbcache: make sure mb_cache_count() not return
- negative value.
-Date: Mon, 8 Jan 2018 16:13:04 -0800
-Message-ID: <20180108161304.f4be912fb6e20cdf56ae78ef@linux-foundation.org>
-References: <1515454691-69220-1-git-send-email-jiang.biao2@zte.com.cn>
+From: Xiongfeng Wang <wangxiongfeng2@huawei.com>
+Subject: [PATCH] ext4: use strlcpy() instead of strncpy()
+Date: Tue, 9 Jan 2018 16:58:39 +0800
+Message-ID: <1515488319-23779-1-git-send-email-wangxiongfeng2@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        tytso@mit.edu, ebiggers@google.com, jack@suse.cz,
-        zhong.weidong@zte.com.cn
-To: Jiang Biao <jiang.biao2@zte.com.cn>
+Content-Type: text/plain
+Cc: <linux-ext4@vger.kernel.org>, <wangxiongfeng2@huawei.com>
+To: <adilger.kernel@dilger.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.linuxfoundation.org ([140.211.169.12]:40354 "EHLO
-        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1758595AbeAIANF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Jan 2018 19:13:05 -0500
-In-Reply-To: <1515454691-69220-1-git-send-email-jiang.biao2@zte.com.cn>
+Received: from szxga06-in.huawei.com ([45.249.212.32]:50218 "EHLO huawei.com"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751728AbeAIIx0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 9 Jan 2018 03:53:26 -0500
+Received: from DGGEMS414-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id 3044ABC37D117
+        for <linux-ext4@vger.kernel.org>; Tue,  9 Jan 2018 16:53:13 +0800 (CST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 9 Jan 2018 07:38:11 +0800 Jiang Biao <jiang.biao2@zte.com.cn> wrote:
+From: Xiongfeng Wang <xiongfeng.wang@linaro.org>
 
-> When running ltp stress test for 7*24 hours, vmscan occasionally emits the
-> following warning continuously:
-> 
-> mb_cache_scan+0x0/0x3f0 negative objects to delete
-> nr=-9232265467809300450
-> ....
-> 
-> Trace info shows the freeable(mb_cache_count returns) is -1, which causes
-> the continuous accumulation and overflow of total_scan.
-> 
-> This patch makes sure that mb_cache_count() not return a negative value,
-> which makes the mbcache shrinker more robust.
-> 
-> ...
->
-> --- a/fs/mbcache.c
-> +++ b/fs/mbcache.c
-> @@ -238,7 +238,11 @@ void mb_cache_entry_delete(struct mb_cache *cache, u32 key, u64 value)
->  			spin_lock(&cache->c_list_lock);
->  			if (!list_empty(&entry->e_list)) {
->  				list_del_init(&entry->e_list);
-> -				cache->c_entry_count--;
-> +				if (cache->c_entry_count > 0)
-> +					cache->c_entry_count--;
-> +				else
-> +					WARN_ONCE(1, "mbcache: Entry count "
-> +                          "going negative!\n");
->  				atomic_dec(&entry->e_refcnt);
->  			}
->  			spin_unlock(&cache->c_list_lock);
+gcc-8 reports
 
-I agree with Jan's comment.  We need to figure out how ->c_entry_count
-went negative.  mb_cache_count() says this state is "Unlikely, but not
-impossible", but from a quick read I can't see how this happens - it
-appears that coherency between ->c_list and ->c_entry_count is always
-maintained under ->c_list_lock?
+fs/ext4/super.c: In function '__save_error_info.isra.6':
+./include/linux/string.h:245:9: warning: '__builtin_strncpy' specified
+bound 32 equals destination size [-Wstringop-truncation]
+
+We need to use strlcpy() to make sure the dest string is nul-terminated.
+
+Signed-off-by: Xiongfeng Wang <xiongfeng.wang@linaro.org>
+---
+ fs/ext4/super.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7c46693..051b988 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -323,11 +323,11 @@ static void __save_error_info(struct super_block *sb, const char *func,
+ 		return;
+ 	es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+ 	es->s_last_error_time = cpu_to_le32(get_seconds());
+-	strncpy(es->s_last_error_func, func, sizeof(es->s_last_error_func));
++	strlcpy(es->s_last_error_func, func, sizeof(es->s_last_error_func));
+ 	es->s_last_error_line = cpu_to_le32(line);
+ 	if (!es->s_first_error_time) {
+ 		es->s_first_error_time = es->s_last_error_time;
+-		strncpy(es->s_first_error_func, func,
++		strlcpy(es->s_first_error_func, func,
+ 			sizeof(es->s_first_error_func));
+ 		es->s_first_error_line = cpu_to_le32(line);
+ 		es->s_first_error_ino = es->s_last_error_ino;
+-- 
+1.8.3.1
