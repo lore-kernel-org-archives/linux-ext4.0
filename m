@@ -1,54 +1,42 @@
-From: Xiongfeng Wang <wangxiongfeng2@huawei.com>
-Subject: [PATCH] ext4: use strlcpy() instead of strncpy()
-Date: Tue, 9 Jan 2018 16:58:39 +0800
-Message-ID: <1515488319-23779-1-git-send-email-wangxiongfeng2@huawei.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 198301] ext4 fails to create symlink if target length is
+ greater than block size (but smaller than PATH_MAX)
+Date: Tue, 09 Jan 2018 09:12:33 +0000
+Message-ID: <bug-198301-13602-YT5RIzuDmw@https.bugzilla.kernel.org/>
+References: <bug-198301-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: <linux-ext4@vger.kernel.org>, <wangxiongfeng2@huawei.com>
-To: <adilger.kernel@dilger.ca>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga06-in.huawei.com ([45.249.212.32]:50218 "EHLO huawei.com"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751728AbeAIIx0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 Jan 2018 03:53:26 -0500
-Received: from DGGEMS414-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 3044ABC37D117
-        for <linux-ext4@vger.kernel.org>; Tue,  9 Jan 2018 16:53:13 +0800 (CST)
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:50572 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751032AbeAIJMf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jan 2018 04:12:35 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A163827FA9
+        for <linux-ext4@vger.kernel.org>; Tue,  9 Jan 2018 09:12:34 +0000 (UTC)
+In-Reply-To: <bug-198301-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Xiongfeng Wang <xiongfeng.wang@linaro.org>
+https://bugzilla.kernel.org/show_bug.cgi?id=198301
 
-gcc-8 reports
+Jan Kara (jack@suse.cz) changed:
 
-fs/ext4/super.c: In function '__save_error_info.isra.6':
-./include/linux/string.h:245:9: warning: '__builtin_strncpy' specified
-bound 32 equals destination size [-Wstringop-truncation]
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |jack@suse.cz
 
-We need to use strlcpy() to make sure the dest string is nul-terminated.
+--- Comment #1 from Jan Kara (jack@suse.cz) ---
+Yes, this is a design limitation of ext4. In principle, on disk format of a
+symlink could be extended to allow for larger symlinks but that would require
+an incompatible on-disk format change and someone determined enough to
+implement all this in the kernel, e2fsck, libext2fs, etc. Also the motivation
+for the work is decreased by the fact that commonly deployed filesystems with
+4k block size do not exhibit the problem. So I personally don't think fixing
+this is worth the effort.
 
-Signed-off-by: Xiongfeng Wang <xiongfeng.wang@linaro.org>
----
- fs/ext4/super.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7c46693..051b988 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -323,11 +323,11 @@ static void __save_error_info(struct super_block *sb, const char *func,
- 		return;
- 	es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
- 	es->s_last_error_time = cpu_to_le32(get_seconds());
--	strncpy(es->s_last_error_func, func, sizeof(es->s_last_error_func));
-+	strlcpy(es->s_last_error_func, func, sizeof(es->s_last_error_func));
- 	es->s_last_error_line = cpu_to_le32(line);
- 	if (!es->s_first_error_time) {
- 		es->s_first_error_time = es->s_last_error_time;
--		strncpy(es->s_first_error_func, func,
-+		strlcpy(es->s_first_error_func, func,
- 			sizeof(es->s_first_error_func));
- 		es->s_first_error_line = cpu_to_le32(line);
- 		es->s_first_error_ino = es->s_last_error_ino;
 -- 
-1.8.3.1
+You are receiving this mail because:
+You are watching the assignee of the bug.
