@@ -1,53 +1,83 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: no need flush workqueue before destroying it
-Date: Tue, 9 Jan 2018 16:07:12 +0100
-Message-ID: <20180109150712.i5tm3nywi3w4w4rk@quack2.suse.cz>
-References: <5A54B7A2.8050101@huawei.com>
+Subject: Re: [PATCH v5 02/19] fs: don't take the i_lock in inode_inc_iversion
+Date: Tue, 9 Jan 2018 16:14:28 +0100
+Message-ID: <20180109151428.yuhawmbgv7tywjcq@quack2.suse.cz>
+References: <20180109141059.25929-1-jlayton@kernel.org>
+ <20180109141059.25929-3-jlayton@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, adilger.kernel@dilger.ca, arnd@arndb.de,
-        linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>
-To: piaojun <piaojun@huawei.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34350 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751263AbeAIPHR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 Jan 2018 10:07:17 -0500
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com, krzk@kernel.org
+To: Jeff Layton <jlayton@kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <5A54B7A2.8050101@huawei.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20180109141059.25929-3-jlayton@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue 09-01-18 20:37:54, piaojun wrote:
-> destroy_workqueue() will do flushing work for us.
+On Tue 09-01-18 09:10:42, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@redhat.com>
 > 
-> Signed-off-by: Jun Piao <piaojun@huawei.com>
+> The rationale for taking the i_lock when incrementing this value is
+> lost in antiquity. The readers of the field don't take it (at least
+> not universally), so my assumption is that it was only done here to
+> serialize incrementors.
+> 
+> If that is indeed the case, then we can drop the i_lock from this
+> codepath and treat it as a atomic64_t for the purposes of
+> incrementing it. This allows us to use inode_inc_iversion without
+> any danger of lock inversion.
+> 
+> Note that the read side is not fetched atomically with this change.
+> The assumption here is that that is not a critical issue since the
+> i_version is not fully synchronized with anything else anyway.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-Looks good. You can add:
+This changes the memory barrier behavior but IMO it is good enough for an
+intermediate version. You can add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
-
-Adding Ted to CC as a maintainer...
 
 								Honza
 
 > ---
->  fs/ext4/super.c | 1 -
->  1 file changed, 1 deletion(-)
+>  include/linux/iversion.h | 7 ++++---
+>  1 file changed, 4 insertions(+), 3 deletions(-)
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 0556cd0..2f46b0b 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -870,7 +870,6 @@ static void ext4_put_super(struct super_block *sb)
->  	ext4_unregister_li_request(sb);
->  	ext4_quota_off_umount(sb);
-> 
-> -	flush_workqueue(sbi->rsv_conversion_wq);
->  	destroy_workqueue(sbi->rsv_conversion_wq);
-> 
->  	if (sbi->s_journal) {
+> diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+> index d09cc3a08740..5ad9eaa3a9b0 100644
+> --- a/include/linux/iversion.h
+> +++ b/include/linux/iversion.h
+> @@ -104,12 +104,13 @@ inode_set_iversion_queried(struct inode *inode, u64 new)
+>  static inline bool
+>  inode_maybe_inc_iversion(struct inode *inode, bool force)
+>  {
+> -	spin_lock(&inode->i_lock);
+> -	inode->i_version++;
+> -	spin_unlock(&inode->i_lock);
+> +	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
+> +
+> +	atomic64_inc(ivp);
+>  	return true;
+>  }
+>  
+> +
+>  /**
+>   * inode_inc_iversion - forcibly increment i_version
+>   * @inode: inode that needs to be updated
 > -- 
+> 2.14.3
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
