@@ -1,56 +1,53 @@
-From: Jeff Layton <jlayton@kernel.org>
-Subject: [RFC PATCH] ext4: don't split xattr inode refcounts across i_ctime and i_version fields
-Date: Tue,  9 Jan 2018 09:47:01 -0500
-Message-ID: <20180109144701.27387-1-jlayton@kernel.org>
-Cc: linux-ext4@vger.kernel.org, dhowells@redhat.com
-To: adilger.kernel@dilger.ca, tytso@mit.edu
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: no need flush workqueue before destroying it
+Date: Tue, 9 Jan 2018 16:07:12 +0100
+Message-ID: <20180109150712.i5tm3nywi3w4w4rk@quack2.suse.cz>
+References: <5A54B7A2.8050101@huawei.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, adilger.kernel@dilger.ca, arnd@arndb.de,
+        linux-ext4@vger.kernel.org, Ted Tso <tytso@mit.edu>
+To: piaojun <piaojun@huawei.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:47300 "EHLO mail.kernel.org"
+Received: from mx2.suse.de ([195.135.220.15]:34350 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756991AbeAIOrD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 Jan 2018 09:47:03 -0500
+        id S1751263AbeAIPHR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 9 Jan 2018 10:07:17 -0500
+Content-Disposition: inline
+In-Reply-To: <5A54B7A2.8050101@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jeff Layton <jlayton@redhat.com>
+On Tue 09-01-18 20:37:54, piaojun wrote:
+> destroy_workqueue() will do flushing work for us.
+> 
+> Signed-off-by: Jun Piao <piaojun@huawei.com>
 
-This patch is based on top of the i_version rework that I'm flogging
-upstream. It's just a cleanup of some nastiness I noticed while in there.
+Looks good. You can add:
 
-This code uses the i_ctime and i_version fields to each store half of
-a refcount. I suspect it was done this way long ago when the i_version
-field was a 32 bits, and was never changed when the field was converted
-to a 64 bit value.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Change the code to just store the refcount in the i_version field rather
-than splitting it across both fields.
+Adding Ted to CC as a maintainer...
 
-Cc: David Howells <dhowells@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/ext4/xattr.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+								Honza
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 63656dbafdc4..6ea78dd367ca 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -294,14 +294,12 @@ ext4_xattr_inode_hash(struct ext4_sb_info *sbi, const void *buffer, size_t size)
- 
- static u64 ext4_xattr_inode_get_ref(struct inode *ea_inode)
- {
--	return ((u64)ea_inode->i_ctime.tv_sec << 32) |
--		(u32) inode_peek_iversion_raw(ea_inode);
-+	return inode_peek_iversion_raw(ea_inode);
- }
- 
- static void ext4_xattr_inode_set_ref(struct inode *ea_inode, u64 ref_count)
- {
--	ea_inode->i_ctime.tv_sec = (u32)(ref_count >> 32);
--	inode_set_iversion_raw(ea_inode, ref_count & 0xffffffff);
-+	inode_set_iversion_raw(ea_inode, ref_count);
- }
- 
- static u32 ext4_xattr_inode_get_hash(struct inode *ea_inode)
+> ---
+>  fs/ext4/super.c | 1 -
+>  1 file changed, 1 deletion(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 0556cd0..2f46b0b 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -870,7 +870,6 @@ static void ext4_put_super(struct super_block *sb)
+>  	ext4_unregister_li_request(sb);
+>  	ext4_quota_off_umount(sb);
+> 
+> -	flush_workqueue(sbi->rsv_conversion_wq);
+>  	destroy_workqueue(sbi->rsv_conversion_wq);
+> 
+>  	if (sbi->s_journal) {
+> -- 
 -- 
-2.14.3
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
