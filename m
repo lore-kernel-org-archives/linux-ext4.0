@@ -1,92 +1,43 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: =?utf-8?B?5Zue5aSN77yaZXh0NA==?= =?utf-8?Q?=2C?= quota,
- projectid:  limits without capablity
-Date: Wed, 10 Jan 2018 12:59:26 +0100
-Message-ID: <20180110115926.tk6bri37bdjhipc2@quack2.suse.cz>
-References: <c18ff577-be92-40ea-93ae-4401ce2107da.yuanliang.wyl@alibaba-inc.com>
- <0dc571a8-e1b2-4247-9e9d-df02c0b0d7c6.yuanliang.wyl@alibaba-inc.com>
+From: Sean Fu <fxinrong@gmail.com>
+Subject: Re: [PATCH] ext4: Remove repeated test in ext4_file_read_iter.
+Date: Wed, 10 Jan 2018 22:01:49 +0800
+Message-ID: <20180110140149.GA5174@linux-zmni.DHCP>
+References: <1514362798-5850-1-git-send-email-fxinrong@gmail.com>
+ <20180103020805.GB21978@ZenIV.linux.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        "adilger.kernel" <adilger.kernel@dilger.ca>,
-        pkuelelixi <pkuelelixi@gmail.com>, jack <jack@suse.cz>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>
-To: Yuanliang Wang <yuanliang.wyl@alibaba-inc.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Al Viro <viro@ZenIV.linux.org.uk>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <0dc571a8-e1b2-4247-9e9d-df02c0b0d7c6.yuanliang.wyl@alibaba-inc.com>
+In-Reply-To: <20180103020805.GB21978@ZenIV.linux.org.uk>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello Wang!
-
-On Wed 10-01-18 19:01:03, Yuanliang Wang wrote:
-> Thank you for your enthusiastic response
+On Wed, Jan 03, 2018 at 02:08:05AM +0000, Al Viro wrote:
+> On Wed, Dec 27, 2017 at 04:19:58PM +0800, Sean Fu wrote:
+> > generic_file_read_iter has done the count test.
+> > So ext4_file_read_iter don't need to test the count repeatedly.
 > 
-> the reason is :
->                         1、I saw
-> that ignore_hardlimit allows root to exceed the limit，so should projid
-> be consistent ?
-
-Generally, it should be consistent. ignore_hardlimit is a different thing -
-you want root to be able to exceed storage space limit but you don't want
-root to be able to make information inconsistent...
-
->                         2、
-> In our scenario we will use hardlink to share data between container and host, and between containers
+> Huh?  You do realize that generic_file_read_iter() is not the
+> only variant possible there, right?
+>
+Yes, I know that generic_file_read_iter() is not the only variant possible.
+The other possible dax_iomap_rw() with zero count would return zero.
+> static ssize_t ext4_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
+> {
+>         struct inode *inode = file_inode(iocb->ki_filp);
+>         ssize_t ret;
 > 
->                                         +------------------+
->                                         |                       |
->                                         |                       |
-> +-------------+                     |                       |
-> |                 |                     |                       |
-> |                 |                     |     container     |
-> |                 +--------------> |                       |
-> |                 |                     |     file A          |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     +------------------+
-> |                 |
-> |                 |
-> |                 |                     +------------------+
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     |    container      |
-> | host file A +---------------> |                       |
-> |                 |                     |    file A           |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     +------------------+
-> |                 |
-> |                 |                     +------------------+
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 +------------->  |     container     |
-> |                 |                     |                       |
-> |                 |                     |                       |
-> |                 |                     |    file A            |
-> |                 |                     |                       |
-> +-------------+                     |                       |
->                                         |                       |
->                                         +------------------+
-
-I see but then which project ID does the 'file A' have? Project ID used for
-neither of the containers is logical... Maybe the file is accessible only
-read-only in your setup and so you don't care much about quotas for that
-particular files but still it may be confusing that the file is not
-accounted to the quota of each particular container. That's the reason why
-project ID consistence is enforced.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+>         if (!inode_trylock_shared(inode)) {
+>                 if (iocb->ki_flags & IOCB_NOWAIT)
+>                         return -EAGAIN;
+>                 inode_lock_shared(inode);
+>         }
+> 
+> ... and now IOCB_NOWAIT read with zero count can fail with -EAGAIN.
+>
+Correct, IOCB_NOWAIT read with zero count can return -EAGAIN, But I
+think that it is reasonable. while it got lock, zero would be returned
+in this case.
