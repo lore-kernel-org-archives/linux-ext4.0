@@ -1,181 +1,92 @@
-From: piaojun <piaojun@huawei.com>
-Subject: [PATCH] ext4: use 'sbi' instead of 'EXT4_SB(sb)'
-Date: Wed, 10 Jan 2018 19:52:54 +0800
-Message-ID: <5A55FE96.1040002@huawei.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: =?utf-8?B?5Zue5aSN77yaZXh0NA==?= =?utf-8?Q?=2C?= quota,
+ projectid:  limits without capablity
+Date: Wed, 10 Jan 2018 12:59:26 +0100
+Message-ID: <20180110115926.tk6bri37bdjhipc2@quack2.suse.cz>
+References: <c18ff577-be92-40ea-93ae-4401ce2107da.yuanliang.wyl@alibaba-inc.com>
+ <0dc571a8-e1b2-4247-9e9d-df02c0b0d7c6.yuanliang.wyl@alibaba-inc.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: <adilger.kernel@dilger.ca>, <arnd@arndb.de>,
-        Ted Tso <tytso@mit.edu>, <linux-ext4@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from szxga05-in.huawei.com ([45.249.212.191]:3765 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S932170AbeAJLxS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Jan 2018 06:53:18 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        "adilger.kernel" <adilger.kernel@dilger.ca>,
+        pkuelelixi <pkuelelixi@gmail.com>, jack <jack@suse.cz>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>
+To: Yuanliang Wang <yuanliang.wyl@alibaba-inc.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <0dc571a8-e1b2-4247-9e9d-df02c0b0d7c6.yuanliang.wyl@alibaba-inc.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-We could use 'sbi' instead of 'EXT4_SB(sb)' to make code more elegant.
+Hello Wang!
 
-Signed-off-by: Jun Piao <piaojun@huawei.com>
----
- fs/ext4/balloc.c         |  4 ++--
- fs/ext4/block_validity.c |  6 +++---
- fs/ext4/ialloc.c         |  4 ++--
- fs/ext4/mballoc.c        | 14 +++++++-------
- fs/ext4/resize.c         |  2 +-
- fs/ext4/super.c          |  6 +++---
- 6 files changed, 18 insertions(+), 18 deletions(-)
+On Wed 10-01-18 19:01:03, Yuanliang Wang wrote:
+> Thank you for your enthusiastic response
+> 
+> the reason is :
+>                         1、I saw
+> that ignore_hardlimit allows root to exceed the limit，so should projid
+> be consistent ?
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index a943e56..f9b3e0a 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -355,10 +355,10 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 	blk = ext4_inode_table(sb, desc);
- 	offset = blk - group_first_block;
- 	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
--			EXT4_B2C(sbi, offset + EXT4_SB(sb)->s_itb_per_group),
-+			EXT4_B2C(sbi, offset + sbi->s_itb_per_group),
- 			EXT4_B2C(sbi, offset));
- 	if (next_zero_bit <
--	    EXT4_B2C(sbi, offset + EXT4_SB(sb)->s_itb_per_group))
-+	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group))
- 		/* bad bitmap for inode tables */
- 		return blk;
- 	return 0;
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index bee888e..913061c 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -147,11 +147,11 @@ int ext4_setup_system_zone(struct super_block *sb)
- 	int ret;
+Generally, it should be consistent. ignore_hardlimit is a different thing -
+you want root to be able to exceed storage space limit but you don't want
+root to be able to make information inconsistent...
 
- 	if (!test_opt(sb, BLOCK_VALIDITY)) {
--		if (EXT4_SB(sb)->system_blks.rb_node)
-+		if (sbi->system_blks.rb_node)
- 			ext4_release_system_zone(sb);
- 		return 0;
- 	}
--	if (EXT4_SB(sb)->system_blks.rb_node)
-+	if (sbi->system_blks.rb_node)
- 		return 0;
+>                         2、
+> In our scenario we will use hardlink to share data between container and host, and between containers
+> 
+>                                         +------------------+
+>                                         |                       |
+>                                         |                       |
+> +-------------+                     |                       |
+> |                 |                     |                       |
+> |                 |                     |     container     |
+> |                 +--------------> |                       |
+> |                 |                     |     file A          |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     +------------------+
+> |                 |
+> |                 |
+> |                 |                     +------------------+
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     |    container      |
+> | host file A +---------------> |                       |
+> |                 |                     |    file A           |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     +------------------+
+> |                 |
+> |                 |                     +------------------+
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 +------------->  |     container     |
+> |                 |                     |                       |
+> |                 |                     |                       |
+> |                 |                     |    file A            |
+> |                 |                     |                       |
+> +-------------+                     |                       |
+>                                         |                       |
+>                                         +------------------+
 
- 	for (i=0; i < ngroups; i++) {
-@@ -173,7 +173,7 @@ int ext4_setup_system_zone(struct super_block *sb)
- 	}
+I see but then which project ID does the 'file A' have? Project ID used for
+neither of the containers is logical... Maybe the file is accessible only
+read-only in your setup and so you don't care much about quotas for that
+particular files but still it may be confusing that the file is not
+accounted to the quota of each particular container. That's the reason why
+project ID consistence is enforced.
 
- 	if (test_opt(sb, DEBUG))
--		debug_print_tree(EXT4_SB(sb));
-+		debug_print_tree(sbi);
- 	return 0;
- }
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index b4267d7..3fd31a3 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -303,7 +303,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 	/* Do this BEFORE marking the inode not in use or returning an error */
- 	ext4_clear_inode(inode);
-
--	es = EXT4_SB(sb)->s_es;
-+	es = sbi->s_es;
- 	if (ino < EXT4_FIRST_INO(sb) || ino > le32_to_cpu(es->s_inodes_count)) {
- 		ext4_error(sb, "reserved or nonexistent inode %lu", ino);
- 		goto error_return;
-@@ -1155,7 +1155,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	ext4_clear_state_flags(ei); /* Only relevant on 32-bit archs */
- 	ext4_set_inode_state(inode, EXT4_STATE_NEW);
-
--	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
-+	ei->i_extra_isize = sbi->s_want_extra_isize;
- 	ei->i_inline_off = 0;
- 	if (ext4_has_feature_inline_data(sb))
- 		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d9f8b90..02e16a8 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -769,10 +769,10 @@ void ext4_mb_generate_buddy(struct super_block *sb,
- 	clear_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
-
- 	period = get_cycles() - period;
--	spin_lock(&EXT4_SB(sb)->s_bal_lock);
--	EXT4_SB(sb)->s_mb_buddies_generated++;
--	EXT4_SB(sb)->s_mb_generation_time += period;
--	spin_unlock(&EXT4_SB(sb)->s_bal_lock);
-+	spin_lock(&sbi->s_bal_lock);
-+	sbi->s_mb_buddies_generated++;
-+	sbi->s_mb_generation_time += period;
-+	spin_unlock(&sbi->s_bal_lock);
- }
-
- static void mb_regenerate_buddy(struct ext4_buddy *e4b)
-@@ -1459,7 +1459,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 		ext4_fsblk_t blocknr;
-
- 		blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
--		blocknr += EXT4_C2B(EXT4_SB(sb), block);
-+		blocknr += EXT4_C2B(sbi, block);
- 		ext4_grp_locked_error(sb, e4b->bd_group,
- 				      inode ? inode->i_ino : 0,
- 				      blocknr,
-@@ -4850,9 +4850,9 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 	if (in_range(ext4_block_bitmap(sb, gdp), block, count) ||
- 	    in_range(ext4_inode_bitmap(sb, gdp), block, count) ||
- 	    in_range(block, ext4_inode_table(sb, gdp),
--		     EXT4_SB(sb)->s_itb_per_group) ||
-+		     sbi->s_itb_per_group) ||
- 	    in_range(block + count - 1, ext4_inode_table(sb, gdp),
--		     EXT4_SB(sb)->s_itb_per_group)) {
-+		     sbi->s_itb_per_group)) {
-
- 		ext4_error(sb, "Freeing blocks in system zone - "
- 			   "Block = %llu, count = %lu", block, count);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 50443bd..b6bec27 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1477,7 +1477,7 @@ static int ext4_flex_group_add(struct super_block *sb,
- 		goto exit_journal;
-
- 	group = flex_gd->groups[0].group;
--	BUG_ON(group != EXT4_SB(sb)->s_groups_count);
-+	BUG_ON(group != sbi->s_groups_count);
- 	err = ext4_add_new_descs(handle, sb, group,
- 				resize_inode, flex_gd->count);
- 	if (err)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0556cd0..165f564 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2676,7 +2676,7 @@ static ext4_fsblk_t descriptor_loc(struct super_block *sb,
- 	 * compensate.
- 	 */
- 	if (sb->s_blocksize == 1024 && nr == 0 &&
--	    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) == 0)
-+	    le32_to_cpu(sbi->s_es->s_first_data_block) == 0)
- 		has_super++;
-
- 	return (has_super + ext4_group_first_block_no(sb, bg));
-@@ -3121,7 +3121,7 @@ int ext4_register_li_request(struct super_block *sb,
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct ext4_li_request *elr = NULL;
--	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
-+	ext4_group_t ngroups = sbi->s_groups_count;
- 	int ret = 0;
-
- 	mutex_lock(&ext4_li_mtx);
-@@ -4836,7 +4836,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
- 	bool needs_barrier = false;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-
--	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
-+	if (unlikely(ext4_forced_shutdown(sbi)))
- 		return 0;
-
- 	trace_ext4_sync_fs(sb, wait);
+								Honza
 -- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
