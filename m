@@ -1,74 +1,194 @@
-From: Krzysztof Kozlowski <krzk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Subject: Re: [PATCH v5 19/19] fs: handle inode->i_version more efficiently
-Date: Wed, 10 Jan 2018 15:12:42 +0100
-Message-ID: <CAJKOXPckGaNF0HTqLMzxJKg_r4r7HZy9GFoOUs_vxeZfa_kb=A@mail.gmail.com>
-References: <20180109141059.25929-1-jlayton@kernel.org> <20180109141059.25929-20-jlayton@kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: use 'sbi' instead of 'EXT4_SB(sb)'
+Date: Wed, 10 Jan 2018 15:38:21 +0100
+Message-ID: <20180110143821.65cq3733fqvpvmsu@quack2.suse.cz>
+References: <5A55FE96.1040002@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org, jack-l3A5Bk7waGM@public.gmane.org,
-        linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org,
-        adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
-        linux-btrfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, clm-b10kYP2dOMg@public.gmane.org, jbacik-b10kYP2dOMg@public.gmane.org,
-        dsterba-IBi9RG/b67k@public.gmane.org, linux-integrity-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-        zohar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, dmitry.kasatkin-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org,
-        linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, dhowells-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
-        jaltman-hRzEac23uH1Wk0Htik3J/w@public.gmane.org
-To: Jeff Layton <jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20180109141059.25929-20-jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, adilger.kernel@dilger.ca, arnd@arndb.de,
+        Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: piaojun <piaojun@huawei.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:44708 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932448AbeAJOiY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 10 Jan 2018 09:38:24 -0500
+Content-Disposition: inline
+In-Reply-To: <5A55FE96.1040002@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 9, 2018 at 3:10 PM, Jeff Layton <jlayton-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org> wrote:
-> From: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
->
-> Since i_version is mostly treated as an opaque value, we can exploit that
-> fact to avoid incrementing it when no one is watching. With that change,
-> we can avoid incrementing the counter on writes, unless someone has
-> queried for it since it was last incremented. If the a/c/mtime don't
-> change, and the i_version hasn't changed, then there's no need to dirty
-> the inode metadata on a write.
->
-> Convert the i_version counter to an atomic64_t, and use the lowest order
-> bit to hold a flag that will tell whether anyone has queried the value
-> since it was last incremented.
->
-> When we go to maybe increment it, we fetch the value and check the flag
-> bit.  If it's clear then we don't need to do anything if the update
-> isn't being forced.
->
-> If we do need to update, then we increment the counter by 2, and clear
-> the flag bit, and then use a CAS op to swap it into place. If that
-> works, we return true. If it doesn't then do it again with the value
-> that we fetch from the CAS operation.
->
-> On the query side, if the flag is already set, then we just shift the
-> value down by 1 bit and return it. Otherwise, we set the flag in our
-> on-stack value and again use cmpxchg to swap it into place if it hasn't
-> changed. If it has, then we use the value from the cmpxchg as the new
-> "old" value and try again.
->
-> This method allows us to avoid incrementing the counter on writes (and
-> dirtying the metadata) under typical workloads. We only need to increment
-> if it has been queried since it was last changed.
->
-> Signed-off-by: Jeff Layton <jlayton-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+On Wed 10-01-18 19:52:54, piaojun wrote:
+> We could use 'sbi' instead of 'EXT4_SB(sb)' to make code more elegant.
+> 
+> Signed-off-by: Jun Piao <piaojun@huawei.com>
+
+Looks good to me. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
 > ---
->  include/linux/fs.h       |   2 +-
->  include/linux/iversion.h | 210 ++++++++++++++++++++++++++++++++++-------------
->  2 files changed, 155 insertions(+), 57 deletions(-)
-
-Works fine on my nfsroot configuration so looks like the issues from
-v4 are gone. FWIW:
-Tested-by: Krzysztof Kozlowski <krzk-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-
-Best regards,
-Krzysztof
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  fs/ext4/balloc.c         |  4 ++--
+>  fs/ext4/block_validity.c |  6 +++---
+>  fs/ext4/ialloc.c         |  4 ++--
+>  fs/ext4/mballoc.c        | 14 +++++++-------
+>  fs/ext4/resize.c         |  2 +-
+>  fs/ext4/super.c          |  6 +++---
+>  6 files changed, 18 insertions(+), 18 deletions(-)
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index a943e56..f9b3e0a 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -355,10 +355,10 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
+>  	blk = ext4_inode_table(sb, desc);
+>  	offset = blk - group_first_block;
+>  	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
+> -			EXT4_B2C(sbi, offset + EXT4_SB(sb)->s_itb_per_group),
+> +			EXT4_B2C(sbi, offset + sbi->s_itb_per_group),
+>  			EXT4_B2C(sbi, offset));
+>  	if (next_zero_bit <
+> -	    EXT4_B2C(sbi, offset + EXT4_SB(sb)->s_itb_per_group))
+> +	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group))
+>  		/* bad bitmap for inode tables */
+>  		return blk;
+>  	return 0;
+> diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+> index bee888e..913061c 100644
+> --- a/fs/ext4/block_validity.c
+> +++ b/fs/ext4/block_validity.c
+> @@ -147,11 +147,11 @@ int ext4_setup_system_zone(struct super_block *sb)
+>  	int ret;
+> 
+>  	if (!test_opt(sb, BLOCK_VALIDITY)) {
+> -		if (EXT4_SB(sb)->system_blks.rb_node)
+> +		if (sbi->system_blks.rb_node)
+>  			ext4_release_system_zone(sb);
+>  		return 0;
+>  	}
+> -	if (EXT4_SB(sb)->system_blks.rb_node)
+> +	if (sbi->system_blks.rb_node)
+>  		return 0;
+> 
+>  	for (i=0; i < ngroups; i++) {
+> @@ -173,7 +173,7 @@ int ext4_setup_system_zone(struct super_block *sb)
+>  	}
+> 
+>  	if (test_opt(sb, DEBUG))
+> -		debug_print_tree(EXT4_SB(sb));
+> +		debug_print_tree(sbi);
+>  	return 0;
+>  }
+> 
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index b4267d7..3fd31a3 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -303,7 +303,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+>  	/* Do this BEFORE marking the inode not in use or returning an error */
+>  	ext4_clear_inode(inode);
+> 
+> -	es = EXT4_SB(sb)->s_es;
+> +	es = sbi->s_es;
+>  	if (ino < EXT4_FIRST_INO(sb) || ino > le32_to_cpu(es->s_inodes_count)) {
+>  		ext4_error(sb, "reserved or nonexistent inode %lu", ino);
+>  		goto error_return;
+> @@ -1155,7 +1155,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>  	ext4_clear_state_flags(ei); /* Only relevant on 32-bit archs */
+>  	ext4_set_inode_state(inode, EXT4_STATE_NEW);
+> 
+> -	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
+> +	ei->i_extra_isize = sbi->s_want_extra_isize;
+>  	ei->i_inline_off = 0;
+>  	if (ext4_has_feature_inline_data(sb))
+>  		ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index d9f8b90..02e16a8 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -769,10 +769,10 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+>  	clear_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
+> 
+>  	period = get_cycles() - period;
+> -	spin_lock(&EXT4_SB(sb)->s_bal_lock);
+> -	EXT4_SB(sb)->s_mb_buddies_generated++;
+> -	EXT4_SB(sb)->s_mb_generation_time += period;
+> -	spin_unlock(&EXT4_SB(sb)->s_bal_lock);
+> +	spin_lock(&sbi->s_bal_lock);
+> +	sbi->s_mb_buddies_generated++;
+> +	sbi->s_mb_generation_time += period;
+> +	spin_unlock(&sbi->s_bal_lock);
+>  }
+> 
+>  static void mb_regenerate_buddy(struct ext4_buddy *e4b)
+> @@ -1459,7 +1459,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+>  		ext4_fsblk_t blocknr;
+> 
+>  		blocknr = ext4_group_first_block_no(sb, e4b->bd_group);
+> -		blocknr += EXT4_C2B(EXT4_SB(sb), block);
+> +		blocknr += EXT4_C2B(sbi, block);
+>  		ext4_grp_locked_error(sb, e4b->bd_group,
+>  				      inode ? inode->i_ino : 0,
+>  				      blocknr,
+> @@ -4850,9 +4850,9 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+>  	if (in_range(ext4_block_bitmap(sb, gdp), block, count) ||
+>  	    in_range(ext4_inode_bitmap(sb, gdp), block, count) ||
+>  	    in_range(block, ext4_inode_table(sb, gdp),
+> -		     EXT4_SB(sb)->s_itb_per_group) ||
+> +		     sbi->s_itb_per_group) ||
+>  	    in_range(block + count - 1, ext4_inode_table(sb, gdp),
+> -		     EXT4_SB(sb)->s_itb_per_group)) {
+> +		     sbi->s_itb_per_group)) {
+> 
+>  		ext4_error(sb, "Freeing blocks in system zone - "
+>  			   "Block = %llu, count = %lu", block, count);
+> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> index 50443bd..b6bec27 100644
+> --- a/fs/ext4/resize.c
+> +++ b/fs/ext4/resize.c
+> @@ -1477,7 +1477,7 @@ static int ext4_flex_group_add(struct super_block *sb,
+>  		goto exit_journal;
+> 
+>  	group = flex_gd->groups[0].group;
+> -	BUG_ON(group != EXT4_SB(sb)->s_groups_count);
+> +	BUG_ON(group != sbi->s_groups_count);
+>  	err = ext4_add_new_descs(handle, sb, group,
+>  				resize_inode, flex_gd->count);
+>  	if (err)
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 0556cd0..165f564 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2676,7 +2676,7 @@ static ext4_fsblk_t descriptor_loc(struct super_block *sb,
+>  	 * compensate.
+>  	 */
+>  	if (sb->s_blocksize == 1024 && nr == 0 &&
+> -	    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) == 0)
+> +	    le32_to_cpu(sbi->s_es->s_first_data_block) == 0)
+>  		has_super++;
+> 
+>  	return (has_super + ext4_group_first_block_no(sb, bg));
+> @@ -3121,7 +3121,7 @@ int ext4_register_li_request(struct super_block *sb,
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>  	struct ext4_li_request *elr = NULL;
+> -	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
+> +	ext4_group_t ngroups = sbi->s_groups_count;
+>  	int ret = 0;
+> 
+>  	mutex_lock(&ext4_li_mtx);
+> @@ -4836,7 +4836,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+>  	bool needs_barrier = false;
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> 
+> -	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
+> +	if (unlikely(ext4_forced_shutdown(sbi)))
+>  		return 0;
+> 
+>  	trace_ext4_sync_fs(sb, wait);
+> -- 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
