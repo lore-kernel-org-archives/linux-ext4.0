@@ -1,39 +1,42 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Remove repeated test in ext4_file_read_iter.
-Date: Wed, 10 Jan 2018 15:02:55 -0500
-Message-ID: <20180110200255.GA6499@thunk.org>
-References: <1514362798-5850-1-git-send-email-fxinrong@gmail.com>
- <20180103020805.GB21978@ZenIV.linux.org.uk>
- <20180110140149.GA5174@linux-zmni.DHCP>
+Subject: Re: [PATCH v2] fs/mbcache: make sure mb_cache_count() not return
+ negative value.
+Date: Wed, 10 Jan 2018 15:11:37 -0500
+Message-ID: <20180110201137.GB6499@thunk.org>
+References: <1515454691-69220-1-git-send-email-jiang.biao2@zte.com.cn>
+ <20180108161304.f4be912fb6e20cdf56ae78ef@linux-foundation.org>
+ <20180110042600.GC5809@thunk.org>
+ <20180110150223.axkqucrhzef2n64u@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Sean Fu <fxinrong@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Jiang Biao <jiang.biao2@zte.com.cn>,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        ebiggers@google.com, zhong.weidong@zte.com.cn
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180110140149.GA5174@linux-zmni.DHCP>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20180110150223.axkqucrhzef2n64u@quack2.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 10, 2018 at 10:01:49PM +0800, Sean Fu wrote:
->
-> Correct, IOCB_NOWAIT read with zero count can return -EAGAIN, But I
-> think that it is reasonable. while it got lock, zero would be returned
-> in this case.
+On Wed, Jan 10, 2018 at 04:02:23PM +0100, Jan Kara wrote:
+> So I don't think this can be a problem. Look, mb_cache_shrink() holds
+> c_list_lock. It will take first entry from cache->c_list - this list is
+> using list_head entry->e_list and so we are guaranteed entry->e_list is
+> non-empty.
+> 
+> The other place deleting entry - mb_cache_entry_delete() - which is using
+> different list to grab the entry is properly checking for
+> !list_empty(entry->e_list) after acquiring c_list_lock.
 
-Returning -EAGAIN and 0 are not the same thing.  Specifically
-returning 0 means "end of file".  Hence, it is NOT reasonable.
+Hmm... you're right.  How we handle the hlist_bl_lock and c_list_lock
+still creeps me out a bit, but it's not going to cause the potential
+problem.  I think there is a problem if mb_cache_entry_create() races
+with mb_cache_delete(), but that will result in an entry being on the
+c_list while not being on the hash list, and it doesn't cause the
+c_entry_count to get out of sync with reality.
 
-See the man page for read(2) or the relevant Single Unix Specification
-standard:
-
-RETURN VALUE
-     On success, the number of bytes read is returned (zero indicates
-     end of file)....
-
-Changing the behavior of the system in which will break userspace is
-never acceptable, and even more so given that this is just a "cleanup
-patch".
+Drat....
 
 						- Ted
