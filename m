@@ -1,34 +1,34 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] FS: EXT4: syn error in __ext4_grp_locked_error
-Date: Thu, 11 Jan 2018 13:13:07 -0500
-Message-ID: <20180111181307.GC19241@thunk.org>
-References: <1513305136-27652-1-git-send-email-zhouzhouyi@gmail.com>
+Subject: Re: [PATCH] ext4: use 'sbi' instead of 'EXT4_SB(sb)'
+Date: Thu, 11 Jan 2018 13:19:09 -0500
+Message-ID: <20180111181909.GD19241@thunk.org>
+References: <5A55FE96.1040002@huawei.com>
+ <20180110143821.65cq3733fqvpvmsu@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: zhouzhouyi@gmail.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: piaojun <piaojun@huawei.com>, adilger.kernel@dilger.ca,
+        arnd@arndb.de, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37508 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S934462AbeAKSTU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 11 Jan 2018 13:19:20 -0500
 Content-Disposition: inline
-In-Reply-To: <1513305136-27652-1-git-send-email-zhouzhouyi@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20180110143821.65cq3733fqvpvmsu@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 15, 2017 at 02:32:16AM +0000, zhouzhouyi@gmail.com wrote:
-> From: Zhouyi Zhou <zhouzhouyi@gmail.com>
+On Wed, Jan 10, 2018 at 03:38:21PM +0100, Jan Kara wrote:
+> On Wed 10-01-18 19:52:54, piaojun wrote:
+> > We could use 'sbi' instead of 'EXT4_SB(sb)' to make code more elegant.
+> > 
+> > Signed-off-by: Jun Piao <piaojun@huawei.com>
 > 
-> In function __ext4_grp_locked_error,   __save_error_info
-> is called to save error info in super block block, but does not sync
-> that information to disk to info the subsequence fsck after reboot.
+> Looks good to me. You can add:
 > 
-> This patch sync the error information to disk. After this patch,
-> I think there is no obvious EXT4 error handle branche which leads to
-> "Remounting filesystem read-only" will leave the disk partition miss
-> the subsequence fsck.
-> 
-> Compiled in x86_64 Linux
-> Signed-off-by: Zhouyi Zhou <zhouzhouyi@gmail.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Applied, thanks.
+Thanks, applied.
 
 					- Ted
