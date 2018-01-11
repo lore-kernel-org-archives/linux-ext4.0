@@ -1,37 +1,39 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH e2fsprogs] tests: Fixup for new r_move_itable tests.
-Date: Thu, 11 Jan 2018 14:13:27 -0500
-Message-ID: <20180111191327.GA5559@thunk.org>
-References: <20171111075540.21722-1-mbakke@fastmail.com>
+Subject: Re: [PATCH] ext4: fix incorrect indentation of if statement
+Date: Thu, 11 Jan 2018 14:18:10 -0500
+Message-ID: <20180111191810.GF19241@thunk.org>
+References: <20171129142059.21898-1-colin.king@canonical.com>
+ <20180104154018.GB2170@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Marius Bakke <mbakke@fastmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37766 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S964978AbeAKTNg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 11 Jan 2018 14:13:36 -0500
+Cc: Colin King <colin.king@canonical.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20171111075540.21722-1-mbakke@fastmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20180104154018.GB2170@quack2.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Nov 11, 2017 at 08:55:40AM +0100, Marius Bakke wrote:
-> Commits 257f009d1034737096f197dc875931207bcdfc75 and
-> 2b50c18a8a12781c26b71873f4368fe61711d9f9 missed one pass in expected
-> output.
+On Thu, Jan 04, 2018 at 04:40:18PM +0100, Jan Kara wrote:
+> On Wed 29-11-17 14:20:59, Colin King wrote:
+> > From: Colin Ian King <colin.king@canonical.com>
+> > 
+> > The indentation is incorrect and spaces need replacing with a tab
+> > on the if statement.
+> > 
+> > Cleans up smatch warning:
+> > fs/ext4/namei.c:3220 ext4_link() warn: inconsistent indenting
+> > 
+> > Signed-off-by: Colin Ian King <colin.king@canonical.com>
 > 
-> Signed-off-by: Marius Bakke <mbakke@fastmail.com>
+> This seems to fall through cracks. The patch looks good. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Hi, what architecture did you discover this on?  I don't need this
-change on x86, but I was seeing some mysterious regression test
-failures on a big-endian system which seemed to look like this.  I
-didn't have time to follow up on it then, but I suspect that this may
-be what you are running into.
+Thanks, applied.  There was actually another whitespace issue on the
+following line, which I've fixed up and merged into this patch.
 
-Can you confirm?
-
-Thanks,
-
-						- Ted
+	  	      	   	    	- Ted
