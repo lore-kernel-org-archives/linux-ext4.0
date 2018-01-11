@@ -1,39 +1,92 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix incorrect indentation of if statement
-Date: Thu, 11 Jan 2018 14:18:10 -0500
-Message-ID: <20180111191810.GF19241@thunk.org>
-References: <20171129142059.21898-1-colin.king@canonical.com>
- <20180104154018.GB2170@quack2.suse.cz>
+From: Liu Bo <bo.li.liu@oracle.com>
+Subject: Re: [PATCH v5 18/19] btrfs: only dirty the inode in
+ btrfs_update_time if something was changed
+Date: Thu, 11 Jan 2018 11:30:32 -0800
+Message-ID: <20180111193031.GA12421@dhcp-10-159-141-29.vpn.oracle.com>
+References: <20180109141059.25929-1-jlayton@kernel.org>
+ <20180109141059.25929-19-jlayton@kernel.org>
+Reply-To: bo.li.liu@oracle.com
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Colin King <colin.king@canonical.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com, krzk@kernel.org
+To: Jeff Layton <jlayton@kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180104154018.GB2170@quack2.suse.cz>
+In-Reply-To: <20180109141059.25929-19-jlayton@kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 04, 2018 at 04:40:18PM +0100, Jan Kara wrote:
-> On Wed 29-11-17 14:20:59, Colin King wrote:
-> > From: Colin Ian King <colin.king@canonical.com>
-> > 
-> > The indentation is incorrect and spaces need replacing with a tab
-> > on the if statement.
-> > 
-> > Cleans up smatch warning:
-> > fs/ext4/namei.c:3220 ext4_link() warn: inconsistent indenting
-> > 
-> > Signed-off-by: Colin Ian King <colin.king@canonical.com>
-> 
-> This seems to fall through cracks. The patch looks good. You can add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
+Hi Jeff,
 
-Thanks, applied.  There was actually another whitespace issue on the
-following line, which I've fixed up and merged into this patch.
+On Tue, Jan 09, 2018 at 09:10:58AM -0500, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@redhat.com>
+> 
+> At this point, we know that "now" and the file times may differ, and we
+> suspect that the i_version has been flagged to be bumped. Attempt to
+> bump the i_version, and only mark the inode dirty if that actually
+> occurred or if one of the times was updated.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Acked-by: David Sterba <dsterba@suse.com>
+> ---
+>  fs/btrfs/inode.c | 5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+> index ac8692849a81..76245323a7c8 100644
+> --- a/fs/btrfs/inode.c
+> +++ b/fs/btrfs/inode.c
+> @@ -6107,19 +6107,20 @@ static int btrfs_update_time(struct inode *inode, struct timespec *now,
+>  			     int flags)
+>  {
+>  	struct btrfs_root *root = BTRFS_I(inode)->root;
+> +	bool dirty = flags & ~S_VERSION;
+>  
+>  	if (btrfs_root_readonly(root))
+>  		return -EROFS;
+>  
+>  	if (flags & S_VERSION)
+> -		inode_inc_iversion(inode);
+> +		dirty |= inode_maybe_inc_iversion(inode, dirty);
+>  	if (flags & S_CTIME)
+>  		inode->i_ctime = *now;
+>  	if (flags & S_MTIME)
+>  		inode->i_mtime = *now;
+>  	if (flags & S_ATIME)
+>  		inode->i_atime = *now;
+> -	return btrfs_dirty_inode(inode);
+> +	return dirty ? btrfs_dirty_inode(inode) : 0;
+>  }
+>  
 
-	  	      	   	    	- Ted
+In order to have a easier error handling for ENOSPC, btrfs has split
+file_update_time() into 2-step work,
+- step 1 is to update time/iversion of in-memory inode in
+  update_time_for_write(),
+- step 2 is to update the time/iversion of on-disk inode in
+  btrfs_update_inode()->fill_inode_item().
+
+I think update_time_for_write() also needs to be updated to use the
+new iversion API.
+
+With that,
+
+Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
+
+Thanks,
+
+-liubo
+>  /*
+> -- 
+> 2.14.3
+> 
