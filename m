@@ -1,52 +1,129 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: use strlcpy() instead of strncpy()
-Date: Wed, 10 Jan 2018 18:01:31 -0500
-Message-ID: <20180110230131.GD6499@thunk.org>
-References: <1515488319-23779-1-git-send-email-wangxiongfeng2@huawei.com>
- <20180109100655.bdbnsrvhceaimaxh@quack2.suse.cz>
- <eae3c8fd-d778-fa65-4609-5159a1a3b405@huawei.com>
- <20180109202003.GC5389@thunk.org>
- <CAK8P3a1xGW+KmtaqQfuARTn2zwJ3J6fZrLqTchstJcvGPj_BEQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Xiongfeng Wang <wangxiongfeng2@huawei.com>,
-        Jan Kara <jack@suse.cz>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:34000 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752978AbeAJXBm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Jan 2018 18:01:42 -0500
-Content-Disposition: inline
-In-Reply-To: <CAK8P3a1xGW+KmtaqQfuARTn2zwJ3J6fZrLqTchstJcvGPj_BEQ@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Kees Cook <keescook@chromium.org>
+Subject: [PATCH 13/38] ext4: Define usercopy region in ext4_inode_cache slab cache
+Date: Wed, 10 Jan 2018 18:02:45 -0800
+Message-ID: <1515636190-24061-14-git-send-email-keescook@chromium.org>
+References: <1515636190-24061-1-git-send-email-keescook@chromium.org>
+Cc: Kees Cook <keescook@chromium.org>,
+	David Windsor <dave@nullcore.net>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	linux-ext4@vger.kernel.org,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andy Lutomirski <luto@kernel.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Christoph Lameter <cl@linux.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Laura Abbott <labbott@redhat.com>,
+	Mark Rutland <mark.rutland@arm.com>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Paolo Bonzini <pbonzini@redhat.com>,
+	Christian Borntraeger <borntraeger@de.ibm.com>,
+	Christoffer Dall <christoffer.dall@linaro.org>,
+	Dave Kleikamp <dave.kleikamp@oracle.com>,
+	Jan Kara <jack@suse.cz>,
+	Luis de Bethencourt <luisbg@kernel.org>,
+	Marc Zyngier <marc.zyngier@arm.com>,
+	Rik van Riel <rie
+To: linux-kernel@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1515636190-24061-1-git-send-email-keescook@chromium.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 10, 2018 at 10:30:15PM +0100, Arnd Bergmann wrote:
-> This warning option appears to be particularly good in finding code that
-> is actually dangerous in case of an overflow, and generally using
-> strscpy() improves either correctness and readability over strncpy(),
-> I think it's worth leaving enabled globally.
-> 
-> I have an experimental patch series to let you wrap the _Pragma("GCC
-> diagnostic ingnored \"-Wstringop-truncation\"") directive in some
-> nicer syntax. Would that work for you here?
+From: David Windsor <dave@nullcore.net>
 
-Having a Pragma which silences errors is certainly better than
-nothing, but what might be nice is to have a way of tagging a variable
-or structure member function as "not guaranteed to be null
-terminated".  That would suppress warnings where strncpy is used to
-set the character array, and add warnings if how the character array
-is accessed without taking due care that it might not be
-null-terminated.
+The ext4 symlink pathnames, stored in struct ext4_inode_info.i_data
+and therefore contained in the ext4_inode_cache slab cache, need
+to be copied to/from userspace.
 
-Essentially all of the on-disk strings in ext4 are not NUL terminated
-(or not necessarily NUL terminated).  We either use an explicit length
-(directory entries) or we use a fixed length character array (for the
-things like the volume label, last error function, etc.)
+cache object allocation:
+    fs/ext4/super.c:
+        ext4_alloc_inode(...):
+            struct ext4_inode_info *ei;
+            ...
+            ei = kmem_cache_alloc(ext4_inode_cachep, GFP_NOFS);
+            ...
+            return &ei->vfs_inode;
 
-Cheers,
+    include/trace/events/ext4.h:
+            #define EXT4_I(inode) \
+                (container_of(inode, struct ext4_inode_info, vfs_inode))
 
-					- Ted
+    fs/ext4/namei.c:
+        ext4_symlink(...):
+            ...
+            inode->i_link = (char *)&EXT4_I(inode)->i_data;
+
+example usage trace:
+    readlink_copy+0x43/0x70
+    vfs_readlink+0x62/0x110
+    SyS_readlinkat+0x100/0x130
+
+    fs/namei.c:
+        readlink_copy(..., link):
+            ...
+            copy_to_user(..., link, len)
+
+        (inlined into vfs_readlink)
+        generic_readlink(dentry, ...):
+            struct inode *inode = d_inode(dentry);
+            const char *link = inode->i_link;
+            ...
+            readlink_copy(..., link);
+
+In support of usercopy hardening, this patch defines a region in the
+ext4_inode_cache slab cache in which userspace copy operations are
+allowed.
+
+This region is known as the slab cache's usercopy region. Slab caches
+can now check that each dynamically sized copy operation involving
+cache-managed memory falls entirely within the slab's usercopy region.
+
+This patch is modified from Brad Spengler/PaX Team's PAX_USERCOPY
+whitelisting code in the last public patch of grsecurity/PaX based on my
+understanding of the code. Changes or omissions from the original code are
+mine and don't reflect the original grsecurity/PaX code.
+
+Signed-off-by: David Windsor <dave@nullcore.net>
+[kees: adjust commit log, provide usage trace]
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Signed-off-by: Kees Cook <keescook@chromium.org>
+---
+ fs/ext4/super.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7c46693a14d7..57a8fa451d3e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1036,11 +1036,13 @@ static void init_once(void *foo)
+ 
+ static int __init init_inodecache(void)
+ {
+-	ext4_inode_cachep = kmem_cache_create("ext4_inode_cache",
+-					     sizeof(struct ext4_inode_info),
+-					     0, (SLAB_RECLAIM_ACCOUNT|
+-						SLAB_MEM_SPREAD|SLAB_ACCOUNT),
+-					     init_once);
++	ext4_inode_cachep = kmem_cache_create_usercopy("ext4_inode_cache",
++				sizeof(struct ext4_inode_info), 0,
++				(SLAB_RECLAIM_ACCOUNT|SLAB_MEM_SPREAD|
++					SLAB_ACCOUNT),
++				offsetof(struct ext4_inode_info, i_data),
++				sizeof_field(struct ext4_inode_info, i_data),
++				init_once);
+ 	if (ext4_inode_cachep == NULL)
+ 		return -ENOMEM;
+ 	return 0;
+-- 
+2.7.4
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
