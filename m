@@ -1,36 +1,53 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [RFC PATCH] ext4: don't split xattr inode refcounts across
- i_ctime and i_version fields
-Date: Thu, 11 Jan 2018 17:41:50 -0500
-Message-ID: <20180111224150.GK19241@thunk.org>
-References: <20180109144701.27387-1-jlayton@kernel.org>
- <20180109185249.GA5594@magnolia>
- <1515524731.3571.16.camel@kernel.org>
- <20180111183914.GE19241@thunk.org>
- <1515701343.3788.19.camel@kernel.org>
+From: Kees Cook <keescook@chromium.org>
+Subject: Re: [PATCH 13/38] ext4: Define usercopy region in ext4_inode_cache
+ slab cache
+Date: Thu, 11 Jan 2018 15:05:14 -0800
+Message-ID: <CAGXu5jJ6=XXuCD7zm8NuKAy+-Ra3F2SyD+CVFjJ=-kQoXPty-A@mail.gmail.com>
+References: <1515636190-24061-1-git-send-email-keescook@chromium.org>
+ <1515636190-24061-14-git-send-email-keescook@chromium.org> <20180111170119.GB19241@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        dhowells@redhat.com
-To: Jeff Layton <jlayton@kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38574 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933341AbeAKWl5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 11 Jan 2018 17:41:57 -0500
-Content-Disposition: inline
-In-Reply-To: <1515701343.3788.19.camel@kernel.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+To: "Theodore Ts'o" <tytso@mit.edu>, Kees Cook <keescook@chromium.org>,
+	LKML <linux-kernel@vger.kernel.org>, David Windsor <dave@nullcore.net>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>, Linus Torvalds <torvalds@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Andrew Morton <akpm@linux-foundation.org>,
+	Andy Lutomirski <luto@kernel.org>, Christoph Hellwig <hch@infradead.org>, Christoph Lameter <cl@linux.com>,
+	"David S. Miller" <davem@davemloft.net>, Laura Abbott <labbott@redhat.com>,
+	Mark Rutland <mark.rutland@arm.com>, "Martin K. Petersen" <martin.petersen@oracle.com>,
+	Paolo Bonzini <pbonzini@redhat.com>, Christian Borntraeger <borntraeger@de.ibm.com>,
+	Christoffer Dall <christoffer.dall@linaro.org>, Dave Kleikamp <dave.kleikamp@oracle.com>,
+	Jan Kara <jack@suse.cz>, Luis de Bethencourt <luisbg@kernel.or
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <20180111170119.GB19241@thunk.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 11, 2018 at 03:09:03PM -0500, Jeff Layton wrote:
-> 
-> Wouldn't it have made more sense to just store it all in i_version field
-> (like this patch makes it do)? If this breaks backward compatibility
-> though, then I'm fine with just dropping the patch.
+On Thu, Jan 11, 2018 at 9:01 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> On Wed, Jan 10, 2018 at 06:02:45PM -0800, Kees Cook wrote:
+>> The ext4 symlink pathnames, stored in struct ext4_inode_info.i_data
+>> and therefore contained in the ext4_inode_cache slab cache, need
+>> to be copied to/from userspace.
+>
+> Symlink operations to/from userspace aren't common or in the hot path,
+> and when they are in i_data, limited to at most 60 bytes.  Is it worth
+> it to copy through a bounce buffer so as to disallow any usercopies
+> into struct ext4_inode_info?
 
-Yes, that part is there for compatibility for the deployed base
-(Lustre Servers).
+If this is the only place it's exposed, yeah, that might be a way to
+avoid the per-FS patches. This would, AIUI, require changing
+readlink_copy() to include a bounce buffer, and that would require an
+allocation. I kind of prefer just leaving the per-FS whitelists, as
+then there's no global overhead added.
 
-					- Ted
+-Kees
+
+-- 
+Kees Cook
+Pixel Security
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
