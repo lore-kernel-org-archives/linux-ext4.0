@@ -1,105 +1,134 @@
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RFC 12/13] ext4: Support charset name matching
-Date: Fri, 12 Jan 2018 05:12:33 -0200
-Message-ID: <20180112071234.29470-13-krisman@collabora.co.uk>
+Subject: [PATCH RFC 13/13] ext4: Implement ext4 dcache hooks for custom charsets
+Date: Fri, 12 Jan 2018 05:12:34 -0200
+Message-ID: <20180112071234.29470-14-krisman@collabora.co.uk>
 References: <20180112071234.29470-1-krisman@collabora.co.uk>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         kernel@lists.collabora.co.uk, alvaro.soliverez@collabora.co.uk,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 To: tytso@mit.edu, david@fromorbit.com, bpm@sgi.com, olaf@sgi.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:43106 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754316AbeALHOY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Jan 2018 02:14:24 -0500
 In-Reply-To: <20180112071234.29470-1-krisman@collabora.co.uk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-Implement generic caseless lookup based on the mount flags using the
-charset library.
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/ext4/namei.c | 27 ++++++++++++++++++---------
- 1 file changed, 18 insertions(+), 9 deletions(-)
+ fs/ext4/dir.c   | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h  |  2 ++
+ fs/ext4/super.c |  5 +++++
+ 3 files changed, 70 insertions(+)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index e750d68fbcb5..24056172e225 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1255,8 +1255,10 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
-  *
-  * Return: %true if the directory entry matches, otherwise %false.
-  */
--static inline bool ext4_match(const struct ext4_filename *fname,
--			      const struct ext4_dir_entry_2 *de)
-+static inline bool ext4_match(const struct charset *charset,
-+			      const struct ext4_filename *fname,
-+			      const struct ext4_dir_entry_2 *de,
-+			      bool ignorecase)
- {
- 	struct fscrypt_name f;
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index d5babc9f222b..8b73a68930d2 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -25,6 +25,7 @@
+ #include <linux/fs.h>
+ #include <linux/buffer_head.h>
+ #include <linux/slab.h>
++#include <linux/charsets.h>
+ #include "ext4.h"
+ #include "xattr.h"
  
-@@ -1268,7 +1270,8 @@ static inline bool ext4_match(const struct ext4_filename *fname,
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
- 	f.crypto_buf = fname->crypto_buf;
- #endif
--	return fscrypt_match_name(&f, de->name, de->name_len);
-+	return fscrypt_charset_match_name(&f, charset, de->name, de->name_len,
-+					  ignorecase);
- }
+@@ -661,3 +662,65 @@ const struct file_operations ext4_dir_operations = {
+ 	.open		= ext4_dir_open,
+ 	.release	= ext4_release_dir,
+ };
++
++static int ext4_d_hash(const struct dentry *dentry, struct qstr *q)
++{
++	unsigned long hash;
++	int i, len;
++	char *str;
++	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
++
++	len = charset_normalize(charset, q->name, q->len, &str);
++
++	hash = init_name_hash(dentry);
++	for (i = 0; i < len; i++)
++		hash = partial_name_hash(str[i], hash);
++	q->hash = end_name_hash(hash);
++
++	kfree(str);
++	return 0;
++}
++
++static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
++			  const char *str, const struct qstr *name)
++{
++	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
++
++	return charset_strncmp(charset, str, name->name, len);
++}
++
++const struct dentry_operations ext4_dentry_ops = {
++	.d_hash = ext4_d_hash,
++	.d_compare = ext4_d_compare,
++};
++
++static int ext4_d_ci_hash(const struct dentry *dentry, struct qstr *q)
++{
++	unsigned long hash;
++	int i, len;
++	char *str;
++	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
++
++	len = charset_casefold(charset, q->name, q->len, &str);
++
++	hash = init_name_hash(dentry);
++	for (i = 0; i < len; i++)
++		hash = partial_name_hash(str[i], hash);
++	q->hash = end_name_hash(hash);
++
++	kfree(str);
++	return 0;
++}
++
++static int ext4_d_ci_compare(const struct dentry *dentry, unsigned int len,
++			     const char *str, const struct qstr *name)
++{
++	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
++
++	return charset_strncasecmp(charset, str, name->name, len);
++}
++
++const struct dentry_operations ext4_ci_dentry_ops = {
++	.d_hash = ext4_d_ci_hash,
++	.d_compare = ext4_d_ci_compare,
++};
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6c8aaf2dd322..980968aeb1cf 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2943,6 +2943,8 @@ static inline void ext4_unlock_group(struct super_block *sb,
  
- /*
-@@ -1281,6 +1284,8 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
- 	struct ext4_dir_entry_2 * de;
- 	char * dlimit;
- 	int de_len;
-+	struct super_block *sb = dir->i_sb;
-+	bool ignorecase = test_opt2(sb, CASE_INSENSITIVE);
+ /* dir.c */
+ extern const struct file_operations ext4_dir_operations;
++extern const struct dentry_operations ext4_dentry_ops;
++extern const struct dentry_operations ext4_ci_dentry_ops;
  
- 	de = (struct ext4_dir_entry_2 *)search_buf;
- 	dlimit = search_buf + buf_size;
-@@ -1288,7 +1293,7 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
- 		/* this code is executed quadratically often */
- 		/* do minimal checking `by hand' */
- 		if ((char *) de + de->name_len <= dlimit &&
--		    ext4_match(fname, de)) {
-+		    ext4_match(EXT4_SB(sb)->encoding, fname, de, ignorecase)) {
- 			/* found a match - just to be sure, do
- 			 * a full check */
- 			if (ext4_check_dir_entry(dir, NULL, de, bh, bh->b_data,
-@@ -1389,11 +1394,13 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
- 	if (is_dx(dir)) {
- 		ret = ext4_dx_find_entry(dir, &fname, res_dir);
- 		/*
--		 * On success, or if the error was file not found,
--		 * return.  Otherwise, fall back to doing a search the
--		 * old fashioned way.
-+		 * On success, or if the file cannot be found, return.
-+		 * If an error occurred, or if the file was not found
-+		 * but we can do case-insensitive lookups, fall back to
-+		 * the linear search.
- 		 */
--		if (!IS_ERR(ret) || PTR_ERR(ret) != ERR_BAD_DX_DIR)
-+		if ((!IS_ERR(ret) && (ret || !test_opt2(sb, CASE_INSENSITIVE))) ||
-+		    (IS_ERR(ret) && PTR_ERR(ret) != ERR_BAD_DX_DIR))
- 			goto cleanup_and_exit;
- 		dxtrace(printk(KERN_DEBUG "ext4_find_entry: dx failed, "
- 			       "falling back\n"));
-@@ -1788,6 +1795,8 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
- 	int nlen, rlen;
- 	unsigned int offset = 0;
- 	char *top;
-+	struct super_block *sb = dir->i_sb;
-+	bool ignorecase = test_opt2(sb, CASE_INSENSITIVE);
+ /* file.c */
+ extern const struct inode_operations ext4_file_inode_operations;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 022bf5f274b2..877acb938453 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4358,6 +4358,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (es->s_error_count)
+ 		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
  
- 	de = (struct ext4_dir_entry_2 *)buf;
- 	top = buf + buf_size - reclen;
-@@ -1795,7 +1804,7 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
- 		if (ext4_check_dir_entry(dir, NULL, de, bh,
- 					 buf, buf_size, offset))
- 			return -EFSCORRUPTED;
--		if (ext4_match(fname, de))
-+		if (ext4_match(EXT4_SB(sb)->encoding, fname, de, ignorecase))
- 			return -EEXIST;
- 		nlen = EXT4_DIR_REC_LEN(de->name_len);
- 		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
++	if (test_opt2(sb, CASE_INSENSITIVE))
++		sb->s_d_op = &ext4_ci_dentry_ops;
++	else
++		sb->s_d_op = &ext4_dentry_ops;
++
+ 	/* Enable message ratelimiting. Default is 10 messages per 5 secs. */
+ 	ratelimit_state_init(&sbi->s_err_ratelimit_state, 5 * HZ, 10);
+ 	ratelimit_state_init(&sbi->s_warning_ratelimit_state, 5 * HZ, 10);
 -- 
 2.15.1
