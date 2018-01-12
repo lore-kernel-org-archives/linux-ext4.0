@@ -1,7 +1,7 @@
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RFC 10/13] ext4: Include encoding information on the superblock
-Date: Fri, 12 Jan 2018 05:12:31 -0200
-Message-ID: <20180112071234.29470-11-krisman@collabora.co.uk>
+Subject: [PATCH RFC 12/13] ext4: Support charset name matching
+Date: Fri, 12 Jan 2018 05:12:33 -0200
+Message-ID: <20180112071234.29470-13-krisman@collabora.co.uk>
 References: <20180112071234.29470-1-krisman@collabora.co.uk>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         kernel@lists.collabora.co.uk, alvaro.soliverez@collabora.co.uk,
@@ -12,103 +12,94 @@ In-Reply-To: <20180112071234.29470-1-krisman@collabora.co.uk>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Implement generic caseless lookup based on the mount flags using the
+charset library.
+
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/ext4/ext4.h  |  1 +
- fs/ext4/super.c | 27 ++++++++++++++++++++++++++-
- 2 files changed, 27 insertions(+), 1 deletion(-)
+ fs/ext4/namei.c | 27 ++++++++++++++++++---------
+ 1 file changed, 18 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 09fb2426c352..6c8aaf2dd322 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1369,6 +1369,7 @@ struct ext4_sb_info {
- 	struct kobject s_kobj;
- 	struct completion s_kobj_unregister;
- 	struct super_block *s_sb;
-+	const struct charset *encoding;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index e750d68fbcb5..24056172e225 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1255,8 +1255,10 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
+  *
+  * Return: %true if the directory entry matches, otherwise %false.
+  */
+-static inline bool ext4_match(const struct ext4_filename *fname,
+-			      const struct ext4_dir_entry_2 *de)
++static inline bool ext4_match(const struct charset *charset,
++			      const struct ext4_filename *fname,
++			      const struct ext4_dir_entry_2 *de,
++			      bool ignorecase)
+ {
+ 	struct fscrypt_name f;
  
- 	/* Journaling */
- 	struct journal_s *s_journal;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f737e90a3b4e..022bf5f274b2 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -40,6 +40,7 @@
- #include <linux/dax.h>
- #include <linux/cleancache.h>
- #include <linux/uaccess.h>
-+#include <linux/charsets.h>
- 
- #include <linux/kthread.h>
- #include <linux/freezer.h>
-@@ -1350,7 +1351,7 @@ enum {
- 	Opt_dioread_nolock, Opt_dioread_lock,
- 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
- 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
--	Opt_ignore_case,
-+	Opt_ignore_case, Opt_encoding,
- };
- 
- static const match_table_t tokens = {
-@@ -1434,6 +1435,7 @@ static const match_table_t tokens = {
- 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
- 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
- 	{Opt_ignore_case, "ignorecase"},
-+	{Opt_encoding, "encoding=%s"},
- 	{Opt_nombcache, "nombcache"},
- 	{Opt_nombcache, "no_mbcache"},	/* for backward compatibility */
- 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
-@@ -1644,6 +1646,7 @@ static const struct mount_opts {
- 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
- 	{Opt_test_dummy_encryption, 0, MOPT_GTE0},
- 	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
-+	{Opt_encoding, 0, MOPT_EXT4_ONLY | MOPT_STRING},
- 	{Opt_err, 0, 0}
- };
- 
-@@ -1882,6 +1885,16 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 		sbi->s_mount_opt |= m->mount_opt;
- 	} else if (token == Opt_data_err_ignore) {
- 		sbi->s_mount_opt &= ~m->mount_opt;
-+	} else if (token == Opt_encoding) {
-+		char *charset = match_strdup(&args[0]);
-+
-+		sbi->encoding = charset_load(charset);
-+		if (!sbi->encoding) {
-+			ext4_msg(sb, KERN_ERR, "Encoding %s not supported\n",
-+				 charset);
-+			return -1;
-+		}
-+		kfree(charset);
- 	} else {
- 		if (!args->from)
- 			arg = 1;
-@@ -1968,6 +1981,12 @@ static int parse_options(char *options, struct super_block *sb,
- 			return 0;
- 		}
- 	}
-+
-+	if (test_opt2(sb, CASE_INSENSITIVE) && !sbi->encoding) {
-+		ext4_msg(sb, KERN_WARNING, "Encoding not explicitly specified "
-+			 "or identified on the superblock.  ASCII is assumed.");
-+	}
-+
- 	return 1;
+@@ -1268,7 +1270,8 @@ static inline bool ext4_match(const struct ext4_filename *fname,
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 	f.crypto_buf = fname->crypto_buf;
+ #endif
+-	return fscrypt_match_name(&f, de->name, de->name_len);
++	return fscrypt_charset_match_name(&f, charset, de->name, de->name_len,
++					  ignorecase);
  }
  
-@@ -3598,6 +3617,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			   &journal_ioprio, 0))
- 		goto failed_mount;
+ /*
+@@ -1281,6 +1284,8 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
+ 	struct ext4_dir_entry_2 * de;
+ 	char * dlimit;
+ 	int de_len;
++	struct super_block *sb = dir->i_sb;
++	bool ignorecase = test_opt2(sb, CASE_INSENSITIVE);
  
-+	if (!sbi->encoding) {
-+		sbi->encoding = charset_load("ascii");
-+		if (!sbi->encoding)
-+			goto failed_mount;
-+	}
-+
- 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
- 		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting "
- 			    "with data=journal disables delayed "
+ 	de = (struct ext4_dir_entry_2 *)search_buf;
+ 	dlimit = search_buf + buf_size;
+@@ -1288,7 +1293,7 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
+ 		/* this code is executed quadratically often */
+ 		/* do minimal checking `by hand' */
+ 		if ((char *) de + de->name_len <= dlimit &&
+-		    ext4_match(fname, de)) {
++		    ext4_match(EXT4_SB(sb)->encoding, fname, de, ignorecase)) {
+ 			/* found a match - just to be sure, do
+ 			 * a full check */
+ 			if (ext4_check_dir_entry(dir, NULL, de, bh, bh->b_data,
+@@ -1389,11 +1394,13 @@ static struct buffer_head * ext4_find_entry (struct inode *dir,
+ 	if (is_dx(dir)) {
+ 		ret = ext4_dx_find_entry(dir, &fname, res_dir);
+ 		/*
+-		 * On success, or if the error was file not found,
+-		 * return.  Otherwise, fall back to doing a search the
+-		 * old fashioned way.
++		 * On success, or if the file cannot be found, return.
++		 * If an error occurred, or if the file was not found
++		 * but we can do case-insensitive lookups, fall back to
++		 * the linear search.
+ 		 */
+-		if (!IS_ERR(ret) || PTR_ERR(ret) != ERR_BAD_DX_DIR)
++		if ((!IS_ERR(ret) && (ret || !test_opt2(sb, CASE_INSENSITIVE))) ||
++		    (IS_ERR(ret) && PTR_ERR(ret) != ERR_BAD_DX_DIR))
+ 			goto cleanup_and_exit;
+ 		dxtrace(printk(KERN_DEBUG "ext4_find_entry: dx failed, "
+ 			       "falling back\n"));
+@@ -1788,6 +1795,8 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
+ 	int nlen, rlen;
+ 	unsigned int offset = 0;
+ 	char *top;
++	struct super_block *sb = dir->i_sb;
++	bool ignorecase = test_opt2(sb, CASE_INSENSITIVE);
+ 
+ 	de = (struct ext4_dir_entry_2 *)buf;
+ 	top = buf + buf_size - reclen;
+@@ -1795,7 +1804,7 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
+ 		if (ext4_check_dir_entry(dir, NULL, de, bh,
+ 					 buf, buf_size, offset))
+ 			return -EFSCORRUPTED;
+-		if (ext4_match(fname, de))
++		if (ext4_match(EXT4_SB(sb)->encoding, fname, de, ignorecase))
+ 			return -EEXIST;
+ 		nlen = EXT4_DIR_REC_LEN(de->name_len);
+ 		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
 -- 
 2.15.1
