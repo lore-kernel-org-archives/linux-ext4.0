@@ -1,47 +1,64 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 198301] ext4 fails to create symlink if target length is
- greater than block size (but smaller than PATH_MAX)
-Date: Sun, 14 Jan 2018 00:16:34 +0000
-Message-ID: <bug-198301-13602-lXUh7ZKLl7@https.bugzilla.kernel.org/>
-References: <bug-198301-13602@https.bugzilla.kernel.org/>
+From: Matthew Wilcox <willy@infradead.org>
+Subject: Re: [PATCH 13/38] ext4: Define usercopy region in ext4_inode_cache
+ slab cache
+Date: Sun, 14 Jan 2018 14:34:56 -0800
+Message-ID: <20180114223455.GA32027@bombadil.infradead.org>
+References: <1515636190-24061-1-git-send-email-keescook@chromium.org>
+ <1515636190-24061-14-git-send-email-keescook@chromium.org>
+ <20180111170119.GB19241@thunk.org>
+ <CAGXu5jJ6=XXuCD7zm8NuKAy+-Ra3F2SyD+CVFjJ=-kQoXPty-A@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41992 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751190AbeANAQf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 13 Jan 2018 19:16:35 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5A43928A29
-        for <linux-ext4@vger.kernel.org>; Sun, 14 Jan 2018 00:16:35 +0000 (UTC)
-In-Reply-To: <bug-198301-13602@https.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, LKML <linux-kernel@vger.kernel.org>,
+	David Windsor <dave@nullcore.net>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andy Lutomirski <luto@kernel.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Christoph Lameter <cl@linux.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Laura Abbott <labbott@redhat.com>,
+	Mark Rutland <mark.rutland@arm.com>,
+	"Martin K. Petersen" <martin.petersen@oracle.com>,
+	Paolo Bonzini <pbonzini@redhat.com>,
+	Christian Borntraeger <borntraeger@de.ibm.com>,
+	Christoffer Dall <christoffer.dall@linaro.org>,
+	Dave Kleikamp <dave.kleikamp@oracle.com>, Jan Kara <jack@suse.cz>,
+	Luis de Bethencourt <luisbg@kernel.org>,
+	Marc Zyngier <marc.zyngier@arm.com
+To: Kees Cook <keescook@chromium.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <CAGXu5jJ6=XXuCD7zm8NuKAy+-Ra3F2SyD+CVFjJ=-kQoXPty-A@mail.gmail.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=198301
+On Thu, Jan 11, 2018 at 03:05:14PM -0800, Kees Cook wrote:
+> On Thu, Jan 11, 2018 at 9:01 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+> > On Wed, Jan 10, 2018 at 06:02:45PM -0800, Kees Cook wrote:
+> >> The ext4 symlink pathnames, stored in struct ext4_inode_info.i_data
+> >> and therefore contained in the ext4_inode_cache slab cache, need
+> >> to be copied to/from userspace.
+> >
+> > Symlink operations to/from userspace aren't common or in the hot path,
+> > and when they are in i_data, limited to at most 60 bytes.  Is it worth
+> > it to copy through a bounce buffer so as to disallow any usercopies
+> > into struct ext4_inode_info?
+> 
+> If this is the only place it's exposed, yeah, that might be a way to
+> avoid the per-FS patches. This would, AIUI, require changing
+> readlink_copy() to include a bounce buffer, and that would require an
+> allocation. I kind of prefer just leaving the per-FS whitelists, as
+> then there's no global overhead added.
 
-Eric Biggers (ebiggers3@gmail.com) changed:
+I think Ted was proposing having a per-FS patch that would, say, copy
+up to 60 bytes to the stack, then memcpy it into the ext4_inode_info.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |ebiggers3@gmail.com
-
---- Comment #7 from Eric Biggers (ebiggers3@gmail.com) ---
-> The strange side effect of this bug is that one can not link to every file in
-> a file system with a block size of e.g. 1k while PATH_MAX is 4k.
-
-Note that you cannot necessarily link to every file in the filesystem even with
-a 4k block size, since the absolute path to a file can be over PATH_MAX. 
-PATH_MAX is a limit on the path string passed to syscalls, not a limit on the
-directory structure.  By using cwd-relative paths, fd-relative paths, chroots,
-or bind mounts, you can create a directory structure that is much deeper than
-PATH_MAX.  None of the major Linux filesystems enforce a directory depth limit,
-as far as I know -- and even if one did, it could still be mounted at a
-mountpoint whose absolute path is already PATH_MAX, or close to it.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
