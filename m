@@ -1,20 +1,20 @@
 From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
-Subject: e2fsck -D lead to severely damaged filesystem
-Date: Mon, 15 Jan 2018 08:23:29 +0100
-Message-ID: <20180115072329.GA20942@pcnci.linuxbox.cz>
+Subject: severe filesystem corruption after running e2fsck -D
+Date: Mon, 15 Jan 2018 11:16:28 +0100
+Message-ID: <20180115101628.GM27709@pcnci.linuxbox.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: nik@linuxbox.cz
+Cc: nikola.ciprich@linuxbox.cz
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gwu.lbox.cz ([62.245.111.132]:55872 "EHLO gwu.lbox.cz"
+Received: from gwu.lbox.cz ([62.245.111.132]:38238 "EHLO gwu.lbox.cz"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751934AbeAOHzx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 15 Jan 2018 02:55:53 -0500
+        id S1751990AbeAOKQb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 15 Jan 2018 05:16:31 -0500
 Received: from linuxbox.linuxbox.cz (linuxbox.linuxbox.cz [10.76.66.10])
-        by gwu.lbox.cz (Sendmail) with ESMTPS id w0F7NTFE019194
+        by gwu.lbox.cz (Sendmail) with ESMTPS id w0FAGS5O004743
         (version=TLSv1.2 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-        for <linux-ext4@vger.kernel.org>; Mon, 15 Jan 2018 08:23:29 +0100
+        for <linux-ext4@vger.kernel.org>; Mon, 15 Jan 2018 11:16:28 +0100
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -28,7 +28,7 @@ we were dealing with slow access to directories with lots of
 files (large maildirs), so after some  tests, I came to conclusion
 that optimizing directories using e2fsck -D (on unmounted FS of course)
 helps a lot. So after testing this on our test box, I did it on production
-mailserver mail volume. The I decided to do some tests on newer kernel,
+mailserver mail volume. Then I decided to do some tests on newer kernel,
 so I rebooted test box and got lots of fs errors..
 
 I checked production box, and it got bad as well:
@@ -51,7 +51,7 @@ after ~3 hours, I gave up, and recovered FS from backup.. checking fs after
 "repair" showed that some of large mailboxes vanished completely (and appeared in lost+found)
 
 I think I can rule out hardware problem, since it appeared on two completely different
-systems after some action.. but I'll try to prepare new test environment and reproduce it.
+systems after same action.. but I'll try to prepare new test environment and reproduce it.
 
 What I think might be my big mistake is that I was using quite old e2fsprogs - 1.42.6,
 kernel was 4.4.52 (which I know is also a bit old, we're already testig 4.14.x)
@@ -70,7 +70,6 @@ BR
 nik
 
 PS: both systems were running latest centos 6 (but with newer kernel and e2fsprogs)
-
 
 -- 
 -------------------------------------
