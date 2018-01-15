@@ -1,64 +1,88 @@
-From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCH 13/38] ext4: Define usercopy region in ext4_inode_cache
- slab cache
-Date: Sun, 14 Jan 2018 14:34:56 -0800
-Message-ID: <20180114223455.GA32027@bombadil.infradead.org>
-References: <1515636190-24061-1-git-send-email-keescook@chromium.org>
- <1515636190-24061-14-git-send-email-keescook@chromium.org>
- <20180111170119.GB19241@thunk.org>
- <CAGXu5jJ6=XXuCD7zm8NuKAy+-Ra3F2SyD+CVFjJ=-kQoXPty-A@mail.gmail.com>
+From: Nikola Ciprich <nikola.ciprich@linuxbox.cz>
+Subject: e2fsck -D lead to severely damaged filesystem
+Date: Mon, 15 Jan 2018 08:23:29 +0100
+Message-ID: <20180115072329.GA20942@pcnci.linuxbox.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>, LKML <linux-kernel@vger.kernel.org>,
-	David Windsor <dave@nullcore.net>,
-	Andreas Dilger <adilger.kernel@dilger.ca>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andy Lutomirski <luto@kernel.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	Christoph Lameter <cl@linux.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	Laura Abbott <labbott@redhat.com>,
-	Mark Rutland <mark.rutland@arm.com>,
-	"Martin K. Petersen" <martin.petersen@oracle.com>,
-	Paolo Bonzini <pbonzini@redhat.com>,
-	Christian Borntraeger <borntraeger@de.ibm.com>,
-	Christoffer Dall <christoffer.dall@linaro.org>,
-	Dave Kleikamp <dave.kleikamp@oracle.com>, Jan Kara <jack@suse.cz>,
-	Luis de Bethencourt <luisbg@kernel.org>,
-	Marc Zyngier <marc.zyngier@arm.com
-To: Kees Cook <keescook@chromium.org>
-Return-path: <owner-linux-mm@kvack.org>
+Cc: nik@linuxbox.cz
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from gwu.lbox.cz ([62.245.111.132]:55872 "EHLO gwu.lbox.cz"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751934AbeAOHzx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 15 Jan 2018 02:55:53 -0500
+Received: from linuxbox.linuxbox.cz (linuxbox.linuxbox.cz [10.76.66.10])
+        by gwu.lbox.cz (Sendmail) with ESMTPS id w0F7NTFE019194
+        (version=TLSv1.2 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+        for <linux-ext4@vger.kernel.org>; Mon, 15 Jan 2018 08:23:29 +0100
 Content-Disposition: inline
-In-Reply-To: <CAGXu5jJ6=XXuCD7zm8NuKAy+-Ra3F2SyD+CVFjJ=-kQoXPty-A@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 11, 2018 at 03:05:14PM -0800, Kees Cook wrote:
-> On Thu, Jan 11, 2018 at 9:01 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> > On Wed, Jan 10, 2018 at 06:02:45PM -0800, Kees Cook wrote:
-> >> The ext4 symlink pathnames, stored in struct ext4_inode_info.i_data
-> >> and therefore contained in the ext4_inode_cache slab cache, need
-> >> to be copied to/from userspace.
-> >
-> > Symlink operations to/from userspace aren't common or in the hot path,
-> > and when they are in i_data, limited to at most 60 bytes.  Is it worth
-> > it to copy through a bounce buffer so as to disallow any usercopies
-> > into struct ext4_inode_info?
-> 
-> If this is the only place it's exposed, yeah, that might be a way to
-> avoid the per-FS patches. This would, AIUI, require changing
-> readlink_copy() to include a bounce buffer, and that would require an
-> allocation. I kind of prefer just leaving the per-FS whitelists, as
-> then there's no global overhead added.
+Hello dear ext4 developers,
 
-I think Ted was proposing having a per-FS patch that would, say, copy
-up to 60 bytes to the stack, then memcpy it into the ext4_inode_info.
+I'd like to ask about following problem I hit yesterday
+(and which I'm a bit responsible for, I guess).
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+we were dealing with slow access to directories with lots of
+files (large maildirs), so after some  tests, I came to conclusion
+that optimizing directories using e2fsck -D (on unmounted FS of course)
+helps a lot. So after testing this on our test box, I did it on production
+mailserver mail volume. The I decided to do some tests on newer kernel,
+so I rebooted test box and got lots of fs errors..
+
+I checked production box, and it got bad as well:
+
+lots  of dx_probe:829: inode #15949784: block 35579: comm deliver: Directory hole found
+messages.. 
+
+
+so I unmounted fs again, run fsck, and got zillion of:
+
+Inode 18378187 ref count is 2, should be 1.  Fix? yes
+
+Unattached inode 18378194
+Connect to /lost+found? yes
+
+messages.. 
+
+
+after ~3 hours, I gave up, and recovered FS from backup.. checking fs after
+"repair" showed that some of large mailboxes vanished completely (and appeared in lost+found)
+
+I think I can rule out hardware problem, since it appeared on two completely different
+systems after some action.. but I'll try to prepare new test environment and reproduce it.
+
+What I think might be my big mistake is that I was using quite old e2fsprogs - 1.42.6,
+kernel was 4.4.52 (which I know is also a bit old, we're already testig 4.14.x)
+
+My question is, was that  some known e2fsck problem which got fixed in new version?
+
+Or did I do something wrong?
+
+I'm going to retry using 1.43.8, but still I'd be a bit calmer to know it was known problem
+and got fixed :)
+
+If I could provide some more information, please let me know..
+
+BR
+
+nik
+
+PS: both systems were running latest centos 6 (but with newer kernel and e2fsprogs)
+
+
+-- 
+-------------------------------------
+Ing. Nikola CIPRICH
+LinuxBox.cz, s.r.o.
+28.rijna 168, 709 00 Ostrava
+
+tel.:   +420 591 166 214
+fax:    +420 596 621 273
+mobil:  +420 777 093 799
+www.linuxbox.cz
+
+mobil servis: +420 737 238 656
+email servis: servis@linuxbox.cz
+-------------------------------------
