@@ -1,67 +1,55 @@
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [fstests PATCH 1/2] shared/272: don't use data journaling with DAX
-Date: Wed, 17 Jan 2018 16:23:50 -0700
-Message-ID: <20180117232351.19286-1-ross.zwisler@linux.intel.com>
+Subject: [fstests PATCH 2/2] generic/347: dm-thin lacks DAX support
+Date: Wed, 17 Jan 2018 16:23:51 -0700
+Message-ID: <20180117232351.19286-2-ross.zwisler@linux.intel.com>
+References: <20180117232351.19286-1-ross.zwisler@linux.intel.com>
 Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
         linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org,
         dave.jiang@intel.com
 To: fstests@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:51129 "EHLO mga11.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752791AbeAQXX5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 17 Jan 2018 18:23:57 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <fstests-owner@vger.kernel.org>
+In-Reply-To: <20180117232351.19286-1-ross.zwisler@linux.intel.com>
+Sender: fstests-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-shared/272 fails with kernels v4.15-rc1 and beyond when you are mounted
-with DAX:
+generic/347 currently fails when run in cojunction with the DAX mount
+option:
 
-shared/272	 [failed, exit status 1] - output mismatch (see
-/root/project/xfstests/results//shared/272.out.bad)
-    --- tests/shared/272.out	2015-12-05 13:12:17.038257578 -0700
-    +++ /root/project/xfstests/results//shared/272.out.bad	2018-01-17
-    15:37:18.581631116 -0700
-    @@ -1,3 +1,3 @@
-     QA output created by 272
-     Switch data journalling mode. Silence is golden.
-    -Check filesystem
-    +/usr/bin/chattr: Device or resource busy while setting flags on
-    /mnt/xfstests_scratch/file.1
+generic/347 72s ... - output mismatch (see
+/root/project/xfstests/results//generic/347.out.bad)
+    --- tests/generic/347.out	2016-05-12 11:56:32.086618744 -0600
+    +++ /root/project/xfstests/results//generic/347.out.bad	2018-01-17
+    16:04:33.459348448 -0700
+    @@ -1,2 +1,3 @@
+     QA output created by 347
+    +mount: /mnt/xfstests_scratch: can't read superblock on
+    /dev/mapper/thin-vol.
+     === completed
     ...
-    (Run 'diff -u tests/shared/272.out
-    /root/project/xfstests/results//shared/272.out.bad'  to see the entire
+    (Run 'diff -u tests/generic/347.out
+    /root/project/xfstests/results//generic/347.out.bad'  to see the entire
     diff)
 
-This is expected.  The following kernel commit:
+This is expected because the dm-thin target currently lacks DAX support.
 
-commit e9072d859df3 ("ext4: prevent data corruption with journaling + DAX")
-
-makes "chattr +j", which is attempting to turn on data journaling, return
--EBUSY if the ext4 DAX mount option is in use.  This was done to prevent
-the data corruption shown in xfstest ext4/030, added by this xfstests
-commit:
-
-commit 750a24e99e48 ("ext4: test for DAX + journaling corruption")
-
-So, just skip shared/272 if the DAX mount option is in use.
+Just skip this test if we are using DAX.
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 ---
- tests/shared/272 | 1 +
+ tests/generic/347 | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/tests/shared/272 b/tests/shared/272
-index 7023b657..0c9763df 100755
---- a/tests/shared/272
-+++ b/tests/shared/272
-@@ -83,6 +83,7 @@ chattr_opt: $chattr_opt" >>$seqres.full
- _supported_fs ext3 ext4
+diff --git a/tests/generic/347 b/tests/generic/347
+index 3adc6744..0c2dec98 100755
+--- a/tests/generic/347
++++ b/tests/generic/347
+@@ -72,6 +72,7 @@ _supported_fs generic
  _supported_os Linux
- _require_scratch
+ _require_scratch_nocheck
+ _require_dm_target thin-pool
 +_exclude_scratch_mount_option dax
  
- rm -f $seqres.full
- _scratch_mkfs_sized $((64 * 1024 * 1024)) >> $seqres.full 2>&1
+ _setup_thin
+ _workout
 -- 
 2.14.3
