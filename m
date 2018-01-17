@@ -1,73 +1,68 @@
 From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH 8/8] ext4: enable encryption for blocksize less than page size
-Date: Wed, 17 Jan 2018 19:12:46 +0530
-Message-ID: <4623372.lWF4DCE0j7@localhost.localdomain>
-References: <20180112141129.27507-1-chandan@linux.vnet.ibm.com> <20180112141129.27507-9-chandan@linux.vnet.ibm.com> <20180117024004.GH4477@zzz.localdomain>
+Subject: Re: [RFC PATCH 0/8] Ext4 encryption support for blocksize < pagesize
+Date: Wed, 17 Jan 2018 19:13:49 +0530
+Message-ID: <4752190.CyFFPQ5jaq@localhost.localdomain>
+References: <20180112141129.27507-1-chandan@linux.vnet.ibm.com> <20180117021020.GA4477@zzz.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7Bit
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         tytso@mit.edu
 To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:55888 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752100AbeAQNle (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 17 Jan 2018 08:41:34 -0500
-Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w0HDekkW060910
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2018 08:41:33 -0500
-Received: from e06smtp15.uk.ibm.com (e06smtp15.uk.ibm.com [195.75.94.111])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2fj5xrd5ak-1
-        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2018 08:41:33 -0500
-Received: from localhost
-        by e06smtp15.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Wed, 17 Jan 2018 13:41:31 -0000
-In-Reply-To: <20180117024004.GH4477@zzz.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20180117021020.GA4477@zzz.localdomain>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wednesday, January 17, 2018 8:10:04 AM IST Eric Biggers wrote:
-> On Fri, Jan 12, 2018 at 07:41:29PM +0530, Chandan Rajendra wrote:
-> > Now that we have all the code to support encryption for block size less
-> > than page size scenario, this commit removes the conditional check in
-> > filesystem mount code.
-> > 
-> > Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-> > ---
-> >  fs/ext4/super.c | 9 +--------
-> >  1 file changed, 1 insertion(+), 8 deletions(-)
-> > 
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index ebb7edb..5a52c98 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -4138,14 +4138,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
-> >  		}
-> >  	}
-> >  
-> > -	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || ext4_has_feature_encrypt(sb)) &&
-> > -	    (blocksize != PAGE_SIZE)) {
-> > -		ext4_msg(sb, KERN_ERR,
-> > -			 "Unsupported blocksize for fs encryption");
-> > -		goto failed_mount_wq;
-> > -	}
-> > -
-> > -	if (DUMMY_ENCRYPTION_ENABLED(sbi) && !sb_rdonly(sb) &&
-> > +	if (DUMMY_ENCRYPTION_ENABLED(sbi) && !(sb->s_flags & MS_RDONLY) &&
-> >  	    !ext4_has_feature_encrypt(sb)) {
-> >  		ext4_set_feature_encrypt(sb);
-> >  		ext4_commit_super(sb, 1);
+On Wednesday, January 17, 2018 7:40:20 AM IST Eric Biggers wrote:
+> Hi Chandan,
 > 
-> Why change sb_rdonly() to 'sb->s_flags & MS_RDONLY'?
+> On Fri, Jan 12, 2018 at 07:41:21PM +0530, Chandan Rajendra wrote:
+> > This patchset implements code to support encryption of Ext4 filesystem
+> > instances that have blocksize less than pagesize. The patchset has
+> > been tested on both ppc64 and x86_64 machines.
+> > 
+> > This patchset changes the prototype of the function
+> > fscrypt_encrypt_page(). I will make the relevant changes to the rest
+> > of the filesystems (e.g. f2fs) and post them in the next version of
+> > the patchset.
+> > 
+> > Chandan Rajendra (8):
+> >   ext4: use EXT4_INODE_ENCRYPT flag to detect encrypted bio
+> >   fs/buffer.c: make some functions non-static
+> >   ext4: decrypt all contiguous blocks in a page
+> >   ext4: decrypt all boundary blocks when doing buffered write
+> >   ext4: decrypt the block that needs to be partially zeroed
+> >   ext4: encrypt blocks whose size is less than page size
+> >   ext4: decrypt blocks whose size is less than page size
+> >   ext4: enable encryption for blocksize less than page size
+> > 
+> 
+> Thanks for working on this!  We've wanted this for a while (both so that it
+> works on PowerPC with a 64K PAGE_SIZE, and so that people can't screw up their
+> 1K blocksize filesystems by enabling the 'encrypt' flag), but no one ever got
+> around to it.  And it's not easy!
+> 
+> First, just a few notes that didn't fit into my comments for the individual
+> patches.
+> 
+> Updating fscrypt_zeroout_range() seems to have been missed.  Currently it
+> assumes block_size == PAGE_SIZE so it will need to be updated too.
+> 
+> The file Documentation/filesystems/fscrypt.rst will also need to be updated, at
+> least to remove the following sentence: "Currently, only the case where the
+> filesystem block size is equal to the system's page size (usually 4096 bytes) is
+> supported.".
+
+Thanks a lot for the review comments. I will make sure to take care of them
+in the next version of the patchset.
+
+> 
+> Also, on future versions of this patchset can you please also Cc
+> linux-fscrypt@vger.kernel.org?
 > 
 
-I am sorry, I messed up this one when rebasing the patchset onto the 
-latest linux-next. . The old code base had 'sb->s_flags & MS_RDONLY'.
-I will fix this up in the next version of this patchset.
+Sure, I will do that.
 
 -- 
 chandan
