@@ -1,68 +1,67 @@
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH 0/8] Ext4 encryption support for blocksize < pagesize
-Date: Wed, 17 Jan 2018 19:13:49 +0530
-Message-ID: <4752190.CyFFPQ5jaq@localhost.localdomain>
-References: <20180112141129.27507-1-chandan@linux.vnet.ibm.com> <20180117021020.GA4477@zzz.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7Bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        tytso@mit.edu
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20180117021020.GA4477@zzz.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+Subject: [fstests PATCH 1/2] shared/272: don't use data journaling with DAX
+Date: Wed, 17 Jan 2018 16:23:50 -0700
+Message-ID: <20180117232351.19286-1-ross.zwisler@linux.intel.com>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org,
+        dave.jiang@intel.com
+To: fstests@vger.kernel.org, Eryu Guan <eguan@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga11.intel.com ([192.55.52.93]:51129 "EHLO mga11.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752791AbeAQXX5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 17 Jan 2018 18:23:57 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wednesday, January 17, 2018 7:40:20 AM IST Eric Biggers wrote:
-> Hi Chandan,
-> 
-> On Fri, Jan 12, 2018 at 07:41:21PM +0530, Chandan Rajendra wrote:
-> > This patchset implements code to support encryption of Ext4 filesystem
-> > instances that have blocksize less than pagesize. The patchset has
-> > been tested on both ppc64 and x86_64 machines.
-> > 
-> > This patchset changes the prototype of the function
-> > fscrypt_encrypt_page(). I will make the relevant changes to the rest
-> > of the filesystems (e.g. f2fs) and post them in the next version of
-> > the patchset.
-> > 
-> > Chandan Rajendra (8):
-> >   ext4: use EXT4_INODE_ENCRYPT flag to detect encrypted bio
-> >   fs/buffer.c: make some functions non-static
-> >   ext4: decrypt all contiguous blocks in a page
-> >   ext4: decrypt all boundary blocks when doing buffered write
-> >   ext4: decrypt the block that needs to be partially zeroed
-> >   ext4: encrypt blocks whose size is less than page size
-> >   ext4: decrypt blocks whose size is less than page size
-> >   ext4: enable encryption for blocksize less than page size
-> > 
-> 
-> Thanks for working on this!  We've wanted this for a while (both so that it
-> works on PowerPC with a 64K PAGE_SIZE, and so that people can't screw up their
-> 1K blocksize filesystems by enabling the 'encrypt' flag), but no one ever got
-> around to it.  And it's not easy!
-> 
-> First, just a few notes that didn't fit into my comments for the individual
-> patches.
-> 
-> Updating fscrypt_zeroout_range() seems to have been missed.  Currently it
-> assumes block_size == PAGE_SIZE so it will need to be updated too.
-> 
-> The file Documentation/filesystems/fscrypt.rst will also need to be updated, at
-> least to remove the following sentence: "Currently, only the case where the
-> filesystem block size is equal to the system's page size (usually 4096 bytes) is
-> supported.".
+shared/272 fails with kernels v4.15-rc1 and beyond when you are mounted
+with DAX:
 
-Thanks a lot for the review comments. I will make sure to take care of them
-in the next version of the patchset.
+shared/272	 [failed, exit status 1] - output mismatch (see
+/root/project/xfstests/results//shared/272.out.bad)
+    --- tests/shared/272.out	2015-12-05 13:12:17.038257578 -0700
+    +++ /root/project/xfstests/results//shared/272.out.bad	2018-01-17
+    15:37:18.581631116 -0700
+    @@ -1,3 +1,3 @@
+     QA output created by 272
+     Switch data journalling mode. Silence is golden.
+    -Check filesystem
+    +/usr/bin/chattr: Device or resource busy while setting flags on
+    /mnt/xfstests_scratch/file.1
+    ...
+    (Run 'diff -u tests/shared/272.out
+    /root/project/xfstests/results//shared/272.out.bad'  to see the entire
+    diff)
 
-> 
-> Also, on future versions of this patchset can you please also Cc
-> linux-fscrypt@vger.kernel.org?
-> 
+This is expected.  The following kernel commit:
 
-Sure, I will do that.
+commit e9072d859df3 ("ext4: prevent data corruption with journaling + DAX")
 
+makes "chattr +j", which is attempting to turn on data journaling, return
+-EBUSY if the ext4 DAX mount option is in use.  This was done to prevent
+the data corruption shown in xfstest ext4/030, added by this xfstests
+commit:
+
+commit 750a24e99e48 ("ext4: test for DAX + journaling corruption")
+
+So, just skip shared/272 if the DAX mount option is in use.
+
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+---
+ tests/shared/272 | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tests/shared/272 b/tests/shared/272
+index 7023b657..0c9763df 100755
+--- a/tests/shared/272
++++ b/tests/shared/272
+@@ -83,6 +83,7 @@ chattr_opt: $chattr_opt" >>$seqres.full
+ _supported_fs ext3 ext4
+ _supported_os Linux
+ _require_scratch
++_exclude_scratch_mount_option dax
+ 
+ rm -f $seqres.full
+ _scratch_mkfs_sized $((64 * 1024 * 1024)) >> $seqres.full 2>&1
 -- 
-chandan
+2.14.3
