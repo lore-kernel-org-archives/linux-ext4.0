@@ -1,85 +1,112 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: Re: [RFC PATCH 3/8] ext4: decrypt all contiguous blocks in a page
-Date: Tue, 16 Jan 2018 18:18:17 -0800
-Message-ID: <20180117021817.GC4477@zzz.localdomain>
+Subject: Re: [RFC PATCH 4/8] ext4: decrypt all boundary blocks when doing
+ buffered write
+Date: Tue, 16 Jan 2018 18:22:16 -0800
+Message-ID: <20180117022216.GD4477@zzz.localdomain>
 References: <20180112141129.27507-1-chandan@linux.vnet.ibm.com>
- <20180112141129.27507-4-chandan@linux.vnet.ibm.com>
+ <20180112141129.27507-5-chandan@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         tytso@mit.edu
 To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f65.google.com ([74.125.83.65]:41700 "EHLO
-        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750811AbeAQCSU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jan 2018 21:18:20 -0500
+Received: from mail-pg0-f68.google.com ([74.125.83.68]:38976 "EHLO
+        mail-pg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751028AbeAQCWT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jan 2018 21:22:19 -0500
 Content-Disposition: inline
-In-Reply-To: <20180112141129.27507-4-chandan@linux.vnet.ibm.com>
+In-Reply-To: <20180112141129.27507-5-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Chandan,
-
-On Fri, Jan 12, 2018 at 07:41:24PM +0530, Chandan Rajendra wrote:
-> With blocksize < pagesize, a page can contain more than one block. Hence
-> this commit changes completion_pages() to invoke fscrypt_decrypt_page()
-> in order to decrypt all the contiguous blocks mapped by the page.
+On Fri, Jan 12, 2018 at 07:41:25PM +0530, Chandan Rajendra wrote:
+> With block size < page size, ext4_block_write_begin() may have two
+> blocks to decrypt. Hence this commit invokes fscrypt_decrypt_page() for
+> those blocks.
 > 
 > Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 > ---
->  fs/crypto/bio.c | 19 +++++++++++++++++--
->  1 file changed, 17 insertions(+), 2 deletions(-)
+>  fs/ext4/inode.c | 29 +++++++++++++++++++++--------
+>  1 file changed, 21 insertions(+), 8 deletions(-)
 > 
-> diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
-> index 0d5e6a5..eb6e06a 100644
-> --- a/fs/crypto/bio.c
-> +++ b/fs/crypto/bio.c
-> @@ -40,8 +40,23 @@ static void completion_pages(struct work_struct *work)
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 6f6589e..d3baa15 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1158,12 +1158,13 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+>  	unsigned to = from + len;
+>  	struct inode *inode = page->mapping->host;
+>  	unsigned block_start, block_end;
+> -	sector_t block;
+> +	sector_t block, page_blk_nr;
+>  	int err = 0;
+>  	unsigned blocksize = inode->i_sb->s_blocksize;
+>  	unsigned bbits;
+>  	struct buffer_head *bh, *head, *wait[2], **wait_bh = wait;
+>  	bool decrypt = false;
+> +	int i;
 >  
->  	bio_for_each_segment_all(bv, bio, i) {
->  		struct page *page = bv->bv_page;
-> -		int ret = fscrypt_decrypt_page(page->mapping->host, page,
+>  	BUG_ON(!PageLocked(page));
+>  	BUG_ON(from > PAGE_SIZE);
+> @@ -1224,16 +1225,28 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+>  	/*
+>  	 * If we issued read requests, let them complete.
+>  	 */
+> -	while (wait_bh > wait) {
+> -		wait_on_buffer(*--wait_bh);
+> -		if (!buffer_uptodate(*wait_bh))
+> +	for (i = 0; (wait + i) < wait_bh; i++) {
+> +		wait_on_buffer(wait[i]);
+> +		if (!buffer_uptodate(wait[i]))
+>  			err = -EIO;
+>  	}
+> -	if (unlikely(err))
+> +	if (unlikely(err)) {
+>  		page_zero_new_buffers(page, from, to);
+> -	else if (decrypt)
+> -		err = fscrypt_decrypt_page(page->mapping->host, page,
 > -				PAGE_SIZE, 0, page->index);
-> +		struct inode *inode = page->mapping->host;
-> +		const unsigned long blocksize = inode->i_sb->s_blocksize;
-> +		const unsigned blkbits = inode->i_blkbits;
-> +		int page_blk = page->index << (PAGE_SHIFT - blkbits);
-> +		int blk = page_blk + (bv->bv_offset >> blkbits);
-
-Use 'u64' for the block number:
-
-	u64 page_blk = (u64)page->index << (PAGE_SHIFT - blkbits);
-	u64 blk = page_blk + (bv->bv_offset >> blkbits);
-
-> +		int nr_blks = bv->bv_len >> blkbits;
-> +		int ret = 0;
-> +		int j;
+> +	} else if (decrypt) {
+> +		page_blk_nr = (sector_t)page->index << (PAGE_SHIFT - bbits);
 > +
-> +		for (j = 0; j < nr_blks; j++, blk++) {
-> +			ret = fscrypt_decrypt_page(page->mapping->host,
-> +						page, blocksize,
-> +						bv->bv_offset + (j << blkbits),
-> +						blk);
-> +			if (ret)
+> +		while (wait_bh > wait) {
+> +			--wait_bh;
+> +			block = page_blk_nr + (bh_offset(*wait_bh) >> bbits);
+> +			err = fscrypt_decrypt_page(page->mapping->host, page,
+> +						(*wait_bh)->b_size,
+> +						bh_offset(*wait_bh),
+> +						block);
+> +			if (err)
 > +				break;
 > +		}
->  
->  		if (ret) {
->  			WARN_ON_ONCE(1);
+> +	}
+> +
+>  	return err;
 
-Since that we'll now actually be operating on blocks rather than pages, some
-renaming seems to be in order, otherwise things will get very confusing.  e.g.:
+Iterating through the 'wait' array once by index and once by pointer is
+confusing.  Why not do it just by index?  e.g.
 
-	fscrypt_decrypt_page() -> fscrypt_decrypt_block()
-	fscrypt_encrypt_page() -> fscrypt_encrypt_block()
-	completion_pages() -> completion_blocks()
-	fscrypt_decrypt_bio_pages() -> fscrypt_decrypt_bio_blocks()
+        int nr_wait = 0;
+        int i;
 
-Please also update the comment for completion_pages() / completion_blocks() to
-clarify that it is decrypting *blocks*, not *pages*.
+        ...
+                wait[nr_wait++] = bh;
 
-(Yes, we should have named all these functions as *_block() originally.  But
-this is a good time to fix it!)
+        ...
+        for (i = 0; i < nr_wait; i++) {
+                wait_on_buffer(wait[i]);
+                ...
+        }
+
+        for (i = 0; i < nr_wait; i++) {
+                ...
+                fscrypt_decrypt_block(...)
+                ...
+        }
+
+Also, you are leaving the buffers uptodate() if the decryption fails, which is
+wrong.  It is an existing bug even in the block_size == PAGE_SIZE case, but it
+should be fixed if possible.
 
 Eric
