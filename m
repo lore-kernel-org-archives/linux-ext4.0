@@ -1,59 +1,64 @@
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-Subject: [fstests PATCH v2] generic/347: dm-thin lacks DAX support
-Date: Thu, 18 Jan 2018 09:07:37 -0700
-Message-ID: <20180118160737.24708-1-ross.zwisler@linux.intel.com>
-References: <20180118042343.GQ3102@eguan.usersys.redhat.com>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-ext4@vger.kernel.org, linux-nvdimm@lists.01.org,
-        dave.jiang@intel.com
-To: Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org
-Return-path: <fstests-owner@vger.kernel.org>
-In-Reply-To: <20180118042343.GQ3102@eguan.usersys.redhat.com>
-Sender: fstests-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 198505] Errors from EXt4 FS when resuming from single
+ hibernation image
+Date: Thu, 18 Jan 2018 16:19:35 +0000
+Message-ID: <bug-198505-13602-0UUukYOiQE@https.bugzilla.kernel.org/>
+References: <bug-198505-13602@https.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:37160 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752746AbeARQTf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Jan 2018 11:19:35 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 7A86D27C0B
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jan 2018 16:19:35 +0000 (UTC)
+In-Reply-To: <bug-198505-13602@https.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-generic/347 currently fails when run in conjunction with the DAX mount
-option:
+https://bugzilla.kernel.org/show_bug.cgi?id=198505
 
-generic/347 72s ... - output mismatch (see
-/root/project/xfstests/results//generic/347.out.bad)
-    --- tests/generic/347.out	2016-05-12 11:56:32.086618744 -0600
-    +++ /root/project/xfstests/results//generic/347.out.bad	2018-01-17
-    16:04:33.459348448 -0700
-    @@ -1,2 +1,3 @@
-     QA output created by 347
-    +mount: /mnt/xfstests_scratch: can't read superblock on
-    /dev/mapper/thin-vol.
-     === completed
-    ...
-    (Run 'diff -u tests/generic/347.out
-    /root/project/xfstests/results//generic/347.out.bad'  to see the entire
-    diff)
+Theodore Tso (tytso@mit.edu) changed:
 
-This is expected because the dm-thin target currently lacks DAX support.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
 
-Just skip this test if we are using DAX.
+--- Comment #1 from Theodore Tso (tytso@mit.edu) ---
+This is not a bug, this a fundamental problem with your proposed technique.
 
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
----
- common/dmthin | 5 +++++
- 1 file changed, 5 insertions(+)
+The issue is that file system metadata will be actively in use, and in memory. 
+Dealing with the block group descriptors are doable (but would require kernel
+changes).  The much bigger problem is going to be with inodes in use by the
+mounted data partition.    If you want to boot from a frozen hibernation image,
+and reuse it over and over again, this approach is pretty much doomed to
+failure, I'm afraid.   All it takes is for one of the system daemons to have
+some file opened for writing --- say, such as a log file, and if you try to
+reuse the hibernation image, it's a recipe for file system corruption and user
+data loss.
 
-diff --git a/common/dmthin b/common/dmthin
-index baab6284..da0ad284 100644
---- a/common/dmthin
-+++ b/common/dmthin
-@@ -35,6 +35,11 @@ DMTHIN_POOL_DEV="/dev/mapper/$DMTHIN_POOL_NAME"
- DMTHIN_VOL_NAME="thin-vol"
- DMTHIN_VOL_DEV="/dev/mapper/$DMTHIN_VOL_NAME"
- 
-+echo $MOUNT_OPTIONS | grep -q dax
-+if [ $? -eq 0 ]; then
-+	_notrun "Cannot run tests with DAX on dmthin devices"
-+fi
-+
- _dmthin_cleanup()
- {
- 	$UMOUNT_PROG $SCRATCH_MNT > /dev/null 2>&1
+If you can change userspace so that you can unmount the data partition, you
+could make it work, since in Android the root partition is read-only, and thus
+guaranteed not to change.   But that means forcing all of the system daemons
+(where by system daemons I am referring to all long-running processes started
+at boot before you to suspend your the system  in your fundamentally flawed
+quick boot scheme) to close their open files and not have any processes set
+with their current working directory in the data partition.   If you could do
+that, you could then after the hibernation, remount the data partition, and
+then send a signal to all of the system daemons to reopen any open files and
+chdir back into /data.
+
+But if you're going to do all of this, you might as well just simply fix the
+userspace to have a faster boot sequence.  I'll note that with my Pixel 2 XL,
+it has a very fast boot sequence, as does any of my Chromebooks.   So fixing
+this problem in userspace is definitely the right way to go --- not by trying
+some dirty hack like what you're proposing.
+
 -- 
-2.14.3
+You are receiving this mail because:
+You are watching the assignee of the bug.
