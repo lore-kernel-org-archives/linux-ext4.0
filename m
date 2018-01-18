@@ -1,108 +1,65 @@
-From: "Amit Agarwal" <amit.a@pathpartnertech.com>
-Subject: mount issue for ext4 filesystem with hibernation support.
-Date: Thu, 18 Jan 2018 12:38:08 +0530
-Message-ID: <014f01d3902b$19a3e040$4ceba0c0$@pathpartnertech.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 198187] jbd2_log_wait_commit hangs
+Date: Thu, 18 Jan 2018 10:05:53 +0000
+Message-ID: <bug-198187-13602-i46SPmwAq8@https.bugzilla.kernel.org/>
+References: <bug-198187-13602@https.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f48.google.com ([74.125.83.48]:38224 "EHLO
-        mail-pg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750931AbeARHIN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jan 2018 02:08:13 -0500
-Received: by mail-pg0-f48.google.com with SMTP id y27so7330299pgc.5
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Jan 2018 23:08:13 -0800 (PST)
-Received: from AmitLaptop ([182.72.168.238])
-        by smtp.gmail.com with ESMTPSA id n24sm11984541pfi.33.2018.01.17.23.08.10
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-SHA bits=128/128);
-        Wed, 17 Jan 2018 23:08:11 -0800 (PST)
-Content-Language: en-in
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42384 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1754905AbeARKFx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Jan 2018 05:05:53 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id EF9AE205AF
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jan 2018 10:05:52 +0000 (UTC)
+In-Reply-To: <bug-198187-13602@https.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello
+https://bugzilla.kernel.org/show_bug.cgi?id=198187
 
-When we added the hibernation support for android M, we are able to
-hibernate and resume properly.but I=A0want to resume every time from single
-snapshot image which have been taken at first-boot. But I am having problem
-with that image after 2nd boot onwards.
+--- Comment #8 from Jan Kara (jack@suse.cz) ---
+Thanks for the output. So every process there waits for jbd2 thread to commit
+the running transaction. JBD2 does:
 
-I am getting ext4 error, seems like block number mismatch and that
-file-system on that partition is being remounted as read-only mode.
+[144526.447408] jbd2/dm-19-8    D    0  1580      2 0x00000080
+[144526.448176] Call Trace:
+[144526.448937]  __schedule+0x3be/0x830
+[144526.449632]  ? scsi_request_fn+0x3f/0x6b0
+[144526.450310]  ? bit_wait+0x60/0x60
+[144526.450993]  schedule+0x36/0x80
+[144526.451673]  io_schedule+0x16/0x40
+[144526.452343]  bit_wait_io+0x11/0x60
+[144526.453017]  __wait_on_bit+0x58/0x90
+[144526.453692]  out_of_line_wait_on_bit+0x8e/0xb0
+[144526.454371]  ? bit_waitqueue+0x40/0x40
+[144526.455051]  __wait_on_buffer+0x32/0x40
+[144526.455731]  jbd2_journal_commit_transaction+0xfa4/0x1800
+[144526.456414]  kjournald2+0xd2/0x270
+[144526.457098]  ? kjournald2+0xd2/0x270
+[144526.457782]  ? remove_wait_queue+0x70/0x70
+[144526.458470]  kthread+0x109/0x140
+[144526.459139]  ? commit_timeout+0x10/0x10
+[144526.459821]  ? kthread_park+0x60/0x60
+[144526.460497]  ? do_syscall_64+0x67/0x150
+[144526.461166]  ret_from_fork+0x25/0x30
 
-Below errors i am getting every time after 2nd boot onwards:
----------------------------------------------------------------------------=
--
-----
-[=A0 =A064.250735] EXT4-fs error (device mmcblk0p24):
-ext4_mb_generate_buddy:758: group 9, block bitmap and bg descriptor
-inconsistent: 31166 vs 31165 free clusters
-[=A0 =A064.252813] <3> (3)[1507:PackageManager]Aborting journal on device
-mmcblk0p24-8.
-[=A0 =A064.267680] <3> (3)[1507:PackageManager]EXT4-fs (mmcblk0p24): Remoun=
-ting
-filesystem read-only
-[=A0 =A064.268667] <3> (1)[1:init]init: Starting service 'media'...
-[=A0 =A064.269479] <3> (3)[1507:PackageManager]EXT4-fs error (device mmcblk=
-0p24)
-in ext4_free_blocks:4881: Journal has aborted
-[=A0 =A064.272235] <3> (3)[1507:PackageManager]EXT4-fs error (device mmcblk=
-0p24)
-in ext4_reserve_inode_write:4999: Journal has aborted
-[=A0 =A064.278537] <3> (3)[1507:PackageManager]EXT4-fs error (device mmcblk=
-0p24)
-in ext4_reserve_inode_write:4999: Journal has aborted
-[=A0 =A064.283132] <3> (3)[1507:PackageManager]EXT4-fs error (device mmcblk=
-0p24)
-in ext4_ext_remove_space:3035: Journal has aborted
-[=A0 =A064.286970] <3> (3)[1507:PackageManager]EXT4-fs error (device mmcblk=
-0p24)
-in ext4_ext_truncate:4669: Journal has aborted
-[=A0 =A064.291775] <3> (3)[1507:PackageManager]EXT4-fs error (device mmcblk=
-0p24)
-in ext4_reserve_inode_write:4999: Journal has aborted
-[=A0 =A064.294465] <3> (3)[1507:PackageManager]EXT4-fs error (device mmcblk=
-0p24)
-in ext4_truncate:3894: Journal has aborted
-[=A0 =A064.297764] <3> (3)[1507:PackageManager]EXT4-fs error (device mmcblk=
-0p24)
-in ext4_reserve_inode_write:4999: Journal has aborted
-[=A0 =A064.300437] <3> (3)[1507:PackageManager]EXT4-fs error (device mmcblk=
-0p24)
-in ext4_orphan_del:2888: Journal has aborted
+So we have submitted buffers for IO and they have not completed. In cases like
+this the problem is in 99% of cases either in the storage driver or in the
+storage firmware. Since you mentioned this started happening after kernel
+update and you seem to be using only plain SATA drives (am I right?), storage
+firmware is probably out of question.
 
----------------------------------------------------------------------------=
--
--------------------------
+You seem to be using some kind of RAID on top of these SATA drives, that would
+look like the most probable culprit at this point. Can you describe your
+storage configuration? Also output of 'dmsetup table' would be useful. After
+having that we would probably need to pull in DM developers to have a look.
+Thanks.
 
-This is happening because mounted partition meta-data in RAM(old snapshot
-image) is not matched with actual data in disk.
-
-Please suggest me some way to overcome this problem.
-
-Also is it possible to update file-system's meta-data to RAM from
-partition(mounted and used by some apps)?
-
-Regards,
-Amit Agarwal
-
-
-
---=20
-=20
-
-This message contains confidential information and is intended only for the=
-=20
-individual(s) named. If you are not the intended recipient, you are=20
-notified that disclosing, copying, distributing or taking any action in=20
-reliance on the contents of this mail and attached file/s is strictly=20
-prohibited. Please notify the sender immediately and delete this e-mail=20
-from your system. E-mail transmission cannot be guaranteed to be secured or=
-=20
-error-free as information could be intercepted, corrupted, lost, destroyed,=
-=20
-arrive late or incomplete, or contain viruses. The sender therefore does=20
-not accept liability for any errors or omissions in the contents of this=20
-message, which arise as a result of e-mail transmission.
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
