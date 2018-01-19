@@ -1,10 +1,10 @@
 From: Jeff Layton <jlayton@kernel.org>
-Subject: Re: [PATCH v5 01/19] fs: new API for handling inode->i_version
-Date: Thu, 18 Jan 2018 17:47:03 -0500
-Message-ID: <1516315623.3379.10.camel@kernel.org>
+Subject: Re: [PATCH v5 02/19] fs: don't take the i_lock in inode_inc_iversion
+Date: Fri, 19 Jan 2018 09:36:34 -0500
+Message-ID: <1516372594.3588.11.camel@kernel.org>
 References: <20180109141059.25929-1-jlayton@kernel.org>
-         <20180109141059.25929-2-jlayton@kernel.org>
-         <20180118213821.GA5299@fieldses.org>
+         <20180109141059.25929-3-jlayton@kernel.org>
+         <20180118214534.GB5299@fieldses.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
@@ -19,73 +19,82 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com, krzk@kernel.org
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180118213821.GA5299@fieldses.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20180118214534.GB5299@fieldses.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 2018-01-18 at 16:38 -0500, J. Bruce Fields wrote:
-> On Tue, Jan 09, 2018 at 09:10:41AM -0500, Jeff Layton wrote:
-> > --- /dev/null
+On Thu, 2018-01-18 at 16:45 -0500, J. Bruce Fields wrote:
+> On Tue, Jan 09, 2018 at 09:10:42AM -0500, Jeff Layton wrote:
+> > From: Jeff Layton <jlayton@redhat.com>
+> > 
+> > The rationale for taking the i_lock when incrementing this value is
+> > lost in antiquity. The readers of the field don't take it (at least
+> > not universally), so my assumption is that it was only done here to
+> > serialize incrementors.
+> > 
+> > If that is indeed the case, then we can drop the i_lock from this
+> > codepath and treat it as a atomic64_t for the purposes of
+> > incrementing it. This allows us to use inode_inc_iversion without
+> > any danger of lock inversion.
+> > 
+> > Note that the read side is not fetched atomically with this change.
+> > The assumption here is that that is not a critical issue since the
+> > i_version is not fully synchronized with anything else anyway.
+> 
+> So I guess it's theoretically possible that e.g. if you read while it's
+> incrementing from 2^32-1 to 2^32 you could read 0, 1, or 2^32+1?
+>
+> If so then you could see an i_version value reused and incorrectly
+> decide that a file hadn't changed.
+> 
+> But it's such a tiny case, and I think you convert this to atomic64_t
+> later anyway, so, whatever.
+> 
+> --b.
+> 
+
+Shrug...we have that problem with the spinlock in place too. The bottom
+line is that reads of this value are not serialized with the increment
+at all.
+
+I'm not 100% thrilled with this patch, but I think it's probably better
+not to add the i_lock all over the place, even as an interim step in
+cleaning this stuff up.
+
+The good news here (as you mention) is that this nastiness gets cleaned
+up in the last patch when we convert the thing to an atomic64_t.
+
+
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  include/linux/iversion.h | 7 ++++---
+> >  1 file changed, 4 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+> > index d09cc3a08740..5ad9eaa3a9b0 100644
+> > --- a/include/linux/iversion.h
 > > +++ b/include/linux/iversion.h
-> > @@ -0,0 +1,236 @@
-> > +/* SPDX-License-Identifier: GPL-2.0 */
-> > +#ifndef _LINUX_IVERSION_H
-> > +#define _LINUX_IVERSION_H
+> > @@ -104,12 +104,13 @@ inode_set_iversion_queried(struct inode *inode, u64 new)
+> >  static inline bool
+> >  inode_maybe_inc_iversion(struct inode *inode, bool force)
+> >  {
+> > -	spin_lock(&inode->i_lock);
+> > -	inode->i_version++;
+> > -	spin_unlock(&inode->i_lock);
+> > +	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
 > > +
-> > +#include <linux/fs.h>
+> > +	atomic64_inc(ivp);
+> >  	return true;
+> >  }
+> >  
 > > +
-> > +/*
-> > + * The change attribute (i_version) is mandated by NFSv4 and is mostly for
-> > + * knfsd, but is also used for other purposes (e.g. IMA). The i_version must
-> > + * appear different to observers if there was a change to the inode's data or
-> > + * metadata since it was last queried.
-> > + *
-> > + * Observers see the i_version as a 64-bit number that never changes.
-> 
-> I don't understand that sentence.
-> 
+> >  /**
+> >   * inode_inc_iversion - forcibly increment i_version
+> >   * @inode: inode that needs to be updated
+> > -- 
+> > 2.14.3
 
-That's because it's utter nonsense. I noticed that the other day and
-fixed it in my tree. It now reads:
-
-* Observers see the i_version as a 64-bit number that never decreases.
-
-> > If it
-> > + * remains the same since it was last checked, then nothing has changed in the
-> > + * inode. If it's different then something has changed. Observers cannot infer
-> > + * anything about the nature or magnitude of the changes from the value, only
-> > + * that the inode has changed in some fashion.
-> 
-> As we've discussed before, there may be brief windows where the first
-> two statements aren't quite correct.  I think that would be worth a
-> mention if we can keep it concise.  Maybe add something like this?:
-> 
-> 	It may be impractical for filesystems to keep i_version updates
-> 	atomic with respect to the changes that cause them.  They
-> 	should, however, guarantee that i_version updates are never
-> 	visible before the changes that caused them.  Also, i_version
-> 	updates should never be delayed longer than it takes the
-> 	original change to reach disk.
-
-That makes sense. I added it in pretty much verbatim. I think we mostly
-follow the latter should already.
-
-> Or maybe those details are best left to documentation on the relevant
-> parts of the api below (maybe inode_maybe_inc_iversion?).
-> 
-> I dunno if it's also worth mentioning that nfsd doesn't actually use the
-> raw i_version--it mixes it with ctime to prevent i_version reuse after
-> reboot.  Presumably that doesn't matter to IMA since it doesn't compare
-> i_version across reboots.
-> 
-
-I think I won't document that here. nfsd is a consumer of i_version.
-What it does with it is sort of its own business. Might be good to have
-a comment blurb in the nfsd code about it though.
-
-> The documentation here is all very helpful, thanks.
-
-Thanks for all of the suggestions so far!
 -- 
 Jeff Layton <jlayton@kernel.org>
