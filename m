@@ -1,191 +1,246 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 4/4] misc: enable thread sanitizer if the builder wants it
-Date: Fri, 19 Jan 2018 22:13:15 -0800
-Message-ID: <151642879586.9652.2681042788789696355.stgit@magnolia>
-References: <151642877063.9652.3628059578106842868.stgit@magnolia>
+From: "Hongzhi, Song" <hongzhi.song@windriver.com>
+Subject: Panic with ext4,nbd,qemu-img,block
+Date: Sat, 20 Jan 2018 16:41:00 +0800
+Message-ID: <0555d0c0-1f42-e78f-28ab-6c7a00f0c020@windriver.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu, darrick.wong@oracle.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:47638 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750745AbeATGOC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Jan 2018 01:14:02 -0500
-In-Reply-To: <151642877063.9652.3628059578106842868.stgit@magnolia>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Transfer-Encoding: 8bit
+Cc: <linux-kernel@vger.kernel.org>, <linux-block@vger.kernel.org>
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-block-owner@vger.kernel.org>
+Content-Language: en-US
+Sender: linux-block-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Darrick J. Wong <darrick.wong@oracle.com>
+Hello,
 
-Enable the gcc/clang thread data corruption sanitizer if the builder
-requests it and it's available.
+I create a virtual disk-image using qemu-img.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- MCONFIG.in   |    4 ++--
- configure    |   56 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- configure.ac |   31 +++++++++++++++++++++++++++++++
- debian/rules |    2 +-
- 4 files changed, 90 insertions(+), 3 deletions(-)
+And then I use /dev/nbd to map the image.
+
+I mount the /dev/nbd to a local dir with ext4-format
+
+Finally, I have some trouble about ext4-filesystem and block device, 
+with using demand of rsync or dd to write the image.
+
+Reproduce :
+
+     qemu-img create test.img 2G
+
+     mkfs.ext4 -F test.img
+
+      qemu-nbd -f raw -c /dev/nbd0 test.img
+
+      mount -r ext4 /dev/nbd0 LOCAL_DIR/
+
+     rsync -av META_DATA_DIR/  LOCAL_DIR/
+
+Kernel Version:
+
+     4.12+HEAD (I have test 4.15-rc7 and 4.12)
+
+Machine:
+
+     intel-x86-64
+
+CPU:
+
+     xeon
+
+Architecture:
+
+     I86
+
+The problem is not always  appear step by step, but often using lava 
+that is a auto-testing method.
+
+And it just appears in some special board.
+
+If someone has similar trouble or has resolution or wants more detail, 
+please connect with me. Thanks.
+
+Detail:
 
 
-diff --git a/MCONFIG.in b/MCONFIG.in
-index 3440cce..6355b49 100644
---- a/MCONFIG.in
-+++ b/MCONFIG.in
-@@ -80,8 +80,8 @@ UDEVRULESDIR = @udevrulesdir@
- @ifNotGNUmake@ CHECK_CMD=true
- @ifNotGNUmake@ CPPCHECK_CMD=true
- 
--SANITIZER_CFLAGS = @lto_cflags@ @ubsan_cflags@ @addrsan_cflags@
--SANITIZER_LDFLAGS = @lto_ldflags@ @ubsan_ldflags@ @addrsan_ldflags@
-+SANITIZER_CFLAGS = @lto_cflags@ @ubsan_cflags@ @addrsan_cflags@ @threadsan_cflags@
-+SANITIZER_LDFLAGS = @lto_ldflags@ @ubsan_ldflags@ @addrsan_ldflags@ @threadsan_ldflags@
- 
- CC = @CC@
- BUILD_CC = @BUILD_CC@
-diff --git a/configure b/configure
-index 1d5f907..045434a 100755
---- a/configure
-+++ b/configure
-@@ -649,6 +649,9 @@ E2SCRUB_CMT
- UNIX_CMT
- CYGWIN_CMT
- LINUX_CMT
-+threadsan_ldflags
-+threadsan_cflags
-+have_threadsan
- addrsan_ldflags
- addrsan_cflags
- have_addrsan
-@@ -912,6 +915,7 @@ enable_fuse2fs
- enable_lto
- enable_ubsan
- enable_addrsan
-+enable_threadsan
- with_multiarch
- '
-       ac_precious_vars='build_alias
-@@ -1586,6 +1590,7 @@ Optional Features:
-   --enable-lto		  enable link time optimization
-   --enable-ubsan	  enable undefined behavior sanitizer
-   --enable-addrsan	  enable address sanitizer
-+  --enable-threadsan	  enable thread sanitizer
- 
- Optional Packages:
-   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
-@@ -13945,6 +13950,57 @@ fi
- if test "$enable_addrsan" = "yes" && test "$have_addrsan" != "yes"; then
- 	as_fn_error $? "ADDRSAN not supported by compiler." "$LINENO" 5
- fi
-+# Check whether --enable-threadsan was given.
-+if test "${enable_threadsan+set}" = set; then :
-+  enableval=$enable_threadsan;
-+else
-+  enable_threadsan=no
-+fi
-+
-+if test "$enable_threadsan" = "yes" || test "$enable_threadsan" = "probe"; then
-+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if C compiler supports THREADSAN" >&5
-+$as_echo_n "checking if C compiler supports THREADSAN... " >&6; }
-+	OLD_CFLAGS="$CFLAGS"
-+	OLD_LDFLAGS="$LDFLAGS"
-+	THREADSAN_FLAGS="-fsanitize=thread"
-+	CFLAGS="$CFLAGS $THREADSAN_FLAGS"
-+	LDFLAGS="$LDFLAGS $THREADSAN_FLAGS"
-+	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-+/* end confdefs.h.  */
-+
-+int
-+main ()
-+{
-+
-+  ;
-+  return 0;
-+}
-+_ACEOF
-+if ac_fn_c_try_link "$LINENO"; then :
-+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-+$as_echo "yes" >&6; }
-+		threadsan_cflags=$THREADSAN_FLAGS
-+		threadsan_ldflags=$THREADSAN_FLAGS
-+		have_threadsan=yes
-+else
-+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-+$as_echo "no" >&6; }
-+fi
-+rm -f core conftest.err conftest.$ac_objext \
-+    conftest$ac_exeext conftest.$ac_ext
-+	CFLAGS="${OLD_CFLAGS}"
-+	LDFLAGS="${OLD_LDFLAGS}"
-+
-+
-+
-+fi
-+if test "$enable_threadsan" = "yes" && test "$have_threadsan" != "yes"; then
-+	as_fn_error $? "THREADSAN not supported by compiler." "$LINENO" 5
-+fi
-+if test "$have_threadsan" = "yes" && test "$have_addrsan" = "yes"; then
-+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ADDRSAN and THREADSAN are not known to work together." >&5
-+$as_echo "$as_me: WARNING: ADDRSAN and THREADSAN are not known to work together." >&2;}
-+fi
- LINUX_CMT="#"
- CYGWIN_CMT="#"
- UNIX_CMT=
-diff --git a/configure.ac b/configure.ac
-index 826a09a..a13ca05 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -1384,6 +1384,37 @@ if test "$enable_addrsan" = "yes" && test "$have_addrsan" != "yes"; then
- 	AC_MSG_ERROR([ADDRSAN not supported by compiler.])
- fi
- dnl
-+dnl Enable THREADSAN for all packages
-+dnl
-+AC_ARG_ENABLE([threadsan],
-+[  --enable-threadsan	  enable thread sanitizer],,
-+enable_threadsan=no)
-+if test "$enable_threadsan" = "yes" || test "$enable_threadsan" = "probe"; then
-+	AC_MSG_CHECKING([if C compiler supports THREADSAN])
-+	OLD_CFLAGS="$CFLAGS"
-+	OLD_LDFLAGS="$LDFLAGS"
-+	THREADSAN_FLAGS="-fsanitize=thread"
-+	CFLAGS="$CFLAGS $THREADSAN_FLAGS"
-+	LDFLAGS="$LDFLAGS $THREADSAN_FLAGS"
-+	AC_LINK_IFELSE([AC_LANG_PROGRAM([])],
-+		[AC_MSG_RESULT([yes])]
-+		[threadsan_cflags=$THREADSAN_FLAGS]
-+		[threadsan_ldflags=$THREADSAN_FLAGS]
-+		[have_threadsan=yes],
-+		[AC_MSG_RESULT([no])])
-+	CFLAGS="${OLD_CFLAGS}"
-+	LDFLAGS="${OLD_LDFLAGS}"
-+	AC_SUBST(have_threadsan)
-+	AC_SUBST(threadsan_cflags)
-+	AC_SUBST(threadsan_ldflags)
-+fi
-+if test "$enable_threadsan" = "yes" && test "$have_threadsan" != "yes"; then
-+	AC_MSG_ERROR([THREADSAN not supported by compiler.])
-+fi
-+if test "$have_threadsan" = "yes" && test "$have_addrsan" = "yes"; then
-+	AC_MSG_WARN([ADDRSAN and THREADSAN are not known to work together.])
-+fi
-+dnl
- dnl OS-specific uncomment control
- dnl
- LINUX_CMT="#"
-diff --git a/debian/rules b/debian/rules
-index 41436f3..8384804 100755
---- a/debian/rules
-+++ b/debian/rules
-@@ -148,7 +148,7 @@ endif
- BACKTRACE_CONF_FLAGS ?= $(shell if ${debdir}/scripts/test-backtrace ; then echo --disable-backtrace ; fi)
- 
- COMMON_CONF_FLAGS = --enable-lto --disable-ubsan --disable-addrsan \
--	--disable-e2initrd-helper \
-+	--disable-threadsan --disable-e2initrd-helper \
- 	--infodir=/usr/share/info  --enable-symlink-install \
- 	--with-multiarch=$(DEB_HOST_MULTIARCH) \
- 	$(BACKTRACE_CONF_FLAGS) $(UTIL_CONF_FLAGS)
+329.11 EXT4-fs (nbd0): mounted filesystem with ordered data mode. Opts: 
+(null)
+329.12 block nbd0: Connection timed out
+329.13 block nbd0: shutting down sockets
+329.14 blk_update_request: I/O error, dev nbd0, sector 304384
+329.15 blk_update_request: I/O error, dev nbd0, sector 304640
+329.16 blk_update_request: I/O error, dev nbd0, sector 304896
+329.17 blk_update_request: I/O error, dev nbd0, sector 305152
+329.18 blk_update_request: I/O error, dev nbd0, sector 305408
+329.19 blk_update_request: I/O error, dev nbd0, sector 305664
+329.20 blk_update_request: I/O error, dev nbd0, sector 305920
+329.21 blk_update_request: I/O error, dev nbd0, sector 306176
+329.22 blk_update_request: I/O error, dev nbd0, sector 306432
+329.23 blk_update_request: I/O error, dev nbd0, sector 306688
+329.24 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 8388608 size 8388608 starting block 38400)
+329.25 Buffer I/O error on device nbd0, logical block 38144
+329.26 Buffer I/O error on device nbd0, logical block 38145
+329.27 Buffer I/O error on device nbd0, logical block 38146
+329.28 Buffer I/O error on device nbd0, logical block 38147
+329.29 Buffer I/O error on device nbd0, logical block 38148
+329.30 Buffer I/O error on device nbd0, logical block 38149
+329.31 Buffer I/O error on device nbd0, logical block 38150
+329.32 Buffer I/O error on device nbd0, logical block 38151
+329.33 Buffer I/O error on device nbd0, logical block 38152
+329.34 Buffer I/O error on device nbd0, logical block 38153
+329.35 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 8388608 size 8388608 starting block 38656)
+329.36 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 8388608 size 8388608 starting block 38912)
+329.37 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 16777216 size 8388608 starting block 39168)
+329.38 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 16777216 size 8388608 starting block 39424)
+329.39 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 16777216 size 8388608 starting block 39680)
+329.40 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 16777216 size 8388608 starting block 39936)
+329.41 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 16777216 size 8388608 starting block 40192)
+329.42 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 16777216 size 8388608 starting block 40448)
+329.43 EXT4-fs error (device nbd0): __ext4_get_inode_loc:4520: inode 
+#222: block 174: comm kworker/u113:0: unable to read itable block
+329.44 EXT4-fs warning (device nbd0): ext4_end_bio:322: I/O error -5 
+writing to inode 160 (offset 16777216 size 8388608 starting block 40704)
+329.45 ------------[ cut here ]------------
+329.46 kernel BUG at /kernel-source//fs/buffer.c:3091!
+329.47 invalid opcode: 0000 [#1] PREEMPT SMP
+329.48 Modules linked in: nbd xt_CHECKSUM iptable_mangle ipt_REJECT 
+nf_reject_ipv4 xt_tcpudp ebtable_filter ebtables ip6_tables 
+ipt_MASQUERADE nf_nat_masquerade_ipv4 nf_conntrack_netlink nfnetlink 
+xfrm_user iptable_nat xt_addrtype iptable_filter ip_tables xt_conntrack 
+x_tables br_netfilter bridge stp llc intel_rapl sb_edac intel_powerclamp 
+coretemp crct10dif_pclmul crct10dif_common aesni_intel aes_x86_64 
+crypto_simd cryptd glue_helper iTCO_wdt iTCO_vendor_support lpc_ich 
+i2c_i801 wmi acpi_pad acpi_power_meter nfsd openvswitch nf_defrag_ipv6 
+nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack 
+kvm_intel kvm irqbypass fuse
+329.49 CPU: 30 PID: 6 Comm: kworker/u113:0 Not tainted 
+4.12.18-rt0-yocto-preempt-rt #1
+329.50 Hardware name: Intel Corporation S2600WTT/S2600WTT, BIOS 
+GRNDSDP1.86B.0036.R05.1407140519 07/14/2014
+329.51 Workqueue: writeback wb_workfn (flush-43:0)
+329.52 task: ffff977bec759e00 task.stack: ffffa2930524c000
+329.53 RIP: 0010:submit_bh_wbc+0x155/0x160
+329.54 RSP: 0018:ffffa2930524f7e0 EFLAGS: 00010246
+329.55 RAX: 0000000000620005 RBX: ffff977f05cddc18 RCX: 0000000000000000
+329.56 RDX: ffff977f05cddc18 RSI: 0000000000020800 RDI: 0000000000000001
+329.57 RBP: ffffa2930524f808 R08: ff00000000000000 R09: 00ffffffffffffff
+329.58 R10: ffffa2930524f920 R11: 000000000000058c R12: 000000000000a598
+329.59 R13: ffffffffba15c500 R14: ffff977fe1bab400 R15: ffff977fea643000
+329.60 FS: 0000000000000000(0000) GS:ffff977befa00000(0000) 
+knlGS:0000000000000000
+329.61 CS: 0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+329.62 CR2: 00007f7d70000010 CR3: 000000035ce0e000 CR4: 00000000001406e0
+329.63 Call Trace:
+329.64 __sync_dirty_buffer+0x41/0xa0
+329.65 ext4_commit_super+0x1d6/0x2a0
+329.66 __ext4_error_inode+0xb2/0x170
+329.67 ? wake_up_bit+0x30/0x30
+329.68 __ext4_get_inode_loc+0x365/0x460
+329.69 ext4_reserve_inode_write+0x51/0xb0
+329.70 ? ext4_writepages+0xd23/0x1090
+329.71 ext4_mark_inode_dirty+0x48/0x200
+329.72 ext4_writepages+0xd23/0x1090
+329.73 ? __schedule+0x25b/0x6a0
+329.74 do_writepages+0x39/0xc0
+329.75 ? do_writepages+0x39/0xc0
+329.76 ? unpin_current_cpu+0x5e/0x80
+329.77 ? migrate_enable+0x2dd/0x3c0
+329.78 __writeback_single_inode+0x4d/0x490
+329.79 ? __writeback_single_inode+0x4d/0x490
+329.80 ? rt_spin_unlock+0x27/0x40
+329.81 writeback_sb_inodes+0x230/0x4d0
+329.82 wb_writeback+0xde/0x3d0
+329.83 wb_workfn+0xb8/0x420
+329.84 ? wb_workfn+0xb8/0x420
+329.85 ? unpin_current_cpu+0x5e/0x80
+329.86 ? migrate_enable+0x2dd/0x3c0
+329.87 ? _raw_spin_lock+0x17/0x40
+329.88 process_one_work+0x1cf/0x470
+329.89 ? migrate_disable+0x12f/0x200
+329.90 worker_thread+0x4b/0x450
+329.91 kthread+0x124/0x140
+329.92 ? process_one_work+0x470/0x470
+329.93 ? kthread_create_on_node+0x40/0x40
+329.94 ret_from_fork+0x22/0x30
+329.95 Code: 89 ef 44 09 f7 41 89 7c 24 14 4c 89 e7 e8 04 c4 22 00 5b 31 
+c0 41 5c 41 5d 41 5e 41 5f 5d c3 f0 80 62 01 f7 e9 19 ff ff ff 0f 0b 
+<0f> 0b 0f 0b 0f 0b 0f 0b 0f 0b 90 0f 1f 44 00 00 55 49 89 f9 48
+329.96 RIP: submit_bh_wbc+0x155/0x160 RSP: ffffa2930524f7e0
+329.97 ---[ end trace 0000000000000002 ]---
+329.98 Buffer I/O error on dev nbd0, logical block 262144, lost sync 
+page write
+329.99 JBD2: Error -5 detected when updating journal superblock for nbd0-8.
+329.100 Aborting journal on device nbd0-8.
+329.101 ------------[ cut here ]------------
+329.102 kernel BUG at /kernel-source//fs/buffer.c:3091!
+329.103 invalid opcode: 0000 [#2] PREEMPT SMP
+329.104 Modules linked in: nbd xt_CHECKSUM iptable_mangle ipt_REJECT 
+nf_reject_ipv4 xt_tcpudp ebtable_filter ebtables ip6_tables 
+ipt_MASQUERADE nf_nat_masquerade_ipv4 nf_conntrack_netlink nfnetlink 
+xfrm_user iptable_nat xt_addrtype iptable_filter ip_tables xt_conntrack 
+x_tables br_netfilter bridge stp llc intel_rapl sb_edac intel_powerclamp 
+coretemp crct10dif_pclmul crct10dif_common aesni_intel aes_x86_64 
+crypto_simd cryptd glue_helper iTCO_wdt iTCO_vendor_support lpc_ich 
+i2c_i801 wmi acpi_pad acpi_power_meter nfsd openvswitch nf_defrag_ipv6 
+nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack 
+kvm_intel kvm irqbypass fuse
+329.105 CPU: 36 PID: 7760 Comm: jbd2/nbd0-8 Tainted: G D 
+4.12.18-rt0-yocto-preempt-rt #1
+329.106 Hardware name: Intel Corporation S2600WTT/S2600WTT, BIOS 
+GRNDSDP1.86B.0036.R05.1407140519 07/14/2014
+329.107 task: ffff977fdd853c00 task.stack: ffffa29308934000
+329.108 RIP: 0010:submit_bh_wbc+0x155/0x160
+329.109 RSP: 0018:ffffa29308937bd0 EFLAGS: 00010246
+329.110 RAX: 0000000004000005 RBX: ffff977f05cf62e8 RCX: 0000000000000000
+329.111 RDX: ffff977f05cf62e8 RSI: 0000000000020800 RDI: 0000000000000001
+329.112 RBP: ffffa29308937bf8 R08: 0000000000000100 R09: 0000000000000000
+329.113 R10: ffff977fdd853f30 R11: 0000000000000000 R12: ffff977fea6bc800
+329.114 R13: 0000000000020800 R14: ffff977fc8a33000 R15: ffff977fea6bc800
+329.115 FS: 0000000000000000(0000) GS:ffff977befb80000(0000) 
+knlGS:0000000000000000
+329.116 CS: 0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+329.117 CR2: 0000000000915d50 CR3: 000000035ce0e000 CR4: 00000000001406e0
+329.118 Call Trace:
+329.119 submit_bh+0x10/0x20
+329.120 jbd2_write_superblock+0xaf/0x1e0
+329.121 jbd2_journal_update_sb_errno+0x3f/0x50
+329.122 __journal_abort_soft+0x3d/0x60
+329.123 jbd2_write_superblock+0x1b4/0x1e0
+329.124 jbd2_journal_update_sb_log_tail+0x3a/0x90
+329.125 jbd2_journal_commit_transaction+0xb89/0x18d0
+329.126 ? __this_cpu_preempt_check+0x13/0x20
+329.127 ? __perf_event_task_sched_in+0x66/0x190
+329.128 ? _raw_spin_lock_irqsave+0x1d/0x50
+329.129 ? lock_timer_base+0x81/0xa0
+329.130 ? _raw_spin_unlock_irqrestore+0x18/0x50
+329.131 ? try_to_del_timer_sync+0x44/0x60
+329.132 ? del_timer_sync+0x47/0xf0
+329.133 kjournald2+0xc6/0x250
+329.134 ? kjournald2+0xc6/0x250
+329.135 ? wake_bit_function+0x60/0x60
+329.136 kthread+0x124/0x140
+329.137 ? commit_timeout+0x10/0x10
+329.138 ? kthread_create_on_node+0x40/0x40
+329.139 ret_from_fork+0x22/0x30
+329.140 Code: 89 ef 44 09 f7 41 89 7c 24 14 4c 89 e7 e8 04 c4 22 00 5b 
+31 c0 41 5c 41 5d 41 5e 41 5f 5d c3 f0 80 62 01 f7 e9 19 ff ff ff 0f 0b 
+<0f> 0b 0f 0b 0f 0b 0f 0b 0f 0b 90 0f 1f 44 00 00 55 49 89 f9 48
+329.141 RIP: submit_bh_wbc+0x155/0x160 RSP: ffffa29308937bd0
+329.142 ---[ end trace 0000000000000003 ]---
+329.143 block nbd0: Connection timed out
+329.144 block nbd0: Connection timed out
+329.145 block nbd0: Connection timed out
+329.146 block nbd0: Connection timed out
+329.147 block nbd0: Connection timed out
+329.148 block nbd0: Connection timed out
+329.149 block nbd0: Connection timed out
+329.150 block nbd0: Connection timed out
+329.151 block nbd0: Connection timed out
