@@ -1,7 +1,7 @@
 From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: [PATCH 2/4] misc: enable UBSAN if the builder wants it
-Date: Fri, 19 Jan 2018 22:13:03 -0800
-Message-ID: <151642878322.9652.3306957963896239601.stgit@magnolia>
+Subject: [PATCH 4/4] misc: enable thread sanitizer if the builder wants it
+Date: Fri, 19 Jan 2018 22:13:15 -0800
+Message-ID: <151642879586.9652.2681042788789696355.stgit@magnolia>
 References: <151642877063.9652.3628059578106842868.stgit@magnolia>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,102 +9,92 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: tytso@mit.edu, darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:47600 "EHLO
+Received: from userp2130.oracle.com ([156.151.31.86]:47638 "EHLO
         userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750745AbeATGOA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Jan 2018 01:14:00 -0500
+        with ESMTP id S1750745AbeATGOC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Jan 2018 01:14:02 -0500
 In-Reply-To: <151642877063.9652.3628059578106842868.stgit@magnolia>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Enable the undefined behavior sanitizer (ubsan) if the builder requests
-it and it's available.
+Enable the gcc/clang thread data corruption sanitizer if the builder
+requests it and it's available.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- MCONFIG.in       |    4 ++--
- config/ltmain.sh |    1 +
- configure        |   52 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- configure.ac     |   28 ++++++++++++++++++++++++++++
- debian/rules     |    2 +-
- 5 files changed, 84 insertions(+), 3 deletions(-)
- create mode 120000 config/ltmain.sh
+ MCONFIG.in   |    4 ++--
+ configure    |   56 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ configure.ac |   31 +++++++++++++++++++++++++++++++
+ debian/rules |    2 +-
+ 4 files changed, 90 insertions(+), 3 deletions(-)
 
 
 diff --git a/MCONFIG.in b/MCONFIG.in
-index 84de8d9..cb168a5 100644
+index 3440cce..6355b49 100644
 --- a/MCONFIG.in
 +++ b/MCONFIG.in
 @@ -80,8 +80,8 @@ UDEVRULESDIR = @udevrulesdir@
  @ifNotGNUmake@ CHECK_CMD=true
  @ifNotGNUmake@ CPPCHECK_CMD=true
  
--SANITIZER_CFLAGS = @lto_cflags@
--SANITIZER_LDFLAGS = @lto_ldflags@
-+SANITIZER_CFLAGS = @lto_cflags@ @ubsan_cflags@
-+SANITIZER_LDFLAGS = @lto_ldflags@ @ubsan_ldflags@
+-SANITIZER_CFLAGS = @lto_cflags@ @ubsan_cflags@ @addrsan_cflags@
+-SANITIZER_LDFLAGS = @lto_ldflags@ @ubsan_ldflags@ @addrsan_ldflags@
++SANITIZER_CFLAGS = @lto_cflags@ @ubsan_cflags@ @addrsan_cflags@ @threadsan_cflags@
++SANITIZER_LDFLAGS = @lto_ldflags@ @ubsan_ldflags@ @addrsan_ldflags@ @threadsan_ldflags@
  
  CC = @CC@
  BUILD_CC = @BUILD_CC@
-diff --git a/config/ltmain.sh b/config/ltmain.sh
-new file mode 120000
-index 0000000..8cff389
---- /dev/null
-+++ b/config/ltmain.sh
-@@ -0,0 +1 @@
-+/usr/share/libtool/build-aux/ltmain.sh
-\ No newline at end of file
 diff --git a/configure b/configure
-index 181fb76..b3e8473 100755
+index 1d5f907..045434a 100755
 --- a/configure
 +++ b/configure
 @@ -649,6 +649,9 @@ E2SCRUB_CMT
  UNIX_CMT
  CYGWIN_CMT
  LINUX_CMT
-+ubsan_ldflags
-+ubsan_cflags
-+have_ubsan
- lto_ldflags
- lto_cflags
- have_lto
-@@ -904,6 +907,7 @@ with_included_gettext
- with_libintl_prefix
- enable_fuse2fs
++threadsan_ldflags
++threadsan_cflags
++have_threadsan
+ addrsan_ldflags
+ addrsan_cflags
+ have_addrsan
+@@ -912,6 +915,7 @@ enable_fuse2fs
  enable_lto
-+enable_ubsan
+ enable_ubsan
+ enable_addrsan
++enable_threadsan
  with_multiarch
  '
        ac_precious_vars='build_alias
-@@ -1576,6 +1580,7 @@ Optional Features:
-   --disable-rpath         do not hardcode runtime library paths
-   --disable-fuse2fs	  do not build fuse2fs
+@@ -1586,6 +1590,7 @@ Optional Features:
    --enable-lto		  enable link time optimization
-+  --enable-ubsan	  enable undefined behavior sanitizer
+   --enable-ubsan	  enable undefined behavior sanitizer
+   --enable-addrsan	  enable address sanitizer
++  --enable-threadsan	  enable thread sanitizer
  
  Optional Packages:
    --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
-@@ -13841,6 +13846,53 @@ fi
- if test "$enable_lto" = "yes" && test "$have_lto" != "yes"; then
- 	as_fn_error $? "LTO not supported by compiler." "$LINENO" 5
+@@ -13945,6 +13950,57 @@ fi
+ if test "$enable_addrsan" = "yes" && test "$have_addrsan" != "yes"; then
+ 	as_fn_error $? "ADDRSAN not supported by compiler." "$LINENO" 5
  fi
-+# Check whether --enable-ubsan was given.
-+if test "${enable_ubsan+set}" = set; then :
-+  enableval=$enable_ubsan;
++# Check whether --enable-threadsan was given.
++if test "${enable_threadsan+set}" = set; then :
++  enableval=$enable_threadsan;
 +else
-+  enable_ubsan=no
++  enable_threadsan=no
 +fi
 +
-+if test "$enable_ubsan" = "yes" || test "$enable_ubsan" = "probe"; then
-+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if C compiler supports UBSAN" >&5
-+$as_echo_n "checking if C compiler supports UBSAN... " >&6; }
++if test "$enable_threadsan" = "yes" || test "$enable_threadsan" = "probe"; then
++	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if C compiler supports THREADSAN" >&5
++$as_echo_n "checking if C compiler supports THREADSAN... " >&6; }
 +	OLD_CFLAGS="$CFLAGS"
 +	OLD_LDFLAGS="$LDFLAGS"
-+	UBSAN_FLAGS="-fsanitize=undefined"
-+	CFLAGS="$CFLAGS $UBSAN_FLAGS"
-+	LDFLAGS="$LDFLAGS $UBSAN_FLAGS"
++	THREADSAN_FLAGS="-fsanitize=thread"
++	CFLAGS="$CFLAGS $THREADSAN_FLAGS"
++	LDFLAGS="$LDFLAGS $THREADSAN_FLAGS"
 +	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 +/* end confdefs.h.  */
 +
@@ -119,9 +109,9 @@ index 181fb76..b3e8473 100755
 +if ac_fn_c_try_link "$LINENO"; then :
 +  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 +$as_echo "yes" >&6; }
-+		ubsan_cflags=$UBSAN_FLAGS
-+		ubsan_ldflags=$UBSAN_FLAGS
-+		have_ubsan=yes
++		threadsan_cflags=$THREADSAN_FLAGS
++		threadsan_ldflags=$THREADSAN_FLAGS
++		have_threadsan=yes
 +else
 +  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 +$as_echo "no" >&6; }
@@ -134,61 +124,68 @@ index 181fb76..b3e8473 100755
 +
 +
 +fi
-+if test "$enable_ubsan" = "yes" && test "$have_ubsan" != "yes"; then
-+	as_fn_error $? "UBSAN not supported by compiler." "$LINENO" 5
++if test "$enable_threadsan" = "yes" && test "$have_threadsan" != "yes"; then
++	as_fn_error $? "THREADSAN not supported by compiler." "$LINENO" 5
++fi
++if test "$have_threadsan" = "yes" && test "$have_addrsan" = "yes"; then
++	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ADDRSAN and THREADSAN are not known to work together." >&5
++$as_echo "$as_me: WARNING: ADDRSAN and THREADSAN are not known to work together." >&2;}
 +fi
  LINUX_CMT="#"
  CYGWIN_CMT="#"
  UNIX_CMT=
 diff --git a/configure.ac b/configure.ac
-index 609207f..95a6832 100644
+index 826a09a..a13ca05 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -1328,6 +1328,34 @@ if test "$enable_lto" = "yes" && test "$have_lto" != "yes"; then
- 	AC_MSG_ERROR([LTO not supported by compiler.])
+@@ -1384,6 +1384,37 @@ if test "$enable_addrsan" = "yes" && test "$have_addrsan" != "yes"; then
+ 	AC_MSG_ERROR([ADDRSAN not supported by compiler.])
  fi
  dnl
-+dnl Enable UBSAN for all packages
++dnl Enable THREADSAN for all packages
 +dnl
-+AC_ARG_ENABLE([ubsan],
-+[  --enable-ubsan	  enable undefined behavior sanitizer],,
-+enable_ubsan=no)
-+if test "$enable_ubsan" = "yes" || test "$enable_ubsan" = "probe"; then
-+	AC_MSG_CHECKING([if C compiler supports UBSAN])
++AC_ARG_ENABLE([threadsan],
++[  --enable-threadsan	  enable thread sanitizer],,
++enable_threadsan=no)
++if test "$enable_threadsan" = "yes" || test "$enable_threadsan" = "probe"; then
++	AC_MSG_CHECKING([if C compiler supports THREADSAN])
 +	OLD_CFLAGS="$CFLAGS"
 +	OLD_LDFLAGS="$LDFLAGS"
-+	UBSAN_FLAGS="-fsanitize=undefined"
-+	CFLAGS="$CFLAGS $UBSAN_FLAGS"
-+	LDFLAGS="$LDFLAGS $UBSAN_FLAGS"
++	THREADSAN_FLAGS="-fsanitize=thread"
++	CFLAGS="$CFLAGS $THREADSAN_FLAGS"
++	LDFLAGS="$LDFLAGS $THREADSAN_FLAGS"
 +	AC_LINK_IFELSE([AC_LANG_PROGRAM([])],
 +		[AC_MSG_RESULT([yes])]
-+		[ubsan_cflags=$UBSAN_FLAGS]
-+		[ubsan_ldflags=$UBSAN_FLAGS]
-+		[have_ubsan=yes],
++		[threadsan_cflags=$THREADSAN_FLAGS]
++		[threadsan_ldflags=$THREADSAN_FLAGS]
++		[have_threadsan=yes],
 +		[AC_MSG_RESULT([no])])
 +	CFLAGS="${OLD_CFLAGS}"
 +	LDFLAGS="${OLD_LDFLAGS}"
-+	AC_SUBST(have_ubsan)
-+	AC_SUBST(ubsan_cflags)
-+	AC_SUBST(ubsan_ldflags)
++	AC_SUBST(have_threadsan)
++	AC_SUBST(threadsan_cflags)
++	AC_SUBST(threadsan_ldflags)
 +fi
-+if test "$enable_ubsan" = "yes" && test "$have_ubsan" != "yes"; then
-+	AC_MSG_ERROR([UBSAN not supported by compiler.])
++if test "$enable_threadsan" = "yes" && test "$have_threadsan" != "yes"; then
++	AC_MSG_ERROR([THREADSAN not supported by compiler.])
++fi
++if test "$have_threadsan" = "yes" && test "$have_addrsan" = "yes"; then
++	AC_MSG_WARN([ADDRSAN and THREADSAN are not known to work together.])
 +fi
 +dnl
  dnl OS-specific uncomment control
  dnl
  LINUX_CMT="#"
 diff --git a/debian/rules b/debian/rules
-index 3a22c35..5dc257f 100755
+index 41436f3..8384804 100755
 --- a/debian/rules
 +++ b/debian/rules
-@@ -147,7 +147,7 @@ endif
- 
+@@ -148,7 +148,7 @@ endif
  BACKTRACE_CONF_FLAGS ?= $(shell if ${debdir}/scripts/test-backtrace ; then echo --disable-backtrace ; fi)
  
--COMMON_CONF_FLAGS = --enable-lto --disable-e2initrd-helper \
-+COMMON_CONF_FLAGS = --enable-lto --disable-ubsan --disable-e2initrd-helper \
+ COMMON_CONF_FLAGS = --enable-lto --disable-ubsan --disable-addrsan \
+-	--disable-e2initrd-helper \
++	--disable-threadsan --disable-e2initrd-helper \
  	--infodir=/usr/share/info  --enable-symlink-install \
  	--with-multiarch=$(DEB_HOST_MULTIARCH) \
  	$(BACKTRACE_CONF_FLAGS) $(UTIL_CONF_FLAGS)
