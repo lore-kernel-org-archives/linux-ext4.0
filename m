@@ -1,70 +1,30 @@
-From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: [PATCH v6 3/4] vfs: Add timestamp_truncate() api
-Date: Sun, 21 Jan 2018 18:04:25 -0800
-Message-ID: <20180122020426.2988-4-deepa.kernel@gmail.com>
-References: <20180122020426.2988-1-deepa.kernel@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-fsdevel@vger.kernel.org, y2038@lists.linaro.org,
- torvalds@linux-foundation.org, linux-kernel@vger.kernel.org, arnd@arndb.de
-To: viro@zeniv.linux.org.uk, tytso@mit.edu, adilger.kernel@dilger.ca,
- linux-ext4@vger.kernel.org
-Return-path: <y2038-bounces@lists.linaro.org>
-In-Reply-To: <20180122020426.2988-1-deepa.kernel@gmail.com>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
-List-Id: linux-ext4.vger.kernel.org
+From: =?utf-8?B?0JHQu9Cw0LPQvtC00LDRgNC10L3QutC+INCQ0YDRgtGR0Lw=?=
+        <artem.blagodarenko@gmail.com>
+Subject: Re: [PATCH v3 0/4] e2image -b option to pass superblock number
+Date: Mon, 22 Jan 2018 12:05:24 +0300
+Message-ID: <E5B80122-4388-4B57-827D-49E09923CBAC@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-lf0-f53.google.com ([209.85.215.53]:37978 "EHLO
+        mail-lf0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751024AbeAVJF2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Jan 2018 04:05:28 -0500
+Received: by mail-lf0-f53.google.com with SMTP id g72so9652338lfg.5
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Jan 2018 01:05:27 -0800 (PST)
+Received: from c02tn4c6htd6.lan ([185.222.152.217])
+        by smtp.gmail.com with ESMTPSA id i186sm629168lji.26.2018.01.22.01.05.25
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 22 Jan 2018 01:05:25 -0800 (PST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-dGltZXNwZWNfdHJ1bmMoKSBmdW5jdGlvbiBpcyB1c2VkIHRvIHRydW5jYXRlIGEKZmlsZXN5c3Rl
-bSB0aW1lc3RhbXAgdG8gdGhlIHJpZ2h0IGdyYW51bGFyaXR5LgpCdXQsIHRoZSBmdW5jdGlvbiBk
-b2VzIG5vdCBjbGFtcCB0dl9zZWMgcGFydCBvZiB0aGUKdGltZXN0YW1wcyBhY2NvcmRpbmcgdG8g
-dGhlIGZpbGVzeXN0ZW0gdGltZXN0YW1wIGxpbWl0cy4KCkFsc28sIHRpbWVzcGVjX3RydW5jKCkg
-aXMgZXhjbHVzaXZlbHkgdXNlZCBmb3IgZmlsZXN5c3RlbQp0aW1lc3RhbXBzLiBNb3ZlIHRoZSBh
-cGkgdG8gYmUgcGFydCBvZiB2ZnMuCgpUaGUgcmVwbGFjZW1lbnQgYXBpOiB0aW1lc3RhbXBfdHJ1
-bmNhdGUoKSBhbHNvIGFsdGVycyB0aGUKc2lnbmF0dXJlIG9mIHRoZSBmdW5jdGlvbiB0byBhY2Nv
-bW1vZGF0ZSBmaWxlc3lzdGVtCnRpbWVzdGFtcCBjbGFtcGluZyBhY2NvcmRpbmcgdG8gZmxlc3lz
-dGVtIGxpbWl0cy4KCk5vdGUgdGhhdCB0aGUgY2xhbXBfdCBtYWNybyBpcyB1c2VkIGZvciBjbGFt
-cGluZyBoZXJlIGFzIHZmcwppcyBub3QgeWV0IHVzaW5nIHN0cnVjdCB0aW1lc3BlYzY0IGludGVy
-bmFsbHkuIFRoaXMgaXMKcmVxdWlyZWQgZm9yIGNvbXBpbGF0aW9uIHB1cnBvc2VzLgpBbHNvIG5v
-dGUgdGhhdCBjbGFtcCB3b24ndCBkbyB0aGUgcmlnaHQgdGhpbmcgZm9yIHRpbWVzdGFtcHMKYmV5
-b25kIDIwMzggb24gMzItYml0IG1hY2hpbmVzIHVudGlsIHRoZSB2ZnMgdXNlcyB0aW1lc3BlYzY0
-LgpBZnRlciB0aGUgdmZzIGlzIHRyYW5zaXRpb25lZCB0byB1c2UgdGltZXNwZWM2NCBmb3IgdGlt
-ZXN0YW1wcywKY2xhbXBfdCgpIGNhbiBiZSByZXBsYWNlZCBieSBjbGFtcCgpLgoKU2lnbmVkLW9m
-Zi1ieTogRGVlcGEgRGluYW1hbmkgPGRlZXBhLmtlcm5lbEBnbWFpbC5jb20+Ci0tLQogZnMvaW5v
-ZGUuYyB8IDMyICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystCiAxIGZpbGUgY2hhbmdl
-ZCwgMzEgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQoKZGlmZiAtLWdpdCBhL2ZzL2lub2Rl
-LmMgYi9mcy9pbm9kZS5jCmluZGV4IGVmMzYyMzY0ZDM5Ni4uMGUyODIwYWRlNTU0IDEwMDY0NAot
-LS0gYS9mcy9pbm9kZS5jCisrKyBiL2ZzL2lub2RlLmMKQEAgLTIxMDcsNiArMjEwNywzNiBAQCB2
-b2lkIGlub2RlX25vaGlnaG1lbShzdHJ1Y3QgaW5vZGUgKmlub2RlKQogfQogRVhQT1JUX1NZTUJP
-TChpbm9kZV9ub2hpZ2htZW0pOwogCisvKioKKyAqIHRpbWVzdGFtcF90cnVuY2F0ZSAtIFRydW5j
-YXRlIHRpbWVzcGVjIHRvIGEgZ3JhbnVsYXJpdHkKKyAqIEB0OiBUaW1lc3BlYworICogQGlub2Rl
-OiBpbm9kZSBiZWluZyB1cGRhdGVkCisgKgorICogVHJ1bmNhdGUgYSB0aW1lc3BlYyB0byB0aGUg
-Z3JhbnVsYXJpdHkgc3VwcG9ydGVkIGJ5IHRoZSBmcworICogY29udGFpbmluZyB0aGUgaW5vZGUu
-IEFsd2F5cyByb3VuZHMgZG93bi4gZ3JhbiBtdXN0CisgKiBub3QgYmUgMCBub3IgZ3JlYXRlciB0
-aGFuIGEgc2Vjb25kIChOU0VDX1BFUl9TRUMsIG9yIDEwXjkgbnMpLgorICovCitzdHJ1Y3QgdGlt
-ZXNwZWMgdGltZXN0YW1wX3RydW5jYXRlKHN0cnVjdCB0aW1lc3BlYyB0LCBzdHJ1Y3QgaW5vZGUg
-Kmlub2RlKQoreworCXN0cnVjdCBzdXBlcl9ibG9jayAqc2IgPSBpbm9kZS0+aV9zYjsKKwl1bnNp
-Z25lZCBpbnQgZ3JhbiA9IHNiLT5zX3RpbWVfZ3JhbjsKKworCXQudHZfc2VjID0gY2xhbXBfdCh0
-aW1lNjRfdCwgdC50dl9zZWMsIHNiLT5zX3RpbWVfbWluLCBzYi0+c190aW1lX21heCk7CisKKwkv
-KiBBdm9pZCBkaXZpc2lvbiBpbiB0aGUgY29tbW9uIGNhc2VzIDEgbnMgYW5kIDEgcy4gKi8KKwlp
-ZiAoZ3JhbiA9PSAxKSB7CisJCS8qIG5vdGhpbmcgKi8KKwl9IGVsc2UgaWYgKGdyYW4gPT0gTlNF
-Q19QRVJfU0VDKSB7CisJCXQudHZfbnNlYyA9IDA7CisJfSBlbHNlIGlmIChncmFuID4gMSAmJiBn
-cmFuIDwgTlNFQ19QRVJfU0VDKSB7CisJCXQudHZfbnNlYyAtPSB0LnR2X25zZWMgJSBncmFuOwor
-CX0gZWxzZSB7CisJCVdBUk4oMSwgImlsbGVnYWwgZmlsZSB0aW1lIGdyYW51bGFyaXR5OiAldSIs
-IGdyYW4pOworCX0KKwlyZXR1cm4gdDsKK30KK0VYUE9SVF9TWU1CT0wodGltZXN0YW1wX3RydW5j
-YXRlKTsKKwogLyoqCiAgKiBjdXJyZW50X3RpbWUgLSBSZXR1cm4gRlMgdGltZQogICogQGlub2Rl
-OiBpbm9kZS4KQEAgLTIxMjYsNiArMjE1Niw2IEBAIHN0cnVjdCB0aW1lc3BlYyBjdXJyZW50X3Rp
-bWUoc3RydWN0IGlub2RlICppbm9kZSkKIAkJcmV0dXJuIG5vdzsKIAl9CiAKLQlyZXR1cm4gdGlt
-ZXNwZWNfdHJ1bmMobm93LCBpbm9kZS0+aV9zYi0+c190aW1lX2dyYW4pOworCXJldHVybiB0aW1l
-c3RhbXBfdHJ1bmNhdGUobm93LCBpbm9kZSk7CiB9CiBFWFBPUlRfU1lNQk9MKGN1cnJlbnRfdGlt
-ZSk7Ci0tIAoyLjE0LjEKCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fClkyMDM4IG1haWxpbmcgbGlzdApZMjAzOEBsaXN0cy5saW5hcm8ub3JnCmh0dHBzOi8v
-bGlzdHMubGluYXJvLm9yZy9tYWlsbWFuL2xpc3RpbmZvL3kyMDM4Cg==
+Hello Theodore,
+
+Do I need to update something in this patch?
+
+Thanks,
+Artem Blagodarenko.
