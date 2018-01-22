@@ -1,77 +1,54 @@
 From: Deepa Dinamani <deepa.kernel@gmail.com>
-Subject: [PATCH v6 4/4] utimes: Clamp the timestamps before update
-Date: Sun, 21 Jan 2018 18:04:26 -0800
-Message-ID: <20180122020426.2988-5-deepa.kernel@gmail.com>
+Subject: [PATCH v6 2/4] ext4: Initialize timestamps limits
+Date: Sun, 21 Jan 2018 18:04:24 -0800
+Message-ID: <20180122020426.2988-3-deepa.kernel@gmail.com>
 References: <20180122020426.2988-1-deepa.kernel@gmail.com>
-Cc: torvalds@linux-foundation.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, arnd@arndb.de, y2038@lists.linaro.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-fsdevel@vger.kernel.org, y2038@lists.linaro.org,
+ torvalds@linux-foundation.org, linux-kernel@vger.kernel.org, arnd@arndb.de
 To: viro@zeniv.linux.org.uk, tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+ linux-ext4@vger.kernel.org
+Return-path: <y2038-bounces@lists.linaro.org>
 In-Reply-To: <20180122020426.2988-1-deepa.kernel@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-POSIX.1 section for futimens, utimensat and utimes says:
-The file's relevant timestamp shall be set to the
-greatest value supported by the file system that is
-not greater than the specified time.
-
-Clamp the timestamps accordingly before assignment.
-
-Note that the clamp_t macro is used for clamping here as vfs
-is not yet using struct timespec64 internally. This is
-required for compilation purposes.
-Also note that clamp won't do the right thing for timestamps
-beyond 2038 on 32-bit machines until the vfs uses timespec64.
-After the vfs is transitioned to use timespec64 for timestamps,
-clamp_t() can be replaced by clamp().
-
-Signed-off-by: Deepa Dinamani <deepa.kernel@gmail.com>
----
- fs/utimes.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
-
-diff --git a/fs/utimes.c b/fs/utimes.c
-index e4b3d7c2c9f5..82fdcc3284b9 100644
---- a/fs/utimes.c
-+++ b/fs/utimes.c
-@@ -50,6 +50,7 @@ static int utimes_common(const struct path *path, struct timespec64 *times)
- 	int error;
- 	struct iattr newattrs;
- 	struct inode *inode = path->dentry->d_inode;
-+	struct super_block *sb = inode->i_sb;
- 	struct inode *delegated_inode = NULL;
- 
- 	error = mnt_want_write(path->mnt);
-@@ -65,16 +66,24 @@ static int utimes_common(const struct path *path, struct timespec64 *times)
- 		if (times[0].tv_nsec == UTIME_OMIT)
- 			newattrs.ia_valid &= ~ATTR_ATIME;
- 		else if (times[0].tv_nsec != UTIME_NOW) {
--			newattrs.ia_atime.tv_sec = times[0].tv_sec;
--			newattrs.ia_atime.tv_nsec = times[0].tv_nsec;
-+			newattrs.ia_atime.tv_sec =
-+				clamp_t(time64_t, times[0].tv_sec, sb->s_time_min, sb->s_time_max);
-+			if (times[0].tv_sec >= sb->s_time_max)
-+				newattrs.ia_atime.tv_nsec = 0;
-+			else
-+				newattrs.ia_atime.tv_nsec = times[0].tv_nsec;
- 			newattrs.ia_valid |= ATTR_ATIME_SET;
- 		}
- 
- 		if (times[1].tv_nsec == UTIME_OMIT)
- 			newattrs.ia_valid &= ~ATTR_MTIME;
- 		else if (times[1].tv_nsec != UTIME_NOW) {
--			newattrs.ia_mtime.tv_sec = times[1].tv_sec;
--			newattrs.ia_mtime.tv_nsec = times[1].tv_nsec;
-+			newattrs.ia_mtime.tv_sec =
-+				clamp_t(time64_t, times[1].tv_sec, sb->s_time_min, sb->s_time_max);
-+			if (times[1].tv_sec >= sb->s_time_max)
-+				newattrs.ia_mtime.tv_nsec = 0;
-+			else
-+				newattrs.ia_mtime.tv_nsec = times[1].tv_nsec;
- 			newattrs.ia_valid |= ATTR_MTIME_SET;
- 		}
- 		/*
--- 
-2.14.1
+ZXh0NCBoYXMgZGlmZmVyZW50IG92ZXJmbG93IGxpbWl0cyBmb3IgbWF4IGZpbGVzeXN0ZW0KdGlt
+ZXN0YW1wcyBiYXNlZCBvbiB0aGUgZXh0cmEgYnl0ZXMgYXZhaWxhYmxlLgoKU2lnbmVkLW9mZi1i
+eTogRGVlcGEgRGluYW1hbmkgPGRlZXBhLmtlcm5lbEBnbWFpbC5jb20+CkNjOiAiVGhlb2RvcmUg
+VHMnbyIgPHR5dHNvQG1pdC5lZHU+CkNjOiBBbmRyZWFzIERpbGdlciA8YWRpbGdlci5rZXJuZWxA
+ZGlsZ2VyLmNhPgpDYzogbGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmcKLS0tCiBmcy9leHQ0L2V4
+dDQuaCAgfCA0ICsrKysKIGZzL2V4dDQvc3VwZXIuYyB8IDcgKysrKysrLQogMiBmaWxlcyBjaGFu
+Z2VkLCAxMCBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pCgpkaWZmIC0tZ2l0IGEvZnMvZXh0
+NC9leHQ0LmggYi9mcy9leHQ0L2V4dDQuaAppbmRleCAzMjQxNDc1YTE3MzMuLmZlNGQ3YTE2ODY2
+NCAxMDA2NDQKLS0tIGEvZnMvZXh0NC9leHQ0LmgKKysrIGIvZnMvZXh0NC9leHQ0LmgKQEAgLTE2
+MDIsNiArMTYwMiwxMCBAQCBzdGF0aWMgaW5saW5lIHZvaWQgZXh0NF9jbGVhcl9zdGF0ZV9mbGFn
+cyhzdHJ1Y3QgZXh0NF9pbm9kZV9pbmZvICplaSkKIAogI2RlZmluZSBFWFQ0X0dPT0RfT0xEX0lO
+T0RFX1NJWkUgMTI4CiAKKyNkZWZpbmUgRVhUNF9FWFRSQV9USU1FU1RBTVBfTUFYCSgoKHM2NCkx
+IDw8IDM0KSAtIDEgICsgUzMyX01JTikKKyNkZWZpbmUgRVhUNF9OT05fRVhUUkFfVElNRVNUQU1Q
+X01BWAlTMzJfTUFYCisjZGVmaW5lIEVYVDRfVElNRVNUQU1QX01JTgkJUzMyX01JTgorCiAvKgog
+ICogRmVhdHVyZSBzZXQgZGVmaW5pdGlvbnMKICAqLwpkaWZmIC0tZ2l0IGEvZnMvZXh0NC9zdXBl
+ci5jIGIvZnMvZXh0NC9zdXBlci5jCmluZGV4IDA4NDNlYmZlYWNlMS4uN2MyYjIyN2FhMzE5IDEw
+MDY0NAotLS0gYS9mcy9leHQ0L3N1cGVyLmMKKysrIGIvZnMvZXh0NC9zdXBlci5jCkBAIC0zNzY4
+LDggKzM3NjgsMTMgQEAgc3RhdGljIGludCBleHQ0X2ZpbGxfc3VwZXIoc3RydWN0IHN1cGVyX2Js
+b2NrICpzYiwgdm9pZCAqZGF0YSwgaW50IHNpbGVudCkKIAkJCSAgICAgICBzYmktPnNfaW5vZGVf
+c2l6ZSk7CiAJCQlnb3RvIGZhaWxlZF9tb3VudDsKIAkJfQotCQlpZiAoc2JpLT5zX2lub2RlX3Np
+emUgPiBFWFQ0X0dPT0RfT0xEX0lOT0RFX1NJWkUpCisJCWlmIChzYmktPnNfaW5vZGVfc2l6ZSA+
+IEVYVDRfR09PRF9PTERfSU5PREVfU0laRSkgewogCQkJc2ItPnNfdGltZV9ncmFuID0gMSA8PCAo
+RVhUNF9FUE9DSF9CSVRTIC0gMik7CisJCQlzYi0+c190aW1lX21heCA9IEVYVDRfRVhUUkFfVElN
+RVNUQU1QX01BWDsKKwkJfSBlbHNlCisJCQlzYi0+c190aW1lX21heCA9IEVYVDRfTk9OX0VYVFJB
+X1RJTUVTVEFNUF9NQVg7CisKKwkJc2ItPnNfdGltZV9taW4gPSBFWFQ0X1RJTUVTVEFNUF9NSU47
+CiAJfQogCiAJc2JpLT5zX2Rlc2Nfc2l6ZSA9IGxlMTZfdG9fY3B1KGVzLT5zX2Rlc2Nfc2l6ZSk7
+Ci0tIAoyLjE0LjEKCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fClkyMDM4IG1haWxpbmcgbGlzdApZMjAzOEBsaXN0cy5saW5hcm8ub3JnCmh0dHBzOi8vbGlz
+dHMubGluYXJvLm9yZy9tYWlsbWFuL2xpc3RpbmZvL3kyMDM4Cg==
