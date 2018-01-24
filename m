@@ -1,59 +1,60 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [PATCH v6 3/4] vfs: Add timestamp_truncate() api
-Date: Wed, 24 Jan 2018 12:56:20 +0100
-Message-ID: <CAK8P3a2+WO70nUW4xAAW-Lmc9OzcjERhKm8zZiBTcscKWzocdg@mail.gmail.com>
-References: <20180122020426.2988-1-deepa.kernel@gmail.com>
- <20180122020426.2988-4-deepa.kernel@gmail.com>
- <CA+55aFyNbcS8k3x1WrZ1-Ymtr6OpnCJ8NUZXBUCfacwWXYzC+g@mail.gmail.com>
- <CABeXuvogBWfTzteb8RFAGnW_HGLQX=hVUj0_SZ-TP1ZeNj=OHA@mail.gmail.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: Failure with generic/388 test
+Date: Wed, 24 Jan 2018 12:00:36 -0500
+Message-ID: <20180124170036.GD30326@thunk.org>
+References: <20180118173946.aug2x2iclhemeij6@quack2.suse.cz>
+ <20180119174041.GB31450@thunk.org>
+ <20180124111132.tjwlc3eou23xm4sg@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Theodore Ts'o <tytso@mit.edu>, y2038 Mailman List <y2038@lists.linaro.org>,
- Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
- Andreas Dilger <adilger.kernel@dilger.ca>, Al Viro <viro@zeniv.linux.org.uk>,
- linux-fsdevel <linux-fsdevel@vger.kernel.org>, linux-ext4@vger.kernel.org,
- Linus Torvalds <torvalds@linux-foundation.org>
-To: Deepa Dinamani <deepa.kernel@gmail.com>
-Return-path: <y2038-bounces@lists.linaro.org>
-In-Reply-To: <CABeXuvogBWfTzteb8RFAGnW_HGLQX=hVUj0_SZ-TP1ZeNj=OHA@mail.gmail.com>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:53808 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S934270AbeAXRAk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 24 Jan 2018 12:00:40 -0500
+Content-Disposition: inline
+In-Reply-To: <20180124111132.tjwlc3eou23xm4sg@quack2.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-T24gVHVlLCBKYW4gMjMsIDIwMTggYXQgNToyNSBQTSwgRGVlcGEgRGluYW1hbmkgPGRlZXBhLmtl
-cm5lbEBnbWFpbC5jb20+IHdyb3RlOgo+IE9uIE1vbiwgSmFuIDIyLCAyMDE4IGF0IDEyOjI1IFBN
-LCBMaW51cyBUb3J2YWxkcwo+IDx0b3J2YWxkc0BsaW51eC1mb3VuZGF0aW9uLm9yZz4gd3JvdGU6
-Cj4+IE9uIFN1biwgSmFuIDIxLCAyMDE4IGF0IDY6MDQgUE0sIERlZXBhIERpbmFtYW5pIDxkZWVw
-YS5rZXJuZWxAZ21haWwuY29tPiB3cm90ZToKPj4+ICsgICAgICAgICAgICAgICB0LnR2X25zZWMg
-LT0gdC50dl9uc2VjICUgZ3JhbjsKPj4KPj4gVGhpcyBkb2Vzbid0IGFjdHVhbGwgeXdvcmsgaWYg
-dHZfbnNlYyBpcyBuZWdhdGl2ZS4KPgo+IFJpZ2h0Lgo+Cj4+IFdoaWNoIG1heSBub3QgYmUgYW4g
-aXNzdWUgaW4gbW9zdCBjYXNlcywgYnV0IGRpZCBzb21lYm9keSBjaGVjawo+PiB1dGltZW5zYXQo
-KSBvciB3aGF0ZXZlcj8KPgo+IEkgY2hlY2tlZCBQT1NJWCBhZ2Fpbi4gVGhlcmUgaXMgbm8gbWVu
-dGlvbiBvZiB0dl9uc2VjIGJlaW5nIHBvc2l0aXZlCj4gYWx3YXlzIGZvciB1dGltZXMuCj4gQW5k
-LCB0aGUgbG9uZyB0ZXJtIHBsYW4gaXMgdG8gcmVwbGFjZSBhbGwgdGhlIGNhbGxlcnMgb2YKPiB0
-aW1lc3BlY190cnVuYygpIHRvIHVzZSB0aGlzIG5ldyBhcGkgaW5zdGVhZCBmb3IgZmlsZXN5c3Rl
-bXMuCj4gU28gdGhpcyB3aWxsIG5lZWQgdG8gYmUgZml4ZWQuIEkgd2lsbCBmaXggdGhpcyBhbmQg
-cG9zdCBhbiB1cGRhdGUuCgpJIGZvdW5kIHRoaXMgb24KaHR0cDovL3B1YnMub3Blbmdyb3VwLm9y
-Zy9vbmxpbmVwdWJzLzk2OTk5MTk3OTkvZnVuY3Rpb25zL3V0aW1lcy5odG1sCgpFUlJPUlMKVGhl
-c2UgZnVuY3Rpb25zIHNoYWxsIGZhaWwgaWY6Ci4uLgpbRUlOVkFMXQogRWl0aGVyIG9mIHRoZSB0
-aW1lcyBhcmd1bWVudCBzdHJ1Y3R1cmVzIHNwZWNpZmllZCBhIHR2X25zZWMgdmFsdWUgdGhhdCB3
-YXMKIG5laXRoZXIgVVRJTUVfTk9XIG5vciBVVElNRV9PTUlULCBhbmQgd2FzIGEgdmFsdWUgbGVz
-cyB0aGFuIHplcm8gb3IKIGdyZWF0ZXIgdGhhbiBvciBlcXVhbCB0byAxMDAwIG1pbGxpb24uCgp3
-aGljaCBpcyB0aGUgc2FtZSBhcyB0aGUgTGludXggbWFuIHBhZ2UgYW5kIHdoYXQgdGhlIGtlcm5l
-bCBhY3R1YWxseQpkb2VzIGZvciBhbGwgdGhlIHN5c2NhbGxzLiBUaGUgUE9TSVggZGVzY3JpcHRp
-b24gc2VlbXMgYSBiaXQgYW1iaWd1b3VzCnRvIHdoZXRoZXIgaXQgYWxzbyBleHBlY3RzIG9yIGFs
-bG93cyBFSU5WQUwgZm9yIHV0aW1lcygpIHdpdGggYSB0dl91c2VjCm92ZXIgMTAwMDAwMCBtaWNy
-b3NlY29uZHMsIG9yIGlmIGl0IGp1c3QgYXBwbGllcyB0byB0aGUgdXRpbWVuc2F0IGFuZApmdXRp
-bWVucygpLiBPbGRlciBkZXNjcmlwdGlvbnMgdGhhdCBvbmx5IGV4cGxhaW4gdXRpbWVzKCkgZG9u
-J3QgbWVudGlvbgp0aGUgcmFuZ2UgY2hlY2sgb24gdHZfdXNlYyBlaXRoZXIuCgogICAgICAgICAg
-QXJuZApfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpZMjAz
-OCBtYWlsaW5nIGxpc3QKWTIwMzhAbGlzdHMubGluYXJvLm9yZwpodHRwczovL2xpc3RzLmxpbmFy
-by5vcmcvbWFpbG1hbi9saXN0aW5mby95MjAzOAo=
+On Wed, Jan 24, 2018 at 12:11:32PM +0100, Jan Kara wrote:
+> > The msleep() sleep bug significantly reduced the crash caused by the
+> > race.  This was non-ideal, but it was better than the alternative,
+> > which was when the iSCSI server went down, it would hang the system
+> > badly enough that node's cluster daemon (think Kubernetes daemon)
+> > would go non-responsive for long enough that a watchdog would hammer
+> > down the entire system.  We knew we had a race, but the msleep reduced
+> > the incidence to the point where it rarely happened in production
+> > workloads, and it was better than the alternative (which was
+> > guaranteed server death).
+> 
+> Ouch, someone is running EXT4_IOC_SHUTDOWN in production? I always thought
+> it is just a testing thing...
+
+Yes, it's being used in no-journal mode on thousands and thousands
+data center servers at work.  By the time we use it though, the iSCSI
+device is presumped dead (we use local loopback per my comments on a
+LSF/MM thread, and in most common case the entire container is getting
+OOM-killed), and we don't care about the data stored on the volume.
+So that's why the various test failures that result in a corrupted
+file system hasn't worried us a whole lot; we're running in no journal
+mode, so fs corruption was always expected --- and in this case, we
+don't actually care about the fs contents, post-shutdown, at all.
+
+> > Anyway, that bug has since been fixed and with this other problem
+> > which you've pointed out hopefully we will have fixed all/most of our
+> > shutdown issues.
+> 
+> Well, just removing msleep() does not completely fix the race, just makes
+> it unlikely. I believe in EXT4_GOING_FLAGS_NOLOGFLUSH case we should first
+> do jbd2_journal_abort() and only after that set EXT4_FLAGS_SHUTDOWN. That
+> will fix the race completely. Are you aware of anything that depends on the
+> "flag first, journal later" ordering in the shutdown path?
+
+I'm going to change things so that the flag will prevent any *new*
+handles from starting, but allow existing handles to complete.  That
+should fix up the problems for LOGFLUSH case as well.
+
+							- Ted
