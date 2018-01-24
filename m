@@ -1,76 +1,81 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Failure with generic/388 test
-Date: Wed, 24 Jan 2018 18:30:52 +0100
-Message-ID: <20180124173052.tys3sqrxaleeyfg6@quack2.suse.cz>
-References: <20180118173946.aug2x2iclhemeij6@quack2.suse.cz>
- <20180119174041.GB31450@thunk.org>
- <20180124111132.tjwlc3eou23xm4sg@quack2.suse.cz>
- <20180124170036.GD30326@thunk.org>
+From: Deepa Dinamani <deepa.kernel@gmail.com>
+Subject: Re: [PATCH v6 3/4] vfs: Add timestamp_truncate() api
+Date: Wed, 24 Jan 2018 09:47:13 -0800
+Message-ID: <CABeXuvqfr7gFGv6s61Xa-Bhz4HQqL1FfzGT+5oVpOuTxo0wthg@mail.gmail.com>
+References: <20180122020426.2988-1-deepa.kernel@gmail.com> <20180122020426.2988-4-deepa.kernel@gmail.com>
+ <CA+55aFyNbcS8k3x1WrZ1-Ymtr6OpnCJ8NUZXBUCfacwWXYzC+g@mail.gmail.com>
+ <CABeXuvogBWfTzteb8RFAGnW_HGLQX=hVUj0_SZ-TP1ZeNj=OHA@mail.gmail.com> <CAK8P3a2+WO70nUW4xAAW-Lmc9OzcjERhKm8zZiBTcscKWzocdg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58284 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S964790AbeAXRay (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 24 Jan 2018 12:30:54 -0500
-Content-Disposition: inline
-In-Reply-To: <20180124170036.GD30326@thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        y2038 Mailman List <y2038@lists.linaro.org>
+To: Arnd Bergmann <arnd@arndb.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <CAK8P3a2+WO70nUW4xAAW-Lmc9OzcjERhKm8zZiBTcscKWzocdg@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed 24-01-18 12:00:36, Theodore Ts'o wrote:
-> On Wed, Jan 24, 2018 at 12:11:32PM +0100, Jan Kara wrote:
-> > > The msleep() sleep bug significantly reduced the crash caused by the
-> > > race.  This was non-ideal, but it was better than the alternative,
-> > > which was when the iSCSI server went down, it would hang the system
-> > > badly enough that node's cluster daemon (think Kubernetes daemon)
-> > > would go non-responsive for long enough that a watchdog would hammer
-> > > down the entire system.  We knew we had a race, but the msleep reduced
-> > > the incidence to the point where it rarely happened in production
-> > > workloads, and it was better than the alternative (which was
-> > > guaranteed server death).
-> > 
-> > Ouch, someone is running EXT4_IOC_SHUTDOWN in production? I always thought
-> > it is just a testing thing...
-> 
-> Yes, it's being used in no-journal mode on thousands and thousands
-> data center servers at work.  By the time we use it though, the iSCSI
-> device is presumped dead (we use local loopback per my comments on a
-> LSF/MM thread, and in most common case the entire container is getting
-> OOM-killed), and we don't care about the data stored on the volume.
-> So that's why the various test failures that result in a corrupted
-> file system hasn't worried us a whole lot; we're running in no journal
-> mode, so fs corruption was always expected --- and in this case, we
-> don't actually care about the fs contents, post-shutdown, at all.
+On Wed, Jan 24, 2018 at 3:56 AM, Arnd Bergmann <arnd@arndb.de> wrote:
+> On Tue, Jan 23, 2018 at 5:25 PM, Deepa Dinamani <deepa.kernel@gmail.com> wrote:
+>> On Mon, Jan 22, 2018 at 12:25 PM, Linus Torvalds
+>> <torvalds@linux-foundation.org> wrote:
+>>> On Sun, Jan 21, 2018 at 6:04 PM, Deepa Dinamani <deepa.kernel@gmail.com> wrote:
+>>>> +               t.tv_nsec -= t.tv_nsec % gran;
+>>>
+>>> This doesn't actuall ywork if tv_nsec is negative.
+>>
+>> Right.
+>>
+>>> Which may not be an issue in most cases, but did somebody check
+>>> utimensat() or whatever?
+>>
+>> I checked POSIX again. There is no mention of tv_nsec being positive
+>> always for utimes.
+>> And, the long term plan is to replace all the callers of
+>> timespec_trunc() to use this new api instead for filesystems.
+>> So this will need to be fixed. I will fix this and post an update.
+>
+> I found this on
+> http://pubs.opengroup.org/onlinepubs/9699919799/functions/utimes.html
+>
+> ERRORS
+> These functions shall fail if:
+> ...
+> [EINVAL]
+>  Either of the times argument structures specified a tv_nsec value that was
+>  neither UTIME_NOW nor UTIME_OMIT, and was a value less than zero or
+>  greater than or equal to 1000 million.
+>
+> which is the same as the Linux man page and what the kernel actually
+> does for all the syscalls. The POSIX description seems a bit ambiguous
+> to whether it also expects or allows EINVAL for utimes() with a tv_usec
+> over 1000000 microseconds, or if it just applies to the utimensat and
+> futimens(). Older descriptions that only explain utimes() don't mention
+> the range check on tv_usec either.
 
-Ah, ok :). Thanks for info.
+Right. This is in keeping with the kernel implementation of the
+corresponding syscalls.
 
-> > > Anyway, that bug has since been fixed and with this other problem
-> > > which you've pointed out hopefully we will have fixed all/most of our
-> > > shutdown issues.
-> > 
-> > Well, just removing msleep() does not completely fix the race, just makes
-> > it unlikely. I believe in EXT4_GOING_FLAGS_NOLOGFLUSH case we should first
-> > do jbd2_journal_abort() and only after that set EXT4_FLAGS_SHUTDOWN. That
-> > will fix the race completely. Are you aware of anything that depends on the
-> > "flag first, journal later" ordering in the shutdown path?
-> 
-> I'm going to change things so that the flag will prevent any *new*
-> handles from starting, but allow existing handles to complete.  That
-> should fix up the problems for LOGFLUSH case as well.
+But, this timespec_truncate() is being called from current_time() and
+will be extended to other calls.
 
-At this point I'm not sure how you want to make that work - once
-ext4_forced_shutdown() starts returning errors, we may fail various
-operations and as a result cleanup of some operation where this happens in
-the middle is incomplete. E.g. if you allocate inode, then flip the
-shutdown bit, then we fail to link inode into its parent directory, but
-iput() on error cleanup path will also fail to free this inode as various
-ext4_forced_shutdown() checks along that path will stop that... So
-transaction will complete but proper cleanup will not be logged in it.
+C99 says
+"When integers are divided, the result of the / operator is the
+algebraic quotient with any fractional part discarded (often called
+"truncation toward zero"). If the quotient a/b is representable, the
+expression (a/b)*b + a%b shall equal a."
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Also, we are already checking for gran being non-zero and in the
+nanoseconds range.
+
+So I think the right answer here is to add a comment that the function
+expects timespec to be normalized, and the functions calling it can
+take care of validation.
+
+-Deepa
