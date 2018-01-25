@@ -1,119 +1,146 @@
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RFC v2 10/13] ext4: Include encoding information on the superblock
-Date: Thu, 25 Jan 2018 00:53:46 -0200
-Message-ID: <20180125025349.31494-11-krisman@collabora.co.uk>
+Subject: [PATCH RFC v2 13/13] ext4: Implement ext4 dcache hooks for custom charsets
+Date: Thu, 25 Jan 2018 00:53:49 -0200
+Message-ID: <20180125025349.31494-14-krisman@collabora.co.uk>
 References: <20180125025349.31494-1-krisman@collabora.co.uk>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         alvaro.soliverez@collabora.co.uk, kernel@lists.collabora.co.uk,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 To: tytso@mit.edu, david@fromorbit.com, olaf@sgi.com,
         viro@zeniv.linux.org.uk
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:52102 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933065AbeAYCzY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jan 2018 21:55:24 -0500
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20180125025349.31494-1-krisman@collabora.co.uk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
+
+Changes from RFC v1:
+  - Handle errors from charset_normalize/casefold (Olaf Weber)
+  - Send length of both strings to comparison functions.
+  - Cast length type to size_t
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/ext4/ext4.h  |  1 +
- fs/ext4/super.c | 27 ++++++++++++++++++++++++++-
- 2 files changed, 27 insertions(+), 1 deletion(-)
+ fs/ext4/dir.c   | 73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h  |  2 ++
+ fs/ext4/super.c |  5 ++++
+ 3 files changed, 80 insertions(+)
 
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index d5babc9f222b..1c75aff87098 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -25,6 +25,7 @@
+ #include <linux/fs.h>
+ #include <linux/buffer_head.h>
+ #include <linux/slab.h>
++#include <linux/charsets.h>
+ #include "ext4.h"
+ #include "xattr.h"
+ 
+@@ -661,3 +662,75 @@ const struct file_operations ext4_dir_operations = {
+ 	.open		= ext4_dir_open,
+ 	.release	= ext4_release_dir,
+ };
++
++static int ext4_d_hash(const struct dentry *dentry, struct qstr *q)
++{
++	unsigned long hash;
++	int i, len;
++	char *str;
++	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
++
++	len = charset_normalize(charset, q->name, q->len, &str);
++
++	if (len < 0) {
++		kfree(str);
++		return -EINVAL;
++	}
++
++	hash = init_name_hash(dentry);
++	for (i = 0; i < len; i++)
++		hash = partial_name_hash(str[i], hash);
++	q->hash = end_name_hash(hash);
++
++	kfree(str);
++	return 0;
++}
++
++static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
++			  const char *str, const struct qstr *name)
++{
++	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
++
++	return charset_strncmp(charset, str, len, name->name, strlen(name->name));
++}
++
++const struct dentry_operations ext4_dentry_ops = {
++	.d_hash = ext4_d_hash,
++	.d_compare = ext4_d_compare,
++};
++
++static int ext4_d_ci_hash(const struct dentry *dentry, struct qstr *q)
++{
++	unsigned long hash;
++	int i, len;
++	char *str;
++	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
++
++	len = charset_casefold(charset, q->name, q->len, &str);
++
++	if (len < 0) {
++		kfree(str);
++		return -EINVAL;
++	}
++
++	hash = init_name_hash(dentry);
++	for (i = 0; i < len; i++)
++		hash = partial_name_hash(str[i], hash);
++	q->hash = end_name_hash(hash);
++
++	kfree(str);
++	return 0;
++}
++
++static int ext4_d_ci_compare(const struct dentry *dentry, unsigned int len,
++			     const char *str, const struct qstr *name)
++{
++	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
++
++	return charset_strncasecmp(charset, str, len, name->name, strlen(name->name));
++}
++
++const struct dentry_operations ext4_ci_dentry_ops = {
++	.d_hash = ext4_d_ci_hash,
++	.d_compare = ext4_d_ci_compare,
++};
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 09fb2426c352..6c8aaf2dd322 100644
+index 6c8aaf2dd322..980968aeb1cf 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1369,6 +1369,7 @@ struct ext4_sb_info {
- 	struct kobject s_kobj;
- 	struct completion s_kobj_unregister;
- 	struct super_block *s_sb;
-+	const struct charset *encoding;
+@@ -2943,6 +2943,8 @@ static inline void ext4_unlock_group(struct super_block *sb,
  
- 	/* Journaling */
- 	struct journal_s *s_journal;
+ /* dir.c */
+ extern const struct file_operations ext4_dir_operations;
++extern const struct dentry_operations ext4_dentry_ops;
++extern const struct dentry_operations ext4_ci_dentry_ops;
+ 
+ /* file.c */
+ extern const struct inode_operations ext4_file_inode_operations;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f737e90a3b4e..022bf5f274b2 100644
+index 022bf5f274b2..877acb938453 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -40,6 +40,7 @@
- #include <linux/dax.h>
- #include <linux/cleancache.h>
- #include <linux/uaccess.h>
-+#include <linux/charsets.h>
+@@ -4358,6 +4358,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (es->s_error_count)
+ 		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
  
- #include <linux/kthread.h>
- #include <linux/freezer.h>
-@@ -1350,7 +1351,7 @@ enum {
- 	Opt_dioread_nolock, Opt_dioread_lock,
- 	Opt_discard, Opt_nodiscard, Opt_init_itable, Opt_noinit_itable,
- 	Opt_max_dir_size_kb, Opt_nojournal_checksum, Opt_nombcache,
--	Opt_ignore_case,
-+	Opt_ignore_case, Opt_encoding,
- };
- 
- static const match_table_t tokens = {
-@@ -1434,6 +1435,7 @@ static const match_table_t tokens = {
- 	{Opt_max_dir_size_kb, "max_dir_size_kb=%u"},
- 	{Opt_test_dummy_encryption, "test_dummy_encryption"},
- 	{Opt_ignore_case, "ignorecase"},
-+	{Opt_encoding, "encoding=%s"},
- 	{Opt_nombcache, "nombcache"},
- 	{Opt_nombcache, "no_mbcache"},	/* for backward compatibility */
- 	{Opt_removed, "check=none"},	/* mount option from ext2/3 */
-@@ -1644,6 +1646,7 @@ static const struct mount_opts {
- 	{Opt_max_dir_size_kb, 0, MOPT_GTE0},
- 	{Opt_test_dummy_encryption, 0, MOPT_GTE0},
- 	{Opt_nombcache, EXT4_MOUNT_NO_MBCACHE, MOPT_SET},
-+	{Opt_encoding, 0, MOPT_EXT4_ONLY | MOPT_STRING},
- 	{Opt_err, 0, 0}
- };
- 
-@@ -1882,6 +1885,16 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 		sbi->s_mount_opt |= m->mount_opt;
- 	} else if (token == Opt_data_err_ignore) {
- 		sbi->s_mount_opt &= ~m->mount_opt;
-+	} else if (token == Opt_encoding) {
-+		char *charset = match_strdup(&args[0]);
++	if (test_opt2(sb, CASE_INSENSITIVE))
++		sb->s_d_op = &ext4_ci_dentry_ops;
++	else
++		sb->s_d_op = &ext4_dentry_ops;
 +
-+		sbi->encoding = charset_load(charset);
-+		if (!sbi->encoding) {
-+			ext4_msg(sb, KERN_ERR, "Encoding %s not supported\n",
-+				 charset);
-+			return -1;
-+		}
-+		kfree(charset);
- 	} else {
- 		if (!args->from)
- 			arg = 1;
-@@ -1968,6 +1981,12 @@ static int parse_options(char *options, struct super_block *sb,
- 			return 0;
- 		}
- 	}
-+
-+	if (test_opt2(sb, CASE_INSENSITIVE) && !sbi->encoding) {
-+		ext4_msg(sb, KERN_WARNING, "Encoding not explicitly specified "
-+			 "or identified on the superblock.  ASCII is assumed.");
-+	}
-+
- 	return 1;
- }
- 
-@@ -3598,6 +3617,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			   &journal_ioprio, 0))
- 		goto failed_mount;
- 
-+	if (!sbi->encoding) {
-+		sbi->encoding = charset_load("ascii");
-+		if (!sbi->encoding)
-+			goto failed_mount;
-+	}
-+
- 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
- 		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting "
- 			    "with data=journal disables delayed "
+ 	/* Enable message ratelimiting. Default is 10 messages per 5 secs. */
+ 	ratelimit_state_init(&sbi->s_err_ratelimit_state, 5 * HZ, 10);
+ 	ratelimit_state_init(&sbi->s_warning_ratelimit_state, 5 * HZ, 10);
 -- 
 2.15.1
