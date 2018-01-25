@@ -1,7 +1,7 @@
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RFC v2 02/13] charsets: ascii: Wrap ascii functions to charsets library
-Date: Thu, 25 Jan 2018 00:53:38 -0200
-Message-ID: <20180125025349.31494-3-krisman@collabora.co.uk>
+Subject: [PATCH RFC v2 05/13] charsets: utf8: Introduce code for UTF-8 normalization
+Date: Thu, 25 Jan 2018 00:53:41 -0200
+Message-ID: <20180125025349.31494-6-krisman@collabora.co.uk>
 References: <20180125025349.31494-1-krisman@collabora.co.uk>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         alvaro.soliverez@collabora.co.uk, kernel@lists.collabora.co.uk,
@@ -13,38 +13,62 @@ In-Reply-To: <20180125025349.31494-1-krisman@collabora.co.uk>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This allows filesystems to always use the charsets interfaces, even when
-not caring about encoding.
+From: Olaf Weber <olaf@sgi.com>
+
+Supporting functions for UTF-8 normalization are in utf8norm.c with the
+header utf8norm.h. Two normalization forms are supported: nfkdi and nfkdicf.
+
+  nfkdi:
+   - Apply unicode normalization form NFKD.
+   - Remove any Default_Ignorable_Code_Point.
+
+  nfkdicf:
+   - Apply unicode normalization form NFKD.
+   - Remove any Default_Ignorable_Code_Point.
+   - Apply a full casefold (C + F).
+
+For the purposes of the code, a string is valid UTF-8 if:
+
+ - The values encoded are 0x1..0x10FFFF.
+ - The surrogate codepoints 0xD800..0xDFFFF are not encoded.
+ - The shortest possible encoding is used for all values.
+
+The supporting functions work on null-terminated strings (utf8 prefix) and
+on length-limited strings (utf8n prefix).
+
+>From the original SGI patch and for conformity with coding standards,
+the utf8data_t typedef was dropped, since it was just masking the struct
+keyword.  On other occasions, namely utf8leaf_t and utf8trie_t, I
+decided to keep it, since they are simple pointers to memory buffers,
+and using uchars here wouldn't provide any more meaningful information.
 
 Changes since RFC v1:
-  - Include length parameter for second string on comparison functions.
-  - Cast length type to size_t.
+  - utf8_version_is_supported receives maj, min and rev as separate
+  arguments. (Olaf Weber)
 
+Signed-off-by: Olaf Weber <olaf@sgi.com>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+  [Rebase to Mainline]
+  [Fix up checkpatch.pl warnings]
+  [Drop typedefs]
+  [Merge with charsets subsystem]
 ---
- lib/charsets/Makefile |   2 +
- lib/charsets/ascii.c  | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 104 insertions(+)
- create mode 100644 lib/charsets/ascii.c
+ include/linux/utf8norm.h | 112 +++++++++
+ lib/charsets/Makefile    |   4 +
+ lib/charsets/utf8norm.c  | 644 +++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 760 insertions(+)
+ create mode 100644 include/linux/utf8norm.h
+ create mode 100644 lib/charsets/utf8norm.c
 
-diff --git a/lib/charsets/Makefile b/lib/charsets/Makefile
-index 01ff9fd09f98..2184e7ff25de 100644
---- a/lib/charsets/Makefile
-+++ b/lib/charsets/Makefile
-@@ -1,3 +1,5 @@
- charsets-y += core.o
- 
- obj-$(CONFIG_CHARSETS) += charsets.o
-+
-+obj-$(CONFIG_CHARSETS) += ascii.o
-diff --git a/lib/charsets/ascii.c b/lib/charsets/ascii.c
+diff --git a/include/linux/utf8norm.h b/include/linux/utf8norm.h
 new file mode 100644
-index 000000000000..42f3ec00e41c
+index 000000000000..0f5fc14d4fd2
 --- /dev/null
-+++ b/lib/charsets/ascii.c
-@@ -0,0 +1,102 @@
++++ b/include/linux/utf8norm.h
+@@ -0,0 +1,112 @@
 +/*
-+ * Copyright (c) 2017 Collabora Ltd.
++ * Copyright (c) 2014 SGI.
++ * All rights reserved.
 + *
 + * This program is free software; you can redistribute it and/or
 + * modify it under the terms of the GNU General Public License as
@@ -56,94 +80,768 @@ index 000000000000..42f3ec00e41c
 + * GNU General Public License for more details.
 + *
 + */
++
++#ifndef UTF8NORM_H
++#define UTF8NORM_H
++
 +#include <linux/types.h>
-+#include <linux/module.h>
-+#include <linux/charsets.h>
++#include <linux/export.h>
 +#include <linux/string.h>
-+#include <linux/ctype.h>
-+#include <linux/parser.h>
++#include <linux/module.h>
 +
-+static struct charset_info ascii_info;
++/* Encoding a unicode version number as a single unsigned int. */
++#define UNICODE_MAJ_SHIFT		(16)
++#define UNICODE_MIN_SHIFT		(8)
 +
-+int ascii_strncmp(const struct charset *charset, const char *str1,
-+		  size_t len1, const char *str2, size_t len2)
-+{
-+	size_t len = (len1 < len2)? len1:len2;
++#define UNICODE_AGE(MAJ, MIN, REV)			\
++	(((unsigned int)(MAJ) << UNICODE_MAJ_SHIFT) |	\
++	 ((unsigned int)(MIN) << UNICODE_MIN_SHIFT) |	\
++	 ((unsigned int)(REV)))
 +
-+	return strncmp(str1, str2, len);
-+}
++/* Highest unicode version supported by the data tables. */
++extern int utf8version_is_supported(u8 maj, u8 min, u8 rev);
 +
-+int ascii_strncasecmp(const struct charset *charset, const char *str1,
-+		      size_t len1, const char *str2, size_t len2)
-+{
-+	size_t len = (len1 < len2)? len1:len2;
++/*
++ * Look for the correct const struct utf8data for a unicode version.
++ * Returns NULL if the version requested is too new.
++ *
++ * Two normalization forms are supported: nfkdi and nfkdicf.
++ *
++ * nfkdi:
++ *  - Apply unicode normalization form NFKD.
++ *  - Remove any Default_Ignorable_Code_Point.
++ *
++ * nfkdicf:
++ *  - Apply unicode normalization form NFKD.
++ *  - Remove any Default_Ignorable_Code_Point.
++ *  - Apply a full casefold (C + F).
++ */
++extern const struct utf8data *utf8nfkdi(unsigned int maxage);
++extern const struct utf8data *utf8nfkdicf(unsigned int maxage);
 +
-+	return strncasecmp(str1, str2, len);
-+}
++/*
++ * Determine the maximum age of any unicode character in the string.
++ * Returns 0 if only unassigned code points are present.
++ * Returns -1 if the input is not valid UTF-8.
++ */
++extern int utf8agemax(const struct utf8data *data, const char *s);
++extern int utf8nagemax(const struct utf8data *data, const char *s, size_t len);
 +
-+int ascii_normalize(const struct charset *charset, const char *str,
-+		    int len, char **normalization)
-+{
-+	*normalization = kstrdup(str, GFP_NOFS);
-+	return (*normalization) ? len : -ENOMEM;
-+}
++/*
++ * Determine the minimum age of any unicode character in the string.
++ * Returns 0 if any unassigned code points are present.
++ * Returns -1 if the input is not valid UTF-8.
++ */
++extern int utf8agemin(const struct utf8data *data, const char *s);
++extern int utf8nagemin(const struct utf8data *data, const char *s, size_t len);
 +
-+int ascii_casefold(const struct charset *charset, const char *str,
-+		   int len, char **folded_str)
-+{
-+	int i;
-+	char *fold;
++/*
++ * Determine the length of the normalized from of the string,
++ * excluding any terminating NULL byte.
++ * Returns 0 if only ignorable code points are present.
++ * Returns -1 if the input is not valid UTF-8.
++ */
++extern ssize_t utf8len(const struct utf8data *data, const char *s);
++extern ssize_t utf8nlen(const struct utf8data *data, const char *s, size_t len);
 +
-+	fold = kstrdup(str, GFP_NOFS);
-+	if (!fold)
-+		return -ENOMEM;
-+
-+	for (i = 0; i < len; i++)
-+		fold[i] = tolower(fold[i]);
-+
-+	*folded_str = fold;
-+	return len;
-+}
-+
-+static const struct charset_ops ascii_ops = {
-+	.strncmp = ascii_strncmp,
-+	.strncasecmp = ascii_strncasecmp,
-+	.casefold = ascii_casefold,
-+	.normalize = ascii_normalize,
++/*
++ * Cursor structure used by the normalizer.
++ */
++struct utf8cursor {
++	const struct utf8data	*data;
++	const char	*s;
++	const char	*p;
++	const char	*ss;
++	const char	*sp;
++	unsigned int	len;
++	unsigned int	slen;
++	short int	ccc;
++	short int	nccc;
 +};
 +
-+static struct charset ascii_charset = {
-+	.version = 0,
-+	.info = &ascii_info,
-+	.ops = &ascii_ops
++/*
++ * Initialize a utf8cursor to normalize a string.
++ * Returns 0 on success.
++ * Returns -1 on failure.
++ */
++extern int utf8cursor(struct utf8cursor *u8c, const struct utf8data *data,
++		      const char *s);
++extern int utf8ncursor(struct utf8cursor *u8c, const struct utf8data *data,
++		       const char *s, size_t len);
++
++/*
++ * Get the next byte in the normalization.
++ * Returns a value > 0 && < 256 on success.
++ * Returns 0 when the end of the normalization is reached.
++ * Returns -1 if the string being normalized is not valid UTF-8.
++ */
++extern int utf8byte(struct utf8cursor *u8c);
++
++#endif /* UTF8NORM_H */
+diff --git a/lib/charsets/Makefile b/lib/charsets/Makefile
+index 8ab7931969ca..d33ac8643ef9 100644
+--- a/lib/charsets/Makefile
++++ b/lib/charsets/Makefile
+@@ -4,6 +4,10 @@ obj-$(CONFIG_CHARSETS) += charsets.o
+ 
+ obj-$(CONFIG_CHARSETS) += ascii.o
+ 
++utf8-y += utf8norm.o
++obj-$(CONFIG_UTF8_NORMALIZATION) +=  utf8.o
++
++$(obj)/utf8norm.o: $(obj)/utf8data.h
+ $(obj)/utf8data.h: $(srctree)/$(src)/ucd/*.txt $(objtree)/scripts/mkutf8data FORCE
+ 	$(call cmd,mkutf8data)
+ quiet_cmd_mkutf8data = MKUTF8DATA $@
+diff --git a/lib/charsets/utf8norm.c b/lib/charsets/utf8norm.c
+new file mode 100644
+index 000000000000..c225a13f6eea
+--- /dev/null
++++ b/lib/charsets/utf8norm.c
+@@ -0,0 +1,644 @@
++/*
++ * Copyright (c) 2014 SGI.
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License as
++ * published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it would be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ */
++
++#include <linux/utf8norm.h>
++
++struct utf8data {
++	unsigned int maxage;
++	unsigned int offset;
 +};
 +
-+static struct charset *ascii_load_charset(void *pargs)
-+{
-+	return &ascii_charset;
-+}
++#define __INCLUDED_FROM_UTF8NORM_C__
++#include "utf8data.h"
++#undef __INCLUDED_FROM_UTF8NORM_C__
 +
-+static struct charset_info ascii_info = {
-+	.name = "ascii",
-+	.match_token = "ascii",
-+	.load_charset = ascii_load_charset,
-+};
-+
-+static int __init init_ascii(void)
++int utf8version_is_supported(u8 maj, u8 min, u8 rev)
 +{
-+	charset_register(&ascii_info);
++	int i = ARRAY_SIZE(utf8agetab) - 1;
++	unsigned int sb_utf8version = UNICODE_AGE(maj, min, rev);
++
++	while (i >= 0 && utf8agetab[i] != 0) {
++		if (sb_utf8version == utf8agetab[i])
++			return 1;
++		i--;
++	}
 +	return 0;
 +}
++EXPORT_SYMBOL(utf8version_is_supported);
 +
-+static void __exit exit_ascii(void)
++/*
++ * UTF-8 valid ranges.
++ *
++ * The UTF-8 encoding spreads the bits of a 32bit word over several
++ * bytes. This table gives the ranges that can be held and how they'd
++ * be represented.
++ *
++ * 0x00000000 0x0000007F: 0xxxxxxx
++ * 0x00000000 0x000007FF: 110xxxxx 10xxxxxx
++ * 0x00000000 0x0000FFFF: 1110xxxx 10xxxxxx 10xxxxxx
++ * 0x00000000 0x001FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
++ * 0x00000000 0x03FFFFFF: 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
++ * 0x00000000 0x7FFFFFFF: 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
++ *
++ * There is an additional requirement on UTF-8, in that only the
++ * shortest representation of a 32bit value is to be used.  A decoder
++ * must not decode sequences that do not satisfy this requirement.
++ * Thus the allowed ranges have a lower bound.
++ *
++ * 0x00000000 0x0000007F: 0xxxxxxx
++ * 0x00000080 0x000007FF: 110xxxxx 10xxxxxx
++ * 0x00000800 0x0000FFFF: 1110xxxx 10xxxxxx 10xxxxxx
++ * 0x00010000 0x001FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
++ * 0x00200000 0x03FFFFFF: 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
++ * 0x04000000 0x7FFFFFFF: 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
++ *
++ * Actual unicode characters are limited to the range 0x0 - 0x10FFFF,
++ * 17 planes of 65536 values.  This limits the sequences actually seen
++ * even more, to just the following.
++ *
++ *          0 -     0x7F: 0                   - 0x7F
++ *       0x80 -    0x7FF: 0xC2 0x80           - 0xDF 0xBF
++ *      0x800 -   0xFFFF: 0xE0 0xA0 0x80      - 0xEF 0xBF 0xBF
++ *    0x10000 - 0x10FFFF: 0xF0 0x90 0x80 0x80 - 0xF4 0x8F 0xBF 0xBF
++ *
++ * Within those ranges the surrogates 0xD800 - 0xDFFF are not allowed.
++ *
++ * Note that the longest sequence seen with valid usage is 4 bytes,
++ * the same a single UTF-32 character.  This makes the UTF-8
++ * representation of Unicode strictly smaller than UTF-32.
++ *
++ * The shortest sequence requirement was introduced by:
++ *    Corrigendum #1: UTF-8 Shortest Form
++ * It can be found here:
++ *    http://www.unicode.org/versions/corrigendum1.html
++ *
++ */
++
++/*
++ * Return the number of bytes used by the current UTF-8 sequence.
++ * Assumes the input points to the first byte of a valid UTF-8
++ * sequence.
++ */
++static inline int utf8clen(const char *s)
 +{
++	unsigned char c = *s;
++
++	return 1 + (c >= 0xC0) + (c >= 0xE0) + (c >= 0xF0);
 +}
 +
-+module_init(init_ascii);
-+module_exit(exit_ascii);
-+MODULE_AUTHOR("Gabriel Krisman Bertazi");
-+MODULE_DESCRIPTION("ASCII charset for filesystems");
-+MODULE_LICENSE("GPL");
++/*
++ * utf8trie_t
++ *
++ * A compact binary tree, used to decode UTF-8 characters.
++ *
++ * Internal nodes are one byte for the node itself, and up to three
++ * bytes for an offset into the tree.  The first byte contains the
++ * following information:
++ *  NEXTBYTE  - flag        - advance to next byte if set
++ *  BITNUM    - 3 bit field - the bit number to tested
++ *  OFFLEN    - 2 bit field - number of bytes in the offset
++ * if offlen == 0 (non-branching node)
++ *  RIGHTPATH - 1 bit field - set if the following node is for the
++ *                            right-hand path (tested bit is set)
++ *  TRIENODE  - 1 bit field - set if the following node is an internal
++ *                            node, otherwise it is a leaf node
++ * if offlen != 0 (branching node)
++ *  LEFTNODE  - 1 bit field - set if the left-hand node is internal
++ *  RIGHTNODE - 1 bit field - set if the right-hand node is internal
++ *
++ * Due to the way utf8 works, there cannot be branching nodes with
++ * NEXTBYTE set, and moreover those nodes always have a righthand
++ * descendant.
++ */
++typedef const unsigned char utf8trie_t;
++#define BITNUM		0x07
++#define NEXTBYTE	0x08
++#define OFFLEN		0x30
++#define OFFLEN_SHIFT	4
++#define RIGHTPATH	0x40
++#define TRIENODE	0x80
++#define RIGHTNODE	0x40
++#define LEFTNODE	0x80
 +
++/*
++ * utf8leaf_t
++ *
++ * The leaves of the trie are embedded in the trie, and so the same
++ * underlying datatype: unsigned char.
++ *
++ * leaf[0]: The unicode version, stored as a generation number that is
++ *          an index into utf8agetab[].  With this we can filter code
++ *          points based on the unicode version in which they were
++ *          defined.  The CCC of a non-defined code point is 0.
++ * leaf[1]: Canonical Combining Class. During normalization, we need
++ *          to do a stable sort into ascending order of all characters
++ *          with a non-zero CCC that occur between two characters with
++ *          a CCC of 0, or at the begin or end of a string.
++ *          The unicode standard guarantees that all CCC values are
++ *          between 0 and 254 inclusive, which leaves 255 available as
++ *          a special value.
++ *          Code points with CCC 0 are known as stoppers.
++ * leaf[2]: Decomposition. If leaf[1] == 255, then leaf[2] is the
++ *          start of a NUL-terminated string that is the decomposition
++ *          of the character.
++ *          The CCC of a decomposable character is the same as the CCC
++ *          of the first character of its decomposition.
++ *          Some characters decompose as the empty string: these are
++ *          characters with the Default_Ignorable_Code_Point property.
++ *          These do affect normalization, as they all have CCC 0.
++ *
++ * The decompositions in the trie have been fully expanded.
++ *
++ * Casefolding, if applicable, is also done using decompositions.
++ *
++ * The trie is constructed in such a way that leaves exist for all
++ * UTF-8 sequences that match the criteria from the "UTF-8 valid
++ * ranges" comment above, and only for those sequences.  Therefore a
++ * lookup in the trie can be used to validate the UTF-8 input.
++ */
++typedef const unsigned char utf8leaf_t;
++
++#define LEAF_GEN(LEAF)	((LEAF)[0])
++#define LEAF_CCC(LEAF)	((LEAF)[1])
++#define LEAF_STR(LEAF)	((const char *)((LEAF) + 2))
++
++#define MINCCC		(0)
++#define MAXCCC		(254)
++#define STOPPER		(0)
++#define	DECOMPOSE	(255)
++
++/*
++ * Use trie to scan s, touching at most len bytes.
++ * Returns the leaf if one exists, NULL otherwise.
++ *
++ * A non-NULL return guarantees that the UTF-8 sequence starting at s
++ * is well-formed and corresponds to a known unicode code point.  The
++ * shorthand for this will be "is valid UTF-8 unicode".
++ */
++static utf8leaf_t *utf8nlookup(const struct utf8data *data, const char *s,
++			       size_t len)
++{
++	utf8trie_t	*trie = utf8data + data->offset;
++	int		offlen;
++	int		offset;
++	int		mask;
++	int		node;
++
++	if (!data)
++		return NULL;
++	if (len == 0)
++		return NULL;
++	node = 1;
++	while (node) {
++		offlen = (*trie & OFFLEN) >> OFFLEN_SHIFT;
++		if (*trie & NEXTBYTE) {
++			if (--len == 0)
++				return NULL;
++			s++;
++		}
++		mask = 1 << (*trie & BITNUM);
++		if (*s & mask) {
++			/* Right leg */
++			if (offlen) {
++				/* Right node at offset of trie */
++				node = (*trie & RIGHTNODE);
++				offset = trie[offlen];
++				while (--offlen) {
++					offset <<= 8;
++					offset |= trie[offlen];
++				}
++				trie += offset;
++			} else if (*trie & RIGHTPATH) {
++				/* Right node after this node */
++				node = (*trie & TRIENODE);
++				trie++;
++			} else {
++				/* No right node. */
++				node = 0;
++				trie = NULL;
++			}
++		} else {
++			/* Left leg */
++			if (offlen) {
++				/* Left node after this node. */
++				node = (*trie & LEFTNODE);
++				trie += offlen + 1;
++			} else if (*trie & RIGHTPATH) {
++				/* No left node. */
++				node = 0;
++				trie = NULL;
++			} else {
++				/* Left node after this node */
++				node = (*trie & TRIENODE);
++				trie++;
++			}
++		}
++	}
++	return trie;
++}
++
++/*
++ * Use trie to scan s.
++ * Returns the leaf if one exists, NULL otherwise.
++ *
++ * Forwards to utf8nlookup().
++ */
++static utf8leaf_t *utf8lookup(const struct utf8data *data, const char *s)
++{
++	return utf8nlookup(data, s, (size_t)-1);
++}
++
++/*
++ * Maximum age of any character in s.
++ * Return -1 if s is not valid UTF-8 unicode.
++ * Return 0 if only non-assigned code points are used.
++ */
++int utf8agemax(const struct utf8data *data, const char *s)
++{
++	utf8leaf_t	*leaf;
++	int		age = 0;
++	int		leaf_age;
++
++	if (!data)
++		return -1;
++	while (*s) {
++		leaf = utf8lookup(data, s);
++		if (!leaf)
++			return -1;
++
++		leaf_age = utf8agetab[LEAF_GEN(leaf)];
++		if (leaf_age <= data->maxage && leaf_age > age)
++			age = leaf_age;
++		s += utf8clen(s);
++	}
++	return age;
++}
++EXPORT_SYMBOL(utf8agemax);
++
++/*
++ * Minimum age of any character in s.
++ * Return -1 if s is not valid UTF-8 unicode.
++ * Return 0 if non-assigned code points are used.
++ */
++int utf8agemin(const struct utf8data *data, const char *s)
++{
++	utf8leaf_t	*leaf;
++	int		age;
++	int		leaf_age;
++
++	if (!data)
++		return -1;
++	age = data->maxage;
++	while (*s) {
++		leaf = utf8lookup(data, s);
++		if (!leaf)
++			return -1;
++		leaf_age = utf8agetab[LEAF_GEN(leaf)];
++		if (leaf_age <= data->maxage && leaf_age < age)
++			age = leaf_age;
++		s += utf8clen(s);
++	}
++	return age;
++}
++EXPORT_SYMBOL(utf8agemin);
++
++/*
++ * Maximum age of any character in s, touch at most len bytes.
++ * Return -1 if s is not valid UTF-8 unicode.
++ */
++int utf8nagemax(const struct utf8data *data, const char *s, size_t len)
++{
++	utf8leaf_t	*leaf;
++	int		age = 0;
++	int		leaf_age;
++
++	if (!data)
++		return -1;
++	while (len && *s) {
++		leaf = utf8nlookup(data, s, len);
++		if (!leaf)
++			return -1;
++		leaf_age = utf8agetab[LEAF_GEN(leaf)];
++		if (leaf_age <= data->maxage && leaf_age > age)
++			age = leaf_age;
++		len -= utf8clen(s);
++		s += utf8clen(s);
++	}
++	return age;
++}
++EXPORT_SYMBOL(utf8nagemax);
++
++/*
++ * Maximum age of any character in s, touch at most len bytes.
++ * Return -1 if s is not valid UTF-8 unicode.
++ */
++int utf8nagemin(const struct utf8data *data, const char *s, size_t len)
++{
++	utf8leaf_t	*leaf;
++	int		leaf_age;
++	int		age;
++
++	if (!data)
++		return -1;
++	age = data->maxage;
++	while (len && *s) {
++		leaf = utf8nlookup(data, s, len);
++		if (!leaf)
++			return -1;
++		leaf_age = utf8agetab[LEAF_GEN(leaf)];
++		if (leaf_age <= data->maxage && leaf_age < age)
++			age = leaf_age;
++		len -= utf8clen(s);
++		s += utf8clen(s);
++	}
++	return age;
++}
++EXPORT_SYMBOL(utf8nagemin);
++
++/*
++ * Length of the normalization of s.
++ * Return -1 if s is not valid UTF-8 unicode.
++ *
++ * A string of Default_Ignorable_Code_Point has length 0.
++ */
++ssize_t utf8len(const struct utf8data *data, const char *s)
++{
++	utf8leaf_t	*leaf;
++	size_t		ret = 0;
++
++	if (!data)
++		return -1;
++	while (*s) {
++		leaf = utf8lookup(data, s);
++		if (!leaf)
++			return -1;
++		if (utf8agetab[LEAF_GEN(leaf)] > data->maxage)
++			ret += utf8clen(s);
++		else if (LEAF_CCC(leaf) == DECOMPOSE)
++			ret += strlen(LEAF_STR(leaf));
++		else
++			ret += utf8clen(s);
++		s += utf8clen(s);
++	}
++	return ret;
++}
++EXPORT_SYMBOL(utf8len);
++
++/*
++ * Length of the normalization of s, touch at most len bytes.
++ * Return -1 if s is not valid UTF-8 unicode.
++ */
++ssize_t utf8nlen(const struct utf8data *data, const char *s, size_t len)
++{
++	utf8leaf_t	*leaf;
++	size_t		ret = 0;
++
++	if (!data)
++		return -1;
++	while (len && *s) {
++		leaf = utf8nlookup(data, s, len);
++		if (!leaf)
++			return -1;
++		if (utf8agetab[LEAF_GEN(leaf)] > data->maxage)
++			ret += utf8clen(s);
++		else if (LEAF_CCC(leaf) == DECOMPOSE)
++			ret += strlen(LEAF_STR(leaf));
++		else
++			ret += utf8clen(s);
++		len -= utf8clen(s);
++		s += utf8clen(s);
++	}
++	return ret;
++}
++EXPORT_SYMBOL(utf8nlen);
++
++/*
++ * Set up an utf8cursor for use by utf8byte().
++ *
++ *   u8c    : pointer to cursor.
++ *   data   : const struct utf8data to use for normalization.
++ *   s      : string.
++ *   len    : length of s.
++ *
++ * Returns -1 on error, 0 on success.
++ */
++int utf8ncursor(struct utf8cursor *u8c, const struct utf8data *data,
++		const char *s, size_t len)
++{
++	if (!data)
++		return -1;
++	if (!s)
++		return -1;
++	u8c->data = data;
++	u8c->s = s;
++	u8c->p = NULL;
++	u8c->ss = NULL;
++	u8c->sp = NULL;
++	u8c->len = len;
++	u8c->slen = 0;
++	u8c->ccc = STOPPER;
++	u8c->nccc = STOPPER;
++	/* Check we didn't clobber the maximum length. */
++	if (u8c->len != len)
++		return -1;
++	/* The first byte of s may not be an utf8 continuation. */
++	if (len > 0 && (*s & 0xC0) == 0x80)
++		return -1;
++	return 0;
++}
++EXPORT_SYMBOL(utf8ncursor);
++
++/*
++ * Set up an utf8cursor for use by utf8byte().
++ *
++ *   u8c    : pointer to cursor.
++ *   data   : const struct utf8data to use for normalization.
++ *   s      : NUL-terminated string.
++ *
++ * Returns -1 on error, 0 on success.
++ */
++int utf8cursor(struct utf8cursor *u8c, const struct utf8data *data,
++	       const char *s)
++{
++	return utf8ncursor(u8c, data, s, (unsigned int)-1);
++}
++EXPORT_SYMBOL(utf8cursor);
++
++/*
++ * Get one byte from the normalized form of the string described by u8c.
++ *
++ * Returns the byte cast to an unsigned char on succes, and -1 on failure.
++ *
++ * The cursor keeps track of the location in the string in u8c->s.
++ * When a character is decomposed, the current location is stored in
++ * u8c->p, and u8c->s is set to the start of the decomposition. Note
++ * that bytes from a decomposition do not count against u8c->len.
++ *
++ * Characters are emitted if they match the current CCC in u8c->ccc.
++ * Hitting end-of-string while u8c->ccc == STOPPER means we're done,
++ * and the function returns 0 in that case.
++ *
++ * Sorting by CCC is done by repeatedly scanning the string.  The
++ * values of u8c->s and u8c->p are stored in u8c->ss and u8c->sp at
++ * the start of the scan.  The first pass finds the lowest CCC to be
++ * emitted and stores it in u8c->nccc, the second pass emits the
++ * characters with this CCC and finds the next lowest CCC. This limits
++ * the number of passes to 1 + the number of different CCCs in the
++ * sequence being scanned.
++ *
++ * Therefore:
++ *  u8c->p  != NULL -> a decomposition is being scanned.
++ *  u8c->ss != NULL -> this is a repeating scan.
++ *  u8c->ccc == -1   -> this is the first scan of a repeating scan.
++ */
++int utf8byte(struct utf8cursor *u8c)
++{
++	utf8leaf_t *leaf;
++	int ccc;
++
++	for (;;) {
++		/* Check for the end of a decomposed character. */
++		if (u8c->p && *u8c->s == '\0') {
++			u8c->s = u8c->p;
++			u8c->p = NULL;
++		}
++
++		/* Check for end-of-string. */
++		if (!u8c->p && (u8c->len == 0 || *u8c->s == '\0')) {
++			/* There is no next byte. */
++			if (u8c->ccc == STOPPER)
++				return 0;
++			/* End-of-string during a scan counts as a stopper. */
++			ccc = STOPPER;
++			goto ccc_mismatch;
++		} else if ((*u8c->s & 0xC0) == 0x80) {
++			/* This is a continuation of the current character. */
++			if (!u8c->p)
++				u8c->len--;
++			return (unsigned char)*u8c->s++;
++		}
++
++		/* Look up the data for the current character. */
++		if (u8c->p)
++			leaf = utf8lookup(u8c->data, u8c->s);
++		else
++			leaf = utf8nlookup(u8c->data, u8c->s, u8c->len);
++
++		/* No leaf found implies that the input is a binary blob. */
++		if (!leaf)
++			return -1;
++
++		ccc = LEAF_CCC(leaf);
++		/* Characters that are too new have CCC 0. */
++		if (utf8agetab[LEAF_GEN(leaf)] > u8c->data->maxage) {
++			ccc = STOPPER;
++		} else if (ccc == DECOMPOSE) {
++			u8c->len -= utf8clen(u8c->s);
++			u8c->p = u8c->s + utf8clen(u8c->s);
++			u8c->s = LEAF_STR(leaf);
++			/* Empty decomposition implies CCC 0. */
++			if (*u8c->s == '\0') {
++				if (u8c->ccc == STOPPER)
++					continue;
++				ccc = STOPPER;
++				goto ccc_mismatch;
++			}
++			leaf = utf8lookup(u8c->data, u8c->s);
++		}
++
++		/*
++		 * If this is not a stopper, then see if it updates
++		 * the next canonical class to be emitted.
++		 */
++		if (ccc != STOPPER && u8c->ccc < ccc && ccc < u8c->nccc)
++			u8c->nccc = ccc;
++
++		/*
++		 * Return the current byte if this is the current
++		 * combining class.
++		 */
++		if (ccc == u8c->ccc) {
++			if (!u8c->p)
++				u8c->len--;
++			return (unsigned char)*u8c->s++;
++		}
++
++		/* Current combining class mismatch. */
++ccc_mismatch:
++		if (u8c->nccc == STOPPER) {
++			/*
++			 * Scan forward for the first canonical class
++			 * to be emitted.  Save the position from
++			 * which to restart.
++			 */
++			u8c->ccc = MINCCC - 1;
++			u8c->nccc = ccc;
++			u8c->sp = u8c->p;
++			u8c->ss = u8c->s;
++			u8c->slen = u8c->len;
++			if (!u8c->p)
++				u8c->len -= utf8clen(u8c->s);
++			u8c->s += utf8clen(u8c->s);
++		} else if (ccc != STOPPER) {
++			/* Not a stopper, and not the ccc we're emitting. */
++			if (!u8c->p)
++				u8c->len -= utf8clen(u8c->s);
++			u8c->s += utf8clen(u8c->s);
++		} else if (u8c->nccc != MAXCCC + 1) {
++			/* At a stopper, restart for next ccc. */
++			u8c->ccc = u8c->nccc;
++			u8c->nccc = MAXCCC + 1;
++			u8c->s = u8c->ss;
++			u8c->p = u8c->sp;
++			u8c->len = u8c->slen;
++		} else {
++			/* All done, proceed from here. */
++			u8c->ccc = STOPPER;
++			u8c->nccc = STOPPER;
++			u8c->sp = NULL;
++			u8c->ss = NULL;
++			u8c->slen = 0;
++		}
++	}
++}
++EXPORT_SYMBOL(utf8byte);
++
++const struct utf8data *utf8nfkdi(unsigned int maxage)
++{
++	int i = ARRAY_SIZE(utf8nfkdidata) - 1;
++
++	while (maxage < utf8nfkdidata[i].maxage)
++		i--;
++	if (maxage > utf8nfkdidata[i].maxage)
++		return NULL;
++	return &utf8nfkdidata[i];
++}
++EXPORT_SYMBOL(utf8nfkdi);
++
++const struct utf8data *utf8nfkdicf(unsigned int maxage)
++{
++	int i = ARRAY_SIZE(utf8nfkdicfdata) - 1;
++
++	while (maxage < utf8nfkdicfdata[i].maxage)
++		i--;
++	if (maxage > utf8nfkdicfdata[i].maxage)
++		return NULL;
++	return &utf8nfkdicfdata[i];
++}
++EXPORT_SYMBOL(utf8nfkdicf);
++
++MODULE_AUTHOR("SGI");
++MODULE_DESCRIPTION("utf8 normalization");
++MODULE_LICENSE("GPL");
 -- 
 2.15.1
