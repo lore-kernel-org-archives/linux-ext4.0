@@ -1,401 +1,154 @@
-From: harshads <harshads@google.com>
-Subject: [PATCH v5] ext4: Ext4 online resize with bigalloc tests.
-Date: Wed, 24 Jan 2018 14:58:12 -0800
-Message-ID: <20180124225812.69852-1-harshads@google.com>
-References: <20180124063748.GA16904@eguan.usersys.redhat.com>
-Cc: fstests@vger.kernel.org, linux-ext4@vger.kernel.org,
-        harshads <harshads@google.com>
-To: eguan@redhat.com
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH RFC v2 00/13] NLS/UTF-8 Case-Insensitive lookups for ext4 and VFS proposal
+Date: Thu, 25 Jan 2018 00:53:36 -0200
+Message-ID: <20180125025349.31494-1-krisman@collabora.co.uk>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        alvaro.soliverez@collabora.co.uk, kernel@lists.collabora.co.uk,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu, david@fromorbit.com, olaf@sgi.com,
+        viro@zeniv.linux.org.uk
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pf0-f194.google.com ([209.85.192.194]:32851 "EHLO
-        mail-pf0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932880AbeAXW6m (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jan 2018 17:58:42 -0500
-Received: by mail-pf0-f194.google.com with SMTP id t5so4318915pfi.0
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Jan 2018 14:58:42 -0800 (PST)
-In-Reply-To: <20180124063748.GA16904@eguan.usersys.redhat.com>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:52000 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751762AbeAYCye (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jan 2018 21:54:34 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add tests to verify Ext4 online resizing feature with bigalloc feature
-enabled. We test various resizing scenarios with different cluster
-sizes.
+Hi,
 
-Signed-off-by: Harshad Shirwadkar <harshads@google.com>
----
- tests/ext4/030     | 171 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/030.out | 172 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/ext4/group   |   1 +
- 3 files changed, 344 insertions(+)
- create mode 100755 tests/ext4/030
- create mode 100644 tests/ext4/030.out
+Along with the patch series, I am very interested in getting feedback on
+the two items below, regarding VFS and NLS changes.
 
-diff --git a/tests/ext4/030 b/tests/ext4/030
-new file mode 100755
-index 00000000..1d42b514
---- /dev/null
-+++ b/tests/ext4/030
-@@ -0,0 +1,171 @@
-+#! /bin/bash
-+# FS QA Test ext4/030
-+#
-+# Ext4 online resize tests of small and crucial resizes with bigalloc
-+# feature.
-+#
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2017 Google, Inc.  All Rights Reserved.
-+#
-+# Author: Harshad Shirwadkar <harshads@google.com>
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,	 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+BLK_SIZ=4096
-+CLUSTER_SIZ=4096
-+
-+IMG_FILE=$SCRATCH_DIR/$seq.fs
-+IMG_MNT=$SCRATCH_DIR/$seq.mnt
-+
-+## Num clusters to blocks.
-+c2b()
-+{
-+	local clusters=$1
-+	echo $(($clusters * $CLUSTER_SIZ / $BLK_SIZ))
-+}
-+
-+_ext4_online_resize()
-+{
-+	## sizes are in number of blocks.
-+	local original_size=$1
-+	local final_size=$2
-+	local check_if_supported=$([ "$3" = "1" ] && echo "1" || echo "0")
-+
-+	## Start with a clean image file.
-+	echo "" > ${IMG_FILE}
-+	echo "+++ truncate image file to $final_size" | \
-+		tee -a $seqres.full
-+	$XFS_IO_PROG -f -c "truncate $(($final_size * $BLK_SIZ))" ${IMG_FILE}
-+	LOOP_DEVICE=`_create_loop_device $IMG_FILE || _fail "losetup failed"`
-+
-+	echo "+++ create fs on image file $original_size" | \
-+		tee -a $seqres.full
-+
-+	${MKFS_PROG}.${FSTYP} -F -O bigalloc,resize_inode -C $CLUSTER_SIZ \
-+		-b $BLK_SIZ ${LOOP_DEVICE} $original_size >> \
-+		$seqres.full 2>&1 || _fail "mkfs failed"
-+
-+	echo "+++ mount image file" | tee -a $seqres.full
-+	$MOUNT_PROG -t ${FSTYP} ${LOOP_DEVICE} ${IMG_MNT} > \
-+		/dev/null 2>&1 || _fail "mount failed"
-+
-+	echo "+++ resize fs to $final_size" | tee -a $seqres.full
-+
-+	resize_output=$(resize2fs -f ${LOOP_DEVICE} $final_size 2>&1)
-+	if [ $? -ne 0 ]; then
-+		if [ $check_if_supported -eq 1 ]; then
-+			echo $resize_output | \
-+			grep "resize2fs: Operation not supported While checking for on-line resizing support" \
-+				&& _notrun "online resizing not supported with bigalloc"
-+		fi
-+		_fail "resize failed"
-+	fi
-+	echo $resize_output >> $seqres.full
-+	echo "+++ umount fs" | tee -a $seqres.full
-+	$UMOUNT_PROG ${IMG_MNT}
-+
-+	echo "+++ check fs" | tee -a $seqres.full
-+	_check_generic_filesystem $LOOP_DEVICE >> $seqres.full 2>&1 || \
-+		_fail "fsck should not fail"
-+	_destroy_loop_device $LOOP_DEVICE && LOOP_DEVICE=
-+}
-+
-+_cleanup()
-+{
-+	cd /
-+	[ -n "$LOOP_DEVICE" ] && _destroy_loop_device $LOOP_DEVICE > /dev/null 2>&1
-+	rm -f $tmp.*
-+	$UMOUNT_PROG ${IMG_MNT} > /dev/null 2>&1
-+	rm -f ${IMG_FILE} > /dev/null 2>&1
-+}
-+
-+# get standard environment and checks
-+. ./common/rc
-+
-+# remove previous $seqres.full before test
-+rm -f $seqres.full
-+
-+# real QA test starts here
-+_supported_fs ext4
-+_supported_os Linux
-+
-+_require_loop
-+_require_scratch
-+# We use resize_inode to make sure that block group descriptor table
-+# can be extended.
-+_require_scratch_ext4_feature "bigalloc,resize_inode"
-+
-+_scratch_mkfs >>$seqres.full 2>&1
-+_scratch_mount
-+
-+rm -f $seqres.full
-+
-+mkdir -p $IMG_MNT || _fail "cannot create loopback mount point"
-+
-+# Check if online resizing with bigalloc is supported by the kernel
-+_ext4_online_resize 4096 8192 1
-+
-+## We perform resizing to various multiples of block group sizes to
-+## ensure that we cover maximum edge cases in the kernel code.
-+for CLUSTER_SIZ in 4096 16384 65536; do
-+	echo "++ set cluster size to $CLUSTER_SIZ" | tee -a $seqres.full
-+
-+	##
-+	## Extend last group tests
-+	##
-+
-+	## Extending a 1/2 block group to a 2/3 block group.
-+	_ext4_online_resize $(c2b 16384) $(c2b 24576)
-+	## Extending a 2/3rd block group to one cluster less than a
-+	## full block group.
-+	_ext4_online_resize $(c2b 24576) $(c2b 32767)
-+	## Extending a 2/3rd block group to a full block group.
-+	_ext4_online_resize $(c2b 24576) $(c2b 32768)
-+
-+	##
-+	## Extend last group and add more block groups.
-+	##
-+
-+	## Extending a 2/3rd block group to 2 block groups.
-+	_ext4_online_resize $(c2b 24576) $(c2b 65536)
-+	## Extending a 2/3rd block group to 15 block groups and one
-+	## cluster.
-+	_ext4_online_resize $(c2b 24576) $(c2b 491521)
-+	## Extending a 2/3rd block group to 15 and a half block groups.
-+	_ext4_online_resize $(c2b 24576) $(c2b 507904)
-+	## Extending a 2/3rd block group to 16 block groups.
-+	_ext4_online_resize $(c2b 24576) $(c2b 524288)
-+	## Extending a 2/3rd block group to 160 block groups.
-+	_ext4_online_resize $(c2b 24576) $(c2b 5242880)
-+
-+	##
-+	## Convert to meta_bg.
-+	##
-+
-+	## Extending a 2/3rd block group to 1280 block groups.
-+	_ext4_online_resize $(c2b 24576) $(c2b 41943040)
-+done
-+
-+status=0
-+exit
-diff --git a/tests/ext4/030.out b/tests/ext4/030.out
-new file mode 100644
-index 00000000..49304654
---- /dev/null
-+++ b/tests/ext4/030.out
-@@ -0,0 +1,172 @@
-+QA output created by 030
-++++ truncate image file to 8192
-++++ create fs on image file 4096
-++++ mount image file
-++++ resize fs to 8192
-++++ umount fs
-++++ check fs
-+++ set cluster size to 4096
-++++ truncate image file to 24576
-++++ create fs on image file 16384
-++++ mount image file
-++++ resize fs to 24576
-++++ umount fs
-++++ check fs
-++++ truncate image file to 32767
-++++ create fs on image file 24576
-++++ mount image file
-++++ resize fs to 32767
-++++ umount fs
-++++ check fs
-++++ truncate image file to 32768
-++++ create fs on image file 24576
-++++ mount image file
-++++ resize fs to 32768
-++++ umount fs
-++++ check fs
-++++ truncate image file to 65536
-++++ create fs on image file 24576
-++++ mount image file
-++++ resize fs to 65536
-++++ umount fs
-++++ check fs
-++++ truncate image file to 491521
-++++ create fs on image file 24576
-++++ mount image file
-++++ resize fs to 491521
-++++ umount fs
-++++ check fs
-++++ truncate image file to 507904
-++++ create fs on image file 24576
-++++ mount image file
-++++ resize fs to 507904
-++++ umount fs
-++++ check fs
-++++ truncate image file to 524288
-++++ create fs on image file 24576
-++++ mount image file
-++++ resize fs to 524288
-++++ umount fs
-++++ check fs
-++++ truncate image file to 5242880
-++++ create fs on image file 24576
-++++ mount image file
-++++ resize fs to 5242880
-++++ umount fs
-++++ check fs
-++++ truncate image file to 41943040
-++++ create fs on image file 24576
-++++ mount image file
-++++ resize fs to 41943040
-++++ umount fs
-++++ check fs
-+++ set cluster size to 16384
-++++ truncate image file to 98304
-++++ create fs on image file 65536
-++++ mount image file
-++++ resize fs to 98304
-++++ umount fs
-++++ check fs
-++++ truncate image file to 131068
-++++ create fs on image file 98304
-++++ mount image file
-++++ resize fs to 131068
-++++ umount fs
-++++ check fs
-++++ truncate image file to 131072
-++++ create fs on image file 98304
-++++ mount image file
-++++ resize fs to 131072
-++++ umount fs
-++++ check fs
-++++ truncate image file to 262144
-++++ create fs on image file 98304
-++++ mount image file
-++++ resize fs to 262144
-++++ umount fs
-++++ check fs
-++++ truncate image file to 1966084
-++++ create fs on image file 98304
-++++ mount image file
-++++ resize fs to 1966084
-++++ umount fs
-++++ check fs
-++++ truncate image file to 2031616
-++++ create fs on image file 98304
-++++ mount image file
-++++ resize fs to 2031616
-++++ umount fs
-++++ check fs
-++++ truncate image file to 2097152
-++++ create fs on image file 98304
-++++ mount image file
-++++ resize fs to 2097152
-++++ umount fs
-++++ check fs
-++++ truncate image file to 20971520
-++++ create fs on image file 98304
-++++ mount image file
-++++ resize fs to 20971520
-++++ umount fs
-++++ check fs
-++++ truncate image file to 167772160
-++++ create fs on image file 98304
-++++ mount image file
-++++ resize fs to 167772160
-++++ umount fs
-++++ check fs
-+++ set cluster size to 65536
-++++ truncate image file to 393216
-++++ create fs on image file 262144
-++++ mount image file
-++++ resize fs to 393216
-++++ umount fs
-++++ check fs
-++++ truncate image file to 524272
-++++ create fs on image file 393216
-++++ mount image file
-++++ resize fs to 524272
-++++ umount fs
-++++ check fs
-++++ truncate image file to 524288
-++++ create fs on image file 393216
-++++ mount image file
-++++ resize fs to 524288
-++++ umount fs
-++++ check fs
-++++ truncate image file to 1048576
-++++ create fs on image file 393216
-++++ mount image file
-++++ resize fs to 1048576
-++++ umount fs
-++++ check fs
-++++ truncate image file to 7864336
-++++ create fs on image file 393216
-++++ mount image file
-++++ resize fs to 7864336
-++++ umount fs
-++++ check fs
-++++ truncate image file to 8126464
-++++ create fs on image file 393216
-++++ mount image file
-++++ resize fs to 8126464
-++++ umount fs
-++++ check fs
-++++ truncate image file to 8388608
-++++ create fs on image file 393216
-++++ mount image file
-++++ resize fs to 8388608
-++++ umount fs
-++++ check fs
-++++ truncate image file to 83886080
-++++ create fs on image file 393216
-++++ mount image file
-++++ resize fs to 83886080
-++++ umount fs
-++++ check fs
-++++ truncate image file to 671088640
-++++ create fs on image file 393216
-++++ mount image file
-++++ resize fs to 671088640
-++++ umount fs
-++++ check fs
-diff --git a/tests/ext4/group b/tests/ext4/group
-index 257bb646..f29d3de6 100644
---- a/tests/ext4/group
-+++ b/tests/ext4/group
-@@ -32,6 +32,7 @@
- 027 auto quick fsmap
- 028 auto quick fsmap
- 029 auto quick fsmap
-+030 auto quick ioctl resize
- 271 auto rw quick
- 301 aio auto ioctl rw stress defrag
- 302 aio auto ioctl rw stress defrag
+This is a v2 of the unicode + ext4 case-insensitive support which
+extends support to Unicode 10.0.0, and applies the fixes suggested by
+Olaf in the previous iteration.  For the same reason as mentioned
+before, the ucd files are not included in the RFC, but the relevant
+patch file explains how to fetch them.
+
+If you'd rather pull everything in this RFC at once, including the UCD
+files, you can clone from:
+
+https://gitlab.collabora.com/krisman/linux.git -b charset-lib
+
+The original cover letter, with explanations on some of the design
+decisions made in this RFC, is documented in the archive below:
+
+  https://www.spinics.net/lists/linux-ext4/msg59457.html
+
+In addition to this RFC, I am making two new proposals (no code in this
+RFC) for VFS and NLS, which I would like to hear feedback from you
+before turning this from an RFC into a final patch submission:
+
+(1) integrate the charset lib into the NLS system.
+
+Basically, this requires introducing new higher-level hooks for string
+comparison, like the ones we have in the charset patch, into the NLS
+subsystem.
+
+NLS also has to support versions of the same encoding, my idea is to
+separate the information to register the encoding with the NLS system
+into a separate structure, which is restricted to the NLS system.  The
+nls_table or a similar structure, which is then passed to users of the
+library, will then be specific to a given version of the charset and
+carry pointers to the functions specific to that version.
+
+One final important point for NLS is that we need to prevent users from
+mounting CI filesystems with encodings that don't support
+normalization/comparison functions and try not the break compatibility
+of filesystems that already do toupper/tolower without normalization.
+These points are important to keep in mind but are quite trivial to
+implement.
+
+The second proposal is related to the VFS layer:
+
+(2) Enable Insensitive lookup support on a per-mountpoint basis,
+via a MS_CASEFOLD flag, with the ultimate goal of supporting a
+case-insensitive bind mount of a subtree, side-by-side with a
+sensitive version of the filesystem.
+
+I have a prototype code at
+
+https://gitlab.collabora.com/krisman/linux.git -b vfs-ms_casefold
+
+Which is *not fully functional*, since it confuses the dentry cache when
+multiple mountpoints are installed, but it gives an idea of the design,
+if anyone wants to review it.  Basically, I want to:
+
+  - Add a new MS_CASEFOLD mount option, which flips a flag in struct
+    vfsmount
+
+  - When this flag is enabled, a LOOKUP_CASEFOLD flag is submitted to
+  the fs .lookup() hook, asking it to perform a case-folded lookup.
+
+  - LOOKUP_CASEFOLD also replaces .d_hash() and d_compare() with
+    insensitive versions, provided by filesystems.
+
+  - Allow "mount -o remount,bind" to flip the MNT_CASEFOLD flag, similar
+    to what is done with the read-only setting.
+
+  - filesystems that support the MS_CASEFOLD flag need to advertise
+    support in struct file_system_type.  There will be no generic
+    implementation of casefolding in the VFS layer for now.  Either the
+    FS acknowledges support for it, or MS_CASEFOLD fails the mount
+    operation.
+
+This is implemented in the branch above (along with the required
+modifications for EXT4) except for the issue in the dentry cache, that I
+am still working on.
+
+Do these changes to VFS seem acceptable?
+
+Thanks,
+
+Gabriel Krisman Bertazi (9):
+  charsets: Introduce middle-layer for character encoding
+  charsets: ascii: Wrap ascii functions to charsets library
+  charsets: utf8: Hook-up utf-8 code to charsets library
+  charsets: utf8: Introduce test module for kernel UTF-8 implementation
+  ext4: Add ignorecase mount option
+  ext4: Include encoding information on the superblock
+  fscrypt: Introduce charset-based matching functions
+  ext4: Support charset name matching
+  ext4: Implement ext4 dcache hooks for custom charsets
+
+Olaf Weber (4):
+  charsets: utf8: Add unicode character database files
+  scripts: add trie generator for UTF-8
+  charsets: utf8: Introduce code for UTF-8 normalization
+  charsets: utf8: reduce the size of utf8data[]
+
+ fs/ext4/dir.c                   |   63 +
+ fs/ext4/ext4.h                  |    6 +
+ fs/ext4/namei.c                 |   27 +-
+ fs/ext4/super.c                 |   35 +
+ include/linux/charsets.h        |   73 +
+ include/linux/fscrypt.h         |    1 +
+ include/linux/fscrypt_notsupp.h |   16 +
+ include/linux/fscrypt_supp.h    |   27 +
+ include/linux/utf8norm.h        |  116 ++
+ lib/Kconfig                     |   16 +
+ lib/Makefile                    |    2 +
+ lib/charsets/Makefile           |   24 +
+ lib/charsets/ascii.c            |   98 ++
+ lib/charsets/core.c             |   68 +
+ lib/charsets/test_ucd.c         |  186 +++
+ lib/charsets/ucd/README         |   33 +
+ lib/charsets/utf8_core.c        |  178 ++
+ lib/charsets/utf8norm.c         |  794 +++++++++
+ scripts/Makefile                |    1 +
+ scripts/mkutf8data.c            | 3464 +++++++++++++++++++++++++++++++++++++++
+ 20 files changed, 5219 insertions(+), 9 deletions(-)
+ create mode 100644 include/linux/charsets.h
+ create mode 100644 include/linux/utf8norm.h
+ create mode 100644 lib/charsets/Makefile
+ create mode 100644 lib/charsets/ascii.c
+ create mode 100644 lib/charsets/core.c
+ create mode 100644 lib/charsets/test_ucd.c
+ create mode 100644 lib/charsets/ucd/README
+ create mode 100644 lib/charsets/utf8_core.c
+ create mode 100644 lib/charsets/utf8norm.c
+ create mode 100644 scripts/mkutf8data.c
+
 -- 
-2.16.0.rc1.238.g530d649a79-goog
+2.15.1
