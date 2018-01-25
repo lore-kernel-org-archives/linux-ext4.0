@@ -1,7 +1,7 @@
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RFC v2 01/13] charsets: Introduce middle-layer for character encoding
-Date: Thu, 25 Jan 2018 00:53:37 -0200
-Message-ID: <20180125025349.31494-2-krisman@collabora.co.uk>
+Subject: [PATCH RFC v2 03/13] charsets: utf8: Add unicode character database files
+Date: Thu, 25 Jan 2018 00:53:39 -0200
+Message-ID: <20180125025349.31494-4-krisman@collabora.co.uk>
 References: <20180125025349.31494-1-krisman@collabora.co.uk>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         alvaro.soliverez@collabora.co.uk, kernel@lists.collabora.co.uk,
@@ -13,216 +13,68 @@ In-Reply-To: <20180125025349.31494-1-krisman@collabora.co.uk>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This implements an abstraction for high-level encoding-wise string
-manipulation functions.  It defines some hooks that encoding modules must
-implement, which will be used by filesystem code to support lookups that
-consider normalization and case-folding.
+From: Olaf Weber <olaf@sgi.com>
 
-Changes since RFC v1:
-  - Export charset_load symbol.
-  - Include length parameter for second string on comparison functions.
-  - Changed length type to size_t.
-  - Fix bad memory access when trying to load invalid charset
+Add files from the Unicode Character Database, version 10.0.0, to the source.
+A helper program that generates a trie used for normalization from these
+files is part of a separate commit.
 
+- Notes on the update from 8.0.0 and 10.0.0:
+
+The structure of ucd files and special cases have not experienced any
+changes between versions 8.0.0 and 10.0.0.  8.0.0 saw the addition of
+Cherokee LC characters, which is an interesting case for case-folding.
+The update is accompanied by new tests on the test_ucd module to catch
+specific cases.  No changes to mkutf8data script was required for the
+update.
+
+Signed-off-by: Olaf Weber <olaf@sgi.com>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+  [Move ucd directory to lib/charsets]
+  [Update to ucd-10.0.0]
 ---
- include/linux/charsets.h | 75 ++++++++++++++++++++++++++++++++++++++++++++++++
- lib/Kconfig              |  2 ++
- lib/Makefile             |  2 ++
- lib/charsets/Makefile    |  3 ++
- lib/charsets/core.c      | 69 ++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 151 insertions(+)
- create mode 100644 include/linux/charsets.h
- create mode 100644 lib/charsets/Makefile
- create mode 100644 lib/charsets/core.c
+ lib/charsets/ucd/README | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+ create mode 100644 lib/charsets/ucd/README
 
-diff --git a/include/linux/charsets.h b/include/linux/charsets.h
+diff --git a/lib/charsets/ucd/README b/lib/charsets/ucd/README
 new file mode 100644
-index 000000000000..3abe92cc0bc6
+index 000000000000..67f2075d1fca
 --- /dev/null
-+++ b/include/linux/charsets.h
-@@ -0,0 +1,75 @@
-+/*
-+ * Copyright (c) 2017 Collabora Ltd.
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License as
-+ * published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ */
++++ b/lib/charsets/ucd/README
+@@ -0,0 +1,33 @@
++The files in this directory are part of the Unicode Character Database
++for version 10.0.0 of the Unicode standard.
 +
-+#ifndef _CHARSET_H
-+#define _CHARSET_H
++The full set of files can be found here:
 +
-+#include <linux/types.h>
++  http://www.unicode.org/Public/10.0.0/ucd/
 +
-+struct charset_info;
-+struct charset;
++The latest released version of the UCD can be found here:
 +
-+struct charset_ops {
-+	int (*strncmp)(const struct charset *charset, const char *str1,
-+		       size_t len1, const char *str2, size_t len2);
-+	int (*strncasecmp)(const struct charset *charset, const char *str1,
-+			   size_t len1, const char *str2, size_t len2);
-+	int (*casefold)(const struct charset *charset, const char *str,
-+			int len, char **folded);
-+	int (*normalize)(const struct charset *charset, const char *str,
-+			 int len, char **normalization);
-+};
++  http://www.unicode.org/Public/UCD/latest/
 +
-+struct charset {
-+	const struct charset_info *info;
-+	unsigned int version;
-+	const struct charset_ops *ops;
-+};
++The files in this directory are identical, except that they have been
++renamed with a suffix indicating the unicode version.
 +
-+struct charset_info {
-+	char *name;
-+	char *match_token;
-+	struct charset* (*load_charset)(void *args);
-+};
++Individual source links:
 +
-+static inline int charset_strncmp(const struct charset *charset,
-+				  const char *str1, size_t len1,
-+				  const char *str2, size_t len2)
-+{
-+	return charset->ops->strncmp(charset, str1, len1, str2, len2);
-+}
++  http://www.unicode.org/Public/10.0.0/ucd/CaseFolding.txt
++  http://www.unicode.org/Public/10.0.0/ucd/DerivedAge.txt
++  http://www.unicode.org/Public/10.0.0/ucd/extracted/DerivedCombiningClass.txt
++  http://www.unicode.org/Public/10.0.0/ucd/DerivedCoreProperties.txt
++  http://www.unicode.org/Public/10.0.0/ucd/NormalizationCorrections.txt
++  http://www.unicode.org/Public/10.0.0/ucd/NormalizationTest.txt
++  http://www.unicode.org/Public/10.0.0/ucd/UnicodeData.txt
 +
-+static inline int charset_strncasecmp(const struct charset *charset,
-+				      const char *str1, size_t len1,
-+				      const char *str2, size_t len2)
-+{
-+	return charset->ops->strncasecmp(charset, str1, len1, str2, len2);
-+}
++md5sums
 +
-+static inline int charset_casefold(const struct charset *charset,
-+				   const char *str, int len, char **folded)
-+{
-+	return charset->ops->casefold(charset, str, len, folded);
-+}
-+
-+static inline int charset_normalize(const struct charset *charset,
-+				    const char *str, int len,
-+				    char **normalization)
-+{
-+	return charset->ops->normalize(charset, str, len, normalization);
-+}
-+
-+int charset_register(struct charset_info *charset);
-+const struct charset *charset_load(char *charset);
-+#endif
-diff --git a/lib/Kconfig b/lib/Kconfig
-index c5e84fbcb30b..bf5c751cfb8a 100644
---- a/lib/Kconfig
-+++ b/lib/Kconfig
-@@ -582,6 +582,8 @@ config PRIME_NUMBERS
- config STRING_SELFTEST
- 	tristate "Test string functions"
- 
-+config CHARSETS
-+       tristate "Character encoding sets"
- endmenu
- 
- config GENERIC_ASHLDI3
-diff --git a/lib/Makefile b/lib/Makefile
-index d11c48ec8ffd..f6b2360fedfa 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -258,3 +258,5 @@ obj-$(CONFIG_GENERIC_LSHRDI3) += lshrdi3.o
- obj-$(CONFIG_GENERIC_MULDI3) += muldi3.o
- obj-$(CONFIG_GENERIC_CMPDI2) += cmpdi2.o
- obj-$(CONFIG_GENERIC_UCMPDI2) += ucmpdi2.o
-+
-+obj-$(CONFIG_CHARSETS) += charsets/
-diff --git a/lib/charsets/Makefile b/lib/charsets/Makefile
-new file mode 100644
-index 000000000000..01ff9fd09f98
---- /dev/null
-+++ b/lib/charsets/Makefile
-@@ -0,0 +1,3 @@
-+charsets-y += core.o
-+
-+obj-$(CONFIG_CHARSETS) += charsets.o
-diff --git a/lib/charsets/core.c b/lib/charsets/core.c
-new file mode 100644
-index 000000000000..238088cbb641
---- /dev/null
-+++ b/lib/charsets/core.c
-@@ -0,0 +1,69 @@
-+/*
-+ * Copyright (c) 2017 Collabora Ltd.
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License as
-+ * published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/string.h>
-+#include <linux/charsets.h>
-+#include <linux/parser.h>
-+
-+#define MAX_ENCODINGS 10
-+
-+static struct match_token encoding_tokens[MAX_ENCODINGS + 1];
-+static struct charset_info *charsets[MAX_ENCODINGS];
-+static int n_encodings;
-+
-+const struct charset *charset_load(char *charset)
-+{
-+	substring_t args[MAX_OPT_ARGS];
-+	int token;
-+
-+	args[0].to = args[0].from = NULL;
-+	token = match_token(charset, encoding_tokens, args);
-+
-+	if (!encoding_tokens[token].pattern)
-+		return NULL;
-+
-+	return charsets[token]->load_charset(args);
-+}
-+EXPORT_SYMBOL(charset_load);
-+
-+int charset_register(struct charset_info *charset)
-+{
-+	encoding_tokens[n_encodings].token = n_encodings;
-+	encoding_tokens[n_encodings].pattern = charset->match_token;
-+
-+	charsets[n_encodings] = charset;
-+	n_encodings += 1;
-+	return 0;
-+}
-+EXPORT_SYMBOL(charset_register);
-+
-+static int __init init_charset(void)
-+{
-+	memset(encoding_tokens, 0, sizeof(encoding_tokens));
-+	n_encodings = 0;
-+
-+	return 0;
-+}
-+
-+static void __exit exit_charset(void)
-+{
-+}
-+
-+module_init(init_charset);
-+module_exit(exit_charset);
-+
-+MODULE_AUTHOR("Gabriel Krisman Bertazi");
-+MODULE_DESCRIPTION("charset abstraction for filesystems");
-+MODULE_LICENSE("GPL");
++  7893b6e005c5a521319a0d12062ae122  CaseFolding-10.0.0.txt
++  a602e4b44de3350087e40f2eb2184898  DerivedAge-10.0.0.txt
++  5abdeb21af4edcc5d1e4c0b5802fc7a7  DerivedCombiningClass-10.0.0.txt
++  eda11c2c2e3c308d9d3b90e2b3282024  DerivedCoreProperties-10.0.0.txt
++  425ece5ffbecd0140d98c13ce05724aa  NormalizationCorrections-10.0.0.txt
++  7296fe7aa07d7d288e65d559af2ad49b  NormalizationTest-10.0.0.txt
++  2a52f30695dcc821f0f224650552beaf  UnicodeData-10.0.0.txt
 -- 
 2.15.1
