@@ -1,146 +1,109 @@
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RFC v2 13/13] ext4: Implement ext4 dcache hooks for custom charsets
-Date: Thu, 25 Jan 2018 00:53:49 -0200
-Message-ID: <20180125025349.31494-14-krisman@collabora.co.uk>
+Subject: [PATCH RFC v2 11/13] fscrypt: Introduce charset-based matching functions
+Date: Thu, 25 Jan 2018 00:53:47 -0200
+Message-ID: <20180125025349.31494-12-krisman@collabora.co.uk>
 References: <20180125025349.31494-1-krisman@collabora.co.uk>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         alvaro.soliverez@collabora.co.uk, kernel@lists.collabora.co.uk,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 To: tytso@mit.edu, david@fromorbit.com, olaf@sgi.com,
         viro@zeniv.linux.org.uk
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:52112 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933065AbeAYCz3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jan 2018 21:55:29 -0500
 In-Reply-To: <20180125025349.31494-1-krisman@collabora.co.uk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Changes from RFC v1:
-  - Handle errors from charset_normalize/casefold (Olaf Weber)
+Changes since RFC v1:
   - Send length of both strings to comparison functions.
-  - Cast length type to size_t
+  - Change length type to size_t.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/ext4/dir.c   | 73 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ext4.h  |  2 ++
- fs/ext4/super.c |  5 ++++
- 3 files changed, 80 insertions(+)
+ include/linux/fscrypt.h         |  1 +
+ include/linux/fscrypt_notsupp.h | 16 ++++++++++++++++
+ include/linux/fscrypt_supp.h    | 27 +++++++++++++++++++++++++++
+ 3 files changed, 44 insertions(+)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index d5babc9f222b..1c75aff87098 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -25,6 +25,7 @@
- #include <linux/fs.h>
- #include <linux/buffer_head.h>
- #include <linux/slab.h>
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index 08b4b40c5aa8..8ca010ef2871 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -21,6 +21,7 @@
+ #include <linux/dcache.h>
+ #include <crypto/skcipher.h>
+ #include <uapi/linux/fs.h>
 +#include <linux/charsets.h>
- #include "ext4.h"
- #include "xattr.h"
  
-@@ -661,3 +662,75 @@ const struct file_operations ext4_dir_operations = {
- 	.open		= ext4_dir_open,
- 	.release	= ext4_release_dir,
- };
-+
-+static int ext4_d_hash(const struct dentry *dentry, struct qstr *q)
+ #define FS_CRYPTO_BLOCK_SIZE		16
+ 
+diff --git a/include/linux/fscrypt_notsupp.h b/include/linux/fscrypt_notsupp.h
+index 63e58808519a..d790052b8cbe 100644
+--- a/include/linux/fscrypt_notsupp.h
++++ b/include/linux/fscrypt_notsupp.h
+@@ -160,6 +160,22 @@ static inline bool fscrypt_match_name(const struct fscrypt_name *fname,
+ 	return !memcmp(de_name, fname->disk_name.name, fname->disk_name.len);
+ }
+ 
++static inline bool fscrypt_charset_match_name(const struct fscrypt_name *fname,
++					      const struct charset *charset,
++					      const u8 *de_name,
++					      u32 de_name_len, bool ignorecase)
 +{
-+	unsigned long hash;
-+	int i, len;
-+	char *str;
-+	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
-+
-+	len = charset_normalize(charset, q->name, q->len, &str);
-+
-+	if (len < 0) {
-+		kfree(str);
-+		return -EINVAL;
++	if (!ignorecase) {
++		return !charset_strncmp(charset, (char *) de_name, de_name_len,
++					fname->disk_name.name,
++					fname->disk_name.len);
 +	}
 +
-+	hash = init_name_hash(dentry);
-+	for (i = 0; i < len; i++)
-+		hash = partial_name_hash(str[i], hash);
-+	q->hash = end_name_hash(hash);
-+
-+	kfree(str);
-+	return 0;
++	return !charset_strncasecmp(charset, (char *) de_name, (size_t) de_name_len,
++				    fname->disk_name.name,
++				    (size_t) fname->disk_name.len);
 +}
 +
-+static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
-+			  const char *str, const struct qstr *name)
+ /* bio.c */
+ static inline void fscrypt_decrypt_bio_pages(struct fscrypt_ctx *ctx,
+ 					     struct bio *bio)
+diff --git a/include/linux/fscrypt_supp.h b/include/linux/fscrypt_supp.h
+index cf9e9fc02f0a..8ef12553a174 100644
+--- a/include/linux/fscrypt_supp.h
++++ b/include/linux/fscrypt_supp.h
+@@ -138,6 +138,33 @@ static inline bool fscrypt_match_name(const struct fscrypt_name *fname,
+ 	return !memcmp(de_name, fname->disk_name.name, fname->disk_name.len);
+ }
+ 
++static inline bool fscrypt_charset_match_name(const struct fscrypt_name *fname,
++					      const struct charset *charset,
++					      const u8 *de_name,
++					      u32 de_name_len, bool ignorecase)
 +{
-+	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
-+
-+	return charset_strncmp(charset, str, len, name->name, strlen(name->name));
-+}
-+
-+const struct dentry_operations ext4_dentry_ops = {
-+	.d_hash = ext4_d_hash,
-+	.d_compare = ext4_d_compare,
-+};
-+
-+static int ext4_d_ci_hash(const struct dentry *dentry, struct qstr *q)
-+{
-+	unsigned long hash;
-+	int i, len;
-+	char *str;
-+	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
-+
-+	len = charset_casefold(charset, q->name, q->len, &str);
-+
-+	if (len < 0) {
-+		kfree(str);
-+		return -EINVAL;
++	if (unlikely(!fname->disk_name.name)) {
++		const struct fscrypt_digested_name *n =
++			(const void *)fname->crypto_buf.name;
++		if (WARN_ON_ONCE(fname->usr_fname->name[0] != '_'))
++			return false;
++		if (de_name_len <= FSCRYPT_FNAME_MAX_UNDIGESTED_SIZE)
++			return false;
++		return !memcmp(FSCRYPT_FNAME_DIGEST(de_name, de_name_len),
++			       n->digest, FSCRYPT_FNAME_DIGEST_SIZE);
 +	}
 +
-+	hash = init_name_hash(dentry);
-+	for (i = 0; i < len; i++)
-+		hash = partial_name_hash(str[i], hash);
-+	q->hash = end_name_hash(hash);
++	if (!ignorecase) {
++		return !charset_strncmp(charset, (char *) de_name, de_name_len,
++					fname->disk_name.name,
++					fname->disk_name.len);
++	}
 +
-+	kfree(str);
-+	return 0;
++	return !charset_strncasecmp(charset, (char *) de_name, de_name_len,
++				    fname->disk_name.name,
++				    fname->disk_name.len);
 +}
 +
-+static int ext4_d_ci_compare(const struct dentry *dentry, unsigned int len,
-+			     const char *str, const struct qstr *name)
-+{
-+	const struct charset *charset = EXT4_SB(dentry->d_sb)->encoding;
-+
-+	return charset_strncasecmp(charset, str, len, name->name, strlen(name->name));
-+}
-+
-+const struct dentry_operations ext4_ci_dentry_ops = {
-+	.d_hash = ext4_d_ci_hash,
-+	.d_compare = ext4_d_ci_compare,
-+};
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6c8aaf2dd322..980968aeb1cf 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2943,6 +2943,8 @@ static inline void ext4_unlock_group(struct super_block *sb,
- 
- /* dir.c */
- extern const struct file_operations ext4_dir_operations;
-+extern const struct dentry_operations ext4_dentry_ops;
-+extern const struct dentry_operations ext4_ci_dentry_ops;
- 
- /* file.c */
- extern const struct inode_operations ext4_file_inode_operations;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 022bf5f274b2..877acb938453 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4358,6 +4358,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	if (es->s_error_count)
- 		mod_timer(&sbi->s_err_report, jiffies + 300*HZ); /* 5 minutes */
- 
-+	if (test_opt2(sb, CASE_INSENSITIVE))
-+		sb->s_d_op = &ext4_ci_dentry_ops;
-+	else
-+		sb->s_d_op = &ext4_dentry_ops;
-+
- 	/* Enable message ratelimiting. Default is 10 messages per 5 secs. */
- 	ratelimit_state_init(&sbi->s_err_ratelimit_state, 5 * HZ, 10);
- 	ratelimit_state_init(&sbi->s_warning_ratelimit_state, 5 * HZ, 10);
+ /* bio.c */
+ extern void fscrypt_decrypt_bio_pages(struct fscrypt_ctx *, struct bio *);
+ extern void fscrypt_pullback_bio_page(struct page **, bool);
 -- 
 2.15.1
