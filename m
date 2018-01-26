@@ -1,96 +1,108 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: Re: [PATCH RFC v2 00/13] NLS/UTF-8 Case-Insensitive lookups for ext4
- and VFS proposal
-Date: Thu, 25 Jan 2018 14:32:39 -0500
-Message-ID: <20180125193239.GA8005@thunk.org>
+From: "Gaoxiang (OS)" <gaoxiang25@huawei.com>
+Subject: Re: [PATCH RFC v2 00/13] NLS/UTF-8 Case-Insensitive lookups for
+ ext4 and VFS proposal
+Date: Fri, 26 Jan 2018 02:52:28 +0000
+Message-ID: <9047C53C18267742AB12E43B65C7F9F70BCD386E@dggemi505-mbs.china.huawei.com>
 References: <20180125025349.31494-1-krisman@collabora.co.uk>
- <20180125031650.GU13338@ZenIV.linux.org.uk>
+ <20180125031650.GU13338@ZenIV.linux.org.uk> <20180125193239.GA8005@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Gabriel Krisman Bertazi <krisman@collabora.co.uk>,
-        david@fromorbit.com, olaf@sgi.com, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, alvaro.soliverez@collabora.co.uk,
-        kernel@lists.collabora.co.uk
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20180125031650.GU13338@ZenIV.linux.org.uk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>, Al Viro <viro@ZenIV.linux.org.uk>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from szxga08-in.huawei.com ([45.249.212.255]:39994 "EHLO huawei.com"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751524AbeAZCwc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 25 Jan 2018 21:52:32 -0500
+In-Reply-To: <20180125193239.GA8005@thunk.org>
+Content-Language: zh-CN
+Content-ID: <28573C3B5D40E147896F1609681EDB1A@huawei.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 25, 2018 at 03:16:50AM +0000, Al Viro wrote:
-> On Thu, Jan 25, 2018 at 12:53:36AM -0200, Gabriel Krisman Bertazi wrote:
-> 
-> > The second proposal is related to the VFS layer:
-> > 
-> > (2) Enable Insensitive lookup support on a per-mountpoint basis,
-> > via a MS_CASEFOLD flag, with the ultimate goal of supporting a
-> > case-insensitive bind mount of a subtree, side-by-side with a
-> > sensitive version of the filesystem.
-> 
-> First reaction: No.  With the side of HELL NO.
-> 
-> Your ultimate goal sounds utterly insane - dcache tree must be shared
-> for all mounts.  Moreover, "would these two names refer to the same
-> object" can not be mount-dependent.  Not going to happen.
-> 
-> Please, post the description of what you are planning to do.
-> Detailed.  I'm not saying that it's 100% impossible to do correctly,
-> but I'm _very_ sceptical about the feasibility.
-
-So I can't speak authoratatively about the Collabora's customer
-requirements that drove this particular feature, but I can talk about
-why I am interested in this feature --- although I understand why it's
-hard to do correctly.
-
-Android is currently using a horrible wrapfs scheme to provide case
-insesitive lookups.  We talked about this last year at LSF/MM[1].  It
-is using separate dentry entries for the upper and lower layers, and
-it is *definitely* prone to races.  Running fsstress on the top and
-lower layers simultaneously is a pretty simple way to induce hilarity,
-although my understanding is that the developers working on it having
-been hammering on it for a while so that the races that cause kernel
-panicks or file system damage are rare.  I don't believe they have
-been completely elimniated, because it's not clear to me that any
-wrapfs solution can ever be made race-free.
-
-[1] https://lwn.net/Articles/718640/
-
-The problem is that both the case insensitive and case sensitive
-directory trees are made available to userspace, and for backwards
-compatibility reasons, they can't just make it disappear.  Although
-they don't have a Linus Torvalds going all Mr. Shouty about breaking
-userspace, the combined whinging from the App developer ecosystem
-probably can be a fairly good substitute for Linus when they complain
-about compatibility breakages visible to the Android application
-programmer.  :-)
-
-So my hope has been to find a way to (a) make wrapfs go away, and (b)
-allow the functionality of case sensitive and case insensitive bind
-mounts of the same underlying file system directories be *somehow*
-supported.
-
-If the answer is that if two files that differ only in case are
-created via the case sensitive mount results in it being undefined
-which file you get when you open, rename, or delete that file via the
-case insensitive mount, that's fine.  I think that's what happpens in
-the wrapfs implementation today anyway.  It would probably be fine if
-the answer was you get the file with an exact match if it is present,
-but if the two files created on the case sensitive side are "makefile"
-and "Makefile", and you try open/delete "MaKeFiLe" via the case
-insensitive mount, it's undefined which file you get --- that's fine.
-
-Anyone who does that will get everything they deserve, and they get
-that today anyway with the wrapfs or the previous fuse hack anyway.
-
-This may indeed be an O_PONIES style request.  And in the worst case,
-Android will continue using an out-of-tree wrapfs solution, and
-hopefully I can fend off people asking me for help when the wrapfs
-code blows up in various not-so-entertainng ways.  Which is,
-admittedly, a purely selfish reason for why I would like to see if we
-can give Android folks equivalent functionality to the wrapfs hack in
-a sane, safe, and consensual way.   :-)
-
-Cheers,
-
-						- Ted
+SGkgVGVkLA0KDQpPbiAyMDE4LzEvMjYgMzozMiwgVGhlb2RvcmUgVHMnbyB3cm90ZToNCj4gT24g
+VGh1LCBKYW4gMjUsIDIwMTggYXQgMDM6MTY6NTBBTSArMDAwMCwgQWwgVmlybyB3cm90ZToNCj4+
+IE9uIFRodSwgSmFuIDI1LCAyMDE4IGF0IDEyOjUzOjM2QU0gLTAyMDAsIEdhYnJpZWwgS3Jpc21h
+biBCZXJ0YXppIHdyb3RlOg0KPj4NCj4+PiBUaGUgc2Vjb25kIHByb3Bvc2FsIGlzIHJlbGF0ZWQg
+dG8gdGhlIFZGUyBsYXllcjoNCj4+Pg0KPj4+ICgyKSBFbmFibGUgSW5zZW5zaXRpdmUgbG9va3Vw
+IHN1cHBvcnQgb24gYSBwZXItbW91bnRwb2ludCBiYXNpcywNCj4+PiB2aWEgYSBNU19DQVNFRk9M
+RCBmbGFnLCB3aXRoIHRoZSB1bHRpbWF0ZSBnb2FsIG9mIHN1cHBvcnRpbmcgYQ0KPj4+IGNhc2Ut
+aW5zZW5zaXRpdmUgYmluZCBtb3VudCBvZiBhIHN1YnRyZWUsIHNpZGUtYnktc2lkZSB3aXRoIGEN
+Cj4+PiBzZW5zaXRpdmUgdmVyc2lvbiBvZiB0aGUgZmlsZXN5c3RlbS4NCj4+DQo+PiBGaXJzdCBy
+ZWFjdGlvbjogTm8uICBXaXRoIHRoZSBzaWRlIG9mIEhFTEwgTk8uDQo+Pg0KPj4gWW91ciB1bHRp
+bWF0ZSBnb2FsIHNvdW5kcyB1dHRlcmx5IGluc2FuZSAtIGRjYWNoZSB0cmVlIG11c3QgYmUgc2hh
+cmVkDQo+PiBmb3IgYWxsIG1vdW50cy4gIE1vcmVvdmVyLCAid291bGQgdGhlc2UgdHdvIG5hbWVz
+IHJlZmVyIHRvIHRoZSBzYW1lDQo+PiBvYmplY3QiIGNhbiBub3QgYmUgbW91bnQtZGVwZW5kZW50
+LiAgTm90IGdvaW5nIHRvIGhhcHBlbi4NCj4+DQo+PiBQbGVhc2UsIHBvc3QgdGhlIGRlc2NyaXB0
+aW9uIG9mIHdoYXQgeW91IGFyZSBwbGFubmluZyB0byBkby4NCj4+IERldGFpbGVkLiAgSSdtIG5v
+dCBzYXlpbmcgdGhhdCBpdCdzIDEwMCUgaW1wb3NzaWJsZSB0byBkbyBjb3JyZWN0bHksDQo+PiBi
+dXQgSSdtIF92ZXJ5XyBzY2VwdGljYWwgYWJvdXQgdGhlIGZlYXNpYmlsaXR5Lg0KPiANCj4gU28g
+SSBjYW4ndCBzcGVhayBhdXRob3JhdGF0aXZlbHkgYWJvdXQgdGhlIENvbGxhYm9yYSdzIGN1c3Rv
+bWVyDQo+IHJlcXVpcmVtZW50cyB0aGF0IGRyb3ZlIHRoaXMgcGFydGljdWxhciBmZWF0dXJlLCBi
+dXQgSSBjYW4gdGFsayBhYm91dA0KPiB3aHkgSSBhbSBpbnRlcmVzdGVkIGluIHRoaXMgZmVhdHVy
+ZSAtLS0gYWx0aG91Z2ggSSB1bmRlcnN0YW5kIHdoeSBpdCdzDQo+IGhhcmQgdG8gZG8gY29ycmVj
+dGx5Lg0KPiANCj4gQW5kcm9pZCBpcyBjdXJyZW50bHkgdXNpbmcgYSBob3JyaWJsZSB3cmFwZnMg
+c2NoZW1lIHRvIHByb3ZpZGUgY2FzZQ0KPiBpbnNlc2l0aXZlIGxvb2t1cHMuICBXZSB0YWxrZWQg
+YWJvdXQgdGhpcyBsYXN0IHllYXIgYXQgTFNGL01NWzFdLiAgSXQNCj4gaXMgdXNpbmcgc2VwYXJh
+dGUgZGVudHJ5IGVudHJpZXMgZm9yIHRoZSB1cHBlciBhbmQgbG93ZXIgbGF5ZXJzLCBhbmQNCj4g
+aXQgaXMgKmRlZmluaXRlbHkqIHByb25lIHRvIHJhY2VzLiAgUnVubmluZyBmc3N0cmVzcyBvbiB0
+aGUgdG9wIGFuZA0KPiBsb3dlciBsYXllcnMgc2ltdWx0YW5lb3VzbHkgaXMgYSBwcmV0dHkgc2lt
+cGxlIHdheSB0byBpbmR1Y2UgaGlsYXJpdHksDQo+IGFsdGhvdWdoIG15IHVuZGVyc3RhbmRpbmcg
+aXMgdGhhdCB0aGUgZGV2ZWxvcGVycyB3b3JraW5nIG9uIGl0IGhhdmluZw0KPiBiZWVuIGhhbW1l
+cmluZyBvbiBpdCBmb3IgYSB3aGlsZSBzbyB0aGF0IHRoZSByYWNlcyB0aGF0IGNhdXNlIGtlcm5l
+bA0KPiBwYW5pY2tzIG9yIGZpbGUgc3lzdGVtIGRhbWFnZSBhcmUgcmFyZS4gIEkgZG9uJ3QgYmVs
+aWV2ZSB0aGV5IGhhdmUNCj4gYmVlbiBjb21wbGV0ZWx5IGVsaW1uaWF0ZWQsIGJlY2F1c2UgaXQn
+cyBub3QgY2xlYXIgdG8gbWUgdGhhdCBhbnkNCj4gd3JhcGZzIHNvbHV0aW9uIGNhbiBldmVyIGJl
+IG1hZGUgcmFjZS1mcmVlLg0KDQpTb3JyeSBmb3IgYm90aGVyLCBJIG1lYW4geW91IHJlZmVyIHRv
+IHNkY2FyZGZzLA0KVGhlIGN1cnJlbnQgU2Ftc3VuZyBzZGNhcmRmcyBhbmQgZXNkZnMgYXJlIGFs
+bCBmc3N0cmVzcyBicm9rZW4gZm9yIG1hbnkgaXNzdWVzLA0KSG93ZXZlciB3ZSBkZXZlbG9wZWQg
+YW4gYW5vdGhlciBhcHByb2FjaCBsYXN0IHllYXIsIGluDQoNCmh0dHBzOi8vYW5kcm9pZC1yZXZp
+ZXcuZ29vZ2xlc291cmNlLmNvbS8jL2Mva2VybmVsL2NvbW1vbi8rLzU3NDQwMi8zL0RvY3VtZW50
+YXRpb24vZmlsZXN5c3RlbXMvaHdzZGNhcmRmcy50eHQNCg0KV2UgYXBwbGllZCBpdCBvbiBIVUFX
+RUkgTWF0ZSAxMCAocHJvKSwgYW5kIHRoZSBjb21wbGV0ZSBzb2x1dGlvbiBpcw0KDQpodHRwczov
+L2FuZHJvaWQtcmV2aWV3Lmdvb2dsZXNvdXJjZS5jb20vIy9xL3N0YXR1czpvcGVuK3Byb2plY3Q6
+a2VybmVsL2NvbW1vbiticmFuY2g6YW5kcm9pZC00LjQrdG9waWM6aHVhd2VpX3NkY2FyZGZzDQoN
+Ckl0IHN1cHBvcnRzIHN0YWNrYWJsZSBjYXNlLWluc2Vuc2l0aXZlIHdpdGhvdXQgbW9kaWZpbmcg
+VkZTIHNtb290aGx5LCANCmFuZCB3ZSB0ZXN0ZWQgZnNzdHJlc3Mgb24gdGhlIHRvcCBhbmQgbG93
+ZXIgbGF5ZXJzIGF0IHRoZSBzYW1lIHRpbWUgDQp3aXRob3V0IGFueSBwcm9ibGVtLg0KDQo+IA0K
+PiBbMV0gaHR0cHM6Ly9sd24ubmV0L0FydGljbGVzLzcxODY0MC8NCj4gDQo+IFRoZSBwcm9ibGVt
+IGlzIHRoYXQgYm90aCB0aGUgY2FzZSBpbnNlbnNpdGl2ZSBhbmQgY2FzZSBzZW5zaXRpdmUNCj4g
+ZGlyZWN0b3J5IHRyZWVzIGFyZSBtYWRlIGF2YWlsYWJsZSB0byB1c2Vyc3BhY2UsIGFuZCBmb3Ig
+YmFja3dhcmRzDQo+IGNvbXBhdGliaWxpdHkgcmVhc29ucywgdGhleSBjYW4ndCBqdXN0IG1ha2Ug
+aXQgZGlzYXBwZWFyLiAgQWx0aG91Z2gNCj4gdGhleSBkb24ndCBoYXZlIGEgTGludXMgVG9ydmFs
+ZHMgZ29pbmcgYWxsIE1yLiBTaG91dHkgYWJvdXQgYnJlYWtpbmcNCj4gdXNlcnNwYWNlLCB0aGUg
+Y29tYmluZWQgd2hpbmdpbmcgZnJvbSB0aGUgQXBwIGRldmVsb3BlciBlY29zeXN0ZW0NCj4gcHJv
+YmFibHkgY2FuIGJlIGEgZmFpcmx5IGdvb2Qgc3Vic3RpdHV0ZSBmb3IgTGludXMgd2hlbiB0aGV5
+IGNvbXBsYWluDQo+IGFib3V0IGNvbXBhdGliaWxpdHkgYnJlYWthZ2VzIHZpc2libGUgdG8gdGhl
+IEFuZHJvaWQgYXBwbGljYXRpb24NCj4gcHJvZ3JhbW1lci4gIDotKQ0KPiANCj4gU28gbXkgaG9w
+ZSBoYXMgYmVlbiB0byBmaW5kIGEgd2F5IHRvIChhKSBtYWtlIHdyYXBmcyBnbyBhd2F5LCBhbmQg
+KGIpDQo+IGFsbG93IHRoZSBmdW5jdGlvbmFsaXR5IG9mIGNhc2Ugc2Vuc2l0aXZlIGFuZCBjYXNl
+IGluc2Vuc2l0aXZlIGJpbmQNCj4gbW91bnRzIG9mIHRoZSBzYW1lIHVuZGVybHlpbmcgZmlsZSBz
+eXN0ZW0gZGlyZWN0b3JpZXMgYmUgKnNvbWVob3cqDQo+IHN1cHBvcnRlZC4NCj4gDQo+IElmIHRo
+ZSBhbnN3ZXIgaXMgdGhhdCBpZiB0d28gZmlsZXMgdGhhdCBkaWZmZXIgb25seSBpbiBjYXNlIGFy
+ZQ0KPiBjcmVhdGVkIHZpYSB0aGUgY2FzZSBzZW5zaXRpdmUgbW91bnQgcmVzdWx0cyBpbiBpdCBi
+ZWluZyB1bmRlZmluZWQNCj4gd2hpY2ggZmlsZSB5b3UgZ2V0IHdoZW4geW91IG9wZW4sIHJlbmFt
+ZSwgb3IgZGVsZXRlIHRoYXQgZmlsZSB2aWEgdGhlDQo+IGNhc2UgaW5zZW5zaXRpdmUgbW91bnQs
+IHRoYXQncyBmaW5lLiAgSSB0aGluayB0aGF0J3Mgd2hhdCBoYXBwcGVucyBpbg0KPiB0aGUgd3Jh
+cGZzIGltcGxlbWVudGF0aW9uIHRvZGF5IGFueXdheS4gIEl0IHdvdWxkIHByb2JhYmx5IGJlIGZp
+bmUgaWYNCj4gdGhlIGFuc3dlciB3YXMgeW91IGdldCB0aGUgZmlsZSB3aXRoIGFuIGV4YWN0IG1h
+dGNoIGlmIGl0IGlzIHByZXNlbnQsDQo+IGJ1dCBpZiB0aGUgdHdvIGZpbGVzIGNyZWF0ZWQgb24g
+dGhlIGNhc2Ugc2Vuc2l0aXZlIHNpZGUgYXJlICJtYWtlZmlsZSINCj4gYW5kICJNYWtlZmlsZSIs
+IGFuZCB5b3UgdHJ5IG9wZW4vZGVsZXRlICJNYUtlRmlMZSIgdmlhIHRoZSBjYXNlDQo+IGluc2Vu
+c2l0aXZlIG1vdW50LCBpdCdzIHVuZGVmaW5lZCB3aGljaCBmaWxlIHlvdSBnZXQgLS0tIHRoYXQn
+cyBmaW5lLg0KDQpXZSBoYXZlIGEgc29sdXRpb24gdG8gc29sdmUgY2FzZS1pbnNlbnNpdGl2ZSBz
+dGFja2FibGUgYnV0IHdpdGhvdXQgbW9kaWZpbmcgVkZTLg0KDQpUaGFua3MsDQoNCj4gDQo+IEFu
+eW9uZSB3aG8gZG9lcyB0aGF0IHdpbGwgZ2V0IGV2ZXJ5dGhpbmcgdGhleSBkZXNlcnZlLCBhbmQg
+dGhleSBnZXQNCj4gdGhhdCB0b2RheSBhbnl3YXkgd2l0aCB0aGUgd3JhcGZzIG9yIHRoZSBwcmV2
+aW91cyBmdXNlIGhhY2sgYW55d2F5Lg0KPiANCj4gVGhpcyBtYXkgaW5kZWVkIGJlIGFuIE9fUE9O
+SUVTIHN0eWxlIHJlcXVlc3QuICBBbmQgaW4gdGhlIHdvcnN0IGNhc2UsDQo+IEFuZHJvaWQgd2ls
+bCBjb250aW51ZSB1c2luZyBhbiBvdXQtb2YtdHJlZSB3cmFwZnMgc29sdXRpb24sIGFuZA0KPiBo
+b3BlZnVsbHkgSSBjYW4gZmVuZCBvZmYgcGVvcGxlIGFza2luZyBtZSBmb3IgaGVscCB3aGVuIHRo
+ZSB3cmFwZnMNCj4gY29kZSBibG93cyB1cCBpbiB2YXJpb3VzIG5vdC1zby1lbnRlcnRhaW5uZyB3
+YXlzLiAgV2hpY2ggaXMsDQo+IGFkbWl0dGVkbHksIGEgcHVyZWx5IHNlbGZpc2ggcmVhc29uIGZv
+ciB3aHkgSSB3b3VsZCBsaWtlIHRvIHNlZSBpZiB3ZQ0KPiBjYW4gZ2l2ZSBBbmRyb2lkIGZvbGtz
+IGVxdWl2YWxlbnQgZnVuY3Rpb25hbGl0eSB0byB0aGUgd3JhcGZzIGhhY2sgaW4NCj4gYSBzYW5l
+LCBzYWZlLCBhbmQgY29uc2Vuc3VhbCB3YXkuICAgOi0pDQo+IA0KPiBDaGVlcnMsDQo+IA0KPiAJ
+CQkJCQktIFRlZA0KPiANCg==
