@@ -1,154 +1,115 @@
-From: Jeff Layton <jlayton@redhat.com>
-Subject: [GIT PULL] inode->i_version rework for v4.16
-Date: Mon, 29 Jan 2018 07:26:35 -0500
-Message-ID: <1517228795.5965.24.camel@redhat.com>
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Subject: [PATCH 4.4 41/74] ext2: Dont clear SGID when inheriting ACLs
+Date: Mon, 29 Jan 2018 13:56:46 +0100
+Message-ID: <20180129123849.432485603@linuxfoundation.org>
+References: <20180129123847.507563674@linuxfoundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-Cc: open list <linux-kernel@vger.kernel.org>,
-        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        xfs <linux-xfs@vger.kernel.org>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Sender: linux-btrfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        stable@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Jan Kara <jack@suse.cz>
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180129123847.507563674@linuxfoundation.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The following changes since commit 50c4c4e268a2d7a3e58ebb698ac74da0de40ae36:
+4.4-stable review patch.  If anyone has any objections, please let me know.
 
-  Linux 4.15-rc3 (2017-12-10 17:56:26 -0800)
+------------------
 
-are available in the Git repository at:
+From: Jan Kara <jack@suse.cz>
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/jlayton/linux.git tags/iversion-v4.16-1
+commit a992f2d38e4ce17b8c7d1f7f67b2de0eebdea069 upstream.
 
-for you to fetch changes up to f02a9ad1f15daf4378afeda025a53455f72645dd:
+When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
+set, DIR1 is expected to have SGID bit set (and owning group equal to
+the owning group of 'DIR0'). However when 'DIR0' also has some default
+ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
+'DIR1' to get cleared if user is not member of the owning group.
 
-  fs: handle inode->i_version more efficiently (2018-01-29 06:42:21 -0500)
+Fix the problem by creating __ext2_set_acl() function that does not call
+posix_acl_update_mode() and use it when inheriting ACLs. That prevents
+SGID bit clearing and the mode has been properly set by
+posix_acl_create() anyway.
 
-----------------------------------------------------------------
-Hi Linus,
+Fixes: 073931017b49d9458aa351605b43a7e34598caef
+CC: stable@vger.kernel.org
+CC: linux-ext4@vger.kernel.org
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 
-This pile of patches is a rework of the inode->i_version field. We have
-traditionally incremented that field on every inode data or metadata
-change. Typically this increment needs to be logged on disk even when
-nothing else has changed, which is rather expensive.
+---
+ fs/ext2/acl.c |   36 ++++++++++++++++++++++--------------
+ 1 file changed, 22 insertions(+), 14 deletions(-)
 
-It turns out though that none of the consumers of that field actually
-require this behavior. The only real requirement for all of them is that
-it be different iff the inode has changed since the last time the field
-was checked.
-
-Given that, we can optimize away most of the i_version increments and
-avoid dirtying inode metadata when the only change is to the i_version 
-and no one is querying it. Queries of the i_version field are rather
-rare, so we can help write performance under many common workloads.
-
-This patch series converts existing accesses of the i_version field to a
-new API, and then converts all of the in-kernel filesystems to use it.
-The last patch in the series then converts the backend implementation to
-a scheme that optimizes away a large portion of the metadata updates
-when no one is looking at it.
-
-In my own testing this series significantly helps performance with small
-I/O sizes. I also got this email for Christmas this year from the kernel
-test robot (a 244% r/w bandwidth improvement with XFS over DAX, with 4k
-writes):
-
-    https://lkml.org/lkml/2017/12/25/8
-
-A few of the earlier patches in this pile are also flowing to you via
-other trees (mm, integrity, and nfsd trees in particular), so there may
-be some minor merge conflicts here. Hopefully they're trivial to
-resolve, but let me know if there are problems.
-
-Thanks!
-----------------------------------------------------------------
-Jeff Layton (21):
-      lustre: don't set f_version in ll_readdir
-      ntfs: remove i_version handling
-      fs: new API for handling inode->i_version
-      fs: don't take the i_lock in inode_inc_iversion
-      fat: convert to new i_version API
-      affs: convert to new i_version API
-      afs: convert to new i_version API
-      btrfs: convert to new i_version API
-      exofs: switch to new i_version API
-      ext2: convert to new i_version API
-      ext4: convert to new i_version API
-      nfs: convert to new i_version API
-      nfsd: convert to new i_version API
-      ocfs2: convert to new i_version API
-      ufs: use new i_version API
-      xfs: convert to new i_version API
-      IMA: switch IMA over to new i_version API
-      fs: only set S_VERSION when updating times if necessary
-      xfs: avoid setting XFS_ILOG_CORE if i_version doesn't need incrementing
-      btrfs: only dirty the inode in btrfs_update_time if something was changed
-      fs: handle inode->i_version more efficiently
-
-Sascha Hauer (1):
-      ima: Use i_version only when filesystem supports it
-
- drivers/staging/lustre/lustre/llite/dir.c |   3 -
- fs/affs/amigaffs.c                        |   5 +-
- fs/affs/dir.c                             |   5 +-
- fs/affs/super.c                           |   3 +-
- fs/afs/fsclient.c                         |   3 +-
- fs/afs/inode.c                            |   5 +-
- fs/btrfs/delayed-inode.c                  |   7 +-
- fs/btrfs/file.c                           |   1 +
- fs/btrfs/inode.c                          |  12 +-
- fs/btrfs/ioctl.c                          |   1 +
- fs/btrfs/tree-log.c                       |   4 +-
- fs/btrfs/xattr.c                          |   1 +
- fs/exofs/dir.c                            |   9 +-
- fs/exofs/super.c                          |   3 +-
- fs/ext2/dir.c                             |   9 +-
- fs/ext2/super.c                           |   5 +-
- fs/ext4/dir.c                             |   9 +-
- fs/ext4/inline.c                          |   7 +-
- fs/ext4/inode.c                           |  13 +-
- fs/ext4/ioctl.c                           |   3 +-
- fs/ext4/namei.c                           |   5 +-
- fs/ext4/super.c                           |   3 +-
- fs/ext4/xattr.c                           |   5 +-
- fs/fat/dir.c                              |   3 +-
- fs/fat/inode.c                            |   9 +-
- fs/fat/namei_msdos.c                      |   7 +-
- fs/fat/namei_vfat.c                       |  22 +-
- fs/inode.c                                |  11 +-
- fs/nfs/delegation.c                       |   3 +-
- fs/nfs/fscache-index.c                    |   5 +-
- fs/nfs/inode.c                            |  18 +-
- fs/nfs/nfs4proc.c                         |  10 +-
- fs/nfs/nfstrace.h                         |   5 +-
- fs/nfs/write.c                            |   8 +-
- fs/nfsd/nfsfh.h                           |   3 +-
- fs/ntfs/inode.c                           |   9 -
- fs/ntfs/mft.c                             |   6 -
- fs/ocfs2/dir.c                            |  15 +-
- fs/ocfs2/inode.c                          |   3 +-
- fs/ocfs2/namei.c                          |   3 +-
- fs/ocfs2/quota_global.c                   |   3 +-
- fs/ufs/dir.c                              |   9 +-
- fs/ufs/inode.c                            |   3 +-
- fs/ufs/super.c                            |   3 +-
- fs/xfs/libxfs/xfs_inode_buf.c             |   7 +-
- fs/xfs/xfs_icache.c                       |   5 +-
- fs/xfs/xfs_inode.c                        |   3 +-
- fs/xfs/xfs_inode_item.c                   |   3 +-
- fs/xfs/xfs_trans_inode.c                  |  16 +-
- include/linux/fs.h                        |  17 +-
- include/linux/iversion.h                  | 341 ++++++++++++++++++++++++++++++
- security/integrity/ima/ima_api.c          |   3 +-
- security/integrity/ima/ima_main.c         |   4 +-
- 53 files changed, 525 insertions(+), 153 deletions(-)
- create mode 100644 include/linux/iversion.h
--- 
-Jeff Layton <jlayton@redhat.com>
+--- a/fs/ext2/acl.c
++++ b/fs/ext2/acl.c
+@@ -178,11 +178,8 @@ ext2_get_acl(struct inode *inode, int ty
+ 	return acl;
+ }
+ 
+-/*
+- * inode->i_mutex: down
+- */
+-int
+-ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
++static int
++__ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ {
+ 	int name_index;
+ 	void *value = NULL;
+@@ -192,13 +189,6 @@ ext2_set_acl(struct inode *inode, struct
+ 	switch(type) {
+ 		case ACL_TYPE_ACCESS:
+ 			name_index = EXT2_XATTR_INDEX_POSIX_ACL_ACCESS;
+-			if (acl) {
+-				error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
+-				if (error)
+-					return error;
+-				inode->i_ctime = CURRENT_TIME_SEC;
+-				mark_inode_dirty(inode);
+-			}
+ 			break;
+ 
+ 		case ACL_TYPE_DEFAULT:
+@@ -225,6 +215,24 @@ ext2_set_acl(struct inode *inode, struct
+ }
+ 
+ /*
++ * inode->i_mutex: down
++ */
++int
++ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
++{
++	int error;
++
++	if (type == ACL_TYPE_ACCESS && acl) {
++		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
++		if (error)
++			return error;
++		inode->i_ctime = CURRENT_TIME_SEC;
++		mark_inode_dirty(inode);
++	}
++	return __ext2_set_acl(inode, acl, type);
++}
++
++/*
+  * Initialize the ACLs of a new inode. Called from ext2_new_inode.
+  *
+  * dir->i_mutex: down
+@@ -241,12 +249,12 @@ ext2_init_acl(struct inode *inode, struc
+ 		return error;
+ 
+ 	if (default_acl) {
+-		error = ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
++		error = __ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
+ 		posix_acl_release(default_acl);
+ 	}
+ 	if (acl) {
+ 		if (!error)
+-			error = ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
++			error = __ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
+ 		posix_acl_release(acl);
+ 	}
+ 	return error;
