@@ -1,115 +1,83 @@
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Subject: [PATCH 4.4 41/74] ext2: Dont clear SGID when inheriting ACLs
-Date: Mon, 29 Jan 2018 13:56:46 +0100
-Message-ID: <20180129123849.432485603@linuxfoundation.org>
-References: <20180129123847.507563674@linuxfoundation.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] inode->i_version rework for v4.16
+Date: Mon, 29 Jan 2018 13:50:47 -0800
+Message-ID: <CA+55aFxXg8JprOwfm0qCm4VkkM8cPM38YMvpkf3gBJq3bSJwPw@mail.gmail.com>
+References: <1517228795.5965.24.camel@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        stable@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Jan Kara <jack@suse.cz>
-To: linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: open list <linux-kernel@vger.kernel.org>,
+        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        xfs <linux-xfs@vger.kernel.org>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-integrity <linux-integrity@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180129123847.507563674@linuxfoundation.org>
+In-Reply-To: <1517228795.5965.24.camel@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-4.4-stable review patch.  If anyone has any objections, please let me know.
+On Mon, Jan 29, 2018 at 4:26 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>
+> This pile of patches is a rework of the inode->i_version field. We have
+> traditionally incremented that field on every inode data or metadata
+> change. Typically this increment needs to be logged on disk even when
+> nothing else has changed, which is rather expensive.
 
-------------------
+Hmm. I have pulled this, but it is really really broken in one place,
+to the degree that I always went "no, I won't pull this garbage".
 
-From: Jan Kara <jack@suse.cz>
+But the breakage is potential, not actual, and can be fixed trivially,
+so I'll let it slide - but I do require it to be fixed. And I require
+people to *think* about it.
 
-commit a992f2d38e4ce17b8c7d1f7f67b2de0eebdea069 upstream.
+So what's to horribly horribly wrong?
 
-When new directory 'DIR1' is created in a directory 'DIR0' with SGID bit
-set, DIR1 is expected to have SGID bit set (and owning group equal to
-the owning group of 'DIR0'). However when 'DIR0' also has some default
-ACLs that 'DIR1' inherits, setting these ACLs will result in SGID bit on
-'DIR1' to get cleared if user is not member of the owning group.
+The inode_cmp_iversion{+raw}() functions are pure and utter crap.
 
-Fix the problem by creating __ext2_set_acl() function that does not call
-posix_acl_update_mode() and use it when inheriting ACLs. That prevents
-SGID bit clearing and the mode has been properly set by
-posix_acl_create() anyway.
+Why?
 
-Fixes: 073931017b49d9458aa351605b43a7e34598caef
-CC: stable@vger.kernel.org
-CC: linux-ext4@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+You say that they return 0/negative/positive, but they do so in a
+completely broken manner. They return that ternary value as the
+sequence number difference in a 's64', which means that if you
+actually care about that ternary value, and do the *sane* thing that
+the kernel-doc of the function implies is the right thing, you would
+do
 
----
- fs/ext2/acl.c |   36 ++++++++++++++++++++++--------------
- 1 file changed, 22 insertions(+), 14 deletions(-)
+    int cmp = inode_cmp_iversion(inode, old);
 
---- a/fs/ext2/acl.c
-+++ b/fs/ext2/acl.c
-@@ -178,11 +178,8 @@ ext2_get_acl(struct inode *inode, int ty
- 	return acl;
- }
- 
--/*
-- * inode->i_mutex: down
-- */
--int
--ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+static int
-+__ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
- 	int name_index;
- 	void *value = NULL;
-@@ -192,13 +189,6 @@ ext2_set_acl(struct inode *inode, struct
- 	switch(type) {
- 		case ACL_TYPE_ACCESS:
- 			name_index = EXT2_XATTR_INDEX_POSIX_ACL_ACCESS;
--			if (acl) {
--				error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
--				if (error)
--					return error;
--				inode->i_ctime = CURRENT_TIME_SEC;
--				mark_inode_dirty(inode);
--			}
- 			break;
- 
- 		case ACL_TYPE_DEFAULT:
-@@ -225,6 +215,24 @@ ext2_set_acl(struct inode *inode, struct
- }
- 
- /*
-+ * inode->i_mutex: down
-+ */
-+int
-+ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+{
-+	int error;
-+
-+	if (type == ACL_TYPE_ACCESS && acl) {
-+		error = posix_acl_update_mode(inode, &inode->i_mode, &acl);
-+		if (error)
-+			return error;
-+		inode->i_ctime = CURRENT_TIME_SEC;
-+		mark_inode_dirty(inode);
-+	}
-+	return __ext2_set_acl(inode, acl, type);
-+}
-+
-+/*
-  * Initialize the ACLs of a new inode. Called from ext2_new_inode.
-  *
-  * dir->i_mutex: down
-@@ -241,12 +249,12 @@ ext2_init_acl(struct inode *inode, struc
- 		return error;
- 
- 	if (default_acl) {
--		error = ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
-+		error = __ext2_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
- 		posix_acl_release(default_acl);
- 	}
- 	if (acl) {
- 		if (!error)
--			error = ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
-+			error = __ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
- 		posix_acl_release(acl);
- 	}
- 	return error;
+    if (cmp < 0 ...
+
+and as a result you get code that looks sane, but that doesn't
+actually *WORK* right.
+
+To make it even worse, it will actually work in practice by accident
+in 99.99999% of all cases, so now you have
+
+ (a) subtly buggy code
+ (b) that looks fine
+ (c) and that works in testing
+
+which is just about the worst possible case for any code. The
+interface is simply garbage that encourages bugs.
+
+And the bug wouldn't be in the user, the bug would be in this code you
+just sent me. The interface is simply wrong.
+
+So this absolutely needs to be fixed. I see two fixes:
+
+ - just return a boolean. That's all that any current user actually
+wants, so the ternary value seems pointless.
+
+ - make it return an 'int', and not just any int, but -1/0/1. That way
+there is no worry about uses, and if somebody *really* cares about the
+ternary value, they can now use a "switch" statement to get it
+(alternatively, make it return an enum, but whatever).
+
+That "ternary" function that has 18446744069414584320 incorrect return
+values really is unacceptable.
+
+                Linus
