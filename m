@@ -1,37 +1,102 @@
-From: 56412061@mylife.unisa.ac.za
-Subject: Darlehensangebot
-Date: Tue, 30 Jan 2018 17:28:51 +0530
-Message-ID: <VI1PR0102MB3422A7FC171025168064E8EABCE40@VI1PR0102MB3422.eurprd01.prod.exchangelabs.com>
-Reply-To: david.loanfirm09@gmail.com
+From: Jeff Layton <jlayton@redhat.com>
+Subject: Re: [GIT PULL] inode->i_version rework for v4.16
+Date: Tue, 30 Jan 2018 07:05:48 -0500
+Message-ID: <1517313948.3658.8.camel@redhat.com>
+References: <1517228795.5965.24.camel@redhat.com>
+         <CA+55aFxXg8JprOwfm0qCm4VkkM8cPM38YMvpkf3gBJq3bSJwPw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
-To: Recipients <56412061@mylife.unisa.ac.za>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ve1eur01hn0243.outbound.protection.outlook.com ([104.47.1.243]:47760
-        "EHLO EUR01-VE1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751219AbeA3L53 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 30 Jan 2018 06:57:29 -0500
-Content-Description: Mail message body
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
+Cc: open list <linux-kernel@vger.kernel.org>,
+        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        xfs <linux-xfs@vger.kernel.org>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-integrity <linux-integrity@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <CA+55aFxXg8JprOwfm0qCm4VkkM8cPM38YMvpkf3gBJq3bSJwPw@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Sch=C3=B6nen Tag,
+On Mon, 2018-01-29 at 13:50 -0800, Linus Torvalds wrote:
+> On Mon, Jan 29, 2018 at 4:26 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > This pile of patches is a rework of the inode->i_version field. We have
+> > traditionally incremented that field on every inode data or metadata
+> > change. Typically this increment needs to be logged on disk even when
+> > nothing else has changed, which is rather expensive.
+> 
+> Hmm. I have pulled this, but it is really really broken in one place,
+> to the degree that I always went "no, I won't pull this garbage".
+> 
+> But the breakage is potential, not actual, and can be fixed trivially,
+> so I'll let it slide - but I do require it to be fixed. And I require
+> people to *think* about it.
+> 
+> So what's to horribly horribly wrong?
+> 
+> The inode_cmp_iversion{+raw}() functions are pure and utter crap.
+> 
+> Why?
+> 
+> You say that they return 0/negative/positive, but they do so in a
+> completely broken manner. They return that ternary value as the
+> sequence number difference in a 's64', which means that if you
+> actually care about that ternary value, and do the *sane* thing that
+> the kernel-doc of the function implies is the right thing, you would
+> do
+> 
+>     int cmp = inode_cmp_iversion(inode, old);
+> 
+>     if (cmp < 0 ...
+> 
+> and as a result you get code that looks sane, but that doesn't
+> actually *WORK* right.
+> 
 
-Sie ben=C3=B6tigen einen echten Kredit online Ihre Rechnungen zu sichern?
-Startet ein neues Unternehmen? Sie ben=C3=B6tigen einen pers=C3=B6nlichen K=
-redit
-oder Business-Darlehen? Wir bieten ein Darlehen von =E2=82=AC 10.000 bis =
-=E2=82=AC
-500,000.000.00 mit 2% Zinsen pro Jahr und auch mit einem
-erschwinglichen R=C3=BCckzahlungsbedingungen und Zustand. Ich suche f=C3=BCr
-Darlehen und Projektinvestmentfonds ? Wir halten professionelle
-Exzellenz, unsere Definition von Exzellenz liegt in hervorragenden
-Kundenservice, erschwingliche Zahlung und R=C3=BCckzahlung Pl=C3=A4ne, schn=
-ell
-und einfach-Prozess.
-Hochachtungsvoll....
+My intent here was to have this handle wraparound using the same sort of
+method that the time_before/time_after macros do. Obviously, I didn't
+document that well.
 
-Freundliche Gr=C3=BC=C3=9Fe,
-Herr David Williams
+I want to make sure I understand what's actually broken here thoug. Is
+it only broken when the two values are more than 2**63 apart, or is
+there something else more fundamentally wrong here?
+
+> To make it even worse, it will actually work in practice by accident
+> in 99.99999% of all cases, so now you have
+> 
+>  (a) subtly buggy code
+>  (b) that looks fine
+>  (c) and that works in testing
+> 
+> which is just about the worst possible case for any code. The
+> interface is simply garbage that encourages bugs.
+> 
+> And the bug wouldn't be in the user, the bug would be in this code you
+> just sent me. The interface is simply wrong.
+> 
+> So this absolutely needs to be fixed. I see two fixes:
+> 
+>  - just return a boolean. That's all that any current user actually
+> wants, so the ternary value seems pointless.
+> 
+>  - make it return an 'int', and not just any int, but -1/0/1. That way
+> there is no worry about uses, and if somebody *really* cares about the
+> ternary value, they can now use a "switch" statement to get it
+> (alternatively, make it return an enum, but whatever).
+> 
+> That "ternary" function that has 18446744069414584320 incorrect return
+> values really is unacceptable.
+> 
+
+I think I'll just make it return a boolean value like you suggested
+first. I'll send a patch to fix it once I've done some basic testing
+with it.
+
+Many thanks,
+--
+Jeff Layton <jlayton@redhat.com>
