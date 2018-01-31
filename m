@@ -1,48 +1,60 @@
-From: fruggeri@arista.com (Francesco Ruggeri)
-Subject: mount stuck in infinite loop
-Date: Wed, 31 Jan 2018 09:16:53 -0800
-Message-ID: <20180131171653.7C66C49841@fruggeri-Arora18_1.sjc.aristanetworks.com>
+From: Jeff Layton <jlayton@kernel.org>
+Subject: Re: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool
+ instead of s64
+Date: Wed, 31 Jan 2018 12:55:24 -0500
+Message-ID: <1517421324.32569.15.camel@kernel.org>
+References: <20180130173126.2806-1-jlayton@kernel.org>
+         <20180130203221.29310-1-jlayton@kernel.org>
+         <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com>
+         <1517401762.3612.0.camel@kernel.org>
+         <CA+55aFxB6og=iRkRchiOrr8EW2=jgb_i4nUiPsvEa+8F64APxA@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 7bit
-Cc: fruggeri@arista.com
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-integrity <linux-integrity@vger.kernel.org>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        GoffredoBaroncelli <kreijack@libero.it>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <CA+55aFxB6og=iRkRchiOrr8EW2=jgb_i4nUiPsvEa+8F64APxA@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I had a few cases of mount getting stuck in an infinite loop.
-This happens when bdev->bd_inode->i_blkbits gets modified (for
-example by bd_set_size()) while *_fill_super() is between
-sb_min_blocksize() and sb_bread(), and the new value is inconsistent
-with the block size used in fill_super().
-When this happens one can get into an infinite loop in
-__getblk_slow(), if grow_buffers() allocates/finds a page with a
-given index, but __find_get_block{_slow}() looks for (and does not
-find) a page with a different index.
+On Wed, 2018-01-31 at 08:46 -0800, Linus Torvalds wrote:
+> On Wed, Jan 31, 2018 at 4:29 AM, Jeff Layton <jlayton@kernel.org> wrote:
+> > 
+> > Do you mind just taking it directly? I don't have anything else queued
+> > up for this cycle.
+> 
+> Done.
+> 
 
-I can reproduce it in 4.14.15 with the following script.
-I can also reproduce it in 4.9 and 3.18.
+Thanks...and also many thanks for spotting the original issue. I agree
+that this makes it much harder for the callers to get things wrong (and
+is probably much more efficient on some arches, as Ted pointed out).
 
-FILE=/tmp/fsfile
-MNT=/tmp/fsmnt
-LOOP=`losetup -f`
+> I wonder if "false for same, true for different" calling convention
+> makes much sense, but it matches the old "0 for same" so obviously
+> makes for a smaller diff.
+> 
+> If it ever ends up confusing people, maybe the sense of that function
+> should be reversed, and the name changed to something like
+> "same_inode_version()" or something.
+> 
+> But at least for now the situation seems ok to me,
+> 
 
-rm -rf $FILE $MNT
+G. Baroncelli suggested changing the name too, so maybe we should just
+go ahead and do it. Let me think on what the best approach is and I may
+try to send another patch or PR before the end of the merge window.
 
-mkdir $MNT
-dd if=/dev/zero of=$FILE count=32 bs=1MiB
-losetup $LOOP $FILE
-mkfs -t ext4 $LOOP
-while true; do losetup -D $LOOP; losetup $LOOP $FILE; done \
-	2>/dev/null >/dev/null &
-for ((i=0; i<100; i++)); do echo ================== $i; \
-	mount $LOOP $MNT; umount $MNT; done
-
-The issue is that __find_get_block_slow() and grow_buffers() compute
-the page index in different ways.
-I am not sure what the correct solution should be here.
-
-Thanks,
-Francesco Ruggeri
+Cheers,
+-- 
+Jeff Layton <jlayton@kernel.org>
