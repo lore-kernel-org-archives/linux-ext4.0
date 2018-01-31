@@ -1,46 +1,48 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool
- instead of s64
-Date: Wed, 31 Jan 2018 08:46:41 -0800
-Message-ID: <CA+55aFxB6og=iRkRchiOrr8EW2=jgb_i4nUiPsvEa+8F64APxA@mail.gmail.com>
-References: <20180130173126.2806-1-jlayton@kernel.org> <20180130203221.29310-1-jlayton@kernel.org>
- <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com> <1517401762.3612.0.camel@kernel.org>
+From: fruggeri@arista.com (Francesco Ruggeri)
+Subject: mount stuck in infinite loop
+Date: Wed, 31 Jan 2018 09:16:53 -0800
+Message-ID: <20180131171653.7C66C49841@fruggeri-Arora18_1.sjc.aristanetworks.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Trond Myklebust <trondmy@primarydata.com>
-To: Jeff Layton <jlayton@kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:52957 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753270AbeAaQqm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Jan 2018 11:46:42 -0500
-In-Reply-To: <1517401762.3612.0.camel@kernel.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: fruggeri@arista.com
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jan 31, 2018 at 4:29 AM, Jeff Layton <jlayton@kernel.org> wrote:
->
-> Do you mind just taking it directly? I don't have anything else queued
-> up for this cycle.
+I had a few cases of mount getting stuck in an infinite loop.
+This happens when bdev->bd_inode->i_blkbits gets modified (for
+example by bd_set_size()) while *_fill_super() is between
+sb_min_blocksize() and sb_bread(), and the new value is inconsistent
+with the block size used in fill_super().
+When this happens one can get into an infinite loop in
+__getblk_slow(), if grow_buffers() allocates/finds a page with a
+given index, but __find_get_block{_slow}() looks for (and does not
+find) a page with a different index.
 
-Done.
+I can reproduce it in 4.14.15 with the following script.
+I can also reproduce it in 4.9 and 3.18.
 
-I wonder if "false for same, true for different" calling convention
-makes much sense, but it matches the old "0 for same" so obviously
-makes for a smaller diff.
+FILE=/tmp/fsfile
+MNT=/tmp/fsmnt
+LOOP=`losetup -f`
 
-If it ever ends up confusing people, maybe the sense of that function
-should be reversed, and the name changed to something like
-"same_inode_version()" or something.
+rm -rf $FILE $MNT
 
-But at least for now the situation seems ok to me,
+mkdir $MNT
+dd if=/dev/zero of=$FILE count=32 bs=1MiB
+losetup $LOOP $FILE
+mkfs -t ext4 $LOOP
+while true; do losetup -D $LOOP; losetup $LOOP $FILE; done \
+	2>/dev/null >/dev/null &
+for ((i=0; i<100; i++)); do echo ================== $i; \
+	mount $LOOP $MNT; umount $MNT; done
 
-            Linus
+The issue is that __find_get_block_slow() and grow_buffers() compute
+the page index in different ways.
+I am not sure what the correct solution should be here.
+
+Thanks,
+Francesco Ruggeri
