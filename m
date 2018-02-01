@@ -1,60 +1,76 @@
-From: Jeff Layton <jlayton@kernel.org>
-Subject: Re: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool
- instead of s64
-Date: Wed, 31 Jan 2018 12:55:24 -0500
-Message-ID: <1517421324.32569.15.camel@kernel.org>
-References: <20180130173126.2806-1-jlayton@kernel.org>
-         <20180130203221.29310-1-jlayton@kernel.org>
-         <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com>
-         <1517401762.3612.0.camel@kernel.org>
-         <CA+55aFxB6og=iRkRchiOrr8EW2=jgb_i4nUiPsvEa+8F64APxA@mail.gmail.com>
+From: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: [PATCH 2] xfs: fix rt_dev usage for DAX
+Date: Thu, 01 Feb 2018 13:32:41 -0700
+Message-ID: <151751716161.69821.14826493123161323243.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        GoffredoBaroncelli <kreijack@libero.it>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CA+55aFxB6og=iRkRchiOrr8EW2=jgb_i4nUiPsvEa+8F64APxA@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+To: darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2018-01-31 at 08:46 -0800, Linus Torvalds wrote:
-> On Wed, Jan 31, 2018 at 4:29 AM, Jeff Layton <jlayton@kernel.org> wrote:
-> > 
-> > Do you mind just taking it directly? I don't have anything else queued
-> > up for this cycle.
-> 
-> Done.
-> 
+When using realtime device (rtdev) with xfs where the data device is not
+DAX capable, two issues arise. One is when data device is not DAX but the
+realtime device is DAX capable, we currently disable DAX.
+After passing this check, we are also not marking the inode as DAX capable.
+This change will allow DAX enabled if the data device or the realtime
+device is DAX capable. S_DAX will be marked for the inode if the file is
+residing on a DAX capable device. This will prevent the case of rtdev is not
+DAX and data device is DAX to create realtime files.
 
-Thanks...and also many thanks for spotting the original issue. I agree
-that this makes it much harder for the callers to get things wrong (and
-is probably much more efficient on some arches, as Ted pointed out).
+Signed-off-by: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Reported-by: Darrick Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+---
+ fs/xfs/xfs_iops.c  |    3 ++-
+ fs/xfs/xfs_super.c |    9 ++++++++-
+ 2 files changed, 10 insertions(+), 2 deletions(-)
 
-> I wonder if "false for same, true for different" calling convention
-> makes much sense, but it matches the old "0 for same" so obviously
-> makes for a smaller diff.
-> 
-> If it ever ends up confusing people, maybe the sense of that function
-> should be reversed, and the name changed to something like
-> "same_inode_version()" or something.
-> 
-> But at least for now the situation seems ok to me,
-> 
-
-G. Baroncelli suggested changing the name too, so maybe we should just
-go ahead and do it. Let me think on what the best approach is and I may
-try to send another patch or PR before the end of the merge window.
-
-Cheers,
--- 
-Jeff Layton <jlayton@kernel.org>
+diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+index 56475fcd76f2..ab352c325301 100644
+--- a/fs/xfs/xfs_iops.c
++++ b/fs/xfs/xfs_iops.c
+@@ -1204,7 +1204,8 @@ xfs_diflags_to_iflags(
+ 	    ip->i_mount->m_sb.sb_blocksize == PAGE_SIZE &&
+ 	    !xfs_is_reflink_inode(ip) &&
+ 	    (ip->i_mount->m_flags & XFS_MOUNT_DAX ||
+-	     ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
++	     ip->i_d.di_flags2 & XFS_DIFLAG2_DAX) &&
++	    blk_queue_dax(bdev_get_queue(inode->i_sb->s_bdev)))
+ 		inode->i_flags |= S_DAX;
+ }
+ 
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index e8a687232614..5ac478924dce 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -1649,11 +1649,18 @@ xfs_fs_fill_super(
+ 		sb->s_flags |= SB_I_VERSION;
+ 
+ 	if (mp->m_flags & XFS_MOUNT_DAX) {
++		bool rtdev_is_dax = false;
++
+ 		xfs_warn(mp,
+ 		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
+ 
++		if (mp->m_rtdev_targp->bt_daxdev)
++			if (bdev_dax_supported(mp->m_rtdev_targp->bt_bdev,
++					      sb->s_blocksize) == 0)
++				rtdev_is_dax = true;
++
+ 		error = bdev_dax_supported(sb->s_bdev, sb->s_blocksize);
+-		if (error) {
++		if (error && !rtdev_is_dax) {
+ 			xfs_alert(mp,
+ 			"DAX unsupported by block device. Turning off DAX.");
+ 			mp->m_flags &= ~XFS_MOUNT_DAX;
