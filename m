@@ -1,108 +1,78 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2 2/2] xfs: fix rt_dev usage for DAX
-Date: Fri, 2 Feb 2018 14:36:17 +1100
-Message-ID: <20180202033617.g23puq2xbwy4wmug@destitution>
-References: <151751717968.69886.6978962571680635420.stgit@djiang5-desk3.ch.intel.com>
- <151751718516.69886.135497175511444689.stgit@djiang5-desk3.ch.intel.com>
- <20180201234413.idd27uqzqbg54ddk@destitution>
- <20180202004332.GZ4849@magnolia>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Jiang <dave.jiang@intel.com>, linux-xfs@vger.kernel.org,
-        ross.zwisler@linux.intel.com, linux-ext4@vger.kernel.org,
-        dan.j.williams@intel.com, linux-nvdimm@lists.01.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [PATCH v4 0/4] 64 bit inode counter support
+Date: Fri,  2 Feb 2018 12:41:32 +0300
+Message-ID: <20180202094136.13032-1-artem.blagodarenko@gmail.com>
+Cc: adilger.kernel@dilger.ca
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:2580 "EHLO
-        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751530AbeBBDlU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Feb 2018 22:41:20 -0500
-Content-Disposition: inline
-In-Reply-To: <20180202004332.GZ4849@magnolia>
+Received: from mail-lf0-f66.google.com ([209.85.215.66]:36604 "EHLO
+        mail-lf0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750781AbeBBJll (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Feb 2018 04:41:41 -0500
+Received: by mail-lf0-f66.google.com with SMTP id t79so30540306lfe.3
+        for <linux-ext4@vger.kernel.org>; Fri, 02 Feb 2018 01:41:40 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 01, 2018 at 04:43:32PM -0800, Darrick J. Wong wrote:
-> On Fri, Feb 02, 2018 at 10:44:13AM +1100, Dave Chinner wrote:
-> > On Thu, Feb 01, 2018 at 01:33:05PM -0700, Dave Jiang wrote:
-> > > Signed-off-by: Dave Jiang <dave.jiang@intel.com>
-> > > Reported-by: Darrick Wong <darrick.wong@oracle.com>
-> > > ---
-> > >  fs/xfs/xfs_iops.c  |    3 ++-
-> > >  fs/xfs/xfs_super.c |    9 ++++++++-
-> > >  2 files changed, 10 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-> > > index 56475fcd76f2..ab352c325301 100644
-> > > --- a/fs/xfs/xfs_iops.c
-> > > +++ b/fs/xfs/xfs_iops.c
-> > > @@ -1204,7 +1204,8 @@ xfs_diflags_to_iflags(
-> > >  	    ip->i_mount->m_sb.sb_blocksize == PAGE_SIZE &&
-> > >  	    !xfs_is_reflink_inode(ip) &&
-> > >  	    (ip->i_mount->m_flags & XFS_MOUNT_DAX ||
-> > > -	     ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
-> > > +	     ip->i_d.di_flags2 & XFS_DIFLAG2_DAX) &&
-> > > +	    blk_queue_dax(bdev_get_queue(inode->i_sb->s_bdev)))
-> > 
-> > This does not discriminate between the rtdev or the data dev. This
-> > needs to call xfs_find_bdev_for_inode() to get the right device
-> > for the inode config.
-> > 
-> > Further, if we add or remove the RT flag to the inode at a later
-> > point in time (e.g. via ioctl) we also need to re-evaluate the S_DAX
-> > flag at that point in time.
-> 
-> Ah, right, I'd missed that subtlety in my earlier replies.  Ok, add
-> another patch to this series to reevaluate S_DAX when we change the RT
-> flag.
-> 
-> > Which brings me to the real problem here: dynamically changing the
-> > S_DAX flag is racy, dangerous and broken. It's not clear that this
-> > should be allowed at all as the inode may have already been mmap()d
-> > by the time the ioctl is called to set/clear the rt file state.
-> 
-> Agreed that this is a mess.  Either this needs to get fixed in the dax
-> code, or we need to decide that we're not going to support reconfiguring
-> the dax flag at all, except possibly for empty files (similar to how we
-> restrict changes to the rt flag).
+With current hardware clusters faced with the trouble of
+creating enough inodes on partitions. Lustre has 0-size
+files to store some information about files. Current
+MDS disk sizes allow to store large amount of such files, but
+EXT4 limits this number to ~4 billions.
 
-Hmmm, the rt flag limitations are to do with whether extents have
-been allocated or not. IIRC the issue with S_DAX is whether the file
-has been mmap()d or not which we can't check for reliably even if
-the file is empty...
+Lustre FS has features like DNE to distribute metadata over many targets
+(disks), but disks are used not effectively. It would be great to have
+ability to store more then ~4 billions inodes on one EXT4 file system.
 
-.....
+This patches add 1) dirdata feature, that allow to store additional
+data in direntry 2)  code that uses dirdata to store high bits of 
+64bit inode number.
 
-> > >  	if (mp->m_flags & XFS_MOUNT_DAX) {
-> > > +		bool rtdev_is_dax = false;
-> > > +
-> > >  		xfs_warn(mp,
-> > >  		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
-> > >  
-> > > +		if (mp->m_rtdev_targp->bt_daxdev)
-> > > +			if (bdev_dax_supported(mp->m_rtdev_targp->bt_bdev,
-> > > +					      sb->s_blocksize) == 0)
-> > > +				rtdev_is_dax = true;
-> > 
-> > .... as this code here needs to turn off DAX here if any device
-> > in the filesystem doesn't support DAX....
-> 
-> I think it'd be useful to be able to have a pmem rt device even if the
-> data device doesn't support it.  Or rather, I have a few clients who
-> have expressed interest in this sort of configuration.
+This is 4th version of the patch set. Changes since v3:
 
-Understood.
+* ext4_warning_inode() is used to print messages
+* DIRENT_INODE_LEN size is 4 bytes
+* using structures to access dirdata fields
+* some code pieces moved to appropriate patches
+* added high part for s_last_orphan, s_first_error_ino, and s_last_error_ino
+  fields
+* ext4_dirent_inohi changed to ext4_dirent_inode64
+* s_inode_goal become 64 bit
+* __u64 goal in ext4_ext_migrate()
+* added functions set_inode() and get_inode() 
+  (in separate patch 3/4)
+* 64 bit support in htree_inlinedir_to_tree(), ext4_try_create_inline_dir() and
+  ext4_add_dirent_to_inline()
+* skip the NUL separator after the name 
+* high part of inode number is accessed only if EXT4_DIRENT_INODE64 enabled
+* 64bit support for ext4_rename_dir_prepare(), ext4_rename_dir_finish(),
+  ext4_rename_delete(), ext4_cross_rename(), ext4_empty_dir(), ext4_rmdir(),
+  ext4_rename(), ext4_unlink(), and ext4_setent() 
+* heleper functions for access to high part of superblock fields
+  based on macroses
+* high part of inode number is copied to prevent align problems
+* style fixes
 
-I suspect all this means we can only support DAX on the rt device by
-setting the RT flag on file create, at least until the dynamic S_DAX
-issues are sorted out.  And that also means it can't be cleared from
-files that have it set. So perhaps all we need to do is disallow
-changing the RT flag on regular files via the ioctl if XFS_MOUNT_DAX
-is set?
+Andreas Dilger (1):
+  ext4: dirdata feature
 
-Cheers,
+Artem Blagodarenko (2):
+  ext4: Add helper functions to access inode numbers
+  ext4: Add 64-bit inode number support
 
-Dave.
+Yang Sheng (1):
+  ext4: Removes static definition of dx_root struct
+
+ fs/ext4/dir.c     |  20 ++-
+ fs/ext4/ext4.h    | 182 +++++++++++++++++++++----
+ fs/ext4/ialloc.c  |  19 ++-
+ fs/ext4/inline.c  |  47 ++++---
+ fs/ext4/inode.c   |   5 +
+ fs/ext4/migrate.c |   2 +-
+ fs/ext4/namei.c   | 390 ++++++++++++++++++++++++++++++++++++++----------------
+ fs/ext4/resize.c  |   8 +-
+ fs/ext4/super.c   |  54 ++++----
+ 9 files changed, 528 insertions(+), 199 deletions(-)
+
 -- 
-Dave Chinner
-david@fromorbit.com
+2.14.3 (Apple Git-98)
