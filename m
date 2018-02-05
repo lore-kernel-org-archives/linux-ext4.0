@@ -1,38 +1,67 @@
-From: Tyson Nottingham <tgnottingham@gmail.com>
-Subject: Re: [PATCH] ext4: make huge file flag user visible.
-Date: Mon, 5 Feb 2018 14:29:46 -0800
-Message-ID: <20180205222946.GA20317@L-66Y>
-References: <1516767348-30444-1-git-send-email-tgnottingham@gmail.com>
- <20180124050333.GC5594@magnolia>
- <20180124050930.GF5594@magnolia>
- <20180125074811.GA24022@L-66Y>
- <20180129230816.GM9359@magnolia>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: quota problems with e2fsck -p?
+Date: Mon, 5 Feb 2018 14:46:06 -0800
+Message-ID: <20180205224606.GB4838@magnolia>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger.kernel@dilger.ca
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pg0-f68.google.com ([74.125.83.68]:38608 "EHLO
-        mail-pg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750796AbeBEW3v (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Feb 2018 17:29:51 -0500
-Received: by mail-pg0-f68.google.com with SMTP id l18so1902312pgc.5
-        for <linux-ext4@vger.kernel.org>; Mon, 05 Feb 2018 14:29:50 -0800 (PST)
+Received: from userp2130.oracle.com ([156.151.31.86]:45490 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751671AbeBEWqK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Feb 2018 17:46:10 -0500
 Content-Disposition: inline
-In-Reply-To: <20180129230816.GM9359@magnolia>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 29, 2018 at 03:08:16PM -0800, Darrick J. Wong wrote:
+Hi everyone,
 
-> Ted hasn't replied in a couple of days, but I would surmise from digging
-> in the ext4 code that we've never exposed the huge file flag to
-> userspace, so it'd probably be better to withdraw the documentation/code
-> of the 'h' option from the chattr manpage instead.  ext2/ext3 never had
-> such a flag at all, so it's unlikely to break anything.
+So I was test-driving my e2scrub patches the other night and saw this:
 
-I agree. I'll update my existing patch that makes some updates to the chattr
-man page.
+systemd[1]: Starting Online ext4 Metadata Check for /dev/sub3_raid/storage...
+e2scrub@-dev-sub3_raid-storage[9332]:   Logical volume "storage.e2scrub" created.
+e2scrub@-dev-sub3_raid-storage[9332]: sub3-raid-fs: Clearing orphaned inode 6950133 (uid=1021, gid=1021, mode=040700, size=4096)
+e2scrub@-dev-sub3_raid-storage[9332]: sub3-raid-fs: Clearing orphaned inode 6952084 (uid=1021, gid=1021, mode=0100600, size=8388608)
+e2scrub@-dev-sub3_raid-storage[9332]: sub3-raid-fs: clean, 6835947/121307136 files, 338587593/485198848 blocks
+e2scrub@-dev-sub3_raid-storage[9332]: e2fsck 1.43.9~WIP-2018-02-03 (3-Feb-2018)
+e2scrub@-dev-sub3_raid-storage[9332]: Pass 1: Checking inodes, blocks, and sizes
+e2scrub@-dev-sub3_raid-storage[9332]: Pass 2: Checking directory structure
+e2scrub@-dev-sub3_raid-storage[9332]: Pass 3: Checking directory connectivity
+e2scrub@-dev-sub3_raid-storage[9332]: Pass 4: Checking reference counts
+e2scrub@-dev-sub3_raid-storage[9332]: Pass 5: Checking group summary information
+e2scrub@-dev-sub3_raid-storage[9332]: [QUOTA WARNING] Usage inconsistent for ID 1021:actual (618773123072, 4395080) != expected (618781515776, 4395082)
+e2scrub@-dev-sub3_raid-storage[9332]: Update quota info for quota type 0? yes
+e2scrub@-dev-sub3_raid-storage[9332]: [QUOTA WARNING] Usage inconsistent for ID 1021:actual (613615316992, 4507364) != expected (613623709696, 4507366)
+e2scrub@-dev-sub3_raid-storage[9332]: Update quota info for quota type 1? yes
+e2scrub@-dev-sub3_raid-storage[9332]: sub3-raid-fs: ***** FILE SYSTEM WAS MODIFIED *****
+e2scrub@-dev-sub3_raid-storage[9332]: sub3-raid-fs: 6835947/121307136 files (0.9% non-contiguous), 338587593/485198848 blocks
+e2scrub@-dev-sub3_raid-storage[9332]: Scrub of /dev/sub3_raid/storage FAILED due to invalid snapshot.
+e2scrub@-dev-sub3_raid-storage[9332]:   Logical volume "storage.e2scrub" successfully removed
+systemd[1]: e2scrub@-dev-sub3_raid-storage.service: Main process exited, code=exited, status=1/FAILURE
+systemd[1]: Failed to start Online ext4 Metadata Check for /dev/sub3_raid/storage.
+systemd[1]: e2scrub@-dev-sub3_raid-storage.service: Unit entered failed state.
+systemd[1]: e2scrub@-dev-sub3_raid-storage.service: Triggering OnFailure= dependencies.
+systemd[1]: e2scrub@-dev-sub3_raid-storage.service: Failed with result 'exit-code'.
 
-Thanks,
-Tyson
+It looks like all we have to do trigger the QUOTA WARNING is enable
+quota, write a file, unlink the file (without closing it), snapshot the
+fs, and then run e2fsck -p followed by e2fsck -fn on the snapshot.
+
+Note that first we run e2fsck to preen the filesystem, then we run it again to
+see if it spots any corruption.  The first run finds two orphaned inodes and
+zaps them, but because of -p it's a short run and we don't update the quota
+information.  As a result, the second run triggers on the quota information
+being wrong and the whole job fails.
+
+The orphan inode processing occurs as part of check_super_block ->
+release_orphan_inodes prior to pass 1, which means that we've not set up any
+quota context nor read the quota data in from disk.  Given that we don't end
+up checking the quota accounting at all in a preening run, I'm a little
+hesitant to just plumb in code to fetch the quota info, update the info when
+we recover orphans, and then write the quota info back out.  But that does
+seem to be what this situation requires.
+
+So, I punt to the list instead -- is that crazy?
+
+--Darrick
