@@ -1,213 +1,83 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 2 2/2] xfs: fix rt_dev usage for DAX
-Date: Tue, 6 Feb 2018 15:19:15 -0800
-Message-ID: <20180206231915.GA26233@magnolia>
-References: <151751717968.69886.6978962571680635420.stgit@djiang5-desk3.ch.intel.com>
- <151751718516.69886.135497175511444689.stgit@djiang5-desk3.ch.intel.com>
- <20180201234413.idd27uqzqbg54ddk@destitution>
- <20180202004332.GZ4849@magnolia>
- <d267ed33-950e-a5c5-73ce-36da6c940513@intel.com>
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: Re: [PATCHv2 1/1] ext4: don't put symlink in pagecache into highmem
+Date: Tue, 6 Feb 2018 15:38:09 -0800
+Message-ID: <20180206233809.GA159960@gmail.com>
+References: <20180206190938.172792-1-jinqian@android.com>
+ <20180206203953.GC18045@kroah.com>
+ <20180206231149.GC1977@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>, linux-xfs@vger.kernel.org,
-        ross.zwisler@linux.intel.com, linux-ext4@vger.kernel.org,
-        dan.j.williams@intel.com, linux-nvdimm@lists.01.org
-To: Dave Jiang <dave.jiang@intel.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:40322 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753339AbeBFXTZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Feb 2018 18:19:25 -0500
+To: Theodore Ts'o <tytso@mit.edu>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Jin Qian <jinqian@android.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Jin Qian <jinqian@google.com>,
+        stable@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <d267ed33-950e-a5c5-73ce-36da6c940513@intel.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20180206231149.GC1977@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 06, 2018 at 03:32:00PM -0700, Dave Jiang wrote:
-> On 02/01/2018 05:43 PM, Darrick J. Wong wrote:
-> > On Fri, Feb 02, 2018 at 10:44:13AM +1100, Dave Chinner wrote:
-> >> On Thu, Feb 01, 2018 at 01:33:05PM -0700, Dave Jiang wrote:
-> >>> When using realtime device (rtdev) with xfs where the data device is not
-> >>> DAX capable, two issues arise. One is when data device is not DAX but the
-> >>> realtime device is DAX capable, we currently disable DAX.
-> >>> After passing this check, we are also not marking the inode as DAX capable.
-> >>> This change will allow DAX enabled if the data device or the realtime
-> >>> device is DAX capable. S_DAX will be marked for the inode if the file is
-> >>> residing on a DAX capable device. This will prevent the case of rtdev is not
-> >>> DAX and data device is DAX to create realtime files.
-> >>
-> >> I'm confused by this description. I'm not sure what is broken, nor
-> >> what you are trying to fix.
-> >>
-> >> I think what you want to do is enable DAX on RT devices separately
-> >> to the data device and vice versa?
-> >>
-> >> i.e. is this what you are trying to acheive?
-> >>
-> >> datadev dax	rtdev dax		DAX enabled on
-> >> -----------     ---------		--------------
-> >> no		no			neither
-> >> yes		no			datadev
-> >> no		yes			rtdev
-> >> yes		yes			both
-> >>
-> >>
-> >>>
-> >>> Signed-off-by: Dave Jiang <dave.jiang@intel.com>
-> >>> Reported-by: Darrick Wong <darrick.wong@oracle.com>
-> >>> ---
-> >>>  fs/xfs/xfs_iops.c  |    3 ++-
-> >>>  fs/xfs/xfs_super.c |    9 ++++++++-
-> >>>  2 files changed, 10 insertions(+), 2 deletions(-)
-> >>>
-> >>> diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-> >>> index 56475fcd76f2..ab352c325301 100644
-> >>> --- a/fs/xfs/xfs_iops.c
-> >>> +++ b/fs/xfs/xfs_iops.c
-> >>> @@ -1204,7 +1204,8 @@ xfs_diflags_to_iflags(
-> >>>  	    ip->i_mount->m_sb.sb_blocksize == PAGE_SIZE &&
-> >>>  	    !xfs_is_reflink_inode(ip) &&
-> >>>  	    (ip->i_mount->m_flags & XFS_MOUNT_DAX ||
-> >>> -	     ip->i_d.di_flags2 & XFS_DIFLAG2_DAX))
-> >>> +	     ip->i_d.di_flags2 & XFS_DIFLAG2_DAX) &&
-> >>> +	    blk_queue_dax(bdev_get_queue(inode->i_sb->s_bdev)))
-> >>
-> >> This does not discriminate between the rtdev or the data dev. This
-> >> needs to call xfs_find_bdev_for_inode() to get the right device
-> >> for the inode config.
-> >>
-> >> Further, if we add or remove the RT flag to the inode at a later
-> >> point in time (e.g. via ioctl) we also need to re-evaluate the S_DAX
-> >> flag at that point in time.
-> > 
-> > Ah, right, I'd missed that subtlety in my earlier replies.  Ok, add
-> > another patch to this series to reevaluate S_DAX when we change the RT
-> > flag.
-> > 
-> >> Which brings me to the real problem here: dynamically changing the
-> >> S_DAX flag is racy, dangerous and broken. It's not clear that this
-> >> should be allowed at all as the inode may have already been mmap()d
-> >> by the time the ioctl is called to set/clear the rt file state.
->
-> > Agreed that this is a mess.  Either this needs to get fixed in the dax
-> > code, or we need to decide that we're not going to support reconfiguring
-> > the dax flag at all, except possibly for empty files (similar to how we
-> > restrict changes to the rt flag).
+On Tue, Feb 06, 2018 at 06:11:49PM -0500, Theodore Ts'o wrote:
+> On Tue, Feb 06, 2018 at 12:39:53PM -0800, Greg KH wrote:
+> > On Tue, Feb 06, 2018 at 11:09:37AM -0800, Jin Qian wrote:
+> > > From: Jin Qian <jinqian@google.com>
+> > > 
+> > > partial backport from 21fc61c73c3903c4c312d0802da01ec2b323d174 upstream
+> > > to v4.4 to prevent virt_to_page on highmem.
+> >
+> > Ted, any objection to this patch?
 > 
-> Does this mean we should add a check in xfs_ioctl_setattr_xflags() to
-> reject removing of realtime flag if S_DAX is set on the inode until the
-> dynamic change issue is sorted out?
-
-Well, I /was/ tiptoeing around this while trying to take care of the
-other 4.16 stuff, but now that I'm done with merge window stuff I'll let
-loose. :)
-
-The last time I paid much attention to DAX was the thread "re-enable XFS
-per-inode DAX"[1] last September.  Motivating me to merge anything else
-into DAX involves convincing me that we (mm, fs, dax developers) have
-some kind of agreement about what we want the user-visible interfaces to
-DAX to look like.  Namely:
-
-0. On what level do we allow users / administrators to control usage of
-the dax paths?  Can the hardware convey enough detail to the kernel that
-the kernel can make a reasonable decision on its own whether buffered or
-dax io make more sense?  If so, can we please just have that?  If not,
-why?
-
-1. If we want to let users override whatever decision the kernel makes,
-how should we do this?  One mount option that applies to everything,
-like ext4?  Inheritable inode flags, like xfs?  Do we have one to force
-it on even if the kernel doesn't want to?  Do we have another to force
-it off even if the kernel wants to?  Do we even want to go down this
-path?  Can we get away with making the answer to Q0 "yes" and then see
-if anyone actually complains about not having fine-grained control?
-
-2. Under what conditions can we support dynamic changing of S_DAX on
-inodes at runtime?  Will this switching work at any time?  Only for
-files that are open but not mmap'd?  Only for files that are empty?
-
-3. The MAP_SYNC support that was merged into 4.15 -- is this sufficient
-to allow this fsyncless clflush business that everyone seems to want?
-
-4. Can someone please fix the XFS iomap_begin function to handle CoW
-properly?  I think it's a simple matter of allocate blocks, memcpy, and
-remap, though I don't know how to do that. ;)
-
-5. Do we test any of this stuff?
-
-The thread from last September left off with promises to go define what
-interface and behaviors we are providing to userspace, but afaict none
-of that ever happened?  If we don't resolve these questions before LSF
-then I think what's needed is to lock everyone in a room to hash all
-this out. :P
-
---D
-
-PS: My personal inclination is {yes, get rid of all that until someone
-complains, i think so but haven't tested it, ???, i sure hope so}.
-
-[1] https://marc.info/?l=linux-xfs&m=150638135225793&w=2
-
+> No objections with my ext4 hat on.
 > 
-> > 
-> >> IOWs, right now we cannot support mixed DAX mode filesystems because
-> >> the generic DAX code does not support dynamic changing of the DAX
-> >> flag on an inode and so checking the block device state here is
-> >> irrelevant....
-> >>
-> >>>  		inode->i_flags |= S_DAX;
-> >>>  }
-> >>>  
-> >>> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-> >>> index e8a687232614..5ac478924dce 100644
-> >>> --- a/fs/xfs/xfs_super.c
-> >>> +++ b/fs/xfs/xfs_super.c
-> >>> @@ -1649,11 +1649,18 @@ xfs_fs_fill_super(
-> >>>  		sb->s_flags |= SB_I_VERSION;
-> >>>  
-> >>>  	if (mp->m_flags & XFS_MOUNT_DAX) {
-> >>> +		bool rtdev_is_dax = false;
-> >>> +
-> >>>  		xfs_warn(mp,
-> >>>  		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
-> >>>  
-> >>> +		if (mp->m_rtdev_targp->bt_daxdev)
-> >>> +			if (bdev_dax_supported(mp->m_rtdev_targp->bt_bdev,
-> >>> +					      sb->s_blocksize) == 0)
-> >>> +				rtdev_is_dax = true;
-> >>
-> >> .... as this code here needs to turn off DAX here if any device
-> >> in the filesystem doesn't support DAX....
-> > 
-> > I think it'd be useful to be able to have a pmem rt device even if the
-> > data device doesn't support it.  Or rather, I have a few clients who
-> > have expressed interest in this sort of configuration.
-> > 
-> > --D
-> > 
-> >>
-> >>
-> >> FWIW, the logic in the code is terrible (not your fault, Dave).
-> >> The logic reads
-> >>
-> >> 	if (NOT bdev_dax_supported(rtdev)) then
-> >> 		rtdev supports DAX
-> >>
-> >> That also needs fixing - we're checking something that has a boolean
-> >> return state (yes or no) and so it should define them in a way that
-> >> makes the caller logic read cleanly....
-> >>
-> >> Cheers,
-> >>
-> >> Dave.
-> >> -- 
-> >> Dave Chinner
-> >> david@fromorbit.com
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> It should be noted though that this is a partial backport because it
+> only fixes ext4, while Al's original upstream fix addressed a much
+> larger set of file systems.  In the Android kernel the f2fs fix had
+> been backported separately.  But for the upstream kernel, it *might*
+> be the case that we should try backporting the original commit so that
+> in case there is some other general purpose distribution decides (a)
+> to base their system on 4.4, and (b) support a 32-bit kernel, they get
+> the more general bug fixes which applies for btrfs, isofs, ocfs2, nfs,
+> etc.
+> 
+> I haevn't been paying attention to what LTS kernels general purpose
+> distro's are using, so I don't know how important this would be.  And
+> if there are companies like Cloudflare which are using upstream LTS
+> kernel, it seems unlikely they would want to use a 32-bit kernel,
+> so.... shrug.  Greg, I'll let you decide if you want to backport the
+> full commit or not.
+> 
+> (We had a similar discussion on the AOSP kernel, and came to the
+> conclusion that we only needed to make the patch support ext4.  No one
+> was going to test the other file systems besides ext4 and f2fs,
+> anyway.  But the calculus might be different might be different for
+> the general upstream LTS kernel.)
+> 
+
+Well, the main point of backporting this change is to fix symlink decryption on
+32-bit systems.  So, it would be needed on both ext4 and f2fs.  Jin, it might be
+a good idea to fix f2fs in this patch at well, since unlike the AOSP kernels,
+the LTS kernels do not have the latest f2fs backported to them.
+
+I don't think backporting this change for other filesystems is particularly
+important, since if I understand correctly, the reasons that Al made the change
+originally were:
+
+- to allow following symlinks in RCU mode, but that's not implemented in old
+  kernels
+
+- to prevent a process from using up all kmaps and deadlocking the system, which
+  I'm not sure is a real problem (someone would need to try to put together a
+  reproducer), but if so it would probably just be a local device of service.
+
+Also if we actually backported the full commit there are follow-on fixes such as
+e8ecde25f5e that would be needed as well but might be missed.
+
+Thanks,
+
+- Eric
