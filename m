@@ -1,49 +1,39 @@
-From: Sean Fu <fxinrong@gmail.com>
-Subject: [PATCH] ext4: Remove unnecessary NULL checks in ext4.
-Date: Tue,  6 Feb 2018 19:15:30 +0800
-Message-ID: <1517915730-11198-1-git-send-email-fxinrong@gmail.com>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Sean Fu <fxinrong@gmail.com>
-To: tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH 1/1] ext4: don't put symlink in pagecache into highmem
+Date: Tue, 6 Feb 2018 08:32:09 -0500
+Message-ID: <20180206133209.GD17801@thunk.org>
+References: <20180205195739.9654-1-jinqian@android.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Jin Qian <jinqian@google.com>,
+        stable@vger.kernel.org
+To: Jin Qian <jinqian@android.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41772 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751084AbeBFNcP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 6 Feb 2018 08:32:15 -0500
+Content-Disposition: inline
+In-Reply-To: <20180205195739.9654-1-jinqian@android.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-NULL check is done in kmem_cache_destroy. So remove NULL checks in ext4.
+On Mon, Feb 05, 2018 at 11:57:39AM -0800, Jin Qian wrote:
+> From: Jin Qian <jinqian@google.com>
+> 
+> partial backport of 21fc61c73c3903c4c312d0802da01ec2b323d174.
 
-Signed-off-by: Sean Fu <fxinrong@gmail.com>
----
- fs/ext4/extents_status.c | 3 +--
- fs/ext4/mballoc.c        | 3 +--
- 2 files changed, 2 insertions(+), 4 deletions(-)
+Hi Jin,
 
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 763ef18..c4e6fb1 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -162,8 +162,7 @@ int __init ext4_init_es(void)
- 
- void ext4_exit_es(void)
- {
--	if (ext4_es_cachep)
--		kmem_cache_destroy(ext4_es_cachep);
-+	kmem_cache_destroy(ext4_es_cachep);
- }
- 
- void ext4_es_init_tree(struct ext4_es_tree *tree)
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d9f8b90a..4fd1349 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2549,8 +2549,7 @@ static void ext4_groupinfo_destroy_slabs(void)
- 	int i;
- 
- 	for (i = 0; i < NR_GRPINFO_CACHES; i++) {
--		if (ext4_groupinfo_caches[i])
--			kmem_cache_destroy(ext4_groupinfo_caches[i]);
-+		kmem_cache_destroy(ext4_groupinfo_caches[i]);
- 		ext4_groupinfo_caches[i] = NULL;
- 	}
- }
--- 
-2.6.2
+When you do a partial backport like this, it would be helpful you
+could indicate which kernel version(s) it is meant for, since there
+are many stable kernel trees.
+
+Thanks!!
+
+						- Ted
