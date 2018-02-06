@@ -1,127 +1,64 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd2: remove the conditional test
-Date: Tue, 6 Feb 2018 11:22:34 +0100
-Message-ID: <20180206102234.s3yjrtjkfaup5vas@quack2.suse.cz>
-References: <1517840679-5902-1-git-send-email-wanglong19@meituan.com>
+Subject: Re: [PATCH] jbd2: remove duplicate `\n` in jbd_debug
+Date: Tue, 6 Feb 2018 11:43:54 +0100
+Message-ID: <20180206104354.ei3dot6f26rxqudx@quack2.suse.cz>
+References: <1517836881-31775-1-git-send-email-wanglong19@meituan.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: darrick.wong@oracle.com, tytso@mit.edu, jack@suse.com,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
 To: Wang Long <wanglong19@meituan.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58148 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752187AbeBFKWi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 6 Feb 2018 05:22:38 -0500
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1517840679-5902-1-git-send-email-wanglong19@meituan.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1517836881-31775-1-git-send-email-wanglong19@meituan.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon 05-02-18 22:24:39, Wang Long wrote:
-> kmem_cache_destroy already handles null pointers, so we can remove the
-> conditional test entirely.
+On Mon 05-02-18 21:21:21, Wang Long wrote:
+> The current jbd_debug output as the following:
 > 
-> This patch also set NULL after the kmem_cache_destroy in function
-> jbd2_journal_destroy_handle_cache.
+> ```
+> [180397.891399] fs/jbd2/commit.c: (jbd2_journal_commit_transaction, 718): JBD2: Submit 4 IOs
+> 
+> [180397.891417] fs/jbd2/commit.c: (jbd2_journal_commit_transaction, 821): JBD2: commit phase 3
+> 
+> [180397.899183] fs/jbd2/commit.c: (jbd2_journal_commit_transaction, 863): JBD2: commit phase 4
+> 
+> [180397.899189] fs/jbd2/commit.c: (jbd2_journal_commit_transaction, 886): JBD2: commit phase 5
+> 
+> [180397.900321] fs/jbd2/commit.c: (jbd2_journal_commit_transaction, 923): JBD2: commit phase 6
+> 
+> [180397.900327] fs/jbd2/commit.c: (jbd2_journal_commit_transaction, 1092): JBD2: commit phase 7
+> ```
+> 
+> Every jbd_debug call in kernel will append `\n` in its
+> fmt argument, so remove duplicate `\n`
 > 
 > Signed-off-by: Wang Long <wanglong19@meituan.com>
 
-Looks good. You can add:
+Makes sense. You can add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/jbd2/journal.c     | 18 +++++++-----------
->  fs/jbd2/revoke.c      | 12 ++++--------
->  fs/jbd2/transaction.c |  6 ++----
->  3 files changed, 13 insertions(+), 23 deletions(-)
+>  fs/jbd2/journal.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
 > diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 93016bb..3c27a61a 100644
+> index 3fbf48e..93016bb 100644
 > --- a/fs/jbd2/journal.c
 > +++ b/fs/jbd2/journal.c
-> @@ -2286,8 +2286,7 @@ static void jbd2_journal_destroy_slabs(void)
->  	int i;
->  
->  	for (i = 0; i < JBD2_MAX_SLABS; i++) {
-> -		if (jbd2_slab[i])
-> -			kmem_cache_destroy(jbd2_slab[i]);
-> +		kmem_cache_destroy(jbd2_slab[i]);
->  		jbd2_slab[i] = NULL;
->  	}
+> @@ -114,7 +114,7 @@ void __jbd2_debug(int level, const char *file, const char *func,
+>  	va_start(args, fmt);
+>  	vaf.fmt = fmt;
+>  	vaf.va = &args;
+> -	printk(KERN_DEBUG "%s: (%s, %u): %pV\n", file, func, line, &vaf);
+> +	printk(KERN_DEBUG "%s: (%s, %u): %pV", file, func, line, &vaf);
+>  	va_end(args);
 >  }
-> @@ -2388,10 +2387,8 @@ static int jbd2_journal_init_journal_head_cache(void)
->  
->  static void jbd2_journal_destroy_journal_head_cache(void)
->  {
-> -	if (jbd2_journal_head_cache) {
-> -		kmem_cache_destroy(jbd2_journal_head_cache);
-> -		jbd2_journal_head_cache = NULL;
-> -	}
-> +	kmem_cache_destroy(jbd2_journal_head_cache);
-> +	jbd2_journal_head_cache = NULL;
->  }
->  
->  /*
-> @@ -2649,11 +2646,10 @@ static int __init jbd2_journal_init_handle_cache(void)
->  
->  static void jbd2_journal_destroy_handle_cache(void)
->  {
-> -	if (jbd2_handle_cache)
-> -		kmem_cache_destroy(jbd2_handle_cache);
-> -	if (jbd2_inode_cache)
-> -		kmem_cache_destroy(jbd2_inode_cache);
-> -
-> +	kmem_cache_destroy(jbd2_handle_cache);
-> +	jbd2_handle_cache = NULL;
-> +	kmem_cache_destroy(jbd2_inode_cache);
-> +	jbd2_inode_cache = NULL;
->  }
->  
->  /*
-> diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-> index 696ef15..240779e 100644
-> --- a/fs/jbd2/revoke.c
-> +++ b/fs/jbd2/revoke.c
-> @@ -180,14 +180,10 @@ static struct jbd2_revoke_record_s *find_revoke_record(journal_t *journal,
->  
->  void jbd2_journal_destroy_revoke_caches(void)
->  {
-> -	if (jbd2_revoke_record_cache) {
-> -		kmem_cache_destroy(jbd2_revoke_record_cache);
-> -		jbd2_revoke_record_cache = NULL;
-> -	}
-> -	if (jbd2_revoke_table_cache) {
-> -		kmem_cache_destroy(jbd2_revoke_table_cache);
-> -		jbd2_revoke_table_cache = NULL;
-> -	}
-> +	kmem_cache_destroy(jbd2_revoke_record_cache);
-> +	jbd2_revoke_record_cache = NULL;
-> +	kmem_cache_destroy(jbd2_revoke_table_cache);
-> +	jbd2_revoke_table_cache = NULL;
->  }
->  
->  int __init jbd2_journal_init_revoke_caches(void)
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index ac31103..3b642e0 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -49,10 +49,8 @@ int __init jbd2_journal_init_transaction_cache(void)
->  
->  void jbd2_journal_destroy_transaction_cache(void)
->  {
-> -	if (transaction_cache) {
-> -		kmem_cache_destroy(transaction_cache);
-> -		transaction_cache = NULL;
-> -	}
-> +	kmem_cache_destroy(transaction_cache);
-> +	transaction_cache = NULL;
->  }
->  
->  void jbd2_journal_free_transaction(transaction_t *transaction)
+>  EXPORT_SYMBOL(__jbd2_debug);
 > -- 
 > 1.8.3.1
 > 
