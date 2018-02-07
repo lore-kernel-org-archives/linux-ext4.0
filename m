@@ -1,62 +1,53 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH 2 2/2] xfs: fix rt_dev usage for DAX
-Date: Tue, 6 Feb 2018 16:19:12 -0800
-Message-ID: <CAPcyv4jQ+ATdVUdF32+uZwcnTZCQnUSMD1fLg14JrT870jaB7g@mail.gmail.com>
-References: <151751717968.69886.6978962571680635420.stgit@djiang5-desk3.ch.intel.com>
- <151751718516.69886.135497175511444689.stgit@djiang5-desk3.ch.intel.com>
- <20180201234413.idd27uqzqbg54ddk@destitution> <20180202004332.GZ4849@magnolia>
- <d267ed33-950e-a5c5-73ce-36da6c940513@intel.com>
- <20180206231915.GA26233@magnolia>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCHv2 1/1] ext4: don't put symlink in pagecache into highmem
+Date: Tue, 6 Feb 2018 21:16:17 -0500
+Message-ID: <20180207021617.GD1977@thunk.org>
+References: <20180206190938.172792-1-jinqian@android.com>
+ <20180206203953.GC18045@kroah.com>
+ <20180206231149.GC1977@thunk.org>
+ <20180206233809.GA159960@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20180206231915.GA26233@magnolia>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Greg KH <gregkh@linuxfoundation.org>,
+        Jin Qian <jinqian@android.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Jin Qian <jinqian@google.com>,
+        stable@vger.kernel.org
+To: Eric Biggers <ebiggers3@gmail.com>
+Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180206233809.GA159960@gmail.com>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 6, 2018 at 3:19 PM, Darrick J. Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org> wrote:
-> On Tue, Feb 06, 2018 at 03:32:00PM -0700, Dave Jiang wrote:
-[..]
-> The last time I paid much attention to DAX was the thread "re-enable XFS
-> per-inode DAX"[1] last September.  Motivating me to merge anything else
-> into DAX involves convincing me that we (mm, fs, dax developers) have
-> some kind of agreement about what we want the user-visible interfaces to
-> DAX to look like.  Namely:
->
-> 0. On what level do we allow users / administrators to control usage of
-> the dax paths?  Can the hardware convey enough detail to the kernel that
-> the kernel can make a reasonable decision on its own whether buffered or
-> dax io make more sense?  If so, can we please just have that?  If not,
-> why?
->
-> 1. If we want to let users override whatever decision the kernel makes,
-> how should we do this?  One mount option that applies to everything,
-> like ext4?  Inheritable inode flags, like xfs?  Do we have one to force
-> it on even if the kernel doesn't want to?  Do we have another to force
-> it off even if the kernel wants to?  Do we even want to go down this
-> path?  Can we get away with making the answer to Q0 "yes" and then see
-> if anyone actually complains about not having fine-grained control?
+On Tue, Feb 06, 2018 at 03:38:09PM -0800, Eric Biggers wrote:
+> I don't think backporting this change for other filesystems is particularly
+> important, since if I understand correctly, the reasons that Al made the change
+> originally were:
+> 
+> - to allow following symlinks in RCU mode, but that's not implemented in old
+>   kernels
 
-I think we will always have folks that want to force it on, i.e. the
-MAP_SYNC user crowd. However, I think we might have some people what
-will complain if they can't force it off. For example, I'm in the
-process of killing off support for passing filesystem-dax mappings
-through to guests because VFIO has the same "pin pages / fs-blocks
-forever" problem as RDMA. Passing page cache through to a guest works
-fine and it would be a shame if that silently stopped working in the
-future. Given the page pinning constraint I'm not sure we can ever
-support dynamically enabling DAX behind the user's back, at least not
-until we kill off any "pin pages / fs-blocks forever" users, or
-otherwise convert them to take a lease.
+Yup.
+
+> - to prevent a process from using up all kmaps and deadlocking the system, which
+>   I'm not sure is a real problem (someone would need to try to put together a
+>   reproducer), but if so it would probably just be a local device of service.
+
+.. and *that's* only a problem on 32-bit systems.  And aside from
+Android, it's unclear to me how much we need to support 32-bit systems
+on upstream LTS kernels.  I suppose there might be Rasperry PI's which
+are 32-bits and which might want to use btrfs.  Personally I'm not
+sure we should care all that much, but others who care more about LTS
+kernels and 32-bit systems might have a different opinion.
+
+> Also if we actually backported the full commit there are follow-on fixes such as
+> e8ecde25f5e that would be needed as well but might be missed.
+
+Good point.
+
+					- Ted
