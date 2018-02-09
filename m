@@ -1,63 +1,46 @@
-From: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: [PATCH v3 3/3] xfs: reject removal of realtime flag when datadev
- doesn't support DAX
-Date: Thu, 08 Feb 2018 17:38:24 -0700
-Message-ID: <151813670468.15926.3966047346830424677.stgit@djiang5-desk3.ch.intel.com>
-References: <151813659955.15926.8922476613392258086.stgit@djiang5-desk3.ch.intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Release of e2fsprogs 1.43.9
+Date: Fri, 9 Feb 2018 10:42:03 -0500
+Message-ID: <20180209154203.GA5710@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <151813659955.15926.8922476613392258086.stgit-Cxk7aZI4ujnJARH06PadV2t3HXsI98Cx0E9HWUfgJXw@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:54510 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751087AbeBIPmF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 9 Feb 2018 10:42:05 -0500
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-In a situation where the rt_dev is DAX and data_dev is not DAX, if the user
-requests to remove the realtime flag via ioctl we can no longer support DAX
-for that file. Dynamic changing of S_DAX on the inode is not supported due
-to various complications in the existing implementation. Therefore until we
-address the dynamic S_DAX change issues, we must disallow realtime flag
-being removed.
+In prepartion for a 1.44.x release, I've flushed out the remaining bug
+fixes (including one which caused 1.43.8 to fail to build on big
+endian systems) and released e2fsprogs 1.43.9 in all of the usual
+places; it's tagged in the git trees on git.kernel.org, github, and
+sourceforge, and available for download at:
 
-Signed-off-by: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
----
- fs/xfs/xfs_ioctl.c |   15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/v1.43.9
 
-diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-index e440d789ed1b..cd5a5c61da39 100644
---- a/fs/xfs/xfs_ioctl.c
-+++ b/fs/xfs/xfs_ioctl.c
-@@ -1029,6 +1029,21 @@ xfs_ioctl_setattr_xflags(
- {
- 	struct xfs_mount	*mp = ip->i_mount;
- 	uint64_t		di_flags2;
-+	struct inode		*inode = VFS_I(ip);
-+	struct super_block	*sb = inode->i_sb;
-+
-+	/*
-+	 * In the case that the inode is realtime, and we are trying to remove
-+	 * the realtime flag, and the rtdev supports DAX but the datadev does
-+	 * not support DAX, we can't allow the realtime flag to be removed
-+	 * since we do not support dynamic S_DAX flag removal yet.
-+	 */
-+	if ((XFS_IS_REALTIME_INODE(ip)) &&
-+	    !(fa->fsx_xflags & FS_XFLAG_REALTIME) &&
-+	    bdev_dax_supported(sb, mp->m_rtdev_targp->bt_bdev,
-+		    sb->s_blocksize) &&
-+	    !bdev_dax_supported(sb, mp->m_ddev_targp->bt_bdev, sb->s_blocksize))
-+		return -ENOTSUPP;
- 
- 	/* Can't change realtime flag if any extents are allocated. */
- 	if ((ip->i_d.di_nextents || ip->i_delayed_blks) &&
+and
+
+http://prdownloads.sourceforge.net/e2fsprogs/e2fsprogs-1.43.9.tar.gz
+
+The release notes for 1.43.9 can be found below.
+
+                                    - Ted
+
+E2fsprogs 1.43.9 (February 8, 2018)
+===================================
+
+Remove the huge file flag from libe2p (and hence from chattr/lsattr),
+since it was never made visible by the kernel.  Remove the description
+of some compression related flags, and add a description of the
+encrypted file flag, and the project hierarchy flag.
+
+Remove a misplaced "MNP is unsupported" message from debugfs.
+
+Fix a build failure in lib/ext2fs/swapfs.c on big-endian systems.
+(Addresses Debian Bug #886119)
+
+Fix various Debian packaging issues.  (Addresses Debian Bug #269569).
