@@ -1,64 +1,46 @@
-From: "Hornseth, Brenan [USA]" <Hornseth_Brenan@bah.com>
-Subject: Buffer overflow in e2fsprog's fsck utility
-Date: Thu, 8 Feb 2018 19:27:59 +0000
-Message-ID: <92451605ac374b46bc990e64ce79e303CO2PR0601MB792D3182CC5DFFAF8D1616E84F30@CO2PR0601MB792.namprd06.prod.outlook.com>
+From: Dave Jiang <dave.jiang@intel.com>
+Subject: [PATCH v3 0/3] minimal DAX support for XFS realtime device
+Date: Thu, 08 Feb 2018 17:38:08 -0700
+Message-ID: <151813659955.15926.8922476613392258086.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-To: "linux-ext4@VGER.KERNEL.ORG" <linux-ext4@VGER.KERNEL.ORG>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-nvdimm@lists.01.org, david@fromorbit.com,
+        linux-xfs@vger.kernel.org, ross.zwisler@linux.intel.com,
+        linux-ext4@vger.kernel.org, dan.j.williams@intel.com
+To: darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mclniron02-ext.bah.com ([128.229.5.22]:35000 "EHLO
-        prodesa04-ext.bah.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1751756AbeBHT2I (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Feb 2018 14:28:08 -0500
-Content-Language: en-US
-Content-ID: <625D4ECEB77A4F47804A603A1F5C27D7@namprd06.prod.outlook.com>
+Received: from mga18.intel.com ([134.134.136.126]:31098 "EHLO mga18.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752308AbeBIAiJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 8 Feb 2018 19:38:09 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hopefully this is the correct place to report this; I recently found a buff=
-er overflow bug in the "fsck" command-line utility on an old version of the=
- tool. Today I checked out the e2fsprogs master and compiled it on my x86-6=
-4 ubuntu 16.04 machine and confirmed the bug still exists.
+Darrick,
+After reading the comments from you, Dave Chinner, and Dan, it looks like
+the dyanmic S_DAX flag support won't be coming or not any time soon at the
+least. Here are the the collection of patches so far to address yours and
+Dave C's comments for minimal support. Please let me know what else I am
+missing. Thanks!
 
-I have been able to produce the bug on multiple machines with a command-lin=
-e like:
+---
 
-fsck -t AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-AAAAAAAAAAAAAAAAAAAA /dev/sda
+Darrick J. Wong (1):
+      fs: allow per-device dax status checking for filesystems
 
-Which results in a message: "*** buffer overflow detected ***: fsck termina=
-ted"
+Dave Jiang (2):
+      dax: change bdev_dax_supported() to support boolean returns
+      xfs: reject removal of realtime flag when datadev doesn't support DAX
 
-=20
 
-I believe the bug stems from fsck.c, execute() line 448. Relevant code foll=
-ows:
+ drivers/dax/super.c |   25 +++++++++++++------------
+ fs/ext2/super.c     |    5 +++--
+ fs/ext4/super.c     |    5 +++--
+ fs/xfs/xfs_ioctl.c  |   18 +++++++++++++++++-
+ fs/xfs/xfs_iops.c   |   30 +++++++++++++++++++++++++-----
+ fs/xfs/xfs_super.c  |   11 +++++++++--
+ include/linux/dax.h |   18 +++++++++++++-----
+ 7 files changed, 83 insertions(+), 29 deletions(-)
 
-=20
-=A0=A0=A0 438=A0=A0=A0=A0=A0=A0=A0=A0 char *s, *argv[80], prog[80];
-=A0=A0=A0 439=A0=A0=A0=A0=A0=A0=A0=A0 int=A0 argc, i;
-=A0=A0=A0 440=A0=A0=A0=A0=A0=A0=A0=A0 struct fsck_instance *inst, *p;
-=A0=A0=A0 441=A0=A0=A0=A0=A0=A0=A0=A0 pid_t=A0=A0 pid;
-=A0=A0=A0 442=20
-=A0=A0=A0 443=A0=A0=A0=A0=A0=A0=A0=A0 inst =3D malloc(sizeof(struct fsck_in=
-stance));
-=A0=A0=A0 444=A0=A0=A0=A0=A0=A0=A0=A0 if (!inst)
-=A0=A0=A0 445=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0=A0 return ENOMEM=
-;
-=A0=A0=A0 446=A0=A0=A0=A0=A0=A0=A0=A0 memset(inst, 0, sizeof(struct fsck_in=
-stance));
-=A0=A0=A0 447=20
-=A0=A0=A0 448=A0=A0=A0=A0=A0=A0=A0=A0 sprintf(prog, "fsck.%s", type);
-
-Note that the sprintf() call does no bounds checking of the "type" argument=
- and that "prog" is only 80 bytes in size.
-
-Please let me know if you need anything else or would prefer a patch (and w=
-hat format is preferred).
-
-Thanks,
-
-Brenan=
+--
