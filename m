@@ -1,84 +1,176 @@
 From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: [RFC PATCH V2 05/11] ext4: Decrypt all boundary blocks when doing buffered write
-Date: Mon, 12 Feb 2018 15:13:41 +0530
-Message-ID: <20180212094347.22071-6-chandan@linux.vnet.ibm.com>
+Subject: [RFC PATCH V2 09/11] fscrypt: Move completion_pages to crypto/readpage.c
+Date: Mon, 12 Feb 2018 15:13:45 +0530
+Message-ID: <20180212094347.22071-10-chandan@linux.vnet.ibm.com>
 References: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
 Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
         linux-fsdevel@vger.kernel.org, ebiggers3@gmail.com,
         linux-fscrypt@vger.kernel.org, tytso@mit.edu
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:57834 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S933321AbeBLJnC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 12 Feb 2018 04:43:02 -0500
+Received: from pps.filterd (m0098416.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w1C9ebS6061233
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:43:01 -0500
+Received: from e36.co.us.ibm.com (e36.co.us.ibm.com [32.97.110.154])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 2g30dffxwm-1
+        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:43:01 -0500
+Received: from localhost
+        by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Mon, 12 Feb 2018 02:43:00 -0700
 In-Reply-To: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-With block size < page size, ext4_block_write_begin() can have up to two
-blocks to decrypt. Hence this commit invokes fscrypt_decrypt_block() for
-each of those blocks.
+completion_pages() processes endio functionality for a bio that is
+intended to read file data from the disk. Hence this commit moves this
+function to crypto/readpage.c file.
+
+This commit also makes mandatory the callback function argument for
+fscrypt_decrypt_bio_blocks().
 
 Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
- fs/ext4/inode.c | 33 +++++++++++++++++++++++----------
- 1 file changed, 23 insertions(+), 10 deletions(-)
+ fs/crypto/bio.c      | 48 ++----------------------------------------------
+ fs/crypto/readpage.c | 47 ++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 48 insertions(+), 47 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 69a4fd6..180dd2d 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1158,12 +1158,13 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 	unsigned to = from + len;
- 	struct inode *inode = page->mapping->host;
- 	unsigned block_start, block_end;
--	sector_t block;
-+	sector_t block, page_blk_nr;
- 	int err = 0;
- 	unsigned blocksize = inode->i_sb->s_blocksize;
- 	unsigned bbits;
- 	struct buffer_head *bh, *head, *wait[2], **wait_bh = wait;
- 	bool decrypt = false;
+diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
+index 265cba3..7188495 100644
+--- a/fs/crypto/bio.c
++++ b/fs/crypto/bio.c
+@@ -26,50 +26,6 @@
+ #include <linux/namei.h>
+ #include "fscrypt_private.h"
+ 
+-/*
+- * Call fscrypt_decrypt_page on every single page, reusing the encryption
+- * context.
+- */
+-static void completion_pages(struct work_struct *work)
+-{
+-	struct fscrypt_ctx *ctx =
+-		container_of(work, struct fscrypt_ctx, r.work);
+-	struct bio *bio = ctx->r.bio;
+-	struct bio_vec *bv;
+-	int i;
+-
+-	bio_for_each_segment_all(bv, bio, i) {
+-		struct page *page = bv->bv_page;
+-		struct inode *inode = page->mapping->host;
+-		const unsigned long blocksize = inode->i_sb->s_blocksize;
+-		const unsigned int blkbits = inode->i_blkbits;
+-		u64 page_blk = page->index << (PAGE_SHIFT - blkbits);
+-		u64 blk = page_blk + (bv->bv_offset >> blkbits);
+-		int nr_blks = bv->bv_len >> blkbits;
+-		int ret = 0;
+-		int j;
+-
+-		for (j = 0; j < nr_blks; j++, blk++) {
+-			ret = fscrypt_decrypt_block(page->mapping->host,
+-						page, blocksize,
+-						bv->bv_offset + (j << blkbits),
+-						blk);
+-			if (ret)
+-				break;
+-		}
+-
+-		if (ret) {
+-			WARN_ON_ONCE(1);
+-			SetPageError(page);
+-		} else {
+-			SetPageUptodate(page);
+-		}
+-		unlock_page(page);
+-	}
+-	fscrypt_release_ctx(ctx);
+-	bio_put(bio);
+-}
+-
+ bool fscrypt_bio_encrypted(struct bio *bio)
+ {
+ 	if (bio->bi_vcnt) {
+@@ -85,8 +41,8 @@ bool fscrypt_bio_encrypted(struct bio *bio)
+ void fscrypt_decrypt_bio_blocks(struct fscrypt_ctx *ctx, struct bio *bio,
+ 			void (*process_bio)(struct work_struct *))
+ {
+-	INIT_WORK(&ctx->r.work,
+-		process_bio ? process_bio : completion_pages);
++	BUG_ON(!process_bio);
++	INIT_WORK(&ctx->r.work, process_bio);
+ 	ctx->r.bio = bio;
+ 	queue_work(fscrypt_read_workqueue, &ctx->r.work);
+ }
+diff --git a/fs/crypto/readpage.c b/fs/crypto/readpage.c
+index 7372173..521c221 100644
+--- a/fs/crypto/readpage.c
++++ b/fs/crypto/readpage.c
+@@ -29,6 +29,50 @@
+ 
+ #include "fscrypt_private.h"
+ 
++/*
++ * Call fscrypt_decrypt_block on every single page, reusing the encryption
++ * context.
++ */
++static void fscrypt_complete_pages(struct work_struct *work)
++{
++	struct fscrypt_ctx *ctx =
++		container_of(work, struct fscrypt_ctx, r.work);
++	struct bio *bio = ctx->r.bio;
++	struct bio_vec *bv;
 +	int i;
- 
- 	BUG_ON(!PageLocked(page));
- 	BUG_ON(from > PAGE_SIZE);
-@@ -1224,18 +1225,30 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
- 	/*
- 	 * If we issued read requests, let them complete.
- 	 */
--	while (wait_bh > wait) {
--		wait_on_buffer(*--wait_bh);
--		if (!buffer_uptodate(*wait_bh))
-+	for (i = 0; &wait[i] < wait_bh; i++) {
-+		wait_on_buffer(wait[i]);
-+		if (!buffer_uptodate(wait[i]))
- 			err = -EIO;
- 	}
--	if (unlikely(err))
-+	if (unlikely(err)) {
- 		page_zero_new_buffers(page, from, to);
--	else if (decrypt) {
--		err = fscrypt_decrypt_block(page->mapping->host, page,
--				PAGE_SIZE, 0, page->index);
--		if (err)
--			clear_buffer_uptodate(*wait_bh);
-+	} else if (decrypt) {
-+		page_blk_nr = (sector_t)page->index << (PAGE_SHIFT - bbits);
 +
-+		for (i = 0; &wait[i] < wait_bh; i++) {
-+			int err2;
++	bio_for_each_segment_all(bv, bio, i) {
++		struct page *page = bv->bv_page;
++		struct inode *inode = page->mapping->host;
++		const unsigned long blocksize = inode->i_sb->s_blocksize;
++		const unsigned int blkbits = inode->i_blkbits;
++		u64 page_blk = page->index << (PAGE_SHIFT - blkbits);
++		u64 blk = page_blk + (bv->bv_offset >> blkbits);
++		int nr_blks = bv->bv_len >> blkbits;
++		int ret = 0;
++		int j;
 +
-+			--wait_bh;
-+			block = page_blk_nr + (bh_offset(wait[i]) >> bbits);
-+			err2 = fscrypt_decrypt_block(page->mapping->host, page,
-+						wait[i]->b_size,
-+						bh_offset(wait[i]),
-+						block);
-+			if (err2) {
-+				clear_buffer_uptodate(wait[i]);
-+				err = err2;
-+			}
++		for (j = 0; j < nr_blks; j++, blk++) {
++			ret = fscrypt_decrypt_block(page->mapping->host,
++						page, blocksize,
++						bv->bv_offset + (j << blkbits),
++						blk);
++			if (ret)
++				break;
 +		}
++
++		if (ret) {
++			WARN_ON_ONCE(1);
++			SetPageError(page);
++		} else {
++			SetPageUptodate(page);
++		}
++		unlock_page(page);
++	}
++	fscrypt_release_ctx(ctx);
++	bio_put(bio);
++}
++
+ static void fscrypt_complete_block(struct work_struct *work)
+ {
+ 	struct fscrypt_ctx *ctx =
+@@ -108,7 +152,8 @@ static void fscrypt_mpage_end_io(struct bio *bio)
+ 		if (bio->bi_status) {
+ 			fscrypt_release_ctx(bio->bi_private);
+ 		} else {
+-			fscrypt_decrypt_bio_blocks(bio->bi_private, bio, NULL);
++			fscrypt_decrypt_bio_blocks(bio->bi_private, bio,
++						fscrypt_complete_pages);
+ 			return;
+ 		}
  	}
- 
- 	return err;
 -- 
 2.9.5
