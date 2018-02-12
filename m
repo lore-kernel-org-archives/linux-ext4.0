@@ -1,83 +1,58 @@
 From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: [RFC PATCH V2 11/11] ext4: Enable encryption for blocksize less than page size
-Date: Mon, 12 Feb 2018 15:13:47 +0530
-Message-ID: <20180212094347.22071-12-chandan@linux.vnet.ibm.com>
+Subject: [RFC PATCH V2 06/11] ext4: Decrypt the block that needs to be partially zeroed
+Date: Mon, 12 Feb 2018 15:13:42 +0530
+Message-ID: <20180212094347.22071-7-chandan@linux.vnet.ibm.com>
 References: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
 Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
         linux-fsdevel@vger.kernel.org, ebiggers3@gmail.com,
         linux-fscrypt@vger.kernel.org, tytso@mit.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:40030 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S933313AbeBLJnJ (ORCPT
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:53506 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1753976AbeBLJmu (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 12 Feb 2018 04:43:09 -0500
-Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w1C9eRFO017198
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:43:08 -0500
-Received: from e37.co.us.ibm.com (e37.co.us.ibm.com [32.97.110.158])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2g377ak61j-1
+        Mon, 12 Feb 2018 04:42:50 -0500
+Received: from pps.filterd (m0098414.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w1C9cq5k116333
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:42:49 -0500
+Received: from e38.co.us.ibm.com (e38.co.us.ibm.com [32.97.110.159])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 2g30eyytpv-1
         (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:43:08 -0500
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:42:49 -0500
 Received: from localhost
-        by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        by e38.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
         for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Mon, 12 Feb 2018 02:43:07 -0700
+        Mon, 12 Feb 2018 02:42:48 -0700
 In-Reply-To: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now that we have all the code to support encryption for block size less
-than page size scenario, this commit removes the conditional check in
-filesystem mount code.
-
-The commit also changes the support statement in
-Documentation/filesystems/fscrypt.rst to reflect the fact that
-encryption of filesystems with blocksize less than page size now works.
+__ext4_block_zero_page_range decrypts the entire page. This commit
+changes the code to decrypt the block that needs to be partially zeroed
+instead of the whole page.
 
 Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
- Documentation/filesystems/fscrypt.rst | 14 +++++++-------
- fs/ext4/super.c                       |  7 -------
- 2 files changed, 7 insertions(+), 14 deletions(-)
+ fs/ext4/inode.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/filesystems/fscrypt.rst b/Documentation/filesystems/fscrypt.rst
-index 776ddc6..2147e53 100644
---- a/Documentation/filesystems/fscrypt.rst
-+++ b/Documentation/filesystems/fscrypt.rst
-@@ -202,13 +202,13 @@ modes are not currently supported because of the difficulty of dealing
- with ciphertext expansion.
- 
- For file contents, each filesystem block is encrypted independently.
--Currently, only the case where the filesystem block size is equal to
--the system's page size (usually 4096 bytes) is supported.  With the
--XTS mode of operation (recommended), the logical block number within
--the file is used as the IV.  With the CBC mode of operation (not
--recommended), ESSIV is used; specifically, the IV for CBC is the
--logical block number encrypted with AES-256, where the AES-256 key is
--the SHA-256 hash of the inode's data encryption key.
-+Starting from Linux kernel 4.17, encryption of filesystems with block
-+size less than system's page size is supported.  With the XTS mode of
-+operation (recommended), the logical block number within the file is
-+used as the IV.  With the CBC mode of operation (not recommended),
-+ESSIV is used; specifically, the IV for CBC is the logical block
-+number encrypted with AES-256, where the AES-256 key is the SHA-256
-+hash of the inode's data encryption key.
- 
- For filenames, the full filename is encrypted at once.  Because of the
- requirements to retain support for efficient directory lookups and
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ebb7edb..3ec04cc 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4138,13 +4138,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 180dd2d..aac0e04 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4034,9 +4034,10 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+ 		    ext4_encrypted_inode(inode)) {
+ 			/* We expect the key to be set. */
+ 			BUG_ON(!fscrypt_has_encryption_key(inode));
+-			BUG_ON(blocksize != PAGE_SIZE);
+ 			WARN_ON_ONCE(fscrypt_decrypt_block(page->mapping->host,
+-						page, PAGE_SIZE, 0, page->index));
++						page, blocksize,
++						round_down(offset, blocksize),
++						iblock));
  		}
  	}
- 
--	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || ext4_has_feature_encrypt(sb)) &&
--	    (blocksize != PAGE_SIZE)) {
--		ext4_msg(sb, KERN_ERR,
--			 "Unsupported blocksize for fs encryption");
--		goto failed_mount_wq;
--	}
+ 	if (ext4_should_journal_data(inode)) {
+-- 
+2.9.5
