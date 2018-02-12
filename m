@@ -1,95 +1,84 @@
 From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: [RFC PATCH V2 02/11] fs/buffer.c: Export end_buffer_async_read and create_page_buffers
-Date: Mon, 12 Feb 2018 15:13:38 +0530
-Message-ID: <20180212094347.22071-3-chandan@linux.vnet.ibm.com>
+Subject: [RFC PATCH V2 05/11] ext4: Decrypt all boundary blocks when doing buffered write
+Date: Mon, 12 Feb 2018 15:13:41 +0530
+Message-ID: <20180212094347.22071-6-chandan@linux.vnet.ibm.com>
 References: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
 Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
         linux-fsdevel@vger.kernel.org, ebiggers3@gmail.com,
         linux-fscrypt@vger.kernel.org, tytso@mit.edu
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:47634 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1753950AbeBLJmh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 12 Feb 2018 04:42:37 -0500
-Received: from pps.filterd (m0098417.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w1C9eLXP121459
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:42:37 -0500
-Received: from e32.co.us.ibm.com (e32.co.us.ibm.com [32.97.110.150])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2g31etntqs-1
-        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:42:36 -0500
-Received: from localhost
-        by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Mon, 12 Feb 2018 02:42:36 -0700
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The functions end_buffer_async_read() and create_page_buffers() will be
-required by the fscrypt module to implement decrypting encrypted blocks
-that have been read from the filesystem.
+With block size < page size, ext4_block_write_begin() can have up to two
+blocks to decrypt. Hence this commit invokes fscrypt_decrypt_block() for
+each of those blocks.
 
 Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
- fs/buffer.c                 | 6 ++++--
- include/linux/buffer_head.h | 3 +++
- 2 files changed, 7 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c | 33 +++++++++++++++++++++++----------
+ 1 file changed, 23 insertions(+), 10 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 551b781..663180d 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -256,7 +256,7 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
-  * I/O completion handler for block_read_full_page() - pages
-  * which come unlocked at the end of I/O.
-  */
--static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
-+void end_buffer_async_read(struct buffer_head *bh, int uptodate)
- {
- 	unsigned long flags;
- 	struct buffer_head *first;
-@@ -312,6 +312,7 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
- 	local_irq_restore(flags);
- 	return;
- }
-+EXPORT_SYMBOL(end_buffer_async_read);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 69a4fd6..180dd2d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1158,12 +1158,13 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 	unsigned to = from + len;
+ 	struct inode *inode = page->mapping->host;
+ 	unsigned block_start, block_end;
+-	sector_t block;
++	sector_t block, page_blk_nr;
+ 	int err = 0;
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+ 	unsigned bbits;
+ 	struct buffer_head *bh, *head, *wait[2], **wait_bh = wait;
+ 	bool decrypt = false;
++	int i;
  
- /*
-  * Completion handler for block_write_full_page() - pages which are unlocked
-@@ -1647,7 +1648,7 @@ static inline int block_size_bits(unsigned int blocksize)
- 	return ilog2(blocksize);
- }
- 
--static struct buffer_head *create_page_buffers(struct page *page, struct inode *inode, unsigned int b_state)
-+struct buffer_head *create_page_buffers(struct page *page, struct inode *inode, unsigned int b_state)
- {
  	BUG_ON(!PageLocked(page));
+ 	BUG_ON(from > PAGE_SIZE);
+@@ -1224,18 +1225,30 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 	/*
+ 	 * If we issued read requests, let them complete.
+ 	 */
+-	while (wait_bh > wait) {
+-		wait_on_buffer(*--wait_bh);
+-		if (!buffer_uptodate(*wait_bh))
++	for (i = 0; &wait[i] < wait_bh; i++) {
++		wait_on_buffer(wait[i]);
++		if (!buffer_uptodate(wait[i]))
+ 			err = -EIO;
+ 	}
+-	if (unlikely(err))
++	if (unlikely(err)) {
+ 		page_zero_new_buffers(page, from, to);
+-	else if (decrypt) {
+-		err = fscrypt_decrypt_block(page->mapping->host, page,
+-				PAGE_SIZE, 0, page->index);
+-		if (err)
+-			clear_buffer_uptodate(*wait_bh);
++	} else if (decrypt) {
++		page_blk_nr = (sector_t)page->index << (PAGE_SHIFT - bbits);
++
++		for (i = 0; &wait[i] < wait_bh; i++) {
++			int err2;
++
++			--wait_bh;
++			block = page_blk_nr + (bh_offset(wait[i]) >> bbits);
++			err2 = fscrypt_decrypt_block(page->mapping->host, page,
++						wait[i]->b_size,
++						bh_offset(wait[i]),
++						block);
++			if (err2) {
++				clear_buffer_uptodate(wait[i]);
++				err = err2;
++			}
++		}
+ 	}
  
-@@ -1656,6 +1657,7 @@ static struct buffer_head *create_page_buffers(struct page *page, struct inode *
- 				     b_state);
- 	return page_buffers(page);
- }
-+EXPORT_SYMBOL(create_page_buffers);
- 
- /*
-  * NOTE! All mapped/uptodate combinations are valid:
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index f1aed01..edc0983 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -161,7 +161,10 @@ struct buffer_head *alloc_page_buffers(struct page *page, unsigned long size,
- 		bool retry);
- void create_empty_buffers(struct page *, unsigned long,
- 			unsigned long b_state);
-+struct buffer_head *create_page_buffers(struct page *page, struct inode *inode,
-+					unsigned int b_state);
- void end_buffer_read_sync(struct buffer_head *bh, int uptodate);
-+void end_buffer_async_read(struct buffer_head *bh, int uptodate);
- void end_buffer_write_sync(struct buffer_head *bh, int uptodate);
- void end_buffer_async_write(struct buffer_head *bh, int uptodate);
- 
+ 	return err;
 -- 
 2.9.5
