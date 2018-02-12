@@ -1,74 +1,40 @@
-From: Eric Sandeen <esandeen@redhat.com>
-Subject: Re: [PATCH] mke2fs: avoid inode number error with large FS
-Date: Mon, 12 Feb 2018 10:06:57 -0600
-Message-ID: <520607f6-a5c2-1b6f-4a6b-813cbb8e2abd@redhat.com>
-References: <20180212111419.25036-1-artem.blagodarenko@gmail.com>
- <20180212154553.g3jfjdmta7uw7n4s@rh_laptop>
-Reply-To: sandeen@redhat.com
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: ext4 iomap SEEK broken [was: [GIT PULL] ext4 updates for 4.15]
+Date: Mon, 12 Feb 2018 11:10:26 -0500
+Message-ID: <20180212161026.GA2087@thunk.org>
+References: <20171113031502.f6mctmlmgk5psh77@thunk.org>
+ <7ae851b1-92a8-779a-a066-1c7e34867465@suse.cz>
+ <45062110-e80c-f1e8-3710-743c1ae4d232@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        Alexey Lyashkov <alexey.lyashkov@gmail.com>
-To: Lukas Czerner <lczerner@redhat.com>,
-        Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43348 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932878AbeBLQHX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 12 Feb 2018 11:07:23 -0500
-In-Reply-To: <20180212154553.g3jfjdmta7uw7n4s@rh_laptop>
-Content-Language: en-US
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>
+To: Jiri Slaby <jslaby@suse.cz>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <45062110-e80c-f1e8-3710-743c1ae4d232@suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-
-
-On 2/12/18 9:45 AM, Lukas Czerner wrote:
-> On Mon, Feb 12, 2018 at 02:14:19PM +0300, Artem Blagodarenko wrote:
->> From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
->>
->> Sometimes during system deployment customers are faced with system
->> formating problem for given inodes/bytes rate. User need to recalucate
->> this rate and start formating again.
->>
->> This patch adds code that limit inodes count instead of error return,
->> to use all inodes in the filesystem.
+On Mon, Feb 12, 2018 at 01:14:07PM +0100, Jiri Slaby wrote:
+> On 02/12/2018, 11:02 AM, Jiri Slaby wrote:
+> > Given this happens only on 32bit kernel, I assume some 32bit overflow.
+> > But I am unable to see it (yet).
 > 
-> Hi,
+> Just to add, a diff of strace in good and bad kernels:
+> @@ -655,14 +655,4 @@
+>  _llseek(3, 4275568640, [4286054400], SEEK_DATA) = 0
+>  _llseek(3, 4286054400, [4288675840], SEEK_HOLE) = 0
+>  _llseek(3, 4288675840, [4299161600], SEEK_DATA) = 0
+> -_llseek(3, 4299161600, [4301783040], SEEK_HOLE) = 0
+> +_llseek(3, 4299161600, [4299161600], SEEK_HOLE) = 2621440
 > 
-> in this case then you do not have byte-per-inode ratio you've
-> specified. So why to specify it in the first place ?
-> 
-> Maybe I am missing something but I would think that if you specify -i
-> then you know what you want and if it's not possible then I would not
-> expect the mke2fs to just succeed regardless. I guess it's confusing.
+> llseek returns a very invalid value when it comes to 0x100400000.
 
-I agree that fixing up incorrect/impossible format specifications and
-continuing is not preferable; it really makes the behavior matrix complex
-when some incorrect options are fixed on the fly, while others fail.
-
-And worse, this creates a new "default" behavior which comes into play
-only when specific incorrect mkfs options are explicitly provided.
-
-When an admin stops using mkfs defaults and starts manually specifying
-geometry, the onus is on /them/ to specify options which are valid.
-
-> Also the man page says:
-> 
-> "This value generally shouldn't be smaller than the blocksize of the
-> filesystem, since in that case more inodes would be made than can ever
-> be used."
-> 
-> But in your case you're using "-i 1024" on what I assume is a 4k bs file
-> system ?
-
-Right, can you offer a concrete example of the commandline you're trying
-to fix?
-
-If it's "-i 1024" on a 4k filesystem, that's simply broken and /should/
-be rejected.  If the error message is not clear, perhaps that's the best
-place to focus these efforts.
+Thanks for the bugreport!  Can you send me the output of "filefrag -v"
+on the file so I can make sure we can exactly replicate what you're
+seeing?
 
 Thanks,
--Eric
+
+						- Ted
