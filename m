@@ -1,55 +1,35 @@
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Subject: [PATCH] e2fsck: properly account cluster size
-Date: Mon, 12 Feb 2018 15:00:40 +0300
-Message-ID: <20180212120040.25441-1-artem.blagodarenko@gmail.com>
-Cc: Andrew Perepechko <anserper@ya.ru>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34902 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932519AbeBLMAr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Feb 2018 07:00:47 -0500
-Received: by mail-it0-f65.google.com with SMTP id e1so6199988ita.0
-        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:00:47 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jiri Slaby <jslaby@suse.cz>
+Subject: Re: ext4 iomap SEEK broken [was: [GIT PULL] ext4 updates for 4.15]
+Date: Mon, 12 Feb 2018 13:14:07 +0100
+Message-ID: <45062110-e80c-f1e8-3710-743c1ae4d232@suse.cz>
+References: <20171113031502.f6mctmlmgk5psh77@thunk.org>
+ <7ae851b1-92a8-779a-a066-1c7e34867465@suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-2
+Content-Transfer-Encoding: 7bit
+To: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <7ae851b1-92a8-779a-a066-1c7e34867465@suse.cz>
+Content-Language: en-GB
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Andrew Perepechko <anserper@ya.ru>
+On 02/12/2018, 11:02 AM, Jiri Slaby wrote:
+> Given this happens only on 32bit kernel, I assume some 32bit overflow.
+> But I am unable to see it (yet).
 
-The patch fixes the quota_data_add() call so that
-not num_blocks * block_size is passed, but instead
-num_blocks * blocks_per_cluster * block_size.
+Just to add, a diff of strace in good and bad kernels:
+@@ -655,14 +655,4 @@
+ _llseek(3, 4275568640, [4286054400], SEEK_DATA) = 0
+ _llseek(3, 4286054400, [4288675840], SEEK_HOLE) = 0
+ _llseek(3, 4288675840, [4299161600], SEEK_DATA) = 0
+-_llseek(3, 4299161600, [4301783040], SEEK_HOLE) = 0
++_llseek(3, 4299161600, [4299161600], SEEK_HOLE) = 2621440
 
-Otherwise, any trivial test with -O bigalloc,quota
-filesystem leads to check errors like
+llseek returns a very invalid value when it comes to 0x100400000.
 
-[QUOTA WARNING] Usage inconsistent for ID 0:actual (8192, 2) != expected
-(131072, 2)
-Update quota info for quota type 0<y>? cancelled!
-[QUOTA WARNING] Usage inconsistent for ID 0:actual (8192, 2) != expected
-(131072, 2)
-Update quota info for quota type 1<y>? cancelled!
-
-Cray-bug-id: LUS-5373
-
-Signed-off-by: Andrew Perepechko <anserper@ya.ru>
-Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
----
- e2fsck/pass1.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 5015d938..471162ea 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -3387,6 +3387,8 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		}
- 	}
- 
-+	pb.num_blocks *= EXT2FS_CLUSTER_RATIO(fs);
-+
- 	if (ino != quota_type2inum(PRJQUOTA, fs->super) &&
- 	    (ino == EXT2_ROOT_INO || ino >= EXT2_FIRST_INODE(ctx->fs->super)) &&
- 	    !(inode->i_flags & EXT4_EA_INODE_FL)) {
+regards,
 -- 
-2.14.3 (Apple Git-98)
+js
+suse labs
