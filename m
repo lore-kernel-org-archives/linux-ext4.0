@@ -1,40 +1,85 @@
-From: Jiri Slaby <jslaby@suse.cz>
-Subject: Re: ext4 iomap SEEK broken [was: [GIT PULL] ext4 updates for 4.15]
-Date: Mon, 12 Feb 2018 14:38:17 +0100
-Message-ID: <de55a671-408e-df3e-30ae-c4608eb7d4c3@suse.cz>
-References: <20171113031502.f6mctmlmgk5psh77@thunk.org>
- <7ae851b1-92a8-779a-a066-1c7e34867465@suse.cz>
- <45062110-e80c-f1e8-3710-743c1ae4d232@suse.cz>
- <6db646d9-9ec0-ddda-d480-357cf3c70a09@suse.cz>
+From: Lukas Czerner <lczerner@redhat.com>
+Subject: Re: [PATCH] mke2fs: avoid inode number error with large FS
+Date: Mon, 12 Feb 2018 16:45:53 +0100
+Message-ID: <20180212154553.g3jfjdmta7uw7n4s@rh_laptop>
+References: <20180212111419.25036-1-artem.blagodarenko@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <6db646d9-9ec0-ddda-d480-357cf3c70a09@suse.cz>
-Content-Language: en-GB
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        Alexey Lyashkov <alexey.lyashkov@gmail.com>
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:39998 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S932173AbeBLPp4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 12 Feb 2018 10:45:56 -0500
+Content-Disposition: inline
+In-Reply-To: <20180212111419.25036-1-artem.blagodarenko@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/12/2018, 02:34 PM, Jiri Slaby wrote:
-> @@ -3523,7 +3523,7 @@ static int ext4_iomap_begin(struct inode *inode,
-> loff_t offset, loff_t length,
->                 iomap->flags |= IOMAP_F_DIRTY;
->         iomap->bdev = inode->i_sb->s_bdev;
->         iomap->dax_dev = sbi->s_daxdev;
-> -       iomap->offset = first_block << blkbits;
-> +       iomap->offset = (u64)first_block << blkbits;
->         iomap->length = (u64)map.m_len << blkbits;
+On Mon, Feb 12, 2018 at 02:14:19PM +0300, Artem Blagodarenko wrote:
+> From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
 > 
->         if (ret == 0) {
+> Sometimes during system deployment customers are faced with system
+> formating problem for given inodes/bytes rate. User need to recalucate
+> this rate and start formating again.
 > 
-> sounds about right?
+> This patch adds code that limit inodes count instead of error return,
+> to use all inodes in the filesystem.
 
-Or even simpler:
--       iomap->offset = first_block << blkbits;
-+       iomap->offset = offset;
+Hi,
 
->> regards,-- 
-js
-suse labs
+in this case then you do not have byte-per-inode ratio you've
+specified. So why to specify it in the first place ?
+
+Maybe I am missing something but I would think that if you specify -i
+then you know what you want and if it's not possible then I would not
+expect the mke2fs to just succeed regardless. I guess it's confusing.
+
+Also the man page says:
+
+"This value generally shouldn't be smaller than the blocksize of the
+filesystem, since in that case more inodes would be made than can ever
+be used."
+
+But in your case you're using "-i 1024" on what I assume is a 4k bs file
+system ?
+
+-Lukas
+
+> 
+> Intel-bug-id: https://jira.hpdd.intel.com/browse/LU-9501
+> Cray-bug-id: LUS-5250
+> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+> Signed-off-by: Alexey Lyashkov <alexey.lyashkov@gmail.com>
+> ---
+>  misc/mke2fs.c | 11 ++++-------
+>  1 file changed, 4 insertions(+), 7 deletions(-)
+> 
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index cfb10bc4..6fb0a717 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -2457,14 +2457,11 @@ profile_error:
+>  		unsigned long long n;
+>  		n = ext2fs_blocks_count(&fs_param) * blocksize / inode_ratio;
+>  		if (n > MAX_32_NUM) {
+> -			if (ext2fs_has_feature_64bit(&fs_param))
+> -				num_inodes = MAX_32_NUM;
+> -			else {
+> +			num_inodes = MAX_32_NUM;
+> +			if (!ext2fs_has_feature_64bit(&fs_param))
+>  				com_err(program_name, 0,
+> -					_("too many inodes (%llu), raise "
+> -					  "inode ratio?"), n);
+> -				exit(1);
+> -			}
+> +					_("too many inodes (%llu), reduced to "
+> +					  "%llu"), n, MAX_32_NUM);
+>  		}
+>  	} else if (num_inodes > MAX_32_NUM) {
+>  		com_err(program_name, 0,
+> -- 
+> 2.14.3 (Apple Git-98)
+> 
