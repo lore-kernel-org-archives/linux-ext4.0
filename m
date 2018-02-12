@@ -1,71 +1,88 @@
-From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
-Subject: probably bug in block allocator
-Date: Mon, 12 Feb 2018 09:14:33 +0300
-Message-ID: <6B41BA7B-1BF4-471E-AA3B-D4CEFB7335B8@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Ts'o Theodore <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f48.google.com ([209.85.215.48]:33234 "EHLO
-        mail-lf0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750937AbeBLGOh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Feb 2018 01:14:37 -0500
-Received: by mail-lf0-f48.google.com with SMTP id j193so2940722lfe.0
-        for <linux-ext4@vger.kernel.org>; Sun, 11 Feb 2018 22:14:37 -0800 (PST)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Subject: [RFC PATCH V2 00/11] Ext4 encryption support for blocksize < pagesize
+Date: Mon, 12 Feb 2018 15:13:36 +0530
+Message-ID: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        linux-fsdevel@vger.kernel.org, ebiggers3@gmail.com,
+        linux-fscrypt@vger.kernel.org, tytso@mit.edu
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi ext4 developers,
+This patchset implements code to support encryption of Ext4 filesystem
+instances that have blocksize less than pagesize. The patchset has
+been tested on both ppc64 and x86_64 machines.
 
-I looked into problem with long time allocations with large FS and found =
-a some strange in
-commit
-commit 40ae3487628235e5f1eb27542cca0cdb6e5dbe16
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Mon Feb 4 15:08:40 2013 -0500
+Eric, fscrypt_mpage_readpages() (originally, ext4_mpage_readpages())
+still retains the ability to read non-encrypted file data. Please let
+me know if the code has to be changed such that
+fscrypt_mpage_readpages() makes it mandatory for the file's data to be
+encrypted.
 
-    ext4: optimize mballoc for large allocations
-..
-it have a chunk
-@@ -1884,15 +1884,19 @@ static int ext4_mb_good_group(struct =
-ext4_allocation_context *ac,
-        case 0:
-                BUG_ON(ac->ac_2order =3D=3D 0);
+TODO:
+F2FS and UBIFS code needs to be updated to make use of the newly added
+fscrypt functions. I will do that in the next version of the patchset.
 
--               if (grp->bb_largest_free_order < ac->ac_2order)
--                       return 0;
--
-                /* Avoid using the first bg of a flexgroup for data =
-files */
-                if ((ac->ac_flags & EXT4_MB_HINT_DATA) &&
-                    (flex_size >=3D EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) &&
-                    ((group % flex_size) =3D=3D 0))
-                        return 0;
+Changelog:
+"RFC V1" -> "RFC V2":
+1. Ext4's "encryption aware" functionality in fs/ext4/readpage.c has
+   been moved to fs/crypto/.
+2. fscrypt functions have now been renamed to indicate that they work
+   on blocks rather than pages.
+   Eric, I have renamed completion_pages() to fscrypt_complete_pages()
+   rather than to fscrypt_complete_blocks(). This is because we have a
+   new function fscrypt_complete_block() (which operates on a single
+   block) and IMHO having the identifier fscrypt_complete_blocks()
+   which differs from it by just one letter would confuse the reader.
+3. ext4_block_write_begin() now clears BH_Uptodate flag when
+   decryption of boundary blocks fail.
+4. fscrypt_encrypt_page() (now renamed to fscrypt_encrypt_block()) is
+   now split into two functions. fscrypt_prep_ciphertext_page()
+   allocates and initializes the fscrypt context and the bounce
+   page. fscrypt_encrypt_block() is limited to encrypting the
+   filesystem's block.
+5. fscrypt_zeroout_range() has been updated to work on blocksize <
+   pagesize scenario.
+6. Documentation/filesystems/fscrypt.rst has been updated to indicate
+   encryption support for blocksize < pagesize.
 
-+               if ((ac->ac_2order > ac->ac_sb->s_blocksize_bits+1) ||
-+                   (free / fragments) >=3D ac->ac_g_ex.fe_len) <<<< (0)
-+                       return 1;
-+
-+               if (grp->bb_largest_free_order < ac->ac_2order)
-+                       return 0;
-+
-                return 1;
-        case 1:
-                if ((free / fragments) >=3D ac->ac_g_ex.fe_len) (1)
+Thanks to Eric Biggers for providing review comments for "RFC V1".
 
+Chandan Rajendra (11):
+  ext4: Clear BH_Uptodate flag on decryption error
+  fs/buffer.c: Export end_buffer_async_read and create_page_buffers
+  fs/crypto/: Rename functions to indicate that they operate on FS
+    blocks
+  completion_pages: Decrypt all contiguous blocks in a page
+  ext4: Decrypt all boundary blocks when doing buffered write
+  ext4: Decrypt the block that needs to be partially zeroed
+  fscrypt_zeroout_range: Encrypt all zeroed out blocks of a page
+  Enable reading encrypted files in blocksize less than pagesize setup
+  fscrypt: Move completion_pages to crypto/readpage.c
+  Enable writing encrypted files in blocksize less than pagesize setup
+  ext4: Enable encryption for blocksize less than page size
 
-..
-ac_g_ex isn=E2=80=99t changed between loops, free/fragments is also =
-don=E2=80=99t changed.
+ Documentation/filesystems/fscrypt.rst |  14 +-
+ fs/buffer.c                           |   6 +-
+ fs/crypto/Makefile                    |   2 +-
+ fs/crypto/bio.c                       |  77 +++---
+ fs/crypto/crypto.c                    |  91 +++---
+ fs/crypto/fscrypt_private.h           |   5 +-
+ fs/crypto/readpage.c                  | 506 ++++++++++++++++++++++++++++++++++
+ fs/ext4/Makefile                      |   2 +-
+ fs/ext4/ext4.h                        |   5 -
+ fs/ext4/inode.c                       |  53 +++-
+ fs/ext4/page-io.c                     |  34 ++-
+ fs/ext4/readpage.c                    | 294 --------------------
+ fs/ext4/super.c                       |   7 -
+ include/linux/buffer_head.h           |   3 +
+ include/linux/fscrypt.h               |   1 +
+ include/linux/fscrypt_notsupp.h       |  23 +-
+ include/linux/fscrypt_supp.h          |  20 +-
+ 17 files changed, 700 insertions(+), 443 deletions(-)
+ create mode 100644 fs/crypto/readpage.c
+ delete mode 100644 fs/ext4/readpage.c
 
-i this case loop(1) is useless as same condition as used in loop (0), =
-but it=E2=80=99s will eats a some time with large number a group.
-In this case - i think loop(1) can be cut and save a some time with =
-scanning a groups.
-
-Theo, what you think about that change ?
-
-
-Alex
+-- 
+2.9.5
