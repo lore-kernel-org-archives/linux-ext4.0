@@ -1,77 +1,59 @@
-From: Jiri Slaby <jslaby@suse.cz>
-Subject: ext4 iomap SEEK broken [was: [GIT PULL] ext4 updates for 4.15]
-Date: Mon, 12 Feb 2018 11:02:29 +0100
-Message-ID: <7ae851b1-92a8-779a-a066-1c7e34867465@suse.cz>
-References: <20171113031502.f6mctmlmgk5psh77@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
-To: Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Subject: [PATCH] mke2fs: avoid inode number error with large FS
+Date: Mon, 12 Feb 2018 14:14:19 +0300
+Message-ID: <20180212111419.25036-1-artem.blagodarenko@gmail.com>
+Cc: adilger.kernel@dilger.ca,
+        Alexey Lyashkov <alexey.lyashkov@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-wr0-f179.google.com ([209.85.128.179]:46330 "EHLO
-        mail-wr0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932505AbeBLKCc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Feb 2018 05:02:32 -0500
-In-Reply-To: <20171113031502.f6mctmlmgk5psh77@thunk.org>
-Content-Language: en-GB
+Received: from mail-it0-f66.google.com ([209.85.214.66]:55592 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754057AbeBLLOl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Feb 2018 06:14:41 -0500
+Received: by mail-it0-f66.google.com with SMTP id b66so6193195itd.5
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 03:14:40 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
 
-On 11/13/2017, 04:15 AM, Theodore Ts'o wrote:
-> The following changes since commit 9e66317d3c92ddaab330c125dfe9d06eee268aff:
-> 
->   Linux 4.14-rc3 (2017-10-01 14:54:54 -0700)
-> 
-> are available in the git repository at:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
-...
-> Christoph Hellwig (1):
->       ext4: Switch to iomap for SEEK_HOLE / SEEK_DATA
+Sometimes during system deployment customers are faced with system
+formating problem for given inodes/bytes rate. User need to recalucate
+this rate and start formating again.
 
-So I bisected a 32bit hole problem in 4.15 down to this one.
+This patch adds code that limit inodes count instead of error return,
+to use all inodes in the filesystem.
 
-tar selftests never finish during build on the 32bit kernel. The stack
-trace is something like this:
-tar             R  running task        0 24780  24590 0x00000000
-Call Trace:
- ? ext4_map_blocks+0x2fa/0x5f0
- ? ext4_map_blocks+0x348/0x5f0
- ? ext4_iomap_begin+0x39b/0x4d0
- ? ext4_evict_inode+0x5c0/0x5c0
- ? iomap_apply+0x61/0x160
- ? iomap_to_fiemap+0xd0/0xd0
- ? iomap_seek_data+0xac/0x110
- ? iomap_seek_hole_actor+0x80/0x80
- ? ext4_llseek+0x13a/0x140
- ? ext4_file_mmap+0x90/0x90
- ? SyS_llseek+0x7b/0xc0
- ? do_int80_syscall_32+0x51/0x100
- ? entry_INT80_32+0x36/0x36
+Intel-bug-id: https://jira.hpdd.intel.com/browse/LU-9501
+Cray-bug-id: LUS-5250
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Signed-off-by: Alexey Lyashkov <alexey.lyashkov@gmail.com>
+---
+ misc/mke2fs.c | 11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
 
-
-The tar test does this:
-AT_TAR_CHECK([
-AT_DATA([mapfile],
-[0 =2560
-m4_for([i], 1, 999, 1, [10M =2560
-])])
-genfile --sparse --file BIGFILE --block-size 4K - < mapfile || AT_SKIP_TEST
-tar -f - -c --sparse --posix BIGFILE | tar tvf - | awk '{ print $3, $(NF) }'
-],
-
-I.e. it generates a file with 1000 blocks of 2560*4K bytes. The blocks
-are 10M from each other, that is 999 10M holes. Tar then tries to
-read&seek in the file, but the seek above never finishes (or maybe
-finishes after a long time).
-
-Given this happens only on 32bit kernel, I assume some 32bit overflow.
-But I am unable to see it (yet).
-
-thanks,
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index cfb10bc4..6fb0a717 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -2457,14 +2457,11 @@ profile_error:
+ 		unsigned long long n;
+ 		n = ext2fs_blocks_count(&fs_param) * blocksize / inode_ratio;
+ 		if (n > MAX_32_NUM) {
+-			if (ext2fs_has_feature_64bit(&fs_param))
+-				num_inodes = MAX_32_NUM;
+-			else {
++			num_inodes = MAX_32_NUM;
++			if (!ext2fs_has_feature_64bit(&fs_param))
+ 				com_err(program_name, 0,
+-					_("too many inodes (%llu), raise "
+-					  "inode ratio?"), n);
+-				exit(1);
+-			}
++					_("too many inodes (%llu), reduced to "
++					  "%llu"), n, MAX_32_NUM);
+ 		}
+ 	} else if (num_inodes > MAX_32_NUM) {
+ 		com_err(program_name, 0,
 -- 
-js
-suse labs
+2.14.3 (Apple Git-98)
