@@ -1,88 +1,60 @@
 From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: [RFC PATCH V2 00/11] Ext4 encryption support for blocksize < pagesize
-Date: Mon, 12 Feb 2018 15:13:36 +0530
-Message-ID: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
+Subject: [RFC PATCH V2 01/11] ext4: Clear BH_Uptodate flag on decryption error
+Date: Mon, 12 Feb 2018 15:13:37 +0530
+Message-ID: <20180212094347.22071-2-chandan@linux.vnet.ibm.com>
+References: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
 Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
         linux-fsdevel@vger.kernel.org, ebiggers3@gmail.com,
         linux-fscrypt@vger.kernel.org, tytso@mit.edu
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:45396 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1753950AbeBLJmd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 12 Feb 2018 04:42:33 -0500
+Received: from pps.filterd (m0098419.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w1C9clvg037657
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:42:32 -0500
+Received: from e32.co.us.ibm.com (e32.co.us.ibm.com [32.97.110.150])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 2g3552qfa7-1
+        (version=TLSv1.2 cipher=AES256-SHA bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Mon, 12 Feb 2018 04:42:31 -0500
+Received: from localhost
+        by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Mon, 12 Feb 2018 02:42:31 -0700
+In-Reply-To: <20180212094347.22071-1-chandan@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patchset implements code to support encryption of Ext4 filesystem
-instances that have blocksize less than pagesize. The patchset has
-been tested on both ppc64 and x86_64 machines.
+On an error return from fscrypt_decrypt_page(), ext4_block_write_begin()
+can return with the page's buffer_head marked with BH_Uptodate
+flag. This commit clears the BH_Uptodate flag in such cases.
 
-Eric, fscrypt_mpage_readpages() (originally, ext4_mpage_readpages())
-still retains the ability to read non-encrypted file data. Please let
-me know if the code has to be changed such that
-fscrypt_mpage_readpages() makes it mandatory for the file's data to be
-encrypted.
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+---
+ fs/ext4/inode.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-TODO:
-F2FS and UBIFS code needs to be updated to make use of the newly added
-fscrypt functions. I will do that in the next version of the patchset.
-
-Changelog:
-"RFC V1" -> "RFC V2":
-1. Ext4's "encryption aware" functionality in fs/ext4/readpage.c has
-   been moved to fs/crypto/.
-2. fscrypt functions have now been renamed to indicate that they work
-   on blocks rather than pages.
-   Eric, I have renamed completion_pages() to fscrypt_complete_pages()
-   rather than to fscrypt_complete_blocks(). This is because we have a
-   new function fscrypt_complete_block() (which operates on a single
-   block) and IMHO having the identifier fscrypt_complete_blocks()
-   which differs from it by just one letter would confuse the reader.
-3. ext4_block_write_begin() now clears BH_Uptodate flag when
-   decryption of boundary blocks fail.
-4. fscrypt_encrypt_page() (now renamed to fscrypt_encrypt_block()) is
-   now split into two functions. fscrypt_prep_ciphertext_page()
-   allocates and initializes the fscrypt context and the bounce
-   page. fscrypt_encrypt_block() is limited to encrypting the
-   filesystem's block.
-5. fscrypt_zeroout_range() has been updated to work on blocksize <
-   pagesize scenario.
-6. Documentation/filesystems/fscrypt.rst has been updated to indicate
-   encryption support for blocksize < pagesize.
-
-Thanks to Eric Biggers for providing review comments for "RFC V1".
-
-Chandan Rajendra (11):
-  ext4: Clear BH_Uptodate flag on decryption error
-  fs/buffer.c: Export end_buffer_async_read and create_page_buffers
-  fs/crypto/: Rename functions to indicate that they operate on FS
-    blocks
-  completion_pages: Decrypt all contiguous blocks in a page
-  ext4: Decrypt all boundary blocks when doing buffered write
-  ext4: Decrypt the block that needs to be partially zeroed
-  fscrypt_zeroout_range: Encrypt all zeroed out blocks of a page
-  Enable reading encrypted files in blocksize less than pagesize setup
-  fscrypt: Move completion_pages to crypto/readpage.c
-  Enable writing encrypted files in blocksize less than pagesize setup
-  ext4: Enable encryption for blocksize less than page size
-
- Documentation/filesystems/fscrypt.rst |  14 +-
- fs/buffer.c                           |   6 +-
- fs/crypto/Makefile                    |   2 +-
- fs/crypto/bio.c                       |  77 +++---
- fs/crypto/crypto.c                    |  91 +++---
- fs/crypto/fscrypt_private.h           |   5 +-
- fs/crypto/readpage.c                  | 506 ++++++++++++++++++++++++++++++++++
- fs/ext4/Makefile                      |   2 +-
- fs/ext4/ext4.h                        |   5 -
- fs/ext4/inode.c                       |  53 +++-
- fs/ext4/page-io.c                     |  34 ++-
- fs/ext4/readpage.c                    | 294 --------------------
- fs/ext4/super.c                       |   7 -
- include/linux/buffer_head.h           |   3 +
- include/linux/fscrypt.h               |   1 +
- include/linux/fscrypt_notsupp.h       |  23 +-
- include/linux/fscrypt_supp.h          |  20 +-
- 17 files changed, 700 insertions(+), 443 deletions(-)
- create mode 100644 fs/crypto/readpage.c
- delete mode 100644 fs/ext4/readpage.c
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6f6589e..e8ecf67 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1231,9 +1231,13 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 	}
+ 	if (unlikely(err))
+ 		page_zero_new_buffers(page, from, to);
+-	else if (decrypt)
++	else if (decrypt) {
+ 		err = fscrypt_decrypt_page(page->mapping->host, page,
+ 				PAGE_SIZE, 0, page->index);
++		if (err)
++			clear_buffer_uptodate(*wait_bh);
++	}
++
+ 	return err;
+ }
+ #endif
 -- 
 2.9.5
