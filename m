@@ -1,56 +1,95 @@
-From: Francesco Ruggeri <fruggeri@arista.com>
-Subject: Re: mount stuck in infinite loop
-Date: Wed, 14 Feb 2018 08:43:18 -0800
-Message-ID: <CA+HUmGiJorL_T7j6B9KHbk96H4MvrCCd-W7CZsBd8RbeMJ7zXQ@mail.gmail.com>
-References: <20180131171653.7C66C49841@fruggeri-Arora18_1.sjc.aristanetworks.com>
+From: Jayashree Mohan <jayashree2912@gmail.com>
+Subject: Behavior of falloc collapse range when preceded by falloc keep size :
+ Possible eof block loss
+Date: Wed, 14 Feb 2018 10:56:31 -0600
+Message-ID: <CA+EzBbBtpD=shOwnWLwTfkb-mmyaznndGNL3saSEobX0uT7MfA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
-Cc: Francesco Ruggeri <fruggeri@arista.com>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180131171653.7C66C49841@fruggeri-Arora18_1.sjc.aristanetworks.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ua0-f181.google.com ([209.85.217.181]:39578 "EHLO
+        mail-ua0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1032939AbeBNQ4d (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Feb 2018 11:56:33 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Does anybody have any opinions about this?
+Hi,
+
+I am Jayashree Mohan, a PhD student at the University of Texas at
+Austin, working with Prof. Vijay Chidambaram. I've been working on the
+Crashmonkey project, which is a test harness for file system crash
+consistency checks[1].
+
+While trying to reproduce some of the reported bugs on filesystems
+using CrashMonkey we stumbled upon the following issue:
+
+Whenever we have a collapse_range operation that follows fallocate
+with keep_size that allocated blocks beyond the end-of-file, the eof
+blocks are lost due to the collapse_range operation in f2fs and xfs.
+
+Consider the following workload(The number within the braces indicate
+the start and end offsets)
+1. Write (0 - 428K)
+     Sync()
+2. Fallocate keep_size (428K - 432K )
+3. Fallocate collapse_range (112K - 128K)
+
+If we now stat the file, the result is as follows for ext4:
+ 1. After write (0-428K)
+  Size: 438272     Blocks: 856        IO Block: 1024   regular file
+
+ 2. Falloc keep_size 428K - 432K
+  Size: 438272     Blocks: 864        IO Block: 1024   regular file
+
+ 3. Falloc collapse_range 112K - 128K
+  Size: 421888     Blocks: 832        IO Block: 1024   regular file
+
+The block count at the end of collapse_range is 32 blocks less than
+step 2, which corresponds to the 16K range that was collapsed. So this
+behavior makes sense. However consider the same for f2fs and xfs,
+
+If we now stat the file, the result is as follows for f2fs:
+ 1. After write (0-428K)
+  Size: 438272     Blocks: 856        IO Block: 4096   regular file
+
+ 2. Falloc keep_size 428K - 432K
+  Size: 438272     Blocks: 864        IO Block: 4096   regular file
+
+ 3. Falloc collapse_range 112K - 128K
+  Size: 421888     Blocks: 824        IO Block: 4096   regular file
+
+If we now stat the file, the result is as follows for xfs:
+ 1. After write (0-428K)
+  Size: 438272     Blocks: 856        IO Block: 4096   regular file
+xfs_bmap :  0: [0..855]: 160..1015
+
+ 2. Falloc keep_size 428K - 432K
+  Size: 438272     Blocks: 864        IO Block: 4096   regular file
+xfs_bmap : 0: [0..855]: 160..1015
+                  1: [856..863]: 1016..1023
+
+ 3. Falloc collapse_range 112K - 128K
+  Size: 421888     Blocks: 824        IO Block: 4096   regular file
+xfs_bmap : 0: [0..223]: 160..383
+                   1: [224..823]: 416..1015
+
+If we didn't have the keep_size option with fallocate in step 2, then
+we see the xfs_bmap after step 3 to be
+0: [0..223]: 160..383
+1: [224..823]: 416..1015
+2: [824..831]: 1016..1023
+
+This clearly shows, the blocks allocated beyond the eof are lost
+during the collapse_range operation, if keep_size was specified while
+allocating these blocks. This behavior is seen in both f2fs and xfs,
+while ext4 seems to preserve the allocated blocks. All these were
+tested on linux kernel 4.15. Shouldn't f2fs and xfs also behave like
+ext4?
+
+Let me know if I am missing some detail.
+
+[1] https://github.com/utsaslab/crashmonkey
 
 Thanks,
-Francesco Ruggeri
-
-On Wed, Jan 31, 2018 at 9:16 AM, Francesco Ruggeri <fruggeri@arista.com> wrote:
-> I had a few cases of mount getting stuck in an infinite loop.
-> This happens when bdev->bd_inode->i_blkbits gets modified (for
-> example by bd_set_size()) while *_fill_super() is between
-> sb_min_blocksize() and sb_bread(), and the new value is inconsistent
-> with the block size used in fill_super().
-> When this happens one can get into an infinite loop in
-> __getblk_slow(), if grow_buffers() allocates/finds a page with a
-> given index, but __find_get_block{_slow}() looks for (and does not
-> find) a page with a different index.
->
-> I can reproduce it in 4.14.15 with the following script.
-> I can also reproduce it in 4.9 and 3.18.
->
-> FILE=/tmp/fsfile
-> MNT=/tmp/fsmnt
-> LOOP=`losetup -f`
->
-> rm -rf $FILE $MNT
->
-> mkdir $MNT
-> dd if=/dev/zero of=$FILE count=32 bs=1MiB
-> losetup $LOOP $FILE
-> mkfs -t ext4 $LOOP
-> while true; do losetup -D $LOOP; losetup $LOOP $FILE; done \
->         2>/dev/null >/dev/null &
-> for ((i=0; i<100; i++)); do echo ================== $i; \
->         mount $LOOP $MNT; umount $MNT; done
->
-> The issue is that __find_get_block_slow() and grow_buffers() compute
-> the page index in different ways.
-> I am not sure what the correct solution should be here.
->
-> Thanks,
-> Francesco Ruggeri
->
+Jayashree
