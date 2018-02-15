@@ -1,78 +1,74 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: Behavior of falloc collapse range when preceded by falloc keep
- size : Possible eof block loss
-Date: Thu, 15 Feb 2018 08:48:00 +1100
-Message-ID: <20180214214800.GH7000@dastard>
-References: <CA+EzBbBtpD=shOwnWLwTfkb-mmyaznndGNL3saSEobX0uT7MfA@mail.gmail.com>
-Mime-Version: 1.0
+From: =?utf-8?B?0JHQu9Cw0LPQvtC00LDRgNC10L3QutC+INCQ0YDRgtGR0Lw=?=
+        <artem.blagodarenko@gmail.com>
+Subject: Re: [PATCH] e2fsck: properly account cluster size
+Date: Thu, 15 Feb 2018 17:45:34 +0300
+Message-ID: <DC07AF86-4B27-4F94-AC08-096CDA3C8D67@gmail.com>
+References: <20180212120040.25441-1-artem.blagodarenko@gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org
-To: Jayashree Mohan <jayashree2912@gmail.com>
+Content-Transfer-Encoding: quoted-printable
+Cc: Andrew Perepechko <anserper@ya.ru>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmailnode02.adl6.internode.on.net ([150.101.137.148]:52127
-        "EHLO ipmailnode02.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1031509AbeBNVxF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 14 Feb 2018 16:53:05 -0500
-Content-Disposition: inline
-In-Reply-To: <CA+EzBbBtpD=shOwnWLwTfkb-mmyaznndGNL3saSEobX0uT7MfA@mail.gmail.com>
+Received: from mail-lf0-f66.google.com ([209.85.215.66]:42052 "EHLO
+        mail-lf0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1033423AbeBOOpj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Feb 2018 09:45:39 -0500
+Received: by mail-lf0-f66.google.com with SMTP id w10so21588444lfc.9
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Feb 2018 06:45:39 -0800 (PST)
+In-Reply-To: <20180212120040.25441-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 14, 2018 at 10:56:31AM -0600, Jayashree Mohan wrote:
-> Hi,
-> 
-> I am Jayashree Mohan, a PhD student at the University of Texas at
-> Austin, working with Prof. Vijay Chidambaram. I've been working on the
-> Crashmonkey project, which is a test harness for file system crash
-> consistency checks[1].
-> 
-> While trying to reproduce some of the reported bugs on filesystems
-> using CrashMonkey we stumbled upon the following issue:
-> 
-> Whenever we have a collapse_range operation that follows fallocate
-> with keep_size that allocated blocks beyond the end-of-file, the eof
-> blocks are lost due to the collapse_range operation in f2fs and xfs.
+Sorry, this patch is duplicate of
+[PATCH] e2fsck: fix quota accounting to use cluster units
+from Eric W at 5 April.
 
-.....
 
-> If we didn't have the keep_size option with fallocate in step 2, then
-> we see the xfs_bmap after step 3 to be
-> 0: [0..223]: 160..383
-> 1: [224..823]: 416..1015
-> 2: [824..831]: 1016..1023
-> 
-> This clearly shows, the blocks allocated beyond the eof are lost
-> during the collapse_range operation, if keep_size was specified while
-> allocating these blocks. This behavior is seen in both f2fs and xfs,
-> while ext4 seems to preserve the allocated blocks. All these were
-> tested on linux kernel 4.15. Shouldn't f2fs and xfs also behave like
-> ext4?
-
-Yup, XFS trims post-eof blocks before a collapse because:
-
-        /*
-         * Trim eofblocks to avoid shifting uninitialized post-eof preallocation
-         * into the accessible region of the file.
-         */
-        if (xfs_can_free_eofblocks(ip, true)) {
-                error = xfs_free_eofblocks(ip);
-                if (error)
-                        return error;
-        }
-
-we can retain uninitialised extents beyond EOF. I think that
-uninitialised preallocation beyond EOF cannot occur in ext4 (i.e.
-it can only have unwritten extents beyond EOF) but you'll need to
-check that.
-
-IOWs, ext4 needs to be considered "potentially dangerous" in
-terms of it's behaviour here, and that both XFS and f2fs are doing
-the obviously safe thing.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> On 12 Feb 2018, at 15:00, Artem Blagodarenko =
+<artem.blagodarenko@gmail.com> wrote:
+>=20
+> From: Andrew Perepechko <anserper@ya.ru>
+>=20
+> The patch fixes the quota_data_add() call so that
+> not num_blocks * block_size is passed, but instead
+> num_blocks * blocks_per_cluster * block_size.
+>=20
+> Otherwise, any trivial test with -O bigalloc,quota
+> filesystem leads to check errors like
+>=20
+> [QUOTA WARNING] Usage inconsistent for ID 0:actual (8192, 2) !=3D =
+expected
+> (131072, 2)
+> Update quota info for quota type 0<y>? cancelled!
+> [QUOTA WARNING] Usage inconsistent for ID 0:actual (8192, 2) !=3D =
+expected
+> (131072, 2)
+> Update quota info for quota type 1<y>? cancelled!
+>=20
+> Cray-bug-id: LUS-5373
+>=20
+> Signed-off-by: Andrew Perepechko <anserper@ya.ru>
+> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+> ---
+> e2fsck/pass1.c | 2 ++
+> 1 file changed, 2 insertions(+)
+>=20
+> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+> index 5015d938..471162ea 100644
+> --- a/e2fsck/pass1.c
+> +++ b/e2fsck/pass1.c
+> @@ -3387,6 +3387,8 @@ static void check_blocks(e2fsck_t ctx, struct =
+problem_context *pctx,
+> 		}
+> 	}
+>=20
+> +	pb.num_blocks *=3D EXT2FS_CLUSTER_RATIO(fs);
+> +
+> 	if (ino !=3D quota_type2inum(PRJQUOTA, fs->super) &&
+> 	    (ino =3D=3D EXT2_ROOT_INO || ino >=3D =
+EXT2_FIRST_INODE(ctx->fs->super)) &&
+> 	    !(inode->i_flags & EXT4_EA_INODE_FL)) {
+> --=20
+> 2.14.3 (Apple Git-98)
+>=20
