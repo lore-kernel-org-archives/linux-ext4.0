@@ -1,67 +1,54 @@
-From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v4 1/3] fs: allow per-device dax status checking for
- filesystems
-Date: Thu, 15 Feb 2018 11:06:58 -0800
-Message-ID: <20180215190658.GQ5217@magnolia>
-References: <151871644696.27617.4390718895806529377.stgit@djiang5-desk3.ch.intel.com>
- <151871655228.27617.3514495396592472682.stgit@djiang5-desk3.ch.intel.com>
- <20180215175241.GA25223@infradead.org>
- <f5f93cd1-4d9e-c794-99fb-28daa0d1669d@intel.com>
+From: Dave Jiang <dave.jiang@intel.com>
+Subject: [PATCH v5 0/3] minimal DAX support for XFS realtime device
+Date: Thu, 15 Feb 2018 14:40:37 -0700
+Message-ID: <151873070632.53899.3320294279108510082.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Cc: linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
- Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <f5f93cd1-4d9e-c794-99fb-28daa0d1669d-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-nvdimm@lists.01.org, david@fromorbit.com,
+        linux-xfs@vger.kernel.org, ross.zwisler@linux.intel.com,
+        linux-ext4@vger.kernel.org, dan.j.williams@intel.com
+To: darrick.wong@oracle.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mga11.intel.com ([192.55.52.93]:58007 "EHLO mga11.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751145AbeBOVki (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Feb 2018 16:40:38 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 15, 2018 at 10:58:54AM -0700, Dave Jiang wrote:
-> On 02/15/2018 10:52 AM, Christoph Hellwig wrote:
-> >>  /**
-> >> - * __bdev_dax_supported() - Check if the device supports dax for filesystem
-> >> + * bdev_dax_supported() - Check if the device supports dax for filesystem
-> >>   * @sb: The superblock of the device
-> >> + * @bdev: block device to check
-> >>   * @blocksize: The block size of the device
-> >>   *
-> >>   * This is a library function for filesystems to check if the block device
-> >> @@ -82,9 +83,9 @@ EXPORT_SYMBOL_GPL(fs_dax_get_by_bdev);
-> >>   *
-> >>   * Return: negative errno if unsupported, 0 if supported.
-> >>   */
-> >> -int __bdev_dax_supported(struct super_block *sb, int blocksize)
-> >> +int bdev_dax_supported(struct super_block *sb, struct block_device *bdev,
-> >> +		       int blocksize)
-> >>  {
-> >> -	struct block_device *bdev = sb->s_bdev;
-> >>  	struct dax_device *dax_dev;
-> >>  	pgoff_t pgoff;
-> >>  	int err, id;
-> > 
-> > This now only uses sb for sb->s_id.  It might be better to use bdevname
-> > to print the device name and don't bother passing a sb at all.
-> > 
-> 
-> I think Darrick wanted to keep the API the same for non-XFS users. I'm
-> ok with dropping the passed in sb if Darrick has no objections.
+Darrick,
+After reading the comments from you, Dave Chinner, and Dan, it looks like
+the dyanmic S_DAX flag support won't be coming or not any time soon at the
+least. Here are the the collection of patches so far to address yours and
+Dave C's comments for minimal support. Please let me know what else I am
+missing. Thanks!
 
-Fine with me to use bdevname.
+v5:
+- Removed sb parameter for bdev_dax_supported() since we only use it for
+  debug output per Christoph comment.
 
---D
+v4:
+- Removed setting of error return in ext2 and ext4 per Ross's comments
+- Rebased against 4.16-rc1 with updates
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+---
+
+Darrick J. Wong (1):
+      fs: allow per-device dax status checking for filesystems
+
+Dave Jiang (2):
+      dax: change bdev_dax_supported() to support boolean returns
+      xfs: reject removal of realtime flag when datadev doesn't support DAX
+
+
+ drivers/dax/super.c |   44 ++++++++++++++++++++++----------------------
+ fs/ext2/super.c     |    3 +--
+ fs/ext4/super.c     |    3 +--
+ fs/xfs/xfs_ioctl.c  |   17 ++++++++++++++++-
+ fs/xfs/xfs_iops.c   |   30 +++++++++++++++++++++++++-----
+ fs/xfs/xfs_super.c  |   10 ++++++++--
+ include/linux/dax.h |   12 ++++--------
+ 7 files changed, 77 insertions(+), 42 deletions(-)
+
+--
