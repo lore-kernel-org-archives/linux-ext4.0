@@ -1,74 +1,50 @@
-From: =?utf-8?B?0JHQu9Cw0LPQvtC00LDRgNC10L3QutC+INCQ0YDRgtGR0Lw=?=
-        <artem.blagodarenko@gmail.com>
-Subject: Re: [PATCH] e2fsck: properly account cluster size
-Date: Thu, 15 Feb 2018 17:45:34 +0300
-Message-ID: <DC07AF86-4B27-4F94-AC08-096CDA3C8D67@gmail.com>
-References: <20180212120040.25441-1-artem.blagodarenko@gmail.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: quoted-printable
-Cc: Andrew Perepechko <anserper@ya.ru>
-To: linux-ext4@vger.kernel.org
+From: Dave Jiang <dave.jiang@intel.com>
+Subject: [PATCH v4 0/3] minimal DAX support for XFS realtime device
+Date: Thu, 15 Feb 2018 10:42:26 -0700
+Message-ID: <151871644696.27617.4390718895806529377.stgit@djiang5-desk3.ch.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-nvdimm@lists.01.org, david@fromorbit.com,
+        linux-xfs@vger.kernel.org, ross.zwisler@linux.intel.com,
+        linux-ext4@vger.kernel.org, dan.j.williams@intel.com
+To: darrick.wong@oracle.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-lf0-f66.google.com ([209.85.215.66]:42052 "EHLO
-        mail-lf0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1033423AbeBOOpj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Feb 2018 09:45:39 -0500
-Received: by mail-lf0-f66.google.com with SMTP id w10so21588444lfc.9
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Feb 2018 06:45:39 -0800 (PST)
-In-Reply-To: <20180212120040.25441-1-artem.blagodarenko@gmail.com>
+Received: from mga01.intel.com ([192.55.52.88]:5385 "EHLO mga01.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1164162AbeBORm1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Feb 2018 12:42:27 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sorry, this patch is duplicate of
-[PATCH] e2fsck: fix quota accounting to use cluster units
-from Eric W at 5 April.
+Darrick,
+After reading the comments from you, Dave Chinner, and Dan, it looks like
+the dyanmic S_DAX flag support won't be coming or not any time soon at the
+least. Here are the the collection of patches so far to address yours and
+Dave C's comments for minimal support. Please let me know what else I am
+missing. Thanks!
+
+v3:
+- Removed setting of error return in ext2 and ext4 per Ross's comments
+- Rebased against 4.16-rc1 with updates
+
+---
+
+Darrick J. Wong (1):
+      fs: allow per-device dax status checking for filesystems
+
+Dave Jiang (2):
+      dax: change bdev_dax_supported() to support boolean returns
+      xfs: reject removal of realtime flag when datadev doesn't support DAX
 
 
-> On 12 Feb 2018, at 15:00, Artem Blagodarenko =
-<artem.blagodarenko@gmail.com> wrote:
->=20
-> From: Andrew Perepechko <anserper@ya.ru>
->=20
-> The patch fixes the quota_data_add() call so that
-> not num_blocks * block_size is passed, but instead
-> num_blocks * blocks_per_cluster * block_size.
->=20
-> Otherwise, any trivial test with -O bigalloc,quota
-> filesystem leads to check errors like
->=20
-> [QUOTA WARNING] Usage inconsistent for ID 0:actual (8192, 2) !=3D =
-expected
-> (131072, 2)
-> Update quota info for quota type 0<y>? cancelled!
-> [QUOTA WARNING] Usage inconsistent for ID 0:actual (8192, 2) !=3D =
-expected
-> (131072, 2)
-> Update quota info for quota type 1<y>? cancelled!
->=20
-> Cray-bug-id: LUS-5373
->=20
-> Signed-off-by: Andrew Perepechko <anserper@ya.ru>
-> Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-> ---
-> e2fsck/pass1.c | 2 ++
-> 1 file changed, 2 insertions(+)
->=20
-> diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-> index 5015d938..471162ea 100644
-> --- a/e2fsck/pass1.c
-> +++ b/e2fsck/pass1.c
-> @@ -3387,6 +3387,8 @@ static void check_blocks(e2fsck_t ctx, struct =
-problem_context *pctx,
-> 		}
-> 	}
->=20
-> +	pb.num_blocks *=3D EXT2FS_CLUSTER_RATIO(fs);
-> +
-> 	if (ino !=3D quota_type2inum(PRJQUOTA, fs->super) &&
-> 	    (ino =3D=3D EXT2_ROOT_INO || ino >=3D =
-EXT2_FIRST_INODE(ctx->fs->super)) &&
-> 	    !(inode->i_flags & EXT4_EA_INODE_FL)) {
-> --=20
-> 2.14.3 (Apple Git-98)
->=20
+ drivers/dax/super.c |   27 ++++++++++++++-------------
+ fs/ext2/super.c     |    3 +--
+ fs/ext4/super.c     |    3 +--
+ fs/xfs/xfs_ioctl.c  |   18 +++++++++++++++++-
+ fs/xfs/xfs_iops.c   |   30 +++++++++++++++++++++++++-----
+ fs/xfs/xfs_super.c  |   11 +++++++++--
+ include/linux/dax.h |   18 +++++++++++++-----
+ 7 files changed, 80 insertions(+), 30 deletions(-)
+
+--
