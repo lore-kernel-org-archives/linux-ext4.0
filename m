@@ -1,32 +1,30 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v4 1/3] fs: allow per-device dax status checking for
- filesystems
-Date: Thu, 15 Feb 2018 10:05:54 -0800
-Message-ID: <20180215180554.GA6264@infradead.org>
-References: <151871644696.27617.4390718895806529377.stgit@djiang5-desk3.ch.intel.com>
- <151871655228.27617.3514495396592472682.stgit@djiang5-desk3.ch.intel.com>
- <20180215175241.GA25223@infradead.org>
- <f5f93cd1-4d9e-c794-99fb-28daa0d1669d@intel.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsck: properly account cluster size
+Date: Thu, 15 Feb 2018 13:41:40 -0500
+Message-ID: <20180215184140.GA583@thunk.org>
+References: <20180212120040.25441-1-artem.blagodarenko@gmail.com>
+ <DC07AF86-4B27-4F94-AC08-096CDA3C8D67@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, darrick.wong@oracle.com,
-        linux-nvdimm@lists.01.org, david@fromorbit.com,
-        linux-xfs@vger.kernel.org, ross.zwisler@linux.intel.com,
-        linux-ext4@vger.kernel.org, dan.j.williams@intel.com
-To: Dave Jiang <dave.jiang@intel.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org, Andrew Perepechko <anserper@ya.ru>
+To: =?utf-8?B?0JHQu9Cw0LPQvtC00LDRgNC10L3QutC+INCQ0YDRgtGR0Lw=?=
+        <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:42162 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1164033AbeBOSF5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Feb 2018 13:05:57 -0500
+Received: from imap.thunk.org ([74.207.234.97]:48460 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1162720AbeBOSlm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Feb 2018 13:41:42 -0500
 Content-Disposition: inline
-In-Reply-To: <f5f93cd1-4d9e-c794-99fb-28daa0d1669d@intel.com>
+In-Reply-To: <DC07AF86-4B27-4F94-AC08-096CDA3C8D67@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 15, 2018 at 10:58:54AM -0700, Dave Jiang wrote:
-> I think Darrick wanted to keep the API the same for non-XFS users. I'm
-> ok with dropping the passed in sb if Darrick has no objections.
+On Thu, Feb 15, 2018 at 05:45:34PM +0300, Благодаренко Артём wrote:
+> Sorry, this patch is duplicate of
+> [PATCH] e2fsck: fix quota accounting to use cluster units
+> from Eric W at 5 April.
 
-But the old API is gone - everyone either uses the new
-sb_dax_supported, or the updated bdev_dax_supported.
+... and which is e2fsprogs 1.43.5 and newer....
+
+    	      	 	   	      - Ted
