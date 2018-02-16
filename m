@@ -1,218 +1,66 @@
-From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v6 2/3] dax: change bdev_dax_supported() to support
- boolean returns
-Date: Fri, 16 Feb 2018 09:26:07 -0800
-Message-ID: <20180216172607.GT5217@magnolia>
-References: <151880058592.43131.558230052922233871.stgit@djiang5-desk3.ch.intel.com>
- <151880066062.43131.82642632079885057.stgit@djiang5-desk3.ch.intel.com>
+From: Eric Biggers <ebiggers@google.com>
+Subject: Re: Attempts to use ext4 encryption on kernel 4.1.15 keep resulting
+ in kernel crash
+Date: Fri, 16 Feb 2018 10:30:55 -0800
+Message-ID: <20180216183055.GA245245@google.com>
+References: <CACfi_Z1Lf+VODomcoS3ekHexTjMueEDjdANmq2CvqTuJd=i-tQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Davis Roman <davis.roman84@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-it0-f54.google.com ([209.85.214.54]:38389 "EHLO
+        mail-it0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752025AbeBPSbA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Feb 2018 13:31:00 -0500
+Received: by mail-it0-f54.google.com with SMTP id k6so2878902ita.3
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Feb 2018 10:31:00 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <151880066062.43131.82642632079885057.stgit-Cxk7aZI4ujnJARH06PadV2t3HXsI98Cx0E9HWUfgJXw@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <CACfi_Z1Lf+VODomcoS3ekHexTjMueEDjdANmq2CvqTuJd=i-tQ@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 16, 2018 at 10:04:20AM -0700, Dave Jiang wrote:
-> The function return values are confusing with the way the function is
-> named. We expect a true or false return value but it actually returns
-> 0/-errno.  This makes the code very confusing. Changing the return values
-> to return a bool where if DAX is supported then return true and no DAX
-> support returns false.
+Hi Davis,
+
+On Fri, Feb 16, 2018 at 11:04:32AM -0500, Davis Roman wrote:
+> Hello,
 > 
-> Signed-off-by: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-> Reviewed-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-> ---
->  drivers/dax/super.c |   16 ++++++++--------
->  fs/ext2/super.c     |    3 +--
->  fs/ext4/super.c     |    3 +--
->  fs/xfs/xfs_ioctl.c  |    4 ++--
->  fs/xfs/xfs_super.c  |   12 ++++++------
->  include/linux/dax.h |    6 +++---
->  6 files changed, 21 insertions(+), 23 deletions(-)
+> I would also like to enable ext4 encryption on our product. We're
+> using a 4.1.15 kernel.
 > 
-> diff --git a/drivers/dax/super.c b/drivers/dax/super.c
-> index f037458600aa..a7a30d3794f6 100644
-> --- a/drivers/dax/super.c
-> +++ b/drivers/dax/super.c
-> @@ -80,9 +80,9 @@ EXPORT_SYMBOL_GPL(fs_dax_get_by_bdev);
->   * This is a library function for filesystems to check if the block device
->   * can be mounted with dax option.
->   *
-> - * Return: negative errno if unsupported, 0 if supported.
-> + * Return: true if supported, false if unsupported
->   */
-> -int bdev_dax_supported(struct block_device *bdev, int blocksize)
-> +bool bdev_dax_supported(struct block_device *bdev, int blocksize)
->  {
->  	struct dax_device *dax_dev;
->  	pgoff_t pgoff;
-> @@ -95,21 +95,21 @@ int bdev_dax_supported(struct block_device *bdev, int blocksize)
->  	if (blocksize != PAGE_SIZE) {
->  		pr_debug("%s: error: unsupported blocksize for dax\n",
->  				bdevname(bdev, buf));
-> -		return -EINVAL;
-> +		return false;
->  	}
->  
->  	err = bdev_dax_pgoff(bdev, 0, PAGE_SIZE, &pgoff);
->  	if (err) {
->  		pr_debug("%s: error: unaligned partition for dax\n",
->  				bdevname(bdev, buf));
-> -		return err;
-> +		return false;
->  	}
->  
->  	dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
->  	if (!dax_dev) {
->  		pr_debug("%s: error: device does not support dax\n",
->  				bdevname(bdev, buf));
-> -		return -EOPNOTSUPP;
-> +		return false;
->  	}
->  
->  	id = dax_read_lock();
-> @@ -121,7 +121,7 @@ int bdev_dax_supported(struct block_device *bdev, int blocksize)
->  	if (len < 1) {
->  		pr_debug("%s: error: dax access failed (%ld)\n",
->  				bdevname(bdev, buf), len);
-> -		return len < 0 ? len : -EIO;
-> +		return false;
->  	}
->  
->  	if ((IS_ENABLED(CONFIG_FS_DAX_LIMITED) && pfn_t_special(pfn))
-> @@ -130,10 +130,10 @@ int bdev_dax_supported(struct block_device *bdev, int blocksize)
->  	else {
->  		pr_debug("%s: error: dax support not enabled\n",
->  				bdevname(bdev, buf));
-> -		return -EOPNOTSUPP;
-> +		return false;
->  	}
->  
-> -	return 0;
-> +	return true;
->  }
->  EXPORT_SYMBOL_GPL(bdev_dax_supported);
->  #endif
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index b8063b640ec1..5e19e1a886b7 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -961,8 +961,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
->  
->  	if (sbi->s_mount_opt & EXT2_MOUNT_DAX) {
-> -		err = bdev_dax_supported(sb->s_bdev, blocksize);
-> -		if (err) {
-> +		if(!bdev_dax_supported(sb->s_bdev, blocksize)) {
-
-Minor spacing nit: if (!bdev...
-
-Otherwise looks ok,
-Reviewed-by: Darrick J. Wong <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-
---D
-
->  			ext2_msg(sb, KERN_ERR,
->  				"DAX unsupported by block device. Turning off DAX.");
->  			sbi->s_mount_opt &= ~EXT2_MOUNT_DAX;
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 911eca771853..23debb8313e5 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3714,8 +3714,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  					" that may contain inline data");
->  			sbi->s_mount_opt &= ~EXT4_MOUNT_DAX;
->  		}
-> -		err = bdev_dax_supported(sb->s_bdev, blocksize);
-> -		if (err) {
-> +		if (!bdev_dax_supported(sb->s_bdev, blocksize)) {
->  			ext4_msg(sb, KERN_ERR,
->  				"DAX unsupported by block device. Turning off DAX.");
->  			sbi->s_mount_opt &= ~EXT4_MOUNT_DAX;
-> diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-> index 0effd46b965f..2c70a0a4f59f 100644
-> --- a/fs/xfs/xfs_ioctl.c
-> +++ b/fs/xfs/xfs_ioctl.c
-> @@ -1103,8 +1103,8 @@ xfs_ioctl_setattr_dax_invalidate(
->  	if (fa->fsx_xflags & FS_XFLAG_DAX) {
->  		if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)))
->  			return -EINVAL;
-> -		if (bdev_dax_supported(xfs_find_bdev_for_inode(VFS_I(ip)),
-> -				sb->s_blocksize) < 0)
-> +		if (!bdev_dax_supported(xfs_find_bdev_for_inode(VFS_I(ip)),
-> +				sb->s_blocksize))
->  			return -EINVAL;
->  	}
->  
-> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-> index aaaba6e604c4..3634e7eb362c 100644
-> --- a/fs/xfs/xfs_super.c
-> +++ b/fs/xfs/xfs_super.c
-> @@ -1657,17 +1657,17 @@ xfs_fs_fill_super(
->  		sb->s_flags |= SB_I_VERSION;
->  
->  	if (mp->m_flags & XFS_MOUNT_DAX) {
-> -		int	error2 = 0;
-> +		bool rtdev_is_dax = false, datadev_is_dax;
->  
->  		xfs_warn(mp,
->  		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
->  
-> -		error = bdev_dax_supported(mp->m_ddev_targp->bt_bdev,
-> -				sb->s_blocksize);
-> +		datadev_is_dax = bdev_dax_supported(mp->m_ddev_targp->bt_bdev,
-> +			sb->s_blocksize);
->  		if (mp->m_rtdev_targp)
-> -			error2 = bdev_dax_supported(mp->m_rtdev_targp->bt_bdev,
-> -					sb->s_blocksize);
-> -		if (error && error2) {
-> +			rtdev_is_dax = bdev_dax_supported(
-> +				mp->m_rtdev_targp->bt_bdev, sb->s_blocksize);
-> +		if (!rtdev_is_dax && !datadev_is_dax) {
->  			xfs_alert(mp,
->  			"DAX unsupported by block device. Turning off DAX.");
->  			mp->m_flags &= ~XFS_MOUNT_DAX;
-> diff --git a/include/linux/dax.h b/include/linux/dax.h
-> index 8eb3a359df95..dd77b0ed2283 100644
-> --- a/include/linux/dax.h
-> +++ b/include/linux/dax.h
-> @@ -40,7 +40,7 @@ static inline void put_dax(struct dax_device *dax_dev)
->  
->  int bdev_dax_pgoff(struct block_device *, sector_t, size_t, pgoff_t *pgoff);
->  #if IS_ENABLED(CONFIG_FS_DAX)
-> -int bdev_dax_supported(struct block_device *bdev, int blocksize);
-> +bool bdev_dax_supported(struct block_device *bdev, int blocksize);
->  static inline struct dax_device *fs_dax_get_by_host(const char *host)
->  {
->  	return dax_get_by_host(host);
-> @@ -53,10 +53,10 @@ static inline void fs_put_dax(struct dax_device *dax_dev)
->  
->  struct dax_device *fs_dax_get_by_bdev(struct block_device *bdev);
->  #else
-> -static inline int bdev_dax_supported(struct block_device *bdev,
-> +static inline bool bdev_dax_supported(struct block_device *bdev,
->  		int blocksize)
->  {
-> -	return -EOPNOTSUPP;
-> +	return false;
->  }
->  
->  static inline struct dax_device *fs_dax_get_by_host(const char *host)
+> Our kernel has CONFIG_KEYS and CONFIG_EXT4_ENCRYPTION enabled and I
+> made sure to have an up to date version of e2fsprogs. We're using
+> 1.43.8.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Unfortunately, I get a kernel panic whenever I try the above steps show below.
+> 
+> Any ideas on what I could do next would be extremely appreciated.
+> 
+
+Is this reproducible on the latest 4.1-stable?  4.1.15 is over two years old so
+you are missing thousands of bug fixes all over the kernel.
+
+Also I don't in general recommend using ext4 encryption on 4.1 kernels at all,
+as that was the first kernel version ever to have ext4 encryption and it is
+missing a lot of bug fixes that haven't been backported.  I've been backporting
+fixes to 4.4, but 4.1 has just been too broken to bother most of the time.
+
+> [<8001f9e8>] (v7_dma_clean_range) from [<8001b8b0>]
+> (__dma_page_cpu_to_dev+0x28/0x94)
+> [<8001b8b0>] (__dma_page_cpu_to_dev) from [<8001b9d0>]
+> (arm_dma_map_page+0x70/0x74)
+> [<8001b9d0>] (arm_dma_map_page) from [<8058f33c>]
+> (ablkcipher_edesc_alloc.constprop.1+0x180/0x568)
+> [<8058f33c>] (ablkcipher_edesc_alloc.constprop.1) from [<8058f740>]
+> (ablkcipher_encrypt+0x1c/0x90)
+> [<8058f740>] (ablkcipher_encrypt) from [<801b4f50>]
+> (ext4_derive_key_aes+0x104/0x15c)
+> [<801b4f50>] (ext4_derive_key_aes) from [<801b5114>]
+> (ext4_generate_encryption_key+0x16c/0x1bc)
+
+But in this case it actually crashed in some hardware crypto driver (maybe CAAM?
+you didn't say) so the bug is probably there, not in ext4.  Maybe the crypto
+driver you are using doesn't handle ECB mode correctly.  Have you checked
+whether there have been any bug fixes to it within the last 2 years...?
+
+Eric
