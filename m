@@ -1,66 +1,85 @@
-From: Eric Biggers <ebiggers@google.com>
-Subject: Re: Attempts to use ext4 encryption on kernel 4.1.15 keep resulting
- in kernel crash
-Date: Fri, 16 Feb 2018 10:30:55 -0800
-Message-ID: <20180216183055.GA245245@google.com>
-References: <CACfi_Z1Lf+VODomcoS3ekHexTjMueEDjdANmq2CvqTuJd=i-tQ@mail.gmail.com>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH v6 3/3] xfs: reject removal of realtime flag when datadev
+ doesn't support DAX
+Date: Sun, 18 Feb 2018 11:23:17 +1100
+Message-ID: <20180218002317.GU7000@dastard>
+References: <151880058592.43131.558230052922233871.stgit@djiang5-desk3.ch.intel.com>
+ <151880066614.43131.15847174332875373188.stgit@djiang5-desk3.ch.intel.com>
+ <20180216172247.GS5217@magnolia>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Davis Roman <davis.roman84@gmail.com>
+Cc: Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
+        linux-xfs@vger.kernel.org, ross.zwisler@linux.intel.com,
+        linux-ext4@vger.kernel.org, dan.j.williams@intel.com
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-it0-f54.google.com ([209.85.214.54]:38389 "EHLO
-        mail-it0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752025AbeBPSbA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Feb 2018 13:31:00 -0500
-Received: by mail-it0-f54.google.com with SMTP id k6so2878902ita.3
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Feb 2018 10:31:00 -0800 (PST)
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:47976 "EHLO
+        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751083AbeBRAXV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 17 Feb 2018 19:23:21 -0500
 Content-Disposition: inline
-In-Reply-To: <CACfi_Z1Lf+VODomcoS3ekHexTjMueEDjdANmq2CvqTuJd=i-tQ@mail.gmail.com>
+In-Reply-To: <20180216172247.GS5217@magnolia>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Davis,
-
-On Fri, Feb 16, 2018 at 11:04:32AM -0500, Davis Roman wrote:
-> Hello,
+On Fri, Feb 16, 2018 at 09:22:47AM -0800, Darrick J. Wong wrote:
+> On Fri, Feb 16, 2018 at 10:04:26AM -0700, Dave Jiang wrote:
+> > In a situation where the rt_dev is DAX and data_dev is not DAX, if the user
+> > requests to remove the realtime flag via ioctl we can no longer support DAX
+> > for that file. Dynamic changing of S_DAX on the inode is not supported due
+> > to various complications in the existing implementation. Therefore until we
+> > address the dynamic S_DAX change issues, we must disallow realtime flag
+> > being removed.
+> > 
+> > Signed-off-by: Dave Jiang <dave.jiang@intel.com>
+> > Reviewed-by: Christoph Hellwig <hch@lst.de>
+> > ---
+> >  fs/xfs/xfs_ioctl.c |   14 ++++++++++++++
+> >  1 file changed, 14 insertions(+)
+> > 
+> > diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
+> > index 2c70a0a4f59f..edd97d527fe8 100644
+> > --- a/fs/xfs/xfs_ioctl.c
+> > +++ b/fs/xfs/xfs_ioctl.c
+> > @@ -1030,6 +1030,20 @@ xfs_ioctl_setattr_xflags(
+> >  {
+> >  	struct xfs_mount	*mp = ip->i_mount;
+> >  	uint64_t		di_flags2;
+> > +	struct inode		*inode = VFS_I(ip);
+> > +	struct super_block	*sb = inode->i_sb;
+> > +
+> > +	/*
+> > +	 * In the case that the inode is realtime, and we are trying to remove
+> > +	 * the realtime flag, and the rtdev supports DAX but the datadev does
+> > +	 * not support DAX, we can't allow the realtime flag to be removed
+> > +	 * since we do not support dynamic S_DAX flag removal yet.
+> > +	 */
+> > +	if (XFS_IS_REALTIME_INODE(ip) &&
+> > +	    !(fa->fsx_xflags & FS_XFLAG_REALTIME) &&
+> > +	    bdev_dax_supported(mp->m_rtdev_targp->bt_bdev, sb->s_blocksize) &&
+> > +	    !bdev_dax_supported(mp->m_ddev_targp->bt_bdev, sb->s_blocksize))
 > 
-> I would also like to enable ext4 encryption on our product. We're
-> using a 4.1.15 kernel.
+> What happens here if we have a non-rt file that we're trying to turn
+> into an rt file and the data dev supports dax but not the rt dev?
 > 
-> Our kernel has CONFIG_KEYS and CONFIG_EXT4_ENCRYPTION enabled and I
-> made sure to have an up to date version of e2fsprogs. We're using
-> 1.43.8.
-> 
-> Unfortunately, I get a kernel panic whenever I try the above steps show below.
-> 
-> Any ideas on what I could do next would be extremely appreciated.
-> 
+> Changing the rt flag is only supported on files with no data blocks (no
+> extents, no delalloc blocks), so why can't we remove S_DAX from an empty
+> file?  There aren't any memory mappings or page cache to get in the way,
+> correct?
 
-Is this reproducible on the latest 4.1-stable?  4.1.15 is over two years old so
-you are missing thousands of bug fixes all over the kernel.
+File size can be non-zero, so you can have DAX read-over-hole
+mappings present. I simply don't think it's safe to remove/add S_DAX
+flags via ioctls right now. If we have a DAX capable rtdev, then the
+only way we should allow rtdev+dax to be used right now is via the
+RT inherit bit on the dir that creates files in the rtdev right from
+the start. i.e. we can't set/remove the RT inode flag on an inode
+via ioctl if rtdev+dax is enabled until the whole dynamic S_DAX
+inode flag thing is resolved.
 
-Also I don't in general recommend using ext4 encryption on 4.1 kernels at all,
-as that was the first kernel version ever to have ext4 encryption and it is
-missing a lot of bug fixes that haven't been backported.  I've been backporting
-fixes to 4.4, but 4.1 has just been too broken to bother most of the time.
+Cheers,
 
-> [<8001f9e8>] (v7_dma_clean_range) from [<8001b8b0>]
-> (__dma_page_cpu_to_dev+0x28/0x94)
-> [<8001b8b0>] (__dma_page_cpu_to_dev) from [<8001b9d0>]
-> (arm_dma_map_page+0x70/0x74)
-> [<8001b9d0>] (arm_dma_map_page) from [<8058f33c>]
-> (ablkcipher_edesc_alloc.constprop.1+0x180/0x568)
-> [<8058f33c>] (ablkcipher_edesc_alloc.constprop.1) from [<8058f740>]
-> (ablkcipher_encrypt+0x1c/0x90)
-> [<8058f740>] (ablkcipher_encrypt) from [<801b4f50>]
-> (ext4_derive_key_aes+0x104/0x15c)
-> [<801b4f50>] (ext4_derive_key_aes) from [<801b5114>]
-> (ext4_generate_encryption_key+0x16c/0x1bc)
-
-But in this case it actually crashed in some hardware crypto driver (maybe CAAM?
-you didn't say) so the bug is probably there, not in ext4.  Maybe the crypto
-driver you are using doesn't handle ECB mode correctly.  Have you checked
-whether there have been any bug fixes to it within the last 2 years...?
-
-Eric
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
