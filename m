@@ -1,85 +1,56 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v6 3/3] xfs: reject removal of realtime flag when datadev
- doesn't support DAX
-Date: Sun, 18 Feb 2018 11:23:17 +1100
-Message-ID: <20180218002317.GU7000@dastard>
-References: <151880058592.43131.558230052922233871.stgit@djiang5-desk3.ch.intel.com>
- <151880066614.43131.15847174332875373188.stgit@djiang5-desk3.ch.intel.com>
- <20180216172247.GS5217@magnolia>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: Re: [PATCH v4 4/4] ext4: Add 64-bit inode number support
+Date: Sat, 17 Feb 2018 21:18:13 -0500
+Message-ID: <20180218021812.GA20751@thunk.org>
+References: <20180202094136.13032-1-artem.blagodarenko@gmail.com>
+ <20180202094136.13032-5-artem.blagodarenko@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
-        linux-xfs@vger.kernel.org, ross.zwisler@linux.intel.com,
-        linux-ext4@vger.kernel.org, dan.j.williams@intel.com
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:47976 "EHLO
-        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751083AbeBRAXV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 17 Feb 2018 19:23:21 -0500
+Received: from imap.thunk.org ([74.207.234.97]:54912 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751258AbeBRCSR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 17 Feb 2018 21:18:17 -0500
 Content-Disposition: inline
-In-Reply-To: <20180216172247.GS5217@magnolia>
+In-Reply-To: <20180202094136.13032-5-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 16, 2018 at 09:22:47AM -0800, Darrick J. Wong wrote:
-> On Fri, Feb 16, 2018 at 10:04:26AM -0700, Dave Jiang wrote:
-> > In a situation where the rt_dev is DAX and data_dev is not DAX, if the user
-> > requests to remove the realtime flag via ioctl we can no longer support DAX
-> > for that file. Dynamic changing of S_DAX on the inode is not supported due
-> > to various complications in the existing implementation. Therefore until we
-> > address the dynamic S_DAX change issues, we must disallow realtime flag
-> > being removed.
-> > 
-> > Signed-off-by: Dave Jiang <dave.jiang@intel.com>
-> > Reviewed-by: Christoph Hellwig <hch@lst.de>
-> > ---
-> >  fs/xfs/xfs_ioctl.c |   14 ++++++++++++++
-> >  1 file changed, 14 insertions(+)
-> > 
-> > diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-> > index 2c70a0a4f59f..edd97d527fe8 100644
-> > --- a/fs/xfs/xfs_ioctl.c
-> > +++ b/fs/xfs/xfs_ioctl.c
-> > @@ -1030,6 +1030,20 @@ xfs_ioctl_setattr_xflags(
-> >  {
-> >  	struct xfs_mount	*mp = ip->i_mount;
-> >  	uint64_t		di_flags2;
-> > +	struct inode		*inode = VFS_I(ip);
-> > +	struct super_block	*sb = inode->i_sb;
-> > +
-> > +	/*
-> > +	 * In the case that the inode is realtime, and we are trying to remove
-> > +	 * the realtime flag, and the rtdev supports DAX but the datadev does
-> > +	 * not support DAX, we can't allow the realtime flag to be removed
-> > +	 * since we do not support dynamic S_DAX flag removal yet.
-> > +	 */
-> > +	if (XFS_IS_REALTIME_INODE(ip) &&
-> > +	    !(fa->fsx_xflags & FS_XFLAG_REALTIME) &&
-> > +	    bdev_dax_supported(mp->m_rtdev_targp->bt_bdev, sb->s_blocksize) &&
-> > +	    !bdev_dax_supported(mp->m_ddev_targp->bt_bdev, sb->s_blocksize))
-> 
-> What happens here if we have a non-rt file that we're trying to turn
-> into an rt file and the data dev supports dax but not the rt dev?
-> 
-> Changing the rt flag is only supported on files with no data blocks (no
-> extents, no delalloc blocks), so why can't we remove S_DAX from an empty
-> file?  There aren't any memory mappings or page cache to get in the way,
-> correct?
+Hi Artem,
 
-File size can be non-zero, so you can have DAX read-over-hole
-mappings present. I simply don't think it's safe to remove/add S_DAX
-flags via ioctls right now. If we have a DAX capable rtdev, then the
-only way we should allow rtdev+dax to be used right now is via the
-RT inherit bit on the dir that creates files in the rtdev right from
-the start. i.e. we can't set/remove the RT inode flag on an inode
-via ioctl if rtdev+dax is enabled until the whole dynamic S_DAX
-inode flag thing is resolved.
+I was debugging another problem and it caused me to ask myself, "Huh.
+I wonder how the 64-bit inode number support deals with the orphaned
+inode list ---- since we use the dtime field in the inode as part of a
+linked list with the 32-bit s_orphan_inum has the head of that linked list."
+
+So I took a quick look at your patch, and noted that in the v3 version
+Andreas had asked you what about adding support for the 32-bito
+s_last_orphan field, so you have added support for s_last_orphan_hi.
+But it doesn't appear that you are *using* that field for anything.
+Also, although you have made ino_next in ext4_orphan_add() a 64-bit
+field, it doesn't appear that you changed how the linked list of the
+orphaned inode list is stored.
+
+BTW, I also don't see any places where s_first_error_ino_hi and
+s_last_error_ino_hi are used.
+
+This brings up a question --- how much testing have you done with your
+patch, and how are you testing it?  It's pretty clear that if you had
+tried a test where inodes with bits set in the 32-bits of the inode
+number, codepaths which depend on the orphan inode handling would have
+blown up.  You might want to consider a debugging mode where the inode
+allocator preferentially tries to use inode numbers that start at
+(2**32) + 1 and then try running xfstests on it.
+
+Another debugging mode that would be useful is one which doesn't
+require really big file systems, so it can be used by kvm-xfstest and
+gce-xfstest.  You might do this forces the high 32-bits of the inode
+to be (17 << 32), and changes ext4_get_inode_loc() so that it returns
+an error if the high bits are not (17 << 32).  (Similar adjustments
+would be needed for access to the inode allocation bitmap.)
 
 Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+						- Ted
