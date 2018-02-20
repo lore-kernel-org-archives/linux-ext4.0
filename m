@@ -1,66 +1,125 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2: fix FS_IOMAP dependency
-Date: Wed, 28 Feb 2018 17:28:00 +0100
-Message-ID: <20180228162800.p2qxrqg7zw6olhfg@quack2.suse.cz>
-References: <20180228133659.1933887-1-arnd@arndb.de>
+From: kbuild test robot <lkp-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH v6 1/3] fs: allow per-device dax status checking for
+ filesystems
+Date: Tue, 20 Feb 2018 08:24:33 +0800
+Message-ID: <201802200834.rXDUV1nU%fengguang.wu@intel.com>
+References: <151880065504.43131.6695118308172421769.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.com>, Dan Williams <dan.j.williams@intel.com>,
-        Ernesto =?iso-8859-1?Q?A=2E_Fern=E1ndez?=
-        <ernesto.mnd.fernandez@gmail.com>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, kbuild-all-JC7UmRfGjtg@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <151880065504.43131.6695118308172421769.stgit-Cxk7aZI4ujnJARH06PadV2t3HXsI98Cx0E9HWUfgJXw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20180228133659.1933887-1-arnd@arndb.de>
-Sender: linux-kernel-owner@vger.kernel.org
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 28-02-18 14:36:46, Arnd Bergmann wrote:
-> I ran into a randconfig link error on next-20180228 that appears to have
-> been caused by an older patch:
-> 
-> fs/ext2/inode.o: In function `ext2_setattr':
-> inode.c:(.text+0x19eb): undefined reference to `iomap_zero_range'
-> 
-> This adds a compile-time conditional around the code path so the
-> compiler can optimize out the reference in configurations that don't
-> need it anyway.
-> 
-> Fixes: 00697eed386d ("ext2: use iomap_zero_range() for zeroing truncated page in DAX path")
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+Hi Darrick,
 
-Thanks for the patch but Dan's patches [1] deal with a breakage like this
-in a more complete way so I'd prefer to go with his full series...
+I love your patch! Yet something to improve:
 
-								Honza
+[auto build test ERROR on linus/master]
+[also build test ERROR on v4.16-rc2 next-20180219]
+[cannot apply to dgc-xfs/for-next]
+[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
 
-[1] https://lkml.org/lkml/2018/2/26/1323
+url:    https://github.com/0day-ci/linux/commits/Dave-Jiang/fs-allow-per-device-dax-status-checking-for-filesystems/20180219-121644
+config: x86_64-randconfig-s5-02200659 (attached as .config)
+compiler: gcc-7 (Debian 7.3.0-1) 7.3.0
+reproduce:
+        # save the attached .config to linux build tree
+        make ARCH=x86_64 
 
-> ---
->  fs/ext2/inode.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-> index 5d5e9f7b98d6..6e6db0ab3bd6 100644
-> --- a/fs/ext2/inode.c
-> +++ b/fs/ext2/inode.c
-> @@ -1296,7 +1296,7 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
->  
->  	inode_dio_wait(inode);
->  
-> -	if (IS_DAX(inode)) {
-> +	if (IS_ENABLED(CONFIG_FS_DAX) && IS_DAX(inode)) {
->  		error = iomap_zero_range(inode, newsize,
->  					 PAGE_ALIGN(newsize) - newsize, NULL,
->  					 &ext2_iomap_ops);
-> -- 
-> 2.9.0
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+All errors (new ones prefixed by >>):
+
+>> drivers/dax/super.c:85:5: error: redefinition of 'bdev_dax_supported'
+    int bdev_dax_supported(struct block_device *bdev, int blocksize)
+        ^~~~~~~~~~~~~~~~~~
+   In file included from drivers/dax/super.c:23:0:
+   include/linux/dax.h:56:19: note: previous definition of 'bdev_dax_supported' was here
+    static inline int bdev_dax_supported(struct block_device *bdev,
+                      ^~~~~~~~~~~~~~~~~~
+
+vim +/bdev_dax_supported +85 drivers/dax/super.c
+
+    74	
+    75	/**
+    76	 * bdev_dax_supported() - Check if the device supports dax for filesystem
+    77	 * @bdev: block device to check
+    78	 * @blocksize: The block size of the device
+    79	 *
+    80	 * This is a library function for filesystems to check if the block device
+    81	 * can be mounted with dax option.
+    82	 *
+    83	 * Return: negative errno if unsupported, 0 if supported.
+    84	 */
+  > 85	int bdev_dax_supported(struct block_device *bdev, int blocksize)
+    86	{
+    87		struct dax_device *dax_dev;
+    88		pgoff_t pgoff;
+    89		int err, id;
+    90		void *kaddr;
+    91		pfn_t pfn;
+    92		long len;
+    93		char buf[BDEVNAME_SIZE];
+    94	
+    95		if (blocksize != PAGE_SIZE) {
+    96			pr_debug("%s: error: unsupported blocksize for dax\n",
+    97					bdevname(bdev, buf));
+    98			return -EINVAL;
+    99		}
+   100	
+   101		err = bdev_dax_pgoff(bdev, 0, PAGE_SIZE, &pgoff);
+   102		if (err) {
+   103			pr_debug("%s: error: unaligned partition for dax\n",
+   104					bdevname(bdev, buf));
+   105			return err;
+   106		}
+   107	
+   108		dax_dev = dax_get_by_host(bdev->bd_disk->disk_name);
+   109		if (!dax_dev) {
+   110			pr_debug("%s: error: device does not support dax\n",
+   111					bdevname(bdev, buf));
+   112			return -EOPNOTSUPP;
+   113		}
+   114	
+   115		id = dax_read_lock();
+   116		len = dax_direct_access(dax_dev, pgoff, 1, &kaddr, &pfn);
+   117		dax_read_unlock(id);
+   118	
+   119		put_dax(dax_dev);
+   120	
+   121		if (len < 1) {
+   122			pr_debug("%s: error: dax access failed (%ld)\n",
+   123					bdevname(bdev, buf), len);
+   124			return len < 0 ? len : -EIO;
+   125		}
+   126	
+   127		if ((IS_ENABLED(CONFIG_FS_DAX_LIMITED) && pfn_t_special(pfn))
+   128				|| pfn_t_devmap(pfn))
+   129			/* pass */;
+   130		else {
+   131			pr_debug("%s: error: dax support not enabled\n",
+   132					bdevname(bdev, buf));
+   133			return -EOPNOTSUPP;
+   134		}
+   135	
+   136		return 0;
+   137	}
+   138	EXPORT_SYMBOL_GPL(bdev_dax_supported);
+   139	#endif
+   140	
+
+---
+0-DAY kernel test infrastructure                Open Source Technology Center
+https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
