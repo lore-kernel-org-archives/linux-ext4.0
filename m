@@ -1,48 +1,66 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH] ext2: fix FS_IOMAP dependency
-Date: Wed, 28 Feb 2018 14:36:46 +0100
-Message-ID: <20180228133659.1933887-1-arnd@arndb.de>
-Cc: Arnd Bergmann <arnd@arndb.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        =?UTF-8?q?Ernesto=20A=2E=20Fern=C3=A1ndez?=
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext2: fix FS_IOMAP dependency
+Date: Wed, 28 Feb 2018 17:28:00 +0100
+Message-ID: <20180228162800.p2qxrqg7zw6olhfg@quack2.suse.cz>
+References: <20180228133659.1933887-1-arnd@arndb.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.com>, Dan Williams <dan.j.williams@intel.com>,
+        Ernesto =?iso-8859-1?Q?A=2E_Fern=E1ndez?=
         <ernesto.mnd.fernandez@gmail.com>,
         Andreas Dilger <adilger@dilger.ca>,
         Andreas Gruenbacher <agruenba@redhat.com>,
         Tejun Heo <tj@kernel.org>, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.com>
+To: Arnd Bergmann <arnd@arndb.de>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180228133659.1933887-1-arnd@arndb.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-I ran into a randconfig link error on next-20180228 that appears to have
-been caused by an older patch:
+On Wed 28-02-18 14:36:46, Arnd Bergmann wrote:
+> I ran into a randconfig link error on next-20180228 that appears to have
+> been caused by an older patch:
+> 
+> fs/ext2/inode.o: In function `ext2_setattr':
+> inode.c:(.text+0x19eb): undefined reference to `iomap_zero_range'
+> 
+> This adds a compile-time conditional around the code path so the
+> compiler can optimize out the reference in configurations that don't
+> need it anyway.
+> 
+> Fixes: 00697eed386d ("ext2: use iomap_zero_range() for zeroing truncated page in DAX path")
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 
-fs/ext2/inode.o: In function `ext2_setattr':
-inode.c:(.text+0x19eb): undefined reference to `iomap_zero_range'
+Thanks for the patch but Dan's patches [1] deal with a breakage like this
+in a more complete way so I'd prefer to go with his full series...
 
-This adds a compile-time conditional around the code path so the
-compiler can optimize out the reference in configurations that don't
-need it anyway.
+								Honza
 
-Fixes: 00697eed386d ("ext2: use iomap_zero_range() for zeroing truncated page in DAX path")
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- fs/ext2/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+[1] https://lkml.org/lkml/2018/2/26/1323
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 5d5e9f7b98d6..6e6db0ab3bd6 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1296,7 +1296,7 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
- 
- 	inode_dio_wait(inode);
- 
--	if (IS_DAX(inode)) {
-+	if (IS_ENABLED(CONFIG_FS_DAX) && IS_DAX(inode)) {
- 		error = iomap_zero_range(inode, newsize,
- 					 PAGE_ALIGN(newsize) - newsize, NULL,
- 					 &ext2_iomap_ops);
+> ---
+>  fs/ext2/inode.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index 5d5e9f7b98d6..6e6db0ab3bd6 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -1296,7 +1296,7 @@ static int ext2_setsize(struct inode *inode, loff_t newsize)
+>  
+>  	inode_dio_wait(inode);
+>  
+> -	if (IS_DAX(inode)) {
+> +	if (IS_ENABLED(CONFIG_FS_DAX) && IS_DAX(inode)) {
+>  		error = iomap_zero_range(inode, newsize,
+>  					 PAGE_ALIGN(newsize) - newsize, NULL,
+>  					 &ext2_iomap_ops);
+> -- 
+> 2.9.0
+> 
+> 
 -- 
-2.9.0
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
