@@ -1,7 +1,7 @@
-From: Andreas Dilger <adilger@dilger.ca>
+From: Dmitry Osipenko <digetx@gmail.com>
 Subject: Re: EXT4 Oops (Re: [PATCH V15 06/22] mmc: block: Add blk-mq support)
-Date: Thu, 1 Mar 2018 13:20:16 -0700
-Message-ID: <AF3403B9-9791-4A77-A6FB-3281B8EA7A31@dilger.ca>
+Date: Fri, 2 Mar 2018 19:39:25 +0300
+Message-ID: <24166154-8b08-bab6-ac8e-618eeba30674@gmail.com>
 References: <1511962879-24262-1-git-send-email-adrian.hunter@intel.com>
  <1511962879-24262-7-git-send-email-adrian.hunter@intel.com>
  <bc65b542-9703-aa04-f1c7-b10584e44391@gmail.com>
@@ -11,12 +11,11 @@ References: <1511962879-24262-1-git-send-email-adrian.hunter@intel.com>
  <8876217f-ede6-fc81-2e05-b4fc976b3235@intel.com>
  <6a1267b0-6242-fc9f-60ed-02bf34677b62@intel.com>
  <20180301160418.GA2490@thunk.org>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_83C1D3F3-F6FF-4590-B7E4-E000F852A5BA";
- protocol="application/pgp-signature"; micalg=pgp-sha256
+ <AF3403B9-9791-4A77-A6FB-3281B8EA7A31@dilger.ca>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
 Cc: Adrian Hunter <adrian.hunter@intel.com>,
-        Dmitry Osipenko <digetx@gmail.com>,
         Ulf Hansson <ulf.hansson@linaro.org>,
         linux-mmc <linux-mmc@vger.kernel.org>,
         linux-block <linux-block@vger.kernel.org>,
@@ -33,107 +32,69 @@ Cc: Adrian Hunter <adrian.hunter@intel.com>,
         Harjani Ritesh <riteshh@codeaurora.org>,
         Venu Byravarasu <vbyravarasu@nvidia.com>,
         Linus Walleij <linus.walleij@linaro.org>,
-        Shawn Lin <shawn.lin@rock-chi
-To: Theodore Ts'o <tytso@mit.edu>
+        Shawn Lin <shawn.lin@rock-chips.com>,
+        Bartlomiej Zolnierkiewicz <
+To: Andreas Dilger <adilger@dilger.ca>, Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180301160418.GA2490@thunk.org>
+In-Reply-To: <AF3403B9-9791-4A77-A6FB-3281B8EA7A31@dilger.ca>
+Content-Language: en-US
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-
---Apple-Mail=_83C1D3F3-F6FF-4590-B7E4-E000F852A5BA
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
-
-
-On Mar 1, 2018, at 9:04 AM, Theodore Ts'o <tytso@mit.edu> wrote:
-> This doesn't seem to make sense; the PC is where we are currently
-> executing, and LR is the "Link Register" where the flow of control
-> will be returning after the current function returns, right?  Well,
-> dx_probe should *not* be returning to __wait_on_bit().  So this just
-> seems.... weird.
+On 01.03.2018 23:20, Andreas Dilger wrote:
 > 
-> Ignoring the LR register, this stack trace looks sane...  I can't see
-> which pointer could be NULL and getting dereferenced, though.  How
-> easily can you reproduce the problem?  Can you either (a) translate
-> the PC into a line number, or better yet, if you can reproduce, add a
-> series of BUG_ON's so we can see what's going on?
+> On Mar 1, 2018, at 9:04 AM, Theodore Ts'o <tytso@mit.edu> wrote:
+>> This doesn't seem to make sense; the PC is where we are currently
+>> executing, and LR is the "Link Register" where the flow of control
+>> will be returning after the current function returns, right?  Well,
+>> dx_probe should *not* be returning to __wait_on_bit().  So this just
+>> seems.... weird.
+>>
+>> Ignoring the LR register, this stack trace looks sane...  I can't see
+>> which pointer could be NULL and getting dereferenced, though.  How
+>> easily can you reproduce the problem?  Can you either (a) translate
+>> the PC into a line number, or better yet, if you can reproduce, add a
+>> series of BUG_ON's so we can see what's going on?
+
+Ted, thank you for the suggestion. I don't have a bug-reproducer, it happens
+only under some IO load and quite randomly. I've applied the BUG_ON()'s, but it
+may take some time to catch the bug again.
+
+>> +	BUG_ON(frame);
 > 
-> +	BUG_ON(frame);
-
-I think you mean:
-	BUG_ON(frame == NULL);
-or
-	BUG_ON(!frame);
-
-
-> 	memset(frame_in, 0, EXT4_HTREE_LEVEL * sizeof(frame_in[0]));
-> 	frame->bh = ext4_read_dirblock(dir, 0, INDEX);
-> 	if (IS_ERR(frame->bh))
-> 		return (struct dx_frame *) frame->bh;
+> I think you mean:
+> 	BUG_ON(frame == NULL);
+> or
+> 	BUG_ON(!frame);
 > 
-> +	BUG_ON(frame->bh);
-> +	BUG_ON(frame->bh->b_data);
-
-Same here.
-
-	BUG_ON(frame->bh == NULL);
-	BUG_ON(frame->bh->b_data == NULL);
-
-This is why I don't like implicit "is NULL" or "is non-zero" usage.  Lustre
-used to require "== NULL" or "!= NULL" to avoid bugs like this, but had to
-abandon that because of upstream code style.
-
-> 	root = (struct dx_root *) frame->bh->b_data;
-> 	if (root->info.hash_version != DX_HASH_TEA &&
-> 	    root->info.hash_version != DX_HASH_HALF_MD4 &&
-> 	    root->info.hash_version != DX_HASH_LEGACY) {
 > 
-> These are "could never" happen scenarios from looking at the code, but
-> that will help explain what is going on.
+>> 	memset(frame_in, 0, EXT4_HTREE_LEVEL * sizeof(frame_in[0]));
+>> 	frame->bh = ext4_read_dirblock(dir, 0, INDEX);
+>> 	if (IS_ERR(frame->bh))
+>> 		return (struct dx_frame *) frame->bh;
+>>
+>> +	BUG_ON(frame->bh);
+>> +	BUG_ON(frame->bh->b_data);
 > 
-> If this is reliably only happening with mq, the only way I could see
-> that if is something is returning an error when it previously wasn't.
-> This isn't a problem we're seeing with any of our testing, though.
+> Same here.
 > 
-> Cheers,
+> 	BUG_ON(frame->bh == NULL);
+> 	BUG_ON(frame->bh->b_data == NULL);
 > 
-> 						- Ted
-> 
+> This is why I don't like implicit "is NULL" or "is non-zero" usage.  Lustre
+> used to require "== NULL" or "!= NULL" to avoid bugs like this, but had to
+> abandon that because of upstream code style.
 
+Well spotted, thanks Andreas.
 
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_83C1D3F3-F6FF-4590-B7E4-E000F852A5BA
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlqYYIAACgkQcqXauRfM
-H+D1MQ/9HoJWn769M05/z1EIBrSufibX73AF41nPOwDkOkmUvcmf+48coM0H1y2y
-HJl6JonNCNZ/wPvpo8yFrXjrZ8/1R0Cekk0nptM9Zokg3ufJygmU8+BB3smeHB7L
-nw1O4ftW1jAXFGGDdj/HiB4Fuy5vij6FgpFaRLz5VtoenkL509d8WBZoRHBnBHsz
-RWD05dB/Hx6s9jVnVs6BkH9Q9r7qxLIjIq24hp6qKy1Zvu1GwjTxMEfqNADEj0Sf
-TjJ/AfG1kCtxnvhYsk2JRhnEj1b7xNbb+eFd9+T4ca/oB4o5hn3BltNBbDMReQBZ
-UHAzhf8N5w+k8psDLXpOl9HjQue9H+bPlYbF4g3JUHWhbRklWiObTU5XULegTNRc
-vVmsmw4iYIve6FEp3neb/DfLrKOnLHWBakESxVZel6N42OxFGJYk0XQc2XmoNCyj
-uC/HgZWV2Iah5F3o0HLpnWHnr2xWE/AVrIhCK2p5ecLq16niFCMh1CCksGqrrqwx
-eIirkF1z9atKTe4XTf7412gPSood0PjbT/2qe5FDLpRtdTiwDA8SMc+pDw7UpbYj
-ymhDIbQf019VSXV9AzN3rktNPaaya+HNSuxqkG26R2jLRsbf3qml1snoUjKga1fS
-DDu5H/nwTLVsjypDHpDapoXul04KRphOKdfUi5z+xJSXLUTwySI=
-=Vg/6
------END PGP SIGNATURE-----
-
---Apple-Mail=_83C1D3F3-F6FF-4590-B7E4-E000F852A5BA--
+>> 	root = (struct dx_root *) frame->bh->b_data;
+>> 	if (root->info.hash_version != DX_HASH_TEA &&
+>> 	    root->info.hash_version != DX_HASH_HALF_MD4 &&
+>> 	    root->info.hash_version != DX_HASH_LEGACY) {
+>>
+>> These are "could never" happen scenarios from looking at the code, but
+>> that will help explain what is going on.
+>>
+>> If this is reliably only happening with mq, the only way I could see
+>> that if is something is returning an error when it previously wasn't.
+>> This isn't a problem we're seeing with any of our testing, though.
