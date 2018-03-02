@@ -1,63 +1,168 @@
-From: Sasha Levin <Alexander.Levin@microsoft.com>
-Subject: Re: [PATCH 4.1 0/3] ext4 encryption fixes for 4.1-stable
-Date: Sat, 3 Mar 2018 21:07:30 +0000
-Message-ID: <20180303210729.rslsgna56zpbtgi6@sasha-lappy>
-References: <20180302222113.85389-1-ebiggers3@gmail.com>
+From: Eric Biggers via Linux-f2fs-devel
+ <linux-f2fs-devel@lists.sourceforge.net>
+Subject: [PATCH] fscrypt: add Speck128/256 support
+Date: Fri,  2 Mar 2018 11:56:10 -0800
+Message-ID: <20180302195610.153581-1-ebiggers@google.com>
+Reply-To: Eric Biggers <ebiggers@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
-Cc: "stable@vger.kernel.org" <stable@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        Eric Biggers <ebiggers@google.com>
-To: Eric Biggers <ebiggers3@gmail.com>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20180302222113.85389-1-ebiggers3@gmail.com>
-Content-Language: en-US
-Content-ID: <C45D0C614C457047B4AE3EEDFCA898CC@namprd21.prod.outlook.com>
-Sender: stable-owner@vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: Michael Halcrow <mhalcrow@google.com>, David Gstir <david@sigma-star.at>,
+ Greg Kaiser <gkaiser@google.com>, Eric Biggers <ebiggers@google.com>,
+ Richard Weinberger <richard@nod.at>, Patrik Torstensson <totte@google.com>,
+ linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+ linux-crypto@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+ linux-ext4@vger.kernel.org, Paul Crowley <paulcrowley@google.com>
+To: linux-fscrypt@vger.kernel.org,
+	Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Mar 02, 2018 at 02:21:10PM -0800, Eric Biggers wrote:
->From: Eric Biggers <ebiggers@google.com>
->
->Hi Sasha, can you please apply these backports of ext4 encryption fixes
->to 4.1-stable?  They all have equivalent fixes in 4.4-stable.  Most
->important is patch 1 which prevents unprivileged users from using (or
->abusing) ext4 encryption when it hasn't been enabled on the filesystem
->by a system administrator.  Patch 2 adds a missing permission check
->(CVE-2016-10318), and patch 3 is a backport that Ted sent out some
->months ago that seems to have been missed, for a bug in 4.1 that is very
->similar to the bug in 4.2+ that was assigned CVE-2017-7374.
->
->Note that ext4 encryption in 4.1 is still pretty broken and should not
->be used (even just 4.4-stable is much better); these are just the most
->important fixes that really ought to be in 4.1-stable.
->
->Eric Biggers (1):
->  fscrypto: add authorization check for setting encryption policy
->
->Richard Weinberger (1):
->  ext4: require encryption feature for EXT4_IOC_SET_ENCRYPTION_POLICY
->
->Theodore Ts'o (1):
->  ext4 crypto: don't regenerate the per-inode encryption key
->    unnecessarily
->
-> fs/ext4/crypto_fname.c  |  5 +++--
-> fs/ext4/crypto_key.c    | 15 ++++++++++++---
-> fs/ext4/crypto_policy.c |  3 +++
-> fs/ext4/ext4.h          |  1 +
-> fs/ext4/ioctl.c         |  3 +++
-> fs/ext4/super.c         |  3 +++
-> 6 files changed, 25 insertions(+), 5 deletions(-)
->
->--=20
->2.16.2.395.g2e18187dfd-goog
->
+Hello, here's a patch which adds Speck128/256 support to fscrypt, for
+ext4/f2fs/ubifs encryption.  Note that this can be applied independently
+of the patches that added Speck to the crypto API since there is no hard
+dependency, but the crypto API support is needed for Speck-encrypted
+files to work.  The crypto API patches can be found in linux-next via
+cryptodev/master.  Commit da7a0ab5b4ba ("crypto: speck - add support for
+the Speck block cipher") with CONFIG_CRYPTO_SPECK enabled is sufficient
+for basic testing, but for testing on ARM the NEON-accelerated version
+should be applied and enabled as well.
 
-Applied, thank you!
+-----8<-----
 
---=20
+fscrypt currently only supports AES encryption.  However, many low-end
+mobile devices have older CPUs that don't have AES instructions, e.g.
+the ARMv8 Cryptography Extensions.  Currently, user data on such devices
+is not being encrypted because AES is not fast enough, even when the
+NEON bit-sliced implementation of AES is used.
 
-Thanks,
-Sasha=
+Therefore, this patch provides an alternative to AES by updating fscrypt
+to support the Speck block cipher.
+
+Separate patches added Speck to the crypto API; more details about the
+choice of Speck can be found in those patches.  Note in particular that
+we can't use ChaCha20 as previously proposed, since it would, in
+general, be insecure to use a stream cipher in this context.
+
+The generic Speck implementation is not especially fast, but Speck can
+be greatly accelerated using general-purpose vector instructions, e.g.
+ARM NEON.  As an example, on a device with an ARMv7 processor, the
+NEON-accelerated Speck128/256-XTS was 108 MB/s for both encryption and
+decryption, while AES-256-XTS (with the NEON bit-sliced implementation)
+was only 41 MB/s encryption and 37 MB/s decryption.
+
+There are multiple variants of Speck.  This patch only adds support for
+Speck128/256, which is the variant with a 128-bit block size and 256-bit
+key size -- the same as AES-256.  This is believed to be the most secure
+variant of Speck, and it's only about 6% slower than Speck128/128.
+
+Speck64/128 is also a contender, since it's at least 20% faster than
+Speck128/256 (having 20% fewer rounds), and can be even faster on CPUs
+that can't efficiently do the 64-bit operations needed for Speck128.
+But, ARM NEON supports the needed 64-bit operations even on 32-bit CPUs,
+and Speck128/256 appears to be fast enough for our targeted use cases.
+So, it makes sense to support Speck128/256 in fscrypt anyway, even if
+there's a possibility that Speck64/128 support would be added later.
+
+The chosen modes of operation are XTS for contents and CTS-CBC for
+filenames.  These are the same modes recommended for AES currently.
+
+This patch intentionally does *not* make CONFIG_FS_ENCRYPTION select
+CONFIG_CRYPTO_SPECK.  Thus, people will have to enable Speck support
+themselves if needed.  This is firstly because we shouldn't bloat the
+FS_ENCRYPTION dependencies with every new cipher, especially ones that
+aren't recommended for most users.  It's also because CRYPTO_SPECK just
+refers to the generic implementation, which won't be fast enough for
+many users; in practice, they'll need to enable a vectorized
+implementation such as CRYPTO_SPECK_NEON to get acceptable performance.
+
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ Documentation/filesystems/fscrypt.rst | 10 ++++++++++
+ fs/crypto/fscrypt_private.h           |  4 ++++
+ fs/crypto/keyinfo.c                   |  2 ++
+ include/uapi/linux/fs.h               |  2 ++
+ 4 files changed, 18 insertions(+)
+
+diff --git a/Documentation/filesystems/fscrypt.rst b/Documentation/filesystems/fscrypt.rst
+index cfbc18f0d9c9..c99465965512 100644
+--- a/Documentation/filesystems/fscrypt.rst
++++ b/Documentation/filesystems/fscrypt.rst
+@@ -191,11 +191,21 @@ Currently, the following pairs of encryption modes are supported:
+ 
+ - AES-256-XTS for contents and AES-256-CTS-CBC for filenames
+ - AES-128-CBC for contents and AES-128-CTS-CBC for filenames
++- Speck128/256-XTS for contents and Speck128/256-CTS-CBC for filenames
+ 
+ It is strongly recommended to use AES-256-XTS for contents encryption.
+ AES-128-CBC was added only for low-powered embedded devices with
+ crypto accelerators such as CAAM or CESA that do not support XTS.
+ 
++Similarly, Speck128/256 support was only added for older or low-end
++CPUs which cannot do AES fast enough -- especially ARM CPUs which have
++NEON instructions but not the Cryptography Extensions.  It is not
++recommended to use Speck on CPUs that have AES instructions.
++Nevertheless, to use Speck, CONFIG_CRYPTO_SPECK must be enabled.  It
++is strongly recommended to enable any available architecture-specific
++implementations of Speck as well, e.g. CONFIG_CRYPTO_SPECK_NEON for
++ARM, since they can be much faster than the generic implementation.
++
+ New encryption modes can be added relatively easily, without changes
+ to individual filesystems.  However, authenticated encryption (AE)
+ modes are not currently supported because of the difficulty of dealing
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index fb96e493167b..bf0bbba783f8 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -91,6 +91,10 @@ static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
+ 	    filenames_mode == FS_ENCRYPTION_MODE_AES_256_CTS)
+ 		return true;
+ 
++	if (contents_mode == FS_ENCRYPTION_MODE_SPECK128_256_XTS &&
++	    filenames_mode == FS_ENCRYPTION_MODE_SPECK128_256_CTS)
++		return true;
++
+ 	return false;
+ }
+ 
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index 05f5ee1f0705..96a1eae9e51d 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -135,6 +135,8 @@ static const struct {
+ 					     FS_AES_128_CBC_KEY_SIZE },
+ 	[FS_ENCRYPTION_MODE_AES_128_CTS] = { "cts(cbc(aes))",
+ 					     FS_AES_128_CTS_KEY_SIZE },
++	[FS_ENCRYPTION_MODE_SPECK128_256_XTS] = { "xts(speck128)", 64 },
++	[FS_ENCRYPTION_MODE_SPECK128_256_CTS] = { "cts(cbc(speck128))", 32 },
+ };
+ 
+ static int determine_cipher_type(struct fscrypt_info *ci, struct inode *inode,
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index d2a8313fabd7..0b6e07ee63a6 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -275,6 +275,8 @@ struct fsxattr {
+ #define FS_ENCRYPTION_MODE_AES_256_CTS		4
+ #define FS_ENCRYPTION_MODE_AES_128_CBC		5
+ #define FS_ENCRYPTION_MODE_AES_128_CTS		6
++#define FS_ENCRYPTION_MODE_SPECK128_256_XTS	7
++#define FS_ENCRYPTION_MODE_SPECK128_256_CTS	8
+ 
+ struct fscrypt_policy {
+ 	__u8 version;
+-- 
+2.16.2.395.g2e18187dfd-goog
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
