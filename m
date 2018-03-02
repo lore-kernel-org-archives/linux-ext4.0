@@ -1,45 +1,49 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 4.1 0/3] ext4 encryption fixes for 4.1-stable
-Date: Fri,  2 Mar 2018 14:21:10 -0800
-Message-ID: <20180302222113.85389-1-ebiggers3@gmail.com>
-Cc: linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@google.com>
+Subject: [PATCH 4.1 1/3] ext4: require encryption feature for EXT4_IOC_SET_ENCRYPTION_POLICY
+Date: Fri,  2 Mar 2018 14:21:11 -0800
+Message-ID: <20180302222113.85389-2-ebiggers3@gmail.com>
+References: <20180302222113.85389-1-ebiggers3@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Richard Weinberger <richard@nod.at>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Eric Biggers <ebiggers@google.com>
 To: stable@vger.kernel.org, Sasha Levin <Alexander.Levin@microsoft.com>
 Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20180302222113.85389-1-ebiggers3@gmail.com>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+From: Richard Weinberger <richard@nod.at>
 
-Hi Sasha, can you please apply these backports of ext4 encryption fixes
-to 4.1-stable?  They all have equivalent fixes in 4.4-stable.  Most
-important is patch 1 which prevents unprivileged users from using (or
-abusing) ext4 encryption when it hasn't been enabled on the filesystem
-by a system administrator.  Patch 2 adds a missing permission check
-(CVE-2016-10318), and patch 3 is a backport that Ted sent out some
-months ago that seems to have been missed, for a bug in 4.1 that is very
-similar to the bug in 4.2+ that was assigned CVE-2017-7374.
+commit 9a200d075e5d05be1fcad4547a0f8aee4e2f9a04 upstream.
 
-Note that ext4 encryption in 4.1 is still pretty broken and should not
-be used (even just 4.4-stable is much better); these are just the most
-important fixes that really ought to be in 4.1-stable.
+...otherwise an user can enable encryption for certain files even
+when the filesystem is unable to support it.
+Such a case would be a filesystem created by mkfs.ext4's default
+settings, 1KiB block size. Ext4 supports encyption only when block size
+is equal to PAGE_SIZE.
+But this constraint is only checked when the encryption feature flag
+is set.
 
-Eric Biggers (1):
-  fscrypto: add authorization check for setting encryption policy
+Signed-off-by: Richard Weinberger <richard@nod.at>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/ioctl.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Richard Weinberger (1):
-  ext4: require encryption feature for EXT4_IOC_SET_ENCRYPTION_POLICY
-
-Theodore Ts'o (1):
-  ext4 crypto: don't regenerate the per-inode encryption key
-    unnecessarily
-
- fs/ext4/crypto_fname.c  |  5 +++--
- fs/ext4/crypto_key.c    | 15 ++++++++++++---
- fs/ext4/crypto_policy.c |  3 +++
- fs/ext4/ext4.h          |  1 +
- fs/ext4/ioctl.c         |  3 +++
- fs/ext4/super.c         |  3 +++
- 6 files changed, 25 insertions(+), 5 deletions(-)
-
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 4196aa567784..dbe1ff511794 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -630,6 +630,9 @@ resizefs_out:
+ 		struct ext4_encryption_policy policy;
+ 		int err = 0;
+ 
++		if (!ext4_sb_has_crypto(sb))
++			return -EOPNOTSUPP;
++
+ 		if (copy_from_user(&policy,
+ 				   (struct ext4_encryption_policy __user *)arg,
+ 				   sizeof(policy))) {
 -- 
 2.16.2.395.g2e18187dfd-goog
