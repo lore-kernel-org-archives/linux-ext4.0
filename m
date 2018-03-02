@@ -1,100 +1,45 @@
-From: Dmitry Osipenko <digetx@gmail.com>
-Subject: Re: EXT4 Oops (Re: [PATCH V15 06/22] mmc: block: Add blk-mq support)
-Date: Fri, 2 Mar 2018 19:39:25 +0300
-Message-ID: <24166154-8b08-bab6-ac8e-618eeba30674@gmail.com>
-References: <1511962879-24262-1-git-send-email-adrian.hunter@intel.com>
- <1511962879-24262-7-git-send-email-adrian.hunter@intel.com>
- <bc65b542-9703-aa04-f1c7-b10584e44391@gmail.com>
- <829308a3-3bf6-c173-65fa-e2a0f45f7f61@intel.com>
- <68886f99-97f5-897a-f754-6f414741bd5a@gmail.com>
- <22580b82-0257-b156-9f0c-79afa34067e5@gmail.com>
- <8876217f-ede6-fc81-2e05-b4fc976b3235@intel.com>
- <6a1267b0-6242-fc9f-60ed-02bf34677b62@intel.com>
- <20180301160418.GA2490@thunk.org>
- <AF3403B9-9791-4A77-A6FB-3281B8EA7A31@dilger.ca>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: Adrian Hunter <adrian.hunter@intel.com>,
-        Ulf Hansson <ulf.hansson@linaro.org>,
-        linux-mmc <linux-mmc@vger.kernel.org>,
-        linux-block <linux-block@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Bough Chen <haibo.chen@nxp.com>,
-        Alex Lemberg <alex.lemberg@sandisk.com>,
-        Mateusz Nowak <mateusz.nowak@intel.com>,
-        Yuliy Izrailov <Yuliy.Izrailov@sandisk.com>,
-        Jaehoon Chung <jh80.chung@samsung.com>,
-        Dong Aisheng <dongas86@gmail.com>,
-        Das Asutosh <asutoshd@codeaurora.org>,
-        Zhangfei Gao <zhangfei.gao@gmail.com>,
-        Sahitya Tummala <stummala@codeaurora.org>,
-        Harjani Ritesh <riteshh@codeaurora.org>,
-        Venu Byravarasu <vbyravarasu@nvidia.com>,
-        Linus Walleij <linus.walleij@linaro.org>,
-        Shawn Lin <shawn.lin@rock-chips.com>,
-        Bartlomiej Zolnierkiewicz <
-To: Andreas Dilger <adilger@dilger.ca>, Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <AF3403B9-9791-4A77-A6FB-3281B8EA7A31@dilger.ca>
-Content-Language: en-US
-Sender: linux-kernel-owner@vger.kernel.org
+From: Eric Biggers <ebiggers3@gmail.com>
+Subject: [PATCH 4.1 0/3] ext4 encryption fixes for 4.1-stable
+Date: Fri,  2 Mar 2018 14:21:10 -0800
+Message-ID: <20180302222113.85389-1-ebiggers3@gmail.com>
+Cc: linux-ext4@vger.kernel.org, Eric Biggers <ebiggers@google.com>
+To: stable@vger.kernel.org, Sasha Levin <Alexander.Levin@microsoft.com>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 01.03.2018 23:20, Andreas Dilger wrote:
-> 
-> On Mar 1, 2018, at 9:04 AM, Theodore Ts'o <tytso@mit.edu> wrote:
->> This doesn't seem to make sense; the PC is where we are currently
->> executing, and LR is the "Link Register" where the flow of control
->> will be returning after the current function returns, right?  Well,
->> dx_probe should *not* be returning to __wait_on_bit().  So this just
->> seems.... weird.
->>
->> Ignoring the LR register, this stack trace looks sane...  I can't see
->> which pointer could be NULL and getting dereferenced, though.  How
->> easily can you reproduce the problem?  Can you either (a) translate
->> the PC into a line number, or better yet, if you can reproduce, add a
->> series of BUG_ON's so we can see what's going on?
+From: Eric Biggers <ebiggers@google.com>
 
-Ted, thank you for the suggestion. I don't have a bug-reproducer, it happens
-only under some IO load and quite randomly. I've applied the BUG_ON()'s, but it
-may take some time to catch the bug again.
+Hi Sasha, can you please apply these backports of ext4 encryption fixes
+to 4.1-stable?  They all have equivalent fixes in 4.4-stable.  Most
+important is patch 1 which prevents unprivileged users from using (or
+abusing) ext4 encryption when it hasn't been enabled on the filesystem
+by a system administrator.  Patch 2 adds a missing permission check
+(CVE-2016-10318), and patch 3 is a backport that Ted sent out some
+months ago that seems to have been missed, for a bug in 4.1 that is very
+similar to the bug in 4.2+ that was assigned CVE-2017-7374.
 
->> +	BUG_ON(frame);
-> 
-> I think you mean:
-> 	BUG_ON(frame == NULL);
-> or
-> 	BUG_ON(!frame);
-> 
-> 
->> 	memset(frame_in, 0, EXT4_HTREE_LEVEL * sizeof(frame_in[0]));
->> 	frame->bh = ext4_read_dirblock(dir, 0, INDEX);
->> 	if (IS_ERR(frame->bh))
->> 		return (struct dx_frame *) frame->bh;
->>
->> +	BUG_ON(frame->bh);
->> +	BUG_ON(frame->bh->b_data);
-> 
-> Same here.
-> 
-> 	BUG_ON(frame->bh == NULL);
-> 	BUG_ON(frame->bh->b_data == NULL);
-> 
-> This is why I don't like implicit "is NULL" or "is non-zero" usage.  Lustre
-> used to require "== NULL" or "!= NULL" to avoid bugs like this, but had to
-> abandon that because of upstream code style.
+Note that ext4 encryption in 4.1 is still pretty broken and should not
+be used (even just 4.4-stable is much better); these are just the most
+important fixes that really ought to be in 4.1-stable.
 
-Well spotted, thanks Andreas.
+Eric Biggers (1):
+  fscrypto: add authorization check for setting encryption policy
 
->> 	root = (struct dx_root *) frame->bh->b_data;
->> 	if (root->info.hash_version != DX_HASH_TEA &&
->> 	    root->info.hash_version != DX_HASH_HALF_MD4 &&
->> 	    root->info.hash_version != DX_HASH_LEGACY) {
->>
->> These are "could never" happen scenarios from looking at the code, but
->> that will help explain what is going on.
->>
->> If this is reliably only happening with mq, the only way I could see
->> that if is something is returning an error when it previously wasn't.
->> This isn't a problem we're seeing with any of our testing, though.
+Richard Weinberger (1):
+  ext4: require encryption feature for EXT4_IOC_SET_ENCRYPTION_POLICY
+
+Theodore Ts'o (1):
+  ext4 crypto: don't regenerate the per-inode encryption key
+    unnecessarily
+
+ fs/ext4/crypto_fname.c  |  5 +++--
+ fs/ext4/crypto_key.c    | 15 ++++++++++++---
+ fs/ext4/crypto_policy.c |  3 +++
+ fs/ext4/ext4.h          |  1 +
+ fs/ext4/ioctl.c         |  3 +++
+ fs/ext4/super.c         |  3 +++
+ 6 files changed, 25 insertions(+), 5 deletions(-)
+
+-- 
+2.16.2.395.g2e18187dfd-goog
