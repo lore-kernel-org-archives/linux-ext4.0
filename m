@@ -1,168 +1,111 @@
-From: Eric Biggers via Linux-f2fs-devel
- <linux-f2fs-devel@lists.sourceforge.net>
-Subject: [PATCH] fscrypt: add Speck128/256 support
-Date: Fri,  2 Mar 2018 11:56:10 -0800
-Message-ID: <20180302195610.153581-1-ebiggers@google.com>
-Reply-To: Eric Biggers <ebiggers@google.com>
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: Re: [PATCH 2 2/2] xfs: fix rt_dev usage for DAX
+Date: Mon, 5 Mar 2018 17:06:39 -0700
+Message-ID: <20180306000639.GA15227@linux.intel.com>
+References: <151751717968.69886.6978962571680635420.stgit@djiang5-desk3.ch.intel.com>
+ <151751718516.69886.135497175511444689.stgit@djiang5-desk3.ch.intel.com>
+ <20180201234413.idd27uqzqbg54ddk@destitution>
+ <20180202004332.GZ4849@magnolia>
+ <d267ed33-950e-a5c5-73ce-36da6c940513@intel.com>
+ <20180206231915.GA26233@magnolia>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Michael Halcrow <mhalcrow@google.com>, David Gstir <david@sigma-star.at>,
- Greg Kaiser <gkaiser@google.com>, Eric Biggers <ebiggers@google.com>,
- Richard Weinberger <richard@nod.at>, Patrik Torstensson <totte@google.com>,
- linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
- linux-crypto@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
- linux-ext4@vger.kernel.org, Paul Crowley <paulcrowley@google.com>
-To: linux-fscrypt@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20180206231915.GA26233@magnolia>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Hello, here's a patch which adds Speck128/256 support to fscrypt, for
-ext4/f2fs/ubifs encryption.  Note that this can be applied independently
-of the patches that added Speck to the crypto API since there is no hard
-dependency, but the crypto API support is needed for Speck-encrypted
-files to work.  The crypto API patches can be found in linux-next via
-cryptodev/master.  Commit da7a0ab5b4ba ("crypto: speck - add support for
-the Speck block cipher") with CONFIG_CRYPTO_SPECK enabled is sufficient
-for basic testing, but for testing on ARM the NEON-accelerated version
-should be applied and enabled as well.
+On Tue, Feb 06, 2018 at 03:19:15PM -0800, Darrick J. Wong wrote:
+<>
+> The last time I paid much attention to DAX was the thread "re-enable XFS
+> per-inode DAX"[1] last September.  Motivating me to merge anything else
+> into DAX involves convincing me that we (mm, fs, dax developers) have
+> some kind of agreement about what we want the user-visible interfaces to
+> DAX to look like.  
 
------8<-----
+Yep, I agree that is the next step.
 
-fscrypt currently only supports AES encryption.  However, many low-end
-mobile devices have older CPUs that don't have AES instructions, e.g.
-the ARMv8 Cryptography Extensions.  Currently, user data on such devices
-is not being encrypted because AES is not fast enough, even when the
-NEON bit-sliced implementation of AES is used.
+> Namely:
+> 
+> 0. On what level do we allow users / administrators to control usage of
+> the dax paths?  Can the hardware convey enough detail to the kernel that
+> the kernel can make a reasonable decision on its own whether buffered or
+> dax io make more sense?  If so, can we please just have that?  If not,
+> why?
 
-Therefore, this patch provides an alternative to AES by updating fscrypt
-to support the Speck block cipher.
+Maybe eventually via the HMAT, but I don't think we have any systems today
+that do a good job of this.
 
-Separate patches added Speck to the crypto API; more details about the
-choice of Speck can be found in those patches.  Note in particular that
-we can't use ChaCha20 as previously proposed, since it would, in
-general, be insecure to use a stream cipher in this context.
+> 1. If we want to let users override whatever decision the kernel makes,
+> how should we do this?  One mount option that applies to everything,
+> like ext4?  Inheritable inode flags, like xfs?  Do we have one to force
+> it on even if the kernel doesn't want to?  Do we have another to force
+> it off even if the kernel wants to?  Do we even want to go down this
+> path?  Can we get away with making the answer to Q0 "yes" and then see
+> if anyone actually complains about not having fine-grained control?
 
-The generic Speck implementation is not especially fast, but Speck can
-be greatly accelerated using general-purpose vector instructions, e.g.
-ARM NEON.  As an example, on a device with an ARMv7 processor, the
-NEON-accelerated Speck128/256-XTS was 108 MB/s for both encryption and
-decryption, while AES-256-XTS (with the NEON bit-sliced implementation)
-was only 41 MB/s encryption and 37 MB/s decryption.
+I agree with Dan's assessment that even if we can make the kernel smart enough
+to know when it's not a performance loss to use DAX (i.e. the persistent
+memory you're using DAX on is just as fast as the page cache), users will
+probably still want to retain the ability to force it on for use cases like
+MAP_SYNC, and force it off for things like RDMA or VFIO, at least until the
+page pinning work is complete.
 
-There are multiple variants of Speck.  This patch only adds support for
-Speck128/256, which is the variant with a 128-bit block size and 256-bit
-key size -- the same as AES-256.  This is believed to be the most secure
-variant of Speck, and it's only about 6% slower than Speck128/128.
+Personally I'm still hopeful that we can have both the mount option and the
+inheritable inode flags, and that we can figure out what we need to to get
+S_DAX transitions happening again.
 
-Speck64/128 is also a contender, since it's at least 20% faster than
-Speck128/256 (having 20% fewer rounds), and can be even faster on CPUs
-that can't efficiently do the 64-bit operations needed for Speck128.
-But, ARM NEON supports the needed 64-bit operations even on 32-bit CPUs,
-and Speck128/256 appears to be fast enough for our targeted use cases.
-So, it makes sense to support Speck128/256 in fscrypt anyway, even if
-there's a possibility that Speck64/128 support would be added later.
+> 2. Under what conditions can we support dynamic changing of S_DAX on
+> inodes at runtime?  Will this switching work at any time?  Only for
+> files that are open but not mmap'd?  Only for files that are empty?
+>
+> 3. The MAP_SYNC support that was merged into 4.15 -- is this sufficient
+> to allow this fsyncless clflush business that everyone seems to want?
 
-The chosen modes of operation are XTS for contents and CTS-CBC for
-filenames.  These are the same modes recommended for AES currently.
+Yep, I think so.  The next big battles are S_DAX transitions, per-inode DAX
+support, and of course the page pinning / leases code that Dan & Christoph
+have been talking about.
 
-This patch intentionally does *not* make CONFIG_FS_ENCRYPTION select
-CONFIG_CRYPTO_SPECK.  Thus, people will have to enable Speck support
-themselves if needed.  This is firstly because we shouldn't bloat the
-FS_ENCRYPTION dependencies with every new cipher, especially ones that
-aren't recommended for most users.  It's also because CRYPTO_SPECK just
-refers to the generic implementation, which won't be fast enough for
-many users; in practice, they'll need to enable a vectorized
-implementation such as CRYPTO_SPECK_NEON to get acceptable performance.
+> 4. Can someone please fix the XFS iomap_begin function to handle CoW
+> properly?  I think it's a simple matter of allocate blocks, memcpy, and
+> remap, though I don't know how to do that. ;)
+> 
+> 5. Do we test any of this stuff?
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- Documentation/filesystems/fscrypt.rst | 10 ++++++++++
- fs/crypto/fscrypt_private.h           |  4 ++++
- fs/crypto/keyinfo.c                   |  2 ++
- include/uapi/linux/fs.h               |  2 ++
- 4 files changed, 18 insertions(+)
+Yes, I think in general we do a pretty good job of DAX test case coverage
+between a combination of xfstests (which I have added to as I've fixed DAX
+related bugs), nfit_test and the ndctl unit tests.  hch has recently suggested
+we start using blktests as well, though I don't think we've actually made any
+new tests there yet.  Suggestions on how we can get better test coverage are
+welcome.
 
-diff --git a/Documentation/filesystems/fscrypt.rst b/Documentation/filesystems/fscrypt.rst
-index cfbc18f0d9c9..c99465965512 100644
---- a/Documentation/filesystems/fscrypt.rst
-+++ b/Documentation/filesystems/fscrypt.rst
-@@ -191,11 +191,21 @@ Currently, the following pairs of encryption modes are supported:
- 
- - AES-256-XTS for contents and AES-256-CTS-CBC for filenames
- - AES-128-CBC for contents and AES-128-CTS-CBC for filenames
-+- Speck128/256-XTS for contents and Speck128/256-CTS-CBC for filenames
- 
- It is strongly recommended to use AES-256-XTS for contents encryption.
- AES-128-CBC was added only for low-powered embedded devices with
- crypto accelerators such as CAAM or CESA that do not support XTS.
- 
-+Similarly, Speck128/256 support was only added for older or low-end
-+CPUs which cannot do AES fast enough -- especially ARM CPUs which have
-+NEON instructions but not the Cryptography Extensions.  It is not
-+recommended to use Speck on CPUs that have AES instructions.
-+Nevertheless, to use Speck, CONFIG_CRYPTO_SPECK must be enabled.  It
-+is strongly recommended to enable any available architecture-specific
-+implementations of Speck as well, e.g. CONFIG_CRYPTO_SPECK_NEON for
-+ARM, since they can be much faster than the generic implementation.
-+
- New encryption modes can be added relatively easily, without changes
- to individual filesystems.  However, authenticated encryption (AE)
- modes are not currently supported because of the difficulty of dealing
-diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-index fb96e493167b..bf0bbba783f8 100644
---- a/fs/crypto/fscrypt_private.h
-+++ b/fs/crypto/fscrypt_private.h
-@@ -91,6 +91,10 @@ static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
- 	    filenames_mode == FS_ENCRYPTION_MODE_AES_256_CTS)
- 		return true;
- 
-+	if (contents_mode == FS_ENCRYPTION_MODE_SPECK128_256_XTS &&
-+	    filenames_mode == FS_ENCRYPTION_MODE_SPECK128_256_CTS)
-+		return true;
-+
- 	return false;
- }
- 
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 05f5ee1f0705..96a1eae9e51d 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -135,6 +135,8 @@ static const struct {
- 					     FS_AES_128_CBC_KEY_SIZE },
- 	[FS_ENCRYPTION_MODE_AES_128_CTS] = { "cts(cbc(aes))",
- 					     FS_AES_128_CTS_KEY_SIZE },
-+	[FS_ENCRYPTION_MODE_SPECK128_256_XTS] = { "xts(speck128)", 64 },
-+	[FS_ENCRYPTION_MODE_SPECK128_256_CTS] = { "cts(cbc(speck128))", 32 },
- };
- 
- static int determine_cipher_type(struct fscrypt_info *ci, struct inode *inode,
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index d2a8313fabd7..0b6e07ee63a6 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -275,6 +275,8 @@ struct fsxattr {
- #define FS_ENCRYPTION_MODE_AES_256_CTS		4
- #define FS_ENCRYPTION_MODE_AES_128_CBC		5
- #define FS_ENCRYPTION_MODE_AES_128_CTS		6
-+#define FS_ENCRYPTION_MODE_SPECK128_256_XTS	7
-+#define FS_ENCRYPTION_MODE_SPECK128_256_CTS	8
- 
- struct fscrypt_policy {
- 	__u8 version;
--- 
-2.16.2.395.g2e18187dfd-goog
+> The thread from last September left off with promises to go define what
+> interface and behaviors we are providing to userspace, but afaict none
+> of that ever happened?  If we don't resolve these questions before LSF
+> then I think what's needed is to lock everyone in a room to hash all
+> this out. :P
 
+Yep, that's accurate.  I got pulled off onto other work and am just now
+finding my way back.  I think talking about it at LSF sounds great, but it's a
+shame that hch won't be available.  It'll be nice to finally meet dchinner,
+though. :)
 
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+> --D
+> 
+> PS: My personal inclination is {yes, get rid of all that until someone
+> complains, i think so but haven't tested it, ???, i sure hope so}.
+> 
+> [1] https://marc.info/?l=linux-xfs&m=150638135225793&w=2
