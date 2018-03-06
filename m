@@ -1,72 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 5/7] ext4: pass -ESHUTDOWN code to jbd2 layer
-Date: Tue, 6 Mar 2018 18:10:41 +0100
-Message-ID: <20180306171041.mz7qlpeikih6mtlg@quack2.suse.cz>
-References: <20180220023038.19883-1-tytso@mit.edu>
- <20180220023038.19883-6-tytso@mit.edu>
+From: lsorense@csclub.uwaterloo.ca (Lennart Sorensen)
+Subject: ext4 ignoring rootfs default mount options
+Date: Tue, 6 Mar 2018 14:03:15 -0500
+Message-ID: <20180306190315.puocf5bu3bfz6yct@csclub.uwaterloo.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        stable@vger.kernel.org
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Len Sorensen <lsorense@csclub.uwaterloo.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180220023038.19883-6-tytso@mit.edu>
-Sender: stable-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 19-02-18 21:30:36, Theodore Ts'o wrote:
-> Previously the jbd2 layer assumed that a file system check would be
-> required after a journal abort.  In the case of the deliberate file
-> system shutdown, this should not be necessary.  Allow the jbd2 layer
-> to distinguish between these two cases by using the ESHUTDOWN errno.
-> 
-> Also add proper locking to __journal_abort_soft().
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Cc: stable@vger.kernel.org
-> ---
+While switching a system from using ext3 to ext4 (It's about time) I
+discovered that setting default options for the filesystem using tune2fs
+-o doesn't work for the root filesystem when mounted by the kernel itself.
+Filesystems mounted from userspace with the mount command use the options
+set just fine.  The extended option set with tune2fs -E mount_opts=
+works fine however.  I am sure those using an initrd works fine (and
+hence why almost noone would ever see this bug) since that uses the
+mount command from userspace to mount the rootfs.
 
-Maybe a cleaner api would be to have a separate JBD2 function like
-jbd2_journal_abort_clean() that would just abort the journal without
-setting an error to it.
+Specifically we did:
 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 3fbf48ec2188..efa0c72a0b9f 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -2105,12 +2108,22 @@ void __jbd2_journal_abort_hard(journal_t *journal)
->   * but don't do any other IO. */
->  static void __journal_abort_soft (journal_t *journal, int errno)
->  {
-> -	if (journal->j_flags & JBD2_ABORT)
-> -		return;
-> +	int old_errno;
->  
-> -	if (!journal->j_errno)
-> +	write_lock(&journal->j_state_lock);
-> +	old_errno = journal->j_errno;
-> +	if (!journal->j_errno || errno == -ESHUTDOWN)
->  		journal->j_errno = errno;
->  
-> +	if (journal->j_flags & JBD2_ABORT) {
-> +		write_unlock(&journal->j_state_lock);
-> +		if (!old_errno && old_errno != -ESHUTDOWN &&
-> +		    errno == -ESHUTDOWN)
-> +			jbd2_journal_update_sb_errno(journal);
-> +		return;
-> +	}
-> +	write_unlock(&journal->j_state_lock);
-> +
+tune2fs -o nodelalloc /dev/sda1
 
-Is it really correct that once the filesystem gets shutdown you clear the
-previous error from the journal? Because if we hit some real fs corruption,
-the journal gets aborted, and then someone calls ext4_shutdown(), we'd
-clear that error which looks like a bug to me because that shutdown hardly
-fixes the fs corruption...
+at boot we got:
+EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null)
 
-								Honza
+Instead using:
+tune2fs -E mount_opts=nodelalloc /dev/sda1
+
+at boot we got:
+EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: nodelalloc; (null)
+
+which seems better.
+
+For filesystems mounted from userspace with the mount command, either
+method works however.  The first option however is what the comment in
+fs/ext4/super.c suggests to use.
+
+Of course I also got the messages:
+EXT4-fs (sda1): Mount option "nodelalloc" incompatible with ext3
+EXT4-fs (sda1): failed to parse options in superblock: nodelalloc
+EXT4-fs (sda1): couldn't mount as ext3 due to feature incompatibilities
+
+Those of course all ought to not be there.  If it is ext4, I don't really
+care if ext3 doesn't understand the options, it works fine with ext4.
+I should not have to explicitly specify that it is ext4 just to avoid
+those.  It is not an ext3 filesystem.
+
+And of course the last annoying thing I noticed is that /proc/mounts
+doesn't actually tell you that nodelalloc is active when it is set
+from the default mount options rather than from the mount command line
+(or fstab).  Lots of other non default options are explicitly handled,
+but not delalloc.  The only place you see it, is in the dmesg line
+telling you what options the filesystem was mounted with.
 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Len Sorensen
