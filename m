@@ -1,111 +1,72 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [PATCH 2 2/2] xfs: fix rt_dev usage for DAX
-Date: Mon, 5 Mar 2018 17:06:39 -0700
-Message-ID: <20180306000639.GA15227@linux.intel.com>
-References: <151751717968.69886.6978962571680635420.stgit@djiang5-desk3.ch.intel.com>
- <151751718516.69886.135497175511444689.stgit@djiang5-desk3.ch.intel.com>
- <20180201234413.idd27uqzqbg54ddk@destitution>
- <20180202004332.GZ4849@magnolia>
- <d267ed33-950e-a5c5-73ce-36da6c940513@intel.com>
- <20180206231915.GA26233@magnolia>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 5/7] ext4: pass -ESHUTDOWN code to jbd2 layer
+Date: Tue, 6 Mar 2018 18:10:41 +0100
+Message-ID: <20180306171041.mz7qlpeikih6mtlg@quack2.suse.cz>
+References: <20180220023038.19883-1-tytso@mit.edu>
+ <20180220023038.19883-6-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180206231915.GA26233@magnolia>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20180220023038.19883-6-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Feb 06, 2018 at 03:19:15PM -0800, Darrick J. Wong wrote:
-<>
-> The last time I paid much attention to DAX was the thread "re-enable XFS
-> per-inode DAX"[1] last September.  Motivating me to merge anything else
-> into DAX involves convincing me that we (mm, fs, dax developers) have
-> some kind of agreement about what we want the user-visible interfaces to
-> DAX to look like.  
-
-Yep, I agree that is the next step.
-
-> Namely:
+On Mon 19-02-18 21:30:36, Theodore Ts'o wrote:
+> Previously the jbd2 layer assumed that a file system check would be
+> required after a journal abort.  In the case of the deliberate file
+> system shutdown, this should not be necessary.  Allow the jbd2 layer
+> to distinguish between these two cases by using the ESHUTDOWN errno.
 > 
-> 0. On what level do we allow users / administrators to control usage of
-> the dax paths?  Can the hardware convey enough detail to the kernel that
-> the kernel can make a reasonable decision on its own whether buffered or
-> dax io make more sense?  If so, can we please just have that?  If not,
-> why?
-
-Maybe eventually via the HMAT, but I don't think we have any systems today
-that do a good job of this.
-
-> 1. If we want to let users override whatever decision the kernel makes,
-> how should we do this?  One mount option that applies to everything,
-> like ext4?  Inheritable inode flags, like xfs?  Do we have one to force
-> it on even if the kernel doesn't want to?  Do we have another to force
-> it off even if the kernel wants to?  Do we even want to go down this
-> path?  Can we get away with making the answer to Q0 "yes" and then see
-> if anyone actually complains about not having fine-grained control?
-
-I agree with Dan's assessment that even if we can make the kernel smart enough
-to know when it's not a performance loss to use DAX (i.e. the persistent
-memory you're using DAX on is just as fast as the page cache), users will
-probably still want to retain the ability to force it on for use cases like
-MAP_SYNC, and force it off for things like RDMA or VFIO, at least until the
-page pinning work is complete.
-
-Personally I'm still hopeful that we can have both the mount option and the
-inheritable inode flags, and that we can figure out what we need to to get
-S_DAX transitions happening again.
-
-> 2. Under what conditions can we support dynamic changing of S_DAX on
-> inodes at runtime?  Will this switching work at any time?  Only for
-> files that are open but not mmap'd?  Only for files that are empty?
->
-> 3. The MAP_SYNC support that was merged into 4.15 -- is this sufficient
-> to allow this fsyncless clflush business that everyone seems to want?
-
-Yep, I think so.  The next big battles are S_DAX transitions, per-inode DAX
-support, and of course the page pinning / leases code that Dan & Christoph
-have been talking about.
-
-> 4. Can someone please fix the XFS iomap_begin function to handle CoW
-> properly?  I think it's a simple matter of allocate blocks, memcpy, and
-> remap, though I don't know how to do that. ;)
+> Also add proper locking to __journal_abort_soft().
 > 
-> 5. Do we test any of this stuff?
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: stable@vger.kernel.org
+> ---
 
-Yes, I think in general we do a pretty good job of DAX test case coverage
-between a combination of xfstests (which I have added to as I've fixed DAX
-related bugs), nfit_test and the ndctl unit tests.  hch has recently suggested
-we start using blktests as well, though I don't think we've actually made any
-new tests there yet.  Suggestions on how we can get better test coverage are
-welcome.
+Maybe a cleaner api would be to have a separate JBD2 function like
+jbd2_journal_abort_clean() that would just abort the journal without
+setting an error to it.
 
-> The thread from last September left off with promises to go define what
-> interface and behaviors we are providing to userspace, but afaict none
-> of that ever happened?  If we don't resolve these questions before LSF
-> then I think what's needed is to lock everyone in a room to hash all
-> this out. :P
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 3fbf48ec2188..efa0c72a0b9f 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -2105,12 +2108,22 @@ void __jbd2_journal_abort_hard(journal_t *journal)
+>   * but don't do any other IO. */
+>  static void __journal_abort_soft (journal_t *journal, int errno)
+>  {
+> -	if (journal->j_flags & JBD2_ABORT)
+> -		return;
+> +	int old_errno;
+>  
+> -	if (!journal->j_errno)
+> +	write_lock(&journal->j_state_lock);
+> +	old_errno = journal->j_errno;
+> +	if (!journal->j_errno || errno == -ESHUTDOWN)
+>  		journal->j_errno = errno;
+>  
+> +	if (journal->j_flags & JBD2_ABORT) {
+> +		write_unlock(&journal->j_state_lock);
+> +		if (!old_errno && old_errno != -ESHUTDOWN &&
+> +		    errno == -ESHUTDOWN)
+> +			jbd2_journal_update_sb_errno(journal);
+> +		return;
+> +	}
+> +	write_unlock(&journal->j_state_lock);
+> +
 
-Yep, that's accurate.  I got pulled off onto other work and am just now
-finding my way back.  I think talking about it at LSF sounds great, but it's a
-shame that hch won't be available.  It'll be nice to finally meet dchinner,
-though. :)
+Is it really correct that once the filesystem gets shutdown you clear the
+previous error from the journal? Because if we hit some real fs corruption,
+the journal gets aborted, and then someone calls ext4_shutdown(), we'd
+clear that error which looks like a bug to me because that shutdown hardly
+fixes the fs corruption...
 
-> --D
-> 
-> PS: My personal inclination is {yes, get rid of all that until someone
-> complains, i think so but haven't tested it, ???, i sure hope so}.
-> 
-> [1] https://marc.info/?l=linux-xfs&m=150638135225793&w=2
+								Honza
+
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
