@@ -1,10 +1,9 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 6/7] jbd2: if the journal is aborted then don't allow
- update of the log tail
-Date: Wed, 7 Mar 2018 09:55:00 +0100
-Message-ID: <20180307085500.prkmuiylpjwaptha@quack2.suse.cz>
+Subject: Re: [PATCH 4/7] ext4: eliminate sleep from shutdown ioctl
+Date: Wed, 7 Mar 2018 10:07:25 +0100
+Message-ID: <20180307090725.2svpxz2xu5vqt5x3@quack2.suse.cz>
 References: <20180220023038.19883-1-tytso@mit.edu>
- <20180220023038.19883-7-tytso@mit.edu>
+ <20180220023038.19883-5-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
@@ -12,13 +11,14 @@ Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180220023038.19883-7-tytso@mit.edu>
+In-Reply-To: <20180220023038.19883-5-tytso@mit.edu>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 19-02-18 21:30:37, Theodore Ts'o wrote:
-> This updates the jbd2 superblock unnecessarily, and on an abort we
-> shouldn't truncate the log.
+On Mon 19-02-18 21:30:35, Theodore Ts'o wrote:
+> The msleep() when processing EXT4_GOING_FLAGS_NOLOGFLUSH was a hack to
+> avoid some races (that are now fixed), but in fact it introduced its
+> own race.
 > 
 > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > Cc: stable@vger.kernel.org
@@ -30,32 +30,25 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 								Honza
 
 > ---
->  fs/jbd2/journal.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
+>  fs/ext4/ioctl.c | 4 +---
+>  1 file changed, 1 insertion(+), 3 deletions(-)
 > 
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index efa0c72a0b9f..dfb057900e79 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -974,7 +974,7 @@ int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
->  }
->  
->  /*
-> - * This is a variaon of __jbd2_update_log_tail which checks for validity of
-> + * This is a variation of __jbd2_update_log_tail which checks for validity of
->   * provided log tail and locks j_checkpoint_mutex. So it is safe against races
->   * with other threads updating log tail.
->   */
-> @@ -1417,6 +1417,9 @@ int jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
->  	journal_superblock_t *sb = journal->j_superblock;
->  	int ret;
->  
-> +	if (is_journal_aborted(journal))
-> +		return -EIO;
-> +
->  	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
->  	jbd_debug(1, "JBD2: updating superblock (start %lu, seq %u)\n",
->  		  tail_block, tail_tid);
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 4d1b1575f8ac..16d3d1325f5b 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -498,10 +498,8 @@ static int ext4_shutdown(struct super_block *sb, unsigned long arg)
+>  		break;
+>  	case EXT4_GOING_FLAGS_NOLOGFLUSH:
+>  		set_bit(EXT4_FLAGS_SHUTDOWN, &sbi->s_ext4_flags);
+> -		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal)) {
+> -			msleep(100);
+> +		if (sbi->s_journal && !is_journal_aborted(sbi->s_journal))
+>  			jbd2_journal_abort(sbi->s_journal, 0);
+> -		}
+>  		break;
+>  	default:
+>  		return -EINVAL;
 > -- 
 > 2.16.1.72.g5be1f00a9a
 > 
