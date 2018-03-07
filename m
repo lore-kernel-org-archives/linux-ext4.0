@@ -1,58 +1,64 @@
-From: lsorense@csclub.uwaterloo.ca (Lennart Sorensen)
-Subject: Re: ext4 ignoring rootfs default mount options
-Date: Wed, 7 Mar 2018 11:15:15 -0500
-Message-ID: <20180307161515.n76esxdqfdz5ho7h@csclub.uwaterloo.ca>
-References: <20180306190315.puocf5bu3bfz6yct@csclub.uwaterloo.ca>
- <20180307040608.GA2462@thunk.org>
- <20180307151427.i6vbeq6kqo55cdgs@csclub.uwaterloo.ca>
- <20180307160856.GD7507@thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 6/7] jbd2: if the journal is aborted then don't allow
+ update of the log tail
+Date: Wed, 7 Mar 2018 09:55:00 +0100
+Message-ID: <20180307085500.prkmuiylpjwaptha@quack2.suse.cz>
+References: <20180220023038.19883-1-tytso@mit.edu>
+ <20180220023038.19883-7-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180307160856.GD7507@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20180220023038.19883-7-tytso@mit.edu>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 07, 2018 at 11:08:56AM -0500, Theodore Y. Ts'o wrote:
-> This is where it's critcal to understand that the "tune2fs -o" changes
-> the *default* mount options.  The key in the comment is the anything
-> different from the *filesystem* defaults (that is, the defaults of the
-> particular ext4 file system, as opposed to the global defaults).  The
-> idea is that /proc/mounts, and /etc/mtab shows the options string that
-> if used in /etc/fstab, or in the mount command line, will replicate
-> the current mount option state.  Furthermore, that /proc/mounts is the
-> minimal set of mount option strings.
+On Mon 19-02-18 21:30:37, Theodore Ts'o wrote:
+> This updates the jbd2 superblock unnecessarily, and on an abort we
+> shouldn't truncate the log.
 > 
-> You may not like the behavior, but it's been this way forever, and the
-> reasoning behind it is that the low-level file system code doesn't
-> really know what the actual mount option string that would be in
-> /etc/fstab or in the /sbin/mount command line.  That's because
-> /sbin/mount command actually parses the mount options, and things like
-> "ro" is actually translated into bitflag passed to the mount option.
-> So for example, it's impossible to know whether "rw" was in the
-> user-specified mount string, since we never see it by the time the
-> string gets sent to ext4_fill_super (in fact the kernel never sees
-> it).  So when we try to make /proc/mounts a replacement for /etc/mtab
-> (since some people make /etc/mtab as symlink /proc/mounts), it's
-> actually impossible.  Trying to make it be the minimal set of options
-> was at least a consitent thing.  That is, if you use "tune2fs -o
-> nodelalloc", it's not necessary to put nodelalloc in /etc/fstab or in
-> the mount command line.  And hence, it should not be in /proc/mounts.
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: stable@vger.kernel.org
 
-OK, that makes sense.  Thanks.  I will work on convincing myself this
-is how it should be.
+Looks good. You can add:
 
-> As far as where ext4_seq_options_show() gets called, it's because we
-> have a fair amount of macro shortcuts in fs/ext4/sysfs.c (which is
-> where we put all of the pseudo file system support for ext4, which
-> means it includes procfs).  Search for macros PROC_FILE_SHOW_DEFN and
-> PROC_FILE_LIST.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Oh that's where it is.
+								Honza
 
+> ---
+>  fs/jbd2/journal.c | 5 ++++-
+>  1 file changed, 4 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index efa0c72a0b9f..dfb057900e79 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -974,7 +974,7 @@ int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+>  }
+>  
+>  /*
+> - * This is a variaon of __jbd2_update_log_tail which checks for validity of
+> + * This is a variation of __jbd2_update_log_tail which checks for validity of
+>   * provided log tail and locks j_checkpoint_mutex. So it is safe against races
+>   * with other threads updating log tail.
+>   */
+> @@ -1417,6 +1417,9 @@ int jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
+>  	journal_superblock_t *sb = journal->j_superblock;
+>  	int ret;
+>  
+> +	if (is_journal_aborted(journal))
+> +		return -EIO;
+> +
+>  	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+>  	jbd_debug(1, "JBD2: updating superblock (start %lu, seq %u)\n",
+>  		  tail_block, tail_tid);
+> -- 
+> 2.16.1.72.g5be1f00a9a
+> 
 -- 
-Len Sorensen
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
