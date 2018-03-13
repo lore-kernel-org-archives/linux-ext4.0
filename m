@@ -1,69 +1,77 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: [PATCH v5 03/11] ext4, dax: introduce ext4_dax_aops
-Date: Fri, 09 Mar 2018 22:55:05 -0800
-Message-ID: <152066490498.40260.13597428016512482129.stgit@dwillia2-desk3.amr.corp.intel.com>
-References: <152066488891.40260.14605734226832760468.stgit@dwillia2-desk3.amr.corp.intel.com>
+From: Adrian Hunter <adrian.hunter@intel.com>
+Subject: Re: mmc: block: bonnie++ runs with errors on arc/hsdk board
+Date: Tue, 13 Mar 2018 16:05:15 +0200
+Message-ID: <486fe92e-9b53-53a4-f98d-129a97032470@intel.com>
+References: <1520942674.10285.8.camel@synopsys.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: jack-AlSwsSmVLrQ@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hch-jcswGhMUV9g@public.gmane.org
-To: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <152066488891.40260.14605734226832760468.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "ulf.hansson@linaro.org" <ulf.hansson@linaro.org>,
+ linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+ "linus.walleij@linaro.org" <linus.walleij@linaro.org>,
+ Alexey Brodkin <Alexey.Brodkin@synopsys.com>,
+ "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
+ "jh80.chung@samsung.com" <jh80.chung@samsung.com>,
+ Andreas Dilger <adilger.kernel@dilger.ca>,
+ "linux-snps-arc@lists.infradead.org" <linux-snps-arc@lists.infradead.org>,
+ Eugeniy Paltsev <Eugeniy.Paltsev@synopsys.com>
+To: Evgeniy Didin <Evgeniy.Didin@synopsys.com>
+Return-path: <linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org>
+In-Reply-To: <1520942674.10285.8.camel@synopsys.com>
+Content-Language: en-US
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-snps-arc>,
+ <mailto:linux-snps-arc-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-snps-arc/>
+List-Post: <mailto:linux-snps-arc@lists.infradead.org>
+List-Help: <mailto:linux-snps-arc-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-snps-arc>,
+ <mailto:linux-snps-arc-request@lists.infradead.org?subject=subscribe>
+Sender: "linux-snps-arc" <linux-snps-arc-bounces@lists.infradead.org>
+Errors-To: linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org
 List-Id: linux-ext4.vger.kernel.org
 
-In preparation for the dax implementation to start associating dax pages
-to inodes via page->mapping, we need to provide a 'struct
-address_space_operations' instance for dax. Otherwise, direct-I/O
-triggers incorrect page cache assumptions and warnings.
-
-Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
----
- fs/ext4/inode.c |   11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c94780075b04..ef21f0ad38ff 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3946,6 +3946,13 @@ static const struct address_space_operations ext4_da_aops = {
- 	.error_remove_page	= generic_error_remove_page,
- };
- 
-+static const struct address_space_operations ext4_dax_aops = {
-+	.writepages		= ext4_writepages,
-+	.direct_IO		= ext4_direct_IO,
-+	.set_page_dirty		= dax_set_page_dirty,
-+	.invalidatepage		= dax_invalidatepage,
-+};
-+
- void ext4_set_aops(struct inode *inode)
- {
- 	switch (ext4_inode_journal_mode(inode)) {
-@@ -3958,7 +3965,9 @@ void ext4_set_aops(struct inode *inode)
- 	default:
- 		BUG();
- 	}
--	if (test_opt(inode->i_sb, DELALLOC))
-+	if (IS_DAX(inode))
-+		inode->i_mapping->a_ops = &ext4_dax_aops;
-+	else if (test_opt(inode->i_sb, DELALLOC))
- 		inode->i_mapping->a_ops = &ext4_da_aops;
- 	else
- 		inode->i_mapping->a_ops = &ext4_aops;
+T24gMTMvMDMvMTggMTQ6MDQsIEV2Z2VuaXkgRGlkaW4gd3JvdGU6Cj4gSGVsbG8gQWRyaWFuLAo+
+IAo+IEkgaGF2ZSBkaXNjb3ZlcmVkLCB0aGF0IGJlZ2dpbmluZyB3aXRoIDQuMTYtcmMxIGJvbm5p
+ZSsrIGJlbmNobWFyawo+IHJ1bnMgd2l0aCBlcnJvcnMgb24gYXJjL2hzZGsgYm9hcmQuIEFmdGVy
+IGJpc2VjdGluZyBiZXR3ZWVuIDQuMTUgYW5kIDQuMTYtcmMxLAo+IEkgaGF2ZSBmb3VuZCB0aGF0
+IGVycm9ycyBzdGFydGVkIGFmdGVywqAKPiBjb21taXQgODExOTY5NzZlZDk0IChtbWM6IGJsb2Nr
+OiBBZGQgYmxrLW1xIHN1cHBvcnQpLgo+IAo+IEVycm9yIG1lc3NhZ2UgaXMgbGlrZToKPiAKPiB8
+ICMgYm9ubmllKysgLXUgcm9vdCAtciAyNTYgLXMgNTEyIC14IDEgLWTCoMKgL21udMKgCj4gfCBV
+c2luZyB1aWQ6MCwgZ2lkOjAuCj4gfCBXcml0aW5nIHdpdGggcHV0YygpLi4ucmFuZG9tOiBjcm5n
+IGluaXQgZG9uZQo+IHwgZG9uZQo+IHwgV3JpdGluZyBpbnRlbGxpZ2VudGx5Li4uSU5GTzogdGFz
+ayBrd29ya2VyL3U4OjA6NSBibG9ja2VkIGZvciBtb3JlIHRoYW4gMTAgc2Vjb25kcy4KPiB8wqDC
+oMKgwqDCoMKgTm90IHRhaW50ZWQgNC4xNS4wLXJjMy0wMDAxMi1nODExOTY5NzZlZDk0LWRpcnR5
+ICMxCj4gfCAiZWNobyAwID4gL3Byb2Mvc3lzL2tlcm5lbC9odW5nX3Rhc2tfdGltZW91dF9zZWNz
+IiBkaXNhYmxlcyB0aGlzIG1lc3NhZ2UuCj4gfCBrd29ya2VyL3U4OjDCoMKgwqDCoETCoMKgwqDC
+oDDCoMKgwqDCoMKgNcKgwqDCoMKgwqDCoDIgMHgwMDAwMDAwMAo+IHwgV29ya3F1ZXVlOiB3cml0
+ZWJhY2sgd2Jfd29ya2ZuIChmbHVzaC0xNzk6MCkKPiB8Cj4gfCBTdGFjayBUcmFjZToKPiB8wqDC
+oF9fc3dpdGNoX3RvKzB4MC8weGFjCj4gfMKgwqBfX3NjaGVkdWxlKzB4MWI4LzB4NzM4Cj4gfMKg
+wqBpb19zY2hlZHVsZSsweDVjLzB4YzAKPiB8wqDCoGJpdF93YWl0X2lvKzB4Yy8weDQ4Cj4gfMKg
+wqBvdXRfb2ZfbGluZV93YWl0X29uX2JpdCsweDc4LzB4YzAKPiB8wqDCoGRvX2dldF93cml0ZV9h
+Y2Nlc3MrMHgxYWEvMHg0Y2MKPiB8wqDCoGpiZDJfam91cm5hbF9nZXRfd3JpdGVfYWNjZXNzKzB4
+MzIvMHg3NAo+IHzCoMKgX19leHQ0X2pvdXJuYWxfZ2V0X3dyaXRlX2FjY2VzcysweDNhLzB4YWMK
+PiB8wqDCoGV4dDRfbWJfbWFya19kaXNrc3BhY2VfdXNlZCsweDY2LzB4NWIwCj4gfMKgwqBleHQ0
+X21iX25ld19ibG9ja3MrMHgxZWUvMHg4MzAKPiB8wqDCoGV4dDRfZXh0X21hcF9ibG9ja3MrMHg1
+MDQvMHhjYWMKPiB8wqDCoGV4dDRfbWFwX2Jsb2NrcysweDI2Mi8weDVlOAo+IHzCoMKgbXBhZ2Vf
+bWFwX2FuZF9zdWJtaXRfZXh0ZW50KzB4YjgvMHg2NDgKPiB8wqDCoGV4dDRfd3JpdGVwYWdlcysw
+eDVjZS8weDZiNAo+IHzCoMKgZG9fd3JpdGVwYWdlcysweDIwLzB4ODQKPiB8wqDCoF9fd3JpdGVi
+YWNrX3NpbmdsZV9pbm9kZSsweDJhLzB4MTU0Cj4gfMKgwqB3Yl93cml0ZWJhY2srMHg1MzgvMHhh
+ZTAKPiB8wqDCoHdiX3dvcmtmbisweDE3Yy8weDMzNAo+IHzCoMKgcHJvY2Vzc19vbmVfd29yaysw
+eDFhNi8weDM1MAo+IHzCoMKgd29ya2VyX3RocmVhZCsweGYyLzB4NDc4Cj4gfMKgwqBrdGhyZWFk
+KzB4MTIwLzB4MTNjCj4gfMKgwqByZXRfZnJvbV9mb3JrKzB4MTgvMHgxYwo+IAo+IFRoZXJlIGFy
+ZSBzb21lIGRldGFpbHMgb2YgaHNka19kZWZjb25maWcgcHJlc2VudGVkIGJlbGxvdzoKPiAKPiBT
+T0ZUTE9DS1VQX0RFVEVDVE9SPXkKPiBERVRFQ1RfSFVOR19UQVNLPXkKPiBERUZBVUxUX0hVTkdf
+VEFTS19USU1FT1VUPTEwCj4gTU1DX0RXPXkKPiBNTUNfRFdfUExURk09eQo+IAo+IEkgaGF2ZSBh
+bHNvIHRlc3RlZCBib25uaWUrKyBvbiBXYW5kYm9hcmQgb24gdjQuMTYtcmM1IHdpdGggdGhlIHNh
+bWUKPiBERUZBVUxUX0hVTkdfVEFTS19USU1FT1VUPTEwLCBidXQgdGhlcmUgd2VyZSBubyBlcnJv
+cnMuCj4gCj4gRXZlbiB0aG91Z2ggaXQgaXMgbm90IGNyaXRpY2FsIGVycm9yIGFuZCB3ZSBzZWUg
+Ym9ubmllKysgdGVzdCBwcm9jZWVkcyB0byB0aGUgZW5kLAo+IHN0aWxsIGl0IGlzIHN0cmFuZ2Us
+IHRoYXQgc29tZSBwcm9jZXNzIGlzIHJ1bm5pbmcgaW4ga2VybmVsIHNwYWNlIGZvciBhIGxvbmcg
+dGltZSAoYXQgbGVhc3QgMTBzZWMpLgo+IFdoYXQgaXMgc3RyYW5nZSwgYmVmb3JlIG1ldGlvbmVk
+IGNvbW1pdCBJIGNhbid0IHJlcHJvZHVjZSB0aGlzIGJlaGF2aW91ci4KPiAKPiBJIGFtIHdvbmRl
+cmluZyBpcyB0aGlzIGV4cGVjdGVkIGJlaGF2aW91cj8gCgpXYXMgdGhlIHBlcmZvcm1hbmNlIGFm
+ZmVjdGVkPyBpLmUuIHRoZSByZXN1bHRzIGZyb20gYm9ubmllKysKCldoYXQgbW91bnQgb3B0aW9u
+cyBkaWQgeW91IHVzZT8KCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fCmxpbnV4LXNucHMtYXJjIG1haWxpbmcgbGlzdApsaW51eC1zbnBzLWFyY0BsaXN0cy5p
+bmZyYWRlYWQub3JnCmh0dHA6Ly9saXN0cy5pbmZyYWRlYWQub3JnL21haWxtYW4vbGlzdGluZm8v
+bGludXgtc25wcy1hcmM=
