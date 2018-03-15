@@ -1,72 +1,149 @@
-From: Adrian Hunter <adrian.hunter@intel.com>
-Subject: Re: mmc: block: bonnie++ runs with errors on arc/hsdk board
-Date: Thu, 15 Mar 2018 11:27:49 +0200
-Message-ID: <83de0f90-0919-f449-b432-494b9bf524a1@intel.com>
-References: <1520942674.10285.8.camel@synopsys.com>
- <486fe92e-9b53-53a4-f98d-129a97032470@intel.com>
- <1520956602.10285.10.camel@synopsys.com>
- <1521030769.10285.16.camel@synopsys.com>
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: [PATCH v6 00/15] dax: fix dma vs truncate/hole-punch
+Date: Thu, 15 Mar 2018 08:51:22 -0700
+Message-ID: <152112908134.24669.10222746224538377035.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "ulf.hansson@linaro.org" <ulf.hansson@linaro.org>,
- "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
- "tytso@mit.edu" <tytso@mit.edu>,
- "linus.walleij@linaro.org" <linus.walleij@linaro.org>,
- "Alexey.Brodkin@synopsys.com" <Alexey.Brodkin@synopsys.com>,
- "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
- "jh80.chung@samsung.com" <jh80.chung@samsung.com>,
- "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
- "linux-snps-arc@lists.infradead.org" <linux-snps-arc@lists.infradead.org>,
- "Eugeniy.Paltsev@synopsys.com" <Eugeniy.Paltsev@synopsys.com>
-To: Evgeniy Didin <Evgeniy.Didin@synopsys.com>
-Return-path: <linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org>
-In-Reply-To: <1521030769.10285.16.camel@synopsys.com>
-Content-Language: en-US
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-snps-arc>,
- <mailto:linux-snps-arc-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-snps-arc/>
-List-Post: <mailto:linux-snps-arc@lists.infradead.org>
-List-Help: <mailto:linux-snps-arc-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-snps-arc>,
- <mailto:linux-snps-arc-request@lists.infradead.org?subject=subscribe>
-Sender: "linux-snps-arc" <linux-snps-arc-bounces@lists.infradead.org>
-Errors-To: linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Michal Hocko <mhocko-IBi9RG/b67k@public.gmane.org>, jack-AlSwsSmVLrQ@public.gmane.org,
+ Matthew Wilcox <mawilcox-0li6OtcxBFHby3iVrkZq2A@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ Dave Hansen <dave.hansen-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ =?utf-8?b?SsOpcsO0bWU=?= Glisse <jglisse-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
+ Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, Jan Kara <jack-IBi9RG/b67k@public.gmane.org>,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>,
+ linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hch-jcswGhMUV9g@public.gmane.org
+To: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-T24gMTQvMDMvMTggMTQ6MzIsIEV2Z2VuaXkgRGlkaW4gd3JvdGU6Cj4gSGkgQWRyaWFuLAo+Pj4K
-Pj4+IFdhcyB0aGUgcGVyZm9ybWFuY2UgYWZmZWN0ZWQ/IGkuZS4gdGhlIHJlc3VsdHMgZnJvbSBi
-b25uaWUrKwo+Pgo+PiBJIGhhdmUgcnVuIGJvbm5pZSsrIHNldmVyYWwgdGltZXMgYmVmb3JlIGFu
-ZCBhZnRlciBtZW50aW9uZWQgY29tbWl0LiBIZXJlIGlzIG91dHB1dDoKPj4gLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS08OC0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0K
-Pj4gQmVmb3JlIGNvbW1pdDoKPj4gQVJDTGludXgsNTEyTSw2NDQyLDUwLDcyMTEsMCw1MzMzLDAs
-MTI5NTQsOTksMzQ1NjM4LDEwMCwrKysrKywrKyssMTYsMjIzMjIsMTAwLCsrKysrLCsrKywzMjcz
-NSw5OSwyMjkyMSwxMDAsKysrKyssKysrLDMyMjExLDEwMAo+PiBBUkNMaW51eCw1MTJNLDY2MTEs
-NTEsNzI0OCwwLDUxNjIsMCwxMjk1MSw5OSwzNDQ3NjMsOTksKysrKyssKysrLDE2LDIyNjQ5LDk5
-LCsrKysrLCsrKywzMjcyMyw5OSwyMjU3MiwxMDAsKysrKyssKysrLDMxNjk3LDEwMAo+PiBBUkNM
-aW51eCw1MTJNLDY1OTcsNTIsNzMwNywwLDUzNjgsMCwxMjkzNCw5OSwzNDM5ODcsOTksKysrKyss
-KysrLDE2LDIyNzc1LDEwMCwrKysrKywrKyssMzI3MTMsOTksMjI4MzIsMTAwLCsrKysrLCsrKywz
-MTg5OSw5OQo+PiBBZnRlciBjb21taXQ6Cj4+IEFSQ0xpbnV4LDUxMk0sNDQ1MywzNiw2NDc0LDEs
-NTg1MiwwLDEyOTQwLDk5LDM0NDMyOSwxMDAsKysrKyssKysrLDE2LDIyMTY4LDk4LCsrKysrLCsr
-KywzMjc2MCw5OSwyMjc1NSwxMDAsKysrKyssKysrLDMyMjA1LDEwMAo+PiBBUkNMaW51eCw1MTJN
-LDUxNTksNDIsNjk0NCwxLDU2NTgsMCwxMjk0NSw5OSwzNDQyOTAsMTAwLCsrKysrLCsrKywxNiwy
-MjI5NSwxMDAsKysrKyssKysrLDMyNzE1LDk5LDIyODg4LDk5LCsrKysrLCsrKywzMjAwNyw5OQo+
-PiBBUkNMaW51eCw1MTJNLDUxNzAsNDIsNjg0MCwyLDUzMTUsMCwxMjk0Niw5OSwzNDM4ODksMTAw
-LCsrKysrLCsrKywxNiwyMjQ0NSwxMDAsKysrKyssKysrLDMyNjgxLDk5LDIyOTY3LDEwMCwrKysr
-KywrKyssMzIxMTcsOTkKPj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS08OC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQo+PiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgXl5eXsKgCj4+IElmIGkgdW5kZXJzdGFuZCBjb3JyZWN0bHksIGluIHRoaXJkIGNvbHVtbiBp
-cyBzaG93biAic2VxdWVudGlhbCBvdXRwdXQiIHBlciBjaGFyYWN0ZXIgc3BlZWQgKEsvc2VjKSwg
-d2hpY2ggZGVjcmVhc2VkLgo+Pgo+Pj4gV2hhdCBtb3VudCBvcHRpb25zIGRpZCB5b3UgdXNlPwo+
-Pgo+PiBJIGRpZG4ndCB1c2UgYW55IG9wdGlvbnMuIFNpbXBseToKPj4gIyBtb3VudCAvZGV2L21t
-Y2JsazBwMSAvbW50Cj4gCj4gTm90ZSB0aGF0IHRoZSBmaWxlIHN5c3RlbSBvbiBTRGNhcmQgd2Fz
-IGV4dDQuwqAKClBsZWFzZSB0cnk6CgoJcGVyZiByZWNvcmQgLWEgLWUgbW1jOiogLS0gYm9ubmll
-KysgLXUgcm9vdCAtciAyNTYgLXMgNTEyIC14IDEgLWQgL21udAoKYW5kIHNoYXJlIHRoZSByZXN1
-bHRpbmcgcGVyZi5kYXRhIGZpbGUgd2hlbiB5b3UgYXJlIGFibGUKdG8gcmVwcm9kdWNlIHRoZSBo
-dW5nIHRhc2sgbWVzc2FnZS4KCllvdSBtYXkgd2FudCB0byBhZGQgdGhpcyBwYXRjaCBmaXJzdDoK
-CglodHRwczovL21hcmMuaW5mby8/bD1saW51eC1tbWMmbT0xNTIxMTA1ODAzMjQyMDAKCl9fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fCmxpbnV4LXNucHMtYXJj
-IG1haWxpbmcgbGlzdApsaW51eC1zbnBzLWFyY0BsaXN0cy5pbmZyYWRlYWQub3JnCmh0dHA6Ly9s
-aXN0cy5pbmZyYWRlYWQub3JnL21haWxtYW4vbGlzdGluZm8vbGludXgtc25wcy1hcmM=
+Changes since v5 [1]:
+* Split the introduction of dax-specific address_space_operations into
+  its own patch, and place them in fs/libfs.c (Christoph)
+
+* Kill some more straggling dead code implementing dax support for block
+  devices.
+
+* Mark devm_memremap_pages EXPORT_SYMBOL_GPL (Christoph)
+
+* Introduce {xfs,ext4,ext2}_dax_writepages() and kill the dynamic check
+  for IS_DAX() in the typical _writepages() implementations in these
+  filesystems. (Christoph)
+
+* Rework xfs_break_layouts() to assume the XFS_MMAPLOCK_EXCL is held at
+  entry. (Christoph)
+
+* Replace the XFS_BREAK_WRITE and XFS_BREAK_MAPS flags with the
+  BREAK_WRITE and BREAK_TRUNCATE enum values since BREAK_WRITE is a
+  subset of BREAK_TRUNCATE. (Christoph)
+
+* Replace wait_for_atomic_one() with Peter's new wait_var_event()
+  facility [2]. (Peter)
+
+[1]: https://lists.01.org/pipermail/linux-nvdimm/2018-March/014585.html
+[2]: https://patchwork.kernel.org/patch/10284383/
+
+---
+
+Background:
+
+get_user_pages() in the filesystem pins file backed memory pages for
+access by devices performing dma. However, it only pins the memory pages
+not the page-to-file offset association. If a file is truncated the
+pages are mapped out of the file and dma may continue indefinitely into
+a page that is owned by a device driver. This breaks coherency of the
+file vs dma, but the assumption is that if userspace wants the
+file-space truncated it does not matter what data is inbound from the
+device, it is not relevant anymore. The only expectation is that dma can
+safely continue while the filesystem reallocates the block(s).
+
+Problem:
+
+This expectation that dma can safely continue while the filesystem
+changes the block map is broken by dax. With dax the target dma page
+*is* the filesystem block. The model of leaving the page pinned for dma,
+but truncating the file block out of the file, means that the filesytem
+is free to reallocate a block under active dma to another file and now
+the expected data-incoherency situation has turned into active
+data-corruption.
+
+Solution:
+
+Defer all filesystem operations (fallocate(), truncate()) on a dax mode
+file while any page/block in the file is under active dma. This solution
+assumes that dma is transient. Cases where dma operations are known to
+not be transient, like RDMA, have been explicitly disabled via
+commits like 5f1d43de5416 "IB/core: disable memory registration of
+filesystem-dax vmas".
+
+The dax_layout_busy_page() routine is called by filesystems with a lock
+held against mm faults (i_mmap_lock) to find pinned / busy dax pages.
+The process of looking up a busy page invalidates all mappings
+to trigger any subsequent get_user_pages() to block on i_mmap_lock.
+The filesystem continues to call dax_layout_busy_page() until it finally
+returns no more active pages. This approach assumes that the page
+pinning is transient, if that assumption is violated the system would
+have likely hung from the uncompleted I/O.
+
+---
+
+Dan Williams (15):
+      dax: store pfns in the radix
+      fs, dax: prepare for dax-specific address_space_operations
+      block, dax: remove dead code in blkdev_writepages()
+      xfs, dax: introduce xfs_dax_aops
+      ext4, dax: introduce ext4_dax_aops
+      ext2, dax: introduce ext2_dax_aops
+      fs, dax: use page->mapping to warn if truncate collides with a busy page
+      mm, dax: enable filesystems to trigger dev_pagemap ->page_free callbacks
+      mm, dev_pagemap: introduce CONFIG_DEV_PAGEMAP_OPS
+      memremap: mark devm_memremap_pages() EXPORT_SYMBOL_GPL
+      mm, fs, dax: handle layout changes to pinned dax mappings
+      xfs: require mmap lock for xfs_break_layouts()
+      xfs: communicate lock drop events from xfs_break_layouts()
+      xfs: prepare xfs_break_layouts() for another layout type
+      xfs, dax: introduce xfs_break_dax_layouts()
+
+
+ drivers/dax/super.c      |   96 ++++++++++++++++---
+ drivers/nvdimm/pmem.c    |    3 -
+ fs/Kconfig               |    1 
+ fs/block_dev.c           |    5 -
+ fs/dax.c                 |  232 ++++++++++++++++++++++++++++++++++++----------
+ fs/ext2/ext2.h           |    1 
+ fs/ext2/inode.c          |   43 +++++----
+ fs/ext2/namei.c          |   18 ----
+ fs/ext2/super.c          |    6 +
+ fs/ext4/inode.c          |   38 ++++++--
+ fs/ext4/super.c          |    6 +
+ fs/libfs.c               |   27 +++++
+ fs/xfs/xfs_aops.c        |   21 +++-
+ fs/xfs/xfs_aops.h        |    1 
+ fs/xfs/xfs_file.c        |   87 ++++++++++++++++-
+ fs/xfs/xfs_inode.h       |   16 +++
+ fs/xfs/xfs_ioctl.c       |    8 --
+ fs/xfs/xfs_iops.c        |   21 +++-
+ fs/xfs/xfs_pnfs.c        |   17 ++-
+ fs/xfs/xfs_pnfs.h        |    4 -
+ fs/xfs/xfs_super.c       |   20 ++--
+ include/linux/dax.h      |   51 +++++++++-
+ include/linux/fs.h       |    3 +
+ include/linux/memremap.h |   28 ++----
+ include/linux/mm.h       |   61 +++++++++---
+ kernel/memremap.c        |   32 +++++-
+ mm/Kconfig               |    5 +
+ mm/gup.c                 |    5 +
+ mm/hmm.c                 |   13 ---
+ mm/swap.c                |    3 -
+ 30 files changed, 653 insertions(+), 219 deletions(-)
