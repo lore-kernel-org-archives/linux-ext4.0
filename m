@@ -1,67 +1,46 @@
-From: Alexey Brodkin <Alexey.Brodkin@synopsys.com>
-Subject: Re: mmc: block: bonnie++ runs with errors on arc/hsdk board
-Date: Thu, 15 Mar 2018 17:21:49 +0000
-Message-ID: <1521134509.6358.1.camel@synopsys.com>
-References: <1520942674.10285.8.camel@synopsys.com>
- <486fe92e-9b53-53a4-f98d-129a97032470@intel.com>
- <1520956602.10285.10.camel@synopsys.com>
- <1521030769.10285.16.camel@synopsys.com>
- <83de0f90-0919-f449-b432-494b9bf524a1@intel.com>
- <345e9053-9251-ad27-d05b-ec80b69ee235@synopsys.com>
+From: lsorense@csclub.uwaterloo.ca (Lennart Sorensen)
+Subject: Re: ext4 ignoring rootfs default mount options
+Date: Thu, 15 Mar 2018 14:35:27 -0400
+Message-ID: <20180315183527.sruft4472fwwu6qk@csclub.uwaterloo.ca>
+References: <20180306190315.puocf5bu3bfz6yct@csclub.uwaterloo.ca>
+ <20180307040608.GA2462@thunk.org>
+ <20180307151427.i6vbeq6kqo55cdgs@csclub.uwaterloo.ca>
+ <20180307160856.GD7507@thunk.org>
+ <20180307191324.qtloesy4zdlkfnwv@csclub.uwaterloo.ca>
+ <20180307225043.GA15217@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "Evgeniy.Didin@synopsys.com" <Evgeniy.Didin@synopsys.com>,
- "ulf.hansson@linaro.org" <ulf.hansson@linaro.org>,
- "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
- "tytso@mit.edu" <tytso@mit.edu>,
- "vincent.weaver@maine.edu" <vincent.weaver@maine.edu>,
- "peterz@infradead.org" <peterz@infradead.org>,
- "linus.walleij@linaro.org" <linus.walleij@linaro.org>,
- "Alexey.Brodkin@synopsys.com" <Alexey.Brodkin@synopsys.com>,
- "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
- "jh80.chung@samsung.com" <jh80.chung@samsung.com>,
- "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
- "linux-snps-arc@lists.infradead.org" <linux-snps-arc@lists.infradead.org>,
- "Eugeniy.Paltsev@synopsys.com" <Eugeniy.Paltsev@synopsys.com>
-To: Vineet Gupta <Vineet.Gupta1@synopsys.com>,
- "adrian.hunter@intel.com" <adrian.hunter@intel.com>
-Return-path: <linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org>
-In-Reply-To: <345e9053-9251-ad27-d05b-ec80b69ee235@synopsys.com>
-Content-Language: en-US
-Content-ID: <575290F5A47817428606B129E3E738F1@internal.synopsys.com>
-List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-snps-arc>,
- <mailto:linux-snps-arc-request@lists.infradead.org?subject=unsubscribe>
-List-Archive: <http://lists.infradead.org/pipermail/linux-snps-arc/>
-List-Post: <mailto:linux-snps-arc@lists.infradead.org>
-List-Help: <mailto:linux-snps-arc-request@lists.infradead.org?subject=help>
-List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-snps-arc>,
- <mailto:linux-snps-arc-request@lists.infradead.org?subject=subscribe>
-Sender: "linux-snps-arc" <linux-snps-arc-bounces@lists.infradead.org>
-Errors-To: linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org
+Content-Type: text/plain; charset=us-ascii
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180307225043.GA15217@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Vineet,
-
-On Thu, 2018-03-15 at 09:38 -0700, Vineet Gupta wrote:
-> On 03/15/2018 02:27 AM, Adrian Hunter wrote:
-> > Please try:
-> > 
-> > 	perf record -a -e mmc:* -- bonnie++ -u root -r 256 -s 512 -x 1 -d /mnt
-> > 
-> > and share the resulting perf.data file when you are able
-> > to reproduce the hung task message.
-> > 
-> > You may want to add this patch first:
-> > 
-> > 	https://marc.info/?l=linux-mmc&m=152110580324200
+On Wed, Mar 07, 2018 at 05:50:43PM -0500, Theodore Y. Ts'o wrote:
+> Yes, this is a shortcoming in tune2fs.  You can set extended mount
+> options using debugfs:
 > 
-> While this SoC has perf counters, Unfortunately the overflow interrupts are not 
-> wired up. We can do perf stats but not sampling.
+>     debugfs -w -R "set_super_value mount_opts foo,bar" /dev/sda1
+> 
+> ... but there ought to be some way to support some kind of quoting
+> mechanism so that tune2fs can understand when a comma is part of an
+> extended option value, as opposed to separating extended options.
+> 
+> Extended options haven't been used much, so it's not been something
+> that has gotten a lot of polish.  Backing up for a bit, is there a
+> reason why you need so many mount options when mounting the root file
+> sytsem?  Specifically, why do you want to turn off dellayed allocation?
 
-I guess here Adrian was asking for pure software MMC-related events which are
-orthogonal to CPU's perf interrupts.
+Completely don't trust it.  Also don't do much writing so no real benefit.
+Having seen machines get killed by the watchdog come back with blank
+chunks in log files is not acceptable.  Getting all user space software
+fixed to actually sync properly in all the right places takes forever.
 
-Adrian?
+Now for my home machine (especially my mythtv box) it is absoletely on
+and a great thing to have.
 
--Alexey
+-- 
+Len Sorensen
