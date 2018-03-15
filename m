@@ -1,105 +1,61 @@
-From: Dan Williams <dan.j.williams@intel.com>
-Subject: [PATCH v6 05/15] ext4, dax: introduce ext4_dax_aops
-Date: Thu, 15 Mar 2018 08:51:50 -0700
-Message-ID: <152112911073.24669.9909626935784919021.stgit@dwillia2-desk3.amr.corp.intel.com>
-References: <152112908134.24669.10222746224538377035.stgit@dwillia2-desk3.amr.corp.intel.com>
+From: Vineet Gupta <Vineet.Gupta1@synopsys.com>
+Subject: Re: mmc: block: bonnie++ runs with errors on arc/hsdk board
+Date: Thu, 15 Mar 2018 09:38:15 -0700
+Message-ID: <345e9053-9251-ad27-d05b-ec80b69ee235@synopsys.com>
+References: <1520942674.10285.8.camel@synopsys.com>
+ <486fe92e-9b53-53a4-f98d-129a97032470@intel.com>
+ <1520956602.10285.10.camel@synopsys.com>
+ <1521030769.10285.16.camel@synopsys.com>
+ <83de0f90-0919-f449-b432-494b9bf524a1@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        david@fromorbit.com, hch@lst.de, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, jack@suse.cz,
-        ross.zwisler@linux.intel.com, hch@lst.de,
-        linux-kernel@vger.kernel.org
-To: linux-nvdimm@lists.01.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <152112908134.24669.10222746224538377035.stgit@dwillia2-desk3.amr.corp.intel.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: "ulf.hansson@linaro.org" <ulf.hansson@linaro.org>,
+ "linux-snps-arc@lists.infradead.org" <linux-snps-arc@lists.infradead.org>,
+ "tytso@mit.edu" <tytso@mit.edu>, Vince Weaver <vincent.weaver@maine.edu>,
+ Peter Zijlstra <peterz@infradead.org>,
+ "linus.walleij@linaro.org" <linus.walleij@linaro.org>,
+ "Alexey.Brodkin@synopsys.com" <Alexey.Brodkin@synopsys.com>,
+ "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
+ "jh80.chung@samsung.com" <jh80.chung@samsung.com>,
+ "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ "Eugeniy.Paltsev@synopsys.com" <Eugeniy.Paltsev@synopsys.com>
+To: Adrian Hunter <adrian.hunter@intel.com>, Evgeniy Didin
+ <Evgeniy.Didin@synopsys.com>
+Return-path: <linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org>
+In-Reply-To: <83de0f90-0919-f449-b432-494b9bf524a1@intel.com>
+Content-Language: en-US
+List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-snps-arc>,
+ <mailto:linux-snps-arc-request@lists.infradead.org?subject=unsubscribe>
+List-Archive: <http://lists.infradead.org/pipermail/linux-snps-arc/>
+List-Post: <mailto:linux-snps-arc@lists.infradead.org>
+List-Help: <mailto:linux-snps-arc-request@lists.infradead.org?subject=help>
+List-Subscribe: <http://lists.infradead.org/mailman/listinfo/linux-snps-arc>,
+ <mailto:linux-snps-arc-request@lists.infradead.org?subject=subscribe>
+Sender: "linux-snps-arc" <linux-snps-arc-bounces@lists.infradead.org>
+Errors-To: linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org
 List-Id: linux-ext4.vger.kernel.org
 
-In preparation for the dax implementation to start associating dax pages
-to inodes via page->mapping, we need to provide a 'struct
-address_space_operations' instance for dax. Otherwise, direct-I/O
-triggers incorrect page cache assumptions and warnings.
+On 03/15/2018 02:27 AM, Adrian Hunter wrote:
+> Please try:
+> 
+> 	perf record -a -e mmc:* -- bonnie++ -u root -r 256 -s 512 -x 1 -d /mnt
+> 
+> and share the resulting perf.data file when you are able
+> to reproduce the hung task message.
+> 
+> You may want to add this patch first:
+> 
+> 	https://marc.info/?l=linux-mmc&m=152110580324200
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
-Cc: Jan Kara <jack@suse.cz>
-Signed-off-by: Dan Williams <dan.j.williams@intel.com>
----
- fs/ext4/inode.c |   38 +++++++++++++++++++++++++++++++-------
- 1 file changed, 31 insertions(+), 7 deletions(-)
+While this SoC has perf counters, Unfortunately the overflow interrupts are not 
+wired up. We can do perf stats but not sampling.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c94780075b04..f9884e41cb39 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2725,12 +2725,6 @@ static int ext4_writepages(struct address_space *mapping,
- 	percpu_down_read(&sbi->s_journal_flag_rwsem);
- 	trace_ext4_writepages(inode, wbc);
- 
--	if (dax_mapping(mapping)) {
--		ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev,
--						  wbc);
--		goto out_writepages;
--	}
--
- 	/*
- 	 * No pages to write? This is mainly a kludge to avoid starting
- 	 * a transaction for special inodes like journal inode on last iput()
-@@ -2955,6 +2949,27 @@ static int ext4_writepages(struct address_space *mapping,
- 	return ret;
- }
- 
-+static int ext4_dax_writepages(struct address_space *mapping,
-+			       struct writeback_control *wbc)
-+{
-+	int ret;
-+	long nr_to_write = wbc->nr_to_write;
-+	struct inode *inode = mapping->host;
-+	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
-+
-+	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
-+		return -EIO;
-+
-+	percpu_down_read(&sbi->s_journal_flag_rwsem);
-+	trace_ext4_writepages(inode, wbc);
-+
-+	ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev, wbc);
-+	trace_ext4_writepages_result(inode, wbc, ret,
-+				     nr_to_write - wbc->nr_to_write);
-+	percpu_up_read(&sbi->s_journal_flag_rwsem);
-+	return ret;
-+}
-+
- static int ext4_nonda_switch(struct super_block *sb)
- {
- 	s64 free_clusters, dirty_clusters;
-@@ -3946,6 +3961,13 @@ static const struct address_space_operations ext4_da_aops = {
- 	.error_remove_page	= generic_error_remove_page,
- };
- 
-+static const struct address_space_operations ext4_dax_aops = {
-+	.direct_IO		= ext4_direct_IO,
-+	.writepages		= ext4_dax_writepages,
-+	.set_page_dirty		= noop_set_page_dirty,
-+	.invalidatepage		= noop_invalidatepage,
-+};
-+
- void ext4_set_aops(struct inode *inode)
- {
- 	switch (ext4_inode_journal_mode(inode)) {
-@@ -3958,7 +3980,9 @@ void ext4_set_aops(struct inode *inode)
- 	default:
- 		BUG();
- 	}
--	if (test_opt(inode->i_sb, DELALLOC))
-+	if (IS_DAX(inode))
-+		inode->i_mapping->a_ops = &ext4_dax_aops;
-+	else if (test_opt(inode->i_sb, DELALLOC))
- 		inode->i_mapping->a_ops = &ext4_da_aops;
- 	else
- 		inode->i_mapping->a_ops = &ext4_aops;
+Peter was it you or Vince trying to use timer interrupts to emulate perf sampling 
+on some ARM SoC ?
+
+Thing is we have a spare hardware timer per core (TIMER1) which is not usabel for 
+otherwise gtod function in SMP and could well be repurposed for perf needs.
+
+-Vineet
