@@ -1,33 +1,29 @@
 From: Adrian Hunter <adrian.hunter@intel.com>
 Subject: Re: mmc: block: bonnie++ runs with errors on arc/hsdk board
-Date: Fri, 16 Mar 2018 09:20:35 +0200
-Message-ID: <94e11cab-8c46-4780-1413-f08e8f848342@intel.com>
+Date: Fri, 16 Mar 2018 14:12:20 +0200
+Message-ID: <c5e50711-77d9-d1d2-35f4-3b656c8e895c@intel.com>
 References: <1520942674.10285.8.camel@synopsys.com>
  <486fe92e-9b53-53a4-f98d-129a97032470@intel.com>
  <1520956602.10285.10.camel@synopsys.com>
  <1521030769.10285.16.camel@synopsys.com>
  <83de0f90-0919-f449-b432-494b9bf524a1@intel.com>
- <345e9053-9251-ad27-d05b-ec80b69ee235@synopsys.com>
- <1521134509.6358.1.camel@synopsys.com>
+ <1521126524.10304.5.camel@synopsys.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "Evgeniy.Didin@synopsys.com" <Evgeniy.Didin@synopsys.com>,
- "ulf.hansson@linaro.org" <ulf.hansson@linaro.org>,
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "ulf.hansson@linaro.org" <ulf.hansson@linaro.org>,
  "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
  "tytso@mit.edu" <tytso@mit.edu>,
- "vincent.weaver@maine.edu" <vincent.weaver@maine.edu>,
- "peterz@infradead.org" <peterz@infradead.org>,
  "linus.walleij@linaro.org" <linus.walleij@linaro.org>,
+ "Alexey.Brodkin@synopsys.com" <Alexey.Brodkin@synopsys.com>,
  "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
  "jh80.chung@samsung.com" <jh80.chung@samsung.com>,
  "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
  "linux-snps-arc@lists.infradead.org" <linux-snps-arc@lists.infradead.org>,
  "Eugeniy.Paltsev@synopsys.com" <Eugeniy.Paltsev@synopsys.com>
-To: Alexey Brodkin <Alexey.Brodkin@synopsys.com>,
- Vineet Gupta <Vineet.Gupta1@synopsys.com>
+To: Evgeniy Didin <Evgeniy.Didin@synopsys.com>
 Return-path: <linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org>
-In-Reply-To: <1521134509.6358.1.camel@synopsys.com>
+In-Reply-To: <1521126524.10304.5.camel@synopsys.com>
 Content-Language: en-US
 List-Unsubscribe: <http://lists.infradead.org/mailman/options/linux-snps-arc>,
  <mailto:linux-snps-arc-request@lists.infradead.org?subject=unsubscribe>
@@ -40,29 +36,70 @@ Sender: "linux-snps-arc" <linux-snps-arc-bounces@lists.infradead.org>
 Errors-To: linux-snps-arc-bounces+gla-linux-snps-arc=m.gmane.org@lists.infradead.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 15/03/18 19:21, Alexey Brodkin wrote:
-> Hi Vineet,
-> 
-> On Thu, 2018-03-15 at 09:38 -0700, Vineet Gupta wrote:
->> On 03/15/2018 02:27 AM, Adrian Hunter wrote:
->>> Please try:
->>>
->>> 	perf record -a -e mmc:* -- bonnie++ -u root -r 256 -s 512 -x 1 -d /mnt
->>>
->>> and share the resulting perf.data file when you are able
->>> to reproduce the hung task message.
->>>
->>> You may want to add this patch first:
->>>
->>> 	https://marc.info/?l=linux-mmc&m=152110580324200
->>
->> While this SoC has perf counters, Unfortunately the overflow interrupts are not 
->> wired up. We can do perf stats but not sampling.
-> 
-> I guess here Adrian was asking for pure software MMC-related events which are
-> orthogonal to CPU's perf interrupts.
-> 
-> Adrian?
-
-Yes, these are mmc tracepoints which are software events.  The file is full
-of them, so it certainly worked.
+T24gMTUvMDMvMTggMTc6MDgsIEV2Z2VuaXkgRGlkaW4gd3JvdGU6Cj4gSGkgQWRyaWFuLAo+IAo+
+PiBPbiAxNC8wMy8xOCAxNDozMiwgRXZnZW5peSBEaWRpbiB3cm90ZToKPj4+IEhpIEFkcmlhbiwK
+Pj4+Pj4KPj4+Pj4gV2FzIHRoZSBwZXJmb3JtYW5jZSBhZmZlY3RlZD8gaS5lLiB0aGUgcmVzdWx0
+cyBmcm9tIGJvbm5pZSsrCj4+Pj4KPj4+PiBJIGhhdmUgcnVuIGJvbm5pZSsrIHNldmVyYWwgdGlt
+ZXMgYmVmb3JlIGFuZCBhZnRlciBtZW50aW9uZWQgY29tbWl0LiBIZXJlIGlzIG91dHB1dDoKPj4+
+PiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLTw4LS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLQo+Pj4+IEJlZm9yZSBjb21taXQ6Cj4+Pj4gQVJDTGludXgsNTEyTSw2NDQy
+LDUwLDcyMTEsMCw1MzMzLDAsMTI5NTQsOTksMzQ1NjM4LDEwMCwrKysrKywrKyssMTYsMjIzMjIs
+MTAwLCsrKysrLCsrKywzMjczNSw5OSwyMjkyMSwxMDAsKysrKyssKysrLDMyMjExLDEwMAo+Pj4+
+IEFSQ0xpbnV4LDUxMk0sNjYxMSw1MSw3MjQ4LDAsNTE2MiwwLDEyOTUxLDk5LDM0NDc2Myw5OSwr
+KysrKywrKyssMTYsMjI2NDksOTksKysrKyssKysrLDMyNzIzLDk5LDIyNTcyLDEwMCwrKysrKywr
+KyssMzE2OTcsMTAwCj4+Pj4gQVJDTGludXgsNTEyTSw2NTk3LDUyLDczMDcsMCw1MzY4LDAsMTI5
+MzQsOTksMzQzOTg3LDk5LCsrKysrLCsrKywxNiwyMjc3NSwxMDAsKysrKyssKysrLDMyNzEzLDk5
+LDIyODMyLDEwMCwrKysrKywrKyssMzE4OTksOTkKPj4+PiBBZnRlciBjb21taXQ6Cj4+Pj4gQVJD
+TGludXgsNTEyTSw0NDUzLDM2LDY0NzQsMSw1ODUyLDAsMTI5NDAsOTksMzQ0MzI5LDEwMCwrKysr
+KywrKyssMTYsMjIxNjgsOTgsKysrKyssKysrLDMyNzYwLDk5LDIyNzU1LDEwMCwrKysrKywrKyss
+MzIyMDUsMTAwCj4+Pj4gQVJDTGludXgsNTEyTSw1MTU5LDQyLDY5NDQsMSw1NjU4LDAsMTI5NDUs
+OTksMzQ0MjkwLDEwMCwrKysrKywrKyssMTYsMjIyOTUsMTAwLCsrKysrLCsrKywzMjcxNSw5OSwy
+Mjg4OCw5OSwrKysrKywrKyssMzIwMDcsOTkKPj4+PiBBUkNMaW51eCw1MTJNLDUxNzAsNDIsNjg0
+MCwyLDUzMTUsMCwxMjk0Niw5OSwzNDM4ODksMTAwLCsrKysrLCsrKywxNiwyMjQ0NSwxMDAsKysr
+KyssKysrLDMyNjgxLDk5LDIyOTY3LDEwMCwrKysrKywrKyssMzIxMTcsOTkKPj4+PiAtLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLTw4LS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tCj4+Pj4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoF5eXl7CoAo+Pj4+IElmIGkgdW5k
+ZXJzdGFuZCBjb3JyZWN0bHksIGluIHRoaXJkIGNvbHVtbiBpcyBzaG93biAic2VxdWVudGlhbCBv
+dXRwdXQiIHBlciBjaGFyYWN0ZXIgc3BlZWQgKEsvc2VjKSwgd2hpY2ggZGVjcmVhc2VkLgo+Pj4+
+Cj4+Pj4+IFdoYXQgbW91bnQgb3B0aW9ucyBkaWQgeW91IHVzZT8KPj4+Pgo+Pj4+IEkgZGlkbid0
+IHVzZSBhbnkgb3B0aW9ucy4gU2ltcGx5Ogo+Pj4+ICMgbW91bnQgL2Rldi9tbWNibGswcDEgL21u
+dAo+Pj4KPj4+IE5vdGUgdGhhdCB0aGUgZmlsZSBzeXN0ZW0gb24gU0RjYXJkIHdhcyBleHQ0LsKg
+Cj4+Cj4+IFBsZWFzZSB0cnk6Cj4+Cj4+IAlwZXJmIHJlY29yZCAtYSAtZSBtbWM6KiAtLSBib25u
+aWUrKyAtdSByb290IC1yIDI1NiAtcyA1MTIgLXggMSAtZCAvbW50Cj4+IGFuZCBzaGFyZSB0aGUg
+cmVzdWx0aW5nIHBlcmYuZGF0YSBmaWxlIHdoZW4geW91IGFyZSBhYmxlCj4+IHRvIHJlcHJvZHVj
+ZSB0aGUgaHVuZyB0YXNrIG1lc3NhZ2UuCj4+Cj4gCj4gSSBoYXZlIGFwcGxpZWQgdGhlIHBhdGNo
+IGJlbG93IGFuZCBjb2xsZWN0ZWQgcGVyZi5kYXRhIHVzaW5nIGNvbW1hbmQgYWJvdmUsIGh1bmcg
+bWVzc2FnZSBhbHNvIGFwcGVhcmVkLiBJcyB0aGlzIHRoZSBpbmZvcm1hdGlvbiB5b3UgbmVlZGVk
+Pwo+IChwZXJmLmRhdGEgaXMgaW4gYXR0YWNobWVudHMgdG8gdGhpcwo+IG1lc3NhZ2UpLgoKWWVz
+LiAgVW5mb3J0dW5hdGVseSB0aGUgY2xvY2sgdXNlZCBpcyBub3QgYWNjdXJhdGUgZW5vdWdoIHRv
+IGNvcnJlY3RseSBvcmRlcgp0aGUgZXZlbnRzIGFjcm9zcyBkaWZmZXJlbnQgQ1BVcywgd2hpY2gg
+bWFrZXMgaXQgdmVyeSBoYXJkIHRvIHNlZSBkZWxheXMKYmV0d2VlbiByZXF1ZXN0cy4gIFlvdSBj
+b3VsZCB0cnkgYSBkaWZmZXJlbnQgY2xvY2sgLSByZWZlciB0aGUgLS1jbG9ja2lkCm9wdGlvbiB0
+byBwZXJmIHJlY29yZC4KCk5ldmVydGhlbGVzcyBpdCBzaG93cyB0aGVyZSBhcmUgbm8gSS9PIGVy
+cm9ycyB3aGljaCBtZWFucyB0aGUgZXJyb3IgcmVjb3ZlcnkKY2FuIGJlIHJ1bGVkIG91dCBhcyBh
+IHByb2JsZW0uCgpUaGUgaXNzdWUgY291bGQgYmUgY2F1c2VkIGJ5IHRoZSBJL08gc2NoZWR1bGVy
+LiAgVW5kZXIgYmxrLW1xIHRoZSBkZWZhdWx0CnNjaGVkdWxlciBpcyB0aGUgbXEtZGVhZGxpbmUg
+c2NoZWR1bGVyIHdoZXJlYXMgd2l0aG91dCBibGstbXEgeW91IHdvdWxkCnByb2JhYmx5IGhhdmUg
+YmVlbiB1c2luZyBjZnEgYnkgZGVmYXVsdC4gIFlvdSBjb3VsZCB0cnkgdGhlIGJmcSBzY2hlZHVs
+ZXI6CgoJZWNobyBiZnEgPiAvc3lzL2Jsb2NrL21tY2JsazAvcXVldWUvc2NoZWR1bGVyCgpCdXQg
+eW91IG1pZ2h0IG5lZWQgdG8gYWRkIGl0IHRvIHRoZSBrZXJuZWwgY29uZmlnIGkuZS4KCglDT05G
+SUdfSU9TQ0hFRF9CRlE9eQoKQWx0ZXJuYXRpdmVseSB5b3UgY291bGQgZmlkZGxlIHdpdGggdGhl
+IHNjaGVkdWxlciBwYXJhbWV0ZXJzOgoKV2l0aCBtcS1kZWFkbGluZSB0aGV5IGFyZToKCiMgZ3Jl
+cCAtSCAuIC9zeXMvYmxvY2svbW1jYmxrMC9xdWV1ZS9pb3NjaGVkLyoKL3N5cy9ibG9jay9tbWNi
+bGswL3F1ZXVlL2lvc2NoZWQvZmlmb19iYXRjaDoxNgovc3lzL2Jsb2NrL21tY2JsazAvcXVldWUv
+aW9zY2hlZC9mcm9udF9tZXJnZXM6MQovc3lzL2Jsb2NrL21tY2JsazAvcXVldWUvaW9zY2hlZC9y
+ZWFkX2V4cGlyZTo1MDAKL3N5cy9ibG9jay9tbWNibGswL3F1ZXVlL2lvc2NoZWQvd3JpdGVfZXhw
+aXJlOjUwMDAKL3N5cy9ibG9jay9tbWNibGswL3F1ZXVlL2lvc2NoZWQvd3JpdGVzX3N0YXJ2ZWQ6
+MgoKWW91IGNvdWxkIHRyeSBkZWNyZWFzaW5nIHRoZSB3cml0ZV9leHBpcmUgYW5kL29yIGZpZm9f
+YmF0Y2guCgo+ICAKPj4gWW91IG1heSB3YW50IHRvIGFkZCB0aGlzIHBhdGNoIGZpcnN0Ogo+Pgo+
+PiAJaHR0cHM6Ly91cmxkZWZlbnNlLnByb29mcG9pbnQuY29tL3YyL3VybD91PWh0dHBzLTNBX19t
+YXJjLmluZm9fLTNGbC0zRGxpbnV4LTJEbW1jLTI2bS0zRDE1MjExMDU4MDMyNDIwMCZkPUR3SURh
+USZjPURQTDZfWF82SmtYRng3QVhXcUIwdGcmcj12UWstUkliandOMHp2bHdpTVNwcTNMWVVUTmY3
+R3FjNAo+PiB1amhvc1lJVHRBdyZtPUxlVkZtZ3pVMHlkdy1xSGFBVmgta1pJLXY0bWxkbkN5Y1l4
+SUd4cURleFUmcz1TeUd2c1ZKQk96ZWdPMk16M2hRNWo2Q1k4S3JqTFdKRVJWSGZvc1NtS1NzJmU9
+Cj4gCj4gQmVzdCByZWdhcmRzLAo+IEV2Z2VuaXkgRGlkaW4KPiAKCgpfX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpsaW51eC1zbnBzLWFyYyBtYWlsaW5nIGxp
+c3QKbGludXgtc25wcy1hcmNAbGlzdHMuaW5mcmFkZWFkLm9yZwpodHRwOi8vbGlzdHMuaW5mcmFk
+ZWFkLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2xpbnV4LXNucHMtYXJj
