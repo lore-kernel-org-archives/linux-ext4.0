@@ -1,7 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 12/14] fscrypt: use a common logging function
-Date: Fri, 23 Mar 2018 12:23:56 -0700
-Message-ID: <20180323192358.95691-13-ebiggers3@gmail.com>
+Subject: [PATCH 13/14] fscrypt: separate key lookup from key
+ derivation
+Date: Fri, 23 Mar 2018 12:23:57 -0700
+Message-ID: <20180323192358.95691-14-ebiggers3@gmail.com>
 References: <20180323192358.95691-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -25,196 +26,181 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Use a common function for fscrypt warning and error messages so that all
-the messages are consistently ratelimited, include the "fscrypt:"
-prefix, and include the filesystem name if applicable.
+Refactor the confusingly-named function 'validate_user_key()' into a new
+function 'find_and_derive_key()' which first finds the keyring key, then
+does the key derivation.  Among other benefits this avoids the strange
+behavior we had previously where if key derivation failed for some
+reason, then we would fall back to the alternate key prefix.  Now, we'll
+only fall back to the alternate key prefix if a valid key isn't found.
 
-Also fix up a few of the log messages to be more descriptive.
+This patch also improves the warning messages that are logged when the
+keyring key's payload is invalid.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/crypto.c          | 28 +++++++++++++++++++++++++---
- fs/crypto/fname.c           | 10 ++++++----
- fs/crypto/fscrypt_private.h |  8 ++++++++
- fs/crypto/hooks.c           |  5 +++--
- fs/crypto/keyinfo.c         | 27 +++++++++++++++------------
- 5 files changed, 57 insertions(+), 21 deletions(-)
+ fs/crypto/keyinfo.c | 122 +++++++++++++++++++++++++++-----------------
+ 1 file changed, 74 insertions(+), 48 deletions(-)
 
-diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
-index d22887f689ad..a40d7d73b633 100644
---- a/fs/crypto/crypto.c
-+++ b/fs/crypto/crypto.c
-@@ -174,9 +174,10 @@ int fscrypt_do_page_crypto(const struct inode *inode, fscrypt_direction_t rw,
- 		res = crypto_wait_req(crypto_skcipher_encrypt(req), &wait);
- 	skcipher_request_free(req);
- 	if (res) {
--		printk_ratelimited(KERN_ERR
--			"%s: crypto_skcipher_encrypt() returned %d\n",
--			__func__, res);
-+		fscrypt_err(inode->i_sb,
-+			    "%scryption failed for inode %lu, block %llu: %d",
-+			    (rw == FS_DECRYPT ? "de" : "en"),
-+			    inode->i_ino, lblk_num, res);
- 		return res;
- 	}
- 	return 0;
-@@ -416,6 +417,27 @@ int fscrypt_initialize(unsigned int cop_flags)
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index 477e2d1fa04e..f00bf1437c3c 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -27,7 +27,7 @@ static struct crypto_shash *essiv_hash_tfm;
+  *
+  * Return: Zero on success; non-zero otherwise.
+  */
+-static int derive_key_aes(u8 deriving_key[FS_KEY_DERIVATION_NONCE_SIZE],
++static int derive_key_aes(const u8 deriving_key[FS_KEY_DERIVATION_NONCE_SIZE],
+ 				const struct fscrypt_key *source_key,
+ 				u8 derived_raw_key[FS_MAX_KEY_SIZE])
+ {
+@@ -67,52 +67,88 @@ static int derive_key_aes(u8 deriving_key[FS_KEY_DERIVATION_NONCE_SIZE],
  	return res;
  }
  
-+void fscrypt_msg(struct super_block *sb, const char *level,
-+		 const char *fmt, ...)
-+{
-+	static DEFINE_RATELIMIT_STATE(rs, DEFAULT_RATELIMIT_INTERVAL,
-+				      DEFAULT_RATELIMIT_BURST);
-+	struct va_format vaf;
-+	va_list args;
+-static int validate_user_key(struct fscrypt_info *crypt_info,
+-			struct fscrypt_context *ctx, u8 *raw_key,
+-			const char *prefix, int min_keysize)
++/*
++ * Search the current task's subscribed keyrings for a "logon" key with
++ * description prefix:descriptor, and if found acquire a read lock on it and
++ * return a pointer to its validated payload in *payload_ret.
++ */
++static struct key *
++find_and_lock_process_key(const char *prefix,
++			  const u8 descriptor[FS_KEY_DESCRIPTOR_SIZE],
++			  unsigned int min_keysize,
++			  const struct fscrypt_key **payload_ret)
+ {
+ 	char *description;
+-	struct key *keyring_key;
+-	struct fscrypt_key *master_key;
++	struct key *key;
+ 	const struct user_key_payload *ukp;
+-	int res;
++	const struct fscrypt_key *payload;
+ 
+ 	description = kasprintf(GFP_NOFS, "%s%*phN", prefix,
+-				FS_KEY_DESCRIPTOR_SIZE,
+-				ctx->master_key_descriptor);
++				FS_KEY_DESCRIPTOR_SIZE, descriptor);
+ 	if (!description)
+-		return -ENOMEM;
++		return ERR_PTR(-ENOMEM);
+ 
+-	keyring_key = request_key(&key_type_logon, description, NULL);
++	key = request_key(&key_type_logon, description, NULL);
+ 	kfree(description);
+-	if (IS_ERR(keyring_key))
+-		return PTR_ERR(keyring_key);
+-	down_read(&keyring_key->sem);
+-
+-	ukp = user_key_payload_locked(keyring_key);
+-	if (!ukp) {
+-		/* key was revoked before we acquired its semaphore */
+-		res = -EKEYREVOKED;
+-		goto out;
++	if (IS_ERR(key))
++		return key;
 +
-+	if (!__ratelimit(&rs))
-+		return;
++	down_read(&key->sem);
++	ukp = user_key_payload_locked(key);
 +
-+	va_start(args, fmt);
-+	vaf.fmt = fmt;
-+	vaf.va = &args;
-+	if (sb)
-+		printk("%sfscrypt (%s): %pV\n", level, sb->s_id, &vaf);
-+	else
-+		printk("%sfscrypt: %pV\n", level, &vaf);
-+	va_end(args);
++	if (!ukp) /* was the key revoked before we acquired its semaphore? */
++		goto invalid;
++
++	payload = (const struct fscrypt_key *)ukp->data;
++
++	if (ukp->datalen != sizeof(struct fscrypt_key) ||
++	    payload->size < 1 || payload->size > FS_MAX_KEY_SIZE) {
++		fscrypt_warn(NULL,
++			     "key with description '%s' has invalid payload",
++			     key->description);
++		goto invalid;
+ 	}
+-	if (ukp->datalen != sizeof(struct fscrypt_key)) {
+-		res = -EINVAL;
+-		goto out;
++
++	if (payload->size < min_keysize ||
++	    payload->size % AES_BLOCK_SIZE != 0) {
++		fscrypt_warn(NULL,
++			     "key with description '%s' is too short or is misaligned (got %u bytes, need %u+ bytes)",
++			     key->description, payload->size, min_keysize);
++		goto invalid;
+ 	}
+-	master_key = (struct fscrypt_key *)ukp->data;
+ 
+-	if (master_key->size < min_keysize || master_key->size > FS_MAX_KEY_SIZE
+-	    || master_key->size % AES_BLOCK_SIZE != 0) {
+-		fscrypt_warn(NULL, "key size incorrect: %u",
+-			     master_key->size);
+-		res = -ENOKEY;
+-		goto out;
++	*payload_ret = payload;
++	return key;
++
++invalid:
++	up_read(&key->sem);
++	key_put(key);
++	return ERR_PTR(-ENOKEY);
 +}
 +
- /**
-  * fscrypt_init() - Set up for fs encryption.
-  */
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index 39091fc31e98..d7a0f682ca12 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -71,8 +71,9 @@ int fname_encrypt(struct inode *inode, const struct qstr *iname,
- 	res = crypto_wait_req(crypto_skcipher_encrypt(req), &wait);
- 	skcipher_request_free(req);
- 	if (res < 0) {
--		printk_ratelimited(KERN_ERR
--				"%s: Error (error code %d)\n", __func__, res);
-+		fscrypt_err(inode->i_sb,
-+			    "Filename encryption failed for inode %lu: %d",
-+			    inode->i_ino, res);
- 		return res;
- 	}
- 
-@@ -115,8 +116,9 @@ static int fname_decrypt(struct inode *inode,
- 	res = crypto_wait_req(crypto_skcipher_decrypt(req), &wait);
- 	skcipher_request_free(req);
- 	if (res < 0) {
--		printk_ratelimited(KERN_ERR
--				"%s: Error (error code %d)\n", __func__, res);
-+		fscrypt_err(inode->i_sb,
-+			    "Filename decryption failed for inode %lu: %d",
-+			    inode->i_ino, res);
- 		return res;
- 	}
- 
-diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-index a3697397e190..37562394c5de 100644
---- a/fs/crypto/fscrypt_private.h
-+++ b/fs/crypto/fscrypt_private.h
-@@ -104,6 +104,14 @@ extern struct page *fscrypt_alloc_bounce_page(struct fscrypt_ctx *ctx,
- 					      gfp_t gfp_flags);
- extern const struct dentry_operations fscrypt_d_ops;
- 
-+extern void __printf(3, 4) __cold
-+fscrypt_msg(struct super_block *sb, const char *level, const char *fmt, ...);
++/* Find the master key, then derive the inode's actual encryption key */
++static int find_and_derive_key(const struct inode *inode,
++			       const struct fscrypt_context *ctx,
++			       u8 *derived_key, unsigned int derived_keysize)
++{
++	struct key *key;
++	const struct fscrypt_key *payload;
++	int err;
 +
-+#define fscrypt_warn(sb, fmt, ...)		\
-+	fscrypt_msg(sb, KERN_WARNING, fmt, ##__VA_ARGS__)
-+#define fscrypt_err(sb, fmt, ...)		\
-+	fscrypt_msg(sb, KERN_ERR, fmt, ##__VA_ARGS__)
-+
- /* fname.c */
- extern int fname_encrypt(struct inode *inode, const struct qstr *iname,
- 			 u8 *out, unsigned int olen);
-diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
-index bec06490fb13..926e5df20ec3 100644
---- a/fs/crypto/hooks.c
-+++ b/fs/crypto/hooks.c
-@@ -39,8 +39,9 @@ int fscrypt_file_open(struct inode *inode, struct file *filp)
- 	dir = dget_parent(file_dentry(filp));
- 	if (IS_ENCRYPTED(d_inode(dir)) &&
- 	    !fscrypt_has_permitted_context(d_inode(dir), inode)) {
--		pr_warn_ratelimited("fscrypt: inconsistent encryption contexts: %lu/%lu",
--				    d_inode(dir)->i_ino, inode->i_ino);
-+		fscrypt_warn(inode->i_sb,
-+			     "inconsistent encryption contexts: %lu/%lu",
-+			     d_inode(dir)->i_ino, inode->i_ino);
- 		err = -EPERM;
++	key = find_and_lock_process_key(FS_KEY_DESC_PREFIX,
++					ctx->master_key_descriptor,
++					derived_keysize, &payload);
++	if (key == ERR_PTR(-ENOKEY) && inode->i_sb->s_cop->key_prefix) {
++		key = find_and_lock_process_key(inode->i_sb->s_cop->key_prefix,
++						ctx->master_key_descriptor,
++						derived_keysize, &payload);
  	}
- 	dput(dir);
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 0a134f985681..477e2d1fa04e 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -103,9 +103,8 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
+-	res = derive_key_aes(ctx->nonce, master_key, raw_key);
+-out:
+-	up_read(&keyring_key->sem);
+-	key_put(keyring_key);
+-	return res;
++	if (IS_ERR(key))
++		return PTR_ERR(key);
++	err = derive_key_aes(ctx->nonce, payload, derived_key);
++	up_read(&key->sem);
++	key_put(key);
++	return err;
+ }
  
- 	if (master_key->size < min_keysize || master_key->size > FS_MAX_KEY_SIZE
- 	    || master_key->size % AES_BLOCK_SIZE != 0) {
--		printk_once(KERN_WARNING
--				"%s: key size incorrect: %d\n",
--				__func__, master_key->size);
-+		fscrypt_warn(NULL, "key size incorrect: %u",
-+			     master_key->size);
- 		res = -ENOKEY;
+ static const struct {
+@@ -295,20 +331,10 @@ int fscrypt_get_encryption_info(struct inode *inode)
+ 	if (!raw_key)
  		goto out;
- 	}
-@@ -134,9 +133,10 @@ static int determine_cipher_type(struct fscrypt_info *ci, struct inode *inode,
- 	u32 mode;
  
- 	if (!fscrypt_valid_enc_modes(ci->ci_data_mode, ci->ci_filename_mode)) {
--		pr_warn_ratelimited("fscrypt: inode %lu uses unsupported encryption modes (contents mode %d, filenames mode %d)\n",
--				    inode->i_ino,
--				    ci->ci_data_mode, ci->ci_filename_mode);
-+		fscrypt_warn(inode->i_sb,
-+			     "inode %lu uses unsupported encryption modes (contents mode %d, filenames mode %d)",
-+			     inode->i_ino, ci->ci_data_mode,
-+			     ci->ci_filename_mode);
- 		return -EINVAL;
- 	}
- 
-@@ -175,8 +175,9 @@ static int derive_essiv_salt(const u8 *key, int keysize, u8 *salt)
- 
- 		tfm = crypto_alloc_shash("sha256", 0, 0);
- 		if (IS_ERR(tfm)) {
--			pr_warn_ratelimited("fscrypt: error allocating SHA-256 transform: %ld\n",
--					    PTR_ERR(tfm));
-+			fscrypt_warn(NULL,
-+				     "error allocating SHA-256 transform: %ld",
-+				     PTR_ERR(tfm));
- 			return PTR_ERR(tfm);
- 		}
- 		prev_tfm = cmpxchg(&essiv_hash_tfm, NULL, tfm);
-@@ -311,8 +312,9 @@ int fscrypt_get_encryption_info(struct inode *inode)
+-	res = validate_user_key(crypt_info, &ctx, raw_key, FS_KEY_DESC_PREFIX,
+-				keysize);
+-	if (res && inode->i_sb->s_cop->key_prefix) {
+-		int res2 = validate_user_key(crypt_info, &ctx, raw_key,
+-					     inode->i_sb->s_cop->key_prefix,
+-					     keysize);
+-		if (res2) {
+-			if (res2 == -ENOKEY)
+-				res = -ENOKEY;
+-			goto out;
+-		}
+-	} else if (res) {
++	res = find_and_derive_key(inode, &ctx, raw_key, keysize);
++	if (res)
+ 		goto out;
+-	}
++
  	ctfm = crypto_alloc_skcipher(cipher_str, 0, 0);
  	if (IS_ERR(ctfm)) {
  		res = PTR_ERR(ctfm);
--		pr_debug("%s: error %d (inode %lu) allocating crypto tfm\n",
--			 __func__, res, inode->i_ino);
-+		fscrypt_warn(inode->i_sb,
-+			     "error allocating '%s' transform for inode %lu: %d",
-+			     cipher_str, inode->i_ino, res);
- 		goto out;
- 	}
- 	crypt_info->ci_ctfm = ctfm;
-@@ -329,8 +331,9 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 	    crypt_info->ci_data_mode == FS_ENCRYPTION_MODE_AES_128_CBC) {
- 		res = init_essiv_generator(crypt_info, raw_key, keysize);
- 		if (res) {
--			pr_debug("%s: error %d (inode %lu) allocating essiv tfm\n",
--				 __func__, res, inode->i_ino);
-+			fscrypt_warn(inode->i_sb,
-+				     "error initializing ESSIV generator for inode %lu: %d",
-+				     inode->i_ino, res);
- 			goto out;
- 		}
- 	}
 -- 
 2.17.0.rc0.231.g781580f067-goog
 
