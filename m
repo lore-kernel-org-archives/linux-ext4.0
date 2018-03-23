@@ -1,8 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 01/14] fscrypt: remove unnecessary NULL check
- when allocating skcipher
-Date: Fri, 23 Mar 2018 12:23:45 -0700
-Message-ID: <20180323192358.95691-2-ebiggers3@gmail.com>
+Subject: [PATCH 03/14] fscrypt: remove WARN_ON_ONCE() when
+ decryption fails
+Date: Fri, 23 Mar 2018 12:23:47 -0700
+Message-ID: <20180323192358.95691-4-ebiggers3@gmail.com>
 References: <20180323192358.95691-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,29 +26,38 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-crypto_alloc_skcipher() returns an ERR_PTR() on failure, not NULL.
-Remove the unnecessary check for NULL.
+If decrypting a block fails, fscrypt did a WARN_ON_ONCE().  But WARN is
+meant for kernel bugs, which this isn't; this could be hit by fuzzers
+using fault injection, for example.  Also, there is already a proper
+warning message logged in fscrypt_do_page_crypto(), so the WARN doesn't
+add much.
+
+Just remove the unnessary WARN.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/keyinfo.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/crypto/bio.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 96a1eae9e51d..8099388f5581 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -320,8 +320,8 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 		goto out;
+diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
+index 0d5e6a569d58..771c8684826b 100644
+--- a/fs/crypto/bio.c
++++ b/fs/crypto/bio.c
+@@ -43,12 +43,10 @@ static void completion_pages(struct work_struct *work)
+ 		int ret = fscrypt_decrypt_page(page->mapping->host, page,
+ 				PAGE_SIZE, 0, page->index);
+ 
+-		if (ret) {
+-			WARN_ON_ONCE(1);
++		if (ret)
+ 			SetPageError(page);
+-		} else {
++		else
+ 			SetPageUptodate(page);
+-		}
+ 		unlock_page(page);
  	}
- 	ctfm = crypto_alloc_skcipher(cipher_str, 0, 0);
--	if (!ctfm || IS_ERR(ctfm)) {
--		res = ctfm ? PTR_ERR(ctfm) : -ENOMEM;
-+	if (IS_ERR(ctfm)) {
-+		res = PTR_ERR(ctfm);
- 		pr_debug("%s: error %d (inode %lu) allocating crypto tfm\n",
- 			 __func__, res, inode->i_ino);
- 		goto out;
+ 	fscrypt_release_ctx(ctx);
 -- 
 2.17.0.rc0.231.g781580f067-goog
 
