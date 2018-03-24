@@ -1,60 +1,34 @@
-From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 08/14] fscrypt: drop empty name check from
- fname_decrypt()
-Date: Fri, 23 Mar 2018 12:23:52 -0700
-Message-ID: <20180323192358.95691-9-ebiggers3@gmail.com>
-References: <20180323192358.95691-1-ebiggers3@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
- linux-mtd@lists.infradead.org, Eric Biggers <ebiggers@google.com>,
- linux-f2fs-devel@lists.sourceforge.net
-To: linux-fscrypt@vger.kernel.org,
-	"Theodore Y . Ts'o" <tytso@mit.edu>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <20180323192358.95691-1-ebiggers3@gmail.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+From: "zhenwei.pi" <zhenwei.pi@youruncloud.com>
+Subject: [PATCH] ext4 : fix comments in ext4_swap_extents
+Date: Sat, 24 Mar 2018 15:28:24 +0800
+Message-ID: <1521876504-18326-1-git-send-email-zhenwei.pi@youruncloud.com>
+Cc: zhenwei.pi@youruncloud.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+"mark_unwritten" in comment and "unwritten" in variable
+argument lists is mismatch.
 
-fname_decrypt() is validating that the encrypted filename is nonempty.
-However, earlier a stronger precondition was already enforced: the
-encrypted filename must be at least 16 (FS_CRYPTO_BLOCK_SIZE) bytes.
-
-Drop the redundant check for an empty filename.
-
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: zhenwei.pi <zhenwei.pi@youruncloud.com>
 ---
- fs/crypto/fname.c | 3 ---
- 1 file changed, 3 deletions(-)
+ fs/ext4/extents.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index cc9590b5f371..c4eb3a235ae4 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -97,9 +97,6 @@ static int fname_decrypt(struct inode *inode,
- 	int res = 0;
- 	char iv[FS_CRYPTO_BLOCK_SIZE];
- 
--	if (iname->len <= 0)
--		return -EIO;
--
- 	/* Allocate request */
- 	req = skcipher_request_alloc(tfm, GFP_NOFS);
- 	if (!req)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 054416e..2fc4227 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5751,7 +5751,7 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
+  * @lblk1:	Start block for first inode
+  * @lblk2:	Start block for second inode
+  * @count:	Number of blocks to swap
+- * @mark_unwritten: Mark second inode's extents as unwritten after swap
++ * @unwritten: Mark second inode's extents as unwritten after swap
+  * @erp:	Pointer to save error value
+  *
+  * This helper routine does exactly what is promise "swap extents". All other
 -- 
-2.17.0.rc0.231.g781580f067-goog
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+2.7.4
