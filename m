@@ -1,51 +1,56 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: always initialize the crc32c checksum driver
-Date: Mon, 26 Mar 2018 00:49:05 -0400
-Message-ID: <20180326044906.13286-1-tytso@mit.edu>
+Subject: [PATCH 2/2] ext4: don't allow r/w mounts if metadata blocks overlap the superblock
+Date: Mon, 26 Mar 2018 00:49:06 -0400
+Message-ID: <20180326044906.13286-2-tytso@mit.edu>
+References: <20180326044906.13286-1-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20180326044906.13286-1-tytso@mit.edu>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The extended attribute code now uses the crc32c checksum for hashing
-purposes, so we should just always always initialize it.  We also want
-to prevent NULL pointer dereferences if one of the metadata checksum
-features is enabled after the file sytsem is originally mounted.
-
-https://bugzilla.kernel.org/show_bug.cgi?id=199183
+If some metadata block, such as an allocation bitmap, overlaps the
+superblock, it's very likely that if the file system is mounted
+read/write, the results will not be pretty.  So disallow r/w mounts
+for file systems corrupted in this particular way.
 
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Cc: stable@vger.kernel.org
 ---
- fs/ext4/super.c | 15 ++++++---------
- 1 file changed, 6 insertions(+), 9 deletions(-)
+ fs/ext4/super.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9d1da40c1f62..7cd022c344d1 100644
+index 7cd022c344d1..edcfe6956eba 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3492,15 +3492,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	}
- 
- 	/* Load the checksum driver */
--	if (ext4_has_feature_metadata_csum(sb) ||
--	    ext4_has_feature_ea_inode(sb)) {
--		sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
--		if (IS_ERR(sbi->s_chksum_driver)) {
--			ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver.");
--			ret = PTR_ERR(sbi->s_chksum_driver);
--			sbi->s_chksum_driver = NULL;
--			goto failed_mount;
--		}
-+	sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-+	if (IS_ERR(sbi->s_chksum_driver)) {
-+		ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver.");
-+		ret = PTR_ERR(sbi->s_chksum_driver);
-+		sbi->s_chksum_driver = NULL;
-+		goto failed_mount;
- 	}
- 
- 	/* Check superblock checksum */
+@@ -2335,6 +2335,8 @@ static int ext4_check_descriptors(struct super_block *sb,
+ 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+ 				 "Block bitmap for group %u overlaps "
+ 				 "superblock", i);
++			if (!sb_rdonly(sb))
++				return 0;
+ 		}
+ 		if (block_bitmap < first_block || block_bitmap > last_block) {
+ 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+@@ -2347,6 +2349,8 @@ static int ext4_check_descriptors(struct super_block *sb,
+ 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+ 				 "Inode bitmap for group %u overlaps "
+ 				 "superblock", i);
++			if (!sb_rdonly(sb))
++				return 0;
+ 		}
+ 		if (inode_bitmap < first_block || inode_bitmap > last_block) {
+ 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+@@ -2359,6 +2363,8 @@ static int ext4_check_descriptors(struct super_block *sb,
+ 			ext4_msg(sb, KERN_ERR, "ext4_check_descriptors: "
+ 				 "Inode table for group %u overlaps "
+ 				 "superblock", i);
++			if (!sb_rdonly(sb))
++				return 0;
+ 		}
+ 		if (inode_table < first_block ||
+ 		    inode_table + sbi->s_itb_per_group - 1 > last_block) {
 -- 
 2.16.1.72.g5be1f00a9a
