@@ -1,34 +1,45 @@
-From: "zhenwei.pi" <zhenwei.pi@youruncloud.com>
-Subject: [PATCH] ext4 : fix comments in ext4_swap_extents
-Date: Sat, 24 Mar 2018 15:28:24 +0800
-Message-ID: <1521876504-18326-1-git-send-email-zhenwei.pi@youruncloud.com>
-Cc: zhenwei.pi@youruncloud.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: fail ext4_iget for root directory if unallocated
+Date: Sun, 25 Mar 2018 21:48:51 -0400
+Message-ID: <20180326014851.5249-1-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-"mark_unwritten" in comment and "unwritten" in variable
-argument lists is mismatch.
+If the root directory has an i_links_count of zero, then when the file
+system is mounted, then when ext4_fill_super() notices the problem and
+tries to call iput() the root directory in the error return path,
+ext4_evict_inode() will try to free the inode on disk, before all of
+the file system structures are set up, and this will result in an OOPS
+caused by a NULL pointer dereference.
 
-Signed-off-by: zhenwei.pi <zhenwei.pi@youruncloud.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=199179
+
+Reported-by: Wen Xu <wen.xu@gatech.edu>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/extents.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/inode.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 054416e..2fc4227 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -5751,7 +5751,7 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
-  * @lblk1:	Start block for first inode
-  * @lblk2:	Start block for second inode
-  * @count:	Number of blocks to swap
-- * @mark_unwritten: Mark second inode's extents as unwritten after swap
-+ * @unwritten: Mark second inode's extents as unwritten after swap
-  * @erp:	Pointer to save error value
-  *
-  * This helper routine does exactly what is promise "swap extents". All other
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 951a3d69ed17..5adfd0980c71 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4745,6 +4745,12 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 		goto bad_inode;
+ 	raw_inode = ext4_raw_inode(&iloc);
+ 
++	if ((ino == EXT4_ROOT_INO) && (raw_inode->i_links_count == 0)) {
++		EXT4_ERROR_INODE(inode, "root inode unallocated");
++		ret = -EFSCORRUPTED;
++		goto bad_inode;
++	}
++
+ 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
+ 		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
+ 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
 -- 
-2.7.4
+2.16.1.72.g5be1f00a9a
