@@ -1,212 +1,85 @@
-From: Qu Wenruo <quwenruo.btrfs@gmx.com>
+From: Dave Chinner <david@fromorbit.com>
 Subject: Re: [PATCH v2 3/3] fstests: generic: Check the fs after each FUA
  writes
-Date: Wed, 28 Mar 2018 14:55:22 +0800
-Message-ID: <2b349e90-c406-2f0d-04a7-66bc66a645c8@gmx.com>
+Date: Thu, 29 Mar 2018 10:36:57 +1100
+Message-ID: <20180328233657.GD1150@dastard>
 References: <20180328044023.22078-1-wqu@suse.com>
  <20180328044023.22078-3-wqu@suse.com>
- <CAOQ4uxj5ff5-AhoACxZGG+ZeHRh0Qr_=uPqyzMUv5h934dicuQ@mail.gmail.com>
- <2956631d-3843-aaf6-8d75-3a2028fea88b@gmx.com>
- <20180328061945.GF30836@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="Z9yK1icynYpknIDT768rsLcFEHAzc3iEJ"
-Cc: Amir Goldstein <amir73il@gmail.com>, Qu Wenruo <wqu@suse.com>,
-        Linux Btrfs <linux-btrfs@vger.kernel.org>,
-        fstests <fstests@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Ext4 <linux-ext4@vger.kernel.org>
-To: Eryu Guan <guaneryu@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-btrfs@vger.kernel.org, fstests@vger.kernel.org,
+        amir73il@gmail.com, linux-xfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+To: Qu Wenruo <wqu@suse.com>
 Return-path: <linux-btrfs-owner@vger.kernel.org>
-In-Reply-To: <20180328061945.GF30836@localhost.localdomain>
+Content-Disposition: inline
+In-Reply-To: <20180328044023.22078-3-wqu@suse.com>
 Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---Z9yK1icynYpknIDT768rsLcFEHAzc3iEJ
-Content-Type: multipart/mixed; boundary="NX1AihsqT5ZVmUqncDgNoPrG1r9u3Mzye";
- protected-headers="v1"
-From: Qu Wenruo <quwenruo.btrfs@gmx.com>
-To: Eryu Guan <guaneryu@gmail.com>
-Cc: Amir Goldstein <amir73il@gmail.com>, Qu Wenruo <wqu@suse.com>,
- Linux Btrfs <linux-btrfs@vger.kernel.org>, fstests
- <fstests@vger.kernel.org>, linux-xfs <linux-xfs@vger.kernel.org>,
- Ext4 <linux-ext4@vger.kernel.org>
-Message-ID: <2b349e90-c406-2f0d-04a7-66bc66a645c8@gmx.com>
-Subject: Re: [PATCH v2 3/3] fstests: generic: Check the fs after each FUA
- writes
-References: <20180328044023.22078-1-wqu@suse.com>
- <20180328044023.22078-3-wqu@suse.com>
- <CAOQ4uxj5ff5-AhoACxZGG+ZeHRh0Qr_=uPqyzMUv5h934dicuQ@mail.gmail.com>
- <2956631d-3843-aaf6-8d75-3a2028fea88b@gmx.com>
- <20180328061945.GF30836@localhost.localdomain>
-In-Reply-To: <20180328061945.GF30836@localhost.localdomain>
+On Wed, Mar 28, 2018 at 12:40:23PM +0800, Qu Wenruo wrote:
+> Basic test case which triggers fsstress with dm-log-writes, and then
+> check the fs after each FUA writes.
+> With needed infrastructure and special handlers for journal based fs.
+> 
+> Signed-off-by: Qu Wenruo <wqu@suse.com>
+.....
+> For xfs:
+> _check_xfs_filesystem: filesystem on /dev/mapper/test-scratch1 is inconsistent (r)
+> *** xfs_repair -n output ***
+> Phase 1 - find and verify superblock...
+> Phase 2 - using internal log
+>         - zero log...
+>         - scan filesystem freespace and inode maps...
+>         - found root inode chunk
+> Phase 3 - for each AG...
+>         - scan (but don't clear) agi unlinked lists...
+>         - process known inodes and perform inode discovery...
+>         - agno = 0
+>         - agno = 1
+>         - agno = 2
+> bad symlink header ino 8409190, file block 0, disk block 1051147
+> problem with symbolic link in inode 8409190
+> would have cleared inode 8409190
+>         - agno = 3
+>         - process newly discovered inodes...
+> Phase 4 - check for duplicate blocks...
+>         - setting up duplicate extent list...
+>         - check for inodes claiming duplicate blocks...
+>         - agno = 0
+>         - agno = 1
+>         - agno = 3
+>         - agno = 2
+> entry "lb" in shortform directory 8409188 references free inode 8409190
+> would have junked entry "lb" in directory inode 8409188
+> bad symlink header ino 8409190, file block 0, disk block 1051147
+> problem with symbolic link in inode 8409190
+> would have cleared inode 8409190
+> No modify flag set, skipping phase 5
+> Phase 6 - check inode connectivity...
+>         - traversing filesystem ...
+> entry "lb" in shortform directory inode 8409188 points to free inode 8409190
+> would junk entry
+>         - traversal finished ...
+>         - moving disconnected inodes to lost+found ...
+> Phase 7 - verify link counts...
+> Maximum metadata LSN (1:396) is ahead of log (1:63).
 
---NX1AihsqT5ZVmUqncDgNoPrG1r9u3Mzye
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: quoted-printable
+That warning implies a write ordering problem - there's a write with
+an LSN on disk that does not yet exist in the log. i.e. the last FUA
+write to the log had 1:63 in it, yet there's metadata on disk that
+could only be *issued* after a REQ_FLUSH|REQ_FUA log write with
+1:396 in it was *completed*. If we've only replayed up to the
+FUA write with 1:63 in it, then no metadata writes should have been
+*issued* with 1:396 in it as the LSN that is stamped into metadata
+is only updated on log IO completion....
 
+On first glance, this implies a bug in the underlying device write
+replay code....
 
+Cheers,
 
-On 2018=E5=B9=B403=E6=9C=8828=E6=97=A5 14:19, Eryu Guan wrote:
-> On Wed, Mar 28, 2018 at 01:51:44PM +0800, Qu Wenruo wrote:
->>
->>
->> On 2018=E5=B9=B403=E6=9C=8828=E6=97=A5 13:04, Amir Goldstein wrote:
->>> On Wed, Mar 28, 2018 at 7:40 AM, Qu Wenruo <wqu@suse.com> wrote:
->>>> Basic test case which triggers fsstress with dm-log-writes, and then=
-
->>>> check the fs after each FUA writes.
->>>> With needed infrastructure and special handlers for journal based fs=
-=2E
->>>>
->>>> Signed-off-by: Qu Wenruo <wqu@suse.com>
->>>> ---
->>>> changelog:
->>>> v2:
->>>>   Use proper "SUSE Linux Products GmbH" instead of "SuSE"
->>>>   Get rid of dm-snapshot which is pretty slow if we're creating and
->>>>   deleting snapshots repeatedly.
->>>>   (Maybe LVM thin provision would be much better, but current replay=
-
->>>>    solution is good so far, and no slower than dm-snapshot)
->>>>   Add back run_check so that we can get the seed.
->>>> ---
->>>> Unfortunately, neither xfs nor ext4 survies this test for even singl=
-e
->>>> success, while btrfs survives.
->>>> (Although not what I want, I'm just trying my luck
->>>> to reproduce a serious btrfs corruption situation)
->>>>
->>>> Although btrfs may be the fastest fs for the test, since it has fixe=
-d
->>>> small amount of write in mkfs and almost nothing to replay, it still=
-
->>>> takes about 240s~300s to finish (the same level using snapshot).
->>>>
->>>> It would take longer time for ext4 for its large amount of write dur=
-ing
->>>> mkfs, if it can survive the test in the first space.
->>>
->>> Hmm, how much time would the total test would take if you don't fail
->>> it on fsck? I am asking because it may be possible to improve this wi=
-th
->>> only a single snapshot after mkfs.
->>
->> The only fs which can pass the test right now is btrfs, so other
->> estimation is mostly based on guess.
->>
->>>
->>> Anyway, if total test run time is expected to be under 10min I wouldn=
-'t
->>> bother with this optimization, at least not right now. IMO it is more=
-
->>> important to get the test out there to get the corruption bugs floati=
-ng.
->>
->> I'd say from current status, if XFS doesn't fail, it would definitely
->> finish in 10min.
->> For EXT4 I'm not pretty sure.
->                                                                        =
-                                                                         =
-                                              =20
-> 10min might be a bit long, 5min would be good enough. I may need to
-> adjust the fsstress "-n" param based on test results when I got some
-> time, hopefully this week..
->=20
-> And I noticed that fsstress "-p" is based on nr_cpus, I'd like to cap i=
-t
-> with a max allowed number, so test won't run for too long on hosts with=
-
-> hundreds of cpus. It could always be scaled with _scale_fsstress_args.
->=20
-> +nr_cpus=3D$("$here/src/feature" -o)
-> +fsstress_args=3D$(_scale_fsstress_args -w -d $SCRATCH_MNT -n 512 -p $n=
-r_cpus \
-> +               $FSSTRESS_AVOID)
-
-This makes sense.
-
-(I used to think 4 cores was enough and now mainstream desktop is push 8
-cores)
-
-Thanks,
-Qu
-
->=20
->>
->> I'd like to  keep current test case as simple as possible right now, a=
-nd
->> for later enhancement, I have several different ideas:
->=20
-> Please make new tests then :)
->=20
->>
->> 1) Reflink fs + loopback
->>    Yep, use btrfs/xfs as base filesystem and create copy using reflink=
-,
->>    then use such files as loopback device.
->>    The good thing is, AFAIK btrfs/xfs reflink is really fast.
->>    Much much faster than dm-snapshot or even LVM thin.
->>
->>    The much much smaller block size (4K default) makes CoW overhead
->>    (LVM thin is 64K, not sure about dm-snapshot though).
->>
->>    The problem is, such setup needs extra mount point and can be a
->>    little hard to setup, and we're introducing another layer of fs,
->>    if the fs itself has some hidden bug, it would screw up the test
->>    case.
->>
->> 2) LVM thin provision
->>    LVM thin provision looks much like btrfs/xfs for block level, and
->>    smaller default block size (64K vs original 2M) makes CoW overhead
->>    smaller.
->>
->>    I'm currently testing this method, the good thing is it's a little
->>    easier to setup and we can use single mount point.
->>
->> Anyway, with proper and efficient snapshot ability implemented, I will=
-
->> definitely convert this test case, and add Flush test case.
->>
->> Thanks for your review too,
->> Qu
->>
->>>
->>> Thanks for working on this!
->>> You can add
->>> Reviewed-by: Amir Goldstein <amir73il@gmail.com>
->=20
-> Thank you both!
->=20
-> Eryu
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->=20
-
-
---NX1AihsqT5ZVmUqncDgNoPrG1r9u3Mzye--
-
---Z9yK1icynYpknIDT768rsLcFEHAzc3iEJ
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEzBAEBCAAdFiEELd9y5aWlW6idqkLhwj2R86El/qgFAlq7PFsACgkQwj2R86El
-/qhjGgf5ASuBLxGdGSEJ0KTG68199sFrwvpFzmQWOuacj9f7ceiwxBFOYA4pbP+B
-8xsUH8LCaLl23ikBDqFYR1VVXnwx6tHI2tlpMV9Xqh0coR5+VdveWkctvwJsyNhG
-QW18/gZdhBeT75aa65IuF3RwjcLq56RGXcK9RtVI/V4+Rd5VOgVdwU5UuXYZdmgr
-TsxWi/RXHU0xajfjpj1sCY+fC0OEW581UyMO1rXy7d0eBArBQK+4L3nJ2wWvvkDl
-PfiTqUqxvLC5SmxUojubEVJVUAYFofj1qhWqDGvpcPPgkQNTHdtRu6PtxI2xF3zI
-chGCn8MrS+ln+9ImcVHX+en4+8GgMA==
-=sV9b
------END PGP SIGNATURE-----
-
---Z9yK1icynYpknIDT768rsLcFEHAzc3iEJ--
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
