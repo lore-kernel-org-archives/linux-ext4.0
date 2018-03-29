@@ -1,85 +1,58 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH v2 3/3] fstests: generic: Check the fs after each FUA
- writes
-Date: Thu, 29 Mar 2018 10:36:57 +1100
-Message-ID: <20180328233657.GD1150@dastard>
-References: <20180328044023.22078-1-wqu@suse.com>
- <20180328044023.22078-3-wqu@suse.com>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v7 05/14] ext4, dax: introduce ext4_dax_aops
+Date: Thu, 29 Mar 2018 17:40:35 +0200
+Message-ID: <20180329154035.lvsepjvt6vcplshw@quack2.suse.cz>
+References: <152167302988.5268.4370226749268662682.stgit@dwillia2-desk3.amr.corp.intel.com>
+ <152167305782.5268.13485258587227210521.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-btrfs@vger.kernel.org, fstests@vger.kernel.org,
-        amir73il@gmail.com, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-To: Qu Wenruo <wqu@suse.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hch-jcswGhMUV9g@public.gmane.org
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20180328044023.22078-3-wqu@suse.com>
-Sender: linux-btrfs-owner@vger.kernel.org
+In-Reply-To: <152167305782.5268.13485258587227210521.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Mar 28, 2018 at 12:40:23PM +0800, Qu Wenruo wrote:
-> Basic test case which triggers fsstress with dm-log-writes, and then
-> check the fs after each FUA writes.
-> With needed infrastructure and special handlers for journal based fs.
+On Wed 21-03-18 15:57:37, Dan Williams wrote:
+> In preparation for the dax implementation to start associating dax pages
+> to inodes via page->mapping, we need to provide a 'struct
+> address_space_operations' instance for dax. Otherwise, direct-I/O
+> triggers incorrect page cache assumptions and warnings.
 > 
-> Signed-off-by: Qu Wenruo <wqu@suse.com>
-.....
-> For xfs:
-> _check_xfs_filesystem: filesystem on /dev/mapper/test-scratch1 is inconsistent (r)
-> *** xfs_repair -n output ***
-> Phase 1 - find and verify superblock...
-> Phase 2 - using internal log
->         - zero log...
->         - scan filesystem freespace and inode maps...
->         - found root inode chunk
-> Phase 3 - for each AG...
->         - scan (but don't clear) agi unlinked lists...
->         - process known inodes and perform inode discovery...
->         - agno = 0
->         - agno = 1
->         - agno = 2
-> bad symlink header ino 8409190, file block 0, disk block 1051147
-> problem with symbolic link in inode 8409190
-> would have cleared inode 8409190
->         - agno = 3
->         - process newly discovered inodes...
-> Phase 4 - check for duplicate blocks...
->         - setting up duplicate extent list...
->         - check for inodes claiming duplicate blocks...
->         - agno = 0
->         - agno = 1
->         - agno = 3
->         - agno = 2
-> entry "lb" in shortform directory 8409188 references free inode 8409190
-> would have junked entry "lb" in directory inode 8409188
-> bad symlink header ino 8409190, file block 0, disk block 1051147
-> problem with symbolic link in inode 8409190
-> would have cleared inode 8409190
-> No modify flag set, skipping phase 5
-> Phase 6 - check inode connectivity...
->         - traversing filesystem ...
-> entry "lb" in shortform directory inode 8409188 points to free inode 8409190
-> would junk entry
->         - traversal finished ...
->         - moving disconnected inodes to lost+found ...
-> Phase 7 - verify link counts...
-> Maximum metadata LSN (1:396) is ahead of log (1:63).
+> Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+> Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+> Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 
-That warning implies a write ordering problem - there's a write with
-an LSN on disk that does not yet exist in the log. i.e. the last FUA
-write to the log had 1:63 in it, yet there's metadata on disk that
-could only be *issued* after a REQ_FLUSH|REQ_FUA log write with
-1:396 in it was *completed*. If we've only replayed up to the
-FUA write with 1:63 in it, then no metadata writes should have been
-*issued* with 1:396 in it as the LSN that is stamped into metadata
-is only updated on log IO completion....
+Looks good, just one nit below.
 
-On first glance, this implies a bug in the underlying device write
-replay code....
+> @@ -3946,6 +3961,13 @@ static const struct address_space_operations ext4_da_aops = {
+>  	.error_remove_page	= generic_error_remove_page,
+>  };
+>  
+> +static const struct address_space_operations ext4_dax_aops = {
+> +	.direct_IO		= ext4_direct_IO,
 
-Cheers,
+So ext4_direct_IO() for IS_DAX() files will just bail out. So could you
+just provide ext4_dax_direct_IO() which will bail out and use it here? With
+a similar comment as in xfs_vm_direct_IO() that open still needs this
+method set... Thanks!
 
-Dave.
+								Honza
 -- 
-Dave Chinner
-david@fromorbit.com
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
