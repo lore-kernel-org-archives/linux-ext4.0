@@ -1,12 +1,12 @@
 From: Sasha Levin <Alexander.Levin@microsoft.com>
-Subject: Re: [PATCH 2/2] ext4: don't allow r/w mounts if metadata blocks
- overlap the superblock
-Date: Fri, 30 Mar 2018 16:16:06 +0000
-Message-ID: <DM5PR2101MB1032A56161CBF73A94B72C36FBA10@DM5PR2101MB1032.namprd21.prod.outlook.com>
-References: <20180326044906.13286-2-tytso@mit.edu>
+Subject: Re: [PATCH] ext4: protect i_disksize update by i_data_sem in direct
+ write path
+Date: Fri, 30 Mar 2018 16:16:10 +0000
+Message-ID: <DM5PR2101MB103262C4DC678FEC128E851BFBA10@DM5PR2101MB1032.namprd21.prod.outlook.com>
+References: <20180312152156.14034-2-guaneryu@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 Cc: Theodore Ts'o <tytso@mit.edu>,
         "stable@vger.kernel.org" <stable@vger.kernel.org>,
         "stable@vger.kernel.org" <stable@vger.kernel.org>
@@ -14,55 +14,81 @@ To: Sasha Levin <Alexander.Levin@microsoft.com>,
         Theodore Ts'o <tytso@mit.edu>,
         Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20180326044906.13286-2-tytso@mit.edu>
+In-Reply-To: <20180312152156.14034-2-guaneryu@gmail.com>
 Content-Language: en-US
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-SGkgRVhUNCBNTCENCg0KSSdtIHdvcmtpbmcgb24gYSBwcm9qZWN0IHRvIHBlcmZvcm0gYXV0b21h
-dGljIHBhdGNoIHNlbGVjdGlvbiBmb3INCnN0YWJsZSwgYW5kIGF1dG9tYXRlIHRoZSB0ZXN0aW5n
-IGJlaW5nIGRvbmUgZm9yIHBhdGNoZXMgZ29pbmcgaW4NCnZhcmlvdXMgc3RhYmxlIHRyZWUuDQoN
-CkkgZ290IHNvbWUgaW5wdXQgZnJvbSB0aGUgWEZTIGZvbGtzIHNvIGZhciwgYW5kIHdhbnRlZCB0
-byBnZXQgc29tZQ0KaW5wdXQgZnJvbSB0aGUgRVhUNCBmb2xrcyBhcyB3ZWxsLg0KDQpCZWxvdyBp
-cyBhIG1haWwgdGhhdCB3b3VsZCBiZSBzZW50IGFzIGEgcmVzcG9uc2UgZm9yIGV4dDQgcGF0Y2hl
-cw0KdGFnZ2VkIGZvciBzdGFibGUgYW5kIHNlbnQgdG8gdGhlIG1haWxpbmcgbGlzdC4gU2luY2Ug
-dGhpcyBvbmUgaXMNCmFscmVhZHkgdGFnZ2VkIGZvciBzdGFibGUsIHRoZXNlIHJlc3VsdHMgc2hv
-dWxkIGJlIHVzZWZ1bCBmb3IgcGVvcGxlDQp0byB1bmRlcnN0YW5kIGlmIHRoZSBwYXRjaCBwcm9w
-ZXJseSBhcHBsaWVzIHRvIHZhcmlvdXMgc3RhYmxlIHRyZWVzDQphbmQgcGFzc2VzIHRlc3Rpbmcu
-DQoNCkZvciBFWFQ0LCBhdCB0aGlzIHBvaW50IHRlc3RpbmcgaXMgdGhlIHhmc3Rlc3RzIHRyZWUg
-YXQNCmh0dHBzOi8vZ2l0aHViLmNvbS90eXRzby94ZnN0ZXN0cyAsIHJ1bm5pbmcgd2l0aCAiLi9j
-aGVjayAtZyBhdXRvIi4NCkNvbXBsZXRlIGJ1aWxkIGFuZCB0ZXN0IGxvZ3MgYXJlIGF2YWlsYWJs
-ZSBpbiB0aGUgbGlua3MgZW1iZWRkZWQgaW4NCnRoZSBtYWlsLg0KDQpJJ2QgYmUgaGFwcHkgdG8g
-Z2V0IGZlZWRiYWNrIGZvciB0aGlzLiBUaGFua3MhDQoNCj09PQ0KDQpIaSBUaGVvZG9yZSBUcydv
-LA0KDQpbVGhpcyBpcyBhbiBhdXRvbWF0ZWQgZW1haWxdDQoNClRoaXMgY29tbWl0IGhhcyBiZWVu
-IHByb2Nlc3NlZCBiZWNhdXNlIGl0IGNvbnRhaW5zIGEgLXN0YWJsZSB0YWcuDQpUaGUgc3RhYmxl
-IHRhZyBpbmRpY2F0ZXMgdGhhdCBpdCdzIHJlbGV2YW50IGZvciB0aGUgZm9sbG93aW5nIHRyZWVz
-OiBhbGwNCg0KVGhlIGJvdCBoYXMgYWxzbyBkZXRlcm1pbmVkIGl0J3MgcHJvYmFibHkgYSBidWcg
-Zml4aW5nIHBhdGNoLiAoc2NvcmU6IDkwLjYwNTkpDQoNClRoZSBib3QgaGFzIHRlc3RlZCB0aGUg
-Zm9sbG93aW5nIHRyZWVzOiB2NC4xNS4xMiwgdjQuMTQuMjksIHY0LjkuODksIHY0LjQuMTIzLCB2
-NC4xLjUwLCB2My4xOC4xMDEuDQoNCnY0LjE1LjEyOiBCdWlsZCBPSyENCnY0LjE0LjI5OiBCdWls
-ZCBPSyENCnY0LjkuODk6IEJ1aWxkIGZhaWxlZCEgRXJyb3JzOg0KICAgIGZzL2V4dDQvc3VwZXIu
-YzoyMjYzOjk6IGVycm9yOiBpbXBsaWNpdCBkZWNsYXJhdGlvbiBvZiBmdW5jdGlvbiDigJhzYl9y
-ZG9ubHnigJkgWy1XZXJyb3I9aW1wbGljaXQtZnVuY3Rpb24tZGVjbGFyYXRpb25dDQoNCnY0LjQu
-MTIzOiBCdWlsZCBmYWlsZWQhIEVycm9yczoNCiAgICBmcy9leHQ0L3N1cGVyLmM6MjEzNDo5OiBl
-cnJvcjogaW1wbGljaXQgZGVjbGFyYXRpb24gb2YgZnVuY3Rpb24g4oCYc2JfcmRvbmx54oCZIFst
-V2Vycm9yPWltcGxpY2l0LWZ1bmN0aW9uLWRlY2xhcmF0aW9uXQ0KDQp2NC4xLjUwOiBCdWlsZCBm
-YWlsZWQhIEVycm9yczoNCiAgICBmcy9leHQ0L3N1cGVyLmM6MjEyOTo5OiBlcnJvcjogaW1wbGlj
-aXQgZGVjbGFyYXRpb24gb2YgZnVuY3Rpb24g4oCYc2JfcmRvbmx54oCZIFstV2Vycm9yPWltcGxp
-Y2l0LWZ1bmN0aW9uLWRlY2xhcmF0aW9uXQ0KDQp2My4xOC4xMDE6IEJ1aWxkIGZhaWxlZCEgRXJy
-b3JzOg0KICAgIGZzL2V4dDQvc3VwZXIuYzoyMDk2Ojk6IGVycm9yOiBpbXBsaWNpdCBkZWNsYXJh
-dGlvbiBvZiBmdW5jdGlvbiDigJhzYl9yZG9ubHnigJkgWy1XZXJyb3I9aW1wbGljaXQtZnVuY3Rp
-b24tZGVjbGFyYXRpb25dDQoNCg0KRVhUNCBTcGVjaWZpYyB0ZXN0czoNCg0KdjQuMTUuMTIgKGh0
-dHA6Ly9zdGFibGUtYm90Lndlc3R1czIuY2xvdWRhcHAuYXp1cmUuY29tL2V4dDQtcGF0Y2gvdjQu
-MTUuMTIvdGVzdHMvKToNCiAgICBUZXN0cyBjb21wbGV0ZS4NCnY0LjE0LjI5IChodHRwOi8vc3Rh
-YmxlLWJvdC53ZXN0dXMyLmNsb3VkYXBwLmF6dXJlLmNvbS9leHQ0LXBhdGNoL3Y0LjE0LjI5L3Rl
-c3RzLyk6DQogICAgVGVzdHMgY29tcGxldGUuDQp2NC45Ljg5IChodHRwOi8vc3RhYmxlLWJvdC53
-ZXN0dXMyLmNsb3VkYXBwLmF6dXJlLmNvbS9leHQ0LXBhdGNoL3Y0LjkuODkvdGVzdHMvKToNCiAg
-ICBObyB0ZXN0cyBjb21wbGV0ZWQhDQp2NC40LjEyMyAoaHR0cDovL3N0YWJsZS1ib3Qud2VzdHVz
-Mi5jbG91ZGFwcC5henVyZS5jb20vZXh0NC1wYXRjaC92NC40LjEyMy90ZXN0cy8pOg0KICAgIE5v
-IHRlc3RzIGNvbXBsZXRlZCENCnY0LjEuNTAgKGh0dHA6Ly9zdGFibGUtYm90Lndlc3R1czIuY2xv
-dWRhcHAuYXp1cmUuY29tL2V4dDQtcGF0Y2gvdjQuMS41MC90ZXN0cy8pOg0KICAgIE5vIHRlc3Rz
-IGNvbXBsZXRlZCENCnYzLjE4LjEwMSAoaHR0cDovL3N0YWJsZS1ib3Qud2VzdHVzMi5jbG91ZGFw
-cC5henVyZS5jb20vZXh0NC1wYXRjaC92My4xOC4xMDEvdGVzdHMvKToNCiAgICBObyB0ZXN0cyBj
-b21wbGV0ZWQhDQoNClBsZWFzZSBsZXQgdXMga25vdyBpZiB5b3UnZCBsaWtlIHRvIGhhdmUgdGhp
-cyBwYXRjaCBpbmNsdWRlZCBpbiBhIHN0YWJsZSB0cmVlLg0KDQotLQ0KVGhhbmtzLA0KU2FzaGE=
+Hi again EXT4 ML!
+
+Here's a mail that would be sent as a result of an autoselection. It
+will note the "score" of the patch, and will run the same tests we
+do for patches tagged for stable.
+
+As before, please let me know your thoughts on this. Thanks!
+
+=3D=3D=3D
+
+Hi Eryu Guan,
+
+[This is an automated email]
+
+This commit has been processed by the -stable helper bot and determined
+to be a high probability candidate for -stable trees. (score: 59.259)
+
+The bot has tested the following trees: v4.15.12, v4.14.29, v4.9.89, v4.4.1=
+23, v4.1.50, v3.18.101.
+
+v4.15.12: Build OK!
+v4.14.29: Build OK!
+v4.9.89: Build OK!
+v4.4.123: Failed to apply! Possible dependencies:
+    914f82a32d02: ("ext4: refactor direct IO code")
+    705965bd6dfa: ("ext4: rename and split get blocks functions")
+    ba5843f51d46: ("ext4: use pre-zeroed blocks for DAX page faults")
+    c86d8db33a92: ("ext4: implement allocation of pre-zeroed blocks")
+    2dcba4781fa3: ("ext4: get rid of EXT4_GET_BLOCKS_NO_LOCK flag")
+
+v4.1.50: Failed to apply! Possible dependencies:
+    914f82a32d02: ("ext4: refactor direct IO code")
+    705965bd6dfa: ("ext4: rename and split get blocks functions")
+    ba5843f51d46: ("ext4: use pre-zeroed blocks for DAX page faults")
+    ed923b5776a2: ("ext4: add ext4_get_block_dax()")
+    e676a4c19165: ("ext4: use ext4_get_block_write() for DAX")
+    11bd1a9ecdd6: ("ext4: huge page fault support")
+    e676a4c19165: ("ext4: use ext4_get_block_write() for DAX")
+    01a33b4ace68: ("ext4: start transaction before calling into DAX")
+    ed923b5776a2: ("ext4: add ext4_get_block_dax()")
+    e676a4c19165: ("ext4: use ext4_get_block_write() for DAX")
+    11bd1a9ecdd6: ("ext4: huge page fault support")
+    11bd1a9ecdd6: ("ext4: huge page fault support")
+
+v3.18.101: Failed to apply! Possible dependencies:
+    914f82a32d02: ("ext4: refactor direct IO code")
+    6f67376318ab: ("direct_IO: use iov_iter_rw() instead of rw everywhere")
+    ef96fdddcd38: ("staging: lustre: lustre: llite: use DIV_ROUND_UP")
+    42b1ab979d92: ("9p: get rid of v9fs_direct_file_read()")
+    9565a5445240: ("9p: get rid of v9fs_direct_file_write()")
+    9abb40830700: ("fs/affs/file.c: add support to O_DIRECT")
+    92b20708f9f0: ("fs/affs/file.c: fix direct IO writes beyond EOF")
+    9abb40830700: ("fs/affs/file.c: add support to O_DIRECT")
+    17f8c842d24a: ("Remove rw from {,__,do_}blockdev_direct_IO()")
+    92b20708f9f0: ("fs/affs/file.c: fix direct IO writes beyond EOF")
+    9abb40830700: ("fs/affs/file.c: add support to O_DIRECT")
+    9abb40830700: ("fs/affs/file.c: add support to O_DIRECT")
+
+
+EXT4 Specific tests:
+
+v4.15.12 (http://stable-bot.westus2.cloudapp.azure.com/ext4-test2/v4.15.12/=
+tests/):
+    Tests complete.
+v4.14.29 (http://stable-bot.westus2.cloudapp.azure.com/ext4-test2/v4.14.29/=
+tests/):
+    Tests complete.
+v4.9.89 (http://stable-bot.westus2.cloudapp.azure.com/ext4-test2/v4.9.89/te=
+sts/):
+    Tests complete.
+
+Please let us know if you'd like to have this patch included in a stable tr=
+ee.
