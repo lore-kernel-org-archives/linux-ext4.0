@@ -1,100 +1,47 @@
-From: Jaegeuk Kim <jaegeuk@kernel.org>
-Subject: [PATCH] ext4: handle errors on ext4_commit_super
-Date: Thu, 29 Mar 2018 18:44:29 -0700
-Message-ID: <20180330014429.27824-1-jaegeuk@kernel.org>
-Cc: Jaegeuk Kim <jaegeuk@google.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>
-To: linux-kernel@vger.kernel.org
+From: valdis.kletnieks@vt.edu
+Subject: Re: linux-next 20180327 - "SELinux: (dev dm-3, type ext4) getxattr errno 34"
+Date: Fri, 30 Mar 2018 00:07:31 -0400
+Message-ID: <15451.1522382851@turing-police.cc.vt.edu>
+References: <24018.1522346273@turing-police.cc.vt.edu> <db97ea5d-0925-63bd-6840-1364a7977a50@tycho.nsa.gov> <026f2dc7-1c9c-93ff-569c-87a77aad0ece@tycho.nsa.gov>
+ <20180330013221.GD3790@thunk.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; boundary="==_Exmh_1522382851_14829P";
+         micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Transfer-Encoding: 7bit
+Cc: Stephen Smalley <sds@tycho.nsa.gov>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, selinux@tycho.nsa.gov
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180330013221.GD3790@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Jaegeuk Kim <jaegeuk@google.com>
+--==_Exmh_1522382851_14829P
+Content-Type: text/plain; charset=us-ascii
 
-When remounting ext4 from ro to rw, currently it allows its transition,
-even if ext4_commit_super() returns EIO. Even worse thing is, after that,
-fs/buffer complains buffer dirty bits like:
+On Thu, 29 Mar 2018 21:32:21 -0400, "Theodore Y. Ts'o" said:
 
- Call trace:
- [<ffffff9750c259dc>] mark_buffer_dirty+0x184/0x1a4
- [<ffffff9750cb398c>] __ext4_handle_dirty_super+0x4c/0xfc
- [<ffffff9750c7a9fc>] ext4_file_open+0x154/0x1c0
- [<ffffff9750bea51c>] do_dentry_open+0x114/0x2d0
- [<ffffff9750bea75c>] vfs_open+0x5c/0x94
- [<ffffff9750bf879c>] path_openat+0x668/0xfe8
- [<ffffff9750bf8088>] do_filp_open+0x74/0x120
- [<ffffff9750beac98>] do_sys_open+0x148/0x254
- [<ffffff9750beade0>] SyS_openat+0x10/0x18
- [<ffffff9750a83ab0>] el0_svc_naked+0x24/0x28
- EXT4-fs (dm-1): previous I/O error to superblock detected
- Buffer I/O error on dev dm-1, logical block 0, lost sync page write
- EXT4-fs (dm-1): re-mounted. Opts: (null)
- Buffer I/O error on dev dm-1, logical block 80, lost async page write
+> Yes, the breakage is my fault; my apologies.  The new version of the
+> patch is already posted in bugzilla (and on linux-ext4).  I'll be
+> pushing out a refreshed ext4.git branch shortly.
 
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org
-Cc: Jaegeuk Kim <jaegeuk@kernel.org>
-Signed-off-by: Jaegeuk Kim <jaegeuk@google.com>
----
- fs/ext4/super.c | 21 +++++++++++++--------
- 1 file changed, 13 insertions(+), 8 deletions(-)
+Confirming that reverting de57a63ea4389e39b1cdd1cef15e1ec9b58a964c
+and applying the new version from the bugzilla results in a clean boot.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 39bf464c35f1..b268bfea879c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2151,7 +2151,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
- 	if (sbi->s_journal)
- 		ext4_set_feature_journal_needs_recovery(sb);
- 
--	ext4_commit_super(sb, 1);
-+	res = ext4_commit_super(sb, 1);
- done:
- 	if (test_opt(sb, DEBUG))
- 		printk(KERN_INFO "[EXT4 FS bs=%lu, gc=%u, "
-@@ -4739,11 +4739,10 @@ static int ext4_commit_super(struct super_block *sb, int sync)
- 		unlock_buffer(sbh);
- 		error = __sync_dirty_buffer(sbh,
- 			REQ_SYNC | (test_opt(sb, BARRIER) ? REQ_FUA : 0));
--		if (error)
-+		if (error && !buffer_write_io_error(sbh))
- 			return error;
- 
--		error = buffer_write_io_error(sbh);
--		if (error) {
-+		if (buffer_write_io_error(sbh)) {
- 			ext4_msg(sb, KERN_ERR, "I/O error while writing "
- 			       "superblock");
- 			clear_buffer_write_io_error(sbh);
-@@ -5144,8 +5143,12 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 			if (sbi->s_journal)
- 				ext4_clear_journal_err(sb, es);
- 			sbi->s_mount_state = le16_to_cpu(es->s_state);
--			if (!ext4_setup_super(sb, es, 0))
--				sb->s_flags &= ~SB_RDONLY;
-+
-+			err = ext4_setup_super(sb, es, 0);
-+			if (err)
-+				goto restore_opts;
-+
-+			sb->s_flags &= ~SB_RDONLY;
- 			if (ext4_has_feature_mmp(sb))
- 				if (ext4_multi_mount_protect(sb,
- 						le64_to_cpu(es->s_mmp_block))) {
-@@ -5169,8 +5172,10 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	}
- 
- 	ext4_setup_system_zone(sb);
--	if (sbi->s_journal == NULL && !(old_sb_flags & SB_RDONLY))
--		ext4_commit_super(sb, 1);
-+	if (sbi->s_journal == NULL && !(old_sb_flags & SB_RDONLY)) {
-+		err = ext4_commit_super(sb, 1);
-+		goto restore_opts;
-+	}
- 
- #ifdef CONFIG_QUOTA
- 	/* Release old quota file names */
--- 
-2.15.0.531.g2ccb3012c9-goog
+
+--==_Exmh_1522382851_14829P
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Comment: Exmh version 2.8.0 04/21/2017
+
+iQEVAwUBWr24A40DS38y7CIcAQKb2gf9HZK4jy0D2DydpBWjCAbBac6blhm4FfSa
+WMSpDMrOgf3M+fG0yOcqkpmmB15Gs4wgfwqEqehqgAnJBpqFzUQ+wz8545LleauI
+yif4ME1IB5dcOgn1bwaoSa58t3IAst4tXwHqvwbR3t3m1GV6Dt57CPQVP94hQqhe
+Uv4BeJCRE/VVoIrPKAxcKRUhk7ISK9u47YEdKR7zKBEcfmZVajPTZTVMDgVuqdYy
+9LjD9g5S3i+9laKfmzz0qZqopB7XGhH5VW5Gh3e2aRfIjy5jD80l6CZ4Ux8lq4DO
+wSnCbLY2Lhn1JBH9IFmypxM4QtHdO4zahC8yIOD4wUBVhhXKkicuZg==
+=Kmso
+-----END PGP SIGNATURE-----
+
+--==_Exmh_1522382851_14829P--
