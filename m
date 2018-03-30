@@ -1,46 +1,34 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH v7 05/14] ext4, dax: introduce ext4_dax_aops
-Date: Thu, 29 Mar 2018 15:47:55 -0700
-Message-ID: <CAPcyv4gknYC3WUEEfGjNH8ufFvokdZarSaZUm-cczCXyEz_D0w@mail.gmail.com>
-References: <152167302988.5268.4370226749268662682.stgit@dwillia2-desk3.amr.corp.intel.com>
- <152167305782.5268.13485258587227210521.stgit@dwillia2-desk3.amr.corp.intel.com>
- <20180329154035.lvsepjvt6vcplshw@quack2.suse.cz>
- <20180329180927.GA16055@lst.de>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: linux-next 20180327 - "SELinux: (dev dm-3, type ext4) getxattr
+ errno 34"
+Date: Thu, 29 Mar 2018 21:32:21 -0400
+Message-ID: <20180330013221.GD3790@thunk.org>
+References: <24018.1522346273@turing-police.cc.vt.edu>
+ <db97ea5d-0925-63bd-6840-1364a7977a50@tycho.nsa.gov>
+ <026f2dc7-1c9c-93ff-569c-87a77aad0ece@tycho.nsa.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- david <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- linux-xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20180329180927.GA16055-jcswGhMUV9g@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: valdis.kletnieks@vt.edu, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, selinux@tycho.nsa.gov
+To: Stephen Smalley <sds@tycho.nsa.gov>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <026f2dc7-1c9c-93ff-569c-87a77aad0ece@tycho.nsa.gov>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Mar 29, 2018 at 11:09 AM, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org> wrote:
-> On Thu, Mar 29, 2018 at 05:40:35PM +0200, Jan Kara wrote:
->> So ext4_direct_IO() for IS_DAX() files will just bail out. So could you
->> just provide ext4_dax_direct_IO() which will bail out and use it here? With
->> a similar comment as in xfs_vm_direct_IO() that open still needs this
->> method set... Thanks!
->
-> In fact a common noop_direct_IO might make sense.
+On Thu, Mar 29, 2018 at 02:35:44PM -0400, Stephen Smalley wrote:
+> > 
+> > broke a longstanding assumption by SELinux that it could call getxattr with a NULL buffer and 0 size to probe whether the filesystem supports the security xattrs at mount time.
+> > 
+> > Options for fixing:
+> > - Revert or revise that patch to not return -ERANGE if buffer is NULL (prior behavior),
+> > - Change SELinux sb_finish_set_opts() to treat -ERANGE as a non-error result.
+> 
+> Per https://bugzilla.kernel.org/show_bug.cgi?id=199185#c4, other callers besides SELinux are also broken by this change, so a revert or revision of the ext4 commit seems necessary regardless.
 
-Ok, I introduced noop_direct_IO() in "fs, dax: prepare for
-dax-specific address_space_operations", and cleaned up xfs, ext4, and
-ext2 accordingly. Let me know if you want to see a resend of the
-series with those changes. Otherwise this will appear in -next
-shortly.
+Yes, the breakage is my fault; my apologies.  The new version of the
+patch is already posted in bugzilla (and on linux-ext4).  I'll be
+pushing out a refreshed ext4.git branch shortly.
+
+					- Ted
