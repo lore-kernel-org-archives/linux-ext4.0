@@ -1,156 +1,100 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: move call to ext4_error() into ext4_xattr_check_block()
-Date: Fri, 30 Mar 2018 16:36:10 -0400
-Message-ID: <20180330203610.23305-1-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH -v2] ext4: limit xattr size to INT_MAX
+Date: Fri, 30 Mar 2018 17:19:24 -0400
+Message-ID: <20180330211923.GD9300@thunk.org>
+References: <20180329194125.GC3790@thunk.org>
+ <20180330191320.7270-1-tytso@mit.edu>
+ <20180330195016.GC180083@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        adilger@dilger.ca, wen.xu@gatech.edu, ebiggers@google.com,
+        stable@vger.kernel.org
+To: Eric Biggers <ebiggers3@gmail.com>
 Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180330195016.GC180083@gmail.com>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Refactor the call to EXT4_ERROR_INODE() into ext4_xattr_check_block().
-This simplifies the code, and fixes a problem where not all callers of
-ext4_xattr_check_block() were not resulting in ext4_error() getting
-called when the xattr block is corrupted.
+On Fri, Mar 30, 2018 at 12:50:16PM -0700, Eric Biggers wrote:
+> Hi Ted,
+> 
+> On Fri, Mar 30, 2018 at 03:13:20PM -0400, Theodore Ts'o wrote:
+> >
+> > Also if the xattr block is corrupted, mark the file system as
+> > containing an error.
+> 
+> Weren't we doing that already?
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/xattr.c | 60 ++++++++++++++++++++++++++-------------------------------
- 1 file changed, 27 insertions(+), 33 deletions(-)
+Actually, not everywhere, but I decided to move that into a separate
+commit and forgot to remove this from the description.  See the commit
+"ext4: move call to ext4_error() into ext4_xattr_check_block()".
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index d2a9b078e121..b0a9ba8e576a 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -226,25 +226,36 @@ ext4_xattr_check_entries(struct ext4_xattr_entry *entry, void *end,
- }
- 
- static inline int
--ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh)
-+__ext4_xattr_check_block(struct inode *inode, struct buffer_head *bh,
-+			 const char *function, unsigned int line)
- {
--	int error;
-+	int error = -EFSCORRUPTED;
- 
- 	if (buffer_verified(bh))
- 		return 0;
- 
- 	if (BHDR(bh)->h_magic != cpu_to_le32(EXT4_XATTR_MAGIC) ||
- 	    BHDR(bh)->h_blocks != cpu_to_le32(1))
--		return -EFSCORRUPTED;
-+		goto errout;
-+	error = -EFSBADCRC;
- 	if (!ext4_xattr_block_csum_verify(inode, bh))
--		return -EFSBADCRC;
-+		goto errout;
- 	error = ext4_xattr_check_entries(BFIRST(bh), bh->b_data + bh->b_size,
- 					 bh->b_data);
--	if (!error)
-+errout:
-+	if (error)
-+		__ext4_error_inode(inode, function, line, 0,
-+				   "corrupted xattr block %llu",
-+				   (unsigned long long) bh->b_blocknr);
-+	else
- 		set_buffer_verified(bh);
- 	return error;
- }
- 
-+#define ext4_xattr_check_block(inode, bh) \
-+	__ext4_xattr_check_block((inode), (bh),  __func__, __LINE__)
-+
-+
- static int
- __xattr_check_inode(struct inode *inode, struct ext4_xattr_ibody_header *header,
- 			 void *end, const char *function, unsigned int line)
-@@ -515,12 +526,9 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
- 		goto cleanup;
- 	ea_bdebug(bh, "b_count=%d, refcount=%d",
- 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
--	if (ext4_xattr_check_block(inode, bh)) {
--		EXT4_ERROR_INODE(inode, "bad block %llu",
--				 EXT4_I(inode)->i_file_acl);
--		error = -EFSCORRUPTED;
-+	error = ext4_xattr_check_block(inode, bh);
-+	if (error)
- 		goto cleanup;
--	}
- 	ext4_xattr_block_cache_insert(ea_block_cache, bh);
- 	entry = BFIRST(bh);
- 	error = ext4_xattr_find_entry(&entry, name_index, name, 1);
-@@ -684,12 +692,9 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
- 		goto cleanup;
- 	ea_bdebug(bh, "b_count=%d, refcount=%d",
- 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
--	if (ext4_xattr_check_block(inode, bh)) {
--		EXT4_ERROR_INODE(inode, "bad block %llu",
--				 EXT4_I(inode)->i_file_acl);
--		error = -EFSCORRUPTED;
-+	error = ext4_xattr_check_block(inode, bh);
-+	if (error)
- 		goto cleanup;
--	}
- 	ext4_xattr_block_cache_insert(EA_BLOCK_CACHE(inode), bh);
- 	error = ext4_xattr_list_entries(dentry, BFIRST(bh), buffer, buffer_size);
- 
-@@ -816,10 +821,9 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
- 			goto out;
- 		}
- 
--		if (ext4_xattr_check_block(inode, bh)) {
--			ret = -EFSCORRUPTED;
-+		ret = ext4_xattr_check_block(inode, bh);
-+		if (ret)
- 			goto out;
--		}
- 
- 		for (entry = BFIRST(bh); !IS_LAST_ENTRY(entry);
- 		     entry = EXT4_XATTR_NEXT(entry))
-@@ -1801,12 +1805,9 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
- 		ea_bdebug(bs->bh, "b_count=%d, refcount=%d",
- 			atomic_read(&(bs->bh->b_count)),
- 			le32_to_cpu(BHDR(bs->bh)->h_refcount));
--		if (ext4_xattr_check_block(inode, bs->bh)) {
--			EXT4_ERROR_INODE(inode, "bad block %llu",
--					 EXT4_I(inode)->i_file_acl);
--			error = -EFSCORRUPTED;
-+		error = ext4_xattr_check_block(inode, bs->bh);
-+		if (error)
- 			goto cleanup;
--		}
- 		/* Find the named attribute. */
- 		bs->s.base = BHDR(bs->bh);
- 		bs->s.first = BFIRST(bs->bh);
-@@ -2729,13 +2730,9 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 		error = -EIO;
- 		if (!bh)
- 			goto cleanup;
--		if (ext4_xattr_check_block(inode, bh)) {
--			EXT4_ERROR_INODE(inode, "bad block %llu",
--					 EXT4_I(inode)->i_file_acl);
--			error = -EFSCORRUPTED;
--			brelse(bh);
-+		error = ext4_xattr_check_block(inode, bh);
-+		if (error)
- 			goto cleanup;
--		}
- 		base = BHDR(bh);
- 		end = bh->b_data + bh->b_size;
- 		min_offs = end - base;
-@@ -2892,11 +2889,8 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 			goto cleanup;
- 		}
- 		error = ext4_xattr_check_block(inode, bh);
--		if (error) {
--			EXT4_ERROR_INODE(inode, "bad block %llu (error %d)",
--					 EXT4_I(inode)->i_file_acl, error);
-+		if (error)
- 			goto cleanup;
--		}
- 
- 		if (ext4_has_feature_ea_inode(inode->i_sb)) {
- 			for (entry = BFIRST(bh); !IS_LAST_ENTRY(entry);
--- 
-2.16.1.72.g5be1f00a9a
+> > This issue has been assigned CVE-2018-1095.
+> > 
+> > https://bugzilla.kernel.org/show_bug.cgi?id=199185
+> > https://bugzilla.redhat.com/show_bug.cgi?id=1560793
+> > 
+> > Reported-by: Wen Xu <wen.xu@gatech.edu>
+> > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> > Cc: stable@vger.kernel.org
+> 
+> I'm still confused why you removed my Fixes: line and the mentions of the bug
+> affecting external inode xattrs only.  Wasn't the size validation correct before
+> then?  We might want to send d7614cc16146 to the stable trees, but after that
+> the sizes were being validated correctly, right?
+
+Sorry, I forgot to add back the Fixes line.   I'll fix that.
+
+I removed the text because it was confusing me when I was originally
+parsing it.  (The details of the ea-in-inode code had been swapped
+out, I'm embarassed to say.)  I do see what you are driving at, and
+I'll add some text that makes the point you are trying to make.
+
+> I still think the new checks here are misleading and shouldn't be added.  If
+> someone can actually modify the buffer_head concurrently then they could just
+> make the size larger than the block but <= INT_MAX, so that the following
+> page(s) are also copied to the xattr, disclosing memory or crashing.  Or they
+> could modify ->e_value_offs to point past the block.  Also since this is not
+> using a volatile memory access, the compiler is free to reload the value and
+> assume it's the same.
+
+The most common case where we run into this problem is where it's not
+a CPU-CPU race, but rather where the buffer head gets read into memory
+and is validated, and then minutes later, file system corruption
+causes the buffer head to be modifeid.  So I wasn't worried about
+races where we would need to copy the buffer to a temp buffer, and
+validate it every time before using it.
+
+You're right that against someone who has both malicoiusly crafted the
+corrupted file system, *and* maliciously crafts the access patterns to
+deliberately trigger a race, the check that I've added isn't
+sufficient.  Unfortunately, doing the copy and validate every time is
+a problem from a performance perspective.
+
+The condition I added does protect us against a class of attacks.  But
+it is not a universal protection, agreed.  The way to fix the concern
+you raised would be to add a check for
+le16_to_cpu(entry->e_value_offs) before we using it.  But that's for a
+different attack, and it's something we should add in a separate
+commit.
+
+Looking at fs/ext4/xattr.c, there are a number of places where we are
+relying on buffer_verified() bit --- I'd call that a "target rich
+environment" for fixes.  In my opinion, the check I added to fix this
+POC attack, or an explicit check for entry->e_value_offs in
+ext4_xattr_block_get() should be the primary protection for malformed
+on-disk data structures that might lead to buffer overflow attacks,
+since it eliminates the TOCTTOU gap.  The buffer_verified bit should
+be a backup just in case we missed a check.
+
+Cheers,
+
+						- Ted
+
+P.S.  If you are concerned that the extra checks makes it hard to find
+bugs, I would much rather add a #ifdef which disable the the
+ext4_xattr_*verify() functions, and see if Wen Xu's can find problems
+--- and if so, we should fix them.
