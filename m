@@ -1,47 +1,68 @@
-From: valdis.kletnieks@vt.edu
-Subject: Re: linux-next 20180327 - "SELinux: (dev dm-3, type ext4) getxattr errno 34"
-Date: Fri, 30 Mar 2018 00:07:31 -0400
-Message-ID: <15451.1522382851@turing-police.cc.vt.edu>
-References: <24018.1522346273@turing-police.cc.vt.edu> <db97ea5d-0925-63bd-6840-1364a7977a50@tycho.nsa.gov> <026f2dc7-1c9c-93ff-569c-87a77aad0ece@tycho.nsa.gov>
- <20180330013221.GD3790@thunk.org>
+From: Sasha Levin <Alexander.Levin@microsoft.com>
+Subject: Re: [PATCH 2/2] ext4: don't allow r/w mounts if metadata blocks
+ overlap the superblock
+Date: Fri, 30 Mar 2018 16:16:06 +0000
+Message-ID: <DM5PR2101MB1032A56161CBF73A94B72C36FBA10@DM5PR2101MB1032.namprd21.prod.outlook.com>
+References: <20180326044906.13286-2-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==_Exmh_1522382851_14829P";
-         micalg=pgp-sha1; protocol="application/pgp-signature"
-Content-Transfer-Encoding: 7bit
-Cc: Stephen Smalley <sds@tycho.nsa.gov>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, selinux@tycho.nsa.gov
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180330013221.GD3790@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        "stable@vger.kernel.org" <stable@vger.kernel.org>,
+        "stable@vger.kernel.org" <stable@vger.kernel.org>
+To: Sasha Levin <Alexander.Levin@microsoft.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20180326044906.13286-2-tytso@mit.edu>
+Content-Language: en-US
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
---==_Exmh_1522382851_14829P
-Content-Type: text/plain; charset=us-ascii
-
-On Thu, 29 Mar 2018 21:32:21 -0400, "Theodore Y. Ts'o" said:
-
-> Yes, the breakage is my fault; my apologies.  The new version of the
-> patch is already posted in bugzilla (and on linux-ext4).  I'll be
-> pushing out a refreshed ext4.git branch shortly.
-
-Confirming that reverting de57a63ea4389e39b1cdd1cef15e1ec9b58a964c
-and applying the new version from the bugzilla results in a clean boot.
-
-
---==_Exmh_1522382851_14829P
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Comment: Exmh version 2.8.0 04/21/2017
-
-iQEVAwUBWr24A40DS38y7CIcAQKb2gf9HZK4jy0D2DydpBWjCAbBac6blhm4FfSa
-WMSpDMrOgf3M+fG0yOcqkpmmB15Gs4wgfwqEqehqgAnJBpqFzUQ+wz8545LleauI
-yif4ME1IB5dcOgn1bwaoSa58t3IAst4tXwHqvwbR3t3m1GV6Dt57CPQVP94hQqhe
-Uv4BeJCRE/VVoIrPKAxcKRUhk7ISK9u47YEdKR7zKBEcfmZVajPTZTVMDgVuqdYy
-9LjD9g5S3i+9laKfmzz0qZqopB7XGhH5VW5Gh3e2aRfIjy5jD80l6CZ4Ux8lq4DO
-wSnCbLY2Lhn1JBH9IFmypxM4QtHdO4zahC8yIOD4wUBVhhXKkicuZg==
-=Kmso
------END PGP SIGNATURE-----
-
---==_Exmh_1522382851_14829P--
+SGkgRVhUNCBNTCENCg0KSSdtIHdvcmtpbmcgb24gYSBwcm9qZWN0IHRvIHBlcmZvcm0gYXV0b21h
+dGljIHBhdGNoIHNlbGVjdGlvbiBmb3INCnN0YWJsZSwgYW5kIGF1dG9tYXRlIHRoZSB0ZXN0aW5n
+IGJlaW5nIGRvbmUgZm9yIHBhdGNoZXMgZ29pbmcgaW4NCnZhcmlvdXMgc3RhYmxlIHRyZWUuDQoN
+CkkgZ290IHNvbWUgaW5wdXQgZnJvbSB0aGUgWEZTIGZvbGtzIHNvIGZhciwgYW5kIHdhbnRlZCB0
+byBnZXQgc29tZQ0KaW5wdXQgZnJvbSB0aGUgRVhUNCBmb2xrcyBhcyB3ZWxsLg0KDQpCZWxvdyBp
+cyBhIG1haWwgdGhhdCB3b3VsZCBiZSBzZW50IGFzIGEgcmVzcG9uc2UgZm9yIGV4dDQgcGF0Y2hl
+cw0KdGFnZ2VkIGZvciBzdGFibGUgYW5kIHNlbnQgdG8gdGhlIG1haWxpbmcgbGlzdC4gU2luY2Ug
+dGhpcyBvbmUgaXMNCmFscmVhZHkgdGFnZ2VkIGZvciBzdGFibGUsIHRoZXNlIHJlc3VsdHMgc2hv
+dWxkIGJlIHVzZWZ1bCBmb3IgcGVvcGxlDQp0byB1bmRlcnN0YW5kIGlmIHRoZSBwYXRjaCBwcm9w
+ZXJseSBhcHBsaWVzIHRvIHZhcmlvdXMgc3RhYmxlIHRyZWVzDQphbmQgcGFzc2VzIHRlc3Rpbmcu
+DQoNCkZvciBFWFQ0LCBhdCB0aGlzIHBvaW50IHRlc3RpbmcgaXMgdGhlIHhmc3Rlc3RzIHRyZWUg
+YXQNCmh0dHBzOi8vZ2l0aHViLmNvbS90eXRzby94ZnN0ZXN0cyAsIHJ1bm5pbmcgd2l0aCAiLi9j
+aGVjayAtZyBhdXRvIi4NCkNvbXBsZXRlIGJ1aWxkIGFuZCB0ZXN0IGxvZ3MgYXJlIGF2YWlsYWJs
+ZSBpbiB0aGUgbGlua3MgZW1iZWRkZWQgaW4NCnRoZSBtYWlsLg0KDQpJJ2QgYmUgaGFwcHkgdG8g
+Z2V0IGZlZWRiYWNrIGZvciB0aGlzLiBUaGFua3MhDQoNCj09PQ0KDQpIaSBUaGVvZG9yZSBUcydv
+LA0KDQpbVGhpcyBpcyBhbiBhdXRvbWF0ZWQgZW1haWxdDQoNClRoaXMgY29tbWl0IGhhcyBiZWVu
+IHByb2Nlc3NlZCBiZWNhdXNlIGl0IGNvbnRhaW5zIGEgLXN0YWJsZSB0YWcuDQpUaGUgc3RhYmxl
+IHRhZyBpbmRpY2F0ZXMgdGhhdCBpdCdzIHJlbGV2YW50IGZvciB0aGUgZm9sbG93aW5nIHRyZWVz
+OiBhbGwNCg0KVGhlIGJvdCBoYXMgYWxzbyBkZXRlcm1pbmVkIGl0J3MgcHJvYmFibHkgYSBidWcg
+Zml4aW5nIHBhdGNoLiAoc2NvcmU6IDkwLjYwNTkpDQoNClRoZSBib3QgaGFzIHRlc3RlZCB0aGUg
+Zm9sbG93aW5nIHRyZWVzOiB2NC4xNS4xMiwgdjQuMTQuMjksIHY0LjkuODksIHY0LjQuMTIzLCB2
+NC4xLjUwLCB2My4xOC4xMDEuDQoNCnY0LjE1LjEyOiBCdWlsZCBPSyENCnY0LjE0LjI5OiBCdWls
+ZCBPSyENCnY0LjkuODk6IEJ1aWxkIGZhaWxlZCEgRXJyb3JzOg0KICAgIGZzL2V4dDQvc3VwZXIu
+YzoyMjYzOjk6IGVycm9yOiBpbXBsaWNpdCBkZWNsYXJhdGlvbiBvZiBmdW5jdGlvbiDigJhzYl9y
+ZG9ubHnigJkgWy1XZXJyb3I9aW1wbGljaXQtZnVuY3Rpb24tZGVjbGFyYXRpb25dDQoNCnY0LjQu
+MTIzOiBCdWlsZCBmYWlsZWQhIEVycm9yczoNCiAgICBmcy9leHQ0L3N1cGVyLmM6MjEzNDo5OiBl
+cnJvcjogaW1wbGljaXQgZGVjbGFyYXRpb24gb2YgZnVuY3Rpb24g4oCYc2JfcmRvbmx54oCZIFst
+V2Vycm9yPWltcGxpY2l0LWZ1bmN0aW9uLWRlY2xhcmF0aW9uXQ0KDQp2NC4xLjUwOiBCdWlsZCBm
+YWlsZWQhIEVycm9yczoNCiAgICBmcy9leHQ0L3N1cGVyLmM6MjEyOTo5OiBlcnJvcjogaW1wbGlj
+aXQgZGVjbGFyYXRpb24gb2YgZnVuY3Rpb24g4oCYc2JfcmRvbmx54oCZIFstV2Vycm9yPWltcGxp
+Y2l0LWZ1bmN0aW9uLWRlY2xhcmF0aW9uXQ0KDQp2My4xOC4xMDE6IEJ1aWxkIGZhaWxlZCEgRXJy
+b3JzOg0KICAgIGZzL2V4dDQvc3VwZXIuYzoyMDk2Ojk6IGVycm9yOiBpbXBsaWNpdCBkZWNsYXJh
+dGlvbiBvZiBmdW5jdGlvbiDigJhzYl9yZG9ubHnigJkgWy1XZXJyb3I9aW1wbGljaXQtZnVuY3Rp
+b24tZGVjbGFyYXRpb25dDQoNCg0KRVhUNCBTcGVjaWZpYyB0ZXN0czoNCg0KdjQuMTUuMTIgKGh0
+dHA6Ly9zdGFibGUtYm90Lndlc3R1czIuY2xvdWRhcHAuYXp1cmUuY29tL2V4dDQtcGF0Y2gvdjQu
+MTUuMTIvdGVzdHMvKToNCiAgICBUZXN0cyBjb21wbGV0ZS4NCnY0LjE0LjI5IChodHRwOi8vc3Rh
+YmxlLWJvdC53ZXN0dXMyLmNsb3VkYXBwLmF6dXJlLmNvbS9leHQ0LXBhdGNoL3Y0LjE0LjI5L3Rl
+c3RzLyk6DQogICAgVGVzdHMgY29tcGxldGUuDQp2NC45Ljg5IChodHRwOi8vc3RhYmxlLWJvdC53
+ZXN0dXMyLmNsb3VkYXBwLmF6dXJlLmNvbS9leHQ0LXBhdGNoL3Y0LjkuODkvdGVzdHMvKToNCiAg
+ICBObyB0ZXN0cyBjb21wbGV0ZWQhDQp2NC40LjEyMyAoaHR0cDovL3N0YWJsZS1ib3Qud2VzdHVz
+Mi5jbG91ZGFwcC5henVyZS5jb20vZXh0NC1wYXRjaC92NC40LjEyMy90ZXN0cy8pOg0KICAgIE5v
+IHRlc3RzIGNvbXBsZXRlZCENCnY0LjEuNTAgKGh0dHA6Ly9zdGFibGUtYm90Lndlc3R1czIuY2xv
+dWRhcHAuYXp1cmUuY29tL2V4dDQtcGF0Y2gvdjQuMS41MC90ZXN0cy8pOg0KICAgIE5vIHRlc3Rz
+IGNvbXBsZXRlZCENCnYzLjE4LjEwMSAoaHR0cDovL3N0YWJsZS1ib3Qud2VzdHVzMi5jbG91ZGFw
+cC5henVyZS5jb20vZXh0NC1wYXRjaC92My4xOC4xMDEvdGVzdHMvKToNCiAgICBObyB0ZXN0cyBj
+b21wbGV0ZWQhDQoNClBsZWFzZSBsZXQgdXMga25vdyBpZiB5b3UnZCBsaWtlIHRvIGhhdmUgdGhp
+cyBwYXRjaCBpbmNsdWRlZCBpbiBhIHN0YWJsZSB0cmVlLg0KDQotLQ0KVGhhbmtzLA0KU2FzaGE=
