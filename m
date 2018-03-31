@@ -1,121 +1,103 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: [PATCH v8 05/18] ext4, dax: introduce ext4_dax_aops
-Date: Fri, 30 Mar 2018 21:02:36 -0700
-Message-ID: <152246895649.36038.5391043415273091960.stgit@dwillia2-desk3.amr.corp.intel.com>
-References: <152246892890.36038.18436540150980653229.stgit@dwillia2-desk3.amr.corp.intel.com>
+From: syzbot <syzbot+1236ce66f79263e8a862@syzkaller.appspotmail.com>
+Subject: KASAN: use-after-free Read in __ext4_check_dir_entry
+Date: Sat, 31 Mar 2018 13:47:06 -0700
+Message-ID: <089e0825cec8b70cc70568bb75d9@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: jack-AlSwsSmVLrQ@public.gmane.org, snitzer-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org,
- linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hch-jcswGhMUV9g@public.gmane.org
-To: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <152246892890.36038.18436540150980653229.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-In preparation for the dax implementation to start associating dax pages
-to inodes via page->mapping, we need to provide a 'struct
-address_space_operations' instance for dax. Otherwise, direct-I/O
-triggers incorrect page cache assumptions and warnings.
+Hello,
 
-Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+syzbot hit the following crash on upstream commit
+9dd2326890d89a5179967c947dab2bab34d7ddee (Fri Mar 30 17:29:47 2018 +0000)
+Merge tag 'ceph-for-4.16-rc8' of git://github.com/ceph/ceph-client
+syzbot dashboard link:  
+https://syzkaller.appspot.com/bug?extid=1236ce66f79263e8a862
+
+C reproducer: https://syzkaller.appspot.com/x/repro.c?id=6171830884761600
+syzkaller reproducer:  
+https://syzkaller.appspot.com/x/repro.syz?id=5341633302233088
+Raw console output:  
+https://syzkaller.appspot.com/x/log.txt?id=6080954745487360
+Kernel config:  
+https://syzkaller.appspot.com/x/.config?id=-2760467897697295172
+compiler: gcc (GCC) 7.1.1 20170620
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+1236ce66f79263e8a862@syzkaller.appspotmail.com
+It will help syzbot understand when the bug is fixed. See footer for  
+details.
+If you forward the report, please keep this part and the footer.
+
+==================================================================
+BUG: KASAN: use-after-free in __ext4_check_dir_entry+0x2de/0x320  
+fs/ext4/dir.c:69
+Read of size 2 at addr ffff8801b80bf000 by task syzkaller432828/4365
+
+CPU: 1 PID: 4365 Comm: syzkaller432828 Not tainted 4.16.0-rc7+ #7
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:17 [inline]
+  dump_stack+0x194/0x24d lib/dump_stack.c:53
+  print_address_description+0x73/0x250 mm/kasan/report.c:256
+  kasan_report_error mm/kasan/report.c:354 [inline]
+  kasan_report+0x23c/0x360 mm/kasan/report.c:412
+  __asan_report_load2_noabort+0x14/0x20 mm/kasan/report.c:431
+  __ext4_check_dir_entry+0x2de/0x320 fs/ext4/dir.c:69
+  ext4_readdir+0xd00/0x3600 fs/ext4/dir.c:237
+  iterate_dir+0x1ca/0x530 fs/readdir.c:51
+  SYSC_getdents64 fs/readdir.c:314 [inline]
+  SyS_getdents64+0x221/0x420 fs/readdir.c:295
+  do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
+  entry_SYSCALL_64_after_hwframe+0x42/0xb7
+RIP: 0033:0x43fd69
+RSP: 002b:00007ffc446ac118 EFLAGS: 00000203 ORIG_RAX: 00000000000000d9
+RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 000000000043fd69
+RDX: 00000000200015fc RSI: 0000000020001540 RDI: 0000000000000003
+RBP: 00000000006ca018 R08: 00000000004002c8 R09: 00000000004002c8
+R10: 00000000004002c8 R11: 0000000000000203 R12: 0000000000401690
+R13: 0000000000401720 R14: 0000000000000000 R15: 0000000000000000
+
+The buggy address belongs to the page:
+page:ffffea0006e02fc0 count:0 mapcount:0 mapping:0000000000000000 index:0x0
+flags: 0x2fffc0000000000()
+raw: 02fffc0000000000 0000000000000000 0000000000000000 00000000ffffffff
+raw: ffffea0006c095a0 ffffea0006e03020 ffff8801be5f2a50 0000000000000000
+page dumped because: kasan: bad access detected
+
+Memory state around the buggy address:
+  ffff8801b80bef00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  ffff8801b80bef80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+> ffff8801b80bf000: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+                    ^
+  ffff8801b80bf080: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ffff8801b80bf100: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+==================================================================
+
+
 ---
- fs/ext4/inode.c |   42 +++++++++++++++++++++++++++++++-----------
- 1 file changed, 31 insertions(+), 11 deletions(-)
+This bug is generated by a dumb bot. It may contain errors.
+See https://goo.gl/tpsmEJ for details.
+Direct all questions to syzkaller@googlegroups.com.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c94780075b04..249a97b19181 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2725,12 +2725,6 @@ static int ext4_writepages(struct address_space *mapping,
- 	percpu_down_read(&sbi->s_journal_flag_rwsem);
- 	trace_ext4_writepages(inode, wbc);
- 
--	if (dax_mapping(mapping)) {
--		ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev,
--						  wbc);
--		goto out_writepages;
--	}
--
- 	/*
- 	 * No pages to write? This is mainly a kludge to avoid starting
- 	 * a transaction for special inodes like journal inode on last iput()
-@@ -2955,6 +2949,27 @@ static int ext4_writepages(struct address_space *mapping,
- 	return ret;
- }
- 
-+static int ext4_dax_writepages(struct address_space *mapping,
-+			       struct writeback_control *wbc)
-+{
-+	int ret;
-+	long nr_to_write = wbc->nr_to_write;
-+	struct inode *inode = mapping->host;
-+	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
-+
-+	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
-+		return -EIO;
-+
-+	percpu_down_read(&sbi->s_journal_flag_rwsem);
-+	trace_ext4_writepages(inode, wbc);
-+
-+	ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev, wbc);
-+	trace_ext4_writepages_result(inode, wbc, ret,
-+				     nr_to_write - wbc->nr_to_write);
-+	percpu_up_read(&sbi->s_journal_flag_rwsem);
-+	return ret;
-+}
-+
- static int ext4_nonda_switch(struct super_block *sb)
- {
- 	s64 free_clusters, dirty_clusters;
-@@ -3857,10 +3872,6 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
- 	if (ext4_has_inline_data(inode))
- 		return 0;
- 
--	/* DAX uses iomap path now */
--	if (WARN_ON_ONCE(IS_DAX(inode)))
--		return 0;
--
- 	trace_ext4_direct_IO_enter(inode, offset, count, iov_iter_rw(iter));
- 	if (iov_iter_rw(iter) == READ)
- 		ret = ext4_direct_IO_read(iocb, iter);
-@@ -3946,6 +3957,13 @@ static const struct address_space_operations ext4_da_aops = {
- 	.error_remove_page	= generic_error_remove_page,
- };
- 
-+static const struct address_space_operations ext4_dax_aops = {
-+	.writepages		= ext4_dax_writepages,
-+	.direct_IO		= noop_direct_IO,
-+	.set_page_dirty		= noop_set_page_dirty,
-+	.invalidatepage		= noop_invalidatepage,
-+};
-+
- void ext4_set_aops(struct inode *inode)
- {
- 	switch (ext4_inode_journal_mode(inode)) {
-@@ -3958,7 +3976,9 @@ void ext4_set_aops(struct inode *inode)
- 	default:
- 		BUG();
- 	}
--	if (test_opt(inode->i_sb, DELALLOC))
-+	if (IS_DAX(inode))
-+		inode->i_mapping->a_ops = &ext4_dax_aops;
-+	else if (test_opt(inode->i_sb, DELALLOC))
- 		inode->i_mapping->a_ops = &ext4_da_aops;
- 	else
- 		inode->i_mapping->a_ops = &ext4_aops;
+syzbot will keep track of this bug report.
+If you forgot to add the Reported-by tag, once the fix for this bug is  
+merged
+into any tree, please reply to this email with:
+#syz fix: exact-commit-title
+If you want to test a patch for this bug, please reply with:
+#syz test: git://repo/address.git branch
+and provide the patch inline or as an attachment.
+To mark this as a duplicate of another syzbot report, please reply with:
+#syz dup: exact-subject-of-another-report
+If it's a one-off invalid bug report, please reply with:
+#syz invalid
+Note: if the crash happens again, it will cause creation of a new bug  
+report.
+Note: all commands must start from beginning of the line in the email body.
