@@ -1,7 +1,7 @@
-From: syzbot <syzbot+730517f1d3fbe54a17c7@syzkaller.appspotmail.com>
-Subject: KASAN: slab-out-of-bounds Read in __ext4_check_dir_entry
-Date: Sat, 31 Mar 2018 13:47:05 -0700
-Message-ID: <001a114043bca8cba00568bb75fa@google.com>
+From: syzbot <syzbot+1236ce66f79263e8a862@syzkaller.appspotmail.com>
+Subject: KASAN: use-after-free Read in __ext4_check_dir_entry
+Date: Sat, 31 Mar 2018 13:47:06 -0700
+Message-ID: <001a113fd904af4b2a0568bb755f@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
@@ -17,32 +17,29 @@ syzbot hit the following crash on upstream commit
 9dd2326890d89a5179967c947dab2bab34d7ddee (Fri Mar 30 17:29:47 2018 +0000)
 Merge tag 'ceph-for-4.16-rc8' of git://github.com/ceph/ceph-client
 syzbot dashboard link:  
-https://syzkaller.appspot.com/bug?extid=730517f1d3fbe54a17c7
+https://syzkaller.appspot.com/bug?extid=1236ce66f79263e8a862
 
-So far this crash happened 3 times on upstream.
-C reproducer: https://syzkaller.appspot.com/x/repro.c?id=4574925402669056
+C reproducer: https://syzkaller.appspot.com/x/repro.c?id=6171830884761600
 syzkaller reproducer:  
-https://syzkaller.appspot.com/x/repro.syz?id=5021234647531520
+https://syzkaller.appspot.com/x/repro.syz?id=5341633302233088
 Raw console output:  
-https://syzkaller.appspot.com/x/log.txt?id=6042946969272320
+https://syzkaller.appspot.com/x/log.txt?id=6080954745487360
 Kernel config:  
 https://syzkaller.appspot.com/x/.config?id=-2760467897697295172
 compiler: gcc (GCC) 7.1.1 20170620
 
 IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+730517f1d3fbe54a17c7@syzkaller.appspotmail.com
+Reported-by: syzbot+1236ce66f79263e8a862@syzkaller.appspotmail.com
 It will help syzbot understand when the bug is fixed. See footer for  
 details.
 If you forward the report, please keep this part and the footer.
 
-sshd (4443) used greatest stack depth: 17016 bytes left
-sshd (4452) used greatest stack depth: 16888 bytes left
 ==================================================================
-BUG: KASAN: slab-out-of-bounds in __ext4_check_dir_entry+0x2de/0x320  
+BUG: KASAN: use-after-free in __ext4_check_dir_entry+0x2de/0x320  
 fs/ext4/dir.c:69
-Read of size 2 at addr ffff8801d96e1000 by task syzkaller995640/4459
+Read of size 2 at addr ffff8801b80bf000 by task syzkaller432828/4365
 
-CPU: 0 PID: 4459 Comm: syzkaller995640 Not tainted 4.16.0-rc7+ #7
+CPU: 1 PID: 4365 Comm: syzkaller432828 Not tainted 4.16.0-rc7+ #7
 Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
 Google 01/01/2011
 Call Trace:
@@ -60,37 +57,27 @@ Call Trace:
   do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
   entry_SYSCALL_64_after_hwframe+0x42/0xb7
 RIP: 0033:0x43fd69
-RSP: 002b:00007ffd16083d48 EFLAGS: 00000203 ORIG_RAX: 00000000000000d9
+RSP: 002b:00007ffc446ac118 EFLAGS: 00000203 ORIG_RAX: 00000000000000d9
 RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 000000000043fd69
 RDX: 00000000200015fc RSI: 0000000020001540 RDI: 0000000000000003
 RBP: 00000000006ca018 R08: 00000000004002c8 R09: 00000000004002c8
 R10: 00000000004002c8 R11: 0000000000000203 R12: 0000000000401690
 R13: 0000000000401720 R14: 0000000000000000 R15: 0000000000000000
 
-Allocated by task 0:
-(stack is not available)
-
-Freed by task 0:
-(stack is not available)
-
-The buggy address belongs to the object at ffff8801d96e1040
-  which belongs to the cache skbuff_head_cache of size 232
-The buggy address is located 64 bytes to the left of
-  232-byte region [ffff8801d96e1040, ffff8801d96e1128)
 The buggy address belongs to the page:
-page:ffffea000765b840 count:1 mapcount:0 mapping:ffff8801d96e1040 index:0x0
-flags: 0x2fffc0000000100(slab)
-raw: 02fffc0000000100 ffff8801d96e1040 0000000000000000 000000010000000c
-raw: ffffea0007655460 ffff8801d9425c48 ffff8801d9423cc0 0000000000000000
+page:ffffea0006e02fc0 count:0 mapcount:0 mapping:0000000000000000 index:0x0
+flags: 0x2fffc0000000000()
+raw: 02fffc0000000000 0000000000000000 0000000000000000 00000000ffffffff
+raw: ffffea0006c095a0 ffffea0006e03020 ffff8801be5f2a50 0000000000000000
 page dumped because: kasan: bad access detected
 
 Memory state around the buggy address:
-  ffff8801d96e0f00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ffff8801d96e0f80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-> ffff8801d96e1000: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
+  ffff8801b80bef00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  ffff8801b80bef80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+> ffff8801b80bf000: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
                     ^
-  ffff8801d96e1080: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
-  ffff8801d96e1100: fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc fc
+  ffff8801b80bf080: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ffff8801b80bf100: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
 ==================================================================
 
 
