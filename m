@@ -1,7 +1,7 @@
-From: syzbot <syzbot+1236ce66f79263e8a862@syzkaller.appspotmail.com>
-Subject: KASAN: use-after-free Read in __ext4_check_dir_entry
-Date: Sat, 31 Mar 2018 13:47:06 -0700
-Message-ID: <001a113fd904af4b2a0568bb755f@google.com>
+From: syzbot <syzbot+9a44753ac327c557796a@syzkaller.appspotmail.com>
+Subject: WARNING in ext4_set_page_dirty
+Date: Sun, 01 Apr 2018 01:05:00 -0700
+Message-ID: <089e0825cec8180a2b0568c4ee1d@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
@@ -14,71 +14,80 @@ List-Id: linux-ext4.vger.kernel.org
 Hello,
 
 syzbot hit the following crash on upstream commit
-9dd2326890d89a5179967c947dab2bab34d7ddee (Fri Mar 30 17:29:47 2018 +0000)
-Merge tag 'ceph-for-4.16-rc8' of git://github.com/ceph/ceph-client
+10b84daddbec72c6b440216a69de9a9605127f7a (Sat Mar 31 17:59:00 2018 +0000)
+Merge branch 'perf-urgent-for-linus' of  
+git://git.kernel.org/pub/scm/linux/kernel/git/tip/tip
 syzbot dashboard link:  
-https://syzkaller.appspot.com/bug?extid=1236ce66f79263e8a862
+https://syzkaller.appspot.com/bug?extid=9a44753ac327c557796a
 
-C reproducer: https://syzkaller.appspot.com/x/repro.c?id=6171830884761600
-syzkaller reproducer:  
-https://syzkaller.appspot.com/x/repro.syz?id=5341633302233088
+So far this crash happened 3 times on upstream.
+Unfortunately, I don't have any reproducer for this crash yet.
 Raw console output:  
-https://syzkaller.appspot.com/x/log.txt?id=6080954745487360
+https://syzkaller.appspot.com/x/log.txt?id=5118663967375360
 Kernel config:  
 https://syzkaller.appspot.com/x/.config?id=-2760467897697295172
 compiler: gcc (GCC) 7.1.1 20170620
 
 IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+1236ce66f79263e8a862@syzkaller.appspotmail.com
+Reported-by: syzbot+9a44753ac327c557796a@syzkaller.appspotmail.com
 It will help syzbot understand when the bug is fixed. See footer for  
 details.
 If you forward the report, please keep this part and the footer.
 
-==================================================================
-BUG: KASAN: use-after-free in __ext4_check_dir_entry+0x2de/0x320  
-fs/ext4/dir.c:69
-Read of size 2 at addr ffff8801b80bf000 by task syzkaller432828/4365
+WARNING: CPU: 0 PID: 7377 at fs/ext4/inode.c:3895  
+ext4_set_page_dirty+0x242/0x2b0 fs/ext4/inode.c:3895
+Kernel panic - not syncing: panic_on_warn set ...
 
-CPU: 1 PID: 4365 Comm: syzkaller432828 Not tainted 4.16.0-rc7+ #7
+CPU: 0 PID: 7377 Comm: syz-executor1 Not tainted 4.16.0-rc7+ #9
 Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
 Google 01/01/2011
 Call Trace:
   __dump_stack lib/dump_stack.c:17 [inline]
   dump_stack+0x194/0x24d lib/dump_stack.c:53
-  print_address_description+0x73/0x250 mm/kasan/report.c:256
-  kasan_report_error mm/kasan/report.c:354 [inline]
-  kasan_report+0x23c/0x360 mm/kasan/report.c:412
-  __asan_report_load2_noabort+0x14/0x20 mm/kasan/report.c:431
-  __ext4_check_dir_entry+0x2de/0x320 fs/ext4/dir.c:69
-  ext4_readdir+0xd00/0x3600 fs/ext4/dir.c:237
-  iterate_dir+0x1ca/0x530 fs/readdir.c:51
-  SYSC_getdents64 fs/readdir.c:314 [inline]
-  SyS_getdents64+0x221/0x420 fs/readdir.c:295
+  panic+0x1e4/0x41c kernel/panic.c:183
+  __warn+0x1dc/0x200 kernel/panic.c:547
+  report_bug+0x1f4/0x2b0 lib/bug.c:186
+  fixup_bug.part.10+0x37/0x80 arch/x86/kernel/traps.c:178
+  fixup_bug arch/x86/kernel/traps.c:247 [inline]
+  do_error_trap+0x2d7/0x3e0 arch/x86/kernel/traps.c:296
+  do_invalid_op+0x1b/0x20 arch/x86/kernel/traps.c:315
+  invalid_op+0x1b/0x40 arch/x86/entry/entry_64.S:986
+RIP: 0010:ext4_set_page_dirty+0x242/0x2b0 fs/ext4/inode.c:3895
+RSP: 0000:ffff88018b725df0 EFLAGS: 00010216
+RAX: 0000000000040000 RBX: ffffea0006713040 RCX: ffffffff81ee1072
+RDX: 0000000000002ee2 RSI: ffffc900074f3000 RDI: ffffea0006713040
+RBP: ffff88018b725ec0 R08: 1ffff100316e4c1c R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: 1ffff100316e4bbf
+R13: ffffea0006713040 R14: ffff88018b725e98 R15: ffffea0006713060
+  set_page_dirty+0x2c5/0x5d0 mm/page-writeback.c:2565
+  set_page_dirty_lock+0xf2/0x160 mm/page-writeback.c:2590
+  dio_bio_complete+0x514/0x750 fs/direct-io.c:560
+  dio_await_completion fs/direct-io.c:581 [inline]
+  do_blockdev_direct_IO+0x7270/0xc960 fs/direct-io.c:1392
+  __blockdev_direct_IO+0x9d/0xd0 fs/direct-io.c:1421
+  ext4_direct_IO_read fs/ext4/inode.c:3830 [inline]
+  ext4_direct_IO+0xfe5/0x1980 fs/ext4/inode.c:3866
+  generic_file_read_iter+0x4cc/0x28e0 mm/filemap.c:2343
+  ext4_file_read_iter+0x113/0x160 fs/ext4/file.c:77
+  call_read_iter include/linux/fs.h:1776 [inline]
+  new_sync_read fs/read_write.c:401 [inline]
+  __vfs_read+0x6a7/0xa00 fs/read_write.c:413
+  vfs_read+0x11e/0x350 fs/read_write.c:447
+  SYSC_pread64 fs/read_write.c:611 [inline]
+  SyS_pread64+0x15b/0x190 fs/read_write.c:598
   do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
   entry_SYSCALL_64_after_hwframe+0x42/0xb7
-RIP: 0033:0x43fd69
-RSP: 002b:00007ffc446ac118 EFLAGS: 00000203 ORIG_RAX: 00000000000000d9
-RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 000000000043fd69
-RDX: 00000000200015fc RSI: 0000000020001540 RDI: 0000000000000003
-RBP: 00000000006ca018 R08: 00000000004002c8 R09: 00000000004002c8
-R10: 00000000004002c8 R11: 0000000000000203 R12: 0000000000401690
-R13: 0000000000401720 R14: 0000000000000000 R15: 0000000000000000
-
-The buggy address belongs to the page:
-page:ffffea0006e02fc0 count:0 mapcount:0 mapping:0000000000000000 index:0x0
-flags: 0x2fffc0000000000()
-raw: 02fffc0000000000 0000000000000000 0000000000000000 00000000ffffffff
-raw: ffffea0006c095a0 ffffea0006e03020 ffff8801be5f2a50 0000000000000000
-page dumped because: kasan: bad access detected
-
-Memory state around the buggy address:
-  ffff8801b80bef00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ffff8801b80bef80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-> ffff8801b80bf000: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-                    ^
-  ffff8801b80bf080: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-  ffff8801b80bf100: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-==================================================================
+RIP: 0033:0x454e79
+RSP: 002b:00007feb4557bc68 EFLAGS: 00000246 ORIG_RAX: 0000000000000011
+RAX: ffffffffffffffda RBX: 00007feb4557c6d4 RCX: 0000000000454e79
+RDX: 00000000ffffff72 RSI: 0000000020003c00 RDI: 0000000000000018
+RBP: 000000000072bea0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 00000000ffffffff
+R13: 000000000000046d R14: 00000000006f8ad8 R15: 0000000000000000
+Dumping ftrace buffer:
+    (ftrace buffer empty)
+Kernel Offset: disabled
+Rebooting in 86400 seconds..
 
 
 ---
@@ -91,9 +100,6 @@ If you forgot to add the Reported-by tag, once the fix for this bug is
 merged
 into any tree, please reply to this email with:
 #syz fix: exact-commit-title
-If you want to test a patch for this bug, please reply with:
-#syz test: git://repo/address.git branch
-and provide the patch inline or as an attachment.
 To mark this as a duplicate of another syzbot report, please reply with:
 #syz dup: exact-subject-of-another-report
 If it's a one-off invalid bug report, please reply with:
