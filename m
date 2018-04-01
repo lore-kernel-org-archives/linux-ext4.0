@@ -1,68 +1,123 @@
-From: Nikolay Borisov <n.borisov.lkml@gmail.com>
-Subject: Re: [PATCH 1/2] ext4: always initialize the crc32c checksum driver
-Date: Sun, 1 Apr 2018 15:19:20 +0300
-Message-ID: <6214c9da-a4bc-f332-ca61-939a16c7f6ce@gmail.com>
-References: <20180326044906.13286-1-tytso@mit.edu>
+From: syzbot <syzbot+06c885be0edcdaeab40c@syzkaller.appspotmail.com>
+Subject: kernel BUG at fs/ext4/extents.c:LINE!
+Date: Sun, 01 Apr 2018 10:01:03 -0700
+Message-ID: <94eb2c05beb41a8c8a0568cc6b03@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: stable@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20180326044906.13286-1-tytso@mit.edu>
-Content-Language: en-US
-Sender: stable-owner@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hello,
+
+syzbot hit the following crash on upstream commit
+10b84daddbec72c6b440216a69de9a9605127f7a (Sat Mar 31 17:59:00 2018 +0000)
+Merge branch 'perf-urgent-for-linus' of  
+git://git.kernel.org/pub/scm/linux/kernel/git/tip/tip
+syzbot dashboard link:  
+https://syzkaller.appspot.com/bug?extid=06c885be0edcdaeab40c
+
+C reproducer: https://syzkaller.appspot.com/x/repro.c?id=6721172100087808
+syzkaller reproducer:  
+https://syzkaller.appspot.com/x/repro.syz?id=4701086711545856
+Raw console output:  
+https://syzkaller.appspot.com/x/log.txt?id=6392087410900992
+Kernel config:  
+https://syzkaller.appspot.com/x/.config?id=-2760467897697295172
+compiler: gcc (GCC) 7.1.1 20170620
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+06c885be0edcdaeab40c@syzkaller.appspotmail.com
+It will help syzbot understand when the bug is fixed. See footer for  
+details.
+If you forward the report, please keep this part and the footer.
+
+------------[ cut here ]------------
+kernel BUG at fs/ext4/extents.c:3190!
+invalid opcode: 0000 [#1] SMP KASAN
+Dumping ftrace buffer:
+    (ftrace buffer empty)
+Modules linked in:
+CPU: 0 PID: 4422 Comm: syzkaller152353 Not tainted 4.16.0-rc7+ #9
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+RIP: 0010:ext4_split_extent_at+0x75d/0x1160 fs/ext4/extents.c:3190
+RSP: 0018:ffff8801c6b8e290 EFLAGS: 00010293
+RAX: ffff8801acdc0080 RBX: ffff8801b425b018 RCX: ffffffff81e959ad
+RDX: 0000000000000000 RSI: ffff8801a79c11f0 RDI: ffff8801d96ce940
+RBP: ffff8801c6b8e3f8 R08: 0000000000000010 R09: 0000000000000425
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801d96ce930
+R13: 0000000000003010 R14: 1ffff10038d71c5e R15: 0000000000000010
+FS:  00000000014a2880(0000) GS:ffff8801db000000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f8298ddf000 CR3: 00000001ad57f002 CR4: 00000000001606f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+  ext4_split_extent.isra.36+0x2b6/0x490 fs/ext4/extents.c:3364
+  ext4_ext_convert_to_initialized fs/ext4/extents.c:3619 [inline]
+  ext4_ext_handle_unwritten_extents+0x1acd/0x3940 fs/ext4/extents.c:4081
+  ext4_ext_map_blocks+0x12d1/0x4410 fs/ext4/extents.c:4339
+  ext4_map_blocks+0xc90/0x1830 fs/ext4/inode.c:636
+  mpage_map_one_extent fs/ext4/inode.c:2452 [inline]
+  mpage_map_and_submit_extent fs/ext4/inode.c:2505 [inline]
+  ext4_writepages+0x2035/0x3c30 fs/ext4/inode.c:2875
+  do_writepages+0xff/0x170 mm/page-writeback.c:2340
+  __filemap_fdatawrite_range+0x32f/0x460 mm/filemap.c:444
+  file_write_and_wait_range+0x8a/0x100 mm/filemap.c:752
+  ext4_sync_file+0x4fb/0x1260 fs/ext4/fsync.c:128
+  vfs_fsync_range+0x110/0x260 fs/sync.c:196
+  generic_write_sync include/linux/fs.h:2680 [inline]
+  ext4_file_write_iter+0x919/0x10c0 fs/ext4/file.c:270
+  call_write_iter include/linux/fs.h:1782 [inline]
+  do_iter_readv_writev+0x55c/0x830 fs/read_write.c:653
+  do_iter_write+0x154/0x540 fs/read_write.c:932
+  vfs_iter_write+0x77/0xb0 fs/read_write.c:945
+  iter_file_splice_write+0x7db/0xf30 fs/splice.c:749
+  do_splice_from fs/splice.c:851 [inline]
+  direct_splice_actor+0x125/0x180 fs/splice.c:1018
+  splice_direct_to_actor+0x2c1/0x820 fs/splice.c:973
+  do_splice_direct+0x29b/0x3c0 fs/splice.c:1061
+  do_sendfile+0x5c9/0xe80 fs/read_write.c:1413
+  SYSC_sendfile64 fs/read_write.c:1468 [inline]
+  SyS_sendfile64+0xbd/0x160 fs/read_write.c:1460
+  do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
+  entry_SYSCALL_64_after_hwframe+0x42/0xb7
+RIP: 0033:0x440029
+RSP: 002b:00007fff87fd7e68 EFLAGS: 00000217 ORIG_RAX: 0000000000000028
+RAX: ffffffffffffffda RBX: 00000fffffeff000 RCX: 0000000000440029
+RDX: 0000000020000000 RSI: 0000000000000004 RDI: 0000000000000003
+RBP: 00000000006cb018 R08: 00007fff87fd7e80 R09: 00007fff87fd7e80
+R10: 0000000100000001 R11: 0000000000000217 R12: 0000000000401860
+R13: 00000000004018f0 R14: 0000000000000000 R15: 0000000000000000
+Code: fe ff ff 48 c7 c7 c0 9c 56 87 0f b7 43 08 4c 8d 04 40 49 c1 e0 04 49  
+01 d8 e8 a0 66 ff ff 41 89 c7 e9 f8 fd ff ff e8 93 0b 88 ff <0f> 0b e8 8c  
+0b 88 ff 48 8b 8d b8 fe ff ff 48 b8 00 00 00 00 00
+RIP: ext4_split_extent_at+0x75d/0x1160 fs/ext4/extents.c:3190 RSP:  
+ffff8801c6b8e290
+---[ end trace d3416668281344cc ]---
 
 
-On 26.03.2018 07:49, Theodore Ts'o wrote:
-> The extended attribute code now uses the crc32c checksum for hashing
-> purposes, so we should just always always initialize it.  We also want
-> to prevent NULL pointer dereferences if one of the metadata checksum
-> features is enabled after the file sytsem is originally mounted.
-> 
-> https://bugzilla.kernel.org/show_bug.cgi?id=199183
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Cc: stable@vger.kernel.org
-> ---
->  fs/ext4/super.c | 15 ++++++---------
->  1 file changed, 6 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 9d1da40c1f62..7cd022c344d1 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3492,15 +3492,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	}
->  
->  	/* Load the checksum driver */
-> -	if (ext4_has_feature_metadata_csum(sb) ||
-> -	    ext4_has_feature_ea_inode(sb)) {
-> -		sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-> -		if (IS_ERR(sbi->s_chksum_driver)) {
-> -			ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver.");
-> -			ret = PTR_ERR(sbi->s_chksum_driver);
-> -			sbi->s_chksum_driver = NULL;
-> -			goto failed_mount;
-> -		}
-> +	sbi->s_chksum_driver = crypto_alloc_shash("crc32c", 0, 0);
-> +	if (IS_ERR(sbi->s_chksum_driver)) {
-> +		ext4_msg(sb, KERN_ERR, "Cannot load crc32c driver.");
-> +		ret = PTR_ERR(sbi->s_chksum_driver);
-> +		sbi->s_chksum_driver = NULL;
-> +		goto failed_mount;
->  	}
+---
+This bug is generated by a dumb bot. It may contain errors.
+See https://goo.gl/tpsmEJ for details.
+Direct all questions to syzkaller@googlegroups.com.
 
-
-Why do you need to do all the manual initialization of the crc32c
-lowlevel driver, when you can just make ext4 select LIBCRC32c and in the
-code just use crc32c? Refer to include/linux/crc32c.h for the interface
-and lib/libcrc32c.c for the low-level details.
-
-
->  
->  	/* Check superblock checksum */
-> 
+syzbot will keep track of this bug report.
+If you forgot to add the Reported-by tag, once the fix for this bug is  
+merged
+into any tree, please reply to this email with:
+#syz fix: exact-commit-title
+If you want to test a patch for this bug, please reply with:
+#syz test: git://repo/address.git branch
+and provide the patch inline or as an attachment.
+To mark this as a duplicate of another syzbot report, please reply with:
+#syz dup: exact-subject-of-another-report
+If it's a one-off invalid bug report, please reply with:
+#syz invalid
+Note: if the crash happens again, it will cause creation of a new bug  
+report.
+Note: all commands must start from beginning of the line in the email body.
