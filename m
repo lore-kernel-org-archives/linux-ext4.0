@@ -1,114 +1,166 @@
-From: syzbot <syzbot+f584efa0ac7213c226b7@syzkaller.appspotmail.com>
-Subject: KASAN: use-after-free Write in __ext4_expand_extra_isize
-Date: Mon, 02 Apr 2018 10:01:02 -0700
-Message-ID: <001a113fd904ee846d0568e088b9@google.com>
+From: Eric Biggers via Linux-f2fs-devel
+ <linux-f2fs-devel@lists.sourceforge.net>
+Subject: Re: [PATCH] f2fs: reserve bits for fs-verity
+Date: Mon, 2 Apr 2018 11:48:37 -0700
+Message-ID: <20180402184837.GA59810@google.com>
+References: <20180328181509.199870-1-ebiggers@google.com>
+ <9ccabf5b-46ef-aa46-bdb8-6fcd96792ed0@huawei.com>
+ <20180330164136.GE44823@jaegeuk-macbookpro.roam.corp.google.com>
+ <20180330183420.GA180083@google.com>
+ <ec343a28-ad47-a494-ea36-c8fef72d3480@huawei.com>
+Reply-To: Eric Biggers <ebiggers@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
-To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso@mit.edu>, Michael Halcrow <mhalcrow@google.com>,
+ linux-f2fs-devel@lists.sourceforge.net, linux-fscrypt@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
+ linux-ext4@vger.kernel.org, Victor Hsieh <victorhsieh@google.com>
+To: Chao Yu <yuchao0@huawei.com>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Content-Disposition: inline
+In-Reply-To: <ec343a28-ad47-a494-ea36-c8fef72d3480@huawei.com>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+[+Cc linux-ext4, linux-fsdevel]
 
-syzbot hit the following crash on upstream commit
-0adb32858b0bddf4ada5f364a84ed60b196dbcda (Sun Apr 1 21:20:27 2018 +0000)
-Linux 4.16
-syzbot dashboard link:  
-https://syzkaller.appspot.com/bug?extid=f584efa0ac7213c226b7
+On Mon, Apr 02, 2018 at 06:07:10PM +0800, Chao Yu wrote:
+> Hi Eric and Jaegeuk,
+> 
+> On 2018/3/31 2:34, Eric Biggers wrote:
+> > Hi Chao and Jaegeuk,
+> > 
+> > On Fri, Mar 30, 2018 at 09:41:36AM -0700, Jaegeuk Kim wrote:
+> >> On 03/30, Chao Yu wrote:
+> >>> Hi Eric,
+> >>>
+> >>> On 2018/3/29 2:15, Eric Biggers wrote:
+> >>>> Reserve an F2FS feature flag and inode flag for fs-verity.  This is an
+> >>>> in-development feature that is planned be discussed at LSF/MM 2018 [1].
+> >>>> It will provide file-based integrity and authenticity for read-only
+> >>>> files.  Most code will be in a filesystem-independent module, with
+> >>>> smaller changes needed to individual filesystems that opt-in to
+> >>>> supporting the feature.  An early prototype supporting F2FS is available
+> >>>> [2].  Reserving the F2FS on-disk bits for fs-verity will prevent users
+> >>>> of the prototype from conflicting with other new F2FS features.
+> >>>>
+> >>>> Note that we're reserving the inode flag in f2fs_inode.i_advise, which
+> >>>> isn't really appropriate since it's not a hint or advice.  But
+> >>>> ->i_advise is already being used to hold the 'encrypt' flag; and F2FS's
+> >>>> ->i_flags uses the generic FS_* values, so it seems ->i_flags can't be
+> >>>> used for an F2FS-specific flag without additional work to remove the
+> >>>> assumption that ->i_flags uses the generic flags namespace.
+> >>>
+> >>> At a glance, this is a VFS feature, can we search free slot, and define
+> >>> FS_VERITY_FL like other generic flags, so we can intergrate this flag into
+> >>> f2fs_inode::i_flags?
+> >>
+> >> Do we need to get/set this bit of i_flags to user? And, f2fs doesn't synchronize
+> >> it with inode block update. I think this should be set by internal f2fs
+> >> operations likewise fscrypt.
+> >>
+> > 
+> > The fs-verity inode flag won't be modifiable using FS_IOC_SETFLAGS.  Like
+> 
+> Verity flag can also be wrapped by FS_FL_USER_MODIFIABLE like for FS_ENCRYPT_FL?
+> 
+> > fscrypt, it will only be possible to set it using a dedicated ioctl (tentatively
+> > called FS_IOC_ENABLE_VERITY), and it won't be supported to clear the bit once
+> > set, short of deleting and re-creating the file.  So it doesn't really matter
+> > where the bit goes in the on-disk inode, it just needs to go somewhere.  I'm
+> > just hesitant to reserve a flag in the UAPI flags namespace which is really more
+> > "owned" by ext4 than by f2fs, so has more implications than just f2fs as we
+> > would effectively be reserving the flag for ext4's on-disk format too.
+> 
+> IMO, because this is a VFS feature, it will be better that we can put it in more
+> generic place, also user can check this bit in generic way (via
+> FS_IOC_GETFLAGS), and then for other filesystem who wants add this feature, that
+> will be simple to place this bit.
+> 
+> What I can see is, for encryption feature:
+> 
+> vfs::i_flags
+> #define FS_ENCRYPT_FL                   0x00000800 /* Encrypted file */
+> 
+> ext4:i_flags
+> #define EXT4_ENCRYPT_FL			0x00000800 /* encrypted file */
+> 
+> f2fs::i_advice
+> #define FADVISE_ENCRYPT_BIT	0x04
+> 
+> It's very wired that f2fs didn't use well defined FS_ENCRYPT_FL bit position,
+> result in that we leave a hole in on-disk i_flags, and if we want to show the
+> same 'encrypted' flags status in FS_IOC_GETFLAGS, we need to change more codes.
+> 
+> Anyway, I just ask why not let generic status goes into i_flags, and private
+> status goes into i_advices?
 
-C reproducer: https://syzkaller.appspot.com/x/repro.c?id=6513385206185984
-syzkaller reproducer:  
-https://syzkaller.appspot.com/x/repro.syz?id=5304036769136640
-Raw console output:  
-https://syzkaller.appspot.com/x/log.txt?id=5041749693038592
-Kernel config:  
-https://syzkaller.appspot.com/x/.config?id=-2374466361298166459
-compiler: gcc (GCC) 7.1.1 20170620
+Ted and others, what would you say about allocating FS_VERITY_FL as one of the
+unused ext4 / "VFS" inode flags like 0x01000000, or maybe 0x00000400 if the
+compression flags aren't being used anymore?
 
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+f584efa0ac7213c226b7@syzkaller.appspotmail.com
-It will help syzbot understand when the bug is fixed. See footer for  
-details.
-If you forward the report, please keep this part and the footer.
+I do wish that we separated the on-disk flags namespaces from the
+FS_IOC_GETFLAGS/FS_IOC_SETFLAGS namespace though...  Then adding the flag to
+each namespace could be done separately which would make more sense.  As-is, the
+flags are all being conflated, so by allocating a flag in f2fs ->i_flags we
+would effectively also be allocating it for ext4 and for the UAPI, which we
+don't necessarily need to do yet.
 
-IPVS: ftp: loaded support on port[0] = 21
-EXT4-fs (sda1): re-mounted. Opts: debug_want_extra_isize=7632
-==================================================================
-BUG: KASAN: use-after-free in memset include/linux/string.h:330 [inline]
-BUG: KASAN: use-after-free in __ext4_expand_extra_isize+0x157/0x230  
-fs/ext4/inode.c:5779
-Write of size 7600 at addr ffff8801c7ee86a0 by task syzkaller547255/4428
+> 
+> > 
+> > I do think the flag *should* go in i_flags rather than i_advise, but I think the
+> > assumption that f2fs's inode flags namespace matches ext4's would first need to
+> > be removed so as to not tie the on-disk formats of different filesystems
+> > together.
+> > 
+> >>>
+> >>> And how about applying this patch inside the patchset of new fsverity feature?
+> >>> Since once fsverity feature has some design modification, I worry about that may
+> >>> be we need to change this bit? result in disk layout incompatibility.
+> >>
+> >> The whole body is not fully mergeable, so once reserving the bits first, we can
+> >> support it f2fs-tools and prepare the feature in advance. Based on previous
+> >> fscrypt experience, I don't expect we need to modify or drop these dramatically
+> >> later.
+> >>
+> >> Any thoughts?
+> 
+> Since I don't know current progress of this feature development, I hope this
+> feature will not be against by vfs developers or suffer design change after we
+> reserved bit for it. :)
+> 
+> >>
+> > 
+> > Yep, the full patchset isn't ready to be merged upstream yet.  Other parts of
+> > the API/ABI such as the fs-verity metadata format, the ioctl numbers, and the
+> > semantics of accessing such files is subject to change.  We know we'll need a
+> > superblock feature flag and a per-inode bit in any case, though.  Personally I'd
+> > prefer to wait for the full patchset too, but we have people who want to start
+> > using the prototype of the feature already, so having f2fs-tools support the
+> > feature flag and having the bits not conflict with other f2fs features will be
+> > helpful.
+> 
+> Oh, so we want a stable on-disk layout, so image for experience will contain
+> fsverity bit in stable position, after formal android released, image with
+> fsverity feature can still be valid, right?
+> 
 
-CPU: 0 PID: 4428 Comm: syzkaller547255 Not tainted 4.16.0+ #10
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
-Google 01/01/2011
-Call Trace:
-  __dump_stack lib/dump_stack.c:17 [inline]
-  dump_stack+0x194/0x24d lib/dump_stack.c:53
-  print_address_description+0x73/0x250 mm/kasan/report.c:256
-  kasan_report_error mm/kasan/report.c:354 [inline]
-  kasan_report+0x23c/0x360 mm/kasan/report.c:412
-  check_memory_region_inline mm/kasan/kasan.c:260 [inline]
-  check_memory_region+0x137/0x190 mm/kasan/kasan.c:267
-  memset+0x23/0x40 mm/kasan/kasan.c:285
-  memset include/linux/string.h:330 [inline]
-  __ext4_expand_extra_isize+0x157/0x230 fs/ext4/inode.c:5779
-  ext4_try_to_expand_extra_isize fs/ext4/inode.c:5831 [inline]
-  ext4_mark_inode_dirty+0x7a9/0xa10 fs/ext4/inode.c:5907
-  ext4_unlink+0xc6f/0x1100 fs/ext4/namei.c:3038
-  vfs_unlink+0x283/0x480 fs/namei.c:3978
-  do_unlinkat+0x731/0x940 fs/namei.c:4041
-  SYSC_unlink fs/namei.c:4088 [inline]
-  SyS_unlink+0x26/0x30 fs/namei.c:4086
-  do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
-  entry_SYSCALL_64_after_hwframe+0x42/0xb7
-RIP: 0033:0x447b77
-RSP: 002b:00007ffc704d9d88 EFLAGS: 00000206 ORIG_RAX: 0000000000000057
-RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000447b77
-RDX: 00007ffc704d9d90 RSI: 00007ffc704d9d90 RDI: 00007ffc704d9e20
-RBP: 00007ffc704db5a0 R08: 0000000000000000 R09: 000000000000000a
-R10: 0000000000000006 R11: 0000000000000206 R12: 0000000001c648a0
-R13: 0000000000000000 R14: 0000000000007384 R15: 00007ffc704daf98
+The fs-verity file format is not finalized, but in any case there will need to
+be a superblock flag and a per-inode flag that indicates whether it is enabled.
+There will also be a version number built into the fs-verity metadata, so the
+file format can be updated without having to change to using a different
+per-inode flag.
 
-The buggy address belongs to the page:
-page:ffffea00071fba00 count:2 mapcount:0 mapping:ffff8801d52ef660  
-index:0x4a7
-flags: 0x2fffc0000001064(referenced|lru|active|private)
-raw: 02fffc0000001064 ffff8801d52ef660 00000000000004a7 00000002ffffffff
-raw: ffffea0006e70c20 ffffea0006d9a5a0 ffff8801a99933f0 ffff8801d9a96b40
-page dumped because: kasan: bad access detected
-page->mem_cgroup:ffff8801d9a96b40
+Eric
 
-Memory state around the buggy address:
-  ffff8801c7ee9f00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  ffff8801c7ee9f80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-> ffff8801c7eea000: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-                    ^
-  ffff8801c7eea080: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-  ffff8801c7eea100: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
-==================================================================
-
-
----
-This bug is generated by a dumb bot. It may contain errors.
-See https://goo.gl/tpsmEJ for details.
-Direct all questions to syzkaller@googlegroups.com.
-
-syzbot will keep track of this bug report.
-If you forgot to add the Reported-by tag, once the fix for this bug is  
-merged
-into any tree, please reply to this email with:
-#syz fix: exact-commit-title
-If you want to test a patch for this bug, please reply with:
-#syz test: git://repo/address.git branch
-and provide the patch inline or as an attachment.
-To mark this as a duplicate of another syzbot report, please reply with:
-#syz dup: exact-subject-of-another-report
-If it's a one-off invalid bug report, please reply with:
-#syz invalid
-Note: if the crash happens again, it will cause creation of a new bug  
-report.
-Note: all commands must start from beginning of the line in the email body.
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
