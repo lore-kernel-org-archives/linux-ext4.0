@@ -1,7 +1,7 @@
-From: syzbot <syzbot+06c885be0edcdaeab40c@syzkaller.appspotmail.com>
-Subject: kernel BUG at fs/ext4/extents.c:LINE!
-Date: Sun, 01 Apr 2018 10:01:03 -0700
-Message-ID: <94eb2c05beb41a8c8a0568cc6b03@google.com>
+From: syzbot <syzbot+f3b1a2c79758f3eec76c@syzkaller.appspotmail.com>
+Subject: WARNING in ext4_superblock_csum_set
+Date: Mon, 02 Apr 2018 10:01:02 -0700
+Message-ID: <001a113ec036ea84f90568e088dc@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
@@ -14,91 +14,86 @@ List-Id: linux-ext4.vger.kernel.org
 Hello,
 
 syzbot hit the following crash on upstream commit
-10b84daddbec72c6b440216a69de9a9605127f7a (Sat Mar 31 17:59:00 2018 +0000)
-Merge branch 'perf-urgent-for-linus' of  
-git://git.kernel.org/pub/scm/linux/kernel/git/tip/tip
+0adb32858b0bddf4ada5f364a84ed60b196dbcda (Sun Apr 1 21:20:27 2018 +0000)
+Linux 4.16
 syzbot dashboard link:  
-https://syzkaller.appspot.com/bug?extid=06c885be0edcdaeab40c
+https://syzkaller.appspot.com/bug?extid=f3b1a2c79758f3eec76c
 
-C reproducer: https://syzkaller.appspot.com/x/repro.c?id=6721172100087808
+C reproducer: https://syzkaller.appspot.com/x/repro.c?id=6181981368877056
 syzkaller reproducer:  
-https://syzkaller.appspot.com/x/repro.syz?id=4701086711545856
+https://syzkaller.appspot.com/x/repro.syz?id=6303722082664448
 Raw console output:  
-https://syzkaller.appspot.com/x/log.txt?id=6392087410900992
+https://syzkaller.appspot.com/x/log.txt?id=5129995567497216
 Kernel config:  
-https://syzkaller.appspot.com/x/.config?id=-2760467897697295172
+https://syzkaller.appspot.com/x/.config?id=-2374466361298166459
 compiler: gcc (GCC) 7.1.1 20170620
 
 IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+06c885be0edcdaeab40c@syzkaller.appspotmail.com
+Reported-by: syzbot+f3b1a2c79758f3eec76c@syzkaller.appspotmail.com
 It will help syzbot understand when the bug is fixed. See footer for  
 details.
 If you forward the report, please keep this part and the footer.
 
-------------[ cut here ]------------
-kernel BUG at fs/ext4/extents.c:3190!
-invalid opcode: 0000 [#1] SMP KASAN
-Dumping ftrace buffer:
-    (ftrace buffer empty)
-Modules linked in:
-CPU: 0 PID: 4422 Comm: syzkaller152353 Not tainted 4.16.0-rc7+ #9
+EXT4-fs (loop0): mounted filesystem without journal. Opts:
+EXT4-fs (loop0): warning: mounting unchecked fs, running e2fsck is  
+recommended
+EXT4-fs warning (device loop0): ext4_update_dynamic_rev:774: updating to  
+rev 1 because of new feature flag, running e2fsck is recommended
+EXT4-fs (loop0): mounted filesystem without journal. Opts:
+WARNING: CPU: 0 PID: 5126 at fs/ext4/ext4.h:2690 ext4_has_metadata_csum  
+fs/ext4/ext4.h:2689 [inline]
+WARNING: CPU: 0 PID: 5126 at fs/ext4/ext4.h:2690  
+ext4_superblock_csum_set+0x2b8/0x350 fs/ext4/super.c:179
+Kernel panic - not syncing: panic_on_warn set ...
+
+CPU: 0 PID: 5126 Comm: syzkaller957684 Not tainted 4.16.0+ #10
 Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
 Google 01/01/2011
-RIP: 0010:ext4_split_extent_at+0x75d/0x1160 fs/ext4/extents.c:3190
-RSP: 0018:ffff8801c6b8e290 EFLAGS: 00010293
-RAX: ffff8801acdc0080 RBX: ffff8801b425b018 RCX: ffffffff81e959ad
-RDX: 0000000000000000 RSI: ffff8801a79c11f0 RDI: ffff8801d96ce940
-RBP: ffff8801c6b8e3f8 R08: 0000000000000010 R09: 0000000000000425
-R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801d96ce930
-R13: 0000000000003010 R14: 1ffff10038d71c5e R15: 0000000000000010
-FS:  00000000014a2880(0000) GS:ffff8801db000000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f8298ddf000 CR3: 00000001ad57f002 CR4: 00000000001606f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
 Call Trace:
-  ext4_split_extent.isra.36+0x2b6/0x490 fs/ext4/extents.c:3364
-  ext4_ext_convert_to_initialized fs/ext4/extents.c:3619 [inline]
-  ext4_ext_handle_unwritten_extents+0x1acd/0x3940 fs/ext4/extents.c:4081
-  ext4_ext_map_blocks+0x12d1/0x4410 fs/ext4/extents.c:4339
-  ext4_map_blocks+0xc90/0x1830 fs/ext4/inode.c:636
-  mpage_map_one_extent fs/ext4/inode.c:2452 [inline]
-  mpage_map_and_submit_extent fs/ext4/inode.c:2505 [inline]
-  ext4_writepages+0x2035/0x3c30 fs/ext4/inode.c:2875
-  do_writepages+0xff/0x170 mm/page-writeback.c:2340
-  __filemap_fdatawrite_range+0x32f/0x460 mm/filemap.c:444
-  file_write_and_wait_range+0x8a/0x100 mm/filemap.c:752
-  ext4_sync_file+0x4fb/0x1260 fs/ext4/fsync.c:128
-  vfs_fsync_range+0x110/0x260 fs/sync.c:196
-  generic_write_sync include/linux/fs.h:2680 [inline]
-  ext4_file_write_iter+0x919/0x10c0 fs/ext4/file.c:270
-  call_write_iter include/linux/fs.h:1782 [inline]
-  do_iter_readv_writev+0x55c/0x830 fs/read_write.c:653
-  do_iter_write+0x154/0x540 fs/read_write.c:932
-  vfs_iter_write+0x77/0xb0 fs/read_write.c:945
-  iter_file_splice_write+0x7db/0xf30 fs/splice.c:749
-  do_splice_from fs/splice.c:851 [inline]
-  direct_splice_actor+0x125/0x180 fs/splice.c:1018
-  splice_direct_to_actor+0x2c1/0x820 fs/splice.c:973
-  do_splice_direct+0x29b/0x3c0 fs/splice.c:1061
-  do_sendfile+0x5c9/0xe80 fs/read_write.c:1413
-  SYSC_sendfile64 fs/read_write.c:1468 [inline]
-  SyS_sendfile64+0xbd/0x160 fs/read_write.c:1460
-  do_syscall_64+0x281/0x940 arch/x86/entry/common.c:287
+  __dump_stack lib/dump_stack.c:17 [inline]
+  dump_stack+0x194/0x24d lib/dump_stack.c:53
+  panic+0x1e4/0x41c kernel/panic.c:183
+  __warn+0x1dc/0x200 kernel/panic.c:547
+  report_bug+0x1f4/0x2b0 lib/bug.c:186
+  fixup_bug.part.10+0x37/0x80 arch/x86/kernel/traps.c:178
+  fixup_bug arch/x86/kernel/traps.c:247 [inline]
+  do_error_trap+0x2d7/0x3e0 arch/x86/kernel/traps.c:296
+  do_invalid_op+0x1b/0x20 arch/x86/kernel/traps.c:315
+  invalid_op+0x1b/0x40 arch/x86/entry/entry_64.S:986
+RIP: 0010:ext4_has_metadata_csum fs/ext4/ext4.h:2689 [inline]
+RIP: 0010:ext4_superblock_csum_set+0x2b8/0x350 fs/ext4/super.c:179
+RSP: 0000:ffff8801b3e97868 EFLAGS: 00010293
+RAX: ffff8801bf85e1c0 RBX: 1ffff100367d2f0d RCX: ffffffff81fd4308
+RDX: 0000000000000000 RSI: ffff8801bea41400 RDI: ffff8801bea41464
+RBP: ffff8801b3e978f0 R08: 1ffff100367d2ede R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801c28a46c0
+R13: ffff8801b3e978c8 R14: ffff8801bea41400 R15: ffff8801c28a4c40
+  ext4_commit_super+0x609/0xb60 fs/ext4/super.c:4720
+  ext4_put_super+0x25b/0xf50 fs/ext4/super.c:898
+  generic_shutdown_super+0x1b5/0x540 fs/super.c:439
+  kill_block_super+0x9b/0xf0 fs/super.c:1146
+  deactivate_locked_super+0x88/0xd0 fs/super.c:312
+  deactivate_super+0x141/0x1b0 fs/super.c:343
+  cleanup_mnt+0xb2/0x150 fs/namespace.c:1173
+  __cleanup_mnt+0x16/0x20 fs/namespace.c:1180
+  task_work_run+0x199/0x270 kernel/task_work.c:113
+  tracehook_notify_resume include/linux/tracehook.h:191 [inline]
+  exit_to_usermode_loop+0x275/0x2f0 arch/x86/entry/common.c:166
+  prepare_exit_to_usermode arch/x86/entry/common.c:196 [inline]
+  syscall_return_slowpath arch/x86/entry/common.c:265 [inline]
+  do_syscall_64+0x6ec/0x940 arch/x86/entry/common.c:292
   entry_SYSCALL_64_after_hwframe+0x42/0xb7
-RIP: 0033:0x440029
-RSP: 002b:00007fff87fd7e68 EFLAGS: 00000217 ORIG_RAX: 0000000000000028
-RAX: ffffffffffffffda RBX: 00000fffffeff000 RCX: 0000000000440029
-RDX: 0000000020000000 RSI: 0000000000000004 RDI: 0000000000000003
-RBP: 00000000006cb018 R08: 00007fff87fd7e80 R09: 00007fff87fd7e80
-R10: 0000000100000001 R11: 0000000000000217 R12: 0000000000401860
-R13: 00000000004018f0 R14: 0000000000000000 R15: 0000000000000000
-Code: fe ff ff 48 c7 c7 c0 9c 56 87 0f b7 43 08 4c 8d 04 40 49 c1 e0 04 49  
-01 d8 e8 a0 66 ff ff 41 89 c7 e9 f8 fd ff ff e8 93 0b 88 ff <0f> 0b e8 8c  
-0b 88 ff 48 8b 8d b8 fe ff ff 48 b8 00 00 00 00 00
-RIP: ext4_split_extent_at+0x75d/0x1160 fs/ext4/extents.c:3190 RSP:  
-ffff8801c6b8e290
----[ end trace d3416668281344cc ]---
+RIP: 0033:0x449d2a
+RSP: 002b:00007f07d6e22cf8 EFLAGS: 00000286 ORIG_RAX: 00000000000000a5
+RAX: ffffffffffffffec RBX: 0000000020000100 RCX: 0000000000449d2a
+RDX: 0000000020000000 RSI: 0000000020000100 RDI: 00007f07d6e22d10
+RBP: 0000000000000012 R08: 0000000020012f00 R09: 000000000000000a
+R10: 0000000000000000 R11: 0000000000000286 R12: 0000000000000006
+R13: 0000000000000007 R14: 0000000000000000 R15: 0000000000000012
+Dumping ftrace buffer:
+    (ftrace buffer empty)
+Kernel Offset: disabled
+Rebooting in 86400 seconds..
 
 
 ---
