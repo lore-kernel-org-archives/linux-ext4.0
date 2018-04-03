@@ -1,135 +1,135 @@
-From: Eric Biggers via Linux-f2fs-devel
- <linux-f2fs-devel@lists.sourceforge.net>
-Subject: Re: [PATCH] f2fs: reserve bits for fs-verity
-Date: Mon, 2 Apr 2018 15:58:25 -0700
-Message-ID: <20180402225825.GD59810@google.com>
-References: <20180328181509.199870-1-ebiggers@google.com>
- <9ccabf5b-46ef-aa46-bdb8-6fcd96792ed0@huawei.com>
- <20180330164136.GE44823@jaegeuk-macbookpro.roam.corp.google.com>
- <20180330183420.GA180083@google.com>
- <ec343a28-ad47-a494-ea36-c8fef72d3480@huawei.com>
- <20180402184837.GA59810@google.com>
- <20180402214959.GG18129@dastard>
-Reply-To: Eric Biggers <ebiggers@google.com>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v8 05/18] ext4, dax: introduce ext4_dax_aops
+Date: Tue, 3 Apr 2018 13:50:03 +0200
+Message-ID: <20180403115003.qfbedsjtxwirqkh6@quack2.suse.cz>
+References: <152246892890.36038.18436540150980653229.stgit@dwillia2-desk3.amr.corp.intel.com>
+ <152246895649.36038.5391043415273091960.stgit@dwillia2-desk3.amr.corp.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso@mit.edu>, Michael Halcrow <mhalcrow@google.com>,
- linux-f2fs-devel@lists.sourceforge.net, linux-fscrypt@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, Jaegeuk Kim <jaegeuk@kernel.org>,
- linux-ext4@vger.kernel.org, Victor Hsieh <victorhsieh@google.com>
-To: Dave Chinner <david@fromorbit.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, snitzer-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hch-jcswGhMUV9g@public.gmane.org
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20180402214959.GG18129@dastard>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+In-Reply-To: <152246895649.36038.5391043415273091960.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 03, 2018 at 07:49:59AM +1000, Dave Chinner wrote:
-> On Mon, Apr 02, 2018 at 11:48:37AM -0700, Eric Biggers wrote:
-> > [+Cc linux-ext4, linux-fsdevel]
-> > 
-> > On Mon, Apr 02, 2018 at 06:07:10PM +0800, Chao Yu wrote:
-> > > Hi Eric and Jaegeuk,
-> > > 
-> > > On 2018/3/31 2:34, Eric Biggers wrote:
-> > > > Hi Chao and Jaegeuk,
-> > > > 
-> > > > On Fri, Mar 30, 2018 at 09:41:36AM -0700, Jaegeuk Kim wrote:
-> > > >> On 03/30, Chao Yu wrote:
-> > > >>> Hi Eric,
-> > > >>>
-> > > >>> On 2018/3/29 2:15, Eric Biggers wrote:
-> > > >>>> Reserve an F2FS feature flag and inode flag for fs-verity.  This is an
-> > > >>>> in-development feature that is planned be discussed at LSF/MM 2018 [1].
-> > > >>>> It will provide file-based integrity and authenticity for read-only
-> > > >>>> files.  Most code will be in a filesystem-independent module, with
-> > > >>>> smaller changes needed to individual filesystems that opt-in to
-> > > >>>> supporting the feature.  An early prototype supporting F2FS is available
-> > > >>>> [2].  Reserving the F2FS on-disk bits for fs-verity will prevent users
-> > > >>>> of the prototype from conflicting with other new F2FS features.
-> > > >>>>
-> > > >>>> Note that we're reserving the inode flag in f2fs_inode.i_advise, which
-> > > >>>> isn't really appropriate since it's not a hint or advice.  But
-> > > >>>> ->i_advise is already being used to hold the 'encrypt' flag; and F2FS's
-> > > >>>> ->i_flags uses the generic FS_* values, so it seems ->i_flags can't be
-> > > >>>> used for an F2FS-specific flag without additional work to remove the
-> > > >>>> assumption that ->i_flags uses the generic flags namespace.
-> > > >>>
-> > > >>> At a glance, this is a VFS feature, can we search free slot, and define
-> > > >>> FS_VERITY_FL like other generic flags, so we can intergrate this flag into
-> > > >>> f2fs_inode::i_flags?
-> > > >>
-> > > >> Do we need to get/set this bit of i_flags to user? And, f2fs doesn't synchronize
-> > > >> it with inode block update. I think this should be set by internal f2fs
-> > > >> operations likewise fscrypt.
-> > > >>
-> > > > 
-> > > > The fs-verity inode flag won't be modifiable using FS_IOC_SETFLAGS.  Like
-> > > 
-> > > Verity flag can also be wrapped by FS_FL_USER_MODIFIABLE like for FS_ENCRYPT_FL?
-> > > 
-> > > > fscrypt, it will only be possible to set it using a dedicated ioctl (tentatively
-> > > > called FS_IOC_ENABLE_VERITY), and it won't be supported to clear the bit once
-> > > > set, short of deleting and re-creating the file.  So it doesn't really matter
-> > > > where the bit goes in the on-disk inode, it just needs to go somewhere.  I'm
-> > > > just hesitant to reserve a flag in the UAPI flags namespace which is really more
-> > > > "owned" by ext4 than by f2fs, so has more implications than just f2fs as we
-> > > > would effectively be reserving the flag for ext4's on-disk format too.
-> > > 
-> > > IMO, because this is a VFS feature, it will be better that we can put it in more
-> > > generic place, also user can check this bit in generic way (via
-> > > FS_IOC_GETFLAGS), and then for other filesystem who wants add this feature, that
-> > > will be simple to place this bit.
-> > > 
-> > > What I can see is, for encryption feature:
-> > > 
-> > > vfs::i_flags
-> > > #define FS_ENCRYPT_FL                   0x00000800 /* Encrypted file */
-> > > 
-> > > ext4:i_flags
-> > > #define EXT4_ENCRYPT_FL			0x00000800 /* encrypted file */
-> > > 
-> > > f2fs::i_advice
-> > > #define FADVISE_ENCRYPT_BIT	0x04
-> > > 
-> > > It's very wired that f2fs didn't use well defined FS_ENCRYPT_FL bit position,
-> > > result in that we leave a hole in on-disk i_flags, and if we want to show the
-> > > same 'encrypted' flags status in FS_IOC_GETFLAGS, we need to change more codes.
-> > > 
-> > > Anyway, I just ask why not let generic status goes into i_flags, and private
-> > > status goes into i_advices?
-> > 
-> > Ted and others, what would you say about allocating FS_VERITY_FL as one of the
-> > unused ext4 / "VFS" inode flags like 0x01000000, or maybe 0x00000400 if the
-> > compression flags aren't being used anymore?
-> > 
-> > I do wish that we separated the on-disk flags namespaces from the
-> > FS_IOC_GETFLAGS/FS_IOC_SETFLAGS namespace though...  Then adding the flag to
+On Fri 30-03-18 21:02:36, Dan Williams wrote:
+> In preparation for the dax implementation to start associating dax pages
+> to inodes via page->mapping, we need to provide a 'struct
+> address_space_operations' instance for dax. Otherwise, direct-I/O
+> triggers incorrect page cache assumptions and warnings.
 > 
-> Use FS_IOC_{GS}ETXATTR instead?. I'ts not tied to an on-disk format.
+> Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+> Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+> Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+
+Looks good. You can add:
+
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+
+								Honza
+
+> ---
+>  fs/ext4/inode.c |   42 +++++++++++++++++++++++++++++++-----------
+>  1 file changed, 31 insertions(+), 11 deletions(-)
 > 
-
-Yes, that API is better -- though, *setting* the fs-verity bit will likely be
-done through its own ioctl (tentatively called FS_IOC_ENABLE_VERITY) as it will
-involve more work than simply flipping the bit.  So for *getting* it we maybe
-should just add it as a statx attribute, and not use the GETFLAGS or GETXATTR
-ioctls at all.
-
-But right now the real problem is that f2fs is using the FS_* namespace for its
-on-disk ->i_flags (other than a few in the f2fs-specific ->i_advise), which
-gives the impression that all new f2fs on-disk flags need to be exposed through
-FS_IOC_GETFLAGS/SETFLAGS, and also reserved for ext4 as well...
-
-Eric
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c94780075b04..249a97b19181 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2725,12 +2725,6 @@ static int ext4_writepages(struct address_space *mapping,
+>  	percpu_down_read(&sbi->s_journal_flag_rwsem);
+>  	trace_ext4_writepages(inode, wbc);
+>  
+> -	if (dax_mapping(mapping)) {
+> -		ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev,
+> -						  wbc);
+> -		goto out_writepages;
+> -	}
+> -
+>  	/*
+>  	 * No pages to write? This is mainly a kludge to avoid starting
+>  	 * a transaction for special inodes like journal inode on last iput()
+> @@ -2955,6 +2949,27 @@ static int ext4_writepages(struct address_space *mapping,
+>  	return ret;
+>  }
+>  
+> +static int ext4_dax_writepages(struct address_space *mapping,
+> +			       struct writeback_control *wbc)
+> +{
+> +	int ret;
+> +	long nr_to_write = wbc->nr_to_write;
+> +	struct inode *inode = mapping->host;
+> +	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
+> +
+> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +		return -EIO;
+> +
+> +	percpu_down_read(&sbi->s_journal_flag_rwsem);
+> +	trace_ext4_writepages(inode, wbc);
+> +
+> +	ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev, wbc);
+> +	trace_ext4_writepages_result(inode, wbc, ret,
+> +				     nr_to_write - wbc->nr_to_write);
+> +	percpu_up_read(&sbi->s_journal_flag_rwsem);
+> +	return ret;
+> +}
+> +
+>  static int ext4_nonda_switch(struct super_block *sb)
+>  {
+>  	s64 free_clusters, dirty_clusters;
+> @@ -3857,10 +3872,6 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+>  	if (ext4_has_inline_data(inode))
+>  		return 0;
+>  
+> -	/* DAX uses iomap path now */
+> -	if (WARN_ON_ONCE(IS_DAX(inode)))
+> -		return 0;
+> -
+>  	trace_ext4_direct_IO_enter(inode, offset, count, iov_iter_rw(iter));
+>  	if (iov_iter_rw(iter) == READ)
+>  		ret = ext4_direct_IO_read(iocb, iter);
+> @@ -3946,6 +3957,13 @@ static const struct address_space_operations ext4_da_aops = {
+>  	.error_remove_page	= generic_error_remove_page,
+>  };
+>  
+> +static const struct address_space_operations ext4_dax_aops = {
+> +	.writepages		= ext4_dax_writepages,
+> +	.direct_IO		= noop_direct_IO,
+> +	.set_page_dirty		= noop_set_page_dirty,
+> +	.invalidatepage		= noop_invalidatepage,
+> +};
+> +
+>  void ext4_set_aops(struct inode *inode)
+>  {
+>  	switch (ext4_inode_journal_mode(inode)) {
+> @@ -3958,7 +3976,9 @@ void ext4_set_aops(struct inode *inode)
+>  	default:
+>  		BUG();
+>  	}
+> -	if (test_opt(inode->i_sb, DELALLOC))
+> +	if (IS_DAX(inode))
+> +		inode->i_mapping->a_ops = &ext4_dax_aops;
+> +	else if (test_opt(inode->i_sb, DELALLOC))
+>  		inode->i_mapping->a_ops = &ext4_da_aops;
+>  	else
+>  		inode->i_mapping->a_ops = &ext4_aops;
+> 
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
