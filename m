@@ -1,7 +1,7 @@
 From: jglisse@redhat.com
-Subject: [RFC PATCH 69/79] fs/journal: add struct address_space to jbd2_journal_try_to_free_buffers() arguments
-Date: Wed,  4 Apr 2018 15:18:21 -0400
-Message-ID: <20180404191831.5378-32-jglisse@redhat.com>
+Subject: [RFC PATCH 34/79] fs/journal: add struct inode to jbd2_journal_revoke() arguments.
+Date: Wed,  4 Apr 2018 15:18:08 -0400
+Message-ID: <20180404191831.5378-19-jglisse@redhat.com>
 References: <20180404191831.5378-1-jglisse@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -21,31 +21,50 @@ List-Id: linux-ext4.vger.kernel.org
 From: Jérôme Glisse <jglisse@redhat.com>
 
 For the holy crusade to stop relying on struct page mapping field, add
-struct address_space to jbd2_journal_try_to_free_buffers() arguments.
+struct super_block to jbd2_journal_revoke() arguments.
 
-<---------------------------------------------------------------------
-@@
-type T1, T2, T3;
-@@
-int
--jbd2_journal_try_to_free_buffers(T1 journal, T2 page, T3 gfp_mask)
-+jbd2_journal_try_to_free_buffers(T1 journal, struct address_space *mapping, T2 page, T3 gfp_mask)
-{...}
-
-@@
-type T1, T2, T3;
-@@
-int
--jbd2_journal_try_to_free_buffers(T1, T2, T3)
-+jbd2_journal_try_to_free_buffers(T1, struct address_space *, T2, T3)
-;
-
-@@
+spatch --sp-file zemantic-011a.spatch --in-place --dir fs/
+----------------------------------------------------------------------
+@exists@
 expression E1, E2, E3;
+identifier I;
 @@
--jbd2_journal_try_to_free_buffers(E1, E2, E3)
-+jbd2_journal_try_to_free_buffers(E1, NULL, E2, E3)
---------------------------------------------------------------------->
+struct super_block *I;
+...
+-jbd2_journal_revoke(E1, E2, E3)
++jbd2_journal_revoke(E1, E2, I, E3)
+
+@exists@
+expression E1, E2, E3;
+identifier F, I;
+@@
+F(..., struct super_block *I, ...) {
+...
+-jbd2_journal_revoke(E1, E2, E3)
++jbd2_journal_revoke(E1, E2, I, E3)
+...
+}
+
+@exists@
+expression E1, E2, E3;
+identifier I;
+@@
+struct inode *I;
+...
+-jbd2_journal_revoke(E1, E2, E3)
++jbd2_journal_revoke(E1, E2, I->i_sb, E3)
+
+@exists@
+expression E1, E2, E3;
+identifier F, I;
+@@
+F(..., struct inode *I, ...) {
+...
+-jbd2_journal_revoke(E1, E2, E3)
++jbd2_journal_revoke(E1, E2, I->i_sb, E3)
+...
+}
+----------------------------------------------------------------------
 
 Signed-off-by: Jérôme Glisse <jglisse@redhat.com>
 Cc: "Theodore Ts'o" <tytso@mit.edu>
@@ -53,70 +72,53 @@ Cc: Jan Kara <jack@suse.com>
 Cc: linux-ext4@vger.kernel.org
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: linux-fsdevel@vger.kernel.org
----
- fs/ext4/inode.c       | 3 ++-
- fs/ext4/super.c       | 4 ++--
- fs/jbd2/transaction.c | 3 ++-
- include/linux/jbd2.h  | 4 +++-
- 4 files changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1a44d9acde53..ef53a57d9768 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3413,7 +3413,8 @@ static int ext4_releasepage(struct address_space *mapping,
- 	if (PageChecked(page))
- 		return 0;
- 	if (journal)
--		return jbd2_journal_try_to_free_buffers(journal, page, wait);
-+		return jbd2_journal_try_to_free_buffers(journal, NULL, page,
-+						        wait);
- 	else
- 		return try_to_free_buffers(mapping, page);
- }
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 8f98bc886569..cf2b74137fb2 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1138,8 +1138,8 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
- 	if (!_page_has_buffers(page, mapping))
- 		return 0;
- 	if (journal)
--		return jbd2_journal_try_to_free_buffers(journal, page,
--						wait & ~__GFP_DIRECT_RECLAIM);
-+		return jbd2_journal_try_to_free_buffers(journal, NULL, page,
-+							wait & ~__GFP_DIRECT_RECLAIM);
- 	return try_to_free_buffers(mapping, page);
- }
- 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index bf673b33d436..6899e7b4036d 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1984,7 +1984,8 @@ __journal_try_to_free_buffer(journal_t *journal, struct buffer_head *bh)
-  * Return 0 on failure, 1 on success
+Signed-off-by: Jérôme Glisse <jglisse@redhat.com>
+---
+ fs/ext4/ext4_jbd2.c  | 2 +-
+ fs/jbd2/revoke.c     | 2 +-
+ include/linux/jbd2.h | 3 ++-
+ 3 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
+index 0804d564b529..5529badca994 100644
+--- a/fs/ext4/ext4_jbd2.c
++++ b/fs/ext4/ext4_jbd2.c
+@@ -237,7 +237,7 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
+ 	 * data!=journal && (is_metadata || should_journal_data(inode))
+ 	 */
+ 	BUFFER_TRACE(bh, "call jbd2_journal_revoke");
+-	err = jbd2_journal_revoke(handle, blocknr, bh);
++	err = jbd2_journal_revoke(handle, blocknr, inode->i_sb, bh);
+ 	if (err) {
+ 		ext4_journal_abort_handle(where, line, __func__,
+ 					  bh, handle, err);
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index b6e2fd52acd6..71e690ad9d44 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -320,7 +320,7 @@ void jbd2_journal_destroy_revoke(journal_t *journal)
   */
- int jbd2_journal_try_to_free_buffers(journal_t *journal,
--				struct page *page, gfp_t gfp_mask)
-+				     struct address_space *mapping,
-+				     struct page *page, gfp_t gfp_mask)
+ 
+ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+-		   struct buffer_head *bh_in)
++			struct super_block *sb, struct buffer_head *bh_in)
  {
- 	struct buffer_head *head;
- 	struct buffer_head *bh;
+ 	struct buffer_head *bh = NULL;
+ 	journal_t *journal;
 diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index c5133df80fd4..658a0d2f758f 100644
+index d89749a179eb..c5133df80fd4 100644
 --- a/include/linux/jbd2.h
 +++ b/include/linux/jbd2.h
-@@ -1363,7 +1363,9 @@ extern int	 jbd2_journal_forget (handle_t *, struct super_block *sb,
- extern void	 journal_sync_buffer (struct buffer_head *);
- extern int	 jbd2_journal_invalidatepage(journal_t *,
- 				struct page *, unsigned int, unsigned int);
--extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
-+extern int	 jbd2_journal_try_to_free_buffers(journal_t *,
-+						    struct address_space *,
-+						    struct page *, gfp_t);
- extern int	 jbd2_journal_stop(handle_t *);
- extern int	 jbd2_journal_flush (journal_t *);
- extern void	 jbd2_journal_lock_updates (journal_t *);
+@@ -1450,7 +1450,8 @@ extern void	   jbd2_journal_destroy_revoke_caches(void);
+ extern int	   jbd2_journal_init_revoke_caches(void);
+ 
+ extern void	   jbd2_journal_destroy_revoke(journal_t *);
+-extern int	   jbd2_journal_revoke (handle_t *, unsigned long long, struct buffer_head *);
++extern int	   jbd2_journal_revoke (handle_t *, unsigned long long,
++				struct super_block *, struct buffer_head *);
+ extern int	   jbd2_journal_cancel_revoke(handle_t *, struct journal_head *);
+ extern void	   jbd2_journal_write_revoke_records(transaction_t *transaction,
+ 						     struct list_head *log_bufs);
 -- 
 2.14.3
