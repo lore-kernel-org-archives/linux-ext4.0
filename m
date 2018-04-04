@@ -1,97 +1,122 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 updates for 4.17
-Date: Wed, 4 Apr 2018 09:51:57 -0400
-Message-ID: <20180404135157.GA20723@thunk.org>
+From: jglisse@redhat.com
+Subject: [RFC PATCH 69/79] fs/journal: add struct address_space to jbd2_journal_try_to_free_buffers() arguments
+Date: Wed,  4 Apr 2018 15:18:21 -0400
+Message-ID: <20180404191831.5378-32-jglisse@redhat.com>
+References: <20180404191831.5378-1-jglisse@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-kernel@vger.kernel.org,
+        =?UTF-8?q?J=C3=A9r=C3=B4me=20Glisse?= <jglisse@redhat.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+To: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-block@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
+In-Reply-To: <20180404191831.5378-1-jglisse@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The following changes since commit 7928b2cbe55b2a410a0f5c1f154610059c57b1b2:
+From: Jérôme Glisse <jglisse@redhat.com>
 
-  Linux 4.16-rc1 (2018-02-11 15:04:29 -0800)
+For the holy crusade to stop relying on struct page mapping field, add
+struct address_space to jbd2_journal_try_to_free_buffers() arguments.
 
-are available in the Git repository at:
+<---------------------------------------------------------------------
+@@
+type T1, T2, T3;
+@@
+int
+-jbd2_journal_try_to_free_buffers(T1 journal, T2 page, T3 gfp_mask)
++jbd2_journal_try_to_free_buffers(T1 journal, struct address_space *mapping, T2 page, T3 gfp_mask)
+{...}
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+@@
+type T1, T2, T3;
+@@
+int
+-jbd2_journal_try_to_free_buffers(T1, T2, T3)
++jbd2_journal_try_to_free_buffers(T1, struct address_space *, T2, T3)
+;
 
-for you to fetch changes up to e40ff213898502d299351cc2fe1e350cd186f0d3:
+@@
+expression E1, E2, E3;
+@@
+-jbd2_journal_try_to_free_buffers(E1, E2, E3)
++jbd2_journal_try_to_free_buffers(E1, NULL, E2, E3)
+--------------------------------------------------------------------->
 
-  ext4: force revalidation of directory pointer after seekdir(2) (2018-04-01 23:21:03 -0400)
+Signed-off-by: Jérôme Glisse <jglisse@redhat.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.com>
+Cc: linux-ext4@vger.kernel.org
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+---
+ fs/ext4/inode.c       | 3 ++-
+ fs/ext4/super.c       | 4 ++--
+ fs/jbd2/transaction.c | 3 ++-
+ include/linux/jbd2.h  | 4 +++-
+ 4 files changed, 9 insertions(+), 5 deletions(-)
 
-----------------------------------------------------------------
-Cleanups and bugfixes for ext4, including some fixes to make ext4 more
-robust against maliciously crafted file system images.  (I still don't
-recommend that container folks hold any delusions that mounting
-arbitary images that can be crafted by malicious attackers should be
-considered sane thing to do, though!)
-
-----------------------------------------------------------------
-Eric Biggers (1):
-      ext4: limit xattr size to INT_MAX
-
-Eric Sandeen (1):
-      ext4: don't complain about incorrect features when probing
-
-Eryu Guan (2):
-      ext4: protect i_disksize update by i_data_sem in direct write path
-      ext4: update i_disksize if direct write past ondisk size
-
-Goldwyn Rodrigues (1):
-      ext4: use generic_writepages instead of __writepage/write_cache_pages
-
-Jiri Slaby (1):
-      ext4: fix offset overflow on 32-bit archs in ext4_iomap_begin()
-
-Nikolay Borisov (1):
-      ext4: remove EXT4_STATE_DIOREAD_LOCK flag
-
-Theodore Ts'o (15):
-      ext4: add tracepoints for shutdown and file system errors
-      jbd2: clarify bad journal block checksum message
-      ext4: shutdown should not prevent get_write_access
-      ext4: eliminate sleep from shutdown ioctl
-      ext4: pass -ESHUTDOWN code to jbd2 layer
-      jbd2: if the journal is aborted then don't allow update of the log tail
-      ext4: don't update checksum of new initialized bitmaps
-      ext4: add validity checks for bitmap block numbers
-      ext4: fail ext4_iget for root directory if unallocated
-      ext4: always initialize the crc32c checksum driver
-      ext4: don't allow r/w mounts if metadata blocks overlap the superblock
-      ext4: move call to ext4_error() into ext4_xattr_check_block()
-      ext4: add bounds checking to ext4_xattr_find_entry()
-      ext4: add extra checks to ext4_xattr_block_get()
-      ext4: force revalidation of directory pointer after seekdir(2)
-
-Tyson Nottingham (6):
-      ext4: null out kobject* during sysfs cleanup
-      ext4: remove unused parameters in sysfs code
-      ext4: simplify kobject usage
-      ext4: show more binary mount options in procfs
-      ext4: omit init_itable=n in procfs when disabled
-      ext4: don't show data=<mode> option if defaulted
-
-zhenwei.pi (1):
-      ext4: fix comments in ext4_swap_extents()
-
- fs/ext4/balloc.c            |  19 +++++++--
- fs/ext4/dir.c               |   8 ++--
- fs/ext4/ext4.h              |  17 ---------
- fs/ext4/ext4_jbd2.c         |   7 ----
- fs/ext4/extents.c           |  23 ++++-------
- fs/ext4/ialloc.c            |  54 +++++---------------------
- fs/ext4/inode.c             |  42 +++++++-------------
- fs/ext4/ioctl.c             |  13 ++-----
- fs/ext4/move_extent.c       |   4 --
- fs/ext4/super.c             |  65 ++++++++++++++++++++-----------
- fs/ext4/sysfs.c             |  72 ++++++++++++----------------------
- fs/ext4/xattr.c             | 121 +++++++++++++++++++++++++++++++++-------------------------
- fs/ext4/xattr.h             |  11 ++++++
- fs/jbd2/journal.c           |  30 +++++++++++----
- fs/jbd2/recovery.c          |   4 +-
- include/trace/events/ext4.h |  43 +++++++++++++++++++++
- 16 files changed, 269 insertions(+), 264 deletions(-)
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1a44d9acde53..ef53a57d9768 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3413,7 +3413,8 @@ static int ext4_releasepage(struct address_space *mapping,
+ 	if (PageChecked(page))
+ 		return 0;
+ 	if (journal)
+-		return jbd2_journal_try_to_free_buffers(journal, page, wait);
++		return jbd2_journal_try_to_free_buffers(journal, NULL, page,
++						        wait);
+ 	else
+ 		return try_to_free_buffers(mapping, page);
+ }
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 8f98bc886569..cf2b74137fb2 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1138,8 +1138,8 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
+ 	if (!_page_has_buffers(page, mapping))
+ 		return 0;
+ 	if (journal)
+-		return jbd2_journal_try_to_free_buffers(journal, page,
+-						wait & ~__GFP_DIRECT_RECLAIM);
++		return jbd2_journal_try_to_free_buffers(journal, NULL, page,
++							wait & ~__GFP_DIRECT_RECLAIM);
+ 	return try_to_free_buffers(mapping, page);
+ }
+ 
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index bf673b33d436..6899e7b4036d 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1984,7 +1984,8 @@ __journal_try_to_free_buffer(journal_t *journal, struct buffer_head *bh)
+  * Return 0 on failure, 1 on success
+  */
+ int jbd2_journal_try_to_free_buffers(journal_t *journal,
+-				struct page *page, gfp_t gfp_mask)
++				     struct address_space *mapping,
++				     struct page *page, gfp_t gfp_mask)
+ {
+ 	struct buffer_head *head;
+ 	struct buffer_head *bh;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index c5133df80fd4..658a0d2f758f 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1363,7 +1363,9 @@ extern int	 jbd2_journal_forget (handle_t *, struct super_block *sb,
+ extern void	 journal_sync_buffer (struct buffer_head *);
+ extern int	 jbd2_journal_invalidatepage(journal_t *,
+ 				struct page *, unsigned int, unsigned int);
+-extern int	 jbd2_journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
++extern int	 jbd2_journal_try_to_free_buffers(journal_t *,
++						    struct address_space *,
++						    struct page *, gfp_t);
+ extern int	 jbd2_journal_stop(handle_t *);
+ extern int	 jbd2_journal_flush (journal_t *);
+ extern void	 jbd2_journal_lock_updates (journal_t *);
+-- 
+2.14.3
