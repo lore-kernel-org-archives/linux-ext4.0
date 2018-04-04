@@ -1,135 +1,97 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH v8 05/18] ext4, dax: introduce ext4_dax_aops
-Date: Tue, 3 Apr 2018 13:50:03 +0200
-Message-ID: <20180403115003.qfbedsjtxwirqkh6@quack2.suse.cz>
-References: <152246892890.36038.18436540150980653229.stgit@dwillia2-desk3.amr.corp.intel.com>
- <152246895649.36038.5391043415273091960.stgit@dwillia2-desk3.amr.corp.intel.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 updates for 4.17
+Date: Wed, 4 Apr 2018 09:51:57 -0400
+Message-ID: <20180404135157.GA20723@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, snitzer-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, hch-jcswGhMUV9g@public.gmane.org
-To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <152246895649.36038.5391043415273091960.stgit-p8uTFz9XbKj2zm6wflaqv1nYeNYlB/vhral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 30-03-18 21:02:36, Dan Williams wrote:
-> In preparation for the dax implementation to start associating dax pages
-> to inodes via page->mapping, we need to provide a 'struct
-> address_space_operations' instance for dax. Otherwise, direct-I/O
-> triggers incorrect page cache assumptions and warnings.
-> 
-> Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-> Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-> Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> Signed-off-by: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+The following changes since commit 7928b2cbe55b2a410a0f5c1f154610059c57b1b2:
 
-Looks good. You can add:
+  Linux 4.16-rc1 (2018-02-11 15:04:29 -0800)
 
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+are available in the Git repository at:
 
-								Honza
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
-> ---
->  fs/ext4/inode.c |   42 +++++++++++++++++++++++++++++++-----------
->  1 file changed, 31 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index c94780075b04..249a97b19181 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2725,12 +2725,6 @@ static int ext4_writepages(struct address_space *mapping,
->  	percpu_down_read(&sbi->s_journal_flag_rwsem);
->  	trace_ext4_writepages(inode, wbc);
->  
-> -	if (dax_mapping(mapping)) {
-> -		ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev,
-> -						  wbc);
-> -		goto out_writepages;
-> -	}
-> -
->  	/*
->  	 * No pages to write? This is mainly a kludge to avoid starting
->  	 * a transaction for special inodes like journal inode on last iput()
-> @@ -2955,6 +2949,27 @@ static int ext4_writepages(struct address_space *mapping,
->  	return ret;
->  }
->  
-> +static int ext4_dax_writepages(struct address_space *mapping,
-> +			       struct writeback_control *wbc)
-> +{
-> +	int ret;
-> +	long nr_to_write = wbc->nr_to_write;
-> +	struct inode *inode = mapping->host;
-> +	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
-> +
-> +	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
-> +		return -EIO;
-> +
-> +	percpu_down_read(&sbi->s_journal_flag_rwsem);
-> +	trace_ext4_writepages(inode, wbc);
-> +
-> +	ret = dax_writeback_mapping_range(mapping, inode->i_sb->s_bdev, wbc);
-> +	trace_ext4_writepages_result(inode, wbc, ret,
-> +				     nr_to_write - wbc->nr_to_write);
-> +	percpu_up_read(&sbi->s_journal_flag_rwsem);
-> +	return ret;
-> +}
-> +
->  static int ext4_nonda_switch(struct super_block *sb)
->  {
->  	s64 free_clusters, dirty_clusters;
-> @@ -3857,10 +3872,6 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
->  	if (ext4_has_inline_data(inode))
->  		return 0;
->  
-> -	/* DAX uses iomap path now */
-> -	if (WARN_ON_ONCE(IS_DAX(inode)))
-> -		return 0;
-> -
->  	trace_ext4_direct_IO_enter(inode, offset, count, iov_iter_rw(iter));
->  	if (iov_iter_rw(iter) == READ)
->  		ret = ext4_direct_IO_read(iocb, iter);
-> @@ -3946,6 +3957,13 @@ static const struct address_space_operations ext4_da_aops = {
->  	.error_remove_page	= generic_error_remove_page,
->  };
->  
-> +static const struct address_space_operations ext4_dax_aops = {
-> +	.writepages		= ext4_dax_writepages,
-> +	.direct_IO		= noop_direct_IO,
-> +	.set_page_dirty		= noop_set_page_dirty,
-> +	.invalidatepage		= noop_invalidatepage,
-> +};
-> +
->  void ext4_set_aops(struct inode *inode)
->  {
->  	switch (ext4_inode_journal_mode(inode)) {
-> @@ -3958,7 +3976,9 @@ void ext4_set_aops(struct inode *inode)
->  	default:
->  		BUG();
->  	}
-> -	if (test_opt(inode->i_sb, DELALLOC))
-> +	if (IS_DAX(inode))
-> +		inode->i_mapping->a_ops = &ext4_dax_aops;
-> +	else if (test_opt(inode->i_sb, DELALLOC))
->  		inode->i_mapping->a_ops = &ext4_da_aops;
->  	else
->  		inode->i_mapping->a_ops = &ext4_aops;
-> 
--- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+for you to fetch changes up to e40ff213898502d299351cc2fe1e350cd186f0d3:
+
+  ext4: force revalidation of directory pointer after seekdir(2) (2018-04-01 23:21:03 -0400)
+
+----------------------------------------------------------------
+Cleanups and bugfixes for ext4, including some fixes to make ext4 more
+robust against maliciously crafted file system images.  (I still don't
+recommend that container folks hold any delusions that mounting
+arbitary images that can be crafted by malicious attackers should be
+considered sane thing to do, though!)
+
+----------------------------------------------------------------
+Eric Biggers (1):
+      ext4: limit xattr size to INT_MAX
+
+Eric Sandeen (1):
+      ext4: don't complain about incorrect features when probing
+
+Eryu Guan (2):
+      ext4: protect i_disksize update by i_data_sem in direct write path
+      ext4: update i_disksize if direct write past ondisk size
+
+Goldwyn Rodrigues (1):
+      ext4: use generic_writepages instead of __writepage/write_cache_pages
+
+Jiri Slaby (1):
+      ext4: fix offset overflow on 32-bit archs in ext4_iomap_begin()
+
+Nikolay Borisov (1):
+      ext4: remove EXT4_STATE_DIOREAD_LOCK flag
+
+Theodore Ts'o (15):
+      ext4: add tracepoints for shutdown and file system errors
+      jbd2: clarify bad journal block checksum message
+      ext4: shutdown should not prevent get_write_access
+      ext4: eliminate sleep from shutdown ioctl
+      ext4: pass -ESHUTDOWN code to jbd2 layer
+      jbd2: if the journal is aborted then don't allow update of the log tail
+      ext4: don't update checksum of new initialized bitmaps
+      ext4: add validity checks for bitmap block numbers
+      ext4: fail ext4_iget for root directory if unallocated
+      ext4: always initialize the crc32c checksum driver
+      ext4: don't allow r/w mounts if metadata blocks overlap the superblock
+      ext4: move call to ext4_error() into ext4_xattr_check_block()
+      ext4: add bounds checking to ext4_xattr_find_entry()
+      ext4: add extra checks to ext4_xattr_block_get()
+      ext4: force revalidation of directory pointer after seekdir(2)
+
+Tyson Nottingham (6):
+      ext4: null out kobject* during sysfs cleanup
+      ext4: remove unused parameters in sysfs code
+      ext4: simplify kobject usage
+      ext4: show more binary mount options in procfs
+      ext4: omit init_itable=n in procfs when disabled
+      ext4: don't show data=<mode> option if defaulted
+
+zhenwei.pi (1):
+      ext4: fix comments in ext4_swap_extents()
+
+ fs/ext4/balloc.c            |  19 +++++++--
+ fs/ext4/dir.c               |   8 ++--
+ fs/ext4/ext4.h              |  17 ---------
+ fs/ext4/ext4_jbd2.c         |   7 ----
+ fs/ext4/extents.c           |  23 ++++-------
+ fs/ext4/ialloc.c            |  54 +++++---------------------
+ fs/ext4/inode.c             |  42 +++++++-------------
+ fs/ext4/ioctl.c             |  13 ++-----
+ fs/ext4/move_extent.c       |   4 --
+ fs/ext4/super.c             |  65 ++++++++++++++++++++-----------
+ fs/ext4/sysfs.c             |  72 ++++++++++++----------------------
+ fs/ext4/xattr.c             | 121 +++++++++++++++++++++++++++++++++-------------------------
+ fs/ext4/xattr.h             |  11 ++++++
+ fs/jbd2/journal.c           |  30 +++++++++++----
+ fs/jbd2/recovery.c          |   4 +-
+ include/trace/events/ext4.h |  43 +++++++++++++++++++++
+ 16 files changed, 269 insertions(+), 264 deletions(-)
