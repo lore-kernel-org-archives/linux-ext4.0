@@ -1,157 +1,60 @@
-From: jglisse@redhat.com
-Subject: [RFC PATCH 33/79] fs/journal: add struct super_block to jbd2_journal_forget() arguments.
-Date: Wed,  4 Apr 2018 15:18:07 -0400
-Message-ID: <20180404191831.5378-18-jglisse@redhat.com>
-References: <20180404191831.5378-1-jglisse@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-kernel@vger.kernel.org,
-        =?UTF-8?q?J=C3=A9r=C3=B4me=20Glisse?= <jglisse@redhat.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-To: linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org
+From: Mathieu Malaterre <malat@debian.org>
+Subject: [PATCH] fs: Add MODULE_SOFTDEP declarations for hard-coded crypto drivers
+Date: Fri,  6 Apr 2018 21:52:31 +0200
+Message-ID: <20180406195231.14868-1-malat@debian.org>
+Cc: Milan Kupcevic <milan@debian.org>,
+        Ben Hutchings <ben@decadent.org.uk>,
+        Mathieu Malaterre <malat@debian.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180404191831.5378-1-jglisse@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Jérôme Glisse <jglisse@redhat.com>
+This helps initramfs builders and other tools to find the full
+dependencies of a module.
 
-For the holy crusade to stop relying on struct page mapping field, add
-struct super_block to jbd2_journal_forget() arguments.
+Debian on powerpc (ppc32) still uses yaboot as default boot loader. Using a
+default installation (debian-installer) 64bit and metadata_csum feature are
+not setup in ext4. This is discussed in more details at:
 
-spatch --sp-file zemantic-010a.spatch --in-place --dir fs/
-----------------------------------------------------------------------
-@exists@
-expression E1, E2;
-identifier I;
-@@
-struct super_block *I;
-...
--jbd2_journal_forget(E1, E2)
-+jbd2_journal_forget(E1, I, E2)
+https://bugs.debian.org/825110#81
 
-@exists@
-expression E1, E2;
-identifier F, I;
-@@
-F(..., struct super_block *I, ...) {
-...
--jbd2_journal_forget(E1, E2)
-+jbd2_journal_forget(E1, I, E2)
-...
-}
+and implemented here:
 
-@exists@
-expression E1, E2;
-identifier I;
-@@
-struct block_device *I;
-...
--jbd2_journal_forget(E1, E2)
-+jbd2_journal_forget(E1, I->bd_super, E2)
+https://anonscm.debian.org/cgit/d-i/partman-ext3.git/patch/?id=f87dc92157262de1ad8dd3f2343436f08271b4dc
 
-@exists@
-expression E1, E2;
-identifier F, I;
-@@
-F(..., struct block_device *I, ...) {
-...
--jbd2_journal_forget(E1, E2)
-+jbd2_journal_forget(E1, I->bd_super, E2)
-...
-}
+This means that building the kernel as default debian package:
 
-@exists@
-expression E1, E2;
-identifier I;
-@@
-struct inode *I;
-...
--jbd2_journal_forget(E1, E2)
-+jbd2_journal_forget(E1, I->i_sb, E2)
+  make ARCH=powerpc XYZ_defconfig
+  make -j8 ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- bindeb-pkg
 
-@exists@
-expression E1, E2;
-identifier F, I;
-@@
-F(..., struct inode *I, ...) {
-...
--jbd2_journal_forget(E1, E2)
-+jbd2_journal_forget(E1, I->i_sb, E2)
-...
-}
-----------------------------------------------------------------------
+Will lead to the following boot failure (initramfs prompt):
 
-Signed-off-by: Jérôme Glisse <jglisse@redhat.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.com>
-Cc: linux-ext4@vger.kernel.org
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org
+  /dev/sda3: clean, 127679/305216 files, 11128559/1220703 blocks done.
+  [    5.592819] EXT4-fs (sda3): Cannot load crc32c driver.
+  mount: mounting /dev/sda3 on /root failed: No such file or directory
+
+Link: https://bugs.debian.org/819725
+Link: https://salsa.debian.org/kernel-team/linux/blob/master/debian/patches/bugfix/all/fs-add-module_softdep-declarations-for-hard-coded-cr.patch
+Suggested-by: Ben Hutchings <ben@decadent.org.uk>
+Cc: Milan Kupcevic <milan@debian.org>
+Signed-off-by: Mathieu Malaterre <malat@debian.org>
 ---
- fs/ext4/ext4_jbd2.c   | 2 +-
- fs/jbd2/revoke.c      | 2 +-
- fs/jbd2/transaction.c | 3 ++-
- include/linux/jbd2.h  | 3 ++-
- 4 files changed, 6 insertions(+), 4 deletions(-)
+ fs/ext4/super.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c
-index 2d593201cf7a..0804d564b529 100644
---- a/fs/ext4/ext4_jbd2.c
-+++ b/fs/ext4/ext4_jbd2.c
-@@ -224,7 +224,7 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
- 	    (!is_metadata && !ext4_should_journal_data(inode))) {
- 		if (bh) {
- 			BUFFER_TRACE(bh, "call jbd2_journal_forget");
--			err = jbd2_journal_forget(handle, bh);
-+			err = jbd2_journal_forget(handle, inode->i_sb, bh);
- 			if (err)
- 				ext4_journal_abort_handle(where, line, __func__,
- 							  bh, handle, err);
-diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index 696ef15ec942..b6e2fd52acd6 100644
---- a/fs/jbd2/revoke.c
-+++ b/fs/jbd2/revoke.c
-@@ -381,7 +381,7 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
- 		set_buffer_revokevalid(bh);
- 		if (bh_in) {
- 			BUFFER_TRACE(bh_in, "call jbd2_journal_forget");
--			jbd2_journal_forget(handle, bh_in);
-+			jbd2_journal_forget(handle, bdev->bd_super, bh_in);
- 		} else {
- 			BUFFER_TRACE(bh, "call brelse");
- 			__brelse(bh);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index ac311037d7a5..e8c50bb5822c 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1482,7 +1482,8 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
-  * Allow this call even if the handle has aborted --- it may be part of
-  * the caller's cleanup after an abort.
-  */
--int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
-+int jbd2_journal_forget (handle_t *handle, struct super_block *sb,
-+			 struct buffer_head *bh)
- {
- 	transaction_t *transaction = handle->h_transaction;
- 	journal_t *journal;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index b708e5169d1d..d89749a179eb 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1358,7 +1358,8 @@ extern int	 jbd2_journal_get_undo_access(handle_t *, struct buffer_head *);
- void		 jbd2_journal_set_triggers(struct buffer_head *,
- 					   struct jbd2_buffer_trigger_type *type);
- extern int	 jbd2_journal_dirty_metadata (handle_t *, struct buffer_head *);
--extern int	 jbd2_journal_forget (handle_t *, struct buffer_head *);
-+extern int	 jbd2_journal_forget (handle_t *, struct super_block *sb,
-+					struct buffer_head *);
- extern void	 journal_sync_buffer (struct buffer_head *);
- extern int	 jbd2_journal_invalidatepage(journal_t *,
- 				struct page *, unsigned int, unsigned int);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 185f7e61f4cf..10bda040e78f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -5886,5 +5886,6 @@ static void __exit ext4_exit_fs(void)
+ MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
+ MODULE_DESCRIPTION("Fourth Extended Filesystem");
+ MODULE_LICENSE("GPL");
++MODULE_SOFTDEP("pre: crypto-crc32c");
+ module_init(ext4_init_fs)
+ module_exit(ext4_exit_fs)
 -- 
-2.14.3
+2.11.0
