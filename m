@@ -1,24 +1,25 @@
-From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
 Subject: Re: [PATCH] mmap.2: Add description of MAP_SHARED_VALIDATE and
  MAP_SYNC
-Date: Thu, 12 Apr 2018 16:22:14 +0200
-Message-ID: <20180412142214.fcxw3g2jxv6bvn7d@quack2.suse.cz>
+Date: Thu, 12 Apr 2018 20:20:12 +0200
+Message-ID: <CAKgNAkgtVryFb81QgzwPq8SD241yKDN1xNxOWUUQH9QBYV13SA@mail.gmail.com>
 References: <20171101153648.30166-1-jack@suse.cz>
  <20171101153648.30166-20-jack@suse.cz>
  <CAKgNAkhsFrcdkXNA2cw3o0gJV0uLRtBg9ybaCe5xy1QBC2PgqA@mail.gmail.com>
+ <20180412142214.fcxw3g2jxv6bvn7d@quack2.suse.cz>
+Reply-To: mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
  "Darrick J . Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
  Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Linux-MM <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>,
  "linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
  Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: "Michael Kerrisk (man-pages)" <mtk.manpages-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <CAKgNAkhsFrcdkXNA2cw3o0gJV0uLRtBg9ybaCe5xy1QBC2PgqA-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+In-Reply-To: <20180412142214.fcxw3g2jxv6bvn7d-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -30,47 +31,40 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Hello Michael!
-
-On Thu 12-04-18 15:00:49, Michael Kerrisk (man-pages) wrote:
-> Hello Jan,
-> 
-> I have applied your patch, and tweaked the text a little, and pushed
-> the result to the git repo.
-
-Thanks!
-
-> > +.B MAP_SHARED
-> > +type will silently ignore this flag.
-> > +This flag is supported only for files supporting DAX (direct mapping of persistent
-> > +memory). For other files, creating mapping with this flag results in
-> > +.B EOPNOTSUPP
-> > +error. Shared file mappings with this flag provide the guarantee that while
-> > +some memory is writeably mapped in the address space of the process, it will
-> > +be visible in the same file at the same offset even after the system crashes or
-> > +is rebooted. This allows users of such mappings to make data modifications
-> > +persistent in a more efficient way using appropriate CPU instructions.
-> 
-> It feels like there's a word missing/unclear wording in the previous
-> line, before "using". Without that word, the sentence feels a bit
-> ambiguous.
-> 
-> Should it be:
-> 
-> persistent in a more efficient way *through the use of* appropriate
-> CPU instructions.
-> 
-> or:
-> 
-> persistent in a more efficient way *than using* appropriate CPU instructions.
-> 
-> ?
-> 
-> Is suspect the first is correct, but need to check.
-
-Yes, the first is correct.
-
-								Honza
--- 
-Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
-SUSE Labs, CR
+SmFuLCBSb3NzLgoKT24gMTIgQXByaWwgMjAxOCBhdCAxNjoyMiwgSmFuIEthcmEgPGphY2tAc3Vz
+ZS5jej4gd3JvdGU6Cj4gSGVsbG8gTWljaGFlbCEKPgo+IE9uIFRodSAxMi0wNC0xOCAxNTowMDo0
+OSwgTWljaGFlbCBLZXJyaXNrIChtYW4tcGFnZXMpIHdyb3RlOgo+PiBIZWxsbyBKYW4sCj4+Cj4+
+IEkgaGF2ZSBhcHBsaWVkIHlvdXIgcGF0Y2gsIGFuZCB0d2Vha2VkIHRoZSB0ZXh0IGEgbGl0dGxl
+LCBhbmQgcHVzaGVkCj4+IHRoZSByZXN1bHQgdG8gdGhlIGdpdCByZXBvLgo+Cj4gVGhhbmtzIQo+
+Cj4+ID4gKy5CIE1BUF9TSEFSRUQKPj4gPiArdHlwZSB3aWxsIHNpbGVudGx5IGlnbm9yZSB0aGlz
+IGZsYWcuCj4+ID4gK1RoaXMgZmxhZyBpcyBzdXBwb3J0ZWQgb25seSBmb3IgZmlsZXMgc3VwcG9y
+dGluZyBEQVggKGRpcmVjdCBtYXBwaW5nIG9mIHBlcnNpc3RlbnQKPj4gPiArbWVtb3J5KS4gRm9y
+IG90aGVyIGZpbGVzLCBjcmVhdGluZyBtYXBwaW5nIHdpdGggdGhpcyBmbGFnIHJlc3VsdHMgaW4K
+Pj4gPiArLkIgRU9QTk9UU1VQUAo+PiA+ICtlcnJvci4gU2hhcmVkIGZpbGUgbWFwcGluZ3Mgd2l0
+aCB0aGlzIGZsYWcgcHJvdmlkZSB0aGUgZ3VhcmFudGVlIHRoYXQgd2hpbGUKPj4gPiArc29tZSBt
+ZW1vcnkgaXMgd3JpdGVhYmx5IG1hcHBlZCBpbiB0aGUgYWRkcmVzcyBzcGFjZSBvZiB0aGUgcHJv
+Y2VzcywgaXQgd2lsbAo+PiA+ICtiZSB2aXNpYmxlIGluIHRoZSBzYW1lIGZpbGUgYXQgdGhlIHNh
+bWUgb2Zmc2V0IGV2ZW4gYWZ0ZXIgdGhlIHN5c3RlbSBjcmFzaGVzIG9yCj4+ID4gK2lzIHJlYm9v
+dGVkLiBUaGlzIGFsbG93cyB1c2VycyBvZiBzdWNoIG1hcHBpbmdzIHRvIG1ha2UgZGF0YSBtb2Rp
+ZmljYXRpb25zCj4+ID4gK3BlcnNpc3RlbnQgaW4gYSBtb3JlIGVmZmljaWVudCB3YXkgdXNpbmcg
+YXBwcm9wcmlhdGUgQ1BVIGluc3RydWN0aW9ucy4KPj4KPj4gSXQgZmVlbHMgbGlrZSB0aGVyZSdz
+IGEgd29yZCBtaXNzaW5nL3VuY2xlYXIgd29yZGluZyBpbiB0aGUgcHJldmlvdXMKPj4gbGluZSwg
+YmVmb3JlICJ1c2luZyIuIFdpdGhvdXQgdGhhdCB3b3JkLCB0aGUgc2VudGVuY2UgZmVlbHMgYSBi
+aXQKPj4gYW1iaWd1b3VzLgo+Pgo+PiBTaG91bGQgaXQgYmU6Cj4+Cj4+IHBlcnNpc3RlbnQgaW4g
+YSBtb3JlIGVmZmljaWVudCB3YXkgKnRocm91Z2ggdGhlIHVzZSBvZiogYXBwcm9wcmlhdGUKPj4g
+Q1BVIGluc3RydWN0aW9ucy4KPj4KPj4gb3I6Cj4+Cj4+IHBlcnNpc3RlbnQgaW4gYSBtb3JlIGVm
+ZmljaWVudCB3YXkgKnRoYW4gdXNpbmcqIGFwcHJvcHJpYXRlIENQVSBpbnN0cnVjdGlvbnMuCj4+
+Cj4+ID8KPj4KPj4gSXMgc3VzcGVjdCB0aGUgZmlyc3QgaXMgY29ycmVjdCwgYnV0IG5lZWQgdG8g
+Y2hlY2suCj4KPiBZZXMsIHRoZSBmaXJzdCBpcyBjb3JyZWN0LgoKVGhhbmtzIGZvciBib3RoIGNo
+ZWNraW5nIHRoYXQgcGhyYXNpbmcuIEluIHRoZSBlbmQgSSBkZWNpZGVkIHRvIHJld29yZAp0aGUg
+c2VudGVuY2UgYSBib3QgbW9yZSBzdWJzdGFudGlhbGx5OgoKICAgICAgICAgICAgICBJbiAgY29u
+anVuY3Rpb24gIHdpdGggIHRoZSAgdXNlIG9mIGFwcHJvcHJpYXRlIENQVQogICAgICAgICAgICAg
+IGluc3RydWN0aW9ucywgdGhpcyBwcm92aWRlcyB1c2VycyBvZiBzdWNoIG1hcHBpbmdzCiAgICAg
+ICAgICAgICAgd2l0aCBhIG1vcmUgZWZmaWNpZW50IHdheSBvZiBtYWtpbmcgZGF0YSBtb2RpZmlj
+YeKAkAogICAgICAgICAgICAgIHRpb25zIHBlcnNpc3RlbnQuCgpUaGFua3MsCgpNaWNoYWVsCgot
+LSAKTWljaGFlbCBLZXJyaXNrCkxpbnV4IG1hbi1wYWdlcyBtYWludGFpbmVyOyBodHRwOi8vd3d3
+Lmtlcm5lbC5vcmcvZG9jL21hbi1wYWdlcy8KTGludXgvVU5JWCBTeXN0ZW0gUHJvZ3JhbW1pbmcg
+VHJhaW5pbmc6IGh0dHA6Ly9tYW43Lm9yZy90cmFpbmluZy8KX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX18KTGludXgtbnZkaW1tIG1haWxpbmcgbGlzdApMaW51
+eC1udmRpbW1AbGlzdHMuMDEub3JnCmh0dHBzOi8vbGlzdHMuMDEub3JnL21haWxtYW4vbGlzdGlu
+Zm8vbGludXgtbnZkaW1tCg==
