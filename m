@@ -1,80 +1,50 @@
-From: Dan Carpenter <dan.carpenter@oracle.com>
-Subject: Re: [PATCH 03/39] proc: introduce proc_create_seq_private
-Date: Thu, 19 Apr 2018 17:18:18 +0300
-Message-ID: <20180419141818.pjys7at4xmz2h6ho@mwanda>
-References: <20180419124140.9309-1-hch@lst.de>
- <20180419124140.9309-4-hch@lst.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4 : fix comments in ext4_swap_extents
+Date: Thu, 19 Apr 2018 16:50:28 +0200
+Message-ID: <20180419145028.44fqs4wy5ofhvn5z@quack2.suse.cz>
+References: <1521448449-25916-1-git-send-email-zhenwei.pi@youruncloud.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
- Alexandre Belloni <alexandre.belloni@bootlin.com>, devel@driverdev.osuosl.org,
- Corey Minyard <minyard@acm.org>, linux-scsi@vger.kernel.org,
- linux-acpi@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
- Jiri Slaby <jslaby@suse.com>, megaraidlinux.pdl@broadcom.com,
- linux-kernel@vger.kernel.org, Alexey Dobriyan <adobriyan@gmail.com>,
- linux-ide@vger.kernel.org, netfilter-devel@vger.kernel.org,
- Alexander Viro <viro@zeniv.linux.org.uk>, netdev@vger.kernel.org,
- Andrew Morton <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org,
- linux-afs@lists.infradead.org, jfs-discussion@lists.sourceforge.net,
- drbd-dev@lists.linbit.com
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "zhenwei.pi" <zhenwei.pi@youruncloud.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180419124140.9309-4-hch@lst.de>
-List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
-List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
-List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
-List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
-List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
-Errors-To: driverdev-devel-bounces@linuxdriverproject.org
-Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
+In-Reply-To: <1521448449-25916-1-git-send-email-zhenwei.pi@youruncloud.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 19, 2018 at 02:41:04PM +0200, Christoph Hellwig wrote:
-> diff --git a/drivers/s390/cio/blacklist.c b/drivers/s390/cio/blacklist.c
-> index 2a3f874a21d5..ad35cddcf6af 100644
-> --- a/drivers/s390/cio/blacklist.c
-> +++ b/drivers/s390/cio/blacklist.c
-> @@ -391,28 +391,15 @@ static const struct seq_operations cio_ignore_proc_seq_ops = {
->  	.show  = cio_ignore_proc_seq_show,
->  };
->  
-> -static int
-> -cio_ignore_proc_open(struct inode *inode, struct file *file)
-> -{
-> -	return seq_open_private(file, &cio_ignore_proc_seq_ops,
-> -				sizeof(struct ccwdev_iter));
-> -}
-> -
-> -static const struct file_operations cio_ignore_proc_fops = {
-> -	.open    = cio_ignore_proc_open,
-> -	.read    = seq_read,
-> -	.llseek  = seq_lseek,
-> -	.release = seq_release_private,
-> -	.write   = cio_ignore_write,
-                   ^^^^^^^^^^^^^^^^
-The cio_ignore_write() function isn't used any more so compilers will
-complain.
+On Mon 19-03-18 16:34:09, zhenwei.pi wrote:
+> "mark_unwritten" in comment and "unwritten" in variable
+> argument lists is mismatch.
+> 
+> Signed-off-by: zhenwei.pi <zhenwei.pi@youruncloud.com>
 
-> -};
-> -
->  static int
->  cio_ignore_proc_init (void)
->  {
->  	struct proc_dir_entry *entry;
->  
-> -	entry = proc_create("cio_ignore", S_IFREG | S_IRUGO | S_IWUSR, NULL,
-> -			    &cio_ignore_proc_fops);
-> +	entry = proc_create_seq_private("cio_ignore",
-> +			S_IFREG | S_IRUGO | S_IWUSR, NULL,
-> +			&cio_ignore_proc_seq_ops, sizeof(struct ccwdev_iter),
-> +			NULL);
->  	if (!entry)
->  		return -ENOENT;
->  	return 0;
+This seems to have fallen through cracks. The patch looks good to me. Ted,
+can you please merge it? Thanks!
 
-regards,
-dan carpenter
+								Honza
+
+> ---
+>  fs/ext4/extents.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 054416e..2fc4227 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -5751,7 +5751,7 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
+>   * @lblk1:	Start block for first inode
+>   * @lblk2:	Start block for second inode
+>   * @count:	Number of blocks to swap
+> - * @mark_unwritten: Mark second inode's extents as unwritten after swap
+> + * @unwritten: Mark second inode's extents as unwritten after swap
+>   * @erp:	Pointer to save error value
+>   *
+>   * This helper routine does exactly what is promise "swap extents". All other
+> -- 
+> 2.7.4
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
