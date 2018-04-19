@@ -1,34 +1,38 @@
-From: Alexey Dobriyan <adobriyan@gmail.com>
-Subject: Re: simplify procfs code for seq_file instances
-Date: Thu, 19 Apr 2018 21:57:50 +0300
-Message-ID: <20180419185750.GD2066@avx2>
-References: <20180419124140.9309-1-hch@lst.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4 : fix comments in ext4_swap_extents
+Date: Thu, 19 Apr 2018 22:13:10 +0200
+Message-ID: <20180419201310.hjxzigbdt4uyjdkz@quack2.suse.cz>
+References: <1521448449-25916-1-git-send-email-zhenwei.pi@youruncloud.com>
+ <20180419145028.44fqs4wy5ofhvn5z@quack2.suse.cz>
+ <20180419164456.GI23194@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Jiri Slaby <jslaby@suse.com>, Corey Minyard <minyard@acm.org>,
-        Alessandro Zummo <a.zummo@towertech.it>,
-        Alexandre Belloni <alexandre.belloni@bootlin.com>,
-        linux-acpi@vger.kernel.org, drbd-dev@lists.linbit.com,
-        linux-ide@vger.kernel.org, netdev@vger.kernel.org,
-        linux-rtc@vger.kernel.org, megaraidlinux.pdl@broadcom.com,
-        linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org,
-        linux-afs@lists.infradead.org, linux-ext4@vger.kernel.org,
-        jfs-discussion@lists.sourceforge.net,
-        netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <netdev-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, "zhenwei.pi" <zhenwei.pi@youruncloud.com>,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180419124140.9309-1-hch@lst.de>
-Sender: netdev-owner@vger.kernel.org
+In-Reply-To: <20180419164456.GI23194@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
->     git://git.infradead.org/users/hch/misc.git proc_create
+On Thu 19-04-18 12:44:56, Theodore Y. Ts'o wrote:
+> On Thu, Apr 19, 2018 at 04:50:28PM +0200, Jan Kara wrote:
+> > On Mon 19-03-18 16:34:09, zhenwei.pi wrote:
+> > > "mark_unwritten" in comment and "unwritten" in variable
+> > > argument lists is mismatch.
+> > > 
+> > > Signed-off-by: zhenwei.pi <zhenwei.pi@youruncloud.com>
+> > 
+> > This seems to have fallen through cracks. The patch looks good to me. Ted,
+> > can you please merge it? Thanks!
+> 
+> It landed in 4.17-rc1, commit id: dcae058a8da9c
 
+Ah, somehow I missed that. Sorry.
 
-I want to ask if it is time to start using poorman function overloading
-with _b_c_e(). There are millions of allocation functions for example,
-all slightly difference, and people will add more. Seeing /proc interfaces
-doubled like this is painful.
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
