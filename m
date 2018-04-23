@@ -1,47 +1,132 @@
-From: "Rafael J. Wysocki" <rafael@kernel.org>
-Subject: Re: [PATCH 15/39] acpi/battery: simplify procfs code
-Date: Sun, 22 Apr 2018 11:42:08 +0200
-Message-ID: <CAJZ5v0gRw8P8KL12QKMuSjyePxWn71LB+s8ephF2a4-Ns234NQ@mail.gmail.com>
-References: <20180419124140.9309-1-hch@lst.de>
- <20180419124140.9309-16-hch@lst.de>
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+Subject: Re: [PATCH v3] ext4: handle errors on ext4_commit_super
+Date: Mon, 23 Apr 2018 08:46:26 -0600
+Message-ID: <20180423144626.GA31757@jaegeuk-macbookpro.roam.corp.google.com>
+References: <20180330014429.27824-1-jaegeuk@kernel.org>
+ <20180419155957.GB81439@jaegeuk-macbookpro.roam.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
- Alexandre Belloni <alexandre.belloni@bootlin.com>, devel@driverdev.osuosl.org,
- Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
- "open list:TARGET SUBSYSTEM" <linux-scsi@vger.kernel.org>,
- Corey Minyard <minyard@acm.org>, linux-ide@vger.kernel.org,
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
- jfs-discussion@lists.sourceforge.net, linux-afs@lists.infradead.org,
- ACPI Devel Maling List <linux-acpi@vger.kernel.org>,
- netdev <netdev@vger.kernel.org>, netfilter-devel@vger.kernel.org,
- Alexander Viro <viro@zeniv.linux.org.uk>, Jiri Slaby <jslaby@suse.com>,
- Andrew Morton <akpm@linux-foundation.org>,
- Ext4 Developers List <linux-ext4@vger.kernel.org>,
- Alexey Dobriyan <adobriyan@gmail.com>, megaraidlinux.pdl@broadcom.com,
- drbd-dev@lists.linbit.com
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
-In-Reply-To: <20180419124140.9309-16-hch@lst.de>
-List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
-List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
-List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
-List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
-List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
-Errors-To: driverdev-devel-bounces@linuxdriverproject.org
-Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jaegeuk Kim <jaegeuk@google.com>, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180419155957.GB81439@jaegeuk-macbookpro.roam.corp.google.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 19, 2018 at 2:41 PM, Christoph Hellwig <hch@lst.de> wrote:
-> Use remove_proc_subtree to remove the whole subtree on cleanup, and
-> unwind the registration loop into individual calls.  Switch to use
-> proc_create_seq where applicable.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+When remounting ext4 from ro to rw, currently it allows its transition,
+even if ext4_commit_super() returns EIO. Even worse thing is, after that,
+fs/buffer complains buffer dirty bits like:
 
-It is OK AFAICS.
+ Call trace:
+ [<ffffff9750c259dc>] mark_buffer_dirty+0x184/0x1a4
+ [<ffffff9750cb398c>] __ext4_handle_dirty_super+0x4c/0xfc
+ [<ffffff9750c7a9fc>] ext4_file_open+0x154/0x1c0
+ [<ffffff9750bea51c>] do_dentry_open+0x114/0x2d0
+ [<ffffff9750bea75c>] vfs_open+0x5c/0x94
+ [<ffffff9750bf879c>] path_openat+0x668/0xfe8
+ [<ffffff9750bf8088>] do_filp_open+0x74/0x120
+ [<ffffff9750beac98>] do_sys_open+0x148/0x254
+ [<ffffff9750beade0>] SyS_openat+0x10/0x18
+ [<ffffff9750a83ab0>] el0_svc_naked+0x24/0x28
+ EXT4-fs (dm-1): previous I/O error to superblock detected
+ Buffer I/O error on dev dm-1, logical block 0, lost sync page write
+ EXT4-fs (dm-1): re-mounted. Opts: (null)
+ Buffer I/O error on dev dm-1, logical block 80, lost async page write
 
-Reviewed-by: Rafael J. Wysocki <rafael.j.wysocki@intel.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org
+Cc: Jaegeuk Kim <jaegeuk@kernel.org>
+Signed-off-by: Jaegeuk Kim <jaegeuk@google.com>
+---
+
+Change log from v2:
+ - fix missing goto condition
+
+ fs/ext4/super.c | 29 ++++++++++++++++-------------
+ 1 file changed, 16 insertions(+), 13 deletions(-)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 185f7e61f4cf..32cf16c33cba 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2116,12 +2116,12 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 			    int read_only)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	int res = 0;
++	int err = 0;
+ 
+ 	if (le32_to_cpu(es->s_rev_level) > EXT4_MAX_SUPP_REV) {
+ 		ext4_msg(sb, KERN_ERR, "revision level too high, "
+ 			 "forcing read-only mode");
+-		res = SB_RDONLY;
++		err = -EROFS;
+ 	}
+ 	if (read_only)
+ 		goto done;
+@@ -2154,7 +2154,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 	if (sbi->s_journal)
+ 		ext4_set_feature_journal_needs_recovery(sb);
+ 
+-	ext4_commit_super(sb, 1);
++	err = ext4_commit_super(sb, 1);
+ done:
+ 	if (test_opt(sb, DEBUG))
+ 		printk(KERN_INFO "[EXT4 FS bs=%lu, gc=%u, "
+@@ -2166,7 +2166,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 			sbi->s_mount_opt, sbi->s_mount_opt2);
+ 
+ 	cleancache_init_fs(sb);
+-	return res;
++	return err;
+ }
+ 
+ int ext4_alloc_flex_bg_array(struct super_block *sb, ext4_group_t ngroup)
+@@ -4760,11 +4760,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 		unlock_buffer(sbh);
+ 		error = __sync_dirty_buffer(sbh,
+ 			REQ_SYNC | (test_opt(sb, BARRIER) ? REQ_FUA : 0));
+-		if (error)
+-			return error;
+-
+-		error = buffer_write_io_error(sbh);
+-		if (error) {
++		if (buffer_write_io_error(sbh)) {
+ 			ext4_msg(sb, KERN_ERR, "I/O error while writing "
+ 			       "superblock");
+ 			clear_buffer_write_io_error(sbh);
+@@ -5165,8 +5161,12 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 			if (sbi->s_journal)
+ 				ext4_clear_journal_err(sb, es);
+ 			sbi->s_mount_state = le16_to_cpu(es->s_state);
+-			if (!ext4_setup_super(sb, es, 0))
+-				sb->s_flags &= ~SB_RDONLY;
++
++			err = ext4_setup_super(sb, es, 0);
++			if (err)
++				goto restore_opts;
++
++			sb->s_flags &= ~SB_RDONLY;
+ 			if (ext4_has_feature_mmp(sb))
+ 				if (ext4_multi_mount_protect(sb,
+ 						le64_to_cpu(es->s_mmp_block))) {
+@@ -5190,8 +5190,11 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	}
+ 
+ 	ext4_setup_system_zone(sb);
+-	if (sbi->s_journal == NULL && !(old_sb_flags & SB_RDONLY))
+-		ext4_commit_super(sb, 1);
++	if (sbi->s_journal == NULL && !(old_sb_flags & SB_RDONLY)) {
++		err = ext4_commit_super(sb, 1);
++		if (err)
++			goto restore_opts;
++	}
+ 
+ #ifdef CONFIG_QUOTA
+ 	/* Release old quota file names */
+-- 
+2.17.0.484.g0c8726318c-goog
