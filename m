@@ -1,13 +1,13 @@
-From: Steven Whitehouse <swhiteho@redhat.com>
+From: Michal Hocko <mhocko@kernel.org>
 Subject: Re: vmalloc with GFP_NOFS
-Date: Tue, 24 Apr 2018 20:26:23 +0100
-Message-ID: <ce42f323-870c-21df-ac27-1bec6aa7e5d1@redhat.com>
+Date: Tue, 24 Apr 2018 13:28:03 -0600
+Message-ID: <20180424192803.GT17484@dhcp22.suse.cz>
 References: <20180424162712.GL17484@dhcp22.suse.cz>
+ <3732370.1623zxSvNg@blindfold>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Artem Bityutskiy <dedekind1@gmail.com>,
-        Richard Weinberger <richard@nod.at>,
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
         David Woodhouse <dwmw2@infradead.org>,
         Brian Norris <computersforpeace@gmail.com>,
         Boris Brezillon <boris.brezillon@free-electrons.com>,
@@ -15,6 +15,7 @@ Cc: Artem Bityutskiy <dedekind1@gmail.com>,
         Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
         Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Whitehouse <swhiteho@redhat.com>,
         Bob Peterson <rpeterso@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -22,69 +23,47 @@ Cc: Artem Bityutskiy <dedekind1@gmail.com>,
         Philippe Ombredanne <pombredanne@nexb.com>,
         Kate Stewart <kstewart@linuxfoundation.org>,
         Mikulas Patocka <mpatocka@redhat.com>,
-        linux-mtd@lists.infradead.org, linux-ext4@vger.kernel.org,
-        cluster-devel@redhat.com, linu
-To: Michal Hocko <mhocko@kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>
+        linux-mtd@lists.infradead.org, linux-ext4@vger.k
+To: Richard Weinberger <richard@nod.at>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180424162712.GL17484@dhcp22.suse.cz>
-Content-Language: en-US
+Content-Disposition: inline
+In-Reply-To: <3732370.1623zxSvNg@blindfold>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+On Tue 24-04-18 21:03:43, Richard Weinberger wrote:
+> Am Dienstag, 24. April 2018, 18:27:12 CEST schrieb Michal Hocko:
+> > fs/ubifs/debug.c
+> 
+> This one is just for debugging.
+> So, preallocating + locking would not hurt much.
+> 
+> > fs/ubifs/lprops.c
+> 
+> Ditto.
+> 
+> > fs/ubifs/lpt_commit.c
+> 
+> Here we use it also only in debugging mode and in one case for
+> fatal error reporting.
+> No hot paths.
+> 
+> > fs/ubifs/orphan.c
+> 
+> Also only for debugging.
+> Getting rid of vmalloc with GFP_NOFS in UBIFS is no big problem.
+> I can prepare a patch.
 
+Cool!
 
-On 24/04/18 17:27, Michal Hocko wrote:
-> Hi,
-> it seems that we still have few vmalloc users who perform GFP_NOFS
-> allocation:
-> drivers/mtd/ubi/io.c
-> fs/ext4/xattr.c
-> fs/gfs2/dir.c
-> fs/gfs2/quota.c
-> fs/nfs/blocklayout/extent_tree.c
-> fs/ubifs/debug.c
-> fs/ubifs/lprops.c
-> fs/ubifs/lpt_commit.c
-> fs/ubifs/orphan.c
->
-> Unfortunatelly vmalloc doesn't suppoer GFP_NOFS semantinc properly
-> because we do have hardocded GFP_KERNEL allocations deep inside the
-> vmalloc layers. That means that if GFP_NOFS really protects from
-> recursion into the fs deadlocks then the vmalloc call is broken.
->
-> What to do about this? Well, there are two things. Firstly, it would be
-> really great to double check whether the GFP_NOFS is really needed. I
-> cannot judge that because I am not familiar with the code. It would be
-> great if the respective maintainers (hopefully get_maintainer.sh pointed
-> me to all relevant ones). If there is not reclaim recursion issue then
-> simply use the standard vmalloc (aka GFP_KERNEL request).
-For GFS2, and I suspect for other fs too, it is really needed. We don't 
-want to enter reclaim while holding filesystem locks.
+Anyway, if UBIFS has some reclaim recursion critical sections in general
+it would be really great to have them documented and that is where the
+scope api is really handy. Just add the scope and document what is the
+recursion issue. This will help people reading the code as well. Ideally
+there shouldn't be any explicit GFP_NOFS in the code.
 
-> If the use is really valid then we have a way to do the vmalloc
-> allocation properly. We have memalloc_nofs_{save,restore} scope api. How
-> does that work? You simply call memalloc_nofs_save when the reclaim
-> recursion critical section starts (e.g. when you take a lock which is
-> then used in the reclaim path - e.g. shrinker) and memalloc_nofs_restore
-> when the critical section ends. _All_ allocations within that scope
-> will get GFP_NOFS semantic automagically. If you are not sure about the
-> scope itself then the easiest workaround is to wrap the vmalloc itself
-> with a big fat comment that this should be revisited.
->
-> Does that sound like something that can be done in a reasonable time?
-> I have tried to bring this up in the past but our speed is glacial and
-> there are attempts to do hacks like checking for abusers inside the
-> vmalloc which is just too ugly to live.
->
-> Please do not hesitate to get back to me if something is not clear.
->
-> Thanks!
+Thanks for a quick turnaround.
 
-It would be good to fix this, and it has been known as an issue for a 
-long time. We might well be able to make use of the new API though. It 
-might be as simple as adding the calls when we get & release glocks, but 
-I'd have to check the code to be sure,
-
-Steve.
+-- 
+Michal Hocko
+SUSE Labs
