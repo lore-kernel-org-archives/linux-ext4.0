@@ -1,77 +1,48 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: update mtime in ext4_punch_hole even if no blocks are released
-Date: Tue, 24 Apr 2018 15:07:51 +0200
-Message-ID: <1524575271-27142-1-git-send-email-lczerner@redhat.com>
-Cc: Lukas Czerner <lczerner@redhat.com>, stable@vger.kernel.org
-To: linux-ext4@vger.kernel.org
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 26/39] rtc/proc: switch to proc_create_single_data
+Date: Tue, 24 Apr 2018 16:15:24 +0200
+Message-ID: <20180424141524.GB26136@lst.de>
+References: <20180419124140.9309-1-hch@lst.de> <20180419124140.9309-27-hch@lst.de> <20180419131027.GC7369@piout.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@lst.de>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexey Dobriyan <adobriyan@gmail.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Jiri Slaby <jslaby@suse.com>, Corey Minyard <minyard@acm.org>,
+        Alessandro Zummo <a.zummo@towertech.it>,
+        linux-acpi@vger.kernel.org, drbd-dev@lists.linbit.com,
+        linux-ide@vger.kernel.org, netdev@vger.kernel.org,
+        linux-rtc@vger.kernel.org, megaraidlinux.pdl@broadcom.com,
+        linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org,
+        linux-afs@lists.infradead.org, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Alexandre Belloni <alexandre.belloni@bootlin.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180419131027.GC7369@piout.net>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently in ext4_punch_hole we're going to skip the mtime update if
-there are no actual blocks to release. However we've actually modified
-the file by zeroing the partial block so the mtime should be updated.
+On Thu, Apr 19, 2018 at 03:10:27PM +0200, Alexandre Belloni wrote:
+> On 19/04/2018 14:41:27+0200, Christoph Hellwig wrote:
+> > And stop trying to get a reference on the submodule, procfs code deals
+> > with release after and unloaded module and thus removed proc entry.
+> > 
+> 
+> Are you sure about that? The rtc module is not the one adding the procfs
+> file so I'm not sure how the procfs code can handle it.
 
-Moreover the sync and datasync handling is skipped as well, which is
-also wrong. Fix it.
+The proc file is removed from this call chain:
 
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reported-by: Joe Habermann <joe.habermann@quantum.com>
-Cc: <stable@vger.kernel.org>
----
- fs/ext4/inode.c | 36 ++++++++++++++++++------------------
- 1 file changed, 18 insertions(+), 18 deletions(-)
+  <driver>_exit (module_exit handler)
+    -> rtc_device_unregister
+      -> rtc_proc_del_device
+        -> remove_proc_entry
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1e50c5e..6b4c5c0 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4298,28 +4298,28 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 		EXT4_BLOCK_SIZE_BITS(sb);
- 	stop_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
- 
--	/* If there are no blocks to remove, return now */
--	if (first_block >= stop_block)
--		goto out_stop;
-+	/* If there are blocks to remove, do it */
-+	if (stop_block > first_block) {
- 
--	down_write(&EXT4_I(inode)->i_data_sem);
--	ext4_discard_preallocations(inode);
-+		down_write(&EXT4_I(inode)->i_data_sem);
-+		ext4_discard_preallocations(inode);
- 
--	ret = ext4_es_remove_extent(inode, first_block,
--				    stop_block - first_block);
--	if (ret) {
--		up_write(&EXT4_I(inode)->i_data_sem);
--		goto out_stop;
--	}
-+		ret = ext4_es_remove_extent(inode, first_block,
-+					    stop_block - first_block);
-+		if (ret) {
-+			up_write(&EXT4_I(inode)->i_data_sem);
-+			goto out_stop;
-+		}
- 
--	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
--		ret = ext4_ext_remove_space(inode, first_block,
--					    stop_block - 1);
--	else
--		ret = ext4_ind_remove_space(handle, inode, first_block,
--					    stop_block);
-+		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-+			ret = ext4_ext_remove_space(inode, first_block,
-+						    stop_block - 1);
-+		else
-+			ret = ext4_ind_remove_space(handle, inode, first_block,
-+						    stop_block);
- 
--	up_write(&EXT4_I(inode)->i_data_sem);
-+		up_write(&EXT4_I(inode)->i_data_sem);
-+	}
- 	if (IS_SYNC(inode))
- 		ext4_handle_sync(handle);
- 
--- 
-2.7.5
+remove_proc_entry takes care of waiting for currently active file
+operation instances and makes sure every new operation never calls
+into the actual proc file ops.  Same behavior as in RTC exists all
+over the kernel.
