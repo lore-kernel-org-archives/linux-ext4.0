@@ -1,10 +1,10 @@
 From: Richard Weinberger <richard@nod.at>
 Subject: Re: vmalloc with GFP_NOFS
-Date: Tue, 24 Apr 2018 21:03:43 +0200
-Message-ID: <3732370.1623zxSvNg@blindfold>
+Date: Tue, 24 Apr 2018 21:05:05 +0200
+Message-ID: <1715857.C3bTW05DZe@blindfold>
 References: <20180424162712.GL17484@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: multipart/alternative; boundary="nextPart26752059.sMrGihSObH"
+Content-Type: multipart/alternative; boundary="nextPart1929745.k0RrSNZNOz"
 Content-Transfer-Encoding: 7Bit
 Cc: Kate Stewart <kstewart@linuxfoundation.org>,
 	Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -36,36 +36,23 @@ List-Id: linux-ext4.vger.kernel.org
 
 This is a multi-part message in MIME format.
 
---nextPart26752059.sMrGihSObH
+--nextPart1929745.k0RrSNZNOz
 Content-Transfer-Encoding: 7Bit
 Content-Type: text/plain; charset="us-ascii"
 
 Am Dienstag, 24. April 2018, 18:27:12 CEST schrieb Michal Hocko:
-> fs/ubifs/debug.c
+> Hi,
+> it seems that we still have few vmalloc users who perform GFP_NOFS
+> allocation:
+> drivers/mtd/ubi/io.c
 
-This one is just for debugging.
-So, preallocating + locking would not hurt much.
-
-> fs/ubifs/lprops.c
-
-Ditto.
-
-> fs/ubifs/lpt_commit.c
-
-Here we use it also only in debugging mode and in one case for
-fatal error reporting.
-No hot paths.
-
-> fs/ubifs/orphan.c
-
-Also only for debugging.
-Getting rid of vmalloc with GFP_NOFS in UBIFS is no big problem.
-I can prepare a patch.
+UBI is also not a big deal. We use it here like in UBIFS for debugging
+when self-checks are enabled.
 
 Thanks,
 //richard
 
---nextPart26752059.sMrGihSObH
+--nextPart1929745.k0RrSNZNOz
 Content-Transfer-Encoding: 7Bit
 Content-Type: text/html; charset="us-ascii"
 
@@ -74,27 +61,14 @@ Content-Type: text/html; charset="us-ascii"
 p, li { white-space: pre-wrap; }
 </style></head><body style=" font-family:'Hack'; font-size:10pt; font-weight:400; font-style:normal;">
 <p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">Am Dienstag, 24. April 2018, 18:27:12 CEST schrieb Michal Hocko:</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">&gt; fs/ubifs/debug.c</p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">&gt; Hi,</p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">&gt; it seems that we still have few vmalloc users who perform GFP_NOFS</p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">&gt; allocation:</p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">&gt; drivers/mtd/ubi/io.c</p>
 <p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; ">&nbsp;</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">This one is just for debugging.</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">So, preallocating + locking would not hurt much.</p>
-<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; ">&nbsp;</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">&gt; fs/ubifs/lprops.c</p>
-<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; ">&nbsp;</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">Ditto.</p>
-<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; ">&nbsp;</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">&gt; fs/ubifs/lpt_commit.c</p>
-<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; ">&nbsp;</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">Here we use it also only in debugging mode and in one case for</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">fatal error reporting.</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">No hot paths.</p>
-<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; ">&nbsp;</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">&gt; fs/ubifs/orphan.c</p>
-<p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; ">&nbsp;</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">Also only for debugging.</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">Getting rid of vmalloc with GFP_NOFS in UBIFS is no big problem.</p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">I can prepare a patch.</p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">UBI is also not a big deal. We use it here like in UBIFS for debugging</p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">when self-checks are enabled.</p>
 <p style="-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; ">&nbsp;</p>
 <p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">Thanks,</p>
 <p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; -qt-user-state:0;">//richard</p></body></html>
---nextPart26752059.sMrGihSObH--
+--nextPart1929745.k0RrSNZNOz--
