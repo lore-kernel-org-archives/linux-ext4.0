@@ -1,13 +1,14 @@
 From: Michal Hocko <mhocko@kernel.org>
 Subject: Re: vmalloc with GFP_NOFS
-Date: Tue, 24 Apr 2018 13:28:03 -0600
-Message-ID: <20180424192803.GT17484@dhcp22.suse.cz>
+Date: Tue, 24 Apr 2018 14:09:27 -0600
+Message-ID: <20180424200927.GU17484@dhcp22.suse.cz>
 References: <20180424162712.GL17484@dhcp22.suse.cz>
- <3732370.1623zxSvNg@blindfold>
+ <ce42f323-870c-21df-ac27-1bec6aa7e5d1@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: LKML <linux-kernel@vger.kernel.org>,
         Artem Bityutskiy <dedekind1@gmail.com>,
+        Richard Weinberger <richard@nod.at>,
         David Woodhouse <dwmw2@infradead.org>,
         Brian Norris <computersforpeace@gmail.com>,
         Boris Brezillon <boris.brezillon@free-electrons.com>,
@@ -15,7 +16,6 @@ Cc: LKML <linux-kernel@vger.kernel.org>,
         Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
         Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        Steven Whitehouse <swhiteho@redhat.com>,
         Bob Peterson <rpeterso@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -23,47 +23,24 @@ Cc: LKML <linux-kernel@vger.kernel.org>,
         Philippe Ombredanne <pombredanne@nexb.com>,
         Kate Stewart <kstewart@linuxfoundation.org>,
         Mikulas Patocka <mpatocka@redhat.com>,
-        linux-mtd@lists.infradead.org, linux-ext4@vger.k
-To: Richard Weinberger <richard@nod.at>
+        linux-mtd@lists.infradead.org, linux-ext4@vger.kerne
+To: Steven Whitehouse <swhiteho@redhat.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <3732370.1623zxSvNg@blindfold>
+In-Reply-To: <ce42f323-870c-21df-ac27-1bec6aa7e5d1@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 24-04-18 21:03:43, Richard Weinberger wrote:
-> Am Dienstag, 24. April 2018, 18:27:12 CEST schrieb Michal Hocko:
-> > fs/ubifs/debug.c
-> 
-> This one is just for debugging.
-> So, preallocating + locking would not hurt much.
-> 
-> > fs/ubifs/lprops.c
-> 
-> Ditto.
-> 
-> > fs/ubifs/lpt_commit.c
-> 
-> Here we use it also only in debugging mode and in one case for
-> fatal error reporting.
-> No hot paths.
-> 
-> > fs/ubifs/orphan.c
-> 
-> Also only for debugging.
-> Getting rid of vmalloc with GFP_NOFS in UBIFS is no big problem.
-> I can prepare a patch.
+On Tue 24-04-18 20:26:23, Steven Whitehouse wrote:
+[...]
+> It would be good to fix this, and it has been known as an issue for a long
+> time. We might well be able to make use of the new API though. It might be
+> as simple as adding the calls when we get & release glocks, but I'd have to
+> check the code to be sure,
 
-Cool!
-
-Anyway, if UBIFS has some reclaim recursion critical sections in general
-it would be really great to have them documented and that is where the
-scope api is really handy. Just add the scope and document what is the
-recursion issue. This will help people reading the code as well. Ideally
-there shouldn't be any explicit GFP_NOFS in the code.
-
-Thanks for a quick turnaround.
-
+Yeah, starting with annotating those locking contexts and how document
+how their are used in the reclaim is the great first step. This has to
+be done per-fs obviously.
 -- 
 Michal Hocko
 SUSE Labs
