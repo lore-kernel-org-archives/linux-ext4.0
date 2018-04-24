@@ -1,74 +1,77 @@
 From: Lukas Czerner <lczerner@redhat.com>
-Subject: [PATCH] ext4: fix bitmap position validation
-Date: Tue, 24 Apr 2018 12:56:54 +0200
-Message-ID: <1524567414-19046-1-git-send-email-lczerner@redhat.com>
+Subject: [PATCH] ext4: update mtime in ext4_punch_hole even if no blocks are released
+Date: Tue, 24 Apr 2018 15:07:51 +0200
+Message-ID: <1524575271-27142-1-git-send-email-lczerner@redhat.com>
 Cc: Lukas Czerner <lczerner@redhat.com>, stable@vger.kernel.org
 To: linux-ext4@vger.kernel.org
 Return-path: <stable-owner@vger.kernel.org>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Currently in ext4_valid_block_bitmap() we expect the bitmap to be
-positioned anywhere between 0 and s_blocksize clusters, but that's
-wrong because the bitmap can be placed anywhere in the block group. This
-causes false positives when validating bitmaps on perfectly valid file
-system layouts. Fix it by checking whether the bitmap is within the group
-boundary.
+Currently in ext4_punch_hole we're going to skip the mtime update if
+there are no actual blocks to release. However we've actually modified
+the file by zeroing the partial block so the mtime should be updated.
 
-The problem can be reproduced using the following
-
-mkfs -t ext3 -E stride=256 /dev/vdb1
-mount /dev/vdb1 /mnt/test
-cd /mnt/test
-wget https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.16.3.tar.xz
-tar xf linux-4.16.3.tar.xz
-
-This will result in the warnings in the logs
-
-EXT4-fs error (device vdb1): ext4_validate_block_bitmap:399: comm tar: bg 84: block 2774529: invalid block bitmap
+Moreover the sync and datasync handling is skipped as well, which is
+also wrong. Fix it.
 
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Reported-by: Ilya Dryomov <idryomov@gmail.com>
-Fixes: 7dac4a1726a9 ("ext4: add validity checks for bitmap block numbers")
-Cc: stable@vger.kernel.org
+Reported-by: Joe Habermann <joe.habermann@quantum.com>
+Cc: <stable@vger.kernel.org>
 ---
- fs/ext4/balloc.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ fs/ext4/inode.c | 36 ++++++++++++++++++------------------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index a33d8fb..0c0e383 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -338,7 +338,8 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 	/* check whether block bitmap block number is set */
- 	blk = ext4_block_bitmap(sb, desc);
- 	offset = blk - group_first_block;
--	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
-+	if (offset < 0 ||
-+	    EXT4_B2C(sbi, offset) >= EXT4_CLUSTERS_PER_GROUP(sb) ||
- 	    !ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
- 		/* bad block bitmap */
- 		return blk;
-@@ -346,7 +347,8 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 	/* check whether the inode bitmap block number is set */
- 	blk = ext4_inode_bitmap(sb, desc);
- 	offset = blk - group_first_block;
--	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
-+	if (offset < 0 ||
-+	    EXT4_B2C(sbi, offset) >= EXT4_CLUSTERS_PER_GROUP(sb) ||
- 	    !ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
- 		/* bad block bitmap */
- 		return blk;
-@@ -354,8 +356,8 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 	/* check whether the inode table block number is set */
- 	blk = ext4_inode_table(sb, desc);
- 	offset = blk - group_first_block;
--	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
--	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >= sb->s_blocksize)
-+	if (offset < 0 || EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >=
-+				   EXT4_CLUSTERS_PER_GROUP(sb))
- 		return blk;
- 	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
- 			EXT4_B2C(sbi, offset + sbi->s_itb_per_group),
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1e50c5e..6b4c5c0 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4298,28 +4298,28 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
+ 		EXT4_BLOCK_SIZE_BITS(sb);
+ 	stop_block = (offset + length) >> EXT4_BLOCK_SIZE_BITS(sb);
+ 
+-	/* If there are no blocks to remove, return now */
+-	if (first_block >= stop_block)
+-		goto out_stop;
++	/* If there are blocks to remove, do it */
++	if (stop_block > first_block) {
+ 
+-	down_write(&EXT4_I(inode)->i_data_sem);
+-	ext4_discard_preallocations(inode);
++		down_write(&EXT4_I(inode)->i_data_sem);
++		ext4_discard_preallocations(inode);
+ 
+-	ret = ext4_es_remove_extent(inode, first_block,
+-				    stop_block - first_block);
+-	if (ret) {
+-		up_write(&EXT4_I(inode)->i_data_sem);
+-		goto out_stop;
+-	}
++		ret = ext4_es_remove_extent(inode, first_block,
++					    stop_block - first_block);
++		if (ret) {
++			up_write(&EXT4_I(inode)->i_data_sem);
++			goto out_stop;
++		}
+ 
+-	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+-		ret = ext4_ext_remove_space(inode, first_block,
+-					    stop_block - 1);
+-	else
+-		ret = ext4_ind_remove_space(handle, inode, first_block,
+-					    stop_block);
++		if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
++			ret = ext4_ext_remove_space(inode, first_block,
++						    stop_block - 1);
++		else
++			ret = ext4_ind_remove_space(handle, inode, first_block,
++						    stop_block);
+ 
+-	up_write(&EXT4_I(inode)->i_data_sem);
++		up_write(&EXT4_I(inode)->i_data_sem);
++	}
+ 	if (IS_SYNC(inode))
+ 		ext4_handle_sync(handle);
+ 
 -- 
 2.7.5
