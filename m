@@ -1,55 +1,76 @@
-From: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-Subject: Re: simplify procfs code for seq_file instances
-Date: Tue, 24 Apr 2018 18:06:53 +0200
-Message-ID: <20180424160652.GA28483@lst.de>
-References: <20180419124140.9309-1-hch@lst.de> <20180419185750.GD2066@avx2>
-	<20180424142304.GE26136@lst.de>
-	<20180424081916.e94ca8463fb3c39ebc082bdd@linux-foundation.org>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: vmalloc with GFP_NOFS
+Date: Tue, 24 Apr 2018 10:27:12 -0600
+Message-ID: <20180424162712.GL17484@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-rtc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Alessandro Zummo <a.zummo-BfzFCNDTiLLj+vYz1yj4TQ@public.gmane.org>,
-	Alexandre Belloni <alexandre.belloni-LDxbnhwyfcJBDgjK7y7TUQ@public.gmane.org>,
-	devel-gWbeCf7V1WCQmaza687I9mD2FQJk+8+b@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
-	linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Corey Minyard <minyard-HInyCGIudOg@public.gmane.org>,
-	linux-ide-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Greg Kroah-Hartman <gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org>,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	Alexey Dobriyan <adobriyan-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	linux-acpi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
-	Jiri Slaby <jslaby-IBi9RG/b67k@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, megaraidlinux.pdl-dY08KVG/lbpWk0Htik3J/w@public.gmane.org,
-	drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org
-To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-Return-path: <drbd-dev-bounces-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Artem Bityutskiy <dedekind1@gmail.com>,
+        Richard Weinberger <richard@nod.at>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Brian Norris <computersforpeace@gmail.com>,
+        Boris Brezillon <boris.brezillon@free-electrons.com>,
+        Marek Vasut <marek.vasut@gmail.com>,
+        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Kate Stewart <kstewart@linuxfoundation.org>,
+        Mikulas Patocka <mpatocka@redhat.com>,
+        linux-mtd@lists.infradead.org, linux-kernel@vger
+To: LKML <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180424081916.e94ca8463fb3c39ebc082bdd-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
-List-Unsubscribe: <http://lists.linbit.com/mailman/options/drbd-dev>,
-	<mailto:drbd-dev-request-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.linbit.com/pipermail/drbd-dev>
-List-Post: <mailto:drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org>
-List-Help: <mailto:drbd-dev-request-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org?subject=help>
-List-Subscribe: <http://lists.linbit.com/mailman/listinfo/drbd-dev>,
-	<mailto:drbd-dev-request-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org?subject=subscribe>
-Sender: drbd-dev-bounces-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org
-Errors-To: drbd-dev-bounces-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 24, 2018 at 08:19:16AM -0700, Andrew Morton wrote:
-> > > I want to ask if it is time to start using poorman function overloading
-> > > with _b_c_e(). There are millions of allocation functions for example,
-> > > all slightly difference, and people will add more. Seeing /proc interfaces
-> > > doubled like this is painful.
-> > 
-> > Function overloading is totally unacceptable.
-> > 
-> > And I very much disagree with a tradeoff that keeps 5000 lines of 
-> > code vs a few new helpers.
-> 
-> OK, the curiosity and suspense are killing me.  What the heck is
-> "function overloading with _b_c_e()"?
+Hi,
+it seems that we still have few vmalloc users who perform GFP_NOFS
+allocation:
+drivers/mtd/ubi/io.c
+fs/ext4/xattr.c
+fs/gfs2/dir.c
+fs/gfs2/quota.c
+fs/nfs/blocklayout/extent_tree.c
+fs/ubifs/debug.c
+fs/ubifs/lprops.c
+fs/ubifs/lpt_commit.c
+fs/ubifs/orphan.c
 
-The way I understood Alexey was to use have a proc_create macro
-that can take different ops types.  Although the short cut for
-__builtin_types_compatible_p would be _b_t_c or similar, so maybe
-I misunderstood him.
+Unfortunatelly vmalloc doesn't suppoer GFP_NOFS semantinc properly
+because we do have hardocded GFP_KERNEL allocations deep inside the
+vmalloc layers. That means that if GFP_NOFS really protects from
+recursion into the fs deadlocks then the vmalloc call is broken.
+
+What to do about this? Well, there are two things. Firstly, it would be
+really great to double check whether the GFP_NOFS is really needed. I
+cannot judge that because I am not familiar with the code. It would be
+great if the respective maintainers (hopefully get_maintainer.sh pointed
+me to all relevant ones). If there is not reclaim recursion issue then
+simply use the standard vmalloc (aka GFP_KERNEL request).
+
+If the use is really valid then we have a way to do the vmalloc
+allocation properly. We have memalloc_nofs_{save,restore} scope api. How
+does that work? You simply call memalloc_nofs_save when the reclaim
+recursion critical section starts (e.g. when you take a lock which is
+then used in the reclaim path - e.g. shrinker) and memalloc_nofs_restore
+when the critical section ends. _All_ allocations within that scope
+will get GFP_NOFS semantic automagically. If you are not sure about the
+scope itself then the easiest workaround is to wrap the vmalloc itself
+with a big fat comment that this should be revisited.
+
+Does that sound like something that can be done in a reasonable time?
+I have tried to bring this up in the past but our speed is glacial and
+there are attempts to do hacks like checking for abusers inside the
+vmalloc which is just too ugly to live.
+
+Please do not hesitate to get back to me if something is not clear.
+
+Thanks!
+-- 
+Michal Hocko
+SUSE Labs
