@@ -1,116 +1,55 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix bitmap position validation
-Date: Tue, 24 Apr 2018 11:43:30 -0400
-Message-ID: <20180424154329.GB30619@thunk.org>
-References: <1524567414-19046-1-git-send-email-lczerner@redhat.com>
+From: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Subject: Re: simplify procfs code for seq_file instances
+Date: Tue, 24 Apr 2018 18:06:53 +0200
+Message-ID: <20180424160652.GA28483@lst.de>
+References: <20180419124140.9309-1-hch@lst.de> <20180419185750.GD2066@avx2>
+	<20180424142304.GE26136@lst.de>
+	<20180424081916.e94ca8463fb3c39ebc082bdd@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, stable@vger.kernel.org
-To: Lukas Czerner <lczerner@redhat.com>
-Return-path: <stable-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-rtc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Alessandro Zummo <a.zummo-BfzFCNDTiLLj+vYz1yj4TQ@public.gmane.org>,
+	Alexandre Belloni <alexandre.belloni-LDxbnhwyfcJBDgjK7y7TUQ@public.gmane.org>,
+	devel-gWbeCf7V1WCQmaza687I9mD2FQJk+8+b@public.gmane.org, linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org,
+	linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Corey Minyard <minyard-HInyCGIudOg@public.gmane.org>,
+	linux-ide-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Greg Kroah-Hartman <gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org>,
+	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	Alexey Dobriyan <adobriyan-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	linux-acpi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>,
+	Jiri Slaby <jslaby-IBi9RG/b67k@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, megaraidlinux.pdl-dY08KVG/lbpWk0Htik3J/w@public.gmane.org,
+	drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org
+To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+Return-path: <drbd-dev-bounces-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1524567414-19046-1-git-send-email-lczerner@redhat.com>
-Sender: stable-owner@vger.kernel.org
+In-Reply-To: <20180424081916.e94ca8463fb3c39ebc082bdd-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>
+List-Unsubscribe: <http://lists.linbit.com/mailman/options/drbd-dev>,
+	<mailto:drbd-dev-request-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.linbit.com/pipermail/drbd-dev>
+List-Post: <mailto:drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org>
+List-Help: <mailto:drbd-dev-request-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.linbit.com/mailman/listinfo/drbd-dev>,
+	<mailto:drbd-dev-request-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org?subject=subscribe>
+Sender: drbd-dev-bounces-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org
+Errors-To: drbd-dev-bounces-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 24, 2018 at 12:56:54PM +0200, Lukas Czerner wrote:
-> @@ -354,8 +356,8 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
->  	/* check whether the inode table block number is set */
->  	blk = ext4_inode_table(sb, desc);
->  	offset = blk - group_first_block;
-> -	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
-> -	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >= sb->s_blocksize)
-> +	if (offset < 0 || EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >=
-> +				   EXT4_CLUSTERS_PER_GROUP(sb))
->  		return blk;
->  	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
->  			EXT4_B2C(sbi, offset + sbi->s_itb_per_group),
+On Tue, Apr 24, 2018 at 08:19:16AM -0700, Andrew Morton wrote:
+> > > I want to ask if it is time to start using poorman function overloading
+> > > with _b_c_e(). There are millions of allocation functions for example,
+> > > all slightly difference, and people will add more. Seeing /proc interfaces
+> > > doubled like this is painful.
+> > 
+> > Function overloading is totally unacceptable.
+> > 
+> > And I very much disagree with a tradeoff that keeps 5000 lines of 
+> > code vs a few new helpers.
+> 
+> OK, the curiosity and suspense are killing me.  What the heck is
+> "function overloading with _b_c_e()"?
 
-The two checks of offset and offset + sbi->s_itb_per_group are
-necessary because a maliciously crafted file system can take advantage
-of unsigned integer overflow such that offset is a very large number,
-but offset + sbi->s_itb_per_group is a legal offset.  So we have ot
-keep both checks.  As it happens I was working on a similar patch (but
-was slowed down by my attendance at LSF/Mm).  So I've combined your
-patch with mine, and came up with this.
-
-					- Ted
-
->From 33444e3f7da8ae9840286732c0d7bbf8f9d8471b Mon Sep 17 00:00:00 2001
-From: Lukas Czerner <lczerner@redhat.com>
-Date: Tue, 24 Apr 2018 11:31:44 -0400
-Subject: [PATCH] ext4: fix bitmap position validation
-
-Currently in ext4_valid_block_bitmap() we expect the bitmap to be
-positioned anywhere between 0 and s_blocksize clusters, but that's
-wrong because the bitmap can be placed anywhere in the block group. This
-causes false positives when validating bitmaps on perfectly valid file
-system layouts. Fix it by checking whether the bitmap is within the group
-boundary.
-
-The problem can be reproduced using the following
-
-mkfs -t ext3 -E stride=256 /dev/vdb1
-mount /dev/vdb1 /mnt/test
-cd /mnt/test
-wget https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.16.3.tar.xz
-tar xf linux-4.16.3.tar.xz
-
-This will result in the warnings in the logs
-
-EXT4-fs error (device vdb1): ext4_validate_block_bitmap:399: comm tar: bg 84: block 2774529: invalid block bitmap
-
-[ Changed slightly for clarity and to not drop a overflow test -- TYT ]
-
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Reported-by: Ilya Dryomov <idryomov@gmail.com>
-Fixes: 7dac4a1726a9 ("ext4: add validity checks for bitmap block numbers")
-Cc: stable@vger.kernel.org
----
- fs/ext4/balloc.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index a33d8fb1bf2a..508b905d744d 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -321,6 +321,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	ext4_grpblk_t offset;
- 	ext4_grpblk_t next_zero_bit;
-+	ext4_grpblk_t max_bit = EXT4_CLUSTERS_PER_GROUP(sb);
- 	ext4_fsblk_t blk;
- 	ext4_fsblk_t group_first_block;
- 
-@@ -338,7 +339,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 	/* check whether block bitmap block number is set */
- 	blk = ext4_block_bitmap(sb, desc);
- 	offset = blk - group_first_block;
--	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
-+	if (offset < 0 || EXT4_B2C(sbi, offset) >= max_bit ||
- 	    !ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
- 		/* bad block bitmap */
- 		return blk;
-@@ -346,7 +347,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 	/* check whether the inode bitmap block number is set */
- 	blk = ext4_inode_bitmap(sb, desc);
- 	offset = blk - group_first_block;
--	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
-+	if (offset < 0 || EXT4_B2C(sbi, offset) >= max_bit ||
- 	    !ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
- 		/* bad block bitmap */
- 		return blk;
-@@ -354,8 +355,8 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
- 	/* check whether the inode table block number is set */
- 	blk = ext4_inode_table(sb, desc);
- 	offset = blk - group_first_block;
--	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
--	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >= sb->s_blocksize)
-+	if (offset < 0 || EXT4_B2C(sbi, offset) >= max_bit ||
-+	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >= max_bit)
- 		return blk;
- 	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
- 			EXT4_B2C(sbi, offset + sbi->s_itb_per_group),
--- 
-2.16.1.72.g5be1f00a9a
+The way I understood Alexey was to use have a proc_create macro
+that can take different ops types.  Although the short cut for
+__builtin_types_compatible_p would be _b_t_c or similar, so maybe
+I misunderstood him.
