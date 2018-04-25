@@ -1,149 +1,91 @@
-From: Lukas Czerner <lczerner@redhat.com>
-Subject: Re: [PATCH] ext4: fix bitmap position validation
-Date: Wed, 25 Apr 2018 09:39:29 +0200
-Message-ID: <20180425073929.egtd5ucpmdn2jbs2@rh_laptop>
-References: <1524567414-19046-1-git-send-email-lczerner@redhat.com>
- <20180424154329.GB30619@thunk.org>
+From: Mikulas Patocka <mpatocka@redhat.com>
+Subject: Re: vmalloc with GFP_NOFS
+Date: Wed, 25 Apr 2018 08:43:32 -0400 (EDT)
+Message-ID: <alpine.LRH.2.02.1804250841230.16455@file01.intranet.prod.int.rdu2.redhat.com>
+References: <20180424162712.GL17484@dhcp22.suse.cz>
+	<3732370.1623zxSvNg@blindfold>
+	<20180424192803.GT17484@dhcp22.suse.cz>
+	<3894056.cxOY6eVYVp@blindfold>
+	<20180424230943.GY17484@dhcp22.suse.cz>
+	<alpine.LRH.2.02.1804241911040.19786@file01.intranet.prod.int.rdu2.redhat.com>
+	<20180424232517.GC17484@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, stable@vger.kernel.org
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20180424154329.GB30619@thunk.org>
-Sender: stable-owner@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Kate Stewart <kstewart@linuxfoundation.org>,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-mm@kvack.org,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Boris Brezillon <boris.brezillon@free-electrons.com>,
+	Richard Weinberger <richard@nod.at>, cluster-devel@redhat.com,
+	Marek Vasut <marek.vasut@gmail.com>, linux-ext4@vger.kernel.org,
+	Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
+	linux-nfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+	Artem Bityutskiy <dedekind1@gmail.com>,
+	Adrian Hunter <adrian.hunter@intel.com>,
+	Philippe Ombredanne <pombredanne@nexb.com>, linux-mtd@lists.infradead.org,
+	Brian Norris <computersforpeace@gmail.com>,
+	David Woodhouse <dwmw2@infradead.org>,
+	Anna Schumaker <anna.schumaker@netapp.com>
+To: Michal Hocko <mhocko@kernel.org>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <20180424232517.GC17484@dhcp22.suse.cz>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 24, 2018 at 11:43:30AM -0400, Theodore Y. Ts'o wrote:
-> On Tue, Apr 24, 2018 at 12:56:54PM +0200, Lukas Czerner wrote:
-> > @@ -354,8 +356,8 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
-> >  	/* check whether the inode table block number is set */
-> >  	blk = ext4_inode_table(sb, desc);
-> >  	offset = blk - group_first_block;
-> > -	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
-> > -	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >= sb->s_blocksize)
-> > +	if (offset < 0 || EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >=
-> > +				   EXT4_CLUSTERS_PER_GROUP(sb))
-> >  		return blk;
-> >  	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
-> >  			EXT4_B2C(sbi, offset + sbi->s_itb_per_group),
-> 
-> The two checks of offset and offset + sbi->s_itb_per_group are
-> necessary because a maliciously crafted file system can take advantage
-> of unsigned integer overflow such that offset is a very large number,
-> but offset + sbi->s_itb_per_group is a legal offset.  So we have ot
-> keep both checks.  As it happens I was working on a similar patch (but
-> was slowed down by my attendance at LSF/Mm).  So I've combined your
-> patch with mine, and came up with this.
 
-Hi Ted,
 
-maybe I am missing something but offset is signed int, but
-s_itb_per_group is unsigned long, so if I recall the arithmetic
-conversions correctly the offset will be converted to unsigned long and
-the restult will be unsigned long.
-Moreover s_itb_per_group value is sanitized when read and can't be very
-big so the restult will always fit into unsigned long hence no overflow
-is possible. Anyway that was my thought process when I removed the
-additional check.
+On Tue, 24 Apr 2018, Michal Hocko wrote:
 
-However it we have a maliciously created fs then
+> On Tue 24-04-18 19:17:12, Mikulas Patocka wrote:
+> > 
+> > 
+> > On Tue, 24 Apr 2018, Michal Hocko wrote:
+> > 
+> > > On Wed 25-04-18 00:18:40, Richard Weinberger wrote:
+> > > > Am Dienstag, 24. April 2018, 21:28:03 CEST schrieb Michal Hocko:
+> > > > > > Also only for debugging.
+> > > > > > Getting rid of vmalloc with GFP_NOFS in UBIFS is no big problem.
+> > > > > > I can prepare a patch.
+> > > > > 
+> > > > > Cool!
+> > > > > 
+> > > > > Anyway, if UBIFS has some reclaim recursion critical sections in general
+> > > > > it would be really great to have them documented and that is where the
+> > > > > scope api is really handy. Just add the scope and document what is the
+> > > > > recursion issue. This will help people reading the code as well. Ideally
+> > > > > there shouldn't be any explicit GFP_NOFS in the code.
+> > > > 
+> > > > So in a perfect world a filesystem calls memalloc_nofs_save/restore and
+> > > > always uses GFP_KERNEL for kmalloc/vmalloc?
+> > > 
+> > > Exactly! And in a dream world those memalloc_nofs_save act as a
+> > > documentation of the reclaim recursion documentation ;)
+> > > -- 
+> > > Michal Hocko
+> > > SUSE Labs
+> > 
+> > BTW. should memalloc_nofs_save and memalloc_noio_save be merged into just 
+> > one that prevents both I/O and FS recursion?
+> 
+> Why should FS usage stop IO altogether?
 
-blk = ext4_inode_table(sb, desc);
+Because the IO may reach loop and loop may redirect it to the same 
+filesystem that is running under memalloc_nofs_save and deadlock.
 
-might be either too big or too small and so
+> > memalloc_nofs_save allows submitting bios to I/O stack and the bios 
+> > created under memalloc_nofs_save could be sent to the loop device and the 
+> > loop device calls the filesystem...
+> 
+> Don't those use NOIO context?
 
-offset = blk - group_first_block;
+What do you mean?
 
-might over/underflow giving us wrong offset that still by chance can land
-into the block group. So maybe we need to check that blk is within the file
-system and/or that offset does not overflow. Maybe making offset type
-ext4_fsblk_t and checking that the result satisfies (offset <= blk) will
-be enough ?
-
-Have fun at LSF/MM :)
-
--Lukas
-
-> 
-> 					- Ted
-> 
-> From 33444e3f7da8ae9840286732c0d7bbf8f9d8471b Mon Sep 17 00:00:00 2001
-> From: Lukas Czerner <lczerner@redhat.com>
-> Date: Tue, 24 Apr 2018 11:31:44 -0400
-> Subject: [PATCH] ext4: fix bitmap position validation
-> 
-> Currently in ext4_valid_block_bitmap() we expect the bitmap to be
-> positioned anywhere between 0 and s_blocksize clusters, but that's
-> wrong because the bitmap can be placed anywhere in the block group. This
-> causes false positives when validating bitmaps on perfectly valid file
-> system layouts. Fix it by checking whether the bitmap is within the group
-> boundary.
-> 
-> The problem can be reproduced using the following
-> 
-> mkfs -t ext3 -E stride=256 /dev/vdb1
-> mount /dev/vdb1 /mnt/test
-> cd /mnt/test
-> wget https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.16.3.tar.xz
-> tar xf linux-4.16.3.tar.xz
-> 
-> This will result in the warnings in the logs
-> 
-> EXT4-fs error (device vdb1): ext4_validate_block_bitmap:399: comm tar: bg 84: block 2774529: invalid block bitmap
-> 
-> [ Changed slightly for clarity and to not drop a overflow test -- TYT ]
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Reported-by: Ilya Dryomov <idryomov@gmail.com>
-> Fixes: 7dac4a1726a9 ("ext4: add validity checks for bitmap block numbers")
-> Cc: stable@vger.kernel.org
-> ---
->  fs/ext4/balloc.c | 9 +++++----
->  1 file changed, 5 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index a33d8fb1bf2a..508b905d744d 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -321,6 +321,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
->  	ext4_grpblk_t offset;
->  	ext4_grpblk_t next_zero_bit;
-> +	ext4_grpblk_t max_bit = EXT4_CLUSTERS_PER_GROUP(sb);
->  	ext4_fsblk_t blk;
->  	ext4_fsblk_t group_first_block;
->  
-> @@ -338,7 +339,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
->  	/* check whether block bitmap block number is set */
->  	blk = ext4_block_bitmap(sb, desc);
->  	offset = blk - group_first_block;
-> -	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
-> +	if (offset < 0 || EXT4_B2C(sbi, offset) >= max_bit ||
->  	    !ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
->  		/* bad block bitmap */
->  		return blk;
-> @@ -346,7 +347,7 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
->  	/* check whether the inode bitmap block number is set */
->  	blk = ext4_inode_bitmap(sb, desc);
->  	offset = blk - group_first_block;
-> -	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
-> +	if (offset < 0 || EXT4_B2C(sbi, offset) >= max_bit ||
->  	    !ext4_test_bit(EXT4_B2C(sbi, offset), bh->b_data))
->  		/* bad block bitmap */
->  		return blk;
-> @@ -354,8 +355,8 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
->  	/* check whether the inode table block number is set */
->  	blk = ext4_inode_table(sb, desc);
->  	offset = blk - group_first_block;
-> -	if (offset < 0 || EXT4_B2C(sbi, offset) >= sb->s_blocksize ||
-> -	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >= sb->s_blocksize)
-> +	if (offset < 0 || EXT4_B2C(sbi, offset) >= max_bit ||
-> +	    EXT4_B2C(sbi, offset + sbi->s_itb_per_group) >= max_bit)
->  		return blk;
->  	next_zero_bit = ext4_find_next_zero_bit(bh->b_data,
->  			EXT4_B2C(sbi, offset + sbi->s_itb_per_group),
-> -- 
-> 2.16.1.72.g5be1f00a9a
-> 
+Mikulas
