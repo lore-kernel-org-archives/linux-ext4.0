@@ -1,89 +1,78 @@
-From: Mikulas Patocka <mpatocka@redhat.com>
-Subject: Re: vmalloc with GFP_NOFS
-Date: Wed, 25 Apr 2018 11:25:09 -0400 (EDT)
-Message-ID: <alpine.LRH.2.02.1804251114120.11848@file01.intranet.prod.int.rdu2.redhat.com>
-References: <20180424162712.GL17484@dhcp22.suse.cz> <3732370.1623zxSvNg@blindfold> <20180424192803.GT17484@dhcp22.suse.cz> <3894056.cxOY6eVYVp@blindfold> <20180424230943.GY17484@dhcp22.suse.cz> <alpine.LRH.2.02.1804241911040.19786@file01.intranet.prod.int.rdu2.redhat.com>
- <20180424232517.GC17484@dhcp22.suse.cz> <alpine.LRH.2.02.1804250841230.16455@file01.intranet.prod.int.rdu2.redhat.com> <20180425144557.GD17484@dhcp22.suse.cz>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Richard Weinberger <richard@nod.at>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Artem Bityutskiy <dedekind1@gmail.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Brian Norris <computersforpeace@gmail.com>,
-        Boris Brezillon <boris.brezillon@free-electrons.com>,
-        Marek Vasut <marek.vasut@gmail.com>,
-        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Adrian Hunter <adrian.hunter@intel.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Kate Stewart <kstewart@linuxfoundation.org>,
-        linux-mtd@lists.infradead.org, linux-ext4@vger.k
-To: Michal Hocko <mhocko@kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180425144557.GD17484@dhcp22.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Christoph Hellwig <hch@lst.de>
+Subject: [PATCH 01/40] net/can: single_open_net needs to be paired with single_release_net
+Date: Wed, 25 Apr 2018 17:47:48 +0200
+Message-ID: <20180425154827.32251-2-hch@lst.de>
+References: <20180425154827.32251-1-hch@lst.de>
+Cc: Alexey Dobriyan <adobriyan@gmail.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Jiri Slaby <jslaby@suse.com>,
+        Alessandro Zummo <a.zummo@towertech.it>,
+        Alexandre Belloni <alexandre.belloni@bootlin.com>,
+        linux-acpi@vger.kernel.org, drbd-dev@lists.linbit.com,
+        linux-ide@vger.kernel.org, netdev@vger.kernel.org,
+        linux-rtc@vger.kernel.org, megaraidlinux.pdl@broadcom.com,
+        linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org,
+        linux-afs@lists.infradead.org, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20180425154827.32251-1-hch@lst.de>
+Sender: netdev-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Otherwise we will leak a reference to the network namespace.
 
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ net/can/bcm.c  | 2 +-
+ net/can/proc.c | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-On Wed, 25 Apr 2018, Michal Hocko wrote:
-
-> On Wed 25-04-18 08:43:32, Mikulas Patocka wrote:
-> > 
-> > 
-> > On Tue, 24 Apr 2018, Michal Hocko wrote:
-> > 
-> > > On Tue 24-04-18 19:17:12, Mikulas Patocka wrote:
-> > > > 
-> > > > 
-> > > > On Tue, 24 Apr 2018, Michal Hocko wrote:
-> > > > 
-> > > > > > So in a perfect world a filesystem calls memalloc_nofs_save/restore and
-> > > > > > always uses GFP_KERNEL for kmalloc/vmalloc?
-> > > > > 
-> > > > > Exactly! And in a dream world those memalloc_nofs_save act as a
-> > > > > documentation of the reclaim recursion documentation ;)
-> > > > > -- 
-> > > > > Michal Hocko
-> > > > > SUSE Labs
-> > > > 
-> > > > BTW. should memalloc_nofs_save and memalloc_noio_save be merged into just 
-> > > > one that prevents both I/O and FS recursion?
-> > > 
-> > > Why should FS usage stop IO altogether?
-> > 
-> > Because the IO may reach loop and loop may redirect it to the same 
-> > filesystem that is running under memalloc_nofs_save and deadlock.
-> 
-> So what is the difference with the current GFP_NOFS?
-
-My point is that filesystems should use GFP_NOIO too. If 
-alloc_pages(GFP_NOFS) issues some random I/O to some block device, the I/O 
-may be end up being redirected (via block loop device) to the filesystem 
-that is calling alloc_pages(GFP_NOFS).
-
-> > > > memalloc_nofs_save allows submitting bios to I/O stack and the bios 
-> > > > created under memalloc_nofs_save could be sent to the loop device and the 
-> > > > loop device calls the filesystem...
-> > > 
-> > > Don't those use NOIO context?
-> > 
-> > What do you mean?
-> 
-> That the loop driver should make sure it will not recurse. The scope API
-> doesn't add anything new here.
-
-The loop driver doesn't recurse. The loop driver will add the request to a 
-queue and wake up a thread that processes it. But if the request queue is 
-full, __get_request will wait until the loop thread finishes processing 
-some other request.
-
-It doesn't recurse, but it waits until the filesystem makes some progress.
-
-Mikulas
+diff --git a/net/can/bcm.c b/net/can/bcm.c
+index ac5e5e34fee3..8073fa14e143 100644
+--- a/net/can/bcm.c
++++ b/net/can/bcm.c
+@@ -249,7 +249,7 @@ static const struct file_operations bcm_proc_fops = {
+ 	.open		= bcm_proc_open,
+ 	.read		= seq_read,
+ 	.llseek		= seq_lseek,
+-	.release	= single_release,
++	.release	= single_release_net,
+ };
+ #endif /* CONFIG_PROC_FS */
+ 
+diff --git a/net/can/proc.c b/net/can/proc.c
+index fdf704e9bb8c..fde2fd55b826 100644
+--- a/net/can/proc.c
++++ b/net/can/proc.c
+@@ -279,7 +279,7 @@ static const struct file_operations can_stats_proc_fops = {
+ 	.open		= can_stats_proc_open,
+ 	.read		= seq_read,
+ 	.llseek		= seq_lseek,
+-	.release	= single_release,
++	.release	= single_release_net,
+ };
+ 
+ static int can_reset_stats_proc_show(struct seq_file *m, void *v)
+@@ -449,7 +449,7 @@ static const struct file_operations can_rcvlist_sff_proc_fops = {
+ 	.open		= can_rcvlist_sff_proc_open,
+ 	.read		= seq_read,
+ 	.llseek		= seq_lseek,
+-	.release	= single_release,
++	.release	= single_release_net,
+ };
+ 
+ 
+@@ -492,7 +492,7 @@ static const struct file_operations can_rcvlist_eff_proc_fops = {
+ 	.open		= can_rcvlist_eff_proc_open,
+ 	.read		= seq_read,
+ 	.llseek		= seq_lseek,
+-	.release	= single_release,
++	.release	= single_release_net,
+ };
+ 
+ /*
+-- 
+2.17.0
