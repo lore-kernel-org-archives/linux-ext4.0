@@ -1,26 +1,28 @@
-From: Alexandre Belloni <alexandre.belloni@bootlin.com>
-Subject: Re: [PATCH 27/40] rtc/proc: switch to proc_create_single_data
-Date: Wed, 25 Apr 2018 20:25:37 +0200
-Message-ID: <20180425182537.GG4813@piout.net>
-References: <20180425154827.32251-1-hch@lst.de>
- <20180425154827.32251-28-hch@lst.de>
+From: Alexey Dobriyan <adobriyan@gmail.com>
+Subject: Re: simplify procfs code for seq_file instances
+Date: Thu, 26 Apr 2018 00:24:11 +0300
+Message-ID: <20180425212411.GB9020@avx2>
+References: <20180419124140.9309-1-hch@lst.de> <20180419185750.GD2066@avx2>
+ <20180424142304.GE26136@lst.de>
+ <20180424081916.e94ca8463fb3c39ebc082bdd@linux-foundation.org>
+ <20180424160652.GA28483@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
- jfs-discussion@lists.sourceforge.net, devel@driverdev.osuosl.org,
- linux-scsi@vger.kernel.org, linux-ide@vger.kernel.org,
- Greg Kroah-Hartman <gregkh@linuxfoundation.org>, linux-kernel@vger.kernel.org,
- linux-afs@lists.infradead.org, linux-acpi@vger.kernel.org,
- netdev@vger.kernel.org, netfilter-devel@vger.kernel.org,
- Alexander Viro <viro@zeniv.linux.org.uk>, Jiri Slaby <jslaby@suse.com>,
- Andrew Morton <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org,
- Alexey Dobriyan <adobriyan@gmail.com>, megaraidlinux.pdl@broadcom.com,
- drbd-dev@lists.linbit.com
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, devel@driverdev.osuosl.org,
+ linux-scsi@vger.kernel.org, Corey Minyard <minyard@acm.org>,
+ linux-ide@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ jfs-discussion@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+ linux-acpi@vger.kernel.org, netdev@vger.kernel.org,
+ netfilter-devel@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
+ Jiri Slaby <jslaby@suse.com>, Andrew Morton <akpm@linux-foundation.org>,
+ linux-ext4@vger.kernel.org, linux-afs@lists.infradead.org,
+ megaraidlinux.pdl@broadcom.com, drbd-dev@lists.linbit.com
 To: Christoph Hellwig <hch@lst.de>
 Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
 Content-Disposition: inline
-In-Reply-To: <20180425154827.32251-28-hch@lst.de>
+In-Reply-To: <20180424160652.GA28483@lst.de>
 List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
  <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
 List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
@@ -32,73 +34,30 @@ Errors-To: driverdev-devel-bounces@linuxdriverproject.org
 Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On 25/04/2018 17:48:14+0200, Christoph Hellwig wrote:
-> And stop trying to get a reference on the submodule, procfs code deals
-> with release after and unloaded module and thus removed proc entry.
-small typo here        ^
-
+On Tue, Apr 24, 2018 at 06:06:53PM +0200, Christoph Hellwig wrote:
+> On Tue, Apr 24, 2018 at 08:19:16AM -0700, Andrew Morton wrote:
+> > > > I want to ask if it is time to start using poorman function overloading
+> > > > with _b_c_e(). There are millions of allocation functions for example,
+> > > > all slightly difference, and people will add more. Seeing /proc interfaces
+> > > > doubled like this is painful.
+> > > 
+> > > Function overloading is totally unacceptable.
+> > > 
+> > > And I very much disagree with a tradeoff that keeps 5000 lines of 
+> > > code vs a few new helpers.
+> > 
+> > OK, the curiosity and suspense are killing me.  What the heck is
+> > "function overloading with _b_c_e()"?
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> The way I understood Alexey was to use have a proc_create macro
+> that can take different ops types.  Although the short cut for
+> __builtin_types_compatible_p would be _b_t_c or similar, so maybe
+> I misunderstood him.
 
-Acked-by: Alexandre Belloni <alexandre.belloni@bootlin.com>
+That's correct.
 
+I also think that several dozens kmalloc signatures are a problem.
 
-> ---
->  drivers/rtc/rtc-proc.c | 33 ++-------------------------------
->  1 file changed, 2 insertions(+), 31 deletions(-)
-> 
-> diff --git a/drivers/rtc/rtc-proc.c b/drivers/rtc/rtc-proc.c
-> index 31e7e23cc5be..a9dd9218fae2 100644
-> --- a/drivers/rtc/rtc-proc.c
-> +++ b/drivers/rtc/rtc-proc.c
-> @@ -107,40 +107,11 @@ static int rtc_proc_show(struct seq_file *seq, void *offset)
->  	return 0;
->  }
->  
-> -static int rtc_proc_open(struct inode *inode, struct file *file)
-> -{
-> -	int ret;
-> -	struct rtc_device *rtc = PDE_DATA(inode);
-> -
-> -	if (!try_module_get(rtc->owner))
-> -		return -ENODEV;
-> -
-> -	ret = single_open(file, rtc_proc_show, rtc);
-> -	if (ret)
-> -		module_put(rtc->owner);
-> -	return ret;
-> -}
-> -
-> -static int rtc_proc_release(struct inode *inode, struct file *file)
-> -{
-> -	int res = single_release(inode, file);
-> -	struct rtc_device *rtc = PDE_DATA(inode);
-> -
-> -	module_put(rtc->owner);
-> -	return res;
-> -}
-> -
-> -static const struct file_operations rtc_proc_fops = {
-> -	.open		= rtc_proc_open,
-> -	.read		= seq_read,
-> -	.llseek		= seq_lseek,
-> -	.release	= rtc_proc_release,
-> -};
-> -
->  void rtc_proc_add_device(struct rtc_device *rtc)
->  {
->  	if (is_rtc_hctosys(rtc))
-> -		proc_create_data("driver/rtc", 0, NULL, &rtc_proc_fops, rtc);
-> +		proc_create_single_data("driver/rtc", 0, NULL, rtc_proc_show,
-> +				rtc);
->  }
->  
->  void rtc_proc_del_device(struct rtc_device *rtc)
-> -- 
-> 2.17.0
-> 
-
--- 
-Alexandre Belloni, Bootlin (formerly Free Electrons)
-Embedded Linux and Kernel engineering
-https://bootlin.com
+And there will be more with pmalloc* stuff and more 2D/3D array
+checked allocations and who knows what.
+And I want to add typed kmalloc!
