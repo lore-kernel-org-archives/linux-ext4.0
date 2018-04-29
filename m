@@ -1,48 +1,44 @@
-From: "Dmitry V. Levin" <ldv@altlinux.org>
-Subject: [PATCH] ext4: add crc32c soft dependency
-Date: Sat, 28 Apr 2018 22:50:44 +0300
-Message-ID: <20180428195044.GA14126@altlinux.org>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 fixes for 4.17-rc3
+Date: Sat, 28 Apr 2018 22:57:48 -0400
+Message-ID: <20180429025748.GA9046@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alexey Gladkov <legion@altlinux.org>,
-        Vitaly Chikunov <vt@altlinux.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Starting with commit a45403b51582, ext4 unconditionally requires
-a crc32c provider, which broke certain mkinitrd setups.
+The following changes since commit e40ff213898502d299351cc2fe1e350cd186f0d3:
 
-Add a soft dependency on crc32c so that mkinitrd, dracut, and other
-initrd image generators could include the required helper module.
+  ext4: force revalidation of directory pointer after seekdir(2) (2018-04-01 23:21:03 -0400)
 
-The dependency on crc32c is quite hard but there seems to be no
-mechanism to specify a dependency on an alias, so let's use this
-soft dependency as a workaround.
+are available in the Git repository at:
 
-Suggested-by: Alexey Gladkov <legion@altlinux.org>
-Fixes: a45403b51582 ("ext4: always initialize the crc32c checksum driver")
-Cc: stable@vger.kernel.org
-Signed-off-by: Dmitry V. Levin <ldv@altlinux.org>
----
- fs/ext4/super.c | 1 +
- 1 file changed, 1 insertion(+)
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/for_linus_stable
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 185f7e6..eb104e8 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5886,5 +5886,6 @@ static void __exit ext4_exit_fs(void)
- MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
- MODULE_DESCRIPTION("Fourth Extended Filesystem");
- MODULE_LICENSE("GPL");
-+MODULE_SOFTDEP("pre: crc32c");
- module_init(ext4_init_fs)
- module_exit(ext4_exit_fs)
+for you to fetch changes up to 7ef79ad52136712172eb0525bf0b462516bf2f93:
 
--- 
-ldv
+  ext4: add MODULE_SOFTDEP to ensure crc32c is included in the initramfs (2018-04-26 00:44:46 -0400)
+
+----------------------------------------------------------------
+Fix misc. bugs and a regression for ext4.
+
+----------------------------------------------------------------
+Eric Biggers (1):
+      ext4: prevent right-shifting extents beyond EXT_MAX_BLOCKS
+
+Lukas Czerner (1):
+      ext4: fix bitmap position validation
+
+Theodore Ts'o (2):
+      ext4: set h_journal if there is a failure starting a reserved handle
+      ext4: add MODULE_SOFTDEP to ensure crc32c is included in the initramfs
+
+ fs/ext4/balloc.c      |  9 +++++----
+ fs/ext4/extents.c     | 16 +++++++++++-----
+ fs/ext4/super.c       |  1 +
+ fs/jbd2/transaction.c |  1 +
+ 4 files changed, 18 insertions(+), 9 deletions(-)
