@@ -1,8 +1,9 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH v2 00/15] fscrypt: improved logging and other
- cleanups
-Date: Mon, 30 Apr 2018 15:51:34 -0700
-Message-ID: <20180430225149.183514-1-ebiggers3@gmail.com>
+Subject: [PATCH 04/15] fscrypt: remove error messages for
+ skcipher_request_alloc() failure
+Date: Mon, 30 Apr 2018 15:51:38 -0700
+Message-ID: <20180430225149.183514-5-ebiggers3@gmail.com>
+References: <20180430225149.183514-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -12,6 +13,7 @@ Cc: Jaegeuk Kim <jaegeuk@kernel.org>, linux-ext4@vger.kernel.org,
 To: linux-fscrypt@vger.kernel.org,
 	"Theodore Y . Ts'o" <tytso@mit.edu>
 Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <20180430225149.183514-1-ebiggers3@gmail.com>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
  <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
@@ -24,57 +26,64 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Hello, here's yet another round of cleanups for fscrypt.  Please
-consider for v4.18.  These are all patches I've sent out previously.
-The series is based on v4.17-rc3.
+skcipher_request_alloc() can only fail due to lack of memory, and in
+that case the memory allocator will have already printed a detailed
+error message.  Thus, remove the redundant error messages from fscrypt.
 
-Patches 1-12 mostly remove unnecessary or redundant code from a number
-of different places; nothing particularly noteworthy.  Note: to avoid a
-merge conflict with f2fs/dev, I've dropped the patch
-"fscrypt: remove WARN_ON_ONCE() when decryption fails".
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/crypto/crypto.c |  6 +-----
+ fs/crypto/fname.c  | 10 ++--------
+ 2 files changed, 3 insertions(+), 13 deletions(-)
 
-Patch 13 switches the existing warning and error messages in fscrypt
-over to use a common logging function, which is ratelimited and includes
-the filesystem name (->s_id) when available as well as a consistent
-prefix of "fscrypt:".
-
-Patches 14-15 are optimizations and cleanups for key lookup and key
-derivation.  They are extracted from the patch "fscrypt: refactor
-finding and deriving key" I had originally sent as part of the series
-"fscrypt: filesystem-level keyring and v2 policy support".  But I think
-they're useful changes by themselves, so no need to wait on them.
-
-Eric Biggers (15):
-  fs, fscrypt: only define ->s_cop when FS_ENCRYPTION is enabled
-  fscrypt: clean up after fscrypt_prepare_lookup() conversions
-  fscrypt: remove unnecessary NULL check when allocating skcipher
-  fscrypt: remove error messages for skcipher_request_alloc() failure
-  fscrypt: remove stale comment from fscrypt_d_revalidate()
-  fscrypt: don't clear flags on crypto transform
-  fscrypt: don't special-case EOPNOTSUPP from
-    fscrypt_get_encryption_info()
-  fscrypt: drop max_namelen check from fname_decrypt()
-  fscrypt: drop empty name check from fname_decrypt()
-  fscrypt: make fscrypt_operations.max_namelen an integer
-  fscrypt: remove unnecessary check for non-logon key type
-  fscrypt: remove internal key size constants
-  fscrypt: use a common logging function
-  fscrypt: separate key lookup from key derivation
-  fscrypt: only derive the needed portion of the key
-
- fs/crypto/crypto.c              |  36 ++++--
- fs/crypto/fname.c               |  32 ++---
- fs/crypto/fscrypt_private.h     |  19 +--
- fs/crypto/hooks.c               |   5 +-
- fs/crypto/keyinfo.c             | 200 +++++++++++++++++---------------
- fs/ext4/super.c                 |   8 +-
- fs/f2fs/super.c                 |   8 +-
- fs/ubifs/crypto.c               |  10 +-
- include/linux/fs.h              |   4 +-
- include/linux/fscrypt_notsupp.h |  10 --
- include/linux/fscrypt_supp.h    |  16 +--
- 11 files changed, 161 insertions(+), 187 deletions(-)
-
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index f2b2d8408a01..58761d816751 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -156,12 +156,8 @@ int fscrypt_do_page_crypto(const struct inode *inode, fscrypt_direction_t rw,
+ 	}
+ 
+ 	req = skcipher_request_alloc(tfm, gfp_flags);
+-	if (!req) {
+-		printk_ratelimited(KERN_ERR
+-				"%s: crypto_request_alloc() failed\n",
+-				__func__);
++	if (!req)
+ 		return -ENOMEM;
+-	}
+ 
+ 	skcipher_request_set_callback(
+ 		req, CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index e33f3d3c5ade..3b5164b159cb 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -59,11 +59,8 @@ int fname_encrypt(struct inode *inode, const struct qstr *iname,
+ 
+ 	/* Set up the encryption request */
+ 	req = skcipher_request_alloc(tfm, GFP_NOFS);
+-	if (!req) {
+-		printk_ratelimited(KERN_ERR
+-			"%s: skcipher_request_alloc() failed\n", __func__);
++	if (!req)
+ 		return -ENOMEM;
+-	}
+ 	skcipher_request_set_callback(req,
+ 			CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+ 			crypto_req_done, &wait);
+@@ -108,11 +105,8 @@ static int fname_decrypt(struct inode *inode,
+ 
+ 	/* Allocate request */
+ 	req = skcipher_request_alloc(tfm, GFP_NOFS);
+-	if (!req) {
+-		printk_ratelimited(KERN_ERR
+-			"%s: crypto_request_alloc() failed\n",  __func__);
++	if (!req)
+ 		return -ENOMEM;
+-	}
+ 	skcipher_request_set_callback(req,
+ 		CRYPTO_TFM_REQ_MAY_BACKLOG | CRYPTO_TFM_REQ_MAY_SLEEP,
+ 		crypto_req_done, &wait);
 -- 
 2.17.0.441.gb46fe60e1d-goog
 
