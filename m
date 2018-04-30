@@ -1,8 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 01/15] fs,
- fscrypt: only define ->s_cop when FS_ENCRYPTION is enabled
-Date: Mon, 30 Apr 2018 15:51:35 -0700
-Message-ID: <20180430225149.183514-2-ebiggers3@gmail.com>
+Subject: [PATCH 06/15] fscrypt: don't clear flags on crypto transform
+Date: Mon, 30 Apr 2018 15:51:40 -0700
+Message-ID: <20180430225149.183514-7-ebiggers3@gmail.com>
 References: <20180430225149.183514-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -27,32 +26,30 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Now that filesystems only set and use their fscrypt_operations when they
-are built with encryption support, we can remove ->s_cop from
-'struct super_block' when FS_ENCRYPTION is disabled.  This saves a few
-bytes on some kernels and also makes it consistent with ->i_crypt_info.
+fscrypt is clearing the flags on the crypto_skcipher it allocates for
+each inode.  But, this is unnecessary and may cause problems in the
+future because it will even clear flags that are meant to be internal to
+the crypto API, e.g. CRYPTO_TFM_NEED_KEY.
+
+Remove the unnecessary flag clearing.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- include/linux/fs.h | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/crypto/keyinfo.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 760d8da1b6c7..8e2460694c3a 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1364,9 +1364,9 @@ struct super_block {
- 	void                    *s_security;
- #endif
- 	const struct xattr_handler **s_xattr;
--
-+#if IS_ENABLED(CONFIG_FS_ENCRYPTION)
- 	const struct fscrypt_operations	*s_cop;
--
-+#endif
- 	struct hlist_bl_head	s_roots;	/* alternate root dentries for NFS */
- 	struct list_head	s_mounts;	/* list of mounts; _not_ for fs use */
- 	struct block_device	*s_bdev;
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index d09df8f751df..0f6a65c6483b 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -325,7 +325,6 @@ int fscrypt_get_encryption_info(struct inode *inode)
+ 		goto out;
+ 	}
+ 	crypt_info->ci_ctfm = ctfm;
+-	crypto_skcipher_clear_flags(ctfm, ~0);
+ 	crypto_skcipher_set_flags(ctfm, CRYPTO_TFM_REQ_WEAK_KEY);
+ 	/*
+ 	 * if the provided key is longer than keysize, we use the first
 -- 
 2.17.0.441.gb46fe60e1d-goog
 
