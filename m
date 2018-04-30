@@ -1,7 +1,7 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 06/15] fscrypt: don't clear flags on crypto transform
-Date: Mon, 30 Apr 2018 15:51:40 -0700
-Message-ID: <20180430225149.183514-7-ebiggers3@gmail.com>
+Subject: [PATCH 08/15] fscrypt: drop max_namelen check from fname_decrypt()
+Date: Mon, 30 Apr 2018 15:51:42 -0700
+Message-ID: <20180430225149.183514-9-ebiggers3@gmail.com>
 References: <20180430225149.183514-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,30 +26,40 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-fscrypt is clearing the flags on the crypto_skcipher it allocates for
-each inode.  But, this is unnecessary and may cause problems in the
-future because it will even clear flags that are meant to be internal to
-the crypto API, e.g. CRYPTO_TFM_NEED_KEY.
+fname_decrypt() returns an error if the input filename is longer than
+the inode's ->max_namelen() as given by the filesystem.  But, this
+doesn't actually make sense because the filesystem provided the input
+filename in the first place, where it was subject to the filesystem's
+limits.  And fname_decrypt() has no internal limit itself.
 
-Remove the unnecessary flag clearing.
+Thus, remove this unnecessary check.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/keyinfo.c | 1 -
- 1 file changed, 1 deletion(-)
+ fs/crypto/fname.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index d09df8f751df..0f6a65c6483b 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -325,7 +325,6 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 		goto out;
- 	}
- 	crypt_info->ci_ctfm = ctfm;
--	crypto_skcipher_clear_flags(ctfm, ~0);
- 	crypto_skcipher_set_flags(ctfm, CRYPTO_TFM_REQ_WEAK_KEY);
- 	/*
- 	 * if the provided key is longer than keysize, we use the first
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index 8088a606c0aa..cc9590b5f371 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -93,14 +93,11 @@ static int fname_decrypt(struct inode *inode,
+ 	struct skcipher_request *req = NULL;
+ 	DECLARE_CRYPTO_WAIT(wait);
+ 	struct scatterlist src_sg, dst_sg;
+-	struct fscrypt_info *ci = inode->i_crypt_info;
+-	struct crypto_skcipher *tfm = ci->ci_ctfm;
++	struct crypto_skcipher *tfm = inode->i_crypt_info->ci_ctfm;
+ 	int res = 0;
+ 	char iv[FS_CRYPTO_BLOCK_SIZE];
+-	unsigned lim;
+ 
+-	lim = inode->i_sb->s_cop->max_namelen(inode);
+-	if (iname->len <= 0 || iname->len > lim)
++	if (iname->len <= 0)
+ 		return -EIO;
+ 
+ 	/* Allocate request */
 -- 
 2.17.0.441.gb46fe60e1d-goog
 
