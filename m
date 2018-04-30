@@ -1,8 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 09/15] fscrypt: drop empty name check from
- fname_decrypt()
-Date: Mon, 30 Apr 2018 15:51:43 -0700
-Message-ID: <20180430225149.183514-10-ebiggers3@gmail.com>
+Subject: [PATCH 11/15] fscrypt: remove unnecessary check for
+ non-logon key type
+Date: Mon, 30 Apr 2018 15:51:45 -0700
+Message-ID: <20180430225149.183514-12-ebiggers3@gmail.com>
 References: <20180430225149.183514-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,31 +26,32 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-fname_decrypt() is validating that the encrypted filename is nonempty.
-However, earlier a stronger precondition was already enforced: the
-encrypted filename must be at least 16 (FS_CRYPTO_BLOCK_SIZE) bytes.
-
-Drop the redundant check for an empty filename.
+We're passing 'key_type_logon' to request_key(), so the found key is
+guaranteed to be of type "logon".  Thus, there is no reason to check
+later that the key is really a "logon" key.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/fname.c | 3 ---
- 1 file changed, 3 deletions(-)
+ fs/crypto/keyinfo.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
-index cc9590b5f371..c4eb3a235ae4 100644
---- a/fs/crypto/fname.c
-+++ b/fs/crypto/fname.c
-@@ -97,9 +97,6 @@ static int fname_decrypt(struct inode *inode,
- 	int res = 0;
- 	char iv[FS_CRYPTO_BLOCK_SIZE];
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index 0f6a65c6483b..0b48aa469453 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -89,12 +89,6 @@ static int validate_user_key(struct fscrypt_info *crypt_info,
+ 		return PTR_ERR(keyring_key);
+ 	down_read(&keyring_key->sem);
  
--	if (iname->len <= 0)
--		return -EIO;
--
- 	/* Allocate request */
- 	req = skcipher_request_alloc(tfm, GFP_NOFS);
- 	if (!req)
+-	if (keyring_key->type != &key_type_logon) {
+-		printk_once(KERN_WARNING
+-				"%s: key type must be logon\n", __func__);
+-		res = -ENOKEY;
+-		goto out;
+-	}
+ 	ukp = user_key_payload_locked(keyring_key);
+ 	if (!ukp) {
+ 		/* key was revoked before we acquired its semaphore */
 -- 
 2.17.0.441.gb46fe60e1d-goog
 
