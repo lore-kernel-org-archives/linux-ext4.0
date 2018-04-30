@@ -1,47 +1,35 @@
-From: David Howells <dhowells@redhat.com>
-Subject: Re: simplify procfs code for seq_file instances V2
-Date: Mon, 30 Apr 2018 16:38:18 +0100
-Message-ID: <15622.1525102698@warthog.procyon.org.uk>
-References: <20180425154827.32251-1-hch@lst.de>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: fix bitmap position validation
+Date: Mon, 30 Apr 2018 12:45:07 -0400
+Message-ID: <20180430164507.GC20585@thunk.org>
+References: <1524567414-19046-1-git-send-email-lczerner@redhat.com>
+ <20180424154329.GB30619@thunk.org>
+ <20180425073929.egtd5ucpmdn2jbs2@rh_laptop>
+ <20180430082453.c7b6lihc6v46jyfe@rh_laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: dhowells@redhat.com, Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
-        Alexandre Belloni <alexandre.belloni@bootlin.com>,
-        devel@driverdev.osuosl.org, linux-kernel@vger.kernel.org,
-        linux-scsi@vger.kernel.org, linux-ide@vger.kernel.org,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        jfs-discussion@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, linux-acpi@vger.kernel.org,
-        netdev@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        Jiri Slaby <jslaby@suse.com>, linux-ext4@vger.kernel.org,
-        Alexey Dobriyan <adobriyan@gmail.com>,
-        megaraidlinux.pdl@broadcom.com, drbd-dev@lists.linbit.com
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180425154827.32251-1-hch@lst.de>
-Content-ID: <15621.1525102698.1@warthog.procyon.org.uk>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, stable@vger.kernel.org
+To: Lukas Czerner <lczerner@redhat.com>
+Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180430082453.c7b6lihc6v46jyfe@rh_laptop>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Note that your kernel hits the:
+On Mon, Apr 30, 2018 at 10:24:53AM +0200, Lukas Czerner wrote:
+> 
+> Well, so much for a discussion :-/ The patch is upstream now...
 
-	inconsistent {HARDIRQ-ON-W} -> {IN-HARDIRQ-W} usage.
-	swapper/0/0 [HC1[1]:SC0[0]:HE0:SE1] takes:
-		(ptrval) (fs_reclaim){?.+.}, at: fs_reclaim_acquire+0x12/0x35
-	{HARDIRQ-ON-W} state was registered at:
-	  fs_reclaim_acquire+0x32/0x35
-	  kmem_cache_alloc_node_trace+0x49/0x2cf
-	  alloc_worker+0x1d/0x49
-	  init_rescuer.part.7+0x19/0x8f
-	  workqueue_init+0xc0/0x1fe
-	  kernel_init_freeable+0xdc/0x433
-	  kernel_init+0xa/0xf5
-	  ret_from_fork+0x24/0x30
+Sorry, it's been crazy busy and there were other fixes I really needed
+to get upstream.
 
-bug, as described here:
+If it really is superfluous, the compiler will optimize it away.  I
+have been bitten more times than I can count with fuzz testers and C's
+_fine_ signed vs. unsigned integer semantics.  So I prefer to be
+careful here.
 
-	https://groups.google.com/forum/#!msg/syzkaller-bugs/sJC3Y3hOM08/aO3z9JXoAgAJ
+If we can really be sure it's safe, we can always remove the extra
+comparison in a separate patch, since that's unrelated to the real bug
+we're trying to fix.
 
-David
+						- Ted
