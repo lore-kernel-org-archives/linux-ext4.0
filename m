@@ -1,8 +1,8 @@
 From: Eric Biggers <ebiggers3@gmail.com>
-Subject: [PATCH 03/15] fscrypt: remove unnecessary NULL check
- when allocating skcipher
-Date: Mon, 30 Apr 2018 15:51:37 -0700
-Message-ID: <20180430225149.183514-4-ebiggers3@gmail.com>
+Subject: [PATCH 05/15] fscrypt: remove stale comment from
+ fscrypt_d_revalidate()
+Date: Mon, 30 Apr 2018 15:51:39 -0700
+Message-ID: <20180430225149.183514-6-ebiggers3@gmail.com>
 References: <20180430225149.183514-1-ebiggers3@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -26,29 +26,23 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-crypto_alloc_skcipher() returns an ERR_PTR() on failure, not NULL.
-Remove the unnecessary check for NULL.
-
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/crypto/keyinfo.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/crypto/crypto.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 05f5ee1f0705..d09df8f751df 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -318,8 +318,8 @@ int fscrypt_get_encryption_info(struct inode *inode)
- 		goto out;
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index 58761d816751..d22887f689ad 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -322,7 +322,6 @@ static int fscrypt_d_revalidate(struct dentry *dentry, unsigned int flags)
+ 		return 0;
  	}
- 	ctfm = crypto_alloc_skcipher(cipher_str, 0, 0);
--	if (!ctfm || IS_ERR(ctfm)) {
--		res = ctfm ? PTR_ERR(ctfm) : -ENOMEM;
-+	if (IS_ERR(ctfm)) {
-+		res = PTR_ERR(ctfm);
- 		pr_debug("%s: error %d (inode %lu) allocating crypto tfm\n",
- 			 __func__, res, inode->i_ino);
- 		goto out;
+ 
+-	/* this should eventually be an flag in d_flags */
+ 	spin_lock(&dentry->d_lock);
+ 	cached_with_key = dentry->d_flags & DCACHE_ENCRYPTED_WITH_KEY;
+ 	spin_unlock(&dentry->d_lock);
 -- 
 2.17.0.441.gb46fe60e1d-goog
 
