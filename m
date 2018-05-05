@@ -1,122 +1,42 @@
-From: ebiederm@xmission.com (Eric W. Biederman)
-Subject: Re: [PATCH 38/40] ide: remove ide_driver_proc_write
-Date: Sat, 05 May 2018 08:09:42 -0500
-Message-ID: <87efiq2qqx.fsf@xmission.com>
-References: <20180425154827.32251-1-hch@lst.de>
- <20180425154827.32251-39-hch@lst.de>
+From: Mathieu Malaterre <malat@debian.org>
+Subject: [PATCH] =?UTF-8?q?ext4:=20make=20function=20=E2=80=98ext4=5Fgetfs?= =?UTF-8?q?map=5Ffind=5Ffixed=5Fmetadata=E2=80=99=20static?=
+Date: Sat,  5 May 2018 22:04:52 +0200
+Message-ID: <20180505200452.18962-1-malat@debian.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
- Alexandre Belloni <alexandre.belloni@bootlin.com>, devel@driverdev.osuosl.org,
- linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
- linux-ide@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
- jfs-discussion@lists.sourceforge.net, linux-afs@lists.infradead.org,
- linux-acpi@vger.kernel.org, netdev@vger.kernel.org,
- netfilter-devel@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
- Jiri Slaby <jslaby@suse.com>, Andrew Morton <akpm@linux-foundation.org>,
- linux-ext4@vger.kernel.org, Alexey Dobriyan <adobriyan@gmail.com>,
- megaraidlinux.pdl@broadcom.com, drbd-dev@lists.linbit.com
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
-In-Reply-To: <20180425154827.32251-39-hch@lst.de> (Christoph Hellwig's message
- of "Wed, 25 Apr 2018 17:48:25 +0200")
-List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
-List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
-List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
-List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
-List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
-Errors-To: driverdev-devel-bounces@linuxdriverproject.org
-Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+Cc: Mathieu Malaterre <malat@debian.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: tytso@mit.edu
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Christoph Hellwig <hch@lst.de> writes:
+Since function ‘ext4_getfsmap_find_fixed_metadata’ can be made static,
+make it so. Remove the following gcc warning (W=1):
 
-> The driver proc file hasn't been writeable for a long time, so this is
-> just dead code.
+  fs/ext4/fsmap.c:405:5: warning: no previous prototype for ‘ext4_getfsmap_find_fixed_metadata’ [-Wmissing-prototypes]
 
-It is possible to chmod this file to get at the write method.  Not that
-I think anyone does.
+Signed-off-by: Mathieu Malaterre <malat@debian.org>
+---
+ fs/ext4/fsmap.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-It looks like this code was merged in 2.3.99-pre1 with permissions
-S_IFREG|S_IRUGO so I don't think the write support was ever finished.
-
-That cap_capable in the write method looks down right scary/buggy.
-
-Acked-by: "Eric W. Biederman" <ebiederm@xmission.com>
-
-Eric
-
-
-
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  drivers/ide/ide-proc.c | 46 ------------------------------------------
->  1 file changed, 46 deletions(-)
->
-> diff --git a/drivers/ide/ide-proc.c b/drivers/ide/ide-proc.c
-> index 863db44c7916..b3b8b8822d6a 100644
-> --- a/drivers/ide/ide-proc.c
-> +++ b/drivers/ide/ide-proc.c
-> @@ -528,58 +528,12 @@ static int ide_driver_proc_open(struct inode *inode, struct file *file)
->  	return single_open(file, ide_driver_proc_show, PDE_DATA(inode));
->  }
->  
-> -static int ide_replace_subdriver(ide_drive_t *drive, const char *driver)
-> -{
-> -	struct device *dev = &drive->gendev;
-> -	int ret = 1;
-> -	int err;
-> -
-> -	device_release_driver(dev);
-> -	/* FIXME: device can still be in use by previous driver */
-> -	strlcpy(drive->driver_req, driver, sizeof(drive->driver_req));
-> -	err = device_attach(dev);
-> -	if (err < 0)
-> -		printk(KERN_WARNING "IDE: %s: device_attach error: %d\n",
-> -			__func__, err);
-> -	drive->driver_req[0] = 0;
-> -	if (dev->driver == NULL) {
-> -		err = device_attach(dev);
-> -		if (err < 0)
-> -			printk(KERN_WARNING
-> -				"IDE: %s: device_attach(2) error: %d\n",
-> -				__func__, err);
-> -	}
-> -	if (dev->driver && !strcmp(dev->driver->name, driver))
-> -		ret = 0;
-> -
-> -	return ret;
-> -}
-> -
-> -static ssize_t ide_driver_proc_write(struct file *file, const char __user *buffer,
-> -				     size_t count, loff_t *pos)
-> -{
-> -	ide_drive_t	*drive = PDE_DATA(file_inode(file));
-> -	char name[32];
-> -
-> -	if (!capable(CAP_SYS_ADMIN))
-> -		return -EACCES;
-> -	if (count > 31)
-> -		count = 31;
-> -	if (copy_from_user(name, buffer, count))
-> -		return -EFAULT;
-> -	name[count] = '\0';
-> -	if (ide_replace_subdriver(drive, name))
-> -		return -EINVAL;
-> -	return count;
-> -}
-> -
->  static const struct file_operations ide_driver_proc_fops = {
->  	.owner		= THIS_MODULE,
->  	.open		= ide_driver_proc_open,
->  	.read		= seq_read,
->  	.llseek		= seq_lseek,
->  	.release	= single_release,
-> -	.write		= ide_driver_proc_write,
->  };
->  
->  static int ide_media_proc_show(struct seq_file *m, void *v)
+diff --git a/fs/ext4/fsmap.c b/fs/ext4/fsmap.c
+index e871c4bf18e9..4b99e2db95b8 100644
+--- a/fs/ext4/fsmap.c
++++ b/fs/ext4/fsmap.c
+@@ -402,8 +402,8 @@ static void ext4_getfsmap_free_fixed_metadata(struct list_head *meta_list)
+ }
+ 
+ /* Find all the fixed metadata in the filesystem. */
+-int ext4_getfsmap_find_fixed_metadata(struct super_block *sb,
+-				      struct list_head *meta_list)
++static int ext4_getfsmap_find_fixed_metadata(struct super_block *sb,
++					     struct list_head *meta_list)
+ {
+ 	struct ext4_group_desc *gdp;
+ 	ext4_group_t agno;
+-- 
+2.11.0
