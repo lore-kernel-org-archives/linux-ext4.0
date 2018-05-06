@@ -1,44 +1,81 @@
-From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-Subject: Re: kernel panic: EXT4-fs (device loop0): panic forced after error
-Date: Sun, 6 May 2018 23:40:10 +0900
-Message-ID: <201805062340.HFC78625.VFFFOHSOtQMOJL@I-love.SAKURA.ne.jp>
-References: <000000000000019f50056b7f0890@google.com>
-        <20180506022428.GQ29205@thunk.org>
-        <d295f575-ba4b-b0ba-a856-405f9d393c9d@I-love.SAKURA.ne.jp>
-        <20180506133154.GS29205@thunk.org>
+From: Alexey Dobriyan <adobriyan@gmail.com>
+Subject: Re: simplify procfs code for seq_file instances V2
+Date: Sun, 6 May 2018 20:19:49 +0300
+Message-ID: <20180506171948.GA769@avx2>
+References: <20180425154827.32251-1-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: syzbot+a9a45987b8b2daabdc88@syzkaller.appspotmail.com,
-        syzkaller-bugs@googlegroups.com, syzkaller@googlegroups.com,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: tytso@mit.edu
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180506133154.GS29205@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, devel@driverdev.osuosl.org,
+ linux-scsi@vger.kernel.org, linux-ide@vger.kernel.org,
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ jfs-discussion@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+ linux-acpi@vger.kernel.org, netdev@vger.kernel.org,
+ netfilter-devel@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
+ Jiri Slaby <jslaby@suse.com>, Andrew Morton <akpm@linux-foundation.org>,
+ linux-ext4@vger.kernel.org, linux-afs@lists.infradead.org,
+ megaraidlinux.pdl@broadcom.com, drbd-dev@lists.linbit.com
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
+Content-Disposition: inline
+In-Reply-To: <20180425154827.32251-1-hch@lst.de>
+List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
+List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
+List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
+List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
+List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>,
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
+Errors-To: driverdev-devel-bounces@linuxdriverproject.org
+Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Theodore Y. Ts'o wrote:
-> On Sun, May 06, 2018 at 02:03:57PM +0900, Tetsuo Handa wrote:
-> > 
-> > Since syzbot is hitting this error path inside mount() request, calling
-> > panic() when something went wrong inside mount() request might be
-> > overkill. We can recover without shutting down the system, can't we?
-> 
-> We could add a full kernel-mode fsck which gets run before mount ---
-> the question is how much complexity we want to add.  If SELinux is
-> enabled, then we have to check xattr consinsistency, etc., etc.
+On Wed, Apr 25, 2018 at 05:47:47PM +0200, Christoph Hellwig wrote:
+> Changes since V1:
+>  - open code proc_create_data to avoid setting not fully initialized
+>    entries live
+>  - use unsigned int for state_size
 
-You are thinking too complicated. I'm not asking for kernel-mode fsck.
-I'm just suggesting that mount() request returns an error to the caller
-(and the administrator invokes fsck etc. as needed).
+Need this to maintain sizeof(struct proc_dir_entry):
 
-We are fixing bugs which occur during mount operation (e.g.
+Otherwise ACK fs/proc/ part.
 
-  https://groups.google.com/d/msg/syzkaller-bugs/Yp4q8n-MijM/yDX3zl1XBQAJ
-  https://groups.google.com/d/msg/syzkaller-bugs/4C4oiBX8vZ0/W6pi8NdbBgAJ
-  https://groups.google.com/d/msg/syzkaller-bugs/QBnHAQBy2pI/ccf-yL5bBgAJ
-
-). And extX filesystem is different from other filesystems that it invokes
-error action specified by errors= parameter rather than return an error to
-the caller.
+diff --git a/fs/proc/internal.h b/fs/proc/internal.h
+index 6d171485c45b..a318ae5b36b4 100644
+--- a/fs/proc/internal.h
++++ b/fs/proc/internal.h
+@@ -48,8 +48,8 @@ struct proc_dir_entry {
+ 		const struct seq_operations *seq_ops;
+ 		int (*single_show)(struct seq_file *, void *);
+ 	};
+-	unsigned int state_size;
+ 	void *data;
++	unsigned int state_size;
+ 	unsigned int low_ino;
+ 	nlink_t nlink;
+ 	kuid_t uid;
+@@ -62,9 +62,9 @@ struct proc_dir_entry {
+ 	umode_t mode;
+ 	u8 namelen;
+ #ifdef CONFIG_64BIT
+-#define SIZEOF_PDE_INLINE_NAME	(192-139)
++#define SIZEOF_PDE_INLINE_NAME	(192-155)
+ #else
+-#define SIZEOF_PDE_INLINE_NAME	(128-87)
++#define SIZEOF_PDE_INLINE_NAME	(128-95)
+ #endif
+ 	char inline_name[SIZEOF_PDE_INLINE_NAME];
+ } __randomize_layout;
+diff --git a/fs/proc/proc_net.c b/fs/proc/proc_net.c
+index baf1994289ce..7d94fa005b0d 100644
+--- a/fs/proc/proc_net.c
++++ b/fs/proc/proc_net.c
+@@ -40,7 +40,7 @@ static struct net *get_proc_net(const struct inode *inode)
+ 
+ static int seq_open_net(struct inode *inode, struct file *file)
+ {
+-	size_t state_size = PDE(inode)->state_size;
++	unsigned int state_size = PDE(inode)->state_size;
+ 	struct seq_net_private *p;
+ 	struct net *net;
