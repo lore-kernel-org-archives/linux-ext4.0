@@ -1,95 +1,41 @@
-From: syzbot <syzbot+a9a45987b8b2daabdc88@syzkaller.appspotmail.com>
-Subject: kernel panic: EXT4-fs (device loop0): panic forced after error
-Date: Sat, 05 May 2018 17:57:02 -0700
-Message-ID: <000000000000019f50056b7f0890@google.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: kernel panic: EXT4-fs (device loop0): panic forced after error
+Date: Sat, 5 May 2018 22:24:28 -0400
+Message-ID: <20180506022428.GQ29205@thunk.org>
+References: <000000000000019f50056b7f0890@google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
-To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+Content-Type: text/plain; charset=us-ascii
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
+        syzkaller@googlegroups.com
+To: syzbot <syzbot+a9a45987b8b2daabdc88@syzkaller.appspotmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <000000000000019f50056b7f0890@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hello,
+On Sat, May 05, 2018 at 05:57:02PM -0700, syzbot wrote:
+> Hello,
+> 
+> syzbot found the following crash on:
+> 
+> EXT4-fs error (device loop0): ext4_iget:4756: inode #2: comm
+> syz-executor909: root inode unallocated
+> Kernel panic - not syncing: EXT4-fs (device loop0): panic forced after error
 
-syzbot found the following crash on:
+I don't get why syzbot considers this a bug.  It created a corrupted
+file system, mounted it as root, and said file system had the flag
+which says, "panic if you find a file system corruption".
 
-HEAD commit:    c1c07416cdd4 Merge tag 'kbuild-fixes-v4.17' of git://git.k..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=11a8a07b800000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=5a1dc06635c10d27
-dashboard link: https://syzkaller.appspot.com/bug?extid=a9a45987b8b2daabdc88
-compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
-syzkaller repro:https://syzkaller.appspot.com/x/repro.syz?x=164fa297800000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=13635c37800000
+In what world is this a security bug?  There's a *reason* why I've
+always said people who want to containers to be allowed to mount
+arbitrary file systems controlled by potentially malicious container
+users are insane....
 
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+a9a45987b8b2daabdc88@syzkaller.appspotmail.com
+I could mark this as a one-off invalid bug, but if syzkaller is going
+to be generating classes of corrupted file systems like this, and are
+going to be complaing about how this causes the kernel to crash, then
+we have a fundamental syzkaller BUG.
 
-random: sshd: uninitialized urandom read (32 bytes read)
-random: sshd: uninitialized urandom read (32 bytes read)
-random: sshd: uninitialized urandom read (32 bytes read)
-random: sshd: uninitialized urandom read (32 bytes read)
-EXT4-fs error (device loop0): ext4_iget:4756: inode #2: comm  
-syz-executor909: root inode unallocated
-Kernel panic - not syncing: EXT4-fs (device loop0): panic forced after error
-
-CPU: 1 PID: 4451 Comm: syz-executor909 Not tainted 4.17.0-rc3+ #34
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
-Google 01/01/2011
-Call Trace:
-  __dump_stack lib/dump_stack.c:77 [inline]
-  dump_stack+0x1b9/0x294 lib/dump_stack.c:113
-  panic+0x22f/0x4de kernel/panic.c:184
-  ext4_handle_error.part.120.cold.128+0x1d/0x1d fs/ext4/super.c:431
-  ext4_handle_error fs/ext4/super.c:408 [inline]
-  __ext4_error_inode+0x351/0x730 fs/ext4/super.c:494
-  ext4_iget+0xe82/0x3dd0 fs/ext4/inode.c:4756
-  ext4_fill_super+0x733c/0xd810 fs/ext4/super.c:4208
-  mount_bdev+0x30c/0x3e0 fs/super.c:1164
-  ext4_mount+0x34/0x40 fs/ext4/super.c:5740
-  mount_fs+0xae/0x328 fs/super.c:1267
-  vfs_kern_mount.part.34+0xd4/0x4d0 fs/namespace.c:1037
-  vfs_kern_mount fs/namespace.c:1027 [inline]
-  do_new_mount fs/namespace.c:2518 [inline]
-  do_mount+0x564/0x3070 fs/namespace.c:2848
-  ksys_mount+0x12d/0x140 fs/namespace.c:3064
-  __do_sys_mount fs/namespace.c:3078 [inline]
-  __se_sys_mount fs/namespace.c:3075 [inline]
-  __x64_sys_mount+0xbe/0x150 fs/namespace.c:3075
-  do_syscall_64+0x1b1/0x800 arch/x86/entry/common.c:287
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x442dda
-RSP: 002b:00007ffdadaf1e38 EFLAGS: 00000297 ORIG_RAX: 00000000000000a5
-RAX: ffffffffffffffda RBX: 0000000000000003 RCX: 0000000000442dda
-RDX: 0000000020000480 RSI: 0000000020000100 RDI: 00007ffdadaf1e40
-RBP: 0000000000000004 R08: 0000000020000440 R09: 000000000000000a
-R10: 0000000000000000 R11: 0000000000000297 R12: 0000000000401c40
-R13: 0000000000401cd0 R14: 0000000000000000 R15: 0000000000000000
-Dumping ftrace buffer:
-    (ftrace buffer empty)
-Kernel Offset: disabled
-Rebooting in 86400 seconds..
-
-
----
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
-
-syzbot will keep track of this bug report.
-If you forgot to add the Reported-by tag, once the fix for this bug is  
-merged
-into any tree, please reply to this email with:
-#syz fix: exact-commit-title
-If you want to test a patch for this bug, please reply with:
-#syz test: git://repo/address.git branch
-and provide the patch inline or as an attachment.
-To mark this as a duplicate of another syzbot report, please reply with:
-#syz dup: exact-subject-of-another-report
-If it's a one-off invalid bug report, please reply with:
-#syz invalid
-Note: if the crash happens again, it will cause creation of a new bug  
-report.
-Note: all commands must start from beginning of the line in the email body.
+					- Ted
