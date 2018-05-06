@@ -1,100 +1,44 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
+From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
 Subject: Re: kernel panic: EXT4-fs (device loop0): panic forced after error
-Date: Sun, 6 May 2018 09:50:02 -0400
-Message-ID: <20180506135002.GT29205@thunk.org>
+Date: Sun, 6 May 2018 23:40:10 +0900
+Message-ID: <201805062340.HFC78625.VFFFOHSOtQMOJL@I-love.SAKURA.ne.jp>
 References: <000000000000019f50056b7f0890@google.com>
- <20180506022428.GQ29205@thunk.org>
- <d295f575-ba4b-b0ba-a856-405f9d393c9d@I-love.SAKURA.ne.jp>
- <CACT4Y+YDy2GTXV=q6B+zqXtnz5nsZsbisxy1T=_R=PLNdAqcog@mail.gmail.com>
+        <20180506022428.GQ29205@thunk.org>
+        <d295f575-ba4b-b0ba-a856-405f9d393c9d@I-love.SAKURA.ne.jp>
+        <20180506133154.GS29205@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>,
-        syzbot <syzbot+a9a45987b8b2daabdc88@syzkaller.appspotmail.com>,
-        syzkaller-bugs <syzkaller-bugs@googlegroups.com>,
-        syzkaller <syzkaller@googlegroups.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-To: Dmitry Vyukov <dvyukov@google.com>
+Cc: syzbot+a9a45987b8b2daabdc88@syzkaller.appspotmail.com,
+        syzkaller-bugs@googlegroups.com, syzkaller@googlegroups.com,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CACT4Y+YDy2GTXV=q6B+zqXtnz5nsZsbisxy1T=_R=PLNdAqcog@mail.gmail.com>
+In-Reply-To: <20180506133154.GS29205@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, May 06, 2018 at 11:15:45AM +0200, Dmitry Vyukov wrote:
-> >> I don't get why syzbot considers this a bug.  It created a corrupted
-> >> file system, mounted it as root, and said file system had the flag
-> >> which says, "panic if you find a file system corruption".
-> > In what world is this a security bug?
+Theodore Y. Ts'o wrote:
+> On Sun, May 06, 2018 at 02:03:57PM +0900, Tetsuo Handa wrote:
+> > 
+> > Since syzbot is hitting this error path inside mount() request, calling
+> > panic() when something went wrong inside mount() request might be
+> > overkill. We can recover without shutting down the system, can't we?
 > 
-> Do you mean why syzbot considers kernel panics as something to report?
-> Or why syzbot has not understood why this panic is somehow special?
-> syzbot doesn't report only security problems. It just reports bugs.
-> E.g. NULL derefs and deadlocks are also not security bugs, but are
-> reported.
+> We could add a full kernel-mode fsck which gets run before mount ---
+> the question is how much complexity we want to add.  If SELinux is
+> enabled, then we have to check xattr consinsistency, etc., etc.
 
-EXT4-fs (device loop0): panic forced after error
+You are thinking too complicated. I'm not asking for kernel-mode fsck.
+I'm just suggesting that mount() request returns an error to the caller
+(and the administrator invokes fsck etc. as needed).
 
-This is working as intended.  See the tune2fs man page.
+We are fixing bugs which occur during mount operation (e.g.
 
-     -e error-behavior
-              Change the behavior of the kernel code when errors are
-              detected.  In all cases, a filesystem error will cause
-              e2fsck(8) to check the filesystem on the next boot.
-              error-behavior can be one of the following:
+  https://groups.google.com/d/msg/syzkaller-bugs/Yp4q8n-MijM/yDX3zl1XBQAJ
+  https://groups.google.com/d/msg/syzkaller-bugs/4C4oiBX8vZ0/W6pi8NdbBgAJ
+  https://groups.google.com/d/msg/syzkaller-bugs/QBnHAQBy2pI/ccf-yL5bBgAJ
 
-                   continue    Continue normal execution.
-
-                   remount-ro  Remount filesystem read-only.
-
-                   panic       Cause a kernel panic.
-
-
-> Can you please give me background regarding purpose of this flag?
-> What's the intended use case? And what exactly is corrupted?
-
-When the file system is corrupted, you might not want to continue
-processing.  If you have some kind High Availability system available,
-having the system shutdown so the secondary/backup system can take
-over for the corrupted file system.  This might be better than
-continuing to steer the spaceship, or continuning to control the x-ray
-dosage received by a patient, etc., etc.
-
-> If kernel detects that an image is corrupted during mount shouldn't it
-> just report an error?
-
-The problem is that this would, in the general case, putting in a full
-or partial kernel-mode fsck and requiring it to be run before mount.
-Sure, I could add more complexity in the system to bypass the check in
-iget() if it is being called from mount, but what if SELinux is
-running and it tries to fetch an xattr?  Or what if Syzkaller's
-repro.c decides to start reading or writing files, or deleting files
-in the directory?
-
-More generally, root can always do stuff which will cause the system
-to crash or shut down.  It can kexec a file containing garbage; it can
-call the shutdown system call.  Presumably it is not reasonable to
-require the kexec(2) system call to validate the image before
-transfering control to it?  After all, that would require solving the
-Halting Problem.  :-)
-
-> If I am reading this correctly, any USB cable
-> that plug into my computer can shut it down. Or maybe even existing
-> cables can shut down all computers in a country on a remote command.
-> Am I missing something here?
-
-If you have physical access to the machine, you can shut it down.  And
-there cases when shutting down a system or even all of the computers
-in a cluster is the right thing to do.  Not shutting down the computer
-could actually have harmful physical effects (e.g., a transformer
-blowing up, a centrifuge tearing itself apart[1], etc.)  The system
-administrator should have the choice to set up a file system such that
-if an inconsistency is detected.
-
-						- Ted
-
-[1] Although if the centrifuge is in Iran, and you are in the NSA,
-that might be considered a feature, not a bug.  Of course, if the
-transformer is in the US or Germany, and the entity triggering a bug
-which causes it to blow up is sponsored by Russia, then of course
-that's a different story.  :-)
+). And extX filesystem is different from other filesystems that it invokes
+error action specified by errors= parameter rather than return an error to
+the caller.
