@@ -1,115 +1,146 @@
-From: Alexey Dobriyan <adobriyan@gmail.com>
-Subject: Re: simplify procfs code for seq_file instances V2
-Date: Wed, 9 May 2018 19:53:31 +0300
-Message-ID: <20180509165331.GC16034@avx2>
-References: <20180425154827.32251-1-hch@lst.de> <20180506171948.GA769@avx2>
- <20180506174531.GK30522@ZenIV.linux.org.uk>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: vmalloc with GFP_NOFS
+Date: Wed, 9 May 2018 23:04:47 +0200
+Message-ID: <20180509210447.GX32366@dhcp22.suse.cz>
+References: <20180424162712.GL17484@dhcp22.suse.cz>
+ <20180424183536.GF30619@thunk.org>
+ <20180424192542.GS17484@dhcp22.suse.cz>
+ <20180509134222.GU32366@dhcp22.suse.cz>
+ <20180509151351.GA4111@magnolia>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
- Alexandre Belloni <alexandre.belloni@bootlin.com>, devel@driverdev.osuosl.org,
- linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
- linux-ide@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
- jfs-discussion@lists.sourceforge.net, linux-afs@lists.infradead.org,
- linux-acpi@vger.kernel.org, netdev@vger.kernel.org,
- netfilter-devel@vger.kernel.org, Jiri Slaby <jslaby@suse.com>,
- Andrew Morton <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org,
- Christoph Hellwig <hch@lst.de>, megaraidlinux.pdl@broadcom.com,
- drbd-dev@lists.linbit.com
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        Richard Weinberger <richard@nod.at>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Brian Norris <computersforpeace@gmail.com>,
+        Boris Brezillon <boris.brezillon@free-electrons.com>,
+        Marek Vasut <marek.vasut@gmail.com>,
+        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Kate Stewart <kstewart@linuxfoundation.org>,
+        Mikulas Patocka <mpatocka@redhat.com>,
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180506174531.GK30522@ZenIV.linux.org.uk>
-List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
-List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
-List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
-List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
-List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
-Errors-To: driverdev-devel-bounces@linuxdriverproject.org
-Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
+In-Reply-To: <20180509151351.GA4111@magnolia>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sun, May 06, 2018 at 06:45:31PM +0100, Al Viro wrote:
-> On Sun, May 06, 2018 at 08:19:49PM +0300, Alexey Dobriyan wrote:
+On Wed 09-05-18 08:13:51, Darrick J. Wong wrote:
+> On Wed, May 09, 2018 at 03:42:22PM +0200, Michal Hocko wrote:
+> > On Tue 24-04-18 13:25:42, Michal Hocko wrote:
+> > [...]
+> > > > As a suggestion, could you take
+> > > > documentation about how to convert to the memalloc_nofs_{save,restore}
+> > > > scope api (which I think you've written about e-mails at length
+> > > > before), and put that into a file in Documentation/core-api?
+> > > 
+> > > I can.
+> > 
+> > Does something like the below sound reasonable/helpful?
+> > ---
+> > =================================
+> > GFP masks used from FS/IO context
+> > =================================
+> > 
+> > :Date: Mapy, 2018
+> > :Author: Michal Hocko <mhocko@kernel.org>
+> > 
+> > Introduction
+> > ============
+> > 
+> > FS resp. IO submitting code paths have to be careful when allocating
+> 
+> Not sure what 'FS resp. IO' means here -- 'FS and IO' ?
+> 
+> (Or is this one of those things where this looks like plain English text
+> but in reality it's some sort of markup that I'm not so familiar with?)
+> 
+> Confused because I've seen 'resp.' used as shorthand for
+> 'responsible'...
 
-> > @@ -62,9 +62,9 @@ struct proc_dir_entry {
-> >  	umode_t mode;
-> >  	u8 namelen;
-> >  #ifdef CONFIG_64BIT
-> > -#define SIZEOF_PDE_INLINE_NAME	(192-139)
-> > +#define SIZEOF_PDE_INLINE_NAME	(192-155)
-> >  #else
-> > -#define SIZEOF_PDE_INLINE_NAME	(128-87)
-> > +#define SIZEOF_PDE_INLINE_NAME	(128-95)
-> 
-> >  #endif
-> >  	char inline_name[SIZEOF_PDE_INLINE_NAME];
-> >  } __randomize_layout;
-> 
-> *UGH*
+Well, I've tried to cover both. Filesystem and IO code paths which
+allocate while in sensitive context. IO submission is kinda clear but I
+am not sure what a general term for filsystem code paths would be. I
+would be greatful for any hints here.
 
-I agree. Maintaining these numbers is a pain point.
-Who knew people were going to start adding fields right away.
+> 
+> > memory to prevent from potential recursion deadlocks caused by direct
+> > memory reclaim calling back into the FS/IO path and block on already
+> > held resources (e.g. locks). Traditional way to avoid this problem
+> 
+> 'The traditional way to avoid this deadlock problem...'
 
-> Both to the original state and that kind of "adjustments".
-> Incidentally, with __bugger_layout in there these expressions
-> are simply wrong.
+Done
 
-Struct randomization is exempt from maintaining sizeof as they are already
-screwing cachelines and everything. But if patch works with lockdep and
-randomization -- even better.
+> > is to clear __GFP_FS resp. __GFP_IO (note the later implies clearing
+> > the first as well) in the gfp mask when calling an allocator. GFP_NOFS
+> > resp. GFP_NOIO can be used as shortcut.
+> > 
+> > This has been the traditional way to avoid deadlocks since ages. It
+> 
+> I think this sentence is a little redundant with the previous sentence,
+> you could chop it out and join this paragraph to the one before it.
 
-> If nothing else, I would suggest turning the last one into
-> 	char inline_name[];
-> in hope that layout won't get... randomized that much and
-> used
-> 
-> #ifdef CONFIG_64BIT
-> #define PDE_SIZE 192
-> #else
-> #define PDE_SIZE 128
-> #endif
-> 
-> union __proc_dir_entry {
-> 	char pad[PDE_SIZE];
-> 	struct proc_dir_entry real;
-> };
-> 
-> #define SIZEOF_PDE_INLINE_NAME (PDE_SIZE - offsetof(struct proc_dir_entry, inline_name))
-> 
-> for constants, adjusted sizeof and sizeof_field when creating
-> proc_dir_entry_cache and turned proc_root into
-> 
-> union __proc_dir_entry __proc_root = { .real = {
->         .low_ino        = PROC_ROOT_INO,
->         .namelen        = 5,
->         .mode           = S_IFDIR | S_IRUGO | S_IXUGO,
->         .nlink          = 2,
->         .refcnt         = REFCOUNT_INIT(1),
->         .proc_iops      = &proc_root_inode_operations,
->         .proc_fops      = &proc_root_operations,
->         .parent         = &__proc_root.real,
->         .subdir         = RB_ROOT,
->         .name           = __proc_root.real.inline_name,
->         .inline_name    = "/proc",
-> }};
-> 
-> #define proc_root __proc_root.real
-> (or actually used __proc_root.real in all of a 6 places where it remains).
-> 
-> > -	size_t state_size = PDE(inode)->state_size;
-> > +	unsigned int state_size = PDE(inode)->state_size;
-> 
-> <shakes head>
-> You and your "size_t is evil" crusade...
+OK
 
-[nods]
+> 
+> > turned out though that above approach has led to abuses when the restricted
+> > gfp mask is used "just in case" without a deeper consideration which leads
+> > to problems because an excessive use of GFP_NOFS/GFP_NOIO can lead to
+> > memory over-reclaim or other memory reclaim issues.
+> > 
+> > New API
+> > =======
+> > 
+> > Since 4.12 we do have a generic scope API for both NOFS and NOIO context
+> > ``memalloc_nofs_save``, ``memalloc_nofs_restore`` resp. ``memalloc_noio_save``,
+> > ``memalloc_noio_restore`` which allow to mark a scope to be a critical
+> > section from the memory reclaim recursion into FS/IO POV. Any allocation
+> > from that scope will inherently drop __GFP_FS resp. __GFP_IO from the given
+> > mask so no memory allocation can recurse back in the FS/IO.
+> > 
+> > FS/IO code then simply calls the appropriate save function right at
+> > the layer where a lock taken from the reclaim context (e.g. shrinker)
+> > is taken and the corresponding restore function when the lock is
+> > released. All that ideally along with an explanation what is the reclaim
+> > context for easier maintenance.
+> > 
+> > What about __vmalloc(GFP_NOFS)
+> > ==============================
+> > 
+> > vmalloc doesn't support GFP_NOFS semantic because there are hardcoded
+> > GFP_KERNEL allocations deep inside the allocator which are quit non-trivial
+> 
+> ...which are quite non-trivial...
 
-        unsigned long           flags;          /* error bits */
-        unsigned long           i_state;
-        unsigned long           s_blocksize;
-        unsigned long           s_flags;
-        unsigned long           s_iflags;       /* internal SB_I_* flags */
+fixed
+
+> > to fix up. That means that calling ``vmalloc`` with GFP_NOFS/GFP_NOIO is
+> > almost always a bug. The good news is that the NOFS/NOIO semantic can be
+> > achieved by the scope api.
+> > 
+> > In the ideal world, upper layers should already mark dangerous contexts
+> > and so no special care is required and vmalloc should be called without
+> > any problems. Sometimes if the context is not really clear or there are
+> > layering violations then the recommended way around that is to wrap ``vmalloc``
+> > by the scope API with a comment explaining the problem.
+> 
+> Otherwise looks ok to me based on my understanding of how all this is
+> supposed to work...
+> 
+> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+Thanks for your review!
+
+-- 
+Michal Hocko
+SUSE Labs
