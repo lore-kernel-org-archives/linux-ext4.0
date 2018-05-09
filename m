@@ -1,194 +1,102 @@
-From: Eric Biggers via Linux-f2fs-devel
- <linux-f2fs-devel@lists.sourceforge.net>
-Subject: [PATCH v2] fscrypt: add Speck128/256 support
-Date: Mon,  7 May 2018 17:22:08 -0700
-Message-ID: <20180508002208.7072-1-ebiggers@google.com>
-Reply-To: Eric Biggers <ebiggers@google.com>
+From: Michal Hocko <mhocko@kernel.org>
+Subject: Re: vmalloc with GFP_NOFS
+Date: Wed, 9 May 2018 15:42:22 +0200
+Message-ID: <20180509134222.GU32366@dhcp22.suse.cz>
+References: <20180424162712.GL17484@dhcp22.suse.cz>
+ <20180424183536.GF30619@thunk.org>
+ <20180424192542.GS17484@dhcp22.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jeffrey Walton <noloader@gmail.com>,
- "Jason A . Donenfeld" <Jason@zx2c4.com>, Greg Kaiser <gkaiser@google.com>,
- Eric Biggers <ebiggers@google.com>, Michael Halcrow <mhalcrow@google.com>,
- Samuel Neves <samuel.c.p.neves@gmail.com>,
- Patrik Torstensson <totte@google.com>, linux-f2fs-devel@lists.sourceforge.net,
- linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
- linux-ext4@vger.kernel.org, Paul Crowley <paulcrowley@google.com>
-To: linux-fscrypt@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        Richard Weinberger <richard@nod.at>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Brian Norris <computersforpeace@gmail.com>,
+        Boris Brezillon <boris.brezillon@free-electrons.com>,
+        Marek Vasut <marek.vasut@gmail.com>,
+        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Kate Stewart <kstewart@linuxfoundation.org>,
+        Mikulas Patocka <mpatocka@redhat.com>,
+        linux-mtd@lists.infradead.org, linux-ext4@
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180424192542.GS17484@dhcp22.suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-fscrypt currently only supports AES encryption.  However, many low-end
-mobile devices have older CPUs that don't have AES instructions, e.g.
-the ARMv8 Cryptography Extensions.  Currently, user data on such devices
-is not encrypted at rest because AES is too slow, even when the NEON
-bit-sliced implementation of AES is used.  Unfortunately, it is
-infeasible to encrypt these devices at all when AES is the only option.
+On Tue 24-04-18 13:25:42, Michal Hocko wrote:
+[...]
+> > As a suggestion, could you take
+> > documentation about how to convert to the memalloc_nofs_{save,restore}
+> > scope api (which I think you've written about e-mails at length
+> > before), and put that into a file in Documentation/core-api?
+> 
+> I can.
 
-Therefore, this patch updates fscrypt to support the Speck block cipher,
-which was recently added to the crypto API.  The C implementation of
-Speck is not especially fast, but Speck can be implemented very
-efficiently with general-purpose vector instructions, e.g. ARM NEON.
-For example, on an ARMv7 processor, we measured the NEON-accelerated
-Speck128/256-XTS at 69 MB/s for both encryption and decryption, while
-AES-256-XTS with the NEON bit-sliced implementation was only 22 MB/s
-encryption and 19 MB/s decryption.
-
-There are multiple variants of Speck.  This patch only adds support for
-Speck128/256, which is the variant with a 128-bit block size and 256-bit
-key size -- the same as AES-256.  This is believed to be the most secure
-variant of Speck, and it's only about 6% slower than Speck128/128.
-Speck64/128 would be at least 20% faster because it has 20% rounds, and
-it can be even faster on CPUs that can't efficiently do the 64-bit
-operations needed for Speck128.  However, Speck64's 64-bit block size is
-not preferred security-wise.  ARM NEON also supports the needed 64-bit
-operations even on 32-bit CPUs, resulting in Speck128 being fast enough
-for our targeted use cases so far.
-
-The chosen modes of operation are XTS for contents and CTS-CBC for
-filenames.  These are the same modes of operation that fscrypt defaults
-to for AES.  Note that as with the other fscrypt modes, Speck will not
-be used unless userspace chooses to use it.  Nor are any of the existing
-modes (which are all AES-based) being removed, of course.
-
-We intentionally don't make CONFIG_FS_ENCRYPTION select
-CONFIG_CRYPTO_SPECK, so people will have to enable Speck support
-themselves if they need it.  This is because we shouldn't bloat the
-FS_ENCRYPTION dependencies with every new cipher, especially ones that
-aren't recommended for most users.  Moreover, CRYPTO_SPECK is just the
-generic implementation, which won't be fast enough for many users; in
-practice, they'll need to enable CRYPTO_SPECK_NEON to get acceptable
-performance.
-
-More details about our choice of Speck can be found in our patches that
-added Speck to the crypto API, and the follow-on discussion threads.
-We're planning a publication that explains the choice in more detail.
-But briefly, we can't use ChaCha20 as we previously proposed, since it
-would be insecure to use a stream cipher in this context, with potential
-IV reuse during writes on f2fs and/or on wear-leveling flash storage.
-
-We also evaluated many other lightweight and/or ARX-based block ciphers
-such as Chaskey-LTS, RC5, LEA, CHAM, Threefish, RC6, NOEKEON, SPARX, and
-XTEA.  However, all had disadvantages vs. Speck, such as insufficient
-performance with NEON, much less published cryptanalysis, or an
-insufficient security level.  Various design choices in Speck make it
-perform better with NEON than competing ciphers while still having a
-security margin similar to AES, and in the case of Speck128 also the
-same available security levels.  Unfortunately, Speck does have some
-political baggage attached -- it's an NSA designed cipher, and was
-rejected from an ISO standard (though for context, as far as I know none
-of the above-mentioned alternatives are ISO standards either).
-Nevertheless, we believe it is a good solution to the problem from a
-technical perspective.
-
-Certain algorithms constructed from ChaCha or the ChaCha permutation,
-such as MEM (Masked Even-Mansour) or HPolyC, may also meet our
-performance requirements.  However, these are new constructions that
-need more time to receive the cryptographic review and acceptance needed
-to be confident in their security.  HPolyC hasn't been published yet,
-and we are concerned that MEM makes stronger assumptions about the
-underlying permutation than the ChaCha stream cipher does.  In contrast,
-the XTS mode of operation is relatively well accepted, and Speck has
-over 70 cryptanalysis papers.  Of course, these ChaCha-based algorithms
-can still be added later if they become ready.
-
-The best known attack on Speck128/256 is a differential cryptanalysis
-attack on 25 of 34 rounds with 2^253 time complexity and 2^125 chosen
-plaintexts, i.e. only marginally faster than brute force.  There is no
-known attack on the full 34 rounds.
-
-Signed-off-by: Eric Biggers <ebiggers@google.com>
+Does something like the below sound reasonable/helpful?
 ---
+=================================
+GFP masks used from FS/IO context
+=================================
 
-Changed since v1:
-    - Improved commit message and documentation.
+:Date: Mapy, 2018
+:Author: Michal Hocko <mhocko@kernel.org>
 
- Documentation/filesystems/fscrypt.rst | 10 ++++++++++
- fs/crypto/fscrypt_private.h           |  4 ++++
- fs/crypto/keyinfo.c                   |  2 ++
- include/uapi/linux/fs.h               |  2 ++
- 4 files changed, 18 insertions(+)
+Introduction
+============
 
-diff --git a/Documentation/filesystems/fscrypt.rst b/Documentation/filesystems/fscrypt.rst
-index cfbc18f0d9c9..48b424de85bb 100644
---- a/Documentation/filesystems/fscrypt.rst
-+++ b/Documentation/filesystems/fscrypt.rst
-@@ -191,11 +191,21 @@ Currently, the following pairs of encryption modes are supported:
- 
- - AES-256-XTS for contents and AES-256-CTS-CBC for filenames
- - AES-128-CBC for contents and AES-128-CTS-CBC for filenames
-+- Speck128/256-XTS for contents and Speck128/256-CTS-CBC for filenames
- 
- It is strongly recommended to use AES-256-XTS for contents encryption.
- AES-128-CBC was added only for low-powered embedded devices with
- crypto accelerators such as CAAM or CESA that do not support XTS.
- 
-+Similarly, Speck128/256 support was only added for older or low-end
-+CPUs which cannot do AES fast enough -- especially ARM CPUs which have
-+NEON instructions but not the Cryptography Extensions -- and for which
-+it would not otherwise be feasible to use encryption at all.  It is
-+not recommended to use Speck on CPUs that have AES instructions.
-+Speck support is only available if it has been enabled in the crypto
-+API via CONFIG_CRYPTO_SPECK.  Also, on ARM platforms, to get
-+acceptable performance CONFIG_CRYPTO_SPECK_NEON must be enabled.
-+
- New encryption modes can be added relatively easily, without changes
- to individual filesystems.  However, authenticated encryption (AE)
- modes are not currently supported because of the difficulty of dealing
-diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-index ad6722bae8b7..bceb737d4694 100644
---- a/fs/crypto/fscrypt_private.h
-+++ b/fs/crypto/fscrypt_private.h
-@@ -91,6 +91,10 @@ static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
- 	    filenames_mode == FS_ENCRYPTION_MODE_AES_256_CTS)
- 		return true;
- 
-+	if (contents_mode == FS_ENCRYPTION_MODE_SPECK128_256_XTS &&
-+	    filenames_mode == FS_ENCRYPTION_MODE_SPECK128_256_CTS)
-+		return true;
-+
- 	return false;
- }
- 
-diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
-index 05f5ee1f0705..96a1eae9e51d 100644
---- a/fs/crypto/keyinfo.c
-+++ b/fs/crypto/keyinfo.c
-@@ -135,6 +135,8 @@ static const struct {
- 					     FS_AES_128_CBC_KEY_SIZE },
- 	[FS_ENCRYPTION_MODE_AES_128_CTS] = { "cts(cbc(aes))",
- 					     FS_AES_128_CTS_KEY_SIZE },
-+	[FS_ENCRYPTION_MODE_SPECK128_256_XTS] = { "xts(speck128)", 64 },
-+	[FS_ENCRYPTION_MODE_SPECK128_256_CTS] = { "cts(cbc(speck128))", 32 },
- };
- 
- static int determine_cipher_type(struct fscrypt_info *ci, struct inode *inode,
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index d2a8313fabd7..0b6e07ee63a6 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -275,6 +275,8 @@ struct fsxattr {
- #define FS_ENCRYPTION_MODE_AES_256_CTS		4
- #define FS_ENCRYPTION_MODE_AES_128_CBC		5
- #define FS_ENCRYPTION_MODE_AES_128_CTS		6
-+#define FS_ENCRYPTION_MODE_SPECK128_256_XTS	7
-+#define FS_ENCRYPTION_MODE_SPECK128_256_CTS	8
- 
- struct fscrypt_policy {
- 	__u8 version;
+FS resp. IO submitting code paths have to be careful when allocating
+memory to prevent from potential recursion deadlocks caused by direct
+memory reclaim calling back into the FS/IO path and block on already
+held resources (e.g. locks). Traditional way to avoid this problem
+is to clear __GFP_FS resp. __GFP_IO (note the later implies clearing
+the first as well) in the gfp mask when calling an allocator. GFP_NOFS
+resp. GFP_NOIO can be used as shortcut.
+
+This has been the traditional way to avoid deadlocks since ages. It
+turned out though that above approach has led to abuses when the restricted
+gfp mask is used "just in case" without a deeper consideration which leads
+to problems because an excessive use of GFP_NOFS/GFP_NOIO can lead to
+memory over-reclaim or other memory reclaim issues.
+
+New API
+=======
+
+Since 4.12 we do have a generic scope API for both NOFS and NOIO context
+``memalloc_nofs_save``, ``memalloc_nofs_restore`` resp. ``memalloc_noio_save``,
+``memalloc_noio_restore`` which allow to mark a scope to be a critical
+section from the memory reclaim recursion into FS/IO POV. Any allocation
+from that scope will inherently drop __GFP_FS resp. __GFP_IO from the given
+mask so no memory allocation can recurse back in the FS/IO.
+
+FS/IO code then simply calls the appropriate save function right at
+the layer where a lock taken from the reclaim context (e.g. shrinker)
+is taken and the corresponding restore function when the lock is
+released. All that ideally along with an explanation what is the reclaim
+context for easier maintenance.
+
+What about __vmalloc(GFP_NOFS)
+==============================
+
+vmalloc doesn't support GFP_NOFS semantic because there are hardcoded
+GFP_KERNEL allocations deep inside the allocator which are quit non-trivial
+to fix up. That means that calling ``vmalloc`` with GFP_NOFS/GFP_NOIO is
+almost always a bug. The good news is that the NOFS/NOIO semantic can be
+achieved by the scope api.
+
+In the ideal world, upper layers should already mark dangerous contexts
+and so no special care is required and vmalloc should be called without
+any problems. Sometimes if the context is not really clear or there are
+layering violations then the recommended way around that is to wrap ``vmalloc``
+by the scope API with a comment explaining the problem.
 -- 
-2.17.0.441.gb46fe60e1d-goog
-
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+Michal Hocko
+SUSE Labs
