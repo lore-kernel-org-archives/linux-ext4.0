@@ -1,58 +1,57 @@
-From: Souptick Joarder <jrdr.linux@gmail.com>
-Subject: [PATCH v2] fs: ext4: Adding new return type vm_fault_t
-Date: Thu, 10 May 2018 20:11:36 +0530
-Message-ID: <20180510144136.GA26160@jordon-HP-15-Notebook-PC>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        willy@infradead.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Fix hole length detection in ext4_ind_map_blocks()
+Date: Thu, 10 May 2018 17:38:51 +0200
+Message-ID: <20180510153851.4689-1-jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>, Jeff Mahoney <jeffm@suse.com>,
+        Jan Kara <jack@suse.cz>, stable@vger.kernel.org
+To: Ted Tso <tytso@mit.edu>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Use new return type vm_fault_t for fault handler. For now,
-this is just documenting that the function returns a
-VM_FAULT value rather than an errno. Once all instances are
-converted, vm_fault_t will become a distinct type.
+When ext4_ind_map_blocks() computes a length of a hole, it doesn't count
+with the fact that mapped offset may be somewhere in the middle of the
+completely empty subtree. In such case it will return too large length
+of the hole which then results in lseek(SEEK_DATA) to end up returning
+an incorrect offset beyond the end of the hole.
 
-commit 1c8f422059ae ("mm: change return type to vm_fault_t")
+Fix the problem by correctly taking offset within a subtree into account
+when computing a length of a hole.
 
-Signed-off-by: Souptick Joarder <jrdr.linux@gmail.com>
-Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+Fixes: facab4d9711e7aa3532cb82643803e8f1b9518e8
+CC: stable@vger.kernel.org
+Reported-by: Jeff Mahoney <jeffm@suse.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
-v2: Updated the change log
+ fs/ext4/indirect.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
- fs/ext4/file.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ I'll submit corresponding fstest shortly.
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index fb6f023..655d1c7 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -277,10 +277,11 @@ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
- }
+diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+index c32802c956d5..bf7fa1507e81 100644
+--- a/fs/ext4/indirect.c
++++ b/fs/ext4/indirect.c
+@@ -561,10 +561,16 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
+ 		unsigned epb = inode->i_sb->s_blocksize / sizeof(u32);
+ 		int i;
  
- #ifdef CONFIG_FS_DAX
--static int ext4_dax_huge_fault(struct vm_fault *vmf,
-+static vm_fault_t ext4_dax_huge_fault(struct vm_fault *vmf,
- 		enum page_entry_size pe_size)
- {
--	int result, error = 0;
-+	int error = 0;
-+	vm_fault_t result;
- 	int retries = 0;
- 	handle_t *handle = NULL;
- 	struct inode *inode = file_inode(vmf->vma->vm_file);
-@@ -335,7 +336,7 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
- 	return result;
- }
- 
--static int ext4_dax_fault(struct vm_fault *vmf)
-+static vm_fault_t ext4_dax_fault(struct vm_fault *vmf)
- {
- 	return ext4_dax_huge_fault(vmf, PE_SIZE_PTE);
- }
+-		/* Count number blocks in a subtree under 'partial' */
+-		count = 1;
+-		for (i = 0; partial + i != chain + depth - 1; i++)
+-			count *= epb;
++		/*
++		 * Count number blocks in a subtree under 'partial'. At each
++		 * level we count number of complete empty subtrees beyond
++		 * current offset and then descend into the subtree only
++		 * partially beyond current offset.
++		 */
++		count = 0;
++		for (i = partial - chain + 1; i < depth; i++)
++			count = count * epb + (epb - offsets[i] - 1);
++		count++;
+ 		/* Fill in size of a hole we found */
+ 		map->m_pblk = 0;
+ 		map->m_len = min_t(unsigned int, map->m_len, count);
 -- 
-1.9.1
+2.13.6
