@@ -1,71 +1,58 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: vmalloc with GFP_NOFS
-Date: Thu, 10 May 2018 09:18:25 +0200
-Message-ID: <20180510071825.GC32366@dhcp22.suse.cz>
-References: <20180424162712.GL17484@dhcp22.suse.cz>
- <20180424183536.GF30619@thunk.org>
- <20180424192542.GS17484@dhcp22.suse.cz>
- <20180509134222.GU32366@dhcp22.suse.cz>
- <20180509151351.GA4111@magnolia>
- <20180509210447.GX32366@dhcp22.suse.cz>
- <20180509220231.GD25312@magnolia>
- <20180510055825.GB32366@dhcp22.suse.cz>
+From: Souptick Joarder <jrdr.linux@gmail.com>
+Subject: [PATCH v2] fs: ext4: Adding new return type vm_fault_t
+Date: Thu, 10 May 2018 20:11:36 +0530
+Message-ID: <20180510144136.GA26160@jordon-HP-15-Notebook-PC>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Artem Bityutskiy <dedekind1@gmail.com>,
-        Richard Weinberger <richard@nod.at>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Brian Norris <computersforpeace@gmail.com>,
-        Boris Brezillon <boris.brezillon@free-electrons.com>,
-        Marek Vasut <marek.vasut@gmail.com>,
-        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Adrian Hunter <adrian.hunter@intel.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Kate Stewart <kstewart@linuxfoundation.org>,
-        Mikulas Patocka <mpatocka@redhat.com>,
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        willy@infradead.org
+To: tytso@mit.edu, adilger.kernel@dilger.ca
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180510055825.GB32366@dhcp22.suse.cz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu 10-05-18 07:58:25, Michal Hocko wrote:
-> On Wed 09-05-18 15:02:31, Darrick J. Wong wrote:
-> > On Wed, May 09, 2018 at 11:04:47PM +0200, Michal Hocko wrote:
-> > > On Wed 09-05-18 08:13:51, Darrick J. Wong wrote:
-> [...]
-> > > > > FS resp. IO submitting code paths have to be careful when allocating
-> > > > 
-> > > > Not sure what 'FS resp. IO' means here -- 'FS and IO' ?
-> > > > 
-> > > > (Or is this one of those things where this looks like plain English text
-> > > > but in reality it's some sort of markup that I'm not so familiar with?)
-> > > > 
-> > > > Confused because I've seen 'resp.' used as shorthand for
-> > > > 'responsible'...
-> > > 
-> > > Well, I've tried to cover both. Filesystem and IO code paths which
-> > > allocate while in sensitive context. IO submission is kinda clear but I
-> > > am not sure what a general term for filsystem code paths would be. I
-> > > would be greatful for any hints here.
-> > 
-> > "Code paths in the filesystem and IO stacks must be careful when
-> > allocating memory to prevent recursion deadlocks caused by direct memory
-> > reclaim calling back into the FS or IO paths and blocking on already
-> > held resources (e.g. locks)." ?
-> 
-> Great, thanks!
+Use new return type vm_fault_t for fault handler. For now,
+this is just documenting that the function returns a
+VM_FAULT value rather than an errno. Once all instances are
+converted, vm_fault_t will become a distinct type.
 
-I dared to extend the last part to "(e.g. locks - most commonly those
-used for the transaction context)"
+commit 1c8f422059ae ("mm: change return type to vm_fault_t")
+
+Signed-off-by: Souptick Joarder <jrdr.linux@gmail.com>
+Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+---
+v2: Updated the change log
+
+ fs/ext4/file.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index fb6f023..655d1c7 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -277,10 +277,11 @@ static ssize_t ext4_write_checks(struct kiocb *iocb, struct iov_iter *from)
+ }
+ 
+ #ifdef CONFIG_FS_DAX
+-static int ext4_dax_huge_fault(struct vm_fault *vmf,
++static vm_fault_t ext4_dax_huge_fault(struct vm_fault *vmf,
+ 		enum page_entry_size pe_size)
+ {
+-	int result, error = 0;
++	int error = 0;
++	vm_fault_t result;
+ 	int retries = 0;
+ 	handle_t *handle = NULL;
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+@@ -335,7 +336,7 @@ static int ext4_dax_huge_fault(struct vm_fault *vmf,
+ 	return result;
+ }
+ 
+-static int ext4_dax_fault(struct vm_fault *vmf)
++static vm_fault_t ext4_dax_fault(struct vm_fault *vmf)
+ {
+ 	return ext4_dax_huge_fault(vmf, PE_SIZE_PTE);
+ }
 -- 
-Michal Hocko
-SUSE Labs
+1.9.1
