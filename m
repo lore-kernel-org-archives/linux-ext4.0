@@ -1,7 +1,7 @@
 From: Michal Hocko <mhocko@kernel.org>
 Subject: Re: vmalloc with GFP_NOFS
-Date: Thu, 10 May 2018 07:58:25 +0200
-Message-ID: <20180510055825.GB32366@dhcp22.suse.cz>
+Date: Thu, 10 May 2018 09:18:25 +0200
+Message-ID: <20180510071825.GC32366@dhcp22.suse.cz>
 References: <20180424162712.GL17484@dhcp22.suse.cz>
  <20180424183536.GF30619@thunk.org>
  <20180424192542.GS17484@dhcp22.suse.cz>
@@ -9,6 +9,7 @@ References: <20180424162712.GL17484@dhcp22.suse.cz>
  <20180509151351.GA4111@magnolia>
  <20180509210447.GX32366@dhcp22.suse.cz>
  <20180509220231.GD25312@magnolia>
+ <20180510055825.GB32366@dhcp22.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
@@ -32,35 +33,39 @@ Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
 To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180509220231.GD25312@magnolia>
+In-Reply-To: <20180510055825.GB32366@dhcp22.suse.cz>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 09-05-18 15:02:31, Darrick J. Wong wrote:
-> On Wed, May 09, 2018 at 11:04:47PM +0200, Michal Hocko wrote:
-> > On Wed 09-05-18 08:13:51, Darrick J. Wong wrote:
-[...]
-> > > > FS resp. IO submitting code paths have to be careful when allocating
+On Thu 10-05-18 07:58:25, Michal Hocko wrote:
+> On Wed 09-05-18 15:02:31, Darrick J. Wong wrote:
+> > On Wed, May 09, 2018 at 11:04:47PM +0200, Michal Hocko wrote:
+> > > On Wed 09-05-18 08:13:51, Darrick J. Wong wrote:
+> [...]
+> > > > > FS resp. IO submitting code paths have to be careful when allocating
+> > > > 
+> > > > Not sure what 'FS resp. IO' means here -- 'FS and IO' ?
+> > > > 
+> > > > (Or is this one of those things where this looks like plain English text
+> > > > but in reality it's some sort of markup that I'm not so familiar with?)
+> > > > 
+> > > > Confused because I've seen 'resp.' used as shorthand for
+> > > > 'responsible'...
 > > > 
-> > > Not sure what 'FS resp. IO' means here -- 'FS and IO' ?
-> > > 
-> > > (Or is this one of those things where this looks like plain English text
-> > > but in reality it's some sort of markup that I'm not so familiar with?)
-> > > 
-> > > Confused because I've seen 'resp.' used as shorthand for
-> > > 'responsible'...
+> > > Well, I've tried to cover both. Filesystem and IO code paths which
+> > > allocate while in sensitive context. IO submission is kinda clear but I
+> > > am not sure what a general term for filsystem code paths would be. I
+> > > would be greatful for any hints here.
 > > 
-> > Well, I've tried to cover both. Filesystem and IO code paths which
-> > allocate while in sensitive context. IO submission is kinda clear but I
-> > am not sure what a general term for filsystem code paths would be. I
-> > would be greatful for any hints here.
+> > "Code paths in the filesystem and IO stacks must be careful when
+> > allocating memory to prevent recursion deadlocks caused by direct memory
+> > reclaim calling back into the FS or IO paths and blocking on already
+> > held resources (e.g. locks)." ?
 > 
-> "Code paths in the filesystem and IO stacks must be careful when
-> allocating memory to prevent recursion deadlocks caused by direct memory
-> reclaim calling back into the FS or IO paths and blocking on already
-> held resources (e.g. locks)." ?
+> Great, thanks!
 
-Great, thanks!
+I dared to extend the last part to "(e.g. locks - most commonly those
+used for the transaction context)"
 -- 
 Michal Hocko
 SUSE Labs
