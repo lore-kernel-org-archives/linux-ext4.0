@@ -1,57 +1,29 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext4: Fix hole length detection in ext4_ind_map_blocks()
-Date: Thu, 10 May 2018 17:38:51 +0200
-Message-ID: <20180510153851.4689-1-jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>, Jeff Mahoney <jeffm@suse.com>,
-        Jan Kara <jack@suse.cz>, stable@vger.kernel.org
-To: Ted Tso <tytso@mit.edu>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: make =?utf-8?Q?function_?=
+ =?utf-8?B?4oCYZXh0NF9nZXRmc21hcF9maW5kX2ZpeGVkX21ldGFkYXRh4oCZ?= static
+Date: Thu, 10 May 2018 11:50:16 -0400
+Message-ID: <20180510155016.GC8335@thunk.org>
+References: <20180505200452.18962-1-malat@debian.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Mathieu Malaterre <malat@debian.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180505200452.18962-1-malat@debian.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-When ext4_ind_map_blocks() computes a length of a hole, it doesn't count
-with the fact that mapped offset may be somewhere in the middle of the
-completely empty subtree. In such case it will return too large length
-of the hole which then results in lseek(SEEK_DATA) to end up returning
-an incorrect offset beyond the end of the hole.
+On Sat, May 05, 2018 at 10:04:52PM +0200, Mathieu Malaterre wrote:
+> Since function ‘ext4_getfsmap_find_fixed_metadata’ can be made static,
+> make it so. Remove the following gcc warning (W=1):
+> 
+>   fs/ext4/fsmap.c:405:5: warning: no previous prototype for ‘ext4_getfsmap_find_fixed_metadata’ [-Wmissing-prototypes]
+> 
+> Signed-off-by: Mathieu Malaterre <malat@debian.org>
 
-Fix the problem by correctly taking offset within a subtree into account
-when computing a length of a hole.
+Applied, thanks.
 
-Fixes: facab4d9711e7aa3532cb82643803e8f1b9518e8
-CC: stable@vger.kernel.org
-Reported-by: Jeff Mahoney <jeffm@suse.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/indirect.c | 14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
-
- I'll submit corresponding fstest shortly.
-
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index c32802c956d5..bf7fa1507e81 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -561,10 +561,16 @@ int ext4_ind_map_blocks(handle_t *handle, struct inode *inode,
- 		unsigned epb = inode->i_sb->s_blocksize / sizeof(u32);
- 		int i;
- 
--		/* Count number blocks in a subtree under 'partial' */
--		count = 1;
--		for (i = 0; partial + i != chain + depth - 1; i++)
--			count *= epb;
-+		/*
-+		 * Count number blocks in a subtree under 'partial'. At each
-+		 * level we count number of complete empty subtrees beyond
-+		 * current offset and then descend into the subtree only
-+		 * partially beyond current offset.
-+		 */
-+		count = 0;
-+		for (i = partial - chain + 1; i < depth; i++)
-+			count = count * epb + (epb - offsets[i] - 1);
-+		count++;
- 		/* Fill in size of a hole we found */
- 		map->m_pblk = 0;
- 		map->m_len = min_t(unsigned int, map->m_len, count);
--- 
-2.13.6
+						- Ted
