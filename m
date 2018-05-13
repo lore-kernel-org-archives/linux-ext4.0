@@ -1,30 +1,50 @@
 From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH v2] fs: ext4: Adding new return type vm_fault_t
-Date: Sun, 13 May 2018 16:02:36 -0400
-Message-ID: <20180513200236.GF14763@thunk.org>
-References: <20180510144136.GA26160@jordon-HP-15-Notebook-PC>
+Subject: Re: [RFC v2 3/4] ext4: add verifier check for symlink with
+ append/immutable flags
+Date: Sun, 13 May 2018 16:51:32 -0400
+Message-ID: <20180513205132.GG14763@thunk.org>
+References: <20180510231359.16899-1-mcgrof@kernel.org>
+ <20180510231359.16899-4-mcgrof@kernel.org>
+ <20180511211218.rs365ftuw53c4qj2@quack2.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, willy@infradead.org
-To: Souptick Joarder <jrdr.linux@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: "Luis R. Rodriguez" <mcgrof@kernel.org>, viro@zeniv.linux.org.uk,
+        darrick.wong@oracle.com, adilger.kernel@dilger.ca, clm@fb.com,
+        jbacik@fb.com, dsterba@suse.com, sandeen@sandeen.net,
+        dhowells@redhat.com, fliu@suse.com, jeffm@suse.com,
+        nborisov@suse.com, jake.norris@suse.com, mtk.manpages@gmail.com,
+        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-btrfs-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180510144136.GA26160@jordon-HP-15-Notebook-PC>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20180511211218.rs365ftuw53c4qj2@quack2.suse.cz>
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 10, 2018 at 08:11:36PM +0530, Souptick Joarder wrote:
-> Use new return type vm_fault_t for fault handler. For now,
-> this is just documenting that the function returns a
-> VM_FAULT value rather than an errno. Once all instances are
-> converted, vm_fault_t will become a distinct type.
+On Fri, May 11, 2018 at 11:12:18PM +0200, Jan Kara wrote:
+> On Thu 10-05-18 16:13:58, Luis R. Rodriguez wrote:
+> > The Linux VFS does not allow a way to set append/immuttable
+> > attributes to symlinks, this is just not possible. If this is
+> > detected inform the user as the filesystem must be corrupted.
+> > 
+> > Signed-off-by: Luis R. Rodriguez <mcgrof@kernel.org>
 > 
-> commit 1c8f422059ae ("mm: change return type to vm_fault_t")
+> Looks good to me. You can add:
 > 
-> Signed-off-by: Souptick Joarder <jrdr.linux@gmail.com>
-> Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Applied, thanks.
+Applied into the ext4 tree after verifying that e2fsck already handles
+this case:
 
-					- Ted
+% e2fsck -fy /tmp/foo.img
+e2fsck 1.44.1 (24-Mar-2018)
+Pass 1: Checking inodes, blocks, and sizes
+Special (device/socket/fifo/symlink) file (inode 13) has immutable
+or append-only flag set.  Clear? yes
+
+(The btrfs and xfs maintainers might want to make a similar check
+before accepting their respective patches.)
+
+						- Ted
