@@ -1,89 +1,89 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 12/14] lustre: separate errno from VM_FAULT_* values
-Date: Wed, 16 May 2018 07:43:46 +0200
-Message-ID: <20180516054348.15950-13-hch@lst.de>
-References: <20180516054348.15950-1-hch@lst.de>
+From: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+Subject: [PATCH 01/42] net/can: single_open_net needs to be
+	paired with single_release_net
+Date: Wed, 16 May 2018 11:43:05 +0200
+Message-ID: <20180516094346.20506-2-hch@lst.de>
+References: <20180516094346.20506-1-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org,
- linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org,
- linux-mm@kvack.org, ocfs2-devel@oss.oracle.com, devel@lists.orangefs.org,
- linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
- ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-btrfs@vger.kernel.org, lustre-devel@lists.lustre.org
-To: Souptick Joarder <jrdr.linux@gmail.com>,
- Matthew Wilcox <willy@infradead.org>
-Return-path: <dri-devel-bounces@lists.freedesktop.org>
-In-Reply-To: <20180516054348.15950-1-hch@lst.de>
-List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
-List-Post: <mailto:dri-devel@lists.freedesktop.org>
-List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
-Errors-To: dri-devel-bounces@lists.freedesktop.org
-Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-rtc-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Alessandro Zummo <a.zummo-BfzFCNDTiLLj+vYz1yj4TQ@public.gmane.org>,
+	Alexandre Belloni <alexandre.belloni-LDxbnhwyfcJBDgjK7y7TUQ@public.gmane.org>,
+	devel-gWbeCf7V1WCQmaza687I9mD2FQJk+8+b@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	linux-scsi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ide-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Greg Kroah-Hartman <gregkh-hQyY1W1yCW8ekmWlsbkhG0B+6BGkLq7r@public.gmane.org>,
+	jfs-discussion-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	linux-afs-IAPFreCvJWM7uuMidbF8XUB+6BGkLq7r@public.gmane.org, linux-acpi-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Jiri Slaby <jslaby-IBi9RG/b67k@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	Alexey Dobriyan <adobriyan-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
+	megaraidlinux.pdl-dY08KVG/lbpWk0Htik3J/w@public.gmane.org, drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org
+To: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
+	Alexander Viro <viro-RmSDqhL/yNMiFSDQTTA3OLVCufUGDwFn@public.gmane.org>
+Return-path: <drbd-dev-bounces-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org>
+In-Reply-To: <20180516094346.20506-1-hch-jcswGhMUV9g@public.gmane.org>
+List-Unsubscribe: <http://lists.linbit.com/mailman/options/drbd-dev>,
+	<mailto:drbd-dev-request-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.linbit.com/pipermail/drbd-dev>
+List-Post: <mailto:drbd-dev-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org>
+List-Help: <mailto:drbd-dev-request-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org?subject=help>
+List-Subscribe: <http://lists.linbit.com/mailman/listinfo/drbd-dev>,
+	<mailto:drbd-dev-request-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org?subject=subscribe>
+Sender: drbd-dev-bounces-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org
+Errors-To: drbd-dev-bounces-cunTk1MwBs8qoQakbn7OcQ@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-U2lnbmVkLW9mZi1ieTogQ2hyaXN0b3BoIEhlbGx3aWcgPGhjaEBsc3QuZGU+Ci0tLQogLi4uL3N0
-YWdpbmcvbHVzdHJlL2x1c3RyZS9sbGl0ZS9sbGl0ZV9tbWFwLmMgIHwgMzcgKysrKysrKy0tLS0t
-LS0tLS0tLQogLi4uL2x1c3RyZS9sdXN0cmUvbGxpdGUvdnZwX2ludGVybmFsLmggICAgICAgIHwg
-IDIgKy0KIDIgZmlsZXMgY2hhbmdlZCwgMTQgaW5zZXJ0aW9ucygrKSwgMjUgZGVsZXRpb25zKC0p
-CgpkaWZmIC0tZ2l0IGEvZHJpdmVycy9zdGFnaW5nL2x1c3RyZS9sdXN0cmUvbGxpdGUvbGxpdGVf
-bW1hcC5jIGIvZHJpdmVycy9zdGFnaW5nL2x1c3RyZS9sdXN0cmUvbGxpdGUvbGxpdGVfbW1hcC5j
-CmluZGV4IDIxNGIwNzU1NGU2Mi4uMDYxZDk4ODcxOTU5IDEwMDY0NAotLS0gYS9kcml2ZXJzL3N0
-YWdpbmcvbHVzdHJlL2x1c3RyZS9sbGl0ZS9sbGl0ZV9tbWFwLmMKKysrIGIvZHJpdmVycy9zdGFn
-aW5nL2x1c3RyZS9sdXN0cmUvbGxpdGUvbGxpdGVfbW1hcC5jCkBAIC0yMzEsMjMgKzIzMSwxOCBA
-QCBzdGF0aWMgaW50IGxsX3BhZ2VfbWt3cml0ZTAoc3RydWN0IHZtX2FyZWFfc3RydWN0ICp2bWEs
-IHN0cnVjdCBwYWdlICp2bXBhZ2UsCiAJcmV0dXJuIHJlc3VsdDsKIH0KIAotc3RhdGljIGlubGlu
-ZSBpbnQgdG9fZmF1bHRfZXJyb3IoaW50IHJlc3VsdCkKK3N0YXRpYyBpbmxpbmUgdm1fZmF1bHRf
-dCB0b19mYXVsdF9lcnJvcihpbnQgcmVzdWx0KQogewogCXN3aXRjaCAocmVzdWx0KSB7CiAJY2Fz
-ZSAwOgotCQlyZXN1bHQgPSBWTV9GQVVMVF9MT0NLRUQ7Ci0JCWJyZWFrOworCQlyZXR1cm4gVk1f
-RkFVTFRfTE9DS0VEOwogCWNhc2UgLUVGQVVMVDoKLQkJcmVzdWx0ID0gVk1fRkFVTFRfTk9QQUdF
-OwotCQlicmVhazsKKwkJcmV0dXJuIFZNX0ZBVUxUX05PUEFHRTsKIAljYXNlIC1FTk9NRU06Ci0J
-CXJlc3VsdCA9IFZNX0ZBVUxUX09PTTsKLQkJYnJlYWs7CisJCXJldHVybiBWTV9GQVVMVF9PT007
-CiAJZGVmYXVsdDoKLQkJcmVzdWx0ID0gVk1fRkFVTFRfU0lHQlVTOwotCQlicmVhazsKKwkJcmV0
-dXJuIFZNX0ZBVUxUX1NJR0JVUzsKIAl9Ci0JcmV0dXJuIHJlc3VsdDsKIH0KIAogLyoqCkBAIC0y
-NjEsNyArMjU2LDcgQEAgc3RhdGljIGlubGluZSBpbnQgdG9fZmF1bHRfZXJyb3IoaW50IHJlc3Vs
-dCkKICAqIFxyZXR2YWwgVk1fRkFVTFRfRVJST1Igb24gZ2VuZXJhbCBlcnJvcgogICogXHJldHZh
-bCBOT1BBR0VfT09NIG5vdCBoYXZlIG1lbW9yeSBmb3IgYWxsb2NhdGUgbmV3IHBhZ2UKICAqLwot
-c3RhdGljIGludCBsbF9mYXVsdDAoc3RydWN0IHZtX2FyZWFfc3RydWN0ICp2bWEsIHN0cnVjdCB2
-bV9mYXVsdCAqdm1mKQorc3RhdGljIHZtX2ZhdWx0X3QgbGxfZmF1bHQwKHN0cnVjdCB2bV9hcmVh
-X3N0cnVjdCAqdm1hLCBzdHJ1Y3Qgdm1fZmF1bHQgKnZtZikKIHsKIAlzdHJ1Y3QgbHVfZW52CSAg
-ICplbnY7CiAJc3RydWN0IGNsX2lvCSAgICAqaW87CkBAIC0yNjksNyArMjY0LDcgQEAgc3RhdGlj
-IGludCBsbF9mYXVsdDAoc3RydWN0IHZtX2FyZWFfc3RydWN0ICp2bWEsIHN0cnVjdCB2bV9mYXVs
-dCAqdm1mKQogCXN0cnVjdCBwYWdlCSAgICAgKnZtcGFnZTsKIAl1bnNpZ25lZCBsb25nCSAgICBy
-YV9mbGFnczsKIAlpbnQJCSAgICAgIHJlc3VsdCA9IDA7Ci0JaW50CQkgICAgICBmYXVsdF9yZXQg
-PSAwOworCXZtX2ZhdWx0X3QJICAgICAgZmF1bHRfcmV0ID0gMDsKIAl1MTYgcmVmY2hlY2s7CiAK
-IAllbnYgPSBjbF9lbnZfZ2V0KCZyZWZjaGVjayk7CkBAIC0zMjMsNyArMzE4LDcgQEAgc3RhdGlj
-IGludCBsbF9mYXVsdDAoc3RydWN0IHZtX2FyZWFfc3RydWN0ICp2bWEsIHN0cnVjdCB2bV9mYXVs
-dCAqdm1mKQogCXJldHVybiBmYXVsdF9yZXQ7CiB9CiAKLXN0YXRpYyBpbnQgbGxfZmF1bHQoc3Ry
-dWN0IHZtX2ZhdWx0ICp2bWYpCitzdGF0aWMgdm1fZmF1bHRfdCBsbF9mYXVsdChzdHJ1Y3Qgdm1f
-ZmF1bHQgKnZtZikKIHsKIAlpbnQgY291bnQgPSAwOwogCWJvb2wgcHJpbnRlZCA9IGZhbHNlOwpA
-QCAtMzY0LDcgKzM1OSw3IEBAIHN0YXRpYyBpbnQgbGxfZmF1bHQoc3RydWN0IHZtX2ZhdWx0ICp2
-bWYpCiAJcmV0dXJuIHJlc3VsdDsKIH0KIAotc3RhdGljIGludCBsbF9wYWdlX21rd3JpdGUoc3Ry
-dWN0IHZtX2ZhdWx0ICp2bWYpCitzdGF0aWMgdm1fZmF1bHRfdCBsbF9wYWdlX21rd3JpdGUoc3Ry
-dWN0IHZtX2ZhdWx0ICp2bWYpCiB7CiAJc3RydWN0IHZtX2FyZWFfc3RydWN0ICp2bWEgPSB2bWYt
-PnZtYTsKIAlpbnQgY291bnQgPSAwOwpAQCAtMzkwLDIyICszODUsMTYgQEAgc3RhdGljIGludCBs
-bF9wYWdlX21rd3JpdGUoc3RydWN0IHZtX2ZhdWx0ICp2bWYpCiAJc3dpdGNoIChyZXN1bHQpIHsK
-IAljYXNlIDA6CiAJCUxBU1NFUlQoUGFnZUxvY2tlZCh2bWYtPnBhZ2UpKTsKLQkJcmVzdWx0ID0g
-Vk1fRkFVTFRfTE9DS0VEOwotCQlicmVhazsKKwkJcmV0dXJuIFZNX0ZBVUxUX0xPQ0tFRDsKIAlj
-YXNlIC1FTk9EQVRBOgogCWNhc2UgLUVBR0FJTjoKIAljYXNlIC1FRkFVTFQ6Ci0JCXJlc3VsdCA9
-IFZNX0ZBVUxUX05PUEFHRTsKLQkJYnJlYWs7CisJCXJldHVybiBWTV9GQVVMVF9OT1BBR0U7CiAJ
-Y2FzZSAtRU5PTUVNOgotCQlyZXN1bHQgPSBWTV9GQVVMVF9PT007Ci0JCWJyZWFrOworCQlyZXR1
-cm4gVk1fRkFVTFRfT09NOwogCWRlZmF1bHQ6Ci0JCXJlc3VsdCA9IFZNX0ZBVUxUX1NJR0JVUzsK
-LQkJYnJlYWs7CisJCXJldHVybiBWTV9GQVVMVF9TSUdCVVM7CiAJfQotCi0JcmV0dXJuIHJlc3Vs
-dDsKIH0KIAogLyoqCmRpZmYgLS1naXQgYS9kcml2ZXJzL3N0YWdpbmcvbHVzdHJlL2x1c3RyZS9s
-bGl0ZS92dnBfaW50ZXJuYWwuaCBiL2RyaXZlcnMvc3RhZ2luZy9sdXN0cmUvbHVzdHJlL2xsaXRl
-L3Z2cF9pbnRlcm5hbC5oCmluZGV4IDdkM2FiYjQzNTg0YS4uYzE5NDk2NmEzZDgyIDEwMDY0NAot
-LS0gYS9kcml2ZXJzL3N0YWdpbmcvbHVzdHJlL2x1c3RyZS9sbGl0ZS92dnBfaW50ZXJuYWwuaAor
-KysgYi9kcml2ZXJzL3N0YWdpbmcvbHVzdHJlL2x1c3RyZS9sbGl0ZS92dnBfaW50ZXJuYWwuaApA
-QCAtODMsNyArODMsNyBAQCBzdHJ1Y3QgdnZwX2lvIHsKIAkJCS8qKgogCQkJICogZmF1bHQgQVBJ
-IHVzZWQgYml0ZmxhZ3MgZm9yIHJldHVybiBjb2RlLgogCQkJICovCi0JCQl1bnNpZ25lZCBpbnQg
-ICAgZnRfZmxhZ3M7CisJCQl2bV9mYXVsdF90ICAgIGZ0X2ZsYWdzOwogCQkJLyoqCiAJCQkgKiBj
-aGVjayB0aGF0IGZsYWdzIGFyZSBmcm9tIGZpbGVtYXBfZmF1bHQKIAkJCSAqLwotLSAKMi4xNy4w
-CgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXwpkcmktZGV2
-ZWwgbWFpbGluZyBsaXN0CmRyaS1kZXZlbEBsaXN0cy5mcmVlZGVza3RvcC5vcmcKaHR0cHM6Ly9s
-aXN0cy5mcmVlZGVza3RvcC5vcmcvbWFpbG1hbi9saXN0aW5mby9kcmktZGV2ZWwK
+Otherwise we will leak a reference to the network namespace.
+
+Signed-off-by: Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+---
+ net/can/bcm.c  | 2 +-
+ net/can/proc.c | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/net/can/bcm.c b/net/can/bcm.c
+index ac5e5e34fee3..8073fa14e143 100644
+--- a/net/can/bcm.c
++++ b/net/can/bcm.c
+@@ -249,7 +249,7 @@ static const struct file_operations bcm_proc_fops = {
+ 	.open		= bcm_proc_open,
+ 	.read		= seq_read,
+ 	.llseek		= seq_lseek,
+-	.release	= single_release,
++	.release	= single_release_net,
+ };
+ #endif /* CONFIG_PROC_FS */
+ 
+diff --git a/net/can/proc.c b/net/can/proc.c
+index fdf704e9bb8c..fde2fd55b826 100644
+--- a/net/can/proc.c
++++ b/net/can/proc.c
+@@ -279,7 +279,7 @@ static const struct file_operations can_stats_proc_fops = {
+ 	.open		= can_stats_proc_open,
+ 	.read		= seq_read,
+ 	.llseek		= seq_lseek,
+-	.release	= single_release,
++	.release	= single_release_net,
+ };
+ 
+ static int can_reset_stats_proc_show(struct seq_file *m, void *v)
+@@ -449,7 +449,7 @@ static const struct file_operations can_rcvlist_sff_proc_fops = {
+ 	.open		= can_rcvlist_sff_proc_open,
+ 	.read		= seq_read,
+ 	.llseek		= seq_lseek,
+-	.release	= single_release,
++	.release	= single_release_net,
+ };
+ 
+ 
+@@ -492,7 +492,7 @@ static const struct file_operations can_rcvlist_eff_proc_fops = {
+ 	.open		= can_rcvlist_eff_proc_open,
+ 	.read		= seq_read,
+ 	.llseek		= seq_lseek,
+-	.release	= single_release,
++	.release	= single_release_net,
+ };
+ 
+ /*
+-- 
+2.17.0
