@@ -1,44 +1,39 @@
-From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: vm_fault_t conversion, for real
-Date: Wed, 16 May 2018 06:22:56 -0700
-Message-ID: <20180516132256.GG20670@bombadil.infradead.org>
-References: <20180516054348.15950-1-hch@lst.de>
- <20180516112347.GB20670@bombadil.infradead.org>
- <20180516130309.GB32454@lst.de>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: simplify procfs code for seq_file instances V3
+Date: Wed, 16 May 2018 14:28:01 +0100
+Message-ID: <20180516132801.GO30522@ZenIV.linux.org.uk>
+References: <20180516094346.20506-1-hch@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Souptick Joarder <jrdr.linux@gmail.com>,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, devel@lists.orangefs.org,
-        ceph-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mtd@lists.infradead.org, dri-devel@lists.freedesktop.org,
-        lustre-devel@lists.lustre.org,
-        linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Alexey Dobriyan <adobriyan@gmail.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Jiri Slaby <jslaby@suse.com>,
+        Alessandro Zummo <a.zummo@towertech.it>,
+        Alexandre Belloni <alexandre.belloni@bootlin.com>,
+        linux-acpi@vger.kernel.org, drbd-dev@lists.linbit.com,
+        linux-ide@vger.kernel.org, netdev@vger.kernel.org,
+        linux-rtc@vger.kernel.org, megaraidlinux.pdl@broadcom.com,
+        linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org,
+        linux-afs@lists.infradead.org, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <netdev-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180516130309.GB32454@lst.de>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20180516094346.20506-1-hch@lst.de>
+Sender: netdev-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, May 16, 2018 at 03:03:09PM +0200, Christoph Hellwig wrote:
-> On Wed, May 16, 2018 at 04:23:47AM -0700, Matthew Wilcox wrote:
-> > On Wed, May 16, 2018 at 07:43:34AM +0200, Christoph Hellwig wrote:
-> > > this series tries to actually turn vm_fault_t into a type that can be
-> > > typechecked and checks the fallout instead of sprinkling random
-> > > annotations without context.
-> > 
-> > Yes, why should we have small tasks that newcomers can do when the mighty
-> > Christoph Hellwig can swoop in and take over from them?  Seriously,
-> > can't your talents find a better use than this?
+On Wed, May 16, 2018 at 11:43:04AM +0200, Christoph Hellwig wrote:
+> We currently have hundreds of proc files that implement plain, read-only
+> seq_file based interfaces.  This series consolidates them using new
+> procfs helpers that take the seq_operations or simple show callback
+> directly.
 > 
-> I've spent less time on this than trying to argue to you and Souptick
-> that these changes are only to get ignored and yelled at as an
-> "asshole maintainer".  So yes, I could have done more productive things
-> if you hadn't forced this escalation.
+> A git tree is available at:
+> 
+>     git://git.infradead.org/users/hch/misc.git proc_create.3
 
-Perhaps you should try being less of an arsehole if you don't want to
-get yelled at?  I don't mind when you're an arsehole towards me, but I
-do mind when you're an arsehole towards newcomers.  How are we supposed
-to attract and retain new maintainers when you're so rude?
+Pulled, but the last bit is a bleeding atrocity in need of followup
+cleanup.
