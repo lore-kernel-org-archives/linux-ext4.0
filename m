@@ -1,133 +1,55 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 07/14] ext4: separate errno from VM_FAULT_* values
-Date: Wed, 16 May 2018 07:43:41 +0200
-Message-ID: <20180516054348.15950-8-hch@lst.de>
+Subject: [PATCH 09/14] ubifs: separate errno from VM_FAULT_* values
+Date: Wed, 16 May 2018 07:43:43 +0200
+Message-ID: <20180516054348.15950-10-hch@lst.de>
 References: <20180516054348.15950-1-hch@lst.de>
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, devel@lists.orangefs.org,
-        ceph-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mtd@lists.infradead.org, dri-devel@lists.freedesktop.org,
-        lustre-devel@lists.lustre.org,
-        linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org,
+ linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org,
+ linux-mm@kvack.org, ocfs2-devel@oss.oracle.com, devel@lists.orangefs.org,
+ linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
+ ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, lustre-devel@lists.lustre.org
 To: Souptick Joarder <jrdr.linux@gmail.com>,
-        Matthew Wilcox <willy@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+ Matthew Wilcox <willy@infradead.org>
+Return-path: <dri-devel-bounces@lists.freedesktop.org>
 In-Reply-To: <20180516054348.15950-1-hch@lst.de>
-Sender: linux-kernel-owner@vger.kernel.org
+List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
+List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
+List-Post: <mailto:dri-devel@lists.freedesktop.org>
+List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
+List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
+Errors-To: dri-devel-bounces@lists.freedesktop.org
+Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/ext4/ext4.h  |  4 ++--
- fs/ext4/inode.c | 30 +++++++++++++++---------------
- 2 files changed, 17 insertions(+), 17 deletions(-)
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index fa52b7dd4542..48592d0edf3e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2463,8 +2463,8 @@ extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
- 			     loff_t lstart, loff_t lend);
--extern int ext4_page_mkwrite(struct vm_fault *vmf);
--extern int ext4_filemap_fault(struct vm_fault *vmf);
-+extern vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf);
-+extern vm_fault_t ext4_filemap_fault(struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
- extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
- extern void ext4_da_update_reserve_space(struct inode *inode,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 95bc48f5c88b..fe49045a2832 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -6106,27 +6106,27 @@ static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
- 	return !buffer_mapped(bh);
- }
- 
--int ext4_page_mkwrite(struct vm_fault *vmf)
-+vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
- {
- 	struct vm_area_struct *vma = vmf->vma;
- 	struct page *page = vmf->page;
- 	loff_t size;
- 	unsigned long len;
--	int ret;
-+	vm_fault_t ret;
- 	struct file *file = vma->vm_file;
- 	struct inode *inode = file_inode(file);
- 	struct address_space *mapping = inode->i_mapping;
- 	handle_t *handle;
- 	get_block_t *get_block;
--	int retries = 0;
-+	int retries = 0, err;
- 
- 	sb_start_pagefault(inode->i_sb);
- 	file_update_time(vma->vm_file);
- 
- 	down_read(&EXT4_I(inode)->i_mmap_sem);
- 
--	ret = ext4_convert_inline_data(inode);
--	if (ret)
-+	err = ext4_convert_inline_data(inode);
-+	if (err)
- 		goto out_ret;
- 
- 	/* Delalloc case is easy... */
-@@ -6134,9 +6134,9 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
- 	    !ext4_should_journal_data(inode) &&
- 	    !ext4_nonda_switch(inode->i_sb)) {
- 		do {
--			ret = block_page_mkwrite(vma, vmf,
-+			err = block_page_mkwrite(vma, vmf,
- 						   ext4_da_get_block_prep);
--		} while (ret == -ENOSPC &&
-+		} while (err == -ENOSPC &&
- 		       ext4_should_retry_alloc(inode->i_sb, &retries));
- 		goto out_ret;
- 	}
-@@ -6181,8 +6181,8 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
- 		ret = VM_FAULT_SIGBUS;
- 		goto out;
- 	}
--	ret = block_page_mkwrite(vma, vmf, get_block);
--	if (!ret && ext4_should_journal_data(inode)) {
-+	err = block_page_mkwrite(vma, vmf, get_block);
-+	if (!err && ext4_should_journal_data(inode)) {
- 		if (ext4_walk_page_buffers(handle, page_buffers(page), 0,
- 			  PAGE_SIZE, NULL, do_journal_get_write_access)) {
- 			unlock_page(page);
-@@ -6193,24 +6193,24 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
- 		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
- 	}
- 	ext4_journal_stop(handle);
--	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+	if (err == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry_alloc;
- out_ret:
--	ret = block_page_mkwrite_return(ret);
-+	ret = block_page_mkwrite_return(err);
- out:
- 	up_read(&EXT4_I(inode)->i_mmap_sem);
- 	sb_end_pagefault(inode->i_sb);
- 	return ret;
- }
- 
--int ext4_filemap_fault(struct vm_fault *vmf)
-+vm_fault_t ext4_filemap_fault(struct vm_fault *vmf)
- {
- 	struct inode *inode = file_inode(vmf->vma->vm_file);
--	int err;
-+	vm_fault_t ret;
- 
- 	down_read(&EXT4_I(inode)->i_mmap_sem);
--	err = filemap_fault(vmf);
-+	ret = filemap_fault(vmf);
- 	up_read(&EXT4_I(inode)->i_mmap_sem);
- 
--	return err;
-+	return ret;
- }
--- 
-2.17.0
+U2lnbmVkLW9mZi1ieTogQ2hyaXN0b3BoIEhlbGx3aWcgPGhjaEBsc3QuZGU+Ci0tLQogZnMvdWJp
+ZnMvZmlsZS5jIHwgNyArKysrLS0tCiAxIGZpbGUgY2hhbmdlZCwgNCBpbnNlcnRpb25zKCspLCAz
+IGRlbGV0aW9ucygtKQoKZGlmZiAtLWdpdCBhL2ZzL3ViaWZzL2ZpbGUuYyBiL2ZzL3ViaWZzL2Zp
+bGUuYwppbmRleCAxYWNiMmZmNTA1ZTYuLjdjMWEyZTFjM2RlNSAxMDA2NDQKLS0tIGEvZnMvdWJp
+ZnMvZmlsZS5jCisrKyBiL2ZzL3ViaWZzL2ZpbGUuYwpAQCAtMTUxMyw3ICsxNTEzLDcgQEAgc3Rh
+dGljIGludCB1Ymlmc19yZWxlYXNlcGFnZShzdHJ1Y3QgcGFnZSAqcGFnZSwgZ2ZwX3QgdW51c2Vk
+X2dmcF9mbGFncykKICAqIG1tYXAoKWQgZmlsZSBoYXMgdGFrZW4gd3JpdGUgcHJvdGVjdGlvbiBm
+YXVsdCBhbmQgaXMgYmVpbmcgbWFkZSB3cml0YWJsZS4KICAqIFVCSUZTIG11c3QgZW5zdXJlIHBh
+Z2UgaXMgYnVkZ2V0ZWQgZm9yLgogICovCi1zdGF0aWMgaW50IHViaWZzX3ZtX3BhZ2VfbWt3cml0
+ZShzdHJ1Y3Qgdm1fZmF1bHQgKnZtZikKK3N0YXRpYyB2bV9mYXVsdF90IHViaWZzX3ZtX3BhZ2Vf
+bWt3cml0ZShzdHJ1Y3Qgdm1fZmF1bHQgKnZtZikKIHsKIAlzdHJ1Y3QgcGFnZSAqcGFnZSA9IHZt
+Zi0+cGFnZTsKIAlzdHJ1Y3QgaW5vZGUgKmlub2RlID0gZmlsZV9pbm9kZSh2bWYtPnZtYS0+dm1f
+ZmlsZSk7CkBAIC0xNTIxLDYgKzE1MjEsNyBAQCBzdGF0aWMgaW50IHViaWZzX3ZtX3BhZ2VfbWt3
+cml0ZShzdHJ1Y3Qgdm1fZmF1bHQgKnZtZikKIAlzdHJ1Y3QgdGltZXNwZWMgbm93ID0gY3VycmVu
+dF90aW1lKGlub2RlKTsKIAlzdHJ1Y3QgdWJpZnNfYnVkZ2V0X3JlcSByZXEgPSB7IC5uZXdfcGFn
+ZSA9IDEgfTsKIAlpbnQgZXJyLCB1cGRhdGVfdGltZTsKKwl2bV9mYXVsdF90IHJldCA9IDA7CiAK
+IAlkYmdfZ2VuKCJpbm8gJWx1LCBwZyAlbHUsIGlfc2l6ZSAlbGxkIiwJaW5vZGUtPmlfaW5vLCBw
+YWdlLT5pbmRleCwKIAkJaV9zaXplX3JlYWQoaW5vZGUpKTsKQEAgLTE2MDEsOCArMTYwMiw4IEBA
+IHN0YXRpYyBpbnQgdWJpZnNfdm1fcGFnZV9ta3dyaXRlKHN0cnVjdCB2bV9mYXVsdCAqdm1mKQog
+CXVubG9ja19wYWdlKHBhZ2UpOwogCXViaWZzX3JlbGVhc2VfYnVkZ2V0KGMsICZyZXEpOwogCWlm
+IChlcnIpCi0JCWVyciA9IFZNX0ZBVUxUX1NJR0JVUzsKLQlyZXR1cm4gZXJyOworCQlyZXQgPSBW
+TV9GQVVMVF9TSUdCVVM7CisJcmV0dXJuIHJldDsKIH0KIAogc3RhdGljIGNvbnN0IHN0cnVjdCB2
+bV9vcGVyYXRpb25zX3N0cnVjdCB1Ymlmc19maWxlX3ZtX29wcyA9IHsKLS0gCjIuMTcuMAoKX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KZHJpLWRldmVsIG1h
+aWxpbmcgbGlzdApkcmktZGV2ZWxAbGlzdHMuZnJlZWRlc2t0b3Aub3JnCmh0dHBzOi8vbGlzdHMu
+ZnJlZWRlc2t0b3Aub3JnL21haWxtYW4vbGlzdGluZm8vZHJpLWRldmVsCg==
