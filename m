@@ -1,80 +1,41 @@
-From: Daniel Vetter <daniel@ffwll.ch>
-Subject: Re: [PATCH 10/14] vgem: separate errno from VM_FAULT_* values
-Date: Wed, 16 May 2018 11:53:03 +0200
-Message-ID: <20180516095303.GH3438@phenom.ffwll.local>
-References: <20180516054348.15950-1-hch@lst.de>
- <20180516054348.15950-11-hch@lst.de>
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Subject: Re: [PATCH 41/42] tty: replace ->proc_fops with ->proc_show
+Date: Wed, 16 May 2018 11:58:02 +0200
+Message-ID: <20180516095802.GA16090@kroah.com>
+References: <20180516094346.20506-1-hch@lst.de>
+ <20180516094346.20506-42-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org,
- linux-btrfs@vger.kernel.org, dri-devel@lists.freedesktop.org,
- linux-kernel@vger.kernel.org, Matthew Wilcox <willy@infradead.org>,
- linux-mm@kvack.org, ocfs2-devel@oss.oracle.com,
- Souptick Joarder <jrdr.linux@gmail.com>, linux-fsdevel@vger.kernel.org,
- linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
- linux-ext4@vger.kernel.org, devel@lists.orangefs.org,
- lustre-devel@lists.lustre.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, devel@driverdev.osuosl.org,
+ linux-scsi@vger.kernel.org, linux-acpi@vger.kernel.org, netdev@vger.kernel.org,
+ megaraidlinux.pdl@broadcom.com, linux-kernel@vger.kernel.org,
+ Alexey Dobriyan <adobriyan@gmail.com>, linux-ide@vger.kernel.org,
+ netfilter-devel@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
+ Jiri Slaby <jslaby@suse.com>, Andrew Morton <akpm@linux-foundation.org>,
+ linux-ext4@vger.kernel.org, linux-afs@lists.infradead.org,
+ jfs-discussion@lists.sourceforge.net, drbd-dev@lists.linbit.com
 To: Christoph Hellwig <hch@lst.de>
-Return-path: <dri-devel-bounces@lists.freedesktop.org>
+Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
 Content-Disposition: inline
-In-Reply-To: <20180516054348.15950-11-hch@lst.de>
-List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
-List-Post: <mailto:dri-devel@lists.freedesktop.org>
-List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
-Errors-To: dri-devel-bounces@lists.freedesktop.org
-Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
+In-Reply-To: <20180516094346.20506-42-hch@lst.de>
+List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
+List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
+List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
+List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
+List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>,
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
+Errors-To: driverdev-devel-bounces@linuxdriverproject.org
+Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
 List-Id: linux-ext4.vger.kernel.org
 
-T24gV2VkLCBNYXkgMTYsIDIwMTggYXQgMDc6NDM6NDRBTSArMDIwMCwgQ2hyaXN0b3BoIEhlbGx3
-aWcgd3JvdGU6Cj4gQW5kIHN0cmVhbWxpbmUgdGhlIGNvZGUgaW4gdmdlbV9mYXVsdCB3aXRoIGVh
-cmx5IHJldHVybnMgc28gdGhhdCBpdCBpcwo+IGEgbGl0dGxlIGJpdCBtb3JlIHJlYWRhYmxlLgo+
-IAo+IFNpZ25lZC1vZmYtYnk6IENocmlzdG9waCBIZWxsd2lnIDxoY2hAbHN0LmRlPgo+IC0tLQo+
-ICBkcml2ZXJzL2dwdS9kcm0vdmdlbS92Z2VtX2Rydi5jIHwgNTEgKysrKysrKysrKysrKysrLS0t
-LS0tLS0tLS0tLS0tLS0tCj4gIDEgZmlsZSBjaGFuZ2VkLCAyMyBpbnNlcnRpb25zKCspLCAyOCBk
-ZWxldGlvbnMoLSkKPiAKPiBkaWZmIC0tZ2l0IGEvZHJpdmVycy9ncHUvZHJtL3ZnZW0vdmdlbV9k
-cnYuYyBiL2RyaXZlcnMvZ3B1L2RybS92Z2VtL3ZnZW1fZHJ2LmMKPiBpbmRleCAyNTI0ZmYxMTZm
-MDAuLmEyNjFlMGFhYjgzYSAxMDA2NDQKPiAtLS0gYS9kcml2ZXJzL2dwdS9kcm0vdmdlbS92Z2Vt
-X2Rydi5jCj4gKysrIGIvZHJpdmVycy9ncHUvZHJtL3ZnZW0vdmdlbV9kcnYuYwo+IEBAIC02MSwx
-MiArNjEsMTMgQEAgc3RhdGljIHZvaWQgdmdlbV9nZW1fZnJlZV9vYmplY3Qoc3RydWN0IGRybV9n
-ZW1fb2JqZWN0ICpvYmopCj4gIAlrZnJlZSh2Z2VtX29iaik7Cj4gIH0KPiAgCj4gLXN0YXRpYyBp
-bnQgdmdlbV9nZW1fZmF1bHQoc3RydWN0IHZtX2ZhdWx0ICp2bWYpCj4gK3N0YXRpYyB2bV9mYXVs
-dF90IHZnZW1fZ2VtX2ZhdWx0KHN0cnVjdCB2bV9mYXVsdCAqdm1mKQo+ICB7Cj4gIAlzdHJ1Y3Qg
-dm1fYXJlYV9zdHJ1Y3QgKnZtYSA9IHZtZi0+dm1hOwo+ICAJc3RydWN0IGRybV92Z2VtX2dlbV9v
-YmplY3QgKm9iaiA9IHZtYS0+dm1fcHJpdmF0ZV9kYXRhOwo+ICAJLyogV2UgZG9uJ3QgdXNlIHZt
-Zi0+cGdvZmYgc2luY2UgdGhhdCBoYXMgdGhlIGZha2Ugb2Zmc2V0ICovCj4gIAl1bnNpZ25lZCBs
-b25nIHZhZGRyID0gdm1mLT5hZGRyZXNzOwo+ICsJc3RydWN0IHBhZ2UgKnBhZ2U7Cj4gIAlpbnQg
-cmV0Owo+ICAJbG9mZl90IG51bV9wYWdlczsKPiAgCXBnb2ZmX3QgcGFnZV9vZmZzZXQ7Cj4gQEAg
-LTg1LDM1ICs4NiwyOSBAQCBzdGF0aWMgaW50IHZnZW1fZ2VtX2ZhdWx0KHN0cnVjdCB2bV9mYXVs
-dCAqdm1mKQo+ICAJCXJldCA9IDA7Cj4gIAl9Cj4gIAltdXRleF91bmxvY2soJm9iai0+cGFnZXNf
-bG9jayk7Cj4gLQlpZiAocmV0KSB7Cj4gLQkJc3RydWN0IHBhZ2UgKnBhZ2U7Cj4gLQo+IC0JCXBh
-Z2UgPSBzaG1lbV9yZWFkX21hcHBpbmdfcGFnZSgKPiAtCQkJCQlmaWxlX2lub2RlKG9iai0+YmFz
-ZS5maWxwKS0+aV9tYXBwaW5nLAo+IC0JCQkJCXBhZ2Vfb2Zmc2V0KTsKPiAtCQlpZiAoIUlTX0VS
-UihwYWdlKSkgewo+IC0JCQl2bWYtPnBhZ2UgPSBwYWdlOwo+IC0JCQlyZXQgPSAwOwo+IC0JCX0g
-ZWxzZSBzd2l0Y2ggKFBUUl9FUlIocGFnZSkpIHsKPiAtCQkJY2FzZSAtRU5PU1BDOgo+IC0JCQlj
-YXNlIC1FTk9NRU06Cj4gLQkJCQlyZXQgPSBWTV9GQVVMVF9PT007Cj4gLQkJCQlicmVhazsKPiAt
-CQkJY2FzZSAtRUJVU1k6Cj4gLQkJCQlyZXQgPSBWTV9GQVVMVF9SRVRSWTsKPiAtCQkJCWJyZWFr
-Owo+IC0JCQljYXNlIC1FRkFVTFQ6Cj4gLQkJCWNhc2UgLUVJTlZBTDoKPiAtCQkJCXJldCA9IFZN
-X0ZBVUxUX1NJR0JVUzsKPiAtCQkJCWJyZWFrOwo+IC0JCQlkZWZhdWx0Ogo+IC0JCQkJV0FSTl9P
-TihQVFJfRVJSKHBhZ2UpKTsKPiAtCQkJCXJldCA9IFZNX0ZBVUxUX1NJR0JVUzsKPiAtCQkJCWJy
-ZWFrOwo+IC0JCX0KPiArCWlmICghcmV0KQo+ICsJCXJldHVybiAwOwo+ICsKPiArCXBhZ2UgPSBz
-aG1lbV9yZWFkX21hcHBpbmdfcGFnZShmaWxlX2lub2RlKG9iai0+YmFzZS5maWxwKS0+aV9tYXBw
-aW5nLAo+ICsJCQlwYWdlX29mZnNldCk7Cj4gKwlpZiAoIUlTX0VSUihwYWdlKSkgewo+ICsJCXZt
-Zi0+cGFnZSA9IHBhZ2U7Cj4gKwkJcmV0dXJuIDA7Cj4gKwl9Cj4gIAo+ICsJc3dpdGNoIChQVFJf
-RVJSKHBhZ2UpKSB7Cj4gKwljYXNlIC1FTk9TUEM6Cj4gKwljYXNlIC1FTk9NRU06Cj4gKwkJcmV0
-dXJuIFZNX0ZBVUxUX09PTTsKPiArCWNhc2UgLUVCVVNZOgo+ICsJCXJldHVybiBWTV9GQVVMVF9S
-RVRSWTsKPiArCWNhc2UgLUVGQVVMVDoKPiArCWNhc2UgLUVJTlZBTDoKPiArCQlyZXR1cm4gVk1f
-RkFVTFRfU0lHQlVTOwo+ICsJZGVmYXVsdDoKPiArCQlXQVJOX09OKFBUUl9FUlIocGFnZSkpOwo+
-ICsJCXJldHVybiBWTV9GQVVMVF9TSUdCVVM7Cj4gIAl9Cj4gLQlyZXR1cm4gcmV0OwoKUmV2aWV3
-ZWQtYnk6IERhbmllbCBWZXR0ZXIgPGRhbmllbC52ZXR0ZXJAZmZ3bGwuY2g+CgpXYW50IG1lIHRv
-IG1lcmdlIHRoaXMgdGhyb3VnaCBkcm0tbWlzYyBvciBwbGFuIHRvIHBpY2sgaXQgdXAgeW91cnNl
-bGY/Ci1EYW5pZWwKCj4gIH0KPiAgCj4gIHN0YXRpYyBjb25zdCBzdHJ1Y3Qgdm1fb3BlcmF0aW9u
-c19zdHJ1Y3QgdmdlbV9nZW1fdm1fb3BzID0gewo+IC0tIAo+IDIuMTcuMAo+IAoKLS0gCkRhbmll
-bCBWZXR0ZXIKU29mdHdhcmUgRW5naW5lZXIsIEludGVsIENvcnBvcmF0aW9uCmh0dHA6Ly9ibG9n
-LmZmd2xsLmNoCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-CmRyaS1kZXZlbCBtYWlsaW5nIGxpc3QKZHJpLWRldmVsQGxpc3RzLmZyZWVkZXNrdG9wLm9yZwpo
-dHRwczovL2xpc3RzLmZyZWVkZXNrdG9wLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2RyaS1kZXZlbAo=
+On Wed, May 16, 2018 at 11:43:45AM +0200, Christoph Hellwig wrote:
+> Just set up the show callback in the tty_operations, and use
+> proc_create_single_data to create the file without additional
+> boilerplace code.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+
+Reviewed-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
