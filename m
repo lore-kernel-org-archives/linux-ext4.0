@@ -1,48 +1,59 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 14/14] mm: turn on vm_fault_t type checking
-Date: Wed, 16 May 2018 19:34:45 +0200
-Message-ID: <20180516173445.GA6088@lst.de>
-References: <20180516054348.15950-1-hch@lst.de>
- <20180516054348.15950-15-hch@lst.de> <20180516150829.GA4904@magnolia>
+From: Alan Jenkins <alan.christopher.jenkins@gmail.com>
+Subject: Re: INFO: task hung in blk_queue_enter
+Date: Wed, 16 May 2018 18:33:36 +0100
+Message-ID: <0609ee2b-fbb6-9122-918a-cc2172ee2cfa@gmail.com>
+References: <0000000000009b212b056ae6dbad@google.com>
+ <343bbbf6-64eb-879e-d19e-96aebb037d47@I-love.SAKURA.ne.jp>
+ <b9c33b04-08d7-87a1-3d93-d81a84e6af12@I-love.SAKURA.ne.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org,
- linux-btrfs@vger.kernel.org, dri-devel@lists.freedesktop.org,
- linux-kernel@vger.kernel.org, Matthew Wilcox <willy@infradead.org>,
- linux-mm@kvack.org, ocfs2-devel@oss.oracle.com,
- Souptick Joarder <jrdr.linux@gmail.com>, linux-fsdevel@vger.kernel.org,
- linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
- linux-ext4@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
- devel@lists.orangefs.org, lustre-devel@lists.lustre.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <dri-devel-bounces@lists.freedesktop.org>
-Content-Disposition: inline
-In-Reply-To: <20180516150829.GA4904@magnolia>
-List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
-List-Post: <mailto:dri-devel@lists.freedesktop.org>
-List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
-Errors-To: dri-devel-bounces@lists.freedesktop.org
-Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+Cc: syzbot <syzbot+c4f9cebf9d651f6e54de@syzkaller.appspotmail.com>,
+        linux-block@vger.kernel.org,
+        Dan Williams <dan.j.williams@intel.com>,
+        Jens Axboe <axboe@kernel.dk>, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, dvyukov@google.com,
+        Bart Van Assche <bart.vanassche@wdc.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Hannes Reinecke <hare@suse.com>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Keith Busch <keith.busch@intel.com>,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        Martin Steigerwald <martin@lichtvoll.de>,
+        Ming Lei <ming.lei@redhat.com>,
+        Oleksandr Natalenko <oleksandr@natalenko.name>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
+        syzkaller-bugs@googlegroups.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <b9c33b04-08d7-87a1-3d93-d81a84e6af12@I-love.SAKURA.ne.jp>
+Content-Language: en-GB
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gV2VkLCBNYXkgMTYsIDIwMTggYXQgMDg6MDg6MjlBTSAtMDcwMCwgRGFycmljayBKLiBXb25n
-IHdyb3RlOgo+IFVoLCB3ZSdyZSBjaGFuZ2luZyBmdW5jdGlvbiBzaWduYXR1cmVzIC9hbmQvIHJl
-ZGVmaW5pbmluZyB2bV9mYXVsdF90Pwo+IEFsbCBpbiB0aGUgc2FtZSA5MEsgcGF0Y2g/Cj4gCj4g
-SSAvd2FzLyBleHBlY3RpbmcgYSBzZXJpZXMgb2YgImNvbnZlcnQgWFhYWFggYW5kIGFsbCBjYWxs
-ZXJzL3VzZXJzIgo+IHBhdGNoZXMgZm9sbG93ZWQgYnkgYSB0cml2aWFsIG9uZSB0byBzd2l0Y2gg
-dGhlIGRlZmluaXRpb24sIG5vdCBhIGdpYW50Cj4gcGlsZSBvZiBjaGFuZ2UuICBGV0lXIEkgZG9u
-J3QgbWluZCBzbyBtdWNoIGlmIHlvdSBtYWtlIGEgcGF0Y2gKPiBjb250YWluaW5nIGEgY2hhbmdl
-IGZvciBzb21lIHN1cGVyLWNvbW1vbiBwcmltaXRpdmUgYW5kIGEgaG9qaWxsaW9uCj4gbGl0dGxl
-IGRpZmYgaHVua3MgdHJlZS13aWRlLCBidXQgb25seSBvbmUgbG9naWNhbCBjaGFuZ2UgYXQgYSB0
-aW1lIGZvciBhCj4gYmlnIHBhdGNoLCBwbGVhc2UuLi4KPiAKPiBJIHF1aXRlIHByZWZlciBzZWVp
-bmcgdGhlIHdob2xlIHNlcmllcyBmcm9tIHN0YXJ0IHRvIGZpbmlzaCBhbGwgcGFja2FnZWQKPiB1
-cCBpbiBvbmUgc2VyaWVzLCBidXQgd293IHRoaXMgd2FzIG92ZXJ3aGVsbWluZy4gOi8KCkFub3Ro
-ZXIgdm90ZSB0byBzcGxpdCB0aGUgY2hhbmdlIG9mIHRoZSB0eXBlZGVmLCBvayBJIGdldCB0aGUg
-bWVzc2FnZS4uCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-CmRyaS1kZXZlbCBtYWlsaW5nIGxpc3QKZHJpLWRldmVsQGxpc3RzLmZyZWVkZXNrdG9wLm9yZwpo
-dHRwczovL2xpc3RzLmZyZWVkZXNrdG9wLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2RyaS1kZXZlbAo=
+ > jbd2/sda1-8(PID=2271) is stuck waiting for journal commit operation.
+ > I don't know how this thread is involved to this problem.
+
+It feels like it should be a necessary link in the chain. This is the 
+filesystem underneath the loop device. If that hangs, we would expect 
+the loop device to hang, but not vice versa.
+
+AIUI, you couldn't reproduce this hang on your own machine.
+
+Don't you think, your fuzzer has just found a nice exploit for reiserfs?
+
+Alan
+
+
+(It's interesting that you found this hang just after we fixed 
+block_queue_enter() to wait in D state instead of S state.[1]  I don't 
+know syszkaller, so I assume from this it only flagged this case up 
+because of the hung task warning. I.e. syzkaller didn't have its own 
+watchdog that would have failed the test anyway.
+
+[1] the commit that caused you to CC me. "block: do not use 
+interruptible wait anywhere"
+
+https://github.com/torvalds/linux/commit/1dc3039bc87ae7d19a990c3ee71cfd8a9068f428
+
+)
