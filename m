@@ -1,55 +1,124 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 09/14] ubifs: separate errno from VM_FAULT_* values
-Date: Wed, 16 May 2018 07:43:43 +0200
-Message-ID: <20180516054348.15950-10-hch@lst.de>
+Subject: [PATCH 08/14] ocfs2: separate errno from VM_FAULT_* values
+Date: Wed, 16 May 2018 07:43:42 +0200
+Message-ID: <20180516054348.15950-9-hch@lst.de>
 References: <20180516054348.15950-1-hch@lst.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org,
- linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org,
- linux-mm@kvack.org, ocfs2-devel@oss.oracle.com, devel@lists.orangefs.org,
- linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
- ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-btrfs@vger.kernel.org, lustre-devel@lists.lustre.org
+Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-kernel@vger.kernel.org, devel@lists.orangefs.org,
+        ceph-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-mtd@lists.infradead.org, dri-devel@lists.freedesktop.org,
+        lustre-devel@lists.lustre.org,
+        linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org
 To: Souptick Joarder <jrdr.linux@gmail.com>,
- Matthew Wilcox <willy@infradead.org>
-Return-path: <dri-devel-bounces@lists.freedesktop.org>
+        Matthew Wilcox <willy@infradead.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20180516054348.15950-1-hch@lst.de>
-List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
-List-Post: <mailto:dri-devel@lists.freedesktop.org>
-List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
- <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
-Errors-To: dri-devel-bounces@lists.freedesktop.org
-Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-U2lnbmVkLW9mZi1ieTogQ2hyaXN0b3BoIEhlbGx3aWcgPGhjaEBsc3QuZGU+Ci0tLQogZnMvdWJp
-ZnMvZmlsZS5jIHwgNyArKysrLS0tCiAxIGZpbGUgY2hhbmdlZCwgNCBpbnNlcnRpb25zKCspLCAz
-IGRlbGV0aW9ucygtKQoKZGlmZiAtLWdpdCBhL2ZzL3ViaWZzL2ZpbGUuYyBiL2ZzL3ViaWZzL2Zp
-bGUuYwppbmRleCAxYWNiMmZmNTA1ZTYuLjdjMWEyZTFjM2RlNSAxMDA2NDQKLS0tIGEvZnMvdWJp
-ZnMvZmlsZS5jCisrKyBiL2ZzL3ViaWZzL2ZpbGUuYwpAQCAtMTUxMyw3ICsxNTEzLDcgQEAgc3Rh
-dGljIGludCB1Ymlmc19yZWxlYXNlcGFnZShzdHJ1Y3QgcGFnZSAqcGFnZSwgZ2ZwX3QgdW51c2Vk
-X2dmcF9mbGFncykKICAqIG1tYXAoKWQgZmlsZSBoYXMgdGFrZW4gd3JpdGUgcHJvdGVjdGlvbiBm
-YXVsdCBhbmQgaXMgYmVpbmcgbWFkZSB3cml0YWJsZS4KICAqIFVCSUZTIG11c3QgZW5zdXJlIHBh
-Z2UgaXMgYnVkZ2V0ZWQgZm9yLgogICovCi1zdGF0aWMgaW50IHViaWZzX3ZtX3BhZ2VfbWt3cml0
-ZShzdHJ1Y3Qgdm1fZmF1bHQgKnZtZikKK3N0YXRpYyB2bV9mYXVsdF90IHViaWZzX3ZtX3BhZ2Vf
-bWt3cml0ZShzdHJ1Y3Qgdm1fZmF1bHQgKnZtZikKIHsKIAlzdHJ1Y3QgcGFnZSAqcGFnZSA9IHZt
-Zi0+cGFnZTsKIAlzdHJ1Y3QgaW5vZGUgKmlub2RlID0gZmlsZV9pbm9kZSh2bWYtPnZtYS0+dm1f
-ZmlsZSk7CkBAIC0xNTIxLDYgKzE1MjEsNyBAQCBzdGF0aWMgaW50IHViaWZzX3ZtX3BhZ2VfbWt3
-cml0ZShzdHJ1Y3Qgdm1fZmF1bHQgKnZtZikKIAlzdHJ1Y3QgdGltZXNwZWMgbm93ID0gY3VycmVu
-dF90aW1lKGlub2RlKTsKIAlzdHJ1Y3QgdWJpZnNfYnVkZ2V0X3JlcSByZXEgPSB7IC5uZXdfcGFn
-ZSA9IDEgfTsKIAlpbnQgZXJyLCB1cGRhdGVfdGltZTsKKwl2bV9mYXVsdF90IHJldCA9IDA7CiAK
-IAlkYmdfZ2VuKCJpbm8gJWx1LCBwZyAlbHUsIGlfc2l6ZSAlbGxkIiwJaW5vZGUtPmlfaW5vLCBw
-YWdlLT5pbmRleCwKIAkJaV9zaXplX3JlYWQoaW5vZGUpKTsKQEAgLTE2MDEsOCArMTYwMiw4IEBA
-IHN0YXRpYyBpbnQgdWJpZnNfdm1fcGFnZV9ta3dyaXRlKHN0cnVjdCB2bV9mYXVsdCAqdm1mKQog
-CXVubG9ja19wYWdlKHBhZ2UpOwogCXViaWZzX3JlbGVhc2VfYnVkZ2V0KGMsICZyZXEpOwogCWlm
-IChlcnIpCi0JCWVyciA9IFZNX0ZBVUxUX1NJR0JVUzsKLQlyZXR1cm4gZXJyOworCQlyZXQgPSBW
-TV9GQVVMVF9TSUdCVVM7CisJcmV0dXJuIHJldDsKIH0KIAogc3RhdGljIGNvbnN0IHN0cnVjdCB2
-bV9vcGVyYXRpb25zX3N0cnVjdCB1Ymlmc19maWxlX3ZtX29wcyA9IHsKLS0gCjIuMTcuMAoKX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18KZHJpLWRldmVsIG1h
-aWxpbmcgbGlzdApkcmktZGV2ZWxAbGlzdHMuZnJlZWRlc2t0b3Aub3JnCmh0dHBzOi8vbGlzdHMu
-ZnJlZWRlc2t0b3Aub3JnL21haWxtYW4vbGlzdGluZm8vZHJpLWRldmVsCg==
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/ocfs2/mmap.c | 36 +++++++++++++++++++-----------------
+ 1 file changed, 19 insertions(+), 17 deletions(-)
+
+diff --git a/fs/ocfs2/mmap.c b/fs/ocfs2/mmap.c
+index fb9a20e3d608..e75c1fc5333e 100644
+--- a/fs/ocfs2/mmap.c
++++ b/fs/ocfs2/mmap.c
+@@ -44,11 +44,11 @@
+ #include "ocfs2_trace.h"
+ 
+ 
+-static int ocfs2_fault(struct vm_fault *vmf)
++static vm_fault_t ocfs2_fault(struct vm_fault *vmf)
+ {
+ 	struct vm_area_struct *vma = vmf->vma;
+ 	sigset_t oldset;
+-	int ret;
++	vm_fault_t ret;
+ 
+ 	ocfs2_block_signals(&oldset);
+ 	ret = filemap_fault(vmf);
+@@ -59,10 +59,10 @@ static int ocfs2_fault(struct vm_fault *vmf)
+ 	return ret;
+ }
+ 
+-static int __ocfs2_page_mkwrite(struct file *file, struct buffer_head *di_bh,
+-				struct page *page)
++static vm_fault_t __ocfs2_page_mkwrite(struct file *file,
++		struct buffer_head *di_bh, struct page *page)
+ {
+-	int ret = VM_FAULT_NOPAGE;
++	vm_fault_t ret = VM_FAULT_NOPAGE;
+ 	struct inode *inode = file_inode(file);
+ 	struct address_space *mapping = inode->i_mapping;
+ 	loff_t pos = page_offset(page);
+@@ -71,6 +71,7 @@ static int __ocfs2_page_mkwrite(struct file *file, struct buffer_head *di_bh,
+ 	struct page *locked_page = NULL;
+ 	void *fsdata;
+ 	loff_t size = i_size_read(inode);
++	int err;
+ 
+ 	last_index = (size - 1) >> PAGE_SHIFT;
+ 
+@@ -105,12 +106,12 @@ static int __ocfs2_page_mkwrite(struct file *file, struct buffer_head *di_bh,
+ 	if (page->index == last_index)
+ 		len = ((size - 1) & ~PAGE_MASK) + 1;
+ 
+-	ret = ocfs2_write_begin_nolock(mapping, pos, len, OCFS2_WRITE_MMAP,
++	err = ocfs2_write_begin_nolock(mapping, pos, len, OCFS2_WRITE_MMAP,
+ 				       &locked_page, &fsdata, di_bh, page);
+-	if (ret) {
+-		if (ret != -ENOSPC)
+-			mlog_errno(ret);
+-		if (ret == -ENOMEM)
++	if (err) {
++		if (err != -ENOSPC)
++			mlog_errno(err);
++		if (err == -ENOMEM)
+ 			ret = VM_FAULT_OOM;
+ 		else
+ 			ret = VM_FAULT_SIGBUS;
+@@ -121,20 +122,21 @@ static int __ocfs2_page_mkwrite(struct file *file, struct buffer_head *di_bh,
+ 		ret = VM_FAULT_NOPAGE;
+ 		goto out;
+ 	}
+-	ret = ocfs2_write_end_nolock(mapping, pos, len, len, fsdata);
+-	BUG_ON(ret != len);
++	err = ocfs2_write_end_nolock(mapping, pos, len, len, fsdata);
++	BUG_ON(err != len);
+ 	ret = VM_FAULT_LOCKED;
+ out:
+ 	return ret;
+ }
+ 
+-static int ocfs2_page_mkwrite(struct vm_fault *vmf)
++static vm_fault_t ocfs2_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct page *page = vmf->page;
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+ 	struct buffer_head *di_bh = NULL;
+ 	sigset_t oldset;
+-	int ret;
++	vm_fault_t ret = 0;
++	int err;
+ 
+ 	sb_start_pagefault(inode->i_sb);
+ 	ocfs2_block_signals(&oldset);
+@@ -144,10 +146,10 @@ static int ocfs2_page_mkwrite(struct vm_fault *vmf)
+ 	 * node. Taking the data lock will also ensure that we don't
+ 	 * attempt page truncation as part of a downconvert.
+ 	 */
+-	ret = ocfs2_inode_lock(inode, &di_bh, 1);
+-	if (ret < 0) {
++	err = ocfs2_inode_lock(inode, &di_bh, 1);
++	if (err < 0) {
+ 		mlog_errno(ret);
+-		if (ret == -ENOMEM)
++		if (err == -ENOMEM)
+ 			ret = VM_FAULT_OOM;
+ 		else
+ 			ret = VM_FAULT_SIGBUS;
+-- 
+2.17.0
