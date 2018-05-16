@@ -1,175 +1,80 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 37/42] atm: switch to proc_create_seq_private
-Date: Wed, 16 May 2018 11:43:41 +0200
-Message-ID: <20180516094346.20506-38-hch@lst.de>
-References: <20180516094346.20506-1-hch@lst.de>
+From: Daniel Vetter <daniel@ffwll.ch>
+Subject: Re: [PATCH 10/14] vgem: separate errno from VM_FAULT_* values
+Date: Wed, 16 May 2018 11:53:03 +0200
+Message-ID: <20180516095303.GH3438@phenom.ffwll.local>
+References: <20180516054348.15950-1-hch@lst.de>
+ <20180516054348.15950-11-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
- Alexandre Belloni <alexandre.belloni@bootlin.com>, devel@driverdev.osuosl.org,
- linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
- linux-ide@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
- jfs-discussion@lists.sourceforge.net, linux-afs@lists.infradead.org,
- linux-acpi@vger.kernel.org, netdev@vger.kernel.org,
- netfilter-devel@vger.kernel.org, Jiri Slaby <jslaby@suse.com>,
- linux-ext4@vger.kernel.org, Alexey Dobriyan <adobriyan@gmail.com>,
- megaraidlinux.pdl@broadcom.com, drbd-dev@lists.linbit.com
-To: Andrew Morton <akpm@linux-foundation.org>,
- Alexander Viro <viro@zeniv.linux.org.uk>
-Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
-In-Reply-To: <20180516094346.20506-1-hch@lst.de>
-List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
-List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
-List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
-List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
-List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>,
- <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
-Errors-To: driverdev-devel-bounces@linuxdriverproject.org
-Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, dri-devel@lists.freedesktop.org,
+ linux-kernel@vger.kernel.org, Matthew Wilcox <willy@infradead.org>,
+ linux-mm@kvack.org, ocfs2-devel@oss.oracle.com,
+ Souptick Joarder <jrdr.linux@gmail.com>, linux-fsdevel@vger.kernel.org,
+ linux-mtd@lists.infradead.org, ceph-devel@vger.kernel.org,
+ linux-ext4@vger.kernel.org, devel@lists.orangefs.org,
+ lustre-devel@lists.lustre.org
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <dri-devel-bounces@lists.freedesktop.org>
+Content-Disposition: inline
+In-Reply-To: <20180516054348.15950-11-hch@lst.de>
+List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
+List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
+List-Post: <mailto:dri-devel@lists.freedesktop.org>
+List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
+List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
+Errors-To: dri-devel-bounces@lists.freedesktop.org
+Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
 List-Id: linux-ext4.vger.kernel.org
 
-And remove proc boilerplate code.
-
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- net/atm/proc.c | 72 +++++++++-----------------------------------------
- 1 file changed, 13 insertions(+), 59 deletions(-)
-
-diff --git a/net/atm/proc.c b/net/atm/proc.c
-index f272b0f59d82..0b0495a41bbe 100644
---- a/net/atm/proc.c
-+++ b/net/atm/proc.c
-@@ -68,7 +68,6 @@ static void atm_dev_info(struct seq_file *seq, const struct atm_dev *dev)
- struct vcc_state {
- 	int bucket;
- 	struct sock *sk;
--	int family;
- };
- 
- static inline int compare_family(struct sock *sk, int family)
-@@ -106,23 +105,13 @@ static int __vcc_walk(struct sock **sock, int family, int *bucket, loff_t l)
- 	return (l < 0);
- }
- 
--static inline void *vcc_walk(struct vcc_state *state, loff_t l)
-+static inline void *vcc_walk(struct seq_file *seq, loff_t l)
- {
--	return __vcc_walk(&state->sk, state->family, &state->bucket, l) ?
--	       state : NULL;
--}
--
--static int __vcc_seq_open(struct inode *inode, struct file *file,
--	int family, const struct seq_operations *ops)
--{
--	struct vcc_state *state;
--
--	state = __seq_open_private(file, ops, sizeof(*state));
--	if (state == NULL)
--		return -ENOMEM;
-+	struct vcc_state *state = seq->private;
-+	int family = (uintptr_t)(PDE_DATA(file_inode(seq->file)));
- 
--	state->family = family;
--	return 0;
-+	return __vcc_walk(&state->sk, family, &state->bucket, l) ?
-+	       state : NULL;
- }
- 
- static void *vcc_seq_start(struct seq_file *seq, loff_t *pos)
-@@ -133,7 +122,7 @@ static void *vcc_seq_start(struct seq_file *seq, loff_t *pos)
- 
- 	read_lock(&vcc_sklist_lock);
- 	state->sk = SEQ_START_TOKEN;
--	return left ? vcc_walk(state, left) : SEQ_START_TOKEN;
-+	return left ? vcc_walk(seq, left) : SEQ_START_TOKEN;
- }
- 
- static void vcc_seq_stop(struct seq_file *seq, void *v)
-@@ -144,9 +133,7 @@ static void vcc_seq_stop(struct seq_file *seq, void *v)
- 
- static void *vcc_seq_next(struct seq_file *seq, void *v, loff_t *pos)
- {
--	struct vcc_state *state = seq->private;
--
--	v = vcc_walk(state, 1);
-+	v = vcc_walk(seq, 1);
- 	*pos += !!PTR_ERR(v);
- 	return v;
- }
-@@ -280,18 +267,6 @@ static const struct seq_operations pvc_seq_ops = {
- 	.show	= pvc_seq_show,
- };
- 
--static int pvc_seq_open(struct inode *inode, struct file *file)
--{
--	return __vcc_seq_open(inode, file, PF_ATMPVC, &pvc_seq_ops);
--}
--
--static const struct file_operations pvc_seq_fops = {
--	.open		= pvc_seq_open,
--	.read		= seq_read,
--	.llseek		= seq_lseek,
--	.release	= seq_release_private,
--};
--
- static int vcc_seq_show(struct seq_file *seq, void *v)
- {
- 	if (v == SEQ_START_TOKEN) {
-@@ -314,18 +289,6 @@ static const struct seq_operations vcc_seq_ops = {
- 	.show	= vcc_seq_show,
- };
- 
--static int vcc_seq_open(struct inode *inode, struct file *file)
--{
--	return __vcc_seq_open(inode, file, 0, &vcc_seq_ops);
--}
--
--static const struct file_operations vcc_seq_fops = {
--	.open		= vcc_seq_open,
--	.read		= seq_read,
--	.llseek		= seq_lseek,
--	.release	= seq_release_private,
--};
--
- static int svc_seq_show(struct seq_file *seq, void *v)
- {
- 	static const char atm_svc_banner[] =
-@@ -349,18 +312,6 @@ static const struct seq_operations svc_seq_ops = {
- 	.show	= svc_seq_show,
- };
- 
--static int svc_seq_open(struct inode *inode, struct file *file)
--{
--	return __vcc_seq_open(inode, file, PF_ATMSVC, &svc_seq_ops);
--}
--
--static const struct file_operations svc_seq_fops = {
--	.open		= svc_seq_open,
--	.read		= seq_read,
--	.llseek		= seq_lseek,
--	.release	= seq_release_private,
--};
--
- static ssize_t proc_dev_atm_read(struct file *file, char __user *buf,
- 				 size_t count, loff_t *pos)
- {
-@@ -434,9 +385,12 @@ int __init atm_proc_init(void)
- 	if (!atm_proc_root)
- 		return -ENOMEM;
- 	proc_create_seq("devices", 0444, atm_proc_root, &atm_dev_seq_ops);
--	proc_create("pvc", 0444, atm_proc_root, &pvc_seq_fops);
--	proc_create("svc", 0444, atm_proc_root, &svc_seq_fops);
--	proc_create("vc", 0444, atm_proc_root, &vcc_seq_fops);
-+	proc_create_seq_private("pvc", 0444, atm_proc_root, &pvc_seq_ops,
-+			sizeof(struct vcc_state), (void *)(uintptr_t)PF_ATMPVC);
-+	proc_create_seq_private("svc", 0444, atm_proc_root, &svc_seq_ops,
-+			sizeof(struct vcc_state), (void *)(uintptr_t)PF_ATMSVC);
-+	proc_create_seq_private("vc", 0444, atm_proc_root, &vcc_seq_ops,
-+			sizeof(struct vcc_state), NULL);
- 	return 0;
- }
- 
--- 
-2.17.0
+T24gV2VkLCBNYXkgMTYsIDIwMTggYXQgMDc6NDM6NDRBTSArMDIwMCwgQ2hyaXN0b3BoIEhlbGx3
+aWcgd3JvdGU6Cj4gQW5kIHN0cmVhbWxpbmUgdGhlIGNvZGUgaW4gdmdlbV9mYXVsdCB3aXRoIGVh
+cmx5IHJldHVybnMgc28gdGhhdCBpdCBpcwo+IGEgbGl0dGxlIGJpdCBtb3JlIHJlYWRhYmxlLgo+
+IAo+IFNpZ25lZC1vZmYtYnk6IENocmlzdG9waCBIZWxsd2lnIDxoY2hAbHN0LmRlPgo+IC0tLQo+
+ICBkcml2ZXJzL2dwdS9kcm0vdmdlbS92Z2VtX2Rydi5jIHwgNTEgKysrKysrKysrKysrKysrLS0t
+LS0tLS0tLS0tLS0tLS0tCj4gIDEgZmlsZSBjaGFuZ2VkLCAyMyBpbnNlcnRpb25zKCspLCAyOCBk
+ZWxldGlvbnMoLSkKPiAKPiBkaWZmIC0tZ2l0IGEvZHJpdmVycy9ncHUvZHJtL3ZnZW0vdmdlbV9k
+cnYuYyBiL2RyaXZlcnMvZ3B1L2RybS92Z2VtL3ZnZW1fZHJ2LmMKPiBpbmRleCAyNTI0ZmYxMTZm
+MDAuLmEyNjFlMGFhYjgzYSAxMDA2NDQKPiAtLS0gYS9kcml2ZXJzL2dwdS9kcm0vdmdlbS92Z2Vt
+X2Rydi5jCj4gKysrIGIvZHJpdmVycy9ncHUvZHJtL3ZnZW0vdmdlbV9kcnYuYwo+IEBAIC02MSwx
+MiArNjEsMTMgQEAgc3RhdGljIHZvaWQgdmdlbV9nZW1fZnJlZV9vYmplY3Qoc3RydWN0IGRybV9n
+ZW1fb2JqZWN0ICpvYmopCj4gIAlrZnJlZSh2Z2VtX29iaik7Cj4gIH0KPiAgCj4gLXN0YXRpYyBp
+bnQgdmdlbV9nZW1fZmF1bHQoc3RydWN0IHZtX2ZhdWx0ICp2bWYpCj4gK3N0YXRpYyB2bV9mYXVs
+dF90IHZnZW1fZ2VtX2ZhdWx0KHN0cnVjdCB2bV9mYXVsdCAqdm1mKQo+ICB7Cj4gIAlzdHJ1Y3Qg
+dm1fYXJlYV9zdHJ1Y3QgKnZtYSA9IHZtZi0+dm1hOwo+ICAJc3RydWN0IGRybV92Z2VtX2dlbV9v
+YmplY3QgKm9iaiA9IHZtYS0+dm1fcHJpdmF0ZV9kYXRhOwo+ICAJLyogV2UgZG9uJ3QgdXNlIHZt
+Zi0+cGdvZmYgc2luY2UgdGhhdCBoYXMgdGhlIGZha2Ugb2Zmc2V0ICovCj4gIAl1bnNpZ25lZCBs
+b25nIHZhZGRyID0gdm1mLT5hZGRyZXNzOwo+ICsJc3RydWN0IHBhZ2UgKnBhZ2U7Cj4gIAlpbnQg
+cmV0Owo+ICAJbG9mZl90IG51bV9wYWdlczsKPiAgCXBnb2ZmX3QgcGFnZV9vZmZzZXQ7Cj4gQEAg
+LTg1LDM1ICs4NiwyOSBAQCBzdGF0aWMgaW50IHZnZW1fZ2VtX2ZhdWx0KHN0cnVjdCB2bV9mYXVs
+dCAqdm1mKQo+ICAJCXJldCA9IDA7Cj4gIAl9Cj4gIAltdXRleF91bmxvY2soJm9iai0+cGFnZXNf
+bG9jayk7Cj4gLQlpZiAocmV0KSB7Cj4gLQkJc3RydWN0IHBhZ2UgKnBhZ2U7Cj4gLQo+IC0JCXBh
+Z2UgPSBzaG1lbV9yZWFkX21hcHBpbmdfcGFnZSgKPiAtCQkJCQlmaWxlX2lub2RlKG9iai0+YmFz
+ZS5maWxwKS0+aV9tYXBwaW5nLAo+IC0JCQkJCXBhZ2Vfb2Zmc2V0KTsKPiAtCQlpZiAoIUlTX0VS
+UihwYWdlKSkgewo+IC0JCQl2bWYtPnBhZ2UgPSBwYWdlOwo+IC0JCQlyZXQgPSAwOwo+IC0JCX0g
+ZWxzZSBzd2l0Y2ggKFBUUl9FUlIocGFnZSkpIHsKPiAtCQkJY2FzZSAtRU5PU1BDOgo+IC0JCQlj
+YXNlIC1FTk9NRU06Cj4gLQkJCQlyZXQgPSBWTV9GQVVMVF9PT007Cj4gLQkJCQlicmVhazsKPiAt
+CQkJY2FzZSAtRUJVU1k6Cj4gLQkJCQlyZXQgPSBWTV9GQVVMVF9SRVRSWTsKPiAtCQkJCWJyZWFr
+Owo+IC0JCQljYXNlIC1FRkFVTFQ6Cj4gLQkJCWNhc2UgLUVJTlZBTDoKPiAtCQkJCXJldCA9IFZN
+X0ZBVUxUX1NJR0JVUzsKPiAtCQkJCWJyZWFrOwo+IC0JCQlkZWZhdWx0Ogo+IC0JCQkJV0FSTl9P
+TihQVFJfRVJSKHBhZ2UpKTsKPiAtCQkJCXJldCA9IFZNX0ZBVUxUX1NJR0JVUzsKPiAtCQkJCWJy
+ZWFrOwo+IC0JCX0KPiArCWlmICghcmV0KQo+ICsJCXJldHVybiAwOwo+ICsKPiArCXBhZ2UgPSBz
+aG1lbV9yZWFkX21hcHBpbmdfcGFnZShmaWxlX2lub2RlKG9iai0+YmFzZS5maWxwKS0+aV9tYXBw
+aW5nLAo+ICsJCQlwYWdlX29mZnNldCk7Cj4gKwlpZiAoIUlTX0VSUihwYWdlKSkgewo+ICsJCXZt
+Zi0+cGFnZSA9IHBhZ2U7Cj4gKwkJcmV0dXJuIDA7Cj4gKwl9Cj4gIAo+ICsJc3dpdGNoIChQVFJf
+RVJSKHBhZ2UpKSB7Cj4gKwljYXNlIC1FTk9TUEM6Cj4gKwljYXNlIC1FTk9NRU06Cj4gKwkJcmV0
+dXJuIFZNX0ZBVUxUX09PTTsKPiArCWNhc2UgLUVCVVNZOgo+ICsJCXJldHVybiBWTV9GQVVMVF9S
+RVRSWTsKPiArCWNhc2UgLUVGQVVMVDoKPiArCWNhc2UgLUVJTlZBTDoKPiArCQlyZXR1cm4gVk1f
+RkFVTFRfU0lHQlVTOwo+ICsJZGVmYXVsdDoKPiArCQlXQVJOX09OKFBUUl9FUlIocGFnZSkpOwo+
+ICsJCXJldHVybiBWTV9GQVVMVF9TSUdCVVM7Cj4gIAl9Cj4gLQlyZXR1cm4gcmV0OwoKUmV2aWV3
+ZWQtYnk6IERhbmllbCBWZXR0ZXIgPGRhbmllbC52ZXR0ZXJAZmZ3bGwuY2g+CgpXYW50IG1lIHRv
+IG1lcmdlIHRoaXMgdGhyb3VnaCBkcm0tbWlzYyBvciBwbGFuIHRvIHBpY2sgaXQgdXAgeW91cnNl
+bGY/Ci1EYW5pZWwKCj4gIH0KPiAgCj4gIHN0YXRpYyBjb25zdCBzdHJ1Y3Qgdm1fb3BlcmF0aW9u
+c19zdHJ1Y3QgdmdlbV9nZW1fdm1fb3BzID0gewo+IC0tIAo+IDIuMTcuMAo+IAoKLS0gCkRhbmll
+bCBWZXR0ZXIKU29mdHdhcmUgRW5naW5lZXIsIEludGVsIENvcnBvcmF0aW9uCmh0dHA6Ly9ibG9n
+LmZmd2xsLmNoCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+CmRyaS1kZXZlbCBtYWlsaW5nIGxpc3QKZHJpLWRldmVsQGxpc3RzLmZyZWVkZXNrdG9wLm9yZwpo
+dHRwczovL2xpc3RzLmZyZWVkZXNrdG9wLm9yZy9tYWlsbWFuL2xpc3RpbmZvL2RyaS1kZXZlbAo=
