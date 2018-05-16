@@ -1,112 +1,70 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 13/14] mm: move arch specific VM_FAULT_* flags to mm.h
-Date: Wed, 16 May 2018 07:43:47 +0200
-Message-ID: <20180516054348.15950-14-hch@lst.de>
+Subject: [PATCH 10/14] vgem: separate errno from VM_FAULT_* values
+Date: Wed, 16 May 2018 07:43:44 +0200
+Message-ID: <20180516054348.15950-11-hch@lst.de>
 References: <20180516054348.15950-1-hch@lst.de>
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org, devel@lists.orangefs.org,
-        ceph-devel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mtd@lists.infradead.org, dri-devel@lists.freedesktop.org,
-        lustre-devel@lists.lustre.org,
-        linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org,
+ linux-kernel@vger.kernel.org, dri-devel@lists.freedesktop.org,
+ linux-mm@kvack.org, ocfs2-devel@oss.oracle.com, devel@lists.orangefs.org,
+ linux-fsdevel@vger.kernel.org, linux-mtd@lists.infradead.org,
+ ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, lustre-devel@lists.lustre.org
 To: Souptick Joarder <jrdr.linux@gmail.com>,
-        Matthew Wilcox <willy@infradead.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+ Matthew Wilcox <willy@infradead.org>
+Return-path: <dri-devel-bounces@lists.freedesktop.org>
 In-Reply-To: <20180516054348.15950-1-hch@lst.de>
-Sender: linux-kernel-owner@vger.kernel.org
+List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=unsubscribe>
+List-Archive: <https://lists.freedesktop.org/archives/dri-devel>
+List-Post: <mailto:dri-devel@lists.freedesktop.org>
+List-Help: <mailto:dri-devel-request@lists.freedesktop.org?subject=help>
+List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/dri-devel>,
+ <mailto:dri-devel-request@lists.freedesktop.org?subject=subscribe>
+Errors-To: dri-devel-bounces@lists.freedesktop.org
+Sender: "dri-devel" <dri-devel-bounces@lists.freedesktop.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Various architectures define their own internal flags.  Not sure a public
-header like mm.h is a good place, but keeping them inside the arch code
-with possible conflicts also seems like a bad idea.  Maybe we just need
-to stop overloading the value instead.
-
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- arch/arm/mm/fault.c       | 3 ---
- arch/arm64/mm/fault.c     | 3 ---
- arch/s390/mm/fault.c      | 6 ------
- arch/unicore32/mm/fault.c | 3 ---
- include/linux/mm.h        | 7 +++++++
- 5 files changed, 7 insertions(+), 15 deletions(-)
-
-diff --git a/arch/arm/mm/fault.c b/arch/arm/mm/fault.c
-index 32034543f49c..b696eabccf60 100644
---- a/arch/arm/mm/fault.c
-+++ b/arch/arm/mm/fault.c
-@@ -201,9 +201,6 @@ void do_bad_area(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
- }
- 
- #ifdef CONFIG_MMU
--#define VM_FAULT_BADMAP		0x010000
--#define VM_FAULT_BADACCESS	0x020000
--
- /*
-  * Check that the permissions on the VMA allow for the fault which occurred.
-  * If we encountered a write fault, we must have write permission, otherwise
-diff --git a/arch/arm64/mm/fault.c b/arch/arm64/mm/fault.c
-index 91c53a7d2575..3d0b1f8eacce 100644
---- a/arch/arm64/mm/fault.c
-+++ b/arch/arm64/mm/fault.c
-@@ -318,9 +318,6 @@ static void do_bad_area(unsigned long addr, unsigned int esr, struct pt_regs *re
- 	}
- }
- 
--#define VM_FAULT_BADMAP		0x010000
--#define VM_FAULT_BADACCESS	0x020000
--
- static int __do_page_fault(struct mm_struct *mm, unsigned long addr,
- 			   unsigned int mm_flags, unsigned long vm_flags,
- 			   struct task_struct *tsk)
-diff --git a/arch/s390/mm/fault.c b/arch/s390/mm/fault.c
-index e074480d3598..48c781ae25d0 100644
---- a/arch/s390/mm/fault.c
-+++ b/arch/s390/mm/fault.c
-@@ -44,12 +44,6 @@
- #define __SUBCODE_MASK 0x0600
- #define __PF_RES_FIELD 0x8000000000000000ULL
- 
--#define VM_FAULT_BADCONTEXT	0x010000
--#define VM_FAULT_BADMAP		0x020000
--#define VM_FAULT_BADACCESS	0x040000
--#define VM_FAULT_SIGNAL		0x080000
--#define VM_FAULT_PFAULT		0x100000
--
- enum fault_type {
- 	KERNEL_FAULT,
- 	USER_FAULT,
-diff --git a/arch/unicore32/mm/fault.c b/arch/unicore32/mm/fault.c
-index 381473412937..6c3c1a82925f 100644
---- a/arch/unicore32/mm/fault.c
-+++ b/arch/unicore32/mm/fault.c
-@@ -148,9 +148,6 @@ void do_bad_area(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
- 		__do_kernel_fault(mm, addr, fsr, regs);
- }
- 
--#define VM_FAULT_BADMAP		0x010000
--#define VM_FAULT_BADACCESS	0x020000
--
- /*
-  * Check that the permissions on the VMA allow for the fault which occurred.
-  * If we encountered a write fault, we must have write permission, otherwise
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 338b8a1afb02..64d09e3afc24 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1250,6 +1250,13 @@ static inline void clear_page_pfmemalloc(struct page *page)
- 					 * and needs fsync() to complete (for
- 					 * synchronous page faults in DAX) */
- 
-+/* Only for use in architecture specific page fault handling: */
-+#define VM_FAULT_BADMAP		0x010000
-+#define VM_FAULT_BADACCESS	0x020000
-+#define VM_FAULT_BADCONTEXT	0x040000
-+#define VM_FAULT_SIGNAL		0x080000
-+#define VM_FAULT_PFAULT		0x100000
-+
- #define VM_FAULT_ERROR	(VM_FAULT_OOM | VM_FAULT_SIGBUS | VM_FAULT_SIGSEGV | \
- 			 VM_FAULT_HWPOISON | VM_FAULT_HWPOISON_LARGE | \
- 			 VM_FAULT_FALLBACK)
--- 
-2.17.0
+QW5kIHN0cmVhbWxpbmUgdGhlIGNvZGUgaW4gdmdlbV9mYXVsdCB3aXRoIGVhcmx5IHJldHVybnMg
+c28gdGhhdCBpdCBpcwphIGxpdHRsZSBiaXQgbW9yZSByZWFkYWJsZS4KClNpZ25lZC1vZmYtYnk6
+IENocmlzdG9waCBIZWxsd2lnIDxoY2hAbHN0LmRlPgotLS0KIGRyaXZlcnMvZ3B1L2RybS92Z2Vt
+L3ZnZW1fZHJ2LmMgfCA1MSArKysrKysrKysrKysrKystLS0tLS0tLS0tLS0tLS0tLS0KIDEgZmls
+ZSBjaGFuZ2VkLCAyMyBpbnNlcnRpb25zKCspLCAyOCBkZWxldGlvbnMoLSkKCmRpZmYgLS1naXQg
+YS9kcml2ZXJzL2dwdS9kcm0vdmdlbS92Z2VtX2Rydi5jIGIvZHJpdmVycy9ncHUvZHJtL3ZnZW0v
+dmdlbV9kcnYuYwppbmRleCAyNTI0ZmYxMTZmMDAuLmEyNjFlMGFhYjgzYSAxMDA2NDQKLS0tIGEv
+ZHJpdmVycy9ncHUvZHJtL3ZnZW0vdmdlbV9kcnYuYworKysgYi9kcml2ZXJzL2dwdS9kcm0vdmdl
+bS92Z2VtX2Rydi5jCkBAIC02MSwxMiArNjEsMTMgQEAgc3RhdGljIHZvaWQgdmdlbV9nZW1fZnJl
+ZV9vYmplY3Qoc3RydWN0IGRybV9nZW1fb2JqZWN0ICpvYmopCiAJa2ZyZWUodmdlbV9vYmopOwog
+fQogCi1zdGF0aWMgaW50IHZnZW1fZ2VtX2ZhdWx0KHN0cnVjdCB2bV9mYXVsdCAqdm1mKQorc3Rh
+dGljIHZtX2ZhdWx0X3QgdmdlbV9nZW1fZmF1bHQoc3RydWN0IHZtX2ZhdWx0ICp2bWYpCiB7CiAJ
+c3RydWN0IHZtX2FyZWFfc3RydWN0ICp2bWEgPSB2bWYtPnZtYTsKIAlzdHJ1Y3QgZHJtX3ZnZW1f
+Z2VtX29iamVjdCAqb2JqID0gdm1hLT52bV9wcml2YXRlX2RhdGE7CiAJLyogV2UgZG9uJ3QgdXNl
+IHZtZi0+cGdvZmYgc2luY2UgdGhhdCBoYXMgdGhlIGZha2Ugb2Zmc2V0ICovCiAJdW5zaWduZWQg
+bG9uZyB2YWRkciA9IHZtZi0+YWRkcmVzczsKKwlzdHJ1Y3QgcGFnZSAqcGFnZTsKIAlpbnQgcmV0
+OwogCWxvZmZfdCBudW1fcGFnZXM7CiAJcGdvZmZfdCBwYWdlX29mZnNldDsKQEAgLTg1LDM1ICs4
+NiwyOSBAQCBzdGF0aWMgaW50IHZnZW1fZ2VtX2ZhdWx0KHN0cnVjdCB2bV9mYXVsdCAqdm1mKQog
+CQlyZXQgPSAwOwogCX0KIAltdXRleF91bmxvY2soJm9iai0+cGFnZXNfbG9jayk7Ci0JaWYgKHJl
+dCkgewotCQlzdHJ1Y3QgcGFnZSAqcGFnZTsKLQotCQlwYWdlID0gc2htZW1fcmVhZF9tYXBwaW5n
+X3BhZ2UoCi0JCQkJCWZpbGVfaW5vZGUob2JqLT5iYXNlLmZpbHApLT5pX21hcHBpbmcsCi0JCQkJ
+CXBhZ2Vfb2Zmc2V0KTsKLQkJaWYgKCFJU19FUlIocGFnZSkpIHsKLQkJCXZtZi0+cGFnZSA9IHBh
+Z2U7Ci0JCQlyZXQgPSAwOwotCQl9IGVsc2Ugc3dpdGNoIChQVFJfRVJSKHBhZ2UpKSB7Ci0JCQlj
+YXNlIC1FTk9TUEM6Ci0JCQljYXNlIC1FTk9NRU06Ci0JCQkJcmV0ID0gVk1fRkFVTFRfT09NOwot
+CQkJCWJyZWFrOwotCQkJY2FzZSAtRUJVU1k6Ci0JCQkJcmV0ID0gVk1fRkFVTFRfUkVUUlk7Ci0J
+CQkJYnJlYWs7Ci0JCQljYXNlIC1FRkFVTFQ6Ci0JCQljYXNlIC1FSU5WQUw6Ci0JCQkJcmV0ID0g
+Vk1fRkFVTFRfU0lHQlVTOwotCQkJCWJyZWFrOwotCQkJZGVmYXVsdDoKLQkJCQlXQVJOX09OKFBU
+Ul9FUlIocGFnZSkpOwotCQkJCXJldCA9IFZNX0ZBVUxUX1NJR0JVUzsKLQkJCQlicmVhazsKLQkJ
+fQorCWlmICghcmV0KQorCQlyZXR1cm4gMDsKKworCXBhZ2UgPSBzaG1lbV9yZWFkX21hcHBpbmdf
+cGFnZShmaWxlX2lub2RlKG9iai0+YmFzZS5maWxwKS0+aV9tYXBwaW5nLAorCQkJcGFnZV9vZmZz
+ZXQpOworCWlmICghSVNfRVJSKHBhZ2UpKSB7CisJCXZtZi0+cGFnZSA9IHBhZ2U7CisJCXJldHVy
+biAwOworCX0KIAorCXN3aXRjaCAoUFRSX0VSUihwYWdlKSkgeworCWNhc2UgLUVOT1NQQzoKKwlj
+YXNlIC1FTk9NRU06CisJCXJldHVybiBWTV9GQVVMVF9PT007CisJY2FzZSAtRUJVU1k6CisJCXJl
+dHVybiBWTV9GQVVMVF9SRVRSWTsKKwljYXNlIC1FRkFVTFQ6CisJY2FzZSAtRUlOVkFMOgorCQly
+ZXR1cm4gVk1fRkFVTFRfU0lHQlVTOworCWRlZmF1bHQ6CisJCVdBUk5fT04oUFRSX0VSUihwYWdl
+KSk7CisJCXJldHVybiBWTV9GQVVMVF9TSUdCVVM7CiAJfQotCXJldHVybiByZXQ7CiB9CiAKIHN0
+YXRpYyBjb25zdCBzdHJ1Y3Qgdm1fb3BlcmF0aW9uc19zdHJ1Y3QgdmdlbV9nZW1fdm1fb3BzID0g
+ewotLSAKMi4xNy4wCgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fXwpkcmktZGV2ZWwgbWFpbGluZyBsaXN0CmRyaS1kZXZlbEBsaXN0cy5mcmVlZGVza3RvcC5v
+cmcKaHR0cHM6Ly9saXN0cy5mcmVlZGVza3RvcC5vcmcvbWFpbG1hbi9saXN0aW5mby9kcmktZGV2
+ZWwK
