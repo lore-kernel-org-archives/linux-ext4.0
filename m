@@ -1,53 +1,76 @@
 From: ebiederm@xmission.com (Eric W. Biederman)
-Subject: Re: [PATCH 34/40] atm: simplify procfs code
-Date: Wed, 16 May 2018 20:15:21 -0500
-Message-ID: <87efibjd5i.fsf@xmission.com>
+Subject: Re: [PATCH 11/40] ipv6/flowlabel: simplify pid namespace lookup
+Date: Thu, 17 May 2018 00:28:01 -0500
+Message-ID: <871seakg0u.fsf@xmission.com>
 References: <20180425154827.32251-1-hch@lst.de>
-        <20180425154827.32251-35-hch@lst.de> <87r2mq2rll.fsf@xmission.com>
-        <20180515141232.GD31296@lst.de>
+ <20180425154827.32251-12-hch@lst.de> <878t8y46sy.fsf@xmission.com>
+ <20180515145643.GA661@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexey Dobriyan <adobriyan@gmail.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Jiri Slaby <jslaby@suse.com>,
-        Alessandro Zummo <a.zummo@towertech.it>,
-        Alexandre Belloni <alexandre.belloni@bootlin.com>,
-        linux-acpi@vger.kernel.org, drbd-dev@lists.linbit.com,
-        linux-ide@vger.kernel.org, netdev@vger.kernel.org,
-        linux-rtc@vger.kernel.org, megaraidlinux.pdl@broadcom.com,
-        linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org,
-        linux-afs@lists.infradead.org, linux-ext4@vger.kernel.org,
-        jfs-discussion@lists.sourceforge.net,
-        netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-rtc@vger.kernel.org, Alessandro Zummo <a.zummo@towertech.it>,
+ Alexandre Belloni <alexandre.belloni@bootlin.com>, devel@driverdev.osuosl.org,
+ linux-kernel@vger.kernel.org, linux-scsi@vger.kernel.org,
+ linux-ide@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ jfs-discussion@lists.sourceforge.net, linux-afs@lists.infradead.org,
+ linux-acpi@vger.kernel.org, netdev@vger.kernel.org,
+ netfilter-devel@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
+ Jiri Slaby <jslaby@suse.com>, Andrew Morton <akpm@linux-foundation.org>,
+ linux-ext4@vger.kernel.org, Alexey Dobriyan <adobriyan@gmail.com>,
+ megaraidlinux.pdl@broadcom.com, drbd-dev@lists.linbit.com
 To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180515141232.GD31296@lst.de> (Christoph Hellwig's message of
-        "Tue, 15 May 2018 16:12:33 +0200")
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <driverdev-devel-bounces@linuxdriverproject.org>
+In-Reply-To: <20180515145643.GA661@lst.de> (Christoph Hellwig's message of
+ "Tue, 15 May 2018 16:56:43 +0200")
+List-Unsubscribe: <http://driverdev.linuxdriverproject.org/mailman/options/driverdev-devel>,
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=unsubscribe>
+List-Archive: <http://driverdev.linuxdriverproject.org/pipermail/driverdev-devel/>
+List-Post: <mailto:driverdev-devel@linuxdriverproject.org>
+List-Help: <mailto:driverdev-devel-request@linuxdriverproject.org?subject=help>
+List-Subscribe: <http://driverdev.linuxdriverproject.org/mailman/listinfo/driverdev-devel>,
+ <mailto:driverdev-devel-request@linuxdriverproject.org?subject=subscribe>
+Errors-To: driverdev-devel-bounces@linuxdriverproject.org
+Sender: "devel" <driverdev-devel-bounces@linuxdriverproject.org>
 List-Id: linux-ext4.vger.kernel.org
 
 Christoph Hellwig <hch@lst.de> writes:
 
-> On Sat, May 05, 2018 at 07:51:18AM -0500, Eric W. Biederman wrote:
+> On Sat, May 05, 2018 at 07:37:33AM -0500, Eric W. Biederman wrote:
 >> Christoph Hellwig <hch@lst.de> writes:
 >> 
->> > Use remove_proc_subtree to remove the whole subtree on cleanup, and
->> > unwind the registration loop into individual calls.  Switch to use
->> > proc_create_seq where applicable.
+>> > The shole seq_file sequence already operates under a single RCU lock pair,
+>> > so move the pid namespace lookup into it, and stop grabbing a reference
+>> > and remove all kinds of boilerplate code.
 >> 
->> Can you please explain why you are removing the error handling when
->> you are unwinding the registration loop?
+>> This is wrong.
+>> 
+>> Move task_active_pid_ns(current) from open to seq_start actually means
+>> that the results if you pass this proc file between callers the results
+>> will change.  So this breaks file descriptor passing.
+>> 
+>> Open is a bad place to access current.  In the middle of read/write is
+>> broken.
+>> 
+>> 
+>> In this particular instance looking up the pid namespace with
+>> task_active_pid_ns was a personal brain fart.  What the code should be
+>> doing (with an appropriate helper) is:
+>> 
+>> struct pid_namespace *pid_ns = inode->i_sb->s_fs_info;
+>> 
+>> Because each mount of proc is bound to a pid namespace.  Looking up the
+>> pid namespace from the super_block is a much better way to go.
 >
-> Because there is no point in handling these errors.  The code work
-> perfectly fine without procfs, or without given proc files and the
-> removal works just fine if they don't exist either.  This is a very
-> common patter in various parts of the kernel already.
+> What do you have in mind for the helper?  For now I've thrown it in
+> opencoded into my working tree, but I'd be glad to add a helper.
 >
-> I'll document it better in the changelog.
+> struct pid_namespace *proc_pid_namespace(struct inode *inode)
+> {
+> 	// maybe warn on for s_magic not on procfs??
+> 	return inode->i_sb->s_fs_info;
+> }
 
-Thank you.  That is the kind of thing that could be a signal of
-inattentiveness and problems, especially when it is not documented.
+That should work.  Ideally out of line for the proc_fs.h version.
+Basically it should be a cousin of PDE_DATA.
 
 Eric
