@@ -1,59 +1,53 @@
-From: Alan Jenkins <alan.christopher.jenkins@gmail.com>
-Subject: Re: INFO: task hung in blk_queue_enter
-Date: Wed, 16 May 2018 18:33:36 +0100
-Message-ID: <0609ee2b-fbb6-9122-918a-cc2172ee2cfa@gmail.com>
-References: <0000000000009b212b056ae6dbad@google.com>
- <343bbbf6-64eb-879e-d19e-96aebb037d47@I-love.SAKURA.ne.jp>
- <b9c33b04-08d7-87a1-3d93-d81a84e6af12@I-love.SAKURA.ne.jp>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Subject: Re: [PATCH 34/40] atm: simplify procfs code
+Date: Wed, 16 May 2018 20:15:21 -0500
+Message-ID: <87efibjd5i.fsf@xmission.com>
+References: <20180425154827.32251-1-hch@lst.de>
+        <20180425154827.32251-35-hch@lst.de> <87r2mq2rll.fsf@xmission.com>
+        <20180515141232.GD31296@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 8bit
-Cc: syzbot <syzbot+c4f9cebf9d651f6e54de@syzkaller.appspotmail.com>,
-        linux-block@vger.kernel.org,
-        Dan Williams <dan.j.williams@intel.com>,
-        Jens Axboe <axboe@kernel.dk>, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, dvyukov@google.com,
-        Bart Van Assche <bart.vanassche@wdc.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Hannes Reinecke <hare@suse.com>,
-        Johannes Thumshirn <jthumshirn@suse.de>,
-        Keith Busch <keith.busch@intel.com>,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Martin Steigerwald <martin@lichtvoll.de>,
-        Ming Lei <ming.lei@redhat.com>,
-        Oleksandr Natalenko <oleksandr@natalenko.name>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        syzkaller-bugs@googlegroups.com
+Content-Type: text/plain
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexey Dobriyan <adobriyan@gmail.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Jiri Slaby <jslaby@suse.com>,
+        Alessandro Zummo <a.zummo@towertech.it>,
+        Alexandre Belloni <alexandre.belloni@bootlin.com>,
+        linux-acpi@vger.kernel.org, drbd-dev@lists.linbit.com,
+        linux-ide@vger.kernel.org, netdev@vger.kernel.org,
+        linux-rtc@vger.kernel.org, megaraidlinux.pdl@broadcom.com,
+        linux-scsi@vger.kernel.org, devel@driverdev.osuosl.org,
+        linux-afs@lists.infradead.org, linux-ext4@vger.kernel.org,
+        jfs-discussion@lists.sourceforge.net,
+        netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <b9c33b04-08d7-87a1-3d93-d81a84e6af12@I-love.SAKURA.ne.jp>
-Content-Language: en-GB
+In-Reply-To: <20180515141232.GD31296@lst.de> (Christoph Hellwig's message of
+        "Tue, 15 May 2018 16:12:33 +0200")
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
- > jbd2/sda1-8(PID=2271) is stuck waiting for journal commit operation.
- > I don't know how this thread is involved to this problem.
+Christoph Hellwig <hch@lst.de> writes:
 
-It feels like it should be a necessary link in the chain. This is the 
-filesystem underneath the loop device. If that hangs, we would expect 
-the loop device to hang, but not vice versa.
+> On Sat, May 05, 2018 at 07:51:18AM -0500, Eric W. Biederman wrote:
+>> Christoph Hellwig <hch@lst.de> writes:
+>> 
+>> > Use remove_proc_subtree to remove the whole subtree on cleanup, and
+>> > unwind the registration loop into individual calls.  Switch to use
+>> > proc_create_seq where applicable.
+>> 
+>> Can you please explain why you are removing the error handling when
+>> you are unwinding the registration loop?
+>
+> Because there is no point in handling these errors.  The code work
+> perfectly fine without procfs, or without given proc files and the
+> removal works just fine if they don't exist either.  This is a very
+> common patter in various parts of the kernel already.
+>
+> I'll document it better in the changelog.
 
-AIUI, you couldn't reproduce this hang on your own machine.
+Thank you.  That is the kind of thing that could be a signal of
+inattentiveness and problems, especially when it is not documented.
 
-Don't you think, your fuzzer has just found a nice exploit for reiserfs?
-
-Alan
-
-
-(It's interesting that you found this hang just after we fixed 
-block_queue_enter() to wait in D state instead of S state.[1]  I don't 
-know syszkaller, so I assume from this it only flagged this case up 
-because of the hung task warning. I.e. syzkaller didn't have its own 
-watchdog that would have failed the test anyway.
-
-[1] the commit that caused you to CC me. "block: do not use 
-interruptible wait anywhere"
-
-https://github.com/torvalds/linux/commit/1dc3039bc87ae7d19a990c3ee71cfd8a9068f428
-
-)
+Eric
