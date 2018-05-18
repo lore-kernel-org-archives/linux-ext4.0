@@ -1,13 +1,12 @@
-From: ebiederm@xmission.com (Eric W. Biederman)
-Subject: Re: [PATCH 11/40] ipv6/flowlabel: simplify pid namespace lookup
-Date: Thu, 17 May 2018 14:14:57 -0500
-Message-ID: <87efiahz66.fsf@xmission.com>
-References: <20180425154827.32251-1-hch@lst.de>
-        <20180425154827.32251-12-hch@lst.de> <878t8y46sy.fsf@xmission.com>
-        <20180515145643.GA661@lst.de> <871seakg0u.fsf@xmission.com>
-        <20180517064220.GA24300@lst.de>
+From: Paul Bolle <pebolle@tiscali.nl>
+Subject: Re: [PATCH 38/42] isdn: replace ->proc_fops with ->proc_show
+Date: Fri, 18 May 2018 10:43:46 +0200
+Message-ID: <4e7091873e8a220c454a7ce5a3f52edc5b5c3e3a.camel@tiscali.nl>
+References: <20180516094346.20506-1-hch@lst.de>
+         <20180516094346.20506-39-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 Cc: Andrew Morton <akpm@linux-foundation.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         Alexey Dobriyan <adobriyan@gmail.com>,
@@ -23,28 +22,59 @@ Cc: Andrew Morton <akpm@linux-foundation.org>,
         jfs-discussion@lists.sourceforge.net,
         netfilter-devel@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Christoph Hellwig <hch@lst.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180517064220.GA24300@lst.de> (Christoph Hellwig's message of
-        "Thu, 17 May 2018 08:42:20 +0200")
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <20180516094346.20506-39-hch@lst.de>
+Sender: netdev-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Christoph Hellwig <hch@lst.de> writes:
+Hi Christoph,
 
-> On Thu, May 17, 2018 at 12:28:01AM -0500, Eric W. Biederman wrote:
->> > struct pid_namespace *proc_pid_namespace(struct inode *inode)
->> > {
->> > 	// maybe warn on for s_magic not on procfs??
->> > 	return inode->i_sb->s_fs_info;
->> > }
->> 
->> That should work.  Ideally out of line for the proc_fs.h version.
->> Basically it should be a cousin of PDE_DATA.
->
-> The version in Al's tree is inline and without the warning as
-> I didn't want to drag in the magic.h include.  Please look at it for
-> additional comments, I can send incremental fixups if needed.
+(I don't think the patches of this series ever hit the ISDN related addresses
+still found in MAINTAINERS. And now I might be a bit late.) 
 
-Sounds good.
+Christoph Hellwig schreef op wo 16-05-2018 om 11:43 [+0200]:
+> diff --git a/drivers/isdn/gigaset/capi.c b/drivers/isdn/gigaset/capi.c
+> index ccec7778cad2..dac5cd35e901 100644
+> --- a/drivers/isdn/gigaset/capi.c
+> +++ b/drivers/isdn/gigaset/capi.c
+> @@ -2437,19 +2437,6 @@ static int gigaset_proc_show(struct seq_file *m, void *v)
+>  	return 0;
+>  }
+>  
+> -static int gigaset_proc_open(struct inode *inode, struct file *file)
+> -{
+> -	return single_open(file, gigaset_proc_show, PDE_DATA(inode));
+> -}
+> -
+> -static const struct file_operations gigaset_proc_fops = {
+> -	.owner		= THIS_MODULE,
+> -	.open		= gigaset_proc_open,
+> -	.read		= seq_read,
+> -	.llseek		= seq_lseek,
+> -	.release	= single_release,
+> -};
+> -
+>  /**
+>   * gigaset_isdn_regdev() - register device to LL
+>   * @cs:		device descriptor structure.
+> @@ -2478,8 +2465,7 @@ int gigaset_isdn_regdev(struct cardstate *cs, const char *isdnid)
+>  	iif->ctr.register_appl = gigaset_register_appl;
+>  	iif->ctr.release_appl  = gigaset_release_appl;
+>  	iif->ctr.send_message  = gigaset_send_message;
+> -	iif->ctr.procinfo      = gigaset_procinfo;
 
-Eric
+Is this intentional? You didn't touch the procinfo method in the other ISDN
+drivers, as far as I can see.
+
+(If it was intentional, gigaset_procinfo() can of course be removed.)
+
+> -	iif->ctr.proc_fops = &gigaset_proc_fops;
+> +	iif->ctr.proc_show     = gigaset_proc_show,
+>  	INIT_LIST_HEAD(&iif->appls);
+>  	skb_queue_head_init(&iif->sendqueue);
+>  	atomic_set(&iif->sendqlen, 0);
+
+Thanks,
+
+
+Paul Bolle
