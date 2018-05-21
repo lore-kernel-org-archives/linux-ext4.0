@@ -1,119 +1,32 @@
 From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH v2] fscrypt: add Speck128/256 support
-Date: Sun, 20 May 2018 20:56:57 -0400
-Message-ID: <20180521005657.GC4464@thunk.org>
-References: <20180508002208.7072-1-ebiggers@google.com>
+Subject: Re: [PATCH] jbd2: remove the conditional test
+Date: Sun, 20 May 2018 22:41:09 -0400
+Message-ID: <20180521024109.GF4464@thunk.org>
+References: <1517840679-5902-1-git-send-email-wanglong19@meituan.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jeffrey Walton <noloader@gmail.com>,
- "Jason A . Donenfeld" <Jason@zx2c4.com>, Greg Kaiser <gkaiser@google.com>,
- Michael Halcrow <mhalcrow@google.com>,
- Samuel Neves <samuel.c.p.neves@gmail.com>,
- Patrik Torstensson <totte@google.com>, linux-f2fs-devel@lists.sourceforge.net,
- linux-fscrypt@vger.kernel.org, linux-mtd@lists.infradead.org,
- linux-crypto@vger.kernel.org, linux-ext4@vger.kernel.org,
- Paul Crowley <paulcrowley@google.com>
-To: Eric Biggers <ebiggers@google.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: darrick.wong@oracle.com, jack@suse.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Wang Long <wanglong19@meituan.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180508002208.7072-1-ebiggers@google.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+In-Reply-To: <1517840679-5902-1-git-send-email-wanglong19@meituan.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 07, 2018 at 05:22:08PM -0700, Eric Biggers wrote:
-> fscrypt currently only supports AES encryption.  However, many low-end
-> mobile devices have older CPUs that don't have AES instructions, e.g.
-> the ARMv8 Cryptography Extensions.  Currently, user data on such devices
-> is not encrypted at rest because AES is too slow, even when the NEON
-> bit-sliced implementation of AES is used.  Unfortunately, it is
-> infeasible to encrypt these devices at all when AES is the only option.
+On Mon, Feb 05, 2018 at 10:24:39PM +0800, Wang Long wrote:
+> kmem_cache_destroy already handles null pointers, so we can remove the
+> conditional test entirely.
 > 
-> Therefore, this patch updates fscrypt to support the Speck block cipher,
-> which was recently added to the crypto API.  The C implementation of
-> Speck is not especially fast, but Speck can be implemented very
-> efficiently with general-purpose vector instructions, e.g. ARM NEON.
-> For example, on an ARMv7 processor, we measured the NEON-accelerated
-> Speck128/256-XTS at 69 MB/s for both encryption and decryption, while
-> AES-256-XTS with the NEON bit-sliced implementation was only 22 MB/s
-> encryption and 19 MB/s decryption.
+> This patch also set NULL after the kmem_cache_destroy in function
+> jbd2_journal_destroy_handle_cache.
 > 
-> There are multiple variants of Speck.  This patch only adds support for
-> Speck128/256, which is the variant with a 128-bit block size and 256-bit
-> key size -- the same as AES-256.  This is believed to be the most secure
-> variant of Speck, and it's only about 6% slower than Speck128/128.
-> Speck64/128 would be at least 20% faster because it has 20% rounds, and
-> it can be even faster on CPUs that can't efficiently do the 64-bit
-> operations needed for Speck128.  However, Speck64's 64-bit block size is
-> not preferred security-wise.  ARM NEON also supports the needed 64-bit
-> operations even on 32-bit CPUs, resulting in Speck128 being fast enough
-> for our targeted use cases so far.
-> 
-> The chosen modes of operation are XTS for contents and CTS-CBC for
-> filenames.  These are the same modes of operation that fscrypt defaults
-> to for AES.  Note that as with the other fscrypt modes, Speck will not
-> be used unless userspace chooses to use it.  Nor are any of the existing
-> modes (which are all AES-based) being removed, of course.
-> 
-> We intentionally don't make CONFIG_FS_ENCRYPTION select
-> CONFIG_CRYPTO_SPECK, so people will have to enable Speck support
-> themselves if they need it.  This is because we shouldn't bloat the
-> FS_ENCRYPTION dependencies with every new cipher, especially ones that
-> aren't recommended for most users.  Moreover, CRYPTO_SPECK is just the
-> generic implementation, which won't be fast enough for many users; in
-> practice, they'll need to enable CRYPTO_SPECK_NEON to get acceptable
-> performance.
-> 
-> More details about our choice of Speck can be found in our patches that
-> added Speck to the crypto API, and the follow-on discussion threads.
-> We're planning a publication that explains the choice in more detail.
-> But briefly, we can't use ChaCha20 as we previously proposed, since it
-> would be insecure to use a stream cipher in this context, with potential
-> IV reuse during writes on f2fs and/or on wear-leveling flash storage.
-> 
-> We also evaluated many other lightweight and/or ARX-based block ciphers
-> such as Chaskey-LTS, RC5, LEA, CHAM, Threefish, RC6, NOEKEON, SPARX, and
-> XTEA.  However, all had disadvantages vs. Speck, such as insufficient
-> performance with NEON, much less published cryptanalysis, or an
-> insufficient security level.  Various design choices in Speck make it
-> perform better with NEON than competing ciphers while still having a
-> security margin similar to AES, and in the case of Speck128 also the
-> same available security levels.  Unfortunately, Speck does have some
-> political baggage attached -- it's an NSA designed cipher, and was
-> rejected from an ISO standard (though for context, as far as I know none
-> of the above-mentioned alternatives are ISO standards either).
-> Nevertheless, we believe it is a good solution to the problem from a
-> technical perspective.
-> 
-> Certain algorithms constructed from ChaCha or the ChaCha permutation,
-> such as MEM (Masked Even-Mansour) or HPolyC, may also meet our
-> performance requirements.  However, these are new constructions that
-> need more time to receive the cryptographic review and acceptance needed
-> to be confident in their security.  HPolyC hasn't been published yet,
-> and we are concerned that MEM makes stronger assumptions about the
-> underlying permutation than the ChaCha stream cipher does.  In contrast,
-> the XTS mode of operation is relatively well accepted, and Speck has
-> over 70 cryptanalysis papers.  Of course, these ChaCha-based algorithms
-> can still be added later if they become ready.
-> 
-> The best known attack on Speck128/256 is a differential cryptanalysis
-> attack on 25 of 34 rounds with 2^253 time complexity and 2^125 chosen
-> plaintexts, i.e. only marginally faster than brute force.  There is no
-> known attack on the full 34 rounds.
-> 
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> Signed-off-by: Wang Long <wanglong19@meituan.com>
 
-Applied, thanks.
+Thanks; I clarified the patch summary to be:
 
-						- Ted
+    jbd2: remove NULL check before calling kmem_cache_destroy()
 
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+and have applied it.  Apologies for not getting to this earlier.
+
+    	 	      		    - Ted
