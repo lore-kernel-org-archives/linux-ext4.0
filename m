@@ -1,32 +1,26 @@
 From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: remove the conditional test
-Date: Sun, 20 May 2018 22:41:09 -0400
-Message-ID: <20180521024109.GF4464@thunk.org>
-References: <1517840679-5902-1-git-send-email-wanglong19@meituan.com>
+Subject: Re: [PATCH] ext4: Remove unnecessary NULL checks in ext4.
+Date: Sun, 20 May 2018 22:45:24 -0400
+Message-ID: <20180521024524.GG4464@thunk.org>
+References: <1517915730-11198-1-git-send-email-fxinrong@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: darrick.wong@oracle.com, jack@suse.com, linux-ext4@vger.kernel.org,
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org
-To: Wang Long <wanglong19@meituan.com>
+To: Sean Fu <fxinrong@gmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1517840679-5902-1-git-send-email-wanglong19@meituan.com>
+In-Reply-To: <1517915730-11198-1-git-send-email-fxinrong@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 05, 2018 at 10:24:39PM +0800, Wang Long wrote:
-> kmem_cache_destroy already handles null pointers, so we can remove the
-> conditional test entirely.
+On Tue, Feb 06, 2018 at 07:15:30PM +0800, Sean Fu wrote:
+> NULL check is done in kmem_cache_destroy. So remove NULL checks in ext4.
 > 
-> This patch also set NULL after the kmem_cache_destroy in function
-> jbd2_journal_destroy_handle_cache.
-> 
-> Signed-off-by: Wang Long <wanglong19@meituan.com>
+> Signed-off-by: Sean Fu <fxinrong@gmail.com>
 
-Thanks; I clarified the patch summary to be:
+Thanks, applied.  I clarified the patch summary to be:
 
-    jbd2: remove NULL check before calling kmem_cache_destroy()
+    ext4: remove NULL check before calling kmem_cache_destroy()
 
-and have applied it.  Apologies for not getting to this earlier.
-
-    	 	      		    - Ted
+    	  	      	    	   	   - Ted
