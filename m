@@ -1,155 +1,103 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 09/34] iomap: inline data should be an
- iomap type, not a flag
-Date: Tue, 29 May 2018 22:49:14 -0700
-Message-ID: <20180530054914.GX30110@magnolia>
-References: <20180523144357.18985-1-hch@lst.de>
-	<20180523144357.18985-10-hch@lst.de>
+From: Adrian Hunter <adrian.hunter@intel.com>
+Subject: Re: mmc filesystem performance decreased on the first write after
+ filesystem creation
+Date: Wed, 30 May 2018 11:44:04 +0300
+Message-ID: <c6a47e30-f07d-3f79-2189-38b6f01429b9@intel.com>
+References: <a976e20a-3ed1-43d0-4665-f570ef496d02@ti.com>
+ <20180528062618.GA4196@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	cluster-devel@redhat.com, linux-mm@kvack.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <cluster-devel-bounces@redhat.com>
-Content-Disposition: inline
-In-Reply-To: <20180523144357.18985-10-hch@lst.de>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-omap <linux-omap@vger.kernel.org>,
+        linux-mmc <linux-mmc@vger.kernel.org>,
+        linux-block <linux-block@vger.kernel.org>,
+        Ulf Hansson <ulf.hansson@linaro.org>,
+        Jens Axboe <axboe@kernel.dk>, linux-ext4@vger.kernel.org,
+        tytso@mit.edu
+To: Christoph Hellwig <hch@lst.de>, Faiz Abbas <faiz_abbas@ti.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180528062618.GA4196@lst.de>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, May 23, 2018 at 04:43:32PM +0200, Christoph Hellwig wrote:
-> Inline data is fundamentally different from our normal mapped case in that
-> it doesn't even have a block address.  So instead of having a flag for it
-> it should be an entirely separate iomap range type.
+On 28/05/18 09:26, Christoph Hellwig wrote:
+> Summary: mke2s uses the BLKDISCARD ioctl to wipe the device,
+> and then uses BLKDISCARDZEROES to check if that zeroed the data.
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> A while ago I made BLKDISCARDZEROES always return 0 because it is
+> basically impossible to have reliably zeroing using discard as the
+> standards leave the devices way to many options to not actually
+> zero data at their own choice when using the discard commands.
 
-Looks ok to me, anyone from gfs2/ext4 want to ack this?
-Let's cc those lists and see what happens...
+Older eMMC do not have a "discard" option and use "erase" instead.  "Erase"
+has similar benefits to "discard" but the eMMC is required to make the
+erased blocks read as either all 0's or all 1's.
 
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-
---D
-
-> ---
->  fs/ext4/inline.c      |  4 ++--
->  fs/gfs2/bmap.c        |  3 +--
->  fs/iomap.c            | 21 ++++++++++++---------
->  include/linux/iomap.h |  2 +-
->  4 files changed, 16 insertions(+), 14 deletions(-)
 > 
-> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-> index 70cf4c7b268a..e1f00891ef95 100644
-> --- a/fs/ext4/inline.c
-> +++ b/fs/ext4/inline.c
-> @@ -1835,8 +1835,8 @@ int ext4_inline_data_iomap(struct inode *inode, struct iomap *iomap)
->  	iomap->offset = 0;
->  	iomap->length = min_t(loff_t, ext4_get_inline_size(inode),
->  			      i_size_read(inode));
-> -	iomap->type = 0;
-> -	iomap->flags = IOMAP_F_DATA_INLINE;
-> +	iomap->type = IOMAP_INLINE;
-> +	iomap->flags = 0;
->  
->  out:
->  	up_read(&EXT4_I(inode)->xattr_sem);
-> diff --git a/fs/gfs2/bmap.c b/fs/gfs2/bmap.c
-> index 278ed0869c3c..cbeedd3cfb36 100644
-> --- a/fs/gfs2/bmap.c
-> +++ b/fs/gfs2/bmap.c
-> @@ -680,8 +680,7 @@ static void gfs2_stuffed_iomap(struct inode *inode, struct iomap *iomap)
->  		      sizeof(struct gfs2_dinode);
->  	iomap->offset = 0;
->  	iomap->length = i_size_read(inode);
-> -	iomap->type = IOMAP_MAPPED;
-> -	iomap->flags = IOMAP_F_DATA_INLINE;
-> +	iomap->type = IOMAP_INLINE;
->  }
->  
->  /**
-> diff --git a/fs/iomap.c b/fs/iomap.c
-> index 0900da23172c..f52209a2c270 100644
-> --- a/fs/iomap.c
-> +++ b/fs/iomap.c
-> @@ -503,10 +503,13 @@ static int iomap_to_fiemap(struct fiemap_extent_info *fi,
->  	case IOMAP_DELALLOC:
->  		flags |= FIEMAP_EXTENT_DELALLOC | FIEMAP_EXTENT_UNKNOWN;
->  		break;
-> +	case IOMAP_MAPPED:
-> +		break;
->  	case IOMAP_UNWRITTEN:
->  		flags |= FIEMAP_EXTENT_UNWRITTEN;
->  		break;
-> -	case IOMAP_MAPPED:
-> +	case IOMAP_INLINE:
-> +		flags |= FIEMAP_EXTENT_DATA_INLINE;
->  		break;
->  	}
->  
-> @@ -514,8 +517,6 @@ static int iomap_to_fiemap(struct fiemap_extent_info *fi,
->  		flags |= FIEMAP_EXTENT_MERGED;
->  	if (iomap->flags & IOMAP_F_SHARED)
->  		flags |= FIEMAP_EXTENT_SHARED;
-> -	if (iomap->flags & IOMAP_F_DATA_INLINE)
-> -		flags |= FIEMAP_EXTENT_DATA_INLINE;
->  
->  	return fiemap_fill_next_extent(fi, iomap->offset,
->  			iomap->addr != IOMAP_NULL_ADDR ? iomap->addr : 0,
-> @@ -1318,14 +1319,16 @@ static loff_t iomap_swapfile_activate_actor(struct inode *inode, loff_t pos,
->  	struct iomap_swapfile_info *isi = data;
->  	int error;
->  
-> -	/* No inline data. */
-> -	if (iomap->flags & IOMAP_F_DATA_INLINE) {
-> +	switch (iomap->type) {
-> +	case IOMAP_MAPPED:
-> +	case IOMAP_UNWRITTEN:
-> +		/* Only real or unwritten extents. */
-> +		break;
-> +	case IOMAP_INLINE:
-> +		/* No inline data. */
->  		pr_err("swapon: file is inline\n");
->  		return -EINVAL;
-> -	}
-> -
-> -	/* Only real or unwritten extents. */
-> -	if (iomap->type != IOMAP_MAPPED && iomap->type != IOMAP_UNWRITTEN) {
-> +	default:
->  		pr_err("swapon: file has unallocated extents\n");
->  		return -EINVAL;
->  	}
-> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-> index 4bd87294219a..8f7095fc514e 100644
-> --- a/include/linux/iomap.h
-> +++ b/include/linux/iomap.h
-> @@ -18,6 +18,7 @@ struct vm_fault;
->  #define IOMAP_DELALLOC	0x02	/* delayed allocation blocks */
->  #define IOMAP_MAPPED	0x03	/* blocks allocated at @addr */
->  #define IOMAP_UNWRITTEN	0x04	/* blocks allocated at @addr in unwritten state */
-> +#define IOMAP_INLINE	0x05	/* data inline in the inode */
->  
->  /*
->   * Flags for all iomap mappings:
-> @@ -34,7 +35,6 @@ struct vm_fault;
->   */
->  #define IOMAP_F_MERGED		0x10	/* contains multiple blocks/extents */
->  #define IOMAP_F_SHARED		0x20	/* block shared with another file */
-> -#define IOMAP_F_DATA_INLINE	0x40	/* data inline in the inode */
->  
->  /*
->   * Magic value for addr:
-> -- 
-> 2.17.0
+> So IFF mke2fs want to actually free space and zero it it needs
+> to use fallocate to punch a hole, and mmc needs to implement
+> REQ_OP_WRITE_ZEROS IFF it actually has a reliable way to zero
+> blocks.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> On Tue, May 22, 2018 at 08:48:31PM +0530, Faiz Abbas wrote:
+>> Hi,
+>>
+>> I am debugging a performance reduction in ext2 filesystems on an mmc
+>> device in TI's am335x evm board.
+>>
+>> I see that the performance is reduced on the first write after making a
+>> new filesystem using mkfs.ext2 on one of the mmc partitions. The
+>> performance comes back to normal after the first write.
+>>
+>> commands used:
+>>
+>> => umount /dev/mmcblk1p2
+>>
+>> => mkfs.ext2 -F  /dev/mmcblk1p2
+>>
+>> => mount -t ext2 -o async /dev/mmcblk1p2 /mnt/partition_mmc
+>>
+>> => dd if=/dev/urandom of=/dev/shm/srctest_file_mmc_1184 bs=1M count=10
+>>
+>> => ./filesystem_tests -write -src_file /dev/shm/srctest_file_mmc_1184
+>> -srcfile_size 10 -file /mnt/partition_mmc/test_file_1184 -buffer_size
+>> 102400 -file_size 100 -performance
+>>
+>> The filesystem_tests write utility reads from the file generated at
+>> /dev/shm/srctest_file_mmc_1184, memory maps the file to a buffer, and
+>> then writes it into the newly created /mnt/partition_mmc in multiples of
+>> buffer_size while measuring write performance.
+>>
+>> See here for the implementation of filesystem_tests write utility:
+>> http://arago-project.org/git/projects/?p=test-automation/ltp-ddt.git;a=blob;f=testcases/ddt/filesystem_test_suite/src/testcases/st_filesystem_write_to_file.c;h=80e8e244d7eaa9f0dbd9b21ea705445156c36bef;hb=f7fc06c290333ce08a7d4fba104eee0f0f1d942b
+>>
+>> Complete log with multiple calls to filesystem_tests:
+>> https://pastebin.ubuntu.com/p/BckmTJpqPv/
+>>
+>> Notice that the first run of filesystem_tests has a lower throughput
+>> reported.
+>>
+>> I was able to bisect the issue to this commit:
+>> 5d1429fead5b (mmc: remove the discard_zeroes_data flag)
+>>
+>> I would assume that after this flag is removed, the filesystem creation
+>> command would explicitly write zeroes to the device which might explain
+>> the performance fall. However, then the mkfs.ext2 command itself should
+>> take more time rather than the first file write after that.
+
+You might want to check the lazy initialization options.  I always use
+"-Elazy_itable_init=0,lazy_journal_init=0" with ext4 to prevent it messing
+up performance tests.
+
+>>
+>> It would be nice if someone could help me understand why this is happening.
+>>
+>> Thanks for your help.
+>>
+>> Regards,
+>> Faiz
+> ---end quoted text---
+> 
