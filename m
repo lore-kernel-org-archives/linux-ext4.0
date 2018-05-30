@@ -1,98 +1,62 @@
-From: Adrian Hunter <adrian.hunter@intel.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
 Subject: Re: mmc filesystem performance decreased on the first write after
  filesystem creation
-Date: Wed, 30 May 2018 11:51:41 +0300
-Message-ID: <43d4164f-5dda-b49a-6008-1f5bf4b08547@intel.com>
+Date: Wed, 30 May 2018 12:15:07 -0400
+Message-ID: <20180530161507.GA14279@thunk.org>
 References: <a976e20a-3ed1-43d0-4665-f570ef496d02@ti.com>
  <20180528062618.GA4196@lst.de>
  <c6a47e30-f07d-3f79-2189-38b6f01429b9@intel.com>
+ <43d4164f-5dda-b49a-6008-1f5bf4b08547@intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@lst.de>, Faiz Abbas <faiz_abbas@ti.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         linux-omap <linux-omap@vger.kernel.org>,
         linux-mmc <linux-mmc@vger.kernel.org>,
         linux-block <linux-block@vger.kernel.org>,
         Ulf Hansson <ulf.hansson@linaro.org>,
-        Jens Axboe <axboe@kernel.dk>, linux-ext4@vger.kernel.org,
-        tytso@mit.edu
-To: Christoph Hellwig <hch@lst.de>, Faiz Abbas <faiz_abbas@ti.com>
+        Jens Axboe <axboe@kernel.dk>, linux-ext4@vger.kernel.org
+To: Adrian Hunter <adrian.hunter@intel.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <c6a47e30-f07d-3f79-2189-38b6f01429b9@intel.com>
-Content-Language: en-US
+Content-Disposition: inline
+In-Reply-To: <43d4164f-5dda-b49a-6008-1f5bf4b08547@intel.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 30/05/18 11:44, Adrian Hunter wrote:
-> On 28/05/18 09:26, Christoph Hellwig wrote:
->> Summary: mke2s uses the BLKDISCARD ioctl to wipe the device,
->> and then uses BLKDISCARDZEROES to check if that zeroed the data.
->>
->> A while ago I made BLKDISCARDZEROES always return 0 because it is
->> basically impossible to have reliably zeroing using discard as the
->> standards leave the devices way to many options to not actually
->> zero data at their own choice when using the discard commands.
+On Wed, May 30, 2018 at 11:51:41AM +0300, Adrian Hunter wrote:
 > 
-> Older eMMC do not have a "discard" option and use "erase" instead.  "Erase"
-> has similar benefits to "discard" but the eMMC is required to make the
-> erased blocks read as either all 0's or all 1's.
-> 
->>
->> So IFF mke2fs want to actually free space and zero it it needs
->> to use fallocate to punch a hole, and mmc needs to implement
->> REQ_OP_WRITE_ZEROS IFF it actually has a reliable way to zero
->> blocks.
->>
->>
->> On Tue, May 22, 2018 at 08:48:31PM +0530, Faiz Abbas wrote:
->>> Hi,
->>>
->>> I am debugging a performance reduction in ext2 filesystems on an mmc
->>> device in TI's am335x evm board.
->>>
->>> I see that the performance is reduced on the first write after making a
->>> new filesystem using mkfs.ext2 on one of the mmc partitions. The
->>> performance comes back to normal after the first write.
->>>
->>> commands used:
->>>
->>> => umount /dev/mmcblk1p2
->>>
->>> => mkfs.ext2 -F  /dev/mmcblk1p2
->>>
->>> => mount -t ext2 -o async /dev/mmcblk1p2 /mnt/partition_mmc
->>>
->>> => dd if=/dev/urandom of=/dev/shm/srctest_file_mmc_1184 bs=1M count=10
->>>
->>> => ./filesystem_tests -write -src_file /dev/shm/srctest_file_mmc_1184
->>> -srcfile_size 10 -file /mnt/partition_mmc/test_file_1184 -buffer_size
->>> 102400 -file_size 100 -performance
->>>
->>> The filesystem_tests write utility reads from the file generated at
->>> /dev/shm/srctest_file_mmc_1184, memory maps the file to a buffer, and
->>> then writes it into the newly created /mnt/partition_mmc in multiples of
->>> buffer_size while measuring write performance.
->>>
->>> See here for the implementation of filesystem_tests write utility:
->>> http://arago-project.org/git/projects/?p=test-automation/ltp-ddt.git;a=blob;f=testcases/ddt/filesystem_test_suite/src/testcases/st_filesystem_write_to_file.c;h=80e8e244d7eaa9f0dbd9b21ea705445156c36bef;hb=f7fc06c290333ce08a7d4fba104eee0f0f1d942b
->>>
->>> Complete log with multiple calls to filesystem_tests:
->>> https://pastebin.ubuntu.com/p/BckmTJpqPv/
->>>
->>> Notice that the first run of filesystem_tests has a lower throughput
->>> reported.
->>>
->>> I was able to bisect the issue to this commit:
->>> 5d1429fead5b (mmc: remove the discard_zeroes_data flag)
->>>
->>> I would assume that after this flag is removed, the filesystem creation
->>> command would explicitly write zeroes to the device which might explain
->>> the performance fall. However, then the mkfs.ext2 command itself should
->>> take more time rather than the first file write after that.
-> 
-> You might want to check the lazy initialization options.  I always use
-> "-Elazy_itable_init=0,lazy_journal_init=0" with ext4 to prevent it messing
-> up performance tests.
+> And discards are not enabled by default by mount so, at least on ext4,
+> adding "-o discard" is needed in the mount options.
 
-And discards are not enabled by default by mount so, at least on ext4,
-adding "-o discard" is needed in the mount options.
+This is because doing discards right away is not always a win from
+performance reasons.  There are some flash devices where discards are
+super-slow and some devices where issuing discards too quickly would
+cause them to trigger internal FTL race conditions and turn them into
+paperweights.
+
+There was at least one engineer from a Linux distribution who argued
+for making discard not the default because back then, there were a lot
+of SSD's floating out there (by a manufacturer who thankfully has
+since gone bankrupt :-) for which they didn't want to deal with the
+support requests from people who were angry about lost data or
+destroyed SSD's --- because guess who they would blame?
+
+Also, please note that for many devices it's much better to
+periodically run fstrim (once a day or once a week) out of cron.
+
+If someone wants to do a survey of available hardware and demonstrate:
+
+   * there is significant value from enabling -o discard by default
+     (instead of using fstrim)
+
+   * there are no (or at least very, very few) devices for which
+     enabling -o discard results in a major performance regression,
+     and
+
+   * if there are any devices left that turn into paperweights, they can
+     be managed using blacklists,
+
+I'm certainly open to changing the default.  There was, however, a
+really good *reason* why the default was chosen to be the way it is.
+
+					- Ted
