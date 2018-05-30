@@ -1,34 +1,155 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: prefer strlcpy to strncpy
-Date: Wed, 30 May 2018 01:14:58 -0400
-Message-ID: <20180530051458.GB27959@thunk.org>
-References: <1527574913-10561-1-git-send-email-nick.desaulniers@gmail.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+Subject: Re: [PATCH 09/34] iomap: inline data should be an
+ iomap type, not a flag
+Date: Tue, 29 May 2018 22:49:14 -0700
+Message-ID: <20180530054914.GX30110@magnolia>
+References: <20180523144357.18985-1-hch@lst.de>
+	<20180523144357.18985-10-hch@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Nick Desaulniers <nick.desaulniers@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	cluster-devel@redhat.com, linux-mm@kvack.org
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <cluster-devel-bounces@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <1527574913-10561-1-git-send-email-nick.desaulniers@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20180523144357.18985-10-hch@lst.de>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 28, 2018 at 11:21:53PM -0700, Nick Desaulniers wrote:
-> Fixes a stringop-truncation warning from gcc-8.
+On Wed, May 23, 2018 at 04:43:32PM +0200, Christoph Hellwig wrote:
+> Inline data is fundamentally different from our normal mapped case in that
+> it doesn't even have a block address.  So instead of having a flag for it
+> it should be an entirely separate iomap range type.
 > 
-> Signed-off-by: Nick Desaulniers <nick.desaulniers@gmail.com>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-I'll note that the ext4 superblock fields are *not* guaranteed to be
-NULL terminated.  Code that references them must, and do, deal with
-this appropriately.  See for example:
+Looks ok to me, anyone from gfs2/ext4 want to ack this?
+Let's cc those lists and see what happens...
 
-https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git/tree/lib/e2p/ls.c#n436
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-GCC-8 may whine about it, but the whine is, in fact, not correct.
-It's making assumptions about all strings being null terminated, which
-is often, but not always, the case.
+--D
 
-Cheers,
-
-						- Ted
+> ---
+>  fs/ext4/inline.c      |  4 ++--
+>  fs/gfs2/bmap.c        |  3 +--
+>  fs/iomap.c            | 21 ++++++++++++---------
+>  include/linux/iomap.h |  2 +-
+>  4 files changed, 16 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+> index 70cf4c7b268a..e1f00891ef95 100644
+> --- a/fs/ext4/inline.c
+> +++ b/fs/ext4/inline.c
+> @@ -1835,8 +1835,8 @@ int ext4_inline_data_iomap(struct inode *inode, struct iomap *iomap)
+>  	iomap->offset = 0;
+>  	iomap->length = min_t(loff_t, ext4_get_inline_size(inode),
+>  			      i_size_read(inode));
+> -	iomap->type = 0;
+> -	iomap->flags = IOMAP_F_DATA_INLINE;
+> +	iomap->type = IOMAP_INLINE;
+> +	iomap->flags = 0;
+>  
+>  out:
+>  	up_read(&EXT4_I(inode)->xattr_sem);
+> diff --git a/fs/gfs2/bmap.c b/fs/gfs2/bmap.c
+> index 278ed0869c3c..cbeedd3cfb36 100644
+> --- a/fs/gfs2/bmap.c
+> +++ b/fs/gfs2/bmap.c
+> @@ -680,8 +680,7 @@ static void gfs2_stuffed_iomap(struct inode *inode, struct iomap *iomap)
+>  		      sizeof(struct gfs2_dinode);
+>  	iomap->offset = 0;
+>  	iomap->length = i_size_read(inode);
+> -	iomap->type = IOMAP_MAPPED;
+> -	iomap->flags = IOMAP_F_DATA_INLINE;
+> +	iomap->type = IOMAP_INLINE;
+>  }
+>  
+>  /**
+> diff --git a/fs/iomap.c b/fs/iomap.c
+> index 0900da23172c..f52209a2c270 100644
+> --- a/fs/iomap.c
+> +++ b/fs/iomap.c
+> @@ -503,10 +503,13 @@ static int iomap_to_fiemap(struct fiemap_extent_info *fi,
+>  	case IOMAP_DELALLOC:
+>  		flags |= FIEMAP_EXTENT_DELALLOC | FIEMAP_EXTENT_UNKNOWN;
+>  		break;
+> +	case IOMAP_MAPPED:
+> +		break;
+>  	case IOMAP_UNWRITTEN:
+>  		flags |= FIEMAP_EXTENT_UNWRITTEN;
+>  		break;
+> -	case IOMAP_MAPPED:
+> +	case IOMAP_INLINE:
+> +		flags |= FIEMAP_EXTENT_DATA_INLINE;
+>  		break;
+>  	}
+>  
+> @@ -514,8 +517,6 @@ static int iomap_to_fiemap(struct fiemap_extent_info *fi,
+>  		flags |= FIEMAP_EXTENT_MERGED;
+>  	if (iomap->flags & IOMAP_F_SHARED)
+>  		flags |= FIEMAP_EXTENT_SHARED;
+> -	if (iomap->flags & IOMAP_F_DATA_INLINE)
+> -		flags |= FIEMAP_EXTENT_DATA_INLINE;
+>  
+>  	return fiemap_fill_next_extent(fi, iomap->offset,
+>  			iomap->addr != IOMAP_NULL_ADDR ? iomap->addr : 0,
+> @@ -1318,14 +1319,16 @@ static loff_t iomap_swapfile_activate_actor(struct inode *inode, loff_t pos,
+>  	struct iomap_swapfile_info *isi = data;
+>  	int error;
+>  
+> -	/* No inline data. */
+> -	if (iomap->flags & IOMAP_F_DATA_INLINE) {
+> +	switch (iomap->type) {
+> +	case IOMAP_MAPPED:
+> +	case IOMAP_UNWRITTEN:
+> +		/* Only real or unwritten extents. */
+> +		break;
+> +	case IOMAP_INLINE:
+> +		/* No inline data. */
+>  		pr_err("swapon: file is inline\n");
+>  		return -EINVAL;
+> -	}
+> -
+> -	/* Only real or unwritten extents. */
+> -	if (iomap->type != IOMAP_MAPPED && iomap->type != IOMAP_UNWRITTEN) {
+> +	default:
+>  		pr_err("swapon: file has unallocated extents\n");
+>  		return -EINVAL;
+>  	}
+> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+> index 4bd87294219a..8f7095fc514e 100644
+> --- a/include/linux/iomap.h
+> +++ b/include/linux/iomap.h
+> @@ -18,6 +18,7 @@ struct vm_fault;
+>  #define IOMAP_DELALLOC	0x02	/* delayed allocation blocks */
+>  #define IOMAP_MAPPED	0x03	/* blocks allocated at @addr */
+>  #define IOMAP_UNWRITTEN	0x04	/* blocks allocated at @addr in unwritten state */
+> +#define IOMAP_INLINE	0x05	/* data inline in the inode */
+>  
+>  /*
+>   * Flags for all iomap mappings:
+> @@ -34,7 +35,6 @@ struct vm_fault;
+>   */
+>  #define IOMAP_F_MERGED		0x10	/* contains multiple blocks/extents */
+>  #define IOMAP_F_SHARED		0x20	/* block shared with another file */
+> -#define IOMAP_F_DATA_INLINE	0x40	/* data inline in the inode */
+>  
+>  /*
+>   * Magic value for addr:
+> -- 
+> 2.17.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
