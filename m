@@ -1,19 +1,20 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+From: "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
 Subject: Re: Question about Experimental of Filesystem DAX.
-Date: Thu, 31 May 2018 09:29:15 -0700
-Message-ID: <CAPcyv4jpffaM60tTdLTojhh0CDwcbVUdS8td7R6LKWM3bb15dw@mail.gmail.com>
+Date: Thu, 31 May 2018 10:46:36 -0700
+Message-ID: <20180531174636.GA7825@magnolia>
 References: <20180531112731.0CAC.E1E9C6FF@jp.fujitsu.com>
  <20180531150716.GA19764@linux.intel.com>
+ <CAPcyv4jpffaM60tTdLTojhh0CDwcbVUdS8td7R6LKWM3bb15dw@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, NVDIMM-ML <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
  linux-xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, Yasunori Goto <y-goto-+CUm20s59erQFUHtdCDX3A@public.gmane.org>,
  linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20180531150716.GA19764-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4jpffaM60tTdLTojhh0CDwcbVUdS8td7R6LKWM3bb15dw-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -25,60 +26,97 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 31, 2018 at 8:07 AM, Ross Zwisler
-<ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> wrote:
-> On Thu, May 31, 2018 at 11:27:33AM +0900, Yasunori Goto wrote:
->> Hello,
->>
->>
->> I would like to know about the Experimental message of Filesystem DAX.
->> --------------------------------------------------------
->> DAX enabled. Warning: EXPERIMENTAL, use at your own risk
->> --------------------------------------------------------
->>
->> AFAIK, the final issue of Filesystem DAX is metadata update problem,
->> and it is(will be?) solved by great effort of MAP_SYNC and
->> "fix dma vs truncate/hole-punch" patch set.
->> So, I suppose that the Experimental message can be removed,
->> but I'm not sure.
->>
->> Is it possible?
->> Otherwise, are there any other issues in Filesystem DAX yet?
->>
->> If this is silly question, sorry for noise....
->>
->> Thanks,
->> ---
->> Yasunori Goto
->
-> Adding in the XFS and ext4 developers, as it's really their call when to
-> remove this notice.
->
-> We've talked about this off and on for a long while, but IMHO we should remove
-> the EXPERIMENTAL warning.  The last few things that we had on our TODO list
-> before this was removed were:
->
-> 1) Get consistent handling of the DAX mount option.  We currently have this,
-> as both filesystems will behave the same and fall back and remove the DAX
-> mount option if it is unsupported by the block device, etc.
->
-> 2) Get consistent handling of the DAX inode option.  We currently have this,
-> as all DAX behavior now happens through the mount option.  If/when we
-> re-enable the per-inode DAX flag we should do it consistently for all DAX
-> enabled filesystems.
->
-> 3) Make DAX work with other XFS features like reflink, etc.  This one isn't
-> done, but we at least disallow DAX with XFS features like reflink where it
-> could be an issue.  Darrick, do you still feel like we need to get these
-> working together to remove EXPERIMENTAL, or are you happy enough that we're
-> keeping them separated and that we're keeping user data safe?
->
-> Jan and the other ext4 guys, do you have any additional things you need done
-> before removing the EXPERIMENTAL warning from ext4 + DAX?
+On Thu, May 31, 2018 at 09:29:15AM -0700, Dan Williams wrote:
+> On Thu, May 31, 2018 at 8:07 AM, Ross Zwisler
+> <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> wrote:
+> > On Thu, May 31, 2018 at 11:27:33AM +0900, Yasunori Goto wrote:
+> >> Hello,
+> >>
+> >>
+> >> I would like to know about the Experimental message of Filesystem DAX.
+> >> --------------------------------------------------------
+> >> DAX enabled. Warning: EXPERIMENTAL, use at your own risk
+> >> --------------------------------------------------------
+> >>
+> >> AFAIK, the final issue of Filesystem DAX is metadata update problem,
+> >> and it is(will be?) solved by great effort of MAP_SYNC and
+> >> "fix dma vs truncate/hole-punch" patch set.
+> >> So, I suppose that the Experimental message can be removed,
+> >> but I'm not sure.
+> >>
+> >> Is it possible?
+> >> Otherwise, are there any other issues in Filesystem DAX yet?
+> >>
+> >> If this is silly question, sorry for noise....
+> >>
+> >> Thanks,
+> >> ---
+> >> Yasunori Goto
+> >
+> > Adding in the XFS and ext4 developers, as it's really their call when to
+> > remove this notice.
+> >
+> > We've talked about this off and on for a long while, but IMHO we should remove
+> > the EXPERIMENTAL warning.  The last few things that we had on our TODO list
+> > before this was removed were:
+> >
+> > 1) Get consistent handling of the DAX mount option.  We currently have this,
+> > as both filesystems will behave the same and fall back and remove the DAX
+> > mount option if it is unsupported by the block device, etc.
 
-The one's on my list are:
+<nod>
 
-1/ Get proper support for recovering userspace consumed poison in DAX
-mappings (may not make 4.18)
+As an aside, I wonder if Christoph's musings about "just have the kernel
+determine the appropriate dax/non-dax setting from the acpi tables and
+skip the inode flag entirely" ever got resolved?
 
-2/ The DAX-DMA vs Truncate fix (queued for 4.18).
+> > 2) Get consistent handling of the DAX inode option.  We currently have this,
+> > as all DAX behavior now happens through the mount option.  If/when we
+> > re-enable the per-inode DAX flag we should do it consistently for all DAX
+> > enabled filesystems.
+
+The behavior of the inode flag isn't all that consistent.  ext4 doesn't
+support it at all.  On XFS, you can set or clear FS_XFLAG_DAX on a
+directory which will propagate the setting to any files created in that
+directory.
+
+However, if you set or clear it on a file we update the on-disk inode
+but we can't change the in-core state flag (S_DAX) until the next
+in-core inode instantiation.  It's weird that users can change the flag
+but the intended behavior changes won't happen until some ... time ...
+in the future??
+
+> > 3) Make DAX work with other XFS features like reflink, etc.  This one isn't
+> > done, but we at least disallow DAX with XFS features like reflink where it
+> > could be an issue.  Darrick, do you still feel like we need to get these
+> > working together to remove EXPERIMENTAL, or are you happy enough that we're
+> > keeping them separated and that we're keeping user data safe?
+
+Yes, reflink and dax still need to work together.  I've not heard any
+good arguments for why page sharing + copy on write are fundamentally
+incompatible with the dax model, or why dax users will never, ever
+require reflink.
+
+The recent thread between Jan and Dan make me wonder if making mappings
+share struct pages is going to be a nightmare to add to the mm code,
+though...
+
+Also: ideally XFS would also be able to consume poison event
+notifications from the pmem so that it can try to deal with metadata
+loss, but that's probably a separate effort.
+
+--D
+
+> > Jan and the other ext4 guys, do you have any additional things you need done
+> > before removing the EXPERIMENTAL warning from ext4 + DAX?
+> 
+> The one's on my list are:
+> 
+> 1/ Get proper support for recovering userspace consumed poison in DAX
+> mappings (may not make 4.18)
+> 
+> 2/ The DAX-DMA vs Truncate fix (queued for 4.18).
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
