@@ -1,150 +1,120 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: Question about Experimental of Filesystem DAX.
-Date: Fri, 1 Jun 2018 09:05:50 +1000
-Message-ID: <20180531230550.GN10363@dastard>
-References: <20180531112731.0CAC.E1E9C6FF@jp.fujitsu.com>
- <20180531150716.GA19764@linux.intel.com>
- <CAPcyv4jpffaM60tTdLTojhh0CDwcbVUdS8td7R6LKWM3bb15dw@mail.gmail.com>
- <20180531174636.GA7825@magnolia>
- <CAPcyv4gS1GCN9TFjngTmmHu83-uMgRpvvx842ZGnvxB3PbgU+Q@mail.gmail.com>
+From: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Subject: Re: INFO: task hung in blk_queue_enter
+Date: Fri, 1 Jun 2018 19:10:17 +0900
+Message-ID: <25708e84-6f35-04c3-a2e4-6854f0ed9e78@I-love.SAKURA.ne.jp>
+References: <b9c33b04-08d7-87a1-3d93-d81a84e6af12@I-love.SAKURA.ne.jp>
+ <43327033306c3dd2f7c3717d64ce22415b6f3451.camel@wdc.com>
+ <CACT4Y+ZJwvROpBmKWF08fTd2AH=dO-a5+dzCzZua_vVFjiCRBw@mail.gmail.com>
+ <6db16aa3a7c56b6dcca2d10b4e100a780c740081.camel@wdc.com>
+ <201805220652.BFH82351.SMQFFOJOtFOVLH@I-love.SAKURA.ne.jp>
+ <201805222020.FEJ82897.OFtJMFHOVLQOSF@I-love.SAKURA.ne.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- NVDIMM-ML <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>, linux-xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Yasunori Goto <y-goto-+CUm20s59erQFUHtdCDX3A@public.gmane.org>, linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <CAPcyv4gS1GCN9TFjngTmmHu83-uMgRpvvx842ZGnvxB3PbgU+Q-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
+        jthumshirn@suse.de, alan.christopher.jenkins@gmail.com,
+        syzbot+c4f9cebf9d651f6e54de@syzkaller.appspotmail.com,
+        martin.petersen@oracle.com, axboe@kernel.dk,
+        dan.j.williams@intel.com, hch@lst.de, oleksandr@natalenko.name,
+        ming.lei@redhat.com, martin@lichtvoll.de, hare@suse.com,
+        syzkaller-bugs@googlegroups.com, ross.zwisler@linux.intel.com,
+        keith.busch@intel.com, linux-ext4@vger.kernel.org
+To: Bart.VanAssche@wdc.com, dvyukov@google.com
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <201805222020.FEJ82897.OFtJMFHOVLQOSF@I-love.SAKURA.ne.jp>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, May 31, 2018 at 11:26:43AM -0700, Dan Williams wrote:
-> On Thu, May 31, 2018 at 10:46 AM, Darrick J. Wong
-> <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org> wrote:
-> > On Thu, May 31, 2018 at 09:29:15AM -0700, Dan Williams wrote:
-> >> On Thu, May 31, 2018 at 8:07 AM, Ross Zwisler
-> >> <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> wrote:
-> >> > On Thu, May 31, 2018 at 11:27:33AM +0900, Yasunori Goto wrote:
-> >> >> Hello,
-> >> >>
-> >> >>
-> >> >> I would like to know about the Experimental message of Filesystem DAX.
-> >> >> --------------------------------------------------------
-> >> >> DAX enabled. Warning: EXPERIMENTAL, use at your own risk
-> >> >> --------------------------------------------------------
-> >> >>
-> >> >> AFAIK, the final issue of Filesystem DAX is metadata update problem,
-> >> >> and it is(will be?) solved by great effort of MAP_SYNC and
-> >> >> "fix dma vs truncate/hole-punch" patch set.
-> >> >> So, I suppose that the Experimental message can be removed,
-> >> >> but I'm not sure.
-> >> >>
-> >> >> Is it possible?
-> >> >> Otherwise, are there any other issues in Filesystem DAX yet?
-> >> >>
-> >> >> If this is silly question, sorry for noise....
-> >> >>
-> >> >> Thanks,
-> >> >> ---
-> >> >> Yasunori Goto
-> >> >
-> >> > Adding in the XFS and ext4 developers, as it's really their call when to
-> >> > remove this notice.
-> >> >
-> >> > We've talked about this off and on for a long while, but IMHO we should remove
-> >> > the EXPERIMENTAL warning.  The last few things that we had on our TODO list
-> >> > before this was removed were:
-> >> >
-> >> > 1) Get consistent handling of the DAX mount option.  We currently have this,
-> >> > as both filesystems will behave the same and fall back and remove the DAX
-> >> > mount option if it is unsupported by the block device, etc.
-> >
-> > <nod>
-> >
-> > As an aside, I wonder if Christoph's musings about "just have the kernel
-> > determine the appropriate dax/non-dax setting from the acpi tables and
-> > skip the inode flag entirely" ever got resolved?
-> >
-> >> > 2) Get consistent handling of the DAX inode option.  We currently have this,
-> >> > as all DAX behavior now happens through the mount option.  If/when we
-> >> > re-enable the per-inode DAX flag we should do it consistently for all DAX
-> >> > enabled filesystems.
-> >
-> > The behavior of the inode flag isn't all that consistent.  ext4 doesn't
-> > support it at all.  On XFS, you can set or clear FS_XFLAG_DAX on a
-> > directory which will propagate the setting to any files created in that
-> > directory.
-> >
-> > However, if you set or clear it on a file we update the on-disk inode
-> > but we can't change the in-core state flag (S_DAX) until the next
-> > in-core inode instantiation.  It's weird that users can change the flag
-> > but the intended behavior changes won't happen until some ... time ...
-> > in the future??
-> >
-> >> > 3) Make DAX work with other XFS features like reflink, etc.  This one isn't
-> >> > done, but we at least disallow DAX with XFS features like reflink where it
-> >> > could be an issue.  Darrick, do you still feel like we need to get these
-> >> > working together to remove EXPERIMENTAL, or are you happy enough that we're
-> >> > keeping them separated and that we're keeping user data safe?
-> >
-> > Yes, reflink and dax still need to work together.  I've not heard any
-> > good arguments for why page sharing + copy on write are fundamentally
-> > incompatible with the dax model, or why dax users will never, ever
-> > require reflink.
-> 
-> Right, but that's separate from DAX being scream in your face
-> "EXPERIMENTAL!". It's just an additional feature that can be added on
-> once all the normal expectations of a userspace mapping work. I think
-> reliable rmap is the last of those requirements.
-> 
-> > The recent thread between Jan and Dan make me wonder if making mappings
-> > share struct pages is going to be a nightmare to add to the mm code,
-> > though...
-> 
-> It's going to be a bit messy because a singular page->mapping
-> association is fundamentally incompatible with DAX. Perhaps a linked
-> list of mapping "siblings"?
+Tetsuo Handa wrote:
+> Since sum of percpu_count did not change after percpu_ref_kill(), this is
+> not a race condition while folding percpu counter values into atomic counter
+> value. That is, for some reason, someone who is responsible for calling
+> percpu_ref_put(&q->q_usage_counter) (presumably via blk_queue_exit()) is
+> unable to call percpu_ref_put().
+> But I don't know how to find someone who is failing to call percpu_ref_put()...
 
-I'd much prefer the filesystem allocate/control the struct page that
-is inserted into mapping trees so we can have multiple struct pages
-pointing at the one physical page.  That way we can just insert
-these dynamic struct pages into the relevant mappings and it works
-the same way for both DAX and shared page cache pages.
+I found the someone. It was already there in the backtrace...
 
-i.e. the filesystem knows they are shared physical blocks, the
-filesystem controls COW of physical blocks, the filesystem controls
-truncate/invalidation of physical blocks, the filesystem controls
-cache state of the physical blocks. So why are we designing
-infrastructure around the virtual memory and caching infrastructure
-that bypasses the layer that manages and arbitrates access to the
-physical storage?
+----------------------------------------
+[   62.065852] a.out           D    0  4414   4337 0x00000000
+[   62.067677] Call Trace:
+[   62.068545]  __schedule+0x40b/0x860
+[   62.069726]  schedule+0x31/0x80
+[   62.070796]  schedule_timeout+0x1c1/0x3c0
+[   62.072159]  ? __next_timer_interrupt+0xd0/0xd0
+[   62.073670]  blk_queue_enter+0x218/0x520
+[   62.074985]  ? remove_wait_queue+0x70/0x70
+[   62.076361]  generic_make_request+0x3d/0x540
+[   62.077785]  ? __bio_clone_fast+0x6b/0x80
+[   62.079147]  ? bio_clone_fast+0x2c/0x70
+[   62.080456]  blk_queue_split+0x29b/0x560
+[   62.081772]  ? blk_queue_split+0x29b/0x560
+[   62.083162]  blk_mq_make_request+0x7c/0x430
+[   62.084562]  generic_make_request+0x276/0x540
+[   62.086034]  submit_bio+0x6e/0x140
+[   62.087185]  ? submit_bio+0x6e/0x140
+[   62.088384]  ? guard_bio_eod+0x9d/0x1d0
+[   62.089681]  do_mpage_readpage+0x328/0x730
+[   62.091045]  ? __add_to_page_cache_locked+0x12e/0x1a0
+[   62.092726]  mpage_readpages+0x120/0x190
+[   62.094034]  ? check_disk_change+0x70/0x70
+[   62.095454]  ? check_disk_change+0x70/0x70
+[   62.096849]  ? alloc_pages_current+0x65/0xd0
+[   62.098277]  blkdev_readpages+0x18/0x20
+[   62.099568]  __do_page_cache_readahead+0x298/0x360
+[   62.101157]  ondemand_readahead+0x1f6/0x490
+[   62.102546]  ? ondemand_readahead+0x1f6/0x490
+[   62.103995]  page_cache_sync_readahead+0x29/0x40
+[   62.105539]  generic_file_read_iter+0x7d0/0x9d0
+[   62.107067]  ? futex_wait+0x221/0x240
+[   62.108303]  ? trace_hardirqs_on+0xd/0x10
+[   62.109654]  blkdev_read_iter+0x30/0x40
+[   62.110954]  generic_file_splice_read+0xc5/0x140
+[   62.112538]  do_splice_to+0x74/0x90
+[   62.113726]  splice_direct_to_actor+0xa4/0x1f0
+[   62.115209]  ? generic_pipe_buf_nosteal+0x10/0x10
+[   62.116773]  do_splice_direct+0x8a/0xb0
+[   62.118056]  do_sendfile+0x1aa/0x390
+[   62.119255]  __x64_sys_sendfile64+0x4e/0xc0
+[   62.120666]  do_syscall_64+0x6e/0x210
+[   62.121909]  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+----------------------------------------
 
-This seems like we're well down the path of a architectural layering
-violation that is backing us into a corner we're not going to be
-able to get ourselves out of...
+The someone is blk_queue_split() from blk_mq_make_request() who depends on an
+assumption that blk_queue_enter() from recursively called generic_make_request()
+does not get blocked due to percpu_ref_tryget_live(&q->q_usage_counter) failure.
 
-> > Also: ideally XFS would also be able to consume poison event
-> > notifications from the pmem so that it can try to deal with metadata
-> > loss, but that's probably a separate effort.
+----------------------------------------
+generic_make_request(struct bio *bio) {
+  if (blk_queue_enter(q, flags) < 0) { /* <= percpu_ref_tryget_live() succeeds. */
+    if (!blk_queue_dying(q) && (bio->bi_opf & REQ_NOWAIT))
+      bio_wouldblock_error(bio);
+    else
+      bio_io_error(bio);
+    return ret;
+  }
+(...snipped...)
+  ret = q->make_request_fn(q, bio);
+(...snipped...)
+  if (q)
+    blk_queue_exit(q);
+}
+----------------------------------------
 
-If the design is such that the layer that manages the physical
-storage isn't going to be told about physical storage failures
-before anyone else is informed, it would seem to me like we really
-have introduced a major architectural flaw in DAX....
+where q->make_request_fn == blk_mq_make_request which does
 
-Cheers,
+----------------------------------------
+blk_mq_make_request(struct request_queue *q, struct bio *bio) {
+   blk_queue_split(q, &bio);
+}
 
-Dave.
--- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+blk_queue_split(struct request_queue *q, struct bio **bio) {
+  generic_make_request(*bio); /* <= percpu_ref_tryget_live() fails and waits until atomic_read(&q->mq_freeze_depth) becomes 0. */
+}
+----------------------------------------
+
+and meanwhile atomic_inc_return(&q->mq_freeze_depth) and
+percpu_ref_kill() are called by	blk_freeze_queue_start()...
+
+Now, it is up to you about how to fix this race problem.
