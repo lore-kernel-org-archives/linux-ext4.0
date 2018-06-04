@@ -1,47 +1,135 @@
-From: Jens Axboe <axboe@kernel.dk>
-Subject: Re: INFO: task hung in blk_queue_enter
-Date: Sat, 2 Jun 2018 07:48:26 -0600
-Message-ID: <0B5A5D8D-BA17-45C2-BCF7-609CDCF1A8DB@kernel.dk>
-References: <CACT4Y+ZJwvROpBmKWF08fTd2AH=dO-a5+dzCzZua_vVFjiCRBw@mail.gmail.com> <6db16aa3a7c56b6dcca2d10b4e100a780c740081.camel@wdc.com> <201805220652.BFH82351.SMQFFOJOtFOVLH@I-love.SAKURA.ne.jp> <201805222020.FEJ82897.OFtJMFHOVLQOSF@I-love.SAKURA.ne.jp> <25708e84-6f35-04c3-a2e4-6854f0ed9e78@I-love.SAKURA.ne.jp> <dc9862c7-ec16-8b11-04e4-422b435d41ef@kernel.dk> <20180601234946.GA655@ming.t460p> <95c419d8-7f19-f9c0-a53f-3d381fe93176@kernel.dk> <20180602023622.GA2306@ming.t460p> <f43465cf-e2f1-807f-d283-89033c056b5b@kernel.dk> <20180602045353.GA20257@ming.t460p>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-        charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>,
-        Bart.VanAssche@wdc.com, dvyukov@google.com,
-        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        jthumshirn@suse.de, alan.christopher.jenkins@gmail.com,
-        syzbot+c4f9cebf9d651f6e54de@syzkaller.appspotmail.com,
-        martin.petersen@oracle.com, dan.j.williams@intel.com, hch@lst.de,
-        oleksandr@natalenko.name, martin@lichtvoll.de, hare@suse.com,
-        syzkaller-bugs@googlegroups.com, ross.zwisler@linux.intel.com,
-        keith.busch@intel.com, linux-ext4@vger.kernel.org
-To: Ming Lei <ming.lei@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180602045353.GA20257@ming.t460p>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Yasunori Goto <y-goto-+CUm20s59erQFUHtdCDX3A@public.gmane.org>
+Subject: Re: Question about Experimental of Filesystem DAX.
+Date: Mon, 04 Jun 2018 10:44:15 +0900
+Message-ID: <20180604104406.4A13.E1E9C6FF@jp.fujitsu.com>
+References: <CAPcyv4gS1GCN9TFjngTmmHu83-uMgRpvvx842ZGnvxB3PbgU+Q@mail.gmail.com>
+ <20180531202556.GA28256@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, NVDIMM-ML <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ linux-xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20180531202556.GA28256-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
+> On Thu, May 31, 2018 at 11:26:43AM -0700, Dan Williams wrote:
+> > On Thu, May 31, 2018 at 10:46 AM, Darrick J. Wong
+> > <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org> wrote:
+> > > On Thu, May 31, 2018 at 09:29:15AM -0700, Dan Williams wrote:
+> > >> On Thu, May 31, 2018 at 8:07 AM, Ross Zwisler
+> > >> <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> wrote:
+> > >> > On Thu, May 31, 2018 at 11:27:33AM +0900, Yasunori Goto wrote:
+> > >> >> Hello,
+> > >> >>
+> > >> >>
+> > >> >> I would like to know about the Experimental message of Filesystem DAX.
+> > >> >> --------------------------------------------------------
+> > >> >> DAX enabled. Warning: EXPERIMENTAL, use at your own risk
+> > >> >> --------------------------------------------------------
+> > >> >>
+> > >> >> AFAIK, the final issue of Filesystem DAX is metadata update problem,
+> > >> >> and it is(will be?) solved by great effort of MAP_SYNC and
+> > >> >> "fix dma vs truncate/hole-punch" patch set.
+> > >> >> So, I suppose that the Experimental message can be removed,
+> > >> >> but I'm not sure.
+> > >> >>
+> > >> >> Is it possible?
+> > >> >> Otherwise, are there any other issues in Filesystem DAX yet?
+> > >> >>
+> > >> >> If this is silly question, sorry for noise....
+> > >> >>
+> > >> >> Thanks,
+> > >> >> ---
+> > >> >> Yasunori Goto
+> > >> >
+> > >> > Adding in the XFS and ext4 developers, as it's really their call when to
+> > >> > remove this notice.
+> > >> >
+> > >> > We've talked about this off and on for a long while, but IMHO we should remove
+> > >> > the EXPERIMENTAL warning.  The last few things that we had on our TODO list
+> > >> > before this was removed were:
+> > >> >
+> > >> > 1) Get consistent handling of the DAX mount option.  We currently have this,
+> > >> > as both filesystems will behave the same and fall back and remove the DAX
+> > >> > mount option if it is unsupported by the block device, etc.
+> > >
+> > > <nod>
+> > >
+> > > As an aside, I wonder if Christoph's musings about "just have the kernel
+> > > determine the appropriate dax/non-dax setting from the acpi tables and
+> > > skip the inode flag entirely" ever got resolved?
+> > >
+> > >> > 2) Get consistent handling of the DAX inode option.  We currently have this,
+> > >> > as all DAX behavior now happens through the mount option.  If/when we
+> > >> > re-enable the per-inode DAX flag we should do it consistently for all DAX
+> > >> > enabled filesystems.
+> > >
+> > > The behavior of the inode flag isn't all that consistent.  ext4 doesn't
+> > > support it at all.  On XFS, you can set or clear FS_XFLAG_DAX on a
+> > > directory which will propagate the setting to any files created in that
+> > > directory.
+> > >
+> > > However, if you set or clear it on a file we update the on-disk inode
+> > > but we can't change the in-core state flag (S_DAX) until the next
+> > > in-core inode instantiation.  It's weird that users can change the flag
+> > > but the intended behavior changes won't happen until some ... time ...
+> > > in the future??
+> > >
+> > >> > 3) Make DAX work with other XFS features like reflink, etc.  This one isn't
+> > >> > done, but we at least disallow DAX with XFS features like reflink where it
+> > >> > could be an issue.  Darrick, do you still feel like we need to get these
+> > >> > working together to remove EXPERIMENTAL, or are you happy enough that we're
+> > >> > keeping them separated and that we're keeping user data safe?
+> > >
+> > > Yes, reflink and dax still need to work together.  I've not heard any
+> > > good arguments for why page sharing + copy on write are fundamentally
+> > > incompatible with the dax model, or why dax users will never, ever
+> > > require reflink.
+> > 
+> > Right, but that's separate from DAX being scream in your face
+> > "EXPERIMENTAL!". It's just an additional feature that can be added on
+> > once all the normal expectations of a userspace mapping work. I think
+> > reliable rmap is the last of those requirements.
+> > 
+> > > The recent thread between Jan and Dan make me wonder if making mappings
+> > > share struct pages is going to be a nightmare to add to the mm code,
+> > > though...
+> > 
+> > It's going to be a bit messy because a singular page->mapping
+> > association is fundamentally incompatible with DAX. Perhaps a linked
+> > list of mapping "siblings"?
+> > 
+> > > Also: ideally XFS would also be able to consume poison event
+> > > notifications from the pmem so that it can try to deal with metadata
+> > > loss, but that's probably a separate effort.
+> > 
+> > Right, not a gating item for declaring DAX ready for prime time.
+> 
+> Yep, I think that the very loud EXPERIMENTAL message is essentially telling
+> users "your data is at risk if you use this".  I totally agree that we still
+> have lots of work to do.  However, I don't think that these feature
+> enhancements should gate removal of the EXPERIMENTAL notice.   IMHO that
+> should only exist as long as we have issues that we know could corrupt data,
+> crash the box, etc.  As far as I know those are basically the 2 items on Dan's
+> list from a few mails ago (poison recovery & DMA vs truncate).
 
-> On Jun 1, 2018, at 10:54 PM, Ming Lei <ming.lei@redhat.com> wrote:
->=20
->> On Fri, Jun 01, 2018 at 10:31:13PM -0600, Jens Axboe wrote:
->> On 6/1/18 8:36 PM, Ming Lei wrote:
->>>> clear the bit when we need to, potentially even adding a debug check to=
+Everyone,
 
->>>> blk_queue_enter_live() that complains if the ref was not already
->>>> elevated. Though that would be expensive, compared to the percpu inc
->>>> now. Not saying the bit is necessarily the best way forward, but I do
->>>> like it a LOT more than adding an argument to generic_make_request.
->>>=20
->>> We may introduce generic_make_request_with_ref() for blk_queue_split(),
->>> what do you think of the following patch?
->>=20
->> Functionally it'll work as well.
->=20
-> If you are fine with this one, I'm glad to prepare for a normal one,
-> so that we can save one precious bio flag, and the total number is
-> just 13.
+Thank you very much for your information/opinions.
+Not only about "experimental", I could understand what is still to do.
 
-We=E2=80=99ve never had much issue with bio specific flags, I prefer that ap=
-proach to a wrapper around generic_make_request().=20
+Thanks a lot!
+---
+Yasunori Goto
