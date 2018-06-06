@@ -1,9 +1,8 @@
 From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH 6/6] iomap: add a page_done callback
-Date: Wed, 6 Jun 2018 13:37:22 +0200
-Message-ID: <CAHc6FU5jJ=ipbkrjoLnqC6AGcecTZC3rD-gKSQ=-EbEzyhxbLA@mail.gmail.com>
+Subject: Re: iomap preparations for GFS2
+Date: Wed, 6 Jun 2018 13:38:50 +0200
+Message-ID: <CAHc6FU458f9xkr2ru2B2L8_FC+=vm5CLDUixBjCZSq5YZZC8=w@mail.gmail.com>
 References: <20180606104033.4947-1-hch@lst.de>
-	<20180606104033.4947-7-hch@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Cc: linux-xfs@vger.kernel.org, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
@@ -12,7 +11,7 @@ Cc: linux-xfs@vger.kernel.org, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-ext4 <linux-ext4@vger.kernel.org>
 To: Christoph Hellwig <hch@lst.de>
 Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20180606104033.4947-7-hch@lst.de>
+In-Reply-To: <20180606104033.4947-1-hch@lst.de>
 List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
 	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/cluster-devel>
@@ -25,57 +24,15 @@ Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
 On 6 June 2018 at 12:40, Christoph Hellwig <hch@lst.de> wrote:
-> This will be used by gfs2 to attach data to transactions for the journaled
-> data mode.  But the concept is generic enough that we might be able to
-> use it for other purposes like encryption/integrity post-processing in the
-> future.
+> Hi all,
 >
-> Based on a patch from Andreas Gruenbacher.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/iomap.c            | 3 +++
->  include/linux/iomap.h | 8 ++++++++
->  2 files changed, 11 insertions(+)
->
-> diff --git a/fs/iomap.c b/fs/iomap.c
-> index f2a491b98b7c..a7ecdd5ddd17 100644
-> --- a/fs/iomap.c
-> +++ b/fs/iomap.c
-> @@ -201,6 +201,9 @@ iomap_write_end(struct inode *inode, loff_t pos, unsigned len,
->                                 copied, page, NULL);
->         }
->
-> +       if (iomap->page_done)
-> +               iomap->page_done(inode, pos, copied, page, iomap);
-> +
->         if (ret < len)
->                 iomap_write_failed(inode, pos, len);
->         return ret;
-> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-> index 69ef622f650e..474e2255ac6e 100644
-> --- a/include/linux/iomap.h
-> +++ b/include/linux/iomap.h
-> @@ -58,6 +58,14 @@ struct iomap {
->                 struct dax_device   *dax_dev;
->                 void                *inline_data;
->         };
-> +
-> +       /*
-> +        * Called when finished processing a page in the mapping returned in
-> +        * thus iomap.  At least for now this is only supported in the buffered
+> this is a slight rework of the patches from Andreas to prepare for gfs2
+> using the iomap code.  I'd like to start with an immutable branch for
+> iomap patches in either the XFS tree or a tree of mine own with something
+> like this so that we can have a nice common base for both the major
+> iomap changes for XFS and the GFS2 work.
 
-"thus" -> "this"
+Okay.
 
-> +        * write path.
-> +        */
-> +       void (*page_done)(struct inode *inode, loff_t pos, unsigned copied,
-> +                       struct page *page, struct iomap *iomap);
->  };
->
->  /*
-> --
-> 2.14.2
->
-
+Thanks,
 Andreas
