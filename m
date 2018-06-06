@@ -1,17 +1,21 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: iomap preparations for GFS2
-Date: Wed, 6 Jun 2018 13:38:50 +0200
-Message-ID: <CAHc6FU458f9xkr2ru2B2L8_FC+=vm5CLDUixBjCZSq5YZZC8=w@mail.gmail.com>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 2/6] iomap: move bdev and dax_dev in a
+	union
+Date: Wed, 6 Jun 2018 14:05:10 +0200
+Message-ID: <20180606120510.GA13047@lst.de>
 References: <20180606104033.4947-1-hch@lst.de>
+	<20180606104033.4947-3-hch@lst.de>
+	<CAHc6FU5xFMmN1EPGrZOhx9S5Focwq0Ky9HZeQ9VRGFC-o-cZZw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: linux-xfs@vger.kernel.org, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: cluster-devel <cluster-devel@redhat.com>, linux-xfs@vger.kernel.org,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	Dan Williams <dan.j.williams@intel.com>,
-	cluster-devel <cluster-devel@redhat.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@lst.de>
+	linux-ext4 <linux-ext4@vger.kernel.org>, Christoph Hellwig <hch@lst.de>
+To: Andreas Gruenbacher <agruenba@redhat.com>
 Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20180606104033.4947-1-hch@lst.de>
+Content-Disposition: inline
+In-Reply-To: <CAHc6FU5xFMmN1EPGrZOhx9S5Focwq0Ky9HZeQ9VRGFC-o-cZZw@mail.gmail.com>
 List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
 	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/cluster-devel>
@@ -23,16 +27,7 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On 6 June 2018 at 12:40, Christoph Hellwig <hch@lst.de> wrote:
-> Hi all,
->
-> this is a slight rework of the patches from Andreas to prepare for gfs2
-> using the iomap code.  I'd like to start with an immutable branch for
-> iomap patches in either the XFS tree or a tree of mine own with something
-> like this so that we can have a nice common base for both the major
-> iomap changes for XFS and the GFS2 work.
+On Wed, Jun 06, 2018 at 01:37:02PM +0200, Andreas Gruenbacher wrote:
+> This seems backwards.
 
-Okay.
-
-Thanks,
-Andreas
+It is.  So much for last minute polarity fixups..
