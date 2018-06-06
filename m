@@ -1,13 +1,11 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 5/6] iomap: generic inline data handling
-Date: Wed,  6 Jun 2018 12:40:32 +0200
-Message-ID: <20180606104033.4947-6-hch@lst.de>
-References: <20180606104033.4947-1-hch@lst.de>
+Subject: iomap preparations for GFS2
+Date: Wed,  6 Jun 2018 12:40:27 +0200
+Message-ID: <20180606104033.4947-1-hch@lst.de>
 Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
 	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
 To: Andreas Gruenbacher <agruenba@redhat.com>, linux-xfs@vger.kernel.org
 Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20180606104033.4947-1-hch@lst.de>
 List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
 	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/cluster-devel>
@@ -19,149 +17,10 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andreas Gruenbacher <agruenba@redhat.com>
+Hi all,
 
-Add generic inline data handling by adding a pointer to the inline data
-region to struct iomap.  When handling a buffered IOMAP_INLINE write,
-iomap_write_begin will copy the current inline data from the inline data
-region into the page cache, and iomap_write_end will copy the changes in
-the page cache back to the inline data region.
-
-This doesn't cover inline data reads and direct I/O yet because so far,
-we have no users.
-
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-[hch: small cleanups to better fit in with other iomap work]
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/iomap.c            | 62 +++++++++++++++++++++++++++++++++++++++++++++------
- include/linux/iomap.h |  1 +
- 2 files changed, 56 insertions(+), 7 deletions(-)
-
-diff --git a/fs/iomap.c b/fs/iomap.c
-index f428baa32185..f2a491b98b7c 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -116,6 +116,26 @@ iomap_write_failed(struct inode *inode, loff_t pos, unsigned len)
- 		truncate_pagecache_range(inode, max(pos, i_size), pos + len);
- }
- 
-+static void
-+iomap_read_inline_data(struct inode *inode, struct page *page,
-+		struct iomap *iomap)
-+{
-+	size_t size = i_size_read(inode);
-+	void *addr;
-+
-+	if (PageUptodate(page))
-+		return;
-+
-+	BUG_ON(page->index);
-+	BUG_ON(size > PAGE_SIZE - offset_in_page(iomap->inline_data));
-+
-+	addr = kmap_atomic(page);
-+	memcpy(addr, iomap->inline_data, size);
-+	memset(addr + size, 0, PAGE_SIZE - size);
-+	kunmap_atomic(addr);
-+	SetPageUptodate(page);
-+}
-+
- static int
- iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
- 		struct page **pagep, struct iomap *iomap)
-@@ -133,7 +153,11 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
- 	if (!page)
- 		return -ENOMEM;
- 
--	status = __block_write_begin_int(page, pos, len, NULL, iomap);
-+	if (iomap->type == IOMAP_INLINE)
-+		iomap_read_inline_data(inode, page, iomap);
-+	else
-+		status = __block_write_begin_int(page, pos, len, NULL, iomap);
-+
- 	if (unlikely(status)) {
- 		unlock_page(page);
- 		put_page(page);
-@@ -146,14 +170,37 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
- 	return status;
- }
- 
-+static int
-+iomap_write_end_inline(struct inode *inode, struct page *page,
-+		struct iomap *iomap, loff_t pos, unsigned copied)
-+{
-+	void *addr;
-+
-+	WARN_ON_ONCE(!PageUptodate(page));
-+	BUG_ON(pos + copied > PAGE_SIZE - offset_in_page(iomap->inline_data));
-+
-+	addr = kmap_atomic(page);
-+	memcpy(iomap->inline_data + pos, addr + pos, copied);
-+	kunmap_atomic(addr);
-+
-+	mark_inode_dirty(inode);
-+	__generic_write_end(inode, pos, copied, page);
-+	return copied;
-+}
-+
- static int
- iomap_write_end(struct inode *inode, loff_t pos, unsigned len,
--		unsigned copied, struct page *page)
-+		unsigned copied, struct page *page, struct iomap *iomap)
- {
- 	int ret;
- 
--	ret = generic_write_end(NULL, inode->i_mapping, pos, len,
--			copied, page, NULL);
-+	if (iomap->type == IOMAP_INLINE) {
-+		ret = iomap_write_end_inline(inode, page, iomap, pos, copied);
-+	} else {
-+		ret = generic_write_end(NULL, inode->i_mapping, pos, len,
-+				copied, page, NULL);
-+	}
-+
- 	if (ret < len)
- 		iomap_write_failed(inode, pos, len);
- 	return ret;
-@@ -208,7 +255,8 @@ iomap_write_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 
- 		flush_dcache_page(page);
- 
--		status = iomap_write_end(inode, pos, bytes, copied, page);
-+		status = iomap_write_end(inode, pos, bytes, copied, page,
-+				iomap);
- 		if (unlikely(status < 0))
- 			break;
- 		copied = status;
-@@ -302,7 +350,7 @@ iomap_dirty_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 
- 		WARN_ON_ONCE(!PageUptodate(page));
- 
--		status = iomap_write_end(inode, pos, bytes, bytes, page);
-+		status = iomap_write_end(inode, pos, bytes, bytes, page, iomap);
- 		if (unlikely(status <= 0)) {
- 			if (WARN_ON_ONCE(status == 0))
- 				return -EIO;
-@@ -354,7 +402,7 @@ static int iomap_zero(struct inode *inode, loff_t pos, unsigned offset,
- 	zero_user(page, offset, bytes);
- 	mark_page_accessed(page);
- 
--	return iomap_write_end(inode, pos, bytes, bytes, page);
-+	return iomap_write_end(inode, pos, bytes, bytes, page, iomap);
- }
- 
- static int iomap_dax_zero(loff_t pos, unsigned offset, unsigned bytes,
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index 212f4d59bcbf..69ef622f650e 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -56,6 +56,7 @@ struct iomap {
- 	union {
- 		struct block_device *bdev;
- 		struct dax_device   *dax_dev;
-+		void		    *inline_data;
- 	};
- };
- 
--- 
-2.14.2
+this is a slight rework of the patches from Andreas to prepare for gfs2
+using the iomap code.  I'd like to start with an immutable branch for
+iomap patches in either the XFS tree or a tree of mine own with something
+like this so that we can have a nice common base for both the major
+iomap changes for XFS and the GFS2 work.
