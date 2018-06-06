@@ -1,99 +1,38 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 updates for 4.18
-Date: Tue, 5 Jun 2018 11:02:07 -0400
-Message-ID: <20180605150207.GA9057@thunk.org>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 1/6] fs: factor out a
+	__generic_write_end helper
+Date: Wed, 6 Jun 2018 12:59:06 +0200
+Message-ID: <20180606105906.GA11821@lst.de>
+References: <20180606104033.4947-1-hch@lst.de>
+	<20180606104033.4947-2-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: torvalds@linux-foundation.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
+	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
+To: Andreas Gruenbacher <agruenba@redhat.com>, linux-xfs@vger.kernel.org
+Return-path: <cluster-devel-bounces@redhat.com>
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20180606104033.4947-2-hch@lst.de>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-The following changes since commit 75bc37fefc4471e718ba8e651aa74673d4e0a9eb:
+On Wed, Jun 06, 2018 at 12:40:28PM +0200, Christoph Hellwig wrote:
+> Bits of the buffer.c based write_end implementations that don't know
+> about buffer_heads and can be reused by other implementations.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-  Linux 4.17-rc4 (2018-05-06 16:57:38 -1000)
+This actually already had two reviews:
 
-are available in the Git repository at:
+Reviewed-by: Brian Foster <bfoster@redhat.com>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
-
-for you to fetch changes up to 4f2f76f751433908364ccff82f437a57d0e6e9b7:
-
-  ext4: fix fencepost error in check for inode count overflow during resize (2018-05-25 12:51:25 -0400)
-
-----------------------------------------------------------------
-A lot of cleanups and bug fixes, especially dealing with corrupted
-file systems.
-
-----------------------------------------------------------------
-Amir Goldstein (3):
-      vfs: add the sb_start_intwrite_trylock() helper
-      ext4: factor out helper ext4_sample_last_mounted()
-      ext4: do not update s_last_mounted of a frozen fs
-
-Eryu Guan (2):
-      ext4: use XATTR_CREATE in ext4_initxattrs()
-      ext4: use raw i_version value for ea_inode
-
-Jaegeuk Kim (1):
-      ext4: handle errors on ext4_commit_super
-
-Jan Kara (2):
-      ext4: fix hole length detection in ext4_ind_map_blocks()
-      ext4: fix fencepost error in check for inode count overflow during resize
-
-Konstantin Khlebnikov (1):
-      ext4: report delalloc reserve as non-free in statfs for project quota
-
-Luis R. Rodriguez (1):
-      ext4: add verifier check for symlink with append/immutable flags
-
-Lukas Czerner (1):
-      ext4: update mtime in ext4_punch_hole even if no blocks are released
-
-Mathieu Malaterre (1):
-      ext4: make function ‘ext4_getfsmap_find_fixed_metadata’ static
-
-Sean Fu (1):
-      ext4: remove NULL check before calling kmem_cache_destroy()
-
-Souptick Joarder (1):
-      fs: ext4: add new return type vm_fault_t
-
-Theodore Ts'o (3):
-      ext4: do not allow external inodes for inline data
-      ext4: bubble errors from ext4_find_inline_data_nolock() up to ext4_iget()
-      ext4: correctly handle a zero-length xattr with a non-zero e_value_offs
-
-Wang Long (1):
-      jbd2: remove NULL check before calling kmem_cache_destroy()
-
-Wang Shilong (5):
-      ext4: fix wrong return value in ext4_read_inode_bitmap()
-      ext4: add new ext4_mark_group_bitmap_corrupted() helper
-      ext4: mark inode bitmap corrupted when found
-      ext4: mark block bitmap corrupted when found
-      jbd2: remove bunch of empty lines with jbd2 debug
-
- fs/ext4/balloc.c         | 33 +++++++-------------
- fs/ext4/ext4.h           |  7 +++++
- fs/ext4/extents_status.c |  3 +-
- fs/ext4/file.c           | 93 ++++++++++++++++++++++++++++++++-----------------------
- fs/ext4/fsmap.c          |  4 +--
- fs/ext4/ialloc.c         | 35 +++++++++------------
- fs/ext4/indirect.c       | 14 ++++++---
- fs/ext4/inline.c         |  6 ++++
- fs/ext4/inode.c          | 77 +++++++++++++++++++++++++++++++--------------
- fs/ext4/mballoc.c        | 23 +++++++-------
- fs/ext4/resize.c         |  2 +-
- fs/ext4/super.c          | 68 +++++++++++++++++++++++++++++++---------
- fs/ext4/xattr.c          |  2 +-
- fs/ext4/xattr_security.c |  2 +-
- fs/jbd2/journal.c        | 20 +++++-------
- fs/jbd2/revoke.c         | 12 +++----
- fs/jbd2/transaction.c    |  6 ++--
- include/linux/fs.h       |  5 +++
- 18 files changed, 245 insertions(+), 167 deletions(-)
+That got lost through the detour via gfs2.
