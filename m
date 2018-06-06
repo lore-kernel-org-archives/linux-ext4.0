@@ -1,7 +1,8 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 2/6] iomap: move bdev and dax_dev in a union
-Date: Wed,  6 Jun 2018 12:40:29 +0200
-Message-ID: <20180606104033.4947-3-hch@lst.de>
+Subject: [PATCH 3/6] iomap: mark newly allocated buffer
+	heads as new
+Date: Wed,  6 Jun 2018 12:40:30 +0200
+Message-ID: <20180606104033.4947-4-hch@lst.de>
 References: <20180606104033.4947-1-hch@lst.de>
 Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
 	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
@@ -19,85 +20,45 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-We always either ask for a block device or DAX device mapping, so we can
-use the same space for both.
+From: Andreas Gruenbacher <agruenba@redhat.com>
 
+In iomap_to_bh, not only mark buffer heads in IOMAP_UNWRITTEN maps as
+new, but also buffer heads in IOMAP_MAPPED maps with the IOMAP_F_NEW
+flag set.  This will be used by filesystems like gfs2, which allocate
+blocks in iomap->begin.
+
+Minor corrections to the comment for IOMAP_UNWRITTEN maps.
+
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/ext2/inode.c       | 6 ++++--
- fs/ext4/inode.c       | 6 ++++--
- fs/xfs/xfs_iomap.c    | 6 ++++--
- include/linux/iomap.h | 6 ++++--
- 4 files changed, 16 insertions(+), 8 deletions(-)
+ fs/buffer.c | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 71635909df3b..8aead4e9dbc1 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -815,9 +815,11 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 		return ret;
- 
- 	iomap->flags = 0;
--	iomap->bdev = inode->i_sb->s_bdev;
- 	iomap->offset = (u64)first_block << blkbits;
--	iomap->dax_dev = sbi->s_daxdev;
-+	if (IS_DAX(inode))
-+		iomap->dax_dev = sbi->s_daxdev;
-+	else
-+		iomap->bdev = inode->i_sb->s_bdev;
- 
- 	if (ret == 0) {
- 		iomap->type = IOMAP_HOLE;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2ea07efbe016..79027e99118f 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3524,8 +3524,10 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 	iomap->flags = 0;
- 	if (ext4_inode_datasync_dirty(inode))
- 		iomap->flags |= IOMAP_F_DIRTY;
--	iomap->bdev = inode->i_sb->s_bdev;
--	iomap->dax_dev = sbi->s_daxdev;
-+	if (IS_DAX(inode))
-+		iomap->dax_dev = sbi->s_daxdev;
-+	else
-+		iomap->bdev = inode->i_sb->s_bdev;
- 	iomap->offset = (u64)first_block << blkbits;
- 	iomap->length = (u64)map.m_len << blkbits;
- 
-diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
-index c6ce6f9335b6..587110db1ad2 100644
---- a/fs/xfs/xfs_iomap.c
-+++ b/fs/xfs/xfs_iomap.c
-@@ -70,8 +70,10 @@ xfs_bmbt_to_iomap(
- 	}
- 	iomap->offset = XFS_FSB_TO_B(mp, imap->br_startoff);
- 	iomap->length = XFS_FSB_TO_B(mp, imap->br_blockcount);
--	iomap->bdev = xfs_find_bdev_for_inode(VFS_I(ip));
--	iomap->dax_dev = xfs_find_daxdev_for_inode(VFS_I(ip));
-+	if (IS_DAX(VFS_I(ip)))
-+		iomap->bdev = xfs_find_bdev_for_inode(VFS_I(ip));
-+	else
-+		iomap->dax_dev = xfs_find_daxdev_for_inode(VFS_I(ip));
- }
- 
- xfs_extlen_t
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index a044a824da85..212f4d59bcbf 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -53,8 +53,10 @@ struct iomap {
- 	u64			length;	/* length of mapping, bytes */
- 	u16			type;	/* type of mapping */
- 	u16			flags;	/* flags for mapping */
--	struct block_device	*bdev;	/* block device for I/O */
--	struct dax_device	*dax_dev; /* dax_dev for dax operations */
-+	union {
-+		struct block_device *bdev;
-+		struct dax_device   *dax_dev;
-+	};
- };
- 
- /*
+diff --git a/fs/buffer.c b/fs/buffer.c
+index aba2a948b235..c8c2b7d8b8d6 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1900,15 +1900,16 @@ iomap_to_bh(struct inode *inode, sector_t block, struct buffer_head *bh,
+ 		break;
+ 	case IOMAP_UNWRITTEN:
+ 		/*
+-		 * For unwritten regions, we always need to ensure that
+-		 * sub-block writes cause the regions in the block we are not
+-		 * writing to are zeroed. Set the buffer as new to ensure this.
++		 * For unwritten regions, we always need to ensure that regions
++		 * in the block we are not writing to are zeroed. Mark the
++		 * buffer as new to ensure this.
+ 		 */
+ 		set_buffer_new(bh);
+ 		set_buffer_unwritten(bh);
+ 		/* FALLTHRU */
+ 	case IOMAP_MAPPED:
+-		if (offset >= i_size_read(inode))
++		if ((iomap->flags & IOMAP_F_NEW) ||
++		    offset >= i_size_read(inode))
+ 			set_buffer_new(bh);
+ 		bh->b_blocknr = (iomap->addr + offset - iomap->offset) >>
+ 				inode->i_blkbits;
 -- 
 2.14.2
