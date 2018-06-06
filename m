@@ -1,8 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 3/6] iomap: mark newly allocated buffer
-	heads as new
-Date: Wed,  6 Jun 2018 12:40:30 +0200
-Message-ID: <20180606104033.4947-4-hch@lst.de>
+Subject: [PATCH 6/6] iomap: add a page_done callback
+Date: Wed,  6 Jun 2018 12:40:33 +0200
+Message-ID: <20180606104033.4947-7-hch@lst.de>
 References: <20180606104033.4947-1-hch@lst.de>
 Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
 	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
@@ -20,45 +19,51 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andreas Gruenbacher <agruenba@redhat.com>
+This will be used by gfs2 to attach data to transactions for the journaled
+data mode.  But the concept is generic enough that we might be able to
+use it for other purposes like encryption/integrity post-processing in the
+future.
 
-In iomap_to_bh, not only mark buffer heads in IOMAP_UNWRITTEN maps as
-new, but also buffer heads in IOMAP_MAPPED maps with the IOMAP_F_NEW
-flag set.  This will be used by filesystems like gfs2, which allocate
-blocks in iomap->begin.
+Based on a patch from Andreas Gruenbacher.
 
-Minor corrections to the comment for IOMAP_UNWRITTEN maps.
-
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/buffer.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ fs/iomap.c            | 3 +++
+ include/linux/iomap.h | 8 ++++++++
+ 2 files changed, 11 insertions(+)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index aba2a948b235..c8c2b7d8b8d6 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1900,15 +1900,16 @@ iomap_to_bh(struct inode *inode, sector_t block, struct buffer_head *bh,
- 		break;
- 	case IOMAP_UNWRITTEN:
- 		/*
--		 * For unwritten regions, we always need to ensure that
--		 * sub-block writes cause the regions in the block we are not
--		 * writing to are zeroed. Set the buffer as new to ensure this.
-+		 * For unwritten regions, we always need to ensure that regions
-+		 * in the block we are not writing to are zeroed. Mark the
-+		 * buffer as new to ensure this.
- 		 */
- 		set_buffer_new(bh);
- 		set_buffer_unwritten(bh);
- 		/* FALLTHRU */
- 	case IOMAP_MAPPED:
--		if (offset >= i_size_read(inode))
-+		if ((iomap->flags & IOMAP_F_NEW) ||
-+		    offset >= i_size_read(inode))
- 			set_buffer_new(bh);
- 		bh->b_blocknr = (iomap->addr + offset - iomap->offset) >>
- 				inode->i_blkbits;
+diff --git a/fs/iomap.c b/fs/iomap.c
+index f2a491b98b7c..a7ecdd5ddd17 100644
+--- a/fs/iomap.c
++++ b/fs/iomap.c
+@@ -201,6 +201,9 @@ iomap_write_end(struct inode *inode, loff_t pos, unsigned len,
+ 				copied, page, NULL);
+ 	}
+ 
++	if (iomap->page_done)
++		iomap->page_done(inode, pos, copied, page, iomap);
++
+ 	if (ret < len)
+ 		iomap_write_failed(inode, pos, len);
+ 	return ret;
+diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+index 69ef622f650e..474e2255ac6e 100644
+--- a/include/linux/iomap.h
++++ b/include/linux/iomap.h
+@@ -58,6 +58,14 @@ struct iomap {
+ 		struct dax_device   *dax_dev;
+ 		void		    *inline_data;
+ 	};
++
++	/*
++	 * Called when finished processing a page in the mapping returned in
++	 * thus iomap.  At least for now this is only supported in the buffered
++	 * write path.
++	 */
++	void (*page_done)(struct inode *inode, loff_t pos, unsigned copied,
++			struct page *page, struct iomap *iomap);
+ };
+ 
+ /*
 -- 
 2.14.2
