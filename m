@@ -1,73 +1,181 @@
-From: Tetsuo Handa <penguin-kernel@i-love.sakura.ne.jp>
-Subject: Re: INFO: task hung in blk_queue_enter
-Date: Thu, 7 Jun 2018 22:19:06 +0900
-Message-ID: <927ef9f9-4f4d-185e-b86f-10bd18fa92d4@i-love.sakura.ne.jp>
-References: <25708e84-6f35-04c3-a2e4-6854f0ed9e78@I-love.SAKURA.ne.jp>
- <dc9862c7-ec16-8b11-04e4-422b435d41ef@kernel.dk>
- <201806050027.w550RfJl010157@www262.sakura.ne.jp>
- <20180605004128.GA28826@ming.t460p>
- <CACVXFVNcJ+tC6RUT+JUA3iw+STB+q4P_u+AvoOSrt04zEw8TZA@mail.gmail.com>
+From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
+Subject: Re: [PATCH 5/6] iomap: generic inline data handling
+Date: Thu, 7 Jun 2018 15:50:03 +0200
+Message-ID: <CAHpGcMJ5m-Mr4xJmDpzNnHZ3y_TQpVsL2WpMzs8na8hN=DYPeQ@mail.gmail.com>
+References: <20180606104033.4947-1-hch@lst.de>
+	<20180606104033.4947-6-hch@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: Jens Axboe <axboe@kernel.dk>,
-        Bart Van Assche <Bart.VanAssche@wdc.com>,
-        Dmitry Vyukov <dvyukov@google.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-block <linux-block@vger.kernel.org>,
-        Johannes Thumshirn <jthumshirn@suse.de>,
-        alan.christopher.jenkins@gmail.com,
-        syzbot+c4f9cebf9d651f6e54de@syzkaller.appspotmail.com,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Oleksandr Natalenko <oleksandr@natalenko.name>,
-        martin@lichtvoll.de, Hannes Reinecke <hare@suse.com>,
-        syzkaller-bugs@googlegroups.com,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Keith Busch <keith.busch@intel.com>,
-        "open list:EXT4 FILE SYSTEM" <linux-ext4@vger.kernel.org>
-To: Ming Lei <tom.leiming@gmail.com>, Ming Lei <ming.lei@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CACVXFVNcJ+tC6RUT+JUA3iw+STB+q4P_u+AvoOSrt04zEw8TZA@mail.gmail.com>
-Content-Language: en-US
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: cluster-devel <cluster-devel@redhat.com>, linux-xfs@vger.kernel.org,
+	Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <20180606104033.4947-6-hch@lst.de>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On 2018/06/07 12:29, Ming Lei wrote:
->> The vfs_fsync() isn't necessary in loop_update_dio() since both
->> generic_file_write_iter() and generic_file_read_iter() can handle
->> buffered io vs dio well.
->>
->> I will send one patch to remove the vfs_sync() later.
-> 
-> Hi Tetsuo,
-> 
-> The issue might be fixed by removing this vfs_sync(), but I'd like to
-> understand the idea behind since vfs_sync() shouldn't have caused
-> any IO to this loop queue.
-> 
-> I also tried to do the test via the following c syzbot, but can't reproduce
-> it yet after running it for several hours.
-> 
-> https://syzkaller.appspot.com/x/repro.c?id=4727023951937536
-> 
-> Could you share us how you reproduce it?
+2018-06-06 12:40 GMT+02:00 Christoph Hellwig <hch@lst.de>:
+> From: Andreas Gruenbacher <agruenba@redhat.com>
+>
+> Add generic inline data handling by adding a pointer to the inline data
+> region to struct iomap.  When handling a buffered IOMAP_INLINE write,
+> iomap_write_begin will copy the current inline data from the inline data
+> region into the page cache, and iomap_write_end will copy the changes in
+> the page cache back to the inline data region.
+>
+> This doesn't cover inline data reads and direct I/O yet because so far,
+> we have no users.
+>
+> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+> [hch: small cleanups to better fit in with other iomap work]
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/iomap.c            | 62 +++++++++++++++++++++++++++++++++++++++++++++------
+>  include/linux/iomap.h |  1 +
+>  2 files changed, 56 insertions(+), 7 deletions(-)
+>
+> diff --git a/fs/iomap.c b/fs/iomap.c
+> index f428baa32185..f2a491b98b7c 100644
+> --- a/fs/iomap.c
+> +++ b/fs/iomap.c
+> @@ -116,6 +116,26 @@ iomap_write_failed(struct inode *inode, loff_t pos, unsigned len)
+>                 truncate_pagecache_range(inode, max(pos, i_size), pos + len);
+>  }
+>
+> +static void
+> +iomap_read_inline_data(struct inode *inode, struct page *page,
+> +               struct iomap *iomap)
+> +{
+> +       size_t size = i_size_read(inode);
+> +       void *addr;
+> +
+> +       if (PageUptodate(page))
+> +               return;
+> +
+> +       BUG_ON(page->index);
+> +       BUG_ON(size > PAGE_SIZE - offset_in_page(iomap->inline_data));
+> +
+> +       addr = kmap_atomic(page);
+> +       memcpy(addr, iomap->inline_data, size);
+> +       memset(addr + size, 0, PAGE_SIZE - size);
+> +       kunmap_atomic(addr);
+> +       SetPageUptodate(page);
+> +}
 
-I just reported that syzbot started hitting vfs_sync() case.
-I haven't succeeded reproducing vfs_sync() case in my environment.
+Can you please move iomap_read_inline_data above iomap_write_failed in
+fs/iomap.c so that it will end up above the readpage code? We'll need
+iomap_read_inline_data in the readpage code.
 
-But in general, I modify "any reproducer provided by syzbot that loops
-forever" to call exit() if open() etc. failed, for continuing the loop
-unlikely helps after hitting "Too many open files" error.
+>  static int
+>  iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
+>                 struct page **pagep, struct iomap *iomap)
+> @@ -133,7 +153,11 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
+>         if (!page)
+>                 return -ENOMEM;
+>
+> -       status = __block_write_begin_int(page, pos, len, NULL, iomap);
+> +       if (iomap->type == IOMAP_INLINE)
+> +               iomap_read_inline_data(inode, page, iomap);
+> +       else
+> +               status = __block_write_begin_int(page, pos, len, NULL, iomap);
+> +
+>         if (unlikely(status)) {
+>                 unlock_page(page);
+>                 put_page(page);
+> @@ -146,14 +170,37 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
+>         return status;
+>  }
+>
+> +static int
+> +iomap_write_end_inline(struct inode *inode, struct page *page,
+> +               struct iomap *iomap, loff_t pos, unsigned copied)
+> +{
+> +       void *addr;
+> +
+> +       WARN_ON_ONCE(!PageUptodate(page));
+> +       BUG_ON(pos + copied > PAGE_SIZE - offset_in_page(iomap->inline_data));
+> +
+> +       addr = kmap_atomic(page);
+> +       memcpy(iomap->inline_data + pos, addr + pos, copied);
+> +       kunmap_atomic(addr);
+> +
+> +       mark_inode_dirty(inode);
+> +       __generic_write_end(inode, pos, copied, page);
+> +       return copied;
+> +}
+> +
+>  static int
+>  iomap_write_end(struct inode *inode, loff_t pos, unsigned len,
+> -               unsigned copied, struct page *page)
+> +               unsigned copied, struct page *page, struct iomap *iomap)
+>  {
+>         int ret;
+>
+> -       ret = generic_write_end(NULL, inode->i_mapping, pos, len,
+> -                       copied, page, NULL);
+> +       if (iomap->type == IOMAP_INLINE) {
+> +               ret = iomap_write_end_inline(inode, page, iomap, pos, copied);
+> +       } else {
+> +               ret = generic_write_end(NULL, inode->i_mapping, pos, len,
+> +                               copied, page, NULL);
+> +       }
+> +
+>         if (ret < len)
+>                 iomap_write_failed(inode, pos, len);
+>         return ret;
+> @@ -208,7 +255,8 @@ iomap_write_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+>
+>                 flush_dcache_page(page);
+>
+> -               status = iomap_write_end(inode, pos, bytes, copied, page);
+> +               status = iomap_write_end(inode, pos, bytes, copied, page,
+> +                               iomap);
+>                 if (unlikely(status < 0))
+>                         break;
+>                 copied = status;
+> @@ -302,7 +350,7 @@ iomap_dirty_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+>
+>                 WARN_ON_ONCE(!PageUptodate(page));
+>
+> -               status = iomap_write_end(inode, pos, bytes, bytes, page);
+> +               status = iomap_write_end(inode, pos, bytes, bytes, page, iomap);
+>                 if (unlikely(status <= 0)) {
+>                         if (WARN_ON_ONCE(status == 0))
+>                                 return -EIO;
+> @@ -354,7 +402,7 @@ static int iomap_zero(struct inode *inode, loff_t pos, unsigned offset,
+>         zero_user(page, offset, bytes);
+>         mark_page_accessed(page);
+>
+> -       return iomap_write_end(inode, pos, bytes, bytes, page);
+> +       return iomap_write_end(inode, pos, bytes, bytes, page, iomap);
+>  }
+>
+>  static int iomap_dax_zero(loff_t pos, unsigned offset, unsigned bytes,
+> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+> index 212f4d59bcbf..69ef622f650e 100644
+> --- a/include/linux/iomap.h
+> +++ b/include/linux/iomap.h
+> @@ -56,6 +56,7 @@ struct iomap {
+>         union {
+>                 struct block_device *bdev;
+>                 struct dax_device   *dax_dev;
+> +               void                *inline_data;
+>         };
+>  };
+>
+> --
+> 2.14.2
+>
 
-   res = syscall(__NR_memfd_create, 0x200002c0, 0);
-   if (res != -1)
-     r[1] = res;
-+  else
-+    exit(1);
-
-Thus, I restart the reproducer in a loop from shell
-rather than keep running for hours.
-
-   while :; do echo -n .; ./a.out; done
+Thanks,
+Andreas
