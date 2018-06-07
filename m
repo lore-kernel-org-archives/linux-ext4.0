@@ -1,181 +1,99 @@
-From: =?UTF-8?Q?Andreas_Gr=C3=BCnbacher?= <andreas.gruenbacher@gmail.com>
-Subject: Re: [PATCH 5/6] iomap: generic inline data handling
-Date: Thu, 7 Jun 2018 15:50:03 +0200
-Message-ID: <CAHpGcMJ5m-Mr4xJmDpzNnHZ3y_TQpVsL2WpMzs8na8hN=DYPeQ@mail.gmail.com>
-References: <20180606104033.4947-1-hch@lst.de>
-	<20180606104033.4947-6-hch@lst.de>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: Question about Experimental of Filesystem DAX.
+Date: Thu, 7 Jun 2018 16:38:38 +0200
+Message-ID: <20180607143838.6gdms3qlok6ikzrf@quack2.suse.cz>
+References: <20180531112731.0CAC.E1E9C6FF@jp.fujitsu.com>
+ <20180531150716.GA19764@linux.intel.com>
+ <CAPcyv4jpffaM60tTdLTojhh0CDwcbVUdS8td7R6LKWM3bb15dw@mail.gmail.com>
+ <20180531174636.GA7825@magnolia>
+ <CAPcyv4gS1GCN9TFjngTmmHu83-uMgRpvvx842ZGnvxB3PbgU+Q@mail.gmail.com>
+ <20180531230550.GN10363@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: cluster-devel <cluster-devel@redhat.com>, linux-xfs@vger.kernel.org,
-	Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-	Dan Williams <dan.j.williams@intel.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20180606104033.4947-6-hch@lst.de>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ NVDIMM-ML <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>, linux-xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Yasunori Goto <y-goto-+CUm20s59erQFUHtdCDX3A@public.gmane.org>, linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20180531230550.GN10363@dastard>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-2018-06-06 12:40 GMT+02:00 Christoph Hellwig <hch@lst.de>:
-> From: Andreas Gruenbacher <agruenba@redhat.com>
->
-> Add generic inline data handling by adding a pointer to the inline data
-> region to struct iomap.  When handling a buffered IOMAP_INLINE write,
-> iomap_write_begin will copy the current inline data from the inline data
-> region into the page cache, and iomap_write_end will copy the changes in
-> the page cache back to the inline data region.
->
-> This doesn't cover inline data reads and direct I/O yet because so far,
-> we have no users.
->
-> Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-> [hch: small cleanups to better fit in with other iomap work]
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/iomap.c            | 62 +++++++++++++++++++++++++++++++++++++++++++++------
->  include/linux/iomap.h |  1 +
->  2 files changed, 56 insertions(+), 7 deletions(-)
->
-> diff --git a/fs/iomap.c b/fs/iomap.c
-> index f428baa32185..f2a491b98b7c 100644
-> --- a/fs/iomap.c
-> +++ b/fs/iomap.c
-> @@ -116,6 +116,26 @@ iomap_write_failed(struct inode *inode, loff_t pos, unsigned len)
->                 truncate_pagecache_range(inode, max(pos, i_size), pos + len);
->  }
->
-> +static void
-> +iomap_read_inline_data(struct inode *inode, struct page *page,
-> +               struct iomap *iomap)
-> +{
-> +       size_t size = i_size_read(inode);
-> +       void *addr;
-> +
-> +       if (PageUptodate(page))
-> +               return;
-> +
-> +       BUG_ON(page->index);
-> +       BUG_ON(size > PAGE_SIZE - offset_in_page(iomap->inline_data));
-> +
-> +       addr = kmap_atomic(page);
-> +       memcpy(addr, iomap->inline_data, size);
-> +       memset(addr + size, 0, PAGE_SIZE - size);
-> +       kunmap_atomic(addr);
-> +       SetPageUptodate(page);
-> +}
+On Fri 01-06-18 09:05:50, Dave Chinner wrote:
+> On Thu, May 31, 2018 at 11:26:43AM -0700, Dan Williams wrote:
+> > On Thu, May 31, 2018 at 10:46 AM, Darrick J. Wong
+> > > The recent thread between Jan and Dan make me wonder if making mappings
+> > > share struct pages is going to be a nightmare to add to the mm code,
+> > > though...
+> > 
+> > It's going to be a bit messy because a singular page->mapping
+> > association is fundamentally incompatible with DAX. Perhaps a linked
+> > list of mapping "siblings"?
+> 
+> I'd much prefer the filesystem allocate/control the struct page that
+> is inserted into mapping trees so we can have multiple struct pages
+> pointing at the one physical page.  That way we can just insert
+> these dynamic struct pages into the relevant mappings and it works
+> the same way for both DAX and shared page cache pages.
 
-Can you please move iomap_read_inline_data above iomap_write_failed in
-fs/iomap.c so that it will end up above the readpage code? We'll need
-iomap_read_inline_data in the readpage code.
+Yes, that's one option but the overhead in terms of memory and CPU is
+non-trivial and as Dan writes there are assumptions in MM code that
+PFN<->struct page is 1:1 relationship (or possibly 1:0 as struct page can
+be missing for certain types of pfns). But at this point I think the exact
+data structure layout is not that important (whether there will be dynamic
+struct pages or some other linkage). I think we first need to settle on
+how responsibilities between MM and filesystems are going to be split.
 
->  static int
->  iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
->                 struct page **pagep, struct iomap *iomap)
-> @@ -133,7 +153,11 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
->         if (!page)
->                 return -ENOMEM;
->
-> -       status = __block_write_begin_int(page, pos, len, NULL, iomap);
-> +       if (iomap->type == IOMAP_INLINE)
-> +               iomap_read_inline_data(inode, page, iomap);
-> +       else
-> +               status = __block_write_begin_int(page, pos, len, NULL, iomap);
-> +
->         if (unlikely(status)) {
->                 unlock_page(page);
->                 put_page(page);
-> @@ -146,14 +170,37 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
->         return status;
->  }
->
-> +static int
-> +iomap_write_end_inline(struct inode *inode, struct page *page,
-> +               struct iomap *iomap, loff_t pos, unsigned copied)
-> +{
-> +       void *addr;
-> +
-> +       WARN_ON_ONCE(!PageUptodate(page));
-> +       BUG_ON(pos + copied > PAGE_SIZE - offset_in_page(iomap->inline_data));
-> +
-> +       addr = kmap_atomic(page);
-> +       memcpy(iomap->inline_data + pos, addr + pos, copied);
-> +       kunmap_atomic(addr);
-> +
-> +       mark_inode_dirty(inode);
-> +       __generic_write_end(inode, pos, copied, page);
-> +       return copied;
-> +}
-> +
->  static int
->  iomap_write_end(struct inode *inode, loff_t pos, unsigned len,
-> -               unsigned copied, struct page *page)
-> +               unsigned copied, struct page *page, struct iomap *iomap)
->  {
->         int ret;
->
-> -       ret = generic_write_end(NULL, inode->i_mapping, pos, len,
-> -                       copied, page, NULL);
-> +       if (iomap->type == IOMAP_INLINE) {
-> +               ret = iomap_write_end_inline(inode, page, iomap, pos, copied);
-> +       } else {
-> +               ret = generic_write_end(NULL, inode->i_mapping, pos, len,
-> +                               copied, page, NULL);
-> +       }
-> +
->         if (ret < len)
->                 iomap_write_failed(inode, pos, len);
->         return ret;
-> @@ -208,7 +255,8 @@ iomap_write_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
->
->                 flush_dcache_page(page);
->
-> -               status = iomap_write_end(inode, pos, bytes, copied, page);
-> +               status = iomap_write_end(inode, pos, bytes, copied, page,
-> +                               iomap);
->                 if (unlikely(status < 0))
->                         break;
->                 copied = status;
-> @@ -302,7 +350,7 @@ iomap_dirty_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
->
->                 WARN_ON_ONCE(!PageUptodate(page));
->
-> -               status = iomap_write_end(inode, pos, bytes, bytes, page);
-> +               status = iomap_write_end(inode, pos, bytes, bytes, page, iomap);
->                 if (unlikely(status <= 0)) {
->                         if (WARN_ON_ONCE(status == 0))
->                                 return -EIO;
-> @@ -354,7 +402,7 @@ static int iomap_zero(struct inode *inode, loff_t pos, unsigned offset,
->         zero_user(page, offset, bytes);
->         mark_page_accessed(page);
->
-> -       return iomap_write_end(inode, pos, bytes, bytes, page);
-> +       return iomap_write_end(inode, pos, bytes, bytes, page, iomap);
->  }
->
->  static int iomap_dax_zero(loff_t pos, unsigned offset, unsigned bytes,
-> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-> index 212f4d59bcbf..69ef622f650e 100644
-> --- a/include/linux/iomap.h
-> +++ b/include/linux/iomap.h
-> @@ -56,6 +56,7 @@ struct iomap {
->         union {
->                 struct block_device *bdev;
->                 struct dax_device   *dax_dev;
-> +               void                *inline_data;
->         };
->  };
->
-> --
-> 2.14.2
->
+> i.e. the filesystem knows they are shared physical blocks, the
+> filesystem controls COW of physical blocks, the filesystem controls
+> truncate/invalidation of physical blocks, the filesystem controls
+> cache state of the physical blocks. So why are we designing
+> infrastructure around the virtual memory and caching infrastructure
+> that bypasses the layer that manages and arbitrates access to the
+> physical storage?
 
-Thanks,
-Andreas
+I agree with this but let's see whether we are on the same page.  What MM
+mostly cares about and in particular what Dan needs to solve is "given
+struct page, give me all page tables that map this page". And it seems
+completely fair to me to maintain such translation within MM code as the
+filesystem generally does not care in too big detail about memory mappings
+of files.  When something with the page is going happen (like breaking cow,
+truncate, whatever), the filesystem just tells MM to invalidate all page
+tables for the page and subsequent page faults will fill in updated
+information - nothing new here.
+
+Then there's a second slightly different question - and I suspect you are
+speaking about that one - "given struct page, give me all radix trees
+pointing to this page". This is more a filesystem caching question (even in
+case of DAX, you can think of this as caching of inode + logical offset =>
+physical block translations). Currently this translation is maintained by
+page cache and again the filesystem is mostly ignorant of details of what
+and when gets cached and just tells the MM when it should throw away the
+cached information (through truncate/invalidate_inode_pages()).
+
+With reflink and DAX / shared page cache these questions get more complex
+to answer but in principle I don't see why the mapping from the struct page
+to radix trees should not be maintained (with a help of the filesystem) in
+generic code. Sure the interface now needs to be more flexible and in that
+sense filesystems will be more in control what the page cache is doing -
+e.g. ->readpage callback would probably need to be passed just inode +
+logical offset and *the filesystem* will now need to find / allocate
+approprite page, fill it up, and tell page cache this page is now caching
+given offset in the file. And page cache will add this inode + offset to a
+list of things caching this page. Do you agree or you had something
+different in mind?
+
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
