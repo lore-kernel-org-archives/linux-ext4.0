@@ -1,7 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 5/6] iomap: generic inline data handling
-Date: Thu, 14 Jun 2018 14:04:56 +0200
-Message-ID: <20180614120457.28285-6-hch@lst.de>
+Subject: [PATCH 2/6] iomap: move bdev and dax_dev in a union
+Date: Thu, 14 Jun 2018 14:04:53 +0200
+Message-ID: <20180614120457.28285-3-hch@lst.de>
 References: <20180614120457.28285-1-hch@lst.de>
 Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
 	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
@@ -19,149 +19,85 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-From: Andreas Gruenbacher <agruenba@redhat.com>
+We always either ask for a block device or DAX device mapping, so we can
+use the same space for both.
 
-Add generic inline data handling by adding a pointer to the inline data
-region to struct iomap.  When handling a buffered IOMAP_INLINE write,
-iomap_write_begin will copy the current inline data from the inline data
-region into the page cache, and iomap_write_end will copy the changes in
-the page cache back to the inline data region.
-
-This doesn't cover inline data reads and direct I/O yet because so far,
-we have no users.
-
-Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
-[hch: small cleanups to better fit in with other iomap work]
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/iomap.c            | 62 ++++++++++++++++++++++++++++++++++++++-----
- include/linux/iomap.h |  1 +
- 2 files changed, 56 insertions(+), 7 deletions(-)
+ fs/ext2/inode.c       | 6 ++++--
+ fs/ext4/inode.c       | 6 ++++--
+ fs/xfs/xfs_iomap.c    | 6 ++++--
+ include/linux/iomap.h | 6 ++++--
+ 4 files changed, 16 insertions(+), 8 deletions(-)
 
-diff --git a/fs/iomap.c b/fs/iomap.c
-index bf1e81b08962..6d5a2ebe5dd8 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -103,6 +103,26 @@ iomap_sector(struct iomap *iomap, loff_t pos)
- 	return (iomap->addr + pos - iomap->offset) >> SECTOR_SHIFT;
- }
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 71635909df3b..8aead4e9dbc1 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -815,9 +815,11 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 		return ret;
  
-+static void
-+iomap_read_inline_data(struct inode *inode, struct page *page,
-+		struct iomap *iomap)
-+{
-+	size_t size = i_size_read(inode);
-+	void *addr;
-+
-+	if (PageUptodate(page))
-+		return;
-+
-+	BUG_ON(page->index);
-+	BUG_ON(size > PAGE_SIZE - offset_in_page(iomap->inline_data));
-+
-+	addr = kmap_atomic(page);
-+	memcpy(addr, iomap->inline_data, size);
-+	memset(addr + size, 0, PAGE_SIZE - size);
-+	kunmap_atomic(addr);
-+	SetPageUptodate(page);
-+}
-+
- static void
- iomap_write_failed(struct inode *inode, loff_t pos, unsigned len)
- {
-@@ -133,7 +153,11 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
- 	if (!page)
- 		return -ENOMEM;
- 
--	status = __block_write_begin_int(page, pos, len, NULL, iomap);
-+	if (iomap->type == IOMAP_INLINE)
-+		iomap_read_inline_data(inode, page, iomap);
+ 	iomap->flags = 0;
+-	iomap->bdev = inode->i_sb->s_bdev;
+ 	iomap->offset = (u64)first_block << blkbits;
+-	iomap->dax_dev = sbi->s_daxdev;
++	if (IS_DAX(inode))
++		iomap->dax_dev = sbi->s_daxdev;
 +	else
-+		status = __block_write_begin_int(page, pos, len, NULL, iomap);
-+
- 	if (unlikely(status)) {
- 		unlock_page(page);
- 		put_page(page);
-@@ -146,14 +170,37 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
- 	return status;
++		iomap->bdev = inode->i_sb->s_bdev;
+ 
+ 	if (ret == 0) {
+ 		iomap->type = IOMAP_HOLE;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2ea07efbe016..79027e99118f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3524,8 +3524,10 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	iomap->flags = 0;
+ 	if (ext4_inode_datasync_dirty(inode))
+ 		iomap->flags |= IOMAP_F_DIRTY;
+-	iomap->bdev = inode->i_sb->s_bdev;
+-	iomap->dax_dev = sbi->s_daxdev;
++	if (IS_DAX(inode))
++		iomap->dax_dev = sbi->s_daxdev;
++	else
++		iomap->bdev = inode->i_sb->s_bdev;
+ 	iomap->offset = (u64)first_block << blkbits;
+ 	iomap->length = (u64)map.m_len << blkbits;
+ 
+diff --git a/fs/xfs/xfs_iomap.c b/fs/xfs/xfs_iomap.c
+index c6ce6f9335b6..c9c3d0df5e4c 100644
+--- a/fs/xfs/xfs_iomap.c
++++ b/fs/xfs/xfs_iomap.c
+@@ -70,8 +70,10 @@ xfs_bmbt_to_iomap(
+ 	}
+ 	iomap->offset = XFS_FSB_TO_B(mp, imap->br_startoff);
+ 	iomap->length = XFS_FSB_TO_B(mp, imap->br_blockcount);
+-	iomap->bdev = xfs_find_bdev_for_inode(VFS_I(ip));
+-	iomap->dax_dev = xfs_find_daxdev_for_inode(VFS_I(ip));
++	if (IS_DAX(VFS_I(ip)))
++		iomap->dax_dev = xfs_find_daxdev_for_inode(VFS_I(ip));
++	else
++		iomap->bdev = xfs_find_bdev_for_inode(VFS_I(ip));
  }
  
-+static int
-+iomap_write_end_inline(struct inode *inode, struct page *page,
-+		struct iomap *iomap, loff_t pos, unsigned copied)
-+{
-+	void *addr;
-+
-+	WARN_ON_ONCE(!PageUptodate(page));
-+	BUG_ON(pos + copied > PAGE_SIZE - offset_in_page(iomap->inline_data));
-+
-+	addr = kmap_atomic(page);
-+	memcpy(iomap->inline_data + pos, addr + pos, copied);
-+	kunmap_atomic(addr);
-+
-+	mark_inode_dirty(inode);
-+	__generic_write_end(inode, pos, copied, page);
-+	return copied;
-+}
-+
- static int
- iomap_write_end(struct inode *inode, loff_t pos, unsigned len,
--		unsigned copied, struct page *page)
-+		unsigned copied, struct page *page, struct iomap *iomap)
- {
- 	int ret;
- 
--	ret = generic_write_end(NULL, inode->i_mapping, pos, len,
--			copied, page, NULL);
-+	if (iomap->type == IOMAP_INLINE) {
-+		ret = iomap_write_end_inline(inode, page, iomap, pos, copied);
-+	} else {
-+		ret = generic_write_end(NULL, inode->i_mapping, pos, len,
-+				copied, page, NULL);
-+	}
-+
- 	if (ret < len)
- 		iomap_write_failed(inode, pos, len);
- 	return ret;
-@@ -208,7 +255,8 @@ iomap_write_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 
- 		flush_dcache_page(page);
- 
--		status = iomap_write_end(inode, pos, bytes, copied, page);
-+		status = iomap_write_end(inode, pos, bytes, copied, page,
-+				iomap);
- 		if (unlikely(status < 0))
- 			break;
- 		copied = status;
-@@ -302,7 +350,7 @@ iomap_dirty_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 
- 		WARN_ON_ONCE(!PageUptodate(page));
- 
--		status = iomap_write_end(inode, pos, bytes, bytes, page);
-+		status = iomap_write_end(inode, pos, bytes, bytes, page, iomap);
- 		if (unlikely(status <= 0)) {
- 			if (WARN_ON_ONCE(status == 0))
- 				return -EIO;
-@@ -354,7 +402,7 @@ static int iomap_zero(struct inode *inode, loff_t pos, unsigned offset,
- 	zero_user(page, offset, bytes);
- 	mark_page_accessed(page);
- 
--	return iomap_write_end(inode, pos, bytes, bytes, page);
-+	return iomap_write_end(inode, pos, bytes, bytes, page, iomap);
- }
- 
- static int iomap_dax_zero(loff_t pos, unsigned offset, unsigned bytes,
+ xfs_extlen_t
 diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index 212f4d59bcbf..69ef622f650e 100644
+index a044a824da85..212f4d59bcbf 100644
 --- a/include/linux/iomap.h
 +++ b/include/linux/iomap.h
-@@ -56,6 +56,7 @@ struct iomap {
- 	union {
- 		struct block_device *bdev;
- 		struct dax_device   *dax_dev;
-+		void		    *inline_data;
- 	};
+@@ -53,8 +53,10 @@ struct iomap {
+ 	u64			length;	/* length of mapping, bytes */
+ 	u16			type;	/* type of mapping */
+ 	u16			flags;	/* flags for mapping */
+-	struct block_device	*bdev;	/* block device for I/O */
+-	struct dax_device	*dax_dev; /* dax_dev for dax operations */
++	union {
++		struct block_device *bdev;
++		struct dax_device   *dax_dev;
++	};
  };
  
+ /*
 -- 
 2.17.1
