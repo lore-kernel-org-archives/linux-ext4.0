@@ -1,47 +1,135 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Subject: Re: WARNING in ext4_set_page_dirty
-Date: Wed, 13 Jun 2018 17:55:42 +0200
-Message-ID: <CACT4Y+bwuRKAXj7gkPa3=ADk7JMBRd61YCWr=6bRkd6fmz_fCQ@mail.gmail.com>
-References: <089e0825cec8180a2b0568c4ee1d@google.com> <0000000000003a8d73056cb11ca3@google.com>
- <20180521125000.hlgdsvlzlr7xw3bx@quack2.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: syzbot <syzbot+9a44753ac327c557796a@syzkaller.appspotmail.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-        syzkaller-bugs <syzkaller-bugs@googlegroups.com>,
-        "Theodore Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180521125000.hlgdsvlzlr7xw3bx@quack2.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Christoph Hellwig <hch@lst.de>
+Subject: [PATCH 1/6] fs: factor out a __generic_write_end
+	helper
+Date: Thu, 14 Jun 2018 14:04:52 +0200
+Message-ID: <20180614120457.28285-2-hch@lst.de>
+References: <20180614120457.28285-1-hch@lst.de>
+Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
+	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
+To: Andreas Gruenbacher <agruenba@redhat.com>, linux-xfs@vger.kernel.org
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <20180614120457.28285-1-hch@lst.de>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, May 21, 2018 at 2:50 PM, Jan Kara <jack@suse.cz> wrote:
-> On Sun 20-05-18 23:07:02, syzbot wrote:
->> syzbot has found a reproducer for the following crash on:
->>
->> HEAD commit:    771c577c23ba Linux 4.17-rc6
->> git tree:       upstream
->> console output: https://syzkaller.appspot.com/x/log.txt?x=108c9f37800000
->> kernel config:  https://syzkaller.appspot.com/x/.config?x=982e2df1b9e60b02
->> dashboard link: https://syzkaller.appspot.com/bug?extid=9a44753ac327c557796a
->> compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
->> syzkaller repro:https://syzkaller.appspot.com/x/repro.syz?x=1655584f800000
->> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=15134357800000
->>
->> IMPORTANT: if you fix the bug, please add the following tag to the commit:
->> Reported-by: syzbot+9a44753ac327c557796a@syzkaller.appspotmail.com
->>
->> WARNING: CPU: 0 PID: 4577 at fs/ext4/inode.c:3894
->> ext4_set_page_dirty+0x28d/0x330 fs/ext4/inode.c:3894
->> Kernel panic - not syncing: panic_on_warn set ...
->
-> Looking at the reproducer, this is the issue we have been speaking about at
-> LSF/MM - direct IO read dirties pages after writeback has written them out
-> and so we don't expect them to be dirtied. If someone told me I would not
-> believe this is possible to hit by fuzzing ;) Good job from the syzkaller
-> guys!
+Bits of the buffer.c based write_end implementations that don't know
+about buffer_heads and can be reused by other implementations.
 
-Thanks, Jan! Very nice to hear.
-I believe we are not yet at the limit of what's possible :)
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Brian Foster <bfoster@redhat.com>
+Reviewed-by: Andreas Gruenbacher <agruenba@redhat.com>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ fs/buffer.c   | 67 +++++++++++++++++++++++++++------------------------
+ fs/internal.h |  2 ++
+ 2 files changed, 37 insertions(+), 32 deletions(-)
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index cabc045f483d..aba2a948b235 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2076,6 +2076,40 @@ int block_write_begin(struct address_space *mapping, loff_t pos, unsigned len,
+ }
+ EXPORT_SYMBOL(block_write_begin);
+ 
++int __generic_write_end(struct inode *inode, loff_t pos, unsigned copied,
++		struct page *page)
++{
++	loff_t old_size = inode->i_size;
++	bool i_size_changed = false;
++
++	/*
++	 * No need to use i_size_read() here, the i_size cannot change under us
++	 * because we hold i_rwsem.
++	 *
++	 * But it's important to update i_size while still holding page lock:
++	 * page writeout could otherwise come in and zero beyond i_size.
++	 */
++	if (pos + copied > inode->i_size) {
++		i_size_write(inode, pos + copied);
++		i_size_changed = true;
++	}
++
++	unlock_page(page);
++	put_page(page);
++
++	if (old_size < pos)
++		pagecache_isize_extended(inode, old_size, pos);
++	/*
++	 * Don't mark the inode dirty under page lock. First, it unnecessarily
++	 * makes the holding time of page lock longer. Second, it forces lock
++	 * ordering of page lock and transaction start for journaling
++	 * filesystems.
++	 */
++	if (i_size_changed)
++		mark_inode_dirty(inode);
++	return copied;
++}
++
+ int block_write_end(struct file *file, struct address_space *mapping,
+ 			loff_t pos, unsigned len, unsigned copied,
+ 			struct page *page, void *fsdata)
+@@ -2116,39 +2150,8 @@ int generic_write_end(struct file *file, struct address_space *mapping,
+ 			loff_t pos, unsigned len, unsigned copied,
+ 			struct page *page, void *fsdata)
+ {
+-	struct inode *inode = mapping->host;
+-	loff_t old_size = inode->i_size;
+-	int i_size_changed = 0;
+-
+ 	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+-
+-	/*
+-	 * No need to use i_size_read() here, the i_size
+-	 * cannot change under us because we hold i_mutex.
+-	 *
+-	 * But it's important to update i_size while still holding page lock:
+-	 * page writeout could otherwise come in and zero beyond i_size.
+-	 */
+-	if (pos+copied > inode->i_size) {
+-		i_size_write(inode, pos+copied);
+-		i_size_changed = 1;
+-	}
+-
+-	unlock_page(page);
+-	put_page(page);
+-
+-	if (old_size < pos)
+-		pagecache_isize_extended(inode, old_size, pos);
+-	/*
+-	 * Don't mark the inode dirty under page lock. First, it unnecessarily
+-	 * makes the holding time of page lock longer. Second, it forces lock
+-	 * ordering of page lock and transaction start for journaling
+-	 * filesystems.
+-	 */
+-	if (i_size_changed)
+-		mark_inode_dirty(inode);
+-
+-	return copied;
++	return __generic_write_end(mapping->host, pos, copied, page);
+ }
+ EXPORT_SYMBOL(generic_write_end);
+ 
+diff --git a/fs/internal.h b/fs/internal.h
+index 980d005b21b4..4a18bdbd2214 100644
+--- a/fs/internal.h
++++ b/fs/internal.h
+@@ -43,6 +43,8 @@ static inline int __sync_blockdev(struct block_device *bdev, int wait)
+ extern void guard_bio_eod(int rw, struct bio *bio);
+ extern int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
+ 		get_block_t *get_block, struct iomap *iomap);
++int __generic_write_end(struct inode *inode, loff_t pos, unsigned copied,
++		struct page *page);
+ 
+ /*
+  * char_dev.c
+-- 
+2.17.1
