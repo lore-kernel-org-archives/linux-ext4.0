@@ -1,11 +1,15 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 6/6] iomap: add a page_done callback
-Date: Thu, 14 Jun 2018 14:04:57 +0200
-Message-ID: <20180614120457.28285-7-hch@lst.de>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: iomap preparations for GFS2 v2
+Date: Thu, 14 Jun 2018 15:04:38 +0200
+Message-ID: <CAHc6FU4nQ562SxepV1=dqcuuuPBWOTXr4sAiY_5H-Z7uOaTNng@mail.gmail.com>
 References: <20180614120457.28285-1-hch@lst.de>
-Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
-	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
-To: Andreas Gruenbacher <agruenba@redhat.com>, linux-xfs@vger.kernel.org
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-xfs@vger.kernel.org, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	Dan Williams <dan.j.williams@intel.com>,
+	cluster-devel <cluster-devel@redhat.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Christoph Hellwig <hch@lst.de>
 Return-path: <cluster-devel-bounces@redhat.com>
 In-Reply-To: <20180614120457.28285-1-hch@lst.de>
 List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
@@ -19,59 +23,33 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-This will be used by gfs2 to attach data to transactions for the journaled
-data mode.  But the concept is generic enough that we might be able to
-use it for other purposes like encryption/integrity post-processing in the
-future.
+On 14 June 2018 at 14:04, Christoph Hellwig <hch@lst.de> wrote:
+> Hi all,
+>
+> this is a slight rework of the patches from Andreas to prepare for gfs2
+> using the iomap code.
+>
+> Note: I'd like to start with an immutable branch for iomap patches in either
+> the XFS tree or a tree of mine at the beginning of the merge window so that
+> we have a common base for the GFS2 and XFS iomap work.
+>
+> Changes since v1:
+>  - move code to a different spot in iomap.c to prefer for readpages
+>    inline data support
+>  - add a forward declaration for struct page to iomap.h
+>  - fix a typo in the dax_dev/bdev unioning
+>  - fix a comment typo
 
-Based on a patch from Andreas Gruenbacher.
+I saw that you've pushed this onto the gfs2-iomap branch in your xfs
+repository. I've rebased the gfs2 iomap-write branch onto that;
+there's a trivial patch for adding a private pointer to struct iomap
+at the head of that branch that would sense to move to the shared
+branch as well now.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/iomap.c            | 3 +++
- include/linux/iomap.h | 9 +++++++++
- 2 files changed, 12 insertions(+)
+The next step would probably be to start using iomap_readpage /
+iomap_readpages in gfs2 for block size == page size. This requires
+adding inline data support to iomap_readpage which is trivial, but
+because of gfs2's reliance on buffer heads, that alone isn't enough.
 
-diff --git a/fs/iomap.c b/fs/iomap.c
-index 6d5a2ebe5dd8..9e265118e8b0 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -201,6 +201,9 @@ iomap_write_end(struct inode *inode, loff_t pos, unsigned len,
- 				copied, page, NULL);
- 	}
- 
-+	if (iomap->page_done)
-+		iomap->page_done(inode, pos, copied, page, iomap);
-+
- 	if (ret < len)
- 		iomap_write_failed(inode, pos, len);
- 	return ret;
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index 69ef622f650e..43cc9208599f 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -9,6 +9,7 @@ struct fiemap_extent_info;
- struct inode;
- struct iov_iter;
- struct kiocb;
-+struct page;
- struct vm_area_struct;
- struct vm_fault;
- 
-@@ -58,6 +59,14 @@ struct iomap {
- 		struct dax_device   *dax_dev;
- 		void		    *inline_data;
- 	};
-+
-+	/*
-+	 * Called when finished processing a page in the mapping returned in
-+	 * this iomap.  At least for now this is only supported in the buffered
-+	 * write path.
-+	 */
-+	void (*page_done)(struct inode *inode, loff_t pos, unsigned copied,
-+			struct page *page, struct iomap *iomap);
- };
- 
- /*
--- 
-2.17.1
+Thanks,
+Andreas
