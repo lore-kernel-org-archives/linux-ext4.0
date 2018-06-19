@@ -1,8 +1,8 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 6/6] iomap: add private pointer to struct
-	iomap
-Date: Tue, 19 Jun 2018 18:41:36 +0200
-Message-ID: <20180619164137.13720-7-hch@lst.de>
+Subject: [PATCH 3/6] iomap: complete partial direct I/O
+	writes synchronously
+Date: Tue, 19 Jun 2018 18:41:33 +0200
+Message-ID: <20180619164137.13720-4-hch@lst.de>
 References: <20180619164137.13720-1-hch@lst.de>
 Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
 	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
@@ -22,27 +22,97 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Andreas Gruenbacher <agruenba@redhat.com>
 
-Add a private pointer to struct iomap to allow filesystems to pass data
-from iomap_begin to iomap_end.  Will be used by gfs2 for passing on the
-on-disk inode buffer head.
+According to xfstest generic/240, applications seem to expect direct I/O
+writes to either complete as a whole or to fail; short direct I/O writes
+are apparently not appreciated.  This means that when only part of an
+asynchronous direct I/O write succeeds, we can either fail the entire
+write, or we can wait for the partial write to complete and retry the
+remaining write as buffered I/O.  The old __blockdev_direct_IO helper
+has code for waiting for partial writes to complete; the new
+iomap_dio_rw iomap helper does not.
+
+The above mentioned fallback mode is needed for gfs2, which doesn't
+allow block allocations under direct I/O to avoid taking cluster-wide
+exclusive locks.  As a consequence, an asynchronous direct I/O write to
+a file range that contains a hole will result in a short write.  In that
+case, wait for the short write to complete to allow gfs2 to recover.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/iomap.h | 1 +
- 1 file changed, 1 insertion(+)
+ fs/iomap.c | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-index 45f43865b0f0..1f36523d448a 100644
---- a/include/linux/iomap.h
-+++ b/include/linux/iomap.h
-@@ -57,6 +57,7 @@ struct iomap {
- 	struct block_device	*bdev;	/* block device for I/O */
- 	struct dax_device	*dax_dev; /* dax_dev for dax operations */
- 	void			*inline_data;
-+	void			*private; /* filesystem private */
+diff --git a/fs/iomap.c b/fs/iomap.c
+index 77397b5a96ef..9c454459a1e9 100644
+--- a/fs/iomap.c
++++ b/fs/iomap.c
+@@ -811,6 +811,7 @@ struct iomap_dio {
+ 	atomic_t		ref;
+ 	unsigned		flags;
+ 	int			error;
++	bool			wait_for_completion;
  
- 	/*
- 	 * Called when finished processing a page in the mapping returned in
+ 	union {
+ 		/* used during submission and for synchronous completion: */
+@@ -914,9 +915,8 @@ static void iomap_dio_bio_end_io(struct bio *bio)
+ 		iomap_dio_set_error(dio, blk_status_to_errno(bio->bi_status));
+ 
+ 	if (atomic_dec_and_test(&dio->ref)) {
+-		if (is_sync_kiocb(dio->iocb)) {
++		if (dio->wait_for_completion) {
+ 			struct task_struct *waiter = dio->submit.waiter;
+-
+ 			WRITE_ONCE(dio->submit.waiter, NULL);
+ 			wake_up_process(waiter);
+ 		} else if (dio->flags & IOMAP_DIO_WRITE) {
+@@ -1131,13 +1131,12 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 	dio->end_io = end_io;
+ 	dio->error = 0;
+ 	dio->flags = 0;
++	dio->wait_for_completion = is_sync_kiocb(iocb);
+ 
+ 	dio->submit.iter = iter;
+-	if (is_sync_kiocb(iocb)) {
+-		dio->submit.waiter = current;
+-		dio->submit.cookie = BLK_QC_T_NONE;
+-		dio->submit.last_queue = NULL;
+-	}
++	dio->submit.waiter = current;
++	dio->submit.cookie = BLK_QC_T_NONE;
++	dio->submit.last_queue = NULL;
+ 
+ 	if (iov_iter_rw(iter) == READ) {
+ 		if (pos >= dio->i_size)
+@@ -1187,7 +1186,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 		dio_warn_stale_pagecache(iocb->ki_filp);
+ 	ret = 0;
+ 
+-	if (iov_iter_rw(iter) == WRITE && !is_sync_kiocb(iocb) &&
++	if (iov_iter_rw(iter) == WRITE && !dio->wait_for_completion &&
+ 	    !inode->i_sb->s_dio_done_wq) {
+ 		ret = sb_init_dio_done_wq(inode->i_sb);
+ 		if (ret < 0)
+@@ -1202,8 +1201,10 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 				iomap_dio_actor);
+ 		if (ret <= 0) {
+ 			/* magic error code to fall back to buffered I/O */
+-			if (ret == -ENOTBLK)
++			if (ret == -ENOTBLK) {
++				dio->wait_for_completion = true;
+ 				ret = 0;
++			}
+ 			break;
+ 		}
+ 		pos += ret;
+@@ -1224,7 +1225,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
+ 		dio->flags &= ~IOMAP_DIO_NEED_SYNC;
+ 
+ 	if (!atomic_dec_and_test(&dio->ref)) {
+-		if (!is_sync_kiocb(iocb))
++		if (!dio->wait_for_completion)
+ 			return -EIOCBQUEUED;
+ 
+ 		for (;;) {
 -- 
 2.17.1
