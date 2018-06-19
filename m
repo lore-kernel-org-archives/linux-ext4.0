@@ -1,8 +1,7 @@
 From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 3/6] iomap: complete partial direct I/O
-	writes synchronously
-Date: Tue, 19 Jun 2018 18:41:33 +0200
-Message-ID: <20180619164137.13720-4-hch@lst.de>
+Subject: [PATCH 4/6] iomap: generic inline data handling
+Date: Tue, 19 Jun 2018 18:41:34 +0200
+Message-ID: <20180619164137.13720-5-hch@lst.de>
 References: <20180619164137.13720-1-hch@lst.de>
 Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
 	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
@@ -22,97 +21,147 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Andreas Gruenbacher <agruenba@redhat.com>
 
-According to xfstest generic/240, applications seem to expect direct I/O
-writes to either complete as a whole or to fail; short direct I/O writes
-are apparently not appreciated.  This means that when only part of an
-asynchronous direct I/O write succeeds, we can either fail the entire
-write, or we can wait for the partial write to complete and retry the
-remaining write as buffered I/O.  The old __blockdev_direct_IO helper
-has code for waiting for partial writes to complete; the new
-iomap_dio_rw iomap helper does not.
+Add generic inline data handling by adding a pointer to the inline data
+region to struct iomap.  When handling a buffered IOMAP_INLINE write,
+iomap_write_begin will copy the current inline data from the inline data
+region into the page cache, and iomap_write_end will copy the changes in
+the page cache back to the inline data region.
 
-The above mentioned fallback mode is needed for gfs2, which doesn't
-allow block allocations under direct I/O to avoid taking cluster-wide
-exclusive locks.  As a consequence, an asynchronous direct I/O write to
-a file range that contains a hole will result in a short write.  In that
-case, wait for the short write to complete to allow gfs2 to recover.
+This doesn't cover inline data reads and direct I/O yet because so far,
+we have no users.
 
 Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+[hch: small cleanups to better fit in with other iomap work]
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/iomap.c | 21 +++++++++++----------
- 1 file changed, 11 insertions(+), 10 deletions(-)
+ fs/iomap.c            | 62 ++++++++++++++++++++++++++++++++++++++-----
+ include/linux/iomap.h |  1 +
+ 2 files changed, 56 insertions(+), 7 deletions(-)
 
 diff --git a/fs/iomap.c b/fs/iomap.c
-index 77397b5a96ef..9c454459a1e9 100644
+index 9c454459a1e9..4aecd7c5dbd8 100644
 --- a/fs/iomap.c
 +++ b/fs/iomap.c
-@@ -811,6 +811,7 @@ struct iomap_dio {
- 	atomic_t		ref;
- 	unsigned		flags;
- 	int			error;
-+	bool			wait_for_completion;
+@@ -103,6 +103,26 @@ iomap_sector(struct iomap *iomap, loff_t pos)
+ 	return (iomap->addr + pos - iomap->offset) >> SECTOR_SHIFT;
+ }
  
- 	union {
- 		/* used during submission and for synchronous completion: */
-@@ -914,9 +915,8 @@ static void iomap_dio_bio_end_io(struct bio *bio)
- 		iomap_dio_set_error(dio, blk_status_to_errno(bio->bi_status));
++static void
++iomap_read_inline_data(struct inode *inode, struct page *page,
++		struct iomap *iomap)
++{
++	size_t size = i_size_read(inode);
++	void *addr;
++
++	if (PageUptodate(page))
++		return;
++
++	BUG_ON(page->index);
++	BUG_ON(size > PAGE_SIZE - offset_in_page(iomap->inline_data));
++
++	addr = kmap_atomic(page);
++	memcpy(addr, iomap->inline_data, size);
++	memset(addr + size, 0, PAGE_SIZE - size);
++	kunmap_atomic(addr);
++	SetPageUptodate(page);
++}
++
+ static void
+ iomap_write_failed(struct inode *inode, loff_t pos, unsigned len)
+ {
+@@ -133,7 +153,11 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
+ 	if (!page)
+ 		return -ENOMEM;
  
- 	if (atomic_dec_and_test(&dio->ref)) {
--		if (is_sync_kiocb(dio->iocb)) {
-+		if (dio->wait_for_completion) {
- 			struct task_struct *waiter = dio->submit.waiter;
--
- 			WRITE_ONCE(dio->submit.waiter, NULL);
- 			wake_up_process(waiter);
- 		} else if (dio->flags & IOMAP_DIO_WRITE) {
-@@ -1131,13 +1131,12 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	dio->end_io = end_io;
- 	dio->error = 0;
- 	dio->flags = 0;
-+	dio->wait_for_completion = is_sync_kiocb(iocb);
+-	status = __block_write_begin_int(page, pos, len, NULL, iomap);
++	if (iomap->type == IOMAP_INLINE)
++		iomap_read_inline_data(inode, page, iomap);
++	else
++		status = __block_write_begin_int(page, pos, len, NULL, iomap);
++
+ 	if (unlikely(status)) {
+ 		unlock_page(page);
+ 		put_page(page);
+@@ -146,14 +170,37 @@ iomap_write_begin(struct inode *inode, loff_t pos, unsigned len, unsigned flags,
+ 	return status;
+ }
  
- 	dio->submit.iter = iter;
--	if (is_sync_kiocb(iocb)) {
--		dio->submit.waiter = current;
--		dio->submit.cookie = BLK_QC_T_NONE;
--		dio->submit.last_queue = NULL;
--	}
-+	dio->submit.waiter = current;
-+	dio->submit.cookie = BLK_QC_T_NONE;
-+	dio->submit.last_queue = NULL;
++static int
++iomap_write_end_inline(struct inode *inode, struct page *page,
++		struct iomap *iomap, loff_t pos, unsigned copied)
++{
++	void *addr;
++
++	WARN_ON_ONCE(!PageUptodate(page));
++	BUG_ON(pos + copied > PAGE_SIZE - offset_in_page(iomap->inline_data));
++
++	addr = kmap_atomic(page);
++	memcpy(iomap->inline_data + pos, addr + pos, copied);
++	kunmap_atomic(addr);
++
++	mark_inode_dirty(inode);
++	__generic_write_end(inode, pos, copied, page);
++	return copied;
++}
++
+ static int
+ iomap_write_end(struct inode *inode, loff_t pos, unsigned len,
+-		unsigned copied, struct page *page)
++		unsigned copied, struct page *page, struct iomap *iomap)
+ {
+ 	int ret;
  
- 	if (iov_iter_rw(iter) == READ) {
- 		if (pos >= dio->i_size)
-@@ -1187,7 +1186,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		dio_warn_stale_pagecache(iocb->ki_filp);
- 	ret = 0;
+-	ret = generic_write_end(NULL, inode->i_mapping, pos, len,
+-			copied, page, NULL);
++	if (iomap->type == IOMAP_INLINE) {
++		ret = iomap_write_end_inline(inode, page, iomap, pos, copied);
++	} else {
++		ret = generic_write_end(NULL, inode->i_mapping, pos, len,
++				copied, page, NULL);
++	}
++
+ 	if (ret < len)
+ 		iomap_write_failed(inode, pos, len);
+ 	return ret;
+@@ -208,7 +255,8 @@ iomap_write_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
  
--	if (iov_iter_rw(iter) == WRITE && !is_sync_kiocb(iocb) &&
-+	if (iov_iter_rw(iter) == WRITE && !dio->wait_for_completion &&
- 	    !inode->i_sb->s_dio_done_wq) {
- 		ret = sb_init_dio_done_wq(inode->i_sb);
- 		if (ret < 0)
-@@ -1202,8 +1201,10 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 				iomap_dio_actor);
- 		if (ret <= 0) {
- 			/* magic error code to fall back to buffered I/O */
--			if (ret == -ENOTBLK)
-+			if (ret == -ENOTBLK) {
-+				dio->wait_for_completion = true;
- 				ret = 0;
-+			}
+ 		flush_dcache_page(page);
+ 
+-		status = iomap_write_end(inode, pos, bytes, copied, page);
++		status = iomap_write_end(inode, pos, bytes, copied, page,
++				iomap);
+ 		if (unlikely(status < 0))
  			break;
- 		}
- 		pos += ret;
-@@ -1224,7 +1225,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		dio->flags &= ~IOMAP_DIO_NEED_SYNC;
+ 		copied = status;
+@@ -302,7 +350,7 @@ iomap_dirty_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
  
- 	if (!atomic_dec_and_test(&dio->ref)) {
--		if (!is_sync_kiocb(iocb))
-+		if (!dio->wait_for_completion)
- 			return -EIOCBQUEUED;
+ 		WARN_ON_ONCE(!PageUptodate(page));
  
- 		for (;;) {
+-		status = iomap_write_end(inode, pos, bytes, bytes, page);
++		status = iomap_write_end(inode, pos, bytes, bytes, page, iomap);
+ 		if (unlikely(status <= 0)) {
+ 			if (WARN_ON_ONCE(status == 0))
+ 				return -EIO;
+@@ -354,7 +402,7 @@ static int iomap_zero(struct inode *inode, loff_t pos, unsigned offset,
+ 	zero_user(page, offset, bytes);
+ 	mark_page_accessed(page);
+ 
+-	return iomap_write_end(inode, pos, bytes, bytes, page);
++	return iomap_write_end(inode, pos, bytes, bytes, page, iomap);
+ }
+ 
+ static int iomap_dax_zero(loff_t pos, unsigned offset, unsigned bytes,
+diff --git a/include/linux/iomap.h b/include/linux/iomap.h
+index a044a824da85..10d6cff7f69a 100644
+--- a/include/linux/iomap.h
++++ b/include/linux/iomap.h
+@@ -55,6 +55,7 @@ struct iomap {
+ 	u16			flags;	/* flags for mapping */
+ 	struct block_device	*bdev;	/* block device for I/O */
+ 	struct dax_device	*dax_dev; /* dax_dev for dax operations */
++	void			*inline_data;
+ };
+ 
+ /*
 -- 
 2.17.1
