@@ -1,7 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH 2/2] ext4: handle layout changes to pinned DAX mappings
-Date: Wed, 20 Jun 2018 16:15:03 -0600
-Message-ID: <20180620221503.25237-3-ross.zwisler@linux.intel.com>
+Subject: [PATCH 1/2] dax: dax_layout_busy_page() warn on !exceptional
+Date: Wed, 20 Jun 2018 16:15:02 -0600
+Message-ID: <20180620221503.25237-2-ross.zwisler@linux.intel.com>
 References: <20180620221503.25237-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -23,144 +23,43 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Follow the lead of xfs_break_dax_layouts() and add synchronization between
-operations in ext4 which remove blocks from an inode (hole punch, truncate
-down, etc.) and pages which are pinned due to DAX DMA operations.
+Inodes using DAX should only ever have exceptional entries in their page
+caches.  Make this clear by warning if the iteration in
+dax_layout_busy_page() ever sees a non-exceptional entry, and by adding a
+comment for the pagevec_release() call which only deals with struct page
+pointers.
 
 Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 ---
- fs/ext4/ext4.h     |  1 +
- fs/ext4/extents.c  | 12 ++++++++++++
- fs/ext4/inode.c    | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/truncate.h |  1 +
- 4 files changed, 62 insertions(+)
+ fs/dax.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0b127853c584..34bccd64d83d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2460,6 +2460,7 @@ extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
- extern int ext4_inode_attach_jinode(struct inode *inode);
- extern int ext4_can_truncate(struct inode *inode);
- extern int ext4_truncate(struct inode *);
-+extern int ext4_break_layouts(struct inode *);
- extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
- extern int ext4_truncate_restart_trans(handle_t *, struct inode *, int nblocks);
- extern void ext4_set_inode_flags(struct inode *);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0057fe3f248d..a6aef06f455b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4820,6 +4820,13 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		 * released from page cache.
- 		 */
- 		down_write(&EXT4_I(inode)->i_mmap_sem);
-+
-+		ret = ext4_break_layouts(inode);
-+		if (ret) {
-+			up_write(&EXT4_I(inode)->i_mmap_sem);
-+			goto out_mutex;
-+		}
-+
- 		ret = ext4_update_disksize_before_punch(inode, offset, len);
- 		if (ret) {
- 			up_write(&EXT4_I(inode)->i_mmap_sem);
-@@ -5493,6 +5500,11 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	 * page cache.
- 	 */
- 	down_write(&EXT4_I(inode)->i_mmap_sem);
-+
-+	ret = ext4_break_layouts(inode);
-+	if (ret)
-+		goto out_mmap;
-+
- 	/*
- 	 * Need to round down offset to be aligned with page size boundary
- 	 * for page size > block size.
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2ea07efbe016..c795e5118745 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4193,6 +4193,41 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
- 	return 0;
- }
+diff --git a/fs/dax.c b/fs/dax.c
+index 641192808bb6..4a5e31f8a2d4 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -566,7 +566,7 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
+ 			if (index >= end)
+ 				break;
  
-+static void ext4_wait_dax_page(struct ext4_inode_info *ei, bool *did_unlock)
-+{
-+	*did_unlock = true;
-+	up_write(&ei->i_mmap_sem);
-+	schedule();
-+	down_write(&ei->i_mmap_sem);
-+}
-+
-+int ext4_break_layouts(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct page *page;
-+	bool retry;
-+	int error;
-+
-+	if (unlikely(!rwsem_is_locked(&ei->i_mmap_sem))) {
-+		WARN_ON_ONCE(1);
-+		return -EINVAL;
-+	}
-+
-+	do {
-+		retry = false;
-+		page = dax_layout_busy_page(inode->i_mapping);
-+		if (!page)
-+			return 0;
-+
-+		error = ___wait_var_event(&page->_refcount,
-+				atomic_read(&page->_refcount) == 1,
-+				TASK_INTERRUPTIBLE, 0, 0,
-+				ext4_wait_dax_page(ei, &retry));
-+	} while (error == 0 && retry);
-+
-+	return error;
-+}
-+
- /*
-  * ext4_punch_hole: punches a hole in a file by releasing the blocks
-  * associated with the given offset and length
-@@ -4266,6 +4301,11 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	 * page cache.
- 	 */
- 	down_write(&EXT4_I(inode)->i_mmap_sem);
-+
-+	ret = ext4_break_layouts(inode);
-+	if (ret)
-+		goto out_dio;
-+
- 	first_block_offset = round_up(offset, sb->s_blocksize);
- 	last_block_offset = round_down((offset + length), sb->s_blocksize) - 1;
+-			if (!radix_tree_exceptional_entry(pvec_ent))
++			if (WARN_ON_ONCE(!radix_tree_exceptional_entry(pvec_ent)))
+ 				continue;
  
-@@ -5554,6 +5594,14 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 				ext4_wait_for_tail_page_commit(inode);
+ 			xa_lock_irq(&mapping->i_pages);
+@@ -578,6 +578,13 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
+ 			if (page)
+ 				break;
  		}
- 		down_write(&EXT4_I(inode)->i_mmap_sem);
 +
-+		rc = ext4_break_layouts(inode);
-+		if (rc) {
-+			up_write(&EXT4_I(inode)->i_mmap_sem);
-+			error = rc;
-+			goto err_out;
-+		}
-+
- 		/*
- 		 * Truncate pagecache after we've waited for commit
- 		 * in data=journal mode to make pages freeable.
-diff --git a/fs/ext4/truncate.h b/fs/ext4/truncate.h
-index 0cb13badf473..a3b78241e9f6 100644
---- a/fs/ext4/truncate.h
-+++ b/fs/ext4/truncate.h
-@@ -12,6 +12,7 @@
- static inline void ext4_truncate_failed_write(struct inode *inode)
- {
- 	down_write(&EXT4_I(inode)->i_mmap_sem);
-+	ext4_break_layouts(inode);
- 	truncate_inode_pages(inode->i_mapping, inode->i_size);
- 	ext4_truncate(inode);
- 	up_write(&EXT4_I(inode)->i_mmap_sem);
++		/*
++		 * We don't expect normal struct page entries to exist in our
++		 * tree, but we keep these pagevec calls so that this code is
++		 * consistent with the common pattern for handling pagevecs
++		 * throughout the kernel.
++		 */
+ 		pagevec_remove_exceptionals(&pvec);
+ 		pagevec_release(&pvec);
+ 		index++;
 -- 
 2.14.4
