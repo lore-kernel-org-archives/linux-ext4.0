@@ -1,135 +1,77 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: [PATCH 1/6] fs: factor out a __generic_write_end
-	helper
-Date: Tue, 19 Jun 2018 18:41:31 +0200
-Message-ID: <20180619164137.13720-2-hch@lst.de>
-References: <20180619164137.13720-1-hch@lst.de>
-Cc: linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
-	Dan Williams <dan.j.williams@intel.com>, linux-ext4@vger.kernel.org
-To: Andreas Gruenbacher <agruenba@redhat.com>, linux-xfs@vger.kernel.org
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20180619164137.13720-1-hch@lst.de>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH] ext2: use ktime_get_real_seconds for timestamps
+Date: Wed, 20 Jun 2018 16:31:40 +0200
+Message-ID: <20180620143203.42225-1-arnd@arndb.de>
+Cc: y2038@lists.linaro.org, Arnd Bergmann <arnd@arndb.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: Jan Kara <jack@suse.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Bits of the buffer.c based write_end implementations that don't know
-about buffer_heads and can be reused by other implementations.
+get_seconds() is deprecated because of the y2038 overflow, so users
+should migrate to 64-bit timestamps using ktime_get_real_seconds().
+In ext2, the timestamps in the superblock and in the inode are all
+limited to 32-bit, and this won't get fixed, so let's just stop
+using the deprecated interface and keep truncating.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Brian Foster <bfoster@redhat.com>
-Reviewed-by: Andreas Gruenbacher <agruenba@redhat.com>
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+All users of ext2 should migrate to ext4 before 2038 to prevent this
+from causing problems.
+
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/buffer.c   | 67 +++++++++++++++++++++++++++------------------------
- fs/internal.h |  2 ++
- 2 files changed, 37 insertions(+), 32 deletions(-)
+ fs/ext2/inode.c | 2 +-
+ fs/ext2/super.c | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index cabc045f483d..aba2a948b235 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2076,6 +2076,40 @@ int block_write_begin(struct address_space *mapping, loff_t pos, unsigned len,
- }
- EXPORT_SYMBOL(block_write_begin);
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 71635909df3b..7f7ee18fe179 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -86,7 +86,7 @@ void ext2_evict_inode(struct inode * inode)
+ 	if (want_delete) {
+ 		sb_start_intwrite(inode->i_sb);
+ 		/* set dtime */
+-		EXT2_I(inode)->i_dtime	= get_seconds();
++		EXT2_I(inode)->i_dtime	= ktime_get_real_seconds();
+ 		mark_inode_dirty(inode);
+ 		__ext2_write_inode(inode, inode_needs_sync(inode));
+ 		/* truncate to 0 */
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 25ab1274090f..25e31afe961d 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -679,7 +679,7 @@ static int ext2_setup_super (struct super_block * sb,
+ 			"running e2fsck is recommended");
+ 	else if (le32_to_cpu(es->s_checkinterval) &&
+ 		(le32_to_cpu(es->s_lastcheck) +
+-			le32_to_cpu(es->s_checkinterval) <= get_seconds()))
++			le32_to_cpu(es->s_checkinterval) <= ktime_get_real_seconds()))
+ 		ext2_msg(sb, KERN_WARNING,
+ 			"warning: checktime reached, "
+ 			"running e2fsck is recommended");
+@@ -1245,7 +1245,7 @@ void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
+ 	spin_lock(&EXT2_SB(sb)->s_lock);
+ 	es->s_free_blocks_count = cpu_to_le32(ext2_count_free_blocks(sb));
+ 	es->s_free_inodes_count = cpu_to_le32(ext2_count_free_inodes(sb));
+-	es->s_wtime = cpu_to_le32(get_seconds());
++	es->s_wtime = cpu_to_le32(ktime_get_real_seconds());
+ 	/* unlock before we do IO */
+ 	spin_unlock(&EXT2_SB(sb)->s_lock);
+ 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
+@@ -1360,7 +1360,7 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 		 * the rdonly flag and then mark the partition as valid again.
+ 		 */
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+-		es->s_mtime = cpu_to_le32(get_seconds());
++		es->s_mtime = cpu_to_le32(ktime_get_real_seconds());
+ 		spin_unlock(&sbi->s_lock);
  
-+int __generic_write_end(struct inode *inode, loff_t pos, unsigned copied,
-+		struct page *page)
-+{
-+	loff_t old_size = inode->i_size;
-+	bool i_size_changed = false;
-+
-+	/*
-+	 * No need to use i_size_read() here, the i_size cannot change under us
-+	 * because we hold i_rwsem.
-+	 *
-+	 * But it's important to update i_size while still holding page lock:
-+	 * page writeout could otherwise come in and zero beyond i_size.
-+	 */
-+	if (pos + copied > inode->i_size) {
-+		i_size_write(inode, pos + copied);
-+		i_size_changed = true;
-+	}
-+
-+	unlock_page(page);
-+	put_page(page);
-+
-+	if (old_size < pos)
-+		pagecache_isize_extended(inode, old_size, pos);
-+	/*
-+	 * Don't mark the inode dirty under page lock. First, it unnecessarily
-+	 * makes the holding time of page lock longer. Second, it forces lock
-+	 * ordering of page lock and transaction start for journaling
-+	 * filesystems.
-+	 */
-+	if (i_size_changed)
-+		mark_inode_dirty(inode);
-+	return copied;
-+}
-+
- int block_write_end(struct file *file, struct address_space *mapping,
- 			loff_t pos, unsigned len, unsigned copied,
- 			struct page *page, void *fsdata)
-@@ -2116,39 +2150,8 @@ int generic_write_end(struct file *file, struct address_space *mapping,
- 			loff_t pos, unsigned len, unsigned copied,
- 			struct page *page, void *fsdata)
- {
--	struct inode *inode = mapping->host;
--	loff_t old_size = inode->i_size;
--	int i_size_changed = 0;
--
- 	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
--
--	/*
--	 * No need to use i_size_read() here, the i_size
--	 * cannot change under us because we hold i_mutex.
--	 *
--	 * But it's important to update i_size while still holding page lock:
--	 * page writeout could otherwise come in and zero beyond i_size.
--	 */
--	if (pos+copied > inode->i_size) {
--		i_size_write(inode, pos+copied);
--		i_size_changed = 1;
--	}
--
--	unlock_page(page);
--	put_page(page);
--
--	if (old_size < pos)
--		pagecache_isize_extended(inode, old_size, pos);
--	/*
--	 * Don't mark the inode dirty under page lock. First, it unnecessarily
--	 * makes the holding time of page lock longer. Second, it forces lock
--	 * ordering of page lock and transaction start for journaling
--	 * filesystems.
--	 */
--	if (i_size_changed)
--		mark_inode_dirty(inode);
--
--	return copied;
-+	return __generic_write_end(mapping->host, pos, copied, page);
- }
- EXPORT_SYMBOL(generic_write_end);
- 
-diff --git a/fs/internal.h b/fs/internal.h
-index 980d005b21b4..4a18bdbd2214 100644
---- a/fs/internal.h
-+++ b/fs/internal.h
-@@ -43,6 +43,8 @@ static inline int __sync_blockdev(struct block_device *bdev, int wait)
- extern void guard_bio_eod(int rw, struct bio *bio);
- extern int __block_write_begin_int(struct page *page, loff_t pos, unsigned len,
- 		get_block_t *get_block, struct iomap *iomap);
-+int __generic_write_end(struct inode *inode, loff_t pos, unsigned copied,
-+		struct page *page);
- 
- /*
-  * char_dev.c
+ 		err = dquot_suspend(sb, -1);
 -- 
-2.17.1
+2.9.0
