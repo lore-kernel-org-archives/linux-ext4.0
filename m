@@ -1,48 +1,46 @@
 From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 5/6] jbd2: replace current_kernel_time64 with ktime equivalent
-Date: Wed, 20 Jun 2018 17:33:02 +0200
-Message-ID: <20180620153322.54221-5-arnd@arndb.de>
+Subject: [PATCH 3/6] ext4: use ktime_get_real_seconds for i_dtime
+Date: Wed, 20 Jun 2018 17:33:00 +0200
+Message-ID: <20180620153322.54221-3-arnd@arndb.de>
 References: <20180620153322.54221-1-arnd@arndb.de>
-Cc: y2038@lists.linaro.org, linux-ext4@vger.kernel.org,
-        Arnd Bergmann <arnd@arndb.de>, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Tahsin Erdogan <tahsin@google.com>, Jan Kara <jack@suse.cz>,
+ Arnd Bergmann <arnd@arndb.de>, y2038@lists.linaro.org,
+ linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+ Miao Xie <miaoxie@huawei.com>
+To: Theodore Ts'o <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Jan Kara <jack@suse.com>
+Return-path: <y2038-bounces@lists.linaro.org>
 In-Reply-To: <20180620153322.54221-1-arnd@arndb.de>
-Sender: linux-kernel-owner@vger.kernel.org
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-jbd2 is one of the few callers of current_kernel_time64(), which
-is a wrapper around ktime_get_coarse_real_ts64(). This calls the
-latter directly for consistency with the rest of the kernel that
-is moving to the ktime_get_ family of time accessors.
-
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- fs/jbd2/commit.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 8de0e7723316..150cc030b4d7 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -121,7 +121,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 	struct commit_header *tmp;
- 	struct buffer_head *bh;
- 	int ret;
--	struct timespec64 now = current_kernel_time64();
-+	struct timespec64 now;
- 
- 	*cbh = NULL;
- 
-@@ -134,6 +134,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 		return 1;
- 
- 	tmp = (struct commit_header *)bh->b_data;
-+	ktime_get_coarse_real_ts64(&now);
- 	tmp->h_commit_sec = cpu_to_be64(now.tv_sec);
- 	tmp->h_commit_nsec = cpu_to_be32(now.tv_nsec);
- 
--- 
-2.9.0
+V2Ugb25seSBjYXJlIGFib3V0IHRoZSBsb3cgMzItYml0IGZvciBpX2R0aW1lIGFzIGV4cGxhaW5l
+ZCBpbiBjb21taXQKYjVmNTE1NzM1YmVhICgiZXh0NDogYXZvaWQgWTIwMzggb3ZlcmZsb3cgaW4g
+cmVjZW50bHlfZGVsZXRlZCgpIiksIHNvCnRoZSB1c2Ugb2YgZ2V0X3NlY29uZHMoKSBpcyBjb3Jy
+ZWN0IGhlcmUsIGJ1dCB0aGF0IGZ1bmN0aW9uIGlzIGdldHRpbmcKcmVtb3ZlZCBpbiB0aGUgcHJv
+Y2VzcyBvZiB0aGUgeTIwMzggZml4ZXMsIHNvIGxldCdzIHVzZSB0aGUgbW9kZXJuCmt0aW1lX2dl
+dF9yZWFsX3NlY29uZHMoKSBoZXJlLgoKU2lnbmVkLW9mZi1ieTogQXJuZCBCZXJnbWFubiA8YXJu
+ZEBhcm5kYi5kZT4KLS0tCiBmcy9leHQ0L2lub2RlLmMgfCAyICstCiAxIGZpbGUgY2hhbmdlZCwg
+MSBpbnNlcnRpb24oKyksIDEgZGVsZXRpb24oLSkKCmRpZmYgLS1naXQgYS9mcy9leHQ0L2lub2Rl
+LmMgYi9mcy9leHQ0L2lub2RlLmMKaW5kZXggMmVhMDdlZmJlMDE2Li42MDBlMjA2M2QxZGYgMTAw
+NjQ0Ci0tLSBhL2ZzL2V4dDQvaW5vZGUuYworKysgYi9mcy9leHQ0L2lub2RlLmMKQEAgLTMxNyw3
+ICszMTcsNyBAQCB2b2lkIGV4dDRfZXZpY3RfaW5vZGUoc3RydWN0IGlub2RlICppbm9kZSkKIAkg
+KiAoV2VsbCwgd2UgY291bGQgZG8gdGhpcyBpZiB3ZSBuZWVkIHRvLCBidXQgaGVjayAtIGl0IHdv
+cmtzKQogCSAqLwogCWV4dDRfb3JwaGFuX2RlbChoYW5kbGUsIGlub2RlKTsKLQlFWFQ0X0koaW5v
+ZGUpLT5pX2R0aW1lCT0gZ2V0X3NlY29uZHMoKTsKKwlFWFQ0X0koaW5vZGUpLT5pX2R0aW1lCT0g
+a3RpbWVfZ2V0X3JlYWxfc2Vjb25kcygpOwogCiAJLyoKIAkgKiBPbmUgc3VidGxlIG9yZGVyaW5n
+IHJlcXVpcmVtZW50OiBpZiBhbnl0aGluZyBoYXMgZ29uZSB3cm9uZwotLSAKMi45LjAKCl9fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fClkyMDM4IG1haWxpbmcg
+bGlzdApZMjAzOEBsaXN0cy5saW5hcm8ub3JnCmh0dHBzOi8vbGlzdHMubGluYXJvLm9yZy9tYWls
+bWFuL2xpc3RpbmZvL3kyMDM4Cg==
