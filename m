@@ -1,77 +1,80 @@
-From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH] ext2: use ktime_get_real_seconds for timestamps
-Date: Wed, 20 Jun 2018 16:31:40 +0200
-Message-ID: <20180620143203.42225-1-arnd@arndb.de>
-Cc: y2038@lists.linaro.org, Arnd Bergmann <arnd@arndb.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: Jan Kara <jack@suse.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext2: use ktime_get_real_seconds for timestamps
+Date: Wed, 20 Jun 2018 16:41:58 +0200
+Message-ID: <20180620144158.4xddk5fgomlhnnme@quack2.suse.cz>
+References: <20180620143203.42225-1-arnd@arndb.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso@mit.edu>, Andreas Gruenbacher <agruenba@redhat.com>,
+ "Darrick J. Wong" <darrick.wong@oracle.com>, y2038@lists.linaro.org,
+ linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+ Jan Kara <jack@suse.com>, Dan Williams <dan.j.williams@intel.com>,
+ linux-ext4@vger.kernel.org
+To: Arnd Bergmann <arnd@arndb.de>
+Return-path: <y2038-bounces@lists.linaro.org>
+Content-Disposition: inline
+In-Reply-To: <20180620143203.42225-1-arnd@arndb.de>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-get_seconds() is deprecated because of the y2038 overflow, so users
-should migrate to 64-bit timestamps using ktime_get_real_seconds().
-In ext2, the timestamps in the superblock and in the inode are all
-limited to 32-bit, and this won't get fixed, so let's just stop
-using the deprecated interface and keep truncating.
-
-All users of ext2 should migrate to ext4 before 2038 to prevent this
-from causing problems.
-
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
----
- fs/ext2/inode.c | 2 +-
- fs/ext2/super.c | 6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 71635909df3b..7f7ee18fe179 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -86,7 +86,7 @@ void ext2_evict_inode(struct inode * inode)
- 	if (want_delete) {
- 		sb_start_intwrite(inode->i_sb);
- 		/* set dtime */
--		EXT2_I(inode)->i_dtime	= get_seconds();
-+		EXT2_I(inode)->i_dtime	= ktime_get_real_seconds();
- 		mark_inode_dirty(inode);
- 		__ext2_write_inode(inode, inode_needs_sync(inode));
- 		/* truncate to 0 */
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 25ab1274090f..25e31afe961d 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -679,7 +679,7 @@ static int ext2_setup_super (struct super_block * sb,
- 			"running e2fsck is recommended");
- 	else if (le32_to_cpu(es->s_checkinterval) &&
- 		(le32_to_cpu(es->s_lastcheck) +
--			le32_to_cpu(es->s_checkinterval) <= get_seconds()))
-+			le32_to_cpu(es->s_checkinterval) <= ktime_get_real_seconds()))
- 		ext2_msg(sb, KERN_WARNING,
- 			"warning: checktime reached, "
- 			"running e2fsck is recommended");
-@@ -1245,7 +1245,7 @@ void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
- 	spin_lock(&EXT2_SB(sb)->s_lock);
- 	es->s_free_blocks_count = cpu_to_le32(ext2_count_free_blocks(sb));
- 	es->s_free_inodes_count = cpu_to_le32(ext2_count_free_inodes(sb));
--	es->s_wtime = cpu_to_le32(get_seconds());
-+	es->s_wtime = cpu_to_le32(ktime_get_real_seconds());
- 	/* unlock before we do IO */
- 	spin_unlock(&EXT2_SB(sb)->s_lock);
- 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
-@@ -1360,7 +1360,7 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- 		 * the rdonly flag and then mark the partition as valid again.
- 		 */
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
--		es->s_mtime = cpu_to_le32(get_seconds());
-+		es->s_mtime = cpu_to_le32(ktime_get_real_seconds());
- 		spin_unlock(&sbi->s_lock);
- 
- 		err = dquot_suspend(sb, -1);
--- 
-2.9.0
+T24gV2VkIDIwLTA2LTE4IDE2OjMxOjQwLCBBcm5kIEJlcmdtYW5uIHdyb3RlOgo+IGdldF9zZWNv
+bmRzKCkgaXMgZGVwcmVjYXRlZCBiZWNhdXNlIG9mIHRoZSB5MjAzOCBvdmVyZmxvdywgc28gdXNl
+cnMKPiBzaG91bGQgbWlncmF0ZSB0byA2NC1iaXQgdGltZXN0YW1wcyB1c2luZyBrdGltZV9nZXRf
+cmVhbF9zZWNvbmRzKCkuCj4gSW4gZXh0MiwgdGhlIHRpbWVzdGFtcHMgaW4gdGhlIHN1cGVyYmxv
+Y2sgYW5kIGluIHRoZSBpbm9kZSBhcmUgYWxsCj4gbGltaXRlZCB0byAzMi1iaXQsIGFuZCB0aGlz
+IHdvbid0IGdldCBmaXhlZCwgc28gbGV0J3MganVzdCBzdG9wCj4gdXNpbmcgdGhlIGRlcHJlY2F0
+ZWQgaW50ZXJmYWNlIGFuZCBrZWVwIHRydW5jYXRpbmcuCj4gCj4gQWxsIHVzZXJzIG9mIGV4dDIg
+c2hvdWxkIG1pZ3JhdGUgdG8gZXh0NCBiZWZvcmUgMjAzOCB0byBwcmV2ZW50IHRoaXMKPiBmcm9t
+IGNhdXNpbmcgcHJvYmxlbXMuCj4gCj4gU2lnbmVkLW9mZi1ieTogQXJuZCBCZXJnbWFubiA8YXJu
+ZEBhcm5kYi5kZT4KClRoYW5rcy4gVGhlIHBhdGNoIGxvb2tzIGdvb2QgbW9kdWxvIG9uZSBsaW5l
+LXdyYXAgaW4gZnMvZXh0Mi9zdXBlci5jIGJ1dApJJ2xsIHRha2UgY2FyZSBvZiB0aGF0IHdoZW4g
+dGFraW5nIHRoZSBwYXRjaCB0byBteSB0cmVlLgoKCQkJCQkJCQlIb256YQoKPiAtLS0KPiAgZnMv
+ZXh0Mi9pbm9kZS5jIHwgMiArLQo+ICBmcy9leHQyL3N1cGVyLmMgfCA2ICsrKy0tLQo+ICAyIGZp
+bGVzIGNoYW5nZWQsIDQgaW5zZXJ0aW9ucygrKSwgNCBkZWxldGlvbnMoLSkKPiAKPiBkaWZmIC0t
+Z2l0IGEvZnMvZXh0Mi9pbm9kZS5jIGIvZnMvZXh0Mi9pbm9kZS5jCj4gaW5kZXggNzE2MzU5MDlk
+ZjNiLi43ZjdlZTE4ZmUxNzkgMTAwNjQ0Cj4gLS0tIGEvZnMvZXh0Mi9pbm9kZS5jCj4gKysrIGIv
+ZnMvZXh0Mi9pbm9kZS5jCj4gQEAgLTg2LDcgKzg2LDcgQEAgdm9pZCBleHQyX2V2aWN0X2lub2Rl
+KHN0cnVjdCBpbm9kZSAqIGlub2RlKQo+ICAJaWYgKHdhbnRfZGVsZXRlKSB7Cj4gIAkJc2Jfc3Rh
+cnRfaW50d3JpdGUoaW5vZGUtPmlfc2IpOwo+ICAJCS8qIHNldCBkdGltZSAqLwo+IC0JCUVYVDJf
+SShpbm9kZSktPmlfZHRpbWUJPSBnZXRfc2Vjb25kcygpOwo+ICsJCUVYVDJfSShpbm9kZSktPmlf
+ZHRpbWUJPSBrdGltZV9nZXRfcmVhbF9zZWNvbmRzKCk7Cj4gIAkJbWFya19pbm9kZV9kaXJ0eShp
+bm9kZSk7Cj4gIAkJX19leHQyX3dyaXRlX2lub2RlKGlub2RlLCBpbm9kZV9uZWVkc19zeW5jKGlu
+b2RlKSk7Cj4gIAkJLyogdHJ1bmNhdGUgdG8gMCAqLwo+IGRpZmYgLS1naXQgYS9mcy9leHQyL3N1
+cGVyLmMgYi9mcy9leHQyL3N1cGVyLmMKPiBpbmRleCAyNWFiMTI3NDA5MGYuLjI1ZTMxYWZlOTYx
+ZCAxMDA2NDQKPiAtLS0gYS9mcy9leHQyL3N1cGVyLmMKPiArKysgYi9mcy9leHQyL3N1cGVyLmMK
+PiBAQCAtNjc5LDcgKzY3OSw3IEBAIHN0YXRpYyBpbnQgZXh0Ml9zZXR1cF9zdXBlciAoc3RydWN0
+IHN1cGVyX2Jsb2NrICogc2IsCj4gIAkJCSJydW5uaW5nIGUyZnNjayBpcyByZWNvbW1lbmRlZCIp
+Owo+ICAJZWxzZSBpZiAobGUzMl90b19jcHUoZXMtPnNfY2hlY2tpbnRlcnZhbCkgJiYKPiAgCQko
+bGUzMl90b19jcHUoZXMtPnNfbGFzdGNoZWNrKSArCj4gLQkJCWxlMzJfdG9fY3B1KGVzLT5zX2No
+ZWNraW50ZXJ2YWwpIDw9IGdldF9zZWNvbmRzKCkpKQo+ICsJCQlsZTMyX3RvX2NwdShlcy0+c19j
+aGVja2ludGVydmFsKSA8PSBrdGltZV9nZXRfcmVhbF9zZWNvbmRzKCkpKQo+ICAJCWV4dDJfbXNn
+KHNiLCBLRVJOX1dBUk5JTkcsCj4gIAkJCSJ3YXJuaW5nOiBjaGVja3RpbWUgcmVhY2hlZCwgIgo+
+ICAJCQkicnVubmluZyBlMmZzY2sgaXMgcmVjb21tZW5kZWQiKTsKPiBAQCAtMTI0NSw3ICsxMjQ1
+LDcgQEAgdm9pZCBleHQyX3N5bmNfc3VwZXIoc3RydWN0IHN1cGVyX2Jsb2NrICpzYiwgc3RydWN0
+IGV4dDJfc3VwZXJfYmxvY2sgKmVzLAo+ICAJc3Bpbl9sb2NrKCZFWFQyX1NCKHNiKS0+c19sb2Nr
+KTsKPiAgCWVzLT5zX2ZyZWVfYmxvY2tzX2NvdW50ID0gY3B1X3RvX2xlMzIoZXh0Ml9jb3VudF9m
+cmVlX2Jsb2NrcyhzYikpOwo+ICAJZXMtPnNfZnJlZV9pbm9kZXNfY291bnQgPSBjcHVfdG9fbGUz
+MihleHQyX2NvdW50X2ZyZWVfaW5vZGVzKHNiKSk7Cj4gLQllcy0+c193dGltZSA9IGNwdV90b19s
+ZTMyKGdldF9zZWNvbmRzKCkpOwo+ICsJZXMtPnNfd3RpbWUgPSBjcHVfdG9fbGUzMihrdGltZV9n
+ZXRfcmVhbF9zZWNvbmRzKCkpOwo+ICAJLyogdW5sb2NrIGJlZm9yZSB3ZSBkbyBJTyAqLwo+ICAJ
+c3Bpbl91bmxvY2soJkVYVDJfU0Ioc2IpLT5zX2xvY2spOwo+ICAJbWFya19idWZmZXJfZGlydHko
+RVhUMl9TQihzYiktPnNfc2JoKTsKPiBAQCAtMTM2MCw3ICsxMzYwLDcgQEAgc3RhdGljIGludCBl
+eHQyX3JlbW91bnQgKHN0cnVjdCBzdXBlcl9ibG9jayAqIHNiLCBpbnQgKiBmbGFncywgY2hhciAq
+IGRhdGEpCj4gIAkJICogdGhlIHJkb25seSBmbGFnIGFuZCB0aGVuIG1hcmsgdGhlIHBhcnRpdGlv
+biBhcyB2YWxpZCBhZ2Fpbi4KPiAgCQkgKi8KPiAgCQllcy0+c19zdGF0ZSA9IGNwdV90b19sZTE2
+KHNiaS0+c19tb3VudF9zdGF0ZSk7Cj4gLQkJZXMtPnNfbXRpbWUgPSBjcHVfdG9fbGUzMihnZXRf
+c2Vjb25kcygpKTsKPiArCQllcy0+c19tdGltZSA9IGNwdV90b19sZTMyKGt0aW1lX2dldF9yZWFs
+X3NlY29uZHMoKSk7Cj4gIAkJc3Bpbl91bmxvY2soJnNiaS0+c19sb2NrKTsKPiAgCj4gIAkJZXJy
+ID0gZHF1b3Rfc3VzcGVuZChzYiwgLTEpOwo+IC0tIAo+IDIuOS4wCj4gCj4gCi0tIApKYW4gS2Fy
+YSA8amFja0BzdXNlLmNvbT4KU1VTRSBMYWJzLCBDUgpfX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fXwpZMjAzOCBtYWlsaW5nIGxpc3QKWTIwMzhAbGlzdHMubGlu
+YXJvLm9yZwpodHRwczovL2xpc3RzLmxpbmFyby5vcmcvbWFpbG1hbi9saXN0aW5mby95MjAzOAo=
