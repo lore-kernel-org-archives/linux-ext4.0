@@ -1,57 +1,66 @@
 From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 2/6] ext4: use 64-bit timestamps for mmp_time
-Date: Wed, 20 Jun 2018 17:32:59 +0200
-Message-ID: <20180620153322.54221-2-arnd@arndb.de>
-References: <20180620153322.54221-1-arnd@arndb.de>
+Subject: [PATCH 1/6] ext4: sysfs: print ext4_super_block fields as little-endian
+Date: Wed, 20 Jun 2018 17:32:58 +0200
+Message-ID: <20180620153322.54221-1-arnd@arndb.de>
 Cc: y2038@lists.linaro.org, linux-ext4@vger.kernel.org,
-        Arnd Bergmann <arnd@arndb.de>, linux-kernel@vger.kernel.org
+        Arnd Bergmann <arnd@arndb.de>, stable@vger.kernel.org,
+        Tyson Nottingham <tgnottingham@gmail.com>,
+        Riccardo Schirone <sirmy15@gmail.com>,
+        linux-kernel@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Jan Kara <jack@suse.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180620153322.54221-1-arnd@arndb.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The mmp_time field is 64 bits wide, which is good, but calling
-get_seconds() results in a 32-bit value on 32-bit architectures. Using
-ktime_get_real_seconds() instead returns 64 bits everywhere.
+While working on extended rand for last_error/first_error timestamps,
+I noticed that the endianess is wrong, we access the little-endian
+fields in struct ext4_super_block as native-endian when we print them.
 
+This adds a special case in ext4_attr_show() and ext4_attr_store()
+to byteswap the superblock fields if needed.
+
+In older kernels, this code was part of super.c, it got moved to sysfs.c
+in linux-4.4.
+
+Cc: stable@vger.kernel.org
+Fixes: 52c198c6820f ("ext4: add sysfs entry showing whether the fs contains errors")
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/ext4/mmp.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/sysfs.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 27b9a76a0dfa..39da4eb48361 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -147,7 +147,7 @@ static int kmmpd(void *data)
- 
- 	mmp_block = le64_to_cpu(es->s_mmp_block);
- 	mmp = (struct mmp_struct *)(bh->b_data);
--	mmp->mmp_time = cpu_to_le64(get_seconds());
-+	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
- 	/*
- 	 * Start with the higher mmp_check_interval and reduce it if
- 	 * the MMP block is being updated on time.
-@@ -165,7 +165,7 @@ static int kmmpd(void *data)
- 			seq = 1;
- 
- 		mmp->mmp_seq = cpu_to_le32(seq);
--		mmp->mmp_time = cpu_to_le64(get_seconds());
-+		mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
- 		last_update_time = jiffies;
- 
- 		retval = write_mmp_block(sb, bh);
-@@ -244,7 +244,7 @@ static int kmmpd(void *data)
- 	 * Unmount seems to be clean.
- 	 */
- 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
--	mmp->mmp_time = cpu_to_le64(get_seconds());
-+	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
- 
- 	retval = write_mmp_block(sb, bh);
- 
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index f34da0bb8f17..b970a200f20c 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -274,8 +274,12 @@ static ssize_t ext4_attr_show(struct kobject *kobj,
+ 	case attr_pointer_ui:
+ 		if (!ptr)
+ 			return 0;
+-		return snprintf(buf, PAGE_SIZE, "%u\n",
+-				*((unsigned int *) ptr));
++		if (a->attr_ptr == ptr_ext4_super_block_offset)
++			return snprintf(buf, PAGE_SIZE, "%u\n",
++					le32_to_cpup(ptr));
++		else
++			return snprintf(buf, PAGE_SIZE, "%u\n",
++					*((unsigned int *) ptr));
+ 	case attr_pointer_atomic:
+ 		if (!ptr)
+ 			return 0;
+@@ -308,7 +312,10 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
+ 		ret = kstrtoul(skip_spaces(buf), 0, &t);
+ 		if (ret)
+ 			return ret;
+-		*((unsigned int *) ptr) = t;
++		if (a->attr_ptr == ptr_ext4_super_block_offset)
++			*((__le32 *) ptr) = cpu_to_le32(t);
++		else
++			*((unsigned int *) ptr) = t;
+ 		return len;
+ 	case attr_inode_readahead:
+ 		return inode_readahead_blks_store(sbi, buf, len);
 -- 
 2.9.0
