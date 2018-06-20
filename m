@@ -1,12 +1,10 @@
 From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH 4/6] ext4: use timespec64 for all inode times
-Date: Wed, 20 Jun 2018 17:33:01 +0200
-Message-ID: <20180620153322.54221-4-arnd@arndb.de>
+Subject: [PATCH 5/6] jbd2: replace current_kernel_time64 with ktime equivalent
+Date: Wed, 20 Jun 2018 17:33:02 +0200
+Message-ID: <20180620153322.54221-5-arnd@arndb.de>
 References: <20180620153322.54221-1-arnd@arndb.de>
 Cc: y2038@lists.linaro.org, linux-ext4@vger.kernel.org,
-        Arnd Bergmann <arnd@arndb.de>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-kernel@vger.kernel.org
+        Arnd Bergmann <arnd@arndb.de>, linux-kernel@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Jan Kara <jack@suse.com>
@@ -15,88 +13,36 @@ In-Reply-To: <20180620153322.54221-1-arnd@arndb.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is the last missing piece for the inode times on 32-bit systems:
-now that VFS interfaces use timespec64, we just need to stop truncating
-the tv_sec values for y2038 compatibililty.
+jbd2 is one of the few callers of current_kernel_time64(), which
+is a wrapper around ktime_get_coarse_real_ts64(). This calls the
+latter directly for consistency with the rest of the kernel that
+is moving to the ktime_get_ family of time accessors.
 
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/ext4/ext4.h   | 18 +++++++-----------
- fs/ext4/ialloc.c |  2 +-
- 2 files changed, 8 insertions(+), 12 deletions(-)
+ fs/jbd2/commit.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0b127853c584..6b4f4369a08c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -789,17 +789,16 @@ struct move_extent {
-  * affected filesystem before 2242.
-  */
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 8de0e7723316..150cc030b4d7 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -121,7 +121,7 @@ static int journal_submit_commit_record(journal_t *journal,
+ 	struct commit_header *tmp;
+ 	struct buffer_head *bh;
+ 	int ret;
+-	struct timespec64 now = current_kernel_time64();
++	struct timespec64 now;
  
--static inline __le32 ext4_encode_extra_time(struct timespec *time)
-+static inline __le32 ext4_encode_extra_time(struct timespec64 *time)
- {
- 	u32 extra = sizeof(time->tv_sec) > 4 ?
- 		((time->tv_sec - (s32)time->tv_sec) >> 32) & EXT4_EPOCH_MASK : 0;
- 	return cpu_to_le32(extra | (time->tv_nsec << EXT4_EPOCH_BITS));
- }
+ 	*cbh = NULL;
  
--static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
-+static inline void ext4_decode_extra_time(struct timespec64 *time, __le32 extra)
- {
--	if (unlikely(sizeof(time->tv_sec) > 4 &&
--			(extra & cpu_to_le32(EXT4_EPOCH_MASK)))) {
-+	if (unlikely(extra & cpu_to_le32(EXT4_EPOCH_MASK))) {
+@@ -134,6 +134,7 @@ static int journal_submit_commit_record(journal_t *journal,
+ 		return 1;
  
- #if 1
- 		/* Handle legacy encoding of pre-1970 dates with epoch
-@@ -821,9 +820,8 @@ static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
- do {										\
- 	(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);		\
- 	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     {\
--		struct timespec ts = timespec64_to_timespec((inode)->xtime);	\
- 		(raw_inode)->xtime ## _extra =					\
--				ext4_encode_extra_time(&ts);			\
-+				ext4_encode_extra_time(&(inode)->xtime);	\
- 		}								\
- } while (0)
+ 	tmp = (struct commit_header *)bh->b_data;
++	ktime_get_coarse_real_ts64(&now);
+ 	tmp->h_commit_sec = cpu_to_be64(now.tv_sec);
+ 	tmp->h_commit_nsec = cpu_to_be32(now.tv_nsec);
  
-@@ -840,10 +838,8 @@ do {									       \
- do {										\
- 	(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);	\
- 	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra)) {	\
--		struct timespec ts = timespec64_to_timespec((inode)->xtime);	\
--		ext4_decode_extra_time(&ts,					\
-+		ext4_decode_extra_time(&(inode)->xtime,				\
- 				       raw_inode->xtime ## _extra);		\
--		(inode)->xtime = timespec_to_timespec64(ts);			\
- 		}								\
- 	else									\
- 		(inode)->xtime.tv_nsec = 0;					\
-@@ -993,9 +989,9 @@ struct ext4_inode_info {
- 
- 	/*
- 	 * File creation time. Its function is same as that of
--	 * struct timespec i_{a,c,m}time in the generic inode.
-+	 * struct timespec64 i_{a,c,m}time in the generic inode.
- 	 */
--	struct timespec i_crtime;
-+	struct timespec64 i_crtime;
- 
- 	/* mballoc */
- 	struct list_head i_prealloc_list;
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index f525f909b559..8c00c871f5dc 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1073,7 +1073,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	/* This is the optimal IO size (for stat), not the fs block size */
- 	inode->i_blocks = 0;
- 	inode->i_mtime = inode->i_atime = inode->i_ctime = current_time(inode);
--	ei->i_crtime = timespec64_to_timespec(inode->i_mtime);
-+	ei->i_crtime = inode->i_mtime;
- 
- 	memset(ei->i_data, 0, sizeof(ei->i_data));
- 	ei->i_dir_start_lookup = 0;
 -- 
 2.9.0
