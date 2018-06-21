@@ -1,78 +1,68 @@
 From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH 2/6] ext4: use 64-bit timestamps for mmp_time
-Date: Thu, 21 Jun 2018 11:20:24 -0600
-Message-ID: <711B183B-8F48-49C0-AC33-907384D10672@dilger.ca>
+Subject: Re: [PATCH 3/6] ext4: use ktime_get_real_seconds for i_dtime
+Date: Thu, 21 Jun 2018 11:27:12 -0600
+Message-ID: <F6095896-5B1A-4A20-9293-086A9350F75C@dilger.ca>
 References: <20180620153322.54221-1-arnd@arndb.de>
- <20180620153322.54221-2-arnd@arndb.de>
+ <20180620153322.54221-3-arnd@arndb.de>
 Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_E79BA00D-983B-49F2-BC1F-60E7BA4D0162";
+ boundary="Apple-Mail=_E6769417-94BF-43FF-8F93-8EAFD27B5C24";
  protocol="application/pgp-signature"; micalg=pgp-sha256
 Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
         y2038@lists.linaro.org,
         Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>, Tahsin Erdogan <tahsin@google.com>,
+        Miao Xie <miaoxie@huawei.com>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 To: Arnd Bergmann <arnd@arndb.de>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180620153322.54221-2-arnd@arndb.de>
+In-Reply-To: <20180620153322.54221-3-arnd@arndb.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
---Apple-Mail=_E79BA00D-983B-49F2-BC1F-60E7BA4D0162
+--Apple-Mail=_E6769417-94BF-43FF-8F93-8EAFD27B5C24
 Content-Transfer-Encoding: 7bit
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Jun 20, 2018, at 9:32 AM, Arnd Bergmann <arnd@arndb.de> wrote:
+
+> On Jun 20, 2018, at 9:33 AM, Arnd Bergmann <arnd@arndb.de> wrote:
 > 
-> The mmp_time field is 64 bits wide, which is good, but calling
-> get_seconds() results in a 32-bit value on 32-bit architectures. Using
-> ktime_get_real_seconds() instead returns 64 bits everywhere.
+> We only care about the low 32-bit for i_dtime as explained in commit
+> b5f515735bea ("ext4: avoid Y2038 overflow in recently_deleted()"), so
+> the use of get_seconds() is correct here, but that function is getting
+> removed in the process of the y2038 fixes, so let's use the modern
+> ktime_get_real_seconds() here.
 > 
 > Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+
+Looks OK, one minor cleanup possible.
 
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
 > ---
-> fs/ext4/mmp.c | 6 +++---
-> 1 file changed, 3 insertions(+), 3 deletions(-)
+> fs/ext4/inode.c | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-> index 27b9a76a0dfa..39da4eb48361 100644
-> --- a/fs/ext4/mmp.c
-> +++ b/fs/ext4/mmp.c
-> @@ -147,7 +147,7 @@ static int kmmpd(void *data)
-> 
-> 	mmp_block = le64_to_cpu(es->s_mmp_block);
-> 	mmp = (struct mmp_struct *)(bh->b_data);
-> -	mmp->mmp_time = cpu_to_le64(get_seconds());
-> +	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
-> 	/*
-> 	 * Start with the higher mmp_check_interval and reduce it if
-> 	 * the MMP block is being updated on time.
-> @@ -165,7 +165,7 @@ static int kmmpd(void *data)
-> 			seq = 1;
-> 
-> 		mmp->mmp_seq = cpu_to_le32(seq);
-> -		mmp->mmp_time = cpu_to_le64(get_seconds());
-> +		mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
-> 		last_update_time = jiffies;
-> 
-> 		retval = write_mmp_block(sb, bh);
-> @@ -244,7 +244,7 @@ static int kmmpd(void *data)
-> 	 * Unmount seems to be clean.
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 2ea07efbe016..600e2063d1df 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -317,7 +317,7 @@ void ext4_evict_inode(struct inode *inode)
+> 	 * (Well, we could do this if we need to, but heck - it works)
 > 	 */
-> 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
-> -	mmp->mmp_time = cpu_to_le64(get_seconds());
-> +	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
-> 
-> 	retval = write_mmp_block(sb, bh);
-> 
-> --
-> 2.9.0
-> 
+> 	ext4_orphan_del(handle, inode);
+> -	EXT4_I(inode)->i_dtime	= get_seconds();
+> +	EXT4_I(inode)->i_dtime	= ktime_get_real_seconds();
 
+Not strictly necessary, but it might be good from a code clarity POV
+to use:
+
+	EXT4_I(inode)->i_dtime	= (__u32)ktime_get_real_seconds();
+
+so that it is more clear we are aware that this is being truncated
+to a 32-bit value.
 
 Cheers, Andreas
 
@@ -81,7 +71,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_E79BA00D-983B-49F2-BC1F-60E7BA4D0162
+--Apple-Mail=_E6769417-94BF-43FF-8F93-8EAFD27B5C24
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -92,19 +82,19 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlsr3lgACgkQcqXauRfM
-H+ASfw//foruYMBroerLYos6rc4jWqUdoTo9h8hB1HTM4E9GxUcZKBy1rRDCd+hr
-Y3jTyFozDB5RwtPfcBX7AF0SzaTC4+tJ96YyNetl2t4eKETl7OSEKM8QplFa/djF
-WXD9muJfZbQ4cntrphl+n6UpBY/jbC15HdeYhwRNHLIOfkAzp2BAKe+Okdo1o+hk
-zcavA0Cx1To+Vy2W96ahuEMwdVHk0lFpBs8pJJ9j0VEM7OdiIRFTatJMSdHTKZUR
-FggB6CNbUSK77NXzuzb0vPfwEtnSuOH9wI7dj+axRn8iPLBY+NGMtgAbKXztpE+4
-Tl7NryRC2PKKebmKteSzhFJqUGg4T6YUrUlIPDUsqCBtGmg2tlonePZbj0tBKDkd
-UgZGIy+zgR1S8b9GFkdwViEjLNhllqBWPvRqkCrtSpvMah0G8Grtwwoty+IlVFT+
-LJqnHvfB2VFh0YfWE6Y2pQ9aiOINzUeE02M6X8bDOOa+pBURuumg5oWdzp6xhthh
-kY7CKpjQEK7mHeEH0k8Lf8a5XE0yg+UMe23xdUPLA0B6Pw9n8Vc/HRSh/TcUwYkv
-9q/2VcesBRcSHgy+T0hu/LEodqx6Eux7gFvcnSX8ifoUtnVyh6OpIT2geUUESSm/
-n7kGL1+fE0482DXFdo4uZXR4hOtEj/VKBZUklf7lTR+1RXtcJ9E=
-=WQ5v
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlsr3/AACgkQcqXauRfM
+H+DRYg//cC5j8y+Lv/9+T+/li60E2dnTqpKtRjjQ6i+yp+UWqYRCxOjPzsZzrlxo
+MBoJ0HWR9QmT48wgMbnOapNCsf9uhOfazrGs7ps3E9ukKlnSoA5aFUcf/jnvsNlV
+nRQSfq5u4UMptsrO2MpJeAcNQHBI5EKrsfSbyy+TjdGOHEJHZY0h7XfXU3G5U0Wf
+qtKuKzI72Q+XbPCbAfX9xDpGXDihVwhyBj3vHHLGnHPLu02cS2jahqFd7PQ73qNV
+P2Ho3uypo66CwnOikN8eQc0CaipwBcts7wvntvVzXhzBsKgxcscuJnkXBON9UImA
+5xhN4T/+I0s5RlKigjNffY0pyyoQSrr1tEsn2VUBNXn7BxJ2jucqp4PPjQzDlcM4
+Gq31QkPD2nTHWUeMC40rFoHACN1opkegpOdIuARio18i3wyoav9Jyn2TlEvG982u
+HGJPXowgzMicW6X1TXm+9C53QpipsLJpOampRWTlsIvhLohWKRDgo7L1lglGJPAQ
+hPo+IJyxIg8qyN17R5hVIw1kNEYFj1BsdbD7Tvgm7wnwkLvkJuYD0aaw4OHRls3F
+qCpMBPw9e1tQTKlJmLIPrnY97JB16aIGEukUXP/H2ng0wMgxuNpx2Xlocb/XPBAh
+QdEthlWI6GuPqqXqFoqjqsjXdYXaMWVAlrfZ3AmGQXvwI8m4Ags=
+=SGjj
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_E79BA00D-983B-49F2-BC1F-60E7BA4D0162--
+--Apple-Mail=_E6769417-94BF-43FF-8F93-8EAFD27B5C24--
