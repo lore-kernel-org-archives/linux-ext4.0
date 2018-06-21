@@ -1,53 +1,54 @@
 From: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [PATCH 1/6] ext4: sysfs: print ext4_super_block fields as little-endian
-Date: Thu, 21 Jun 2018 22:07:14 +0200
-Message-ID: <CAK8P3a3ZRZKRn=6LB6ZtRGTezKc6cC8MRcnaN-86g6Z3whXNqA@mail.gmail.com>
-References: <20180620153322.54221-1-arnd@arndb.de> <4D58091B-6028-4E24-9EDD-0B4D53314FB8@dilger.ca>
+Subject: Re: [PATCH 3/6] ext4: use ktime_get_real_seconds for i_dtime
+Date: Thu, 21 Jun 2018 22:07:47 +0200
+Message-ID: <CAK8P3a1VzHpyighcfvSsG-Zfq2s7nURXcE6AdXamP7mO5C2q7Q@mail.gmail.com>
+References: <20180620153322.54221-1-arnd@arndb.de>
+ <20180620153322.54221-3-arnd@arndb.de>
+ <F6095896-5B1A-4A20-9293-086A9350F75C@dilger.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        y2038 Mailman List <y2038@lists.linaro.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        "# 3.4.x" <stable@vger.kernel.org>,
-        Tyson Nottingham <tgnottingham@gmail.com>,
-        Riccardo Schirone <sirmy15@gmail.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Tahsin Erdogan <tahsin@google.com>, Jan Kara <jack@suse.cz>,
+ y2038 Mailman List <y2038@lists.linaro.org>,
+ Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+ Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+ Ext4 Developers List <linux-ext4@vger.kernel.org>,
+ Miao Xie <miaoxie@huawei.com>
 To: Andreas Dilger <adilger@dilger.ca>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <4D58091B-6028-4E24-9EDD-0B4D53314FB8@dilger.ca>
-Sender: linux-kernel-owner@vger.kernel.org
+Return-path: <y2038-bounces@lists.linaro.org>
+In-Reply-To: <F6095896-5B1A-4A20-9293-086A9350F75C@dilger.ca>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 21, 2018 at 7:49 PM, Andreas Dilger <adilger@dilger.ca> wrote:
-> On Jun 20, 2018, at 9:32 AM, Arnd Bergmann <arnd@arndb.de> wrote:
->>
->> While working on extended rand for last_error/first_error timestamps,
->> I noticed that the endianess is wrong, we access the little-endian
->> fields in struct ext4_super_block as native-endian when we print them.
->>
->> This adds a special case in ext4_attr_show() and ext4_attr_store()
->> to byteswap the superblock fields if needed.
->>
->> In older kernels, this code was part of super.c, it got moved to sysfs.c
->> in linux-4.4.
->>
->> Cc: stable@vger.kernel.org
->> Fixes: 52c198c6820f ("ext4: add sysfs entry showing whether the fs contains errors")
->> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
->
-> I was wondering why this didn't just use le32_to_cpu() all the time,
-> but I see that these functions are being used for both ext4_super_block
-> (on-disk) fields, as well as ext4_sb_info (in-memory) fields.  A bit
-> ugly, but I don't think there is a better solution.
->
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-One alternative that I considered was to just do away with helpers
-for the ext4_super_block structure and only use them for ext4_sb_info,
-especially after the last patch that changes this again. However,
-as a bugfix for stable backports it seemed best to keep the change
-as simple as possible.
-
-Thanks for the review,
-
-      Arnd
+T24gVGh1LCBKdW4gMjEsIDIwMTggYXQgNzoyNyBQTSwgQW5kcmVhcyBEaWxnZXIgPGFkaWxnZXJA
+ZGlsZ2VyLmNhPiB3cm90ZToKPiBPbiBKdW4gMjAsIDIwMTgsIGF0IDk6MzMgQU0sIEFybmQgQmVy
+Z21hbm4gPGFybmRAYXJuZGIuZGU+IHdyb3RlOgo+Pgo+PiBXZSBvbmx5IGNhcmUgYWJvdXQgdGhl
+IGxvdyAzMi1iaXQgZm9yIGlfZHRpbWUgYXMgZXhwbGFpbmVkIGluIGNvbW1pdAo+PiBiNWY1MTU3
+MzViZWEgKCJleHQ0OiBhdm9pZCBZMjAzOCBvdmVyZmxvdyBpbiByZWNlbnRseV9kZWxldGVkKCki
+KSwgc28KPj4gdGhlIHVzZSBvZiBnZXRfc2Vjb25kcygpIGlzIGNvcnJlY3QgaGVyZSwgYnV0IHRo
+YXQgZnVuY3Rpb24gaXMgZ2V0dGluZwo+PiByZW1vdmVkIGluIHRoZSBwcm9jZXNzIG9mIHRoZSB5
+MjAzOCBmaXhlcywgc28gbGV0J3MgdXNlIHRoZSBtb2Rlcm4KPj4ga3RpbWVfZ2V0X3JlYWxfc2Vj
+b25kcygpIGhlcmUuCj4+Cj4+IFNpZ25lZC1vZmYtYnk6IEFybmQgQmVyZ21hbm4gPGFybmRAYXJu
+ZGIuZGU+Cj4KPiBMb29rcyBPSywgb25lIG1pbm9yIGNsZWFudXAgcG9zc2libGUuCj4KPiBSZXZp
+ZXdlZC1ieTogQW5kcmVhcyBEaWxnZXIgPGFkaWxnZXJAZGlsZ2VyLmNhPgo+PiAgICAgICBleHQ0
+X29ycGhhbl9kZWwoaGFuZGxlLCBpbm9kZSk7Cj4+IC0gICAgIEVYVDRfSShpbm9kZSktPmlfZHRp
+bWUgID0gZ2V0X3NlY29uZHMoKTsKPj4gKyAgICAgRVhUNF9JKGlub2RlKS0+aV9kdGltZSAgPSBr
+dGltZV9nZXRfcmVhbF9zZWNvbmRzKCk7Cj4KPiBOb3Qgc3RyaWN0bHkgbmVjZXNzYXJ5LCBidXQg
+aXQgbWlnaHQgYmUgZ29vZCBmcm9tIGEgY29kZSBjbGFyaXR5IFBPVgo+IHRvIHVzZToKPgo+ICAg
+ICAgICAgRVhUNF9JKGlub2RlKS0+aV9kdGltZSAgPSAoX191MzIpa3RpbWVfZ2V0X3JlYWxfc2Vj
+b25kcygpOwo+Cj4gc28gdGhhdCBpdCBpcyBtb3JlIGNsZWFyIHdlIGFyZSBhd2FyZSB0aGF0IHRo
+aXMgaXMgYmVpbmcgdHJ1bmNhdGVkCj4gdG8gYSAzMi1iaXQgdmFsdWUuCgpSaWdodCwgSSd2ZSBi
+ZWVuIGEgYml0IGluY29uc2lzdGVudCBoZXJlIGFjcm9zcyBmaWxlIHN5c3RlbXMsIEkndmUKZG9u
+ZSB0aGlzIGluIHNvbWUgb3RoZXIgb25lcywgdXNpbmcgZWl0aGVyIGEgY2FzdCBvciBhIGxvd2Vy
+XzMyX2JpdHMoKQpmdW5jdGlvbiBjYWxsLiBDaGFuZ2VkIGl0IGFzIHlvdSBzdWdnZXN0ZWQgaGVy
+ZSBub3cuCgogICAgIEFybmQKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX18KWTIwMzggbWFpbGluZyBsaXN0ClkyMDM4QGxpc3RzLmxpbmFyby5vcmcKaHR0cHM6
+Ly9saXN0cy5saW5hcm8ub3JnL21haWxtYW4vbGlzdGluZm8veTIwMzgK
