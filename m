@@ -1,77 +1,110 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: Re: [fstests PATCH 2/2] generic/999: test DAX DMA vs
- truncate/hole-punch
-Date: Thu, 21 Jun 2018 10:34:05 -0600
-Message-ID: <20180621163405.GA7014@linux.intel.com>
-References: <20180620225147.12151-1-ross.zwisler@linux.intel.com>
- <20180620225147.12151-2-ross.zwisler@linux.intel.com>
- <20180621021842.GB13748@dastard>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Eryu Guan <eguan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, fstests-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20180621021842.GB13748@dastard>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+From: Andreas Dilger <adilger@dilger.ca>
+Subject: Re: [PATCH 2/6] ext4: use 64-bit timestamps for mmp_time
+Date: Thu, 21 Jun 2018 11:20:24 -0600
+Message-ID: <711B183B-8F48-49C0-AC33-907384D10672@dilger.ca>
+References: <20180620153322.54221-1-arnd@arndb.de>
+ <20180620153322.54221-2-arnd@arndb.de>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_E79BA00D-983B-49F2-BC1F-60E7BA4D0162";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        y2038@lists.linaro.org,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Arnd Bergmann <arnd@arndb.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180620153322.54221-2-arnd@arndb.de>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 21, 2018 at 12:18:42PM +1000, Dave Chinner wrote:
-> On Wed, Jun 20, 2018 at 04:51:47PM -0600, Ross Zwisler wrote:
-<>
-> > +rm -f $seqres.full
-> > +
-> > +# Modify as appropriate.
-> > +_supported_fs generic
-> > +_supported_os Linux
-> > +_require_test
-> > +_require_test_program "t_mmap_collision"
-> > +
-> > +# turn off DAX on our scratch device so we can get normal O_DIRECT behavior
-> > +export MOUNT_OPTIONS=""
-> > +_scratch_unmount >> $seqres.full 2>&1
-> > +_scratch_mount >> $seqres.full 2>&1
-> 
-> _exclude_scratch_mount_option "dax"
-> 
-> i.e. we skip the test if "-o dax" is in the mount options. We try
-> not to turn off all mount options, because then we never exercise
-> any filesystem configuration other than mount defaults, regardless of
-> what other mount options the tester has specified on the CLI or
-> in config files...
-> 
-> > +Silence is golden
-> > diff --git a/tests/generic/group b/tests/generic/group
-> > index 83a6fdab..793f71ed 100644
-> > --- a/tests/generic/group
-> > +++ b/tests/generic/group
-> > @@ -501,3 +501,4 @@
-> >  496 auto quick swap
-> >  497 auto quick swap collapse
-> >  498 auto quick log
-> > +999 auto quick dax
-> 
-> Why should this be in a "dax" group when the test explicitly turns
-> off the the DAX mount option?
 
-Right, sorry, this is a bit confusing.  We only turn off dax for the scratch
-device, but we use the full mount options for the test device.  To reproduce
-the bug I'm looking for we would like those mount options to include -o dax
-(hence the membership in the dax group), but the test runs fine without this
-so I didn't want to require the dax mount option for the test to run.
+--Apple-Mail=_E79BA00D-983B-49F2-BC1F-60E7BA4D0162
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-I'll add comments to this effect, and I'll address the rest of your feedback
-in v2.
+On Jun 20, 2018, at 9:32 AM, Arnd Bergmann <arnd@arndb.de> wrote:
+> 
+> The mmp_time field is 64 bits wide, which is good, but calling
+> get_seconds() results in a 32-bit value on 32-bit architectures. Using
+> ktime_get_real_seconds() instead returns 64 bits everywhere.
+> 
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 
-Thank you for the review.
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+
+> ---
+> fs/ext4/mmp.c | 6 +++---
+> 1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+> index 27b9a76a0dfa..39da4eb48361 100644
+> --- a/fs/ext4/mmp.c
+> +++ b/fs/ext4/mmp.c
+> @@ -147,7 +147,7 @@ static int kmmpd(void *data)
+> 
+> 	mmp_block = le64_to_cpu(es->s_mmp_block);
+> 	mmp = (struct mmp_struct *)(bh->b_data);
+> -	mmp->mmp_time = cpu_to_le64(get_seconds());
+> +	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
+> 	/*
+> 	 * Start with the higher mmp_check_interval and reduce it if
+> 	 * the MMP block is being updated on time.
+> @@ -165,7 +165,7 @@ static int kmmpd(void *data)
+> 			seq = 1;
+> 
+> 		mmp->mmp_seq = cpu_to_le32(seq);
+> -		mmp->mmp_time = cpu_to_le64(get_seconds());
+> +		mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
+> 		last_update_time = jiffies;
+> 
+> 		retval = write_mmp_block(sb, bh);
+> @@ -244,7 +244,7 @@ static int kmmpd(void *data)
+> 	 * Unmount seems to be clean.
+> 	 */
+> 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
+> -	mmp->mmp_time = cpu_to_le64(get_seconds());
+> +	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
+> 
+> 	retval = write_mmp_block(sb, bh);
+> 
+> --
+> 2.9.0
+> 
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_E79BA00D-983B-49F2-BC1F-60E7BA4D0162
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlsr3lgACgkQcqXauRfM
+H+ASfw//foruYMBroerLYos6rc4jWqUdoTo9h8hB1HTM4E9GxUcZKBy1rRDCd+hr
+Y3jTyFozDB5RwtPfcBX7AF0SzaTC4+tJ96YyNetl2t4eKETl7OSEKM8QplFa/djF
+WXD9muJfZbQ4cntrphl+n6UpBY/jbC15HdeYhwRNHLIOfkAzp2BAKe+Okdo1o+hk
+zcavA0Cx1To+Vy2W96ahuEMwdVHk0lFpBs8pJJ9j0VEM7OdiIRFTatJMSdHTKZUR
+FggB6CNbUSK77NXzuzb0vPfwEtnSuOH9wI7dj+axRn8iPLBY+NGMtgAbKXztpE+4
+Tl7NryRC2PKKebmKteSzhFJqUGg4T6YUrUlIPDUsqCBtGmg2tlonePZbj0tBKDkd
+UgZGIy+zgR1S8b9GFkdwViEjLNhllqBWPvRqkCrtSpvMah0G8Grtwwoty+IlVFT+
+LJqnHvfB2VFh0YfWE6Y2pQ9aiOINzUeE02M6X8bDOOa+pBURuumg5oWdzp6xhthh
+kY7CKpjQEK7mHeEH0k8Lf8a5XE0yg+UMe23xdUPLA0B6Pw9n8Vc/HRSh/TcUwYkv
+9q/2VcesBRcSHgy+T0hu/LEodqx6Eux7gFvcnSX8ifoUtnVyh6OpIT2geUUESSm/
+n7kGL1+fE0482DXFdo4uZXR4hOtEj/VKBZUklf7lTR+1RXtcJ9E=
+=WQ5v
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_E79BA00D-983B-49F2-BC1F-60E7BA4D0162--
