@@ -1,44 +1,58 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/6] ext4: use timespec64 for all inode times
-Date: Fri, 22 Jun 2018 09:37:28 +0200
-Message-ID: <20180622073728.76imgamp3u4ivhf3@quack2.suse.cz>
+Subject: Re: [PATCH 2/6] ext4: use 64-bit timestamps for mmp_time
+Date: Fri, 22 Jun 2018 09:38:21 +0200
+Message-ID: <20180622073821.vmom4rvvxzrhd3se@quack2.suse.cz>
 References: <20180620153322.54221-1-arnd@arndb.de>
- <20180620153322.54221-4-arnd@arndb.de>
+ <20180620153322.54221-2-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jan Kara <jack@suse.com>, y2038@lists.linaro.org,
-        linux-ext4@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Theodore Ts'o <tytso@mit.edu>, y2038@lists.linaro.org,
+ linux-kernel@vger.kernel.org, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org
 To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <y2038-bounces@lists.linaro.org>
 Content-Disposition: inline
-In-Reply-To: <20180620153322.54221-4-arnd@arndb.de>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20180620153322.54221-2-arnd@arndb.de>
+List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
+List-Archive: <http://lists.linaro.org/pipermail/y2038/>
+List-Post: <mailto:y2038@lists.linaro.org>
+List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
+List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
+ <mailto:y2038-request@lists.linaro.org?subject=subscribe>
+Errors-To: y2038-bounces@lists.linaro.org
+Sender: "Y2038" <y2038-bounces@lists.linaro.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed 20-06-18 17:33:01, Arnd Bergmann wrote:
-> -static inline __le32 ext4_encode_extra_time(struct timespec *time)
-> +static inline __le32 ext4_encode_extra_time(struct timespec64 *time)
->  {
->  	u32 extra = sizeof(time->tv_sec) > 4 ?
-
-I suppose this condition can be removed now.
-
->  		((time->tv_sec - (s32)time->tv_sec) >> 32) & EXT4_EPOCH_MASK : 0;
->  	return cpu_to_le32(extra | (time->tv_nsec << EXT4_EPOCH_BITS));
->  }
->  
-> -static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
-> +static inline void ext4_decode_extra_time(struct timespec64 *time, __le32 extra)
-
-Wrap?
-
-Otherwise the patch looks good.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+T24gV2VkIDIwLTA2LTE4IDE3OjMyOjU5LCBBcm5kIEJlcmdtYW5uIHdyb3RlOgo+IFRoZSBtbXBf
+dGltZSBmaWVsZCBpcyA2NCBiaXRzIHdpZGUsIHdoaWNoIGlzIGdvb2QsIGJ1dCBjYWxsaW5nCj4g
+Z2V0X3NlY29uZHMoKSByZXN1bHRzIGluIGEgMzItYml0IHZhbHVlIG9uIDMyLWJpdCBhcmNoaXRl
+Y3R1cmVzLiBVc2luZwo+IGt0aW1lX2dldF9yZWFsX3NlY29uZHMoKSBpbnN0ZWFkIHJldHVybnMg
+NjQgYml0cyBldmVyeXdoZXJlLgo+IAo+IFNpZ25lZC1vZmYtYnk6IEFybmQgQmVyZ21hbm4gPGFy
+bmRAYXJuZGIuZGU+CgpMb29rcyBnb29kLgoKUmV2aWV3ZWQtYnk6IEphbiBLYXJhIDxqYWNrQHN1
+c2UuY3o+CgoJCQkJCQkJCUhvbnphCgo+IC0tLQo+ICBmcy9leHQ0L21tcC5jIHwgNiArKystLS0K
+PiAgMSBmaWxlIGNoYW5nZWQsIDMgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkKPiAKPiBk
+aWZmIC0tZ2l0IGEvZnMvZXh0NC9tbXAuYyBiL2ZzL2V4dDQvbW1wLmMKPiBpbmRleCAyN2I5YTc2
+YTBkZmEuLjM5ZGE0ZWI0ODM2MSAxMDA2NDQKPiAtLS0gYS9mcy9leHQ0L21tcC5jCj4gKysrIGIv
+ZnMvZXh0NC9tbXAuYwo+IEBAIC0xNDcsNyArMTQ3LDcgQEAgc3RhdGljIGludCBrbW1wZCh2b2lk
+ICpkYXRhKQo+ICAKPiAgCW1tcF9ibG9jayA9IGxlNjRfdG9fY3B1KGVzLT5zX21tcF9ibG9jayk7
+Cj4gIAltbXAgPSAoc3RydWN0IG1tcF9zdHJ1Y3QgKikoYmgtPmJfZGF0YSk7Cj4gLQltbXAtPm1t
+cF90aW1lID0gY3B1X3RvX2xlNjQoZ2V0X3NlY29uZHMoKSk7Cj4gKwltbXAtPm1tcF90aW1lID0g
+Y3B1X3RvX2xlNjQoa3RpbWVfZ2V0X3JlYWxfc2Vjb25kcygpKTsKPiAgCS8qCj4gIAkgKiBTdGFy
+dCB3aXRoIHRoZSBoaWdoZXIgbW1wX2NoZWNrX2ludGVydmFsIGFuZCByZWR1Y2UgaXQgaWYKPiAg
+CSAqIHRoZSBNTVAgYmxvY2sgaXMgYmVpbmcgdXBkYXRlZCBvbiB0aW1lLgo+IEBAIC0xNjUsNyAr
+MTY1LDcgQEAgc3RhdGljIGludCBrbW1wZCh2b2lkICpkYXRhKQo+ICAJCQlzZXEgPSAxOwo+ICAK
+PiAgCQltbXAtPm1tcF9zZXEgPSBjcHVfdG9fbGUzMihzZXEpOwo+IC0JCW1tcC0+bW1wX3RpbWUg
+PSBjcHVfdG9fbGU2NChnZXRfc2Vjb25kcygpKTsKPiArCQltbXAtPm1tcF90aW1lID0gY3B1X3Rv
+X2xlNjQoa3RpbWVfZ2V0X3JlYWxfc2Vjb25kcygpKTsKPiAgCQlsYXN0X3VwZGF0ZV90aW1lID0g
+amlmZmllczsKPiAgCj4gIAkJcmV0dmFsID0gd3JpdGVfbW1wX2Jsb2NrKHNiLCBiaCk7Cj4gQEAg
+LTI0NCw3ICsyNDQsNyBAQCBzdGF0aWMgaW50IGttbXBkKHZvaWQgKmRhdGEpCj4gIAkgKiBVbm1v
+dW50IHNlZW1zIHRvIGJlIGNsZWFuLgo+ICAJICovCj4gIAltbXAtPm1tcF9zZXEgPSBjcHVfdG9f
+bGUzMihFWFQ0X01NUF9TRVFfQ0xFQU4pOwo+IC0JbW1wLT5tbXBfdGltZSA9IGNwdV90b19sZTY0
+KGdldF9zZWNvbmRzKCkpOwo+ICsJbW1wLT5tbXBfdGltZSA9IGNwdV90b19sZTY0KGt0aW1lX2dl
+dF9yZWFsX3NlY29uZHMoKSk7Cj4gIAo+ICAJcmV0dmFsID0gd3JpdGVfbW1wX2Jsb2NrKHNiLCBi
+aCk7Cj4gIAo+IC0tIAo+IDIuOS4wCj4gCj4gCi0tIApKYW4gS2FyYSA8amFja0BzdXNlLmNvbT4K
+U1VTRSBMYWJzLCBDUgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fXwpZMjAzOCBtYWlsaW5nIGxpc3QKWTIwMzhAbGlzdHMubGluYXJvLm9yZwpodHRwczovL2xp
+c3RzLmxpbmFyby5vcmcvbWFpbG1hbi9saXN0aW5mby95MjAzOAo=
