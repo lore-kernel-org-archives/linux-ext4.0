@@ -1,38 +1,44 @@
-From: Eryu Guan <guaneryu-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Re: [fstests PATCH 1/2] src/: fix up mmap() error checking
-Date: Fri, 22 Jun 2018 10:28:38 +0800
-Message-ID: <20180622022838.GM2780@desktop>
-References: <20180620225147.12151-1-ross.zwisler@linux.intel.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 4/6] ext4: use timespec64 for all inode times
+Date: Fri, 22 Jun 2018 09:37:28 +0200
+Message-ID: <20180622073728.76imgamp3u4ivhf3@quack2.suse.cz>
+References: <20180620153322.54221-1-arnd@arndb.de>
+ <20180620153322.54221-4-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, fstests-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>, y2038@lists.linaro.org,
+        linux-ext4@vger.kernel.org,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        linux-kernel@vger.kernel.org
+To: Arnd Bergmann <arnd@arndb.de>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180620225147.12151-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20180620153322.54221-4-arnd@arndb.de>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 20, 2018 at 04:51:46PM -0600, Ross Zwisler wrote:
-> I noticed that in some of my C tests in src/ I was incorrectly checking for
-> mmap() failure by looking for NULL instead of MAP_FAILED.  Fix those and
-> clean up some places where we were testing against -1 (the actual value of
-> MAP_FAILED) which was manually being cast to a pointer.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+On Wed 20-06-18 17:33:01, Arnd Bergmann wrote:
+> -static inline __le32 ext4_encode_extra_time(struct timespec *time)
+> +static inline __le32 ext4_encode_extra_time(struct timespec64 *time)
+>  {
+>  	u32 extra = sizeof(time->tv_sec) > 4 ?
 
-BTW, I've applied this patch, no need to resend it in v2.
+I suppose this condition can be removed now.
 
-Thanks,
-Eryu
+>  		((time->tv_sec - (s32)time->tv_sec) >> 32) & EXT4_EPOCH_MASK : 0;
+>  	return cpu_to_le32(extra | (time->tv_nsec << EXT4_EPOCH_BITS));
+>  }
+>  
+> -static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
+> +static inline void ext4_decode_extra_time(struct timespec64 *time, __le32 extra)
+
+Wrap?
+
+Otherwise the patch looks good.
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
