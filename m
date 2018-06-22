@@ -1,58 +1,66 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/6] ext4: use 64-bit timestamps for mmp_time
-Date: Fri, 22 Jun 2018 09:38:21 +0200
-Message-ID: <20180622073821.vmom4rvvxzrhd3se@quack2.suse.cz>
+Subject: Re: [PATCH 5/6] jbd2: replace current_kernel_time64 with ktime
+ equivalent
+Date: Fri, 22 Jun 2018 09:41:42 +0200
+Message-ID: <20180622074142.kjs6sozf3it42wef@quack2.suse.cz>
 References: <20180620153322.54221-1-arnd@arndb.de>
- <20180620153322.54221-2-arnd@arndb.de>
+ <20180620153322.54221-5-arnd@arndb.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: Theodore Ts'o <tytso@mit.edu>, y2038@lists.linaro.org,
- linux-kernel@vger.kernel.org, Andreas Dilger <adilger.kernel@dilger.ca>,
- Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jan Kara <jack@suse.com>, y2038@lists.linaro.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 To: Arnd Bergmann <arnd@arndb.de>
-Return-path: <y2038-bounces@lists.linaro.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180620153322.54221-2-arnd@arndb.de>
-List-Unsubscribe: <https://lists.linaro.org/mailman/options/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=unsubscribe>
-List-Archive: <http://lists.linaro.org/pipermail/y2038/>
-List-Post: <mailto:y2038@lists.linaro.org>
-List-Help: <mailto:y2038-request@lists.linaro.org?subject=help>
-List-Subscribe: <https://lists.linaro.org/mailman/listinfo/y2038>,
- <mailto:y2038-request@lists.linaro.org?subject=subscribe>
-Errors-To: y2038-bounces@lists.linaro.org
-Sender: "Y2038" <y2038-bounces@lists.linaro.org>
+In-Reply-To: <20180620153322.54221-5-arnd@arndb.de>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-T24gV2VkIDIwLTA2LTE4IDE3OjMyOjU5LCBBcm5kIEJlcmdtYW5uIHdyb3RlOgo+IFRoZSBtbXBf
-dGltZSBmaWVsZCBpcyA2NCBiaXRzIHdpZGUsIHdoaWNoIGlzIGdvb2QsIGJ1dCBjYWxsaW5nCj4g
-Z2V0X3NlY29uZHMoKSByZXN1bHRzIGluIGEgMzItYml0IHZhbHVlIG9uIDMyLWJpdCBhcmNoaXRl
-Y3R1cmVzLiBVc2luZwo+IGt0aW1lX2dldF9yZWFsX3NlY29uZHMoKSBpbnN0ZWFkIHJldHVybnMg
-NjQgYml0cyBldmVyeXdoZXJlLgo+IAo+IFNpZ25lZC1vZmYtYnk6IEFybmQgQmVyZ21hbm4gPGFy
-bmRAYXJuZGIuZGU+CgpMb29rcyBnb29kLgoKUmV2aWV3ZWQtYnk6IEphbiBLYXJhIDxqYWNrQHN1
-c2UuY3o+CgoJCQkJCQkJCUhvbnphCgo+IC0tLQo+ICBmcy9leHQ0L21tcC5jIHwgNiArKystLS0K
-PiAgMSBmaWxlIGNoYW5nZWQsIDMgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkKPiAKPiBk
-aWZmIC0tZ2l0IGEvZnMvZXh0NC9tbXAuYyBiL2ZzL2V4dDQvbW1wLmMKPiBpbmRleCAyN2I5YTc2
-YTBkZmEuLjM5ZGE0ZWI0ODM2MSAxMDA2NDQKPiAtLS0gYS9mcy9leHQ0L21tcC5jCj4gKysrIGIv
-ZnMvZXh0NC9tbXAuYwo+IEBAIC0xNDcsNyArMTQ3LDcgQEAgc3RhdGljIGludCBrbW1wZCh2b2lk
-ICpkYXRhKQo+ICAKPiAgCW1tcF9ibG9jayA9IGxlNjRfdG9fY3B1KGVzLT5zX21tcF9ibG9jayk7
-Cj4gIAltbXAgPSAoc3RydWN0IG1tcF9zdHJ1Y3QgKikoYmgtPmJfZGF0YSk7Cj4gLQltbXAtPm1t
-cF90aW1lID0gY3B1X3RvX2xlNjQoZ2V0X3NlY29uZHMoKSk7Cj4gKwltbXAtPm1tcF90aW1lID0g
-Y3B1X3RvX2xlNjQoa3RpbWVfZ2V0X3JlYWxfc2Vjb25kcygpKTsKPiAgCS8qCj4gIAkgKiBTdGFy
-dCB3aXRoIHRoZSBoaWdoZXIgbW1wX2NoZWNrX2ludGVydmFsIGFuZCByZWR1Y2UgaXQgaWYKPiAg
-CSAqIHRoZSBNTVAgYmxvY2sgaXMgYmVpbmcgdXBkYXRlZCBvbiB0aW1lLgo+IEBAIC0xNjUsNyAr
-MTY1LDcgQEAgc3RhdGljIGludCBrbW1wZCh2b2lkICpkYXRhKQo+ICAJCQlzZXEgPSAxOwo+ICAK
-PiAgCQltbXAtPm1tcF9zZXEgPSBjcHVfdG9fbGUzMihzZXEpOwo+IC0JCW1tcC0+bW1wX3RpbWUg
-PSBjcHVfdG9fbGU2NChnZXRfc2Vjb25kcygpKTsKPiArCQltbXAtPm1tcF90aW1lID0gY3B1X3Rv
-X2xlNjQoa3RpbWVfZ2V0X3JlYWxfc2Vjb25kcygpKTsKPiAgCQlsYXN0X3VwZGF0ZV90aW1lID0g
-amlmZmllczsKPiAgCj4gIAkJcmV0dmFsID0gd3JpdGVfbW1wX2Jsb2NrKHNiLCBiaCk7Cj4gQEAg
-LTI0NCw3ICsyNDQsNyBAQCBzdGF0aWMgaW50IGttbXBkKHZvaWQgKmRhdGEpCj4gIAkgKiBVbm1v
-dW50IHNlZW1zIHRvIGJlIGNsZWFuLgo+ICAJICovCj4gIAltbXAtPm1tcF9zZXEgPSBjcHVfdG9f
-bGUzMihFWFQ0X01NUF9TRVFfQ0xFQU4pOwo+IC0JbW1wLT5tbXBfdGltZSA9IGNwdV90b19sZTY0
-KGdldF9zZWNvbmRzKCkpOwo+ICsJbW1wLT5tbXBfdGltZSA9IGNwdV90b19sZTY0KGt0aW1lX2dl
-dF9yZWFsX3NlY29uZHMoKSk7Cj4gIAo+ICAJcmV0dmFsID0gd3JpdGVfbW1wX2Jsb2NrKHNiLCBi
-aCk7Cj4gIAo+IC0tIAo+IDIuOS4wCj4gCj4gCi0tIApKYW4gS2FyYSA8amFja0BzdXNlLmNvbT4K
-U1VTRSBMYWJzLCBDUgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fXwpZMjAzOCBtYWlsaW5nIGxpc3QKWTIwMzhAbGlzdHMubGluYXJvLm9yZwpodHRwczovL2xp
-c3RzLmxpbmFyby5vcmcvbWFpbG1hbi9saXN0aW5mby95MjAzOAo=
+On Wed 20-06-18 17:33:02, Arnd Bergmann wrote:
+> jbd2 is one of the few callers of current_kernel_time64(), which
+> is a wrapper around ktime_get_coarse_real_ts64(). This calls the
+> latter directly for consistency with the rest of the kernel that
+> is moving to the ktime_get_ family of time accessors.
+> 
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+
+Looks good. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/jbd2/commit.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index 8de0e7723316..150cc030b4d7 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -121,7 +121,7 @@ static int journal_submit_commit_record(journal_t *journal,
+>  	struct commit_header *tmp;
+>  	struct buffer_head *bh;
+>  	int ret;
+> -	struct timespec64 now = current_kernel_time64();
+> +	struct timespec64 now;
+>  
+>  	*cbh = NULL;
+>  
+> @@ -134,6 +134,7 @@ static int journal_submit_commit_record(journal_t *journal,
+>  		return 1;
+>  
+>  	tmp = (struct commit_header *)bh->b_data;
+> +	ktime_get_coarse_real_ts64(&now);
+>  	tmp->h_commit_sec = cpu_to_be64(now.tv_sec);
+>  	tmp->h_commit_nsec = cpu_to_be32(now.tv_nsec);
+>  
+> -- 
+> 2.9.0
+> 
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
