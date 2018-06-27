@@ -1,11 +1,13 @@
 From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: [PATCH 0/1] iomap: Direct I/O for inline data
-Date: Wed, 27 Jun 2018 02:39:05 +0200
-Message-ID: <20180627003906.15571-1-agruenba@redhat.com>
+Subject: [PATCH 1/1] iomap: Direct I/O for inline data
+Date: Wed, 27 Jun 2018 02:39:06 +0200
+Message-ID: <20180627003906.15571-2-agruenba@redhat.com>
+References: <20180627003906.15571-1-agruenba@redhat.com>
 Cc: cluster-devel@redhat.com, linux-fsdevel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
 To: Christoph Hellwig <hch@lst.de>
 Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <20180627003906.15571-1-agruenba@redhat.com>
 List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
 	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/cluster-devel>
@@ -17,29 +19,64 @@ Sender: cluster-devel-bounces@redhat.com
 Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-Here's a patch that implements direct I/O for inline data.  Direct I/O
-to inline data is a bit weird because it's not direct in the usual
-sense, but since Christoph's been asking for it ...
+Add support for reading from and writing to inline data to iomap_dio_rw.
+This saves filesystems from having to implement fallback code for this
+case.
 
-The usual alignment restrictions to the logical block size of the
-underlying block device still apply.  I don't see a reason for changing
-that; the resulting behavior would only become very weird for no
-benefit.
+The inline data is actually cached in the inode, so the I/O is only
+direct in the sense that it doesn't go through the page cache.  The same
+alignment restrictions as to non-inline data apply.
 
-I've tested this against a hacked-up version of gfs2.  However, the
-"real" gfs2 will keep falling back to buffered I/O for writes to inline
-data: gfs2 takes a shared lock during direct I/O, and writing to the
-inode under that shared lock is not allowed.  Ext4 may become the first
-actual user of this part of the patch.
-
-Thanks,
-Andreas
-
-Andreas Gruenbacher (1):
-  iomap: Direct I/O to inline data
-
+Signed-off-by: Andreas Gruenbacher <agruenba@redhat.com>
+---
  fs/iomap.c | 28 ++++++++++++++++++++++++++++
  1 file changed, 28 insertions(+)
 
+diff --git a/fs/iomap.c b/fs/iomap.c
+index d393bb0c7384..74668b3ca2ed 100644
+--- a/fs/iomap.c
++++ b/fs/iomap.c
+@@ -1231,6 +1231,32 @@ iomap_dio_zero(struct iomap_dio *dio, struct iomap *iomap, loff_t pos,
+ 	return submit_bio(bio);
+ }
+ 
++static loff_t iomap_dio_actor_inline(struct inode *inode, struct iomap_dio *dio,
++		struct iomap *iomap, loff_t pos, loff_t length)
++{
++	struct iov_iter *iter = dio->submit.iter;
++	size_t copied;
++
++	BUG_ON(pos + length > PAGE_SIZE - offset_in_page(iomap->inline_data));
++
++	if (dio->flags & IOMAP_DIO_WRITE) {
++		loff_t size = inode->i_size;
++
++		if (pos > size)
++			memset(iomap->inline_data + size, 0, pos - size);
++		copied = copy_from_iter(iomap->inline_data + pos, length, iter);
++		if (copied) {
++			if (pos + copied > size)
++				i_size_write(inode, pos + copied);
++			mark_inode_dirty(inode);
++		}
++	} else {
++		copied = copy_to_iter(iomap->inline_data + pos, length, iter);
++	}
++	dio->size += copied;
++	return copied;
++}
++
+ static loff_t
+ iomap_dio_actor(struct inode *inode, loff_t pos, loff_t length,
+ 		void *data, struct iomap *iomap)
+@@ -1281,6 +1307,8 @@ iomap_dio_actor(struct inode *inode, loff_t pos, loff_t length,
+ 				use_fua = true;
+ 		}
+ 		break;
++	case IOMAP_INLINE:
++		return iomap_dio_actor_inline(inode, dio, iomap, pos, length);
+ 	default:
+ 		WARN_ON_ONCE(1);
+ 		return -EIO;
 -- 
 2.17.1
