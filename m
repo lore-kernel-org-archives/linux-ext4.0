@@ -1,8 +1,7 @@
 From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v2 2/2] ext4: handle layout changes to pinned DAX mappings
-Date: Wed, 27 Jun 2018 15:22:52 -0600
-Message-ID: <20180627212252.31032-3-ross.zwisler@linux.intel.com>
-References: <20180627212252.31032-1-ross.zwisler@linux.intel.com>
+Subject: [PATCH v2 0/2] ext4: fix DAX dma vs truncate/hole-punch
+Date: Wed, 27 Jun 2018 15:22:50 -0600
+Message-ID: <20180627212252.31032-1-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -12,7 +11,6 @@ To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Dan Williams <dan.j.williams-r
  Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
  Jeff Moyer <jmoyer-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20180627212252.31032-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -24,146 +22,53 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Follow the lead of xfs_break_dax_layouts() and add synchronization between
-operations in ext4 which remove blocks from an inode (hole punch, truncate
-down, etc.) and pages which are pinned due to DAX DMA operations.
+This series from Dan:
 
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
----
+https://lists.01.org/pipermail/linux-nvdimm/2018-March/014913.html
+
+added synchronization between DAX dma and truncate/hole-punch in XFS.
+This short series adds analogous support to ext4.
+
+I've added calls to ext4_break_layouts() everywhere that ext4 removes
+blocks from an inode's map.
+
+The timings in XFS are such that it's difficult to hit this race.  Dan
+was able to show the race by manually introducing delays in the direct
+I/O path.
+
+For ext4, though, its trivial to hit this race, and a hit will result in
+a trigger of this WARN_ON_ONCE() in dax_disassociate_entry():
+
+        WARN_ON_ONCE(trunc && page_ref_count(page) > 1);
+
+I've made an xfstest which tests all the paths where we now call
+ext4_break_layouts(). Each of the four paths easily hits this race many
+times in my test setup with the xfstest.  You can find that test here:
+
+https://lists.01.org/pipermail/linux-nvdimm/2018-June/016435.html
+
+With these patches applied, I've still seen occasional hits of the above
+WARN_ON_ONCE(), which tells me that we still have some work to do.  I'll
+continue looking at these more rare hits.
+
+--- 
+
+Changes in v2:
+ * A little cleanup to each patch as suggested by Jan.
+ * Removed the ext4_break_layouts() call in ext4_truncate_failed_write()
+   and added a comment instead. (Jan)
+ * Added reviewed-by tags from Jan.
+
+Ross Zwisler (2):
+  dax: dax_layout_busy_page() warn on !exceptional
+  ext4: handle layout changes to pinned DAX mappings
+
+ fs/dax.c           | 10 +++++++++-
  fs/ext4/ext4.h     |  1 +
  fs/ext4/extents.c  | 12 ++++++++++++
  fs/ext4/inode.c    | 46 ++++++++++++++++++++++++++++++++++++++++++++++
  fs/ext4/truncate.h |  4 ++++
- 4 files changed, 63 insertions(+)
+ 5 files changed, 72 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0b127853c584..34bccd64d83d 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2460,6 +2460,7 @@ extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
- extern int ext4_inode_attach_jinode(struct inode *inode);
- extern int ext4_can_truncate(struct inode *inode);
- extern int ext4_truncate(struct inode *);
-+extern int ext4_break_layouts(struct inode *);
- extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
- extern int ext4_truncate_restart_trans(handle_t *, struct inode *, int nblocks);
- extern void ext4_set_inode_flags(struct inode *);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 0057fe3f248d..a6aef06f455b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4820,6 +4820,13 @@ static long ext4_zero_range(struct file *file, loff_t offset,
- 		 * released from page cache.
- 		 */
- 		down_write(&EXT4_I(inode)->i_mmap_sem);
-+
-+		ret = ext4_break_layouts(inode);
-+		if (ret) {
-+			up_write(&EXT4_I(inode)->i_mmap_sem);
-+			goto out_mutex;
-+		}
-+
- 		ret = ext4_update_disksize_before_punch(inode, offset, len);
- 		if (ret) {
- 			up_write(&EXT4_I(inode)->i_mmap_sem);
-@@ -5493,6 +5500,11 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
- 	 * page cache.
- 	 */
- 	down_write(&EXT4_I(inode)->i_mmap_sem);
-+
-+	ret = ext4_break_layouts(inode);
-+	if (ret)
-+		goto out_mmap;
-+
- 	/*
- 	 * Need to round down offset to be aligned with page size boundary
- 	 * for page size > block size.
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2ea07efbe016..fadb8ecacb1e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4193,6 +4193,39 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
- 	return 0;
- }
- 
-+static void ext4_wait_dax_page(struct ext4_inode_info *ei, bool *did_unlock)
-+{
-+	*did_unlock = true;
-+	up_write(&ei->i_mmap_sem);
-+	schedule();
-+	down_write(&ei->i_mmap_sem);
-+}
-+
-+int ext4_break_layouts(struct inode *inode)
-+{
-+	struct ext4_inode_info *ei = EXT4_I(inode);
-+	struct page *page;
-+	bool retry;
-+	int error;
-+
-+	if (WARN_ON_ONCE(!rwsem_is_locked(&ei->i_mmap_sem)))
-+		return -EINVAL;
-+
-+	do {
-+		retry = false;
-+		page = dax_layout_busy_page(inode->i_mapping);
-+		if (!page)
-+			return 0;
-+
-+		error = ___wait_var_event(&page->_refcount,
-+				atomic_read(&page->_refcount) == 1,
-+				TASK_INTERRUPTIBLE, 0, 0,
-+				ext4_wait_dax_page(ei, &retry));
-+	} while (error == 0 && retry);
-+
-+	return error;
-+}
-+
- /*
-  * ext4_punch_hole: punches a hole in a file by releasing the blocks
-  * associated with the given offset and length
-@@ -4266,6 +4299,11 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
- 	 * page cache.
- 	 */
- 	down_write(&EXT4_I(inode)->i_mmap_sem);
-+
-+	ret = ext4_break_layouts(inode);
-+	if (ret)
-+		goto out_dio;
-+
- 	first_block_offset = round_up(offset, sb->s_blocksize);
- 	last_block_offset = round_down((offset + length), sb->s_blocksize) - 1;
- 
-@@ -5554,6 +5592,14 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 				ext4_wait_for_tail_page_commit(inode);
- 		}
- 		down_write(&EXT4_I(inode)->i_mmap_sem);
-+
-+		rc = ext4_break_layouts(inode);
-+		if (rc) {
-+			up_write(&EXT4_I(inode)->i_mmap_sem);
-+			error = rc;
-+			goto err_out;
-+		}
-+
- 		/*
- 		 * Truncate pagecache after we've waited for commit
- 		 * in data=journal mode to make pages freeable.
-diff --git a/fs/ext4/truncate.h b/fs/ext4/truncate.h
-index 0cb13badf473..bcbe3668c1d4 100644
---- a/fs/ext4/truncate.h
-+++ b/fs/ext4/truncate.h
-@@ -11,6 +11,10 @@
-  */
- static inline void ext4_truncate_failed_write(struct inode *inode)
- {
-+	/*
-+	 * We don't need to call ext4_break_layouts() because the blocks we
-+	 * are truncating were never visible to userspace.
-+	 */
- 	down_write(&EXT4_I(inode)->i_mmap_sem);
- 	truncate_inode_pages(inode->i_mapping, inode->i_size);
- 	ext4_truncate(inode);
 -- 
 2.14.4
