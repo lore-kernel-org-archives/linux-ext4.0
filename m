@@ -1,69 +1,39 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH 0/1] iomap: Direct I/O for inline data
-Date: Wed, 27 Jun 2018 13:14:24 +0200
-Message-ID: <CAHc6FU7gJUcaKRr6He8Te0wcMYMQjriwbz58pC-ie1m-WJOw0g@mail.gmail.com>
-References: <20180627003906.15571-1-agruenba@redhat.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: e2fsprogs: fix inode bitmap num not
+ integer,incompatible for ancient android devices
+Date: Wed, 27 Jun 2018 10:09:37 -0400
+Message-ID: <20180627140937.GA3348@thunk.org>
+References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: cluster-devel <cluster-devel@redhat.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20180627003906.15571-1-agruenba@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        sorp.liqingchao@huawei.com, harry.shen@huawei.com,
+        miaoxie@huawei.com
+To: GaoMing <gaoming20@huawei.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 27 June 2018 at 02:39, Andreas Gruenbacher <agruenba@redhat.com> wrote:
-> Here's a patch that implements direct I/O for inline data.  Direct I/O
-> to inline data is a bit weird because it's not direct in the usual
-> sense, but since Christoph's been asking for it ...
+On Tue, Jun 26, 2018 at 07:54:06PM +0800, GaoMing wrote:
+> for example, 1708 inodes every group,3 block groups, bitmap bytes are 1708/8=213.5 when the inode bitmap has some errors, e2fsprogs cannot fix it
 >
-> The usual alignment restrictions to the logical block size of the
-> underlying block device still apply.  I don't see a reason for changing
-> that; the resulting behavior would only become very weird for no
-> benefit.
->
-> I've tested this against a hacked-up version of gfs2.  However, the
-> "real" gfs2 will keep falling back to buffered I/O for writes to inline
-> data: gfs2 takes a shared lock during direct I/O, and writing to the
-> inode under that shared lock is not allowed.  Ext4 may become the first
-> actual user of this part of the patch.
+> Signed-off-by: GaoMing <gaoming20@huawei.com>
 
-One further issue is the alignment check in iomap_dio_actor:
+File systems like this should not exist.  Can you please please please
+make sure that any use of make_ext2fs are ripped out by the roots?
 
->        if ((pos | length | align) & ((1 << blkbits) - 1))
->                return -EINVAL;
+What I *should* do is have e2fsck reject these file systems as
+completely invalid in pass 0, when we check for superblock sanity.  I
+haven't because there are some older Android systems that use
+make_ext2fs.  But at this point, what I am **seriously** doing is to
+make e2fsck reject these file systems by default, unless a setting in
+e2fsck.conf is set to allow them as an exception.
 
-For inline data, iomap->length is set to the file size. iomap_apply
-truncates the requested length down to that, so iomap_dio_actor sees
-the truncated length instead of the requested length and fails with
--EINVAL. This causes tests like the following to fail (also see
-xfstest generic/120):
+My concern about applying this patch is that it will be taken as
+acceptance of e2fsprogs to fully support these sorts of invalid file
+systems.  In particular, there is no guarantee that various tune2fs
+options, resize2fs, etc., will work correctly even with your patch.
 
-  xfs_io -fd -c 'truncate 300' -c 'pread -v 0 4096' /mnt/test/foo
-
-A possible fix is to change the alignment check in iomap_dio_actor as follows:
-
--       if ((pos | length | align) & ((1 << blkbits) - 1))
-+       if ((pos | align) & ((1 << blkbits) - 1))
-+               return -EINVAL;
-+       if (length & ((1 << blkbits) - 1) &&
-+           pos + length != iomap->offset + iomap->length)
-                return -EINVAL;
-
-Moving the alignment check from iomap_dio_actor to iomap_dio_rw isn't
-that easy because iomap->bdev isn't known there.
-
-Any thoughts?
-
-Thanks,
-Andreas
+	 	    	       	    	      - Ted
