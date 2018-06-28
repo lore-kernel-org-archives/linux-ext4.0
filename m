@@ -1,16 +1,16 @@
-From: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
-Subject: =?gb2312?B?tPC4tDogtPC4tDogW1BBVENIXSBleHQ0OiBlMmZzcHJvZ3M6IGZpeCBpbm9k?=
- =?gb2312?B?ZSBiaXRtYXAgbnVtIG5vdCBpbnRlZ2VyLGluY29tcGF0aWJsZSBmb3IgYW5j?=
- =?gb2312?Q?ient_android_devices?=
-Date: Thu, 28 Jun 2018 07:56:59 +0000
-Message-ID: <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: =?utf-8?B?562U5aSNOiDnrZTlpI06IFtQQVRD?=
+ =?utf-8?Q?H=5D_ext4=3A_e2fsprogs=3A_fix_inode_bitma?= =?utf-8?Q?p?= num not
+ integer,incompatible for ancient android devices
+Date: Thu, 28 Jun 2018 11:30:22 -0400
+Message-ID: <20180628153022.GA8521@thunk.org>
 References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
  <20180627140937.GA3348@thunk.org>
  <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
  <20180628022900.GA663@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="gb2312"
-Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset=us-ascii
 Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
@@ -18,51 +18,67 @@ Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
         "miaoxie (A)" <miaoxie@huawei.com>,
         "yangfei (D)" <yangfei39@huawei.com>,
         "Renlipeng (OS driver)" <renlipeng@huawei.com>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180628022900.GA663@thunk.org>
-Content-Language: zh-CN
+Content-Disposition: inline
+In-Reply-To: <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-SGksDQoNCkkgaGF2ZSBjbG9uZWQgdGhlIHJlcG8gL3N5c3RlbS9leHRyYXMgb24gbWFzdGVyIGJy
-YW5jaC4NCmdpdCBjbG9uZSBodHRwczovL2FuZHJvaWQuZ29vZ2xlc291cmNlLmNvbS9wbGF0Zm9y
-bS9zeXN0ZW0vZXh0cmFzICYmIChjZCBleHRyYXMgJiYgY3VybCAtTG8gYGdpdCByZXYtcGFyc2Ug
-LS1naXQtZGlyYC9ob29rcy9jb21taXQtbXNnIGh0dHBzOi8vZ2Vycml0LXJldmlldy5nb29nbGVz
-b3VyY2UuY29tL3Rvb2xzL2hvb2tzL2NvbW1pdC1tc2cgOyBjaG1vZCAreCBgZ2l0IHJldi1wYXJz
-ZSAtLWdpdC1kaXJgL2hvb2tzL2NvbW1pdC1tc2cpDQphbmQgDQpnaXQgY2hlY2tvdXQgZ2l0IGNo
-ZWNrb3V0IDljMjc5NzBkMTQyZGMxNGIxZTgyYjFkNmY5ZmE4MjdmOTk0NjA5YjYgLWIgdG1wDQov
-L3RoaXMgbWVhbnMgcm9sbGJhY2sgdG8gdGhlIHZlcnNpb24gYmVmb3JlIG1ha2VfZXh0NGZzIGNv
-ZGUgd2FzIGRlbGV0ZWQgb24gSnVuIDIxdGggMjAxOC4NCg0KQW5kIGNvcHkgdGhlIGNvZGVzIHRv
-IGFuZHJvaWQgcHJvamVjdCwgdGhlbiBjb21waWxlLCBhbmQgcHJvZHVjZSB0aGUgaW1hZ2UuIExp
-a2UgYmVsb3csDQoNCi4vaG9zdC9saW51eC14ODYvYmluL21ha2VfZXh0NGZzICAtcyAtbCAyME0g
-LWIgMTAyNCBnYW9taW5nLmltZw0KQ3JlYXRpbmcgZmlsZXN5c3RlbSB3aXRoIHBhcmFtZXRlcnM6
-DQogICAgU2l6ZTogMjA5NzE1MjANCiAgICBCbG9jayBzaXplOiAxMDI0DQogICAgQmxvY2tzIHBl
-ciBncm91cDogODE5Mg0KICAgIElub2RlcyBwZXIgZ3JvdXA6IDE3MDgNCiAgICBJbm9kZSBzaXpl
-OiAyNTYNCiAgICBKb3VybmFsIGJsb2NrczogMTAyNA0KICAgIExhYmVsOg0KICAgIEJsb2Nrczog
-MjA0ODANCiAgICBCbG9jayBncm91cHM6IDMNCiAgICBSZXNlcnZlZCBibG9jayBncm91cCBzaXpl
-OiA5NQ0KQ3JlYXRlZCBmaWxlc3lzdGVtIHdpdGggMTEvNTEyNCBpbm9kZXMgYW5kIDI1MDkvMjA0
-ODAgYmxvY2tzDQoNCllvdSBzZWUsIElub2RlcyBwZXIgZ3JvdXAgaXMgMTcwOCx3aGljaCBpcyBp
-bGxlZ2FsIGFzIHlvdSBzYWlkLg0KDQpTbywgdGhlIHByb2JsZW0gZXhpc3RzIGEgbG9uZyB0aW1l
-IHVudGlsIEp1biAyMXRoIDIwMTguDQoNCllvdSBjb21wbGFpbmVkIHRoZSBwcm9ibGVtIGluIDIw
-MTEsIHRoZXkgZG8gbm90IGZpeCBpdCB0aWxsIDIwMTguDQpKdXN0IGFzDQpJIGNvbXBsYWluZWQs
-IGZpeCBpdCwgIGFuZCB5b3UgZG8gbm90IGFjY2VwdCBpdC4gXl9eDQoNCg0KUmVnYXJkcywNCk1p
-bmcNCg0KLS0tLS3Tyrz+1K28/i0tLS0tDQq3orz+yMs6IFRoZW9kb3JlIFkuIFRzJ28gW21haWx0
-bzp0eXRzb0BtaXQuZWR1XSANCreiy83KsbzkOiAyMDE4xOo21MIyOMjVIDEwOjI5DQrK1bz+yMs6
-IEdhb21pbmcgKG1pbmcsIGNvbnN1bWVyIEJHKQ0Ks63LzTogbGludXgtZXh0NEB2Z2VyLmtlcm5l
-bC5vcmc7IGxpbnV4LWtlcm5lbEB2Z2VyLmtlcm5lbC5vcmc7IExpcWluZ2NoYW8gKHNvcnApOyBT
-aGVuY2hlbiAoaGFycnkpOyBtaWFveGllIChBKTsgeWFuZ2ZlaSAoRCkNCtb3zOI6IFJlOiC08Li0
-OiBbUEFUQ0hdIGV4dDQ6IGUyZnNwcm9nczogZml4IGlub2RlIGJpdG1hcCBudW0gbm90IGludGVn
-ZXIsaW5jb21wYXRpYmxlIGZvciBhbmNpZW50IGFuZHJvaWQgZGV2aWNlcw0KDQpPbiBUaHUsIEp1
-biAyOCwgMjAxOCBhdCAwMTo0MDozMEFNICswMDAwLCBHYW9taW5nIChtaW5nLCBjb25zdW1lciBC
-Rykgd3JvdGU6DQo+IEhpIHR5dHNvLA0KPiANCj4gSSBoYXZlIGNoZWNrZWQgdGhhdCBtYWtlX2V4
-dDRmcyBjb2RlIHdhcyBkZWxldGVkIG8gSnVuIDIxdGggMjAxOCBvbiBtYXN0ZXIgYnJhbmNoIG9m
-IC9zeXN0ZW0vZXh0cmFzIHJlcG9zaXRvcnkuDQo+IGUuZy4gDQo+IGh0dHBzOi8vYW5kcm9pZC1y
-ZXZpZXcuZ29vZ2xlc291cmNlLmNvbS9jL3BsYXRmb3JtL3N5c3RlbS9leHRyYXMvKy83MDgwMDMN
-Cg0KTWFrZV9leHQ0ZnMgd2FzIGZpeGVkIG5vdCBjcmVhdGUgaW52YWxpZCBmaWxlIHN5c3RlbXMg
-YSAqbG9uZyogdGltZQ0KYWdvLiAgV2hhdCBJJ20gbm90IHN1cmUgYWJvdXQgaXMgd2h5IHRoZSBw
-YXRjaCBoYXNuJ3QgZ290dGVuIG91dCB0bw0KbW9yZSBBbmRyb2lkIG1hbnVmYWN0ZXJzIHNvb25l
-ci4NCg0KSXQgc2hvdWxkIGhhdmUgYmVlbiBmaXhlZCBieSBzb21ldGltZSBpbiAyMDEyIC0tLSBJ
-IGNvbXBsYWluZWQgdG8gdGhlDQpBbmRyb2lkIHRlYW0gaW4gZWFybHkgMjAxMS4gIFdoYXQgSSBk
-b24ndCB1bmRlcnN0YW5kIGlzIHdoeSBwZW9wbGUgYXJlDQpjb21pbmcgb3V0IG9mIHRoZSB3b29k
-d29yayAqbm93Ki4NCg0KCQkJCQktIFRlZA0K
+On Thu, Jun 28, 2018 at 07:56:59AM +0000, Gaoming (ming, consumer BG) wrote:
+> You see, Inodes per group is 1708,which is illegal as you said.
+> 
+> So, the problem exists a long time until Jun 21th 2018.
+> 
+> You complained the problem in 2011, they do not fix it till 2018.
+> Just as
+> I complained, fix it,  and you do not accept it. ^_^
+
+Here's the commit.  (Note the date.)   Do you see it in your repository?
+
+Or are you using an unusual inode size?  (e.g., not 256 bytes, or 16
+inodes per block).
+
+
+       	   	       	       	     	  - Ted
+
+commit 06c35f935a7adadceb9ee326b3231f952f6ad203
+Merge: 480a3b1 96cc54a
+Author: Colin Cross <ccross@android.com>
+Date:   Sat Apr 30 19:08:09 2011 -0700
+
+    Merge "Make inodes per group a multiple of inodes per block"
+
+diff --cc ext4_utils/make_ext4fs.c
+index c9fd992,e37d617..22c9424
+--- a/ext4_utils/make_ext4fs.c
++++ b/ext4_utils/make_ext4fs.c
+@@@ -214,26 -215,10 +214,27 @@@ static u32 compute_inodes_per_group(
+  {
+  	u32 blocks = DIV_ROUND_UP(info.len, info.block_size);
+  	u32 block_groups = DIV_ROUND_UP(blocks, info.blocks_per_group);
+- 	return DIV_ROUND_UP(info.inodes, block_groups);
++ 	u32 inodes = DIV_ROUND_UP(info.inodes, block_groups);
++ 	return ALIGN(inodes, (info.block_size / info.inode_size));
+  }
+  
+ +static u32 compute_bg_desc_reserve_blocks()
+ +{
+ +	u32 blocks = DIV_ROUND_UP(info.len, info.block_size);
+ +	u32 block_groups = DIV_ROUND_UP(blocks, info.blocks_per_group);
+ +	u32 bg_desc_blocks = DIV_ROUND_UP(block_groups * sizeof(struct ext2_group_desc),
+ +			info.block_size);
+ +
+ +	u32 bg_desc_reserve_blocks =
+ +			DIV_ROUND_UP(block_groups * 1024 * sizeof(struct ext2_group_desc),
+ +					info.block_size) - bg_desc_blocks;
+ +
+ +	if (bg_desc_reserve_blocks > info.block_size / sizeof(u32))
+ +		bg_desc_reserve_blocks = info.block_size / sizeof(u32);
+ +
+ +	return bg_desc_reserve_blocks;
+ +}
+ +
+  void reset_ext4fs_info() {
+      // Reset all the global data structures used by make_ext4fs so it
+      // can be called again.
