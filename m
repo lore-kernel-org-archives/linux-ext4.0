@@ -1,64 +1,40 @@
-From: Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>
-Subject: Re: [PATCH] mm: reject MAP_SHARED_VALIDATE without new flags
-Date: Wed, 27 Jun 2018 21:17:55 -0500
-Message-ID: <1e2ad827-6ff4-4b1e-c4d9-79ca4e432a6c@sandeen.net>
-References: <60052659-7b37-cb69-bf9f-1683caa46219@redhat.com>
- <CA+55aFzeA7N3evSF2jKHu8JoTQuKDLCMKx7RiPhmym97-8HY7A@mail.gmail.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: =?utf-8?B?562U5aSNOiBbUEFUQ0hdIGV4dDQ6?=
+ =?utf-8?Q?_e2fsprogs=3A_fix_inode_bitma?= =?utf-8?Q?p?= num not
+ integer,incompatible for ancient android devices
+Date: Wed, 27 Jun 2018 22:29:00 -0400
+Message-ID: <20180628022900.GA663@thunk.org>
+References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
+ <20180627140937.GA3348@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, zhibli-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
- linux-xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-mm <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>,
- linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <CA+55aFzeA7N3evSF2jKHu8JoTQuKDLCMKx7RiPhmym97-8HY7A-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Content-Language: en-US
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
+        "Shenchen (harry)" <harry.shen@huawei.com>,
+        "miaoxie (A)" <miaoxie@huawei.com>,
+        "yangfei (D)" <yangfei39@huawei.com>
+To: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 6/27/18 9:10 PM, Linus Torvalds wrote:
-> On Wed, Jun 27, 2018 at 6:45 PM Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org> wrote:
->>
->> Thus the invalid flag combination of (MAP_SHARED|MAP_PRIVATE) now
->> passes without error, which is a regression.
+On Thu, Jun 28, 2018 at 01:40:30AM +0000, Gaoming (ming, consumer BG) wrote:
+> Hi tytso,
 > 
-> It's not a regression, it's just new behavior.
-> 
-> "regression" doesn't mean "things changed". It means "something broke".
-> 
-> What broke?
+> I have checked that make_ext4fs code was deleted o Jun 21th 2018 on master branch of /system/extras repository.
+> e.g. 
+> https://android-review.googlesource.com/c/platform/system/extras/+/708003
 
-My commit log perhaps was not clear enough.
+Make_ext4fs was fixed not create invalid file systems a *long* time
+ago.  What I'm not sure about is why the patch hasn't gotten out to
+more Android manufacters sooner.
 
-What broke is that mmap(MAP_SHARED|MAP_PRIVATE) now succeeds without error,
-whereas before it rightly returned -EINVAL.
+It should have been fixed by sometime in 2012 --- I complained to the
+Android team in early 2011.  What I don't understand is why people are
+coming out of the woodwork *now*.
 
-What behavior should a user expect from a successful mmap(MAP_SHARED|MAP_PRIVATE)?
-
--Eric
-
-> Because if it's some manual page breakage, just fix the manual. That's
-> what "new behavior" is all about.
-> 
-> There is nothing that says that "MAP_SHARED_VALIDATE" can't work with
-> just the legacy flags.
-> 
-> Because I'd be worried about your patch breaking some actual new user
-> of MAP_SHARED_VALIDATE.
-> 
-> Because it's actual *users* of behavior we care about, not some
-> test-suite or manual pages.
-> 
->               Linus
+					- Ted
