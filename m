@@ -1,60 +1,68 @@
-From: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH] mm: reject MAP_SHARED_VALIDATE without new flags
-Date: Wed, 27 Jun 2018 23:18:30 -0500
-Message-ID: <52d82353-2746-269a-c1e3-e4aec4fbf0f9@redhat.com>
-References: <60052659-7b37-cb69-bf9f-1683caa46219@redhat.com>
- <CA+55aFzeA7N3evSF2jKHu8JoTQuKDLCMKx7RiPhmym97-8HY7A@mail.gmail.com>
- <1e2ad827-6ff4-4b1e-c4d9-79ca4e432a6c@sandeen.net>
- <CA+55aFxs7Cc30fCiENw0R+XDJhUJ-w=z=NLLzYfT5gF2Qh-60Q@mail.gmail.com>
+From: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
+Subject: =?gb2312?B?tPC4tDogtPC4tDogW1BBVENIXSBleHQ0OiBlMmZzcHJvZ3M6IGZpeCBpbm9k?=
+ =?gb2312?B?ZSBiaXRtYXAgbnVtIG5vdCBpbnRlZ2VyLGluY29tcGF0aWJsZSBmb3IgYW5j?=
+ =?gb2312?Q?ient_android_devices?=
+Date: Thu, 28 Jun 2018 07:56:59 +0000
+Message-ID: <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
+References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
+ <20180627140937.GA3348@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
+ <20180628022900.GA663@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Christoph Hellwig <hch-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- Linux API <linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, zhibli-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
- linux-xfs <linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-mm <linux-mm-Bw31MaZKKs3YtjvyW6yDsg@public.gmane.org>,
- linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Linus Torvalds <torvalds-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
- Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <CA+55aFxs7Cc30fCiENw0R+XDJhUJ-w=z=NLLzYfT5gF2Qh-60Q-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
-Content-Language: en-US
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="gb2312"
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
+        "Shenchen (harry)" <harry.shen@huawei.com>,
+        "miaoxie (A)" <miaoxie@huawei.com>,
+        "yangfei (D)" <yangfei39@huawei.com>,
+        "Renlipeng (OS driver)" <renlipeng@huawei.com>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180628022900.GA663@thunk.org>
+Content-Language: zh-CN
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 6/27/18 9:37 PM, Linus Torvalds wrote:
-> On Wed, Jun 27, 2018 at 7:17 PM Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org> wrote:
->>
->> What broke is that mmap(MAP_SHARED|MAP_PRIVATE) now succeeds without error,
->> whereas before it rightly returned -EINVAL.
-> 
-> You're still confusing *behavior* with breakage.
-> 
-> Yes. New *behavior* is that MAP_SHARED|MAP_PRIVATE is now a valid
-> thing. It means "MAP_SHARED_VALIDATE".
-> 
-> Behavior changed.  That's normal. Every single time we add a system
-> call, behavior changes: a system call that used to return -ENOSYS now
-> returns something else.
-> 
-> That's not breakage, that's just intentional new behavior.
-
-*shrug* semantics aside, the new behavior is out there in a public
-API, so I guess there's nothing to do at this point other than
-to document the change more clearly.  It's true that my patch could
-possibly break existing users.
-
-The man page is clearly wrong at this point, both in terms of the
-error code section, and the claim that MAP_SHARED and MAP_PRIVATE
-behave as described in POSIX (because POSIX states that these
-two flags may not be specified together.)
-
--Eric
+SGksDQoNCkkgaGF2ZSBjbG9uZWQgdGhlIHJlcG8gL3N5c3RlbS9leHRyYXMgb24gbWFzdGVyIGJy
+YW5jaC4NCmdpdCBjbG9uZSBodHRwczovL2FuZHJvaWQuZ29vZ2xlc291cmNlLmNvbS9wbGF0Zm9y
+bS9zeXN0ZW0vZXh0cmFzICYmIChjZCBleHRyYXMgJiYgY3VybCAtTG8gYGdpdCByZXYtcGFyc2Ug
+LS1naXQtZGlyYC9ob29rcy9jb21taXQtbXNnIGh0dHBzOi8vZ2Vycml0LXJldmlldy5nb29nbGVz
+b3VyY2UuY29tL3Rvb2xzL2hvb2tzL2NvbW1pdC1tc2cgOyBjaG1vZCAreCBgZ2l0IHJldi1wYXJz
+ZSAtLWdpdC1kaXJgL2hvb2tzL2NvbW1pdC1tc2cpDQphbmQgDQpnaXQgY2hlY2tvdXQgZ2l0IGNo
+ZWNrb3V0IDljMjc5NzBkMTQyZGMxNGIxZTgyYjFkNmY5ZmE4MjdmOTk0NjA5YjYgLWIgdG1wDQov
+L3RoaXMgbWVhbnMgcm9sbGJhY2sgdG8gdGhlIHZlcnNpb24gYmVmb3JlIG1ha2VfZXh0NGZzIGNv
+ZGUgd2FzIGRlbGV0ZWQgb24gSnVuIDIxdGggMjAxOC4NCg0KQW5kIGNvcHkgdGhlIGNvZGVzIHRv
+IGFuZHJvaWQgcHJvamVjdCwgdGhlbiBjb21waWxlLCBhbmQgcHJvZHVjZSB0aGUgaW1hZ2UuIExp
+a2UgYmVsb3csDQoNCi4vaG9zdC9saW51eC14ODYvYmluL21ha2VfZXh0NGZzICAtcyAtbCAyME0g
+LWIgMTAyNCBnYW9taW5nLmltZw0KQ3JlYXRpbmcgZmlsZXN5c3RlbSB3aXRoIHBhcmFtZXRlcnM6
+DQogICAgU2l6ZTogMjA5NzE1MjANCiAgICBCbG9jayBzaXplOiAxMDI0DQogICAgQmxvY2tzIHBl
+ciBncm91cDogODE5Mg0KICAgIElub2RlcyBwZXIgZ3JvdXA6IDE3MDgNCiAgICBJbm9kZSBzaXpl
+OiAyNTYNCiAgICBKb3VybmFsIGJsb2NrczogMTAyNA0KICAgIExhYmVsOg0KICAgIEJsb2Nrczog
+MjA0ODANCiAgICBCbG9jayBncm91cHM6IDMNCiAgICBSZXNlcnZlZCBibG9jayBncm91cCBzaXpl
+OiA5NQ0KQ3JlYXRlZCBmaWxlc3lzdGVtIHdpdGggMTEvNTEyNCBpbm9kZXMgYW5kIDI1MDkvMjA0
+ODAgYmxvY2tzDQoNCllvdSBzZWUsIElub2RlcyBwZXIgZ3JvdXAgaXMgMTcwOCx3aGljaCBpcyBp
+bGxlZ2FsIGFzIHlvdSBzYWlkLg0KDQpTbywgdGhlIHByb2JsZW0gZXhpc3RzIGEgbG9uZyB0aW1l
+IHVudGlsIEp1biAyMXRoIDIwMTguDQoNCllvdSBjb21wbGFpbmVkIHRoZSBwcm9ibGVtIGluIDIw
+MTEsIHRoZXkgZG8gbm90IGZpeCBpdCB0aWxsIDIwMTguDQpKdXN0IGFzDQpJIGNvbXBsYWluZWQs
+IGZpeCBpdCwgIGFuZCB5b3UgZG8gbm90IGFjY2VwdCBpdC4gXl9eDQoNCg0KUmVnYXJkcywNCk1p
+bmcNCg0KLS0tLS3Tyrz+1K28/i0tLS0tDQq3orz+yMs6IFRoZW9kb3JlIFkuIFRzJ28gW21haWx0
+bzp0eXRzb0BtaXQuZWR1XSANCreiy83KsbzkOiAyMDE4xOo21MIyOMjVIDEwOjI5DQrK1bz+yMs6
+IEdhb21pbmcgKG1pbmcsIGNvbnN1bWVyIEJHKQ0Ks63LzTogbGludXgtZXh0NEB2Z2VyLmtlcm5l
+bC5vcmc7IGxpbnV4LWtlcm5lbEB2Z2VyLmtlcm5lbC5vcmc7IExpcWluZ2NoYW8gKHNvcnApOyBT
+aGVuY2hlbiAoaGFycnkpOyBtaWFveGllIChBKTsgeWFuZ2ZlaSAoRCkNCtb3zOI6IFJlOiC08Li0
+OiBbUEFUQ0hdIGV4dDQ6IGUyZnNwcm9nczogZml4IGlub2RlIGJpdG1hcCBudW0gbm90IGludGVn
+ZXIsaW5jb21wYXRpYmxlIGZvciBhbmNpZW50IGFuZHJvaWQgZGV2aWNlcw0KDQpPbiBUaHUsIEp1
+biAyOCwgMjAxOCBhdCAwMTo0MDozMEFNICswMDAwLCBHYW9taW5nIChtaW5nLCBjb25zdW1lciBC
+Rykgd3JvdGU6DQo+IEhpIHR5dHNvLA0KPiANCj4gSSBoYXZlIGNoZWNrZWQgdGhhdCBtYWtlX2V4
+dDRmcyBjb2RlIHdhcyBkZWxldGVkIG8gSnVuIDIxdGggMjAxOCBvbiBtYXN0ZXIgYnJhbmNoIG9m
+IC9zeXN0ZW0vZXh0cmFzIHJlcG9zaXRvcnkuDQo+IGUuZy4gDQo+IGh0dHBzOi8vYW5kcm9pZC1y
+ZXZpZXcuZ29vZ2xlc291cmNlLmNvbS9jL3BsYXRmb3JtL3N5c3RlbS9leHRyYXMvKy83MDgwMDMN
+Cg0KTWFrZV9leHQ0ZnMgd2FzIGZpeGVkIG5vdCBjcmVhdGUgaW52YWxpZCBmaWxlIHN5c3RlbXMg
+YSAqbG9uZyogdGltZQ0KYWdvLiAgV2hhdCBJJ20gbm90IHN1cmUgYWJvdXQgaXMgd2h5IHRoZSBw
+YXRjaCBoYXNuJ3QgZ290dGVuIG91dCB0bw0KbW9yZSBBbmRyb2lkIG1hbnVmYWN0ZXJzIHNvb25l
+ci4NCg0KSXQgc2hvdWxkIGhhdmUgYmVlbiBmaXhlZCBieSBzb21ldGltZSBpbiAyMDEyIC0tLSBJ
+IGNvbXBsYWluZWQgdG8gdGhlDQpBbmRyb2lkIHRlYW0gaW4gZWFybHkgMjAxMS4gIFdoYXQgSSBk
+b24ndCB1bmRlcnN0YW5kIGlzIHdoeSBwZW9wbGUgYXJlDQpjb21pbmcgb3V0IG9mIHRoZSB3b29k
+d29yayAqbm93Ki4NCg0KCQkJCQktIFRlZA0K
