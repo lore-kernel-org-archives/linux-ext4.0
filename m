@@ -1,68 +1,66 @@
-From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Subject: [PATCH v2 1/2] dax: dax_layout_busy_page() warn on !exceptional
-Date: Wed, 27 Jun 2018 15:22:51 -0600
-Message-ID: <20180627212252.31032-2-ross.zwisler@linux.intel.com>
-References: <20180627212252.31032-1-ross.zwisler@linux.intel.com>
+From: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
+Subject: =?gb2312?B?tPC4tDogW1BBVENIXSBleHQ0OiBlMmZzcHJvZ3M6IGZpeCBpbm9kZSBiaXRt?=
+ =?gb2312?B?YXAgbnVtIG5vdCBpbnRlZ2VyLGluY29tcGF0aWJsZSBmb3IgYW5jaWVudCBh?=
+ =?gb2312?Q?ndroid_devices?=
+Date: Thu, 28 Jun 2018 01:40:30 +0000
+Message-ID: <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
+References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
+ <20180627140937.GA3348@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- Jeff Moyer <jmoyer-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20180627212252.31032-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="gb2312"
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
+        "Shenchen (harry)" <harry.shen@huawei.com>,
+        "miaoxie (A)" <miaoxie@huawei.com>,
+        "yangfei (D)" <yangfei39@huawei.com>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180627140937.GA3348@thunk.org>
+Content-Language: zh-CN
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Inodes using DAX should only ever have exceptional entries in their page
-caches.  Make this clear by warning if the iteration in
-dax_layout_busy_page() ever sees a non-exceptional entry, and by adding a
-comment for the pagevec_release() call which only deals with struct page
-pointers.
-
-Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
----
- fs/dax.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
-
-diff --git a/fs/dax.c b/fs/dax.c
-index 641192808bb6..897b51e41d8f 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -566,7 +566,8 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
- 			if (index >= end)
- 				break;
- 
--			if (!radix_tree_exceptional_entry(pvec_ent))
-+			if (WARN_ON_ONCE(
-+			     !radix_tree_exceptional_entry(pvec_ent)))
- 				continue;
- 
- 			xa_lock_irq(&mapping->i_pages);
-@@ -578,6 +579,13 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
- 			if (page)
- 				break;
- 		}
-+
-+		/*
-+		 * We don't expect normal struct page entries to exist in our
-+		 * tree, but we keep these pagevec calls so that this code is
-+		 * consistent with the common pattern for handling pagevecs
-+		 * throughout the kernel.
-+		 */
- 		pagevec_remove_exceptionals(&pvec);
- 		pagevec_release(&pvec);
- 		index++;
--- 
-2.14.4
+SGkgdHl0c28sDQoNCkkgaGF2ZSBjaGVja2VkIHRoYXQgbWFrZV9leHQ0ZnMgY29kZSB3YXMgZGVs
+ZXRlZCBvIEp1biAyMXRoIDIwMTggb24gbWFzdGVyIGJyYW5jaCBvZiAvc3lzdGVtL2V4dHJhcyBy
+ZXBvc2l0b3J5Lg0KZS5nLiANCmh0dHBzOi8vYW5kcm9pZC1yZXZpZXcuZ29vZ2xlc291cmNlLmNv
+bS9jL3BsYXRmb3JtL3N5c3RlbS9leHRyYXMvKy83MDgwMDMNCg0KdGhhdCBtZWFucyB0aGlzIHRv
+b2xzIGhhcyBiZWVuIHdpZGVseSB1c2VkIGFsb25nIHNlcnZhbCB5ZWFycy4NCkFuZCBpdCBpcyBw
+cm9iYWJseSB0aGF0IG1hbnkgbWFueSBkZXZpY2VzIGhhdmUgYmVlbiBkZWxpdmVyeWVkIGluIHNl
+dmVyYWwgeWVhciBmcm9tIGFuZHJvaWQgMy4wIHRvIGFuZHJvaWQgOC4wLCB3aGljaCB1c2VkIG1h
+a2VfZXh0NGZzLg0KQW5kIG9mIGNvdXJzZSB0aGVzZSBkZXZpY2VzIGNhbm5vdCBiZSByZWNhbGxl
+ZC4NCg0KSWYgdGhpcyBidWcgd2FzIGluZHVjZWQgaW4gc29tZSBhbmRyb2lkIGRldmljZXMsIHdo
+ZW4gbWFrZV9leHQ0ZnMgdG9vbCBwcm9kdWNlIGV4dDQgZmlsZXN5c3RlbSB3aXRoIGlub2RlbWFw
+IG51bSBub3QgaW50ZWdlci4NCklmIHNvbWUgZXJyb3Igb2NjdXJzIHdpdGggdGhpcyBmaWxlc3lz
+dGVtICwgdGhlIGUyZnNjayB0cnkgdG8gZml4IGl0LiBDb250cmFyaWx5LCBpdCBpbmR1Y2VkIG1v
+cmUgZXJyb3JzLg0KDQpJIGhhdmUgY2hlY2tlZCB0dW5lMmZzLHJlc2l6ZTJmcywgdGhlc2UgdHdv
+IHByb2dzIG5vdCB1c2VkIHNvbWV0aGluZyBsaWtlICIgRVhUMl9JTk9ERVNfUEVSX0dST1VQKGZz
+LT5zdXBlcikgLyA4IiAsIG9yIHVzZWQgbGliIHdoaWNoIHdhcyBtb2RpZmllZCBieSBtZS4NCg0K
+UmVnYXJkcywNCk1pbmcNCg0KLS0tLS3Tyrz+1K28/i0tLS0tDQq3orz+yMs6IFRoZW9kb3JlIFku
+IFRzJ28gW21haWx0bzp0eXRzb0BtaXQuZWR1XSANCreiy83KsbzkOiAyMDE4xOo21MIyN8jVIDIy
+OjEwDQrK1bz+yMs6IEdhb21pbmcgKG1pbmcsIGNvbnN1bWVyIEJHKQ0Ks63LzTogbGludXgtZXh0
+NEB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWtlcm5lbEB2Z2VyLmtlcm5lbC5vcmc7IExpcWluZ2No
+YW8gKHNvcnApOyBTaGVuY2hlbiAoaGFycnkpOyBtaWFveGllIChBKQ0K1vfM4jogUmU6IFtQQVRD
+SF0gZXh0NDogZTJmc3Byb2dzOiBmaXggaW5vZGUgYml0bWFwIG51bSBub3QgaW50ZWdlcixpbmNv
+bXBhdGlibGUgZm9yIGFuY2llbnQgYW5kcm9pZCBkZXZpY2VzDQoNCk9uIFR1ZSwgSnVuIDI2LCAy
+MDE4IGF0IDA3OjU0OjA2UE0gKzA4MDAsIEdhb01pbmcgd3JvdGU6DQo+IGZvciBleGFtcGxlLCAx
+NzA4IGlub2RlcyBldmVyeSBncm91cCwzIGJsb2NrIGdyb3VwcywgYml0bWFwIGJ5dGVzIGFyZSAx
+NzA4Lzg9MjEzLjUgd2hlbiB0aGUgaW5vZGUgYml0bWFwIGhhcyBzb21lIGVycm9ycywgZTJmc3By
+b2dzIGNhbm5vdCBmaXggaXQNCj4NCj4gU2lnbmVkLW9mZi1ieTogR2FvTWluZyA8Z2FvbWluZzIw
+QGh1YXdlaS5jb20+DQoNCkZpbGUgc3lzdGVtcyBsaWtlIHRoaXMgc2hvdWxkIG5vdCBleGlzdC4g
+IENhbiB5b3UgcGxlYXNlIHBsZWFzZSBwbGVhc2UNCm1ha2Ugc3VyZSB0aGF0IGFueSB1c2Ugb2Yg
+bWFrZV9leHQyZnMgYXJlIHJpcHBlZCBvdXQgYnkgdGhlIHJvb3RzPw0KDQpXaGF0IEkgKnNob3Vs
+ZCogZG8gaXMgaGF2ZSBlMmZzY2sgcmVqZWN0IHRoZXNlIGZpbGUgc3lzdGVtcyBhcw0KY29tcGxl
+dGVseSBpbnZhbGlkIGluIHBhc3MgMCwgd2hlbiB3ZSBjaGVjayBmb3Igc3VwZXJibG9jayBzYW5p
+dHkuICBJDQpoYXZlbid0IGJlY2F1c2UgdGhlcmUgYXJlIHNvbWUgb2xkZXIgQW5kcm9pZCBzeXN0
+ZW1zIHRoYXQgdXNlDQptYWtlX2V4dDJmcy4gIEJ1dCBhdCB0aGlzIHBvaW50LCB3aGF0IEkgYW0g
+KipzZXJpb3VzbHkqKiBkb2luZyBpcyB0bw0KbWFrZSBlMmZzY2sgcmVqZWN0IHRoZXNlIGZpbGUg
+c3lzdGVtcyBieSBkZWZhdWx0LCB1bmxlc3MgYSBzZXR0aW5nIGluDQplMmZzY2suY29uZiBpcyBz
+ZXQgdG8gYWxsb3cgdGhlbSBhcyBhbiBleGNlcHRpb24uDQoNCk15IGNvbmNlcm4gYWJvdXQgYXBw
+bHlpbmcgdGhpcyBwYXRjaCBpcyB0aGF0IGl0IHdpbGwgYmUgdGFrZW4gYXMNCmFjY2VwdGFuY2Ug
+b2YgZTJmc3Byb2dzIHRvIGZ1bGx5IHN1cHBvcnQgdGhlc2Ugc29ydHMgb2YgaW52YWxpZCBmaWxl
+DQpzeXN0ZW1zLiAgSW4gcGFydGljdWxhciwgdGhlcmUgaXMgbm8gZ3VhcmFudGVlIHRoYXQgdmFy
+aW91cyB0dW5lMmZzDQpvcHRpb25zLCByZXNpemUyZnMsIGV0Yy4sIHdpbGwgd29yayBjb3JyZWN0
+bHkgZXZlbiB3aXRoIHlvdXIgcGF0Y2guDQoNCgkgCSAgICAJICAgICAgIAkgICAgCSAgICAgIC0g
+VGVkDQo=
