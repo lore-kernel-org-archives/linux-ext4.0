@@ -1,89 +1,40 @@
-From: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
-Subject: =?gb2312?B?tPC4tDogtPC4tDogtPC4tDogW1BBVENIXSBleHQ0OiBlMmZzcHJvZ3M6IGZp?=
- =?gb2312?B?eCBpbm9kZSBiaXRtYXAgbnVtIG5vdCBpbnRlZ2VyLGluY29tcGF0aWJsZSBm?=
- =?gb2312?Q?or_ancient_android_devices?=
-Date: Fri, 29 Jun 2018 02:06:03 +0000
-Message-ID: <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
-References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
- <20180627140937.GA3348@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
- <20180628022900.GA663@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
- <20180628153022.GA8521@thunk.org>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 0/1] iomap: Direct I/O for inline data
+Date: Fri, 29 Jun 2018 10:43:13 +0200
+Message-ID: <20180629084313.GA16042@lst.de>
+References: <20180627003906.15571-1-agruenba@redhat.com>
+	<CAHc6FU7gJUcaKRr6He8Te0wcMYMQjriwbz58pC-ie1m-WJOw0g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="gb2312"
-Content-Transfer-Encoding: base64
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
-        "Shenchen (harry)" <harry.shen@huawei.com>,
-        "miaoxie (A)" <miaoxie@huawei.com>,
-        "yangfei (D)" <yangfei39@huawei.com>,
-        "Renlipeng (OS driver)" <renlipeng@huawei.com>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180628153022.GA8521@thunk.org>
-Content-Language: zh-CN
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: cluster-devel <cluster-devel@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, Christoph Hellwig <hch@lst.de>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <cluster-devel-bounces@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <CAHc6FU7gJUcaKRr6He8Te0wcMYMQjriwbz58pC-ie1m-WJOw0g@mail.gmail.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-V2UgdXNlIHVzdWFsIGlub2RlIHNpemUsIGl0IGlzIDI1NiBieXRlcy4NCg0KWWVzLCB0aGlzIGNv
-bW1pdCBpcyBpbiBteSByZXBvc2l0b3J5Lg0KQnV0IHRoZXJlIGlzIGEgYnVnIGluIHRoaXMgcGF0
-Y2guDQoNCkxldCBtZSBzaG93IHlvdSwNCkhlcmUgaXMgdGhlIGJ1ZzogIiByZXR1cm4gQUxJR04o
-aW5vZGVzLCAoaW5mby5ibG9ja19zaXplIC8gaW5mby5pbm9kZV9zaXplKSk7Ig0KDQpJbiBteSBy
-ZXByb2R1Y2UsDQppbmZvLmJsb2NrX3NpemUgPSAxMDI0LCAoaXQgaXMgbGVnYWwpDQppbmZvLmlu
-b2RlX3NpemUgPTI1NiwNCg0KdGhlIGNvZGUgb25seSBBTElHTiBCWSA0Lg0KDQpCdXQgaW4gcmVh
-bCBzY2VuYXJpbywgd2Ugc2hvdWxkIGFsaWduIGJ5IDgsKCA4IGJpdCBwZXIgYnl0ZXMgaW4gaW5v
-ZGUgbWFwKS4NCg0KU28gd2UgZ290IElub2RlcyBwZXIgZ3JvdXA6IDE3MDggLCB3aGljaCBpcyBp
-bGxlZ2FsLg0KDQpMaWtlIGJlbG93LA0KDQouL2hvc3QvbGludXgteDg2L2Jpbi9tYWtlX2V4dDRm
-cyAgLXMgLWwgMjBNIC1iIDEwMjQgZ2FvbWluZy5pbWcgDQpDcmVhdGluZyBmaWxlc3lzdGVtIHdp
-dGggcGFyYW1ldGVyczoNCiAgICBTaXplOiAyMDk3MTUyMA0KICAgIEJsb2NrIHNpemU6IDEwMjQN
-CiAgICBCbG9ja3MgcGVyIGdyb3VwOiA4MTkyDQogICAgSW5vZGVzIHBlciBncm91cDogMTcwOA0K
-ICAgIElub2RlIHNpemU6IDI1Ng0KICAgIEpvdXJuYWwgYmxvY2tzOiAxMDI0DQogICAgTGFiZWw6
-DQogICAgQmxvY2tzOiAyMDQ4MA0KICAgIEJsb2NrIGdyb3VwczogMw0KICAgIFJlc2VydmVkIGJs
-b2NrIGdyb3VwIHNpemU6IDk1DQpDcmVhdGVkIGZpbGVzeXN0ZW0gd2l0aCAxMS81MTI0IGlub2Rl
-cyBhbmQgMjUwOS8yMDQ4MCBibG9ja3MNCg0KVGhpcyBidWcgZXhpc3RzIHZlcnkgdmVyeSBsb25n
-IHRpbWUgdGlsbCBub3cuDQoNCg0KUmVnYXJkcywNCk1pbmcNCg0KLS0tLS3Tyrz+1K28/i0tLS0t
-DQq3orz+yMs6IFRoZW9kb3JlIFkuIFRzJ28gW21haWx0bzp0eXRzb0BtaXQuZWR1XSANCreiy83K
-sbzkOiAyMDE4xOo21MIyOMjVIDIzOjMwDQrK1bz+yMs6IEdhb21pbmcgKG1pbmcsIGNvbnN1bWVy
-IEJHKQ0Ks63LzTogbGludXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LWtlcm5lbEB2Z2Vy
-Lmtlcm5lbC5vcmc7IExpcWluZ2NoYW8gKHNvcnApOyBTaGVuY2hlbiAoaGFycnkpOyBtaWFveGll
-IChBKTsgeWFuZ2ZlaSAoRCk7IFJlbmxpcGVuZyAoT1MgZHJpdmVyKQ0K1vfM4jogUmU6ILTwuLQ6
-ILTwuLQ6IFtQQVRDSF0gZXh0NDogZTJmc3Byb2dzOiBmaXggaW5vZGUgYml0bWFwIG51bSBub3Qg
-aW50ZWdlcixpbmNvbXBhdGlibGUgZm9yIGFuY2llbnQgYW5kcm9pZCBkZXZpY2VzDQoNCk9uIFRo
-dSwgSnVuIDI4LCAyMDE4IGF0IDA3OjU2OjU5QU0gKzAwMDAsIEdhb21pbmcgKG1pbmcsIGNvbnN1
-bWVyIEJHKSB3cm90ZToNCj4gWW91IHNlZSwgSW5vZGVzIHBlciBncm91cCBpcyAxNzA4LHdoaWNo
-IGlzIGlsbGVnYWwgYXMgeW91IHNhaWQuDQo+IA0KPiBTbywgdGhlIHByb2JsZW0gZXhpc3RzIGEg
-bG9uZyB0aW1lIHVudGlsIEp1biAyMXRoIDIwMTguDQo+IA0KPiBZb3UgY29tcGxhaW5lZCB0aGUg
-cHJvYmxlbSBpbiAyMDExLCB0aGV5IGRvIG5vdCBmaXggaXQgdGlsbCAyMDE4Lg0KPiBKdXN0IGFz
-DQo+IEkgY29tcGxhaW5lZCwgZml4IGl0LCAgYW5kIHlvdSBkbyBub3QgYWNjZXB0IGl0LiBeX14N
-Cg0KSGVyZSdzIHRoZSBjb21taXQuICAoTm90ZSB0aGUgZGF0ZS4pICAgRG8geW91IHNlZSBpdCBp
-biB5b3VyIHJlcG9zaXRvcnk/DQoNCk9yIGFyZSB5b3UgdXNpbmcgYW4gdW51c3VhbCBpbm9kZSBz
-aXplPyAgKGUuZy4sIG5vdCAyNTYgYnl0ZXMsIG9yIDE2DQppbm9kZXMgcGVyIGJsb2NrKS4NCg0K
-DQogICAgICAgCSAgIAkgICAgICAgCSAgICAgICAJICAgICAJICAtIFRlZA0KDQpjb21taXQgMDZj
-MzVmOTM1YTdhZGFkY2ViOWVlMzI2YjMyMzFmOTUyZjZhZDIwMw0KTWVyZ2U6IDQ4MGEzYjEgOTZj
-YzU0YQ0KQXV0aG9yOiBDb2xpbiBDcm9zcyA8Y2Nyb3NzQGFuZHJvaWQuY29tPg0KRGF0ZTogICBT
-YXQgQXByIDMwIDE5OjA4OjA5IDIwMTEgLTA3MDANCg0KICAgIE1lcmdlICJNYWtlIGlub2RlcyBw
-ZXIgZ3JvdXAgYSBtdWx0aXBsZSBvZiBpbm9kZXMgcGVyIGJsb2NrIg0KDQpkaWZmIC0tY2MgZXh0
-NF91dGlscy9tYWtlX2V4dDRmcy5jDQppbmRleCBjOWZkOTkyLGUzN2Q2MTcuLjIyYzk0MjQNCi0t
-LSBhL2V4dDRfdXRpbHMvbWFrZV9leHQ0ZnMuYw0KKysrIGIvZXh0NF91dGlscy9tYWtlX2V4dDRm
-cy5jDQpAQEAgLTIxNCwyNiAtMjE1LDEwICsyMTQsMjcgQEBAIHN0YXRpYyB1MzIgY29tcHV0ZV9p
-bm9kZXNfcGVyX2dyb3VwKA0KICB7DQogIAl1MzIgYmxvY2tzID0gRElWX1JPVU5EX1VQKGluZm8u
-bGVuLCBpbmZvLmJsb2NrX3NpemUpOw0KICAJdTMyIGJsb2NrX2dyb3VwcyA9IERJVl9ST1VORF9V
-UChibG9ja3MsIGluZm8uYmxvY2tzX3Blcl9ncm91cCk7DQotIAlyZXR1cm4gRElWX1JPVU5EX1VQ
-KGluZm8uaW5vZGVzLCBibG9ja19ncm91cHMpOw0KKyAJdTMyIGlub2RlcyA9IERJVl9ST1VORF9V
-UChpbmZvLmlub2RlcywgYmxvY2tfZ3JvdXBzKTsNCisgCXJldHVybiBBTElHTihpbm9kZXMsIChp
-bmZvLmJsb2NrX3NpemUgLyBpbmZvLmlub2RlX3NpemUpKTsNCiAgfQ0KICANCiArc3RhdGljIHUz
-MiBjb21wdXRlX2JnX2Rlc2NfcmVzZXJ2ZV9ibG9ja3MoKQ0KICt7DQogKwl1MzIgYmxvY2tzID0g
-RElWX1JPVU5EX1VQKGluZm8ubGVuLCBpbmZvLmJsb2NrX3NpemUpOw0KICsJdTMyIGJsb2NrX2dy
-b3VwcyA9IERJVl9ST1VORF9VUChibG9ja3MsIGluZm8uYmxvY2tzX3Blcl9ncm91cCk7DQogKwl1
-MzIgYmdfZGVzY19ibG9ja3MgPSBESVZfUk9VTkRfVVAoYmxvY2tfZ3JvdXBzICogc2l6ZW9mKHN0
-cnVjdCBleHQyX2dyb3VwX2Rlc2MpLA0KICsJCQlpbmZvLmJsb2NrX3NpemUpOw0KICsNCiArCXUz
-MiBiZ19kZXNjX3Jlc2VydmVfYmxvY2tzID0NCiArCQkJRElWX1JPVU5EX1VQKGJsb2NrX2dyb3Vw
-cyAqIDEwMjQgKiBzaXplb2Yoc3RydWN0IGV4dDJfZ3JvdXBfZGVzYyksDQogKwkJCQkJaW5mby5i
-bG9ja19zaXplKSAtIGJnX2Rlc2NfYmxvY2tzOw0KICsNCiArCWlmIChiZ19kZXNjX3Jlc2VydmVf
-YmxvY2tzID4gaW5mby5ibG9ja19zaXplIC8gc2l6ZW9mKHUzMikpDQogKwkJYmdfZGVzY19yZXNl
-cnZlX2Jsb2NrcyA9IGluZm8uYmxvY2tfc2l6ZSAvIHNpemVvZih1MzIpOw0KICsNCiArCXJldHVy
-biBiZ19kZXNjX3Jlc2VydmVfYmxvY2tzOw0KICt9DQogKw0KICB2b2lkIHJlc2V0X2V4dDRmc19p
-bmZvKCkgew0KICAgICAgLy8gUmVzZXQgYWxsIHRoZSBnbG9iYWwgZGF0YSBzdHJ1Y3R1cmVzIHVz
-ZWQgYnkgbWFrZV9leHQ0ZnMgc28gaXQNCiAgICAgIC8vIGNhbiBiZSBjYWxsZWQgYWdhaW4uDQo=
+> A possible fix is to change the alignment check in iomap_dio_actor as follows:
+> 
+> -       if ((pos | length | align) & ((1 << blkbits) - 1))
+> +       if ((pos | align) & ((1 << blkbits) - 1))
+> +               return -EINVAL;
+> +       if (length & ((1 << blkbits) - 1) &&
+> +           pos + length != iomap->offset + iomap->length)
+>                 return -EINVAL;
+> 
+> Moving the alignment check from iomap_dio_actor to iomap_dio_rw isn't
+> that easy because iomap->bdev isn't known there.
+
+Just make the check conditional on iomap->type != IOMAP_INLINE
+as alignment checks on inline data don't make much sense.
