@@ -1,186 +1,63 @@
-From: Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH v2 2/2] ext4: handle layout changes to pinned DAX mappings
-Date: Fri, 29 Jun 2018 14:02:23 +0200
-Message-ID: <20180629120223.oaslngsvspnwf4ae@localhost.localdomain>
-References: <20180627212252.31032-1-ross.zwisler@linux.intel.com>
- <20180627212252.31032-3-ross.zwisler@linux.intel.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: =?utf-8?B?562U5aSNOiDnrZTlpI06IOetlA==?=
+ =?utf-8?B?5aSNOiBbUEFUQ0hdIGV4dDQ6IGUyZnNwcm9nczogZml4IGlub2RlIGJpdG1h?=
+ =?utf-8?Q?p?= num not integer,incompatible for ancient android devices
+Date: Fri, 29 Jun 2018 10:26:12 -0400
+Message-ID: <20180629142612.GE1231@thunk.org>
+References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
+ <20180627140937.GA3348@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
+ <20180628022900.GA663@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
+ <20180628153022.GA8521@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
+        "Shenchen (harry)" <harry.shen@huawei.com>,
+        "miaoxie (A)" <miaoxie@huawei.com>,
+        "yangfei (D)" <yangfei39@huawei.com>,
+        "Renlipeng (OS driver)" <renlipeng@huawei.com>
+To: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180627212252.31032-3-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jun 27, 2018 at 03:22:52PM -0600, Ross Zwisler wrote:
-> Follow the lead of xfs_break_dax_layouts() and add synchronization between
-> operations in ext4 which remove blocks from an inode (hole punch, truncate
-> down, etc.) and pages which are pinned due to DAX DMA operations.
+On Fri, Jun 29, 2018 at 02:06:03AM +0000, Gaoming (ming, consumer BG) wrote:
+> We use usual inode size, it is 256 bytes.
 > 
-> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> ---
->  fs/ext4/ext4.h     |  1 +
->  fs/ext4/extents.c  | 12 ++++++++++++
->  fs/ext4/inode.c    | 46 ++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/truncate.h |  4 ++++
->  4 files changed, 63 insertions(+)
+> Yes, this commit is in my repository.
+> But there is a bug in this patch.
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 0b127853c584..34bccd64d83d 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2460,6 +2460,7 @@ extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
->  extern int ext4_inode_attach_jinode(struct inode *inode);
->  extern int ext4_can_truncate(struct inode *inode);
->  extern int ext4_truncate(struct inode *);
-> +extern int ext4_break_layouts(struct inode *);
->  extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
->  extern int ext4_truncate_restart_trans(handle_t *, struct inode *, int nblocks);
->  extern void ext4_set_inode_flags(struct inode *);
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 0057fe3f248d..a6aef06f455b 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -4820,6 +4820,13 @@ static long ext4_zero_range(struct file *file, loff_t offset,
->  		 * released from page cache.
->  		 */
->  		down_write(&EXT4_I(inode)->i_mmap_sem);
-> +
-> +		ret = ext4_break_layouts(inode);
-> +		if (ret) {
-> +			up_write(&EXT4_I(inode)->i_mmap_sem);
-> +			goto out_mutex;
-> +		}
-> +
->  		ret = ext4_update_disksize_before_punch(inode, offset, len);
->  		if (ret) {
->  			up_write(&EXT4_I(inode)->i_mmap_sem);
-> @@ -5493,6 +5500,11 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
->  	 * page cache.
->  	 */
->  	down_write(&EXT4_I(inode)->i_mmap_sem);
-> +
-> +	ret = ext4_break_layouts(inode);
-> +	if (ret)
-> +		goto out_mmap;
-
-Hi,
-
-don't we need to do the same for ext4_insert_range() since we're about
-to truncate_pagecache() as well ?
-
-/thinking out loud/
-Xfs seems to do this before every fallocate operation, but in ext4
-it does not seem to be needed at least for simply allocating falocate...
-
-Thanks!
--Lukas
-
-> +
->  	/*
->  	 * Need to round down offset to be aligned with page size boundary
->  	 * for page size > block size.
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 2ea07efbe016..fadb8ecacb1e 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4193,6 +4193,39 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
->  	return 0;
->  }
->  
-> +static void ext4_wait_dax_page(struct ext4_inode_info *ei, bool *did_unlock)
-> +{
-> +	*did_unlock = true;
-> +	up_write(&ei->i_mmap_sem);
-> +	schedule();
-> +	down_write(&ei->i_mmap_sem);
-> +}
-> +
-> +int ext4_break_layouts(struct inode *inode)
-> +{
-> +	struct ext4_inode_info *ei = EXT4_I(inode);
-> +	struct page *page;
-> +	bool retry;
-> +	int error;
-> +
-> +	if (WARN_ON_ONCE(!rwsem_is_locked(&ei->i_mmap_sem)))
-> +		return -EINVAL;
-> +
-> +	do {
-> +		retry = false;
-> +		page = dax_layout_busy_page(inode->i_mapping);
-> +		if (!page)
-> +			return 0;
-> +
-> +		error = ___wait_var_event(&page->_refcount,
-> +				atomic_read(&page->_refcount) == 1,
-> +				TASK_INTERRUPTIBLE, 0, 0,
-> +				ext4_wait_dax_page(ei, &retry));
-> +	} while (error == 0 && retry);
-> +
-> +	return error;
-> +}
-> +
->  /*
->   * ext4_punch_hole: punches a hole in a file by releasing the blocks
->   * associated with the given offset and length
-> @@ -4266,6 +4299,11 @@ int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length)
->  	 * page cache.
->  	 */
->  	down_write(&EXT4_I(inode)->i_mmap_sem);
-> +
-> +	ret = ext4_break_layouts(inode);
-> +	if (ret)
-> +		goto out_dio;
-> +
->  	first_block_offset = round_up(offset, sb->s_blocksize);
->  	last_block_offset = round_down((offset + length), sb->s_blocksize) - 1;
->  
-> @@ -5554,6 +5592,14 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
->  				ext4_wait_for_tail_page_commit(inode);
->  		}
->  		down_write(&EXT4_I(inode)->i_mmap_sem);
-> +
-> +		rc = ext4_break_layouts(inode);
-> +		if (rc) {
-> +			up_write(&EXT4_I(inode)->i_mmap_sem);
-> +			error = rc;
-> +			goto err_out;
-> +		}
-> +
->  		/*
->  		 * Truncate pagecache after we've waited for commit
->  		 * in data=journal mode to make pages freeable.
-> diff --git a/fs/ext4/truncate.h b/fs/ext4/truncate.h
-> index 0cb13badf473..bcbe3668c1d4 100644
-> --- a/fs/ext4/truncate.h
-> +++ b/fs/ext4/truncate.h
-> @@ -11,6 +11,10 @@
->   */
->  static inline void ext4_truncate_failed_write(struct inode *inode)
->  {
-> +	/*
-> +	 * We don't need to call ext4_break_layouts() because the blocks we
-> +	 * are truncating were never visible to userspace.
-> +	 */
->  	down_write(&EXT4_I(inode)->i_mmap_sem);
->  	truncate_inode_pages(inode->i_mapping, inode->i_size);
->  	ext4_truncate(inode);
-> -- 
-> 2.14.4
+> Let me show you,
+> Here is the bug: " return ALIGN(inodes, (info.block_size / info.inode_size));"
 > 
+> In my reproduce,
+> info.block_size = 1024, (it is legal)
+> info.inode_size =256,
+
+But why are you using a block size of 1024?  It's legal, but in
+general, it's a bad idea (often will hurt performance, will impose
+additional scalability limitations, etc.)....  It's certainly not
+the default.
+
+A block size of 1024 is also incompatible with file-based encryption
+(FBE), which is required for a number of Android features.  Support
+for FBE is strongly required, and it wouldn't surprise me if it
+becomes an mandatory requirement at some point in the future.
+
+How long have you been using a block size of 1024, and why?
+
+> But in real scenario, we should align by 8,( 8 bit per bytes in inode map).
+
+Yes, and that's why mke2fs does.  make_ext4fs was an Android specific
+abomination, that I've been pushing hard for Android to rid itself of.
+This is not the only thing it's gotten wrong in the past, and I've had
+to help Android developers deal with data corrupting bugs caused by
+the fact that way back when, Android had a GPL-in-userspace allergy.
+
+						- Ted
