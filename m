@@ -1,63 +1,180 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: =?utf-8?B?562U5aSNOiDnrZTlpI06IOetlA==?=
- =?utf-8?B?5aSNOiBbUEFUQ0hdIGV4dDQ6IGUyZnNwcm9nczogZml4IGlub2RlIGJpdG1h?=
- =?utf-8?Q?p?= num not integer,incompatible for ancient android devices
-Date: Fri, 29 Jun 2018 10:26:12 -0400
-Message-ID: <20180629142612.GE1231@thunk.org>
-References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
- <20180627140937.GA3348@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
- <20180628022900.GA663@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
- <20180628153022.GA8521@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
+From: Andreas Gruenbacher <agruenba@redhat.com>
+Subject: Re: [PATCH 1/1] iomap: Direct I/O for inline data
+Date: Fri, 29 Jun 2018 16:40:40 +0200
+Message-ID: <CAHc6FU66vvPsDU2sq9O-_fRcU8CH_b6UsnQCYaSSbh-vVVWj=g@mail.gmail.com>
+References: <20180627003906.15571-1-agruenba@redhat.com>
+	<20180627003906.15571-2-agruenba@redhat.com>
+	<20180629085614.GB16042@lst.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
-        "Shenchen (harry)" <harry.shen@huawei.com>,
-        "miaoxie (A)" <miaoxie@huawei.com>,
-        "yangfei (D)" <yangfei39@huawei.com>,
-        "Renlipeng (OS driver)" <renlipeng@huawei.com>
-To: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: cluster-devel <cluster-devel@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Christoph Hellwig <hch@lst.de>
+Return-path: <cluster-devel-bounces@redhat.com>
+In-Reply-To: <20180629085614.GB16042@lst.de>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 29, 2018 at 02:06:03AM +0000, Gaoming (ming, consumer BG) wrote:
-> We use usual inode size, it is 256 bytes.
-> 
-> Yes, this commit is in my repository.
-> But there is a bug in this patch.
-> 
-> Let me show you,
-> Here is the bug: " return ALIGN(inodes, (info.block_size / info.inode_size));"
-> 
-> In my reproduce,
-> info.block_size = 1024, (it is legal)
-> info.inode_size =256,
+On 29 June 2018 at 10:56, Christoph Hellwig <hch@lst.de> wrote:
+> This looks generally fine.  But I think it might be worth refactoring
+> iomap_dio_actor a bit first, e.g. something like this new patch
+> before yours, which would also nicely solve your alignmnet concern
+> (entirely untested for now):
 
-But why are you using a block size of 1024?  It's legal, but in
-general, it's a bad idea (often will hurt performance, will impose
-additional scalability limitations, etc.)....  It's certainly not
-the default.
+This looks correct. I've rebased my patches on top of it and I ran the
+xfstest auto group on gfs2 and xfs on top.
 
-A block size of 1024 is also incompatible with file-based encryption
-(FBE), which is required for a number of Android features.  Support
-for FBE is strongly required, and it wouldn't surprise me if it
-becomes an mandatory requirement at some point in the future.
+Can you push this to your gfs2-iomap branch? I'll then repost an
+updated version of "iomap: Direct I/O for inline data".
 
-How long have you been using a block size of 1024, and why?
+> ---
+> From f8c58ffe79df63d23332376ce481cdc4753cc567 Mon Sep 17 00:00:00 2001
+> From: Christoph Hellwig <hch@lst.de>
+> Date: Fri, 29 Jun 2018 10:54:10 +0200
+> Subject: iomap: refactor iomap_dio_actor
+>
+> Split the function up into two helpers for the bio based I/O and hole
+> case, and a small helper to call the two.  This separates the code a
+> little better in preparation for supporting I/O to inline data.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Andreas Gruenbacher <agruenba@redhat.com>
 
-> But in real scenario, we should align by 8,( 8 bit per bytes in inode map).
+> ---
+>  fs/iomap.c | 88 ++++++++++++++++++++++++++++++++----------------------
+>  1 file changed, 52 insertions(+), 36 deletions(-)
+>
+> diff --git a/fs/iomap.c b/fs/iomap.c
+> index 7d1e9f45f098..f05c83773cbf 100644
+> --- a/fs/iomap.c
+> +++ b/fs/iomap.c
+> @@ -963,10 +963,9 @@ iomap_dio_zero(struct iomap_dio *dio, struct iomap *iomap, loff_t pos,
+>  }
+>
+>  static loff_t
+> -iomap_dio_actor(struct inode *inode, loff_t pos, loff_t length,
+> -               void *data, struct iomap *iomap)
+> +iomap_dio_bio_actor(struct inode *inode, loff_t pos, loff_t length,
+> +               struct iomap_dio *dio, struct iomap *iomap)
+>  {
+> -       struct iomap_dio *dio = data;
+>         unsigned int blkbits = blksize_bits(bdev_logical_block_size(iomap->bdev));
+>         unsigned int fs_block_size = i_blocksize(inode), pad;
+>         unsigned int align = iov_iter_alignment(dio->submit.iter);
+> @@ -980,41 +979,27 @@ iomap_dio_actor(struct inode *inode, loff_t pos, loff_t length,
+>         if ((pos | length | align) & ((1 << blkbits) - 1))
+>                 return -EINVAL;
+>
+> -       switch (iomap->type) {
+> -       case IOMAP_HOLE:
+> -               if (WARN_ON_ONCE(dio->flags & IOMAP_DIO_WRITE))
+> -                       return -EIO;
+> -               /*FALLTHRU*/
+> -       case IOMAP_UNWRITTEN:
+> -               if (!(dio->flags & IOMAP_DIO_WRITE)) {
+> -                       length = iov_iter_zero(length, dio->submit.iter);
+> -                       dio->size += length;
+> -                       return length;
+> -               }
+> +       if (iomap->type == IOMAP_UNWRITTEN) {
+>                 dio->flags |= IOMAP_DIO_UNWRITTEN;
+>                 need_zeroout = true;
+> -               break;
+> -       case IOMAP_MAPPED:
+> -               if (iomap->flags & IOMAP_F_SHARED)
+> -                       dio->flags |= IOMAP_DIO_COW;
+> -               if (iomap->flags & IOMAP_F_NEW) {
+> -                       need_zeroout = true;
+> -               } else {
+> -                       /*
+> -                        * Use a FUA write if we need datasync semantics, this
+> -                        * is a pure data IO that doesn't require any metadata
+> -                        * updates and the underlying device supports FUA. This
+> -                        * allows us to avoid cache flushes on IO completion.
+> -                        */
+> -                       if (!(iomap->flags & (IOMAP_F_SHARED|IOMAP_F_DIRTY)) &&
+> -                           (dio->flags & IOMAP_DIO_WRITE_FUA) &&
+> -                           blk_queue_fua(bdev_get_queue(iomap->bdev)))
+> -                               use_fua = true;
+> -               }
+> -               break;
+> -       default:
+> -               WARN_ON_ONCE(1);
+> -               return -EIO;
+> +       }
+> +
+> +       if (iomap->flags & IOMAP_F_SHARED)
+> +               dio->flags |= IOMAP_DIO_COW;
+> +
+> +       if (iomap->flags & IOMAP_F_NEW) {
+> +               need_zeroout = true;
+> +       } else {
+> +               /*
+> +                * Use a FUA write if we need datasync semantics, this
+> +                * is a pure data IO that doesn't require any metadata
+> +                * updates and the underlying device supports FUA. This
+> +                * allows us to avoid cache flushes on IO completion.
+> +                */
+> +               if (!(iomap->flags & (IOMAP_F_SHARED|IOMAP_F_DIRTY)) &&
+> +                   (dio->flags & IOMAP_DIO_WRITE_FUA) &&
+> +                   blk_queue_fua(bdev_get_queue(iomap->bdev)))
+> +                       use_fua = true;
+>         }
+>
+>         /*
+> @@ -1093,6 +1078,37 @@ iomap_dio_actor(struct inode *inode, loff_t pos, loff_t length,
+>         return copied;
+>  }
+>
+> +static loff_t
+> +iomap_dio_hole_actor(loff_t length, struct iomap_dio *dio)
+> +{
+> +       length = iov_iter_zero(length, dio->submit.iter);
+> +       dio->size += length;
+> +       return length;
+> +}
 
-Yes, and that's why mke2fs does.  make_ext4fs was an Android specific
-abomination, that I've been pushing hard for Android to rid itself of.
-This is not the only thing it's gotten wrong in the past, and I've had
-to help Android developers deal with data corrupting bugs caused by
-the fact that way back when, Android had a GPL-in-userspace allergy.
+Just a minor nit: iomap_dio_hole_actor should come before iomap_dio_bio_actor.
 
-						- Ted
+> +
+> +static loff_t
+> +iomap_dio_actor(struct inode *inode, loff_t pos, loff_t length,
+> +               void *data, struct iomap *iomap)
+> +{
+> +       struct iomap_dio *dio = data;
+> +
+> +       switch (iomap->type) {
+> +       case IOMAP_HOLE:
+> +               if (WARN_ON_ONCE(dio->flags & IOMAP_DIO_WRITE))
+> +                       return -EIO;
+> +               return iomap_dio_hole_actor(length, dio);
+> +       case IOMAP_UNWRITTEN:
+> +               if (!(dio->flags & IOMAP_DIO_WRITE))
+> +                       return iomap_dio_hole_actor(length, dio);
+> +               return iomap_dio_bio_actor(inode, pos, length, dio, iomap);
+> +       case IOMAP_MAPPED:
+> +               return iomap_dio_bio_actor(inode, pos, length, dio, iomap);
+> +       default:
+> +               WARN_ON_ONCE(1);
+> +               return -EIO;
+> +       }
+> +}
+> +
+>  /*
+>   * iomap_dio_rw() always completes O_[D]SYNC writes regardless of whether the IO
+>   * is being issued as AIO or not.  This allows us to optimise pure data writes
+> --
+> 2.17.1
+>
+
+Thanks,
+Andreas
