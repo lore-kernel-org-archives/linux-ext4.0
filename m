@@ -1,53 +1,59 @@
-From: Andreas Gruenbacher <agruenba@redhat.com>
-Subject: Re: [PATCH 1/1] iomap: Direct I/O for inline data
-Date: Fri, 29 Jun 2018 19:02:07 +0200
-Message-ID: <CAHc6FU4UJEb2u7+XRFzhSkx_BZfB6ONNYDMeraoMMHTcPjtpqQ@mail.gmail.com>
-References: <20180627003906.15571-1-agruenba@redhat.com>
-	<20180627003906.15571-2-agruenba@redhat.com>
-	<20180629085614.GB16042@lst.de>
-	<CAHc6FU66vvPsDU2sq9O-_fRcU8CH_b6UsnQCYaSSbh-vVVWj=g@mail.gmail.com>
-	<20180629160148.GA9938@lst.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: cluster-devel <cluster-devel@redhat.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, Christoph Hellwig <hch@lst.de>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <cluster-devel-bounces@redhat.com>
-In-Reply-To: <20180629160148.GA9938@lst.de>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+From: Jon Derrick <jonathan.derrick@intel.com>
+Subject: [PATCH] ext4: Check superblock mapped prior to committing
+Date: Fri, 29 Jun 2018 13:36:35 -0600
+Message-ID: <1530300995-25583-1-git-send-email-jonathan.derrick@intel.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        <linux-kernel@vger.kernel.org>,
+        Jon Derrick <jonathan.derrick@intel.com>
+To: <linux-ext4@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 29 June 2018 at 18:01, Christoph Hellwig <hch@lst.de> wrote:
-> On Fri, Jun 29, 2018 at 04:40:40PM +0200, Andreas Gruenbacher wrote:
->> On 29 June 2018 at 10:56, Christoph Hellwig <hch@lst.de> wrote:
->> > This looks generally fine.  But I think it might be worth refactoring
->> > iomap_dio_actor a bit first, e.g. something like this new patch
->> > before yours, which would also nicely solve your alignmnet concern
->> > (entirely untested for now):
->>
->> This looks correct. I've rebased my patches on top of it and I ran the
->> xfstest auto group on gfs2 and xfs on top.
->>
->> Can you push this to your gfs2-iomap branch? I'll then repost an
->> updated version of "iomap: Direct I/O for inline data".
->
-> Darrick now has a real iomap merge branch which replaced it.
+This patch attempts to close a hole leading to a BUG seen with hot
+removals during writes [1].
 
-Where is it? Not in
-https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git
-it seems.
+A block device (NVME namespace in this test case) is formatted to EXT4
+without partitions. It's mounted and write I/O is run to a file, then
+the device is hot removed from the slot. The superblock attempts to be
+written to the drive which is no longer present.
 
->  Before formally submitting the patch I'd also like to verify that it does
-> not regress for XFS by doing a full xfstests run.
+The typical chain of events leading to the BUG:
+ext4_commit_super()
+  __sync_dirty_buffer()
+    submit_bh()
+      submit_bh_wbc()
+        BUG_ON(!buffer_mapped(bh));
 
-Thanks,
-Andreas
+This fix checks for the superblock's buffer head being mapped prior to
+syncing.
+
+[1] https://www.spinics.net/lists/linux-ext4/msg56527.html
+
+Signed-off-by: Jon Derrick <jonathan.derrick@intel.com>
+---
+ fs/ext4/super.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0c4c220..ee33233 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4736,6 +4736,14 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 
+ 	if (!sbh || block_device_ejected(sb))
+ 		return error;
++
++	/*
++	 * The superblock bh should be mapped, but it might not be if the
++	 * device was hot-removed. Not much we can do but fail the I/O.
++	 */
++	if (!buffer_mapped(sbh))
++		return error;
++
+ 	/*
+ 	 * If the file system is mounted read-only, don't update the
+ 	 * superblock write time.  This avoids updating the superblock
+-- 
+2.7.4
