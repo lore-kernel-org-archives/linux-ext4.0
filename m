@@ -1,108 +1,72 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: [PATCH v2 2/2] ext4: handle layout changes to pinned DAX mappings
-Date: Sat, 30 Jun 2018 11:12:32 +1000
-Message-ID: <20180630011232.GP19934@dastard>
-References: <20180627212252.31032-1-ross.zwisler@linux.intel.com>
- <20180627212252.31032-3-ross.zwisler@linux.intel.com>
- <20180629120223.oaslngsvspnwf4ae@localhost.localdomain>
+From: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
+Subject: =?gb2312?B?tPC4tDogtPC4tDogtPC4tDogtPC4tDogW1BBVENIXSBleHQ0OiBlMmZzcHJv?=
+ =?gb2312?B?Z3M6IGZpeCBpbm9kZSBiaXRtYXAgbnVtIG5vdCBpbnRlZ2VyLGluY29tcGF0?=
+ =?gb2312?Q?ible_for_ancient_android_devices?=
+Date: Sat, 30 Jun 2018 01:26:43 +0000
+Message-ID: <FDC91B229D965C458E3615E98C48ADDD0EC41869@dggemm511-mbx.china.huawei.com>
+References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
+ <20180627140937.GA3348@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
+ <20180628022900.GA663@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
+ <20180628153022.GA8521@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
+ <20180629142612.GE1231@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20180629120223.oaslngsvspnwf4ae-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="gb2312"
+Content-Transfer-Encoding: base64
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
+        "Shenchen (harry)" <harry.shen@huawei.com>,
+        "miaoxie (A)" <miaoxie@huawei.com>,
+        "yangfei (D)" <yangfei39@huawei.com>,
+        "Renlipeng (OS driver)" <renlipeng@huawei.com>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180629142612.GE1231@thunk.org>
+Content-Language: zh-CN
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 29, 2018 at 02:02:23PM +0200, Lukas Czerner wrote:
-> On Wed, Jun 27, 2018 at 03:22:52PM -0600, Ross Zwisler wrote:
-> > Follow the lead of xfs_break_dax_layouts() and add synchronization between
-> > operations in ext4 which remove blocks from an inode (hole punch, truncate
-> > down, etc.) and pages which are pinned due to DAX DMA operations.
-> > 
-> > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> > Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> > ---
-> >  fs/ext4/ext4.h     |  1 +
-> >  fs/ext4/extents.c  | 12 ++++++++++++
-> >  fs/ext4/inode.c    | 46 ++++++++++++++++++++++++++++++++++++++++++++++
-> >  fs/ext4/truncate.h |  4 ++++
-> >  4 files changed, 63 insertions(+)
-> > 
-> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > index 0b127853c584..34bccd64d83d 100644
-> > --- a/fs/ext4/ext4.h
-> > +++ b/fs/ext4/ext4.h
-> > @@ -2460,6 +2460,7 @@ extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
-> >  extern int ext4_inode_attach_jinode(struct inode *inode);
-> >  extern int ext4_can_truncate(struct inode *inode);
-> >  extern int ext4_truncate(struct inode *);
-> > +extern int ext4_break_layouts(struct inode *);
-> >  extern int ext4_punch_hole(struct inode *inode, loff_t offset, loff_t length);
-> >  extern int ext4_truncate_restart_trans(handle_t *, struct inode *, int nblocks);
-> >  extern void ext4_set_inode_flags(struct inode *);
-> > diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> > index 0057fe3f248d..a6aef06f455b 100644
-> > --- a/fs/ext4/extents.c
-> > +++ b/fs/ext4/extents.c
-> > @@ -4820,6 +4820,13 @@ static long ext4_zero_range(struct file *file, loff_t offset,
-> >  		 * released from page cache.
-> >  		 */
-> >  		down_write(&EXT4_I(inode)->i_mmap_sem);
-> > +
-> > +		ret = ext4_break_layouts(inode);
-> > +		if (ret) {
-> > +			up_write(&EXT4_I(inode)->i_mmap_sem);
-> > +			goto out_mutex;
-> > +		}
-> > +
-> >  		ret = ext4_update_disksize_before_punch(inode, offset, len);
-> >  		if (ret) {
-> >  			up_write(&EXT4_I(inode)->i_mmap_sem);
-> > @@ -5493,6 +5500,11 @@ int ext4_collapse_range(struct inode *inode, loff_t offset, loff_t len)
-> >  	 * page cache.
-> >  	 */
-> >  	down_write(&EXT4_I(inode)->i_mmap_sem);
-> > +
-> > +	ret = ext4_break_layouts(inode);
-> > +	if (ret)
-> > +		goto out_mmap;
-> 
-> Hi,
-> 
-> don't we need to do the same for ext4_insert_range() since we're about
-> to truncate_pagecache() as well ?
-> 
-> /thinking out loud/
-> Xfs seems to do this before every fallocate operation, but in ext4
-> it does not seem to be needed at least for simply allocating falocate...
-
-The PNFS client may have mapped a hole over the range we are about
-to allocate. Hence it's mapping will be stale, and it needs to remap
-the range.
-
-i.e. any change to the extent list needs to break the lease of any
-client that may have a cached layout on that inode. i.e. it's not
-just extent removal that we are protecting against - we are trying
-to ensure clients using leases to access blocks directly remain
-coherent with the filesystem's extent map. Hence any potential
-change to the extent map requires breaking the lease....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+WWVzLCBpdCBpcyBjYXVzZWQgYnkgdXNpbmcgMTAyNCBibG9ja3NpemUuDQpJdCBpcyBoaXN0b3Jp
+Y2FsIHByb2JsZW0sIGFuZCBJIGhhdmUgdG8gYWRtaXQgdGhhdCdzIG5vdCBnb29kIGlkZWEuICBJ
+IGRvbid0IGtub3cgd2h5IHNvbWVib2R5IGNob29zZSBpdCBzb21lIHllYXJzIGJlZm9yZS4gDQpJ
+dCBoYXMgYmVlbiBjb3JyZWN0ZWQgdHdvIHllYXJzIGJlZm9yZSBvciBtb3JlIGVhcmx5LiBCdXQg
+c29tZSBhbmNpZW50IGRldmljZXMgZXhpc3QuIA0KSXQgaXMgbm90IHVzZXIgZGF0YSwgbm8gbmVl
+ZCB0byBkbyBmaWxlLWJhc2VkIGVuY3J5cHRpb24uIEl0IGlzIGEgc21hbGwgcGFydGl0aW9uIGZv
+ciBzb21lIHVzZS4NCg0KSG93ZXZlciwgMTAyNCBpcyBsZWdhbCB0aG91Z2ggbm90IGdvb2QsIHNv
+bWVib2R5IG1heSB1c2UgaXQuIA0KQW5kIHdlIHNob3VsZCBmaXggaXQuDQoNCg0KUmVnYXJkcywN
+Ck1pbmcNCg0KLS0tLS3Tyrz+1K28/i0tLS0tDQq3orz+yMs6IFRoZW9kb3JlIFkuIFRzJ28gW21h
+aWx0bzp0eXRzb0BtaXQuZWR1XSANCreiy83KsbzkOiAyMDE4xOo21MIyOcjVIDIyOjI2DQrK1bz+
+yMs6IEdhb21pbmcgKG1pbmcsIGNvbnN1bWVyIEJHKQ0Ks63LzTogbGludXgtZXh0NEB2Z2VyLmtl
+cm5lbC5vcmc7IGxpbnV4LWtlcm5lbEB2Z2VyLmtlcm5lbC5vcmc7IExpcWluZ2NoYW8gKHNvcnAp
+OyBTaGVuY2hlbiAoaGFycnkpOyBtaWFveGllIChBKTsgeWFuZ2ZlaSAoRCk7IFJlbmxpcGVuZyAo
+T1MgZHJpdmVyKQ0K1vfM4jogUmU6ILTwuLQ6ILTwuLQ6ILTwuLQ6IFtQQVRDSF0gZXh0NDogZTJm
+c3Byb2dzOiBmaXggaW5vZGUgYml0bWFwIG51bSBub3QgaW50ZWdlcixpbmNvbXBhdGlibGUgZm9y
+IGFuY2llbnQgYW5kcm9pZCBkZXZpY2VzDQoNCk9uIEZyaSwgSnVuIDI5LCAyMDE4IGF0IDAyOjA2
+OjAzQU0gKzAwMDAsIEdhb21pbmcgKG1pbmcsIGNvbnN1bWVyIEJHKSB3cm90ZToNCj4gV2UgdXNl
+IHVzdWFsIGlub2RlIHNpemUsIGl0IGlzIDI1NiBieXRlcy4NCj4gDQo+IFllcywgdGhpcyBjb21t
+aXQgaXMgaW4gbXkgcmVwb3NpdG9yeS4NCj4gQnV0IHRoZXJlIGlzIGEgYnVnIGluIHRoaXMgcGF0
+Y2guDQo+IA0KPiBMZXQgbWUgc2hvdyB5b3UsDQo+IEhlcmUgaXMgdGhlIGJ1ZzogIiByZXR1cm4g
+QUxJR04oaW5vZGVzLCAoaW5mby5ibG9ja19zaXplIC8gaW5mby5pbm9kZV9zaXplKSk7Ig0KPiAN
+Cj4gSW4gbXkgcmVwcm9kdWNlLA0KPiBpbmZvLmJsb2NrX3NpemUgPSAxMDI0LCAoaXQgaXMgbGVn
+YWwpDQo+IGluZm8uaW5vZGVfc2l6ZSA9MjU2LA0KDQpCdXQgd2h5IGFyZSB5b3UgdXNpbmcgYSBi
+bG9jayBzaXplIG9mIDEwMjQ/ICBJdCdzIGxlZ2FsLCBidXQgaW4NCmdlbmVyYWwsIGl0J3MgYSBi
+YWQgaWRlYSAob2Z0ZW4gd2lsbCBodXJ0IHBlcmZvcm1hbmNlLCB3aWxsIGltcG9zZQ0KYWRkaXRp
+b25hbCBzY2FsYWJpbGl0eSBsaW1pdGF0aW9ucywgZXRjLikuLi4uICBJdCdzIGNlcnRhaW5seSBu
+b3QNCnRoZSBkZWZhdWx0Lg0KDQpBIGJsb2NrIHNpemUgb2YgMTAyNCBpcyBhbHNvIGluY29tcGF0
+aWJsZSB3aXRoIGZpbGUtYmFzZWQgZW5jcnlwdGlvbg0KKEZCRSksIHdoaWNoIGlzIHJlcXVpcmVk
+IGZvciBhIG51bWJlciBvZiBBbmRyb2lkIGZlYXR1cmVzLiAgU3VwcG9ydA0KZm9yIEZCRSBpcyBz
+dHJvbmdseSByZXF1aXJlZCwgYW5kIGl0IHdvdWxkbid0IHN1cnByaXNlIG1lIGlmIGl0DQpiZWNv
+bWVzIGFuIG1hbmRhdG9yeSByZXF1aXJlbWVudCBhdCBzb21lIHBvaW50IGluIHRoZSBmdXR1cmUu
+DQoNCkhvdyBsb25nIGhhdmUgeW91IGJlZW4gdXNpbmcgYSBibG9jayBzaXplIG9mIDEwMjQsIGFu
+ZCB3aHk/DQoNCj4gQnV0IGluIHJlYWwgc2NlbmFyaW8sIHdlIHNob3VsZCBhbGlnbiBieSA4LCgg
+OCBiaXQgcGVyIGJ5dGVzIGluIGlub2RlIG1hcCkuDQoNClllcywgYW5kIHRoYXQncyB3aHkgbWtl
+MmZzIGRvZXMuICBtYWtlX2V4dDRmcyB3YXMgYW4gQW5kcm9pZCBzcGVjaWZpYw0KYWJvbWluYXRp
+b24sIHRoYXQgSSd2ZSBiZWVuIHB1c2hpbmcgaGFyZCBmb3IgQW5kcm9pZCB0byByaWQgaXRzZWxm
+IG9mLg0KVGhpcyBpcyBub3QgdGhlIG9ubHkgdGhpbmcgaXQncyBnb3R0ZW4gd3JvbmcgaW4gdGhl
+IHBhc3QsIGFuZCBJJ3ZlIGhhZA0KdG8gaGVscCBBbmRyb2lkIGRldmVsb3BlcnMgZGVhbCB3aXRo
+IGRhdGEgY29ycnVwdGluZyBidWdzIGNhdXNlZCBieQ0KdGhlIGZhY3QgdGhhdCB3YXkgYmFjayB3
+aGVuLCBBbmRyb2lkIGhhZCBhIEdQTC1pbi11c2Vyc3BhY2UgYWxsZXJneS4NCg0KCQkJCQkJLSBU
+ZWQNCg==
