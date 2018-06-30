@@ -1,116 +1,71 @@
-From: Andreas Dilger <adilger@dilger.ca>
-Subject: Re: [PATCH] ext4: Check superblock mapped prior to committing
-Date: Fri, 29 Jun 2018 22:36:06 -0600
-Message-ID: <A869A023-8695-48CC-B577-DAA1C75837C3@dilger.ca>
-References: <1530300995-25583-1-git-send-email-jonathan.derrick@intel.com>
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_E8FFBE7E-1B06-4D58-8BBF-BAE19556F898";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Jon Derrick <jonathan.derrick@intel.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: =?utf-8?B?562U5aSNOiDnrZTlpI06IOetlA==?=
+ =?utf-8?B?5aSNOiDnrZTlpI06IFtQQVRDSF0gZXh0NDogZTJmc3Byb2dzOiBmaXggaW5v?=
+ =?utf-8?Q?de_bitma?= =?utf-8?Q?p?= num not integer,incompatible for ancient
+ android devices
+Date: Sat, 30 Jun 2018 09:04:29 -0400
+Message-ID: <20180630130429.GA26529@thunk.org>
+References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
+ <20180627140937.GA3348@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
+ <20180628022900.GA663@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
+ <20180628153022.GA8521@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
+ <20180629142612.GE1231@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41869@dggemm511-mbx.china.huawei.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
+        "Shenchen (harry)" <harry.shen@huawei.com>,
+        "miaoxie (A)" <miaoxie@huawei.com>,
+        "yangfei (D)" <yangfei39@huawei.com>,
+        "Renlipeng (OS driver)" <renlipeng@huawei.com>
+To: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1530300995-25583-1-git-send-email-jonathan.derrick@intel.com>
+Content-Disposition: inline
+In-Reply-To: <FDC91B229D965C458E3615E98C48ADDD0EC41869@dggemm511-mbx.china.huawei.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Sat, Jun 30, 2018 at 01:26:43AM +0000, Gaoming (ming, consumer BG) wrote:
+> Yes, it is caused by using 1024 blocksize.
+> It is historical problem, and I have to admit that's not good idea.  I don't know why somebody choose it some years before. 
+> It has been corrected two years before or more early. But some ancient devices exist. 
+> It is not user data, no need to do file-based encryption. It is a small partition for some use.
+> 
+> However, 1024 is legal though not good, somebody may use it. 
+> And we should fix it.
 
---Apple-Mail=_E8FFBE7E-1B06-4D58-8BBF-BAE19556F898
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+So you understand my position --- the reason why I've been pushing so
+hard is I'm trying to figure out how big of a problem this is.
+Specifically speaking, is this a Huawei-specific problem, or something
+across the entire Android ecosystem.  I *thought* I had fixed most of
+the disaster back in 2011.  There have periodic headaches where
+testers would discover problems where android handsets get bricked
+after doing a factory reset that I had tracked down to make_ext4fs,
+and the existence of make_ext4fs is not something I agreed to, and
+have been fighting for years.  So I've been cleaning up after
+make_ext4fs for a while, even though it's not my responsiblity.  (For
+one thing my work responsibilities are for data center servers at
+Google, *not* Android; for another, no one asked *me* before they came
+up with the abomination which is make_ext4fs.)
 
-On Jun 29, 2018, at 1:36 PM, Jon Derrick <jonathan.derrick@intel.com> =
-wrote:
->=20
-> This patch attempts to close a hole leading to a BUG seen with hot
-> removals during writes [1].
->=20
-> A block device (NVME namespace in this test case) is formatted to EXT4
-> without partitions. It's mounted and write I/O is run to a file, then
-> the device is hot removed from the slot. The superblock attempts to be
-> written to the drive which is no longer present.
->=20
-> The typical chain of events leading to the BUG:
-> ext4_commit_super()
->  __sync_dirty_buffer()
->    submit_bh()
->      submit_bh_wbc()
->        BUG_ON(!buffer_mapped(bh));
->=20
-> This fix checks for the superblock's buffer head being mapped prior to
-> syncing.
->=20
-> [1] https://www.spinics.net/lists/linux-ext4/msg56527.html
->=20
-> Signed-off-by: Jon Derrick <jonathan.derrick@intel.com>
-> ---
-> fs/ext4/super.c | 8 ++++++++
-> 1 file changed, 8 insertions(+)
->=20
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 0c4c220..ee33233 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -4736,6 +4736,14 @@ static int ext4_commit_super(struct super_block =
-*sb, int sync)
->=20
-> 	if (!sbh || block_device_ejected(sb))
-> 		return error;
-> +
-> +	/*
-> +	 * The superblock bh should be mapped, but it might not be if =
-the
-> +	 * device was hot-removed. Not much we can do but fail the I/O.
-> +	 */
-> +	if (!buffer_mapped(sbh))
-> +		return error;
+So I don't feel particularly, or personally, responsible for bugs
+caused by make_ext4fs, because if it had been up to me, it would have
+never existed in the first place.
 
-This still looks a bit racy, based on the stack trace you posted.
-There is already a "block_device_ejected()" check a line above,
-which makes me think that the PCI device removal should be handled
-like an ejected device, so that it is also handled elsewhere.
+If it's only in ancient Huawei devices, I don't see a strong reason to
+support his in upstream e2fsprogs.  Are you really going to be
+backporting the latest e2fsprogs into these ancient Huawei devices?
+In my experience, the Android team has a hard enough time getting
+their Android partners to backport kernel fixes for severe security
+bugs into old Android devices --- never mind versions of e2fsprogs.
 
-Even so, the check here in ext4_commit_super() can pass, and the
-PCI card can be removed on the next instruction and still trigger
-the BUG_ON().
+If not, what's the point?
 
-That said, this is probably still an improvement on the existing
-situation.
+Regards,
 
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_E8FFBE7E-1B06-4D58-8BBF-BAE19556F898
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAls3CLYACgkQcqXauRfM
-H+B1IQ/+Ivh2zNIIOCJEilXbgCSnYxWDUwDWUEX8I3q1FuDqoRC80U5Di2sx2ibK
-pfAF5a61IJMvinjW5VlnxIzDtc+kq//aZT/5ddLOSvY161+JHF1AysVjQIGZWEBS
-5dFpOGarmjZa3HfDjDkcNGwBdolB1SSE1W8GX8V8Zlk/R8aUqHOQitYusmUQHNbf
-ZG6EQmZuuN0ydEyOZCnUbDm2ab9YIDQtxzhvIBqfTLSdXOhwMVnL0ftJqaiFiEn4
-yt4dXo3sZEWxpAGWYmnZK+Pjwxyc6xvqAd1YlnchDZxsKlkICvicliU19NzCaVIe
-2GTi5kQ84dYNtTpSsoOhOYGNfyUpE6QegF5NdL2+1o4vnqYoC7c1rMxrMVBBiGJl
-lazFrGvnZSFTKMt0Aqy4Ytt15w0XPZmaY17TOge4/xCCXZhZzMFv4OWav50qL4Ye
-ppkzTWTNFKZ1GYjYmgmmYtaHyjwaSys2O3wvws/sU+RHn768MFdjfL7vDXHAxMby
-MWY9M8n2PUIi7o6Am8m7aBGpwJF8d3oJGcUt40K5UMoJFalnGqHCy4vKMEEa1JdM
-HHqLtw3lgKml4zhSfZqY7T4/NHd4KMGuv9a6hcuppIRhCFW9qlWy74X9aU5PTNyX
-kKK9vW+LtgSiHjMR04IpcwvUPwEhQbV8x0NvuQFi5pw8pTeOCXE=
-=9q8V
------END PGP SIGNATURE-----
-
---Apple-Mail=_E8FFBE7E-1B06-4D58-8BBF-BAE19556F898--
+						- Ted
