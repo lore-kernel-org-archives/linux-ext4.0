@@ -1,7 +1,7 @@
 From: Huaisheng Ye <yehs2007-ytc+IHgoah0@public.gmane.org>
-Subject: [PATCH 2/3] fs/ext2/inode: Fix a type cast error for fsdax
-Date: Sun,  1 Jul 2018 14:18:47 +0800
-Message-ID: <20180701061848.7036-2-yehs2007@zoho.com>
+Subject: [PATCH 3/3] fs/ext2/inode: Optimize the condition for iomap_begin
+Date: Sun,  1 Jul 2018 14:18:48 +0800
+Message-ID: <20180701061848.7036-3-yehs2007@zoho.com>
 References: <20180701061848.7036-1-yehs2007@zoho.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -24,29 +24,40 @@ List-Id: linux-ext4.vger.kernel.org
 
 From: Huaisheng Ye <yehs1-6jq1YtArVR3QT0dZR+AlfA@public.gmane.org>
 
-The type of offset within struct iomap is loff_t, which represents
-file offset of mapping.
-
-In ext2_iomap_begin, iomap->offset shall be given a type cast as
-loff_t instead of u64.
+If ext2_get_blocks returns negative result, ext2_iomap_begin
+will return for error case.
+Adjust the judging condition of ret value will be useful for
+code simplification.
 
 Signed-off-by: Huaisheng Ye <yehs1-6jq1YtArVR3QT0dZR+AlfA@public.gmane.org>
 ---
- fs/ext2/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext2/inode.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 7163590..ca211bd 100644
+index ca211bd..9b1004d 100644
 --- a/fs/ext2/inode.c
 +++ b/fs/ext2/inode.c
-@@ -816,7 +816,7 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- 
- 	iomap->flags = 0;
- 	iomap->bdev = inode->i_sb->s_bdev;
--	iomap->offset = (u64)first_block << blkbits;
-+	iomap->offset = (loff_t)first_block << blkbits;
+@@ -819,15 +819,15 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ 	iomap->offset = (loff_t)first_block << blkbits;
  	iomap->dax_dev = sbi->s_daxdev;
  
- 	if (ret == 0) {
+-	if (ret == 0) {
+-		iomap->type = IOMAP_HOLE;
+-		iomap->addr = IOMAP_NULL_ADDR;
+-		iomap->length = 1 << blkbits;
+-	} else {
++	if (ret) {
+ 		iomap->type = IOMAP_MAPPED;
+ 		iomap->addr = (u64)bno << blkbits;
+ 		iomap->length = (u64)ret << blkbits;
+ 		iomap->flags |= IOMAP_F_MERGED;
++	} else {
++		iomap->type = IOMAP_HOLE;
++		iomap->addr = IOMAP_NULL_ADDR;
++		iomap->length = 1 << blkbits;
+ 	}
+ 
+ 	if (new)
 -- 
 1.8.3.1
