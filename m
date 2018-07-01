@@ -1,53 +1,47 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH 1/1] iomap: Direct I/O for inline data
-Date: Sun, 1 Jul 2018 08:13:06 +0200
-Message-ID: <20180701061306.GA27195@lst.de>
-References: <20180627003906.15571-1-agruenba@redhat.com>
-	<20180627003906.15571-2-agruenba@redhat.com>
-	<20180629085614.GB16042@lst.de>
-	<CAHc6FU66vvPsDU2sq9O-_fRcU8CH_b6UsnQCYaSSbh-vVVWj=g@mail.gmail.com>
-	<20180629160148.GA9938@lst.de>
-	<CAHc6FU4UJEb2u7+XRFzhSkx_BZfB6ONNYDMeraoMMHTcPjtpqQ@mail.gmail.com>
+From: Huaisheng Ye <yehs2007-ytc+IHgoah0@public.gmane.org>
+Subject: [PATCH 1/3] drivers/dax/super: Add annotation for ops in struct
+ dax_device
+Date: Sun,  1 Jul 2018 14:18:46 +0800
+Message-ID: <20180701061848.7036-1-yehs2007@zoho.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cluster-devel <cluster-devel@redhat.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>, Christoph Hellwig <hch@lst.de>,
-	"Darrick J. Wong" <darrick.wong@oracle.com>
-To: Andreas Gruenbacher <agruenba@redhat.com>
-Return-path: <cluster-devel-bounces@redhat.com>
-Content-Disposition: inline
-In-Reply-To: <CAHc6FU4UJEb2u7+XRFzhSkx_BZfB6ONNYDMeraoMMHTcPjtpqQ@mail.gmail.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, chengnt-6jq1YtArVR3QT0dZR+AlfA@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org,
+ linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jun 29, 2018 at 07:02:07PM +0200, Andreas Gruenbacher wrote:
-> On 29 June 2018 at 18:01, Christoph Hellwig <hch@lst.de> wrote:
-> > On Fri, Jun 29, 2018 at 04:40:40PM +0200, Andreas Gruenbacher wrote:
-> >> On 29 June 2018 at 10:56, Christoph Hellwig <hch@lst.de> wrote:
-> >> > This looks generally fine.  But I think it might be worth refactoring
-> >> > iomap_dio_actor a bit first, e.g. something like this new patch
-> >> > before yours, which would also nicely solve your alignmnet concern
-> >> > (entirely untested for now):
-> >>
-> >> This looks correct. I've rebased my patches on top of it and I ran the
-> >> xfstest auto group on gfs2 and xfs on top.
-> >>
-> >> Can you push this to your gfs2-iomap branch? I'll then repost an
-> >> updated version of "iomap: Direct I/O for inline data".
-> >
-> > Darrick now has a real iomap merge branch which replaced it.
-> 
-> Where is it? Not in
-> https://git.kernel.org/pub/scm/linux/kernel/git/djwong/xfs-linux.git
-> it seems.
+From: Huaisheng Ye <yehs1-6jq1YtArVR3QT0dZR+AlfA@public.gmane.org>
 
-https://git.kernel.org/pub/scm/fs/xfs/xfs-linux.git/log/?h=iomap-4.19-merge
+There is no annotation for member ops within struct dax_device.
+Add it.
+
+Signed-off-by: Huaisheng Ye <yehs1-6jq1YtArVR3QT0dZR+AlfA@public.gmane.org>
+---
+ drivers/dax/super.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/dax/super.c b/drivers/dax/super.c
+index 2b2332b..aa6382a 100644
+--- a/drivers/dax/super.c
++++ b/drivers/dax/super.c
+@@ -161,6 +161,7 @@ enum dax_device_flags {
+  * @host: optional name for lookups where the device path is not available
+  * @private: dax driver private data
+  * @flags: state and boolean properties
++ * @ops: function pointers for direct_access and fs-dax
+  */
+ struct dax_device {
+ 	struct hlist_node list;
+-- 
+1.8.3.1
