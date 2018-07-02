@@ -1,47 +1,40 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: =?utf-8?B?562U5aSNOiDnrZTlpI06IOetlA==?=
- =?utf-8?B?5aSNOiDnrZTlpI06IOetlOWkjTogW1BBVENIXSBleHQ0OiBlMmZzcHJvZ3M6?=
- =?utf-8?Q?_fix_inode_bitma?= =?utf-8?Q?p?= num not integer,incompatible for
- ancient android devices
-Date: Mon, 2 Jul 2018 08:16:54 -0400
-Message-ID: <20180702121654.GA15131@thunk.org>
-References: <20180627140937.GA3348@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
- <20180628022900.GA663@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
- <20180628153022.GA8521@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
- <20180629142612.GE1231@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC41869@dggemm511-mbx.china.huawei.com>
- <20180630130429.GA26529@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC41D5F@dggemm511-mbx.china.huawei.com>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH] iomap: Add inline data support to
+	iomap_readpage_actor
+Date: Mon, 2 Jul 2018 14:52:30 +0200
+Message-ID: <20180702125230.GB3366@lst.de>
+References: <20180615130209.1970-2-hch@lst.de>
+	<20180629144444.28826-1-agruenba@redhat.com>
+	<20180701062141.GA27281@lst.de>
+	<CAHc6FU4MAo4BXpKBAnP-abRJ1ZBN1RLZKO9KQzyk=L96PVY-iA@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
-        "Shenchen (harry)" <harry.shen@huawei.com>,
-        "miaoxie (A)" <miaoxie@huawei.com>,
-        "yangfei (D)" <yangfei39@huawei.com>,
-        "Renlipeng (OS driver)" <renlipeng@huawei.com>
-To: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: cluster-devel <cluster-devel@redhat.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>, Christoph Hellwig <hch@lst.de>
+To: Andreas Gruenbacher <agruenba@redhat.com>
+Return-path: <cluster-devel-bounces@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <FDC91B229D965C458E3615E98C48ADDD0EC41D5F@dggemm511-mbx.china.huawei.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <CAHc6FU4MAo4BXpKBAnP-abRJ1ZBN1RLZKO9KQzyk=L96PVY-iA@mail.gmail.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jul 02, 2018 at 09:34:28AM +0000, Gaoming (ming, consumer BG) wrote:
-> I got it. You hate make_ext4fs, and me too.
-> You don't like to merge this patch in upstream e2fsprogs to resolve the bug of make_ext4fs.
+On Sun, Jul 01, 2018 at 11:43:43PM +0200, Andreas Gruenbacher wrote:
+> > +               WARN_ON_ONCE(plen != PAGE_SIZE);
 > 
-> Of course we will fix the bug on our ancient devices, we have to .
-> If this problem fixed or this patch merges in latest e2fsprogs, we will backport the latest e2fsprogs.
-> If not, we have no motivation to backport it.
-> 
-> I don't know whether other android devices suffer this problem.
+> Inline mappings only extend to the end of the file (iomap->offset == 0
+> && iomap->length == inode->i_size), so length and plen will be
+> inode->i_size here. This assertion should just be removed.
 
-Can you be explicit and tell me how many Huawei devices uses a block
-size of 1024?  And can you help me understand *why* such a choice was made?
+But we should generally still return PAGE_SIZE from iomap_begin
+because we cover the whole page and zero the rest, don't we?
 
-     	       	       	   	   	      - Ted
+Either way, I can remove the assert from now.
