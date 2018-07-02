@@ -1,21 +1,18 @@
 From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-Subject: Re: [PATCH 2/3] fs/ext2/inode: Fix a type cast error for fsdax
-Date: Mon, 2 Jul 2018 09:55:43 +0200
-Message-ID: <20180702075543.k7y73aj3s3gp4ptz@quack2.suse.cz>
+Subject: Re: [PATCH 3/3] fs/ext2/inode: Optimize the condition for iomap_begin
+Date: Mon, 2 Jul 2018 09:57:27 +0200
+Message-ID: <20180702075727.3s7yymczrmm4xiox@quack2.suse.cz>
 References: <20180701061848.7036-1-yehs2007@zoho.com>
- <20180701061848.7036-2-yehs2007@zoho.com>
- <20180701192600.GT30522@ZenIV.linux.org.uk>
- <16459a9432e.10c419704327.5268154349116077352@zoho.com>
+ <20180701061848.7036-3-yehs2007@zoho.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
 Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, chengnt-6jq1YtArVR3QT0dZR+AlfA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, "\"Al Viro\"" <viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org>, jack-IBi9RG/b67k@public.gmane.org,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+ willy-wEGCiKHe2LqWVfeAwA7xHQ@public.gmane.org, jack-IBi9RG/b67k@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 To: Huaisheng Ye <yehs2007-ytc+IHgoah0@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <16459a9432e.10c419704327.5268154349116077352-ytc+IHgoah0@public.gmane.org>
+In-Reply-To: <20180701061848.7036-3-yehs2007-ytc+IHgoah0@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -27,41 +24,52 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 02-07-18 14:23:42, Huaisheng Ye wrote:
->  ---- On Mon, 02 Jul 2018 03:26:00 +0800 Al Viro <viro-3bDd1+5oDREiFSDQTTA3OLVCufUGDwFn@public.gmane.org> wrote ---- 
->  > On Sun, Jul 01, 2018 at 02:18:47PM +0800, Huaisheng Ye wrote: 
->  > > From: Huaisheng Ye <yehs1-6jq1YtArVR3QT0dZR+AlfA@public.gmane.org> 
->  > >  
->  > > The type of offset within struct iomap is loff_t, which represents 
->  > > file offset of mapping. 
->  > >  
->  > > In ext2_iomap_begin, iomap->offset shall be given a type cast as 
->  > > loff_t instead of u64. 
->  >  
->  > Why is it an error?  loff_t is uniformly typedefed to long long. 
->  > In which case the second variant is different from the first one 
->  > *and* does not step into nasal demon territory?
+On Sun 01-07-18 14:18:48, Huaisheng Ye wrote:
+> From: Huaisheng Ye <yehs1-6jq1YtArVR3QT0dZR+AlfA@public.gmane.org>
 > 
-> Sorry for my inaccuracy.
-> The type of iomap->offset is loff_t, is it better to cast first_block
-> to loff_t, then do the left shift operation?
+> If ext2_get_blocks returns negative result, ext2_iomap_begin
+> will return for error case.
+> Adjust the judging condition of ret value will be useful for
+> code simplification.
+> 
+> Signed-off-by: Huaisheng Ye <yehs1-6jq1YtArVR3QT0dZR+AlfA@public.gmane.org>
 
-I think what Al meant is that in the kernel loff_t is 64-bit anyway and
-furthermore it is signed which means most people have to look up C standard
-to remember how right shift is (un)defined if it would overflow ;). So this
-does not really make the code any more readable. Rather on contrary...
+I'm sorry but how exactly is this simpler?
 
 								Honza
 
->  
->  >  
->  > > -    iomap->offset = (u64)first_block << blkbits; 
->  > > +    iomap->offset = (loff_t)first_block << blkbits; 
->  > 
-> 
 > ---
-> Cheers,
-> Huaisheng
+>  fs/ext2/inode.c | 10 +++++-----
+>  1 file changed, 5 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index ca211bd..9b1004d 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -819,15 +819,15 @@ static int ext2_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+>  	iomap->offset = (loff_t)first_block << blkbits;
+>  	iomap->dax_dev = sbi->s_daxdev;
+>  
+> -	if (ret == 0) {
+> -		iomap->type = IOMAP_HOLE;
+> -		iomap->addr = IOMAP_NULL_ADDR;
+> -		iomap->length = 1 << blkbits;
+> -	} else {
+> +	if (ret) {
+>  		iomap->type = IOMAP_MAPPED;
+>  		iomap->addr = (u64)bno << blkbits;
+>  		iomap->length = (u64)ret << blkbits;
+>  		iomap->flags |= IOMAP_F_MERGED;
+> +	} else {
+> +		iomap->type = IOMAP_HOLE;
+> +		iomap->addr = IOMAP_NULL_ADDR;
+> +		iomap->length = 1 << blkbits;
+>  	}
+>  
+>  	if (new)
+> -- 
+> 1.8.3.1
+> 
 > 
 > 
 -- 
