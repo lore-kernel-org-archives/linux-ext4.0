@@ -1,11 +1,11 @@
-From: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
-Subject: =?gb2312?B?tPC4tDogtPC4tDogtPC4tDogtPC4tDogtPC4tDogW1BBVENIXSBleHQ0OiBl?=
- =?gb2312?B?MmZzcHJvZ3M6IGZpeCBpbm9kZSBiaXRtYXAgbnVtIG5vdCBpbnRlZ2VyLGlu?=
- =?gb2312?Q?compatible_for_ancient_android_devices?=
-Date: Mon, 2 Jul 2018 09:34:28 +0000
-Message-ID: <FDC91B229D965C458E3615E98C48ADDD0EC41D5F@dggemm511-mbx.china.huawei.com>
-References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
- <20180627140937.GA3348@thunk.org>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: =?utf-8?B?562U5aSNOiDnrZTlpI06IOetlA==?=
+ =?utf-8?B?5aSNOiDnrZTlpI06IOetlOWkjTogW1BBVENIXSBleHQ0OiBlMmZzcHJvZ3M6?=
+ =?utf-8?Q?_fix_inode_bitma?= =?utf-8?Q?p?= num not integer,incompatible for
+ ancient android devices
+Date: Mon, 2 Jul 2018 08:16:54 -0400
+Message-ID: <20180702121654.GA15131@thunk.org>
+References: <20180627140937.GA3348@thunk.org>
  <FDC91B229D965C458E3615E98C48ADDD0EC41667@dggemm511-mbx.china.huawei.com>
  <20180628022900.GA663@thunk.org>
  <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
@@ -14,9 +14,9 @@ References: <1530014046-62466-1-git-send-email-gaoming20@huawei.com>
  <20180629142612.GE1231@thunk.org>
  <FDC91B229D965C458E3615E98C48ADDD0EC41869@dggemm511-mbx.china.huawei.com>
  <20180630130429.GA26529@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41D5F@dggemm511-mbx.china.huawei.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="gb2312"
-Content-Transfer-Encoding: base64
+Content-Type: text/plain; charset=us-ascii
 Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
@@ -24,63 +24,24 @@ Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
         "miaoxie (A)" <miaoxie@huawei.com>,
         "yangfei (D)" <yangfei39@huawei.com>,
         "Renlipeng (OS driver)" <renlipeng@huawei.com>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180630130429.GA26529@thunk.org>
-Content-Language: zh-CN
+Content-Disposition: inline
+In-Reply-To: <FDC91B229D965C458E3615E98C48ADDD0EC41D5F@dggemm511-mbx.china.huawei.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-SSBnb3QgaXQuIFlvdSBoYXRlIG1ha2VfZXh0NGZzLCBhbmQgbWUgdG9vLg0KWW91IGRvbid0IGxp
-a2UgdG8gbWVyZ2UgdGhpcyBwYXRjaCBpbiB1cHN0cmVhbSBlMmZzcHJvZ3MgdG8gcmVzb2x2ZSB0
-aGUgYnVnIG9mIG1ha2VfZXh0NGZzLg0KDQpPZiBjb3Vyc2Ugd2Ugd2lsbCBmaXggdGhlIGJ1ZyBv
-biBvdXIgYW5jaWVudCBkZXZpY2VzLCB3ZSBoYXZlIHRvIC4NCklmIHRoaXMgcHJvYmxlbSBmaXhl
-ZCBvciB0aGlzIHBhdGNoIG1lcmdlcyBpbiBsYXRlc3QgZTJmc3Byb2dzLCB3ZSB3aWxsIGJhY2tw
-b3J0IHRoZSBsYXRlc3QgZTJmc3Byb2dzLg0KSWYgbm90LCB3ZSBoYXZlIG5vIG1vdGl2YXRpb24g
-dG8gYmFja3BvcnQgaXQuDQoNCkkgZG9uJ3Qga25vdyB3aGV0aGVyIG90aGVyIGFuZHJvaWQgZGV2
-aWNlcyBzdWZmZXIgdGhpcyBwcm9ibGVtLg0KDQpJZiBzb21lb25lIGVsc2UgY29tZSB0byBjb21w
-bGFpbiB0aGlzIHByb2JsZW0sIHlvdSBzaG91bGQgY29uc2lkZXIgdG8gZml4IGl0Lg0KDQpCZXN0
-IHdpc2hlcy4NCg0KTWluZw0KDQoNCi0tLS0t08q8/tStvP4tLS0tLQ0Kt6K8/sjLOiBUaGVvZG9y
-ZSBZLiBUcydvIFttYWlsdG86dHl0c29AbWl0LmVkdV0gDQq3osvNyrG85DogMjAxOMTqNtTCMzDI
-1SAyMTowNA0KytW8/sjLOiBHYW9taW5nIChtaW5nLCBjb25zdW1lciBCRykNCrOty806IGxpbnV4
-LWV4dDRAdmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnOyBMaXFp
-bmdjaGFvIChzb3JwKTsgU2hlbmNoZW4gKGhhcnJ5KTsgbWlhb3hpZSAoQSk7IHlhbmdmZWkgKEQp
-OyBSZW5saXBlbmcgKE9TIGRyaXZlcikNCtb3zOI6IFJlOiC08Li0OiC08Li0OiC08Li0OiC08Li0
-OiBbUEFUQ0hdIGV4dDQ6IGUyZnNwcm9nczogZml4IGlub2RlIGJpdG1hcCBudW0gbm90IGludGVn
-ZXIsaW5jb21wYXRpYmxlIGZvciBhbmNpZW50IGFuZHJvaWQgZGV2aWNlcw0KDQpPbiBTYXQsIEp1
-biAzMCwgMjAxOCBhdCAwMToyNjo0M0FNICswMDAwLCBHYW9taW5nIChtaW5nLCBjb25zdW1lciBC
-Rykgd3JvdGU6DQo+IFllcywgaXQgaXMgY2F1c2VkIGJ5IHVzaW5nIDEwMjQgYmxvY2tzaXplLg0K
-PiBJdCBpcyBoaXN0b3JpY2FsIHByb2JsZW0sIGFuZCBJIGhhdmUgdG8gYWRtaXQgdGhhdCdzIG5v
-dCBnb29kIGlkZWEuICBJIGRvbid0IGtub3cgd2h5IHNvbWVib2R5IGNob29zZSBpdCBzb21lIHll
-YXJzIGJlZm9yZS4gDQo+IEl0IGhhcyBiZWVuIGNvcnJlY3RlZCB0d28geWVhcnMgYmVmb3JlIG9y
-IG1vcmUgZWFybHkuIEJ1dCBzb21lIGFuY2llbnQgZGV2aWNlcyBleGlzdC4gDQo+IEl0IGlzIG5v
-dCB1c2VyIGRhdGEsIG5vIG5lZWQgdG8gZG8gZmlsZS1iYXNlZCBlbmNyeXB0aW9uLiBJdCBpcyBh
-IHNtYWxsIHBhcnRpdGlvbiBmb3Igc29tZSB1c2UuDQo+IA0KPiBIb3dldmVyLCAxMDI0IGlzIGxl
-Z2FsIHRob3VnaCBub3QgZ29vZCwgc29tZWJvZHkgbWF5IHVzZSBpdC4gDQo+IEFuZCB3ZSBzaG91
-bGQgZml4IGl0Lg0KDQpTbyB5b3UgdW5kZXJzdGFuZCBteSBwb3NpdGlvbiAtLS0gdGhlIHJlYXNv
-biB3aHkgSSd2ZSBiZWVuIHB1c2hpbmcgc28NCmhhcmQgaXMgSSdtIHRyeWluZyB0byBmaWd1cmUg
-b3V0IGhvdyBiaWcgb2YgYSBwcm9ibGVtIHRoaXMgaXMuDQpTcGVjaWZpY2FsbHkgc3BlYWtpbmcs
-IGlzIHRoaXMgYSBIdWF3ZWktc3BlY2lmaWMgcHJvYmxlbSwgb3Igc29tZXRoaW5nDQphY3Jvc3Mg
-dGhlIGVudGlyZSBBbmRyb2lkIGVjb3N5c3RlbS4gIEkgKnRob3VnaHQqIEkgaGFkIGZpeGVkIG1v
-c3Qgb2YNCnRoZSBkaXNhc3RlciBiYWNrIGluIDIwMTEuICBUaGVyZSBoYXZlIHBlcmlvZGljIGhl
-YWRhY2hlcyB3aGVyZQ0KdGVzdGVycyB3b3VsZCBkaXNjb3ZlciBwcm9ibGVtcyB3aGVyZSBhbmRy
-b2lkIGhhbmRzZXRzIGdldCBicmlja2VkDQphZnRlciBkb2luZyBhIGZhY3RvcnkgcmVzZXQgdGhh
-dCBJIGhhZCB0cmFja2VkIGRvd24gdG8gbWFrZV9leHQ0ZnMsDQphbmQgdGhlIGV4aXN0ZW5jZSBv
-ZiBtYWtlX2V4dDRmcyBpcyBub3Qgc29tZXRoaW5nIEkgYWdyZWVkIHRvLCBhbmQNCmhhdmUgYmVl
-biBmaWdodGluZyBmb3IgeWVhcnMuICBTbyBJJ3ZlIGJlZW4gY2xlYW5pbmcgdXAgYWZ0ZXINCm1h
-a2VfZXh0NGZzIGZvciBhIHdoaWxlLCBldmVuIHRob3VnaCBpdCdzIG5vdCBteSByZXNwb25zaWJs
-aXR5LiAgKEZvcg0Kb25lIHRoaW5nIG15IHdvcmsgcmVzcG9uc2liaWxpdGllcyBhcmUgZm9yIGRh
-dGEgY2VudGVyIHNlcnZlcnMgYXQNCkdvb2dsZSwgKm5vdCogQW5kcm9pZDsgZm9yIGFub3RoZXIs
-IG5vIG9uZSBhc2tlZCAqbWUqIGJlZm9yZSB0aGV5IGNhbWUNCnVwIHdpdGggdGhlIGFib21pbmF0
-aW9uIHdoaWNoIGlzIG1ha2VfZXh0NGZzLikNCg0KU28gSSBkb24ndCBmZWVsIHBhcnRpY3VsYXJs
-eSwgb3IgcGVyc29uYWxseSwgcmVzcG9uc2libGUgZm9yIGJ1Z3MNCmNhdXNlZCBieSBtYWtlX2V4
-dDRmcywgYmVjYXVzZSBpZiBpdCBoYWQgYmVlbiB1cCB0byBtZSwgaXQgd291bGQgaGF2ZQ0KbmV2
-ZXIgZXhpc3RlZCBpbiB0aGUgZmlyc3QgcGxhY2UuDQoNCklmIGl0J3Mgb25seSBpbiBhbmNpZW50
-IEh1YXdlaSBkZXZpY2VzLCBJIGRvbid0IHNlZSBhIHN0cm9uZyByZWFzb24gdG8NCnN1cHBvcnQg
-aGlzIGluIHVwc3RyZWFtIGUyZnNwcm9ncy4gIEFyZSB5b3UgcmVhbGx5IGdvaW5nIHRvIGJlDQpi
-YWNrcG9ydGluZyB0aGUgbGF0ZXN0IGUyZnNwcm9ncyBpbnRvIHRoZXNlIGFuY2llbnQgSHVhd2Vp
-IGRldmljZXM/DQpJbiBteSBleHBlcmllbmNlLCB0aGUgQW5kcm9pZCB0ZWFtIGhhcyBhIGhhcmQg
-ZW5vdWdoIHRpbWUgZ2V0dGluZw0KdGhlaXIgQW5kcm9pZCBwYXJ0bmVycyB0byBiYWNrcG9ydCBr
-ZXJuZWwgZml4ZXMgZm9yIHNldmVyZSBzZWN1cml0eQ0KYnVncyBpbnRvIG9sZCBBbmRyb2lkIGRl
-dmljZXMgLS0tIG5ldmVyIG1pbmQgdmVyc2lvbnMgb2YgZTJmc3Byb2dzLg0KDQpJZiBub3QsIHdo
-YXQncyB0aGUgcG9pbnQ/DQoNClJlZ2FyZHMsDQoNCgkJCQkJCS0gVGVkDQo=
+On Mon, Jul 02, 2018 at 09:34:28AM +0000, Gaoming (ming, consumer BG) wrote:
+> I got it. You hate make_ext4fs, and me too.
+> You don't like to merge this patch in upstream e2fsprogs to resolve the bug of make_ext4fs.
+> 
+> Of course we will fix the bug on our ancient devices, we have to .
+> If this problem fixed or this patch merges in latest e2fsprogs, we will backport the latest e2fsprogs.
+> If not, we have no motivation to backport it.
+> 
+> I don't know whether other android devices suffer this problem.
+
+Can you be explicit and tell me how many Huawei devices uses a block
+size of 1024?  And can you help me understand *why* such a choice was made?
+
+     	       	       	   	   	      - Ted
