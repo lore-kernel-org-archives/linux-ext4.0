@@ -1,49 +1,68 @@
-From: "Theodore Y. Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH v2 1/2] dax: dax_layout_busy_page() warn on !exceptional
-Date: Tue, 3 Jul 2018 13:44:02 -0400
-Message-ID: <20180703174402.GD4384@thunk.org>
-References: <20180627212252.31032-1-ross.zwisler@linux.intel.com>
- <20180627212252.31032-2-ross.zwisler@linux.intel.com>
- <20180702221503.GA12830@thunk.org>
- <20180703154137.GB13019@linux.intel.com>
+From: Yang Shi <yang.shi@linux.alibaba.com>
+Subject: Re: [PATCH 1/2] fs: ext4: use BUG_ON if writepage call comes from
+ direct reclaim
+Date: Tue, 3 Jul 2018 16:10:51 -0700
+Message-ID: <f15b7474-66bd-515b-9c0e-16909bb2255d@linux.alibaba.com>
+References: <1530591079-33813-1-git-send-email-yang.shi@linux.alibaba.com>
+ <20180703103948.GB27426@thunk.org>
+ <6c305241-d502-b8ea-a187-54c33e4ca692@linux.alibaba.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
- Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20180703154137.GB13019-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+To: "Theodore Y. Ts'o" <tytso@mit.edu>, mgorman@techsingularity.net,
+        adilger.kernel@dilger.ca, akpm@linux-foundation.org,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <6c305241-d502-b8ea-a187-54c33e4ca692@linux.alibaba.com>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 03, 2018 at 09:41:37AM -0600, Ross Zwisler wrote:
-> 
-> It looks like you only picked up patch 1/2?  (I'm looking at the 'dev' branch
-> in your repo.)  Was that intentional?
 
-Actually, it was a mistake, in that if you looked at the commit, it's
-currently an empty commit.  The patch failed to apply because the ext4
-tree is still based on v4.17-rc4.
 
-My current plan is to hold the two patches until I get the current
-patch of fixes pushed to Linus (probably in the next day or two; I'll
-drop the empty commit before I send a pull request to reduce
-confusion).  I'll then reset the ext4 tree to be based on v4.17 (or
-possibly v4.18-rcX if that is necessary) and then apply the two
-patches in this series.
+On 7/3/18 10:05 AM, Yang Shi wrote:
+>
+>
+> On 7/3/18 3:39 AM, Theodore Y. Ts'o wrote:
+>> On Tue, Jul 03, 2018 at 12:11:18PM +0800, Yang Shi wrote:
+>>> direct reclaim doesn't write out filesystem page, only kswapd could do
+>>> it. So, if the call comes from direct reclaim, it is definitely a bug.
+>>>
+>>> And, Mel Gormane also mentioned "Ultimately, this will be a BUG_ON." In
+>>> commit 94054fa3fca1fd78db02cb3d68d5627120f0a1d4 ("xfs: warn if direct
+>>> reclaim tries to writeback pages").
+>>>
+>>> Although it is for xfs, ext4 has the similar behavior, so elevate
+>>> WARN_ON to BUG_ON.
+>>>
+>>> And, correct the comment accordingly.
+>>>
+>>> Cc: Mel Gorman <mgorman@techsingularity.net>
+>>> Cc: "Theodore Ts'o" <tytso@mit.edu>
+>>> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+>>> Signed-off-by: Yang Shi <yang.shi@linux.alibaba.com>
+>> What's the upside of crashing the kernel if the file sytsem can 
+>> handle it?
 
-Apologies for the confusion....
+BTW, the comment does sound misleading. Direct reclaim is not a 
+legitimate context to call writepage. I'd like to correct at least.
 
-						- Ted
+Thanks,
+Yang
+
+>
+> I'm not sure if it is a good choice to let filesystem handle such 
+> vital VM regression. IMHO, writing out filesystem page from direct 
+> reclaim context is a vital VM bug. It means something is definitely 
+> wrong in VM. It should never happen.
+>
+> It sounds ok to have filesystem throw out warning and handle it, but 
+> I'm not sure if someone will just ignore the warning, but it should 
+> *never* be ignored.
+>
+> Yang
+>
+>>
+>>                                                 - Ted
+>
