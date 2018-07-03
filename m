@@ -1,73 +1,49 @@
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-Subject: Re: [PATCH 2/2] fs: xfs: use BUG_ON if writepage call comes from
- direct reclaim
-Date: Tue, 3 Jul 2018 10:19:20 -0700
-Message-ID: <20180703171920.GC5711@magnolia>
-References: <1530591079-33813-1-git-send-email-yang.shi@linux.alibaba.com>
- <1530591079-33813-2-git-send-email-yang.shi@linux.alibaba.com>
+From: "Theodore Y. Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: [PATCH v2 1/2] dax: dax_layout_busy_page() warn on !exceptional
+Date: Tue, 3 Jul 2018 13:44:02 -0400
+Message-ID: <20180703174402.GD4384@thunk.org>
+References: <20180627212252.31032-1-ross.zwisler@linux.intel.com>
+ <20180627212252.31032-2-ross.zwisler@linux.intel.com>
+ <20180702221503.GA12830@thunk.org>
+ <20180703154137.GB13019@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: mgorman@techsingularity.net, tytso@mit.edu,
-        adilger.kernel@dilger.ca, dchinner@redhat.com,
-        akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org
-To: Yang Shi <yang.shi@linux.alibaba.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <1530591079-33813-2-git-send-email-yang.shi@linux.alibaba.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20180703154137.GB13019-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 03, 2018 at 12:11:19PM +0800, Yang Shi wrote:
-> direct reclaim doesn't write out filesystem page, only kswapd could do
-> this. So, if it is called from direct relaim, it is definitely a bug.
+On Tue, Jul 03, 2018 at 09:41:37AM -0600, Ross Zwisler wrote:
 > 
-> And, Mel Gorman mentioned "Ultimately, this will be a BUG_ON." in commit
-> 94054fa3fca1fd78db02cb3d68d5627120f0a1d4 ("xfs: warn if direct reclaim
-> tries to writeback pages"),
-> 
-> It has been many years since that commit, so it should be safe to
-> elevate WARN_ON to BUG_ON now.
-> 
-> Cc: Mel Gorman <mgorman@techsingularity.net>
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: Dave Chinner <dchinner@redhat.com>
-> Signed-off-by: Yang Shi <yang.shi@linux.alibaba.com>
-> ---
->  fs/xfs/xfs_aops.c | 6 ++----
->  1 file changed, 2 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-> index 8eb3ba3..7efc2d2 100644
-> --- a/fs/xfs/xfs_aops.c
-> +++ b/fs/xfs/xfs_aops.c
-> @@ -1080,11 +1080,9 @@ static inline int xfs_bio_add_buffer(struct bio *bio, struct buffer_head *bh)
->  	 * allow reclaim from kswapd as the stack usage there is relatively low.
->  	 *
->  	 * This should never happen except in the case of a VM regression so
-> -	 * warn about it.
-> +	 * BUG about it.
->  	 */
-> -	if (WARN_ON_ONCE((current->flags & (PF_MEMALLOC|PF_KSWAPD)) ==
-> -			PF_MEMALLOC))
-> -		goto redirty;
-> +	BUG_ON((current->flags & (PF_MEMALLOC|PF_KSWAPD)) == PF_MEMALLOC);
+> It looks like you only picked up patch 1/2?  (I'm looking at the 'dev' branch
+> in your repo.)  Was that intentional?
 
-Ugh, please do not increase the BUG() factor.  Even if this happens due
-to a regression it's /much/ easier to debug if we don't halt the system.
+Actually, it was a mistake, in that if you looked at the commit, it's
+currently an empty commit.  The patch failed to apply because the ext4
+tree is still based on v4.17-rc4.
 
-(IOWs, I decline to take this patch.)
+My current plan is to hold the two patches until I get the current
+patch of fixes pushed to Linus (probably in the next day or two; I'll
+drop the empty commit before I send a pull request to reduce
+confusion).  I'll then reset the ext4 tree to be based on v4.17 (or
+possibly v4.18-rcX if that is necessary) and then apply the two
+patches in this series.
 
---D
+Apologies for the confusion....
 
->  
->  	/*
->  	 * Given that we do not allow direct reclaim to call us, we should
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
