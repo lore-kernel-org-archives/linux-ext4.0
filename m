@@ -1,46 +1,50 @@
-From: Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 2/2] fs: xfs: use BUG_ON if writepage call comes from
- direct reclaim
-Date: Tue, 3 Jul 2018 14:37:38 +1000
-Message-ID: <20180703043738.GG2234@dastard>
-References: <1530591079-33813-1-git-send-email-yang.shi@linux.alibaba.com>
- <1530591079-33813-2-git-send-email-yang.shi@linux.alibaba.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: =?utf-8?B?562U5aSNOiDnrZTlpI06IOetlA==?=
+ =?utf-8?B?5aSNOiDnrZTlpI06IOetlOWkjTog562U5aSNOiBbUEFUQ0hdIGV4dDQ6IGUy?=
+ =?utf-8?Q?fsprogs=3A_fix_inode_bitma?= =?utf-8?Q?p?= num not
+ integer,incompatible for ancient android devices
+Date: Tue, 3 Jul 2018 06:35:57 -0400
+Message-ID: <20180703103557.GA27426@thunk.org>
+References: <20180628022900.GA663@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC416E8@dggemm511-mbx.china.huawei.com>
+ <20180628153022.GA8521@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
+ <20180629142612.GE1231@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41869@dggemm511-mbx.china.huawei.com>
+ <20180630130429.GA26529@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41D5F@dggemm511-mbx.china.huawei.com>
+ <20180702121654.GA15131@thunk.org>
+ <FDC91B229D965C458E3615E98C48ADDD0EC41DC4@dggemm511-mbx.china.huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: mgorman@techsingularity.net, tytso@mit.edu,
-        adilger.kernel@dilger.ca, darrick.wong@oracle.com,
-        dchinner@redhat.com, akpm@linux-foundation.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-kernel@vger.kernel.org
-To: Yang Shi <yang.shi@linux.alibaba.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
+        "Shenchen (harry)" <harry.shen@huawei.com>,
+        "miaoxie (A)" <miaoxie@huawei.com>,
+        "yangfei (D)" <yangfei39@huawei.com>,
+        "Renlipeng (OS driver)" <renlipeng@huawei.com>
+To: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1530591079-33813-2-git-send-email-yang.shi@linux.alibaba.com>
+In-Reply-To: <FDC91B229D965C458E3615E98C48ADDD0EC41DC4@dggemm511-mbx.china.huawei.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 03, 2018 at 12:11:19PM +0800, Yang Shi wrote:
-> direct reclaim doesn't write out filesystem page, only kswapd could do
-> this. So, if it is called from direct relaim, it is definitely a bug.
-> 
-> And, Mel Gorman mentioned "Ultimately, this will be a BUG_ON." in commit
-> 94054fa3fca1fd78db02cb3d68d5627120f0a1d4 ("xfs: warn if direct reclaim
-> tries to writeback pages"),
-> 
-> It has been many years since that commit, so it should be safe to
-> elevate WARN_ON to BUG_ON now.
+On Tue, Jul 03, 2018 at 12:58:48AM +0000, Gaoming (ming, consumer BG) wrote:
+> And can you help me understand *why* such a choice was made?
+> -----if there is such a problem in your devices, how will you do? Is there any other choice?
+> ----- of course, you cannot format the partition.
 
-NACK.
+You misunderstand my question.  Why was the choice of a blocksize of
+1024 made?
 
-The existing code warns and then handles the situation gracefully -
-this is the appropriate way to handle incorrect calling contexts.
-There is absolutely no good reason to panic production kernels
-in situations like this.
+I'm trying to understand how many devices, and why any other
+manufacture would make, what seems to me, to be a completely insane
+choice.
 
-Cheers,
+How long has Huawei been using a 1024 byte blocksize?  And why?  And
+for how many devices?  Essentially, I'm trying to figure out if this
+was a Huawei-specific mistake.
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+					- Ted
