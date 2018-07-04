@@ -1,117 +1,90 @@
-From: "Gaoming (ming, consumer BG)" <gaoming20@huawei.com>
-Subject: =?gb2312?B?tPC4tDogtPC4tDogtPC4tDogtPC4tDogtPC4tDogtPC4tDogtPC4tDogtPA=?=
- =?gb2312?B?uLQ6IFtQQVRDSF0gZXh0NDogZTJmc3Byb2dzOiBmaXggaW5vZGUgYml0bWFw?=
- =?gb2312?B?IG51bSBub3QgaW50ZWdlcixpbmNvbXBhdGlibGUgZm9yIGFuY2llbnQgYW5k?=
- =?gb2312?Q?roid_devices?=
-Date: Wed, 4 Jul 2018 01:54:12 +0000
-Message-ID: <FDC91B229D965C458E3615E98C48ADDD0EC41F6D@dggemm511-mbx.china.huawei.com>
-References: <20180628153022.GA8521@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC4179B@dggemm511-mbx.china.huawei.com>
- <20180629142612.GE1231@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC41869@dggemm511-mbx.china.huawei.com>
- <20180630130429.GA26529@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC41D5F@dggemm511-mbx.china.huawei.com>
- <20180702121654.GA15131@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC41DC4@dggemm511-mbx.china.huawei.com>
- <20180703103557.GA27426@thunk.org>
- <FDC91B229D965C458E3615E98C48ADDD0EC41F40@dggemm511-mbx.china.huawei.com>
- <20180703160301.GB4384@thunk.org>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v3 2/2] ext4: handle layout changes to pinned DAX mappings
+Date: Wed, 4 Jul 2018 14:27:23 +0200
+Message-ID: <20180704122723.lup2wovzb6u6ta6v@quack2.suse.cz>
+References: <20180627212252.31032-3-ross.zwisler@linux.intel.com>
+ <20180702172912.329-1-ross.zwisler@linux.intel.com>
+ <20180704004923.GT19934@dastard>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="gb2312"
-Content-Transfer-Encoding: base64
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "Liqingchao (sorp)" <sorp.liqingchao@huawei.com>,
-        "Shenchen (harry)" <harry.shen@huawei.com>,
-        "miaoxie (A)" <miaoxie@huawei.com>,
-        "yangfei (D)" <yangfei39@huawei.com>,
-        "Renlipeng (OS driver)" <renlipeng@huawei.com>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180703160301.GB4384@thunk.org>
-Content-Language: zh-CN
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20180704004923.GT19934@dastard>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-SGksDQoNCkkgZG8gbm90IHRoaW5rIEh1YXdlaSBoYXMgaGFja2VkIG1ha2VfZXh0NGZzLg0KRm9y
-IGl0IGNvdWxkIGJlIHJlcHJvZHVjZWQgaW4gbWFrZV9leHQ0ZnMgbWFzdGVyIGJyYWNoIGJlZm9y
-ZSBKdW4gMjF0aCAyMDE4LiBMaWtlIGJlbG93LA0KSSB0aGluayB3ZSBqdXN0IGNob29zZSBub3Qg
-cmVjb21tZW5kZWQgcGFyYW1ldGVyICItYiAxMDI0IiBmb3Igc21hbGwgcGFydGl0aW9uIGxpa2Ug
-YmVsb3csIGJ1dCBpdCdzIGxlZ2FsIHRob3VnaCBub3QgZ29vZC4gDQoNCi4vaG9zdC9saW51eC14
-ODYvYmluL21ha2VfZXh0NGZzICAtcyAtbCAyME0gLWIgMTAyNCBnYW9taW5nLmltZyANCkNyZWF0
-aW5nIGZpbGVzeXN0ZW0gd2l0aCBwYXJhbWV0ZXJzOg0KICAgIFNpemU6IDIwOTcxNTIwDQogICAg
-QmxvY2sgc2l6ZTogMTAyNA0KICAgIEJsb2NrcyBwZXIgZ3JvdXA6IDgxOTINCiAgICBJbm9kZXMg
-cGVyIGdyb3VwOiAxNzA4DQogICAgSW5vZGUgc2l6ZTogMjU2DQogICAgSm91cm5hbCBibG9ja3M6
-IDEwMjQNCiAgICBMYWJlbDoNCiAgICBCbG9ja3M6IDIwNDgwDQogICAgQmxvY2sgZ3JvdXBzOiAz
-DQogICAgUmVzZXJ2ZWQgYmxvY2sgZ3JvdXAgc2l6ZTogOTUNCkNyZWF0ZWQgZmlsZXN5c3RlbSB3
-aXRoIDExLzUxMjQgaW5vZGVzIGFuZCAyNTA5LzIwNDgwIGJsb2Nrcw0KDQpPdGhlciB2ZW5kb3Jz
-IG1heSBjaG9vc2UgdGhpcyBwYXJhLCBvciBub3QsIHdlIGRvbid0IGtub3cuIG1heWJlIHRoZXkg
-YXJlIGx1Y2t5IG9yIHdpc2Ugbm90IGNob29zaW5nIDEwMjQuDQoNCk9mIGNvdXJzZSB3ZSB3aWxs
-IGNob29zZSA0MDk2LCBvciBta2UyZnMgZnJvbSBub3cgb24uDQoNCldlIGp1c3Qgd2FudCB0byBm
-aXggaGlzdG9yaWNhbCBwcm9ibGVtLiBXZSB3aWxsIGZpeCBpdCBieSBvdXJzZWx2ZXMuDQpJIGZ1
-bGx5IHVuZGVyc3RhbmQgeW91ciBhdHRpdHVkZS4NClRoYW5rcyBhIGxvdC4NCg0KUmVnYXJkcywN
-Ck1pbmcNCg0KLS0tLS3Tyrz+1K28/i0tLS0tDQq3orz+yMs6IFRoZW9kb3JlIFkuIFRzJ28gW21h
-aWx0bzp0eXRzb0BtaXQuZWR1XSANCreiy83KsbzkOiAyMDE4xOo31MI0yNUgMDowMw0KytW8/sjL
-OiBHYW9taW5nIChtaW5nLCBjb25zdW1lciBCRykNCrOty806IGxpbnV4LWV4dDRAdmdlci5rZXJu
-ZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnOyBMaXFpbmdjaGFvIChzb3JwKTsg
-U2hlbmNoZW4gKGhhcnJ5KTsgbWlhb3hpZSAoQSk7IHlhbmdmZWkgKEQpOyBSZW5saXBlbmcgKE9T
-IGRyaXZlcikNCtb3zOI6IFJlOiC08Li0OiC08Li0OiC08Li0OiC08Li0OiC08Li0OiC08Li0OiC0
-8Li0OiBbUEFUQ0hdIGV4dDQ6IGUyZnNwcm9nczogZml4IGlub2RlIGJpdG1hcCBudW0gbm90IGlu
-dGVnZXIsaW5jb21wYXRpYmxlIGZvciBhbmNpZW50IGFuZHJvaWQgZGV2aWNlcw0KDQpPbiBUdWUs
-IEp1bCAwMywgMjAxOCBhdCAxMToxNToyMUFNICswMDAwLCBHYW9taW5nIChtaW5nLCBjb25zdW1l
-ciBCRykgd3JvdGU6DQo+IA0KPiBZb3UgbWlzdW5kZXJzdGFuZCBteSBxdWVzdGlvbi4gIFdoeSB3
-YXMgdGhlIGNob2ljZSBvZiBhIGJsb2Nrc2l6ZSBvZg0KPiAxMDI0IG1hZGU/DQo+IA0KPiAtLS0t
-LXNvbWUgb25lIGNob29zZSwgbm90IG1lIC4gSSBndWVzcyB0aGV5IHdhbnQgZ2V0IG1vcmUgaW5v
-ZGVzIGluIDIwTSBmaWxlc3lzdGVtLg0KDQpUaGF0IGNhbid0IGJlIHRoZSBleHBsYW5hdGlvbi4N
-Cg0KSSBqdXN0IGNoZWNrZWQgdGhlIHNvdXJjZXMgZm9yIG1ha2VfZXh0NGZzOyB0aGUgYmxvY2tz
-aXplIHdhcw0KaGFyZC1jb2RlZCwgYXMgd2FzIHRoZSBudW1iZXIgb2YgaW5vZGVzLiAgU28gaW4g
-b3JkZXIgdG8gdXNlIGENCmJsb2NrX3NpemUgb2YgMTAyNCBieXRlcywgc29tZW9uZSBtdXN0IGhh
-dmUgaGFja2VkIHRoZSBzb3VyY2VzDQpkaXJlY3RseSBhbmQgbW9kaWZpZWQgY29tcHV0ZV9ibG9j
-a19zaXplKCkuICBBbmQgaW4gZmFjdCwgaXQgd291bGQNCmhhdmUgYmVlbiAqZWFzaWVyKiB0byBz
-aW1wbHkgaGFjayBjb21wdXRlX2lub2RlcygpIHdoaWNoIGlzIGp1c3QgYSBmZXcNCmxpbmVzIGJl
-bG93IGluIG1ha2VfZXh0NGZzLmM6DQoNCnN0YXRpYyB1MzIgY29tcHV0ZV9ibG9ja19zaXplKCkN
-CnsNCglyZXR1cm4gNDA5NjsNCn0NCg0Kc3RhdGljIHUzMiBjb21wdXRlX2lub2RlcygpDQp7DQoJ
-cmV0dXJuIERJVl9ST1VORF9VUChpbmZvLmxlbiwgaW5mby5ibG9ja19zaXplKSAvIDQ7DQp9DQoN
-Cg0KVGhpcyBhbHNvIG1lYW5zIGNvbW1pdCAwNmMzNWY5MzVhN2Egd2hpY2ggZml4ZWQgbWFrZV9l
-eHQ0ZnMuYyB3YXNuJ3QNCmJ1Z2d5OyBpdCB3YXMgYSB2YWxpZCBmaXggZ2l2ZW4gdGhlIGNvbXBs
-ZXRlLW5vbi1hZGp1c3RhYmlsaXR5IG9mIHRoZQ0KYmxvY2tzaXplIGluIG1ha2VfZXh0NGZzLiAg
-WWVzLCBpdCdzIG5vdCBhIGdyZWF0IGZpeCwgc2luY2UgaXQgd2FzDQpmcmFnaWxlIC0tLSBidXQg
-dGhhdCdzIGhhcmRseSB0aGUgc21hbGxlc3QgcHJvYmxlbSBpbiBtYWtlX2V4dDRmcywNCnRoZXJl
-IHdhcyBwbGVudHkgb2Ygb3RoZXIgc3VwZXItZnJhZ2lsZSBiaXRzIGluIG1ha2VfZXh0NGZzLiAg
-VGhlcmUncw0KYSAqcmVhc29uKiBJIHdhcyBwdXNoaW5nIGhhcmQgdG8gbWFrZSBtYWtlX2V4dDRm
-cyBnbyBhd2F5Lg0KDQpUaGF0IGJlaW5nIHNhaWQsIGdpdmVuIHRoZSBibG9jayBzaXplIG9mIG1h
-a2VfZXh0NGZzIHdhcyBoYXJkLWNvZGVkIHRvDQo0MDk2LCBpdCBtYWtlcyBpdCBjbGVhciB0aGF0
-IHRoZSBjaGFuZ2UgdG8gbWFrZSBpdCBjcmVhdGUgYSBibG9ja3NpemUNCm9mIDEwMjQgbXVzdCBo
-YXZlIGJlZWVuIGEgSHVhd2VpLWxvY2FsIGNoYW5nZSwgYW5kIGl0IHdhcyBuZXZlciBzZW50DQpi
-YWNrIHRvIHRoZSB0aGUgY29tbW9uIEFPU1AgdHJlZS4gIChJZiBpdCBoYWQsIEkgd291bGQgaGF2
-ZSBnb3R0ZW4gYW4NCmUtbWFpbCwgYW5kIEkgd291bGQgaGF2ZSBleHBsYWluZWQgdG8gd2hvZXZl
-ciBoYWQgbWFkZSB0aGlzDQpIdWF3ZWktbG9jYWwgaGFjayB3aHkgaXQgd2FzIHN1Y2ggYSBpbmNy
-ZWRpYmx5IGJhZCBpZGVhLikNCg0KDQpJbiBhbnkgY2FzZSwgd2hhdCBJIHdvdWxkIHJlY29tbWVu
-ZCBhdCB0aGlzIHBvaW50IGlmIHlvdSBuZWVkIHRvDQpzdXBwb3J0IEh1YXdlaSBkZXZpY2VzIHRo
-YXQgZG8gdGhpcywgaXMgdGhhdCB5b3Uga2VlcCB5b3VyIGUyZnNwcm9ncw0KYXMgYSBIdWF3ZWkt
-c3BlY2lmaWMgZTJmc3Byb2dzIHJlcG8uDQoNCj4gSG93IGxvbmcgaGFzIEh1YXdlaSBiZWVuIHVz
-aW5nIGEgMTAyNCBieXRlIGJsb2Nrc2l6ZT8gIEFuZCB3aHk/ICBBbmQNCj4gZm9yIGhvdyBtYW55
-IGRldmljZXM/ICBFc3NlbnRpYWxseSwgSSdtIHRyeWluZyB0byBmaWd1cmUgb3V0IGlmIHRoaXMN
-Cj4gd2FzIGEgSHVhd2VpLXNwZWNpZmljIG1pc3Rha2UuDQo+IC0tLS0tIEkgY2Fubm90IGFuc3dl
-ciB0aGlzIHF1ZXN0aW9uLg0KDQpXZWxsLCBhY3R1YWxseSwgaXQgc2hvdWxkIGJlIHZlcnkgZWFz
-eSBmb3IgeW91IHRvIGRldHJlbWluZSB0aGUgYW5zd2VyDQp0aGlzIHF1ZXN0aW9uIC0tLSBpdCBz
-aG91bGQganVzdCBiZSBhIG1hdHRlciBvZiBjaGVja2luZyBnaXQgc291cmNlDQpjb250cm9sIGhp
-c3RvcnkgYW5kIHNlZSB3aGljaCBwcm9kdWN0IHRyZWVzIGhhcyB0aGUgY2hhbmdlIHRvDQpwbGF0
-Zm9ybXMvc3lzdGVtL2V4dHJhcy9leHQ0X3V0aWxzL21ha2VfZXh0NGZzLmMgLS0tIGFuZCB5b3Ug
-bXVzdCBoYXZlDQpwbGF0Zm9ybS1zcGVjaWZpYyBzb3VyY2UgdHJlZXMgaW4gb3JkZXIgdG8gYmUg
-Y29tcGxpYW50IHdpdGggdGhlIEdOVQ0KUHVibGljIExpY2Vuc2UgKEdQTCkuDQoNCkV2ZW4gaWYg
-eW91IGRpZG4ndCwgaXQgd291bGQganVzdCBiZSBhIG1hdHRlciB1c2luZyBkdW1wZTJmcyBvcg0K
-ZGVidWdmcyAodGhleSBhcmVuJ3QgYnVpbHQgYnkgZGVmYXVsdCBpbiBlMmZzcHJvZ3MgYnkgdGhl
-IEFPU1AgYnVpbGQNCnRyZWVzLCBidXQgdGhleSBzaG91bGQgYmUgYnVpbGRhYmxlKSB0byB0aG9z
-ZSBIdWF3ZWkgZGV2aWNlcyB0aGF0IHlvdQ0Kc3RpbGwgc3VwcG9ydCwgYW5kIHRoZW4gcnVuIGVp
-dGhlciBkdW1wZTJmcyBvciBkZWJ1Z2ZzIHZpYSBhZGIgc2hlbGwNCmFuZCBzZWUgd2hhdCBibG9j
-ayBzaXplIGlzIHJlcG9ydGVkLg0KDQpFdmVuIGlmIHlvdSBhcmVuJ3QgYWxsb3dlZCB0byBhbnN3
-ZXIgdGhpcyBxdWVzdGlvbiBwdWJsaWNhbGx5LCBJJ2QNCnN0cm9uZ2x5IHJlY29tbWVuZCB5b3Ug
-ZmlndXJlIGl0IG91dCwgc28geW91IGtub3cgd2hlbiB5b3VyIGxvY2FsDQpjaGFuZ2UgdG8gZTJm
-c3Byb2dzIGNhbiBiZSBkcm9wcGVkLiAgSSdkIGZ1cnRoZXIgcmVjb21tZW5kIHRoYXQgeW91DQpt
-YWtlIHN1cmUgYWxsIG5ldyBIdWF3ZWkgZGV2aWNlcyB1c2UgYSBibG9jayBzaXplIG9mIDQwOTYs
-IHByZWZlcmFibHkNCnVzaW5nIG1rZTJmcyBhbmQgZTJmc2Ryb2lkLCBhcyBpcyBjdXJyZW50bHkg
-ZG9uZSBpbiBBT1NQLiAgRmFpbGluZw0KdGhhdCwgYXQgbGVhc3QgcGxlYXNlIHVzZSB0aGUgc3Rv
-Y2sgbWFrZV9leHQ0ZnMgd2hpY2ggZG9lc24ndCBoYXZlIHRoZQ0KSHVhd2VpLXNwZWNpZmljIGhh
-Y2sgdG8gc3VwcG9ydCAxMDI0IGJ5dGUgYmxvY2sgc2l6ZXMsIG9yIGhhdmUgdGhhdA0KSHVhd2Vp
-LXNwZWNpZmljIGhhY2sgcmV2ZXJ0ZWQuDQoNClJlZ2FyZHMsDQoNCgkJCQkJCS0gVGVkDQo=
+On Wed 04-07-18 10:49:23, Dave Chinner wrote:
+> On Mon, Jul 02, 2018 at 11:29:12AM -0600, Ross Zwisler wrote:
+> > Follow the lead of xfs_break_dax_layouts() and add synchronization between
+> > operations in ext4 which remove blocks from an inode (hole punch, truncate
+> > down, etc.) and pages which are pinned due to DAX DMA operations.
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> > Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> > Reviewed-by: Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+> > ---
+> > 
+> > Changes since v2:
+> >  * Added a comment to ext4_insert_range() explaining why we don't call
+> >    ext4_break_layouts(). (Jan)
+> 
+> Which I think is wrong and will cause data corruption.
+> 
+> > @@ -5651,6 +5663,11 @@ int ext4_insert_range(struct inode *inode, loff_t offset, loff_t len)
+> >  			LLONG_MAX);
+> >  	if (ret)
+> >  		goto out_mmap;
+> > +	/*
+> > +	 * We don't need to call ext4_break_layouts() because we aren't
+> > +	 * removing any blocks from the inode.  We are just changing their
+> > +	 * offset by inserting a hole.
+> > +	 */
+> 
+> The entire point of these leases is so that a thrid party can
+> directly access the blocks underlying the file. That means they are
+> keeping their own file offset<->disk block mapping internally, and
+> they are assuming that it is valid for as long as they hold the
+> lease. If the filesystem modifies the extent map - even something
+> like a shift here which changes the offset<->disk block mapping -
+> the userspace app now has a stale mapping and so the lease *must be
+> broken* to tell it that it's mappings are now stale and it needs to
+> refetch them.
+
+Well, ext4 has no real concept of leases and no pNFS support. And DAX
+requirements wrt consistency are much weaker than those of pNFS. This is
+mostly caused by the fact that calls like invalidate_mapping_pages() will
+flush offset<->pfn mappings DAX maintains in the radix tree automatically
+(similarly as it happens when page cache is used).
+
+What Ross did just keeps ext4 + DAX behave similarly as ext4 + page cache
+does - i.e., if you use mmaped file as a buffer e.g. for direct IO and mix
+your direct IO with extent manipulations on that buffer file, you will get
+inconsistent results. With page cache, pages you use as buffers will get
+detached from the inode during extent manipulations and discarded once you
+drop your page references. With DAX, changes will land at a different
+offset of the file than you might have thought. But that is the same as if
+we just waited for the IO to complete (which is what ext4_break_layouts()
+effectively does) and then shifted those blocks.
+
+So the biggest problem I can see here is that ext4_break_layouts() is a
+misnomer as it promises more than the function actually does (wait for page
+references to be dropped). If we called it like ext4_dax_unmap_pages(),
+things would be clearer I guess. Ross?
+
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
