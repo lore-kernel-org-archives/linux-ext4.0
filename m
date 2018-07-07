@@ -1,55 +1,60 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [Bisect] ext4_validate_inode_bitmap:98: comm stress-ng: Corrupt
- inode bitmap
-Date: Sat, 7 Jul 2018 00:10:18 -0400
-Message-ID: <20180707041018.GB3546@thunk.org>
-References: <20180706174324.GA3049@xps13.dannf>
+From: Souptick Joarder <jrdr.linux@gmail.com>
+Subject: [PATCH] fs: ext4: use new return type vm_fault_t
+Date: Sat, 7 Jul 2018 16:00:30 +0530
+Message-ID: <20180707103029.GA13365@jordon-HP-15-Notebook-PC>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        yanaijie@huawei.com, colin.king@canonical.com,
-        kamal.mostafa@canonical.com, ike.pan@canonical.com
-To: dann frazier <dann.frazier@canonical.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: tytso@mit.edu, adilger.kernel@dilger.ca, willy@infradead.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180706174324.GA3049@xps13.dannf>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 06, 2018 at 11:43:24AM -0600, dann frazier wrote:
-> Hi,
->   We're seeing a regression triggered by the stress-ng[*] "chdir" test
-> that I've bisected to:
-> 
-> 044e6e3d74a3 ext4: don't update checksum of new initialized bitmaps
-> 
-> So far we've only seen failures on servers based on HiSilicon's family
-> of ARM64 SoCs (D05/Hi1616 SoC, D06/Hi1620 SoC). On these systems it is
-> very reproducible.
+Use new return type vm_fault_t for fault handler
+ext4_filemap_fault.
 
-Thanks for the report.  Can you verify whether or not this patch fixes
-things for you?
+Signed-off-by: Souptick Joarder <jrdr.linux@gmail.com>
+---
+ fs/ext4/ext4.h  | 2 +-
+ fs/ext4/inode.c | 8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-					- Ted
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index da6c10c1e37a..1cfb74bc4dca 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -90,6 +90,8 @@ static int ext4_validate_inode_bitmap(struct super_block *sb,
- 		return -EFSCORRUPTED;
- 
- 	ext4_lock_group(sb, block_group);
-+	if (buffer_verified(bh))
-+		goto verified;
- 	blk = ext4_inode_bitmap(sb, desc);
- 	if (!ext4_inode_bitmap_csum_verify(sb, block_group, desc, bh,
- 					   EXT4_INODES_PER_GROUP(sb) / 8)) {
-@@ -101,6 +103,7 @@ static int ext4_validate_inode_bitmap(struct super_block *sb,
- 		return -EFSBADCRC;
- 	}
- 	set_buffer_verified(bh);
-+verified:
- 	ext4_unlock_group(sb, block_group);
- 	return 0;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0b12785..aec0010 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2470,7 +2470,7 @@ int do_journal_get_write_access(handle_t *handle,
+ extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+ 			     loff_t lstart, loff_t lend);
+ extern int ext4_page_mkwrite(struct vm_fault *vmf);
+-extern int ext4_filemap_fault(struct vm_fault *vmf);
++extern vm_fault_t ext4_filemap_fault(struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
+ extern void ext4_da_update_reserve_space(struct inode *inode,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2ea07ef..03ac322 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -6205,14 +6205,14 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
+ 	return ret;
  }
+ 
+-int ext4_filemap_fault(struct vm_fault *vmf)
++vm_fault_t ext4_filemap_fault(struct vm_fault *vmf)
+ {
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+-	int err;
++	vm_fault_t ret;
+ 
+ 	down_read(&EXT4_I(inode)->i_mmap_sem);
+-	err = filemap_fault(vmf);
++	ret = filemap_fault(vmf);
+ 	up_read(&EXT4_I(inode)->i_mmap_sem);
+ 
+-	return err;
++	return ret;
+ }
+-- 
+1.9.1
