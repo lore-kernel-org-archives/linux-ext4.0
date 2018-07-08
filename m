@@ -1,60 +1,64 @@
-From: Souptick Joarder <jrdr.linux@gmail.com>
-Subject: [PATCH] fs: ext4: use new return type vm_fault_t
-Date: Sat, 7 Jul 2018 16:00:30 +0530
-Message-ID: <20180707103029.GA13365@jordon-HP-15-Notebook-PC>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 fixes for 4.18
+Date: Sun, 8 Jul 2018 01:02:21 -0400
+Message-ID: <20180708050221.GA5947@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca, willy@infradead.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Use new return type vm_fault_t for fault handler
-ext4_filemap_fault.
+The following changes since commit 4f2f76f751433908364ccff82f437a57d0e6e9b7:
 
-Signed-off-by: Souptick Joarder <jrdr.linux@gmail.com>
----
- fs/ext4/ext4.h  | 2 +-
- fs/ext4/inode.c | 8 ++++----
- 2 files changed, 5 insertions(+), 5 deletions(-)
+  ext4: fix fencepost error in check for inode count overflow during resize (2018-05-25 12:51:25 -0400)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0b12785..aec0010 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2470,7 +2470,7 @@ int do_journal_get_write_access(handle_t *handle,
- extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
- 			     loff_t lstart, loff_t lend);
- extern int ext4_page_mkwrite(struct vm_fault *vmf);
--extern int ext4_filemap_fault(struct vm_fault *vmf);
-+extern vm_fault_t ext4_filemap_fault(struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
- extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
- extern void ext4_da_update_reserve_space(struct inode *inode,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2ea07ef..03ac322 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -6205,14 +6205,14 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
- 	return ret;
- }
- 
--int ext4_filemap_fault(struct vm_fault *vmf)
-+vm_fault_t ext4_filemap_fault(struct vm_fault *vmf)
- {
- 	struct inode *inode = file_inode(vmf->vma->vm_file);
--	int err;
-+	vm_fault_t ret;
- 
- 	down_read(&EXT4_I(inode)->i_mmap_sem);
--	err = filemap_fault(vmf);
-+	ret = filemap_fault(vmf);
- 	up_read(&EXT4_I(inode)->i_mmap_sem);
- 
--	return err;
-+	return ret;
- }
--- 
-1.9.1
+are available in the Git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+
+for you to fetch changes up to a17712c8e4be4fa5404d20e9cd3b2b21eae7bc56:
+
+  ext4: check superblock mapped prior to committing (2018-07-02 18:45:18 -0400)
+
+----------------------------------------------------------------
+Bug fixes for ext4; most of which relate to vulnerabilities where a
+maliciously crafted file system image can result in a kernel OOPS or
+hang.  At least one fix addresses an inline data bug could be
+triggered by userspace without the need of a crafted file system
+(although it does require that the inline data feature be enabled).
+
+----------------------------------------------------------------
+Jon Derrick (1):
+      ext4: check superblock mapped prior to committing
+
+Theodore Ts'o (14):
+      ext4: add warn_on_error mount option
+      ext4: add corruption check in ext4_xattr_set_entry()
+      ext4: always verify the magic number in xattr blocks
+      ext4: always check block group bounds in ext4_init_block_bitmap()
+      ext4: make sure bitmaps and the inode table don't overlap with bg descriptors
+      ext4: only look at the bg_flags field if it is valid
+      ext4: verify the depth of extent tree in ext4_find_extent()
+      ext4: include the illegal physical block in the bad map ext4_error msg
+      ext4: clear i_data in ext4_inode_info when removing inline data
+      ext4: never move the system.data xattr out of the inode body
+      jbd2: don't mark block as modified if the handle is out of credits
+      ext4: avoid running out of journal credits when appending to an inline file
+      ext4: add more inode number paranoia checks
+      ext4: add more mount time checks of the superblock
+
+ fs/ext4/balloc.c       | 21 +++++++++++++--------
+ fs/ext4/ext4.h         |  9 +--------
+ fs/ext4/ext4_extents.h |  1 +
+ fs/ext4/extents.c      |  6 ++++++
+ fs/ext4/ialloc.c       | 14 ++++++++++++--
+ fs/ext4/inline.c       | 39 ++-------------------------------------
+ fs/ext4/inode.c        |  7 ++++---
+ fs/ext4/mballoc.c      |  6 ++++--
+ fs/ext4/super.c        | 99 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------
+ fs/ext4/xattr.c        | 40 ++++++++++++++++++----------------------
+ fs/jbd2/transaction.c  |  9 ++++++++-
+ 11 files changed, 155 insertions(+), 96 deletions(-)
