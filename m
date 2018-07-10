@@ -1,171 +1,69 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: fix inline data updates with checksums enabled
-Date: Tue, 10 Jul 2018 13:28:40 -0400
-Message-ID: <20180710172840.4309-1-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
+From: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Subject: [PATCH v4 1/2] dax: dax_layout_busy_page() warn on !exceptional
+Date: Tue, 10 Jul 2018 13:10:30 -0600
+Message-ID: <20180710191031.17919-2-ross.zwisler@linux.intel.com>
+References: <20180710191031.17919-1-ross.zwisler@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Jeff Moyer <jmoyer-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20180710191031.17919-1-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-The inline data code was updating the raw inode directly; this is
-problematic since if metadata checksums are enabled,
-ext4_mark_inode_dirty() must be called to update the inode's checksum.
-In addition, the jbd2 layer requires that get_write_access() be called
-before the metadata buffer is modified.  Fix both of these problems.
+Inodes using DAX should only ever have exceptional entries in their page
+caches.  Make this clear by warning if the iteration in
+dax_layout_busy_page() ever sees a non-exceptional entry, and by adding a
+comment for the pagevec_release() call which only deals with struct page
+pointers.
 
-https://bugzilla.kernel.org/show_bug.cgi?id=200443
-
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
+Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
- fs/ext4/inline.c | 19 +++++++++++--------
- fs/ext4/inode.c  | 16 +++++++---------
- 2 files changed, 18 insertions(+), 17 deletions(-)
+ fs/dax.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index e55a8bc870bd..3543fe80a3c4 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -682,6 +682,10 @@ int ext4_try_to_write_inline_data(struct address_space *mapping,
- 		goto convert;
- 	}
+diff --git a/fs/dax.c b/fs/dax.c
+index 641192808bb6..897b51e41d8f 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -566,7 +566,8 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
+ 			if (index >= end)
+ 				break;
  
-+	ret = ext4_journal_get_write_access(handle, iloc.bh);
-+	if (ret)
-+		goto out;
+-			if (!radix_tree_exceptional_entry(pvec_ent))
++			if (WARN_ON_ONCE(
++			     !radix_tree_exceptional_entry(pvec_ent)))
+ 				continue;
+ 
+ 			xa_lock_irq(&mapping->i_pages);
+@@ -578,6 +579,13 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
+ 			if (page)
+ 				break;
+ 		}
 +
- 	flags |= AOP_FLAG_NOFS;
- 
- 	page = grab_cache_page_write_begin(mapping, 0, flags);
-@@ -710,7 +714,7 @@ int ext4_try_to_write_inline_data(struct address_space *mapping,
- out_up_read:
- 	up_read(&EXT4_I(inode)->xattr_sem);
- out:
--	if (handle)
-+	if (handle && (ret != 1))
- 		ext4_journal_stop(handle);
- 	brelse(iloc.bh);
- 	return ret;
-@@ -752,6 +756,7 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
- 
- 	ext4_write_unlock_xattr(inode, &no_expand);
- 	brelse(iloc.bh);
-+	mark_inode_dirty(inode);
- out:
- 	return copied;
- }
-@@ -898,7 +903,6 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
- 		goto out;
- 	}
- 
--
- 	page = grab_cache_page_write_begin(mapping, 0, flags);
- 	if (!page) {
- 		ret = -ENOMEM;
-@@ -916,6 +920,9 @@ int ext4_da_write_inline_data_begin(struct address_space *mapping,
- 		if (ret < 0)
- 			goto out_release_page;
- 	}
-+	ret = ext4_journal_get_write_access(handle, iloc.bh);
-+	if (ret)
-+		goto out_release_page;
- 
- 	up_read(&EXT4_I(inode)->xattr_sem);
- 	*pagep = page;
-@@ -936,7 +943,6 @@ int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
- 				  unsigned len, unsigned copied,
- 				  struct page *page)
- {
--	int i_size_changed = 0;
- 	int ret;
- 
- 	ret = ext4_write_inline_data_end(inode, pos, len, copied, page);
-@@ -954,10 +960,8 @@ int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
- 	 * But it's important to update i_size while still holding page lock:
- 	 * page writeout could otherwise come in and zero beyond i_size.
- 	 */
--	if (pos+copied > inode->i_size) {
-+	if (pos+copied > inode->i_size)
- 		i_size_write(inode, pos+copied);
--		i_size_changed = 1;
--	}
- 	unlock_page(page);
- 	put_page(page);
- 
-@@ -967,8 +971,7 @@ int ext4_da_write_inline_data_end(struct inode *inode, loff_t pos,
- 	 * ordering of page lock and transaction start for journaling
- 	 * filesystems.
- 	 */
--	if (i_size_changed)
--		mark_inode_dirty(inode);
-+	mark_inode_dirty(inode);
- 
- 	return copied;
- }
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7d6c10017bdf..4efe77286ecd 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1389,9 +1389,10 @@ static int ext4_write_end(struct file *file,
- 	loff_t old_size = inode->i_size;
- 	int ret = 0, ret2;
- 	int i_size_changed = 0;
-+	int inline_data = ext4_has_inline_data(inode);
- 
- 	trace_ext4_write_end(inode, pos, len, copied);
--	if (ext4_has_inline_data(inode)) {
-+	if (inline_data) {
- 		ret = ext4_write_inline_data_end(inode, pos, len,
- 						 copied, page);
- 		if (ret < 0) {
-@@ -1419,7 +1420,7 @@ static int ext4_write_end(struct file *file,
- 	 * ordering of page lock and transaction start for journaling
- 	 * filesystems.
- 	 */
--	if (i_size_changed)
-+	if (i_size_changed || inline_data)
- 		ext4_mark_inode_dirty(handle, inode);
- 
- 	if (pos + len > inode->i_size && ext4_can_truncate(inode))
-@@ -1493,6 +1494,7 @@ static int ext4_journalled_write_end(struct file *file,
- 	int partial = 0;
- 	unsigned from, to;
- 	int size_changed = 0;
-+	int inline_data = ext4_has_inline_data(inode);
- 
- 	trace_ext4_journalled_write_end(inode, pos, len, copied);
- 	from = pos & (PAGE_SIZE - 1);
-@@ -1500,7 +1502,7 @@ static int ext4_journalled_write_end(struct file *file,
- 
- 	BUG_ON(!ext4_handle_valid(handle));
- 
--	if (ext4_has_inline_data(inode)) {
-+	if (inline_data) {
- 		ret = ext4_write_inline_data_end(inode, pos, len,
- 						 copied, page);
- 		if (ret < 0) {
-@@ -1531,7 +1533,7 @@ static int ext4_journalled_write_end(struct file *file,
- 	if (old_size < pos)
- 		pagecache_isize_extended(inode, old_size, pos);
- 
--	if (size_changed) {
-+	if (size_changed || inline_data) {
- 		ret2 = ext4_mark_inode_dirty(handle, inode);
- 		if (!ret)
- 			ret = ret2;
-@@ -2028,11 +2030,7 @@ static int __ext4_journalled_writepage(struct page *page,
- 	}
- 
- 	if (inline_data) {
--		BUFFER_TRACE(inode_bh, "get write access");
--		ret = ext4_journal_get_write_access(handle, inode_bh);
--
--		err = ext4_handle_dirty_metadata(handle, inode, inode_bh);
--
-+		ret = ext4_mark_inode_dirty(handle, inode);
- 	} else {
- 		ret = ext4_walk_page_buffers(handle, page_bufs, 0, len, NULL,
- 					     do_journal_get_write_access);
++		/*
++		 * We don't expect normal struct page entries to exist in our
++		 * tree, but we keep these pagevec calls so that this code is
++		 * consistent with the common pattern for handling pagevecs
++		 * throughout the kernel.
++		 */
+ 		pagevec_remove_exceptionals(&pvec);
+ 		pagevec_release(&pvec);
+ 		index++;
 -- 
-2.18.0.rc0
+2.14.4
