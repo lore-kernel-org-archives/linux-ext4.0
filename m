@@ -1,59 +1,42 @@
 From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH v2 2/6] ext4: use 64-bit timestamps for mmp_time
-Date: Wed, 11 Jul 2018 11:14:10 +0200
-Message-ID: <20180711091414.1494843-2-arnd@arndb.de>
+Subject: [PATCH v2 3/6] ext4: use ktime_get_real_seconds for i_dtime
+Date: Wed, 11 Jul 2018 11:14:11 +0200
+Message-ID: <20180711091414.1494843-3-arnd@arndb.de>
 References: <20180711091414.1494843-1-arnd@arndb.de>
 Cc: arnd@arndb.de, jack@suse.cz, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, sirmy15@gmail.com,
         stable@vger.kernel.org, tgnottingham@gmail.com, tytso@mit.edu,
         y2038@lists.linaro.org
 To: adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
 In-Reply-To: <20180711091414.1494843-1-arnd@arndb.de>
-Sender: linux-kernel-owner@vger.kernel.org
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-The mmp_time field is 64 bits wide, which is good, but calling
-get_seconds() results in a 32-bit value on 32-bit architectures. Using
-ktime_get_real_seconds() instead returns 64 bits everywhere.
+We only care about the low 32-bit for i_dtime as explained in commit
+b5f515735bea ("ext4: avoid Y2038 overflow in recently_deleted()"), so
+the use of get_seconds() is correct here, but that function is getting
+removed in the process of the y2038 fixes, so let's use the modern
+ktime_get_real_seconds() here.
 
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/ext4/mmp.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
-index 27b9a76a0dfa..39da4eb48361 100644
---- a/fs/ext4/mmp.c
-+++ b/fs/ext4/mmp.c
-@@ -147,7 +147,7 @@ static int kmmpd(void *data)
- 
- 	mmp_block = le64_to_cpu(es->s_mmp_block);
- 	mmp = (struct mmp_struct *)(bh->b_data);
--	mmp->mmp_time = cpu_to_le64(get_seconds());
-+	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
- 	/*
- 	 * Start with the higher mmp_check_interval and reduce it if
- 	 * the MMP block is being updated on time.
-@@ -165,7 +165,7 @@ static int kmmpd(void *data)
- 			seq = 1;
- 
- 		mmp->mmp_seq = cpu_to_le32(seq);
--		mmp->mmp_time = cpu_to_le64(get_seconds());
-+		mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
- 		last_update_time = jiffies;
- 
- 		retval = write_mmp_block(sb, bh);
-@@ -244,7 +244,7 @@ static int kmmpd(void *data)
- 	 * Unmount seems to be clean.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 74982a9566a9..3b54227cf2b1 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -317,7 +317,7 @@ void ext4_evict_inode(struct inode *inode)
+ 	 * (Well, we could do this if we need to, but heck - it works)
  	 */
- 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
--	mmp->mmp_time = cpu_to_le64(get_seconds());
-+	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
+ 	ext4_orphan_del(handle, inode);
+-	EXT4_I(inode)->i_dtime	= get_seconds();
++	EXT4_I(inode)->i_dtime	= (__u32)ktime_get_real_seconds();
  
- 	retval = write_mmp_block(sb, bh);
- 
+ 	/*
+ 	 * One subtle ordering requirement: if anything has gone wrong
 -- 
 2.9.0
