@@ -1,7 +1,7 @@
 From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH v2 4/6] ext4: use timespec64 for all inode times
-Date: Wed, 11 Jul 2018 11:14:12 +0200
-Message-ID: <20180711091414.1494843-4-arnd@arndb.de>
+Subject: [PATCH v2 6/6] ext4: super: extend timestamps to 40 bits
+Date: Wed, 11 Jul 2018 11:14:14 +0200
+Message-ID: <20180711091414.1494843-6-arnd@arndb.de>
 References: <20180711091414.1494843-1-arnd@arndb.de>
 Cc: arnd@arndb.de, jack@suse.cz, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, sirmy15@gmail.com,
@@ -13,91 +13,196 @@ In-Reply-To: <20180711091414.1494843-1-arnd@arndb.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-This is the last missing piece for the inode times on 32-bit systems:
-now that VFS interfaces use timespec64, we just need to stop truncating
-the tv_sec values for y2038 compatibililty.
+The inode timestamps use 34 bits in ext4, but the various timestamps in
+the superblock are limited to 32 bits. If every user accesses these as
+'unsigned', then this is good until year 2106, but it seems better to
+extend this a bit further in the process of removing the deprecated
+get_seconds() function.
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+This adds another byte for each timestamp in the superblock, making
+them long enough to store timestamps beyond what is in the inodes,
+which seems good enough here (in ocfs2, they are already 64-bit wide,
+which is appropriate for a new layout).
+
+I did not modify e2fsprogs, which obviously needs the same change to
+actually interpret future timestamps correctly.
+
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/ext4/ext4.h   | 22 +++++++++-------------
- fs/ext4/ialloc.c |  2 +-
- 2 files changed, 10 insertions(+), 14 deletions(-)
+v2: drop 'RFC' from subject
+    minor changes as suggested by Andreas Dilger
+---
+ fs/ext4/ext4.h  |  9 ++++++++-
+ fs/ext4/super.c | 39 ++++++++++++++++++++++++++++++---------
+ fs/ext4/sysfs.c | 19 +++++++++++++++++--
+ 3 files changed, 55 insertions(+), 12 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d79d1a54a27e..f71ccafe8f9f 100644
+index f71ccafe8f9f..3ee9f198c698 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -789,17 +789,16 @@ struct move_extent {
-  * affected filesystem before 2242.
-  */
+@@ -1295,7 +1295,14 @@ struct ext4_super_block {
+ 	__le32	s_lpf_ino;		/* Location of the lost+found inode */
+ 	__le32	s_prj_quota_inum;	/* inode for tracking project quota */
+ 	__le32	s_checksum_seed;	/* crc32c(uuid) if csum_seed set */
+-	__le32	s_reserved[98];		/* Padding to the end of the block */
++	__u8	s_wtime_hi;
++	__u8	s_mtime_hi;
++	__u8	s_mkfs_time_hi;
++	__u8	s_lastcheck_hi;
++	__u8	s_first_error_time_hi;
++	__u8	s_last_error_time_hi;
++	__u8	s_pad[2];
++	__le32	s_reserved[96];		/* Padding to the end of the block */
+ 	__le32	s_checksum;		/* crc32c(superblock) */
+ };
  
--static inline __le32 ext4_encode_extra_time(struct timespec *time)
-+static inline __le32 ext4_encode_extra_time(struct timespec64 *time)
- {
--	u32 extra = sizeof(time->tv_sec) > 4 ?
--		((time->tv_sec - (s32)time->tv_sec) >> 32) & EXT4_EPOCH_MASK : 0;
-+	u32 extra =((time->tv_sec - (s32)time->tv_sec) >> 32) & EXT4_EPOCH_MASK;
- 	return cpu_to_le32(extra | (time->tv_nsec << EXT4_EPOCH_BITS));
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 86e3d13787e6..aaf29e3981db 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -313,6 +313,24 @@ void ext4_itable_unused_set(struct super_block *sb,
+ 		bg->bg_itable_unused_hi = cpu_to_le16(count >> 16);
  }
  
--static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
-+static inline void ext4_decode_extra_time(struct timespec64 *time,
-+					  __le32 extra)
- {
--	if (unlikely(sizeof(time->tv_sec) > 4 &&
--			(extra & cpu_to_le32(EXT4_EPOCH_MASK)))) {
-+	if (unlikely(extra & cpu_to_le32(EXT4_EPOCH_MASK))) {
++static void __ext4_update_tstamp(__le32 *lo, __u8 *hi)
++{
++	time64_t now = ktime_get_real_seconds();
++
++	now = clamp_val(now, 0, (1ull << 40) - 1);
++
++	*lo = cpu_to_le32(lower_32_bits(now));
++	*hi = upper_32_bits(now);
++}
++
++static time64_t __ext4_get_tstamp(__le32 *lo, __u8 *hi)
++{
++	return ((time64_t)(*hi) << 32) + le32_to_cpu(*lo);
++}
++#define ext4_update_tstamp(es, tstamp) \
++	__ext4_update_tstamp(&(es)->tstamp, &(es)->tstamp ## _hi)
++#define ext4_get_tstamp(es, tstamp) \
++	__ext4_get_tstamp(&(es)->tstamp, &(es)->tstamp ## _hi)
  
- #if 1
- 		/* Handle legacy encoding of pre-1970 dates with epoch
-@@ -821,9 +820,8 @@ static inline void ext4_decode_extra_time(struct timespec *time, __le32 extra)
- do {										\
- 	(raw_inode)->xtime = cpu_to_le32((inode)->xtime.tv_sec);		\
- 	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra))     {\
--		struct timespec ts = timespec64_to_timespec((inode)->xtime);	\
- 		(raw_inode)->xtime ## _extra =					\
--				ext4_encode_extra_time(&ts);			\
-+				ext4_encode_extra_time(&(inode)->xtime);	\
- 		}								\
- } while (0)
- 
-@@ -840,10 +838,8 @@ do {									       \
- do {										\
- 	(inode)->xtime.tv_sec = (signed)le32_to_cpu((raw_inode)->xtime);	\
- 	if (EXT4_FITS_IN_INODE(raw_inode, EXT4_I(inode), xtime ## _extra)) {	\
--		struct timespec ts = timespec64_to_timespec((inode)->xtime);	\
--		ext4_decode_extra_time(&ts,					\
-+		ext4_decode_extra_time(&(inode)->xtime,				\
- 				       raw_inode->xtime ## _extra);		\
--		(inode)->xtime = timespec_to_timespec64(ts);			\
- 		}								\
- 	else									\
- 		(inode)->xtime.tv_nsec = 0;					\
-@@ -993,9 +989,9 @@ struct ext4_inode_info {
- 
- 	/*
- 	 * File creation time. Its function is same as that of
--	 * struct timespec i_{a,c,m}time in the generic inode.
-+	 * struct timespec64 i_{a,c,m}time in the generic inode.
+ static void __save_error_info(struct super_block *sb, const char *func,
+ 			    unsigned int line)
+@@ -323,11 +341,12 @@ static void __save_error_info(struct super_block *sb, const char *func,
+ 	if (bdev_read_only(sb->s_bdev))
+ 		return;
+ 	es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+-	es->s_last_error_time = cpu_to_le32(get_seconds());
++	ext4_update_tstamp(es, s_last_error_time);
+ 	strncpy(es->s_last_error_func, func, sizeof(es->s_last_error_func));
+ 	es->s_last_error_line = cpu_to_le32(line);
+ 	if (!es->s_first_error_time) {
+ 		es->s_first_error_time = es->s_last_error_time;
++		es->s_first_error_time_hi = es->s_last_error_time_hi;
+ 		strncpy(es->s_first_error_func, func,
+ 			sizeof(es->s_first_error_func));
+ 		es->s_first_error_line = cpu_to_le32(line);
+@@ -2175,8 +2194,8 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 			 "warning: maximal mount count reached, "
+ 			 "running e2fsck is recommended");
+ 	else if (le32_to_cpu(es->s_checkinterval) &&
+-		(le32_to_cpu(es->s_lastcheck) +
+-			le32_to_cpu(es->s_checkinterval) <= get_seconds()))
++		 (ext4_get_tstamp(es, s_lastcheck) +
++		  le32_to_cpu(es->s_checkinterval) <= ktime_get_real_seconds()))
+ 		ext4_msg(sb, KERN_WARNING,
+ 			 "warning: checktime reached, "
+ 			 "running e2fsck is recommended");
+@@ -2185,7 +2204,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 	if (!(__s16) le16_to_cpu(es->s_max_mnt_count))
+ 		es->s_max_mnt_count = cpu_to_le16(EXT4_DFL_MAX_MNT_COUNT);
+ 	le16_add_cpu(&es->s_mnt_count, 1);
+-	es->s_mtime = cpu_to_le32(get_seconds());
++	ext4_update_tstamp(es, s_mtime);
+ 	ext4_update_dynamic_rev(sb);
+ 	if (sbi->s_journal)
+ 		ext4_set_feature_journal_needs_recovery(sb);
+@@ -2876,8 +2895,9 @@ static void print_daily_error_info(struct timer_list *t)
+ 		ext4_msg(sb, KERN_NOTICE, "error count since last fsck: %u",
+ 			 le32_to_cpu(es->s_error_count));
+ 	if (es->s_first_error_time) {
+-		printk(KERN_NOTICE "EXT4-fs (%s): initial error at time %u: %.*s:%d",
+-		       sb->s_id, le32_to_cpu(es->s_first_error_time),
++		printk(KERN_NOTICE "EXT4-fs (%s): initial error at time %llu: %.*s:%d",
++		       sb->s_id,
++		       ext4_get_tstamp(es, s_first_error_time),
+ 		       (int) sizeof(es->s_first_error_func),
+ 		       es->s_first_error_func,
+ 		       le32_to_cpu(es->s_first_error_line));
+@@ -2890,8 +2910,9 @@ static void print_daily_error_info(struct timer_list *t)
+ 		printk(KERN_CONT "\n");
+ 	}
+ 	if (es->s_last_error_time) {
+-		printk(KERN_NOTICE "EXT4-fs (%s): last error at time %u: %.*s:%d",
+-		       sb->s_id, le32_to_cpu(es->s_last_error_time),
++		printk(KERN_NOTICE "EXT4-fs (%s): last error at time %llu: %.*s:%d",
++		       sb->s_id,
++		       ext4_get_tstamp(es, s_last_error_time),
+ 		       (int) sizeof(es->s_last_error_func),
+ 		       es->s_last_error_func,
+ 		       le32_to_cpu(es->s_last_error_line));
+@@ -4822,7 +4843,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 	 * to complain and force a full file system check.
  	 */
--	struct timespec i_crtime;
-+	struct timespec64 i_crtime;
+ 	if (!(sb->s_flags & SB_RDONLY))
+-		es->s_wtime = cpu_to_le32(get_seconds());
++		ext4_update_tstamp(es, s_wtime);
+ 	if (sb->s_bdev->bd_part)
+ 		es->s_kbytes_written =
+ 			cpu_to_le64(EXT4_SB(sb)->s_kbytes_written +
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index b970a200f20c..e60cc5e89023 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -25,6 +25,8 @@ typedef enum {
+ 	attr_reserved_clusters,
+ 	attr_inode_readahead,
+ 	attr_trigger_test_error,
++	attr_first_error_time,
++	attr_last_error_time,
+ 	attr_feature,
+ 	attr_pointer_ui,
+ 	attr_pointer_atomic,
+@@ -182,8 +184,8 @@ EXT4_RW_ATTR_SBI_UI(warning_ratelimit_burst, s_warning_ratelimit_state.burst);
+ EXT4_RW_ATTR_SBI_UI(msg_ratelimit_interval_ms, s_msg_ratelimit_state.interval);
+ EXT4_RW_ATTR_SBI_UI(msg_ratelimit_burst, s_msg_ratelimit_state.burst);
+ EXT4_RO_ATTR_ES_UI(errors_count, s_error_count);
+-EXT4_RO_ATTR_ES_UI(first_error_time, s_first_error_time);
+-EXT4_RO_ATTR_ES_UI(last_error_time, s_last_error_time);
++EXT4_ATTR(first_error_time, 0444, first_error_time);
++EXT4_ATTR(last_error_time, 0444, last_error_time);
  
- 	/* mballoc */
- 	struct list_head i_prealloc_list;
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index fb83750c1a14..18c37c43751c 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1083,7 +1083,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
- 	/* This is the optimal IO size (for stat), not the fs block size */
- 	inode->i_blocks = 0;
- 	inode->i_mtime = inode->i_atime = inode->i_ctime = current_time(inode);
--	ei->i_crtime = timespec64_to_timespec(inode->i_mtime);
-+	ei->i_crtime = inode->i_mtime;
+ static unsigned int old_bump_val = 128;
+ EXT4_ATTR_PTR(max_writeback_mb_bump, 0444, pointer_ui, &old_bump_val);
+@@ -249,6 +251,15 @@ static void *calc_ptr(struct ext4_attr *a, struct ext4_sb_info *sbi)
+ 	return NULL;
+ }
  
- 	memset(ei->i_data, 0, sizeof(ei->i_data));
- 	ei->i_dir_start_lookup = 0;
++static ssize_t __print_tstamp(char *buf, __le32 lo, __u8 hi)
++{
++	return snprintf(buf, PAGE_SIZE, "%lld",
++			((time64_t)hi << 32) + le32_to_cpu(lo));
++}
++
++#define print_tstamp(buf, es, tstamp) \
++	__print_tstamp(buf, (es)->tstamp, (es)->tstamp ## _hi)
++
+ static ssize_t ext4_attr_show(struct kobject *kobj,
+ 			      struct attribute *attr, char *buf)
+ {
+@@ -287,6 +298,10 @@ static ssize_t ext4_attr_show(struct kobject *kobj,
+ 				atomic_read((atomic_t *) ptr));
+ 	case attr_feature:
+ 		return snprintf(buf, PAGE_SIZE, "supported\n");
++	case attr_first_error_time:
++		return print_tstamp(buf, sbi->s_es, s_first_error_time);
++	case attr_last_error_time:
++		return print_tstamp(buf, sbi->s_es, s_last_error_time);
+ 	}
+ 
+ 	return 0;
 -- 
 2.9.0
