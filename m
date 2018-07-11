@@ -1,64 +1,59 @@
-From: Ike Panhc <ike.pan@canonical.com>
-Subject: Re: [Bisect] ext4_validate_inode_bitmap:98: comm stress-ng: Corrupt
- inode bitmap
-Date: Wed, 11 Jul 2018 16:57:16 +0800
-Message-ID: <b39169ad-2237-0a4f-e3d1-afc51ac10fa5@canonical.com>
-References: <20180706174324.GA3049@xps13.dannf>
- <20180707041018.GB3546@thunk.org> <20180710165143.GA20459@xps13.dannf>
- <20180710204329.GB20459@xps13.dannf>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: dann frazier <dann.frazier@canonical.com>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, yanaijie@huawei.com,
-        colin.king@canonical.com, kamal.mostafa@canonical.com
+From: Arnd Bergmann <arnd@arndb.de>
+Subject: [PATCH v2 2/6] ext4: use 64-bit timestamps for mmp_time
+Date: Wed, 11 Jul 2018 11:14:10 +0200
+Message-ID: <20180711091414.1494843-2-arnd@arndb.de>
+References: <20180711091414.1494843-1-arnd@arndb.de>
+Cc: arnd@arndb.de, jack@suse.cz, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, sirmy15@gmail.com,
+        stable@vger.kernel.org, tgnottingham@gmail.com, tytso@mit.edu,
+        y2038@lists.linaro.org
+To: adilger.kernel@dilger.ca
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180710204329.GB20459@xps13.dannf>
-Content-Language: en-US
+In-Reply-To: <20180711091414.1494843-1-arnd@arndb.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 07/11/2018 04:43 AM, dann frazier wrote:
-> On Tue, Jul 10, 2018 at 10:51:43AM -0600, dann frazier wrote:
->> On Sat, Jul 07, 2018 at 12:10:18AM -0400, Theodore Y. Ts'o wrote:
->>> On Fri, Jul 06, 2018 at 11:43:24AM -0600, dann frazier wrote:
->>>> Hi,
->>>>   We're seeing a regression triggered by the stress-ng[*] "chdir" test
->>>> that I've bisected to:
->>>>
->>>> 044e6e3d74a3 ext4: don't update checksum of new initialized bitmaps
->>>>
->>>> So far we've only seen failures on servers based on HiSilicon's family
->>>> of ARM64 SoCs (D05/Hi1616 SoC, D06/Hi1620 SoC). On these systems it is
->>>> very reproducible.
->>>
->>> Thanks for the report.  Can you verify whether or not this patch fixes
->>> things for you?
->>
->> hey Ted,
->>   Sorry for the delayed response - was afk for a long weekend.
->> Your patch does seem to fix the issue for me - after applying the
->> patch, I was able to survive 20 iterations (and counting), where
->> previously it would always fail the first time.
->>
->> However, I've received a conflicting report from a colleague who
->> appears to still be seeing errors. I'll get back to you ASAP once I am
->> able to (in-?)validate that observation.
-> 
-> OK - I believe I found an explanation for my colleague's continued
-> test failures after applying the patch. The filesystem being used may
-> have already been corrupted from a previous run, and the test w/ your
-> patch just tripped over it. Details are here starting in comment #9 if
-> you'd like to look them over:
-> 
->   https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1780137
-> 
->   -dann
-> 
+The mmp_time field is 64 bits wide, which is good, but calling
+get_seconds() results in a 32-bit value on 32-bit architectures. Using
+ktime_get_real_seconds() instead returns 64 bits everywhere.
 
-Review console log and on each run I have filesystem rebuild. The problem
-is that mke2fs I am using is 1.44.3-rc2. I am now reseting the environment
-and re-test.
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/ext4/mmp.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
--- Ike
+diff --git a/fs/ext4/mmp.c b/fs/ext4/mmp.c
+index 27b9a76a0dfa..39da4eb48361 100644
+--- a/fs/ext4/mmp.c
++++ b/fs/ext4/mmp.c
+@@ -147,7 +147,7 @@ static int kmmpd(void *data)
+ 
+ 	mmp_block = le64_to_cpu(es->s_mmp_block);
+ 	mmp = (struct mmp_struct *)(bh->b_data);
+-	mmp->mmp_time = cpu_to_le64(get_seconds());
++	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
+ 	/*
+ 	 * Start with the higher mmp_check_interval and reduce it if
+ 	 * the MMP block is being updated on time.
+@@ -165,7 +165,7 @@ static int kmmpd(void *data)
+ 			seq = 1;
+ 
+ 		mmp->mmp_seq = cpu_to_le32(seq);
+-		mmp->mmp_time = cpu_to_le64(get_seconds());
++		mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
+ 		last_update_time = jiffies;
+ 
+ 		retval = write_mmp_block(sb, bh);
+@@ -244,7 +244,7 @@ static int kmmpd(void *data)
+ 	 * Unmount seems to be clean.
+ 	 */
+ 	mmp->mmp_seq = cpu_to_le32(EXT4_MMP_SEQ_CLEAN);
+-	mmp->mmp_time = cpu_to_le64(get_seconds());
++	mmp->mmp_time = cpu_to_le64(ktime_get_real_seconds());
+ 
+ 	retval = write_mmp_block(sb, bh);
+ 
+-- 
+2.9.0
