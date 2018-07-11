@@ -1,50 +1,64 @@
 From: Arnd Bergmann <arnd@arndb.de>
-Subject: [PATCH v2 5/6] jbd2: replace current_kernel_time64 with ktime equivalent
-Date: Wed, 11 Jul 2018 11:14:13 +0200
-Message-ID: <20180711091414.1494843-5-arnd@arndb.de>
-References: <20180711091414.1494843-1-arnd@arndb.de>
+Subject: [PATCH v2 1/6] ext4: sysfs: print ext4_super_block fields as little-endian
+Date: Wed, 11 Jul 2018 11:14:09 +0200
+Message-ID: <20180711091414.1494843-1-arnd@arndb.de>
 Cc: arnd@arndb.de, jack@suse.cz, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, sirmy15@gmail.com,
         stable@vger.kernel.org, tgnottingham@gmail.com, tytso@mit.edu,
         y2038@lists.linaro.org
 To: adilger.kernel@dilger.ca
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180711091414.1494843-1-arnd@arndb.de>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-jbd2 is one of the few callers of current_kernel_time64(), which
-is a wrapper around ktime_get_coarse_real_ts64(). This calls the
-latter directly for consistency with the rest of the kernel that
-is moving to the ktime_get_ family of time accessors.
+While working on extended rand for last_error/first_error timestamps,
+I noticed that the endianess is wrong, we access the little-endian
+fields in struct ext4_super_block as native-endian when we print them.
 
+This adds a special case in ext4_attr_show() and ext4_attr_store()
+to byteswap the superblock fields if needed.
+
+In older kernels, this code was part of super.c, it got moved to sysfs.c
+in linux-4.4.
+
+Cc: stable@vger.kernel.org
+Fixes: 52c198c6820f ("ext4: add sysfs entry showing whether the fs contains errors")
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Arnd Bergmann <arnd@arndb.de>
 ---
- fs/jbd2/commit.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext4/sysfs.c | 13 ++++++++++---
+ 1 file changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 8de0e7723316..150cc030b4d7 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -121,7 +121,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 	struct commit_header *tmp;
- 	struct buffer_head *bh;
- 	int ret;
--	struct timespec64 now = current_kernel_time64();
-+	struct timespec64 now;
- 
- 	*cbh = NULL;
- 
-@@ -134,6 +134,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 		return 1;
- 
- 	tmp = (struct commit_header *)bh->b_data;
-+	ktime_get_coarse_real_ts64(&now);
- 	tmp->h_commit_sec = cpu_to_be64(now.tv_sec);
- 	tmp->h_commit_nsec = cpu_to_be32(now.tv_nsec);
- 
+diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
+index f34da0bb8f17..b970a200f20c 100644
+--- a/fs/ext4/sysfs.c
++++ b/fs/ext4/sysfs.c
+@@ -274,8 +274,12 @@ static ssize_t ext4_attr_show(struct kobject *kobj,
+ 	case attr_pointer_ui:
+ 		if (!ptr)
+ 			return 0;
+-		return snprintf(buf, PAGE_SIZE, "%u\n",
+-				*((unsigned int *) ptr));
++		if (a->attr_ptr == ptr_ext4_super_block_offset)
++			return snprintf(buf, PAGE_SIZE, "%u\n",
++					le32_to_cpup(ptr));
++		else
++			return snprintf(buf, PAGE_SIZE, "%u\n",
++					*((unsigned int *) ptr));
+ 	case attr_pointer_atomic:
+ 		if (!ptr)
+ 			return 0;
+@@ -308,7 +312,10 @@ static ssize_t ext4_attr_store(struct kobject *kobj,
+ 		ret = kstrtoul(skip_spaces(buf), 0, &t);
+ 		if (ret)
+ 			return ret;
+-		*((unsigned int *) ptr) = t;
++		if (a->attr_ptr == ptr_ext4_super_block_offset)
++			*((__le32 *) ptr) = cpu_to_le32(t);
++		else
++			*((unsigned int *) ptr) = t;
+ 		return len;
+ 	case attr_inode_readahead:
+ 		return inode_readahead_blks_store(sbi, buf, len);
 -- 
 2.9.0
