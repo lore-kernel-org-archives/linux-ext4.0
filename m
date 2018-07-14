@@ -1,88 +1,86 @@
-From: Goldwyn Rodrigues <rgoldwyn@suse.de>
-Subject: Re: [PATCH 5/6] iomap: add a page_done callback
-Date: Thu, 12 Jul 2018 21:58:53 -0500
-Message-ID: <20180713025853.xugxx6zte3kvvqjy@merlin>
-References: <20180619164137.13720-1-hch@lst.de>
-	<20180619164137.13720-6-hch@lst.de>
+From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
+Subject: Re: [fstests PATCH v2 2/2] generic/999: test DAX DMA vs
+ truncate/hole-punch
+Date: Sat, 14 Jul 2018 11:41:05 +1000
+Message-ID: <20180714014105.GY2234@dastard>
+References: <20180710220942.21074-1-ross.zwisler@linux.intel.com>
+ <20180710220942.21074-3-ross.zwisler@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cluster-devel@redhat.com, linux-xfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, Dan Williams <dan.j.williams@intel.com>,
-	linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@lst.de>
-Return-path: <cluster-devel-bounces@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Eryu Guan <eguan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, fstests-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20180619164137.13720-6-hch@lst.de>
-List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/cluster-devel>
-List-Post: <mailto:cluster-devel@redhat.com>
-List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
-	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
-Sender: cluster-devel-bounces@redhat.com
-Errors-To: cluster-devel-bounces@redhat.com
+In-Reply-To: <20180710220942.21074-3-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On 18:41 19/06, Christoph Hellwig wrote:
-> This will be used by gfs2 to attach data to transactions for the journaled
-> data mode.  But the concept is generic enough that we might be able to
-> use it for other purposes like encryption/integrity post-processing in the
-> future.
+On Tue, Jul 10, 2018 at 04:09:42PM -0600, Ross Zwisler wrote:
+> This adds a regression test for the following series:
 > 
-> Based on a patch from Andreas Gruenbacher.
+> https://lists.01.org/pipermail/linux-nvdimm/2018-July/016842.html
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/iomap.c            | 3 +++
->  include/linux/iomap.h | 9 +++++++++
->  2 files changed, 12 insertions(+)
+> which adds synchronization between DAX DMA in ext4 and truncate/hole-punch.
+> The intention of the test is to test those specific changes, but it runs
+> fine both with XFS and without DAX so I've put it in the generic tests
+> instead of ext4 and not restricted it to only DAX configurations.
 > 
-> diff --git a/fs/iomap.c b/fs/iomap.c
-> index 4aecd7c5dbd8..a1f71e64ea49 100644
-> --- a/fs/iomap.c
-> +++ b/fs/iomap.c
-> @@ -201,6 +201,9 @@ iomap_write_end(struct inode *inode, loff_t pos, unsigned len,
->  				copied, page, NULL);
->  	}
->  
-> +	if (iomap->page_done)
-> +		iomap->page_done(inode, pos, copied, page, iomap);
-> +
->  	if (ret < len)
->  		iomap_write_failed(inode, pos, len);
->  	return ret;
-> diff --git a/include/linux/iomap.h b/include/linux/iomap.h
-> index 10d6cff7f69a..45f43865b0f0 100644
-> --- a/include/linux/iomap.h
-> +++ b/include/linux/iomap.h
-> @@ -9,6 +9,7 @@ struct fiemap_extent_info;
->  struct inode;
->  struct iov_iter;
->  struct kiocb;
-> +struct page;
->  struct vm_area_struct;
->  struct vm_fault;
->  
-> @@ -56,6 +57,14 @@ struct iomap {
->  	struct block_device	*bdev;	/* block device for I/O */
->  	struct dax_device	*dax_dev; /* dax_dev for dax operations */
->  	void			*inline_data;
-> +
-> +	/*
-> +	 * Called when finished processing a page in the mapping returned in
-> +	 * this iomap.  At least for now this is only supported in the buffered
-> +	 * write path.
-> +	 */
-> +	void (*page_done)(struct inode *inode, loff_t pos, unsigned copied,
-> +			struct page *page, struct iomap *iomap);
->  };
->  
+> When run with v4.18-rc4 + DAX + ext4, this test will hit the following
+> WARN_ON_ONCE() in dax_disassociate_entry():
+> 
+> 	WARN_ON_ONCE(trunc && page_ref_count(page) > 1);
+> 
+> If you change this to a WARN_ON() instead, you can see that each of the
+> four paths being exercised in this test hits that condition many times in
+> the one second that the subtest is being run.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
 
-Would it be better if we keep this function as a part of iomap_ops? I
-know gfs2 sets this conditionally, but we can always check the condition
-in the function assigned to page_done(). It would keep all the functions
-in one place.
+just a FWIW:
 
+> +int main(int argc, char *argv[])
+> +{
+> +	int err;
+> +
+> +	if (argc != 3) {
+> +		printf("Usage: %s <dax file> <non-dax file>\n",
+> +				basename(argv[0]));
+> +		exit(0);
+> +	}
+
+This is an example of why we should be supporting per-inode DAX
+enablement in all filesystems, not a global mount option....
+
+> +_supported_fs generic
+> +_supported_os Linux
+> +_require_test
+> +_require_test_program "t_mmap_collision"
+> +
+> +# To get the failure we turn off DAX on our SCRATCH_MNT so we can get O_DIRECT
+> +# behavior.  We will continue to use unmodified mount options for the test
+> +# TEST_DIR.  The failures fixed by the above mentioned kernel patch trigger
+> +# when those mount options include "-o dax", but the test runs fine without
+> +# that option so we don't require it.
+> +export MOUNT_OPTIONS=""
+> +_scratch_unmount >> $seqres.full 2>&1
+> +_scratch_mount >> $seqres.full 2>&1
+
+And then all this crap would go away....
+
+Cheers,
+
+Dave.
 -- 
-Goldwyn
+Dave Chinner
+david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
