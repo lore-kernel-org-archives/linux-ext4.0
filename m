@@ -1,86 +1,125 @@
-From: Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>
-Subject: Re: [fstests PATCH v2 2/2] generic/999: test DAX DMA vs
- truncate/hole-punch
-Date: Sat, 14 Jul 2018 11:41:05 +1000
-Message-ID: <20180714014105.GY2234@dastard>
-References: <20180710220942.21074-1-ross.zwisler@linux.intel.com>
- <20180710220942.21074-3-ross.zwisler@linux.intel.com>
+From: dann frazier <dann.frazier@canonical.com>
+Subject: Re: [Bisect] ext4_validate_inode_bitmap:98: comm stress-ng: Corrupt
+ inode bitmap
+Date: Sat, 14 Jul 2018 05:21:14 -0600
+Message-ID: <CALdTtns1yL6z3mvWF70bXvpB0hXFgfRxdTg+sBTMzJKG7L7prA@mail.gmail.com>
+References: <20180706174324.GA3049@xps13.dannf> <20180707041018.GB3546@thunk.org>
+ <20180710165143.GA20459@xps13.dannf> <20180710204329.GB20459@xps13.dannf>
+ <b39169ad-2237-0a4f-e3d1-afc51ac10fa5@canonical.com> <20180712230826.GB28610@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Eryu Guan <eguan-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, fstests-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
- Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20180710220942.21074-3-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="UTF-8"
+To: tytso@mit.edu, Ike Pan <ike.pan@canonical.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        yanaijie@huawei.com, Colin King <colin.king@canonical.com>,
+        Kamal Mostafa <kamal.mostafa@canonical.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180712230826.GB28610@thunk.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 10, 2018 at 04:09:42PM -0600, Ross Zwisler wrote:
-> This adds a regression test for the following series:
-> 
-> https://lists.01.org/pipermail/linux-nvdimm/2018-July/016842.html
-> 
-> which adds synchronization between DAX DMA in ext4 and truncate/hole-punch.
-> The intention of the test is to test those specific changes, but it runs
-> fine both with XFS and without DAX so I've put it in the generic tests
-> instead of ext4 and not restricted it to only DAX configurations.
-> 
-> When run with v4.18-rc4 + DAX + ext4, this test will hit the following
-> WARN_ON_ONCE() in dax_disassociate_entry():
-> 
-> 	WARN_ON_ONCE(trunc && page_ref_count(page) > 1);
-> 
-> If you change this to a WARN_ON() instead, you can see that each of the
-> four paths being exercised in this test hits that condition many times in
-> the one second that the subtest is being run.
-> 
-> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+On Thu, Jul 12, 2018 at 5:08 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+>
+> >
+> > Review console log and on each run I have filesystem rebuild. The problem
+> > is that mke2fs I am using is 1.44.3-rc2. I am now reseting the environment
+> > and re-test.
+> >
+>
+> Could it be that you saw the error in ext4_validate_block_bitmap()?
 
-just a FWIW:
+Looks like it. From Ike's report:
 
-> +int main(int argc, char *argv[])
-> +{
-> +	int err;
-> +
-> +	if (argc != 3) {
-> +		printf("Usage: %s <dax file> <non-dax file>\n",
-> +				basename(argv[0]));
-> +		exit(0);
-> +	}
+# grep EXT4 d05-4-ipmi.log
+[ 26.215587] EXT4-fs (sdb2): mounted filesystem with ordered data
+mode. Opts: (null)
+[ 29.844105] EXT4-fs (sdb2): re-mounted. Opts: errors=remount-ro
+[ 3586.211348] EXT4-fs error (device sda2):
+ext4_validate_block_bitmap:383: comm stress-ng: bg 4705: bad block
+bitmap checksum
+[ 8254.776992] EXT4-fs error (device sda2):
+ext4_validate_block_bitmap:383: comm stress-ng: bg 4193: bad block
+bitmap checksum
 
-This is an example of why we should be supporting per-inode DAX
-enablement in all filesystems, not a global mount option....
+I've ran my test case for several days w/ just the inode bitmap fix
+and haven't been able to reproduce it - but perhaps that's just the
+nature of the chdir test.
 
-> +_supported_fs generic
-> +_supported_os Linux
-> +_require_test
-> +_require_test_program "t_mmap_collision"
-> +
-> +# To get the failure we turn off DAX on our SCRATCH_MNT so we can get O_DIRECT
-> +# behavior.  We will continue to use unmodified mount options for the test
-> +# TEST_DIR.  The failures fixed by the above mentioned kernel patch trigger
-> +# when those mount options include "-o dax", but the test runs fine without
-> +# that option so we don't require it.
-> +export MOUNT_OPTIONS=""
-> +_scratch_unmount >> $seqres.full 2>&1
-> +_scratch_mount >> $seqres.full 2>&1
+> The patch which I sent Dann only fixed the problem for inode bitmaps;
+> I noticed today that we need to fix it for block allocation bitmaps as
+> well.
 
-And then all this crap would go away....
+I've also now ran several iterations w/ the block bitmap fix as well,
+and still no problems, so:
 
-Cheers,
+Tested-by: dann frazier <dann.frazier@canonical.com>
 
-Dave.
--- 
-Dave Chinner
-david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org
+> commit 8d5a803c6a6ce4ec258e31f76059ea5153ba46ef
+> Author: Theodore Ts'o <tytso@mit.edu>
+> Date:   Thu Jul 12 19:08:05 2018 -0400
+>
+>     ext4: check for allocation block validity with block group locked
+>
+>     With commit 044e6e3d74a3: "ext4: don't update checksum of new
+>     initialized bitmaps" the buffer valid bit will get set without
+>     actually setting up the checksum for the allocation bitmap, since the
+>     checksum will get calculated once we actually allocate an inode or
+>     block.
+>
+>     If we are doing this, then we need to (re-)check the verified bit
+>     after we take the block group lock.  Otherwise, we could race with
+>     another process reading and verifying the bitmap, which would then
+>     complain about the checksum being invalid.
+>
+>     https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1780137
+>
+>     Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+>     Cc: stable@kernel.org
+
+Would it also make sense to add the following?
+
+Fixes: 044e6e3d74a3 ("ext4: don't update checksum of new initialized bitmaps")
+
+  -dann
+
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index e68cefe08261..aa52d87985aa 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -368,6 +368,8 @@ static int ext4_validate_block_bitmap(struct super_block *sb,
+>                 return -EFSCORRUPTED;
+>
+>         ext4_lock_group(sb, block_group);
+> +       if (buffer_verified(bh))
+> +               goto verified;
+>         if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
+>                         desc, bh))) {
+>                 ext4_unlock_group(sb, block_group);
+> @@ -386,6 +388,7 @@ static int ext4_validate_block_bitmap(struct super_block *sb,
+>                 return -EFSCORRUPTED;
+>         }
+>         set_buffer_verified(bh);
+> +verified:
+>         ext4_unlock_group(sb, block_group);
+>         return 0;
+>  }
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index fb83750c1a14..e9d8e2667ab5 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -90,6 +90,8 @@ static int ext4_validate_inode_bitmap(struct super_block *sb,
+>                 return -EFSCORRUPTED;
+>
+>         ext4_lock_group(sb, block_group);
+> +       if (buffer_verified(bh))
+> +               goto verified;
+>         blk = ext4_inode_bitmap(sb, desc);
+>         if (!ext4_inode_bitmap_csum_verify(sb, block_group, desc, bh,
+>                                            EXT4_INODES_PER_GROUP(sb) / 8)) {
+> @@ -101,6 +103,7 @@ static int ext4_validate_inode_bitmap(struct super_block *sb,
+>                 return -EFSBADCRC;
+>         }
+>         set_buffer_verified(bh);
+> +verified:
+>         ext4_unlock_group(sb, block_group);
+>         return 0;
+>  }
