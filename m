@@ -1,50 +1,36 @@
-From: Michal Hocko <mhocko@kernel.org>
-Subject: Re: vmalloc with GFP_NOFS
-Date: Tue, 17 Jul 2018 14:50:59 +0200
-Message-ID: <20180717125059.GC30926@dhcp22.suse.cz>
-References: <20180424162712.GL17484@dhcp22.suse.cz>
- <ce42f323-870c-21df-ac27-1bec6aa7e5d1@redhat.com>
- <20180424200927.GU17484@dhcp22.suse.cz>
+From: Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 5/6] iomap: add a page_done callback
+Date: Tue, 17 Jul 2018 16:02:58 +0200
+Message-ID: <20180717140258.GA18365@lst.de>
+References: <20180619164137.13720-1-hch@lst.de>
+	<20180619164137.13720-6-hch@lst.de>
+	<20180713025853.xugxx6zte3kvvqjy@merlin>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: LKML <linux-kernel@vger.kernel.org>,
-        Artem Bityutskiy <dedekind1@gmail.com>,
-        Richard Weinberger <richard@nod.at>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Brian Norris <computersforpeace@gmail.com>,
-        Boris Brezillon <boris.brezillon@free-electrons.com>,
-        Marek Vasut <marek.vasut@gmail.com>,
-        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Adrian Hunter <adrian.hunter@intel.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Kate Stewart <kstewart@linuxfoundation.org>,
-        Mikulas Patocka <mpatocka@redhat.com>,
-        linux-mtd@lists.infradead.org, linux-ext4@vger.kerne
-To: Steven Whitehouse <swhiteho@redhat.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Cc: cluster-devel@redhat.com, linux-xfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, Dan Williams <dan.j.williams@intel.com>,
+	linux-ext4@vger.kernel.org, Christoph Hellwig <hch@lst.de>
+To: Goldwyn Rodrigues <rgoldwyn@suse.de>
+Return-path: <cluster-devel-bounces@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <20180424200927.GU17484@dhcp22.suse.cz>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <20180713025853.xugxx6zte3kvvqjy@merlin>
+List-Unsubscribe: <https://www.redhat.com/mailman/options/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/cluster-devel>
+List-Post: <mailto:cluster-devel@redhat.com>
+List-Help: <mailto:cluster-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/cluster-devel>,
+	<mailto:cluster-devel-request@redhat.com?subject=subscribe>
+Sender: cluster-devel-bounces@redhat.com
+Errors-To: cluster-devel-bounces@redhat.com
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 24-04-18 14:09:27, Michal Hocko wrote:
-> On Tue 24-04-18 20:26:23, Steven Whitehouse wrote:
-> [...]
-> > It would be good to fix this, and it has been known as an issue for a long
-> > time. We might well be able to make use of the new API though. It might be
-> > as simple as adding the calls when we get & release glocks, but I'd have to
-> > check the code to be sure,
-> 
-> Yeah, starting with annotating those locking contexts and how document
-> how their are used in the reclaim is the great first step. This has to
-> be done per-fs obviously.
+On Thu, Jul 12, 2018 at 09:58:53PM -0500, Goldwyn Rodrigues wrote:
+> Would it be better if we keep this function as a part of iomap_ops? I
+> know gfs2 sets this conditionally, but we can always check the condition
+> in the function assigned to page_done(). It would keep all the functions
+> in one place.
 
-Any chance of progress here?
--- 
-Michal Hocko
-SUSE Labs
+It works at a very different level than the other iomap ops.  We had
+extensive discussions on previous versions, it should all be on
+the list.
