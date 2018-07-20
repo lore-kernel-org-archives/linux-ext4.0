@@ -1,7 +1,7 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
+From: Markus Heiser <markus.heiser@darmarit.de>
 Subject: Re: Sphinx version dependencies?
-Date: Fri, 20 Jul 2018 16:43:43 -0400
-Message-ID: <20180720204343.GC27862@thunk.org>
+Date: Fri, 20 Jul 2018 23:28:34 +0200
+Message-ID: <1c30a215-b67a-1e42-2e7d-078882125094@darmarit.de>
 References: <20180719181556.GA21435@thunk.org>
  <20180719190400.GB4800@magnolia>
  <44d73cd9926f58976a1269ff3cd3afb845ec84fa.camel@darmarit.de>
@@ -11,41 +11,36 @@ References: <20180719181556.GA21435@thunk.org>
  <cd31ba58ac24851698e06628ceebce4648345ff6.camel@darmarit.de>
  <20180720164421.GG4800@magnolia>
  <93aa59853a491a5ba3d5c3bcc0c991a1b815a67d.camel@darmarit.de>
- <20180720171020.GI4800@magnolia>
+ <20180720171020.GI4800@magnolia> <20180720204343.GC27862@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Markus Heiser <markus.heiser@darmarit.de>,
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
         Jonathan Corbet <corbet@lwn.net>, linux-doc@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20180720171020.GI4800@magnolia>
+In-Reply-To: <20180720204343.GC27862@thunk.org>
+Content-Language: de-DE
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 20, 2018 at 10:10:20AM -0700, Darrick J. Wong wrote:
-> 
-> Well yes, but it's the virtualenv workflow that produced build errors
-> for Ted; that's what would seem to need fixing?
+On 20.07.2018 22:43, Theodore Y. Ts'o wrote:
+> So if Documentation/sphinx/requirements.txt is the only thing which is
+> guaranteed to work, that's fine.  But it might be good to document
+> that somewhere.
 
-What would delight me if there was a fixed docutils and Sphinx version
-which is the **only** thing which subsystem maintainers need to test
-against.  If it fails for that version, then I reject the patch; and
-if it works on that version (say, 1.4.9), and it fails on some other
-version that a Distro wants to use for its hermetic build environment
-(say, 1.7.5), I can tell them, "not my problem, feel free to send me a
-patch that makes things work for 1.7.5, and doesn't break on 1.4.9 ---
-or package 1.4.9 for your distro build systems."
+Hm, I read it again and I guess this is more ore less what the documentation
+will say, see 'Sphinx Install' section. [1]
 
-I don't really care what the mandated version is --- although given
-that Fedora and Debian seem to be using 1.7.5, maybe that's the right
-answer, and too bad for the enterprise distro build systems --- that's
-why they get paid the big bucks.  I just want to know what I'm obliged
-to test against.
+- distros are fragile
+- Documentation/sphinx/requirements.txt is the reference environment
 
-So if Documentation/sphinx/requirements.txt is the only thing which is
-guaranteed to work, that's fine.  But it might be good to document
-that somewhere.
+.. even if this needs a virtualenv on specific distros. But what is with
+the offline build systems Christoph mentioned? I can't see a solution on
+the sometimes contradictory requirements on a *reference env* and the package
+reposetorie of a distro.
 
-						- Ted
+[1] https://www.kernel.org/doc/html/latest/doc-guide/sphinx.html?#sphinx-install
+
+--Markus--
