@@ -1,39 +1,38 @@
 From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH v2 6/6] ext4: super: extend timestamps to 40 bits
-Date: Sun, 22 Jul 2018 14:55:07 -0400
-Message-ID: <20180722185507.GG6685@thunk.org>
-References: <20180711091414.1494843-1-arnd@arndb.de>
- <20180711091414.1494843-6-arnd@arndb.de>
+Subject: Re: [PATCH] ext4: remove abnormal set for I_DATA_SEM subclass
+Date: Sun, 22 Jul 2018 18:08:41 -0400
+Message-ID: <20180722220841.GA3358@thunk.org>
+References: <1531123108-45918-1-git-send-email-junil0814.lee@lge.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: adilger.kernel@dilger.ca, jack@suse.cz, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, sirmy15@gmail.com,
-        stable@vger.kernel.org, tgnottingham@gmail.com,
-        y2038@lists.linaro.org
-To: Arnd Bergmann <arnd@arndb.de>
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, junil0814.lee@MIT.EDU
+To: Junil Lee <junil0814.lee@lge.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180711091414.1494843-6-arnd@arndb.de>
+In-Reply-To: <1531123108-45918-1-git-send-email-junil0814.lee@lge.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 11, 2018 at 11:14:14AM +0200, Arnd Bergmann wrote:
-> The inode timestamps use 34 bits in ext4, but the various timestamps in
-> the superblock are limited to 32 bits. If every user accesses these as
-> 'unsigned', then this is good until year 2106, but it seems better to
-> extend this a bit further in the process of removing the deprecated
-> get_seconds() function.
+On Mon, Jul 09, 2018 at 04:58:28PM +0900, Junil Lee wrote:
+> The -EBUSY return value of dquot_enable() function means that just
+> want to update flags. If some users make a duplicate request to update
+> flags, lockdep could catch the false positive casued by needing to
+> allocate a quota block from inside ext4_map_blocks(), while holding
+> i_data_sem for a data inode. This results in this complaint:
 > 
-> This adds another byte for each timestamp in the superblock, making
-> them long enough to store timestamps beyond what is in the inodes,
-> which seems good enough here (in ocfs2, they are already 64-bit wide,
-> which is appropriate for a new layout).
-> 
-> I did not modify e2fsprogs, which obviously needs the same change to
-> actually interpret future timestamps correctly.
-> 
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+>        CPU0                    CPU1
+>        ----                    ----
+>   lock(&s->s_dquot.dqio_mutex);
+>                                lock(&ei->i_data_sem);
+>                                lock(&s->s_dquot.dqio_mutex);
+>   lock(&ei->i_data_sem);
 
-Thanks, applied.
+How does this happen in practice?  The function ext4_quota_enable() is
+only called by ext4_enable_quotas(), and I don't see the code path
+where this would happen.  And if it does it would be resulting an
+EXT4-fs warning message getting printing indicating that a failure to
+enable quotas with an error of EBUSY.  So how does this happen that
+"users would make a duplicate request to update flags"?
 
-					- Ted
+       	     	    	      	      	 	- Ted
