@@ -1,47 +1,40 @@
-From: "Gustavo A. R. Silva" <gustavo@embeddedor.com>
-Subject: Re: [PATCH] ext4: use swap macro in mext_page_double_lock
-Date: Sun, 22 Jul 2018 18:30:53 -0500
-Message-ID: <fc152714-1784-bb0c-5340-db50e63e2044@embeddedor.com>
-References: <20180709131600.GA9138@embeddedor.com>
- <20180722221911.GC3358@thunk.org>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: remove abnormal set for I_DATA_SEM subclass
+Date: Mon, 23 Jul 2018 12:23:38 -0400
+Message-ID: <20180723162338.GG3358@thunk.org>
+References: <1531123108-45918-1-git-send-email-junil0814.lee@lge.com>
+ <20180722220841.GA3358@thunk.org>
+ <ccb7943b-44af-5031-8410-f1c0851e70c2@lge.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Transfer-Encoding: 8bit
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, junil0814.lee@MIT.EDU
+To: =?utf-8?B?7J207KSA7J28L+yXsOq1rOybkC9NQ+yXsOq1rOyGjCBCU1Dsi6QgQlNQNg==?=
+         =?utf-8?B?7YyAKGp1bmlsMDgxNC5sZWVAbGdlLmNvbSk=?=
+        <junil0814.lee@lge.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180722221911.GC3358@thunk.org>
-Content-Language: en-US
+Content-Disposition: inline
+In-Reply-To: <ccb7943b-44af-5031-8410-f1c0851e70c2@lge.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Theodore,
+On Mon, Jul 23, 2018 at 10:48:37AM +0900, 이준일/연구원/MC연구소 BSP실 BSP6팀(junil0814.lee@lge.com) wrote:
+> Then, I have a question.
+> quotactl() doesn't have case only to set limits flag, the routine to set
+> the DQUOT_LIMITS_ENABLED flag is under dquot_enable() function.
+> According to this logic, if users makes duplicate request to set
+> DQUOT_LIMITS_ENABLED flags, can lockdep make the false alarm with ext4 ?
 
-On 07/22/2018 05:19 PM, Theodore Y. Ts'o wrote:
-> On Mon, Jul 09, 2018 at 08:16:00AM -0500, Gustavo A. R. Silva wrote:
->> Make use of the swap macro and remove unnecessary variable *tmp*.
->> This makes the code easier to read and maintain. Also, reduces the
->> stack usage.
->>
->> This code was detected with the help of Coccinelle.
->>
->> Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
-> 
-> It doesn't actually reduce stack usage.  Look at the definition of
-> swap() in include/linux/kernel.h:
-> 
-> #define swap(a, b) \
-> 	do { typeof(a) __tmp = (a); (a) = (b); (b) = __tmp; } while (0)
-> 
-> It removes the variable "tmp", and replace it with "__tmp".
-> 
-> It slightly reduces the number of lines of code, so it slightly makes
-> the code easier to maintainer.  But I think you are really
-> over-promising how much this commit helps.
-> 
-I'll remove that part from the changelog and send it again.
+With the upstream kernel, if you call quotactl with the Q_QUOTAON
+command, it will fail with EEXIST before it ever gets to the file
+system specific quota code.  This happens in dquot_quota_enable() in
+fs/quota/dquot.c.
 
-Thanks
---
-Gustavo
+I'm going to guess you didn't try to reproduce the problem with the
+latest mainstream kernel, and then applied the patch, and verified the
+problem went away before you submitted it?
+
+Regards,
+
+					- Ted
