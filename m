@@ -1,93 +1,63 @@
 From: Jeremy Cline <jcline@redhat.com>
-Subject: [PATCH 2/3] ext4: super: Fix spectre gadgets in ext4_quota_{read,write,off}
-Date: Fri, 27 Jul 2018 16:23:56 +0000
-Message-ID: <20180727162357.30801-3-jcline@redhat.com>
+Subject: [PATCH 3/3] ext4: mballoc: Fix spectre gadget in ext4_mb_simple_scan_group
+Date: Fri, 27 Jul 2018 16:23:57 +0000
+Message-ID: <20180727162357.30801-4-jcline@redhat.com>
 References: <20180727162357.30801-1-jcline@redhat.com>
 Cc: Josh Poimboeuf <jpoimboe@redhat.com>, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org, Jeremy Cline <jcline@redhat.com>,
         stable@vger.kernel.org
 To: Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>
-Return-path: <stable-owner@vger.kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 In-Reply-To: <20180727162357.30801-1-jcline@redhat.com>
-Sender: stable-owner@vger.kernel.org
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-'type' is a user-controlled value used to index 'sb_dqopt(sb)->files'.
-Clamp 'type' to the size of the array to avoid a speculative
-out-of-bounds read.
+'ac->ac_2order' is a user-controlled value used to index into
+'grp->bb_counters' and based on the value at that index, 'ac->ac_found'
+is written to. Clamp the value right after the bounds check to avoid a
+speculative out-of-bounds read of 'grp->bb_counters'.
 
-These gadgets were found with the help of smatch:
+This also protects the access of the s_mb_offsets and s_mb_maxs arrays
+inside mb_find_buddy().
 
-* fs/ext4/super.c:5741 ext4_quota_read() warn: potential spectre issue
-  'sb_dqopt(sb)->files' [r]
+These gadgets were discovered with the help of smatch:
 
-* fs/ext4/super.c:5778 ext4_quota_write() warn: potential spectre issue
-  'sb_dqopt(sb)->files' [r]
+* fs/ext4/mballoc.c:1896 ext4_mb_simple_scan_group() warn: potential
+  spectre issue 'grp->bb_counters' [w] (local cap)
+
+* fs/ext4/mballoc.c:445 mb_find_buddy() warn: potential spectre issue
+  'EXT4_SB(e4b->bd_sb)->s_mb_offsets' [r] (local cap)
+
+* fs/ext4/mballoc.c:446 mb_find_buddy() warn: potential spectre issue
+  'EXT4_SB(e4b->bd_sb)->s_mb_maxs' [r] (local cap)
 
 Cc: Josh Poimboeuf <jpoimboe@redhat.com>
 Cc: stable@vger.kernel.org
 Signed-off-by: Jeremy Cline <jcline@redhat.com>
 ---
- fs/ext4/super.c | 18 ++++++++++++++----
- 1 file changed, 14 insertions(+), 4 deletions(-)
+ fs/ext4/mballoc.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c04a09b51742..de358eba024a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -5693,10 +5693,13 @@ static int ext4_enable_quotas(struct super_block *sb)
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index f7ab34088162..c0866007a949 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -14,6 +14,7 @@
+ #include <linux/log2.h>
+ #include <linux/module.h>
+ #include <linux/slab.h>
++#include <linux/nospec.h>
+ #include <linux/backing-dev.h>
+ #include <trace/events/ext4.h>
  
- static int ext4_quota_off(struct super_block *sb, int type)
- {
--	struct inode *inode = sb_dqopt(sb)->files[type];
-+	struct inode *inode;
- 	handle_t *handle;
- 	int err;
+@@ -1893,6 +1894,7 @@ void ext4_mb_simple_scan_group(struct ext4_allocation_context *ac,
  
-+	type = array_index_nospec(type, MAXQUOTAS);
-+	inode = sb_dqopt(sb)->files[type];
-+
- 	/* Force all delayed allocation blocks to be allocated.
- 	 * Caller already holds s_umount sem */
- 	if (test_opt(sb, DELALLOC))
-@@ -5740,13 +5743,17 @@ static int ext4_quota_off(struct super_block *sb, int type)
- static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
- 			       size_t len, loff_t off)
- {
--	struct inode *inode = sb_dqopt(sb)->files[type];
-+	struct inode *inode;
- 	ext4_lblk_t blk = off >> EXT4_BLOCK_SIZE_BITS(sb);
- 	int offset = off & (sb->s_blocksize - 1);
- 	int tocopy;
- 	size_t toread;
- 	struct buffer_head *bh;
--	loff_t i_size = i_size_read(inode);
-+	loff_t i_size;
-+
-+	type = array_index_nospec(type, MAXQUOTAS);
-+	inode = sb_dqopt(sb)->files[type];
-+	i_size = i_size_read(inode);
+ 	BUG_ON(ac->ac_2order <= 0);
+ 	for (i = ac->ac_2order; i <= sb->s_blocksize_bits + 1; i++) {
++		i = array_index_nospec(i, sb->s_blocksize_bits + 2);
+ 		if (grp->bb_counters[i] == 0)
+ 			continue;
  
- 	if (off > i_size)
- 		return 0;
-@@ -5777,13 +5784,16 @@ static ssize_t ext4_quota_read(struct super_block *sb, int type, char *data,
- static ssize_t ext4_quota_write(struct super_block *sb, int type,
- 				const char *data, size_t len, loff_t off)
- {
--	struct inode *inode = sb_dqopt(sb)->files[type];
-+	struct inode *inode;
- 	ext4_lblk_t blk = off >> EXT4_BLOCK_SIZE_BITS(sb);
- 	int err, offset = off & (sb->s_blocksize - 1);
- 	int retries = 0;
- 	struct buffer_head *bh;
- 	handle_t *handle = journal_current_handle();
- 
-+	type = array_index_nospec(type, MAXQUOTAS);
-+	inode = sb_dqopt(sb)->files[type];
-+
- 	if (EXT4_SB(sb)->s_journal && !handle) {
- 		ext4_msg(sb, KERN_WARNING, "Quota write (off=%llu, len=%llu)"
- 			" cancelled because transaction is not started",
 -- 
 2.17.1
