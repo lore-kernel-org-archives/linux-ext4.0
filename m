@@ -1,46 +1,34 @@
-From: "Gustavo A. R. Silva" <gustavo@embeddedor.com>
-Subject: [PATCH v2] ext4: use swap macro in mext_page_double_lock
-Date: Thu, 26 Jul 2018 12:43:23 -0500
-Message-ID: <20180726174323.GA28731@embeddedor.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Gustavo A. R. Silva" <gustavo@embeddedor.com>
+From: Jeremy Cline <jcline@redhat.com>
+Subject: [PATCH 0/3] ext4: fix spectre v1 gadgets
+Date: Fri, 27 Jul 2018 16:23:54 +0000
+Message-ID: <20180727162357.30801-1-jcline@redhat.com>
+Cc: Josh Poimboeuf <jpoimboe@redhat.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Jeremy Cline <jcline@redhat.com>
 To: Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Make use of the swap macro and remove unnecessary variable *tmp*.
-This makes the code easier to read and maintain.
+Hi folks,
 
-This code was detected with the help of Coccinelle.
+This patch set fixes a few Spectre v1 gadgets in ext4 detected with the
+help of Smatch.
 
-Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
----
-Changes in v2:
- - Update changelog. Remove the line claiming that this
-   patch reduces stack usage.
+Note that because the speculation window is large, the policy is to stop
+the speculative out-of-bounds load and not worry if the attack can be
+completed with a dependent load or store[0].
 
- fs/ext4/move_extent.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+[0] https://marc.info/?l=linux-kernel&m=152449131114778
 
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 8e17efd..a409ff7 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -134,9 +134,7 @@ mext_page_double_lock(struct inode *inode1, struct inode *inode2,
- 		mapping[0] = inode1->i_mapping;
- 		mapping[1] = inode2->i_mapping;
- 	} else {
--		pgoff_t tmp = index1;
--		index1 = index2;
--		index2 = tmp;
-+		swap(index1, index2);
- 		mapping[0] = inode2->i_mapping;
- 		mapping[1] = inode1->i_mapping;
- 	}
+Jeremy Cline (3):
+  ext4: super: Fix spectre gadget in ext4_quota_on
+  ext4: super: Fix spectre gadgets in ext4_quota_{read,write,off}
+  ext4: mballoc: Fix spectre gadget in ext4_mb_simple_scan_group
+
+ fs/ext4/mballoc.c |  2 ++
+ fs/ext4/super.c   | 20 ++++++++++++++++----
+ 2 files changed, 18 insertions(+), 4 deletions(-)
+
 -- 
-2.7.4
+2.17.1
