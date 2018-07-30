@@ -1,70 +1,35 @@
-From: Jeremy Cline <jcline@redhat.com>
-Subject: [PATCH v2] ext4: mballoc: Fix spectre gadget in ext4_mb_regular_allocator
-Date: Mon, 30 Jul 2018 18:07:47 +0000
-Message-ID: <20180730180747.25200-1-jcline@redhat.com>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jeremy Cline <jcline@redhat.com>,
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4: mballoc: Fix spectre gadget in
+ ext4_mb_regular_allocator
+Date: Mon, 30 Jul 2018 14:36:15 -0400
+Message-ID: <20180730183615.GU21725@thunk.org>
+References: <20180730180747.25200-1-jcline@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
         Josh Poimboeuf <jpoimboe@redhat.com>, stable@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
+To: Jeremy Cline <jcline@redhat.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180730180747.25200-1-jcline@redhat.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-'ac->ac_g_ex.fe_len' is a user-controlled value which is used in the
-derivation of 'ac->ac_2order'. 'ac->ac_2order', in turn, is used to
-index arrays which makes it a potential spectre gadget. Fix this by
-sanitizing the value assigned to 'ac->ac2_order'.  This covers the
-following accesses found with the help of smatch:
+Hey Jeremy,
 
-* fs/ext4/mballoc.c:1896 ext4_mb_simple_scan_group() warn: potential
-  spectre issue 'grp->bb_counters' [w] (local cap)
+I think you are also going to be changing the 1/3 patch from the
+original patch series that this was part of.  That's correct, right?
 
-* fs/ext4/mballoc.c:445 mb_find_buddy() warn: potential spectre issue
-  'EXT4_SB(e4b->bd_sb)->s_mb_offsets' [r] (local cap)
+It would be easier for me if you could simply make all of the
+revisions you plan to make for the patch series, and then upload a
+full v2 of the entire patch series.
 
-* fs/ext4/mballoc.c:446 mb_find_buddy() warn: potential spectre issue
-  'EXT4_SB(e4b->bd_sb)->s_mb_maxs' [r] (local cap)
+Right now I've mentally marked the entire patch series as "waiting
+forh v2".  So when you send a V2 version of individual patch out of
+that series, it leaves things unclear when/if you plan to update any
+of other patches in the series.
 
-Cc: Josh Poimboeuf <jpoimboe@redhat.com>
-Cc: stable@vger.kernel.org
-Suggested-by: Josh Poimboeuf <jpoimboe@redhat.com>
-Signed-off-by: Jeremy Cline <jcline@redhat.com>
----
+Thanks!!
 
-I broke this out of the "ext4: fix spectre v1 gadgets" patch set since
-the other patches in that series could, as Josh noted, be replaced with
-one fix in do_quotactl. I'll send that fix to the disk quota folks
-separately.
-
-Changes from v1:
-  - Sanitize ac_2order on assignment, rather than down the call chain in
-    ext4_mb_simple_scan_group.
-
- fs/ext4/mballoc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index f7ab34088162..8b24d3d42cb3 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -14,6 +14,7 @@
- #include <linux/log2.h>
- #include <linux/module.h>
- #include <linux/slab.h>
-+#include <linux/nospec.h>
- #include <linux/backing-dev.h>
- #include <trace/events/ext4.h>
- 
-@@ -2140,7 +2141,8 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 		 * This should tell if fe_len is exactly power of 2
- 		 */
- 		if ((ac->ac_g_ex.fe_len & (~(1 << (i - 1)))) == 0)
--			ac->ac_2order = i - 1;
-+			ac->ac_2order = array_index_nospec(i - 1,
-+							   sb->s_blocksize_bits + 2);
- 	}
- 
- 	/* if stream allocation is enabled, use global goal */
--- 
-2.17.1
+						- Ted
