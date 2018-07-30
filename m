@@ -1,45 +1,44 @@
-From: Jeremy Cline <jcline@redhat.com>
+From: Josh Poimboeuf <jpoimboe@redhat.com>
 Subject: Re: [PATCH v2] ext4: mballoc: Fix spectre gadget in
  ext4_mb_regular_allocator
-Date: Mon, 30 Jul 2018 14:46:59 -0400
-Message-ID: <3f954645-e6b5-55d8-0ccd-2d1dd5ddb80e@redhat.com>
+Date: Mon, 30 Jul 2018 13:54:08 -0500
+Message-ID: <20180730185408.hl6omiitkqpac5d3@treble>
 References: <20180730180747.25200-1-jcline@redhat.com>
- <20180730183615.GU21725@thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+Cc: Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Josh Poimboeuf <jpoimboe@redhat.com>, stable@vger.kernel.org
+        stable@vger.kernel.org
+To: Jeremy Cline <jcline@redhat.com>
 Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20180730183615.GU21725@thunk.org>
-Content-Language: en-US
+Content-Disposition: inline
+In-Reply-To: <20180730180747.25200-1-jcline@redhat.com>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
-
-On 07/30/2018 02:36 PM, Theodore Y. Ts'o wrote:
-> Hey Jeremy,
+On Mon, Jul 30, 2018 at 06:07:47PM +0000, Jeremy Cline wrote:
+> 'ac->ac_g_ex.fe_len' is a user-controlled value which is used in the
+> derivation of 'ac->ac_2order'. 'ac->ac_2order', in turn, is used to
+> index arrays which makes it a potential spectre gadget. Fix this by
+> sanitizing the value assigned to 'ac->ac2_order'.  This covers the
+> following accesses found with the help of smatch:
 > 
-> I think you are also going to be changing the 1/3 patch from the
-> original patch series that this was part of.  That's correct, right?
+> * fs/ext4/mballoc.c:1896 ext4_mb_simple_scan_group() warn: potential
+>   spectre issue 'grp->bb_counters' [w] (local cap)
 > 
-> It would be easier for me if you could simply make all of the
-> revisions you plan to make for the patch series, and then upload a
-> full v2 of the entire patch series.
+> * fs/ext4/mballoc.c:445 mb_find_buddy() warn: potential spectre issue
+>   'EXT4_SB(e4b->bd_sb)->s_mb_offsets' [r] (local cap)
 > 
-> Right now I've mentally marked the entire patch series as "waiting
-> forh v2".  So when you send a V2 version of individual patch out of
-> that series, it leaves things unclear when/if you plan to update any
-> of other patches in the series.
+> * fs/ext4/mballoc.c:446 mb_find_buddy() warn: potential spectre issue
+>   'EXT4_SB(e4b->bd_sb)->s_mb_maxs' [r] (local cap)
+> 
+> Cc: Josh Poimboeuf <jpoimboe@redhat.com>
+> Cc: stable@vger.kernel.org
+> Suggested-by: Josh Poimboeuf <jpoimboe@redhat.com>
+> Signed-off-by: Jeremy Cline <jcline@redhat.com>
 
-I dropped patch 1/3 and 2/3 from the original series because they can
-both be covered by some sanitation in fs/quota/quota.c, so the this is
-only patch from the v1 series that should be applied.
+Reviewed-by: Josh Poimboeuf <jpoimboe@redhat.com>
 
-Sorry for not being more clear!
-
-Cheers,
-Jeremy
+-- 
+Josh
