@@ -1,27 +1,70 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: use swap macro in mext_page_double_lock
-Date: Sun, 29 Jul 2018 16:12:36 -0400
-Message-ID: <20180729201236.GF21725@thunk.org>
-References: <20180726174323.GA28731@embeddedor.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Gustavo A. R. Silva" <gustavo@embeddedor.com>
+From: Jeremy Cline <jcline@redhat.com>
+Subject: [PATCH v2] ext4: mballoc: Fix spectre gadget in ext4_mb_regular_allocator
+Date: Mon, 30 Jul 2018 18:07:47 +0000
+Message-ID: <20180730180747.25200-1-jcline@redhat.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jeremy Cline <jcline@redhat.com>,
+        Josh Poimboeuf <jpoimboe@redhat.com>, stable@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20180726174323.GA28731@embeddedor.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 26, 2018 at 12:43:23PM -0500, Gustavo A. R. Silva wrote:
-> Make use of the swap macro and remove unnecessary variable *tmp*.
-> This makes the code easier to read and maintain.
-> 
-> This code was detected with the help of Coccinelle.
-> 
-> Signed-off-by: Gustavo A. R. Silva <gustavo@embeddedor.com>
+'ac->ac_g_ex.fe_len' is a user-controlled value which is used in the
+derivation of 'ac->ac_2order'. 'ac->ac_2order', in turn, is used to
+index arrays which makes it a potential spectre gadget. Fix this by
+sanitizing the value assigned to 'ac->ac2_order'.  This covers the
+following accesses found with the help of smatch:
 
-Thanks, applied.
+* fs/ext4/mballoc.c:1896 ext4_mb_simple_scan_group() warn: potential
+  spectre issue 'grp->bb_counters' [w] (local cap)
 
-					- Ted
+* fs/ext4/mballoc.c:445 mb_find_buddy() warn: potential spectre issue
+  'EXT4_SB(e4b->bd_sb)->s_mb_offsets' [r] (local cap)
+
+* fs/ext4/mballoc.c:446 mb_find_buddy() warn: potential spectre issue
+  'EXT4_SB(e4b->bd_sb)->s_mb_maxs' [r] (local cap)
+
+Cc: Josh Poimboeuf <jpoimboe@redhat.com>
+Cc: stable@vger.kernel.org
+Suggested-by: Josh Poimboeuf <jpoimboe@redhat.com>
+Signed-off-by: Jeremy Cline <jcline@redhat.com>
+---
+
+I broke this out of the "ext4: fix spectre v1 gadgets" patch set since
+the other patches in that series could, as Josh noted, be replaced with
+one fix in do_quotactl. I'll send that fix to the disk quota folks
+separately.
+
+Changes from v1:
+  - Sanitize ac_2order on assignment, rather than down the call chain in
+    ext4_mb_simple_scan_group.
+
+ fs/ext4/mballoc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index f7ab34088162..8b24d3d42cb3 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -14,6 +14,7 @@
+ #include <linux/log2.h>
+ #include <linux/module.h>
+ #include <linux/slab.h>
++#include <linux/nospec.h>
+ #include <linux/backing-dev.h>
+ #include <trace/events/ext4.h>
+ 
+@@ -2140,7 +2141,8 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 		 * This should tell if fe_len is exactly power of 2
+ 		 */
+ 		if ((ac->ac_g_ex.fe_len & (~(1 << (i - 1)))) == 0)
+-			ac->ac_2order = i - 1;
++			ac->ac_2order = array_index_nospec(i - 1,
++							   sb->s_blocksize_bits + 2);
+ 	}
+ 
+ 	/* if stream allocation is enabled, use global goal */
+-- 
+2.17.1
