@@ -1,49 +1,101 @@
-From: Eric Dumazet <edumazet@google.com>
-Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
- 13/17] khwasan: add hooks implementation)
-Date: Tue, 31 Jul 2018 11:16:28 -0700
-Message-ID: <CANn89iLjk-mV3kZGASvZQtYaBDy9sbo=NW4Tt_V=dOP_-b=VNQ@mail.gmail.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re:
+ [PATCH v4 13/17] khwasan: add hooks implementation)
+Date: Tue, 31 Jul 2018 11:51:59 -0700
+Message-ID: <CA+55aFzYLgyNp1jsqsvUOjwZdO_1Piqj=iB=rzDShjScdNtkbg@mail.gmail.com>
 References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
  <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
- <CANn89iLLQP2vA+2J-zxL3Fa75zNw=yRmv3Jg6vcEc=fYeEZ2ow@mail.gmail.com> <CACT4Y+Y6dhNgisDM9hdP-M-Rnk66DxZWcX7v39ESGJR8RY3asQ@mail.gmail.com>
+ <CA+55aFzHR1+YbDee6Cduo6YXHO9LKmLN1wP=MVzbP41nxUb5=g@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Christoph Lameter <cl@linux.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, jack@suse.com,
-        linux-ext4@vger.kernel.org,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Pablo Neira Ayuso <pablo@netfilter.org>,
-        Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
-        Florian Westphal <fw@strlen.de>,
-        David Miller <davem@davemloft.net>,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        netdev <netdev@vger.kernel.org>,
-        Gerrit Renker <gerrit@erg.abdn.ac.uk>, dccp@vger.kernel.org,
-        jani.nikula@linux.intel.com, joonas.lahtinen@linux.intel.com,
-        rodrigo.vivi@intel.com, airlied@linux.ie,
-        intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
-        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
-To: Dmitry Vyukov <dvyukov@google.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CACT4Y+Y6dhNgisDM9hdP-M-Rnk66DxZWcX7v39ESGJR8RY3asQ@mail.gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: Dave Airlie <airlied@linux.ie>, DRI <dri-devel@lists.freedesktop.org>,
+ linux-mm <linux-mm@kvack.org>, Eric Dumazet <edumazet@google.com>,
+ Network Development <netdev@vger.kernel.org>, gerrit@erg.abdn.ac.uk,
+ dccp@vger.kernel.org, coreteam@netfilter.org,
+ Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
+ Andrey Ryabinin <aryabinin@virtuozzo.com>, linux-ext4@vger.kernel.org,
+ Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
+ Pablo Neira Ayuso <pablo@netfilter.org>,
+ linux-s390 <linux-s390@vger.kernel.org>,
+ Andrey Konovalov <andreyknvl@google.com>,
+ intel-gfx <intel-gfx@lists.freedesktop.org>,
+ Ursula Braun <ubraun@linux.ibm.com>, Rodrigo Vivi <rodrigo.vivi@intel.com>,
+ Dmitry Vyukov <dvyukov@google.com>, Theodore Ts'o <tytso@mit.edu>,
+ Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
+ Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ Florian Westphal <fw@strlen.de>,
+ Linux Kernel Mailing List <linu
+To: Christoph Lameter <cl@linux.com>
+Return-path: <intel-gfx-bounces@lists.freedesktop.org>
+In-Reply-To: <CA+55aFzHR1+YbDee6Cduo6YXHO9LKmLN1wP=MVzbP41nxUb5=g@mail.gmail.com>
+List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/intel-gfx>,
+ <mailto:intel-gfx-request@lists.freedesktop.org?subject=unsubscribe>
+List-Archive: <https://lists.freedesktop.org/archives/intel-gfx>
+List-Post: <mailto:intel-gfx@lists.freedesktop.org>
+List-Help: <mailto:intel-gfx-request@lists.freedesktop.org?subject=help>
+List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/intel-gfx>,
+ <mailto:intel-gfx-request@lists.freedesktop.org?subject=subscribe>
+Errors-To: intel-gfx-bounces@lists.freedesktop.org
+Sender: "Intel-gfx" <intel-gfx-bounces@lists.freedesktop.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 31, 2018 at 10:51 AM Dmitry Vyukov <dvyukov@google.com> wrote:
->
->
-> Is it OK to overwrite ct->status? It seems that are some read and
-> writes to it right after atomic_inc_not_zero.
-
-If it is after a (successful) atomic_inc_not_zero(),
-the object is guaranteed to be alive (not freed or about to be freed).
-
-About readind/writing a specific field, all traditional locking rules apply.
-
-For TCP socket, we would generally grab the socket lock before
-reading/writing various fields.
-
-ct->status seems to be manipulated with set_bit() and clear_bit()
-which are SMP safe.
+T24gVHVlLCBKdWwgMzEsIDIwMTggYXQgMTA6NDkgQU0gTGludXMgVG9ydmFsZHMKPHRvcnZhbGRz
+QGxpbnV4LWZvdW5kYXRpb24ub3JnPiB3cm90ZToKPgo+IFNvIHRoZSByZS11c2UgbWlnaHQgaW5p
+dGlhbGl6ZSB0aGUgZmllbGRzIGxhemlseSwgbm90IG5lY2Vzc2FyaWx5IHVzaW5nIGEgY3Rvci4K
+CkluIHBhcnRpY3VsYXIsIHRoZSBwYXR0ZXJuIHRoYXQgbmZfY29ubnRyYWNrIHVzZXMgbG9va3Mg
+bGlrZSBpdCBpcyBzYWZlLgoKSWYgeW91IGhhdmUgYSB3ZWxsLWRlZmluZWQgcmVmY291bnQsIGFu
+ZCB1c2UgImF0b21pY19pbmNfbm90X3plcm8oKSIKdG8gZ3VhcmQgdGhlIHNwZWN1bGF0aXZlIFJD
+VSBhY2Nlc3Mgc2VjdGlvbiwgYW5kIHVzZQoiYXRvbWljX2RlY19hbmRfdGVzdCgpIiBpbiB0aGUg
+ZnJlZWluZyBzZWN0aW9uLCB0aGVuIHlvdSBzaG91bGQgYmUKc2FmZSB3cnQgbmV3IGFsbG9jYXRp
+b25zLgoKSWYgeW91IGhhdmUgYSBjb21wbGV0ZWx5IG5ldyBhbGxvY2F0aW9uIHRoYXQgaGFzICJy
+YW5kb20gc3RhbGUKY29udGVudCIsIHlvdSBrbm93IHRoYXQgaXQgY2Fubm90IGJlIG9uIHRoZSBS
+Q1UgbGlzdCwgc28gdGhlcmUgaXMgbm8Kc3BlY3VsYXRpdmUgYWNjZXNzIHRoYXQgY2FuIGV2ZXIg
+c2VlIHRoYXQgcmFuZG9tIGNvbnRlbnQuCgpTbyB0aGUgb25seSBjYXNlIHlvdSBuZWVkIHRvIHdv
+cnJ5IGFib3V0IGlzIGEgcmUtdXNlIGFsbG9jYXRpb24sIGFuZAp5b3Uga25vdyB0aGF0IHRoZSBy
+ZWZjb3VudCB3aWxsIHN0YXJ0IG91dCBhcyB6ZXJvIGV2ZW4gaWYgeW91IGRvbid0CmhhdmUgYSBj
+b25zdHJ1Y3Rvci4KClNvIHlvdSBjYW4gdGhpbmsgb2YgdGhlIHJlZmNvdW50IGl0c2VsZiBhcyBh
+bHdheXMgaGF2aW5nIGEgemVybwpjb25zdHJ1Y3RvciwgKkJVVCogeW91IG5lZWQgdG8gYmUgY2Fy
+ZWZ1bCB3aXRoIG9yZGVyaW5nLgoKSW4gcGFydGljdWxhciwgd2hvZXZlciBkb2VzIHRoZSBhbGxv
+Y2F0aW9uIG5lZWRzIHRvIHRoZW4gc2V0IHRoZQpyZWZjb3VudCB0byBhIG5vbi16ZXJvIHZhbHVl
+ICphZnRlciogaXQgaGFzIGluaXRpYWxpemVkIGFsbCB0aGUgb3RoZXIKZmllbGRzLiBBbmQgaW4g
+cGFydGljdWxhciwgaXQgbmVlZHMgdG8gbWFrZSBzdXJlIHRoYXQgaXQgdXNlcyB0aGUKcHJvcGVy
+IG1lbW9yeSBvcmRlcmluZyB0byBkbyBzby4KCkFuZCBpbiB0aGlzIGNhc2UsIHdlIGhhdmUKCiAg
+c3RhdGljIHN0cnVjdCBuZl9jb25uICoKICBfX25mX2Nvbm50cmFja19hbGxvYyhzdHJ1Y3QgbmV0
+ICpuZXQsCiAgewogICAgICAgIC4uLgogICAgICAgIGF0b21pY19zZXQoJmN0LT5jdF9nZW5lcmFs
+LnVzZSwgMCk7Cgp3aGljaCBpcyBhIG5vLW9wIGZvciB0aGUgcmUtdXNlIGNhc2UgKHdoZXRoZXIg
+cmFjaW5nIG9yIG5vdCwgc2luY2UgYW55CiJpbmNfbm90X3plcm8iIHVzZXJzIHdvbid0IHRvdWNo
+IGl0KSwgYnV0IGluaXRpYWxpemVzIGl0IHRvIHplcm8gZm9yCnRoZSAiY29tcGxldGVseSBuZXcg
+b2JqZWN0IiBjYXNlLgoKQW5kIHRoZW4sIHRoZSB0aGluZyB0aGF0IGFjdHVhbGx5IGV4cG9zZXMg
+aXQgdG8gdGhlIHNwZWN1bGF0aXZlIHdhbGtlcnMgZG9lczoKCiAgaW50CiAgbmZfY29ubnRyYWNr
+X2hhc2hfY2hlY2tfaW5zZXJ0KHN0cnVjdCBuZl9jb25uICpjdCkKICB7CiAgICAgICAgLi4uCiAg
+ICAgICAgc21wX3dtYigpOwogICAgICAgIC8qIFRoZSBjYWxsZXIgaG9sZHMgYSByZWZlcmVuY2Ug
+dG8gdGhpcyBvYmplY3QgKi8KICAgICAgICBhdG9taWNfc2V0KCZjdC0+Y3RfZ2VuZXJhbC51c2Us
+IDIpOwoKd2hpY2ggbWVhbnMgdGhhdCBpdCBzdGF5cyBhcyB6ZXJvIHVudGlsIGV2ZXJ5dGhpbmcg
+aXMgYWN0dWFsbHkgc2V0IHVwLAphbmQgdGhlbiB0aGUgb3B0aW1pc3RpYyB3YWxrZXIgY2FuIHVz
+ZSB0aGUgb3RoZXIgZmllbGRzIChpbmNsdWRpbmcKc3BpbmxvY2tzIGV0YykgdG8gdmVyaWZ5IHRo
+YXQgaXQncyBhY3R1YWxseSB0aGUgcmlnaHQgdGhpbmcuIFRoZQpzbXBfd21iKCkgbWVhbnMgdGhh
+dCB0aGUgcHJldmlvdXMgaW5pdGlhbGl6YXRpb24gcmVhbGx5IHdpbGwgYmUKdmlzaWJsZSBiZWZv
+cmUgdGhlIG9iamVjdCBpcyB2aXNpYmxlLgoKU2lkZSBub3RlOiBvbiBzb21lIGFyY2hpdGVjdHVy
+ZXMgaXQgbWlnaHQgaGVscCB0byBtYWtlIHRoYXQgInNtcF93bWIKLT4gYXRvbWljX3NldCgpIiBz
+ZXF1ZW5jZSBiZSBhbSAic21wX3N0b3JlX3JlbGVhc2UoKSIgaW5zdGVhZC4gRG9lc24ndAptYXR0
+ZXIgb24geDg2LCBidXQgbWlnaHQgbWF0dGVyIG9uIGFybTY0LgoKTk9URSEgT25lIHRoaW5nIHRv
+IGJlIHZlcnkgd29ycmllZCBhYm91dCBpcyB0aGF0IHJlLWluaXRpYWxpemluZwp3aGF0ZXZlciBS
+Q1UgbGlzdHMgbWVhbnMgdGhhdCBub3cgdGhlIFJDVSB3YWxrZXIgbWF5IGJlIHdhbGtpbmcgb24g
+dGhlCndyb25nIGxpc3Qgc28gdGhlIHdhbGtlciBtYXkgZG8gdGhlIHJpZ2h0IHRoaW5nIGZvciB0
+aGlzIHBhcnRpY3VsYXIKZW50cnksIGJ1dCBpdCBtYXkgbWlzcyB3YWxraW5nICpvdGhlciogZW50
+cmllcy4gU28gdGhlbiB5b3UgY2FuIGdldApzcHVyaW91cyBsb29rdXAgZmFpbHVyZXMsIGJlY2F1
+c2UgdGhlIFJDVSB3YWxrZXIgbmV2ZXIgd2Fsa2VkIGFsbCB0aGUKd2F5IHRvIHRoZSBlbmQgb2Yg
+dGhlIHJpZ2h0IGxpc3QuIFRoYXQgZW5kcyB1cCBiZWluZyBhIG11Y2ggbW9yZQpzdWJ0bGUgYnVn
+LgoKQnV0IHRoZSBuZl9jb25udHJhY2sgY2FzZSBzZWVtcyB0byBnZXQgdGhhdCByaWdodCB0b28s
+IHNlZSB0aGUgcmVzdGFydAppbiBfX19fbmZfY29ubnRyYWNrX2ZpbmQoKS4KClNvIEkgZG9uJ3Qg
+c2VlIGFueXRoaW5nIHdyb25nIGluIG5mX2Nvbm50cmFjay4KCkJ1dCB5ZXMsIHVzaW5nIFNMQUJf
+VFlQRVNBRkVfQllfUkNVIGlzIHZlcnkgdmVyeSBzdWJ0bGUuIEJ1dCBtb3N0IG9mCnRoZSBzdWJ0
+bGV0aWVzIGhhdmUgbm90aGluZyB0byBkbyB3aXRoIGhhdmluZyBhIGNvbnN0cnVjdG9yLCB0aGV5
+IGFyZQphYm91dCB0aG9zZSAibWFrZSBzdXJlIG1lbW9yeSBvcmRlcmluZyB3cnQgcmVmY291bnQg
+aXMgcmlnaHQiIGFuZAoicmVzdGFydCBzcGVjdWxhdGl2ZSBSQ1Ugd2FsayIgaXNzdWVzIHRoYXQg
+YWN0dWFsbHkgaGFwcGVuIHJlZ2FyZGxlc3MKb2YgaGF2aW5nIGEgY29uc3RydWN0b3Igb3Igbm90
+LgoKICAgICAgICAgICAgICAgICAgTGludXMKX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX18KSW50ZWwtZ2Z4IG1haWxpbmcgbGlzdApJbnRlbC1nZnhAbGlzdHMu
+ZnJlZWRlc2t0b3Aub3JnCmh0dHBzOi8vbGlzdHMuZnJlZWRlc2t0b3Aub3JnL21haWxtYW4vbGlz
+dGluZm8vaW50ZWwtZ2Z4Cg==
