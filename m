@@ -1,62 +1,40 @@
-From: Christopher Lameter <cl@linux.com>
+From: Eric Dumazet <edumazet@google.com>
 Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
  13/17] khwasan: add hooks implementation)
-Date: Tue, 31 Jul 2018 17:36:36 +0000
-Message-ID: <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
-References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
+Date: Tue, 31 Jul 2018 10:41:54 -0700
+Message-ID: <CANn89iLLQP2vA+2J-zxL3Fa75zNw=yRmv3Jg6vcEc=fYeEZ2ow@mail.gmail.com>
+References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com> <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+Content-Type: text/plain; charset="UTF-8"
+Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, jack@suse.com,
         linux-ext4@vger.kernel.org,
         Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
         Pablo Neira Ayuso <pablo@netfilter.org>,
         Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
         Florian Westphal <fw@strlen.de>,
-        "David S. Miller" <davem@davemloft.net>,
+        David Miller <davem@davemloft.net>,
         netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        netdev@vger.kernel.org, Gerrit Renker <gerrit@erg.abdn.ac.uk>,
-        dccp@vger.kernel.org, Jani Nikula <jani.nikula@linux.intel.com>,
-        Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
-        Rodrigo Vivi <rodrigo.vivi@intel.com>,
-        David Airlie <airlied@linux.ie>,
+        netdev <netdev@vger.kernel.org>,
+        Gerrit Renker <gerrit@erg.abdn.ac.uk>, dccp@vger.kernel.org,
+        jani.nikula@linux.intel.com, joonas.lahtinen@linux.intel.com,
+        rodrigo.vivi@intel.com, airlied@linux.ie,
         intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
-        Eric Dumazet <edumazet@google.com>,
         Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
-        Hideaki YOSHIFUJI <yosh
-To: Andrey Ryabinin <aryabinin@virtuozzo.com>
+        Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
+        Ursula Braun <ubraun@linux.ibm.com>,
+To: Christoph Lameter <cl@linux.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
+In-Reply-To: <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 31 Jul 2018, Andrey Ryabinin wrote:
+On Tue, Jul 31, 2018 at 10:36 AM Christopher Lameter <cl@linux.com> wrote:
 
-> Guys, it seems that we have a lot of code using SLAB_TYPESAFE_BY_RCU cache without constructor.
-> I think it's nearly impossible to use that combination without having bugs.
-> It's either you don't really need the SLAB_TYPESAFE_BY_RCU, or you need to have a constructor in kmem_cache.
 >
-> Could you guys, please, verify your code if it's really need SLAB_TYPSAFE or constructor?
->
-> E.g. the netlink code look extremely suspicious:
->
-> 	/*
-> 	 * Do not use kmem_cache_zalloc(), as this cache uses
-> 	 * SLAB_TYPESAFE_BY_RCU.
-> 	 */
-> 	ct = kmem_cache_alloc(nf_conntrack_cachep, gfp);
-> 	if (ct == NULL)
-> 		goto out;
->
-> 	spin_lock_init(&ct->lock);
->
-> If nf_conntrack_cachep objects really used in rcu typesafe manner, than 'ct' returned by kmem_cache_alloc might still be
-> in use by another cpu. So we just reinitialize spin_lock used by someone else?
+> If there is refcounting going on then why use SLAB_TYPESAFE_BY_RCU?
 
-ct may still be read by another cpu in a RCU section but the object was
-freed elsewhere so no other processor may modify the object.
+To allow fast reuse of objects, without going through call_rcu() and
+reducing cache efficiency.
 
-The lock must have been released before freeing the slab object and thus
-the initialization of the spinlock is unnecessary if it was
-initialized in ctor.
-
-If there is refcounting going on then why use SLAB_TYPESAFE_BY_RCU?
+I believe this is mentioned in Documentation/RCU/rculist_nulls.txt
