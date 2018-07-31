@@ -1,83 +1,64 @@
-From: Andrey Ryabinin <aryabinin@virtuozzo.com>
-Subject: SLAB_TYPESAFE_BY_RCU without constructors (was Re:
- [PATCH v4 13/17] khwasan: add hooks implementation)
-Date: Tue, 31 Jul 2018 20:01:30 +0300
-Message-ID: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
+From: Florian Westphal <fw@strlen.de>
+Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
+ 13/17] khwasan: add hooks implementation)
+Date: Tue, 31 Jul 2018 19:09:57 +0200
+Message-ID: <20180731170957.o4vhopmzgedpo5sh@breakpoint.cc>
+References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
- linux-ext4@vger.kernel.org, Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
- Pablo Neira Ayuso <pablo@netfilter.org>,
- Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>, Florian Westphal
- <fw@strlen.de>, "David S. Miller" <davem@davemloft.net>,
- netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
- netdev@vger.kernel.org, Gerrit Renker <gerrit@erg.abdn.ac.uk>,
- dccp@vger.kernel.org, Jani Nikula <jani.nikula@linux.intel.com>,
- Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
- Rodrigo Vivi <rodrigo.vivi@intel.com>, David Airlie <airlied@linux.ie>,
- intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
- Eric Dumazet <edumazet@google.com>, Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
- Hideaki YOSHIFUJI <yoshfuji@linux-ipv6.org>,
- Ursula Braun <ubraun@linux.ibm.com>, linux-s390@vger.kernel.org,
- linux-kernel@vger.kernel.or
-Return-path: <intel-gfx-bounces@lists.freedesktop.org>
-Content-Language: en-US
-List-Unsubscribe: <https://lists.freedesktop.org/mailman/options/intel-gfx>,
- <mailto:intel-gfx-request@lists.freedesktop.org?subject=unsubscribe>
-List-Archive: <https://lists.freedesktop.org/archives/intel-gfx>
-List-Post: <mailto:intel-gfx@lists.freedesktop.org>
-List-Help: <mailto:intel-gfx-request@lists.freedesktop.org?subject=help>
-List-Subscribe: <https://lists.freedesktop.org/mailman/listinfo/intel-gfx>,
- <mailto:intel-gfx-request@lists.freedesktop.org?subject=subscribe>
-Errors-To: intel-gfx-bounces@lists.freedesktop.org
-Sender: "Intel-gfx" <intel-gfx-bounces@lists.freedesktop.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
+        Florian Westphal <fw@strlen.de>,
+        "David S. Miller" <davem@davemloft.net>,
+        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+        netdev@vger.kernel.org, Gerrit Renker <gerrit@erg.abdn.ac.uk>,
+        dccp@vger.kernel.org, Jani Nikula <jani.nikula@linux.intel.com>,
+        Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
+        Rodrigo Vivi <rodrigo.vivi@intel.com>,
+        David Airlie <airlied@linux.ie>,
+        intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        Eric Dumazet <edumazet@google.com>,
+        Alexey Kuznetsov <kuznet@ms2.inr.ac.ru>,
+        Hideaki YOSHIFUJI <yosh
+To: Andrey Ryabinin <aryabinin@virtuozzo.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ck9uIDA3LzMxLzIwMTggMDc6MDQgUE0sIEFuZHJleSBSeWFiaW5pbiB3cm90ZToKPj4gU29tZXdo
-YXQgb2ZmdG9waWMsIGJ1dCBJIGNhbid0IHVuZGVyc3RhbmQgaG93IFNMQUJfVFlQRVNBRkVfQllf
-UkNVCj4+IHNsYWJzIGNhbiBiZSB1c2VmdWwgd2l0aG91dCBjdG9ycyBvciBhdCBsZWFzdCBtZW1z
-ZXQoMCkuIE9iamVjdHMgaW4KPj4gc3VjaCBzbGFicyBuZWVkIHRvIGJlIHR5cGUtc3RhYmxlLCBi
-dXQgSSBjYW4ndCB1bmRlcnN0YW5kIGhvdyBpdCdzCj4+IHBvc3NpYmxlIHRvIGVzdGFibGlzaCB0
-eXBlIHN0YWJpbGl0eSB3aXRob3V0IGEgY3Rvci4uLiBBcmUgdGhlc2UgYnVncz8KPiAKPiBZZWFo
-LCBJIHB1enpsZWQgYnkgdGhpcyB0b28uIEhvd2V2ZXIsIEkgdGhpbmsgaXQncyBoYXJkIGJ1dCBw
-b3NzaWJsZSB0byBtYWtlIGl0IHdvcmssIGF0IGxlYXN0IGluIHRoZW9yeS4KPiBUaGVyZSBtdXN0
-IGJlIGFuIGluaXRpYWxpemVyLCB3aGljaCBjb25zaXN0cyBvZiB0d28gcGFydHM6Cj4gYSkgaW5p
-dGlsaXplIG9iamVjdHMgZmllbGRzCj4gYikgZXhwb3NlIG9iamVjdCB0byB0aGUgd29ybGQgKGFk
-ZCBpdCB0byBsaXN0IG9yIHNvbWV0aGluZyBsaWtlIHRoYXQpCj4gCj4gKGEpIHBhcnQgbXVzdCBz
-b21laG93IHRvIGJlIG9rIHRvIHJhY2Ugd2l0aCBhbm90aGVyIGNwdSB3aGljaCBtaWdodCBhbHJl
-YWR5IHVzZSB0aGUgb2JqZWN0Lgo+IChiKSBwYXJ0IG11c3QgbXVzdCB1c2UgZS5nLiBiYXJyaWVy
-cyB0byBtYWtlIHN1cmUgdGhhdCByYWN5IHVzZXJzIHdpbGwgc2VlIHByZXZpb3VzbHkgaW5pbGl6
-ZWQgZmllbGRzLgo+IFJhY3kgdXNlcnMgbXVzdCBoYXZlIHBhcnJpbmcgYmFycmllciBvZiBjb3Vy
-c2UuCj4gCj4gQnV0IGl0IHNvdW5kIGZpc2h5LCBhbmQgdmVyeSBlYXN5IHRvIGZ1Y2sgdXAuIEkg
-d29uJ3QgYmUgc3VycHJpc2VkIGlmIGV2ZXJ5IHNpbmdsZSBvbmUgU0xBQl9UWVBFU0FGRV9CWV9S
-Q1UgdXNlcgo+IHdpdGhvdXQgLT5jdG9yIGlzIGJvZ3VzLiBJdCBjZXJ0YWlubHkgd291bGQgYmUg
-YmV0dGVyIHRvIGNvbnZlcnQgdGhvc2UgdG8gdXNlIC0+Y3Rvci4KPiAKPiBTdWNoIGNhY2hlcyBz
-ZWVtcyB1c2VkIGJ5IG5ldHdvcmtpbmcgc3Vic3lzdGVtIGluIHByb3RvX3JlZ2lzdGVyKCk6Cj4g
-Cj4gCQlwcm90LT5zbGFiID0ga21lbV9jYWNoZV9jcmVhdGVfdXNlcmNvcHkocHJvdC0+bmFtZSwK
-PiAJCQkJCXByb3QtPm9ial9zaXplLCAwLAo+IAkJCQkJU0xBQl9IV0NBQ0hFX0FMSUdOIHwgU0xB
-Ql9BQ0NPVU5UIHwKPiAJCQkJCXByb3QtPnNsYWJfZmxhZ3MsCj4gCQkJCQlwcm90LT51c2Vyb2Zm
-c2V0LCBwcm90LT51c2Vyc2l6ZSwKPiAJCQkJCU5VTEwpOwo+IAo+IEFuZCBjZXJ0YWluIHByb3Rv
-Y29scyBzcGVjaWZ5IFNMQUJfVFlQRVNBRkVfQllfUkNVIGluIC0+c2xhYl9mbGFncywgc3VjaCBh
-czoKPiBsbGNfcHJvdG8sIHNtY19wcm90bywgc21jX3Byb3RvNiwgdGNwX3Byb3QsIHRjcHY2X3By
-b3QsIGRjY3BfdjZfcHJvdCwgZGNjcF92NF9wcm90Lgo+IAo+IAo+IEFsc28gbmZfY29ubnRyYWNr
-X2NhY2hlcCwga2VybmZzX25vZGVfY2FjaGUsIGpiZDJfam91cm5hbF9oZWFkX2NhY2hlIGFuZCBp
-OTE1X3JlcXVlc3QgY2FjaGUuCj4gCgoKWytDQyBtYWludGFpbmVyIG9mIHRoZSByZWxldmFudCBj
-b2RlLl0KCkd1eXMsIGl0IHNlZW1zIHRoYXQgd2UgaGF2ZSBhIGxvdCBvZiBjb2RlIHVzaW5nIFNM
-QUJfVFlQRVNBRkVfQllfUkNVIGNhY2hlIHdpdGhvdXQgY29uc3RydWN0b3IuCkkgdGhpbmsgaXQn
-cyBuZWFybHkgaW1wb3NzaWJsZSB0byB1c2UgdGhhdCBjb21iaW5hdGlvbiB3aXRob3V0IGhhdmlu
-ZyBidWdzLgpJdCdzIGVpdGhlciB5b3UgZG9uJ3QgcmVhbGx5IG5lZWQgdGhlIFNMQUJfVFlQRVNB
-RkVfQllfUkNVLCBvciB5b3UgbmVlZCB0byBoYXZlIGEgY29uc3RydWN0b3IgaW4ga21lbV9jYWNo
-ZS4KCkNvdWxkIHlvdSBndXlzLCBwbGVhc2UsIHZlcmlmeSB5b3VyIGNvZGUgaWYgaXQncyByZWFs
-bHkgbmVlZCBTTEFCX1RZUFNBRkUgb3IgY29uc3RydWN0b3I/CgpFLmcuIHRoZSBuZXRsaW5rIGNv
-ZGUgbG9vayBleHRyZW1lbHkgc3VzcGljaW91czoKCgkvKgoJICogRG8gbm90IHVzZSBrbWVtX2Nh
-Y2hlX3phbGxvYygpLCBhcyB0aGlzIGNhY2hlIHVzZXMKCSAqIFNMQUJfVFlQRVNBRkVfQllfUkNV
-LgoJICovCgljdCA9IGttZW1fY2FjaGVfYWxsb2MobmZfY29ubnRyYWNrX2NhY2hlcCwgZ2ZwKTsK
-CWlmIChjdCA9PSBOVUxMKQoJCWdvdG8gb3V0OwoKCXNwaW5fbG9ja19pbml0KCZjdC0+bG9jayk7
-CgpJZiBuZl9jb25udHJhY2tfY2FjaGVwIG9iamVjdHMgcmVhbGx5IHVzZWQgaW4gcmN1IHR5cGVz
-YWZlIG1hbm5lciwgdGhhbiAnY3QnIHJldHVybmVkIGJ5IGttZW1fY2FjaGVfYWxsb2MgbWlnaHQg
-c3RpbGwgYmUKaW4gdXNlIGJ5IGFub3RoZXIgY3B1LiBTbyB3ZSBqdXN0IHJlaW5pdGlhbGl6ZSBz
-cGluX2xvY2sgdXNlZCBieSBzb21lb25lIGVsc2U/CgpfX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fXwpJbnRlbC1nZnggbWFpbGluZyBsaXN0CkludGVsLWdmeEBs
-aXN0cy5mcmVlZGVza3RvcC5vcmcKaHR0cHM6Ly9saXN0cy5mcmVlZGVza3RvcC5vcmcvbWFpbG1h
-bi9saXN0aW5mby9pbnRlbC1nZngK
+Andrey Ryabinin <aryabinin@virtuozzo.com> wrote:
+> Guys, it seems that we have a lot of code using SLAB_TYPESAFE_BY_RCU cache without constructor.
+> I think it's nearly impossible to use that combination without having bugs.
+> It's either you don't really need the SLAB_TYPESAFE_BY_RCU, or you need to have a constructor in kmem_cache.
+> 
+> Could you guys, please, verify your code if it's really need SLAB_TYPSAFE or constructor?
+> 
+> E.g. the netlink code look extremely suspicious:
+> 
+> 	/*
+> 	 * Do not use kmem_cache_zalloc(), as this cache uses
+> 	 * SLAB_TYPESAFE_BY_RCU.
+> 	 */
+> 	ct = kmem_cache_alloc(nf_conntrack_cachep, gfp);
+> 	if (ct == NULL)
+> 		goto out;
+> 
+> 	spin_lock_init(&ct->lock);
+> 
+> If nf_conntrack_cachep objects really used in rcu typesafe manner, than 'ct' returned by kmem_cache_alloc might still be
+> in use by another cpu. So we just reinitialize spin_lock used by someone else?
+
+That would be a bug, nf_conn objects are reference counted.
+
+spinlock can only be used after object had its refcount incremented.
+
+lookup operation on nf_conn object:
+1. compare keys
+2. attempt to obtain refcount (using _not_zero version)
+3. compare keys again after refcount was obtained
+
+if any of that fails, nf_conn candidate is skipped.
