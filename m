@@ -1,51 +1,52 @@
-From: Souptick Joarder <jrdr.linux@gmail.com>
-Subject: Re: [PATCH] ext4: Convert int to vm_fault_t type
-Date: Wed, 1 Aug 2018 18:56:39 +0530
-Message-ID: <CAFqt6zYJv7SdkntY7KOBvNyfk-9MRaXBMmkbsc4J7P-tq616DA@mail.gmail.com>
-References: <20180728085000.GA9136@jordon-HP-15-Notebook-PC>
- <20180801125512.GA10761@thunk.org> <CAFqt6zbxpj5DS=ONUGTJ9zaeH5k=qZpQYy-J+08tr9y0gOsCAg@mail.gmail.com>
- <20180801131330.GA4734@bombadil.infradead.org>
+From: Florian Westphal <fw@strlen.de>
+Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
+ 13/17] khwasan: add hooks implementation)
+Date: Wed, 1 Aug 2018 15:46:28 +0200
+Message-ID: <20180801134628.ueyzwg2gszrvk2hc@breakpoint.cc>
+References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
+ <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
+ <CA+55aFzHR1+YbDee6Cduo6YXHO9LKmLN1wP=MVzbP41nxUb5=g@mail.gmail.com>
+ <CA+55aFzYLgyNp1jsqsvUOjwZdO_1Piqj=iB=rzDShjScdNtkbg@mail.gmail.com>
+ <CACT4Y+aYZumcc-Od5T1AnP4mwn8-FaWfxvfb93MnNwQPqG8TDw@mail.gmail.com>
+ <CACT4Y+ZkgqDT77dshHg+hBtc9YPW-eZ8wVQA9LTDQ6q_y99oiQ@mail.gmail.com>
+ <20180801103537.d36t3snzulyuge7g@breakpoint.cc>
+ <CACT4Y+aHWpgDZygXv=smWwdVMWfjpedyajuVvvLDGMK-wFD5Lw@mail.gmail.com>
+ <20180801114048.ufkr7zwmir7ps3vl@breakpoint.cc>
+ <CACT4Y+ZNnYojj0x_DoUxeUREaEgzcf3UG=UW_P4vzsnZNjjgMQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Jens Axboe <axboe@kernel.dk>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Eric Biggers <ebiggers@google.com>,
-        Greg KH <gregkh@linuxfoundation.org>, kemi.wang@intel.com,
-        Sabyasachi Gupta <sabyasachi.linux@gmail.com>,
-        Brajeswar Ghosh <brajeswar.linux@gmail.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Matthew Wilcox <willy@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Florian Westphal <fw@strlen.de>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Christoph Lameter <cl@linux.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
+        David Miller <davem@davemloft.net>,
+        NetFilter <netfilter-devel@vger.kernel.org>,
+        coreteam@netfilter.org,
+        Network Development <netdev@vger.kernel.org>,
+        Gerrit Renker <gerrit@erg.abdn.ac.uk>, dccp@vger.kernel.org,
+        Jani Nikula <jani.nikula@linux.intel.com>,
+        Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
+        Rodrigo Vivi <rodrigo.vivi@intel.com>,
+        Dave Airlie <airlied@linux.ie>,
+To: Dmitry Vyukov <dvyukov@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180801131330.GA4734@bombadil.infradead.org>
+Content-Disposition: inline
+In-Reply-To: <CACT4Y+ZNnYojj0x_DoUxeUREaEgzcf3UG=UW_P4vzsnZNjjgMQ@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 1, 2018 at 6:43 PM, Matthew Wilcox <willy@infradead.org> wrote:
-> On Wed, Aug 01, 2018 at 06:34:45PM +0530, Souptick Joarder wrote:
->> > The fact that ext4_page_mkwrite() returns a vm_fault_t, while
->> > block_page_mkwrite() returns an int which then has to get translated
->> > into a vm_fault_t via block_page_mkwrite_return() is I suspect going
->> > to confuse an awful lot of callers.
->>
->> We have also changed block_page_mkwrite() to return vm_fault_t, but in
->> a different patch. Hopefully that patch will be in linux-next tree soon.
->
-> I didn't sign off on that, so that's not "we", but "I".  And this is
-> completely against everything I've been telling you for this whole effort.
-> Patches should each make sense individually.  You can't make this patch
-> dependent on another patch without putting that in writing.
+Dmitry Vyukov <dvyukov@google.com> wrote:
+> If that scenario is possible that a fix would be to make
 
-It was mistake form my side. Sorry about it.
+Looks possible.
 
->
-> Leave block_page_mkwrite() alone for now.  Eventually it should return
-> a vm_fault_t, probably.  But that patch needs to be delayed at least
-> one kernel cycle.
+> __nf_conntrack_find_get ever return NULL iff it got NULL from
+> ____nf_conntrack_find (not if any of the checks has failed).
 
-As caller of block_page_mkwrite() are -
-fs/ext4/inode.c
-fs/nilfs2/file.c
-
-I will merge both changes in a single patch and send it.
+I don't see why we need to restart on nf_ct_is_dying(), but other
+than that this seems ok.
