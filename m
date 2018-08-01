@@ -1,19 +1,20 @@
-From: Dmitry Vyukov <dvyukov@google.com>
+From: Florian Westphal <fw@strlen.de>
 Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
  13/17] khwasan: add hooks implementation)
-Date: Wed, 1 Aug 2018 12:34:54 +0200
-Message-ID: <CACT4Y+bLbDunoz+0qB=atbQXJ9Gu3N6+UXPwNnqMbq5RyZu1mQ@mail.gmail.com>
+Date: Wed, 1 Aug 2018 12:35:37 +0200
+Message-ID: <20180801103537.d36t3snzulyuge7g@breakpoint.cc>
 References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
  <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
  <CA+55aFzHR1+YbDee6Cduo6YXHO9LKmLN1wP=MVzbP41nxUb5=g@mail.gmail.com>
  <CA+55aFzYLgyNp1jsqsvUOjwZdO_1Piqj=iB=rzDShjScdNtkbg@mail.gmail.com>
- <30ee6c72-dc90-275a-8e23-54221f393cb0@virtuozzo.com> <c03fd1ca-0169-4492-7d6f-2df7a91bff5e@gmail.com>
+ <CACT4Y+aYZumcc-Od5T1AnP4mwn8-FaWfxvfb93MnNwQPqG8TDw@mail.gmail.com>
+ <CACT4Y+ZkgqDT77dshHg+hBtc9YPW-eZ8wVQA9LTDQ6q_y99oiQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
         Christoph Lameter <cl@linux.com>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
         linux-ext4@vger.kernel.org,
         Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
         Pablo Neira Ayuso <pablo@netfilter.org>,
@@ -28,23 +29,80 @@ Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
         Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
         Rodrigo Vivi <rodrigo.vivi@intel.com>,
         Dave Airlie <airlied@linux.ie>,
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <c03fd1ca-0169-4492-7d6f-2df7a91bff5e@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
+To: Dmitry Vyukov <dvyukov@google.com>
+Return-path: <netdev-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <CACT4Y+ZkgqDT77dshHg+hBtc9YPW-eZ8wVQA9LTDQ6q_y99oiQ@mail.gmail.com>
+Sender: netdev-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 1, 2018 at 12:23 PM, Eric Dumazet <eric.dumazet@gmail.com> wrote:
-> On 08/01/2018 02:03 AM, Andrey Ryabinin wrote:
->
->> I can't think of any advantage in not having the constructor.
->
-> I can't see any advantage adding another indirect call,
-> in RETPOLINE world.
+Dmitry Vyukov <dvyukov@google.com> wrote:
+> Still can't grasp all details.
+> There is state that we read without taking ct->ct_general.use ref
+> first, namely ct->state and what's used by nf_ct_key_equal.
+> So let's say the entry we want to find is in the list, but
+> ____nf_conntrack_find finds a wrong entry earlier because all state it
+> looks at is random garbage, so it returns the wrong entry to
+> __nf_conntrack_find_get.
 
-Can you please elaborate what's the problem here?
-If slab ctor call have RETPOLINE, then using ctors more does not
-introduce any security problems and they are not _that_ slow.
-If slab ctors are not protected, then we have problem that needs to be
-fixed already.
-What am I missing?
+If an entry can be found, it can't be random garbage.
+We never link entries into global table until state has been set up.
+
+> Now (nf_ct_is_dying(ct) || !atomic_inc_not_zero(&ct->ct_general.use))
+> check in __nf_conntrack_find_get passes, and it returns NULL to the
+> caller (which means entry is not present).
+
+So entry is going away or marked as dead which for us is same as
+'not present', we need to allocate a new entry.
+
+> While in reality the entry
+> is present, but we were just looking at the wrong one.
+
+We never add tuples that are identical to the global table.
+
+If N cores receive identical packets at same time with no prior state, all
+will allocate a new conntrack, but we notice this when we try to insert the
+nf_conn entries into the table.
+
+Only one will succeed, other cpus have to cope with this.
+(worst case: all raced packets are dropped along with their conntrack
+ object).
+
+For lookup, we have following scenarios:
+
+1. It doesn't exist -> new allocation needed
+2. It exists, not dead, has nonzero refount -> use it
+3. It exists, but marked as dying -> new allocation needed
+4. It exists but has 0 reference count -> new allocation needed
+5. It exists, we get reference, but 2nd nf_ct_key_equal check
+   fails.  We saw a matching 'old incarnation' that just got
+   re-used on other core.  -> retry lookup
+
+> Also I am not sure about order of checks in (nf_ct_is_dying(ct) ||
+> !atomic_inc_not_zero(&ct->ct_general.use)), because checking state
+> before taking the ref is only a best-effort hint, so it can actually
+> be a dying entry when we take a ref.
+
+Yes, it can also become a dying entry after we took the reference.
+ 
+> So shouldn't it read something like the following?
+> 
+>         rcu_read_lock();
+> begin:
+>         h = ____nf_conntrack_find(net, zone, tuple, hash);
+>         if (h) {
+>                 ct = nf_ct_tuplehash_to_ctrack(h);
+>                 if (!atomic_inc_not_zero(&ct->ct_general.use))
+>                         goto begin;
+>                 if (unlikely(nf_ct_is_dying(ct)) ||
+>                     unlikely(!nf_ct_key_equal(h, tuple, zone, net))) {
+>                         nf_ct_put(ct);
+
+It would be ok to make this change, but dying bit can be set
+at any time e.g. because userspace tells kernel to flush the conntrack table.
+So refcount is always > 0 when the DYING bit is set.
+
+I don't see why it would be a problem.
+
+nf_conn struct will stay valid until all cpus have dropped references.
+The check in lookup function only serves to hide the known-to-go-away entry.
