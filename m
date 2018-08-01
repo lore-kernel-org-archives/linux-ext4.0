@@ -1,63 +1,49 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Convert int to vm_fault_t type
-Date: Wed, 1 Aug 2018 10:38:30 -0400
-Message-ID: <20180801143830.GB10761@thunk.org>
-References: <20180728085000.GA9136@jordon-HP-15-Notebook-PC>
- <20180801125512.GA10761@thunk.org>
- <CAFqt6zbxpj5DS=ONUGTJ9zaeH5k=qZpQYy-J+08tr9y0gOsCAg@mail.gmail.com>
- <20180801131330.GA4734@bombadil.infradead.org>
- <CAFqt6zYJv7SdkntY7KOBvNyfk-9MRaXBMmkbsc4J7P-tq616DA@mail.gmail.com>
+From: Christopher Lameter <cl@linux.com>
+Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
+ 13/17] khwasan: add hooks implementation)
+Date: Wed, 1 Aug 2018 15:15:51 +0000
+Message-ID: <01000164f60f3f12-b1253c6e-ee57-49fc-aed8-0944ab4fd7a2-000000@email.amazonses.com>
+References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com> <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com> <CA+55aFzHR1+YbDee6Cduo6YXHO9LKmLN1wP=MVzbP41nxUb5=g@mail.gmail.com> <CA+55aFzYLgyNp1jsqsvUOjwZdO_1Piqj=iB=rzDShjScdNtkbg@mail.gmail.com>
+ <30ee6c72-dc90-275a-8e23-54221f393cb0@virtuozzo.com> <c03fd1ca-0169-4492-7d6f-2df7a91bff5e@gmail.com> <CACT4Y+bLbDunoz+0qB=atbQXJ9Gu3N6+UXPwNnqMbq5RyZu1mQ@mail.gmail.com> <cf751136-c459-853a-0210-abf16f54ad17@gmail.com>
+ <CACT4Y+b6aCHMTQD21fSf2AMZoH5g8p-FuCVHviMLF00uFV+zGg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <willy@infradead.org>, adilger.kernel@dilger.ca,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Jens Axboe <axboe@kernel.dk>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Eric Biggers <ebiggers@google.com>,
-        Greg KH <gregkh@linuxfoundation.org>, kemi.wang@intel.com,
-        Sabyasachi Gupta <sabyasachi.linux@gmail.com>,
-        Brajeswar Ghosh <brajeswar.linux@gmail.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Souptick Joarder <jrdr.linux@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
+Cc: Eric Dumazet <eric.dumazet@gmail.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
+        Florian Westphal <fw@strlen.de>,
+        David Miller <davem@davemloft.net>,
+        NetFilter <netfilter-devel@vger.kernel.org>,
+        coreteam@netfilter.org,
+        Network Development <netdev@vger.kernel.org>,
+        Gerrit Renker <gerrit@erg.abdn.ac.uk>, dccp@vger.kernel.org,
+        Jani Nikula <jani.nikula@linux.intel.com>,
+        Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
+        Rodrigo Vivi <rodrigo.vivi@intel.com>,
+        Dave Airlie <airlied@linux.ie>,
+To: Dmitry Vyukov <dvyukov@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAFqt6zYJv7SdkntY7KOBvNyfk-9MRaXBMmkbsc4J7P-tq616DA@mail.gmail.com>
+In-Reply-To: <CACT4Y+b6aCHMTQD21fSf2AMZoH5g8p-FuCVHviMLF00uFV+zGg@mail.gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 01, 2018 at 06:56:39PM +0530, Souptick Joarder wrote:
-> As caller of block_page_mkwrite() are -
-> fs/ext4/inode.c
-> fs/nilfs2/file.c
-> 
-> I will merge both changes in a single patch and send it.
+On Wed, 1 Aug 2018, Dmitry Vyukov wrote:
 
-Note that it's *important* for ext4 that we know what kind of error
-was returned by the helper function passed into block_page_write() and
-called by it.  In particular, whether the error was ENOSPC or not.
+> But we are trading 1 indirect call for comparable overhead removed
+> from much more common path. The path that does ctors is also calling
+> into page alloc, which is much more expensive.
+> So ctor should be a net win on performance front, no?
 
-That's why this change should have raised all sorts of alarums:
+ctor would make it esier to review the flow and guarantee that the object
+always has certain fields set as required before any use by the subsystem.
 
- 	ext4_journal_stop(handle);
--	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+	if (ret == VM_FAULT_SIGBUS &&
-+		ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry_alloc;
+ctors are run once on allocation of the slab page for all objects in it.
 
-Note the ret == -ENOSPC --- you blindly changed it to return
-VM_FAULT_SIGBUS!!!
-
-You need to understand *why* the code does what it does, and not just
-make blind mechanical replacements.
-
-In this particular case, it probably means that if you insist on
-making block_page_mkwrite() return vmfault_t, it will probably need to
-take an optional "int *err" parameter, so the error can be returned to
-the caller if the caller needs it.
-
-I'm going to drop the whole ext4 changes for vm_fault_t for this
-cycle, and I'll let you try to fix it up properly for the next cycle.
-
-Regards,
-
-						- Ted
+ctors are not called duiring allocation and freeing of objects from the
+slab page. So we could avoid the intialization of the spinlock on each
+object allocation which actually should be faster.
