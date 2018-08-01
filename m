@@ -1,89 +1,178 @@
-From: Dmitry Vyukov <dvyukov@google.com>
-Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
- 13/17] khwasan: add hooks implementation)
-Date: Wed, 1 Aug 2018 17:53:00 +0200
-Message-ID: <CACT4Y+axXa3HXG7ZoJSmP-g2QqtnvQ77oUZuioX-V9Ydi-56Dw@mail.gmail.com>
-References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
- <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
- <CA+55aFzHR1+YbDee6Cduo6YXHO9LKmLN1wP=MVzbP41nxUb5=g@mail.gmail.com>
- <CA+55aFzYLgyNp1jsqsvUOjwZdO_1Piqj=iB=rzDShjScdNtkbg@mail.gmail.com>
- <30ee6c72-dc90-275a-8e23-54221f393cb0@virtuozzo.com> <c03fd1ca-0169-4492-7d6f-2df7a91bff5e@gmail.com>
- <CACT4Y+bLbDunoz+0qB=atbQXJ9Gu3N6+UXPwNnqMbq5RyZu1mQ@mail.gmail.com>
- <cf751136-c459-853a-0210-abf16f54ad17@gmail.com> <CACT4Y+b6aCHMTQD21fSf2AMZoH5g8p-FuCVHviMLF00uFV+zGg@mail.gmail.com>
- <01000164f60f3f12-b1253c6e-ee57-49fc-aed8-0944ab4fd7a2-000000@email.amazonses.com>
- <CANn89i+KtwtLvSw1c=Ux8okKP+XyMxzYbuKhYb2qhYeMw=NTzg@mail.gmail.com>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Convert int to vm_fault_t type
+Date: Wed, 1 Aug 2018 12:06:18 -0400
+Message-ID: <20180801160618.GE10761@thunk.org>
+References: <20180728085000.GA9136@jordon-HP-15-Notebook-PC>
+ <20180801125512.GA10761@thunk.org>
+ <CAFqt6zbxpj5DS=ONUGTJ9zaeH5k=qZpQYy-J+08tr9y0gOsCAg@mail.gmail.com>
+ <20180801131330.GA4734@bombadil.infradead.org>
+ <CAFqt6zYJv7SdkntY7KOBvNyfk-9MRaXBMmkbsc4J7P-tq616DA@mail.gmail.com>
+ <20180801143830.GB10761@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Christoph Lameter <cl@linux.com>,
-        Eric Dumazet <eric.dumazet@gmail.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Pablo Neira Ayuso <pablo@netfilter.org>,
-        Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
-        Florian Westphal <fw@strlen.de>,
-        David Miller <davem@davemloft.net>,
-        NetFilter <netfilter-devel@vger.kernel.org>,
-        coreteam@netfilter.org, netdev <netdev@vger.kernel.org>,
-        Gerrit Renker <gerrit@erg.abdn.ac.uk>, dccp@vger.kernel.org,
-        Jani Nikula <jani.nikula@linux.intel.com>,
-        Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
-        Rodrigo Vivi <rodrigo.vivi@intel.com>,
-        David Air
-To: Eric Dumazet <edumazet@google.com>
+Content-Type: text/plain; charset=us-ascii
+To: Souptick Joarder <jrdr.linux@gmail.com>,
+        Matthew Wilcox <willy@infradead.org>, adilger.kernel@dilger.ca,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Jens Axboe <axboe@kernel.dk>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Eric Biggers <ebiggers@google.com>,
+        Greg KH <gregkh@linuxfoundation.org>, kemi.wang@intel.com,
+        Sabyasachi Gupta <sabyasachi.linux@gmail.com>,
+        Brajeswar Ghosh <brajeswar.linux@gmail.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CANn89i+KtwtLvSw1c=Ux8okKP+XyMxzYbuKhYb2qhYeMw=NTzg@mail.gmail.com>
+Content-Disposition: inline
+In-Reply-To: <20180801143830.GB10761@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 1, 2018 at 5:37 PM, Eric Dumazet <edumazet@google.com> wrote:
-> On Wed, Aug 1, 2018 at 8:15 AM Christopher Lameter <cl@linux.com> wrote:
->>
->> On Wed, 1 Aug 2018, Dmitry Vyukov wrote:
->>
->> > But we are trading 1 indirect call for comparable overhead removed
->> > from much more common path. The path that does ctors is also calling
->> > into page alloc, which is much more expensive.
->> > So ctor should be a net win on performance front, no?
->>
->> ctor would make it esier to review the flow and guarantee that the object
->> always has certain fields set as required before any use by the subsystem.
->>
->> ctors are run once on allocation of the slab page for all objects in it.
->>
->> ctors are not called duiring allocation and freeing of objects from the
->> slab page. So we could avoid the intialization of the spinlock on each
->> object allocation which actually should be faster.
->
->
-> This strategy might have been a win 30 years ago when cpu had no
-> caches (or too small anyway)
->
-> What probability is that the 60 bytes around the spinlock are not
-> touched after the object is freshly allocated ?
->
-> -> None
->
-> Writing 60 bytes  in one cache line instead of 64 has really the same
-> cost. The cache line miss is the real killer.
->
-> Feel free to write the patches, test them,  but I doubt you will have any gain.
->
-> Remember btw that TCP sockets can be either completely fresh
-> (socket() call, using memset() to clear the whole object),
-> or clones (accept() thus copying the parent socket)
->
-> The idea of having a ctor() would only be a win if all the fields that
-> can be initialized in the ctor are contiguous and fill an integral
-> number of cache lines.
+On Wed, Aug 01, 2018 at 10:38:30AM -0400, Theodore Y. Ts'o wrote:
+> I'm going to drop the whole ext4 changes for vm_fault_t for this
+> cycle, and I'll let you try to fix it up properly for the next cycle.
 
-Code size can have some visible performance impact too.
+Here's the fixed up commit that I'm going to drop since you plan to be
+making changes in block_page_mkpage(), and I don't want us to get out
+of sync.
 
-But either way, what you say only means that ctors are not necessary
-significantly faster. But your original point was that they are
-slower.
-If they are not slower, then what Andrey said seems to make sense:
-some gain on code comprehension front re type-stability invariant +
-some gain on performance front (even if not too big) and no downsides.
+						- Ted
+
+commit 37ec0b791ff90c6fe480fdf74c7df934c1756819
+Author: Souptick Joarder <jrdr.linux@gmail.com>
+Date:   Wed Aug 1 11:54:31 2018 -0400
+
+    ext4: use new return type vm_fault_t
+    
+    Use new return type vm_fault_t for fault handler
+    ext4_filemap_fault.
+    
+    Signed-off-by: Souptick Joarder <jrdr.linux@gmail.com>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6d7dec48372b..21fb1964a672 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2468,8 +2468,8 @@ extern int ext4_writepage_trans_blocks(struct inode *);
+ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+ extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
+ 			     loff_t lstart, loff_t lend);
+-extern int ext4_page_mkwrite(struct vm_fault *vmf);
+-extern int ext4_filemap_fault(struct vm_fault *vmf);
++extern vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf);
++extern vm_fault_t ext4_filemap_fault(struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
+ extern void ext4_da_update_reserve_space(struct inode *inode,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ba0de19fb1ad..a6da9eda2194 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -6107,27 +6107,27 @@ static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
+ 	return !buffer_mapped(bh);
+ }
+ 
+-int ext4_page_mkwrite(struct vm_fault *vmf)
++vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct vm_area_struct *vma = vmf->vma;
+ 	struct page *page = vmf->page;
+ 	loff_t size;
+ 	unsigned long len;
+-	int ret;
++	vm_fault_t ret;
+ 	struct file *file = vma->vm_file;
+ 	struct inode *inode = file_inode(file);
+ 	struct address_space *mapping = inode->i_mapping;
+ 	handle_t *handle;
+ 	get_block_t *get_block;
+-	int retries = 0;
++	int retries = 0, err;
+ 
+ 	sb_start_pagefault(inode->i_sb);
+ 	file_update_time(vma->vm_file);
+ 
+ 	down_read(&EXT4_I(inode)->i_mmap_sem);
+ 
+-	ret = ext4_convert_inline_data(inode);
+-	if (ret)
++	err = ext4_convert_inline_data(inode);
++	if (err)
+ 		goto out_ret;
+ 
+ 	/* Delalloc case is easy... */
+@@ -6135,9 +6135,9 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
+ 	    !ext4_should_journal_data(inode) &&
+ 	    !ext4_nonda_switch(inode->i_sb)) {
+ 		do {
+-			ret = block_page_mkwrite(vma, vmf,
+-						   ext4_da_get_block_prep);
+-		} while (ret == -ENOSPC &&
++			err = block_page_mkwrite(vma, vmf,
++						 ext4_da_get_block_prep);
++		} while (err == -ENOSPC &&
+ 		       ext4_should_retry_alloc(inode->i_sb, &retries));
+ 		goto out_ret;
+ 	}
+@@ -6182,8 +6182,8 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
+ 		ret = VM_FAULT_SIGBUS;
+ 		goto out;
+ 	}
+-	ret = block_page_mkwrite(vma, vmf, get_block);
+-	if (!ret && ext4_should_journal_data(inode)) {
++	err = block_page_mkwrite(vma, vmf, get_block);
++	if (!err && ext4_should_journal_data(inode)) {
+ 		if (ext4_walk_page_buffers(handle, page_buffers(page), 0,
+ 			  PAGE_SIZE, NULL, do_journal_get_write_access)) {
+ 			unlock_page(page);
+@@ -6194,24 +6194,24 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
+ 		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
+ 	}
+ 	ext4_journal_stop(handle);
+-	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
++	if (err == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry_alloc;
+ out_ret:
+-	ret = block_page_mkwrite_return(ret);
++	ret = block_page_mkwrite_return(err);
+ out:
+ 	up_read(&EXT4_I(inode)->i_mmap_sem);
+ 	sb_end_pagefault(inode->i_sb);
+ 	return ret;
+ }
+ 
+-int ext4_filemap_fault(struct vm_fault *vmf)
++vm_fault_t ext4_filemap_fault(struct vm_fault *vmf)
+ {
+ 	struct inode *inode = file_inode(vmf->vma->vm_file);
+-	int err;
++	vm_fault_t ret;
+ 
+ 	down_read(&EXT4_I(inode)->i_mmap_sem);
+-	err = filemap_fault(vmf);
++	ret = filemap_fault(vmf);
+ 	up_read(&EXT4_I(inode)->i_mmap_sem);
+ 
+-	return err;
++	return ret;
+ }
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 96225a77c112..ed7a81b8f7cc 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -14,6 +14,7 @@
+ #include <linux/pagemap.h>
+ #include <linux/wait.h>
+ #include <linux/atomic.h>
++#include <linux/mm_types.h>
+ 
+ #ifdef CONFIG_BLOCK
+ 
+@@ -242,7 +243,7 @@ int block_commit_write(struct page *page, unsigned from, unsigned to);
+ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 				get_block_t get_block);
+ /* Convert errno to return value from ->page_mkwrite() call */
+-static inline int block_page_mkwrite_return(int err)
++static inline vm_fault_t block_page_mkwrite_return(int err)
+ {
+ 	if (err == 0)
+ 		return VM_FAULT_LOCKED;
