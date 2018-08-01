@@ -1,71 +1,61 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Convert int to vm_fault_t type
-Date: Wed, 1 Aug 2018 12:22:59 -0400
-Message-ID: <20180801162259.GF10761@thunk.org>
-References: <20180728085000.GA9136@jordon-HP-15-Notebook-PC>
- <20180801125512.GA10761@thunk.org>
- <CAFqt6zbxpj5DS=ONUGTJ9zaeH5k=qZpQYy-J+08tr9y0gOsCAg@mail.gmail.com>
- <20180801131330.GA4734@bombadil.infradead.org>
- <CAFqt6zYJv7SdkntY7KOBvNyfk-9MRaXBMmkbsc4J7P-tq616DA@mail.gmail.com>
- <20180801143830.GB10761@thunk.org>
- <20180801160618.GE10761@thunk.org>
- <20180801161319.GC4039@bombadil.infradead.org>
+From: Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
+ 13/17] khwasan: add hooks implementation)
+Date: Wed, 1 Aug 2018 09:25:55 -0700
+Message-ID: <bf435a04-b689-ec5a-f5df-f47807b43316@gmail.com>
+References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
+ <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
+ <CA+55aFzHR1+YbDee6Cduo6YXHO9LKmLN1wP=MVzbP41nxUb5=g@mail.gmail.com>
+ <CA+55aFzYLgyNp1jsqsvUOjwZdO_1Piqj=iB=rzDShjScdNtkbg@mail.gmail.com>
+ <30ee6c72-dc90-275a-8e23-54221f393cb0@virtuozzo.com>
+ <c03fd1ca-0169-4492-7d6f-2df7a91bff5e@gmail.com>
+ <CACT4Y+bLbDunoz+0qB=atbQXJ9Gu3N6+UXPwNnqMbq5RyZu1mQ@mail.gmail.com>
+ <cf751136-c459-853a-0210-abf16f54ad17@gmail.com>
+ <CACT4Y+b6aCHMTQD21fSf2AMZoH5g8p-FuCVHviMLF00uFV+zGg@mail.gmail.com>
+ <01000164f60f3f12-b1253c6e-ee57-49fc-aed8-0944ab4fd7a2-000000@email.amazonses.com>
+ <CANn89i+KtwtLvSw1c=Ux8okKP+XyMxzYbuKhYb2qhYeMw=NTzg@mail.gmail.com>
+ <01000164f64bd525-be13e04f-18a9-4f7f-a44b-0c0fcec33b71-000000@email.amazonses.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Souptick Joarder <jrdr.linux@gmail.com>, adilger.kernel@dilger.ca,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Jens Axboe <axboe@kernel.dk>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Eric Biggers <ebiggers@google.com>,
-        Greg KH <gregkh@linuxfoundation.org>, kemi.wang@intel.com,
-        Sabyasachi Gupta <sabyasachi.linux@gmail.com>,
-        Brajeswar Ghosh <brajeswar.linux@gmail.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Matthew Wilcox <willy@infradead.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Cc: Dmitry Vyukov <dvyukov@google.com>,
+        Eric Dumazet <eric.dumazet@gmail.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Theodore Ts'o <tytso@mit.edu>, jack@suse.com,
+        linux-ext4@vger.kernel.org,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
+        Florian Westphal <fw@strlen.de>,
+        David Miller <davem@davemloft.net>,
+        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
+        netdev <netdev@vger.kernel.org>,
+        Gerrit Renker <gerrit@erg.abdn.ac.uk>, dccp@vger.kernel.org,
+        jani.nikula@linux.intel.com, joonas.lahtinen@linux.intel.com,
+        rodrigo.vivi@intel.com, airlied@linux.ie,
+        intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+To: Christopher Lameter <cl@linux.com>,
+        Eric Dumazet <edumazet@google.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20180801161319.GC4039@bombadil.infradead.org>
+In-Reply-To: <01000164f64bd525-be13e04f-18a9-4f7f-a44b-0c0fcec33b71-000000@email.amazonses.com>
+Content-Language: en-US
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 01, 2018 at 09:13:19AM -0700, Matthew Wilcox wrote:
-> On Wed, Aug 01, 2018 at 12:06:18PM -0400, Theodore Y. Ts'o wrote:
-> > On Wed, Aug 01, 2018 at 10:38:30AM -0400, Theodore Y. Ts'o wrote:
-> > > I'm going to drop the whole ext4 changes for vm_fault_t for this
-> > > cycle, and I'll let you try to fix it up properly for the next cycle.
-> > 
-> > Here's the fixed up commit that I'm going to drop since you plan to be
-> > making changes in block_page_mkwrite(), and I don't want us to get out
-> > of sync.
+
+
+On 08/01/2018 09:22 AM, Christopher Lameter wrote:
+> On Wed, 1 Aug 2018, Eric Dumazet wrote:
 > 
-> This looks sane to me.
+>> The idea of having a ctor() would only be a win if all the fields that
+>> can be initialized in the ctor are contiguous and fill an integral
+>> number of cache lines.
+> 
+> Ok. Its reducing code size and makes the object status more consistent.
+> Isn't that enough?
+> 
 
-Yeah, it's fine except for the cognitive load to the file system
-programmer where block_page_mkwrite() returns an int, and not a
-vm_fault_t, and you have use block_page_mkwrite_return() in order to
-convert from the negative error code convention to a vm_fault_t.
+Prove it ;)
 
-Souptick has a separate patch out which changes block_page_mkpage() to
-return a vm_fault_t.  It's broken in that it clobbers the error return
-and doesn't provide a way for the caller to get the error return.  So
-Souptick, please consider that other patch to have received a NACK
-from me, as it *will* break ext4.
-
-Souptick, perhaps you could change block_page_mkwrite() so that its
-function signature looks like this instead:
-
-vm_fault_t block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
-	   		      get_block_t get_block, int *err)
-
-...that's sane.  Or you can maybe simply change the *name* of the
-function so it's clear it's differnt from all other xxx_page_mkwrite()
-functions in that it returns an int.
-
-I'll let you decide what you want to do --- since part of your
-development to be a sophisticated programmer is to get experience
-making these sorts of decisions that involve having good programming
-"taste".
-
-Regards,
-
-						- Ted
+I yet have to seen actual numbers.
