@@ -1,70 +1,156 @@
-From: "jianchao.wang" <jianchao.w.wang@oracle.com>
-Subject: Re: [next-20180727][qla2xxx][BUG] WARNING: CPU: 12 PID: 511 at
- drivers/scsi/scsi_lib.c:691 scsi_end_request+0x250/0x280
-Date: Wed, 1 Aug 2018 15:19:58 +0800
-Message-ID: <ea4ba28e-0b03-e0d0-a1f2-4e8cf06326b8@oracle.com>
-References: <1533105183.23332.15.camel@abdul>
+From: Dmitry Vyukov <dvyukov@google.com>
+Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
+ 13/17] khwasan: add hooks implementation)
+Date: Wed, 1 Aug 2018 10:46:35 +0200
+Message-ID: <CACT4Y+aYZumcc-Od5T1AnP4mwn8-FaWfxvfb93MnNwQPqG8TDw@mail.gmail.com>
+References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
+ <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
+ <CA+55aFzHR1+YbDee6Cduo6YXHO9LKmLN1wP=MVzbP41nxUb5=g@mail.gmail.com> <CA+55aFzYLgyNp1jsqsvUOjwZdO_1Piqj=iB=rzDShjScdNtkbg@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-block <linux-block@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-scsi <linux-scsi@vger.kernel.org>,
-        linux-next <linux-next@vger.kernel.org>,
-        Stephen Rothwell <sfr@canb.auug.org.au>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        jejb@linux.vnet.ibm.com, Jens Axboe <axboe@kernel.dk>,
-        dgilbert@interlog.com, "bart.vanassche" <bart.vanassche@wdc.com>,
-        rosattig@br.ibm.com, kyle.mahlkuch@ibm.com
-To: Abdul Haleem <abdhalee@linux.vnet.ibm.com>,
-        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>,
-        "Madhani, Himanshu" <himanshu.madhani@cavium.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <1533105183.23332.15.camel@abdul>
-Content-Language: en-US
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: Christoph Lameter <cl@linux.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        "Theodore Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.com>,
+        linux-ext4@vger.kernel.org,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Pablo Neira Ayuso <pablo@netfilter.org>,
+        Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
+        Florian Westphal <fw@strlen.de>,
+        David Miller <davem@davemloft.net>,
+        NetFilter <netfilter-devel@vger.kernel.org>,
+        coreteam@netfilter.org,
+        Network Development <netdev@vger.kernel.org>,
+        Gerrit Renker <gerrit@erg.abdn.ac.uk>, dccp@vger.kernel.org,
+        Jani Nikula <jani.nikula@linux.intel.com>,
+        Joonas Lahtinen <joonas.lahtinen@linux.intel.com>,
+        Rodrigo Vivi <rodrigo.vivi@intel.com>,
+        Dave Airlie <airlied@linux.ie>,
+        intel-gfx <intel-gfx@lists.freedesktop.org>,
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <netdev-owner@vger.kernel.org>
+In-Reply-To: <CA+55aFzYLgyNp1jsqsvUOjwZdO_1Piqj=iB=rzDShjScdNtkbg@mail.gmail.com>
+Sender: netdev-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Abdul
+On Tue, Jul 31, 2018 at 8:51 PM, Linus Torvalds
+<torvalds@linux-foundation.org> wrote:
+> On Tue, Jul 31, 2018 at 10:49 AM Linus Torvalds
+> <torvalds@linux-foundation.org> wrote:
+>>
+>> So the re-use might initialize the fields lazily, not necessarily using a ctor.
+>
+> In particular, the pattern that nf_conntrack uses looks like it is safe.
+>
+> If you have a well-defined refcount, and use "atomic_inc_not_zero()"
+> to guard the speculative RCU access section, and use
+> "atomic_dec_and_test()" in the freeing section, then you should be
+> safe wrt new allocations.
+>
+> If you have a completely new allocation that has "random stale
+> content", you know that it cannot be on the RCU list, so there is no
+> speculative access that can ever see that random content.
+>
+> So the only case you need to worry about is a re-use allocation, and
+> you know that the refcount will start out as zero even if you don't
+> have a constructor.
+>
+> So you can think of the refcount itself as always having a zero
+> constructor, *BUT* you need to be careful with ordering.
+>
+> In particular, whoever does the allocation needs to then set the
+> refcount to a non-zero value *after* it has initialized all the other
+> fields. And in particular, it needs to make sure that it uses the
+> proper memory ordering to do so.
+>
+> And in this case, we have
+>
+>   static struct nf_conn *
+>   __nf_conntrack_alloc(struct net *net,
+>   {
+>         ...
+>         atomic_set(&ct->ct_general.use, 0);
+>
+> which is a no-op for the re-use case (whether racing or not, since any
+> "inc_not_zero" users won't touch it), but initializes it to zero for
+> the "completely new object" case.
+>
+> And then, the thing that actually exposes it to the speculative walkers does:
+>
+>   int
+>   nf_conntrack_hash_check_insert(struct nf_conn *ct)
+>   {
+>         ...
+>         smp_wmb();
+>         /* The caller holds a reference to this object */
+>         atomic_set(&ct->ct_general.use, 2);
+>
+> which means that it stays as zero until everything is actually set up,
+> and then the optimistic walker can use the other fields (including
+> spinlocks etc) to verify that it's actually the right thing. The
+> smp_wmb() means that the previous initialization really will be
+> visible before the object is visible.
+>
+> Side note: on some architectures it might help to make that "smp_wmb
+> -> atomic_set()" sequence be am "smp_store_release()" instead. Doesn't
+> matter on x86, but might matter on arm64.
+>
+> NOTE! One thing to be very worried about is that re-initializing
+> whatever RCU lists means that now the RCU walker may be walking on the
+> wrong list so the walker may do the right thing for this particular
+> entry, but it may miss walking *other* entries. So then you can get
+> spurious lookup failures, because the RCU walker never walked all the
+> way to the end of the right list. That ends up being a much more
+> subtle bug.
+>
+> But the nf_conntrack case seems to get that right too, see the restart
+> in ____nf_conntrack_find().
+>
+> So I don't see anything wrong in nf_conntrack.
+>
+> But yes, using SLAB_TYPESAFE_BY_RCU is very very subtle. But most of
+> the subtleties have nothing to do with having a constructor, they are
+> about those "make sure memory ordering wrt refcount is right" and
+> "restart speculative RCU walk" issues that actually happen regardless
+> of having a constructor or not.
 
-On 08/01/2018 02:33 PM, Abdul Haleem wrote:
-> # mkfs -t ext4 /dev/mapper/mpatha
-> mke2fs 1.43.1 (08-Jun-2016)
-> Found a dos partition table in /dev/mapper/mpatha
-> Proceed anyway? (y,n) y
-> Discarding device blocks: 
-> qla2xxx [0106:a0:00.1]-801c:2: Abort command issued nexus=2:1:0 --  1 2002.
-> qla2xxx [0106:a0:00.0]-801c:0: Abort command issued nexus=0:1:0 --  1 2002.
-> qla2xxx [0106:a0:00.1]-801c:2: Abort command issued nexus=2:1:0 --  1 2002.
-> qla2xxx [0106:a0:00.0]-801c:0: Abort command issued nexus=0:1:0 --  1 2002.
-> WARNING: CPU: 12 PID: 511 at drivers/scsi/scsi_lib.c:691 scsi_end_request+0x250/0x280
-...
-> NIP [c000000000690080] scsi_end_request+0x250/0x280
-> LR [c00000000068fe80] scsi_end_request+0x50/0x280
-> Call Trace:
-> [c00000027d39b600] [c00000000068fe80] scsi_end_request+0x50/0x280 (unreliable)
-> [c00000027d39b660] [c0000000006904ac] scsi_io_completion+0x29c/0x7d0
-> [c00000027d39b710] [c0000000006848e4] scsi_finish_command+0x104/0x1c0
-> [c00000027d39b790] [c00000000068f148] scsi_softirq_done+0x198/0x1f0
-> [c00000027d39b820] [c0000000004f2b80] blk_mq_complete_request+0x130/0x1d0
-> [c00000027d39b860] [c00000000068d27c] scsi_mq_done+0x2c/0xe0
-> [c00000027d39b890] [d000000004291080] qla2xxx_qpair_sp_compl+0xa8/0x140 [qla2xxx]
-> [c00000027d39b900] [d0000000042cc9d0] qla2x00_process_completed_request+0x68/0x140 [qla2xxx]
-> ------------[ cut here ]------------
-> kernel BUG at block/blk-core.c:3196!
 
-blk_finish_request
+Thank you, this is very enlightening.
 
-BUG_ON(blk_queued_rq(req))
+So the type-stable invariant is established by initialization of the
+object after the first kmem_cache_alloc, and then we rely on the fact
+that repeated initialization does not break the invariant, which works
+because the state is very simple (including debug builds, i.e. no
+ODEBUG nor magic values).
 
-We are also suffering a similar issue on qla2xxx,
-the BUG_ON in blk_finish_request is triggered while there are lots of command aborted.
-The root cause should be qla2xxx driver still invoke scsi_done for an aborted command
-and cause race between requeue path and normal complete path.
+There is a bunch of other SLAB_TYPESAFE_BY_RCU uses without ctor:
 
-Add Himanshu Madhani from qlogic team.
-It seems that they are working on this.
+https://elixir.bootlin.com/linux/latest/source/fs/jbd2/journal.c#L2395
+https://elixir.bootlin.com/linux/latest/source/fs/kernfs/mount.c#L415
+https://elixir.bootlin.com/linux/latest/source/net/netfilter/nf_conntrack_core.c#L2065
+https://elixir.bootlin.com/linux/latest/source/drivers/gpu/drm/i915/i915_gem.c#L5501
+https://elixir.bootlin.com/linux/latest/source/drivers/gpu/drm/i915/selftests/mock_gem_device.c#L212
+https://elixir.bootlin.com/linux/latest/source/drivers/staging/lustre/lustre/ldlm/ldlm_lockd.c#L1131
 
-Thanks
-Jianchao
+Also these in proto structs:
+https://elixir.bootlin.com/linux/latest/source/net/dccp/ipv4.c#L959
+https://elixir.bootlin.com/linux/latest/source/net/dccp/ipv6.c#L1048
+https://elixir.bootlin.com/linux/latest/source/net/ipv4/tcp_ipv4.c#L2461
+https://elixir.bootlin.com/linux/latest/source/net/ipv6/tcp_ipv6.c#L1980
+https://elixir.bootlin.com/linux/latest/source/net/llc/af_llc.c#L145
+https://elixir.bootlin.com/linux/latest/source/net/smc/af_smc.c#L105
+They later created in net/core/sock.c without ctor.
+
+I guess it would be useful to have such extensive comment for each
+SLAB_TYPESAFE_BY_RCU use explaining why it is needed and how all the
+tricky aspects are handled.
+
+For example, the one in jbd2 is interesting because it memsets the
+whole object before freeing it into SLAB_TYPESAFE_BY_RCU slab:
+
+memset(jh, JBD2_POISON_FREE, sizeof(*jh));
+kmem_cache_free(jbd2_journal_head_cache, jh);
+
+I guess there are also tricky ways how it can all work in the end
+(type-stable state is only a byte, or we check for all possible
+combinations of being overwritten with JBD2_POISON_FREE). But at first
+sight it does look fishy.
