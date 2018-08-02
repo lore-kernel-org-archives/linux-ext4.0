@@ -1,52 +1,85 @@
-From: Eric Dumazet <edumazet@google.com>
-Subject: Re: SLAB_TYPESAFE_BY_RCU without constructors (was Re: [PATCH v4
- 13/17] khwasan: add hooks implementation)
-Date: Wed, 1 Aug 2018 10:18:49 -0700
-Message-ID: <CANn89iKSwt-1j_p3XvoMTv2NpjJsiv6p7c=xkYKG+zDzcS9hgQ@mail.gmail.com>
-References: <e3b48104-3efb-1896-0d46-792419f49a75@virtuozzo.com>
- <01000164f169bc6b-c73a8353-d7d9-47ec-a782-90aadcb86bfb-000000@email.amazonses.com>
- <CA+55aFzHR1+YbDee6Cduo6YXHO9LKmLN1wP=MVzbP41nxUb5=g@mail.gmail.com>
- <CA+55aFzYLgyNp1jsqsvUOjwZdO_1Piqj=iB=rzDShjScdNtkbg@mail.gmail.com>
- <30ee6c72-dc90-275a-8e23-54221f393cb0@virtuozzo.com> <c03fd1ca-0169-4492-7d6f-2df7a91bff5e@gmail.com>
- <CACT4Y+bLbDunoz+0qB=atbQXJ9Gu3N6+UXPwNnqMbq5RyZu1mQ@mail.gmail.com>
- <cf751136-c459-853a-0210-abf16f54ad17@gmail.com> <CACT4Y+b6aCHMTQD21fSf2AMZoH5g8p-FuCVHviMLF00uFV+zGg@mail.gmail.com>
- <01000164f60f3f12-b1253c6e-ee57-49fc-aed8-0944ab4fd7a2-000000@email.amazonses.com>
- <CANn89i+KtwtLvSw1c=Ux8okKP+XyMxzYbuKhYb2qhYeMw=NTzg@mail.gmail.com>
- <01000164f64bd525-be13e04f-18a9-4f7f-a44b-0c0fcec33b71-000000@email.amazonses.com>
- <bf435a04-b689-ec5a-f5df-f47807b43316@gmail.com> <CACT4Y+akncPCAZ2pUX3xEpUPELQAei1XzYByB8Dohfz-Ve0k5w@mail.gmail.com>
+From: Sodagudi Prasad <psodagud@codeaurora.org>
+Subject: Re: Remounting filesystem read-only
+Date: Wed, 01 Aug 2018 19:23:10 -0700
+Message-ID: <91cab9ba274131c4701fe4c1ce444d6b@codeaurora.org>
+References: <366cf3ac534bbadaaa61714a43006ac7@codeaurora.org>
+ <e9869d6cd358e9de395d730ab7b3aa60@codeaurora.org>
+ <20180727195213.GE13922@thunk.org>
+ <c121825198eba667c09fc53fa9b4fd3a@codeaurora.org>
+ <20180728001823.GA28432@thunk.org> <20180728074704.GA4203@magnolia>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: Eric Dumazet <eric.dumazet@gmail.com>,
-        Christoph Lameter <cl@linux.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "Theodore Ts'o" <tytso@mit.edu>, jack@suse.com,
-        linux-ext4@vger.kernel.org,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Pablo Neira Ayuso <pablo@netfilter.org>,
-        Jozsef Kadlecsik <kadlec@blackhole.kfki.hu>,
-        Florian Westphal <fw@strlen.de>,
-        David Miller <davem@davemloft.net>,
-        netfilter-devel@vger.kernel.org, coreteam@netfilter.org,
-        netdev <netdev@vger.kernel.org>,
-        Gerrit Renker <gerrit@erg.abdn.ac.uk>, dccp@vger.kernel.org,
-        jani.nikula@linux.intel.com, joonas.lahtinen@linux.intel.com,
-        rodrigo.vivi@intel.com, airlied@linux.ie,
-        intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
-To: Dmitry Vyukov <dvyukov@google.com>
+Content-Type: text/plain; charset=US-ASCII;
+ format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Y. Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        wen.xu@gatech.edu, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CACT4Y+akncPCAZ2pUX3xEpUPELQAei1XzYByB8Dohfz-Ve0k5w@mail.gmail.com>
+In-Reply-To: <20180728074704.GA4203@magnolia>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 1, 2018 at 9:47 AM Dmitry Vyukov <dvyukov@google.com> wrote:
->
-> Proving with numbers is required for a claimed performance improvement
-> at the cost of code degradation/increase. For a win-win change there
-> is really nothing to prove.
+On 2018-07-28 00:47, Darrick J. Wong wrote:
+> On Fri, Jul 27, 2018 at 08:18:23PM -0400, Theodore Y. Ts'o wrote:
+>> On Fri, Jul 27, 2018 at 01:34:31PM -0700, Sodagudi Prasad wrote:
+>> > > The error should be pretty clear: "Inode table for bg 0 marked as
+>> > > needing zeroing".  That should never happen.
+>> >
+>> > Can you provide any debug patch to detect when this corruption is happening?
+>> > Source of this corruption and how this is partition getting corrupted?
+>> > Or which file system operation lead to this corruption?
+>> 
+>> Do you have a reliable repro?  If it's a one-off, it can be caused by
+>> *anything*.  Crappy hardware, a bug in some proprietary, binary-only
+>> GPU driver dereferencing some wild pointer that corrupts kernel
+>> memory, etc.
+>> 
+>> Asking for a debug patch is like asking for "can you create technology
+>> that can detect when a cockroach enter my house?"
+> 
+> Well, ext4 *could* add metadata read and write verifiers to complain
+> loudly in dmesg about stuff that shouldn't be there, so at least we'd
+> know when we're writing cockroaches into the house... :)
+> 
+> --D
+> 
+Hi Ted,
 
-You have to _prove_ it is a win-win.
+Below change fixed this issue. Thanks for your support.
 
-It is not sufficient to claim it is a win-win.
+https://github.com/torvalds/linux/commit/5012284700775a4e6e3fbe7eac4c543c4874b559
 
-Sorry, but I do have bugs to take care of.
+"ext4: fix check to prevent initializing reserved inodes"
+
+-Thanks, Prasad
+
+>> So if you have a reliable repro, then we know what operations might be
+>> triggering the corruption, and then you work on creating a minimal
+>> repro, and only *then* when we have a restricted set of possibilities
+>> that might be the cause (for example, if removing a GPU call makes the
+>> problem go away, then the patch would need to be in the proprietary
+>> GPU driver....)
+>> 
+>> > I am digging code a bit around this warning to understand more.
+>> 
+>> The warning means that a flag in block group descriptor #0 is set
+>> that should never be set.  How did the flag get set?  There is any
+>> number of things that could cause that.
+>> 
+>> You might want to look at the block group descriptor via dumpe2fs or
+>> debugfs, to see if it's just a single bit getting flipped, or if the
+>> entire block group descriptor is garbage.  Note that under normal code
+>> paths, the flag *never* gets set by ext4 kernel code.  The flag will
+>> get set on non-block group 0 block group descriptors by ext4, and the
+>> ext4 kernel code will only clear the flag.
+>> 
+>> Of course, if there is a bug in some driver that dereferences a
+>> pointer widely, all bets are off.
+>> 
+>> 					- Ted
+
+-- 
+The Qualcomm Innovation Center, Inc. is a member of the Code Aurora 
+Forum,
+Linux Foundation Collaborative Project
