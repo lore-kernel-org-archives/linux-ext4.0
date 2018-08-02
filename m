@@ -1,85 +1,42 @@
-From: Sodagudi Prasad <psodagud@codeaurora.org>
-Subject: Re: Remounting filesystem read-only
-Date: Wed, 01 Aug 2018 19:23:10 -0700
-Message-ID: <91cab9ba274131c4701fe4c1ce444d6b@codeaurora.org>
-References: <366cf3ac534bbadaaa61714a43006ac7@codeaurora.org>
- <e9869d6cd358e9de395d730ab7b3aa60@codeaurora.org>
- <20180727195213.GE13922@thunk.org>
- <c121825198eba667c09fc53fa9b4fd3a@codeaurora.org>
- <20180728001823.GA28432@thunk.org> <20180728074704.GA4203@magnolia>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [PATCH v2] ext4: mballoc: Fix spectre gadget in
+ ext4_mb_regular_allocator
+Date: Thu, 2 Aug 2018 00:06:09 -0400
+Message-ID: <20180802040609.GD9187@thunk.org>
+References: <20180730180747.25200-1-jcline@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Y. Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        wen.xu@gatech.edu, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180728074704.GA4203@magnolia>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Josh Poimboeuf <jpoimboe@redhat.com>, stable@vger.kernel.org
+To: Jeremy Cline <jcline@redhat.com>
+Return-path: <stable-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20180730180747.25200-1-jcline@redhat.com>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 2018-07-28 00:47, Darrick J. Wong wrote:
-> On Fri, Jul 27, 2018 at 08:18:23PM -0400, Theodore Y. Ts'o wrote:
->> On Fri, Jul 27, 2018 at 01:34:31PM -0700, Sodagudi Prasad wrote:
->> > > The error should be pretty clear: "Inode table for bg 0 marked as
->> > > needing zeroing".  That should never happen.
->> >
->> > Can you provide any debug patch to detect when this corruption is happening?
->> > Source of this corruption and how this is partition getting corrupted?
->> > Or which file system operation lead to this corruption?
->> 
->> Do you have a reliable repro?  If it's a one-off, it can be caused by
->> *anything*.  Crappy hardware, a bug in some proprietary, binary-only
->> GPU driver dereferencing some wild pointer that corrupts kernel
->> memory, etc.
->> 
->> Asking for a debug patch is like asking for "can you create technology
->> that can detect when a cockroach enter my house?"
+On Mon, Jul 30, 2018 at 06:07:47PM +0000, Jeremy Cline wrote:
+> 'ac->ac_g_ex.fe_len' is a user-controlled value which is used in the
+> derivation of 'ac->ac_2order'. 'ac->ac_2order', in turn, is used to
+> index arrays which makes it a potential spectre gadget. Fix this by
+> sanitizing the value assigned to 'ac->ac2_order'.  This covers the
+> following accesses found with the help of smatch:
 > 
-> Well, ext4 *could* add metadata read and write verifiers to complain
-> loudly in dmesg about stuff that shouldn't be there, so at least we'd
-> know when we're writing cockroaches into the house... :)
+> * fs/ext4/mballoc.c:1896 ext4_mb_simple_scan_group() warn: potential
+>   spectre issue 'grp->bb_counters' [w] (local cap)
 > 
-> --D
+> * fs/ext4/mballoc.c:445 mb_find_buddy() warn: potential spectre issue
+>   'EXT4_SB(e4b->bd_sb)->s_mb_offsets' [r] (local cap)
 > 
-Hi Ted,
+> * fs/ext4/mballoc.c:446 mb_find_buddy() warn: potential spectre issue
+>   'EXT4_SB(e4b->bd_sb)->s_mb_maxs' [r] (local cap)
+> 
+> Cc: Josh Poimboeuf <jpoimboe@redhat.com>
+> Cc: stable@vger.kernel.org
+> Suggested-by: Josh Poimboeuf <jpoimboe@redhat.com>
+> Signed-off-by: Jeremy Cline <jcline@redhat.com>
 
-Below change fixed this issue. Thanks for your support.
+Thanks, applied.
 
-https://github.com/torvalds/linux/commit/5012284700775a4e6e3fbe7eac4c543c4874b559
-
-"ext4: fix check to prevent initializing reserved inodes"
-
--Thanks, Prasad
-
->> So if you have a reliable repro, then we know what operations might be
->> triggering the corruption, and then you work on creating a minimal
->> repro, and only *then* when we have a restricted set of possibilities
->> that might be the cause (for example, if removing a GPU call makes the
->> problem go away, then the patch would need to be in the proprietary
->> GPU driver....)
->> 
->> > I am digging code a bit around this warning to understand more.
->> 
->> The warning means that a flag in block group descriptor #0 is set
->> that should never be set.  How did the flag get set?  There is any
->> number of things that could cause that.
->> 
->> You might want to look at the block group descriptor via dumpe2fs or
->> debugfs, to see if it's just a single bit getting flipped, or if the
->> entire block group descriptor is garbage.  Note that under normal code
->> paths, the flag *never* gets set by ext4 kernel code.  The flag will
->> get set on non-block group 0 block group descriptors by ext4, and the
->> ext4 kernel code will only clear the flag.
->> 
->> Of course, if there is a bug in some driver that dereferences a
->> pointer widely, all bets are off.
->> 
->> 					- Ted
-
--- 
-The Qualcomm Innovation Center, Inc. is a member of the Code Aurora 
-Forum,
-Linux Foundation Collaborative Project
+					- Ted
