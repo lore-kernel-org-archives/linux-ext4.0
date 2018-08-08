@@ -1,9 +1,8 @@
 From: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 Subject: [PATCH v2 2/2] [PATCH] xfs: Close race between direct IO and
  xfs_break_layouts()
-Date: Wed, 08 Aug 2018 10:26:36 -0700
-Message-ID: <153374915981.40645.3350205963852459041.stgit@djiang5-desk3.ch.intel.com>
-References: <153374910694.40645.17166196534680658204.stgit@djiang5-desk3.ch.intel.com>
+Date: Wed, 08 Aug 2018 10:31:40 -0700
+Message-ID: <153374942137.42241.10539674028265137668.stgit@djiang5-desk3.ch.intel.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -12,7 +11,6 @@ Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, david-FqsqvQoI3Ljby3iV
  hch-jcswGhMUV9g@public.gmane.org
 To: tytso-3s7WtUTddSA@public.gmane.org, darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jack-AlSwsSmVLrQ@public.gmane.org, zwisler-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <153374910694.40645.17166196534680658204.stgit-Cxk7aZI4ujnJARH06PadV2t3HXsI98Cx0E9HWUfgJXw@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -37,10 +35,13 @@ Instead, always continue looping as long as dax_layout_busy_page() gives us
 a page which it found with an elevated refcount.
 
 Signed-off-by: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 ---
 
+Sorry resend, forgot to add Jan's reviewed-by.
+
 v2:
-- Rename parameter from did_unlock to retry (Jan) 
+- Rename parameter from did_unlock to retry (Jan)
 
  fs/xfs/xfs_file.c |    9 ++++-----
  1 file changed, 4 insertions(+), 5 deletions(-)
