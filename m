@@ -1,21 +1,21 @@
-From: Eric Sandeen <esandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+From: "Theodore Y. Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
 Subject: Re: [PATCH v4 1/2] dax: dax_layout_busy_page() warn on !exceptional
-Date: Fri, 10 Aug 2018 14:52:53 -0500
-Message-ID: <6ca60cf6-f1dc-27d5-fb79-7547aea39dfa@redhat.com>
+Date: Fri, 10 Aug 2018 16:33:49 -0400
+Message-ID: <20180810203349.GH627@thunk.org>
 References: <20180710191031.17919-1-ross.zwisler@linux.intel.com>
  <20180710191031.17919-2-ross.zwisler@linux.intel.com>
-Reply-To: sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
+ <6ca60cf6-f1dc-27d5-fb79-7547aea39dfa@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-To: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
- Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
- "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Jeff Moyer <jmoyer-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
- linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>,
+ linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>,
+ Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>
+To: sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20180710191031.17919-2-ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-Content-Language: en-US
+Content-Disposition: inline
+In-Reply-To: <6ca60cf6-f1dc-27d5-fb79-7547aea39dfa-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -27,53 +27,25 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On 7/10/18 2:10 PM, Ross Zwisler wrote:
-> Inodes using DAX should only ever have exceptional entries in their page
-> caches.  Make this clear by warning if the iteration in
-> dax_layout_busy_page() ever sees a non-exceptional entry, and by adding a
-> comment for the pagevec_release() call which only deals with struct page
-> pointers.
+On Fri, Aug 10, 2018 at 02:52:53PM -0500, Eric Sandeen wrote:
 > 
-> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> Hi Ted, hadn't seem feedback from you on this by the time it gathered reviews,
+> is this something you plan to merge for realz?  (I see it's on your dev
+> branch now, just not sure of its permanence at this point.)
 
-Hi Ted, hadn't seem feedback from you on this by the time it gathered reviews,
-is this something you plan to merge for realz?  (I see it's on your dev
-branch now, just not sure of its permanence at this point.)
+Yes, the dev branch is pretty much locked down since I assume the
+merge window is openning over the weekend.
 
-Thanks,
--Eric
+The reason why I've been silent is because I haven't had a chance to
+do was a test run with DAX, because up until recently I wasn't able to
+run a DAX regression test run.  (That's because of the CONFIG_KASAN
+incompatibility with CONFIG_ZONE_DEVICE that caused the kernel to
+instantly blow up on boot if I tried to enable emulated /dev/pmem
+devices.)
 
-> ---
->  fs/dax.c | 10 +++++++++-
->  1 file changed, 9 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 641192808bb6..897b51e41d8f 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -566,7 +566,8 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
->  			if (index >= end)
->  				break;
->  
-> -			if (!radix_tree_exceptional_entry(pvec_ent))
-> +			if (WARN_ON_ONCE(
-> +			     !radix_tree_exceptional_entry(pvec_ent)))
->  				continue;
->  
->  			xa_lock_irq(&mapping->i_pages);
-> @@ -578,6 +579,13 @@ struct page *dax_layout_busy_page(struct address_space *mapping)
->  			if (page)
->  				break;
->  		}
-> +
-> +		/*
-> +		 * We don't expect normal struct page entries to exist in our
-> +		 * tree, but we keep these pagevec calls so that this code is
-> +		 * consistent with the common pattern for handling pagevecs
-> +		 * throughout the kernel.
-> +		 */
->  		pagevec_remove_exceptionals(&pvec);
->  		pagevec_release(&pvec);
->  		index++;
-> 
+I just kicked off a DAX test ("gce-xfstests -c dax -g auto") with
+CONFIG_KASAN disabled, and I expect it shouldn't show up anything
+concerning.  So assuming nothing surprising pops up, yes it should be
+merged at the next merge window.
+
+	     		    	     	  - Ted
