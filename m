@@ -1,8 +1,8 @@
 From: Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH 3/5] f2fs: cache NULL when both default_acl and
+Subject: [PATCH 4/5] jfs: cache NULL when both default_acl and
  acl are NULL
-Date: Tue, 14 Aug 2018 22:16:32 +0800
-Message-ID: <20180814141634.5471-3-cgxu519@gmx.com>
+Date: Tue, 14 Aug 2018 22:16:33 +0800
+Message-ID: <20180814141634.5471-4-cgxu519@gmx.com>
 References: <20180814141634.5471-1-cgxu519@gmx.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -34,22 +34,23 @@ in this case.
 
 Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
 ---
- fs/f2fs/acl.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/jfs/acl.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
-index 111824199a88..97ed555316be 100644
---- a/fs/f2fs/acl.c
-+++ b/fs/f2fs/acl.c
-@@ -401,6 +401,8 @@ int f2fs_init_acl(struct inode *inode, struct inode *dir, struct page *ipage,
- 					       ipage);
+diff --git a/fs/jfs/acl.c b/fs/jfs/acl.c
+index 2e71b6e7e646..15b9a9b74d72 100644
+--- a/fs/jfs/acl.c
++++ b/fs/jfs/acl.c
+@@ -154,6 +154,9 @@ int jfs_init_acl(tid_t tid, struct inode *inode, struct inode *dir)
  		posix_acl_release(acl);
  	}
+ 
 +	if (!default_acl && !acl)
 +		cache_no_acl(inode);
++
+ 	JFS_IP(inode)->mode2 = (JFS_IP(inode)->mode2 & 0xffff0000) |
+ 			       inode->i_mode;
  
- 	return error;
- }
 -- 
 2.17.1
 
