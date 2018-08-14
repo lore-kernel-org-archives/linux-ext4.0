@@ -1,8 +1,9 @@
 From: Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH 1/5] ext2: cache NULL when both default_acl and
+Subject: [PATCH 2/5] ext4: cache NULL when both default_acl and
  acl are NULL
-Date: Tue, 14 Aug 2018 22:16:30 +0800
-Message-ID: <20180814141634.5471-1-cgxu519@gmx.com>
+Date: Tue, 14 Aug 2018 22:16:31 +0800
+Message-ID: <20180814141634.5471-2-cgxu519@gmx.com>
+References: <20180814141634.5471-1-cgxu519@gmx.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
@@ -13,6 +14,7 @@ To: jack@suse.com, tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org,
  yuchao0@huawei.com, shaggy@kernel.org, hubcap@omnibond.com,
  martin@omnibond.com
 Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <20180814141634.5471-1-cgxu519@gmx.com>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
  <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
@@ -32,15 +34,15 @@ in this case.
 
 Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
 ---
- fs/ext2/acl.c | 3 +++
+ fs/ext4/acl.c | 3 +++
  1 file changed, 3 insertions(+)
 
-diff --git a/fs/ext2/acl.c b/fs/ext2/acl.c
-index 224c04abb2e5..74411e8ea507 100644
---- a/fs/ext2/acl.c
-+++ b/fs/ext2/acl.c
-@@ -262,5 +262,8 @@ ext2_init_acl(struct inode *inode, struct inode *dir)
- 			error = __ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
+diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
+index fb50f9aa6ead..69a01d28356d 100644
+--- a/fs/ext4/acl.c
++++ b/fs/ext4/acl.c
+@@ -291,5 +291,8 @@ ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
+ 					       acl, XATTR_CREATE);
  		posix_acl_release(acl);
  	}
 +	if (!default_acl && !acl)
