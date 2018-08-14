@@ -1,8 +1,8 @@
 From: Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH 2/5] ext4: cache NULL when both default_acl and
+Subject: [PATCH 3/5] f2fs: cache NULL when both default_acl and
  acl are NULL
-Date: Tue, 14 Aug 2018 22:16:31 +0800
-Message-ID: <20180814141634.5471-2-cgxu519@gmx.com>
+Date: Tue, 14 Aug 2018 22:16:32 +0800
+Message-ID: <20180814141634.5471-3-cgxu519@gmx.com>
 References: <20180814141634.5471-1-cgxu519@gmx.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -34,20 +34,20 @@ in this case.
 
 Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
 ---
- fs/ext4/acl.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/f2fs/acl.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index fb50f9aa6ead..69a01d28356d 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -291,5 +291,8 @@ ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- 					       acl, XATTR_CREATE);
+diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
+index 111824199a88..97ed555316be 100644
+--- a/fs/f2fs/acl.c
++++ b/fs/f2fs/acl.c
+@@ -401,6 +401,8 @@ int f2fs_init_acl(struct inode *inode, struct inode *dir, struct page *ipage,
+ 					       ipage);
  		posix_acl_release(acl);
  	}
 +	if (!default_acl && !acl)
 +		cache_no_acl(inode);
-+
+ 
  	return error;
  }
 -- 
