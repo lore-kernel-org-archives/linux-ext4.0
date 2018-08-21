@@ -1,60 +1,34 @@
-From: Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH 5/5] orangefs: cache NULL when both default_acl
- and acl are NULL
-Date: Tue, 14 Aug 2018 22:16:34 +0800
-Message-ID: <20180814141634.5471-5-cgxu519@gmx.com>
-References: <20180814141634.5471-1-cgxu519@gmx.com>
+From: Nikolay Borisov <nborisov@suse.com>
+Subject: exporting uuid_t from uapi/linux/uuid.h
+Date: Tue, 21 Aug 2018 22:25:50 +0300
+Message-ID: <ffc387b8-09f5-537a-c5a9-08ec28e088e0@suse.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-Cc: jfs-discussion@lists.sourceforge.net, Chengguang Xu <cgxu519@gmx.com>,
- linux-kernel@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
- linux-ext4@vger.kernel.org, devel@lists.orangefs.org
-To: jack@suse.com, tytso@mit.edu, adilger.kernel@dilger.ca, jaegeuk@kernel.org,
- yuchao0@huawei.com, shaggy@kernel.org, hubcap@omnibond.com,
- martin@omnibond.com
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <20180814141634.5471-1-cgxu519@gmx.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        Ted Ts'o <tytso@mit.edu>
+To: linux-api@vger.kernel.org
+Return-path: <linux-btrfs-owner@vger.kernel.org>
+Content-Language: en-US
+Sender: linux-btrfs-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-default_acl and acl of newly created inode will be initiated
-as ACL_NOT_CACHED in vfs function inode_init_always() and later
-will be updated by calling xxx_init_acl() in specific filesystems.
-Howerver, when default_acl and acl are NULL then they keep the value
-of ACL_NOT_CACHED, this patch tries to cache NULL for acl/default_acl
-in this case.
+Hello,
 
-Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
----
- fs/orangefs/acl.c | 3 +++
- 1 file changed, 3 insertions(+)
+I'm doing some refactoring on btrfs and would like to convert some of
+the "naked" definition of UUID in on-disk object to uuid_t. Since those
+structs are defined in include/uapi/linux/btrfs_tree.h I naturally would
+need to expose the kernel uuid_t to the uapi header via
+include/uapi/linux/uuid.h. The uuid was originally unexported in
+60927bc31436 ("uuid: remove uuid_be defintions from the uapi header")
+ but at that time it was called uuid_be. The thing is that btrfs-progs
+for example uses both btrfs_tree.h uapi header as well as libuuid. THe
+latter also defines uuid_t. Both the kernel one and libuuid are binary
+compatible.
 
-diff --git a/fs/orangefs/acl.c b/fs/orangefs/acl.c
-index 10587413b20e..e3b043a263bc 100644
---- a/fs/orangefs/acl.c
-+++ b/fs/orangefs/acl.c
-@@ -175,6 +175,9 @@ int orangefs_init_acl(struct inode *inode, struct inode *dir)
- 		posix_acl_release(acl);
- 	}
- 
-+	if (!default_acl && !acl)
-+		cache_no_acl(inode);
-+
- 	/* If mode of the inode was changed, then do a forcible ->setattr */
- 	if (mode != inode->i_mode) {
- 		memset(&iattr, 0, sizeof iattr);
--- 
-2.17.1
+So what's the correct way (if any) to expose a kernel type that might
+have also been defined by a userspace library?
 
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+Regards,
+Nikolay
