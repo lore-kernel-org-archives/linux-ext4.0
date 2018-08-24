@@ -1,7 +1,8 @@
 From: Eric Biggers <ebiggers@kernel.org>
-Subject: [RFC PATCH 09/10] ext4: add fs-verity read support
-Date: Fri, 24 Aug 2018 09:16:41 -0700
-Message-ID: <20180824161642.1144-10-ebiggers@kernel.org>
+Subject: [RFC PATCH 07/10] fs-verity: support builtin file
+ signatures
+Date: Fri, 24 Aug 2018 09:16:39 -0700
+Message-ID: <20180824161642.1144-8-ebiggers@kernel.org>
 References: <20180824161642.1144-1-ebiggers@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -24,333 +25,451 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
 Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-From: Theodore Ts'o <tytso@mit.edu>
+From: Eric Biggers <ebiggers@google.com>
 
-Make ext4_mpage_readpages() verify data as it is read from fs-verity
-files, using the helper functions from fs/verity/.
+Add optional support for:
 
-To be compatible with fscrypt, like in the corresponding f2fs patch this
-required refactoring the decryption workflow into a generic "post-read
-processing" workflow, which can do decryption, verification, or both.
+- At module initialization time, creating an ".fs-verity" keyring to
+  which trusted X.509 certificates can be added via sys_add_key().
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-(EB: various fixes and other changes)
+- Parsing a signed file measurement from the fs-verity metadata (as a
+  PKCS7_SIGNATURE unauthenticated extension item), and verifying it
+  against the certificates in the ".fs-verity" keyring.
+
+- Registering a sysctl fs.verity.require_signatures.  This can be set to
+  enforce that all fs-verity files have a valid signature.
+
+This is meant as a relatively simple mechanism that can be used to
+provide an authenticity guarantee for fs-verity files, as an alternative
+to IMA-appraisal.  Userspace programs still need to check that the
+fs-verity bit is set in order to get an authenticity guarantee.
+
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/ext4/ext4.h     |   2 +
- fs/ext4/inode.c    |   3 +
- fs/ext4/readpage.c | 207 ++++++++++++++++++++++++++++++++++++++-------
- fs/ext4/super.c    |   6 ++
- 4 files changed, 187 insertions(+), 31 deletions(-)
+ fs/verity/Kconfig             |  17 ++++
+ fs/verity/Makefile            |   2 +
+ fs/verity/fsverity_private.h  |  34 +++++++
+ fs/verity/setup.c             |  63 +++++++++++-
+ fs/verity/signature.c         | 187 ++++++++++++++++++++++++++++++++++
+ include/uapi/linux/fsverity.h |  10 ++
+ 6 files changed, 311 insertions(+), 2 deletions(-)
+ create mode 100644 fs/verity/signature.c
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 335c99e781728..f8db4b8bf133c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -3077,6 +3077,8 @@ static inline void ext4_set_de_type(struct super_block *sb,
- extern int ext4_mpage_readpages(struct address_space *mapping,
- 				struct list_head *pages, struct page *page,
- 				unsigned nr_pages);
-+extern int __init ext4_init_post_read_processing(void);
-+extern void ext4_destroy_post_read_processing(void);
+diff --git a/fs/verity/Kconfig b/fs/verity/Kconfig
+index 308d733a9401b..485488021ac16 100644
+--- a/fs/verity/Kconfig
++++ b/fs/verity/Kconfig
+@@ -34,3 +34,20 @@ config FS_VERITY_DEBUG
+ 	  Enable debugging messages related to fs-verity by default.
  
- /* symlink.c */
- extern const struct inode_operations ext4_encrypted_symlink_inode_operations;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index bb8f50230d055..cbee798d0de17 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3848,6 +3848,9 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
- 		return 0;
- #endif
+ 	  Say N unless you are an fs-verity developer.
++
++config FS_VERITY_BUILTIN_SIGNATURES
++	bool "FS Verity builtin signature support"
++	depends on FS_VERITY
++	select SYSTEM_DATA_VERIFICATION
++	help
++	  Support verifying signatures of verity files against the X.509
++	  certificates that have been loaded into the ".fs-verity"
++	  kernel keyring.
++
++	  This is meant as a relatively simple mechanism that can be
++	  used to provide an authenticity guarantee for verity files, as
++	  an alternative to IMA appraisal.  Userspace programs still
++	  need to check that the verity bit is set in order to get an
++	  authenticity guarantee.
++
++	  If unsure, say N.
+diff --git a/fs/verity/Makefile b/fs/verity/Makefile
+index 6450925e3a8b7..d293ea2a1b393 100644
+--- a/fs/verity/Makefile
++++ b/fs/verity/Makefile
+@@ -1,3 +1,5 @@
+ obj-$(CONFIG_FS_VERITY)	+= fsverity.o
  
-+	if (ext4_verity_inode(inode))
+ fsverity-y := hash_algs.o ioctl.o setup.o verify.o
++
++fsverity-$(CONFIG_FS_VERITY_BUILTIN_SIGNATURES) += signature.o
+diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
+index 1046b87b12dee..73a3f04776fce 100644
+--- a/fs/verity/fsverity_private.h
++++ b/fs/verity/fsverity_private.h
+@@ -63,6 +63,7 @@ struct fsverity_info {
+ 	u8 root_hash[FS_VERITY_MAX_DIGEST_SIZE];   /* Merkle tree root hash */
+ 	u8 measurement[FS_VERITY_MAX_DIGEST_SIZE]; /* file measurement */
+ 	bool have_root_hash;		/* have root hash from disk? */
++	bool have_signed_measurement;	/* have measurement from signature? */
+ 
+ 	/* Starting blocks for each tree level. 'depth-1' is the root level. */
+ 	u64 hash_lvl_region_idx[FS_VERITY_MAX_LEVELS];
+@@ -96,6 +97,39 @@ static inline bool set_fsverity_info(struct inode *inode,
+ 	return true;
+ }
+ 
++/* signature.c */
++#ifdef CONFIG_FS_VERITY_BUILTIN_SIGNATURES
++extern int fsverity_require_signatures;
++
++int fsverity_parse_pkcs7_signature_extension(struct fsverity_info *vi,
++					     const void *raw_pkcs7,
++					     size_t size);
++
++int __init fsverity_signature_init(void);
++
++void __exit fsverity_signature_exit(void);
++#else /* CONFIG_FS_VERITY_BUILTIN_SIGNATURES */
++
++#define fsverity_require_signatures 0
++
++static inline int
++fsverity_parse_pkcs7_signature_extension(struct fsverity_info *vi,
++					 const void *raw_pkcs7, size_t size)
++{
++	pr_warn("PKCS#7 signatures not supported in this kernel build!\n");
++	return -EINVAL;
++}
++
++static inline int fsverity_signature_init(void)
++{
++	return 0;
++}
++
++static inline void fsverity_signature_exit(void)
++{
++}
++#endif /* !CONFIG_FS_VERITY_BUILTIN_SIGNATURES */
++
+ /* verify.c */
+ extern struct workqueue_struct *fsverity_read_workqueue;
+ 
+diff --git a/fs/verity/setup.c b/fs/verity/setup.c
+index 3f5cb9526dbc9..6a11cdcbd01d4 100644
+--- a/fs/verity/setup.c
++++ b/fs/verity/setup.c
+@@ -132,6 +132,10 @@ static const struct extension_type {
+ 	[FS_VERITY_EXT_SALT] = {
+ 		.parse = parse_salt_extension,
+ 	},
++	[FS_VERITY_EXT_PKCS7_SIGNATURE] = {
++		.parse = fsverity_parse_pkcs7_signature_extension,
++		.unauthenticated = true,
++	},
+ };
+ 
+ static int do_parse_extensions(struct fsverity_info *vi,
+@@ -449,6 +453,54 @@ static int compute_measurement(const struct fsverity_info *vi,
+ 	return err;
+ }
+ 
++/*
++ * Compute the file's measurement; then, if a signature was present, verify that
++ * the signed measurement matches the actual one.
++ */
++static int
++verify_file_measurement(struct fsverity_info *vi,
++			const struct fsverity_descriptor *desc,
++			int desc_auth_len,
++			struct page *desc_pages[MAX_DESCRIPTOR_PAGES],
++			int nr_desc_pages)
++{
++	u8 measurement[FS_VERITY_MAX_DIGEST_SIZE];
++	int err;
++
++	err = compute_measurement(vi, desc, desc_auth_len, desc_pages,
++				  nr_desc_pages, measurement);
++	if (err) {
++		pr_warn("Error computing fs-verity measurement: %d\n", err);
++		return err;
++	}
++
++	if (!vi->have_signed_measurement) {
++		pr_debug("Computed measurement: %s:%*phN (used desc_auth_len %d)\n",
++			 vi->hash_alg->name, vi->hash_alg->digest_size,
++			 measurement, desc_auth_len);
++		if (fsverity_require_signatures) {
++			pr_warn("require_signatures=1, rejecting unsigned file!\n");
++			return -EBADMSG;
++		}
++		memcpy(vi->measurement, measurement, vi->hash_alg->digest_size);
 +		return 0;
++	}
 +
- 	/*
- 	 * If we are doing data journalling we don't support O_DIRECT
- 	 */
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index 19b87a8de6ff3..7750e22c90e39 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -47,6 +47,11 @@
- 
- #include "ext4.h"
- 
-+#define NUM_PREALLOC_POST_READ_CTXS	128
++	if (!memcmp(measurement, vi->measurement, vi->hash_alg->digest_size)) {
++		pr_debug("Verified measurement: %s:%*phN (used desc_auth_len %d)\n",
++			 vi->hash_alg->name, vi->hash_alg->digest_size,
++			 measurement, desc_auth_len);
++		return 0;
++	}
 +
-+static struct kmem_cache *bio_post_read_ctx_cache;
-+static mempool_t *bio_post_read_ctx_pool;
++	pr_warn("FILE CORRUPTED (actual measurement mismatches signed measurement): "
++		"want %s:%*phN, real %s:%*phN (used desc_auth_len %d)\n",
++		vi->hash_alg->name, vi->hash_alg->digest_size, vi->measurement,
++		vi->hash_alg->name, vi->hash_alg->digest_size, measurement,
++		desc_auth_len);
++	return -EBADMSG;
++}
 +
- static inline bool ext4_bio_encrypted(struct bio *bio)
+ static struct fsverity_info *alloc_fsverity_info(void)
  {
- #ifdef CONFIG_EXT4_FS_ENCRYPTION
-@@ -56,6 +61,124 @@ static inline bool ext4_bio_encrypted(struct bio *bio)
- #endif
- }
+ 	return kmem_cache_zalloc(fsverity_info_cachep, GFP_NOFS);
+@@ -693,8 +745,8 @@ struct fsverity_info *create_fsverity_info(struct inode *inode, bool enabling)
+ 	err = compute_tree_depth_and_offsets(vi);
+ 	if (err)
+ 		goto out;
+-	err = compute_measurement(vi, desc, desc_auth_len, desc_pages,
+-				  nr_desc_pages, vi->measurement);
++	err = verify_file_measurement(vi, desc, desc_auth_len,
++				      desc_pages, nr_desc_pages);
+ out:
+ 	if (desc)
+ 		unmap_fsverity_descriptor(desc, desc_pages, nr_desc_pages);
+@@ -848,11 +900,17 @@ static int __init fsverity_module_init(void)
+ 	if (!fsverity_info_cachep)
+ 		goto error_free_workqueue;
  
-+/* postprocessing steps for read bios */
-+enum bio_post_read_step {
-+	STEP_INITIAL = 0,
-+	STEP_DECRYPT,
-+	STEP_VERITY,
-+};
++	err = fsverity_signature_init();
++	if (err)
++		goto error_free_info_cache;
 +
-+struct bio_post_read_ctx {
-+	struct bio *bio;
-+	struct work_struct work;
-+	unsigned int cur_step;
-+	unsigned int enabled_steps;
-+};
-+
-+static void __read_end_io(struct bio *bio)
-+{
-+	struct page *page;
-+	struct bio_vec *bv;
-+	int i;
-+
-+	bio_for_each_segment_all(bv, bio, i) {
-+		page = bv->bv_page;
-+
-+		/* PG_error was set if any post_read step failed */
-+		if (bio->bi_status || PageError(page)) {
-+			ClearPageUptodate(page);
-+			SetPageError(page);
-+		} else {
-+			SetPageUptodate(page);
-+		}
-+		unlock_page(page);
-+	}
-+	if (bio->bi_private)
-+		mempool_free(bio->bi_private, bio_post_read_ctx_pool);
-+	bio_put(bio);
-+}
-+
-+static void bio_post_read_processing(struct bio_post_read_ctx *ctx);
-+
-+static void decrypt_work(struct work_struct *work)
-+{
-+	struct bio_post_read_ctx *ctx =
-+		container_of(work, struct bio_post_read_ctx, work);
-+
-+	fscrypt_decrypt_bio(ctx->bio);
-+
-+	bio_post_read_processing(ctx);
-+}
-+
-+static void verity_work(struct work_struct *work)
-+{
-+	struct bio_post_read_ctx *ctx =
-+		container_of(work, struct bio_post_read_ctx, work);
-+
-+	fsverity_verify_bio(ctx->bio);
-+
-+	bio_post_read_processing(ctx);
-+}
-+
-+static void bio_post_read_processing(struct bio_post_read_ctx *ctx)
-+{
-+	/*
-+	 * We use different work queues for decryption and for verity because
-+	 * verity may require reading metadata pages that need decryption, and
-+	 * we shouldn't recurse to the same workqueue.
-+	 */
-+	switch (++ctx->cur_step) {
-+	case STEP_DECRYPT:
-+		if (ctx->enabled_steps & (1 << STEP_DECRYPT)) {
-+			INIT_WORK(&ctx->work, decrypt_work);
-+			fscrypt_enqueue_decrypt_work(&ctx->work);
-+			return;
-+		}
-+		ctx->cur_step++;
-+		/* fall-through */
-+	case STEP_VERITY:
-+		if (ctx->enabled_steps & (1 << STEP_VERITY)) {
-+			INIT_WORK(&ctx->work, verity_work);
-+			fsverity_enqueue_verify_work(&ctx->work);
-+			return;
-+		}
-+		ctx->cur_step++;
-+		/* fall-through */
-+	default:
-+		__read_end_io(ctx->bio);
-+	}
-+}
-+
-+static struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
-+						       struct bio *bio,
-+						       pgoff_t index)
-+{
-+	unsigned int post_read_steps = 0;
-+	struct bio_post_read_ctx *ctx = NULL;
-+
-+	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode))
-+		post_read_steps |= 1 << STEP_DECRYPT;
-+#ifdef CONFIG_EXT4_FS_VERITY
-+	if (inode->i_verity_info != NULL &&
-+	    (index < ((i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT)))
-+		post_read_steps |= 1 << STEP_VERITY;
-+#endif
-+	if (post_read_steps) {
-+		ctx = mempool_alloc(bio_post_read_ctx_pool, GFP_NOFS);
-+		if (!ctx)
-+			return ERR_PTR(-ENOMEM);
-+		ctx->bio = bio;
-+		ctx->enabled_steps = post_read_steps;
-+		bio->bi_private = ctx;
-+	}
-+	return ctx;
-+}
-+
-+static bool bio_post_read_required(struct bio *bio)
-+{
-+	return bio->bi_private && !bio->bi_status;
-+}
-+
- /*
-  * I/O completion handler for multipage BIOs.
-  *
-@@ -70,30 +193,31 @@ static inline bool ext4_bio_encrypted(struct bio *bio)
-  */
- static void mpage_end_io(struct bio *bio)
- {
--	struct bio_vec *bv;
--	int i;
-+	if (bio_post_read_required(bio)) {
-+		struct bio_post_read_ctx *ctx = bio->bi_private;
+ 	fsverity_check_hash_algs();
  
--	if (ext4_bio_encrypted(bio)) {
--		if (bio->bi_status) {
--			fscrypt_release_ctx(bio->bi_private);
--		} else {
--			fscrypt_enqueue_decrypt_bio(bio->bi_private, bio);
--			return;
--		}
-+		ctx->cur_step = STEP_INITIAL;
-+		bio_post_read_processing(ctx);
-+		return;
- 	}
--	bio_for_each_segment_all(bv, bio, i) {
--		struct page *page = bv->bv_page;
-+	__read_end_io(bio);
-+}
- 
--		if (!bio->bi_status) {
--			SetPageUptodate(page);
--		} else {
--			ClearPageUptodate(page);
--			SetPageError(page);
--		}
--		unlock_page(page);
-+static inline loff_t ext4_readpage_limit(struct inode *inode)
-+{
-+#ifdef CONFIG_EXT4_FS_VERITY
-+	if (ext4_verity_inode(inode)) {
-+		if (inode->i_verity_info)
-+			/* limit to end of metadata region */
-+			return fsverity_full_i_size(inode);
-+		/*
-+		 * fsverity_info is currently being set up and no user reads are
-+		 * allowed yet.  It's easiest to just not enforce a limit yet.
-+		 */
-+		return inode->i_sb->s_maxbytes;
- 	}
--
--	bio_put(bio);
-+#endif
-+	return i_size_read(inode);
- }
- 
- int ext4_mpage_readpages(struct address_space *mapping,
-@@ -140,7 +264,8 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 
- 		block_in_file = (sector_t)page->index << (PAGE_SHIFT - blkbits);
- 		last_block = block_in_file + nr_pages * blocks_per_page;
--		last_block_in_file = (i_size_read(inode) + blocksize - 1) >> blkbits;
-+		last_block_in_file = (ext4_readpage_limit(inode) +
-+				      blocksize - 1) >> blkbits;
- 		if (last_block > last_block_in_file)
- 			last_block = last_block_in_file;
- 		page_block = 0;
-@@ -240,19 +365,15 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 			bio = NULL;
- 		}
- 		if (bio == NULL) {
--			struct fscrypt_ctx *ctx = NULL;
-+			struct bio_post_read_ctx *ctx;
- 
--			if (ext4_encrypted_inode(inode) &&
--			    S_ISREG(inode->i_mode)) {
--				ctx = fscrypt_get_ctx(inode, GFP_NOFS);
--				if (IS_ERR(ctx))
--					goto set_error_page;
--			}
- 			bio = bio_alloc(GFP_KERNEL,
- 				min_t(int, nr_pages, BIO_MAX_PAGES));
--			if (!bio) {
--				if (ctx)
--					fscrypt_release_ctx(ctx);
-+			if (!bio)
-+				goto set_error_page;
-+			ctx = get_bio_post_read_ctx(inode, bio, page->index);
-+			if (IS_ERR(ctx)) {
-+				bio_put(bio);
- 				goto set_error_page;
- 			}
- 			bio_set_dev(bio, bdev);
-@@ -292,3 +413,27 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 		submit_bio(bio);
+ 	pr_debug("Initialized fs-verity\n");
  	return 0;
+ 
++error_free_info_cache:
++	kmem_cache_destroy(fsverity_info_cachep);
+ error_free_workqueue:
+ 	destroy_workqueue(fsverity_read_workqueue);
+ error:
+@@ -863,6 +921,7 @@ static void __exit fsverity_module_exit(void)
+ {
+ 	destroy_workqueue(fsverity_read_workqueue);
+ 	kmem_cache_destroy(fsverity_info_cachep);
++	fsverity_signature_exit();
+ 	fsverity_exit_hash_algs();
  }
+ 
+diff --git a/fs/verity/signature.c b/fs/verity/signature.c
+new file mode 100644
+index 0000000000000..bb8407e7914c8
+--- /dev/null
++++ b/fs/verity/signature.c
+@@ -0,0 +1,187 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * fs/verity/signature.c: verification of builtin signatures
++ *
++ * Copyright (C) 2018 Google LLC
++ *
++ * Written by Eric Biggers.
++ */
 +
-+int __init ext4_init_post_read_processing(void)
++#include "fsverity_private.h"
++
++#include <linux/cred.h>
++#include <linux/key.h>
++#include <linux/verification.h>
++
++/*
++ * /proc/sys/fs/verity/require_signatures
++ * If 1, all verity files must have a valid builtin signature.
++ */
++int fsverity_require_signatures;
++
++/*
++ * Keyring that contains the trusted X.509 certificates.
++ *
++ * Only root (kuid=0) can modify this.  Also, root may use
++ * keyctl_restrict_keyring() to prevent any more additions.
++ */
++static struct key *fsverity_keyring;
++
++static int extract_measurement(void *ctx, const void *data, size_t len,
++			       size_t asn1hdrlen)
 +{
-+	bio_post_read_ctx_cache = KMEM_CACHE(bio_post_read_ctx, 0);
-+	if (!bio_post_read_ctx_cache)
-+		goto fail;
-+	bio_post_read_ctx_pool =
-+		mempool_create_slab_pool(NUM_PREALLOC_POST_READ_CTXS,
-+					 bio_post_read_ctx_cache);
-+	if (!bio_post_read_ctx_pool)
-+		goto fail_free_cache;
++	struct fsverity_info *vi = ctx;
++	const struct fsverity_digest_disk *d;
++	const struct fsverity_hash_alg *hash_alg;
++
++	if (len < sizeof(*d)) {
++		pr_warn("Signed file measurement has unrecognized format\n");
++		return -EBADMSG;
++	}
++	d = (const void *)data;
++
++	hash_alg = fsverity_get_hash_alg(le16_to_cpu(d->digest_algorithm));
++	if (IS_ERR(hash_alg))
++		return PTR_ERR(hash_alg);
++
++	if (le16_to_cpu(d->digest_size) != hash_alg->digest_size) {
++		pr_warn("Wrong digest_size in signed measurement: wanted %u for algorithm %s, but got %u\n",
++			hash_alg->digest_size, hash_alg->name,
++			le16_to_cpu(d->digest_size));
++		return -EBADMSG;
++	}
++
++	if (len < sizeof(*d) + hash_alg->digest_size) {
++		pr_warn("Signed file measurement is truncated\n");
++		return -EBADMSG;
++	}
++
++	if (hash_alg != vi->hash_alg) {
++		pr_warn("Signed file measurement uses %s, but file uses %s\n",
++			hash_alg->name, vi->hash_alg->name);
++		return -EBADMSG;
++	}
++
++	memcpy(vi->measurement, d->digest, hash_alg->digest_size);
++	vi->have_signed_measurement = true;
++	return 0;
++}
++
++/**
++ * fsverity_parse_pkcs7_signature_extension - verify the signed file measurement
++ *
++ * Verify a signed fsverity_measurement against the certificates in the
++ * fs-verity keyring.  The signature is given as a PKCS#7 formatted message, and
++ * the signed data is included in the message (not detached).
++ *
++ * Return: 0 if the signature checks out and the signed measurement is
++ * well-formed and uses the expected hash algorithm; -EBADMSG on signature
++ * verification failure or malformed data; else another -errno code.
++ */
++int fsverity_parse_pkcs7_signature_extension(struct fsverity_info *vi,
++					     const void *raw_pkcs7, size_t size)
++{
++	int err;
++
++	if (vi->have_signed_measurement) {
++		pr_warn("Found multiple PKCS#7 signatures\n");
++		return -EBADMSG;
++	}
++
++	if (!vi->hash_alg->cryptographic) {
++		/* Might as well check this... */
++		pr_warn("Found signed %s file measurement, but %s isn't a cryptographic hash algorithm.\n",
++			vi->hash_alg->name, vi->hash_alg->name);
++		return -EBADMSG;
++	}
++
++	err = verify_pkcs7_signature(NULL, 0, raw_pkcs7, size, fsverity_keyring,
++				     VERIFYING_UNSPECIFIED_SIGNATURE,
++				     extract_measurement, vi);
++	if (err)
++		pr_warn("PKCS#7 signature verification error: %d\n", err);
++
++	return err;
++}
++
++#ifdef CONFIG_SYSCTL
++static int zero;
++static int one = 1;
++static struct ctl_table_header *fsverity_sysctl_header;
++
++static struct ctl_path fsverity_sysctl_path[] = {
++	{ .procname = "fs", },
++	{ .procname = "verity", },
++	{ }
++};
++
++static struct ctl_table fsverity_sysctl_table[] = {
++	{
++		.procname       = "require_signatures",
++		.data           = &fsverity_require_signatures,
++		.maxlen         = sizeof(int),
++		.mode           = 0644,
++		.proc_handler   = proc_dointvec_minmax,
++		.extra1         = &zero,
++		.extra2         = &one,
++	},
++	{ }
++};
++
++static int __init fsverity_sysctl_init(void)
++{
++	fsverity_sysctl_header = register_sysctl_paths(fsverity_sysctl_path,
++						       fsverity_sysctl_table);
++	if (!fsverity_sysctl_header) {
++		pr_warn("sysctl registration failed!");
++		return -ENOMEM;
++	}
++	return 0;
++}
++
++static void __exit fsverity_sysctl_exit(void)
++{
++	unregister_sysctl_table(fsverity_sysctl_header);
++}
++#else /* CONFIG_SYSCTL */
++static inline int fsverity_sysctl_init(void)
++{
++	return 0;
++}
++
++static inline void fsverity_sysctl_exit(void)
++{
++}
++#endif /* !CONFIG_SYSCTL */
++
++int __init fsverity_signature_init(void)
++{
++	struct key *ring;
++	int err;
++
++	ring = keyring_alloc(".fs-verity", KUIDT_INIT(0), KGIDT_INIT(0),
++			     current_cred(),
++			     ((KEY_POS_ALL & ~KEY_POS_SETATTR) |
++			      KEY_USR_VIEW | KEY_USR_READ |
++			      KEY_USR_WRITE | KEY_USR_SEARCH | KEY_USR_SETATTR),
++			     KEY_ALLOC_NOT_IN_QUOTA, NULL, NULL);
++	if (IS_ERR(ring))
++		return PTR_ERR(ring);
++
++	err = fsverity_sysctl_init();
++	if (err)
++		goto error_put_ring;
++
++	fsverity_keyring = ring;
 +	return 0;
 +
-+fail_free_cache:
-+	kmem_cache_destroy(bio_post_read_ctx_cache);
-+fail:
-+	return -ENOMEM;
++error_put_ring:
++	key_put(ring);
++	return err;
 +}
 +
-+void ext4_destroy_post_read_processing(void)
++void __exit fsverity_signature_exit(void)
 +{
-+	mempool_destroy(bio_post_read_ctx_pool);
-+	kmem_cache_destroy(bio_post_read_ctx_cache);
++	key_put(fsverity_keyring);
++	fsverity_sysctl_exit();
 +}
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c2f372c634ccb..0a17f7c6f630a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -6006,6 +6006,10 @@ static int __init ext4_init_fs(void)
- 	if (err)
- 		return err;
+diff --git a/include/uapi/linux/fsverity.h b/include/uapi/linux/fsverity.h
+index b1afd205bbf87..3d97181f50a77 100644
+--- a/include/uapi/linux/fsverity.h
++++ b/include/uapi/linux/fsverity.h
+@@ -56,6 +56,7 @@ struct fsverity_descriptor {
+ /* Extension types */
+ #define FS_VERITY_EXT_ROOT_HASH		1
+ #define FS_VERITY_EXT_SALT		2
++#define FS_VERITY_EXT_PKCS7_SIGNATURE	3
  
-+	err = ext4_init_post_read_processing();
-+	if (err)
-+		goto out6;
-+
- 	err = ext4_init_pageio();
- 	if (err)
- 		goto out5;
-@@ -6044,6 +6048,8 @@ static int __init ext4_init_fs(void)
- out4:
- 	ext4_exit_pageio();
- out5:
-+	ext4_destroy_post_read_processing();
-+out6:
- 	ext4_exit_es();
+ /* Header of each extension (variable-length metadata item) */
+ struct fsverity_extension {
+@@ -78,6 +79,15 @@ struct fsverity_extension {
  
- 	return err;
+ /* FS_VERITY_EXT_SALT payload is just a byte array, any size */
+ 
++/*
++ * FS_VERITY_EXT_PKCS7_SIGNATURE payload is a DER-encoded PKCS#7 message
++ * containing the signed file measurement in the following format:
++ */
++struct fsverity_digest_disk {
++	__le16 digest_algorithm;
++	__le16 digest_size;
++	__u8 digest[];
++};
+ 
+ /* Fields stored at the very end of the file */
+ struct fsverity_footer {
 -- 
 2.18.0
 
