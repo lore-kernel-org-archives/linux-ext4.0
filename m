@@ -1,172 +1,119 @@
 From: Eric Biggers <ebiggers@kernel.org>
-Subject: Re: [RFC PATCH 02/10] fs-verity: add data verification
- hooks for ->readpages()
-Date: Fri, 24 Aug 2018 21:16:48 -0700
-Message-ID: <20180825041647.GA726@sol.localdomain>
+Subject: Re: [RFC PATCH 01/10] fs-verity: add setup code, UAPI, and Kconfig
+Date: Fri, 24 Aug 2018 21:48:53 -0700
+Message-ID: <20180825044852.GB726@sol.localdomain>
 References: <20180824161642.1144-1-ebiggers@kernel.org>
- <20180824161642.1144-3-ebiggers@kernel.org>
- <2f2382c3-e5e9-f0da-dc89-42dfc7b2b636@huawei.com>
+ <20180824161642.1144-2-ebiggers@kernel.org>
+ <1535132549.2855027.1485213752.129E3334@webmail.messagingengine.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
- Michael Halcrow <mhalcrow@google.com>, linux-kernel@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, linux-fscrypt@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-integrity@vger.kernel.org,
- linux-ext4@vger.kernel.org, Mimi Zohar <zohar@linux.vnet.ibm.com>,
- Victor Hsieh <victorhsieh@google.com>
-To: Gao Xiang <gaoxiang25@huawei.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Victor Hsieh <victorhsieh@google.com>
+To: Colin Walters <walters@verbum.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <2f2382c3-e5e9-f0da-dc89-42dfc7b2b636@huawei.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+In-Reply-To: <1535132549.2855027.1485213752.129E3334@webmail.messagingengine.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Gao,
+Hi Colin,
 
-On Sat, Aug 25, 2018 at 10:29:26AM +0800, Gao Xiang wrote:
-> Hi,
+On Fri, Aug 24, 2018 at 01:42:29PM -0400, Colin Walters wrote:
 > 
-> On 2018/8/25 0:16, Eric Biggers wrote:
-> > +/**
-> > + * fsverity_verify_page - verify a data page
-> > + *
-> > + * Verify a page that has just been read from a file against that file's Merkle
-> > + * tree.  The page is assumed to be a pagecache page.
-> > + *
-> > + * Return: true if the page is valid, else false.
-> > + */
-> > +bool fsverity_verify_page(struct page *data_page)
-> > +{
-> > +	struct inode *inode = data_page->mapping->host;
-> > +	const struct fsverity_info *vi = get_fsverity_info(inode);
-> > +	struct ahash_request *req;
-> > +	bool valid;
-> > +
-> > +	req = ahash_request_alloc(vi->hash_alg->tfm, GFP_KERNEL);
-> > +	if (unlikely(!req))
-> > +		return false;
-> > +
-> > +	valid = verify_page(inode, vi, req, data_page);
-> > +
-> > +	ahash_request_free(req);
-> > +
-> > +	return valid;
-> > +}
-> > +EXPORT_SYMBOL_GPL(fsverity_verify_page);
-> > +
-> > +/**
-> > + * fsverity_verify_bio - verify a 'read' bio that has just completed
-> > + *
-> > + * Verify a set of pages that have just been read from a file against that
-> > + * file's Merkle tree.  The pages are assumed to be pagecache pages.  Pages that
-> > + * fail verification are set to the Error state.  Verification is skipped for
-> > + * pages already in the Error state, e.g. due to fscrypt decryption failure.
-> > + */
-> > +void fsverity_verify_bio(struct bio *bio)
-> > +{
-> > +	struct inode *inode = bio_first_page_all(bio)->mapping->host;
-> > +	const struct fsverity_info *vi = get_fsverity_info(inode);
-> > +	struct ahash_request *req;
-> > +	struct bio_vec *bv;
-> > +	int i;
-> > +
-> > +	req = ahash_request_alloc(vi->hash_alg->tfm, GFP_KERNEL);
-> > +	if (unlikely(!req)) {
-> > +		bio_for_each_segment_all(bv, bio, i)
-> > +			SetPageError(bv->bv_page);
-> > +		return;
-> > +	}
-> > +
-> > +	bio_for_each_segment_all(bv, bio, i) {
-> > +		struct page *page = bv->bv_page;
-> > +
-> > +		if (!PageError(page) && !verify_page(inode, vi, req, page))
-> > +			SetPageError(page);
-> > +	}
-> > +
-> > +	ahash_request_free(req);
-> > +}
-> > +EXPORT_SYMBOL_GPL(fsverity_verify_bio);
+> On Fri, Aug 24, 2018, at 12:16 PM, Eric Biggers wrote:
+> > From: Eric Biggers <ebiggers@google.com>
+> > 
+> > fs-verity is a filesystem feature that provides efficient, transparent
+> > integrity verification and authentication of read-only files.  It uses a
+> > dm-verity like mechanism at the file level: a Merkle tree hidden past
+> > the end of the file is used to verify any block in the file in
+> > log(filesize) time.  It is implemented mainly by helper functions in
+> > fs/verity/ that will be shared by multiple filesystems.
+> > 
+> > Essentially, fs-verity reports a file's hash in constant time, but reads
+> > that would violate that hash fail at runtime.  This is useful when only
+> > a portion of the file is actually accessed, as only the accessed portion
+> > has to be hashed, and the latency to the first read is much reduced over
+> > a full file hash.  On top of this hashing mechanism, auditing or
+> > authentication policies can be implemented to log or verify file hashes.
+> > 
+> > Note that in general, fs-verity is *not* a replacement for IMA.
+> > fs-verity is a lower-level feature, primarily a way to hash a file;
+> > whereas IMA deals more with higher-level policy logic, like defining
+> > which files are "measured" and what to do with those measurements.  We
+> > plan for IMA to support fs-verity measurements as an alternative to the
+> > traditional full file hash.  Still, some users find fs-verity useful by
+> > itself, so it's also usable without IMA in simple cases, e.g. in cases
+> > where just retrieving the file measurement via an ioctl is enough.
+> > 
+> > A structure containing the properties of the Merkle tree -- such as the
+> > hash algorithm used, the block size, and the root hash -- is also stored
+> > on-disk, following the Merkle tree.  The actual file measurement hash
+> > that fs-verity reports is the hash of this structure.
+> > 
+> > All fs-verity metadata is written by userspace; the kernel only reads
+> > it.  Extended attributes aren't used because the Merkle tree may be much
+> > larger than XATTR_SIZE_MAX, we want the hash pages to be cached in the
+> > page cache as usual, and in the case of fs-verity combined with fscrypt
+> > we want the metadata to be encrypted to avoid leaking plaintext hashes.
+> > The fs-verity metadata is hidden from userspace by overriding the i_size
+> > of the in-memory VFS inode; ext4 additionally will override the on-disk
+> > i_size in order to make verity a RO_COMPAT filesystem feature.
+> > 
+> > This initial patch only adds the fs-verity Kconfig option, UAPI, and
+> > setup code, e.g. the ->open() hook that parses the fs-verity descriptor.
 > 
-> Out of curiosity, I quickly scanned the fs-verity source code and some minor question out there....
+> This first patch also adds a bit of core logic in the
+> simple fsverity_prepare_setattr() which ends up being called
+> by ext4 later.
 > 
-> If something is wrong, please point out, thanks in advance...
+> While I'm not too familiar with the vfs, as far as I can
+> tell  from inspection of Linus' git master is that pretty much any change (timestamp, hardlinks) ends up
+> calling notify_change() which calls the fs-specific one, and in
+> the verity case basically denies everything, right?
 > 
-> My first question is that 'Is there any way to skip to verify pages in a bio?'
-> I am thinking about
-> If metadata and data page are mixed in a filesystem of such kind, they could submit together in a bio, but metadata could be unsuitable for such kind of verification.
+> Previously I brought up many uses for "content immutable" files:
+> https://marc.info/?l=linux-fsdevel&m=151698481512084&w=2
+> 
+> The discussion sort of died out but...did you have any opinion
+> on e.g. my proposal to use the Unix mode bits as a way to describe
+> levels of mutablility?
+> 
+> Let's say that your new _VERITY inode flag becomes "_WRITEPROT"
+> or something a bit more generic.
+> 
+> Do you have any thoughts on my proposal to reuse the Unix mode
+> bits to control levels of inode mutability?
+> 
+> For example, it seems to me we could define u+w as "hardlinks are OK".
+> There shouldn't be any reason ext4/f2fs couldn't hardlink a verity-protected
+> inode right?  Or if for some reason that is hard, we could disallow that to
+> start, but at least have the core VFS support _WRITEPROT inodes?
 > 
 
-Pages below i_size are verified, pages above are not.
+As Ted pointed out, only truncates are denied on fs-verity files, not other
+metadata changes like chmod().
 
-With my patches, ext4 and f2fs won't actually submit pages in both areas in the
-same bio, and they won't call the fs-verity verification function for bios in
-the data area.  But even if they did, there's also a check in verify_page() that
-skips the verification if the page is above i_size.
+Think of it this way: the purpose of fs-verity is *not* to make files immutable.
+It's to hash them.  We can't allow people to change the thing being hashed,
+since that would invalidate the hash.  So while fs-verity does make the file
+contents immutable, it's actually a requirement for it being hashed (measured),
+rather than the end goal.  There's no reason from fs-verity's perspective to
+make anything else immutable.
 
-> The second question is related to the first question --- 'Is there any way to verify a partial page?'
-> Take scalability into consideration, some files could be totally inlined or partially inlined in metadata.
-> Is there any way to deal with them in per-file approach? at least --- support for the interface?
+That being said, in the future, we could allow declaring file metadata like the
+Unix mode bits in the authenticated portion of the fs-verity descriptor, so they
+would be included in the file hash.  fs-verity would then need to enforce that
+the declared mode matches the actual one and that the actual one cannot be
+changed.  Extended attributes could be included in the hash in the same way.
 
-Well, one problem is that inline data has its own separate I/O path; see
-ext4_readpage_inline() and f2fs_read_inline_data().  So it would be a large
-effort to support features like encryption and verity which require
-postprocessing after reads, and probably not worthwhile especially for verity
-which is primarily intended for large files.
-
-A somewhat separate question is whether the zero padding to a block boundary
-after i_size, before the Merkle tree begins, is needed.  The answer is yes,
-since mixing data and metadata in the same page would cause problems.  First,
-userspace would be able to mmap the page and see some of the metadata rather
-than zeroes.  That's not a huge problem, but it breaks the standard behavior.
-Second, any page containing data cannot be set Uptodate until it's been
-verified.  So, a special case would be needed to handle reading the part of the
-metadata that's located in a data page.
-
-> At last, I hope filesystems could select the on-disk position of hash tree and 'struct fsverity_descriptor'
-> rather than fixed in the end of verity files...I think if fs-verity preparing such support and interfaces could be better.....hmmm... :(
-
-In theory it would be a much cleaner design to store verity metadata separately
-from the data.  But the Merkle tree can be very large.  For example, a 1 GB file
-using SHA-512 would have a 16.6 MB Merkle tree.  So the Merkle tree can't be an
-extended attribute, since the xattrs API requires xattrs to be small (<= 64 KB),
-and most filesystems further limit xattr sizes in their on-disk format to as
-little as 4 KB.  Furthermore, even if both of these limits were to be increased,
-the xattrs functions (both the syscalls, and the internal functions that
-filesystems have) are all based around getting/setting the entire xattr value.
-
-Also when used with fscrypt, we want the Merkle tree and fsverity_descriptor to
-be encrypted, so they doesn't leak plaintext hashes.  And we want the Merkle
-tree to be paged into memory, just like the file contents, to take advantage of
-the usual Linux memory management.
-
-What we really need is *streams*, like NTFS has.  But the filesystems we're
-targetting don't support streams, nor does the Linux syscall interface have any
-API for accessing streams, nor does the VFS support them.
-
-Adding streams support to all those things would be a huge multi-year effort,
-controversial, and almost certainly not worth it just for fs-verity.
-
-So simply storing the verity metadata past i_size seems like the best solution
-for now.
-
-That being said, in the future we could pretty easily swap out the calls to
-read_mapping_page() with something else if a particular filesystem wanted to
-store the metadata somewhere else.  We actually even originally had a function
-->read_metadata_page() in the filesystem's fsverity_operations, but it turned
-out to be unnecessary and I replaced it with directly calling
-read_mapping_page(), but it could be changed back at any time.
+But that's out of scope for now, as so far users only need the file contents to
+be hashed.
 
 - Eric
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
