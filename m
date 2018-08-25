@@ -1,119 +1,96 @@
-From: Eric Biggers <ebiggers@kernel.org>
-Subject: Re: [RFC PATCH 01/10] fs-verity: add setup code, UAPI, and Kconfig
-Date: Fri, 24 Aug 2018 21:48:53 -0700
-Message-ID: <20180825044852.GB726@sol.localdomain>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [f2fs-dev] [RFC PATCH 02/10] fs-verity: add data verification
+ hooks for ->readpages()
+Date: Sat, 25 Aug 2018 01:06:21 -0400
+Message-ID: <20180825050621.GA25031@thunk.org>
 References: <20180824161642.1144-1-ebiggers@kernel.org>
- <20180824161642.1144-2-ebiggers@kernel.org>
- <1535132549.2855027.1485213752.129E3334@webmail.messagingengine.com>
+ <20180824161642.1144-3-ebiggers@kernel.org>
+ <2f2382c3-e5e9-f0da-dc89-42dfc7b2b636@huawei.com>
+ <20180825034544.GA5281@thunk.org>
+ <cb646950-94ea-9b28-80f1-3c840ad85581@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-fscrypt@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+Cc: Eric Biggers <ebiggers@kernel.org>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
         Michael Halcrow <mhalcrow@google.com>,
+        linux-kernel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-integrity@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
         Victor Hsieh <victorhsieh@google.com>
-To: Colin Walters <walters@verbum.org>
+To: Gao Xiang <gaoxiang25@huawei.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <1535132549.2855027.1485213752.129E3334@webmail.messagingengine.com>
+In-Reply-To: <cb646950-94ea-9b28-80f1-3c840ad85581@huawei.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Colin,
+On Sat, Aug 25, 2018 at 12:00:04PM +0800, Gao Xiang wrote:
+> 
+> But I have some consideration than the current implementation.... (if it is suitable to discuss, thanks...)
+> 
+> 1) Since it is the libfs-like library, I think bio-strict is too strict for its future fs users.
 
-On Fri, Aug 24, 2018 at 01:42:29PM -0400, Colin Walters wrote:
-> 
-> On Fri, Aug 24, 2018, at 12:16 PM, Eric Biggers wrote:
-> > From: Eric Biggers <ebiggers@google.com>
-> > 
-> > fs-verity is a filesystem feature that provides efficient, transparent
-> > integrity verification and authentication of read-only files.  It uses a
-> > dm-verity like mechanism at the file level: a Merkle tree hidden past
-> > the end of the file is used to verify any block in the file in
-> > log(filesize) time.  It is implemented mainly by helper functions in
-> > fs/verity/ that will be shared by multiple filesystems.
-> > 
-> > Essentially, fs-verity reports a file's hash in constant time, but reads
-> > that would violate that hash fail at runtime.  This is useful when only
-> > a portion of the file is actually accessed, as only the accessed portion
-> > has to be hashed, and the latency to the first read is much reduced over
-> > a full file hash.  On top of this hashing mechanism, auditing or
-> > authentication policies can be implemented to log or verify file hashes.
-> > 
-> > Note that in general, fs-verity is *not* a replacement for IMA.
-> > fs-verity is a lower-level feature, primarily a way to hash a file;
-> > whereas IMA deals more with higher-level policy logic, like defining
-> > which files are "measured" and what to do with those measurements.  We
-> > plan for IMA to support fs-verity measurements as an alternative to the
-> > traditional full file hash.  Still, some users find fs-verity useful by
-> > itself, so it's also usable without IMA in simple cases, e.g. in cases
-> > where just retrieving the file measurement via an ioctl is enough.
-> > 
-> > A structure containing the properties of the Merkle tree -- such as the
-> > hash algorithm used, the block size, and the root hash -- is also stored
-> > on-disk, following the Merkle tree.  The actual file measurement hash
-> > that fs-verity reports is the hash of this structure.
-> > 
-> > All fs-verity metadata is written by userspace; the kernel only reads
-> > it.  Extended attributes aren't used because the Merkle tree may be much
-> > larger than XATTR_SIZE_MAX, we want the hash pages to be cached in the
-> > page cache as usual, and in the case of fs-verity combined with fscrypt
-> > we want the metadata to be encrypted to avoid leaking plaintext hashes.
-> > The fs-verity metadata is hidden from userspace by overriding the i_size
-> > of the in-memory VFS inode; ext4 additionally will override the on-disk
-> > i_size in order to make verity a RO_COMPAT filesystem feature.
-> > 
-> > This initial patch only adds the fs-verity Kconfig option, UAPI, and
-> > setup code, e.g. the ->open() hook that parses the fs-verity descriptor.
-> 
-> This first patch also adds a bit of core logic in the
-> simple fsverity_prepare_setattr() which ends up being called
-> by ext4 later.
-> 
-> While I'm not too familiar with the vfs, as far as I can
-> tell  from inspection of Linus' git master is that pretty much any change (timestamp, hardlinks) ends up
-> calling notify_change() which calls the fs-specific one, and in
-> the verity case basically denies everything, right?
-> 
-> Previously I brought up many uses for "content immutable" files:
-> https://marc.info/?l=linux-fsdevel&m=151698481512084&w=2
-> 
-> The discussion sort of died out but...did you have any opinion
-> on e.g. my proposal to use the Unix mode bits as a way to describe
-> levels of mutablility?
-> 
-> Let's say that your new _VERITY inode flag becomes "_WRITEPROT"
-> or something a bit more generic.
-> 
-> Do you have any thoughts on my proposal to reuse the Unix mode
-> bits to control levels of inode mutability?
-> 
-> For example, it seems to me we could define u+w as "hardlinks are OK".
-> There shouldn't be any reason ext4/f2fs couldn't hardlink a verity-protected
-> inode right?  Or if for some reason that is hard, we could disallow that to
-> start, but at least have the core VFS support _WRITEPROT inodes?
-> 
+Well, it's always possible to potentially expand fs-crypt and
+fs-verity to be more flexible in the future.  For example, Chandan
+Rajendra from IBM has been working on a set of patches to support file
+systems that have a block size smaller than a page size.  This turns
+out to be important on Power architecture with 64k page sizes.
 
-As Ted pointed out, only truncates are denied on fs-verity files, not other
-metadata changes like chmod().
+Fundamentally, a Merkle tree is a data structure that works on fixed
+size chunks, both for the data blocks and the hash tree.  The natural
+size to use is the page size, since data is cached in the page cache.
 
-Think of it this way: the purpose of fs-verity is *not* to make files immutable.
-It's to hash them.  We can't allow people to change the thing being hashed,
-since that would invalidate the hash.  So while fs-verity does make the file
-contents immutable, it's actually a requirement for it being hashed (measured),
-rather than the end goal.  There's no reason from fs-verity's perspective to
-make anything else immutable.
+So a file system can be store data in any number of places, but
+ultimately, most interesting file systems are ones where you can
+execute ELF binaries out of said file system with demand paging, which
+in turn means that mmap has to work, which in turn means that file
+data will be stored in the page cache.  This is true of f2fs, btrfs,
+ext4, xfs, etc.  So basically, fs-verity will be verifying the page
+before it is marked as uptodate.  Right now, all of the file systems
+that we are interested in trigger the call to ask fsverity to verify
+the page via the bio endio callback function.
 
-That being said, in the future, we could allow declaring file metadata like the
-Unix mode bits in the authenticated portion of the fs-verity descriptor, so they
-would be included in the file hash.  fs-verity would then need to enforce that
-the declared mode matches the actual one and that the actual one cannot be
-changed.  Extended attributes could be included in the hash in the same way.
+Some other file systems could theoretically call that function after
+assembling the page from a dozen random locations in a b-tree.  In
+that case, it could call fsverity after assembling the page in the
+page cache.  But I'd suggest worrying about it when such a file system
+comes out of the woodwork, and someone is willing to do the work to
+integrate fserity in that file system.
 
-But that's out of scope for now, as so far users only need the file contents to
-be hashed.
+> 2) My last question
+> "At last, I hope filesystems could select the on-disk position of hash tree and 'struct fsverity_descriptor'
+> rather than fixed in the end of verity files...I think if fs-verity preparing such support and interfaces could be better....."
+> is also for some files partially or totally encoded (eg. compressed, or whatever ...)
 
-- Eric
+Well, the userspace interface for instantiating a fs-verity file is
+that it writes the file data with the fs-verity metadata (which
+consists of the Merkle tree with a fs-verity header at the end of the
+file).  The program (which might be a package manager such as dpkg or
+rpm) would then call an ioctl which would cause the file system to
+read the fs-verity header and make only the file data visible, and the
+file system would the verify the data as it is read into the page
+cache.
+
+That is the userspace API to the fs-verity system.  That has to remain
+the same, regardless of which file system is in use.  We need a common
+interface so that whether it is the Android APK management system, or
+some distribution package manager, can instantiate fs-verity protected
+file the same way regardless of the file system in use.
+
+There is a very simple, easy way to implement this in the file system,
+and f2fs and ext4 both do it that way --- which is to simply change
+the i_size exposed to the userspace when you stat the file, and we use
+the file system's existing mechanism to map logical block numbers to
+physical block numbers to read the Merkle tree.
+
+If the file system wants to import that file data and store it
+somewhere else random --- perhaps it breaks it apart into a zillion
+tiny pieces and puts it in a b-tree --- a file system implementor is
+free to do that.  I personally think it is a completely insane thing
+to do, but there is nothing in the fs-verity design that *prohibits*
+that.
+
+Regards,
+
+						- Ted
