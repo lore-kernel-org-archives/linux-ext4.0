@@ -1,8 +1,8 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: [RFC PATCH 02/10] fs-verity: add data verification
- hooks for ->readpages()
-Date: Sat, 25 Aug 2018 13:06:24 -0400
-Message-ID: <20180825170624.GB10619@thunk.org>
+From: Gao Xiang <hsiangkao@aol.com>
+Subject: Re: Re: [RFC PATCH 02/10] fs-verity: add data verification hooks for
+ ->readpages()
+Date: Sun, 26 Aug 2018 21:44:04 +0800
+Message-ID: <a7ee7fb5-26a0-6737-9246-93d6d7432a42@aol.com>
 References: <20180824161642.1144-1-ebiggers@kernel.org>
  <20180824161642.1144-3-ebiggers@kernel.org>
  <2f2382c3-e5e9-f0da-dc89-42dfc7b2b636@huawei.com>
@@ -10,65 +10,87 @@ References: <20180824161642.1144-1-ebiggers@kernel.org>
  <21e86199-28a7-4693-aef5-5fc28842535c@huawei.com>
  <20180825071827.GD726@sol.localdomain>
  <c907ad1d-c7c8-714a-0e59-373c1df3afe8@huawei.com>
+ <20180825170624.GB10619@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
-Cc: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
- Michael Halcrow <mhalcrow@google.com>, linux-kernel@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, Eric Biggers <ebiggers@kernel.org>,
- linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-integrity@vger.kernel.org, linux-ext4@vger.kernel.org,
- Mimi Zohar <zohar@linux.vnet.ibm.com>, Victor Hsieh <victorhsieh@google.com>
-To: Gao Xiang <gaoxiang25@huawei.com>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-Content-Disposition: inline
-In-Reply-To: <c907ad1d-c7c8-714a-0e59-373c1df3afe8@huawei.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Cc: Eric Biggers <ebiggers@kernel.org>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Michael Halcrow <mhalcrow@google.com>,
+        linux-kernel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-integrity@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Gao Xiang <gaoxiang25@huawei.com>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180825170624.GB10619@thunk.org>
+Content-Language: en-US
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Aug 25, 2018 at 03:43:43PM +0800, Gao Xiang wrote:
-> > I don't know of any plan to use fs-verity on Android's system partition or to
-> > replace dm-verity on the system partition.  The use cases so far have been
-> > verifying files on /data, like APK files.
-> > 
-> > So I don't think you need to support fs-verity in EROFS.
+Hi Ted,
+
+Sorry for the late reply...
+
+On 2018/8/26 1:06, Theodore Y. Ts'o wrote:
+> On Sat, Aug 25, 2018 at 03:43:43PM +0800, Gao Xiang wrote:
+>>> I don't know of any plan to use fs-verity on Android's system partition or to
+>>> replace dm-verity on the system partition.  The use cases so far have been
+>>> verifying files on /data, like APK files.
+>>>
+>>> So I don't think you need to support fs-verity in EROFS.
+>>
+>> Thanks for your information about fs-verity, that is quite useful for us
+>> Actually, I was worrying about that these months...  :)
 > 
-> Thanks for your information about fs-verity, that is quite useful for us
-> Actually, I was worrying about that these months...  :)
+> I'll be even clearer --- I can't *imagine* any situation where it
+> would make sense to use fs-verity on the Android system partition.
+> Remember, for OTA to work the system image has to be bit-for-bit
+> identical to the official golden image for that release.  So the
+> system image has to be completely locked down from any modification
+> (to data or metadata), and that means dm-verity and *NOT* fs-verity.
 
-I'll be even clearer --- I can't *imagine* any situation where it
-would make sense to use fs-verity on the Android system partition.
-Remember, for OTA to work the system image has to be bit-for-bit
-identical to the official golden image for that release.  So the
-system image has to be completely locked down from any modification
-(to data or metadata), and that means dm-verity and *NOT* fs-verity.
+I think so mainly because of the security reason you said above.
 
-The initial use of fs-verity (as you can see if you look at AOSP) will
-be to protect a small number of privileged APK's that are stored on
-the data partition.  Previously, they were verified when they were
-downloaded, and never again.
+In addition, I think it is mandatory that the Android system partition
+should also _never_ suffer from filesystem corrupted by design (expect
+for the storage device corrupt or malware), therefore I think the
+bit-for-bit read-only, and identical-verity requirement is quite strong
+for Android, which will make the Android system steady and as solid as
+rocks.
 
-Part of the goal which we are trying to achieve here is that even if
-the kernel gets compromised by a 0-day, a successful reboot should
-restore the system to a known state.  That is, the secure bootloader
-checks the signature of the kernel, and then in turn, dm-verity will
-verify the root Merkle hash protecting the system partition, and
-fs-verity will protect the privileged APK's.  If malware modifies any
-these components in an attempt to be persistent, the modifications
-would be detected, and the worst it could do is to cause subsequent
-reboots to fail until the phone's software could be reflashed.
+But I need to make sure my personal thoughts through this topic. :)
 
-Cheers,
+> 
+> The initial use of fs-verity (as you can see if you look at AOSP) will
+> be to protect a small number of privileged APK's that are stored on
+> the data partition.  Previously, they were verified when they were
+> downloaded, and never again.
+> 
+> Part of the goal which we are trying to achieve here is that even if
+> the kernel gets compromised by a 0-day, a successful reboot should
+> restore the system to a known state.  That is, the secure bootloader
+> checks the signature of the kernel, and then in turn, dm-verity will
+> verify the root Merkle hash protecting the system partition, and
+> fs-verity will protect the privileged APK's.  If malware modifies any
+> these components in an attempt to be persistent, the modifications
+> would be detected, and the worst it could do is to cause subsequent
+> reboots to fail until the phone's software could be reflashed.
+> 
 
-					- Ted
+Yeah, I have seen the the fs-verity presentation and materials from
+Android bootcamp and other official channels before.
 
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+
+Thanks for your kindly detailed explanation. :)
+
+
+Best regards,
+Gao Xiang
+
+> Cheers,
+> 
+> 					- Ted
+> 
