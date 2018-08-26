@@ -1,87 +1,75 @@
 From: Eric Biggers <ebiggers@kernel.org>
-Subject: Re: [RFC PATCH 01/10] fs-verity: add setup code, UAPI, and Kconfig
-Date: Sun, 26 Aug 2018 10:17:14 -0700
-Message-ID: <20180826171713.GB728@sol.localdomain>
+Subject: Re: [f2fs-dev] [RFC PATCH 10/10] f2fs: fs-verity support
+Date: Sun, 26 Aug 2018 10:35:08 -0700
+Message-ID: <20180826173507.GC728@sol.localdomain>
 References: <20180824161642.1144-1-ebiggers@kernel.org>
- <20180824161642.1144-2-ebiggers@kernel.org>
- <815EEE5D-D90F-4E97-A33E-D33D868B962B@gmail.com>
+ <20180824161642.1144-11-ebiggers@kernel.org>
+ <b2b6a810-9605-15c8-b905-a4591c0cf3a5@huawei.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-fscrypt@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>,
         Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
         Michael Halcrow <mhalcrow@google.com>,
+        linux-kernel@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-integrity@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
         Victor Hsieh <victorhsieh@google.com>
-To: Chuck Lever <chucklever@gmail.com>
+To: Chao Yu <yuchao0@huawei.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <815EEE5D-D90F-4E97-A33E-D33D868B962B@gmail.com>
+In-Reply-To: <b2b6a810-9605-15c8-b905-a4591c0cf3a5@huawei.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Chuck,
+Hi Chao,
 
-On Sun, Aug 26, 2018 at 12:22:08PM -0400, Chuck Lever wrote:
-> Hi Eric-
-> 
-> Context: I'm working on IMA support for NFSv4, and would like to
-> use fs-verity (or some Merkle tree-like mechanism) eventually to
-> help address the performance impacts of using IMA with large NFS
-> files.
-> 
-> 
-> > On Aug 24, 2018, at 12:16 PM, Eric Biggers <ebiggers@kernel.org> wrote:
-> > 
+On Sat, Aug 25, 2018 at 01:54:08PM +0800, Chao Yu wrote:
+> On 2018/8/25 0:16, Eric Biggers wrote:
 > > From: Eric Biggers <ebiggers@google.com>
-> > 
-> > fs-verity is a filesystem feature that provides efficient, transparent
-> > integrity verification and authentication of read-only files.  It uses a
-> > dm-verity like mechanism at the file level: a Merkle tree hidden past
-> > the end of the file is used to verify any block in the file in
-> > log(filesize) time.  It is implemented mainly by helper functions in
-> > fs/verity/ that will be shared by multiple filesystems.
+> >  #ifdef CONFIG_F2FS_CHECK_FS
+> >  #define f2fs_bug_on(sbi, condition)	BUG_ON(condition)
+> >  #else
+> > @@ -146,7 +149,7 @@ struct f2fs_mount_info {
+> >  #define F2FS_FEATURE_QUOTA_INO		0x0080
+> >  #define F2FS_FEATURE_INODE_CRTIME	0x0100
+> >  #define F2FS_FEATURE_LOST_FOUND		0x0200
+> > -#define F2FS_FEATURE_VERITY		0x0400	/* reserved */
+> > +#define F2FS_FEATURE_VERITY		0x0400
+> >  
+> >  #define F2FS_HAS_FEATURE(sb, mask)					\
+> >  	((F2FS_SB(sb)->raw_super->feature & cpu_to_le32(mask)) != 0)
+> > @@ -598,7 +601,7 @@ enum {
+> >  #define FADVISE_ENC_NAME_BIT	0x08
+> >  #define FADVISE_KEEP_SIZE_BIT	0x10
+> >  #define FADVISE_HOT_BIT		0x20
+> > -#define FADVISE_VERITY_BIT	0x40	/* reserved */
+> > +#define FADVISE_VERITY_BIT	0x40
 > 
-> This description suggests that the only way fs-verity can work is
-> by placing the Merkle tree data after EOF. Further, this organi-
-> zation is exposed to user space, making it a fixed part of the
-> fs-verity kernel/user space API.
+> As I suggested before, how about moving f2fs' verity_bit from i_fadvise to more
+> generic i_flags field like ext4, so we can a) remaining more bits for those
+> demands which really need file advise fields. b) using i_flags bits keeping line
+> with ext4. Not sure, if user want to know whether the file is verity one, it
+> will be easy for f2fs to export the status through FS_IOC_SETFLAGS.
 > 
-> Remote filesystems -- esp. NFS -- would prefer to manage the Merkle
-> tree data in other ways. The NFSv4 protocol, for example, supports
-> named streams (as some other filesystems do), and could store the
-> Merkle trees in those. Or, a new pNFS layout type could be con-
-> structed where Merkle trees are stored separately from a file's
-> content -- perhaps even on a separate file server.
+> #define EXT4_VERITY_FL			0x00100000 /* Verity protected inode */
 > 
-> File servers can store this data as the servers' local filesystems
-> require.
-> 
-> Sharing how the Merkle tree is created and used is sensible, but
-> IMHO the filesystem implementations should be allowed to store this
-> tree however they find convenient. The Merkle trees should be
-> exposed via a clean API, not as part of the file's content.
+> #define F2FS_VERITY_FL			0x00100000 /* Verity protected inode */
 > 
 
-There has also been discussion with this on the thread for patch 02/10.
-"A Merkle tree hidden past the end of the file" describes how ext4 and f2fs are
-proposed to implement it, and it describes the file format expected by
-FS_IOC_ENABLE_VERITY.  But, at FS_IOC_ENABLE_VERITY time, a filesystem could
-copy the verity metadata to somewhere else if it wanted, e.g. into a file
-stream, and then truncate the file to its original size.
+I don't like using i_advise much either, but I actually don't see either
+location being much better than the other at the moment.  The real problem is an
+artificial one: the i_flags in f2fs's on-disk format are being assumed to use
+the same numbering scheme as ext4's on-disk format, which makes it seem that
+they have to be in sync, and that all new ext4 flags (say, EA_INODE) also
+reserve bits in f2fs and vice versa, when they in fact do not.  Instead, f2fs
+should use its own numbering for its i_flags, and it should map them to/from
+whatever is needed for common APIs like FS_IOC_{GET,SET}FLAGS and
+FS_IOC_FS{GET,SET}XATTR.
 
-Afterwards, fs-verity doesn't really care where the metadata is stored.
-Currently it does actually assume it's beyond EOF since it calls
-read_mapping_page() directly, but that could be replaced at any time with
-indirection via a method fsverity_operations.read_metadata_page().
-We actually had such a method originally, but it turned out to be unnecessary
-for ext4 and f2fs, so I had dropped it for now.
-
-I will make this clearer in the next revision of the patchset, and maybe even
-consider reintroducing ->read_metadata_page() to make it clear that filesystems
-don't necessarily have to store the metadata beyond EOF.
+So putting the verity flag in *either* location (i_advise or i_flags) is just
+kicking the can down the road.  If I get around to it I will send a patch that
+cleans up the f2fs flags properly...
 
 Thanks,
 
