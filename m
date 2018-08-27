@@ -1,114 +1,96 @@
-From: Gao Xiang via Linux-f2fs-devel <linux-f2fs-devel@lists.sourceforge.net>
-Subject: Re: [RFC PATCH 02/10] fs-verity: add data verification
- hooks for ->readpages()
-Date: Mon, 27 Aug 2018 01:44:50 +0800
-Message-ID: <a83219f8-44a2-7a40-319a-dc2f9d567cbe@aol.com>
-References: <20180824161642.1144-1-ebiggers@kernel.org>
- <20180824161642.1144-3-ebiggers@kernel.org>
- <C86750D6-CA95-4A7F-9204-51345C497EC2@gmail.com>
- <20180826170433.GA728@sol.localdomain>
-Reply-To: Gao Xiang <hsiangkao@aol.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Chuck Lever <chucklever@gmail.com>,
- Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
- Michael Halcrow <mhalcrow@google.com>, linux-kernel@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, linux-fscrypt@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-integrity@vger.kernel.org,
- linux-ext4@vger.kernel.org, Mimi Zohar <zohar@linux.vnet.ibm.com>,
- Victor Hsieh <victorhsieh@google.com>
-To: Eric Biggers <ebiggers@kernel.org>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <20180826170433.GA728@sol.localdomain>
-Content-Language: en-US
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: avoid buffer overrun when deleting inline directories
+Date: Mon, 27 Aug 2018 09:38:38 -0400
+Message-ID: <20180827133838.32720-1-tytso@mit.edu>
+Cc: wen.xu@gatech.edu, Theodore Ts'o <tytso@mit.edu>,
+        stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Eric,
+A specially crafted file system can trick empty_inline_dir() into
+reading beyond the bounds of inline directory.  Fix this by using the
+size of the inline directory instead of dir->i_size.
 
-On 2018/8/27 1:04, Eric Biggers wrote:
-> Hi Chuck,
-> 
-> On Sun, Aug 26, 2018 at 11:55:57AM -0400, Chuck Lever wrote:
->>> +
->>> +/**
->>> + * fsverity_verify_page - verify a data page
->>> + *
->>> + * Verify a page that has just been read from a file against that file's Merkle
->>> + * tree.  The page is assumed to be a pagecache page.
->>> + *
->>> + * Return: true if the page is valid, else false.
->>> + */
->>> +bool fsverity_verify_page(struct page *data_page)
->>> +{
->>> +	struct inode *inode = data_page->mapping->host;
->>> +	const struct fsverity_info *vi = get_fsverity_info(inode);
->>> +	struct ahash_request *req;
->>> +	bool valid;
->>> +
->>> +	req = ahash_request_alloc(vi->hash_alg->tfm, GFP_KERNEL);
+Also clean up error reporting in __ext4_check_dir_entry so that the
+message is clearer and more understandable --- and avoids a potential
+division by zero trap if the size passed in is zero.  (I'm not sure
+why we coded it that way in the first place; printing offset % size is
+actually more confusing and less useful.)
 
-Some minor suggestions occurred to me after I saw this part of code
-again before sleeping...
+https://bugzilla.kernel.org/show_bug.cgi?id=200933
 
-1) How about introducing an iterator callback to avoid too many
-ahash_request_alloc and ahash_request_free... (It seems too many pages
-and could be some slower than fsverity_verify_bio...)
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reported-by: Wen Xu <wen.xu@gatech.edu>
+Cc: stable@vger.kernel.org
+---
+ fs/ext4/dir.c    | 20 +++++++++-----------
+ fs/ext4/inline.c |  4 +++-
+ 2 files changed, 12 insertions(+), 12 deletions(-)
 
-2) How about adding a gfp_t input argument since I don't know whether
-GFP_KERNEL is suitable for all use cases...
-
-It seems there could be more fsverity_verify_page users as well as
-fsverity_verify_bio ;)
-
-Sorry for interruption...
-
-Thanks,
-Gao Xiang
-
->>> +	if (unlikely(!req))
->>> +		return false;
->>> +
->>> +	valid = verify_page(inode, vi, req, data_page);
->>> +
->>> +	ahash_request_free(req);
->>> +
->>> +	return valid;
->>> +}
->>> +EXPORT_SYMBOL_GPL(fsverity_verify_page);
->>> +
->>> +/**
->>> + * fsverity_verify_bio - verify a 'read' bio that has just completed
->>> + *
->>> + * Verify a set of pages that have just been read from a file against that
->>> + * file's Merkle tree.  The pages are assumed to be pagecache pages.  Pages that
->>> + * fail verification are set to the Error state.  Verification is skipped for
->>> + * pages already in the Error state, e.g. due to fscrypt decryption failure.
->>> + */
->>> +void fsverity_verify_bio(struct bio *bio)
->>
->> Hi Eric-
->>
->> This kind of API won't work for remote filesystems, which do not use
->> "struct bio" to do their I/O. Could a remote filesystem solely use
->> fsverity_verify_page instead?
->>
-> 
-> Yes, filesystems don't have to use fsverity_verify_bio().  They can call
-> fsverity_verify_page() on each page instead.  I will clarify this in the next
-> revision of the patchset.
-> 
-> - Eric
-> 
-
-------------------------------------------------------------------------------
-Check out the vibrant tech community on one of the world's most
-engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index e2902d394f1b..f93f9881ec18 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -76,7 +76,7 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
+ 	else if (unlikely(rlen < EXT4_DIR_REC_LEN(de->name_len)))
+ 		error_msg = "rec_len is too small for name_len";
+ 	else if (unlikely(((char *) de - buf) + rlen > size))
+-		error_msg = "directory entry across range";
++		error_msg = "directory entry overrun";
+ 	else if (unlikely(le32_to_cpu(de->inode) >
+ 			le32_to_cpu(EXT4_SB(dir->i_sb)->s_es->s_inodes_count)))
+ 		error_msg = "inode out of bounds";
+@@ -85,18 +85,16 @@ int __ext4_check_dir_entry(const char *function, unsigned int line,
+ 
+ 	if (filp)
+ 		ext4_error_file(filp, function, line, bh->b_blocknr,
+-				"bad entry in directory: %s - offset=%u(%u), "
+-				"inode=%u, rec_len=%d, name_len=%d",
+-				error_msg, (unsigned) (offset % size),
+-				offset, le32_to_cpu(de->inode),
+-				rlen, de->name_len);
++				"bad entry in directory: %s - offset=%u, "
++				"inode=%u, rec_len=%d, name_len=%d, size=%d",
++				error_msg, offset, le32_to_cpu(de->inode),
++				rlen, de->name_len, size);
+ 	else
+ 		ext4_error_inode(dir, function, line, bh->b_blocknr,
+-				"bad entry in directory: %s - offset=%u(%u), "
+-				"inode=%u, rec_len=%d, name_len=%d",
+-				error_msg, (unsigned) (offset % size),
+-				offset, le32_to_cpu(de->inode),
+-				rlen, de->name_len);
++				"bad entry in directory: %s - offset=%u, "
++				"inode=%u, rec_len=%d, name_len=%d, size=%d",
++				 error_msg, offset, le32_to_cpu(de->inode),
++				 rlen, de->name_len, size);
+ 
+ 	return 1;
+ }
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 3543fe80a3c4..7b4736022761 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1753,6 +1753,7 @@ bool empty_inline_dir(struct inode *dir, int *has_inline_data)
+ {
+ 	int err, inline_size;
+ 	struct ext4_iloc iloc;
++	size_t inline_len;
+ 	void *inline_pos;
+ 	unsigned int offset;
+ 	struct ext4_dir_entry_2 *de;
+@@ -1780,8 +1781,9 @@ bool empty_inline_dir(struct inode *dir, int *has_inline_data)
+ 		goto out;
+ 	}
+ 
++	inline_len = ext4_get_inline_size(dir);
+ 	offset = EXT4_INLINE_DOTDOT_SIZE;
+-	while (offset < dir->i_size) {
++	while (offset < inline_len) {
+ 		de = ext4_get_inline_entry(dir, &iloc, offset,
+ 					   &inline_pos, &inline_size);
+ 		if (ext4_check_dir_entry(dir, NULL, de,
+-- 
+2.18.0.rc0
