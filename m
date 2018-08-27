@@ -1,99 +1,76 @@
-From: Chao Yu <chao@kernel.org>
-Subject: Re: [f2fs-dev] [RFC PATCH 10/10] f2fs: fs-verity support
-Date: Mon, 27 Aug 2018 23:54:34 +0800
-Message-ID: <dbc20be8-975d-7bd2-002d-a8f30896da4a@kernel.org>
-References: <20180824161642.1144-1-ebiggers@kernel.org>
- <20180824161642.1144-11-ebiggers@kernel.org>
- <b2b6a810-9605-15c8-b905-a4591c0cf3a5@huawei.com>
- <20180826173507.GC728@sol.localdomain>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH v4 1/2] dax: dax_layout_busy_page() warn on !exceptional
+Date: Mon, 27 Aug 2018 18:09:03 +0200
+Message-ID: <20180827160903.GF4002@quack2.suse.cz>
+References: <20180710191031.17919-1-ross.zwisler@linux.intel.com>
+ <20180710191031.17919-2-ross.zwisler@linux.intel.com>
+ <6ca60cf6-f1dc-27d5-fb79-7547aea39dfa@redhat.com>
+ <20180810203349.GH627@thunk.org> <20180811021053.GB14368@thunk.org>
+ <20180813101252.GC8927@quack2.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
-        Michael Halcrow <mhalcrow@google.com>,
-        linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-integrity@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Mimi Zohar <zohar@linux.vnet.ibm.com>,
-        Victor Hsieh <victorhsieh@google.com>
-To: Eric Biggers <ebiggers@kernel.org>, Chao Yu <yuchao0@huawei.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180826173507.GC728@sol.localdomain>
-Content-Language: en-US
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ "Darrick J. Wong" <darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>, linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org,
+ Dave Chinner <david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org>, Christoph Hellwig <hch-jcswGhMUV9g@public.gmane.org>,
+ Lukas Czerner <lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: "Theodore Y. Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <20180813101252.GC8927-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Eric,
+On Mon 13-08-18 12:12:52, Jan Kara wrote:
+> On Fri 10-08-18 22:10:53, Theodore Y. Ts'o wrote:
+> > On Fri, Aug 10, 2018 at 04:33:49PM -0400, Theodore Y. Ts'o wrote:
+> > > I just kicked off a DAX test ("gce-xfstests -c dax -g auto") with
+> > > CONFIG_KASAN disabled, and I expect it shouldn't show up anything
+> > > concerning.  So assuming nothing surprising pops up, yes it should be
+> > > merged at the next merge window.
+> > 
+> > ... and here are the results.  The first is 4.17, and the second is
+> > the ext4 git tree:
+> > 
+> > ext4/dax: 488 tests, 4 failures, 97 skipped, 2647 seconds
+> >   Failures: ext4/033 generic/344 generic/491 generic/503
+> > 
+> > ext4/dax: 488 tests, 3 failures, 97 skipped, 2637 seconds
+> >   Failures: generic/081 generic/344 generic/388
+> > 
+> > The generic/388 failure is a known flake (shutdown stress test).
+> > 
+> > The generic/081 regression appears to be a device-mapper issue:
+> > 
+> > generic/081		[22:06:33][   15.079661] run fstests generic/081 at 2018-08-10 22:06:33
+> > [   15.795745] device-mapper: ioctl: can't change device type (old=4 vs new=1) after initial table load.
+> > [failed, exit status 1] [22:06:36]- output mismatch (see /results/ext4/results-dax/generic/081.out.bad)
+> >     --- tests/generic/081.out	2018-08-09 18:00:42.000000000 -0400
+> >     +++ /results/ext4/results-dax/generic/081.out.bad	2018-08-10 22:06:36.440005460 -0400
+> >     @@ -1,2 +1,4 @@
+> >      QA output created by 081
+> >      Silence is golden
+> >     +Failed to create snapshot
+> >     +(see /results/ext4/results-dax/generic/081.full for details)
+> >     ...
+> >     (Run 'diff -u tests/generic/081.out /results/ext4/results-dax/generic/081.out.bad'  to see the entire diff)
+> 
+> I'll see if this reproduces for me. Doesn't seem to be related to the DAX
+> patches you caary though.
 
-On 2018/8/27 1:35, Eric Biggers wrote:
-> Hi Chao,
-> 
-> On Sat, Aug 25, 2018 at 01:54:08PM +0800, Chao Yu wrote:
->> On 2018/8/25 0:16, Eric Biggers wrote:
->>> From: Eric Biggers <ebiggers@google.com>
->>>  #ifdef CONFIG_F2FS_CHECK_FS
->>>  #define f2fs_bug_on(sbi, condition)	BUG_ON(condition)
->>>  #else
->>> @@ -146,7 +149,7 @@ struct f2fs_mount_info {
->>>  #define F2FS_FEATURE_QUOTA_INO		0x0080
->>>  #define F2FS_FEATURE_INODE_CRTIME	0x0100
->>>  #define F2FS_FEATURE_LOST_FOUND		0x0200
->>> -#define F2FS_FEATURE_VERITY		0x0400	/* reserved */
->>> +#define F2FS_FEATURE_VERITY		0x0400
->>>  
->>>  #define F2FS_HAS_FEATURE(sb, mask)					\
->>>  	((F2FS_SB(sb)->raw_super->feature & cpu_to_le32(mask)) != 0)
->>> @@ -598,7 +601,7 @@ enum {
->>>  #define FADVISE_ENC_NAME_BIT	0x08
->>>  #define FADVISE_KEEP_SIZE_BIT	0x10
->>>  #define FADVISE_HOT_BIT		0x20
->>> -#define FADVISE_VERITY_BIT	0x40	/* reserved */
->>> +#define FADVISE_VERITY_BIT	0x40
->>
->> As I suggested before, how about moving f2fs' verity_bit from i_fadvise to more
->> generic i_flags field like ext4, so we can a) remaining more bits for those
->> demands which really need file advise fields. b) using i_flags bits keeping line
->> with ext4. Not sure, if user want to know whether the file is verity one, it
->> will be easy for f2fs to export the status through FS_IOC_SETFLAGS.
->>
->> #define EXT4_VERITY_FL			0x00100000 /* Verity protected inode */
->>
->> #define F2FS_VERITY_FL			0x00100000 /* Verity protected inode */
->>
-> 
-> I don't like using i_advise much either, but I actually don't see either
-> location being much better than the other at the moment.  The real problem is an
-> artificial one: the i_flags in f2fs's on-disk format are being assumed to use
+This is caused by commit dbc626597c39b "dm: prevent DAX mounts if not
+supported". I've started discussion with relevant developers how to fix
+this.
 
-Yeah, but since most copied flags from vfs/ext4 are not actually used in f2fs,
-also 0x00100000 bit is not used now, so we can just define it now directly for
-verity bit.
-
-Cleanup and remapping in ioctl interface for those unused flags, we can do it
-latter?
-
-Thanks,
-
-> the same numbering scheme as ext4's on-disk format, which makes it seem that
-> they have to be in sync, and that all new ext4 flags (say, EA_INODE) also
-> reserve bits in f2fs and vice versa, when they in fact do not.  Instead, f2fs
-> should use its own numbering for its i_flags, and it should map them to/from
-> whatever is needed for common APIs like FS_IOC_{GET,SET}FLAGS and
-> FS_IOC_FS{GET,SET}XATTR.
-> 
-> So putting the verity flag in *either* location (i_advise or i_flags) is just
-> kicking the can down the road.  If I get around to it I will send a patch that
-> cleans up the f2fs flags properly...>
-> Thanks,
-> 
-> - Eric
-> 
-> ------------------------------------------------------------------------------
-> Check out the vibrant tech community on one of the world's most
-> engaging tech sites, Slashdot.org! http://sdm.link/slashdot
-> _______________________________________________
-> Linux-f2fs-devel mailing list
-> Linux-f2fs-devel@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel
-> 
+								Honza
+-- 
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
+SUSE Labs, CR
