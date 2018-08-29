@@ -1,67 +1,174 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/5] ext2: cache NULL when both default_acl and acl are
- NULL
-Date: Wed, 29 Aug 2018 15:18:15 +0200
-Message-ID: <20180829131815.GC7369@quack2.suse.cz>
-References: <20180814141634.5471-1-cgxu519@gmx.com>
+Subject: Re: KASAN: stack-out-of-bounds Read in __schedule
+Date: Wed, 29 Aug 2018 15:46:20 +0200
+Message-ID: <20180829134620.GD7369@quack2.suse.cz>
+References: <000000000000fef39305748083ae@google.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.com, tytso@mit.edu, adilger.kernel@dilger.ca,
-        jaegeuk@kernel.org, yuchao0@huawei.com, shaggy@kernel.org,
-        hubcap@omnibond.com, martin@omnibond.com, devel@lists.orangefs.org,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        jfs-discussion@lists.sourceforge.net
-To: Chengguang Xu <cgxu519@gmx.com>
+Cc: jack@suse.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+To: syzbot <syzbot+45a34334c61a8ecf661d@syzkaller.appspotmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20180814141634.5471-1-cgxu519@gmx.com>
+In-Reply-To: <000000000000fef39305748083ae@google.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 14-08-18 22:16:30, Chengguang Xu wrote:
-> default_acl and acl of newly created inode will be initiated
-> as ACL_NOT_CACHED in vfs function inode_init_always() and later
-> will be updated by calling xxx_init_acl() in specific filesystems.
-> Howerver, when default_acl and acl are NULL then they keep the value
-> of ACL_NOT_CACHED, this patch tries to cache NULL for acl/default_acl
-> in this case.
+On Tue 28-08-18 08:30:02, syzbot wrote:
+> Hello,
 > 
-> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
-> ---
->  fs/ext2/acl.c | 3 +++
->  1 file changed, 3 insertions(+)
+> syzbot found the following crash on:
 > 
-> diff --git a/fs/ext2/acl.c b/fs/ext2/acl.c
-> index 224c04abb2e5..74411e8ea507 100644
-> --- a/fs/ext2/acl.c
-> +++ b/fs/ext2/acl.c
-> @@ -262,5 +262,8 @@ ext2_init_acl(struct inode *inode, struct inode *dir)
->  			error = __ext2_set_acl(inode, acl, ACL_TYPE_ACCESS);
->  		posix_acl_release(acl);
->  	}
-> +	if (!default_acl && !acl)
-> +		cache_no_acl(inode);
-> +
+> HEAD commit:    5b394b2ddf03 Linux 4.19-rc1
+> git tree:       upstream
+> console output: https://syzkaller.appspot.com/x/log.txt?x=14f4d8e1400000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=49927b422dcf0b29
+> dashboard link: https://syzkaller.appspot.com/bug?extid=45a34334c61a8ecf661d
+> compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=13127e5a400000
+> 
+> IMPORTANT: if you fix the bug, please add the following tag to the commit:
+> Reported-by: syzbot+45a34334c61a8ecf661d@syzkaller.appspotmail.com
+> 
+> IPv6: ADDRCONF(NETDEV_UP): veth1: link is not ready
+> IPv6: ADDRCONF(NETDEV_CHANGE): veth1: link becomes ready
+> IPv6: ADDRCONF(NETDEV_CHANGE): veth0: link becomes ready
+> 8021q: adding VLAN 0 to HW filter on device team0
+> ==================================================================
+> BUG: KASAN: stack-out-of-bounds in schedule_debug kernel/sched/core.c:3285
+> [inline]
+> BUG: KASAN: stack-out-of-bounds in __schedule+0x1977/0x1df0
+> kernel/sched/core.c:3395
+> Read of size 8 at addr ffff8801ad090000 by task syz-executor0/4718
 
-Thanks for the patch. I'd somewhat prefer something equivalent to:
-
-	if (!acl)
-		inode->i_acl = NULL;
-	if (!default_acl)
-		inode->i_default_acl = NULL;
-
-given the code in ext2_init_acl(). It would be most natural like:
-
-	if (default_acl) {
-		do foo
-	} else {
-		inode->i_default_acl = NULL;
-	}
-
-And similarly for 'acl'.
+Weird, can you please help me decipher this? So here KASAN complains about
+wrong memory access in the scheduler. However the stacktrace below shows a
+problem in find_stack() function called by KASAN? And this does not seem to
+be fs related at all? Also the reproducer has no sign of any filesystem
+related activity...
 
 								Honza
+
+> CPU: 0 PID: 4718 Comm: syz-executor0 Not tainted 4.19.0-rc1+ #211
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
+> Google 01/01/2011
+> Call Trace:
+> 
+> The buggy address belongs to the page:
+> page:ffffea0006b42400 count:1 mapcount:-512 mapping:0000000000000000
+> index:0x0
+> flags: 0x2fffc0000000000()
+> raw: 02fffc0000000000 dead000000000100 dead000000000200 0000000000000000
+> raw: 0000000000000000 0000000000000000 00000001fffffdff ffff8801d29544c0
+> page dumped because: kasan: bad access detected
+> page->mem_cgroup:ffff8801d29544c0
+> 
+> Memory state around the buggy address:
+>  ffff8801ad08ff00: f2 f2 f2 f2 f2 00 f2 f2 f2 00 00 00 00 00 00 00
+>  ffff8801ad08ff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f1
+> > ffff8801ad090000: f1 f1 f1 00 f2 f2 f2 f2 f2 f2 f2 04 f2 f2 f2 f2
+>                    ^
+>  ffff8801ad090080: f2 f2 f2 00 f2 f2 f2 00 00 00 00 00 00 00 00 00
+>  ffff8801ad090100: 00 00 00 00 00 00 00 00 00 00 00 00 00 f1 f1 f1
+> ==================================================================
+> Kernel panic - not syncing: panic_on_warn set ...
+> 
+> BUG: unable to handle kernel paging request at 0000000100000007
+> PGD 1b34a2067 P4D 1b34a2067 PUD 0
+> Oops: 0000 [#1] SMP KASAN
+> CPU: 1 PID: 4325 Comm: rs:main Q:Reg Tainted: G    B             4.19.0-rc1+
+> #211
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS
+> Google 01/01/2011
+> RIP: 0010:find_stack lib/stackdepot.c:188 [inline]
+> RIP: 0010:depot_save_stack+0x120/0x470 lib/stackdepot.c:238
+> Code: 0f 00 4e 8b 24 f5 e0 db ae 89 4d 85 e4 0f 84 d4 00 00 00 44 8d 47 ff
+> 49 c1 e0 03 eb 0d 4d 8b 24 24 4d 85 e4 0f 84 bd 00 00 00 <41> 39 5c 24 08 75
+> ec 41 3b 7c 24 0c 75 e5 48 8b 01 49 39 44 24 18
+> RSP: 0018:ffff8801b2636f40 EFLAGS: 00010006
+> RAX: 0000000084727a0d RBX: 00000000222ca320 RCX: ffff8801b2636fa0
+> RDX: 000000004e510a9d RSI: 0000000000400000 RDI: 0000000000000012
+> RBP: ffff8801b2636f78 R08: 0000000000000088 R09: 00000000dcf06c78
+> R10: 00000000ecfd654a R11: ffff8801db1236f3 R12: 00000000ffffffff
+> R13: ffff8801b2636f88 R14: 00000000000ca320 R15: ffff8801b2a72680
+> FS:  00007ff2eb061700(0000) GS:ffff8801db100000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 0000000100000007 CR3: 00000001b4fdd000 CR4: 00000000001406e0
+> Call Trace:
+>  save_stack+0xa9/0xd0 mm/kasan/kasan.c:454
+>  set_track mm/kasan/kasan.c:460 [inline]
+>  __kasan_slab_free+0x11a/0x170 mm/kasan/kasan.c:521
+>  kasan_slab_free+0xe/0x10 mm/kasan/kasan.c:528
+>  __cache_free mm/slab.c:3498 [inline]
+>  kmem_cache_free+0x86/0x280 mm/slab.c:3756
+>  jbd2_free_handle include/linux/jbd2.h:1426 [inline]
+>  jbd2_journal_stop+0x443/0x1600 fs/jbd2/transaction.c:1787
+>  __ext4_journal_stop+0xde/0x1f0 fs/ext4/ext4_jbd2.c:103
+>  ext4_dirty_inode+0xab/0xc0 fs/ext4/inode.c:6027
+>  __mark_inode_dirty+0x760/0x1300 fs/fs-writeback.c:2129
+>  generic_update_time+0x26a/0x450 fs/inode.c:1651
+>  update_time fs/inode.c:1667 [inline]
+>  file_update_time+0x390/0x640 fs/inode.c:1877
+>  __generic_file_write_iter+0x1dc/0x630 mm/filemap.c:3214
+>  ext4_file_write_iter+0x390/0x1450 fs/ext4/file.c:266
+>  call_write_iter include/linux/fs.h:1807 [inline]
+>  new_sync_write fs/read_write.c:474 [inline]
+>  __vfs_write+0x6af/0x9d0 fs/read_write.c:487
+>  vfs_write+0x1fc/0x560 fs/read_write.c:549
+>  ksys_write+0x101/0x260 fs/read_write.c:598
+>  __do_sys_write fs/read_write.c:610 [inline]
+>  __se_sys_write fs/read_write.c:607 [inline]
+>  __x64_sys_write+0x73/0xb0 fs/read_write.c:607
+>  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+>  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+> RIP: 0033:0x7ff2ecabf19d
+> Code: d1 20 00 00 75 10 b8 01 00 00 00 0f 05 48 3d 01 f0 ff ff 73 31 c3 48
+> 83 ec 08 e8 be fa ff ff 48 89 04 24 b8 01 00 00 00 0f 05 <48> 8b 3c 24 48 89
+> c2 e8 07 fb ff ff 48 89 d0 48 83 c4 08 48 3d 01
+> RSP: 002b:00007ff2eb05ff90 EFLAGS: 00000293 ORIG_RAX: 0000000000000001
+> RAX: ffffffffffffffda RBX: 0000000000000400 RCX: 00007ff2ecabf19d
+> RDX: 0000000000000400 RSI: 0000000002089a90 RDI: 0000000000000005
+> RBP: 0000000002089a90 R08: 00000000020d9e00 R09: 656c6c616b7a7973
+> R10: 6c656e72656b2072 R11: 0000000000000293 R12: 0000000000000000
+> R13: 00007ff2eb060410 R14: 00000000020d9e00 R15: 0000000002089890
+> Modules linked in:
+> Dumping ftrace buffer:
+>    (ftrace buffer empty)
+> CR2: 0000000100000007
+> ---[ end trace fbf1ba842de6c894 ]---
+> RIP: 0010:find_stack lib/stackdepot.c:188 [inline]
+> RIP: 0010:depot_save_stack+0x120/0x470 lib/stackdepot.c:238
+> Code: 0f 00 4e 8b 24 f5 e0 db ae 89 4d 85 e4 0f 84 d4 00 00 00 44 8d 47 ff
+> 49 c1 e0 03 eb 0d 4d 8b 24 24 4d 85 e4 0f 84 bd 00 00 00 <41> 39 5c 24 08 75
+> ec 41 3b 7c 24 0c 75 e5 48 8b 01 49 39 44 24 18
+> RSP: 0018:ffff8801b2636f40 EFLAGS: 00010006
+> RAX: 0000000084727a0d RBX: 00000000222ca320 RCX: ffff8801b2636fa0
+> RDX: 000000004e510a9d RSI: 0000000000400000 RDI: 0000000000000012
+> RBP: ffff8801b2636f78 R08: 0000000000000088 R09: 00000000dcf06c78
+> R10: 00000000ecfd654a R11: ffff8801db1236f3 R12: 00000000ffffffff
+> R13: ffff8801b2636f88 R14: 00000000000ca320 R15: ffff8801b2a72680
+> FS:  00007ff2eb061700(0000) GS:ffff8801db100000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 0000000100000007 CR3: 00000001b4fdd000 CR4: 00000000001406e0
+> Shutting down cpus with NMI
+> Dumping ftrace buffer:
+>    (ftrace buffer empty)
+> Kernel Offset: disabled
+> Rebooting in 86400 seconds..
+> 
+> 
+> ---
+> This bug is generated by a bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for more information about syzbot.
+> syzbot engineers can be reached at syzkaller@googlegroups.com.
+> 
+> syzbot will keep track of this bug report. See:
+> https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with
+> syzbot.
+> syzbot can test patches for this bug, for details see:
+> https://goo.gl/tpsmEJ#testing-patches
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
