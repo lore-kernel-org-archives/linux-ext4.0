@@ -1,8 +1,8 @@
 From: Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH v2 3/5] f2fs: cache NULL when both default_acl
- and acl are NULL
-Date: Fri, 31 Aug 2018 22:33:50 +0800
-Message-ID: <20180831143352.22970-3-cgxu519@gmx.com>
+Subject: [PATCH v2 4/5] jfs: cache NULL when both default_acl and
+ acl are NULL
+Date: Fri, 31 Aug 2018 22:33:51 +0800
+Message-ID: <20180831143352.22970-4-cgxu519@gmx.com>
 References: <20180831143352.22970-1-cgxu519@gmx.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -37,30 +37,30 @@ Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
 v1->v2:
 - Coding style change.
 
- fs/f2fs/acl.c | 4 ++++
+ fs/jfs/acl.c | 4 ++++
  1 file changed, 4 insertions(+)
 
-diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
-index 111824199a88..80aabdf92659 100644
---- a/fs/f2fs/acl.c
-+++ b/fs/f2fs/acl.c
-@@ -394,12 +394,16 @@ int f2fs_init_acl(struct inode *inode, struct inode *dir, struct page *ipage,
- 		error = __f2fs_set_acl(inode, ACL_TYPE_DEFAULT, default_acl,
- 				       ipage);
+diff --git a/fs/jfs/acl.c b/fs/jfs/acl.c
+index 2e71b6e7e646..8c06a6ea862d 100644
+--- a/fs/jfs/acl.c
++++ b/fs/jfs/acl.c
+@@ -146,12 +146,16 @@ int jfs_init_acl(tid_t tid, struct inode *inode, struct inode *dir)
+ 	if (default_acl) {
+ 		rc = __jfs_set_acl(tid, inode, ACL_TYPE_DEFAULT, default_acl);
  		posix_acl_release(default_acl);
 +	} else {
 +		inode->i_default_acl = NULL;
  	}
+ 
  	if (acl) {
- 		if (!error)
- 			error = __f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl,
- 					       ipage);
+ 		if (!rc)
+ 			rc = __jfs_set_acl(tid, inode, ACL_TYPE_ACCESS, acl);
  		posix_acl_release(acl);
 +	} else {
 +		inode->i_acl = NULL;
  	}
  
- 	return error;
+ 	JFS_IP(inode)->mode2 = (JFS_IP(inode)->mode2 & 0xffff0000) |
 -- 
 2.17.1
 
