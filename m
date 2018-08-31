@@ -1,64 +1,65 @@
-From: Jiri Slaby <jslaby@suse.cz>
-Subject: Re: [PATCH] ext4: avoid arithemetic overflow that can trigger a BUG
-Date: Fri, 31 Aug 2018 21:31:36 +0200
-Message-ID: <27af5487-9579-0950-94b5-0292b80e37c7@suse.cz>
-References: <20180831174126.13071-1-tytso@mit.edu>
+From: Jan =?ISO-8859-1?Q?L=FCbbe?= <jlu@pengutronix.de>
+Subject: Re: [RFC PATCH 00/10] fs-verity: filesystem-level integrity
+ protection
+Date: Fri, 31 Aug 2018 22:05:23 +0200
+Message-ID: <1535745923.25742.1.camel@pengutronix.de>
+References: <20180824161642.1144-1-ebiggers@kernel.org>
+Reply-To: jlu@pengutronix.de
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-Content-Transfer-Encoding: 7bit
-Cc: stable@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20180831174126.13071-1-tytso@mit.edu>
-Content-Language: en-GB
-Sender: stable-owner@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+Cc: linux-integrity@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Victor Hsieh <victorhsieh@google.com>
+To: Eric Biggers <ebiggers@kernel.org>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180824161642.1144-1-ebiggers@kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 08/31/2018, 07:41 PM, Theodore Ts'o wrote:
-> A maliciously crafted file system can cause an overflow when the
-> results of a 64-bit calculation is stored into a 32-bit length
-> parameter.
-> 
-> https://bugzilla.kernel.org/show_bug.cgi?id=200623
-> 
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Reported-by: Wen Xu <wen.xu@gatech.edu>
-> Cc: stable@vger.kernel.org
-> ---
->  fs/ext4/inode.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 8f6ad7667974..1134c3473673 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3414,6 +3414,7 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
->  	unsigned int blkbits = inode->i_blkbits;
->  	unsigned long first_block = offset >> blkbits;
->  	unsigned long last_block = (offset + length - 1) >> blkbits;
-> +	unsigned long len;
->  	struct ext4_map_blocks map;
->  	bool delalloc = false;
->  	int ret;
-> @@ -3434,7 +3435,8 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
->  	}
->  
->  	map.m_lblk = first_block;
-> -	map.m_len = last_block - first_block + 1;
-> +	len = last_block - first_block + 1;
-> +	map.m_len = (len < UINT_MAX) ? len : UINT_MAX;
+On Fri, 2018-08-24 at 09:16 -0700, Eric Biggers wrote:
+[...]
+> Since fs-verity provides the Merkle tree root hash in constant time and
+> verifies data blocks on-demand, it is useful for efficiently verifying
+> the authenticity of, or "appraising", large files of which only a small
+> portion may be accessed -- such as Android application (APK) files.  It
+> can also be useful in "audit" use cases where file hashes are logged.
+> fs-verity also provides better protection against malicious disk
+> firmware than an ahead-of-time hash, since fs-verity re-verifies data
+> each time it's paged in.
+[...]
+> Feedback on the design and implementation is greatly appreciated.
 
-Can't this be just
+Hi,
 
-map.m_len = min_t(unsigned long, last_block - first_block + 1, UINT_MAX)?
+I've looked at the series and the slides linked form the recent lwn.net
+article, but I'm not sure how fs-verity intends to protect against
+malicious firmware (or offline modification). Similar to IMA/EVM, fs-
+verity doesn't seem to include the name/location of the file into it's
+verification. So the firmware/an attacker could replace one fs-verity-
+protected file with another (maybe a trusted system APK with another
+one for which a vulnerability was discovered, or /sbin/init with
+/bin/sh).
 
+Is the expected root hash of the file provided from somewhere else, so
+this is not a problem on Android? Or is this problem out-of-scope for
+fs-verity?
 
->  	if (flags & IOMAP_REPORT) {
->  		ret = ext4_map_blocks(NULL, inode, &map, 0);
-> 
+For IMA/EVM, there were patches by Dmitry to address this class of
+attacks (they were not merged, though):
+https://lwn.net/Articles/574221/
 
-thanks,
+Thanks,
+Jan
+
+[1] https://events.linuxfoundation.org/wp-content/uploads/2017/11/fs-ve
+rify_Mike-Halcrow_Eric-Biggers.pdf
 -- 
-js
-suse labs
+Pengutronix e.K.                           |                             |
+Industrial Linux Solutions                 | http://www.pengutronix.de/  |
+Peiner Str. 6-8, 31137 Hildesheim, Germany | Phone: +49-5121-206917-0    |
+Amtsgericht Hildesheim, HRA 2686           | Fax:   +49-5121-206917-5555 |
