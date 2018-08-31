@@ -1,8 +1,8 @@
 From: Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH v2 2/5] ext4: cache NULL when both default_acl
+Subject: [PATCH v2 3/5] f2fs: cache NULL when both default_acl
  and acl are NULL
-Date: Fri, 31 Aug 2018 22:33:49 +0800
-Message-ID: <20180831143352.22970-2-cgxu519@gmx.com>
+Date: Fri, 31 Aug 2018 22:33:50 +0800
+Message-ID: <20180831143352.22970-3-cgxu519@gmx.com>
 References: <20180831143352.22970-1-cgxu519@gmx.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -37,30 +37,30 @@ Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
 v1->v2:
 - Coding style change.
 
- fs/ext4/acl.c | 4 ++++
+ fs/f2fs/acl.c | 4 ++++
  1 file changed, 4 insertions(+)
 
-diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-index fb50f9aa6ead..c1d570ee1d9f 100644
---- a/fs/ext4/acl.c
-+++ b/fs/ext4/acl.c
-@@ -284,12 +284,16 @@ ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- 		error = __ext4_set_acl(handle, inode, ACL_TYPE_DEFAULT,
- 				       default_acl, XATTR_CREATE);
+diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
+index 111824199a88..80aabdf92659 100644
+--- a/fs/f2fs/acl.c
++++ b/fs/f2fs/acl.c
+@@ -394,12 +394,16 @@ int f2fs_init_acl(struct inode *inode, struct inode *dir, struct page *ipage,
+ 		error = __f2fs_set_acl(inode, ACL_TYPE_DEFAULT, default_acl,
+ 				       ipage);
  		posix_acl_release(default_acl);
 +	} else {
 +		inode->i_default_acl = NULL;
  	}
  	if (acl) {
  		if (!error)
- 			error = __ext4_set_acl(handle, inode, ACL_TYPE_ACCESS,
- 					       acl, XATTR_CREATE);
+ 			error = __f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl,
+ 					       ipage);
  		posix_acl_release(acl);
 +	} else {
 +		inode->i_acl = NULL;
  	}
+ 
  	return error;
- }
 -- 
 2.17.1
 
