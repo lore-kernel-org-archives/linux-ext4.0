@@ -1,8 +1,8 @@
 From: Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH v2 4/5] jfs: cache NULL when both default_acl and
- acl are NULL
-Date: Fri, 31 Aug 2018 22:33:51 +0800
-Message-ID: <20180831143352.22970-4-cgxu519@gmx.com>
+Subject: [PATCH v2 5/5] orangefs: cache NULL when both
+ default_acl and acl are NULL
+Date: Fri, 31 Aug 2018 22:33:52 +0800
+Message-ID: <20180831143352.22970-5-cgxu519@gmx.com>
 References: <20180831143352.22970-1-cgxu519@gmx.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -37,30 +37,30 @@ Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
 v1->v2:
 - Coding style change.
 
- fs/jfs/acl.c | 4 ++++
+ fs/orangefs/acl.c | 4 ++++
  1 file changed, 4 insertions(+)
 
-diff --git a/fs/jfs/acl.c b/fs/jfs/acl.c
-index 2e71b6e7e646..8c06a6ea862d 100644
---- a/fs/jfs/acl.c
-+++ b/fs/jfs/acl.c
-@@ -146,12 +146,16 @@ int jfs_init_acl(tid_t tid, struct inode *inode, struct inode *dir)
- 	if (default_acl) {
- 		rc = __jfs_set_acl(tid, inode, ACL_TYPE_DEFAULT, default_acl);
+diff --git a/fs/orangefs/acl.c b/fs/orangefs/acl.c
+index 10587413b20e..72d2ff17d27b 100644
+--- a/fs/orangefs/acl.c
++++ b/fs/orangefs/acl.c
+@@ -167,12 +167,16 @@ int orangefs_init_acl(struct inode *inode, struct inode *dir)
+ 		error = __orangefs_set_acl(inode, default_acl,
+ 					   ACL_TYPE_DEFAULT);
  		posix_acl_release(default_acl);
 +	} else {
 +		inode->i_default_acl = NULL;
  	}
  
  	if (acl) {
- 		if (!rc)
- 			rc = __jfs_set_acl(tid, inode, ACL_TYPE_ACCESS, acl);
+ 		if (!error)
+ 			error = __orangefs_set_acl(inode, acl, ACL_TYPE_ACCESS);
  		posix_acl_release(acl);
 +	} else {
 +		inode->i_acl = NULL;
  	}
  
- 	JFS_IP(inode)->mode2 = (JFS_IP(inode)->mode2 & 0xffff0000) |
+ 	/* If mode of the inode was changed, then do a forcible ->setattr */
 -- 
 2.17.1
 
