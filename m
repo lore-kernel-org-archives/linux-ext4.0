@@ -1,50 +1,70 @@
-From: Souptick Joarder <jrdr.linux@gmail.com>
-Subject: Re: [PATCH v2] fs: Convert return type int to vm_fault_t
-Date: Sat, 1 Sep 2018 21:51:28 +0530
-Message-ID: <CAFqt6zY=-fEDR606Ae-Opg3Dn+jyZ9NdAKAshuF0PmmgimhHRQ@mail.gmail.com>
-References: <20180830172547.GA4408@jordon-HP-15-Notebook-PC>
- <20180830163521.728f3ff2fd3cc93b52a5dcc0@linux-foundation.org> <20180831165844.GB3303@thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: "Theodore Ts'o" <tytso@mit.edu>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-        Al Viro <viro@zeniv.linux.org.uk>, adilger.kernel@dilger.ca,
-        Jens Axboe <axboe@kernel.dk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@google.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Greg KH <gregkh@linuxfoundation.org>, kemi.wang@intel.com,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nilfs <linux-nilfs@vger.kernel.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180831165844.GB3303@thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH -v2] ext4: avoid arithemetic overflow that can trigger a BUG
+Date: Sat,  1 Sep 2018 12:49:27 -0400
+Message-ID: <20180901164927.15260-1-tytso@mit.edu>
+References: <20180901025003.GB27277@thunk.org>
+Cc: jslaby@suse.cz, adilger@dilger.ca, Theodore Ts'o <tytso@mit.edu>,
+        stable@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <stable-owner@vger.kernel.org>
+In-Reply-To: <20180901025003.GB27277@thunk.org>
+Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-> Also, the fact that the patch series involves multiple file system is
-> a massive pain.  It means I'm going to have to do a separate
-> regression test --- or preferably, I would ask *you* to run a file
-> system regression test[1] --- to make sure what is *not* a trivial
-> patch doesn't break things.  Also, it means that this patch series is
-> going to get more complicated to get into kernel, and we may have to
-> deal with patch conflicts if this goes in via some third party tree
-> (such as Andrew's tree).
->
-> [1] https:/thunk.org/gce-xfstests
+A maliciously crafted file system can cause an overflow when the
+results of a 64-bit calculation is stored into a 32-bit length
+parameter.
 
-Sure, I will run the regression.
+https://bugzilla.kernel.org/show_bug.cgi?id=200623
 
->
-> One way to make life easier is to add the new function with the new
-> interface first, and then wait a release cycle, and then move file
-> systems over in independant patches.
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reported-by: Wen Xu <wen.xu@gatech.edu>
+Cc: stable@vger.kernel.org
+---
+This is a revised version which checks for overflows when caluclating
+first_block and last_block.  This catches more overflow scenarios than
+just checking for an overflow when calculating map.m_len.
 
-In last review, you left it to me either to add new function or modify the
-input parameters of block_page_mkwrite() to return err to caller.
-As block_page_mkwrite() is getting called from 2 places in ext4 & nilfs,
-I choose to add new input argument in block_page_mkwrite() rather than
-introducing new function and put everything in a single commit.
+ fs/ext4/ext4.h  | 3 +++
+ fs/ext4/inode.c | 8 ++++++--
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 249bcee4d7b2..ac05bd86643a 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -686,6 +686,9 @@ enum {
+ /* Max physical block we can address w/o extents */
+ #define EXT4_MAX_BLOCK_FILE_PHYS	0xFFFFFFFF
+ 
++/* Max logical block we can support */
++#define EXT4_MAX_LOGICAL_BLOCK		0xFFFFFFFF
++
+ /*
+  * Structure of an inode on the disk
+  */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 8f6ad7667974..694f31364206 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3412,12 +3412,16 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	unsigned int blkbits = inode->i_blkbits;
+-	unsigned long first_block = offset >> blkbits;
+-	unsigned long last_block = (offset + length - 1) >> blkbits;
++	unsigned long first_block, last_block;
+ 	struct ext4_map_blocks map;
+ 	bool delalloc = false;
+ 	int ret;
+ 
++	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
++		return -EINVAL;
++	first_block = offset >> blkbits;
++	last_block = min_t(loff_t, (offset + length - 1) >> blkbits,
++			   EXT4_MAX_LOGICAL_BLOCK);
+ 
+ 	if (flags & IOMAP_REPORT) {
+ 		if (ext4_has_inline_data(inode)) {
+-- 
+2.18.0.rc0
