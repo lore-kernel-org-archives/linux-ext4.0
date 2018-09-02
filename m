@@ -1,70 +1,74 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v2] ext4: avoid arithemetic overflow that can trigger a BUG
-Date: Sat,  1 Sep 2018 12:49:27 -0400
-Message-ID: <20180901164927.15260-1-tytso@mit.edu>
-References: <20180901025003.GB27277@thunk.org>
-Cc: jslaby@suse.cz, adilger@dilger.ca, Theodore Ts'o <tytso@mit.edu>,
-        stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20180901025003.GB27277@thunk.org>
-Sender: stable-owner@vger.kernel.org
+From: Olof Johansson <olof@lixom.net>
+Subject: Re: [RFC PATCH 02/10] fs-verity: add data verification hooks for ->readpages()
+Date: Sat, 1 Sep 2018 19:35:53 -0700
+Message-ID: <CAOesGMhGfesVQHHMpqW5r7gMOZccX4RsZZex6y-kfkmuA6K0ow@mail.gmail.com>
+References: <20180824161642.1144-1-ebiggers@kernel.org> <20180824161642.1144-3-ebiggers@kernel.org>
+ <2f2382c3-e5e9-f0da-dc89-42dfc7b2b636@huawei.com> <20180825041647.GA726@sol.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: Gao Xiang <gaoxiang25@huawei.com>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-fscrypt@vger.kernel.org, linux-integrity@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+        Victor Hsieh <victorhsieh@google.com>
+To: Eric Biggers <ebiggers@kernel.org>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180825041647.GA726@sol.localdomain>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-A maliciously crafted file system can cause an overflow when the
-results of a 64-bit calculation is stored into a 32-bit length
-parameter.
+Hi,
 
-https://bugzilla.kernel.org/show_bug.cgi?id=200623
+On Fri, Aug 24, 2018 at 9:16 PM, Eric Biggers <ebiggers@kernel.org> wrote:
+> Hi Gao,
+>
+> On Sat, Aug 25, 2018 at 10:29:26AM +0800, Gao Xiang wrote:
+>> Hi,
+>>
+>> At last, I hope filesystems could select the on-disk position of hash tree and 'struct fsverity_descriptor'
+>> rather than fixed in the end of verity files...I think if fs-verity preparing such support and interfaces could be better.....hmmm... :(
+>
+> In theory it would be a much cleaner design to store verity metadata separately
+> from the data.  But the Merkle tree can be very large.  For example, a 1 GB file
+> using SHA-512 would have a 16.6 MB Merkle tree.  So the Merkle tree can't be an
+> extended attribute, since the xattrs API requires xattrs to be small (<= 64 KB),
+> and most filesystems further limit xattr sizes in their on-disk format to as
+> little as 4 KB.  Furthermore, even if both of these limits were to be increased,
+> the xattrs functions (both the syscalls, and the internal functions that
+> filesystems have) are all based around getting/setting the entire xattr value.
+>
+> Also when used with fscrypt, we want the Merkle tree and fsverity_descriptor to
+> be encrypted, so they doesn't leak plaintext hashes.  And we want the Merkle
+> tree to be paged into memory, just like the file contents, to take advantage of
+> the usual Linux memory management.
+>
+> What we really need is *streams*, like NTFS has.  But the filesystems we're
+> targetting don't support streams, nor does the Linux syscall interface have any
+> API for accessing streams, nor does the VFS support them.
+>
+> Adding streams support to all those things would be a huge multi-year effort,
+> controversial, and almost certainly not worth it just for fs-verity.
+>
+> So simply storing the verity metadata past i_size seems like the best solution
+> for now.
+>
+> That being said, in the future we could pretty easily swap out the calls to
+> read_mapping_page() with something else if a particular filesystem wanted to
+> store the metadata somewhere else.  We actually even originally had a function
+> ->read_metadata_page() in the filesystem's fsverity_operations, but it turned
+> out to be unnecessary and I replaced it with directly calling
+> read_mapping_page(), but it could be changed back at any time.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Reported-by: Wen Xu <wen.xu@gatech.edu>
-Cc: stable@vger.kernel.org
----
-This is a revised version which checks for overflows when caluclating
-first_block and last_block.  This catches more overflow scenarios than
-just checking for an overflow when calculating map.m_len.
+What about an xattr not to hold the Merkle tree, but to contain a
+suitable reference to a file/inode+offset that contains it (+ toplevel
+hash for said tree/file or the descriptor/struct)?
 
- fs/ext4/ext4.h  | 3 +++
- fs/ext4/inode.c | 8 ++++++--
- 2 files changed, 9 insertions(+), 2 deletions(-)
+If you also expose said file in the directory structure, things such
+as backups might be easier to handle. For where the tree is appended
+to the file, you could self-reference.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 249bcee4d7b2..ac05bd86643a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -686,6 +686,9 @@ enum {
- /* Max physical block we can address w/o extents */
- #define EXT4_MAX_BLOCK_FILE_PHYS	0xFFFFFFFF
- 
-+/* Max logical block we can support */
-+#define EXT4_MAX_LOGICAL_BLOCK		0xFFFFFFFF
-+
- /*
-  * Structure of an inode on the disk
-  */
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8f6ad7667974..694f31364206 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3412,12 +3412,16 @@ static int ext4_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	unsigned int blkbits = inode->i_blkbits;
--	unsigned long first_block = offset >> blkbits;
--	unsigned long last_block = (offset + length - 1) >> blkbits;
-+	unsigned long first_block, last_block;
- 	struct ext4_map_blocks map;
- 	bool delalloc = false;
- 	int ret;
- 
-+	if ((offset >> blkbits) > EXT4_MAX_LOGICAL_BLOCK)
-+		return -EINVAL;
-+	first_block = offset >> blkbits;
-+	last_block = min_t(loff_t, (offset + length - 1) >> blkbits,
-+			   EXT4_MAX_LOGICAL_BLOCK);
- 
- 	if (flags & IOMAP_REPORT) {
- 		if (ext4_has_inline_data(inode)) {
--- 
-2.18.0.rc0
+
+-Olof
