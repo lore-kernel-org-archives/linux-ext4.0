@@ -1,55 +1,171 @@
-From: Matthew Wilcox <willy@infradead.org>
-Subject: Re: [PATCH v2] fs: Convert return type int to vm_fault_t
-Date: Mon, 3 Sep 2018 19:13:55 -0700
-Message-ID: <20180904021355.GA17153@bombadil.infradead.org>
-References: <20180830172547.GA4408@jordon-HP-15-Notebook-PC>
- <20180830163352.5a96cc721ce069bed95fdbe8@linux-foundation.org>
- <CAFqt6zZckYhLJuJr9TSw2KOZrt6qD25xDctuvbKfm0jyBoPycA@mail.gmail.com>
- <20180903172843.9bf312c738ce8a434dd9c242@linux-foundation.org>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH 1/2] ext4: fix setattr project check upon
+ fssetxattr ioctl
+Date: Tue,  4 Sep 2018 23:54:05 +0900
+Message-ID: <1536072846-19361-1-git-send-email-wshilong@ddn.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Souptick Joarder <jrdr.linux@gmail.com>,
-        Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Theodore Ts'o <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        Jens Axboe <axboe@kernel.dk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@google.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Greg KH <gregkh@linuxfoundation.org>, kemi.wang@intel.com,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nilfs <linux-nilfs@vger.kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20180903172843.9bf312c738ce8a434dd9c242@linux-foundation.org>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: adilger@dilger.ca, wshilong@ddn.com, dchinner@redhat.com
+To: linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Sep 03, 2018 at 05:28:43PM -0700, Andrew Morton wrote:
-> > > I'm beginning to feel vm_fault_t exhaustion.  Please remind me what
-> > > benefit we're going to get out of all this churn?
+Currently, project quota could be changed by fssetxattr
+ioctl, and existed permission check inode_owner_or_capable()
+is obviously not enough, just think that common users could
+change project id of file, that could make users to
+break project quota easily.
 
-Hi Andrew,
+This patch try to follow same regular of xfs project
+quota:
 
-The primary benefit is to help driver writers.  At the moment, there
-is nothing to stop them returning -ENOMEM instead of VM_FAULT_NOMEM.
-There were one or two examples of this in the tree, but I think they're
-all gone now.
+"Project Quota ID state is only allowed to change from
+within the init namespace. Enforce that restriction only
+if we are trying to change the quota ID state.
+Everything else is allowed in user namespaces."
 
-Secondarily, there are a number of places which translate between error
-codes and vm_fault codes.  Those places are reduced as a result of these
-patches, if not entirely eliminated yet.  There was some pretty extreme
-cargo-culting of errno to vm_fault switch statements, particularly in
-the DRM drivers.
+Besides that, check and set project id'state should
+be an atomic operation, protect whole operation with
+inode lock.
 
-There were also several places which were just ignoring the return value
-of vm_insert_foo(), and as a result of this audit, those have been fixed.
-Those errors are going to be rare, but can cause inappropriate decisions
-to be made by the OOM killer.
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+ fs/ext4/ioctl.c | 62 ++++++++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 39 insertions(+), 23 deletions(-)
 
-Now that I think about it, vmf_insert_foo() should probably get marked
-with __must_check to prevent those kinds of errors from being introduced
-again.
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index a707411..e860df9 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -339,19 +339,14 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 	if (projid_eq(kprojid, EXT4_I(inode)->i_projid))
+ 		return 0;
+ 
+-	err = mnt_want_write_file(filp);
+-	if (err)
+-		return err;
+-
+ 	err = -EPERM;
+-	inode_lock(inode);
+ 	/* Is it quota file? Do not allow user to mess with it */
+ 	if (ext4_is_quota_file(inode))
+-		goto out_unlock;
++		return err;
+ 
+ 	err = ext4_get_inode_loc(inode, &iloc);
+ 	if (err)
+-		goto out_unlock;
++		return err;
+ 
+ 	raw_inode = ext4_raw_inode(&iloc);
+ 	if (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid)) {
+@@ -359,7 +354,7 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 					      EXT4_SB(sb)->s_want_extra_isize,
+ 					      &iloc);
+ 		if (err)
+-			goto out_unlock;
++			return err;
+ 	} else {
+ 		brelse(iloc.bh);
+ 	}
+@@ -369,10 +364,8 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 	handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
+ 		EXT4_QUOTA_INIT_BLOCKS(sb) +
+ 		EXT4_QUOTA_DEL_BLOCKS(sb) + 3);
+-	if (IS_ERR(handle)) {
+-		err = PTR_ERR(handle);
+-		goto out_unlock;
+-	}
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
+ 
+ 	err = ext4_reserve_inode_write(handle, inode, &iloc);
+ 	if (err)
+@@ -400,9 +393,6 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 		err = rc;
+ out_stop:
+ 	ext4_journal_stop(handle);
+-out_unlock:
+-	inode_unlock(inode);
+-	mnt_drop_write_file(filp);
+ 	return err;
+ }
+ #else
+@@ -626,6 +616,32 @@ static long ext4_ioctl_group_add(struct file *file,
+ 	return err;
+ }
+ 
++static int
++ext4_ioctl_setattr_check_projid(struct inode *inode,
++				struct fsxattr *fa)
++{
++	/*
++	 * Project Quota ID state is only allowed to change from within the init
++	 * namespace. Enforce that restriction only if we are trying to change
++	 * the quota ID state. Everything else is allowed in user namespaces.
++	 */
++	if (current_user_ns() == &init_user_ns)
++		return 0;
++
++	if (__kprojid_val(EXT4_I(inode)->i_projid) != fa->fsx_projid)
++		return -EINVAL;
++
++	if (ext4_test_inode_flag(inode, EXT4_INODE_PROJINHERIT)) {
++		if (!(fa->fsx_xflags & FS_XFLAG_PROJINHERIT))
++			return -EINVAL;
++	} else {
++		if (fa->fsx_xflags & FS_XFLAG_PROJINHERIT)
++			return -EINVAL;
++	}
++
++	return 0;
++}
++
+ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ {
+ 	struct inode *inode = file_inode(filp);
+@@ -1025,19 +1041,19 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 			return err;
+ 
+ 		inode_lock(inode);
++		err = ext4_ioctl_setattr_check_projid(inode, &fa);
++		if (err)
++			goto out;
+ 		flags = (ei->i_flags & ~EXT4_FL_XFLAG_VISIBLE) |
+ 			 (flags & EXT4_FL_XFLAG_VISIBLE);
+ 		err = ext4_ioctl_setflags(inode, flags);
+-		inode_unlock(inode);
+-		mnt_drop_write_file(filp);
+ 		if (err)
+-			return err;
+-
++			goto out;
+ 		err = ext4_ioctl_setproject(filp, fa.fsx_projid);
+-		if (err)
+-			return err;
+-
+-		return 0;
++out:
++		inode_unlock(inode);
++		mnt_drop_write_file(filp);
++		return err;
+ 	}
+ 	case EXT4_IOC_SHUTDOWN:
+ 		return ext4_shutdown(sb, arg);
+-- 
+1.8.3.1
+
+
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
