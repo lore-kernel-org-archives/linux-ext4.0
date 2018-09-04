@@ -1,47 +1,66 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: fix online resizing for bigalloc file systems with a 1k block size
-Date: Mon,  3 Sep 2018 22:25:46 -0400
-Message-ID: <20180904022546.16351-2-tytso@mit.edu>
-References: <20180904022546.16351-1-tytso@mit.edu>
+Subject: [PATCH 1/2] ext4: fix online resize's handling of a too-small final block group
+Date: Mon,  3 Sep 2018 22:25:45 -0400
+Message-ID: <20180904022546.16351-1-tytso@mit.edu>
 Cc: Torsten Hilbrich <torsten.hilbrich@secunet.com>,
         Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <stable-owner@vger.kernel.org>
-In-Reply-To: <20180904022546.16351-1-tytso@mit.edu>
 Sender: stable-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-An online resize of a file system with the bigalloc feature enabled
-and a 1k block size would be refused since ext4_resize_begin() did not
-understand s_first_data_block is 0 for all bigalloc file systems, even
-when the block size is 1k.
+Avoid growing the file system to an extent so that the last block
+group is too small to hold all of the metadata that must be stored in
+the block group.
 
+This problem can be triggered with the following reproducer:
+
+umount /mnt
+mke2fs -F -m0 -b 4096 -t ext4 -O resize_inode,^has_journal \
+	-E resize=1073741824 /tmp/foo.img 128M
+mount /tmp/foo.img /mnt
+truncate --size 1708M /tmp/foo.img
+resize2fs /dev/loop0 295400
+umount /mnt
+e2fsck -fy /tmp/foo.img
+
+Reported-by: Torsten Hilbrich <torsten.hilbrich@secunet.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Cc: stable@vger.kernel.org
 ---
- fs/ext4/resize.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext4/resize.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 33655a6eff4d..ebbc663d0798 100644
+index e5fb38451a73..33655a6eff4d 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -19,6 +19,7 @@
+@@ -1986,6 +1986,26 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 		}
+ 	}
  
- int ext4_resize_begin(struct super_block *sb)
- {
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	int ret = 0;
- 
- 	if (!capable(CAP_SYS_RESOURCE))
-@@ -29,7 +30,7 @@ int ext4_resize_begin(struct super_block *sb)
-          * because the user tools have no way of handling this.  Probably a
-          * bad time to do it anyways.
-          */
--	if (EXT4_SB(sb)->s_sbh->b_blocknr !=
-+	if (EXT4_B2C(sbi, sbi->s_sbh->b_blocknr) !=
- 	    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block)) {
- 		ext4_warning(sb, "won't resize using backup superblock at %llu",
- 			(unsigned long long)EXT4_SB(sb)->s_sbh->b_blocknr);
++	/*
++	 * Make sure the last group has enough space so that it's
++	 * guaranteed to have enough space for all metadata blocks
++	 * that it might need to hold.  (We might not need to store
++	 * the inode table blocks in the last block group, but there
++	 * will be cases where this might be needed.)
++	 */
++	if ((ext4_group_first_block_no(sb, n_group) +
++	     ext4_group_overhead_blocks(sb, n_group) + 2 +
++	     sbi->s_itb_per_group + sbi->s_cluster_ratio) >= n_blocks_count) {
++		n_blocks_count = ext4_group_first_block_no(sb, n_group);
++		n_group--;
++		n_blocks_count_retry = 0;
++		if (resize_inode) {
++			iput(resize_inode);
++			resize_inode = NULL;
++		}
++		goto retry;
++	}
++
+ 	/* extend the last group */
+ 	if (n_group == o_group)
+ 		add = n_blocks_count - o_blocks_count;
 -- 
 2.18.0.rc0
