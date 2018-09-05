@@ -1,66 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: fix online resize's handling of a too-small final block group
-Date: Mon,  3 Sep 2018 22:25:45 -0400
-Message-ID: <20180904022546.16351-1-tytso@mit.edu>
-Cc: Torsten Hilbrich <torsten.hilbrich@secunet.com>,
-        Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <stable-owner@vger.kernel.org>
-Sender: stable-owner@vger.kernel.org
+From: cgxu519 <cgxu519@gmx.com>
+Subject: Re: [Jfs-discussion] [PATCH v2 4/5] jfs: cache NULL when
+ both default_acl and acl are NULL
+Date: Wed, 5 Sep 2018 14:13:47 +0800
+Message-ID: <c231d198-7a4e-63a0-0a7d-9211ab0abfe9@gmx.com>
+References: <20180831143352.22970-1-cgxu519@gmx.com>
+ <20180831143352.22970-4-cgxu519@gmx.com>
+ <0e37733e-9acd-cf82-62f7-420f0fa864eb@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"; Format="flowed"
+Content-Transfer-Encoding: 7bit
+Cc: jfs-discussion@lists.sourceforge.net, linux-ext4@vger.kernel.org,
+ linux-kernel@vger.kernel.org, devel@lists.orangefs.org,
+ linux-f2fs-devel@lists.sourceforge.net
+To: Dave Kleikamp <dave.kleikamp@oracle.com>, jack@suse.com, tytso@mit.edu,
+ adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
+ shaggy@kernel.org, hubcap@omnibond.com, martin@omnibond.com
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <0e37733e-9acd-cf82-62f7-420f0fa864eb@oracle.com>
+Content-Language: en-US
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Avoid growing the file system to an extent so that the last block
-group is too small to hold all of the metadata that must be stored in
-the block group.
 
-This problem can be triggered with the following reproducer:
+On 09/04/2018 04:34 AM, Dave Kleikamp wrote:
+> Are you pushing these as a series, or would you like this patch pushed
+> through the jfs tree?
+I'd hope maintainers pick individual patch to their tree.
 
-umount /mnt
-mke2fs -F -m0 -b 4096 -t ext4 -O resize_inode,^has_journal \
-	-E resize=1073741824 /tmp/foo.img 128M
-mount /tmp/foo.img /mnt
-truncate --size 1708M /tmp/foo.img
-resize2fs /dev/loop0 295400
-umount /mnt
-e2fsck -fy /tmp/foo.img
+Thanks,
+Chengguang
 
-Reported-by: Torsten Hilbrich <torsten.hilbrich@secunet.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@vger.kernel.org
----
- fs/ext4/resize.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+>
+> On 8/31/18 9:33 AM, Chengguang Xu wrote:
+>> default_acl and acl of newly created inode will be initiated
+>> as ACL_NOT_CACHED in vfs function inode_init_always() and later
+>> will be updated by calling xxx_init_acl() in specific filesystems.
+>> Howerver, when default_acl and acl are NULL then they keep the value
+>> of ACL_NOT_CACHED, this patch tries to cache NULL for acl/default_acl
+>> in this case.
+>>
+>> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+> Acked-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+>
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index e5fb38451a73..33655a6eff4d 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1986,6 +1986,26 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 		}
- 	}
- 
-+	/*
-+	 * Make sure the last group has enough space so that it's
-+	 * guaranteed to have enough space for all metadata blocks
-+	 * that it might need to hold.  (We might not need to store
-+	 * the inode table blocks in the last block group, but there
-+	 * will be cases where this might be needed.)
-+	 */
-+	if ((ext4_group_first_block_no(sb, n_group) +
-+	     ext4_group_overhead_blocks(sb, n_group) + 2 +
-+	     sbi->s_itb_per_group + sbi->s_cluster_ratio) >= n_blocks_count) {
-+		n_blocks_count = ext4_group_first_block_no(sb, n_group);
-+		n_group--;
-+		n_blocks_count_retry = 0;
-+		if (resize_inode) {
-+			iput(resize_inode);
-+			resize_inode = NULL;
-+		}
-+		goto retry;
-+	}
-+
- 	/* extend the last group */
- 	if (n_group == o_group)
- 		add = n_blocks_count - o_blocks_count;
--- 
-2.18.0.rc0
+------------------------------------------------------------------------------
+Check out the vibrant tech community on one of the world's most
+engaging tech sites, Slashdot.org! http://sdm.link/slashdot
