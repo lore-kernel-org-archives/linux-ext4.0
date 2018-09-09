@@ -1,67 +1,171 @@
-From: Mike Marshall <hubcap@omnibond.com>
-Subject: Re: [PATCH v2 5/5] orangefs: cache NULL when both default_acl and acl
- are NULL
-Date: Fri, 7 Sep 2018 14:11:08 -0400
-Message-ID: <CAOg9mSR1n88LBpmr7kOdSRx84FtnzUzsxG+oV4=vWVjz0Zkfbw@mail.gmail.com>
-References: <20180831143352.22970-1-cgxu519@gmx.com> <20180831143352.22970-5-cgxu519@gmx.com>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH v2 1/2] ext4: fix setattr project check upon
+ fssetxattr ioctl
+Date: Sun,  9 Sep 2018 18:15:13 +0900
+Message-ID: <1536484514-16202-1-git-send-email-wshilong1991@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Cc: jack@suse.com, "Theodore Ts'o" <tytso@mit.edu>,
-        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
-        shaggy@kernel.org, Martin Brandenburg <martin@omnibond.com>,
-        devel@lists.orangefs.org, LKML <linux-kernel@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net,
-        jfs-discussion@lists.sourceforge.net,
-        Mike Marshall <hubcap@omnibond.com>
-To: cgxu519@gmx.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180831143352.22970-5-cgxu519@gmx.com>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: adilger@dilger.ca, Wang Shilong <wangshilong1991@gmail.com>,
+ wshilong@ddn.com, dchinner@redhat.com
+To: linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-Thanks... I've added your patch to 4.19-rc2, run it through xfstests,
-and added it to my linux-next tree...
+From: Wang Shilong <wangshilong1991@gmail.com>
 
--Mike
-On Fri, Aug 31, 2018 at 10:35 AM Chengguang Xu <cgxu519@gmx.com> wrote:
->
-> default_acl and acl of newly created inode will be initiated
-> as ACL_NOT_CACHED in vfs function inode_init_always() and later
-> will be updated by calling xxx_init_acl() in specific filesystems.
-> Howerver, when default_acl and acl are NULL then they keep the value
-> of ACL_NOT_CACHED, this patch tries to cache NULL for acl/default_acl
-> in this case.
->
-> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
-> ---
-> v1->v2:
-> - Coding style change.
->
->  fs/orangefs/acl.c | 4 ++++
->  1 file changed, 4 insertions(+)
->
-> diff --git a/fs/orangefs/acl.c b/fs/orangefs/acl.c
-> index 10587413b20e..72d2ff17d27b 100644
-> --- a/fs/orangefs/acl.c
-> +++ b/fs/orangefs/acl.c
-> @@ -167,12 +167,16 @@ int orangefs_init_acl(struct inode *inode, struct inode *dir)
->                 error = __orangefs_set_acl(inode, default_acl,
->                                            ACL_TYPE_DEFAULT);
->                 posix_acl_release(default_acl);
-> +       } else {
-> +               inode->i_default_acl = NULL;
->         }
->
->         if (acl) {
->                 if (!error)
->                         error = __orangefs_set_acl(inode, acl, ACL_TYPE_ACCESS);
->                 posix_acl_release(acl);
-> +       } else {
-> +               inode->i_acl = NULL;
->         }
->
->         /* If mode of the inode was changed, then do a forcible ->setattr */
-> --
-> 2.17.1
->
+Currently, project quota could be changed by fssetxattr
+ioctl, and existed permission check inode_owner_or_capable()
+is obviously not enough, just think that common users could
+change project id of file, that could make users to
+break project quota easily.
+
+This patch try to follow same regular of xfs project
+quota:
+
+"Project Quota ID state is only allowed to change from
+within the init namespace. Enforce that restriction only
+if we are trying to change the quota ID state.
+Everything else is allowed in user namespaces."
+
+Besides that, check and set project id'state should
+be an atomic operation, protect whole operation with
+inode lock.
+
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+v1->v2: rename ext4_ioctl_setattr_check_projid()
+to ext4_ioctl_check_project()
+---
+ fs/ext4/ioctl.c | 61 +++++++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 38 insertions(+), 23 deletions(-)
+
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index a707411..6ef989a 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -339,19 +339,14 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 	if (projid_eq(kprojid, EXT4_I(inode)->i_projid))
+ 		return 0;
+ 
+-	err = mnt_want_write_file(filp);
+-	if (err)
+-		return err;
+-
+ 	err = -EPERM;
+-	inode_lock(inode);
+ 	/* Is it quota file? Do not allow user to mess with it */
+ 	if (ext4_is_quota_file(inode))
+-		goto out_unlock;
++		return err;
+ 
+ 	err = ext4_get_inode_loc(inode, &iloc);
+ 	if (err)
+-		goto out_unlock;
++		return err;
+ 
+ 	raw_inode = ext4_raw_inode(&iloc);
+ 	if (!EXT4_FITS_IN_INODE(raw_inode, ei, i_projid)) {
+@@ -359,7 +354,7 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 					      EXT4_SB(sb)->s_want_extra_isize,
+ 					      &iloc);
+ 		if (err)
+-			goto out_unlock;
++			return err;
+ 	} else {
+ 		brelse(iloc.bh);
+ 	}
+@@ -369,10 +364,8 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 	handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
+ 		EXT4_QUOTA_INIT_BLOCKS(sb) +
+ 		EXT4_QUOTA_DEL_BLOCKS(sb) + 3);
+-	if (IS_ERR(handle)) {
+-		err = PTR_ERR(handle);
+-		goto out_unlock;
+-	}
++	if (IS_ERR(handle))
++		return PTR_ERR(handle);
+ 
+ 	err = ext4_reserve_inode_write(handle, inode, &iloc);
+ 	if (err)
+@@ -400,9 +393,6 @@ static int ext4_ioctl_setproject(struct file *filp, __u32 projid)
+ 		err = rc;
+ out_stop:
+ 	ext4_journal_stop(handle);
+-out_unlock:
+-	inode_unlock(inode);
+-	mnt_drop_write_file(filp);
+ 	return err;
+ }
+ #else
+@@ -626,6 +616,31 @@ static long ext4_ioctl_group_add(struct file *file,
+ 	return err;
+ }
+ 
++static int
++ext4_ioctl_check_project(struct inode *inode, struct fsxattr *fa)
++{
++	/*
++	 * Project Quota ID state is only allowed to change from within the init
++	 * namespace. Enforce that restriction only if we are trying to change
++	 * the quota ID state. Everything else is allowed in user namespaces.
++	 */
++	if (current_user_ns() == &init_user_ns)
++		return 0;
++
++	if (__kprojid_val(EXT4_I(inode)->i_projid) != fa->fsx_projid)
++		return -EINVAL;
++
++	if (ext4_test_inode_flag(inode, EXT4_INODE_PROJINHERIT)) {
++		if (!(fa->fsx_xflags & FS_XFLAG_PROJINHERIT))
++			return -EINVAL;
++	} else {
++		if (fa->fsx_xflags & FS_XFLAG_PROJINHERIT)
++			return -EINVAL;
++	}
++
++	return 0;
++}
++
+ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ {
+ 	struct inode *inode = file_inode(filp);
+@@ -1025,19 +1040,19 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 			return err;
+ 
+ 		inode_lock(inode);
++		err = ext4_ioctl_check_project(inode, &fa);
++		if (err)
++			goto out;
+ 		flags = (ei->i_flags & ~EXT4_FL_XFLAG_VISIBLE) |
+ 			 (flags & EXT4_FL_XFLAG_VISIBLE);
+ 		err = ext4_ioctl_setflags(inode, flags);
+-		inode_unlock(inode);
+-		mnt_drop_write_file(filp);
+ 		if (err)
+-			return err;
+-
++			goto out;
+ 		err = ext4_ioctl_setproject(filp, fa.fsx_projid);
+-		if (err)
+-			return err;
+-
+-		return 0;
++out:
++		inode_unlock(inode);
++		mnt_drop_write_file(filp);
++		return err;
+ 	}
+ 	case EXT4_IOC_SHUTDOWN:
+ 		return ext4_shutdown(sb, arg);
+-- 
+1.8.3.1
