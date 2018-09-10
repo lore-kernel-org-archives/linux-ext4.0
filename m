@@ -1,150 +1,168 @@
-From: Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>
-Subject: Re: [PATCH v4 0/2] ext4: fix DAX dma vs truncate/hole-punch
-Date: Mon, 10 Sep 2018 17:18:49 -0500
-Message-ID: <8c70d61a-fc5c-b928-334a-fbb2567b8dea@sandeen.net>
-References: <20180710191031.17919-1-ross.zwisler@linux.intel.com>
- <20180711081741.lmr44sp4cmt3f6um@quack2.suse.cz>
- <20180725222839.GA28304@linux.intel.com>
- <CAOxpaSWCT+XRtGxGQT_PVMcn79csMxbqb+cf4yycbV3eqjjnkQ@mail.gmail.com>
- <20180807084545.6gzxrtrvb34hyhdq@quack2.suse.cz>
+From: Wang Shilong <wangshilong1991@gmail.com>
+Subject: [PATCH v3 2/2] f2fs: fix setattr project check upon
+ fssetxattr ioctl
+Date: Tue, 11 Sep 2018 08:54:21 +0900
+Message-ID: <1536623661-5912-1-git-send-email-wshilong1991@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org,
- linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>, Ross Zwisler <zwisler-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20180807084545.6gzxrtrvb34hyhdq-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-Content-Language: en-US
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Cc: adilger@dilger.ca, Wang Shilong <wangshilong1991@gmail.com>,
+ wshilong@ddn.com, dchinner@redhat.com
+To: linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-On 8/7/18 3:45 AM, Jan Kara wrote:
-> On Fri 27-07-18 10:28:51, Ross Zwisler wrote:
->> + fsdevel and the xfs list.
->>
->> On Wed, Jul 25, 2018 at 4:28 PM Ross Zwisler
->> <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org> wrote:
->>> On Wed, Jul 11, 2018 at 10:17:41AM +0200, Jan Kara wrote:
->>>> On Tue 10-07-18 13:10:29, Ross Zwisler wrote:
->>>>> Changes since v3:
->>>>>  * Added an ext4_break_layouts() call to ext4_insert_range() to ensure
->>>>>    that the {ext4,xfs}_break_layouts() calls have the same meaning.
->>>>>    (Dave, Darrick and Jan)
->>>>
->>>> How about the occasional WARN_ON_ONCE you mention below. Were you able to
->>>> hunt them down?
->>>
->>> The root cause of this issue is that while the ei->i_mmap_sem provides
->>> synchronization between ext4_break_layouts() and page faults, it doesn't
->>> provide synchronize us with the direct I/O path.  This exact same issue exists
->>> in XFS AFAICT, with the synchronization tool there being the XFS_MMAPLOCK.
->>>
->>> This allows the direct I/O path to do I/O and raise & lower page->_refcount
->>> while we're executing a truncate/hole punch.  This leads to us trying to free
->>> a page with an elevated refcount.
->>>
->>> Here's one instance of the race:
->>>
->>> CPU 0                                   CPU 1
->>> -----                                   -----
->>> ext4_punch_hole()
->>>   ext4_break_layouts() # all pages have refcount=1
->>>
->>>                                         ext4_direct_IO()
->>>                                           ... lots of layers ...
->>>                                           follow_page_pte()
->>>                                             get_page() # elevates refcount
->>>
->>>   truncate_pagecache_range()
->>>    ... a few layers ...
->>>    dax_disassociate_entry() # sees elevated refcount, WARN_ON_ONCE()
->>>
-> 
-> So this is a very different race from the one below. And it should be
-> impossible to happen. This race is exactly the reason why
-> dax_layout_busy_page() has unmap_mapping_range() call to force GUP to fault
-> which blocks on ei->i_mmap_sem / XFS_MMAPLOCK and thus avoids the race.
-> 
->>> A similar race occurs when the refcount is being dropped while we're running
->>> ext4_break_layouts(), and this is the one that my test was actually hitting:
->>>
->>> CPU 0                                   CPU 1
->>> -----                                   -----
->>>                                         ext4_direct_IO()
->>>                                           ... lots of layers ...
->>>                                           follow_page_pte()
->>>                                             get_page()
->>>                                             # elevates refcount of page X
->>> ext4_punch_hole()
->>>   ext4_break_layouts() # two pages, X & Y, have refcount == 2
->>>     __wait_var_event() # called for page X
->>>
->>>                                           __put_devmap_managed_page()
->>>                                           # drops refcount of X to 1
->>>
->>>    # __wait_var_events() checks X's refcount in "if (condition)", and breaks.
->>>    # We never actually called ext4_wait_dax_page(), so 'retry' in
->>>    # ext4_break_layouts() is still false.  Exit do/while loop in
->>>    # ext4_break_layouts, never attempting to wait on page Y which still has an
->>>    # elevated refcount of 2.
->>>
->>>   truncate_pagecache_range()
->>>    ... a few layers ...
->>>    dax_disassociate_entry() # sees elevated refcount for Y, WARN_ON_ONCE()
->>>
->>> This second race can be fixed with the patch at the end of this function,
->>> which I think should go in, unless there is a benfit to the current retry
->>> scheme which relies on the 'retry' variable in {ext4,xfs}_break_layouts()?
->>> With this patch applied I've been able to run my unit test through
->>> thousands of iterations, where it used to failed consistently within 10 or
->>> so.
->>>
->>> Even so, I wonder if the real solution is to add synchronization between
->>> the direct I/O path and {ext4,xfs}_break_layouts()?  Other ideas on how
->>> this should be handled?
->>>
->>> --- >8 ---
->>>
->>> From a4519b0f40362f0a63ae96acaf986092aff0f0d3 Mon Sep 17 00:00:00 2001
->>> From: Ross Zwisler <zwisler-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
->>> Date: Wed, 25 Jul 2018 16:16:05 -0600
->>> Subject: [PATCH] ext4: Close race between direct IO and ext4_break_layouts()
->>>
->>> If the refcount of a page is lowered between the time that it is returned
->>> by dax_busy_page() and when the refcount is again checked in
->>> ext4_break_layouts() => ___wait_var_event(), the waiting function
->>> ext4_wait_dax_page() will never be called.  This means that
->>> ext4_break_layouts() will still have 'retry' set to false, so we'll stop
->>> looping and never check the refcount of other pages in this inode.
->>>
->>> Instead, always continue looping as long as dax_layout_busy_page() gives us
->>> a page which it found with an elevated refcount.
->>>
->>> Note that this works around the race exposed by my unit test, but I think
->>> that there is another race that needs to be addressed, probably with
->>> additional synchronization added between direct I/O and
->>> {ext4,xfs}_break_layouts().
->>>
->>> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
-> 
-> OK, this is a good catch and the patch looks good. You can add:
-> 
-> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> 
-> Also please post this fix officially to Ted to include it in his tree (I
-> can see that he has all your other patches queued for the merge window).
+From: Wang Shilong <wangshilong1991@gmail.com>
 
-Did these ever get on Ted's radar?  I don't see it upstream yet.
+Currently, project quota could be changed by fssetxattr
+ioctl, and existed permission check inode_owner_or_capable()
+is obviously not enough, just think that common users could
+change project id of file, that could make users to
+break project quota easily.
 
-Thanks,
--Eric
+This patch try to follow same regular of xfs project
+quota:
+
+"Project Quota ID state is only allowed to change from
+within the init namespace. Enforce that restriction only
+if we are trying to change the quota ID state.
+Everything else is allowed in user namespaces."
+
+Besides that, check and set project id'state should
+be an atomic operation, protect whole operation with
+inode lock.
+
+Signed-off-by: Wang Shilong <wshilong@ddn.com>
+---
+v2->v3: remove inode_lock() and mnt_want_write_file()
+inside f2fs_ioc_setproject()
+v1->v2: rename f2fs_ioctl_setattr_check_projid()
+to f2fs_ioctl_check_project()
+ fs/f2fs/file.c | 61 ++++++++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 38 insertions(+), 23 deletions(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 5474aaa..f5170e6 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -2617,34 +2617,26 @@ static int f2fs_ioc_setproject(struct file *filp, __u32 projid)
+ 	if (projid_eq(kprojid, F2FS_I(inode)->i_projid))
+ 		return 0;
+ 
+-	err = mnt_want_write_file(filp);
+-	if (err)
+-		return err;
+-
+ 	err = -EPERM;
+-	inode_lock(inode);
+-
+ 	/* Is it quota file? Do not allow user to mess with it */
+ 	if (IS_NOQUOTA(inode))
+-		goto out_unlock;
++		return err;
+ 
+ 	ipage = f2fs_get_node_page(sbi, inode->i_ino);
+-	if (IS_ERR(ipage)) {
+-		err = PTR_ERR(ipage);
+-		goto out_unlock;
+-	}
++	if (IS_ERR(ipage))
++		return PTR_ERR(ipage);
+ 
+ 	if (!F2FS_FITS_IN_INODE(F2FS_INODE(ipage), fi->i_extra_isize,
+ 								i_projid)) {
+ 		err = -EOVERFLOW;
+ 		f2fs_put_page(ipage, 1);
+-		goto out_unlock;
++		return err;
+ 	}
+ 	f2fs_put_page(ipage, 1);
+ 
+ 	err = dquot_initialize(inode);
+ 	if (err)
+-		goto out_unlock;
++		return err;
+ 
+ 	transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
+ 	if (!IS_ERR(transfer_to[PRJQUOTA])) {
+@@ -2658,9 +2650,6 @@ static int f2fs_ioc_setproject(struct file *filp, __u32 projid)
+ 	inode->i_ctime = current_time(inode);
+ out_dirty:
+ 	f2fs_mark_inode_dirty_sync(inode, true);
+-out_unlock:
+-	inode_unlock(inode);
+-	mnt_drop_write_file(filp);
+ 	return err;
+ }
+ #else
+@@ -2736,6 +2725,31 @@ static int f2fs_ioc_fsgetxattr(struct file *filp, unsigned long arg)
+ 	return 0;
+ }
+ 
++static int
++f2fs_ioctl_check_project(struct inode *inode, struct fsxattr *fa)
++{
++	/*
++	 * Project Quota ID state is only allowed to change from within the init
++	 * namespace. Enforce that restriction only if we are trying to change
++	 * the quota ID state. Everything else is allowed in user namespaces.
++	 */
++	if (current_user_ns() == &init_user_ns)
++		return 0;
++
++	if (__kprojid_val(F2FS_I(inode)->i_projid) != fa->fsx_projid)
++		return -EINVAL;
++
++	if (F2FS_I(inode)->i_flags & F2FS_PROJINHERIT_FL) {
++		if (!(fa->fsx_xflags & FS_XFLAG_PROJINHERIT))
++			return -EINVAL;
++	} else {
++		if (fa->fsx_xflags & FS_XFLAG_PROJINHERIT)
++			return -EINVAL;
++	}
++
++	return 0;
++}
++
+ static int f2fs_ioc_fssetxattr(struct file *filp, unsigned long arg)
+ {
+ 	struct inode *inode = file_inode(filp);
+@@ -2763,19 +2777,20 @@ static int f2fs_ioc_fssetxattr(struct file *filp, unsigned long arg)
+ 		return err;
+ 
+ 	inode_lock(inode);
++	err = f2fs_ioctl_check_project(inode, &fa);
++	if (err)
++		goto out;
+ 	flags = (fi->i_flags & ~F2FS_FL_XFLAG_VISIBLE) |
+ 				(flags & F2FS_FL_XFLAG_VISIBLE);
+ 	err = __f2fs_ioc_setflags(inode, flags);
+-	inode_unlock(inode);
+-	mnt_drop_write_file(filp);
+ 	if (err)
+-		return err;
++		goto out;
+ 
+ 	err = f2fs_ioc_setproject(filp, fa.fsx_projid);
+-	if (err)
+-		return err;
+-
+-	return 0;
++out:
++	inode_unlock(inode);
++	mnt_drop_write_file(filp);
++	return err;
+ }
+ 
+ int f2fs_pin_file_control(struct inode *inode, bool inc)
+-- 
+1.8.3.1
