@@ -1,146 +1,100 @@
-From: Souptick Joarder <jrdr.linux@gmail.com>
-Subject: [PATCH] fs/ext4: Convert fault handler to use vm_fault_t type
-Date: Mon, 10 Sep 2018 21:16:12 +0530
-Message-ID: <20180910154611.GA20252@jordon-HP-15-Notebook-PC>
+From: Eric Sandeen <esandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v2 1/2] ext4: Close race between direct IO and
+ ext4_break_layouts()
+Date: Mon, 10 Sep 2018 11:23:56 -0500
+Message-ID: <e5232336-757e-2338-5b28-7dfadc8eb2c8@redhat.com>
+References: <153374910694.40645.17166196534680658204.stgit@djiang5-desk3.ch.intel.com>
+Reply-To: sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca, darrick.wong@oracle.com,
-        axboe@kernel.dk, nborisov@suse.com, ak@linux.intel.com,
-        viro@zeniv.linux.org.uk, kemi.wang@intel.com, willy@infradead.org,
-        gregkh@linuxfoundation.org, ebiggers@google.com
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, david-FqsqvQoI3Ljby3iVrkZq2A@public.gmane.org, linux-xfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+ hch-jcswGhMUV9g@public.gmane.org
+To: Dave Jiang <dave.jiang-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>, tytso-3s7WtUTddSA@public.gmane.org,
+ darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org, jack-AlSwsSmVLrQ@public.gmane.org, zwisler-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <153374910694.40645.17166196534680658204.stgit-Cxk7aZI4ujnJARH06PadV2t3HXsI98Cx0E9HWUfgJXw@public.gmane.org>
+Content-Language: en-US
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Return type of ext4_page_mkwrite and ext4_filemap_fault are
-changed to use vm_fault_t type.
+On 8/8/18 12:25 PM, Dave Jiang wrote:
+> From: Ross Zwisler <zwisler-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>
+> 
+> If the refcount of a page is lowered between the time that it is returned
+> by dax_busy_page() and when the refcount is again checked in
+> ext4_break_layouts() => ___wait_var_event(), the waiting function
+> ext4_wait_dax_page() will never be called.  This means that
+> ext4_break_layouts() will still have 'retry' set to false, so we'll stop
+> looping and never check the refcount of other pages in this inode.
+> 
+> Instead, always continue looping as long as dax_layout_busy_page() gives us
+> a page which it found with an elevated refcount.
+> 
+> Signed-off-by: Ross Zwisler <ross.zwisler-VuQAYsv1563Yd54FQh9/CA@public.gmane.org>
+> Reviewed-by: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 
-With this patch all the callers of block_page_mkwrite_return()
-are changed to handle vm_fault_t. So converting the return type
-of block_page_mkwrite_return() to vm_fault_t.
+Ted - wondering if this one is still on your radar?
 
-Signed-off-by: Souptick Joarder <jrdr.linux@gmail.com>
----
- fs/ext4/ext4.h              |  4 ++--
- fs/ext4/inode.c             | 29 +++++++++++++++--------------
- include/linux/buffer_head.h |  2 +-
- 3 files changed, 18 insertions(+), 17 deletions(-)
+Thanks,
+-Eric
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0f0edd1..8506b14 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2469,8 +2469,8 @@ int do_journal_get_write_access(handle_t *handle,
- extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_zero_partial_blocks(handle_t *handle, struct inode *inode,
- 			     loff_t lstart, loff_t lend);
--extern int ext4_page_mkwrite(struct vm_fault *vmf);
--extern int ext4_filemap_fault(struct vm_fault *vmf);
-+extern vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf);
-+extern vm_fault_t ext4_filemap_fault(struct vm_fault *vmf);
- extern qsize_t *ext4_get_reserved_space(struct inode *inode);
- extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
- extern void ext4_da_update_reserve_space(struct inode *inode,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d0dd585..7c1723b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -6151,13 +6151,14 @@ static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
- 	return !buffer_mapped(bh);
- }
- 
--int ext4_page_mkwrite(struct vm_fault *vmf)
-+vm_fault_t ext4_page_mkwrite(struct vm_fault *vmf)
- {
- 	struct vm_area_struct *vma = vmf->vma;
- 	struct page *page = vmf->page;
- 	loff_t size;
- 	unsigned long len;
--	int ret;
-+	int err;
-+	vm_fault_t ret;
- 	struct file *file = vma->vm_file;
- 	struct inode *inode = file_inode(file);
- 	struct address_space *mapping = inode->i_mapping;
-@@ -6170,8 +6171,8 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
- 
- 	down_read(&EXT4_I(inode)->i_mmap_sem);
- 
--	ret = ext4_convert_inline_data(inode);
--	if (ret)
-+	err = ext4_convert_inline_data(inode);
-+	if (err)
- 		goto out_ret;
- 
- 	/* Delalloc case is easy... */
-@@ -6179,9 +6180,9 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
- 	    !ext4_should_journal_data(inode) &&
- 	    !ext4_nonda_switch(inode->i_sb)) {
- 		do {
--			ret = block_page_mkwrite(vma, vmf,
-+			err = block_page_mkwrite(vma, vmf,
- 						   ext4_da_get_block_prep);
--		} while (ret == -ENOSPC &&
-+		} while (err == -ENOSPC &&
- 		       ext4_should_retry_alloc(inode->i_sb, &retries));
- 		goto out_ret;
- 	}
-@@ -6226,8 +6227,8 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
- 		ret = VM_FAULT_SIGBUS;
- 		goto out;
- 	}
--	ret = block_page_mkwrite(vma, vmf, get_block);
--	if (!ret && ext4_should_journal_data(inode)) {
-+	err = block_page_mkwrite(vma, vmf, get_block);
-+	if (!err && ext4_should_journal_data(inode)) {
- 		if (ext4_walk_page_buffers(handle, page_buffers(page), 0,
- 			  PAGE_SIZE, NULL, do_journal_get_write_access)) {
- 			unlock_page(page);
-@@ -6238,24 +6239,24 @@ int ext4_page_mkwrite(struct vm_fault *vmf)
- 		ext4_set_inode_state(inode, EXT4_STATE_JDATA);
- 	}
- 	ext4_journal_stop(handle);
--	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+	if (err == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry_alloc;
- out_ret:
--	ret = block_page_mkwrite_return(ret);
-+	ret = block_page_mkwrite_return(err);
- out:
- 	up_read(&EXT4_I(inode)->i_mmap_sem);
- 	sb_end_pagefault(inode->i_sb);
- 	return ret;
- }
- 
--int ext4_filemap_fault(struct vm_fault *vmf)
-+vm_fault_t ext4_filemap_fault(struct vm_fault *vmf)
- {
- 	struct inode *inode = file_inode(vmf->vma->vm_file);
--	int err;
-+	vm_fault_t ret;
- 
- 	down_read(&EXT4_I(inode)->i_mmap_sem);
--	err = filemap_fault(vmf);
-+	ret = filemap_fault(vmf);
- 	up_read(&EXT4_I(inode)->i_mmap_sem);
- 
--	return err;
-+	return ret;
- }
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 96225a7..7b73ef7 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -242,7 +242,7 @@ int cont_write_begin(struct file *, struct address_space *, loff_t,
- int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
- 				get_block_t get_block);
- /* Convert errno to return value from ->page_mkwrite() call */
--static inline int block_page_mkwrite_return(int err)
-+static inline vm_fault_t block_page_mkwrite_return(int err)
- {
- 	if (err == 0)
- 		return VM_FAULT_LOCKED;
--- 
-1.9.1
+> ---
+> 
+> v2:
+> - remove verbiage in comment header (Jan)
+> 
+>  fs/ext4/inode.c |    9 +++------
+>  1 file changed, 3 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 8f6ad7667974..d2663a1e3ec2 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4191,9 +4191,8 @@ int ext4_update_disksize_before_punch(struct inode *inode, loff_t offset,
+>  	return 0;
+>  }
+>  
+> -static void ext4_wait_dax_page(struct ext4_inode_info *ei, bool *did_unlock)
+> +static void ext4_wait_dax_page(struct ext4_inode_info *ei)
+>  {
+> -	*did_unlock = true;
+>  	up_write(&ei->i_mmap_sem);
+>  	schedule();
+>  	down_write(&ei->i_mmap_sem);
+> @@ -4203,14 +4202,12 @@ int ext4_break_layouts(struct inode *inode)
+>  {
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	struct page *page;
+> -	bool retry;
+>  	int error;
+>  
+>  	if (WARN_ON_ONCE(!rwsem_is_locked(&ei->i_mmap_sem)))
+>  		return -EINVAL;
+>  
+>  	do {
+> -		retry = false;
+>  		page = dax_layout_busy_page(inode->i_mapping);
+>  		if (!page)
+>  			return 0;
+> @@ -4218,8 +4215,8 @@ int ext4_break_layouts(struct inode *inode)
+>  		error = ___wait_var_event(&page->_refcount,
+>  				atomic_read(&page->_refcount) == 1,
+>  				TASK_INTERRUPTIBLE, 0, 0,
+> -				ext4_wait_dax_page(ei, &retry));
+> -	} while (error == 0 && retry);
+> +				ext4_wait_dax_page(ei));
+> +	} while (error == 0);
+>  
+>  	return error;
+>  }
+> 
