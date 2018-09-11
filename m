@@ -1,19 +1,27 @@
-From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-Subject: Re: [PATCH 2/2] ext4, dax: set ext4_dax_aops for dax files
-Date: Tue, 11 Sep 2018 11:15:18 -0700
-Message-ID: <CAPcyv4iEZ7q0MV7n-_eovrJw_U9S3=pkY_nYwtw1jSBS7vPqCQ@mail.gmail.com>
-References: <20180911154246.6844-1-toshi.kani@hpe.com>
- <20180911154246.6844-3-toshi.kani@hpe.com>
+From: Eric Sandeen <esandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [PATCH v4 0/2] ext4: fix DAX dma vs truncate/hole-punch
+Date: Tue, 11 Sep 2018 13:21:19 -0500
+Message-ID: <c026e902-c0e8-a8f3-1108-b8079321843b@redhat.com>
+References: <20180710191031.17919-1-ross.zwisler@linux.intel.com>
+ <20180711081741.lmr44sp4cmt3f6um@quack2.suse.cz>
+ <20180725222839.GA28304@linux.intel.com>
+ <CAOxpaSWCT+XRtGxGQT_PVMcn79csMxbqb+cf4yycbV3eqjjnkQ@mail.gmail.com>
+ <20180807084545.6gzxrtrvb34hyhdq@quack2.suse.cz>
+ <8c70d61a-fc5c-b928-334a-fbb2567b8dea@sandeen.net>
+ <20180911151421.GD6104@quack2.suse.cz> <20180911152024.GE6104@quack2.suse.cz>
+ <20180911172806.GC2225@thunk.org>
+Reply-To: sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+Cc: linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org, darrick.wong-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org,
+ Eric Sandeen <sandeen-+82itfer+wXR7s880joybQ@public.gmane.org>, Ross Zwisler <zwisler-DgEjT+Ai2ygdnm+yROfE0A@public.gmane.org>,
+ linux-fsdevel <linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>, lczerner-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org,
  linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+To: "Theodore Y. Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
 Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20180911154246.6844-3-toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+In-Reply-To: <20180911172806.GC2225-AKGzg7BKzIDYtjvyW6yDsg@public.gmane.org>
+Content-Language: en-US
 List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
  <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
 List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
@@ -25,91 +33,31 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Sep 11, 2018 at 8:42 AM, Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org> wrote:
-> Sync syscall to an existing DAX file needs to flush processor cache,
-> but it does not currently.  This is because 'ext4_da_aops' is set to
-> address_space_operations of existing DAX files, instead of 'ext4_dax_aops',
-> since S_DAX flag is set after ext4_set_aops() in the open path.
->
->   New file
->   --------
->   lookup_open
->     ext4_create
->       __ext4_new_inode
->         ext4_set_inode_flags   // Set S_DAX flag
->       ext4_set_aops            // Set aops to ext4_dax_aops
->
->   Existing file
->   -------------
->   lookup_open
->     ext4_lookup
->       ext4_iget
->         ext4_set_aops          // Set aops to ext4_da_aops
->         ext4_set_inode_flags   // Set S_DAX flag
->
-> Change ext4_iget() to call ext4_set_inode_flags() before ext4_set_aops().
->
-> Fixes: 5f0663bb4a64f588f0a2dd6d1be68d40f9af0086
+On 9/11/18 12:28 PM, Theodore Y. Ts'o wrote:
+> On Tue, Sep 11, 2018 at 05:20:24PM +0200, Jan Kara wrote:
+>>> Hum, it seems Ted never picked this patch up. I guess I'll gather the two
+>>> fixes you pointed out and resend them to Ted.
+>>
+>> Actually only one patch when looking into it now.
+> 
+> I believe both are in the ext4 git tree.
+> 
+>   	       	      	       	   - Ted
 
-Same format nit:
+Ok, right:
 
-Fixes: 5f0663bb4a64 ("ext4, dax: introduce ext4_dax_aops")
-Cc: <stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+dax: dax_layout_busy_page() warn on !exceptional
+https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/commit/?h=dev&id=cdbf8897cb09b7baf2b8a7e78051a35a872b01d5
 
+ext4: handle layout changes to pinned DAX mappings
+https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git/commit/?h=dev&id=430657b6be896db57d974375cc499ca212c7f01d
 
-> Signed-off-by: Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
-> Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> Cc: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-> Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-> Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-> ---
->  fs/ext4/inode.c |    3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 775cd9b4af55..93cbbb859c40 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4998,6 +4998,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->         if (ret)
->                 goto bad_inode;
->
-> +       ext4_set_inode_flags(inode);
-> +
+I think the one I meant to ask about was:
 
-Hmm, does this have unintended behavior changes?
+[PATCH v2 1/2] ext4: Close race between direct IO and ext4_break_layouts()
 
-I notice that there are some checks for flags "IS_APPEND(inode) ||
-IS_IMMUTABLE(inode)" *before* the call to ext4_set_inode_flags(). I
-didn't look too much deeper at whether those checks are bogus, but it
-would seem safer to do something like this for a lower risk fix.
+https://patchwork.kernel.org/patch/10560393/
 
-Thoughts?
+Sorry for the confusion.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d0dd585add6a..1e9ab445c777 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4999,7 +4999,6 @@ struct inode *ext4_iget(struct super_block *sb,
-unsigned long ino)
-        if (S_ISREG(inode->i_mode)) {
-                inode->i_op = &ext4_file_inode_operations;
-                inode->i_fop = &ext4_file_operations;
--               ext4_set_aops(inode);
-        } else if (S_ISDIR(inode->i_mode)) {
-                inode->i_op = &ext4_dir_inode_operations;
-                inode->i_fop = &ext4_dir_operations;
-@@ -5042,6 +5041,12 @@ struct inode *ext4_iget(struct super_block *sb,
-unsigned long ino)
-        }
-        brelse(iloc.bh);
-        ext4_set_inode_flags(inode);
-+       /*
-+        * Now that we have determined whether DAX is enabled, set the
-+        * proper address spaces operations
-+        */
-+       if (S_ISREG(inode->i_mode))
-+               ext4_set_aops(inode);
-
-        unlock_new_inode(inode);
-        return inode;
+-Eric
