@@ -1,42 +1,115 @@
-From: "Kani, Toshi" <toshi.kani@hpe.com>
-Subject: Re: [PATCH 1/2] ext4, dax: update dax check to skip journal inode
-Date: Tue, 11 Sep 2018 18:11:39 +0000
-Message-ID: <19388d015c54202ee3d1e8526677ccdf7d46cd02.camel@hpe.com>
+From: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Subject: Re: [PATCH 2/2] ext4, dax: set ext4_dax_aops for dax files
+Date: Tue, 11 Sep 2018 11:15:18 -0700
+Message-ID: <CAPcyv4iEZ7q0MV7n-_eovrJw_U9S3=pkY_nYwtw1jSBS7vPqCQ@mail.gmail.com>
 References: <20180911154246.6844-1-toshi.kani@hpe.com>
-         <20180911154246.6844-2-toshi.kani@hpe.com>
-         <CAPcyv4j0zF+OjqPywkmZLgGiSjNdH_9SwpXjS=92bqT9OXZ_MQ@mail.gmail.com>
+ <20180911154246.6844-3-toshi.kani@hpe.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "jack@suse.cz" <jack@suse.cz>,
-        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "tytso@mit.edu" <tytso@mit.edu>
-To: "dan.j.williams@intel.com" <dan.j.williams@intel.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CAPcyv4j0zF+OjqPywkmZLgGiSjNdH_9SwpXjS=92bqT9OXZ_MQ@mail.gmail.com>
-Content-Language: en-US
-Content-ID: <4A8A9F59A15EEE4EB1D10A8094F9B84B@NAMPRD84.PROD.OUTLOOK.COM>
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+In-Reply-To: <20180911154246.6844-3-toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-T24gVHVlLCAyMDE4LTA5LTExIGF0IDEwOjU5IC0wNzAwLCBEYW4gV2lsbGlhbXMgd3JvdGU6DQo+
-IE9uIFR1ZSwgU2VwIDExLCAyMDE4IGF0IDg6NDIgQU0sIFRvc2hpIEthbmkgPHRvc2hpLmthbmlA
-aHBlLmNvbT4gd3JvdGU6DQo+ID4gRXh0NCBtb3VudCBwYXRoIGNhbGxzIGV4dDRfaWdldCgpIHRv
-IG9idGFpbiB0aGUgam91cm5hbCBpbm9kZS4gIFRoaXMNCj4gPiBpbm9kZSBkb2VzIG5vdCBzdXBw
-b3J0IERBWCwgYW5kICdleHQ0X2RhX2FvcHMnIG5lZWRzIHRvIGJlIHNldC4gIEl0DQo+ID4gY3Vy
-cmVudGx5IHdvcmtzIGZvciB0aGUgREFYIG1vdW50IGNhc2UgYmVjYXVzZSBleHQ0X2lnZXQoKSBh
-bHdheXMgc2V0DQo+ID4gJ2V4dDRfZGFfYW9wcycgdG8gYW55IHJlZ3VsYXIgZmlsZXMuDQo+ID4g
-DQo+ID4gICBleHQ0X2ZpbGxfc3VwZXINCj4gPiAgICAgZXh0NF9sb2FkX2pvdXJuYWwNCj4gPiAg
-ICAgICBleHQ0X2dldF9qb3VybmFsX2lub2RlDQo+ID4gICAgICAgICBleHQ0X2lnZXQNCj4gPiAN
-Cj4gPiBJbiBwcmVwYXJhdGlvbiB0byBmaXggZXh0NF9pZ2V0KCkgdG8gc2V0ICdleHQ0X2RheF9h
-b3BzJyBmb3IgREFYIGZpbGVzLA0KPiA+IHVwZGF0ZSBleHQ0X3Nob3VsZF91c2VfZGF4KCkgdG8g
-cmV0dXJuIGZhbHNlIGZvciB0aGUgam91cm5hbCBpbm9kZS4NCj4gPiANCj4gPiBGaXhlczogNWYw
-NjYzYmI0YTY0ZjU4OGYwYTJkZDZkMWJlNjhkNDBmOWFmMDA4Ng0KPiANCj4gSnVzdCBhIG1pbm9y
-IGZvcm1hdCByZWNvbW1lbmRhdGlvbjoNCj4gDQo+IEZpeGVzOiA1ZjA2NjNiYjRhNjQgKCJleHQ0
-LCBkYXg6IGludHJvZHVjZSBleHQ0X2RheF9hb3BzIikNCj4gQ2M6IDxzdGFibGVAdmdlci5rZXJu
-ZWwub3JnPg0KDQpXaWxsIGRvLg0KDQo+IA0KPiBUaGlzIGxvb2tzIGdvb2QgdG8gbWUuDQo+IA0K
-PiBSZXZpZXdlZC1ieTogRGFuIFdpbGxpYW1zIDxkYW4uai53aWxsaWFtc0BpbnRlbC5jb20+DQoN
-ClRoYW5rcyENCi1Ub3NoaQ0KDQo=
+On Tue, Sep 11, 2018 at 8:42 AM, Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org> wrote:
+> Sync syscall to an existing DAX file needs to flush processor cache,
+> but it does not currently.  This is because 'ext4_da_aops' is set to
+> address_space_operations of existing DAX files, instead of 'ext4_dax_aops',
+> since S_DAX flag is set after ext4_set_aops() in the open path.
+>
+>   New file
+>   --------
+>   lookup_open
+>     ext4_create
+>       __ext4_new_inode
+>         ext4_set_inode_flags   // Set S_DAX flag
+>       ext4_set_aops            // Set aops to ext4_dax_aops
+>
+>   Existing file
+>   -------------
+>   lookup_open
+>     ext4_lookup
+>       ext4_iget
+>         ext4_set_aops          // Set aops to ext4_da_aops
+>         ext4_set_inode_flags   // Set S_DAX flag
+>
+> Change ext4_iget() to call ext4_set_inode_flags() before ext4_set_aops().
+>
+> Fixes: 5f0663bb4a64f588f0a2dd6d1be68d40f9af0086
+
+Same format nit:
+
+Fixes: 5f0663bb4a64 ("ext4, dax: introduce ext4_dax_aops")
+Cc: <stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+
+
+> Signed-off-by: Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+> Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> Cc: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+> Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+> Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+> ---
+>  fs/ext4/inode.c |    3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 775cd9b4af55..93cbbb859c40 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -4998,6 +4998,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>         if (ret)
+>                 goto bad_inode;
+>
+> +       ext4_set_inode_flags(inode);
+> +
+
+Hmm, does this have unintended behavior changes?
+
+I notice that there are some checks for flags "IS_APPEND(inode) ||
+IS_IMMUTABLE(inode)" *before* the call to ext4_set_inode_flags(). I
+didn't look too much deeper at whether those checks are bogus, but it
+would seem safer to do something like this for a lower risk fix.
+
+Thoughts?
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d0dd585add6a..1e9ab445c777 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4999,7 +4999,6 @@ struct inode *ext4_iget(struct super_block *sb,
+unsigned long ino)
+        if (S_ISREG(inode->i_mode)) {
+                inode->i_op = &ext4_file_inode_operations;
+                inode->i_fop = &ext4_file_operations;
+-               ext4_set_aops(inode);
+        } else if (S_ISDIR(inode->i_mode)) {
+                inode->i_op = &ext4_dir_inode_operations;
+                inode->i_fop = &ext4_dir_operations;
+@@ -5042,6 +5041,12 @@ struct inode *ext4_iget(struct super_block *sb,
+unsigned long ino)
+        }
+        brelse(iloc.bh);
+        ext4_set_inode_flags(inode);
++       /*
++        * Now that we have determined whether DAX is enabled, set the
++        * proper address spaces operations
++        */
++       if (S_ISREG(inode->i_mode))
++               ext4_set_aops(inode);
+
+        unlock_new_inode(inode);
+        return inode;
