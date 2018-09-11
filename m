@@ -1,7 +1,7 @@
 From: Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
-Subject: [PATCH 2/2] ext4, dax: set ext4_dax_aops for dax files
-Date: Tue, 11 Sep 2018 09:42:46 -0600
-Message-ID: <20180911154246.6844-3-toshi.kani@hpe.com>
+Subject: [PATCH 1/2] ext4, dax: update dax check to skip journal inode
+Date: Tue, 11 Sep 2018 09:42:45 -0600
+Message-ID: <20180911154246.6844-2-toshi.kani@hpe.com>
 References: <20180911154246.6844-1-toshi.kani@hpe.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -23,28 +23,18 @@ Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
 Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-Sync syscall to an existing DAX file needs to flush processor cache,
-but it does not currently.  This is because 'ext4_da_aops' is set to
-address_space_operations of existing DAX files, instead of 'ext4_dax_aops',
-since S_DAX flag is set after ext4_set_aops() in the open path.
+Ext4 mount path calls ext4_iget() to obtain the journal inode.  This
+inode does not support DAX, and 'ext4_da_aops' needs to be set.  It
+currently works for the DAX mount case because ext4_iget() always set
+'ext4_da_aops' to any regular files.
 
-  New file
-  --------
-  lookup_open
-    ext4_create
-      __ext4_new_inode
-        ext4_set_inode_flags   // Set S_DAX flag
-      ext4_set_aops            // Set aops to ext4_dax_aops
+  ext4_fill_super
+    ext4_load_journal
+      ext4_get_journal_inode
+        ext4_iget
 
-  Existing file
-  -------------
-  lookup_open
-    ext4_lookup
-      ext4_iget
-        ext4_set_aops          // Set aops to ext4_da_aops
-        ext4_set_inode_flags   // Set S_DAX flag
-
-Change ext4_iget() to call ext4_set_inode_flags() before ext4_set_aops().
+In preparation to fix ext4_iget() to set 'ext4_dax_aops' for DAX files,
+update ext4_should_use_dax() to return false for the journal inode.
 
 Fixes: 5f0663bb4a64f588f0a2dd6d1be68d40f9af0086
 Signed-off-by: Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
@@ -53,27 +43,39 @@ Cc: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
 Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
 Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
 ---
- fs/ext4/inode.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext4/ext4_jbd2.h |    8 ++++++++
+ fs/ext4/inode.c     |    2 ++
+ 2 files changed, 10 insertions(+)
 
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 15b6dd733780..9847dc980a0d 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -437,6 +437,14 @@ static inline int ext4_should_writeback_data(struct inode *inode)
+ 	return ext4_inode_journal_mode(inode) & EXT4_INODE_WRITEBACK_DATA_MODE;
+ }
+ 
++static inline int ext4_is_journal_inode(struct inode *inode)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	unsigned int journal_inum = le32_to_cpu(sbi->s_es->s_journal_inum);
++
++	return journal_inum && (journal_inum == inode->i_ino);
++}
++
+ /*
+  * This function controls whether or not we should try to go down the
+  * dioread_nolock code paths, which makes it safe to avoid taking
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 775cd9b4af55..93cbbb859c40 100644
+index d0dd585add6a..775cd9b4af55 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4998,6 +4998,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	if (ret)
- 		goto bad_inode;
- 
-+	ext4_set_inode_flags(inode);
-+
- 	if (S_ISREG(inode->i_mode)) {
- 		inode->i_op = &ext4_file_inode_operations;
- 		inode->i_fop = &ext4_file_operations;
-@@ -5043,7 +5045,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 		goto bad_inode;
- 	}
- 	brelse(iloc.bh);
--	ext4_set_inode_flags(inode);
- 
- 	unlock_new_inode(inode);
- 	return inode;
+@@ -4686,6 +4686,8 @@ static bool ext4_should_use_dax(struct inode *inode)
+ 		return false;
+ 	if (ext4_should_journal_data(inode))
+ 		return false;
++	if (ext4_is_journal_inode(inode))
++		return false;
+ 	if (ext4_has_inline_data(inode))
+ 		return false;
+ 	if (ext4_encrypted_inode(inode))
