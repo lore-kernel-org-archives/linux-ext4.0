@@ -1,91 +1,134 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/2] ext4, dax: update dax check to skip journal inode
-Date: Wed, 12 Sep 2018 11:24:22 +0200
-Message-ID: <20180912092422.GA7782@quack2.suse.cz>
+From: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+Subject: Re: [PATCH 2/2] ext4, dax: set ext4_dax_aops for dax files
+Date: Wed, 12 Sep 2018 11:31:40 +0200
+Message-ID: <20180912093140.GB7782@quack2.suse.cz>
 References: <20180911154246.6844-1-toshi.kani@hpe.com>
- <20180911154246.6844-2-toshi.kani@hpe.com>
+ <20180911154246.6844-3-toshi.kani@hpe.com>
+ <CAPcyv4iEZ7q0MV7n-_eovrJw_U9S3=pkY_nYwtw1jSBS7vPqCQ@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, dan.j.williams@intel.com, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org
-To: Toshi Kani <toshi.kani@hpe.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>, linux-nvdimm <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
+ Linux Kernel Mailing List <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+ Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
+ linux-ext4 <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+To: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <20180911154246.6844-2-toshi.kani@hpe.com>
-Sender: linux-kernel-owner@vger.kernel.org
+In-Reply-To: <CAPcyv4iEZ7q0MV7n-_eovrJw_U9S3=pkY_nYwtw1jSBS7vPqCQ-JsoAwUIsXosN+BqQ9rBEUg@public.gmane.org>
+List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
+List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
+List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
+List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
+ <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
+Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
+Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 11-09-18 09:42:45, Toshi Kani wrote:
-> Ext4 mount path calls ext4_iget() to obtain the journal inode.  This
-> inode does not support DAX, and 'ext4_da_aops' needs to be set.  It
-> currently works for the DAX mount case because ext4_iget() always set
-> 'ext4_da_aops' to any regular files.
+On Tue 11-09-18 11:15:18, Dan Williams wrote:
+> On Tue, Sep 11, 2018 at 8:42 AM, Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org> wrote:
+> > Sync syscall to an existing DAX file needs to flush processor cache,
+> > but it does not currently.  This is because 'ext4_da_aops' is set to
+> > address_space_operations of existing DAX files, instead of 'ext4_dax_aops',
+> > since S_DAX flag is set after ext4_set_aops() in the open path.
+> >
+> >   New file
+> >   --------
+> >   lookup_open
+> >     ext4_create
+> >       __ext4_new_inode
+> >         ext4_set_inode_flags   // Set S_DAX flag
+> >       ext4_set_aops            // Set aops to ext4_dax_aops
+> >
+> >   Existing file
+> >   -------------
+> >   lookup_open
+> >     ext4_lookup
+> >       ext4_iget
+> >         ext4_set_aops          // Set aops to ext4_da_aops
+> >         ext4_set_inode_flags   // Set S_DAX flag
+> >
+> > Change ext4_iget() to call ext4_set_inode_flags() before ext4_set_aops().
+> >
+> > Fixes: 5f0663bb4a64f588f0a2dd6d1be68d40f9af0086
 > 
->   ext4_fill_super
->     ext4_load_journal
->       ext4_get_journal_inode
->         ext4_iget
+> Same format nit:
 > 
-> In preparation to fix ext4_iget() to set 'ext4_dax_aops' for DAX files,
-> update ext4_should_use_dax() to return false for the journal inode.
+> Fixes: 5f0663bb4a64 ("ext4, dax: introduce ext4_dax_aops")
+> Cc: <stable-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 > 
-> Fixes: 5f0663bb4a64f588f0a2dd6d1be68d40f9af0086
-> Signed-off-by: Toshi Kani <toshi.kani@hpe.com>
-> Cc: Jan Kara <jack@suse.cz>
-> Cc: Dan Williams <dan.j.williams@intel.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+> 
+> > Signed-off-by: Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
+> > Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
+> > Cc: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
+> > Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+> > Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
+> > ---
+> >  fs/ext4/inode.c |    3 ++-
+> >  1 file changed, 2 insertions(+), 1 deletion(-)
+> >
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index 775cd9b4af55..93cbbb859c40 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -4998,6 +4998,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+> >         if (ret)
+> >                 goto bad_inode;
+> >
+> > +       ext4_set_inode_flags(inode);
+> > +
+> 
+> Hmm, does this have unintended behavior changes?
+> 
+> I notice that there are some checks for flags "IS_APPEND(inode) ||
+> IS_IMMUTABLE(inode)" *before* the call to ext4_set_inode_flags(). I
+> didn't look too much deeper at whether those checks are bogus, but it
+> would seem safer to do something like this for a lower risk fix.
+> 
+> Thoughts?
 
-The journal inode is similar to any other 'system' inode we have in ext4.
-We don't really expect any of the address space operations to be called for
-it because we don't use page cache with these inodes. Very similar
-situation is with e.g. quota files. So to me it seems this patch is not
-really necessary. Or did you observe any bad effects without this patch?
+Well, safer but it would leave the landmine around for others to hit.
+Toshi, please move the ext4_set_inode_flags() call to be just after the
+assignment:
 
-That being said I agree that it would be a good cleanup to define something
-like ext4_is_system_inode() and disable DAX for these inodes just because
-they are special. But I don't see a need for this as a part of your fix.
+	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
+
+in ext4_iget(). That way people won't introduce checks for i_flags that can
+never hit... And yes, it fixes also other bugs (mostly in sanity checks
+AFAICS) than the DAX issue.
 
 								Honza
 
-> ---
->  fs/ext4/ext4_jbd2.h |    8 ++++++++
->  fs/ext4/inode.c     |    2 ++
->  2 files changed, 10 insertions(+)
 > 
-> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-> index 15b6dd733780..9847dc980a0d 100644
-> --- a/fs/ext4/ext4_jbd2.h
-> +++ b/fs/ext4/ext4_jbd2.h
-> @@ -437,6 +437,14 @@ static inline int ext4_should_writeback_data(struct inode *inode)
->  	return ext4_inode_journal_mode(inode) & EXT4_INODE_WRITEBACK_DATA_MODE;
->  }
->  
-> +static inline int ext4_is_journal_inode(struct inode *inode)
-> +{
-> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> +	unsigned int journal_inum = le32_to_cpu(sbi->s_es->s_journal_inum);
-> +
-> +	return journal_inum && (journal_inum == inode->i_ino);
-> +}
-> +
->  /*
->   * This function controls whether or not we should try to go down the
->   * dioread_nolock code paths, which makes it safe to avoid taking
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index d0dd585add6a..775cd9b4af55 100644
+> index d0dd585add6a..1e9ab445c777 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -4686,6 +4686,8 @@ static bool ext4_should_use_dax(struct inode *inode)
->  		return false;
->  	if (ext4_should_journal_data(inode))
->  		return false;
-> +	if (ext4_is_journal_inode(inode))
-> +		return false;
->  	if (ext4_has_inline_data(inode))
->  		return false;
->  	if (ext4_encrypted_inode(inode))
+> @@ -4999,7 +4999,6 @@ struct inode *ext4_iget(struct super_block *sb,
+> unsigned long ino)
+>         if (S_ISREG(inode->i_mode)) {
+>                 inode->i_op = &ext4_file_inode_operations;
+>                 inode->i_fop = &ext4_file_operations;
+> -               ext4_set_aops(inode);
+>         } else if (S_ISDIR(inode->i_mode)) {
+>                 inode->i_op = &ext4_dir_inode_operations;
+>                 inode->i_fop = &ext4_dir_operations;
+> @@ -5042,6 +5041,12 @@ struct inode *ext4_iget(struct super_block *sb,
+> unsigned long ino)
+>         }
+>         brelse(iloc.bh);
+>         ext4_set_inode_flags(inode);
+> +       /*
+> +        * Now that we have determined whether DAX is enabled, set the
+> +        * proper address spaces operations
+> +        */
+> +       if (S_ISREG(inode->i_mode))
+> +               ext4_set_aops(inode);
+> 
+>         unlock_new_inode(inode);
+>         return inode;
 -- 
-Jan Kara <jack@suse.com>
+Jan Kara <jack-IBi9RG/b67k@public.gmane.org>
 SUSE Labs, CR
