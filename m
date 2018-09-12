@@ -1,18 +1,24 @@
-From: Wang Shilong <wangshilong1991@gmail.com>
-Subject: [PATCH v4 3/3] f2fs: fix setattr project check upon
+From: Wang Shilong <wshilong@ddn.com>
+Subject: Re: [PATCH v3 2/2] f2fs: fix setattr project check upon
  fssetxattr ioctl
-Date: Wed, 12 Sep 2018 08:57:18 +0900
-Message-ID: <1536710238-16858-3-git-send-email-wshilong1991@gmail.com>
-References: <1536710238-16858-1-git-send-email-wshilong1991@gmail.com>
+Date: Wed, 12 Sep 2018 00:00:06 +0000
+Message-ID: <84A27250-3DEB-4E64-AA85-9C67915FD34C@ddn.com>
+References: <1536623661-5912-1-git-send-email-wshilong1991@gmail.com>
+ <20180911224701.GF55456@jaegeuk-macbookpro.roam.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: adilger@dilger.ca, Wang Shilong <wangshilong1991@gmail.com>,
- wshilong@ddn.com, dchinner@redhat.com
-To: linux-ext4@vger.kernel.org,
-	linux-f2fs-devel@lists.sourceforge.net
+Content-Type: text/plain; charset="gb2312"
+Content-Transfer-Encoding: base64
+Cc: Andreas Dilger <adilger@dilger.ca>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ Wang Shilong <wangshilong1991@gmail.com>,
+ "dchinner@redhat.com" <dchinner@redhat.com>,
+ "linux-f2fs-devel@lists.sourceforge.net"
+ <linux-f2fs-devel@lists.sourceforge.net>
+To: Jaegeuk Kim <jaegeuk@kernel.org>
 Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <1536710238-16858-1-git-send-email-wshilong1991@gmail.com>
+In-Reply-To: <20180911224701.GF55456@jaegeuk-macbookpro.roam.corp.google.com>
+Content-Language: en-US
+Content-ID: <A095D4B292E5C842A4F5E28351B76AD8@ddn.com>
 List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
  <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
 List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
@@ -23,149 +29,95 @@ List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
 Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-From: Wang Shilong <wangshilong1991@gmail.com>
-
-Currently, project quota could be changed by fssetxattr
-ioctl, and existed permission check inode_owner_or_capable()
-is obviously not enough, just think that common users could
-change project id of file, that could make users to
-break project quota easily.
-
-This patch try to follow same regular of xfs project
-quota:
-
-"Project Quota ID state is only allowed to change from
-within the init namespace. Enforce that restriction only
-if we are trying to change the quota ID state.
-Everything else is allowed in user namespaces."
-
-Besides that, check and set project id'state should
-be an atomic operation, protect whole operation with
-inode lock.
-
-Signed-off-by: Wang Shilong <wshilong@ddn.com>
-Reviewed-by: Chao Yu <yuchao0@huawei.com>
----
-v3->v4: change function declaration to one line.
-v2->v3: remove inode_lock() and mnt_want_write_file()
-inside f2fs_ioc_setproject()
-v1->v2: rename f2fs_ioctl_setattr_check_projid()
----
- fs/f2fs/file.c | 60 +++++++++++++++++++++++++++++++-------------------
- 1 file changed, 37 insertions(+), 23 deletions(-)
-
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 5474aaa274b9..e7896c5da0c2 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -2617,34 +2617,26 @@ static int f2fs_ioc_setproject(struct file *filp, __u32 projid)
- 	if (projid_eq(kprojid, F2FS_I(inode)->i_projid))
- 		return 0;
- 
--	err = mnt_want_write_file(filp);
--	if (err)
--		return err;
--
- 	err = -EPERM;
--	inode_lock(inode);
--
- 	/* Is it quota file? Do not allow user to mess with it */
- 	if (IS_NOQUOTA(inode))
--		goto out_unlock;
-+		return err;
- 
- 	ipage = f2fs_get_node_page(sbi, inode->i_ino);
--	if (IS_ERR(ipage)) {
--		err = PTR_ERR(ipage);
--		goto out_unlock;
--	}
-+	if (IS_ERR(ipage))
-+		return PTR_ERR(ipage);
- 
- 	if (!F2FS_FITS_IN_INODE(F2FS_INODE(ipage), fi->i_extra_isize,
- 								i_projid)) {
- 		err = -EOVERFLOW;
- 		f2fs_put_page(ipage, 1);
--		goto out_unlock;
-+		return err;
- 	}
- 	f2fs_put_page(ipage, 1);
- 
- 	err = dquot_initialize(inode);
- 	if (err)
--		goto out_unlock;
-+		return err;
- 
- 	transfer_to[PRJQUOTA] = dqget(sb, make_kqid_projid(kprojid));
- 	if (!IS_ERR(transfer_to[PRJQUOTA])) {
-@@ -2658,9 +2650,6 @@ static int f2fs_ioc_setproject(struct file *filp, __u32 projid)
- 	inode->i_ctime = current_time(inode);
- out_dirty:
- 	f2fs_mark_inode_dirty_sync(inode, true);
--out_unlock:
--	inode_unlock(inode);
--	mnt_drop_write_file(filp);
- 	return err;
- }
- #else
-@@ -2736,6 +2725,30 @@ static int f2fs_ioc_fsgetxattr(struct file *filp, unsigned long arg)
- 	return 0;
- }
- 
-+static int f2fs_ioctl_check_project(struct inode *inode, struct fsxattr *fa)
-+{
-+	/*
-+	 * Project Quota ID state is only allowed to change from within the init
-+	 * namespace. Enforce that restriction only if we are trying to change
-+	 * the quota ID state. Everything else is allowed in user namespaces.
-+	 */
-+	if (current_user_ns() == &init_user_ns)
-+		return 0;
-+
-+	if (__kprojid_val(F2FS_I(inode)->i_projid) != fa->fsx_projid)
-+		return -EINVAL;
-+
-+	if (F2FS_I(inode)->i_flags & F2FS_PROJINHERIT_FL) {
-+		if (!(fa->fsx_xflags & FS_XFLAG_PROJINHERIT))
-+			return -EINVAL;
-+	} else {
-+		if (fa->fsx_xflags & FS_XFLAG_PROJINHERIT)
-+			return -EINVAL;
-+	}
-+
-+	return 0;
-+}
-+
- static int f2fs_ioc_fssetxattr(struct file *filp, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
-@@ -2763,19 +2776,20 @@ static int f2fs_ioc_fssetxattr(struct file *filp, unsigned long arg)
- 		return err;
- 
- 	inode_lock(inode);
-+	err = f2fs_ioctl_check_project(inode, &fa);
-+	if (err)
-+		goto out;
- 	flags = (fi->i_flags & ~F2FS_FL_XFLAG_VISIBLE) |
- 				(flags & F2FS_FL_XFLAG_VISIBLE);
- 	err = __f2fs_ioc_setflags(inode, flags);
--	inode_unlock(inode);
--	mnt_drop_write_file(filp);
- 	if (err)
--		return err;
-+		goto out;
- 
- 	err = f2fs_ioc_setproject(filp, fa.fsx_projid);
--	if (err)
--		return err;
--
--	return 0;
-+out:
-+	inode_unlock(inode);
-+	mnt_drop_write_file(filp);
-+	return err;
- }
- 
- int f2fs_pin_file_control(struct inode *inode, bool inc)
--- 
-2.17.1
+DQoNCj4g1NogMjAxOMTqOdTCMTLI1aOsyc/O5zY6NDejrEphZWdldWsgS2ltIDxqYWVnZXVrQGtl
+cm5lbC5vcmc+INC0tcCjug0KPiANCj4gT24gMDkvMTEsIFdhbmcgU2hpbG9uZyB3cm90ZToNCj4+
+IEZyb206IFdhbmcgU2hpbG9uZyA8d2FuZ3NoaWxvbmcxOTkxQGdtYWlsLmNvbT4NCj4+IA0KPj4g
+Q3VycmVudGx5LCBwcm9qZWN0IHF1b3RhIGNvdWxkIGJlIGNoYW5nZWQgYnkgZnNzZXR4YXR0cg0K
+Pj4gaW9jdGwsIGFuZCBleGlzdGVkIHBlcm1pc3Npb24gY2hlY2sgaW5vZGVfb3duZXJfb3JfY2Fw
+YWJsZSgpDQo+PiBpcyBvYnZpb3VzbHkgbm90IGVub3VnaCwganVzdCB0aGluayB0aGF0IGNvbW1v
+biB1c2VycyBjb3VsZA0KPj4gY2hhbmdlIHByb2plY3QgaWQgb2YgZmlsZSwgdGhhdCBjb3VsZCBt
+YWtlIHVzZXJzIHRvDQo+PiBicmVhayBwcm9qZWN0IHF1b3RhIGVhc2lseS4NCj4+IA0KPj4gVGhp
+cyBwYXRjaCB0cnkgdG8gZm9sbG93IHNhbWUgcmVndWxhciBvZiB4ZnMgcHJvamVjdA0KPj4gcXVv
+dGE6DQo+PiANCj4+ICJQcm9qZWN0IFF1b3RhIElEIHN0YXRlIGlzIG9ubHkgYWxsb3dlZCB0byBj
+aGFuZ2UgZnJvbQ0KPj4gd2l0aGluIHRoZSBpbml0IG5hbWVzcGFjZS4gRW5mb3JjZSB0aGF0IHJl
+c3RyaWN0aW9uIG9ubHkNCj4+IGlmIHdlIGFyZSB0cnlpbmcgdG8gY2hhbmdlIHRoZSBxdW90YSBJ
+RCBzdGF0ZS4NCj4+IEV2ZXJ5dGhpbmcgZWxzZSBpcyBhbGxvd2VkIGluIHVzZXIgbmFtZXNwYWNl
+cy4iDQo+PiANCj4+IEJlc2lkZXMgdGhhdCwgY2hlY2sgYW5kIHNldCBwcm9qZWN0IGlkJ3N0YXRl
+IHNob3VsZA0KPj4gYmUgYW4gYXRvbWljIG9wZXJhdGlvbiwgcHJvdGVjdCB3aG9sZSBvcGVyYXRp
+b24gd2l0aA0KPj4gaW5vZGUgbG9jay4NCj4+IA0KPj4gU2lnbmVkLW9mZi1ieTogV2FuZyBTaGls
+b25nIDx3c2hpbG9uZ0BkZG4uY29tPg0KPj4gLS0tDQo+PiB2Mi0+djM6IHJlbW92ZSBpbm9kZV9s
+b2NrKCkgYW5kIG1udF93YW50X3dyaXRlX2ZpbGUoKQ0KPj4gaW5zaWRlIGYyZnNfaW9jX3NldHBy
+b2plY3QoKQ0KPj4gdjEtPnYyOiByZW5hbWUgZjJmc19pb2N0bF9zZXRhdHRyX2NoZWNrX3Byb2pp
+ZCgpDQo+PiB0byBmMmZzX2lvY3RsX2NoZWNrX3Byb2plY3QoKQ0KPj4gZnMvZjJmcy9maWxlLmMg
+fCA2MSArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tDQo+PiAxIGZpbGUgY2hhbmdlZCwgMzggaW5zZXJ0aW9ucygrKSwgMjMgZGVsZXRpb25z
+KC0pDQo+PiANCj4+IGRpZmYgLS1naXQgYS9mcy9mMmZzL2ZpbGUuYyBiL2ZzL2YyZnMvZmlsZS5j
+DQo+PiBpbmRleCA1NDc0YWFhLi5mNTE3MGU2IDEwMDY0NA0KPj4gLS0tIGEvZnMvZjJmcy9maWxl
+LmMNCj4+ICsrKyBiL2ZzL2YyZnMvZmlsZS5jDQo+PiBAQCAtMjYxNywzNCArMjYxNywyNiBAQCBz
+dGF0aWMgaW50IGYyZnNfaW9jX3NldHByb2plY3Qoc3RydWN0IGZpbGUgKmZpbHAsIF9fdTMyIHBy
+b2ppZCkNCj4+IAlpZiAocHJvamlkX2VxKGtwcm9qaWQsIEYyRlNfSShpbm9kZSktPmlfcHJvamlk
+KSkNCj4+IAkJcmV0dXJuIDA7DQo+PiANCj4+IC0JZXJyID0gbW50X3dhbnRfd3JpdGVfZmlsZShm
+aWxwKTsNCj4+IC0JaWYgKGVycikNCj4+IC0JCXJldHVybiBlcnI7DQo+PiAtDQo+PiAJZXJyID0g
+LUVQRVJNOw0KPj4gLQlpbm9kZV9sb2NrKGlub2RlKTsNCj4+IC0NCj4+IAkvKiBJcyBpdCBxdW90
+YSBmaWxlPyBEbyBub3QgYWxsb3cgdXNlciB0byBtZXNzIHdpdGggaXQgKi8NCj4+IAlpZiAoSVNf
+Tk9RVU9UQShpbm9kZSkpDQo+PiAtCQlnb3RvIG91dF91bmxvY2s7DQo+PiArCQlyZXR1cm4gZXJy
+Ow0KPj4gDQo+PiAJaXBhZ2UgPSBmMmZzX2dldF9ub2RlX3BhZ2Uoc2JpLCBpbm9kZS0+aV9pbm8p
+Ow0KPj4gLQlpZiAoSVNfRVJSKGlwYWdlKSkgew0KPj4gLQkJZXJyID0gUFRSX0VSUihpcGFnZSk7
+DQo+PiAtCQlnb3RvIG91dF91bmxvY2s7DQo+PiAtCX0NCj4+ICsJaWYgKElTX0VSUihpcGFnZSkp
+DQo+PiArCQlyZXR1cm4gUFRSX0VSUihpcGFnZSk7DQo+PiANCj4+IAlpZiAoIUYyRlNfRklUU19J
+Tl9JTk9ERShGMkZTX0lOT0RFKGlwYWdlKSwgZmktPmlfZXh0cmFfaXNpemUsDQo+PiAJCQkJCQkJ
+CWlfcHJvamlkKSkgew0KPj4gCQllcnIgPSAtRU9WRVJGTE9XOw0KPj4gCQlmMmZzX3B1dF9wYWdl
+KGlwYWdlLCAxKTsNCj4+IC0JCWdvdG8gb3V0X3VubG9jazsNCj4+ICsJCXJldHVybiBlcnI7DQo+
+PiAJfQ0KPj4gCWYyZnNfcHV0X3BhZ2UoaXBhZ2UsIDEpOw0KPj4gDQo+PiAJZXJyID0gZHF1b3Rf
+aW5pdGlhbGl6ZShpbm9kZSk7DQo+PiAJaWYgKGVycikNCj4+IC0JCWdvdG8gb3V0X3VubG9jazsN
+Cj4+ICsJCXJldHVybiBlcnI7DQo+PiANCj4+IAl0cmFuc2Zlcl90b1tQUkpRVU9UQV0gPSBkcWdl
+dChzYiwgbWFrZV9rcWlkX3Byb2ppZChrcHJvamlkKSk7DQo+PiAJaWYgKCFJU19FUlIodHJhbnNm
+ZXJfdG9bUFJKUVVPVEFdKSkgew0KPj4gQEAgLTI2NTgsOSArMjY1MCw2IEBAIHN0YXRpYyBpbnQg
+ZjJmc19pb2Nfc2V0cHJvamVjdChzdHJ1Y3QgZmlsZSAqZmlscCwgX191MzIgcHJvamlkKQ0KPj4g
+CWlub2RlLT5pX2N0aW1lID0gY3VycmVudF90aW1lKGlub2RlKTsNCj4+IG91dF9kaXJ0eToNCj4+
+IAlmMmZzX21hcmtfaW5vZGVfZGlydHlfc3luYyhpbm9kZSwgdHJ1ZSk7DQo+PiAtb3V0X3VubG9j
+azoNCj4+IC0JaW5vZGVfdW5sb2NrKGlub2RlKTsNCj4+IC0JbW50X2Ryb3Bfd3JpdGVfZmlsZShm
+aWxwKTsNCj4+IAlyZXR1cm4gZXJyOw0KPj4gfQ0KPj4gI2Vsc2UNCj4+IEBAIC0yNzM2LDYgKzI3
+MjUsMzEgQEAgc3RhdGljIGludCBmMmZzX2lvY19mc2dldHhhdHRyKHN0cnVjdCBmaWxlICpmaWxw
+LCB1bnNpZ25lZCBsb25nIGFyZykNCj4+IAlyZXR1cm4gMDsNCj4+IH0NCj4+IA0KPj4gK3N0YXRp
+YyBpbnQNCj4+ICtmMmZzX2lvY3RsX2NoZWNrX3Byb2plY3Qoc3RydWN0IGlub2RlICppbm9kZSwg
+c3RydWN0IGZzeGF0dHIgKmZhKQ0KPiANCj4gV2UncmUgbm90IGZvbGxvd2luZyB0aGlzIGNvZGlu
+ZyBzdHlsZS4gTGV0IG1lIGFsbG93IHRvIGRlY2xhcmUgbGlrZSB0aGlzLg0KPiANCj4gc3RhdGlj
+IGludCBmMmZzX2lvY3RsX6GtDQoNCkhpIEpLLA0KDQogICBHb29kIHBvaW50LCBJIGZvbGxvd2Vk
+IEx1c3RyZSBjb2RlcyBzdHlsZXMgd2hpY2ggd2FzIGEgYmFkDQpFeGFtcGxlIG9mIHRoaXOhrUxP
+TC4NCg0KVGhhbmtzLA0KU2hpbG9uZw0KDQo+IA0KPiBUaGFua3MsDQo+IA0KPj4gK3sNCj4+ICsJ
+LyoNCj4+ICsJICogUHJvamVjdCBRdW90YSBJRCBzdGF0ZSBpcyBvbmx5IGFsbG93ZWQgdG8gY2hh
+bmdlIGZyb20gd2l0aGluIHRoZSBpbml0DQo+PiArCSAqIG5hbWVzcGFjZS4gRW5mb3JjZSB0aGF0
+IHJlc3RyaWN0aW9uIG9ubHkgaWYgd2UgYXJlIHRyeWluZyB0byBjaGFuZ2UNCj4+ICsJICogdGhl
+IHF1b3RhIElEIHN0YXRlLiBFdmVyeXRoaW5nIGVsc2UgaXMgYWxsb3dlZCBpbiB1c2VyIG5hbWVz
+cGFjZXMuDQo+PiArCSAqLw0KPj4gKwlpZiAoY3VycmVudF91c2VyX25zKCkgPT0gJmluaXRfdXNl
+cl9ucykNCj4+ICsJCXJldHVybiAwOw0KPj4gKw0KPj4gKwlpZiAoX19rcHJvamlkX3ZhbChGMkZT
+X0koaW5vZGUpLT5pX3Byb2ppZCkgIT0gZmEtPmZzeF9wcm9qaWQpDQo+PiArCQlyZXR1cm4gLUVJ
+TlZBTDsNCj4+ICsNCj4+ICsJaWYgKEYyRlNfSShpbm9kZSktPmlfZmxhZ3MgJiBGMkZTX1BST0pJ
+TkhFUklUX0ZMKSB7DQo+PiArCQlpZiAoIShmYS0+ZnN4X3hmbGFncyAmIEZTX1hGTEFHX1BST0pJ
+TkhFUklUKSkNCj4+ICsJCQlyZXR1cm4gLUVJTlZBTDsNCj4+ICsJfSBlbHNlIHsNCj4+ICsJCWlm
+IChmYS0+ZnN4X3hmbGFncyAmIEZTX1hGTEFHX1BST0pJTkhFUklUKQ0KPj4gKwkJCXJldHVybiAt
+RUlOVkFMOw0KPj4gKwl9DQo+PiArDQo+PiArCXJldHVybiAwOw0KPj4gK30NCj4+ICsNCj4+IHN0
+YXRpYyBpbnQgZjJmc19pb2NfZnNzZXR4YXR0cihzdHJ1Y3QgZmlsZSAqZmlscCwgdW5zaWduZWQg
+bG9uZyBhcmcpDQo+PiB7DQo+PiAJc3RydWN0IGlub2RlICppbm9kZSA9IGZpbGVfaW5vZGUoZmls
+cCk7DQo+PiBAQCAtMjc2MywxOSArMjc3NywyMCBAQCBzdGF0aWMgaW50IGYyZnNfaW9jX2Zzc2V0
+eGF0dHIoc3RydWN0IGZpbGUgKmZpbHAsIHVuc2lnbmVkIGxvbmcgYXJnKQ0KPj4gCQlyZXR1cm4g
+ZXJyOw0KPj4gDQo+PiAJaW5vZGVfbG9jayhpbm9kZSk7DQo+PiArCWVyciA9IGYyZnNfaW9jdGxf
+Y2hlY2tfcHJvamVjdChpbm9kZSwgJmZhKTsNCj4+ICsJaWYgKGVycikNCj4+ICsJCWdvdG8gb3V0
+Ow0KPj4gCWZsYWdzID0gKGZpLT5pX2ZsYWdzICYgfkYyRlNfRkxfWEZMQUdfVklTSUJMRSkgfA0K
+Pj4gCQkJCShmbGFncyAmIEYyRlNfRkxfWEZMQUdfVklTSUJMRSk7DQo+PiAJZXJyID0gX19mMmZz
+X2lvY19zZXRmbGFncyhpbm9kZSwgZmxhZ3MpOw0KPj4gLQlpbm9kZV91bmxvY2soaW5vZGUpOw0K
+Pj4gLQltbnRfZHJvcF93cml0ZV9maWxlKGZpbHApOw0KPj4gCWlmIChlcnIpDQo+PiAtCQlyZXR1
+cm4gZXJyOw0KPj4gKwkJZ290byBvdXQ7DQo+PiANCj4+IAllcnIgPSBmMmZzX2lvY19zZXRwcm9q
+ZWN0KGZpbHAsIGZhLmZzeF9wcm9qaWQpOw0KPj4gLQlpZiAoZXJyKQ0KPj4gLQkJcmV0dXJuIGVy
+cjsNCj4+IC0NCj4+IC0JcmV0dXJuIDA7DQo+PiArb3V0Og0KPj4gKwlpbm9kZV91bmxvY2soaW5v
+ZGUpOw0KPj4gKwltbnRfZHJvcF93cml0ZV9maWxlKGZpbHApOw0KPj4gKwlyZXR1cm4gZXJyOw0K
+Pj4gfQ0KPj4gDQo+PiBpbnQgZjJmc19waW5fZmlsZV9jb250cm9sKHN0cnVjdCBpbm9kZSAqaW5v
+ZGUsIGJvb2wgaW5jKQ0KPj4gLS0gDQo+PiAxLjguMy4xDQo+PiANCj4+IA0KPj4gDQo+PiBfX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fXw0KPj4gTGludXgtZjJm
+cy1kZXZlbCBtYWlsaW5nIGxpc3QNCj4+IExpbnV4LWYyZnMtZGV2ZWxAbGlzdHMuc291cmNlZm9y
+Z2UubmV0DQo+PiBodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0cy9saXN0aW5mby9s
+aW51eC1mMmZzLWRldmVsDQoNCgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fXwpMaW51eC1mMmZzLWRldmVsIG1haWxpbmcgbGlzdApMaW51eC1mMmZzLWRldmVs
+QGxpc3RzLnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0
+cy9saXN0aW5mby9saW51eC1mMmZzLWRldmVsCg==
