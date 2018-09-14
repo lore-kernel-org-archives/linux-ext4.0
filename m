@@ -1,80 +1,60 @@
-From: "Kani, Toshi" <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
-Subject: Re: [PATCH 1/2] ext4, dax: update dax check to skip journal inode
-Date: Wed, 12 Sep 2018 16:52:12 +0000
-Message-ID: <80fb47d31dfced7cf8d115bd55768447e9e53a84.camel@hpe.com>
-References: <20180911154246.6844-1-toshi.kani@hpe.com>
- <20180911154246.6844-2-toshi.kani@hpe.com>
- <20180912092422.GA7782@quack2.suse.cz>
- <92faf51ac89e62dcd67e39cc66eef60966d1263c.camel@hpe.com>
- <20180912162046.GA23522@quack2.suse.cz>
+From: =?UTF-8?B?54Sm5pmT5Yas?= <milestonejxd@gmail.com>
+Subject: metadata operation reordering regards to crash
+Date: Fri, 14 Sep 2018 17:06:44 +0800
+Message-ID: <CAJDTihzzLV3qwg0tGH_D4xAjCrgMy+oc4H9snpnMC_RC2q7nyw@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: "tytso-3s7WtUTddSA@public.gmane.org" <tytso-3s7WtUTddSA@public.gmane.org>,
- "linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org" <linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>,
- "linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
- "adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org" <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>,
- "linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-To: "jack-AlSwsSmVLrQ@public.gmane.org" <jack-AlSwsSmVLrQ@public.gmane.org>
-Return-path: <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-In-Reply-To: <20180912162046.GA23522-4I4JzKEfoa/jFM9bn6wA6Q@public.gmane.org>
-Content-Language: en-US
-Content-ID: <1B2CEFF2271F7948B0551D7A14AAFC21-mmYPd6ayCNGroOM5E8FhRbjFIynDaujOfM0AETQt39g@public.gmane.org>
-List-Unsubscribe: <https://lists.01.org/mailman/options/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://lists.01.org/pipermail/linux-nvdimm/>
-List-Post: <mailto:linux-nvdimm-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
-List-Help: <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.01.org/mailman/listinfo/linux-nvdimm>,
- <mailto:linux-nvdimm-request-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org?subject=subscribe>
-Errors-To: linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org
-Sender: "Linux-nvdimm" <linux-nvdimm-bounces-hn68Rpc1hR1g9hUCZPvPmw@public.gmane.org>
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-kernel@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        adilger.kernel@dilger.ca
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 2018-09-12 at 18:20 +0200, Jan Kara wrote:
-> On Wed 12-09-18 15:47:12, Kani, Toshi wrote:
-> > On Wed, 2018-09-12 at 11:24 +0200, Jan Kara wrote:
-> > > On Tue 11-09-18 09:42:45, Toshi Kani wrote:
-> > > > Ext4 mount path calls ext4_iget() to obtain the journal inode.  This
-> > > > inode does not support DAX, and 'ext4_da_aops' needs to be set.  It
-> > > > currently works for the DAX mount case because ext4_iget() always set
-> > > > 'ext4_da_aops' to any regular files.
-> > > > 
-> > > >   ext4_fill_super
-> > > >     ext4_load_journal
-> > > >       ext4_get_journal_inode
-> > > >         ext4_iget
-> > > > 
-> > > > In preparation to fix ext4_iget() to set 'ext4_dax_aops' for DAX files,
-> > > > update ext4_should_use_dax() to return false for the journal inode.
-> > > > 
-> > > > Fixes: 5f0663bb4a64f588f0a2dd6d1be68d40f9af0086
-> > > > Signed-off-by: Toshi Kani <toshi.kani-ZPxbGqLxI0U@public.gmane.org>
-> > > > Cc: Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>
-> > > > Cc: Dan Williams <dan.j.williams-ral2JQCrhuEAvxtiuMwx3w@public.gmane.org>
-> > > > Cc: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-> > > > Cc: Andreas Dilger <adilger.kernel-m1MBpc4rdrD3fQ9qLvQP4Q@public.gmane.org>
-> > > 
-> > > The journal inode is similar to any other 'system' inode we have in ext4.
-> > > We don't really expect any of the address space operations to be called for
-> > > it because we don't use page cache with these inodes. Very similar
-> > > situation is with e.g. quota files. So to me it seems this patch is not
-> > > really necessary. Or did you observe any bad effects without this patch?
-> > 
-> > Yes, without this change, mount fails with the error below.  I believe
-> > .bmap operation in ext4_da_aops is necessary for this case.
-> > 
-> >   jbd2_journal_init_inode: Cannot locate journal superblock
-> >   EXT4-fs
-> > (pmem1): Could not load journal inode
-> 
-> Ah, OK, forgot about this. Then how about adding:
-> 	.bmap                   = ext4_bmap,
-> 
-> to ext4_dax_aops? .bmap is completely fine for DAX inodes and there's no
-> reason to disallow it.
+Hi, all,
 
-Yes, mount -o dax succeeds with the added ext4_bmap in ext4_dax_aops.
+A probably bit of complex question:
+Does nowadays practical filesystems, eg., extX, btfs, preserve metadata
+operation order through a crash/power failure?
 
-Thanks!
--Toshi
+What I know is modern filesystems ensure metadata consistency
+after crash/power failure. Journal filesystems like extX do that by
+write-ahead logging of metadata operations into transactions. Other
+filesystems do that in various ways as btfs do that by COW.
+
+What I'm not so far clear is whether these filesystems preserve
+metadata operation order after a crash.
+
+For example,
+op 1.  rename(A, B)
+op 2.  rename(C, D)
+
+As mentioned above,  metadata consistency is ensured after a crash.
+Thus, B is either the original B(or not exists) or has been replaced by A.
+The same to D.
+
+Is it possible that, after a crash, D has been replaced by C but B is still
+the original file(or not exists)?
+
+Or, from the view of implementation, before the crash
+- in a journal filesystem,
+Is the atomic transaction `rename(C, D)` permitted to be written to disk journal
+before the transaction `rename(A, B)`?
+- in other filesystems, say btfs,
+Is it permit to reorder `rename(C,D)` and `rename(A,B)` atomic operation hiting
+disk?
+
+The question is meaningful as many applications do that:
+if (flag_file_says_need_generate_data) {
+    open_write_sync_close(data_tmp);
+    rename(data_tmp, data);
+
+    open_write_sync_close(flag_file_tmp, no_need_to_generate_data);
+    rename(flag_file_tmp, flag_file)
+}
+use_data_file()
+
+If flag is here but data is not after a crash, that is a problem.
+
+Thanks,
+Trol
