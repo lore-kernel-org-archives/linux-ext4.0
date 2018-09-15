@@ -1,73 +1,45 @@
-From: =?UTF-8?B?54Sm5pmT5Yas?= <milestonejxd@gmail.com>
-Subject: Re: metadata operation reordering regards to crash
-Date: Sat, 15 Sep 2018 14:58:07 +0800
-Message-ID: <CAJDTihx2MEpdWdp6V6AsOD35Lh_6R=uFXBGtO8fL8s0o5C_t8Q@mail.gmail.com>
-References: <CAJDTihzzLV3qwg0tGH_D4xAjCrgMy+oc4H9snpnMC_RC2q7nyw@mail.gmail.com>
- <20180914222336.GD16550@dastard>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: Re: [RFC PATCH 01/10] fs-verity: add setup code, UAPI, and Kconfig
+Date: Sat, 15 Sep 2018 11:27:03 -0400
+Message-ID: <20180915152703.GA9979@thunk.org>
+References: <20180824161642.1144-1-ebiggers@kernel.org>
+ <20180824161642.1144-2-ebiggers@kernel.org>
+ <1535132549.2855027.1485213752.129E3334@webmail.messagingengine.com>
+ <20180825044852.GB726@sol.localdomain>
+ <1536930930.1003187.1508104496.6465C44D@webmail.messagingengine.com>
+ <20180914162142.GA734@sol.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        adilger.kernel@dilger.ca, linux-kernel@vger.kernel.org
-To: david@fromorbit.com, cmumford@cmumford.com,
-        linux-btrfs@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Colin Walters <walters@verbum.org>, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+        Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
+        Michael Halcrow <mhalcrow@google.com>,
+        Victor Hsieh <victorhsieh@google.com>
+To: Eric Biggers <ebiggers@kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180914222336.GD16550@dastard>
+Content-Disposition: inline
+In-Reply-To: <20180914162142.GA734@sol.localdomain>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Sat, Sep 15, 2018 at 6:23 AM Dave Chinner <david@fromorbit.com> wrote:
->
-> On Fri, Sep 14, 2018 at 05:06:44PM +0800, =E7=84=A6=E6=99=93=E5=86=AC wro=
-te:
-> > Hi, all,
-> >
-> > A probably bit of complex question:
-> > Does nowadays practical filesystems, eg., extX, btfs, preserve metadata
-> > operation order through a crash/power failure?
->
-> Yes.
->
-> Behaviour is filesystem dependent, but we have tests in fstests that
-> specifically exercise order preservation across filesystem failures.
->
-> > What I know is modern filesystems ensure metadata consistency
-> > after crash/power failure. Journal filesystems like extX do that by
-> > write-ahead logging of metadata operations into transactions. Other
-> > filesystems do that in various ways as btfs do that by COW.
-> >
-> > What I'm not so far clear is whether these filesystems preserve
-> > metadata operation order after a crash.
-> >
-> > For example,
-> > op 1.  rename(A, B)
-> > op 2.  rename(C, D)
-> >
-> > As mentioned above,  metadata consistency is ensured after a crash.
-> > Thus, B is either the original B(or not exists) or has been replaced by=
- A.
-> > The same to D.
-> >
-> > Is it possible that, after a crash, D has been replaced by C but B is s=
-till
-> > the original file(or not exists)?
->
-> Not for XFS, ext4, btrfs or f2fs. Other filesystems might be
-> different.
+On Fri, Sep 14, 2018 at 09:21:43AM -0700, Eric Biggers wrote:
+> > 
+> > Now AIUI, Zip files have an internal header that contains e.g. the size and
+> > indexes into the internal files.  So if someone added random data to the end
+> > of a zip file, nothing is going to end up actually reading it.
+> 
+> After the verity bit is enabled, the verity metadata is not visible to
+> userspace.  Yes, that means i_size is adjusted too.  Also all contents
+> modifications are denied, including appends.
 
-Thanks, Dave,
+One of this reasons why this is important is that ZIP files *also*
+have an central directory at the end.  And in the case of the APK
+files, there is an in-band signature block which is located at at the
+end of the last file and the central directory, which can be located
+by starting at the end of the file, finding the length of the central
+directory, and then backing up to find the signature block.
 
-I found this archive:
-https://www.mail-archive.com/linux-btrfs@vger.kernel.org/msg31937.html
-
-It seems btrfs people thinks reordering could happen.
-
-It is a relatively old reply. Has the implement changed? Or is there
-some new standard that requires reordering not happen?
-
-> Cheers,
->
-> Dave,
-> --
-> Dave Chinner
-> david@fromorbit.com
+    	 	       	    		- Ted
