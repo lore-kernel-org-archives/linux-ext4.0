@@ -1,69 +1,100 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2 3/3] ext2, dax: set ext2_dax_aops for dax files
-Date: Mon, 17 Sep 2018 18:37:09 +0200
-Message-ID: <20180917163709.GA10257@quack2.suse.cz>
-References: <20180914145114.11122-1-toshi.kani@hpe.com>
- <20180914145114.11122-4-toshi.kani@hpe.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: jack@suse.cz, dan.j.williams@intel.com, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
-        stable@vger.kernel.org
-To: Toshi Kani <toshi.kani@hpe.com>
-Return-path: <stable-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20180914145114.11122-4-toshi.kani@hpe.com>
-Sender: stable-owner@vger.kernel.org
+From: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+Subject: [PATCH] docs: fix some broken documentation references
+Date: Mon, 17 Sep 2018 15:02:34 -0400
+Message-ID: <6b47bf56b898c48a0dc3cd42283c9e5c7c23367a.1537210894.git.mchehab+samsung@kernel.org>
+Cc: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Linux Media Mailing List <linux-media@vger.kernel.org>,
+        Mauro Carvalho Chehab <mchehab@infradead.org>,
+        Jonathan Corbet <corbet@lwn.net>, Jan Kara <jack@suse.com>,
+        Stephen Hemminger <stephen@networkplumber.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Michael Ellerman <mpe@ellerman.id.au>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Arnd Bergmann <arnd@arndb.de>, linux-doc@vger.kernel.org,
+        linux-ext4@vger.kernel.org, bridge@lists.linux-foundation.org,
+        netdev@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <netdev-owner@vger.kernel.org>
+Sender: netdev-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Fri 14-09-18 08:51:14, Toshi Kani wrote:
-> Sync syscall to DAX file needs to flush processor cache, but it
-> currently does not flush to existing DAX files.  This is because
-> 'ext2_da_aops' is set to address_space_operations of existing DAX
-> files, instead of 'ext2_dax_aops', since S_DAX flag is set after
-> ext2_set_aops() in the open path.
-> 
-> Similar to ext4, change ext2_iget() to initialize i_flags before
-> ext2_set_aops().
-> 
-> Fixes: fb094c90748f ("ext2, dax: introduce ext2_dax_aops")
-> Signed-off-by: Toshi Kani <toshi.kani@hpe.com>
-> Suggested-by: Jan Kara <jack@suse.cz>
-> Cc: Jan Kara <jack@suse.cz>
-> Cc: Dan Williams <dan.j.williams@intel.com>
-> Cc: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Andreas Dilger <adilger.kernel@dilger.ca>
-> Cc: <stable@vger.kernel.org>
+Some documentation files received recent changes and are
+pointing to wrong places.
 
-Thanks. I'll take the patch through my tree.
+Those references can easily fixed with the help of a
+script:
 
-								Honza
+	$ ./scripts/documentation-file-ref-check --fix
 
-> ---
->  fs/ext2/inode.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-> index 7f7ee18fe179..e4bb9386c045 100644
-> --- a/fs/ext2/inode.c
-> +++ b/fs/ext2/inode.c
-> @@ -1448,6 +1448,7 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
->  	}
->  	inode->i_blocks = le32_to_cpu(raw_inode->i_blocks);
->  	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
-> +	ext2_set_inode_flags(inode);
->  	ei->i_faddr = le32_to_cpu(raw_inode->i_faddr);
->  	ei->i_frag_no = raw_inode->i_frag;
->  	ei->i_frag_size = raw_inode->i_fsize;
-> @@ -1517,7 +1518,6 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
->  			   new_decode_dev(le32_to_cpu(raw_inode->i_block[1])));
->  	}
->  	brelse (bh);
-> -	ext2_set_inode_flags(inode);
->  	unlock_new_inode(inode);
->  	return inode;
->  	
+Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+---
+ Documentation/filesystems/dax.txt  | 2 +-
+ Documentation/filesystems/ext2.txt | 2 +-
+ MAINTAINERS                        | 4 ++--
+ net/bridge/Kconfig                 | 2 +-
+ 4 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/Documentation/filesystems/dax.txt b/Documentation/filesystems/dax.txt
+index 70cb68bed2e8..bc393e0a22b8 100644
+--- a/Documentation/filesystems/dax.txt
++++ b/Documentation/filesystems/dax.txt
+@@ -75,7 +75,7 @@ exposure of uninitialized data through mmap.
+ 
+ These filesystems may be used for inspiration:
+ - ext2: see Documentation/filesystems/ext2.txt
+-- ext4: see Documentation/filesystems/ext4.txt
++- ext4: see Documentation/filesystems/ext4/ext4.rst
+ - xfs:  see Documentation/filesystems/xfs.txt
+ 
+ 
+diff --git a/Documentation/filesystems/ext2.txt b/Documentation/filesystems/ext2.txt
+index 81c0becab225..a45c9fc0747b 100644
+--- a/Documentation/filesystems/ext2.txt
++++ b/Documentation/filesystems/ext2.txt
+@@ -358,7 +358,7 @@ and are copied into the filesystem.  If a transaction is incomplete at
+ the time of the crash, then there is no guarantee of consistency for
+ the blocks in that transaction so they are discarded (which means any
+ filesystem changes they represent are also lost).
+-Check Documentation/filesystems/ext4.txt if you want to read more about
++Check Documentation/filesystems/ext4/ext4.rst if you want to read more about
+ ext4 and journaling.
+ 
+ References
+diff --git a/MAINTAINERS b/MAINTAINERS
+index 9989925f658d..078a4cf6d064 100644
+--- a/MAINTAINERS
++++ b/MAINTAINERS
+@@ -840,7 +840,7 @@ ANALOG DEVICES INC ADGS1408 DRIVER
+ M:	Mircea Caprioru <mircea.caprioru@analog.com>
+ S:	Supported
+ F:	drivers/mux/adgs1408.c
+-F:	Documentation/devicetree/bindings/mux/adgs1408.txt
++F:	Documentation/devicetree/bindings/mux/adi,adgs1408.txt
+ 
+ ANALOG DEVICES INC ADP5061 DRIVER
+ M:	Stefan Popa <stefan.popa@analog.com>
+@@ -5515,7 +5515,7 @@ W:	http://ext4.wiki.kernel.org
+ Q:	http://patchwork.ozlabs.org/project/linux-ext4/list/
+ T:	git git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+ S:	Maintained
+-F:	Documentation/filesystems/ext4.txt
++F:	Documentation/filesystems/ext4/ext4.rst
+ F:	fs/ext4/
+ 
+ Extended Verification Module (EVM)
+diff --git a/net/bridge/Kconfig b/net/bridge/Kconfig
+index aa0d3b2f1bb7..3625d6ade45c 100644
+--- a/net/bridge/Kconfig
++++ b/net/bridge/Kconfig
+@@ -17,7 +17,7 @@ config BRIDGE
+ 	  other third party bridge products.
+ 
+ 	  In order to use the Ethernet bridge, you'll need the bridge
+-	  configuration tools; see <file:Documentation/networking/bridge.txt>
++	  configuration tools; see <file:Documentation/networking/bridge.rst>
+ 	  for location. Please read the Bridge mini-HOWTO for more
+ 	  information.
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.17.1
