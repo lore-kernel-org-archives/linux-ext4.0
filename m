@@ -1,81 +1,66 @@
-From: Wang Shilong <wshilong@ddn.com>
-Subject: Re: [PATCH v3 1/3] ext4: fix setattr project check upon
- fssetxattr ioctl
-Date: Sun, 16 Sep 2018 12:25:52 +0000
-Message-ID: <9A6D2B35-2355-4061-9E0C-4A1883FC3547@ddn.com>
-References: <1536710238-16858-1-git-send-email-wshilong1991@gmail.com>
- <20180916035529.GG8652@thunk.org>
- <75832A38-2476-4504-A03C-15B40053A565@ddn.com>
- <20180916122034.GA5915@thunk.org>
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 fixes for 4.19-rc5
+Date: Mon, 17 Sep 2018 00:44:44 -0400
+Message-ID: <20180917044444.GA29836@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
-Cc: "adilger@dilger.ca" <adilger@dilger.ca>,
- "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
- Wang Shilong <wangshilong1991@gmail.com>,
- "dchinner@redhat.com" <dchinner@redhat.com>,
- "linux-f2fs-devel@lists.sourceforge.net"
- <linux-f2fs-devel@lists.sourceforge.net>
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
-In-Reply-To: <20180916122034.GA5915@thunk.org>
-Content-Language: en-US
-Content-ID: <657411204763D54CA47F443341C34708@ddn.com>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
-List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
-List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
- <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
-Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org, gregkh@linuxfoundation.org
+Return-path: <linux-kernel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-DQoNCj4g5ZyoIDIwMTjlubQ55pyIMTbml6XvvIzkuIvljYg4OjIw77yMVGhlb2RvcmUgWS4gVHMn
-byA8dHl0c29AbWl0LmVkdT4g5YaZ6YGT77yaDQo+IA0KPiBPbiBTdW4sIFNlcCAxNiwgMjAxOCBh
-dCAwNDowMjo1MkFNICswMDAwLCBXYW5nIFNoaWxvbmcgd3JvdGU6DQo+PiANCj4+IA0KPj4+IOWc
-qCAyMDE45bm0OeaciDE25pel77yM5LiK5Y2IMTE6NTXvvIxUaGVvZG9yZSBZLiBUcydvIDx0eXRz
-b0BtaXQuZWR1PiDlhpnpgZPvvJoNCj4+PiANCj4+PiBPbiBXZWQsIFNlcCAxMiwgMjAxOCBhdCAw
-ODo1NzoxNkFNICswOTAwLCBXYW5nIFNoaWxvbmcgd3JvdGU6DQo+Pj4+IGRpZmYgLS1naXQgYS9m
-cy9leHQ0L2lvY3RsLmMgYi9mcy9leHQ0L2lvY3RsLmMNCj4+Pj4gaW5kZXggYTcwNzQxMTVkNmY2
-Li5mODExMDJiZDMyMDMgMTAwNjQ0DQo+Pj4+IC0tLSBhL2ZzL2V4dDQvaW9jdGwuYw0KPj4+PiAr
-KysgYi9mcy9leHQ0L2lvY3RsLmMNCj4+Pj4gQEAgLTMzOSwxOSArMzM5LDE0IEBAIHN0YXRpYyBp
-bnQgZXh0NF9pb2N0bF9zZXRwcm9qZWN0KHN0cnVjdCBmaWxlICpmaWxwLCBfX3UzMiBwcm9qaWQp
-DQo+Pj4+IAlpZiAocHJvamlkX2VxKGtwcm9qaWQsIEVYVDRfSShpbm9kZSktPmlfcHJvamlkKSkN
-Cj4+Pj4gCQlyZXR1cm4gMDsNCj4+Pj4gDQo+Pj4+IC0JZXJyID0gbW50X3dhbnRfd3JpdGVfZmls
-ZShmaWxwKTsNCj4+Pj4gLQlpZiAoZXJyKQ0KPj4+PiAtCQlyZXR1cm4gZXJyOw0KPj4+PiAtDQo+
-Pj4gDQo+Pj4gQSBodWdlIHBhcnQgb2YgdGhpcyBwYXRjaCBpcyBkcm9wcGluZyB0aGUgY2FsbHMg
-dG8NCj4+PiBtbnRfd2FudF93cml0ZV9maWxlKCkgYW5kIG1udF9kcm9wX3dyaXRlX2ZpbGUoKS4g
-IFdoYXQncyB0aGUNCj4+PiBqdXN0aWZpY2F0aW9uIGZvciBkb2luZyB0aGlzPyAgVGhlIHVzZSBv
-ZiBtbnRfd2FudF93cml0ZV9maWxlKCkgbG9va3MNCj4+PiBuZWNlc3NhcnkgdG8gbWXigKYNCj4+
-IA0KPj4gSGkgVGVkLA0KPj4gDQo+PiAgICAgbW50X3dhbnRfd3JpdGVfZmlsZSgpIGFuZCBpbm9k
-ZV9sb2NrIGlzIGhlbGQgYmVmb3JlIHRoaXMgZnVuY3Rpb24gY2FsbGVkIG5vdy4NCj4+IFNpbmNl
-IGJvdGggaW9jdGxfc2V0X2ZsYWdzIGFuZCBleHQ0X3NldF9wcm9qZWN0KCkgbmVlZCBjYWxsIHRo
-ZW0uDQo+IA0KPiBJIGRvbid0IHNlZSBhbnkgcGxhY2UgaW4gdGhpcyBwYXRjaCB3aGVyZSBtbnRf
-d2FudF93cml0ZV9maWxlKCkgaXMNCj4gYmVpbmcgY2FsbGVkLiAgV2hhdCBhbSBJIG1pc3Npbmc/
-ICBBbmQgaWYgdGhlcmUgaXMgYSBkZXBlbmRlbnQgcGF0Y2gNCj4gdG8gdGhpcyBmaXJzdCBwYXRj
-aCBpbiB0aGUgcGF0Y2ggc2VyaWVzLCBwbGVhc2UgaW5jbHVkZSBpdCBpbiB0aGlzDQo+IHBhdGNo
-IHNlcmllcy4uLi4gIG9yIGxlYXN0IHBvaW50IGl0IG91dCBhZnRlciB0aGUgLS0tIGxpc3QuDQoN
-ClNvcnJ5LCBJIG1pZ2h0IG5vdCBleHBsYWluIGl0IGNsZWFybHksIGhlcmUgaXMgY3VycmVudCBj
-b2RlcyBhZnRlciBhcHBseWluZyBwYXRjaDoNCg0KMDM5ICAgICAgICAgICAgICAgICBlcnIgPSBt
-bnRfd2FudF93cml0ZV9maWxlKGZpbHApOyAgICAgICAgICDigJTigJTigJTigJTigJTigJTigJQ+
-Y2FsbGVkIGhlcmUsIHRoaXMgaXMgb3JpZ2luYWxseSB0aGVyZSBmb3IgZXh0NF9pb2N0bF9zZXRm
-bGFncygpDQoxMDQwICAgICAgICAgICAgICAgICBpZiAoZXJyKQ0KMTA0MSAgICAgICAgICAgICAg
-ICAgICAgICAgICByZXR1cm4gZXJyOw0KMTA0MiANCjEwNDMgICAgICAgICAgICAgICAgIGlub2Rl
-X2xvY2soaW5vZGUpOw0KMTA0NCAgICAgICAgICAgICAgICAgZXJyID0gZXh0NF9pb2N0bF9zZXRh
-dHRyX2NoZWNrX3Byb2ppZChpbm9kZSwgJmZhKTsNCjEwNDUgICAgICAgICAgICAgICAgIGlmIChl
-cnIpDQoxMDQ2ICAgICAgICAgICAgICAgICAgICAgICAgIGdvdG8gb3V0Ow0KMTA0NyAgICAgICAg
-ICAgICAgICAgZmxhZ3MgPSAoZWktPmlfZmxhZ3MgJiB+RVhUNF9GTF9YRkxBR19WSVNJQkxFKSB8
-DQoxMDQ4ICAgICAgICAgICAgICAgICAgICAgICAgICAoZmxhZ3MgJiBFWFQ0X0ZMX1hGTEFHX1ZJ
-U0lCTEUpOw0KMTA0OSAgICAgICAgICAgICAgICAgZXJyID0gZXh0NF9pb2N0bF9zZXRmbGFncyhp
-bm9kZSwgZmxhZ3MpOw0KMTA1MCAgICAgICAgICAgICAgICAgaWYgKGVycikNCjEwNTEgICAgICAg
-ICAgICAgICAgICAgICAgICAgZ290byBvdXQ7DQoxMDUyICAgICAgICAgICAgICAgICBlcnIgPSBl
-eHQ0X2lvY3RsX3NldHByb2plY3QoZmlscCwgZmEuZnN4X3Byb2ppZCk7DQoxMDUzIG91dDoNCjEw
-NTQgICAgICAgICAgICAgICAgIGlub2RlX3VubG9jayhpbm9kZSk7DQoxMDU1ICAgICAgICAgICAg
-ICAgICBtbnRfZHJvcF93cml0ZV9maWxlKGZpbHApOyAgICAgICAgICDigJTigJTigJTigJTigJTi
-gJTigJTigJQ+ZHJvcHBlZCBoZXJlLg0KMTA1NiAgICAgICAgICAgICAgICAgcmV0dXJuIGVycjsg
-DQoxMDU3ICAgICAgICAgfQ0KDQpUaGFua3MsDQpTaGlsb25nDQoNCj4gDQo+IFRoYW5rcywNCj4g
-DQo+IAkJCQkJCS0gVGVkDQoNCgpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fXwpMaW51eC1mMmZzLWRldmVsIG1haWxpbmcgbGlzdApMaW51eC1mMmZzLWRldmVs
-QGxpc3RzLnNvdXJjZWZvcmdlLm5ldApodHRwczovL2xpc3RzLnNvdXJjZWZvcmdlLm5ldC9saXN0
-cy9saXN0aW5mby9saW51eC1mMmZzLWRldmVsCg==
+[ This pull request was originally intended for 4.19-rc4, but some
+  testing hiccups delayed my sending this earlier.  Given Linus's
+  comments, I'm not sure whether PULL requests should be going to Linus
+  or Greg, so I'm sending it to both.  -- Ted ]
+
+The following changes since commit 863c37fcb14f8b66ea831b45fb35a53ac4a8d69e:
+
+  ext4: remove unneeded variable "err" in ext4_mb_release_inode_pa() (2018-08-04 17:34:07 -0400)
+
+are available in the Git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+
+for you to fetch changes up to cce6c9f7e6029caee45c459db5b3e78fec6973cb:
+
+  ext4, dax: set ext4_dax_aops for dax files (2018-09-15 21:37:59 -0400)
+
+----------------------------------------------------------------
+Various ext4 bug fixes; primarily making ext4 more robust against
+maliciously crafted file systems, and some DAX fixes.
+
+----------------------------------------------------------------
+Eric Biggers (1):
+      ext4: show test_dummy_encryption mount option in /proc/mounts
+
+Li Dongyang (1):
+      ext4: don't mark mmp buffer head dirty
+
+Ross Zwisler (1):
+      ext4: close race between direct IO and ext4_break_layouts()
+
+Theodore Ts'o (7):
+      ext4: add nonstring annotations to ext4.h
+      ext4: check to make sure the rename(2)'s destination is not freed
+      ext4: avoid divide by zero fault when deleting corrupted inline directories
+      ext4: avoid arithemetic overflow that can trigger a BUG
+      ext4: recalucate superblock checksum after updating free blocks/inodes
+      ext4: fix online resize's handling of a too-small final block group
+      ext4: fix online resizing for bigalloc file systems with a 1k block size
+
+Toshi Kani (2):
+      ext4, dax: add ext4_bmap to ext4_dax_aops
+      ext4, dax: set ext4_dax_aops for dax files
+
+ fs/ext4/dir.c    | 20 +++++++++-----------
+ fs/ext4/ext4.h   | 20 +++++++++++++++++---
+ fs/ext4/inline.c |  4 +++-
+ fs/ext4/inode.c  | 20 +++++++++++---------
+ fs/ext4/mmp.c    |  1 -
+ fs/ext4/namei.c  |  6 ++++++
+ fs/ext4/resize.c | 23 ++++++++++++++++++++++-
+ fs/ext4/super.c  |  4 ++++
+ 8 files changed, 72 insertions(+), 26 deletions(-)
