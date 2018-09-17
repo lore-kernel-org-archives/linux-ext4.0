@@ -1,66 +1,88 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 fixes for 4.19-rc5
-Date: Mon, 17 Sep 2018 00:44:44 -0400
-Message-ID: <20180917044444.GA29836@thunk.org>
+From: Wang Shilong <wshilong@ddn.com>
+Subject: Re: [PATCH v3 1/3] ext4: fix setattr project check upon
+ fssetxattr ioctl
+Date: Mon, 17 Sep 2018 05:18:13 +0000
+Message-ID: <DD605171-E52E-47E1-B916-61B42C36ABC2@ddn.com>
+References: <1536710238-16858-1-git-send-email-wshilong1991@gmail.com>
+ <20180916035529.GG8652@thunk.org>
+ <75832A38-2476-4504-A03C-15B40053A565@ddn.com>
+ <20180916122034.GA5915@thunk.org>
+ <9A6D2B35-2355-4061-9E0C-4A1883FC3547@ddn.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org, gregkh@linuxfoundation.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: base64
+Cc: "adilger@dilger.ca" <adilger@dilger.ca>,
+ "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+ Wang Shilong <wangshilong1991@gmail.com>,
+ "dchinner@redhat.com" <dchinner@redhat.com>,
+ "linux-f2fs-devel@lists.sourceforge.net"
+ <linux-f2fs-devel@lists.sourceforge.net>
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-f2fs-devel-bounces@lists.sourceforge.net>
+In-Reply-To: <9A6D2B35-2355-4061-9E0C-4A1883FC3547@ddn.com>
+Content-Language: en-US
+Content-ID: <3165508BE6969448A1309B5B2E1128C4@ddn.com>
+List-Unsubscribe: <https://lists.sourceforge.net/lists/options/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=unsubscribe>
+List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=linux-f2fs-devel>
+List-Post: <mailto:linux-f2fs-devel@lists.sourceforge.net>
+List-Help: <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=help>
+List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel>,
+ <mailto:linux-f2fs-devel-request@lists.sourceforge.net?subject=subscribe>
+Errors-To: linux-f2fs-devel-bounces@lists.sourceforge.net
 List-Id: linux-ext4.vger.kernel.org
 
-[ This pull request was originally intended for 4.19-rc4, but some
-  testing hiccups delayed my sending this earlier.  Given Linus's
-  comments, I'm not sure whether PULL requests should be going to Linus
-  or Greg, so I'm sending it to both.  -- Ted ]
-
-The following changes since commit 863c37fcb14f8b66ea831b45fb35a53ac4a8d69e:
-
-  ext4: remove unneeded variable "err" in ext4_mb_release_inode_pa() (2018-08-04 17:34:07 -0400)
-
-are available in the Git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
-
-for you to fetch changes up to cce6c9f7e6029caee45c459db5b3e78fec6973cb:
-
-  ext4, dax: set ext4_dax_aops for dax files (2018-09-15 21:37:59 -0400)
-
-----------------------------------------------------------------
-Various ext4 bug fixes; primarily making ext4 more robust against
-maliciously crafted file systems, and some DAX fixes.
-
-----------------------------------------------------------------
-Eric Biggers (1):
-      ext4: show test_dummy_encryption mount option in /proc/mounts
-
-Li Dongyang (1):
-      ext4: don't mark mmp buffer head dirty
-
-Ross Zwisler (1):
-      ext4: close race between direct IO and ext4_break_layouts()
-
-Theodore Ts'o (7):
-      ext4: add nonstring annotations to ext4.h
-      ext4: check to make sure the rename(2)'s destination is not freed
-      ext4: avoid divide by zero fault when deleting corrupted inline directories
-      ext4: avoid arithemetic overflow that can trigger a BUG
-      ext4: recalucate superblock checksum after updating free blocks/inodes
-      ext4: fix online resize's handling of a too-small final block group
-      ext4: fix online resizing for bigalloc file systems with a 1k block size
-
-Toshi Kani (2):
-      ext4, dax: add ext4_bmap to ext4_dax_aops
-      ext4, dax: set ext4_dax_aops for dax files
-
- fs/ext4/dir.c    | 20 +++++++++-----------
- fs/ext4/ext4.h   | 20 +++++++++++++++++---
- fs/ext4/inline.c |  4 +++-
- fs/ext4/inode.c  | 20 +++++++++++---------
- fs/ext4/mmp.c    |  1 -
- fs/ext4/namei.c  |  6 ++++++
- fs/ext4/resize.c | 23 ++++++++++++++++++++++-
- fs/ext4/super.c  |  4 ++++
- 8 files changed, 72 insertions(+), 26 deletions(-)
+DQo+IOWcqCAyMDE45bm0OeaciDE25pel77yM5LiL5Y2IODoyNe+8jFdhbmcgU2hpbG9uZyA8d3No
+aWxvbmdAZGRuLmNvbT4g5YaZ6YGT77yaDQo+IA0KPiANCj4gDQo+PiDlnKggMjAxOOW5tDnmnIgx
+NuaXpe+8jOS4i+WNiDg6MjDvvIxUaGVvZG9yZSBZLiBUcydvIDx0eXRzb0BtaXQuZWR1PiDlhpnp
+gZPvvJoNCj4+IA0KPj4gT24gU3VuLCBTZXAgMTYsIDIwMTggYXQgMDQ6MDI6NTJBTSArMDAwMCwg
+V2FuZyBTaGlsb25nIHdyb3RlOg0KPj4+IA0KPj4+IA0KPj4+PiDlnKggMjAxOOW5tDnmnIgxNuaX
+pe+8jOS4iuWNiDExOjU177yMVGhlb2RvcmUgWS4gVHMnbyA8dHl0c29AbWl0LmVkdT4g5YaZ6YGT
+77yaDQo+Pj4+IA0KPj4+PiBPbiBXZWQsIFNlcCAxMiwgMjAxOCBhdCAwODo1NzoxNkFNICswOTAw
+LCBXYW5nIFNoaWxvbmcgd3JvdGU6DQo+Pj4+PiBkaWZmIC0tZ2l0IGEvZnMvZXh0NC9pb2N0bC5j
+IGIvZnMvZXh0NC9pb2N0bC5jDQo+Pj4+PiBpbmRleCBhNzA3NDExNWQ2ZjYuLmY4MTEwMmJkMzIw
+MyAxMDA2NDQNCj4+Pj4+IC0tLSBhL2ZzL2V4dDQvaW9jdGwuYw0KPj4+Pj4gKysrIGIvZnMvZXh0
+NC9pb2N0bC5jDQo+Pj4+PiBAQCAtMzM5LDE5ICszMzksMTQgQEAgc3RhdGljIGludCBleHQ0X2lv
+Y3RsX3NldHByb2plY3Qoc3RydWN0IGZpbGUgKmZpbHAsIF9fdTMyIHByb2ppZCkNCj4+Pj4+IAlp
+ZiAocHJvamlkX2VxKGtwcm9qaWQsIEVYVDRfSShpbm9kZSktPmlfcHJvamlkKSkNCj4+Pj4+IAkJ
+cmV0dXJuIDA7DQo+Pj4+PiANCj4+Pj4+IC0JZXJyID0gbW50X3dhbnRfd3JpdGVfZmlsZShmaWxw
+KTsNCj4+Pj4+IC0JaWYgKGVycikNCj4+Pj4+IC0JCXJldHVybiBlcnI7DQo+Pj4+PiAtDQo+Pj4+
+IA0KPj4+PiBBIGh1Z2UgcGFydCBvZiB0aGlzIHBhdGNoIGlzIGRyb3BwaW5nIHRoZSBjYWxscyB0
+bw0KPj4+PiBtbnRfd2FudF93cml0ZV9maWxlKCkgYW5kIG1udF9kcm9wX3dyaXRlX2ZpbGUoKS4g
+IFdoYXQncyB0aGUNCj4+Pj4ganVzdGlmaWNhdGlvbiBmb3IgZG9pbmcgdGhpcz8gIFRoZSB1c2Ug
+b2YgbW50X3dhbnRfd3JpdGVfZmlsZSgpIGxvb2tzDQo+Pj4+IG5lY2Vzc2FyeSB0byBtZeKApg0K
+Pj4+IA0KPj4+IEhpIFRlZCwNCj4+PiANCj4+PiAgICBtbnRfd2FudF93cml0ZV9maWxlKCkgYW5k
+IGlub2RlX2xvY2sgaXMgaGVsZCBiZWZvcmUgdGhpcyBmdW5jdGlvbiBjYWxsZWQgbm93Lg0KPj4+
+IFNpbmNlIGJvdGggaW9jdGxfc2V0X2ZsYWdzIGFuZCBleHQ0X3NldF9wcm9qZWN0KCkgbmVlZCBj
+YWxsIHRoZW0uDQo+PiANCj4+IEkgZG9uJ3Qgc2VlIGFueSBwbGFjZSBpbiB0aGlzIHBhdGNoIHdo
+ZXJlIG1udF93YW50X3dyaXRlX2ZpbGUoKSBpcw0KPj4gYmVpbmcgY2FsbGVkLiAgV2hhdCBhbSBJ
+IG1pc3Npbmc/ICBBbmQgaWYgdGhlcmUgaXMgYSBkZXBlbmRlbnQgcGF0Y2gNCj4+IHRvIHRoaXMg
+Zmlyc3QgcGF0Y2ggaW4gdGhlIHBhdGNoIHNlcmllcywgcGxlYXNlIGluY2x1ZGUgaXQgaW4gdGhp
+cw0KPj4gcGF0Y2ggc2VyaWVzLi4uLiAgb3IgbGVhc3QgcG9pbnQgaXQgb3V0IGFmdGVyIHRoZSAt
+LS0gbGlzdC4NCj4gDQo+IFNvcnJ5LCBJIG1pZ2h0IG5vdCBleHBsYWluIGl0IGNsZWFybHksIGhl
+cmUgaXMgY3VycmVudCBjb2RlcyBhZnRlciBhcHBseWluZyBwYXRjaDoNCj4gDQo+IDAzOSAgICAg
+ICAgICAgICAgICAgZXJyID0gbW50X3dhbnRfd3JpdGVfZmlsZShmaWxwKTsgICAgICAgICAg4oCU
+4oCU4oCU4oCU4oCU4oCU4oCUPmNhbGxlZCBoZXJlLCB0aGlzIGlzIG9yaWdpbmFsbHkgdGhlcmUg
+Zm9yIGV4dDRfaW9jdGxfc2V0ZmxhZ3MoKQ0KPiAxMDQwICAgICAgICAgICAgICAgICBpZiAoZXJy
+KQ0KPiAxMDQxICAgICAgICAgICAgICAgICAgICAgICAgIHJldHVybiBlcnI7DQo+IDEwNDIgDQo+
+IDEwNDMgICAgICAgICAgICAgICAgIGlub2RlX2xvY2soaW5vZGUpOw0KPiAxMDQ0ICAgICAgICAg
+ICAgICAgICBlcnIgPSBleHQ0X2lvY3RsX3NldGF0dHJfY2hlY2tfcHJvamlkKGlub2RlLCAmZmEp
+Ow0KPiAxMDQ1ICAgICAgICAgICAgICAgICBpZiAoZXJyKQ0KPiAxMDQ2ICAgICAgICAgICAgICAg
+ICAgICAgICAgIGdvdG8gb3V0Ow0KPiAxMDQ3ICAgICAgICAgICAgICAgICBmbGFncyA9IChlaS0+
+aV9mbGFncyAmIH5FWFQ0X0ZMX1hGTEFHX1ZJU0lCTEUpIHwNCj4gMTA0OCAgICAgICAgICAgICAg
+ICAgICAgICAgICAgKGZsYWdzICYgRVhUNF9GTF9YRkxBR19WSVNJQkxFKTsNCj4gMTA0OSAgICAg
+ICAgICAgICAgICAgZXJyID0gZXh0NF9pb2N0bF9zZXRmbGFncyhpbm9kZSwgZmxhZ3MpOw0KPiAx
+MDUwICAgICAgICAgICAgICAgICBpZiAoZXJyKQ0KPiAxMDUxICAgICAgICAgICAgICAgICAgICAg
+ICAgIGdvdG8gb3V0Ow0KPiAxMDUyICAgICAgICAgICAgICAgICBlcnIgPSBleHQ0X2lvY3RsX3Nl
+dHByb2plY3QoZmlscCwgZmEuZnN4X3Byb2ppZCk7DQo+IDEwNTMgb3V0Og0KPiAxMDU0ICAgICAg
+ICAgICAgICAgICBpbm9kZV91bmxvY2soaW5vZGUpOw0KPiAxMDU1ICAgICAgICAgICAgICAgICBt
+bnRfZHJvcF93cml0ZV9maWxlKGZpbHApOyAgICAgICAgICDigJTigJTigJTigJTigJTigJTigJTi
+gJQ+ZHJvcHBlZCBoZXJlLg0KPiAxMDU2ICAgICAgICAgICAgICAgICByZXR1cm4gZXJyOyANCj4g
+MTA1NyAgICAgICAgIH0NCj4gDQo+IFRoYW5rcywNCj4gU2hpbG9uZw0KDQpKdXN0IGEgZ2VuZXJh
+bCBwaW5nIGZvciB0aGlzLCBtYWtlIHN1cmUgeW91IGRpZCBub3QgbWlzcyByZXBseS4NClNpbmNl
+IEkgc2F3IHlvdSBzZW50IG5ldyBwdWxsIHJlcXVlc3QuDQoNCklzIHRoZXJlIGFueXRoaW5nIG1v
+cmUgSSBjb3VsZCBkbz8gDQoNCg0KPiANCj4+IA0KPj4gVGhhbmtzLA0KPj4gDQo+PiAJCQkJCQkt
+IFRlZA0KPiANCg0KCl9fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fCkxpbnV4LWYyZnMtZGV2ZWwgbWFpbGluZyBsaXN0CkxpbnV4LWYyZnMtZGV2ZWxAbGlzdHMu
+c291cmNlZm9yZ2UubmV0Cmh0dHBzOi8vbGlzdHMuc291cmNlZm9yZ2UubmV0L2xpc3RzL2xpc3Rp
+bmZvL2xpbnV4LWYyZnMtZGV2ZWwK
