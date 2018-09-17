@@ -1,38 +1,24 @@
-From: Chao Yu <yuchao0@huawei.com>
-Subject: Re: [PATCH] ext4: fix to propagate error from dquot_initialize()
-Date: Mon, 17 Sep 2018 16:33:17 +0800
-Message-ID: <2aad2a3c-f606-f511-8222-8e2e18b4a2ba@huawei.com>
-References: <20180917072246.25457-1-yuchao0@huawei.com>
- <CAP9B-QmoV0RtDMpuKhEAgg4Pq+38bbPoXwXWdkFV8DHzopW-8g@mail.gmail.com>
+From: Greg KH <gregkh@linuxfoundation.org>
+Subject: Re: [GIT PULL] ext4 fixes for 4.19-rc5
+Date: Mon, 17 Sep 2018 11:03:23 +0200
+Message-ID: <20180917090323.GA24316@kroah.com>
+References: <20180917044444.GA29836@thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Cc: Theodore Ts'o <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        "Ext4 Developers List" <linux-ext4@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <chao@kernel.org>
-To: Wang Shilong <wangshilong1991@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+To: "Theodore Y. Ts'o" <tytso@mit.edu>, torvalds@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <CAP9B-QmoV0RtDMpuKhEAgg4Pq+38bbPoXwXWdkFV8DHzopW-8g@mail.gmail.com>
-Content-Language: en-US
+Content-Disposition: inline
+In-Reply-To: <20180917044444.GA29836@thunk.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi Shilong,
+On Mon, Sep 17, 2018 at 12:44:44AM -0400, Theodore Y. Ts'o wrote:
+> [ This pull request was originally intended for 4.19-rc4, but some
+>   testing hiccups delayed my sending this earlier.  Given Linus's
+>   comments, I'm not sure whether PULL requests should be going to Linus
+>   or Greg, so I'm sending it to both.  -- Ted ]
 
-On 2018/9/17 16:18, Wang Shilong wrote:
-> Hi Chao,
-> 
->    I sent a early patch  series which included this but forgot  to send to
-> f2fs list..
-> https://patchwork.ozlabs.org/patch/968759/
+Thanks for cc: me, I've now pulled this.
 
-Oh, sorry, I didn't notice that one.
-
-To all, please ignore this reduplicated one.
-
-> 
-> It looks Ted still have some questions for my first patch, so that second patch
-> is not applied yet..
-> 
-> Thanks,
-> 
+greg k-h
