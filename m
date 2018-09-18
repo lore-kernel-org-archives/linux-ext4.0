@@ -1,7 +1,7 @@
-From: Jan Kara <jack@suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 Subject: Re: [PATCH] docs: fix some broken documentation references
-Date: Tue, 18 Sep 2018 11:17:14 +0200
-Message-ID: <20180918091714.GG10257@quack2.suse.cz>
+Date: Tue, 18 Sep 2018 07:39:31 -0700
+Message-ID: <20180918143931.GA4590@magnolia>
 References: <6b47bf56b898c48a0dc3cd42283c9e5c7c23367a.1537210894.git.mchehab+samsung@kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -16,7 +16,7 @@ Cc: linux-kernel@vger.kernel.org,
         Andrew Morton <akpm@linux-foundation.org>,
         Arnd Bergmann <arnd@arndb.de>, linux-doc@vger.kernel.org,
         linux-ext4@vger.kernel.org, bridge@lists.linux-foundation.org,
-        netdev@vger.kernel.org, Ted Tso <tytso@mit.edu>
+        netdev@vger.kernel.org
 To: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
 Content-Disposition: inline
@@ -24,7 +24,7 @@ In-Reply-To: <6b47bf56b898c48a0dc3cd42283c9e5c7c23367a.1537210894.git.mchehab+sa
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon 17-09-18 15:02:34, Mauro Carvalho Chehab wrote:
+On Mon, Sep 17, 2018 at 03:02:34PM -0400, Mauro Carvalho Chehab wrote:
 > Some documentation files received recent changes and are
 > pointing to wrong places.
 > 
@@ -35,11 +35,12 @@ On Mon 17-09-18 15:02:34, Mauro Carvalho Chehab wrote:
 > 
 > Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
 
-Looks good to me. Thanks for fixing this up. You can add:
+Thanks for fixing up the ext4 parts!
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-								Honza
+--D
+
 > ---
 >  Documentation/filesystems/dax.txt  | 2 +-
 >  Documentation/filesystems/ext2.txt | 2 +-
@@ -111,7 +112,3 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 > -- 
 > 2.17.1
 > 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
