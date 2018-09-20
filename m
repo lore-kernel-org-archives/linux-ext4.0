@@ -1,9 +1,9 @@
 From: Nick Desaulniers <ndesaulniers@google.com>
-Subject: Re: [PATCH v5 15/15] Compiler Attributes: ext4: remove local
- __nonstring definition
-Date: Thu, 20 Sep 2018 11:13:48 -0700
-Message-ID: <CAKwvOdnF=65Fj3zXP5KWVqWkKKFoPMvKox0iWFTObxdQiSgqog@mail.gmail.com>
-References: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com> <20180920172301.21868-16-miguel.ojeda.sandonis@gmail.com>
+Subject: Re: [PATCH v5 13/15] Compiler Attributes: enable -Wstringop-truncation
+ on W=1 (gcc >= 8)
+Date: Thu, 20 Sep 2018 11:16:31 -0700
+Message-ID: <CAKwvOdmVfqMSox3nR57i=5GzSfV8szeaK1REs2X_gtmv7x1f4Q@mail.gmail.com>
+References: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com> <20180920172301.21868-14-miguel.ojeda.sandonis@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="UTF-8"
 Cc: Greg KH <gregkh@linuxfoundation.org>,
@@ -26,51 +26,51 @@ Cc: Greg KH <gregkh@linuxfoundation.org>,
         paul.burton@mips.com, David Rientjes <rientjes@google.c
 To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180920172301.21868-16-miguel.ojeda.sandonis@gmail.com>
+In-Reply-To: <20180920172301.21868-14-miguel.ojeda.sandonis@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 On Thu, Sep 20, 2018 at 10:23 AM Miguel Ojeda
 <miguel.ojeda.sandonis@gmail.com> wrote:
 >
-> Commit 072ebb3bffe6 ("ext4: add nonstring annotations to ext4.h")
-> introduced a local definition of __nonstring to suppress some false
-> positives in gcc 8's -Wstringop-truncation.
+> Commit 217c3e019675 ("disable stringop truncation warnings for now")
+> disabled -Wstringop-truncation since it was too noisy.
 >
-> Since now we support __nonstring for everyone, remove it.
-
-... from a patch in the current series (Note to other reviewers).
-
+> Having __nonstring available allows us to let GCC know that a string
+> is not meant to be NUL-terminated, which helps suppressing some
+> -Wstringop-truncation warnings.
+>
+> Note that using __nonstring actually triggers other warnings
+> (-Wstringop-overflow, which is on by default) which may be real
+> problems. Therefore, cleaning up -Wstringop-truncation warnings
+> also buys us the ability to uncover further potential problems.
+>
+> To encourage the use of __nonstring, we put the warning back at W=1.
+> In the future, if we end up with a fairly warning-free tree,
+> we might want to enable it by default.
 >
 > Signed-off-by: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
 > ---
->  fs/ext4/ext4.h | 9 ---------
->  1 file changed, 9 deletions(-)
+>  scripts/Makefile.extrawarn | 1 +
+>  1 file changed, 1 insertion(+)
 >
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index caff935fbeb8..2acdfdad3d3f 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -45,15 +45,6 @@
+> diff --git a/scripts/Makefile.extrawarn b/scripts/Makefile.extrawarn
+> index 8d5357053f86..b8f36f5f43f2 100644
+> --- a/scripts/Makefile.extrawarn
+> +++ b/scripts/Makefile.extrawarn
+> @@ -29,6 +29,7 @@ warning-1 += $(call cc-option, -Wmissing-include-dirs)
+>  warning-1 += $(call cc-option, -Wunused-but-set-variable)
+>  warning-1 += $(call cc-option, -Wunused-const-variable)
+>  warning-1 += $(call cc-option, -Wpacked-not-aligned)
+> +warning-1 += $(call cc-option, -Wstringop-truncation)
+>  warning-1 += $(call cc-disable-warning, missing-field-initializers)
+>  warning-1 += $(call cc-disable-warning, sign-compare)
 >
->  #include <linux/compiler.h>
->
-> -/* Until this gets included into linux/compiler-gcc.h */
-> -#ifndef __nonstring
-> -#if defined(GCC_VERSION) && (GCC_VERSION >= 80000)
-> -#define __nonstring __attribute__((nonstring))
-> -#else
-> -#define __nonstring
-> -#endif
-> -#endif
-> -
->  /*
->   * The fourth extended filesystem constants/structures
->   */
 > --
 > 2.17.1
 >
 
+I was sad to see these go in the first place.
 Reviewed-by: Nick Desaulniers <ndesaulniers@google.com>
 
 -- 
