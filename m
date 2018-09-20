@@ -1,7 +1,7 @@
 From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Subject: [PATCH v5 12/15] Compiler Attributes: add support for __nonstring (gcc >= 8)
-Date: Thu, 20 Sep 2018 19:22:58 +0200
-Message-ID: <20180920172301.21868-13-miguel.ojeda.sandonis@gmail.com>
+Subject: [PATCH v5 13/15] Compiler Attributes: enable -Wstringop-truncation on W=1 (gcc >= 8)
+Date: Thu, 20 Sep 2018 19:22:59 +0200
+Message-ID: <20180920172301.21868-14-miguel.ojeda.sandonis@gmail.com>
 References: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com>
 Cc: linux-kernel@vger.kernel.org,
         Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
@@ -28,83 +28,38 @@ In-Reply-To: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
->From the GCC manual:
+Commit 217c3e019675 ("disable stringop truncation warnings for now")
+disabled -Wstringop-truncation since it was too noisy.
 
-  nonstring
+Having __nonstring available allows us to let GCC know that a string
+is not meant to be NUL-terminated, which helps suppressing some
+-Wstringop-truncation warnings.
 
-    The nonstring variable attribute specifies that an object or member
-    declaration with type array of char, signed char, or unsigned char,
-    or pointer to such a type is intended to store character arrays that
-    do not necessarily contain a terminating NUL. This is useful in detecting
-    uses of such arrays or pointers with functions that expect NUL-terminated
-    strings, and to avoid warnings when such an array or pointer is used as
-    an argument to a bounded string manipulation function such as strncpy.
+Note that using __nonstring actually triggers other warnings
+(-Wstringop-overflow, which is on by default) which may be real
+problems. Therefore, cleaning up -Wstringop-truncation warnings
+also buys us the ability to uncover further potential problems.
 
-  https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html
-
-This attribute can be used for documentation purposes (i.e. replacing
-comments), but it is most helpful when the following warnings are enabled:
-
-  -Wstringop-overflow
-
-    Warn for calls to string manipulation functions such as memcpy and
-    strcpy that are determined to overflow the destination buffer.
-
-    [...]
-
-  -Wstringop-truncation
-
-    Warn for calls to bounded string manipulation functions such as
-    strncat, strncpy, and stpncpy that may either truncate the copied
-    string or leave the destination unchanged.
-
-    [...]
-
-    In situations where a character array is intended to store a sequence
-    of bytes with no terminating NUL such an array may be annotated with
-    attribute nonstring to avoid this warning. Such arrays, however,
-    are not suitable arguments to functions that expect NUL-terminated
-    strings. To help detect accidental misuses of such arrays GCC issues
-    warnings unless it can prove that the use is safe.
-
-  https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+To encourage the use of __nonstring, we put the warning back at W=1.
+In the future, if we end up with a fairly warning-free tree,
+we might want to enable it by default.
 
 Signed-off-by: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
 ---
- include/linux/compiler_attributes.h | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ scripts/Makefile.extrawarn | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/include/linux/compiler_attributes.h b/include/linux/compiler_attributes.h
-index f0f9fc398440..6b28c1b7310c 100644
---- a/include/linux/compiler_attributes.h
-+++ b/include/linux/compiler_attributes.h
-@@ -34,6 +34,7 @@
- # define __GCC4_has_attribute___externally_visible__  1
- # define __GCC4_has_attribute___noclone__             1
- # define __GCC4_has_attribute___optimize__            1
-+# define __GCC4_has_attribute___nonstring__           0
- # define __GCC4_has_attribute___no_sanitize_address__ (__GNUC_MINOR__ >= 8)
- #endif
+diff --git a/scripts/Makefile.extrawarn b/scripts/Makefile.extrawarn
+index 8d5357053f86..b8f36f5f43f2 100644
+--- a/scripts/Makefile.extrawarn
++++ b/scripts/Makefile.extrawarn
+@@ -29,6 +29,7 @@ warning-1 += $(call cc-option, -Wmissing-include-dirs)
+ warning-1 += $(call cc-option, -Wunused-but-set-variable)
+ warning-1 += $(call cc-option, -Wunused-const-variable)
+ warning-1 += $(call cc-option, -Wpacked-not-aligned)
++warning-1 += $(call cc-option, -Wstringop-truncation)
+ warning-1 += $(call cc-disable-warning, missing-field-initializers)
+ warning-1 += $(call cc-disable-warning, sign-compare)
  
-@@ -181,6 +182,19 @@
-  */
- #define   noinline                      __attribute__((__noinline__))
- 
-+/*
-+ * Optional: only supported since gcc >= 8
-+ * Optional: not supported by clang
-+ * Optional: not supported by icc
-+ *
-+ *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-nonstring-variable-attribute
-+ */
-+#if __has_attribute(__nonstring__)
-+# define __nonstring                    __attribute__((__nonstring__))
-+#else
-+# define __nonstring
-+#endif
-+
- /*
-  *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-noreturn-function-attribute
-  * clang: https://clang.llvm.org/docs/AttributeReference.html#noreturn
 -- 
 2.17.1
