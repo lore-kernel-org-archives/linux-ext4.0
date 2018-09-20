@@ -1,7 +1,7 @@
 From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Subject: [PATCH v5 03/15] Compiler Attributes: remove unneeded tests
-Date: Thu, 20 Sep 2018 19:22:49 +0200
-Message-ID: <20180920172301.21868-4-miguel.ojeda.sandonis@gmail.com>
+Subject: [PATCH v5 05/15] Compiler Attributes: remove unneeded sparse (__CHECKER__) tests
+Date: Thu, 20 Sep 2018 19:22:51 +0200
+Message-ID: <20180920172301.21868-6-miguel.ojeda.sandonis@gmail.com>
 References: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com>
 Cc: linux-kernel@vger.kernel.org,
         Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
@@ -28,83 +28,94 @@ In-Reply-To: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Attributes const and always_inline have tests around them
-which are unneeded, since they are supported by gcc >= 4.6,
-clang >= 3 and icc >= 13. https://godbolt.org/z/DFPq37
+Sparse knows about a few more attributes now, so we can remove
+the __CHECKER__ conditions from them (which, in turn, allow us
+to move some of them later on to compiler_attributes.h).
 
-In the case of gnu_inline, we do not need to test for
-__GNUC_STDC_INLINE__ because, regardless of the current
-inlining behavior, we can simply always force the old
-GCC inlining behavior by using the attribute in all cases.
+  * assume_aligned: since sparse's commit ffc860b ("sparse:
+    ignore __assume_aligned__ attribute"), included in 0.5.1
+
+  * error: since sparse's commit 0a04210 ("sparse: Add 'error'
+    to ignored attributes"), included in 0.5.0
+
+  * hotpatch: since sparse's commit 6043210 ("sparse/parse.c:
+    ignore hotpatch attribute"), included in 0.5.1
+
+  * warning: since sparse's commit 977365d ("Avoid "attribute
+    'warning': unknown attribute" warning"), included in 0.4.2
+
+On top of that, __must_be_array does not need it either because:
+
+  * Even ancient versions of sparse do not have a problem
+
+  * BUILD_BUG_ON_ZERO() is currently disabled for __CHECKER__
 
 Reviewed-by: Nick Desaulniers <ndesaulniers@google.com>
 Reviewed-by: Luc Van Oostenryck <luc.vanoostenryck@gmail.com>
 Signed-off-by: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
 ---
- include/linux/compiler_types.h | 23 +++--------------------
- 1 file changed, 3 insertions(+), 20 deletions(-)
+ include/linux/compiler-gcc.h   | 6 ++----
+ include/linux/compiler.h       | 4 ----
+ include/linux/compiler_types.h | 2 +-
+ 3 files changed, 3 insertions(+), 9 deletions(-)
 
+diff --git a/include/linux/compiler-gcc.h b/include/linux/compiler-gcc.h
+index 3b32bbfa5a49..1ca6a51cfaa9 100644
+--- a/include/linux/compiler-gcc.h
++++ b/include/linux/compiler-gcc.h
+@@ -76,14 +76,12 @@
+ 
+ #define __compiletime_object_size(obj) __builtin_object_size(obj, 0)
+ 
+-#ifndef __CHECKER__
+ #define __compiletime_warning(message) __attribute__((__warning__(message)))
+ #define __compiletime_error(message) __attribute__((__error__(message)))
+ 
+-#ifdef LATENT_ENTROPY_PLUGIN
++#if defined(LATENT_ENTROPY_PLUGIN) && !defined(__CHECKER__)
+ #define __latent_entropy __attribute__((latent_entropy))
+ #endif
+-#endif /* __CHECKER__ */
+ 
+ /*
+  * calling noreturn functions, __builtin_unreachable() and __builtin_trap()
+@@ -131,7 +129,7 @@
+ 
+ /* gcc version specific checks */
+ 
+-#if GCC_VERSION >= 40900 && !defined(__CHECKER__)
++#if GCC_VERSION >= 40900
+ /*
+  * __assume_aligned(n, k): Tell the optimizer that the returned
+  * pointer can be assumed to be k modulo n. The second argument is
+diff --git a/include/linux/compiler.h b/include/linux/compiler.h
+index 165b1d5683ed..4030a2940d6b 100644
+--- a/include/linux/compiler.h
++++ b/include/linux/compiler.h
+@@ -357,11 +357,7 @@ static inline void *offset_to_ptr(const int *off)
+ 	compiletime_assert(__native_word(t),				\
+ 		"Need native word sized stores/loads for atomicity.")
+ 
+-#ifdef __CHECKER__
+-#define __must_be_array(a)	0
+-#else
+ /* &a[0] degrades to a pointer: a different type from an array */
+ #define __must_be_array(a)	BUILD_BUG_ON_ZERO(__same_type((a), &(a)[0]))
+-#endif
+ 
+ #endif /* __LINUX_COMPILER_H */
 diff --git a/include/linux/compiler_types.h b/include/linux/compiler_types.h
-index 8fbdd47dd3d0..5ff9cda893f4 100644
+index 5ff9cda893f4..a3eceb3ad1b3 100644
 --- a/include/linux/compiler_types.h
 +++ b/include/linux/compiler_types.h
-@@ -158,10 +158,6 @@ struct ftrace_likely_data {
- 	(sizeof(t) == sizeof(char) || sizeof(t) == sizeof(short) || \
- 	 sizeof(t) == sizeof(int) || sizeof(t) == sizeof(long))
- 
--#ifndef __attribute_const__
--#define __attribute_const__	__attribute__((__const__))
--#endif
--
- #ifndef __noclone
- #define __noclone
+@@ -218,7 +218,7 @@ struct ftrace_likely_data {
+ #define __must_check
  #endif
-@@ -196,6 +192,7 @@ struct ftrace_likely_data {
-  * [...]
-  */
- #define __pure			__attribute__((__pure__))
-+#define __attribute_const__	__attribute__((__const__))
- #define __aligned(x)		__attribute__((__aligned__(x)))
- #define __aligned_largest	__attribute__((__aligned__))
- #define __printf(a, b)		__attribute__((__format__(printf, a, b)))
-@@ -211,6 +208,8 @@ struct ftrace_likely_data {
- #define __alias(symbol)		__attribute__((__alias__(#symbol)))
- #define __cold			__attribute__((__cold__))
- #define __section(S)		__attribute__((__section__(#S)))
-+#define __always_inline		inline __attribute__((__always_inline__))
-+#define __gnu_inline		__attribute__((__gnu_inline__))
  
- 
- #ifdef CONFIG_ENABLE_MUST_CHECK
-@@ -235,18 +234,6 @@ struct ftrace_likely_data {
- 
- #define __compiler_offsetof(a, b)	__builtin_offsetof(a, b)
- 
--/*
-- * Feature detection for gnu_inline (gnu89 extern inline semantics). Either
-- * __GNUC_STDC_INLINE__ is defined (not using gnu89 extern inline semantics,
-- * and we opt in to the gnu89 semantics), or __GNUC_STDC_INLINE__ is not
-- * defined so the gnu89 semantics are the default.
-- */
--#ifdef __GNUC_STDC_INLINE__
--# define __gnu_inline	__attribute__((__gnu_inline__))
--#else
--# define __gnu_inline
--#endif
--
- /*
-  * Force always-inline if the user requests it so via the .config.
-  * GCC does not warn about unused static inline functions for
-@@ -271,10 +258,6 @@ struct ftrace_likely_data {
- #define __inline inline
- #define noinline	__attribute__((__noinline__))
- 
--#ifndef __always_inline
--#define __always_inline inline __attribute__((__always_inline__))
--#endif
--
- /*
-  * Rather then using noinline to prevent stack consumption, use
-  * noinline_for_stack instead.  For documentation reasons.
+-#if defined(CC_USING_HOTPATCH) && !defined(__CHECKER__)
++#if defined(CC_USING_HOTPATCH)
+ #define notrace			__attribute__((hotpatch(0, 0)))
+ #else
+ #define notrace			__attribute__((__no_instrument_function__))
 -- 
 2.17.1
