@@ -1,42 +1,159 @@
-From: Jonathan Corbet <corbet@lwn.net>
-Subject: Re: [PATCH] docs: fix some broken documentation references
-Date: Thu, 20 Sep 2018 11:10:22 -0600
-Message-ID: <20180920111022.072b33a7@lwn.net>
-References: <6b47bf56b898c48a0dc3cd42283c9e5c7c23367a.1537210894.git.mchehab+samsung@kernel.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 8bit
+From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Subject: [PATCH v5 00/15] Compiler Attributes
+Date: Thu, 20 Sep 2018 19:22:46 +0200
+Message-ID: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com>
 Cc: linux-kernel@vger.kernel.org,
-        Linux Media Mailing List <linux-media@vger.kernel.org>,
-        Mauro Carvalho Chehab <mchehab@infradead.org>,
-        Jan Kara <jack@suse.com>,
-        Stephen Hemminger <stephen@networkplumber.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Michael Ellerman <mpe@ellerman.id.au>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Arnd Bergmann <arnd@arndb.de>, linux-doc@vger.kernel.org,
-        linux-ext4@vger.kernel.org, bridge@lists.linux-foundation.org,
-        netdev@vger.kernel.org
-To: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deac
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <6b47bf56b898c48a0dc3cd42283c9e5c7c23367a.1537210894.git.mchehab+samsung@kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 17 Sep 2018 15:02:34 -0400
-Mauro Carvalho Chehab <mchehab+samsung@kernel.org> wrote:
+The Compiler Attributes series is an effort to disentangle
+the include/linux/compiler*.h headers and bring them up to date.
 
-> Some documentation files received recent changes and are
-> pointing to wrong places.
-> 
-> Those references can easily fixed with the help of a
-> script:
-> 
-> 	$ ./scripts/documentation-file-ref-check --fix
-> 
-> Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+The main idea behind the series is to use feature checking macros
+(i.e. __has_attribute) instead of compiler version checks (e.g. GCC_VERSION),
+which are compiler-agnostic (so they can be shared, reducing the size
+of compiler-specific headers) and version-agnostic.
 
-Applied, thanks.
+Other related improvements have been performed in the headers as well,
+which on top of the use of __has_attribute it has amounted to a significant
+simplification of these headers (e.g. GCC_VERSION is now only guarding 4
+non-attribute macros).
 
-jon
+This series should also help the efforts to support compiling the kernel
+with clang and icc. A fair amount of documentation and comments have also
+been added, clarified or removed; and the headers are now more readable,
+which should help kernel developers in general.
+
+The series was triggered due to the move to gcc >= 4.6. In turn, this series
+has also triggered Sparse to gain the ability to recognize __has_attribute
+on its own.
+
+Finally, the nonstring variable attribute series has been applied on top
+of this one.
+
+You can also fetch it from:
+
+  https://github.com/ojeda/linux/tree/compiler-attributes-v5
+
+Enjoy!
+
+Cheers,
+Miguel
+
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Masahiro Yamada <yamada.masahiro@socionext.com>
+Cc: Michal Marek <michal.lkml@markovi.net>
+Cc: Steven Rostedt <rostedt@goodmis.org>
+Cc: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+Cc: Olof Johansson <olof@lxom.net>
+Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Cc: David S. Miller <davem@davemloft.net>
+Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>
+Cc: Kees Cook <keescook@chromium.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Ingo Molnar <mingo@kernel.org>
+Cc: Paul Lawrence <paullawrence@google.com>
+Cc: Sandipan Das <sandipan@linux.vnet.ibm.com>
+Cc: Andrey Konovalov <andreyknvl@google.com>
+Cc: David Woodhouse <dwmw2@infradead.org>
+Cc: Will Deacon <will.deacon@arm.com>
+Cc: Philippe Ombredanne <pombredanne@nexb.com>
+Cc: Paul Burton <paul.burton@mips.com>
+Cc: David Rientjes <rientjes@google.com>
+Cc: Willy Tarreau <w@1wt.eu>
+Cc: Martin Sebor <msebor@gmail.com>
+Cc: Christopher Li <sparse@chrisli.org>
+Cc: Jonathan Corbet <corbet@lwn.net>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Geert Uytterhoeven <geert@linux-m68k.org>
+Cc: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Cc: Joe Perches <joe@perches.com>
+Cc: Arnd Bergmann <arnd@arndb.de>
+Cc: Dominique Martinet <asmadeus@codewreck.org>
+Cc: Stefan Agner <stefan@agner.ch>
+Cc: Luc Van Oostenryck <luc.vanoostenryck@gmail.com>
+Cc: Nick Desaulniers <ndesaulniers@google.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-doc@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+Cc: linux-sparse@vger.kernel.org
+Cc: linux-kbuild@vger.kernel.org
+
+v4 -> v5
+
+  * Removed the 2 __naked patches, since Greg just applied them to master;
+    and rebased on top of that. The only change in the range-diff is in
+    "Compiler Attributes: always use the extra-underscores syntax" due
+    to the move of __naked to compiler_types.h.
+
+  * Applied the nonstring series on top of this one (last 4 patches).
+    Rationale:
+      - the nonstring series would anyway be modified again by this one
+        (so it has been rebased after the general cleanup).
+      - ext4's "local" nonstring was merged
+      - easier to manage (and easier to see the end result)
+
+    The first 2 patches of the last 4 add the warning back at W=1 and
+    add the __nonstring attribute. The other two serve as an example
+    of usage and as a cleanup.
+
+  * Cc lists removed from each commit; using a single list in the cover letter;
+    and a new, revised list of Cc (wider audience).
+
+Miguel Ojeda (15):
+  Compiler Attributes: remove unused attributes
+  Compiler Attributes: always use the extra-underscores syntax
+  Compiler Attributes: remove unneeded tests
+  Compiler Attributes: homogenize __must_be_array
+  Compiler Attributes: remove unneeded sparse (__CHECKER__) tests
+  Compiler Attributes: add missing SPDX ID in compiler_types.h
+  Compiler Attributes: use feature checks instead of version checks
+  Compiler Attributes: KENTRY used twice the "used" attribute
+  Compiler Attributes: remove uses of __attribute__ from compiler.h
+  Compiler Attributes: add Doc/process/programming-language.rst
+  Compiler Attributes: add MAINTAINERS entry
+  Compiler Attributes: add support for __nonstring (gcc >= 8)
+  Compiler Attributes: enable -Wstringop-truncation on W=1 (gcc >= 8)
+  Compiler Attributes: auxdisplay: panel: use __nonstring
+  Compiler Attributes: ext4: remove local __nonstring definition
+
+ Documentation/process/index.rst               |   1 +
+ .../process/programming-language.rst          |  45 +++
+ MAINTAINERS                                   |   5 +
+ drivers/auxdisplay/panel.c                    |   7 +-
+ fs/ext4/ext4.h                                |   9 -
+ include/linux/compiler-clang.h                |   5 -
+ include/linux/compiler-gcc.h                  |  70 +----
+ include/linux/compiler-intel.h                |   9 -
+ include/linux/compiler.h                      |  19 +-
+ include/linux/compiler_attributes.h           | 258 ++++++++++++++++++
+ include/linux/compiler_types.h                | 101 +------
+ scripts/Makefile.extrawarn                    |   1 +
+ 12 files changed, 341 insertions(+), 189 deletions(-)
+ create mode 100644 Documentation/process/programming-language.rst
+ create mode 100644 include/linux/compiler_attributes.h
+
+-- 
+2.17.1
