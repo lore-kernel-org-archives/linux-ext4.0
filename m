@@ -1,67 +1,84 @@
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-Subject: Re: inline extents
-Date: Thu, 20 Sep 2018 15:34:20 -0400
-Message-ID: <20180920193420.GA9343@thunk.org>
-References: <CAJCQCtQVzmwey0GcuHmZ8=_XuqmrA24d4DDVVuX9vL3KYStwZg@mail.gmail.com>
- <20180920014506.GL27618@dastard>
- <CAJCQCtQyws4LVJKrNiFST4ajFXB5ViXx=oRWq98r=tppa+K8FQ@mail.gmail.com>
+From: Kees Cook <keescook@chromium.org>
+Subject: Re: [PATCH v5 13/15] Compiler Attributes: enable -Wstringop-truncation
+ on W=1 (gcc >= 8)
+Date: Thu, 20 Sep 2018 12:52:57 -0700
+Message-ID: <CAGXu5jKZYEK7Asy4KwtfVVxHLFbpeqpWWEOM-60h7h4gj3JZrw@mail.gmail.com>
+References: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com> <20180920172301.21868-14-miguel.ojeda.sandonis@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        xfs list <linux-xfs@vger.kernel.org>,
-        Btrfs BTRFS <linux-btrfs@vger.kernel.org>,
-        linux-ext4@vger.kernel.org
-To: Chris Murphy <lists@colorremedies.com>
-Return-path: <linux-btrfs-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <CAJCQCtQyws4LVJKrNiFST4ajFXB5ViXx=oRWq98r=tppa+K8FQ@mail.gmail.com>
-Sender: linux-btrfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        P
+To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Return-path: <linux-kernel-owner@vger.kernel.org>
+In-Reply-To: <20180920172301.21868-14-miguel.ojeda.sandonis@gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Sep 19, 2018 at 09:18:16PM -0600, Chris Murphy wrote:
-> > ext4 has inline data, too, so there's every chance grub will corrupt
-> > ext4 filesystems with tit's wonderful new feature. I'm not sure if
-> > the ext4 metadata cksums cover the entire inode and inline data, but
-> > if they do it's the same problem as btrfs.
-> 
-> I don't see inline used with a default mkfs, but I do see metadata_csum
+On Thu, Sep 20, 2018 at 10:22 AM, Miguel Ojeda
+<miguel.ojeda.sandonis@gmail.com> wrote:
+> Commit 217c3e019675 ("disable stringop truncation warnings for now")
+> disabled -Wstringop-truncation since it was too noisy.
+>
+> Having __nonstring available allows us to let GCC know that a string
+> is not meant to be NUL-terminated, which helps suppressing some
+> -Wstringop-truncation warnings.
+>
+> Note that using __nonstring actually triggers other warnings
+> (-Wstringop-overflow, which is on by default) which may be real
+> problems. Therefore, cleaning up -Wstringop-truncation warnings
+> also buys us the ability to uncover further potential problems.
+>
+> To encourage the use of __nonstring, we put the warning back at W=1.
+> In the future, if we end up with a fairly warning-free tree,
+> we might want to enable it by default.
+>
+> Signed-off-by: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
 
-The grub environment block is 1024 bytes, so unless you are using a 4k
-inode size (the default is 256 bytes), the grub environment block
-won't be an inline data file.  So in practice, this won't be a
-problem.  So in practice this won't be a problem for ext4 today.
+Yessss. :)
 
-There are ways that grub can query the file system (using FIEMAP or
-FS_IOC_GETFLAGS) to see whether or not the file is an inline file.
-For xfs grub would also need to make sure the file isn't reflinked
-file (which can also be queried using FIEMAP).  That's fine for
-inline, since a file won't magically change from stored in a block
-versus inline, so grub can check this at grub setup time.  But the
-problem with reflink is that a file that was originally using a block
-exclusively could later have that block be shared by another file, at
-which point it's only safe to write the block using copy-on-write.
+Reviewed-by: Kees Cook <keescook@chromium.org>
 
-> I know some of the file systems have reserve areas for bootloader
-> stuff. I'm not sure if that's preferred over bootloaders just getting
-> their own partition and controlling it stem to stern however they
-> want.
+-Kees
 
-Ext4 had reserved the bootloader inode, and we have defined a way for
-a bootloader to access it.  The original intent was that not it just
-be fore the environment block, but also the grub stage 1.5 or stage 2
-loader.  This would allow grub to just use a fixed list of blocks or
-extents, and not need to understand the ext4 extents structures.  We
-added way this when, because we anticipated this would be easier for
-grub than having it learn how to read ext4 extents structures.
-Instead, the bootloader would at setup time use the EXT4_IOC_SWAP_BOOT
-ioctl and then use a fixed list of blocks or block extents like LILO
-used to do.
+> ---
+>  scripts/Makefile.extrawarn | 1 +
+>  1 file changed, 1 insertion(+)
+>
+> diff --git a/scripts/Makefile.extrawarn b/scripts/Makefile.extrawarn
+> index 8d5357053f86..b8f36f5f43f2 100644
+> --- a/scripts/Makefile.extrawarn
+> +++ b/scripts/Makefile.extrawarn
+> @@ -29,6 +29,7 @@ warning-1 += $(call cc-option, -Wmissing-include-dirs)
+>  warning-1 += $(call cc-option, -Wunused-but-set-variable)
+>  warning-1 += $(call cc-option, -Wunused-const-variable)
+>  warning-1 += $(call cc-option, -Wpacked-not-aligned)
+> +warning-1 += $(call cc-option, -Wstringop-truncation)
+>  warning-1 += $(call cc-disable-warning, missing-field-initializers)
+>  warning-1 += $(call cc-disable-warning, sign-compare)
+>
+> --
+> 2.17.1
+>
 
-Of course, grub exceeded expectations and actually learned how to read
-ext4 file systems, and probably we (the ext4 developers) should have
-reached out to GRUB folks.
 
-Cheers,
 
-						- Ted
+-- 
+Kees Cook
+Pixel Security
