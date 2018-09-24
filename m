@@ -1,15 +1,15 @@
 Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:45542 "EHLO
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:45510 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726031AbeIYECN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:13 -0400
+        with ESMTP id S1725933AbeIYEBr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:01:47 -0400
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org, Olaf Weber <olaf@sgi.com>,
+Cc: linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RESEND v2 12/25] nls: utf8n: Add unicode character database files
-Date: Mon, 24 Sep 2018 17:56:42 -0400
-Message-Id: <20180924215655.3676-13-krisman@collabora.co.uk>
+Subject: [PATCH RESEND v2 04/25] nls: Split default charset from NLS core
+Date: Mon, 24 Sep 2018 17:56:34 -0400
+Message-Id: <20180924215655.3676-5-krisman@collabora.co.uk>
 In-Reply-To: <20180924215655.3676-1-krisman@collabora.co.uk>
 References: <20180924215655.3676-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
@@ -17,82 +17,255 @@ Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Olaf Weber <olaf@sgi.com>
-
-Add files from the Unicode Character Database, version 10.0.0, to the
-source.  A helper program that generates a trie used for normalization
-from these files is part of a separate commit.
-
-- Notes on the update from 8.0.0 and 10.0.0:
-
-The structure of ucd files and special cases have not experienced any
-changes between versions 8.0.0 and 10.0.0.  8.0.0 saw the addition of
-Cherokee LC characters, which is an interesting case for case-folding.
-The update is accompanied by new tests on the test_ucd module to catch
-specific cases.  No changes to mkutf8data script was required for the
-update.
-
-The actual files are not part of the commit submitted to the list
-because they are to big and would bounce.  Still, they can be obtained
-by the following script:
-
-FILES="CaseFolding.txt DerivedAge.txt extracted/DerivedCombiningClass.txt
-       DerivedCoreProperties.txt NormalizationCorrections.txt
-       NormalizationTest.txt UnicodeData.txt"
-VERSION=10.0.0
-BASE=http://www.unicode.org/Public/${VERSION}/ucd
-
-for i in ${FILES} ; do
-  wget "${BASE}/$i" -O fs/nls/ucd/$(basename ${i} .txt)-${VERSION}.txt
-done
-
-Signed-off-by: Olaf Weber <olaf@sgi.com>
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-  [Move ucd directory to fs/nls/]
-  [Update to ucd-10.0.0]
 ---
- fs/nls/ucd/README | 33 +++++++++++++++++++++++++++++++++
- 1 file changed, 33 insertions(+)
- create mode 100644 fs/nls/ucd/README
+ fs/nls/Makefile                      |  1 +
+ fs/nls/nls_core.c                    | 94 ++++++++++++++++++++++++++++
+ fs/nls/{nls_base.c => nls_default.c} | 93 +++------------------------
+ 3 files changed, 102 insertions(+), 86 deletions(-)
+ create mode 100644 fs/nls/nls_core.c
+ rename fs/nls/{nls_base.c => nls_default.c} (90%)
 
-diff --git a/fs/nls/ucd/README b/fs/nls/ucd/README
+diff --git a/fs/nls/Makefile b/fs/nls/Makefile
+index ac54db297128..5f42ceff9d15 100644
+--- a/fs/nls/Makefile
++++ b/fs/nls/Makefile
+@@ -3,6 +3,7 @@
+ # Makefile for native language support
+ #
+ 
++nls_base-y := nls_core.o nls_default.o
+ obj-$(CONFIG_NLS)		+= nls_base.o
+ 
+ obj-$(CONFIG_NLS_CODEPAGE_437)	+= nls_cp437.o
+diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
 new file mode 100644
-index 000000000000..67f2075d1fca
+index 000000000000..3f7de8f4c5b2
 --- /dev/null
-+++ b/fs/nls/ucd/README
-@@ -0,0 +1,33 @@
-+The files in this directory are part of the Unicode Character Database
-+for version 10.0.0 of the Unicode standard.
++++ b/fs/nls/nls_core.c
+@@ -0,0 +1,94 @@
++/*
++ * linux/fs/nls/nls_core.c
++ *
++ * Native language support--charsets and unicode translations.
++ * By Gordon Chaffee 1996, 1997
++ *
++ * Unicode based case conversion 1999 by Wolfram Pienkoss
++ *
++ */
 +
-+The full set of files can be found here:
++#include <linux/module.h>
++#include <linux/string.h>
++#include <linux/nls.h>
++#include <linux/kernel.h>
++#include <linux/errno.h>
++#include <linux/kmod.h>
++#include <linux/spinlock.h>
 +
-+  http://www.unicode.org/Public/10.0.0/ucd/
++static struct nls_table default_table;
++static struct nls_table *tables = &default_table;
++static DEFINE_SPINLOCK(nls_lock);
 +
-+The latest released version of the UCD can be found here:
++int __register_nls(struct nls_table *nls, struct module *owner)
++{
++	struct nls_table ** tmp = &tables;
 +
-+  http://www.unicode.org/Public/UCD/latest/
++	if (nls->next)
++		return -EBUSY;
 +
-+The files in this directory are identical, except that they have been
-+renamed with a suffix indicating the unicode version.
++	nls->owner = owner;
++	spin_lock(&nls_lock);
++	while (*tmp) {
++		if (nls == *tmp) {
++			spin_unlock(&nls_lock);
++			return -EBUSY;
++		}
++		tmp = &(*tmp)->next;
++	}
++	nls->next = tables;
++	tables = nls;
++	spin_unlock(&nls_lock);
++	return 0;
++}
++EXPORT_SYMBOL(__register_nls);
 +
-+Individual source links:
++int unregister_nls(struct nls_table * nls)
++{
++	struct nls_table ** tmp = &tables;
 +
-+  http://www.unicode.org/Public/10.0.0/ucd/CaseFolding.txt
-+  http://www.unicode.org/Public/10.0.0/ucd/DerivedAge.txt
-+  http://www.unicode.org/Public/10.0.0/ucd/extracted/DerivedCombiningClass.txt
-+  http://www.unicode.org/Public/10.0.0/ucd/DerivedCoreProperties.txt
-+  http://www.unicode.org/Public/10.0.0/ucd/NormalizationCorrections.txt
-+  http://www.unicode.org/Public/10.0.0/ucd/NormalizationTest.txt
-+  http://www.unicode.org/Public/10.0.0/ucd/UnicodeData.txt
++	spin_lock(&nls_lock);
++	while (*tmp) {
++		if (nls == *tmp) {
++			*tmp = nls->next;
++			spin_unlock(&nls_lock);
++			return 0;
++		}
++		tmp = &(*tmp)->next;
++	}
++	spin_unlock(&nls_lock);
++	return -EINVAL;
++}
 +
-+md5sums
++static struct nls_table *find_nls(char *charset)
++{
++	struct nls_table *nls;
++	spin_lock(&nls_lock);
++	for (nls = tables; nls; nls = nls->next) {
++		if (!strcmp(nls_charset_name(nls), charset))
++			break;
++		if (nls->alias && !strcmp(nls->alias, charset))
++			break;
++	}
++	if (nls && !try_module_get(nls->owner))
++		nls = NULL;
++	spin_unlock(&nls_lock);
++	return nls;
++}
 +
-+  7893b6e005c5a521319a0d12062ae122  CaseFolding-10.0.0.txt
-+  a602e4b44de3350087e40f2eb2184898  DerivedAge-10.0.0.txt
-+  5abdeb21af4edcc5d1e4c0b5802fc7a7  DerivedCombiningClass-10.0.0.txt
-+  eda11c2c2e3c308d9d3b90e2b3282024  DerivedCoreProperties-10.0.0.txt
-+  425ece5ffbecd0140d98c13ce05724aa  NormalizationCorrections-10.0.0.txt
-+  7296fe7aa07d7d288e65d559af2ad49b  NormalizationTest-10.0.0.txt
-+  2a52f30695dcc821f0f224650552beaf  UnicodeData-10.0.0.txt
++struct nls_table *load_nls(char *charset)
++{
++	return try_then_request_module(find_nls(charset), "nls_%s", charset);
++}
++
++void unload_nls(struct nls_table *nls)
++{
++	if (nls)
++		module_put(nls->owner);
++}
++
++EXPORT_SYMBOL(unregister_nls);
++EXPORT_SYMBOL(unload_nls);
++EXPORT_SYMBOL(load_nls);
++
++MODULE_LICENSE("Dual BSD/GPL");
+diff --git a/fs/nls/nls_base.c b/fs/nls/nls_default.c
+similarity index 90%
+rename from fs/nls/nls_base.c
+rename to fs/nls/nls_default.c
+index 0bb0acf6893f..c5d7e8391b22 100644
+--- a/fs/nls/nls_base.c
++++ b/fs/nls/nls_default.c
+@@ -1,5 +1,5 @@
+ /*
+- * linux/fs/nls/nls_base.c
++ * linux/fs/nls/nls_default.c
+  *
+  * Native language support--charsets and unicode translations.
+  * By Gordon Chaffee 1996, 1997
+@@ -8,23 +8,17 @@
+  *
+  */
+ 
++/*
++ * Sample implementation from Unicode home page.
++ * http://www.stonehand.com/unicode/standard/fss-utf.html
++ */
++
+ #include <linux/module.h>
+-#include <linux/string.h>
+-#include <linux/nls.h>
+-#include <linux/kernel.h>
+-#include <linux/errno.h>
+-#include <linux/kmod.h>
+-#include <linux/spinlock.h>
+ #include <asm/byteorder.h>
++#include <linux/nls.h>
+ 
+ static struct nls_table default_table;
+-static struct nls_table *tables = &default_table;
+-static DEFINE_SPINLOCK(nls_lock);
+ 
+-/*
+- * Sample implementation from Unicode home page.
+- * http://www.stonehand.com/unicode/standard/fss-utf.html
+- */
+ struct utf8_table {
+ 	int     cmask;
+ 	int     cval;
+@@ -232,73 +226,6 @@ int utf16s_to_utf8s(const wchar_t *pwcs, int inlen, enum utf16_endian endian,
+ }
+ EXPORT_SYMBOL(utf16s_to_utf8s);
+ 
+-int __register_nls(struct nls_table *nls, struct module *owner)
+-{
+-	struct nls_table ** tmp = &tables;
+-
+-	if (nls->next)
+-		return -EBUSY;
+-
+-	nls->owner = owner;
+-	spin_lock(&nls_lock);
+-	while (*tmp) {
+-		if (nls == *tmp) {
+-			spin_unlock(&nls_lock);
+-			return -EBUSY;
+-		}
+-		tmp = &(*tmp)->next;
+-	}
+-	nls->next = tables;
+-	tables = nls;
+-	spin_unlock(&nls_lock);
+-	return 0;	
+-}
+-EXPORT_SYMBOL(__register_nls);
+-
+-int unregister_nls(struct nls_table * nls)
+-{
+-	struct nls_table ** tmp = &tables;
+-
+-	spin_lock(&nls_lock);
+-	while (*tmp) {
+-		if (nls == *tmp) {
+-			*tmp = nls->next;
+-			spin_unlock(&nls_lock);
+-			return 0;
+-		}
+-		tmp = &(*tmp)->next;
+-	}
+-	spin_unlock(&nls_lock);
+-	return -EINVAL;
+-}
+-
+-static struct nls_table *find_nls(char *charset)
+-{
+-	struct nls_table *nls;
+-	spin_lock(&nls_lock);
+-	for (nls = tables; nls; nls = nls->next) {
+-		if (!strcmp(nls_charset_name(nls), charset))
+-			break;
+-		if (nls->alias && !strcmp(nls->alias, charset))
+-			break;
+-	}
+-	if (nls && !try_module_get(nls->owner))
+-		nls = NULL;
+-	spin_unlock(&nls_lock);
+-	return nls;
+-}
+-
+-struct nls_table *load_nls(char *charset)
+-{
+-	return try_then_request_module(find_nls(charset), "nls_%s", charset);
+-}
+-
+-void unload_nls(struct nls_table *nls)
+-{
+-	if (nls)
+-		module_put(nls->owner);
+-}
+-
+ static const wchar_t charset2uni[256] = {
+ 	/* 0x00*/
+ 	0x0000, 0x0001, 0x0002, 0x0003,
+@@ -543,10 +470,4 @@ struct nls_table *load_nls_default(void)
+ 	else
+ 		return &default_table;
+ }
+-
+-EXPORT_SYMBOL(unregister_nls);
+-EXPORT_SYMBOL(unload_nls);
+-EXPORT_SYMBOL(load_nls);
+ EXPORT_SYMBOL(load_nls_default);
+-
+-MODULE_LICENSE("Dual BSD/GPL");
 -- 
 2.19.0
