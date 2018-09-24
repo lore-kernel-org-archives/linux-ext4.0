@@ -1,15 +1,15 @@
 Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:45572 "EHLO
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:45596 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726031AbeIYECb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:31 -0400
+        with ESMTP id S1725986AbeIYECr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:47 -0400
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 To: tytso@mit.edu
 Cc: linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RESEND v2 17/25] nls: utf8: Integrate utf8 normalization code with utf8 charset
-Date: Mon, 24 Sep 2018 17:56:47 -0400
-Message-Id: <20180924215655.3676-18-krisman@collabora.co.uk>
+Subject: [PATCH RESEND v2 22/25] ext4: Support encoding-aware file name lookups
+Date: Mon, 24 Sep 2018 17:56:52 -0400
+Message-Id: <20180924215655.3676-23-krisman@collabora.co.uk>
 In-Reply-To: <20180924215655.3676-1-krisman@collabora.co.uk>
 References: <20180924215655.3676-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
@@ -17,394 +17,371 @@ Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch integrates the utf8n patches with the NLS utf8 charset by
-implementing the nls_ops operations and nls_charset table.  The
-Normalization is done with NFKD, and Casefold is implemented using the
-NFKD+CF algorithm, implemented by Olaf Weber and SGI.  The high level,
-strcmp, strncmp functions are implemented on top of the same utf8 code.
+This patch implements the actual support for encoding-aware file name
+lookups in ext4, based on the feature bit and the encoding stored in the
+superblock.
 
-Utf-8 with normalization is exposed as optional on top of the existing
-utf8 charset, and disabled by default, to avoid changing the behavior of
-existing nls_utf8 users.  To enable normalization, the specific
-normalization type must be set at load_table() time.
+A filesystem that has the encoding feature set is able to find files
+even if the name used by userspace is not exact, but an equivalent
+string.  This operation will be called and inexact-match name search.
 
-Changes since RFC v2:
-  - Integrate with NLS
-  - Merge utf8n with nls_utf8.
+Ext4 will only store exact-match names in the cache. Even if an
+inexact-match is issued, the exact-match name is what will be stored in
+the dcache.  This is done to prevent unintentional duplications of
+dentries in the dcache, and is the same approach used by filesystems
+doing case-insensitive lookups already.  We use d_add_ci(), to fix the
+names and prevent such duplication.
 
-Changes since RFC v1:
-  - Change error return code from EIO to EINVAL. (Olaf Weber)
-  - Fix issues with strncmp/strcmp.  (Olaf Weber)
-  - Remove stack buffer in normalization/casefold. (Olaf Weber)
-  - Include length parameter for second string on comparison functions.
-  - Change length type to size_t.
+For now, negative lookups are not inserted in the dcache, since they
+would need to be invalidated anyway, because we can't trust missing file
+dentries.  This is bad for performance but requires some leveraging of
+the vfs layer to fix.  We can live without that for now.
+
+DX is supported by modifying the hashes to make them encoding-aware.
+The new hashes are calculated as the hash of the normalized string,
+instead of the string directly.  This allows us to efficiently search
+for file names without requiring the user to provide the exact name.
+
+Changes since v1:
+  - Support normalized htree hashes.
+  - Guard code with CONFIG_NLS.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/nls/nls_utf8-core.c | 274 ++++++++++++++++++++++++++++++++++++++---
- fs/nls/nls_utf8-norm.c |   6 +
- fs/nls/utf8n.h         |   1 +
- include/linux/nls.h    |   8 ++
- 4 files changed, 275 insertions(+), 14 deletions(-)
+ fs/ext4/ext4.h   |  6 ++--
+ fs/ext4/hash.c   | 34 +++++++++++++++++-
+ fs/ext4/ialloc.c |  2 +-
+ fs/ext4/inline.c |  2 +-
+ fs/ext4/namei.c  | 92 ++++++++++++++++++++++++++++++++++++++++++------
+ 5 files changed, 119 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nls/nls_utf8-core.c b/fs/nls/nls_utf8-core.c
-index fe1ac5efaa37..a59d7f902f35 100644
---- a/fs/nls/nls_utf8-core.c
-+++ b/fs/nls/nls_utf8-core.c
-@@ -6,10 +6,15 @@
- #include <linux/module.h>
- #include <linux/kernel.h>
- #include <linux/string.h>
-+#include <linux/slab.h>
-+#include <linux/parser.h>
- #include <linux/nls.h>
- #include <linux/errno.h>
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 6bdaba9c6923..f7932d70b9fd 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1192,7 +1192,7 @@ extern void ext4_set_bits(void *bm, int cur, int len);
  
-+#include "utf8n.h"
-+
- static unsigned char identity[256];
-+static struct nls_charset utf8_info;
+ /* Be careful when modifying these flags.  The lower byte must match the
+  * NLS flags. */
+-
++#define EXT4_ENC_STRICT_MODE_FL	0x0001
+ #define EXT4_ENC_NLS_FL_MASK	0x00FF
  
- static int uni2char(wchar_t uni, unsigned char *out, int boundlen)
- {
-@@ -50,22 +55,262 @@ static unsigned char charset_toupper(const struct nls_table *table,
- 	return identity[c];
- }
- 
--static const struct nls_ops charset_ops = {
--	.lowercase = charset_toupper,
--	.uppercase = charset_tolower,
--	.uni2char = uni2char,
--	.char2uni = char2uni,
--};
-+#ifdef CONFIG_NLS_UTF8_NORMALIZATION
-+
-+static int utf8_validate(const struct nls_table *charset,
-+			 const unsigned char *str, size_t len)
-+{
-+	const struct utf8data *data = utf8nfkdi(charset->version);
-+
-+	if (utf8nlen(data, str, len) < 0)
-+		return -1;
-+	return 0;
-+}
-+
-+static int utf8_strncmp(const struct nls_table *charset,
-+			const unsigned char *str1, size_t len1,
-+			const unsigned char *str2, size_t len2)
-+{
-+	const struct utf8data *data = utf8nfkdi(charset->version);
-+	struct utf8cursor cur1, cur2;
-+	int c1, c2;
-+
-+	if (utf8ncursor(&cur1, data, str1, len1) < 0)
-+		goto invalid_seq;
-+
-+	if (utf8ncursor(&cur2, data, str2, len2) < 0)
-+		goto invalid_seq;
-+
-+	do {
-+		c1 = utf8byte(&cur1);
-+		c2 = utf8byte(&cur2);
-+
-+		if (c1 < 0 || c2 < 0)
-+			goto invalid_seq;
-+		if (c1 != c2)
-+			return 1;
-+	} while (c1);
-+
-+	return 0;
-+
-+invalid_seq:
-+	if(IS_STRICT_MODE(charset))
-+		return -EINVAL;
-+
-+	/* Treat the sequence as a binary blob. */
-+	if (len1 != len2)
-+		return 1;
-+
-+	return !!memcmp(str1, str2, len1);
-+}
-+
-+static int utf8_strncasecmp(const struct nls_table *charset,
-+			    const unsigned char *str1, size_t len1,
-+			    const unsigned char *str2, size_t len2)
-+{
-+	const struct utf8data *data = utf8nfkdicf(charset->version);
-+	struct utf8cursor cur1, cur2;
-+	int c1, c2;
-+
-+	if (utf8ncursor(&cur1, data, str1, len1) < 0)
-+		goto invalid_seq;
-+
-+	if (utf8ncursor(&cur2, data, str2, len2) < 0)
-+		goto invalid_seq;
-+
-+	do {
-+		c1 = utf8byte(&cur1);
-+		c2 = utf8byte(&cur2);
-+
-+		if (c1 < 0 || c2 < 0)
-+			goto invalid_seq;
-+		if (c1 != c2)
-+			return 1;
-+	} while (c1);
-+
-+	return 0;
-+
-+invalid_seq:
-+	if(IS_STRICT_MODE(charset))
-+		return -EINVAL;
-+
-+	/* Treat the sequence as a binary blob. */
-+	if (len1 != len2)
-+		return 1;
-+
-+	return !!memcmp(str1, str2, len1);
-+}
-+
-+static int utf8_casefold_nfkdcf(const struct nls_table *charset,
-+				const unsigned char *str, size_t len,
-+				unsigned char *dest, size_t dlen)
-+{
-+	const struct utf8data *data = utf8nfkdicf(charset->version);
-+	struct utf8cursor cur;
-+	size_t nlen = 0;
-+
-+	if (utf8ncursor(&cur, data, str, len) < 0)
-+		goto invalid_seq;
-+
-+	for (nlen = 0; nlen < dlen; nlen++) {
-+		dest[nlen] = utf8byte(&cur);
-+		if (!dest[nlen])
-+			return nlen;
-+		if (dest[nlen] == -1)
-+			break;
-+	}
-+
-+invalid_seq:
-+	if (IS_STRICT_MODE(charset))
-+		return -EINVAL;
-+
-+	/* Treat the sequence as a binary blob. */
-+	memcpy(dest, str, len);
-+	return len;
-+}
-+
-+static int utf8_normalize_nfkd(const struct nls_table *charset,
-+			       const unsigned char *str,
-+			       size_t len, unsigned char *dest, size_t dlen)
-+{
-+	const struct utf8data *data = utf8nfkdi(charset->version);
-+	struct utf8cursor cur;
-+	ssize_t nlen = 0;
- 
--static struct nls_charset nls_charset;
--static struct nls_table table = {
--	.charset = &nls_charset,
--	.ops = &charset_ops,
-+	if (utf8ncursor(&cur, data, str, len) < 0)
-+		goto invalid_seq;
-+
-+	for (nlen = 0; nlen < dlen; nlen++) {
-+		dest[nlen] = utf8byte(&cur);
-+		if (!dest[nlen])
-+			return nlen;
-+		if (dest[nlen] == -1)
-+			break;
-+	}
-+
-+invalid_seq:
-+	if (IS_STRICT_MODE(charset))
-+		return -EINVAL;
-+
-+	/* Treat the sequence as a binary blob. */
-+	memcpy(dest, str, len);
-+	return len;
-+}
-+
-+static int utf8_parse_version(const char *version, unsigned int *maj,
-+			      unsigned int *min, unsigned int *rev)
-+{
-+	substring_t args[3];
-+	char *tmp;
-+	const struct match_token token[] = {
-+		{1, "%d.%d.%d"},
-+		{0, NULL}
-+	};
-+	int ret = 0;
-+
-+	tmp = kstrdup(version, GFP_KERNEL);
-+	if (match_token(tmp, token, args) != 1) {
-+		ret = -EINVAL;
-+		goto out;
-+	}
-+
-+	if (match_int(&args[0], maj) || match_int(&args[1], min) ||
-+	    match_int(&args[2], rev)) {
-+		ret = -EINVAL;
-+		goto out;
-+	}
-+out:
-+	kfree(tmp);
-+	return ret;
-+}
-+#endif
-+
-+struct utf8_table {
-+	struct nls_table tbl;
-+	struct nls_ops ops;
- };
- 
--static struct nls_charset nls_charset = {
-+static void utf8_set_ops(struct utf8_table *utbl)
-+{
-+	utbl->ops.lowercase = charset_toupper;
-+	utbl->ops.uppercase = charset_tolower;
-+	utbl->ops.uni2char = uni2char;
-+	utbl->ops.char2uni = char2uni;
-+
-+#ifdef CONFIG_NLS_UTF8_NORMALIZATION
-+	utbl->ops.validate = utf8_validate;
-+
-+	if (IS_NORMALIZATION_TYPE_UTF8_NFKD(&utbl->tbl)) {
-+		utbl->ops.normalize = utf8_normalize_nfkd;
-+		utbl->ops.strncmp = utf8_strncmp;
-+	}
-+
-+	if (IS_CASEFOLD_TYPE_UTF8_NFKDCF(&utbl->tbl)) {
-+		utbl->ops.casefold = utf8_casefold_nfkdcf;
-+		utbl->ops.strncasecmp = utf8_strncasecmp;
-+	}
-+#endif
-+
-+	utbl->tbl.ops = &utbl->ops;
-+}
-+
-+static struct nls_table *utf8_load_table(const char *version, unsigned int flags)
-+{
-+	struct utf8_table *utbl = NULL;
-+	unsigned int nls_version;
-+
-+#ifdef CONFIG_NLS_UTF8_NORMALIZATION
-+	if (version) {
-+		unsigned int maj, min, rev;
-+
-+		if (utf8_parse_version(version, &maj, &min, &rev) < 0)
-+			return ERR_PTR(-EINVAL);
-+
-+		if (!utf8version_is_supported(maj, min, rev))
-+			return ERR_PTR(-EINVAL);
-+
-+		nls_version = UNICODE_AGE(maj, min, rev);
-+	} else {
-+		nls_version = utf8version_latest();
-+		printk(KERN_WARNING"UTF-8 version not specified. "
-+		       "Assuming latest supported version (%d.%d.%d).",
-+		       (nls_version >> 16) & 0xff, (nls_version >> 8) & 0xff,
-+		       (nls_version & 0xff));
-+	}
-+#else
-+	nls_version = 0;
-+#endif
-+
-+	utbl = kzalloc(sizeof(struct utf8_table), GFP_KERNEL);
-+	if (!utbl)
-+		return ERR_PTR(-ENOMEM);
-+
-+	utbl->tbl.charset = &utf8_info;
-+	utbl->tbl.version = nls_version;
-+	utbl->tbl.flags = flags;
-+	utf8_set_ops(utbl);
-+
-+	utbl->tbl.next = utf8_info.tables;
-+	utf8_info.tables = &utbl->tbl;
-+
-+	return &utbl->tbl;
-+}
-+
-+static void utf8_cleanup_tables(void)
-+{
-+	struct nls_table *tmp, *tbl = utf8_info.tables;
-+
-+	while (tbl) {
-+		tmp = tbl;
-+		tbl = tbl->next;
-+		kfree(tmp);
-+	}
-+	utf8_info.tables = NULL;
-+}
-+
-+static struct nls_charset utf8_info = {
- 	.charset = "utf8",
--	.tables = &table,
-+	.load_table = utf8_load_table,
- };
- 
- static int __init init_nls_utf8(void)
-@@ -74,12 +319,13 @@ static int __init init_nls_utf8(void)
- 	for (i=0; i<256; i++)
- 		identity[i] = i;
- 
--        return register_nls(&nls_charset);
-+        return register_nls(&utf8_info);
- }
- 
- static void __exit exit_nls_utf8(void)
- {
--        unregister_nls(&nls_charset);
-+	unregister_nls(&utf8_info);
-+	utf8_cleanup_tables();
- }
- 
- module_init(init_nls_utf8)
-diff --git a/fs/nls/nls_utf8-norm.c b/fs/nls/nls_utf8-norm.c
-index 64c3cc74a2ca..abee8b376a87 100644
---- a/fs/nls/nls_utf8-norm.c
-+++ b/fs/nls/nls_utf8-norm.c
-@@ -38,6 +38,12 @@ int utf8version_is_supported(u8 maj, u8 min, u8 rev)
- }
- EXPORT_SYMBOL(utf8version_is_supported);
- 
-+int utf8version_latest()
-+{
-+	return utf8vers;
-+}
-+EXPORT_SYMBOL(utf8version_latest);
-+
  /*
-  * UTF-8 valid ranges.
+@@ -2396,8 +2396,8 @@ extern int ext4_check_all_de(struct inode *dir, struct buffer_head *bh,
+ extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
+ 
+ /* hash.c */
+-extern int ext4fs_dirhash(const char *name, int len, struct
+-			  dx_hash_info *hinfo);
++extern int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
++			  struct dx_hash_info *hinfo);
+ 
+ /* ialloc.c */
+ extern struct inode *__ext4_new_inode(handle_t *, struct inode *, umode_t,
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index e22dcfab308b..1b3c9a492b14 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include <linux/fs.h>
++#include <linux/nls.h>
+ #include <linux/compiler.h>
+ #include <linux/bitops.h>
+ #include "ext4.h"
+@@ -196,7 +197,8 @@ static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
+  * represented, and whether or not the returned hash is 32 bits or 64
+  * bits.  32 bit hashes will return 0 for the minor hash.
+  */
+-int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
++static int __ext4fs_dirhash(const char *name, int len,
++			    struct dx_hash_info *hinfo)
+ {
+ 	__u32	hash;
+ 	__u32	minor_hash = 0;
+@@ -266,3 +268,33 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 	hinfo->minor_hash = minor_hash;
+ 	return 0;
+ }
++
++int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
++		   struct dx_hash_info *hinfo)
++{
++#ifdef CONFIG_NLS
++	const struct nls_table *charset = EXT4_SB(dir->i_sb)->encoding;
++	int r, dlen;
++	unsigned char *buff;
++
++	if (len && charset) {
++		buff = kzalloc(sizeof (char) * PATH_MAX, GFP_KERNEL);
++		if (!buff)
++			return -1;
++
++		dlen = nls_normalize(charset, name, len, buff, PATH_MAX);
++
++		if (dlen < 0) {
++			kfree(buff);
++			goto opaque_seq;
++		}
++
++		r = __ext4fs_dirhash(buff, dlen, hinfo);
++
++		kfree(buff);
++		return r;
++	}
++opaque_seq:
++#endif
++	return __ext4fs_dirhash(name, len, hinfo);
++}
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 2addcb8730e1..5a8265540343 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -455,7 +455,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 		if (qstr) {
+ 			hinfo.hash_version = DX_HASH_HALF_MD4;
+ 			hinfo.seed = sbi->s_hash_seed;
+-			ext4fs_dirhash(qstr->name, qstr->len, &hinfo);
++			ext4fs_dirhash(parent, qstr->name, qstr->len, &hinfo);
+ 			grp = hinfo.hash;
+ 		} else
+ 			grp = prandom_u32();
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 7b4736022761..4e6a6fea85ca 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1404,7 +1404,7 @@ int htree_inlinedir_to_tree(struct file *dir_file,
+ 			}
+ 		}
+ 
+-		ext4fs_dirhash(de->name, de->name_len, hinfo);
++		ext4fs_dirhash(dir, de->name, de->name_len, hinfo);
+ 		if ((hinfo->hash < start_hash) ||
+ 		    ((hinfo->hash == start_hash) &&
+ 		     (hinfo->minor_hash < start_minor_hash)))
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 377d516c475f..be0c2e5ae2e0 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -35,6 +35,7 @@
+ #include <linux/buffer_head.h>
+ #include <linux/bio.h>
+ #include <linux/iversion.h>
++#include <linux/nls.h>
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+ 
+@@ -628,7 +629,7 @@ static struct stats dx_show_leaf(struct inode *dir,
+ 				}
+ 				if (!fscrypt_has_encryption_key(dir)) {
+ 					/* Directory is not encrypted */
+-					ext4fs_dirhash(de->name,
++					ext4fs_dirhash(dir, de->name,
+ 						de->name_len, &h);
+ 					printk("%*.s:(U)%x.%u ", len,
+ 					       name, h.hash,
+@@ -661,8 +662,8 @@ static struct stats dx_show_leaf(struct inode *dir,
+ 						name = fname_crypto_str.name;
+ 						len = fname_crypto_str.len;
+ 					}
+-					ext4fs_dirhash(de->name, de->name_len,
+-						       &h);
++					ext4fs_dirhash(dir, de->name,
++						       de->name_len, &h);
+ 					printk("%*.s:(E)%x.%u ", len, name,
+ 					       h.hash, (unsigned) ((char *) de
+ 								   - base));
+@@ -672,7 +673,7 @@ static struct stats dx_show_leaf(struct inode *dir,
+ #else
+ 				int len = de->name_len;
+ 				char *name = de->name;
+-				ext4fs_dirhash(de->name, de->name_len, &h);
++				ext4fs_dirhash(dir, de->name, de->name_len, &h);
+ 				printk("%*.s:%x.%u ", len, name, h.hash,
+ 				       (unsigned) ((char *) de - base));
+ #endif
+@@ -761,7 +762,7 @@ dx_probe(struct ext4_filename *fname, struct inode *dir,
+ 		hinfo->hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 	if (fname && fname_name(fname))
+-		ext4fs_dirhash(fname_name(fname), fname_len(fname), hinfo);
++		ext4fs_dirhash(dir, fname_name(fname), fname_len(fname), hinfo);
+ 	hash = hinfo->hash;
+ 
+ 	if (root->info.unused_flags & 1) {
+@@ -1007,7 +1008,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 			/* silently ignore the rest of the block */
+ 			break;
+ 		}
+-		ext4fs_dirhash(de->name, de->name_len, hinfo);
++		ext4fs_dirhash(dir, de->name, de->name_len, hinfo);
+ 		if ((hinfo->hash < start_hash) ||
+ 		    ((hinfo->hash == start_hash) &&
+ 		     (hinfo->minor_hash < start_minor_hash)))
+@@ -1196,7 +1197,7 @@ static int dx_make_map(struct inode *dir, struct ext4_dir_entry_2 *de,
+ 
+ 	while ((char *) de < base + blocksize) {
+ 		if (de->name_len && de->inode) {
+-			ext4fs_dirhash(de->name, de->name_len, &h);
++			ext4fs_dirhash(dir, de->name, de->name_len, &h);
+ 			map_tail--;
+ 			map_tail->hash = h.hash;
+ 			map_tail->offs = ((char *) de - base)>>2;
+@@ -1256,10 +1257,14 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
   *
-diff --git a/fs/nls/utf8n.h b/fs/nls/utf8n.h
-index f60827663503..b4697f9bfbab 100644
---- a/fs/nls/utf8n.h
-+++ b/fs/nls/utf8n.h
-@@ -32,6 +32,7 @@
+  * Return: %true if the directory entry matches, otherwise %false.
+  */
+-static inline bool ext4_match(const struct ext4_filename *fname,
++static inline bool ext4_match(const struct inode *parent,
++			      const struct ext4_filename *fname,
+ 			      const struct ext4_dir_entry_2 *de)
+ {
+ 	struct fscrypt_name f;
++#ifdef CONFIG_NLS
++	const struct ext4_sb_info *sbi = EXT4_SB(parent->i_sb);
++#endif
  
- /* Highest unicode version supported by the data tables. */
- extern int utf8version_is_supported(u8 maj, u8 min, u8 rev);
-+extern int utf8version_latest(void);
+ 	if (!de->inode)
+ 		return false;
+@@ -1269,6 +1274,15 @@ static inline bool ext4_match(const struct ext4_filename *fname,
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 	f.crypto_buf = fname->crypto_buf;
+ #endif
++
++#ifdef CONFIG_NLS
++	if (sbi->encoding) {
++		return !nls_strncmp(sbi->encoding,
++				    de->name, de->name_len,
++				    f.disk_name.name, f.disk_name.len);
++	}
++#endif
++
+ 	return fscrypt_match_name(&f, de->name, de->name_len);
+ }
  
- /*
-  * Look for the correct const struct utf8data for a unicode version.
-diff --git a/include/linux/nls.h b/include/linux/nls.h
-index aab60d4858ee..aee5cbfc07c6 100644
---- a/include/linux/nls.h
-+++ b/include/linux/nls.h
-@@ -186,6 +186,14 @@ NLS_CASEFOLD_FUNCS(ALL, TOUPPER, NLS_CASEFOLD_TYPE_TOUPPER)
- NLS_CASEFOLD_FUNCS(ASCII, TOUPPER, NLS_ASCII_CASEFOLD_TOUPPER)
- NLS_CASEFOLD_FUNCS(ASCII, TOLOWER, NLS_ASCII_CASEFOLD_TOLOWER)
+@@ -1289,7 +1303,7 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
+ 		/* this code is executed quadratically often */
+ 		/* do minimal checking `by hand' */
+ 		if ((char *) de + de->name_len <= dlimit &&
+-		    ext4_match(fname, de)) {
++		    ext4_match(dir, fname, de)) {
+ 			/* found a match - just to be sure, do
+ 			 * a full check */
+ 			if (ext4_check_dir_entry(dir, NULL, de, bh, bh->b_data,
+@@ -1587,6 +1601,31 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+ 			return ERR_PTR(-EPERM);
+ 		}
+ 	}
++
++#ifdef CONFIG_NLS
++	if (EXT4_SB(dir->i_sb)->encoding) {
++		if (inode) {
++			struct dentry *new;
++			struct qstr ciname;
++
++			ciname.len = de->name_len;
++			ciname.name = kstrndup(de->name, ciname.len, GFP_NOFS);
++			if (!ciname.name)
++				return ERR_PTR(-ENOMEM);
++
++			new = d_add_ci(dentry, inode, &ciname);
++			kfree(ciname.name);
++			return new;
++		} else {
++			/* Eventually we want to call d_add_ci(dentry, NULL)
++			 * for negative dentries in the encoding case as
++			 * well.  For now, prevent the negative dentry
++			 * from being cached.
++			 */
++			return NULL;
++		}
++	}
++#endif
+ 	return d_splice_alias(inode, dentry);
+ }
  
-+/* UTF-8 */
+@@ -1797,7 +1836,7 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
+ 		if (ext4_check_dir_entry(dir, NULL, de, bh,
+ 					 buf, buf_size, offset))
+ 			return -EFSCORRUPTED;
+-		if (ext4_match(fname, de))
++		if (ext4_match(dir, fname, de))
+ 			return -EEXIST;
+ 		nlen = EXT4_DIR_REC_LEN(de->name_len);
+ 		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
+@@ -1982,7 +2021,7 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
+ 	if (fname->hinfo.hash_version <= DX_HASH_TEA)
+ 		fname->hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	fname->hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+-	ext4fs_dirhash(fname_name(fname), fname_len(fname), &fname->hinfo);
++	ext4fs_dirhash(dir, fname_name(fname), fname_len(fname), &fname->hinfo);
+ 
+ 	memset(frames, 0, sizeof(frames));
+ 	frame = frames;
+@@ -2035,6 +2074,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	struct ext4_dir_entry_2 *de;
+ 	struct ext4_dir_entry_tail *t;
+ 	struct super_block *sb;
++	struct ext4_sb_info *sbi;
+ 	struct ext4_filename fname;
+ 	int	retval;
+ 	int	dx_fallback=0;
+@@ -2046,10 +2086,18 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+ 	sb = dir->i_sb;
++	sbi = EXT4_SB(sb);
+ 	blocksize = sb->s_blocksize;
+ 	if (!dentry->d_name.len)
+ 		return -EINVAL;
+ 
++#ifdef CONFIG_NLS
++	if (sbi->encoding_flags & EXT4_ENC_STRICT_MODE_FL &&
++	    nls_validate(sbi->encoding, dentry->d_name.name,
++			 dentry->d_name.len))
++		return -EINVAL;
++#endif
 +
-+#define NLS_UTF8_NORMALIZATION_TYPE_NFKD NLS_NORMALIZATION_TYPE(1)
-+#define NLS_UTF8_CASEFOLD_TYPE_NFKDCF	 NLS_CASEFOLD_TYPE(1)
+ 	retval = ext4_fname_setup_filename(dir, &dentry->d_name, 0, &fname);
+ 	if (retval)
+ 		return retval;
+@@ -2972,6 +3020,17 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+ 
++#ifdef CONFIG_NLS
++	/* VFS negative dentries are incompatible with Encoding and
++	 * Case-insensitiveness. Eventually we'll want avoid
++	 * invalidating the dentries here, alongside with returning the
++	 * negative dentries at ext4_lookup(), when it is better
++	 * supported by the VFS for the CI case.
++	 */
++	if (EXT4_SB(dir->i_sb)->encoding)
++		d_invalidate(dentry);
++#endif
 +
-+NLS_NORMALIZATION_FUNCS(UTF8, NFKD, NLS_UTF8_NORMALIZATION_TYPE_NFKD)
-+NLS_CASEFOLD_FUNCS(UTF8, NFKDCF, NLS_UTF8_CASEFOLD_TYPE_NFKDCF)
+ end_rmdir:
+ 	brelse(bh);
+ 	if (handle)
+@@ -3041,6 +3100,17 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	inode->i_ctime = current_time(inode);
+ 	ext4_mark_inode_dirty(handle, inode);
+ 
++#ifdef CONFIG_NLS
++	/* VFS negative dentries are incompatible with Encoding and
++	 * Case-insensitiveness. Eventually we'll want avoid
++	 * invalidating the dentries here, alongside with returning the
++	 * negative dentries at ext4_lookup(), when it is  better
++	 * supported by the VFS for the CI case.
++	 */
++	if (EXT4_SB(dir->i_sb)->encoding)
++		d_invalidate(dentry);
++#endif
 +
- /* nls_base.c */
- extern int __register_nls(struct nls_charset *, struct module *);
- extern int unregister_nls(struct nls_charset *);
+ end_unlink:
+ 	brelse(bh);
+ 	if (handle)
 -- 
 2.19.0
