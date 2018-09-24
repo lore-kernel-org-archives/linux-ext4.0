@@ -1,86 +1,98 @@
 Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-ed1-f66.google.com ([209.85.208.66]:41133 "EHLO
-        mail-ed1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726350AbeIXUim (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Sep 2018 16:38:42 -0400
-Date: Mon, 24 Sep 2018 16:36:10 +0200
-From: Luc Van Oostenryck <luc.vanoostenryck@gmail.com>
-To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        linux-kernel@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        "David S . Miller" <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Subject: Re: [PATCH v5 00/15] Compiler Attributes
-Message-ID: <20180924143608.aiyehiibgc7isk7k@ltop.local>
-References: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:45542 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726031AbeIYECN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:13 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org, Olaf Weber <olaf@sgi.com>,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH RESEND v2 12/25] nls: utf8n: Add unicode character database files
+Date: Mon, 24 Sep 2018 17:56:42 -0400
+Message-Id: <20180924215655.3676-13-krisman@collabora.co.uk>
+In-Reply-To: <20180924215655.3676-1-krisman@collabora.co.uk>
+References: <20180924215655.3676-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 20, 2018 at 07:22:46PM +0200, Miguel Ojeda wrote:
-> The Compiler Attributes series is an effort to disentangle
-> the include/linux/compiler*.h headers and bring them up to date.
-> 
-> The main idea behind the series is to use feature checking macros
-> (i.e. __has_attribute) instead of compiler version checks (e.g. GCC_VERSION),
-> which are compiler-agnostic (so they can be shared, reducing the size
-> of compiler-specific headers) and version-agnostic.
-> 
-> Other related improvements have been performed in the headers as well,
-> which on top of the use of __has_attribute it has amounted to a significant
-> simplification of these headers (e.g. GCC_VERSION is now only guarding 4
-> non-attribute macros).
-> 
-> This series should also help the efforts to support compiling the kernel
-> with clang and icc. A fair amount of documentation and comments have also
-> been added, clarified or removed; and the headers are now more readable,
-> which should help kernel developers in general.
-> 
-> The series was triggered due to the move to gcc >= 4.6. In turn, this series
-> has also triggered Sparse to gain the ability to recognize __has_attribute
-> on its own.
-> 
-> Finally, the nonstring variable attribute series has been applied on top
-> of this one.
+From: Olaf Weber <olaf@sgi.com>
 
-Hi Miguel,
-Feel free to add my
-  Reviewed-by: Luc Van Oostenryck <luc.vanoostenryck@gmail.com>
-on patches 11-15 (I think the others ones already have it).
+Add files from the Unicode Character Database, version 10.0.0, to the
+source.  A helper program that generates a trie used for normalization
+from these files is part of a separate commit.
 
--- Luc
+- Notes on the update from 8.0.0 and 10.0.0:
+
+The structure of ucd files and special cases have not experienced any
+changes between versions 8.0.0 and 10.0.0.  8.0.0 saw the addition of
+Cherokee LC characters, which is an interesting case for case-folding.
+The update is accompanied by new tests on the test_ucd module to catch
+specific cases.  No changes to mkutf8data script was required for the
+update.
+
+The actual files are not part of the commit submitted to the list
+because they are to big and would bounce.  Still, they can be obtained
+by the following script:
+
+FILES="CaseFolding.txt DerivedAge.txt extracted/DerivedCombiningClass.txt
+       DerivedCoreProperties.txt NormalizationCorrections.txt
+       NormalizationTest.txt UnicodeData.txt"
+VERSION=10.0.0
+BASE=http://www.unicode.org/Public/${VERSION}/ucd
+
+for i in ${FILES} ; do
+  wget "${BASE}/$i" -O fs/nls/ucd/$(basename ${i} .txt)-${VERSION}.txt
+done
+
+Signed-off-by: Olaf Weber <olaf@sgi.com>
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+  [Move ucd directory to fs/nls/]
+  [Update to ucd-10.0.0]
+---
+ fs/nls/ucd/README | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+ create mode 100644 fs/nls/ucd/README
+
+diff --git a/fs/nls/ucd/README b/fs/nls/ucd/README
+new file mode 100644
+index 000000000000..67f2075d1fca
+--- /dev/null
++++ b/fs/nls/ucd/README
+@@ -0,0 +1,33 @@
++The files in this directory are part of the Unicode Character Database
++for version 10.0.0 of the Unicode standard.
++
++The full set of files can be found here:
++
++  http://www.unicode.org/Public/10.0.0/ucd/
++
++The latest released version of the UCD can be found here:
++
++  http://www.unicode.org/Public/UCD/latest/
++
++The files in this directory are identical, except that they have been
++renamed with a suffix indicating the unicode version.
++
++Individual source links:
++
++  http://www.unicode.org/Public/10.0.0/ucd/CaseFolding.txt
++  http://www.unicode.org/Public/10.0.0/ucd/DerivedAge.txt
++  http://www.unicode.org/Public/10.0.0/ucd/extracted/DerivedCombiningClass.txt
++  http://www.unicode.org/Public/10.0.0/ucd/DerivedCoreProperties.txt
++  http://www.unicode.org/Public/10.0.0/ucd/NormalizationCorrections.txt
++  http://www.unicode.org/Public/10.0.0/ucd/NormalizationTest.txt
++  http://www.unicode.org/Public/10.0.0/ucd/UnicodeData.txt
++
++md5sums
++
++  7893b6e005c5a521319a0d12062ae122  CaseFolding-10.0.0.txt
++  a602e4b44de3350087e40f2eb2184898  DerivedAge-10.0.0.txt
++  5abdeb21af4edcc5d1e4c0b5802fc7a7  DerivedCombiningClass-10.0.0.txt
++  eda11c2c2e3c308d9d3b90e2b3282024  DerivedCoreProperties-10.0.0.txt
++  425ece5ffbecd0140d98c13ce05724aa  NormalizationCorrections-10.0.0.txt
++  7296fe7aa07d7d288e65d559af2ad49b  NormalizationTest-10.0.0.txt
++  2a52f30695dcc821f0f224650552beaf  UnicodeData-10.0.0.txt
+-- 
+2.19.0
