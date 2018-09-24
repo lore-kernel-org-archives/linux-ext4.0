@@ -1,15 +1,15 @@
 Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:45516 "EHLO
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:45534 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725944AbeIYEBx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:01:53 -0400
+        with ESMTP id S1725986AbeIYECI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:08 -0400
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 To: tytso@mit.edu
 Cc: linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RESEND v2 06/25] nls: Add support for multiple versions of an encoding
-Date: Mon, 24 Sep 2018 17:56:36 -0400
-Message-Id: <20180924215655.3676-7-krisman@collabora.co.uk>
+Subject: [PATCH RESEND v2 10/25] nls: Add optional normalization and casefold hooks
+Date: Mon, 24 Sep 2018 17:56:40 -0400
+Message-Id: <20180924215655.3676-11-krisman@collabora.co.uk>
 In-Reply-To: <20180924215655.3676-1-krisman@collabora.co.uk>
 References: <20180924215655.3676-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
@@ -17,138 +17,209 @@ Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This allows a user to request a specific version of an encoding, like
-the version 10.0.0 of Unicode encoded in utf8.
+The Normalization operation applies a transformation to strings to
+obtain the normalization form, which allow the user to determine whether
+any two strings are equivalent to each other.  The NLS subsystem doesn't
+impose any constraint on what means to be equivalent, for any charsets.
+Unicode-based charsets, for instance, are free to support one, a few or
+all kinds of Unicode equivalences.
 
-Supporting specific versions of encodings is important to ensure
-stability of names in filesystems, specially when doing transformations
-like casefold and normalization.  Even for unicode, where defined
-code-points are stable, there is instability for code points that
-weren't defined on a previous version, so the user might want to use an
-older version of the encoding to ensure the encoding is exact.
+The Casefold operation is similar to Normalization, in a sense that it
+also allows the caller to identify equivalent strings, but it
+disregards case, making it ideal for case insensitive comparisons.
 
-Not every NLS charset supports this feature.  It doesn't make sense for
-many of them, like ASCII.  Others just don't implement it yet, and never
-will.  In those cases, the interface allows the caller to get the
-un-versioned charset, which is the same original behavior as if this
-patch weren't applied.  A user that is not interested in a specific
-version can also ask for a versioned charset without specifying the
-version, and in this case, NLS will return the latest version available
-of that charset.
+Default implementation are provided by the nls core, such that existing
+charsets can operate on the new interface. The Normalization default
+operation is the format NLS_NORMALIZATION_TYPE_PLAIN, which returns the
+identity of the string, which means no normalization.  The casefold
+default is NLS_CASEFOLD_TYPE_TOUPPER, which returns the string with all
+characters converted to uppercase.
+
+Changes since V1:
+  - Add default operations for casefold and normalization
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/nls/nls_core.c   | 45 ++++++++++++++++++++++++++++++++++++++-------
- include/linux/nls.h |  8 ++++++++
- 2 files changed, 46 insertions(+), 7 deletions(-)
+ fs/nls/nls_core.c   |  11 +++++
+ include/linux/nls.h | 116 ++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 127 insertions(+)
 
 diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
-index 200a7f8165e6..dfd7a5ab4320 100644
+index 493690459b88..531d4add1d43 100644
 --- a/fs/nls/nls_core.c
 +++ b/fs/nls/nls_core.c
-@@ -19,10 +19,26 @@
- extern struct nls_charset default_charset;
- static struct nls_charset *charsets = &default_charset;
- static DEFINE_SPINLOCK(nls_lock);
--static struct nls_table *nls_load_table(struct nls_charset *charset)
-+
-+static struct nls_table *nls_load_table(struct nls_charset *charset,
-+					const char *version,
-+					unsigned int flags)
- {
--	/* For now, return the default table, which is the first one found. */
--	return charset->tables;
-+	struct nls_table *tbl;
-+
-+	/* If there is no table_create, only 1 table is supported and it
-+	 * must have been loaded statically.
-+	 */
-+	if (!charset->load_table)
-+		tbl = charset->tables;
-+	else
-+		tbl = charset->load_table(version, flags);
-+
-+	if (IS_ERR(tbl))
-+		return tbl;
-+
-+	tbl->flags = flags;
-+	return tbl;
- }
+@@ -25,6 +25,17 @@ static int nls_validate_flags(struct nls_table *table, unsigned int flags)
+ 	if (flags & NLS_STRICT_MODE && !table->ops->validate)
+ 		return -1;
  
- int __register_nls(struct nls_charset *nls, struct module *owner)
-@@ -85,21 +101,36 @@ static struct nls_charset *find_nls(const char *charset)
- 	return nls;
- }
- 
--struct nls_table *load_nls(char *charset)
-+struct nls_table *load_nls_version(const char *charset, const char *version,
-+				   unsigned int flags)
- {
- 	struct nls_charset *nls_charset;
- 
- 	nls_charset = try_then_request_module(find_nls(charset),
- 					      "nls_%s", charset);
--	if (!IS_ERR(nls_charset))
-+	if (IS_ERR(nls_charset))
-+		return ERR_PTR(-EINVAL);
++	if ((flags & NLS_NORMALIZATION_TYPE_MASK) && !table->ops->normalize)
++		return -1;
 +
-+	return nls_load_table(nls_charset, version, flags);
-+}
-+EXPORT_SYMBOL(load_nls_version);
++	if ((flags & NLS_CASEFOLD_TYPE_MASK) && !table->ops->casefold)
++		return -1;
 +
-+struct nls_table *load_nls(char *charset)
-+{
-+	struct nls_table *table = load_nls_version(charset, NULL, 0);
++	/* Reject unused flags */
++	if (flags & ~(NLS_CASEFOLD_TYPE_MASK|NLS_NORMALIZATION_TYPE_MASK |
++		      NLS_STRICT_MODE))
++		return -1;
 +
-+	/* Pre-versioned load_nls() didn't return error pointers. Let's
-+	 * keep the abi for now to prevent breakage.
-+	 */
-+	if (IS_ERR(table))
- 		return NULL;
- 
--	return nls_load_table(nls_charset);
-+	return table;
- }
- 
- void unload_nls(struct nls_table *nls)
- {
--	if (nls)
-+	if (!IS_ERR_OR_NULL(nls))
- 		module_put(nls->charset->owner);
+ 	return 0;
  }
  
 diff --git a/include/linux/nls.h b/include/linux/nls.h
-index cdc95cd9e5d4..91524bb4477b 100644
+index 980103d4c363..44a06a9c69e7 100644
 --- a/include/linux/nls.h
 +++ b/include/linux/nls.h
-@@ -30,6 +30,9 @@ struct nls_ops {
+@@ -4,6 +4,7 @@
  
- struct nls_table {
- 	const struct nls_charset *charset;
-+	unsigned int version;
-+	unsigned int flags;
-+
- 	const struct nls_ops *ops;
- 	const unsigned char *charset2lower;
- 	const unsigned char *charset2upper;
-@@ -42,6 +45,8 @@ struct nls_charset {
- 	struct module *owner;
- 	struct nls_table *tables;
- 	struct nls_charset *next;
-+	struct nls_table *(*load_table)(const char *version,
-+					unsigned int flags);
+ #include <linux/init.h>
+ #include <linux/string.h>
++#include <linux/errno.h>
+ 
+ /* Unicode has changed over the years.  Unicode code points no longer
+  * fit into 16 bits; as of Unicode 5 valid code points range from 0
+@@ -65,6 +66,51 @@ struct nls_ops {
+ 	int (*strncasecmp)(const struct nls_table *charset,
+ 			   const unsigned char *str1, size_t len1,
+ 			   const unsigned char *str2, size_t len2);
++	/**
++	 * @normalize:
++	 *
++	 * Obtain the normalized form of a string, which can be used to
++	 * determine whether any two strings are equivalent.  The NLS
++	 * subsystem doesn't impose any constraint on the charsets
++	 * regarding what it means to be equivalent.  Unicode-based
++	 * charsets, for instance, are free to support one, a few or all
++	 * kinds of Unicode equivalences.  Different kinds of
++	 * normalizations can be specified using the nls_table flags.
++	 *
++	 * This hook is responsible for performing string validation if
++	 * the strict mode flag is set.  The only case where it is not
++	 * called by nls_core is when strict mode and normalization are
++	 * disabled, because in this case the normalization is
++	 * guaranteed to be the string identity.
++	 *
++	 * Not every charset implements this hook.  It is only required
++	 * if the charset supports strict mode or some kind of
++	 * normalization.
++	 *
++	 * If this operation cannot be executed for this charset,
++	 * -ENOTSUPP is returned.  If the sequence is invalid, -EINVAL
++	 * is returned.  Otherwise, this function returns the size of the
++	 * new string.
++	 **/
++	int (*normalize)(const struct nls_table *charset,
++			 const unsigned char *str, size_t len,
++			 unsigned char *dest, size_t dlen);
++	/**
++	 * @casefold:
++	 *
++	 * Casefold returns a version of the string that can be used to
++	 * perform case-insensitive comparisons.  The kind of casefold
++	 * algorithm that will be used is charset dependent, and can be
++	 * configured using the nls_table flags field.
++	 *
++	 * If this operation cannot be executed for this charset,
++	 * -ENOTSUPP is returned.  If the sequence fails, -EINVAL is
++	 * returned.  Otherwise, this function returns the size of the
++	 * new string.
++	 **/
++	int (*casefold)(const struct nls_table *charset,
++			const unsigned char *str, size_t len,
++			unsigned char *dest, size_t dlen);
+ 	unsigned char (*lowercase)(const struct nls_table *charset,
+ 				   unsigned int c);
+ 	unsigned char (*uppercase)(const struct nls_table *charset,
+@@ -101,13 +147,37 @@ enum utf16_endian {
+ 	UTF16_BIG_ENDIAN
  };
  
- /* this value hold the maximum octet of charset */
-@@ -58,6 +63,9 @@ enum utf16_endian {
++#define NLS_NORMALIZATION_TYPE(i)	((i & 0x7) << 1)
++#define NLS_CASEFOLD_TYPE(i)		((i & 0x7) << 4)
++
+ #define NLS_STRICT_MODE			0x00000001
++#define NLS_NORMALIZATION_TYPE_PLAIN	NLS_NORMALIZATION_TYPE(0)
++#define NLS_NORMALIZATION_TYPE_MASK	0x0000000E
++#define NLS_CASEFOLD_TYPE_TOUPPER	NLS_CASEFOLD_TYPE(0)
++#define NLS_CASEFOLD_TYPE_MASK		0x00000070
+ 
+ static inline int IS_STRICT_MODE(const struct nls_table *charset)
+ {
+ 	return (charset->flags & NLS_STRICT_MODE);
+ }
+ 
++#define NLS_NORMALIZATION_FUNCS(charset, type, i)			\
++static inline int							\
++IS_NORMALIZATION_TYPE_##charset##_##type(const struct nls_table *c)	\
++{									\
++	return ((c->flags & NLS_NORMALIZATION_TYPE_MASK) == i);		\
++}
++
++#define NLS_CASEFOLD_FUNCS(charset, type, i)			    	\
++static inline int							\
++IS_CASEFOLD_TYPE_##charset##_##type(const struct nls_table *c)		\
++{									\
++	return ((c->flags & NLS_CASEFOLD_TYPE_MASK) == i);		\
++}
++
++NLS_NORMALIZATION_FUNCS(ALL, PLAIN, NLS_NORMALIZATION_TYPE_PLAIN)
++NLS_CASEFOLD_FUNCS(ALL, TOUPPER, NLS_CASEFOLD_TYPE_TOUPPER)
++
+ /* nls_base.c */
  extern int __register_nls(struct nls_charset *, struct module *);
  extern int unregister_nls(struct nls_charset *);
- extern struct nls_table *load_nls(char *);
-+extern struct nls_table *load_nls_version(const char *charset,
-+					  const char *version,
-+					  unsigned int flags);
- extern void unload_nls(struct nls_table *);
- extern struct nls_table *load_nls_default(void);
- #define register_nls(nls) __register_nls((nls), THIS_MODULE)
+@@ -213,6 +283,52 @@ static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
+ 	return nls_strncasecmp(t, s1, len, s2, len);
+ }
+ 
++static inline int nls_casefold(const struct nls_table *t,
++			       const unsigned char *str, size_t len,
++			       unsigned char *dest, size_t dlen)
++{
++	int i;
++
++	if (t->ops->casefold)
++		return t->ops->casefold(t, str, len, dest, dlen);
++
++	if (!IS_CASEFOLD_TYPE_ALL_TOUPPER(t))
++		return -ENOTSUPP;
++
++	if (IS_STRICT_MODE(t) && nls_validate(t, str, len))
++		return -EINVAL;
++
++	if (len > dlen)
++		return -EINVAL;
++
++	for (i = 0 ; i < len; i++)
++		dest[i] = nls_toupper(t, str[i]);
++
++	return len;
++}
++
++static inline int nls_normalize(const struct nls_table *t,
++				const unsigned char *str, size_t len,
++				unsigned char *dest, size_t dlen)
++{
++	if (t->ops->normalize)
++		return t->ops->normalize(t, str, len, dest, dlen);
++
++	if (!IS_NORMALIZATION_TYPE_ALL_PLAIN(t))
++		return -ENOTSUPP;
++
++	if (IS_STRICT_MODE(t) && nls_validate(t, str, len))
++		return -EINVAL;
++
++	if (len > dlen)
++		return -EINVAL;
++
++	/* If normalization are disabled, normalization is the
++	 * identity. */
++	strncpy(dest, str, len);
++	return len;
++}
++
+ /*
+  * nls_nullsize - return length of null character for codepage
+  * @codepage - codepage for which to return length of NULL terminator
 -- 
 2.19.0
