@@ -1,884 +1,3340 @@
-Return-Path: <SRS0=wjg6=MI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:54972 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726410AbeI0BUX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Sep 2018 21:20:23 -0400
-Subject: [PATCH 3/3] docs: make ext4 readme tables readable
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: tytso@mit.edu, darrick.wong@oracle.com
-Cc: linux-ext4@vger.kernel.org
-Date: Wed, 26 Sep 2018 12:05:50 -0700
-Message-ID: <153798875046.29896.10731326312802989345.stgit@magnolia>
-In-Reply-To: <153798873160.29896.3647029167086263735.stgit@magnolia>
-References: <153798873160.29896.3647029167086263735.stgit@magnolia>
+Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:45550 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725986AbeIYECZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:25 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org, Olaf Weber <olaf@sgi.com>,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH RESEND v2 13/25] scripts: add trie generator for UTF-8
+Date: Mon, 24 Sep 2018 17:56:43 -0400
+Message-Id: <20180924215655.3676-14-krisman@collabora.co.uk>
+In-Reply-To: <20180924215655.3676-1-krisman@collabora.co.uk>
+References: <20180924215655.3676-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Darrick J. Wong <darrick.wong@oracle.com>
+From: Olaf Weber <olaf@sgi.com>
 
-The tables in the ext4 readme are not particularly space efficient in
-the text or html outputs, and they're totally broken in the pdf output.
-Convert them into titled paragraphs so that they render more nicely.
+mkutf8data.c is the source for a program that generates utf8data.h, which
+contains the trie that utf8norm.c uses. The trie is generated from the
+Unicode 10.0.0 data files. The format of the utf8data[] table is described
+in utf8norm.c, which is added in the next patch.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Olaf Weber <olaf@sgi.com>
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+  [Rebase to mainline]
+  [Fix out-of-tree-build]
+  [Fix checkpatch warnings]
+  [Merge back robustness fixes from original patch. Requested by Dave Chinner]
+  [Update makefile to build 10.0.0 ucd files]
 ---
- Documentation/filesystems/ext4/ext4.rst |  821 +++++++++++++++----------------
- 1 file changed, 391 insertions(+), 430 deletions(-)
+ fs/nls/Kconfig       |   10 +
+ fs/nls/Makefile      |   13 +
+ scripts/Makefile     |    1 +
+ scripts/mkutf8data.c | 3239 ++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 3263 insertions(+)
+ create mode 100644 scripts/mkutf8data.c
 
-
-diff --git a/Documentation/filesystems/ext4/ext4.rst b/Documentation/filesystems/ext4/ext4.rst
-index 9d4368d591fa..e2b6bb7c2730 100644
---- a/Documentation/filesystems/ext4/ext4.rst
-+++ b/Documentation/filesystems/ext4/ext4.rst
-@@ -101,269 +101,256 @@ Options
- When mounting an ext4 filesystem, the following option are accepted:
- (*) == default
+diff --git a/fs/nls/Kconfig b/fs/nls/Kconfig
+index e2ce79ef48c4..7cb2848da608 100644
+--- a/fs/nls/Kconfig
++++ b/fs/nls/Kconfig
+@@ -616,4 +616,14 @@ config NLS_UTF8
+ 	  input/output character sets. Say Y here for the UTF-8 encoding of
+ 	  the Unicode/ISO9646 universal character set.
  
--======================= =======================================================
--Mount Option            Description
--======================= =======================================================
--ro                   	Mount filesystem read only. Note that ext4 will
--                     	replay the journal (and thus write to the
--                     	partition) even when mounted "read only". The
--                     	mount options "ro,noload" can be used to prevent
--		     	writes to the filesystem.
--
--journal_checksum	Enable checksumming of the journal transactions.
--			This will allow the recovery code in e2fsck and the
--			kernel to detect corruption in the kernel.  It is a
--			compatible change and will be ignored by older kernels.
--
--journal_async_commit	Commit block can be written to disk without waiting
--			for descriptor blocks. If enabled older kernels cannot
--			mount the device. This will enable 'journal_checksum'
--			internally.
--
--journal_path=path
--journal_dev=devnum	When the external journal device's major/minor numbers
--			have changed, these options allow the user to specify
--			the new journal location.  The journal device is
--			identified through either its new major/minor numbers
--			encoded in devnum, or via a path to the device.
--
--norecovery		Don't load the journal on mounting.  Note that
--noload			if the filesystem was not unmounted cleanly,
--                     	skipping the journal replay will lead to the
--                     	filesystem containing inconsistencies that can
--                     	lead to any number of problems.
--
--data=journal		All data are committed into the journal prior to being
--			written into the main file system.  Enabling
--			this mode will disable delayed allocation and
--			O_DIRECT support.
--
--data=ordered	(*)	All data are forced directly out to the main file
--			system prior to its metadata being committed to the
--			journal.
--
--data=writeback		Data ordering is not preserved, data may be written
--			into the main file system after its metadata has been
--			committed to the journal.
--
--commit=nrsec	(*)	Ext4 can be told to sync all its data and metadata
--			every 'nrsec' seconds. The default value is 5 seconds.
--			This means that if you lose your power, you will lose
--			as much as the latest 5 seconds of work (your
--			filesystem will not be damaged though, thanks to the
--			journaling).  This default value (or any low value)
--			will hurt performance, but it's good for data-safety.
--			Setting it to 0 will have the same effect as leaving
--			it at the default (5 seconds).
--			Setting it to very large values will improve
--			performance.
--
--barrier=<0|1(*)>	This enables/disables the use of write barriers in
--barrier(*)		the jbd code.  barrier=0 disables, barrier=1 enables.
--nobarrier		This also requires an IO stack which can support
--			barriers, and if jbd gets an error on a barrier
--			write, it will disable again with a warning.
--			Write barriers enforce proper on-disk ordering
--			of journal commits, making volatile disk write caches
--			safe to use, at some performance penalty.  If
--			your disks are battery-backed in one way or another,
--			disabling barriers may safely improve performance.
--			The mount options "barrier" and "nobarrier" can
--			also be used to enable or disable barriers, for
--			consistency with other ext4 mount options.
--
--inode_readahead_blks=n	This tuning parameter controls the maximum
--			number of inode table blocks that ext4's inode
--			table readahead algorithm will pre-read into
--			the buffer cache.  The default value is 32 blocks.
--
--nouser_xattr		Disables Extended User Attributes.  See the
--			attr(5) manual page for more information about
--			extended attributes.
--
--noacl			This option disables POSIX Access Control List
--			support. If ACL support is enabled in the kernel
--			configuration (CONFIG_EXT4_FS_POSIX_ACL), ACL is
--			enabled by default on mount. See the acl(5) manual
--			page for more information about acl.
--
--bsddf		(*)	Make 'df' act like BSD.
--minixdf			Make 'df' act like Minix.
--
--debug			Extra debugging information is sent to syslog.
--
--abort			Simulate the effects of calling ext4_abort() for
--			debugging purposes.  This is normally used while
--			remounting a filesystem which is already mounted.
--
--errors=remount-ro	Remount the filesystem read-only on an error.
--errors=continue		Keep going on a filesystem error.
--errors=panic		Panic and halt the machine if an error occurs.
--                        (These mount options override the errors behavior
--                        specified in the superblock, which can be configured
--                        using tune2fs)
--
--data_err=ignore(*)	Just print an error message if an error occurs
--			in a file data buffer in ordered mode.
--data_err=abort		Abort the journal if an error occurs in a file
--			data buffer in ordered mode.
--
--grpid			New objects have the group ID of their parent.
--bsdgroups
--
--nogrpid		(*)	New objects have the group ID of their creator.
--sysvgroups
--
--resgid=n		The group ID which may use the reserved blocks.
--
--resuid=n		The user ID which may use the reserved blocks.
--
--sb=n			Use alternate superblock at this location.
--
--quota			These options are ignored by the filesystem. They
--noquota			are used only by quota tools to recognize volumes
--grpquota		where quota should be turned on. See documentation
--usrquota		in the quota-tools package for more details
--			(http://sourceforge.net/projects/linuxquota).
--
--jqfmt=<quota type>	These options tell filesystem details about quota
--usrjquota=<file>	so that quota information can be properly updated
--grpjquota=<file>	during journal replay. They replace the above
--			quota options. See documentation in the quota-tools
--			package for more details
--			(http://sourceforge.net/projects/linuxquota).
--
--stripe=n		Number of filesystem blocks that mballoc will try
--			to use for allocation size and alignment. For RAID5/6
--			systems this should be the number of data
--			disks *  RAID chunk size in file system blocks.
--
--delalloc	(*)	Defer block allocation until just before ext4
--			writes out the block(s) in question.  This
--			allows ext4 to better allocation decisions
--			more efficiently.
--nodelalloc		Disable delayed allocation.  Blocks are allocated
--			when the data is copied from userspace to the
--			page cache, either via the write(2) system call
--			or when an mmap'ed page which was previously
--			unallocated is written for the first time.
--
--max_batch_time=usec	Maximum amount of time ext4 should wait for
--			additional filesystem operations to be batch
--			together with a synchronous write operation.
--			Since a synchronous write operation is going to
--			force a commit and then a wait for the I/O
--			complete, it doesn't cost much, and can be a
--			huge throughput win, we wait for a small amount
--			of time to see if any other transactions can
--			piggyback on the synchronous write.   The
--			algorithm used is designed to automatically tune
--			for the speed of the disk, by measuring the
--			amount of time (on average) that it takes to
--			finish committing a transaction.  Call this time
--			the "commit time".  If the time that the
--			transaction has been running is less than the
--			commit time, ext4 will try sleeping for the
--			commit time to see if other operations will join
--			the transaction.   The commit time is capped by
--			the max_batch_time, which defaults to 15000us
--			(15ms).   This optimization can be turned off
--			entirely by setting max_batch_time to 0.
--
--min_batch_time=usec	This parameter sets the commit time (as
--			described above) to be at least min_batch_time.
--			It defaults to zero microseconds.  Increasing
--			this parameter may improve the throughput of
--			multi-threaded, synchronous workloads on very
--			fast disks, at the cost of increasing latency.
--
--journal_ioprio=prio	The I/O priority (from 0 to 7, where 0 is the
--			highest priority) which should be used for I/O
--			operations submitted by kjournald2 during a
--			commit operation.  This defaults to 3, which is
--			a slightly higher priority than the default I/O
--			priority.
--
--auto_da_alloc(*)	Many broken applications don't use fsync() when 
--noauto_da_alloc		replacing existing files via patterns such as
--			fd = open("foo.new")/write(fd,..)/close(fd)/
--			rename("foo.new", "foo"), or worse yet,
--			fd = open("foo", O_TRUNC)/write(fd,..)/close(fd).
--			If auto_da_alloc is enabled, ext4 will detect
--			the replace-via-rename and replace-via-truncate
--			patterns and force that any delayed allocation
--			blocks are allocated such that at the next
--			journal commit, in the default data=ordered
--			mode, the data blocks of the new file are forced
--			to disk before the rename() operation is
--			committed.  This provides roughly the same level
--			of guarantees as ext3, and avoids the
--			"zero-length" problem that can happen when a
--			system crashes before the delayed allocation
--			blocks are forced to disk.
--
--noinit_itable		Do not initialize any uninitialized inode table
--			blocks in the background.  This feature may be
--			used by installation CD's so that the install
--			process can complete as quickly as possible; the
--			inode table initialization process would then be
--			deferred until the next time the  file system
--			is unmounted.
--
--init_itable=n		The lazy itable init code will wait n times the
--			number of milliseconds it took to zero out the
--			previous block group's inode table.  This
--			minimizes the impact on the system performance
--			while file system's inode table is being initialized.
--
--discard			Controls whether ext4 should issue discard/TRIM
--nodiscard(*)		commands to the underlying block device when
--			blocks are freed.  This is useful for SSD devices
--			and sparse/thinly-provisioned LUNs, but it is off
--			by default until sufficient testing has been done.
--
--nouid32			Disables 32-bit UIDs and GIDs.  This is for
--			interoperability  with  older kernels which only
--			store and expect 16-bit values.
--
--block_validity(*)	These options enable or disable the in-kernel
--noblock_validity	facility for tracking filesystem metadata blocks
--			within internal data structures.  This allows multi-
--			block allocator and other routines to notice
--			bugs or corrupted allocation bitmaps which cause
--			blocks to be allocated which overlap with
--			filesystem metadata blocks.
--
--dioread_lock		Controls whether or not ext4 should use the DIO read
--dioread_nolock		locking. If the dioread_nolock option is specified
--			ext4 will allocate uninitialized extent before buffer
--			write and convert the extent to initialized after IO
--			completes. This approach allows ext4 code to avoid
--			using inode mutex, which improves scalability on high
--			speed storages. However this does not work with
--			data journaling and dioread_nolock option will be
--			ignored with kernel warning. Note that dioread_nolock
--			code path is only used for extent-based files.
--			Because of the restrictions this options comprises
--			it is off by default (e.g. dioread_lock).
--
--max_dir_size_kb=n	This limits the size of directories so that any
--			attempt to expand them beyond the specified
--			limit in kilobytes will cause an ENOSPC error.
--			This is useful in memory constrained
--			environments, where a very large directory can
--			cause severe performance problems or even
--			provoke the Out Of Memory killer.  (For example,
--			if there is only 512mb memory available, a 176mb
--			directory may seriously cramp the system's style.)
--
--i_version		Enable 64-bit inode version support. This option is
--			off by default.
--
--dax			Use direct access (no page cache).  See
--			Documentation/filesystems/dax.txt.  Note that
--			this option is incompatible with data=journal.
--======================= =======================================================
-+  ro
-+        Mount filesystem read only. Note that ext4 will replay the journal (and
-+        thus write to the partition) even when mounted "read only". The mount
-+        options "ro,noload" can be used to prevent writes to the filesystem.
++#
++# utf8 normalization
++#
++config NLS_UTF8_NORMALIZATION
++	bool "UTF-8 normalization and casefolding support"
++	depends on NLS_UTF8
++	help
++	  Say Y here to enable utf8 NFKD normalization and casefolding
++	  support.
 +
-+  journal_checksum
-+        Enable checksumming of the journal transactions.  This will allow the
-+        recovery code in e2fsck and the kernel to detect corruption in the
-+        kernel.  It is a compatible change and will be ignored by older
-+        kernels.
+ endif # NLS
+diff --git a/fs/nls/Makefile b/fs/nls/Makefile
+index 5f42ceff9d15..9eff2f058c7a 100644
+--- a/fs/nls/Makefile
++++ b/fs/nls/Makefile
+@@ -55,3 +55,16 @@ obj-$(CONFIG_NLS_MAC_INUIT)     += mac-inuit.o
+ obj-$(CONFIG_NLS_MAC_ROMANIAN)  += mac-romanian.o
+ obj-$(CONFIG_NLS_MAC_ROMAN)     += mac-roman.o
+ obj-$(CONFIG_NLS_MAC_TURKISH)   += mac-turkish.o
 +
-+  journal_async_commit
-+        Commit block can be written to disk without waiting for descriptor
-+        blocks. If enabled older kernels cannot mount the device. This will
-+        enable 'journal_checksum' internally.
-+
-+  journal_path=path, journal_dev=devnum
-+        When the external journal device's major/minor numbers have changed,
-+        these options allow the user to specify the new journal location.  The
-+        journal device is identified through either its new major/minor numbers
-+        encoded in devnum, or via a path to the device.
-+
-+  norecovery, noload
-+        Don't load the journal on mounting.  Note that if the filesystem was
-+        not unmounted cleanly, skipping the journal replay will lead to the
-+        filesystem containing inconsistencies that can lead to any number of
-+        problems.
-+
-+  data=journal
-+        All data are committed into the journal prior to being written into the
-+        main file system.  Enabling this mode will disable delayed allocation
-+        and O_DIRECT support.
-+
-+  data=ordered	(*)
-+        All data are forced directly out to the main file system prior to its
-+        metadata being committed to the journal.
-+
-+  data=writeback
-+        Data ordering is not preserved, data may be written into the main file
-+        system after its metadata has been committed to the journal.
-+
-+  commit=nrsec	(*)
-+        Ext4 can be told to sync all its data and metadata every 'nrsec'
-+        seconds. The default value is 5 seconds.  This means that if you lose
-+        your power, you will lose as much as the latest 5 seconds of work (your
-+        filesystem will not be damaged though, thanks to the journaling).  This
-+        default value (or any low value) will hurt performance, but it's good
-+        for data-safety.  Setting it to 0 will have the same effect as leaving
-+        it at the default (5 seconds).  Setting it to very large values will
-+        improve performance.
-+
-+  barrier=<0|1(*)>, barrier(*), nobarrier
-+        This enables/disables the use of write barriers in the jbd code.
-+        barrier=0 disables, barrier=1 enables.  This also requires an IO stack
-+        which can support barriers, and if jbd gets an error on a barrier
-+        write, it will disable again with a warning.  Write barriers enforce
-+        proper on-disk ordering of journal commits, making volatile disk write
-+        caches safe to use, at some performance penalty.  If your disks are
-+        battery-backed in one way or another, disabling barriers may safely
-+        improve performance.  The mount options "barrier" and "nobarrier" can
-+        also be used to enable or disable barriers, for consistency with other
-+        ext4 mount options.
-+
-+  inode_readahead_blks=n
-+        This tuning parameter controls the maximum number of inode table blocks
-+        that ext4's inode table readahead algorithm will pre-read into the
-+        buffer cache.  The default value is 32 blocks.
-+
-+  nouser_xattr
-+        Disables Extended User Attributes.  See the attr(5) manual page for
-+        more information about extended attributes.
-+
-+  noacl
-+        This option disables POSIX Access Control List support. If ACL support
-+        is enabled in the kernel configuration (CONFIG_EXT4_FS_POSIX_ACL), ACL
-+        is enabled by default on mount. See the acl(5) manual page for more
-+        information about acl.
-+
-+  bsddf	(*)
-+        Make 'df' act like BSD.
-+
-+  minixdf
-+        Make 'df' act like Minix.
-+
-+  debug
-+        Extra debugging information is sent to syslog.
-+
-+  abort
-+        Simulate the effects of calling ext4_abort() for debugging purposes.
-+        This is normally used while remounting a filesystem which is already
-+        mounted.
-+
-+  errors=remount-ro
-+        Remount the filesystem read-only on an error.
-+
-+  errors=continue
-+        Keep going on a filesystem error.
-+
-+  errors=panic
-+        Panic and halt the machine if an error occurs.  (These mount options
-+        override the errors behavior specified in the superblock, which can be
-+        configured using tune2fs)
-+
-+  data_err=ignore(*)
-+        Just print an error message if an error occurs in a file data buffer in
-+        ordered mode.
-+  data_err=abort
-+        Abort the journal if an error occurs in a file data buffer in ordered
-+        mode.
-+
-+  grpid | bsdgroups
-+        New objects have the group ID of their parent.
-+
-+  nogrpid (*) | sysvgroups
-+        New objects have the group ID of their creator.
-+
-+  resgid=n
-+        The group ID which may use the reserved blocks.
-+
-+  resuid=n
-+        The user ID which may use the reserved blocks.
-+
-+  sb=
-+        Use alternate superblock at this location.
-+
-+  quota, noquota, grpquota, usrquota
-+        These options are ignored by the filesystem. They are used only by
-+        quota tools to recognize volumes where quota should be turned on. See
-+        documentation in the quota-tools package for more details
-+        (http://sourceforge.net/projects/linuxquota).
-+
-+  jqfmt=<quota type>, usrjquota=<file>, grpjquota=<file>
-+        These options tell filesystem details about quota so that quota
-+        information can be properly updated during journal replay. They replace
-+        the above quota options. See documentation in the quota-tools package
-+        for more details (http://sourceforge.net/projects/linuxquota).
-+
-+  stripe=n
-+        Number of filesystem blocks that mballoc will try to use for allocation
-+        size and alignment. For RAID5/6 systems this should be the number of
-+        data disks *  RAID chunk size in file system blocks.
-+
-+  delalloc	(*)
-+        Defer block allocation until just before ext4 writes out the block(s)
-+        in question.  This allows ext4 to better allocation decisions more
-+        efficiently.
-+
-+  nodelalloc
-+        Disable delayed allocation.  Blocks are allocated when the data is
-+        copied from userspace to the page cache, either via the write(2) system
-+        call or when an mmap'ed page which was previously unallocated is
-+        written for the first time.
-+
-+  max_batch_time=usec
-+        Maximum amount of time ext4 should wait for additional filesystem
-+        operations to be batch together with a synchronous write operation.
-+        Since a synchronous write operation is going to force a commit and then
-+        a wait for the I/O complete, it doesn't cost much, and can be a huge
-+        throughput win, we wait for a small amount of time to see if any other
-+        transactions can piggyback on the synchronous write.   The algorithm
-+        used is designed to automatically tune for the speed of the disk, by
-+        measuring the amount of time (on average) that it takes to finish
-+        committing a transaction.  Call this time the "commit time".  If the
-+        time that the transaction has been running is less than the commit
-+        time, ext4 will try sleeping for the commit time to see if other
-+        operations will join the transaction.   The commit time is capped by
-+        the max_batch_time, which defaults to 15000us (15ms).   This
-+        optimization can be turned off entirely by setting max_batch_time to 0.
-+
-+  min_batch_time=usec
-+        This parameter sets the commit time (as described above) to be at least
-+        min_batch_time.  It defaults to zero microseconds.  Increasing this
-+        parameter may improve the throughput of multi-threaded, synchronous
-+        workloads on very fast disks, at the cost of increasing latency.
-+
-+  journal_ioprio=prio
-+        The I/O priority (from 0 to 7, where 0 is the highest priority) which
-+        should be used for I/O operations submitted by kjournald2 during a
-+        commit operation.  This defaults to 3, which is a slightly higher
-+        priority than the default I/O priority.
-+
-+  auto_da_alloc(*), noauto_da_alloc
-+        Many broken applications don't use fsync() when replacing existing
-+        files via patterns such as fd = open("foo.new")/write(fd,..)/close(fd)/
-+        rename("foo.new", "foo"), or worse yet, fd = open("foo",
-+        O_TRUNC)/write(fd,..)/close(fd).  If auto_da_alloc is enabled, ext4
-+        will detect the replace-via-rename and replace-via-truncate patterns
-+        and force that any delayed allocation blocks are allocated such that at
-+        the next journal commit, in the default data=ordered mode, the data
-+        blocks of the new file are forced to disk before the rename() operation
-+        is committed.  This provides roughly the same level of guarantees as
-+        ext3, and avoids the "zero-length" problem that can happen when a
-+        system crashes before the delayed allocation blocks are forced to disk.
-+
-+  noinit_itable
-+        Do not initialize any uninitialized inode table blocks in the
-+        background.  This feature may be used by installation CD's so that the
-+        install process can complete as quickly as possible; the inode table
-+        initialization process would then be deferred until the next time the
-+        file system is unmounted.
-+
-+  init_itable=n
-+        The lazy itable init code will wait n times the number of milliseconds
-+        it took to zero out the previous block group's inode table.  This
-+        minimizes the impact on the system performance while file system's
-+        inode table is being initialized.
-+
-+  discard, nodiscard(*)
-+        Controls whether ext4 should issue discard/TRIM commands to the
-+        underlying block device when blocks are freed.  This is useful for SSD
-+        devices and sparse/thinly-provisioned LUNs, but it is off by default
-+        until sufficient testing has been done.
-+
-+  nouid32
-+        Disables 32-bit UIDs and GIDs.  This is for interoperability  with
-+        older kernels which only store and expect 16-bit values.
-+
-+  block_validity(*), noblock_validity
-+        These options enable or disable the in-kernel facility for tracking
-+        filesystem metadata blocks within internal data structures.  This
-+        allows multi- block allocator and other routines to notice bugs or
-+        corrupted allocation bitmaps which cause blocks to be allocated which
-+        overlap with filesystem metadata blocks.
-+
-+  dioread_lock, dioread_nolock
-+        Controls whether or not ext4 should use the DIO read locking. If the
-+        dioread_nolock option is specified ext4 will allocate uninitialized
-+        extent before buffer write and convert the extent to initialized after
-+        IO completes. This approach allows ext4 code to avoid using inode
-+        mutex, which improves scalability on high speed storages. However this
-+        does not work with data journaling and dioread_nolock option will be
-+        ignored with kernel warning. Note that dioread_nolock code path is only
-+        used for extent-based files.  Because of the restrictions this options
-+        comprises it is off by default (e.g. dioread_lock).
-+
-+  max_dir_size_kb=n
-+        This limits the size of directories so that any attempt to expand them
-+        beyond the specified limit in kilobytes will cause an ENOSPC error.
-+        This is useful in memory constrained environments, where a very large
-+        directory can cause severe performance problems or even provoke the Out
-+        Of Memory killer.  (For example, if there is only 512mb memory
-+        available, a 176mb directory may seriously cramp the system's style.)
-+
-+  i_version
-+        Enable 64-bit inode version support. This option is off by default.
-+
-+  dax
-+        Use direct access (no page cache).  See
-+        Documentation/filesystems/dax.txt.  Note that this option is
-+        incompatible with data=journal.
++$(obj)/utf8data.h: $(srctree)/$(src)/ucd/*.txt $(objtree)/scripts/mkutf8data FORCE
++	$(call cmd,mkutf8data)
++quiet_cmd_mkutf8data = MKUTF8DATA $@
++      cmd_mkutf8data = $(objtree)/scripts/mkutf8data \
++		-a $(srctree)/$(src)/ucd/DerivedAge-10.0.0.txt \
++		-c $(srctree)/$(src)/ucd/DerivedCombiningClass-10.0.0.txt \
++		-p $(srctree)/$(src)/ucd/DerivedCoreProperties-10.0.0.txt \
++		-d $(srctree)/$(src)/ucd/UnicodeData-10.0.0.txt \
++		-f $(srctree)/$(src)/ucd/CaseFolding-10.0.0.txt \
++		-n $(srctree)/$(src)/ucd/NormalizationCorrections-10.0.0.txt \
++		-t $(srctree)/$(src)/ucd/NormalizationTest-10.0.0.txt \
++		-o $@
+diff --git a/scripts/Makefile b/scripts/Makefile
+index 25ab143cbe14..6972bb4815d8 100644
+--- a/scripts/Makefile
++++ b/scripts/Makefile
+@@ -19,6 +19,7 @@ hostprogs-$(CONFIG_ASN1)	 += asn1_compiler
+ hostprogs-$(CONFIG_MODULE_SIG)	 += sign-file
+ hostprogs-$(CONFIG_SYSTEM_TRUSTED_KEYRING) += extract-cert
+ hostprogs-$(CONFIG_SYSTEM_EXTRA_CERTIFICATE) += insert-sys-cert
++hostprogs-$(CONFIG_NLS_UTF8_NORMALIZATION) += mkutf8data
  
- Data Mode
- =========
-@@ -407,11 +394,8 @@ in table below.
- 
- Files in /proc/fs/ext4/<devname>
- 
--================ =======
-- File            Content
--================ =======
-- mb_groups       details of multiblock allocator buddy cache of free blocks
--================ =======
-+  mb_groups
-+        details of multiblock allocator buddy cache of free blocks
- 
- /sys entries
- ============
-@@ -426,74 +410,71 @@ Files in /sys/fs/ext4/<devname>:
- 
- (see also Documentation/ABI/testing/sysfs-fs-ext4)
- 
--============================= =================================================
--File                          Content
--============================= =================================================
-- delayed_allocation_blocks    This file is read-only and shows the number of
--                              blocks that are dirty in the page cache, but
--                              which do not have their location in the
--                              filesystem allocated yet.
--
--inode_goal                    Tuning parameter which (if non-zero) controls
--                              the goal inode used by the inode allocator in
--                              preference to all other allocation heuristics.
--                              This is intended for debugging use only, and
--                              should be 0 on production systems.
--
--inode_readahead_blks          Tuning parameter which controls the maximum
--                              number of inode table blocks that ext4's inode
--                              table readahead algorithm will pre-read into
--                              the buffer cache
--
--lifetime_write_kbytes         This file is read-only and shows the number of
--                              kilobytes of data that have been written to this
--                              filesystem since it was created.
--
-- max_writeback_mb_bump        The maximum number of megabytes the writeback
--                              code will try to write out before move on to
--                              another inode.
--
-- mb_group_prealloc            The multiblock allocator will round up allocation
--                              requests to a multiple of this tuning parameter if
--                              the stripe size is not set in the ext4 superblock
--
-- mb_max_to_scan               The maximum number of extents the multiblock
--                              allocator will search to find the best extent
--
-- mb_min_to_scan               The minimum number of extents the multiblock
--                              allocator will search to find the best extent
--
-- mb_order2_req                Tuning parameter which controls the minimum size
--                              for requests (as a power of 2) where the buddy
--                              cache is used
--
-- mb_stats                     Controls whether the multiblock allocator should
--                              collect statistics, which are shown during the
--                              unmount. 1 means to collect statistics, 0 means
--                              not to collect statistics
--
-- mb_stream_req                Files which have fewer blocks than this tunable
--                              parameter will have their blocks allocated out
--                              of a block group specific preallocation pool, so
--                              that small files are packed closely together.
--                              Each large file will have its blocks allocated
--                              out of its own unique preallocation pool.
--
-- session_write_kbytes         This file is read-only and shows the number of
--                              kilobytes of data that have been written to this
--                              filesystem since it was mounted.
--
-- reserved_clusters            This is RW file and contains number of reserved
--                              clusters in the file system which will be used
--                              in the specific situations to avoid costly
--                              zeroout, unexpected ENOSPC, or possible data
--                              loss. The default is 2% or 4096 clusters,
--                              whichever is smaller and this can be changed
--                              however it can never exceed number of clusters
--                              in the file system. If there is not enough space
--                              for the reserved space when mounting the file
--                              mount will _not_ fail.
--============================= =================================================
-+  delayed_allocation_blocks
-+        This file is read-only and shows the number of blocks that are dirty in
-+        the page cache, but which do not have their location in the filesystem
-+        allocated yet.
+ HOSTCFLAGS_sortextable.o = -I$(srctree)/tools/include
+ HOSTCFLAGS_asn1_compiler.o = -I$(srctree)/include
+diff --git a/scripts/mkutf8data.c b/scripts/mkutf8data.c
+new file mode 100644
+index 000000000000..700b41c0cb66
+--- /dev/null
++++ b/scripts/mkutf8data.c
+@@ -0,0 +1,3239 @@
++/*
++ * Copyright (c) 2014 SGI.
++ * All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License as
++ * published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it would be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write the Free Software Foundation,
++ * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ */
 +
-+  inode_goal
-+        Tuning parameter which (if non-zero) controls the goal inode used by
-+        the inode allocator in preference to all other allocation heuristics.
-+        This is intended for debugging use only, and should be 0 on production
-+        systems.
++/* Generator for a compact trie for unicode normalization */
 +
-+  inode_readahead_blks
-+        Tuning parameter which controls the maximum number of inode table
-+        blocks that ext4's inode table readahead algorithm will pre-read into
-+        the buffer cache.
++#include <sys/types.h>
++#include <stddef.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <assert.h>
++#include <string.h>
++#include <unistd.h>
++#include <errno.h>
 +
-+  lifetime_write_kbytes
-+        This file is read-only and shows the number of kilobytes of data that
-+        have been written to this filesystem since it was created.
++/* Default names of the in- and output files. */
 +
-+  max_writeback_mb_bump
-+        The maximum number of megabytes the writeback code will try to write
-+        out before move on to another inode.
++#define AGE_NAME	"DerivedAge.txt"
++#define CCC_NAME	"DerivedCombiningClass.txt"
++#define PROP_NAME	"DerivedCoreProperties.txt"
++#define DATA_NAME	"UnicodeData.txt"
++#define FOLD_NAME	"CaseFolding.txt"
++#define NORM_NAME	"NormalizationCorrections.txt"
++#define TEST_NAME	"NormalizationTest.txt"
++#define UTF8_NAME	"utf8data.h"
 +
-+  mb_group_prealloc
-+        The multiblock allocator will round up allocation requests to a
-+        multiple of this tuning parameter if the stripe size is not set in the
-+        ext4 superblock
++const char	*age_name  = AGE_NAME;
++const char	*ccc_name  = CCC_NAME;
++const char	*prop_name = PROP_NAME;
++const char	*data_name = DATA_NAME;
++const char	*fold_name = FOLD_NAME;
++const char	*norm_name = NORM_NAME;
++const char	*test_name = TEST_NAME;
++const char	*utf8_name = UTF8_NAME;
 +
-+  mb_max_to_scan
-+        The maximum number of extents the multiblock allocator will search to
-+        find the best extent.
++int verbose = 0;
 +
-+  mb_min_to_scan
-+        The minimum number of extents the multiblock allocator will search to
-+        find the best extent.
++/* An arbitrary line size limit on input lines. */
 +
-+  mb_order2_req
-+        Tuning parameter which controls the minimum size for requests (as a
-+        power of 2) where the buddy cache is used.
++#define LINESIZE	1024
++char line[LINESIZE];
++char buf0[LINESIZE];
++char buf1[LINESIZE];
++char buf2[LINESIZE];
++char buf3[LINESIZE];
 +
-+  mb_stats
-+        Controls whether the multiblock allocator should collect statistics,
-+        which are shown during the unmount. 1 means to collect statistics, 0
-+        means not to collect statistics.
++const char *argv0;
 +
-+  mb_stream_req
-+        Files which have fewer blocks than this tunable parameter will have
-+        their blocks allocated out of a block group specific preallocation
-+        pool, so that small files are packed closely together.  Each large file
-+        will have its blocks allocated out of its own unique preallocation
-+        pool.
++/* ------------------------------------------------------------------ */
 +
-+  session_write_kbytes
-+        This file is read-only and shows the number of kilobytes of data that
-+        have been written to this filesystem since it was mounted.
++/*
++ * Unicode version numbers consist of three parts: major, minor, and a
++ * revision.  These numbers are packed into an unsigned int to obtain
++ * a single version number.
++ *
++ * To save space in the generated trie, the unicode version is not
++ * stored directly, instead we calculate a generation number from the
++ * unicode versions seen in the DerivedAge file, and use that as an
++ * index into a table of unicode versions.
++ */
++#define UNICODE_MAJ_SHIFT		(16)
++#define UNICODE_MIN_SHIFT		(8)
 +
-+  reserved_clusters
-+        This is RW file and contains number of reserved clusters in the file
-+        system which will be used in the specific situations to avoid costly
-+        zeroout, unexpected ENOSPC, or possible data loss. The default is 2% or
-+        4096 clusters, whichever is smaller and this can be changed however it
-+        can never exceed number of clusters in the file system. If there is not
-+        enough space for the reserved space when mounting the file mount will
-+        _not_ fail.
- 
- Ioctls
- ======
-@@ -504,100 +485,80 @@ shown in the table below.
- 
- Table of Ext4 specific ioctls
- 
--============================= =================================================
--Ioctl			      Description
--============================= =================================================
-- EXT4_IOC_GETFLAGS	      Get additional attributes associated with inode.
--			      The ioctl argument is an integer bitfield, with
--			      bit values described in ext4.h. This ioctl is an
--			      alias for FS_IOC_GETFLAGS.
--
-- EXT4_IOC_SETFLAGS	      Set additional attributes associated with inode.
--			      The ioctl argument is an integer bitfield, with
--			      bit values described in ext4.h. This ioctl is an
--			      alias for FS_IOC_SETFLAGS.
--
-- EXT4_IOC_GETVERSION
-- EXT4_IOC_GETVERSION_OLD
--			      Get the inode i_generation number stored for
--			      each inode. The i_generation number is normally
--			      changed only when new inode is created and it is
--			      particularly useful for network filesystems. The
--			      '_OLD' version of this ioctl is an alias for
--			      FS_IOC_GETVERSION.
--
-- EXT4_IOC_SETVERSION
-- EXT4_IOC_SETVERSION_OLD
--			      Set the inode i_generation number stored for
--			      each inode. The '_OLD' version of this ioctl
--			      is an alias for FS_IOC_SETVERSION.
--
-- EXT4_IOC_GROUP_EXTEND	      This ioctl has the same purpose as the resize
--			      mount option. It allows to resize filesystem
--			      to the end of the last existing block group,
--			      further resize has to be done with resize2fs,
--			      either online, or offline. The argument points
--			      to the unsigned logn number representing the
--			      filesystem new block count.
--
-- EXT4_IOC_MOVE_EXT	      Move the block extents from orig_fd (the one
--			      this ioctl is pointing to) to the donor_fd (the
--			      one specified in move_extent structure passed
--			      as an argument to this ioctl). Then, exchange
--			      inode metadata between orig_fd and donor_fd.
--			      This is especially useful for online
--			      defragmentation, because the allocator has the
--			      opportunity to allocate moved blocks better,
--			      ideally into one contiguous extent.
--
-- EXT4_IOC_GROUP_ADD	      Add a new group descriptor to an existing or
--			      new group descriptor block. The new group
--			      descriptor is described by ext4_new_group_input
--			      structure, which is passed as an argument to
--			      this ioctl. This is especially useful in
--			      conjunction with EXT4_IOC_GROUP_EXTEND,
--			      which allows online resize of the filesystem
--			      to the end of the last existing block group.
--			      Those two ioctls combined is used in userspace
--			      online resize tool (e.g. resize2fs).
--
-- EXT4_IOC_MIGRATE	      This ioctl operates on the filesystem itself.
--			      It converts (migrates) ext3 indirect block mapped
--			      inode to ext4 extent mapped inode by walking
--			      through indirect block mapping of the original
--			      inode and converting contiguous block ranges
--			      into ext4 extents of the temporary inode. Then,
--			      inodes are swapped. This ioctl might help, when
--			      migrating from ext3 to ext4 filesystem, however
--			      suggestion is to create fresh ext4 filesystem
--			      and copy data from the backup. Note, that
--			      filesystem has to support extents for this ioctl
--			      to work.
--
-- EXT4_IOC_ALLOC_DA_BLKS	      Force all of the delay allocated blocks to be
--			      allocated to preserve application-expected ext3
--			      behaviour. Note that this will also start
--			      triggering a write of the data blocks, but this
--			      behaviour may change in the future as it is
--			      not necessary and has been done this way only
--			      for sake of simplicity.
--
-- EXT4_IOC_RESIZE_FS	      Resize the filesystem to a new size.  The number
--			      of blocks of resized filesystem is passed in via
--			      64 bit integer argument.  The kernel allocates
--			      bitmaps and inode table, the userspace tool thus
--			      just passes the new number of blocks.
--
-- EXT4_IOC_SWAP_BOOT	      Swap i_blocks and associated attributes
--			      (like i_blocks, i_size, i_flags, ...) from
--			      the specified inode with inode
--			      EXT4_BOOT_LOADER_INO (#5). This is typically
--			      used to store a boot loader in a secure part of
--			      the filesystem, where it can't be changed by a
--			      normal user by accident.
--			      The data blocks of the previous boot loader
--			      will be associated with the given inode.
--============================= =================================================
-+  EXT4_IOC_GETFLAGS
-+        Get additional attributes associated with inode.  The ioctl argument is
-+        an integer bitfield, with bit values described in ext4.h. This ioctl is
-+        an alias for FS_IOC_GETFLAGS.
++#define UNICODE_MAJ_MAX			((unsigned short)-1)
++#define UNICODE_MIN_MAX			((unsigned char)-1)
++#define UNICODE_REV_MAX			((unsigned char)-1)
 +
-+  EXT4_IOC_SETFLAGS
-+        Set additional attributes associated with inode.  The ioctl argument is
-+        an integer bitfield, with bit values described in ext4.h. This ioctl is
-+        an alias for FS_IOC_SETFLAGS.
++#define UNICODE_AGE(MAJ,MIN,REV)			\
++	(((unsigned int)(MAJ) << UNICODE_MAJ_SHIFT) |	\
++	 ((unsigned int)(MIN) << UNICODE_MIN_SHIFT) |	\
++	 ((unsigned int)(REV)))
 +
-+  EXT4_IOC_GETVERSION, EXT4_IOC_GETVERSION_OLD
-+        Get the inode i_generation number stored for each inode. The
-+        i_generation number is normally changed only when new inode is created
-+        and it is particularly useful for network filesystems. The '_OLD'
-+        version of this ioctl is an alias for FS_IOC_GETVERSION.
++unsigned int *ages;
++int ages_count;
 +
-+  EXT4_IOC_SETVERSION, EXT4_IOC_SETVERSION_OLD
-+        Set the inode i_generation number stored for each inode. The '_OLD'
-+        version of this ioctl is an alias for FS_IOC_SETVERSION.
++unsigned int unicode_maxage;
 +
-+  EXT4_IOC_GROUP_EXTEND
-+        This ioctl has the same purpose as the resize mount option. It allows
-+        to resize filesystem to the end of the last existing block group,
-+        further resize has to be done with resize2fs, either online, or
-+        offline. The argument points to the unsigned logn number representing
-+        the filesystem new block count.
++static int
++age_valid(unsigned int major, unsigned int minor, unsigned int revision)
++{
++	if (major > UNICODE_MAJ_MAX)
++		return 0;
++	if (minor > UNICODE_MIN_MAX)
++		return 0;
++	if (revision > UNICODE_REV_MAX)
++		return 0;
++	return 1;
++}
 +
-+  EXT4_IOC_MOVE_EXT
-+        Move the block extents from orig_fd (the one this ioctl is pointing to)
-+        to the donor_fd (the one specified in move_extent structure passed as
-+        an argument to this ioctl). Then, exchange inode metadata between
-+        orig_fd and donor_fd.  This is especially useful for online
-+        defragmentation, because the allocator has the opportunity to allocate
-+        moved blocks better, ideally into one contiguous extent.
++/* ------------------------------------------------------------------ */
 +
-+  EXT4_IOC_GROUP_ADD
-+        Add a new group descriptor to an existing or new group descriptor
-+        block. The new group descriptor is described by ext4_new_group_input
-+        structure, which is passed as an argument to this ioctl. This is
-+        especially useful in conjunction with EXT4_IOC_GROUP_EXTEND, which
-+        allows online resize of the filesystem to the end of the last existing
-+        block group.  Those two ioctls combined is used in userspace online
-+        resize tool (e.g. resize2fs).
++/*
++ * utf8trie_t
++ *
++ * A compact binary tree, used to decode UTF-8 characters.
++ *
++ * Internal nodes are one byte for the node itself, and up to three
++ * bytes for an offset into the tree.  The first byte contains the
++ * following information:
++ *  NEXTBYTE  - flag        - advance to next byte if set
++ *  BITNUM    - 3 bit field - the bit number to tested
++ *  OFFLEN    - 2 bit field - number of bytes in the offset
++ * if offlen == 0 (non-branching node)
++ *  RIGHTPATH - 1 bit field - set if the following node is for the
++ *                            right-hand path (tested bit is set)
++ *  TRIENODE  - 1 bit field - set if the following node is an internal
++ *                            node, otherwise it is a leaf node
++ * if offlen != 0 (branching node)
++ *  LEFTNODE  - 1 bit field - set if the left-hand node is internal
++ *  RIGHTNODE - 1 bit field - set if the right-hand node is internal
++ *
++ * Due to the way utf8 works, there cannot be branching nodes with
++ * NEXTBYTE set, and moreover those nodes always have a righthand
++ * descendant.
++ */
++typedef unsigned char utf8trie_t;
++#define BITNUM		0x07
++#define NEXTBYTE	0x08
++#define OFFLEN		0x30
++#define OFFLEN_SHIFT	4
++#define RIGHTPATH	0x40
++#define TRIENODE	0x80
++#define RIGHTNODE	0x40
++#define LEFTNODE	0x80
 +
-+  EXT4_IOC_MIGRATE
-+        This ioctl operates on the filesystem itself.  It converts (migrates)
-+        ext3 indirect block mapped inode to ext4 extent mapped inode by walking
-+        through indirect block mapping of the original inode and converting
-+        contiguous block ranges into ext4 extents of the temporary inode. Then,
-+        inodes are swapped. This ioctl might help, when migrating from ext3 to
-+        ext4 filesystem, however suggestion is to create fresh ext4 filesystem
-+        and copy data from the backup. Note, that filesystem has to support
-+        extents for this ioctl to work.
++/*
++ * utf8leaf_t
++ *
++ * The leaves of the trie are embedded in the trie, and so the same
++ * underlying datatype, unsigned char.
++ *
++ * leaf[0]: The unicode version, stored as a generation number that is
++ *          an index into utf8agetab[].  With this we can filter code
++ *          points based on the unicode version in which they were
++ *          defined.  The CCC of a non-defined code point is 0.
++ * leaf[1]: Canonical Combining Class. During normalization, we need
++ *          to do a stable sort into ascending order of all characters
++ *          with a non-zero CCC that occur between two characters with
++ *          a CCC of 0, or at the begin or end of a string.
++ *          The unicode standard guarantees that all CCC values are
++ *          between 0 and 254 inclusive, which leaves 255 available as
++ *          a special value.
++ *          Code points with CCC 0 are known as stoppers.
++ * leaf[2]: Decomposition. If leaf[1] == 255, then leaf[2] is the
++ *          start of a NUL-terminated string that is the decomposition
++ *          of the character.
++ *          The CCC of a decomposable character is the same as the CCC
++ *          of the first character of its decomposition.
++ *          Some characters decompose as the empty string: these are
++ *          characters with the Default_Ignorable_Code_Point property.
++ *          These do affect normalization, as they all have CCC 0.
++ *
++ * The decompositions in the trie have been fully expanded.
++ *
++ * Casefolding, if applicable, is also done using decompositions.
++ */
++typedef unsigned char utf8leaf_t;
 +
-+  EXT4_IOC_ALLOC_DA_BLKS
-+        Force all of the delay allocated blocks to be allocated to preserve
-+        application-expected ext3 behaviour. Note that this will also start
-+        triggering a write of the data blocks, but this behaviour may change in
-+        the future as it is not necessary and has been done this way only for
-+        sake of simplicity.
++#define LEAF_GEN(LEAF)	((LEAF)[0])
++#define LEAF_CCC(LEAF)	((LEAF)[1])
++#define LEAF_STR(LEAF)	((const char*)((LEAF) + 2))
 +
-+  EXT4_IOC_RESIZE_FS
-+        Resize the filesystem to a new size.  The number of blocks of resized
-+        filesystem is passed in via 64 bit integer argument.  The kernel
-+        allocates bitmaps and inode table, the userspace tool thus just passes
-+        the new number of blocks.
++#define MAXGEN		(255)
 +
-+  EXT4_IOC_SWAP_BOOT
-+        Swap i_blocks and associated attributes (like i_blocks, i_size,
-+        i_flags, ...) from the specified inode with inode EXT4_BOOT_LOADER_INO
-+        (#5). This is typically used to store a boot loader in a secure part of
-+        the filesystem, where it can't be changed by a normal user by accident.
-+        The data blocks of the previous boot loader will be associated with the
-+        given inode.
- 
- References
- ==========
++#define MINCCC		(0)
++#define MAXCCC		(254)
++#define STOPPER		(0)
++#define DECOMPOSE	(255)
++
++struct tree;
++static utf8leaf_t *utf8nlookup(struct tree *, const char *, size_t);
++static utf8leaf_t *utf8lookup(struct tree *, const char *);
++
++unsigned char *utf8data;
++size_t utf8data_size;
++
++utf8trie_t *nfkdi;
++utf8trie_t *nfkdicf;
++
++/* ------------------------------------------------------------------ */
++
++/*
++ * UTF8 valid ranges.
++ *
++ * The UTF-8 encoding spreads the bits of a 32bit word over several
++ * bytes. This table gives the ranges that can be held and how they'd
++ * be represented.
++ *
++ * 0x00000000 0x0000007F: 0xxxxxxx
++ * 0x00000000 0x000007FF: 110xxxxx 10xxxxxx
++ * 0x00000000 0x0000FFFF: 1110xxxx 10xxxxxx 10xxxxxx
++ * 0x00000000 0x001FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
++ * 0x00000000 0x03FFFFFF: 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
++ * 0x00000000 0x7FFFFFFF: 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
++ *
++ * There is an additional requirement on UTF-8, in that only the
++ * shortest representation of a 32bit value is to be used.  A decoder
++ * must not decode sequences that do not satisfy this requirement.
++ * Thus the allowed ranges have a lower bound.
++ *
++ * 0x00000000 0x0000007F: 0xxxxxxx
++ * 0x00000080 0x000007FF: 110xxxxx 10xxxxxx
++ * 0x00000800 0x0000FFFF: 1110xxxx 10xxxxxx 10xxxxxx
++ * 0x00010000 0x001FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
++ * 0x00200000 0x03FFFFFF: 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
++ * 0x04000000 0x7FFFFFFF: 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
++ *
++ * Actual unicode characters are limited to the range 0x0 - 0x10FFFF,
++ * 17 planes of 65536 values.  This limits the sequences actually seen
++ * even more, to just the following.
++ *
++ *          0 -     0x7f: 0                     0x7f
++ *       0x80 -    0x7ff: 0xc2 0x80             0xdf 0xbf
++ *      0x800 -   0xffff: 0xe0 0xa0 0x80        0xef 0xbf 0xbf
++ *    0x10000 - 0x10ffff: 0xf0 0x90 0x80 0x80   0xf4 0x8f 0xbf 0xbf
++ *
++ * Even within those ranges not all values are allowed: the surrogates
++ * 0xd800 - 0xdfff should never be seen.
++ *
++ * Note that the longest sequence seen with valid usage is 4 bytes,
++ * the same a single UTF-32 character.  This makes the UTF-8
++ * representation of Unicode strictly smaller than UTF-32.
++ *
++ * The shortest sequence requirement was introduced by:
++ *    Corrigendum #1: UTF-8 Shortest Form
++ * It can be found here:
++ *    http://www.unicode.org/versions/corrigendum1.html
++ *
++ */
++
++#define UTF8_2_BITS     0xC0
++#define UTF8_3_BITS     0xE0
++#define UTF8_4_BITS     0xF0
++#define UTF8_N_BITS     0x80
++#define UTF8_2_MASK     0xE0
++#define UTF8_3_MASK     0xF0
++#define UTF8_4_MASK     0xF8
++#define UTF8_N_MASK     0xC0
++#define UTF8_V_MASK     0x3F
++#define UTF8_V_SHIFT    6
++
++static int
++utf8encode(char *str, unsigned int val)
++{
++	int len;
++
++	if (val < 0x80) {
++		str[0] = val;
++		len = 1;
++	} else if (val < 0x800) {
++		str[1] = val & UTF8_V_MASK;
++		str[1] |= UTF8_N_BITS;
++		val >>= UTF8_V_SHIFT;
++		str[0] = val;
++		str[0] |= UTF8_2_BITS;
++		len = 2;
++	} else if (val < 0x10000) {
++		str[2] = val & UTF8_V_MASK;
++		str[2] |= UTF8_N_BITS;
++		val >>= UTF8_V_SHIFT;
++		str[1] = val & UTF8_V_MASK;
++		str[1] |= UTF8_N_BITS;
++		val >>= UTF8_V_SHIFT;
++		str[0] = val;
++		str[0] |= UTF8_3_BITS;
++		len = 3;
++	} else if (val < 0x110000) {
++		str[3] = val & UTF8_V_MASK;
++		str[3] |= UTF8_N_BITS;
++		val >>= UTF8_V_SHIFT;
++		str[2] = val & UTF8_V_MASK;
++		str[2] |= UTF8_N_BITS;
++		val >>= UTF8_V_SHIFT;
++		str[1] = val & UTF8_V_MASK;
++		str[1] |= UTF8_N_BITS;
++		val >>= UTF8_V_SHIFT;
++		str[0] = val;
++		str[0] |= UTF8_4_BITS;
++		len = 4;
++	} else {
++		printf("%#x: illegal val\n", val);
++		len = 0;
++	}
++	return len;
++}
++
++static unsigned int
++utf8decode(const char *str)
++{
++	const unsigned char *s = (const unsigned char*)str;
++	unsigned int unichar = 0;
++
++	if (*s < 0x80) {
++		unichar = *s;
++	} else if (*s < UTF8_3_BITS) {
++		unichar = *s++ & 0x1F;
++		unichar <<= UTF8_V_SHIFT;
++		unichar |= *s & 0x3F;
++	} else if (*s < UTF8_4_BITS) {
++		unichar = *s++ & 0x0F;
++		unichar <<= UTF8_V_SHIFT;
++		unichar |= *s++ & 0x3F;
++		unichar <<= UTF8_V_SHIFT;
++		unichar |= *s & 0x3F;
++	} else {
++		unichar = *s++ & 0x0F;
++		unichar <<= UTF8_V_SHIFT;
++		unichar |= *s++ & 0x3F;
++		unichar <<= UTF8_V_SHIFT;
++		unichar |= *s++ & 0x3F;
++		unichar <<= UTF8_V_SHIFT;
++		unichar |= *s & 0x3F;
++	}
++	return unichar;
++}
++
++static int
++utf32valid(unsigned int unichar)
++{
++	return unichar < 0x110000;
++}
++
++#define NODE 1
++#define LEAF 0
++
++struct tree {
++	void *root;
++	int childnode;
++	const char *type;
++	unsigned int maxage;
++	struct tree *next;
++	int (*leaf_equal)(void *, void *);
++	void (*leaf_print)(void *, int);
++	int (*leaf_mark)(void *);
++	int (*leaf_size)(void *);
++	int *(*leaf_index)(struct tree *, void *);
++	unsigned char *(*leaf_emit)(void *, unsigned char *);
++	int leafindex[0x110000];
++	int index;
++};
++
++struct node {
++	int index;
++	int offset;
++	int mark;
++	int size;
++	struct node *parent;
++	void *left;
++	void *right;
++	unsigned char bitnum;
++	unsigned char nextbyte;
++	unsigned char leftnode;
++	unsigned char rightnode;
++	unsigned int keybits;
++	unsigned int keymask;
++};
++
++/*
++ * Example lookup function for a tree.
++ */
++static void *
++lookup(struct tree *tree, const char *key)
++{
++	struct node *node;
++	void *leaf = NULL;
++
++	node = tree->root;
++	while (!leaf && node) {
++		if (node->nextbyte)
++			key++;
++		if (*key & (1 << (node->bitnum & 7))) {
++			/* Right leg */
++			if (node->rightnode == NODE) {
++				node = node->right;
++			} else if (node->rightnode == LEAF) {
++				leaf = node->right;
++			} else {
++				node = NULL;
++			}
++		} else {
++			/* Left leg */
++			if (node->leftnode == NODE) {
++				node = node->left;
++			} else if (node->leftnode == LEAF) {
++				leaf = node->left;
++			} else {
++				node = NULL;
++			}
++		}
++	}
++
++	return leaf;
++}
++
++/*
++ * A simple non-recursive tree walker: keep track of visits to the
++ * left and right branches in the leftmask and rightmask.
++ */
++static void
++tree_walk(struct tree *tree)
++{
++	struct node *node;
++	unsigned int leftmask;
++	unsigned int rightmask;
++	unsigned int bitmask;
++	int indent = 1;
++	int nodes, singletons, leaves;
++
++	nodes = singletons = leaves = 0;
++
++	printf("%s_%x root %p\n", tree->type, tree->maxage, tree->root);
++	if (tree->childnode == LEAF) {
++		assert(tree->root);
++		tree->leaf_print(tree->root, indent);
++		leaves = 1;
++	} else {
++		assert(tree->childnode == NODE);
++		node = tree->root;
++		leftmask = rightmask = 0;
++		while (node) {
++			printf("%*snode @ %p bitnum %d nextbyte %d"
++			       " left %p right %p mask %x bits %x\n",
++				indent, "", node,
++				node->bitnum, node->nextbyte,
++				node->left, node->right,
++				node->keymask, node->keybits);
++			nodes += 1;
++			if (!(node->left && node->right))
++				singletons += 1;
++
++			while (node) {
++				bitmask = 1 << node->bitnum;
++				if ((leftmask & bitmask) == 0) {
++					leftmask |= bitmask;
++					if (node->leftnode == LEAF) {
++						assert(node->left);
++						tree->leaf_print(node->left,
++								 indent+1);
++						leaves += 1;
++					} else if (node->left) {
++						assert(node->leftnode == NODE);
++						indent += 1;
++						node = node->left;
++						break;
++					}
++				}
++				if ((rightmask & bitmask) == 0) {
++					rightmask |= bitmask;
++					if (node->rightnode == LEAF) {
++						assert(node->right);
++						tree->leaf_print(node->right,
++								 indent+1);
++						leaves += 1;
++					} else if (node->right) {
++						assert(node->rightnode==NODE);
++						indent += 1;
++						node = node->right;
++						break;
++					}
++				}
++				leftmask &= ~bitmask;
++				rightmask &= ~bitmask;
++				node = node->parent;
++				indent -= 1;
++			}
++		}
++	}
++	printf("nodes %d leaves %d singletons %d\n",
++	       nodes, leaves, singletons);
++}
++
++/*
++ * Allocate an initialize a new internal node.
++ */
++static struct node *
++alloc_node(struct node *parent)
++{
++	struct node *node;
++	int bitnum;
++
++	node = malloc(sizeof(*node));
++	node->left = node->right = NULL;
++	node->parent = parent;
++	node->leftnode = NODE;
++	node->rightnode = NODE;
++	node->keybits = 0;
++	node->keymask = 0;
++	node->mark = 0;
++	node->index = 0;
++	node->offset = -1;
++	node->size = 4;
++
++	if (node->parent) {
++		bitnum = parent->bitnum;
++		if ((bitnum & 7) == 0) {
++			node->bitnum = bitnum + 7 + 8;
++			node->nextbyte = 1;
++		} else {
++			node->bitnum = bitnum - 1;
++			node->nextbyte = 0;
++		}
++	} else {
++		node->bitnum = 7;
++		node->nextbyte = 0;
++	}
++
++	return node;
++}
++
++/*
++ * Insert a new leaf into the tree, and collapse any subtrees that are
++ * fully populated and end in identical leaves. A nextbyte tagged
++ * internal node will not be removed to preserve the tree's integrity.
++ * Note that due to the structure of utf8, no nextbyte tagged node
++ * will be a candidate for removal.
++ */
++static int
++insert(struct tree *tree, char *key, int keylen, void *leaf)
++{
++	struct node *node;
++	struct node *parent;
++	void **cursor;
++	int keybits;
++
++	assert(keylen >= 1 && keylen <= 4);
++
++	node = NULL;
++	cursor = &tree->root;
++	keybits = 8 * keylen;
++
++	/* Insert, creating path along the way. */
++	while (keybits) {
++		if (!*cursor)
++			*cursor = alloc_node(node);
++		node = *cursor;
++		if (node->nextbyte)
++			key++;
++		if (*key & (1 << (node->bitnum & 7)))
++			cursor = &node->right;
++		else
++			cursor = &node->left;
++		keybits--;
++	}
++	*cursor = leaf;
++
++	/* Merge subtrees if possible. */
++	while (node) {
++		if (*key & (1 << (node->bitnum & 7)))
++			node->rightnode = LEAF;
++		else
++			node->leftnode = LEAF;
++		if (node->nextbyte)
++			break;
++		if (node->leftnode == NODE || node->rightnode == NODE)
++			break;
++		assert(node->left);
++		assert(node->right);
++		/* Compare */
++		if (! tree->leaf_equal(node->left, node->right))
++			break;
++		/* Keep left, drop right leaf. */
++		leaf = node->left;
++		/* Check in parent */
++		parent = node->parent;
++		if (!parent) {
++			/* root of tree! */
++			tree->root = leaf;
++			tree->childnode = LEAF;
++		} else if (parent->left == node) {
++			parent->left = leaf;
++			parent->leftnode = LEAF;
++			if (parent->right) {
++				parent->keymask = 0;
++				parent->keybits = 0;
++			} else {
++				parent->keymask |= (1 << node->bitnum);
++			}
++		} else if (parent->right == node) {
++			parent->right = leaf;
++			parent->rightnode = LEAF;
++			if (parent->left) {
++				parent->keymask = 0;
++				parent->keybits = 0;
++			} else {
++				parent->keymask |= (1 << node->bitnum);
++				parent->keybits |= (1 << node->bitnum);
++			}
++		} else {
++			/* internal tree error */
++			assert(0);
++		}
++		free(node);
++		node = parent;
++	}
++
++	/* Propagate keymasks up along singleton chains. */
++	while (node) {
++		parent = node->parent;
++		if (!parent)
++			break;
++		/* Nix the mask for parents with two children. */
++		if (node->keymask == 0) {
++			parent->keymask = 0;
++			parent->keybits = 0;
++		} else if (parent->left && parent->right) {
++			parent->keymask = 0;
++			parent->keybits = 0;
++		} else {
++			assert((parent->keymask & node->keymask) == 0);
++			parent->keymask |= node->keymask;
++			parent->keymask |= (1 << parent->bitnum);
++			parent->keybits |= node->keybits;
++			if (parent->right)
++				parent->keybits |= (1 << parent->bitnum);
++		}
++		node = parent;
++	}
++
++	return 0;
++}
++
++/*
++ * Prune internal nodes.
++ *
++ * Fully populated subtrees that end at the same leaf have already
++ * been collapsed.  There are still internal nodes that have for both
++ * their left and right branches a sequence of singletons that make
++ * identical choices and end in identical leaves.  The keymask and
++ * keybits collected in the nodes describe the choices made in these
++ * singleton chains.  When they are identical for the left and right
++ * branch of a node, and the two leaves comare identical, the node in
++ * question can be removed.
++ *
++ * Note that nodes with the nextbyte tag set will not be removed by
++ * this to ensure tree integrity.  Note as well that the structure of
++ * utf8 ensures that these nodes would not have been candidates for
++ * removal in any case.
++ */
++static void
++prune(struct tree *tree)
++{
++	struct node *node;
++	struct node *left;
++	struct node *right;
++	struct node *parent;
++	void *leftleaf;
++	void *rightleaf;
++	unsigned int leftmask;
++	unsigned int rightmask;
++	unsigned int bitmask;
++	int count;
++
++	if (verbose > 0)
++		printf("Pruning %s_%x\n", tree->type, tree->maxage);
++
++	count = 0;
++	if (tree->childnode == LEAF)
++		return;
++	if (!tree->root)
++		return;
++
++	leftmask = rightmask = 0;
++	node = tree->root;
++	while (node) {
++		if (node->nextbyte)
++			goto advance;
++		if (node->leftnode == LEAF)
++			goto advance;
++		if (node->rightnode == LEAF)
++			goto advance;
++		if (!node->left)
++			goto advance;
++		if (!node->right)
++			goto advance;
++		left = node->left;
++		right = node->right;
++		if (left->keymask == 0)
++			goto advance;
++		if (right->keymask == 0)
++			goto advance;
++		if (left->keymask != right->keymask)
++			goto advance;
++		if (left->keybits != right->keybits)
++			goto advance;
++		leftleaf = NULL;
++		while (!leftleaf) {
++			assert(left->left || left->right);
++			if (left->leftnode == LEAF)
++				leftleaf = left->left;
++			else if (left->rightnode == LEAF)
++				leftleaf = left->right;
++			else if (left->left)
++				left = left->left;
++			else if (left->right)
++				left = left->right;
++			else
++				assert(0);
++		}
++		rightleaf = NULL;
++		while (!rightleaf) {
++			assert(right->left || right->right);
++			if (right->leftnode == LEAF)
++				rightleaf = right->left;
++			else if (right->rightnode == LEAF)
++				rightleaf = right->right;
++			else if (right->left)
++				right = right->left;
++			else if (right->right)
++				right = right->right;
++			else
++				assert(0);
++		}
++		if (! tree->leaf_equal(leftleaf, rightleaf))
++			goto advance;
++		/*
++		 * This node has identical singleton-only subtrees.
++		 * Remove it.
++		 */
++		parent = node->parent;
++		left = node->left;
++		right = node->right;
++		if (parent->left == node)
++			parent->left = left;
++		else if (parent->right == node)
++			parent->right = left;
++		else
++			assert(0);
++		left->parent = parent;
++		left->keymask |= (1 << node->bitnum);
++		node->left = NULL;
++		while (node) {
++			bitmask = 1 << node->bitnum;
++			leftmask &= ~bitmask;
++			rightmask &= ~bitmask;
++			if (node->leftnode == NODE && node->left) {
++				left = node->left;
++				free(node);
++				count++;
++				node = left;
++			} else if (node->rightnode == NODE && node->right) {
++				right = node->right;
++				free(node);
++				count++;
++				node = right;
++			} else {
++				node = NULL;
++			}
++		}
++		/* Propagate keymasks up along singleton chains. */
++		node = parent;
++		/* Force re-check */
++		bitmask = 1 << node->bitnum;
++		leftmask &= ~bitmask;
++		rightmask &= ~bitmask;
++		for (;;) {
++			if (node->left && node->right)
++				break;
++			if (node->left) {
++				left = node->left;
++				node->keymask |= left->keymask;
++				node->keybits |= left->keybits;
++			}
++			if (node->right) {
++				right = node->right;
++				node->keymask |= right->keymask;
++				node->keybits |= right->keybits;
++			}
++			node->keymask |= (1 << node->bitnum);
++			node = node->parent;
++			/* Force re-check */
++			bitmask = 1 << node->bitnum;
++			leftmask &= ~bitmask;
++			rightmask &= ~bitmask;
++		}
++	advance:
++		bitmask = 1 << node->bitnum;
++		if ((leftmask & bitmask) == 0 &&
++		    node->leftnode == NODE &&
++		    node->left) {
++			leftmask |= bitmask;
++			node = node->left;
++		} else if ((rightmask & bitmask) == 0 &&
++			   node->rightnode == NODE &&
++			   node->right) {
++			rightmask |= bitmask;
++			node = node->right;
++		} else {
++			leftmask &= ~bitmask;
++			rightmask &= ~bitmask;
++			node = node->parent;
++		}
++	}
++	if (verbose > 0)
++		printf("Pruned %d nodes\n", count);
++}
++
++/*
++ * Mark the nodes in the tree that lead to leaves that must be
++ * emitted.
++ */
++static void
++mark_nodes(struct tree *tree)
++{
++	struct node *node;
++	struct node *n;
++	unsigned int leftmask;
++	unsigned int rightmask;
++	unsigned int bitmask;
++	int marked;
++
++	marked = 0;
++	if (verbose > 0)
++		printf("Marking %s_%x\n", tree->type, tree->maxage);
++	if (tree->childnode == LEAF)
++		goto done;
++
++	assert(tree->childnode == NODE);
++	node = tree->root;
++	leftmask = rightmask = 0;
++	while (node) {
++		bitmask = 1 << node->bitnum;
++		if ((leftmask & bitmask) == 0) {
++			leftmask |= bitmask;
++			if (node->leftnode == LEAF) {
++				assert(node->left);
++				if (tree->leaf_mark(node->left)) {
++					n = node;
++					while (n && !n->mark) {
++						marked++;
++						n->mark = 1;
++						n = n->parent;
++					}
++				}
++			} else if (node->left) {
++				assert(node->leftnode == NODE);
++				node = node->left;
++				continue;
++			}
++		}
++		if ((rightmask & bitmask) == 0) {
++			rightmask |= bitmask;
++			if (node->rightnode == LEAF) {
++				assert(node->right);
++				if (tree->leaf_mark(node->right)) {
++					n = node;
++					while (n && !n->mark) {
++						marked++;
++						n->mark = 1;
++						n = n->parent;
++					}
++				}
++			} else if (node->right) {
++				assert(node->rightnode==NODE);
++				node = node->right;
++				continue;
++			}
++		}
++		leftmask &= ~bitmask;
++		rightmask &= ~bitmask;
++		node = node->parent;
++	}
++
++	/* second pass: left siblings and singletons */
++
++	assert(tree->childnode == NODE);
++	node = tree->root;
++	leftmask = rightmask = 0;
++	while (node) {
++		bitmask = 1 << node->bitnum;
++		if ((leftmask & bitmask) == 0) {
++			leftmask |= bitmask;
++			if (node->leftnode == LEAF) {
++				assert(node->left);
++				if (tree->leaf_mark(node->left)) {
++					n = node;
++					while (n && !n->mark) {
++						marked++;
++						n->mark = 1;
++						n = n->parent;
++					}
++				}
++			} else if (node->left) {
++				assert(node->leftnode == NODE);
++				node = node->left;
++				if (!node->mark && node->parent->mark) {
++					marked++;
++					node->mark = 1;
++				}
++				continue;
++			}
++		}
++		if ((rightmask & bitmask) == 0) {
++			rightmask |= bitmask;
++			if (node->rightnode == LEAF) {
++				assert(node->right);
++				if (tree->leaf_mark(node->right)) {
++					n = node;
++					while (n && !n->mark) {
++						marked++;
++						n->mark = 1;
++						n = n->parent;
++					}
++				}
++			} else if (node->right) {
++				assert(node->rightnode==NODE);
++				node = node->right;
++				if (!node->mark && node->parent->mark &&
++				    !node->parent->left) {
++					marked++;
++					node->mark = 1;
++				}
++				continue;
++			}
++		}
++		leftmask &= ~bitmask;
++		rightmask &= ~bitmask;
++		node = node->parent;
++	}
++done:
++	if (verbose > 0)
++		printf("Marked %d nodes\n", marked);
++}
++
++/*
++ * Compute the index of each node and leaf, which is the offset in the
++ * emitted trie.  These values must be pre-computed because relative
++ * offsets between nodes are used to navigate the tree.
++ */
++static int
++index_nodes(struct tree *tree, int index)
++{
++	struct node *node;
++	unsigned int leftmask;
++	unsigned int rightmask;
++	unsigned int bitmask;
++	int count;
++	int indent;
++
++	/* Align to a cache line (or half a cache line?). */
++	while (index % 64)
++		index++;
++	tree->index = index;
++	indent = 1;
++	count = 0;
++
++	if (verbose > 0)
++		printf("Indexing %s_%x: %d\n", tree->type, tree->maxage, index);
++	if (tree->childnode == LEAF) {
++		index += tree->leaf_size(tree->root);
++		goto done;
++	}
++
++	assert(tree->childnode == NODE);
++	node = tree->root;
++	leftmask = rightmask = 0;
++	while (node) {
++		if (!node->mark)
++			goto skip;
++		count++;
++		if (node->index != index)
++			node->index = index;
++		index += node->size;
++skip:
++		while (node) {
++			bitmask = 1 << node->bitnum;
++			if (node->mark && (leftmask & bitmask) == 0) {
++				leftmask |= bitmask;
++				if (node->leftnode == LEAF) {
++					assert(node->left);
++					*tree->leaf_index(tree, node->left) =
++									index;
++					index += tree->leaf_size(node->left);
++					count++;
++				} else if (node->left) {
++					assert(node->leftnode == NODE);
++					indent += 1;
++					node = node->left;
++					break;
++				}
++			}
++			if (node->mark && (rightmask & bitmask) == 0) {
++				rightmask |= bitmask;
++				if (node->rightnode == LEAF) {
++					assert(node->right);
++					*tree->leaf_index(tree, node->right) = index;
++					index += tree->leaf_size(node->right);
++					count++;
++				} else if (node->right) {
++					assert(node->rightnode==NODE);
++					indent += 1;
++					node = node->right;
++					break;
++				}
++			}
++			leftmask &= ~bitmask;
++			rightmask &= ~bitmask;
++			node = node->parent;
++			indent -= 1;
++		}
++	}
++done:
++	/* Round up to a multiple of 16 */
++	while (index % 16)
++		index++;
++	if (verbose > 0)
++		printf("Final index %d\n", index);
++	return index;
++}
++
++/*
++ * Compute the size of nodes and leaves. We start by assuming that
++ * each node needs to store a three-byte offset. The indexes of the
++ * nodes are calculated based on that, and then this function is
++ * called to see if the sizes of some nodes can be reduced.  This is
++ * repeated until no more changes are seen.
++ */
++static int
++size_nodes(struct tree *tree)
++{
++	struct tree *next;
++	struct node *node;
++	struct node *right;
++	struct node *n;
++	unsigned int leftmask;
++	unsigned int rightmask;
++	unsigned int bitmask;
++	unsigned int pathbits;
++	unsigned int pathmask;
++	int changed;
++	int offset;
++	int size;
++	int indent;
++
++	indent = 1;
++	changed = 0;
++	size = 0;
++
++	if (verbose > 0)
++		printf("Sizing %s_%x\n", tree->type, tree->maxage);
++	if (tree->childnode == LEAF)
++		goto done;
++
++	assert(tree->childnode == NODE);
++	pathbits = 0;
++	pathmask = 0;
++	node = tree->root;
++	leftmask = rightmask = 0;
++	while (node) {
++		if (!node->mark)
++			goto skip;
++		offset = 0;
++		if (!node->left || !node->right) {
++			size = 1;
++		} else {
++			if (node->rightnode == NODE) {
++				right = node->right;
++				next = tree->next;
++				while (!right->mark) {
++					assert(next);
++					n = next->root;
++					while (n->bitnum != node->bitnum) {
++						if (pathbits & (1<<n->bitnum))
++							n = n->right;
++						else
++							n = n->left;
++					}
++					n = n->right;
++					assert(right->bitnum == n->bitnum);
++					right = n;
++					next = next->next;
++				}
++				offset = right->index - node->index;
++			} else {
++				offset = *tree->leaf_index(tree, node->right);
++				offset -= node->index;
++			}
++			assert(offset >= 0);
++			assert(offset <= 0xffffff);
++			if (offset <= 0xff) {
++				size = 2;
++			} else if (offset <= 0xffff) {
++				size = 3;
++			} else { /* offset <= 0xffffff */
++				size = 4;
++			}
++		}
++		if (node->size != size || node->offset != offset) {
++			node->size = size;
++			node->offset = offset;
++			changed++;
++		}
++skip:
++		while (node) {
++			bitmask = 1 << node->bitnum;
++			pathmask |= bitmask;
++			if (node->mark && (leftmask & bitmask) == 0) {
++				leftmask |= bitmask;
++				if (node->leftnode == LEAF) {
++					assert(node->left);
++				} else if (node->left) {
++					assert(node->leftnode == NODE);
++					indent += 1;
++					node = node->left;
++					break;
++				}
++			}
++			if (node->mark && (rightmask & bitmask) == 0) {
++				rightmask |= bitmask;
++				pathbits |= bitmask;
++				if (node->rightnode == LEAF) {
++					assert(node->right);
++				} else if (node->right) {
++					assert(node->rightnode==NODE);
++					indent += 1;
++					node = node->right;
++					break;
++				}
++			}
++			leftmask &= ~bitmask;
++			rightmask &= ~bitmask;
++			pathmask &= ~bitmask;
++			pathbits &= ~bitmask;
++			node = node->parent;
++			indent -= 1;
++		}
++	}
++done:
++	if (verbose > 0)
++		printf("Found %d changes\n", changed);
++	return changed;
++}
++
++/*
++ * Emit a trie for the given tree into the data array.
++ */
++static void
++emit(struct tree *tree, unsigned char *data)
++{
++	struct node *node;
++	unsigned int leftmask;
++	unsigned int rightmask;
++	unsigned int bitmask;
++	int offlen;
++	int offset;
++	int index;
++	int indent;
++	unsigned char byte;
++
++	index = tree->index;
++	data += index;
++	indent = 1;
++	if (verbose > 0)
++		printf("Emitting %s_%x\n", tree->type, tree->maxage);
++	if (tree->childnode == LEAF) {
++		assert(tree->root);
++		tree->leaf_emit(tree->root, data);
++		return;
++	}
++
++	assert(tree->childnode == NODE);
++	node = tree->root;
++	leftmask = rightmask = 0;
++	while (node) {
++		if (!node->mark)
++			goto skip;
++		assert(node->offset != -1);
++		assert(node->index == index);
++
++		byte = 0;
++		if (node->nextbyte)
++			byte |= NEXTBYTE;
++		byte |= (node->bitnum & BITNUM);
++		if (node->left && node->right) {
++			if (node->leftnode == NODE)
++				byte |= LEFTNODE;
++			if (node->rightnode == NODE)
++				byte |= RIGHTNODE;
++			if (node->offset <= 0xff)
++				offlen = 1;
++			else if (node->offset <= 0xffff)
++				offlen = 2;
++			else
++				offlen = 3;
++			offset = node->offset;
++			byte |= offlen << OFFLEN_SHIFT;
++			*data++ = byte;
++			index++;
++			while (offlen--) {
++				*data++ = offset & 0xff;
++				index++;
++				offset >>= 8;
++			}
++		} else if (node->left) {
++			if (node->leftnode == NODE)
++				byte |= TRIENODE;
++			*data++ = byte;
++			index++;
++		} else if (node->right) {
++			byte |= RIGHTNODE;
++			if (node->rightnode == NODE)
++				byte |= TRIENODE;
++			*data++ = byte;
++			index++;
++		} else {
++			assert(0);
++		}
++skip:
++		while (node) {
++			bitmask = 1 << node->bitnum;
++			if (node->mark && (leftmask & bitmask) == 0) {
++				leftmask |= bitmask;
++				if (node->leftnode == LEAF) {
++					assert(node->left);
++					data = tree->leaf_emit(node->left,
++							       data);
++					index += tree->leaf_size(node->left);
++				} else if (node->left) {
++					assert(node->leftnode == NODE);
++					indent += 1;
++					node = node->left;
++					break;
++				}
++			}
++			if (node->mark && (rightmask & bitmask) == 0) {
++				rightmask |= bitmask;
++				if (node->rightnode == LEAF) {
++					assert(node->right);
++					data = tree->leaf_emit(node->right,
++							       data);
++					index += tree->leaf_size(node->right);
++				} else if (node->right) {
++					assert(node->rightnode==NODE);
++					indent += 1;
++					node = node->right;
++					break;
++				}
++			}
++			leftmask &= ~bitmask;
++			rightmask &= ~bitmask;
++			node = node->parent;
++			indent -= 1;
++		}
++	}
++}
++
++/* ------------------------------------------------------------------ */
++
++/*
++ * Unicode data.
++ *
++ * We need to keep track of the Canonical Combining Class, the Age,
++ * and decompositions for a code point.
++ *
++ * For the Age, we store the index into the ages table.  Effectively
++ * this is a generation number that the table maps to a unicode
++ * version.
++ *
++ * The correction field is used to indicate that this entry is in the
++ * corrections array, which contains decompositions that were
++ * corrected in later revisions.  The value of the correction field is
++ * the Unicode version in which the mapping was corrected.
++ */
++struct unicode_data {
++	unsigned int code;
++	int ccc;
++	int gen;
++	int correction;
++	unsigned int *utf32nfkdi;
++	unsigned int *utf32nfkdicf;
++	char *utf8nfkdi;
++	char *utf8nfkdicf;
++};
++
++struct unicode_data unicode_data[0x110000];
++struct unicode_data *corrections;
++int    corrections_count;
++
++struct tree *nfkdi_tree;
++struct tree *nfkdicf_tree;
++
++struct tree *trees;
++int          trees_count;
++
++/*
++ * Check the corrections array to see if this entry was corrected at
++ * some point.
++ */
++static struct unicode_data *
++corrections_lookup(struct unicode_data *u)
++{
++	int i;
++
++	for (i = 0; i != corrections_count; i++)
++		if (u->code == corrections[i].code)
++			return &corrections[i];
++	return u;
++}
++
++static int
++nfkdi_equal(void *l, void *r)
++{
++	struct unicode_data *left = l;
++	struct unicode_data *right = r;
++
++	if (left->gen != right->gen)
++		return 0;
++	if (left->ccc != right->ccc)
++		return 0;
++	if (left->utf8nfkdi && right->utf8nfkdi &&
++	    strcmp(left->utf8nfkdi, right->utf8nfkdi) == 0)
++		return 1;
++	if (left->utf8nfkdi || right->utf8nfkdi)
++		return 0;
++	return 1;
++}
++
++static int
++nfkdicf_equal(void *l, void *r)
++{
++	struct unicode_data *left = l;
++	struct unicode_data *right = r;
++
++	if (left->gen != right->gen)
++		return 0;
++	if (left->ccc != right->ccc)
++		return 0;
++	if (left->utf8nfkdicf && right->utf8nfkdicf &&
++	    strcmp(left->utf8nfkdicf, right->utf8nfkdicf) == 0)
++		return 1;
++	if (left->utf8nfkdicf && right->utf8nfkdicf)
++		return 0;
++	if (left->utf8nfkdicf || right->utf8nfkdicf)
++		return 0;
++	if (left->utf8nfkdi && right->utf8nfkdi &&
++	    strcmp(left->utf8nfkdi, right->utf8nfkdi) == 0)
++		return 1;
++	if (left->utf8nfkdi || right->utf8nfkdi)
++		return 0;
++	return 1;
++}
++
++static void
++nfkdi_print(void *l, int indent)
++{
++	struct unicode_data *leaf = l;
++
++	printf("%*sleaf @ %p code %X ccc %d gen %d", indent, "", leaf,
++		leaf->code, leaf->ccc, leaf->gen);
++	if (leaf->utf8nfkdi)
++		printf(" nfkdi \"%s\"", (const char*)leaf->utf8nfkdi);
++	printf("\n");
++}
++
++static void
++nfkdicf_print(void *l, int indent)
++{
++	struct unicode_data *leaf = l;
++
++	printf("%*sleaf @ %p code %X ccc %d gen %d", indent, "", leaf,
++		leaf->code, leaf->ccc, leaf->gen);
++	if (leaf->utf8nfkdicf)
++		printf(" nfkdicf \"%s\"", (const char*)leaf->utf8nfkdicf);
++	else if (leaf->utf8nfkdi)
++		printf(" nfkdi \"%s\"", (const char*)leaf->utf8nfkdi);
++	printf("\n");
++}
++
++static int
++nfkdi_mark(void *l)
++{
++	return 1;
++}
++
++static int
++nfkdicf_mark(void *l)
++{
++	struct unicode_data *leaf = l;
++
++	if (leaf->utf8nfkdicf)
++		return 1;
++	return 0;
++}
++
++static int
++correction_mark(void *l)
++{
++	struct unicode_data *leaf = l;
++
++	return leaf->correction;
++}
++
++static int
++nfkdi_size(void *l)
++{
++	struct unicode_data *leaf = l;
++
++	int size = 2;
++	if (leaf->utf8nfkdi)
++		size += strlen(leaf->utf8nfkdi) + 1;
++	return size;
++}
++
++static int
++nfkdicf_size(void *l)
++{
++	struct unicode_data *leaf = l;
++
++	int size = 2;
++	if (leaf->utf8nfkdicf)
++		size += strlen(leaf->utf8nfkdicf) + 1;
++	else if (leaf->utf8nfkdi)
++		size += strlen(leaf->utf8nfkdi) + 1;
++	return size;
++}
++
++static int *
++nfkdi_index(struct tree *tree, void *l)
++{
++	struct unicode_data *leaf = l;
++
++	return &tree->leafindex[leaf->code];
++}
++
++static int *
++nfkdicf_index(struct tree *tree, void *l)
++{
++	struct unicode_data *leaf = l;
++
++	return &tree->leafindex[leaf->code];
++}
++
++static unsigned char *
++nfkdi_emit(void *l, unsigned char *data)
++{
++	struct unicode_data *leaf = l;
++	unsigned char *s;
++
++	*data++ = leaf->gen;
++	if (leaf->utf8nfkdi) {
++		*data++ = DECOMPOSE;
++		s = (unsigned char*)leaf->utf8nfkdi;
++		while ((*data++ = *s++) != 0)
++			;
++	} else {
++		*data++ = leaf->ccc;
++	}
++	return data;
++}
++
++static unsigned char *
++nfkdicf_emit(void *l, unsigned char *data)
++{
++	struct unicode_data *leaf = l;
++	unsigned char *s;
++
++	*data++ = leaf->gen;
++	if (leaf->utf8nfkdicf) {
++		*data++ = DECOMPOSE;
++		s = (unsigned char*)leaf->utf8nfkdicf;
++		while ((*data++ = *s++) != 0)
++			;
++	} else if (leaf->utf8nfkdi) {
++		*data++ = DECOMPOSE;
++		s = (unsigned char*)leaf->utf8nfkdi;
++		while ((*data++ = *s++) != 0)
++			;
++	} else {
++		*data++ = leaf->ccc;
++	}
++	return data;
++}
++
++static void
++utf8_create(struct unicode_data *data)
++{
++	char utf[18*4+1];
++	char *u;
++	unsigned int *um;
++	int i;
++
++	u = utf;
++	um = data->utf32nfkdi;
++	if (um) {
++		for (i = 0; um[i]; i++)
++			u += utf8encode(u, um[i]);
++		*u = '\0';
++		data->utf8nfkdi = strdup(utf);
++	}
++	u = utf;
++	um = data->utf32nfkdicf;
++	if (um) {
++		for (i = 0; um[i]; i++)
++			u += utf8encode(u, um[i]);
++		*u = '\0';
++		if (!data->utf8nfkdi || strcmp(data->utf8nfkdi, utf))
++			data->utf8nfkdicf = strdup(utf);
++	}
++}
++
++static void
++utf8_init(void)
++{
++	unsigned int unichar;
++	int i;
++
++	for (unichar = 0; unichar != 0x110000; unichar++)
++		utf8_create(&unicode_data[unichar]);
++
++	for (i = 0; i != corrections_count; i++)
++		utf8_create(&corrections[i]);
++}
++
++static void
++trees_init(void)
++{
++	struct unicode_data *data;
++	unsigned int maxage;
++	unsigned int nextage;
++	int count;
++	int i;
++	int j;
++
++	/* Count the number of different ages. */
++	count = 0;
++	nextage = (unsigned int)-1;
++	do {
++		maxage = nextage;
++		nextage = 0;
++		for (i = 0; i <= corrections_count; i++) {
++			data = &corrections[i];
++			if (nextage < data->correction &&
++			    data->correction < maxage)
++				nextage = data->correction;
++		}
++		count++;
++	} while (nextage);
++
++	/* Two trees per age: nfkdi and nfkdicf */
++	trees_count = count * 2;
++	trees = calloc(trees_count, sizeof(struct tree));
++
++	/* Assign ages to the trees. */
++	count = trees_count;
++	nextage = (unsigned int)-1;
++	do {
++		maxage = nextage;
++		trees[--count].maxage = maxage;
++		trees[--count].maxage = maxage;
++		nextage = 0;
++		for (i = 0; i <= corrections_count; i++) {
++			data = &corrections[i];
++			if (nextage < data->correction &&
++			    data->correction < maxage)
++				nextage = data->correction;
++		}
++	} while (nextage);
++
++	/* The ages assigned above are off by one. */
++	for (i = 0; i != trees_count; i++) {
++		j = 0;
++		while (ages[j] < trees[i].maxage)
++			j++;
++		trees[i].maxage = ages[j-1];
++	}
++
++	/* Set up the forwarding between trees. */
++	trees[trees_count-2].next = &trees[trees_count-1];
++	trees[trees_count-1].leaf_mark = nfkdi_mark;
++	trees[trees_count-2].leaf_mark = nfkdicf_mark;
++	for (i = 0; i != trees_count-2; i += 2) {
++		trees[i].next = &trees[trees_count-2];
++		trees[i].leaf_mark = correction_mark;
++		trees[i+1].next = &trees[trees_count-1];
++		trees[i+1].leaf_mark = correction_mark;
++	}
++
++	/* Assign the callouts. */
++	for (i = 0; i != trees_count; i += 2) {
++		trees[i].type = "nfkdicf";
++		trees[i].leaf_equal = nfkdicf_equal;
++		trees[i].leaf_print = nfkdicf_print;
++		trees[i].leaf_size = nfkdicf_size;
++		trees[i].leaf_index = nfkdicf_index;
++		trees[i].leaf_emit = nfkdicf_emit;
++
++		trees[i+1].type = "nfkdi";
++		trees[i+1].leaf_equal = nfkdi_equal;
++		trees[i+1].leaf_print = nfkdi_print;
++		trees[i+1].leaf_size = nfkdi_size;
++		trees[i+1].leaf_index = nfkdi_index;
++		trees[i+1].leaf_emit = nfkdi_emit;
++	}
++
++	/* Finish init. */
++	for (i = 0; i != trees_count; i++)
++		trees[i].childnode = NODE;
++}
++
++static void
++trees_populate(void)
++{
++	struct unicode_data *data;
++	unsigned int unichar;
++	char keyval[4];
++	int keylen;
++	int i;
++
++	for (i = 0; i != trees_count; i++) {
++		if (verbose > 0) {
++			printf("Populating %s_%x\n",
++				trees[i].type, trees[i].maxage);
++		}
++		for (unichar = 0; unichar != 0x110000; unichar++) {
++			if (unicode_data[unichar].gen < 0)
++				continue;
++			keylen = utf8encode(keyval, unichar);
++			data = corrections_lookup(&unicode_data[unichar]);
++			if (data->correction <= trees[i].maxage)
++				data = &unicode_data[unichar];
++			insert(&trees[i], keyval, keylen, data);
++		}
++	}
++}
++
++static void
++trees_reduce(void)
++{
++	int i;
++	int size;
++	int changed;
++
++	for (i = 0; i != trees_count; i++)
++		prune(&trees[i]);
++	for (i = 0; i != trees_count; i++)
++		mark_nodes(&trees[i]);
++	do {
++		size = 0;
++		for (i = 0; i != trees_count; i++)
++			size = index_nodes(&trees[i], size);
++		changed = 0;
++		for (i = 0; i != trees_count; i++)
++			changed += size_nodes(&trees[i]);
++	} while (changed);
++
++	utf8data = calloc(size, 1);
++	utf8data_size = size;
++	for (i = 0; i != trees_count; i++)
++		emit(&trees[i], utf8data);
++
++	if (verbose > 0) {
++		for (i = 0; i != trees_count; i++) {
++			printf("%s_%x idx %d\n",
++				trees[i].type, trees[i].maxage, trees[i].index);
++		}
++	}
++
++	nfkdi = utf8data + trees[trees_count-1].index;
++	nfkdicf = utf8data + trees[trees_count-2].index;
++
++	nfkdi_tree = &trees[trees_count-1];
++	nfkdicf_tree = &trees[trees_count-2];
++}
++
++static void
++verify(struct tree *tree)
++{
++	struct unicode_data *data;
++	utf8leaf_t	*leaf;
++	unsigned int	unichar;
++	char		key[4];
++	int		report;
++	int		nocf;
++
++	if (verbose > 0)
++		printf("Verifying %s_%x\n", tree->type, tree->maxage);
++	nocf = strcmp(tree->type, "nfkdicf");
++
++	for (unichar = 0; unichar != 0x110000; unichar++) {
++		report = 0;
++		data = corrections_lookup(&unicode_data[unichar]);
++		if (data->correction <= tree->maxage)
++			data = &unicode_data[unichar];
++		utf8encode(key,unichar);
++		leaf = utf8lookup(tree, key);
++		if (!leaf) {
++			if (data->gen != -1)
++				report++;
++			if (unichar < 0xd800 || unichar > 0xdfff)
++				report++;
++		} else {
++			if (unichar >= 0xd800 && unichar <= 0xdfff)
++				report++;
++			if (data->gen == -1)
++				report++;
++			if (data->gen != LEAF_GEN(leaf))
++				report++;
++			if (LEAF_CCC(leaf) == DECOMPOSE) {
++				if (nocf) {
++					if (!data->utf8nfkdi) {
++						report++;
++					} else if (strcmp(data->utf8nfkdi,
++							  LEAF_STR(leaf))) {
++						report++;
++					}
++				} else {
++					if (!data->utf8nfkdicf &&
++					    !data->utf8nfkdi) {
++						report++;
++					} else if (data->utf8nfkdicf) {
++						if (strcmp(data->utf8nfkdicf,
++							   LEAF_STR(leaf)))
++							report++;
++					} else if (strcmp(data->utf8nfkdi,
++							  LEAF_STR(leaf))) {
++						report++;
++					}
++				}
++			} else if (data->ccc != LEAF_CCC(leaf)) {
++				report++;
++			}
++		}
++		if (report) {
++			printf("%X code %X gen %d ccc %d"
++				" nfkdi -> \"%s\"",
++				unichar, data->code, data->gen,
++				data->ccc,
++				data->utf8nfkdi);
++			if (leaf) {
++				printf(" gen %d ccc %d"
++					" nfkdi -> \"%s\"",
++					LEAF_GEN(leaf),
++					LEAF_CCC(leaf),
++					LEAF_CCC(leaf) == DECOMPOSE ?
++						LEAF_STR(leaf) : "");
++			}
++			printf("\n");
++		}
++	}
++}
++
++static void
++trees_verify(void)
++{
++	int i;
++
++	for (i = 0; i != trees_count; i++)
++		verify(&trees[i]);
++}
++
++/* ------------------------------------------------------------------ */
++
++static void
++help(void)
++{
++	printf("Usage: %s [options]\n", argv0);
++	printf("\n");
++	printf("This program creates an a data trie used for parsing and\n");
++	printf("normalization of UTF-8 strings. The trie is derived from\n");
++	printf("a set of input files from the Unicode character database\n");
++	printf("found at: http://www.unicode.org/Public/UCD/latest/ucd/\n");
++	printf("\n");
++	printf("The generated tree supports two normalization forms:\n");
++	printf("\n");
++	printf("\tnfkdi:\n");
++	printf("\t- Apply unicode normalization form NFKD.\n");
++	printf("\t- Remove any Default_Ignorable_Code_Point.\n");
++	printf("\n");
++	printf("\tnfkdicf:\n");
++	printf("\t- Apply unicode normalization form NFKD.\n");
++	printf("\t- Remove any Default_Ignorable_Code_Point.\n");
++	printf("\t- Apply a full casefold (C + F).\n");
++	printf("\n");
++	printf("These forms were chosen as being most useful when dealing\n");
++	printf("with file names: NFKD catches most cases where characters\n");
++	printf("should be considered equivalent. The ignorables are mostly\n");
++	printf("invisible, making names hard to type.\n");
++	printf("\n");
++	printf("The options to specify the files to be used are listed\n");
++	printf("below with their default values, which are the names used\n");
++	printf("by version 7.0.0 of the Unicode Character Database.\n");
++	printf("\n");
++	printf("The input files:\n");
++	printf("\t-a %s\n", AGE_NAME);
++	printf("\t-c %s\n", CCC_NAME);
++	printf("\t-p %s\n", PROP_NAME);
++	printf("\t-d %s\n", DATA_NAME);
++	printf("\t-f %s\n", FOLD_NAME);
++	printf("\t-n %s\n", NORM_NAME);
++	printf("\n");
++	printf("Additionally, the generated tables are tested using:\n");
++	printf("\t-t %s\n", TEST_NAME);
++	printf("\n");
++	printf("Finally, the output file:\n");
++	printf("\t-o %s\n", UTF8_NAME);
++	printf("\n");
++}
++
++static void
++usage(void)
++{
++	help();
++	exit(1);
++}
++
++static void
++open_fail(const char *name, int error)
++{
++	printf("Error %d opening %s: %s\n", error, name, strerror(error));
++	exit(1);
++}
++
++static void
++file_fail(const char *filename)
++{
++	printf("Error parsing %s\n", filename);
++	exit(1);
++}
++
++static void
++line_fail(const char *filename, const char *line)
++{
++	printf("Error parsing %s:%s\n", filename, line);
++	exit(1);
++}
++
++/* ------------------------------------------------------------------ */
++
++static void
++print_utf32(unsigned int *utf32str)
++{
++	int	i;
++
++	for (i = 0; utf32str[i]; i++)
++		printf(" %X", utf32str[i]);
++}
++
++static void
++print_utf32nfkdi(unsigned int unichar)
++{
++	printf(" %X ->", unichar);
++	print_utf32(unicode_data[unichar].utf32nfkdi);
++	printf("\n");
++}
++
++static void
++print_utf32nfkdicf(unsigned int unichar)
++{
++	printf(" %X ->", unichar);
++	print_utf32(unicode_data[unichar].utf32nfkdicf);
++	printf("\n");
++}
++
++/* ------------------------------------------------------------------ */
++
++static void
++age_init(void)
++{
++	FILE *file;
++	unsigned int first;
++	unsigned int last;
++	unsigned int unichar;
++	unsigned int major;
++	unsigned int minor;
++	unsigned int revision;
++	int gen;
++	int count;
++	int ret;
++
++	if (verbose > 0)
++		printf("Parsing %s\n", age_name);
++
++	file = fopen(age_name, "r");
++	if (!file)
++		open_fail(age_name, errno);
++	count = 0;
++
++	gen = 0;
++	while (fgets(line, LINESIZE, file)) {
++		ret = sscanf(line, "# Age=V%d_%d_%d",
++				&major, &minor, &revision);
++		if (ret == 3) {
++			ages_count++;
++			if (verbose > 1)
++				printf(" Age V%d_%d_%d\n",
++					major, minor, revision);
++			if (!age_valid(major, minor, revision))
++				line_fail(age_name, line);
++			continue;
++		}
++		ret = sscanf(line, "# Age=V%d_%d", &major, &minor);
++		if (ret == 2) {
++			ages_count++;
++			if (verbose > 1)
++				printf(" Age V%d_%d\n", major, minor);
++			if (!age_valid(major, minor, 0))
++				line_fail(age_name, line);
++			continue;
++		}
++	}
++
++	/* We must have found something above. */
++	if (verbose > 1)
++		printf("%d age entries\n", ages_count);
++	if (ages_count == 0 || ages_count > MAXGEN)
++		file_fail(age_name);
++
++	/* There is a 0 entry. */
++	ages_count++;
++	ages = calloc(ages_count + 1, sizeof(*ages));
++	/* And a guard entry. */
++	ages[ages_count] = (unsigned int)-1;
++
++	rewind(file);
++	count = 0;
++	gen = 0;
++	while (fgets(line, LINESIZE, file)) {
++		ret = sscanf(line, "# Age=V%d_%d_%d",
++				&major, &minor, &revision);
++		if (ret == 3) {
++			ages[++gen] =
++				UNICODE_AGE(major, minor, revision);
++			if (verbose > 1)
++				printf(" Age V%d_%d_%d = gen %d\n",
++					major, minor, revision, gen);
++			if (!age_valid(major, minor, revision))
++				line_fail(age_name, line);
++			continue;
++		}
++		ret = sscanf(line, "# Age=V%d_%d", &major, &minor);
++		if (ret == 2) {
++			ages[++gen] = UNICODE_AGE(major, minor, 0);
++			if (verbose > 1)
++				printf(" Age V%d_%d = %d\n",
++					major, minor, gen);
++			if (!age_valid(major, minor, 0))
++				line_fail(age_name, line);
++			continue;
++		}
++		ret = sscanf(line, "%X..%X ; %d.%d #",
++			     &first, &last, &major, &minor);
++		if (ret == 4) {
++			for (unichar = first; unichar <= last; unichar++)
++				unicode_data[unichar].gen = gen;
++			count += 1 + last - first;
++			if (verbose > 1)
++				printf("  %X..%X gen %d\n", first, last, gen);
++			if (!utf32valid(first) || !utf32valid(last))
++				line_fail(age_name, line);
++			continue;
++		}
++		ret = sscanf(line, "%X ; %d.%d #", &unichar, &major, &minor);
++		if (ret == 3) {
++			unicode_data[unichar].gen = gen;
++			count++;
++			if (verbose > 1)
++				printf("  %X gen %d\n", unichar, gen);
++			if (!utf32valid(unichar))
++				line_fail(age_name, line);
++			continue;
++		}
++	}
++	unicode_maxage = ages[gen];
++	fclose(file);
++
++	/* Nix surrogate block */
++	if (verbose > 1)
++		printf(" Removing surrogate block D800..DFFF\n");
++	for (unichar = 0xd800; unichar <= 0xdfff; unichar++)
++		unicode_data[unichar].gen = -1;
++
++	if (verbose > 0)
++	        printf("Found %d entries\n", count);
++	if (count == 0)
++		file_fail(age_name);
++}
++
++static void
++ccc_init(void)
++{
++	FILE *file;
++	unsigned int first;
++	unsigned int last;
++	unsigned int unichar;
++	unsigned int value;
++	int count;
++	int ret;
++
++	if (verbose > 0)
++		printf("Parsing %s\n", ccc_name);
++
++	file = fopen(ccc_name, "r");
++	if (!file)
++		open_fail(ccc_name, errno);
++
++	count = 0;
++	while (fgets(line, LINESIZE, file)) {
++		ret = sscanf(line, "%X..%X ; %d #", &first, &last, &value);
++		if (ret == 3) {
++			for (unichar = first; unichar <= last; unichar++) {
++				unicode_data[unichar].ccc = value;
++                                count++;
++			}
++			if (verbose > 1)
++				printf(" %X..%X ccc %d\n", first, last, value);
++			if (!utf32valid(first) || !utf32valid(last))
++				line_fail(ccc_name, line);
++			continue;
++		}
++		ret = sscanf(line, "%X ; %d #", &unichar, &value);
++		if (ret == 2) {
++			unicode_data[unichar].ccc = value;
++                        count++;
++			if (verbose > 1)
++				printf(" %X ccc %d\n", unichar, value);
++			if (!utf32valid(unichar))
++				line_fail(ccc_name, line);
++			continue;
++		}
++	}
++	fclose(file);
++
++	if (verbose > 0)
++		printf("Found %d entries\n", count);
++	if (count == 0)
++		file_fail(ccc_name);
++}
++
++static void
++nfkdi_init(void)
++{
++	FILE *file;
++	unsigned int unichar;
++	unsigned int mapping[19]; /* Magic - guaranteed not to be exceeded. */
++	char *s;
++	unsigned int *um;
++	int count;
++	int i;
++	int ret;
++
++	if (verbose > 0)
++		printf("Parsing %s\n", data_name);
++	file = fopen(data_name, "r");
++	if (!file)
++		open_fail(data_name, errno);
++
++	count = 0;
++	while (fgets(line, LINESIZE, file)) {
++		ret = sscanf(line, "%X;%*[^;];%*[^;];%*[^;];%*[^;];%[^;];",
++			     &unichar, buf0);
++		if (ret != 2)
++			continue;
++		if (!utf32valid(unichar))
++			line_fail(data_name, line);
++
++		s = buf0;
++		/* skip over <tag> */
++		if (*s == '<')
++			while (*s++ != ' ')
++				;
++		/* decode the decomposition into UTF-32 */
++		i = 0;
++		while (*s) {
++			mapping[i] = strtoul(s, &s, 16);
++			if (!utf32valid(mapping[i]))
++				line_fail(data_name, line);
++			i++;
++		}
++		mapping[i++] = 0;
++
++		um = malloc(i * sizeof(unsigned int));
++		memcpy(um, mapping, i * sizeof(unsigned int));
++		unicode_data[unichar].utf32nfkdi = um;
++
++		if (verbose > 1)
++			print_utf32nfkdi(unichar);
++		count++;
++	}
++	fclose(file);
++	if (verbose > 0)
++		printf("Found %d entries\n", count);
++	if (count == 0)
++		file_fail(data_name);
++}
++
++static void
++nfkdicf_init(void)
++{
++	FILE *file;
++	unsigned int unichar;
++	unsigned int mapping[19]; /* Magic - guaranteed not to be exceeded. */
++	char status;
++	char *s;
++	unsigned int *um;
++	int i;
++	int count;
++	int ret;
++
++	if (verbose > 0)
++		printf("Parsing %s\n", fold_name);
++	file = fopen(fold_name, "r");
++	if (!file)
++		open_fail(fold_name, errno);
++
++	count = 0;
++	while (fgets(line, LINESIZE, file)) {
++		ret = sscanf(line, "%X; %c; %[^;];", &unichar, &status, buf0);
++		if (ret != 3)
++			continue;
++		if (!utf32valid(unichar))
++			line_fail(fold_name, line);
++		/* Use the C+F casefold. */
++		if (status != 'C' && status != 'F')
++			continue;
++		s = buf0;
++		if (*s == '<')
++			while (*s++ != ' ')
++				;
++		i = 0;
++		while (*s) {
++			mapping[i] = strtoul(s, &s, 16);
++			if (!utf32valid(mapping[i]))
++				line_fail(fold_name, line);
++			i++;
++		}
++		mapping[i++] = 0;
++
++		um = malloc(i * sizeof(unsigned int));
++		memcpy(um, mapping, i * sizeof(unsigned int));
++		unicode_data[unichar].utf32nfkdicf = um;
++
++		if (verbose > 1)
++			print_utf32nfkdicf(unichar);
++		count++;
++	}
++	fclose(file);
++	if (verbose > 0)
++		printf("Found %d entries\n", count);
++	if (count == 0)
++		file_fail(fold_name);
++}
++
++static void
++ignore_init(void)
++{
++	FILE *file;
++	unsigned int unichar;
++	unsigned int first;
++	unsigned int last;
++	unsigned int *um;
++	int count;
++	int ret;
++
++	if (verbose > 0)
++		printf("Parsing %s\n", prop_name);
++	file = fopen(prop_name, "r");
++	if (!file)
++		open_fail(prop_name, errno);
++	assert(file);
++	count = 0;
++	while (fgets(line, LINESIZE, file)) {
++		ret = sscanf(line, "%X..%X ; %s # ", &first, &last, buf0);
++		if (ret == 3) {
++			if (strcmp(buf0, "Default_Ignorable_Code_Point"))
++				continue;
++			if (!utf32valid(first) || !utf32valid(last))
++				line_fail(prop_name, line);
++			for (unichar = first; unichar <= last; unichar++) {
++				free(unicode_data[unichar].utf32nfkdi);
++				um = malloc(sizeof(unsigned int));
++				*um = 0;
++				unicode_data[unichar].utf32nfkdi = um;
++				free(unicode_data[unichar].utf32nfkdicf);
++				um = malloc(sizeof(unsigned int));
++				*um = 0;
++				unicode_data[unichar].utf32nfkdicf = um;
++				count++;
++			}
++			if (verbose > 1)
++				printf(" %X..%X Default_Ignorable_Code_Point\n",
++					first, last);
++			continue;
++		}
++		ret = sscanf(line, "%X ; %s # ", &unichar, buf0);
++		if (ret == 2) {
++			if (strcmp(buf0, "Default_Ignorable_Code_Point"))
++				continue;
++			if (!utf32valid(unichar))
++				line_fail(prop_name, line);
++			free(unicode_data[unichar].utf32nfkdi);
++			um = malloc(sizeof(unsigned int));
++			*um = 0;
++			unicode_data[unichar].utf32nfkdi = um;
++			free(unicode_data[unichar].utf32nfkdicf);
++			um = malloc(sizeof(unsigned int));
++			*um = 0;
++			unicode_data[unichar].utf32nfkdicf = um;
++			if (verbose > 1)
++				printf(" %X Default_Ignorable_Code_Point\n",
++					unichar);
++			count++;
++			continue;
++		}
++	}
++	fclose(file);
++
++	if (verbose > 0)
++		printf("Found %d entries\n", count);
++	if (count == 0)
++		file_fail(prop_name);
++}
++
++static void
++corrections_init(void)
++{
++	FILE *file;
++	unsigned int unichar;
++	unsigned int major;
++	unsigned int minor;
++	unsigned int revision;
++	unsigned int age;
++	unsigned int *um;
++	unsigned int mapping[19]; /* Magic - guaranteed not to be exceeded. */
++	char *s;
++	int i;
++	int count;
++	int ret;
++
++	if (verbose > 0)
++		printf("Parsing %s\n", norm_name);
++	file = fopen(norm_name, "r");
++	if (!file)
++		open_fail(norm_name, errno);
++
++	count = 0;
++	while (fgets(line, LINESIZE, file)) {
++		ret = sscanf(line, "%X;%[^;];%[^;];%d.%d.%d #",
++				&unichar, buf0, buf1,
++				&major, &minor, &revision);
++		if (ret != 6)
++			continue;
++		if (!utf32valid(unichar) || !age_valid(major, minor, revision))
++			line_fail(norm_name, line);
++		count++;
++	}
++	corrections = calloc(count, sizeof(struct unicode_data));
++	corrections_count = count;
++	rewind(file);
++
++	count = 0;
++	while (fgets(line, LINESIZE, file)) {
++		ret = sscanf(line, "%X;%[^;];%[^;];%d.%d.%d #",
++				&unichar, buf0, buf1,
++				&major, &minor, &revision);
++		if (ret != 6)
++			continue;
++		if (!utf32valid(unichar) || !age_valid(major, minor, revision))
++			line_fail(norm_name, line);
++		corrections[count] = unicode_data[unichar];
++		assert(corrections[count].code == unichar);
++		age = UNICODE_AGE(major, minor, revision);
++		corrections[count].correction = age;
++
++		i = 0;
++		s = buf0;
++		while (*s) {
++			mapping[i] = strtoul(s, &s, 16);
++			if (!utf32valid(mapping[i]))
++				line_fail(norm_name, line);
++			i++;
++		}
++		mapping[i++] = 0;
++
++		um = malloc(i * sizeof(unsigned int));
++		memcpy(um, mapping, i * sizeof(unsigned int));
++		corrections[count].utf32nfkdi = um;
++
++		if (verbose > 1)
++			printf(" %X -> %s -> %s V%d_%d_%d\n",
++				unichar, buf0, buf1, major, minor, revision);
++		count++;
++	}
++	fclose(file);
++
++	if (verbose > 0)
++	        printf("Found %d entries\n", count);
++	if (count == 0)
++		file_fail(norm_name);
++}
++
++/* ------------------------------------------------------------------ */
++
++/*
++ * Hangul decomposition (algorithm from Section 3.12 of Unicode 6.3.0)
++ *
++ * AC00;<Hangul Syllable, First>;Lo;0;L;;;;;N;;;;;
++ * D7A3;<Hangul Syllable, Last>;Lo;0;L;;;;;N;;;;;
++ *
++ * SBase = 0xAC00
++ * LBase = 0x1100
++ * VBase = 0x1161
++ * TBase = 0x11A7
++ * LCount = 19
++ * VCount = 21
++ * TCount = 28
++ * NCount = 588 (VCount * TCount)
++ * SCount = 11172 (LCount * NCount)
++ *
++ * Decomposition:
++ *   SIndex = s - SBase
++ *
++ * LV (Canonical/Full)
++ *   LIndex = SIndex / NCount
++ *   VIndex = (Sindex % NCount) / TCount
++ *   LPart = LBase + LIndex
++ *   VPart = VBase + VIndex
++ *
++ * LVT (Canonical)
++ *   LVIndex = (SIndex / TCount) * TCount
++ *   TIndex = (Sindex % TCount)
++ *   LVPart = SBase + LVIndex
++ *   TPart = TBase + TIndex
++ *
++ * LVT (Full)
++ *   LIndex = SIndex / NCount
++ *   VIndex = (Sindex % NCount) / TCount
++ *   TIndex = (Sindex % TCount)
++ *   LPart = LBase + LIndex
++ *   VPart = VBase + VIndex
++ *   if (TIndex == 0) {
++ *          d = <LPart, VPart>
++ *   } else {
++ *          TPart = TBase + TIndex
++ *          d = <LPart, VPart, TPart>
++ *   }
++ *
++ */
++
++static void
++hangul_decompose(void)
++{
++	unsigned int sb = 0xAC00;
++	unsigned int lb = 0x1100;
++	unsigned int vb = 0x1161;
++	unsigned int tb = 0x11a7;
++	/* unsigned int lc = 19; */
++	unsigned int vc = 21;
++	unsigned int tc = 28;
++	unsigned int nc = (vc * tc);
++	/* unsigned int sc = (lc * nc); */
++	unsigned int unichar;
++	unsigned int mapping[4];
++	unsigned int *um;
++        int count;
++	int i;
++
++	if (verbose > 0)
++		printf("Decomposing hangul\n");
++	/* Hangul */
++	count = 0;
++	for (unichar = 0xAC00; unichar <= 0xD7A3; unichar++) {
++		unsigned int si = unichar - sb;
++		unsigned int li = si / nc;
++		unsigned int vi = (si % nc) / tc;
++		unsigned int ti = si % tc;
++
++		i = 0;
++		mapping[i++] = lb + li;
++		mapping[i++] = vb + vi;
++		if (ti)
++			mapping[i++] = tb + ti;
++		mapping[i++] = 0;
++
++		assert(!unicode_data[unichar].utf32nfkdi);
++		um = malloc(i * sizeof(unsigned int));
++		memcpy(um, mapping, i * sizeof(unsigned int));
++		unicode_data[unichar].utf32nfkdi = um;
++
++		assert(!unicode_data[unichar].utf32nfkdicf);
++		um = malloc(i * sizeof(unsigned int));
++		memcpy(um, mapping, i * sizeof(unsigned int));
++		unicode_data[unichar].utf32nfkdicf = um;
++
++		if (verbose > 1)
++			print_utf32nfkdi(unichar);
++
++		count++;
++	}
++	if (verbose > 0)
++		printf("Created %d entries\n", count);
++}
++
++static void
++nfkdi_decompose(void)
++{
++	unsigned int unichar;
++	unsigned int mapping[19]; /* Magic - guaranteed not to be exceeded. */
++	unsigned int *um;
++	unsigned int *dc;
++	int count;
++	int i;
++	int j;
++	int ret;
++
++	if (verbose > 0)
++		printf("Decomposing nfkdi\n");
++
++	count = 0;
++	for (unichar = 0; unichar != 0x110000; unichar++) {
++		if (!unicode_data[unichar].utf32nfkdi)
++			continue;
++		for (;;) {
++			ret = 1;
++			i = 0;
++			um = unicode_data[unichar].utf32nfkdi;
++			while (*um) {
++				dc = unicode_data[*um].utf32nfkdi;
++				if (dc) {
++					for (j = 0; dc[j]; j++)
++						mapping[i++] = dc[j];
++					ret = 0;
++				} else {
++					mapping[i++] = *um;
++				}
++				um++;
++			}
++			mapping[i++] = 0;
++			if (ret)
++				break;
++			free(unicode_data[unichar].utf32nfkdi);
++			um = malloc(i * sizeof(unsigned int));
++			memcpy(um, mapping, i * sizeof(unsigned int));
++			unicode_data[unichar].utf32nfkdi = um;
++		}
++		/* Add this decomposition to nfkdicf if there is no entry. */
++		if (!unicode_data[unichar].utf32nfkdicf) {
++			um = malloc(i * sizeof(unsigned int));
++			memcpy(um, mapping, i * sizeof(unsigned int));
++			unicode_data[unichar].utf32nfkdicf = um;
++		}
++		if (verbose > 1)
++			print_utf32nfkdi(unichar);
++		count++;
++	}
++	if (verbose > 0)
++		printf("Processed %d entries\n", count);
++}
++
++static void
++nfkdicf_decompose(void)
++{
++	unsigned int unichar;
++	unsigned int mapping[19]; /* Magic - guaranteed not to be exceeded. */
++	unsigned int *um;
++	unsigned int *dc;
++	int count;
++	int i;
++	int j;
++	int ret;
++
++	if (verbose > 0)
++		printf("Decomposing nfkdicf\n");
++	count = 0;
++	for (unichar = 0; unichar != 0x110000; unichar++) {
++		if (!unicode_data[unichar].utf32nfkdicf)
++			continue;
++		for (;;) {
++			ret = 1;
++			i = 0;
++			um = unicode_data[unichar].utf32nfkdicf;
++			while (*um) {
++				dc = unicode_data[*um].utf32nfkdicf;
++				if (dc) {
++					for (j = 0; dc[j]; j++)
++						mapping[i++] = dc[j];
++					ret = 0;
++				} else {
++					mapping[i++] = *um;
++				}
++				um++;
++			}
++			mapping[i++] = 0;
++			if (ret)
++				break;
++			free(unicode_data[unichar].utf32nfkdicf);
++			um = malloc(i * sizeof(unsigned int));
++			memcpy(um, mapping, i * sizeof(unsigned int));
++			unicode_data[unichar].utf32nfkdicf = um;
++		}
++		if (verbose > 1)
++			print_utf32nfkdicf(unichar);
++		count++;
++	}
++	if (verbose > 0)
++		printf("Processed %d entries\n", count);
++}
++
++/* ------------------------------------------------------------------ */
++
++int utf8agemax(struct tree *, const char *);
++int utf8nagemax(struct tree *, const char *, size_t);
++int utf8agemin(struct tree *, const char *);
++int utf8nagemin(struct tree *, const char *, size_t);
++ssize_t utf8len(struct tree *, const char *);
++ssize_t utf8nlen(struct tree *, const char *, size_t);
++struct utf8cursor;
++int utf8cursor(struct utf8cursor *, struct tree *, const char *);
++int utf8ncursor(struct utf8cursor *, struct tree *, const char *, size_t);
++int utf8byte(struct utf8cursor *);
++
++/*
++ * Use trie to scan s, touching at most len bytes.
++ * Returns the leaf if one exists, NULL otherwise.
++ *
++ * A non-NULL return guarantees that the UTF-8 sequence starting at s
++ * is well-formed and corresponds to a known unicode code point.  The
++ * shorthand for this will be "is valid UTF-8 unicode".
++ */
++static utf8leaf_t *
++utf8nlookup(struct tree *tree, const char *s, size_t len)
++{
++	utf8trie_t	*trie = utf8data + tree->index;
++	int		offlen;
++	int		offset;
++	int		mask;
++	int		node;
++
++	if (!tree)
++		return NULL;
++	if (len == 0)
++		return NULL;
++	node = 1;
++	while (node) {
++		offlen = (*trie & OFFLEN) >> OFFLEN_SHIFT;
++		if (*trie & NEXTBYTE) {
++			if (--len == 0)
++				return NULL;
++			s++;
++		}
++		mask = 1 << (*trie & BITNUM);
++		if (*s & mask) {
++			/* Right leg */
++			if (offlen) {
++				/* Right node at offset of trie */
++				node = (*trie & RIGHTNODE);
++				offset = trie[offlen];
++				while (--offlen) {
++					offset <<= 8;
++					offset |= trie[offlen];
++				}
++				trie += offset;
++			} else if (*trie & RIGHTPATH) {
++				/* Right node after this node */
++				node = (*trie & TRIENODE);
++				trie++;
++			} else {
++				/* No right node. */
++				return NULL;
++			}
++		} else {
++			/* Left leg */
++			if (offlen) {
++				/* Left node after this node. */
++				node = (*trie & LEFTNODE);
++				trie += offlen + 1;
++			} else if (*trie & RIGHTPATH) {
++				/* No left node. */
++				return NULL;
++			} else {
++				/* Left node after this node */
++				node = (*trie & TRIENODE);
++				trie++;
++			}
++		}
++	}
++	return trie;
++}
++
++/*
++ * Use trie to scan s.
++ * Returns the leaf if one exists, NULL otherwise.
++ *
++ * Forwards to trie_nlookup().
++ */
++static utf8leaf_t *
++utf8lookup(struct tree *tree, const char *s)
++{
++	return utf8nlookup(tree, s, (size_t)-1);
++}
++
++/*
++ * Return the number of bytes used by the current UTF-8 sequence.
++ * Assumes the input points to the first byte of a valid UTF-8
++ * sequence.
++ */
++static inline int
++utf8clen(const char *s)
++{
++	unsigned char c = *s;
++	return 1 + (c >= 0xC0) + (c >= 0xE0) + (c >= 0xF0);
++}
++
++/*
++ * Maximum age of any character in s.
++ * Return -1 if s is not valid UTF-8 unicode.
++ * Return 0 if only non-assigned code points are used.
++ */
++int
++utf8agemax(struct tree *tree, const char *s)
++{
++	utf8leaf_t	*leaf;
++	int		age = 0;
++	int		leaf_age;
++
++	if (!tree)
++		return -1;
++	while (*s) {
++		if (!(leaf = utf8lookup(tree, s)))
++			return -1;
++		leaf_age = ages[LEAF_GEN(leaf)];
++		if (leaf_age <= tree->maxage && leaf_age > age)
++			age = leaf_age;
++		s += utf8clen(s);
++	}
++	return age;
++}
++
++/*
++ * Minimum age of any character in s.
++ * Return -1 if s is not valid UTF-8 unicode.
++ * Return 0 if non-assigned code points are used.
++ */
++int
++utf8agemin(struct tree *tree, const char *s)
++{
++	utf8leaf_t	*leaf;
++	int		age;
++	int		leaf_age;
++
++	if (!tree)
++		return -1;
++	age = tree->maxage;
++	while (*s) {
++		if (!(leaf = utf8lookup(tree, s)))
++			return -1;
++		leaf_age = ages[LEAF_GEN(leaf)];
++		if (leaf_age <= tree->maxage && leaf_age < age)
++			age = leaf_age;
++		s += utf8clen(s);
++	}
++	return age;
++}
++
++/*
++ * Maximum age of any character in s, touch at most len bytes.
++ * Return -1 if s is not valid UTF-8 unicode.
++ */
++int
++utf8nagemax(struct tree *tree, const char *s, size_t len)
++{
++	utf8leaf_t	*leaf;
++	int		age = 0;
++	int		leaf_age;
++
++	if (!tree)
++		return -1;
++        while (len && *s) {
++		if (!(leaf = utf8nlookup(tree, s, len)))
++			return -1;
++		leaf_age = ages[LEAF_GEN(leaf)];
++		if (leaf_age <= tree->maxage && leaf_age > age)
++			age = leaf_age;
++		len -= utf8clen(s);
++		s += utf8clen(s);
++	}
++	return age;
++}
++
++/*
++ * Maximum age of any character in s, touch at most len bytes.
++ * Return -1 if s is not valid UTF-8 unicode.
++ */
++int
++utf8nagemin(struct tree *tree, const char *s, size_t len)
++{
++	utf8leaf_t	*leaf;
++	int		leaf_age;
++	int		age;
++
++	if (!tree)
++		return -1;
++	age = tree->maxage;
++        while (len && *s) {
++		if (!(leaf = utf8nlookup(tree, s, len)))
++			return -1;
++		leaf_age = ages[LEAF_GEN(leaf)];
++		if (leaf_age <= tree->maxage && leaf_age < age)
++			age = leaf_age;
++		len -= utf8clen(s);
++		s += utf8clen(s);
++	}
++	return age;
++}
++
++/*
++ * Length of the normalization of s.
++ * Return -1 if s is not valid UTF-8 unicode.
++ *
++ * A string of Default_Ignorable_Code_Point has length 0.
++ */
++ssize_t
++utf8len(struct tree *tree, const char *s)
++{
++	utf8leaf_t	*leaf;
++	size_t		ret = 0;
++
++	if (!tree)
++		return -1;
++	while (*s) {
++		if (!(leaf = utf8lookup(tree, s)))
++			return -1;
++		if (ages[LEAF_GEN(leaf)] > tree->maxage)
++			ret += utf8clen(s);
++		else if (LEAF_CCC(leaf) == DECOMPOSE)
++			ret += strlen(LEAF_STR(leaf));
++		else
++			ret += utf8clen(s);
++		s += utf8clen(s);
++	}
++	return ret;
++}
++
++/*
++ * Length of the normalization of s, touch at most len bytes.
++ * Return -1 if s is not valid UTF-8 unicode.
++ */
++ssize_t
++utf8nlen(struct tree *tree, const char *s, size_t len)
++{
++	utf8leaf_t	*leaf;
++	size_t		ret = 0;
++
++	if (!tree)
++		return -1;
++	while (len && *s) {
++		if (!(leaf = utf8nlookup(tree, s, len)))
++			return -1;
++		if (ages[LEAF_GEN(leaf)] > tree->maxage)
++			ret += utf8clen(s);
++		else if (LEAF_CCC(leaf) == DECOMPOSE)
++			ret += strlen(LEAF_STR(leaf));
++		else
++			ret += utf8clen(s);
++		len -= utf8clen(s);
++		s += utf8clen(s);
++	}
++	return ret;
++}
++
++/*
++ * Cursor structure used by the normalizer.
++ */
++struct utf8cursor {
++	struct tree	*tree;
++	const char	*s;
++	const char	*p;
++	const char	*ss;
++	const char	*sp;
++	unsigned int	len;
++	unsigned int	slen;
++	short int	ccc;
++	short int	nccc;
++	unsigned int	unichar;
++};
++
++/*
++ * Set up an utf8cursor for use by utf8byte().
++ *
++ *   s      : string.
++ *   len    : length of s.
++ *   u8c    : pointer to cursor.
++ *   trie   : utf8trie_t to use for normalization.
++ *
++ * Returns -1 on error, 0 on success.
++ */
++int
++utf8ncursor(
++	struct utf8cursor *u8c,
++	struct tree	*tree,
++	const char	*s,
++	size_t		len)
++{
++	if (!tree)
++		return -1;
++	if (!s)
++		return -1;
++	u8c->tree = tree;
++	u8c->s = s;
++	u8c->p = NULL;
++	u8c->ss = NULL;
++	u8c->sp = NULL;
++	u8c->len = len;
++	u8c->slen = 0;
++	u8c->ccc = STOPPER;
++	u8c->nccc = STOPPER;
++	u8c->unichar = 0;
++	/* Check we didn't clobber the maximum length. */
++	if (u8c->len != len)
++		return -1;
++	/* The first byte of s may not be an utf8 continuation. */
++	if (len > 0 && (*s & 0xC0) == 0x80)
++		return -1;
++	return 0;
++}
++
++/*
++ * Set up an utf8cursor for use by utf8byte().
++ *
++ *   s      : NUL-terminated string.
++ *   u8c    : pointer to cursor.
++ *   trie   : utf8trie_t to use for normalization.
++ *
++ * Returns -1 on error, 0 on success.
++ */
++int
++utf8cursor(
++	struct utf8cursor *u8c,
++	struct tree	*tree,
++	const char	*s)
++{
++	return utf8ncursor(u8c, tree, s, (unsigned int)-1);
++}
++
++/*
++ * Get one byte from the normalized form of the string described by u8c.
++ *
++ * Returns the byte cast to an unsigned char on succes, and -1 on failure.
++ *
++ * The cursor keeps track of the location in the string in u8c->s.
++ * When a character is decomposed, the current location is stored in
++ * u8c->p, and u8c->s is set to the start of the decomposition. Note
++ * that bytes from a decomposition do not count against u8c->len.
++ *
++ * Characters are emitted if they match the current CCC in u8c->ccc.
++ * Hitting end-of-string while u8c->ccc == STOPPER means we're done,
++ * and the function returns 0 in that case.
++ *
++ * Sorting by CCC is done by repeatedly scanning the string.  The
++ * values of u8c->s and u8c->p are stored in u8c->ss and u8c->sp at
++ * the start of the scan.  The first pass finds the lowest CCC to be
++ * emitted and stores it in u8c->nccc, the second pass emits the
++ * characters with this CCC and finds the next lowest CCC. This limits
++ * the number of passes to 1 + the number of different CCCs in the
++ * sequence being scanned.
++ *
++ * Therefore:
++ *  u8c->p  != NULL -> a decomposition is being scanned.
++ *  u8c->ss != NULL -> this is a repeating scan.
++ *  u8c->ccc == -1  -> this is the first scan of a repeating scan.
++ */
++int
++utf8byte(struct utf8cursor *u8c)
++{
++	utf8leaf_t *leaf;
++	int ccc;
++
++	for (;;) {
++		/* Check for the end of a decomposed character. */
++		if (u8c->p && *u8c->s == '\0') {
++			u8c->s = u8c->p;
++			u8c->p = NULL;
++		}
++
++		/* Check for end-of-string. */
++		if (!u8c->p && (u8c->len == 0 || *u8c->s == '\0')) {
++			/* There is no next byte. */
++			if (u8c->ccc == STOPPER)
++				return 0;
++			/* End-of-string during a scan counts as a stopper. */
++			ccc = STOPPER;
++			goto ccc_mismatch;
++		} else if ((*u8c->s & 0xC0) == 0x80) {
++			/* This is a continuation of the current character. */
++			if (!u8c->p)
++				u8c->len--;
++			return (unsigned char)*u8c->s++;
++		}
++
++		/* Look up the data for the current character. */
++		if (u8c->p)
++			leaf = utf8lookup(u8c->tree, u8c->s);
++		else
++			leaf = utf8nlookup(u8c->tree, u8c->s, u8c->len);
++
++		/* No leaf found implies that the input is a binary blob. */
++		if (!leaf)
++			return -1;
++
++		/* Characters that are too new have CCC 0. */
++		if (ages[LEAF_GEN(leaf)] > u8c->tree->maxage) {
++			ccc = STOPPER;
++		} else if ((ccc = LEAF_CCC(leaf)) == DECOMPOSE) {
++			u8c->len -= utf8clen(u8c->s);
++			u8c->p = u8c->s + utf8clen(u8c->s);
++			u8c->s = LEAF_STR(leaf);
++			/* Empty decomposition implies CCC 0. */
++			if (*u8c->s == '\0') {
++				if (u8c->ccc == STOPPER)
++					continue;
++				ccc = STOPPER;
++				goto ccc_mismatch;
++			}
++			leaf = utf8lookup(u8c->tree, u8c->s);
++			ccc = LEAF_CCC(leaf);
++		}
++		u8c->unichar = utf8decode(u8c->s);
++
++		/*
++		 * If this is not a stopper, then see if it updates
++		 * the next canonical class to be emitted.
++		 */
++		if (ccc != STOPPER && u8c->ccc < ccc && ccc < u8c->nccc)
++			u8c->nccc = ccc;
++
++		/*
++		 * Return the current byte if this is the current
++		 * combining class.
++		 */
++		if (ccc == u8c->ccc) {
++			if (!u8c->p)
++				u8c->len--;
++			return (unsigned char)*u8c->s++;
++		}
++
++		/* Current combining class mismatch. */
++	ccc_mismatch:
++		if (u8c->nccc == STOPPER) {
++			/*
++			 * Scan forward for the first canonical class
++			 * to be emitted.  Save the position from
++			 * which to restart.
++			 */
++			assert(u8c->ccc == STOPPER);
++			u8c->ccc = MINCCC - 1;
++			u8c->nccc = ccc;
++			u8c->sp = u8c->p;
++			u8c->ss = u8c->s;
++			u8c->slen = u8c->len;
++			if (!u8c->p)
++				u8c->len -= utf8clen(u8c->s);
++			u8c->s += utf8clen(u8c->s);
++		} else if (ccc != STOPPER) {
++			/* Not a stopper, and not the ccc we're emitting. */
++			if (!u8c->p)
++				u8c->len -= utf8clen(u8c->s);
++			u8c->s += utf8clen(u8c->s);
++		} else if (u8c->nccc != MAXCCC + 1) {
++			/* At a stopper, restart for next ccc. */
++			u8c->ccc = u8c->nccc;
++			u8c->nccc = MAXCCC + 1;
++			u8c->s = u8c->ss;
++			u8c->p = u8c->sp;
++			u8c->len = u8c->slen;
++		} else {
++			/* All done, proceed from here. */
++			u8c->ccc = STOPPER;
++			u8c->nccc = STOPPER;
++			u8c->sp = NULL;
++			u8c->ss = NULL;
++			u8c->slen = 0;
++		}
++	}
++}
++
++/* ------------------------------------------------------------------ */
++
++static int
++normalize_line(struct tree *tree)
++{
++	char *s;
++	char *t;
++	int c;
++	struct utf8cursor u8c;
++
++	/* First test: null-terminated string. */
++	s = buf2;
++	t = buf3;
++	if (utf8cursor(&u8c, tree, s))
++		return -1;
++	while ((c = utf8byte(&u8c)) > 0)
++		if (c != (unsigned char)*t++)
++			return -1;
++	if (c < 0)
++		return -1;
++	if (*t != 0)
++		return -1;
++
++	/* Second test: length-limited string. */
++	s = buf2;
++	/* Replace NUL with a value that will cause an error if seen. */
++	s[strlen(s) + 1] = -1;
++	t = buf3;
++	if (utf8cursor(&u8c, tree, s))
++		return -1;
++	while ((c = utf8byte(&u8c)) > 0)
++		if (c != (unsigned char)*t++)
++			return -1;
++	if (c < 0)
++		return -1;
++	if (*t != 0)
++		return -1;
++
++	return 0;
++}
++
++static void
++normalization_test(void)
++{
++	FILE *file;
++	unsigned int unichar;
++	struct unicode_data *data;
++	char *s;
++	char *t;
++	int ret;
++	int ignorables;
++	int tests = 0;
++	int failures = 0;
++
++	if (verbose > 0)
++		printf("Parsing %s\n", test_name);
++	/* Step one, read data from file. */
++	file = fopen(test_name, "r");
++	if (!file)
++		open_fail(test_name, errno);
++
++	while (fgets(line, LINESIZE, file)) {
++		ret = sscanf(line, "%[^;];%*[^;];%*[^;];%*[^;];%[^;];",
++			     buf0, buf1);
++		if (ret != 2 || *line == '#')
++			continue;
++		s = buf0;
++		t = buf2;
++		while (*s) {
++			unichar = strtoul(s, &s, 16);
++			t += utf8encode(t, unichar);
++		}
++		*t = '\0';
++
++		ignorables = 0;
++		s = buf1;
++		t = buf3;
++		while (*s) {
++			unichar = strtoul(s, &s, 16);
++			data = &unicode_data[unichar];
++			if (data->utf8nfkdi && !*data->utf8nfkdi)
++				ignorables = 1;
++			else
++				t += utf8encode(t, unichar);
++		}
++		*t = '\0';
++
++		tests++;
++		if (normalize_line(nfkdi_tree) < 0) {
++			printf("Line %s -> %s", buf0, buf1);
++			if (ignorables)
++				printf(" (ignorables removed)");
++			printf(" failure\n");
++			failures++;
++		}
++	}
++	fclose(file);
++	if (verbose > 0)
++		printf("Ran %d tests with %d failures\n", tests, failures);
++	if (failures)
++		file_fail(test_name);
++}
++
++/* ------------------------------------------------------------------ */
++
++static void
++write_file(void)
++{
++	FILE *file;
++	int i;
++	int j;
++	int t;
++	int gen;
++
++	if (verbose > 0)
++		printf("Writing %s\n", utf8_name);
++	file = fopen(utf8_name, "w");
++	if (!file)
++		open_fail(utf8_name, errno);
++
++	fprintf(file, "/* This file is generated code, do not edit. */\n");
++	fprintf(file, "#ifndef __INCLUDED_FROM_UTF8NORM_C__\n");
++	fprintf(file, "#error Only xfs_utf8.c may include this file.\n");
++	fprintf(file, "#endif\n");
++	fprintf(file, "\n");
++	fprintf(file, "static const unsigned int utf8vers = %#x;\n",
++		unicode_maxage);
++	fprintf(file, "\n");
++	fprintf(file, "static const unsigned int utf8agetab[] = {\n");
++	for (i = 0; i != ages_count; i++)
++		fprintf(file, "\t%#x%s\n", ages[i],
++			ages[i] == unicode_maxage ? "" : ",");
++	fprintf(file, "};\n");
++	fprintf(file, "\n");
++	fprintf(file, "static const struct utf8data utf8nfkdicfdata[] = {\n");
++	t = 0;
++	for (gen = 0; gen < ages_count; gen++) {
++		fprintf(file, "\t{ %#x, %d }%s\n",
++			ages[gen], trees[t].index,
++			ages[gen] == unicode_maxage ? "" : ",");
++		if (trees[t].maxage == ages[gen])
++			t += 2;
++	}
++	fprintf(file, "};\n");
++	fprintf(file, "\n");
++	fprintf(file, "static const struct utf8data utf8nfkdidata[] = {\n");
++	t = 1;
++	for (gen = 0; gen < ages_count; gen++) {
++		fprintf(file, "\t{ %#x, %d }%s\n",
++			ages[gen], trees[t].index,
++			ages[gen] == unicode_maxage ? "" : ",");
++		if (trees[t].maxage == ages[gen])
++			t += 2;
++	}
++	fprintf(file, "};\n");
++	fprintf(file, "\n");
++	fprintf(file, "static const unsigned char utf8data[%zd] = {\n",
++		utf8data_size);
++	t = 0;
++	for (i = 0; i != utf8data_size; i += 16) {
++		if (i == trees[t].index) {
++			fprintf(file, "\t/* %s_%x */\n",
++				trees[t].type, trees[t].maxage);
++			if (t < trees_count-1)
++				t++;
++		}
++		fprintf(file, "\t");
++		for (j = i; j != i + 16; j++)
++			fprintf(file, "0x%.2x%s", utf8data[j],
++				(j < utf8data_size -1 ? "," : ""));
++		fprintf(file, "\n");
++	}
++	fprintf(file, "};\n");
++	fclose(file);
++}
++
++/* ------------------------------------------------------------------ */
++
++int
++main(int argc, char *argv[])
++{
++	unsigned int unichar;
++	int opt;
++
++	argv0 = argv[0];
++
++	while ((opt = getopt(argc, argv, "a:c:d:f:hn:o:p:t:v")) != -1) {
++		switch (opt) {
++		case 'a':
++			age_name = optarg;
++			break;
++		case 'c':
++			ccc_name = optarg;
++			break;
++		case 'd':
++			data_name = optarg;
++			break;
++		case 'f':
++			fold_name = optarg;
++			break;
++		case 'n':
++			norm_name = optarg;
++			break;
++		case 'o':
++			utf8_name = optarg;
++			break;
++		case 'p':
++			prop_name = optarg;
++			break;
++		case 't':
++			test_name = optarg;
++			break;
++		case 'v':
++			verbose++;
++			break;
++		case 'h':
++			help();
++			exit(0);
++		default:
++			usage();
++		}
++	}
++
++	if (verbose > 1)
++		help();
++	for (unichar = 0; unichar != 0x110000; unichar++)
++		unicode_data[unichar].code = unichar;
++	age_init();
++	ccc_init();
++	nfkdi_init();
++	nfkdicf_init();
++	ignore_init();
++	corrections_init();
++	hangul_decompose();
++	nfkdi_decompose();
++	nfkdicf_decompose();
++	utf8_init();
++	trees_init();
++	trees_populate();
++	trees_reduce();
++	trees_verify();
++	/* Prevent "unused function" warning. */
++	(void)lookup(nfkdi_tree, " ");
++	if (verbose > 2)
++		tree_walk(nfkdi_tree);
++	if (verbose > 2)
++		tree_walk(nfkdicf_tree);
++	normalization_test();
++	write_file();
++
++	return 0;
++}
+-- 
+2.19.0
