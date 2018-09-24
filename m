@@ -1,64 +1,50 @@
-Return-Path: <SRS0=cyUA=MM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-qt1-f193.google.com ([209.85.160.193]:42281 "EHLO
-        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727991AbeI3RtD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 30 Sep 2018 13:49:03 -0400
+Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:45554 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726031AbeIYECU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:20 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH RESEND v2 14/25] nls: utf8: Move nls-utf8{,-core}.c
+Date: Mon, 24 Sep 2018 17:56:44 -0400
+Message-Id: <20180924215655.3676-15-krisman@collabora.co.uk>
+In-Reply-To: <20180924215655.3676-1-krisman@collabora.co.uk>
+References: <20180924215655.3676-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-References: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com>
- <20180920172301.21868-13-miguel.ojeda.sandonis@gmail.com> <CAGXu5jJEXFXnOVZrjoUyyuQ-=L=Lou3iLsA2Jjzci_McSgn2XA@mail.gmail.com>
-In-Reply-To: <CAGXu5jJEXFXnOVZrjoUyyuQ-=L=Lou3iLsA2Jjzci_McSgn2XA@mail.gmail.com>
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Sun, 30 Sep 2018 13:16:15 +0200
-Message-ID: <CANiq72nT12vjxjyPr2_nPFQroiiPbba7uoF0V-y_5+4yid=1iw@mail.gmail.com>
-Subject: Re: [PATCH v5 12/15] Compiler Attributes: add support for __nonstring
- (gcc >= 8)
-To: Kees Cook <keescook@chromium.org>
-Cc: Greg KH <gregkh@linuxfoundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 20, 2018 at 10:08 PM Kees Cook <keescook@chromium.org> wrote:
->
-> Reviewed-by: Kees Cook <keescook@chromium.org>
->
+nls_utf8 will be generated from multiple files, so lets move the
+existing code to a -core suffix.
 
-Done! Thanks!
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+---
+ fs/nls/Makefile                        | 3 +++
+ fs/nls/{nls_utf8.c => nls_utf8-core.c} | 0
+ 2 files changed, 3 insertions(+)
+ rename fs/nls/{nls_utf8.c => nls_utf8-core.c} (100%)
 
-Cheers,
-Miguel
+diff --git a/fs/nls/Makefile b/fs/nls/Makefile
+index 9eff2f058c7a..2e092668fcd8 100644
+--- a/fs/nls/Makefile
++++ b/fs/nls/Makefile
+@@ -43,7 +43,10 @@ obj-$(CONFIG_NLS_ISO8859_14)	+= nls_iso8859-14.o
+ obj-$(CONFIG_NLS_ISO8859_15)	+= nls_iso8859-15.o
+ obj-$(CONFIG_NLS_KOI8_R)	+= nls_koi8-r.o
+ obj-$(CONFIG_NLS_KOI8_U)	+= nls_koi8-u.o nls_koi8-ru.o
++
+ obj-$(CONFIG_NLS_UTF8)		+= nls_utf8.o
++nls_utf8-y			+= nls_utf8-core.o
++
+ obj-$(CONFIG_NLS_MAC_CELTIC)    += mac-celtic.o
+ obj-$(CONFIG_NLS_MAC_CENTEURO)  += mac-centeuro.o
+ obj-$(CONFIG_NLS_MAC_CROATIAN)  += mac-croatian.o
+diff --git a/fs/nls/nls_utf8.c b/fs/nls/nls_utf8-core.c
+similarity index 100%
+rename from fs/nls/nls_utf8.c
+rename to fs/nls/nls_utf8-core.c
+-- 
+2.19.0
