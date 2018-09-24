@@ -1,15 +1,15 @@
 Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:45530 "EHLO
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:45586 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725944AbeIYECD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:03 -0400
+        with ESMTP id S1725986AbeIYECl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:41 -0400
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 To: tytso@mit.edu
 Cc: linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RESEND v2 09/25] nls: Add new interface for string comparisons
-Date: Mon, 24 Sep 2018 17:56:39 -0400
-Message-Id: <20180924215655.3676-10-krisman@collabora.co.uk>
+Subject: [PATCH RESEND v2 20/25] ext4: Include encoding information in the superblock
+Date: Mon, 24 Sep 2018 17:56:50 -0400
+Message-Id: <20180924215655.3676-21-krisman@collabora.co.uk>
 In-Reply-To: <20180924215655.3676-1-krisman@collabora.co.uk>
 References: <20180924215655.3676-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
@@ -17,123 +17,229 @@ Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The existing stricmp() interface is limited by not accepting separated
-length parameters for each string being compared.  This is a problem for
-charsets doing normalization or full casefold comparison, since
-different sized strings can still be matched.  To resolve this problem,
-this patch implements a new interface, allowing charsets to do the
-comparison, if needed.
+Support for encoding is considered an incompatible feature, since it has
+potential to create collisions of file names in existing filesystems.
+If the feature flag is not enabled, the entire filesystem will operate
+on opaque byte sequences, respecting the original behavior.
 
-The original stricmp is left in the code, until we convert all caller to
-the new interface.  Nevertheless, it was reimplemented using the new
-interface.
+The charset data is encoded in a new field in the superblock using a
+magic number specific to ext4.  This is the easiest way I found to avoid
+writing the name of the charset in the superblock.  The magic number is
+mapped to the exact NLS table, but the mapping is specific to ext4.
+Since we don't have any commitment to support old encodings, the only
+encodings I am supporting right now is utf8n-10.0.0 and ascii, both
+using the NLS abstraction.
+
+The current implementation prevents the user from enabling encoding and
+per-directory encryption on the same filesystem at the same time.  The
+incompatibility between these features lies in how we do efficient
+directory searches when we cannot be sure the encryption of the user
+provided fname will match the actual hash stored in the disk without
+decrypting every directory entry, because of normalization cases.  My
+quickest solution is to simply block the concurrent use of these
+features for now, and enable it later, once we have a better solution.
+
+Changes since v1:
+  - Guard code with CONFIG_NLS.
+  - Use 16 bits for s_ioencoding.
+  - Split mount option from this patch
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- include/linux/nls.h | 69 +++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 66 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h  | 19 ++++++++++++-
+ fs/ext4/super.c | 73 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 91 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/nls.h b/include/linux/nls.h
-index c43746bd390e..980103d4c363 100644
---- a/include/linux/nls.h
-+++ b/include/linux/nls.h
-@@ -3,6 +3,7 @@
- #define _LINUX_NLS_H
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index ac05bd86643a..6bdaba9c6923 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1190,6 +1190,11 @@ extern void ext4_set_bits(void *bm, int cur, int len);
+ /* Metadata checksum algorithm codes */
+ #define EXT4_CRC32C_CHKSUM		1
  
- #include <linux/init.h>
-+#include <linux/string.h>
- 
- /* Unicode has changed over the years.  Unicode code points no longer
-  * fit into 16 bits; as of Unicode 5 valid code points range from 0
-@@ -38,6 +39,32 @@ struct nls_ops {
- 	 **/
- 	int (*validate)(const struct nls_table *charset,
- 			const unsigned char *str, size_t len);
-+	/**
-+	 * @strncmp:
-+	 *
-+	 * strncmp is the function for case-sensitive string comparison.
-+	 * It only needs to be implemented by charsets that want to do
-+	 * some fancy comparisons, like normalization-insensitive.
-+	 *
-+	 * Returns 0 if str1 and str2 are equal, otherwise return
-+	 * non-zero.
-+	 **/
-+	int (*strncmp)(const struct nls_table *charset,
-+		       const unsigned char *str1, size_t len1,
-+		       const unsigned char *str2, size_t len2);
++/* Be careful when modifying these flags.  The lower byte must match the
++ * NLS flags. */
 +
-+	/**
-+	 * @strncasecmp:
-+	 *
-+	 * strncasecmp is the function for case-insensitive string
-+	 * comparison.
-+	 *
-+	 * Returns 0 if str1 and str2 are equal, otherwise return
-+	 * non-zero.
-+	 **/
-+	int (*strncasecmp)(const struct nls_table *charset,
-+			   const unsigned char *str1, size_t len1,
-+			   const unsigned char *str2, size_t len2);
- 	unsigned char (*lowercase)(const struct nls_table *charset,
- 				   unsigned int c);
- 	unsigned char (*uppercase)(const struct nls_table *charset,
-@@ -139,10 +166,21 @@ static inline unsigned char nls_toupper(const struct nls_table *t,
- 	return nc ? nc : c;
- }
- 
--static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
--		const unsigned char *s2, int len)
-+static inline int nls_strncasecmp(struct nls_table *t,
-+				  const unsigned char *s1, size_t len1,
-+				  const unsigned char *s2, size_t len2)
- {
--	while (len--) {
-+	if (t->ops->strncasecmp)
-+		return t->ops->strncasecmp(t, s1, len1, s2, len2);
-+
-+	if (IS_STRICT_MODE(t) &&
-+	    (nls_validate(t, s1, len1) || nls_validate(t, s1, len1)))
-+		return -EINVAL;
-+
-+	if (len1 != len2)
-+		return 1;
-+
-+	while (len1--) {
- 		if (nls_tolower(t, *s1++) != nls_tolower(t, *s2++))
- 			return 1;
- 	}
-@@ -150,6 +188,31 @@ static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
- 	return 0;
- }
- 
-+static inline int nls_strncmp(struct nls_table *t,
-+			      const unsigned char *s1, size_t len1,
-+			      const unsigned char *s2, size_t len2)
-+{
-+	if (t->ops->strncmp)
-+		return t->ops->strncmp(t, s1, len1, s2, len2);
-+
-+	if (IS_STRICT_MODE(t) &&
-+	    (nls_validate(t, s1, len1) || nls_validate(t, s1, len1)))
-+		return -EINVAL;
-+
-+	if (len1 != len2)
-+		return 1;
-+
-+	/* strnicmp did not return negative values. So let's keep the
-+	 * abi for now */
-+	return !!memcmp(s1, s2, len1);
-+}
-+
-+static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
-+		const unsigned char *s2, int len)
-+{
-+	return nls_strncasecmp(t, s1, len, s2, len);
-+}
++#define EXT4_ENC_NLS_FL_MASK	0x00FF
 +
  /*
-  * nls_nullsize - return length of null character for codepage
-  * @codepage - codepage for which to return length of NULL terminator
+  * Structure of the super block
+  */
+@@ -1316,7 +1321,9 @@ struct ext4_super_block {
+ 	__u8	s_first_error_time_hi;
+ 	__u8	s_last_error_time_hi;
+ 	__u8	s_pad[2];
+-	__le32	s_reserved[96];		/* Padding to the end of the block */
++	__le16  s_ioencoding;		/* charset encoding */
++	__le16  s_ioencoding_flags;	/* charset encoding flags */
++	__le32	s_reserved[95];		/* Padding to the end of the block */
+ 	__le32	s_checksum;		/* crc32c(superblock) */
+ };
+ 
+@@ -1341,6 +1348,8 @@ struct ext4_super_block {
+ /* Number of quota types we support */
+ #define EXT4_MAXQUOTAS 3
+ 
++struct ext4_sb_encodings;
++
+ /*
+  * fourth extended-fs super-block data in memory
+  */
+@@ -1390,6 +1399,11 @@ struct ext4_sb_info {
+ 	struct kobject s_kobj;
+ 	struct completion s_kobj_unregister;
+ 	struct super_block *s_sb;
++#ifdef CONFIG_NLS
++	const struct ext4_sb_encodings *encoding_info;
++	struct nls_table *encoding;
++	__u16 encoding_flags;
++#endif
+ 
+ 	/* Journaling */
+ 	struct journal_s *s_journal;
+@@ -1665,6 +1679,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
+ #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
+ #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
++#define EXT4_FEATURE_INCOMPAT_IOENCODING	0x20000
+ 
+ #define EXT4_FEATURE_COMPAT_FUNCS(name, flagname) \
+ static inline bool ext4_has_feature_##name(struct super_block *sb) \
+@@ -1753,6 +1768,7 @@ EXT4_FEATURE_INCOMPAT_FUNCS(csum_seed,		CSUM_SEED)
+ EXT4_FEATURE_INCOMPAT_FUNCS(largedir,		LARGEDIR)
+ EXT4_FEATURE_INCOMPAT_FUNCS(inline_data,	INLINE_DATA)
+ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
++EXT4_FEATURE_INCOMPAT_FUNCS(ioencoding,		IOENCODING)
+ 
+ #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
+ #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+@@ -1780,6 +1796,7 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
+ 					 EXT4_FEATURE_INCOMPAT_MMP | \
+ 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
+ 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
++					 EXT4_FEATURE_INCOMPAT_IOENCODING | \
+ 					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
+ 					 EXT4_FEATURE_INCOMPAT_LARGEDIR)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a430fb3e9720..ccf4742fea3b 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -42,6 +42,7 @@
+ #include <linux/cleancache.h>
+ #include <linux/uaccess.h>
+ #include <linux/iversion.h>
++#include <linux/nls.h>
+ 
+ #include <linux/kthread.h>
+ #include <linux/freezer.h>
+@@ -1010,6 +1011,10 @@ static void ext4_put_super(struct super_block *sb)
+ 		crypto_free_shash(sbi->s_chksum_driver);
+ 	kfree(sbi->s_blockgroup_lock);
+ 	fs_put_dax(sbi->s_daxdev);
++#ifdef CONFIG_NLS
++	unload_nls(sbi->encoding);
++	kfree(sbi->encoding_info);
++#endif
+ 	kfree(sbi);
+ }
+ 
+@@ -1703,6 +1708,31 @@ static const struct mount_opts {
+ 	{Opt_err, 0, 0}
+ };
+ 
++#ifdef CONFIG_NLS
++static const struct ext4_sb_encodings {
++	char *name;
++	char *version;
++} ext4_sb_encoding_map[] = {
++	/* 0x0 */	{"ascii", NULL},
++	/* 0x1 */	{"utf8", "10.0.0"},
++};
++
++static int
++ext4_sb_read_encoding(const struct ext4_super_block *es,
++		      const struct ext4_sb_encodings **encoding, __u16 *flags)
++{
++	__u16 magic = le16_to_cpu(es->s_ioencoding);
++
++	if (magic >= ARRAY_SIZE(ext4_sb_encoding_map))
++		return -EINVAL;
++
++	*encoding = &ext4_sb_encoding_map[magic];
++	*flags = le16_to_cpu(es->s_ioencoding_flags);
++
++	return 0;
++}
++#endif
++
+ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+ 			    substring_t *args, unsigned long *journal_devnum,
+ 			    unsigned int *journal_ioprio, int is_remount)
+@@ -3515,6 +3545,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	int err = 0;
+ 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
+ 	ext4_group_t first_not_zeroed;
++#ifdef CONFIG_NLS
++	struct nls_table *encoding;
++	const struct ext4_sb_encodings *encoding_info;
++	__u16 nls_flags;
++#endif
+ 
+ 	if ((data && !orig_data) || !sbi)
+ 		goto out_free_base;
+@@ -3687,6 +3722,39 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			   &journal_ioprio, 0))
+ 		goto failed_mount;
+ 
++#ifdef CONFIG_NLS
++	if (ext4_has_feature_ioencoding(sb) && !sbi->encoding) {
++		if (ext4_has_feature_encrypt(sb)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Can't mount with both encoding and encryption");
++			goto failed_mount;
++		}
++
++		if (ext4_sb_read_encoding(es, &encoding_info, &nls_flags)) {
++			ext4_msg(sb, KERN_ERR,
++				 "Encoding requested by superblock is unknown");
++			goto failed_mount;
++		}
++
++		encoding = load_nls_version(encoding_info->name,
++					    encoding_info->version,
++					    nls_flags & EXT4_ENC_NLS_FL_MASK);
++		if (IS_ERR(encoding)) {
++			ext4_msg(sb, KERN_ERR, "can't mount with superblock charset: "
++				 "%s-%s not supported by the kernel. flags: 0x%x",
++				 encoding_info->name, encoding_info->version,
++				 nls_flags);
++			goto failed_mount;
++		}
++		ext4_msg(sb, KERN_INFO,"Using encoding defined by superblock: "
++			 "%s-%s with flags 0x%hx", encoding_info->name,
++			 encoding_info->version?:"\b", nls_flags);
++
++		sbi->encoding = encoding;
++		sbi->encoding_flags = nls_flags;
++	}
++#endif
++
+ 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
+ 		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting "
+ 			    "with data=journal disables delayed "
+@@ -4527,6 +4595,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ failed_mount:
+ 	if (sbi->s_chksum_driver)
+ 		crypto_free_shash(sbi->s_chksum_driver);
++
++#ifdef CONFIG_NLS
++	unload_nls(sbi->encoding);
++#endif
++
+ #ifdef CONFIG_QUOTA
+ 	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+ 		kfree(sbi->s_qf_names[i]);
 -- 
 2.19.0
