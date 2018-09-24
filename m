@@ -1,74 +1,33 @@
-Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:37134 "EHLO imap.thunk.org"
+Return-Path: <SRS0=q/KL=MW=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.hmha.gob.ec ([190.11.21.43]:52454 "EHLO mail.hmha.gob.ec"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726552AbeJBVdY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 2 Oct 2018 17:33:24 -0400
-Date: Tue, 2 Oct 2018 10:49:33 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: syzbot <syzbot+a2872d6feea6918008a9@syzkaller.appspotmail.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        syzkaller-bugs@googlegroups.com, viro@zeniv.linux.org.uk,
-        linux-ext4@vger.kernel.org
-Subject: Re: KASAN: use-after-free Read in seq_escape
-Message-ID: <20181002144933.GC17537@thunk.org>
-References: <000000000000902cb10577255369@google.com>
+        id S1726022AbeJJSTA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 10 Oct 2018 14:19:00 -0400
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <000000000000902cb10577255369@google.com>
+Content-Transfer-Encoding: 8BIT
+Content-Description: Mail message body
+Subject: =?utf-8?b?V29obHTDpHRpZ2tlaXRzc3BlbmRlIGluIEjDtmhlIHZvbiDigqwgMi4wMDAu?=
+ =?utf-8?q?000=2C00?=
+To: Recipients <cinthia_reyes@hmha.gob.ec>
+From: cinthia_reyes@hmha.gob.ec
+Date: Mon, 24 Sep 2018 10:45:09 +0100
+Reply-To: wumt.claimservice@gmail.com
+Message-Id: <20180924094518.75D1F270E48B@mail.hmha.gob.ec>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 30, 2018 at 11:58:02PM -0700, syzbot wrote:
-> Hello,
-> 
-> syzbot found the following crash on:
-> 
-> HEAD commit:    17b57b1883c1 Linux 4.19-rc6
-> git tree:       upstream
-> console output: https://syzkaller.appspot.com/x/log.txt?x=1672d711400000
-> kernel config:  https://syzkaller.appspot.com/x/.config?x=c0af03fe452b65fb
-> dashboard link: https://syzkaller.appspot.com/bug?extid=a2872d6feea6918008a9
-> compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
-
-This should be fixed with the following patch.
-
-     	       	     	      		- Ted
-
->From 89cc85e761c5b905b1a61cb85440bf9b5e841c80 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Tue, 2 Oct 2018 10:40:57 -0400
-Subject: [PATCH] ext4: fix use-after-free race in ext4_remount()'s error path
-
-It's possible for ext4_show_quota_options() to try reading
-s_qf_names[i] while it is being modified by ext4_remount() --- most
-notably, in ext4_remount's error path when the original values of the
-quota file name gets restored.
-
-Reported-by: syzbot+a2872d6feea6918008a9@syzkaller.appspotmail.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@kernel.org
----
- fs/ext4/super.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index faf293ed8060..11a1bfae0937 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2048,11 +2048,13 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
- 		seq_printf(seq, ",jqfmt=%s", fmtname);
- 	}
+Lieber Freund,
  
-+	down_read(&sb->s_umount);
- 	if (sbi->s_qf_names[USRQUOTA])
- 		seq_show_option(seq, "usrjquota", sbi->s_qf_names[USRQUOTA]);
+Ich bin Herr Tayeb Souami, New Jersey, Vereinigte Staaten von Amerika, der Mega-Gewinner von $ 315million In Mega Millions Jackpot, spende ich an 5 zufällige Personen, wenn Sie diese E-Mail erhalten, dann wurde Ihre E-Mail nach einem Spinball ausgewählt.Ich habe den größten Teil meines Vermögens auf eine Reihe von Wohltätigkeitsorganisationen und Organisationen verteilt.Ich habe mich freiwillig dazu entschieden, die Summe von € 2.000.000,00 an Sie als eine der ausgewählten 5 zu spenden, um meine Gewinne zu überprüfen, sehen Sie bitte meine You Tube Seite unten.
  
- 	if (sbi->s_qf_names[GRPQUOTA])
- 		seq_show_option(seq, "grpjquota", sbi->s_qf_names[GRPQUOTA]);
-+	up_read(&sb->s_umount);
- #endif
- }
+UHR MICH HIER: https://www.youtube.com/watch?v=Z6ui8ZDQ6Ks
  
--- 
-2.18.0.rc0
+Das ist dein Spendencode: [DFC530342018]
+ 
+Antworten Sie mit dem SPENDE-CODE an diese E-Mail: financialfundingcompany09@gmail.com
+ 
+Ich hoffe, Sie und Ihre Familie glücklich zu machen.
+ 
+Grüße
+Herr Tayeb Souami
