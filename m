@@ -1,225 +1,78 @@
-Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:45534 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725986AbeIYECI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:08 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RESEND v2 10/25] nls: Add optional normalization and casefold hooks
-Date: Mon, 24 Sep 2018 17:56:40 -0400
-Message-Id: <20180924215655.3676-11-krisman@collabora.co.uk>
-In-Reply-To: <20180924215655.3676-1-krisman@collabora.co.uk>
-References: <20180924215655.3676-1-krisman@collabora.co.uk>
+Return-Path: <SRS0=0UAC=MJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-ot1-f67.google.com ([209.85.210.67]:40724 "EHLO
+        mail-ot1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727199AbeI0Tma (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Sep 2018 15:42:30 -0400
+Received: by mail-ot1-f67.google.com with SMTP id g14-v6so2512871otj.7
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Sep 2018 06:24:14 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From: Vignesh Raman <vignesh.raman.in@gmail.com>
+Date: Thu, 27 Sep 2018 18:54:02 +0530
+Message-ID: <CAH3OF51p+Sty54KJswtPBa6aj3T4dDsiYOGcn265MAAf+L5EEA@mail.gmail.com>
+Subject: inode/block bitmap checksum error
+To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The Normalization operation applies a transformation to strings to
-obtain the normalization form, which allow the user to determine whether
-any two strings are equivalent to each other.  The NLS subsystem doesn't
-impose any constraint on what means to be equivalent, for any charsets.
-Unicode-based charsets, for instance, are free to support one, a few or
-all kinds of Unicode equivalences.
+Hi All,
 
-The Casefold operation is similar to Normalization, in a sense that it
-also allows the caller to identify equivalent strings, but it
-disregards case, making it ideal for case insensitive comparisons.
+We are seeing the below ext4 corruption messages when running linux
+4.9 on debian,
+[   13.694043] EXT4-fs error (device sda4):
+ext4_validate_block_bitmap:384: comm plymouthd: bg 6: bad block bitmap
+checksum
+[   13.694359] EXT4-fs error (device sda4) in ext4_free_blocks:4916:
+Filesystem failed CRC
+[   13.694807] EXT4-fs error (device sda4):
+ext4_validate_inode_bitmap:96: comm plymouthd: Corrupt inode bitmap -
+block_group = 1, inode_bitmap = 331
+[   13.695025] EXT4-fs error (device sda4) in ext4_free_inode:358:
+Filesystem failed CRC
+[   13.696127] EXT4-fs error (device sda4):
+ext4_validate_block_bitmap:384: comm plymouthd: bg 7: bad block bitmap
+checksum
+[   13.715278] EXT4-fs error (device sda4):
+ext4_validate_block_bitmap:384: comm systemd-tmpfile: bg 16: bad block
+bitmap checksum
+[   13.715736] EXT4-fs error (device sda4) in ext4_free_blocks:4916:
+Filesystem failed CRC
+[   13.716358] EXT4-fs error (device sda4):
+ext4_validate_inode_bitmap:96: comm systemd-tmpfile: Corrupt inode
+bitmap - block_group = 16, inode_bitmap = 524292
+[   13.716639] EXT4-fs error (device sda4) in ext4_free_inode:358:
+Filesystem failed CRC
+[   13.717477] EXT4-fs error (device sda4) in ext4_free_inode:358:
+Corrupt filesystem
 
-Default implementation are provided by the nls core, such that existing
-charsets can operate on the new interface. The Normalization default
-operation is the format NLS_NORMALIZATION_TYPE_PLAIN, which returns the
-identity of the string, which means no normalization.  The casefold
-default is NLS_CASEFOLD_TYPE_TOUPPER, which returns the string with all
-characters converted to uppercase.
+fsck shows the below error,
+systemd-fsck[193]: fsck failed with exit status 8.
+systemd-fsck[193]: Ignoring error.
+systemd-fsck[193]: fsck.ext4: Superblock checksum does not match
+superblock while trying to open /dev/sda4
+systemd-fsck[193]: /dev/sda4:
+systemd-fsck[193]: The superblock could not be read or does not
+describe a valid ext2/ext3/ext4
+systemd-fsck[193]: filesystem.  If the device is valid and it really
+contains an ext2/ext3/ext4
+systemd-fsck[193]: filesystem (and not swap or ufs or something else),
+then the superblock
+systemd-fsck[193]: is corrupt, and you might try running e2fsck with
+an alternate superblock:
+systemd-fsck[193]:     e2fsck -b 8193 <device>
+systemd-fsck[193]:  or
+systemd-fsck[193]:     e2fsck -b 32768 <device>
 
-Changes since V1:
-  - Add default operations for casefold and normalization
+Would the fsck failure cause the inode/block bitmap checksum issue?
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- fs/nls/nls_core.c   |  11 +++++
- include/linux/nls.h | 116 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 127 insertions(+)
+Kernel version: [    0.000000] Linux version 4.9.0-8-amd64
+(debian-kernel@lists.debian.org) (gcc version 6.3.0 20170516 (Debian
+6.3.0-18+deb9u1) ) #1 SMP Debian 4.9.110-3+deb9u4 (2018-08-21)
 
-diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
-index 493690459b88..531d4add1d43 100644
---- a/fs/nls/nls_core.c
-+++ b/fs/nls/nls_core.c
-@@ -25,6 +25,17 @@ static int nls_validate_flags(struct nls_table *table, unsigned int flags)
- 	if (flags & NLS_STRICT_MODE && !table->ops->validate)
- 		return -1;
- 
-+	if ((flags & NLS_NORMALIZATION_TYPE_MASK) && !table->ops->normalize)
-+		return -1;
-+
-+	if ((flags & NLS_CASEFOLD_TYPE_MASK) && !table->ops->casefold)
-+		return -1;
-+
-+	/* Reject unused flags */
-+	if (flags & ~(NLS_CASEFOLD_TYPE_MASK|NLS_NORMALIZATION_TYPE_MASK |
-+		      NLS_STRICT_MODE))
-+		return -1;
-+
- 	return 0;
- }
- 
-diff --git a/include/linux/nls.h b/include/linux/nls.h
-index 980103d4c363..44a06a9c69e7 100644
---- a/include/linux/nls.h
-+++ b/include/linux/nls.h
-@@ -4,6 +4,7 @@
- 
- #include <linux/init.h>
- #include <linux/string.h>
-+#include <linux/errno.h>
- 
- /* Unicode has changed over the years.  Unicode code points no longer
-  * fit into 16 bits; as of Unicode 5 valid code points range from 0
-@@ -65,6 +66,51 @@ struct nls_ops {
- 	int (*strncasecmp)(const struct nls_table *charset,
- 			   const unsigned char *str1, size_t len1,
- 			   const unsigned char *str2, size_t len2);
-+	/**
-+	 * @normalize:
-+	 *
-+	 * Obtain the normalized form of a string, which can be used to
-+	 * determine whether any two strings are equivalent.  The NLS
-+	 * subsystem doesn't impose any constraint on the charsets
-+	 * regarding what it means to be equivalent.  Unicode-based
-+	 * charsets, for instance, are free to support one, a few or all
-+	 * kinds of Unicode equivalences.  Different kinds of
-+	 * normalizations can be specified using the nls_table flags.
-+	 *
-+	 * This hook is responsible for performing string validation if
-+	 * the strict mode flag is set.  The only case where it is not
-+	 * called by nls_core is when strict mode and normalization are
-+	 * disabled, because in this case the normalization is
-+	 * guaranteed to be the string identity.
-+	 *
-+	 * Not every charset implements this hook.  It is only required
-+	 * if the charset supports strict mode or some kind of
-+	 * normalization.
-+	 *
-+	 * If this operation cannot be executed for this charset,
-+	 * -ENOTSUPP is returned.  If the sequence is invalid, -EINVAL
-+	 * is returned.  Otherwise, this function returns the size of the
-+	 * new string.
-+	 **/
-+	int (*normalize)(const struct nls_table *charset,
-+			 const unsigned char *str, size_t len,
-+			 unsigned char *dest, size_t dlen);
-+	/**
-+	 * @casefold:
-+	 *
-+	 * Casefold returns a version of the string that can be used to
-+	 * perform case-insensitive comparisons.  The kind of casefold
-+	 * algorithm that will be used is charset dependent, and can be
-+	 * configured using the nls_table flags field.
-+	 *
-+	 * If this operation cannot be executed for this charset,
-+	 * -ENOTSUPP is returned.  If the sequence fails, -EINVAL is
-+	 * returned.  Otherwise, this function returns the size of the
-+	 * new string.
-+	 **/
-+	int (*casefold)(const struct nls_table *charset,
-+			const unsigned char *str, size_t len,
-+			unsigned char *dest, size_t dlen);
- 	unsigned char (*lowercase)(const struct nls_table *charset,
- 				   unsigned int c);
- 	unsigned char (*uppercase)(const struct nls_table *charset,
-@@ -101,13 +147,37 @@ enum utf16_endian {
- 	UTF16_BIG_ENDIAN
- };
- 
-+#define NLS_NORMALIZATION_TYPE(i)	((i & 0x7) << 1)
-+#define NLS_CASEFOLD_TYPE(i)		((i & 0x7) << 4)
-+
- #define NLS_STRICT_MODE			0x00000001
-+#define NLS_NORMALIZATION_TYPE_PLAIN	NLS_NORMALIZATION_TYPE(0)
-+#define NLS_NORMALIZATION_TYPE_MASK	0x0000000E
-+#define NLS_CASEFOLD_TYPE_TOUPPER	NLS_CASEFOLD_TYPE(0)
-+#define NLS_CASEFOLD_TYPE_MASK		0x00000070
- 
- static inline int IS_STRICT_MODE(const struct nls_table *charset)
- {
- 	return (charset->flags & NLS_STRICT_MODE);
- }
- 
-+#define NLS_NORMALIZATION_FUNCS(charset, type, i)			\
-+static inline int							\
-+IS_NORMALIZATION_TYPE_##charset##_##type(const struct nls_table *c)	\
-+{									\
-+	return ((c->flags & NLS_NORMALIZATION_TYPE_MASK) == i);		\
-+}
-+
-+#define NLS_CASEFOLD_FUNCS(charset, type, i)			    	\
-+static inline int							\
-+IS_CASEFOLD_TYPE_##charset##_##type(const struct nls_table *c)		\
-+{									\
-+	return ((c->flags & NLS_CASEFOLD_TYPE_MASK) == i);		\
-+}
-+
-+NLS_NORMALIZATION_FUNCS(ALL, PLAIN, NLS_NORMALIZATION_TYPE_PLAIN)
-+NLS_CASEFOLD_FUNCS(ALL, TOUPPER, NLS_CASEFOLD_TYPE_TOUPPER)
-+
- /* nls_base.c */
- extern int __register_nls(struct nls_charset *, struct module *);
- extern int unregister_nls(struct nls_charset *);
-@@ -213,6 +283,52 @@ static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
- 	return nls_strncasecmp(t, s1, len, s2, len);
- }
- 
-+static inline int nls_casefold(const struct nls_table *t,
-+			       const unsigned char *str, size_t len,
-+			       unsigned char *dest, size_t dlen)
-+{
-+	int i;
-+
-+	if (t->ops->casefold)
-+		return t->ops->casefold(t, str, len, dest, dlen);
-+
-+	if (!IS_CASEFOLD_TYPE_ALL_TOUPPER(t))
-+		return -ENOTSUPP;
-+
-+	if (IS_STRICT_MODE(t) && nls_validate(t, str, len))
-+		return -EINVAL;
-+
-+	if (len > dlen)
-+		return -EINVAL;
-+
-+	for (i = 0 ; i < len; i++)
-+		dest[i] = nls_toupper(t, str[i]);
-+
-+	return len;
-+}
-+
-+static inline int nls_normalize(const struct nls_table *t,
-+				const unsigned char *str, size_t len,
-+				unsigned char *dest, size_t dlen)
-+{
-+	if (t->ops->normalize)
-+		return t->ops->normalize(t, str, len, dest, dlen);
-+
-+	if (!IS_NORMALIZATION_TYPE_ALL_PLAIN(t))
-+		return -ENOTSUPP;
-+
-+	if (IS_STRICT_MODE(t) && nls_validate(t, str, len))
-+		return -EINVAL;
-+
-+	if (len > dlen)
-+		return -EINVAL;
-+
-+	/* If normalization are disabled, normalization is the
-+	 * identity. */
-+	strncpy(dest, str, len);
-+	return len;
-+}
-+
- /*
-  * nls_nullsize - return length of null character for codepage
-  * @codepage - codepage for which to return length of NULL terminator
--- 
-2.19.0
+Backported the below patch, but the issue was still seen.
+https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/commit/?id=8d5a803c6a6ce4ec258e31f76059ea5153ba46ef
+
+Any pointers will be helpful. Thanks.
+
+Regards,
+Vignesh
