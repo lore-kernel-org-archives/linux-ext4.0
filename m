@@ -1,856 +1,372 @@
-Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:45564 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726031AbeIYEC1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Sep 2018 00:02:27 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org, Olaf Weber <olaf@sgi.com>,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RESEND v2 15/25] nls: utf8: Introduce code for UTF-8 normalization
-Date: Mon, 24 Sep 2018 17:56:45 -0400
-Message-Id: <20180924215655.3676-16-krisman@collabora.co.uk>
-In-Reply-To: <20180924215655.3676-1-krisman@collabora.co.uk>
-References: <20180924215655.3676-1-krisman@collabora.co.uk>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Return-Path: <SRS0=T+aA=MK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-yw1-f67.google.com ([209.85.161.67]:38306 "EHLO
+        mail-yw1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729138AbeI1WsS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2018 18:48:18 -0400
+Received: by mail-yw1-f67.google.com with SMTP id d126-v6so2862168ywa.5
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2018 09:23:47 -0700 (PDT)
+From: Eric Whitney <enwlinux@gmail.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu, Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH v3 3/6] ext4: fix reserved cluster accounting at delayed write time
+Date: Fri, 28 Sep 2018 12:23:13 -0400
+Message-Id: <20180928162316.16480-4-enwlinux@gmail.com>
+In-Reply-To: <20180928162316.16480-1-enwlinux@gmail.com>
+References: <20180928162316.16480-1-enwlinux@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Olaf Weber <olaf@sgi.com>
+The code in ext4_da_map_blocks sometimes reserves space for more
+delayed allocated clusters than it should, resulting in premature
+ENOSPC, exceeded quota, and inaccurate free space reporting.
 
-Supporting functions for UTF-8 normalization are in utf8norm.c with the
-header utf8norm.h. Two normalization forms are supported: nfkdi and
-nfkdicf.
+Fix this by checking for written and unwritten blocks shared in the
+same cluster with the newly delayed allocated block.  A cluster
+reservation should not be made for a cluster for which physical space
+has already been allocated.
 
-  nfkdi:
-   - Apply unicode normalization form NFKD.
-   - Remove any Default_Ignorable_Code_Point.
-
-  nfkdicf:
-   - Apply unicode normalization form NFKD.
-   - Remove any Default_Ignorable_Code_Point.
-   - Apply a full casefold (C + F).
-
-For the purposes of the code, a string is valid UTF-8 if:
-
- - The values encoded are 0x1..0x10FFFF.
- - The surrogate codepoints 0xD800..0xDFFFF are not encoded.
- - The shortest possible encoding is used for all values.
-
-The supporting functions work on null-terminated strings (utf8 prefix)
-and on length-limited strings (utf8n prefix).
-
->From the original SGI patch and for conformity with coding standards,
-the utf8data_t typedef was dropped, since it was just masking the struct
-keyword.  On other occasions, namely utf8leaf_t and utf8trie_t, I
-decided to keep it, since they are simple pointers to memory buffers,
-and using uchars here wouldn't provide any more meaningful information.
-
-Changes since RFC v2:
-  - Merge to NLS system
-
-Changes since RFC v1:
-  - utf8_version_is_supported receives maj, min and rev as separate
-  arguments. (Olaf Weber)
-
-Signed-off-by: Olaf Weber <olaf@sgi.com>
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-  [Rebase to Mainline]
-  [Fix up checkpatch.pl warnings]
-  [Drop typedefs]
-  [Merge with NLS subsystem]
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
 ---
- fs/nls/Makefile        |   2 +
- fs/nls/nls_utf8-norm.c | 640 +++++++++++++++++++++++++++++++++++++++++
- fs/nls/utf8n.h         | 112 ++++++++
- 3 files changed, 754 insertions(+)
- create mode 100644 fs/nls/nls_utf8-norm.c
- create mode 100644 fs/nls/utf8n.h
+ fs/ext4/ext4.h              |  1 +
+ fs/ext4/extents.c           | 79 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/extents_status.c    | 53 ++++++++++++++++++++++++++++++
+ fs/ext4/extents_status.h    | 12 +++++++
+ fs/ext4/inode.c             | 79 ++++++++++++++++++++++++++++++++++-----------
+ include/trace/events/ext4.h | 35 ++++++++++++++++++++
+ 6 files changed, 241 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nls/Makefile b/fs/nls/Makefile
-index 2e092668fcd8..e9b0b2ac8e83 100644
---- a/fs/nls/Makefile
-+++ b/fs/nls/Makefile
-@@ -46,6 +46,7 @@ obj-$(CONFIG_NLS_KOI8_U)	+= nls_koi8-u.o nls_koi8-ru.o
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index fc0f41dbf90b..d85fd5c8a2c4 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -3155,6 +3155,7 @@ extern int ext4_swap_extents(handle_t *handle, struct inode *inode1,
+ 				struct inode *inode2, ext4_lblk_t lblk1,
+ 			     ext4_lblk_t lblk2,  ext4_lblk_t count,
+ 			     int mark_unwritten,int *err);
++extern int ext4_clu_mapped(struct inode *inode, ext4_lblk_t lclu);
  
- obj-$(CONFIG_NLS_UTF8)		+= nls_utf8.o
- nls_utf8-y			+= nls_utf8-core.o
-+nls_utf8-$(CONFIG_NLS_UTF8_NORMALIZATION) += nls_utf8-norm.o
- 
- obj-$(CONFIG_NLS_MAC_CELTIC)    += mac-celtic.o
- obj-$(CONFIG_NLS_MAC_CENTEURO)  += mac-centeuro.o
-@@ -59,6 +60,7 @@ obj-$(CONFIG_NLS_MAC_ROMANIAN)  += mac-romanian.o
- obj-$(CONFIG_NLS_MAC_ROMAN)     += mac-roman.o
- obj-$(CONFIG_NLS_MAC_TURKISH)   += mac-turkish.o
- 
-+$(obj)/nls_utf8-norm.o: $(obj)/utf8data.h
- $(obj)/utf8data.h: $(srctree)/$(src)/ucd/*.txt $(objtree)/scripts/mkutf8data FORCE
- 	$(call cmd,mkutf8data)
- quiet_cmd_mkutf8data = MKUTF8DATA $@
-diff --git a/fs/nls/nls_utf8-norm.c b/fs/nls/nls_utf8-norm.c
-new file mode 100644
-index 000000000000..ca0bbf644b49
---- /dev/null
-+++ b/fs/nls/nls_utf8-norm.c
-@@ -0,0 +1,640 @@
+ /* move_extent.c */
+ extern void ext4_double_down_write_data_sem(struct inode *first,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 95796f00e4e6..26481e543312 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -5930,3 +5930,82 @@ ext4_swap_extents(handle_t *handle, struct inode *inode1,
+ 	}
+ 	return replaced_count;
+ }
++
 +/*
-+ * Copyright (c) 2014 SGI.
-+ * All rights reserved.
++ * ext4_clu_mapped - determine whether any block in a logical cluster has
++ *                   been mapped to a physical cluster
 + *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License as
-+ * published by the Free Software Foundation.
++ * @inode - file containing the logical cluster
++ * @lclu - logical cluster of interest
 + *
-+ * This program is distributed in the hope that it would be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
++ * Returns 1 if any block in the logical cluster is mapped, signifying
++ * that a physical cluster has been allocated for it.  Otherwise,
++ * returns 0.  Can also return negative error codes.  Derived from
++ * ext4_ext_map_blocks().
 + */
-+
-+#include "utf8n.h"
-+
-+struct utf8data {
-+	unsigned int maxage;
-+	unsigned int offset;
-+};
-+
-+#define __INCLUDED_FROM_UTF8NORM_C__
-+#include "utf8data.h"
-+#undef __INCLUDED_FROM_UTF8NORM_C__
-+
-+int utf8version_is_supported(u8 maj, u8 min, u8 rev)
++int ext4_clu_mapped(struct inode *inode, ext4_lblk_t lclu)
 +{
-+	int i = ARRAY_SIZE(utf8agetab) - 1;
-+	unsigned int sb_utf8version = UNICODE_AGE(maj, min, rev);
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	struct ext4_ext_path *path;
++	int depth, mapped = 0, err = 0;
++	struct ext4_extent *extent;
++	ext4_lblk_t first_lblk, first_lclu, last_lclu;
 +
-+	while (i >= 0 && utf8agetab[i] != 0) {
-+		if (sb_utf8version == utf8agetab[i])
-+			return 1;
-+		i--;
++	/* search for the extent closest to the first block in the cluster */
++	path = ext4_find_extent(inode, EXT4_C2B(sbi, lclu), NULL, 0);
++	if (IS_ERR(path)) {
++		err = PTR_ERR(path);
++		path = NULL;
++		goto out;
 +	}
-+	return 0;
-+}
-+EXPORT_SYMBOL(utf8version_is_supported);
 +
-+/*
-+ * UTF-8 valid ranges.
-+ *
-+ * The UTF-8 encoding spreads the bits of a 32bit word over several
-+ * bytes. This table gives the ranges that can be held and how they'd
-+ * be represented.
-+ *
-+ * 0x00000000 0x0000007F: 0xxxxxxx
-+ * 0x00000000 0x000007FF: 110xxxxx 10xxxxxx
-+ * 0x00000000 0x0000FFFF: 1110xxxx 10xxxxxx 10xxxxxx
-+ * 0x00000000 0x001FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-+ * 0x00000000 0x03FFFFFF: 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
-+ * 0x00000000 0x7FFFFFFF: 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
-+ *
-+ * There is an additional requirement on UTF-8, in that only the
-+ * shortest representation of a 32bit value is to be used.  A decoder
-+ * must not decode sequences that do not satisfy this requirement.
-+ * Thus the allowed ranges have a lower bound.
-+ *
-+ * 0x00000000 0x0000007F: 0xxxxxxx
-+ * 0x00000080 0x000007FF: 110xxxxx 10xxxxxx
-+ * 0x00000800 0x0000FFFF: 1110xxxx 10xxxxxx 10xxxxxx
-+ * 0x00010000 0x001FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-+ * 0x00200000 0x03FFFFFF: 111110xx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
-+ * 0x04000000 0x7FFFFFFF: 1111110x 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx 10xxxxxx
-+ *
-+ * Actual unicode characters are limited to the range 0x0 - 0x10FFFF,
-+ * 17 planes of 65536 values.  This limits the sequences actually seen
-+ * even more, to just the following.
-+ *
-+ *          0 -     0x7F: 0                   - 0x7F
-+ *       0x80 -    0x7FF: 0xC2 0x80           - 0xDF 0xBF
-+ *      0x800 -   0xFFFF: 0xE0 0xA0 0x80      - 0xEF 0xBF 0xBF
-+ *    0x10000 - 0x10FFFF: 0xF0 0x90 0x80 0x80 - 0xF4 0x8F 0xBF 0xBF
-+ *
-+ * Within those ranges the surrogates 0xD800 - 0xDFFF are not allowed.
-+ *
-+ * Note that the longest sequence seen with valid usage is 4 bytes,
-+ * the same a single UTF-32 character.  This makes the UTF-8
-+ * representation of Unicode strictly smaller than UTF-32.
-+ *
-+ * The shortest sequence requirement was introduced by:
-+ *    Corrigendum #1: UTF-8 Shortest Form
-+ * It can be found here:
-+ *    http://www.unicode.org/versions/corrigendum1.html
-+ *
-+ */
++	depth = ext_depth(inode);
 +
-+/*
-+ * Return the number of bytes used by the current UTF-8 sequence.
-+ * Assumes the input points to the first byte of a valid UTF-8
-+ * sequence.
-+ */
-+static inline int utf8clen(const char *s)
-+{
-+	unsigned char c = *s;
++	/*
++	 * A consistent leaf must not be empty.  This situation is possible,
++	 * though, _during_ tree modification, and it's why an assert can't
++	 * be put in ext4_find_extent().
++	 */
++	if (unlikely(path[depth].p_ext == NULL && depth != 0)) {
++		EXT4_ERROR_INODE(inode,
++		    "bad extent address - lblock: %lu, depth: %d, pblock: %lld",
++				 (unsigned long) EXT4_C2B(sbi, lclu),
++				 depth, path[depth].p_block);
++		err = -EFSCORRUPTED;
++		goto out;
++	}
 +
-+	return 1 + (c >= 0xC0) + (c >= 0xE0) + (c >= 0xF0);
-+}
++	extent = path[depth].p_ext;
 +
-+/*
-+ * utf8trie_t
-+ *
-+ * A compact binary tree, used to decode UTF-8 characters.
-+ *
-+ * Internal nodes are one byte for the node itself, and up to three
-+ * bytes for an offset into the tree.  The first byte contains the
-+ * following information:
-+ *  NEXTBYTE  - flag        - advance to next byte if set
-+ *  BITNUM    - 3 bit field - the bit number to tested
-+ *  OFFLEN    - 2 bit field - number of bytes in the offset
-+ * if offlen == 0 (non-branching node)
-+ *  RIGHTPATH - 1 bit field - set if the following node is for the
-+ *                            right-hand path (tested bit is set)
-+ *  TRIENODE  - 1 bit field - set if the following node is an internal
-+ *                            node, otherwise it is a leaf node
-+ * if offlen != 0 (branching node)
-+ *  LEFTNODE  - 1 bit field - set if the left-hand node is internal
-+ *  RIGHTNODE - 1 bit field - set if the right-hand node is internal
-+ *
-+ * Due to the way utf8 works, there cannot be branching nodes with
-+ * NEXTBYTE set, and moreover those nodes always have a righthand
-+ * descendant.
-+ */
-+typedef const unsigned char utf8trie_t;
-+#define BITNUM		0x07
-+#define NEXTBYTE	0x08
-+#define OFFLEN		0x30
-+#define OFFLEN_SHIFT	4
-+#define RIGHTPATH	0x40
-+#define TRIENODE	0x80
-+#define RIGHTNODE	0x40
-+#define LEFTNODE	0x80
++	/* can't be mapped if the extent tree is empty */
++	if (extent == NULL)
++		goto out;
 +
-+/*
-+ * utf8leaf_t
-+ *
-+ * The leaves of the trie are embedded in the trie, and so the same
-+ * underlying datatype: unsigned char.
-+ *
-+ * leaf[0]: The unicode version, stored as a generation number that is
-+ *          an index into utf8agetab[].  With this we can filter code
-+ *          points based on the unicode version in which they were
-+ *          defined.  The CCC of a non-defined code point is 0.
-+ * leaf[1]: Canonical Combining Class. During normalization, we need
-+ *          to do a stable sort into ascending order of all characters
-+ *          with a non-zero CCC that occur between two characters with
-+ *          a CCC of 0, or at the begin or end of a string.
-+ *          The unicode standard guarantees that all CCC values are
-+ *          between 0 and 254 inclusive, which leaves 255 available as
-+ *          a special value.
-+ *          Code points with CCC 0 are known as stoppers.
-+ * leaf[2]: Decomposition. If leaf[1] == 255, then leaf[2] is the
-+ *          start of a NUL-terminated string that is the decomposition
-+ *          of the character.
-+ *          The CCC of a decomposable character is the same as the CCC
-+ *          of the first character of its decomposition.
-+ *          Some characters decompose as the empty string: these are
-+ *          characters with the Default_Ignorable_Code_Point property.
-+ *          These do affect normalization, as they all have CCC 0.
-+ *
-+ * The decompositions in the trie have been fully expanded.
-+ *
-+ * Casefolding, if applicable, is also done using decompositions.
-+ *
-+ * The trie is constructed in such a way that leaves exist for all
-+ * UTF-8 sequences that match the criteria from the "UTF-8 valid
-+ * ranges" comment above, and only for those sequences.  Therefore a
-+ * lookup in the trie can be used to validate the UTF-8 input.
-+ */
-+typedef const unsigned char utf8leaf_t;
++	first_lblk = le32_to_cpu(extent->ee_block);
++	first_lclu = EXT4_B2C(sbi, first_lblk);
 +
-+#define LEAF_GEN(LEAF)	((LEAF)[0])
-+#define LEAF_CCC(LEAF)	((LEAF)[1])
-+#define LEAF_STR(LEAF)	((const char *)((LEAF) + 2))
-+
-+#define MINCCC		(0)
-+#define MAXCCC		(254)
-+#define STOPPER		(0)
-+#define	DECOMPOSE	(255)
-+
-+/*
-+ * Use trie to scan s, touching at most len bytes.
-+ * Returns the leaf if one exists, NULL otherwise.
-+ *
-+ * A non-NULL return guarantees that the UTF-8 sequence starting at s
-+ * is well-formed and corresponds to a known unicode code point.  The
-+ * shorthand for this will be "is valid UTF-8 unicode".
-+ */
-+static utf8leaf_t *utf8nlookup(const struct utf8data *data, const char *s,
-+			       size_t len)
-+{
-+	utf8trie_t	*trie = utf8data + data->offset;
-+	int		offlen;
-+	int		offset;
-+	int		mask;
-+	int		node;
-+
-+	if (!data)
-+		return NULL;
-+	if (len == 0)
-+		return NULL;
-+	node = 1;
-+	while (node) {
-+		offlen = (*trie & OFFLEN) >> OFFLEN_SHIFT;
-+		if (*trie & NEXTBYTE) {
-+			if (--len == 0)
-+				return NULL;
-+			s++;
++	/*
++	 * Three possible outcomes at this point - found extent spanning
++	 * the target cluster, to the left of the target cluster, or to the
++	 * right of the target cluster.  The first two cases are handled here.
++	 * The last case indicates the target cluster is not mapped.
++	 */
++	if (lclu >= first_lclu) {
++		last_lclu = EXT4_B2C(sbi, first_lblk +
++				     ext4_ext_get_actual_len(extent) - 1);
++		if (lclu <= last_lclu) {
++			mapped = 1;
++		} else {
++			first_lblk = ext4_ext_next_allocated_block(path);
++			first_lclu = EXT4_B2C(sbi, first_lblk);
++			if (lclu == first_lclu)
++				mapped = 1;
 +		}
-+		mask = 1 << (*trie & BITNUM);
-+		if (*s & mask) {
-+			/* Right leg */
-+			if (offlen) {
-+				/* Right node at offset of trie */
-+				node = (*trie & RIGHTNODE);
-+				offset = trie[offlen];
-+				while (--offlen) {
-+					offset <<= 8;
-+					offset |= trie[offlen];
++	}
++
++out:
++	ext4_ext_drop_refs(path);
++	kfree(path);
++
++	return err ? err : mapped;
++}
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 194785ce890a..c5d456e12062 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1552,3 +1552,56 @@ bool ext4_is_pending(struct inode *inode, ext4_lblk_t lblk)
+ 
+ 	return ret;
+ }
++
++/*
++ * ext4_es_insert_delayed_block - adds a delayed block to the extents status
++ *                                tree, adding a pending reservation where
++ *                                needed
++ *
++ * @inode - file containing the newly added block
++ * @lblk - logical block to be added
++ * @allocated - indicates whether a physical cluster has been allocated for
++ *              the logical cluster that contains the block
++ *
++ * Returns 0 on success, negative error code on failure.
++ */
++int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
++				 bool allocated)
++{
++	struct extent_status newes;
++	int err = 0;
++
++	es_debug("add [%u/1) delayed to extent status tree of inode %lu\n",
++		 lblk, inode->i_ino);
++
++	newes.es_lblk = lblk;
++	newes.es_len = 1;
++	ext4_es_store_pblock_status(&newes, ~0, EXTENT_STATUS_DELAYED);
++	trace_ext4_es_insert_delayed_block(inode, &newes, allocated);
++
++	ext4_es_insert_extent_check(inode, &newes);
++
++	write_lock(&EXT4_I(inode)->i_es_lock);
++
++	err = __es_remove_extent(inode, lblk, lblk);
++	if (err != 0)
++		goto error;
++retry:
++	err = __es_insert_extent(inode, &newes);
++	if (err == -ENOMEM && __es_shrink(EXT4_SB(inode->i_sb),
++					  128, EXT4_I(inode)))
++		goto retry;
++	if (err != 0)
++		goto error;
++
++	if (allocated)
++		__insert_pending(inode, lblk);
++
++error:
++	write_unlock(&EXT4_I(inode)->i_es_lock);
++
++	ext4_es_print_tree(inode);
++	ext4_print_pending_tree(inode);
++
++	return err;
++}
+diff --git a/fs/ext4/extents_status.h b/fs/ext4/extents_status.h
+index 379b7171c67c..9d3c676ec623 100644
+--- a/fs/ext4/extents_status.h
++++ b/fs/ext4/extents_status.h
+@@ -178,6 +178,16 @@ static inline int ext4_es_is_hole(struct extent_status *es)
+ 	return (ext4_es_type(es) & EXTENT_STATUS_HOLE) != 0;
+ }
+ 
++static inline int ext4_es_is_mapped(struct extent_status *es)
++{
++	return (ext4_es_is_written(es) || ext4_es_is_unwritten(es));
++}
++
++static inline int ext4_es_is_delonly(struct extent_status *es)
++{
++	return (ext4_es_is_delayed(es) && !ext4_es_is_unwritten(es));
++}
++
+ static inline void ext4_es_set_referenced(struct extent_status *es)
+ {
+ 	es->es_pblk |= ((ext4_fsblk_t)EXTENT_STATUS_REFERENCED) << ES_SHIFT;
+@@ -232,5 +242,7 @@ extern void ext4_exit_pending(void);
+ extern void ext4_init_pending_tree(struct ext4_pending_tree *tree);
+ extern void ext4_remove_pending(struct inode *inode, ext4_lblk_t lblk);
+ extern bool ext4_is_pending(struct inode *inode, ext4_lblk_t lblk);
++extern int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
++					bool allocated);
+ 
+ #endif /* _EXT4_EXTENTS_STATUS_H */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b83bf3308b5e..57c6dd38f071 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1781,6 +1781,65 @@ static int ext4_bh_delay_or_unwritten(handle_t *handle, struct buffer_head *bh)
+ }
+ 
+ /*
++ * ext4_insert_delayed_block - adds a delayed block to the extents status
++ *                             tree, incrementing the reserved cluster/block
++ *                             count or making a pending reservation
++ *                             where needed
++ *
++ * @inode - file containing the newly added block
++ * @lblk - logical block to be added
++ *
++ * Returns 0 on success, negative error code on failure.
++ */
++static int ext4_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	int ret;
++	bool allocated = false;
++
++	/*
++	 * If the cluster containing lblk is shared with a delayed,
++	 * written, or unwritten extent in a bigalloc file system, it's
++	 * already been accounted for and does not need to be reserved.
++	 * A pending reservation must be made for the cluster if it's
++	 * shared with a written or unwritten extent and doesn't already
++	 * have one.  Written and unwritten extents can be purged from the
++	 * extents status tree if the system is under memory pressure, so
++	 * it's necessary to examine the extent tree if a search of the
++	 * extents status tree doesn't get a match.
++	 */
++	if (sbi->s_cluster_ratio == 1) {
++		ret = ext4_da_reserve_space(inode);
++		if (ret != 0)   /* ENOSPC */
++			goto errout;
++	} else {   /* bigalloc */
++		if (!ext4_es_scan_clu(inode, &ext4_es_is_delonly, lblk)) {
++			if (!ext4_es_scan_clu(inode,
++					      &ext4_es_is_mapped, lblk)) {
++				ret = ext4_clu_mapped(inode,
++						      EXT4_B2C(sbi, lblk));
++				if (ret < 0)
++					goto errout;
++				if (ret == 0) {
++					ret = ext4_da_reserve_space(inode);
++					if (ret != 0)   /* ENOSPC */
++						goto errout;
++				} else {
++					allocated = true;
 +				}
-+				trie += offset;
-+			} else if (*trie & RIGHTPATH) {
-+				/* Right node after this node */
-+				node = (*trie & TRIENODE);
-+				trie++;
 +			} else {
-+				/* No right node. */
-+				node = 0;
-+				trie = NULL;
-+			}
-+		} else {
-+			/* Left leg */
-+			if (offlen) {
-+				/* Left node after this node. */
-+				node = (*trie & LEFTNODE);
-+				trie += offlen + 1;
-+			} else if (*trie & RIGHTPATH) {
-+				/* No left node. */
-+				node = 0;
-+				trie = NULL;
-+			} else {
-+				/* Left node after this node */
-+				node = (*trie & TRIENODE);
-+				trie++;
++				allocated = true;
 +			}
 +		}
 +	}
-+	return trie;
-+}
 +
-+/*
-+ * Use trie to scan s.
-+ * Returns the leaf if one exists, NULL otherwise.
-+ *
-+ * Forwards to utf8nlookup().
-+ */
-+static utf8leaf_t *utf8lookup(const struct utf8data *data, const char *s)
-+{
-+	return utf8nlookup(data, s, (size_t)-1);
-+}
++	ret = ext4_es_insert_delayed_block(inode, lblk, allocated);
 +
-+/*
-+ * Maximum age of any character in s.
-+ * Return -1 if s is not valid UTF-8 unicode.
-+ * Return 0 if only non-assigned code points are used.
-+ */
-+int utf8agemax(const struct utf8data *data, const char *s)
-+{
-+	utf8leaf_t	*leaf;
-+	int		age = 0;
-+	int		leaf_age;
-+
-+	if (!data)
-+		return -1;
-+	while (*s) {
-+		leaf = utf8lookup(data, s);
-+		if (!leaf)
-+			return -1;
-+
-+		leaf_age = utf8agetab[LEAF_GEN(leaf)];
-+		if (leaf_age <= data->maxage && leaf_age > age)
-+			age = leaf_age;
-+		s += utf8clen(s);
-+	}
-+	return age;
-+}
-+EXPORT_SYMBOL(utf8agemax);
-+
-+/*
-+ * Minimum age of any character in s.
-+ * Return -1 if s is not valid UTF-8 unicode.
-+ * Return 0 if non-assigned code points are used.
-+ */
-+int utf8agemin(const struct utf8data *data, const char *s)
-+{
-+	utf8leaf_t	*leaf;
-+	int		age;
-+	int		leaf_age;
-+
-+	if (!data)
-+		return -1;
-+	age = data->maxage;
-+	while (*s) {
-+		leaf = utf8lookup(data, s);
-+		if (!leaf)
-+			return -1;
-+		leaf_age = utf8agetab[LEAF_GEN(leaf)];
-+		if (leaf_age <= data->maxage && leaf_age < age)
-+			age = leaf_age;
-+		s += utf8clen(s);
-+	}
-+	return age;
-+}
-+EXPORT_SYMBOL(utf8agemin);
-+
-+/*
-+ * Maximum age of any character in s, touch at most len bytes.
-+ * Return -1 if s is not valid UTF-8 unicode.
-+ */
-+int utf8nagemax(const struct utf8data *data, const char *s, size_t len)
-+{
-+	utf8leaf_t	*leaf;
-+	int		age = 0;
-+	int		leaf_age;
-+
-+	if (!data)
-+		return -1;
-+	while (len && *s) {
-+		leaf = utf8nlookup(data, s, len);
-+		if (!leaf)
-+			return -1;
-+		leaf_age = utf8agetab[LEAF_GEN(leaf)];
-+		if (leaf_age <= data->maxage && leaf_age > age)
-+			age = leaf_age;
-+		len -= utf8clen(s);
-+		s += utf8clen(s);
-+	}
-+	return age;
-+}
-+EXPORT_SYMBOL(utf8nagemax);
-+
-+/*
-+ * Maximum age of any character in s, touch at most len bytes.
-+ * Return -1 if s is not valid UTF-8 unicode.
-+ */
-+int utf8nagemin(const struct utf8data *data, const char *s, size_t len)
-+{
-+	utf8leaf_t	*leaf;
-+	int		leaf_age;
-+	int		age;
-+
-+	if (!data)
-+		return -1;
-+	age = data->maxage;
-+	while (len && *s) {
-+		leaf = utf8nlookup(data, s, len);
-+		if (!leaf)
-+			return -1;
-+		leaf_age = utf8agetab[LEAF_GEN(leaf)];
-+		if (leaf_age <= data->maxage && leaf_age < age)
-+			age = leaf_age;
-+		len -= utf8clen(s);
-+		s += utf8clen(s);
-+	}
-+	return age;
-+}
-+EXPORT_SYMBOL(utf8nagemin);
-+
-+/*
-+ * Length of the normalization of s.
-+ * Return -1 if s is not valid UTF-8 unicode.
-+ *
-+ * A string of Default_Ignorable_Code_Point has length 0.
-+ */
-+ssize_t utf8len(const struct utf8data *data, const char *s)
-+{
-+	utf8leaf_t	*leaf;
-+	size_t		ret = 0;
-+
-+	if (!data)
-+		return -1;
-+	while (*s) {
-+		leaf = utf8lookup(data, s);
-+		if (!leaf)
-+			return -1;
-+		if (utf8agetab[LEAF_GEN(leaf)] > data->maxage)
-+			ret += utf8clen(s);
-+		else if (LEAF_CCC(leaf) == DECOMPOSE)
-+			ret += strlen(LEAF_STR(leaf));
-+		else
-+			ret += utf8clen(s);
-+		s += utf8clen(s);
-+	}
++errout:
 +	return ret;
 +}
-+EXPORT_SYMBOL(utf8len);
 +
 +/*
-+ * Length of the normalization of s, touch at most len bytes.
-+ * Return -1 if s is not valid UTF-8 unicode.
-+ */
-+ssize_t utf8nlen(const struct utf8data *data, const char *s, size_t len)
-+{
-+	utf8leaf_t	*leaf;
-+	size_t		ret = 0;
+  * This function is grabs code from the very beginning of
+  * ext4_map_blocks, but assumes that the caller is from delayed write
+  * time. This function looks up the requested blocks and sets the
+@@ -1864,25 +1923,9 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		 * XXX: __block_prepare_write() unmaps passed block,
+ 		 * is it OK?
+ 		 */
+-		/*
+-		 * If the block was allocated from previously allocated cluster,
+-		 * then we don't need to reserve it again. However we still need
+-		 * to reserve metadata for every block we're going to write.
+-		 */
+-		if (EXT4_SB(inode->i_sb)->s_cluster_ratio == 1 ||
+-		    !ext4_es_scan_clu(inode,
+-				      &ext4_es_is_delayed, map->m_lblk)) {
+-			ret = ext4_da_reserve_space(inode);
+-			if (ret) {
+-				/* not enough space to reserve */
+-				retval = ret;
+-				goto out_unlock;
+-			}
+-		}
+ 
+-		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
+-					    ~0, EXTENT_STATUS_DELAYED);
+-		if (ret) {
++		ret = ext4_insert_delayed_block(inode, map->m_lblk);
++		if (ret != 0) {
+ 			retval = ret;
+ 			goto out_unlock;
+ 		}
+diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
+index 7849b7f8fd9d..6d7a943f849c 100644
+--- a/include/trace/events/ext4.h
++++ b/include/trace/events/ext4.h
+@@ -2512,6 +2512,41 @@ TRACE_EVENT(ext4_es_shrink,
+ 		  __entry->scan_time, __entry->nr_skipped, __entry->retried)
+ );
+ 
++TRACE_EVENT(ext4_es_insert_delayed_block,
++	TP_PROTO(struct inode *inode, struct extent_status *es,
++		 bool allocated),
 +
-+	if (!data)
-+		return -1;
-+	while (len && *s) {
-+		leaf = utf8nlookup(data, s, len);
-+		if (!leaf)
-+			return -1;
-+		if (utf8agetab[LEAF_GEN(leaf)] > data->maxage)
-+			ret += utf8clen(s);
-+		else if (LEAF_CCC(leaf) == DECOMPOSE)
-+			ret += strlen(LEAF_STR(leaf));
-+		else
-+			ret += utf8clen(s);
-+		len -= utf8clen(s);
-+		s += utf8clen(s);
-+	}
-+	return ret;
-+}
-+EXPORT_SYMBOL(utf8nlen);
++	TP_ARGS(inode, es, allocated),
 +
-+/*
-+ * Set up an utf8cursor for use by utf8byte().
-+ *
-+ *   u8c    : pointer to cursor.
-+ *   data   : const struct utf8data to use for normalization.
-+ *   s      : string.
-+ *   len    : length of s.
-+ *
-+ * Returns -1 on error, 0 on success.
-+ */
-+int utf8ncursor(struct utf8cursor *u8c, const struct utf8data *data,
-+		const char *s, size_t len)
-+{
-+	if (!data)
-+		return -1;
-+	if (!s)
-+		return -1;
-+	u8c->data = data;
-+	u8c->s = s;
-+	u8c->p = NULL;
-+	u8c->ss = NULL;
-+	u8c->sp = NULL;
-+	u8c->len = len;
-+	u8c->slen = 0;
-+	u8c->ccc = STOPPER;
-+	u8c->nccc = STOPPER;
-+	/* Check we didn't clobber the maximum length. */
-+	if (u8c->len != len)
-+		return -1;
-+	/* The first byte of s may not be an utf8 continuation. */
-+	if (len > 0 && (*s & 0xC0) == 0x80)
-+		return -1;
-+	return 0;
-+}
-+EXPORT_SYMBOL(utf8ncursor);
++	TP_STRUCT__entry(
++		__field(	dev_t,		dev		)
++		__field(	ino_t,		ino		)
++		__field(	ext4_lblk_t,	lblk		)
++		__field(	ext4_lblk_t,	len		)
++		__field(	ext4_fsblk_t,	pblk		)
++		__field(	char,		status		)
++		__field(	bool,		allocated	)
++	),
 +
-+/*
-+ * Set up an utf8cursor for use by utf8byte().
-+ *
-+ *   u8c    : pointer to cursor.
-+ *   data   : const struct utf8data to use for normalization.
-+ *   s      : NUL-terminated string.
-+ *
-+ * Returns -1 on error, 0 on success.
-+ */
-+int utf8cursor(struct utf8cursor *u8c, const struct utf8data *data,
-+	       const char *s)
-+{
-+	return utf8ncursor(u8c, data, s, (unsigned int)-1);
-+}
-+EXPORT_SYMBOL(utf8cursor);
++	TP_fast_assign(
++		__entry->dev		= inode->i_sb->s_dev;
++		__entry->ino		= inode->i_ino;
++		__entry->lblk		= es->es_lblk;
++		__entry->len		= es->es_len;
++		__entry->pblk		= ext4_es_pblock(es);
++		__entry->status		= ext4_es_status(es);
++		__entry->allocated	= allocated;
++	),
 +
-+/*
-+ * Get one byte from the normalized form of the string described by u8c.
-+ *
-+ * Returns the byte cast to an unsigned char on succes, and -1 on failure.
-+ *
-+ * The cursor keeps track of the location in the string in u8c->s.
-+ * When a character is decomposed, the current location is stored in
-+ * u8c->p, and u8c->s is set to the start of the decomposition. Note
-+ * that bytes from a decomposition do not count against u8c->len.
-+ *
-+ * Characters are emitted if they match the current CCC in u8c->ccc.
-+ * Hitting end-of-string while u8c->ccc == STOPPER means we're done,
-+ * and the function returns 0 in that case.
-+ *
-+ * Sorting by CCC is done by repeatedly scanning the string.  The
-+ * values of u8c->s and u8c->p are stored in u8c->ss and u8c->sp at
-+ * the start of the scan.  The first pass finds the lowest CCC to be
-+ * emitted and stores it in u8c->nccc, the second pass emits the
-+ * characters with this CCC and finds the next lowest CCC. This limits
-+ * the number of passes to 1 + the number of different CCCs in the
-+ * sequence being scanned.
-+ *
-+ * Therefore:
-+ *  u8c->p  != NULL -> a decomposition is being scanned.
-+ *  u8c->ss != NULL -> this is a repeating scan.
-+ *  u8c->ccc == -1   -> this is the first scan of a repeating scan.
-+ */
-+int utf8byte(struct utf8cursor *u8c)
-+{
-+	utf8leaf_t *leaf;
-+	int ccc;
++	TP_printk("dev %d,%d ino %lu es [%u/%u) mapped %llu status %s "
++		  "allocated %d",
++		  MAJOR(__entry->dev), MINOR(__entry->dev),
++		  (unsigned long) __entry->ino,
++		  __entry->lblk, __entry->len,
++		  __entry->pblk, show_extent_status(__entry->status),
++		  __entry->allocated)
++);
 +
-+	for (;;) {
-+		/* Check for the end of a decomposed character. */
-+		if (u8c->p && *u8c->s == '\0') {
-+			u8c->s = u8c->p;
-+			u8c->p = NULL;
-+		}
-+
-+		/* Check for end-of-string. */
-+		if (!u8c->p && (u8c->len == 0 || *u8c->s == '\0')) {
-+			/* There is no next byte. */
-+			if (u8c->ccc == STOPPER)
-+				return 0;
-+			/* End-of-string during a scan counts as a stopper. */
-+			ccc = STOPPER;
-+			goto ccc_mismatch;
-+		} else if ((*u8c->s & 0xC0) == 0x80) {
-+			/* This is a continuation of the current character. */
-+			if (!u8c->p)
-+				u8c->len--;
-+			return (unsigned char)*u8c->s++;
-+		}
-+
-+		/* Look up the data for the current character. */
-+		if (u8c->p)
-+			leaf = utf8lookup(u8c->data, u8c->s);
-+		else
-+			leaf = utf8nlookup(u8c->data, u8c->s, u8c->len);
-+
-+		/* No leaf found implies that the input is a binary blob. */
-+		if (!leaf)
-+			return -1;
-+
-+		ccc = LEAF_CCC(leaf);
-+		/* Characters that are too new have CCC 0. */
-+		if (utf8agetab[LEAF_GEN(leaf)] > u8c->data->maxage) {
-+			ccc = STOPPER;
-+		} else if (ccc == DECOMPOSE) {
-+			u8c->len -= utf8clen(u8c->s);
-+			u8c->p = u8c->s + utf8clen(u8c->s);
-+			u8c->s = LEAF_STR(leaf);
-+			/* Empty decomposition implies CCC 0. */
-+			if (*u8c->s == '\0') {
-+				if (u8c->ccc == STOPPER)
-+					continue;
-+				ccc = STOPPER;
-+				goto ccc_mismatch;
-+			}
-+			leaf = utf8lookup(u8c->data, u8c->s);
-+		}
-+
-+		/*
-+		 * If this is not a stopper, then see if it updates
-+		 * the next canonical class to be emitted.
-+		 */
-+		if (ccc != STOPPER && u8c->ccc < ccc && ccc < u8c->nccc)
-+			u8c->nccc = ccc;
-+
-+		/*
-+		 * Return the current byte if this is the current
-+		 * combining class.
-+		 */
-+		if (ccc == u8c->ccc) {
-+			if (!u8c->p)
-+				u8c->len--;
-+			return (unsigned char)*u8c->s++;
-+		}
-+
-+		/* Current combining class mismatch. */
-+ccc_mismatch:
-+		if (u8c->nccc == STOPPER) {
-+			/*
-+			 * Scan forward for the first canonical class
-+			 * to be emitted.  Save the position from
-+			 * which to restart.
-+			 */
-+			u8c->ccc = MINCCC - 1;
-+			u8c->nccc = ccc;
-+			u8c->sp = u8c->p;
-+			u8c->ss = u8c->s;
-+			u8c->slen = u8c->len;
-+			if (!u8c->p)
-+				u8c->len -= utf8clen(u8c->s);
-+			u8c->s += utf8clen(u8c->s);
-+		} else if (ccc != STOPPER) {
-+			/* Not a stopper, and not the ccc we're emitting. */
-+			if (!u8c->p)
-+				u8c->len -= utf8clen(u8c->s);
-+			u8c->s += utf8clen(u8c->s);
-+		} else if (u8c->nccc != MAXCCC + 1) {
-+			/* At a stopper, restart for next ccc. */
-+			u8c->ccc = u8c->nccc;
-+			u8c->nccc = MAXCCC + 1;
-+			u8c->s = u8c->ss;
-+			u8c->p = u8c->sp;
-+			u8c->len = u8c->slen;
-+		} else {
-+			/* All done, proceed from here. */
-+			u8c->ccc = STOPPER;
-+			u8c->nccc = STOPPER;
-+			u8c->sp = NULL;
-+			u8c->ss = NULL;
-+			u8c->slen = 0;
-+		}
-+	}
-+}
-+EXPORT_SYMBOL(utf8byte);
-+
-+const struct utf8data *utf8nfkdi(unsigned int maxage)
-+{
-+	int i = ARRAY_SIZE(utf8nfkdidata) - 1;
-+
-+	while (maxage < utf8nfkdidata[i].maxage)
-+		i--;
-+	if (maxage > utf8nfkdidata[i].maxage)
-+		return NULL;
-+	return &utf8nfkdidata[i];
-+}
-+EXPORT_SYMBOL(utf8nfkdi);
-+
-+const struct utf8data *utf8nfkdicf(unsigned int maxage)
-+{
-+	int i = ARRAY_SIZE(utf8nfkdicfdata) - 1;
-+
-+	while (maxage < utf8nfkdicfdata[i].maxage)
-+		i--;
-+	if (maxage > utf8nfkdicfdata[i].maxage)
-+		return NULL;
-+	return &utf8nfkdicfdata[i];
-+}
-+EXPORT_SYMBOL(utf8nfkdicf);
-diff --git a/fs/nls/utf8n.h b/fs/nls/utf8n.h
-new file mode 100644
-index 000000000000..0f5fc14d4fd2
---- /dev/null
-+++ b/fs/nls/utf8n.h
-@@ -0,0 +1,112 @@
-+/*
-+ * Copyright (c) 2014 SGI.
-+ * All rights reserved.
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License as
-+ * published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it would be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ */
-+
-+#ifndef UTF8NORM_H
-+#define UTF8NORM_H
-+
-+#include <linux/types.h>
-+#include <linux/export.h>
-+#include <linux/string.h>
-+#include <linux/module.h>
-+
-+/* Encoding a unicode version number as a single unsigned int. */
-+#define UNICODE_MAJ_SHIFT		(16)
-+#define UNICODE_MIN_SHIFT		(8)
-+
-+#define UNICODE_AGE(MAJ, MIN, REV)			\
-+	(((unsigned int)(MAJ) << UNICODE_MAJ_SHIFT) |	\
-+	 ((unsigned int)(MIN) << UNICODE_MIN_SHIFT) |	\
-+	 ((unsigned int)(REV)))
-+
-+/* Highest unicode version supported by the data tables. */
-+extern int utf8version_is_supported(u8 maj, u8 min, u8 rev);
-+
-+/*
-+ * Look for the correct const struct utf8data for a unicode version.
-+ * Returns NULL if the version requested is too new.
-+ *
-+ * Two normalization forms are supported: nfkdi and nfkdicf.
-+ *
-+ * nfkdi:
-+ *  - Apply unicode normalization form NFKD.
-+ *  - Remove any Default_Ignorable_Code_Point.
-+ *
-+ * nfkdicf:
-+ *  - Apply unicode normalization form NFKD.
-+ *  - Remove any Default_Ignorable_Code_Point.
-+ *  - Apply a full casefold (C + F).
-+ */
-+extern const struct utf8data *utf8nfkdi(unsigned int maxage);
-+extern const struct utf8data *utf8nfkdicf(unsigned int maxage);
-+
-+/*
-+ * Determine the maximum age of any unicode character in the string.
-+ * Returns 0 if only unassigned code points are present.
-+ * Returns -1 if the input is not valid UTF-8.
-+ */
-+extern int utf8agemax(const struct utf8data *data, const char *s);
-+extern int utf8nagemax(const struct utf8data *data, const char *s, size_t len);
-+
-+/*
-+ * Determine the minimum age of any unicode character in the string.
-+ * Returns 0 if any unassigned code points are present.
-+ * Returns -1 if the input is not valid UTF-8.
-+ */
-+extern int utf8agemin(const struct utf8data *data, const char *s);
-+extern int utf8nagemin(const struct utf8data *data, const char *s, size_t len);
-+
-+/*
-+ * Determine the length of the normalized from of the string,
-+ * excluding any terminating NULL byte.
-+ * Returns 0 if only ignorable code points are present.
-+ * Returns -1 if the input is not valid UTF-8.
-+ */
-+extern ssize_t utf8len(const struct utf8data *data, const char *s);
-+extern ssize_t utf8nlen(const struct utf8data *data, const char *s, size_t len);
-+
-+/*
-+ * Cursor structure used by the normalizer.
-+ */
-+struct utf8cursor {
-+	const struct utf8data	*data;
-+	const char	*s;
-+	const char	*p;
-+	const char	*ss;
-+	const char	*sp;
-+	unsigned int	len;
-+	unsigned int	slen;
-+	short int	ccc;
-+	short int	nccc;
-+};
-+
-+/*
-+ * Initialize a utf8cursor to normalize a string.
-+ * Returns 0 on success.
-+ * Returns -1 on failure.
-+ */
-+extern int utf8cursor(struct utf8cursor *u8c, const struct utf8data *data,
-+		      const char *s);
-+extern int utf8ncursor(struct utf8cursor *u8c, const struct utf8data *data,
-+		       const char *s, size_t len);
-+
-+/*
-+ * Get the next byte in the normalization.
-+ * Returns a value > 0 && < 256 on success.
-+ * Returns 0 when the end of the normalization is reached.
-+ * Returns -1 if the string being normalized is not valid UTF-8.
-+ */
-+extern int utf8byte(struct utf8cursor *u8c);
-+
-+#endif /* UTF8NORM_H */
+ /* fsmap traces */
+ DECLARE_EVENT_CLASS(ext4_fsmap_class,
+ 	TP_PROTO(struct super_block *sb, u32 keydev, u32 agno, u64 bno, u64 len,
 -- 
-2.19.0
+2.11.0
