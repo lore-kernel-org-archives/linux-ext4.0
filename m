@@ -1,130 +1,210 @@
-Return-Path: <SRS0=0UAC=MJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from forward105p.mail.yandex.net ([77.88.28.108]:39069 "EHLO
-        forward105p.mail.yandex.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727530AbeI1CJ1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 27 Sep 2018 22:09:27 -0400
-From: Andrey Abramov <st5pub@yandex.ru>
-To: tytso@mit.edu
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Andrey Abramov <st5pub@yandex.ru>
-Subject: [PATCH] Fixed some code style issues in the fs/ext4/...
-Date: Thu, 27 Sep 2018 22:41:43 +0300
-Message-Id: <20180927194143.32665-1-st5pub@yandex.ru>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Return-Path: <SRS0=T+aA=MK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-yw1-f68.google.com ([209.85.161.68]:43322 "EHLO
+        mail-yw1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729509AbeI1WsX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Sep 2018 18:48:23 -0400
+Received: by mail-yw1-f68.google.com with SMTP id k66-v6so2849146ywa.10
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Sep 2018 09:23:52 -0700 (PDT)
+From: Eric Whitney <enwlinux@gmail.com>
+To: linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu, Eric Whitney <enwlinux@gmail.com>
+Subject: [PATCH v3 6/6] ext4: fix reserved cluster accounting at page invalidation time
+Date: Fri, 28 Sep 2018 12:23:16 -0400
+Message-Id: <20180928162316.16480-7-enwlinux@gmail.com>
+In-Reply-To: <20180928162316.16480-1-enwlinux@gmail.com>
+References: <20180928162316.16480-1-enwlinux@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Andrey Abramov <st5pub@yandex.ru>
----
- fs/ext4/balloc.c         |  7 +++----
- fs/ext4/block_validity.c |  4 +++-
- fs/ext4/file.c           | 16 ++++++++++------
- 3 files changed, 16 insertions(+), 11 deletions(-)
+Add new code to count canceled pending cluster reservations on bigalloc
+file systems and to reduce the cluster reservation count on all file
+systems using delayed allocation.  This replaces old code in
+ext4_da_page_release_reservations that was incorrect.
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index e5d6ee61ff48..87dca171d7f6 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -239,7 +239,7 @@ unsigned ext4_free_clusters_after_init(struct super_block *sb,
- 				       ext4_group_t block_group,
- 				       struct ext4_group_desc *gdp)
- {
--	return num_clusters_in_group(sb, block_group) - 
-+	return num_clusters_in_group(sb, block_group) -
- 		ext4_num_overhead_clusters(sb, block_group, gdp);
+Signed-off-by: Eric Whitney <enwlinux@gmail.com>
+---
+ fs/ext4/ext4.h           |  1 +
+ fs/ext4/extents_status.c | 90 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inode.c          | 23 +++----------
+ 3 files changed, 95 insertions(+), 19 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0bdbbd151d2c..57cbc98d730f 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2491,6 +2491,7 @@ extern int ext4_page_mkwrite(struct vm_fault *vmf);
+ extern int ext4_filemap_fault(struct vm_fault *vmf);
+ extern qsize_t *ext4_get_reserved_space(struct inode *inode);
+ extern int ext4_get_projid(struct inode *inode, kprojid_t *projid);
++extern void ext4_da_release_space(struct inode *inode, int to_free);
+ extern void ext4_da_update_reserve_space(struct inode *inode,
+ 					int used, int quota_claim);
+ extern int ext4_issue_zeroout(struct inode *inode, ext4_lblk_t lblk,
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index c92fbf444d08..2b439afafe13 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1780,3 +1780,93 @@ static void __revise_pending(struct inode *inode, ext4_lblk_t lblk,
+ 			__remove_pending(inode, last);
+ 	}
+ }
++
++/*
++ * ext4_es_remove_blks - remove block range from extents status tree and
++ *                       reduce reservation count or cancel pending
++ *                       reservation as needed
++ *
++ * @inode - file containing range
++ * @lblk - first block in range
++ * @len - number of blocks to remove
++ *
++ */
++void ext4_es_remove_blks(struct inode *inode, ext4_lblk_t lblk,
++			 ext4_lblk_t len)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	unsigned int clu_size, reserved = 0;
++	ext4_lblk_t last_lclu, first, length, remainder, last;
++	bool delonly;
++	int err = 0;
++	struct pending_reservation *pr;
++	struct ext4_pending_tree *tree;
++
++	/*
++	 * Process cluster by cluster for bigalloc - there may be up to
++	 * two clusters in a 4k page with a 1k block size and two blocks
++	 * per cluster.  Also necessary for systems with larger page sizes
++	 * and potentially larger block sizes.
++	 */
++	clu_size = sbi->s_cluster_ratio;
++	last_lclu = EXT4_B2C(sbi, lblk + len - 1);
++
++	write_lock(&EXT4_I(inode)->i_es_lock);
++
++	for (first = lblk, remainder = len;
++	     remainder > 0;
++	     first += length, remainder -= length) {
++
++		if (EXT4_B2C(sbi, first) == last_lclu)
++			length = remainder;
++		else
++			length = clu_size - EXT4_LBLK_COFF(sbi, first);
++
++		/*
++		 * The BH_Delay flag, which triggers calls to this function,
++		 * and the contents of the extents status tree can be
++		 * inconsistent due to writepages activity. So, note whether
++		 * the blocks to be removed actually belong to an extent with
++		 * delayed only status.
++		 */
++		delonly = __es_scan_clu(inode, &ext4_es_is_delonly, first);
++
++		/*
++		 * because of the writepages effect, written and unwritten
++		 * blocks could be removed here
++		 */
++		last = first + length - 1;
++		err = __es_remove_extent(inode, first, last);
++		if (err)
++			ext4_warning(inode->i_sb,
++				     "%s: couldn't remove page (err = %d)",
++				     __func__, err);
++
++		/* non-bigalloc case: simply count the cluster for release */
++		if (sbi->s_cluster_ratio == 1 && delonly) {
++			reserved++;
++			continue;
++		}
++
++		/*
++		 * bigalloc case: if all delayed allocated only blocks have
++		 * just been removed from a cluster, either cancel a pending
++		 * reservation if it exists or count a cluster for release
++		 */
++		if (delonly &&
++		    !__es_scan_clu(inode, &ext4_es_is_delonly, first)) {
++			pr = __get_pending(inode, EXT4_B2C(sbi, first));
++			if (pr != NULL) {
++				tree = &EXT4_I(inode)->i_pending_tree;
++				rb_erase(&pr->rb_node, &tree->root);
++				kmem_cache_free(ext4_pending_cachep, pr);
++			} else {
++				reserved++;
++			}
++		}
++	}
++
++	write_unlock(&EXT4_I(inode)->i_es_lock);
++
++	ext4_da_release_space(inode, reserved);
++}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 57c6dd38f071..9b69f88bdacc 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1595,7 +1595,7 @@ static int ext4_da_reserve_space(struct inode *inode)
+ 	return 0;       /* success */
  }
  
-@@ -261,7 +261,7 @@ unsigned ext4_free_clusters_after_init(struct super_block *sb,
-  * @bh:			pointer to the buffer head to store the block
-  *			group descriptor
-  */
--struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
-+struct ext4_group_desc *ext4_get_group_desc(struct super_block *sb,
- 					     ext4_group_t block_group,
- 					     struct buffer_head **bh)
+-static void ext4_da_release_space(struct inode *inode, int to_free)
++void ext4_da_release_space(struct inode *inode, int to_free)
  {
-@@ -823,8 +823,7 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
- 	if (!ext4_has_feature_meta_bg(sb) || metagroup < first_meta_bg)
- 		return ext4_bg_num_gdb_nometa(sb, group);
+ 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+@@ -1634,13 +1634,11 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 					     unsigned int offset,
+ 					     unsigned int length)
+ {
+-	int to_release = 0, contiguous_blks = 0;
++	int contiguous_blks = 0;
+ 	struct buffer_head *head, *bh;
+ 	unsigned int curr_off = 0;
+ 	struct inode *inode = page->mapping->host;
+-	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+ 	unsigned int stop = offset + length;
+-	int num_clusters;
+ 	ext4_fsblk_t lblk;
  
--	return ext4_bg_num_gdb_meta(sb,group);
+ 	BUG_ON(stop > PAGE_SIZE || stop < length);
+@@ -1654,7 +1652,6 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 			break;
+ 
+ 		if ((offset <= curr_off) && (buffer_delay(bh))) {
+-			to_release++;
+ 			contiguous_blks++;
+ 			clear_buffer_delay(bh);
+ 		} else if (contiguous_blks) {
+@@ -1662,7 +1659,7 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 			       (PAGE_SHIFT - inode->i_blkbits);
+ 			lblk += (curr_off >> inode->i_blkbits) -
+ 				contiguous_blks;
+-			ext4_es_remove_extent(inode, lblk, contiguous_blks);
++			ext4_es_remove_blks(inode, lblk, contiguous_blks);
+ 			contiguous_blks = 0;
+ 		}
+ 		curr_off = next_off;
+@@ -1671,21 +1668,9 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 	if (contiguous_blks) {
+ 		lblk = page->index << (PAGE_SHIFT - inode->i_blkbits);
+ 		lblk += (curr_off >> inode->i_blkbits) - contiguous_blks;
+-		ext4_es_remove_extent(inode, lblk, contiguous_blks);
++		ext4_es_remove_blks(inode, lblk, contiguous_blks);
+ 	}
+ 
+-	/* If we have released all the blocks belonging to a cluster, then we
+-	 * need to release the reserved space for that cluster. */
+-	num_clusters = EXT4_NUM_B2C(sbi, to_release);
+-	while (num_clusters > 0) {
+-		lblk = (page->index << (PAGE_SHIFT - inode->i_blkbits)) +
+-			((num_clusters - 1) << sbi->s_cluster_bits);
+-		if (sbi->s_cluster_ratio == 1 ||
+-		    !ext4_es_scan_clu(inode, &ext4_es_is_delayed, lblk))
+-			ext4_da_release_space(inode, 1);
 -
-+	return ext4_bg_num_gdb_meta(sb, group);
+-		num_clusters--;
+-	}
  }
  
  /*
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-index 913061c0de1b..35e96951eb84 100644
---- a/fs/ext4/block_validity.c
-+++ b/fs/ext4/block_validity.c
-@@ -154,11 +154,12 @@ int ext4_setup_system_zone(struct super_block *sb)
- 	if (sbi->system_blks.rb_node)
- 		return 0;
- 
--	for (i=0; i < ngroups; i++) {
-+	for (i = 0; i < ngroups; i++) {
- 		if (ext4_bg_has_super(sb, i) &&
- 		    ((i < 5) || ((i % flex_size) == 0)))
- 			add_system_zone(sbi, ext4_group_first_block_no(sb, i),
- 					ext4_bg_num_gdb(sb, i) + 1);
-+
- 		gdp = ext4_get_group_desc(sb, i, NULL);
- 		ret = add_system_zone(sbi, ext4_block_bitmap(sb, gdp), 1);
- 		if (ret)
-@@ -174,6 +175,7 @@ int ext4_setup_system_zone(struct super_block *sb)
- 
- 	if (test_opt(sb, DEBUG))
- 		debug_print_tree(sbi);
-+
- 	return 0;
- }
- 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 69d65d49837b..3e5ded9b3dd4 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -64,7 +64,10 @@ static ssize_t ext4_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
- 
- static ssize_t ext4_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
- {
--	if (unlikely(ext4_forced_shutdown(EXT4_SB(file_inode(iocb->ki_filp)->i_sb))))
-+	if (unlikely(ext4_forced_shutdown(
-+		EXT4_SB(file_inode(iocb->ki_filp)->i_sb)
-+		)))
-+
- 		return -EIO;
- 
- 	if (!iov_iter_count(to))
-@@ -89,14 +92,15 @@ static int ext4_release_file(struct inode *inode, struct file *filp)
- 		ext4_clear_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
- 	}
- 	/* if we are the last writer on the inode, drop the block reservation */
--	if ((filp->f_mode & FMODE_WRITE) &&
--			(atomic_read(&inode->i_writecount) == 1) &&
--		        !EXT4_I(inode)->i_reserved_data_blocks)
--	{
-+	if ((filp->f_mode & FMODE_WRITE)
-+		&& (atomic_read(&inode->i_writecount) == 1)
-+		&& !EXT4_I(inode)->i_reserved_data_blocks) {
-+
- 		down_write(&EXT4_I(inode)->i_data_sem);
- 		ext4_discard_preallocations(inode);
- 		up_write(&EXT4_I(inode)->i_data_sem);
- 	}
-+
- 	if (is_dx(inode) && filp->private_data)
- 		ext4_htree_free_dir_info(filp->private_data);
- 
-@@ -429,7 +433,7 @@ static int ext4_sample_last_mounted(struct super_block *sb,
- 	return err;
- }
- 
--static int ext4_file_open(struct inode * inode, struct file * filp)
-+static int ext4_file_open(struct inode *inode, struct file *filp)
- {
- 	int ret;
- 
 -- 
-2.19.0
+2.11.0
