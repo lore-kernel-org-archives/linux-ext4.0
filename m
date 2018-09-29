@@ -1,86 +1,31 @@
-Return-Path: <SRS0=VTDm=MG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56042 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727136AbeIYBia (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 24 Sep 2018 21:38:30 -0400
-Date: Mon, 24 Sep 2018 21:34:43 +0200
-From: Jan Kara <jack@suse.cz>
-To: Chengguang Xu <cgxu519@gmx.com>
-Cc: jack@suse.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2: remove redundant building macro check
-Message-ID: <20180924193443.GA4841@quack2.suse.cz>
-References: <20180924061015.30976-1-cgxu519@gmx.com>
+Return-Path: <SRS0=tX6L=ML=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:34818 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728246AbeI2Vr7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 29 Sep 2018 17:47:59 -0400
+Date: Sat, 29 Sep 2018 11:19:09 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Xose Vazquez Perez <xose.vazquez@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: uninit_bg removed from mke2fs.conf
+Message-ID: <20180929151908.GB2290@thunk.org>
+References: <ac3c94bd-adf7-eb8a-f776-e6f3a31f9df9@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20180924061015.30976-1-cgxu519@gmx.com>
+In-Reply-To: <ac3c94bd-adf7-eb8a-f776-e6f3a31f9df9@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 24-09-18 14:10:15, Chengguang Xu wrote:
-> If macro CONFIG_QUOTA is not enabled then mount option flag
-> of usrquota/grpquota will not be set, so we can remove some
-> building macro check safely in ext2_shwo_options().
-> Additionally, I think it's better to define EXT2_MOUNT_DAX
-> regardless macro CONFIG_FS_DAX is enabled just like acl/xattr.
+On Sat, Sep 29, 2018 at 03:39:06PM +0200, Xose Vazquez Perez wrote:
 > 
-> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+> It was removed from misc/mke2fs.conf.in in d0b9e0a6aa7d6805338a43b4e372623352d8df09
+> 
+> Was it intentional?
 
-Looks like a nice cleanup. Applied. Thanks.
+Yes, metadata_csum's functionality is a superset of uninit_bg with a
+different way of checksuming the block group descriptors.  So it's
+contradictory to have both metadata_csum and uninit_bg enabled at the
+same time.
 
-								Honza
-
-> ---
->  fs/ext2/ext2.h  | 4 ----
->  fs/ext2/super.c | 5 +----
->  2 files changed, 1 insertion(+), 8 deletions(-)
-> 
-> diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-> index 00e759f05161..e770cd100a6a 100644
-> --- a/fs/ext2/ext2.h
-> +++ b/fs/ext2/ext2.h
-> @@ -390,11 +390,7 @@ struct ext2_inode {
->  #define EXT2_MOUNT_USRQUOTA		0x020000  /* user quota */
->  #define EXT2_MOUNT_GRPQUOTA		0x040000  /* group quota */
->  #define EXT2_MOUNT_RESERVATION		0x080000  /* Preallocation */
-> -#ifdef CONFIG_FS_DAX
->  #define EXT2_MOUNT_DAX			0x100000  /* Direct Access */
-> -#else
-> -#define EXT2_MOUNT_DAX			0
-> -#endif
->  
->  
->  #define clear_opt(o, opt)		o &= ~EXT2_MOUNT_##opt
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index 73bd58fa13de..cb91baa4275d 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -309,20 +309,17 @@ static int ext2_show_options(struct seq_file *seq, struct dentry *root)
->  	if (test_opt(sb, NOBH))
->  		seq_puts(seq, ",nobh");
->  
-> -#if defined(CONFIG_QUOTA)
->  	if (sbi->s_mount_opt & EXT2_MOUNT_USRQUOTA)
->  		seq_puts(seq, ",usrquota");
->  
->  	if (sbi->s_mount_opt & EXT2_MOUNT_GRPQUOTA)
->  		seq_puts(seq, ",grpquota");
-> -#endif
->  
-> -#ifdef CONFIG_FS_DAX
->  	if (sbi->s_mount_opt & EXT2_MOUNT_XIP)
->  		seq_puts(seq, ",xip");
-> +
->  	if (sbi->s_mount_opt & EXT2_MOUNT_DAX)
->  		seq_puts(seq, ",dax");
-> -#endif
->  
->  	if (!test_opt(sb, RESERVATION))
->  		seq_puts(seq, ",noreservation");
-> -- 
-> 2.17.1
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+						- Ted
