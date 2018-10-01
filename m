@@ -1,180 +1,104 @@
-Return-Path: <SRS0=tE3u=M7=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail03.adl2.internode.on.net ([150.101.137.141]:26427 "EHLO
-        ipmail03.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725934AbeJSJBr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 Oct 2018 05:01:47 -0400
-Date: Fri, 19 Oct 2018 11:43:03 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Jeff Moyer <jmoyer@redhat.com>,
-        Johannes Thumshirn <jthumshirn@suse.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org
-Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
-Message-ID: <20181019004303.GI6311@dastard>
-References: <20181002100531.GC4135@quack2.suse.cz>
- <20181002121039.GA3274@linux-x5ow.site>
- <20181002142959.GD9127@quack2.suse.cz>
- <x49h8hkfhk9.fsf@segfault.boston.devel.redhat.com>
- <20181018002510.GC6311@dastard>
- <20181018145555.GS23493@quack2.suse.cz>
+Return-Path: <SRS0=j8gV=MN=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mout.gmx.net ([212.227.17.20]:35257 "EHLO mout.gmx.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729412AbeJAV0d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 1 Oct 2018 17:26:33 -0400
+Subject: Re: cross-fs copy support
+To: Joshi <joshiiitr@gmail.com>, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
+From: Qu Wenruo <quwenruo.btrfs@gmx.com>
+Message-ID: <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
+Date: Mon, 1 Oct 2018 22:48:15 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181018145555.GS23493@quack2.suse.cz>
+In-Reply-To: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ protocol="application/pgp-signature";
+ boundary="Qv99O5hZknZYCc2HZwRH8gtgh2XOxSLYH"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 18, 2018 at 04:55:55PM +0200, Jan Kara wrote:
-> On Thu 18-10-18 11:25:10, Dave Chinner wrote:
-> > On Wed, Oct 17, 2018 at 04:23:50PM -0400, Jeff Moyer wrote:
-> > > MAP_SYNC
-> > > - file system guarantees that metadata required to reach faulted-in file
-> > >   data is consistent on media before a write fault is completed.  A
-> > >   side-effect is that the page cache will not be used for
-> > >   writably-mapped pages.
-> > 
-> > I think you are conflating current implementation with API
-> > requirements - MAP_SYNC doesn't guarantee anything about page cache
-> > use. The man page definition simply says "supported only for files
-> > supporting DAX" and that it provides certain data integrity
-> > guarantees. It does not define the implementation.
-> > 
-> > We've /implemented MAP_SYNC/ as O_DSYNC page fault behaviour,
-> > because that's the only way we can currently provide the required
-> > behaviour to userspace. However, if a filesystem can use the page
-> > cache to provide the required functionality, then it's free to do
-> > so.
-> > 
-> > i.e. if someone implements a pmem-based page cache, MAP_SYNC data
-> > integrity could be provided /without DAX/ by any filesystem using
-> > that persistent page cache. i.e. MAP_SYNC really only requires
-> > mmap() of CPU addressable persistent memory - it does not require
-> > DAX. Right now, however, the only way to get this functionality is
-> > through a DAX capable filesystem on dax capable storage.
-> > 
-> > And, FWIW, this is pretty much how NOVA maintains DAX w/ COW - it
-> > COWs new pages in pmem and attaches them a special per-inode cache
-> > on clean->dirty transition. Then on data sync, background writeback
-> > or crash recovery, it migrates them from the cache into the file map
-> > proper via atomic metadata pointer swaps.
-> > 
-> > IOWs, NOVA provides the correct MAP_SYNC semantics by using a
-> > separate persistent per-inode write cache to provide the correct
-> > crash recovery semantics for MAP_SYNC.
-> 
-> Corect. NOVA would be able to provide MAP_SYNC semantics without DAX. But
-> effectively it will be also able to provide MAP_DIRECT semantics, right?
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--Qv99O5hZknZYCc2HZwRH8gtgh2XOxSLYH
+Content-Type: multipart/mixed; boundary="ci0Jq2j01hmhpU1Xr0oZYQMaAFiUooomG";
+ protected-headers="v1"
+From: Qu Wenruo <quwenruo.btrfs@gmx.com>
+To: Joshi <joshiiitr@gmail.com>, linux-fsdevel@vger.kernel.org,
+ linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+ linux-ext4@vger.kernel.org
+Message-ID: <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
+Subject: Re: cross-fs copy support
+References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
+In-Reply-To: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
 
-Yes, I think so. It still needs to do COW on first write fault,
-but then the app has direct access to the data buffer until it is
-cleaned and put back in place. The "put back in place" is just an
-atomic swap of metadata pointers, so it doesn't need the page cache
-at all...
+--ci0Jq2j01hmhpU1Xr0oZYQMaAFiUooomG
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: quoted-printable
 
-> Because there won't be DRAM between app and persistent storage and I don't
-> think COW tricks or other data integrity methods are that interesting for
-> the application.
 
-Not for the application, but the filesystem still wants to support
-snapshots and other such functionality that requires COW. And NOVA
-doesn't have write-in-place functionality at all - it always COWs
-on the clean->dirty transition.
 
-> Most users of O_DIRECT are concerned about getting close
-> to media speed performance and low DRAM usage...
+On 2018/10/1 =E4=B8=8B=E5=8D=8810:32, Joshi wrote:
+> I was wondering about the cross-fs copy through copy_file_range.
 
-*nod*
+The term "cross-fs" looks pretty confusing.
 
-> > > and what I think Dan had proposed:
-> > > 
-> > > mmap flag, MAP_DIRECT
-> > > - file system guarantees that page cache will not be used to front storage.
-> > >   storage MUST be directly addressable.  This *almost* implies MAP_SYNC.
-> > >   The subtle difference is that a write fault /may/ not result in metadata
-> > >   being written back to media.
-> > 
-> > SIimilar to O_DIRECT, these semantics do not allow userspace apps to
-> > replace msync/fsync with CPU cache flush operations. So any
-> > application that uses this mode still needs to use either MAP_SYNC
-> > or issue msync/fsync for data integrity.
-> > 
-> > If the app is using MAP_DIRECT, the what do we do if the filesystem
-> > can't provide the required semantics for that specific operation? In
-> > the case of O_DIRECT, we fall back to buffered IO because it has the
-> > same data integrity semantics as O_DIRECT and will always work. It's
-> > just slower and consumes more memory, but the app continues to work
-> > just fine.
-> > 
-> > Sending SIGBUS to apps when we can't perform MAP_DIRECT operations
-> > without using the pagecache seems extremely problematic to me.  e.g.
-> > an app already has an open MAP_DIRECT file, and a third party
-> > reflinks it or dedupes it and the fs has to fall back to buffered IO
-> > to do COW operations. This isn't the app's fault - the kernel should
-> > just fall back transparently to using the page cache for the
-> > MAP_DIRECT app and just keep working, just like it would if it was
-> > using O_DIRECT read/write.
-> 
-> There's another option of failing reflink / dedupe with EBUSY if the file
-> is mapped with MAP_DIRECT and the filesystem cannot support relink &
-> MAP_DIRECT together. But there are downsides to that as well.
+If you mean "cross-subvolume", then it should work without problem in btr=
+fs.
 
-Yup, not the least that setting MAP_DIRECT can race with a
-reflink....
+If you mean reflink across two different file systems (not matter the
+same fs type or not).
+Then it's impossible to work.
 
-> > The point I'm trying to make here is that O_DIRECT is a /hint/, not
-> > a guarantee, and it's done that way to prevent applications from
-> > being presented with transient, potentially fatal error cases
-> > because a filesystem implementation can't do a specific operation
-> > through the direct IO path.
-> > 
-> > IMO, MAP_DIRECT needs to be a hint like O_DIRECT and not a
-> > guarantee. Over time we'll end up with filesystems that can
-> > guarantee that MAP_DIRECT is always going to use DAX, in the same
-> > way we have filesystems that guarantee O_DIRECT will always be
-> > O_DIRECT (e.g. XFS). But if we decide that MAP_DIRECT must guarantee
-> > no page cache will ever be used, then we are basically saying
-> > "filesystems won't provide MAP_DIRECT even in common, useful cases
-> > because they can't provide MAP_DIRECT in all cases." And that
-> > doesn't seem like a very good solution to me.
-> 
-> These are good points. I'm just somewhat wary of the situation where users
-> will map files with MAP_DIRECT and then the machine starts thrashing
-> because the file got reflinked and thus pagecache gets used suddently.
+Reflink (clone_file_range) works by inserting data pointers into the
+filesystem other than really copying the data.
+Thus if the source is outside of the fs, it's really impossible to work,
+as the source pointer/data is completely out of control of the dest fs.
 
-It's still better than apps randomly getting SIGBUS.
+> It seems current implement has below check, that disables such copy.
+>=20
+> 1577         /* this could be relaxed once a method supports cross-fs c=
+opies */
+> 1578         if (inode_in->i_sb !=3D inode_out->i_sb)
+> 1579                 return -EXDEV;
+>=20
+> May I know what are the thoughts behind disabling cross-fs copy?
+> Code has the comment "once a method supports", but that leaves me
+> wondering exactly what 'method' is expected, and from whom.
+>=20
+> I disabled the check, and copy across volumes seemed to work fine. At
+> least for a single file (1G size), with no data mismatch, and faster
+> speed than regular copy.
 
-FWIW, this suggests that we probably need to be able to host both
-DAX pages and page cache pages on the same file at the same time,
-and be able to handle page faults based on the type of page being
-mapped (different sets of fault ops for different page types?)
-and have fallback paths when the page type needs to be changed
-between direct and cached during the fault....
+Please provide the steps or script about how you did the reflink, in
+case I misunderstand your "cross-fs" definition.
 
-> With O_DIRECT the fallback to buffered IO is quite rare (at least for major
-> filesystems) so usually people just won't notice. If fallback for
-> MAP_DIRECT will be easy to hit, I'm not sure it would be very useful.
+And just in case you're really doing cross filesystem reflink, please
+also run "btrfs check" on both fs.
 
-Which is just like the situation where O_DIRECT on ext3 was not very
-useful, but on other filesystems like XFS it was fully functional.
+Thanks,
+Qu
 
-IMO, the fact that a specific filesytem has a suboptimal fallback
-path for an uncommon behaviour isn't an argument against MAP_DIRECT
-as a hint - it's actually a feature. If MAP_DIRECT can't be used
-until it's always direct access, then most filesystems wouldn't be
-able to provide any faster paths at all. It's much better to have
-partial functionality now than it is to never have the functionality
-at all, and so we need to design in the flexibility we need to
-iteratively improve implementations without needing API changes that
-will break applications.
 
-Cheers,
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+--ci0Jq2j01hmhpU1Xr0oZYQMaAFiUooomG--
+
+--Qv99O5hZknZYCc2HZwRH8gtgh2XOxSLYH
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAEBCAAdFiEELd9y5aWlW6idqkLhwj2R86El/qgFAluyM68ACgkQwj2R86El
+/qiZXQgAl42dvErkqnlBQaSinUyBBlH97d2zZW21MM3WE8kofldrlZwmBhtngGph
+KtZX9YBuPVrmHY3h2dZ4tt+8BOn9c0HYiFK1g7hrSgsggzZnpyRgEHkqzH1QPUFV
+F8b76taNajcoQnsrVfbjHHBWGARcsNvxUIu1gAW3JtmHiQUxKGqgvD3t3p4V0/+r
+rgxdoPb6d+qSI1fAq01xcHQwyNTvsCmEXn9edauux9c1mqW2WhX7yXiEoeqHVnzc
+GodbRlQBeURPwjhnmjEzH/3syeIqiu7uNKu1IBbKsDbacgXvmMWNtbt2cozz9wMG
+z+kj2Dg17pO0MXAzbrznSEDj0cJNtA==
+=iJnX
+-----END PGP SIGNATURE-----
+
+--Qv99O5hZknZYCc2HZwRH8gtgh2XOxSLYH--
