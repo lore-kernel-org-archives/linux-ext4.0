@@ -1,157 +1,87 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail01.adl2.internode.on.net ([150.101.137.133]:16084 "EHLO
-        ipmail01.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726644AbeJRJIe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Oct 2018 05:08:34 -0400
-Date: Thu, 18 Oct 2018 12:05:00 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Dan Williams <dan.j.williams@intel.com>
-Cc: jmoyer <jmoyer@redhat.com>, Eric Sandeen <sandeen@sandeen.net>,
-        zwisler@kernel.org, Christoph Hellwig <hch@lst.de>,
-        Jan Kara <jack@suse.cz>, linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH 0/3] ext2, ext4, xfs: hard fail dax mount on unsupported
- devices
-Message-ID: <20181018010500.GD6311@dastard>
-References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
- <20181011103636.GC9467@quack2.suse.cz>
- <CAPcyv4iAD_wkjY1way1rOxr4=gC_TGx71VquF13ooAuUPz9RJw@mail.gmail.com>
- <5a8e54e8-4845-1c85-e4e9-0b9b551a9ce2@sandeen.net>
- <20181012082154.GB30154@lst.de>
- <CAOxpaSWf=6RBTa3WM=Hnbr7MwpQ5mMSMAZ+B5FfZo3zKv4Nu7w@mail.gmail.com>
- <116ef687-f23d-b45c-1b48-fd444b346719@sandeen.net>
- <x491s8ofeg2.fsf@segfault.boston.devel.redhat.com>
- <CAPcyv4iOH4o_1mBh2a1jEqJZGxwki2FHqp8UM0Cj-ZCzHoxQWQ@mail.gmail.com>
+Return-Path: <SRS0=j8gV=MN=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-ed1-f44.google.com ([209.85.208.44]:43616 "EHLO
+        mail-ed1-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729480AbeJAVyQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Oct 2018 17:54:16 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAPcyv4iOH4o_1mBh2a1jEqJZGxwki2FHqp8UM0Cj-ZCzHoxQWQ@mail.gmail.com>
+References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
+ <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
+In-Reply-To: <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
+From: Joshi <joshiiitr@gmail.com>
+Date: Mon, 1 Oct 2018 20:45:45 +0530
+Message-ID: <CA+1E3rJmoeVGhokE0phbH1kv_+izT0W14ZijWnjVbU0PPqRwOg@mail.gmail.com>
+Subject: Re: cross-fs copy support
+To: quwenruo.btrfs@gmx.com
+Cc: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 17, 2018 at 02:44:55PM -0700, Dan Williams wrote:
-> On Wed, Oct 17, 2018 at 2:31 PM Jeff Moyer <jmoyer@redhat.com> wrote:
+Sorry if my post was not clear enough. I picked the term "cross-fs"
+from the implementation of vfs_copy_file_range.
+Below snippet, inside vfs_copy_file_range -
+1578         /* this could be relaxed once a method supports cross-fs copie=
+s */
+1579         if (inode_in->i_sb !=3D inode_out->i_sb)
+1580                 return -EXDEV;
+
+And I was not trying reflink for copy, rather I just used example code
+for copy_file_range syscall -
+http://man7.org/linux/man-pages/man2/copy_file_range.2.html
+This code creates a new file first, and later issues "copy_file_range"
+for copying. I was trying this sort of copy among files residing on
+btrfs, ext4, and xfs.
+Although vfs_copy_file_range internally uses clone_file_range (which
+would be true for btrfs and xfs).
+On Mon, Oct 1, 2018 at 8:18 PM Qu Wenruo <quwenruo.btrfs@gmx.com> wrote:
+>
+>
+>
+> On 2018/10/1 =E4=B8=8B=E5=8D=8810:32, Joshi wrote:
+> > I was wondering about the cross-fs copy through copy_file_range.
+>
+> The term "cross-fs" looks pretty confusing.
+>
+> If you mean "cross-subvolume", then it should work without problem in btr=
+fs.
+>
+> If you mean reflink across two different file systems (not matter the
+> same fs type or not).
+> Then it's impossible to work.
+>
+> Reflink (clone_file_range) works by inserting data pointers into the
+> filesystem other than really copying the data.
+> Thus if the source is outside of the fs, it's really impossible to work,
+> as the source pointer/data is completely out of control of the dest fs.
+>
+> > It seems current implement has below check, that disables such copy.
 > >
-> > Eric Sandeen <sandeen@sandeen.net> writes:
+> > 1577         /* this could be relaxed once a method supports cross-fs c=
+opies */
+> > 1578         if (inode_in->i_sb !=3D inode_out->i_sb)
+> > 1579                 return -EXDEV;
 > >
-> > > I've been thinking about the per-inode stuff a bit, and while I don't know
-> > > how to resolve some of the trickier issues, at least the expected behavior
-> > > seems like something we can narrow down and specify.
-> > >
-> > > Because it's an on-disk flag (in xfs today, in any case) it seems that
-> > > the only sane behavior to expect is either/or, i.e.:
-> > >
-> > > Mount option: All files always dax, per-inode flags ignored (or rejected)
-> > > Per-inode: Mount option cannot be specified; only inodes explicitly flagged are dax
-> > >
-> > > Think about it; what would mount-option-plus-per-inode mean?  We have
-> > > no "negative" dax flag, so while mount-option-with-flag surely means
-> > > "dax", what the heck does mount-option-without-flag mean, and how is it
-> > > distinguishable from mount option only?
-> > >
-> > > I submit that flags can only have meaning w/o the fs-wide mount option
-> > > enabled, so the question of "should we hard fail mount -o dax for devices
-> > > that cannot support it" seems to be orthogonal to the per-inode question.
-> > >
-> > > i.e. mount -o dax really can only mean "I want dax on everything" and so
-> > > again, I think we probably need to fail the mount if that can't be honored.
+> > May I know what are the thoughts behind disabling cross-fs copy?
+> > Code has the comment "once a method supports", but that leaves me
+> > wondering exactly what 'method' is expected, and from whom.
 > >
-> > I hate to even open up this can of worms, but what about killing the dax
-> > mount option?
-> >
-> > To quote Christoph:
-> >   How does an application "make use of DAX"?  What actual user visible
-> >   semantics are associated with a file that has this flag set?
-> >
-> > We're already talking about making caching decisions automatically, so
-> > does DAX even mean anything at that point?  If the storage and the file
-> > system support it, enable it.
-> >
-> > From what we've seen so far, aplications want:
-> > 1) to be able to make data persistent from userspace
-> >    For this, we have MAP_SYNC.
-> > 2) to determine whether or not page cache will be used
-> >    For this, we have O_DIRECT for read/write access, and MAP_SYNC for
-> >    mmap access (and maybe a third option coming, we'll see).
-> 
-> As Jan has said, it's not safe to assume that 'no page cache' is
-> implied with MAP_SYNC. It's a side effect not a contract of the
-> current implementation.
+> > I disabled the check, and copy across volumes seemed to work fine. At
+> > least for a single file (1G size), with no data mismatch, and faster
+> > speed than regular copy.
+>
+> Please provide the steps or script about how you did the reflink, in
+> case I misunderstand your "cross-fs" definition.
+>
+> And just in case you're really doing cross filesystem reflink, please
+> also run "btrfs check" on both fs.
+>
+> Thanks,
+> Qu
+>
+>
 
-Even MAP_DIRECT shouldn't mean "no page cache". O_DIRECT is a hint,
-not a guarantee, and so it may very well use the page cache if it
-needs to (as I've just explained in detail in a different thread).
 
-> > The only thing users gain from a mount option is the ability to turn OFF
-> > dax.  I suppose there might be a use case that wants this, but I'm not
-> > aware of it.
-> 
-> I think we're stuck with it as many scripts would break if it ever
-> went completely away. However, we could mark it deprecated / ignored
-
-I don't really care that much about this - it is still marked
-experimental.
-
-That said, deprecation is the best way forward here if we are going
-to remove the mount option. We've done this for other XFS mount
-options recently (e.g. barrier/nobarrier) where the functionality is
-now fully baked into the fileystem and there's no user option to
-control it anymore.
-
-What we really need is a document describing the expected behaviour
-of filesysetms on dax-capable storage. Let's nail down exactly what
-we need to do to pull DAX out of the experimental state before we
-start changing things. We've been doing things in a very ad-hoc way
-for a while now, and we're not really converging on an endpoint where we
-can say "we're done, have at it".
-
-I think we need to decide on:
-
-- default filesystem behaviour on dax-capable block devices
-- what information aout DAX do applications actually need? What
-  makes sense to provide them with that information?
-- how to provide hints to the kernel for desired behaviour
-  - on-disk inode flags, or something else?
-  - dax/nodax mount options or root dir inode flags become default
-    global hints?
-  - is a single hint flag sufficient or do we also need an
-    explicit "do not use dax" flag?
-- behaviour of MAP_SYNC w.r.t. non-DAX filesystems that can provide
-  required MAP_SYNC semnatics
-- behaviour of MAP_DIRECT - hint like O_DIRECT or guarantee?
-- default read/write path behaviour of dax-capable block devices
-  - automatically bypass the pagecache if bdev is capable?
-- default mmap behaviour on dax capable devices
-  - use dax always?
-- DAX vs get_user_pages_longterm
-  - turns off DAX dynamically?
-  - how do DAX-enabled filesystems interact with page fault capable
-    hardware? Can we allow DAX in those cases?
-
-I'm sure there's a heap more we need to document and nail down.
-There's a lot of stuff to sort out before we start hammering on
-random bits of code....
-
-> provided we had a way for applications to query and override if DAX is
-> enabled. I also think it's important to keep separate the dax-mmap
-> behavior from the dax-read/write behavior. dax-mmap is where an
-> application would make different decisions if it can get a mapping
-> without page cache,
-
-The functionality people keep saying "requires DAX" really doesn't -
-what it really requires is that mmap() exposes filesystem tracked
-pmem in a CPU addressable memory range. DAX is not the only way to
-do that - a filesystem with a pmem-based persistent page cache can
-provide MAP_SYNC semantics to userspace without being a DAX
-filesystem.
-
-(see other thread again)
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+--=20
+Joshi
