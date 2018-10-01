@@ -1,281 +1,377 @@
-Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-qk1-f194.google.com ([209.85.222.194]:42760 "EHLO
-        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725747AbeJDENa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Oct 2018 00:13:30 -0400
+Return-Path: <SRS0=j8gV=MN=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-it1-f198.google.com ([209.85.166.198]:56987 "EHLO
+        mail-it1-f198.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726518AbeJBAxG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Oct 2018 20:53:06 -0400
+Received: by mail-it1-f198.google.com with SMTP id i188-v6so12030177itf.6
+        for <linux-ext4@vger.kernel.org>; Mon, 01 Oct 2018 11:14:04 -0700 (PDT)
 MIME-Version: 1.0
-References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
- <20181003071059.02b3fd6f@canb.auug.org.au> <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
- <CANiq72mmxiO6RWBTQfWYDaa6gmOF01nXmN6BJNCAjAFz3QJqqA@mail.gmail.com>
- <20181002232454.GB2483@thunk.org> <CANiq72=cRpqnB3BxLsmj-rMdUGJK+pac1SRppoRgsON69ErfQg@mail.gmail.com>
- <20181003153303.GC2835@thunk.org>
-In-Reply-To: <20181003153303.GC2835@thunk.org>
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Wed, 3 Oct 2018 23:23:11 +0200
-Message-ID: <CANiq72=Jq8HZ1=CsSvV4GenG+F6z3vRFmiB7Joct5VKdUFo8pA@mail.gmail.com>
-Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
-To: "Ted Ts'o" <tytso@mit.edu>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Linux-Next Mailing List <linux-next@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Stephen Rothwell <sfr@canb.auug.org.au>
-Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 01 Oct 2018 11:14:04 -0700
+Message-ID: <0000000000003908ec05772ec554@google.com>
+Subject: INFO: task hung in ext4_fallocate
+From: syzbot <syzbot+c61979f6f2cba5cb3c06@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Hello,
 
-On Wed, Oct 3, 2018 at 5:33 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
->
-> On Wed, Oct 03, 2018 at 01:54:05PM +0200, Miguel Ojeda wrote:
-> >
-> > Exactly. And for this case, I simply assumed Stephen wanted a clean
-> > series to apply on top of the latest next-* tag (same way we base
-> > stuff on top of -rc*s). Note that this is *not* really a "tree"
-> > collecting changes/development, it is a patch series, i.e. what is
-> > important is only the range-diff.
-> >
-> > What has surprised me is that -next does not allow for range-diffs
-> > (patches/commits/...) to be inside -next, maybe applied after all the
-> > normal merges of trees. I simply assumed it did, given what I could
-> > find about -next (which does not seem to be documented properly, by
-> > the way).
->
-> Part of the reason why I wrote my long message was because the -next
-> tree usage has been mostly by convention.  Better documentation would
-> be a good thing; I think the main reason why we don't have it is that
-> historically, the people who submit direct pull requests to Linus
-> already know how things work.  Obviously that's not a great
-> assumption, but in fact there are a large number of things about what
-> is needed to be a subsystem maintainer which needs to be documented,
-> and the linux-next tree is just one part of it.  (And perhaps not even
-> the biggest part.)
+syzbot found the following crash on:
 
-It not a bad assumption either -- I happen to be one a very odd
-maintainer because I have not been actively contributing for years so
-I missed the -next implementation, so it is fine, I don't blame anyone
-for my mistake; still a few lines would be fine: who is the
-maintainer, where to send the patches, who should be Cc'd, etc. :-)
+HEAD commit:    291d0e5d81e1 Merge tag 'for-linus-20180929' of git://git.k..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=10332181400000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=a8212f992609a887
+dashboard link: https://syzkaller.appspot.com/bug?extid=c61979f6f2cba5cb3c06
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1611fbfa400000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1489f831400000
 
->
-> Historically there was one source of changes into the linux-next tree
-> which was done as quilt-style patch series, and that was Andrew
-> Morton's mmotm tree.  Part of the problem is that it's a lot more work
-> to consume a patch series, and so these days while Andrew still uses a
-> patch series, he exports a git tree[1] which is what I believe Stephen
-> and Linus use.  (For that matter, I use a patch series[2] as well, but
-> the public interface is the ext4.git tree on git.kernel.org.)
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+c61979f6f2cba5cb3c06@syzkaller.appspotmail.com
 
-Hm... I agree that patches (i.e. referring to the email workflow) are
-a pain, but I am not sure why the actual "patches" (i.e. referring to
-the commits/diffs) need to be harder to work with. Maybe we don't have
-the tools for that yet. For instance, the new git range-diff command
-is actually quite good to compare versions of series after rebasing.
+audit: type=1400 audit(1538313446.938:37): avc:  denied  { map } for   
+pid=5541 comm="syz-executor212" path="/root/syz-executor212822736"  
+dev="sda1" ino=16481 scontext=unconfined_u:system_r:insmod_t:s0-s0:c0.c1023  
+tcontext=unconfined_u:object_r:user_home_t:s0 tclass=file permissive=1
+INFO: task syz-executor212:5548 blocked for more than 140 seconds.
+       Not tainted 4.19.0-rc5+ #40
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+syz-executor212 D19712  5548   5545 0x00000004
+Call Trace:
+  context_switch kernel/sched/core.c:2825 [inline]
+  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
+  schedule+0xfe/0x460 kernel/sched/core.c:3517
+  __rwsem_down_write_failed_common+0xbb9/0x1670  
+kernel/locking/rwsem-xadd.c:566
+  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
+  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
+  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
+  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
+  inode_lock include/linux/fs.h:738 [inline]
+  ext4_fallocate+0x921/0x2300 fs/ext4/extents.c:4957
+  vfs_fallocate+0x4b4/0x940 fs/open.c:308
+  ksys_fallocate+0x56/0x90 fs/open.c:331
+  __do_sys_fallocate fs/open.c:339 [inline]
+  __se_sys_fallocate fs/open.c:337 [inline]
+  __x64_sys_fallocate+0x97/0xf0 fs/open.c:337
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x440ef9
+Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
+4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
+20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
+RSP: 002b:00007ffd82484778 EFLAGS: 00000217 ORIG_RAX: 000000000000011d
+RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000003
+RBP: 0000000000000000 R08: 00000000004002c8 R09: 00000000004002c8
+R10: 0000000000010001 R11: 0000000000000217 R12: 0000000000401d90
+R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
+INFO: task syz-executor212:5550 blocked for more than 140 seconds.
+       Not tainted 4.19.0-rc5+ #40
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+syz-executor212 D23736  5550   5543 0x00000004
+Call Trace:
+  context_switch kernel/sched/core.c:2825 [inline]
+  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
+  schedule+0xfe/0x460 kernel/sched/core.c:3517
+  __rwsem_down_write_failed_common+0xbb9/0x1670  
+kernel/locking/rwsem-xadd.c:566
+  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
+  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
+  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
+  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
+  inode_lock include/linux/fs.h:738 [inline]
+  process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
+  ima_file_check+0xe5/0x130 security/integrity/ima/ima_main.c:391
+  do_last fs/namei.c:3422 [inline]
+  path_openat+0x134d/0x5160 fs/namei.c:3534
+  do_filp_open+0x255/0x380 fs/namei.c:3564
+  do_sys_open+0x568/0x700 fs/open.c:1063
+  __do_sys_openat fs/open.c:1090 [inline]
+  __se_sys_openat fs/open.c:1084 [inline]
+  __x64_sys_openat+0x9d/0x100 fs/open.c:1084
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x440ef9
+Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
+4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
+20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
+RSP: 002b:00007ffd82484778 EFLAGS: 00000207 ORIG_RAX: 0000000000000101
+RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
+RDX: 000000000000275a RSI: 0000000020000080 RDI: 00000000ffffff9c
+RBP: 0000000000000000 R08: 00000000008c3880 R09: 00000000004002c8
+R10: 0000000000000000 R11: 0000000000000207 R12: 0000000000401d90
+R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
+INFO: task syz-executor212:5551 blocked for more than 140 seconds.
+       Not tainted 4.19.0-rc5+ #40
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+syz-executor212 D23736  5551   5546 0x00000004
+Call Trace:
+  context_switch kernel/sched/core.c:2825 [inline]
+  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
+  schedule+0xfe/0x460 kernel/sched/core.c:3517
+  __rwsem_down_write_failed_common+0xbb9/0x1670  
+kernel/locking/rwsem-xadd.c:566
+  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
+  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
+  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
+  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
+  inode_lock include/linux/fs.h:738 [inline]
+  process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
+  ima_file_check+0xe5/0x130 security/integrity/ima/ima_main.c:391
+  do_last fs/namei.c:3422 [inline]
+  path_openat+0x134d/0x5160 fs/namei.c:3534
+  do_filp_open+0x255/0x380 fs/namei.c:3564
+  do_sys_open+0x568/0x700 fs/open.c:1063
+  __do_sys_openat fs/open.c:1090 [inline]
+  __se_sys_openat fs/open.c:1084 [inline]
+  __x64_sys_openat+0x9d/0x100 fs/open.c:1084
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x440ef9
+Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
+4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
+20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
+RSP: 002b:00007ffd82484778 EFLAGS: 00000207 ORIG_RAX: 0000000000000101
+RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
+RDX: 000000000000275a RSI: 0000000020000080 RDI: 00000000ffffff9c
+RBP: 0000000000000000 R08: 00000000008c3880 R09: 00000000004002c8
+R10: 0000000000000000 R11: 0000000000000207 R12: 0000000000401d90
+R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
+INFO: task syz-executor212:5552 blocked for more than 140 seconds.
+       Not tainted 4.19.0-rc5+ #40
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+syz-executor212 D23888  5552   5544 0x00000004
+Call Trace:
+  context_switch kernel/sched/core.c:2825 [inline]
+  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
+  schedule+0xfe/0x460 kernel/sched/core.c:3517
+  __rwsem_down_write_failed_common+0xbb9/0x1670  
+kernel/locking/rwsem-xadd.c:566
+  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
+  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
+  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
+  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
+  inode_lock include/linux/fs.h:738 [inline]
+  process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
+  ima_file_check+0xe5/0x130 security/integrity/ima/ima_main.c:391
+  do_last fs/namei.c:3422 [inline]
+  path_openat+0x134d/0x5160 fs/namei.c:3534
+  do_filp_open+0x255/0x380 fs/namei.c:3564
+  do_sys_open+0x568/0x700 fs/open.c:1063
+  __do_sys_openat fs/open.c:1090 [inline]
+  __se_sys_openat fs/open.c:1084 [inline]
+  __x64_sys_openat+0x9d/0x100 fs/open.c:1084
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x440ef9
+Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
+4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
+20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
+RSP: 002b:00007ffd82484778 EFLAGS: 00000207 ORIG_RAX: 0000000000000101
+RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
+RDX: 000000000000275a RSI: 0000000020000080 RDI: 00000000ffffff9c
+RBP: 0000000000000000 R08: 00000000008c3880 R09: 00000000004002c8
+R10: 0000000000000000 R11: 0000000000000207 R12: 0000000000401d90
+R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
+INFO: task syz-executor212:5553 blocked for more than 140 seconds.
+       Not tainted 4.19.0-rc5+ #40
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+syz-executor212 D23736  5553   5542 0x00000004
+Call Trace:
+  context_switch kernel/sched/core.c:2825 [inline]
+  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
+  schedule+0xfe/0x460 kernel/sched/core.c:3517
+  __rwsem_down_write_failed_common+0xbb9/0x1670  
+kernel/locking/rwsem-xadd.c:566
+  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
+  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
+  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
+  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
+  inode_lock include/linux/fs.h:738 [inline]
+  process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
+  ima_file_check+0xe5/0x130 security/integrity/ima/ima_main.c:391
+  do_last fs/namei.c:3422 [inline]
+  path_openat+0x134d/0x5160 fs/namei.c:3534
+  do_filp_open+0x255/0x380 fs/namei.c:3564
+  do_sys_open+0x568/0x700 fs/open.c:1063
+  __do_sys_openat fs/open.c:1090 [inline]
+  __se_sys_openat fs/open.c:1084 [inline]
+  __x64_sys_openat+0x9d/0x100 fs/open.c:1084
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x440ef9
+Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
+4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
+20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
+RSP: 002b:00007ffd82484778 EFLAGS: 00000207 ORIG_RAX: 0000000000000101
+RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
+RDX: 000000000000275a RSI: 0000000020000080 RDI: 00000000ffffff9c
+RBP: 0000000000000000 R08: 00000000008c3880 R09: 00000000004002c8
+R10: 0000000000000000 R11: 0000000000000207 R12: 0000000000401d90
+R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
 
->
-> [1] https://www.ozlabs.org/~akpm/mmotm/mmotm-readme.txt
-> [2] https://ext4.wiki.kernel.org/index.php/Ext4_patchsets
->
-> > While this is a simple conflict, I don't really agree with release
-> > maintainers having to fix conflicts on the fly (even if it is a single
-> > trivial line), but that is an orthogonal discussion...
->
-> Sure; there are some srtong reasons for it, but we can save that for
-> the Maintainer's Handbook discussion.  I will say that this is
-> something where attempts to avoid Linus needing to fix conflicts on
-> the fly, such as a rebase right before a PULL request, violates
-> Linus's rules which has in the past resulted in him expressing a
-> "strong" correction e-mail to Maintainers since it was assumed that
-> they really should have known better.  Linus has said he doesn't want
-> to yell at Maintainers, so we can support him by getting the
-> Maintainer's Handbook out there.  :-)
+Showing all locks held in the system:
+1 lock held by khungtaskd/983:
+  #0: 000000005e364832 (rcu_read_lock){....}, at:  
+debug_show_all_locks+0xd0/0x424 kernel/locking/lockdep.c:4435
+1 lock held by rsyslogd/5383:
+  #0: 000000003ee63875 (&f->f_pos_lock){+.+.}, at: __fdget_pos+0x1bb/0x200  
+fs/file.c:766
+2 locks held by getty/5505:
+  #0: 0000000016366007 (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 000000001962389b (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5506:
+  #0: 00000000459f06bd (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 000000009ba0e33f (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5507:
+  #0: 00000000ed059e98 (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 000000006a8dd22c (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5508:
+  #0: 00000000de392f74 (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 000000002f41f35e (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5509:
+  #0: 000000004b0015bd (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 00000000fbcabc1c (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5510:
+  #0: 000000000749babf (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 0000000039eaad48 (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5511:
+  #0: 000000009592ef13 (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 0000000080736cf9 (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by syz-executor212/5548:
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: file_start_write  
+include/linux/fs.h:2759 [inline]
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: vfs_fallocate+0x72a/0x940  
+fs/open.c:307
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
+include/linux/fs.h:738 [inline]
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
+ext4_fallocate+0x921/0x2300 fs/ext4/extents.c:4957
+6 locks held by syz-executor212/5549:
+2 locks held by syz-executor212/5550:
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: sb_start_write  
+include/linux/fs.h:1566 [inline]
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: mnt_want_write+0x3f/0xc0  
+fs/namespace.c:360
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
+include/linux/fs.h:738 [inline]
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
+process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
+2 locks held by syz-executor212/5551:
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: sb_start_write  
+include/linux/fs.h:1566 [inline]
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: mnt_want_write+0x3f/0xc0  
+fs/namespace.c:360
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
+include/linux/fs.h:738 [inline]
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
+process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
+2 locks held by syz-executor212/5552:
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: sb_start_write  
+include/linux/fs.h:1566 [inline]
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: mnt_want_write+0x3f/0xc0  
+fs/namespace.c:360
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
+include/linux/fs.h:738 [inline]
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
+process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
+2 locks held by syz-executor212/5553:
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: sb_start_write  
+include/linux/fs.h:1566 [inline]
+  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: mnt_want_write+0x3f/0xc0  
+fs/namespace.c:360
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
+include/linux/fs.h:738 [inline]
+  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
+process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
 
-Yeah, I actually got the correction myself :-) I understand Linus'
-reasons about the benefits of using the merges (and I agree that
-information shouldn't be dropped); but I think there has to be a
-better way to handle conflicts. (See below).
+=============================================
 
->
-> > Alright, I am not sure how to answer this without sounding
-> > "aggressive" and maybe I misunderstood something you tried to point
-> > out, so I apologize in advance. There are several points here:
-> >
-> >   * The merge conflict isn't related to this (but let's assume it was,
-> > since you pointed this out as an example -- I guess; although I am not
-> > sure why).
->
-> I thought I was clear that I used it as an example, but my apologies
-> if that didn't come across.
+NMI backtrace for cpu 0
+CPU: 0 PID: 983 Comm: khungtaskd Not tainted 4.19.0-rc5+ #40
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x1c4/0x2b4 lib/dump_stack.c:113
+  nmi_cpu_backtrace.cold.3+0x63/0xa2 lib/nmi_backtrace.c:101
+  nmi_trigger_cpumask_backtrace+0x1b3/0x1ed lib/nmi_backtrace.c:62
+  arch_trigger_cpumask_backtrace+0x14/0x20 arch/x86/kernel/apic/hw_nmi.c:38
+  trigger_all_cpu_backtrace include/linux/nmi.h:144 [inline]
+  check_hung_uninterruptible_tasks kernel/hung_task.c:204 [inline]
+  watchdog+0xb3e/0x1050 kernel/hung_task.c:265
+  kthread+0x35a/0x420 kernel/kthread.c:246
+  ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:413
+Sending NMI from CPU 0 to CPUs 1:
+NMI backtrace for cpu 1
+CPU: 1 PID: 5549 Comm: syz-executor212 Not tainted 4.19.0-rc5+ #40
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+RIP: 0010:mext_check_coverage.constprop.13+0x20d/0x510  
+fs/ext4/move_extent.c:101
+Code: 86 16 fe ff ff 4c 8d 24 40 48 b8 00 00 00 00 00 fc ff df 49 c1 e4 04  
+49 01 dc 49 8d 7c 24 10 48 89 fa 48 c1 ea 03 80 3c 02 00 <0f> 85 36 02 00  
+00 48 b8 00 00 00 00 00 fc ff df 4d 8b 64 24 10 49
+RSP: 0018:ffff8801b4af71c0 EFLAGS: 00000246
+RAX: dffffc0000000000 RBX: ffff8801bac71600 RCX: ffffffff821e4a52
+RDX: 1ffff1003758e2c2 RSI: ffffffff821e493b RDI: ffff8801bac71610
+RBP: ffff8801b4af7270 R08: ffff8801c3056180 R09: 1ffffffff1273955
+R10: ffffed003b5e4732 R11: ffff8801daf23993 R12: ffff8801bac71600
+R13: 00000000cbb0eca5 R14: ffff8801b0f34530 R15: ffff8801b4af73e0
+FS:  00000000008c3880(0000) GS:ffff8801daf00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: ffffffffff600400 CR3: 00000001c59e4000 CR4: 00000000001406e0
+Call Trace:
+  move_extent_per_page fs/ext4/move_extent.c:323 [inline]
+  ext4_move_extents+0x2784/0x3c20 fs/ext4/move_extent.c:669
+  ext4_ioctl+0x3154/0x4210 fs/ext4/ioctl.c:799
+  vfs_ioctl fs/ioctl.c:46 [inline]
+  file_ioctl fs/ioctl.c:501 [inline]
+  do_vfs_ioctl+0x1de/0x1720 fs/ioctl.c:685
+  ksys_ioctl+0xa9/0xd0 fs/ioctl.c:702
+  __do_sys_ioctl fs/ioctl.c:709 [inline]
+  __se_sys_ioctl fs/ioctl.c:707 [inline]
+  __x64_sys_ioctl+0x73/0xb0 fs/ioctl.c:707
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x440ef9
+Code: e8 ac e8 ff ff 48 83 c4 18 c3 0f 1f 80 00 00 00 00 48 89 f8 48 89 f7  
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  
+ff 0f 83 0b 0a fc ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007ffd82484778 EFLAGS: 00000217 ORIG_RAX: 0000000000000010
+RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
+RDX: 0000000020000040 RSI: 00000000c028660f RDI: 0000000000000003
+RBP: 0000000000000000 R08: 00000000004002c8 R09: 00000000004002c8
+R10: 00000000004002c8 R11: 0000000000000217 R12: 0000000000401d90
+R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
 
-No apologies needed!
 
->
-> >     - Changes should include everything related to them (as far as
-> > possible, i.e. extreme examples aside). Adding __nonstring and not
-> > removing the ext4 part would simply be leaving undone work (which has
-> > to be done sooner or later). To be honest, it could have even been
-> > done in the same commit and I would say it is logically OK (even if
-> > not great).
-> > ...
-> >
-> > You seem to argue that it is better to avoid merge conflicts rather
-> > than doing a proper series. Well, I think we should really try to
-> > avoid conflicts pushing down the """quality""" of
-> > patches/commits/series.
->
-> And I think this is where the disagreement lies, which is why I
-> bothered to send my long missive in the first place.  From my point of
-> view, and I suspect many maintainers share this, avoiding merge
-> conflicts is way important than making sure everything is "done" in a
-> single patch series.  There have been plenty of changes where cleanup
-> is done latter, and/or where preparatory patches are done in one
-> release, and the big change happens in the next release, 3 months
-> later.
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-I agree with that being a problem for huge changes and/or developed in
-parallel. Still, if we have -next (which is meant precisely to test
-integration), we should not have to reduce nor split the amount of
-work on the trees just to solve integration in most cases, no? That is
-my point. (See again below).
-
->
-> That's because some of the alternatives, such as basing your git tree
-> on an unstable head branch, such as linux-next, or a last minute
-> rebase which means that the actual patches that which gets the pull
-> rebase hasn't been tested or soaked in linux-next, are far worse
-> because it can lead to lower quality git trees getting merged during
-> the merge window.
->
-> There is a tension here between maximizing the "quality" of a patch
-> series, and maximizing the "quality" of the git trees that feed into
-> the merge window.  Or perhaps the better way of saying this is
-> minimizing the risk of bad changes getting integreted during the merge
-> window.  Some technical debt which gets cleaned up in the next release
-> is in my view a very low price to pay in order to minimize risk.
-
-I see this tension as a missing piece of the puzzle. I am not an
-expert on the kernel, but I worked in the past on a system similar to
-what Stephen is doing: merging many quasi-independent trees at CERN
-(but it was not Git in that case, but CVS; yeah... :-).
-
-The problem we had there was similar: 1000+ projects with changes
-depending on each other in many, many cases. We had a "release
-manager" (similar to what Stephen is doing) sorting it all out in time
-to make the release required for the CMS detector -- they suffered a
-lot...
-
-We ended up designing a system to make cross-project changes called
-"tagsets" (equivalent to the Next/* files included in linux-next). I
-also added support for assigning dependencies to other pending (or
-done) tagsets in a graph. Cycles in the graph meant changes had to go
-in at the same time. The dependencies were plotted in an SVG graph
-drawn by Graphviz. All this in a webapp to make it convenient for
-remote developers and release managers. Fun times :-)
-
-This served as a transition step from CVS to Git (and nowadays I think
-everything is done with standard PRs in GitHub AFAIK). However, it
-seems we are having the same problem. Although it is much easier to
-handle (less trees, git rerere, better tooling, etc.), Stephen still
-has a custom system to deal with all the trees, so it seems there *is*
-something missing. (...continuing below using the example)
-
->
-> Part of this is because I've had to waste time debugging changes made
-> to the ext4 sources which came in via someone else's git tree that
-> were "obviously correct" or "trivial changes" --- but they weren't.
-> Most of the time they get caught as part of linux-next testing, but
-> not always.  So sometimes the interests of one subsystem maintainer
-> can end up conflicting with the interests of the patch series author,
-> or the interests of another subsystem maintainer.  And that's why we
-> have some of these "cultural understandings", many of which we clearly
-> need to document.
-
-(...from above) Yes, indeed, but the point is that changes should be
-able to be done in different parts of the kernel crossing trees and
-decided by everyone.
-
-We have this problem only because we have ended up dividing the kernel
-in so many almost-independent trees (and mailing lists) that, in the
-end, it is like having several independent projects; which then in
-turn requires a custom system to sort out everything again (which is
-the same problem we faced at CMS).
-
-So either a) we are missing a system to actually handle this kind of
-mega-project composed of smaller projects (like Stephen's, or the
-already-retired one at CMS); or b) we are missing way to discuss
-changes globally that scales (so that splitting trees is not required
-and the problem goes away).
-
-Just to be clear, I don't have a magical solution for this :-) I am
-just saying that it looks very, very familiar to me and that, if we
-had that something, those problems about wasting time debugging
-changes made to different trees shouldn't be there; and therefore we
-wouldn't need to drop patches, leave dead code for defensive reasons,
-rejecting work, creating technical debt, etc.
-
-Maybe the "solution" should be a new webapp to sort out kernel
-development better. Maybe it should be a better discussion platform
-other than email. Maybe it should be some Git support for managing
-many dependent "subtrees" with possible dependencies, preparing
-"releases", doing "super-merges" of all trees when ready (e.g. merge
-window) -- basically linux-next and Stephen's scripts, but kept in the
-repository itself; so that Linus could simply "trigger" the full merge
-on the merge window, etc.
-
->
-> (And yes, in this case I didn't object to the cleanup being in your
-> patch series; normally I don't care, unless it actually break things.
-> I was just trying to make the point from my perspective, nothing
-> *required* that the change be in your git tree, and if it *was*
-> causing the problem, I had gone out of my way to make sure to make it
-> easy for you to drop the change; and from my perspective I was doing
-> you --- and me :-) --- a favor when I added the outer #ifndef, which I
-> had done with full consideration, specifically for this reason.  Even
-> if the definition was different, my definition *had* been fully tested
-> with over a 27+ VM hours of regression testing, and if it turned out
-> that they were different, cleaning that up three months from now in
-> the next release is just *fine* as far as I'm concerned.)
-
-Yes, of course your change was tested, and that is a good thing. My
-point is simply that it is still misleading, and it is still better to
-simply do it kernel-wide if possible (which goes back to: we currently
-have effectively independent projects going on). The change would have
-been tested by you the same way if it had been applied kernel-wide.
-
-Cheers,
-Miguel
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with  
+syzbot.
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
