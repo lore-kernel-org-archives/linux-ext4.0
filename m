@@ -1,76 +1,110 @@
-Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:35714 "EHLO mail.kernel.org"
+Return-Path: <SRS0=j8gV=MN=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from sandeen.net ([63.231.237.45]:34958 "EHLO sandeen.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726630AbeJCTtL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Oct 2018 15:49:11 -0400
-Date: Wed, 3 Oct 2018 09:00:47 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Linux-Next Mailing List <linux-next@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
-Message-ID: <20181003090047.5aa88fc4@gandalf.local.home>
-In-Reply-To: <CANiq72nLLhTf3AsXqLkPmK6TV_g7E3tML9XaM_zE45dM7XPn-A@mail.gmail.com>
-References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
-        <20181003071059.02b3fd6f@canb.auug.org.au>
-        <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
-        <CANiq72mmxiO6RWBTQfWYDaa6gmOF01nXmN6BJNCAjAFz3QJqqA@mail.gmail.com>
-        <20181002223652.GA4290@nautica>
-        <20181003090010.5150f914@canb.auug.org.au>
-        <CANiq72nLLhTf3AsXqLkPmK6TV_g7E3tML9XaM_zE45dM7XPn-A@mail.gmail.com>
+        id S1726243AbeJAW1r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 1 Oct 2018 18:27:47 -0400
+Subject: Re: cross-fs copy support
+To: Qu Wenruo <quwenruo.btrfs@gmx.com>, Joshi <joshiiitr@gmail.com>,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org
+References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
+ <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
+From: Eric Sandeen <sandeen@sandeen.net>
+Message-ID: <df92a795-3f2e-751a-8504-030015fba6d9@sandeen.net>
+Date: Mon, 1 Oct 2018 10:49:19 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+In-Reply-To: <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ protocol="application/pgp-signature";
+ boundary="9UjKmgcLzBeTqjtP1UIvfHakosmYM3iHX"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 3 Oct 2018 14:34:28 +0200
-Miguel Ojeda <miguel.ojeda.sandonis@gmail.com> wrote:
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--9UjKmgcLzBeTqjtP1UIvfHakosmYM3iHX
+Content-Type: multipart/mixed; boundary="Of3BxTUPGojsV2HfXW7xCSdriW3b0WC0K";
+ protected-headers="v1"
+From: Eric Sandeen <sandeen@sandeen.net>
+To: Qu Wenruo <quwenruo.btrfs@gmx.com>, Joshi <joshiiitr@gmail.com>,
+ linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org
+Message-ID: <df92a795-3f2e-751a-8504-030015fba6d9@sandeen.net>
+Subject: Re: cross-fs copy support
+References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
+ <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
+In-Reply-To: <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
 
-> When I sent the first email, I assumed that changes in -next were
-> supposed to be clean -- my mistake, but please document somewhere how
-> -next works! Specially that you are rerere'ing conflicts and
-> re-resolving them every day.
+--Of3BxTUPGojsV2HfXW7xCSdriW3b0WC0K
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: quoted-printable
 
-Yes, a document in the Documentation directory on how to work with
-linux-next may be a good idea. Something we can point people to when
-they start using linux-next. I know there was something in the initial
-email, but I've lost that.
+On 10/1/18 9:48 AM, Qu Wenruo wrote:
+>=20
+>=20
+> On 2018/10/1 =E4=B8=8B=E5=8D=8810:32, Joshi wrote:
+>> I was wondering about the cross-fs copy through copy_file_range.
+>=20
+> The term "cross-fs" looks pretty confusing.
+>=20
+> If you mean "cross-subvolume", then it should work without problem in b=
+trfs.
+>=20
+> If you mean reflink across two different file systems (not matter the
+> same fs type or not).
+> Then it's impossible to work.
 
--- Steve
+I believe Joshi is talking about vfs_copy_file_range() not
+vfs_clone_file range(), although _copy_ does call _clone_ if it can.
+
+> Reflink (clone_file_range) works by inserting data pointers into the
+> filesystem other than really copying the data.
+> Thus if the source is outside of the fs, it's really impossible to work=
+,
+> as the source pointer/data is completely out of control of the dest fs.=
+
+
+Yes, I would expect there to be problems with his modified kernel
+for a filesystem that supports clone_file_range, because
+vfs_copy_file_range() will clone if possible, and this should fail across=
+
+filesystems.
+
+In general, though, I don't know for sure why we don't fall back to
+do_splice_direct() across filesystems, although the filesystems that
+implement their own ->copy_file_range ops may have their own,
+further restrictions within their implementations.
+
+This call /is/ documented in the manpage as only being valid for
+files on the same filesystem, though:
+http://man7.org/linux/man-pages/man2/copy_file_range.2.html
+
+-Eric
+
+
+--Of3BxTUPGojsV2HfXW7xCSdriW3b0WC0K--
+
+--9UjKmgcLzBeTqjtP1UIvfHakosmYM3iHX
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEK4GFkZ6NJImBhp3tIK4WkuE93uAFAluyQgAACgkQIK4WkuE9
+3uCwcg//dXNLuozv1pIWO7q7BXNSK5nO1F9jicwp/Ulkv+0iGDhWWx0kar9IEbvi
+vXL7WgLbTHUCrlXr7rbwi8aGZH/ySPAPDwG/PuIbMVMIJzrfg6vvhtieGcB2lW6T
+deVYw/10a/xOS4y1CyVsGMJ9FlsVIhwKeiHH6oqaU3hSDmZs4CQBgc4Tsz4elQFs
+RjHjDxlEl0EH8kMsYl9HCQ8abgGePZrr1bcvWbi67HznpqHs/7FlZHkJNQcRwH7+
+4yKpvBq+/08jtEiirJODxH9FQeG8iOIzWgn3/0zTcXA/qzOIl/kae0VRtj4j2Ej4
+yhz0UtM3v2ldTgDrEQmD++3yadgLVx6yteoDc+nvCAvaJ2VaVpkJjOhtHQ0Xy8Zt
+0IVyi3aLYj9NCjHUb1n86Xw17owuXwqmEmN3oaQ4GW7jvltbE7NoP6drhiDBLp9x
+mMBLV9UMnPwBJgmV1fGhW82Qm7NHh8VqZOZhwaq8/BRn2+36Rcoowe+7NLZft7Ex
+H8m0mic89HLCvspjFFsSbd0oJQtrlEC6EH25azRKO/4JE2NESgFsyxJf4FYMgw4/
+g4LLsF8Ap5rHUvwLDeXvEGCwyY+zpvq6IWE6GFX78qLpdbbJ330Gs66zTcjuCuAU
+7bADElcmZ9Z3zQgyuImeNqo+tXlFy2yVqKelwAHTtXaRTyJnN2k=
+=X76r
+-----END PGP SIGNATURE-----
+
+--9UjKmgcLzBeTqjtP1UIvfHakosmYM3iHX--
