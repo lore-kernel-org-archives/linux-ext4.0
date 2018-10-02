@@ -1,48 +1,54 @@
-Return-Path: <SRS0=Qv/7=NE=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lj1-f195.google.com ([209.85.208.195]:43128 "EHLO
-        mail-lj1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727000AbeJXT5t (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2018 15:57:49 -0400
-Received: by mail-lj1-f195.google.com with SMTP id x22-v6so1221093ljc.10
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Oct 2018 04:30:03 -0700 (PDT)
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from fieldses.org ([173.255.197.46]:56426 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725951AbeJCBMm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 2 Oct 2018 21:12:42 -0400
+Date: Tue, 2 Oct 2018 14:28:00 -0400
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: Eric Sandeen <sandeen@sandeen.net>,
+        Qu Wenruo <quwenruo.btrfs@gmx.com>,
+        Joshi <joshiiitr@gmail.com>, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: cross-fs copy support
+Message-ID: <20181002182800.GA8364@fieldses.org>
+References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
+ <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
+ <df92a795-3f2e-751a-8504-030015fba6d9@sandeen.net>
+ <FE6394EC-5CB0-4A16-AAC6-97F465A4E50C@dilger.ca>
 MIME-Version: 1.0
-Reply-To: jonathan_juju@yahoo.com
-From: Jonathan Juju <halvorsonnicholas@gmail.com>
-Date: Wed, 24 Oct 2018 19:30:02 +0800
-Message-ID: <CAOpF70pNJb=b9sC+yc=BB-8oixGmWscAgk--rk9qDzOa8uwUmA@mail.gmail.com>
-Subject: 
-To: undisclosed-recipients:;
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: 8BIT
+In-Reply-To: <FE6394EC-5CB0-4A16-AAC6-97F465A4E50C@dilger.ca>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-FROM: DR. JONATHAN JUJU
-ACH REPUBLIC OF SOUTH AFRICA.
+On Mon, Oct 01, 2018 at 01:51:09PM -0600, Andreas Dilger wrote:
+> 
+
+
+On Oct 1, 2018, at 9:49 AM, Eric Sandeen <sandeen@sandeen.net> wrote:
+> > Yes, I would expect there to be problems with his modified kernel
+> > for a filesystem that supports clone_file_range, because
+> > vfs_copy_file_range() will clone if possible, and this should fail across
+> > filesystems.
+> > 
+> > In general, though, I don't know for sure why we don't fall back to
+> > do_splice_direct() across filesystems, although the filesystems that
+> > implement their own ->copy_file_range ops may have their own,
+> > further restrictions within their implementations.
+> > 
+> > This call /is/ documented in the manpage as only being valid for
+> > files on the same filesystem, though:
+> > http://man7.org/linux/man-pages/man2/copy_file_range.2.html
+> 
+> There was a patch to allow cross-mount copy for NFS, but it hasn't landed
+> yet.
 
-Attn: Sir/Ma
+I thought Christoph Hellwig vetoed it partly because he thought NFS
+server-to-server copy is too complicated.  Which perhaps it is, but I
+suspect we'll do it anyway because the benefit seems obvious.
 
-YOUR COMPANY'S OPERATIONS AND PROFILE GOT MY  ATTENTION, IN LINE WITH
-MY CURRENT  DIVERSIFICATION AND EXPANSION PROGRAM IN CREATING
-STRATEGIC PARTNERSHIP I WOULD LIKE TO KNOW IF THERE ARE AVAILABLE
-PARTNERSHIP OPTIONS AND  OPENINGS FOR NEW INVESTORS WITHIN YOUR FIRM.
-I THEREFORE,SOLICIT PARTNERSHIP WITH YOU BY PROVIDING THE FUNDS FOR
-INVESTMENT IN ANY PROJECT  IN YOUR COUNTRY.
-
-THE INVESTMENT FUNDS ARE AVAILABLE FOR TRANSFER  FURTHER INFORMATION
-AND INSTRUCTIONS WOULD BE  COMMUNICATED TO YOU ON YOUR RESPONSE AND
-DECLARATION OF INTEREST. YOUR HONEST COOPERATION WOULD BE HIGHLY
-APPRECIATED TO ENABLE ME SUCCESSFULLY EXECUTE THE TRANSFER OF THESE
-FUNDS OUT OF THE SHORES OF AFRICA  AND INVEST IN ANY LAUDABLE PROJECT
-THAT WILL EARN  GOOD RETURNS.
-
-PLEASE, CALL OR SEND A FAX TO TEL:. +27- 60-3015081  / FAX:.+ 27-
-86-610-8465 FOR FURTHER DISCUSSIONS AND ACQUAINTANCE.
-
-I LOOK FORWARD TO YOUR URGENT AND POSITIVE RESPONSE.
-
-YOURS  SINCERELY,
-DR.JONATHAN JUJU
-
-NOTE:
-This is a CONFIDENTIAL message. Please, treat as such. Kindly destroy it
-if you are not interested,.
+--b.
