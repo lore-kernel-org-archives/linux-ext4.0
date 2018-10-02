@@ -1,94 +1,108 @@
-Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from sandeen.net ([63.231.237.45]:46592 "EHLO sandeen.net"
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from ozlabs.org ([203.11.71.1]:39277 "EHLO ozlabs.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727014AbeJRDju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 17 Oct 2018 23:39:50 -0400
-Subject: Re: [PATCH 0/3] ext2, ext4, xfs: hard fail dax mount on unsupported
- devices
-To: Ross Zwisler <zwisler@kernel.org>, Christoph Hellwig <hch@lst.de>
-Cc: Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
- <20181011103636.GC9467@quack2.suse.cz>
- <CAPcyv4iAD_wkjY1way1rOxr4=gC_TGx71VquF13ooAuUPz9RJw@mail.gmail.com>
- <5a8e54e8-4845-1c85-e4e9-0b9b551a9ce2@sandeen.net>
- <20181012082154.GB30154@lst.de>
- <CAOxpaSWf=6RBTa3WM=Hnbr7MwpQ5mMSMAZ+B5FfZo3zKv4Nu7w@mail.gmail.com>
-From: Eric Sandeen <sandeen@sandeen.net>
-Message-ID: <116ef687-f23d-b45c-1b48-fd444b346719@sandeen.net>
-Date: Wed, 17 Oct 2018 14:42:36 -0500
+        id S1728324AbeJCD4l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 2 Oct 2018 23:56:41 -0400
+Date: Wed, 3 Oct 2018 07:10:59 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Linux-Next Mailing List <linux-next@vger.kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
+Message-ID: <20181003071059.02b3fd6f@canb.auug.org.au>
+In-Reply-To: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
+References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <CAOxpaSWf=6RBTa3WM=Hnbr7MwpQ5mMSMAZ+B5FfZo3zKv4Nu7w@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ boundary="Sig_/Wy1yG25pA/9_Y8n97w8zq9H"; protocol="application/pgp-signature"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+--Sig_/Wy1yG25pA/9_Y8n97w8zq9H
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
+Hi Miguel,
 
-On 10/13/18 11:05 AM, Ross Zwisler wrote:
-> On Fri, Oct 12, 2018 at 2:21 AM Christoph Hellwig <hch@lst.de> wrote:
->>
->> On Thu, Oct 11, 2018 at 01:38:34PM -0500, Eric Sandeen wrote:
->>>> The different behavior between filesystems was confusing customers so
->>>> we had to align them, then the question was which default to pick.
->>>> Honestly, we came to the decision to bring ext4 in line with the xfs
->>>> behavior because we thought that would be easier than the alternative.
->>>> Dave and Christoph made repeated arguments that DAX is just a hidden
->>>> performance optimization that no application should rely on, so we
->>>> went the path of least resistance and changed the ext4 default.
->>>
->>> Ok, well, I guess we'd better reconcile "it's a hidden performance hint"
->>> with "if the administrator asked they must receive..." before making this
->>> change... cc: hch for bonus input.
->>
->> I don't really care too mouch on the mount options, the important bit
->> was the application behavior.
->>
->> I fully agree with Dan that we should have the same behavior for every
->> file system, though.
-> 
-> One factor that might influence this is how we expect users to detect
-> whether or not DAX is being used, and whether that can vary per-inode
-> within a filesystem.  If we choose to only have the mount option then
-> I agree that a hard failure when -o dax doesn't work seems fine.  And
-> of course keeping the filesystems behaving the same is desirable.
-> 
-> If we eventually do go back to having a per-inode DAX option, though,
-> the mount option becomes a hint as to what the default behavior is,
-> and the user will need another way to detect whether or not DAX is
-> being used for a given inode.  In that case having the mount option
-> fail loudly isn't as important because all we've really changed is the
-> filesystem's default, and the application will still need a consistent
-> way of detecting whether the inode they are actually using is DAX or
-> not.
-> 
-> I'm not sure if per-inode DAX is still a goal for anyone.  If not,
-> then sure, using the DAX mount option as the one source of truth and
-> making it a hard failure when it doesn't work seems reasonable.
+On Tue, 2 Oct 2018 15:47:12 +0200 Miguel Ojeda <miguel.ojeda.sandonis@gmail=
+.com> wrote:
+>
+> The Compiler Attributes series has been stable for 10+ days. To
+> increase testing before 4.20, I would to request it being picked up
+> for -next.
+>=20
+> The changes w.r.t. v5 in the LKML:
+>=20
+>   - Rebased on top of next-20180928, which required removing
 
-I've been thinking about the per-inode stuff a bit, and while I don't know
-how to resolve some of the trickier issues, at least the expected behavior
-seems like something we can narrow down and specify.
+Unfortunately, trees/branches included in linux-next must be based on
+something stable (usually Linus' tree, but it could be another
+tree/branch that is included in linux-next that does not rebase).
+Linux-next itself rebases every day, so snything based on it would drag
+in a previous version of all the other trees :-(
 
-Because it's an on-disk flag (in xfs today, in any case) it seems that
-the only sane behavior to expect is either/or, i.e.:
+> aligned_largest, which was removed by 9503cd9cbaba
+> ("include/linux/compiler*.h: add version detection to
+> asm_volatile_goto").
 
-Mount option: All files always dax, per-inode flags ignored (or rejected)
-Per-inode: Mount option cannot be specified; only inodes explicitly flagged are dax
+That commit is from Andrew's patch series which also rebases (usually
+at least every week), so you cannot depend on it.
 
-Think about it; what would mount-option-plus-per-inode mean?  We have
-no "negative" dax flag, so while mount-option-with-flag surely means
-"dax", what the heck does mount-option-without-flag mean, and how is it
-distinguishable from mount option only?
+--=20
+Cheers,
+Stephen Rothwell
 
-I submit that flags can only have meaning w/o the fs-wide mount option
-enabled, so the question of "should we hard fail mount -o dax for devices
-that cannot support it" seems to be orthogonal to the per-inode question.
+--Sig_/Wy1yG25pA/9_Y8n97w8zq9H
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
 
-i.e. mount -o dax really can only mean "I want dax on everything" and so
-again, I think we probably need to fail the mount if that can't be honored.
+-----BEGIN PGP SIGNATURE-----
 
--Eric
+iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAluz3uMACgkQAVBC80lX
+0GzohQf/dtnIEaWJKYtEJwhXt0bAjk5Bk2GPjxi8aCFnm2lUZC46HW7EBT3oyM9n
+oPDpt3MbdeUAnDj8b3Z4JzizqRry1RBpdh+ezyHTql35gteBfsu95PW/PPja8wB6
+AJfTmoA44zNa2kANpBnfnV9ETn5HGyNjJBwZhsfwwUruF09NUp11zr0Qy8qne2Nb
+Ex6DaQ8uBJRAhCfchSd3O4FyTBvva1UlPzdB0b97439EIqyvlK5p9Rg1uWP1StOc
++u5o8hd+EyDO+wbCfpzRYWqC6wpS6JbpHeMoqQuZiO+1cw1Q8HgGOwFU6P+CmYiD
+ULrX9yaIUybv2T7GDwiFdDAp28s/7Q==
+=GxsG
+-----END PGP SIGNATURE-----
+
+--Sig_/Wy1yG25pA/9_Y8n97w8zq9H--
