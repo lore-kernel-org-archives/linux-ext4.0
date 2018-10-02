@@ -1,44 +1,34 @@
-Return-Path: <SRS0=nu1L=M2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-io1-f65.google.com ([209.85.166.65]:46834 "EHLO
-        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726257AbeJNWj6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Oct 2018 18:39:58 -0400
-Received: by mail-io1-f65.google.com with SMTP id t7-v6so12476074ioj.13
-        for <linux-ext4@vger.kernel.org>; Sun, 14 Oct 2018 07:58:45 -0700 (PDT)
-From: nicholas.clark@gmail.com
-To: nicholas.clark@gmail.com, linux-ext4@vger.kernel.org
-Subject: [PATCH RESEND 1/2] Fuse2fs: fix 'mount' entry in some cases.
-Date: Sun, 14 Oct 2018 08:58:36 -0600
-Message-Id: <20181014145837.6344-2-nicholas.clark@gmail.com>
-In-Reply-To: <20181014145837.6344-1-nicholas.clark@gmail.com>
-References: <20181014145837.6344-1-nicholas.clark@gmail.com>
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.133]:45106 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727856AbeJBVVA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Oct 2018 17:21:00 -0400
+Date: Tue, 2 Oct 2018 07:37:13 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jan Kara <jack@suse.cz>
+Cc: Johannes Thumshirn <jthumshirn@suse.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-api@vger.kernel.org
+Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
+Message-ID: <20181002143713.GA19845@infradead.org>
+References: <20181002100531.GC4135@quack2.suse.cz>
+ <20181002121039.GA3274@linux-x5ow.site>
+ <20181002142959.GD9127@quack2.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181002142959.GD9127@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Nicholas Clark <nicholas.clark@gmail.com>
+On Tue, Oct 02, 2018 at 04:29:59PM +0200, Jan Kara wrote:
+> > OK naive question from me, how do we want an application to be able to
+> > check if it is running on a DAX mapping?
+> 
+> The question from me is: Should application really care?
 
-FUSE's parser allows command-line options to be specified before
-or after the device/image and mount-path. This commit changes the
-value of the fsname mount option to be correct even if options are
-specified before the target device/image.
-
-Signed-off-by: Nicholas Clark <nicholas.clark@gmail.com>
----
- misc/fuse2fs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index 5c73895e..3214be4a 100644
---- a/misc/fuse2fs.c
-+++ b/misc/fuse2fs.c
-@@ -3845,7 +3845,7 @@ int main(int argc, char *argv[])
- 	/* Set up default fuse parameters */
- 	snprintf(extra_args, BUFSIZ, "-okernel_cache,subtype=ext4,use_ino,"
- 		 "fsname=%s,attr_timeout=0" FUSE_PLATFORM_OPTS,
--		 argv[1]);
-+		 fctx.device);
- 	if (fctx.no_default_opts == 0)
- 		fuse_opt_add_arg(&args, extra_args);
- 
--- 
-2.17.1
+No, it should not.  DAX is an implementation detail thay may change
+or go away at any time.
