@@ -1,34 +1,27 @@
 Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:45106 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727856AbeJBVVA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Oct 2018 17:21:00 -0400
-Date: Tue, 2 Oct 2018 07:37:13 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jan Kara <jack@suse.cz>
-Cc: Johannes Thumshirn <jthumshirn@suse.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org
-Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
-Message-ID: <20181002143713.GA19845@infradead.org>
-References: <20181002100531.GC4135@quack2.suse.cz>
- <20181002121039.GA3274@linux-x5ow.site>
- <20181002142959.GD9127@quack2.suse.cz>
+Received: from [69.163.46.125] ([69.163.46.125]:54579 "EHLO fitzandfloyd.com"
+        rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726517AbeJCEt6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Oct 2018 00:49:58 -0400
+To: linux-ext4@vger.kernel.org
+Subject: Team for it 23
+Message-ID: <24896c827d1264bbeec9f70c6a566be2@jmcutlery.com>
+Date: Tue, 02 Oct 2018 13:30:28 +0200
+From: "Cathy" <zttinteeqrpawnlke@verizon.net>
+Reply-To: husanlu@sina.com
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181002142959.GD9127@quack2.suse.cz>
+Content-Type: text/plain; format=flowed; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 02, 2018 at 04:29:59PM +0200, Jan Kara wrote:
-> > OK naive question from me, how do we want an application to be able to
-> > check if it is running on a DAX mapping?
-> 
-> The question from me is: Should application really care?
+Do you need photos cutting out or retouching?
 
-No, it should not.  DAX is an implementation detail thay may change
-or go away at any time.
+We are a image edit team and we do editing for the e-commerce photos,
+portrait photos and others.
+
+We can provide testing to check quality.
+Waiting for your reply and photo work you need to be done.
+
+Thanks,
+Cathy
