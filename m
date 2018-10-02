@@ -1,86 +1,78 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lj1-f195.google.com ([209.85.208.195]:44895 "EHLO
-        mail-lj1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727523AbeJVRu0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 13:50:26 -0400
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:58218 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726118AbeJBVNm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 2 Oct 2018 17:13:42 -0400
+Date: Tue, 2 Oct 2018 16:29:59 +0200
+From: Jan Kara <jack@suse.cz>
+To: Johannes Thumshirn <jthumshirn@suse.de>
+Cc: Jan Kara <jack@suse.cz>, Dan Williams <dan.j.williams@intel.com>,
+        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-api@vger.kernel.org
+Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
+Message-ID: <20181002142959.GD9127@quack2.suse.cz>
+References: <20181002100531.GC4135@quack2.suse.cz>
+ <20181002121039.GA3274@linux-x5ow.site>
 MIME-Version: 1.0
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
- <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com> <20181022004217.GA4941@bombadil.infradead.org>
-In-Reply-To: <20181022004217.GA4941@bombadil.infradead.org>
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Mon, 22 Oct 2018 11:32:29 +0200
-Message-ID: <CANiq72nKkJgLuHVTEZAMPcrXeTd1OvP2owCAUjqnYtru4JeMYA@mail.gmail.com>
-Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
- (gcc >= 7.1)
-To: Matthew Wilcox <willy@infradead.org>
-Cc: Greg KH <gregkh@linuxfoundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Dan <dan.carpenter@oracle.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181002121039.GA3274@linux-x5ow.site>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 22, 2018 at 2:42 AM Matthew Wilcox <willy@infradead.org> wrote:
->
-> On Sun, Oct 21, 2018 at 07:14:13PM +0200, Miguel Ojeda wrote:
-> > +#if __has_attribute(__fallthrough__)
-> > +# define __fallthrough                  __attribute__((__fallthrough__))
-> > +#else
-> > +# define __fallthrough
-> > +#endif
->
-> Why is the #else not:
->
-> # define __fallthrough          /* fallthrough */
->
-> Would this solve the Coverity problem, or does Coverity look at the raw
-> source code before preprocessing?
+[Added ext4, xfs, and linux-api folks to CC for the interface discussion]
 
-That wouldn't work if Coverity follows the standard, because it is
-required that comments are removed right before the preprocessing
-phase.
+On Tue 02-10-18 14:10:39, Johannes Thumshirn wrote:
+> On Tue, Oct 02, 2018 at 12:05:31PM +0200, Jan Kara wrote:
+> > Hello,
+> > 
+> > commit e1fb4a086495 "dax: remove VM_MIXEDMAP for fsdax and device dax" has
+> > removed VM_MIXEDMAP flag from DAX VMAs. Now our testing shows that in the
+> > mean time certain customer of ours started poking into /proc/<pid>/smaps
+> > and looks at VMA flags there and if VM_MIXEDMAP is missing among the VMA
+> > flags, the application just fails to start complaining that DAX support is
+> > missing in the kernel. The question now is how do we go about this?
+> 
+> OK naive question from me, how do we want an application to be able to
+> check if it is running on a DAX mapping?
 
-That is one of the advantages vs. the attribute that I mentioned:
+The question from me is: Should application really care? After all DAX is
+just a caching decision. Sure it affects performance characteristics and
+memory usage of the kernel but it is not a correctness issue (in particular
+we took care for MAP_SYNC to return EOPNOTSUPP if the feature cannot be
+supported for current mapping). And in the future the details of what we do
+with DAX mapping can change - e.g. I could imagine we might decide to cache
+writes in DRAM but do direct PMEM access on reads. And all this could be
+auto-tuned based on media properties. And we don't want to tie our hands by
+specifying too narrowly how the kernel is going to behave.
 
-    """
-    We can actually use a #define for it like for the rest of
-    attributes/extensions, which is not possible with a comment, (...)
-    """
+OTOH I understand that e.g. for a large database application the difference
+between DAX and non-DAX mapping can be a difference between performs fine
+and performs terribly / kills the machine so such application might want to
+determine / force caching policy to save sysadmin from debugging why the
+application is misbehaving.
 
-Cheers,
-Miguel
+> AFAIU DAX is always associated with a file descriptor of some kind (be
+> it a real file with filesystem dax or the /dev/dax device file for
+> device dax). So could a new fcntl() be of any help here? IS_DAX() only
+> checks for the S_DAX flag in inode::i_flags, so this should be doable
+> for both fsdax and devdax.
+
+So fcntl() to query DAX usage is one option. Another option is the GETFLAGS
+ioctl with which you can query the state of S_DAX flag (works only for XFS
+currently). But that inode flag was meant more as a hint "use DAX if
+available" AFAIK so that's probably not really suitable for querying
+whether DAX is really in use or not. Since DAX is really about caching
+policy, I was also thinking that we could use madvise / fadvise for this.
+I.e., something like MADV_DIRECT_ACCESS which would return with success if
+DAX is in use, with error if not. Later, kernel could use it as a hint to
+really force DAX on a mapping and not try clever caching policies...
+Thoughts?
+
+								Honza
+
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
