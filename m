@@ -1,73 +1,133 @@
-Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:50182 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727132AbeJREyJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:54:09 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 19/23] ext4: Reserve superblock fields for encoding information
-Date: Wed, 17 Oct 2018 16:55:20 -0400
-Message-Id: <20181017205524.23360-20-krisman@collabora.co.uk>
-In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
-References: <20181017205524.23360-1-krisman@collabora.co.uk>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:48358 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725198AbeJCGYF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Oct 2018 02:24:05 -0400
+From: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@kernel.org
+Subject: [PATCH] ext4: fix EXT4_IOC_SWAP_BOOT
+Date: Tue,  2 Oct 2018 19:38:08 -0400
+Message-Id: <20181002233808.16118-1-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The s_encoding field stores a magic number indicating the encoding
-format and version used globally by file and directory names in the
-filesystem.
+The code EXT4_IOC_SWAP_BOOT ioctl hasn't been updated in a while, and
+it's a bit broken with respect to more modern ext4 kernels, especially
+metadata checksums.
 
-The s_encoding_flags defines policies for using the charset encoding,
-like how to handle invalid sequences and what kind of normalization to
-use.
+Other problems fixed with this commit:
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+* Don't allow installing a DAX, swap file, or an encrypted file as a
+  boot loader.
+
+* Respect the immutable and append-only flags.
+
+* Wait until any DIO operations are finished *before* calling
+  truncate_inode_pages().
+
+* Don't swap inode->i_flags, since these flags have nothing to do with
+  the inode blocks --- and it will give the IMA/audit code heartburn
+  when the inode is evicted.
+
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@kernel.org
+Reported-by: syzbot+e81ccd4744c6c4f71354@syzkaller.appspotmail.com
 ---
- fs/ext4/ext4.h | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/ext4/ioctl.c | 33 +++++++++++++++++++++++++++------
+ 1 file changed, 27 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 12f90d48ba61..358ccf06fade 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1320,7 +1320,9 @@ struct ext4_super_block {
- 	__u8	s_first_error_time_hi;
- 	__u8	s_last_error_time_hi;
- 	__u8	s_pad[2];
--	__le32	s_reserved[96];		/* Padding to the end of the block */
-+	__le16  s_encoding;		/* Filename charset encoding */
-+	__le16  s_encoding_flags;	/* Filename charset encoding flags */
-+	__le32	s_reserved[95];		/* Padding to the end of the block */
- 	__le32	s_checksum;		/* crc32c(superblock) */
- };
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index a7074115d6f6..d7ed7487e630 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -67,7 +67,6 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+ 	ei1 = EXT4_I(inode1);
+ 	ei2 = EXT4_I(inode2);
  
-@@ -1670,6 +1672,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
- #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
-+#define EXT4_FEATURE_INCOMPAT_FNAME_ENCODING	0x20000
+-	swap(inode1->i_flags, inode2->i_flags);
+ 	swap(inode1->i_version, inode2->i_version);
+ 	swap(inode1->i_blocks, inode2->i_blocks);
+ 	swap(inode1->i_bytes, inode2->i_bytes);
+@@ -85,6 +84,21 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+ 	i_size_write(inode2, isize);
+ }
  
- #define EXT4_FEATURE_COMPAT_FUNCS(name, flagname) \
- static inline bool ext4_has_feature_##name(struct super_block *sb) \
-@@ -1758,6 +1761,7 @@ EXT4_FEATURE_INCOMPAT_FUNCS(csum_seed,		CSUM_SEED)
- EXT4_FEATURE_INCOMPAT_FUNCS(largedir,		LARGEDIR)
- EXT4_FEATURE_INCOMPAT_FUNCS(inline_data,	INLINE_DATA)
- EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
-+EXT4_FEATURE_INCOMPAT_FUNCS(fname_encoding,	FNAME_ENCODING)
++static void reset_inode_seed(struct inode *inode)
++{
++	struct ext4_inode_info *ei = EXT4_I(inode);
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	__le32 inum = cpu_to_le32(inode->i_ino);
++	__le32 gen = cpu_to_le32(inode->i_generation);
++	__u32 csum;
++
++	if (!ext4_has_metadata_csum(inode->i_sb))
++		return;
++
++	csum = ext4_chksum(sbi, sbi->s_csum_seed, (__u8 *)&inum, sizeof(inum));
++	ei->i_csum_seed = ext4_chksum(sbi, csum, (__u8 *)&gen, sizeof(gen));
++}
++
+ /**
+  * Swap the information from the given @inode and the inode
+  * EXT4_BOOT_LOADER_INO. It will basically swap i_data and all other
+@@ -102,10 +116,13 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 	struct inode *inode_bl;
+ 	struct ext4_inode_info *ei_bl;
  
- #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
- #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
-@@ -1785,6 +1789,7 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
- 					 EXT4_FEATURE_INCOMPAT_MMP | \
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
- 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
-+					 EXT4_FEATURE_INCOMPAT_FNAME_ENCODING | \
- 					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
- 					 EXT4_FEATURE_INCOMPAT_LARGEDIR)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+-	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode))
++	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode) ||
++	    IS_SWAPFILE(inode) || IS_ENCRYPTED(inode) ||
++	    ext4_has_inline_data(inode))
+ 		return -EINVAL;
+ 
+-	if (!inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN))
++	if (IS_RDONLY(inode) || IS_APPEND(inode) || IS_IMMUTABLE(inode) ||
++	    !inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN))
+ 		return -EPERM;
+ 
+ 	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO);
+@@ -120,13 +137,13 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 	 * that only 1 swap_inode_boot_loader is running. */
+ 	lock_two_nondirectories(inode, inode_bl);
+ 
+-	truncate_inode_pages(&inode->i_data, 0);
+-	truncate_inode_pages(&inode_bl->i_data, 0);
+-
+ 	/* Wait for all existing dio workers */
+ 	inode_dio_wait(inode);
+ 	inode_dio_wait(inode_bl);
+ 
++	truncate_inode_pages(&inode->i_data, 0);
++	truncate_inode_pages(&inode_bl->i_data, 0);
++
+ 	handle = ext4_journal_start(inode_bl, EXT4_HT_MOVE_EXTENTS, 2);
+ 	if (IS_ERR(handle)) {
+ 		err = -EINVAL;
+@@ -159,6 +176,8 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 
+ 	inode->i_generation = prandom_u32();
+ 	inode_bl->i_generation = prandom_u32();
++	reset_inode_seed(inode);
++	reset_inode_seed(inode_bl);
+ 
+ 	ext4_discard_preallocations(inode);
+ 
+@@ -169,6 +188,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 			inode->i_ino, err);
+ 		/* Revert all changes: */
+ 		swap_inode_data(inode, inode_bl);
++		ext4_mark_inode_dirty(handle, inode);
+ 	} else {
+ 		err = ext4_mark_inode_dirty(handle, inode_bl);
+ 		if (err < 0) {
+@@ -178,6 +198,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 			/* Revert all changes: */
+ 			swap_inode_data(inode, inode_bl);
+ 			ext4_mark_inode_dirty(handle, inode);
++			ext4_mark_inode_dirty(handle, inode_bl);
+ 		}
+ 	}
+ 	ext4_journal_stop(handle);
 -- 
-2.19.1
+2.18.0.rc0
