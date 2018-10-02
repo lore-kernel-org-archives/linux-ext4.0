@@ -1,271 +1,109 @@
-Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:50112 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726009AbeJRExO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:53:14 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 04/23] nls: Split default charset from NLS core
-Date: Wed, 17 Oct 2018 16:55:05 -0400
-Message-Id: <20181017205524.23360-5-krisman@collabora.co.uk>
-In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
-References: <20181017205524.23360-1-krisman@collabora.co.uk>
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:43408 "EHLO
+        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725753AbeJCE5z (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Oct 2018 00:57:55 -0400
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
+ <20181003071059.02b3fd6f@canb.auug.org.au> <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
+In-Reply-To: <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
+From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Date: Wed, 3 Oct 2018 00:12:10 +0200
+Message-ID: <CANiq72mmxiO6RWBTQfWYDaa6gmOF01nXmN6BJNCAjAFz3QJqqA@mail.gmail.com>
+Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
+To: Nick Desaulniers <ndesaulniers@google.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Linux-Next Mailing List <linux-next@vger.kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Stephen Rothwell <sfr@canb.auug.org.au>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- fs/nls/Makefile                      |  1 +
- fs/nls/nls_core.c                    | 94 ++++++++++++++++++++++++++++
- fs/nls/{nls_base.c => nls_default.c} | 93 +++------------------------
- 3 files changed, 102 insertions(+), 86 deletions(-)
- create mode 100644 fs/nls/nls_core.c
- rename fs/nls/{nls_base.c => nls_default.c} (90%)
+Hi Nick,
 
-diff --git a/fs/nls/Makefile b/fs/nls/Makefile
-index ac54db297128..5f42ceff9d15 100644
---- a/fs/nls/Makefile
-+++ b/fs/nls/Makefile
-@@ -3,6 +3,7 @@
- # Makefile for native language support
- #
- 
-+nls_base-y := nls_core.o nls_default.o
- obj-$(CONFIG_NLS)		+= nls_base.o
- 
- obj-$(CONFIG_NLS_CODEPAGE_437)	+= nls_cp437.o
-diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
-new file mode 100644
-index 000000000000..3f7de8f4c5b2
---- /dev/null
-+++ b/fs/nls/nls_core.c
-@@ -0,0 +1,94 @@
-+/*
-+ * linux/fs/nls/nls_core.c
-+ *
-+ * Native language support--charsets and unicode translations.
-+ * By Gordon Chaffee 1996, 1997
-+ *
-+ * Unicode based case conversion 1999 by Wolfram Pienkoss
-+ *
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/string.h>
-+#include <linux/nls.h>
-+#include <linux/kernel.h>
-+#include <linux/errno.h>
-+#include <linux/kmod.h>
-+#include <linux/spinlock.h>
-+
-+static struct nls_table default_table;
-+static struct nls_table *tables = &default_table;
-+static DEFINE_SPINLOCK(nls_lock);
-+
-+int __register_nls(struct nls_table *nls, struct module *owner)
-+{
-+	struct nls_table ** tmp = &tables;
-+
-+	if (nls->next)
-+		return -EBUSY;
-+
-+	nls->owner = owner;
-+	spin_lock(&nls_lock);
-+	while (*tmp) {
-+		if (nls == *tmp) {
-+			spin_unlock(&nls_lock);
-+			return -EBUSY;
-+		}
-+		tmp = &(*tmp)->next;
-+	}
-+	nls->next = tables;
-+	tables = nls;
-+	spin_unlock(&nls_lock);
-+	return 0;
-+}
-+EXPORT_SYMBOL(__register_nls);
-+
-+int unregister_nls(struct nls_table * nls)
-+{
-+	struct nls_table ** tmp = &tables;
-+
-+	spin_lock(&nls_lock);
-+	while (*tmp) {
-+		if (nls == *tmp) {
-+			*tmp = nls->next;
-+			spin_unlock(&nls_lock);
-+			return 0;
-+		}
-+		tmp = &(*tmp)->next;
-+	}
-+	spin_unlock(&nls_lock);
-+	return -EINVAL;
-+}
-+
-+static struct nls_table *find_nls(char *charset)
-+{
-+	struct nls_table *nls;
-+	spin_lock(&nls_lock);
-+	for (nls = tables; nls; nls = nls->next) {
-+		if (!strcmp(nls_charset_name(nls), charset))
-+			break;
-+		if (nls->alias && !strcmp(nls->alias, charset))
-+			break;
-+	}
-+	if (nls && !try_module_get(nls->owner))
-+		nls = NULL;
-+	spin_unlock(&nls_lock);
-+	return nls;
-+}
-+
-+struct nls_table *load_nls(char *charset)
-+{
-+	return try_then_request_module(find_nls(charset), "nls_%s", charset);
-+}
-+
-+void unload_nls(struct nls_table *nls)
-+{
-+	if (nls)
-+		module_put(nls->owner);
-+}
-+
-+EXPORT_SYMBOL(unregister_nls);
-+EXPORT_SYMBOL(unload_nls);
-+EXPORT_SYMBOL(load_nls);
-+
-+MODULE_LICENSE("Dual BSD/GPL");
-diff --git a/fs/nls/nls_base.c b/fs/nls/nls_default.c
-similarity index 90%
-rename from fs/nls/nls_base.c
-rename to fs/nls/nls_default.c
-index 0bb0acf6893f..c5d7e8391b22 100644
---- a/fs/nls/nls_base.c
-+++ b/fs/nls/nls_default.c
-@@ -1,5 +1,5 @@
- /*
-- * linux/fs/nls/nls_base.c
-+ * linux/fs/nls/nls_default.c
-  *
-  * Native language support--charsets and unicode translations.
-  * By Gordon Chaffee 1996, 1997
-@@ -8,23 +8,17 @@
-  *
-  */
- 
-+/*
-+ * Sample implementation from Unicode home page.
-+ * http://www.stonehand.com/unicode/standard/fss-utf.html
-+ */
-+
- #include <linux/module.h>
--#include <linux/string.h>
--#include <linux/nls.h>
--#include <linux/kernel.h>
--#include <linux/errno.h>
--#include <linux/kmod.h>
--#include <linux/spinlock.h>
- #include <asm/byteorder.h>
-+#include <linux/nls.h>
- 
- static struct nls_table default_table;
--static struct nls_table *tables = &default_table;
--static DEFINE_SPINLOCK(nls_lock);
- 
--/*
-- * Sample implementation from Unicode home page.
-- * http://www.stonehand.com/unicode/standard/fss-utf.html
-- */
- struct utf8_table {
- 	int     cmask;
- 	int     cval;
-@@ -232,73 +226,6 @@ int utf16s_to_utf8s(const wchar_t *pwcs, int inlen, enum utf16_endian endian,
- }
- EXPORT_SYMBOL(utf16s_to_utf8s);
- 
--int __register_nls(struct nls_table *nls, struct module *owner)
--{
--	struct nls_table ** tmp = &tables;
--
--	if (nls->next)
--		return -EBUSY;
--
--	nls->owner = owner;
--	spin_lock(&nls_lock);
--	while (*tmp) {
--		if (nls == *tmp) {
--			spin_unlock(&nls_lock);
--			return -EBUSY;
--		}
--		tmp = &(*tmp)->next;
--	}
--	nls->next = tables;
--	tables = nls;
--	spin_unlock(&nls_lock);
--	return 0;	
--}
--EXPORT_SYMBOL(__register_nls);
--
--int unregister_nls(struct nls_table * nls)
--{
--	struct nls_table ** tmp = &tables;
--
--	spin_lock(&nls_lock);
--	while (*tmp) {
--		if (nls == *tmp) {
--			*tmp = nls->next;
--			spin_unlock(&nls_lock);
--			return 0;
--		}
--		tmp = &(*tmp)->next;
--	}
--	spin_unlock(&nls_lock);
--	return -EINVAL;
--}
--
--static struct nls_table *find_nls(char *charset)
--{
--	struct nls_table *nls;
--	spin_lock(&nls_lock);
--	for (nls = tables; nls; nls = nls->next) {
--		if (!strcmp(nls_charset_name(nls), charset))
--			break;
--		if (nls->alias && !strcmp(nls->alias, charset))
--			break;
--	}
--	if (nls && !try_module_get(nls->owner))
--		nls = NULL;
--	spin_unlock(&nls_lock);
--	return nls;
--}
--
--struct nls_table *load_nls(char *charset)
--{
--	return try_then_request_module(find_nls(charset), "nls_%s", charset);
--}
--
--void unload_nls(struct nls_table *nls)
--{
--	if (nls)
--		module_put(nls->owner);
--}
--
- static const wchar_t charset2uni[256] = {
- 	/* 0x00*/
- 	0x0000, 0x0001, 0x0002, 0x0003,
-@@ -543,10 +470,4 @@ struct nls_table *load_nls_default(void)
- 	else
- 		return &default_table;
- }
--
--EXPORT_SYMBOL(unregister_nls);
--EXPORT_SYMBOL(unload_nls);
--EXPORT_SYMBOL(load_nls);
- EXPORT_SYMBOL(load_nls_default);
--
--MODULE_LICENSE("Dual BSD/GPL");
--- 
-2.19.1
+On Tue, Oct 2, 2018 at 11:16 PM Nick Desaulniers
+<ndesaulniers@google.com> wrote:
+>
+> On Tue, Oct 2, 2018 at 2:11 PM Stephen Rothwell <sfr@canb.auug.org.au> wrote:
+> >
+> > Hi Miguel,
+> >
+> > On Tue, 2 Oct 2018 15:47:12 +0200 Miguel Ojeda <miguel.ojeda.sandonis@gmail.com> wrote:
+> > >
+> > > The Compiler Attributes series has been stable for 10+ days. To
+> > > increase testing before 4.20, I would to request it being picked up
+> > > for -next.
+> > >
+> > > The changes w.r.t. v5 in the LKML:
+> > >
+> > >   - Rebased on top of next-20180928, which required removing
+> >
+> > Unfortunately, trees/branches included in linux-next must be based on
+> > something stable (usually Linus' tree, but it could be another
+> > tree/branch that is included in linux-next that does not rebase).
+> > Linux-next itself rebases every day, so snything based on it would drag
+> > in a previous version of all the other trees :-(
+>
+> I think of this like a branch that's force pushed to.  Can't base
+> other branches or trees off of it cause it's always moving/force
+> rewriting history.
+
+As I have read, -next is supposed to be a vision of what the merge
+window will look like after merging everything, i.e. ideally -rc1. For
+that to work for files out-of-tree (like these ones, which are not
+maintained by a single tree), changes should be allowed to be stacked
+on each other; otherwise, we cannot handle conflicts :-(
+
+>
+> >
+> > > aligned_largest, which was removed by 9503cd9cbaba
+> > > ("include/linux/compiler*.h: add version detection to
+> > > asm_volatile_goto").
+> >
+> > That commit is from Andrew's patch series which also rebases (usually
+> > at least every week), so you cannot depend on it.
+>
+> Miguel, you should be able to drop that patch from your set then,
+> since Andrew's -mm tree flows into this -next tree as well, IIUC.
+> We'll take up that patch from there.
+
+Not sure what you mean by "drop that patch". There is no patch to
+drop, there is a conflict with a change already in -next.
+
+Cheers,
+Miguel
