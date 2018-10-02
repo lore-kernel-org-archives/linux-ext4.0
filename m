@@ -1,65 +1,61 @@
-Return-Path: <SRS0=yq1P=MY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:45698 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726054AbeJMC6C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 12 Oct 2018 22:58:02 -0400
-Date: Fri, 12 Oct 2018 15:24:01 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Gabriel Krisman Bertazi <krisman@collabora.co.uk>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [PATCH RESEND v2 00/25] Ext4 Encoding and Case-insensitive
- support
-Message-ID: <20181012192401.GA20322@thunk.org>
-References: <20180924215655.3676-1-krisman@collabora.co.uk>
- <20181011222359.GB24824@magnolia>
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-oi1-f193.google.com ([209.85.167.193]:41294 "EHLO
+        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727148AbeJCDEL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Oct 2018 23:04:11 -0400
+Received: by mail-oi1-f193.google.com with SMTP id l197-v6so2628749oib.8
+        for <linux-ext4@vger.kernel.org>; Tue, 02 Oct 2018 13:19:05 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181011222359.GB24824@magnolia>
+References: <20181002100531.GC4135@quack2.suse.cz> <20181002121039.GA3274@linux-x5ow.site>
+ <20181002142959.GD9127@quack2.suse.cz> <20181002143713.GA19845@infradead.org>
+ <20181002144412.GC4963@linux-x5ow.site> <20181002145206.GA10903@infradead.org>
+ <20181002153100.GG9127@quack2.suse.cz>
+In-Reply-To: <20181002153100.GG9127@quack2.suse.cz>
+From: Dan Williams <dan.j.williams@intel.com>
+Date: Tue, 2 Oct 2018 13:18:54 -0700
+Message-ID: <CAPcyv4j0tTD+rENqFExA68aw=-MmtCBaOe1qJovyrmJC=yBg-Q@mail.gmail.com>
+Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
+To: Jan Kara <jack@suse.cz>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Dave Jiang <dave.jiang@intel.com>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        Linux MM <linux-mm@kvack.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 11, 2018 at 03:23:59PM -0700, Darrick J. Wong wrote:
-> 
-> Hmmm, I'm curious, why pick NFKD specifically?  AFAICT Linux userspace
-> environments (I only tried with GNOME and KDE) use NF[K]C....
+On Tue, Oct 2, 2018 at 8:32 AM Jan Kara <jack@suse.cz> wrote:
 >
-> Is there a particular reason you picked NFKD?  Ohhh, right, because this
-> series is a derivative of the ~2014 XFS case folding patchset.  Hmm, so
-> looking at the ext4 changes, I guess what you do is add a custom ->d_hash
-> function so that the dentries are hashed by hash(nfkd(fname))?  Which
-> makes it easy to have link() look for names that will conflict after
-> normalization?
+> On Tue 02-10-18 07:52:06, Christoph Hellwig wrote:
+> > On Tue, Oct 02, 2018 at 04:44:13PM +0200, Johannes Thumshirn wrote:
+> > > On Tue, Oct 02, 2018 at 07:37:13AM -0700, Christoph Hellwig wrote:
+> > > > No, it should not.  DAX is an implementation detail thay may change
+> > > > or go away at any time.
+> > >
+> > > Well we had an issue with an application checking for dax, this is how
+> > > we landed here in the first place.
+> >
+> > So what exacty is that "DAX" they are querying about (and no, I'm not
+> > joking, nor being philosophical).
+>
+> I believe the application we are speaking about is mostly concerned about
+> the memory overhead of the page cache. Think of a machine that has ~ 1TB of
+> DRAM, the database running on it is about that size as well and they want
+> database state stored somewhere persistently - which they may want to do by
+> modifying mmaped database files if they do small updates... So they really
+> want to be able to use close to all DRAM for the DB and not leave slack
+> space for the kernel page cache to cache 1TB of database files.
 
-This would be true for NFKC or NFC as well though, right?  So the
-tradeoff of NF[K]C vs NF[K]D is that NFC is more efficient from an
-encoding perspective.  For e with a grave accent, NFC would encode it
-as C3 A9, while NFD would encode it as 65 CC 81.  So from an encoding
-perspective there would be a benefit to use 'C' versus 'D'.  But MacOS
-X by default canonicalizes to 'D', not 'C'.  I assume that's the
-rationale for using NFKD versus NFKC?
+VM_MIXEDMAP was never a reliable indication of DAX because it could be
+set for random other device-drivers that use vm_insert_mixed(). The
+MAP_SYNC flag positively indicates that page cache is disabled for a
+given mapping, although whether that property is due to "dax" or some
+other kernel mechanics is purely an internal detail.
 
-As far as the 'K' versus "non-K" distinction, I imagine the main issue
-is that a user could cut and paste something like "She\uFB03eld" which
-it makes sense to canonicalize this to "Sheffield".  This is *not* a
-canoncalization which MacOS X does (it uses NFD, not NFKD) but from a
-compatibility perspective, it's not a problem since:
-
-NFD:	Sheffield -> Sheffield
-	She\uFB03eld -> She\uFB03eld
-
-NFKD:	Sheffield -> Sheffield
-	She\uFB03eld -> Sheffield
-
-Given it's really painful to type the string She\uFB03eld into a
-terminal, it seems to make sense that even if the user tries to create
-a file with that string, that the actual file name that should get
-created should be "Sheffield".
-
-And hence, that's the argument for why the best on-disk encoding for
-Linux file systems should be NFKD.
-
-Does that seem right to everyone?
-
-						- Ted
+I'm not opposed to faking out VM_MIXEDMAP if this broken check has
+made it into production, but again, it's unreliable.
