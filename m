@@ -1,56 +1,55 @@
-Return-Path: <SRS0=ufRS=NJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36176 "EHLO mx1.suse.de"
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:36722 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729229AbeJ2T36 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 29 Oct 2018 15:29:58 -0400
-Date: Mon, 29 Oct 2018 11:41:50 +0100
+        id S1729254AbeJBVvB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 2 Oct 2018 17:51:01 -0400
+Date: Tue, 2 Oct 2018 17:07:08 +0200
 From: Jan Kara <jack@suse.cz>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [GIT PULL] ext2 and udf changes for v4.20-rc1
-Message-ID: <20181029104150.GD5988@quack2.suse.cz>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jan Kara <jack@suse.cz>, Johannes Thumshirn <jthumshirn@suse.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-api@vger.kernel.org
+Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
+Message-ID: <20181002150708.GF9127@quack2.suse.cz>
+References: <20181002100531.GC4135@quack2.suse.cz>
+ <20181002121039.GA3274@linux-x5ow.site>
+ <20181002142959.GD9127@quack2.suse.cz>
+ <20181002143713.GA19845@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+In-Reply-To: <20181002143713.GA19845@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
+On Tue 02-10-18 07:37:13, Christoph Hellwig wrote:
+> On Tue, Oct 02, 2018 at 04:29:59PM +0200, Jan Kara wrote:
+> > > OK naive question from me, how do we want an application to be able to
+> > > check if it is running on a DAX mapping?
+> > 
+> > The question from me is: Should application really care?
+> 
+> No, it should not.  DAX is an implementation detail thay may change
+> or go away at any time.
 
-  could you please pull from
+I agree that whether / how pagecache is used for filesystem access is an
+implementation detail of the kernel.  OTOH for some workloads it is about
+whether kernel needs gigabytes of RAM to cache files or not, which is not a
+detail anymore if you want to fully utilize the machine. So people will be
+asking for this and will be finding odd ways to determine whether DAX is
+used or not (such as poking in smaps). And once there is some widely enough
+used application doing this, it is not "stupid application" problem anymore
+but the kernel's problem of not maintaining backward compatibility.
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git filesystems_for_v4.20-rc1
+So I think we would be better off providing *some* API which applications
+can use to determine whether pagecache is used or not and make sure this
+API will convey the right information even if we change DAX
+implementation or remove it altogether.
 
-to get small ext2 cleanups and couple of udf fixes.
-
-Top of the tree is 2aad26fa0a3d. The full shortlog is:
-
-Chengguang Xu (2):
-      ext2: cache NULL when both default_acl and acl are NULL
-      ext2: remove redundant building macro check
-
-Colin Ian King (1):
-      udf: remove unused variables group_start and nr_groups
-
-Jan Kara (4):
-      udf: Prevent write-unsupported filesystem to be remounted read-write
-      udf: Fix crash during mount
-      udf: Drop freed bitmap / table support
-      udf: Drop pack pragma from udf_sb.h
-
-The diffstat is
-
- fs/ext2/acl.c   |   4 ++
- fs/ext2/ext2.h  |   4 --
- fs/ext2/super.c |   5 +-
- fs/udf/balloc.c |  30 +-----------
- fs/udf/super.c  | 139 +++++++++++++++++++++++++++++++-------------------------
- fs/udf/udf_sb.h |  10 +---
- 6 files changed, 85 insertions(+), 107 deletions(-)
-
-							Thanks
 								Honza
-
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
