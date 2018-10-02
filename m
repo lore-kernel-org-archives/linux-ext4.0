@@ -1,114 +1,115 @@
-Return-Path: <SRS0=j8gV=MN=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-it1-f195.google.com ([209.85.166.195]:50517 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726204AbeJBCaj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Oct 2018 22:30:39 -0400
-Received: by mail-it1-f195.google.com with SMTP id j81-v6so20828ite.0
-        for <linux-ext4@vger.kernel.org>; Mon, 01 Oct 2018 12:51:16 -0700 (PDT)
-From: Andreas Dilger <adilger@dilger.ca>
-Message-Id: <FE6394EC-5CB0-4A16-AAC6-97F465A4E50C@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_6FD6155E-4B53-4E0B-BBB4-240C9582FC05";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: cross-fs copy support
-Date: Mon, 1 Oct 2018 13:51:09 -0600
-In-Reply-To: <df92a795-3f2e-751a-8504-030015fba6d9@sandeen.net>
-Cc: Qu Wenruo <quwenruo.btrfs@gmx.com>, Joshi <joshiiitr@gmail.com>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@sandeen.net>
-References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
- <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
- <df92a795-3f2e-751a-8504-030015fba6d9@sandeen.net>
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from ozlabs.org ([203.11.71.1]:39485 "EHLO ozlabs.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725198AbeJCFqQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Oct 2018 01:46:16 -0400
+Date: Wed, 3 Oct 2018 09:00:10 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: Dominique Martinet <asmadeus@codewreck.org>
+Cc: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Linux-Next Mailing List <linux-next@vger.kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>, Ted Ts'o <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
+Message-ID: <20181003090010.5150f914@canb.auug.org.au>
+In-Reply-To: <20181002223652.GA4290@nautica>
+References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
+        <20181003071059.02b3fd6f@canb.auug.org.au>
+        <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
+        <CANiq72mmxiO6RWBTQfWYDaa6gmOF01nXmN6BJNCAjAFz3QJqqA@mail.gmail.com>
+        <20181002223652.GA4290@nautica>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ boundary="Sig_/Pi_fuJWlk3fcJlLoIKV/0xY"; protocol="application/pgp-signature"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---Apple-Mail=_6FD6155E-4B53-4E0B-BBB4-240C9582FC05
+--Sig_/Pi_fuJWlk3fcJlLoIKV/0xY
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=utf-8
 
-=1D=08=1D=1DOn Oct 1, 2018, at 9:49 AM, Eric Sandeen =
-<sandeen@sandeen.net> wrote:
+Hi Miguel,
+
+On Wed, 3 Oct 2018 00:36:52 +0200 Dominique Martinet <asmadeus@codewreck.or=
+g> wrote:
+>
+> Miguel Ojeda wrote on Wed, Oct 03, 2018:
+> > As I have read, -next is supposed to be a vision of what the merge
+> > window will look like after merging everything, i.e. ideally -rc1. For
+> > that to work for files out-of-tree (like these ones, which are not
+> > maintained by a single tree), changes should be allowed to be stacked
+> > on each other; otherwise, we cannot handle conflicts :-( =20
 >=20
+> The rule is the same as with a regular mainline pull; I don't have the
+> reference at hand but in some recent-ish pull request Linus said he
+> prefers the stable version with the conflict, and optionally you can
+> provide a second branch with the conflict resolved for reference, but
+> the pull request should be based on something stable even if it has
+> conflicts
 >=20
-> On 10/1/18 9:48 AM, Qu Wenruo wrote:
->>=20
->>=20
->> On 2018/10/1 =E4=B8=8B=E5=8D=8810:32, Joshi wrote:
->>> I was wondering about the cross-fs copy through copy_file_range.
->>=20
->> The term "cross-fs" looks pretty confusing.
->>=20
->> If you mean "cross-subvolume", then it should work without problem in =
-btrfs.
->>=20
->> If you mean reflink across two different file systems (not matter the
->> same fs type or not).
->> Then it's impossible to work.
->=20
-> I believe Joshi is talking about vfs_copy_file_range() not
-> vfs_clone_file range(), although _copy_ does call _clone_ if it can.
->=20
->> Reflink (clone_file_range) works by inserting data pointers into the
->> filesystem other than really copying the data.
->> Thus if the source is outside of the fs, it's really impossible to =
-work,
->> as the source pointer/data is completely out of control of the dest =
-fs.
->=20
-> Yes, I would expect there to be problems with his modified kernel
-> for a filesystem that supports clone_file_range, because
-> vfs_copy_file_range() will clone if possible, and this should fail =
-across
-> filesystems.
->=20
-> In general, though, I don't know for sure why we don't fall back to
-> do_splice_direct() across filesystems, although the filesystems that
-> implement their own ->copy_file_range ops may have their own,
-> further restrictions within their implementations.
->=20
-> This call /is/ documented in the manpage as only being valid for
-> files on the same filesystem, though:
-> http://man7.org/linux/man-pages/man2/copy_file_range.2.html
+> If there is a conflict Stefen will resolve it like Linus/Greg would, and
+> the resolved bit will be carried over everyday so it's not much more
+> work -- exactly like a regular pull request for inclusion in the main
+> tree :)
 
-There was a patch to allow cross-mount copy for NFS, but it hasn't =
-landed
-yet.
+Exactly what Dominique said.  I will fix up the conflict (unless it is
+a very complex conflict, in which case the author(s) should help) and
+the Linus (or Greg) will do the same.  If you do depend on a patch in
+Andrew's series, what happens if that patch does not get sent to Linus
+during the merge window or Linus rejects it?
 
-Cheers, Andreas
+--=20
+Cheers,
+Stephen Rothwell
 
-
-
-
-
-
---Apple-Mail=_6FD6155E-4B53-4E0B-BBB4-240C9582FC05
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
+--Sig_/Pi_fuJWlk3fcJlLoIKV/0xY
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
 
 -----BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
 
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAluyeq0ACgkQcqXauRfM
-H+CA/BAAlqfHLiBffwXGdhOXxmPi4v2pdAwCq1EtDwY2FrQ9pouuSEwVc5WimoYA
-8hPkLHmLw2DBwGon9YHgI90Or73VHWHY7hQDKJdU1kgo6BVSYDKSc2fj197DFuau
-1SJbsERSn+VGlgoJgnzLsWUFbsl7jU8wXQAVh53zh1xHQtKrTWpfwlMO1/LmkO5M
-FW5XIID7cE8iZHLMCdftciOufamoXiU1h1ILoWvMqmsL0lB8Ie2K2KKtw9EC6v2z
-+CjMDPoNHIlbOFB+LIUKSTCNB064Sts3OUKF1EjfIYYoPAjM4JCuWU7rh5q1mv3o
-gy7kxhx3IM8NpGDiGeUttCabdzqSMlY0VRyYLtTiqP5h6WkgHgrMkSb0zH26A2GZ
-AKzzJZzUk24QMEaLoQPCYbN8EnwFwES/4vxGpeAmb3FAtSk2jDJiZ3QitTWbamSY
-N2JydBps2Y+pi8W66VPKse/0u7REk9B79JSyouuB2VlyCxwGPME+VGCpAoMumrIA
-FUkYzp699AlMOwCCsdJocsVUfSCOnfwD2sU73n7ytBvqyKF4LaGN1q6VMxaWvZAf
-rM22YDLk3ATvYF2hp+hAzVJrVfEcPY+nadhUuFRt4AvgFrql56rGNEJzJ1e5kbe8
-f2BgJ6dQV09n3zywL7O5nLE4b1BMHDl4jGkiPeKB+COydXzj9Pw=
-=pSPg
+iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAluz+HoACgkQAVBC80lX
+0GwB6Af/QRmuvQ4ntPviR4hY99kAVf71n2hG+jM6yJp/+JjLvGaMxGSq+ZFAMk0V
+qnVWGZKhMDjl8b1Z+UrEJU35kn5GoWIAIbaXsBSgGWo5Hc6Z9u3PDfF6/Z0pMUEw
+KE8e8PS/1KVk24EBb5foc0l3VvVYKttUroqVfUglkYVgvizRV6kdzkMAbOaqdiVh
+eMIWmB0ZxYoOyM2rAQt9ul4VhQLrLKiIPlzjUQa3pMJmcaHT38RuuZ/Cpv4M3L0a
+uNbiOJCyY+hUp4Q6Twi69Srk9IWU5GdaSWwTOM0SvWRQhh1ge/K0mC+b21D8ANDh
+utwC/WyGrQiXJcpRJKiQpefzWwcWbQ==
+=9ecB
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_6FD6155E-4B53-4E0B-BBB4-240C9582FC05--
+--Sig_/Pi_fuJWlk3fcJlLoIKV/0xY--
