@@ -1,225 +1,55 @@
-Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:50136 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727243AbeJRExg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:53:36 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 10/23] nls: Add optional normalization and casefold hooks
-Date: Wed, 17 Oct 2018 16:55:11 -0400
-Message-Id: <20181017205524.23360-11-krisman@collabora.co.uk>
-In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
-References: <20181017205524.23360-1-krisman@collabora.co.uk>
+Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:45544 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727006AbeJBO5s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 2 Oct 2018 10:57:48 -0400
+Date: Tue, 2 Oct 2018 10:15:44 +0200
+From: David Sterba <dsterba@suse.cz>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: Eric Sandeen <sandeen@sandeen.net>,
+        Qu Wenruo <quwenruo.btrfs@gmx.com>,
+        Joshi <joshiiitr@gmail.com>, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Subject: Re: cross-fs copy support
+Message-ID: <20181002081544.GW3255@twin.jikos.cz>
+Reply-To: dsterba@suse.cz
+References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
+ <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
+ <df92a795-3f2e-751a-8504-030015fba6d9@sandeen.net>
+ <FE6394EC-5CB0-4A16-AAC6-97F465A4E50C@dilger.ca>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <FE6394EC-5CB0-4A16-AAC6-97F465A4E50C@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The Normalization operation applies a transformation to strings to
-obtain the normalization form, which allow the user to determine whether
-any two strings are equivalent to each other.  The NLS subsystem doesn't
-impose any constraint on what means to be equivalent, for any charsets.
-Unicode-based charsets, for instance, are free to support one, a few or
-all kinds of Unicode equivalences.
+On Mon, Oct 01, 2018 at 01:51:09PM -0600, Andreas Dilger wrote:
+> > Yes, I would expect there to be problems with his modified kernel
+> > for a filesystem that supports clone_file_range, because
+> > vfs_copy_file_range() will clone if possible, and this should fail across
+> > filesystems.
+> > 
+> > In general, though, I don't know for sure why we don't fall back to
+> > do_splice_direct() across filesystems, although the filesystems that
+> > implement their own ->copy_file_range ops may have their own,
+> > further restrictions within their implementations.
+> > 
+> > This call /is/ documented in the manpage as only being valid for
+> > files on the same filesystem, though:
+> > http://man7.org/linux/man-pages/man2/copy_file_range.2.html
+> 
+> There was a patch to allow cross-mount copy for NFS, but it hasn't landed
+> yet.
 
-The Casefold operation is similar to Normalization, in a sense that it
-also allows the caller to identify equivalent strings, but it
-disregards case, making it ideal for case insensitive comparisons.
+I found https://marc.info/?l=linux-nfs&m=144138779721907&w=2 that lifts
+the VFS check (part of a series that can't be easily linked to).
 
-Default implementation are provided by the nls core, such that existing
-charsets can operate on the new interface. The Normalization default
-operation is the format NLS_NORMALIZATION_TYPE_PLAIN, which returns the
-identity of the string, which means no normalization.  The casefold
-default is NLS_CASEFOLD_TYPE_TOUPPER, which returns the string with all
-characters converted to uppercase.
+The lack of cross-mount reflink (based on the copy_file_ragne) is often
+confusing users, there are common setups that mount subvolumes
+separately and reflinking between them would require mount of the
+toplevel subvolume.
 
-Changes since V1:
-  - Add default operations for casefold and normalization
-
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- fs/nls/nls_core.c   |  11 +++++
- include/linux/nls.h | 116 ++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 127 insertions(+)
-
-diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
-index 493690459b88..531d4add1d43 100644
---- a/fs/nls/nls_core.c
-+++ b/fs/nls/nls_core.c
-@@ -25,6 +25,17 @@ static int nls_validate_flags(struct nls_table *table, unsigned int flags)
- 	if (flags & NLS_STRICT_MODE && !table->ops->validate)
- 		return -1;
- 
-+	if ((flags & NLS_NORMALIZATION_TYPE_MASK) && !table->ops->normalize)
-+		return -1;
-+
-+	if ((flags & NLS_CASEFOLD_TYPE_MASK) && !table->ops->casefold)
-+		return -1;
-+
-+	/* Reject unused flags */
-+	if (flags & ~(NLS_CASEFOLD_TYPE_MASK|NLS_NORMALIZATION_TYPE_MASK |
-+		      NLS_STRICT_MODE))
-+		return -1;
-+
- 	return 0;
- }
- 
-diff --git a/include/linux/nls.h b/include/linux/nls.h
-index 980103d4c363..44a06a9c69e7 100644
---- a/include/linux/nls.h
-+++ b/include/linux/nls.h
-@@ -4,6 +4,7 @@
- 
- #include <linux/init.h>
- #include <linux/string.h>
-+#include <linux/errno.h>
- 
- /* Unicode has changed over the years.  Unicode code points no longer
-  * fit into 16 bits; as of Unicode 5 valid code points range from 0
-@@ -65,6 +66,51 @@ struct nls_ops {
- 	int (*strncasecmp)(const struct nls_table *charset,
- 			   const unsigned char *str1, size_t len1,
- 			   const unsigned char *str2, size_t len2);
-+	/**
-+	 * @normalize:
-+	 *
-+	 * Obtain the normalized form of a string, which can be used to
-+	 * determine whether any two strings are equivalent.  The NLS
-+	 * subsystem doesn't impose any constraint on the charsets
-+	 * regarding what it means to be equivalent.  Unicode-based
-+	 * charsets, for instance, are free to support one, a few or all
-+	 * kinds of Unicode equivalences.  Different kinds of
-+	 * normalizations can be specified using the nls_table flags.
-+	 *
-+	 * This hook is responsible for performing string validation if
-+	 * the strict mode flag is set.  The only case where it is not
-+	 * called by nls_core is when strict mode and normalization are
-+	 * disabled, because in this case the normalization is
-+	 * guaranteed to be the string identity.
-+	 *
-+	 * Not every charset implements this hook.  It is only required
-+	 * if the charset supports strict mode or some kind of
-+	 * normalization.
-+	 *
-+	 * If this operation cannot be executed for this charset,
-+	 * -ENOTSUPP is returned.  If the sequence is invalid, -EINVAL
-+	 * is returned.  Otherwise, this function returns the size of the
-+	 * new string.
-+	 **/
-+	int (*normalize)(const struct nls_table *charset,
-+			 const unsigned char *str, size_t len,
-+			 unsigned char *dest, size_t dlen);
-+	/**
-+	 * @casefold:
-+	 *
-+	 * Casefold returns a version of the string that can be used to
-+	 * perform case-insensitive comparisons.  The kind of casefold
-+	 * algorithm that will be used is charset dependent, and can be
-+	 * configured using the nls_table flags field.
-+	 *
-+	 * If this operation cannot be executed for this charset,
-+	 * -ENOTSUPP is returned.  If the sequence fails, -EINVAL is
-+	 * returned.  Otherwise, this function returns the size of the
-+	 * new string.
-+	 **/
-+	int (*casefold)(const struct nls_table *charset,
-+			const unsigned char *str, size_t len,
-+			unsigned char *dest, size_t dlen);
- 	unsigned char (*lowercase)(const struct nls_table *charset,
- 				   unsigned int c);
- 	unsigned char (*uppercase)(const struct nls_table *charset,
-@@ -101,13 +147,37 @@ enum utf16_endian {
- 	UTF16_BIG_ENDIAN
- };
- 
-+#define NLS_NORMALIZATION_TYPE(i)	((i & 0x7) << 1)
-+#define NLS_CASEFOLD_TYPE(i)		((i & 0x7) << 4)
-+
- #define NLS_STRICT_MODE			0x00000001
-+#define NLS_NORMALIZATION_TYPE_PLAIN	NLS_NORMALIZATION_TYPE(0)
-+#define NLS_NORMALIZATION_TYPE_MASK	0x0000000E
-+#define NLS_CASEFOLD_TYPE_TOUPPER	NLS_CASEFOLD_TYPE(0)
-+#define NLS_CASEFOLD_TYPE_MASK		0x00000070
- 
- static inline int IS_STRICT_MODE(const struct nls_table *charset)
- {
- 	return (charset->flags & NLS_STRICT_MODE);
- }
- 
-+#define NLS_NORMALIZATION_FUNCS(charset, type, i)			\
-+static inline int							\
-+IS_NORMALIZATION_TYPE_##charset##_##type(const struct nls_table *c)	\
-+{									\
-+	return ((c->flags & NLS_NORMALIZATION_TYPE_MASK) == i);		\
-+}
-+
-+#define NLS_CASEFOLD_FUNCS(charset, type, i)			    	\
-+static inline int							\
-+IS_CASEFOLD_TYPE_##charset##_##type(const struct nls_table *c)		\
-+{									\
-+	return ((c->flags & NLS_CASEFOLD_TYPE_MASK) == i);		\
-+}
-+
-+NLS_NORMALIZATION_FUNCS(ALL, PLAIN, NLS_NORMALIZATION_TYPE_PLAIN)
-+NLS_CASEFOLD_FUNCS(ALL, TOUPPER, NLS_CASEFOLD_TYPE_TOUPPER)
-+
- /* nls_base.c */
- extern int __register_nls(struct nls_charset *, struct module *);
- extern int unregister_nls(struct nls_charset *);
-@@ -213,6 +283,52 @@ static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
- 	return nls_strncasecmp(t, s1, len, s2, len);
- }
- 
-+static inline int nls_casefold(const struct nls_table *t,
-+			       const unsigned char *str, size_t len,
-+			       unsigned char *dest, size_t dlen)
-+{
-+	int i;
-+
-+	if (t->ops->casefold)
-+		return t->ops->casefold(t, str, len, dest, dlen);
-+
-+	if (!IS_CASEFOLD_TYPE_ALL_TOUPPER(t))
-+		return -ENOTSUPP;
-+
-+	if (IS_STRICT_MODE(t) && nls_validate(t, str, len))
-+		return -EINVAL;
-+
-+	if (len > dlen)
-+		return -EINVAL;
-+
-+	for (i = 0 ; i < len; i++)
-+		dest[i] = nls_toupper(t, str[i]);
-+
-+	return len;
-+}
-+
-+static inline int nls_normalize(const struct nls_table *t,
-+				const unsigned char *str, size_t len,
-+				unsigned char *dest, size_t dlen)
-+{
-+	if (t->ops->normalize)
-+		return t->ops->normalize(t, str, len, dest, dlen);
-+
-+	if (!IS_NORMALIZATION_TYPE_ALL_PLAIN(t))
-+		return -ENOTSUPP;
-+
-+	if (IS_STRICT_MODE(t) && nls_validate(t, str, len))
-+		return -EINVAL;
-+
-+	if (len > dlen)
-+		return -EINVAL;
-+
-+	/* If normalization are disabled, normalization is the
-+	 * identity. */
-+	strncpy(dest, str, len);
-+	return len;
-+}
-+
- /*
-  * nls_nullsize - return length of null character for codepage
-  * @codepage - codepage for which to return length of NULL terminator
--- 
-2.19.1
+If there are 2 in-kernel users of the relaxed cross-mount copy, I think
+this would help to push the series forward.
