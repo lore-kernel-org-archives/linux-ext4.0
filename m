@@ -1,24 +1,24 @@
-Return-Path: <SRS0=nfm4=NB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from smtprelay0037.hostedemail.com ([216.40.44.37]:56813 "EHLO
-        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1727446AbeJVDHq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 21 Oct 2018 23:07:46 -0400
-Message-ID: <d56762f8856201f520a3ee5553276621237e8e27.camel@perches.com>
-Subject: Re: [PATCH 0/2] Compiler Attributes: __fallthrough
-From: Joe Perches <joe@perches.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Cc: linux-kernel@vger.kernel.org,
-        Dan Carpenter <dan.carpenter@oracle.com>,
+Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:35714 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726630AbeJCTtL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Oct 2018 15:49:11 -0400
+Date: Wed, 3 Oct 2018 09:00:47 -0400
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Linux-Next Mailing List <linux-next@vger.kernel.org>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Masahiro Yamada <yamada.masahiro@socionext.com>,
         Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
         Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
         Olof Johansson <olof@lxom.net>,
         Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        "David S . Miller" <davem@davemloft.net>,
+        David Miller <davem@davemloft.net>,
         Andrey Ryabinin <aryabinin@virtuozzo.com>,
         Kees Cook <keescook@chromium.org>,
         Thomas Gleixner <tglx@linutronix.de>,
@@ -33,47 +33,44 @@ Cc: linux-kernel@vger.kernel.org,
         David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
         Martin Sebor <msebor@gmail.com>,
         Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Theodore Ts'o <tytso@mit.edu>,
+        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
         Geert Uytterhoeven <geert@linux-m68k.org>,
         Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
         Stefan Agner <stefan@agner.ch>,
         Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Date: Sun, 21 Oct 2018 11:52:21 -0700
-In-Reply-To: <20181021182926.GB6683@kroah.com>
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
-         <20181021182926.GB6683@kroah.com>
-Content-Type: text/plain; charset="ISO-8859-1"
-Mime-Version: 1.0
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
+Message-ID: <20181003090047.5aa88fc4@gandalf.local.home>
+In-Reply-To: <CANiq72nLLhTf3AsXqLkPmK6TV_g7E3tML9XaM_zE45dM7XPn-A@mail.gmail.com>
+References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
+        <20181003071059.02b3fd6f@canb.auug.org.au>
+        <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
+        <CANiq72mmxiO6RWBTQfWYDaa6gmOF01nXmN6BJNCAjAFz3QJqqA@mail.gmail.com>
+        <20181002223652.GA4290@nautica>
+        <20181003090010.5150f914@canb.auug.org.au>
+        <CANiq72nLLhTf3AsXqLkPmK6TV_g7E3tML9XaM_zE45dM7XPn-A@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 2018-10-21 at 19:29 +0100, Greg Kroah-Hartman wrote:i
-> On Sun, Oct 21, 2018 at 07:14:12PM +0200, Miguel Ojeda wrote:
-> > These are two patches are meant to go on top of the rest of the compiler
-> > attributes series on:
-> > 
-> >   https://github.com/ojeda/linux/tree/compiler-attributes
-> > 
-> > which will be sent to Greg for the next merge window.
-> > 
-> > Please review them and let me know! (specially if someone is against
-> > __fallthrough for some reason :-).
-> 
-> Will this work with all of the static tools that are currently looking
-> for the comment instead?
+On Wed, 3 Oct 2018 14:34:28 +0200
+Miguel Ojeda <miguel.ojeda.sandonis@gmail.com> wrote:
 
-Does anyone have a list of the static tools that
-use comment style fallthrough notations?
+> When I sent the first email, I assumed that changes in -next were
+> supposed to be clean -- my mistake, but please document somewhere how
+> -next works! Specially that you are rerere'ing conflicts and
+> re-resolving them every day.
 
-> I know coverity handles that, what about others?
+Yes, a document in the Documentation directory on how to work with
+linux-next may be a good idea. Something we can point people to when
+they start using linux-next. I know there was something in the initial
+email, but I've lost that.
 
-No doubt tool updates would be useful.
+-- Steve
