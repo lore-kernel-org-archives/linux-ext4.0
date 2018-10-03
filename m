@@ -1,65 +1,78 @@
-Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:52530 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726233AbeJBWDd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Oct 2018 18:03:33 -0400
-Date: Tue, 2 Oct 2018 08:19:26 -0700
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: dsterba@suse.cz, Andreas Dilger <adilger@dilger.ca>,
-        Eric Sandeen <sandeen@sandeen.net>,
-        Qu Wenruo <quwenruo.btrfs@gmx.com>,
-        Joshi <joshiiitr@gmail.com>, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: cross-fs copy support
-Message-ID: <20181002151926.GC6706@magnolia>
-References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
- <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
- <df92a795-3f2e-751a-8504-030015fba6d9@sandeen.net>
- <FE6394EC-5CB0-4A16-AAC6-97F465A4E50C@dilger.ca>
- <20181002081544.GW3255@twin.jikos.cz>
+Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:57134 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726619AbeJCTjO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Oct 2018 15:39:14 -0400
+Date: Wed, 3 Oct 2018 14:50:56 +0200
+From: Jan Kara <jack@suse.cz>
+To: Dan Williams <dan.j.williams@intel.com>
+Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Dave Jiang <dave.jiang@intel.com>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        Linux MM <linux-mm@kvack.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>
+Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
+Message-ID: <20181003125056.GA21043@quack2.suse.cz>
+References: <20181002100531.GC4135@quack2.suse.cz>
+ <20181002121039.GA3274@linux-x5ow.site>
+ <20181002142959.GD9127@quack2.suse.cz>
+ <20181002143713.GA19845@infradead.org>
+ <20181002144412.GC4963@linux-x5ow.site>
+ <20181002145206.GA10903@infradead.org>
+ <20181002153100.GG9127@quack2.suse.cz>
+ <CAPcyv4j0tTD+rENqFExA68aw=-MmtCBaOe1qJovyrmJC=yBg-Q@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181002081544.GW3255@twin.jikos.cz>
+In-Reply-To: <CAPcyv4j0tTD+rENqFExA68aw=-MmtCBaOe1qJovyrmJC=yBg-Q@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 02, 2018 at 10:15:44AM +0200, David Sterba wrote:
-> On Mon, Oct 01, 2018 at 01:51:09PM -0600, Andreas Dilger wrote:
-> > > Yes, I would expect there to be problems with his modified kernel
-> > > for a filesystem that supports clone_file_range, because
-> > > vfs_copy_file_range() will clone if possible, and this should fail across
-> > > filesystems.
-> > > 
-> > > In general, though, I don't know for sure why we don't fall back to
-> > > do_splice_direct() across filesystems, although the filesystems that
-> > > implement their own ->copy_file_range ops may have their own,
-> > > further restrictions within their implementations.
-> > > 
-> > > This call /is/ documented in the manpage as only being valid for
-> > > files on the same filesystem, though:
-> > > http://man7.org/linux/man-pages/man2/copy_file_range.2.html
-> > 
-> > There was a patch to allow cross-mount copy for NFS, but it hasn't landed
-> > yet.
+On Tue 02-10-18 13:18:54, Dan Williams wrote:
+> On Tue, Oct 2, 2018 at 8:32 AM Jan Kara <jack@suse.cz> wrote:
+> >
+> > On Tue 02-10-18 07:52:06, Christoph Hellwig wrote:
+> > > On Tue, Oct 02, 2018 at 04:44:13PM +0200, Johannes Thumshirn wrote:
+> > > > On Tue, Oct 02, 2018 at 07:37:13AM -0700, Christoph Hellwig wrote:
+> > > > > No, it should not.  DAX is an implementation detail thay may change
+> > > > > or go away at any time.
+> > > >
+> > > > Well we had an issue with an application checking for dax, this is how
+> > > > we landed here in the first place.
+> > >
+> > > So what exacty is that "DAX" they are querying about (and no, I'm not
+> > > joking, nor being philosophical).
+> >
+> > I believe the application we are speaking about is mostly concerned about
+> > the memory overhead of the page cache. Think of a machine that has ~ 1TB of
+> > DRAM, the database running on it is about that size as well and they want
+> > database state stored somewhere persistently - which they may want to do by
+> > modifying mmaped database files if they do small updates... So they really
+> > want to be able to use close to all DRAM for the DB and not leave slack
+> > space for the kernel page cache to cache 1TB of database files.
 > 
-> I found https://marc.info/?l=linux-nfs&m=144138779721907&w=2 that lifts
-> the VFS check (part of a series that can't be easily linked to).
+> VM_MIXEDMAP was never a reliable indication of DAX because it could be
+> set for random other device-drivers that use vm_insert_mixed(). The
+> MAP_SYNC flag positively indicates that page cache is disabled for a
+> given mapping, although whether that property is due to "dax" or some
+> other kernel mechanics is purely an internal detail.
 > 
-> The lack of cross-mount reflink (based on the copy_file_ragne) is often
-> confusing users, there are common setups that mount subvolumes
-> separately and reflinking between them would require mount of the
-> toplevel subvolume.
-> 
-> If there are 2 in-kernel users of the relaxed cross-mount copy, I think
-> this would help to push the series forward.
+> I'm not opposed to faking out VM_MIXEDMAP if this broken check has
+> made it into production, but again, it's unreliable.
 
-I don't have any objection to cross-mountpoint same-filesystem clones,
-though obviously we need to all agree that from now on the vfs /does/
-support certain IO operations across mountpoints.
+So luckily this particular application wasn't widely deployed yet so we
+will likely get away with the vendor asking customers to update to a
+version not looking into smaps and parsing /proc/mounts instead.
 
-(I haven't any opinion on cross-filesystem copies, as XFS is incapable
-of such things.)
+But I don't find parsing /proc/mounts that beautiful either and I'd prefer
+if we had a better interface for applications to query whether they can
+avoid page cache for mmaps or not.
 
---D
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
