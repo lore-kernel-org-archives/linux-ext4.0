@@ -1,50 +1,32 @@
-Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60490 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727856AbeJBV2C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 2 Oct 2018 17:28:02 -0400
-Date: Tue, 2 Oct 2018 16:44:13 +0200
-From: Johannes Thumshirn <jthumshirn@suse.de>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jan Kara <jack@suse.cz>, Dan Williams <dan.j.williams@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org
-Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
-Message-ID: <20181002144412.GC4963@linux-x5ow.site>
-References: <20181002100531.GC4135@quack2.suse.cz>
- <20181002121039.GA3274@linux-x5ow.site>
- <20181002142959.GD9127@quack2.suse.cz>
- <20181002143713.GA19845@infradead.org>
+Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:49344 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725767AbeJCIKu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Oct 2018 04:10:50 -0400
+Date: Tue, 2 Oct 2018 21:24:37 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Lukas Czerner <lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org, stable@kernel.org
+Subject: Re: [PATCH] ext4: initialize retries variable in
+ ext4_da_write_inline_data_begin()
+Message-ID: <20181003012437.GA18521@thunk.org>
+References: <20180813133459.24241-1-lczerner@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20181002143713.GA19845@infradead.org>
+In-Reply-To: <20180813133459.24241-1-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 02, 2018 at 07:37:13AM -0700, Christoph Hellwig wrote:
-> No, it should not.  DAX is an implementation detail thay may change
-> or go away at any time.
+On Mon, Aug 13, 2018 at 03:34:59PM +0200, Lukas Czerner wrote:
+> Variable retries is not initialized in ext4_da_write_inline_data_begin()
+> which can lead to nondeterministic number of retries in case we hit
+> ENOSPC. Initialize retries to zero as we do everywhere else.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> Fixes: bc0ca9df3b2a ("ext4: retry allocation when inline->extent conversion failed")
+> Cc: stable@kernel.org
 
-Well we had an issue with an application checking for dax, this is how
-we landed here in the first place.
+Applied, thanks.
 
-It's not that I want them to do it, it's more that they're actually
-doing it in all kinds of interesting ways and then complaining when it
-doesn't work anymore.
-
-So it's less of an "API beauty price problem" but more of a "provide a
-documented way which we won't break" way.
-
-Byte,
-	   Johannes
--- 
-Johannes Thumshirn                                          Storage
-jthumshirn@suse.de                                +49 911 74053 689
-SUSE LINUX GmbH, Maxfeldstr. 5, 90409 Nürnberg
-GF: Felix Imendörffer, Jane Smithard, Graham Norton
-HRB 21284 (AG Nürnberg)
-Key fingerprint = EC38 9CAB C2C4 F25D 8600 D0D0 0393 969D 2D76 0850
+					- Ted
