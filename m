@@ -1,35 +1,31 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39600 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50314 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727067AbeJSFIX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 19 Oct 2018 01:08:23 -0400
-From: Jeff Moyer <jmoyer@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Jan Kara <jack@suse.cz>, Johannes Thumshirn <jthumshirn@suse.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org
-Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
-References: <20181002100531.GC4135@quack2.suse.cz>
-        <20181002121039.GA3274@linux-x5ow.site>
-        <20181002142959.GD9127@quack2.suse.cz>
-        <x49h8hkfhk9.fsf@segfault.boston.devel.redhat.com>
-        <20181018002510.GC6311@dastard>
-Date: Thu, 18 Oct 2018 17:05:30 -0400
-In-Reply-To: <20181018002510.GC6311@dastard> (Dave Chinner's message of "Thu,
-        18 Oct 2018 11:25:10 +1100")
-Message-ID: <x49woqfq82t.fsf@segfault.boston.devel.redhat.com>
+        id S1726432AbeJCKB3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Oct 2018 06:01:29 -0400
+Date: Tue, 2 Oct 2018 23:15:00 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Eric Whitney <enwlinux@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v3 0/6] ext4: rework bigalloc reserved cluster accounting
+Message-ID: <20181003031500.GA30807@thunk.org>
+References: <20180928162316.16480-1-enwlinux@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20180928162316.16480-1-enwlinux@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dave,
+On Fri, Sep 28, 2018 at 12:23:10PM -0400, Eric Whitney wrote:
+> Ext4 can make gross overestimates of the number of reserved clusters
+> required to handle bigalloc write requests under delayed allocation,
+> resulting in premature ENOSPC and quota limit failures.
+> 
+> These patches fix the implementation of reserved cluster accounting for
+> bigalloc file systems configured to use delayed allocation, and fix the
+> specific bugs described in bugzilla #151491.
 
-Thanks for the detailed response!  I hadn't considered the NOVA use case
-at all.
+Thanks, I've applied this patch series to the ext4 git tree.
 
-Cheers,
-Jeff
+		     	   	     - Ted
