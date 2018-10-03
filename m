@@ -1,37 +1,33 @@
-Return-Path: <SRS0=0MVU=MR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:40712 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726073AbeJEHzy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Oct 2018 03:55:54 -0400
-Subject: [PATCH 0/2] ext4: even more documentation fixes
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: tytso@mit.edu, darrick.wong@oracle.com
-Cc: linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org,
-        corbet@lwn.net
-Date: Thu, 04 Oct 2018 17:59:31 -0700
-Message-ID: <153870117116.30837.1220267868954289184.stgit@magnolia>
+Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:50004 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726510AbeJCJ3l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Oct 2018 05:29:41 -0400
+Date: Tue, 2 Oct 2018 22:43:17 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 1/3] docs: generate a separate ext4 pdf file from the
+ documentation
+Message-ID: <20181003024317.GC18521@thunk.org>
+References: <153798873160.29896.3647029167086263735.stgit@magnolia>
+ <153798873785.29896.10931653144919511571.stgit@magnolia>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <153798873785.29896.10931653144919511571.stgit@magnolia>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+On Wed, Sep 26, 2018 at 12:05:37PM -0700, Darrick J. Wong wrote:
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> 
+> The documentation build scripts won't build a pdf for the ext4
+> documentation unless explicitly called for, so ask for a separate
+> ext4.pdf to be generated with all the documentation.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-This series fixes some problems that were brought up during review for
-the XFS documentation which I hadn't known about when pushing the ext4
-documentation during the 4.19 cycle.
+Applied, thanks.
 
-The first patch moves the ext4 mount option and sysfs knob information
-into the Linux administration guide.
-
-The second patch moves the ext4 Data Structures & Algorithms book up a
-level since it's a self-contained documentation book.
-
-I've built the docs and put them here, in case you hate reading rst:
-https://djwong.org/docs/kdoc/filesystems/ext4/index.html
-
-The patchset should apply cleanly against 4.19-rc6.  Comments and
-questions are, as always, welcome.
-
---D
+					- Ted
