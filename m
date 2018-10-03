@@ -1,110 +1,66 @@
-Return-Path: <SRS0=ulrH=NA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40472 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727423AbeJUDZu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 20 Oct 2018 23:25:50 -0400
-From: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] resize2fs: update checksums in the extent tree's relocated block
-Date: Sat, 20 Oct 2018 15:14:14 -0400
-Message-Id: <20181020191415.24653-1-tytso@mit.edu>
+Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-oi1-f193.google.com ([209.85.167.193]:38606 "EHLO
+        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726842AbeJCXpe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Oct 2018 19:45:34 -0400
+Received: by mail-oi1-f193.google.com with SMTP id u197-v6so5114554oif.5
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Oct 2018 09:56:21 -0700 (PDT)
+MIME-Version: 1.0
+References: <20180824154542.26872-1-jack@suse.cz> <20181003163557.GA18434@thunk.org>
+In-Reply-To: <20181003163557.GA18434@thunk.org>
+From: Dan Williams <dan.j.williams@intel.com>
+Date: Wed, 3 Oct 2018 09:56:09 -0700
+Message-ID: <CAPcyv4hxxcC6dkeN80MXaHx9A-kw1fn=Yjqi5uGRdFueVRFXbg@mail.gmail.com>
+Subject: Re: [PATCH] mm: Fix warning in insert_pfn()
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Linux MM <linux-mm@kvack.org>,
+        Dave Jiang <dave.jiang@intel.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When shrinking an file system, and we need to relocate an inode, the
-checksums in its extent tree must get updated to reflect its new inode
-number.  When doing this, we need to do this *after* we update the
-extent tree to reflect any blocks which need to be relocated due to
-the file system shrink operation.
+On Wed, Oct 3, 2018 at 9:40 AM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+>
+> On Fri, Aug 24, 2018 at 05:45:42PM +0200, Jan Kara wrote:
+> > In DAX mode a write pagefault can race with write(2) in the following
+> > way:
+> >
+> > CPU0                            CPU1
+> >                                 write fault for mapped zero page (hole)
+> > dax_iomap_rw()
+> >   iomap_apply()
+> >     xfs_file_iomap_begin()
+> >       - allocates blocks
+> >     dax_iomap_actor()
+> >       invalidate_inode_pages2_range()
+> >         - invalidates radix tree entries in given range
+> >                                 dax_iomap_pte_fault()
+> >                                   grab_mapping_entry()
+> >                                     - no entry found, creates empty
+> >                                   ...
+> >                                   xfs_file_iomap_begin()
+> >                                     - finds already allocated block
+> >                                   ...
+> >                                   vmf_insert_mixed_mkwrite()
+> >                                     - WARNs and does nothing because there
+> >                                       is still zero page mapped in PTE
+> >         unmap_mapping_pages()
+> >
+> > This race results in WARN_ON from insert_pfn() and is occasionally
+> > triggered by fstest generic/344. Note that the race is otherwise
+> > harmless as before write(2) on CPU0 is finished, we will invalidate page
+> > tables properly and thus user of mmap will see modified data from
+> > write(2) from that point on. So just restrict the warning only to the
+> > case when the PFN in PTE is not zero page.
+> >
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+>
+> I don't see this in linux-next.  What's the status of this patch?
+>
 
-Otherwise, in the case where only an interior node of the extent tree
-needs to get relocated, and none of the entries in that node need to
-be adjusted, the checksum for that interior node is updated in the old
-copy of that block, and then after the extent tree is updated to use
-the new copy of that interior node, the extent tree is left with an
-invalid checksum.
-
-This is a relatively rare case, since it requires the following
-conditions to be true:
-
-*)  The metadata checksum feature must be enabled.
-*)  An inode needs to be relocated.
-*)  The inode needs to have an interior node.
-*)  The block for that interior node needs to be relocated.
-*)  None of blocks addressed by entries in that interior node needs
-    to be relocated.
-
-When all of these conditions are true, though, the file system is left
-with corrupted with bad checksum for the extent tree block.
-
-Addresses-Launchpad-Bug: 1798562
-
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Reported-by: Jean-Baptiste Lallement <jean-baptiste.lallement@ubuntu.com>
----
- resize/resize2fs.c | 22 ++++++++++------------
- 1 file changed, 10 insertions(+), 12 deletions(-)
-
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index e89405042..38032e5c3 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -2244,31 +2244,20 @@ remap_blocks:
- 		if (retval)
- 			goto errout;
- 
--		/* Rewrite extent block checksums with new inode number */
--		if (ext2fs_has_feature_metadata_csum(rfs->old_fs->super) &&
--		    (inode->i_flags & EXT4_EXTENTS_FL)) {
--			rfs->old_fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
--			retval = rewrite_extents(rfs->old_fs, new_inode);
--			rfs->old_fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
--			if (retval)
--				goto errout;
--		}
--
- 		/*
- 		 * Update inodes to point to new blocks; schedule directory
- 		 * blocks for inode remapping.  Need to write out dir blocks
- 		 * with new inode numbers if we have metadata_csum enabled.
- 		 */
-+		rfs->old_fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 		if (ext2fs_inode_has_valid_blocks2(rfs->old_fs, inode) &&
- 		    (rfs->bmap || pb.is_dir)) {
- 			pb.ino = new_inode;
- 			pb.old_ino = ino;
- 			pb.has_extents = inode->i_flags & EXT4_EXTENTS_FL;
--			rfs->old_fs->flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 			retval = ext2fs_block_iterate3(rfs->old_fs,
- 						       new_inode, 0, block_buf,
- 						       process_block, &pb);
--			rfs->old_fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 			if (retval)
- 				goto errout;
- 			if (pb.error) {
-@@ -2283,6 +2272,14 @@ remap_blocks:
- 			if (retval)
- 				goto errout;
- 		}
-+
-+		/* Fix up extent block checksums with the new inode number */
-+		if (ext2fs_has_feature_metadata_csum(rfs->old_fs->super) &&
-+		    (inode->i_flags & EXT4_EXTENTS_FL)) {
-+			retval = rewrite_extents(rfs->old_fs, new_inode);
-+			if (retval)
-+				goto errout;
-+		}
- 	}
- 
- 	if (update_ea_inode_refs &&
-@@ -2296,6 +2293,7 @@ remap_blocks:
- 
- errout:
- 	reset_com_err_hook();
-+	rfs->old_fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 	if (rfs->bmap) {
- 		ext2fs_free_extent_table(rfs->bmap);
- 		rfs->bmap = 0;
--- 
-2.18.0.rc0
+It's in Andrew's tree. I believe we are awaiting the next -next
+release to rebase on latest mmotm.
