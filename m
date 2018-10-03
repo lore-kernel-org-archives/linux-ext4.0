@@ -1,42 +1,74 @@
-Return-Path: <SRS0=VEyz=NL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:47174 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725731AbeKAELm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 1 Nov 2018 00:11:42 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH 1/7] ext4: lost brelse in __ext4_read_dirblock()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-References: <cover.1541011937.git.vvs@virtuozzo.com>
-Message-ID: <60f19df8-1e65-99a0-cb6b-696d1b530fd4@virtuozzo.com>
-Date: Wed, 31 Oct 2018 22:12:18 +0300
+Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:43842 "EHLO
+        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726338AbeJDEbb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Oct 2018 00:31:31 -0400
 MIME-Version: 1.0
-In-Reply-To: <cover.1541011937.git.vvs@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
+ <20181003071059.02b3fd6f@canb.auug.org.au> <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
+ <CANiq72mmxiO6RWBTQfWYDaa6gmOF01nXmN6BJNCAjAFz3QJqqA@mail.gmail.com>
+ <20181002232454.GB2483@thunk.org> <CANiq72=cRpqnB3BxLsmj-rMdUGJK+pac1SRppoRgsON69ErfQg@mail.gmail.com>
+ <20181003153303.GC2835@thunk.org> <CANiq72=Jq8HZ1=CsSvV4GenG+F6z3vRFmiB7Joct5VKdUFo8pA@mail.gmail.com>
+In-Reply-To: <CANiq72=Jq8HZ1=CsSvV4GenG+F6z3vRFmiB7Joct5VKdUFo8pA@mail.gmail.com>
+From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Date: Wed, 3 Oct 2018 23:41:08 +0200
+Message-ID: <CANiq72nMu6NXg1Ovn49qJ=FP_S4_LQJSwPuS+Q_zofhOEbVZng@mail.gmail.com>
+Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
+To: "Ted Ts'o" <tytso@mit.edu>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Linux-Next Mailing List <linux-next@vger.kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Stephen Rothwell <sfr@canb.auug.org.au>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fixes dc6982ff4db1 ("ext4: refactor code to read directory blocks ...") # 3.9
+On Wed, Oct 3, 2018 at 11:23 PM Miguel Ojeda
+<miguel.ojeda.sandonis@gmail.com> wrote:
+> On Wed, Oct 3, 2018 at 5:33 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+> > had done with full consideration, specifically for this reason.  Even
+> > if the definition was different, my definition *had* been fully tested
+> > with over a 27+ VM hours of regression testing, and if it turned out
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/ext4/namei.c | 1 +
- 1 file changed, 1 insertion(+)
+I forgot to mention that if the definitions were different, it could
+have caused a problem, because your definition wouldn't apply, so your
+27+ hours of testing wouldn't have mattered :-P Without the #ifndef,
+we would have at least got a redefinition warning about it.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index d388cce72db2..1a21e59ede72 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -111,6 +111,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
- 	if (!bh) {
- 		ext4_error_inode(inode, func, line, block,
- 				 "Directory hole found");
-+		brelse(bh);
- 		return ERR_PTR(-EFSCORRUPTED);
- 	}
- 	dirent = (struct ext4_dir_entry *) bh->b_data;
--- 
-2.17.1
+Cheers,
+Miguel
