@@ -1,185 +1,105 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:29908 "EHLO
-        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726644AbeJRIXc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Oct 2018 04:23:32 -0400
-Date: Thu, 18 Oct 2018 11:25:10 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Jeff Moyer <jmoyer@redhat.com>
-Cc: Jan Kara <jack@suse.cz>, Johannes Thumshirn <jthumshirn@suse.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org
+Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:49874 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726801AbeJCVzs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Oct 2018 17:55:48 -0400
+Date: Wed, 3 Oct 2018 17:06:58 +0200
+From: Jan Kara <jack@suse.cz>
+To: Dan Williams <dan.j.williams@intel.com>
+Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Dave Jiang <dave.jiang@intel.com>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        Linux MM <linux-mm@kvack.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>
 Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
-Message-ID: <20181018002510.GC6311@dastard>
+Message-ID: <20181003150658.GC24030@quack2.suse.cz>
 References: <20181002100531.GC4135@quack2.suse.cz>
  <20181002121039.GA3274@linux-x5ow.site>
  <20181002142959.GD9127@quack2.suse.cz>
- <x49h8hkfhk9.fsf@segfault.boston.devel.redhat.com>
+ <20181002143713.GA19845@infradead.org>
+ <20181002144412.GC4963@linux-x5ow.site>
+ <20181002145206.GA10903@infradead.org>
+ <20181002153100.GG9127@quack2.suse.cz>
+ <CAPcyv4j0tTD+rENqFExA68aw=-MmtCBaOe1qJovyrmJC=yBg-Q@mail.gmail.com>
+ <20181003125056.GA21043@quack2.suse.cz>
+ <CAPcyv4jfV10yuTiPg6ijsPRRL2-c_48ovfpU5TK1Zu7BWnfk3g@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <x49h8hkfhk9.fsf@segfault.boston.devel.redhat.com>
+In-Reply-To: <CAPcyv4jfV10yuTiPg6ijsPRRL2-c_48ovfpU5TK1Zu7BWnfk3g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 17, 2018 at 04:23:50PM -0400, Jeff Moyer wrote:
-> Jan Kara <jack@suse.cz> writes:
-> 
-> > [Added ext4, xfs, and linux-api folks to CC for the interface discussion]
+On Wed 03-10-18 07:38:50, Dan Williams wrote:
+> On Wed, Oct 3, 2018 at 5:51 AM Jan Kara <jack@suse.cz> wrote:
 > >
-> > On Tue 02-10-18 14:10:39, Johannes Thumshirn wrote:
-> >> On Tue, Oct 02, 2018 at 12:05:31PM +0200, Jan Kara wrote:
-> >> > Hello,
-> >> > 
-> >> > commit e1fb4a086495 "dax: remove VM_MIXEDMAP for fsdax and device dax" has
-> >> > removed VM_MIXEDMAP flag from DAX VMAs. Now our testing shows that in the
-> >> > mean time certain customer of ours started poking into /proc/<pid>/smaps
-> >> > and looks at VMA flags there and if VM_MIXEDMAP is missing among the VMA
-> >> > flags, the application just fails to start complaining that DAX support is
-> >> > missing in the kernel. The question now is how do we go about this?
-> >> 
-> >> OK naive question from me, how do we want an application to be able to
-> >> check if it is running on a DAX mapping?
+> > On Tue 02-10-18 13:18:54, Dan Williams wrote:
+> > > On Tue, Oct 2, 2018 at 8:32 AM Jan Kara <jack@suse.cz> wrote:
+> > > >
+> > > > On Tue 02-10-18 07:52:06, Christoph Hellwig wrote:
+> > > > > On Tue, Oct 02, 2018 at 04:44:13PM +0200, Johannes Thumshirn wrote:
+> > > > > > On Tue, Oct 02, 2018 at 07:37:13AM -0700, Christoph Hellwig wrote:
+> > > > > > > No, it should not.  DAX is an implementation detail thay may change
+> > > > > > > or go away at any time.
+> > > > > >
+> > > > > > Well we had an issue with an application checking for dax, this is how
+> > > > > > we landed here in the first place.
+> > > > >
+> > > > > So what exacty is that "DAX" they are querying about (and no, I'm not
+> > > > > joking, nor being philosophical).
+> > > >
+> > > > I believe the application we are speaking about is mostly concerned about
+> > > > the memory overhead of the page cache. Think of a machine that has ~ 1TB of
+> > > > DRAM, the database running on it is about that size as well and they want
+> > > > database state stored somewhere persistently - which they may want to do by
+> > > > modifying mmaped database files if they do small updates... So they really
+> > > > want to be able to use close to all DRAM for the DB and not leave slack
+> > > > space for the kernel page cache to cache 1TB of database files.
+> > >
+> > > VM_MIXEDMAP was never a reliable indication of DAX because it could be
+> > > set for random other device-drivers that use vm_insert_mixed(). The
+> > > MAP_SYNC flag positively indicates that page cache is disabled for a
+> > > given mapping, although whether that property is due to "dax" or some
+> > > other kernel mechanics is purely an internal detail.
+> > >
+> > > I'm not opposed to faking out VM_MIXEDMAP if this broken check has
+> > > made it into production, but again, it's unreliable.
 > >
-> > The question from me is: Should application really care? After all DAX is
-> > just a caching decision. Sure it affects performance characteristics and
-> > memory usage of the kernel but it is not a correctness issue (in particular
-> > we took care for MAP_SYNC to return EOPNOTSUPP if the feature cannot be
-> > supported for current mapping). And in the future the details of what we do
-> > with DAX mapping can change - e.g. I could imagine we might decide to cache
-> > writes in DRAM but do direct PMEM access on reads. And all this could be
-> > auto-tuned based on media properties. And we don't want to tie our hands by
-> > specifying too narrowly how the kernel is going to behave.
+> > So luckily this particular application wasn't widely deployed yet so we
+> > will likely get away with the vendor asking customers to update to a
+> > version not looking into smaps and parsing /proc/mounts instead.
+> >
+> > But I don't find parsing /proc/mounts that beautiful either and I'd prefer
+> > if we had a better interface for applications to query whether they can
+> > avoid page cache for mmaps or not.
 > 
-> For read and write, I would expect the O_DIRECT open flag to still work,
-> even for dax-capable persistent memory.  Is that a contentious opinion?
-
-Not contentious at all, because that's the way it currently works.
-FYI, XFS decides what to do with read (and similarly writes) like
-this:
-
-        if (IS_DAX(inode))
-                ret = xfs_file_dax_read(iocb, to);
-        else if (iocb->ki_flags & IOCB_DIRECT)
-                ret = xfs_file_dio_aio_read(iocb, to);
-        else
-                ret = xfs_file_buffered_aio_read(iocb, to);
-
-Neither DAX or O_DIRECT on pmem use the page cache - the only difference
-between the DAX read/write path and the O_DIRECT read/write path
-is where the memcpy() into the user buffer is done. For DAX
-it's done in the fsdax layer, for O_DIRECT it's done in the pmem
-block driver.
-
-> So, what we're really discussing is the behavior for mmap.
-
-Yes.
-
-> MAP_SYNC
-> will certainly ensure that the page cache is not used for writes.  It
-> would also be odd for us to decide to cache reads.  The only issue I can
-> see is that perhaps the application doesn't want to take a performance
-> hit on write faults.  I haven't heard that concern expressed in this
-> thread, though.
+> Yeah, the mount flag is not a good indicator either. I think we need
+> to follow through on the per-inode property of DAX. Darrick and I
+> discussed just allowing the property to be inherited from the parent
+> directory at file creation time. That avoids the dynamic set-up /
+> teardown races that seem intractable at this point.
 > 
-> Just to be clear, this is my understanding of the world:
-> 
-> MAP_SYNC
-> - file system guarantees that metadata required to reach faulted-in file
->   data is consistent on media before a write fault is completed.  A
->   side-effect is that the page cache will not be used for
->   writably-mapped pages.
+> What's wrong with MAP_SYNC as a page-cache detector in the meantime?
 
-I think you are conflating current implementation with API
-requirements - MAP_SYNC doesn't guarantee anything about page cache
-use. The man page definition simply says "supported only for files
-supporting DAX" and that it provides certain data integrity
-guarantees. It does not define the implementation.
+So IMHO checking for MAP_SYNC is about as reliable as checking for 'dax'
+mount option. It works now but nobody promises it will reliably detect DAX in
+future - e.g. there's nothing that prevents MAP_SYNC to work for mappings
+using pagecache if we find a sensible usecase for that.
 
-We've /implemented MAP_SYNC/ as O_DSYNC page fault behaviour,
-because that's the only way we can currently provide the required
-behaviour to userspace. However, if a filesystem can use the page
-cache to provide the required functionality, then it's free to do
-so.
+WRT per-inode DAX property, AFAIU that inode flag is just going to be
+advisory thing - i.e., use DAX if possible. If you mount a filesystem with
+these inode flags set in a configuration which does not allow DAX to be
+used, you will still be able to access such inodes but the access will use
+page cache instead. And querying these flags should better show real
+on-disk status and not just whether DAX is used as that would result in an
+even bigger mess. So this feature seems to be somewhat orthogonal to the
+API I'm looking for.
 
-i.e. if someone implements a pmem-based page cache, MAP_SYNC data
-integrity could be provided /without DAX/ by any filesystem using
-that persistent page cache. i.e. MAP_SYNC really only requires
-mmap() of CPU addressable persistent memory - it does not require
-DAX. Right now, however, the only way to get this functionality is
-through a DAX capable filesystem on dax capable storage.
-
-And, FWIW, this is pretty much how NOVA maintains DAX w/ COW - it
-COWs new pages in pmem and attaches them a special per-inode cache
-on clean->dirty transition. Then on data sync, background writeback
-or crash recovery, it migrates them from the cache into the file map
-proper via atomic metadata pointer swaps.
-
-IOWs, NOVA provides the correct MAP_SYNC semantics by using a
-separate persistent per-inode write cache to provide the correct
-crash recovery semantics for MAP_SYNC.
-
-> and what I think Dan had proposed:
-> 
-> mmap flag, MAP_DIRECT
-> - file system guarantees that page cache will not be used to front storage.
->   storage MUST be directly addressable.  This *almost* implies MAP_SYNC.
->   The subtle difference is that a write fault /may/ not result in metadata
->   being written back to media.
-
-SIimilar to O_DIRECT, these semantics do not allow userspace apps to
-replace msync/fsync with CPU cache flush operations. So any
-application that uses this mode still needs to use either MAP_SYNC
-or issue msync/fsync for data integrity.
-
-If the app is using MAP_DIRECT, the what do we do if the filesystem
-can't provide the required semantics for that specific operation? In
-the case of O_DIRECT, we fall back to buffered IO because it has the
-same data integrity semantics as O_DIRECT and will always work. It's
-just slower and consumes more memory, but the app continues to work
-just fine.
-
-Sending SIGBUS to apps when we can't perform MAP_DIRECT operations
-without using the pagecache seems extremely problematic to me.  e.g.
-an app already has an open MAP_DIRECT file, and a third party
-reflinks it or dedupes it and the fs has to fall back to buffered IO
-to do COW operations. This isn't the app's fault - the kernel should
-just fall back transparently to using the page cache for the
-MAP_DIRECT app and just keep working, just like it would if it was
-using O_DIRECT read/write.
-
-The point I'm trying to make here is that O_DIRECT is a /hint/, not
-a guarantee, and it's done that way to prevent applications from
-being presented with transient, potentially fatal error cases
-because a filesystem implementation can't do a specific operation
-through the direct IO path.
-
-IMO, MAP_DIRECT needs to be a hint like O_DIRECT and not a
-guarantee. Over time we'll end up with filesystems that can
-guarantee that MAP_DIRECT is always going to use DAX, in the same
-way we have filesystems that guarantee O_DIRECT will always be
-O_DIRECT (e.g. XFS). But if we decide that MAP_DIRECT must guarantee
-no page cache will ever be used, then we are basically saying
-"filesystems won't provide MAP_DIRECT even in common, useful cases
-because they can't provide MAP_DIRECT in all cases." And that
-doesn't seem like a very good solution to me.
-
-> and this is what I think you were proposing, Jan:
-> 
-> madvise flag, MADV_DIRECT_ACCESS
-> - same semantics as MAP_DIRECT, but specified via the madvise system call
-
-Seems to be the equivalent of fcntl(F_SETFL, O_DIRECT). Makes sense
-to have both MAP_DIRECT and MADV_DIRECT_ACCESS to me - one is an
-init time flag, the other is a run time flag.
-
-Cheers,
-
-Dave.
+								Honza
 -- 
-Dave Chinner
-david@fromorbit.com
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
