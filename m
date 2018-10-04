@@ -1,91 +1,77 @@
-Return-Path: <SRS0=dqau=MX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-oi1-f196.google.com ([209.85.167.196]:46528 "EHLO
-        mail-oi1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726046AbeJKILP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2018 04:11:15 -0400
-Received: by mail-oi1-f196.google.com with SMTP id k64-v6so5641463oia.13
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2018 17:46:33 -0700 (PDT)
+Return-Path: <SRS0=Op7R=MQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:49012 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727415AbeJDX1Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 4 Oct 2018 19:27:16 -0400
+Date: Thu, 4 Oct 2018 18:33:11 +0200
+From: Lukas Czerner <lczerner@redhat.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Greg KH <greg@kroah.com>, Ted Tso <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH] jbd2: Fix use after free in jbd2_log_do_checkpoint()
+Message-ID: <20181004163311.axr6uokqaueeri5m@localhost.localdomain>
+References: <20181004104640.28326-1-jack@suse.cz>
+ <20181004154402.GC6921@kroah.com>
+ <20181004160546.GH28384@quack2.suse.cz>
 MIME-Version: 1.0
-References: <20180824154542.26872-1-jack@suse.cz> <20181010173015.ecb7c7ed1b2df729f058e346@linux-foundation.org>
-In-Reply-To: <20181010173015.ecb7c7ed1b2df729f058e346@linux-foundation.org>
-From: Dan Williams <dan.j.williams@intel.com>
-Date: Wed, 10 Oct 2018 17:46:22 -0700
-Message-ID: <CAPcyv4hB+rhST7QgNcT0QyLnYY3jQagd_tw8Lz=x3eO+TBFZxg@mail.gmail.com>
-Subject: Re: [PATCH] mm: Fix warning in insert_pfn()
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Jan Kara <jack@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Linux MM <linux-mm@kvack.org>,
-        Dave Jiang <dave.jiang@intel.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181004160546.GH28384@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 10, 2018 at 5:37 PM Andrew Morton <akpm@linux-foundation.org> wrote:
->
-> On Fri, 24 Aug 2018 17:45:42 +0200 Jan Kara <jack@suse.cz> wrote:
->
-> > In DAX mode a write pagefault can race with write(2) in the following
-> > way:
-> >
-> > CPU0                            CPU1
-> >                                 write fault for mapped zero page (hole)
-> > dax_iomap_rw()
-> >   iomap_apply()
-> >     xfs_file_iomap_begin()
-> >       - allocates blocks
-> >     dax_iomap_actor()
-> >       invalidate_inode_pages2_range()
-> >         - invalidates radix tree entries in given range
-> >                                 dax_iomap_pte_fault()
-> >                                   grab_mapping_entry()
-> >                                     - no entry found, creates empty
-> >                                   ...
-> >                                   xfs_file_iomap_begin()
-> >                                     - finds already allocated block
-> >                                   ...
-> >                                   vmf_insert_mixed_mkwrite()
-> >                                     - WARNs and does nothing because there
-> >                                       is still zero page mapped in PTE
-> >         unmap_mapping_pages()
-> >
-> > This race results in WARN_ON from insert_pfn() and is occasionally
-> > triggered by fstest generic/344. Note that the race is otherwise
-> > harmless as before write(2) on CPU0 is finished, we will invalidate page
-> > tables properly and thus user of mmap will see modified data from
-> > write(2) from that point on. So just restrict the warning only to the
-> > case when the PFN in PTE is not zero page.
-> >
-> > ...
-> >
-> > --- a/mm/memory.c
-> > +++ b/mm/memory.c
-> > @@ -1787,10 +1787,15 @@ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
-> >                        * in may not match the PFN we have mapped if the
-> >                        * mapped PFN is a writeable COW page.  In the mkwrite
-> >                        * case we are creating a writable PTE for a shared
-> > -                      * mapping and we expect the PFNs to match.
-> > +                      * mapping and we expect the PFNs to match. If they
-> > +                      * don't match, we are likely racing with block
-> > +                      * allocation and mapping invalidation so just skip the
-> > +                      * update.
-> >                        */
-> > -                     if (WARN_ON_ONCE(pte_pfn(*pte) != pfn_t_to_pfn(pfn)))
-> > +                     if (pte_pfn(*pte) != pfn_t_to_pfn(pfn)) {
-> > +                             WARN_ON_ONCE(!is_zero_pfn(pte_pfn(*pte)));
-> >                               goto out_unlock;
-> > +                     }
-> >                       entry = *pte;
->
-> Shouldn't we just remove the warning?  We know it happens and we know
-> why it happens and we know it's harmless.  What's the point in scaring
-> people?
+On Thu, Oct 04, 2018 at 06:05:46PM +0200, Jan Kara wrote:
+> On Thu 04-10-18 08:44:02, Greg KH wrote:
+> > On Thu, Oct 04, 2018 at 12:46:40PM +0200, Jan Kara wrote:
+> > > The code cleaning transaction's lists of checkpoint buffers has a bug
+> > > where it increases bh refcount only after releasing
+> > > journal->j_list_lock. Thus the following race is possible:
+> > > 
+> > > CPU0					CPU1
+> > > jbd2_log_do_checkpoint()
+> > > 					jbd2_journal_try_to_free_buffers()
+> > > 					  __journal_try_to_free_buffer(bh)
+> > >   ...
+> > >   while (transaction->t_checkpoint_io_list)
+> > >   ...
+> > >     if (buffer_locked(bh)) {
+> > > 
+> > > <-- IO completes now, buffer gets unlocked -->
+> > > 
+> > >       spin_unlock(&journal->j_list_lock);
+> > > 					    spin_lock(&journal->j_list_lock);
+> > > 					    __jbd2_journal_remove_checkpoint(jh);
+> > > 					    spin_unlock(&journal->j_list_lock);
+> > > 					  try_to_free_buffers(page);
+> > >       get_bh(bh) <-- accesses freed bh
+> > > 
+> > > Fix the problem by grabbing bh reference before unlocking
+> > > journal->j_list_lock.
+> > > 
+> > > Fixes: dc6e8d669cf5cb3ff84707c372c0a2a8a5e80845
+> > > Fixes: be1158cc615fd723552f0d9912087423c7cadda5
+> > 
+> > Nit, this normally looks like:
+> > 
+> > Fixes: dc6e8d669cf5 ("jbd2: don't call get_bh() before calling __jbd2_journal_remove_checkpoint()")
+> > 
+> > And this is created by:
+> > 	git show -s --abbrev-commit --abbrev=12 --pretty=format:"%h (\"%s\")%n"
+> 
+> OK, ok, will do next time. The full git commit ID is faster to cut-n-paste
+> which shows how lazy I'm ;) 
 
-tl;dr let's keep it.
+I have this in the .gitconfig
 
-I think this fix effectively pushes this into "can't happen"
-territory, but if it does our dax assumptions are off somewhere else.
-So, I think this is useful for developers hacking around in the dax
-code to make sure they aren't breaking some fundamental assumption.
+[pretty]
+	fixes = Fixes: %h (\"%s\")
+
+which helps. I think I found it in the docs somewhere.
+
+-Lukas
+
+> 
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
