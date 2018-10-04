@@ -1,133 +1,93 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:50326 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726359AbeJRW5U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Oct 2018 18:57:20 -0400
-Date: Thu, 18 Oct 2018 16:55:55 +0200
-From: Jan Kara <jack@suse.cz>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Jeff Moyer <jmoyer@redhat.com>, Jan Kara <jack@suse.cz>,
-        Johannes Thumshirn <jthumshirn@suse.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org
-Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
-Message-ID: <20181018145555.GS23493@quack2.suse.cz>
-References: <20181002100531.GC4135@quack2.suse.cz>
- <20181002121039.GA3274@linux-x5ow.site>
- <20181002142959.GD9127@quack2.suse.cz>
- <x49h8hkfhk9.fsf@segfault.boston.devel.redhat.com>
- <20181018002510.GC6311@dastard>
+Return-Path: <SRS0=Op7R=MQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:48131 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727209AbeJDSnK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 4 Oct 2018 14:43:10 -0400
+Date: Thu, 4 Oct 2018 13:50:12 +0200
+From: Lukas Czerner <lczerner@redhat.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: Re: [PATCH] jbd2: Fix use after free in jbd2_log_do_checkpoint()
+Message-ID: <20181004115012.s5isxzw4zt4g26y3@localhost.localdomain>
+References: <20181004104640.28326-1-jack@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181018002510.GC6311@dastard>
+In-Reply-To: <20181004104640.28326-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 18-10-18 11:25:10, Dave Chinner wrote:
-> On Wed, Oct 17, 2018 at 04:23:50PM -0400, Jeff Moyer wrote:
-> > MAP_SYNC
-> > - file system guarantees that metadata required to reach faulted-in file
-> >   data is consistent on media before a write fault is completed.  A
-> >   side-effect is that the page cache will not be used for
-> >   writably-mapped pages.
+On Thu, Oct 04, 2018 at 12:46:40PM +0200, Jan Kara wrote:
+> The code cleaning transaction's lists of checkpoint buffers has a bug
+> where it increases bh refcount only after releasing
+> journal->j_list_lock. Thus the following race is possible:
 > 
-> I think you are conflating current implementation with API
-> requirements - MAP_SYNC doesn't guarantee anything about page cache
-> use. The man page definition simply says "supported only for files
-> supporting DAX" and that it provides certain data integrity
-> guarantees. It does not define the implementation.
+> CPU0					CPU1
+> jbd2_log_do_checkpoint()
+> 					jbd2_journal_try_to_free_buffers()
+> 					  __journal_try_to_free_buffer(bh)
+>   ...
+>   while (transaction->t_checkpoint_io_list)
+>   ...
+>     if (buffer_locked(bh)) {
 > 
-> We've /implemented MAP_SYNC/ as O_DSYNC page fault behaviour,
-> because that's the only way we can currently provide the required
-> behaviour to userspace. However, if a filesystem can use the page
-> cache to provide the required functionality, then it's free to do
-> so.
+> <-- IO completes now, buffer gets unlocked -->
 > 
-> i.e. if someone implements a pmem-based page cache, MAP_SYNC data
-> integrity could be provided /without DAX/ by any filesystem using
-> that persistent page cache. i.e. MAP_SYNC really only requires
-> mmap() of CPU addressable persistent memory - it does not require
-> DAX. Right now, however, the only way to get this functionality is
-> through a DAX capable filesystem on dax capable storage.
+>       spin_unlock(&journal->j_list_lock);
+> 					    spin_lock(&journal->j_list_lock);
+> 					    __jbd2_journal_remove_checkpoint(jh);
+> 					    spin_unlock(&journal->j_list_lock);
+> 					  try_to_free_buffers(page);
+>       get_bh(bh) <-- accesses freed bh
 > 
-> And, FWIW, this is pretty much how NOVA maintains DAX w/ COW - it
-> COWs new pages in pmem and attaches them a special per-inode cache
-> on clean->dirty transition. Then on data sync, background writeback
-> or crash recovery, it migrates them from the cache into the file map
-> proper via atomic metadata pointer swaps.
-> 
-> IOWs, NOVA provides the correct MAP_SYNC semantics by using a
-> separate persistent per-inode write cache to provide the correct
-> crash recovery semantics for MAP_SYNC.
+> Fix the problem by grabbing bh reference before unlocking
+> journal->j_list_lock.
 
-Corect. NOVA would be able to provide MAP_SYNC semantics without DAX. But
-effectively it will be also able to provide MAP_DIRECT semantics, right?
-Because there won't be DRAM between app and persistent storage and I don't
-think COW tricks or other data integrity methods are that interesting for
-the application. Most users of O_DIRECT are concerned about getting close
-to media speed performance and low DRAM usage...
+Hi Jan,
 
-> > and what I think Dan had proposed:
-> > 
-> > mmap flag, MAP_DIRECT
-> > - file system guarantees that page cache will not be used to front storage.
-> >   storage MUST be directly addressable.  This *almost* implies MAP_SYNC.
-> >   The subtle difference is that a write fault /may/ not result in metadata
-> >   being written back to media.
+nice catch. The patch looks good, you can add
+
+Reviewed-by: Lukas Czerner <lczerner@redhat.com>
+
+Btw, do you by any chance have a reproducer for this ?
+
+-Lukas
+
 > 
-> SIimilar to O_DIRECT, these semantics do not allow userspace apps to
-> replace msync/fsync with CPU cache flush operations. So any
-> application that uses this mode still needs to use either MAP_SYNC
-> or issue msync/fsync for data integrity.
+> Fixes: dc6e8d669cf5cb3ff84707c372c0a2a8a5e80845
+> Fixes: be1158cc615fd723552f0d9912087423c7cadda5
+> Reported-by: syzbot+7f4a27091759e2fe7453@syzkaller.appspotmail.com
+> CC: stable@vger.kernel.org
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/jbd2/checkpoint.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 > 
-> If the app is using MAP_DIRECT, the what do we do if the filesystem
-> can't provide the required semantics for that specific operation? In
-> the case of O_DIRECT, we fall back to buffered IO because it has the
-> same data integrity semantics as O_DIRECT and will always work. It's
-> just slower and consumes more memory, but the app continues to work
-> just fine.
+> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> index c125d662777c..26f8d7e46462 100644
+> --- a/fs/jbd2/checkpoint.c
+> +++ b/fs/jbd2/checkpoint.c
+> @@ -251,8 +251,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+>  		bh = jh2bh(jh);
+>  
+>  		if (buffer_locked(bh)) {
+> -			spin_unlock(&journal->j_list_lock);
+>  			get_bh(bh);
+> +			spin_unlock(&journal->j_list_lock);
+>  			wait_on_buffer(bh);
+>  			/* the journal_head may have gone by now */
+>  			BUFFER_TRACE(bh, "brelse");
+> @@ -333,8 +333,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+>  		jh = transaction->t_checkpoint_io_list;
+>  		bh = jh2bh(jh);
+>  		if (buffer_locked(bh)) {
+> -			spin_unlock(&journal->j_list_lock);
+>  			get_bh(bh);
+> +			spin_unlock(&journal->j_list_lock);
+>  			wait_on_buffer(bh);
+>  			/* the journal_head may have gone by now */
+>  			BUFFER_TRACE(bh, "brelse");
+> -- 
+> 2.16.4
 > 
-> Sending SIGBUS to apps when we can't perform MAP_DIRECT operations
-> without using the pagecache seems extremely problematic to me.  e.g.
-> an app already has an open MAP_DIRECT file, and a third party
-> reflinks it or dedupes it and the fs has to fall back to buffered IO
-> to do COW operations. This isn't the app's fault - the kernel should
-> just fall back transparently to using the page cache for the
-> MAP_DIRECT app and just keep working, just like it would if it was
-> using O_DIRECT read/write.
-
-There's another option of failing reflink / dedupe with EBUSY if the file
-is mapped with MAP_DIRECT and the filesystem cannot support relink &
-MAP_DIRECT together. But there are downsides to that as well.
-
-> The point I'm trying to make here is that O_DIRECT is a /hint/, not
-> a guarantee, and it's done that way to prevent applications from
-> being presented with transient, potentially fatal error cases
-> because a filesystem implementation can't do a specific operation
-> through the direct IO path.
-> 
-> IMO, MAP_DIRECT needs to be a hint like O_DIRECT and not a
-> guarantee. Over time we'll end up with filesystems that can
-> guarantee that MAP_DIRECT is always going to use DAX, in the same
-> way we have filesystems that guarantee O_DIRECT will always be
-> O_DIRECT (e.g. XFS). But if we decide that MAP_DIRECT must guarantee
-> no page cache will ever be used, then we are basically saying
-> "filesystems won't provide MAP_DIRECT even in common, useful cases
-> because they can't provide MAP_DIRECT in all cases." And that
-> doesn't seem like a very good solution to me.
-
-These are good points. I'm just somewhat wary of the situation where users
-will map files with MAP_DIRECT and then the machine starts thrashing
-because the file got reflinked and thus pagecache gets used suddently.
-With O_DIRECT the fallback to buffered IO is quite rare (at least for major
-filesystems) so usually people just won't notice. If fallback for
-MAP_DIRECT will be easy to hit, I'm not sure it would be very useful.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
