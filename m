@@ -1,51 +1,63 @@
-Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41226 "EHLO mx1.suse.de"
+Return-Path: <SRS0=Op7R=MQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:43588 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726330AbeJBWO7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 2 Oct 2018 18:14:59 -0400
-Date: Tue, 2 Oct 2018 17:31:00 +0200
+        id S1727484AbeJDW7m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 4 Oct 2018 18:59:42 -0400
+Date: Thu, 4 Oct 2018 18:05:46 +0200
 From: Jan Kara <jack@suse.cz>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Johannes Thumshirn <jthumshirn@suse.de>, Jan Kara <jack@suse.cz>,
-        Dan Williams <dan.j.williams@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-api@vger.kernel.org
-Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
-Message-ID: <20181002153100.GG9127@quack2.suse.cz>
-References: <20181002100531.GC4135@quack2.suse.cz>
- <20181002121039.GA3274@linux-x5ow.site>
- <20181002142959.GD9127@quack2.suse.cz>
- <20181002143713.GA19845@infradead.org>
- <20181002144412.GC4963@linux-x5ow.site>
- <20181002145206.GA10903@infradead.org>
+To: Greg KH <greg@kroah.com>
+Cc: Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH] jbd2: Fix use after free in jbd2_log_do_checkpoint()
+Message-ID: <20181004160546.GH28384@quack2.suse.cz>
+References: <20181004104640.28326-1-jack@suse.cz>
+ <20181004154402.GC6921@kroah.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181002145206.GA10903@infradead.org>
+In-Reply-To: <20181004154402.GC6921@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 02-10-18 07:52:06, Christoph Hellwig wrote:
-> On Tue, Oct 02, 2018 at 04:44:13PM +0200, Johannes Thumshirn wrote:
-> > On Tue, Oct 02, 2018 at 07:37:13AM -0700, Christoph Hellwig wrote:
-> > > No, it should not.  DAX is an implementation detail thay may change
-> > > or go away at any time.
+On Thu 04-10-18 08:44:02, Greg KH wrote:
+> On Thu, Oct 04, 2018 at 12:46:40PM +0200, Jan Kara wrote:
+> > The code cleaning transaction's lists of checkpoint buffers has a bug
+> > where it increases bh refcount only after releasing
+> > journal->j_list_lock. Thus the following race is possible:
 > > 
-> > Well we had an issue with an application checking for dax, this is how
-> > we landed here in the first place.
+> > CPU0					CPU1
+> > jbd2_log_do_checkpoint()
+> > 					jbd2_journal_try_to_free_buffers()
+> > 					  __journal_try_to_free_buffer(bh)
+> >   ...
+> >   while (transaction->t_checkpoint_io_list)
+> >   ...
+> >     if (buffer_locked(bh)) {
+> > 
+> > <-- IO completes now, buffer gets unlocked -->
+> > 
+> >       spin_unlock(&journal->j_list_lock);
+> > 					    spin_lock(&journal->j_list_lock);
+> > 					    __jbd2_journal_remove_checkpoint(jh);
+> > 					    spin_unlock(&journal->j_list_lock);
+> > 					  try_to_free_buffers(page);
+> >       get_bh(bh) <-- accesses freed bh
+> > 
+> > Fix the problem by grabbing bh reference before unlocking
+> > journal->j_list_lock.
+> > 
+> > Fixes: dc6e8d669cf5cb3ff84707c372c0a2a8a5e80845
+> > Fixes: be1158cc615fd723552f0d9912087423c7cadda5
 > 
-> So what exacty is that "DAX" they are querying about (and no, I'm not
-> joking, nor being philosophical).
+> Nit, this normally looks like:
+> 
+> Fixes: dc6e8d669cf5 ("jbd2: don't call get_bh() before calling __jbd2_journal_remove_checkpoint()")
+> 
+> And this is created by:
+> 	git show -s --abbrev-commit --abbrev=12 --pretty=format:"%h (\"%s\")%n"
 
-I believe the application we are speaking about is mostly concerned about
-the memory overhead of the page cache. Think of a machine that has ~ 1TB of
-DRAM, the database running on it is about that size as well and they want
-database state stored somewhere persistently - which they may want to do by
-modifying mmaped database files if they do small updates... So they really
-want to be able to use close to all DRAM for the DB and not leave slack
-space for the kernel page cache to cache 1TB of database files.
+OK, ok, will do next time. The full git commit ID is faster to cut-n-paste
+which shows how lazy I'm ;) 
 
 								Honza
 -- 
