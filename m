@@ -1,30 +1,34 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from 822397.com ([185.216.140.104]:57437 "EHLO garyline.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728254AbeJSBop (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Oct 2018 21:44:45 -0400
-To: linux-ext4@vger.kernel.org
-Subject: Images 34
-Message-ID: <8ff7a828672d39abafae86f19f73d511@ustacup.com>
-Date: Thu, 18 Oct 2018 13:27:06 +0200
-From: "Nancy" <cetdecisvnsuitce@aol.jp>
-Reply-To: haoshoten@aliyun.com
+Return-Path: <SRS0=Op7R=MQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:56850 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727322AbeJDV3Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 4 Oct 2018 17:29:24 -0400
+Date: Thu, 4 Oct 2018 10:35:38 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Dan Williams <dan.j.williams@intel.com>
+Cc: Jan Kara <jack@suse.cz>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Linux MM <linux-mm@kvack.org>,
+        Dave Jiang <dave.jiang@intel.com>
+Subject: Re: [PATCH] mm: Fix warning in insert_pfn()
+Message-ID: <20181004143538.GE646@thunk.org>
+References: <20180824154542.26872-1-jack@suse.cz>
+ <20181003163557.GA18434@thunk.org>
+ <CAPcyv4hxxcC6dkeN80MXaHx9A-kw1fn=Yjqi5uGRdFueVRFXbg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4hxxcC6dkeN80MXaHx9A-kw1fn=Yjqi5uGRdFueVRFXbg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We are an image team who can process 400+ images each day.
+On Wed, Oct 03, 2018 at 09:56:09AM -0700, Dan Williams wrote:
+> 
+> It's in Andrew's tree. I believe we are awaiting the next -next
+> release to rebase on latest mmotm.
 
-If you need any image editing service, please let us know.
+Great, thanks for the update!
 
-Image cut out and clipping path, masking.
-Such as for ecommerce photos, jewelry photos retouching, beauty and skin
-images
-and wedding photos.
-
-We give test editing for your photos if you send us some.
-
-Thanks,
-Nancy
+					- Ted
