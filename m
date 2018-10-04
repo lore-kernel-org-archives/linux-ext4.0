@@ -1,53 +1,59 @@
-Return-Path: <SRS0=03HA=MU=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:33852 "EHLO
-        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725749AbeJIFYH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Oct 2018 01:24:07 -0400
-Date: Tue, 9 Oct 2018 09:10:11 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Eric Sandeen <sandeen@sandeen.net>
-Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/3] xfs: hard fail dax mount on unsupported devices
-Message-ID: <20181008221011.GF18095@dastard>
-References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
- <1539027169-23332-2-git-send-email-sandeen@sandeen.net>
+Return-Path: <SRS0=Op7R=MQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from wout2-smtp.messagingengine.com ([64.147.123.25]:49975 "EHLO
+        wout2-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1728183AbeJDWh5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Oct 2018 18:37:57 -0400
+Date: Thu, 4 Oct 2018 08:44:02 -0700
+From: Greg KH <greg@kroah.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        stable@vger.kernel.org
+Subject: Re: [PATCH] jbd2: Fix use after free in jbd2_log_do_checkpoint()
+Message-ID: <20181004154402.GC6921@kroah.com>
+References: <20181004104640.28326-1-jack@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1539027169-23332-2-git-send-email-sandeen@sandeen.net>
+In-Reply-To: <20181004104640.28326-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 08, 2018 at 02:32:47PM -0500, Eric Sandeen wrote:
-> As dax inches closer to production use, an administrator should not
-> be surprised by silently disabling the feature they asked for.
+On Thu, Oct 04, 2018 at 12:46:40PM +0200, Jan Kara wrote:
+> The code cleaning transaction's lists of checkpoint buffers has a bug
+> where it increases bh refcount only after releasing
+> journal->j_list_lock. Thus the following race is possible:
 > 
-> Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
-> ---
->  fs/xfs/xfs_super.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
+> CPU0					CPU1
+> jbd2_log_do_checkpoint()
+> 					jbd2_journal_try_to_free_buffers()
+> 					  __journal_try_to_free_buffer(bh)
+>   ...
+>   while (transaction->t_checkpoint_io_list)
+>   ...
+>     if (buffer_locked(bh)) {
 > 
-> diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
-> index 207ee30..a0a32cd 100644
-> --- a/fs/xfs/xfs_super.c
-> +++ b/fs/xfs/xfs_super.c
-> @@ -1674,9 +1674,9 @@ struct proc_xfs_info {
->  			rtdev_is_dax = bdev_dax_supported(
->  				mp->m_rtdev_targp->bt_bdev, sb->s_blocksize);
->  		if (!rtdev_is_dax && !datadev_is_dax) {
-> -			xfs_alert(mp,
-> -			"DAX unsupported by block device. Turning off DAX.");
-> -			mp->m_flags &= ~XFS_MOUNT_DAX;
-> +			xfs_alert(mp, "DAX unsupported by block device.");
-> +			error = -EINVAL;
-> +			goto out_filestream_unmount;
->  		}
->  		if (xfs_sb_version_hasreflink(&mp->m_sb)) {
->  			xfs_alert(mp,
+> <-- IO completes now, buffer gets unlocked -->
+> 
+>       spin_unlock(&journal->j_list_lock);
+> 					    spin_lock(&journal->j_list_lock);
+> 					    __jbd2_journal_remove_checkpoint(jh);
+> 					    spin_unlock(&journal->j_list_lock);
+> 					  try_to_free_buffers(page);
+>       get_bh(bh) <-- accesses freed bh
+> 
+> Fix the problem by grabbing bh reference before unlocking
+> journal->j_list_lock.
+> 
+> Fixes: dc6e8d669cf5cb3ff84707c372c0a2a8a5e80845
+> Fixes: be1158cc615fd723552f0d9912087423c7cadda5
 
-Looks good, I'll throw it in the stack for 4.20.
+Nit, this normally looks like:
 
-Reviewed-by: Dave Chinner <dchinner@redhat.com>
--- 
-Dave Chinner
-david@fromorbit.com
+Fixes: dc6e8d669cf5 ("jbd2: don't call get_bh() before calling __jbd2_journal_remove_checkpoint()")
+
+And this is created by:
+	git show -s --abbrev-commit --abbrev=12 --pretty=format:"%h (\"%s\")%n"
+
+thanks
+
+greg k-h
