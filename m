@@ -1,44 +1,86 @@
-Return-Path: <SRS0=VEyz=NL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:47186 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725731AbeKAELw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 1 Nov 2018 00:11:52 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH 2/7] ext4: possible sbi->s_group_desc leak in ext4_fill_super
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-References: <cover.1541011937.git.vvs@virtuozzo.com>
-Message-ID: <4b554ca1-f46e-742e-4aaa-04b379baf5f9@virtuozzo.com>
-Date: Wed, 31 Oct 2018 22:12:27 +0300
+Return-Path: <SRS0=Op7R=MQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:60972 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727483AbeJDQ4l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 4 Oct 2018 12:56:41 -0400
+Date: Thu, 4 Oct 2018 12:04:06 +0200
+From: Johannes Thumshirn <jthumshirn@suse.de>
+To: Jan Kara <jack@suse.cz>
+Cc: Dan Williams <dan.j.williams@intel.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Dave Jiang <dave.jiang@intel.com>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        Linux MM <linux-mm@kvack.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>
+Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
+Message-ID: <20181004100406.GE6682@linux-x5ow.site>
+References: <20181002143713.GA19845@infradead.org>
+ <20181002144412.GC4963@linux-x5ow.site>
+ <20181002145206.GA10903@infradead.org>
+ <20181002153100.GG9127@quack2.suse.cz>
+ <CAPcyv4j0tTD+rENqFExA68aw=-MmtCBaOe1qJovyrmJC=yBg-Q@mail.gmail.com>
+ <20181003125056.GA21043@quack2.suse.cz>
+ <CAPcyv4jfV10yuTiPg6ijsPRRL2-c_48ovfpU5TK1Zu7BWnfk3g@mail.gmail.com>
+ <20181003150658.GC24030@quack2.suse.cz>
+ <CAPcyv4iJvN6_Cf6tw=5a=Uh99LfMFKU7n8QkGcz1ZaxL0Oi-3w@mail.gmail.com>
+ <20181003164407.GK24030@quack2.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <cover.1541011937.git.vvs@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20181003164407.GK24030@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fixes bfe0a5f47ada ("ext4: add more mount time checks of the superblock") # 4.18
+On Wed, Oct 03, 2018 at 06:44:07PM +0200, Jan Kara wrote:
+> On Wed 03-10-18 08:13:37, Dan Williams wrote:
+> > On Wed, Oct 3, 2018 at 8:07 AM Jan Kara <jack@suse.cz> wrote:
+> > > WRT per-inode DAX property, AFAIU that inode flag is just going to be
+> > > advisory thing - i.e., use DAX if possible. If you mount a filesystem with
+> > > these inode flags set in a configuration which does not allow DAX to be
+> > > used, you will still be able to access such inodes but the access will use
+> > > page cache instead. And querying these flags should better show real
+> > > on-disk status and not just whether DAX is used as that would result in an
+> > > even bigger mess. So this feature seems to be somewhat orthogonal to the
+> > > API I'm looking for.
+> > 
+> > True, I imagine once we have that flag we will be able to distinguish
+> > the "saved" property and the "effective / live" property of DAX...
+> > Also it's really not DAX that applications care about as much as "is
+> > there page-cache indirection / overhead for this mapping?". That seems
+> > to be a narrower guarantee that we can make than what "DAX" might
+> > imply.
+> 
+> Right. So what do people think about my suggestion earlier in the thread to
+> use madvise(MADV_DIRECT_ACCESS) for this? Currently it would return success
+> when DAX is in use, failure otherwise. Later we could extend it to be also
+> used as a hint for caching policy for the inode...
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/ext4/super.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+Hmm apart from Dan's objection that it can't really be used for a
+query, isn't madvise(2) for mmap(2)?
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a221f1cdf704..ed4d36506ec2 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4100,7 +4100,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			 le32_to_cpu(es->s_inodes_count),
- 			 ((u64)sbi->s_groups_count * sbi->s_inodes_per_group));
- 		ret = -EINVAL;
--		goto failed_mount;
-+		db_count = 0;
-+		goto failed_mount2;
- 	}
- 
- 	bgl_lock_init(sbi->s_blockgroup_lock);
+But AFAIU (from looking at the xfs code, so please correct me if I',
+wrong), DAX can be used for the traditional read(2)/write(2) interface
+as well.
+
+There is at least:
+
+xfs_file_read_iter()
+`-> if (IS_DAX(inode))
+    `-> xfs_file_dax_read()
+        `->dax_iomap_rw()
+
+So IMHO something on an inode granularity would make more sens to me.
+
+Byte,
+	Johannes
 -- 
-2.17.1
+Johannes Thumshirn                                          Storage
+jthumshirn@suse.de                                +49 911 74053 689
+SUSE LINUX GmbH, Maxfeldstr. 5, 90409 Nürnberg
+GF: Felix Imendörffer, Jane Smithard, Graham Norton
+HRB 21284 (AG Nürnberg)
+Key fingerprint = EC38 9CAB C2C4 F25D 8600 D0D0 0393 969D 2D76 0850
