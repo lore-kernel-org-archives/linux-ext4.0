@@ -1,56 +1,68 @@
-Return-Path: <SRS0=nu1L=M2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-io1-f65.google.com ([209.85.166.65]:37111 "EHLO
-        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726257AbeJNWj5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Oct 2018 18:39:57 -0400
-Received: by mail-io1-f65.google.com with SMTP id m16-v6so12487725ioj.4
-        for <linux-ext4@vger.kernel.org>; Sun, 14 Oct 2018 07:58:44 -0700 (PDT)
-From: nicholas.clark@gmail.com
-To: nicholas.clark@gmail.com, linux-ext4@vger.kernel.org
-Subject: [PATCH RESEND 0/2] e2fsprogs: fuse2fs bugfix and new 'fakeroot' feature
-Date: Sun, 14 Oct 2018 08:58:35 -0600
-Message-Id: <20181014145837.6344-1-nicholas.clark@gmail.com>
+Return-Path: <SRS0=7m81=MS=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lj1-f196.google.com ([209.85.208.196]:40716 "EHLO
+        mail-lj1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726409AbeJFRWg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Oct 2018 13:22:36 -0400
+MIME-Version: 1.0
+References: <CA+icZUW+N4V-bLEX0217dMYTrfzmgLZkbif8w3-zRQXnd7VYSQ@mail.gmail.com>
+ <CANiq72mATUQeNA5uTSY2XBPwDi-S+K+H3LJJU5_UFcxUj_E8sw@mail.gmail.com> <CA+icZUXnew3JNME1UcCN0Dtc_3CHutyqcJ3yvb4d_rDBDt3jKw@mail.gmail.com>
+In-Reply-To: <CA+icZUXnew3JNME1UcCN0Dtc_3CHutyqcJ3yvb4d_rDBDt3jKw@mail.gmail.com>
+From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Date: Sat, 6 Oct 2018 12:19:41 +0200
+Message-ID: <CANiq72mw4gPMP+j9E19o3r9+fpn=Tq0nUDWuR=3HfYdPOgN81A@mail.gmail.com>
+Subject: Re: [PATCH v5 00/15] Compiler Attributes
+To: sedat.dilek@gmail.com
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Nick Clark <nicholas.clark@gmail.com>
+On Sat, Oct 6, 2018 at 9:13 AM Sedat Dilek <sedat.dilek@gmail.com> wrote:
+>
+> Hi Miguel,
+>
+> In my testoings I am booting in QEMU and on bare metal.
+> Both tests were successful.
 
-Hi all,
+Wow! I only wanted to confirm it booted and/or run for a while -- but
+having more information is always good. Thanks a *lot*!
 
-I wrote a couple of patches for fuse2fs (from the e2fsprogs collection).
-One is a minor bugfix to the displayed name in the mount command's output,
-and the other is a new 'fakeroot' mount option, as described below.
+I will add a reference to your email in the commits.
 
-When building cross-compiled Linux systems (for use on routers, consumer
-devices, etc), it's often necessary to build rootfs filesystem images.
-This commit adds a new 'fakeroot' mount option that gives a user full
-control over the mounted filesystem, within the confines of FUSE.
-
-When used, the new option allows treats allowed users as uid 0 for the
-purposes of permission checks (within the mounted filesystem). This
-allows the owner of a .img file to mount the file and make whatever
-changes they want to any files inside of the image.
-
-If the option is left disabled at mount-time, fuse2fs acts the same as
-before - only root can edit "root"-owned files inside of the image. But
-when enabled, fuse2fs becomes a powerful tool to build/modify filesystem
-images.
-
-What do you all think?
-
--Nick
-
-Nicholas Clark (2):
-  Fuse2fs: fix 'mount' entry in some cases.
-  Fuse2fs: add fakeroot option.
-
- acinclude.m4      |  47 ++++++++++++++++
- configure         | 134 ++++++++++++++++++++++++++++++++++++++++++++++
- configure.ac      |   4 ++
- lib/config.h.in   |   6 +++
- misc/fuse2fs.1.in |   3 ++
- misc/fuse2fs.c    |  31 ++++++++---
- 6 files changed, 217 insertions(+), 8 deletions(-)
-
--- 
-2.17.1
+Cheers,
+Miguel
