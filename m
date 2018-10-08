@@ -1,100 +1,40 @@
-Return-Path: <SRS0=0MVU=MR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33016 "EHLO imap.thunk.org"
+Return-Path: <SRS0=03HA=MU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from sandeen.net ([63.231.237.45]:39902 "EHLO sandeen.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726037AbeJFEan (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 6 Oct 2018 00:30:43 -0400
-From: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: Theodore Ts'o <tytso@mit.edu>, stable@kernel.org
-Subject: [PATCH -v2] ext4: fix use-after-free race in ext4_remount()'s error path
-Date: Fri,  5 Oct 2018 17:29:57 -0400
-Message-Id: <20181005212957.8008-1-tytso@mit.edu>
+        id S1726540AbeJICqX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 8 Oct 2018 22:46:23 -0400
+From: Eric Sandeen <sandeen@sandeen.net>
+To: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: [PATCH 3/3] ext2: hard fail dax mount on unsupported devices
+Date: Mon,  8 Oct 2018 14:32:49 -0500
+Message-Id: <1539027169-23332-4-git-send-email-sandeen@sandeen.net>
+In-Reply-To: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
+References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It's possible for ext4_show_quota_options() to try reading
-s_qf_names[i] while it is being modified by ext4_remount() --- most
-notably, in ext4_remount's error path when the original values of the
-quota file name gets restored.
+As dax inches closer to production use, an administrator should not
+be surprised by silently disabling the feature they asked for.
 
-Reported-by: syzbot+a2872d6feea6918008a9@syzkaller.appspotmail.com
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@kernel.org
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
 ---
+ fs/ext2/super.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-The -v1 patch had circular locking problems as reported by Lockdep.
-So I've redone this change using RCU.
-
- fs/ext4/super.c | 25 +++++++++++++++++++------
- 1 file changed, 19 insertions(+), 6 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index faf293ed8060..0843fd5ce449 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1578,6 +1578,7 @@ static int clear_qf_name(struct super_block *sb, int qtype)
- {
- 
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	char *to_free;
- 
- 	if (sb_any_quota_loaded(sb) &&
- 		sbi->s_qf_names[qtype]) {
-@@ -1585,8 +1586,11 @@ static int clear_qf_name(struct super_block *sb, int qtype)
- 			" when quota turned on");
- 		return -1;
- 	}
--	kfree(sbi->s_qf_names[qtype]);
--	sbi->s_qf_names[qtype] = NULL;
-+	to_free = rcu_dereference_protected(sbi->s_qf_names[qtype],
-+					    lockdep_is_held(&sb->s_umount));
-+	rcu_assign_pointer(sbi->s_qf_names[qtype], NULL);
-+	synchronize_rcu();
-+	kfree(to_free);
- 	return 1;
- }
- #endif
-@@ -2048,11 +2052,15 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
- 		seq_printf(seq, ",jqfmt=%s", fmtname);
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 73bd58f..b9471c0 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -967,8 +967,8 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (sbi->s_mount_opt & EXT2_MOUNT_DAX) {
+ 		if (!bdev_dax_supported(sb->s_bdev, blocksize)) {
+ 			ext2_msg(sb, KERN_ERR,
+-				"DAX unsupported by block device. Turning off DAX.");
+-			sbi->s_mount_opt &= ~EXT2_MOUNT_DAX;
++				"DAX unsupported by block device.");
++			goto failed_mount;
+ 		}
  	}
  
-+	rcu_read_lock();
- 	if (sbi->s_qf_names[USRQUOTA])
--		seq_show_option(seq, "usrjquota", sbi->s_qf_names[USRQUOTA]);
-+		seq_show_option(seq, "usrjquota",
-+				rcu_dereference(sbi->s_qf_names[USRQUOTA]));
- 
- 	if (sbi->s_qf_names[GRPQUOTA])
--		seq_show_option(seq, "grpjquota", sbi->s_qf_names[GRPQUOTA]);
-+		seq_show_option(seq, "grpjquota",
-+				rcu_dereference(sbi->s_qf_names[GRPQUOTA]));
-+	rcu_read_unlock();
- #endif
- }
- 
-@@ -5104,6 +5112,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	int err = 0;
- #ifdef CONFIG_QUOTA
- 	int i, j;
-+	char *to_free[EXT4_MAXQUOTAS];
- #endif
- 	char *orig_data = kstrdup(data, GFP_KERNEL);
- 
-@@ -5353,9 +5362,13 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- #ifdef CONFIG_QUOTA
- 	sbi->s_jquota_fmt = old_opts.s_jquota_fmt;
- 	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
--		kfree(sbi->s_qf_names[i]);
--		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
-+		to_free[i] = rcu_dereference_protected(sbi->s_qf_names[i],
-+						       &sb->s_umount);
-+		rcu_assign_pointer(sbi->s_qf_names[i], old_opts.s_qf_names[i]);
- 	}
-+	for (i = 0; i < EXT4_MAXQUOTAS; i++)
-+		kfree(to_free[i]);
-+	synchronize_rcu();
- #endif
- 	kfree(orig_data);
- 	return err;
 -- 
-2.18.0.rc0
+1.8.3.1
