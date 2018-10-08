@@ -1,154 +1,57 @@
-Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:50120 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727243AbeJRExW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:53:22 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 06/23] nls: Add support for multiple versions of an encoding
-Date: Wed, 17 Oct 2018 16:55:07 -0400
-Message-Id: <20181017205524.23360-7-krisman@collabora.co.uk>
-In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
-References: <20181017205524.23360-1-krisman@collabora.co.uk>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Return-Path: <SRS0=03HA=MU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-io1-f66.google.com ([209.85.166.66]:39333 "EHLO
+        mail-io1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725759AbeJIGyI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Oct 2018 02:54:08 -0400
+Received: by mail-io1-f66.google.com with SMTP id z16-v6so17190795iol.6
+        for <linux-ext4@vger.kernel.org>; Mon, 08 Oct 2018 16:40:00 -0700 (PDT)
+From: nicholas.clark@gmail.com
+To: linux-ext4@vger.kernel.org
+Cc: Nick Clark <nicholas.clark@gmail.com>
+Subject: [PATCH 0/2] e2fsprogs: fuse2fs bugfix and new 'fakeroot' feature
+Date: Mon,  8 Oct 2018 17:39:50 -0600
+Message-Id: <20181008233952.20965-1-nicholas.clark@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This allows a user to request a specific version of an encoding, like
-the version 10.0.0 of Unicode encoded in utf8.
+From: Nick Clark <nicholas.clark@gmail.com>
 
-Supporting specific versions of encodings is important to ensure
-stability of names in filesystems, specially when doing transformations
-like casefold and normalization.  Even for unicode, where defined
-code-points are stable, there is instability for code points that
-weren't defined on a previous version, so the user might want to use an
-older version of the encoding to ensure the encoding is exact.
+Hi all,
 
-Not every NLS charset supports this feature.  It doesn't make sense for
-many of them, like ASCII.  Others just don't implement it yet, and never
-will.  In those cases, the interface allows the caller to get the
-un-versioned charset, which is the same original behavior as if this
-patch weren't applied.  A user that is not interested in a specific
-version can also ask for a versioned charset without specifying the
-version, and in this case, NLS will return the latest version available
-of that charset.
+I wrote a couple of patches for fuse2fs (from the e2fsprogs collection).
+One is a minor bugfix to the displayed name in the mount command's output,
+and the other is a new 'fakeroot' mount option, as described below.
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- fs/nls/nls_core.c   | 45 ++++++++++++++++++++++++++++++++++++++-------
- include/linux/nls.h |  8 ++++++++
- 2 files changed, 46 insertions(+), 7 deletions(-)
+When building cross-compiled Linux systems (for use on routers, consumer
+devices, etc), it's often necessary to build rootfs filesystem images.
+This commit adds a new 'fakeroot' mount option that gives a user full
+control over the mounted filesystem, within the confines of FUSE.
 
-diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
-index 200a7f8165e6..dfd7a5ab4320 100644
---- a/fs/nls/nls_core.c
-+++ b/fs/nls/nls_core.c
-@@ -19,10 +19,26 @@
- extern struct nls_charset default_charset;
- static struct nls_charset *charsets = &default_charset;
- static DEFINE_SPINLOCK(nls_lock);
--static struct nls_table *nls_load_table(struct nls_charset *charset)
-+
-+static struct nls_table *nls_load_table(struct nls_charset *charset,
-+					const char *version,
-+					unsigned int flags)
- {
--	/* For now, return the default table, which is the first one found. */
--	return charset->tables;
-+	struct nls_table *tbl;
-+
-+	/* If there is no table_create, only 1 table is supported and it
-+	 * must have been loaded statically.
-+	 */
-+	if (!charset->load_table)
-+		tbl = charset->tables;
-+	else
-+		tbl = charset->load_table(version, flags);
-+
-+	if (IS_ERR(tbl))
-+		return tbl;
-+
-+	tbl->flags = flags;
-+	return tbl;
- }
- 
- int __register_nls(struct nls_charset *nls, struct module *owner)
-@@ -85,21 +101,36 @@ static struct nls_charset *find_nls(const char *charset)
- 	return nls;
- }
- 
--struct nls_table *load_nls(char *charset)
-+struct nls_table *load_nls_version(const char *charset, const char *version,
-+				   unsigned int flags)
- {
- 	struct nls_charset *nls_charset;
- 
- 	nls_charset = try_then_request_module(find_nls(charset),
- 					      "nls_%s", charset);
--	if (!IS_ERR(nls_charset))
-+	if (IS_ERR(nls_charset))
-+		return ERR_PTR(-EINVAL);
-+
-+	return nls_load_table(nls_charset, version, flags);
-+}
-+EXPORT_SYMBOL(load_nls_version);
-+
-+struct nls_table *load_nls(char *charset)
-+{
-+	struct nls_table *table = load_nls_version(charset, NULL, 0);
-+
-+	/* Pre-versioned load_nls() didn't return error pointers. Let's
-+	 * keep the abi for now to prevent breakage.
-+	 */
-+	if (IS_ERR(table))
- 		return NULL;
- 
--	return nls_load_table(nls_charset);
-+	return table;
- }
- 
- void unload_nls(struct nls_table *nls)
- {
--	if (nls)
-+	if (!IS_ERR_OR_NULL(nls))
- 		module_put(nls->charset->owner);
- }
- 
-diff --git a/include/linux/nls.h b/include/linux/nls.h
-index cdc95cd9e5d4..91524bb4477b 100644
---- a/include/linux/nls.h
-+++ b/include/linux/nls.h
-@@ -30,6 +30,9 @@ struct nls_ops {
- 
- struct nls_table {
- 	const struct nls_charset *charset;
-+	unsigned int version;
-+	unsigned int flags;
-+
- 	const struct nls_ops *ops;
- 	const unsigned char *charset2lower;
- 	const unsigned char *charset2upper;
-@@ -42,6 +45,8 @@ struct nls_charset {
- 	struct module *owner;
- 	struct nls_table *tables;
- 	struct nls_charset *next;
-+	struct nls_table *(*load_table)(const char *version,
-+					unsigned int flags);
- };
- 
- /* this value hold the maximum octet of charset */
-@@ -58,6 +63,9 @@ enum utf16_endian {
- extern int __register_nls(struct nls_charset *, struct module *);
- extern int unregister_nls(struct nls_charset *);
- extern struct nls_table *load_nls(char *);
-+extern struct nls_table *load_nls_version(const char *charset,
-+					  const char *version,
-+					  unsigned int flags);
- extern void unload_nls(struct nls_table *);
- extern struct nls_table *load_nls_default(void);
- #define register_nls(nls) __register_nls((nls), THIS_MODULE)
+When used, the new option allows treats allowed users as uid 0 for the
+purposes of permission checks (within the mounted filesystem). This
+allows the owner of a .img file to mount the file and make whatever
+changes they want to any files inside of the image.
+
+If the option is left disabled at mount-time, fuse2fs acts the same as
+before - only root can edit "root"-owned files inside of the image. But
+when enabled, fuse2fs becomes a powerful tool to build/modify filesystem
+images.
+
+What do you all think?
+
+-Nick
+
+Nicholas Clark (2):
+  Fuse2fs: fix 'mount' entry in some cases.
+  Fuse2fs: add fakeroot option.
+
+ acinclude.m4      |  47 ++++++++++++++++
+ configure         | 134 ++++++++++++++++++++++++++++++++++++++++++++++
+ configure.ac      |   4 ++
+ lib/config.h.in   |   6 +++
+ misc/fuse2fs.1.in |   3 ++
+ misc/fuse2fs.c    |  31 ++++++++---
+ 6 files changed, 217 insertions(+), 8 deletions(-)
+
 -- 
-2.19.1
+2.17.1
