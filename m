@@ -1,130 +1,45 @@
-Return-Path: <SRS0=VEyz=NL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-qk1-f196.google.com ([209.85.222.196]:42054 "EHLO
-        mail-qk1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730228AbeKADsw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2018 23:48:52 -0400
-Received: by mail-qk1-f196.google.com with SMTP id u68so6812487qkg.9
-        for <linux-ext4@vger.kernel.org>; Wed, 31 Oct 2018 11:49:35 -0700 (PDT)
-MIME-Version: 1.0
-References: <1540858969-75803-1-git-send-email-bo.liu@linux.alibaba.com>
-In-Reply-To: <1540858969-75803-1-git-send-email-bo.liu@linux.alibaba.com>
-From: Liu Bo <obuil.liubo@gmail.com>
-Date: Wed, 31 Oct 2018 11:49:23 -0700
-Message-ID: <CANQeFDC6BXEXDRr5UJOCjheoxX05NfdsE98fmDG3zXWbJNcifQ@mail.gmail.com>
-Subject: Re: [PATCH RFC] Ext4: fix deadlock on dirty pages between fault and writeback
-To: Liu Bo <bo.liu@linux.alibaba.com>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Return-Path: <SRS0=03HA=MU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-it1-f194.google.com ([209.85.166.194]:40211 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725759AbeJIGyK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Oct 2018 02:54:10 -0400
+Received: by mail-it1-f194.google.com with SMTP id i191-v6so62263iti.5
+        for <linux-ext4@vger.kernel.org>; Mon, 08 Oct 2018 16:40:01 -0700 (PDT)
+From: nicholas.clark@gmail.com
+To: linux-ext4@vger.kernel.org
+Cc: Nicholas Clark <nicholas.clark@gmail.com>
+Subject: [PATCH 1/2] Fuse2fs: fix 'mount' entry in some cases.
+Date: Mon,  8 Oct 2018 17:39:51 -0600
+Message-Id: <20181008233952.20965-2-nicholas.clark@gmail.com>
+In-Reply-To: <20181008233952.20965-1-nicholas.clark@gmail.com>
+References: <20181008233952.20965-1-nicholas.clark@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+From: Nicholas Clark <nicholas.clark@gmail.com>
 
-Could you please take a look at this?
+FUSE's parser allows command-line options to be specified before
+or after the device/image and mount-path. This commit changes the
+value of the fsname mount option to be correct even if options are
+specified before the target device/image.
 
-(unfortunately I failed to come up with a reproducer as it mixed
-'short of memory, writeback and fault'.)
+Signed-off-by: Nicholas Clark <nicholas.clark@gmail.com>
+---
+ misc/fuse2fs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-thanks,
-liubo
-
-On Mon, Oct 29, 2018 at 5:26 PM Liu Bo <bo.liu@linux.alibaba.com> wrote:
->
-> mpage_prepare_extent_to_map() tries to build up a large bio to stuff down
-> the pipe.  But if it needs to wait for a page lock, it needs to make sure
-> and send down any pending writes so we don't deadlock with anyone who has
-> the page lock and is waiting for writeback of things inside the bio.
->
-> The related lock stack is shown as follows,
->
-> task1:
-> [<ffffffff811aaa52>] wait_on_page_bit+0x82/0xa0
-> [<ffffffff811c5777>] shrink_page_list+0x907/0x960
-> [<ffffffff811c6027>] shrink_inactive_list+0x2c7/0x680
-> [<ffffffff811c6ba4>] shrink_node_memcg+0x404/0x830
-> [<ffffffff811c70a8>] shrink_node+0xd8/0x300
-> [<ffffffff811c73dd>] do_try_to_free_pages+0x10d/0x330
-> [<ffffffff811c7865>] try_to_free_mem_cgroup_pages+0xd5/0x1b0
-> [<ffffffff8122df2d>] try_charge+0x14d/0x720
-> [<ffffffff812320cc>] memcg_kmem_charge_memcg+0x3c/0xa0
-> [<ffffffff812321ae>] memcg_kmem_charge+0x7e/0xd0
-> [<ffffffff811b68a8>] __alloc_pages_nodemask+0x178/0x260
-> [<ffffffff8120bff5>] alloc_pages_current+0x95/0x140
-> [<ffffffff81074247>] pte_alloc_one+0x17/0x40
-> [<ffffffff811e34de>] __pte_alloc+0x1e/0x110
-> [<ffffffffa06739de>] alloc_set_pte+0x5fe/0xc20
-> [<ffffffff811e5d93>] do_fault+0x103/0x970
-> [<ffffffff811e6e5e>] handle_mm_fault+0x61e/0xd10
-> [<ffffffff8106ea02>] __do_page_fault+0x252/0x4d0
-> [<ffffffff8106ecb0>] do_page_fault+0x30/0x80
-> [<ffffffff8171bce8>] page_fault+0x28/0x30
-> [<ffffffffffffffff>] 0xffffffffffffffff
->
-> task2:
-> [<ffffffff811aadc6>] __lock_page+0x86/0xa0
-> [<ffffffffa02f1e47>] mpage_prepare_extent_to_map+0x2e7/0x310 [ext4]
-> [<ffffffffa08a2689>] ext4_writepages+0x479/0xd60
-> [<ffffffff811bbede>] do_writepages+0x1e/0x30
-> [<ffffffff812725e5>] __writeback_single_inode+0x45/0x320
-> [<ffffffff81272de2>] writeback_sb_inodes+0x272/0x600
-> [<ffffffff81273202>] __writeback_inodes_wb+0x92/0xc0
-> [<ffffffff81273568>] wb_writeback+0x268/0x300
-> [<ffffffff81273d24>] wb_workfn+0xb4/0x390
-> [<ffffffff810a2f19>] process_one_work+0x189/0x420
-> [<ffffffff810a31fe>] worker_thread+0x4e/0x4b0
-> [<ffffffff810a9786>] kthread+0xe6/0x100
-> [<ffffffff8171a9a1>] ret_from_fork+0x41/0x50
-> [<ffffffffffffffff>] 0xffffffffffffffff
->
-> task1 is waiting for the PageWriteback bit of the page that task2 has
-> collected in mpd->io_submit->io_bio, and tasks2 is waiting for the LOCKED
-> bit the page which tasks1 has locked.
->
-> It seems that this deadlock only happens when those pages are mapped pages
-> so that mpage_prepare_extent_to_map() can have pages queued in io_bio and
-> when waiting to lock the subsequent page.
->
-> Signed-off-by: Liu Bo <bo.liu@linux.alibaba.com>
-> ---
->
-> Only did build test.
->
->  fs/ext4/inode.c | 21 ++++++++++++++++++++-
->  1 file changed, 20 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index c3d9a42c561e..becbfb292bf0 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2681,7 +2681,26 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
->                         if (mpd->map.m_len > 0 && mpd->next_page != page->index)
->                                 goto out;
->
-> -                       lock_page(page);
-> +                       if (!trylock_page(page)) {
-> +                               /*
-> +                                * A rare race may happen between fault and
-> +                                * writeback,
-> +                                *
-> +                                * 1. fault may have raced in and locked this
-> +                                * page ahead of us, and if fault needs to
-> +                                * reclaim memory via shrink_page_list(), it may
-> +                                * also wait on the writeback pages we've
-> +                                * collected in our mpd->io_submit.
-> +                                *
-> +                                * 2. We have to submit mpd->io_submit->io_bio
-> +                                * to let memory reclaim make progress in order
-> +                                * to avoid the deadlock between fault and
-> +                                * ourselves(writeback).
-> +                                */
-> +                               ext4_io_submit(&mpd->io_submit);
-> +                               lock_page(page);
-> +                       }
-> +
->                         /*
->                          * If the page is no longer dirty, or its mapping no
->                          * longer corresponds to inode we are writing (which
-> --
-> 1.8.3.1
->
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index 5c73895e..3214be4a 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -3845,7 +3845,7 @@ int main(int argc, char *argv[])
+ 	/* Set up default fuse parameters */
+ 	snprintf(extra_args, BUFSIZ, "-okernel_cache,subtype=ext4,use_ino,"
+ 		 "fsname=%s,attr_timeout=0" FUSE_PLATFORM_OPTS,
+-		 argv[1]);
++		 fctx.device);
+ 	if (fctx.no_default_opts == 0)
+ 		fuse_opt_add_arg(&args, extra_args);
+ 
+-- 
+2.17.1
