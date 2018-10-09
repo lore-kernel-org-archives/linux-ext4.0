@@ -1,51 +1,258 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:57582 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727260AbeJRKWo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Oct 2018 06:22:44 -0400
-Date: Wed, 17 Oct 2018 22:23:59 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: liu.song11@zte.com.cn, fishland@aliyun.com, wang.yi59@zte.com.cn,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] ext4: direct return when jinode allocate failed
-Message-ID: <20181018022359.GA12382@thunk.org>
-References: <20181016145526.3288-1-fishland@aliyun.com,20181016190840.GF24131@thunk.org>
- <201810171026448096961@zte.com.cn>
- <EA9B5AA4-DA21-4B1D-9E89-8C9F16EB8986@dilger.ca>
+Return-Path: <SRS0=WpiV=MV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:60274 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1725823AbeJIMqi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Oct 2018 08:46:38 -0400
+Received: from pps.filterd (m0098414.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w995OZ3e041190
+        for <linux-ext4@vger.kernel.org>; Tue, 9 Oct 2018 01:31:29 -0400
+Received: from e13.ny.us.ibm.com (e13.ny.us.ibm.com [129.33.205.203])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 2n0m0d4c7c-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Oct 2018 01:31:28 -0400
+Received: from localhost
+        by e13.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
+        Tue, 9 Oct 2018 01:31:28 -0400
+Date: Mon, 8 Oct 2018 22:30:15 -0700
+From: "Paul E. McKenney" <paulmck@linux.ibm.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        joel@joelfernandes.org, stable@kernel.org
+Subject: Re: [PATCH -v3] ext4: fix use-after-free race in ext4_remount()'s
+ error path
+Reply-To: paulmck@linux.ibm.com
+References: <20181007030706.9094-1-tytso@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <EA9B5AA4-DA21-4B1D-9E89-8C9F16EB8986@dilger.ca>
+In-Reply-To: <20181007030706.9094-1-tytso@mit.edu>
+Message-Id: <20181009053015.GJ2674@linux.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 17, 2018 at 05:28:55PM -0600, Andreas Dilger wrote:
+On Sat, Oct 06, 2018 at 11:07:06PM -0400, Theodore Ts'o wrote:
+> It's possible for ext4_show_quota_options() to try reading
+> s_qf_names[i] while it is being modified by ext4_remount() --- most
+> notably, in ext4_remount's error path when the original values of the
+> quota file name gets restored.
 > 
-> Looking at the patch there are two effects that it has:
-> - optimize a very rare case where there is an allocation failure before locking
-> - return an unnecessary error if "ei->jinode" is allocated before locking
+> Reported-by: syzbot+a2872d6feea6918008a9@syzkaller.appspotmail.com
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: stable@kernel.org
+
+Looks good to me!
+
+Acked-by: Paul E. McKenney <paulmck@linux.ibm.com>
+
+> ---
 > 
-> I don't think it is worthwhile to optimize this case, since allocation failures
-> will have a serious impact on the application, and I'd rather avoid the rare
-> case where we don't return an unnecessary error than make the error case faster.
-
-To be fair, the "unnecessery error" case is also extremely rare.  In
-order for that to happen, two processes would need to be racing to
-allocate allocate the jinode structure for an inode (since we bail
-earlier when we check for the ei->jinode == NULL case before we take
-the lock), where the first process succeeds in allocating memory ---
-but the second one fails.
-
-Both of these are super-rare cases, and involve the system thrashing
-due to super-high memory pressure --- at which point worrying about a
-micro-optimization or an unnecessary failure is going to be the last
-of the system's problem.
-
-This is why I said, "the patch probably doesn't hurt, but I also don't
-see it helping much".
-
-Cheers,
-
-						- Ted
+> v3: RCU clean ups and fix ups
+> v2: Use RCU to avoid lock dependency problems
+> 
+>  fs/ext4/ext4.h  |  3 +-
+>  fs/ext4/super.c | 73 ++++++++++++++++++++++++++++++++-----------------
+>  2 files changed, 50 insertions(+), 26 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 86e1bacac757..12f90d48ba61 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1405,7 +1405,8 @@ struct ext4_sb_info {
+>  	u32 s_min_batch_time;
+>  	struct block_device *journal_bdev;
+>  #ifdef CONFIG_QUOTA
+> -	char *s_qf_names[EXT4_MAXQUOTAS];	/* Names of quota files with journalled quota */
+> +	/* Names of quota files with journalled quota */
+> +	char __rcu *s_qf_names[EXT4_MAXQUOTAS];
+>  	int s_jquota_fmt;			/* Format of quota to use */
+>  #endif
+>  	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index faf293ed8060..1909fbb28583 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -920,6 +920,18 @@ static inline void ext4_quota_off_umount(struct super_block *sb)
+>  }
+>  #endif
+>  
+> +/*
+> + * This is a helper function which is used in the mount/remount
+> + * codepaths (which holds s_umount) to fetch the quota file name.
+> + */
+> +static inline char *get_qf_name(struct super_block *sb,
+> +				struct ext4_sb_info *sbi,
+> +				int type)
+> +{
+> +	return rcu_dereference_protected(sbi->s_qf_names[type],
+> +					 lockdep_is_held(&sb->s_umount));
+> +}
+> +
+>  static void ext4_put_super(struct super_block *sb)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> @@ -965,7 +977,7 @@ static void ext4_put_super(struct super_block *sb)
+>  	percpu_free_rwsem(&sbi->s_journal_flag_rwsem);
+>  #ifdef CONFIG_QUOTA
+>  	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+> -		kfree(sbi->s_qf_names[i]);
+> +		kfree(get_qf_name(sb, sbi, i));
+>  #endif
+>  
+>  	/* Debugging code just in case the in-memory inode orphan list
+> @@ -1531,11 +1543,10 @@ static const char deprecated_msg[] =
+>  static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> -	char *qname;
+> +	char *qname, *old_qname = get_qf_name(sb, sbi, qtype);
+>  	int ret = -1;
+>  
+> -	if (sb_any_quota_loaded(sb) &&
+> -		!sbi->s_qf_names[qtype]) {
+> +	if (sb_any_quota_loaded(sb) && !old_qname) {
+>  		ext4_msg(sb, KERN_ERR,
+>  			"Cannot change journaled "
+>  			"quota options when quota turned on");
+> @@ -1552,8 +1563,8 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+>  			"Not enough memory for storing quotafile name");
+>  		return -1;
+>  	}
+> -	if (sbi->s_qf_names[qtype]) {
+> -		if (strcmp(sbi->s_qf_names[qtype], qname) == 0)
+> +	if (old_qname) {
+> +		if (strcmp(old_qname, qname) == 0)
+>  			ret = 1;
+>  		else
+>  			ext4_msg(sb, KERN_ERR,
+> @@ -1566,7 +1577,7 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+>  			"quotafile must be on filesystem root");
+>  		goto errout;
+>  	}
+> -	sbi->s_qf_names[qtype] = qname;
+> +	rcu_assign_pointer(sbi->s_qf_names[qtype], qname);
+>  	set_opt(sb, QUOTA);
+>  	return 1;
+>  errout:
+> @@ -1578,15 +1589,16 @@ static int clear_qf_name(struct super_block *sb, int qtype)
+>  {
+>  
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	char *old_qname = get_qf_name(sb, sbi, qtype);
+>  
+> -	if (sb_any_quota_loaded(sb) &&
+> -		sbi->s_qf_names[qtype]) {
+> +	if (sb_any_quota_loaded(sb) && old_qname) {
+>  		ext4_msg(sb, KERN_ERR, "Cannot change journaled quota options"
+>  			" when quota turned on");
+>  		return -1;
+>  	}
+> -	kfree(sbi->s_qf_names[qtype]);
+> -	sbi->s_qf_names[qtype] = NULL;
+> +	rcu_assign_pointer(sbi->s_qf_names[qtype], NULL);
+> +	synchronize_rcu();
+> +	kfree(old_qname);
+>  	return 1;
+>  }
+>  #endif
+> @@ -1961,7 +1973,7 @@ static int parse_options(char *options, struct super_block *sb,
+>  			 int is_remount)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> -	char *p;
+> +	char *p, *usr_qf_name, *grp_qf_name;
+>  	substring_t args[MAX_OPT_ARGS];
+>  	int token;
+>  
+> @@ -1992,11 +2004,13 @@ static int parse_options(char *options, struct super_block *sb,
+>  			 "Cannot enable project quota enforcement.");
+>  		return 0;
+>  	}
+> -	if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
+> -		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
+> +	usr_qf_name = get_qf_name(sb, sbi, USRQUOTA);
+> +	grp_qf_name = get_qf_name(sb, sbi, GRPQUOTA);
+> +	if (usr_qf_name || grp_qf_name) {
+> +		if (test_opt(sb, USRQUOTA) && usr_qf_name)
+>  			clear_opt(sb, USRQUOTA);
+>  
+> -		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
+> +		if (test_opt(sb, GRPQUOTA) && grp_qf_name)
+>  			clear_opt(sb, GRPQUOTA);
+>  
+>  		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
+> @@ -2030,6 +2044,7 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
+>  {
+>  #if defined(CONFIG_QUOTA)
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	char *usr_qf_name, *grp_qf_name;
+>  
+>  	if (sbi->s_jquota_fmt) {
+>  		char *fmtname = "";
+> @@ -2048,11 +2063,14 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
+>  		seq_printf(seq, ",jqfmt=%s", fmtname);
+>  	}
+>  
+> -	if (sbi->s_qf_names[USRQUOTA])
+> -		seq_show_option(seq, "usrjquota", sbi->s_qf_names[USRQUOTA]);
+> -
+> -	if (sbi->s_qf_names[GRPQUOTA])
+> -		seq_show_option(seq, "grpjquota", sbi->s_qf_names[GRPQUOTA]);
+> +	rcu_read_lock();
+> +	usr_qf_name = rcu_dereference(sbi->s_qf_names[USRQUOTA]);
+> +	grp_qf_name = rcu_dereference(sbi->s_qf_names[GRPQUOTA]);
+> +	if (usr_qf_name)
+> +		seq_show_option(seq, "usrjquota", usr_qf_name);
+> +	if (grp_qf_name)
+> +		seq_show_option(seq, "grpjquota", grp_qf_name);
+> +	rcu_read_unlock();
+>  #endif
+>  }
+>  
+> @@ -5104,6 +5122,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+>  	int err = 0;
+>  #ifdef CONFIG_QUOTA
+>  	int i, j;
+> +	char *to_free[EXT4_MAXQUOTAS];
+>  #endif
+>  	char *orig_data = kstrdup(data, GFP_KERNEL);
+>  
+> @@ -5123,8 +5142,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+>  	old_opts.s_jquota_fmt = sbi->s_jquota_fmt;
+>  	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+>  		if (sbi->s_qf_names[i]) {
+> -			old_opts.s_qf_names[i] = kstrdup(sbi->s_qf_names[i],
+> -							 GFP_KERNEL);
+> +			char *qf_name = get_qf_name(sb, sbi, i);
+> +
+> +			old_opts.s_qf_names[i] = kstrdup(qf_name, GFP_KERNEL);
+>  			if (!old_opts.s_qf_names[i]) {
+>  				for (j = 0; j < i; j++)
+>  					kfree(old_opts.s_qf_names[j]);
+> @@ -5353,9 +5373,12 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+>  #ifdef CONFIG_QUOTA
+>  	sbi->s_jquota_fmt = old_opts.s_jquota_fmt;
+>  	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+> -		kfree(sbi->s_qf_names[i]);
+> -		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
+> +		to_free[i] = get_qf_name(sb, sbi, i);
+> +		rcu_assign_pointer(sbi->s_qf_names[i], old_opts.s_qf_names[i]);
+>  	}
+> +	synchronize_rcu();
+> +	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+> +		kfree(to_free[i]);
+>  #endif
+>  	kfree(orig_data);
+>  	return err;
+> @@ -5546,7 +5569,7 @@ static int ext4_write_info(struct super_block *sb, int type)
+>   */
+>  static int ext4_quota_on_mount(struct super_block *sb, int type)
+>  {
+> -	return dquot_quota_on_mount(sb, EXT4_SB(sb)->s_qf_names[type],
+> +	return dquot_quota_on_mount(sb, get_qf_name(sb, EXT4_SB(sb), type),
+>  					EXT4_SB(sb)->s_jquota_fmt, type);
+>  }
+>  
+> -- 
+> 2.18.0.rc0
+> 
