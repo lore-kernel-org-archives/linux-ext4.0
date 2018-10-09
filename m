@@ -1,142 +1,55 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59836 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727680AbeJRVST (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Oct 2018 17:18:19 -0400
-From: Jan Kara <jack@suse.cz>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Ted Tso <tytso@mit.edu>, <linux-fsdevel@vger.kernel.org>,
-        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/2] proc: Protect readers of /proc/mounts from remount
-Date: Thu, 18 Oct 2018 15:17:09 +0200
-Message-Id: <20181018131709.11976-3-jack@suse.cz>
-In-Reply-To: <20181018131709.11976-1-jack@suse.cz>
-References: <20181018131709.11976-1-jack@suse.cz>
+Return-Path: <SRS0=WpiV=MV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from userp2120.oracle.com ([156.151.31.85]:55150 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725749AbeJIHkM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Oct 2018 03:40:12 -0400
+Date: Mon, 8 Oct 2018 17:23:58 -0700
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: nicholas.clark@gmail.com
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH 1/2] Fuse2fs: fix 'mount' entry in some cases.
+Message-ID: <20181009002358.GA24099@magnolia>
+References: <20181008233952.20965-1-nicholas.clark@gmail.com>
+ <20181008233952.20965-2-nicholas.clark@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181008233952.20965-2-nicholas.clark@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Readers of /proc/mounts (and similar files) are currently unprotected
-from concurrently running remount on the filesystem they are reporting.
-This can not only result in bogus reported information but also in
-confusion in filesystems ->show_options callbacks resulting in
-use-after-free issues or similar (for example ext4 handling of quota
-file names is prone to such races).
+On Mon, Oct 08, 2018 at 05:39:51PM -0600, nicholas.clark@gmail.com wrote:
+> From: Nicholas Clark <nicholas.clark@gmail.com>
+> 
+> FUSE's parser allows command-line options to be specified before
+> or after the device/image and mount-path. This commit changes the
+> value of the fsname mount option to be correct even if options are
+> specified before the target device/image.
+> 
+> Signed-off-by: Nicholas Clark <nicholas.clark@gmail.com>
 
-Fix the problem by protecting showing of mount information with
-sb->s_umount semaphore.
+Looks ok,
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/mount.h     |  1 +
- fs/namespace.c | 59 ++++++++++++++++++++++++++++++++++++++++++++++++++++++----
- 2 files changed, 56 insertions(+), 4 deletions(-)
+--D
 
-diff --git a/fs/mount.h b/fs/mount.h
-index f39bc9da4d73..5ca0a9e714b3 100644
---- a/fs/mount.h
-+++ b/fs/mount.h
-@@ -134,6 +134,7 @@ struct proc_mounts {
- 	void *cached_mount;
- 	u64 cached_event;
- 	loff_t cached_index;
-+	struct super_block *locked_sb;
- };
- 
- extern const struct seq_operations mounts_op;
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 99186556f8d3..31270baa4c0b 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -1237,26 +1237,68 @@ struct vfsmount *mnt_clone_internal(const struct path *path)
- }
- 
- #ifdef CONFIG_PROC_FS
-+
-+static bool mounts_trylock_super(struct proc_mounts *p, struct super_block *sb)
-+{
-+	if (p->locked_sb == sb)
-+		return true;
-+	if (p->locked_sb) {
-+		drop_super(p->locked_sb);
-+		p->locked_sb = NULL;
-+	}
-+	if (down_read_trylock(&sb->s_umount)) {
-+		hold_sb(sb);
-+		p->locked_sb = sb;
-+		return true;
-+	}
-+	return false;
-+}
-+
- /* iterator; we want it to have access to namespace_sem, thus here... */
- static void *m_start(struct seq_file *m, loff_t *pos)
- {
- 	struct proc_mounts *p = m->private;
-+	struct mount *mount;
-+	struct super_block *sb;
- 
-+restart:
- 	down_read(&namespace_sem);
- 	if (p->cached_event == p->ns->event) {
- 		void *v = p->cached_mount;
- 		if (*pos == p->cached_index)
--			return v;
-+			goto lock_sb;
- 		if (*pos == p->cached_index + 1) {
- 			v = seq_list_next(v, &p->ns->list, &p->cached_index);
--			return p->cached_mount = v;
-+			p->cached_mount = v;
-+			goto lock_sb;
- 		}
- 	}
- 
- 	p->cached_event = p->ns->event;
- 	p->cached_mount = seq_list_start(&p->ns->list, *pos);
- 	p->cached_index = *pos;
--	return p->cached_mount;
-+lock_sb:
-+	if (!p->cached_mount)
-+		return NULL;
-+	mount = list_entry(p->cached_mount, struct mount, mnt_list);
-+	sb = mount->mnt.mnt_sb;
-+	if (mounts_trylock_super(p, sb))
-+		return p->cached_mount;
-+	/*
-+	 * Trylock failed. Since namepace_sem ranks below s_umount (through
-+	 * sb->s_umount > dir->i_rwsem > namespace_sem in the mount path), we
-+	 * have to drop it, wait for s_umount and then try again to guarantee
-+	 * forward progress.
-+	 */
-+	hold_sb(sb);
-+	up_read(&namespace_sem);
-+	down_read(&sb->s_umount);
-+	/*
-+	 * Sb may be dead by now but that just means we won't find it in any
-+	 * mount and drop lock & reference anyway.
-+	 */
-+	p->locked_sb = sb;
-+	goto restart;
- }
- 
- static void *m_next(struct seq_file *m, void *v, loff_t *pos)
-@@ -1277,7 +1319,16 @@ static int m_show(struct seq_file *m, void *v)
- {
- 	struct proc_mounts *p = m->private;
- 	struct mount *r = list_entry(v, struct mount, mnt_list);
--	return p->show(m, &r->mnt);
-+	struct super_block *sb = r->mnt.mnt_sb;
-+	int ret;
-+
-+	/* Protect show function against racing remount */
-+	if (!mounts_trylock_super(p, sb))
-+		return -EAGAIN;
-+	ret = p->show(m, &r->mnt);
-+	drop_super(sb);
-+	p->locked_sb = NULL;
-+	return ret;
- }
- 
- const struct seq_operations mounts_op = {
--- 
-2.16.4
+> ---
+>  misc/fuse2fs.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+> index 5c73895e..3214be4a 100644
+> --- a/misc/fuse2fs.c
+> +++ b/misc/fuse2fs.c
+> @@ -3845,7 +3845,7 @@ int main(int argc, char *argv[])
+>  	/* Set up default fuse parameters */
+>  	snprintf(extra_args, BUFSIZ, "-okernel_cache,subtype=ext4,use_ino,"
+>  		 "fsname=%s,attr_timeout=0" FUSE_PLATFORM_OPTS,
+> -		 argv[1]);
+> +		 fctx.device);
+>  	if (fctx.no_default_opts == 0)
+>  		fuse_opt_add_arg(&args, extra_args);
+>  
+> -- 
+> 2.17.1
+> 
