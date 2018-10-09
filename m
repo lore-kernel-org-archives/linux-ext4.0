@@ -1,36 +1,37 @@
-Return-Path: <SRS0=0MVU=MR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:40820 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727572AbeJEWct (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Oct 2018 18:32:49 -0400
-Subject: Re: [PATCH 0/2] ext4: even more documentation fixes
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        linux-ext4@vger.kernel.org, linux-doc@vger.kernel.org,
-        corbet@lwn.net
-References: <153870117116.30837.1220267868954289184.stgit@magnolia>
- <007a23b2-1db3-36fb-3300-f94115d4f2b3@infradead.org>
- <20181005152205.GA22801@thunk.org>
-From: Randy Dunlap <rdunlap@infradead.org>
-Message-ID: <830727e5-cb34-9a59-85c8-dd5e3772aeef@infradead.org>
-Date: Fri, 5 Oct 2018 08:33:33 -0700
+Return-Path: <SRS0=WpiV=MV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f175.google.com ([209.85.214.175]:42545 "EHLO
+        mail-pl1-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725855AbeJIK4H (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Oct 2018 06:56:07 -0400
+Subject: Re: [BUG] ext4 null pointer crash in linux-next
+To: valdis.kletnieks@vt.edu, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jens Axboe <axboe@kernel.dk>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-block@vger.kernel.org
+References: <36243.1539028475@turing-police.cc.vt.edu>
+From: Bart Van Assche <bvanassche@acm.org>
+Message-ID: <839b29df-08af-403c-da3e-e1bc9eca1685@acm.org>
+Date: Mon, 8 Oct 2018 20:41:15 -0700
 MIME-Version: 1.0
-In-Reply-To: <20181005152205.GA22801@thunk.org>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <36243.1539028475@turing-police.cc.vt.edu>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Content-Language: en-US
 Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 10/5/18 8:22 AM, Theodore Y. Ts'o wrote:
-> On Thu, Oct 04, 2018 at 07:48:31PM -0700, Randy Dunlap wrote:
->> Hi Darrick,
->>
->> I don't see patch 2/2 anywhere (my inbox, email archives)...
-> 
-> Probably because it's moving a lot of files around, so the diffs were 276k.
+On 10/8/18 12:54 PM, valdis.kletnieks@vt.edu wrote:
+> [  680.692915] RIP: 0010:__get_request+0x31/0x7e0
 
-Oh, yeah.  Thanks.
+Can you provide the source code line number that corresponds to that 
+address? If you haven't done this before: enter gdb 
+${path_to_kernel_source_tree}/vmlinux in a shell and then run "list 
+*(__get_request+0x31)" (without the double quotes).
 
--- 
-~Randy
+Additionally, which block driver is being used in your setup under the 
+ext4 filesystem?
+
+Thanks,
+
+Bart.
