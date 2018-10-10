@@ -1,30 +1,51 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59850 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728141AbeJRVST (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Oct 2018 17:18:19 -0400
-From: Jan Kara <jack@suse.cz>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Ted Tso <tytso@mit.edu>, <linux-fsdevel@vger.kernel.org>,
-        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 0/2] vfs: Fix crashes when reading /proc/mounts
-Date: Thu, 18 Oct 2018 15:17:07 +0200
-Message-Id: <20181018131709.11976-1-jack@suse.cz>
+Return-Path: <SRS0=q/KL=MW=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mout.kundenserver.de ([217.72.192.73]:37645 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726903AbeJJVus (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Oct 2018 17:50:48 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Arnd Bergmann <arnd@arndb.de>, Jan Kara <jack@suse.cz>,
+        Eric Biggers <ebiggers@google.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] ext4: avoid unused variable warning
+Date: Wed, 10 Oct 2018 16:27:58 +0200
+Message-Id: <20181010142813.1918180-1-arnd@arndb.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+The two new variables are only used in an #ifdef, so they cause a
+warning without CONFIG_QUOTA:
 
-this patch series aims at fixing possible races between functions formatting
-output for /proc/mounts and friends and remount. Especially ->show_options
-functions of filesystems are not counting with the fact that options can
-change under them and thus races can result in bogus output or outright
-crashes (like was the case with ext4 handling of quota mount option, or udf
-could crash when printing charset name, or xfs when printing log device name
-etc.).
+fs/ext4/super.c: In function 'parse_options':
+fs/ext4/super.c:1977:26: error: unused variable 'grp_qf_name' [-Werror=unused-variable]
+  char *p, *usr_qf_name, *grp_qf_name;
+                          ^~~~~~~~~~~
+fs/ext4/super.c:1977:12: error: unused variable 'usr_qf_name' [-Werror=unused-variable]
+  char *p, *usr_qf_name, *grp_qf_name;
 
-Admittedly the patch 2/2 is somewhat ugly because namespace_sem ranks below
-sb->s_umount semaphore but I think it is bearable. Al, what do you think?
+Fixes: 20cefcdc2040 ("ext4: fix use-after-free race in ext4_remount()'s error path")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/ext4/super.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-								Honza
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e9ca8312457b..d60199510c94 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1974,7 +1974,10 @@ static int parse_options(char *options, struct super_block *sb,
+ 			 int is_remount)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	char *p, *usr_qf_name, *grp_qf_name;
++	char *p;
++#ifdef CONFIG_QUOTA
++	char *usr_qf_name, *grp_qf_name;
++#endif
+ 	substring_t args[MAX_OPT_ARGS];
+ 	int token;
+ 
+-- 
+2.18.0
