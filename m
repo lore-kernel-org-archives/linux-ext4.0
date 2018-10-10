@@ -1,115 +1,50 @@
-Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ozlabs.org ([203.11.71.1]:39485 "EHLO ozlabs.org"
+Return-Path: <SRS0=q/KL=MW=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41158 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725198AbeJCFqQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Oct 2018 01:46:16 -0400
-Date: Wed, 3 Oct 2018 09:00:10 +1000
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-To: Dominique Martinet <asmadeus@codewreck.org>
-Cc: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Linux-Next Mailing List <linux-next@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, Ted Ts'o <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
-Message-ID: <20181003090010.5150f914@canb.auug.org.au>
-In-Reply-To: <20181002223652.GA4290@nautica>
-References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
-        <20181003071059.02b3fd6f@canb.auug.org.au>
-        <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
-        <CANiq72mmxiO6RWBTQfWYDaa6gmOF01nXmN6BJNCAjAFz3QJqqA@mail.gmail.com>
-        <20181002223652.GA4290@nautica>
+        id S1726989AbeJKBMw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 10 Oct 2018 21:12:52 -0400
+Date: Wed, 10 Oct 2018 13:49:34 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Adrian Hunter <adrian.hunter@intel.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Subject: Re: jbd2_clear_buffer_revoked_flags() takes a long time
+Message-ID: <20181010174934.GA19601@thunk.org>
+References: <d2e1ec1a-0d7d-1acb-6887-c55ac30e4a3a@intel.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- boundary="Sig_/Pi_fuJWlk3fcJlLoIKV/0xY"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <d2e1ec1a-0d7d-1acb-6887-c55ac30e4a3a@intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---Sig_/Pi_fuJWlk3fcJlLoIKV/0xY
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Wed, Oct 10, 2018 at 04:43:27PM +0300, Adrian Hunter wrote:
+> Hi
+> 
+> I have a case on a v4.14 kernel where the EXT4 journal commit disables
+> preemption for 30ms due to jbd2_clear_buffer_revoked_flags().  That in turn
+> disables preemption on other CPUs as they come to spin waiting for the same
+> lock.  The side-effect of that is that it periodically blocks high priority
+> tasks from running.
+> 
+> I see jbd2_clear_buffer_revoked_flags() iterating 32768 times calling
+> __find_get_block().
+> 
+> Is there any way to make jbd2_clear_buffer_revoked_flags() take less time,
+> or move its work out from under write_lock(&journal->j_state_lock)?
 
-Hi Miguel,
+Hmm.... I'd have to look a bit more carefully and then run some tests,
+but I *think* we can drop the j_state_lock at the beginning of JBD2
+commit phase 1, and then grab it again right before we set
+commit_transaction->t_state to T_FLUSH.
 
-On Wed, 3 Oct 2018 00:36:52 +0200 Dominique Martinet <asmadeus@codewreck.or=
-g> wrote:
->
-> Miguel Ojeda wrote on Wed, Oct 03, 2018:
-> > As I have read, -next is supposed to be a vision of what the merge
-> > window will look like after merging everything, i.e. ideally -rc1. For
-> > that to work for files out-of-tree (like these ones, which are not
-> > maintained by a single tree), changes should be allowed to be stacked
-> > on each other; otherwise, we cannot handle conflicts :-( =20
->=20
-> The rule is the same as with a regular mainline pull; I don't have the
-> reference at hand but in some recent-ish pull request Linus said he
-> prefers the stable version with the conflict, and optionally you can
-> provide a second branch with the conflict resolved for reference, but
-> the pull request should be based on something stable even if it has
-> conflicts
->=20
-> If there is a conflict Stefen will resolve it like Linus/Greg would, and
-> the resolved bit will be carried over everyday so it's not much more
-> work -- exactly like a regular pull request for inclusion in the main
-> tree :)
+That should be safe because while the transaction state is T_LOCKED,
+we can't start any new handles, so there can't be any new blocks added
+to the revoke table.
 
-Exactly what Dominique said.  I will fix up the conflict (unless it is
-a very complex conflict, in which case the author(s) should help) and
-the Linus (or Greg) will do the same.  If you do depend on a patch in
-Andrew's series, what happens if that patch does not get sent to Linus
-during the merge window or Linus rejects it?
+Can you give that a try and see whether that solves your priority
+inversion problem?
 
---=20
 Cheers,
-Stephen Rothwell
 
---Sig_/Pi_fuJWlk3fcJlLoIKV/0xY
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-
-iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAluz+HoACgkQAVBC80lX
-0GwB6Af/QRmuvQ4ntPviR4hY99kAVf71n2hG+jM6yJp/+JjLvGaMxGSq+ZFAMk0V
-qnVWGZKhMDjl8b1Z+UrEJU35kn5GoWIAIbaXsBSgGWo5Hc6Z9u3PDfF6/Z0pMUEw
-KE8e8PS/1KVk24EBb5foc0l3VvVYKttUroqVfUglkYVgvizRV6kdzkMAbOaqdiVh
-eMIWmB0ZxYoOyM2rAQt9ul4VhQLrLKiIPlzjUQa3pMJmcaHT38RuuZ/Cpv4M3L0a
-uNbiOJCyY+hUp4Q6Twi69Srk9IWU5GdaSWwTOM0SvWRQhh1ge/K0mC+b21D8ANDh
-utwC/WyGrQiXJcpRJKiQpefzWwcWbQ==
-=9ecB
------END PGP SIGNATURE-----
-
---Sig_/Pi_fuJWlk3fcJlLoIKV/0xY--
+						- Ted
