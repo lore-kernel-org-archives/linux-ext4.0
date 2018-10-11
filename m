@@ -1,97 +1,91 @@
-Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-qk1-f193.google.com ([209.85.222.193]:36940 "EHLO
-        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727218AbeJCEuM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Oct 2018 00:50:12 -0400
+Return-Path: <SRS0=dqau=MX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-oi1-f196.google.com ([209.85.167.196]:46528 "EHLO
+        mail-oi1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726046AbeJKILP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2018 04:11:15 -0400
+Received: by mail-oi1-f196.google.com with SMTP id k64-v6so5641463oia.13
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Oct 2018 17:46:33 -0700 (PDT)
 MIME-Version: 1.0
-References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
- <20181003071059.02b3fd6f@canb.auug.org.au>
-In-Reply-To: <20181003071059.02b3fd6f@canb.auug.org.au>
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Wed, 3 Oct 2018 00:04:29 +0200
-Message-ID: <CANiq72nh0nybEC8SizQ9rv=RvncMuTH-dt5vciRtvQ1aFBzJcg@mail.gmail.com>
-Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
-To: Stephen Rothwell <sfr@canb.auug.org.au>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Linux-Next Mailing List <linux-next@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
+References: <20180824154542.26872-1-jack@suse.cz> <20181010173015.ecb7c7ed1b2df729f058e346@linux-foundation.org>
+In-Reply-To: <20181010173015.ecb7c7ed1b2df729f058e346@linux-foundation.org>
+From: Dan Williams <dan.j.williams@intel.com>
+Date: Wed, 10 Oct 2018 17:46:22 -0700
+Message-ID: <CAPcyv4hB+rhST7QgNcT0QyLnYY3jQagd_tw8Lz=x3eO+TBFZxg@mail.gmail.com>
+Subject: Re: [PATCH] mm: Fix warning in insert_pfn()
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Jan Kara <jack@suse.cz>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Linux MM <linux-mm@kvack.org>,
+        Dave Jiang <dave.jiang@intel.com>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Stephen,
-
-On Tue, Oct 2, 2018 at 11:11 PM Stephen Rothwell <sfr@canb.auug.org.au> wrote:
+On Wed, Oct 10, 2018 at 5:37 PM Andrew Morton <akpm@linux-foundation.org> wrote:
 >
-> Hi Miguel,
+> On Fri, 24 Aug 2018 17:45:42 +0200 Jan Kara <jack@suse.cz> wrote:
 >
-> On Tue, 2 Oct 2018 15:47:12 +0200 Miguel Ojeda <miguel.ojeda.sandonis@gmail.com> wrote:
+> > In DAX mode a write pagefault can race with write(2) in the following
+> > way:
 > >
-> > The Compiler Attributes series has been stable for 10+ days. To
-> > increase testing before 4.20, I would to request it being picked up
-> > for -next.
+> > CPU0                            CPU1
+> >                                 write fault for mapped zero page (hole)
+> > dax_iomap_rw()
+> >   iomap_apply()
+> >     xfs_file_iomap_begin()
+> >       - allocates blocks
+> >     dax_iomap_actor()
+> >       invalidate_inode_pages2_range()
+> >         - invalidates radix tree entries in given range
+> >                                 dax_iomap_pte_fault()
+> >                                   grab_mapping_entry()
+> >                                     - no entry found, creates empty
+> >                                   ...
+> >                                   xfs_file_iomap_begin()
+> >                                     - finds already allocated block
+> >                                   ...
+> >                                   vmf_insert_mixed_mkwrite()
+> >                                     - WARNs and does nothing because there
+> >                                       is still zero page mapped in PTE
+> >         unmap_mapping_pages()
 > >
-> > The changes w.r.t. v5 in the LKML:
+> > This race results in WARN_ON from insert_pfn() and is occasionally
+> > triggered by fstest generic/344. Note that the race is otherwise
+> > harmless as before write(2) on CPU0 is finished, we will invalidate page
+> > tables properly and thus user of mmap will see modified data from
+> > write(2) from that point on. So just restrict the warning only to the
+> > case when the PFN in PTE is not zero page.
 > >
-> >   - Rebased on top of next-20180928, which required removing
+> > ...
+> >
+> > --- a/mm/memory.c
+> > +++ b/mm/memory.c
+> > @@ -1787,10 +1787,15 @@ static int insert_pfn(struct vm_area_struct *vma, unsigned long addr,
+> >                        * in may not match the PFN we have mapped if the
+> >                        * mapped PFN is a writeable COW page.  In the mkwrite
+> >                        * case we are creating a writable PTE for a shared
+> > -                      * mapping and we expect the PFNs to match.
+> > +                      * mapping and we expect the PFNs to match. If they
+> > +                      * don't match, we are likely racing with block
+> > +                      * allocation and mapping invalidation so just skip the
+> > +                      * update.
+> >                        */
+> > -                     if (WARN_ON_ONCE(pte_pfn(*pte) != pfn_t_to_pfn(pfn)))
+> > +                     if (pte_pfn(*pte) != pfn_t_to_pfn(pfn)) {
+> > +                             WARN_ON_ONCE(!is_zero_pfn(pte_pfn(*pte)));
+> >                               goto out_unlock;
+> > +                     }
+> >                       entry = *pte;
 >
-> Unfortunately, trees/branches included in linux-next must be based on
-> something stable (usually Linus' tree, but it could be another
-> tree/branch that is included in linux-next that does not rebase).
-> Linux-next itself rebases every day, so snything based on it would drag
-> in a previous version of all the other trees :-(
+> Shouldn't we just remove the warning?  We know it happens and we know
+> why it happens and we know it's harmless.  What's the point in scaring
+> people?
 
-I assumed you could apply changes as a diff/patches/cherry-pick, not
-as a merge, for those that went on top of others (so that at the new
-merge window, conflicts were already solved). Otherwise, why are
-next-* tags/branches provided anyway?
+tl;dr let's keep it.
 
->
-> > aligned_largest, which was removed by 9503cd9cbaba
-> > ("include/linux/compiler*.h: add version detection to
-> > asm_volatile_goto").
->
-> That commit is from Andrew's patch series which also rebases (usually
-> at least every week), so you cannot depend on it.
-
-Then who is solving the conflict?
-
-Thanks!
-
-Cheers,
-Miguel
+I think this fix effectively pushes this into "can't happen"
+territory, but if it does our dax assumptions are off somewhere else.
+So, I think this is useful for developers hacking around in the dax
+code to make sure they aren't breaking some fundamental assumption.
