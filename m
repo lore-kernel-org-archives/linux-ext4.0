@@ -1,46 +1,47 @@
-Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:45980 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725743AbeJaGxa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 31 Oct 2018 02:53:30 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2 06/11] ext4 resize: lost resize_inode cleanup before retry
- in ext4_resize_fs()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-References: <cover.1540935522.git.vvs@virtuozzo.com>
-Message-ID: <85ecdd2d-e034-4b15-a872-f8399582b56a@virtuozzo.com>
-Date: Wed, 31 Oct 2018 00:58:16 +0300
+Return-Path: <SRS0=dqau=MX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:58846 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726656AbeJKSDR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 11 Oct 2018 14:03:17 -0400
+Date: Thu, 11 Oct 2018 12:36:36 +0200
+From: Jan Kara <jack@suse.cz>
+To: Eric Sandeen <sandeen@sandeen.net>
+Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Ross Zwisler <zwisler@kernel.org>,
+        Dan Williams <dan.j.williams@intel.com>
+Subject: Re: [PATCH 0/3] ext2, ext4, xfs: hard fail dax mount on unsupported
+ devices
+Message-ID: <20181011103636.GC9467@quack2.suse.cz>
+References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
 MIME-Version: 1.0
-In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fixes 1c6bd7173d66 ("ext4: convert file system to meta_bg if needed ...") # 3.7
+On Mon 08-10-18 14:32:46, Eric Sandeen wrote:
+> In response to an earlier xfs patch to change how xfs reacts to
+> dax incompatibilities, Dave said:
+> 
+> > I suspect we need to be more harsh are rejecting mounts with -o dax
+> > on devices DAX isn't supported on. This mount option is going into
+> > production systems - it's not just for "testing" as the comments all
+> > claim. i Things will break in production systems if DAX isn't
+> > enabled and they are expecting it to be enabled.
+> 
+> and I tend to agree, so proposing this change to hard-fail a dax mount if
+> the device doesn't support it, instead of silently disabling the
+> functionality.  Proposing for ext2, ext4, and xfs to keep behavior in
+> sync.
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/ext4/resize.c | 4 ++++
- 1 file changed, 4 insertions(+)
+Let me include Dan and Ross into the discussion since they were the ones
+proposing the "silent fallback" behavior (ext4 actually did fail the mount
+instead not so long ago - see 24f3478d664b "ext4: auto disable dax instead
+of failing mount" from December). Guys, why did you choose the fallback
+path instead of a failure?
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 5fee65afd58b..85158e9de7c2 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -2058,6 +2058,10 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 		n_blocks_count_retry = 0;
- 		free_flex_gd(flex_gd);
- 		flex_gd = NULL;
-+		if (resize_inode) {
-+			iput(resize_inode);
-+			resize_inode = NULL;
-+		}
- 		goto retry;
- 	}
- 
+								Honza
 -- 
-2.17.1
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
