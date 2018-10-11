@@ -1,95 +1,254 @@
-Return-Path: <SRS0=/GAa=M3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:37484 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726024AbeJPE7a (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Oct 2018 00:59:30 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH e2fsprogs 2/9] e2fsprogs: Reserve feature bit and SB field bit for filename encoding
-Date: Mon, 15 Oct 2018 17:12:13 -0400
-Message-Id: <20181015211220.27370-3-krisman@collabora.co.uk>
-In-Reply-To: <20181015211220.27370-1-krisman@collabora.co.uk>
-References: <20181015211220.27370-1-krisman@collabora.co.uk>
+Return-Path: <SRS0=dqau=MX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:57506 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726135AbeJKRym (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 11 Oct 2018 13:54:42 -0400
+Date: Thu, 11 Oct 2018 12:28:00 +0200
+From: Jan Kara <jack@suse.cz>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        joel@joelfernandes.org, paulmck@linux.ibm.com,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: [PATCH -v3] ext4: fix use-after-free race in ext4_remount()'s
+ error path
+Message-ID: <20181011102800.GB9467@quack2.suse.cz>
+References: <20181007030706.9094-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181007030706.9094-1-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The s_encoding field in the superblock stores a magic number indicating
-the encoding format and version used globally by file and directory
-names in the filesystem.
+On Sat 06-10-18 23:07:06, Theodore Ts'o wrote:
+> It's possible for ext4_show_quota_options() to try reading
+> s_qf_names[i] while it is being modified by ext4_remount() --- most
+> notably, in ext4_remount's error path when the original values of the
+> quota file name gets restored.
+> 
+> Reported-by: syzbot+a2872d6feea6918008a9@syzkaller.appspotmail.com
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: stable@kernel.org
 
-The s_encoding_flags defines policies for using the charset encoding,
-like how to handle invalid sequences and what kind of normalization to
-use.
+Well, honestly the fact that ->show_options can be called while remount is
+changing stuff under you looks problematic to me and I bet ext4 is not the
+only one that would have issues with that. So I believe we might be better
+off with just synchronizing ->show_options with umount / remount properly.
+What were the lock dependency problems that made you switch to use RCU?
 
-A feature flag is also allocated to indicate whether this filesystem has
-encoding awareness enabled.
+								Honza
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- lib/e2p/feature.c    | 2 ++
- lib/ext2fs/ext2_fs.h | 6 +++++-
- lib/ext2fs/ext2fs.h  | 1 +
- 3 files changed, 8 insertions(+), 1 deletion(-)
-
-diff --git a/lib/e2p/feature.c b/lib/e2p/feature.c
-index e3b0dab83c81..294a56a40b52 100644
---- a/lib/e2p/feature.c
-+++ b/lib/e2p/feature.c
-@@ -109,6 +109,8 @@ static struct feature feature_list[] = {
- 			"inline_data"},
- 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_ENCRYPT,
- 			"encrypt"},
-+	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_FNAME_ENCODING,
-+			"encoding"},
- 	{	0, 0, 0 },
- };
- 
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index ab2595486d21..f1c405b76339 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -755,7 +755,9 @@ struct ext2_super_block {
- 	__u8	s_first_error_time_hi;
- 	__u8	s_last_error_time_hi;
- 	__u8	s_pad[2];
--	__le32	s_reserved[96];		/* Padding to the end of the block */
-+/*27c*/ __le16	s_encoding;		/* Filename charset encoding */
-+	__le16	s_encoding_flags;	/* Filename charset encoding flags */
-+	__le32	s_reserved[95];		/* Padding to the end of the block */
- /*3fc*/	__u32	s_checksum;		/* crc32c(superblock) */
- };
- 
-@@ -846,6 +848,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
- #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
-+#define EXT4_FEATURE_INCOMPAT_FNAME_ENCODING	0x20000
- 
- #define EXT4_FEATURE_COMPAT_FUNCS(name, ver, flagname) \
- static inline int ext2fs_has_feature_##name(struct ext2_super_block *sb) \
-@@ -939,6 +942,7 @@ EXT4_FEATURE_INCOMPAT_FUNCS(csum_seed,		4, CSUM_SEED)
- EXT4_FEATURE_INCOMPAT_FUNCS(largedir,		4, LARGEDIR)
- EXT4_FEATURE_INCOMPAT_FUNCS(inline_data,	4, INLINE_DATA)
- EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		4, ENCRYPT)
-+EXT4_FEATURE_INCOMPAT_FUNCS(fname_encoding,	4, FNAME_ENCODING)
- 
- #define EXT2_FEATURE_COMPAT_SUPP	0
- #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 185be5df511f..64c5b8758a40 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -616,6 +616,7 @@ typedef struct ext2_icount *ext2_icount_t;
- 					 EXT4_FEATURE_INCOMPAT_64BIT|\
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA|\
- 					 EXT4_FEATURE_INCOMPAT_ENCRYPT|\
-+					 EXT4_FEATURE_INCOMPAT_FNAME_ENCODING|\
- 					 EXT4_FEATURE_INCOMPAT_CSUM_SEED|\
- 					 EXT4_FEATURE_INCOMPAT_LARGEDIR)
- 
+> ---
+> 
+> v3: RCU clean ups and fix ups
+> v2: Use RCU to avoid lock dependency problems
+> 
+>  fs/ext4/ext4.h  |  3 +-
+>  fs/ext4/super.c | 73 ++++++++++++++++++++++++++++++++-----------------
+>  2 files changed, 50 insertions(+), 26 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 86e1bacac757..12f90d48ba61 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1405,7 +1405,8 @@ struct ext4_sb_info {
+>  	u32 s_min_batch_time;
+>  	struct block_device *journal_bdev;
+>  #ifdef CONFIG_QUOTA
+> -	char *s_qf_names[EXT4_MAXQUOTAS];	/* Names of quota files with journalled quota */
+> +	/* Names of quota files with journalled quota */
+> +	char __rcu *s_qf_names[EXT4_MAXQUOTAS];
+>  	int s_jquota_fmt;			/* Format of quota to use */
+>  #endif
+>  	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index faf293ed8060..1909fbb28583 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -920,6 +920,18 @@ static inline void ext4_quota_off_umount(struct super_block *sb)
+>  }
+>  #endif
+>  
+> +/*
+> + * This is a helper function which is used in the mount/remount
+> + * codepaths (which holds s_umount) to fetch the quota file name.
+> + */
+> +static inline char *get_qf_name(struct super_block *sb,
+> +				struct ext4_sb_info *sbi,
+> +				int type)
+> +{
+> +	return rcu_dereference_protected(sbi->s_qf_names[type],
+> +					 lockdep_is_held(&sb->s_umount));
+> +}
+> +
+>  static void ext4_put_super(struct super_block *sb)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> @@ -965,7 +977,7 @@ static void ext4_put_super(struct super_block *sb)
+>  	percpu_free_rwsem(&sbi->s_journal_flag_rwsem);
+>  #ifdef CONFIG_QUOTA
+>  	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+> -		kfree(sbi->s_qf_names[i]);
+> +		kfree(get_qf_name(sb, sbi, i));
+>  #endif
+>  
+>  	/* Debugging code just in case the in-memory inode orphan list
+> @@ -1531,11 +1543,10 @@ static const char deprecated_msg[] =
+>  static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> -	char *qname;
+> +	char *qname, *old_qname = get_qf_name(sb, sbi, qtype);
+>  	int ret = -1;
+>  
+> -	if (sb_any_quota_loaded(sb) &&
+> -		!sbi->s_qf_names[qtype]) {
+> +	if (sb_any_quota_loaded(sb) && !old_qname) {
+>  		ext4_msg(sb, KERN_ERR,
+>  			"Cannot change journaled "
+>  			"quota options when quota turned on");
+> @@ -1552,8 +1563,8 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+>  			"Not enough memory for storing quotafile name");
+>  		return -1;
+>  	}
+> -	if (sbi->s_qf_names[qtype]) {
+> -		if (strcmp(sbi->s_qf_names[qtype], qname) == 0)
+> +	if (old_qname) {
+> +		if (strcmp(old_qname, qname) == 0)
+>  			ret = 1;
+>  		else
+>  			ext4_msg(sb, KERN_ERR,
+> @@ -1566,7 +1577,7 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
+>  			"quotafile must be on filesystem root");
+>  		goto errout;
+>  	}
+> -	sbi->s_qf_names[qtype] = qname;
+> +	rcu_assign_pointer(sbi->s_qf_names[qtype], qname);
+>  	set_opt(sb, QUOTA);
+>  	return 1;
+>  errout:
+> @@ -1578,15 +1589,16 @@ static int clear_qf_name(struct super_block *sb, int qtype)
+>  {
+>  
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	char *old_qname = get_qf_name(sb, sbi, qtype);
+>  
+> -	if (sb_any_quota_loaded(sb) &&
+> -		sbi->s_qf_names[qtype]) {
+> +	if (sb_any_quota_loaded(sb) && old_qname) {
+>  		ext4_msg(sb, KERN_ERR, "Cannot change journaled quota options"
+>  			" when quota turned on");
+>  		return -1;
+>  	}
+> -	kfree(sbi->s_qf_names[qtype]);
+> -	sbi->s_qf_names[qtype] = NULL;
+> +	rcu_assign_pointer(sbi->s_qf_names[qtype], NULL);
+> +	synchronize_rcu();
+> +	kfree(old_qname);
+>  	return 1;
+>  }
+>  #endif
+> @@ -1961,7 +1973,7 @@ static int parse_options(char *options, struct super_block *sb,
+>  			 int is_remount)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> -	char *p;
+> +	char *p, *usr_qf_name, *grp_qf_name;
+>  	substring_t args[MAX_OPT_ARGS];
+>  	int token;
+>  
+> @@ -1992,11 +2004,13 @@ static int parse_options(char *options, struct super_block *sb,
+>  			 "Cannot enable project quota enforcement.");
+>  		return 0;
+>  	}
+> -	if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
+> -		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
+> +	usr_qf_name = get_qf_name(sb, sbi, USRQUOTA);
+> +	grp_qf_name = get_qf_name(sb, sbi, GRPQUOTA);
+> +	if (usr_qf_name || grp_qf_name) {
+> +		if (test_opt(sb, USRQUOTA) && usr_qf_name)
+>  			clear_opt(sb, USRQUOTA);
+>  
+> -		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
+> +		if (test_opt(sb, GRPQUOTA) && grp_qf_name)
+>  			clear_opt(sb, GRPQUOTA);
+>  
+>  		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
+> @@ -2030,6 +2044,7 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
+>  {
+>  #if defined(CONFIG_QUOTA)
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	char *usr_qf_name, *grp_qf_name;
+>  
+>  	if (sbi->s_jquota_fmt) {
+>  		char *fmtname = "";
+> @@ -2048,11 +2063,14 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
+>  		seq_printf(seq, ",jqfmt=%s", fmtname);
+>  	}
+>  
+> -	if (sbi->s_qf_names[USRQUOTA])
+> -		seq_show_option(seq, "usrjquota", sbi->s_qf_names[USRQUOTA]);
+> -
+> -	if (sbi->s_qf_names[GRPQUOTA])
+> -		seq_show_option(seq, "grpjquota", sbi->s_qf_names[GRPQUOTA]);
+> +	rcu_read_lock();
+> +	usr_qf_name = rcu_dereference(sbi->s_qf_names[USRQUOTA]);
+> +	grp_qf_name = rcu_dereference(sbi->s_qf_names[GRPQUOTA]);
+> +	if (usr_qf_name)
+> +		seq_show_option(seq, "usrjquota", usr_qf_name);
+> +	if (grp_qf_name)
+> +		seq_show_option(seq, "grpjquota", grp_qf_name);
+> +	rcu_read_unlock();
+>  #endif
+>  }
+>  
+> @@ -5104,6 +5122,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+>  	int err = 0;
+>  #ifdef CONFIG_QUOTA
+>  	int i, j;
+> +	char *to_free[EXT4_MAXQUOTAS];
+>  #endif
+>  	char *orig_data = kstrdup(data, GFP_KERNEL);
+>  
+> @@ -5123,8 +5142,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+>  	old_opts.s_jquota_fmt = sbi->s_jquota_fmt;
+>  	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+>  		if (sbi->s_qf_names[i]) {
+> -			old_opts.s_qf_names[i] = kstrdup(sbi->s_qf_names[i],
+> -							 GFP_KERNEL);
+> +			char *qf_name = get_qf_name(sb, sbi, i);
+> +
+> +			old_opts.s_qf_names[i] = kstrdup(qf_name, GFP_KERNEL);
+>  			if (!old_opts.s_qf_names[i]) {
+>  				for (j = 0; j < i; j++)
+>  					kfree(old_opts.s_qf_names[j]);
+> @@ -5353,9 +5373,12 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+>  #ifdef CONFIG_QUOTA
+>  	sbi->s_jquota_fmt = old_opts.s_jquota_fmt;
+>  	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
+> -		kfree(sbi->s_qf_names[i]);
+> -		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
+> +		to_free[i] = get_qf_name(sb, sbi, i);
+> +		rcu_assign_pointer(sbi->s_qf_names[i], old_opts.s_qf_names[i]);
+>  	}
+> +	synchronize_rcu();
+> +	for (i = 0; i < EXT4_MAXQUOTAS; i++)
+> +		kfree(to_free[i]);
+>  #endif
+>  	kfree(orig_data);
+>  	return err;
+> @@ -5546,7 +5569,7 @@ static int ext4_write_info(struct super_block *sb, int type)
+>   */
+>  static int ext4_quota_on_mount(struct super_block *sb, int type)
+>  {
+> -	return dquot_quota_on_mount(sb, EXT4_SB(sb)->s_qf_names[type],
+> +	return dquot_quota_on_mount(sb, get_qf_name(sb, EXT4_SB(sb), type),
+>  					EXT4_SB(sb)->s_jquota_fmt, type);
+>  }
+>  
+> -- 
+> 2.18.0.rc0
+> 
 -- 
-2.19.1
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
