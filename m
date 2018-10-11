@@ -1,58 +1,128 @@
-Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:45948 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725743AbeJaGxA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 31 Oct 2018 02:53:00 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2 02/11] ext4 resize: missing brelse() after errors in
- set_flexbg_block_bitmap()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org,
-        Yongqiang Yang <xiaoqiangnk@gmail.com>,
-        Yongqiang Yang <yangyongqiang01@baidu.com>
-References: <cover.1540935522.git.vvs@virtuozzo.com>
-Message-ID: <de9191d6-1cb1-6725-f378-b886c9cd06d0@virtuozzo.com>
-Date: Wed, 31 Oct 2018 00:57:45 +0300
+Return-Path: <SRS0=dqau=MX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from aserp2120.oracle.com ([141.146.126.78]:50006 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726691AbeJKW40 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2018 18:56:26 -0400
+Date: Thu, 11 Oct 2018 08:28:40 -0700
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Lukas Czerner <lczerner@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] fuse2fs: return proper exit code from fuse_main
+Message-ID: <20181011152840.GB24099@magnolia>
+References: <20181011134336.977-1-lczerner@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181011134336.977-1-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fixes 33afdcc5402d ("ext4: add a function which sets up group blocks ...") # 3.3
+On Thu, Oct 11, 2018 at 03:43:36PM +0200, Lukas Czerner wrote:
+> Currently fuse2fs will always return 0 exit code indicating successful
+> operation even though the mount failed either because we failed to
+> properly read the file system in the first place, or the fuse_main()
+> failed for whatever reason.
+> 
+> Fix it by using the return code from fuse_main(), or return 32 in case
+> we fail because the file system is corrupted, or we encountered a
+> problem preventing us mounting the file system. 32 because this is a
+> libmount exit code indicating mount failed.
+> 
+> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> ---
+>  misc/fuse2fs.c | 17 +++++++++++------
+>  1 file changed, 11 insertions(+), 6 deletions(-)
+> 
+> diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+> index 5c73895e..d7a0b668 100644
+> --- a/misc/fuse2fs.c
+> +++ b/misc/fuse2fs.c
+> @@ -3720,7 +3720,7 @@ int main(int argc, char *argv[])
+>  {
+>  	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+>  	struct fuse2fs fctx;
+> -	errcode_t err;
+> +	errcode_t err = 0;
+>  	char *logfile;
+>  	char extra_args[BUFSIZ];
+>  	int ret = 0, flags = EXT2_FLAG_64BITS | EXT2_FLAG_EXCLUSIVE;
+> @@ -3753,6 +3753,7 @@ int main(int argc, char *argv[])
+>  		fctx.err_fp = fopen(logfile, "a");
+>  		if (!fctx.err_fp) {
+>  			perror(logfile);
+> +			err = errno;
+>  			goto out;
+>  		}
+>  	} else
+> @@ -3766,7 +3767,6 @@ int main(int argc, char *argv[])
+>  	}
+>  
+>  	/* Start up the fs (while we still can use stdout) */
+> -	ret = 2;
+>  	if (!fctx.ro)
+>  		flags |= EXT2_FLAG_RW;
+>  	err = ext2fs_open2(fctx.device, NULL, flags, 0, 0, unix_io_manager,
+> @@ -3779,8 +3779,6 @@ int main(int argc, char *argv[])
+>  	fctx.fs = global_fs;
+>  	global_fs->priv_data = &fctx;
+>  
+> -	ret = 3;
+> -
+>  	if (ext2fs_has_feature_journal_needs_recovery(global_fs->super)) {
+>  		if (!fctx.ro) {
+>  			printf(_("%s: recovering journal\n"), fctx.device);
+> @@ -3797,6 +3795,7 @@ int main(int argc, char *argv[])
+>  		} else {
+>  			printf("%s", _("Journal needs recovery; running "
+>  			       "`e2fsck -E journal_only' is required.\n"));
+> +			err = 1;
+>  			goto out;
+>  		}
+>  	}
+> @@ -3836,6 +3835,7 @@ int main(int argc, char *argv[])
+>  	if (global_fs->super->s_state & EXT2_ERROR_FS) {
+>  		printf("%s",
+>  		       _("Errors detected; running e2fsck is required.\n"));
+> +		err = 1;
+>  		goto out;
+>  	}
+>  
+> @@ -3859,11 +3859,16 @@ int main(int argc, char *argv[])
+>  	}
+>  
+>  	pthread_mutex_init(&fctx.bfl, NULL);
+> -	fuse_main(args.argc, args.argv, &fs_ops, &fctx);
+> +	ret = fuse_main(args.argc, args.argv, &fs_ops, &fctx);
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/ext4/resize.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+Hmmm, what /does/ fuse_main return?  According to the libfuse github
+site it returns 0 for success and "nonzero" for failure.  The source
+code seems to return 1 on failure (I think), but we probably ought to
+set ret to 1 ("incorrect invocation or permissions") or 32 explicitly
+just in case they ever change their minds...
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index c3fa30878ca8..0a4dc6217e78 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -459,16 +459,18 @@ static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
- 
- 		BUFFER_TRACE(bh, "get_write_access");
- 		err = ext4_journal_get_write_access(handle, bh);
--		if (err)
-+		if (err) {
-+			brelse(bh);
- 			return err;
-+		}
- 		ext4_debug("mark block bitmap %#04llx (+%llu/%u)\n",
- 			   first_cluster, first_cluster - start, count2);
- 		ext4_set_bits(bh->b_data, first_cluster - start, count2);
- 
- 		err = ext4_handle_dirty_metadata(handle, NULL, bh);
-+		brelse(bh);
- 		if (unlikely(err))
- 			return err;
--		brelse(bh);
- 	}
- 
- 	return 0;
--- 
-2.17.1
+>  	pthread_mutex_destroy(&fctx.bfl);
+>  
+> -	ret = 0;
+>  out:
+> +	/*
+> +	 * Encountered error reading the file system. Return standard "mount
+> +	 * failure" mount exit code (32).
+> +	 */
+> +	if (err)
+> +		ret = 32;
+
+...I guess "mount failure" for libext2fs problems is good enough, though
+part of me thinks that we should return 1 if ext2fs_open can't open the
+block device due to EPERM/EACCESS.
+
+<shrug>  OTOH "mount failure" is sufficiently vague to hide just about
+anything behind. :)
+
+--D
+
+>  	if (global_fs) {
+>  		err = ext2fs_close(global_fs);
+>  		if (err)
+> -- 
+> 2.17.1
+> 
