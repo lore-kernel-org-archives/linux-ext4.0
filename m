@@ -1,384 +1,125 @@
-Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:50178 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727280AbeJREyF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:54:05 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 18/23] nls: utf8: Introduce test module for normalized utf8 implementation
-Date: Wed, 17 Oct 2018 16:55:19 -0400
-Message-Id: <20181017205524.23360-19-krisman@collabora.co.uk>
-In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
-References: <20181017205524.23360-1-krisman@collabora.co.uk>
+Return-Path: <SRS0=dqau=MX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:35962 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728157AbeJKSjL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 11 Oct 2018 14:39:11 -0400
+Date: Thu, 11 Oct 2018 13:12:23 +0200
+From: Jan Kara <jack@suse.cz>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc: Adrian Hunter <adrian.hunter@intel.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Subject: Re: jbd2_clear_buffer_revoked_flags() takes a long time
+Message-ID: <20181011111223.GD9467@quack2.suse.cz>
+References: <d2e1ec1a-0d7d-1acb-6887-c55ac30e4a3a@intel.com>
+ <20181010174934.GA19601@thunk.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: multipart/mixed; boundary="zhXaljGHf11kAtnf"
+Content-Disposition: inline
+In-Reply-To: <20181010174934.GA19601@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This implements a in-kernel sanity test module for the utf8
-normalization core.  At probe time, it will run basic sequences through
-the utf8n core, to identify problems will equivalent sequences and
-normalization/casefold code.  This is supposed to be useful for
-regression testing when adding support for a new version of utf8 to
-linux.
 
-Changes since RFC v2:
-  - Merge with NLS
+--zhXaljGHf11kAtnf
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Changes since RFC v1:
-  - Include comparison tests for matching strings with different lengths.
-  - Include tests for characters included in unicode 8.0.0, 9.0.0 and 10.0.0.
+On Wed 10-10-18 13:49:34, Theodore Y. Ts'o wrote:
+> On Wed, Oct 10, 2018 at 04:43:27PM +0300, Adrian Hunter wrote:
+> > Hi
+> > 
+> > I have a case on a v4.14 kernel where the EXT4 journal commit disables
+> > preemption for 30ms due to jbd2_clear_buffer_revoked_flags().  That in turn
+> > disables preemption on other CPUs as they come to spin waiting for the same
+> > lock.  The side-effect of that is that it periodically blocks high priority
+> > tasks from running.
+> > 
+> > I see jbd2_clear_buffer_revoked_flags() iterating 32768 times calling
+> > __find_get_block().
+> > 
+> > Is there any way to make jbd2_clear_buffer_revoked_flags() take less time,
+> > or move its work out from under write_lock(&journal->j_state_lock)?
+> 
+> Hmm.... I'd have to look a bit more carefully and then run some tests,
+> but I *think* we can drop the j_state_lock at the beginning of JBD2
+> commit phase 1, and then grab it again right before we set
+> commit_transaction->t_state to T_FLUSH.
+> 
+> That should be safe because while the transaction state is T_LOCKED,
+> we can't start any new handles, so there can't be any new blocks added
+> to the revoke table.
+> 
+> Can you give that a try and see whether that solves your priority
+> inversion problem?
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- fs/nls/Kconfig             |   5 +
- fs/nls/Makefile            |   1 +
- fs/nls/nls_utf8-selftest.c | 309 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 315 insertions(+)
- create mode 100644 fs/nls/nls_utf8-selftest.c
+Agreed. Something like attached patch (compile-tested only)?
 
-diff --git a/fs/nls/Kconfig b/fs/nls/Kconfig
-index 7cb2848da608..b9c9b663d0ab 100644
---- a/fs/nls/Kconfig
-+++ b/fs/nls/Kconfig
-@@ -626,4 +626,9 @@ config NLS_UTF8_NORMALIZATION
- 	  Say Y here to enable utf8 NFKD normalization and casefolding
- 	  support.
- 
-+config NLS_UTF8_NORMALIZATION_SELFTEST
-+	tristate "Test UTF-8 normalization support"
-+	depends on NLS_UTF8
-+	default n
-+
- endif # NLS
-diff --git a/fs/nls/Makefile b/fs/nls/Makefile
-index e9b0b2ac8e83..71e5c0701ac6 100644
---- a/fs/nls/Makefile
-+++ b/fs/nls/Makefile
-@@ -47,6 +47,7 @@ obj-$(CONFIG_NLS_KOI8_U)	+= nls_koi8-u.o nls_koi8-ru.o
- obj-$(CONFIG_NLS_UTF8)		+= nls_utf8.o
- nls_utf8-y			+= nls_utf8-core.o
- nls_utf8-$(CONFIG_NLS_UTF8_NORMALIZATION) += nls_utf8-norm.o
-+obj-$(CONFIG_NLS_UTF8_NORMALIZATION_SELFTEST) += nls_utf8-selftest.o
- 
- obj-$(CONFIG_NLS_MAC_CELTIC)    += mac-celtic.o
- obj-$(CONFIG_NLS_MAC_CENTEURO)  += mac-centeuro.o
-diff --git a/fs/nls/nls_utf8-selftest.c b/fs/nls/nls_utf8-selftest.c
-new file mode 100644
-index 000000000000..346da5f479f1
---- /dev/null
-+++ b/fs/nls/nls_utf8-selftest.c
-@@ -0,0 +1,309 @@
-+/*
-+ * Kernel module for testing utf-8 support.
-+ *
-+ * Copyright 2017 Collabora Ltd.
-+ *
-+ * This software is licensed under the terms of the GNU General Public
-+ * License version 2, as published by the Free Software Foundation, and
-+ * may be copied, distributed, and modified under those terms.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ */
-+
-+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-+
-+#include <linux/module.h>
-+#include <linux/printk.h>
-+#include <linux/nls.h>
-+
-+#include "utf8n.h"
-+
-+unsigned int failed_tests;
-+unsigned int total_tests;
-+
-+/* Tests will be based on this version. */
-+#define latest_maj 10
-+#define latest_min 0
-+#define latest_rev 0
-+
-+#define _test(cond, func, line, fmt, ...) do {				\
-+		total_tests++;						\
-+		if (!cond) {						\
-+			failed_tests++;					\
-+			pr_err("test %s:%d Failed: %s%s",		\
-+			       func, line, #cond, (fmt?":":"."));	\
-+			if (fmt)					\
-+				pr_err(fmt, ##__VA_ARGS__);		\
-+		}							\
-+	} while (0)
-+#define test_f(cond, fmt, ...) _test(cond, __func__, __LINE__, fmt, ##__VA_ARGS__)
-+#define test(cond) _test(cond, __func__, __LINE__, "")
-+
-+const static struct {
-+	/* UTF-8 strings in this vector _must_ be NULL-terminated. */
-+	unsigned char str[10];
-+	unsigned char dec[10];
-+} nfkdi_test_data[] = {
-+	/* Trivial sequence */
-+	{
-+		/* "ABba" decomposes to itself */
-+		.str = {0x41, 0x42, 0x62, 0x61, 0x00},
-+		.dec = {0x41, 0x42, 0x62, 0x61, 0x00}
-+	},
-+	/* Simple equivalent sequences */
-+	{
-+		/* 'VULGAR FRACTION ONE QUARTER' decomposes to
-+		   'NUMBER 1' + 'FRACTION SLASH' + 'NUMBER 4' */
-+		.str = {0xc2, 0xbc, 0x00},
-+		.dec = {0x31, 0xe2, 0x81, 0x84, 0x34, 0x00},
-+	},
-+	{
-+		/* 'LATIN SMALL LETTER A WITH DIAERESIS' decomposes to
-+		   'LETTER A' + 'COMBINING DIAERESIS' */
-+		.str = {0xc3, 0xa4, 0x00},
-+		.dec = {0x61, 0xcc, 0x88, 0x00},
-+	},
-+	{
-+		/* 'LATIN SMALL LETTER LJ' decomposes to
-+		   'LETTER L' + 'LETTER J' */
-+		.str = {0xC7, 0x89, 0x00},
-+		.dec = {0x6c, 0x6a, 0x00},
-+	},
-+	{
-+		/* GREEK ANO TELEIA decomposes to MIDDLE DOT */
-+		.str = {0xCE, 0x87, 0x00},
-+		.dec = {0xC2, 0xB7, 0x00}
-+	},
-+	/* Canonical ordering */
-+	{
-+		/* A + 'COMBINING ACUTE ACCENT' + 'COMBINING OGONEK' decomposes
-+		   to A + 'COMBINING OGONEK' + 'COMBINING ACUTE ACCENT' */
-+		.str = {0x41, 0xcc, 0x81, 0xcc, 0xa8, 0x0},
-+		.dec = {0x41, 0xcc, 0xa8, 0xcc, 0x81, 0x0},
-+	},
-+	{
-+		/* 'LATIN SMALL LETTER A WITH DIAERESIS' + 'COMBINING OGONEK'
-+		   decomposes to
-+		   'LETTER A' + 'COMBINING OGONEK' + 'COMBINING DIAERESIS' */
-+		.str = {0xc3, 0xa4, 0xCC, 0xA8, 0x00},
-+
-+		.dec = {0x61, 0xCC, 0xA8, 0xcc, 0x88, 0x00},
-+	},
-+
-+};
-+
-+const static struct {
-+	/* UTF-8 strings in this vector _must_ be NULL-terminated. */
-+	unsigned char str[30];
-+	unsigned char ncf[30];
-+} nfkdicf_test_data[] = {
-+	/* Trivial sequences */
-+	{
-+		/* "ABba" folds to lowercase */
-+		.str = {0x41, 0x42, 0x62, 0x61, 0x00},
-+		.ncf = {0x61, 0x62, 0x62, 0x61, 0x00},
-+	},
-+	{
-+		/* All ASCII folds to lower-case */
-+		.str = "ABCDEFGHIJKLMNOPRSTUVWXYZ0.1",
-+		.ncf = "abcdefghijklmnoprstuvwxyz0.1",
-+	},
-+	{
-+		/* LATIN SMALL LETTER SHARP S folds to
-+		   LATIN SMALL LETTER S + LATIN SMALL LETTER S */
-+		.str = {0xc3, 0x9f, 0x00},
-+		.ncf = {0x73, 0x73, 0x00},
-+	},
-+	{
-+		/* LATIN CAPITAL LETTER A WITH RING ABOVE folds to
-+		   LATIN SMALL LETTER A + COMBINING RING ABOVE */
-+		.str = {0xC3, 0x85, 0x00},
-+		.ncf = {0x61, 0xcc, 0x8a, 0x00},
-+	},
-+	/* Introduced by UTF-8.0.0. */
-+	/* Cherokee letters are interesting test-cases because they fold
-+	   to upper-case.  Before 8.0.0, Cherokee lowercase were
-+	   undefined, thus, the folding from LC is not stable between
-+	   7.0.0 -> 8.0.0, but it is from UC. */
-+	{
-+		/* CHEROKEE SMALL LETTER A folds to CHEROKEE LETTER A */
-+		.str = {0xea, 0xad, 0xb0, 0x00},
-+		.ncf = {0xe1, 0x8e, 0xa0, 0x00},
-+	},
-+	{
-+		/* CHEROKEE SMALL LETTER YE folds to CHEROKEE LETTER YE */
-+		.str = {0xe1, 0x8f, 0xb8, 0x00},
-+		.ncf = {0xe1, 0x8f, 0xb0, 0x00},
-+	},
-+	{
-+		/* OLD HUNGARIAN CAPITAL LETTER AMB folds to
-+		   OLD HUNGARIAN SMALL LETTER AMB */
-+		.str = {0xf0, 0x90, 0xb2, 0x83, 0x00},
-+		.ncf = {0xf0, 0x90, 0xb3, 0x83, 0x00},
-+	},
-+	/* Introduced by UTF-9.0.0. */
-+	{
-+		/* OSAGE CAPITAL LETTER CHA folds to
-+		   OSAGE SMALL LETTER CHA */
-+		.str = {0xf0, 0x90, 0x92, 0xb5, 0x00},
-+		.ncf = {0xf0, 0x90, 0x93, 0x9d, 0x00},
-+	},
-+	{
-+		/* LATIN CAPITAL LETTER SMALL CAPITAL I folds to
-+		   LATIN LETTER SMALL CAPITAL I */
-+		.str = {0xea, 0x9e, 0xae, 0x00},
-+		.ncf = {0xc9, 0xaa, 0x00},
-+	},
-+};
-+
-+static void check_utf8_nfkdi(void)
-+{
-+	int i;
-+	struct utf8cursor u8c;
-+	const struct utf8data *data;
-+
-+	data = utf8nfkdi(UNICODE_AGE(latest_maj, latest_min, latest_rev));
-+	if (!data) {
-+		pr_err("%s: Unable to load utf8-%d.%d.%d. Skipping.\n",
-+		       __func__, latest_maj, latest_min, latest_rev);
-+		return;
-+	}
-+
-+	for (i = 0; i < ARRAY_SIZE(nfkdi_test_data); i++) {
-+		int len = strlen(nfkdi_test_data[i].str);
-+		int nlen = strlen(nfkdi_test_data[i].dec);
-+		int j = 0;
-+		unsigned char c;
-+
-+		test((utf8len(data, nfkdi_test_data[i].str) == nlen));
-+		test((utf8nlen(data, nfkdi_test_data[i].str, len) == nlen));
-+
-+		if (utf8cursor(&u8c, data, nfkdi_test_data[i].str) < 0)
-+			pr_err("can't create cursor\n");
-+
-+		while ((c = utf8byte(&u8c)) > 0) {
-+			test_f((c == nfkdi_test_data[i].dec[j]),
-+			       "Unexpected byte 0x%x should be 0x%x\n",
-+			       c, nfkdi_test_data[i].dec[j]);
-+			j++;
-+		}
-+
-+		test((j == nlen));
-+	}
-+}
-+
-+static void check_utf8_nfkdicf(void)
-+{
-+	int i;
-+	struct utf8cursor u8c;
-+	const struct utf8data *data;
-+
-+	data = utf8nfkdicf(UNICODE_AGE(latest_maj, latest_min, latest_rev));
-+	if (!data) {
-+		pr_err("%s: Unable to load utf8-%d.%d.%d. Skipping.\n",
-+		       __func__, latest_maj, latest_min, latest_rev);
-+		return;
-+	}
-+
-+	for (i = 0; i < ARRAY_SIZE(nfkdicf_test_data); i++) {
-+		int len = strlen(nfkdicf_test_data[i].str);
-+		int nlen = strlen(nfkdicf_test_data[i].ncf);
-+		int j = 0;
-+		unsigned char c;
-+
-+		test((utf8len(data, nfkdicf_test_data[i].str) == nlen));
-+		test((utf8nlen(data, nfkdicf_test_data[i].str, len) == nlen));
-+
-+		if (utf8cursor(&u8c, data, nfkdicf_test_data[i].str) < 0)
-+			pr_err("can't create cursor\n");
-+
-+		while ((c = utf8byte(&u8c)) > 0) {
-+			test_f((c == nfkdicf_test_data[i].ncf[j]),
-+			       "Unexpected byte 0x%x should be 0x%x\n",
-+			       c, nfkdicf_test_data[i].ncf[j]);
-+			j++;
-+		}
-+
-+		test((j == nlen));
-+	}
-+}
-+
-+static void check_utf8_comparisons(void)
-+{
-+	int i;
-+	struct nls_table *table = load_nls_version("utf8", "10.0.0",
-+						   NLS_UTF8_NORMALIZATION_TYPE_NFKD |
-+						   NLS_UTF8_CASEFOLD_TYPE_NFKDCF);
-+
-+	if (IS_ERR(table)) {
-+		pr_err("%s: Unable to load utf8 %d.%d.%d. Skipping.\n",
-+		       __func__, latest_maj, latest_min, latest_rev);
-+		return;
-+	}
-+
-+	for (i = 0; i < ARRAY_SIZE(nfkdi_test_data); i++) {
-+		const char *s1 = nfkdi_test_data[i].str;
-+		const char *s2 = nfkdi_test_data[i].dec;
-+
-+		test_f(!nls_strncmp(table, s1, strlen(s1), s2, strlen(s2)),
-+		       "%s %s comparison mismatch\n", s1, s2);
-+	}
-+	for (i = 0; i < ARRAY_SIZE(nfkdicf_test_data); i++) {
-+		const char *s1 = nfkdicf_test_data[i].str;
-+		const char *s2 = nfkdicf_test_data[i].ncf;
-+
-+		test_f(!nls_strncasecmp(table, s1, strlen(s1),
-+					s2, strlen(s2)),
-+		       "%s %s comparison mismatch\n", s1, s2);
-+	}
-+
-+	unload_nls(table);
-+}
-+
-+static void check_supported_versions(void)
-+{
-+	/* Unicode 7.0.0 should be supported. */
-+	test(utf8version_is_supported(7, 0, 0));
-+
-+	/* Unicode 9.0.0 should be supported. */
-+	test(utf8version_is_supported(9, 0, 0));
-+
-+	/* Unicode 10.0.0 (the latest version) should be supported. */
-+	test(utf8version_is_supported(latest_maj, latest_min, latest_rev));
-+
-+	/* Next versions don't exist. */
-+	test(!utf8version_is_supported(11, 0, 0));
-+	test(!utf8version_is_supported(0, 0, 0));
-+	test(!utf8version_is_supported(-1, -1, -1));
-+}
-+
-+static int __init init_test_ucd(void)
-+{
-+	failed_tests = 0;
-+	total_tests = 0;
-+
-+	check_supported_versions();
-+	check_utf8_nfkdi();
-+	check_utf8_nfkdicf();
-+	check_utf8_comparisons();
-+
-+	if (!failed_tests)
-+		pr_info("All %u tests passed\n", total_tests);
-+	else
-+		pr_err("%u out of %u tests failed\n", failed_tests,
-+		       total_tests);
-+	return 0;
-+}
-+
-+static void __exit exit_test_ucd(void)
-+{
-+}
-+
-+module_init(init_test_ucd);
-+module_exit(exit_test_ucd);
-+
-+MODULE_AUTHOR("Gabriel Krisman Bertazi <krisman@collabora.co.uk>");
-+MODULE_LICENSE("GPL");
+								Honza
+
 -- 
-2.19.1
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--zhXaljGHf11kAtnf
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-jbd2-Avoid-long-hold-times-of-j_state_lock-while-com.patch"
+
+>From 3627b5f30996504019cd84f326402fccbb9a298b Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Thu, 11 Oct 2018 13:04:44 +0200
+Subject: [PATCH] jbd2: Avoid long hold times of j_state_lock while committing
+ a transaction
+
+We can hold j_state_lock for writing at the beginning of
+jbd2_journal_commit_transaction() for a rather long time (reportedly for
+30 ms) due cleaning revoke bits of all revoked buffers under it. The
+handling of revoke tables as well as cleaning of t_reserved_list, and
+checkpoint lists does not need j_state_lock for anything. Furthermore
+the transaction is in T_LOCKED state and we waited for all outstanding
+handles so nobody is going to be adding anything to the transaction.
+
+Just drop the lock for unnecessary operations.
+
+Reported-by: Adrian Hunter <adrian.hunter@intel.com>
+Suggested-by: "Theodore Y. Ts'o" <tytso@mit.edu>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/commit.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 150cc030b4d7..356b75fa3101 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -422,6 +422,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 				       stats.run.rs_locked);
+ 	stats.run.rs_running = jbd2_time_diff(commit_transaction->t_start,
+ 					      stats.run.rs_locked);
++	write_unlock(&journal->j_state_lock);
+ 
+ 	spin_lock(&commit_transaction->t_handle_lock);
+ 	while (atomic_read(&commit_transaction->t_updates)) {
+@@ -431,9 +432,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 					TASK_UNINTERRUPTIBLE);
+ 		if (atomic_read(&commit_transaction->t_updates)) {
+ 			spin_unlock(&commit_transaction->t_handle_lock);
+-			write_unlock(&journal->j_state_lock);
+ 			schedule();
+-			write_lock(&journal->j_state_lock);
+ 			spin_lock(&commit_transaction->t_handle_lock);
+ 		}
+ 		finish_wait(&journal->j_wait_updates, &wait);
+@@ -505,6 +504,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	atomic_sub(atomic_read(&journal->j_reserved_credits),
+ 		   &commit_transaction->t_outstanding_credits);
+ 
++	write_lock(&journal->j_state_lock);
+ 	trace_jbd2_commit_flushing(journal, commit_transaction);
+ 	stats.run.rs_flushing = jiffies;
+ 	stats.run.rs_locked = jbd2_time_diff(stats.run.rs_locked,
+-- 
+2.16.4
+
+
+--zhXaljGHf11kAtnf--
