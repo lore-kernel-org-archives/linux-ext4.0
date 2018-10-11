@@ -1,58 +1,54 @@
-Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:46020 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725743AbeJaGyH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 31 Oct 2018 02:54:07 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2 11/11] ext4: access to uninitialized bh fields in
- ext4_xattr_set_handle()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-References: <cover.1540935522.git.vvs@virtuozzo.com>
-Message-ID: <b8523c3a-0eb2-3aeb-fdf9-2e9d6d320d5c@virtuozzo.com>
-Date: Wed, 31 Oct 2018 00:58:53 +0300
+Return-Path: <SRS0=dqau=MX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-ot1-f65.google.com ([209.85.210.65]:43069 "EHLO
+        mail-ot1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727443AbeJLBg6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Oct 2018 21:36:58 -0400
+Received: by mail-ot1-f65.google.com with SMTP id k9so9817362otl.10
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2018 11:08:38 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net> <20181011103636.GC9467@quack2.suse.cz>
+In-Reply-To: <20181011103636.GC9467@quack2.suse.cz>
+From: Dan Williams <dan.j.williams@intel.com>
+Date: Thu, 11 Oct 2018 11:08:26 -0700
+Message-ID: <CAPcyv4iAD_wkjY1way1rOxr4=gC_TGx71VquF13ooAuUPz9RJw@mail.gmail.com>
+Subject: Re: [PATCH 0/3] ext2, ext4, xfs: hard fail dax mount on unsupported devices
+To: Jan Kara <jack@suse.cz>
+Cc: Eric Sandeen <sandeen@sandeen.net>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>, zwisler@kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On-stack initialization does not guarantee zeroying of unintialized
-fields. So is.iloc.bh and bs.bh can be contain garbage of old stack
-conent.
+On Thu, Oct 11, 2018 at 3:37 AM Jan Kara <jack@suse.cz> wrote:
+>
+> On Mon 08-10-18 14:32:46, Eric Sandeen wrote:
+> > In response to an earlier xfs patch to change how xfs reacts to
+> > dax incompatibilities, Dave said:
+> >
+> > > I suspect we need to be more harsh are rejecting mounts with -o dax
+> > > on devices DAX isn't supported on. This mount option is going into
+> > > production systems - it's not just for "testing" as the comments all
+> > > claim. i Things will break in production systems if DAX isn't
+> > > enabled and they are expecting it to be enabled.
+> >
+> > and I tend to agree, so proposing this change to hard-fail a dax mount if
+> > the device doesn't support it, instead of silently disabling the
+> > functionality.  Proposing for ext2, ext4, and xfs to keep behavior in
+> > sync.
+>
+> Let me include Dan and Ross into the discussion since they were the ones
+> proposing the "silent fallback" behavior (ext4 actually did fail the mount
+> instead not so long ago - see 24f3478d664b "ext4: auto disable dax instead
+> of failing mount" from December). Guys, why did you choose the fallback
+> path instead of a failure?
 
-Errors in the beginning of ext4_xattr_set_handle() function
-lead to jump to "cleanup:" label where brelse(is.iloc.bh)
-and brelse(bs.bh) can access uninitialized bh fields of
-on-stack located "is" and "bs" structures.
+The different behavior between filesystems was confusing customers so
+we had to align them, then the question was which default to pick.
+Honestly, we came to the decision to bring ext4 in line with the xfs
+behavior because we thought that would be easier than the alternative.
+Dave and Christoph made repeated arguments that DAX is just a hidden
+performance optimization that no application should rely on, so we
+went the path of least resistance and changed the ext4 default.
 
-Issue was inherited from ext3 and was present in first ext4 commit.
-
-Fixes ac27a0ec112a ("ext4: initial copy of files from ext3") # 2.6.19
-
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/ext4/xattr.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index dc1aeab06dba..aae12425597e 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -2303,9 +2303,11 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 	};
- 	struct ext4_xattr_ibody_find is = {
- 		.s = { .not_found = -ENODATA, },
-+		.iloc = { .bh = NULL, },
- 	};
- 	struct ext4_xattr_block_find bs = {
- 		.s = { .not_found = -ENODATA, },
-+		.bh = NULL,
- 	};
- 	int no_expand;
- 	int error;
--- 
-2.17.1
+I'm perfectly fine switching both to the "fail if not DAX device" behavior.
