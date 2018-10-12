@@ -1,30 +1,57 @@
-Return-Path: <SRS0=KszP=NF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from 822397.com ([185.216.140.104]:47007 "EHLO jackstorms.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727230AbeJZDxG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 Oct 2018 23:53:06 -0400
-To: linux-ext4@vger.kernel.org
-Subject: for your images 12
-Message-ID: <fe7b4ba97efb6bb5a0f6c1dd157487b0@brandeditems.com>
-Date: Thu, 25 Oct 2018 04:21:09 +0200
-From: "Kate" <yetddeisnsufiteb@aol.jp>
-Reply-To: hamansi@sina.com
+Return-Path: <SRS0=yq1P=MY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:54424 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726336AbeJLJvW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 12 Oct 2018 05:51:22 -0400
+Date: Thu, 11 Oct 2018 22:21:08 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Eric Sandeen <sandeen@sandeen.net>
+Cc: Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Ross Zwisler <zwisler@kernel.org>,
+        Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH 0/3] ext2, ext4, xfs: hard fail dax mount on unsupported
+ devices
+Message-ID: <20181012022108.GA2420@thunk.org>
+References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
+ <20181011103636.GC9467@quack2.suse.cz>
+ <CAPcyv4iAD_wkjY1way1rOxr4=gC_TGx71VquF13ooAuUPz9RJw@mail.gmail.com>
+ <5a8e54e8-4845-1c85-e4e9-0b9b551a9ce2@sandeen.net>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <5a8e54e8-4845-1c85-e4e9-0b9b551a9ce2@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We are an imaging team who can process 300+ images daily.
+On Thu, Oct 11, 2018 at 01:38:34PM -0500, Eric Sandeen wrote:
+> > The different behavior between filesystems was confusing customers so
+> > we had to align them, then the question was which default to pick.
+> > Honestly, we came to the decision to bring ext4 in line with the xfs
+> > behavior because we thought that would be easier than the alternative.
+> > Dave and Christoph made repeated arguments that DAX is just a hidden
+> > performance optimization that no application should rely on, so we
+> > went the path of least resistance and changed the ext4 default.
+> 
+> Ok, well, I guess we'd better reconcile "it's a hidden performance hint"
+> with "if the administrator asked they must receive..." before making this
+> change... cc: hch for bonus input.
 
-If you need any image editing service, please contact us today.
+And it's not so hidden if there are some applications that are
+demanding that they know whether "dax" is turned on....
 
-We do mainly images cut out and clipping path, masking.
-Such as for your ecommerce photos, jewelry photos retouching, also it is
-for beauty portraits and skin images
-and wedding photos.
-
-We provide test editing if you send some photos.
+I don't really care, but it would nice if we settled all of these
+disagreements about what dax is one way or another.  Flip a coin if
+necessary; ext4 isn't supporting a per-file dax flag right now since
+it hasn't been clear whether or not XFS is going to drop support
+(which it is claimed we can do since dax is still "experimental").
+ 
+But whether it's flipping a coin or super-soakers at 20 paces, can we
+please figure this out?  One way or another?  I'll provide some
+suitable coin at LSF/MM if we can't figure it out sooner --- but I
+really would prefer that it be sooner.  :-)
 
 Thanks,
-Kate
+
+						- Ted
