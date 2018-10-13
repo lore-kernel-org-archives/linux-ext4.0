@@ -1,85 +1,61 @@
-From: Kees Cook <keescook@chromium.org>
-Subject: Re: [PATCH v5 12/15] Compiler Attributes: add support for __nonstring
- (gcc >= 8)
-Date: Thu, 20 Sep 2018 13:08:40 -0700
-Message-ID: <CAGXu5jJEXFXnOVZrjoUyyuQ-=L=Lou3iLsA2Jjzci_McSgn2XA@mail.gmail.com>
-References: <20180920172301.21868-1-miguel.ojeda.sandonis@gmail.com> <20180920172301.21868-13-miguel.ojeda.sandonis@gmail.com>
-Mime-Version: 1.0
+Return-Path: <SRS0=pBWG=MZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:60982 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726329AbeJMXlj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 13 Oct 2018 19:41:39 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id CE6E429537
+        for <linux-ext4@vger.kernel.org>; Sat, 13 Oct 2018 16:03:56 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 200681] [inline_data] read() does not see what write() has just
+ written through different FD in the same thread
+Date: Sat, 13 Oct 2018 16:03:56 +0000
+Message-ID: <bug-200681-13602-7meqM9e9et@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-200681-13602@https.bugzilla.kernel.org/>
+References: <bug-200681-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        "David S . Miller" <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        P
-To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Return-path: <linux-kernel-owner@vger.kernel.org>
-In-Reply-To: <20180920172301.21868-13-miguel.ojeda.sandonis@gmail.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 8BIT
+MIME-Version: 1.0
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Sep 20, 2018 at 10:22 AM, Miguel Ojeda
-<miguel.ojeda.sandonis@gmail.com> wrote:
-> From the GCC manual:
->
->   nonstring
->
->     The nonstring variable attribute specifies that an object or member
->     declaration with type array of char, signed char, or unsigned char,
->     or pointer to such a type is intended to store character arrays that
->     do not necessarily contain a terminating NUL. This is useful in detecting
->     uses of such arrays or pointers with functions that expect NUL-terminated
->     strings, and to avoid warnings when such an array or pointer is used as
->     an argument to a bounded string manipulation function such as strncpy.
->
->   https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html
->
-> This attribute can be used for documentation purposes (i.e. replacing
-> comments), but it is most helpful when the following warnings are enabled:
->
->   -Wstringop-overflow
->
->     Warn for calls to string manipulation functions such as memcpy and
->     strcpy that are determined to overflow the destination buffer.
->
->     [...]
->
->   -Wstringop-truncation
->
->     Warn for calls to bounded string manipulation functions such as
->     strncat, strncpy, and stpncpy that may either truncate the copied
->     string or leave the destination unchanged.
->
->     [...]
->
->     In situations where a character array is intended to store a sequence
->     of bytes with no terminating NUL such an array may be annotated with
->     attribute nonstring to avoid this warning. Such arrays, however,
->     are not suitable arguments to functions that expect NUL-terminated
->     strings. To help detect accidental misuses of such arrays GCC issues
->     warnings unless it can prove that the use is safe.
->
->   https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
->
-> Signed-off-by: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=200681
 
-Reviewed-by: Kees Cook <keescook@chromium.org>
+--- Comment #6 from Anatoly Trosinenko (anatoly.trosinenko@gmail.com) ---
+It looks like the difference was that I have specified 8M partition size. How
+to reproduce it (I repeat parts of your documentation just to make sure I have
+got it right):
 
--Kees
+1) Checkout master branch of torvalds/linux (tested on commit bab5c80b211)
+2) Copy fstests/kernel-configs/x86_64-config-4.14 to .config and compile after
+`make olddefconfig`
+3) Take the attached repro.c and execute the following commands:
+
+$ gcc --static repro.c -o repro # Inside /tmp/kvm-xfstest-$USER
+$ kvm-xfstest shell
+root@kvm-xfstests:~# mount /vtmp
+root@kvm-xfstests:~# mke2fs -Fq -t ext4 -O inline_data -I 1024 /dev/vdc 8M
+/dev/vdc contains a ext4 file system
+        last mounted on /vdc on Sat Oct 13 15:59:40 2018
+root@kvm-xfstests:~# mount /vdc
+[    9.812236] EXT4-fs (vdc): mounted filesystem with ordered data mode. Opts:
+(null)
+root@kvm-xfstests:~# cd /vdc
+root@kvm-xfstests:/vdc# /vtmp/repro
+First write res = 48
+Second write res = 17968
+res1 = 17968 res2 = 48          first bytes of data are: 00 00 00...
+
+When the full partition is used for the filesystem, the bug is not
+reproducible, as expected.
+
+Maybe with a 8M partition there is just not enough room for data, so maybe
+everything is right except for the return codes saying everything was written
+successfully instead of ENOSPC... (but the file size is 18016 as if all the
+data were written to it).
 
 -- 
-Kees Cook
-Pixel Security
+You are receiving this mail because:
+You are watching the assignee of the bug.
