@@ -1,37 +1,44 @@
-Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49568 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726407AbeJCIk7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Oct 2018 04:40:59 -0400
-Date: Tue, 2 Oct 2018 21:54:43 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Lukas Czerner <lczerner@redhat.com>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] e2fsprogs: avoid segfault when s_nr_users is too high
-Message-ID: <20181003015443.GA22436@thunk.org>
-References: <20180814143753.8937-1-lczerner@redhat.com>
+Return-Path: <SRS0=pBWG=MZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:32804 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726329AbeJMXme (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 13 Oct 2018 19:42:34 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id CCEFA296BB
+        for <linux-ext4@vger.kernel.org>; Sat, 13 Oct 2018 16:04:51 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 200681] [inline_data] read() does not see what write() has just
+ written through different FD in the same thread
+Date: Sat, 13 Oct 2018 16:04:52 +0000
+Message-ID: <bug-200681-13602-VGekQQaz6p@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-200681-13602@https.bugzilla.kernel.org/>
+References: <bug-200681-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20180814143753.8937-1-lczerner@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 14, 2018 at 04:37:53PM +0200, Lukas Czerner wrote:
-> Currently in e2fsprogs tools it's possible to access out of bounds
-> memory when reading list of ids sharing a journal log
-> (journal_superblock_t->s_users[]) in case where s_nr_users is too high.
-> 
-> This is because we never check whether the s_nr_users fits into the
-> restriction of JFS_USERS_MAX. Fix it by checking that nr_users is not
-> bigger than JFS_USERS_MAX and error out when possiblem.
-> 
-> Also add test for dumpe2fs. The rest would require involving external
-> journal which is not possible to test with e2fsprogs test suite at the
-> moment.
-> 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=200681
 
-Thanks, applied.
+Anatoly Trosinenko (anatoly.trosinenko@gmail.com) changed:
 
-					- Ted
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+ Attachment #277603|0                           |1
+        is obsolete|                            |
+ Attachment #277605|0                           |1
+        is obsolete|                            |
+ Attachment #277607|0                           |1
+        is obsolete|                            |
+
+--- Comment #7 from Anatoly Trosinenko (anatoly.trosinenko@gmail.com) ---
+Created attachment 279013
+  --> https://bugzilla.kernel.org/attachment.cgi?id=279013&action=edit
+Reproducer
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
