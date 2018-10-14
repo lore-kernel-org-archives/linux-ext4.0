@@ -1,58 +1,45 @@
-Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:46002 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725743AbeJaGxx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 31 Oct 2018 02:53:53 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2 09/11] ext4: iloc.bh cleanup in add_new_gdb()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-References: <cover.1540935522.git.vvs@virtuozzo.com>
-Message-ID: <eb58c8ca-8456-7b5f-9c12-99f03e3057af@virtuozzo.com>
-Date: Wed, 31 Oct 2018 00:58:38 +0300
-MIME-Version: 1.0
-In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Return-Path: <SRS0=nu1L=M2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-it1-f194.google.com ([209.85.166.194]:38421 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726309AbeJNWln (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Oct 2018 18:41:43 -0400
+Received: by mail-it1-f194.google.com with SMTP id i76-v6so24204763ita.3
+        for <linux-ext4@vger.kernel.org>; Sun, 14 Oct 2018 08:00:29 -0700 (PDT)
+From: nicholas.clark@gmail.com
+To: linux-ext4@vger.kernel.org
+Cc: Nicholas Clark <nicholas.clark@gmail.com>
+Subject: [PATCH RESEND 1/2] Fuse2fs: fix 'mount' entry in some cases.
+Date: Sun, 14 Oct 2018 09:00:24 -0600
+Message-Id: <20181014150025.6477-2-nicholas.clark@gmail.com>
+In-Reply-To: <20181014150025.6477-1-nicholas.clark@gmail.com>
+References: <20181014150025.6477-1-nicholas.clark@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-iloc.bh was taken in ext4_reserve_inode_write() and released
-in ext4_mark_iloc_dirty(). It should not be released 2nd time
-in rollback after failed ext4_handle_dirty_metadata(gdb_bh)
+From: Nicholas Clark <nicholas.clark@gmail.com>
 
-Fixes b40971426a83 ("ext4: add error checking to calls to ...") # 2.6.38
+FUSE's parser allows command-line options to be specified before
+or after the device/image and mount-path. This commit changes the
+value of the fsname mount option to be correct even if options are
+specified before the target device/image.
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+Signed-off-by: Nicholas Clark <nicholas.clark@gmail.com>
 ---
- fs/ext4/resize.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ misc/fuse2fs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 85158e9de7c2..aedfd6a6fcd1 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -871,7 +871,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
- 	if (unlikely(err)) {
- 		ext4_std_error(sb, err);
--		goto exit_inode;
-+		goto exit_kfree;
- 	}
- 	brelse(dind);
+diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
+index 5c73895e..3214be4a 100644
+--- a/misc/fuse2fs.c
++++ b/misc/fuse2fs.c
+@@ -3845,7 +3845,7 @@ int main(int argc, char *argv[])
+ 	/* Set up default fuse parameters */
+ 	snprintf(extra_args, BUFSIZ, "-okernel_cache,subtype=ext4,use_ino,"
+ 		 "fsname=%s,attr_timeout=0" FUSE_PLATFORM_OPTS,
+-		 argv[1]);
++		 fctx.device);
+ 	if (fctx.no_default_opts == 0)
+ 		fuse_opt_add_arg(&args, extra_args);
  
-@@ -891,8 +891,9 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 	return err;
- 
- exit_inode:
--	kvfree(n_group_desc);
- 	brelse(iloc.bh);
-+exit_kfree:
-+	kvfree(n_group_desc);
- exit_dind:
- 	brelse(dind);
- exit_bh:
 -- 
 2.17.1
