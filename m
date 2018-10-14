@@ -1,69 +1,56 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59834 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727633AbeJRVSS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Oct 2018 17:18:18 -0400
-From: Jan Kara <jack@suse.cz>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Ted Tso <tytso@mit.edu>, <linux-fsdevel@vger.kernel.org>,
-        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] vfs: Provide function to grab superblock reference
-Date: Thu, 18 Oct 2018 15:17:08 +0200
-Message-Id: <20181018131709.11976-2-jack@suse.cz>
-In-Reply-To: <20181018131709.11976-1-jack@suse.cz>
-References: <20181018131709.11976-1-jack@suse.cz>
+Return-Path: <SRS0=nu1L=M2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-io1-f65.google.com ([209.85.166.65]:37111 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726257AbeJNWj5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Oct 2018 18:39:57 -0400
+Received: by mail-io1-f65.google.com with SMTP id m16-v6so12487725ioj.4
+        for <linux-ext4@vger.kernel.org>; Sun, 14 Oct 2018 07:58:44 -0700 (PDT)
+From: nicholas.clark@gmail.com
+To: nicholas.clark@gmail.com, linux-ext4@vger.kernel.org
+Subject: [PATCH RESEND 0/2] e2fsprogs: fuse2fs bugfix and new 'fakeroot' feature
+Date: Sun, 14 Oct 2018 08:58:35 -0600
+Message-Id: <20181014145837.6344-1-nicholas.clark@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Provide function to hold superblock reference when we are sure the
-superblock is active. This function will get used by code reading
-/proc/mounts and friends.
+From: Nick Clark <nicholas.clark@gmail.com>
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/internal.h |  1 +
- fs/super.c    | 16 ++++++++++++++++
- 2 files changed, 17 insertions(+)
+Hi all,
 
-diff --git a/fs/internal.h b/fs/internal.h
-index d410186bc369..608f4f276ba5 100644
---- a/fs/internal.h
-+++ b/fs/internal.h
-@@ -104,6 +104,7 @@ extern bool trylock_super(struct super_block *sb);
- extern struct dentry *mount_fs(struct file_system_type *,
- 			       int, const char *, void *);
- extern struct super_block *user_get_super(dev_t);
-+extern void hold_sb(struct super_block *sb);
- 
- /*
-  * open.c
-diff --git a/fs/super.c b/fs/super.c
-index f3a8c008e164..f60a07f794cc 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -775,6 +775,22 @@ struct super_block *get_super_exclusive_thawed(struct block_device *bdev)
- }
- EXPORT_SYMBOL(get_super_exclusive_thawed);
- 
-+/**
-+ *	hold_sb - get superblock reference for active superblock
-+ *	@sb: superblock to get reference for
-+ *
-+ *	Get reference to superblock. The caller must make sure the superblock
-+ *	is currently active by other means (e.g. holding an active reference
-+ * 	itself or holding namespace_sem preventing unmount).
-+ */
-+void hold_sb(struct super_block *sb)
-+{
-+	spin_lock(&sb_lock);
-+	WARN_ON_ONCE(!atomic_read(&sb->s_active));
-+	sb->s_count++;
-+	spin_unlock(&sb_lock);
-+}
-+
- /**
-  * get_active_super - get an active reference to the superblock of a device
-  * @bdev: device to get the superblock for
+I wrote a couple of patches for fuse2fs (from the e2fsprogs collection).
+One is a minor bugfix to the displayed name in the mount command's output,
+and the other is a new 'fakeroot' mount option, as described below.
+
+When building cross-compiled Linux systems (for use on routers, consumer
+devices, etc), it's often necessary to build rootfs filesystem images.
+This commit adds a new 'fakeroot' mount option that gives a user full
+control over the mounted filesystem, within the confines of FUSE.
+
+When used, the new option allows treats allowed users as uid 0 for the
+purposes of permission checks (within the mounted filesystem). This
+allows the owner of a .img file to mount the file and make whatever
+changes they want to any files inside of the image.
+
+If the option is left disabled at mount-time, fuse2fs acts the same as
+before - only root can edit "root"-owned files inside of the image. But
+when enabled, fuse2fs becomes a powerful tool to build/modify filesystem
+images.
+
+What do you all think?
+
+-Nick
+
+Nicholas Clark (2):
+  Fuse2fs: fix 'mount' entry in some cases.
+  Fuse2fs: add fakeroot option.
+
+ acinclude.m4      |  47 ++++++++++++++++
+ configure         | 134 ++++++++++++++++++++++++++++++++++++++++++++++
+ configure.ac      |   4 ++
+ lib/config.h.in   |   6 +++
+ misc/fuse2fs.1.in |   3 ++
+ misc/fuse2fs.c    |  31 ++++++++---
+ 6 files changed, 217 insertions(+), 8 deletions(-)
+
 -- 
-2.16.4
+2.17.1
