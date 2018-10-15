@@ -1,66 +1,28 @@
 Return-Path: <SRS0=eFe4=M4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50666 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727142AbeJQDAg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 16 Oct 2018 23:00:36 -0400
-Date: Tue, 16 Oct 2018 15:08:40 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: fishland <fishland@aliyun.com>
-Cc: adilger.kernel@dilger.ca, wang.yi59@zte.com.cn,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Liu Song <liu.song11@zte.com.cn>
-Subject: Re: [PATCH] ext4: direct return when jinode allocate failed
-Message-ID: <20181016190840.GF24131@thunk.org>
-References: <20181016145526.3288-1-fishland@aliyun.com>
+Received: from tiaoe.net ([185.216.140.105]:53138 "EHLO menards.com"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726914AbeJPINE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 16 Oct 2018 04:13:04 -0400
+To: linux-ext4@vger.kernel.org
+Subject: Working test 4
+Message-ID: <3db0653a2560453a0c61d53f975c1bd2@bplampsupply.com>
+Date: Mon, 15 Oct 2018 14:07:49 +0200
+From: "Judy" <atedevisncsuitke@aol.jp>
+Reply-To: dusimtane@aliyun.com
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181016145526.3288-1-fishland@aliyun.com>
+Content-Type: text/plain; format=flowed; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 16, 2018 at 10:55:26PM +0800, fishland wrote:
-> The jinode does not need protected by *i_lock*, we can return
-> directly if memory allocation fails.
-> 
+Did you get my email from last week?
+Let me know if you have photos for cutting out or retouching?
 
-I don't see anything wrong with this patch, but at the same time, I'm
-not sure I see the benefit, either.  Checking for the allocation
-failure is cheap, and moving it out spinlock doesn't buy much; not to
-mention that the allocation failure is going to be highly uncommon.
+We are an image team who can do editing for your the web store photos,
+industry photos or portrait photos.
 
-What inspired this commit?
+Send photos, we will do testing for you to check quality.
+Waiting for your reply soon.
 
-						- Ted
-
-
-
-> Signed-off-by: Liu Song <liu.song11@zte.com.cn>
-> Reviewed-by: Wang Yi <wang.yi59@zte.com.cn>
-> ---
->  fs/ext4/inode.c | 7 +++----
->  1 file changed, 3 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index d767e993591d..67ba6f062de5 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4384,12 +4384,11 @@ int ext4_inode_attach_jinode(struct inode *inode)
->  		return 0;
->  
->  	jinode = jbd2_alloc_inode(GFP_KERNEL);
-> +	if (!jinode)
-> +		return -ENOMEM;
-> +
->  	spin_lock(&inode->i_lock);
->  	if (!ei->jinode) {
-> -		if (!jinode) {
-> -			spin_unlock(&inode->i_lock);
-> -			return -ENOMEM;
-> -		}
->  		ei->jinode = jinode;
->  		jbd2_journal_init_jbd_inode(ei->jinode, inode);
->  		jinode = NULL;
-> -- 
-> 2.17.1
-> 
+Thanks,
+Judy
