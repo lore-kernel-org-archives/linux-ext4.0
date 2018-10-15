@@ -1,55 +1,62 @@
-Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45544 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727006AbeJBO5s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 2 Oct 2018 10:57:48 -0400
-Date: Tue, 2 Oct 2018 10:15:44 +0200
-From: David Sterba <dsterba@suse.cz>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Eric Sandeen <sandeen@sandeen.net>,
-        Qu Wenruo <quwenruo.btrfs@gmx.com>,
-        Joshi <joshiiitr@gmail.com>, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Subject: Re: cross-fs copy support
-Message-ID: <20181002081544.GW3255@twin.jikos.cz>
-Reply-To: dsterba@suse.cz
-References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
- <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
- <df92a795-3f2e-751a-8504-030015fba6d9@sandeen.net>
- <FE6394EC-5CB0-4A16-AAC6-97F465A4E50C@dilger.ca>
+Return-Path: <SRS0=/GAa=M3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:44362 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726836AbeJPByo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 15 Oct 2018 21:54:44 -0400
+Date: Mon, 15 Oct 2018 14:08:21 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Dmitry Vyukov <dvyukov@google.com>
+Cc: syzbot <syzbot+85da7ac734f7ba432ee4@syzkaller.appspotmail.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        syzkaller-bugs <syzkaller-bugs@googlegroups.com>
+Subject: Re: WARNING in ext4_invalidatepage
+Message-ID: <20181015180821.GE8983@thunk.org>
+References: <0000000000002753c60577b9f707@google.com>
+ <CACT4Y+bdR3ch9q_FCND4YmqjunYBVbEk3n167DT0r0GqzVKL-g@mail.gmail.com>
+ <20181009013425.GB3369@thunk.org>
+ <CACT4Y+a08tYAgXKEiTO+A-RDrSNk-RdhDxvGCM6bAbk5bckH6A@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <FE6394EC-5CB0-4A16-AAC6-97F465A4E50C@dilger.ca>
+In-Reply-To: <CACT4Y+a08tYAgXKEiTO+A-RDrSNk-RdhDxvGCM6bAbk5bckH6A@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 01, 2018 at 01:51:09PM -0600, Andreas Dilger wrote:
-> > Yes, I would expect there to be problems with his modified kernel
-> > for a filesystem that supports clone_file_range, because
-> > vfs_copy_file_range() will clone if possible, and this should fail across
-> > filesystems.
-> > 
-> > In general, though, I don't know for sure why we don't fall back to
-> > do_splice_direct() across filesystems, although the filesystems that
-> > implement their own ->copy_file_range ops may have their own,
-> > further restrictions within their implementations.
-> > 
-> > This call /is/ documented in the manpage as only being valid for
-> > files on the same filesystem, though:
-> > http://man7.org/linux/man-pages/man2/copy_file_range.2.html
+On Mon, Oct 15, 2018 at 03:22:42PM +0200, Dmitry Vyukov wrote:
+> Now that you mention EXT4_IOC_SWAP_BOOT, I think I looked at the wrong
+> program, there is a subsequent one that does ioctl(0x6611) where
+> 0x6611 is in fact EXT4_IOC_SWAP_BOOT. So I think it's this one:
 > 
-> There was a patch to allow cross-mount copy for NFS, but it hasn't landed
-> yet.
+> 05:23:28 executing program 5:
+> r0 = creat(&(0x7f00000001c0)='./file0\x00', 0x0)
+> socketpair$unix(0x1, 0x1, 0x0, &(0x7f0000000380)={0xffffffffffffffff,
+> <r1=>0xffffffffffffffff})
+> write$RDMA_USER_CM_CMD_CREATE_ID(r0, &(0x7f0000000240)={0x0, 0x18,
+> 0xfa00, {0x0, &(0x7f0000000200)}}, 0x20)
+> ioctl$PERF_EVENT_IOC_ENABLE(r1, 0x8912, 0x400200)
+> ioctl$EXT4_IOC_SETFLAGS(r0, 0x6611, &(0x7f0000000000)=0x4000)
 
-I found https://marc.info/?l=linux-nfs&m=144138779721907&w=2 that lifts
-the VFS check (part of a series that can't be easily linked to).
+Ah, so is it a bug in Syzkaller that it is printing
+ioctl$EXT4_IOC_SETFLAGS when 0x6611 is in fact EXT4_IOC_SWAP_BOOT,
+right?
 
-The lack of cross-mount reflink (based on the copy_file_ragne) is often
-confusing users, there are common setups that mount subvolumes
-separately and reflinking between them would require mount of the
-toplevel subvolume.
+> I've tried to manually reply this program and the whole log too, but
+> it does not reproduce. This may be related to the fact that filesystem
+> accumulates too much global state, so probably first relevant part
+> happened long time ago, and then second relevant part happened later
+> and triggered the warning. But just re-doing the second part does not
+> reproduce the bug.
 
-If there are 2 in-kernel users of the relaxed cross-mount copy, I think
-this would help to push the series forward.
+It was probably some other process racing with EXT4_IOC_SWAP_BOOT.
+The patch I referenced in my previous e-mail protects against
+additional scenarios where someone might be trying to punch a whole
+into a file that is being swapped into the bootloader ioctl.  This
+particular ioctl isn't yet being used by anyone, so it had some other
+issues as well, such as not interacting well with inline_data-enabled
+file systems --- not that any bootloader would be small enough that it
+would fit in an inline_data inode, but we're basically proofing the
+code against a malicious (or buggy) root-privileged program... such as
+syzbot.  :-)
+
+						- Ted
