@@ -1,93 +1,127 @@
-Return-Path: <SRS0=Op7R=MQ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48131 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727209AbeJDSnK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 4 Oct 2018 14:43:10 -0400
-Date: Thu, 4 Oct 2018 13:50:12 +0200
-From: Lukas Czerner <lczerner@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        stable@vger.kernel.org
-Subject: Re: [PATCH] jbd2: Fix use after free in jbd2_log_do_checkpoint()
-Message-ID: <20181004115012.s5isxzw4zt4g26y3@localhost.localdomain>
-References: <20181004104640.28326-1-jack@suse.cz>
+Return-Path: <SRS0=/GAa=M3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:37492 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726024AbeJPE7i (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Oct 2018 00:59:38 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH e2fsprogs 4/9] mke2fs: Configure encoding during superblock initialization
+Date: Mon, 15 Oct 2018 17:12:15 -0400
+Message-Id: <20181015211220.27370-5-krisman@collabora.co.uk>
+In-Reply-To: <20181015211220.27370-1-krisman@collabora.co.uk>
+References: <20181015211220.27370-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181004104640.28326-1-jack@suse.cz>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 04, 2018 at 12:46:40PM +0200, Jan Kara wrote:
-> The code cleaning transaction's lists of checkpoint buffers has a bug
-> where it increases bh refcount only after releasing
-> journal->j_list_lock. Thus the following race is possible:
-> 
-> CPU0					CPU1
-> jbd2_log_do_checkpoint()
-> 					jbd2_journal_try_to_free_buffers()
-> 					  __journal_try_to_free_buffer(bh)
->   ...
->   while (transaction->t_checkpoint_io_list)
->   ...
->     if (buffer_locked(bh)) {
-> 
-> <-- IO completes now, buffer gets unlocked -->
-> 
->       spin_unlock(&journal->j_list_lock);
-> 					    spin_lock(&journal->j_list_lock);
-> 					    __jbd2_journal_remove_checkpoint(jh);
-> 					    spin_unlock(&journal->j_list_lock);
-> 					  try_to_free_buffers(page);
->       get_bh(bh) <-- accesses freed bh
-> 
-> Fix the problem by grabbing bh reference before unlocking
-> journal->j_list_lock.
+This patch implements two new extended options to mkefs, allowing the
+user to specify an encoding for file name operations and encoding flags
+during filesystem creation.  We provide default flags for each encoding,
+which the user can overwrite by passing -E encoding-flags to mkfs.
+---
+ lib/ext2fs/initialize.c |  4 ++++
+ misc/mke2fs.c           | 43 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 47 insertions(+)
 
-Hi Jan,
-
-nice catch. The patch looks good, you can add
-
-Reviewed-by: Lukas Czerner <lczerner@redhat.com>
-
-Btw, do you by any chance have a reproducer for this ?
-
--Lukas
-
-> 
-> Fixes: dc6e8d669cf5cb3ff84707c372c0a2a8a5e80845
-> Fixes: be1158cc615fd723552f0d9912087423c7cadda5
-> Reported-by: syzbot+7f4a27091759e2fe7453@syzkaller.appspotmail.com
-> CC: stable@vger.kernel.org
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/jbd2/checkpoint.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-> index c125d662777c..26f8d7e46462 100644
-> --- a/fs/jbd2/checkpoint.c
-> +++ b/fs/jbd2/checkpoint.c
-> @@ -251,8 +251,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
->  		bh = jh2bh(jh);
->  
->  		if (buffer_locked(bh)) {
-> -			spin_unlock(&journal->j_list_lock);
->  			get_bh(bh);
-> +			spin_unlock(&journal->j_list_lock);
->  			wait_on_buffer(bh);
->  			/* the journal_head may have gone by now */
->  			BUFFER_TRACE(bh, "brelse");
-> @@ -333,8 +333,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
->  		jh = transaction->t_checkpoint_io_list;
->  		bh = jh2bh(jh);
->  		if (buffer_locked(bh)) {
-> -			spin_unlock(&journal->j_list_lock);
->  			get_bh(bh);
-> +			spin_unlock(&journal->j_list_lock);
->  			wait_on_buffer(bh);
->  			/* the journal_head may have gone by now */
->  			BUFFER_TRACE(bh, "brelse");
-> -- 
-> 2.16.4
-> 
+diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
+index 8c9e97fee831..30b1ae033340 100644
+--- a/lib/ext2fs/initialize.c
++++ b/lib/ext2fs/initialize.c
+@@ -186,6 +186,10 @@ errcode_t ext2fs_initialize(const char *name, int flags,
+ 	set_field(s_flags, 0);
+ 	assign_field(s_backup_bgs[0]);
+ 	assign_field(s_backup_bgs[1]);
++
++	assign_field(s_encoding);
++	assign_field(s_encoding_flags);
++
+ 	if (super->s_feature_incompat & ~EXT2_LIB_FEATURE_INCOMPAT_SUPP) {
+ 		retval = EXT2_ET_UNSUPP_FEATURE;
+ 		goto cleanup;
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index f05003fc30b9..5ed7b987540e 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -790,6 +790,8 @@ static void parse_extended_opts(struct ext2_super_block *param,
+ 	int	len;
+ 	int	r_usage = 0;
+ 	int	ret;
++	int	encoding = -1;
++	char 	*encoding_flags = NULL;
+ 
+ 	len = strlen(opts);
+ 	buf = malloc(len+1);
+@@ -1056,6 +1058,26 @@ static void parse_extended_opts(struct ext2_super_block *param,
+ 			}
+ 		} else if (!strcmp(token, "android_sparse")) {
+ 			android_sparse_file = 1;
++		} else if (!strcmp(token, "encoding")) {
++			if (!arg) {
++				r_usage++;
++				continue;
++			}
++
++			encoding = e2p_str2encoding(arg);
++			if (encoding < 0) {
++				fprintf(stderr, _("Invalid encoding: %s"), arg);
++				r_usage++;
++				continue;
++			}
++			param->s_encoding = encoding;
++			ext2fs_set_feature_fname_encoding(param);
++		} else if (!strcmp(token, "encoding-flags")) {
++			if (!arg) {
++				r_usage++;
++				continue;
++			}
++			encoding_flags = arg;
+ 		} else {
+ 			r_usage++;
+ 			badopt = token;
+@@ -1080,6 +1102,8 @@ static void parse_extended_opts(struct ext2_super_block *param,
+ 			"\ttest_fs\n"
+ 			"\tdiscard\n"
+ 			"\tnodiscard\n"
++			"\tencoding=<encoding>\n"
++			"\tencoding-flags=<flags>\n"
+ 			"\tquotatype=<quota type(s) to be enabled>\n\n"),
+ 			badopt ? badopt : "");
+ 		free(buf);
+@@ -1091,6 +1115,24 @@ static void parse_extended_opts(struct ext2_super_block *param,
+ 				  "multiple of stride %u.\n\n"),
+ 			param->s_raid_stripe_width, param->s_raid_stride);
+ 
++	if (ext2fs_has_feature_fname_encoding(param)) {
++		param->s_encoding_flags =
++			ext4_encoding_map[encoding].default_flags;
++		if (encoding_flags &&
++		    e2p_str2encoding_flags(encoding, encoding_flags,
++					   &param->s_encoding_flags)) {
++			fprintf(stderr, _("error: Invalid encoding flag: %s\n"),
++				encoding_flags);
++			free(buf);
++			exit(1);
++		}
++	} else if (encoding_flags) {
++		fprintf(stderr, _("error: An encoding must be explicitely "
++				  "specified when passing encoding-flags\n"));
++		free(buf);
++		exit(1);
++	}
++
+ 	free(buf);
+ }
+ 
+@@ -1112,6 +1154,7 @@ static __u32 ok_features[3] = {
+ 		EXT4_FEATURE_INCOMPAT_64BIT|
+ 		EXT4_FEATURE_INCOMPAT_INLINE_DATA|
+ 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
++		EXT4_FEATURE_INCOMPAT_FNAME_ENCODING |
+ 		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
+ 		EXT4_FEATURE_INCOMPAT_LARGEDIR,
+ 	/* R/O compat */
+-- 
+2.19.1
