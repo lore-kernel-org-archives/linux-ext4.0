@@ -1,46 +1,48 @@
-Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:58646 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727450AbeJ3WjX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 30 Oct 2018 18:39:23 -0400
-Subject: Re: [PATCH 3/7] ext4 resize: missing brelse() in case success in
- add_new_gdb()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-References: <d8c84f46-7ffe-7fd3-0e70-775c3c59320e@virtuozzo.com>
-From: Vasily Averin <vvs@virtuozzo.com>
-Message-ID: <3a7944cb-ca99-49d1-85e8-f5371a86fba6@virtuozzo.com>
-Date: Tue, 30 Oct 2018 16:45:45 +0300
+Return-Path: <SRS0=/GAa=M3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:37512 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726024AbeJPE74 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Oct 2018 00:59:56 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH e2fsprogs 9/9] tune2fs: Prevent enabling encryption flag on encoding-aware fs
+Date: Mon, 15 Oct 2018 17:12:20 -0400
+Message-Id: <20181015211220.27370-10-krisman@collabora.co.uk>
+In-Reply-To: <20181015211220.27370-1-krisman@collabora.co.uk>
+References: <20181015211220.27370-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-In-Reply-To: <d8c84f46-7ffe-7fd3-0e70-775c3c59320e@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-please drop this one, it isn't correct.
+The kernel will refuse to mount filesystems with the encryption and
+encoding features enabled at the same time.  The encoding feature can
+only be set at mount time, so we can just prevent encryption from being
+set at a later time by tune2fs.
 
-On 10/29/2018 06:25 PM, Vasily Averin wrote:
-> Fixes ac27a0ec112a ("ext4: initial copy of files from ext3")
-> #? cc: stable <stable@vger.kernel.org>     # 2.6.19 or evel earlier in ext3
-> 
-> Signed-off-by: Vasily Averin <vvs@openvz.org>
-> ---
->  fs/ext4/resize.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-> index 0a4dc6217e78..ff17480e8613 100644
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -874,6 +874,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
->  		goto exit_inode;
->  	}
->  	brelse(dind);
-> +	brelse(iloc.bh);
->  
->  	o_group_desc = EXT4_SB(sb)->s_group_desc;
->  	memcpy(n_group_desc, o_group_desc,
-> 
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+---
+ misc/tune2fs.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index a680b461cc86..cda4d8076f81 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -1459,6 +1459,12 @@ mmp_error:
+ 	}
+ 
+ 	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_ENCRYPT)) {
++		if (ext2fs_has_feature_fname_encoding(sb)) {
++			fputs(_("Cannot enable feature 'encrypt' on filesystems "
++				"with the 'encoding' feature enabled.\n"),
++			      stderr);
++			return 1;
++		}
+ 		fs->super->s_encrypt_algos[0] =
+ 			EXT4_ENCRYPTION_MODE_AES_256_XTS;
+ 		fs->super->s_encrypt_algos[1] =
+-- 
+2.19.1
