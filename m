@@ -1,61 +1,154 @@
-Return-Path: <SRS0=VEyz=NL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:47230 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725731AbeKAEMf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 1 Nov 2018 00:12:35 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH 7/7] ext4: lost brelse in ext4_expand_extra_isize_ea()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-References: <cover.1541011937.git.vvs@virtuozzo.com>
-Message-ID: <c5dc2118-ac42-c899-f218-4a78aa39c37f@virtuozzo.com>
-Date: Wed, 31 Oct 2018 22:13:09 +0300
+Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:50120 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727243AbeJRExW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:53:22 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v3 06/23] nls: Add support for multiple versions of an encoding
+Date: Wed, 17 Oct 2018 16:55:07 -0400
+Message-Id: <20181017205524.23360-7-krisman@collabora.co.uk>
+In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
+References: <20181017205524.23360-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-In-Reply-To: <cover.1541011937.git.vvs@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fixes de05ca852679 ("ext4: move call to ext4_error() into ...") # 4.17
+This allows a user to request a specific version of an encoding, like
+the version 10.0.0 of Unicode encoded in utf8.
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+Supporting specific versions of encodings is important to ensure
+stability of names in filesystems, specially when doing transformations
+like casefold and normalization.  Even for unicode, where defined
+code-points are stable, there is instability for code points that
+weren't defined on a previous version, so the user might want to use an
+older version of the encoding to ensure the encoding is exact.
+
+Not every NLS charset supports this feature.  It doesn't make sense for
+many of them, like ASCII.  Others just don't implement it yet, and never
+will.  In those cases, the interface allows the caller to get the
+un-versioned charset, which is the same original behavior as if this
+patch weren't applied.  A user that is not interested in a specific
+version can also ask for a versioned charset without specifying the
+version, and in this case, NLS will return the latest version available
+of that charset.
+
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/ext4/xattr.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/nls/nls_core.c   | 45 ++++++++++++++++++++++++++++++++++++++-------
+ include/linux/nls.h |  8 ++++++++
+ 2 files changed, 46 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 5c9bc0d85cc0..0b9688683526 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -2698,7 +2698,6 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 			       struct ext4_inode *raw_inode, handle_t *handle)
- {
- 	struct ext4_xattr_ibody_header *header;
--	struct buffer_head *bh;
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	static unsigned int mnt_count;
- 	size_t min_offs;
-@@ -2739,13 +2738,17 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
- 	 * EA block can hold new_extra_isize bytes.
- 	 */
- 	if (EXT4_I(inode)->i_file_acl) {
-+		struct buffer_head *bh;
+diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
+index 200a7f8165e6..dfd7a5ab4320 100644
+--- a/fs/nls/nls_core.c
++++ b/fs/nls/nls_core.c
+@@ -19,10 +19,26 @@
+ extern struct nls_charset default_charset;
+ static struct nls_charset *charsets = &default_charset;
+ static DEFINE_SPINLOCK(nls_lock);
+-static struct nls_table *nls_load_table(struct nls_charset *charset)
 +
- 		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
- 		error = -EIO;
- 		if (!bh)
- 			goto cleanup;
- 		error = ext4_xattr_check_block(inode, bh);
--		if (error)
-+		if (error) {
-+			brelse(bh);
- 			goto cleanup;
-+		}
- 		base = BHDR(bh);
- 		end = bh->b_data + bh->b_size;
- 		min_offs = end - base;
++static struct nls_table *nls_load_table(struct nls_charset *charset,
++					const char *version,
++					unsigned int flags)
+ {
+-	/* For now, return the default table, which is the first one found. */
+-	return charset->tables;
++	struct nls_table *tbl;
++
++	/* If there is no table_create, only 1 table is supported and it
++	 * must have been loaded statically.
++	 */
++	if (!charset->load_table)
++		tbl = charset->tables;
++	else
++		tbl = charset->load_table(version, flags);
++
++	if (IS_ERR(tbl))
++		return tbl;
++
++	tbl->flags = flags;
++	return tbl;
+ }
+ 
+ int __register_nls(struct nls_charset *nls, struct module *owner)
+@@ -85,21 +101,36 @@ static struct nls_charset *find_nls(const char *charset)
+ 	return nls;
+ }
+ 
+-struct nls_table *load_nls(char *charset)
++struct nls_table *load_nls_version(const char *charset, const char *version,
++				   unsigned int flags)
+ {
+ 	struct nls_charset *nls_charset;
+ 
+ 	nls_charset = try_then_request_module(find_nls(charset),
+ 					      "nls_%s", charset);
+-	if (!IS_ERR(nls_charset))
++	if (IS_ERR(nls_charset))
++		return ERR_PTR(-EINVAL);
++
++	return nls_load_table(nls_charset, version, flags);
++}
++EXPORT_SYMBOL(load_nls_version);
++
++struct nls_table *load_nls(char *charset)
++{
++	struct nls_table *table = load_nls_version(charset, NULL, 0);
++
++	/* Pre-versioned load_nls() didn't return error pointers. Let's
++	 * keep the abi for now to prevent breakage.
++	 */
++	if (IS_ERR(table))
+ 		return NULL;
+ 
+-	return nls_load_table(nls_charset);
++	return table;
+ }
+ 
+ void unload_nls(struct nls_table *nls)
+ {
+-	if (nls)
++	if (!IS_ERR_OR_NULL(nls))
+ 		module_put(nls->charset->owner);
+ }
+ 
+diff --git a/include/linux/nls.h b/include/linux/nls.h
+index cdc95cd9e5d4..91524bb4477b 100644
+--- a/include/linux/nls.h
++++ b/include/linux/nls.h
+@@ -30,6 +30,9 @@ struct nls_ops {
+ 
+ struct nls_table {
+ 	const struct nls_charset *charset;
++	unsigned int version;
++	unsigned int flags;
++
+ 	const struct nls_ops *ops;
+ 	const unsigned char *charset2lower;
+ 	const unsigned char *charset2upper;
+@@ -42,6 +45,8 @@ struct nls_charset {
+ 	struct module *owner;
+ 	struct nls_table *tables;
+ 	struct nls_charset *next;
++	struct nls_table *(*load_table)(const char *version,
++					unsigned int flags);
+ };
+ 
+ /* this value hold the maximum octet of charset */
+@@ -58,6 +63,9 @@ enum utf16_endian {
+ extern int __register_nls(struct nls_charset *, struct module *);
+ extern int unregister_nls(struct nls_charset *);
+ extern struct nls_table *load_nls(char *);
++extern struct nls_table *load_nls_version(const char *charset,
++					  const char *version,
++					  unsigned int flags);
+ extern void unload_nls(struct nls_table *);
+ extern struct nls_table *load_nls_default(void);
+ #define register_nls(nls) __register_nls((nls), THIS_MODULE)
 -- 
-2.17.1
+2.19.1
