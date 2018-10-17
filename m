@@ -1,130 +1,238 @@
-Return-Path: <SRS0=Qv/7=NE=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-yb1-f194.google.com ([209.85.219.194]:40623 "EHLO
-        mail-yb1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726808AbeJXQX4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2018 12:23:56 -0400
+Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:50194 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727132AbeJREyU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:54:20 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v3 22/23] ext4: Implement EXT4_CASEFOLD_FL flag
+Date: Wed, 17 Oct 2018 16:55:23 -0400
+Message-Id: <20181017205524.23360-23-krisman@collabora.co.uk>
+In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
+References: <20181017205524.23360-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-References: <20181023201957.GA15708@pathfinder> <CAOQ4uxhitRXu+qjg-0hWVe4VJLEu0Th+ExFr=MSeBdP+y2C6vw@mail.gmail.com>
-In-Reply-To: <CAOQ4uxhitRXu+qjg-0hWVe4VJLEu0Th+ExFr=MSeBdP+y2C6vw@mail.gmail.com>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Wed, 24 Oct 2018 10:56:43 +0300
-Message-ID: <CAOQ4uxjAh9wbdKT5TAAY9mgahfqCdKghdAFxkuxwkx_+0+dXhA@mail.gmail.com>
-Subject: Re: [RFC][PATCH v2 04/10] ext2: use common file type conversion
-To: Phillip Potter <phil@philpotter.co.uk>
-Cc: Jan Kara <jack@suse.com>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Ext4 <linux-ext4@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 24, 2018 at 9:50 AM Amir Goldstein <amir73il@gmail.com> wrote:
->
-> On Tue, Oct 23, 2018 at 11:19 PM Phillip Potter <phil@philpotter.co.uk> wrote:
-> >
-> > Deduplicate the ext2 file type conversion implementation.
-> >
-> > Original patch by Amir Goldstein.
-> >
-> > v2:
-> > - Rebased against Linux 4.19 by Phillip Potter
-> > - This version does not remove EXT2_FT_x enum from fs/ext2/ext2.h,
-> >   as these values are now used in compile-time checks added by
-> >   Phillip Potter to make sure they remain the same as FT_x values
-> >
-> > v1:
-> > - Initial implementation
-> >
->
-> Same comments as how to apply a patch and about changelog as patch 1.
-> Won't repeat for other patches.
->
-> I think it would be also good to mention there is a lurking bug if code
-> ever tries to access ext2_type_by_mode[S_IFMT] because on-disk
-> data is corrupted.
+Casefold is a flag applied to directories and inherited by its children
+which states that the directory requires case-insensitive searches.
+This flag can only be enabled on empty directories for filesystems that
+support the encoding feature, thus preventing collision of file names
+that only differ by case.
 
-So my old notes on the alleged ext2 bug:
-https://marc.info/?l=linux-fsdevel&m=148243866204444&w=2
+Enconding-awareness is also required because we consider the casefold
+operation not be defined for opaque byte sequences.
 
->
-> > Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
-> > ---
-> >  fs/ext2/dir.c | 51 ++++++++++++++++++++++-----------------------------
-> >  1 file changed, 22 insertions(+), 29 deletions(-)
-> >
-> > diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-> > index 3b8114def693..420d4b9e8980 100644
-> > --- a/fs/ext2/dir.c
-> > +++ b/fs/ext2/dir.c
-> > @@ -252,33 +252,10 @@ ext2_validate_entry(char *base, unsigned offset, unsigned mask)
-> >         return (char *)p - base;
-> >  }
-> >
-> > -static unsigned char ext2_filetype_table[EXT2_FT_MAX] = {
-> > -       [EXT2_FT_UNKNOWN]       = DT_UNKNOWN,
-> > -       [EXT2_FT_REG_FILE]      = DT_REG,
-> > -       [EXT2_FT_DIR]           = DT_DIR,
-> > -       [EXT2_FT_CHRDEV]        = DT_CHR,
-> > -       [EXT2_FT_BLKDEV]        = DT_BLK,
-> > -       [EXT2_FT_FIFO]          = DT_FIFO,
-> > -       [EXT2_FT_SOCK]          = DT_SOCK,
-> > -       [EXT2_FT_SYMLINK]       = DT_LNK,
-> > -};
-> > -
-> > -#define S_SHIFT 12
-> > -static unsigned char ext2_type_by_mode[S_IFMT >> S_SHIFT] = {
-> > -       [S_IFREG >> S_SHIFT]    = EXT2_FT_REG_FILE,
-> > -       [S_IFDIR >> S_SHIFT]    = EXT2_FT_DIR,
-> > -       [S_IFCHR >> S_SHIFT]    = EXT2_FT_CHRDEV,
-> > -       [S_IFBLK >> S_SHIFT]    = EXT2_FT_BLKDEV,
-> > -       [S_IFIFO >> S_SHIFT]    = EXT2_FT_FIFO,
-> > -       [S_IFSOCK >> S_SHIFT]   = EXT2_FT_SOCK,
-> > -       [S_IFLNK >> S_SHIFT]    = EXT2_FT_SYMLINK,
-> > -};
-> > -
-> >  static inline void ext2_set_de_type(ext2_dirent *de, struct inode *inode)
-> >  {
-> > -       umode_t mode = inode->i_mode;
-> >         if (EXT2_HAS_INCOMPAT_FEATURE(inode->i_sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
-> > -               de->file_type = ext2_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
-> > +               de->file_type = fs_umode_to_ftype(inode->i_mode);
-> >         else
-> >                 de->file_type = 0;
-> >  }
-> > @@ -293,14 +270,14 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
-> >         unsigned long n = pos >> PAGE_SHIFT;
-> >         unsigned long npages = dir_pages(inode);
-> >         unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
-> > -       unsigned char *types = NULL;
-> >         bool need_revalidate = !inode_eq_iversion(inode, file->f_version);
-> > +       bool has_filetype;
-> >
-> >         if (pos > inode->i_size - EXT2_DIR_REC_LEN(1))
-> >                 return 0;
-> >
-> > -       if (EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
-> > -               types = ext2_filetype_table;
-> > +       has_filetype =
-> > +               EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE);
-> >
-> >         for ( ; n < npages; n++, offset = 0) {
-> >                 char *kaddr, *limit;
-> > @@ -335,8 +312,24 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
-> >                         if (de->inode) {
-> >                                 unsigned char d_type = DT_UNKNOWN;
-> >
-> > -                               if (types && de->file_type < EXT2_FT_MAX)
-> > -                                       d_type = types[de->file_type];
-> > +                               /*
-> > +                                * compile-time asserts that generic FT_x types
-> > +                                * still match EXT2_FT_x types - no need to list
-> > +                                * for other functions as well as build will
-> > +                                * fail either way
+Changes since v2:
+  - Rename sbi->encoding -> sbi->s_encoding.
 
-Please remove the part about "no need to list for other functions..."
-Imagine how kernel code would look like if every call to BUILD_BUG_ON()
-would have a comment explaining how BUILD_BUG_ON() works...
+Changes since v1:
+  - Moved the CASEFOLD_FL to prevent collision with reserved verity flag.
 
-Thanks,
-Amir.
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+---
+ fs/ext4/dir.c      | 30 ++++++++++++++++++++++--------
+ fs/ext4/ext4.h     |  7 ++++---
+ fs/ext4/hash.c     |  6 +++++-
+ fs/ext4/inode.c    |  4 +++-
+ fs/ext4/ioctl.c    | 18 ++++++++++++++++++
+ fs/ext4/namei.c    | 13 ++++++++++---
+ include/linux/fs.h |  2 ++
+ 7 files changed, 64 insertions(+), 16 deletions(-)
+
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index efb75c204551..43b91747f7e7 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -670,6 +670,10 @@ static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
+ {
+ 	struct nls_table *charset = EXT4_SB(dentry->d_sb)->s_encoding;
+ 
++	if (IS_CASEFOLDED(dentry->d_parent->d_inode))
++		return nls_strncasecmp(charset, str, len, name->name,
++				       name->len);
++
+ 	return nls_strncmp(charset, str, len, name->name, name->len);
+ }
+ 
+@@ -679,16 +683,26 @@ static int ext4_d_hash(const struct dentry *dentry, struct qstr *q)
+ 	unsigned char *norm;
+ 	int len, ret = 0;
+ 
+-	/* If normalization is TYPE_PLAIN, we can just reuse the vfs
+-	 * hash. */
+-	if (IS_NORMALIZATION_TYPE_ALL_PLAIN(charset))
+-	    return 0;
++	if (!IS_CASEFOLDED(dentry->d_inode)) {
+ 
+-	norm = kmalloc(PATH_MAX, GFP_ATOMIC);
+-	if (!norm)
+-		return -ENOMEM;
++		/* If normalization is TYPE_PLAIN, we can just reuse the
++		 * VFS hash.
++		 */
++		if (IS_NORMALIZATION_TYPE_ALL_PLAIN(charset))
++			return 0;
+ 
+-	len = nls_normalize(charset, q->name, q->len, norm, PATH_MAX);
++		norm = kmalloc(PATH_MAX, GFP_ATOMIC);
++		if (!norm)
++			return -ENOMEM;
++
++		len = nls_normalize(charset, q->name, q->len, norm, PATH_MAX);
++	} else {
++		norm = kmalloc(PATH_MAX, GFP_ATOMIC);
++		if (!norm)
++			return -ENOMEM;
++
++		len = nls_casefold(charset, q->name, q->len, norm, PATH_MAX);
++	}
+ 
+ 	if (len < 0) {
+ 		ret = -EINVAL;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 03f86c8d07e0..eea05485cb59 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -409,10 +409,11 @@ struct flex_groups {
+ #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+ #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
+ #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
++#define EXT4_CASEFOLD_FL		0x40000000 /* Casefolded file */
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+ 
+-#define EXT4_FL_USER_VISIBLE		0x304BDFFF /* User visible flags */
+-#define EXT4_FL_USER_MODIFIABLE		0x204BC0FF /* User modifiable flags */
++#define EXT4_FL_USER_VISIBLE		0x704BDFFF /* User visible flags */
++#define EXT4_FL_USER_MODIFIABLE		0x604BC0FF /* User modifiable flags */
+ 
+ /* Flags we can manipulate with through EXT4_IOC_FSSETXATTR */
+ #define EXT4_FL_XFLAG_VISIBLE		(EXT4_SYNC_FL | \
+@@ -427,7 +428,7 @@ struct flex_groups {
+ 			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
+ 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
+ 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL |\
+-			   EXT4_PROJINHERIT_FL)
++			   EXT4_PROJINHERIT_FL | EXT4_CASEFOLD_FL)
+ 
+ /* Flags that are appropriate for regular files (all but dir-specific ones). */
+ #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index 8ec9c7145987..78cb97664a33 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -282,7 +282,11 @@ int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
+ 		if (!buff)
+ 			return -1;
+ 
+-		dlen = nls_normalize(charset, name, len, buff, PATH_MAX);
++		if (!IS_CASEFOLDED(dir))
++			dlen = nls_normalize(charset, name, len, buff,
++					     PATH_MAX);
++		else
++			dlen = nls_casefold(charset, name, len, buff, PATH_MAX);
+ 
+ 		if (dlen < 0) {
+ 			kfree(buff);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c3d9a42c561e..8e7d5bacd6d9 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4745,9 +4745,11 @@ void ext4_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_DAX;
+ 	if (flags & EXT4_ENCRYPT_FL)
+ 		new_fl |= S_ENCRYPTED;
++	if (flags & EXT4_CASEFOLD_FL)
++		new_fl |= S_CASEFOLD;
+ 	inode_set_flags(inode, new_fl,
+ 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
+-			S_ENCRYPTED);
++			S_ENCRYPTED|S_CASEFOLD);
+ }
+ 
+ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 0edee31913d1..ef4ffe681836 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -231,6 +231,7 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 	struct ext4_iloc iloc;
+ 	unsigned int oldflags, mask, i;
+ 	unsigned int jflag;
++	struct super_block *sb = inode->i_sb;
+ 
+ 	/* Is it quota file? Do not allow user to mess with it */
+ 	if (ext4_is_quota_file(inode))
+@@ -275,6 +276,23 @@ static int ext4_ioctl_setflags(struct inode *inode,
+ 			goto flags_out;
+ 	}
+ 
++	if ((flags ^ oldflags) & EXT4_CASEFOLD_FL) {
++		if (!ext4_has_feature_fname_encoding(sb)) {
++			err = -EOPNOTSUPP;
++			goto flags_out;
++		}
++
++		if (!S_ISDIR(inode->i_mode)) {
++			err = -ENOTDIR;
++			goto flags_out;
++		}
++
++		if (!ext4_empty_dir(inode)) {
++			err = -ENOTEMPTY;
++			goto flags_out;
++		}
++	}
++
+ 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
+ 	if (IS_ERR(handle)) {
+ 		err = PTR_ERR(handle);
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 5c6f78c0a6f9..a46cfbe87dec 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1277,9 +1277,16 @@ static inline bool ext4_match(const struct inode *parent,
+ 
+ #ifdef CONFIG_NLS
+ 	if (sbi->s_encoding) {
+-		return !nls_strncmp(sbi->s_encoding,
+-				    de->name, de->name_len,
+-				    f.disk_name.name, f.disk_name.len);
++		if (!IS_CASEFOLDED(parent))
++			return !nls_strncmp(sbi->s_encoding,
++					    de->name, de->name_len,
++					    fname->disk_name.name,
++					    fname->disk_name.len);
++		else
++			return !nls_strncasecmp(sbi->s_encoding,
++						de->name, de->name_len,
++						fname->disk_name.name,
++						fname->disk_name.len);
+ 	}
+ #endif
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 6c0b4a1c22ff..0872d1e0b803 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1896,6 +1896,7 @@ struct super_operations {
+ #define S_DAX		0	/* Make all the DAX code disappear */
+ #endif
+ #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
++#define S_CASEFOLD	32768	/* Casefolded file */
+ 
+ /*
+  * Note that nosuid etc flags are inode-specific: setting some file-system
+@@ -1936,6 +1937,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
+ #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
+ #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
+ #define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
++#define IS_CASEFOLDED(inode)	((inode)->i_flags & S_CASEFOLD)
+ 
+ #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
+ 				 (inode)->i_rdev == WHITEOUT_DEV)
+-- 
+2.19.1
