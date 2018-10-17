@@ -1,118 +1,271 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-yb1-f193.google.com ([209.85.219.193]:46926 "EHLO
-        mail-yb1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727210AbeJVW2z (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 18:28:55 -0400
-Received: by mail-yb1-f193.google.com with SMTP id o8-v6so16199609ybk.13
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Oct 2018 07:10:10 -0700 (PDT)
-Received: from mail-yb1-f175.google.com (mail-yb1-f175.google.com. [209.85.219.175])
-        by smtp.gmail.com with ESMTPSA id o3-v6sm172018ywe.79.2018.10.22.07.10.06
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 22 Oct 2018 07:10:08 -0700 (PDT)
-Received: by mail-yb1-f175.google.com with SMTP id o204-v6so2182242yba.9
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Oct 2018 07:10:06 -0700 (PDT)
+Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:50112 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726009AbeJRExO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:53:14 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v3 04/23] nls: Split default charset from NLS core
+Date: Wed, 17 Oct 2018 16:55:05 -0400
+Message-Id: <20181017205524.23360-5-krisman@collabora.co.uk>
+In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
+References: <20181017205524.23360-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-In-Reply-To: <20181021171414.22674-3-miguel.ojeda.sandonis@gmail.com>
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com> <20181021171414.22674-3-miguel.ojeda.sandonis@gmail.com>
-From: Kees Cook <keescook@chromium.org>
-Date: Mon, 22 Oct 2018 07:10:02 -0700
-Message-ID: <CAGXu5j+3pR2mfcdbURv7MrPxUVjmjQEDRHH8BLpTNGiasJs1pg@mail.gmail.com>
-Subject: Re: [PATCH 2/2] Compiler Attributes: auxdisplay: panel: use __fallthrough
-To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
-        "Gustavo A. R. Silva" <gustavo@embeddedor.com>
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Dan Carpenter <dan.carpenter@oracle.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        "David S . Miller" <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "open list:DOCUMENTATION" <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Sparse Mailing-list <linux-sparse@vger.kernel.org>,
-        linux-kbuild <linux-kbuild@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 21, 2018 at 10:14 AM, Miguel Ojeda
-<miguel.ojeda.sandonis@gmail.com> wrote:
-> Let gcc know these cases are meant to fall through to the next label
-> by annotating them with the new __fallthrough statement attribute;
-> and remove the comment since it conveys the same information
-> (which was also parsed by gcc to suppress the warning).
->
-> Signed-off-by: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-> ---
->  drivers/auxdisplay/panel.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
->
-> diff --git a/drivers/auxdisplay/panel.c b/drivers/auxdisplay/panel.c
-> index 21b9b2f2470a..0755034e49ba 100644
-> --- a/drivers/auxdisplay/panel.c
-> +++ b/drivers/auxdisplay/panel.c
-> @@ -1367,7 +1367,7 @@ static void panel_process_inputs(void)
->                                 break;
->                         input->rise_timer = 0;
->                         input->state = INPUT_ST_RISING;
-> -                       /* fall through */
-> +                       __fallthrough;
->                 case INPUT_ST_RISING:
->                         if ((phys_curr & input->mask) != input->value) {
->                                 input->state = INPUT_ST_LOW;
-> @@ -1380,11 +1380,11 @@ static void panel_process_inputs(void)
->                         }
->                         input->high_timer = 0;
->                         input->state = INPUT_ST_HIGH;
-> -                       /* fall through */
-> +                       __fallthrough;
->                 case INPUT_ST_HIGH:
->                         if (input_state_high(input))
->                                 break;
-> -                       /* fall through */
-> +                       __fallthrough;
->                 case INPUT_ST_FALLING:
->                         input_state_falling(input);
->                 }
-> --
-> 2.17.1
->
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+---
+ fs/nls/Makefile                      |  1 +
+ fs/nls/nls_core.c                    | 94 ++++++++++++++++++++++++++++
+ fs/nls/{nls_base.c => nls_default.c} | 93 +++------------------------
+ 3 files changed, 102 insertions(+), 86 deletions(-)
+ create mode 100644 fs/nls/nls_core.c
+ rename fs/nls/{nls_base.c => nls_default.c} (90%)
 
-I would prefer we continue to use the comment style until we've got
-confirmed support for (at least) Clang, Coverity, CPPcheck, smatch,
-and eclipse.
-
--Kees
-
+diff --git a/fs/nls/Makefile b/fs/nls/Makefile
+index ac54db297128..5f42ceff9d15 100644
+--- a/fs/nls/Makefile
++++ b/fs/nls/Makefile
+@@ -3,6 +3,7 @@
+ # Makefile for native language support
+ #
+ 
++nls_base-y := nls_core.o nls_default.o
+ obj-$(CONFIG_NLS)		+= nls_base.o
+ 
+ obj-$(CONFIG_NLS_CODEPAGE_437)	+= nls_cp437.o
+diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
+new file mode 100644
+index 000000000000..3f7de8f4c5b2
+--- /dev/null
++++ b/fs/nls/nls_core.c
+@@ -0,0 +1,94 @@
++/*
++ * linux/fs/nls/nls_core.c
++ *
++ * Native language support--charsets and unicode translations.
++ * By Gordon Chaffee 1996, 1997
++ *
++ * Unicode based case conversion 1999 by Wolfram Pienkoss
++ *
++ */
++
++#include <linux/module.h>
++#include <linux/string.h>
++#include <linux/nls.h>
++#include <linux/kernel.h>
++#include <linux/errno.h>
++#include <linux/kmod.h>
++#include <linux/spinlock.h>
++
++static struct nls_table default_table;
++static struct nls_table *tables = &default_table;
++static DEFINE_SPINLOCK(nls_lock);
++
++int __register_nls(struct nls_table *nls, struct module *owner)
++{
++	struct nls_table ** tmp = &tables;
++
++	if (nls->next)
++		return -EBUSY;
++
++	nls->owner = owner;
++	spin_lock(&nls_lock);
++	while (*tmp) {
++		if (nls == *tmp) {
++			spin_unlock(&nls_lock);
++			return -EBUSY;
++		}
++		tmp = &(*tmp)->next;
++	}
++	nls->next = tables;
++	tables = nls;
++	spin_unlock(&nls_lock);
++	return 0;
++}
++EXPORT_SYMBOL(__register_nls);
++
++int unregister_nls(struct nls_table * nls)
++{
++	struct nls_table ** tmp = &tables;
++
++	spin_lock(&nls_lock);
++	while (*tmp) {
++		if (nls == *tmp) {
++			*tmp = nls->next;
++			spin_unlock(&nls_lock);
++			return 0;
++		}
++		tmp = &(*tmp)->next;
++	}
++	spin_unlock(&nls_lock);
++	return -EINVAL;
++}
++
++static struct nls_table *find_nls(char *charset)
++{
++	struct nls_table *nls;
++	spin_lock(&nls_lock);
++	for (nls = tables; nls; nls = nls->next) {
++		if (!strcmp(nls_charset_name(nls), charset))
++			break;
++		if (nls->alias && !strcmp(nls->alias, charset))
++			break;
++	}
++	if (nls && !try_module_get(nls->owner))
++		nls = NULL;
++	spin_unlock(&nls_lock);
++	return nls;
++}
++
++struct nls_table *load_nls(char *charset)
++{
++	return try_then_request_module(find_nls(charset), "nls_%s", charset);
++}
++
++void unload_nls(struct nls_table *nls)
++{
++	if (nls)
++		module_put(nls->owner);
++}
++
++EXPORT_SYMBOL(unregister_nls);
++EXPORT_SYMBOL(unload_nls);
++EXPORT_SYMBOL(load_nls);
++
++MODULE_LICENSE("Dual BSD/GPL");
+diff --git a/fs/nls/nls_base.c b/fs/nls/nls_default.c
+similarity index 90%
+rename from fs/nls/nls_base.c
+rename to fs/nls/nls_default.c
+index 0bb0acf6893f..c5d7e8391b22 100644
+--- a/fs/nls/nls_base.c
++++ b/fs/nls/nls_default.c
+@@ -1,5 +1,5 @@
+ /*
+- * linux/fs/nls/nls_base.c
++ * linux/fs/nls/nls_default.c
+  *
+  * Native language support--charsets and unicode translations.
+  * By Gordon Chaffee 1996, 1997
+@@ -8,23 +8,17 @@
+  *
+  */
+ 
++/*
++ * Sample implementation from Unicode home page.
++ * http://www.stonehand.com/unicode/standard/fss-utf.html
++ */
++
+ #include <linux/module.h>
+-#include <linux/string.h>
+-#include <linux/nls.h>
+-#include <linux/kernel.h>
+-#include <linux/errno.h>
+-#include <linux/kmod.h>
+-#include <linux/spinlock.h>
+ #include <asm/byteorder.h>
++#include <linux/nls.h>
+ 
+ static struct nls_table default_table;
+-static struct nls_table *tables = &default_table;
+-static DEFINE_SPINLOCK(nls_lock);
+ 
+-/*
+- * Sample implementation from Unicode home page.
+- * http://www.stonehand.com/unicode/standard/fss-utf.html
+- */
+ struct utf8_table {
+ 	int     cmask;
+ 	int     cval;
+@@ -232,73 +226,6 @@ int utf16s_to_utf8s(const wchar_t *pwcs, int inlen, enum utf16_endian endian,
+ }
+ EXPORT_SYMBOL(utf16s_to_utf8s);
+ 
+-int __register_nls(struct nls_table *nls, struct module *owner)
+-{
+-	struct nls_table ** tmp = &tables;
+-
+-	if (nls->next)
+-		return -EBUSY;
+-
+-	nls->owner = owner;
+-	spin_lock(&nls_lock);
+-	while (*tmp) {
+-		if (nls == *tmp) {
+-			spin_unlock(&nls_lock);
+-			return -EBUSY;
+-		}
+-		tmp = &(*tmp)->next;
+-	}
+-	nls->next = tables;
+-	tables = nls;
+-	spin_unlock(&nls_lock);
+-	return 0;	
+-}
+-EXPORT_SYMBOL(__register_nls);
+-
+-int unregister_nls(struct nls_table * nls)
+-{
+-	struct nls_table ** tmp = &tables;
+-
+-	spin_lock(&nls_lock);
+-	while (*tmp) {
+-		if (nls == *tmp) {
+-			*tmp = nls->next;
+-			spin_unlock(&nls_lock);
+-			return 0;
+-		}
+-		tmp = &(*tmp)->next;
+-	}
+-	spin_unlock(&nls_lock);
+-	return -EINVAL;
+-}
+-
+-static struct nls_table *find_nls(char *charset)
+-{
+-	struct nls_table *nls;
+-	spin_lock(&nls_lock);
+-	for (nls = tables; nls; nls = nls->next) {
+-		if (!strcmp(nls_charset_name(nls), charset))
+-			break;
+-		if (nls->alias && !strcmp(nls->alias, charset))
+-			break;
+-	}
+-	if (nls && !try_module_get(nls->owner))
+-		nls = NULL;
+-	spin_unlock(&nls_lock);
+-	return nls;
+-}
+-
+-struct nls_table *load_nls(char *charset)
+-{
+-	return try_then_request_module(find_nls(charset), "nls_%s", charset);
+-}
+-
+-void unload_nls(struct nls_table *nls)
+-{
+-	if (nls)
+-		module_put(nls->owner);
+-}
+-
+ static const wchar_t charset2uni[256] = {
+ 	/* 0x00*/
+ 	0x0000, 0x0001, 0x0002, 0x0003,
+@@ -543,10 +470,4 @@ struct nls_table *load_nls_default(void)
+ 	else
+ 		return &default_table;
+ }
+-
+-EXPORT_SYMBOL(unregister_nls);
+-EXPORT_SYMBOL(unload_nls);
+-EXPORT_SYMBOL(load_nls);
+ EXPORT_SYMBOL(load_nls_default);
+-
+-MODULE_LICENSE("Dual BSD/GPL");
 -- 
-Kees Cook
-Pixel Security
+2.19.1
