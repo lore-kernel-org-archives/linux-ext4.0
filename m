@@ -1,377 +1,384 @@
-Return-Path: <SRS0=j8gV=MN=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-it1-f198.google.com ([209.85.166.198]:56987 "EHLO
-        mail-it1-f198.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726518AbeJBAxG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Oct 2018 20:53:06 -0400
-Received: by mail-it1-f198.google.com with SMTP id i188-v6so12030177itf.6
-        for <linux-ext4@vger.kernel.org>; Mon, 01 Oct 2018 11:14:04 -0700 (PDT)
+Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:50178 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727280AbeJREyF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:54:05 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v3 18/23] nls: utf8: Introduce test module for normalized utf8 implementation
+Date: Wed, 17 Oct 2018 16:55:19 -0400
+Message-Id: <20181017205524.23360-19-krisman@collabora.co.uk>
+In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
+References: <20181017205524.23360-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-Date: Mon, 01 Oct 2018 11:14:04 -0700
-Message-ID: <0000000000003908ec05772ec554@google.com>
-Subject: INFO: task hung in ext4_fallocate
-From: syzbot <syzbot+c61979f6f2cba5cb3c06@syzkaller.appspotmail.com>
-To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+This implements a in-kernel sanity test module for the utf8
+normalization core.  At probe time, it will run basic sequences through
+the utf8n core, to identify problems will equivalent sequences and
+normalization/casefold code.  This is supposed to be useful for
+regression testing when adding support for a new version of utf8 to
+linux.
 
-syzbot found the following crash on:
+Changes since RFC v2:
+  - Merge with NLS
 
-HEAD commit:    291d0e5d81e1 Merge tag 'for-linus-20180929' of git://git.k..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=10332181400000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=a8212f992609a887
-dashboard link: https://syzkaller.appspot.com/bug?extid=c61979f6f2cba5cb3c06
-compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1611fbfa400000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1489f831400000
+Changes since RFC v1:
+  - Include comparison tests for matching strings with different lengths.
+  - Include tests for characters included in unicode 8.0.0, 9.0.0 and 10.0.0.
 
-IMPORTANT: if you fix the bug, please add the following tag to the commit:
-Reported-by: syzbot+c61979f6f2cba5cb3c06@syzkaller.appspotmail.com
-
-audit: type=1400 audit(1538313446.938:37): avc:  denied  { map } for   
-pid=5541 comm="syz-executor212" path="/root/syz-executor212822736"  
-dev="sda1" ino=16481 scontext=unconfined_u:system_r:insmod_t:s0-s0:c0.c1023  
-tcontext=unconfined_u:object_r:user_home_t:s0 tclass=file permissive=1
-INFO: task syz-executor212:5548 blocked for more than 140 seconds.
-       Not tainted 4.19.0-rc5+ #40
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-syz-executor212 D19712  5548   5545 0x00000004
-Call Trace:
-  context_switch kernel/sched/core.c:2825 [inline]
-  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
-  schedule+0xfe/0x460 kernel/sched/core.c:3517
-  __rwsem_down_write_failed_common+0xbb9/0x1670  
-kernel/locking/rwsem-xadd.c:566
-  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
-  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
-  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
-  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
-  inode_lock include/linux/fs.h:738 [inline]
-  ext4_fallocate+0x921/0x2300 fs/ext4/extents.c:4957
-  vfs_fallocate+0x4b4/0x940 fs/open.c:308
-  ksys_fallocate+0x56/0x90 fs/open.c:331
-  __do_sys_fallocate fs/open.c:339 [inline]
-  __se_sys_fallocate fs/open.c:337 [inline]
-  __x64_sys_fallocate+0x97/0xf0 fs/open.c:337
-  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x440ef9
-Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
-4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
-20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
-RSP: 002b:00007ffd82484778 EFLAGS: 00000217 ORIG_RAX: 000000000000011d
-RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
-RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000003
-RBP: 0000000000000000 R08: 00000000004002c8 R09: 00000000004002c8
-R10: 0000000000010001 R11: 0000000000000217 R12: 0000000000401d90
-R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
-INFO: task syz-executor212:5550 blocked for more than 140 seconds.
-       Not tainted 4.19.0-rc5+ #40
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-syz-executor212 D23736  5550   5543 0x00000004
-Call Trace:
-  context_switch kernel/sched/core.c:2825 [inline]
-  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
-  schedule+0xfe/0x460 kernel/sched/core.c:3517
-  __rwsem_down_write_failed_common+0xbb9/0x1670  
-kernel/locking/rwsem-xadd.c:566
-  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
-  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
-  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
-  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
-  inode_lock include/linux/fs.h:738 [inline]
-  process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
-  ima_file_check+0xe5/0x130 security/integrity/ima/ima_main.c:391
-  do_last fs/namei.c:3422 [inline]
-  path_openat+0x134d/0x5160 fs/namei.c:3534
-  do_filp_open+0x255/0x380 fs/namei.c:3564
-  do_sys_open+0x568/0x700 fs/open.c:1063
-  __do_sys_openat fs/open.c:1090 [inline]
-  __se_sys_openat fs/open.c:1084 [inline]
-  __x64_sys_openat+0x9d/0x100 fs/open.c:1084
-  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x440ef9
-Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
-4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
-20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
-RSP: 002b:00007ffd82484778 EFLAGS: 00000207 ORIG_RAX: 0000000000000101
-RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
-RDX: 000000000000275a RSI: 0000000020000080 RDI: 00000000ffffff9c
-RBP: 0000000000000000 R08: 00000000008c3880 R09: 00000000004002c8
-R10: 0000000000000000 R11: 0000000000000207 R12: 0000000000401d90
-R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
-INFO: task syz-executor212:5551 blocked for more than 140 seconds.
-       Not tainted 4.19.0-rc5+ #40
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-syz-executor212 D23736  5551   5546 0x00000004
-Call Trace:
-  context_switch kernel/sched/core.c:2825 [inline]
-  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
-  schedule+0xfe/0x460 kernel/sched/core.c:3517
-  __rwsem_down_write_failed_common+0xbb9/0x1670  
-kernel/locking/rwsem-xadd.c:566
-  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
-  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
-  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
-  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
-  inode_lock include/linux/fs.h:738 [inline]
-  process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
-  ima_file_check+0xe5/0x130 security/integrity/ima/ima_main.c:391
-  do_last fs/namei.c:3422 [inline]
-  path_openat+0x134d/0x5160 fs/namei.c:3534
-  do_filp_open+0x255/0x380 fs/namei.c:3564
-  do_sys_open+0x568/0x700 fs/open.c:1063
-  __do_sys_openat fs/open.c:1090 [inline]
-  __se_sys_openat fs/open.c:1084 [inline]
-  __x64_sys_openat+0x9d/0x100 fs/open.c:1084
-  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x440ef9
-Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
-4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
-20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
-RSP: 002b:00007ffd82484778 EFLAGS: 00000207 ORIG_RAX: 0000000000000101
-RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
-RDX: 000000000000275a RSI: 0000000020000080 RDI: 00000000ffffff9c
-RBP: 0000000000000000 R08: 00000000008c3880 R09: 00000000004002c8
-R10: 0000000000000000 R11: 0000000000000207 R12: 0000000000401d90
-R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
-INFO: task syz-executor212:5552 blocked for more than 140 seconds.
-       Not tainted 4.19.0-rc5+ #40
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-syz-executor212 D23888  5552   5544 0x00000004
-Call Trace:
-  context_switch kernel/sched/core.c:2825 [inline]
-  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
-  schedule+0xfe/0x460 kernel/sched/core.c:3517
-  __rwsem_down_write_failed_common+0xbb9/0x1670  
-kernel/locking/rwsem-xadd.c:566
-  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
-  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
-  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
-  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
-  inode_lock include/linux/fs.h:738 [inline]
-  process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
-  ima_file_check+0xe5/0x130 security/integrity/ima/ima_main.c:391
-  do_last fs/namei.c:3422 [inline]
-  path_openat+0x134d/0x5160 fs/namei.c:3534
-  do_filp_open+0x255/0x380 fs/namei.c:3564
-  do_sys_open+0x568/0x700 fs/open.c:1063
-  __do_sys_openat fs/open.c:1090 [inline]
-  __se_sys_openat fs/open.c:1084 [inline]
-  __x64_sys_openat+0x9d/0x100 fs/open.c:1084
-  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x440ef9
-Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
-4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
-20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
-RSP: 002b:00007ffd82484778 EFLAGS: 00000207 ORIG_RAX: 0000000000000101
-RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
-RDX: 000000000000275a RSI: 0000000020000080 RDI: 00000000ffffff9c
-RBP: 0000000000000000 R08: 00000000008c3880 R09: 00000000004002c8
-R10: 0000000000000000 R11: 0000000000000207 R12: 0000000000401d90
-R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
-INFO: task syz-executor212:5553 blocked for more than 140 seconds.
-       Not tainted 4.19.0-rc5+ #40
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-syz-executor212 D23736  5553   5542 0x00000004
-Call Trace:
-  context_switch kernel/sched/core.c:2825 [inline]
-  __schedule+0x86c/0x1ed0 kernel/sched/core.c:3473
-  schedule+0xfe/0x460 kernel/sched/core.c:3517
-  __rwsem_down_write_failed_common+0xbb9/0x1670  
-kernel/locking/rwsem-xadd.c:566
-  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:595
-  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
-  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
-  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
-  inode_lock include/linux/fs.h:738 [inline]
-  process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
-  ima_file_check+0xe5/0x130 security/integrity/ima/ima_main.c:391
-  do_last fs/namei.c:3422 [inline]
-  path_openat+0x134d/0x5160 fs/namei.c:3534
-  do_filp_open+0x255/0x380 fs/namei.c:3564
-  do_sys_open+0x568/0x700 fs/open.c:1063
-  __do_sys_openat fs/open.c:1090 [inline]
-  __se_sys_openat fs/open.c:1084 [inline]
-  __x64_sys_openat+0x9d/0x100 fs/open.c:1084
-  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x440ef9
-Code: 67 00 00 00 00 00 00 00 00 49 6e 76 61 6c 69 64 20 22 24 4d 61 69 6e  
-4d 73 67 51 75 65 75 65 44 65 71 75 65 75 65 54 69 6d 65 <45> 6e 64 22 2c  
-20 65 72 72 6f 72 20 25 64 2e 20 49 67 6e 6f 72 65
-RSP: 002b:00007ffd82484778 EFLAGS: 00000207 ORIG_RAX: 0000000000000101
-RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
-RDX: 000000000000275a RSI: 0000000020000080 RDI: 00000000ffffff9c
-RBP: 0000000000000000 R08: 00000000008c3880 R09: 00000000004002c8
-R10: 0000000000000000 R11: 0000000000000207 R12: 0000000000401d90
-R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
-
-Showing all locks held in the system:
-1 lock held by khungtaskd/983:
-  #0: 000000005e364832 (rcu_read_lock){....}, at:  
-debug_show_all_locks+0xd0/0x424 kernel/locking/lockdep.c:4435
-1 lock held by rsyslogd/5383:
-  #0: 000000003ee63875 (&f->f_pos_lock){+.+.}, at: __fdget_pos+0x1bb/0x200  
-fs/file.c:766
-2 locks held by getty/5505:
-  #0: 0000000016366007 (&tty->ldisc_sem){++++}, at:  
-ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
-  #1: 000000001962389b (&ldata->atomic_read_lock){+.+.}, at:  
-n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
-2 locks held by getty/5506:
-  #0: 00000000459f06bd (&tty->ldisc_sem){++++}, at:  
-ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
-  #1: 000000009ba0e33f (&ldata->atomic_read_lock){+.+.}, at:  
-n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
-2 locks held by getty/5507:
-  #0: 00000000ed059e98 (&tty->ldisc_sem){++++}, at:  
-ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
-  #1: 000000006a8dd22c (&ldata->atomic_read_lock){+.+.}, at:  
-n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
-2 locks held by getty/5508:
-  #0: 00000000de392f74 (&tty->ldisc_sem){++++}, at:  
-ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
-  #1: 000000002f41f35e (&ldata->atomic_read_lock){+.+.}, at:  
-n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
-2 locks held by getty/5509:
-  #0: 000000004b0015bd (&tty->ldisc_sem){++++}, at:  
-ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
-  #1: 00000000fbcabc1c (&ldata->atomic_read_lock){+.+.}, at:  
-n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
-2 locks held by getty/5510:
-  #0: 000000000749babf (&tty->ldisc_sem){++++}, at:  
-ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
-  #1: 0000000039eaad48 (&ldata->atomic_read_lock){+.+.}, at:  
-n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
-2 locks held by getty/5511:
-  #0: 000000009592ef13 (&tty->ldisc_sem){++++}, at:  
-ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
-  #1: 0000000080736cf9 (&ldata->atomic_read_lock){+.+.}, at:  
-n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
-2 locks held by syz-executor212/5548:
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: file_start_write  
-include/linux/fs.h:2759 [inline]
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: vfs_fallocate+0x72a/0x940  
-fs/open.c:307
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
-include/linux/fs.h:738 [inline]
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
-ext4_fallocate+0x921/0x2300 fs/ext4/extents.c:4957
-6 locks held by syz-executor212/5549:
-2 locks held by syz-executor212/5550:
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: sb_start_write  
-include/linux/fs.h:1566 [inline]
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: mnt_want_write+0x3f/0xc0  
-fs/namespace.c:360
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
-include/linux/fs.h:738 [inline]
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
-process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
-2 locks held by syz-executor212/5551:
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: sb_start_write  
-include/linux/fs.h:1566 [inline]
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: mnt_want_write+0x3f/0xc0  
-fs/namespace.c:360
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
-include/linux/fs.h:738 [inline]
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
-process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
-2 locks held by syz-executor212/5552:
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: sb_start_write  
-include/linux/fs.h:1566 [inline]
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: mnt_want_write+0x3f/0xc0  
-fs/namespace.c:360
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
-include/linux/fs.h:738 [inline]
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
-process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
-2 locks held by syz-executor212/5553:
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: sb_start_write  
-include/linux/fs.h:1566 [inline]
-  #0: 00000000dd953693 (sb_writers#4){.+.+}, at: mnt_want_write+0x3f/0xc0  
-fs/namespace.c:360
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at: inode_lock  
-include/linux/fs.h:738 [inline]
-  #1: 000000000a255960 (&sb->s_type->i_mutex_key#9){+.+.}, at:  
-process_measurement+0x190f/0x1bf0 security/integrity/ima/ima_main.c:205
-
-=============================================
-
-NMI backtrace for cpu 0
-CPU: 0 PID: 983 Comm: khungtaskd Not tainted 4.19.0-rc5+ #40
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
-Google 01/01/2011
-Call Trace:
-  __dump_stack lib/dump_stack.c:77 [inline]
-  dump_stack+0x1c4/0x2b4 lib/dump_stack.c:113
-  nmi_cpu_backtrace.cold.3+0x63/0xa2 lib/nmi_backtrace.c:101
-  nmi_trigger_cpumask_backtrace+0x1b3/0x1ed lib/nmi_backtrace.c:62
-  arch_trigger_cpumask_backtrace+0x14/0x20 arch/x86/kernel/apic/hw_nmi.c:38
-  trigger_all_cpu_backtrace include/linux/nmi.h:144 [inline]
-  check_hung_uninterruptible_tasks kernel/hung_task.c:204 [inline]
-  watchdog+0xb3e/0x1050 kernel/hung_task.c:265
-  kthread+0x35a/0x420 kernel/kthread.c:246
-  ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:413
-Sending NMI from CPU 0 to CPUs 1:
-NMI backtrace for cpu 1
-CPU: 1 PID: 5549 Comm: syz-executor212 Not tainted 4.19.0-rc5+ #40
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
-Google 01/01/2011
-RIP: 0010:mext_check_coverage.constprop.13+0x20d/0x510  
-fs/ext4/move_extent.c:101
-Code: 86 16 fe ff ff 4c 8d 24 40 48 b8 00 00 00 00 00 fc ff df 49 c1 e4 04  
-49 01 dc 49 8d 7c 24 10 48 89 fa 48 c1 ea 03 80 3c 02 00 <0f> 85 36 02 00  
-00 48 b8 00 00 00 00 00 fc ff df 4d 8b 64 24 10 49
-RSP: 0018:ffff8801b4af71c0 EFLAGS: 00000246
-RAX: dffffc0000000000 RBX: ffff8801bac71600 RCX: ffffffff821e4a52
-RDX: 1ffff1003758e2c2 RSI: ffffffff821e493b RDI: ffff8801bac71610
-RBP: ffff8801b4af7270 R08: ffff8801c3056180 R09: 1ffffffff1273955
-R10: ffffed003b5e4732 R11: ffff8801daf23993 R12: ffff8801bac71600
-R13: 00000000cbb0eca5 R14: ffff8801b0f34530 R15: ffff8801b4af73e0
-FS:  00000000008c3880(0000) GS:ffff8801daf00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: ffffffffff600400 CR3: 00000001c59e4000 CR4: 00000000001406e0
-Call Trace:
-  move_extent_per_page fs/ext4/move_extent.c:323 [inline]
-  ext4_move_extents+0x2784/0x3c20 fs/ext4/move_extent.c:669
-  ext4_ioctl+0x3154/0x4210 fs/ext4/ioctl.c:799
-  vfs_ioctl fs/ioctl.c:46 [inline]
-  file_ioctl fs/ioctl.c:501 [inline]
-  do_vfs_ioctl+0x1de/0x1720 fs/ioctl.c:685
-  ksys_ioctl+0xa9/0xd0 fs/ioctl.c:702
-  __do_sys_ioctl fs/ioctl.c:709 [inline]
-  __se_sys_ioctl fs/ioctl.c:707 [inline]
-  __x64_sys_ioctl+0x73/0xb0 fs/ioctl.c:707
-  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
-  entry_SYSCALL_64_after_hwframe+0x49/0xbe
-RIP: 0033:0x440ef9
-Code: e8 ac e8 ff ff 48 83 c4 18 c3 0f 1f 80 00 00 00 00 48 89 f8 48 89 f7  
-48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  
-ff 0f 83 0b 0a fc ff c3 66 2e 0f 1f 84 00 00 00 00
-RSP: 002b:00007ffd82484778 EFLAGS: 00000217 ORIG_RAX: 0000000000000010
-RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 0000000000440ef9
-RDX: 0000000020000040 RSI: 00000000c028660f RDI: 0000000000000003
-RBP: 0000000000000000 R08: 00000000004002c8 R09: 00000000004002c8
-R10: 00000000004002c8 R11: 0000000000000217 R12: 0000000000401d90
-R13: 0000000000401e20 R14: 0000000000000000 R15: 0000000000000000
-
-
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
-This bug is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ fs/nls/Kconfig             |   5 +
+ fs/nls/Makefile            |   1 +
+ fs/nls/nls_utf8-selftest.c | 309 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 315 insertions(+)
+ create mode 100644 fs/nls/nls_utf8-selftest.c
 
-syzbot will keep track of this bug report. See:
-https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with  
-syzbot.
-syzbot can test patches for this bug, for details see:
-https://goo.gl/tpsmEJ#testing-patches
+diff --git a/fs/nls/Kconfig b/fs/nls/Kconfig
+index 7cb2848da608..b9c9b663d0ab 100644
+--- a/fs/nls/Kconfig
++++ b/fs/nls/Kconfig
+@@ -626,4 +626,9 @@ config NLS_UTF8_NORMALIZATION
+ 	  Say Y here to enable utf8 NFKD normalization and casefolding
+ 	  support.
+ 
++config NLS_UTF8_NORMALIZATION_SELFTEST
++	tristate "Test UTF-8 normalization support"
++	depends on NLS_UTF8
++	default n
++
+ endif # NLS
+diff --git a/fs/nls/Makefile b/fs/nls/Makefile
+index e9b0b2ac8e83..71e5c0701ac6 100644
+--- a/fs/nls/Makefile
++++ b/fs/nls/Makefile
+@@ -47,6 +47,7 @@ obj-$(CONFIG_NLS_KOI8_U)	+= nls_koi8-u.o nls_koi8-ru.o
+ obj-$(CONFIG_NLS_UTF8)		+= nls_utf8.o
+ nls_utf8-y			+= nls_utf8-core.o
+ nls_utf8-$(CONFIG_NLS_UTF8_NORMALIZATION) += nls_utf8-norm.o
++obj-$(CONFIG_NLS_UTF8_NORMALIZATION_SELFTEST) += nls_utf8-selftest.o
+ 
+ obj-$(CONFIG_NLS_MAC_CELTIC)    += mac-celtic.o
+ obj-$(CONFIG_NLS_MAC_CENTEURO)  += mac-centeuro.o
+diff --git a/fs/nls/nls_utf8-selftest.c b/fs/nls/nls_utf8-selftest.c
+new file mode 100644
+index 000000000000..346da5f479f1
+--- /dev/null
++++ b/fs/nls/nls_utf8-selftest.c
+@@ -0,0 +1,309 @@
++/*
++ * Kernel module for testing utf-8 support.
++ *
++ * Copyright 2017 Collabora Ltd.
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
++
++#include <linux/module.h>
++#include <linux/printk.h>
++#include <linux/nls.h>
++
++#include "utf8n.h"
++
++unsigned int failed_tests;
++unsigned int total_tests;
++
++/* Tests will be based on this version. */
++#define latest_maj 10
++#define latest_min 0
++#define latest_rev 0
++
++#define _test(cond, func, line, fmt, ...) do {				\
++		total_tests++;						\
++		if (!cond) {						\
++			failed_tests++;					\
++			pr_err("test %s:%d Failed: %s%s",		\
++			       func, line, #cond, (fmt?":":"."));	\
++			if (fmt)					\
++				pr_err(fmt, ##__VA_ARGS__);		\
++		}							\
++	} while (0)
++#define test_f(cond, fmt, ...) _test(cond, __func__, __LINE__, fmt, ##__VA_ARGS__)
++#define test(cond) _test(cond, __func__, __LINE__, "")
++
++const static struct {
++	/* UTF-8 strings in this vector _must_ be NULL-terminated. */
++	unsigned char str[10];
++	unsigned char dec[10];
++} nfkdi_test_data[] = {
++	/* Trivial sequence */
++	{
++		/* "ABba" decomposes to itself */
++		.str = {0x41, 0x42, 0x62, 0x61, 0x00},
++		.dec = {0x41, 0x42, 0x62, 0x61, 0x00}
++	},
++	/* Simple equivalent sequences */
++	{
++		/* 'VULGAR FRACTION ONE QUARTER' decomposes to
++		   'NUMBER 1' + 'FRACTION SLASH' + 'NUMBER 4' */
++		.str = {0xc2, 0xbc, 0x00},
++		.dec = {0x31, 0xe2, 0x81, 0x84, 0x34, 0x00},
++	},
++	{
++		/* 'LATIN SMALL LETTER A WITH DIAERESIS' decomposes to
++		   'LETTER A' + 'COMBINING DIAERESIS' */
++		.str = {0xc3, 0xa4, 0x00},
++		.dec = {0x61, 0xcc, 0x88, 0x00},
++	},
++	{
++		/* 'LATIN SMALL LETTER LJ' decomposes to
++		   'LETTER L' + 'LETTER J' */
++		.str = {0xC7, 0x89, 0x00},
++		.dec = {0x6c, 0x6a, 0x00},
++	},
++	{
++		/* GREEK ANO TELEIA decomposes to MIDDLE DOT */
++		.str = {0xCE, 0x87, 0x00},
++		.dec = {0xC2, 0xB7, 0x00}
++	},
++	/* Canonical ordering */
++	{
++		/* A + 'COMBINING ACUTE ACCENT' + 'COMBINING OGONEK' decomposes
++		   to A + 'COMBINING OGONEK' + 'COMBINING ACUTE ACCENT' */
++		.str = {0x41, 0xcc, 0x81, 0xcc, 0xa8, 0x0},
++		.dec = {0x41, 0xcc, 0xa8, 0xcc, 0x81, 0x0},
++	},
++	{
++		/* 'LATIN SMALL LETTER A WITH DIAERESIS' + 'COMBINING OGONEK'
++		   decomposes to
++		   'LETTER A' + 'COMBINING OGONEK' + 'COMBINING DIAERESIS' */
++		.str = {0xc3, 0xa4, 0xCC, 0xA8, 0x00},
++
++		.dec = {0x61, 0xCC, 0xA8, 0xcc, 0x88, 0x00},
++	},
++
++};
++
++const static struct {
++	/* UTF-8 strings in this vector _must_ be NULL-terminated. */
++	unsigned char str[30];
++	unsigned char ncf[30];
++} nfkdicf_test_data[] = {
++	/* Trivial sequences */
++	{
++		/* "ABba" folds to lowercase */
++		.str = {0x41, 0x42, 0x62, 0x61, 0x00},
++		.ncf = {0x61, 0x62, 0x62, 0x61, 0x00},
++	},
++	{
++		/* All ASCII folds to lower-case */
++		.str = "ABCDEFGHIJKLMNOPRSTUVWXYZ0.1",
++		.ncf = "abcdefghijklmnoprstuvwxyz0.1",
++	},
++	{
++		/* LATIN SMALL LETTER SHARP S folds to
++		   LATIN SMALL LETTER S + LATIN SMALL LETTER S */
++		.str = {0xc3, 0x9f, 0x00},
++		.ncf = {0x73, 0x73, 0x00},
++	},
++	{
++		/* LATIN CAPITAL LETTER A WITH RING ABOVE folds to
++		   LATIN SMALL LETTER A + COMBINING RING ABOVE */
++		.str = {0xC3, 0x85, 0x00},
++		.ncf = {0x61, 0xcc, 0x8a, 0x00},
++	},
++	/* Introduced by UTF-8.0.0. */
++	/* Cherokee letters are interesting test-cases because they fold
++	   to upper-case.  Before 8.0.0, Cherokee lowercase were
++	   undefined, thus, the folding from LC is not stable between
++	   7.0.0 -> 8.0.0, but it is from UC. */
++	{
++		/* CHEROKEE SMALL LETTER A folds to CHEROKEE LETTER A */
++		.str = {0xea, 0xad, 0xb0, 0x00},
++		.ncf = {0xe1, 0x8e, 0xa0, 0x00},
++	},
++	{
++		/* CHEROKEE SMALL LETTER YE folds to CHEROKEE LETTER YE */
++		.str = {0xe1, 0x8f, 0xb8, 0x00},
++		.ncf = {0xe1, 0x8f, 0xb0, 0x00},
++	},
++	{
++		/* OLD HUNGARIAN CAPITAL LETTER AMB folds to
++		   OLD HUNGARIAN SMALL LETTER AMB */
++		.str = {0xf0, 0x90, 0xb2, 0x83, 0x00},
++		.ncf = {0xf0, 0x90, 0xb3, 0x83, 0x00},
++	},
++	/* Introduced by UTF-9.0.0. */
++	{
++		/* OSAGE CAPITAL LETTER CHA folds to
++		   OSAGE SMALL LETTER CHA */
++		.str = {0xf0, 0x90, 0x92, 0xb5, 0x00},
++		.ncf = {0xf0, 0x90, 0x93, 0x9d, 0x00},
++	},
++	{
++		/* LATIN CAPITAL LETTER SMALL CAPITAL I folds to
++		   LATIN LETTER SMALL CAPITAL I */
++		.str = {0xea, 0x9e, 0xae, 0x00},
++		.ncf = {0xc9, 0xaa, 0x00},
++	},
++};
++
++static void check_utf8_nfkdi(void)
++{
++	int i;
++	struct utf8cursor u8c;
++	const struct utf8data *data;
++
++	data = utf8nfkdi(UNICODE_AGE(latest_maj, latest_min, latest_rev));
++	if (!data) {
++		pr_err("%s: Unable to load utf8-%d.%d.%d. Skipping.\n",
++		       __func__, latest_maj, latest_min, latest_rev);
++		return;
++	}
++
++	for (i = 0; i < ARRAY_SIZE(nfkdi_test_data); i++) {
++		int len = strlen(nfkdi_test_data[i].str);
++		int nlen = strlen(nfkdi_test_data[i].dec);
++		int j = 0;
++		unsigned char c;
++
++		test((utf8len(data, nfkdi_test_data[i].str) == nlen));
++		test((utf8nlen(data, nfkdi_test_data[i].str, len) == nlen));
++
++		if (utf8cursor(&u8c, data, nfkdi_test_data[i].str) < 0)
++			pr_err("can't create cursor\n");
++
++		while ((c = utf8byte(&u8c)) > 0) {
++			test_f((c == nfkdi_test_data[i].dec[j]),
++			       "Unexpected byte 0x%x should be 0x%x\n",
++			       c, nfkdi_test_data[i].dec[j]);
++			j++;
++		}
++
++		test((j == nlen));
++	}
++}
++
++static void check_utf8_nfkdicf(void)
++{
++	int i;
++	struct utf8cursor u8c;
++	const struct utf8data *data;
++
++	data = utf8nfkdicf(UNICODE_AGE(latest_maj, latest_min, latest_rev));
++	if (!data) {
++		pr_err("%s: Unable to load utf8-%d.%d.%d. Skipping.\n",
++		       __func__, latest_maj, latest_min, latest_rev);
++		return;
++	}
++
++	for (i = 0; i < ARRAY_SIZE(nfkdicf_test_data); i++) {
++		int len = strlen(nfkdicf_test_data[i].str);
++		int nlen = strlen(nfkdicf_test_data[i].ncf);
++		int j = 0;
++		unsigned char c;
++
++		test((utf8len(data, nfkdicf_test_data[i].str) == nlen));
++		test((utf8nlen(data, nfkdicf_test_data[i].str, len) == nlen));
++
++		if (utf8cursor(&u8c, data, nfkdicf_test_data[i].str) < 0)
++			pr_err("can't create cursor\n");
++
++		while ((c = utf8byte(&u8c)) > 0) {
++			test_f((c == nfkdicf_test_data[i].ncf[j]),
++			       "Unexpected byte 0x%x should be 0x%x\n",
++			       c, nfkdicf_test_data[i].ncf[j]);
++			j++;
++		}
++
++		test((j == nlen));
++	}
++}
++
++static void check_utf8_comparisons(void)
++{
++	int i;
++	struct nls_table *table = load_nls_version("utf8", "10.0.0",
++						   NLS_UTF8_NORMALIZATION_TYPE_NFKD |
++						   NLS_UTF8_CASEFOLD_TYPE_NFKDCF);
++
++	if (IS_ERR(table)) {
++		pr_err("%s: Unable to load utf8 %d.%d.%d. Skipping.\n",
++		       __func__, latest_maj, latest_min, latest_rev);
++		return;
++	}
++
++	for (i = 0; i < ARRAY_SIZE(nfkdi_test_data); i++) {
++		const char *s1 = nfkdi_test_data[i].str;
++		const char *s2 = nfkdi_test_data[i].dec;
++
++		test_f(!nls_strncmp(table, s1, strlen(s1), s2, strlen(s2)),
++		       "%s %s comparison mismatch\n", s1, s2);
++	}
++	for (i = 0; i < ARRAY_SIZE(nfkdicf_test_data); i++) {
++		const char *s1 = nfkdicf_test_data[i].str;
++		const char *s2 = nfkdicf_test_data[i].ncf;
++
++		test_f(!nls_strncasecmp(table, s1, strlen(s1),
++					s2, strlen(s2)),
++		       "%s %s comparison mismatch\n", s1, s2);
++	}
++
++	unload_nls(table);
++}
++
++static void check_supported_versions(void)
++{
++	/* Unicode 7.0.0 should be supported. */
++	test(utf8version_is_supported(7, 0, 0));
++
++	/* Unicode 9.0.0 should be supported. */
++	test(utf8version_is_supported(9, 0, 0));
++
++	/* Unicode 10.0.0 (the latest version) should be supported. */
++	test(utf8version_is_supported(latest_maj, latest_min, latest_rev));
++
++	/* Next versions don't exist. */
++	test(!utf8version_is_supported(11, 0, 0));
++	test(!utf8version_is_supported(0, 0, 0));
++	test(!utf8version_is_supported(-1, -1, -1));
++}
++
++static int __init init_test_ucd(void)
++{
++	failed_tests = 0;
++	total_tests = 0;
++
++	check_supported_versions();
++	check_utf8_nfkdi();
++	check_utf8_nfkdicf();
++	check_utf8_comparisons();
++
++	if (!failed_tests)
++		pr_info("All %u tests passed\n", total_tests);
++	else
++		pr_err("%u out of %u tests failed\n", failed_tests,
++		       total_tests);
++	return 0;
++}
++
++static void __exit exit_test_ucd(void)
++{
++}
++
++module_init(init_test_ucd);
++module_exit(exit_test_ucd);
++
++MODULE_AUTHOR("Gabriel Krisman Bertazi <krisman@collabora.co.uk>");
++MODULE_LICENSE("GPL");
+-- 
+2.19.1
