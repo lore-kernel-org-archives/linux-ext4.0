@@ -1,79 +1,98 @@
 Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:33002 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727013AbeJQUwO (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 17 Oct 2018 16:52:14 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 1E5582AFAE
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Oct 2018 12:56:38 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201461] New: ext4 journal stalls write system call
-Date: Wed, 17 Oct 2018 12:56:38 +0000
-Message-ID: <bug-201461-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:50146 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727359AbeJRExn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:53:43 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org, Olaf Weber <olaf@sgi.com>,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v3 12/23] nls: utf8n: Add unicode character database files
+Date: Wed, 17 Oct 2018 16:55:13 -0400
+Message-Id: <20181017205524.23360-13-krisman@collabora.co.uk>
+In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
+References: <20181017205524.23360-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201461
+From: Olaf Weber <olaf@sgi.com>
 
-            Bug ID: 201461
-           Summary: ext4 journal stalls write system call
-           Product: File System
-           Version: 2.5
-    Kernel Version: 3.10.0-229.el7.x86_64
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: zhenbianshu@foxmail.com
-        Regression: No
+Add files from the Unicode Character Database, version 10.0.0, to the
+source.  A helper program that generates a trie used for normalization
+from these files is part of a separate commit.
 
-I am using CentOS 7.1.1503 with kernel linux 3.10.0-229.el7.x86_64, ext4 file
-system with ordered journal mode, and delalloc enabled.
+- Notes on the update from 8.0.0 and 10.0.0:
 
-When my app writes logs to a file continually (about 6M/s), I can find the
-write system call stalled for 100-700 ms occasionally, When I disable ext4's
-journal feature, or set the journal mode to writeback, or disable delay
-allocate, the stalling disappears. When I set linux's writeback more frequent,
-dirty page expire time shorter, the problem reduced. 
+The structure of ucd files and special cases have not experienced any
+changes between versions 8.0.0 and 10.0.0.  8.0.0 saw the addition of
+Cherokee LC characters, which is an interesting case for case-folding.
+The update is accompanied by new tests on the test_ucd module to catch
+specific cases.  No changes to mkutf8data script was required for the
+update.
 
-I printed the process's stack when stalling happends, I got this:
+The actual files are not part of the commit submitted to the list
+because they are to big and would bounce.  Still, they can be obtained
+by the following script:
 
+FILES="CaseFolding.txt DerivedAge.txt extracted/DerivedCombiningClass.txt
+       DerivedCoreProperties.txt NormalizationCorrections.txt
+       NormalizationTest.txt UnicodeData.txt"
+VERSION=10.0.0
+BASE=http://www.unicode.org/Public/${VERSION}/ucd
 
-[<ffffffff812e31f4>] call_rwsem_down_read_failed+0x14/0x30
-[<ffffffffa0195854>] ext4_da_get_block_prep+0x1a4/0x4b0 [ext4]
-[<ffffffff811fbe17>] __block_write_begin+0x1a7/0x490
-[<ffffffffa019b71c>] ext4_da_write_begin+0x15c/0x340 [ext4]
-[<ffffffff8115685e>] generic_file_buffered_write+0x11e/0x290
-[<ffffffff811589c5>] __generic_file_aio_write+0x1d5/0x3e0
-[<ffffffff81158c2d>] generic_file_aio_write+0x5d/0xc0
-[<ffffffffa0190b75>] ext4_file_write+0xb5/0x460 [ext4]
-[<ffffffff811c64cd>] do_sync_write+0x8d/0xd0
-[<ffffffff811c6c6d>] vfs_write+0xbd/0x1e0
-[<ffffffff811c76b8>] SyS_write+0x58/0xb0
-[<ffffffff81614a29>] system_call_fastpath+0x16/0x1b
-[<ffffffffffffffff>] 0xffffffffffffffff
+for i in ${FILES} ; do
+  wget "${BASE}/$i" -O fs/nls/ucd/$(basename ${i} .txt)-${VERSION}.txt
+done
 
+Signed-off-by: Olaf Weber <olaf@sgi.com>
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+  [Move ucd directory to fs/nls/]
+  [Update to ucd-10.0.0]
+---
+ fs/nls/ucd/README | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+ create mode 100644 fs/nls/ucd/README
 
-I read the source code of linux kernel, and found that
-call_rwsem_down_read_failed will call rwsem_down_read_failed which will keep
-waiting for rw_semaphore.
-
-I think the reason is that metadata journal flushing must wait for related
-dirty pages flushed, when dirty pages flushing took long time, the journal
-blocked, and journal commit has this inode's rw_semaphore, write system call to
-this inode is stalled.
-
-I really hope I can find evidence to prove it.
-
+diff --git a/fs/nls/ucd/README b/fs/nls/ucd/README
+new file mode 100644
+index 000000000000..67f2075d1fca
+--- /dev/null
++++ b/fs/nls/ucd/README
+@@ -0,0 +1,33 @@
++The files in this directory are part of the Unicode Character Database
++for version 10.0.0 of the Unicode standard.
++
++The full set of files can be found here:
++
++  http://www.unicode.org/Public/10.0.0/ucd/
++
++The latest released version of the UCD can be found here:
++
++  http://www.unicode.org/Public/UCD/latest/
++
++The files in this directory are identical, except that they have been
++renamed with a suffix indicating the unicode version.
++
++Individual source links:
++
++  http://www.unicode.org/Public/10.0.0/ucd/CaseFolding.txt
++  http://www.unicode.org/Public/10.0.0/ucd/DerivedAge.txt
++  http://www.unicode.org/Public/10.0.0/ucd/extracted/DerivedCombiningClass.txt
++  http://www.unicode.org/Public/10.0.0/ucd/DerivedCoreProperties.txt
++  http://www.unicode.org/Public/10.0.0/ucd/NormalizationCorrections.txt
++  http://www.unicode.org/Public/10.0.0/ucd/NormalizationTest.txt
++  http://www.unicode.org/Public/10.0.0/ucd/UnicodeData.txt
++
++md5sums
++
++  7893b6e005c5a521319a0d12062ae122  CaseFolding-10.0.0.txt
++  a602e4b44de3350087e40f2eb2184898  DerivedAge-10.0.0.txt
++  5abdeb21af4edcc5d1e4c0b5802fc7a7  DerivedCombiningClass-10.0.0.txt
++  eda11c2c2e3c308d9d3b90e2b3282024  DerivedCoreProperties-10.0.0.txt
++  425ece5ffbecd0140d98c13ce05724aa  NormalizationCorrections-10.0.0.txt
++  7296fe7aa07d7d288e65d559af2ad49b  NormalizationTest-10.0.0.txt
++  2a52f30695dcc821f0f224650552beaf  UnicodeData-10.0.0.txt
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.19.1
