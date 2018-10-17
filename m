@@ -1,45 +1,94 @@
-Return-Path: <SRS0=ufRS=NJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:46088 "EHLO relay.sw.ru"
+Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from sandeen.net ([63.231.237.45]:46592 "EHLO sandeen.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727456AbeJ3Agm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 29 Oct 2018 20:36:42 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH 7/7] ext4 resize: lost resize_inode cleanup before retry in
- ext4_resize_fs()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-Message-ID: <cc935d9e-0e59-fba9-ecdd-a01b435eb5bd@virtuozzo.com>
-Date: Mon, 29 Oct 2018 18:25:40 +0300
+        id S1727014AbeJRDju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 17 Oct 2018 23:39:50 -0400
+Subject: Re: [PATCH 0/3] ext2, ext4, xfs: hard fail dax mount on unsupported
+ devices
+To: Ross Zwisler <zwisler@kernel.org>, Christoph Hellwig <hch@lst.de>
+Cc: Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
+ <20181011103636.GC9467@quack2.suse.cz>
+ <CAPcyv4iAD_wkjY1way1rOxr4=gC_TGx71VquF13ooAuUPz9RJw@mail.gmail.com>
+ <5a8e54e8-4845-1c85-e4e9-0b9b551a9ce2@sandeen.net>
+ <20181012082154.GB30154@lst.de>
+ <CAOxpaSWf=6RBTa3WM=Hnbr7MwpQ5mMSMAZ+B5FfZo3zKv4Nu7w@mail.gmail.com>
+From: Eric Sandeen <sandeen@sandeen.net>
+Message-ID: <116ef687-f23d-b45c-1b48-fd444b346719@sandeen.net>
+Date: Wed, 17 Oct 2018 14:42:36 -0500
 MIME-Version: 1.0
+In-Reply-To: <CAOxpaSWf=6RBTa3WM=Hnbr7MwpQ5mMSMAZ+B5FfZo3zKv4Nu7w@mail.gmail.com>
 Content-Type: text/plain; charset=utf-8
 Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fixes 1c6bd7173d66 ("ext4: convert file system to meta_bg if needed ...")
-#? cc: stable <stable@vger.kernel.org>     # 3.7+
 
-Signed-off-by: Vasily Averin <vvs@openvz.org>
----
- fs/ext4/resize.c | 4 ++++
- 1 file changed, 4 insertions(+)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 16b7cfe485d7..3006ede18773 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -2059,6 +2059,10 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 		n_blocks_count_retry = 0;
- 		free_flex_gd(flex_gd);
- 		flex_gd = NULL;
-+		if (resize_inode) {
-+			iput(resize_inode);
-+			resize_inode = NULL;
-+		}
- 		goto retry;
- 	}
- 
--- 
-2.17.1
+On 10/13/18 11:05 AM, Ross Zwisler wrote:
+> On Fri, Oct 12, 2018 at 2:21 AM Christoph Hellwig <hch@lst.de> wrote:
+>>
+>> On Thu, Oct 11, 2018 at 01:38:34PM -0500, Eric Sandeen wrote:
+>>>> The different behavior between filesystems was confusing customers so
+>>>> we had to align them, then the question was which default to pick.
+>>>> Honestly, we came to the decision to bring ext4 in line with the xfs
+>>>> behavior because we thought that would be easier than the alternative.
+>>>> Dave and Christoph made repeated arguments that DAX is just a hidden
+>>>> performance optimization that no application should rely on, so we
+>>>> went the path of least resistance and changed the ext4 default.
+>>>
+>>> Ok, well, I guess we'd better reconcile "it's a hidden performance hint"
+>>> with "if the administrator asked they must receive..." before making this
+>>> change... cc: hch for bonus input.
+>>
+>> I don't really care too mouch on the mount options, the important bit
+>> was the application behavior.
+>>
+>> I fully agree with Dan that we should have the same behavior for every
+>> file system, though.
+> 
+> One factor that might influence this is how we expect users to detect
+> whether or not DAX is being used, and whether that can vary per-inode
+> within a filesystem.  If we choose to only have the mount option then
+> I agree that a hard failure when -o dax doesn't work seems fine.  And
+> of course keeping the filesystems behaving the same is desirable.
+> 
+> If we eventually do go back to having a per-inode DAX option, though,
+> the mount option becomes a hint as to what the default behavior is,
+> and the user will need another way to detect whether or not DAX is
+> being used for a given inode.  In that case having the mount option
+> fail loudly isn't as important because all we've really changed is the
+> filesystem's default, and the application will still need a consistent
+> way of detecting whether the inode they are actually using is DAX or
+> not.
+> 
+> I'm not sure if per-inode DAX is still a goal for anyone.  If not,
+> then sure, using the DAX mount option as the one source of truth and
+> making it a hard failure when it doesn't work seems reasonable.
+
+I've been thinking about the per-inode stuff a bit, and while I don't know
+how to resolve some of the trickier issues, at least the expected behavior
+seems like something we can narrow down and specify.
+
+Because it's an on-disk flag (in xfs today, in any case) it seems that
+the only sane behavior to expect is either/or, i.e.:
+
+Mount option: All files always dax, per-inode flags ignored (or rejected)
+Per-inode: Mount option cannot be specified; only inodes explicitly flagged are dax
+
+Think about it; what would mount-option-plus-per-inode mean?  We have
+no "negative" dax flag, so while mount-option-with-flag surely means
+"dax", what the heck does mount-option-without-flag mean, and how is it
+distinguishable from mount option only?
+
+I submit that flags can only have meaning w/o the fs-wide mount option
+enabled, so the question of "should we hard fail mount -o dax for devices
+that cannot support it" seems to be orthogonal to the per-inode question.
+
+i.e. mount -o dax really can only mean "I want dax on everything" and so
+again, I think we probably need to fail the mount if that can't be honored.
+
+-Eric
