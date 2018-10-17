@@ -1,173 +1,252 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-ot1-f68.google.com ([209.85.210.68]:36587 "EHLO
-        mail-ot1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727307AbeJRKA2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 06:00:28 -0400
-Received: by mail-ot1-f68.google.com with SMTP id x4so26839117otg.3
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Oct 2018 19:01:55 -0700 (PDT)
+Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:50090 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725798AbeJREw6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:52:58 -0400
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+To: tytso@mit.edu
+Cc: linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v3 00/23] Ext4 Encoding and Case-insensitive support
+Date: Wed, 17 Oct 2018 16:55:01 -0400
+Message-Id: <20181017205524.23360-1-krisman@collabora.co.uk>
 MIME-Version: 1.0
-References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
- <20181011103636.GC9467@quack2.suse.cz> <CAPcyv4iAD_wkjY1way1rOxr4=gC_TGx71VquF13ooAuUPz9RJw@mail.gmail.com>
- <5a8e54e8-4845-1c85-e4e9-0b9b551a9ce2@sandeen.net> <20181012082154.GB30154@lst.de>
- <CAOxpaSWf=6RBTa3WM=Hnbr7MwpQ5mMSMAZ+B5FfZo3zKv4Nu7w@mail.gmail.com>
- <116ef687-f23d-b45c-1b48-fd444b346719@sandeen.net> <x491s8ofeg2.fsf@segfault.boston.devel.redhat.com>
- <CAPcyv4iOH4o_1mBh2a1jEqJZGxwki2FHqp8UM0Cj-ZCzHoxQWQ@mail.gmail.com> <20181018010500.GD6311@dastard>
-In-Reply-To: <20181018010500.GD6311@dastard>
-From: Dan Williams <dan.j.williams@intel.com>
-Date: Wed, 17 Oct 2018 19:01:43 -0700
-Message-ID: <CAPcyv4gSAsDg0uQkZwAWn-pASmxH0LKwx6MwQuWs-YKwnS1eRA@mail.gmail.com>
-Subject: Re: [PATCH 0/3] ext2, ext4, xfs: hard fail dax mount on unsupported devices
-To: david <david@fromorbit.com>
-Cc: jmoyer <jmoyer@redhat.com>, Eric Sandeen <sandeen@sandeen.net>,
-        zwisler@kernel.org, Christoph Hellwig <hch@lst.de>,
-        Jan Kara <jack@suse.cz>, linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 17, 2018 at 6:05 PM Dave Chinner <david@fromorbit.com> wrote:
->
-> On Wed, Oct 17, 2018 at 02:44:55PM -0700, Dan Williams wrote:
-> > On Wed, Oct 17, 2018 at 2:31 PM Jeff Moyer <jmoyer@redhat.com> wrote:
-> > >
-> > > Eric Sandeen <sandeen@sandeen.net> writes:
-> > >
-> > > > I've been thinking about the per-inode stuff a bit, and while I don't know
-> > > > how to resolve some of the trickier issues, at least the expected behavior
-> > > > seems like something we can narrow down and specify.
-> > > >
-> > > > Because it's an on-disk flag (in xfs today, in any case) it seems that
-> > > > the only sane behavior to expect is either/or, i.e.:
-> > > >
-> > > > Mount option: All files always dax, per-inode flags ignored (or rejected)
-> > > > Per-inode: Mount option cannot be specified; only inodes explicitly flagged are dax
-> > > >
-> > > > Think about it; what would mount-option-plus-per-inode mean?  We have
-> > > > no "negative" dax flag, so while mount-option-with-flag surely means
-> > > > "dax", what the heck does mount-option-without-flag mean, and how is it
-> > > > distinguishable from mount option only?
-> > > >
-> > > > I submit that flags can only have meaning w/o the fs-wide mount option
-> > > > enabled, so the question of "should we hard fail mount -o dax for devices
-> > > > that cannot support it" seems to be orthogonal to the per-inode question.
-> > > >
-> > > > i.e. mount -o dax really can only mean "I want dax on everything" and so
-> > > > again, I think we probably need to fail the mount if that can't be honored.
-> > >
-> > > I hate to even open up this can of worms, but what about killing the dax
-> > > mount option?
-> > >
-> > > To quote Christoph:
-> > >   How does an application "make use of DAX"?  What actual user visible
-> > >   semantics are associated with a file that has this flag set?
-> > >
-> > > We're already talking about making caching decisions automatically, so
-> > > does DAX even mean anything at that point?  If the storage and the file
-> > > system support it, enable it.
-> > >
-> > > From what we've seen so far, aplications want:
-> > > 1) to be able to make data persistent from userspace
-> > >    For this, we have MAP_SYNC.
-> > > 2) to determine whether or not page cache will be used
-> > >    For this, we have O_DIRECT for read/write access, and MAP_SYNC for
-> > >    mmap access (and maybe a third option coming, we'll see).
-> >
-> > As Jan has said, it's not safe to assume that 'no page cache' is
-> > implied with MAP_SYNC. It's a side effect not a contract of the
-> > current implementation.
->
-> Even MAP_DIRECT shouldn't mean "no page cache". O_DIRECT is a hint,
-> not a guarantee, and so it may very well use the page cache if it
-> needs to (as I've just explained in detail in a different thread).
->
-> > > The only thing users gain from a mount option is the ability to turn OFF
-> > > dax.  I suppose there might be a use case that wants this, but I'm not
-> > > aware of it.
-> >
-> > I think we're stuck with it as many scripts would break if it ever
-> > went completely away. However, we could mark it deprecated / ignored
->
-> I don't really care that much about this - it is still marked
-> experimental.
->
-> That said, deprecation is the best way forward here if we are going
-> to remove the mount option. We've done this for other XFS mount
-> options recently (e.g. barrier/nobarrier) where the functionality is
-> now fully baked into the fileystem and there's no user option to
-> control it anymore.
->
-> What we really need is a document describing the expected behaviour
-> of filesysetms on dax-capable storage. Let's nail down exactly what
-> we need to do to pull DAX out of the experimental state before we
-> start changing things. We've been doing things in a very ad-hoc way
-> for a while now, and we're not really converging on an endpoint where we
-> can say "we're done, have at it".
->
-> I think we need to decide on:
->
-> - default filesystem behaviour on dax-capable block devices
-> - what information aout DAX do applications actually need? What
->   makes sense to provide them with that information?
-> - how to provide hints to the kernel for desired behaviour
->   - on-disk inode flags, or something else?
->   - dax/nodax mount options or root dir inode flags become default
->     global hints?
->   - is a single hint flag sufficient or do we also need an
->     explicit "do not use dax" flag?
-> - behaviour of MAP_SYNC w.r.t. non-DAX filesystems that can provide
->   required MAP_SYNC semnatics
-> - behaviour of MAP_DIRECT - hint like O_DIRECT or guarantee?
-> - default read/write path behaviour of dax-capable block devices
->   - automatically bypass the pagecache if bdev is capable?
-> - default mmap behaviour on dax capable devices
->   - use dax always?
-> - DAX vs get_user_pages_longterm
->   - turns off DAX dynamically?
->   - how do DAX-enabled filesystems interact with page fault capable
->     hardware? Can we allow DAX in those cases?
->
-> I'm sure there's a heap more we need to document and nail down.
-> There's a lot of stuff to sort out before we start hammering on
-> random bits of code....
+Hi,
 
-Nice, yes, I'll add some more:
+Here is the v3.  The changes include:
 
-- Is MADV_DIRECT_ACCESS a hint or a requirement?
-- How does the kernel communicate the effective mode of a mapping
-  taking into account madvise(), inode flags, mount options, and / or
-  default fs behavior? New madvice() syscall?
-- What is the behavior of dax in the presence of reflink'd extents?
-  Just failing seems the 'experimental' behavior. What to do about
-  page->index when page belongs to more than 1 file via reflink?
-- Is there ever a case to force disable dax operation? To date we've
-  only ever thought about interfaces to force *enable* dax operation
-- The virtio-pmem use case wants dax mappings but requires an explicit
-  fsync() instead of MAP_SYNC to flush software buffers, it's a DAX
-  sub-set, should it have it's own name?
-- DAX operation is loosely tied to block devices. There has been
-  discussions of mounting filesystems on /dev/dax devices directly.
-  Should we take that to its logical conclusion and support a
-  block-layer-less conversion of dax-capable file systems?
-- Willy has proposed that the Xarray cache file-offset-to-physical
-  address lookups, currently it only tracks dirty mapping state
-- The NVDIMM sub-system tracks badblocks, but the filesytem currently
-  only finds out about them late when it attempts dax_direct_access().
-  Applications want to be able to list files+offsets that have
-  experienced media corruption.
+ - Remove encoding mount option patch
+ - Rename superblock and feature fields
+ - Split the field declaration patch
+ - Squash the dcache hooks into the original patch
+ - Drop the use of d_add_ci and the d_add_ci quirk.
 
-> > provided we had a way for applications to query and override if DAX is
-> > enabled. I also think it's important to keep separate the dax-mmap
-> > behavior from the dax-read/write behavior. dax-mmap is where an
-> > application would make different decisions if it can get a mapping
-> > without page cache,
->
-> The functionality people keep saying "requires DAX" really doesn't -
-> what it really requires is that mmap() exposes filesystem tracked
-> pmem in a CPU addressable memory range. DAX is not the only way to
-> do that - a filesystem with a pmem-based persistent page cache can
-> provide MAP_SYNC semantics to userspace without being a DAX
-> filesystem.
+The most important change is the last one. d_add_ci() was not being
+actually used as intendedin my original design, because the quirk, in association
+with the encoding aware d_compare() would always call d_splice_alias
+directly.  So we can just do it directly, which simplifies the code in
+ext4_lookup().
 
-*nod*
+Notice however, that we are still storing a single dentry in the dcache
+for each object, since we search and retrieve using the encoding-aware
+hash and compare. The dentry name in the cache, however, is the one of the
+first use.  Is this a real problem?
+
+I have also submitted the e2fsprogs patches in a separate thread, but if
+you want to just checkout everything at once:
+
+ - e2fsprogs: https://gitlab.collabora.com/krisman/e2fsprogs.git -b encoding-feature-merge
+ - linux: https://gitlab.collabora.com/krisman/linux.git -b ext4-ci-directory_v3
+ - xfstests: https://gitlab.collabora.com/krisman/xfstests.git -b encoding
+
+Thanks,
+
+---
+Previous message:
+
+This patchset implements encoding support as a superblock feature, valid
+for the entire disk, and Case-insensitive lookups support as a
+per-directory feature, configured as an inode flag.  Alongside the
+addition of the casefolding patch, which was not part of v1, I fixed
+some bugs and addressed the concerns raised regarding invalid sequences
+and what normalization we use.
+
+My approach to solve the two problems above is to make things more
+flexible.  An encoding flags field in the superblock registers what kind
+of normalization is used by the filesystem.  Right now, the only
+encoding supported for utf8 is NFKD, for instance, but if we want to
+support a different normalization function in the future, we can be
+backward compatible.  Likewise, superblock flags also define the
+behavior when dealing with invalid sequences.  The default behavior is
+to just treat invalid sequences as opaque byte sequences, falling back
+to the original behavior. Alternatively if the strict flag is enabled,
+the kernel will reject invalid sequences as soon as they are detected.
+All these flags, can only be set at mkfs time, using the encoding_flags
+parameter.
+
+Each encoding has its default flags, when creating the filesystem in
+mkfs, regarding normalization/casefold functions and how to deal with
+opaque sequences.
+
+The NLS patches implement generic casefold and normalization operation
+(defined as tolower() and identity(), respectively), allowing us to use
+any NLS charset in the kernel.  We store the NLS charset as a magic
+number in the superblock, and for that only a few charsets are defined.
+If you want to force a different charset, the encoding and
+encoding_flags mount options are also provided.
+
+This patchset also includes the NLS changes that I am proposing,
+including the entire utf8 normalization implementation.  Differently
+from the previous version, I merged utf8 and utf8n, allowing the user to
+request a specific normalization (or no normalization at all) using the
+flags. As usual, I did not include the source ucd files because they
+would bounce in the list, but a completely functional implementation can
+be found at:
+
+I am also not supporting encoding with encrypted directories, given the
+cost of searching encrypted directories where the diggested name is not
+normalized. This means that we need to decrypt each filename beforehand,
+so I decided to simply skip this for now.  If the user tries to mount
+with encoding a directory that has the encryption feature, we simply
+bail out saying it is not supported.
+
+The patchset survives without failures the smoke tests of xfstests, with
+the obvious exception of generic/453.  This test, which verifies that
+multiple files having equivalent names (which would match in utf8
+normalization) are not the same file, doesn't really make sense with
+this patchset, since it basically verifies the fs is *not* encoding
+aware.
+
+We also developed encoding and casefolding tests for xfstests, allowing
+us to quickly verify the implementation.  I will be sumitting them
+upstream too, but for now they are available at:
+
+These tests validate the usage on inline dirs, on dx directories, when
+dealing with dcache and more.  I am happy with the coverage we have now,
+but if you have specific concerns I can add more tests.
+
+A modified version of e2fsprogs is necessary to run the tests and to
+enable the feature.  Support for mkfs, fsck, lsattr, chattr is
+available.  I also hacked tune2fs to prevent it from setting the
+encryption flag when encoding is enabled.  This tune2fs change is
+temporary until we are able to support these two features together.
+
+Gabriel Krisman Bertazi (19):
+  nls: Wrap uni2char/char2uni callers
+  nls: Wrap charset field access
+  nls: Wrap charset hooks in ops structure
+  nls: Split default charset from NLS core
+  nls: Split struct nls_charset from struct nls_table
+  nls: Add support for multiple versions of an encoding
+  nls: Implement NLS_STRICT_MODE flag
+  nls: Let charsets define the behavior of tolower/toupper
+  nls: Add new interface for string comparisons
+  nls: Add optional normalization and casefold hooks
+  nls: ascii: Support validation and normalization operations
+  nls: utf8: Move nls-utf8{,-core}.c
+  nls: utf8: Integrate utf8 normalization code with utf8 charset
+  nls: utf8: Introduce test module for normalized utf8 implementation
+  ext4: Reserve superblock fields for encoding information
+  ext4: Include encoding information in the superblock
+  ext4: Support encoding-aware file name lookups
+  ext4: Implement EXT4_CASEFOLD_FL flag
+  docs: ext4.rst: Document encoding and case-insensitive
+
+Olaf Weber (4):
+  nls: utf8n: Add unicode character database files
+  scripts: add trie generator for UTF-8
+  nls: utf8: Introduce code for UTF-8 normalization
+  nls: utf8n: reduce the size of utf8data[]
+
+ Documentation/admin-guide/ext4.rst   |   29 +
+ fs/befs/linuxvfs.c                   |    8 +-
+ fs/cifs/cifs_unicode.c               |   15 +-
+ fs/cifs/cifsfs.c                     |    2 +-
+ fs/cifs/connect.c                    |    2 +-
+ fs/cifs/dir.c                        |    7 +-
+ fs/ext4/dir.c                        |   59 +
+ fs/ext4/ext4.h                       |   30 +-
+ fs/ext4/hash.c                       |   38 +-
+ fs/ext4/ialloc.c                     |    2 +-
+ fs/ext4/inline.c                     |    2 +-
+ fs/ext4/inode.c                      |    4 +-
+ fs/ext4/ioctl.c                      |   18 +
+ fs/ext4/namei.c                      |   85 +-
+ fs/ext4/super.c                      |   77 +
+ fs/fat/dir.c                         |   13 +-
+ fs/fat/inode.c                       |    6 +-
+ fs/fat/namei_vfat.c                  |    6 +-
+ fs/hfs/super.c                       |    6 +-
+ fs/hfs/trans.c                       |    9 +-
+ fs/hfsplus/options.c                 |    2 +-
+ fs/hfsplus/unicode.c                 |    6 +-
+ fs/isofs/inode.c                     |    5 +-
+ fs/isofs/joliet.c                    |    3 +-
+ fs/jfs/jfs_unicode.c                 |    9 +-
+ fs/jfs/super.c                       |    3 +-
+ fs/nls/Kconfig                       |   15 +
+ fs/nls/Makefile                      |   20 +
+ fs/nls/mac-celtic.c                  |   34 +-
+ fs/nls/mac-centeuro.c                |   34 +-
+ fs/nls/mac-croatian.c                |   34 +-
+ fs/nls/mac-cyrillic.c                |   34 +-
+ fs/nls/mac-gaelic.c                  |   34 +-
+ fs/nls/mac-greek.c                   |   34 +-
+ fs/nls/mac-iceland.c                 |   34 +-
+ fs/nls/mac-inuit.c                   |   34 +-
+ fs/nls/mac-roman.c                   |   34 +-
+ fs/nls/mac-romanian.c                |   34 +-
+ fs/nls/mac-turkish.c                 |   34 +-
+ fs/nls/nls_ascii.c                   |   84 +-
+ fs/nls/nls_core.c                    |  163 ++
+ fs/nls/nls_cp1250.c                  |   34 +-
+ fs/nls/nls_cp1251.c                  |   34 +-
+ fs/nls/nls_cp1255.c                  |   36 +-
+ fs/nls/nls_cp437.c                   |   34 +-
+ fs/nls/nls_cp737.c                   |   34 +-
+ fs/nls/nls_cp775.c                   |   34 +-
+ fs/nls/nls_cp850.c                   |   34 +-
+ fs/nls/nls_cp852.c                   |   34 +-
+ fs/nls/nls_cp855.c                   |   34 +-
+ fs/nls/nls_cp857.c                   |   34 +-
+ fs/nls/nls_cp860.c                   |   34 +-
+ fs/nls/nls_cp861.c                   |   34 +-
+ fs/nls/nls_cp862.c                   |   34 +-
+ fs/nls/nls_cp863.c                   |   34 +-
+ fs/nls/nls_cp864.c                   |   34 +-
+ fs/nls/nls_cp865.c                   |   34 +-
+ fs/nls/nls_cp866.c                   |   34 +-
+ fs/nls/nls_cp869.c                   |   34 +-
+ fs/nls/nls_cp874.c                   |   36 +-
+ fs/nls/nls_cp932.c                   |   36 +-
+ fs/nls/nls_cp936.c                   |   36 +-
+ fs/nls/nls_cp949.c                   |   36 +-
+ fs/nls/nls_cp950.c                   |   36 +-
+ fs/nls/{nls_base.c => nls_default.c} |  124 +-
+ fs/nls/nls_euc-jp.c                  |   29 +-
+ fs/nls/nls_iso8859-1.c               |   34 +-
+ fs/nls/nls_iso8859-13.c              |   34 +-
+ fs/nls/nls_iso8859-14.c              |   34 +-
+ fs/nls/nls_iso8859-15.c              |   34 +-
+ fs/nls/nls_iso8859-2.c               |   34 +-
+ fs/nls/nls_iso8859-3.c               |   34 +-
+ fs/nls/nls_iso8859-4.c               |   34 +-
+ fs/nls/nls_iso8859-5.c               |   34 +-
+ fs/nls/nls_iso8859-6.c               |   34 +-
+ fs/nls/nls_iso8859-7.c               |   34 +-
+ fs/nls/nls_iso8859-9.c               |   34 +-
+ fs/nls/nls_koi8-r.c                  |   34 +-
+ fs/nls/nls_koi8-ru.c                 |   30 +-
+ fs/nls/nls_koi8-u.c                  |   34 +-
+ fs/nls/nls_utf8-core.c               |  333 +++
+ fs/nls/nls_utf8-norm.c               |  797 ++++++
+ fs/nls/nls_utf8-selftest.c           |  309 +++
+ fs/nls/nls_utf8.c                    |   67 -
+ fs/nls/ucd/README                    |   33 +
+ fs/nls/utf8n.h                       |  117 +
+ fs/ntfs/inode.c                      |    2 +-
+ fs/ntfs/super.c                      |    6 +-
+ fs/ntfs/unistr.c                     |   13 +-
+ fs/udf/super.c                       |    3 +-
+ fs/udf/unicode.c                     |    4 +-
+ include/linux/fs.h                   |    2 +
+ include/linux/nls.h                  |  293 ++-
+ scripts/Makefile                     |    1 +
+ scripts/mkutf8data.c                 | 3464 ++++++++++++++++++++++++++
+ 95 files changed, 7347 insertions(+), 618 deletions(-)
+ create mode 100644 fs/nls/nls_core.c
+ rename fs/nls/{nls_base.c => nls_default.c} (89%)
+ create mode 100644 fs/nls/nls_utf8-core.c
+ create mode 100644 fs/nls/nls_utf8-norm.c
+ create mode 100644 fs/nls/nls_utf8-selftest.c
+ delete mode 100644 fs/nls/nls_utf8.c
+ create mode 100644 fs/nls/ucd/README
+ create mode 100644 fs/nls/utf8n.h
+ create mode 100644 scripts/mkutf8data.c
+
+-- 
+2.19.1
