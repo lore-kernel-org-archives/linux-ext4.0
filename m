@@ -1,124 +1,89 @@
-Return-Path: <SRS0=2u2A=ND=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-wr1-f65.google.com ([209.85.221.65]:35909 "EHLO
-        mail-wr1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727566AbeJXEo5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2018 00:44:57 -0400
-Received: by mail-wr1-f65.google.com with SMTP id y16so3108790wrw.3
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Oct 2018 13:19:59 -0700 (PDT)
-Date: Tue, 23 Oct 2018 21:19:57 +0100
-From: Phillip Potter <phil@philpotter.co.uk>
-To: jack@suse.com
-Cc: linux-kernel@vger.kernel.org, amir73il@gmail.com,
-        viro@zeniv.linux.org.uk, linux-ext4@vger.kernel.org
-Subject: [RFC][PATCH v2 04/10] ext2: use common file type conversion
-Message-ID: <20181023201957.GA15708@pathfinder>
+Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:43882 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727186AbeJRDsm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 17 Oct 2018 23:48:42 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
+ <20181011103636.GC9467@quack2.suse.cz> <CAPcyv4iAD_wkjY1way1rOxr4=gC_TGx71VquF13ooAuUPz9RJw@mail.gmail.com>
+ <5a8e54e8-4845-1c85-e4e9-0b9b551a9ce2@sandeen.net> <20181012082154.GB30154@lst.de>
+ <CAOxpaSWf=6RBTa3WM=Hnbr7MwpQ5mMSMAZ+B5FfZo3zKv4Nu7w@mail.gmail.com> <116ef687-f23d-b45c-1b48-fd444b346719@sandeen.net>
+In-Reply-To: <116ef687-f23d-b45c-1b48-fd444b346719@sandeen.net>
+From: Ross Zwisler <zwisler@kernel.org>
+Date: Wed, 17 Oct 2018 13:51:15 -0600
+Message-ID: <CAOxpaSUN3cG5c4CJQHeBMgKKHO6-wguGT0m7tgG5VwpY6PgJEg@mail.gmail.com>
+Subject: Re: [PATCH 0/3] ext2, ext4, xfs: hard fail dax mount on unsupported devices
+To: Eric Sandeen <sandeen@sandeen.net>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Jan Kara <jack@suse.cz>, linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Deduplicate the ext2 file type conversion implementation.
+On Wed, Oct 17, 2018 at 1:42 PM Eric Sandeen <sandeen@sandeen.net> wrote:
+> On 10/13/18 11:05 AM, Ross Zwisler wrote:
+> > On Fri, Oct 12, 2018 at 2:21 AM Christoph Hellwig <hch@lst.de> wrote:
+> >>
+> >> On Thu, Oct 11, 2018 at 01:38:34PM -0500, Eric Sandeen wrote:
+> >>>> The different behavior between filesystems was confusing customers so
+> >>>> we had to align them, then the question was which default to pick.
+> >>>> Honestly, we came to the decision to bring ext4 in line with the xfs
+> >>>> behavior because we thought that would be easier than the alternative.
+> >>>> Dave and Christoph made repeated arguments that DAX is just a hidden
+> >>>> performance optimization that no application should rely on, so we
+> >>>> went the path of least resistance and changed the ext4 default.
+> >>>
+> >>> Ok, well, I guess we'd better reconcile "it's a hidden performance hint"
+> >>> with "if the administrator asked they must receive..." before making this
+> >>> change... cc: hch for bonus input.
+> >>
+> >> I don't really care too mouch on the mount options, the important bit
+> >> was the application behavior.
+> >>
+> >> I fully agree with Dan that we should have the same behavior for every
+> >> file system, though.
+> >
+> > One factor that might influence this is how we expect users to detect
+> > whether or not DAX is being used, and whether that can vary per-inode
+> > within a filesystem.  If we choose to only have the mount option then
+> > I agree that a hard failure when -o dax doesn't work seems fine.  And
+> > of course keeping the filesystems behaving the same is desirable.
+> >
+> > If we eventually do go back to having a per-inode DAX option, though,
+> > the mount option becomes a hint as to what the default behavior is,
+> > and the user will need another way to detect whether or not DAX is
+> > being used for a given inode.  In that case having the mount option
+> > fail loudly isn't as important because all we've really changed is the
+> > filesystem's default, and the application will still need a consistent
+> > way of detecting whether the inode they are actually using is DAX or
+> > not.
+> >
+> > I'm not sure if per-inode DAX is still a goal for anyone.  If not,
+> > then sure, using the DAX mount option as the one source of truth and
+> > making it a hard failure when it doesn't work seems reasonable.
+>
+> I've been thinking about the per-inode stuff a bit, and while I don't know
+> how to resolve some of the trickier issues, at least the expected behavior
+> seems like something we can narrow down and specify.
+>
+> Because it's an on-disk flag (in xfs today, in any case) it seems that
+> the only sane behavior to expect is either/or, i.e.:
+>
+> Mount option: All files always dax, per-inode flags ignored (or rejected)
+> Per-inode: Mount option cannot be specified; only inodes explicitly flagged are dax
+>
+> Think about it; what would mount-option-plus-per-inode mean?  We have
+> no "negative" dax flag, so while mount-option-with-flag surely means
+> "dax", what the heck does mount-option-without-flag mean, and how is it
+> distinguishable from mount option only?
+>
+> I submit that flags can only have meaning w/o the fs-wide mount option
+> enabled, so the question of "should we hard fail mount -o dax for devices
+> that cannot support it" seems to be orthogonal to the per-inode question.
+>
+> i.e. mount -o dax really can only mean "I want dax on everything" and so
+> again, I think we probably need to fail the mount if that can't be honored.
 
-Original patch by Amir Goldstein.
-
-v2:
-- Rebased against Linux 4.19 by Phillip Potter
-- This version does not remove EXT2_FT_x enum from fs/ext2/ext2.h,
-  as these values are now used in compile-time checks added by
-  Phillip Potter to make sure they remain the same as FT_x values
-
-v1:
-- Initial implementation
-
-Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
----
- fs/ext2/dir.c | 51 ++++++++++++++++++++++-----------------------------
- 1 file changed, 22 insertions(+), 29 deletions(-)
-
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 3b8114def693..420d4b9e8980 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -252,33 +252,10 @@ ext2_validate_entry(char *base, unsigned offset, unsigned mask)
- 	return (char *)p - base;
- }
- 
--static unsigned char ext2_filetype_table[EXT2_FT_MAX] = {
--	[EXT2_FT_UNKNOWN]	= DT_UNKNOWN,
--	[EXT2_FT_REG_FILE]	= DT_REG,
--	[EXT2_FT_DIR]		= DT_DIR,
--	[EXT2_FT_CHRDEV]	= DT_CHR,
--	[EXT2_FT_BLKDEV]	= DT_BLK,
--	[EXT2_FT_FIFO]		= DT_FIFO,
--	[EXT2_FT_SOCK]		= DT_SOCK,
--	[EXT2_FT_SYMLINK]	= DT_LNK,
--};
--
--#define S_SHIFT 12
--static unsigned char ext2_type_by_mode[S_IFMT >> S_SHIFT] = {
--	[S_IFREG >> S_SHIFT]	= EXT2_FT_REG_FILE,
--	[S_IFDIR >> S_SHIFT]	= EXT2_FT_DIR,
--	[S_IFCHR >> S_SHIFT]	= EXT2_FT_CHRDEV,
--	[S_IFBLK >> S_SHIFT]	= EXT2_FT_BLKDEV,
--	[S_IFIFO >> S_SHIFT]	= EXT2_FT_FIFO,
--	[S_IFSOCK >> S_SHIFT]	= EXT2_FT_SOCK,
--	[S_IFLNK >> S_SHIFT]	= EXT2_FT_SYMLINK,
--};
--
- static inline void ext2_set_de_type(ext2_dirent *de, struct inode *inode)
- {
--	umode_t mode = inode->i_mode;
- 	if (EXT2_HAS_INCOMPAT_FEATURE(inode->i_sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
--		de->file_type = ext2_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
-+		de->file_type = fs_umode_to_ftype(inode->i_mode);
- 	else
- 		de->file_type = 0;
- }
-@@ -293,14 +270,14 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 	unsigned long n = pos >> PAGE_SHIFT;
- 	unsigned long npages = dir_pages(inode);
- 	unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
--	unsigned char *types = NULL;
- 	bool need_revalidate = !inode_eq_iversion(inode, file->f_version);
-+	bool has_filetype;
- 
- 	if (pos > inode->i_size - EXT2_DIR_REC_LEN(1))
- 		return 0;
- 
--	if (EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
--		types = ext2_filetype_table;
-+	has_filetype =
-+		EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE);
- 
- 	for ( ; n < npages; n++, offset = 0) {
- 		char *kaddr, *limit;
-@@ -335,8 +312,24 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 			if (de->inode) {
- 				unsigned char d_type = DT_UNKNOWN;
- 
--				if (types && de->file_type < EXT2_FT_MAX)
--					d_type = types[de->file_type];
-+				/*
-+				 * compile-time asserts that generic FT_x types
-+				 * still match EXT2_FT_x types - no need to list
-+				 * for other functions as well as build will
-+				 * fail either way
-+				 */
-+				BUILD_BUG_ON(EXT2_FT_UNKNOWN != FT_UNKNOWN);
-+				BUILD_BUG_ON(EXT2_FT_REG_FILE != FT_REG_FILE);
-+				BUILD_BUG_ON(EXT2_FT_DIR != FT_DIR);
-+				BUILD_BUG_ON(EXT2_FT_CHRDEV != FT_CHRDEV);
-+				BUILD_BUG_ON(EXT2_FT_BLKDEV != FT_BLKDEV);
-+				BUILD_BUG_ON(EXT2_FT_FIFO != FT_FIFO);
-+				BUILD_BUG_ON(EXT2_FT_SOCK != FT_SOCK);
-+				BUILD_BUG_ON(EXT2_FT_SYMLINK != FT_SYMLINK);
-+				BUILD_BUG_ON(EXT2_FT_MAX != FT_MAX);
-+
-+				if (has_filetype)
-+					d_type = fs_dtype(de->file_type);
- 
- 				if (!dir_emit(ctx, de->name, de->name_len,
- 						le32_to_cpu(de->inode),
--- 
-2.17.2
+Works for me.
