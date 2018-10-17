@@ -1,159 +1,142 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from esgaroth.petrovitsch.at ([78.47.184.11]:4768 "EHLO
-        esgaroth.tuxoid.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728161AbeJWCf7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 22:35:59 -0400
-Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
- (gcc >= 7.1)
-To: Nick Desaulniers <ndesaulniers@google.com>
-Cc: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
-        dan.carpenter@oracle.com, "Theodore Ts'o" <tytso@mit.edu>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        LKML <linux-kernel@vger.kernel.org>, adilger.kernel@dilger.ca,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>, rostedt@goodmis.org,
-        mchehab+samsung@kernel.org, olof@lxom.net,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        sandipan@linux.vnet.ibm.com,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        paul.burton@mips.com, David Rientjes <rientjes@google.com>,
-        Willy Tarreau <w@1wt.eu>, msebor@gmail.com, sparse@chrisli.org,
-        Jonathan Corbet <corbet@lwn.net>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
-        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-sparse@vger.kernel.org,
-        Linux Kbuild mailing list <linux-kbuild@vger.kernel.org>
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
- <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
- <20181021222712.GI1617@thunk.org>
- <8fb78062-b6d4-6f2d-d943-44bec6b95ff0@petrovitsch.priv.at>
- <20181022102743.nua5fgbscyeymzal@mwanda>
- <1474d995-1b5a-2efb-f077-33eb4a5d9e31@petrovitsch.priv.at>
- <20181022105314.j6djkrpwbnokhai5@mwanda>
- <CANiq72=ioYcRA-yq38+Z4i6iVDNm6C2-+b4feRmnvEiekuR7dA@mail.gmail.com>
- <3cbb5345-0270-5575-7563-6ad37d888e42@petrovitsch.priv.at>
- <CAKwvOdnWkPi_2UJ7VKYZ6cuWi+BDgpEUf+tcrfZLUYawbm+grw@mail.gmail.com>
-From: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
-Message-ID: <9c52827b-4783-8f39-9030-a166d5436f05@petrovitsch.priv.at>
-Date: Mon, 22 Oct 2018 20:13:46 +0200
-MIME-Version: 1.0
-In-Reply-To: <CAKwvOdnWkPi_2UJ7VKYZ6cuWi+BDgpEUf+tcrfZLUYawbm+grw@mail.gmail.com>
-Content-Type: multipart/mixed;
- boundary="------------AFED424BB543102162459081"
-Content-Language: en-US
+Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-io1-f65.google.com ([209.85.166.65]:42470 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727186AbeJRH1D (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 03:27:03 -0400
+Received: by mail-io1-f65.google.com with SMTP id n18-v6so19879442ioa.9
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Oct 2018 16:29:00 -0700 (PDT)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <EA9B5AA4-DA21-4B1D-9E89-8C9F16EB8986@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_C878ED81-577A-481B-B30C-166BF18D6A8B";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH] ext4: direct return when jinode allocate failed
+Date: Wed, 17 Oct 2018 17:28:55 -0600
+In-Reply-To: <201810171026448096961@zte.com.cn>
+Cc: "Theodore Y. Ts'o" <tytso@mit.edu>, fishland@aliyun.com,
+        wang.yi59@zte.com.cn,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: liu.song11@zte.com.cn
+References: <20181016145526.3288-1-fishland@aliyun.com,20181016190840.GF24131@thunk.org>
+ <201810171026448096961@zte.com.cn>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------AFED424BB543102162459081
-Content-Type: text/plain; charset=utf-8
+
+--Apple-Mail=_C878ED81-577A-481B-B30C-166BF18D6A8B
 Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-Hi all!
 
-On 22/10/18 19:54, Nick Desaulniers wrote:
-> On Mon, Oct 22, 2018 at 10:50 AM Bernd Petrovitsch
-> <bernd@petrovitsch.priv.at> wrote:
-[...]
->> PS: clang++ errors with "fallthrough annotation in unreachable code" i=
-f
->>     [[fallthrough]] is after an assert(). clang-devs there, please, th=
-e
->>     fallthrough doesn't really generated code (I hope;-).
-[...]
-> Can you send me a link to a simple reproducer in godbolt (godbolt.org)
-> and we'll take a look?
+> On Oct 16, 2018, at 8:26 PM, liu.song11@zte.com.cn wrote:
+>=20
+>> On Tue, Oct 16, 2018 at 10:55:26PM +0800, fishland wrote:
+>>> The jinode does not need protected by *i_lock*, we can return
+>>> directly if memory allocation fails.
+>>>=20
+>>=20
+>> I don't see anything wrong with this patch, but at the same time, I'm
+>> not sure I see the benefit, either.  Checking for the allocation
+>> failure is cheap, and moving it out spinlock doesn't buy much; not to
+>> mention that the allocation failure is going to be highly uncommon.
+>>=20
+>> What inspired this commit?
+>>=20
+>> - Ted
+>=20
+> Hi, Ted
+> I found this during code reading. All code logic is very smooth, when
+> reading here, need to spin_unlock before "return -ENOMEM", which I
+> feel this could more close to the allocate. I refer to other =
+processing
+> logic for this situation in "inode.c", found that they all return =
+immediately
+> after memory application failed. I agree with you that the benefit of =
+this
+> patch is almost none, however it can slightly improve the code in rare =
+case.
 
-Does https://godbolt.org/z/2Y4zIo do it - I'm a godbolt-newbie?
+Looking at the patch there are two effects that it has:
+- optimize a very rare case where there is an allocation failure before =
+locking
+- return an unnecessary error if "ei->jinode" is allocated before =
+locking
 
-For
-----  snip  ----
-#include <cassert>
+I don't think it is worthwhile to optimize this case, since allocation =
+failures
+will have a serious impact on the application, and I'd rather avoid the =
+rare
+case where we don't return an unnecessary error than make the error case =
+faster.
 
-int main(void)
-{
-  switch (1) {
-  default:
-    assert(0);
-    [[fallthrough]];
-  case 1:
-    ;
-  }
-  return 0;
-}
-----  snip  ----
-Just "clang++ -Wimplicit-fallthrough -Werror" it .....
+Cheers, Andreas
 
-MfG,
-	Bernd
---=20
-"I dislike type abstraction if it has no real reason. And saving
-on typing is not a good reason - if your typing speed is the main
-issue when you're coding, you're doing something seriously wrong."
-    - Linus Torvalds
+>=20
+>>> Signed-off-by: Liu Song <liu.song11@zte.com.cn>
+>>> Reviewed-by: Wang Yi <wang.yi59@zte.com.cn>
+>>> ---
+>>> fs/ext4/inode.c | 7 +++----
+>>> 1 file changed, 3 insertions(+), 4 deletions(-)
+>>>=20
+>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>>> index d767e993591d..67ba6f062de5 100644
+>>> --- a/fs/ext4/inode.c
+>>> +++ b/fs/ext4/inode.c
+>>> @@ -4384,12 +4384,11 @@ int ext4_inode_attach_jinode(struct inode =
+*inode)
+>>>         return 0;
+>>>=20
+>>>  	jinode =3D jbd2_alloc_inode(GFP_KERNEL);
+>>> +	if (!jinode)
+>>> +	return -ENOMEM;
+>>> +
+>>>  	spin_lock(&inode->i_lock);
+>>>  	if (!ei->jinode) {
+>>> -		if (!jinode) {
+>>> -			spin_unlock(&inode->i_lock);
+>>> -			return -ENOMEM;
+>>> -		}
+>>>  		ei->jinode =3D jinode;
+>>>  		jbd2_journal_init_jbd_inode(ei->jinode, inode);
+>>>  		jinode =3D NULL;
+>>> --
+>>> 2.17.1
 
---------------AFED424BB543102162459081
-Content-Type: application/pgp-keys;
- name="pEpkey.asc"
-Content-Transfer-Encoding: quoted-printable
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_C878ED81-577A-481B-B30C-166BF18D6A8B
+Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
- filename="pEpkey.asc"
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
 
------BEGIN PGP PUBLIC KEY BLOCK-----
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
 
-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3D=3D
-=3Dv2Yn
------END PGP PUBLIC KEY BLOCK-----
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlvHxbgACgkQcqXauRfM
+H+CCcA/+OMy3TvcdQXystp7YhvSJYGSfFRnvWBSczl3DvC5KzEbxk6owU8I1ZgLW
+xy39xc/gZur31Qsqquj7R+SHJshQ06xOd2Uzv7YfjIuKdYCoQNx89xstOqyNRjER
+u15kqBFHj5yadbHOslcr+qd1nslzZUg601c/ef6T0jxHcMjFD8lUBnQEktbTTOBx
+1CiCNpp03/tQFElX8ZKOVsMs2toTdNWNEIC8PvWqfpgDaFeT4+Sr3z5NfZQ17u0Q
+UGNlN3FrtKEch2nMBgz2z38TxdEVJrr/XAOZ3X6GEbvwVhgHNQHLQwRyz0RC9vQJ
+bl/3D/8rnOSu2mHL7cUzbquCWFL2w58IW9XqraVFDUp7U4nS0Qg4SatT3mxKFVfI
+clheMhNxylzVIMx9+BD/f40B+68zapPEMJSKzKzxpGCClzV7aJ+oi7u4V4RUkrcc
+zaNR0X7C4h2flTX5MATfNX4sCoT4luaoAeytlsLfugCLCc5un4+ZnBUDO4DOsOUX
+U8lZHJ5TWCWIVDg6YyX66uQA9g1YtqeT10c489ho83vbxt6FimXtEcEz43HVRit5
+trI/Rzj8ZfaP5GS5puwOB6+qZmQer7YFhMamlp0Zd8T2hqabMHvq/cOlwglcArRw
++5uAgdA+SvGe1ykBDKfpGO+lBhA8YcA/BUV4l1nST6H+otysn58=
+=hWNJ
+-----END PGP SIGNATURE-----
 
---------------AFED424BB543102162459081--
+--Apple-Mail=_C878ED81-577A-481B-B30C-166BF18D6A8B--
