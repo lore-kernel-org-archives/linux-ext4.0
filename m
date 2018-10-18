@@ -1,77 +1,44 @@
-Return-Path: <SRS0=Op7R=MQ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49012 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727415AbeJDX1Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 4 Oct 2018 19:27:16 -0400
-Date: Thu, 4 Oct 2018 18:33:11 +0200
-From: Lukas Czerner <lczerner@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Greg KH <greg@kroah.com>, Ted Tso <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH] jbd2: Fix use after free in jbd2_log_do_checkpoint()
-Message-ID: <20181004163311.axr6uokqaueeri5m@localhost.localdomain>
-References: <20181004104640.28326-1-jack@suse.cz>
- <20181004154402.GC6921@kroah.com>
- <20181004160546.GH28384@quack2.suse.cz>
+Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:39826 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726325AbeJRWNf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Oct 2018 18:13:35 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5E90D28B6B
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2018 14:12:23 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201461] ext4 journal stalls write system call
+Date: Thu, 18 Oct 2018 14:12:23 +0000
+Message-ID: <bug-201461-13602-x39Iam2bU3@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201461-13602@https.bugzilla.kernel.org/>
+References: <bug-201461-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181004160546.GH28384@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 04, 2018 at 06:05:46PM +0200, Jan Kara wrote:
-> On Thu 04-10-18 08:44:02, Greg KH wrote:
-> > On Thu, Oct 04, 2018 at 12:46:40PM +0200, Jan Kara wrote:
-> > > The code cleaning transaction's lists of checkpoint buffers has a bug
-> > > where it increases bh refcount only after releasing
-> > > journal->j_list_lock. Thus the following race is possible:
-> > > 
-> > > CPU0					CPU1
-> > > jbd2_log_do_checkpoint()
-> > > 					jbd2_journal_try_to_free_buffers()
-> > > 					  __journal_try_to_free_buffer(bh)
-> > >   ...
-> > >   while (transaction->t_checkpoint_io_list)
-> > >   ...
-> > >     if (buffer_locked(bh)) {
-> > > 
-> > > <-- IO completes now, buffer gets unlocked -->
-> > > 
-> > >       spin_unlock(&journal->j_list_lock);
-> > > 					    spin_lock(&journal->j_list_lock);
-> > > 					    __jbd2_journal_remove_checkpoint(jh);
-> > > 					    spin_unlock(&journal->j_list_lock);
-> > > 					  try_to_free_buffers(page);
-> > >       get_bh(bh) <-- accesses freed bh
-> > > 
-> > > Fix the problem by grabbing bh reference before unlocking
-> > > journal->j_list_lock.
-> > > 
-> > > Fixes: dc6e8d669cf5cb3ff84707c372c0a2a8a5e80845
-> > > Fixes: be1158cc615fd723552f0d9912087423c7cadda5
-> > 
-> > Nit, this normally looks like:
-> > 
-> > Fixes: dc6e8d669cf5 ("jbd2: don't call get_bh() before calling __jbd2_journal_remove_checkpoint()")
-> > 
-> > And this is created by:
-> > 	git show -s --abbrev-commit --abbrev=12 --pretty=format:"%h (\"%s\")%n"
-> 
-> OK, ok, will do next time. The full git commit ID is faster to cut-n-paste
-> which shows how lazy I'm ;) 
+https://bugzilla.kernel.org/show_bug.cgi?id=201461
 
-I have this in the .gitconfig
+--- Comment #5 from Theodore Tso (tytso@mit.edu) ---
+Keep in mind that 3.10 was released over ***five years*** ago.   Quite frankly,
+using a 3.10 kernel borders on malpractice, since it has so many unpatched
+security holes it isn't funny.  If you are talking about a RHEL kernel, it has
+diverged significantly from mainline and whether or not it is a security
+disaster is between you and your Red Hat support contract.  :-)
 
-[pretty]
-	fixes = Fixes: %h (\"%s\")
+My comments apply mainly to the the upstream development kernel, but to answer
+your questions:
 
-which helps. I think I found it in the docs somewhere.
+No, in 3.10, generic_writepages() does not call ext4_da_writepages().   And
+ext4_da_writepages roughly corresponds to what ext4_writepages() in
+non-obsolete kernels.
 
--Lukas
+A huge number of things have changed between 3.10 and more modern kernels,
+including many performance enhancements.   So some of the details have changed.
 
-> 
-> 								Honza
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
