@@ -1,95 +1,133 @@
-Return-Path: <SRS0=/GAa=M3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:37476 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726024AbeJPE7X (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Oct 2018 00:59:23 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH e2fsprogs 0/9] Support encoding awareness and casefold
-Date: Mon, 15 Oct 2018 17:12:11 -0400
-Message-Id: <20181015211220.27370-1-krisman@collabora.co.uk>
+Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:50326 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726359AbeJRW5U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Oct 2018 18:57:20 -0400
+Date: Thu, 18 Oct 2018 16:55:55 +0200
+From: Jan Kara <jack@suse.cz>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Jeff Moyer <jmoyer@redhat.com>, Jan Kara <jack@suse.cz>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        Dave Jiang <dave.jiang@intel.com>, linux-nvdimm@lists.01.org,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-api@vger.kernel.org
+Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
+Message-ID: <20181018145555.GS23493@quack2.suse.cz>
+References: <20181002100531.GC4135@quack2.suse.cz>
+ <20181002121039.GA3274@linux-x5ow.site>
+ <20181002142959.GD9127@quack2.suse.cz>
+ <x49h8hkfhk9.fsf@segfault.boston.devel.redhat.com>
+ <20181018002510.GC6311@dastard>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181018002510.GC6311@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+On Thu 18-10-18 11:25:10, Dave Chinner wrote:
+> On Wed, Oct 17, 2018 at 04:23:50PM -0400, Jeff Moyer wrote:
+> > MAP_SYNC
+> > - file system guarantees that metadata required to reach faulted-in file
+> >   data is consistent on media before a write fault is completed.  A
+> >   side-effect is that the page cache will not be used for
+> >   writably-mapped pages.
+> 
+> I think you are conflating current implementation with API
+> requirements - MAP_SYNC doesn't guarantee anything about page cache
+> use. The man page definition simply says "supported only for files
+> supporting DAX" and that it provides certain data integrity
+> guarantees. It does not define the implementation.
+> 
+> We've /implemented MAP_SYNC/ as O_DSYNC page fault behaviour,
+> because that's the only way we can currently provide the required
+> behaviour to userspace. However, if a filesystem can use the page
+> cache to provide the required functionality, then it's free to do
+> so.
+> 
+> i.e. if someone implements a pmem-based page cache, MAP_SYNC data
+> integrity could be provided /without DAX/ by any filesystem using
+> that persistent page cache. i.e. MAP_SYNC really only requires
+> mmap() of CPU addressable persistent memory - it does not require
+> DAX. Right now, however, the only way to get this functionality is
+> through a DAX capable filesystem on dax capable storage.
+> 
+> And, FWIW, this is pretty much how NOVA maintains DAX w/ COW - it
+> COWs new pages in pmem and attaches them a special per-inode cache
+> on clean->dirty transition. Then on data sync, background writeback
+> or crash recovery, it migrates them from the cache into the file map
+> proper via atomic metadata pointer swaps.
+> 
+> IOWs, NOVA provides the correct MAP_SYNC semantics by using a
+> separate persistent per-inode write cache to provide the correct
+> crash recovery semantics for MAP_SYNC.
 
-These are the modifications to e2fsprogs in order to support encoding
-awareness and case folding.  This patch series is divided in 3 parts:
+Corect. NOVA would be able to provide MAP_SYNC semantics without DAX. But
+effectively it will be also able to provide MAP_DIRECT semantics, right?
+Because there won't be DRAM between app and persistent storage and I don't
+think COW tricks or other data integrity methods are that interesting for
+the application. Most users of O_DIRECT are concerned about getting close
+to media speed performance and low DRAM usage...
 
-Patch 1 & 2 work on reserving superblock fields.  Patch 1 is actually
-unrelated, just updating the super_block to resynchronize with the
-kernel.  Patch 2 reserves the feature bit and superblock fields for this
-feature.
+> > and what I think Dan had proposed:
+> > 
+> > mmap flag, MAP_DIRECT
+> > - file system guarantees that page cache will not be used to front storage.
+> >   storage MUST be directly addressable.  This *almost* implies MAP_SYNC.
+> >   The subtle difference is that a write fault /may/ not result in metadata
+> >   being written back to media.
+> 
+> SIimilar to O_DIRECT, these semantics do not allow userspace apps to
+> replace msync/fsync with CPU cache flush operations. So any
+> application that uses this mode still needs to use either MAP_SYNC
+> or issue msync/fsync for data integrity.
+> 
+> If the app is using MAP_DIRECT, the what do we do if the filesystem
+> can't provide the required semantics for that specific operation? In
+> the case of O_DIRECT, we fall back to buffered IO because it has the
+> same data integrity semantics as O_DIRECT and will always work. It's
+> just slower and consumes more memory, but the app continues to work
+> just fine.
+> 
+> Sending SIGBUS to apps when we can't perform MAP_DIRECT operations
+> without using the pagecache seems extremely problematic to me.  e.g.
+> an app already has an open MAP_DIRECT file, and a third party
+> reflinks it or dedupes it and the fs has to fall back to buffered IO
+> to do COW operations. This isn't the app's fault - the kernel should
+> just fall back transparently to using the page cache for the
+> MAP_DIRECT app and just keep working, just like it would if it was
+> using O_DIRECT read/write.
 
-Patch 3 through 5 implements the changes the changes to mke2fs and
-chattr/lsattr to enable the encoding feature at mkfs time and flipping
-the casefold flag on demand for specific directories.
+There's another option of failing reflink / dedupe with EBUSY if the file
+is mapped with MAP_DIRECT and the filesystem cannot support relink &
+MAP_DIRECT together. But there are downsides to that as well.
 
-Patch 6 through 9 is where things get a bit ugly.  fsck needs to become
-encoding aware, in order to calculate directory hashes correctly and
-verify/fix inconsistencies.  This requires a tiny bit of plumbing to
-pass the encoding information up to the point where we calculate the
-hash, as well as implementing a simple nls-like interface in e2fsprogs
-to do normalization/casefolding.  You'll see that in this series I've
-actually dropped the utf8 part because that patch is huge and I'd rather
-discuss it separately.  I did it in a hacky way now, where we import the
-utf8n code from linux.  I thought about using libunistring but it
-doesn't seem to support versioning and we risk being incompatible with
-the kernel hashes.  I think we could follow the kernel approach and make
-ucd files available in e2fsprogs and generate the data at
-compilation. What do you think?
+> The point I'm trying to make here is that O_DIRECT is a /hint/, not
+> a guarantee, and it's done that way to prevent applications from
+> being presented with transient, potentially fatal error cases
+> because a filesystem implementation can't do a specific operation
+> through the direct IO path.
+> 
+> IMO, MAP_DIRECT needs to be a hint like O_DIRECT and not a
+> guarantee. Over time we'll end up with filesystems that can
+> guarantee that MAP_DIRECT is always going to use DAX, in the same
+> way we have filesystems that guarantee O_DIRECT will always be
+> O_DIRECT (e.g. XFS). But if we decide that MAP_DIRECT must guarantee
+> no page cache will ever be used, then we are basically saying
+> "filesystems won't provide MAP_DIRECT even in common, useful cases
+> because they can't provide MAP_DIRECT in all cases." And that
+> doesn't seem like a very good solution to me.
 
-If you want to see a full utf8 capable version of this series, please
-clone from:
+These are good points. I'm just somewhat wary of the situation where users
+will map files with MAP_DIRECT and then the machine starts thrashing
+because the file got reflinked and thus pagecache gets used suddently.
+With O_DIRECT the fallback to buffered IO is quite rare (at least for major
+filesystems) so usually people just won't notice. If fallback for
+MAP_DIRECT will be easy to hit, I'm not sure it would be very useful.
 
-https://gitlab.collabora.com/krisman/e2fsprogs -b encoding-feature-merge
-
-If you don't object to patch 1 & 2, can we get them merged before the
-rest of the series is ready, so I can reserve the bits in the super
-block for this feature (patch 2) and avoid more rebasing on my side?
-
-Thanks,
-
-Gabriel Krisman Bertazi (9):
-  e2fsprogs: Add timestamp extension bits to superblock
-  e2fsprogs: Reserve feature bit and SB field bit for filename encoding
-  libe2p: Helpers for configuring the encoding superblock fields
-  mke2fs: Configure encoding during superblock initialization
-  chattr/lsattr: Support casefold attribute
-  lib/ext2fs: Implement NLS support
-  lib/ext2fs: Support encoding when calculating dx hashes
-  debugfs/htree: Support encoding when printing the file hash
-  tune2fs: Prevent enabling encryption flag on encoding-aware fs
-
- debugfs/htree.c         | 27 +++++++++++----
- e2fsck/dx_dirinfo.c     |  4 ++-
- e2fsck/e2fsck.h         |  4 ++-
- e2fsck/pass1.c          | 11 ++++--
- e2fsck/pass2.c          |  7 +++-
- e2fsck/rehash.c         | 12 ++++---
- lib/e2p/Makefile.in     |  8 +++--
- lib/e2p/e2p.h           |  4 +++
- lib/e2p/encoding.c      | 76 +++++++++++++++++++++++++++++++++++++++++
- lib/e2p/feature.c       |  2 ++
- lib/e2p/pf.c            |  1 +
- lib/ext2fs/Makefile.in  | 10 ++++--
- lib/ext2fs/dirhash.c    | 49 +++++++++++++++++++++++---
- lib/ext2fs/ext2_fs.h    | 31 +++++++++++++++--
- lib/ext2fs/ext2fs.h     |  6 +++-
- lib/ext2fs/initialize.c |  4 +++
- lib/ext2fs/nls.h        | 65 +++++++++++++++++++++++++++++++++++
- lib/ext2fs/nls_ascii.c  | 48 ++++++++++++++++++++++++++
- misc/chattr.c           |  3 +-
- misc/mke2fs.c           | 43 +++++++++++++++++++++++
- misc/tune2fs.c          |  6 ++++
- 21 files changed, 393 insertions(+), 28 deletions(-)
- create mode 100644 lib/e2p/encoding.c
- create mode 100644 lib/ext2fs/nls.h
- create mode 100644 lib/ext2fs/nls_ascii.c
-
+								Honza
 -- 
-2.19.1
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
