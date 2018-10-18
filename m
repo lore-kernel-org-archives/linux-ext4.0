@@ -1,63 +1,69 @@
-Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:46010 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725743AbeJaGyA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 31 Oct 2018 02:54:00 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2 10/11] ext4: remove useless brelse call in
- ext4_xattr_inode_update_ref()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org, Tahsin Erdogan <tahsin@google.com>
-References: <cover.1540935522.git.vvs@virtuozzo.com>
-Message-ID: <fb87bcc2-5e4a-34ba-a063-3f43e9de976c@virtuozzo.com>
-Date: Wed, 31 Oct 2018 00:58:46 +0300
-MIME-Version: 1.0
-In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:59834 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727633AbeJRVSS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Oct 2018 17:18:18 -0400
+From: Jan Kara <jack@suse.cz>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Ted Tso <tytso@mit.edu>, <linux-fsdevel@vger.kernel.org>,
+        <linux-ext4@vger.kernel.org>, <linux-xfs@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH 1/2] vfs: Provide function to grab superblock reference
+Date: Thu, 18 Oct 2018 15:17:08 +0200
+Message-Id: <20181018131709.11976-2-jack@suse.cz>
+In-Reply-To: <20181018131709.11976-1-jack@suse.cz>
+References: <20181018131709.11976-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-brelse(iloc.bh) is useless here, it is always called with iloc.bh = NULL
+Provide function to hold superblock reference when we are sure the
+superblock is active. This function will get used by code reading
+/proc/mounts and friends.
 
-Fixes dec214d00e0d ("ext4: xattr inode deduplication") # 4.13
-cc: Tahsin Erdogan <tahsin@google.com>
-
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/xattr.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ fs/internal.h |  1 +
+ fs/super.c    | 16 ++++++++++++++++
+ 2 files changed, 17 insertions(+)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index f36fc5d5b257..dc1aeab06dba 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -1031,10 +1031,8 @@ static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
- 	inode_lock(ea_inode);
+diff --git a/fs/internal.h b/fs/internal.h
+index d410186bc369..608f4f276ba5 100644
+--- a/fs/internal.h
++++ b/fs/internal.h
+@@ -104,6 +104,7 @@ extern bool trylock_super(struct super_block *sb);
+ extern struct dentry *mount_fs(struct file_system_type *,
+ 			       int, const char *, void *);
+ extern struct super_block *user_get_super(dev_t);
++extern void hold_sb(struct super_block *sb);
  
- 	ret = ext4_reserve_inode_write(handle, ea_inode, &iloc);
--	if (ret) {
--		iloc.bh = NULL;
-+	if (ret)
- 		goto out;
--	}
- 
- 	ref_count = ext4_xattr_inode_get_ref(ea_inode);
- 	ref_count += ref_change;
-@@ -1080,12 +1078,10 @@ static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
- 	}
- 
- 	ret = ext4_mark_iloc_dirty(handle, ea_inode, &iloc);
--	iloc.bh = NULL;
- 	if (ret)
- 		ext4_warning_inode(ea_inode,
- 				   "ext4_mark_iloc_dirty() failed ret=%d", ret);
- out:
--	brelse(iloc.bh);
- 	inode_unlock(ea_inode);
- 	return ret;
+ /*
+  * open.c
+diff --git a/fs/super.c b/fs/super.c
+index f3a8c008e164..f60a07f794cc 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -775,6 +775,22 @@ struct super_block *get_super_exclusive_thawed(struct block_device *bdev)
  }
+ EXPORT_SYMBOL(get_super_exclusive_thawed);
+ 
++/**
++ *	hold_sb - get superblock reference for active superblock
++ *	@sb: superblock to get reference for
++ *
++ *	Get reference to superblock. The caller must make sure the superblock
++ *	is currently active by other means (e.g. holding an active reference
++ * 	itself or holding namespace_sem preventing unmount).
++ */
++void hold_sb(struct super_block *sb)
++{
++	spin_lock(&sb_lock);
++	WARN_ON_ONCE(!atomic_read(&sb->s_active));
++	sb->s_count++;
++	spin_unlock(&sb_lock);
++}
++
+ /**
+  * get_active_super - get an active reference to the superblock of a device
+  * @bdev: device to get the superblock for
 -- 
-2.17.1
+2.16.4
