@@ -1,74 +1,50 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pf1-f194.google.com ([209.85.210.194]:46737 "EHLO
-        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728176AbeJWBN5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 21:13:57 -0400
-Received: by mail-pf1-f194.google.com with SMTP id r64-v6so20191443pfb.13
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Oct 2018 09:54:40 -0700 (PDT)
-MIME-Version: 1.0
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
- <20181021182926.GB6683@kroah.com> <CANiq72kOE0a4M0oCmmiWO9xTFJsybEirwUyb_ZTXpJJhc7O_TA@mail.gmail.com>
-In-Reply-To: <CANiq72kOE0a4M0oCmmiWO9xTFJsybEirwUyb_ZTXpJJhc7O_TA@mail.gmail.com>
-From: Nick Desaulniers <ndesaulniers@google.com>
-Date: Mon, 22 Oct 2018 09:54:27 -0700
-Message-ID: <CAKwvOdn9hOcF01eOmwfnrH_ciFZ4fPaspSzMPiY68o3B0En-VQ@mail.gmail.com>
-Subject: Re: [PATCH 0/2] Compiler Attributes: __fallthrough
-To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Cc: Greg KH <gregkh@linuxfoundation.org>,
-        LKML <linux-kernel@vger.kernel.org>, dan.carpenter@oracle.com,
-        adilger.kernel@dilger.ca,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>, rostedt@goodmis.org,
-        mchehab+samsung@kernel.org, olof@lxom.net,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        sandipan@linux.vnet.ibm.com,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        paul.burton@mips.com, David Rientjes <rientjes@google.com>,
-        Willy Tarreau <w@1wt.eu>, msebor@gmail.com, sparse@chrisli.org,
-        Jonathan Corbet <corbet@lwn.net>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
-        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-sparse@vger.kernel.org,
-        Linux Kbuild mailing list <linux-kbuild@vger.kernel.org>
+Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:55758 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727393AbeJRKed (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Oct 2018 06:34:33 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 8BD2420881
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2018 02:35:53 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201461] ext4 journal stalls write system call
+Date: Thu, 18 Oct 2018 02:35:53 +0000
+Message-ID: <bug-201461-13602-UoBpLav8xT@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201461-13602@https.bugzilla.kernel.org/>
+References: <bug-201461-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+MIME-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 22, 2018 at 2:48 AM Miguel Ojeda
-<miguel.ojeda.sandonis@gmail.com> wrote:
->
-> On Sun, Oct 21, 2018 at 8:29 PM Greg Kroah-Hartman
-> <gregkh@linuxfoundation.org> wrote:
-> >
-> > Will this work with all of the static tools that are currently looking
-> > for the comment instead?  I know coverity handles that, what about
-> > others?
->
-> I will also contact the different tools about this.
+https://bugzilla.kernel.org/show_bug.cgi?id=201461
 
-Let's contact the authors of these tools if they don't parse the
-attribute.  I prefer to have the attributes rather than specifically
-formatted comments.
+--- Comment #3 from Theodore Tso (tytso@mit.edu) ---
+The writeback code will end up calling ext4_writepages(), which will do block
+allocations via ext4_map_blocks() with the flag EXT4_GET_BLOCKS_CREATE(), and
+this will take a write lock on i_data_sem.   
 
-I do think this may be tricky to provide backwards support for though;
-Miguel, do you have info on which versions of GCC support comments vs
-attribute?
+I'll let you trace through the call chain that starts in the writeback thread,
+through the call to ext4_writepages(), proceeds to mpage_map_one_extent(), and
+from there to ext4_map_blocks() which actually holds the write block.
+
+Note that this is distinct from the data=ordered forced writeblock which starts
+in fs/jbd2's journal_submit_inode_data_buffer() calling generic_writepages().  
+The difference is that generic_writepages() will only call writepage()
+function.  For ext4 that's ext4_writepage(), which will never do block
+allocation.
+
+But the writeback threads call the address space operation's, writepages()
+function, and ext4_writepages() *will* do block allocation for delayed
+allocation writes.
+
+This is a subtle point; ext4_writepage() and ext4_writepages() do very
+different things.   The first is used by the commit kernel thread; the second
+is used by the writeback kernel thread.
+
 -- 
-Thanks,
-~Nick Desaulniers
+You are receiving this mail because:
+You are watching the assignee of the bug.
