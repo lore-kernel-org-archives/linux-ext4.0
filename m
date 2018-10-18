@@ -1,164 +1,157 @@
-Return-Path: <SRS0=nfm4=NB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-wr1-f65.google.com ([209.85.221.65]:34187 "EHLO
-        mail-wr1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727688AbeJVB3i (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Oct 2018 21:29:38 -0400
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: linux-kernel@vger.kernel.org,
-        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
-        Dan Carpenter <dan.carpenter@oracle.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        "David S . Miller" <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Subject: [PATCH 1/2] Compiler Attributes: add support for __fallthrough (gcc >= 7.1)
-Date: Sun, 21 Oct 2018 19:14:13 +0200
-Message-Id: <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
-In-Reply-To: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from ipmail01.adl2.internode.on.net ([150.101.137.133]:16084 "EHLO
+        ipmail01.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726644AbeJRJIe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Oct 2018 05:08:34 -0400
+Date: Thu, 18 Oct 2018 12:05:00 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Dan Williams <dan.j.williams@intel.com>
+Cc: jmoyer <jmoyer@redhat.com>, Eric Sandeen <sandeen@sandeen.net>,
+        zwisler@kernel.org, Christoph Hellwig <hch@lst.de>,
+        Jan Kara <jack@suse.cz>, linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH 0/3] ext2, ext4, xfs: hard fail dax mount on unsupported
+ devices
+Message-ID: <20181018010500.GD6311@dastard>
+References: <1539027169-23332-1-git-send-email-sandeen@sandeen.net>
+ <20181011103636.GC9467@quack2.suse.cz>
+ <CAPcyv4iAD_wkjY1way1rOxr4=gC_TGx71VquF13ooAuUPz9RJw@mail.gmail.com>
+ <5a8e54e8-4845-1c85-e4e9-0b9b551a9ce2@sandeen.net>
+ <20181012082154.GB30154@lst.de>
+ <CAOxpaSWf=6RBTa3WM=Hnbr7MwpQ5mMSMAZ+B5FfZo3zKv4Nu7w@mail.gmail.com>
+ <116ef687-f23d-b45c-1b48-fd444b346719@sandeen.net>
+ <x491s8ofeg2.fsf@segfault.boston.devel.redhat.com>
+ <CAPcyv4iOH4o_1mBh2a1jEqJZGxwki2FHqp8UM0Cj-ZCzHoxQWQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4iOH4o_1mBh2a1jEqJZGxwki2FHqp8UM0Cj-ZCzHoxQWQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->From the GCC manual:
+On Wed, Oct 17, 2018 at 02:44:55PM -0700, Dan Williams wrote:
+> On Wed, Oct 17, 2018 at 2:31 PM Jeff Moyer <jmoyer@redhat.com> wrote:
+> >
+> > Eric Sandeen <sandeen@sandeen.net> writes:
+> >
+> > > I've been thinking about the per-inode stuff a bit, and while I don't know
+> > > how to resolve some of the trickier issues, at least the expected behavior
+> > > seems like something we can narrow down and specify.
+> > >
+> > > Because it's an on-disk flag (in xfs today, in any case) it seems that
+> > > the only sane behavior to expect is either/or, i.e.:
+> > >
+> > > Mount option: All files always dax, per-inode flags ignored (or rejected)
+> > > Per-inode: Mount option cannot be specified; only inodes explicitly flagged are dax
+> > >
+> > > Think about it; what would mount-option-plus-per-inode mean?  We have
+> > > no "negative" dax flag, so while mount-option-with-flag surely means
+> > > "dax", what the heck does mount-option-without-flag mean, and how is it
+> > > distinguishable from mount option only?
+> > >
+> > > I submit that flags can only have meaning w/o the fs-wide mount option
+> > > enabled, so the question of "should we hard fail mount -o dax for devices
+> > > that cannot support it" seems to be orthogonal to the per-inode question.
+> > >
+> > > i.e. mount -o dax really can only mean "I want dax on everything" and so
+> > > again, I think we probably need to fail the mount if that can't be honored.
+> >
+> > I hate to even open up this can of worms, but what about killing the dax
+> > mount option?
+> >
+> > To quote Christoph:
+> >   How does an application "make use of DAX"?  What actual user visible
+> >   semantics are associated with a file that has this flag set?
+> >
+> > We're already talking about making caching decisions automatically, so
+> > does DAX even mean anything at that point?  If the storage and the file
+> > system support it, enable it.
+> >
+> > From what we've seen so far, aplications want:
+> > 1) to be able to make data persistent from userspace
+> >    For this, we have MAP_SYNC.
+> > 2) to determine whether or not page cache will be used
+> >    For this, we have O_DIRECT for read/write access, and MAP_SYNC for
+> >    mmap access (and maybe a third option coming, we'll see).
+> 
+> As Jan has said, it's not safe to assume that 'no page cache' is
+> implied with MAP_SYNC. It's a side effect not a contract of the
+> current implementation.
 
-  fallthrough
+Even MAP_DIRECT shouldn't mean "no page cache". O_DIRECT is a hint,
+not a guarantee, and so it may very well use the page cache if it
+needs to (as I've just explained in detail in a different thread).
 
-    The fallthrough attribute with a null statement serves as a
-    fallthrough statement. It hints to the compiler that a statement
-    that falls through to another case label, or user-defined label
-    in a switch statement is intentional and thus the -Wimplicit-fallthrough
-    warning must not trigger. The fallthrough attribute may appear
-    at most once in each attribute list, and may not be mixed with
-    other attributes. It can only be used in a switch statement
-    (the compiler will issue an error otherwise), after a preceding
-    statement and before a logically succeeding case label,
-    or user-defined label.
+> > The only thing users gain from a mount option is the ability to turn OFF
+> > dax.  I suppose there might be a use case that wants this, but I'm not
+> > aware of it.
+> 
+> I think we're stuck with it as many scripts would break if it ever
+> went completely away. However, we could mark it deprecated / ignored
 
-  https://gcc.gnu.org/onlinedocs/gcc/Statement-Attributes.html
+I don't really care that much about this - it is still marked
+experimental.
 
-Currently, most of the kernel uses fallthrough comments to silence
-the -Wimplicit-fallthrough warnings (enabled by -Wextra, in W=1).
-However, C++17 standarized an "statement attribute" (the first
-of its kind) to deal with this: [[fallthrough]] is meant to be
-a new control keyword in the form of an extension.
+That said, deprecation is the best way forward here if we are going
+to remove the mount option. We've done this for other XFS mount
+options recently (e.g. barrier/nobarrier) where the functionality is
+now fully baked into the fileystem and there's no user option to
+control it anymore.
 
-In C mode, GCC supports the __fallthrough__ attribute since 7.1,
-the same time the warning and the comment parsing were introduced.
+What we really need is a document describing the expected behaviour
+of filesysetms on dax-capable storage. Let's nail down exactly what
+we need to do to pull DAX out of the experimental state before we
+start changing things. We've been doing things in a very ad-hoc way
+for a while now, and we're not really converging on an endpoint where we
+can say "we're done, have at it".
 
-While comment parsing is a good idea to deal with old codebases
-that used such a comment as documentation for humans, the best
-solution is to use the attribute:
+I think we need to decide on:
 
-  * It is a "real" part of the AST (=> better for tooling).
+- default filesystem behaviour on dax-capable block devices
+- what information aout DAX do applications actually need? What
+  makes sense to provide them with that information?
+- how to provide hints to the kernel for desired behaviour
+  - on-disk inode flags, or something else?
+  - dax/nodax mount options or root dir inode flags become default
+    global hints?
+  - is a single hint flag sufficient or do we also need an
+    explicit "do not use dax" flag?
+- behaviour of MAP_SYNC w.r.t. non-DAX filesystems that can provide
+  required MAP_SYNC semnatics
+- behaviour of MAP_DIRECT - hint like O_DIRECT or guarantee?
+- default read/write path behaviour of dax-capable block devices
+  - automatically bypass the pagecache if bdev is capable?
+- default mmap behaviour on dax capable devices
+  - use dax always?
+- DAX vs get_user_pages_longterm
+  - turns off DAX dynamically?
+  - how do DAX-enabled filesystems interact with page fault capable
+    hardware? Can we allow DAX in those cases?
 
-  * It does not follow arbitrary rules for parsing (e.g. regexps
-    for the comment parsing).
+I'm sure there's a heap more we need to document and nail down.
+There's a lot of stuff to sort out before we start hammering on
+random bits of code....
 
-  * It may even become standarized in C as well: there are ongoing
-    proposals to import some C++ standard attributes into
-    the C standard, e.g. for fallthrough:
+> provided we had a way for applications to query and override if DAX is
+> enabled. I also think it's important to keep separate the dax-mmap
+> behavior from the dax-read/write behavior. dax-mmap is where an
+> application would make different decisions if it can get a mapping
+> without page cache,
 
-      http://www.open-std.org/jtc1/sc22/wg14/www/docs/n2268.pdf
+The functionality people keep saying "requires DAX" really doesn't -
+what it really requires is that mmap() exposes filesystem tracked
+pmem in a CPU addressable memory range. DAX is not the only way to
+do that - a filesystem with a pmem-based persistent page cache can
+provide MAP_SYNC semantics to userspace without being a DAX
+filesystem.
 
-On top of that, it is also a better solution for the kernel, because:
+(see other thread again)
 
-  * We can actually use a #define for it like for the rest of
-    attributes/extensions, which is not possible with a comment,
-    so that its naming/usage is consistent across the entire kernel.
+Cheers,
 
-  * Whenever the migration from the comments to the attribute
-    is complete, we may increase the level of the GCC warning up to 5,
-    i.e. comments will not longer be considered for warning
-    surpression:  only the attribute must be used. This would enforce
-    consistency by leveraging the compiler directly (instead of
-    enforcing it with other tools).
-
-  * Further into the future, we can consider moving the warning
-    up to W=0 or even making it an error.
-
-It is worth noting that clang >= 3.2 supports the warning and
-the attribute, but only in C++ mode (and it is not enabled by
--Wall/-Wextra/-Wpedantic like in gcc). Hopefully, they will also
-support it for C as well.
-
-Further, icc >= 18 does not seem to know anything about the warning;
-except that it accepts (i.e. ignores) [[fallthrough]] in C++17 mode
-(to be conformant, probably).
-
-Link: https://lore.kernel.org/lkml/20181017062255.oiu44y4zuuwilan3@mwanda/
-Suggested-by: Dan Carpenter <dan.carpenter@oracle.com>
-Signed-off-by: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
----
- include/linux/compiler_attributes.h | 18 ++++++++++++++++++
- 1 file changed, 18 insertions(+)
-
-diff --git a/include/linux/compiler_attributes.h b/include/linux/compiler_attributes.h
-index 6b28c1b7310c..9e2153f85462 100644
---- a/include/linux/compiler_attributes.h
-+++ b/include/linux/compiler_attributes.h
-@@ -32,6 +32,7 @@
- # define __GCC4_has_attribute___assume_aligned__      (__GNUC_MINOR__ >= 9)
- # define __GCC4_has_attribute___designated_init__     0
- # define __GCC4_has_attribute___externally_visible__  1
-+# define __GCC4_has_attribute___fallthrough__         0
- # define __GCC4_has_attribute___noclone__             1
- # define __GCC4_has_attribute___optimize__            1
- # define __GCC4_has_attribute___nonstring__           0
-@@ -133,6 +134,23 @@
- # define __visible
- #endif
- 
-+/*
-+ * Currently, most of the kernel uses fallthrough comments to silence
-+ * the -Wimplicit-fallthrough warnings (enabled by -Wextra, in W=1).
-+ * For new instances, please use this attribute instead.
-+ *
-+ * Optional: only supported since gcc >= 7.1
-+ * Optional: not supported by clang
-+ * Optional: not supported by icc
-+ *
-+ *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Statement-Attributes.html#index-fallthrough-statement-attribute
-+ */
-+#if __has_attribute(__fallthrough__)
-+# define __fallthrough                  __attribute__((__fallthrough__))
-+#else
-+# define __fallthrough
-+#endif
-+
- /*
-  *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-format-function-attribute
-  * clang: https://clang.llvm.org/docs/AttributeReference.html#format
+Dave.
 -- 
-2.17.1
+Dave Chinner
+david@fromorbit.com
