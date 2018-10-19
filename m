@@ -1,33 +1,47 @@
-Return-Path: <SRS0=j8gV=MN=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-ed1-f50.google.com ([209.85.208.50]:45782 "EHLO
-        mail-ed1-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729415AbeJAVKh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Oct 2018 17:10:37 -0400
+Return-Path: <SRS0=tE3u=M7=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35004 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725945AbeJSIWX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 19 Oct 2018 04:22:23 -0400
+Date: Thu, 18 Oct 2018 20:18:49 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Nathan Peterson <nathan@uwgrads.com>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: Unable to mount an ext4 RAID6 array
+Message-ID: <20181019001849.GC2407@thunk.org>
+References: <CAAQ4vX2wrzxzP6=bP9Bbt89Hvs_JRJuZxSQGfPw2vUrtOqh3UA@mail.gmail.com>
+ <20180913223252.GD30588@thunk.org>
+ <CAAQ4vX2nujND+s7mK-3EztS+MtLeNsNgmd=kwFQmVSa1ABjrKQ@mail.gmail.com>
+ <CAAQ4vX3a5RrD_Dt7tFJ23cof=FAK3fd5jrF+c45YujbjwNcKmw@mail.gmail.com>
 MIME-Version: 1.0
-From: Joshi <joshiiitr@gmail.com>
-Date: Mon, 1 Oct 2018 20:02:17 +0530
-Message-ID: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
-Subject: cross-fs copy support
-To: linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAAQ4vX3a5RrD_Dt7tFJ23cof=FAK3fd5jrF+c45YujbjwNcKmw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I was wondering about the cross-fs copy through copy_file_range.
-It seems current implement has below check, that disables such copy.
+Hi,
 
-1577         /* this could be relaxed once a method supports cross-fs copies */
-1578         if (inode_in->i_sb != inode_out->i_sb)
-1579                 return -EXDEV;
+Sorry I didn't get back to you sooner.  This e-mail thread got lost in
+my inbox, so thanks for pinging me about it.
 
-May I know what are the thoughts behind disabling cross-fs copy?
-Code has the comment "once a method supports", but that leaves me
-wondering exactly what 'method' is expected, and from whom.
+These lines in the logs clearly show that it is a hardware problem.
+It could be an issue with the SATA controller, or cables, or even
+something in the motherboard.
 
-I disabled the check, and copy across volumes seemed to work fine. At
-least for a single file (1G size), with no data mismatch, and faster
-speed than regular copy.
+[  +0.000006] ata1: irq_stat 0x00400040, connection status changed
+[  +0.000004] ata1: SError: { HostInt PHYRdyChg 10B8B DevExch }
+[  +0.000005] ata1: hard resetting link
+[  +5.634542] ata1: SATA link up 6.0 Gbps (SStatus 133 SControl 300)
+[  +0.001809] ata1.00: configured for UDMA/133
+[  +0.000003] ata1: EH complete
+[Sep13 19:47] ata1: exception Emask 0x50 SAct 0x0 SErr 0x4090800
 
--- 
-Joshi
+The following article (found via Google) on Serverfault might be
+helpful:
+
+https://serverfault.com/questions/749433/hard-resetting-link-exception-emask-0x50-sact-0x0-serr-0x4090800-action-0xe-froz
+
+Good luck,
+
+					- Ted
