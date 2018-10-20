@@ -1,31 +1,32 @@
-Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:50314 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726432AbeJCKB3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Oct 2018 06:01:29 -0400
-Date: Tue, 2 Oct 2018 23:15:00 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Eric Whitney <enwlinux@gmail.com>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v3 0/6] ext4: rework bigalloc reserved cluster accounting
-Message-ID: <20181003031500.GA30807@thunk.org>
-References: <20180928162316.16480-1-enwlinux@gmail.com>
+Return-Path: <SRS0=ulrH=NA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from morilee.com ([185.53.170.144]:46378 "EHLO tablebases.com"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726710AbeJUHr1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 21 Oct 2018 03:47:27 -0400
+To: linux-ext4@vger.kernel.org
+Subject: Editors 4
+Message-ID: <24affd4693b3b2b94d3be2b3e4bd43e8@hairpinlegs.com>
+Date: Sat, 20 Oct 2018 14:43:00 +0200
+From: "Linda" <paninteerpaenrloz@verizon.net>
+Reply-To: dotrenai@sina.com
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20180928162316.16480-1-enwlinux@gmail.com>
+Content-Type: text/plain; format=flowed; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 28, 2018 at 12:23:10PM -0400, Eric Whitney wrote:
-> Ext4 can make gross overestimates of the number of reserved clusters
-> required to handle bigalloc write requests under delayed allocation,
-> resulting in premature ENOSPC and quota limit failures.
-> 
-> These patches fix the implementation of reserved cluster accounting for
-> bigalloc file systems configured to use delayed allocation, and fix the
-> specific bugs described in bugzilla #151491.
+We are one image studio who is able to process 300+ photos a day.
 
-Thanks, I've applied this patch series to the ext4 git tree.
+If you need any image editing, please let us know. We can do it for you
+such as:
+Image cut out for photos  and clipping path, masking for your photos,
+They are mostly used for ecommerce photos, jewelry photos retouching,
+beauty and skin images
+and wedding photos.
 
-		     	   	     - Ted
+We do also different kind of beauty retouching, portraits retouching.
+
+We can send editing for your photos if you send us one or two photos.
+
+Thanks,
+Linda
