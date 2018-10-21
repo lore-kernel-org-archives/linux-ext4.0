@@ -1,51 +1,79 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-40133.protonmail.ch ([185.70.40.133]:16650 "EHLO
-        mail-40133.protonmail.ch" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728144AbeJVSwx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 14:52:53 -0400
-Date: Mon, 22 Oct 2018 10:34:48 +0000
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-From: Fisher <fisherthepooh@protonmail.com>
-Reply-To: Fisher <fisherthepooh@protonmail.com>
-Subject: Why not always do copy-out in jbd2_journal_write_metadta_buffer
-Message-ID: <usGdshd4UQ6wFx4jVDkzY1xddFnUnT7NXj6IWA-uVczdSc5_TmczQvtmULxNVQ3reUPTmyQd2YeLhPa_L2uPbaNdfBPVlLz7rQQ9oC7aSkw=@protonmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+Return-Path: <SRS0=nfm4=NB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from smtprelay0037.hostedemail.com ([216.40.44.37]:56813 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1727446AbeJVDHq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 21 Oct 2018 23:07:46 -0400
+Message-ID: <d56762f8856201f520a3ee5553276621237e8e27.camel@perches.com>
+Subject: Re: [PATCH 0/2] Compiler Attributes: __fallthrough
+From: Joe Perches <joe@perches.com>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Cc: linux-kernel@vger.kernel.org,
+        Dan Carpenter <dan.carpenter@oracle.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Date: Sun, 21 Oct 2018 11:52:21 -0700
+In-Reply-To: <20181021182926.GB6683@kroah.com>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+         <20181021182926.GB6683@kroah.com>
+Content-Type: text/plain; charset="ISO-8859-1"
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Sun, 2018-10-21 at 19:29 +0100, Greg Kroah-Hartman wrote:i
+> On Sun, Oct 21, 2018 at 07:14:12PM +0200, Miguel Ojeda wrote:
+> > These are two patches are meant to go on top of the rest of the compiler
+> > attributes series on:
+> > 
+> >   https://github.com/ojeda/linux/tree/compiler-attributes
+> > 
+> > which will be sent to Greg for the next merge window.
+> > 
+> > Please review them and let me know! (specially if someone is against
+> > __fallthrough for some reason :-).
+> 
+> Will this work with all of the static tools that are currently looking
+> for the comment instead?
 
-Recently I was testing my storage's performance and found that there were
+Does anyone have a list of the static tools that
+use comment style fallthrough notations?
 
-periodic performance drops when I ran sequential write benchmark.
+> I know coverity handles that, what about others?
 
-After profiling the duration in each step, I found that the dropping
-
-performance was due to wait_on_bit_io(&bh->b_state, BH_Shadow, TASK_UNINTER=
-RUPTIBLE)
-
-in do_get_write_access(). And this is what made me confused, if my understa=
-nding was right,
-
-I thought buffer_shadow(bh) stands for buffer not being copied-out that's w=
-hy we should wait.
-
-But why don't we do copy-out in jbd2_journal_write_metadta_buffer()? and if=
- we do
-
-do the copy-out, does that mean we don't have to set_buffer_shadow because =
-it refers to
-
-buffer not copied-out?
-
-I made a test, when a buffer_head goes into jbd2_journal_write_metadta_buff=
-er(), as long as
-
-it belongs to metadata, then force it to do copy-out and do not set_buffer_=
-shadow, then there
-
-will be no periodic performance drops. Is this test reasonable?
-
-Thanks,
+No doubt tool updates would be useful.
