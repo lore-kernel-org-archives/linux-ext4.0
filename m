@@ -1,18 +1,14 @@
-Return-Path: <SRS0=0MVU=MR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-qk1-f194.google.com ([209.85.222.194]:45622 "EHLO
-        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727581AbeJESbA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Oct 2018 14:31:00 -0400
-MIME-Version: 1.0
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Fri, 5 Oct 2018 13:32:25 +0200
-Message-ID: <CANiq72kuTr09CjE0jcNFkdO-gOFCjYp+REuLPq5V9c4Y8KvWXA@mail.gmail.com>
-Subject: [GIT PULL linux-next] Add Compiler Attributes (v6) tree
-To: Stephen Rothwell <sfr@canb.auug.org.au>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Linux-Next Mailing List <linux-next@vger.kernel.org>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+Return-Path: <SRS0=nfm4=NB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:55704 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727827AbeJVCok (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 21 Oct 2018 22:44:40 -0400
+Date: Sun, 21 Oct 2018 19:29:26 +0100
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Cc: linux-kernel@vger.kernel.org,
+        Dan Carpenter <dan.carpenter@oracle.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
         Masahiro Yamada <yamada.masahiro@socionext.com>,
         Michal Marek <michal.lkml@markovi.net>,
         Steven Rostedt <rostedt@goodmis.org>,
@@ -35,7 +31,7 @@ Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
         Martin Sebor <msebor@gmail.com>,
         Christopher Li <sparse@chrisli.org>,
         Jonathan Corbet <corbet@lwn.net>,
-        "Theodore Ts'o" <tytso@mit.edu>,
+        Theodore Ts'o <tytso@mit.edu>,
         Geert Uytterhoeven <geert@linux-m68k.org>,
         Rasmus Villemoes <linux@rasmusvillemoes.dk>,
         Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
@@ -43,77 +39,35 @@ Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
         Stefan Agner <stefan@agner.ch>,
         Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
         Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Subject: Re: [PATCH 0/2] Compiler Attributes: __fallthrough
+Message-ID: <20181021182926.GB6683@kroah.com>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Stephen,
+On Sun, Oct 21, 2018 at 07:14:12PM +0200, Miguel Ojeda wrote:
+> These are two patches are meant to go on top of the rest of the compiler
+> attributes series on:
+> 
+>   https://github.com/ojeda/linux/tree/compiler-attributes
+> 
+> which will be sent to Greg for the next merge window.
+> 
+> Please review them and let me know! (specially if someone is against
+> __fallthrough for some reason :-).
 
-As discussed, here it is the Compiler Attributes series for
-linux-next. This time the original v6, based on -rc6.
+Will this work with all of the static tools that are currently looking
+for the comment instead?  I know coverity handles that, what about
+others?
 
-The changes w.r.t. v5:
+thanks,
 
-  - Added latest Reviewed-by's and Tested-by's.
-
-The conflicts are trivial to solve, but if you want a reference, take
-a look at (rebased on top of next-20181005):
-
-  https://github.com/ojeda/linux.git compiler-attributes-rebased
-
-Thanks!
-
-Cheers,
-Miguel
-
-The following changes since commit 17b57b1883c1285f3d0dc2266e8f79286a7bef38:
-
-  Linux 4.19-rc6 (2018-09-30 07:15:35 -0700)
-
-are available in the Git repository at:
-
-  https://github.com/ojeda/linux.git compiler-attributes
-
-for you to fetch changes up to f0604f63033d4020f019d2aaee805c1075b1077b:
-
-  Compiler Attributes: ext4: remove local __nonstring definition
-(2018-09-30 20:14:04 +0200)
-
-----------------------------------------------------------------
-Miguel Ojeda (15):
-      Compiler Attributes: remove unused attributes
-      Compiler Attributes: always use the extra-underscores syntax
-      Compiler Attributes: remove unneeded tests
-      Compiler Attributes: homogenize __must_be_array
-      Compiler Attributes: remove unneeded sparse (__CHECKER__) tests
-      Compiler Attributes: add missing SPDX ID in compiler_types.h
-      Compiler Attributes: use feature checks instead of version checks
-      Compiler Attributes: KENTRY used twice the "used" attribute
-      Compiler Attributes: remove uses of __attribute__ from compiler.h
-      Compiler Attributes: add Doc/process/programming-language.rst
-      Compiler Attributes: add MAINTAINERS entry
-      Compiler Attributes: add support for __nonstring (gcc >= 8)
-      Compiler Attributes: enable -Wstringop-truncation on W=1 (gcc >= 8)
-      Compiler Attributes: auxdisplay: panel: use __nonstring
-      Compiler Attributes: ext4: remove local __nonstring definition
-
- Documentation/process/index.rst                |   1 +
- Documentation/process/programming-language.rst |  45 +++++
- MAINTAINERS                                    |   5 +
- drivers/auxdisplay/panel.c                     |   7 +-
- fs/ext4/ext4.h                                 |   9 -
- include/linux/compiler-clang.h                 |   5 -
- include/linux/compiler-gcc.h                   |  70 +------
- include/linux/compiler-intel.h                 |   9 -
- include/linux/compiler.h                       |  19 +-
- include/linux/compiler_attributes.h            | 258 +++++++++++++++++++++++++
- include/linux/compiler_types.h                 | 101 ++--------
- scripts/Makefile.extrawarn                     |   1 +
- 12 files changed, 341 insertions(+), 189 deletions(-)
- create mode 100644 Documentation/process/programming-language.rst
- create mode 100644 include/linux/compiler_attributes.h
+greg k-h
