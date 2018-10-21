@@ -1,14 +1,12 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from wtarreau.pck.nerim.net ([62.212.114.60]:35374 "EHLO 1wt.eu"
+Return-Path: <SRS0=nfm4=NB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:42716 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727325AbeJVPY0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 22 Oct 2018 11:24:26 -0400
-Date: Mon, 22 Oct 2018 09:05:47 +0200
-From: Willy Tarreau <w@1wt.eu>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Matthew Wilcox <willy@infradead.org>,
-        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        id S1725882AbeJVGn6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 22 Oct 2018 02:43:58 -0400
+Date: Sun, 21 Oct 2018 18:27:12 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
         linux-kernel@vger.kernel.org,
         Dan Carpenter <dan.carpenter@oracle.com>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
@@ -30,7 +28,7 @@ To: "Theodore Y. Ts'o" <tytso@mit.edu>,
         Will Deacon <will.deacon@arm.com>,
         Philippe Ombredanne <pombredanne@nexb.com>,
         Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
         Martin Sebor <msebor@gmail.com>,
         Christopher Li <sparse@chrisli.org>,
         Jonathan Corbet <corbet@lwn.net>,
@@ -47,44 +45,41 @@ To: "Theodore Y. Ts'o" <tytso@mit.edu>,
         linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
 Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
  (gcc >= 7.1)
-Message-ID: <20181022070547.GA22454@1wt.eu>
+Message-ID: <20181021222712.GI1617@thunk.org>
 References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
  <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
- <20181022004217.GA4941@bombadil.infradead.org>
- <20181022065800.GK1617@thunk.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181022065800.GK1617@thunk.org>
+In-Reply-To: <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 22, 2018 at 02:58:00AM -0400, Theodore Y. Ts'o wrote:
-> On Sun, Oct 21, 2018 at 05:42:18PM -0700, Matthew Wilcox wrote:
-> > On Sun, Oct 21, 2018 at 07:14:13PM +0200, Miguel Ojeda wrote:
-> > > +#if __has_attribute(__fallthrough__)
-> > > +# define __fallthrough                  __attribute__((__fallthrough__))
-> > > +#else
-> > > +# define __fallthrough
-> > > +#endif
-> > 
-> > Why is the #else not:
-> > 
-> > # define __fallthrough		/* fallthrough */
-> > 
-> > Would this solve the Coverity problem, or does Coverity look at the raw
-> > source code before preprocessing?
+On Sun, Oct 21, 2018 at 07:14:13PM +0200, Miguel Ojeda wrote:
+> From the GCC manual:
 > 
-> Wouldn't the "/* ... */" be eaten by the preprocessor before defining
-> the __fallthrough cpp macro?  (e.g., try running the attached script)
+>   fallthrough
+> 
+>     The fallthrough attribute with a null statement serves as a
+>     fallthrough statement. It hints to the compiler that a statement
+>     that falls through to another case label, or user-defined label
+>     in a switch statement is intentional and thus the -Wimplicit-fallthrough
+>     warning must not trigger. The fallthrough attribute may appear
+>     at most once in each attribute list, and may not be mixed with
+>     other attributes. It can only be used in a switch statement
+>     (the compiler will issue an error otherwise), after a preceding
+>     statement and before a logically succeeding case label,
+>     or user-defined label.
+> 
+>   https://gcc.gnu.org/onlinedocs/gcc/Statement-Attributes.html
 
-You're right, even on older versions (4.7 here) :
+Do we know if coverity understands the fallthrough attribute?  One of
+the reasons why I started using /* fallthrough */ is because it kept
+Coverity happy.
 
-$ echo -e '#define foobar quux /* foobar */\nfoobar\n' | gcc -E -
-# 1 "<stdin>"
-# 1 "<command-line>"
-# 1 "<stdin>"
+If the conversion from /* fallthrough */ to the __fallthrough__
+attribute means that we start gethting a lot of Coverity warnings,
+that would be unfortunate.  OTOH, if this is getting standardized,
+maybe we can get Coverity to understand this attribute?
 
-quux
-
-Willy
+						- Ted
