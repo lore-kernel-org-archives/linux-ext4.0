@@ -1,25 +1,13 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lj1-f193.google.com ([209.85.208.193]:47047 "EHLO
-        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726038AbeJWFyr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2018 01:54:47 -0400
-MIME-Version: 1.0
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
- <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com> <20181021222712.GI1617@thunk.org>
- <8fb78062-b6d4-6f2d-d943-44bec6b95ff0@petrovitsch.priv.at>
- <20181022102743.nua5fgbscyeymzal@mwanda> <1474d995-1b5a-2efb-f077-33eb4a5d9e31@petrovitsch.priv.at>
- <20181022105314.j6djkrpwbnokhai5@mwanda> <CANiq72=ioYcRA-yq38+Z4i6iVDNm6C2-+b4feRmnvEiekuR7dA@mail.gmail.com>
- <3cbb5345-0270-5575-7563-6ad37d888e42@petrovitsch.priv.at>
-In-Reply-To: <3cbb5345-0270-5575-7563-6ad37d888e42@petrovitsch.priv.at>
+Return-Path: <SRS0=nfm4=NB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-wm1-f67.google.com ([209.85.128.67]:36852 "EHLO
+        mail-wm1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727835AbeJVB3e (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Oct 2018 21:29:34 -0400
 From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Mon, 22 Oct 2018 23:34:16 +0200
-Message-ID: <CANiq72kLOV63XZx2zCnnSuvEyXucqpnjb5dnF=gRZ_q-hEGO2Q@mail.gmail.com>
-Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
- (gcc >= 7.1)
-To: bernd@petrovitsch.priv.at
-Cc: Dan <dan.carpenter@oracle.com>, "Ted Ts'o" <tytso@mit.edu>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: linux-kernel@vger.kernel.org,
+        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        Dan Carpenter <dan.carpenter@oracle.com>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Masahiro Yamada <yamada.masahiro@socionext.com>,
         Michal Marek <michal.lkml@markovi.net>,
@@ -27,7 +15,7 @@ Cc: Dan <dan.carpenter@oracle.com>, "Ted Ts'o" <tytso@mit.edu>,
         Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
         Olof Johansson <olof@lxom.net>,
         Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
+        "David S . Miller" <davem@davemloft.net>,
         Andrey Ryabinin <aryabinin@virtuozzo.com>,
         Kees Cook <keescook@chromium.org>,
         Thomas Gleixner <tglx@linutronix.de>,
@@ -43,6 +31,7 @@ Cc: Dan <dan.carpenter@oracle.com>, "Ted Ts'o" <tytso@mit.edu>,
         Martin Sebor <msebor@gmail.com>,
         Christopher Li <sparse@chrisli.org>,
         Jonathan Corbet <corbet@lwn.net>,
+        Theodore Ts'o <tytso@mit.edu>,
         Geert Uytterhoeven <geert@linux-m68k.org>,
         Rasmus Villemoes <linux@rasmusvillemoes.dk>,
         Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
@@ -52,112 +41,83 @@ Cc: Dan <dan.carpenter@oracle.com>, "Ted Ts'o" <tytso@mit.edu>,
         Nick Desaulniers <ndesaulniers@google.com>,
         Andrew Morton <akpm@linux-foundation.org>,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Subject: [PATCH 0/2] Compiler Attributes: __fallthrough
+Date: Sun, 21 Oct 2018 19:14:12 +0200
+Message-Id: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 22, 2018 at 7:50 PM Bernd Petrovitsch
-<bernd@petrovitsch.priv.at> wrote:
->
-> Hi all!
->
-> On 22/10/18 13:07, Miguel Ojeda wrote:
-> > On Mon, Oct 22, 2018 at 12:54 PM Dan Carpenter <dan.carpenter@oracle.com> wrote:
-> >>
-> >> Doing both is super ugly.  Let's just do comments until Eclipse gets
-> >> updated.
->
-> Yes, "Eclipse" as the IDE.
->
-> And yes but IMHO better super ugly than loosing the warning - YMMV.
+These are two patches are meant to go on top of the rest of the compiler
+attributes series on:
 
-I think Dan meant too simply not touch anything (i.e. not losing the
-warning anywhere).
+  https://github.com/ojeda/linux/tree/compiler-attributes
 
->
-> For the archives: I have Eclipse Photon/June 2016 here. And "no break"
-> is the (default) string in a comment used by Eclipse (it can be
-> customized and is actually a regexp but it must be in a comment).
->
+which will be sent to Greg for the next merge window.
 
-Hm... that means they don't support (by default) the same regexps as
-GCC; which is bad: it means that it is only equivalent to the most
-relaxed level in gcc, 1:
+Please review them and let me know! (specially if someone is against
+__fallthrough for some reason :-).
 
-    """
-    -Wimplicit-fallthrough=1 matches .* regular expression, any
-comment is used as fallthrough comment.
-    """
+The first patch introduces the attribute and gives the rationale.
+The second patch is an example of usage.
 
-    See https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
+This was started in the following thread:
 
-i.e. any other level above will either not match Eclipse or not match gcc.
-
-> >> I had wanted to move to the attribute because that would simplify things
-> >> in Smatch but it's not a huge deal to delay for another year.
-> >
-> > I can re-send them later on, no problem. On the other hand, doing the
-> > changes will push tools to get updated sooner ;-)
-> >
-> > If tools were doing something as fancy as comment parsing for
-> > diagnostics, they should have been updated with the attribute support
-> > (either gcc's or C++17's) -- it has been more than a year now since
-> > gcc 7.1 and the C++17 final draft. (Note that this does not apply for
-> > things like clang, since they weren't doing comment parsing to begin
-> > with.)
->
-> That would be nice. And if they agree on the same texts (or accept per
-> default all somewhat widely used and/or old ones).
->
-> After stumbling over
-> https://stackoverflow.com/questions/16935935/how-do-i-turn-off-a-static-code-analysis-warning-on-a-line-by-line-warning-in-cd,
-> looking into Eclipses Window -> Preferences -> C/C++ -> Code Analysis ->
-> "No break at the end of case" screen (that's the screenshot there) and I
-> tried various things:
->
-> Preface:
-> I have
-> ----  snip  ----
-> #define __fallthrough __attribute__((fallthrough))
-> ----  snip  ----
-> for gcc >= 7 (because clang doesn't know it and I had also older
-> gcc's in use before).
->
-> So:
-> - Adding a comment to the #define doesn't change anything for Eclipse.
-
-It shouldn't according to the standard -- but who knows... :-)
-
-> - Eclipse looks *only* in comments for the string/regexp given
->   the warnings configuration (and that comment must be on the line
->   directly before the "case").
-> - Eclipse understands [[fallthrough]] out-of-the-box though (which
->   is C++11 AFAIK) as does g++-7 (I use -std=gnu++17 - most of the
->   sources are C++, but not all) and clang++-6 (all the current standard
->   Ubuntu-18.06/Bionic packages).
-
-Eclipse understanding [[fallthrough]] is very good, actually.
-
->   Eclipse "accepts" [[fallthrough]] only in C++ sources (and not in C
->   sources).
-
-Bad, but I guess they will add it to C eventually, since it is
-probably coming for C2x.
-
-> - Neither gcc nor clang understand [[fallthrough]] (so it's probably a
->   no-go for the Kernel with C89 anyways).
-
-clang does it if you enable -fdouble-square-bracket-attributes (please
-see my other messages). gcc will at some point (if C2x gets the
-attributes), but at the moment the C parser is different than the C++
-parser and there is no support for it on trunk that I could see, so
-they will have to copy the support; i.e. it will take a bit more time
-than clang, likely.
-
-Thanks a *lot* for taking a look at Eclipse!
+  https://lore.kernel.org/lkml/20181017062255.oiu44y4zuuwilan3@mwanda/
 
 Cheers,
 Miguel
+
+Cc: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: Masahiro Yamada <yamada.masahiro@socionext.com>
+Cc: Michal Marek <michal.lkml@markovi.net>
+Cc: Steven Rostedt <rostedt@goodmis.org>
+Cc: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+Cc: Olof Johansson <olof@lxom.net>
+Cc: Konstantin Ryabitsev <konstantin@linuxfoundation.org>
+Cc: David S. Miller <davem@davemloft.net>
+Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>
+Cc: Kees Cook <keescook@chromium.org>
+Cc: Thomas Gleixner <tglx@linutronix.de>
+Cc: Ingo Molnar <mingo@kernel.org>
+Cc: Paul Lawrence <paullawrence@google.com>
+Cc: Sandipan Das <sandipan@linux.vnet.ibm.com>
+Cc: Andrey Konovalov <andreyknvl@google.com>
+Cc: David Woodhouse <dwmw2@infradead.org>
+Cc: Will Deacon <will.deacon@arm.com>
+Cc: Philippe Ombredanne <pombredanne@nexb.com>
+Cc: Paul Burton <paul.burton@mips.com>
+Cc: David Rientjes <rientjes@google.com>
+Cc: Willy Tarreau <w@1wt.eu>
+Cc: Martin Sebor <msebor@gmail.com>
+Cc: Christopher Li <sparse@chrisli.org>
+Cc: Jonathan Corbet <corbet@lwn.net>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Geert Uytterhoeven <geert@linux-m68k.org>
+Cc: Rasmus Villemoes <linux@rasmusvillemoes.dk>
+Cc: Joe Perches <joe@perches.com>
+Cc: Arnd Bergmann <arnd@arndb.de>
+Cc: Dominique Martinet <asmadeus@codewreck.org>
+Cc: Stefan Agner <stefan@agner.ch>
+Cc: Luc Van Oostenryck <luc.vanoostenryck@gmail.com>
+Cc: Nick Desaulniers <ndesaulniers@google.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-doc@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+Cc: linux-sparse@vger.kernel.org
+Cc: linux-kbuild@vger.kernel.org
+
+Miguel Ojeda (2):
+  Compiler Attributes: add support for __fallthrough (gcc >= 7.1)
+  Compiler Attributes: auxdisplay: panel: use __fallthrough
+
+ drivers/auxdisplay/panel.c          |  6 +++---
+ include/linux/compiler_attributes.h | 18 ++++++++++++++++++
+ 2 files changed, 21 insertions(+), 3 deletions(-)
+
+-- 
+2.17.1
