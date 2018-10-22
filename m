@@ -1,238 +1,102 @@
-Return-Path: <SRS0=48F3=M5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:50194 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727132AbeJREyU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Oct 2018 00:54:20 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 22/23] ext4: Implement EXT4_CASEFOLD_FL flag
-Date: Wed, 17 Oct 2018 16:55:23 -0400
-Message-Id: <20181017205524.23360-23-krisman@collabora.co.uk>
-In-Reply-To: <20181017205524.23360-1-krisman@collabora.co.uk>
-References: <20181017205524.23360-1-krisman@collabora.co.uk>
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:43514 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726784AbeJVPQP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 22 Oct 2018 11:16:15 -0400
+Date: Mon, 22 Oct 2018 02:58:00 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Matthew Wilcox <willy@infradead.org>
+Cc: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org,
+        Dan Carpenter <dan.carpenter@oracle.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+Message-ID: <20181022065800.GK1617@thunk.org>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
+ <20181022004217.GA4941@bombadil.infradead.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: multipart/mixed; boundary="ikeVEW9yuYc//A+q"
+Content-Disposition: inline
+In-Reply-To: <20181022004217.GA4941@bombadil.infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Casefold is a flag applied to directories and inherited by its children
-which states that the directory requires case-insensitive searches.
-This flag can only be enabled on empty directories for filesystems that
-support the encoding feature, thus preventing collision of file names
-that only differ by case.
 
-Enconding-awareness is also required because we consider the casefold
-operation not be defined for opaque byte sequences.
+--ikeVEW9yuYc//A+q
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Changes since v2:
-  - Rename sbi->encoding -> sbi->s_encoding.
+On Sun, Oct 21, 2018 at 05:42:18PM -0700, Matthew Wilcox wrote:
+> On Sun, Oct 21, 2018 at 07:14:13PM +0200, Miguel Ojeda wrote:
+> > +#if __has_attribute(__fallthrough__)
+> > +# define __fallthrough                  __attribute__((__fallthrough__))
+> > +#else
+> > +# define __fallthrough
+> > +#endif
+> 
+> Why is the #else not:
+> 
+> # define __fallthrough		/* fallthrough */
+> 
+> Would this solve the Coverity problem, or does Coverity look at the raw
+> source code before preprocessing?
 
-Changes since v1:
-  - Moved the CASEFOLD_FL to prevent collision with reserved verity flag.
+Wouldn't the "/* ... */" be eaten by the preprocessor before defining
+the __fallthrough cpp macro?  (e.g., try running the attached script)
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- fs/ext4/dir.c      | 30 ++++++++++++++++++++++--------
- fs/ext4/ext4.h     |  7 ++++---
- fs/ext4/hash.c     |  6 +++++-
- fs/ext4/inode.c    |  4 +++-
- fs/ext4/ioctl.c    | 18 ++++++++++++++++++
- fs/ext4/namei.c    | 13 ++++++++++---
- include/linux/fs.h |  2 ++
- 7 files changed, 64 insertions(+), 16 deletions(-)
+						- Ted
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index efb75c204551..43b91747f7e7 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -670,6 +670,10 @@ static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
- {
- 	struct nls_table *charset = EXT4_SB(dentry->d_sb)->s_encoding;
- 
-+	if (IS_CASEFOLDED(dentry->d_parent->d_inode))
-+		return nls_strncasecmp(charset, str, len, name->name,
-+				       name->len);
-+
- 	return nls_strncmp(charset, str, len, name->name, name->len);
- }
- 
-@@ -679,16 +683,26 @@ static int ext4_d_hash(const struct dentry *dentry, struct qstr *q)
- 	unsigned char *norm;
- 	int len, ret = 0;
- 
--	/* If normalization is TYPE_PLAIN, we can just reuse the vfs
--	 * hash. */
--	if (IS_NORMALIZATION_TYPE_ALL_PLAIN(charset))
--	    return 0;
-+	if (!IS_CASEFOLDED(dentry->d_inode)) {
- 
--	norm = kmalloc(PATH_MAX, GFP_ATOMIC);
--	if (!norm)
--		return -ENOMEM;
-+		/* If normalization is TYPE_PLAIN, we can just reuse the
-+		 * VFS hash.
-+		 */
-+		if (IS_NORMALIZATION_TYPE_ALL_PLAIN(charset))
-+			return 0;
- 
--	len = nls_normalize(charset, q->name, q->len, norm, PATH_MAX);
-+		norm = kmalloc(PATH_MAX, GFP_ATOMIC);
-+		if (!norm)
-+			return -ENOMEM;
-+
-+		len = nls_normalize(charset, q->name, q->len, norm, PATH_MAX);
-+	} else {
-+		norm = kmalloc(PATH_MAX, GFP_ATOMIC);
-+		if (!norm)
-+			return -ENOMEM;
-+
-+		len = nls_casefold(charset, q->name, q->len, norm, PATH_MAX);
-+	}
- 
- 	if (len < 0) {
- 		ret = -EINVAL;
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 03f86c8d07e0..eea05485cb59 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -409,10 +409,11 @@ struct flex_groups {
- #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
- #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
- #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
-+#define EXT4_CASEFOLD_FL		0x40000000 /* Casefolded file */
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
- 
--#define EXT4_FL_USER_VISIBLE		0x304BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE		0x204BC0FF /* User modifiable flags */
-+#define EXT4_FL_USER_VISIBLE		0x704BDFFF /* User visible flags */
-+#define EXT4_FL_USER_MODIFIABLE		0x604BC0FF /* User modifiable flags */
- 
- /* Flags we can manipulate with through EXT4_IOC_FSSETXATTR */
- #define EXT4_FL_XFLAG_VISIBLE		(EXT4_SYNC_FL | \
-@@ -427,7 +428,7 @@ struct flex_groups {
- 			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
- 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
- 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL |\
--			   EXT4_PROJINHERIT_FL)
-+			   EXT4_PROJINHERIT_FL | EXT4_CASEFOLD_FL)
- 
- /* Flags that are appropriate for regular files (all but dir-specific ones). */
- #define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index 8ec9c7145987..78cb97664a33 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -282,7 +282,11 @@ int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
- 		if (!buff)
- 			return -1;
- 
--		dlen = nls_normalize(charset, name, len, buff, PATH_MAX);
-+		if (!IS_CASEFOLDED(dir))
-+			dlen = nls_normalize(charset, name, len, buff,
-+					     PATH_MAX);
-+		else
-+			dlen = nls_casefold(charset, name, len, buff, PATH_MAX);
- 
- 		if (dlen < 0) {
- 			kfree(buff);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c3d9a42c561e..8e7d5bacd6d9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4745,9 +4745,11 @@ void ext4_set_inode_flags(struct inode *inode)
- 		new_fl |= S_DAX;
- 	if (flags & EXT4_ENCRYPT_FL)
- 		new_fl |= S_ENCRYPTED;
-+	if (flags & EXT4_CASEFOLD_FL)
-+		new_fl |= S_CASEFOLD;
- 	inode_set_flags(inode, new_fl,
- 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
--			S_ENCRYPTED);
-+			S_ENCRYPTED|S_CASEFOLD);
- }
- 
- static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 0edee31913d1..ef4ffe681836 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -231,6 +231,7 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 	struct ext4_iloc iloc;
- 	unsigned int oldflags, mask, i;
- 	unsigned int jflag;
-+	struct super_block *sb = inode->i_sb;
- 
- 	/* Is it quota file? Do not allow user to mess with it */
- 	if (ext4_is_quota_file(inode))
-@@ -275,6 +276,23 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 			goto flags_out;
- 	}
- 
-+	if ((flags ^ oldflags) & EXT4_CASEFOLD_FL) {
-+		if (!ext4_has_feature_fname_encoding(sb)) {
-+			err = -EOPNOTSUPP;
-+			goto flags_out;
-+		}
-+
-+		if (!S_ISDIR(inode->i_mode)) {
-+			err = -ENOTDIR;
-+			goto flags_out;
-+		}
-+
-+		if (!ext4_empty_dir(inode)) {
-+			err = -ENOTEMPTY;
-+			goto flags_out;
-+		}
-+	}
-+
- 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
- 	if (IS_ERR(handle)) {
- 		err = PTR_ERR(handle);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 5c6f78c0a6f9..a46cfbe87dec 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1277,9 +1277,16 @@ static inline bool ext4_match(const struct inode *parent,
- 
- #ifdef CONFIG_NLS
- 	if (sbi->s_encoding) {
--		return !nls_strncmp(sbi->s_encoding,
--				    de->name, de->name_len,
--				    f.disk_name.name, f.disk_name.len);
-+		if (!IS_CASEFOLDED(parent))
-+			return !nls_strncmp(sbi->s_encoding,
-+					    de->name, de->name_len,
-+					    fname->disk_name.name,
-+					    fname->disk_name.len);
-+		else
-+			return !nls_strncasecmp(sbi->s_encoding,
-+						de->name, de->name_len,
-+						fname->disk_name.name,
-+						fname->disk_name.len);
- 	}
- #endif
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 6c0b4a1c22ff..0872d1e0b803 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1896,6 +1896,7 @@ struct super_operations {
- #define S_DAX		0	/* Make all the DAX code disappear */
- #endif
- #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
-+#define S_CASEFOLD	32768	/* Casefolded file */
- 
- /*
-  * Note that nosuid etc flags are inode-specific: setting some file-system
-@@ -1936,6 +1937,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
- #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
- #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
- #define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
-+#define IS_CASEFOLDED(inode)	((inode)->i_flags & S_CASEFOLD)
- 
- #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
- 				 (inode)->i_rdev == WHITEOUT_DEV)
--- 
-2.19.1
+
+
+
+--ikeVEW9yuYc//A+q
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=foo
+
+#!/bin/bash
+
+cat << EOF > /tmp/test$$.c
+#define foobar quux /* foobar */
+
+foobar
+EOF
+gcc -E /tmp/test$$.c
+rm -f /tmp/test$$.c
+
+--ikeVEW9yuYc//A+q--
