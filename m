@@ -1,38 +1,111 @@
-Return-Path: <SRS0=Qv/7=NE=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-ed1-f41.google.com ([209.85.208.41]:34104 "EHLO
-        mail-ed1-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726505AbeJYBN4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2018 21:13:56 -0400
-Received: by mail-ed1-f41.google.com with SMTP id w19-v6so5719020eds.1
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Oct 2018 09:45:08 -0700 (PDT)
-Received: from mail-wm1-f42.google.com (mail-wm1-f42.google.com. [209.85.128.42])
-        by smtp.gmail.com with ESMTPSA id f3-v6sm1862465edb.58.2018.10.24.09.45.06
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 24 Oct 2018 09:45:06 -0700 (PDT)
-Received: by mail-wm1-f42.google.com with SMTP id s10-v6so4047684wmc.5
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Oct 2018 09:45:06 -0700 (PDT)
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pf1-f195.google.com ([209.85.210.195]:43175 "EHLO
+        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728658AbeJWBmt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 21:42:49 -0400
+Received: by mail-pf1-f195.google.com with SMTP id q1-v6so2925436pfh.10
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Oct 2018 10:23:26 -0700 (PDT)
 MIME-Version: 1.0
-References: <20181024144735.GA28816@thunk.org>
-In-Reply-To: <20181024144735.GA28816@thunk.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 24 Oct 2018 17:44:47 +0100
-Message-ID: <CAHk-=wgtz3Xamn_RT0hzBbEhsXyB2yWJ_M4vCRnJRT1du-otdw@mail.gmail.com>
-Subject: Re: [GIT PULL] ext4 updates for 4.20-rc1
-To: "Theodore Ts'o" <tytso@mit.edu>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com> <20181021222712.GI1617@thunk.org>
+ <CANiq72mXV6WTyHXNZJDTfFOpPrXD0zD6cB30bGOuKO44AvRiog@mail.gmail.com>
+In-Reply-To: <CANiq72mXV6WTyHXNZJDTfFOpPrXD0zD6cB30bGOuKO44AvRiog@mail.gmail.com>
+From: Nick Desaulniers <ndesaulniers@google.com>
+Date: Mon, 22 Oct 2018 10:23:14 -0700
+Message-ID: <CAKwvOdm7Ts1ZpYV2qw1YLSg8ntjPekY8Gu=Q1CbSq_7==ekUMw@mail.gmail.com>
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        LKML <linux-kernel@vger.kernel.org>, dan.carpenter@oracle.com,
+        adilger.kernel@dilger.ca,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>, rostedt@goodmis.org,
+        mchehab+samsung@kernel.org, olof@lxom.net,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        sandipan@linux.vnet.ibm.com,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        paul.burton@mips.com, David Rientjes <rientjes@google.com>,
+        Willy Tarreau <w@1wt.eu>, msebor@gmail.com, sparse@chrisli.org,
+        Jonathan Corbet <corbet@lwn.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
+        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org,
+        Linux Kbuild mailing list <linux-kbuild@vger.kernel.org>,
+        Colin Ian King <colin.king@canonical.com>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 24, 2018 at 3:47 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+On Mon, Oct 22, 2018 at 2:26 AM Miguel Ojeda
+<miguel.ojeda.sandonis@gmail.com> wrote:
 >
-> Further restructure ext4 documentation; fix up ext4's delayed
-> allocation for bigalloc file systems; fix up some syzbot-detected
-> races in EXT4_IOC_MOVE_EXT, EXT4_IOC_SWAP_BOOT, and ext4_remount; and
-> a few other miscellaneous bugs and optimizations.
+> On Mon, Oct 22, 2018 at 12:27 AM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+> >
+> > On Sun, Oct 21, 2018 at 07:14:13PM +0200, Miguel Ojeda wrote:
+> > > From the GCC manual:
+> > >
+> > >   fallthrough
+> > >
+> > >     The fallthrough attribute with a null statement serves as a
+> > >     fallthrough statement. It hints to the compiler that a statement
+> > >     that falls through to another case label, or user-defined label
+> > >     in a switch statement is intentional and thus the -Wimplicit-fallthrough
+> > >     warning must not trigger. The fallthrough attribute may appear
+> > >     at most once in each attribute list, and may not be mixed with
+> > >     other attributes. It can only be used in a switch statement
+> > >     (the compiler will issue an error otherwise), after a preceding
+> > >     statement and before a logically succeeding case label,
+> > >     or user-defined label.
+> > >
+> > >   https://gcc.gnu.org/onlinedocs/gcc/Statement-Attributes.html
+> >
+> > Do we know if coverity understands the fallthrough attribute?  One of
+> > the reasons why I started using /* fallthrough */ is because it kept
+> > Coverity happy.
+>
+> If Coverity is like gcc, they should be doing both (i.e. I see the
+> comment parsing as an "extra" that gcc did, but the "basic stuff" is
+> the attribute -- and I would guess it is way easier for them to
+> support than the comment parsing).
+>
+> But I cannot test it myself :-( Someone, please?
 
-Thanks, pulled,
++ Colin, who has been running Coverity on the kernel, and sending patches.
 
-               Linus
+>
+> However, if I understood Greg correctly in his reply to the cover
+> letter, he replied that Coverity knows about it (?).
+>
+> >
+> > If the conversion from /* fallthrough */ to the __fallthrough__
+> > attribute means that we start gethting a lot of Coverity warnings,
+> > that would be unfortunate.  OTOH, if this is getting standardized,
+> > maybe we can get Coverity to understand this attribute?
+>
+> Indeed! That would be the best for everyone, including Coverity customers.
+>
+> Cheers,
+> Miguel
+
+
+
+-- 
+Thanks,
+~Nick Desaulniers
