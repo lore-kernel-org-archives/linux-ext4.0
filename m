@@ -1,162 +1,159 @@
-Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-ot1-f48.google.com ([209.85.210.48]:44237 "EHLO
-        mail-ot1-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728079AbeJaHyr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 31 Oct 2018 03:54:47 -0400
-Received: by mail-ot1-f48.google.com with SMTP id p23so12792448otf.11
-        for <linux-ext4@vger.kernel.org>; Tue, 30 Oct 2018 15:59:21 -0700 (PDT)
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from esgaroth.petrovitsch.at ([78.47.184.11]:4768 "EHLO
+        esgaroth.tuxoid.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728161AbeJWCf7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 22:35:59 -0400
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+To: Nick Desaulniers <ndesaulniers@google.com>
+Cc: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        dan.carpenter@oracle.com, "Theodore Ts'o" <tytso@mit.edu>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        LKML <linux-kernel@vger.kernel.org>, adilger.kernel@dilger.ca,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>, rostedt@goodmis.org,
+        mchehab+samsung@kernel.org, olof@lxom.net,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        sandipan@linux.vnet.ibm.com,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        paul.burton@mips.com, David Rientjes <rientjes@google.com>,
+        Willy Tarreau <w@1wt.eu>, msebor@gmail.com, sparse@chrisli.org,
+        Jonathan Corbet <corbet@lwn.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
+        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org,
+        Linux Kbuild mailing list <linux-kbuild@vger.kernel.org>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
+ <20181021222712.GI1617@thunk.org>
+ <8fb78062-b6d4-6f2d-d943-44bec6b95ff0@petrovitsch.priv.at>
+ <20181022102743.nua5fgbscyeymzal@mwanda>
+ <1474d995-1b5a-2efb-f077-33eb4a5d9e31@petrovitsch.priv.at>
+ <20181022105314.j6djkrpwbnokhai5@mwanda>
+ <CANiq72=ioYcRA-yq38+Z4i6iVDNm6C2-+b4feRmnvEiekuR7dA@mail.gmail.com>
+ <3cbb5345-0270-5575-7563-6ad37d888e42@petrovitsch.priv.at>
+ <CAKwvOdnWkPi_2UJ7VKYZ6cuWi+BDgpEUf+tcrfZLUYawbm+grw@mail.gmail.com>
+From: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
+Message-ID: <9c52827b-4783-8f39-9030-a166d5436f05@petrovitsch.priv.at>
+Date: Mon, 22 Oct 2018 20:13:46 +0200
 MIME-Version: 1.0
-References: <20181002100531.GC4135@quack2.suse.cz> <20181002121039.GA3274@linux-x5ow.site>
- <20181002142959.GD9127@quack2.suse.cz> <x49h8hkfhk9.fsf@segfault.boston.devel.redhat.com>
- <20181018002510.GC6311@dastard> <20181018145555.GS23493@quack2.suse.cz>
- <20181019004303.GI6311@dastard> <CAPcyv4ixoAh7HEMfm+B4sRDx1Qwm6SHGjtQ+5r3EKsxreRydrA@mail.gmail.com>
- <20181030224904.GT19305@dastard>
-In-Reply-To: <20181030224904.GT19305@dastard>
-From: Dan Williams <dan.j.williams@intel.com>
-Date: Tue, 30 Oct 2018 15:59:09 -0700
-Message-ID: <CAPcyv4gwBJ65170Gy+EaDLpomA93kxuWTM10mZeaPYV6Rq=SRw@mail.gmail.com>
-Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
-To: david <david@fromorbit.com>
-Cc: Jan Kara <jack@suse.cz>, jmoyer <jmoyer@redhat.com>,
-        Johannes Thumshirn <jthumshirn@suse.de>,
-        Dave Jiang <dave.jiang@intel.com>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Linux MM <linux-mm@kvack.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <CAKwvOdnWkPi_2UJ7VKYZ6cuWi+BDgpEUf+tcrfZLUYawbm+grw@mail.gmail.com>
+Content-Type: multipart/mixed;
+ boundary="------------AFED424BB543102162459081"
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 30, 2018 at 3:49 PM Dave Chinner <david@fromorbit.com> wrote:
->
-> On Mon, Oct 29, 2018 at 11:30:41PM -0700, Dan Williams wrote:
-> > On Thu, Oct 18, 2018 at 5:58 PM Dave Chinner <david@fromorbit.com> wrote:
-> > > On Thu, Oct 18, 2018 at 04:55:55PM +0200, Jan Kara wrote:
-> > > > On Thu 18-10-18 11:25:10, Dave Chinner wrote:
-> > > > > On Wed, Oct 17, 2018 at 04:23:50PM -0400, Jeff Moyer wrote:
-> > > > > > MAP_SYNC
-> > > > > > - file system guarantees that metadata required to reach faulted-in file
-> > > > > >   data is consistent on media before a write fault is completed.  A
-> > > > > >   side-effect is that the page cache will not be used for
-> > > > > >   writably-mapped pages.
-> > > > >
-> > > > > I think you are conflating current implementation with API
-> > > > > requirements - MAP_SYNC doesn't guarantee anything about page cache
-> > > > > use. The man page definition simply says "supported only for files
-> > > > > supporting DAX" and that it provides certain data integrity
-> > > > > guarantees. It does not define the implementation.
-> ....
-> > > > With O_DIRECT the fallback to buffered IO is quite rare (at least for major
-> > > > filesystems) so usually people just won't notice. If fallback for
-> > > > MAP_DIRECT will be easy to hit, I'm not sure it would be very useful.
-> > >
-> > > Which is just like the situation where O_DIRECT on ext3 was not very
-> > > useful, but on other filesystems like XFS it was fully functional.
-> > >
-> > > IMO, the fact that a specific filesytem has a suboptimal fallback
-> > > path for an uncommon behaviour isn't an argument against MAP_DIRECT
-> > > as a hint - it's actually a feature. If MAP_DIRECT can't be used
-> > > until it's always direct access, then most filesystems wouldn't be
-> > > able to provide any faster paths at all. It's much better to have
-> > > partial functionality now than it is to never have the functionality
-> > > at all, and so we need to design in the flexibility we need to
-> > > iteratively improve implementations without needing API changes that
-> > > will break applications.
-> >
-> > The hard guarantee requirement still remains though because an
-> > application that expects combined MAP_SYNC|MAP_DIRECT semantics will
-> > be surprised if the MAP_DIRECT property silently disappears.
->
-> Why would they be surprised? They won't even notice it if the
-> filesystem can provide MAP_SYNC without MAP_DIRECT.
->
-> And that's the whole point.
->
-> MAP_DIRECT is a private mapping state. So is MAP_SYNC. They are not
-> visible to the filesystem and the filesystem does nothing to enforce
-> them. If someone does something that requires the page cache (e.g.
-> calls do_splice_direct()) then that MAP_DIRECT mapping has a whole
-> heap of new work to do. And, in some cases, the filesystem may not
-> be able to provide MAP_DIRECT as a result..
->
-> IOWs, the filesystem cannot guarantee MAP_DIRECT and the
-> circumstances under which MAP_DIRECT will and will not work are
-> dynamic. If MAP_DIRECT is supposed to be a guarantee then we'll have
-> applications randomly segfaulting in production as things like
-> backups, indexers, etc run over the filesystem and do their work.
->
-> This is why MAP_DIRECT needs to be an optimisation, not a
-> requirement - things will still work if MAP_DIRECT is not used. What
-> matters to these applications is MAP_SYNC - if we break MAP_SYNC,
-> then the application data integrity model is violated. That's not an
-> acceptible outcome.
->
-> The problem, it seems to me, is that people are unable to separate
-> MAP_DIRECT and MAP_SYNC. I suspect that is because, at present,
-> MAP_SYNC on XFS and ext4 requires MAP_DIRECT. i.e. we can only
-> provide MAP_SYNC functionality on DAX mappings. However, that's a
-> /filesystem implementation issue/, not an API guarantee we need to
-> provide to userspace.
->
-> If we implement a persistent page cache (e.g. allocate page cache
-> pages out of ZONE_DEVICE pmem), then filesystems like XFS and ext4
-> could provide applications with the MAP_SYNC data integrity model
-> without MAP_DIRECT. Indeed, those filesystems would not even be able
-> to provide MAP_DIRECT semantics because they aren't backed by pmem.
->
-> Hence if applications that want MAP_SYNC are hard coded
-> MAP_SYNC|MAP_DIRECT and we make MAP_DIRECT a hard guarantee, then
-> those applications are going to fail on a filesystem that provides
-> only MAP_SYNC. This is despite the fact the applications would
-> function correctly and the data integrity model would be maintained.
-> i.e. the failure is because applications have assumed MAP_SYNC can
-> only be provided by a DAX implementation, not because MAP_SYNC is
-> not supported.
->
-> MAP_SYNC really isn't about DAX at all. It's about enabling a data
-> integrity model that requires the filesystem to provide userspace
-> access to CPU addressable persistent memory.  DAX+MAP_DIRECT is just
-> one method of providing this functionality, but it's not the only
-> method. Our API needs to be future proof rather than an encoding of
-> the existing implementation limitations, otherwise apps will have to
-> be re-written as every new MAP_SYNC capable technology comes along.
->
-> In summary:
->
->         MAP_DIRECT is an access hint.
->
->         MAP_SYNC provides a data integrity model guarantee.
->
->         MAP_SYNC may imply MAP_DIRECT for specific implementations,
->         but it does not require or guarantee MAP_DIRECT.
->
-> Let's compare that with O_DIRECT:
->
->         O_DIRECT in an access hint.
->
->         O_DSYNC provides a data integrity model guarantee.
->
->         O_DSYNC may imply O_DIRECT for specific implementations, but
->         it does not require or guarantee O_DIRECT.
->
-> Consistency in access and data integrity models is a good thing. DAX
-> and pmem is not an exception. We need to use a model we know works
-> and has proven itself over a long period of time.
->
-> > I think
-> > it still makes some sense as a hint for apps that want to minimize
-> > page cache, but for the applications with a flush from userspace model
-> > I think that wants to be an F_SETLEASE / F_DIRECTLCK operation. This
-> > still gives the filesystem the option to inject page-cache at will,
-> > but with an application coordination point.
->
-> Why make it more complex for applications than it needs to be?
+This is a multi-part message in MIME format.
+--------------AFED424BB543102162459081
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-With the clarification that MAP_SYNC implies "cpu cache flush to
-persistent memory page-cache *or* dax to persistent memory" I think
-all of the concerns are addressed. I was conflating MAP_DIRECT as "no
-page cache indirection", but the indirection does not matter if the
-page cache itself is persisted.
+Hi all!
+
+On 22/10/18 19:54, Nick Desaulniers wrote:
+> On Mon, Oct 22, 2018 at 10:50 AM Bernd Petrovitsch
+> <bernd@petrovitsch.priv.at> wrote:
+[...]
+>> PS: clang++ errors with "fallthrough annotation in unreachable code" i=
+f
+>>     [[fallthrough]] is after an assert(). clang-devs there, please, th=
+e
+>>     fallthrough doesn't really generated code (I hope;-).
+[...]
+> Can you send me a link to a simple reproducer in godbolt (godbolt.org)
+> and we'll take a look?
+
+Does https://godbolt.org/z/2Y4zIo do it - I'm a godbolt-newbie?
+
+For
+----  snip  ----
+#include <cassert>
+
+int main(void)
+{
+  switch (1) {
+  default:
+    assert(0);
+    [[fallthrough]];
+  case 1:
+    ;
+  }
+  return 0;
+}
+----  snip  ----
+Just "clang++ -Wimplicit-fallthrough -Werror" it .....
+
+MfG,
+	Bernd
+--=20
+"I dislike type abstraction if it has no real reason. And saving
+on typing is not a good reason - if your typing speed is the main
+issue when you're coding, you're doing something seriously wrong."
+    - Linus Torvalds
+
+--------------AFED424BB543102162459081
+Content-Type: application/pgp-keys;
+ name="pEpkey.asc"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: attachment;
+ filename="pEpkey.asc"
+
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+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3D=3D
+=3Dv2Yn
+-----END PGP PUBLIC KEY BLOCK-----
+
+--------------AFED424BB543102162459081--
