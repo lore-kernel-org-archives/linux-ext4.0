@@ -1,60 +1,90 @@
-Return-Path: <SRS0=q/KL=MW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43664 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727451AbeJKCui (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Oct 2018 22:50:38 -0400
-Date: Wed, 10 Oct 2018 15:26:58 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.cz>,
-        Eric Biggers <ebiggers@google.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Subject: Re: [PATCH] ext4: avoid unused variable warning
-Message-ID: <20181010192658.GA27646@thunk.org>
-References: <20181010142813.1918180-1-arnd@arndb.de>
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lf1-f65.google.com ([209.85.167.65]:39184 "EHLO
+        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727210AbeJVV6j (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 17:58:39 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181010142813.1918180-1-arnd@arndb.de>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com> <20181021222712.GI1617@thunk.org>
+ <CANiq72mXV6WTyHXNZJDTfFOpPrXD0zD6cB30bGOuKO44AvRiog@mail.gmail.com>
+ <CAGXu5jKb-0H+smRAW6ngQKDZ-PbTThhMwhmu34iB8vjTa-4H8Q@mail.gmail.com>
+ <CANiq72n4+HDXPqr7xySSGx49g8vEcXaxO7a-By9cSg7YSxOS_A@mail.gmail.com>
+ <CAGXu5jLzfuEnWpJFL1Caq94nKbPps-QTaYGpge2CfZWj1Zzf9g@mail.gmail.com> <CANiq72kpCoVwCzMUVYB_km+9xr41gBZLo_K203e_t4_QZ9-r1Q@mail.gmail.com>
+In-Reply-To: <CANiq72kpCoVwCzMUVYB_km+9xr41gBZLo_K203e_t4_QZ9-r1Q@mail.gmail.com>
+From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Date: Mon, 22 Oct 2018 15:39:47 +0200
+Message-ID: <CANiq72k_uBxjzguG8YBmSaV5XUYoOsuHk+UHFdgCarr4--uGDA@mail.gmail.com>
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+To: Kees Cook <keescook@chromium.org>
+Cc: "Gustavo A. R. Silva" <gustavo@embeddedor.com>,
+        "Ted Ts'o" <tytso@mit.edu>, Greg KH <gregkh@linuxfoundation.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Dan <dan.carpenter@oracle.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 10, 2018 at 04:27:58PM +0200, Arnd Bergmann wrote:
-> The two new variables are only used in an #ifdef, so they cause a
-> warning without CONFIG_QUOTA:
-> 
-> fs/ext4/super.c: In function 'parse_options':
-> fs/ext4/super.c:1977:26: error: unused variable 'grp_qf_name' [-Werror=unused-variable]
->   char *p, *usr_qf_name, *grp_qf_name;
->                           ^~~~~~~~~~~
-> fs/ext4/super.c:1977:12: error: unused variable 'usr_qf_name' [-Werror=unused-variable]
->   char *p, *usr_qf_name, *grp_qf_name;
-> 
-> Fixes: 20cefcdc2040 ("ext4: fix use-after-free race in ext4_remount()'s error path")
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+On Mon, Oct 22, 2018 at 1:24 PM Miguel Ojeda
+<miguel.ojeda.sandonis@gmail.com> wrote:
+>
+> On Mon, Oct 22, 2018 at 12:53 PM Kees Cook <keescook@chromium.org> wrote:
+> >
+> > On Mon, Oct 22, 2018 at 2:41 AM, Miguel Ojeda
+> > <miguel.ojeda.sandonis@gmail.com> wrote:
+> >
+> > >   * clang does *not* support the attribute in C.
+> >
+> > Well that's not good. :)
+>
+> I will see with clang if they plan to add it.
+>
 
-Hmm, I wonder if we should do something like:
+So I have looked in the clang sources and I have seen that clang is
+already preparing for C2x: since clang >= 6 we can actually enable the
+C++-like attributes with "-fdouble-square-bracket-attributes" in C
+mode, which in turn makes the warning work in C mode and can be
+suppressed with [[fallthrough]]. This would give us the warning also
+in clang, which would be a win vs. the comments. Nick?
 
-#define EXT4_UNUSED_VAR __attribute__ ((unused))
+However, I don't see a way to enable [[fallthrough]] in C mode for gcc
+>= 7.1 -- from a quick look, the C parser does not know about [[]]
+attributes, so I don't think we can use [[fallthrough]] for both
+compilers (yet).
 
-and then we could do:
-
-	char *p, *usr_qf_name EXT4_UNUSED_VAR, *grp_qf_name EXT4_UNUSED_VAR;
-
-More generally, I wonder if this is something we should have defined
-for the whole kernel, as opposed to a one-off hack that ACPI and ext4
-subsystems use.  It's a little ugly, but I think it's much nicer than
-having extra #ifdefs such as:
-
-	char *p;
-#ifdef CONFIG_QUOTA
-	char *usr_qf_name, *grp_qf_name;
-#endif
-
-After all, the compiler is perfectly capable of ignoring variables
-which are unused.  And if it's only because of an #ifdef later in the
-function, it would be nice to not have an extra #ifdef in the variable
-declarations.
-
-						- Ted
+Cheers,
+Miguel
