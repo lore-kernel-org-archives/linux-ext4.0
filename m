@@ -1,45 +1,95 @@
-Return-Path: <SRS0=nu1L=M2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-it1-f194.google.com ([209.85.166.194]:38421 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726309AbeJNWln (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Oct 2018 18:41:43 -0400
-Received: by mail-it1-f194.google.com with SMTP id i76-v6so24204763ita.3
-        for <linux-ext4@vger.kernel.org>; Sun, 14 Oct 2018 08:00:29 -0700 (PDT)
-From: nicholas.clark@gmail.com
-To: linux-ext4@vger.kernel.org
-Cc: Nicholas Clark <nicholas.clark@gmail.com>
-Subject: [PATCH RESEND 1/2] Fuse2fs: fix 'mount' entry in some cases.
-Date: Sun, 14 Oct 2018 09:00:24 -0600
-Message-Id: <20181014150025.6477-2-nicholas.clark@gmail.com>
-In-Reply-To: <20181014150025.6477-1-nicholas.clark@gmail.com>
-References: <20181014150025.6477-1-nicholas.clark@gmail.com>
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from esgaroth.petrovitsch.at ([78.47.184.11]:3330 "EHLO
+        esgaroth.tuxoid.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728317AbeJVSLy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 14:11:54 -0400
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org,
+        Dan Carpenter <dan.carpenter@oracle.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
+ <20181021222712.GI1617@thunk.org>
+From: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
+Message-ID: <8fb78062-b6d4-6f2d-d943-44bec6b95ff0@petrovitsch.priv.at>
+Date: Mon, 22 Oct 2018 11:41:56 +0200
+MIME-Version: 1.0
+In-Reply-To: <20181021222712.GI1617@thunk.org>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Nicholas Clark <nicholas.clark@gmail.com>
+On 22/10/2018 00:27, Theodore Y. Ts'o wrote:
+> On Sun, Oct 21, 2018 at 07:14:13PM +0200, Miguel Ojeda wrote:
+>> From the GCC manual:
+>>
+>>   fallthrough
+>>
+>>     The fallthrough attribute with a null statement serves as a
+>>     fallthrough statement. It hints to the compiler that a statement
+>>     that falls through to another case label, or user-defined label
+>>     in a switch statement is intentional and thus the -Wimplicit-fallthrough
+>>     warning must not trigger. The fallthrough attribute may appear
+>>     at most once in each attribute list, and may not be mixed with
+>>     other attributes. It can only be used in a switch statement
+>>     (the compiler will issue an error otherwise), after a preceding
+>>     statement and before a logically succeeding case label,
+>>     or user-defined label.
+>>
+>>   https://gcc.gnu.org/onlinedocs/gcc/Statement-Attributes.html
+> 
+> Do we know if coverity understands the fallthrough attribute?  One of
+> the reasons why I started using /* fallthrough */ is because it kept
+> Coverity happy.
 
-FUSE's parser allows command-line options to be specified before
-or after the device/image and mount-path. This commit changes the
-value of the fsname mount option to be correct even if options are
-specified before the target device/image.
+FWIW, current "eclipse" has the same "problem".
 
-Signed-off-by: Nicholas Clark <nicholas.clark@gmail.com>
----
- misc/fuse2fs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> If the conversion from /* fallthrough */ to the __fallthrough__
+> attribute means that we start gethting a lot of Coverity warnings,
 
-diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-index 5c73895e..3214be4a 100644
---- a/misc/fuse2fs.c
-+++ b/misc/fuse2fs.c
-@@ -3845,7 +3845,7 @@ int main(int argc, char *argv[])
- 	/* Set up default fuse parameters */
- 	snprintf(extra_args, BUFSIZ, "-okernel_cache,subtype=ext4,use_ino,"
- 		 "fsname=%s,attr_timeout=0" FUSE_PLATFORM_OPTS,
--		 argv[1]);
-+		 fctx.device);
- 	if (fctx.no_default_opts == 0)
- 		fuse_opt_add_arg(&args, extra_args);
- 
+We could keep both.
+
+MfG,
+	Bernd
 -- 
-2.17.1
+Bernd Petrovitsch                  Email : bernd@petrovitsch.priv.at
+                     LUGA : http://www.luga.at
