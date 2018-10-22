@@ -1,33 +1,74 @@
-Return-Path: <SRS0=q/KL=MW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.hmha.gob.ec ([190.11.21.43]:52454 "EHLO mail.hmha.gob.ec"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726022AbeJJSTA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Oct 2018 14:19:00 -0400
-Content-Type: text/plain; charset="utf-8"
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-wm1-f66.google.com ([209.85.128.66]:35988 "EHLO
+        mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727774AbeJVUZ0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 16:25:26 -0400
+Date: Mon, 22 Oct 2018 13:07:02 +0100
+From: Luc Van Oostenryck <luc.vanoostenryck@gmail.com>
+To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org,
+        Dan Carpenter <dan.carpenter@oracle.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+Message-ID: <20181022120658.jm7dv7jiq7riuqci@ltop.local>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8BIT
-Content-Description: Mail message body
-Subject: =?utf-8?b?V29obHTDpHRpZ2tlaXRzc3BlbmRlIGluIEjDtmhlIHZvbiDigqwgMi4wMDAu?=
- =?utf-8?q?000=2C00?=
-To: Recipients <cinthia_reyes@hmha.gob.ec>
-From: cinthia_reyes@hmha.gob.ec
-Date: Mon, 24 Sep 2018 10:45:09 +0100
-Reply-To: wumt.claimservice@gmail.com
-Message-Id: <20180924094518.75D1F270E48B@mail.hmha.gob.ec>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Lieber Freund,
- 
-Ich bin Herr Tayeb Souami, New Jersey, Vereinigte Staaten von Amerika, der Mega-Gewinner von $ 315million In Mega Millions Jackpot, spende ich an 5 zufällige Personen, wenn Sie diese E-Mail erhalten, dann wurde Ihre E-Mail nach einem Spinball ausgewählt.Ich habe den größten Teil meines Vermögens auf eine Reihe von Wohltätigkeitsorganisationen und Organisationen verteilt.Ich habe mich freiwillig dazu entschieden, die Summe von € 2.000.000,00 an Sie als eine der ausgewählten 5 zu spenden, um meine Gewinne zu überprüfen, sehen Sie bitte meine You Tube Seite unten.
- 
-UHR MICH HIER: https://www.youtube.com/watch?v=Z6ui8ZDQ6Ks
- 
-Das ist dein Spendencode: [DFC530342018]
- 
-Antworten Sie mit dem SPENDE-CODE an diese E-Mail: financialfundingcompany09@gmail.com
- 
-Ich hoffe, Sie und Ihre Familie glücklich zu machen.
- 
-Grüße
-Herr Tayeb Souami
+On Sun, Oct 21, 2018 at 07:14:13PM +0200, Miguel Ojeda wrote:
+> 
+> While comment parsing is a good idea to deal with old codebases
+> that used such a comment as documentation for humans, the best
+> solution is to use the attribute:
+> 
+>   * It is a "real" part of the AST (=> better for tooling).
+
+This will create a problem for the recent versions of sparse which
+support __has_attribute() because sparse falsely pretends to support
+this attribute while, to play nice with -Wdeclaration-after-statement,
+it needs some adaptation to the parsing (it's actually seen not as a 
+statement but as a declaration).  I'll see to fix it this evening.
+
+
+Regards,
+-- Luc
