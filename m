@@ -1,52 +1,86 @@
-Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:60544 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726543AbeJCVWs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Oct 2018 17:22:48 -0400
-Date: Wed, 3 Oct 2018 10:34:05 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Wang Shilong <wangshilong1991@gmail.com>
-Cc: linux-ext4@vger.kernel.org, dchinner@redhat.com, adilger@dilger.ca,
-        wshilong@ddn.com
-Subject: Re: [PATCH v4 1/2] ext4: fix setattr project check upon fssetxattr
- ioctl
-Message-ID: <20181003143405.GA4555@thunk.org>
-References: <1537258530-4435-1-git-send-email-wshilong1991@gmail.com>
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lj1-f194.google.com ([209.85.208.194]:35908 "EHLO
+        mail-lj1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728374AbeJVTm0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 15:42:26 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1537258530-4435-1-git-send-email-wshilong1991@gmail.com>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com> <20181021222712.GI1617@thunk.org>
+ <CANiq72mXV6WTyHXNZJDTfFOpPrXD0zD6cB30bGOuKO44AvRiog@mail.gmail.com>
+ <CAGXu5jKb-0H+smRAW6ngQKDZ-PbTThhMwhmu34iB8vjTa-4H8Q@mail.gmail.com>
+ <CANiq72n4+HDXPqr7xySSGx49g8vEcXaxO7a-By9cSg7YSxOS_A@mail.gmail.com> <CAGXu5jLzfuEnWpJFL1Caq94nKbPps-QTaYGpge2CfZWj1Zzf9g@mail.gmail.com>
+In-Reply-To: <CAGXu5jLzfuEnWpJFL1Caq94nKbPps-QTaYGpge2CfZWj1Zzf9g@mail.gmail.com>
+From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Date: Mon, 22 Oct 2018 13:24:03 +0200
+Message-ID: <CANiq72kpCoVwCzMUVYB_km+9xr41gBZLo_K203e_t4_QZ9-r1Q@mail.gmail.com>
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+To: Kees Cook <keescook@chromium.org>
+Cc: "Gustavo A. R. Silva" <gustavo@embeddedor.com>,
+        "Ted Ts'o" <tytso@mit.edu>, Greg KH <gregkh@linuxfoundation.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Dan <dan.carpenter@oracle.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 18, 2018 at 05:15:29PM +0900, Wang Shilong wrote:
-> From: Wang Shilong <wangshilong1991@gmail.com>
-> 
-> Currently, project quota could be changed by fssetxattr
-> ioctl, and existed permission check inode_owner_or_capable()
-> is obviously not enough, just think that common users could
-> change project id of file, that could make users to
-> break project quota easily.
-> 
-> This patch try to follow same regular of xfs project
-> quota:
-> 
-> "Project Quota ID state is only allowed to change from
-> within the init namespace. Enforce that restriction only
-> if we are trying to change the quota ID state.
-> Everything else is allowed in user namespaces."
-> 
-> Besides that, check and set project id'state should
-> be an atomic operation, protect whole operation with
-> inode lock, ext4_ioctl_setproject() is only used for
-> ioctl EXT4_IOC_FSSETXATTR, we have held mnt_want_write_file()
-> before ext4_ioctl_setflags(), and ext4_ioctl_setproject()
-> is called after ext4_ioctl_setflags(), we could share
-> codes, so remove it inside ext4_ioctl_setproject().
-> 
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+On Mon, Oct 22, 2018 at 12:53 PM Kees Cook <keescook@chromium.org> wrote:
+>
+> On Mon, Oct 22, 2018 at 2:41 AM, Miguel Ojeda
+> <miguel.ojeda.sandonis@gmail.com> wrote:
+> > Please take a look at the rationale (also more details at the linked thread):
+> >
+> >   * gcc 7.1 added -Wimplicit-fallthrough at the same time as the
+> > attribute and the comment parsing.
+>
+> Ah, perfect. I missed this. :)
 
-Applied, thanks.
+No problem! I know the commit message is a bit too long, so I understand :)
 
-					- Ted
+>
+> >   * clang does *not* support the attribute in C.
+>
+> Well that's not good. :)
+
+I will see with clang if they plan to add it.
+
+(By the way, if the "*not*" sounded rude, sorry; I wanted to emphasize
+it is surprising that it doesn't -- I also assumed the opposite until
+I checked it).
+
+Cheers,
+Miguel
