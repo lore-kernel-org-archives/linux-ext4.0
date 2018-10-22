@@ -1,104 +1,107 @@
-Return-Path: <SRS0=j8gV=MN=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mout.gmx.net ([212.227.17.20]:35257 "EHLO mout.gmx.net"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729412AbeJAV0d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 1 Oct 2018 17:26:33 -0400
-Subject: Re: cross-fs copy support
-To: Joshi <joshiiitr@gmail.com>, linux-fsdevel@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
-From: Qu Wenruo <quwenruo.btrfs@gmx.com>
-Message-ID: <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
-Date: Mon, 1 Oct 2018 22:48:15 +0800
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lf1-f66.google.com ([209.85.167.66]:43762 "EHLO
+        mail-lf1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727063AbeJWFTk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2018 01:19:40 -0400
 MIME-Version: 1.0
-In-Reply-To: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="Qv99O5hZknZYCc2HZwRH8gtgh2XOxSLYH"
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com> <20181021222712.GI1617@thunk.org>
+ <CANiq72mXV6WTyHXNZJDTfFOpPrXD0zD6cB30bGOuKO44AvRiog@mail.gmail.com>
+ <CAGXu5jKb-0H+smRAW6ngQKDZ-PbTThhMwhmu34iB8vjTa-4H8Q@mail.gmail.com>
+ <CANiq72n4+HDXPqr7xySSGx49g8vEcXaxO7a-By9cSg7YSxOS_A@mail.gmail.com>
+ <CANiq72kNnrhi8OPbF7P+Rw4SGYu=JuvhDKtzGtG2J5AOoC1-Dw@mail.gmail.com> <CAKwvOdn1TOzZYg_i0zB0rU+K3jaQQ8XmWnLXz01NCG9V+8PxHw@mail.gmail.com>
+In-Reply-To: <CAKwvOdn1TOzZYg_i0zB0rU+K3jaQQ8XmWnLXz01NCG9V+8PxHw@mail.gmail.com>
+From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Date: Mon, 22 Oct 2018 22:59:16 +0200
+Message-ID: <CANiq72kUJOSrR=h2=2jXfkBPLrR=DrN8X4OoKOqAte4sMLxkdQ@mail.gmail.com>
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+To: Nick Desaulniers <ndesaulniers@google.com>
+Cc: Kees Cook <keescook@chromium.org>,
+        "Gustavo A. R. Silva" <gustavo@embeddedor.com>,
+        "Ted Ts'o" <tytso@mit.edu>, Greg KH <gregkh@linuxfoundation.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Dan <dan.carpenter@oracle.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---Qv99O5hZknZYCc2HZwRH8gtgh2XOxSLYH
-Content-Type: multipart/mixed; boundary="ci0Jq2j01hmhpU1Xr0oZYQMaAFiUooomG";
- protected-headers="v1"
-From: Qu Wenruo <quwenruo.btrfs@gmx.com>
-To: Joshi <joshiiitr@gmail.com>, linux-fsdevel@vger.kernel.org,
- linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
- linux-ext4@vger.kernel.org
-Message-ID: <2a92fff4-d005-835a-3bd7-a328b008857f@gmx.com>
-Subject: Re: cross-fs copy support
-References: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
-In-Reply-To: <CA+1E3rLXPwzfO3ro49ZVg7RfpYon5YDB6Y_zqu60ivpgn4wenw@mail.gmail.com>
+On Mon, Oct 22, 2018 at 7:17 PM Nick Desaulniers
+<ndesaulniers@google.com> wrote:
+>
+> On Mon, Oct 22, 2018 at 2:43 AM Miguel Ojeda
+> <miguel.ojeda.sandonis@gmail.com> wrote:
+> >
+> > On Mon, Oct 22, 2018 at 11:41 AM Miguel Ojeda
+> > <miguel.ojeda.sandonis@gmail.com> wrote:
+> > >
+> > >   * clang does *not* support the attribute in C.
+> >
+> > ...nor the warning at all, by the way (which is why this is OK).
+> >
+> > Cheers,
+> > Miguel
+>
+> Oh? We're going through and annotating all of Android's C++ source
+> right now with it.
+> https://clang.llvm.org/docs/DiagnosticsReference.html#wimplicit-fallthrough
+>
 
---ci0Jq2j01hmhpU1Xr0oZYQMaAFiUooomG
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: quoted-printable
+Sure, but I am talking about the C mode only. Please read the previous
+messages in the thread :-)
 
+> Though it looks like the attribute syntax I like from GCC is not yet
+> supported in Clang.
 
+Indeed, that is what I explained in the last message.
 
-On 2018/10/1 =E4=B8=8B=E5=8D=8810:32, Joshi wrote:
-> I was wondering about the cross-fs copy through copy_file_range.
+> https://bugs.llvm.org/show_bug.cgi?id=37135
+> https://github.com/ClangBuiltLinux/linux/issues/235
+> I'll take a look at adding support.
+>
+> So Kees sent me this embarrassing example:
+> https://godbolt.org/z/gV_c9_
+> (try changing the language from C++ to C; it works)!  That's embarrassing!
 
-The term "cross-fs" looks pretty confusing.
+Yup, that is what I have been testing yesterday -- see the linked
+thread in the commit message for the summary of the results.
 
-If you mean "cross-subvolume", then it should work without problem in btr=
-fs.
+> https://bugs.llvm.org/show_bug.cgi?id=39382
+> https://github.com/ClangBuiltLinux/linux/issues/236
+> Will get these both fixed up.
 
-If you mean reflink across two different file systems (not matter the
-same fs type or not).
-Then it's impossible to work.
-
-Reflink (clone_file_range) works by inserting data pointers into the
-filesystem other than really copying the data.
-Thus if the source is outside of the fs, it's really impossible to work,
-as the source pointer/data is completely out of control of the dest fs.
-
-> It seems current implement has below check, that disables such copy.
->=20
-> 1577         /* this could be relaxed once a method supports cross-fs c=
-opies */
-> 1578         if (inode_in->i_sb !=3D inode_out->i_sb)
-> 1579                 return -EXDEV;
->=20
-> May I know what are the thoughts behind disabling cross-fs copy?
-> Code has the comment "once a method supports", but that leaves me
-> wondering exactly what 'method' is expected, and from whom.
->=20
-> I disabled the check, and copy across volumes seemed to work fine. At
-> least for a single file (1G size), with no data mismatch, and faster
-> speed than regular copy.
-
-Please provide the steps or script about how you did the reflink, in
-case I misunderstand your "cross-fs" definition.
-
-And just in case you're really doing cross filesystem reflink, please
-also run "btrfs check" on both fs.
-
-Thanks,
-Qu
-
-
-
---ci0Jq2j01hmhpU1Xr0oZYQMaAFiUooomG--
-
---Qv99O5hZknZYCc2HZwRH8gtgh2XOxSLYH
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEzBAEBCAAdFiEELd9y5aWlW6idqkLhwj2R86El/qgFAluyM68ACgkQwj2R86El
-/qiZXQgAl42dvErkqnlBQaSinUyBBlH97d2zZW21MM3WE8kofldrlZwmBhtngGph
-KtZX9YBuPVrmHY3h2dZ4tt+8BOn9c0HYiFK1g7hrSgsggzZnpyRgEHkqzH1QPUFV
-F8b76taNajcoQnsrVfbjHHBWGARcsNvxUIu1gAW3JtmHiQUxKGqgvD3t3p4V0/+r
-rgxdoPb6d+qSI1fAq01xcHQwyNTvsCmEXn9edauux9c1mqW2WhX7yXiEoeqHVnzc
-GodbRlQBeURPwjhnmjEzH/3syeIqiu7uNKu1IBbKsDbacgXvmMWNtbt2cozz9wMG
-z+kj2Dg17pO0MXAzbrznSEDj0cJNtA==
-=iJnX
------END PGP SIGNATURE-----
-
---Qv99O5hZknZYCc2HZwRH8gtgh2XOxSLYH--
+Cheers,
+Miguel
