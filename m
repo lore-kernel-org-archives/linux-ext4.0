@@ -1,32 +1,82 @@
-Return-Path: <SRS0=ulrH=NA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from morilee.com ([185.53.170.144]:46378 "EHLO tablebases.com"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726710AbeJUHr1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 21 Oct 2018 03:47:27 -0400
-To: linux-ext4@vger.kernel.org
-Subject: Editors 4
-Message-ID: <24affd4693b3b2b94d3be2b3e4bd43e8@hairpinlegs.com>
-Date: Sat, 20 Oct 2018 14:43:00 +0200
-From: "Linda" <paninteerpaenrloz@verizon.net>
-Reply-To: dotrenai@sina.com
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from userp2130.oracle.com ([156.151.31.86]:43654 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727256AbeJVNq1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 09:46:27 -0400
+Date: Mon, 22 Oct 2018 08:27:01 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: Joe Perches <joe@perches.com>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        linux-kernel@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Subject: Re: [PATCH 0/2] Compiler Attributes: __fallthrough
+Message-ID: <20181022052700.a6v3d6t43kot6yso@mwanda>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021182926.GB6683@kroah.com>
+ <d56762f8856201f520a3ee5553276621237e8e27.camel@perches.com>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <d56762f8856201f520a3ee5553276621237e8e27.camel@perches.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We are one image studio who is able to process 300+ photos a day.
+On Sun, Oct 21, 2018 at 11:52:21AM -0700, Joe Perches wrote:
+> On Sun, 2018-10-21 at 19:29 +0100, Greg Kroah-Hartman wrote:i
+> > On Sun, Oct 21, 2018 at 07:14:12PM +0200, Miguel Ojeda wrote:
+> > > These are two patches are meant to go on top of the rest of the compiler
+> > > attributes series on:
+> > > 
+> > >   https://github.com/ojeda/linux/tree/compiler-attributes
+> > > 
+> > > which will be sent to Greg for the next merge window.
+> > > 
+> > > Please review them and let me know! (specially if someone is against
+> > > __fallthrough for some reason :-).
+> > 
+> > Will this work with all of the static tools that are currently looking
+> > for the comment instead?
+> 
+> Does anyone have a list of the static tools that
+> use comment style fallthrough notations?
+> 
 
-If you need any image editing, please let us know. We can do it for you
-such as:
-Image cut out for photos  and clipping path, masking for your photos,
-They are mostly used for ecommerce photos, jewelry photos retouching,
-beauty and skin images
-and wedding photos.
+It would only be CPPcheck I think.
 
-We do also different kind of beauty retouching, portraits retouching.
-
-We can send editing for your photos if you send us one or two photos.
-
-Thanks,
-Linda
+regards,
+dan carpenter
