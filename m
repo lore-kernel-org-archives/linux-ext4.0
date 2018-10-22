@@ -1,43 +1,83 @@
-Return-Path: <SRS0=WpiV=MV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53866 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725887AbeJIJF2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 Oct 2018 05:05:28 -0400
-Date: Mon, 8 Oct 2018 21:50:53 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Chengguang Xu <cgxu519@gmx.com>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: remove QUOTA flag setting in set_qf_name()
-Message-ID: <20181009015053.GC3369@thunk.org>
-References: <20181008235013.13687-1-cgxu519@gmx.com>
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:33820 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727025AbeJWEQn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2018 00:16:43 -0400
+Received: by mail-pg1-f196.google.com with SMTP id g12-v6so19514344pgs.1
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Oct 2018 12:56:49 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181008235013.13687-1-cgxu519@gmx.com>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com> <20181021222712.GI1617@thunk.org>
+ <8fb78062-b6d4-6f2d-d943-44bec6b95ff0@petrovitsch.priv.at>
+ <20181022102743.nua5fgbscyeymzal@mwanda> <1474d995-1b5a-2efb-f077-33eb4a5d9e31@petrovitsch.priv.at>
+ <20181022105314.j6djkrpwbnokhai5@mwanda> <CANiq72=ioYcRA-yq38+Z4i6iVDNm6C2-+b4feRmnvEiekuR7dA@mail.gmail.com>
+ <3cbb5345-0270-5575-7563-6ad37d888e42@petrovitsch.priv.at>
+ <CAKwvOdnWkPi_2UJ7VKYZ6cuWi+BDgpEUf+tcrfZLUYawbm+grw@mail.gmail.com> <9c52827b-4783-8f39-9030-a166d5436f05@petrovitsch.priv.at>
+In-Reply-To: <9c52827b-4783-8f39-9030-a166d5436f05@petrovitsch.priv.at>
+From: Nick Desaulniers <ndesaulniers@google.com>
+Date: Mon, 22 Oct 2018 12:56:37 -0700
+Message-ID: <CAKwvOd=_mnxnG3cFb6qBhO5KLFxjrgsavoQ37asY3O1B4LLkwA@mail.gmail.com>
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+To: bernd@petrovitsch.priv.at
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 09, 2018 at 07:50:13AM +0800, Chengguang Xu wrote:
-> Mount flag QUOTA is the same as flag USRQUOTA in ext4, so should
-> not set flag QUOTA in set_qf_name().
-> 
-> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
-> ---
->  fs/ext4/super.c | 1 -
->  1 file changed, 1 deletion(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 1145109968ef..9ed33e4860db 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1566,7 +1566,6 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
->  		goto errout;
->  	}
->  	sbi->s_qf_names[qtype] = qname;
-> -	set_opt(sb, QUOTA);
+On Mon, Oct 22, 2018 at 11:15 AM Bernd Petrovitsch
+<bernd@petrovitsch.priv.at> wrote:
+>
+> Hi all!
+>
+> On 22/10/18 19:54, Nick Desaulniers wrote:
+> > On Mon, Oct 22, 2018 at 10:50 AM Bernd Petrovitsch
+> > <bernd@petrovitsch.priv.at> wrote:
+> [...]
+> >> PS: clang++ errors with "fallthrough annotation in unreachable code" if
+> >>     [[fallthrough]] is after an assert(). clang-devs there, please, the
+> >>     fallthrough doesn't really generated code (I hope;-).
+> [...]
+> > Can you send me a link to a simple reproducer in godbolt (godbolt.org)
+> > and we'll take a look?
+>
+> Does https://godbolt.org/z/2Y4zIo do it - I'm a godbolt-newbie?
 
-No, sorry.  This is still needed so that the usrjquota and the
-grpjquota mount options will work correctly.  And it's not like
-set_qf_name() is a performance hot path.
+Moving the kernel folks to bcc, since we don't need to be discussing
+C++ on LKML.
+https://godbolt.org/z/B1fo9Z shows that this works as intended, for
+cases that cannot be statically proven.  I guess I'm looking for a
+more realistic code sample to show why putting a `break;` statement
+there is untenable?
 
-					- Ted
+>
+> For
+> ----  snip  ----
+> #include <cassert>
+>
+> int main(void)
+> {
+>   switch (1) {
+>   default:
+>     assert(0);
+>     [[fallthrough]];
+>   case 1:
+>     ;
+>   }
+>   return 0;
+> }
+> ----  snip  ----
+> Just "clang++ -Wimplicit-fallthrough -Werror" it .....
+>
+> MfG,
+>         Bernd
+> --
+> "I dislike type abstraction if it has no real reason. And saving
+> on typing is not a good reason - if your typing speed is the main
+> issue when you're coding, you're doing something seriously wrong."
+>     - Linus Torvalds
+
+
+
+-- 
+Thanks,
+~Nick Desaulniers
