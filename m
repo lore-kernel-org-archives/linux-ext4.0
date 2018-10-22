@@ -1,61 +1,85 @@
-Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36144 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726835AbeJCXZR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Oct 2018 19:25:17 -0400
-Date: Wed, 3 Oct 2018 12:35:58 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Dan Williams <dan.j.williams@intel.com>, linux-mm@kvack.org,
-        Dave Jiang <dave.jiang@intel.com>
-Subject: Re: [PATCH] mm: Fix warning in insert_pfn()
-Message-ID: <20181003163557.GA18434@thunk.org>
-References: <20180824154542.26872-1-jack@suse.cz>
+Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from userp2120.oracle.com ([156.151.31.85]:44922 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728300AbeJVTN2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 15:13:28 -0400
+Date: Mon, 22 Oct 2018 13:53:14 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
+Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Kees Cook <keescook@chromium.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
+ (gcc >= 7.1)
+Message-ID: <20181022105314.j6djkrpwbnokhai5@mwanda>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
+ <20181021222712.GI1617@thunk.org>
+ <8fb78062-b6d4-6f2d-d943-44bec6b95ff0@petrovitsch.priv.at>
+ <20181022102743.nua5fgbscyeymzal@mwanda>
+ <1474d995-1b5a-2efb-f077-33eb4a5d9e31@petrovitsch.priv.at>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20180824154542.26872-1-jack@suse.cz>
+In-Reply-To: <1474d995-1b5a-2efb-f077-33eb4a5d9e31@petrovitsch.priv.at>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 24, 2018 at 05:45:42PM +0200, Jan Kara wrote:
-> In DAX mode a write pagefault can race with write(2) in the following
-> way:
+On Mon, Oct 22, 2018 at 12:45:03PM +0200, Bernd Petrovitsch wrote:
+> It's more like
+> ----  snip  ----
+> 	case 3:
+> 		frob();
+> 		__fall_through;
+> 		/* no break - fall through */
+> 	case 4:
+> ----  snip  ----
+> as "eclipse" doesn't accept anything else.
 > 
-> CPU0                            CPU1
->                                 write fault for mapped zero page (hole)
-> dax_iomap_rw()
->   iomap_apply()
->     xfs_file_iomap_begin()
->       - allocates blocks
->     dax_iomap_actor()
->       invalidate_inode_pages2_range()
->         - invalidates radix tree entries in given range
->                                 dax_iomap_pte_fault()
->                                   grab_mapping_entry()
->                                     - no entry found, creates empty
->                                   ...
->                                   xfs_file_iomap_begin()
->                                     - finds already allocated block
->                                   ...
->                                   vmf_insert_mixed_mkwrite()
->                                     - WARNs and does nothing because there
->                                       is still zero page mapped in PTE
->         unmap_mapping_pages()
+> And yes, it's far from "beautiful" but I hadn't time to dig into
+> eclipses innards to fix that.
 > 
-> This race results in WARN_ON from insert_pfn() and is occasionally
-> triggered by fstest generic/344. Note that the race is otherwise
-> harmless as before write(2) on CPU0 is finished, we will invalidate page
-> tables properly and thus user of mmap will see modified data from
-> write(2) from that point on. So just restrict the warning only to the
-> case when the PFN in PTE is not zero page.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
 
-I don't see this in linux-next.  What's the status of this patch?
+Doing both is super ugly.  Let's just do comments until Eclipse gets
+updated.
 
-Thanks,
+I had wanted to move to the attribute because that would simplify things
+in Smatch but it's not a huge deal to delay for another year.
 
-					- Ted
+regards,
+dan carpenter
