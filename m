@@ -1,88 +1,38 @@
-Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:53318 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726619AbeJCTTC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Oct 2018 15:19:02 -0400
-Date: Wed, 3 Oct 2018 08:30:43 -0400
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Cc: Dominique Martinet <asmadeus@codewreck.org>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Linux-Next Mailing List <linux-next@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Stephen Rothwell <sfr@canb.auug.org.au>,
-        Dan Williams <dan.j.williams@intel.com>
-Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
-Message-ID: <20181003083043.380a2c74@gandalf.local.home>
-In-Reply-To: <CANiq72=M2xQa6FJ1YZ2kKuNXES-XSn1O9yJ+FbhgMawND_kAqA@mail.gmail.com>
-References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
-        <20181003071059.02b3fd6f@canb.auug.org.au>
-        <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
-        <CANiq72mmxiO6RWBTQfWYDaa6gmOF01nXmN6BJNCAjAFz3QJqqA@mail.gmail.com>
-        <20181002223652.GA4290@nautica>
-        <CANiq72=M2xQa6FJ1YZ2kKuNXES-XSn1O9yJ+FbhgMawND_kAqA@mail.gmail.com>
+Return-Path: <SRS0=2u2A=ND=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-yb1-f177.google.com ([209.85.219.177]:37100 "EHLO
+        mail-yb1-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725266AbeJXEFP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2018 00:05:15 -0400
+Date: Tue, 23 Oct 2018 12:40:21 -0700
+From: Tejun Heo <tj@kernel.org>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc: syzbot <syzbot+a50c7541a4a55cd49b02@syzkaller.appspotmail.com>,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        linux-fsdevel@vger.kernel.org, jiangshanlai@gmail.com
+Subject: Re: possible deadlock in flush_workqueue (2)
+Message-ID: <20181023194021.GA4182586@devbig004.ftw2.facebook.com>
+References: <000000000000bfd4270578abe88b@google.com>
+ <0000000000009bcd4a0578e22ebd@google.com>
+ <20181023142804.GC6850@thunk.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181023142804.GC6850@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 3 Oct 2018 14:14:28 +0200
-Miguel Ojeda <miguel.ojeda.sandonis@gmail.com> wrote:
+Hello,
 
-> HI Dominique,
-> 
-> On Wed, Oct 3, 2018 at 12:37 AM Dominique Martinet
-> <asmadeus@codewreck.org> wrote:
-> >
-> > Miguel Ojeda wrote on Wed, Oct 03, 2018:  
-> > > As I have read, -next is supposed to be a vision of what the merge
-> > > window will look like after merging everything, i.e. ideally -rc1. For
-> > > that to work for files out-of-tree (like these ones, which are not
-> > > maintained by a single tree), changes should be allowed to be stacked
-> > > on each other; otherwise, we cannot handle conflicts :-(  
-> >
-> > The rule is the same as with a regular mainline pull; I don't have the
-> > reference at hand but in some recent-ish pull request Linus said he  
-> 
-> That is actually the first problem: there is no
-> reference/documentation at hand. :-P
->
+On Tue, Oct 23, 2018 at 10:28:04AM -0400, Theodore Y. Ts'o wrote:
+> The other, and I think better way, we could fix this is to have an
+> alternate destroy_never_used_workqueue() function which skips the
+> drain_workqueue().
 
-Yes, and one of the topics for Maintainers Summit is to create one. One
-is actually in the works led by Dan Williams.
+Yeah, I'm okay with this approach.  Maybe name it
+destroy_workqueue_skip_drain()?
 
--- Steve
+Thanks.
+
+-- 
+tejun
