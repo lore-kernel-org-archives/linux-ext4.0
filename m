@@ -1,126 +1,193 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lf1-f68.google.com ([209.85.167.68]:39325 "EHLO
-        mail-lf1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727557AbeJWFhm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2018 01:37:42 -0400
+Return-Path: <SRS0=2u2A=ND=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-io1-f70.google.com ([209.85.166.70]:57079 "EHLO
+        mail-io1-f70.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728601AbeJWSEl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2018 14:04:41 -0400
+Received: by mail-io1-f70.google.com with SMTP id q7-v6so502303ioh.23
+        for <linux-ext4@vger.kernel.org>; Tue, 23 Oct 2018 02:42:03 -0700 (PDT)
 MIME-Version: 1.0
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
- <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com> <CAKwvOdmPj_mm+9t1i=yLhvO0FAe6Kd7ezjOoTnp1fzcoikPHpw@mail.gmail.com>
-In-Reply-To: <CAKwvOdmPj_mm+9t1i=yLhvO0FAe6Kd7ezjOoTnp1fzcoikPHpw@mail.gmail.com>
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Mon, 22 Oct 2018 23:17:15 +0200
-Message-ID: <CANiq72k2z78uae1GWjECo+OB7GC90b8irt0SHYtnSXT8F2Grrw@mail.gmail.com>
-Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
- (gcc >= 7.1)
-To: Nick Desaulniers <ndesaulniers@google.com>
-Cc: Greg KH <gregkh@linuxfoundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Dan <dan.carpenter@oracle.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 23 Oct 2018 02:42:03 -0700
+In-Reply-To: <000000000000bfd4270578abe88b@google.com>
+Message-ID: <0000000000009bcd4a0578e22ebd@google.com>
+Subject: Re: possible deadlock in flush_workqueue (2)
+From: syzbot <syzbot+a50c7541a4a55cd49b02@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 22, 2018 at 7:36 PM Nick Desaulniers
-<ndesaulniers@google.com> wrote:
->
-> On Sun, Oct 21, 2018 at 10:14 AM Miguel Ojeda
-> <miguel.ojeda.sandonis@gmail.com> wrote:
-> >
-> > of its kind) to deal with this: [[fallthrough]] is meant to be
-> > a new control keyword in the form of an extension.
->
-> I think we can leave the details about the [[]] notation out. IIUC,
-> it's only applicable to C++.
+syzbot has found a reproducer for the following crash on:
 
-No, because C++ is the driving force for the standard attributes
-syntax; i.e. C2x is adding them because of the syntax published by
-C++17; and possibly gcc 7.1 added support for fallthrough (and comment
-parsing) due to C++17 too.
+HEAD commit:    ca9eb48fe01f Merge tag 'regulator-v5.0' of git://git.kerne..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=11a60939400000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=963b24abf3f7c2d8
+dashboard link: https://syzkaller.appspot.com/bug?extid=a50c7541a4a55cd49b02
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=12097f03400000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=10b55ac5400000
 
-Basically, it is a small paragraph explaining how this came to be.
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+a50c7541a4a55cd49b02@syzkaller.appspotmail.com
 
-> > +#if __has_attribute(__fallthrough__)
-> > +# define __fallthrough                  __attribute__((__fallthrough__))
-> > +#else
-> > +# define __fallthrough
->
-> While this is in the correct format as the other attributes in this
-> file, I think this particular attribute is a special case, because of
-> the variety of fallbacks and differing support for them.  I'd like to
 
-No, is it the correct format because we cannot add support for the
-other syntax in gcc; so the best way to proceed is to simply wait
-until clang supports the GNU attribute in C mode.
+======================================================
+WARNING: possible circular locking dependency detected
+syz-executor460 (5381) used greatest stack depth: 13176 bytes left
+4.19.0+ #298 Not tainted
+------------------------------------------------------
+syz-executor460/5379 is trying to acquire lock:
+00000000cba2efd5 ((wq_completion)"dio/%s"sb->s_id){+.+.}, at:  
+flush_workqueue+0x2db/0x1e10 kernel/workqueue.c:2652
 
-The tooling, of course, is another matter and independent of this.
+but task is already holding lock:
+00000000a7636398 (&sb->s_type->i_mutex_key#10){+.+.}, at: inode_trylock  
+include/linux/fs.h:758 [inline]
+00000000a7636398 (&sb->s_type->i_mutex_key#10){+.+.}, at:  
+ext4_file_write_iter+0x2a1/0x1420 fs/ext4/file.c:232
 
-> see in the commit message maybe a list of tools we'd like to support
+which lock already depends on the new lock.
 
-Yes, I already said I would write it in one of the other threads.
 
-> and links to the feature requests/bug reports for them.  I acknowledge
-> it's more work to file bugs, but it's being a good open source
-> citizen, IMO.
+the existing dependency chain (in reverse order) is:
 
-Who said we aren't going to do it? :-)
+-> #2 (&sb->s_type->i_mutex_key#10){+.+.}:
+        down_write+0x8a/0x130 kernel/locking/rwsem.c:70
+        inode_lock include/linux/fs.h:738 [inline]
+        __generic_file_fsync+0xb5/0x200 fs/libfs.c:981
+        ext4_sync_file+0xa4f/0x1510 fs/ext4/fsync.c:120
+        vfs_fsync_range+0x140/0x220 fs/sync.c:197
+        generic_write_sync include/linux/fs.h:2732 [inline]
+        dio_complete+0x75c/0x9e0 fs/direct-io.c:329
+        dio_aio_complete_work+0x20/0x30 fs/direct-io.c:341
+        process_one_work+0xc90/0x1c40 kernel/workqueue.c:2153
+        worker_thread+0x17f/0x1390 kernel/workqueue.c:2296
+        kthread+0x35a/0x420 kernel/kthread.c:246
+        ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:413
 
-I was actually in the process of checking which OSS tools supported
-what and how easy it was to fix in each of them (gcc's [[...]] syntax,
-clang's GNU and C++ attrs in C mode, cppcheck's fallthrough
-support...), but it takes time; I prefer to do the research
-beforehand; so that the submitted bug reports are better/more
-precise/more helpful, etc.
+-> #1 ((work_completion)(&dio->complete_work)){+.+.}:
+        process_one_work+0xc0a/0x1c40 kernel/workqueue.c:2129
+        worker_thread+0x17f/0x1390 kernel/workqueue.c:2296
+        kthread+0x35a/0x420 kernel/kthread.c:246
+        ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:413
 
-However, you already sent the LLVM report (without mentioning this
-thread or me, nor the -fdouble-square-bracket-attributes clang flag
-that I mentioned). That is a bit rude :-) Please take things a little
-easier, there is no need to rush stuff. If I didn't have submitted the
-LLVM bug report is because I hadn't finish looking at the issue. In
-general, I think it is polite (and also more productive to avoid
-duplicating efforts) to first ask whoever is working on something
-before you rush to do it...
+-> #0 ((wq_completion)"dio/%s"sb->s_id){+.+.}:
+        lock_acquire+0x1ed/0x520 kernel/locking/lockdep.c:3900
+        flush_workqueue+0x30a/0x1e10 kernel/workqueue.c:2655
+        drain_workqueue+0x2a9/0x640 kernel/workqueue.c:2820
+        destroy_workqueue+0xc6/0x9c0 kernel/workqueue.c:4155
+        sb_init_dio_done_wq+0x74/0x90 fs/direct-io.c:634
+        do_blockdev_direct_IO+0x12ea/0x9d70 fs/direct-io.c:1283
+        __blockdev_direct_IO+0x9d/0xc6 fs/direct-io.c:1417
+        ext4_direct_IO_write fs/ext4/inode.c:3743 [inline]
+        ext4_direct_IO+0xae8/0x2230 fs/ext4/inode.c:3870
+        generic_file_direct_write+0x275/0x4b0 mm/filemap.c:3042
+        __generic_file_write_iter+0x2ff/0x630 mm/filemap.c:3221
+        ext4_file_write_iter+0x390/0x1420 fs/ext4/file.c:266
+        call_write_iter include/linux/fs.h:1808 [inline]
+        aio_write+0x3b1/0x610 fs/aio.c:1561
+        io_submit_one+0xaa1/0xf80 fs/aio.c:1835
+        __do_sys_io_submit fs/aio.c:1916 [inline]
+        __se_sys_io_submit fs/aio.c:1887 [inline]
+        __x64_sys_io_submit+0x1b7/0x580 fs/aio.c:1887
+        do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+        entry_SYSCALL_64_after_hwframe+0x49/0xbe
 
->
-> I'm also curious which is the first version of GCC to support the
-> comment format?
+other info that might help us debug this:
 
-gcc 7.1 started everything. It is stated in the commit message and
-several messages/threads already. Again, please pause, relax and read
-a bit before sending stuff around :-)
+Chain exists of:
+   (wq_completion)"dio/%s"sb->s_id -->  
+(work_completion)(&dio->complete_work) --> &sb->s_type->i_mutex_key#10
 
-Cheers,
-Miguel
+  Possible unsafe locking scenario:
+
+        CPU0                    CPU1
+        ----                    ----
+   lock(&sb->s_type->i_mutex_key#10);
+                                lock((work_completion)(&dio->complete_work));
+                                lock(&sb->s_type->i_mutex_key#10);
+   lock((wq_completion)"dio/%s"sb->s_id);
+
+  *** DEADLOCK ***
+
+1 lock held by syz-executor460/5379:
+  #0: 00000000a7636398 (&sb->s_type->i_mutex_key#10){+.+.}, at:  
+inode_trylock include/linux/fs.h:758 [inline]
+  #0: 00000000a7636398 (&sb->s_type->i_mutex_key#10){+.+.}, at:  
+ext4_file_write_iter+0x2a1/0x1420 fs/ext4/file.c:232
+
+stack backtrace:
+CPU: 1 PID: 5379 Comm: syz-executor460 Not tainted 4.19.0+ #298
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x1c4/0x2b6 lib/dump_stack.c:113
+  print_circular_bug.isra.33.cold.54+0x1bd/0x27d  
+kernel/locking/lockdep.c:1221
+  check_prev_add kernel/locking/lockdep.c:1861 [inline]
+  check_prevs_add kernel/locking/lockdep.c:1974 [inline]
+  validate_chain kernel/locking/lockdep.c:2415 [inline]
+  __lock_acquire+0x33e4/0x4ec0 kernel/locking/lockdep.c:3411
+  lock_acquire+0x1ed/0x520 kernel/locking/lockdep.c:3900
+  flush_workqueue+0x30a/0x1e10 kernel/workqueue.c:2655
+  drain_workqueue+0x2a9/0x640 kernel/workqueue.c:2820
+  destroy_workqueue+0xc6/0x9c0 kernel/workqueue.c:4155
+  sb_init_dio_done_wq+0x74/0x90 fs/direct-io.c:634
+  do_blockdev_direct_IO+0x12ea/0x9d70 fs/direct-io.c:1283
+  __blockdev_direct_IO+0x9d/0xc6 fs/direct-io.c:1417
+  ext4_direct_IO_write fs/ext4/inode.c:3743 [inline]
+  ext4_direct_IO+0xae8/0x2230 fs/ext4/inode.c:3870
+  generic_file_direct_write+0x275/0x4b0 mm/filemap.c:3042
+  __generic_file_write_iter+0x2ff/0x630 mm/filemap.c:3221
+  ext4_file_write_iter+0x390/0x1420 fs/ext4/file.c:266
+  call_write_iter include/linux/fs.h:1808 [inline]
+  aio_write+0x3b1/0x610 fs/aio.c:1561
+  io_submit_one+0xaa1/0xf80 fs/aio.c:1835
+  __do_sys_io_submit fs/aio.c:1916 [inline]
+  __se_sys_io_submit fs/aio.c:1887 [inline]
+  __x64_sys_io_submit+0x1b7/0x580 fs/aio.c:1887
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x4469b9
+Code: e8 dc e6 ff ff 48 83 c4 18 c3 0f 1f 80 00 00 00 00 48 89 f8 48 89 f7  
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  
+ff 0f 83 4b 07 fc ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007fbd534a7da8 EFLAGS: 00000246 ORIG_RAX: 00000000000000d1
+RAX: ffffffffffffffda RBX: 00000000006dcc48 RCX: 00000000004469b9
+RDX: 0000000020000540 RSI: 0000000000000008 RDI: 00007fbd53487000
+RBP: 00000000006dcc40 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 00000000006dcc4c
+R13: 8000000000044000 R14: 00007fbd534a89c0 R15: 00000000006dcd4c
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.jTMKK3/1/bus PID: 14 Comm: kworker/0:1
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.jTMKK3/3/bus PID: 14 Comm: kworker/0:1
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.itrSF4/4/bus PID: 5 Comm: kworker/0:0
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.itrSF4/5/bus PID: 5 Comm: kworker/0:0
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.qGPxI4/5/bus PID: 14 Comm: kworker/0:1
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.qGPxI4/6/bus PID: 5 Comm: kworker/0:0
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.FhXGz4/9/bus PID: 14 Comm: kworker/0:1
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.itrSF4/9/bus PID: 5394 Comm: kworker/0:4
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.FhXGz4/10/bus PID: 5394 Comm: kworker/0:4
+Page cache invalidation failure on direct I/O.  Possible data corruption  
+due to collision with buffered I/O!
+File: /root/syzkaller.qGPxI4/9/bus PID: 5394 Comm: kworker/0:4
