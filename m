@@ -1,107 +1,48 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lf1-f66.google.com ([209.85.167.66]:43762 "EHLO
-        mail-lf1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727063AbeJWFTk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Oct 2018 01:19:40 -0400
+Return-Path: <SRS0=Qv/7=NE=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lj1-f195.google.com ([209.85.208.195]:43128 "EHLO
+        mail-lj1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727000AbeJXT5t (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Oct 2018 15:57:49 -0400
+Received: by mail-lj1-f195.google.com with SMTP id x22-v6so1221093ljc.10
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Oct 2018 04:30:03 -0700 (PDT)
 MIME-Version: 1.0
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
- <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com> <20181021222712.GI1617@thunk.org>
- <CANiq72mXV6WTyHXNZJDTfFOpPrXD0zD6cB30bGOuKO44AvRiog@mail.gmail.com>
- <CAGXu5jKb-0H+smRAW6ngQKDZ-PbTThhMwhmu34iB8vjTa-4H8Q@mail.gmail.com>
- <CANiq72n4+HDXPqr7xySSGx49g8vEcXaxO7a-By9cSg7YSxOS_A@mail.gmail.com>
- <CANiq72kNnrhi8OPbF7P+Rw4SGYu=JuvhDKtzGtG2J5AOoC1-Dw@mail.gmail.com> <CAKwvOdn1TOzZYg_i0zB0rU+K3jaQQ8XmWnLXz01NCG9V+8PxHw@mail.gmail.com>
-In-Reply-To: <CAKwvOdn1TOzZYg_i0zB0rU+K3jaQQ8XmWnLXz01NCG9V+8PxHw@mail.gmail.com>
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Mon, 22 Oct 2018 22:59:16 +0200
-Message-ID: <CANiq72kUJOSrR=h2=2jXfkBPLrR=DrN8X4OoKOqAte4sMLxkdQ@mail.gmail.com>
-Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
- (gcc >= 7.1)
-To: Nick Desaulniers <ndesaulniers@google.com>
-Cc: Kees Cook <keescook@chromium.org>,
-        "Gustavo A. R. Silva" <gustavo@embeddedor.com>,
-        "Ted Ts'o" <tytso@mit.edu>, Greg KH <gregkh@linuxfoundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Dan <dan.carpenter@oracle.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Reply-To: jonathan_juju@yahoo.com
+From: Jonathan Juju <halvorsonnicholas@gmail.com>
+Date: Wed, 24 Oct 2018 19:30:02 +0800
+Message-ID: <CAOpF70pNJb=b9sC+yc=BB-8oixGmWscAgk--rk9qDzOa8uwUmA@mail.gmail.com>
+Subject: 
+To: undisclosed-recipients:;
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 22, 2018 at 7:17 PM Nick Desaulniers
-<ndesaulniers@google.com> wrote:
->
-> On Mon, Oct 22, 2018 at 2:43 AM Miguel Ojeda
-> <miguel.ojeda.sandonis@gmail.com> wrote:
-> >
-> > On Mon, Oct 22, 2018 at 11:41 AM Miguel Ojeda
-> > <miguel.ojeda.sandonis@gmail.com> wrote:
-> > >
-> > >   * clang does *not* support the attribute in C.
-> >
-> > ...nor the warning at all, by the way (which is why this is OK).
-> >
-> > Cheers,
-> > Miguel
->
-> Oh? We're going through and annotating all of Android's C++ source
-> right now with it.
-> https://clang.llvm.org/docs/DiagnosticsReference.html#wimplicit-fallthrough
->
+FROM: DR. JONATHAN JUJU
+ACH REPUBLIC OF SOUTH AFRICA.
 
-Sure, but I am talking about the C mode only. Please read the previous
-messages in the thread :-)
+Attn: Sir/Ma
 
-> Though it looks like the attribute syntax I like from GCC is not yet
-> supported in Clang.
+YOUR COMPANY'S OPERATIONS AND PROFILE GOT MY  ATTENTION, IN LINE WITH
+MY CURRENT  DIVERSIFICATION AND EXPANSION PROGRAM IN CREATING
+STRATEGIC PARTNERSHIP I WOULD LIKE TO KNOW IF THERE ARE AVAILABLE
+PARTNERSHIP OPTIONS AND  OPENINGS FOR NEW INVESTORS WITHIN YOUR FIRM.
+I THEREFORE,SOLICIT PARTNERSHIP WITH YOU BY PROVIDING THE FUNDS FOR
+INVESTMENT IN ANY PROJECT  IN YOUR COUNTRY.
 
-Indeed, that is what I explained in the last message.
+THE INVESTMENT FUNDS ARE AVAILABLE FOR TRANSFER  FURTHER INFORMATION
+AND INSTRUCTIONS WOULD BE  COMMUNICATED TO YOU ON YOUR RESPONSE AND
+DECLARATION OF INTEREST. YOUR HONEST COOPERATION WOULD BE HIGHLY
+APPRECIATED TO ENABLE ME SUCCESSFULLY EXECUTE THE TRANSFER OF THESE
+FUNDS OUT OF THE SHORES OF AFRICA  AND INVEST IN ANY LAUDABLE PROJECT
+THAT WILL EARN  GOOD RETURNS.
 
-> https://bugs.llvm.org/show_bug.cgi?id=37135
-> https://github.com/ClangBuiltLinux/linux/issues/235
-> I'll take a look at adding support.
->
-> So Kees sent me this embarrassing example:
-> https://godbolt.org/z/gV_c9_
-> (try changing the language from C++ to C; it works)!  That's embarrassing!
+PLEASE, CALL OR SEND A FAX TO TEL:. +27- 60-3015081  / FAX:.+ 27-
+86-610-8465 FOR FURTHER DISCUSSIONS AND ACQUAINTANCE.
 
-Yup, that is what I have been testing yesterday -- see the linked
-thread in the commit message for the summary of the results.
+I LOOK FORWARD TO YOUR URGENT AND POSITIVE RESPONSE.
 
-> https://bugs.llvm.org/show_bug.cgi?id=39382
-> https://github.com/ClangBuiltLinux/linux/issues/236
-> Will get these both fixed up.
+YOURS  SINCERELY,
+DR.JONATHAN JUJU
 
-Cheers,
-Miguel
+NOTE:
+This is a CONFIDENTIAL message. Please, treat as such. Kindly destroy it
+if you are not interested,.
