@@ -1,199 +1,211 @@
-Return-Path: <SRS0=Lb0t=NC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from esgaroth.petrovitsch.at ([78.47.184.11]:4682 "EHLO
-        esgaroth.tuxoid.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728270AbeJWCMC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Oct 2018 22:12:02 -0400
-Subject: Re: [PATCH 1/2] Compiler Attributes: add support for __fallthrough
- (gcc >= 7.1)
-To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
-        Dan <dan.carpenter@oracle.com>
-Cc: "Ted Ts'o" <tytso@mit.edu>, Greg KH <gregkh@linuxfoundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org,
-        ndesaulniers@google.com
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
- <20181021171414.22674-2-miguel.ojeda.sandonis@gmail.com>
- <20181021222712.GI1617@thunk.org>
- <8fb78062-b6d4-6f2d-d943-44bec6b95ff0@petrovitsch.priv.at>
- <20181022102743.nua5fgbscyeymzal@mwanda>
- <1474d995-1b5a-2efb-f077-33eb4a5d9e31@petrovitsch.priv.at>
- <20181022105314.j6djkrpwbnokhai5@mwanda>
- <CANiq72=ioYcRA-yq38+Z4i6iVDNm6C2-+b4feRmnvEiekuR7dA@mail.gmail.com>
-From: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
-Message-ID: <3cbb5345-0270-5575-7563-6ad37d888e42@petrovitsch.priv.at>
-Date: Mon, 22 Oct 2018 19:49:21 +0200
+Return-Path: <SRS0=PkuD=NH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-io1-f72.google.com ([209.85.166.72]:44521 "EHLO
+        mail-io1-f72.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728520AbeJ0Twl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Oct 2018 15:52:41 -0400
+Received: by mail-io1-f72.google.com with SMTP id s15-v6so3410525iob.11
+        for <linux-ext4@vger.kernel.org>; Sat, 27 Oct 2018 04:12:04 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CANiq72=ioYcRA-yq38+Z4i6iVDNm6C2-+b4feRmnvEiekuR7dA@mail.gmail.com>
-Content-Type: multipart/mixed;
- boundary="------------4F428F195E06AF3B428EB1A0"
-Content-Language: en-US
+Date: Sat, 27 Oct 2018 04:12:03 -0700
+Message-ID: <000000000000dd0a16057933e7d6@google.com>
+Subject: INFO: task hung in ext4_map_blocks
+From: syzbot <syzbot+b620151161795bd74a60@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------4F428F195E06AF3B428EB1A0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Hello,
 
-Hi all!
+syzbot found the following crash on:
 
-On 22/10/18 13:07, Miguel Ojeda wrote:
-> On Mon, Oct 22, 2018 at 12:54 PM Dan Carpenter <dan.carpenter@oracle.co=
-m> wrote:
->>
->> Doing both is super ugly.  Let's just do comments until Eclipse gets
->> updated.
+HEAD commit:    638820d8da8e Merge branch 'next-general' of git://git.kern..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=10c8d0eb400000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=f9a456324fcc850a
+dashboard link: https://syzkaller.appspot.com/bug?extid=b620151161795bd74a60
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=15ede44d400000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=1452e9cb400000
 
-Yes, "Eclipse" as the IDE.
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+b620151161795bd74a60@syzkaller.appspotmail.com
 
-And yes but IMHO better super ugly than loosing the warning - YMMV.
+audit: type=1800 audit(1540407533.329:30): pid=5235 uid=0 auid=4294967295  
+ses=4294967295 subj==unconfined op=collect_data cause=failed(directio)  
+comm="startpar" name="rmnologin" dev="sda1" ino=2423 res=0
+INFO: task kworker/u4:0:7 blocked for more than 140 seconds.
+       Not tainted 4.19.0+ #301
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+kworker/u4:0    D13168     7      2 0x80000000
+Workqueue: writeback wb_workfn (flush-8:0)
+Call Trace:
+  context_switch kernel/sched/core.c:2826 [inline]
+  __schedule+0x8cf/0x21d0 kernel/sched/core.c:3474
+  schedule+0xfe/0x460 kernel/sched/core.c:3518
+  __rwsem_down_write_failed_common+0xc9a/0x15e0  
+kernel/locking/rwsem-xadd.c:577
+  rwsem_down_write_failed+0xe/0x10 kernel/locking/rwsem-xadd.c:606
+  call_rwsem_down_write_failed+0x17/0x30 arch/x86/lib/rwsem.S:117
+  __down_write arch/x86/include/asm/rwsem.h:142 [inline]
+  down_write+0xa5/0x130 kernel/locking/rwsem.c:72
+  ext4_map_blocks+0x88f/0x1b40 fs/ext4/inode.c:629
+  mpage_map_one_extent fs/ext4/inode.c:2450 [inline]
+  mpage_map_and_submit_extent fs/ext4/inode.c:2503 [inline]
+  ext4_writepages+0x2595/0x4130 fs/ext4/inode.c:2854
+  do_writepages+0x9a/0x1a0 mm/page-writeback.c:2340
+  __writeback_single_inode+0x20a/0x1620 fs/fs-writeback.c:1323
+  writeback_sb_inodes+0x71f/0x11d0 fs/fs-writeback.c:1587
+  __writeback_inodes_wb+0x1b9/0x340 fs/fs-writeback.c:1656
+  wb_writeback+0xa73/0xfc0 fs/fs-writeback.c:1765
+  wb_check_old_data_flush fs/fs-writeback.c:1867 [inline]
+  wb_do_writeback fs/fs-writeback.c:1920 [inline]
+  wb_workfn+0x1008/0x1790 fs/fs-writeback.c:1949
+  process_one_work+0xc90/0x1c40 kernel/workqueue.c:2153
+  worker_thread+0x17f/0x1390 kernel/workqueue.c:2296
+  kthread+0x35a/0x420 kernel/kthread.c:246
+  ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:350
 
-For the archives: I have Eclipse Photon/June 2016 here. And "no break"
-is the (default) string in a comment used by Eclipse (it can be
-customized and is actually a regexp but it must be in a comment).
+Showing all locks held in the system:
+5 locks held by kworker/u4:0/7:
+  #0: 00000000ce3fc1c2 ((wq_completion)"writeback"){+.+.}, at:  
+__write_once_size include/linux/compiler.h:206 [inline]
+  #0: 00000000ce3fc1c2 ((wq_completion)"writeback"){+.+.}, at:  
+arch_atomic64_set arch/x86/include/asm/atomic64_64.h:34 [inline]
+  #0: 00000000ce3fc1c2 ((wq_completion)"writeback"){+.+.}, at: atomic64_set  
+include/asm-generic/atomic-instrumented.h:40 [inline]
+  #0: 00000000ce3fc1c2 ((wq_completion)"writeback"){+.+.}, at:  
+atomic_long_set include/asm-generic/atomic-long.h:59 [inline]
+  #0: 00000000ce3fc1c2 ((wq_completion)"writeback"){+.+.}, at: set_work_data  
+kernel/workqueue.c:617 [inline]
+  #0: 00000000ce3fc1c2 ((wq_completion)"writeback"){+.+.}, at:  
+set_work_pool_and_clear_pending kernel/workqueue.c:644 [inline]
+  #0: 00000000ce3fc1c2 ((wq_completion)"writeback"){+.+.}, at:  
+process_one_work+0xb43/0x1c40 kernel/workqueue.c:2124
+  #1: 00000000d6c9c988 ((work_completion)(&(&wb->dwork)->work)){+.+.}, at:  
+process_one_work+0xb9a/0x1c40 kernel/workqueue.c:2128
+  #2: 00000000a32f172a (&type->s_umount_key#30){++++}, at:  
+trylock_super+0x22/0x110 fs/super.c:412
+  #3: 000000004f496d2d (&sbi->s_journal_flag_rwsem){.+.+}, at:  
+do_writepages+0x9a/0x1a0 mm/page-writeback.c:2340
+  #4: 00000000abe2b30d (&ei->i_data_sem){++++}, at:  
+ext4_map_blocks+0x88f/0x1b40 fs/ext4/inode.c:629
+1 lock held by khungtaskd/980:
+  #0: 000000004d289beb (rcu_read_lock){....}, at:  
+debug_show_all_locks+0xd0/0x424 kernel/locking/lockdep.c:4379
+1 lock held by rsyslogd/5273:
+  #0: 00000000bce88f8b (&f->f_pos_lock){+.+.}, at: __fdget_pos+0x1bb/0x200  
+fs/file.c:766
+2 locks held by getty/5363:
+  #0: 00000000bc7d06fd (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 000000005dc6654d (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5364:
+  #0: 00000000b74b0737 (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 000000000d7c9596 (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5365:
+  #0: 000000002db01519 (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 00000000feac9e10 (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5366:
+  #0: 00000000fa7b9c5d (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 0000000029958494 (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5367:
+  #0: 00000000c8499234 (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 000000008773936c (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5368:
+  #0: 000000004165be65 (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 0000000089cba62d (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+2 locks held by getty/5369:
+  #0: 00000000f3f983f2 (&tty->ldisc_sem){++++}, at:  
+ldsem_down_read+0x32/0x40 drivers/tty/tty_ldsem.c:353
+  #1: 00000000c8e059da (&ldata->atomic_read_lock){+.+.}, at:  
+n_tty_read+0x335/0x1ce0 drivers/tty/n_tty.c:2140
+5 locks held by syz-executor827/5390:
 
->> I had wanted to move to the attribute because that would simplify thin=
-gs
->> in Smatch but it's not a huge deal to delay for another year.
->=20
-> I can re-send them later on, no problem. On the other hand, doing the
-> changes will push tools to get updated sooner ;-)
->=20
-> If tools were doing something as fancy as comment parsing for
-> diagnostics, they should have been updated with the attribute support
-> (either gcc's or C++17's) -- it has been more than a year now since
-> gcc 7.1 and the C++17 final draft. (Note that this does not apply for
-> things like clang, since they weren't doing comment parsing to begin
-> with.)
+=============================================
 
-That would be nice. And if they agree on the same texts (or accept per
-default all somewhat widely used and/or old ones).
+NMI backtrace for cpu 0
+CPU: 0 PID: 980 Comm: khungtaskd Not tainted 4.19.0+ #301
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x244/0x39d lib/dump_stack.c:113
+  nmi_cpu_backtrace.cold.1+0x5c/0xa1 lib/nmi_backtrace.c:101
+  nmi_trigger_cpumask_backtrace+0x1b3/0x1ed lib/nmi_backtrace.c:62
+  arch_trigger_cpumask_backtrace+0x14/0x20 arch/x86/kernel/apic/hw_nmi.c:38
+  trigger_all_cpu_backtrace include/linux/nmi.h:144 [inline]
+  check_hung_uninterruptible_tasks kernel/hung_task.c:204 [inline]
+  watchdog+0xb3e/0x1050 kernel/hung_task.c:265
+  kthread+0x35a/0x420 kernel/kthread.c:246
+  ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:350
+Sending NMI from CPU 0 to CPUs 1:
+INFO: NMI handler (nmi_cpu_backtrace_handler) took too long to run: 1.137  
+msecs
+NMI backtrace for cpu 1
+CPU: 1 PID: 5390 Comm: syz-executor827 Not tainted 4.19.0+ #301
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+RIP: 0010:get_ext_path fs/ext4/move_extent.c:40 [inline]
+RIP: 0010:mext_check_coverage.constprop.13+0x174/0x510  
+fs/ext4/move_extent.c:98
+Code: 49 83 7c 24 10 00 0f 84 e4 01 00 00 e8 f5 2f 60 ff 48 8b 95 70 ff ff  
+ff 48 b8 00 00 00 00 00 fc ff df 48 c1 ea 03 80 3c 02 00 <0f> 85 e3 02 00  
+00 4c 89 fa 48 89 5d 98 48 b8 00 00 00 00 00 fc ff
+RSP: 0018:ffff8801d7fcf1c0 EFLAGS: 00000246
+RAX: dffffc0000000000 RBX: ffff8801d963a880 RCX: ffffffff821f5a82
+RDX: 1ffff1003aff9e41 RSI: ffffffff821f591b RDI: ffff8801d963a890
+RBP: ffff8801d7fcf270 R08: ffff8801d7d66400 R09: ffffed003b5e5b57
+R10: ffffed003b5e5b57 R11: ffff8801daf2dabb R12: ffff8801d963a880
+R13: 00000000f6986ac0 R14: ffff8801b73411f0 R15: ffff8801d7fcf3e0
+FS:  0000000001fef880(0000) GS:ffff8801daf00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: ffffffffff600400 CR3: 00000001d93df000 CR4: 00000000001406e0
+Call Trace:
+  move_extent_per_page fs/ext4/move_extent.c:323 [inline]
+  ext4_move_extents+0x2784/0x3c20 fs/ext4/move_extent.c:669
+  ext4_ioctl+0x3154/0x4210 fs/ext4/ioctl.c:799
+  vfs_ioctl fs/ioctl.c:46 [inline]
+  file_ioctl fs/ioctl.c:501 [inline]
+  do_vfs_ioctl+0x1de/0x1720 fs/ioctl.c:685
+  ksys_ioctl+0xa9/0xd0 fs/ioctl.c:702
+  __do_sys_ioctl fs/ioctl.c:709 [inline]
+  __se_sys_ioctl fs/ioctl.c:707 [inline]
+  __x64_sys_ioctl+0x73/0xb0 fs/ioctl.c:707
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x4401d9
+Code: 18 89 d0 c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 00 48 89 f8 48 89 f7  
+48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff  
+ff 0f 83 fb 13 fc ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007ffe954e8808 EFLAGS: 00000217 ORIG_RAX: 0000000000000010
+RAX: ffffffffffffffda RBX: 00000000004002c8 RCX: 00000000004401d9
+RDX: 0000000020000040 RSI: 00000000c028660f RDI: 0000000000000003
+RBP: 00000000006ca018 R08: 00000000004002c8 R09: 00000000004002c8
+R10: 00000000004002c8 R11: 0000000000000217 R12: 0000000000401a60
+R13: 0000000000401af0 R14: 0000000000000000 R15: 0000000000000000
 
-After stumbling over
-https://stackoverflow.com/questions/16935935/how-do-i-turn-off-a-static-c=
-ode-analysis-warning-on-a-line-by-line-warning-in-cd,
-looking into Eclipses Window -> Preferences -> C/C++ -> Code Analysis ->
-"No break at the end of case" screen (that's the screenshot there) and I
-tried various things:
 
-Preface:
-I have
-----  snip  ----
-#define __fallthrough __attribute__((fallthrough))
-----  snip  ----
-for gcc >=3D 7 (because clang doesn't know it and I had also older
-gcc's in use before).
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-So:
-- Adding a comment to the #define doesn't change anything for Eclipse.
-- Eclipse looks *only* in comments for the string/regexp given
-  the warnings configuration (and that comment must be on the line
-  directly before the "case").
-- Eclipse understands [[fallthrough]] out-of-the-box though (which
-  is C++11 AFAIK) as does g++-7 (I use -std=3Dgnu++17 - most of the
-  sources are C++, but not all) and clang++-6 (all the current standard
-  Ubuntu-18.06/Bionic packages).
-  Eclipse "accepts" [[fallthrough]] only in C++ sources (and not in C
-  sources).
-- Neither gcc nor clang understand [[fallthrough]] (so it's probably a
-  no-go for the Kernel with C89 anyways).
-
-MfG,
-	Bernd
-
-PS: clang++ errors with "fallthrough annotation in unreachable code" if
-    [[fallthrough]] is after an assert(). clang-devs there, please, the
-    fallthrough doesn't really generated code (I hope;-).
-    I have lots of switch()es which catch undefined values (for enums
-    et. al.) with "default"+assert() and fall through to the most safe
-    case (for the deployed version).
---=20
-"I dislike type abstraction if it has no real reason. And saving
-on typing is not a good reason - if your typing speed is the main
-issue when you're coding, you're doing something seriously wrong."
-    - Linus Torvalds
-
---------------4F428F195E06AF3B428EB1A0
-Content-Type: application/pgp-keys;
- name="pEpkey.asc"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: attachment;
- filename="pEpkey.asc"
-
------BEGIN PGP PUBLIC KEY BLOCK-----
-
-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3D=3D
-=3Dv2Yn
------END PGP PUBLIC KEY BLOCK-----
-
---------------4F428F195E06AF3B428EB1A0--
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with  
+syzbot.
+syzbot can test patches for this bug, for details see:
+https://goo.gl/tpsmEJ#testing-patches
