@@ -1,105 +1,115 @@
-Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:49874 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726801AbeJCVzs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Oct 2018 17:55:48 -0400
-Date: Wed, 3 Oct 2018 17:06:58 +0200
-From: Jan Kara <jack@suse.cz>
-To: Dan Williams <dan.j.williams@intel.com>
-Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
-        Johannes Thumshirn <jthumshirn@suse.de>,
-        Dave Jiang <dave.jiang@intel.com>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Linux MM <linux-mm@kvack.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>
-Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
-Message-ID: <20181003150658.GC24030@quack2.suse.cz>
-References: <20181002100531.GC4135@quack2.suse.cz>
- <20181002121039.GA3274@linux-x5ow.site>
- <20181002142959.GD9127@quack2.suse.cz>
- <20181002143713.GA19845@infradead.org>
- <20181002144412.GC4963@linux-x5ow.site>
- <20181002145206.GA10903@infradead.org>
- <20181002153100.GG9127@quack2.suse.cz>
- <CAPcyv4j0tTD+rENqFExA68aw=-MmtCBaOe1qJovyrmJC=yBg-Q@mail.gmail.com>
- <20181003125056.GA21043@quack2.suse.cz>
- <CAPcyv4jfV10yuTiPg6ijsPRRL2-c_48ovfpU5TK1Zu7BWnfk3g@mail.gmail.com>
+Return-Path: <SRS0=PkuD=NH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-wm1-f66.google.com ([209.85.128.66]:37560 "EHLO
+        mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726496AbeJ0Jcu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Oct 2018 05:32:50 -0400
+Received: by mail-wm1-f66.google.com with SMTP id p2-v6so2895257wmc.2
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2018 17:53:39 -0700 (PDT)
+Date: Sat, 27 Oct 2018 01:53:37 +0100
+From: Phillip Potter <phil@philpotter.co.uk>
+To: jack@suse.com
+Cc: amir73il@gmail.com, viro@zeniv.linux.org.uk,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [RFC][PATCH v3 04/10] ext2: use common file type conversion
+Message-ID: <20181027005337.GA9954@pathfinder>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAPcyv4jfV10yuTiPg6ijsPRRL2-c_48ovfpU5TK1Zu7BWnfk3g@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 03-10-18 07:38:50, Dan Williams wrote:
-> On Wed, Oct 3, 2018 at 5:51 AM Jan Kara <jack@suse.cz> wrote:
-> >
-> > On Tue 02-10-18 13:18:54, Dan Williams wrote:
-> > > On Tue, Oct 2, 2018 at 8:32 AM Jan Kara <jack@suse.cz> wrote:
-> > > >
-> > > > On Tue 02-10-18 07:52:06, Christoph Hellwig wrote:
-> > > > > On Tue, Oct 02, 2018 at 04:44:13PM +0200, Johannes Thumshirn wrote:
-> > > > > > On Tue, Oct 02, 2018 at 07:37:13AM -0700, Christoph Hellwig wrote:
-> > > > > > > No, it should not.  DAX is an implementation detail thay may change
-> > > > > > > or go away at any time.
-> > > > > >
-> > > > > > Well we had an issue with an application checking for dax, this is how
-> > > > > > we landed here in the first place.
-> > > > >
-> > > > > So what exacty is that "DAX" they are querying about (and no, I'm not
-> > > > > joking, nor being philosophical).
-> > > >
-> > > > I believe the application we are speaking about is mostly concerned about
-> > > > the memory overhead of the page cache. Think of a machine that has ~ 1TB of
-> > > > DRAM, the database running on it is about that size as well and they want
-> > > > database state stored somewhere persistently - which they may want to do by
-> > > > modifying mmaped database files if they do small updates... So they really
-> > > > want to be able to use close to all DRAM for the DB and not leave slack
-> > > > space for the kernel page cache to cache 1TB of database files.
-> > >
-> > > VM_MIXEDMAP was never a reliable indication of DAX because it could be
-> > > set for random other device-drivers that use vm_insert_mixed(). The
-> > > MAP_SYNC flag positively indicates that page cache is disabled for a
-> > > given mapping, although whether that property is due to "dax" or some
-> > > other kernel mechanics is purely an internal detail.
-> > >
-> > > I'm not opposed to faking out VM_MIXEDMAP if this broken check has
-> > > made it into production, but again, it's unreliable.
-> >
-> > So luckily this particular application wasn't widely deployed yet so we
-> > will likely get away with the vendor asking customers to update to a
-> > version not looking into smaps and parsing /proc/mounts instead.
-> >
-> > But I don't find parsing /proc/mounts that beautiful either and I'd prefer
-> > if we had a better interface for applications to query whether they can
-> > avoid page cache for mmaps or not.
-> 
-> Yeah, the mount flag is not a good indicator either. I think we need
-> to follow through on the per-inode property of DAX. Darrick and I
-> discussed just allowing the property to be inherited from the parent
-> directory at file creation time. That avoids the dynamic set-up /
-> teardown races that seem intractable at this point.
-> 
-> What's wrong with MAP_SYNC as a page-cache detector in the meantime?
+Deduplicate the ext2 file type conversion implementation - file systems
+that use the same file types as defined by POSIX do not need to define
+their own versions and can use the common helper functions decared in
+fs_types.h and implemented in fs_types.c
 
-So IMHO checking for MAP_SYNC is about as reliable as checking for 'dax'
-mount option. It works now but nobody promises it will reliably detect DAX in
-future - e.g. there's nothing that prevents MAP_SYNC to work for mappings
-using pagecache if we find a sensible usecase for that.
+Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
+---
+ fs/ext2/dir.c | 49 ++++++++++++++++++++-----------------------------
+ 1 file changed, 20 insertions(+), 29 deletions(-)
 
-WRT per-inode DAX property, AFAIU that inode flag is just going to be
-advisory thing - i.e., use DAX if possible. If you mount a filesystem with
-these inode flags set in a configuration which does not allow DAX to be
-used, you will still be able to access such inodes but the access will use
-page cache instead. And querying these flags should better show real
-on-disk status and not just whether DAX is used as that would result in an
-even bigger mess. So this feature seems to be somewhat orthogonal to the
-API I'm looking for.
-
-								Honza
+diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+index 3b8114def693..bd30fe266373 100644
+--- a/fs/ext2/dir.c
++++ b/fs/ext2/dir.c
+@@ -252,33 +252,24 @@ ext2_validate_entry(char *base, unsigned offset, unsigned mask)
+ 	return (char *)p - base;
+ }
+ 
+-static unsigned char ext2_filetype_table[EXT2_FT_MAX] = {
+-	[EXT2_FT_UNKNOWN]	= DT_UNKNOWN,
+-	[EXT2_FT_REG_FILE]	= DT_REG,
+-	[EXT2_FT_DIR]		= DT_DIR,
+-	[EXT2_FT_CHRDEV]	= DT_CHR,
+-	[EXT2_FT_BLKDEV]	= DT_BLK,
+-	[EXT2_FT_FIFO]		= DT_FIFO,
+-	[EXT2_FT_SOCK]		= DT_SOCK,
+-	[EXT2_FT_SYMLINK]	= DT_LNK,
+-};
+-
+-#define S_SHIFT 12
+-static unsigned char ext2_type_by_mode[S_IFMT >> S_SHIFT] = {
+-	[S_IFREG >> S_SHIFT]	= EXT2_FT_REG_FILE,
+-	[S_IFDIR >> S_SHIFT]	= EXT2_FT_DIR,
+-	[S_IFCHR >> S_SHIFT]	= EXT2_FT_CHRDEV,
+-	[S_IFBLK >> S_SHIFT]	= EXT2_FT_BLKDEV,
+-	[S_IFIFO >> S_SHIFT]	= EXT2_FT_FIFO,
+-	[S_IFSOCK >> S_SHIFT]	= EXT2_FT_SOCK,
+-	[S_IFLNK >> S_SHIFT]	= EXT2_FT_SYMLINK,
+-};
+-
+ static inline void ext2_set_de_type(ext2_dirent *de, struct inode *inode)
+ {
+-	umode_t mode = inode->i_mode;
++	/*
++	 * compile-time asserts that generic FT_x types still match
++	 * EXT2_FT_x types
++	 */
++	BUILD_BUG_ON(EXT2_FT_UNKNOWN != FT_UNKNOWN);
++	BUILD_BUG_ON(EXT2_FT_REG_FILE != FT_REG_FILE);
++	BUILD_BUG_ON(EXT2_FT_DIR != FT_DIR);
++	BUILD_BUG_ON(EXT2_FT_CHRDEV != FT_CHRDEV);
++	BUILD_BUG_ON(EXT2_FT_BLKDEV != FT_BLKDEV);
++	BUILD_BUG_ON(EXT2_FT_FIFO != FT_FIFO);
++	BUILD_BUG_ON(EXT2_FT_SOCK != FT_SOCK);
++	BUILD_BUG_ON(EXT2_FT_SYMLINK != FT_SYMLINK);
++	BUILD_BUG_ON(EXT2_FT_MAX != FT_MAX);
++
+ 	if (EXT2_HAS_INCOMPAT_FEATURE(inode->i_sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
+-		de->file_type = ext2_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
++		de->file_type = fs_umode_to_ftype(inode->i_mode);
+ 	else
+ 		de->file_type = 0;
+ }
+@@ -293,14 +284,14 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
+ 	unsigned long n = pos >> PAGE_SHIFT;
+ 	unsigned long npages = dir_pages(inode);
+ 	unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
+-	unsigned char *types = NULL;
+ 	bool need_revalidate = !inode_eq_iversion(inode, file->f_version);
++	bool has_filetype;
+ 
+ 	if (pos > inode->i_size - EXT2_DIR_REC_LEN(1))
+ 		return 0;
+ 
+-	if (EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
+-		types = ext2_filetype_table;
++	has_filetype =
++		EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE);
+ 
+ 	for ( ; n < npages; n++, offset = 0) {
+ 		char *kaddr, *limit;
+@@ -335,8 +326,8 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
+ 			if (de->inode) {
+ 				unsigned char d_type = DT_UNKNOWN;
+ 
+-				if (types && de->file_type < EXT2_FT_MAX)
+-					d_type = types[de->file_type];
++				if (has_filetype)
++					d_type = fs_ftype_to_dtype(de->file_type);
+ 
+ 				if (!dir_emit(ctx, de->name, de->name_len,
+ 						le32_to_cpu(de->inode),
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.17.2
