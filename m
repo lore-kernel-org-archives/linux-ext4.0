@@ -1,92 +1,95 @@
-Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:45938 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725743AbeJaGw5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 31 Oct 2018 02:52:57 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2 01/11] ext4 resise: extra brelse in
- setup_new_flex_group_blocks()
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org,
-        Yongqiang Yang <xiaoqiangnk@gmail.com>,
-        Yongqiang Yang <yangyongqiang01@baidu.com>
-References: <cover.1540935522.git.vvs@virtuozzo.com>
-Message-ID: <37de5906-2d76-461a-ff92-b6fcc775b408@virtuozzo.com>
-Date: Wed, 31 Oct 2018 00:57:37 +0300
+Return-Path: <SRS0=PkuD=NH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-wm1-f66.google.com ([209.85.128.66]:36640 "EHLO
+        mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726439AbeJ0Jcx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Oct 2018 05:32:53 -0400
+Received: by mail-wm1-f66.google.com with SMTP id a8-v6so2909171wmf.1
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Oct 2018 17:53:41 -0700 (PDT)
+Date: Sat, 27 Oct 2018 01:53:39 +0100
+From: Phillip Potter <phil@philpotter.co.uk>
+To: tytso@mit.edu
+Cc: amir73il@gmail.com, viro@zeniv.linux.org.uk,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: [RFC][PATCH v3 06/10] ext4: use common file type conversion
+Message-ID: <20181027005339.GA9968@pathfinder>
 MIME-Version: 1.0
-In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-currently bh is set to NULL only during first iteration of for cycle,
-then this pointer is not cleared after end of using.
-Therefore rollback after errors can lead to extra brelse(bh) call,
-decrements bh counter and later trigger an unexpected warning in __brelse()
+Deduplicate the ext4 file type conversion implementation - file systems
+that use the same file types as defined by POSIX do not need to define
+their own versions and can use the common helper functions decared in
+fs_types.h and implemented in fs_types.c
 
-Patch moves brelse() calls in body of cycle to exclude requirement of
-brelse() call in rollback.
-
-Fixes 33afdcc5402d ("ext4: add a function which sets up group blocks ...") # 3.3+
-
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
 ---
- fs/ext4/resize.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ fs/ext4/ext4.h | 33 +++++++++++++++++----------------
+ 1 file changed, 17 insertions(+), 16 deletions(-)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index ebbc663d0798..c3fa30878ca8 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -605,7 +605,6 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 		bh = bclean(handle, sb, block);
- 		if (IS_ERR(bh)) {
- 			err = PTR_ERR(bh);
--			bh = NULL;
- 			goto out;
- 		}
- 		overhead = ext4_group_overhead_blocks(sb, group);
-@@ -618,9 +617,9 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 		ext4_mark_bitmap_end(EXT4_B2C(sbi, group_data[i].blocks_count),
- 				     sb->s_blocksize * 8, bh->b_data);
- 		err = ext4_handle_dirty_metadata(handle, NULL, bh);
-+		brelse(bh);
- 		if (err)
- 			goto out;
--		brelse(bh);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index caff935fbeb8..88c65ce70413 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2361,16 +2361,13 @@ static inline void ext4_update_dx_flag(struct inode *inode)
+ 	if (!ext4_has_feature_dir_index(inode->i_sb))
+ 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
+ }
+-static const unsigned char ext4_filetype_table[] = {
+-	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+-};
  
- handle_ib:
- 		if (bg_flags[i] & EXT4_BG_INODE_UNINIT)
-@@ -635,18 +634,16 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 		bh = bclean(handle, sb, block);
- 		if (IS_ERR(bh)) {
- 			err = PTR_ERR(bh);
--			bh = NULL;
- 			goto out;
- 		}
+ static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
+ {
+-	if (!ext4_has_feature_filetype(sb) || filetype >= EXT4_FT_MAX)
++	if (!ext4_has_feature_filetype(sb))
+ 		return DT_UNKNOWN;
  
- 		ext4_mark_bitmap_end(EXT4_INODES_PER_GROUP(sb),
- 				     sb->s_blocksize * 8, bh->b_data);
- 		err = ext4_handle_dirty_metadata(handle, NULL, bh);
-+		brelse(bh);
- 		if (err)
- 			goto out;
--		brelse(bh);
- 	}
--	bh = NULL;
+-	return ext4_filetype_table[filetype];
++	return fs_ftype_to_dtype(filetype);
+ }
+ extern int ext4_check_all_de(struct inode *dir, struct buffer_head *bh,
+ 			     void *buf, int buf_size);
+@@ -3055,22 +3052,26 @@ extern void initialize_dirent_tail(struct ext4_dir_entry_tail *t,
+ extern int ext4_handle_dirty_dirent_node(handle_t *handle,
+ 					 struct inode *inode,
+ 					 struct buffer_head *bh);
+-#define S_SHIFT 12
+-static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
+-	[S_IFREG >> S_SHIFT]	= EXT4_FT_REG_FILE,
+-	[S_IFDIR >> S_SHIFT]	= EXT4_FT_DIR,
+-	[S_IFCHR >> S_SHIFT]	= EXT4_FT_CHRDEV,
+-	[S_IFBLK >> S_SHIFT]	= EXT4_FT_BLKDEV,
+-	[S_IFIFO >> S_SHIFT]	= EXT4_FT_FIFO,
+-	[S_IFSOCK >> S_SHIFT]	= EXT4_FT_SOCK,
+-	[S_IFLNK >> S_SHIFT]	= EXT4_FT_SYMLINK,
+-};
  
- 	/* Mark group tables in block bitmap */
- 	for (j = 0; j < GROUP_TABLE_COUNT; j++) {
-@@ -685,7 +682,6 @@ static int setup_new_flex_group_blocks(struct super_block *sb,
- 	}
+ static inline void ext4_set_de_type(struct super_block *sb,
+ 				struct ext4_dir_entry_2 *de,
+ 				umode_t mode) {
++	/*
++	 * compile-time asserts that generic FT_x types still match
++	 * EXT4_FT_x types
++	 */
++	BUILD_BUG_ON(EXT4_FT_UNKNOWN != FT_UNKNOWN);
++	BUILD_BUG_ON(EXT4_FT_REG_FILE != FT_REG_FILE);
++	BUILD_BUG_ON(EXT4_FT_DIR != FT_DIR);
++	BUILD_BUG_ON(EXT4_FT_CHRDEV != FT_CHRDEV);
++	BUILD_BUG_ON(EXT4_FT_BLKDEV != FT_BLKDEV);
++	BUILD_BUG_ON(EXT4_FT_FIFO != FT_FIFO);
++	BUILD_BUG_ON(EXT4_FT_SOCK != FT_SOCK);
++	BUILD_BUG_ON(EXT4_FT_SYMLINK != FT_SYMLINK);
++	BUILD_BUG_ON(EXT4_FT_MAX != FT_MAX);
++
+ 	if (ext4_has_feature_filetype(sb))
+-		de->file_type = ext4_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
++		de->file_type = fs_umode_to_ftype(mode);
+ }
  
- out:
--	brelse(bh);
- 	err2 = ext4_journal_stop(handle);
- 	if (err2 && !err)
- 		err = err2;
+ /* readpages.c */
 -- 
-2.17.1
+2.17.2
