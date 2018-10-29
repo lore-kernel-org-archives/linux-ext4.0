@@ -1,36 +1,42 @@
-Return-Path: <SRS0=03HA=MU=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mout.gmx.net ([212.227.15.18]:59841 "EHLO mout.gmx.net"
+Return-Path: <SRS0=ufRS=NJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:46086 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726525AbeJIHEj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 Oct 2018 03:04:39 -0400
-From: Chengguang Xu <cgxu519@gmx.com>
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH] ext4: remove QUOTA flag setting in set_qf_name()
-Date: Tue,  9 Oct 2018 07:50:13 +0800
-Message-Id: <20181008235013.13687-1-cgxu519@gmx.com>
+        id S1727456AbeJ3Agk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 29 Oct 2018 20:36:40 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH 3/7] ext4 resize: missing brelse() in case success in
+ add_new_gdb()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org
+Message-ID: <d8c84f46-7ffe-7fd3-0e70-775c3c59320e@virtuozzo.com>
+Date: Mon, 29 Oct 2018 18:25:16 +0300
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mount flag QUOTA is the same as flag USRQUOTA in ext4, so should
-not set flag QUOTA in set_qf_name().
+Fixes ac27a0ec112a ("ext4: initial copy of files from ext3")
+#? cc: stable <stable@vger.kernel.org>     # 2.6.19 or evel earlier in ext3
 
-Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+Signed-off-by: Vasily Averin <vvs@openvz.org>
 ---
- fs/ext4/super.c | 1 -
- 1 file changed, 1 deletion(-)
+ fs/ext4/resize.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 1145109968ef..9ed33e4860db 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1566,7 +1566,6 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
- 		goto errout;
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 0a4dc6217e78..ff17480e8613 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -874,6 +874,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 		goto exit_inode;
  	}
- 	sbi->s_qf_names[qtype] = qname;
--	set_opt(sb, QUOTA);
- 	return 1;
- errout:
- 	kfree(qname);
+ 	brelse(dind);
++	brelse(iloc.bh);
+ 
+ 	o_group_desc = EXT4_SB(sb)->s_group_desc;
+ 	memcpy(n_group_desc, o_group_desc,
 -- 
 2.17.1
