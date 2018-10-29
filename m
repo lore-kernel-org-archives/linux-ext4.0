@@ -1,55 +1,45 @@
-Return-Path: <SRS0=WpiV=MV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:55150 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725749AbeJIHkM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Oct 2018 03:40:12 -0400
-Date: Mon, 8 Oct 2018 17:23:58 -0700
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: nicholas.clark@gmail.com
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 1/2] Fuse2fs: fix 'mount' entry in some cases.
-Message-ID: <20181009002358.GA24099@magnolia>
-References: <20181008233952.20965-1-nicholas.clark@gmail.com>
- <20181008233952.20965-2-nicholas.clark@gmail.com>
+Return-Path: <SRS0=ufRS=NJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:46088 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727456AbeJ3Agm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 29 Oct 2018 20:36:42 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH 7/7] ext4 resize: lost resize_inode cleanup before retry in
+ ext4_resize_fs()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org
+Message-ID: <cc935d9e-0e59-fba9-ecdd-a01b435eb5bd@virtuozzo.com>
+Date: Mon, 29 Oct 2018 18:25:40 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181008233952.20965-2-nicholas.clark@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 08, 2018 at 05:39:51PM -0600, nicholas.clark@gmail.com wrote:
-> From: Nicholas Clark <nicholas.clark@gmail.com>
-> 
-> FUSE's parser allows command-line options to be specified before
-> or after the device/image and mount-path. This commit changes the
-> value of the fsname mount option to be correct even if options are
-> specified before the target device/image.
-> 
-> Signed-off-by: Nicholas Clark <nicholas.clark@gmail.com>
+Fixes 1c6bd7173d66 ("ext4: convert file system to meta_bg if needed ...")
+#? cc: stable <stable@vger.kernel.org>     # 3.7+
 
-Looks ok,
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+Signed-off-by: Vasily Averin <vvs@openvz.org>
+---
+ fs/ext4/resize.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
---D
-
-> ---
->  misc/fuse2fs.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/misc/fuse2fs.c b/misc/fuse2fs.c
-> index 5c73895e..3214be4a 100644
-> --- a/misc/fuse2fs.c
-> +++ b/misc/fuse2fs.c
-> @@ -3845,7 +3845,7 @@ int main(int argc, char *argv[])
->  	/* Set up default fuse parameters */
->  	snprintf(extra_args, BUFSIZ, "-okernel_cache,subtype=ext4,use_ino,"
->  		 "fsname=%s,attr_timeout=0" FUSE_PLATFORM_OPTS,
-> -		 argv[1]);
-> +		 fctx.device);
->  	if (fctx.no_default_opts == 0)
->  		fuse_opt_add_arg(&args, extra_args);
->  
-> -- 
-> 2.17.1
-> 
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 16b7cfe485d7..3006ede18773 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -2059,6 +2059,10 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 		n_blocks_count_retry = 0;
+ 		free_flex_gd(flex_gd);
+ 		flex_gd = NULL;
++		if (resize_inode) {
++			iput(resize_inode);
++			resize_inode = NULL;
++		}
+ 		goto retry;
+ 	}
+ 
+-- 
+2.17.1
