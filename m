@@ -1,258 +1,164 @@
-Return-Path: <SRS0=nfm4=NB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:41480 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727613AbeJUWJv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 21 Oct 2018 18:09:51 -0400
-From: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] libext2fs: refactor code which fixes up the checksums in an extent tree
-Date: Sun, 21 Oct 2018 09:55:20 -0400
-Message-Id: <20181021135520.31566-1-tytso@mit.edu>
+Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from ipmail01.adl2.internode.on.net ([150.101.137.133]:54374 "EHLO
+        ipmail01.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726077AbeJaHoc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 31 Oct 2018 03:44:32 -0400
+Date: Wed, 31 Oct 2018 09:49:04 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Dan Williams <dan.j.williams@intel.com>
+Cc: Jan Kara <jack@suse.cz>, jmoyer <jmoyer@redhat.com>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Dave Jiang <dave.jiang@intel.com>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        Linux MM <linux-mm@kvack.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>
+Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
+Message-ID: <20181030224904.GT19305@dastard>
+References: <20181002100531.GC4135@quack2.suse.cz>
+ <20181002121039.GA3274@linux-x5ow.site>
+ <20181002142959.GD9127@quack2.suse.cz>
+ <x49h8hkfhk9.fsf@segfault.boston.devel.redhat.com>
+ <20181018002510.GC6311@dastard>
+ <20181018145555.GS23493@quack2.suse.cz>
+ <20181019004303.GI6311@dastard>
+ <CAPcyv4ixoAh7HEMfm+B4sRDx1Qwm6SHGjtQ+5r3EKsxreRydrA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAPcyv4ixoAh7HEMfm+B4sRDx1Qwm6SHGjtQ+5r3EKsxreRydrA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The code to recalculate the checksums in an extent tree (which is
-needed after an inode is relocated so it has a different inode number)
-was duplicated in tune2fs and resize2fs.  In addition, this work could
-be done in a much more efficient way inside lib/ext2fs/extent.c.
+On Mon, Oct 29, 2018 at 11:30:41PM -0700, Dan Williams wrote:
+> On Thu, Oct 18, 2018 at 5:58 PM Dave Chinner <david@fromorbit.com> wrote:
+> > On Thu, Oct 18, 2018 at 04:55:55PM +0200, Jan Kara wrote:
+> > > On Thu 18-10-18 11:25:10, Dave Chinner wrote:
+> > > > On Wed, Oct 17, 2018 at 04:23:50PM -0400, Jeff Moyer wrote:
+> > > > > MAP_SYNC
+> > > > > - file system guarantees that metadata required to reach faulted-in file
+> > > > >   data is consistent on media before a write fault is completed.  A
+> > > > >   side-effect is that the page cache will not be used for
+> > > > >   writably-mapped pages.
+> > > >
+> > > > I think you are conflating current implementation with API
+> > > > requirements - MAP_SYNC doesn't guarantee anything about page cache
+> > > > use. The man page definition simply says "supported only for files
+> > > > supporting DAX" and that it provides certain data integrity
+> > > > guarantees. It does not define the implementation.
+....
+> > > With O_DIRECT the fallback to buffered IO is quite rare (at least for major
+> > > filesystems) so usually people just won't notice. If fallback for
+> > > MAP_DIRECT will be easy to hit, I'm not sure it would be very useful.
+> >
+> > Which is just like the situation where O_DIRECT on ext3 was not very
+> > useful, but on other filesystems like XFS it was fully functional.
+> >
+> > IMO, the fact that a specific filesytem has a suboptimal fallback
+> > path for an uncommon behaviour isn't an argument against MAP_DIRECT
+> > as a hint - it's actually a feature. If MAP_DIRECT can't be used
+> > until it's always direct access, then most filesystems wouldn't be
+> > able to provide any faster paths at all. It's much better to have
+> > partial functionality now than it is to never have the functionality
+> > at all, and so we need to design in the flexibility we need to
+> > iteratively improve implementations without needing API changes that
+> > will break applications.
+> 
+> The hard guarantee requirement still remains though because an
+> application that expects combined MAP_SYNC|MAP_DIRECT semantics will
+> be surprised if the MAP_DIRECT property silently disappears.
 
-This commit creates a new library function which corrects the
-checksums in an inode's extent tree, named: ext2fs_fix_extents_checksums()
+Why would they be surprised? They won't even notice it if the
+filesystem can provide MAP_SYNC without MAP_DIRECT.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- lib/ext2fs/ext2fs.h |  4 ++-
- lib/ext2fs/extent.c | 48 ++++++++++++++++++++++++++++++++++++
- misc/tune2fs.c      | 60 +--------------------------------------------
- resize/resize2fs.c  | 56 ++----------------------------------------
- 4 files changed, 54 insertions(+), 114 deletions(-)
+And that's the whole point.
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 185be5df5..a5fc90a9e 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1295,7 +1295,9 @@ extern errcode_t ext2fs_extent_goto(ext2_extent_handle_t handle,
- extern errcode_t ext2fs_extent_goto2(ext2_extent_handle_t handle,
- 				     int leaf_level, blk64_t blk);
- extern errcode_t ext2fs_extent_fix_parents(ext2_extent_handle_t handle);
--size_t ext2fs_max_extent_depth(ext2_extent_handle_t handle);
-+extern size_t ext2fs_max_extent_depth(ext2_extent_handle_t handle);
-+extern errcode_t ext2fs_fix_extents_checksums(ext2_filsys fs, ext2_ino_t ino,
-+					      struct ext2_inode *inode);
- 
- /* fallocate.c */
- #define EXT2_FALLOCATE_ZERO_BLOCKS	(0x1)
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index a9cdae797..ac3dbfec9 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -1737,6 +1737,54 @@ size_t ext2fs_max_extent_depth(ext2_extent_handle_t handle)
- 	return last_result;
- }
- 
-+errcode_t ext2fs_fix_extents_checksums(ext2_filsys fs, ext2_ino_t ino,
-+				       struct ext2_inode *inode)
-+{
-+	ext2_extent_handle_t	handle;
-+	struct ext2fs_extent	extent;
-+	errcode_t		errcode;
-+	int    			save_flags = fs->flags;
-+
-+	if (!ext2fs_has_feature_metadata_csum(fs->super) ||
-+	    (inode && !(inode->i_flags & EXT4_EXTENTS_FL)))
-+		return 0;
-+
-+	errcode = ext2fs_extent_open2(fs, ino, inode, &handle);
-+	if (errcode) {
-+		if (errcode == EXT2_ET_INODE_NOT_EXTENT)
-+			errcode = 0;
-+		return errcode;
-+	}
-+
-+	fs->flags &= ~EXT2_FLAG_IGNORE_CSUM_ERRORS;
-+	errcode = ext2fs_extent_get(handle, EXT2_EXTENT_ROOT, &extent);
-+	if (errcode)
-+		goto out;
-+
-+	do {
-+		/* Skip to the end of a block of leaf nodes */
-+		if (extent.e_flags & EXT2_EXTENT_FLAGS_LEAF) {
-+			errcode = ext2fs_extent_get(handle,
-+						    EXT2_EXTENT_LAST_SIB,
-+						    &extent);
-+			if (errcode)
-+				break;
-+		}
-+
-+		errcode = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT, &extent);
-+		if (errcode == EXT2_ET_EXTENT_CSUM_INVALID)
-+			errcode = update_path(handle);
-+	} while (errcode == 0);
-+
-+out:
-+	/* Ok if we run off the end */
-+	if (errcode == EXT2_ET_EXTENT_NO_NEXT)
-+		errcode = 0;
-+	ext2fs_extent_free(handle);
-+	fs->flags = save_flags;
-+	return errcode;
-+}
-+
- #ifdef DEBUG
- /*
-  * Override debugfs's prompt
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index a680b461c..616bdc630 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -497,64 +497,6 @@ static void convert_64bit(ext2_filsys fs, int direction)
- 		fprintf(stderr, _("' to disable 64-bit mode.\n"));
- }
- 
--/* Rewrite extents */
--static errcode_t rewrite_extents(ext2_filsys fs, ext2_ino_t ino,
--				 struct ext2_inode *inode)
--{
--	ext2_extent_handle_t	handle;
--	struct ext2fs_extent	extent;
--	errcode_t		errcode;
--	struct ext2_extent_info	info;
--
--	if (!(inode->i_flags & EXT4_EXTENTS_FL) ||
--	    !ext2fs_has_feature_metadata_csum(fs->super))
--		return 0;
--
--	errcode = ext2fs_extent_open(fs, ino, &handle);
--	if (errcode)
--		return errcode;
--
--	errcode = ext2fs_extent_get(handle, EXT2_EXTENT_ROOT, &extent);
--	if (errcode)
--		goto out;
--
--	do {
--		errcode = ext2fs_extent_get_info(handle, &info);
--		if (errcode)
--			break;
--
--		/*
--		 * If this is the first extent in an extent block that we
--		 * haven't visited, rewrite the extent to force the ETB
--		 * checksum to be rewritten.
--		 */
--		if (info.curr_entry == 1 && info.curr_level != 0 &&
--		    !(extent.e_flags & EXT2_EXTENT_FLAGS_SECOND_VISIT)) {
--			errcode = ext2fs_extent_replace(handle, 0, &extent);
--			if (errcode)
--				break;
--		}
--
--		/* Skip to the end of a block of leaf nodes */
--		if (extent.e_flags & EXT2_EXTENT_FLAGS_LEAF) {
--			errcode = ext2fs_extent_get(handle,
--						    EXT2_EXTENT_LAST_SIB,
--						    &extent);
--			if (errcode)
--				break;
--		}
--
--		errcode = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT, &extent);
--	} while (errcode == 0);
--
--out:
--	/* Ok if we run off the end */
--	if (errcode == EXT2_ET_EXTENT_NO_NEXT)
--		errcode = 0;
--	ext2fs_extent_free(handle);
--	return errcode;
--}
--
- /*
-  * Rewrite directory blocks with checksums
-  */
-@@ -849,7 +791,7 @@ static void rewrite_one_inode(struct rewrite_context *ctx, ext2_ino_t ino,
- 	if (retval)
- 		fatal_err(retval, "while writing inode");
- 
--	retval = rewrite_extents(ctx->fs, ino, inode);
-+	retval = ext2fs_fix_extents_checksums(ctx->fs, ino, inode);
- 	if (retval)
- 		fatal_err(retval, "while rewriting extents");
- 
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index 38032e5c3..c2e10471b 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -1927,59 +1927,6 @@ out:
- 	return err;
- }
- 
--/* Rewrite extents */
--static errcode_t rewrite_extents(ext2_filsys fs, ext2_ino_t ino)
--{
--	ext2_extent_handle_t	handle;
--	struct ext2fs_extent	extent;
--	errcode_t		errcode;
--	struct ext2_extent_info	info;
--
--	errcode = ext2fs_extent_open(fs, ino, &handle);
--	if (errcode)
--		return errcode;
--
--	errcode = ext2fs_extent_get(handle, EXT2_EXTENT_ROOT, &extent);
--	if (errcode)
--		goto out;
--
--	do {
--		errcode = ext2fs_extent_get_info(handle, &info);
--		if (errcode)
--			break;
--
--		/*
--		 * If this is the first extent in an extent block that we
--		 * haven't visited, rewrite the extent to force the ETB
--		 * checksum to be rewritten.
--		 */
--		if (info.curr_entry == 1 && info.curr_level != 0 &&
--		    !(extent.e_flags & EXT2_EXTENT_FLAGS_SECOND_VISIT)) {
--			errcode = ext2fs_extent_replace(handle, 0, &extent);
--			if (errcode)
--				break;
--		}
--
--		/* Skip to the end of a block of leaf nodes */
--		if (extent.e_flags & EXT2_EXTENT_FLAGS_LEAF) {
--			errcode = ext2fs_extent_get(handle,
--						    EXT2_EXTENT_LAST_SIB,
--						    &extent);
--			if (errcode)
--				break;
--		}
--
--		errcode = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT, &extent);
--	} while (errcode == 0);
--
--out:
--	/* Ok if we run off the end */
--	if (errcode == EXT2_ET_EXTENT_NO_NEXT)
--		errcode = 0;
--	ext2fs_extent_free(handle);
--	return errcode;
--}
--
- static void quiet_com_err_proc(const char *whoami EXT2FS_ATTR((unused)),
- 			       errcode_t code EXT2FS_ATTR((unused)),
- 			       const char *fmt EXT2FS_ATTR((unused)),
-@@ -2276,7 +2223,8 @@ remap_blocks:
- 		/* Fix up extent block checksums with the new inode number */
- 		if (ext2fs_has_feature_metadata_csum(rfs->old_fs->super) &&
- 		    (inode->i_flags & EXT4_EXTENTS_FL)) {
--			retval = rewrite_extents(rfs->old_fs, new_inode);
-+			retval = ext2fs_fix_extents_checksums(rfs->old_fs,
-+							      new_inode, NULL);
- 			if (retval)
- 				goto errout;
- 		}
+MAP_DIRECT is a private mapping state. So is MAP_SYNC. They are not
+visible to the filesystem and the filesystem does nothing to enforce
+them. If someone does something that requires the page cache (e.g.
+calls do_splice_direct()) then that MAP_DIRECT mapping has a whole
+heap of new work to do. And, in some cases, the filesystem may not
+be able to provide MAP_DIRECT as a result..
+
+IOWs, the filesystem cannot guarantee MAP_DIRECT and the
+circumstances under which MAP_DIRECT will and will not work are
+dynamic. If MAP_DIRECT is supposed to be a guarantee then we'll have
+applications randomly segfaulting in production as things like
+backups, indexers, etc run over the filesystem and do their work.
+
+This is why MAP_DIRECT needs to be an optimisation, not a
+requirement - things will still work if MAP_DIRECT is not used. What
+matters to these applications is MAP_SYNC - if we break MAP_SYNC,
+then the application data integrity model is violated. That's not an
+acceptible outcome.
+
+The problem, it seems to me, is that people are unable to separate
+MAP_DIRECT and MAP_SYNC. I suspect that is because, at present,
+MAP_SYNC on XFS and ext4 requires MAP_DIRECT. i.e. we can only
+provide MAP_SYNC functionality on DAX mappings. However, that's a
+/filesystem implementation issue/, not an API guarantee we need to
+provide to userspace.
+
+If we implement a persistent page cache (e.g. allocate page cache
+pages out of ZONE_DEVICE pmem), then filesystems like XFS and ext4
+could provide applications with the MAP_SYNC data integrity model
+without MAP_DIRECT. Indeed, those filesystems would not even be able
+to provide MAP_DIRECT semantics because they aren't backed by pmem.
+
+Hence if applications that want MAP_SYNC are hard coded
+MAP_SYNC|MAP_DIRECT and we make MAP_DIRECT a hard guarantee, then
+those applications are going to fail on a filesystem that provides
+only MAP_SYNC. This is despite the fact the applications would
+function correctly and the data integrity model would be maintained.
+i.e. the failure is because applications have assumed MAP_SYNC can
+only be provided by a DAX implementation, not because MAP_SYNC is
+not supported.
+
+MAP_SYNC really isn't about DAX at all. It's about enabling a data
+integrity model that requires the filesystem to provide userspace
+access to CPU addressable persistent memory.  DAX+MAP_DIRECT is just
+one method of providing this functionality, but it's not the only
+method. Our API needs to be future proof rather than an encoding of
+the existing implementation limitations, otherwise apps will have to
+be re-written as every new MAP_SYNC capable technology comes along.
+
+In summary:
+
+	MAP_DIRECT is an access hint.
+
+	MAP_SYNC provides a data integrity model guarantee.
+
+	MAP_SYNC may imply MAP_DIRECT for specific implementations,
+	but it does not require or guarantee MAP_DIRECT.
+
+Let's compare that with O_DIRECT:
+
+	O_DIRECT in an access hint.
+
+	O_DSYNC provides a data integrity model guarantee.
+
+	O_DSYNC may imply O_DIRECT for specific implementations, but
+	it does not require or guarantee O_DIRECT.
+
+Consistency in access and data integrity models is a good thing. DAX
+and pmem is not an exception. We need to use a model we know works
+and has proven itself over a long period of time.
+
+> I think
+> it still makes some sense as a hint for apps that want to minimize
+> page cache, but for the applications with a flush from userspace model
+> I think that wants to be an F_SETLEASE / F_DIRECTLCK operation. This
+> still gives the filesystem the option to inject page-cache at will,
+> but with an application coordination point.
+
+Why make it more complex for applications than it needs to be? 
+
+Cheers,
+
+Dave.
 -- 
-2.18.0.rc0
+Dave Chinner
+david@fromorbit.com
