@@ -1,91 +1,48 @@
-Return-Path: <SRS0=f65u=MO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:46848 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728228AbeJCEB6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Oct 2018 00:01:58 -0400
-Received: by mail-pl1-f195.google.com with SMTP id v5-v6so2341370plz.13
-        for <linux-ext4@vger.kernel.org>; Tue, 02 Oct 2018 14:16:40 -0700 (PDT)
+Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:45968 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725743AbeJaGxR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 31 Oct 2018 02:53:17 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2 04/11] ext4 resize: lost brelse() in update_backups()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org
+References: <cover.1540935522.git.vvs@virtuozzo.com>
+Message-ID: <7120b1a5-fcda-8e31-fc8c-7944b4291b14@virtuozzo.com>
+Date: Wed, 31 Oct 2018 00:58:03 +0300
 MIME-Version: 1.0
-References: <CANiq72=rgT9cPWH64Tf_8gAU09EiH5FvGqFUdOjV=spVbM5m8Q@mail.gmail.com>
- <20181003071059.02b3fd6f@canb.auug.org.au>
-In-Reply-To: <20181003071059.02b3fd6f@canb.auug.org.au>
-From: Nick Desaulniers <ndesaulniers@google.com>
-Date: Tue, 2 Oct 2018 14:16:27 -0700
-Message-ID: <CAKwvOdmt4-jFv6d-ZVUH5OOvXSz38jpuNvQy-jtoSS3xEoh78A@mail.gmail.com>
-Subject: Re: [GIT PULL linux-next] Add Compiler Attributes tree
-To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        linux-next@vger.kernel.org, adilger.kernel@dilger.ca,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>, rostedt@goodmis.org,
-        mchehab+samsung@kernel.org, olof@lxom.net,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        sandipan@linux.vnet.ibm.com,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        paul.burton@mips.com, David Rientjes <rientjes@google.com>,
-        Willy Tarreau <w@1wt.eu>, msebor@gmail.com, sparse@chrisli.org,
-        Jonathan Corbet <corbet@lwn.net>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
-        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-sparse@vger.kernel.org,
-        Linux Kbuild mailing list <linux-kbuild@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>, sfr@canb.auug.org.au
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 2, 2018 at 2:11 PM Stephen Rothwell <sfr@canb.auug.org.au> wrote:
->
-> Hi Miguel,
->
-> On Tue, 2 Oct 2018 15:47:12 +0200 Miguel Ojeda <miguel.ojeda.sandonis@gmail.com> wrote:
-> >
-> > The Compiler Attributes series has been stable for 10+ days. To
-> > increase testing before 4.20, I would to request it being picked up
-> > for -next.
-> >
-> > The changes w.r.t. v5 in the LKML:
-> >
-> >   - Rebased on top of next-20180928, which required removing
->
-> Unfortunately, trees/branches included in linux-next must be based on
-> something stable (usually Linus' tree, but it could be another
-> tree/branch that is included in linux-next that does not rebase).
-> Linux-next itself rebases every day, so snything based on it would drag
-> in a previous version of all the other trees :-(
+bh was not released after error in ext4_journal_get_write_access()
 
-I think of this like a branch that's force pushed to.  Can't base
-other branches or trees off of it cause it's always moving/force
-rewriting history.
+Fixes ac27a0ec112a ("ext4: initial copy of files from ext3") # 2.6.19
 
->
-> > aligned_largest, which was removed by 9503cd9cbaba
-> > ("include/linux/compiler*.h: add version detection to
-> > asm_volatile_goto").
->
-> That commit is from Andrew's patch series which also rebases (usually
-> at least every week), so you cannot depend on it.
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/ext4/resize.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Miguel, you should be able to drop that patch from your set then,
-since Andrew's -mm tree flows into this -next tree as well, IIUC.
-We'll take up that patch from there.
-
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 7131f35b62d9..3df326ee6d50 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -1121,8 +1121,10 @@ static void update_backups(struct super_block *sb, sector_t blk_off, char *data,
+ 			   backup_block, backup_block -
+ 			   ext4_group_first_block_no(sb, group));
+ 		BUFFER_TRACE(bh, "get_write_access");
+-		if ((err = ext4_journal_get_write_access(handle, bh)))
++		if ((err = ext4_journal_get_write_access(handle, bh))) {
++			brelse(bh);
+ 			break;
++		}
+ 		lock_buffer(bh);
+ 		memcpy(bh->b_data, data, size);
+ 		if (rest)
 -- 
-Thanks,
-~Nick Desaulniers
+2.17.1
