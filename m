@@ -1,127 +1,58 @@
-Return-Path: <SRS0=/GAa=M3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:37492 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726024AbeJPE7i (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Oct 2018 00:59:38 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH e2fsprogs 4/9] mke2fs: Configure encoding during superblock initialization
-Date: Mon, 15 Oct 2018 17:12:15 -0400
-Message-Id: <20181015211220.27370-5-krisman@collabora.co.uk>
-In-Reply-To: <20181015211220.27370-1-krisman@collabora.co.uk>
-References: <20181015211220.27370-1-krisman@collabora.co.uk>
+Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:46002 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725743AbeJaGxx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 31 Oct 2018 02:53:53 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2 09/11] ext4: iloc.bh cleanup in add_new_gdb()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org
+References: <cover.1540935522.git.vvs@virtuozzo.com>
+Message-ID: <eb58c8ca-8456-7b5f-9c12-99f03e3057af@virtuozzo.com>
+Date: Wed, 31 Oct 2018 00:58:38 +0300
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch implements two new extended options to mkefs, allowing the
-user to specify an encoding for file name operations and encoding flags
-during filesystem creation.  We provide default flags for each encoding,
-which the user can overwrite by passing -E encoding-flags to mkfs.
----
- lib/ext2fs/initialize.c |  4 ++++
- misc/mke2fs.c           | 43 +++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 47 insertions(+)
+iloc.bh was taken in ext4_reserve_inode_write() and released
+in ext4_mark_iloc_dirty(). It should not be released 2nd time
+in rollback after failed ext4_handle_dirty_metadata(gdb_bh)
 
-diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-index 8c9e97fee831..30b1ae033340 100644
---- a/lib/ext2fs/initialize.c
-+++ b/lib/ext2fs/initialize.c
-@@ -186,6 +186,10 @@ errcode_t ext2fs_initialize(const char *name, int flags,
- 	set_field(s_flags, 0);
- 	assign_field(s_backup_bgs[0]);
- 	assign_field(s_backup_bgs[1]);
-+
-+	assign_field(s_encoding);
-+	assign_field(s_encoding_flags);
-+
- 	if (super->s_feature_incompat & ~EXT2_LIB_FEATURE_INCOMPAT_SUPP) {
- 		retval = EXT2_ET_UNSUPP_FEATURE;
- 		goto cleanup;
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index f05003fc30b9..5ed7b987540e 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -790,6 +790,8 @@ static void parse_extended_opts(struct ext2_super_block *param,
- 	int	len;
- 	int	r_usage = 0;
- 	int	ret;
-+	int	encoding = -1;
-+	char 	*encoding_flags = NULL;
+Fixes b40971426a83 ("ext4: add error checking to calls to ...") # 2.6.38
+
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/ext4/resize.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 85158e9de7c2..aedfd6a6fcd1 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -871,7 +871,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
+ 	if (unlikely(err)) {
+ 		ext4_std_error(sb, err);
+-		goto exit_inode;
++		goto exit_kfree;
+ 	}
+ 	brelse(dind);
  
- 	len = strlen(opts);
- 	buf = malloc(len+1);
-@@ -1056,6 +1058,26 @@ static void parse_extended_opts(struct ext2_super_block *param,
- 			}
- 		} else if (!strcmp(token, "android_sparse")) {
- 			android_sparse_file = 1;
-+		} else if (!strcmp(token, "encoding")) {
-+			if (!arg) {
-+				r_usage++;
-+				continue;
-+			}
-+
-+			encoding = e2p_str2encoding(arg);
-+			if (encoding < 0) {
-+				fprintf(stderr, _("Invalid encoding: %s"), arg);
-+				r_usage++;
-+				continue;
-+			}
-+			param->s_encoding = encoding;
-+			ext2fs_set_feature_fname_encoding(param);
-+		} else if (!strcmp(token, "encoding-flags")) {
-+			if (!arg) {
-+				r_usage++;
-+				continue;
-+			}
-+			encoding_flags = arg;
- 		} else {
- 			r_usage++;
- 			badopt = token;
-@@ -1080,6 +1102,8 @@ static void parse_extended_opts(struct ext2_super_block *param,
- 			"\ttest_fs\n"
- 			"\tdiscard\n"
- 			"\tnodiscard\n"
-+			"\tencoding=<encoding>\n"
-+			"\tencoding-flags=<flags>\n"
- 			"\tquotatype=<quota type(s) to be enabled>\n\n"),
- 			badopt ? badopt : "");
- 		free(buf);
-@@ -1091,6 +1115,24 @@ static void parse_extended_opts(struct ext2_super_block *param,
- 				  "multiple of stride %u.\n\n"),
- 			param->s_raid_stripe_width, param->s_raid_stride);
+@@ -891,8 +891,9 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	return err;
  
-+	if (ext2fs_has_feature_fname_encoding(param)) {
-+		param->s_encoding_flags =
-+			ext4_encoding_map[encoding].default_flags;
-+		if (encoding_flags &&
-+		    e2p_str2encoding_flags(encoding, encoding_flags,
-+					   &param->s_encoding_flags)) {
-+			fprintf(stderr, _("error: Invalid encoding flag: %s\n"),
-+				encoding_flags);
-+			free(buf);
-+			exit(1);
-+		}
-+	} else if (encoding_flags) {
-+		fprintf(stderr, _("error: An encoding must be explicitely "
-+				  "specified when passing encoding-flags\n"));
-+		free(buf);
-+		exit(1);
-+	}
-+
- 	free(buf);
- }
- 
-@@ -1112,6 +1154,7 @@ static __u32 ok_features[3] = {
- 		EXT4_FEATURE_INCOMPAT_64BIT|
- 		EXT4_FEATURE_INCOMPAT_INLINE_DATA|
- 		EXT4_FEATURE_INCOMPAT_ENCRYPT |
-+		EXT4_FEATURE_INCOMPAT_FNAME_ENCODING |
- 		EXT4_FEATURE_INCOMPAT_CSUM_SEED |
- 		EXT4_FEATURE_INCOMPAT_LARGEDIR,
- 	/* R/O compat */
+ exit_inode:
+-	kvfree(n_group_desc);
+ 	brelse(iloc.bh);
++exit_kfree:
++	kvfree(n_group_desc);
+ exit_dind:
+ 	brelse(dind);
+ exit_bh:
 -- 
-2.19.1
+2.17.1
