@@ -1,68 +1,58 @@
-Return-Path: <SRS0=7m81=MS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lj1-f196.google.com ([209.85.208.196]:40716 "EHLO
-        mail-lj1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726409AbeJFRWg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 6 Oct 2018 13:22:36 -0400
-MIME-Version: 1.0
-References: <CA+icZUW+N4V-bLEX0217dMYTrfzmgLZkbif8w3-zRQXnd7VYSQ@mail.gmail.com>
- <CANiq72mATUQeNA5uTSY2XBPwDi-S+K+H3LJJU5_UFcxUj_E8sw@mail.gmail.com> <CA+icZUXnew3JNME1UcCN0Dtc_3CHutyqcJ3yvb4d_rDBDt3jKw@mail.gmail.com>
-In-Reply-To: <CA+icZUXnew3JNME1UcCN0Dtc_3CHutyqcJ3yvb4d_rDBDt3jKw@mail.gmail.com>
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Sat, 6 Oct 2018 12:19:41 +0200
-Message-ID: <CANiq72mw4gPMP+j9E19o3r9+fpn=Tq0nUDWuR=3HfYdPOgN81A@mail.gmail.com>
-Subject: Re: [PATCH v5 00/15] Compiler Attributes
-To: sedat.dilek@gmail.com
+Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:45948 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725743AbeJaGxA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 31 Oct 2018 02:53:00 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2 02/11] ext4 resize: missing brelse() after errors in
+ set_flexbg_block_bitmap()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+        linux-kernel@vger.kernel.org,
+        Yongqiang Yang <xiaoqiangnk@gmail.com>,
+        Yongqiang Yang <yangyongqiang01@baidu.com>
+References: <cover.1540935522.git.vvs@virtuozzo.com>
+Message-ID: <de9191d6-1cb1-6725-f378-b886c9cd06d0@virtuozzo.com>
+Date: Wed, 31 Oct 2018 00:57:45 +0300
+MIME-Version: 1.0
+In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 6, 2018 at 9:13 AM Sedat Dilek <sedat.dilek@gmail.com> wrote:
->
-> Hi Miguel,
->
-> In my testoings I am booting in QEMU and on bare metal.
-> Both tests were successful.
+Fixes 33afdcc5402d ("ext4: add a function which sets up group blocks ...") # 3.3
 
-Wow! I only wanted to confirm it booted and/or run for a while -- but
-having more information is always good. Thanks a *lot*!
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/ext4/resize.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-I will add a reference to your email in the commits.
-
-Cheers,
-Miguel
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index c3fa30878ca8..0a4dc6217e78 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -459,16 +459,18 @@ static int set_flexbg_block_bitmap(struct super_block *sb, handle_t *handle,
+ 
+ 		BUFFER_TRACE(bh, "get_write_access");
+ 		err = ext4_journal_get_write_access(handle, bh);
+-		if (err)
++		if (err) {
++			brelse(bh);
+ 			return err;
++		}
+ 		ext4_debug("mark block bitmap %#04llx (+%llu/%u)\n",
+ 			   first_cluster, first_cluster - start, count2);
+ 		ext4_set_bits(bh->b_data, first_cluster - start, count2);
+ 
+ 		err = ext4_handle_dirty_metadata(handle, NULL, bh);
++		brelse(bh);
+ 		if (unlikely(err))
+ 			return err;
+-		brelse(bh);
+ 	}
+ 
+ 	return 0;
+-- 
+2.17.1
