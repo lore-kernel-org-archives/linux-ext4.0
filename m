@@ -1,58 +1,52 @@
-Return-Path: <SRS0=WpiV=MV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:59544 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726445AbeJIWKl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Oct 2018 18:10:41 -0400
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: [PATCH RESEND v2 21/25] ext4: Add encoding mount options
-References: <20180924215655.3676-1-krisman@collabora.co.uk>
-        <20180924215655.3676-22-krisman@collabora.co.uk>
-        <20181007192221.GB10662@thunk.org>
-Date: Tue, 09 Oct 2018 10:53:19 -0400
-In-Reply-To: <20181007192221.GB10662@thunk.org> (Theodore Y. Ts'o's message of
-        "Sun, 7 Oct 2018 15:22:21 -0400")
-Message-ID: <878t37masg.fsf@collabora.co.uk>
+Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:45994 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725743AbeJaGxp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 31 Oct 2018 02:53:45 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2 08/11] ext4: lost brelse in ext4_orphan_add()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org, Dmitry Monakhov <dmonakhov@gmail.com>
+References: <cover.1540935522.git.vvs@virtuozzo.com>
+Message-ID: <c747413b-f5e1-d3e0-650b-e3749a98d59d@virtuozzo.com>
+Date: Wed, 31 Oct 2018 00:58:31 +0300
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Theodore Y. Ts'o" <tytso@mit.edu> writes:
+iloc.bh os taken in ext4_reserve_inode_write().
+If (dirty == true) it is released in ext4_mark_iloc_dirty(),
+however it is not released in (dirty == false) case.
 
-> On Mon, Sep 24, 2018 at 05:56:51PM -0400, Gabriel Krisman Bertazi wrote:
+Fixes d745a8c20c1f ("ext4: reduce contention on s_orphan_lock")
+however iloc.bh count balance was broken earlier by
+Fixes 6e3617e579e0 ("ext4: Handle non empty on-disk orphan link") #2.6.34
 
-> It seems to me that adding support for setting the encoding parameters
-> via mount options is a bad idea.  The encoding is going to impact
-> directory hash; which means if the file system has directories created
-> using, say, ASCII as its encoding, and then the encoding changes to
-> UTF-8, directory lookups won't work correctly.  So I think this commit
-> needs to be dropped, and support for setting the encoding needs to be
-> added to e2fsprogs as the primary way encoding settings are made.
+cc: Dmitry Monakhov <dmonakhov@gmail.com>
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/ext4/namei.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-The main reason I had this patch is debugging, so I am ok with dropping
-it.
-
-> We need e2fsprogs support before this feature is ready for production
-> use, since e2fsck needs to be able to properly rebuild directories.
->
-> Do you agree?
-
-I have support for e2fsprogs in the branch I mentioned in the cover
-letter, I will rebase and start submitting it in the next iteration.
-
-I am only supporting encoding selection at mkfs time, so I don't need to
-rebuild the hashes, (except for fsck errors).  I'm not sure I care about
-changing the encoding after creation time, since this complicates
-things, for instance by increasing the risk of file name collisions.
-I'm also only allowing case-sensitiveness configuration changes on empty
-directories for the same reason.
-
-I will start by submitting kernel/e2fsprogs patches to reserve the
-superblock bits.  Do we agree on the current superblock format?
-
-Also, what is the best list to send the NLS patches?  fsdevel?
-
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 67a38532032a..d388cce72db2 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2811,7 +2811,9 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
+ 			list_del_init(&EXT4_I(inode)->i_orphan);
+ 			mutex_unlock(&sbi->s_orphan_lock);
+ 		}
+-	}
++	} else
++		brelse(iloc.bh);
++
+ 	jbd_debug(4, "superblock will point to %lu\n", inode->i_ino);
+ 	jbd_debug(4, "orphan inode %lu will point to %d\n",
+ 			inode->i_ino, NEXT_ORPHAN(inode));
 -- 
-Gabriel Krisman Bertazi
+2.17.1
