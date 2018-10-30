@@ -1,45 +1,43 @@
-Return-Path: <SRS0=mHRP=MP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33066 "EHLO imap.thunk.org"
+Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:45974 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726748AbeJCVmx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Oct 2018 17:42:53 -0400
-Date: Wed, 3 Oct 2018 10:54:06 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH] ext4: fix EXT4_IOC_SWAP_BOOT
-Message-ID: <20181003145406.GA2835@thunk.org>
-References: <20181002233808.16118-1-tytso@mit.edu>
- <20181003125520.GA19655@infradead.org>
+        id S1725743AbeJaGxX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 31 Oct 2018 02:53:23 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2 05/11] ext4 resize: lost rollback in ext4_resize_fs()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org
+References: <cover.1540935522.git.vvs@virtuozzo.com>
+Message-ID: <916ed44d-d137-060a-bfc3-1925afa03b04@virtuozzo.com>
+Date: Wed, 31 Oct 2018 00:58:09 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181003125520.GA19655@infradead.org>
+In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 03, 2018 at 05:55:20AM -0700, Christoph Hellwig wrote:
-> On Tue, Oct 02, 2018 at 07:38:08PM -0400, Theodore Ts'o wrote:
-> > The code EXT4_IOC_SWAP_BOOT ioctl hasn't been updated in a while, and
-> > it's a bit broken with respect to more modern ext4 kernels, especially
-> > metadata checksums.
-> 
-> Do you have any reports of anyone but sysbot actually using it?
-> Maybe it is a better idea to drop it unless it also gets coverage
-> in xfstests?
+Fixes 117fff10d7f1 ("ext4: grow the s_flex_groups array as needed ...") # 3.7
 
-Adding xfstests coverage is on my todo list.  I need to clean up an
-ext4-ioc.c test program so it can be added to xfstests/src, but yes, I
-noticed that the lack of test coverage is what led to the code
-bitrot.
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/ext4/resize.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-There was recent discussion that perhaps Grub should use this instead
-of chasing file system format changes (which was the original
-intention of this patch) so I had been examining the code path looking
-for potential problems anyway.  So I'd rather not drop it for now.
-
-This will allow us to future-proof ext4 in case we ever grow support
-for reflink (which I understand from Darrick has been an issue for
-XFS :-).
-
-						- Ted
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 3df326ee6d50..5fee65afd58b 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -2022,7 +2022,7 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 
+ 	err = ext4_alloc_flex_bg_array(sb, n_group + 1);
+ 	if (err)
+-		return err;
++		goto out;
+ 
+ 	err = ext4_mb_alloc_groupinfo(sb, n_group + 1);
+ 	if (err)
+-- 
+2.17.1
