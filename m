@@ -1,277 +1,58 @@
-Return-Path: <SRS0=dqau=MX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:58100 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727127AbeJKW5j (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 11 Oct 2018 18:57:39 -0400
-Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w9BFNFKQ049114
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2018 11:29:58 -0400
-Received: from e16.ny.us.ibm.com (e16.ny.us.ibm.com [129.33.205.206])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2n26av9ctx-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Oct 2018 11:29:57 -0400
-Received: from localhost
-        by e16.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
-        Thu, 11 Oct 2018 11:29:56 -0400
-Date: Thu, 11 Oct 2018 08:29:53 -0700
-From: "Paul E. McKenney" <paulmck@linux.ibm.com>
-To: Jan Kara <jack@suse.cz>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        joel@joelfernandes.org, Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH -v3] ext4: fix use-after-free race in ext4_remount()'s
- error path
-Reply-To: paulmck@linux.ibm.com
-References: <20181007030706.9094-1-tytso@mit.edu>
- <20181011102800.GB9467@quack2.suse.cz>
+Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:45962 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725743AbeJaGxL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 31 Oct 2018 02:53:11 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2 03/11] ext4 resize: brelse() cleanup in
+ add_new_gdb_meta_bg()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org,
+        Yongqiang Yang <xiaoqiangnk@gmail.com>,
+        Yongqiang Yang <yangyongqiang01@baidu.com>
+References: <cover.1540935522.git.vvs@virtuozzo.com>
+Message-ID: <34d94824-834c-fb72-2f93-01e9036e9b38@virtuozzo.com>
+Date: Wed, 31 Oct 2018 00:57:55 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181011102800.GB9467@quack2.suse.cz>
-Message-Id: <20181011152953.GL2674@linux.ibm.com>
+In-Reply-To: <cover.1540935522.git.vvs@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 11, 2018 at 12:28:00PM +0200, Jan Kara wrote:
-> On Sat 06-10-18 23:07:06, Theodore Ts'o wrote:
-> > It's possible for ext4_show_quota_options() to try reading
-> > s_qf_names[i] while it is being modified by ext4_remount() --- most
-> > notably, in ext4_remount's error path when the original values of the
-> > quota file name gets restored.
-> > 
-> > Reported-by: syzbot+a2872d6feea6918008a9@syzkaller.appspotmail.com
-> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> > Cc: stable@kernel.org
-> 
-> Well, honestly the fact that ->show_options can be called while remount is
-> changing stuff under you looks problematic to me and I bet ext4 is not the
-> only one that would have issues with that. So I believe we might be better
-> off with just synchronizing ->show_options with umount / remount properly.
-> What were the lock dependency problems that made you switch to use RCU?
+gdb_bh must be released in case of errors before update of s_group_desc
+but it must not be released after update of group descriptors
+because in this case bh can be used later.
 
-OK, I will bite...
+Fixes 01f795f9e0d6 ("ext4: add online resizing support for meta_bg ...") # 3.7
 
-Ted's patch does in fact just properly synchronize ->show_options with
-umount / remount.  Using RCU.  ;-)
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/ext4/resize.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-							Thanx, Paul
-
-> 								Honza
-> 
-> > ---
-> > 
-> > v3: RCU clean ups and fix ups
-> > v2: Use RCU to avoid lock dependency problems
-> > 
-> >  fs/ext4/ext4.h  |  3 +-
-> >  fs/ext4/super.c | 73 ++++++++++++++++++++++++++++++++-----------------
-> >  2 files changed, 50 insertions(+), 26 deletions(-)
-> > 
-> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > index 86e1bacac757..12f90d48ba61 100644
-> > --- a/fs/ext4/ext4.h
-> > +++ b/fs/ext4/ext4.h
-> > @@ -1405,7 +1405,8 @@ struct ext4_sb_info {
-> >  	u32 s_min_batch_time;
-> >  	struct block_device *journal_bdev;
-> >  #ifdef CONFIG_QUOTA
-> > -	char *s_qf_names[EXT4_MAXQUOTAS];	/* Names of quota files with journalled quota */
-> > +	/* Names of quota files with journalled quota */
-> > +	char __rcu *s_qf_names[EXT4_MAXQUOTAS];
-> >  	int s_jquota_fmt;			/* Format of quota to use */
-> >  #endif
-> >  	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index faf293ed8060..1909fbb28583 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -920,6 +920,18 @@ static inline void ext4_quota_off_umount(struct super_block *sb)
-> >  }
-> >  #endif
-> >  
-> > +/*
-> > + * This is a helper function which is used in the mount/remount
-> > + * codepaths (which holds s_umount) to fetch the quota file name.
-> > + */
-> > +static inline char *get_qf_name(struct super_block *sb,
-> > +				struct ext4_sb_info *sbi,
-> > +				int type)
-> > +{
-> > +	return rcu_dereference_protected(sbi->s_qf_names[type],
-> > +					 lockdep_is_held(&sb->s_umount));
-> > +}
-> > +
-> >  static void ext4_put_super(struct super_block *sb)
-> >  {
-> >  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> > @@ -965,7 +977,7 @@ static void ext4_put_super(struct super_block *sb)
-> >  	percpu_free_rwsem(&sbi->s_journal_flag_rwsem);
-> >  #ifdef CONFIG_QUOTA
-> >  	for (i = 0; i < EXT4_MAXQUOTAS; i++)
-> > -		kfree(sbi->s_qf_names[i]);
-> > +		kfree(get_qf_name(sb, sbi, i));
-> >  #endif
-> >  
-> >  	/* Debugging code just in case the in-memory inode orphan list
-> > @@ -1531,11 +1543,10 @@ static const char deprecated_msg[] =
-> >  static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
-> >  {
-> >  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> > -	char *qname;
-> > +	char *qname, *old_qname = get_qf_name(sb, sbi, qtype);
-> >  	int ret = -1;
-> >  
-> > -	if (sb_any_quota_loaded(sb) &&
-> > -		!sbi->s_qf_names[qtype]) {
-> > +	if (sb_any_quota_loaded(sb) && !old_qname) {
-> >  		ext4_msg(sb, KERN_ERR,
-> >  			"Cannot change journaled "
-> >  			"quota options when quota turned on");
-> > @@ -1552,8 +1563,8 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
-> >  			"Not enough memory for storing quotafile name");
-> >  		return -1;
-> >  	}
-> > -	if (sbi->s_qf_names[qtype]) {
-> > -		if (strcmp(sbi->s_qf_names[qtype], qname) == 0)
-> > +	if (old_qname) {
-> > +		if (strcmp(old_qname, qname) == 0)
-> >  			ret = 1;
-> >  		else
-> >  			ext4_msg(sb, KERN_ERR,
-> > @@ -1566,7 +1577,7 @@ static int set_qf_name(struct super_block *sb, int qtype, substring_t *args)
-> >  			"quotafile must be on filesystem root");
-> >  		goto errout;
-> >  	}
-> > -	sbi->s_qf_names[qtype] = qname;
-> > +	rcu_assign_pointer(sbi->s_qf_names[qtype], qname);
-> >  	set_opt(sb, QUOTA);
-> >  	return 1;
-> >  errout:
-> > @@ -1578,15 +1589,16 @@ static int clear_qf_name(struct super_block *sb, int qtype)
-> >  {
-> >  
-> >  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> > +	char *old_qname = get_qf_name(sb, sbi, qtype);
-> >  
-> > -	if (sb_any_quota_loaded(sb) &&
-> > -		sbi->s_qf_names[qtype]) {
-> > +	if (sb_any_quota_loaded(sb) && old_qname) {
-> >  		ext4_msg(sb, KERN_ERR, "Cannot change journaled quota options"
-> >  			" when quota turned on");
-> >  		return -1;
-> >  	}
-> > -	kfree(sbi->s_qf_names[qtype]);
-> > -	sbi->s_qf_names[qtype] = NULL;
-> > +	rcu_assign_pointer(sbi->s_qf_names[qtype], NULL);
-> > +	synchronize_rcu();
-> > +	kfree(old_qname);
-> >  	return 1;
-> >  }
-> >  #endif
-> > @@ -1961,7 +1973,7 @@ static int parse_options(char *options, struct super_block *sb,
-> >  			 int is_remount)
-> >  {
-> >  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> > -	char *p;
-> > +	char *p, *usr_qf_name, *grp_qf_name;
-> >  	substring_t args[MAX_OPT_ARGS];
-> >  	int token;
-> >  
-> > @@ -1992,11 +2004,13 @@ static int parse_options(char *options, struct super_block *sb,
-> >  			 "Cannot enable project quota enforcement.");
-> >  		return 0;
-> >  	}
-> > -	if (sbi->s_qf_names[USRQUOTA] || sbi->s_qf_names[GRPQUOTA]) {
-> > -		if (test_opt(sb, USRQUOTA) && sbi->s_qf_names[USRQUOTA])
-> > +	usr_qf_name = get_qf_name(sb, sbi, USRQUOTA);
-> > +	grp_qf_name = get_qf_name(sb, sbi, GRPQUOTA);
-> > +	if (usr_qf_name || grp_qf_name) {
-> > +		if (test_opt(sb, USRQUOTA) && usr_qf_name)
-> >  			clear_opt(sb, USRQUOTA);
-> >  
-> > -		if (test_opt(sb, GRPQUOTA) && sbi->s_qf_names[GRPQUOTA])
-> > +		if (test_opt(sb, GRPQUOTA) && grp_qf_name)
-> >  			clear_opt(sb, GRPQUOTA);
-> >  
-> >  		if (test_opt(sb, GRPQUOTA) || test_opt(sb, USRQUOTA)) {
-> > @@ -2030,6 +2044,7 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
-> >  {
-> >  #if defined(CONFIG_QUOTA)
-> >  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> > +	char *usr_qf_name, *grp_qf_name;
-> >  
-> >  	if (sbi->s_jquota_fmt) {
-> >  		char *fmtname = "";
-> > @@ -2048,11 +2063,14 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
-> >  		seq_printf(seq, ",jqfmt=%s", fmtname);
-> >  	}
-> >  
-> > -	if (sbi->s_qf_names[USRQUOTA])
-> > -		seq_show_option(seq, "usrjquota", sbi->s_qf_names[USRQUOTA]);
-> > -
-> > -	if (sbi->s_qf_names[GRPQUOTA])
-> > -		seq_show_option(seq, "grpjquota", sbi->s_qf_names[GRPQUOTA]);
-> > +	rcu_read_lock();
-> > +	usr_qf_name = rcu_dereference(sbi->s_qf_names[USRQUOTA]);
-> > +	grp_qf_name = rcu_dereference(sbi->s_qf_names[GRPQUOTA]);
-> > +	if (usr_qf_name)
-> > +		seq_show_option(seq, "usrjquota", usr_qf_name);
-> > +	if (grp_qf_name)
-> > +		seq_show_option(seq, "grpjquota", grp_qf_name);
-> > +	rcu_read_unlock();
-> >  #endif
-> >  }
-> >  
-> > @@ -5104,6 +5122,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
-> >  	int err = 0;
-> >  #ifdef CONFIG_QUOTA
-> >  	int i, j;
-> > +	char *to_free[EXT4_MAXQUOTAS];
-> >  #endif
-> >  	char *orig_data = kstrdup(data, GFP_KERNEL);
-> >  
-> > @@ -5123,8 +5142,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
-> >  	old_opts.s_jquota_fmt = sbi->s_jquota_fmt;
-> >  	for (i = 0; i < EXT4_MAXQUOTAS; i++)
-> >  		if (sbi->s_qf_names[i]) {
-> > -			old_opts.s_qf_names[i] = kstrdup(sbi->s_qf_names[i],
-> > -							 GFP_KERNEL);
-> > +			char *qf_name = get_qf_name(sb, sbi, i);
-> > +
-> > +			old_opts.s_qf_names[i] = kstrdup(qf_name, GFP_KERNEL);
-> >  			if (!old_opts.s_qf_names[i]) {
-> >  				for (j = 0; j < i; j++)
-> >  					kfree(old_opts.s_qf_names[j]);
-> > @@ -5353,9 +5373,12 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
-> >  #ifdef CONFIG_QUOTA
-> >  	sbi->s_jquota_fmt = old_opts.s_jquota_fmt;
-> >  	for (i = 0; i < EXT4_MAXQUOTAS; i++) {
-> > -		kfree(sbi->s_qf_names[i]);
-> > -		sbi->s_qf_names[i] = old_opts.s_qf_names[i];
-> > +		to_free[i] = get_qf_name(sb, sbi, i);
-> > +		rcu_assign_pointer(sbi->s_qf_names[i], old_opts.s_qf_names[i]);
-> >  	}
-> > +	synchronize_rcu();
-> > +	for (i = 0; i < EXT4_MAXQUOTAS; i++)
-> > +		kfree(to_free[i]);
-> >  #endif
-> >  	kfree(orig_data);
-> >  	return err;
-> > @@ -5546,7 +5569,7 @@ static int ext4_write_info(struct super_block *sb, int type)
-> >   */
-> >  static int ext4_quota_on_mount(struct super_block *sb, int type)
-> >  {
-> > -	return dquot_quota_on_mount(sb, EXT4_SB(sb)->s_qf_names[type],
-> > +	return dquot_quota_on_mount(sb, get_qf_name(sb, EXT4_SB(sb), type),
-> >  					EXT4_SB(sb)->s_jquota_fmt, type);
-> >  }
-> >  
-> > -- 
-> > 2.18.0.rc0
-> > 
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
-> 
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 0a4dc6217e78..7131f35b62d9 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -922,6 +922,7 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
+ 				     sizeof(struct buffer_head *),
+ 				     GFP_NOFS);
+ 	if (!n_group_desc) {
++		brelse(gdb_bh);
+ 		err = -ENOMEM;
+ 		ext4_warning(sb, "not enough memory for %lu groups",
+ 			     gdb_num + 1);
+@@ -937,8 +938,6 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
+ 	kvfree(o_group_desc);
+ 	BUFFER_TRACE(gdb_bh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, gdb_bh);
+-	if (unlikely(err))
+-		brelse(gdb_bh);
+ 	return err;
+ }
+ 
+-- 
+2.17.1
