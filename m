@@ -1,67 +1,110 @@
-Return-Path: <SRS0=Xbv+=M6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:51580 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727011AbeJRVF6 (ORCPT
+Return-Path: <SRS0=zKcc=NK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:33682 "EHLO
+        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725840AbeJ3JOb (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Oct 2018 17:05:58 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 3F9C52872A
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Oct 2018 13:05:01 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201461] ext4 journal stalls write system call
-Date: Thu, 18 Oct 2018 13:04:59 +0000
-Message-ID: <bug-201461-13602-dmbBdCpMXA@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201461-13602@https.bugzilla.kernel.org/>
-References: <bug-201461-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+        Tue, 30 Oct 2018 05:14:31 -0400
+From: Liu Bo <bo.liu@linux.alibaba.com>
+To: <linux-ext4@vger.kernel.org>
+Subject: [PATCH RFC] Ext4: fix deadlock on dirty pages between fault and writeback
+Date: Tue, 30 Oct 2018 08:22:49 +0800
+Message-Id: <1540858969-75803-1-git-send-email-bo.liu@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201461
+mpage_prepare_extent_to_map() tries to build up a large bio to stuff down
+the pipe.  But if it needs to wait for a page lock, it needs to make sure
+and send down any pending writes so we don't deadlock with anyone who has
+the page lock and is waiting for writeback of things inside the bio.
 
---- Comment #4 from zhenbianshu@foxmail.com ---
-(In reply to Theodore Tso from comment #3)
-> The writeback code will end up calling ext4_writepages(), which will do
-> block allocations via ext4_map_blocks() with the flag
-> EXT4_GET_BLOCKS_CREATE(), and this will take a write lock on i_data_sem.   
-> 
-> I'll let you trace through the call chain that starts in the writeback
-> thread, through the call to ext4_writepages(), proceeds to
-> mpage_map_one_extent(), and from there to ext4_map_blocks() which actually
-> holds the write block.
-> 
-> Note that this is distinct from the data=ordered forced writeblock which
-> starts in fs/jbd2's journal_submit_inode_data_buffer() calling
-> generic_writepages().   The difference is that generic_writepages() will
-> only call writepage() function.  For ext4 that's ext4_writepage(), which
-> will never do block allocation.
-> 
-> But the writeback threads call the address space operation's, writepages()
-> function, and ext4_writepages() *will* do block allocation for delayed
-> allocation writes.
-> 
-> This is a subtle point; ext4_writepage() and ext4_writepages() do very
-> different things.   The first is used by the commit kernel thread; the
-> second is used by the writeback kernel thread.
+The related lock stack is shown as follows,
 
-I did not find ext4_writepages() or mpage_map_one_extent() in linux 3.10.0
-source code, what I found is ext4_da_writepages().
+task1:
+[<ffffffff811aaa52>] wait_on_page_bit+0x82/0xa0
+[<ffffffff811c5777>] shrink_page_list+0x907/0x960
+[<ffffffff811c6027>] shrink_inactive_list+0x2c7/0x680
+[<ffffffff811c6ba4>] shrink_node_memcg+0x404/0x830
+[<ffffffff811c70a8>] shrink_node+0xd8/0x300
+[<ffffffff811c73dd>] do_try_to_free_pages+0x10d/0x330
+[<ffffffff811c7865>] try_to_free_mem_cgroup_pages+0xd5/0x1b0
+[<ffffffff8122df2d>] try_charge+0x14d/0x720
+[<ffffffff812320cc>] memcg_kmem_charge_memcg+0x3c/0xa0
+[<ffffffff812321ae>] memcg_kmem_charge+0x7e/0xd0
+[<ffffffff811b68a8>] __alloc_pages_nodemask+0x178/0x260
+[<ffffffff8120bff5>] alloc_pages_current+0x95/0x140
+[<ffffffff81074247>] pte_alloc_one+0x17/0x40
+[<ffffffff811e34de>] __pte_alloc+0x1e/0x110
+[<ffffffffa06739de>] alloc_set_pte+0x5fe/0xc20
+[<ffffffff811e5d93>] do_fault+0x103/0x970
+[<ffffffff811e6e5e>] handle_mm_fault+0x61e/0xd10
+[<ffffffff8106ea02>] __do_page_fault+0x252/0x4d0
+[<ffffffff8106ecb0>] do_page_fault+0x30/0x80
+[<ffffffff8171bce8>] page_fault+0x28/0x30
+[<ffffffffffffffff>] 0xffffffffffffffff
 
-And the call chain:
-journal_submit_data_buffers()
-journal_submit_inode_data_buffers()
-generic_writepages()
-ext4_da_writepages()
-write_cache_page_da()
-mpage_da_map_and_submit()
-ext4_map_blocks()
-will take the write lock of i_data_sem.
+task2:
+[<ffffffff811aadc6>] __lock_page+0x86/0xa0
+[<ffffffffa02f1e47>] mpage_prepare_extent_to_map+0x2e7/0x310 [ext4]
+[<ffffffffa08a2689>] ext4_writepages+0x479/0xd60
+[<ffffffff811bbede>] do_writepages+0x1e/0x30
+[<ffffffff812725e5>] __writeback_single_inode+0x45/0x320
+[<ffffffff81272de2>] writeback_sb_inodes+0x272/0x600
+[<ffffffff81273202>] __writeback_inodes_wb+0x92/0xc0
+[<ffffffff81273568>] wb_writeback+0x268/0x300
+[<ffffffff81273d24>] wb_workfn+0xb4/0x390
+[<ffffffff810a2f19>] process_one_work+0x189/0x420
+[<ffffffff810a31fe>] worker_thread+0x4e/0x4b0
+[<ffffffff810a9786>] kthread+0xe6/0x100
+[<ffffffff8171a9a1>] ret_from_fork+0x41/0x50
+[<ffffffffffffffff>] 0xffffffffffffffff
 
-Will generic_writepages() call ext4_da_writepages() in jbd2 ?
+task1 is waiting for the PageWriteback bit of the page that task2 has
+collected in mpd->io_submit->io_bio, and tasks2 is waiting for the LOCKED
+bit the page which tasks1 has locked.
 
+It seems that this deadlock only happens when those pages are mapped pages
+so that mpage_prepare_extent_to_map() can have pages queued in io_bio and
+when waiting to lock the subsequent page.
+
+Signed-off-by: Liu Bo <bo.liu@linux.alibaba.com>
+---
+
+Only did build test.
+
+ fs/ext4/inode.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c3d9a42c561e..becbfb292bf0 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2681,7 +2681,26 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
+ 			if (mpd->map.m_len > 0 && mpd->next_page != page->index)
+ 				goto out;
+ 
+-			lock_page(page);
++			if (!trylock_page(page)) {
++				/*
++				 * A rare race may happen between fault and
++				 * writeback,
++				 *
++				 * 1. fault may have raced in and locked this
++				 * page ahead of us, and if fault needs to
++				 * reclaim memory via shrink_page_list(), it may
++				 * also wait on the writeback pages we've
++				 * collected in our mpd->io_submit.
++				 *
++				 * 2. We have to submit mpd->io_submit->io_bio
++				 * to let memory reclaim make progress in order
++				 * to avoid the deadlock between fault and
++				 * ourselves(writeback).
++				 */
++				ext4_io_submit(&mpd->io_submit);
++				lock_page(page);
++			}
++
+ 			/*
+ 			 * If the page is no longer dirty, or its mapping no
+ 			 * longer corresponds to inode we are writing (which
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.8.3.1
