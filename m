@@ -1,57 +1,44 @@
-Return-Path: <SRS0=KszP=NF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43986 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727208AbeJYUOX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 Oct 2018 16:14:23 -0400
-Date: Thu, 25 Oct 2018 13:41:56 +0200
-From: Jan Kara <jack@suse.cz>
-To: Fisher <fisherthepooh@protonmail.com>
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Subject: Re: Why not always do copy-out in jbd2_journal_write_metadta_buffer
-Message-ID: <20181025114156.GB7711@quack2.suse.cz>
-References: <usGdshd4UQ6wFx4jVDkzY1xddFnUnT7NXj6IWA-uVczdSc5_TmczQvtmULxNVQ3reUPTmyQd2YeLhPa_L2uPbaNdfBPVlLz7rQQ9oC7aSkw=@protonmail.com>
+Return-Path: <SRS0=VEyz=NL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:47192 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725731AbeKAEME (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 1 Nov 2018 00:12:04 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH 3/7] ext4: lost release of s_journal_flag_rwsem on rollback in
+ ext4_fill_super
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org, Daeho Jeong <daeho.jeong@samsung.com>
+References: <cover.1541011937.git.vvs@virtuozzo.com>
+Message-ID: <2a41b591-ce2e-e4e1-d86a-e0fd18e77ccd@virtuozzo.com>
+Date: Wed, 31 Oct 2018 22:12:35 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <usGdshd4UQ6wFx4jVDkzY1xddFnUnT7NXj6IWA-uVczdSc5_TmczQvtmULxNVQ3reUPTmyQd2YeLhPa_L2uPbaNdfBPVlLz7rQQ9oC7aSkw=@protonmail.com>
+In-Reply-To: <cover.1541011937.git.vvs@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Fixes c8585c6fcaf2 ("ext4: fix races between changing inode journal ...") # 4.7
 
-On Mon 22-10-18 10:34:48, Fisher wrote:
-> Recently I was testing my storage's performance and found that there were
-> periodic performance drops when I ran sequential write benchmark.
-> After profiling the duration in each step, I found that the dropping
-> performance was due to wait_on_bit_io(&bh->b_state, BH_Shadow,
-> TASK_UNINTERRUPTIBLE) in do_get_write_access(). And this is what made me
-> confused, if my understanding was right, I thought buffer_shadow(bh)
-> stands for buffer not being copied-out that's why we should wait.
+cc: Daeho Jeong <daeho.jeong@samsung.com>
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/ext4/super.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-No buffer_shadow() just means that some version of the buffer is being
-written to the journal. 
-
-> But why don't we do copy-out in jbd2_journal_write_metadta_buffer()? and
-> if we do do the copy-out, does that mean we don't have to
-> set_buffer_shadow because it refers to buffer not copied-out?
-
-The code in do_get_write_access() checks whether the buffer already has
-frozen data (by checking jh->b_frozen_data) and if not, if it is just being
-written to the journal (buffer_shadow() check in there). If it is, we have
-to wait because we cannot modify the version of the buffer that goes to the
-journal.
-
-> I made a test, when a buffer_head goes into
-> jbd2_journal_write_metadta_buffer(), as long as it belongs to metadata,
-> then force it to do copy-out and do not set_buffer_shadow, then there
-> will be no periodic performance drops. Is this test reasonable?
-
-Well, it does trade of CPU overhead (you know copy buffer for each
-transaction) for the latency (no need to wait for buffer writeout when
-redirtying buffer). Usually I wouldn't consider this worth it but obviously
-it depends on the workload...
-
-								Honza
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ed4d36506ec2..0c9e165b4e3f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4511,6 +4511,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	percpu_counter_destroy(&sbi->s_dirtyclusters_counter);
++	percpu_free_rwsem(&sbi->s_journal_flag_rwsem);
+ failed_mount5:
+ 	ext4_ext_release(sb);
+ 	ext4_release_system_zone(sb);
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.17.1
