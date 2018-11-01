@@ -1,182 +1,171 @@
-Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out30-133.freemail.mail.aliyun.com ([115.124.30.133]:59373 "EHLO
-        out30-133.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725994AbeK2HOa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Nov 2018 02:14:30 -0500
-Date: Wed, 28 Nov 2018 12:11:23 -0800
-From: Liu Bo <bo.liu@linux.alibaba.com>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH RFC] Ext4: fix deadlock on dirty pages between fault and
- writeback
-Message-ID: <20181128201122.r4sec265cnlxgj2x@US-160370MP2.local>
-Reply-To: bo.liu@linux.alibaba.com
-References: <1540858969-75803-1-git-send-email-bo.liu@linux.alibaba.com>
- <20181127114249.GH16301@quack2.suse.cz>
+Return-Path: <SRS0=aByE=NM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:11795 "EHLO
+        ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726386AbeKBIFT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2018 04:05:19 -0400
+Date: Fri, 2 Nov 2018 10:00:12 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "y-goto@fujitsu.com" <y-goto@fujitsu.com>
+Cc: Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
+        jmoyer <jmoyer@redhat.com>,
+        Johannes Thumshirn <jthumshirn@suse.de>,
+        Dave Jiang <dave.jiang@intel.com>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        Linux MM <linux-mm@kvack.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>
+Subject: Re: Problems with VM_MIXEDMAP removal from /proc/<pid>/smaps
+Message-ID: <20181101230012.GC19305@dastard>
+References: <20181002100531.GC4135@quack2.suse.cz>
+ <20181002121039.GA3274@linux-x5ow.site>
+ <20181002142959.GD9127@quack2.suse.cz>
+ <x49h8hkfhk9.fsf@segfault.boston.devel.redhat.com>
+ <20181018002510.GC6311@dastard>
+ <20181018145555.GS23493@quack2.suse.cz>
+ <20181019004303.GI6311@dastard>
+ <CAPcyv4ixoAh7HEMfm+B4sRDx1Qwm6SHGjtQ+5r3EKsxreRydrA@mail.gmail.com>
+ <20181030224904.GT19305@dastard>
+ <TYAPR01MB32619CCA488DD0DA86EDB17E90CD0@TYAPR01MB3261.jpnprd01.prod.outlook.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181127114249.GH16301@quack2.suse.cz>
+In-Reply-To: <TYAPR01MB32619CCA488DD0DA86EDB17E90CD0@TYAPR01MB3261.jpnprd01.prod.outlook.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 27, 2018 at 12:42:49PM +0100, Jan Kara wrote:
-> CCed fsdevel since this may be interesting to other filesystem developers
-> as well.
+On Wed, Oct 31, 2018 at 05:59:17AM +0000, y-goto@fujitsu.com wrote:
+> > On Mon, Oct 29, 2018 at 11:30:41PM -0700, Dan Williams wrote:
+> > > On Thu, Oct 18, 2018 at 5:58 PM Dave Chinner <david@fromorbit.com> wrote:
+> > In summary:
+> > 
+> > 	MAP_DIRECT is an access hint.
+> > 
+> > 	MAP_SYNC provides a data integrity model guarantee.
+> > 
+> > 	MAP_SYNC may imply MAP_DIRECT for specific implementations,
+> > 	but it does not require or guarantee MAP_DIRECT.
+> > 
+> > Let's compare that with O_DIRECT:
+> > 
+> > 	O_DIRECT in an access hint.
+> > 
+> > 	O_DSYNC provides a data integrity model guarantee.
+> > 
+> > 	O_DSYNC may imply O_DIRECT for specific implementations, but
+> > 	it does not require or guarantee O_DIRECT.
+> > 
+> > Consistency in access and data integrity models is a good thing. DAX
+> > and pmem is not an exception. We need to use a model we know works
+> > and has proven itself over a long period of time.
 > 
-> On Tue 30-10-18 08:22:49, Liu Bo wrote:
-> > mpage_prepare_extent_to_map() tries to build up a large bio to stuff down
-> > the pipe.  But if it needs to wait for a page lock, it needs to make sure
-> > and send down any pending writes so we don't deadlock with anyone who has
-> > the page lock and is waiting for writeback of things inside the bio.
+> Hmmm, then, I would like to know all of the reasons of breakage of MAP_DIRECT.
+> (I'm not opposed to your opinion, but I need to know it.)
 > 
-> Thanks for report! I agree the current code has a deadlock possibility you
-> describe. But I think the problem reaches a bit further than what your
-> patch fixes.  The problem is with pages that are unlocked but have
-> PageWriteback set.  Page reclaim may end up waiting for these pages and
-> thus any memory allocation with __GFP_FS set can block on these. So in our
-> current setting page writeback must not block on anything that can be held
-> while doing memory allocation with __GFP_FS set. Page lock is just one of
-> these possibilities, wait_on_page_writeback() in
-> mpage_prepare_extent_to_map() is another suspect and there mat be more. Or
-> to say it differently, if there's lock A and GFP_KERNEL allocation can
-> happen under lock A, then A cannot be taken by the writeback path. This is
-> actually pretty subtle deadlock possibility and our current lockdep
-> instrumentation isn't going to catch this.
->
+> In O_DIRECT case, in my understanding, the reason of breakage of O_DIRECT is 
+> "wrong alignment is specified by application", right?
 
-Thanks for the nice summary, it's true that a lock A held in both
-writeback path and memory reclaim can end up with deadlock.
+O_DIRECT has defined memory and offset alignment restrictions, and
+will return an error to userspace when they are violated. It does
+not fall back to buffered IO in this case. MAP_DIRECT has no
+equivalent restriction, so IO alignment of O_DIRECT is largely
+irrelevant here.
 
-Fortunately, by far there're only deadlock reports of page's lock bit
-and writeback bit in both ext4 and btrfs[1].  I think
-wait_on_page_writeback() would be OK as it's been protected by page
-lock.
+What we are talking about here is that some filesystems can only do
+certain operations through buffered IO, such as block allocation or
+file extension, and so silently fall back to doing them via buffered
+IO even when O_DIRECT is specified. The old direct IO code used to
+be full of conditionals to allow this - I think DIO_SKIP_HOLES is
+only one remaining:
 
-[1]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=01d658f2ca3c85c1ffb20b306e30d16197000ce7
+                /*
+                 * For writes that could fill holes inside i_size on a
+                 * DIO_SKIP_HOLES filesystem we forbid block creations: only
+                 * overwrites are permitted. We will return early to the caller
+                 * once we see an unmapped buffer head returned, and the caller
+                 * will fall back to buffered I/O.
+                 *
+                 * Otherwise the decision is left to the get_blocks method,
+                 * which may decide to handle it or also return an unmapped
+                 * buffer head.
+                 */
+                create = dio->op == REQ_OP_WRITE;
+                if (dio->flags & DIO_SKIP_HOLES) {
+                        if (fs_startblk <= ((i_size_read(dio->inode) - 1) >>
+                                                        i_blkbits))
+                                create = 0;
+                }
 
-> So I see two ways how to fix this properly:
-> 
-> 1) Change ext4 code to always submit the bio once we have a full page
-> prepared for writing. This may be relatively simple but has a higher CPU
-> overhead for bio allocation & freeing (actual IO won't really differ since
-> the plugging code should take care of merging the submitted bios). XFS
-> seems to be doing this.
+Other cases like file extension cases are caught by the filesystems
+before calling into the DIO code itself, so there's multiple avenues
+for O_DIRECT transparently falling back to buffered IO.
 
-Seems that that's the safest way to do it, but as you said there's
-some tradeoff.
+This means the applications don't fail just because the filesystem
+can't do a specific operation via O_DIRECT. The data writes still
+succeed because they fall back to buffered IO, and the application
+is blissfully unaware that the filesystem behaved that way.
 
-(Just took a look at xfs's writepages, xfs also did the page
-collection if there're adjacent pages in xfs_add_to_ioend(), and since
-xfs_vm_writepages() is using the generic helper write_cache_pages()
-which calls lock_page() as well, it's still possible to run into the
-above kind of deadlock.)
+> When filesystem can not use O_DIRECT and it uses page cache instead,
+> then system uses more memory resource than user's expectation.
 
-> 
-> 2) Change the code to unlock the page only when we submit the bio.
+That's far better than failing unexpectedly because the app
+unexpectedly came across a hole in the file (e.g. someone ran
+sparsify across the filesystem).
 
-This sounds doable but not good IMO, the concern is that page locks
-can be held for too long, or if we do 2), submitting one bio per page
-in 1) is also needed.
+> So, there is a side effect, and it may cause other trouble.
+> (memory pressure, expected performance can not be gained, and so on ..)
 
-thanks,
--liubo
+Which is why people are supposed to test their systems before they
+put them into production.
 
-> 
-> 								Honza
-> > The related lock stack is shown as follows,
-> > 
-> > task1:
-> > [<ffffffff811aaa52>] wait_on_page_bit+0x82/0xa0
-> > [<ffffffff811c5777>] shrink_page_list+0x907/0x960
-> > [<ffffffff811c6027>] shrink_inactive_list+0x2c7/0x680
-> > [<ffffffff811c6ba4>] shrink_node_memcg+0x404/0x830
-> > [<ffffffff811c70a8>] shrink_node+0xd8/0x300
-> > [<ffffffff811c73dd>] do_try_to_free_pages+0x10d/0x330
-> > [<ffffffff811c7865>] try_to_free_mem_cgroup_pages+0xd5/0x1b0
-> > [<ffffffff8122df2d>] try_charge+0x14d/0x720
-> > [<ffffffff812320cc>] memcg_kmem_charge_memcg+0x3c/0xa0
-> > [<ffffffff812321ae>] memcg_kmem_charge+0x7e/0xd0
-> > [<ffffffff811b68a8>] __alloc_pages_nodemask+0x178/0x260
-> > [<ffffffff8120bff5>] alloc_pages_current+0x95/0x140
-> > [<ffffffff81074247>] pte_alloc_one+0x17/0x40
-> > [<ffffffff811e34de>] __pte_alloc+0x1e/0x110
-> > [<ffffffffa06739de>] alloc_set_pte+0x5fe/0xc20
-> > [<ffffffff811e5d93>] do_fault+0x103/0x970
-> > [<ffffffff811e6e5e>] handle_mm_fault+0x61e/0xd10
-> > [<ffffffff8106ea02>] __do_page_fault+0x252/0x4d0
-> > [<ffffffff8106ecb0>] do_page_fault+0x30/0x80
-> > [<ffffffff8171bce8>] page_fault+0x28/0x30
-> > [<ffffffffffffffff>] 0xffffffffffffffff
-> > 
-> > task2:
-> > [<ffffffff811aadc6>] __lock_page+0x86/0xa0
-> > [<ffffffffa02f1e47>] mpage_prepare_extent_to_map+0x2e7/0x310 [ext4]
-> > [<ffffffffa08a2689>] ext4_writepages+0x479/0xd60
-> > [<ffffffff811bbede>] do_writepages+0x1e/0x30
-> > [<ffffffff812725e5>] __writeback_single_inode+0x45/0x320
-> > [<ffffffff81272de2>] writeback_sb_inodes+0x272/0x600
-> > [<ffffffff81273202>] __writeback_inodes_wb+0x92/0xc0
-> > [<ffffffff81273568>] wb_writeback+0x268/0x300
-> > [<ffffffff81273d24>] wb_workfn+0xb4/0x390
-> > [<ffffffff810a2f19>] process_one_work+0x189/0x420
-> > [<ffffffff810a31fe>] worker_thread+0x4e/0x4b0
-> > [<ffffffff810a9786>] kthread+0xe6/0x100
-> > [<ffffffff8171a9a1>] ret_from_fork+0x41/0x50
-> > [<ffffffffffffffff>] 0xffffffffffffffff
-> > 
-> > task1 is waiting for the PageWriteback bit of the page that task2 has
-> > collected in mpd->io_submit->io_bio, and tasks2 is waiting for the LOCKED
-> > bit the page which tasks1 has locked.
-> > 
-> > It seems that this deadlock only happens when those pages are mapped pages
-> > so that mpage_prepare_extent_to_map() can have pages queued in io_bio and
-> > when waiting to lock the subsequent page.
-> > 
-> > Signed-off-by: Liu Bo <bo.liu@linux.alibaba.com>
-> > ---
-> > 
-> > Only did build test.
-> > 
-> >  fs/ext4/inode.c | 21 ++++++++++++++++++++-
-> >  1 file changed, 20 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index c3d9a42c561e..becbfb292bf0 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -2681,7 +2681,26 @@ static int mpage_prepare_extent_to_map(struct mpage_da_data *mpd)
-> >  			if (mpd->map.m_len > 0 && mpd->next_page != page->index)
-> >  				goto out;
-> >  
-> > -			lock_page(page);
-> > +			if (!trylock_page(page)) {
-> > +				/*
-> > +				 * A rare race may happen between fault and
-> > +				 * writeback,
-> > +				 *
-> > +				 * 1. fault may have raced in and locked this
-> > +				 * page ahead of us, and if fault needs to
-> > +				 * reclaim memory via shrink_page_list(), it may
-> > +				 * also wait on the writeback pages we've
-> > +				 * collected in our mpd->io_submit.
-> > +				 *
-> > +				 * 2. We have to submit mpd->io_submit->io_bio
-> > +				 * to let memory reclaim make progress in order
-> > +				 * to avoid the deadlock between fault and
-> > +				 * ourselves(writeback).
-> > +				 */
-> > +				ext4_io_submit(&mpd->io_submit);
-> > +				lock_page(page);
-> > +			}
-> > +
-> >  			/*
-> >  			 * If the page is no longer dirty, or its mapping no
-> >  			 * longer corresponds to inode we are writing (which
-> > -- 
-> > 1.8.3.1
-> > 
-> -- 
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
+I've lost count of the number of times I've heard "but O_DIRECT is
+supposed to make things faster!" because people don't understand
+exactly what it does or means. Bypassing the page cache does not
+magically make applications go faster - it puts the responsibility
+for doing optimal IO on the application, not the kernel.
+
+MAP_DIRECT will be no different. It's no guarantee that it will make
+things faster, or that everything will just work as users expect
+them to. It specifically places the responsibility for performing IO
+in an optimal fashion on the application and the user for making
+sure that it is fit for their purposes. Like O_DIRECT, using
+MAP_DIRECT means "I, the application, know exactly what I'm doing,
+so get out of the way as much as possible because I'm taking
+responsibility for issuing IO in the most optimal manner now".
+
+> In such case its administrator (or technical support engineer) needs to struggle to
+> investigate what is the reason.
+
+That's no different to performance problems that arise from
+inappropriate use of O_DIRECT. It requires a certain level of
+expertise to be able to understand and diagnose such issues.
+
+> So, I would like to know in MAP_DIRECT case, what is the reasons? 
+> I think it will be helpful for users.
+> Only splice?
+
+The filesystem can ignore MAP_DIRECT for any reason it needs to. I'm
+certain that filesystem developers will try to maintain MAP_DIRECT
+semantics as much as possible, but it's not going to be possible in
+/all situations/ on XFS and ext4 because they simply haven't been
+designed with DAX in mind. Filesystems designed specifically for
+pmem and DAX might be able to provide MAP_DIRECT in all situations,
+but those filesystems don't really exist yet.
+
+This is no different to the early days of O_DIRECT. e.g.  ext3
+couldn't do O_DIRECT for all operations when it was first
+introduced, but over time the functionality improved as the
+underlying issues were solved. If O_DIRECT was a guarantee, then
+ext3 would have never supported O_DIRECT at all...
+
+> (Maybe such document will be necessary....)
+
+The semantics will need to be documented in the relevant man pages.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
