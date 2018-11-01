@@ -1,88 +1,110 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34034 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725999AbeKUSS5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 13:18:57 -0500
-Subject: Re: [PATCH V11 17/19] block: document usage of bio iterator helpers
-To: Ming Lei <ming.lei@redhat.com>, Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-References: <20181121032327.8434-1-ming.lei@redhat.com>
- <20181121032327.8434-18-ming.lei@redhat.com>
-From: Nikolay Borisov <nborisov@suse.com>
-Message-ID: <1f93e845-09e8-2c6c-3643-654b8c490597@suse.com>
-Date: Wed, 21 Nov 2018 09:45:25 +0200
+Return-Path: <SRS0=aByE=NM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lf1-f68.google.com ([209.85.167.68]:42776 "EHLO
+        mail-lf1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725843AbeKBCS6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2018 22:18:58 -0400
+Received: by mail-lf1-f68.google.com with SMTP id q6-v6so14715382lfh.9
+        for <linux-ext4@vger.kernel.org>; Thu, 01 Nov 2018 10:15:06 -0700 (PDT)
+Received: from mail-lj1-f174.google.com (mail-lj1-f174.google.com. [209.85.208.174])
+        by smtp.gmail.com with ESMTPSA id g3-v6sm4425608lfj.3.2018.11.01.10.15.04
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 01 Nov 2018 10:15:05 -0700 (PDT)
+Received: by mail-lj1-f174.google.com with SMTP id s15-v6so18745245lji.3
+        for <linux-ext4@vger.kernel.org>; Thu, 01 Nov 2018 10:15:04 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20181121032327.8434-18-ming.lei@redhat.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+References: <20181022105944.GA1411@gmail.com>
+In-Reply-To: <20181022105944.GA1411@gmail.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 1 Nov 2018 10:06:28 -0700
+Message-ID: <CAHk-=whpBiV5sVTvPsWOVx5WYOouxbNG1fWeCdpK4oFiaH0Zqg@mail.gmail.com>
+Subject: Re: [GIT PULL] Compiler Attributes for v4.20-rc1
+To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>
+Cc: dan.carpenter@oracle.com, adilger.kernel@dilger.ca,
+        yamada.masahiro@socionext.com, michal.lkml@markovi.net,
+        rostedt@goodmis.org, mchehab+samsung@kernel.org, olof@lxom.net,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Kees Cook <keescook@chromium.org>, tglx@linutronix.de,
+        Ingo Molnar <mingo@kernel.org>, paullawrence@google.com,
+        sandipan@linux.vnet.ibm.com, andreyknvl@google.com,
+        dwmw2@infradead.org, will.deacon@arm.com, pombredanne@nexb.com,
+        paul.burton@mips.com, rientjes@google.com, w@1wt.eu,
+        msebor@gmail.com, sparse@chrisli.org,
+        Jonathan Corbet <corbet@lwn.net>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
+        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
+        stefan@agner.ch, luc.vanoostenryck@gmail.com,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Oct 22, 2018 at 3:59 AM Miguel Ojeda
+<miguel.ojeda.sandonis@gmail.com> wrote:
+>
+> Here it is the Compiler Attributes series/tree, which tries to disentangle
+> the include/linux/compiler*.h headers and bring them up to date.
 
+I've finally emptied the "normal" pull queues, and am looking at the
+odd ones that I felt I needed to review more in-depth.
 
-On 21.11.18 г. 5:23 ч., Ming Lei wrote:
-> Now multi-page bvec is supported, some helpers may return page by
-> page, meantime some may return segment by segment, this patch
-> documents the usage.
-> 
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> ---
->  Documentation/block/biovecs.txt | 24 ++++++++++++++++++++++++
->  1 file changed, 24 insertions(+)
-> 
-> diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
-> index 25689584e6e0..bb008f7afb05 100644
-> --- a/Documentation/block/biovecs.txt
-> +++ b/Documentation/block/biovecs.txt
-> @@ -117,3 +117,27 @@ Other implications:
->     size limitations and the limitations of the underlying devices. Thus
->     there's no need to define ->merge_bvec_fn() callbacks for individual block
->     drivers.
-> +
-> +Usage of helpers:
-> +=================
-> +
-> +* The following helpers whose names have the suffix of "_all" can only be used
-> +on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
-> +shouldn't use them because the bio may have been split before it reached the
-> +driver.
-> +
-> +	bio_for_each_segment_all()
-> +	bio_first_bvec_all()
-> +	bio_first_page_all()
-> +	bio_last_bvec_all()
-> +
-> +* The following helpers iterate over single-page bvecs. The passed 'struct
-> +bio_vec' will contain a single-page IO vector during the iteration
-> +
-> +	bio_for_each_segment()
-> +	bio_for_each_segment_all()
-> +
-> +* The following helpers iterate over single-page bvecs. The passed 'struct
-> +bio_vec' will contain a single-page IO vector during the iteration
-> +
-> +	bio_for_each_bvec()
+This looked fine to me, and I already pulled, but when looking at the
+conflict for __no_sanitize_address_or_inline, I also noticed that you
+actually changed the gcc version logic.
 
-Just put this helper right below the above 2, no need to repeat the
-explanation. Also I'd suggest introducing another catch-all sentence
-"All other helpers are assumed to iterate multipage bio vecs" and
-perhaps give an example with 1-2 helpers.
+The logic for using __no_sanitize_address *used* to be
 
-> 
+    #if GCC_VERSION >= 40902
+
+but you have changed it to
+
+  # define __GCC4_has_attribute___no_sanitize_address__ (__GNUC_MINOR__ >= 8)
+
+so now it's gcc-4.8+ rather than gcc-4.9.2+.
+
+I'm not sure how much that matters (maybe the original check for 4.9.2
+was just a random pick by Andrey? Added to cc), but together with the
+movement to <linux/compiler_attributes.h> that looks like it also
+wouldn't want the CONFIG_KASAN tests, I wonder what the right merge
+resolution would be.
+
+Yes, I see the resolution in linux-next, and I think that one is odd
+and dubious, and now it *mixes* that old test of gcc-4.9.2 with the
+different test in compiler-attributes.
+
+I'm _inclined_ to just do
+
+#ifdef CONFIG_KASAN
+ #define __no_sanitize_address_or_inline \
+  __no_sanitize_address __maybe_unused notrace
+#else
+ #define __no_sanitize_address_or_inline inline
+#endif
+
+without any compiler versions at all, because I don't think it matters
+(maybe we won't get address sanitation, and we will not get inlining
+either, but do we care?).
+
+But I'm also unsure whether you meant for the "__has_attribute()" test
+to be usable outside the linux/compiler_attributes.h file, in which
+case I could just do
+
+  #if defined(CONFIG_KASAN) && __has_attribute(__no_sanitize_address__)
+
+instead.
+
+End result: it's not the merge resolution itself that raises
+questions, it's just semantics in general.
+
+So I've dropped this for now, in the hope that you/Andrey can answer
+these questions.
+
+                   Linus
