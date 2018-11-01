@@ -1,70 +1,204 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49052 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=aByE=NM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:52158 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725939AbeKUPhQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 10:37:16 -0500
-Date: Wed, 21 Nov 2018 13:04:00 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Sagi Grimberg <sagi@grimberg.me>
-Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
-        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
-Message-ID: <20181121050359.GA31915@ming.t460p>
-References: <20181115085306.9910-10-ming.lei@redhat.com>
- <20181116134541.GH3165@lst.de>
- <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
- <20181120161651.GB2629@lst.de>
- <53526aae-fb9b-ee38-0a01-e5899e2d4e4d@grimberg.me>
- <20181121005902.GA31748@ming.t460p>
- <2d9bee7a-f010-dcf4-1184-094101058584@grimberg.me>
- <20181121034415.GA8408@ming.t460p>
- <2a47d336-c19b-6bf4-c247-d7382871eeea@grimberg.me>
- <7378bf49-5a7e-5622-d4d1-808ba37ce656@grimberg.me>
+        id S1728072AbeKBH7R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 2 Nov 2018 03:59:17 -0400
+From: Eric Biggers <ebiggers@kernel.org>
+To: linux-fscrypt@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Subject: [PATCH v2 05/12] fs-verity: implement FS_IOC_ENABLE_VERITY ioctl
+Date: Thu,  1 Nov 2018 15:52:23 -0700
+Message-Id: <20181101225230.88058-6-ebiggers@kernel.org>
+In-Reply-To: <20181101225230.88058-1-ebiggers@kernel.org>
+References: <20181101225230.88058-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <7378bf49-5a7e-5622-d4d1-808ba37ce656@grimberg.me>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 20, 2018 at 08:42:04PM -0800, Sagi Grimberg wrote:
-> 
-> > > Yeah, that is the most common example, given merge is enabled
-> > > in most of cases. If the driver or device doesn't care merge,
-> > > you can disable it and always get single bio request, then the
-> > > bio's bvec table can be reused for send().
-> > 
-> > Does bvec_iter span bvecs with your patches? I didn't see that change?
-> 
-> Wait, I see that the bvec is still a single array per bio. When you said
-> a table I thought you meant a 2-dimentional array...
+From: Eric Biggers <ebiggers@google.com>
 
-I mean a new 1-d table A has to be created for multiple bios in one rq,
-and build it in the following way
+Add a function for filesystems to call to implement the
+FS_IOC_ENABLE_VERITY ioctl.  This ioctl enables fs-verity on a file,
+after userspace has appended verity metadata to it.
 
-           rq_for_each_bvec(tmp, rq, rq_iter)
-                    *A = tmp;
+This ioctl is documented in Documentation/filesystem/fsverity.rst;
+see there for more information.
 
-Then you can pass A to iov_iter_bvec() & send().
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/verity/Makefile       |   2 +-
+ fs/verity/ioctl.c        | 117 +++++++++++++++++++++++++++++++++++++++
+ include/linux/fsverity.h |  11 ++++
+ 3 files changed, 129 insertions(+), 1 deletion(-)
+ create mode 100644 fs/verity/ioctl.c
 
-Given it is over TCP, I guess it should be doable for you to preallocate one
-256-bvec table in one page for each request, then sets the max segment size as
-(unsigned int)-1, and max segment number as 256, the preallocated table
-should work anytime.
-
-
-Thanks,
-Ming
+diff --git a/fs/verity/Makefile b/fs/verity/Makefile
+index a6c7cefb61ab7..6450925e3a8b7 100644
+--- a/fs/verity/Makefile
++++ b/fs/verity/Makefile
+@@ -1,3 +1,3 @@
+ obj-$(CONFIG_FS_VERITY)	+= fsverity.o
+ 
+-fsverity-y := hash_algs.o setup.o verify.o
++fsverity-y := hash_algs.o ioctl.o setup.o verify.o
+diff --git a/fs/verity/ioctl.c b/fs/verity/ioctl.c
+new file mode 100644
+index 0000000000000..c5f0022cb3bef
+--- /dev/null
++++ b/fs/verity/ioctl.c
+@@ -0,0 +1,117 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * fs/verity/ioctl.c: fs-verity ioctls
++ *
++ * Copyright 2018 Google LLC
++ *
++ * Originally written by Jaegeuk Kim and Michael Halcrow;
++ * heavily rewritten by Eric Biggers.
++ */
++
++#include "fsverity_private.h"
++
++#include <linux/mm.h>
++#include <linux/mount.h>
++#include <linux/uaccess.h>
++
++/**
++ * fsverity_ioctl_enable - enable fs-verity on a file
++ *
++ * Enable fs-verity on a file.  Verity metadata must have already been appended
++ * to the file.  See Documentation/filesystems/fsverity.rst, section
++ * 'FS_IOC_ENABLE_VERITY' for details.
++ *
++ * Return: 0 on success, -errno on failure
++ */
++int fsverity_ioctl_enable(struct file *filp, const void __user *arg)
++{
++	struct inode *inode = file_inode(filp);
++	struct fsverity_info *vi;
++	int err;
++
++	err = inode_permission(inode, MAY_WRITE);
++	if (err)
++		return err;
++
++	if (IS_APPEND(inode))
++		return -EPERM;
++
++	if (arg) /* argument is reserved */
++		return -EINVAL;
++
++	if (S_ISDIR(inode->i_mode))
++		return -EISDIR;
++
++	if (!S_ISREG(inode->i_mode))
++		return -EINVAL;
++
++	err = mnt_want_write_file(filp);
++	if (err)
++		goto out;
++
++	/*
++	 * Temporarily lock out writers via writable file descriptors or
++	 * truncate().  This should stabilize the contents of the file as well
++	 * as its size.  Note that at the end of this ioctl we will unlock
++	 * writers, but at that point the verity bit will be set (if the ioctl
++	 * succeeded), preventing future writers.
++	 */
++	err = deny_write_access(filp);
++	if (err) /* -ETXTBSY */
++		goto out_drop_write;
++
++	/*
++	 * fsync so that the verity bit can't be persisted to disk prior to the
++	 * data, causing verification errors after a crash.
++	 */
++	err = vfs_fsync(filp, 1);
++	if (err)
++		goto out_allow_write;
++
++	/* Serialize concurrent use of this ioctl on the same inode */
++	inode_lock(inode);
++
++	if (get_fsverity_info(inode)) { /* fs-verity already enabled? */
++		err = -EEXIST;
++		goto out_unlock;
++	}
++
++	/* Validate the verity metadata */
++	vi = create_fsverity_info(inode, true);
++	if (IS_ERR(vi)) {
++		err = PTR_ERR(vi);
++		if (err == -EINVAL) /* distinguish "invalid metadata" case */
++			err = -EBADMSG;
++		goto out_unlock;
++	}
++
++	/*
++	 * Ask the filesystem to mark the file as a verity file, e.g. by setting
++	 * the verity bit in the inode.
++	 */
++	err = inode->i_sb->s_vop->set_verity(inode, vi->data_i_size);
++	if (err)
++		goto out_free_vi;
++
++	/* Invalidate all cached pages, forcing re-verification */
++	truncate_inode_pages(inode->i_mapping, 0);
++
++	/*
++	 * Set ->i_verity_info, unless another task managed to do it already
++	 * between ->set_verity() and here.
++	 */
++	if (set_fsverity_info(inode, vi))
++		vi = NULL;
++	err = 0;
++out_free_vi:
++	free_fsverity_info(vi);
++out_unlock:
++	inode_unlock(inode);
++out_allow_write:
++	allow_write_access(filp);
++out_drop_write:
++	mnt_drop_write_file(filp);
++out:
++	return err;
++}
++EXPORT_SYMBOL_GPL(fsverity_ioctl_enable);
+diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+index 15478fe7d55aa..5de50b52ccc70 100644
+--- a/include/linux/fsverity.h
++++ b/include/linux/fsverity.h
+@@ -21,6 +21,9 @@ struct fsverity_operations {
+ 
+ #if __FS_HAS_VERITY
+ 
++/* ioctl.c */
++extern int fsverity_ioctl_enable(struct file *filp, const void __user *arg);
++
+ /* setup.c */
+ extern int fsverity_file_open(struct inode *inode, struct file *filp);
+ extern int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
+@@ -40,6 +43,14 @@ static inline bool fsverity_check_hole(struct inode *inode, struct page *page)
+ 
+ #else /* !__FS_HAS_VERITY */
+ 
++/* ioctl.c */
++
++static inline int fsverity_ioctl_enable(struct file *filp,
++					const void __user *arg)
++{
++	return -EOPNOTSUPP;
++}
++
+ /* setup.c */
+ 
+ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
+-- 
+2.19.1.568.g152ad8e336-goog
