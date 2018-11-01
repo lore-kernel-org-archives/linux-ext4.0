@@ -1,129 +1,80 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:50112 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727854AbeKQAKh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Nov 2018 19:10:37 -0500
-Date: Fri, 16 Nov 2018 14:58:03 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 18/19] block: kill QUEUE_FLAG_NO_SG_MERGE
-Message-ID: <20181116135803.GN3165@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-19-ming.lei@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-19-ming.lei@redhat.com>
+Return-Path: <SRS0=aByE=NM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-131.freemail.mail.aliyun.com ([115.124.30.131]:59042 "EHLO
+        out30-131.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725978AbeKAK4p (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2018 06:56:45 -0400
+From: Liu Bo <bo.liu@linux.alibaba.com>
+To: <linux-ext4@vger.kernel.org>
+Subject: [PATCH] Ext4: fix ENOSPC when both quota and dioread_nolock are enabled
+Date: Thu,  1 Nov 2018 09:54:29 +0800
+Message-Id: <1541037269-96483-1-git-send-email-bo.liu@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:53:05PM +0800, Ming Lei wrote:
-> Since bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting"),
-> physical segment number is mainly figured out in blk_queue_split() for
-> fast path, and the flag of BIO_SEG_VALID is set there too.
-> 
-> Now only blk_recount_segments() and blk_recalc_rq_segments() use this
-> flag.
-> 
-> Basically blk_recount_segments() is bypassed in fast path given BIO_SEG_VALID
-> is set in blk_queue_split().
-> 
-> For another user of blk_recalc_rq_segments():
-> 
-> - run in partial completion branch of blk_update_request, which is an unusual case
-> 
-> - run in blk_cloned_rq_check_limits(), still not a big problem if the flag is killed
-> since dm-rq is the only user.
-> 
-> Multi-page bvec is enabled now, QUEUE_FLAG_NO_SG_MERGE doesn't make sense any more.
-> 
-> Cc: Dave Chinner <dchinner@redhat.com>
-> Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> Cc: Mike Snitzer <snitzer@redhat.com>
-> Cc: dm-devel@redhat.com
-> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> Cc: linux-fsdevel@vger.kernel.org
-> Cc: Shaohua Li <shli@kernel.org>
-> Cc: linux-raid@vger.kernel.org
-> Cc: linux-erofs@lists.ozlabs.org
-> Cc: David Sterba <dsterba@suse.com>
-> Cc: linux-btrfs@vger.kernel.org
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: linux-xfs@vger.kernel.org
-> Cc: Gao Xiang <gaoxiang25@huawei.com>
-> Cc: Christoph Hellwig <hch@lst.de>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Coly Li <colyli@suse.de>
-> Cc: linux-bcache@vger.kernel.org
-> Cc: Boaz Harrosh <ooo@electrozaur.com>
-> Cc: Bob Peterson <rpeterso@redhat.com>
-> Cc: cluster-devel@redhat.com
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> ---
->  block/blk-merge.c      | 31 ++++++-------------------------
->  block/blk-mq-debugfs.c |  1 -
->  block/blk-mq.c         |  3 ---
->  drivers/md/dm-table.c  | 13 -------------
->  include/linux/blkdev.h |  1 -
->  5 files changed, 6 insertions(+), 43 deletions(-)
-> 
-> diff --git a/block/blk-merge.c b/block/blk-merge.c
-> index 153a659fde74..06be298be332 100644
-> --- a/block/blk-merge.c
-> +++ b/block/blk-merge.c
-> @@ -351,8 +351,7 @@ void blk_queue_split(struct request_queue *q, struct bio **bio)
->  EXPORT_SYMBOL(blk_queue_split);
->  
->  static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
-> -					     struct bio *bio,
-> -					     bool no_sg_merge)
-> +					     struct bio *bio)
->  {
->  	struct bio_vec bv, bvprv = { NULL };
->  	int cluster, prev = 0;
-> @@ -379,13 +378,6 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
->  	nr_phys_segs = 0;
->  	for_each_bio(bio) {
->  		bio_for_each_bvec(bv, bio, iter) {
-> -			/*
-> -			 * If SG merging is disabled, each bio vector is
-> -			 * a segment
-> -			 */
-> -			if (no_sg_merge)
-> -				goto new_segment;
-> -
->  			if (prev && cluster) {
->  				if (seg_size + bv.bv_len
->  				    > queue_max_segment_size(q))
-> @@ -420,27 +412,16 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
->  
->  void blk_recalc_rq_segments(struct request *rq)
->  {
-> -	bool no_sg_merge = !!test_bit(QUEUE_FLAG_NO_SG_MERGE,
-> -			&rq->q->queue_flags);
-> -
-> -	rq->nr_phys_segments = __blk_recalc_rq_segments(rq->q, rq->bio,
-> -			no_sg_merge);
-> +	rq->nr_phys_segments = __blk_recalc_rq_segments(rq->q, rq->bio);
+With dioread_nolock, unwritten extents are converted in IO completion, and
+these extents may be merged with siblings.
 
-Can we rename __blk_recalc_rq_segments to blk_recalc_rq_segments
-can kill the old blk_recalc_rq_segments now?
+ext4_writepages() has reserved a handle to hold 2 credits for inode update
+and extent update and the handle will be used in IO completion as we can't
+start journal after clearing PageWriteback (due to locking rules).
 
-Otherwise looks fine:
+However, if quota is enabled, the following enospc situation could happen,
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+ext4_convert_unwritten_extents
+  ext4_ext_try_to_merge
+    ext4_ext_try_to_merge_up
+      ext4_journal_extend(handle, 2) # extend 2 credits for
+                                     # bitmap/group_desc
+      ext4_free_blocks()
+        dquot_free_block
+	  // use 3 credits for 3 quota types
+	  // use 1 credit for inode update
+	# update bitmap block
+	# update group desc block
+        # either of two updates may hit enospc
+        # as ->h_buffer_credits has been consumed out.
+
+In ext4_ext_try_to_merge(), per-inode extent tree may be collasped into
+inode and ext4_free_blocks() will then free the unneeded blocks, but with
+quota being enabled, there aren't enough credits to process updates and we
+end up with -ENOSPC.
+
+As this is a corner case, instead of adding credits in ext4_writepages(),
+this just extends more credits for quota when doing merge-up.
+
+Fixes: ecb94f5fdf4b (ext4: collapse a single extent tree block into the inode if possible)
+CC: stable@vger.kernel.org # v3.6-rc1+
+Signed-off-by: Liu Bo <bo.liu@linux.alibaba.com>
+---
+ fs/ext4/extents.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 240b6dea5441..ff2498355e3c 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1812,6 +1812,7 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
+ 	size_t s;
+ 	unsigned max_root = ext4_ext_space_root(inode, 0);
+ 	ext4_fsblk_t blk;
++	int credits = 2;
+ 
+ 	if ((path[0].p_depth != 1) ||
+ 	    (le16_to_cpu(path[0].p_hdr->eh_entries) != 1) ||
+@@ -1820,10 +1821,12 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
+ 
+ 	/*
+ 	 * We need to modify the block allocation bitmap and the block
+-	 * group descriptor to release the extent tree block.  If we
++	 * group descriptor to release the extent tree block.  If
++	 * quota is enabled, updates on quota are also needed.  If we
+ 	 * can't get the journal credits, give up.
+ 	 */
+-	if (ext4_journal_extend(handle, 2))
++	credits += EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
++	if (ext4_journal_extend(handle, credits))
+ 		return;
+ 
+ 	/*
+-- 
+1.8.3.1
