@@ -1,72 +1,162 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-io1-f68.google.com ([209.85.166.68]:40192 "EHLO
-        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2392234AbeKVQSz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2018 11:18:55 -0500
-Received: by mail-io1-f68.google.com with SMTP id n9so5773083ioh.7
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Nov 2018 21:41:06 -0800 (PST)
-MIME-Version: 1.0
-References: <20181121024400.4346-1-devel@etsukata.com> <20181121045440.GM32577@ZenIV.linux.org.uk>
-In-Reply-To: <20181121045440.GM32577@ZenIV.linux.org.uk>
-From: Eiichi Tsukata <devel@etsukata.com>
-Date: Thu, 22 Nov 2018 14:40:50 +0900
-Message-ID: <CANhTXPQzKmsyPO9QrGz6eijjuMFzLN4BhUV=6ABDJysX0xyKfw@mail.gmail.com>
-Subject: Re: [PATCH v1 0/4] fs: fix race between llseek SEEK_END and write
-To: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: andi@firstfloor.org, Chris Mason <clm@fb.com>,
-        Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+Return-Path: <SRS0=aByE=NM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:52096 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727645AbeKBH7P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 2 Nov 2018 03:59:15 -0400
+From: Eric Biggers <ebiggers@kernel.org>
+To: linux-fscrypt@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-unionfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Subject: [PATCH v2 00/12] fs-verity: read-only file-based authenticity protection
+Date: Thu,  1 Nov 2018 15:52:18 -0700
+Message-Id: <20181101225230.88058-1-ebiggers@kernel.org>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2018=E5=B9=B411=E6=9C=8821=E6=97=A5(=E6=B0=B4) 13:54 Al Viro <viro@zeniv.li=
-nux.org.uk>:
->
-> On Wed, Nov 21, 2018 at 11:43:56AM +0900, Eiichi Tsukata wrote:
-> > Some file systems (including ext4, xfs, ramfs ...) have the following
-> > problem as I've described in the commit message of the 1/4 patch.
-> >
-> >   The commit ef3d0fd27e90 ("vfs: do (nearly) lockless generic_file_llse=
-ek")
-> >   removed almost all locks in llseek() including SEEK_END. It based on =
-the
-> >   idea that write() updates size atomically. But in fact, write() can b=
-e
-> >   divided into two or more parts in generic_perform_write() when pos
-> >   straddles over the PAGE_SIZE, which results in updating size multiple
-> >   times in one write(). It means that llseek() can see the size being
-> >   updated during write().
->
-> And?  Who has ever promised anything that insane?  write(2) can take an a=
-rbitrary
-> amount of time; another process doing lseek() on independently opened des=
-criptor
-> is *not* going to wait for that (e.g. page-in of the buffer being written=
-, which
-> just happens to be mmapped from a file on NFS over RFC1149 link).
+Hello,
 
-Thanks.
+This patchset implements fs-verity for ext4 and f2fs.  fs-verity is
+similar to dm-verity, but implemented on a per-file basis: a Merkle tree
+is used to measure (hash) the file's data as it is paged in.  ext4 and
+f2fs hide this Merkle tree beyond the end of the file, though other
+filesystems might implement it differently in the future.  In general,
+fs-verity is intended for use on writable filesystems; dm-verity is
+still recommended on read-only ones.
 
-The lock I added in NFS was nothing but slow down lseek() because a file si=
-ze is
-updated atomically. Even `spin_lock(&inode->i_lock)` is unnecessary.
+Similar to fscrypt, most of the code is in fs/verity/, and not too many
+filesystem-specific changes are needed.  The Merkle tree is written by
+userspace before calling an ioctl to mark the file as a verity file; the
+file then becomes read-only and the verity metadata is hidden or moved.
 
-I'll fix the commit message which only refers to specific local file
-systems that use
-generic_perform_write() and remove unnecessary locks in some
-distributed file systems
-(e.g. nfs, cifs, or more) by replacing generic_file_llseek() with
-generic_file_llseek_unlocked()
-so that `tail` don't have to wait for avian carriers.
+fs-verity provides a file measurement (hash) in constant time and
+verifies data on-demand.  Thus, it is useful for efficiently verifying
+the authenticity of large files of which only a small portion may be
+accessed, such as Android application package (APK) files.  It may also
+be useful in "audit" use cases where file hashes are logged.
+
+fs-verity also provides better protection against malicious disks than
+an ahead-of-time hash, since fs-verity re-verifies data each time it's
+paged in.  Note, however, that any authenticity guarantee is still
+dependent on verification of the file measurement and other relevant
+metadata in a way that makes sense for the overall system; fs-verity is
+only a tool to help with this.
+
+This patchset doesn't yet include IMA support for fs-verity file
+measurements.  This is planned and we'd like to collaborate with the IMA
+maintainers.  Although fs-verity can be used on its own without IMA,
+fs-verity is primarily a lower level feature (think of it as a way of
+hashing a file), so some users may still need IMA's policy mechanism.
+However, an optional in-kernel signature verification mechanism within
+fs-verity itself is also included.
+
+This patchset is based on Linus' tree as of today (commit 7c6c54b505b8a).
+It can also be found in git at tag "fsverity_2018-11-01" of:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
+
+fs-verity has a userspace utility:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git
+
+xfstests for fs-verity can be found at branch "fsverity" of:
+
+	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/xfstests-dev.git
+
+fs-verity is supported by e2fsprogs v1.44.4-2+ and f2fs-tools v1.11.0+.
+
+Please see the documentation file Documentation/filesystems/fsverity.rst
+(added by patch 1) for details; this cover letter only gave an overview.
+Examples of setting up fs-verity protected files can also be found in
+the README file of fsverity-utils.
+
+Other useful references include:
+
+    - LWN coverage of v1 patchset: https://lwn.net/Articles/763729/
+
+    - Presentation at Linux Security Summit North America 2018:
+        - Slides: https://schd.ws/hosted_files/lssna18/af/fs-verity%20slide%20deck.pdf
+        - Video: https://www.youtube.com/watch?v=Aw5h6aBhu6M
+
+    - Notes from discussion at LSFMM 2018: https://lwn.net/Articles/752614/
+
+Changes since v1:
+
+- Added documentation file.
+- Require write permission for FS_IOC_ENABLE_VERITY, rather than
+  CAP_SYS_ADMIN.
+- Eliminated dependency on CONFIG_BLOCK and clarified that filesystems
+  can verify a page at a time rather than a bio at a time.
+- Fixed conditions for verifying holes.
+- ext4 now only allows fs-verity on extent-based files.
+- Eliminated most of the assumptions that the verity metadata is stored
+  beyond EOF, in case filesystems want to do things differently.
+- Other cleanups.
+
+Eric Biggers (12):
+  fs-verity: add a documentation file
+  fs-verity: add setup code, UAPI, and Kconfig
+  fs-verity: add MAINTAINERS file entry
+  fs-verity: add data verification hooks for ->readpages()
+  fs-verity: implement FS_IOC_ENABLE_VERITY ioctl
+  fs-verity: implement FS_IOC_MEASURE_VERITY ioctl
+  fs-verity: add SHA-512 support
+  fs-verity: add CRC-32C support
+  fs-verity: support builtin file signatures
+  ext4: add basic fs-verity support
+  ext4: add fs-verity read support
+  f2fs: fs-verity support
+
+ Documentation/filesystems/fsverity.rst | 583 ++++++++++++++++
+ Documentation/filesystems/index.rst    |  11 +
+ Documentation/ioctl/ioctl-number.txt   |   1 +
+ MAINTAINERS                            |  11 +
+ fs/Kconfig                             |   2 +
+ fs/Makefile                            |   1 +
+ fs/ext4/Kconfig                        |  20 +
+ fs/ext4/ext4.h                         |  22 +-
+ fs/ext4/file.c                         |   6 +
+ fs/ext4/inode.c                        |  11 +
+ fs/ext4/ioctl.c                        |  12 +
+ fs/ext4/readpage.c                     | 209 +++++-
+ fs/ext4/super.c                        | 100 ++-
+ fs/ext4/sysfs.c                        |   6 +
+ fs/f2fs/Kconfig                        |  20 +
+ fs/f2fs/data.c                         |  43 +-
+ fs/f2fs/f2fs.h                         |  17 +-
+ fs/f2fs/file.c                         |  58 ++
+ fs/f2fs/inode.c                        |   3 +-
+ fs/f2fs/super.c                        |  30 +
+ fs/f2fs/sysfs.c                        |  11 +
+ fs/verity/Kconfig                      |  52 ++
+ fs/verity/Makefile                     |   5 +
+ fs/verity/fsverity_private.h           | 135 ++++
+ fs/verity/hash_algs.c                  | 115 ++++
+ fs/verity/ioctl.c                      | 164 +++++
+ fs/verity/setup.c                      | 908 +++++++++++++++++++++++++
+ fs/verity/signature.c                  | 187 +++++
+ fs/verity/verify.c                     | 298 ++++++++
+ include/linux/fs.h                     |   9 +
+ include/linux/fsverity.h               | 112 +++
+ include/uapi/linux/fsverity.h          |  98 +++
+ 32 files changed, 3218 insertions(+), 42 deletions(-)
+ create mode 100644 Documentation/filesystems/fsverity.rst
+ create mode 100644 fs/verity/Kconfig
+ create mode 100644 fs/verity/Makefile
+ create mode 100644 fs/verity/fsverity_private.h
+ create mode 100644 fs/verity/hash_algs.c
+ create mode 100644 fs/verity/ioctl.c
+ create mode 100644 fs/verity/setup.c
+ create mode 100644 fs/verity/signature.c
+ create mode 100644 fs/verity/verify.c
+ create mode 100644 include/linux/fsverity.h
+ create mode 100644 include/uapi/linux/fsverity.h
+
+-- 
+2.19.1.568.g152ad8e336-goog
