@@ -1,64 +1,89 @@
-Return-Path: <SRS0=kdxW=OC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36152 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1733028AbeKWMaz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 23 Nov 2018 07:30:55 -0500
-Date: Fri, 23 Nov 2018 09:48:21 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 07/19] fs/buffer.c: use bvec iterator to truncate the
- bio
-Message-ID: <20181123014820.GA20110@ming.t460p>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
- <20181121032327.8434-8-ming.lei@redhat.com>
- <20181122105849.GA30066@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181122105849.GA30066@lst.de>
+Return-Path: <SRS0=aByE=NM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-it1-f196.google.com ([209.85.166.196]:33107 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725999AbeKAJms (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 1 Nov 2018 05:42:48 -0400
+Received: by mail-it1-f196.google.com with SMTP id p11-v6so912416itf.0
+        for <linux-ext4@vger.kernel.org>; Wed, 31 Oct 2018 17:42:12 -0700 (PDT)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <0C3DF51C-F627-47F7-879B-0A0D5BC143C0@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_6DAA99BE-CD7D-493C-85AD-DD18080505DA";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH v2 11/11] ext4: access to uninitialized bh fields in
+ ext4_xattr_set_handle()
+Date: Wed, 31 Oct 2018 18:42:01 -0600
+In-Reply-To: <0db97e14-c87d-9507-4c87-875835b64212@virtuozzo.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        LKML <linux-kernel@vger.kernel.org>
+To: Vasily Averin <vvs@virtuozzo.com>
+References: <cover.1540935522.git.vvs@virtuozzo.com>
+ <b8523c3a-0eb2-3aeb-fdf9-2e9d6d320d5c@virtuozzo.com>
+ <48BA929C-9BF7-4092-BDD3-BECB64AF0599@dilger.ca>
+ <0db97e14-c87d-9507-4c87-875835b64212@virtuozzo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 22, 2018 at 11:58:49AM +0100, Christoph Hellwig wrote:
-> Btw, given that this is the last user of bvec_last_segment after my
-> other patches I think we should kill bvec_last_segment and do something
-> like this here:
-> 
-> 
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index fa37ad52e962..af5e135d2b83 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -2981,6 +2981,14 @@ static void end_bio_bh_io_sync(struct bio *bio)
->  	bio_put(bio);
->  }
->  
-> +static void zero_trailing_sectors(struct bio_vec *bvec, unsigned bytes)
-> +{
-> +	unsigned last_page = (bvec->bv_offset + bvec->bv_len - 1) >> PAGE_SHIFT;
-> +
-> +	zero_user(nth_page(bvec->bv_page, last_page),
-> +		  bvec->bv_offset % PAGE_SIZE + bvec->bv_len, bytes);
-> +}
 
-The above 'start' parameter is figured out as wrong, and the computation
-isn't very obvious, so I'd suggest to keep bvec_last_segment().
+--Apple-Mail=_6DAA99BE-CD7D-493C-85AD-DD18080505DA
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
 
-Thanks,
-Ming
+On Oct 30, 2018, at 9:39 PM, Vasily Averin <vvs@virtuozzo.com> wrote:
+> 
+> On 10/31/2018 04:30 AM, Andreas Dilger wrote:
+>> Could you please explain your statement below that on-stack
+>> initialization does not zero unspecified fields?  According
+>> to documents I found, for example:
+>> 
+>> https://gcc.gnu.org/onlinedocs/gcc/Designated-Inits.html
+>> 
+>> they *are* initialized to zero.
+> 
+> I did not know it,
+> I re-checked it in generated assembler code and found that you
+> are right and I was wrong.
+> 
+> Please drop this patch,
+> should I resend of rest of this patch set once again?
+
+I don't think it is necessary to resend the whole patch series.
+Ted should notice these emails on this patch and not apply it.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_6DAA99BE-CD7D-493C-85AD-DD18080505DA
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlvaS9kACgkQcqXauRfM
+H+APEQ/+LKwBcyDcl5jacJue16RzP2SkekzEfNoBT7Im5yphpPaqVHj2mnrMkeKZ
+SZ47lyRwtLTSahMGOK3jur1AIBg4pcdcBZzM8ydtIXnqs9Yqq3oCGQX1F0oz2aGQ
+FlLKwNRphxhHlv2GfTpKs0eCkhZXlgWiLCfTZW++w/Xi7mypDYenQFLaTaZfVIgC
+5z45X0KDaBy3oJWKT61EVAMlGVDJzD5oaFXUJyloi8iMgSGTV/Hlzrh+U7mw75nE
+ENfmSqMb5CHBaFVkFhlNUCg8VUvJJr1X/kR4UXdsN48xlnDkKDTNwXMVyat4NOCH
+6PX9cTAzRnngbjSxuvOvMy3/Ybov5K1mPWSr3FeKJFbXf0E2krMp8TjxOUGglsH5
+F9Eefhr+33zufHYnkO3NMiCBXqe+Wyoaw7SuoRZGvaRJzHlEDKjgT/xOBhs/eWWE
+iM/02LkXL2DGEmTS6WdW/BUMyNcCQWOWcZ11SsE04K1SpaKFhCWEr+dEMF+QDrYH
+h9phvwVGwCczEHDdMaisj2/t81nFeqiYBimSaYGIMo8Qvoe6Y6ozadlJw3iShNmP
+W+g2BOpii2Fl2KQq5WR+Cwewd9b+RpAsYELYqxiGtJL7Rw/zzCbsy9GMbRxO7hkU
+eClUvYutAekvi7CutkHIu0ngeHFAK/ti+zbeabJNlokHZUXkwnE=
+=aigz
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_6DAA99BE-CD7D-493C-85AD-DD18080505DA--
