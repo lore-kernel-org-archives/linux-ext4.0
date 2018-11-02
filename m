@@ -1,72 +1,73 @@
-Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:43034 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727359AbeK2PON (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Nov 2018 10:14:13 -0500
-Date: Wed, 28 Nov 2018 23:10:14 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        alexey.lyashkov@gmail.com
-Subject: Re: [PATCH v2] ext2fs: don't read group descriptors during e2label
-Message-ID: <20181129041014.GJ31885@thunk.org>
-References: <20181128204840.4544-1-artem.blagodarenko@gmail.com>
+Return-Path: <SRS0=yllL=NN=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lj1-f193.google.com ([209.85.208.193]:37987 "EHLO
+        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726008AbeKBUDz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2018 16:03:55 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181128204840.4544-1-artem.blagodarenko@gmail.com>
+References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
+ <20181021171414.22674-3-miguel.ojeda.sandonis@gmail.com> <CAGXu5j+3pR2mfcdbURv7MrPxUVjmjQEDRHH8BLpTNGiasJs1pg@mail.gmail.com>
+ <20181023053542.lsklua2p3lnbkqir@mwanda> <CANiq72nrd70qTxEAfxxuNHNoi19MBo=yrJnm9_EnfrpEMQHXCg@mail.gmail.com>
+In-Reply-To: <CANiq72nrd70qTxEAfxxuNHNoi19MBo=yrJnm9_EnfrpEMQHXCg@mail.gmail.com>
+From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
+Date: Fri, 2 Nov 2018 11:56:58 +0100
+Message-ID: <CANiq72k3rniqgoEqLwZxpTO0N9-BqkZKRJr_M-T7-y6khR03ww@mail.gmail.com>
+Subject: Re: [PATCH 2/2] Compiler Attributes: auxdisplay: panel: use __fallthrough
+To: Dan <dan.carpenter@oracle.com>
+Cc: Kees Cook <keescook@chromium.org>,
+        "Gustavo A. R. Silva" <gustavo@embeddedor.com>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Masahiro Yamada <yamada.masahiro@socionext.com>,
+        Michal Marek <michal.lkml@markovi.net>,
+        Steven Rostedt <rostedt@goodmis.org>,
+        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
+        Olof Johansson <olof@lxom.net>,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Paul Lawrence <paullawrence@google.com>,
+        Sandipan Das <sandipan@linux.vnet.ibm.com>,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Will Deacon <will.deacon@arm.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Paul Burton <paul.burton@mips.com>,
+        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
+        Martin Sebor <msebor@gmail.com>,
+        Christopher Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
+        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Stefan Agner <stefan@agner.ch>,
+        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 28, 2018 at 11:48:40PM +0300, Artem Blagodarenko wrote:
-> tune2fs is used to make e2label duties.  ext2fs_open2() reads group
-> descriptors which are not used during disk label obtaining, but
-> takes a lot of time on large partitions.
+On Fri, Nov 2, 2018 at 11:49 AM Miguel Ojeda
+<miguel.ojeda.sandonis@gmail.com> wrote:
+>
+> Thanks for checking! Let's wait then a few months and see if we can
+> get cppcheck/Eclipse to support it.
 
-Are you trying to speed up using e2label to *read* the label, or
-e2label to *write* the label?  How often do you need to write the
-label, and do you need to write the label with a dirty journal?
+In the meantime, saved here too:
 
-I really don't like this patch because it makes the
-EXT2_FLAG_JOURNAL_ONLY flag an **extremely** hazardous flag to use.
-If the application uses it wrong, it could lead to extremely serious,
-disastrous data loss.
+  https://github.com/ojeda/linux/tree/compiler-attributes-fallthrough
 
-In fact, I'm going to guess that you only care about reading the
-label, and you didn't even test using "tune2fs -L new_label
-/dev/large_file_system_with_precious_data".  Because if you did, the
-tune2fs -L would call ext2fs_mark_super_dirty(), and then
-ext2fs_close() would call ext2fs_flushfs(), which would write out all
-of the block groups, writing uninitialized trash into all of the block
-group descriptor blocks beyond the first one, and your large
-production file system would be very sad.
+rebased on top of e468f5c06b5e ("Merge tag
+'compiler-attributes-for-linus-4.20-rc1' of
+https://github.com/ojeda/linux").
 
-So, ah, NACK.  :-)
-
-If what you care about is "print label" case, what I would suggest is
-a new interface which simply reads the superblock into a struct
-ext2_super_block and calls ext2fs_swap_super() on it.  This will speed
-up the e2label read case.
-
-If you want to speed up the e2label write case when the file system is
-cleanly unmounted, we could have a new interface that writes out the
-superblock, and tune2fs would use it if the file system does not need
-to have a journal replay.  But if the journal does need to be
-replayed, we would need to do a full ext2fs_open2() call.
-
-When designing library interfaces, it's always important to imagine
-how an well-meaning programmer calling them might misuse them.
-Leaving land-mines for programmers to trip over --- especially when
-you trip over them yourself in the same patch which introduces the
-interfaces --- is just not a nice thing to do.  For your amusement,
-I'll leave you with:
-
-Rusty Rusell's writeup, "How Do I Make This Hard to Misuse":
-
-   https://ozlabs.org/~rusty/index.cgi/tech/2008-03-30.html
-
-And the flip side, his "What If I Don't Actually Like My Users?"
-
-   https://ozlabs.org/~rusty/index.cgi/tech/2008-04-01.html
-
-						- Ted
+Cheers,
+Miguel
