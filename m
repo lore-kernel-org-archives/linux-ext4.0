@@ -1,35 +1,194 @@
-Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:35318 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726551AbeK3TAW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Nov 2018 14:00:22 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id AEC472F47E
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 07:51:56 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Fri, 30 Nov 2018 07:51:56 +0000
-Message-ID: <bug-201685-13602-5WXb5bOhMu@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=yllL=NN=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:55272 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726104AbeKBSrZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2018 14:47:25 -0400
+Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wA29cetp117494
+        for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2018 05:40:51 -0400
+Received: from e06smtp07.uk.ibm.com (e06smtp07.uk.ibm.com [195.75.94.103])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2ngksx8xam-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Fri, 02 Nov 2018 05:40:51 -0400
+Received: from localhost
+        by e06smtp07.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Fri, 2 Nov 2018 09:40:48 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>
+Subject: Re: [PATCH v2 10/12] ext4: add basic fs-verity support
+Date: Fri, 02 Nov 2018 15:13:14 +0530
+In-Reply-To: <20181101225230.88058-11-ebiggers@kernel.org>
+References: <20181101225230.88058-1-ebiggers@kernel.org> <20181101225230.88058-11-ebiggers@kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 7Bit
+Content-Type: text/plain; charset="us-ascii"
+Message-Id: <2168901.PE78DCQIza@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Friday, November 2, 2018 4:22:28 AM IST Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> Add basic fs-verity support to ext4.  fs-verity is a filesystem feature
+> that enables transparent integrity protection and authentication of
+> read-only files.  It uses a dm-verity like mechanism at the file level:
+> a Merkle tree is used to verify any block in the file in log(filesize)
+> time.  It is implemented mainly by helper functions in fs/verity/.
+> See Documentation/filesystems/fsverity.rst for details.
+> 
+> This patch adds everything except the data verification hooks that will
+> needed in ->readpages().
+> 
+> On ext4, enabling fs-verity on a file requires that the filesystem has
+> the 'verity' feature, e.g. that it was formatted with
+> 'mkfs.ext4 -O verity' or had 'tune2fs -O verity' run on it.
+> This requires e2fsprogs 1.44.4-2 or later.
+> 
+> In ext4, we choose to retain the fs-verity metadata past the end of the
+> file rather than trying to move it into an external inode xattr, since
+> in practice keeping the metadata in-line actually results in the
+> simplest and most efficient implementation.  One non-obvious advantage
+> of keeping the verity metadata in-line is that when fs-verity is
+> combined with fscrypt, the verity metadata naturally gets encrypted too;
+> this is actually necessary because it contains hashes of the plaintext.
+> 
+> We also choose to keep the on-disk i_size equal to the original file
+> size, in order to make the 'verity' feature a RO_COMPAT feature.  Thus,
+> ext4 has to find the fsverity_footer by looking in the last extent.
+> 
+> Co-developed-by: Theodore Ts'o <tytso@mit.edu>
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  fs/ext4/Kconfig | 20 +++++++++++
+>  fs/ext4/ext4.h  | 20 ++++++++++-
+>  fs/ext4/file.c  |  6 ++++
+>  fs/ext4/inode.c |  8 +++++
+>  fs/ext4/ioctl.c | 12 +++++++
+>  fs/ext4/super.c | 91 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/ext4/sysfs.c |  6 ++++
+>  7 files changed, 162 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
+> index a453cc87082b5..5a76125ac0f8a 100644
+> --- a/fs/ext4/Kconfig
+> +++ b/fs/ext4/Kconfig
+> @@ -111,6 +111,26 @@ config EXT4_FS_ENCRYPTION
+>  	default y
+>  	depends on EXT4_ENCRYPTION
+> 
+> +config EXT4_FS_VERITY
+> +	bool "Ext4 Verity"
+> +	depends on EXT4_FS
+> +	select FS_VERITY
+> +	help
+> +	  This option enables fs-verity for ext4.  fs-verity is the
+> +	  dm-verity mechanism implemented at the file level.  Userspace
+> +	  can append a Merkle tree (hash tree) to a file, then enable
+> +	  fs-verity on the file.  ext4 will then transparently verify
+> +	  any data read from the file against the Merkle tree.  The file
+> +	  is also made read-only.
+> +
+> +	  This serves as an integrity check, but the availability of the
+> +	  Merkle tree root hash also allows efficiently supporting
+> +	  various use cases where normally the whole file would need to
+> +	  be hashed at once, such as auditing and authenticity
+> +	  verification (appraisal).
+> +
+> +	  If unsure, say N.
+> +
+>  config EXT4_DEBUG
+>  	bool "EXT4 debugging support"
+>  	depends on EXT4_FS
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 12f90d48ba613..e5475a629ed80 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -43,6 +43,9 @@
+>  #define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_EXT4_FS_ENCRYPTION)
+>  #include <linux/fscrypt.h>
+> 
+> +#define __FS_HAS_VERITY IS_ENABLED(CONFIG_EXT4_FS_VERITY)
+> +#include <linux/fsverity.h>
+> +
+>  #include <linux/compiler.h>
+> 
+>  /* Until this gets included into linux/compiler-gcc.h */
+> @@ -405,6 +408,7 @@ struct flex_groups {
+>  #define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
+>  #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
+>  #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
+> +#define EXT4_VERITY_FL			0x00100000 /* Verity protected inode */
+>  #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
+>  #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
+>  #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
+> @@ -472,6 +476,7 @@ enum {
+>  	EXT4_INODE_TOPDIR	= 17,	/* Top of directory hierarchies*/
+>  	EXT4_INODE_HUGE_FILE	= 18,	/* Set to each huge file */
+>  	EXT4_INODE_EXTENTS	= 19,	/* Inode uses extents */
+> +	EXT4_INODE_VERITY	= 20,	/* Verity protected inode */
+>  	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
+>  	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
+>  	EXT4_INODE_INLINE_DATA	= 28,	/* Data in inode. */
+> @@ -517,6 +522,7 @@ static inline void ext4_check_flag_values(void)
+>  	CHECK_FLAG_VALUE(TOPDIR);
+>  	CHECK_FLAG_VALUE(HUGE_FILE);
+>  	CHECK_FLAG_VALUE(EXTENTS);
+> +	CHECK_FLAG_VALUE(VERITY);
+>  	CHECK_FLAG_VALUE(EA_INODE);
+>  	CHECK_FLAG_VALUE(EOFBLOCKS);
+>  	CHECK_FLAG_VALUE(INLINE_DATA);
+> @@ -1654,6 +1660,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+>  #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
+>  #define EXT4_FEATURE_RO_COMPAT_READONLY		0x1000
+>  #define EXT4_FEATURE_RO_COMPAT_PROJECT		0x2000
+> +#define EXT4_FEATURE_RO_COMPAT_VERITY		0x8000
+> 
+>  #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
+>  #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
+> @@ -1742,6 +1749,7 @@ EXT4_FEATURE_RO_COMPAT_FUNCS(bigalloc,		BIGALLOC)
+>  EXT4_FEATURE_RO_COMPAT_FUNCS(metadata_csum,	METADATA_CSUM)
+>  EXT4_FEATURE_RO_COMPAT_FUNCS(readonly,		READONLY)
+>  EXT4_FEATURE_RO_COMPAT_FUNCS(project,		PROJECT)
+> +EXT4_FEATURE_RO_COMPAT_FUNCS(verity,		VERITY)
+> 
+>  EXT4_FEATURE_INCOMPAT_FUNCS(compression,	COMPRESSION)
+>  EXT4_FEATURE_INCOMPAT_FUNCS(filetype,		FILETYPE)
+> @@ -1797,7 +1805,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
+>  					 EXT4_FEATURE_RO_COMPAT_BIGALLOC |\
+>  					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|\
+>  					 EXT4_FEATURE_RO_COMPAT_QUOTA |\
+> -					 EXT4_FEATURE_RO_COMPAT_PROJECT)
+> +					 EXT4_FEATURE_RO_COMPAT_PROJECT |\
+> +					 EXT4_FEATURE_RO_COMPAT_VERITY)
+> 
+>  #define EXTN_FEATURE_FUNCS(ver) \
+>  static inline bool ext4_has_unknown_ext##ver##_compat_features(struct super_block *sb) \
+> @@ -2293,6 +2302,15 @@ static inline bool ext4_encrypted_inode(struct inode *inode)
+>  	return ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT);
+>  }
+> 
+> +static inline bool ext4_verity_inode(struct inode *inode)
+> +{
+> +#ifdef CONFIG_EXT4_FS_VERITY
+> +	return ext4_test_inode_flag(inode, EXT4_INODE_VERITY);
+> +#else
+> +	return false;
+> +#endif
+> +}
+> +
 
---- Comment #82 from Hao Wei Tee (angelsl@in04.sg) ---
-I fear the bug might be caused by some interaction between something new in
-fs/ext4 and something new elsewhere... Sounds unlikely, but it's possible.
+Hi Eric,
 
-Since 4.18 ext4 seems to work on 4.19 kernel, maybe it's worth trying 4.19 ext4
-on 4.18 kernel (before a bisect), just to make sure the bisect won't lead us
-down a false trail?
+Can you please explain as to why we check for the presence of
+EXT4_INODE_VERITY flag only when fsverity is enabled during kernel build?
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+chandan
