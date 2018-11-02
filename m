@@ -1,79 +1,101 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f182.google.com ([209.85.214.182]:39485 "EHLO
-        mail-pl1-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2390166AbeKQCx7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 21:53:59 -0500
-Received: by mail-pl1-f182.google.com with SMTP id b5-v6so11415962pla.6
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Nov 2018 08:40:54 -0800 (PST)
-Date: Fri, 16 Nov 2018 08:40:51 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 19/19] block: kill BLK_MQ_F_SG_MERGE
-Message-ID: <20181116164051.GX23828@vader>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-20-ming.lei@redhat.com>
+Return-Path: <SRS0=yllL=NN=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-io1-f72.google.com ([209.85.166.72]:44076 "EHLO
+        mail-io1-f72.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726550AbeKCAqd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2018 20:46:33 -0400
+Received: by mail-io1-f72.google.com with SMTP id u5-v6so2032077iol.11
+        for <linux-ext4@vger.kernel.org>; Fri, 02 Nov 2018 08:39:04 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-20-ming.lei@redhat.com>
+Date: Fri, 02 Nov 2018 08:39:03 -0700
+Message-ID: <000000000000c71dcf0579b0553f@google.com>
+Subject: KASAN: use-after-free Read in ext4_xattr_set_entry (2)
+From: syzbot <syzbot+4a39a025912b265cacef@syzkaller.appspotmail.com>
+To: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        tytso@mit.edu
+Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:53:06PM +0800, Ming Lei wrote:
-> QUEUE_FLAG_NO_SG_MERGE has been killed, so kill BLK_MQ_F_SG_MERGE too.
-> 
-> Cc: Dave Chinner <dchinner@redhat.com>
-> Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> Cc: Mike Snitzer <snitzer@redhat.com>
-> Cc: dm-devel@redhat.com
-> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> Cc: linux-fsdevel@vger.kernel.org
-> Cc: Shaohua Li <shli@kernel.org>
-> Cc: linux-raid@vger.kernel.org
-> Cc: linux-erofs@lists.ozlabs.org
-> Cc: David Sterba <dsterba@suse.com>
-> Cc: linux-btrfs@vger.kernel.org
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: linux-xfs@vger.kernel.org
-> Cc: Gao Xiang <gaoxiang25@huawei.com>
-> Cc: Christoph Hellwig <hch@lst.de>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Coly Li <colyli@suse.de>
-> Cc: linux-bcache@vger.kernel.org
-> Cc: Boaz Harrosh <ooo@electrozaur.com>
-> Cc: Bob Peterson <rpeterso@redhat.com>
-> Cc: cluster-devel@redhat.com
+Hello,
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
+syzbot found the following crash on:
 
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> ---
->  block/blk-mq-debugfs.c       | 1 -
->  drivers/block/loop.c         | 2 +-
->  drivers/block/nbd.c          | 2 +-
->  drivers/block/rbd.c          | 2 +-
->  drivers/block/skd_main.c     | 1 -
->  drivers/block/xen-blkfront.c | 2 +-
->  drivers/md/dm-rq.c           | 2 +-
->  drivers/mmc/core/queue.c     | 3 +--
->  drivers/scsi/scsi_lib.c      | 2 +-
->  include/linux/blk-mq.h       | 1 -
->  10 files changed, 7 insertions(+), 11 deletions(-)
+HEAD commit:    fb1c592cf4c9 Merge tag 'char-misc-4.19-rc7' of git://git.k..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=11431406400000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=c0af03fe452b65fb
+dashboard link: https://syzkaller.appspot.com/bug?extid=4a39a025912b265cacef
+compiler:       gcc (GCC) 8.0.1 20180413 (experimental)
 
-[snip]
+Unfortunately, I don't have any reproducer for this crash yet.
+
+IMPORTANT: if you fix the bug, please add the following tag to the commit:
+Reported-by: syzbot+4a39a025912b265cacef@syzkaller.appspotmail.com
+
+==================================================================
+BUG: KASAN: use-after-free in ext4_xattr_set_entry+0x2f6a/0x3d70  
+fs/ext4/xattr.c:1600
+Read of size 4 at addr ffff8801a4db491b by task syz-executor0/14364
+
+CPU: 1 PID: 14364 Comm: syz-executor0 Not tainted 4.19.0-rc6+ #51
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS  
+Google 01/01/2011
+Call Trace:
+  __dump_stack lib/dump_stack.c:77 [inline]
+  dump_stack+0x1c4/0x2b4 lib/dump_stack.c:113
+  print_address_description.cold.8+0x9/0x1ff mm/kasan/report.c:256
+  kasan_report_error mm/kasan/report.c:354 [inline]
+  kasan_report.cold.9+0x242/0x309 mm/kasan/report.c:412
+  __asan_report_load4_noabort+0x14/0x20 mm/kasan/report.c:432
+  ext4_xattr_set_entry+0x2f6a/0x3d70 fs/ext4/xattr.c:1600
+  ext4_xattr_ibody_set+0x8a/0x2c0 fs/ext4/xattr.c:2240
+  ext4_xattr_set_handle+0xb8f/0x1650 fs/ext4/xattr.c:2394
+  ext4_initxattrs+0xbd/0x120 fs/ext4/xattr_security.c:43
+  security_inode_init_security+0x1d1/0x3d0 security/security.c:502
+  ext4_init_security+0x34/0x40 fs/ext4/xattr_security.c:57
+  __ext4_new_inode+0x4a6a/0x65b0 fs/ext4/ialloc.c:1160
+  ext4_symlink+0x4b7/0x1130 fs/ext4/namei.c:3093
+  vfs_symlink+0x37a/0x5d0 fs/namei.c:4127
+  do_symlinkat+0x242/0x2d0 fs/namei.c:4154
+  __do_sys_symlink fs/namei.c:4173 [inline]
+  __se_sys_symlink fs/namei.c:4171 [inline]
+  __x64_sys_symlink+0x59/0x80 fs/namei.c:4171
+  do_syscall_64+0x1b9/0x820 arch/x86/entry/common.c:290
+  entry_SYSCALL_64_after_hwframe+0x49/0xbe
+RIP: 0033:0x4572a7
+Code: 64 8b 5d 00 e9 14 fd ff ff 4c 8b 74 24 30 64 c7 45 00 22 00 00 00 bb  
+22 00 00 00 e9 fd fc ff ff 0f 1f 00 b8 58 00 00 00 0f 05 <48> 3d 01 f0 ff  
+ff 0f 83 bd b6 fb ff c3 66 2e 0f 1f 84 00 00 00 00
+RSP: 002b:00007ffcaac01628 EFLAGS: 00000206 ORIG_RAX: 0000000000000058
+RAX: ffffffffffffffda RBX: 0000000000000000 RCX: 00000000004572a7
+RDX: 00007ffcaac016a7 RSI: 00000000004bcfd0 RDI: 00007ffcaac01690
+RBP: 0000000000000000 R08: 0000000000000000 R09: 0000000000000017
+R10: 0000000000000075 R11: 0000000000000206 R12: 0000000000000000
+R13: 0000000000000001 R14: 0000000000000b01 R15: 0000000000000000
+
+The buggy address belongs to the page:
+page:ffffea0006936d00 count:0 mapcount:0 mapping:0000000000000000 index:0x1
+flags: 0x2fffc0000000000()
+raw: 02fffc0000000000 dead000000000100 dead000000000200 0000000000000000
+raw: 0000000000000001 0000000000000000 00000000ffffffff 0000000000000000
+page dumped because: kasan: bad access detected
+
+Memory state around the buggy address:
+  ffff8801a4db4800: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ffff8801a4db4880: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+> ffff8801a4db4900: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+                             ^
+  ffff8801a4db4980: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+  ffff8801a4db4a00: ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff
+==================================================================
+
+
+---
+This bug is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this bug report. See:
+https://goo.gl/tpsmEJ#bug-status-tracking for how to communicate with  
+syzbot.
