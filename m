@@ -1,60 +1,90 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:36660 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726784AbeKSSrL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 13:47:11 -0500
-Date: Mon, 19 Nov 2018 09:24:14 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
-        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: Re: [PATCH V10 08/19] btrfs: move bio_pages_all() to btrfs
-Message-ID: <20181119082414.GA10678@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-9-ming.lei@redhat.com> <20181116133845.GG3165@lst.de> <20181119081922.GB16736@ming.t460p>
+Return-Path: <SRS0=yllL=NN=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lf1-f68.google.com ([209.85.167.68]:40507 "EHLO
+        mail-lf1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725987AbeKBK54 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2018 06:57:56 -0400
+Received: by mail-lf1-f68.google.com with SMTP id n3-v6so272165lfe.7
+        for <linux-ext4@vger.kernel.org>; Thu, 01 Nov 2018 18:52:31 -0700 (PDT)
+Received: from mail-lf1-f54.google.com (mail-lf1-f54.google.com. [209.85.167.54])
+        by smtp.gmail.com with ESMTPSA id w21-v6sm686814lfe.73.2018.11.01.18.52.29
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 01 Nov 2018 18:52:30 -0700 (PDT)
+Received: by mail-lf1-f54.google.com with SMTP id p86so279014lfg.5
+        for <linux-ext4@vger.kernel.org>; Thu, 01 Nov 2018 18:52:29 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181119081922.GB16736@ming.t460p>
+References: <20181022105944.GA1411@gmail.com> <CAHk-=whpBiV5sVTvPsWOVx5WYOouxbNG1fWeCdpK4oFiaH0Zqg@mail.gmail.com>
+In-Reply-To: <CAHk-=whpBiV5sVTvPsWOVx5WYOouxbNG1fWeCdpK4oFiaH0Zqg@mail.gmail.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Thu, 1 Nov 2018 18:46:17 -0700
+Message-ID: <CAHk-=widcG7zGELniGoqjPyBZAHehA_Gyi2n1aRO94G7SBzwNQ@mail.gmail.com>
+Subject: Re: [GIT PULL] Compiler Attributes for v4.20-rc1
+To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>
+Cc: dan.carpenter@oracle.com, adilger.kernel@dilger.ca,
+        yamada.masahiro@socionext.com, michal.lkml@markovi.net,
+        rostedt@goodmis.org, mchehab+samsung@kernel.org, olof@lxom.net,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Kees Cook <keescook@chromium.org>, tglx@linutronix.de,
+        Ingo Molnar <mingo@kernel.org>, paullawrence@google.com,
+        sandipan@linux.vnet.ibm.com, andreyknvl@google.com,
+        David Woodhouse <dwmw2@infradead.org>, will.deacon@arm.com,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        paul.burton@mips.com, rientjes@google.com, w@1wt.eu,
+        msebor@gmail.com, sparse@chrisli.org,
+        Jonathan Corbet <corbet@lwn.net>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
+        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
+        stefan@agner.ch, luc.vanoostenryck@gmail.com,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 19, 2018 at 04:19:24PM +0800, Ming Lei wrote:
-> On Fri, Nov 16, 2018 at 02:38:45PM +0100, Christoph Hellwig wrote:
-> > On Thu, Nov 15, 2018 at 04:52:55PM +0800, Ming Lei wrote:
-> > > BTRFS is the only user of this helper, so move this helper into
-> > > BTRFS, and implement it via bio_for_each_segment_all(), since
-> > > bio->bi_vcnt may not equal to number of pages after multipage bvec
-> > > is enabled.
-> > 
-> > btrfs only uses the value to check if it is larger than 1.  No amount
-> > of multipage bio merging should ever make bi_vcnt go from 0 to 1 or
-> > vice versa.
-> 
-> Could you explain a bit why?
-> 
-> Suppose 2 physically continuous pages are added to this bio, .bi_vcnt
-> can be 1 in case of multi-page bvec, but it is 2 in case of single-page
-> bvec.
+On Thu, Nov 1, 2018 at 10:06 AM Linus Torvalds
+<torvalds@linux-foundation.org> wrote:
+>
+> The logic for using __no_sanitize_address *used* to be
+>
+>     #if GCC_VERSION >= 40902
 
-True, I did think of 0 vs 1.
+Ok, looking around, I think this has less to do with the attribute
+being recognized, and simply just being because KASAN itself wants
+gcc-4.9.2.
 
-The magic here in btrfs still doesn't make much sense.  The comments
-down in btrfs_check_repairable talk about sectors, so it might be a
-leftover from the blocksize == PAGE_SIZE days (assuming those patches
-actually got merged).  I'd like to have the btrfs folks chime in,
-but in the end we should probably check if the bio was larger than
-a single sector here.
+I'm actually not seeing that KASAN dependency in the Kconfig scripts
+(and it probably _should_ be now that we can just add compiler version
+dependencies there), but that explains why the gcc version check is
+different from "gcc supports the attribute".
+
+Anyway, I decided to do the merge by just getting rid of the
+GCC_VERSION check around __no_sanitize_address_or_inline entirely. If
+you enable KASAN, then a function with that marking just won't be
+marked inline.
+
+End result: pulled. I'm as confused as you are as to why
+__no_sanitize_address_or_inline is in the gcc header, but I guess it
+ends up being the same issue: KASAN depends on gcc even if that
+dependency doesn't seem to be spelled out in lib/Kconfig.kasan.
+
+So I _think_ the KASAN config should have a
+
+    depends on CC_IS_GCC && GCC_VERSION >= 40902
+
+on it, but maybe there is something I'm missing.
+
+But from a pull standpoint, I don't want to mess with those
+(unrelated) issues, so I just kept the merge resolution as simple and
+straightforward as possible.
+
+Miguel, please do double-check the merge (it's not pushed out yet, I'm
+doing the usual build tests etc first).
+
+                    Linus
