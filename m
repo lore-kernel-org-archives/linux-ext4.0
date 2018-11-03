@@ -1,77 +1,41 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58280 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=UtPy=NO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:33626 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726224AbeKZNNv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Nov 2018 08:13:51 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V12 18/20] block: document usage of bio iterator helpers
-Date: Mon, 26 Nov 2018 10:17:18 +0800
-Message-Id: <20181126021720.19471-19-ming.lei@redhat.com>
-In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
-References: <20181126021720.19471-1-ming.lei@redhat.com>
+        id S1726430AbeKDFkb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 4 Nov 2018 01:40:31 -0400
+Date: Sat, 3 Nov 2018 16:28:06 -0400
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Vasily Averin <vvs@virtuozzo.com>
+Cc: linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org,
+        Yongqiang Yang <xiaoqiangnk@gmail.com>,
+        Yongqiang Yang <yangyongqiang01@baidu.com>
+Subject: Re: [PATCH v2 02/11] ext4 resize: missing brelse() after errors in
+ set_flexbg_block_bitmap()
+Message-ID: <20181103202806.GF28850@thunk.org>
+References: <cover.1540935522.git.vvs@virtuozzo.com>
+ <de9191d6-1cb1-6725-f378-b886c9cd06d0@virtuozzo.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <de9191d6-1cb1-6725-f378-b886c9cd06d0@virtuozzo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now multi-page bvec is supported, some helpers may return page by
-page, meantime some may return segment by segment, this patch
-documents the usage.
+On Wed, Oct 31, 2018 at 12:57:45AM +0300, Vasily Averin wrote:
+> Fixes 33afdcc5402d ("ext4: add a function which sets up group blocks ...") # 3.3
+> 
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- Documentation/block/biovecs.txt | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+Thanks, applied.  I adjusted the patch summary:
 
-diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
-index 25689584e6e0..ce6eccaf5df7 100644
---- a/Documentation/block/biovecs.txt
-+++ b/Documentation/block/biovecs.txt
-@@ -117,3 +117,28 @@ Other implications:
-    size limitations and the limitations of the underlying devices. Thus
-    there's no need to define ->merge_bvec_fn() callbacks for individual block
-    drivers.
-+
-+Usage of helpers:
-+=================
-+
-+* The following helpers whose names have the suffix of "_all" can only be used
-+on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
-+shouldn't use them because the bio may have been split before it reached the
-+driver.
-+
-+	bio_for_each_segment_all()
-+	bio_first_bvec_all()
-+	bio_first_page_all()
-+	bio_last_bvec_all()
-+
-+* The following helpers iterate over single-page segment. The passed 'struct
-+bio_vec' will contain a single-page IO vector during the iteration
-+
-+	bio_for_each_segment()
-+	bio_for_each_segment_all()
-+
-+* The following helpers iterate over multi-page bvec. The passed 'struct
-+bio_vec' will contain a multi-page IO vector during the iteration
-+
-+	bio_for_each_bvec()
-+	rq_for_each_bvec()
--- 
-2.9.5
+    ext4: add missing brelse() in set_flexbg_block_bitmap()'s error path
+
+Also please note that properly Fixes should have a colon, and to add
+Cc: stable@kernel.org to trailer to make sure they get backported:
+    
+    Fixes: 33afdcc5402d ("ext4: add a function which sets up group blocks ...")
+    Cc: stable@kernel.org # 3.3
+
+						- Ted
