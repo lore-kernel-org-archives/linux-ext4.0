@@ -1,171 +1,118 @@
-Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:57858 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1730466AbeK0V1I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 27 Nov 2018 16:27:08 -0500
-Date: Tue, 27 Nov 2018 11:29:39 +0100
-From: Jan Kara <jack@suse.cz>
-To: Ted Tso <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-        "Hunter, Adrian" <adrian.hunter@intel.com>, Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH v2] jbd2: Avoid long hold times of j_state_lock while
- committing a transaction
-Message-ID: <20181127102939.GG16301@quack2.suse.cz>
-References: <20181108122938.10688-1-jack@suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181108122938.10688-1-jack@suse.cz>
+Return-Path: <SRS0=Yxos=NQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:34918 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2387420AbeKFB4o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 5 Nov 2018 20:56:44 -0500
+From: Brian Foster <bfoster@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc: Dave Chinner <david@fromorbit.com>
+Subject: [PATCH] mm: don't break integrity writeback on ->writepage() error
+Date: Mon,  5 Nov 2018 11:36:13 -0500
+Message-Id: <20181105163613.7542-1-bfoster@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 08-11-18 13:29:38, Jan Kara wrote:
-> We can hold j_state_lock for writing at the beginning of
-> jbd2_journal_commit_transaction() for a rather long time (reportedly for
-> 30 ms) due cleaning revoke bits of all revoked buffers under it. The
-> handling of revoke tables as well as cleaning of t_reserved_list, and
-> checkpoint lists does not need j_state_lock for anything. It is only
-> needed to prevent new handles from joining the transaction. Generally
-> T_LOCKED transaction state prevents new handles from joining the
-> transaction - except for reserved handles which have to allowed to join
-> while we wait for other handles to complete.
-> 
-> To prevent reserved handles from joining the transaction while cleaning
-> up lists, add new transaction state T_SWITCH and watch for it when
-> starting reserved handles. With this we can just drop the lock for
-> operations that don't need it.
-> 
-> Reported-and-tested-by: Adrian Hunter <adrian.hunter@intel.com>
-> Suggested-by: "Theodore Y. Ts'o" <tytso@mit.edu>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+write_cache_pages() currently breaks out of the writepage loop in
+the event of a ->writepage() error. This causes problems for
+integrity writeback on XFS in the event of a persistent error as XFS
+expects to process every dirty+delalloc page such that it can
+discard delalloc blocks when real block allocation fails.  Failure
+to handle all delalloc pages leaves the filesystem in an
+inconsistent state if the integrity writeback happens to be due to
+an unmount, for example.
 
-Ping?
+Update write_cache_pages() to continue processing pages for
+integrity writeback regardless of ->writepage() errors. Save the
+first encountered error and return it once complete. This
+facilitates XFS or any other fs that expects integrity writeback to
+process the entire set of dirty pages regardless of errors.
+Background writeback continues to exit on the first error
+encountered.
 
-								Honza
+Signed-off-by: Brian Foster <bfoster@redhat.com>
+---
 
-> ---
->  fs/jbd2/commit.c      |  3 +++
->  fs/jbd2/transaction.c | 43 ++++++++++++++++++++++++++++++++++++++-----
->  include/linux/jbd2.h  |  1 +
->  3 files changed, 42 insertions(+), 5 deletions(-)
-> 
-> Changes since v1:
-> - fixed handling of reserved handles
-> - rebased on top of 4.20-rc1
-> - tested dioread-nolock xfstest run
-> 
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 150cc030b4d7..2eb55c3361a8 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -439,6 +439,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
->  		finish_wait(&journal->j_wait_updates, &wait);
->  	}
->  	spin_unlock(&commit_transaction->t_handle_lock);
-> +	commit_transaction->t_state = T_SWITCH;
-> +	write_unlock(&journal->j_state_lock);
->  
->  	J_ASSERT (atomic_read(&commit_transaction->t_outstanding_credits) <=
->  			journal->j_max_transaction_buffers);
-> @@ -505,6 +507,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
->  	atomic_sub(atomic_read(&journal->j_reserved_credits),
->  		   &commit_transaction->t_outstanding_credits);
->  
-> +	write_lock(&journal->j_state_lock);
->  	trace_jbd2_commit_flushing(journal, commit_transaction);
->  	stats.run.rs_flushing = jiffies;
->  	stats.run.rs_locked = jbd2_time_diff(stats.run.rs_locked,
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index c0b66a7a795b..116d8251fbff 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -138,9 +138,9 @@ static inline void update_t_max_wait(transaction_t *transaction,
->  }
->  
->  /*
-> - * Wait until running transaction passes T_LOCKED state. Also starts the commit
-> - * if needed. The function expects running transaction to exist and releases
-> - * j_state_lock.
-> + * Wait until running transaction passes to T_FLUSH state and new transaction
-> + * can thus be started. Also starts the commit if needed. The function expects
-> + * running transaction to exist and releases j_state_lock.
->   */
->  static void wait_transaction_locked(journal_t *journal)
->  	__releases(journal->j_state_lock)
-> @@ -160,6 +160,32 @@ static void wait_transaction_locked(journal_t *journal)
->  	finish_wait(&journal->j_wait_transaction_locked, &wait);
->  }
->  
-> +/*
-> + * Wait until running transaction transitions from T_SWITCH to T_FLUSH
-> + * state and new transaction can thus be started. The function releases
-> + * j_state_lock.
-> + */
-> +static void wait_transaction_switching(journal_t *journal)
-> +	__releases(journal->j_state_lock)
-> +{
-> +	DEFINE_WAIT(wait);
-> +
-> +	if (WARN_ON(!journal->j_running_transaction ||
-> +		    journal->j_running_transaction->t_state != T_SWITCH))
-> +		return;
-> +	prepare_to_wait(&journal->j_wait_transaction_locked, &wait,
-> +			TASK_UNINTERRUPTIBLE);
-> +	read_unlock(&journal->j_state_lock);
-> +	/*
-> +	 * We don't call jbd2_might_wait_for_commit() here as there's no
-> +	 * waiting for outstanding handles happening anymore in T_SWITCH state
-> +	 * and handling of reserved handles actually relies on that for
-> +	 * correctness.
-> +	 */
-> +	schedule();
-> +	finish_wait(&journal->j_wait_transaction_locked, &wait);
-> +}
-> +
->  static void sub_reserved_credits(journal_t *journal, int blocks)
->  {
->  	atomic_sub(blocks, &journal->j_reserved_credits);
-> @@ -183,7 +209,8 @@ static int add_transaction_credits(journal_t *journal, int blocks,
->  	 * If the current transaction is locked down for commit, wait
->  	 * for the lock to be released.
->  	 */
-> -	if (t->t_state == T_LOCKED) {
-> +	if (t->t_state != T_RUNNING) {
-> +		WARN_ON_ONCE(t->t_state >= T_FLUSH);
->  		wait_transaction_locked(journal);
->  		return 1;
->  	}
-> @@ -360,8 +387,14 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
->  		/*
->  		 * We have handle reserved so we are allowed to join T_LOCKED
->  		 * transaction and we don't have to check for transaction size
-> -		 * and journal space.
-> +		 * and journal space. But we still have to wait while running
-> +		 * transaction is being switched to a committing one as it
-> +		 * won't wait for any handles anymore.
->  		 */
-> +		if (transaction->t_state == T_SWITCH) {
-> +			wait_transaction_switching(journal);
-> +			goto repeat;
-> +		}
->  		sub_reserved_credits(journal, blocks);
->  		handle->h_reserved = 0;
->  	}
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index b708e5169d1d..118d00a64184 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -575,6 +575,7 @@ struct transaction_s
->  	enum {
->  		T_RUNNING,
->  		T_LOCKED,
-> +		T_SWITCH,
->  		T_FLUSH,
->  		T_COMMIT,
->  		T_COMMIT_DFLUSH,
-> -- 
-> 2.16.4
-> 
+Hi all,
+
+This was actually first posted[1] as a patch in XFS to not return errors
+from ->writepage() when called via write_cache_pages(). After some
+discussion with Dave, it was suggested that this is a
+write_cache_pages() bug rather than one in XFS. I think that could go
+either way, so I'm floating this patch as an alternative. FWIW, that
+same thread also includes a supporting patch for an fstests test[2] that
+demonstrates the original problem this patch attempts to resolve.
+
+This applies on top of v4.19 and I've tested it against XFS and ext4
+(defaults) and not seen any regressions. Note that it's not clear to me
+if ext4 is affected by the same or similar problem and I skipped btrfs
+since it seems to duplicate all of the associated writeback code.
+
+Finally, I'm not totally sure about the ->for_sync bit in the error
+handling logic. I included it out of caution to try and handle any sort
+of potential (->sync_mode == WB_SYNC_NONE && ->for_sync == 1)
+combination, but that doesn't appear to be used anywhere that I can see.
+Instead, ->for_sync seems more like an exceptional case of ->sync_mode
+== WB_SYNC ALL.
+
+Thoughts?
+
+Brian
+
+[1] https://marc.info/?l=linux-xfs&m=154102085505264&w=2
+[2] https://marc.info/?l=fstests&m=154031860022439&w=2
+
+ mm/page-writeback.c | 19 ++++++++++++-------
+ 1 file changed, 12 insertions(+), 7 deletions(-)
+
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 84ae9bf5858a..9dbbf9465ff9 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2156,6 +2156,7 @@ int write_cache_pages(struct address_space *mapping,
+ {
+ 	int ret = 0;
+ 	int done = 0;
++	int error;
+ 	struct pagevec pvec;
+ 	int nr_pages;
+ 	pgoff_t uninitialized_var(writeback_index);
+@@ -2236,25 +2237,29 @@ int write_cache_pages(struct address_space *mapping,
+ 				goto continue_unlock;
+ 
+ 			trace_wbc_writepage(wbc, inode_to_bdi(mapping->host));
+-			ret = (*writepage)(page, wbc, data);
+-			if (unlikely(ret)) {
+-				if (ret == AOP_WRITEPAGE_ACTIVATE) {
++			error = (*writepage)(page, wbc, data);
++			if (unlikely(error)) {
++				if (error == AOP_WRITEPAGE_ACTIVATE) {
+ 					unlock_page(page);
+-					ret = 0;
+-				} else {
++					error = 0;
++				} else if (wbc->sync_mode != WB_SYNC_ALL &&
++					   !wbc->for_sync) {
+ 					/*
+-					 * done_index is set past this page,
+-					 * so media errors will not choke
++					 * done_index is set past this page, so
++					 * media errors will not choke
+ 					 * background writeout for the entire
+ 					 * file. This has consequences for
+ 					 * range_cyclic semantics (ie. it may
+ 					 * not be suitable for data integrity
+ 					 * writeout).
+ 					 */
++					ret = error;
+ 					done_index = page->index + 1;
+ 					done = 1;
+ 					break;
+ 				}
++				if (!ret)
++					ret = error;
+ 			}
+ 
+ 			/*
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.17.2
