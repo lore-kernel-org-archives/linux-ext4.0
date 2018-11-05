@@ -1,191 +1,63 @@
-Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail2-drop-p1.anu.edu.au ([130.56.64.27]:37350 "EHLO
-        mail2-drop-p1.anu.edu.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726111AbeKMOmf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2018 09:42:35 -0500
-From: Li Dongyang <dongyangli@ddn.com>
-To: linux-ext4@vger.kernel.org
-Cc: adilger@dilger.ca
-Subject: [PATCH v2] e2fsck: check xattr 'system.data' before setting inline_data feature
-Date: Tue, 13 Nov 2018 15:46:03 +1100
-Message-Id: <20181113044603.1089-1-dongyangli@ddn.com>
+Return-Path: <SRS0=Yxos=NQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lj1-f194.google.com ([209.85.208.194]:32792 "EHLO
+        mail-lj1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387475AbeKFBnF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Nov 2018 20:43:05 -0500
+Received: by mail-lj1-f194.google.com with SMTP id v1-v6so2367656ljd.0
+        for <linux-ext4@vger.kernel.org>; Mon, 05 Nov 2018 08:22:38 -0800 (PST)
+Received: from mail-lf1-f50.google.com (mail-lf1-f50.google.com. [209.85.167.50])
+        by smtp.gmail.com with ESMTPSA id z195-v6sm6902373lff.82.2018.11.05.08.22.35
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 05 Nov 2018 08:22:36 -0800 (PST)
+Received: by mail-lf1-f50.google.com with SMTP id p86so6585836lfg.5
+        for <linux-ext4@vger.kernel.org>; Mon, 05 Nov 2018 08:22:35 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20181022105944.GA1411@gmail.com> <CAHk-=whpBiV5sVTvPsWOVx5WYOouxbNG1fWeCdpK4oFiaH0Zqg@mail.gmail.com>
+ <29dba7c2-f612-7b35-d665-9939d7e10eb8@virtuozzo.com> <CAHk-=wj2AEQbmhto6FwxaxLEwvh3GG8FD8p8UptOsh5bE7jcuQ@mail.gmail.com>
+ <20181105070256.52c6fd8f@mschwideX1> <20181105141535.7394b16d@mschwideX1>
+In-Reply-To: <20181105141535.7394b16d@mschwideX1>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Mon, 5 Nov 2018 08:14:56 -0800
+Message-ID: <CAHk-=wi6OFJrhN2rmTy7oy2ZghvQb5Nhrq1O1G-+EPuPxdhEMQ@mail.gmail.com>
+Subject: Re: [GIT PULL] Compiler Attributes for v4.20-rc1
+To: Martin Schwidefsky <schwidefsky@de.ibm.com>
+Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Vasily Gorbik <gor@linux.ibm.com>,
+        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        dan.carpenter@oracle.com, adilger.kernel@dilger.ca,
+        yamada.masahiro@socionext.com, michal.lkml@markovi.net,
+        rostedt@goodmis.org, mchehab+samsung@kernel.org, olof@lxom.net,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Kees Cook <keescook@chromium.org>, tglx@linutronix.de,
+        Ingo Molnar <mingo@kernel.org>, paullawrence@google.com,
+        sandipan@linux.vnet.ibm.com,
+        Andrey Konovalov <andreyknvl@google.com>,
+        David Woodhouse <dwmw2@infradead.org>, will.deacon@arm.com,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        paul.burton@mips.com, rientjes@google.com, w@1wt.eu,
+        msebor@gmail.com, Chris Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
+        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
+        stefan@agner.ch, luc.vanoostenryck@gmail.com,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext2fs_inline_data_size will happy return 0 and set size to
-EXT4_MIN_INLINE_DATA_SIZE even when inode doesn't have
-xattr 'system.data', a corrupted i_flags could make e2fsck
-enable the inline_data on the superblock.
+On Mon, Nov 5, 2018 at 5:15 AM Martin Schwidefsky
+<schwidefsky@de.ibm.com> wrote:
+>
+> This patch would work for me:
 
-We should only offer to enable inline_data when i_flags is set
-and xattr 'system.data' can be found.
+Thanks, applied,
 
-Also use correct prompt for PR_1_INLINE_DATA_FEATURE.
-
-Signed-off-by: Li Dongyang <dongyangli@ddn.com>
----
- e2fsck/pass1.c                    |   4 ++--
- e2fsck/problem.c                  |   2 +-
- tests/f_inlinedata_flags/expect.1 |  26 ++++++++++++++++++++++++++
- tests/f_inlinedata_flags/expect.2 |   7 +++++++
- tests/f_inlinedata_flags/image.gz | Bin 0 -> 11226 bytes
- tests/f_inlinedata_flags/name     |   1 +
- 6 files changed, 37 insertions(+), 3 deletions(-)
- create mode 100644 tests/f_inlinedata_flags/expect.1
- create mode 100644 tests/f_inlinedata_flags/expect.2
- create mode 100644 tests/f_inlinedata_flags/image.gz
- create mode 100644 tests/f_inlinedata_flags/name
-
-v2:
-- Add tests/f_inlinedata_flags
-
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 8abf0c33..45534388 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1496,8 +1496,8 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		    (ino >= EXT2_FIRST_INODE(fs->super))) {
- 			size_t size = 0;
- 
--			pctx.errcode = ext2fs_inline_data_size(fs, ino, &size);
--			if (!pctx.errcode && size &&
-+			pctx.errcode = get_inline_data_ea_size(fs, ino, &size);
-+			if (!pctx.errcode &&
- 			    fix_problem(ctx, PR_1_INLINE_DATA_FEATURE, &pctx)) {
- 				ext2fs_set_feature_inline_data(sb);
- 				ext2fs_mark_super_dirty(fs);
-diff --git a/e2fsck/problem.c b/e2fsck/problem.c
-index 932cad3c..4082e373 100644
---- a/e2fsck/problem.c
-+++ b/e2fsck/problem.c
-@@ -1063,7 +1063,7 @@ static struct e2fsck_problem problem_table[] = {
- 	/* Inode has inline data, but superblock is missing INLINE_DATA feature */
- 	{ PR_1_INLINE_DATA_FEATURE,
- 	  N_("@i %i has inline data, but @S is missing INLINE_DATA feature\n"),
--	  PROMPT_CLEAR, PR_PREEN_OK, 0, 0, 0 },
-+	  PROMPT_FIX, PR_PREEN_OK, 0, 0, 0 },
- 
- 	/* inode has INLINE_DATA_FL flag on filesystem without inline data */
- 	{ PR_1_INLINE_DATA_SET,
-diff --git a/tests/f_inlinedata_flags/expect.1 b/tests/f_inlinedata_flags/expect.1
-new file mode 100644
-index 00000000..86eba883
---- /dev/null
-+++ b/tests/f_inlinedata_flags/expect.1
-@@ -0,0 +1,26 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Inode 12 has INLINE_DATA_FL flag on filesystem without inline data support.
-+Clear? yes
-+
-+Inode 13 has inline data, but superblock is missing INLINE_DATA feature
-+Fix? yes
-+
-+Pass 2: Checking directory structure
-+Entry '1' in / (2) has deleted/unused inode 12.  Clear? yes
-+
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+Inode bitmap differences:  -12
-+Fix? yes
-+
-+Free inodes count wrong for group #0 (243, counted=244).
-+Fix? yes
-+
-+Free inodes count wrong (243, counted=244).
-+Fix? yes
-+
-+
-+test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
-+test_filesys: 12/256 files (0.0% non-contiguous), 1143/8192 blocks
-+Exit status is 1
-diff --git a/tests/f_inlinedata_flags/expect.2 b/tests/f_inlinedata_flags/expect.2
-new file mode 100644
-index 00000000..87b3f18b
---- /dev/null
-+++ b/tests/f_inlinedata_flags/expect.2
-@@ -0,0 +1,7 @@
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+test_filesys: 12/256 files (0.0% non-contiguous), 1143/8192 blocks
-+Exit status is 0
-diff --git a/tests/f_inlinedata_flags/image.gz b/tests/f_inlinedata_flags/image.gz
-new file mode 100644
-index 0000000000000000000000000000000000000000..4344a0a8cc0d711c10beca1ff0ef174d4357f523
-GIT binary patch
-literal 11226
-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
-V@~rmvf2^)8M{d!Byu6Nh{T;dpI4%GH
-
-literal 0
-HcmV?d00001
-
-diff --git a/tests/f_inlinedata_flags/name b/tests/f_inlinedata_flags/name
-new file mode 100644
-index 00000000..66b7676a
---- /dev/null
-+++ b/tests/f_inlinedata_flags/name
-@@ -0,0 +1 @@
-+check incorrect inline_data flags
--- 
-2.19.1
+                 Linus
