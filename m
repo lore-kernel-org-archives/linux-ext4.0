@@ -1,59 +1,62 @@
-Return-Path: <SRS0=kdxW=OC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:35692 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1733280AbeKWKoD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 23 Nov 2018 05:44:03 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 95A6B2C77D
-        for <linux-ext4@vger.kernel.org>; Fri, 23 Nov 2018 00:02:12 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Fri, 23 Nov 2018 00:02:13 +0000
-Message-ID: <bug-201685-13602-OqxMJxPodS@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=Yxos=NQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from userp2130.oracle.com ([156.151.31.86]:43662 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387515AbeKFDUp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Nov 2018 22:20:45 -0500
+Date: Mon, 5 Nov 2018 09:59:46 -0800
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+Subject: [PATCH] e2scrub: fix systemd escaping again
+Message-ID: <20181105175946.GA4124@magnolia>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+From: Darrick J. Wong <darrick.wong@oracle.com>
 
---- Comment #37 from Jimmy.Jazz@gmx.net ---
-@Jen Axboe
+Apparently newer versions of systemd than the one on this author's
+laptop <cough> now complain about lack of (path) escaping in unit
+instance variable contents:
 
-please read worth not worse in comment 33
+ # e2scrub_all
+ Scrubbing /home...
+ Invalid unit name "e2scrub@/home" was escaped as "e2scrub@-home"
+ (maybe you should use systemd-escape?)
+ Starting Online ext4 Metadata Check for /home...
 
-I tried your patch for 4.19.3 and still get quite harmful ext4 errors like this
-one,
+So change the escape_path_for_systemd function to escape paths
+unconditionally to make the warning go away.
 
-EXT4-fs error (device dm-4): ext4_xattr_ibody_get:592: inode #4881425: comm
-rsync: corrupted in-inode xattr
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ scrub/e2scrub_all.in |    9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-The filesystems were clean at boot time and the system was idle.
-
-tune2fs ends with
-FS Error count:           64
-First error time:         Fri Nov 23 00:19:25 2018
-First error function:     ext4_xattr_ibody_get
-First error line #:       592
-First error inode #:      4881425
-First error block #:      0
-Last error time:          Fri Nov 23 00:19:25 2018
-Last error function:      ext4_xattr_ibody_get
-Last error line #:        592
-Last error inode #:       4881430
-Last error block #:       0
-MMP block number:         9255
-MMP update interval:      5
-
-If you are interested in its dumpe2fs result let me know.
-
-I don't use binary modules.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+diff --git a/scrub/e2scrub_all.in b/scrub/e2scrub_all.in
+index 9581dc2c4..23d122d25 100644
+--- a/scrub/e2scrub_all.in
++++ b/scrub/e2scrub_all.in
+@@ -101,13 +101,18 @@ ls_scrub_targets() {
+ # systemd doesn't know to do path escaping on the instance variable we pass
+ # to the e2scrub service, which breaks things if there is a dash in the path
+ # name.  Therefore, do the path escaping ourselves if needed.
++#
++# systemd path escaping also drops the initial slash so we add that back in so
++# that log messages from the service units preserve the full path and users can
++# look up log messages using full paths.  However, for "/" the escaping rules
++# do /not/ drop the initial slash, so we have to special-case that here.
+ escape_path_for_systemd() {
+ 	local path="$1"
+ 
+-	if echo "${path}" | grep -q -- "-"; then
++	if [ "${path}" != "/" ]; then
+ 		echo "-$(systemd-escape --path "${path}")"
+ 	else
+-		echo "${path}"
++		echo "-"
+ 	fi
+ }
+ 
