@@ -1,74 +1,188 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:59142 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S2389115AbeKVGvr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 01:51:47 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id E49FF2C906
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Nov 2018 20:15:59 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Wed, 21 Nov 2018 20:15:58 +0000
-Message-ID: <bug-201685-13602-5jsASK7mGj@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=Yxos=NQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:47536 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727275AbeKEUWV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 5 Nov 2018 15:22:21 -0500
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2] ext4: remove code duplication in
+ update_ind/bind/tind_extent_range
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-kernel@vger.kernel.org
+References: <E88DA3F6-D339-44D6-95A8-75256A8F57CC@dilger.ca>
+Message-ID: <bcd63c24-4a5c-8c75-554d-af0f80d1edf7@virtuozzo.com>
+Date: Mon, 5 Nov 2018 14:03:08 +0300
 MIME-Version: 1.0
+In-Reply-To: <E88DA3F6-D339-44D6-95A8-75256A8F57CC@dilger.ca>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+update_ind/bind/tind_extent_page() differs by one variable and can be
+replaced by unified function. These functions are called by similar way
+and their caller function can be simplified too.
 
---- Comment #20 from Theodore Tso (tytso@mit.edu) ---
-Can someone try 4.19.3?   I was working with another Ubuntu user who did *not*
-have see the problem with 4.19.0, but did see it with 4.19.1, but one of the
-differences in his config was:
+v2: minor style changes, thanks to Andreas Dilger
 
--# CONFIG_SCSI_MQ_DEFAULT is not set
-+CONFIG_SCSI_MQ_DEFAULT=y
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/ext4/migrate.c | 112 ++++++++++------------------------------------
+ 1 file changed, 24 insertions(+), 88 deletions(-)
 
-Furthermore, he tried 4.19.3 and after two hours of heavy I/O, he's no longer
-seeing problems.   Based on the above observation, his theory is this commit
-may have fixed things, and it *is* blk-mq specific:
-
-commit 410306a0f2baa5d68970cdcf6763d79c16df5f23
-Author: Ming Lei <ming.lei@redhat.com>
-Date:   Wed Nov 14 16:25:51 2018 +0800
-
-    SCSI: fix queue cleanup race before queue initialization is done
-
-    commit 8dc765d438f1e42b3e8227b3b09fad7d73f4ec9a upstream.
-
-    c2856ae2f315d ("blk-mq: quiesce queue before freeing queue") has
-    already fixed this race, however the implied synchronize_rcu()
-    in blk_mq_quiesce_queue() can slow down LUN probe a lot, so caused
-    performance regression.
-
-    Then 1311326cf4755c7 ("blk-mq: avoid to synchronize rcu inside
-blk_cleanup_queue()")
-    tried to quiesce queue for avoiding unnecessary synchronize_rcu()
-    only when queue initialization is done, because it is usual to see
-    lots of inexistent LUNs which need to be probed.
-
-    However, turns out it isn't safe to quiesce queue only when queue
-    initialization is done. Because when one SCSI command is completed,
-    the user of sending command can be waken up immediately, then the
-    scsi device may be removed, meantime the run queue in scsi_end_request()
-    is still in-progress, so kernel panic can be caused.
-
-    In Red Hat QE lab, there are several reports about this kind of kernel
-    panic triggered during kernel booting.
-
-    This patch tries to address the issue by grabing one queue usage
-    counter during freeing one request and the following run queue.
-
-This commit just landed in mainline and is not in 4.20-rc2, so the theory that
-it was a blk-mq bug that was fixed by the above commit is consistent with all
-of the observations made to date.
-
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 61a9d1927817..224e136d1c10 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -109,12 +109,13 @@ static int update_extent_range(handle_t *handle, struct inode *inode,
+ 
+ static int update_ind_extent_range(handle_t *handle, struct inode *inode,
+ 				   ext4_fsblk_t pblock,
+-				   struct migrate_struct *lb)
++				   struct migrate_struct *lb,
++				   ext4_lblk_t inc)
+ {
+ 	struct buffer_head *bh;
+ 	__le32 *i_data;
+ 	int i, retval = 0;
+-	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
++	ext4_lblk_t max_entries = inode->i_sb->s_blocksize >> 2;
+ 
+ 	bh = sb_bread(inode->i_sb, pblock);
+ 	if (!bh)
+@@ -128,67 +129,7 @@ static int update_ind_extent_range(handle_t *handle, struct inode *inode,
+ 			if (retval)
+ 				break;
+ 		} else {
+-			lb->curr_block++;
+-		}
+-	}
+-	put_bh(bh);
+-	return retval;
+-
+-}
+-
+-static int update_dind_extent_range(handle_t *handle, struct inode *inode,
+-				    ext4_fsblk_t pblock,
+-				    struct migrate_struct *lb)
+-{
+-	struct buffer_head *bh;
+-	__le32 *i_data;
+-	int i, retval = 0;
+-	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+-
+-	bh = sb_bread(inode->i_sb, pblock);
+-	if (!bh)
+-		return -EIO;
+-
+-	i_data = (__le32 *)bh->b_data;
+-	for (i = 0; i < max_entries; i++) {
+-		if (i_data[i]) {
+-			retval = update_ind_extent_range(handle, inode,
+-						le32_to_cpu(i_data[i]), lb);
+-			if (retval)
+-				break;
+-		} else {
+-			/* Only update the file block number */
+-			lb->curr_block += max_entries;
+-		}
+-	}
+-	put_bh(bh);
+-	return retval;
+-
+-}
+-
+-static int update_tind_extent_range(handle_t *handle, struct inode *inode,
+-				    ext4_fsblk_t pblock,
+-				    struct migrate_struct *lb)
+-{
+-	struct buffer_head *bh;
+-	__le32 *i_data;
+-	int i, retval = 0;
+-	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+-
+-	bh = sb_bread(inode->i_sb, pblock);
+-	if (!bh)
+-		return -EIO;
+-
+-	i_data = (__le32 *)bh->b_data;
+-	for (i = 0; i < max_entries; i++) {
+-		if (i_data[i]) {
+-			retval = update_dind_extent_range(handle, inode,
+-						le32_to_cpu(i_data[i]), lb);
+-			if (retval)
+-				break;
+-		} else {
+-			/* Only update the file block number */
+-			lb->curr_block += max_entries * max_entries;
++			lb->curr_block += inc;
+ 		}
+ 	}
+ 	put_bh(bh);
+@@ -433,7 +374,7 @@ int ext4_ext_migrate(struct inode *inode)
+ 	struct ext4_inode_info *ei;
+ 	struct inode *tmp_inode = NULL;
+ 	struct migrate_struct lb;
+-	unsigned long max_entries;
++	ext4_lblk_t max_entries, inc, mult;
+ 	__u32 goal;
+ 	uid_t owner[2];
+ 
+@@ -523,34 +464,29 @@ int ext4_ext_migrate(struct inode *inode)
+ 
+ 	/* 32 bit block address 4 bytes */
+ 	max_entries = inode->i_sb->s_blocksize >> 2;
+-	for (i = 0; i < EXT4_NDIR_BLOCKS; i++) {
++
++	inc = 1; mult = 1;
++	for (i = 0; i < EXT4_N_BLOCKS; i++) {
++		inc *= mult;
++		if (i == EXT4_IND_BLOCK)
++			mult = max_entries;
++
+ 		if (i_data[i]) {
+-			retval = update_extent_range(handle, tmp_inode,
++			if (i < EXT4_IND_BLOCK)
++				retval = update_extent_range(handle, tmp_inode,
+ 						le32_to_cpu(i_data[i]), &lb);
++			else
++				retval = update_ind_extent_range(handle,
++						tmp_inode,
++						le32_to_cpu(i_data[i]),
++						&lb, inc);
+ 			if (retval)
+ 				goto err_out;
+-		} else
+-			lb.curr_block++;
+-	}
+-	if (i_data[EXT4_IND_BLOCK]) {
+-		retval = update_ind_extent_range(handle, tmp_inode,
+-				le32_to_cpu(i_data[EXT4_IND_BLOCK]), &lb);
+-			if (retval)
+-				goto err_out;
+-	} else
+-		lb.curr_block += max_entries;
+-	if (i_data[EXT4_DIND_BLOCK]) {
+-		retval = update_dind_extent_range(handle, tmp_inode,
+-				le32_to_cpu(i_data[EXT4_DIND_BLOCK]), &lb);
+-			if (retval)
+-				goto err_out;
+-	} else
+-		lb.curr_block += max_entries * max_entries;
+-	if (i_data[EXT4_TIND_BLOCK]) {
+-		retval = update_tind_extent_range(handle, tmp_inode,
+-				le32_to_cpu(i_data[EXT4_TIND_BLOCK]), &lb);
+-			if (retval)
+-				goto err_out;
++
++		} else {
++			if (i < EXT4_TIND_BLOCK)
++				lb.curr_block += inc * mult;
++		}
+ 	}
+ 	/*
+ 	 * Build the last extent
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.17.1
