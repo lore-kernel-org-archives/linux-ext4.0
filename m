@@ -1,189 +1,160 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:40341 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726687AbeKPLdG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 06:33:06 -0500
-Received: by mail-pl1-f195.google.com with SMTP id b22-v6so4876652pls.7
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 17:22:48 -0800 (PST)
-Date: Thu, 15 Nov 2018 17:22:45 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        linux-fsdevel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Shaohua Li <shli@kernel.org>, linux-raid@vger.kernel.org,
-        linux-erofs@lists.ozlabs.org, linux-btrfs@vger.kernel.org,
-        David Sterba <dsterba@suse.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 12/19] block: allow bio_for_each_segment_all() to
- iterate over multi-page bvec
-Message-ID: <20181116012245.GG23828@vader>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-13-ming.lei@redhat.com>
+Return-Path: <SRS0=Yxos=NQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:43358 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729165AbeKEXvI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 5 Nov 2018 18:51:08 -0500
+Date: Mon, 5 Nov 2018 09:31:03 -0500
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Martin Schwidefsky <schwidefsky@de.ibm.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Vasily Gorbik <gor@linux.ibm.com>,
+        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
+        dan.carpenter@oracle.com, adilger.kernel@dilger.ca,
+        yamada.masahiro@socionext.com, michal.lkml@markovi.net,
+        mchehab+samsung@kernel.org, olof@lxom.net,
+        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
+        David Miller <davem@davemloft.net>,
+        Kees Cook <keescook@chromium.org>, tglx@linutronix.de,
+        Ingo Molnar <mingo@kernel.org>, paullawrence@google.com,
+        sandipan@linux.vnet.ibm.com, andreyknvl@google.com,
+        David Woodhouse <dwmw2@infradead.org>, will.deacon@arm.com,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        paul.burton@mips.com, rientjes@google.com, w@1wt.eu,
+        msebor@gmail.com, Chris Li <sparse@chrisli.org>,
+        Jonathan Corbet <corbet@lwn.net>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
+        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
+        stefan@agner.ch, luc.vanoostenryck@gmail.com,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Greg KH <gregkh@linuxfoundation.org>,
+        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
+Subject: Re: [GIT PULL] Compiler Attributes for v4.20-rc1
+Message-ID: <20181105093103.67453e3b@gandalf.local.home>
+In-Reply-To: <20181105141535.7394b16d@mschwideX1>
+References: <20181022105944.GA1411@gmail.com>
+        <CAHk-=whpBiV5sVTvPsWOVx5WYOouxbNG1fWeCdpK4oFiaH0Zqg@mail.gmail.com>
+        <29dba7c2-f612-7b35-d665-9939d7e10eb8@virtuozzo.com>
+        <CAHk-=wj2AEQbmhto6FwxaxLEwvh3GG8FD8p8UptOsh5bE7jcuQ@mail.gmail.com>
+        <20181105070256.52c6fd8f@mschwideX1>
+        <20181105141535.7394b16d@mschwideX1>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-13-ming.lei@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:52:59PM +0800, Ming Lei wrote:
-> This patch introduces one extra iterator variable to bio_for_each_segment_all(),
-> then we can allow bio_for_each_segment_all() to iterate over multi-page bvec.
+On Mon, 5 Nov 2018 14:15:35 +0100
+Martin Schwidefsky <schwidefsky@de.ibm.com> wrote:
+>  
+> Follow-up question: the __no_sanitize_address_or_inline define has the 'notrace'
+> option that is missing for __no_kasan_or_inline. We need that option for
+> __load_psw_mask, if we do the replacement all users of __no_kasan_or_inline
+> would get the option as well. This affects __read_once_size_nocheck and
+> read_word_at_a_time. Do these function have to be traceable ?
+
+Some history on why I added notrace to inline. It was to make things
+more consistent. Since gcc wont add a fentry/mcount call to inlined
+functions, having those functions show up in the trace depending on
+whether or not gcc honored the "inline" tag made things confusing. And
+it even once caused a crash when local_irq_save() stopped being
+inlined.
+
+I added notrace to inline so that if you mark something as inline, it
+would not show up in the trace regardless of gcc deciding to inline the
+function or not.
+
 > 
-> Given it is just one mechannical & simple change on all bio_for_each_segment_all()
-> users, this patch does tree-wide change in one single patch, so that we can
-> avoid to use a temporary helper for this conversion.
+> This patch would work for me:
+> --
+> >From 4aaa09fe4b54e930edabac86606dee979b12647c Mon Sep 17 00:00:00 2001  
+> From: Martin Schwidefsky <schwidefsky@de.ibm.com>
+> Date: Mon, 5 Nov 2018 07:36:28 +0100
+> Subject: [PATCH] compiler: remove __no_sanitize_address_or_inline again
 > 
-> Cc: Dave Chinner <dchinner@redhat.com>
-> Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> Cc: linux-fsdevel@vger.kernel.org
-> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> Cc: Shaohua Li <shli@kernel.org>
-> Cc: linux-raid@vger.kernel.org
-> Cc: linux-erofs@lists.ozlabs.org
-> Cc: linux-btrfs@vger.kernel.org
-> Cc: David Sterba <dsterba@suse.com>
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: Gao Xiang <gaoxiang25@huawei.com>
-> Cc: Christoph Hellwig <hch@lst.de>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Coly Li <colyli@suse.de>
-> Cc: linux-bcache@vger.kernel.org
-> Cc: Boaz Harrosh <ooo@electrozaur.com>
-> Cc: Bob Peterson <rpeterso@redhat.com>
-> Cc: cluster-devel@redhat.com
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> The __no_sanitize_address_or_inline and __no_kasan_or_inline defines
+> are almost identical. The only difference is that __no_kasan_or_inline
+> does not have the 'notrace' attribute.
+> 
+> To be able to replace __no_sanitize_address_or_inline with the older
+> definition, add 'notrace' to __no_kasan_or_inline and change to two
+> users of __no_sanitize_address_or_inline in the s390 code.
+> 
+> The 'notrace' option is necessary for e.g. the __load_psw_mask function
+> in arch/s390/include/asm/processor.h. Without the option it is possible
+> to trace __load_psw_mask which leads to kernel stack overflow.
+
+Acked-by: Steven Rostedt (VMware) <rostedt@goodmis.org>
+
+-- Steve
+
+> 
+> Signed-off-by: Martin Schwidefsky <schwidefsky@de.ibm.com>
 > ---
->  block/bio.c                       | 27 ++++++++++++++++++---------
->  block/blk-zoned.c                 |  1 +
->  block/bounce.c                    |  6 ++++--
->  drivers/md/bcache/btree.c         |  3 ++-
->  drivers/md/dm-crypt.c             |  3 ++-
->  drivers/md/raid1.c                |  3 ++-
->  drivers/staging/erofs/data.c      |  3 ++-
->  drivers/staging/erofs/unzip_vle.c |  3 ++-
->  fs/block_dev.c                    |  6 ++++--
->  fs/btrfs/compression.c            |  3 ++-
->  fs/btrfs/disk-io.c                |  3 ++-
->  fs/btrfs/extent_io.c              | 12 ++++++++----
->  fs/btrfs/inode.c                  |  6 ++++--
->  fs/btrfs/raid56.c                 |  3 ++-
->  fs/crypto/bio.c                   |  3 ++-
->  fs/direct-io.c                    |  4 +++-
->  fs/exofs/ore.c                    |  3 ++-
->  fs/exofs/ore_raid.c               |  3 ++-
->  fs/ext4/page-io.c                 |  3 ++-
->  fs/ext4/readpage.c                |  3 ++-
->  fs/f2fs/data.c                    |  9 ++++++---
->  fs/gfs2/lops.c                    |  6 ++++--
->  fs/gfs2/meta_io.c                 |  3 ++-
->  fs/iomap.c                        |  6 ++++--
->  fs/mpage.c                        |  3 ++-
->  fs/xfs/xfs_aops.c                 |  5 +++--
->  include/linux/bio.h               | 11 +++++++++--
->  include/linux/bvec.h              | 31 +++++++++++++++++++++++++++++++
->  28 files changed, 129 insertions(+), 46 deletions(-)
+>  arch/s390/include/asm/processor.h |  4 ++--
+>  include/linux/compiler-gcc.h      | 12 ------------
+>  include/linux/compiler.h          |  2 +-
+>  3 files changed, 3 insertions(+), 15 deletions(-)
 > 
-
-[snip]
-
-> diff --git a/include/linux/bio.h b/include/linux/bio.h
-> index 3496c816946e..1a2430a8b89d 100644
-> --- a/include/linux/bio.h
-> +++ b/include/linux/bio.h
-> @@ -131,12 +131,19 @@ static inline bool bio_full(struct bio *bio)
->  	return bio->bi_vcnt >= bio->bi_max_vecs;
+> diff --git a/arch/s390/include/asm/processor.h b/arch/s390/include/asm/processor.h
+> index 302795c47c06..81038ab357ce 100644
+> --- a/arch/s390/include/asm/processor.h
+> +++ b/arch/s390/include/asm/processor.h
+> @@ -236,7 +236,7 @@ static inline unsigned long current_stack_pointer(void)
+>  	return sp;
 >  }
 >  
-> +#define bvec_for_each_segment(bv, bvl, i, iter_all)			\
-> +	for (bv = bvec_init_iter_all(&iter_all);			\
-> +		(iter_all.done < (bvl)->bv_len) &&			\
-> +		((bvec_next_segment((bvl), &iter_all)), 1);		\
-
-The parentheses around (bvec_next_segment((bvl), &iter_all)) are
-unnecessary.
-
-> +		iter_all.done += bv->bv_len, i += 1)
-> +
->  /*
->   * drivers should _never_ use the all version - the bio may have been split
->   * before it got to the driver and the driver won't own all of it
+> -static __no_sanitize_address_or_inline unsigned short stap(void)
+> +static __no_kasan_or_inline unsigned short stap(void)
+>  {
+>  	unsigned short cpu_address;
+>  
+> @@ -330,7 +330,7 @@ static inline void __load_psw(psw_t psw)
+>   * Set PSW mask to specified value, while leaving the
+>   * PSW addr pointing to the next instruction.
 >   */
-> -#define bio_for_each_segment_all(bvl, bio, i)				\
-> -	for (i = 0, bvl = (bio)->bi_io_vec; i < (bio)->bi_vcnt; i++, bvl++)
-> +#define bio_for_each_segment_all(bvl, bio, i, iter_all)		\
-> +	for (i = 0, iter_all.idx = 0; iter_all.idx < (bio)->bi_vcnt; iter_all.idx++)	\
-> +		bvec_for_each_segment(bvl, &((bio)->bi_io_vec[iter_all.idx]), i, iter_all)
-
-Would it be possible to move i into iter_all to streamline this a bit?
-
->  static inline void __bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
->  				      unsigned bytes, bool mp)
-> diff --git a/include/linux/bvec.h b/include/linux/bvec.h
-> index 01616a0b6220..02f26d2b59ad 100644
-> --- a/include/linux/bvec.h
-> +++ b/include/linux/bvec.h
-> @@ -82,6 +82,12 @@ struct bvec_iter {
->  						   current bvec */
->  };
+> -static __no_sanitize_address_or_inline void __load_psw_mask(unsigned long mask)
+> +static __no_kasan_or_inline void __load_psw_mask(unsigned long mask)
+>  {
+>  	unsigned long addr;
+>  	psw_t psw;
+> diff --git a/include/linux/compiler-gcc.h b/include/linux/compiler-gcc.h
+> index c0f5db3a9621..2010493e1040 100644
+> --- a/include/linux/compiler-gcc.h
+> +++ b/include/linux/compiler-gcc.h
+> @@ -143,18 +143,6 @@
+>  #define KASAN_ABI_VERSION 3
+>  #endif
 >  
-> +struct bvec_iter_all {
-> +	struct bio_vec	bv;
-> +	int		idx;
-> +	unsigned	done;
-> +};
-> +
->  /*
->   * various member access, note that bio_data should of course not be used
->   * on highmem page vectors
-> @@ -216,6 +222,31 @@ static inline bool mp_bvec_iter_advance(const struct bio_vec *bv,
->  	.bi_bvec_done	= 0,						\
->  }
->  
-> +static inline struct bio_vec *bvec_init_iter_all(struct bvec_iter_all *iter_all)
-> +{
-> +	iter_all->bv.bv_page = NULL;
-> +	iter_all->done = 0;
-> +
-> +	return &iter_all->bv;
-> +}
-> +
-> +/* used for chunk_for_each_segment */
-> +static inline void bvec_next_segment(const struct bio_vec *bvec,
-> +		struct bvec_iter_all *iter_all)
-
-Indentation.
-
-> +{
-> +	struct bio_vec *bv = &iter_all->bv;
-> +
-> +	if (bv->bv_page) {
-> +		bv->bv_page += 1;
-> +		bv->bv_offset = 0;
-> +	} else {
-> +		bv->bv_page = bvec->bv_page;
-> +		bv->bv_offset = bvec->bv_offset;
-> +	}
-> +	bv->bv_len = min_t(unsigned int, PAGE_SIZE - bv->bv_offset,
-> +			bvec->bv_len - iter_all->done);
-
-Indentation.
-
-> +}
-> +
->  /*
->   * Get the last singlepage segment from the multipage bvec and store it
->   * in @seg
-> -- 
-> 2.9.5
-> 
+> -/*
+> - * Because __no_sanitize_address conflicts with inlining:
+> - *   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67368
+> - * we do one or the other. 
+> - */
+> -#ifdef CONFIG_KASAN
+> -#define __no_sanitize_address_or_inline					\
+> -	__no_sanitize_address __maybe_unused notrace
+> -#else
+> -#define __no_sanitize_address_or_inline inline
+> -#endif
+> -
+>  #if GCC_VERSION >= 50100
+>  #define COMPILER_HAS_GENERIC_BUILTIN_OVERFLOW 1
+>  #endif
+> diff --git a/include/linux/compiler.h b/include/linux/compiler.h
+> index 18c80cfa4fc4..06396c1cf127 100644
+> --- a/include/linux/compiler.h
+> +++ b/include/linux/compiler.h
+> @@ -189,7 +189,7 @@ void __read_once_size(const volatile void *p, void *res, int size)
+>   * 	https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67368
+>   * '__maybe_unused' allows us to avoid defined-but-not-used warnings.
+>   */
+> -# define __no_kasan_or_inline __no_sanitize_address __maybe_unused
+> +# define __no_kasan_or_inline __no_sanitize_address notrace __maybe_unused
+>  #else
+>  # define __no_kasan_or_inline __always_inline
+>  #endif
