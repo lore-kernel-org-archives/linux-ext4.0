@@ -1,63 +1,122 @@
-Return-Path: <SRS0=+plc=NX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from o1.31qt.s2shared.sendgrid.net ([167.89.106.69]:6620 "EHLO
-        o1.31qt.s2shared.sendgrid.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1731375AbeKLOjL (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 12 Nov 2018 09:39:11 -0500
-To: linux-ext4@vger.kernel.org
-Cc: kevin@potatofrom.space, bfields@fieldses.org
-From: Kevin Liu <kevin@potatofrom.space>
-Subject: ext4-nfsd interaction causes sporadic hang on rwsem_down_write_failed
-Message-ID: <56454f6d-bbf8-fcd5-d389-50d5c3653ba6@potatofrom.space>
-Date: Mon, 12 Nov 2018 04:38:34 +0000 (UTC)
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-content-transfer-encoding: quoted-printable
+Return-Path: <SRS0=Yxos=NQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:35295 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730077AbeKFG1F (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Nov 2018 01:27:05 -0500
+Received: by mail-pg1-f196.google.com with SMTP id 32-v6so4788657pgu.2
+        for <linux-ext4@vger.kernel.org>; Mon, 05 Nov 2018 13:05:31 -0800 (PST)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <F1AB58DE-E8D8-449C-B07C-4868B181F5E9@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_F0C1406D-50AB-4BE0-B275-698A345B0C1F";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH v2 10/12] ext4: add basic fs-verity support
+Date: Mon, 5 Nov 2018 14:05:24 -0700
+In-Reply-To: <20181101225230.88058-11-ebiggers@kernel.org>
+Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: Eric Biggers <ebiggers@kernel.org>
+References: <20181101225230.88058-1-ebiggers@kernel.org>
+ <20181101225230.88058-11-ebiggers@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,=0D
-=0D
-I recently submitted an NFS bug=0D
-(https://bugzilla.kernel.org/show_bug.cgi?id=3D201655) where nfsd randomly=
-=0D
-locks up on rwsem_down_write_failed:=0D
-=0D
-Nov 10 15:29:55 rem kernel: INFO: task nfsd:7464 blocked for more than=0D
-120 seconds.=0D
-Nov 10 15:29:55 rem kernel:       Tainted: P           O      4.19.1=0D
-#1-NixOS=0D
-Nov 10 15:29:55 rem kernel: "echo 0 >=0D
-/proc/sys/kernel/hung_task_timeout_secs" disables this message.=0D
-Nov 10 15:29:55 rem kernel: nfsd            D    0  7464      2 0x80000000=
-=0D
-Nov 10 15:29:55 rem kernel: Call Trace:=0D
-Nov 10 15:29:55 rem kernel:  ? __schedule+0x1d3/0x6f0=0D
-Nov 10 15:29:55 rem kernel:  schedule+0x28/0x80=0D
-Nov 10 15:29:55 rem kernel:  rwsem_down_write_failed+0x15e/0x350=0D
-Nov 10 15:29:55 rem kernel:  ? call_rwsem_down_write_failed+0x13/0x20=0D
-Nov 10 15:29:55 rem kernel:  call_rwsem_down_write_failed+0x13/0x20=0D
-Nov 10 15:29:55 rem kernel:  down_write+0x29/0x40=0D
-Nov 10 15:29:55 rem kernel:  ext4_file_write_iter+0x91/0x3d0 [ext4]=0D
-Nov 10 15:29:55 rem kernel:  ? nfsd_proc_write+0x160/0x160 [nfsd]=0D
-Nov 10 15:29:55 rem kernel:  ? exportfs_decode_fh+0xf2/0x2b0=0D
-...=0D
-=0D
-(more details in the bugzilla)=0D
-=0D
-And according to Bruce Fields:=0D
-=0D
-> I'm guessing it's the inode_lock at the start of ext4_file_write_iter tha=
-t's blocking.  On a quick look I don't see any of the callers taking any lo=
-cks.  So I'd expect that elsewhere there'd be a process holding that inode =
-lock and blocking on something else.=0D
-> =0D
-> Based just on this might first guess would be a vfs or maybe ext4 bug rat=
-her than an nfsd bug, but I'm not seeing how to reassign.  May be worth rep=
-orting to the relevant mailing lists.=0D
-=0D
-So, starting with ext4, I was wondering if you had an idea of what the=0D
-cause might be or where the fault truly lies.=0D
-=0D
-Kevin Liu
+
+--Apple-Mail=_F0C1406D-50AB-4BE0-B275-698A345B0C1F
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain;
+	charset=us-ascii
+
+On Nov 1, 2018, at 4:52 PM, Eric Biggers <ebiggers@kernel.org> wrote:
+> 
+> From: Eric Biggers <ebiggers@google.com>
+> 
+> Add basic fs-verity support to ext4.  fs-verity is a filesystem feature
+> that enables transparent integrity protection and authentication of
+> read-only files.  It uses a dm-verity like mechanism at the file level:
+> a Merkle tree is used to verify any block in the file in log(filesize)
+> time.  It is implemented mainly by helper functions in fs/verity/.
+> See Documentation/filesystems/fsverity.rst for details.
+> 
+> This patch adds everything except the data verification hooks that will
+> needed in ->readpages().
+> 
+> On ext4, enabling fs-verity on a file requires that the filesystem has
+> the 'verity' feature, e.g. that it was formatted with
+> 'mkfs.ext4 -O verity' or had 'tune2fs -O verity' run on it.
+> This requires e2fsprogs 1.44.4-2 or later.
+> 
+> In ext4, we choose to retain the fs-verity metadata past the end of the
+> file rather than trying to move it into an external inode xattr, since
+> in practice keeping the metadata in-line actually results in the
+> simplest and most efficient implementation.  One non-obvious advantage
+> of keeping the verity metadata in-line is that when fs-verity is
+> combined with fscrypt, the verity metadata naturally gets encrypted too;
+> this is actually necessary because it contains hashes of the plaintext.
+
+On the plus side, this means that the verity data will automatically be
+invalidated if the file is truncated or extended, but on the negative side
+it means that the verity Merkle tree needs to be recalculated for the
+entire file if e.g. the file is appended to.
+
+I guess the current implementation will generate the Merkle tree in
+userspace, but at some point it might be useful to generate it on-the-fly
+to have proper data integrity from the time of write (e.g. like ZFS)
+rather than only allowing it to be stored after the entire file is written?
+
+Storing the Merkle tree in a large xattr inode would allow this to change
+in the future rather than being stuck with the current implementation.  We
+could encrypt the xattr data just as easily as the file data (which should
+be done anyway even for non-verity files to avoid leaking data), and having
+the verity attr keyed to the inode version/size/mime(?) would ensure the
+kernel knows it is stale if the inode is modified.
+
+I'm not going to stand on my head and block this implementation, I just
+thought it is worthwhile to raise these issues now rather than after it
+is a fait accompli.
+
+> We also choose to keep the on-disk i_size equal to the original file
+> size, in order to make the 'verity' feature a RO_COMPAT feature.  Thus,
+> ext4 has to find the fsverity_footer by looking in the last extent.
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_F0C1406D-50AB-4BE0-B275-698A345B0C1F
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlvgsJUACgkQcqXauRfM
+H+CsRRAAuh1XSvfDwsO1atgPaFlL0Q7PcY1+CYff3nkv3uRh9ipcCTihtLAhGOVf
+BLqR6uikUyIJefr4j0iFYOI8bI/StscPRXIUR6iYwIzqiErTlnvb0ClQ1VMS5tyu
+y+LpKLpkXeTnZHAv5HWgviAM0IotgdpwrEjkuStGj5AHIsMr2Cmh045PXBqmv6yt
+uuUmZTmmsHGN8FzaHy75APglMH4axBhgCburXs1Bj9eK54uppuhSIUnS5GKzJhA1
+OLlBExpkqCrMmlYgDtOUFfWtJfzTG5HMsMHIR/90I6ahxMw2Qcudud16gthMAuKv
+ZSqjOz9hBRTfLICoY4ZN2BhUUhujU5FvGGLLAg23U11BtusfcKerFUql4pZTXgaN
+HQpfQy5ST7reXn2xuhkxH0amPoebf9+f6vY0TCKv8w0RpZS6qOHkzbMocuvpuW42
+V7i8s+Cd9SH9DGsfGce75MGy2YZu0R/iHbY1BhYZeRRQUEqubLoH/xQREltNjAp3
+g7l12NF47h5glm73urKdfIiOq+zNSX8XgiVceuIX5ij4T6z8VcpyJv8lASfpcH+d
+z8Tjt3aI+h4vZaCpHteZ9FOuarSoULSbIMRzEaYV2oX3zbM6JCOlb/A9cVKf/522
+KsoOjOofDsPNfMRUNo+/egSKVsg1CySgsuUkaF2v1I4QoFXYO4Q=
+=XiFo
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_F0C1406D-50AB-4BE0-B275-698A345B0C1F--
