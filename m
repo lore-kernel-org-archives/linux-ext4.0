@@ -1,193 +1,112 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:51717 "EHLO newverein.lst.de"
+Return-Path: <SRS0=hSPz=NR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:51612 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726778AbeKVBIh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 20:08:37 -0500
-Date: Wed, 21 Nov 2018 15:33:55 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 14/19] block: handle non-cluster bio out of
- blk_bio_segment_split
-Message-ID: <20181121143355.GB2594@lst.de>
-References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-15-ming.lei@redhat.com>
+        id S1725839AbeKFKeS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 6 Nov 2018 05:34:18 -0500
+Date: Mon, 5 Nov 2018 17:11:42 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Subject: Re: [PATCH v2 10/12] ext4: add basic fs-verity support
+Message-ID: <20181106011141.GA28490@gmail.com>
+References: <20181101225230.88058-1-ebiggers@kernel.org>
+ <20181101225230.88058-11-ebiggers@kernel.org>
+ <F1AB58DE-E8D8-449C-B07C-4868B181F5E9@dilger.ca>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181121032327.8434-15-ming.lei@redhat.com>
+In-Reply-To: <F1AB58DE-E8D8-449C-B07C-4868B181F5E9@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> +			non-cluster.o
+Hi Andreas,
 
-Do we really need a new source file for these few functions?
+On Mon, Nov 05, 2018 at 02:05:24PM -0700, Andreas Dilger wrote:
+> On Nov 1, 2018, at 4:52 PM, Eric Biggers <ebiggers@kernel.org> wrote:
+> > 
+> > From: Eric Biggers <ebiggers@google.com>
+> > 
+> > Add basic fs-verity support to ext4.  fs-verity is a filesystem feature
+> > that enables transparent integrity protection and authentication of
+> > read-only files.  It uses a dm-verity like mechanism at the file level:
+> > a Merkle tree is used to verify any block in the file in log(filesize)
+> > time.  It is implemented mainly by helper functions in fs/verity/.
+> > See Documentation/filesystems/fsverity.rst for details.
+> > 
+> > This patch adds everything except the data verification hooks that will
+> > needed in ->readpages().
+> > 
+> > On ext4, enabling fs-verity on a file requires that the filesystem has
+> > the 'verity' feature, e.g. that it was formatted with
+> > 'mkfs.ext4 -O verity' or had 'tune2fs -O verity' run on it.
+> > This requires e2fsprogs 1.44.4-2 or later.
+> > 
+> > In ext4, we choose to retain the fs-verity metadata past the end of the
+> > file rather than trying to move it into an external inode xattr, since
+> > in practice keeping the metadata in-line actually results in the
+> > simplest and most efficient implementation.  One non-obvious advantage
+> > of keeping the verity metadata in-line is that when fs-verity is
+> > combined with fscrypt, the verity metadata naturally gets encrypted too;
+> > this is actually necessary because it contains hashes of the plaintext.
+> 
+> On the plus side, this means that the verity data will automatically be
+> invalidated if the file is truncated or extended, but on the negative side
+> it means that the verity Merkle tree needs to be recalculated for the
+> entire file if e.g. the file is appended to.
+> 
+> I guess the current implementation will generate the Merkle tree in
+> userspace, but at some point it might be useful to generate it on-the-fly
+> to have proper data integrity from the time of write (e.g. like ZFS)
+> rather than only allowing it to be stored after the entire file is written?
+> 
+> Storing the Merkle tree in a large xattr inode would allow this to change
+> in the future rather than being stuck with the current implementation.  We
+> could encrypt the xattr data just as easily as the file data (which should
+> be done anyway even for non-verity files to avoid leaking data), and having
+> the verity attr keyed to the inode version/size/mime(?) would ensure the
+> kernel knows it is stale if the inode is modified.
+> 
+> I'm not going to stand on my head and block this implementation, I just
+> thought it is worthwhile to raise these issues now rather than after it
+> is a fait accompli.
+> 
 
->  	default:
-> +		if (!blk_queue_cluster(q)) {
-> +			blk_queue_non_cluster_bio(q, bio);
-> +			return;
+That would actually be the least of the problems for adding write support.
+Adding write support would require at least:
 
-I'd name this blk_bio_segment_split_singlepage or similar.
+- A way to maintain consistency between the data and hashes, including all
+  levels of hashes, since corruption after a crash (especially of potentially
+  the entire file!) is unacceptable.  The main options for solving this are data
+  journalling, copy-on-write, and log-structured volume.  But it's very hard to
+  retrofit existing filesystems with new consistency mechanisms.  Data
+  journalling can always be used, but is very slow.
 
-> +static __init int init_non_cluster_bioset(void)
-> +{
-> +	WARN_ON(bioset_init(&non_cluster_bio_set, BIO_POOL_SIZE, 0,
-> +			   BIOSET_NEED_BVECS));
-> +	WARN_ON(bioset_integrity_create(&non_cluster_bio_set, BIO_POOL_SIZE));
-> +	WARN_ON(bioset_init(&non_cluster_bio_split, BIO_POOL_SIZE, 0, 0));
+- An on-disk format that allows dynamically growing/shrinking each level of the
+  Merkle tree; or, using a different authenticated dictionary structure, such as
+  an authenticated skiplist rather than a Merkle tree.  This would drastically
+  increase the complexity over a regular Merkle tree.
 
-Please only allocate the resources once a queue without the cluster
-flag is registered, there are only very few modern drivers that do that.
+Compare it to dm-verity vs. dm-integrity.  dm-verity is read-only and very
+simple; the kernel just uses a Merkle tree that is generated by userspace.
+On the other hand, dm-integrity supports writes but is slow, much more complex,
+and doesn't even actually do full-device authentication since it authenticates
+each sector independently, i.e. there is no Merkle tree.
 
-> +static void non_cluster_end_io(struct bio *bio)
-> +{
-> +	struct bio *bio_orig = bio->bi_private;
-> +
-> +	bio_orig->bi_status = bio->bi_status;
-> +	bio_endio(bio_orig);
-> +	bio_put(bio);
-> +}
+I don't think it would make sense for the same device-mapper target to support
+these quite different use cases.  And the same general concepts apply at the
+filesystem level; for these reasons and others (note that per-block checksums
+like btrfs and ZFS wouldn't need a Merkle tree), write support is very
+intentionally outside the scope of fs-verity.
 
-Why can't we use bio_chain for the split bios?
+So I think any arguments for doing things differently in fs-verity need to be
+made in the context of read-only files.
 
-> +	bio_for_each_segment(from, *bio_orig, iter) {
-> +		if (i++ < max_segs)
-> +			sectors += from.bv_len >> 9;
-> +		else
-> +			break;
-> +	}
+Thanks,
 
-The easy to read way would be:
-
-	bio_for_each_segment(from, *bio_orig, iter) {
-		if (i++ == max_segs)
-			break;
-		sectors += from.bv_len >> 9;
-	}
-
-> +	if (sectors < bio_sectors(*bio_orig)) {
-> +		bio = bio_split(*bio_orig, sectors, GFP_NOIO,
-> +				&non_cluster_bio_split);
-> +		bio_chain(bio, *bio_orig);
-> +		generic_make_request(*bio_orig);
-> +		*bio_orig = bio;
-
-I don't think this is very efficient, as this means we now
-clone the bio twice, first to split it at the sector boundary,
-and then again when converting it to single-page bio_vec.
-
-I think this could be something like this (totally untested):
-
-diff --git a/block/non-cluster.c b/block/non-cluster.c
-index 9c2910be9404..60389f275c43 100644
---- a/block/non-cluster.c
-+++ b/block/non-cluster.c
-@@ -13,58 +13,59 @@
- 
- #include "blk.h"
- 
--static struct bio_set non_cluster_bio_set, non_cluster_bio_split;
-+static struct bio_set non_cluster_bio_set;
- 
- static __init int init_non_cluster_bioset(void)
- {
- 	WARN_ON(bioset_init(&non_cluster_bio_set, BIO_POOL_SIZE, 0,
- 			   BIOSET_NEED_BVECS));
- 	WARN_ON(bioset_integrity_create(&non_cluster_bio_set, BIO_POOL_SIZE));
--	WARN_ON(bioset_init(&non_cluster_bio_split, BIO_POOL_SIZE, 0, 0));
- 
- 	return 0;
- }
- __initcall(init_non_cluster_bioset);
- 
--static void non_cluster_end_io(struct bio *bio)
--{
--	struct bio *bio_orig = bio->bi_private;
--
--	bio_orig->bi_status = bio->bi_status;
--	bio_endio(bio_orig);
--	bio_put(bio);
--}
--
- void blk_queue_non_cluster_bio(struct request_queue *q, struct bio **bio_orig)
- {
--	struct bio *bio;
- 	struct bvec_iter iter;
--	struct bio_vec from;
--	unsigned i = 0;
--	unsigned sectors = 0;
--	unsigned short max_segs = min_t(unsigned short, BIO_MAX_PAGES,
--					queue_max_segments(q));
-+	struct bio *bio;
-+	struct bio_vec bv;
-+	unsigned short max_segs, segs = 0;
-+
-+	bio = bio_alloc_bioset(GFP_NOIO, bio_segments(*bio_orig),
-+			&non_cluster_bio_set);
-+	bio->bi_disk		= (*bio_orig)->bi_disk;
-+	bio->bi_partno		= (*bio_orig)->bi_partno;
-+	bio_set_flag(bio, BIO_CLONED);
-+	if (bio_flagged(*bio_orig, BIO_THROTTLED))
-+		bio_set_flag(bio, BIO_THROTTLED);
-+	bio->bi_opf		= (*bio_orig)->bi_opf;
-+	bio->bi_ioprio		= (*bio_orig)->bi_ioprio;
-+	bio->bi_write_hint	= (*bio_orig)->bi_write_hint;
-+	bio->bi_iter.bi_sector	= (*bio_orig)->bi_iter.bi_sector;
-+	bio->bi_iter.bi_size	= (*bio_orig)->bi_iter.bi_size;
-+
-+	if (bio_integrity(*bio_orig))
-+		bio_integrity_clone(bio, *bio_orig, GFP_NOIO);
- 
--	bio_for_each_segment(from, *bio_orig, iter) {
--		if (i++ < max_segs)
--			sectors += from.bv_len >> 9;
--		else
-+	bio_clone_blkcg_association(bio, *bio_orig);
-+
-+	max_segs = min_t(unsigned short, queue_max_segments(q), BIO_MAX_PAGES);
-+	bio_for_each_segment(bv, *bio_orig, iter) {
-+		bio->bi_io_vec[segs++] = bv;
-+		if (segs++ == max_segs)
- 			break;
- 	}
- 
--	if (sectors < bio_sectors(*bio_orig)) {
--		bio = bio_split(*bio_orig, sectors, GFP_NOIO,
--				&non_cluster_bio_split);
--		bio_chain(bio, *bio_orig);
--		generic_make_request(*bio_orig);
--		*bio_orig = bio;
--	}
--	bio = bio_clone_bioset(*bio_orig, GFP_NOIO, &non_cluster_bio_set);
-+	bio->bi_vcnt = segs;
-+	bio->bi_phys_segments = segs;
-+	bio_set_flag(bio, BIO_SEG_VALID);
-+	bio_chain(bio, *bio_orig);
- 
--	bio->bi_phys_segments = bio_segments(bio);
--        bio_set_flag(bio, BIO_SEG_VALID);
--	bio->bi_end_io = non_cluster_end_io;
-+	if (bio_integrity(bio))
-+		bio_integrity_trim(bio);
-+	bio_advance(bio, (*bio_orig)->bi_iter.bi_size);
- 
--	bio->bi_private = *bio_orig;
-+	generic_make_request(*bio_orig);
- 	*bio_orig = bio;
- }
+Eric
