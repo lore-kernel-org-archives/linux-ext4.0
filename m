@@ -1,45 +1,36 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:51798 "EHLO newverein.lst.de"
+Return-Path: <SRS0=hSPz=NR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:46048 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726300AbeKZXrX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Nov 2018 18:47:23 -0500
-Date: Mon, 26 Nov 2018 13:53:17 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V12 05/20] block: remove bvec_iter_rewind()
-Message-ID: <20181126125317.GA6383@lst.de>
-References: <20181126021720.19471-1-ming.lei@redhat.com> <20181126021720.19471-6-ming.lei@redhat.com>
+        id S1726069AbeKGHU3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 7 Nov 2018 02:20:29 -0500
+Date: Tue, 6 Nov 2018 16:53:09 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Vasily Averin <vvs@virtuozzo.com>
+Cc: linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 07/11] ext4: lost put_bh in ext4_mark_iloc_dirty()
+Message-ID: <20181106215309.GF2570@thunk.org>
+References: <cover.1540935522.git.vvs@virtuozzo.com>
+ <61d28461-8fdd-d614-8bde-844703936ac1@virtuozzo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181126021720.19471-6-ming.lei@redhat.com>
+In-Reply-To: <61d28461-8fdd-d614-8bde-844703936ac1@virtuozzo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 26, 2018 at 10:17:05AM +0800, Ming Lei wrote:
-> Commit 7759eb23fd980 ("block: remove bio_rewind_iter()") removes
-> bio_rewind_iter(), then no one uses bvec_iter_rewind() any more,
-> so remove it.
+On Wed, Oct 31, 2018 at 12:58:24AM +0300, Vasily Averin wrote:
+> ext4_mark_iloc_dirty() callers expect that it releases iloc->bh
+> even if it returns an error.
 > 
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> Fixes 0db1ff222d40 ("ext4: add shutdown bit and check for it") # 4.11
+> 
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 
-Looks good,
+Thanks, applied.  I fixed up the commit description and Fixes/Cc
+trailers.  I used the one-line description:
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+    ext4: avoid buffer leak on shutdown in ext4_mark_iloc_dirty()
+
+    	  	       	       		- Ted
