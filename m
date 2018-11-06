@@ -1,59 +1,58 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:44574 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727291AbeK0JQN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:16:13 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH v3 12/12] chattr.1: Document the casefold attribute
-Date: Mon, 26 Nov 2018 17:19:49 -0500
-Message-Id: <20181126221949.12172-13-krisman@collabora.com>
-In-Reply-To: <20181126221949.12172-1-krisman@collabora.com>
-References: <20181126221949.12172-1-krisman@collabora.com>
+Return-Path: <SRS0=hSPz=NR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:44622 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2389227AbeKGCOJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 6 Nov 2018 21:14:09 -0500
+Date: Tue, 6 Nov 2018 11:47:59 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Adrian Hunter <adrian.hunter@intel.com>
+Subject: Re: [PATCH] jbd2: Avoid long hold times of j_state_lock while
+ committing a transaction
+Message-ID: <20181106164759.GE6416@thunk.org>
+References: <20181016094248.21359-1-jack@suse.cz>
+ <20181106052051.GD6416@thunk.org>
+ <20181106102230.GC25414@quack2.suse.cz>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181106102230.GC25414@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
----
- misc/chattr.1.in | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+On Tue, Nov 06, 2018 at 11:22:30AM +0100, Jan Kara wrote:
+>> So the buffer is on BJ_Shadow list while the assertion in
+> jbd2_journal_dirty_metadata() expects it to be in BJ_Metadata list. This is
+> really weird as we have also checked that jh->b_transaction ==
+> handle->h_transaction so the transaction couldn't have passed to commit
+> phase... Oh, I see, the code in start_this_handle() got racy with the
+> removal of j_state_lock protection from journal_commit_transaction() so now
+> transaction can start even though there are handles outstanding! I'll think
+> about the best solution for this. Thanks for report!
 
-diff --git a/misc/chattr.1.in b/misc/chattr.1.in
-index 028ae9e7ca4c..5949d096687b 100644
---- a/misc/chattr.1.in
-+++ b/misc/chattr.1.in
-@@ -29,7 +29,7 @@ The operator '+' causes the selected attributes to be added to the
- existing attributes of the files; '-' causes them to be removed; and '='
- causes them to be the only attributes that the files have.
- .PP
--The letters 'aAcCdDeijPsStTu' select the new attributes for the files:
-+The letters 'aAcCdDeFijPsStTu' select the new attributes for the files:
- append only (a),
- no atime updates (A),
- compressed (c),
-@@ -37,6 +37,7 @@ no copy on write (C),
- no dump (d),
- synchronous directory updates (D),
- extent format (e),
-+case-insensitive directory lookups (F),
- immutable (i),
- data journalling (j),
- project hierarchy (P),
-@@ -119,6 +120,11 @@ set or reset using
- although it can be displayed by
- .BR lsattr (1).
- .PP
-+A directory with the 'F' attribute set indicates that all the path
-+lookups inside that directory are made in a case-insensitive fashion.
-+This attribute can only be changed in empty directories on file systems
-+with the fname_encoding feature enabled.
-+.PP
- A file with the 'i' attribute cannot be modified: it cannot be deleted or
- renamed, no link can be created to this file, most of the file's
- metadata can not be modified, and the file can not be opened in write mode.
--- 
-2.19.2
+Thanks for the analysis!  I finished the bisection last night and it
+was too late for me to dive into how this was going on.  I should have
+realized this before I had suggested the approach in the patch.
+
+The original complaint which Andrian made was that the long hold times
+of j_state_lock at the beginning of the commit.  What he didn't
+mention was what the other "high priority tasks" were blocked on, but
+they were almost certainly start_this_handle.  And that's fundamental;
+when we are trying to at the beginning of the commit process is
+waiting for the outstanding handles to close; and so we can't let new
+handles start.
+
+What we can do is to try to decrease the handle hold times.  This is
+why we track the handle type and we have the jbd2_handle_stats
+tracepoint.  If we can find that handles of a particular type and a
+particular line number are the ones which are taking more time than
+other handles, we can try to make them run faster; for example, by
+pre-reading blocks aren't in the buffer cache before starting the
+handle.
+
+The other thing which we can probably do is to for truncate handles,
+if we notice that current_transaction->t_state == T_LOCKED, we can
+suspend the truncation activity and close the handle, and then resume
+it (which will block until a new transaction is ready to be started).
+
+   	       	     	     	 	     - Ted
