@@ -1,92 +1,188 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:40781 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727330AbeK0Jlv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:41:51 -0500
-Received: by mail-pl1-f195.google.com with SMTP id u18so2006048plq.7
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:46:11 -0800 (PST)
-Date: Mon, 26 Nov 2018 14:46:08 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V12 02/20] btrfs: look at bi_size for repair decisions
-Message-ID: <20181126224608.GO30411@vader>
-References: <20181126021720.19471-1-ming.lei@redhat.com>
- <20181126021720.19471-3-ming.lei@redhat.com>
+Return-Path: <SRS0=hSPz=NR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:53434 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729416AbeKFPsU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 6 Nov 2018 10:48:20 -0500
+Subject: Re: [PATCH] ext4: remove code duplication in free_ind_block()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-kernel@vger.kernel.org
+References: <f1ec9378-6b0f-fdee-392c-bb97187fae12@virtuozzo.com>
+From: Vasily Averin <vvs@virtuozzo.com>
+Message-ID: <8248d9f2-b758-21cb-5cd8-30bba2bb9137@virtuozzo.com>
+Date: Tue, 6 Nov 2018 09:24:38 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181126021720.19471-3-ming.lei@redhat.com>
+In-Reply-To: <f1ec9378-6b0f-fdee-392c-bb97187fae12@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 26, 2018 at 10:17:02AM +0800, Ming Lei wrote:
-> From: Christoph Hellwig <hch@lst.de>
-> 
-> bio_readpage_error currently uses bi_vcnt to decide if it is worth
-> retrying an I/O.  But the vector count is mostly an implementation
-> artifact - it really should figure out if there is more than a
-> single sector worth retrying.  Use bi_size for that and shift by
-> PAGE_SHIFT.  This really should be blocks/sectors, but given that
-> btrfs doesn't support a sector size different from the PAGE_SIZE
-> using the page size keeps the changes to a minimum.
-> 
-> Reviewed-by: David Sterba <dsterba@suse.com>
+btw I have few related questions:
+1) extend_credit_for_blkdel() can return error but its return code is not checked, 
+neither here nor in all other places. Could somebody clarify, is it normal?
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
+2) there is similar function free_ext_idx(). After internal failures  it calls 
+extend_credit_for_blkdel() and ext4_free_blocks().
+In the same situation free_ind_blocks() returns without calling of these functions.
+Is it OK?
 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+Thank you,
+	Vasily Averin
+
+On 11/6/18 9:13 AM, Vasily Averin wrote:
+> free_ind_block(), free_dind_blocks() and free_tind_blocks() are replaced
+> by a single recursive function.
+> 
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 > ---
->  fs/btrfs/extent_io.c | 2 +-
->  include/linux/bio.h  | 6 ------
->  2 files changed, 1 insertion(+), 7 deletions(-)
+>  fs/ext4/migrate.c | 115 +++++++++++++---------------------------------
+>  1 file changed, 32 insertions(+), 83 deletions(-)
 > 
-> diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
-> index 15fd46582bb2..40751e86a2a9 100644
-> --- a/fs/btrfs/extent_io.c
-> +++ b/fs/btrfs/extent_io.c
-> @@ -2368,7 +2368,7 @@ static int bio_readpage_error(struct bio *failed_bio, u64 phy_offset,
->  	int read_mode = 0;
->  	blk_status_t status;
->  	int ret;
-> -	unsigned failed_bio_pages = bio_pages_all(failed_bio);
-> +	unsigned failed_bio_pages = failed_bio->bi_iter.bi_size >> PAGE_SHIFT;
->  
->  	BUG_ON(bio_op(failed_bio) == REQ_OP_WRITE);
->  
-> diff --git a/include/linux/bio.h b/include/linux/bio.h
-> index 056fb627edb3..6f6bc331a5d1 100644
-> --- a/include/linux/bio.h
-> +++ b/include/linux/bio.h
-> @@ -263,12 +263,6 @@ static inline void bio_get_last_bvec(struct bio *bio, struct bio_vec *bv)
->  		bv->bv_len = iter.bi_bvec_done;
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index 224e136d1c10..754f172b18d4 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -157,100 +157,43 @@ static int extend_credit_for_blkdel(handle_t *handle, struct inode *inode)
+>  	return retval;
 >  }
 >  
-> -static inline unsigned bio_pages_all(struct bio *bio)
-> -{
-> -	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
-> -	return bio->bi_vcnt;
+> -static int free_dind_blocks(handle_t *handle,
+> -				struct inode *inode, __le32 i_data)
+> +static int free_ind_blocks(handle_t *handle,
+> +				struct inode *inode, __le32 i_data, int ind)
+>  {
+> -	int i;
+> -	__le32 *tmp_idata;
+> -	struct buffer_head *bh;
+> -	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+> -
+> -	bh = sb_bread(inode->i_sb, le32_to_cpu(i_data));
+> -	if (!bh)
+> -		return -EIO;
+> -
+> -	tmp_idata = (__le32 *)bh->b_data;
+> -	for (i = 0; i < max_entries; i++) {
+> -		if (tmp_idata[i]) {
+> -			extend_credit_for_blkdel(handle, inode);
+> -			ext4_free_blocks(handle, inode, NULL,
+> -					 le32_to_cpu(tmp_idata[i]), 1,
+> -					 EXT4_FREE_BLOCKS_METADATA |
+> -					 EXT4_FREE_BLOCKS_FORGET);
+> -		}
+> -	}
+> -	put_bh(bh);
+> -	extend_credit_for_blkdel(handle, inode);
+> -	ext4_free_blocks(handle, inode, NULL, le32_to_cpu(i_data), 1,
+> -			 EXT4_FREE_BLOCKS_METADATA |
+> -			 EXT4_FREE_BLOCKS_FORGET);
+> -	return 0;
 > -}
 > -
->  static inline struct bio_vec *bio_first_bvec_all(struct bio *bio)
+> -static int free_tind_blocks(handle_t *handle,
+> -				struct inode *inode, __le32 i_data)
+> -{
+> -	int i, retval = 0;
+> -	__le32 *tmp_idata;
+> -	struct buffer_head *bh;
+> -	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+> -
+> -	bh = sb_bread(inode->i_sb, le32_to_cpu(i_data));
+> -	if (!bh)
+> -		return -EIO;
+> -
+> -	tmp_idata = (__le32 *)bh->b_data;
+> -	for (i = 0; i < max_entries; i++) {
+> -		if (tmp_idata[i]) {
+> -			retval = free_dind_blocks(handle,
+> -					inode, tmp_idata[i]);
+> -			if (retval) {
+> -				put_bh(bh);
+> -				return retval;
+> +	if (ind > 0) {
+> +		int retval = 0;
+> +		__le32 *tmp_idata;
+> +		ext4_lblk_t i, max_entries;
+> +		struct buffer_head *bh;
+> +
+> +		bh = sb_bread(inode->i_sb, le32_to_cpu(i_data));
+> +		if (!bh)
+> +			return -EIO;
+> +
+> +		tmp_idata = (__le32 *)bh->b_data;
+> +		max_entries = inode->i_sb->s_blocksize >> 2;
+> +		for (i = 0; i < max_entries; i++) {
+> +			if (tmp_idata[i]) {
+> +				retval = free_ind_blocks(handle,
+> +						inode, tmp_idata[i], ind - 1);
+> +				if (retval) {
+> +					put_bh(bh);
+> +					return retval;
+> +				}
+>  			}
+>  		}
+> +		put_bh(bh);
+>  	}
+> -	put_bh(bh);
+>  	extend_credit_for_blkdel(handle, inode);
+>  	ext4_free_blocks(handle, inode, NULL, le32_to_cpu(i_data), 1,
+> -			 EXT4_FREE_BLOCKS_METADATA |
+> -			 EXT4_FREE_BLOCKS_FORGET);
+> -	return 0;
+> -}
+> -
+> -static int free_ind_block(handle_t *handle, struct inode *inode, __le32 *i_data)
+> -{
+> -	int retval;
+> -
+> -	/* ei->i_data[EXT4_IND_BLOCK] */
+> -	if (i_data[0]) {
+> -		extend_credit_for_blkdel(handle, inode);
+> -		ext4_free_blocks(handle, inode, NULL,
+> -				le32_to_cpu(i_data[0]), 1,
+> -				 EXT4_FREE_BLOCKS_METADATA |
+> -				 EXT4_FREE_BLOCKS_FORGET);
+> -	}
+> -
+> -	/* ei->i_data[EXT4_DIND_BLOCK] */
+> -	if (i_data[1]) {
+> -		retval = free_dind_blocks(handle, inode, i_data[1]);
+> -		if (retval)
+> -			return retval;
+> -	}
+> -
+> -	/* ei->i_data[EXT4_TIND_BLOCK] */
+> -	if (i_data[2]) {
+> -		retval = free_tind_blocks(handle, inode, i_data[2]);
+> -		if (retval)
+> -			return retval;
+> -	}
+> +			 EXT4_FREE_BLOCKS_METADATA | EXT4_FREE_BLOCKS_FORGET);
+>  	return 0;
+>  }
+>  
+>  static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
+>  						struct inode *tmp_inode)
 >  {
->  	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
-> -- 
-> 2.9.5
+> -	int retval;
+> +	int i, retval;
+>  	__le32	i_data[3];
+>  	struct ext4_inode_info *ei = EXT4_I(inode);
+>  	struct ext4_inode_info *tmp_ei = EXT4_I(tmp_inode);
+> @@ -307,7 +250,13 @@ static int ext4_ext_swap_inode_data(handle_t *handle, struct inode *inode,
+>  	 * We mark the inode dirty after, because we decrement the
+>  	 * i_blocks when freeing the indirect meta-data blocks
+>  	 */
+> -	retval = free_ind_block(handle, inode, i_data);
+> +	for (i = 0; i < ARRAY_SIZE(i_data); i++) {
+> +		if (i_data[i]) {
+> +			retval = free_ind_blocks(handle, inode, i_data[i], i);
+> +			if (retval)
+> +				break;
+> +		}
+> +	}
+>  	ext4_mark_inode_dirty(handle, inode);
+>  
+>  err_out:
 > 
