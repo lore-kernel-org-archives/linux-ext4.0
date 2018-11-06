@@ -1,77 +1,75 @@
-Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:54988 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S2387839AbeKPC1f (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 15 Nov 2018 21:27:35 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6E9422C9D7
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 16:19:06 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Thu, 15 Nov 2018 16:19:06 +0000
-Message-ID: <bug-201685-13602-sFa3VWNVzG@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
+Return-Path: <SRS0=hSPz=NR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mga05.intel.com ([192.55.52.43]:60956 "EHLO mga05.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2389426AbeKGClO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 6 Nov 2018 21:41:14 -0500
+From: "Hunter, Adrian" <adrian.hunter@intel.com>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+CC: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Subject: RE: [PATCH] jbd2: Avoid long hold times of j_state_lock while
+ committing a transaction
+Date: Tue, 6 Nov 2018 17:14:58 +0000
+Message-ID: <363DA0ED52042842948283D2FC38E4649C3135C3@IRSMSX106.ger.corp.intel.com>
+References: <20181016094248.21359-1-jack@suse.cz>
+ <20181106052051.GD6416@thunk.org> <20181106102230.GC25414@quack2.suse.cz>
+ <20181106164759.GE6416@thunk.org>
+In-Reply-To: <20181106164759.GE6416@thunk.org>
+Content-Language: en-US
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
-
---- Comment #3 from Jason Gambrel (jaygambrel@gmail.com) ---
-(In reply to Theodore Tso from comment #2)
-> I'm using a 4.19.0 based kernel (with some ext4 patches for the 4.20
-> mainline) and I'm not noticing any file system problems.   I'm running a
-> Dell XPS 13 with an NVME SSD, and Debian testing as my userspace.
+> -----Original Message-----
+> From: Theodore Y. Ts'o [mailto:tytso@mit.edu]
+> Sent: Tuesday, November 6, 2018 6:48 PM
+> To: Jan Kara <jack@suse.cz>
+> Cc: linux-ext4@vger.kernel.org; Hunter, Adrian <adrian.hunter@intel.com>
+> Subject: Re: [PATCH] jbd2: Avoid long hold times of j_state_lock while
+> committing a transaction
 > 
-> It's hard to do anything with a "my file system is corrupted" report without
-> any kind of reliable reproduction information.   Remember that file system
-> corruptions can be caused by any number of things --- buggy device drivers,
-> buggy Nvidia binary modules that dereference wild pointers and randomly
-> corrupt kernel memory, RAID code if you are using RAID, etc., etc.
+> On Tue, Nov 06, 2018 at 11:22:30AM +0100, Jan Kara wrote:
+> >> So the buffer is on BJ_Shadow list while the assertion in
+> > jbd2_journal_dirty_metadata() expects it to be in BJ_Metadata list.
+> > This is really weird as we have also checked that jh->b_transaction ==
+> > handle->h_transaction so the transaction couldn't have passed to
+> > handle->commit
+> > phase... Oh, I see, the code in start_this_handle() got racy with the
+> > removal of j_state_lock protection from journal_commit_transaction()
+> > so now transaction can start even though there are handles
+> > outstanding! I'll think about the best solution for this. Thanks for report!
 > 
-> Also, the symptoms reported by Claude and Jason are very different.  Claude
-> has reported that a data block in a shared library file has gotten
-> corrupted.  Jason has reported that file system metadata corruption.   This
-> could very well be coming from different root causes.
+> Thanks for the analysis!  I finished the bisection last night and it was too late
+> for me to dive into how this was going on.  I should have realized this before I
+> had suggested the approach in the patch.
 > 
-> So it's better with these sorts of things to file separate bugs, and to
-> include detailed hardware configuration details, kernel configuration,
-> dumpe2fs outputs of the file system in question, as well as e2fsck logs.
+> The original complaint which Andrian made was that the long hold times of
+> j_state_lock at the beginning of the commit.  What he didn't mention was
+> what the other "high priority tasks" were blocked on,
 
-Thank you for your reply Theodore and I apologize for my unhelpful post.  I am
-relatively new to this space so I find your advice very helpful.  If the file
-system corruption happens a 3rd time (hopefully it won't), I will post a
-separate bug report.  I also wasn't previously aware of dumpe2fs, so I will
-provide that helpful information next time. I have also searched to find any
-additional logs and it looks like fsck logs the boot info under
-/var/logs/boot.log and potentially /var/logs/syslog.  Unfortunately the
-information from my last boot requiring fixation had already been overwritten. 
-I will keep this in mind for the future.
+The high priority task does not use any file system I/O.
+It was not able to run because the CPU had preemption disabled, because
+J_state_lock is a spinning lock.
 
-If it helps, my system uses an i7 with integrated Intel graphics.  I am not
-running any proprietary drivers.  No Raid. 500gb SSD. 16gb ram with a 4gb swap
-file (not a swap partition).  I have been using ukuu to install mainline
-kernels.  I did not change anything else on my system.  When I jumped from
-4.18.17 to 4.19.0 this problem first appeared.  Then it occurred again after
-updating to 4.19.1.
+Have you considered using a non-spinning lock instead? E.g. rw_semaphore
 
-I'm uncertain as to whether it would be helpful or not, but while trying to
-figure out why this happened to me, I came across a post on Ask Ubuntu with a
-few others reporting similar problems.  They did provide some debugging
-information in their post at:
-https://askubuntu.com/questions/1092558/ubuntu-18-04-4-19-1-kernel-after-closing-the-lid-for-the-night-not-logging-ou
 
-Again it might be a different problem from what Claude Heiland-Allen is
-experiencing.
-
-Thank you very much for your advice and I will try and provide some useful
-information including logs in a separate bug report if it happens again.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+>                                                                                                              but they were almost
+> certainly start_this_handle.  And that's fundamental; when we are trying to
+> at the beginning of the commit process is waiting for the outstanding handles
+> to close; and so we can't let new handles start.
+> 
+> What we can do is to try to decrease the handle hold times.  This is why we
+> track the handle type and we have the jbd2_handle_stats tracepoint.  If we
+> can find that handles of a particular type and a particular line number are the
+> ones which are taking more time than other handles, we can try to make
+> them run faster; for example, by pre-reading blocks aren't in the buffer
+> cache before starting the handle.
+> 
+> The other thing which we can probably do is to for truncate handles, if we
+> notice that current_transaction->t_state == T_LOCKED, we can suspend the
+> truncation activity and close the handle, and then resume it (which will block
+> until a new transaction is ready to be started).
+> 
+>    	       	     	     	 	     - Ted
