@@ -1,116 +1,43 @@
-Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mout.gmx.net ([212.227.15.18]:54017 "EHLO mout.gmx.net"
+Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:37756 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725991AbeKMKAr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 13 Nov 2018 05:00:47 -0500
-From: Chengguang Xu <cgxu519@gmx.com>
-To: jack@suse.com
-Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH 02/10] ext2: fix coding style for balloc.c
-Date: Tue, 13 Nov 2018 08:04:40 +0800
-Message-Id: <20181113000448.16023-3-cgxu519@gmx.com>
-In-Reply-To: <20181113000448.16023-1-cgxu519@gmx.com>
-References: <20181113000448.16023-1-cgxu519@gmx.com>
+        id S1727859AbeKHDBm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 7 Nov 2018 22:01:42 -0500
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2] ext4: lost brelse in __ext4_read_dirblock()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-kernel@vger.kernel.org
+References: <6e5c9e17-5916-7296-35a0-cc0600a79f27@virtuozzo.com>
+Message-ID: <e269cf8c-b5ca-3eed-bd60-a8629378db8b@virtuozzo.com>
+Date: Wed, 7 Nov 2018 20:30:17 +0300
+MIME-Version: 1.0
+In-Reply-To: <6e5c9e17-5916-7296-35a0-cc0600a79f27@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix various complains from checkpatch.pl
+Fixes dc6982ff4db1 ("ext4: refactor code to read directory blocks ...")
+Cc: stable@kernel.org # 3.9
 
-Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 ---
- fs/ext2/balloc.c | 34 +++++++++++++++++-----------------
- 1 file changed, 17 insertions(+), 17 deletions(-)
+ fs/ext4/namei.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 33db13365c5e..12fd52b9488f 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -38,13 +38,13 @@
- 
- #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
- 
--struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
-+struct ext2_group_desc *ext2_get_group_desc(struct super_block *sb,
- 					     unsigned int block_group,
--					     struct buffer_head ** bh)
-+					     struct buffer_head **bh)
- {
- 	unsigned long group_desc;
- 	unsigned long offset;
--	struct ext2_group_desc * desc;
-+	struct ext2_group_desc *desc;
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
- 
- 	if (block_group >= sbi->s_groups_count) {
-@@ -125,8 +125,8 @@ static int ext2_valid_block_bitmap(struct super_block *sb,
- static struct buffer_head *
- read_block_bitmap(struct super_block *sb, unsigned int block_group)
- {
--	struct ext2_group_desc * desc;
--	struct buffer_head * bh = NULL;
-+	struct ext2_group_desc *desc;
-+	struct buffer_head *bh = NULL;
- 	ext2_fsblk_t bitmap_blk;
- 
- 	desc = ext2_get_group_desc(sb, block_group, NULL);
-@@ -335,8 +335,8 @@ void ext2_rsv_window_add(struct super_block *sb,
- 	struct rb_node *node = &rsv->rsv_node;
- 	ext2_fsblk_t start = rsv->rsv_start;
- 
--	struct rb_node ** p = &root->rb_node;
--	struct rb_node * parent = NULL;
-+	struct rb_node **p = &root->rb_node;
-+	struct rb_node *parent = NULL;
- 	struct ext2_reserve_window_node *this;
- 
- 	while (*p)
-@@ -475,19 +475,19 @@ void ext2_discard_reservation(struct inode *inode)
-  * @block:		start physical block to free
-  * @count:		number of blocks to free
-  */
--void ext2_free_blocks (struct inode * inode, unsigned long block,
--		       unsigned long count)
-+void ext2_free_blocks(struct inode *inode, unsigned long block,
-+		      unsigned long count)
- {
- 	struct buffer_head *bitmap_bh = NULL;
--	struct buffer_head * bh2;
-+	struct buffer_head *bh2;
- 	unsigned long block_group;
- 	unsigned long bit;
- 	unsigned long i;
- 	unsigned long overflow;
--	struct super_block * sb = inode->i_sb;
--	struct ext2_sb_info * sbi = EXT2_SB(sb);
--	struct ext2_group_desc * desc;
--	struct ext2_super_block * es = sbi->s_es;
-+	struct super_block *sb = inode->i_sb;
-+	struct ext2_sb_info *sbi = EXT2_SB(sb);
-+	struct ext2_group_desc *desc;
-+	struct ext2_super_block *es = sbi->s_es;
- 	unsigned freed = 0, group_freed;
- 
- 	if (block < le32_to_cpu(es->s_first_data_block) ||
-@@ -778,7 +778,7 @@ ext2_try_to_allocate(struct super_block *sb, int group,
- static int find_next_reservable_window(
- 				struct ext2_reserve_window_node *search_head,
- 				struct ext2_reserve_window_node *my_rsv,
--				struct super_block * sb,
-+				struct super_block *sb,
- 				ext2_fsblk_t start_block,
- 				ext2_fsblk_t last_block)
- {
-@@ -1466,9 +1466,9 @@ unsigned long ext2_count_free(struct buffer_head *map, unsigned int numchars)
- 
- #endif  /*  EXT2FS_DEBUG  */
- 
--unsigned long ext2_count_free_blocks (struct super_block * sb)
-+unsigned long ext2_count_free_blocks(struct super_block *sb)
- {
--	struct ext2_group_desc * desc;
-+	struct ext2_group_desc *desc;
- 	unsigned long desc_count = 0;
- 	int i;
- #ifdef EXT2FS_DEBUG
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index d388cce72db2..6a6b90363ef1 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -126,6 +126,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
+ 	if (!is_dx_block && type == INDEX) {
+ 		ext4_error_inode(inode, func, line, block,
+ 		       "directory leaf block found instead of index block");
++		brelse(bh);
+ 		return ERR_PTR(-EFSCORRUPTED);
+ 	}
+ 	if (!ext4_has_metadata_csum(inode->i_sb) ||
 -- 
-2.17.2
+2.17.1
