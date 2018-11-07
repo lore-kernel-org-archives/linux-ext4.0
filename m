@@ -1,48 +1,70 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-ed1-f65.google.com ([209.85.208.65]:40652 "EHLO
-        mail-ed1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727522AbeKVPBx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2018 10:01:53 -0500
-Received: by mail-ed1-f65.google.com with SMTP id d3so6586228edx.7
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Nov 2018 20:24:21 -0800 (PST)
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH 2/3] Fix panic with journal superblock flags printing.
-From: Alexey Lyashkov <alexey.lyashkov@gmail.com>
-In-Reply-To: <20181121235432.GE10588@thunk.org>
-Date: Thu, 22 Nov 2018 07:24:17 +0300
-Cc: linux-ext4@vger.kernel.org
-Content-Transfer-Encoding: quoted-printable
-Message-Id: <EC847396-EE31-4F96-B8A9-3457FD1AC9F5@gmail.com>
-References: <20181119091650.81803-1-alexey.lyashkov@gmail.com>
- <20181119091650.81803-3-alexey.lyashkov@gmail.com>
- <20181121235432.GE10588@thunk.org>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:49530 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726752AbeKHCEy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 7 Nov 2018 21:04:54 -0500
+Date: Wed, 7 Nov 2018 11:33:46 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Vasily Averin <vvs@virtuozzo.com>
+Cc: linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: missing !bh check in ext4_xattr_inode_write()
+Message-ID: <20181107163346.GH9919@thunk.org>
+References: <710ddac8-eb88-e631-3b27-74410039d15f@virtuozzo.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <710ddac8-eb88-e631-3b27-74410039d15f@virtuozzo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-1024 is jbd superblock size, and this constant widely used over =
-e2fsprogs code.
-from this particular case it=E2=80=99s clear bug as jsb_buffer defined =
-as.
->>
-        char                    jsb_buffer[1024];
->>
+On Sun, Nov 04, 2018 at 08:29:39PM +0300, Vasily Averin wrote:
+> ext4_getblk() called with map_flags=0 can return NULL,
+> it can lead to oops on bh dereferemce
+> 
+> Fixes e50e5129f384 ("ext4: xattr-in-inode support")
+> Cc: stable@kernel.org # 4.13
+> 
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> ---
+>  fs/ext4/xattr.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 0b9688683526..6dc6c70828f0 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -1384,6 +1384,8 @@ static int ext4_xattr_inode_write(handle_t *handle, struct inode *ea_inode,
+>  		bh = ext4_getblk(handle, ea_inode, block, 0);
+>  		if (IS_ERR(bh))
+>  			return PTR_ERR(bh);
+> +		if (!bh)
+> +			return -ENOMEM;
 
+ext4_getblk() should never return NULL here; and if it does, it won't
+be because of ENOMEM.  If we did have a memory allocation problem, we
+would have returned ERR_PTR(-ENOMEM). 
 
-> 22 =D0=BD=D0=BE=D1=8F=D0=B1. 2018 =D0=B3., =D0=B2 2:54, Theodore Y. =
-Ts'o <tytso@mit.edu> =D0=BD=D0=B0=D0=BF=D0=B8=D1=81=D0=B0=D0=BB(=D0=B0):
->=20
-> The summary really isn't right; "panic" is something that kernels do,
-> not userspace programs.
->=20
->> -	if (dump_super) {
->> +	if (dump_all || dump_super) {
->> 		e2p_list_journal_super(out_file, jsb_buffer,
->> -				       current_fs->blocksize, 0);
->> +				       1024, 0);
->=20
-> This makes no sense to me.  Why is hard-coding the expected blocksize
-> to be 1024 a good thing to do here?
->=20
-> 					- Ted
+In the while loop above this point, the blocks in ea_inode would have
+been allocated, and so when ext4_getblk() is called with map_flags ==
+0, it will return NULL if there is a hole in the inode --- but we had
+*just* allocated the blocks in question.
+
+The only time that bh could be NULL, then, would be in the case of
+something really going wrong; a programming error elsewhere (perhaps a
+wild pointer dereference) or I/O error causing on-disk file system
+corruption (although that would be highly unlikely given that we had
+*just* allocated the blocks and so the metadata blocks in question
+probably would still be in the cache).
+
+If we do want to handle this case, what we should do is something like
+call WARN_ON_ONCE(1), call ext4_error() since the file system may have
+gotten corrupted, and then return -EFSCORRUPTED.
+
+(Linus has said that there should be no new BUG_ON's, so the
+WARN_ON_ONE is to help debugging, and flaging the file system as
+corrupted is probably the best we could do here, and is marginally
+better than what we do now, which is just let the Oops take place.)
+
+						- Ted
