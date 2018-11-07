@@ -1,110 +1,98 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:45732 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2388965AbeKPKcI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 05:32:08 -0500
-Received: by mail-pl1-f196.google.com with SMTP id a14so5657786plm.12
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 16:22:01 -0800 (PST)
-Date: Thu, 15 Nov 2018 16:21:57 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 07/19] btrfs: use bvec_last_segment to get bio's last
- page
-Message-ID: <20181116002157.GB23828@vader>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-8-ming.lei@redhat.com>
+Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:49204 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727203AbeKHBEX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 7 Nov 2018 20:04:23 -0500
+Date: Wed, 7 Nov 2018 10:33:30 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Vasily Averin <vvs@virtuozzo.com>
+Cc: linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 2/7] ext4: possible sbi->s_group_desc leak in
+ ext4_fill_super
+Message-ID: <20181107153330.GC9919@thunk.org>
+References: <cover.1541011937.git.vvs@virtuozzo.com>
+ <4b554ca1-f46e-742e-4aaa-04b379baf5f9@virtuozzo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-8-ming.lei@redhat.com>
+In-Reply-To: <4b554ca1-f46e-742e-4aaa-04b379baf5f9@virtuozzo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:52:54PM +0800, Ming Lei wrote:
-> Preparing for supporting multi-page bvec.
+On Wed, Oct 31, 2018 at 10:12:27PM +0300, Vasily Averin wrote:
+> Fixes bfe0a5f47ada ("ext4: add more mount time checks of the superblock") # 4.18
 > 
-> Cc: Dave Chinner <dchinner@redhat.com>
-> Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> Cc: Mike Snitzer <snitzer@redhat.com>
-> Cc: dm-devel@redhat.com
-> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> Cc: linux-fsdevel@vger.kernel.org
-> Cc: Shaohua Li <shli@kernel.org>
-> Cc: linux-raid@vger.kernel.org
-> Cc: linux-erofs@lists.ozlabs.org
-> Cc: David Sterba <dsterba@suse.com>
-> Cc: linux-btrfs@vger.kernel.org
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: linux-xfs@vger.kernel.org
-> Cc: Gao Xiang <gaoxiang25@huawei.com>
-> Cc: Christoph Hellwig <hch@lst.de>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Coly Li <colyli@suse.de>
-> Cc: linux-bcache@vger.kernel.org
-> Cc: Boaz Harrosh <ooo@electrozaur.com>
-> Cc: Bob Peterson <rpeterso@redhat.com>
-> Cc: cluster-devel@redhat.com
-
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 > ---
->  fs/btrfs/compression.c | 5 ++++-
->  fs/btrfs/extent_io.c   | 5 +++--
->  2 files changed, 7 insertions(+), 3 deletions(-)
+>  fs/ext4/super.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/btrfs/compression.c b/fs/btrfs/compression.c
-> index 2955a4ea2fa8..161e14b8b180 100644
-> --- a/fs/btrfs/compression.c
-> +++ b/fs/btrfs/compression.c
-> @@ -400,8 +400,11 @@ blk_status_t btrfs_submit_compressed_write(struct inode *inode, u64 start,
->  static u64 bio_end_offset(struct bio *bio)
->  {
->  	struct bio_vec *last = bio_last_bvec_all(bio);
-> +	struct bio_vec bv;
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index a221f1cdf704..ed4d36506ec2 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -4100,7 +4100,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  			 le32_to_cpu(es->s_inodes_count),
+>  			 ((u64)sbi->s_groups_count * sbi->s_inodes_per_group));
+>  		ret = -EINVAL;
+> -		goto failed_mount;
+> +		db_count = 0;
+> +		goto failed_mount2;
+>  	}
 >  
-> -	return page_offset(last->bv_page) + last->bv_len + last->bv_offset;
-> +	bvec_last_segment(last, &bv);
-> +
-> +	return page_offset(bv.bv_page) + bv.bv_len + bv.bv_offset;
->  }
->  
->  static noinline int add_ra_bio_pages(struct inode *inode,
-> diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
-> index d228f706ff3e..5d5965297e7e 100644
-> --- a/fs/btrfs/extent_io.c
-> +++ b/fs/btrfs/extent_io.c
-> @@ -2720,11 +2720,12 @@ static int __must_check submit_one_bio(struct bio *bio, int mirror_num,
->  {
->  	blk_status_t ret = 0;
->  	struct bio_vec *bvec = bio_last_bvec_all(bio);
-> -	struct page *page = bvec->bv_page;
-> +	struct bio_vec bv;
->  	struct extent_io_tree *tree = bio->bi_private;
->  	u64 start;
->  
-> -	start = page_offset(page) + bvec->bv_offset;
-> +	bvec_last_segment(bvec, &bv);
-> +	start = page_offset(bv.bv_page) + bv.bv_offset;
->  
->  	bio->bi_private = NULL;
->  
-> -- 
-> 2.9.5
-> 
+>  	bgl_lock_init(sbi->s_blockgroup_lock);
+
+Thanks for spotting this!
+
+A better fix would be to move this check earlier, before the
+allocation of sbi->s_group_desc.
+
+						- Ted
+
+commit 9fa8bc9b9d3c6864f8dddd83893a02fcc1b48b62
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Wed Nov 7 10:32:53 2018 -0500
+
+    ext4: fix possible leak of sbi->s_group_desc_leak in error path
+    
+    Fixes: bfe0a5f47ada ("ext4: add more mount time checks of the superblock")
+    Reported-by: Vasily Averin <vvs@virtuozzo.com>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+    Cc: stable@kernel.org # 4.18
+
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index a221f1cdf704..92092b55db1e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4075,6 +4075,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_groups_count = blocks_count;
+ 	sbi->s_blockfile_groups = min_t(ext4_group_t, sbi->s_groups_count,
+ 			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
++	if (((u64)sbi->s_groups_count * sbi->s_inodes_per_group) !=
++	    le32_to_cpu(es->s_inodes_count)) {
++		ext4_msg(sb, KERN_ERR, "inodes count not valid: %u vs %llu",
++			 le32_to_cpu(es->s_inodes_count),
++			 ((u64)sbi->s_groups_count * sbi->s_inodes_per_group));
++		ret = -EINVAL;
++		goto failed_mount;
++	}
+ 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+ 		   EXT4_DESC_PER_BLOCK(sb);
+ 	if (ext4_has_feature_meta_bg(sb)) {
+@@ -4094,14 +4102,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		ret = -ENOMEM;
+ 		goto failed_mount;
+ 	}
+-	if (((u64)sbi->s_groups_count * sbi->s_inodes_per_group) !=
+-	    le32_to_cpu(es->s_inodes_count)) {
+-		ext4_msg(sb, KERN_ERR, "inodes count not valid: %u vs %llu",
+-			 le32_to_cpu(es->s_inodes_count),
+-			 ((u64)sbi->s_groups_count * sbi->s_inodes_per_group));
+-		ret = -EINVAL;
+-		goto failed_mount;
+-	}
+ 
+ 	bgl_lock_init(sbi->s_blockgroup_lock);
+ 
