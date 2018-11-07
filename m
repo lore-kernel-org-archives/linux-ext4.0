@@ -1,42 +1,37 @@
-Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:47290 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726375AbeK3PSD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Nov 2018 10:18:03 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id C14CF2FD3D
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 04:10:06 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Fri, 30 Nov 2018 04:10:06 +0000
-Message-ID: <bug-201685-13602-DwHHhoyRbh@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mout.gmx.net ([212.227.15.15]:60871 "EHLO mout.gmx.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726878AbeKGXRx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 7 Nov 2018 18:17:53 -0500
+From: Chengguang Xu <cgxu519@gmx.com>
+To: jack@suse.com
+Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
+Subject: [PATCH] ext2: avoid unnecessary operation in ext2_error()
+Date: Wed,  7 Nov 2018 21:47:04 +0800
+Message-Id: <20181107134704.15821-1-cgxu519@gmx.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+If filesystem has already mounted as read-only, then we don't have
+to do it again.
 
---- Comment #78 from Néstor A. Marchesini (nestorm_des@hotmail.com) ---
-Well, guys, this seems to pass the test, after several reboots every several
-hours of use, I had no more corruptions of my four partitions mdadm raid1.
-The solution was to delete the ext4 folder from my kernel 4.19.5 and copy the
-ext4 folder from my previous kernel 4.18.20 and recompiling the tree 4.19.5.
+Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+---
+ fs/ext2/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-$ uname -a
-Linux pc-user 4.19.5-gentoo #1 SMP PREEMPT Thu Nov 29 00:45:31 2018 x86_64 AMD
-FX(tm)-8350 Eight-Core Processor AuthenticAMD GNU/Linux
-
-I was comparing both folders /fs/ext4 of the 4.18.20 and 4.19.5 trees with meld
-and there are several modifications, unfortunately it exceeds my knowledge.
-At least on this side I affirm that the problem is gone, we will see it happen
-with later patches.
-
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index cb91baa4275d..5e2861b947a6 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -73,7 +73,7 @@ void ext2_error(struct super_block *sb, const char *function,
+ 
+ 	if (test_opt(sb, ERRORS_PANIC))
+ 		panic("EXT2-fs: panic from previous error\n");
+-	if (test_opt(sb, ERRORS_RO)) {
++	if (!sb_rdonly(sb) && test_opt(sb, ERRORS_RO)) {
+ 		ext2_msg(sb, KERN_CRIT,
+ 			     "error: remounting filesystem read-only");
+ 		sb->s_flags |= SB_RDONLY;
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.17.2
