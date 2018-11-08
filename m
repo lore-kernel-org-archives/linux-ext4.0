@@ -1,34 +1,32 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:51002 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1730412AbeKVTxY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 14:53:24 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A82A12C323
-        for <linux-ext4@vger.kernel.org>; Thu, 22 Nov 2018 09:14:48 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Thu, 22 Nov 2018 09:14:48 +0000
-Message-ID: <bug-201685-13602-8yfcUxmRoE@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:51946 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728618AbeKHM4N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 8 Nov 2018 07:56:13 -0500
+Date: Wed, 7 Nov 2018 22:22:49 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Vasily Averin <vvs@virtuozzo.com>
+Cc: linux-ext4@vger.kernel.org,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 7/7] ext4: lost brelse in ext4_expand_extra_isize_ea()
+Message-ID: <20181108032249.GC22459@thunk.org>
+References: <cover.1541011937.git.vvs@virtuozzo.com>
+ <c5dc2118-ac42-c899-f218-4a78aa39c37f@virtuozzo.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <c5dc2118-ac42-c899-f218-4a78aa39c37f@virtuozzo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Wed, Oct 31, 2018 at 10:13:09PM +0300, Vasily Averin wrote:
+> Fixes de05ca852679 ("ext4: move call to ext4_error() into ...") # 4.17
+> 
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 
---- Comment #29 from carlphilippreh@gmail.com ---
-Sorry for the late response, but I have been trying to reproduce the problem
-with 4.19.2 for some while now. It seems that the problem I was experiencing
-only happens with 4.19.1 and 4.19.0, and it did so very frequently. I can at
-least confirm that I have CONFIG_SCSI_MQ_DEFAULT=y set in 4.19 but I didn't in
-4.18. I hope that this is, at least for me, fixed for now.
+Thanks, applied.  I used the commit description:
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+    ext4: fix buffer leak in ext4_expand_extra_isize_ea() on error path
+
+    	      	     	     			- Ted
