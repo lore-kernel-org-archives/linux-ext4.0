@@ -1,216 +1,94 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:44530 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726296AbeK0JPe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:15:34 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 01/12] libe2p: Helpers for configuring the encoding superblock fields
-Date: Mon, 26 Nov 2018 17:19:38 -0500
-Message-Id: <20181126221949.12172-2-krisman@collabora.com>
-In-Reply-To: <20181126221949.12172-1-krisman@collabora.com>
-References: <20181126221949.12172-1-krisman@collabora.com>
+Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mxo2.dft.dmz.twosigma.com ([208.77.212.182]:54197 "EHLO
+        mxo2.dft.dmz.twosigma.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726751AbeKIDpE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Nov 2018 22:45:04 -0500
+From: Elana Hashman <Elana.Hashman@twosigma.com>
+To: "'tytso@mit.edu'" <tytso@mit.edu>
+CC: "'linux-ext4@vger.kernel.org'" <linux-ext4@vger.kernel.org>
+Subject: Phantom full ext4 root filesystems on 4.1 through 4.14 kernels
+Date: Thu, 8 Nov 2018 17:59:18 +0000
+Message-ID: <9abbdde6145a4887a8d32c65974f7832@exmbdft5.ad.twosigma.com>
+Content-Language: en-US
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Hi Ted,
 
-Implement helper functions to convert the encoding name and specific
-parameters requested by the user on the command line into the format
-that is written to disk.
+We've run into a mysterious "phantom" full filesystem issue on our Kubernetes fleet. We initially encountered this issue on kernel 4.1.35, but are still experiencing the problem after upgrading to 4.14.67. Essentially, `df` reports our root filesystems as full and they behave as though they are full, but the "used" space cannot be accounted for. Rebooting the system, remounting the root filesystem read-only and then remounting as read-write, or booting into single-user mode all free up the "used" space. The disk slowly fills up over time, suggesting that there might be some kind of leak; we previously saw this affecting hosts with ~200 days of uptime on the 4.1 kernel, but are now seeing it affect a 4.14 host with only ~70 days of uptime.
 
-Changes since v2:
-  - Rename defines to add EXT4_ prefix
-  - Use unicode X.Y versioning scheme
+Here is some data from an example host, running the 4.14.67 kernel. The root disk is ext4.
 
-Changes since v1:
-  - Drop struct ext4_encoding_map name.
-  - remove question mark in comment.
-  - Reword 0x0 -> NULL
-  - Prevent out of bound array access if requested invalid encoding
+$ uname -a
+Linux <hostname> 4.14.67-ts1 #1 SMP Wed Aug 29 13:28:25 UTC 2018 x86_64 GNU/Linux
+$ grep ' / ' /proc/mounts
+/dev/disk/by-uuid/<some-uuid> / ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- lib/e2p/Makefile.in  |  8 +++-
- lib/e2p/e2p.h        |  5 +++
- lib/e2p/encoding.c   | 97 ++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2_fs.h |  5 +++
- 4 files changed, 113 insertions(+), 2 deletions(-)
- create mode 100644 lib/e2p/encoding.c
+`df` reports 0 bytes free:
 
-diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
-index 2b0aa1915130..68d534cdaf11 100644
---- a/lib/e2p/Makefile.in
-+++ b/lib/e2p/Makefile.in
-@@ -19,7 +19,8 @@ all::	e2p.pc
- OBJS=		feature.o fgetflags.o fsetflags.o fgetversion.o fsetversion.o \
- 		getflags.o getversion.o hashstr.o iod.o ls.o ljs.o mntopts.o \
- 		parse_num.o pe.o pf.o ps.o setflags.o setversion.o uuid.o \
--		ostype.o percent.o crypto_mode.o fgetproject.o fsetproject.o
-+		ostype.o percent.o crypto_mode.o fgetproject.o fsetproject.o \
-+		encoding.o
- 
- SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/fsetflags.c $(srcdir)/fgetversion.c \
-@@ -29,7 +30,7 @@ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/pe.c $(srcdir)/pf.c $(srcdir)/ps.c \
- 		$(srcdir)/setflags.c $(srcdir)/setversion.c $(srcdir)/uuid.c \
- 		$(srcdir)/ostype.c $(srcdir)/percent.c $(srcdir)/crypto_mode.c \
--		$(srcdir)/fgetproject.c $(srcdir)/fsetproject.c
-+		$(srcdir)/fgetproject.c $(srcdir)/fsetproject.c $(srcdir)/encoding.c
- HFILES= e2p.h
- 
- LIBRARY= libe2p
-@@ -147,6 +148,9 @@ getversion.o: $(srcdir)/getversion.c $(top_builddir)/lib/config.h \
- hashstr.o: $(srcdir)/hashstr.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-+encoding.o: $(srcdir)/encoding.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
- iod.o: $(srcdir)/iod.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-diff --git a/lib/e2p/e2p.h b/lib/e2p/e2p.h
-index d70b59a5d358..c3a6b2587bf6 100644
---- a/lib/e2p/e2p.h
-+++ b/lib/e2p/e2p.h
-@@ -80,3 +80,8 @@ unsigned int e2p_percent(int percent, unsigned int base);
- 
- const char *e2p_encmode2string(int num);
- int e2p_string2encmode(char *string);
-+
-+int e2p_str2encoding(const char *string);
-+const char *e2p_encoding2str(int encoding);
-+int e2p_get_encoding_flags(int encoding);
-+int e2p_str2encoding_flags(int encoding, char *param, __u16 *flags);
-diff --git a/lib/e2p/encoding.c b/lib/e2p/encoding.c
-new file mode 100644
-index 000000000000..a441647aaea3
---- /dev/null
-+++ b/lib/e2p/encoding.c
-@@ -0,0 +1,97 @@
-+/*
-+ * encoding.c --- convert between encoding magic numbers and strings
-+ *
-+ * Copyright (C) 2018  Collabora Ltd.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
-+
-+#include "config.h"
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <ctype.h>
-+#include <errno.h>
-+#include <stdio.h>
-+
-+#include "e2p.h"
-+
-+#define ARRAY_SIZE(array)			\
-+        (sizeof(array) / sizeof(array[0]))
-+
-+static const struct {
-+	char *name;
-+	__u16 default_flags;
-+} ext4_encoding_map[] = {
-+	/* 0x0 */ { "ascii", 0},
-+	/* 0x1 */ {"utf8-10.0", (EXT4_UTF8_NORMALIZATION_TYPE_NFKD |
-+				 EXT4_UTF8_CASEFOLD_TYPE_NFKDCF)},
-+};
-+
-+static const struct enc_flags {
-+	__u16 flag;
-+	char *param;
-+} encoding_flags[] = {
-+	{ EXT4_ENC_STRICT_MODE_FL, "strict" },
-+};
-+
-+/* Return a positive number < 0xff indicating the encoding magic number
-+ * or a negative value indicating error. */
-+int e2p_str2encoding(const char *string)
-+{
-+	int i;
-+
-+	for (i = 0 ; i < ARRAY_SIZE(ext4_encoding_map); i++)
-+		if (!strcmp(string, ext4_encoding_map[i].name))
-+			return i;
-+
-+	return -EINVAL;
-+}
-+
-+const char *e2p_encoding2str(int encoding)
-+{
-+	if (encoding < ARRAY_SIZE(ext4_encoding_map))
-+		return ext4_encoding_map[encoding].name;
-+	return NULL;
-+}
-+
-+int e2p_get_encoding_flags(int encoding)
-+{
-+	if (encoding < ARRAY_SIZE(ext4_encoding_map))
-+		return ext4_encoding_map[encoding].default_flags;
-+	return 0;
-+}
-+
-+int e2p_str2encoding_flags(int encoding, char *param, __u16 *flags)
-+{
-+	char *f = strtok(param, "-");
-+	const struct enc_flags *fl;
-+	int i, neg = 0;
-+
-+	while (f) {
-+		neg = 0;
-+		if (!strncmp("no", f, 2)) {
-+			neg = 1;
-+			f += 2;
-+		}
-+
-+		for (i = 0; i < ARRAY_SIZE(encoding_flags); i++) {
-+			fl = &encoding_flags[i];
-+			if (!strcmp(fl->param, f)) {
-+				if (neg)
-+					*flags &= ~fl->flag;
-+				else
-+					*flags |= fl->flag;
-+
-+				goto next_flag;
-+			}
-+		}
-+		return -EINVAL;
-+	next_flag:
-+		f = strtok(NULL, "-");
-+	}
-+	return 0;
-+}
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index f1c405b76339..36ae7ae41c47 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -16,6 +16,7 @@
- #ifndef _LINUX_EXT2_FS_H
- #define _LINUX_EXT2_FS_H
- 
-+#include <stddef.h>
- #include <ext2fs/ext2_types.h>		/* Changed from linux/types.h */
- 
- #ifndef __GNUC_PREREQ
-@@ -1127,4 +1128,8 @@ struct mmp_struct {
-  */
- #define EXT4_INLINE_DATA_DOTDOT_SIZE	(4)
- 
-+#define EXT4_ENC_STRICT_MODE_FL			(1 << 0) /* Reject invalid sequences */
-+#define EXT4_UTF8_NORMALIZATION_TYPE_NFKD	(1 << 1)
-+#define EXT4_UTF8_CASEFOLD_TYPE_NFKDCF		(1 << 4)
-+
- #endif	/* _LINUX_EXT2_FS_H */
--- 
-2.19.2
+$ df -h /
+Filesystem                                              Size  Used Avail Use% Mounted on
+/dev/disk/by-uuid/<some-uuid>   50G   48G     0 100% /
+
+Deleted, open files account for almost no disk capacity:
+
+$ sudo lsof -a +L1 /
+COMMAND    PID   USER   FD   TYPE DEVICE SIZE/OFF NLINK    NODE NAME
+java      5313 user    3r   REG    8,3  6806312     0 1315847 /var/lib/sss/mc/passwd (deleted)
+java      5313 user   11u   REG    8,3    55185     0 2494654 /tmp/classpath.1668Gp (deleted)
+system_ar 5333 user    3r   REG    8,3  6806312     0 1315847 /var/lib/sss/mc/passwd (deleted)
+java      5421 user    3r   REG    8,3  6806312     0 1315847 /var/lib/sss/mc/passwd (deleted)
+java      5421 user   11u   REG    8,3   149313     0 2494486 /tmp/java.fzTwWp (deleted)
+java      5421 tsdist   12u   REG    8,3    55185     0 2500513 /tmp/classpath.7AmxHO (deleted)
+
+`du` can only account for 16GB of file usage:
+
+$ sudo du -hxs /
+16G     /
+
+But what is most puzzling is the numbers reported by e2freefrag, which don't add up:
+
+$ sudo e2freefrag /dev/disk/by-uuid/<some-uuid>
+Device: /dev/disk/by-uuid/<some-uuid>
+Blocksize: 4096 bytes
+Total blocks: 13107200
+Free blocks: 7778076 (59.3%)
+
+Min. free extent: 4 KB
+Max. free extent: 8876 KB
+Avg. free extent: 224 KB
+Num. free extent: 6098
+
+HISTOGRAM OF FREE EXTENT SIZES:
+Extent Size Range :  Free extents   Free Blocks  Percent
+    4K...    8K-  :          1205          1205    0.02%
+    8K...   16K-  :           980          2265    0.03%
+   16K...   32K-  :           653          3419    0.04%
+   32K...   64K-  :          1337         15374    0.20%
+   64K...  128K-  :           631         14151    0.18%
+  128K...  256K-  :           224         10205    0.13%
+  256K...  512K-  :           261         23818    0.31%
+  512K... 1024K-  :           303         56801    0.73%
+    1M...    2M-  :           387        135907    1.75%
+    2M...    4M-  :           103         64740    0.83%
+    4M...    8M-  :            12         15005    0.19%
+    8M...   16M-  :             2          4267    0.05%
+
+This looks like a bug to me; the histogram in the manpage example has percentages that add up to 100% but this doesn't even add up to 5%.
+
+After a reboot, `df` reflects real utilization:
+
+$ df -h /
+Filesystem                                              Size  Used Avail Use% Mounted on
+/dev/disk/by-uuid/<some-uuid>   50G   16G   31G  34% /
+
+We are using overlay2fs for Docker, as well as rbd mounts; I'm not sure how they might interact.
+
+Thanks for your help,
+
+--
+Elana Hashman
+ehashman@twosigma.com
