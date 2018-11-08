@@ -1,25 +1,142 @@
-Return-Path: <SRS0=3cJ+=N5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from sv2113.xserver.jp ([183.90.242.14]:33870 "EHLO
-        sv2113.xserver.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726095AbeKSHN4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2018 02:13:56 -0500
-Reply-To: <reem51531593@gmail.com>
-From: "Reem Al-Hashimi" <zjruibang@chemnet.com>
-Subject: Important
-Date: Mon, 19 Nov 2018 02:45:57 +0700
+Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from userp2120.oracle.com ([156.151.31.85]:42952 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726751AbeKIEVc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Nov 2018 23:21:32 -0500
+Date: Thu, 8 Nov 2018 10:44:31 -0800
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>, Elana.Hashman@twosigma.com
+Subject: [PATCH] e2freefrag: fix free blocks count during live scan
+Message-ID: <20181108184431.GA27852@magnolia>
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="Windows-1251"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20181118194615.3E021418DC918F@sv2113.xserver.jp>
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+From: Darrick J. Wong <darrick.wong@oracle.com>
 
-My name is ms. Reem Al-Hashimi. The UAE minister of state for international cooparation. I got your contact from a certain email database from your country while i was looking for someone to handle a huge financial transaction for me in confidence. Can you receive and invest on behalf of my only son. Please reply to reem2018@daum.net, for more details if you are interested.
+In e2freefrag live scan mode, we take the free block count from the
+ondisk superblock.  This leads to screwy histogram percentages:
 
-Regards,
+Extent Size Range :  Free extents   Free Blocks  Percent
+    4M...    8M-  :             5          8234    1.05%
+   64M...  128M-  :             2         52279    6.64%
+  512M... 1024M-  :             1        202752   25.74%
 
-Ms. Reem Al-Hashimy
+...because there could be superblock updates in the journal that haven't
+yet been checkpointed.  The online scan is perfectly capable of tallying
+the free blocks on its own, so teach it do that and make a more accurate
+report.
+
+Reported-by: Elana Hashman <Elana.Hashman@twosigma.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ misc/e2freefrag.c |   26 ++++++++++++++++----------
+ 1 file changed, 16 insertions(+), 10 deletions(-)
+
+diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
+index 6eb4c736d..f7fede54b 100644
+--- a/misc/e2freefrag.c
++++ b/misc/e2freefrag.c
+@@ -163,7 +163,8 @@ static void scan_block_bitmap(ext2_filsys fs, struct chunk_info *info)
+ 
+ #if defined(HAVE_EXT2_IOCTLS) && !defined(DEBUGFS)
+ # define FSMAP_EXTENTS	1024
+-static int scan_online(ext2_filsys fs, struct chunk_info *info)
++static int scan_online(ext2_filsys fs, struct chunk_info *info,
++		       blk64_t *free_blks)
+ {
+ 	struct fsmap_head *fsmap;
+ 	struct fsmap *extent;
+@@ -204,6 +205,7 @@ static int scan_online(ext2_filsys fs, struct chunk_info *info)
+ 	fsmap->fmh_keys[1].fmr_offset = ULLONG_MAX;
+ 	fsmap->fmh_keys[1].fmr_flags = UINT_MAX;
+ 
++	*free_blks = 0;
+ 	/* Fill the extent histogram with live data */
+ 	while (1) {
+ 		ret = ioctl(fd, FS_IOC_GETFSMAP, fsmap);
+@@ -225,6 +227,7 @@ static int scan_online(ext2_filsys fs, struct chunk_info *info)
+ 				continue;
+ 			update_chunk_stats(info,
+ 					   extent->fmr_length / fs->blocksize);
++			*free_blks += (extent->fmr_length / fs->blocksize);
+ 		}
+ 
+ 		p = &fsmap->fmh_recs[fsmap->fmh_entries - 1];
+@@ -236,13 +239,15 @@ static int scan_online(ext2_filsys fs, struct chunk_info *info)
+ 	return 1;
+ }
+ #else
+-# define scan_online(fs, info)	(0)
++# define scan_online(fs, info, free_blks)	(0)
+ #endif /* HAVE_EXT2_IOCTLS */
+ 
+-static errcode_t scan_offline(ext2_filsys fs, struct chunk_info *info)
++static errcode_t scan_offline(ext2_filsys fs, struct chunk_info *info,
++			      blk64_t *free_blks)
+ {
+ 	errcode_t retval;
+ 
++	*free_blks = ext2fs_free_blocks_count(fs->super);
+ 	retval = ext2fs_read_block_bitmap(fs);
+ 	if (retval)
+ 		return retval;
+@@ -251,7 +256,7 @@ static errcode_t scan_offline(ext2_filsys fs, struct chunk_info *info)
+ }
+ 
+ static errcode_t dump_chunk_info(ext2_filsys fs, struct chunk_info *info,
+-				 FILE *f)
++				 FILE *f, blk64_t free_blks)
+ {
+ 	unsigned long total_chunks;
+ 	const char *unitp = "KMGTPEZY";
+@@ -261,8 +266,8 @@ static errcode_t dump_chunk_info(ext2_filsys fs, struct chunk_info *info,
+ 
+ 	fprintf(f, "Total blocks: %llu\nFree blocks: %llu (%0.1f%%)\n",
+ 		ext2fs_blocks_count(fs->super),
+-		ext2fs_free_blocks_count(fs->super),
+-		(double)ext2fs_free_blocks_count(fs->super) * 100 /
++		free_blks,
++		(double)free_blks * 100 /
+ 		ext2fs_blocks_count(fs->super));
+ 
+ 	if (info->chunkbytes) {
+@@ -306,7 +311,7 @@ static errcode_t dump_chunk_info(ext2_filsys fs, struct chunk_info *info,
+ 				info->histogram.fc_chunks[i],
+ 				info->histogram.fc_blocks[i],
+ 				(double)info->histogram.fc_blocks[i] * 100 /
+-				ext2fs_free_blocks_count(fs->super));
++				free_blks);
+ 		}
+ 		start = end;
+ 		if (start == 1<<10) {
+@@ -330,14 +335,15 @@ static void close_device(char *device_name, ext2_filsys fs)
+ static void collect_info(ext2_filsys fs, struct chunk_info *chunk_info, FILE *f)
+ {
+ 	unsigned int retval = 0;
++	blk64_t free_blks = 0;
+ 
+ 	fprintf(f, "Device: %s\n", fs->device_name);
+ 	fprintf(f, "Blocksize: %u bytes\n", fs->blocksize);
+ 
+ 	init_chunk_info(fs, chunk_info);
+-	if (!scan_online(fs, chunk_info)) {
++	if (!scan_online(fs, chunk_info, &free_blks)) {
+ 		init_chunk_info(fs, chunk_info);
+-		retval = scan_offline(fs, chunk_info);
++		retval = scan_offline(fs, chunk_info, &free_blks);
+ 	}
+ 	if (retval) {
+ 		com_err(fs->device_name, retval, "while reading block bitmap");
+@@ -345,7 +351,7 @@ static void collect_info(ext2_filsys fs, struct chunk_info *chunk_info, FILE *f)
+ 		exit(1);
+ 	}
+ 
+-	retval = dump_chunk_info(fs, chunk_info, f);
++	retval = dump_chunk_info(fs, chunk_info, f, free_blks);
+ 	if (retval) {
+ 		com_err(fs->device_name, retval, "while dumping chunk info");
+                 close_device(fs->device_name, fs);
