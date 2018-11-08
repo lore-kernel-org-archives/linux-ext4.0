@@ -1,64 +1,155 @@
-Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mailout1.w1.samsung.com ([210.118.77.11]:33874 "EHLO
-        mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726467AbeK3UmG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Nov 2018 15:42:06 -0500
-From: Huijin Park <huijin.park@samsung.com>
-To: Andreas Dilger <adilger.kernel@dilger.ca>,
-        Michael Callahan <michaelcallahan@fb.com>
-Cc: Omar Sandoval <osandov@fb.com>, js07.lee@samsung.com,
-        Huijin Park <huijin.park@samsung.com>,
-        Huijin Park <bbanghj.park@gmail.com>,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH,2/2] ext4: change type to same as sectors in disk_stats
-Date: Fri, 30 Nov 2018 04:32:41 -0500
-Message-id: <1543570361-3168-2-git-send-email-huijin.park@samsung.com>
-In-reply-to: <1543570361-3168-1-git-send-email-huijin.park@samsung.com>
-References: <1543570361-3168-1-git-send-email-huijin.park@samsung.com>
-        <CGME20181130093322eucas1p2aab6a9716469d9d2a9de1ffa91dd42f0@eucas1p2.samsung.com>
+Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:55706 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726609AbeKHWE7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 8 Nov 2018 17:04:59 -0500
+From: Jan Kara <jack@suse.cz>
+To: Ted Tso <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>,
+        "Hunter, Adrian" <adrian.hunter@intel.com>, Jan Kara <jack@suse.cz>
+Subject: [PATCH v2] jbd2: Avoid long hold times of j_state_lock while committing a transaction
+Date: Thu,  8 Nov 2018 13:29:38 +0100
+Message-Id: <20181108122938.10688-1-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "huijin.park" <huijin.park@samsung.com>
+We can hold j_state_lock for writing at the beginning of
+jbd2_journal_commit_transaction() for a rather long time (reportedly for
+30 ms) due cleaning revoke bits of all revoked buffers under it. The
+handling of revoke tables as well as cleaning of t_reserved_list, and
+checkpoint lists does not need j_state_lock for anything. It is only
+needed to prevent new handles from joining the transaction. Generally
+T_LOCKED transaction state prevents new handles from joining the
+transaction - except for reserved handles which have to allowed to join
+while we wait for other handles to complete.
 
-This patch changes the 's_sectors_written_start' type to u64
-same as the 'sectors' type in disk_stats.
-Because if the 'sectors' has more than about 2TiB,
-the 's_sectors_written_start' will overflow in 32 bit system.
-And it makes invalid statistics([session|lifetime]_write_kbytes).
+To prevent reserved handles from joining the transaction while cleaning
+up lists, add new transaction state T_SWITCH and watch for it when
+starting reserved handles. With this we can just drop the lock for
+operations that don't need it.
 
-Signed-off-by: huijin.park <huijin.park@samsung.com>
+Reported-and-tested-by: Adrian Hunter <adrian.hunter@intel.com>
+Suggested-by: "Theodore Y. Ts'o" <tytso@mit.edu>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/ext4.h  |    2 +-
- fs/ext4/sysfs.c |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/jbd2/commit.c      |  3 +++
+ fs/jbd2/transaction.c | 43 ++++++++++++++++++++++++++++++++++++++-----
+ include/linux/jbd2.h  |  1 +
+ 3 files changed, 42 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3f89d0a..d3a08b2 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1457,7 +1457,7 @@ struct ext4_sb_info {
- 	struct ext4_locality_group __percpu *s_locality_groups;
+Changes since v1:
+- fixed handling of reserved handles
+- rebased on top of 4.20-rc1
+- tested dioread-nolock xfstest run
+
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 150cc030b4d7..2eb55c3361a8 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -439,6 +439,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		finish_wait(&journal->j_wait_updates, &wait);
+ 	}
+ 	spin_unlock(&commit_transaction->t_handle_lock);
++	commit_transaction->t_state = T_SWITCH;
++	write_unlock(&journal->j_state_lock);
  
- 	/* for write statistics */
--	unsigned long s_sectors_written_start;
-+	u64 s_sectors_written_start;
- 	u64 s_kbytes_written;
+ 	J_ASSERT (atomic_read(&commit_transaction->t_outstanding_credits) <=
+ 			journal->j_max_transaction_buffers);
+@@ -505,6 +507,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	atomic_sub(atomic_read(&journal->j_reserved_credits),
+ 		   &commit_transaction->t_outstanding_credits);
  
- 	/* the size of zero-out chunk */
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index 9212a02..59ac5cf 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -57,7 +57,7 @@ static ssize_t session_write_kbytes_show(struct ext4_sb_info *sbi, char *buf)
++	write_lock(&journal->j_state_lock);
+ 	trace_jbd2_commit_flushing(journal, commit_transaction);
+ 	stats.run.rs_flushing = jiffies;
+ 	stats.run.rs_locked = jbd2_time_diff(stats.run.rs_locked,
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index c0b66a7a795b..116d8251fbff 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -138,9 +138,9 @@ static inline void update_t_max_wait(transaction_t *transaction,
+ }
  
- 	if (!sb->s_bdev->bd_part)
- 		return snprintf(buf, PAGE_SIZE, "0\n");
--	return snprintf(buf, PAGE_SIZE, "%lu\n",
-+	return snprintf(buf, PAGE_SIZE, "%llu\n",
- 			(part_stat_read(sb->s_bdev->bd_part,
- 					sectors[STAT_WRITE]) -
- 			 sbi->s_sectors_written_start) >> 1);
+ /*
+- * Wait until running transaction passes T_LOCKED state. Also starts the commit
+- * if needed. The function expects running transaction to exist and releases
+- * j_state_lock.
++ * Wait until running transaction passes to T_FLUSH state and new transaction
++ * can thus be started. Also starts the commit if needed. The function expects
++ * running transaction to exist and releases j_state_lock.
+  */
+ static void wait_transaction_locked(journal_t *journal)
+ 	__releases(journal->j_state_lock)
+@@ -160,6 +160,32 @@ static void wait_transaction_locked(journal_t *journal)
+ 	finish_wait(&journal->j_wait_transaction_locked, &wait);
+ }
+ 
++/*
++ * Wait until running transaction transitions from T_SWITCH to T_FLUSH
++ * state and new transaction can thus be started. The function releases
++ * j_state_lock.
++ */
++static void wait_transaction_switching(journal_t *journal)
++	__releases(journal->j_state_lock)
++{
++	DEFINE_WAIT(wait);
++
++	if (WARN_ON(!journal->j_running_transaction ||
++		    journal->j_running_transaction->t_state != T_SWITCH))
++		return;
++	prepare_to_wait(&journal->j_wait_transaction_locked, &wait,
++			TASK_UNINTERRUPTIBLE);
++	read_unlock(&journal->j_state_lock);
++	/*
++	 * We don't call jbd2_might_wait_for_commit() here as there's no
++	 * waiting for outstanding handles happening anymore in T_SWITCH state
++	 * and handling of reserved handles actually relies on that for
++	 * correctness.
++	 */
++	schedule();
++	finish_wait(&journal->j_wait_transaction_locked, &wait);
++}
++
+ static void sub_reserved_credits(journal_t *journal, int blocks)
+ {
+ 	atomic_sub(blocks, &journal->j_reserved_credits);
+@@ -183,7 +209,8 @@ static int add_transaction_credits(journal_t *journal, int blocks,
+ 	 * If the current transaction is locked down for commit, wait
+ 	 * for the lock to be released.
+ 	 */
+-	if (t->t_state == T_LOCKED) {
++	if (t->t_state != T_RUNNING) {
++		WARN_ON_ONCE(t->t_state >= T_FLUSH);
+ 		wait_transaction_locked(journal);
+ 		return 1;
+ 	}
+@@ -360,8 +387,14 @@ static int start_this_handle(journal_t *journal, handle_t *handle,
+ 		/*
+ 		 * We have handle reserved so we are allowed to join T_LOCKED
+ 		 * transaction and we don't have to check for transaction size
+-		 * and journal space.
++		 * and journal space. But we still have to wait while running
++		 * transaction is being switched to a committing one as it
++		 * won't wait for any handles anymore.
+ 		 */
++		if (transaction->t_state == T_SWITCH) {
++			wait_transaction_switching(journal);
++			goto repeat;
++		}
+ 		sub_reserved_credits(journal, blocks);
+ 		handle->h_reserved = 0;
+ 	}
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index b708e5169d1d..118d00a64184 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -575,6 +575,7 @@ struct transaction_s
+ 	enum {
+ 		T_RUNNING,
+ 		T_LOCKED,
++		T_SWITCH,
+ 		T_FLUSH,
+ 		T_COMMIT,
+ 		T_COMMIT_DFLUSH,
 -- 
-1.7.9.5
+2.16.4
