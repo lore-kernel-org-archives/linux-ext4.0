@@ -1,75 +1,58 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:13312 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay.sw.ru ([185.231.240.75]:60708 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727816AbeKSN56 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 08:57:58 -0500
-Date: Mon, 19 Nov 2018 11:35:14 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 01/19] block: introduce multi-page page bvec helpers
-Message-ID: <20181119033513.GF10838@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-2-ming.lei@redhat.com>
- <20181116131305.GA3165@lst.de>
- <20181119022327.GC10838@ming.t460p>
- <83fb4102-bffe-41f1-c8d0-3bdf61fe0ba8@kernel.dk>
+        id S1725945AbeKHQUf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 8 Nov 2018 11:20:35 -0500
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2] ext4: missing !bh check in ext4_xattr_inode_write()
+To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-kernel@vger.kernel.org
+References: <20181107163346.GH9919@thunk.org>
+Message-ID: <a3f1e28c-fba0-2b07-b710-c559fab555b8@virtuozzo.com>
+Date: Thu, 8 Nov 2018 09:46:30 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <83fb4102-bffe-41f1-c8d0-3bdf61fe0ba8@kernel.dk>
+In-Reply-To: <20181107163346.GH9919@thunk.org>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 18, 2018 at 08:10:14PM -0700, Jens Axboe wrote:
-> On 11/18/18 7:23 PM, Ming Lei wrote:
-> > On Fri, Nov 16, 2018 at 02:13:05PM +0100, Christoph Hellwig wrote:
-> >>> -#define bvec_iter_page(bvec, iter)				\
-> >>> +#define mp_bvec_iter_page(bvec, iter)				\
-> >>>  	(__bvec_iter_bvec((bvec), (iter))->bv_page)
-> >>>  
-> >>> -#define bvec_iter_len(bvec, iter)				\
-> >>> +#define mp_bvec_iter_len(bvec, iter)				\
-> >>
-> >> I'd much prefer if we would stick to the segment naming that
-> >> we also use in the higher level helper.
-> >>
-> >> So segment_iter_page, segment_iter_len, etc.
-> > 
-> > We discussed the naming problem before, one big problem is that the 'segment'
-> > in bio_for_each_segment*() means one single page segment actually.
-> > 
-> > If we use segment_iter_page() here for multi-page segment, it may
-> > confuse people.
-> > 
-> > Of course, I prefer to the naming of segment/page, 
-> > 
-> > And Jens didn't agree to rename bio_for_each_segment*() before.
-> 
-> I didn't like frivolous renaming (and I still don't), but mp_
-> is horrible imho. Don't name these after the fact that they
-> are done in conjunction with supporting multipage bvecs. That
-> very fact will be irrelevant very soon
+According to Ted Ts'o ext4_getblk() called in ext4_xattr_inode_write()
+should not return bh = NULL
 
-OK, so what is your suggestion for the naming issue?
+The only time that bh could be NULL, then, would be in the case of
+something really going wrong; a programming error elsewhere (perhaps a
+wild pointer dereference) or I/O error causing on-disk file system
+corruption (although that would be highly unlikely given that we had
+*just* allocated the blocks and so the metadata blocks in question
+probably would still be in the cache).
 
-Are you fine to use segment_iter_page() here? Then the term of 'segment'
-may be interpreted as multi-page segment here, but as single-page in
-bio_for_each_segment*().
+Fixes e50e5129f384 ("ext4: xattr-in-inode support")
+Cc: stable@kernel.org # 4.13
 
-thanks
-Ming
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/ext4/xattr.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 0b9688683526..415f73d4c9e6 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1384,6 +1384,12 @@ static int ext4_xattr_inode_write(handle_t *handle, struct inode *ea_inode,
+ 		bh = ext4_getblk(handle, ea_inode, block, 0);
+ 		if (IS_ERR(bh))
+ 			return PTR_ERR(bh);
++		if (!bh) {
++			WARN_ON_ONCE(1);
++			__ext4_error_inode(ea_inode, __func__, __LINE__, 0,
++					   "ext4_getblk() return bh = NULL");
++			return -EFSCORRUPTED;
++		}
+ 		ret = ext4_journal_get_write_access(handle, bh);
+ 		if (ret)
+ 			goto out;
+-- 
+2.17.1
