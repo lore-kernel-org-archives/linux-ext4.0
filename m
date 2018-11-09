@@ -1,102 +1,95 @@
-Return-Path: <SRS0=jmd0=OE=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:51068 "EHLO
-        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727428AbeKYT1C (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 25 Nov 2018 14:27:02 -0500
-From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-To: linux-ext4@vger.kernel.org
-Cc: jack@suse.cz, Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-Subject: [PATCH v2] jbd2: fix deadlock while checkpoint thread waits commit thread to finish
-Date: Sun, 25 Nov 2018 16:36:06 +0800
-Message-Id: <20181125083606.5273-1-xiaoguang.wang@linux.alibaba.com>
+Return-Path: <SRS0=UyHz=NU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-qk1-f194.google.com ([209.85.222.194]:36715 "EHLO
+        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725740AbeKJFDG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 10 Nov 2018 00:03:06 -0500
+Received: by mail-qk1-f194.google.com with SMTP id o125so3562771qkf.3
+        for <linux-ext4@vger.kernel.org>; Fri, 09 Nov 2018 11:21:09 -0800 (PST)
+MIME-Version: 1.0
+References: <1541037269-96483-1-git-send-email-bo.liu@linux.alibaba.com>
+In-Reply-To: <1541037269-96483-1-git-send-email-bo.liu@linux.alibaba.com>
+From: Liu Bo <obuil.liubo@gmail.com>
+Date: Fri, 9 Nov 2018 11:20:57 -0800
+Message-ID: <CANQeFDBbRRivvJA1xxbudtCinxxm_EY05_wLempQa042JX+hJg@mail.gmail.com>
+Subject: Re: [PATCH] Ext4: fix ENOSPC when both quota and dioread_nolock are enabled
+To: Liu Bo <bo.liu@linux.alibaba.com>
+Cc: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This issue was found when I tried to put checkpoint work in a separate thread,
-the deadlock below happened:
-         Thread1                                |   Thread2
-__jbd2_log_wait_for_space                       |
-jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
-  if (jh->b_transaction != NULL)                |
-    ...                                         |
-    jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
-                                                |  will lock j_checkpoint_mutex,
-                                                |  but will be blocked here.
-                                                |
-    jbd2_log_wait_commit(journal, tid);         |
-    wait_event(journal->j_wait_done_commit,     |
-     !tid_gt(tid, journal->j_commit_sequence)); |
-     ...                                        |wake_up(j_wait_done_commit)
-  }                                             |
+ping?
 
-then deadlock occurs, Thread1 will never be waken up.
+thanks,
+liubo
 
-To fix this issue, drop j_checkpoint_mutex in jbd2_log_do_checkpoint()
-when we are going to wait for transaction commit.
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-
-----------------
-v2:
-    1, modify patch's subsys name from ext4 to jbd2
-    2, do not modify initial logic about whether transaction is gone in
-       jbd2_log_do_checkpoint();
----
- fs/jbd2/checkpoint.c | 17 +++++++++++++++--
- fs/jbd2/journal.c    |  2 +-
- 2 files changed, 16 insertions(+), 3 deletions(-)
-
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 26f8d7e46462..02e0b79753e7 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -113,7 +113,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
- 	nblocks = jbd2_space_needed(journal);
- 	while (jbd2_log_space_left(journal) < nblocks) {
- 		write_unlock(&journal->j_state_lock);
--		mutex_lock(&journal->j_checkpoint_mutex);
-+		mutex_lock_io(&journal->j_checkpoint_mutex);
- 
- 		/*
- 		 * Test again, another process may have checkpointed while we
-@@ -276,9 +276,22 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 		"JBD2: %s: Waiting for Godot: block %llu\n",
- 		journal->j_devname, (unsigned long long) bh->b_blocknr);
- 
-+			if (batch_count)
-+				__flush_batch(journal, &batch_count);
- 			jbd2_log_start_commit(journal, tid);
-+			/*
-+			 * jbd2_journal_commit_transaction() may want
-+			 * to take the checkpoint_mutex if JBD2_FLUSHED
-+			 * is set, jbd2_update_log_tail() called by
-+			 * jbd2_journal_commit_transaction() may also take
-+			 * checkpoint_mutex.  So we need to temporarily
-+			 * drop it.
-+			 */
-+			mutex_unlock(&journal->j_checkpoint_mutex);
- 			jbd2_log_wait_commit(journal, tid);
--			goto retry;
-+			mutex_lock_io(&journal->j_checkpoint_mutex);
-+			spin_lock(&journal->j_list_lock);
-+			goto restart;
- 		}
- 		if (!buffer_dirty(bh)) {
- 			if (unlikely(buffer_write_io_error(bh)) && !result)
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8ef6b6daaa7a..88d8f22d2cba 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2067,7 +2067,7 @@ int jbd2_journal_wipe(journal_t *journal, int write)
- 	err = jbd2_journal_skip_recovery(journal);
- 	if (write) {
- 		/* Lock to make assertions happy... */
--		mutex_lock(&journal->j_checkpoint_mutex);
-+		mutex_lock_io(&journal->j_checkpoint_mutex);
- 		jbd2_mark_journal_empty(journal, REQ_SYNC | REQ_FUA);
- 		mutex_unlock(&journal->j_checkpoint_mutex);
- 	}
--- 
-2.17.2
+On Wed, Oct 31, 2018 at 6:57 PM Liu Bo <bo.liu@linux.alibaba.com> wrote:
+>
+> With dioread_nolock, unwritten extents are converted in IO completion, and
+> these extents may be merged with siblings.
+>
+> ext4_writepages() has reserved a handle to hold 2 credits for inode update
+> and extent update and the handle will be used in IO completion as we can't
+> start journal after clearing PageWriteback (due to locking rules).
+>
+> However, if quota is enabled, the following enospc situation could happen,
+>
+> ext4_convert_unwritten_extents
+>   ext4_ext_try_to_merge
+>     ext4_ext_try_to_merge_up
+>       ext4_journal_extend(handle, 2) # extend 2 credits for
+>                                      # bitmap/group_desc
+>       ext4_free_blocks()
+>         dquot_free_block
+>           // use 3 credits for 3 quota types
+>           // use 1 credit for inode update
+>         # update bitmap block
+>         # update group desc block
+>         # either of two updates may hit enospc
+>         # as ->h_buffer_credits has been consumed out.
+>
+> In ext4_ext_try_to_merge(), per-inode extent tree may be collasped into
+> inode and ext4_free_blocks() will then free the unneeded blocks, but with
+> quota being enabled, there aren't enough credits to process updates and we
+> end up with -ENOSPC.
+>
+> As this is a corner case, instead of adding credits in ext4_writepages(),
+> this just extends more credits for quota when doing merge-up.
+>
+> Fixes: ecb94f5fdf4b (ext4: collapse a single extent tree block into the inode if possible)
+> CC: stable@vger.kernel.org # v3.6-rc1+
+> Signed-off-by: Liu Bo <bo.liu@linux.alibaba.com>
+> ---
+>  fs/ext4/extents.c | 7 +++++--
+>  1 file changed, 5 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 240b6dea5441..ff2498355e3c 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -1812,6 +1812,7 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
+>         size_t s;
+>         unsigned max_root = ext4_ext_space_root(inode, 0);
+>         ext4_fsblk_t blk;
+> +       int credits = 2;
+>
+>         if ((path[0].p_depth != 1) ||
+>             (le16_to_cpu(path[0].p_hdr->eh_entries) != 1) ||
+> @@ -1820,10 +1821,12 @@ static void ext4_ext_try_to_merge_up(handle_t *handle,
+>
+>         /*
+>          * We need to modify the block allocation bitmap and the block
+> -        * group descriptor to release the extent tree block.  If we
+> +        * group descriptor to release the extent tree block.  If
+> +        * quota is enabled, updates on quota are also needed.  If we
+>          * can't get the journal credits, give up.
+>          */
+> -       if (ext4_journal_extend(handle, 2))
+> +       credits += EXT4_MAXQUOTAS_TRANS_BLOCKS(inode->i_sb);
+> +       if (ext4_journal_extend(handle, credits))
+>                 return;
+>
+>         /*
+> --
+> 1.8.3.1
+>
