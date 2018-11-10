@@ -1,60 +1,143 @@
-Return-Path: <SRS0=hSPz=NR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:48254 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2388987AbeKGCrd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 6 Nov 2018 21:47:33 -0500
-Date: Tue, 6 Nov 2018 18:21:19 +0100
-From: Jan Kara <jack@suse.cz>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        Adrian Hunter <adrian.hunter@intel.com>
-Subject: Re: [PATCH] jbd2: Avoid long hold times of j_state_lock while
- committing a transaction
-Message-ID: <20181106172119.GB19413@quack2.suse.cz>
-References: <20181016094248.21359-1-jack@suse.cz>
- <20181106052051.GD6416@thunk.org>
- <20181106102230.GC25414@quack2.suse.cz>
- <20181106164759.GE6416@thunk.org>
+Return-Path: <SRS0=KjRz=NV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:40444 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726068AbeKKBEb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 10 Nov 2018 20:04:31 -0500
+Date: Sat, 10 Nov 2018 10:19:07 -0500
+From: Brian Foster <bfoster@redhat.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] mm: don't break integrity writeback on ->writepage()
+ error
+Message-ID: <20181110151907.GA10691@bfoster>
+References: <20181105163613.7542-1-bfoster@redhat.com>
+ <20181109154251.d35772bb1cdc314a70aa90a1@linux-foundation.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181106164759.GE6416@thunk.org>
+In-Reply-To: <20181109154251.d35772bb1cdc314a70aa90a1@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 06-11-18 11:47:59, Theodore Y. Ts'o wrote:
-> On Tue, Nov 06, 2018 at 11:22:30AM +0100, Jan Kara wrote:
-> >> So the buffer is on BJ_Shadow list while the assertion in
-> > jbd2_journal_dirty_metadata() expects it to be in BJ_Metadata list. This is
-> > really weird as we have also checked that jh->b_transaction ==
-> > handle->h_transaction so the transaction couldn't have passed to commit
-> > phase... Oh, I see, the code in start_this_handle() got racy with the
-> > removal of j_state_lock protection from journal_commit_transaction() so now
-> > transaction can start even though there are handles outstanding! I'll think
-> > about the best solution for this. Thanks for report!
+On Fri, Nov 09, 2018 at 03:42:51PM -0800, Andrew Morton wrote:
+> On Mon,  5 Nov 2018 11:36:13 -0500 Brian Foster <bfoster@redhat.com> wrote:
 > 
-> Thanks for the analysis!  I finished the bisection last night and it
-> was too late for me to dive into how this was going on.  I should have
-> realized this before I had suggested the approach in the patch.
+> > write_cache_pages() currently breaks out of the writepage loop in
+> > the event of a ->writepage() error. This causes problems for
+> > integrity writeback on XFS
 > 
-> The original complaint which Andrian made was that the long hold times
-> of j_state_lock at the beginning of the commit.  What he didn't
-> mention was what the other "high priority tasks" were blocked on, but
-> they were almost certainly start_this_handle.  And that's fundamental;
-> when we are trying to at the beginning of the commit process is
-> waiting for the outstanding handles to close; and so we can't let new
-> handles start.
+> For the uninitiated, please define the term "integrity writeback". 
+> Quite carefully ;) I'm not sure what it actually means.  grepping
+> fs/xfs for "integrity" doesn't reveal anything.
+> 
+> <reads the code>
+> 
+> OK, it appears the term means "to sync data to disk" as opposed to
+> "periodic dirty memory cleaning".  I guess we don't have particularly
+> well-established terms for the two concepts.
+> 
 
-As Adrian mentioned, the problem is really with j_state_lock hold times,
-not with waiting for outstanding handles as such (because that happens with
-j_state_lock droppped). And the holding of j_state_lock while checking
-for outstanding handles is not a real source of latency so we can keep
-that. We just have to introduce new transaction state so that once we have
-checked there are no outstanding handles and are going to drop
-j_state_lock, we switch to this new state to prevent new reserved handles
-from joining the transaction. I'll send a patch tomorrow...
+Indeed. The intent is basically to describe any writeback that is
+intended to persist data and so so before returning (i.e., fsync(),
+etc.). That was the best term I came across to describe it ("integrity
+sync" is used in some of the existing comments), but I can try to be
+more descriptive in the commit log.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> > in the event of a persistent error as XFS
+> > expects to process every dirty+delalloc page such that it can
+> > discard delalloc blocks when real block allocation fails.  Failure
+> > to handle all delalloc pages leaves the filesystem in an
+> > inconsistent state if the integrity writeback happens to be due to
+> > an unmount, for example.
+> > 
+> > Update write_cache_pages() to continue processing pages for
+> > integrity writeback regardless of ->writepage() errors. Save the
+> > first encountered error and return it once complete. This
+> > facilitates XFS or any other fs that expects integrity writeback to
+> > process the entire set of dirty pages regardless of errors.
+> > Background writeback continues to exit on the first error
+> > encountered.
+> > 
+> > ...
+> >
+> > --- a/mm/page-writeback.c
+> > +++ b/mm/page-writeback.c
+> > @@ -2156,6 +2156,7 @@ int write_cache_pages(struct address_space *mapping,
+> >  {
+> >  	int ret = 0;
+> >  	int done = 0;
+> > +	int error;
+> >  	struct pagevec pvec;
+> >  	int nr_pages;
+> >  	pgoff_t uninitialized_var(writeback_index);
+> > @@ -2236,25 +2237,29 @@ int write_cache_pages(struct address_space *mapping,
+> >  				goto continue_unlock;
+> >  
+> >  			trace_wbc_writepage(wbc, inode_to_bdi(mapping->host));
+> > -			ret = (*writepage)(page, wbc, data);
+> > -			if (unlikely(ret)) {
+> > -				if (ret == AOP_WRITEPAGE_ACTIVATE) {
+> > +			error = (*writepage)(page, wbc, data);
+> > +			if (unlikely(error)) {
+> > +				if (error == AOP_WRITEPAGE_ACTIVATE) {
+> >  					unlock_page(page);
+> > -					ret = 0;
+> > -				} else {
+> > +					error = 0;
+> > +				} else if (wbc->sync_mode != WB_SYNC_ALL &&
+> > +					   !wbc->for_sync) {
+> 
+> And here we're determining that it is not a sync-data-to-disk
+> operation, hence it must be a clean-dirty-pages operation.
+> 
+> This isn't very well-controlled, is it?  It's an inference which was
+> put together by examining current callers, I assume?
+> 
+
+Yeah, sort of. Some of the comments do already explain how WB_SYNC_ALL
+refers to "integrity" writeback/sync (above write_cache_pages(), for
+example). The ->for_sync thing is more of an inference based on its use
+in __writeback_single_inode() and the comment where it is defined.
+
+> It would be good if we could force callers to be explicit about their
+> intent here.  But I'm not sure that adding a new writeback_sync_mode is
+> the way to do this.
+> 
+
+The more I look at it, however, I think I could probably drop the
+for_sync bit here. It appears only be used for a special case of
+WB_SYNC_ALL that isn't relevant to this patch, so it only serves to
+complicate in this context.
+
+I'm not sure if you had more in mind beyond that..? There are a lot of
+knobs on the wbc in general. It might be interesting to see if some of
+that could be cleaned up to factor out some of those seemingly bolt-on
+knobs, but I'd have to stare at the code more and think about it. Even
+still, any such change is probably better as a follow on patch to this
+one, which is intended to be an isolated bug fix. Thoughts on any of
+that is appreciated.
+
+> At a minimum it would be good to have careful comments in here
+> explaining what is going on, justifying the above inference, explaining
+> the xfs requirement (hopefully in a way which isn't xfs-specific).
+> 
+
+Ok, I can add a comment here that covers such details. Thanks for the
+feedback.
+
+Brian
+
+> >  					/*
+> > -					 * done_index is set past this page,
+> > -					 * so media errors will not choke
+> > +					 * done_index is set past this page, so
+> > +					 * media errors will not choke
+> >  					 * background writeout for the entire
+> >  					 * file. This has consequences for
+> >  					 * range_cyclic semantics (ie. it may
+> >  					 * not be suitable for data integrity
+> >  					 * writeout).
+> >  					 */
+> 
