@@ -1,54 +1,29 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:50059 "EHLO newverein.lst.de"
+Return-Path: <SRS0=BLjJ=NW=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:50326 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728079AbeKQAGN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Nov 2018 19:06:13 -0500
-Date: Fri, 16 Nov 2018 14:53:40 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 15/19] block: always define BIO_MAX_PAGES as 256
-Message-ID: <20181116135340.GL3165@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-16-ming.lei@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-16-ming.lei@redhat.com>
+        id S1728927AbeKLJAL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 12 Nov 2018 04:00:11 -0500
+Subject: Re: [GIT PULL] ext4 bug fixes for 4.20-rc2
+From: pr-tracker-bot@kernel.org
+In-Reply-To: <20181111115115.GA3085@thunk.org>
+References: <20181111115115.GA3085@thunk.org>
+Message-Id: <20181111231002.12478.73217.pr-tracker-bot-c140f8b072d16595c83d4d16a05693e72d9b1973@pdx-korg-gitolite-1.ci.codeaurora.org>
+Date: Sun, 11 Nov 2018 23:10:02 +0000
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc: torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> diff --git a/include/linux/bio.h b/include/linux/bio.h
-> index 5040e9a2eb09..277921ad42e7 100644
-> --- a/include/linux/bio.h
-> +++ b/include/linux/bio.h
-> @@ -34,15 +34,7 @@
->  #define BIO_BUG_ON
->  #endif
->  
-> -#ifdef CONFIG_THP_SWAP
-> -#if HPAGE_PMD_NR > 256
-> -#define BIO_MAX_PAGES		HPAGE_PMD_NR
-> -#else
->  #define BIO_MAX_PAGES		256
-> -#endif
-> -#else
-> -#define BIO_MAX_PAGES		256
-> -#endif
+The pull request you sent on Sun, 11 Nov 2018 06:51:15 -0500:
 
-Looks good.  This mess should have never gone in.
+> git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/c140f8b072d16595c83d4d16a05693e72d9b1973
+
+Thank you!
+
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
