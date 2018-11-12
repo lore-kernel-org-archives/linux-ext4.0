@@ -1,114 +1,56 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:40615 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727308AbeK0JfU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:35:20 -0500
-Received: by mail-pf1-f195.google.com with SMTP id i12so7296496pfo.7
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:39:41 -0800 (PST)
-Date: Mon, 26 Nov 2018 14:39:38 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V12 13/20] block: loop: pass multi-page bvec to iov_iter
-Message-ID: <20181126223938.GJ30411@vader>
-References: <20181126021720.19471-1-ming.lei@redhat.com>
- <20181126021720.19471-14-ming.lei@redhat.com>
+Return-Path: <SRS0=+plc=NX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:44336 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731541AbeKLQbp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 12 Nov 2018 11:31:45 -0500
+Date: Mon, 12 Nov 2018 01:39:47 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Kevin Liu <kevin@potatofrom.space>
+Cc: linux-ext4@vger.kernel.org, bfields@fieldses.org
+Subject: Re: ext4-nfsd interaction causes sporadic hang on
+ rwsem_down_write_failed
+Message-ID: <20181112063947.GB7377@thunk.org>
+References: <56454f6d-bbf8-fcd5-d389-50d5c3653ba6@potatofrom.space>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181126021720.19471-14-ming.lei@redhat.com>
+In-Reply-To: <56454f6d-bbf8-fcd5-d389-50d5c3653ba6@potatofrom.space>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 26, 2018 at 10:17:13AM +0800, Ming Lei wrote:
-> iov_iter is implemented on bvec itererator helpers, so it is safe to pass
-> multi-page bvec to it, and this way is much more efficient than passing one
-> page in each bvec.
+On Mon, Nov 12, 2018 at 04:38:34AM +0000, Kevin Liu wrote:
+> Hi,
 > 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> I recently submitted an NFS bug
+> (https://bugzilla.kernel.org/show_bug.cgi?id=201655) where nfsd randomly
+> locks up on rwsem_down_write_failed:
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
+> So, starting with ext4, I was wondering if you had an idea of what the
+> cause might be or where the fault truly lies.
 
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> ---
->  drivers/block/loop.c | 20 ++++++++++----------
->  1 file changed, 10 insertions(+), 10 deletions(-)
-> 
-> diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-> index 176ab1f28eca..e3683211f12d 100644
-> --- a/drivers/block/loop.c
-> +++ b/drivers/block/loop.c
-> @@ -510,21 +510,22 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
->  		     loff_t pos, bool rw)
->  {
->  	struct iov_iter iter;
-> +	struct req_iterator rq_iter;
->  	struct bio_vec *bvec;
->  	struct request *rq = blk_mq_rq_from_pdu(cmd);
->  	struct bio *bio = rq->bio;
->  	struct file *file = lo->lo_backing_file;
-> +	struct bio_vec tmp;
->  	unsigned int offset;
-> -	int segments = 0;
-> +	int nr_bvec = 0;
->  	int ret;
->  
-> +	rq_for_each_bvec(tmp, rq, rq_iter)
-> +		nr_bvec++;
-> +
->  	if (rq->bio != rq->biotail) {
-> -		struct req_iterator iter;
-> -		struct bio_vec tmp;
->  
-> -		__rq_for_each_bio(bio, rq)
-> -			segments += bio_segments(bio);
-> -		bvec = kmalloc_array(segments, sizeof(struct bio_vec),
-> +		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
->  				     GFP_NOIO);
->  		if (!bvec)
->  			return -EIO;
-> @@ -533,10 +534,10 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
->  		/*
->  		 * The bios of the request may be started from the middle of
->  		 * the 'bvec' because of bio splitting, so we can't directly
-> -		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_segment
-> +		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_bvec
->  		 * API will take care of all details for us.
->  		 */
-> -		rq_for_each_segment(tmp, rq, iter) {
-> +		rq_for_each_bvec(tmp, rq, rq_iter) {
->  			*bvec = tmp;
->  			bvec++;
->  		}
-> @@ -550,11 +551,10 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
->  		 */
->  		offset = bio->bi_iter.bi_bvec_done;
->  		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
-> -		segments = bio_segments(bio);
->  	}
->  	atomic_set(&cmd->ref, 2);
->  
-> -	iov_iter_bvec(&iter, rw, bvec, segments, blk_rq_bytes(rq));
-> +	iov_iter_bvec(&iter, rw, bvec, nr_bvec, blk_rq_bytes(rq));
->  	iter.iov_offset = offset;
->  
->  	cmd->iocb.ki_pos = pos;
-> -- 
-> 2.9.5
-> 
+Sorry, this isn't something I've seen before.  And it's not at all
+obvious from the information in Bugzilla what's causing the deadlock.
+
+The down_read() up appears to be in mm/memory.c, in
+__access_remote_vm() getting called from proc_pid_cmdline_read().
+access_Remote_vm is apparently trying to get a shared lock on
+&mm->mmap_sem.  How this would get involved with the inode_lock() is
+not immediately obvious.
+
+Things I would suggest.
+
+1) Try running your kernel console log throughn
+./scripts/decode_stacktrace.sh so we can be sure we've correctly
+assessed where the kernel is grabbing which lock.  Enabling
+CONFIG_DEBUG_INFO and CONFIG_DEBUG_INFO_REDUCED will be helpful.
+
+2) Try turning on CONFIG_LOCKDEP and see if this reports some
+potential deadlock.
+
+3) Try using sysrq-d to find all held locks (running the resulting
+kernel console output through decode_stacktrace.sh will also eb
+helpful).
+
+Cheers,
+
+					- Ted
