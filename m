@@ -1,40 +1,116 @@
-Return-Path: <SRS0=hSPz=NR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:46112 "EHLO imap.thunk.org"
+Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mout.gmx.net ([212.227.15.18]:54017 "EHLO mout.gmx.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725951AbeKGHb5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 7 Nov 2018 02:31:57 -0500
-Date: Tue, 6 Nov 2018 17:04:33 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Vasily Averin <vvs@virtuozzo.com>
-Cc: linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org, Dmitry Monakhov <dmonakhov@gmail.com>
-Subject: Re: [PATCH v2 08/11] ext4: lost brelse in ext4_orphan_add()
-Message-ID: <20181106220433.GG2570@thunk.org>
-References: <cover.1540935522.git.vvs@virtuozzo.com>
- <c747413b-f5e1-d3e0-650b-e3749a98d59d@virtuozzo.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <c747413b-f5e1-d3e0-650b-e3749a98d59d@virtuozzo.com>
+        id S1725991AbeKMKAr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 13 Nov 2018 05:00:47 -0500
+From: Chengguang Xu <cgxu519@gmx.com>
+To: jack@suse.com
+Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
+Subject: [PATCH 02/10] ext2: fix coding style for balloc.c
+Date: Tue, 13 Nov 2018 08:04:40 +0800
+Message-Id: <20181113000448.16023-3-cgxu519@gmx.com>
+In-Reply-To: <20181113000448.16023-1-cgxu519@gmx.com>
+References: <20181113000448.16023-1-cgxu519@gmx.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 31, 2018 at 12:58:31AM +0300, Vasily Averin wrote:
-> iloc.bh os taken in ext4_reserve_inode_write().
-> If (dirty == true) it is released in ext4_mark_iloc_dirty(),
-> however it is not released in (dirty == false) case.
-> 
-> Fixes d745a8c20c1f ("ext4: reduce contention on s_orphan_lock")
-> however iloc.bh count balance was broken earlier by
-> Fixes 6e3617e579e0 ("ext4: Handle non empty on-disk orphan link") #2.6.34
-> 
-> cc: Dmitry Monakhov <dmonakhov@gmail.com>
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+Fix various complains from checkpatch.pl
 
-Thanks, applied.  I fixed up the commit description and Fixes/Cc
-trailers.  I used the one-line description:
+Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+---
+ fs/ext2/balloc.c | 34 +++++++++++++++++-----------------
+ 1 file changed, 17 insertions(+), 17 deletions(-)
 
-    ext4: avoid buffer leak in ext4_orphan_add() after prior errors
-
-  	       	       			       - Ted
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index 33db13365c5e..12fd52b9488f 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -38,13 +38,13 @@
+ 
+ #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
+ 
+-struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
++struct ext2_group_desc *ext2_get_group_desc(struct super_block *sb,
+ 					     unsigned int block_group,
+-					     struct buffer_head ** bh)
++					     struct buffer_head **bh)
+ {
+ 	unsigned long group_desc;
+ 	unsigned long offset;
+-	struct ext2_group_desc * desc;
++	struct ext2_group_desc *desc;
+ 	struct ext2_sb_info *sbi = EXT2_SB(sb);
+ 
+ 	if (block_group >= sbi->s_groups_count) {
+@@ -125,8 +125,8 @@ static int ext2_valid_block_bitmap(struct super_block *sb,
+ static struct buffer_head *
+ read_block_bitmap(struct super_block *sb, unsigned int block_group)
+ {
+-	struct ext2_group_desc * desc;
+-	struct buffer_head * bh = NULL;
++	struct ext2_group_desc *desc;
++	struct buffer_head *bh = NULL;
+ 	ext2_fsblk_t bitmap_blk;
+ 
+ 	desc = ext2_get_group_desc(sb, block_group, NULL);
+@@ -335,8 +335,8 @@ void ext2_rsv_window_add(struct super_block *sb,
+ 	struct rb_node *node = &rsv->rsv_node;
+ 	ext2_fsblk_t start = rsv->rsv_start;
+ 
+-	struct rb_node ** p = &root->rb_node;
+-	struct rb_node * parent = NULL;
++	struct rb_node **p = &root->rb_node;
++	struct rb_node *parent = NULL;
+ 	struct ext2_reserve_window_node *this;
+ 
+ 	while (*p)
+@@ -475,19 +475,19 @@ void ext2_discard_reservation(struct inode *inode)
+  * @block:		start physical block to free
+  * @count:		number of blocks to free
+  */
+-void ext2_free_blocks (struct inode * inode, unsigned long block,
+-		       unsigned long count)
++void ext2_free_blocks(struct inode *inode, unsigned long block,
++		      unsigned long count)
+ {
+ 	struct buffer_head *bitmap_bh = NULL;
+-	struct buffer_head * bh2;
++	struct buffer_head *bh2;
+ 	unsigned long block_group;
+ 	unsigned long bit;
+ 	unsigned long i;
+ 	unsigned long overflow;
+-	struct super_block * sb = inode->i_sb;
+-	struct ext2_sb_info * sbi = EXT2_SB(sb);
+-	struct ext2_group_desc * desc;
+-	struct ext2_super_block * es = sbi->s_es;
++	struct super_block *sb = inode->i_sb;
++	struct ext2_sb_info *sbi = EXT2_SB(sb);
++	struct ext2_group_desc *desc;
++	struct ext2_super_block *es = sbi->s_es;
+ 	unsigned freed = 0, group_freed;
+ 
+ 	if (block < le32_to_cpu(es->s_first_data_block) ||
+@@ -778,7 +778,7 @@ ext2_try_to_allocate(struct super_block *sb, int group,
+ static int find_next_reservable_window(
+ 				struct ext2_reserve_window_node *search_head,
+ 				struct ext2_reserve_window_node *my_rsv,
+-				struct super_block * sb,
++				struct super_block *sb,
+ 				ext2_fsblk_t start_block,
+ 				ext2_fsblk_t last_block)
+ {
+@@ -1466,9 +1466,9 @@ unsigned long ext2_count_free(struct buffer_head *map, unsigned int numchars)
+ 
+ #endif  /*  EXT2FS_DEBUG  */
+ 
+-unsigned long ext2_count_free_blocks (struct super_block * sb)
++unsigned long ext2_count_free_blocks(struct super_block *sb)
+ {
+-	struct ext2_group_desc * desc;
++	struct ext2_group_desc *desc;
+ 	unsigned long desc_count = 0;
+ 	int i;
+ #ifdef EXT2FS_DEBUG
+-- 
+2.17.2
