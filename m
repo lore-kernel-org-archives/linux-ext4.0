@@ -1,54 +1,57 @@
-Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44458 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mout.gmx.net ([212.227.15.15]:43293 "EHLO mout.gmx.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727120AbeK2OfM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Nov 2018 09:35:12 -0500
-Date: Thu, 29 Nov 2018 11:30:47 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: Mike Snitzer <snitzer@redhat.com>,
-        "Ewan D. Milne" <emilne@redhat.com>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        dm-devel@redhat.com, Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V12 00/20] block: support multi-page bvec
-Message-ID: <20181129033046.GE23390@ming.t460p>
-References: <20181126021720.19471-1-ming.lei@redhat.com>
- <7096bc4e-0617-29d0-a90d-ae7caf09a16d@kernel.dk>
- <20181129012959.GC23249@ming.t460p>
- <1983a2f5-07be-4102-fedc-54e2ad2e16dc@kernel.dk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1983a2f5-07be-4102-fedc-54e2ad2e16dc@kernel.dk>
+        id S1725991AbeKMKAj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 13 Nov 2018 05:00:39 -0500
+From: Chengguang Xu <cgxu519@gmx.com>
+To: jack@suse.com
+Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
+Subject: [PATCH 00/10] fix coding style for ext2 filesystem
+Date: Tue, 13 Nov 2018 08:04:38 +0800
+Message-Id: <20181113000448.16023-1-cgxu519@gmx.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 28, 2018 at 07:20:51PM -0700, Jens Axboe wrote:
-> On 11/28/18 6:30 PM, Ming Lei wrote:
-> >> I'm going back and forth on those one a bit. Any concerns with
-> >> pushing this to 4.22?
-> > 
-> > My only one concern is about the warning of
-> > "blk_cloned_rq_check_limits: over max segments limit" on dm multipath,
-> > and seems Ewan and Mike is waiting for this fix.
-> 
-> Not familiar with this issue, can you post a link to it? I'd be fine
-> working around anything until 4.22, it's not going to be a new issue.
+This patch set fixes some coding style warnings which are from
+checkpatch.pl.
 
-https://marc.info/?t=153303425700002&r=1&w=2
+Detail warning/error messages are below:
 
-thanks,
-Ming
+WARNING: function definition argument 'struct inode *' should
+also have an identifier name
+
+WARNING: space prohibited between function name and open
+parenthesis '(' 
+
+WARNING: line over 80 characters
+
+ERROR: "foo * bar" should be "foo *bar"
+
+---
+
+Chengguang Xu (10):
+  ext2: fix coding style for acl.h
+  ext2: fix coding style for balloc.c
+  ext2: fix coding style for dir.c
+  ext2: fix coding style for ext2.h
+  ext2: fix coding style for inode.c
+  ext2: fix coding style for file.c
+  ext2: fix coding style for ialloc.c
+  ext2: fix coding style for namei.c
+  ext2: fix coding style for super.c
+  ext2: fix coding style for xattr.c
+
+ fs/ext2/acl.h    |   4 +-
+ fs/ext2/balloc.c |  34 ++++++++--------
+ fs/ext2/dir.c    |  18 ++++-----
+ fs/ext2/ext2.h   | 100 +++++++++++++++++++++++++++--------------------
+ fs/ext2/file.c   |   2 +-
+ fs/ext2/ialloc.c |  18 ++++-----
+ fs/ext2/inode.c  |  12 +++---
+ fs/ext2/namei.c  |  55 ++++++++++++++------------
+ fs/ext2/super.c  |  26 ++++++------
+ fs/ext2/xattr.c  |  17 ++++----
+ 10 files changed, 152 insertions(+), 134 deletions(-)
+
+-- 
+2.17.2
