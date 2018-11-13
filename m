@@ -1,122 +1,191 @@
-Return-Path: <SRS0=Yxos=NQ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pg1-f196.google.com ([209.85.215.196]:35295 "EHLO
-        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730077AbeKFG1F (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Nov 2018 01:27:05 -0500
-Received: by mail-pg1-f196.google.com with SMTP id 32-v6so4788657pgu.2
-        for <linux-ext4@vger.kernel.org>; Mon, 05 Nov 2018 13:05:31 -0800 (PST)
-From: Andreas Dilger <adilger@dilger.ca>
-Message-Id: <F1AB58DE-E8D8-449C-B07C-4868B181F5E9@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_F0C1406D-50AB-4BE0-B275-698A345B0C1F";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH v2 10/12] ext4: add basic fs-verity support
-Date: Mon, 5 Nov 2018 14:05:24 -0700
-In-Reply-To: <20181101225230.88058-11-ebiggers@kernel.org>
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: Eric Biggers <ebiggers@kernel.org>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-11-ebiggers@kernel.org>
+Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail2-drop-p1.anu.edu.au ([130.56.64.27]:37350 "EHLO
+        mail2-drop-p1.anu.edu.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726111AbeKMOmf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Nov 2018 09:42:35 -0500
+From: Li Dongyang <dongyangli@ddn.com>
+To: linux-ext4@vger.kernel.org
+Cc: adilger@dilger.ca
+Subject: [PATCH v2] e2fsck: check xattr 'system.data' before setting inline_data feature
+Date: Tue, 13 Nov 2018 15:46:03 +1100
+Message-Id: <20181113044603.1089-1-dongyangli@ddn.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+ext2fs_inline_data_size will happy return 0 and set size to
+EXT4_MIN_INLINE_DATA_SIZE even when inode doesn't have
+xattr 'system.data', a corrupted i_flags could make e2fsck
+enable the inline_data on the superblock.
 
---Apple-Mail=_F0C1406D-50AB-4BE0-B275-698A345B0C1F
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
+We should only offer to enable inline_data when i_flags is set
+and xattr 'system.data' can be found.
 
-On Nov 1, 2018, at 4:52 PM, Eric Biggers <ebiggers@kernel.org> wrote:
-> 
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Add basic fs-verity support to ext4.  fs-verity is a filesystem feature
-> that enables transparent integrity protection and authentication of
-> read-only files.  It uses a dm-verity like mechanism at the file level:
-> a Merkle tree is used to verify any block in the file in log(filesize)
-> time.  It is implemented mainly by helper functions in fs/verity/.
-> See Documentation/filesystems/fsverity.rst for details.
-> 
-> This patch adds everything except the data verification hooks that will
-> needed in ->readpages().
-> 
-> On ext4, enabling fs-verity on a file requires that the filesystem has
-> the 'verity' feature, e.g. that it was formatted with
-> 'mkfs.ext4 -O verity' or had 'tune2fs -O verity' run on it.
-> This requires e2fsprogs 1.44.4-2 or later.
-> 
-> In ext4, we choose to retain the fs-verity metadata past the end of the
-> file rather than trying to move it into an external inode xattr, since
-> in practice keeping the metadata in-line actually results in the
-> simplest and most efficient implementation.  One non-obvious advantage
-> of keeping the verity metadata in-line is that when fs-verity is
-> combined with fscrypt, the verity metadata naturally gets encrypted too;
-> this is actually necessary because it contains hashes of the plaintext.
+Also use correct prompt for PR_1_INLINE_DATA_FEATURE.
 
-On the plus side, this means that the verity data will automatically be
-invalidated if the file is truncated or extended, but on the negative side
-it means that the verity Merkle tree needs to be recalculated for the
-entire file if e.g. the file is appended to.
+Signed-off-by: Li Dongyang <dongyangli@ddn.com>
+---
+ e2fsck/pass1.c                    |   4 ++--
+ e2fsck/problem.c                  |   2 +-
+ tests/f_inlinedata_flags/expect.1 |  26 ++++++++++++++++++++++++++
+ tests/f_inlinedata_flags/expect.2 |   7 +++++++
+ tests/f_inlinedata_flags/image.gz | Bin 0 -> 11226 bytes
+ tests/f_inlinedata_flags/name     |   1 +
+ 6 files changed, 37 insertions(+), 3 deletions(-)
+ create mode 100644 tests/f_inlinedata_flags/expect.1
+ create mode 100644 tests/f_inlinedata_flags/expect.2
+ create mode 100644 tests/f_inlinedata_flags/image.gz
+ create mode 100644 tests/f_inlinedata_flags/name
 
-I guess the current implementation will generate the Merkle tree in
-userspace, but at some point it might be useful to generate it on-the-fly
-to have proper data integrity from the time of write (e.g. like ZFS)
-rather than only allowing it to be stored after the entire file is written?
+v2:
+- Add tests/f_inlinedata_flags
 
-Storing the Merkle tree in a large xattr inode would allow this to change
-in the future rather than being stuck with the current implementation.  We
-could encrypt the xattr data just as easily as the file data (which should
-be done anyway even for non-verity files to avoid leaking data), and having
-the verity attr keyed to the inode version/size/mime(?) would ensure the
-kernel knows it is stale if the inode is modified.
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 8abf0c33..45534388 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -1496,8 +1496,8 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 		    (ino >= EXT2_FIRST_INODE(fs->super))) {
+ 			size_t size = 0;
+ 
+-			pctx.errcode = ext2fs_inline_data_size(fs, ino, &size);
+-			if (!pctx.errcode && size &&
++			pctx.errcode = get_inline_data_ea_size(fs, ino, &size);
++			if (!pctx.errcode &&
+ 			    fix_problem(ctx, PR_1_INLINE_DATA_FEATURE, &pctx)) {
+ 				ext2fs_set_feature_inline_data(sb);
+ 				ext2fs_mark_super_dirty(fs);
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 932cad3c..4082e373 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1063,7 +1063,7 @@ static struct e2fsck_problem problem_table[] = {
+ 	/* Inode has inline data, but superblock is missing INLINE_DATA feature */
+ 	{ PR_1_INLINE_DATA_FEATURE,
+ 	  N_("@i %i has inline data, but @S is missing INLINE_DATA feature\n"),
+-	  PROMPT_CLEAR, PR_PREEN_OK, 0, 0, 0 },
++	  PROMPT_FIX, PR_PREEN_OK, 0, 0, 0 },
+ 
+ 	/* inode has INLINE_DATA_FL flag on filesystem without inline data */
+ 	{ PR_1_INLINE_DATA_SET,
+diff --git a/tests/f_inlinedata_flags/expect.1 b/tests/f_inlinedata_flags/expect.1
+new file mode 100644
+index 00000000..86eba883
+--- /dev/null
++++ b/tests/f_inlinedata_flags/expect.1
+@@ -0,0 +1,26 @@
++Pass 1: Checking inodes, blocks, and sizes
++Inode 12 has INLINE_DATA_FL flag on filesystem without inline data support.
++Clear? yes
++
++Inode 13 has inline data, but superblock is missing INLINE_DATA feature
++Fix? yes
++
++Pass 2: Checking directory structure
++Entry '1' in / (2) has deleted/unused inode 12.  Clear? yes
++
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++Inode bitmap differences:  -12
++Fix? yes
++
++Free inodes count wrong for group #0 (243, counted=244).
++Fix? yes
++
++Free inodes count wrong (243, counted=244).
++Fix? yes
++
++
++test_filesys: ***** FILE SYSTEM WAS MODIFIED *****
++test_filesys: 12/256 files (0.0% non-contiguous), 1143/8192 blocks
++Exit status is 1
+diff --git a/tests/f_inlinedata_flags/expect.2 b/tests/f_inlinedata_flags/expect.2
+new file mode 100644
+index 00000000..87b3f18b
+--- /dev/null
++++ b/tests/f_inlinedata_flags/expect.2
+@@ -0,0 +1,7 @@
++Pass 1: Checking inodes, blocks, and sizes
++Pass 2: Checking directory structure
++Pass 3: Checking directory connectivity
++Pass 4: Checking reference counts
++Pass 5: Checking group summary information
++test_filesys: 12/256 files (0.0% non-contiguous), 1143/8192 blocks
++Exit status is 0
+diff --git a/tests/f_inlinedata_flags/image.gz b/tests/f_inlinedata_flags/image.gz
+new file mode 100644
+index 0000000000000000000000000000000000000000..4344a0a8cc0d711c10beca1ff0ef174d4357f523
+GIT binary patch
+literal 11226
+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
+V@~rmvf2^)8M{d!Byu6Nh{T;dpI4%GH
 
-I'm not going to stand on my head and block this implementation, I just
-thought it is worthwhile to raise these issues now rather than after it
-is a fait accompli.
+literal 0
+HcmV?d00001
 
-> We also choose to keep the on-disk i_size equal to the original file
-> size, in order to make the 'verity' feature a RO_COMPAT feature.  Thus,
-> ext4 has to find the fsverity_footer by looking in the last extent.
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_F0C1406D-50AB-4BE0-B275-698A345B0C1F
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlvgsJUACgkQcqXauRfM
-H+CsRRAAuh1XSvfDwsO1atgPaFlL0Q7PcY1+CYff3nkv3uRh9ipcCTihtLAhGOVf
-BLqR6uikUyIJefr4j0iFYOI8bI/StscPRXIUR6iYwIzqiErTlnvb0ClQ1VMS5tyu
-y+LpKLpkXeTnZHAv5HWgviAM0IotgdpwrEjkuStGj5AHIsMr2Cmh045PXBqmv6yt
-uuUmZTmmsHGN8FzaHy75APglMH4axBhgCburXs1Bj9eK54uppuhSIUnS5GKzJhA1
-OLlBExpkqCrMmlYgDtOUFfWtJfzTG5HMsMHIR/90I6ahxMw2Qcudud16gthMAuKv
-ZSqjOz9hBRTfLICoY4ZN2BhUUhujU5FvGGLLAg23U11BtusfcKerFUql4pZTXgaN
-HQpfQy5ST7reXn2xuhkxH0amPoebf9+f6vY0TCKv8w0RpZS6qOHkzbMocuvpuW42
-V7i8s+Cd9SH9DGsfGce75MGy2YZu0R/iHbY1BhYZeRRQUEqubLoH/xQREltNjAp3
-g7l12NF47h5glm73urKdfIiOq+zNSX8XgiVceuIX5ij4T6z8VcpyJv8lASfpcH+d
-z8Tjt3aI+h4vZaCpHteZ9FOuarSoULSbIMRzEaYV2oX3zbM6JCOlb/A9cVKf/522
-KsoOjOofDsPNfMRUNo+/egSKVsg1CySgsuUkaF2v1I4QoFXYO4Q=
-=XiFo
------END PGP SIGNATURE-----
-
---Apple-Mail=_F0C1406D-50AB-4BE0-B275-698A345B0C1F--
+diff --git a/tests/f_inlinedata_flags/name b/tests/f_inlinedata_flags/name
+new file mode 100644
+index 00000000..66b7676a
+--- /dev/null
++++ b/tests/f_inlinedata_flags/name
+@@ -0,0 +1 @@
++check incorrect inline_data flags
+-- 
+2.19.1
