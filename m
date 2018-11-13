@@ -1,194 +1,206 @@
-Return-Path: <SRS0=yllL=NN=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:55272 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726104AbeKBSrZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2018 14:47:25 -0400
-Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wA29cetp117494
-        for <linux-ext4@vger.kernel.org>; Fri, 2 Nov 2018 05:40:51 -0400
-Received: from e06smtp07.uk.ibm.com (e06smtp07.uk.ibm.com [195.75.94.103])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2ngksx8xam-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Fri, 02 Nov 2018 05:40:51 -0400
-Received: from localhost
-        by e06smtp07.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Fri, 2 Nov 2018 09:40:48 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>
-Subject: Re: [PATCH v2 10/12] ext4: add basic fs-verity support
-Date: Fri, 02 Nov 2018 15:13:14 +0530
-In-Reply-To: <20181101225230.88058-11-ebiggers@kernel.org>
-References: <20181101225230.88058-1-ebiggers@kernel.org> <20181101225230.88058-11-ebiggers@kernel.org>
+Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-132.freemail.mail.aliyun.com ([115.124.30.132]:42088 "EHLO
+        out30-132.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1732875AbeKMW6f (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 13 Nov 2018 17:58:35 -0500
+Subject: Re: [PATCH] ext4: fix deadlock while checkpoint thread waits commit
+ thread to finish
+To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, jack@suse.com, tytso@mit.edu
+References: <20181113085907.22545-1-xiaoguang.wang@linux.alibaba.com>
+ <20181113123917.GB1292@quack2.suse.cz>
+From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Message-ID: <9157e14b-c341-7089-f17b-1c282137940f@linux.alibaba.com>
+Date: Tue, 13 Nov 2018 21:00:20 +0800
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="us-ascii"
-Message-Id: <2168901.PE78DCQIza@localhost.localdomain>
+In-Reply-To: <20181113123917.GB1292@quack2.suse.cz>
+Content-Type: text/plain; charset=gbk; format=flowed
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Friday, November 2, 2018 4:22:28 AM IST Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Add basic fs-verity support to ext4.  fs-verity is a filesystem feature
-> that enables transparent integrity protection and authentication of
-> read-only files.  It uses a dm-verity like mechanism at the file level:
-> a Merkle tree is used to verify any block in the file in log(filesize)
-> time.  It is implemented mainly by helper functions in fs/verity/.
-> See Documentation/filesystems/fsverity.rst for details.
-> 
-> This patch adds everything except the data verification hooks that will
-> needed in ->readpages().
-> 
-> On ext4, enabling fs-verity on a file requires that the filesystem has
-> the 'verity' feature, e.g. that it was formatted with
-> 'mkfs.ext4 -O verity' or had 'tune2fs -O verity' run on it.
-> This requires e2fsprogs 1.44.4-2 or later.
-> 
-> In ext4, we choose to retain the fs-verity metadata past the end of the
-> file rather than trying to move it into an external inode xattr, since
-> in practice keeping the metadata in-line actually results in the
-> simplest and most efficient implementation.  One non-obvious advantage
-> of keeping the verity metadata in-line is that when fs-verity is
-> combined with fscrypt, the verity metadata naturally gets encrypted too;
-> this is actually necessary because it contains hashes of the plaintext.
-> 
-> We also choose to keep the on-disk i_size equal to the original file
-> size, in order to make the 'verity' feature a RO_COMPAT feature.  Thus,
-> ext4 has to find the fsverity_footer by looking in the last extent.
-> 
-> Co-developed-by: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> Signed-off-by: Eric Biggers <ebiggers@google.com>
-> ---
->  fs/ext4/Kconfig | 20 +++++++++++
->  fs/ext4/ext4.h  | 20 ++++++++++-
->  fs/ext4/file.c  |  6 ++++
->  fs/ext4/inode.c |  8 +++++
->  fs/ext4/ioctl.c | 12 +++++++
->  fs/ext4/super.c | 91 +++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/sysfs.c |  6 ++++
->  7 files changed, 162 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-> index a453cc87082b5..5a76125ac0f8a 100644
-> --- a/fs/ext4/Kconfig
-> +++ b/fs/ext4/Kconfig
-> @@ -111,6 +111,26 @@ config EXT4_FS_ENCRYPTION
->  	default y
->  	depends on EXT4_ENCRYPTION
-> 
-> +config EXT4_FS_VERITY
-> +	bool "Ext4 Verity"
-> +	depends on EXT4_FS
-> +	select FS_VERITY
-> +	help
-> +	  This option enables fs-verity for ext4.  fs-verity is the
-> +	  dm-verity mechanism implemented at the file level.  Userspace
-> +	  can append a Merkle tree (hash tree) to a file, then enable
-> +	  fs-verity on the file.  ext4 will then transparently verify
-> +	  any data read from the file against the Merkle tree.  The file
-> +	  is also made read-only.
-> +
-> +	  This serves as an integrity check, but the availability of the
-> +	  Merkle tree root hash also allows efficiently supporting
-> +	  various use cases where normally the whole file would need to
-> +	  be hashed at once, such as auditing and authenticity
-> +	  verification (appraisal).
-> +
-> +	  If unsure, say N.
-> +
->  config EXT4_DEBUG
->  	bool "EXT4 debugging support"
->  	depends on EXT4_FS
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 12f90d48ba613..e5475a629ed80 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -43,6 +43,9 @@
->  #define __FS_HAS_ENCRYPTION IS_ENABLED(CONFIG_EXT4_FS_ENCRYPTION)
->  #include <linux/fscrypt.h>
-> 
-> +#define __FS_HAS_VERITY IS_ENABLED(CONFIG_EXT4_FS_VERITY)
-> +#include <linux/fsverity.h>
-> +
->  #include <linux/compiler.h>
-> 
->  /* Until this gets included into linux/compiler-gcc.h */
-> @@ -405,6 +408,7 @@ struct flex_groups {
->  #define EXT4_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
->  #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
->  #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
-> +#define EXT4_VERITY_FL			0x00100000 /* Verity protected inode */
->  #define EXT4_EA_INODE_FL	        0x00200000 /* Inode used for large EA */
->  #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
->  #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
-> @@ -472,6 +476,7 @@ enum {
->  	EXT4_INODE_TOPDIR	= 17,	/* Top of directory hierarchies*/
->  	EXT4_INODE_HUGE_FILE	= 18,	/* Set to each huge file */
->  	EXT4_INODE_EXTENTS	= 19,	/* Inode uses extents */
-> +	EXT4_INODE_VERITY	= 20,	/* Verity protected inode */
->  	EXT4_INODE_EA_INODE	= 21,	/* Inode used for large EA */
->  	EXT4_INODE_EOFBLOCKS	= 22,	/* Blocks allocated beyond EOF */
->  	EXT4_INODE_INLINE_DATA	= 28,	/* Data in inode. */
-> @@ -517,6 +522,7 @@ static inline void ext4_check_flag_values(void)
->  	CHECK_FLAG_VALUE(TOPDIR);
->  	CHECK_FLAG_VALUE(HUGE_FILE);
->  	CHECK_FLAG_VALUE(EXTENTS);
-> +	CHECK_FLAG_VALUE(VERITY);
->  	CHECK_FLAG_VALUE(EA_INODE);
->  	CHECK_FLAG_VALUE(EOFBLOCKS);
->  	CHECK_FLAG_VALUE(INLINE_DATA);
-> @@ -1654,6 +1660,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
->  #define EXT4_FEATURE_RO_COMPAT_METADATA_CSUM	0x0400
->  #define EXT4_FEATURE_RO_COMPAT_READONLY		0x1000
->  #define EXT4_FEATURE_RO_COMPAT_PROJECT		0x2000
-> +#define EXT4_FEATURE_RO_COMPAT_VERITY		0x8000
-> 
->  #define EXT4_FEATURE_INCOMPAT_COMPRESSION	0x0001
->  #define EXT4_FEATURE_INCOMPAT_FILETYPE		0x0002
-> @@ -1742,6 +1749,7 @@ EXT4_FEATURE_RO_COMPAT_FUNCS(bigalloc,		BIGALLOC)
->  EXT4_FEATURE_RO_COMPAT_FUNCS(metadata_csum,	METADATA_CSUM)
->  EXT4_FEATURE_RO_COMPAT_FUNCS(readonly,		READONLY)
->  EXT4_FEATURE_RO_COMPAT_FUNCS(project,		PROJECT)
-> +EXT4_FEATURE_RO_COMPAT_FUNCS(verity,		VERITY)
-> 
->  EXT4_FEATURE_INCOMPAT_FUNCS(compression,	COMPRESSION)
->  EXT4_FEATURE_INCOMPAT_FUNCS(filetype,		FILETYPE)
-> @@ -1797,7 +1805,8 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
->  					 EXT4_FEATURE_RO_COMPAT_BIGALLOC |\
->  					 EXT4_FEATURE_RO_COMPAT_METADATA_CSUM|\
->  					 EXT4_FEATURE_RO_COMPAT_QUOTA |\
-> -					 EXT4_FEATURE_RO_COMPAT_PROJECT)
-> +					 EXT4_FEATURE_RO_COMPAT_PROJECT |\
-> +					 EXT4_FEATURE_RO_COMPAT_VERITY)
-> 
->  #define EXTN_FEATURE_FUNCS(ver) \
->  static inline bool ext4_has_unknown_ext##ver##_compat_features(struct super_block *sb) \
-> @@ -2293,6 +2302,15 @@ static inline bool ext4_encrypted_inode(struct inode *inode)
->  	return ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT);
->  }
-> 
-> +static inline bool ext4_verity_inode(struct inode *inode)
-> +{
-> +#ifdef CONFIG_EXT4_FS_VERITY
-> +	return ext4_test_inode_flag(inode, EXT4_INODE_VERITY);
-> +#else
-> +	return false;
-> +#endif
-> +}
-> +
+hi,
 
-Hi Eric,
+> On Tue 13-11-18 16:59:07, Xiaoguang Wang wrote:
+>> This issue was found when I tried to put checkpoint work in a separate thread,
+>> the deadlock below happened:
+>>           Thread1                                |   Thread2
+>> __jbd2_log_wait_for_space                       |
+>> jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
+>>    if (jh->b_transaction != NULL)                |
+>>      ...                                         |
+>>      jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
+>>                                                  |  will lock j_checkpoint_mutex,
+>>                                                  |  but will be blocked here.
+>>                                                  |
+>>      jbd2_log_wait_commit(journal, tid);         |
+>>      wait_event(journal->j_wait_done_commit,     |
+>>       !tid_gt(tid, journal->j_commit_sequence)); |
+>>       ...                                        |wake_up(j_wait_done_commit)
+>>    }                                             |
+>>
+>> then deadlock occurs, Thread1 will never be waken up.
+>>
+>> To fix this issue, here we introduce a new j_loginfo_mutex to protect
+>> concurrent modifications to journal log tail info.
+>>
+>> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+> 
+> Thanks for the analysis and the patch. I agree this deadlock is possible
+> however I'm not sure your solution is quite correct. There are other places
+> besides __jbd2_update_log_tail() that do update log tail. The most common
+> one is jbd2_mark_journal_empty() and the functions calling it but there are
+> a few other places as well. All these need to be synchronized properly so
+> that journal tail does not get corrupted. The your patch needs some more
+> work.
+Yes, thanks for pointing this out.
 
-Can you please explain as to why we check for the presence of
-EXT4_INODE_VERITY flag only when fsverity is enabled during kernel build?
+> 
+> But in general I like the idea of a special lock protecting journal tail
+> (I'd just call it j_tail_mutex to explicitely express that) so that
+> pushing of the journal tail possibly done during transaction commit would not
+> be blocked by checkpointing. That can be a performance win as well.
+Agree with you :)
 
--- 
-chandan
+> 
+> Since proper locking change is going to be a bit more involved, can you
+> perhaps fix this deadlock by just dropping j_checkpoint_mutex in
+> log_do_checkpoint() when we are going to wait for transaction commit. I've
+> checked and that should be fine and that is going to be much easier change
+> to backport into stable kernels...
+OK, I'll try this method and have a test, thanks.
+
+Regards,
+Xiaoguang Wang
+
+> 
+> 								Honza
+> 
+> 
+>> ---
+>>   fs/jbd2/checkpoint.c |  2 +-
+>>   fs/jbd2/commit.c     |  6 +++---
+>>   fs/jbd2/journal.c    | 16 +++++++++-------
+>>   include/linux/jbd2.h |  9 ++++++++-
+>>   4 files changed, 21 insertions(+), 12 deletions(-)
+>>
+>> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+>> index c125d662777c..1729d6298895 100644
+>> --- a/fs/jbd2/checkpoint.c
+>> +++ b/fs/jbd2/checkpoint.c
+>> @@ -404,7 +404,7 @@ int jbd2_cleanup_journal_tail(journal_t *journal)
+>>   	if (journal->j_flags & JBD2_BARRIER)
+>>   		blkdev_issue_flush(journal->j_fs_dev, GFP_NOFS, NULL);
+>>   
+>> -	return __jbd2_update_log_tail(journal, first_tid, blocknr);
+>> +	return jbd2_update_log_tail(journal, first_tid, blocknr);
+>>   }
+>>   
+>>   
+>> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+>> index 150cc030b4d7..f139f5465687 100644
+>> --- a/fs/jbd2/commit.c
+>> +++ b/fs/jbd2/commit.c
+>> @@ -383,9 +383,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+>>   	/* Do we need to erase the effects of a prior jbd2_journal_flush? */
+>>   	if (journal->j_flags & JBD2_FLUSHED) {
+>>   		jbd_debug(3, "super block updated\n");
+>> -		mutex_lock_io(&journal->j_checkpoint_mutex);
+>> +		mutex_lock_io(&journal->j_loginfo_mutex);
+>>   		/*
+>> -		 * We hold j_checkpoint_mutex so tail cannot change under us.
+>> +		 * We hold j_loginfo_mutex so tail cannot change under us.
+>>   		 * We don't need any special data guarantees for writing sb
+>>   		 * since journal is empty and it is ok for write to be
+>>   		 * flushed only with transaction commit.
+>> @@ -394,7 +394,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+>>   						journal->j_tail_sequence,
+>>   						journal->j_tail,
+>>   						REQ_SYNC);
+>> -		mutex_unlock(&journal->j_checkpoint_mutex);
+>> +		mutex_unlock(&journal->j_loginfo_mutex);
+>>   	} else {
+>>   		jbd_debug(3, "superblock not updated\n");
+>>   	}
+>> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+>> index 8ef6b6daaa7a..be2c10ff5bae 100644
+>> --- a/fs/jbd2/journal.c
+>> +++ b/fs/jbd2/journal.c
+>> @@ -940,8 +940,6 @@ int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+>>   	unsigned long freed;
+>>   	int ret;
+>>   
+>> -	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+>> -
+>>   	/*
+>>   	 * We cannot afford for write to remain in drive's caches since as
+>>   	 * soon as we update j_tail, next transaction can start reusing journal
+>> @@ -978,12 +976,16 @@ int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+>>    * provided log tail and locks j_checkpoint_mutex. So it is safe against races
+>>    * with other threads updating log tail.
+>>    */
+>> -void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+>> +int jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block)
+>>   {
+>> -	mutex_lock_io(&journal->j_checkpoint_mutex);
+>> +	int ret = 0;
+>> +
+>> +	mutex_lock_io(&journal->j_loginfo_mutex);
+>>   	if (tid_gt(tid, journal->j_tail_sequence))
+>> -		__jbd2_update_log_tail(journal, tid, block);
+>> -	mutex_unlock(&journal->j_checkpoint_mutex);
+>> +		ret = __jbd2_update_log_tail(journal, tid, block);
+>> +	mutex_unlock(&journal->j_loginfo_mutex);
+>> +
+>> +	return ret;
+>>   }
+>>   
+>>   struct jbd2_stats_proc_session {
+>> @@ -1147,6 +1149,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
+>>   	init_waitqueue_head(&journal->j_wait_reserved);
+>>   	mutex_init(&journal->j_barrier);
+>>   	mutex_init(&journal->j_checkpoint_mutex);
+>> +	mutex_init(&journal->j_loginfo_mutex);
+>>   	spin_lock_init(&journal->j_revoke_lock);
+>>   	spin_lock_init(&journal->j_list_lock);
+>>   	rwlock_init(&journal->j_state_lock);
+>> @@ -1420,7 +1423,6 @@ int jbd2_journal_update_sb_log_tail(journal_t *journal, tid_t tail_tid,
+>>   	if (is_journal_aborted(journal))
+>>   		return -EIO;
+>>   
+>> -	BUG_ON(!mutex_is_locked(&journal->j_checkpoint_mutex));
+>>   	jbd_debug(1, "JBD2: updating superblock (start %lu, seq %u)\n",
+>>   		  tail_block, tail_tid);
+>>   
+>> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+>> index b708e5169d1d..a9c2928aea35 100644
+>> --- a/include/linux/jbd2.h
+>> +++ b/include/linux/jbd2.h
+>> @@ -862,6 +862,13 @@ struct journal_s
+>>   	 */
+>>   	struct buffer_head	*j_chkpt_bhs[JBD2_NR_BATCH];
+>>   
+>> +	/**
+>> +	 * @j_loginfo_mutex:
+>> +	 *
+>> +	 * Semaphore for locking against concurrent update journal info.
+>> +	 */
+>> +	struct mutex		j_loginfo_mutex;
+>> +
+>>   	/**
+>>   	 * @j_head:
+>>   	 *
+>> @@ -1265,7 +1272,7 @@ int jbd2_journal_next_log_block(journal_t *, unsigned long long *);
+>>   int jbd2_journal_get_log_tail(journal_t *journal, tid_t *tid,
+>>   			      unsigned long *block);
+>>   int __jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
+>> -void jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
+>> +int jbd2_update_log_tail(journal_t *journal, tid_t tid, unsigned long block);
+>>   
+>>   /* Commit management */
+>>   extern void jbd2_journal_commit_transaction(journal_t *);
+>> -- 
+>> 2.14.4.44.g2045bb6
+>>
+>>
