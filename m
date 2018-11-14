@@ -1,76 +1,60 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:39626 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725729AbeKQFR3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 17 Nov 2018 00:17:29 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2386829A09
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Nov 2018 19:03:52 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Fri, 16 Nov 2018 19:03:51 +0000
-Message-ID: <bug-201685-13602-ItIAHrz1xu@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+Return-Path: <SRS0=wBZF=NZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:36938 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2388646AbeKOI34 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Nov 2018 03:29:56 -0500
+From: Sasha Levin <sashal@kernel.org>
+To: stable@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Vasily Averin <vvs@virtuozzo.com>, Theodore Ts'o <tytso@mit.edu>,
+        stable@kernel.org, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.18 53/59] ext4: missing !bh check in ext4_xattr_inode_write()
+Date: Wed, 14 Nov 2018 17:23:25 -0500
+Message-Id: <20181114222335.99339-53-sashal@kernel.org>
+In-Reply-To: <20181114222335.99339-1-sashal@kernel.org>
+References: <20181114222335.99339-1-sashal@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+From: Vasily Averin <vvs@virtuozzo.com>
 
---- Comment #6 from Theodore Tso (tytso@mit.edu) ---
-Please send detailed information about your hardware (lspci -v and dmesg while
-it is booting would be helpful).   Also please send the results of running
-dumpe2fs on the file system, and the kernel logs when file system operations
-started returning "Structure needs cleaning".   I want to see if there are any
-other kernel messages in and around the ext4 error messages that will be in the
-kernel logs.    Also please send me the fsck logs, and what sort of workload
-(what programs) you have running on your system.   Also, do you do anything
-unusual on your machine; do you typically do clean shutdowns, or do you just do
-forced power-offs?   Are you regularly running into a large amount of memory
-pressure (e.g., are you regularly using a large percentage of the physical
-memory available on your system.)
+[ Upstream commit eb6984fa4ce2837dcb1f66720a600f31b0bb3739 ]
 
-This is going to end up being a process of elimination.   4.19 works for me.  
-I'm using a 2018 Dell XPS 13, Model 9370, with 16GB of memory and I run a
-typical kernel developer workload.   We also run a large number of ext4
-regression testing, which generally happens on KVM for one developer, and I use
-Google Compute Engine for my tests.   None of this detected any problems before
-4.19 was released.    So the question then is --- what makes people who are
-experiencing difficulties different from my development laptop (which also has
-an Intel board, and an SSD connected using NVMe) from those who are seeing
-problems?  This is why getting lots of details about the precise hardware
-configuration is going to be critically important.
+According to Ted Ts'o ext4_getblk() called in ext4_xattr_inode_write()
+should not return bh = NULL
 
-In the ideal world we would come up with a clean, simple, reliable reproducer. 
-Then we can experiment and see if the reliable reproducer continues to
-reproduce on different hardware, etc.   
+The only time that bh could be NULL, then, would be in the case of
+something really going wrong; a programming error elsewhere (perhaps a
+wild pointer dereference) or I/O error causing on-disk file system
+corruption (although that would be highly unlikely given that we had
+*just* allocated the blocks and so the metadata blocks in question
+probably would still be in the cache).
 
-Finally, since in order to figure things out we may need a lot of detail about
-the hardware, the software, and the applications running on each of the systems
-where people are seeing problems, it's helpful if new people upload all of this
-information onto new kernel bugzilla issues, and then mention the kernel
-bugzilla issue here, so people can follow the links.
+Fixes: e50e5129f384 ("ext4: xattr-in-inode support")
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@kernel.org # 4.13
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/ext4/xattr.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-I'll note that a few years ago, we had a mysterious "ext4 failure" that
-ultimately turned out to be a Intel virtualization hardware bug, and it was the
-*host* version that mattered, not the *guest* kernel version that mattered. 
-Worse, it was fixed in the very next vesion of the kernel, and so it was only
-people using Debian host kernels that ran into troubles --- but **only** if
-they were using a specific Intel chipset and Intel CPU generation.   Everyone
-kept on swearing up and down it was an ext4 bug, and there were many angry
-people arguing this on bugzilla.   Ultimately, it was a problem caused by a
-hardware bug, and a kernel workaround that was in 3.18 but not in 3.17, and
-Debian hadn't noticed they needed to backport the kernel workaround....   And
-because everyone was *certain* that the host kernel version didn't matter ---
-after all, it was *obviously* an ext4 bug in the guest kernel --- they didn't
-report it, and that made figuring out what the problem was (it took over a
-year) much, Much, MUCH harder.
-
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index f36fc5d5b257..302725176571 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1388,6 +1388,12 @@ static int ext4_xattr_inode_write(handle_t *handle, struct inode *ea_inode,
+ 		bh = ext4_getblk(handle, ea_inode, block, 0);
+ 		if (IS_ERR(bh))
+ 			return PTR_ERR(bh);
++		if (!bh) {
++			WARN_ON_ONCE(1);
++			EXT4_ERROR_INODE(ea_inode,
++					 "ext4_getblk() return bh = NULL");
++			return -EFSCORRUPTED;
++		}
+ 		ret = ext4_journal_get_write_access(handle, bh);
+ 		if (ret)
+ 			goto out;
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.17.1
