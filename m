@@ -1,96 +1,60 @@
-Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:47217 "EHLO
-        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728505AbeKTVQl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 20 Nov 2018 16:16:41 -0500
-Subject: Re: ext4: try to improve unwritten extents merges
-To: Jan Kara <jack@suse.cz>
-Cc: darrick.wong@oracle.com, linux-ext4@vger.kernel.org
-References: <e3074993-0810-1954-7204-38b6d0b0f1e5@linux.alibaba.com>
- <20181120100533.GD8842@quack2.suse.cz>
-From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-Message-ID: <e4de55ba-716f-bd8c-7da7-05092052ebf4@linux.alibaba.com>
-Date: Tue, 20 Nov 2018 18:48:07 +0800
-MIME-Version: 1.0
-In-Reply-To: <20181120100533.GD8842@quack2.suse.cz>
-Content-Type: text/plain; charset=gbk; format=flowed
-Content-Transfer-Encoding: 7bit
+Return-Path: <SRS0=wBZF=NZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:38160 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726579AbeKOIa6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Nov 2018 03:30:58 -0500
+From: Sasha Levin <sashal@kernel.org>
+To: stable@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Vasily Averin <vvs@virtuozzo.com>, Theodore Ts'o <tytso@mit.edu>,
+        stable@kernel.org, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.14 27/27] ext4: missing !bh check in ext4_xattr_inode_write()
+Date: Wed, 14 Nov 2018 17:25:16 -0500
+Message-Id: <20181114222520.99926-27-sashal@kernel.org>
+In-Reply-To: <20181114222520.99926-1-sashal@kernel.org>
+References: <20181114222520.99926-1-sashal@kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-hi,
+From: Vasily Averin <vvs@virtuozzo.com>
 
-> Hello!
-> 
-> On Tue 20-11-18 17:01:25, Xiaoguang Wang wrote:
->> First sorry to bother you again, recently we meet a
->> "dioread_nolock,nodelalloc" slow writeback issue, Liu Bo has sent a patch to
->> fix this issue. But here I also wonder whether we can merge unwritten
->> extents as far as possible.
->> In current codes:
->>
->> int
->> ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
->> 				struct ext4_extent *ex2)
->> {
->> ...
->> 	if (ext4_ext_is_unwritten(ex1) &&
->> 	    (ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN) ||
->> 	     atomic_read(&EXT4_I(inode)->i_unwritten) ||
->> 	     (ext1_ee_len + ext2_ee_len > EXT_UNWRITTEN_MAX_LEN)))
->> 		return 0;
->> ...
->> }
->> This was added by Darrick in 2014:
->> commit a9b8241594adda0a7a4fb3b87bf29d2dff0d997d
->> Author: Darrick J. Wong <darrick.wong@oracle.com>
->> Date:   Thu Feb 20 21:17:35 2014 -0500
->>
->>      ext4: merge uninitialized extents
->>
->>      Allow for merging uninitialized extents.
->>
->>      Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
->>      Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->>
->> So long as we have a unwritten extents under io(which also means i_unwritten
->> is not zero), then we can not do merge work for unwritten extents, I wonder
->> whether this conditon is too strict. Assume that the
->> begin of the file is under io, but middle or end of the file could not
->> merge unwritten extetns, though they could be.
->>
->> I'm not sure whether we could directly remove
->> "atomic_read(&EXT4_I(inode)->i_unwritten)",if not, here I make a simple
->> patch to respect same semantics. The idea is simple, I use a red-black
->> tree to record unwritten extents under io, when trying to merging
->> unwritten extents, we search this per-inode tree, it not hit, we can
->> merge. I have also run "xfstests quick group test cases", look like that
->> it works well. dio maybe also go to this way.
-> 
-> The reason why we don't merge unwritten extents if there is IO to unwritten
-> extents running is that we split unwritten extents to match exactly the IO
-> range on submission and then convert it to written extents on IO
-> completion. So we must avoid merging these split out extents while the IO
-> is running.
-I see, thanks.
+[ Upstream commit eb6984fa4ce2837dcb1f66720a600f31b0bb3739 ]
 
-> 
-> I agree that the condition in ext4_can_extents_be_merged() is rather coarse
-> so it would be nice to improve it so that unwritten extents on which IO is
-> not running can be merged. I've also observed that unwritten extents get
-> fragmented relatively easily under some workloads.
-> 
-> Rather than introducing new RB-tree for this (which costs additional memory
-> and its maintenance costs also CPU time), I'd use extent status tree to
-> identify unwritten extent that got split out when preparing the IO (you
-> should mark such extent in ext4_map_blocks() when EXT4_GET_BLOCKS_IO_SUBMIT
-> flag is set). Then the flag would get cleared on extent conversion to
-> written one.
-Agree, thanks for your helps and suggestions, I'll try this method.
+According to Ted Ts'o ext4_getblk() called in ext4_xattr_inode_write()
+should not return bh = NULL
 
-Regards,
-Xiaoguang Wang
-> 
-> 								Honza
-> 
+The only time that bh could be NULL, then, would be in the case of
+something really going wrong; a programming error elsewhere (perhaps a
+wild pointer dereference) or I/O error causing on-disk file system
+corruption (although that would be highly unlikely given that we had
+*just* allocated the blocks and so the metadata blocks in question
+probably would still be in the cache).
+
+Fixes: e50e5129f384 ("ext4: xattr-in-inode support")
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@kernel.org # 4.13
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/ext4/xattr.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 9bc50eef6127..34975e1aa7d2 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1387,6 +1387,12 @@ static int ext4_xattr_inode_write(handle_t *handle, struct inode *ea_inode,
+ 		bh = ext4_getblk(handle, ea_inode, block, 0);
+ 		if (IS_ERR(bh))
+ 			return PTR_ERR(bh);
++		if (!bh) {
++			WARN_ON_ONCE(1);
++			EXT4_ERROR_INODE(ea_inode,
++					 "ext4_getblk() return bh = NULL");
++			return -EFSCORRUPTED;
++		}
+ 		ret = ext4_journal_get_write_access(handle, bh);
+ 		if (ret)
+ 			goto out;
+-- 
+2.17.1
