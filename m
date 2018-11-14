@@ -1,135 +1,106 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44324 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726705AbeKUOBC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 09:01:02 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V11 15/19] block: enable multipage bvecs
-Date: Wed, 21 Nov 2018 11:23:23 +0800
-Message-Id: <20181121032327.8434-16-ming.lei@redhat.com>
-In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
+Return-Path: <SRS0=wBZF=NZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-132.freemail.mail.aliyun.com ([115.124.30.132]:60578 "EHLO
+        out30-132.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1728071AbeKNVyX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 14 Nov 2018 16:54:23 -0500
+From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+To: linux-ext4@vger.kernel.org
+Cc: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Subject: [PATCH] ext4: fix deadlock while checkpoint thread waits commit thread to finish
+Date: Wed, 14 Nov 2018 19:49:35 +0800
+Message-Id: <20181114114935.5250-1-xiaoguang.wang@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch pulls the trigger for multi-page bvecs.
+This issue was found when I tried to put checkpoint work in a separate thread,
+the deadlock below happened:
+         Thread1                                |   Thread2
+__jbd2_log_wait_for_space                       |
+jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
+  if (jh->b_transaction != NULL)                |
+    ...                                         |
+    jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
+                                                |  will lock j_checkpoint_mutex,
+                                                |  but will be blocked here.
+                                                |
+    jbd2_log_wait_commit(journal, tid);         |
+    wait_event(journal->j_wait_done_commit,     |
+     !tid_gt(tid, journal->j_commit_sequence)); |
+     ...                                        |wake_up(j_wait_done_commit)
+  }                                             |
 
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
+then deadlock occurs, Thread1 will never be waken up.
+
+To fix this issue, drop j_checkpoint_mutex in jbd2_log_do_checkpoint()
+when we are going to wait for transaction commit.
+
+Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
 ---
- block/bio.c       | 32 +++++++++++++++++++++++++++-----
- fs/iomap.c        |  2 +-
- fs/xfs/xfs_aops.c |  2 +-
- 3 files changed, 29 insertions(+), 7 deletions(-)
+ fs/jbd2/checkpoint.c | 21 +++++++++++++++++----
+ fs/jbd2/journal.c    |  2 +-
+ 2 files changed, 18 insertions(+), 5 deletions(-)
 
-diff --git a/block/bio.c b/block/bio.c
-index 0f1635b9ec50..854676edc438 100644
---- a/block/bio.c
-+++ b/block/bio.c
-@@ -823,7 +823,7 @@ EXPORT_SYMBOL(bio_add_pc_page);
-  * @len: length of the data to add
-  * @off: offset of the data in @page
-  *
-- * Try to add the data at @page + @off to the last bvec of @bio.  This is a
-+ * Try to add the data at @page + @off to the last page of @bio.  This is a
-  * a useful optimisation for file systems with a block size smaller than the
-  * page size.
-  *
-@@ -836,10 +836,13 @@ bool __bio_try_merge_page(struct bio *bio, struct page *page,
- 		return false;
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 26f8d7e46462..e728844f2f0e 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -113,7 +113,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+ 	nblocks = jbd2_space_needed(journal);
+ 	while (jbd2_log_space_left(journal) < nblocks) {
+ 		write_unlock(&journal->j_state_lock);
+-		mutex_lock(&journal->j_checkpoint_mutex);
++		mutex_lock_io(&journal->j_checkpoint_mutex);
  
- 	if (bio->bi_vcnt > 0) {
--		struct bio_vec *bv = &bio->bi_io_vec[bio->bi_vcnt - 1];
-+		struct bio_vec bv;
-+		struct bio_vec *seg = &bio->bi_io_vec[bio->bi_vcnt - 1];
+ 		/*
+ 		 * Test again, another process may have checkpointed while we
+@@ -241,8 +241,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+ 	 * done (maybe it's a new transaction, but it fell at the same
+ 	 * address).
+ 	 */
+-	if (journal->j_checkpoint_transactions != transaction ||
+-	    transaction->t_tid != this_tid)
++	if (journal->j_checkpoint_transactions == NULL ||
++	    journal->j_checkpoint_transactions->t_tid != this_tid)
+ 		goto out;
  
--		if (page == bv->bv_page && off == bv->bv_offset + bv->bv_len) {
--			bv->bv_len += len;
-+		bvec_last_segment(seg, &bv);
-+
-+		if (page == bv.bv_page && off == bv.bv_offset + bv.bv_len) {
-+			seg->bv_len += len;
- 			bio->bi_iter.bi_size += len;
- 			return true;
+ 	/* checkpoint all of the transaction's buffers */
+@@ -276,9 +276,22 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+ 		"JBD2: %s: Waiting for Godot: block %llu\n",
+ 		journal->j_devname, (unsigned long long) bh->b_blocknr);
+ 
++			if (batch_count)
++				__flush_batch(journal, &batch_count);
+ 			jbd2_log_start_commit(journal, tid);
++			/*
++			 * jbd2_journal_commit_transaction() may want
++			 * to take the checkpoint_mutex if JBD2_FLUSHED
++			 * is set, jbd2_update_log_tail() called by
++			 * jbd2_journal_commit_transaction() may also take
++			 * checkpoint_mutex.  So we need to temporarily
++			 * drop it.
++			 */
++			mutex_unlock(&journal->j_checkpoint_mutex);
+ 			jbd2_log_wait_commit(journal, tid);
+-			goto retry;
++			mutex_lock_io(&journal->j_checkpoint_mutex);
++			spin_lock(&journal->j_list_lock);
++			goto restart;
  		}
-@@ -848,6 +851,25 @@ bool __bio_try_merge_page(struct bio *bio, struct page *page,
- }
- EXPORT_SYMBOL_GPL(__bio_try_merge_page);
- 
-+static bool bio_try_merge_segment(struct bio *bio, struct page *page,
-+				  unsigned int len, unsigned int off)
-+{
-+	if (WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED)))
-+		return false;
-+
-+	if (bio->bi_vcnt > 0) {
-+		struct bio_vec *seg = &bio->bi_io_vec[bio->bi_vcnt - 1];
-+
-+		if (page_to_phys(seg->bv_page) + seg->bv_offset + seg->bv_len ==
-+		    page_to_phys(page) + off) {
-+			seg->bv_len += len;
-+			bio->bi_iter.bi_size += len;
-+			return true;
-+		}
-+	}
-+	return false;
-+}
-+
- /**
-  * __bio_add_page - add page to a bio in a new segment
-  * @bio: destination bio
-@@ -888,7 +910,7 @@ EXPORT_SYMBOL_GPL(__bio_add_page);
- int bio_add_page(struct bio *bio, struct page *page,
- 		 unsigned int len, unsigned int offset)
- {
--	if (!__bio_try_merge_page(bio, page, len, offset)) {
-+	if (!bio_try_merge_segment(bio, page, len, offset)) {
- 		if (bio_full(bio))
- 			return 0;
- 		__bio_add_page(bio, page, len, offset);
-diff --git a/fs/iomap.c b/fs/iomap.c
-index f5fb8bf75cc8..ccc2ba115f4d 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -344,7 +344,7 @@ iomap_readpage_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 		ctx->bio->bi_end_io = iomap_read_end_io;
+ 		if (!buffer_dirty(bh)) {
+ 			if (unlikely(buffer_write_io_error(bh)) && !result)
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 8ef6b6daaa7a..88d8f22d2cba 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2067,7 +2067,7 @@ int jbd2_journal_wipe(journal_t *journal, int write)
+ 	err = jbd2_journal_skip_recovery(journal);
+ 	if (write) {
+ 		/* Lock to make assertions happy... */
+-		mutex_lock(&journal->j_checkpoint_mutex);
++		mutex_lock_io(&journal->j_checkpoint_mutex);
+ 		jbd2_mark_journal_empty(journal, REQ_SYNC | REQ_FUA);
+ 		mutex_unlock(&journal->j_checkpoint_mutex);
  	}
- 
--	__bio_add_page(ctx->bio, page, plen, poff);
-+	bio_add_page(ctx->bio, page, plen, poff);
- done:
- 	/*
- 	 * Move the caller beyond our range so that it keeps making progress.
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index 1f1829e506e8..5c2190216614 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -621,7 +621,7 @@ xfs_add_to_ioend(
- 			atomic_inc(&iop->write_count);
- 		if (bio_full(wpc->ioend->io_bio))
- 			xfs_chain_bio(wpc->ioend, wbc, bdev, sector);
--		__bio_add_page(wpc->ioend->io_bio, page, len, poff);
-+		bio_add_page(wpc->ioend->io_bio, page, len, poff);
- 	}
- 
- 	wpc->ioend->io_size += len;
 -- 
-2.9.5
+2.17.2
