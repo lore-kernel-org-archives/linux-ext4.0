@@ -1,63 +1,39 @@
-Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41480 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729259AbeK0TyG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 27 Nov 2018 14:54:06 -0500
-Date: Tue, 27 Nov 2018 09:56:53 +0100
-From: Jan Kara <jack@suse.cz>
-To: Amir Goldstein <amir73il@gmail.com>
-Cc: Jan Kara <jack@suse.cz>, Phillip Potter <phil@philpotter.co.uk>,
-        Jan Kara <jack@suse.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Ext4 <linux-ext4@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: Re: [RFC][PATCH v4 04/09] ext2: use common file type conversion
-Message-ID: <20181127085653.GC14128@quack2.suse.cz>
-References: <20181121190653.GA7710@pathfinder>
- <20181122114023.GE9840@quack2.suse.cz>
- <CAOQ4uxiOOJuFDO7x=sY9Cy3wGr8xo6AGKY4Hep10jwvOVkqd_A@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAOQ4uxiOOJuFDO7x=sY9Cy3wGr8xo6AGKY4Hep10jwvOVkqd_A@mail.gmail.com>
+Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mout.gmx.net ([212.227.15.18]:39195 "EHLO mout.gmx.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726574AbeKOQsc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Nov 2018 11:48:32 -0500
+From: Chengguang Xu <cgxu519@gmx.com>
+To: tytso@mit.edu, adilger.kernel@dilger.ca
+Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
+Subject: [PATCH] ext4: change variable reusable to bool type
+Date: Thu, 15 Nov 2018 14:41:46 +0800
+Message-Id: <20181115064146.21232-1-cgxu519@gmx.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 22-11-18 14:47:39, Amir Goldstein wrote:
-> On Thu, Nov 22, 2018 at 1:40 PM Jan Kara <jack@suse.cz> wrote:
-> >
-> > On Wed 21-11-18 19:06:53, Phillip Potter wrote:
-> > > Deduplicate the ext2 file type conversion implementation - file systems
-> > > that use the same file types as defined by POSIX do not need to define
-> > > their own versions and can use the common helper functions decared in
-> > > fs_types.h and implemented in fs_types.c
-> > >
-> > > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-> > > Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
-> >
-> > Looks good. You can add:
-> >
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> 
-> Jan,
-> 
-> As you know, Al probably has bigger fish to fry at the moment.
-> Will you take this patch along with patch #1 through your tree?
-> Other fs maintainers could apply patches on next cycle (or coordinate
-> they pull request with you).
-> 
-> If you would agree to that, I suggest to copy the following section
-> from the cover letter into the ext2 patch:
-> 
-> The current implementation has a lurking out-of-bounds access
-> bug to the ext2_type_by_mode array.
-> The array is defined with size S_IFMT >> S_SHIFT, so 15.
-> This means that it is possible with a malformed inode to
-> get an index of 15, as the array is always accessed with:
-> ext2_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
+Reusable parameter of mb_cache_entry_create() is bool type,
+so change variable resuable to bool type from int.
 
-Yes, I will do that.
+Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+---
+ fs/ext4/xattr.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-								Honza
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 7643d52c776c..cda5dd16a8cb 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -2979,8 +2979,8 @@ ext4_xattr_block_cache_insert(struct mb_cache *ea_block_cache,
+ {
+ 	struct ext4_xattr_header *header = BHDR(bh);
+ 	__u32 hash = le32_to_cpu(header->h_hash);
+-	int reusable = le32_to_cpu(header->h_refcount) <
+-		       EXT4_XATTR_REFCOUNT_MAX;
++	bool reusable = (le32_to_cpu(header->h_refcount) <
++		       EXT4_XATTR_REFCOUNT_MAX) ? true : false;
+ 	int error;
+ 
+ 	if (!ea_block_cache)
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.17.2
