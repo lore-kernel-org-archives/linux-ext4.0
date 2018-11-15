@@ -1,73 +1,116 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38064 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732495AbeKVLy0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 06:54:26 -0500
-Date: Thu, 22 Nov 2018 09:17:06 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
+Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f194.google.com ([209.85.215.194]:43195 "EHLO
+        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726407AbeKPJdz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 04:33:55 -0500
+Received: by mail-pg1-f194.google.com with SMTP id n10-v6so9693308pgv.10
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 15:24:00 -0800 (PST)
+Date: Thu, 15 Nov 2018 15:23:56 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
 Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
         linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
         linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 03/19] block: introduce bio_for_each_bvec()
-Message-ID: <20181122011705.GC20814@ming.t460p>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
- <20181121032327.8434-4-ming.lei@redhat.com>
- <20181121133244.GB1640@lst.de>
- <20181121153135.GB19111@ming.t460p>
- <20181121161025.GB4977@lst.de>
+Subject: Re: [PATCH V10 05/19] block: introduce bvec_last_segment()
+Message-ID: <20181115232356.GA23238@vader>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-6-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181121161025.GB4977@lst.de>
+In-Reply-To: <20181115085306.9910-6-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 21, 2018 at 05:10:25PM +0100, Christoph Hellwig wrote:
-> On Wed, Nov 21, 2018 at 11:31:36PM +0800, Ming Lei wrote:
-> > > But while looking over this I wonder why we even need the max_seg_len
-> > > here.  The only thing __bvec_iter_advance does it to move bi_bvec_done
-> > > and bi_idx forward, with corresponding decrements of bi_size.  As far
-> > > as I can tell the only thing that max_seg_len does is that we need
-> > > to more iterations of the while loop to archive the same thing.
-> > > 
-> > > And actual bvec used by the caller will be obtained using
-> > > bvec_iter_bvec or segment_iter_bvec depending on if they want multi-page
-> > > or single-page variants.
-> > 
-> > Right, we let __bvec_iter_advance() serve for both multi-page and single-page
-> > case, then we have to tell it via one way or another, now we use the constant
-> > of 'max_seg_len'.
-> > 
-> > Or you suggest to implement two versions of __bvec_iter_advance()?
+On Thu, Nov 15, 2018 at 04:52:52PM +0800, Ming Lei wrote:
+> BTRFS and guard_bio_eod() need to get the last singlepage segment
+> from one multipage bvec, so introduce this helper to make them happy.
 > 
-> No - I think we can always use the code without any segment in
-> bvec_iter_advance.  Because bvec_iter_advance only operates on the
-> iteractor, the generation of an actual single-page or multi-page
-> bvec is left to the caller using the bvec_iter_bvec or segment_iter_bvec
-> helpers.  The only difference is how many bytes you can move the
-> iterator forward in a single loop iteration - so if you pass in
-> PAGE_SIZE as the max_seg_len you just will have to loop more often
-> for a large enough bytes, but not actually do anything different.
+> Cc: Dave Chinner <dchinner@redhat.com>
+> Cc: Kent Overstreet <kent.overstreet@gmail.com>
+> Cc: Mike Snitzer <snitzer@redhat.com>
+> Cc: dm-devel@redhat.com
+> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+> Cc: linux-fsdevel@vger.kernel.org
+> Cc: Shaohua Li <shli@kernel.org>
+> Cc: linux-raid@vger.kernel.org
+> Cc: linux-erofs@lists.ozlabs.org
+> Cc: David Sterba <dsterba@suse.com>
+> Cc: linux-btrfs@vger.kernel.org
+> Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> Cc: linux-xfs@vger.kernel.org
+> Cc: Gao Xiang <gaoxiang25@huawei.com>
+> Cc: Christoph Hellwig <hch@lst.de>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: Coly Li <colyli@suse.de>
+> Cc: linux-bcache@vger.kernel.org
+> Cc: Boaz Harrosh <ooo@electrozaur.com>
+> Cc: Bob Peterson <rpeterso@redhat.com>
+> Cc: cluster-devel@redhat.com
 
-Yeah, I see that.
+Reviewed-by: Omar Sandoval <osandov@fb.com>
 
-The difference is made by bio_iter_iovec()/bio_iter_mp_iovec() in
-__bio_for_each_segment()/__bio_for_each_bvec().
+Minor comments below.
 
+> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> ---
+>  include/linux/bvec.h | 25 +++++++++++++++++++++++++
+>  1 file changed, 25 insertions(+)
+> 
+> diff --git a/include/linux/bvec.h b/include/linux/bvec.h
+> index 3d61352cd8cf..01616a0b6220 100644
+> --- a/include/linux/bvec.h
+> +++ b/include/linux/bvec.h
+> @@ -216,4 +216,29 @@ static inline bool mp_bvec_iter_advance(const struct bio_vec *bv,
+>  	.bi_bvec_done	= 0,						\
+>  }
+>  
+> +/*
+> + * Get the last singlepage segment from the multipage bvec and store it
+> + * in @seg
+> + */
+> +static inline void bvec_last_segment(const struct bio_vec *bvec,
+> +		struct bio_vec *seg)
 
-Thanks,
-Ming
+Indentation is all messed up here.
+
+> +{
+> +	unsigned total = bvec->bv_offset + bvec->bv_len;
+> +	unsigned last_page = total / PAGE_SIZE;
+> +
+> +	if (last_page * PAGE_SIZE == total)
+> +		last_page--;
+
+I think this could just be
+
+	unsigned int last_page = (total - 1) / PAGE_SIZE;
+
+> +	seg->bv_page = nth_page(bvec->bv_page, last_page);
+> +
+> +	/* the whole segment is inside the last page */
+> +	if (bvec->bv_offset >= last_page * PAGE_SIZE) {
+> +		seg->bv_offset = bvec->bv_offset % PAGE_SIZE;
+> +		seg->bv_len = bvec->bv_len;
+> +	} else {
+> +		seg->bv_offset = 0;
+> +		seg->bv_len = total - last_page * PAGE_SIZE;
+> +	}
+> +}
+> +
+>  #endif /* __LINUX_BVEC_ITER_H */
+> -- 
+> 2.9.5
+> 
