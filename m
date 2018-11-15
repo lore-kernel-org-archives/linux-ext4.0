@@ -1,141 +1,55 @@
-Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail03.adl2.internode.on.net ([150.101.137.141]:11174 "EHLO
-        ipmail03.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726187AbeK2XIH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Nov 2018 18:08:07 -0500
-Date: Thu, 29 Nov 2018 23:02:53 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Liu Bo <bo.liu@linux.alibaba.com>, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [PATCH RFC] Ext4: fix deadlock on dirty pages between fault and
- writeback
-Message-ID: <20181129120253.GR6311@dastard>
-References: <1540858969-75803-1-git-send-email-bo.liu@linux.alibaba.com>
- <20181127114249.GH16301@quack2.suse.cz>
- <20181128201122.r4sec265cnlxgj2x@US-160370MP2.local>
- <20181129085238.GD31087@quack2.suse.cz>
+Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:34596 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2387833AbeKPCel (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Nov 2018 21:34:41 -0500
+Date: Thu, 15 Nov 2018 17:26:10 +0100
+From: Jan Kara <jack@suse.cz>
+To: Chengguang Xu <cgxu519@gmx.com>
+Cc: jack@suse.com, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext2: change reusable parameter to true when calling
+ mb_cache_entry_create()
+Message-ID: <20181115162610.GA12786@quack2.suse.cz>
+References: <20181115064008.21056-1-cgxu519@gmx.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181129085238.GD31087@quack2.suse.cz>
+In-Reply-To: <20181115064008.21056-1-cgxu519@gmx.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 29, 2018 at 09:52:38AM +0100, Jan Kara wrote:
-> On Wed 28-11-18 12:11:23, Liu Bo wrote:
-> > On Tue, Nov 27, 2018 at 12:42:49PM +0100, Jan Kara wrote:
-> > > CCed fsdevel since this may be interesting to other filesystem developers
-> > > as well.
-> > > 
-> > > On Tue 30-10-18 08:22:49, Liu Bo wrote:
-> > > > mpage_prepare_extent_to_map() tries to build up a large bio to stuff down
-> > > > the pipe.  But if it needs to wait for a page lock, it needs to make sure
-> > > > and send down any pending writes so we don't deadlock with anyone who has
-> > > > the page lock and is waiting for writeback of things inside the bio.
-> > > 
-> > > Thanks for report! I agree the current code has a deadlock possibility you
-> > > describe. But I think the problem reaches a bit further than what your
-> > > patch fixes.  The problem is with pages that are unlocked but have
-> > > PageWriteback set.  Page reclaim may end up waiting for these pages and
-> > > thus any memory allocation with __GFP_FS set can block on these. So in our
-> > > current setting page writeback must not block on anything that can be held
-> > > while doing memory allocation with __GFP_FS set. Page lock is just one of
-> > > these possibilities, wait_on_page_writeback() in
-> > > mpage_prepare_extent_to_map() is another suspect and there mat be more. Or
-> > > to say it differently, if there's lock A and GFP_KERNEL allocation can
-> > > happen under lock A, then A cannot be taken by the writeback path. This is
-> > > actually pretty subtle deadlock possibility and our current lockdep
-> > > instrumentation isn't going to catch this.
-> > >
-> > 
-> > Thanks for the nice summary, it's true that a lock A held in both
-> > writeback path and memory reclaim can end up with deadlock.
-> > 
-> > Fortunately, by far there're only deadlock reports of page's lock bit
-> > and writeback bit in both ext4 and btrfs[1].  I think
-> > wait_on_page_writeback() would be OK as it's been protected by page
-> > lock.
-> > 
-> > [1]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=01d658f2ca3c85c1ffb20b306e30d16197000ce7
+On Thu 15-11-18 14:40:08, Chengguang Xu wrote:
+> Reusable parameter of mb_cache_entry_create() is bool type,
+> so it's better to set true instead of 1.
 > 
-> Yes, but that may just mean that the other deadlocks are just harder to
-> hit...
+> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+
+Applied after fixing the whitespace damage. Thanks.
+
+								Honza
+
+> ---
+>  fs/ext2/xattr.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
 > 
-> > > So I see two ways how to fix this properly:
-> > > 
-> > > 1) Change ext4 code to always submit the bio once we have a full page
-> > > prepared for writing. This may be relatively simple but has a higher CPU
-> > > overhead for bio allocation & freeing (actual IO won't really differ since
-> > > the plugging code should take care of merging the submitted bios). XFS
-> > > seems to be doing this.
-> > 
-> > Seems that that's the safest way to do it, but as you said there's
-> > some tradeoff.
-> > 
-> > (Just took a look at xfs's writepages, xfs also did the page
-> > collection if there're adjacent pages in xfs_add_to_ioend(), and since
-> > xfs_vm_writepages() is using the generic helper write_cache_pages()
-> > which calls lock_page() as well, it's still possible to run into the
-> > above kind of deadlock.)
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index 62d9a659a8ff..6bab2432b717 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -835,7 +835,8 @@ ext2_xattr_cache_insert(struct mb_cache *cache, struct buffer_head *bh)
+>  	__u32 hash = le32_to_cpu(HDR(bh)->h_hash);
+>  	int error;
+>  
+> -	error = mb_cache_entry_create(cache, GFP_NOFS, hash, bh->b_blocknr, 1);
+> +	error = mb_cache_entry_create(cache, GFP_NOFS, hash,
+> +					bh->b_blocknr,true);
+>  	if (error) {
+>  		if (error == -EBUSY) {
+>  			ea_bdebug(bh, "already in cache (%d cache entries)",
+> -- 
+> 2.17.2
 > 
-> Originally I thought XFS doesn't have this problem but now when I look
-> again, you are right that their ioend may accumulate more pages to write
-> and so they are prone to the same deadlock ext4 is. Added XFS list to CC.
-
-I don't think XFS has a problem here, because the deadlock is
-dependent on holding a lock that writeback might take and then doing
-a GFP_KERNEL allocation. I don't think we do that anywhere in XFS -
-the only lock that is of concern here is the ip->i_ilock, and I
-think we always do GFP_NOFS allocations inside that lock.
-
-As it is, this sort of lock vs reclaim inversion should be caught by
-lockdep - allocations and reclaim contexts are recorded by lockdep
-we get reports if we do lock A - alloc and then do reclaim - lock A.
-We've always had problems with false positives from lockdep for
-these situations where common XFS code can be called from GFP_KERNEL
-valid contexts as well as reclaim or GFP_NOFS-only contexts, but I
-don't recall ever seeing such a report for the writeback path....
-
-> > > 2) Change the code to unlock the page only when we submit the bio.
-
-> > This sounds doable but not good IMO, the concern is that page locks
-> > can be held for too long, or if we do 2), submitting one bio per page
-> > in 1) is also needed.
 > 
-> Hum, you're right that page lock hold times may increase noticeably and
-> that's not very good. Ideally we'd need a way to submit whatever we have
-> prepared when we are going to sleep but there's no easy way to do that.
-
-XFS unlocks the page after it has been added to the bio and marked
-as under writeback, not when the bio is submitted. i.e.
-
-writepage w/ locked page dirty
-lock ilock
-<mapping, allocation>
-unlock ilock
-bio_add_page
-clear_page_dirty_for_io
-set_page_writeback
-unlock_page
-.....
-<gather more dirty pages into bio>
-.....
-<bio is full or discontiguous page to be written>
-submit_bio()
-
-If we switch away which holding a partially built bio, the only page
-we have locked is the one we are currently trying to add to the bio.
-Lock ordering prevents deadlocks on that one page, and all other
-pages in the bio being built are marked as under writeback and are
-not locked. Hence anything that wants to modify a page held in the
-bio will block waiting for page writeback to clear, not the page
-lock.
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
