@@ -1,140 +1,228 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:44550 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726296AbeK0JPw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:15:52 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 06/12] debugfs/htree: Support encoding when printing the file hash
-Date: Mon, 26 Nov 2018 17:19:43 -0500
-Message-Id: <20181126221949.12172-7-krisman@collabora.com>
-In-Reply-To: <20181126221949.12172-1-krisman@collabora.com>
-References: <20181126221949.12172-1-krisman@collabora.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-131.freemail.mail.aliyun.com ([115.124.30.131]:34039 "EHLO
+        out30-131.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726689AbeKOPsV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Nov 2018 10:48:21 -0500
+From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+To: linux-ext4@vger.kernel.org
+Cc: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Subject: [PATCH v2] jbd2: add proc entry to control whethre doing buffer copy-out
+Date: Thu, 15 Nov 2018 13:41:11 +0800
+Message-Id: <20181115054111.47229-1-xiaoguang.wang@linux.alibaba.com>
+In-Reply-To: <050b7290-ed29-26e7-e52f-e83ee46dafb9@linux.alibaba.com>
+References: <050b7290-ed29-26e7-e52f-e83ee46dafb9@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+When jbd2 tries to get write access to one buffer, and if this buffer
+is under writeback with BH_Shadow flag, jbd2 will wait until this buffer
+has been written to disk, but sometimes the time taken to wait may be
+much long, especially disk capacity is almost full.
 
-Implement two parameters -e and -c, to specify encoding and casefold
-when printing the hash of a given file.
+Here add a proc entry "force-copy", if its value is not zero, jbd2 will
+always do meta buffer copy-cout, then we can eliminate the unnecessary
+wating time here, and reduce long tail latency for buffered-write.
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+I construct such test case below:
+
+$cat offline.fio
+; fio-rand-RW.job for fiotest
+
+[global]
+name=fio-rand-RW
+filename=fio-rand-RW
+rw=randrw
+rwmixread=60
+rwmixwrite=40
+bs=4K
+direct=0
+numjobs=4
+time_based=1
+runtime=900
+
+[file1]
+size=60G
+ioengine=sync
+iodepth=16
+
+$cat online.fio
+; fio-seq-write.job for fiotest
+
+[global]
+name=fio-seq-write
+filename=fio-seq-write
+rw=write
+bs=256K
+direct=0
+numjobs=1
+time_based=1
+runtime=60
+
+[file1]
+rate=50m
+size=10G
+ioengine=sync
+iodepth=16
+
+With this patch:
+$cat /proc/fs/jbd2/sda5-8/force_copy
+0
+
+online fio almost always get such long tail latency:
+
+Jobs: 1 (f=1), 0B/s-0B/s: [W(1)][100.0%][w=50.0MiB/s][w=200 IOPS][eta
+00m:00s]
+file1: (groupid=0, jobs=1): err= 0: pid=17855: Thu Nov 15 09:45:57 2018
+  write: IOPS=200, BW=50.0MiB/s (52.4MB/s)(3000MiB/60001msec)
+    clat (usec): min=135, max=4086.6k, avg=867.21, stdev=50338.22
+     lat (usec): min=139, max=4086.6k, avg=871.16, stdev=50338.22
+    clat percentiles (usec):
+     |  1.00th=[    141],  5.00th=[    143], 10.00th=[    145],
+     | 20.00th=[    147], 30.00th=[    147], 40.00th=[    149],
+     | 50.00th=[    149], 60.00th=[    151], 70.00th=[    153],
+     | 80.00th=[    155], 90.00th=[    159], 95.00th=[    163],
+     | 99.00th=[    255], 99.50th=[    273], 99.90th=[    429],
+     | 99.95th=[    441], 99.99th=[3640656]
+
+$cat /proc/fs/jbd2/sda5-8/force_copy
+1
+
+online fio latency is much better.
+
+Jobs: 1 (f=1), 0B/s-0B/s: [W(1)][100.0%][w=50.0MiB/s][w=200 IOPS][eta
+00m:00s]
+file1: (groupid=0, jobs=1): err= 0: pid=8084: Thu Nov 15 09:31:15 2018
+  write: IOPS=200, BW=50.0MiB/s (52.4MB/s)(3000MiB/60001msec)
+    clat (usec): min=137, max=545, avg=151.35, stdev=16.22
+     lat (usec): min=140, max=548, avg=155.31, stdev=16.65
+    clat percentiles (usec):
+     |  1.00th=[  143],  5.00th=[  145], 10.00th=[  145], 20.00th=[
+147],
+     | 30.00th=[  147], 40.00th=[  147], 50.00th=[  149], 60.00th=[
+149],
+     | 70.00th=[  151], 80.00th=[  155], 90.00th=[  157], 95.00th=[
+161],
+     | 99.00th=[  239], 99.50th=[  269], 99.90th=[  420], 99.95th=[
+429],
+     | 99.99th=[  537]
+
+As to the cost: because we'll always need to copy meta buffer, will
+consume minor cpu time and some memory(at most 32MB for 128MB journal
+size).
+Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+
+v2:
+    add missing "force-copy" directory delete operation
 ---
- debugfs/Makefile.in    |  1 +
- debugfs/htree.c        | 30 +++++++++++++++++++++++-------
- lib/ext2fs/Makefile.in |  2 +-
- 3 files changed, 25 insertions(+), 8 deletions(-)
+ fs/jbd2/journal.c    | 58 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h |  5 +++++
+ 2 files changed, 63 insertions(+)
 
-diff --git a/debugfs/Makefile.in b/debugfs/Makefile.in
-index bb4d1947b33b..bc59f5f97513 100644
---- a/debugfs/Makefile.in
-+++ b/debugfs/Makefile.in
-@@ -287,6 +287,7 @@ htree.o: $(srcdir)/htree.c $(top_builddir)/lib/config.h \
-  $(top_srcdir)/lib/ext2fs/ext2_io.h $(top_builddir)/lib/ext2fs/ext2_err.h \
-  $(top_srcdir)/lib/ext2fs/ext2_ext_attr.h $(top_srcdir)/lib/ext2fs/hashmap.h \
-  $(top_srcdir)/lib/ext2fs/bitops.h $(srcdir)/../misc/create_inode.h \
-+ $(top_srcdir)/lib/ext2fs/nls.h \
-  $(top_srcdir)/lib/e2p/e2p.h $(top_srcdir)/lib/support/quotaio.h \
-  $(top_srcdir)/lib/support/dqblk_v2.h \
-  $(top_srcdir)/lib/support/quotaio_tree.h
-diff --git a/debugfs/htree.c b/debugfs/htree.c
-index 0c6a3852393e..d76dc7f0f5e8 100644
---- a/debugfs/htree.c
-+++ b/debugfs/htree.c
-@@ -27,6 +27,8 @@ extern char *optarg;
- #include "uuid/uuid.h"
- #include "e2p/e2p.h"
- 
-+#include "ext2fs/nls.h"
-+
- static FILE *pager;
- 
- static void htree_dump_leaf_node(ext2_filsys fs, ext2_ino_t ino,
-@@ -44,6 +46,7 @@ static void htree_dump_leaf_node(ext2_filsys fs, ext2_ino_t ino,
- 	ext2_dirhash_t 	hash, minor_hash;
- 	unsigned int	rec_len;
- 	int		hash_alg;
-+	int		hash_flags = inode->i_flags & EXT4_CASEFOLD_FL;
- 	int		csum_size = 0;
- 
- 	if (ext2fs_has_feature_metadata_csum(fs->super))
-@@ -89,9 +92,10 @@ static void htree_dump_leaf_node(ext2_filsys fs, ext2_ino_t ino,
- 		}
- 		strncpy(name, dirent->name, thislen);
- 		name[thislen] = '\0';
--		errcode = ext2fs_dirhash(hash_alg, name,
--					 thislen, fs->super->s_hash_seed,
--					 &hash, &minor_hash);
-+		errcode = ext2fs_dirhash2(hash_alg, name, thislen,
-+					  fs->encoding, hash_flags,
-+					  fs->super->s_hash_seed,
-+					  &hash, &minor_hash);
- 		if (errcode)
- 			com_err("htree_dump_leaf_node", errcode,
- 				"while calculating hash");
-@@ -306,11 +310,12 @@ errout:
- void do_dx_hash(int argc, char *argv[], int sci_idx EXT2FS_ATTR((unused)),
- 		void *infop EXT2FS_ATTR((unused)))
- {
--	ext2_dirhash_t hash, minor_hash;
-+	ext2_dirhash_t hash, minor_hash, hash_flags;
- 	errcode_t	err;
- 	int		c;
- 	int		hash_version = 0;
- 	__u32		hash_seed[4];
-+	const struct nls_table *encoding;
- 
- 	hash_seed[0] = hash_seed[1] = hash_seed[2] = hash_seed[3] = 0;
- 
-@@ -329,6 +334,15 @@ void do_dx_hash(int argc, char *argv[], int sci_idx EXT2FS_ATTR((unused)),
- 				return;
- 			}
- 			break;
-+		case 'c':
-+			hash_flags = EXT4_CASEFOLD_FL;
-+			break;
-+		case 'e':
-+			encoding = nls_load_table(optarg);
-+			if (!encoding)
-+				fprintf(stderr, "Invalid encoding: %s\n",
-+					optarg);
-+				return;
- 		default:
- 			goto print_usage;
- 		}
-@@ -336,11 +350,13 @@ void do_dx_hash(int argc, char *argv[], int sci_idx EXT2FS_ATTR((unused)),
- 	if (optind != argc-1) {
- 	print_usage:
- 		com_err(argv[0], 0, "usage: dx_hash [-h hash_alg] "
--			"[-s hash_seed] filename");
-+			"[-s hash_seed] [-c] [-e encoding] filename");
- 		return;
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 8ef6b6daaa7a..7fdaf501610a 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -418,6 +418,9 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
  	}
--	err = ext2fs_dirhash(hash_version, argv[optind], strlen(argv[optind]),
--			     hash_seed, &hash, &minor_hash);
-+	err = ext2fs_dirhash2(hash_version, argv[optind],
-+			      strlen(argv[optind]), encoding, hash_flags,
-+			      hash_seed, &hash, &minor_hash);
+ 	kunmap_atomic(mapped_data);
+ 
++	/* force copy-out */
++	if (need_copy_out == 0 && journal->j_force_copy)
++		need_copy_out = 1;
+ 	/*
+ 	 * Do we need to do a data copy?
+ 	 */
+@@ -1100,6 +1103,58 @@ static const struct file_operations jbd2_seq_info_fops = {
+ 	.release        = jbd2_seq_info_release,
+ };
+ 
++static int jbd2_seq_force_copy_show(struct seq_file *m, void *v)
++{
++	journal_t *journal = m->private;
 +
- 	if (err) {
- 		com_err(argv[0], err, "while calculating hash");
- 		return;
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index b756bbdf35a5..78c54d1a09de 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -1299,7 +1299,7 @@ htree.o: $(top_srcdir)/debugfs/htree.c $(top_builddir)/lib/config.h \
-  $(srcdir)/hashmap.h $(srcdir)/bitops.h \
-  $(top_srcdir)/debugfs/../misc/create_inode.h $(top_srcdir)/lib/e2p/e2p.h \
-  $(top_srcdir)/lib/support/quotaio.h $(top_srcdir)/lib/support/dqblk_v2.h \
-- $(top_srcdir)/lib/support/quotaio_tree.h
-+ $(top_srcdir)/lib/support/quotaio_tree.h $(srcdir)/nls.h
- unused.o: $(top_srcdir)/debugfs/unused.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(top_srcdir)/debugfs/debugfs.h \
-  $(top_srcdir)/lib/ss/ss.h $(top_builddir)/lib/ss/ss_err.h \
++	seq_printf(m, "%u\n", journal->j_force_copy);
++	return 0;
++}
++
++static int jbd2_seq_force_copy_open(struct inode *inode, struct file *filp)
++{
++	journal_t *journal = PDE_DATA(inode);
++
++	return single_open(filp, jbd2_seq_force_copy_show, journal);
++}
++
++/* Worst case buffer size needed for holding an integer. */
++#define PROC_NUMBUF 13
++
++static ssize_t jbd2_seq_force_copy_write(struct file *file,
++			const char __user *buf, size_t count, loff_t *offset)
++{
++	struct inode *inode = file_inode(file);
++	journal_t *journal = PDE_DATA(inode);
++	char buffer[PROC_NUMBUF];
++	unsigned int force_copy;
++	int err;
++
++	memset(buffer, 0, sizeof(buffer));
++	if (count > sizeof(buffer) - 1)
++		count = sizeof(buffer) - 1;
++	if (copy_from_user(buffer, buf, count)) {
++		err = -EFAULT;
++		goto out;
++	}
++
++	err = kstrtouint(strstrip(buffer), 0, &force_copy);
++	if (err)
++		goto out;
++	journal->j_force_copy = force_copy;
++out:
++	return err < 0 ? err : count;
++}
++
++static const struct file_operations jbd2_seq_force_copy_fops = {
++	.owner		= THIS_MODULE,
++	.open           = jbd2_seq_force_copy_open,
++	.read           = seq_read,
++	.write		= jbd2_seq_force_copy_write,
++	.llseek         = seq_lseek,
++	.release        = single_release,
++};
++
+ static struct proc_dir_entry *proc_jbd2_stats;
+ 
+ static void jbd2_stats_proc_init(journal_t *journal)
+@@ -1108,12 +1163,15 @@ static void jbd2_stats_proc_init(journal_t *journal)
+ 	if (journal->j_proc_entry) {
+ 		proc_create_data("info", S_IRUGO, journal->j_proc_entry,
+ 				 &jbd2_seq_info_fops, journal);
++		proc_create_data("force_copy", 0644, journal->j_proc_entry,
++				 &jbd2_seq_force_copy_fops, journal);
+ 	}
+ }
+ 
+ static void jbd2_stats_proc_exit(journal_t *journal)
+ {
+ 	remove_proc_entry("info", journal->j_proc_entry);
++	remove_proc_entry("force_copy", journal->j_proc_entry);
+ 	remove_proc_entry(journal->j_devname, proc_jbd2_stats);
+ }
+ 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index b708e5169d1d..7034888eac6b 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1111,6 +1111,11 @@ struct journal_s
+ 	 */
+ 	struct transaction_stats_s j_stats;
+ 
++	/**
++	 * @j_force_copy: if not zero, force to do buffer copy-out.
++	 */
++	unsigned int j_force_copy;
++
+ 	/**
+ 	 * @j_failed_commit: Failed journal commit ID.
+ 	 */
 -- 
-2.19.2
+2.14.4.44.g2045bb6
