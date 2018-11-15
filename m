@@ -1,15 +1,12 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pf1-f194.google.com ([209.85.210.194]:37497 "EHLO
-        mail-pf1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726714AbeKPM2n (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 07:28:43 -0500
-Received: by mail-pf1-f194.google.com with SMTP id u3-v6so7941258pfm.4
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 18:18:14 -0800 (PST)
-Date: Thu, 15 Nov 2018 18:18:11 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:58708 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728634AbeKOTBB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Nov 2018 14:01:01 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Ming Lei <ming.lei@redhat.com>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
@@ -23,36 +20,173 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
         linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 18/19] block: kill QUEUE_FLAG_NO_SG_MERGE
-Message-ID: <20181116021811.GM23828@vader>
+Subject: [PATCH V10 02/19] block: introduce bio_for_each_bvec()
+Date: Thu, 15 Nov 2018 16:52:49 +0800
+Message-Id: <20181115085306.9910-3-ming.lei@redhat.com>
+In-Reply-To: <20181115085306.9910-1-ming.lei@redhat.com>
 References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-19-ming.lei@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-19-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:53:05PM +0800, Ming Lei wrote:
-> Since bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting"),
-> physical segment number is mainly figured out in blk_queue_split() for
-> fast path, and the flag of BIO_SEG_VALID is set there too.
-> 
-> Now only blk_recount_segments() and blk_recalc_rq_segments() use this
-> flag.
-> 
-> Basically blk_recount_segments() is bypassed in fast path given BIO_SEG_VALID
-> is set in blk_queue_split().
-> 
-> For another user of blk_recalc_rq_segments():
-> 
-> - run in partial completion branch of blk_update_request, which is an unusual case
-> 
-> - run in blk_cloned_rq_check_limits(), still not a big problem if the flag is killed
-> since dm-rq is the only user.
-> 
-> Multi-page bvec is enabled now, QUEUE_FLAG_NO_SG_MERGE doesn't make sense any more.
+This helper is used for iterating over multi-page bvec for bio
+split & merge code.
 
-This commit message wasn't very clear. Is it the case that
-QUEUE_FLAG_NO_SG_MERGE is no longer set by any drivers?
+Cc: Dave Chinner <dchinner@redhat.com>
+Cc: Kent Overstreet <kent.overstreet@gmail.com>
+Cc: Mike Snitzer <snitzer@redhat.com>
+Cc: dm-devel@redhat.com
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+Cc: Shaohua Li <shli@kernel.org>
+Cc: linux-raid@vger.kernel.org
+Cc: linux-erofs@lists.ozlabs.org
+Cc: David Sterba <dsterba@suse.com>
+Cc: linux-btrfs@vger.kernel.org
+Cc: Darrick J. Wong <darrick.wong@oracle.com>
+Cc: linux-xfs@vger.kernel.org
+Cc: Gao Xiang <gaoxiang25@huawei.com>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Cc: Coly Li <colyli@suse.de>
+Cc: linux-bcache@vger.kernel.org
+Cc: Boaz Harrosh <ooo@electrozaur.com>
+Cc: Bob Peterson <rpeterso@redhat.com>
+Cc: cluster-devel@redhat.com
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ include/linux/bio.h  | 34 +++++++++++++++++++++++++++++++---
+ include/linux/bvec.h | 36 ++++++++++++++++++++++++++++++++----
+ 2 files changed, 63 insertions(+), 7 deletions(-)
+
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 056fb627edb3..1f0dcf109841 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -76,6 +76,9 @@
+ #define bio_data_dir(bio) \
+ 	(op_is_write(bio_op(bio)) ? WRITE : READ)
+ 
++#define bio_iter_mp_iovec(bio, iter)				\
++	mp_bvec_iter_bvec((bio)->bi_io_vec, (iter))
++
+ /*
+  * Check whether this bio carries any data or not. A NULL bio is allowed.
+  */
+@@ -135,18 +138,33 @@ static inline bool bio_full(struct bio *bio)
+ #define bio_for_each_segment_all(bvl, bio, i)				\
+ 	for (i = 0, bvl = (bio)->bi_io_vec; i < (bio)->bi_vcnt; i++, bvl++)
+ 
+-static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
+-				    unsigned bytes)
++static inline void __bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
++				      unsigned bytes, bool mp)
+ {
+ 	iter->bi_sector += bytes >> 9;
+ 
+ 	if (bio_no_advance_iter(bio))
+ 		iter->bi_size -= bytes;
+ 	else
+-		bvec_iter_advance(bio->bi_io_vec, iter, bytes);
++		if (!mp)
++			bvec_iter_advance(bio->bi_io_vec, iter, bytes);
++		else
++			mp_bvec_iter_advance(bio->bi_io_vec, iter, bytes);
+ 		/* TODO: It is reasonable to complete bio with error here. */
+ }
+ 
++static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
++				    unsigned bytes)
++{
++	__bio_advance_iter(bio, iter, bytes, false);
++}
++
++static inline void bio_advance_mp_iter(struct bio *bio, struct bvec_iter *iter,
++				       unsigned bytes)
++{
++	__bio_advance_iter(bio, iter, bytes, true);
++}
++
+ #define __bio_for_each_segment(bvl, bio, iter, start)			\
+ 	for (iter = (start);						\
+ 	     (iter).bi_size &&						\
+@@ -156,6 +174,16 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
+ #define bio_for_each_segment(bvl, bio, iter)				\
+ 	__bio_for_each_segment(bvl, bio, iter, (bio)->bi_iter)
+ 
++#define __bio_for_each_bvec(bvl, bio, iter, start)		\
++	for (iter = (start);						\
++	     (iter).bi_size &&						\
++		((bvl = bio_iter_mp_iovec((bio), (iter))), 1);	\
++	     bio_advance_mp_iter((bio), &(iter), (bvl).bv_len))
++
++/* returns one real segment(multipage bvec) each time */
++#define bio_for_each_bvec(bvl, bio, iter)			\
++	__bio_for_each_bvec(bvl, bio, iter, (bio)->bi_iter)
++
+ #define bio_iter_last(bvec, iter) ((iter).bi_size == (bvec).bv_len)
+ 
+ static inline unsigned bio_segments(struct bio *bio)
+diff --git a/include/linux/bvec.h b/include/linux/bvec.h
+index 8ef904a50577..3d61352cd8cf 100644
+--- a/include/linux/bvec.h
++++ b/include/linux/bvec.h
+@@ -124,8 +124,16 @@ struct bvec_iter {
+ 	.bv_offset	= bvec_iter_offset((bvec), (iter)),	\
+ })
+ 
+-static inline bool bvec_iter_advance(const struct bio_vec *bv,
+-		struct bvec_iter *iter, unsigned bytes)
++#define mp_bvec_iter_bvec(bvec, iter)				\
++((struct bio_vec) {							\
++	.bv_page	= mp_bvec_iter_page((bvec), (iter)),	\
++	.bv_len		= mp_bvec_iter_len((bvec), (iter)),	\
++	.bv_offset	= mp_bvec_iter_offset((bvec), (iter)),	\
++})
++
++static inline bool __bvec_iter_advance(const struct bio_vec *bv,
++				       struct bvec_iter *iter,
++				       unsigned bytes, bool mp)
+ {
+ 	if (WARN_ONCE(bytes > iter->bi_size,
+ 		     "Attempted to advance past end of bvec iter\n")) {
+@@ -134,8 +142,14 @@ static inline bool bvec_iter_advance(const struct bio_vec *bv,
+ 	}
+ 
+ 	while (bytes) {
+-		unsigned iter_len = bvec_iter_len(bv, *iter);
+-		unsigned len = min(bytes, iter_len);
++		unsigned len;
++
++		if (mp)
++			len = mp_bvec_iter_len(bv, *iter);
++		else
++			len = bvec_iter_len(bv, *iter);
++
++		len = min(bytes, len);
+ 
+ 		bytes -= len;
+ 		iter->bi_size -= len;
+@@ -173,6 +187,20 @@ static inline bool bvec_iter_rewind(const struct bio_vec *bv,
+ 	return true;
+ }
+ 
++static inline bool bvec_iter_advance(const struct bio_vec *bv,
++				     struct bvec_iter *iter,
++				     unsigned bytes)
++{
++	return __bvec_iter_advance(bv, iter, bytes, false);
++}
++
++static inline bool mp_bvec_iter_advance(const struct bio_vec *bv,
++					struct bvec_iter *iter,
++					unsigned bytes)
++{
++	return __bvec_iter_advance(bv, iter, bytes, true);
++}
++
+ #define for_each_bvec(bvl, bio_vec, iter, start)			\
+ 	for (iter = (start);						\
+ 	     (iter).bi_size &&						\
+-- 
+2.9.5
