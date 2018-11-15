@@ -1,27 +1,52 @@
-Return-Path: <SRS0=+plc=NX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from [206.189.131.98] ([206.189.131.98]:41738 "EHLO mail.hanqfast.cf"
-        rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-        id S1730465AbeKLOZ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 12 Nov 2018 09:25:28 -0500
-To: linux-ext4@vger.kernel.org
-Subject: Price Inquiry
-From: Daniel Murray <sinara-group@bk.ru>
-Reply-To: sinara-group@list.ru
+Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:56320 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728801AbeKOWu5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Nov 2018 17:50:57 -0500
+Date: Thu, 15 Nov 2018 13:42:52 +0100
+From: David Sterba <dsterba@suse.cz>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        linux-fsdevel@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Shaohua Li <shli@kernel.org>, linux-raid@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-btrfs@vger.kernel.org,
+        David Sterba <dsterba@suse.com>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 12/19] block: allow bio_for_each_segment_all() to
+ iterate over multi-page bvec
+Message-ID: <20181115124252.GP24115@twin.jikos.cz>
+Reply-To: dsterba@suse.cz
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-13-ming.lei@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Message-Id: <20181111162038.2033D620D04@mail.hanqfast.cf>
-Date: Sun, 11 Nov 2018 15:35:08 +0000 (UTC)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181115085306.9910-13-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,friend,
- 
-This is Daniel Murray and i am from Sinara Group Co.Ltd Group Co.,LTD in Russia.
-We are glad to know about your company from the web and we are interested in your products.
-Could you kindly send us your Latest catalog and price list for our trial order.
- 
-Best Regards,
- 
-Daniel Murray
-Purchasing Manager
+On Thu, Nov 15, 2018 at 04:52:59PM +0800, Ming Lei wrote:
+> diff --git a/block/blk-zoned.c b/block/blk-zoned.c
+> index 13ba2011a306..789b09ae402a 100644
+> --- a/block/blk-zoned.c
+> +++ b/block/blk-zoned.c
+> @@ -123,6 +123,7 @@ static int blk_report_zones(struct gendisk *disk, sector_t sector,
+>  	unsigned int z = 0, n, nrz = *nr_zones;
+>  	sector_t capacity = get_capacity(disk);
+>  	int ret;
+> +	struct bvec_iter_all iter_all;
+>  
+>  	while (z < nrz && sector < capacity) {
+>  		n = nrz - z;
+
+iter_all is added but not used and I don't see any
+bio_for_each_segment_all for conversion in this function.
