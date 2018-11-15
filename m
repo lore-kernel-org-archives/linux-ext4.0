@@ -1,105 +1,78 @@
-Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mout.gmx.net ([212.227.15.18]:52185 "EHLO mout.gmx.net"
+Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:49406 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725991AbeKMKBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 13 Nov 2018 05:01:11 -0500
-From: Chengguang Xu <cgxu519@gmx.com>
-To: jack@suse.com
-Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH 09/10] ext2: fix coding style for super.c
-Date: Tue, 13 Nov 2018 08:04:47 +0800
-Message-Id: <20181113000448.16023-10-cgxu519@gmx.com>
-In-Reply-To: <20181113000448.16023-1-cgxu519@gmx.com>
-References: <20181113000448.16023-1-cgxu519@gmx.com>
+        id S1728564AbeKOTBw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Nov 2018 14:01:52 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Ming Lei <ming.lei@redhat.com>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: [PATCH V10 06/19] fs/buffer.c: use bvec iterator to truncate the bio
+Date: Thu, 15 Nov 2018 16:52:53 +0800
+Message-Id: <20181115085306.9910-7-ming.lei@redhat.com>
+In-Reply-To: <20181115085306.9910-1-ming.lei@redhat.com>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix various complains from checkpatch.pl
+Once multi-page bvec is enabled, the last bvec may include more than one
+page, this patch use bvec_last_segment() to truncate the bio.
 
-Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+Cc: Dave Chinner <dchinner@redhat.com>
+Cc: Kent Overstreet <kent.overstreet@gmail.com>
+Cc: Mike Snitzer <snitzer@redhat.com>
+Cc: dm-devel@redhat.com
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+Cc: Shaohua Li <shli@kernel.org>
+Cc: linux-raid@vger.kernel.org
+Cc: linux-erofs@lists.ozlabs.org
+Cc: David Sterba <dsterba@suse.com>
+Cc: linux-btrfs@vger.kernel.org
+Cc: Darrick J. Wong <darrick.wong@oracle.com>
+Cc: linux-xfs@vger.kernel.org
+Cc: Gao Xiang <gaoxiang25@huawei.com>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Cc: Coly Li <colyli@suse.de>
+Cc: linux-bcache@vger.kernel.org
+Cc: Boaz Harrosh <ooo@electrozaur.com>
+Cc: Bob Peterson <rpeterso@redhat.com>
+Cc: cluster-devel@redhat.com
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
 ---
- fs/ext2/super.c | 26 +++++++++++++-------------
- 1 file changed, 13 insertions(+), 13 deletions(-)
+ fs/buffer.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index cb91baa4275d..c58ca931a2e5 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -39,8 +39,8 @@
- #include "acl.h"
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 1286c2b95498..fa37ad52e962 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -3032,7 +3032,10 @@ void guard_bio_eod(int op, struct bio *bio)
  
- static void ext2_write_super(struct super_block *sb);
--static int ext2_remount (struct super_block * sb, int * flags, char * data);
--static int ext2_statfs (struct dentry * dentry, struct kstatfs * buf);
-+static int ext2_remount(struct super_block *sb, int *flags, char *data);
-+static int ext2_statfs(struct dentry *dentry, struct kstatfs *buf);
- static int ext2_sync_fs(struct super_block *sb, int wait);
- static int ext2_freeze(struct super_block *sb);
- static int ext2_unfreeze(struct super_block *sb);
-@@ -140,7 +140,7 @@ static inline void ext2_quota_off_umount(struct super_block *sb)
+ 	/* ..and clear the end of the buffer for reads */
+ 	if (op == REQ_OP_READ) {
+-		zero_user(bvec->bv_page, bvec->bv_offset + bvec->bv_len,
++		struct bio_vec bv;
++
++		bvec_last_segment(bvec, &bv);
++		zero_user(bv.bv_page, bv.bv_offset + bv.bv_len,
+ 				truncated_bytes);
+ 	}
  }
- #endif
- 
--static void ext2_put_super (struct super_block * sb)
-+static void ext2_put_super(struct super_block *sb)
- {
- 	int db_count;
- 	int i;
-@@ -176,7 +176,7 @@ static void ext2_put_super (struct super_block * sb)
- 	kfree(sbi);
- }
- 
--static struct kmem_cache * ext2_inode_cachep;
-+static struct kmem_cache *ext2_inode_cachep;
- 
- static struct inode *ext2_alloc_inode(struct super_block *sb)
- {
-@@ -648,8 +648,8 @@ static int parse_options(char *options, struct super_block *sb,
- 	return 1;
- }
- 
--static int ext2_setup_super (struct super_block * sb,
--			      struct ext2_super_block * es,
-+static int ext2_setup_super(struct super_block *sb,
-+			      struct ext2_super_block *es,
- 			      int read_only)
- {
- 	int res = 0;
-@@ -819,9 +819,9 @@ static unsigned long descriptor_loc(struct super_block *sb,
- static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- {
- 	struct dax_device *dax_dev = fs_dax_get_by_bdev(sb->s_bdev);
--	struct buffer_head * bh;
--	struct ext2_sb_info * sbi;
--	struct ext2_super_block * es;
-+	struct buffer_head *bh;
-+	struct ext2_sb_info *sbi;
-+	struct ext2_super_block *es;
- 	struct inode *root;
- 	unsigned long block;
- 	unsigned long sb_block = get_sb_block(&data);
-@@ -1321,10 +1321,10 @@ static void ext2_write_super(struct super_block *sb)
- 		ext2_sync_fs(sb, 1);
- }
- 
--static int ext2_remount (struct super_block * sb, int * flags, char * data)
-+static int ext2_remount(struct super_block *sb, int *flags, char *data)
- {
--	struct ext2_sb_info * sbi = EXT2_SB(sb);
--	struct ext2_super_block * es;
-+	struct ext2_sb_info *sbi = EXT2_SB(sb);
-+	struct ext2_super_block *es;
- 	struct ext2_mount_options new_opts;
- 	int err;
- 
-@@ -1404,7 +1404,7 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
- 	return 0;
- }
- 
--static int ext2_statfs (struct dentry * dentry, struct kstatfs * buf)
-+static int ext2_statfs(struct dentry *dentry, struct kstatfs *buf)
- {
- 	struct super_block *sb = dentry->d_sb;
- 	struct ext2_sb_info *sbi = EXT2_SB(sb);
 -- 
-2.17.2
+2.9.5
