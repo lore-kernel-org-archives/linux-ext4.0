@@ -1,40 +1,40 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:51886 "EHLO newverein.lst.de"
+Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35446 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726206AbeKZXwt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Nov 2018 18:52:49 -0500
-Date: Mon, 26 Nov 2018 13:58:42 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V12 16/20] block: enable multipage bvecs
-Message-ID: <20181126125842.GE6383@lst.de>
-References: <20181126021720.19471-1-ming.lei@redhat.com> <20181126021720.19471-17-ming.lei@redhat.com>
+        id S1725916AbeKPFaF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Nov 2018 00:30:05 -0500
+Date: Thu, 15 Nov 2018 14:20:58 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] e2scrub: fix systemd escaping again
+Message-ID: <20181115192058.GE20617@thunk.org>
+References: <20181105175946.GA4124@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181126021720.19471-17-ming.lei@redhat.com>
+In-Reply-To: <20181105175946.GA4124@magnolia>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> +		phys_addr_t vec_end_addr = page_to_phys(bv->bv_page) +
-> +			bv->bv_offset + bv->bv_len;
+On Mon, Nov 05, 2018 at 09:59:46AM -0800, Darrick J. Wong wrote:
+> From: Darrick J. Wong <darrick.wong@oracle.com>
+> 
+> Apparently newer versions of systemd than the one on this author's
+> laptop <cough> now complain about lack of (path) escaping in unit
+> instance variable contents:
+> 
+>  # e2scrub_all
+>  Scrubbing /home...
+>  Invalid unit name "e2scrub@/home" was escaped as "e2scrub@-home"
+>  (maybe you should use systemd-escape?)
+>  Starting Online ext4 Metadata Check for /home...
+> 
+> So change the escape_path_for_systemd function to escape paths
+> unconditionally to make the warning go away.
+> 
+> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 
-The name is a little confusing, as the real end addr would be -1.  Maybe
-throw the -1 in here, and adjust for it in the contigous check below?
+Thanks, applied.
+
+					- Ted
