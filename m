@@ -1,39 +1,113 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:53146 "EHLO imap.thunk.org"
+Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41440 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726124AbeKZOeW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Nov 2018 09:34:22 -0500
-Date: Sun, 25 Nov 2018 22:41:32 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Jaegeuk Kim <jaegeuk@kernel.org>
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, ebiggers@kernel.org
-Subject: Re: [f2fs-dev] [PATCH 2/7] f2fs: use IS_ENCRYPTED() to check
- encryption status
-Message-ID: <20181126034132.GC7904@thunk.org>
-References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
- <20181119052324.31456-3-chandan@linux.vnet.ibm.com>
- <20181119212332.GB33805@jaegeuk-macbookpro.roam.corp.google.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181119212332.GB33805@jaegeuk-macbookpro.roam.corp.google.com>
+        id S1728699AbeKOTCl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 15 Nov 2018 14:02:41 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Ming Lei <ming.lei@redhat.com>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: [PATCH V10 09/19] block: introduce bio_bvecs()
+Date: Thu, 15 Nov 2018 16:52:56 +0800
+Message-Id: <20181115085306.9910-10-ming.lei@redhat.com>
+In-Reply-To: <20181115085306.9910-1-ming.lei@redhat.com>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 19, 2018 at 01:23:32PM -0800, Jaegeuk Kim wrote:
-> Hi Chandan,
-> 
-> Let me try to queue and test this patch separately from the patch-set in order
-> to avoid merge conflicts. So, I think IS_ENCRYPTED should be merged in f2fs/ext4
-> branches, and the others can be applied to fscrypt and fsverity into each trees.
+There are still cases in which we need to use bio_bvecs() for get the
+number of multi-page segment, so introduce it.
 
-Hi Jaeguk,
+Cc: Dave Chinner <dchinner@redhat.com>
+Cc: Kent Overstreet <kent.overstreet@gmail.com>
+Cc: Mike Snitzer <snitzer@redhat.com>
+Cc: dm-devel@redhat.com
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org
+Cc: Shaohua Li <shli@kernel.org>
+Cc: linux-raid@vger.kernel.org
+Cc: linux-erofs@lists.ozlabs.org
+Cc: David Sterba <dsterba@suse.com>
+Cc: linux-btrfs@vger.kernel.org
+Cc: Darrick J. Wong <darrick.wong@oracle.com>
+Cc: linux-xfs@vger.kernel.org
+Cc: Gao Xiang <gaoxiang25@huawei.com>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Cc: Coly Li <colyli@suse.de>
+Cc: linux-bcache@vger.kernel.org
+Cc: Boaz Harrosh <ooo@electrozaur.com>
+Cc: Bob Peterson <rpeterso@redhat.com>
+Cc: cluster-devel@redhat.com
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ include/linux/bio.h | 30 +++++++++++++++++++++++++-----
+ 1 file changed, 25 insertions(+), 5 deletions(-)
 
-What conflicts are you anticipating?  I can't apply the rest of
-Chandan's patches without unless we apply them in order, and I'd
-prefer to avoid cross-merging, or spreading out this series across two
-kernel releases.
-
-						- Ted
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 1f0dcf109841..3496c816946e 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -196,7 +196,6 @@ static inline unsigned bio_segments(struct bio *bio)
+ 	 * We special case discard/write same/write zeroes, because they
+ 	 * interpret bi_size differently:
+ 	 */
+-
+ 	switch (bio_op(bio)) {
+ 	case REQ_OP_DISCARD:
+ 	case REQ_OP_SECURE_ERASE:
+@@ -205,13 +204,34 @@ static inline unsigned bio_segments(struct bio *bio)
+ 	case REQ_OP_WRITE_SAME:
+ 		return 1;
+ 	default:
+-		break;
++		bio_for_each_segment(bv, bio, iter)
++			segs++;
++		return segs;
+ 	}
++}
+ 
+-	bio_for_each_segment(bv, bio, iter)
+-		segs++;
++static inline unsigned bio_bvecs(struct bio *bio)
++{
++	unsigned bvecs = 0;
++	struct bio_vec bv;
++	struct bvec_iter iter;
+ 
+-	return segs;
++	/*
++	 * We special case discard/write same/write zeroes, because they
++	 * interpret bi_size differently:
++	 */
++	switch (bio_op(bio)) {
++	case REQ_OP_DISCARD:
++	case REQ_OP_SECURE_ERASE:
++	case REQ_OP_WRITE_ZEROES:
++		return 0;
++	case REQ_OP_WRITE_SAME:
++		return 1;
++	default:
++		bio_for_each_bvec(bv, bio, iter)
++			bvecs++;
++		return bvecs;
++	}
+ }
+ 
+ /*
+-- 
+2.9.5
