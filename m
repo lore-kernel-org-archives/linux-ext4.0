@@ -1,11 +1,11 @@
-Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f194.google.com ([209.85.214.194]:32804 "EHLO
-        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727175AbeKPInp (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 03:43:45 -0500
-Received: by mail-pl1-f194.google.com with SMTP id w22-v6so10154855plk.0
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 14:34:02 -0800 (PST)
-Date: Thu, 15 Nov 2018 14:33:58 -0800
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:43972 "EHLO
+        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2389033AbeKPKug (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 05:50:36 -0500
+Received: by mail-pg1-f195.google.com with SMTP id n10-v6so9769938pgv.10
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 16:40:24 -0800 (PST)
+Date: Thu, 15 Nov 2018 16:40:22 -0800
 From: Omar Sandoval <osandov@osandov.com>
 To: Ming Lei <ming.lei@redhat.com>
 Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
@@ -23,20 +23,21 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
         linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 04/19] block: use bio_for_each_bvec() to map sg
-Message-ID: <20181115223358.GE9348@vader>
+Subject: Re: [PATCH V10 10/19] block: loop: pass multi-page bvec to iov_iter
+Message-ID: <20181116004022.GE23828@vader>
 References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-5-ming.lei@redhat.com>
+ <20181115085306.9910-11-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-5-ming.lei@redhat.com>
+In-Reply-To: <20181115085306.9910-11-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:52:51PM +0800, Ming Lei wrote:
-> It is more efficient to use bio_for_each_bvec() to map sg, meantime
-> we have to consider splitting multipage bvec as done in blk_bio_segment_split().
+On Thu, Nov 15, 2018 at 04:52:57PM +0800, Ming Lei wrote:
+> iov_iter is implemented with bvec itererator, so it is safe to pass
+> multipage bvec to it, and this way is much more efficient than
+> passing one page in each bvec.
 > 
 > Cc: Dave Chinner <dchinner@redhat.com>
 > Cc: Kent Overstreet <kent.overstreet@gmail.com>
@@ -63,108 +64,80 @@ On Thu, Nov 15, 2018 at 04:52:51PM +0800, Ming Lei wrote:
 
 Reviewed-by: Omar Sandoval <osandov@fb.com>
 
+Comments below.
+
 > Signed-off-by: Ming Lei <ming.lei@redhat.com>
 > ---
->  block/blk-merge.c | 72 +++++++++++++++++++++++++++++++++++++++----------------
->  1 file changed, 52 insertions(+), 20 deletions(-)
+>  drivers/block/loop.c | 23 ++++++++++++-----------
+>  1 file changed, 12 insertions(+), 11 deletions(-)
 > 
-> diff --git a/block/blk-merge.c b/block/blk-merge.c
-> index 6f7deb94a23f..cb9f49bcfd36 100644
-> --- a/block/blk-merge.c
-> +++ b/block/blk-merge.c
-> @@ -473,6 +473,56 @@ static int blk_phys_contig_segment(struct request_queue *q, struct bio *bio,
->  	return biovec_phys_mergeable(q, &end_bv, &nxt_bv);
->  }
+> diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+> index bf6bc35aaf88..a3fd418ec637 100644
+> --- a/drivers/block/loop.c
+> +++ b/drivers/block/loop.c
+> @@ -515,16 +515,16 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
+>  	struct bio *bio = rq->bio;
+>  	struct file *file = lo->lo_backing_file;
+>  	unsigned int offset;
+> -	int segments = 0;
+> +	int nr_bvec = 0;
+>  	int ret;
 >  
-> +static struct scatterlist *blk_next_sg(struct scatterlist **sg,
-> +		struct scatterlist *sglist)
-> +{
-> +	if (!*sg)
-> +		return sglist;
-> +	else {
-> +		/*
-> +		 * If the driver previously mapped a shorter
-> +		 * list, we could see a termination bit
-> +		 * prematurely unless it fully inits the sg
-> +		 * table on each mapping. We KNOW that there
-> +		 * must be more entries here or the driver
-> +		 * would be buggy, so force clear the
-> +		 * termination bit to avoid doing a full
-> +		 * sg_init_table() in drivers for each command.
-> +		 */
-> +		sg_unmark_end(*sg);
-> +		return sg_next(*sg);
-> +	}
-> +}
-> +
-> +static unsigned blk_bvec_map_sg(struct request_queue *q,
-> +		struct bio_vec *bvec, struct scatterlist *sglist,
-> +		struct scatterlist **sg)
-> +{
-> +	unsigned nbytes = bvec->bv_len;
-> +	unsigned nsegs = 0, total = 0;
-> +
-> +	while (nbytes > 0) {
-> +		unsigned seg_size;
-> +		struct page *pg;
-> +		unsigned offset, idx;
-> +
-> +		*sg = blk_next_sg(sg, sglist);
-> +
-> +		seg_size = min(nbytes, queue_max_segment_size(q));
-> +		offset = (total + bvec->bv_offset) % PAGE_SIZE;
-> +		idx = (total + bvec->bv_offset) / PAGE_SIZE;
-> +		pg = nth_page(bvec->bv_page, idx);
-> +
-> +		sg_set_page(*sg, pg, seg_size, offset);
-> +
-> +		total += seg_size;
-> +		nbytes -= seg_size;
-> +		nsegs++;
-> +	}
-> +
-> +	return nsegs;
-> +}
-> +
->  static inline void
->  __blk_segment_map_sg(struct request_queue *q, struct bio_vec *bvec,
->  		     struct scatterlist *sglist, struct bio_vec *bvprv,
-> @@ -490,25 +540,7 @@ __blk_segment_map_sg(struct request_queue *q, struct bio_vec *bvec,
->  		(*sg)->length += nbytes;
->  	} else {
->  new_segment:
-> -		if (!*sg)
-> -			*sg = sglist;
-> -		else {
-> -			/*
-> -			 * If the driver previously mapped a shorter
-> -			 * list, we could see a termination bit
-> -			 * prematurely unless it fully inits the sg
-> -			 * table on each mapping. We KNOW that there
-> -			 * must be more entries here or the driver
-> -			 * would be buggy, so force clear the
-> -			 * termination bit to avoid doing a full
-> -			 * sg_init_table() in drivers for each command.
-> -			 */
-> -			sg_unmark_end(*sg);
-> -			*sg = sg_next(*sg);
+>  	if (rq->bio != rq->biotail) {
+> -		struct req_iterator iter;
+> +		struct bvec_iter iter;
+>  		struct bio_vec tmp;
+>  
+>  		__rq_for_each_bio(bio, rq)
+> -			segments += bio_segments(bio);
+> -		bvec = kmalloc_array(segments, sizeof(struct bio_vec),
+> +			nr_bvec += bio_bvecs(bio);
+> +		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
+>  				     GFP_NOIO);
+>  		if (!bvec)
+>  			return -EIO;
+> @@ -533,13 +533,14 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
+>  		/*
+>  		 * The bios of the request may be started from the middle of
+>  		 * the 'bvec' because of bio splitting, so we can't directly
+> -		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_segment
+> +		 * copy bio->bi_iov_vec to new bvec. The bio_for_each_bvec
+>  		 * API will take care of all details for us.
+>  		 */
+> -		rq_for_each_segment(tmp, rq, iter) {
+> -			*bvec = tmp;
+> -			bvec++;
 > -		}
-> -
-> -		sg_set_page(*sg, bvec->bv_page, nbytes, bvec->bv_offset);
-> -		(*nsegs)++;
-> +		(*nsegs) += blk_bvec_map_sg(q, bvec, sglist, sg);
+> +		__rq_for_each_bio(bio, rq)
+> +			bio_for_each_bvec(tmp, bio, iter) {
+> +				*bvec = tmp;
+> +				bvec++;
+> +			}
+
+Even if they're not strictly necessary, could you please include the
+curly braces for __rq_for_each_bio() here?
+
+>  		bvec = cmd->bvec;
+>  		offset = 0;
+>  	} else {
+> @@ -550,11 +551,11 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
+>  		 */
+>  		offset = bio->bi_iter.bi_bvec_done;
+>  		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
+> -		segments = bio_segments(bio);
+> +		nr_bvec = bio_bvecs(bio);
+
+This scared me for a second, but it's fine to do here because we haven't
+actually enabled multipage bvecs yet, right?
+
 >  	}
->  	*bvprv = *bvec;
->  }
-> @@ -530,7 +562,7 @@ static int __blk_bios_map_sg(struct request_queue *q, struct bio *bio,
->  	int cluster = blk_queue_cluster(q), nsegs = 0;
+>  	atomic_set(&cmd->ref, 2);
 >  
->  	for_each_bio(bio)
-> -		bio_for_each_segment(bvec, bio, iter)
-> +		bio_for_each_bvec(bvec, bio, iter)
->  			__blk_segment_map_sg(q, &bvec, sglist, &bvprv, sg,
->  					     &nsegs, &cluster);
+> -	iov_iter_bvec(&iter, rw, bvec, segments, blk_rq_bytes(rq));
+> +	iov_iter_bvec(&iter, rw, bvec, nr_bvec, blk_rq_bytes(rq));
+>  	iter.iov_offset = offset;
 >  
+>  	cmd->iocb.ki_pos = pos;
 > -- 
 > 2.9.5
 > 
