@@ -1,34 +1,51 @@
-Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.thelounge.net ([91.118.73.15]:54927 "EHLO
-        mail.thelounge.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726801AbeKIE1c (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Nov 2018 23:27:32 -0500
-Subject: Re: Phantom full ext4 root filesystems on 4.1 through 4.14 kernels
-To: Elana Hashman <Elana.Hashman@twosigma.com>,
-        "'tytso@mit.edu'" <tytso@mit.edu>
-Cc: "'linux-ext4@vger.kernel.org'" <linux-ext4@vger.kernel.org>
-References: <9abbdde6145a4887a8d32c65974f7832@exmbdft5.ad.twosigma.com>
-From: Reindl Harald <h.reindl@thelounge.net>
-Message-ID: <8ac9d2e2-f462-2b8d-d10e-93f065528009@thelounge.net>
-Date: Thu, 8 Nov 2018 19:13:36 +0100
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:49870 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727711AbeKPXti (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Nov 2018 18:49:38 -0500
+Date: Fri, 16 Nov 2018 14:37:10 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 07/19] btrfs: use bvec_last_segment to get bio's
+ last page
+Message-ID: <20181116133710.GF3165@lst.de>
+References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-8-ming.lei@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <9abbdde6145a4887a8d32c65974f7832@exmbdft5.ad.twosigma.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: de-CH
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181115085306.9910-8-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, Nov 15, 2018 at 04:52:54PM +0800, Ming Lei wrote:
+> index 2955a4ea2fa8..161e14b8b180 100644
+> --- a/fs/btrfs/compression.c
+> +++ b/fs/btrfs/compression.c
+> @@ -400,8 +400,11 @@ blk_status_t btrfs_submit_compressed_write(struct inode *inode, u64 start,
+>  static u64 bio_end_offset(struct bio *bio)
+>  {
+>  	struct bio_vec *last = bio_last_bvec_all(bio);
+> +	struct bio_vec bv;
+>  
+> -	return page_offset(last->bv_page) + last->bv_len + last->bv_offset;
+> +	bvec_last_segment(last, &bv);
+> +
+> +	return page_offset(bv.bv_page) + bv.bv_len + bv.bv_offset;
 
-
-Am 08.11.18 um 18:59 schrieb Elana Hashman:
-> After a reboot, `df` reflects real utilization:
-> 
-> $ df -h /
-> Filesystem                                              Size  Used Avail Use% Mounted on
-> /dev/disk/by-uuid/<some-uuid>   50G   16G   31G  34% /
-> 
-> We are using overlay2fs for Docker, as well as rbd mounts; I'm not sure how they might interact.
-
-and what says "df -hi"?
-maybe you are running simply out of inodes
+I don't think we need this.  If last is a multi-page bvec bv_offset
+will already contain the correct offset from the first page.
