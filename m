@@ -1,98 +1,106 @@
-Return-Path: <SRS0=UtPy=NO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out0-149.mail.aliyun.com ([140.205.0.149]:36535 "EHLO
-        out0-149.mail.aliyun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726129AbeKCOZ6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 3 Nov 2018 10:25:58 -0400
-Date: Sat, 03 Nov 2018 13:15:43 +0800
-From: "=?UTF-8?B?546L5bCP5YWJKOi0ueabvCk=?=" <feiman.wxg@alibaba-inc.com>
-To: "'Jan Kara'" <jack@suse.cz>,
-        "'Fisher'" <fisherthepooh@protonmail.com>
-Cc: <linux-ext4@vger.kernel.org>
-Message-ID: <3c8a2760-7e8c-448f-b1e4-861641679a81.feiman.wxg@alibaba-inc.com>
-Subject: =?UTF-8?B?562U5aSNOiBXaHkgbm90IGFsd2F5cyBkbyBjb3B5LW91dCBpbiBqYmQyX2pvdXJuYWxfd3Jp?=
-  =?UTF-8?B?dGVfbWV0YWR0YV9idWZmZXI=?=
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:39758 "EHLO
+        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727231AbeKPKeI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 05:34:08 -0500
+Received: by mail-pl1-f194.google.com with SMTP id b5-v6so10265287pla.6
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 16:24:01 -0800 (PST)
+Date: Thu, 15 Nov 2018 16:23:56 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 08/19] btrfs: move bio_pages_all() to btrfs
+Message-ID: <20181116002356.GC23828@vader>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-9-ming.lei@redhat.com>
 MIME-Version: 1.0
-Content-Language: zh-cn
-In-Reply-To: <20181025114156.GB7711@quack2.suse.cz>
-References: <usGdshd4UQ6wFx4jVDkzY1xddFnUnT7NXj6IWA-uVczdSc5_TmczQvtmULxNVQ3reUPTmyQd2YeLhPa_L2uPbaNdfBPVlLz7rQQ9oC7aSkw=@protonmail.com> <20181025114156.GB7711@quack2.suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181115085306.9910-9-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi jan,
+On Thu, Nov 15, 2018 at 04:52:55PM +0800, Ming Lei wrote:
+> BTRFS is the only user of this helper, so move this helper into
+> BTRFS, and implement it via bio_for_each_segment_all(), since
+> bio->bi_vcnt may not equal to number of pages after multipage bvec
+> is enabled.
 
->
->Hi,
->
->On Mon 22-10-18 10:34:48, Fisher wrote:
->> Recently I was testing my storage's performance and found that there
->> were periodic performance drops when I ran sequential write benchmark.
->> After profiling the duration in each step, I found that the dropping
->> performance was due to wait_on_bit_io(&bh->b_state, BH_Shadow,
->> TASK_UNINTERRUPTIBLE) in do_get_write_access(). And this is what made
->> me confused, if my understanding was right, I thought
->> buffer_shadow(bh) stands for buffer not being copied-out that's why we
->should wait.
->
->No buffer_shadow() just means that some version of the buffer is being
-written
->to the journal.
->
->> But why don't we do copy-out in jbd2_journal_write_metadta_buffer()?
->> and if we do do the copy-out, does that mean we don't have to
->> set_buffer_shadow because it refers to buffer not copied-out?
->
->The code in do_get_write_access() checks whether the buffer already has
->frozen data (by checking jh->b_frozen_data) and if not, if it is just being
-written
->to the journal (buffer_shadow() check in there). If it is, we have to wait
-because
->we cannot modify the version of the buffer that goes to the journal.
->
->> I made a test, when a buffer_head goes into
->> jbd2_journal_write_metadta_buffer(), as long as it belongs to
->> metadata, then force it to do copy-out and do not set_buffer_shadow,
->> then there will be no periodic performance drops. Is this test
-reasonable?
->
->Well, it does trade of CPU overhead (you know copy buffer for each
->transaction) for the latency (no need to wait for buffer writeout when
->redirtying buffer). Usually I wouldn't consider this worth it but obviously
-it
->depends on the workload...
-I also run into this issue.
-In do_get_write_access(), there are such comments:
-/*
-	 * There is one case we have to be very careful about.  If the
-	 * committing transaction is currently writing this buffer out to
-disk
-	 * and has NOT made a copy-out, then we cannot modify the buffer
-	 * contents at all right now.  The essence of copy-out is that it is
-	 * the extra copy, not the primary copy, which gets journaled.  If
-the
-	 * primary copy is already going to disk then we cannot do copy-out
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      I wonder why we can not do copy-out here? We can not visit this buffer
-while it's
-      going to disk? 
+Shouldn't you also get rid of bio_pages_all() in this patch?
 
-	 * here.
-	 */
-	if (buffer_shadow(bh)) {
-		JBUFFER_TRACE(jh, "on shadow: sleep");
-		jbd_unlock_bh_state(bh);
-		wait_on_bit_io(&bh->b_state, BH_Shadow,
-TASK_UNINTERRUPTIBLE);
-		goto repeat;
-	}
-
-Regards,
-Xiaoguang Wang
-
-
->
->								Honza
->--
->Jan Kara <jack@suse.com>
->SUSE Labs, CR
+> Cc: Dave Chinner <dchinner@redhat.com>
+> Cc: Kent Overstreet <kent.overstreet@gmail.com>
+> Cc: Mike Snitzer <snitzer@redhat.com>
+> Cc: dm-devel@redhat.com
+> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+> Cc: linux-fsdevel@vger.kernel.org
+> Cc: Shaohua Li <shli@kernel.org>
+> Cc: linux-raid@vger.kernel.org
+> Cc: linux-erofs@lists.ozlabs.org
+> Cc: David Sterba <dsterba@suse.com>
+> Cc: linux-btrfs@vger.kernel.org
+> Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> Cc: linux-xfs@vger.kernel.org
+> Cc: Gao Xiang <gaoxiang25@huawei.com>
+> Cc: Christoph Hellwig <hch@lst.de>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: Coly Li <colyli@suse.de>
+> Cc: linux-bcache@vger.kernel.org
+> Cc: Boaz Harrosh <ooo@electrozaur.com>
+> Cc: Bob Peterson <rpeterso@redhat.com>
+> Cc: cluster-devel@redhat.com
+> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> ---
+>  fs/btrfs/extent_io.c | 14 +++++++++++++-
+>  1 file changed, 13 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+> index 5d5965297e7e..874bb9aeebdc 100644
+> --- a/fs/btrfs/extent_io.c
+> +++ b/fs/btrfs/extent_io.c
+> @@ -2348,6 +2348,18 @@ struct bio *btrfs_create_repair_bio(struct inode *inode, struct bio *failed_bio,
+>  	return bio;
+>  }
+>  
+> +static unsigned btrfs_bio_pages_all(struct bio *bio)
+> +{
+> +	unsigned i;
+> +	struct bio_vec *bv;
+> +
+> +	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
+> +
+> +	bio_for_each_segment_all(bv, bio, i)
+> +		;
+> +	return i;
+> +}
+> +
+>  /*
+>   * this is a generic handler for readpage errors (default
+>   * readpage_io_failed_hook). if other copies exist, read those and write back
+> @@ -2368,7 +2380,7 @@ static int bio_readpage_error(struct bio *failed_bio, u64 phy_offset,
+>  	int read_mode = 0;
+>  	blk_status_t status;
+>  	int ret;
+> -	unsigned failed_bio_pages = bio_pages_all(failed_bio);
+> +	unsigned failed_bio_pages = btrfs_bio_pages_all(failed_bio);
+>  
+>  	BUG_ON(bio_op(failed_bio) == REQ_OP_WRITE);
+>  
+> -- 
+> 2.9.5
+> 
