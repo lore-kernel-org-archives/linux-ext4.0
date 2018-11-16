@@ -1,43 +1,121 @@
-Return-Path: <SRS0=kdxW=OC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from youngberry.canonical.com ([91.189.89.112]:49332 "EHLO
-        youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730360AbeKXDZy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Nov 2018 22:25:54 -0500
-From: Colin King <colin.king@canonical.com>
-To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.com>,
-        linux-ext4@vger.kernel.org
-Cc: kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] jbd2: clean up indentation issue, replace spaces with tab
-Date: Fri, 23 Nov 2018 16:40:53 +0000
-Message-Id: <20181123164053.19193-1-colin.king@canonical.com>
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:49948 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727997AbeKPX6L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Nov 2018 18:58:11 -0500
+Date: Fri, 16 Nov 2018 14:45:41 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
+Message-ID: <20181116134541.GH3165@lst.de>
+References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-10-ming.lei@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181115085306.9910-10-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Colin Ian King <colin.king@canonical.com>
+On Thu, Nov 15, 2018 at 04:52:56PM +0800, Ming Lei wrote:
+> There are still cases in which we need to use bio_bvecs() for get the
+> number of multi-page segment, so introduce it.
 
-There is a statement that is indented with spaces, replace it with
-a tab.
+The only user in your final tree seems to be the loop driver, and
+even that one only uses the helper for read/write bios.
 
-Signed-off-by: Colin Ian King <colin.king@canonical.com>
----
- fs/jbd2/transaction.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I think something like this would be much simpler in the end:
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index c0b66a7a795b..4af8ff17ad5c 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -910,7 +910,7 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
- 	 * this is the first time this transaction is touching this buffer,
- 	 * reset the modified flag
- 	 */
--       jh->b_modified = 0;
-+	jh->b_modified = 0;
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index d509902a8046..712511815ac6 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -514,16 +514,18 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
+ 	struct request *rq = blk_mq_rq_from_pdu(cmd);
+ 	struct bio *bio = rq->bio;
+ 	struct file *file = lo->lo_backing_file;
++	struct bvec_iter bvec_iter;
++	struct bio_vec tmp;
+ 	unsigned int offset;
+ 	int nr_bvec = 0;
+ 	int ret;
  
- 	/*
- 	 * If the buffer is not journaled right now, we need to make sure it
--- 
-2.19.1
++	__rq_for_each_bio(bio, rq)
++		bio_for_each_bvec(tmp, bio, bvec_iter)
++			nr_bvec++;
++
+ 	if (rq->bio != rq->biotail) {
+-		struct bvec_iter iter;
+-		struct bio_vec tmp;
+ 
+-		__rq_for_each_bio(bio, rq)
+-			nr_bvec += bio_bvecs(bio);
+ 		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
+ 				     GFP_NOIO);
+ 		if (!bvec)
+@@ -537,7 +539,7 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
+ 		 * API will take care of all details for us.
+ 		 */
+ 		__rq_for_each_bio(bio, rq)
+-			bio_for_each_bvec(tmp, bio, iter) {
++			bio_for_each_bvec(tmp, bio, bvec_iter) {
+ 				*bvec = tmp;
+ 				bvec++;
+ 			}
+@@ -551,7 +553,6 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
+ 		 */
+ 		offset = bio->bi_iter.bi_bvec_done;
+ 		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
+-		nr_bvec = bio_bvecs(bio);
+ 	}
+ 	atomic_set(&cmd->ref, 2);
+ 
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index dcad0b69f57a..379440d1ced0 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -200,30 +200,6 @@ static inline unsigned bio_segments(struct bio *bio)
+ 	}
+ }
+ 
+-static inline unsigned bio_bvecs(struct bio *bio)
+-{
+-	unsigned bvecs = 0;
+-	struct bio_vec bv;
+-	struct bvec_iter iter;
+-
+-	/*
+-	 * We special case discard/write same/write zeroes, because they
+-	 * interpret bi_size differently:
+-	 */
+-	switch (bio_op(bio)) {
+-	case REQ_OP_DISCARD:
+-	case REQ_OP_SECURE_ERASE:
+-	case REQ_OP_WRITE_ZEROES:
+-		return 0;
+-	case REQ_OP_WRITE_SAME:
+-		return 1;
+-	default:
+-		bio_for_each_bvec(bv, bio, iter)
+-			bvecs++;
+-		return bvecs;
+-	}
+-}
+-
+ /*
+  * get a reference to a bio, so it won't disappear. the intended use is
+  * something like:
