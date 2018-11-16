@@ -1,95 +1,123 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-wr1-f65.google.com ([209.85.221.65]:37193 "EHLO
-        mail-wr1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731652AbeKVFm3 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2018 00:42:29 -0500
-Received: by mail-wr1-f65.google.com with SMTP id j10so6837717wru.4
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Nov 2018 11:06:57 -0800 (PST)
-Date: Wed, 21 Nov 2018 19:06:55 +0000
-From: Phillip Potter <phil@philpotter.co.uk>
-To: tytso@mit.edu
-Cc: amir73il@gmail.com, viro@zeniv.linux.org.uk,
-        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: [RFC][PATCH v4 05/09] ext4: use common file type conversion
-Message-ID: <20181121190655.GA7717@pathfinder>
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pf1-f195.google.com ([209.85.210.195]:43545 "EHLO
+        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727110AbeKPMQD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 07:16:03 -0500
+Received: by mail-pf1-f195.google.com with SMTP id w73so1276788pfk.10
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 18:05:36 -0800 (PST)
+Date: Thu, 15 Nov 2018 18:05:33 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 16/19] block: document usage of bio iterator helpers
+Message-ID: <20181116020533.GK23828@vader>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-17-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+In-Reply-To: <20181115085306.9910-17-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Deduplicate the ext4 file type conversion implementation - file systems
-that use the same file types as defined by POSIX do not need to define
-their own versions and can use the common helper functions decared in
-fs_types.h and implemented in fs_types.c
+On Thu, Nov 15, 2018 at 04:53:03PM +0800, Ming Lei wrote:
+> Now multi-page bvec is supported, some helpers may return page by
+> page, meantime some may return segment by segment, this patch
+> documents the usage.
+> 
+> Cc: Dave Chinner <dchinner@redhat.com>
+> Cc: Kent Overstreet <kent.overstreet@gmail.com>
+> Cc: Mike Snitzer <snitzer@redhat.com>
+> Cc: dm-devel@redhat.com
+> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+> Cc: linux-fsdevel@vger.kernel.org
+> Cc: Shaohua Li <shli@kernel.org>
+> Cc: linux-raid@vger.kernel.org
+> Cc: linux-erofs@lists.ozlabs.org
+> Cc: David Sterba <dsterba@suse.com>
+> Cc: linux-btrfs@vger.kernel.org
+> Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> Cc: linux-xfs@vger.kernel.org
+> Cc: Gao Xiang <gaoxiang25@huawei.com>
+> Cc: Christoph Hellwig <hch@lst.de>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: Coly Li <colyli@suse.de>
+> Cc: linux-bcache@vger.kernel.org
+> Cc: Boaz Harrosh <ooo@electrozaur.com>
+> Cc: Bob Peterson <rpeterso@redhat.com>
+> Cc: cluster-devel@redhat.com
+> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> ---
+>  Documentation/block/biovecs.txt | 26 ++++++++++++++++++++++++++
+>  1 file changed, 26 insertions(+)
+> 
+> diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
+> index 25689584e6e0..bfafb70d0d9e 100644
+> --- a/Documentation/block/biovecs.txt
+> +++ b/Documentation/block/biovecs.txt
+> @@ -117,3 +117,29 @@ Other implications:
+>     size limitations and the limitations of the underlying devices. Thus
+>     there's no need to define ->merge_bvec_fn() callbacks for individual block
+>     drivers.
+> +
+> +Usage of helpers:
+> +=================
+> +
+> +* The following helpers whose names have the suffix of "_all" can only be used
+> +on non-BIO_CLONED bio, and usually they are used by filesystem code, and driver
+> +shouldn't use them because bio may have been split before they got to the driver:
 
-Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
----
- fs/ext4/ext4.h | 33 +++++++++++++++++----------------
- 1 file changed, 17 insertions(+), 16 deletions(-)
+Putting an english teacher hat on, this is quite the run-on sentence.
+How about:
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3f89d0ab08fc..c45d701ba4f4 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2357,16 +2357,13 @@ static inline void ext4_update_dx_flag(struct inode *inode)
- 	if (!ext4_has_feature_dir_index(inode->i_sb))
- 		ext4_clear_inode_flag(inode, EXT4_INODE_INDEX);
- }
--static const unsigned char ext4_filetype_table[] = {
--	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
--};
- 
- static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
- {
--	if (!ext4_has_feature_filetype(sb) || filetype >= EXT4_FT_MAX)
-+	if (!ext4_has_feature_filetype(sb))
- 		return DT_UNKNOWN;
- 
--	return ext4_filetype_table[filetype];
-+	return fs_ftype_to_dtype(filetype);
- }
- extern int ext4_check_all_de(struct inode *dir, struct buffer_head *bh,
- 			     void *buf, int buf_size);
-@@ -3052,22 +3049,26 @@ extern void initialize_dirent_tail(struct ext4_dir_entry_tail *t,
- extern int ext4_handle_dirty_dirent_node(handle_t *handle,
- 					 struct inode *inode,
- 					 struct buffer_head *bh);
--#define S_SHIFT 12
--static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
--	[S_IFREG >> S_SHIFT]	= EXT4_FT_REG_FILE,
--	[S_IFDIR >> S_SHIFT]	= EXT4_FT_DIR,
--	[S_IFCHR >> S_SHIFT]	= EXT4_FT_CHRDEV,
--	[S_IFBLK >> S_SHIFT]	= EXT4_FT_BLKDEV,
--	[S_IFIFO >> S_SHIFT]	= EXT4_FT_FIFO,
--	[S_IFSOCK >> S_SHIFT]	= EXT4_FT_SOCK,
--	[S_IFLNK >> S_SHIFT]	= EXT4_FT_SYMLINK,
--};
- 
- static inline void ext4_set_de_type(struct super_block *sb,
- 				struct ext4_dir_entry_2 *de,
- 				umode_t mode) {
-+	/*
-+	 * compile-time asserts that generic FT_x types still match
-+	 * EXT4_FT_x types
-+	 */
-+	BUILD_BUG_ON(EXT4_FT_UNKNOWN != FT_UNKNOWN);
-+	BUILD_BUG_ON(EXT4_FT_REG_FILE != FT_REG_FILE);
-+	BUILD_BUG_ON(EXT4_FT_DIR != FT_DIR);
-+	BUILD_BUG_ON(EXT4_FT_CHRDEV != FT_CHRDEV);
-+	BUILD_BUG_ON(EXT4_FT_BLKDEV != FT_BLKDEV);
-+	BUILD_BUG_ON(EXT4_FT_FIFO != FT_FIFO);
-+	BUILD_BUG_ON(EXT4_FT_SOCK != FT_SOCK);
-+	BUILD_BUG_ON(EXT4_FT_SYMLINK != FT_SYMLINK);
-+	BUILD_BUG_ON(EXT4_FT_MAX != FT_MAX);
-+
- 	if (ext4_has_feature_filetype(sb))
--		de->file_type = ext4_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
-+		de->file_type = fs_umode_to_ftype(mode);
- }
- 
- /* readpages.c */
--- 
-2.19.1
+* The following helpers whose names have the suffix of "_all" can only be used
+on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
+shouldn't use them because the bio may have been split before it reached the
+driver.
+
+Maybe also an explanation of why the filesystem would want to use these?
+
+> +	bio_for_each_segment_all()
+> +	bio_first_bvec_all()
+> +	bio_first_page_all()
+> +	bio_last_bvec_all()
+> +
+> +* The following helpers iterate over single-page bvec, and the local
+> +variable of 'struct bio_vec' or the reference records single-page IO
+> +vector during the itearation:
+
+
+* The following helpers iterate over single-page bvecs. The passed 'struct
+bio_vec' will contain a single-page IO vector during the iteration.
+
+> +	bio_for_each_segment()
+> +	bio_for_each_segment_all()
+> +
+> +* The following helper iterates over multi-page bvec, and each bvec may
+> +include multiple physically contiguous pages, and the local variable of
+> +'struct bio_vec' or the reference records multi-page IO vector during the
+> +itearation:
+
+* The following helper iterates over multi-page bvecs. Each bvec may
+include multiple physically contiguous pages. The passed 'struct bio_vec' will
+contain a multi-page IO vector during the iteration.
+
+> +	bio_for_each_bvec()
+> -- 
+> 2.9.5
+> 
