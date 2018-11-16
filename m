@@ -1,72 +1,50 @@
-Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49832 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726740AbeK2VRF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Nov 2018 16:17:05 -0500
-Subject: Re: [PATCH 2/2] fs: Don't open-code lru_to_page
-To: Michal Hocko <mhocko@kernel.org>,
-        Nikolay Borisov <nborisov@suse.com>
-Cc: linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>,
-        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>,
-        "Yan, Zheng" <zyan@redhat.com>, Sage Weil <sage@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Steve French <sfrench@samba.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Mark Fasheh <mark@fasheh.com>,
-        Joel Becker <jlbec@evilplan.org>,
-        Mike Marshall <hubcap@omnibond.com>,
-        Martin Brandenburg <martin@omnibond.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Mike Rapoport <rppt@linux.vnet.ibm.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Randy Dunlap <rdunlap@infradead.org>,
-        YueHaibing <yuehaibing@huawei.com>,
-        Shakeel Butt <shakeelb@google.com>,
-        Dan Williams <dan.j.williams@intel.com>,
-        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
-        ocfs2-devel@oss.oracle.com, devel@lists.orangefs.org,
-        linux-mm@kvack.org
-References: <20181129075301.29087-1-nborisov@suse.com>
- <20181129075301.29087-2-nborisov@suse.com>
- <20181129081826.GO6923@dhcp22.suse.cz>
-From: David Hildenbrand <david@redhat.com>
-Message-ID: <38bdc5f7-63b5-7276-921f-258ee876c45b@redhat.com>
-Date: Thu, 29 Nov 2018 11:12:07 +0100
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pf1-f193.google.com ([209.85.210.193]:39049 "EHLO
+        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2390246AbeKQCxh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 21:53:37 -0500
+Received: by mail-pf1-f193.google.com with SMTP id c72so6970581pfc.6
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Nov 2018 08:40:31 -0800 (PST)
+Date: Fri, 16 Nov 2018 08:40:28 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Ming Lei <ming.lei@redhat.com>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 18/19] block: kill QUEUE_FLAG_NO_SG_MERGE
+Message-ID: <20181116164028.GW23828@vader>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-19-ming.lei@redhat.com>
+ <20181116021811.GM23828@vader>
+ <20181116135922.GO3165@lst.de>
 MIME-Version: 1.0
-In-Reply-To: <20181129081826.GO6923@dhcp22.suse.cz>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181116135922.GO3165@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 29.11.18 09:18, Michal Hocko wrote:
-> On Thu 29-11-18 09:52:57, Nikolay Borisov wrote:
->> There are a bunch of filesystems which essentially open-code lru_to_page
->> helper. Change them to using the helper. No functional changes.
+On Fri, Nov 16, 2018 at 02:59:22PM +0100, Christoph Hellwig wrote:
+> On Thu, Nov 15, 2018 at 06:18:11PM -0800, Omar Sandoval wrote:
+> > This commit message wasn't very clear. Is it the case that
+> > QUEUE_FLAG_NO_SG_MERGE is no longer set by any drivers?
 > 
-> I would just squash the two into a single patch. It makes the first one
-> more obvious. Or is there any reason to have them separate?
-> 
->> Signed-off-by: Nikolay Borisov <nborisov@suse.com>
-> 
-> Acked-by: Michal Hocko <mhocko@suse.com>
+> I think he wants to say that not doing S/G merging is rather pointless
+> with the current setup of the I/O path, as it isn't going to save
+> you a significant amount of cycles.
 
-mm_inline.h is 99.9% about lru and there is barely anything about lru in
-mm.h. However this simple macro seems to differ from the other inlined
-functions.
+Okay, that makes sense. Ming, you can add
 
-So to the squashed patch
-
-Reviewed-by: David Hildenbrand <david@redhat.com>
-
-
--- 
-
-Thanks,
-
-David / dhildenb
+Reviewed-by: Omar Sandoval <osandov@fb.com>
