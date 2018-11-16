@@ -1,47 +1,79 @@
-Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33828 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727625AbeK0NWC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 27 Nov 2018 08:22:02 -0500
-Date: Tue, 27 Nov 2018 10:25:19 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f182.google.com ([209.85.214.182]:39485 "EHLO
+        mail-pl1-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2390166AbeKQCx7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 21:53:59 -0500
+Received: by mail-pl1-f182.google.com with SMTP id b5-v6so11415962pla.6
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Nov 2018 08:40:54 -0800 (PST)
+Date: Fri, 16 Nov 2018 08:40:51 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
 Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
         linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
         linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V12 16/20] block: enable multipage bvecs
-Message-ID: <20181127022517.GC25199@ming.t460p>
-References: <20181126021720.19471-1-ming.lei@redhat.com>
- <20181126021720.19471-17-ming.lei@redhat.com>
- <20181126125842.GE6383@lst.de>
+Subject: Re: [PATCH V10 19/19] block: kill BLK_MQ_F_SG_MERGE
+Message-ID: <20181116164051.GX23828@vader>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-20-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181126125842.GE6383@lst.de>
+In-Reply-To: <20181115085306.9910-20-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 26, 2018 at 01:58:42PM +0100, Christoph Hellwig wrote:
-> > +		phys_addr_t vec_end_addr = page_to_phys(bv->bv_page) +
-> > +			bv->bv_offset + bv->bv_len;
+On Thu, Nov 15, 2018 at 04:53:06PM +0800, Ming Lei wrote:
+> QUEUE_FLAG_NO_SG_MERGE has been killed, so kill BLK_MQ_F_SG_MERGE too.
 > 
-> The name is a little confusing, as the real end addr would be -1.  Maybe
-> throw the -1 in here, and adjust for it in the contigous check below?
+> Cc: Dave Chinner <dchinner@redhat.com>
+> Cc: Kent Overstreet <kent.overstreet@gmail.com>
+> Cc: Mike Snitzer <snitzer@redhat.com>
+> Cc: dm-devel@redhat.com
+> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+> Cc: linux-fsdevel@vger.kernel.org
+> Cc: Shaohua Li <shli@kernel.org>
+> Cc: linux-raid@vger.kernel.org
+> Cc: linux-erofs@lists.ozlabs.org
+> Cc: David Sterba <dsterba@suse.com>
+> Cc: linux-btrfs@vger.kernel.org
+> Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> Cc: linux-xfs@vger.kernel.org
+> Cc: Gao Xiang <gaoxiang25@huawei.com>
+> Cc: Christoph Hellwig <hch@lst.de>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: Coly Li <colyli@suse.de>
+> Cc: linux-bcache@vger.kernel.org
+> Cc: Boaz Harrosh <ooo@electrozaur.com>
+> Cc: Bob Peterson <rpeterso@redhat.com>
+> Cc: cluster-devel@redhat.com
 
-Yeah, it makes sense.
+Reviewed-by: Omar Sandoval <osandov@fb.com>
 
-thanks,
-Ming
+> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> ---
+>  block/blk-mq-debugfs.c       | 1 -
+>  drivers/block/loop.c         | 2 +-
+>  drivers/block/nbd.c          | 2 +-
+>  drivers/block/rbd.c          | 2 +-
+>  drivers/block/skd_main.c     | 1 -
+>  drivers/block/xen-blkfront.c | 2 +-
+>  drivers/md/dm-rq.c           | 2 +-
+>  drivers/mmc/core/queue.c     | 3 +--
+>  drivers/scsi/scsi_lib.c      | 2 +-
+>  include/linux/blk-mq.h       | 1 -
+>  10 files changed, 7 insertions(+), 11 deletions(-)
+
+[snip]
