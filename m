@@ -1,75 +1,54 @@
-Return-Path: <SRS0=yRHK=OD=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42704 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726160AbeKXW4g (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 24 Nov 2018 17:56:36 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id EEEB02AE9B
-        for <linux-ext4@vger.kernel.org>; Sat, 24 Nov 2018 12:08:18 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sat, 24 Nov 2018 12:08:18 +0000
-Message-ID: <bug-201685-13602-rqVtXMIXm9@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:50059 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728079AbeKQAGN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Nov 2018 19:06:13 -0500
+Date: Fri, 16 Nov 2018 14:53:40 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 15/19] block: always define BIO_MAX_PAGES as 256
+Message-ID: <20181116135340.GL3165@lst.de>
+References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-16-ming.lei@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181115085306.9910-16-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+> diff --git a/include/linux/bio.h b/include/linux/bio.h
+> index 5040e9a2eb09..277921ad42e7 100644
+> --- a/include/linux/bio.h
+> +++ b/include/linux/bio.h
+> @@ -34,15 +34,7 @@
+>  #define BIO_BUG_ON
+>  #endif
+>  
+> -#ifdef CONFIG_THP_SWAP
+> -#if HPAGE_PMD_NR > 256
+> -#define BIO_MAX_PAGES		HPAGE_PMD_NR
+> -#else
+>  #define BIO_MAX_PAGES		256
+> -#endif
+> -#else
+> -#define BIO_MAX_PAGES		256
+> -#endif
 
---- Comment #38 from Rainer Fiebig (jrf@mailbox.org) ---
-(In reply to Jimmy.Jazz from comment #37)
-> @Jen Axboe
-> 
-> please read worth not worse in comment 33
-> 
-> I tried your patch for 4.19.3 and still get quite harmful ext4 errors like
-> this one,
-> 
-> EXT4-fs error (device dm-4): ext4_xattr_ibody_get:592: inode #4881425: comm
-> rsync: corrupted in-inode xattr
-> 
-> The filesystems were clean at boot time and the system was idle.
-> 
-> tune2fs ends with
-> FS Error count:           64
-> First error time:         Fri Nov 23 00:19:25 2018
-> First error function:     ext4_xattr_ibody_get
-> First error line #:       592
-> First error inode #:      4881425
-> First error block #:      0
-> Last error time:          Fri Nov 23 00:19:25 2018
-> Last error function:      ext4_xattr_ibody_get
-> Last error line #:        592
-> Last error inode #:       4881430
-> Last error block #:       0
-> MMP block number:         9255
-> MMP update interval:      5
-> 
-> If you are interested in its dumpe2fs result let me know.
-> 
-> I don't use binary modules.
+Looks good.  This mess should have never gone in.
 
-Jimmy,
-
-what *I* would do if I were in your shoes is 
-
-- run a kernel < 4.19, make sure the fs is OK and *backup important data* 
-- compile 4.19.3 with CONFIG_SCSI_MQ_DEFAULT *not* set
-
-and see what happens. If you still get corruption, CONFIG_SCSI_MQ_DEFAULT
-probably is not the culprit. If not, it has at least something to do with it.
-
-It seems that CONFIG_SCSI_MQ_DEFAULT *not* set was the default <= 4.18.19.
-
-Others here obviously don't have problems with CONFIG_SCSI_MQ_DEFAULT=y and
-kernels >= 4.19, but you never know.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Reviewed-by: Christoph Hellwig <hch@lst.de>
