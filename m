@@ -1,33 +1,94 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from szxga04-in.huawei.com ([45.249.212.190]:15117 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725908AbeKSQrs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 11:47:48 -0500
-Subject: Re: [f2fs-dev] [PATCH 6/7] f2fs: use IS_VERITY() to check inode's
- fsverity status
-To: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        <linux-fscrypt@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
-        <linux-f2fs-devel@lists.sourceforge.net>
-CC: <ebiggers@kernel.org>, <tytso@mit.edu>
-References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
- <20181119052324.31456-7-chandan@linux.vnet.ibm.com>
-From: Chao Yu <yuchao0@huawei.com>
-Message-ID: <b29b57fa-e8e8-7800-ac09-9093d3d989b6@huawei.com>
-Date: Mon, 19 Nov 2018 14:25:05 +0800
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:46385 "EHLO
+        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727348AbeKPMKE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 07:10:04 -0500
+Received: by mail-pg1-f195.google.com with SMTP id w7so9843280pgp.13
+        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 17:59:38 -0800 (PST)
+Date: Thu, 15 Nov 2018 17:59:36 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 15/19] block: always define BIO_MAX_PAGES as 256
+Message-ID: <20181116015936.GJ23828@vader>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-16-ming.lei@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20181119052324.31456-7-chandan@linux.vnet.ibm.com>
-Content-Type: text/plain; charset="windows-1252"
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181115085306.9910-16-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 2018/11/19 13:23, Chandan Rajendra wrote:
-> This commit now uses IS_VERITY() macro to check if fsverity is
-> enabled on an inode.
+On Thu, Nov 15, 2018 at 04:53:02PM +0800, Ming Lei wrote:
+> Now multi-page bvec can cover CONFIG_THP_SWAP, so we don't need to
+> increase BIO_MAX_PAGES for it.
+
+You mentioned to it in the cover letter, but this needs more explanation
+in the commit message. Why did CONFIG_THP_SWAP require > 256? Why does
+multipage bvecs remove that requirement?
+
+> Cc: Dave Chinner <dchinner@redhat.com>
+> Cc: Kent Overstreet <kent.overstreet@gmail.com>
+> Cc: Mike Snitzer <snitzer@redhat.com>
+> Cc: dm-devel@redhat.com
+> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+> Cc: linux-fsdevel@vger.kernel.org
+> Cc: Shaohua Li <shli@kernel.org>
+> Cc: linux-raid@vger.kernel.org
+> Cc: linux-erofs@lists.ozlabs.org
+> Cc: David Sterba <dsterba@suse.com>
+> Cc: linux-btrfs@vger.kernel.org
+> Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> Cc: linux-xfs@vger.kernel.org
+> Cc: Gao Xiang <gaoxiang25@huawei.com>
+> Cc: Christoph Hellwig <hch@lst.de>
+> Cc: Theodore Ts'o <tytso@mit.edu>
+> Cc: linux-ext4@vger.kernel.org
+> Cc: Coly Li <colyli@suse.de>
+> Cc: linux-bcache@vger.kernel.org
+> Cc: Boaz Harrosh <ooo@electrozaur.com>
+> Cc: Bob Peterson <rpeterso@redhat.com>
+> Cc: cluster-devel@redhat.com
+> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> ---
+>  include/linux/bio.h | 8 --------
+>  1 file changed, 8 deletions(-)
 > 
-> Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-
-Acked-by: Chao Yu <yuchao0@huawei.com>
-
-Thanks,
+> diff --git a/include/linux/bio.h b/include/linux/bio.h
+> index 5040e9a2eb09..277921ad42e7 100644
+> --- a/include/linux/bio.h
+> +++ b/include/linux/bio.h
+> @@ -34,15 +34,7 @@
+>  #define BIO_BUG_ON
+>  #endif
+>  
+> -#ifdef CONFIG_THP_SWAP
+> -#if HPAGE_PMD_NR > 256
+> -#define BIO_MAX_PAGES		HPAGE_PMD_NR
+> -#else
+>  #define BIO_MAX_PAGES		256
+> -#endif
+> -#else
+> -#define BIO_MAX_PAGES		256
+> -#endif
+>  
+>  #define bio_prio(bio)			(bio)->bi_ioprio
+>  #define bio_set_prio(bio, prio)		((bio)->bi_ioprio = prio)
+> -- 
+> 2.9.5
+> 
