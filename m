@@ -1,55 +1,75 @@
-Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34596 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2387833AbeKPCel (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 15 Nov 2018 21:34:41 -0500
-Date: Thu, 15 Nov 2018 17:26:10 +0100
-From: Jan Kara <jack@suse.cz>
-To: Chengguang Xu <cgxu519@gmx.com>
-Cc: jack@suse.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2: change reusable parameter to true when calling
- mb_cache_entry_create()
-Message-ID: <20181115162610.GA12786@quack2.suse.cz>
-References: <20181115064008.21056-1-cgxu519@gmx.com>
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f194.google.com ([209.85.215.194]:36395 "EHLO
+        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2389824AbeKPXCS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 18:02:18 -0500
+Received: by mail-pg1-f194.google.com with SMTP id n2so3407569pgm.3
+        for <linux-ext4@vger.kernel.org>; Fri, 16 Nov 2018 04:50:03 -0800 (PST)
+From: Eiichi Tsukata <devel@etsukata.com>
+To: andi@firstfloor.org, tytso@mit.edu, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Cc: Eiichi Tsukata <devel@etsukata.com>
+Subject: [RFC PATCH 1/1] ext4: fix race between llseek SEEK_END and write
+Date: Fri, 16 Nov 2018 17:37:37 +0900
+Message-Id: <20181116083737.10596-2-devel@etsukata.com>
+In-Reply-To: <20181116083737.10596-1-devel@etsukata.com>
+References: <20181116083737.10596-1-devel@etsukata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115064008.21056-1-cgxu519@gmx.com>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 15-11-18 14:40:08, Chengguang Xu wrote:
-> Reusable parameter of mb_cache_entry_create() is bool type,
-> so it's better to set true instead of 1.
-> 
-> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+The commit ef3d0fd27e90 ("vfs: do (nearly) lockless generic_file_llseek")
+removed almost all locks in llseek() including SEEK_END. It based on the
+idea that write() updates size atomically. But in fact, write() can be
+divided into two or more parts in generic_perform_write() when pos
+straddles over the PAGE_SIZE, which results in updating size multiple
+times in one write(). It means that llseek() can see the size being
+updated during write().
 
-Applied after fixing the whitespace damage. Thanks.
+This race changes behavior of some applications. 'tail' is one of those
+applications. It reads range [pos, pos_end] where pos_end is obtained
+via llseek() SEEK_END. Sometimes, a read line could be broken.
 
-								Honza
+reproducer:
 
-> ---
->  fs/ext2/xattr.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-> index 62d9a659a8ff..6bab2432b717 100644
-> --- a/fs/ext2/xattr.c
-> +++ b/fs/ext2/xattr.c
-> @@ -835,7 +835,8 @@ ext2_xattr_cache_insert(struct mb_cache *cache, struct buffer_head *bh)
->  	__u32 hash = le32_to_cpu(HDR(bh)->h_hash);
->  	int error;
->  
-> -	error = mb_cache_entry_create(cache, GFP_NOFS, hash, bh->b_blocknr, 1);
-> +	error = mb_cache_entry_create(cache, GFP_NOFS, hash,
-> +					bh->b_blocknr,true);
->  	if (error) {
->  		if (error == -EBUSY) {
->  			ea_bdebug(bh, "already in cache (%d cache entries)",
-> -- 
-> 2.17.2
-> 
-> 
+  $ while true; do echo 123456 >> out; done
+  $ while true; do tail out | grep -v 123456 ; done
+
+example output(take 30 secs):
+
+  12345
+  1
+  1234
+  1
+  12
+  1234
+
+Signed-off-by: Eiichi Tsukata <devel@etsukata.com>
+---
+ fs/ext4/file.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 69d65d49837b..6479f3066043 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -477,6 +477,16 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int whence)
+ 	default:
+ 		return generic_file_llseek_size(file, offset, whence,
+ 						maxbytes, i_size_read(inode));
++	case SEEK_END:
++		/*
++		 * protects against inode size race with write so that llseek
++		 * doesn't see inode size being updated in generic_perform_write
++		 */
++		inode_lock_shared(inode);
++		offset = generic_file_llseek_size(file, offset, whence,
++						  maxbytes, i_size_read(inode));
++		inode_unlock_shared(inode);
++		return offset;
+ 	case SEEK_HOLE:
+ 		inode_lock_shared(inode);
+ 		offset = iomap_seek_hole(inode, offset, &ext4_iomap_ops);
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.19.1
