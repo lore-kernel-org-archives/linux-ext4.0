@@ -1,11 +1,11 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34112 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:50051 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726175AbeKSStL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 13:49:11 -0500
-Date: Mon, 19 Nov 2018 16:25:49 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Omar Sandoval <osandov@osandov.com>
+        id S1727727AbeKQAFl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Nov 2018 19:05:41 -0500
+Date: Fri, 16 Nov 2018 14:53:08 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
 Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         Dave Chinner <dchinner@redhat.com>,
@@ -21,121 +21,50 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
         linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 10/19] block: loop: pass multi-page bvec to iov_iter
-Message-ID: <20181119082548.GD16736@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-11-ming.lei@redhat.com>
- <20181116004022.GE23828@vader>
+Subject: Re: [PATCH V10 14/19] block: enable multipage bvecs
+Message-ID: <20181116135308.GK3165@lst.de>
+References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-15-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181116004022.GE23828@vader>
+In-Reply-To: <20181115085306.9910-15-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:40:22PM -0800, Omar Sandoval wrote:
-> On Thu, Nov 15, 2018 at 04:52:57PM +0800, Ming Lei wrote:
-> > iov_iter is implemented with bvec itererator, so it is safe to pass
-> > multipage bvec to it, and this way is much more efficient than
-> > passing one page in each bvec.
-> > 
-> > Cc: Dave Chinner <dchinner@redhat.com>
-> > Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> > Cc: Mike Snitzer <snitzer@redhat.com>
-> > Cc: dm-devel@redhat.com
-> > Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> > Cc: linux-fsdevel@vger.kernel.org
-> > Cc: Shaohua Li <shli@kernel.org>
-> > Cc: linux-raid@vger.kernel.org
-> > Cc: linux-erofs@lists.ozlabs.org
-> > Cc: David Sterba <dsterba@suse.com>
-> > Cc: linux-btrfs@vger.kernel.org
-> > Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> > Cc: linux-xfs@vger.kernel.org
-> > Cc: Gao Xiang <gaoxiang25@huawei.com>
-> > Cc: Christoph Hellwig <hch@lst.de>
-> > Cc: Theodore Ts'o <tytso@mit.edu>
-> > Cc: linux-ext4@vger.kernel.org
-> > Cc: Coly Li <colyli@suse.de>
-> > Cc: linux-bcache@vger.kernel.org
-> > Cc: Boaz Harrosh <ooo@electrozaur.com>
-> > Cc: Bob Peterson <rpeterso@redhat.com>
-> > Cc: cluster-devel@redhat.com
-> 
-> Reviewed-by: Omar Sandoval <osandov@fb.com>
-> 
-> Comments below.
-> 
-> > Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> > ---
-> >  drivers/block/loop.c | 23 ++++++++++++-----------
-> >  1 file changed, 12 insertions(+), 11 deletions(-)
-> > 
-> > diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-> > index bf6bc35aaf88..a3fd418ec637 100644
-> > --- a/drivers/block/loop.c
-> > +++ b/drivers/block/loop.c
-> > @@ -515,16 +515,16 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
-> >  	struct bio *bio = rq->bio;
-> >  	struct file *file = lo->lo_backing_file;
-> >  	unsigned int offset;
-> > -	int segments = 0;
-> > +	int nr_bvec = 0;
-> >  	int ret;
-> >  
-> >  	if (rq->bio != rq->biotail) {
-> > -		struct req_iterator iter;
-> > +		struct bvec_iter iter;
-> >  		struct bio_vec tmp;
-> >  
-> >  		__rq_for_each_bio(bio, rq)
-> > -			segments += bio_segments(bio);
-> > -		bvec = kmalloc_array(segments, sizeof(struct bio_vec),
-> > +			nr_bvec += bio_bvecs(bio);
-> > +		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
-> >  				     GFP_NOIO);
-> >  		if (!bvec)
-> >  			return -EIO;
-> > @@ -533,13 +533,14 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
-> >  		/*
-> >  		 * The bios of the request may be started from the middle of
-> >  		 * the 'bvec' because of bio splitting, so we can't directly
-> > -		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_segment
-> > +		 * copy bio->bi_iov_vec to new bvec. The bio_for_each_bvec
-> >  		 * API will take care of all details for us.
-> >  		 */
-> > -		rq_for_each_segment(tmp, rq, iter) {
-> > -			*bvec = tmp;
-> > -			bvec++;
-> > -		}
-> > +		__rq_for_each_bio(bio, rq)
-> > +			bio_for_each_bvec(tmp, bio, iter) {
-> > +				*bvec = tmp;
-> > +				bvec++;
-> > +			}
-> 
-> Even if they're not strictly necessary, could you please include the
-> curly braces for __rq_for_each_bio() here?
+> -
+> -		if (page == bv->bv_page && off == bv->bv_offset + bv->bv_len) {
+> -			bv->bv_len += len;
+> -			bio->bi_iter.bi_size += len;
+> -			return true;
+> -		}
+> +		struct request_queue *q = NULL;
+> +
+> +		if (page == bv->bv_page && off == (bv->bv_offset + bv->bv_len)
+> +				&& (off + len) <= PAGE_SIZE)
 
-Sure, will do it.
+How could the page struct be the same, but the range beyond PAGE_SIZE
+(at least with the existing callers)?
 
-> 
-> >  		bvec = cmd->bvec;
-> >  		offset = 0;
-> >  	} else {
-> > @@ -550,11 +551,11 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
-> >  		 */
-> >  		offset = bio->bi_iter.bi_bvec_done;
-> >  		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
-> > -		segments = bio_segments(bio);
-> > +		nr_bvec = bio_bvecs(bio);
-> 
-> This scared me for a second, but it's fine to do here because we haven't
-> actually enabled multipage bvecs yet, right?
+Also no need for the inner btraces, and the && always goes on the
+first line.
 
-Well, it is fine, all helpers supporting multi-page bvec actually works
-well when it isn't enabled, cause single-page bvec is one special case in
-which multi-page bevc helpers have to deal with.
+> +		if (bio->bi_disk)
+> +			q = bio->bi_disk->queue;
+> +
+> +		/* disable multi-page bvec too if cluster isn't enabled */
+> +		if (!q || !blk_queue_cluster(q) ||
+> +		    ((page_to_phys(bv->bv_page) + bv->bv_offset + bv->bv_len) !=
+> +		     (page_to_phys(page) + off)))
+> +			return false;
+> + merge:
+> +		bv->bv_len += len;
+> +		bio->bi_iter.bi_size += len;
+> +		return true;
 
-Thanks,
-Ming
+Ok, this is scary, as it will give differen results depending on when
+bi_disk is assigned.  But then again we shouldn't really do the cluster
+check here, but rather when splitting the bio for the actual low-level
+driver.
+
+(and eventually we should kill this clustering setting off in favor
+of our normal segment limits).
