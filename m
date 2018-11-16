@@ -1,37 +1,39 @@
-Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mout.gmx.net ([212.227.15.15]:60871 "EHLO mout.gmx.net"
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:50136 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726878AbeKGXRx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 7 Nov 2018 18:17:53 -0500
-From: Chengguang Xu <cgxu519@gmx.com>
-To: jack@suse.com
-Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH] ext2: avoid unnecessary operation in ext2_error()
-Date: Wed,  7 Nov 2018 21:47:04 +0800
-Message-Id: <20181107134704.15821-1-cgxu519@gmx.com>
+        id S1727999AbeKQAML (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Nov 2018 19:12:11 -0500
+Date: Fri, 16 Nov 2018 14:59:37 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 19/19] block: kill BLK_MQ_F_SG_MERGE
+Message-ID: <20181116135937.GP3165@lst.de>
+References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-20-ming.lei@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181115085306.9910-20-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If filesystem has already mounted as read-only, then we don't have
-to do it again.
+On Thu, Nov 15, 2018 at 04:53:06PM +0800, Ming Lei wrote:
+> QUEUE_FLAG_NO_SG_MERGE has been killed, so kill BLK_MQ_F_SG_MERGE too.
 
-Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
----
- fs/ext2/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Looks fine,
 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index cb91baa4275d..5e2861b947a6 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -73,7 +73,7 @@ void ext2_error(struct super_block *sb, const char *function,
- 
- 	if (test_opt(sb, ERRORS_PANIC))
- 		panic("EXT2-fs: panic from previous error\n");
--	if (test_opt(sb, ERRORS_RO)) {
-+	if (!sb_rdonly(sb) && test_opt(sb, ERRORS_RO)) {
- 		ext2_msg(sb, KERN_CRIT,
- 			     "error: remounting filesystem read-only");
- 		sb->s_flags |= SB_RDONLY;
--- 
-2.17.2
+Reviewed-by: Christoph Hellwig <hch@lst.de>
