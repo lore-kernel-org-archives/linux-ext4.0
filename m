@@ -1,129 +1,48 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58384 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:48230 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726784AbeKSSog (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 13:44:36 -0500
-Date: Mon, 19 Nov 2018 16:21:25 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        id S1727398AbeKPTb1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Nov 2018 14:31:27 -0500
+Date: Fri, 16 Nov 2018 10:19:56 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Omar Sandoval <osandov@osandov.com>
+Cc: Mike Snitzer <snitzer@redhat.com>, Ming Lei <ming.lei@redhat.com>,
+        Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
+        dm-devel@redhat.com, Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
         linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
         David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
-Message-ID: <20181119082124.GC16736@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-10-ming.lei@redhat.com>
- <20181116134541.GH3165@lst.de>
+Subject: Re: [PATCH V10 03/19] block: use bio_for_each_bvec() to compute
+ multi-page bvec count
+Message-ID: <20181116091956.GA17604@lst.de>
+References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-4-ming.lei@redhat.com> <20181115202028.GC9348@vader> <20181115210510.GA24908@redhat.com> <20181115221847.GD9348@vader>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181116134541.GH3165@lst.de>
+In-Reply-To: <20181115221847.GD9348@vader>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 16, 2018 at 02:45:41PM +0100, Christoph Hellwig wrote:
-> On Thu, Nov 15, 2018 at 04:52:56PM +0800, Ming Lei wrote:
-> > There are still cases in which we need to use bio_bvecs() for get the
-> > number of multi-page segment, so introduce it.
+On Thu, Nov 15, 2018 at 02:18:47PM -0800, Omar Sandoval wrote:
+> My only reason to prefer unsigned int is consistency. unsigned int is
+> much more common in the kernel:
 > 
-> The only user in your final tree seems to be the loop driver, and
-> even that one only uses the helper for read/write bios.
+> $ ag --cc -s 'unsigned\s+int' | wc -l
+> 129632
+> $ ag --cc -s 'unsigned\s+(?!char|short|int|long)' | wc -l
+> 22435
 > 
-> I think something like this would be much simpler in the end:
-> 
-> diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-> index d509902a8046..712511815ac6 100644
-> --- a/drivers/block/loop.c
-> +++ b/drivers/block/loop.c
-> @@ -514,16 +514,18 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
->  	struct request *rq = blk_mq_rq_from_pdu(cmd);
->  	struct bio *bio = rq->bio;
->  	struct file *file = lo->lo_backing_file;
-> +	struct bvec_iter bvec_iter;
-> +	struct bio_vec tmp;
->  	unsigned int offset;
->  	int nr_bvec = 0;
->  	int ret;
->  
-> +	__rq_for_each_bio(bio, rq)
-> +		bio_for_each_bvec(tmp, bio, bvec_iter)
-> +			nr_bvec++;
-> +
->  	if (rq->bio != rq->biotail) {
-> -		struct bvec_iter iter;
-> -		struct bio_vec tmp;
->  
-> -		__rq_for_each_bio(bio, rq)
-> -			nr_bvec += bio_bvecs(bio);
->  		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
->  				     GFP_NOIO);
->  		if (!bvec)
-> @@ -537,7 +539,7 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
->  		 * API will take care of all details for us.
->  		 */
->  		__rq_for_each_bio(bio, rq)
-> -			bio_for_each_bvec(tmp, bio, iter) {
-> +			bio_for_each_bvec(tmp, bio, bvec_iter) {
->  				*bvec = tmp;
->  				bvec++;
->  			}
-> @@ -551,7 +553,6 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
->  		 */
->  		offset = bio->bi_iter.bi_bvec_done;
->  		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
-> -		nr_bvec = bio_bvecs(bio);
->  	}
->  	atomic_set(&cmd->ref, 2);
->  
-> diff --git a/include/linux/bio.h b/include/linux/bio.h
-> index dcad0b69f57a..379440d1ced0 100644
-> --- a/include/linux/bio.h
-> +++ b/include/linux/bio.h
-> @@ -200,30 +200,6 @@ static inline unsigned bio_segments(struct bio *bio)
->  	}
->  }
->  
-> -static inline unsigned bio_bvecs(struct bio *bio)
-> -{
-> -	unsigned bvecs = 0;
-> -	struct bio_vec bv;
-> -	struct bvec_iter iter;
-> -
-> -	/*
-> -	 * We special case discard/write same/write zeroes, because they
-> -	 * interpret bi_size differently:
-> -	 */
-> -	switch (bio_op(bio)) {
-> -	case REQ_OP_DISCARD:
-> -	case REQ_OP_SECURE_ERASE:
-> -	case REQ_OP_WRITE_ZEROES:
-> -		return 0;
-> -	case REQ_OP_WRITE_SAME:
-> -		return 1;
-> -	default:
-> -		bio_for_each_bvec(bv, bio, iter)
-> -			bvecs++;
-> -		return bvecs;
-> -	}
-> -}
-> -
->  /*
->   * get a reference to a bio, so it won't disappear. the intended use is
->   * something like:
+> checkpatch also warns on plain unsigned.
 
-OK, will do it in next version.
-
-Thanks,
-Ming
+Talk about chicken and egg.  unsigned is perfectly valid C, and being
+shorter often helps being more readable.  checkpath is as so often
+wrongly opinionated..
