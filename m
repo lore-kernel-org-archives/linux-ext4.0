@@ -1,70 +1,60 @@
-Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:43004 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728181AbeK2D3D (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 28 Nov 2018 22:29:03 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 408302DA39
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 16:26:50 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Wed, 28 Nov 2018 16:26:50 +0000
-Message-ID: <bug-201685-13602-eRWxpD6Ed8@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga06-in.huawei.com ([45.249.212.32]:42901 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727405AbeKPTxa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 16 Nov 2018 14:53:30 -0500
+Subject: Re: [PATCH V10 03/19] block: use bio_for_each_bvec() to compute
+ multi-page bvec count
+To: Christoph Hellwig <hch@lst.de>
+CC: Omar Sandoval <osandov@osandov.com>,
+        Mike Snitzer <snitzer@redhat.com>,
+        Ming Lei <ming.lei@redhat.com>, Jens Axboe <axboe@kernel.dk>,
+        <linux-block@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <linux-mm@kvack.org>, Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        <dm-devel@redhat.com>, Alexander Viro <viro@zeniv.linux.org.uk>,
+        <linux-fsdevel@vger.kernel.org>, Shaohua Li <shli@kernel.org>,
+        <linux-raid@vger.kernel.org>, <linux-erofs@lists.ozlabs.org>,
+        David Sterba <dsterba@suse.com>, <linux-btrfs@vger.kernel.org>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        <linux-xfs@vger.kernel.org>, Theodore Ts'o <tytso@mit.edu>,
+        <linux-ext4@vger.kernel.org>, Coly Li <colyli@suse.de>,
+        <linux-bcache@vger.kernel.org>, Boaz Harrosh <ooo@electrozaur.com>,
+        "Bob Peterson" <rpeterso@redhat.com>, <cluster-devel@redhat.com>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-4-ming.lei@redhat.com> <20181115202028.GC9348@vader>
+ <20181115210510.GA24908@redhat.com> <20181115221847.GD9348@vader>
+ <20181116091956.GA17604@lst.de>
+From: Gao Xiang <gaoxiang25@huawei.com>
+Message-ID: <a0105f7a-95b2-3a42-1543-3e8b999edb30@huawei.com>
+Date: Fri, 16 Nov 2018 17:41:47 +0800
 MIME-Version: 1.0
+In-Reply-To: <20181116091956.GA17604@lst.de>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Néstor A. Marchesini (nestorm_des@hotmail.com) changed:
+On 2018/11/16 17:19, Christoph Hellwig wrote:
+> On Thu, Nov 15, 2018 at 02:18:47PM -0800, Omar Sandoval wrote:
+>> My only reason to prefer unsigned int is consistency. unsigned int is
+>> much more common in the kernel:
+>>
+>> $ ag --cc -s 'unsigned\s+int' | wc -l
+>> 129632
+>> $ ag --cc -s 'unsigned\s+(?!char|short|int|long)' | wc -l
+>> 22435
+>>
+>> checkpatch also warns on plain unsigned.
+> 
+> Talk about chicken and egg.  unsigned is perfectly valid C, and being
+> shorter often helps being more readable.  checkpath is as so often
+> wrongly opinionated..
+> 
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |nestorm_des@hotmail.com
+sigh...I personally tend to use "unsigned" instead of "unsigned int" as well,
+but checkpatch.pl also suggests erofs to use "unsigned int" :-(
 
---- Comment #65 from Néstor A. Marchesini (nestorm_des@hotmail.com) ---
-Hi.
-My distro is gentoo testing, I also use 4 partitions raid1 ,are two discs of
-1T WD black that have never failed.
-These raid1 partitions use mdadm with metadata 0.90.
-
-$ lsblk /dev/md*
-RM RO MODEL NAME LABEL      FSTYPE MOUNTPOINT   SIZE PHY-SEC LOG-SEC MODE      
- 0  0       md0  GentooBoot ext4                128M     512     512 brw-rw----
- 0  0       md1  GentooSwap swap   [SWAP]         4G     512     512 brw-rw----
- 0  0       md2  GentooRaiz ext4   /             50G     512     512 brw-rw----
- 0  0       md3  GentooHome ext4   /home      877,4G     512     512 brw-rw----
-
-Effectively from 4.19.0 I started to have problems with the boot, the system
-always closed perfectly unmount all the partitions, but when booting the next
-time I fall in fsck and end in recovery console, ignoring these errors, restart
-again and I choose the kernel 4.18.20 and it does not fall in fsck, it also
-does
-not detect any error in the ext4 partitions.
-Sometimes these errors trigger the resynchronization of the partition that fsck
-detects false positives, I see it with $ cat /proc/mdstat
-For now I will continue using 4.18.20, the faults I have been doing since
-4.19.0
-4.19.1 4.19.2 4.19.3 4.19.4 and 4.19.5, given that this is something from the
-4.19.x branch
-
-$ uname -a
-Linux pc-user 4.18.20-gentoo #1 SMP PREEMPT Sat Nov 24 14:39:41
-
-$ eselect kernel list 
-Available kernel symlink targets:
-  [1]   linux-4.18.20-gentoo
-  [2]   linux-4.19.4-gentoo
-  [3]   linux-4.19.5-gentoo *
-
-Regards
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks,
+Gao Xiang
