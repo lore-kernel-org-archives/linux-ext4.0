@@ -1,108 +1,45 @@
-Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:34035 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726273AbeK1IWK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Nov 2018 03:22:10 -0500
-Date: Tue, 27 Nov 2018 13:22:55 -0800
-From: Guenter Roeck <linux@roeck-us.net>
-To: Rainer Fiebig <jrf@mailbox.org>
-Cc: linux-kernel@vger.kernel.org, grendel@twistedcode.net,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org
-Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
-Message-ID: <20181127212255.GA2987@roeck-us.net>
-References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
- <b43fb902-9b64-22d9-25ca-c970b3842a43@roeck-us.net>
- <5d94f857-b31d-a02c-5a20-2796076f447e@twistedcode.net>
- <2157925.3ZPi3Rj3bs@siriux>
+Return-Path: <SRS0=k8Ev=N4=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59302 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729750AbeKQM5n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 17 Nov 2018 07:57:43 -0500
+Date: Sat, 17 Nov 2018 10:42:11 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 00/19] block: support multi-page bvec
+Message-ID: <20181117024209.GD8872@ming.t460p>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181116140314.GA7735@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <2157925.3ZPi3Rj3bs@siriux>
+In-Reply-To: <20181116140314.GA7735@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 27, 2018 at 07:55:01PM +0100, Rainer Fiebig wrote:
-> Am Dienstag, 27. November 2018, 15:48:19 schrieb Marek Habersack:
-> > On 27/11/2018 15:32, Guenter Roeck wrote:
-> > Hi,
-> > 
-> > You might try to see if you have CONFIG_SCSI_MQ_DEFAULT=yes in your kernel
-> > config. Starting with 4.19.1 it somehow interferes with ext4 and causes
-> > problems similar to the ones you list below. Ever since I disabled MQ
-> > (either recompile your kernel or add `scsi_mod.use_blk_mq=0` to the kernel
-> > command line) none of those errors came back.
-> > 
-> > hope it helps,
-> > 
-> > marek
-> 
-> Unfortunately, this doesn't seem to work in every case: 
-> https://bugzilla.kernel.org/show_bug.cgi?id=201685#c54
-> 
-> And I'm using a defconfig-4.19.3 (meaning: CONFIG_SCSI_MQ_DEFAULT=yes) in a VM 
-> and I'm not seeing those errors there. OK, it's a VM - but anyway.
-> 
+On Fri, Nov 16, 2018 at 03:03:14PM +0100, Christoph Hellwig wrote:
+> It seems like bi_phys_segments is still around of this series.
+> Shouldn't it be superflous now?
 
-Agreed. I disabled CONFIG_SCSI_MQ_DEFAULT, but the problem is still seen
-at least on one of my servers, so disabling it does not help, at least not
-in my case.
+Even though multi-page bvec is supported, the segment number doesn't
+equal to the actual bvec count yet, for example, one bvec may be too
+bigger to be held in one single segment.
 
-If the problem is somehow related to CONFIG_SCSI_MQ_DEFAULT, you might
-have to explicitly use a scsi drive (virtio-scsi-pci or similar) to
-trigger its use in a VM.
 
-Guenter
-
-> The definite cause of this can only be found by bisecting, IMO. And it needs 
-> to be pinned down because else some feeling of insecurity will remain.
-> 
-> So long!
-> 
-> Rainer Fiebig
-> 
-> > 
-> > > [trying again, this time with correct kernel.org address]
-> > > 
-> > > Hi,
-> > > 
-> > > I have seen the following and similar problems several times,
-> > > with both v4.19.3 and v4.19.4:
-> > > 
-> > > Nov 23 04:32:25 mars kernel: [112668.673671] EXT4-fs error (device sdb1):
-> > > ext4_iget:4831: inode #12602889: comm git: bad extra_isize 33661 (inode
-> > > size 256)
-> > > Nov 23 04:32:25 mars kernel: [112668.675217] Aborting journal on device
-> > > sdb1-8. Nov 23 04:32:25 mars kernel: [112668.676681] EXT4-fs (sdb1):
-> > > Remounting filesystem read-only Nov 23 04:32:25 mars kernel:
-> > > [112668.808886] EXT4-fs error (device sdb1): ext4_iget:4831: inode
-> > > #12602881: comm rm: bad extra_isize 33685 (inode size 256)
-> > > ...
-> > > 
-> > > Nov 25 00:12:43 saturn kernel: [59377.725984] EXT4-fs error (device sda1):
-> > > ext4_lookup:1578: inode #238034131: comm updatedb.mlocat: deleted inode
-> > > referenced: 238160407
-> > > Nov 25 00:12:43 saturn kernel: [59377.766638] Aborting journal on device
-> > > sda1-8. Nov 25 00:12:43 saturn kernel: [59377.779372] EXT4-fs (sda1):
-> > > Remounting filesystem read-only ...
-> > > 
-> > > Nov 24 01:52:31 saturn kernel: [189085.240016] EXT4-fs error (device
-> > > sda1): ext4_lookup:1578: inode #52038457: comm nfsd: deleted inode
-> > > referenced: 52043796
-> > > Nov 24 01:52:31 saturn kernel: [189085.263427] Aborting journal on device
-> > > sda1-8. Nov 24 01:52:31 saturn kernel: [189085.275313] EXT4-fs (sda1):
-> > > Remounting filesystem read-only
-> > > 
-> > > 
-> > > The same systems running v4.18.6 never experienced a problem.
-> > > 
-> > > Has anyone else seen similar problems ? Is there anything I can do
-> > > to help tracking down the problem ?
-> > > 
-> > > Thanks,
-> > > Guenter
-> 
-> -- 
-> The truth always turns out to be simpler than you thought.
-> Richard Feynman
+Thanks,
+Ming
