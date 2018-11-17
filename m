@@ -1,130 +1,518 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36044 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727343AbeKVA3D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 19:29:03 -0500
-Date: Wed, 21 Nov 2018 14:54:30 +0100
-From: Jan Kara <jack@suse.cz>
-To: Liu Bo <obuil.liubo@gmail.com>
-Cc: Jan Kara <jack@suse.cz>, xiaoguang.wang@linux.alibaba.com,
-        darrick.wong@oracle.com, linux-ext4@vger.kernel.org
-Subject: Re: ext4: try to improve unwritten extents merges
-Message-ID: <20181121135430.GC28182@quack2.suse.cz>
-References: <e3074993-0810-1954-7204-38b6d0b0f1e5@linux.alibaba.com>
- <20181120100533.GD8842@quack2.suse.cz>
- <CANQeFDDAV+s5M9W8Y_VvQLOYaAjKM+J5f07HS_JUHuN0SqutWA@mail.gmail.com>
+Return-Path: <SRS0=k8Ev=N4=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:43426 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726894AbeKRJyU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 18 Nov 2018 04:54:20 -0500
+From: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: Theodore Ts'o <tytso@mit.edu>, stable@kernel.org
+Subject: [PATCH] ext4: add ext4_sb_bread() to disambiguate ENOMEM cases
+Date: Sat, 17 Nov 2018 18:35:23 -0500
+Message-Id: <20181117233523.8832-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CANQeFDDAV+s5M9W8Y_VvQLOYaAjKM+J5f07HS_JUHuN0SqutWA@mail.gmail.com>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+Today, when sb_bread() returns NULL, this can either be because of an
+I/O error or because the system failed to allocate the buffer.  Since
+it's an old interface, changing would require changing many call
+sites.
 
-On Tue 20-11-18 11:03:41, Liu Bo wrote:
-> On Tue, Nov 20, 2018 at 2:07 AM Jan Kara <jack@suse.cz> wrote:
-> >
-> > Hello!
-> >
-> > On Tue 20-11-18 17:01:25, Xiaoguang Wang wrote:
-> > > First sorry to bother you again, recently we meet a
-> > > "dioread_nolock,nodelalloc" slow writeback issue, Liu Bo has sent a patch to
-> > > fix this issue. But here I also wonder whether we can merge unwritten
-> > > extents as far as possible.
-> > > In current codes:
-> > >
-> > > int
-> > > ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-> > >                               struct ext4_extent *ex2)
-> > > {
-> > > ...
-> > >       if (ext4_ext_is_unwritten(ex1) &&
-> > >           (ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN) ||
-> > >            atomic_read(&EXT4_I(inode)->i_unwritten) ||
-> > >            (ext1_ee_len + ext2_ee_len > EXT_UNWRITTEN_MAX_LEN)))
-> > >               return 0;
-> > > ...
-> > > }
-> > > This was added by Darrick in 2014:
-> > > commit a9b8241594adda0a7a4fb3b87bf29d2dff0d997d
-> > > Author: Darrick J. Wong <darrick.wong@oracle.com>
-> > > Date:   Thu Feb 20 21:17:35 2014 -0500
-> > >
-> > >     ext4: merge uninitialized extents
-> > >
-> > >     Allow for merging uninitialized extents.
-> > >
-> > >     Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> > >     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> > >
-> > > So long as we have a unwritten extents under io(which also means i_unwritten
-> > > is not zero), then we can not do merge work for unwritten extents, I wonder
-> > > whether this conditon is too strict. Assume that the
-> > > begin of the file is under io, but middle or end of the file could not
-> > > merge unwritten extetns, though they could be.
-> > >
-> > > I'm not sure whether we could directly remove
-> > > "atomic_read(&EXT4_I(inode)->i_unwritten)",if not, here I make a simple
-> > > patch to respect same semantics. The idea is simple, I use a red-black
-> > > tree to record unwritten extents under io, when trying to merging
-> > > unwritten extents, we search this per-inode tree, it not hit, we can
-> > > merge. I have also run "xfstests quick group test cases", look like that
-> > > it works well. dio maybe also go to this way.
-> >
-> > The reason why we don't merge unwritten extents if there is IO to unwritten
-> > extents running is that we split unwritten extents to match exactly the IO
-> > range on submission and then convert it to written extents on IO
-> > completion. So we must avoid merging these split out extents while the IO
-> > is running.
-> >
-> 
-> I can see why it is a must for the 'delalloc' case (as we may be not
-> able to offer enough credits for doing split on IO completion).
-> 
-> However, for the 'nodelalloc' case, extent splits are done in
-> writepages() instead of endio, and we have reserved enough credits for
-> either extent allocation or extent split.
-> 
-> While I understand a more fine-grain track for unwritten extents is
-> preferable, do you think if it's OK to have a workaround like [1] to
-> mitigate the performance pain?
+So instead we create our own ext4_sb_bread(), which also allows us to
+set the REQ_META flag.
 
-I'm not sure I understand your reasoning why extent merging is OK for
-'nodelalloc' case. Generally IO submission path (regardless whether in
-dellalloc or nodelalloc case) prepares unwritten extent. Then we write the
-data to the extent. Then IO completion needs to convert this extent to
-written one. If the extent got merged to another unwritten extent in the
-mean time, the conversion to written extent will need to split it again,
-which may need block allocation (which we not necessarily have available
-anymore), more journal credits then we expected etc. Am I missing
-something?
+Also fixed a problem in the xattr code where a NULL return in a
+function could also mean that the xattr was not found, which could
+lead to the wrong error getting returned to userspace.
 
-								Honza
+Fixes: ac27a0ec112a ("ext4: initial copy of files from ext3")
+Cc: stable@kernel.org
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/ext4.h    |  2 ++
+ fs/ext4/migrate.c | 36 +++++++++++-----------
+ fs/ext4/resize.c  | 72 ++++++++++++++++++++++----------------------
+ fs/ext4/super.c   | 23 ++++++++++++++
+ fs/ext4/xattr.c   | 76 ++++++++++++++++++++++-------------------------
+ 5 files changed, 115 insertions(+), 94 deletions(-)
 
-> 
-> [1]: https://patchwork.ozlabs.org/patch/1000284
-> 
-> thanks,
-> liubo
-> 
-> > I agree that the condition in ext4_can_extents_be_merged() is rather coarse
-> > so it would be nice to improve it so that unwritten extents on which IO is
-> > not running can be merged. I've also observed that unwritten extents get
-> > fragmented relatively easily under some workloads.
-> >
-> > Rather than introducing new RB-tree for this (which costs additional memory
-> > and its maintenance costs also CPU time), I'd use extent status tree to
-> > identify unwritten extent that got split out when preparing the IO (you
-> > should mark such extent in ext4_map_blocks() when EXT4_GET_BLOCKS_IO_SUBMIT
-> > flag is set). Then the flag would get cleared on extent conversion to
-> > written one.
-> >
-> >                                                                 Honza
-> >
-> > --
-> > Jan Kara <jack@suse.com>
-> > SUSE Labs, CR
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3f89d0ab08fc..863549a85a34 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2538,6 +2538,8 @@ extern int ext4_group_extend(struct super_block *sb,
+ extern int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count);
+ 
+ /* super.c */
++extern struct buffer_head *ext4_sb_bread(struct super_block *sb,
++					 sector_t block);
+ extern int ext4_seq_options_show(struct seq_file *seq, void *offset);
+ extern int ext4_calculate_overhead(struct super_block *sb);
+ extern void ext4_superblock_csum_set(struct super_block *sb);
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 61a9d1927817..f7eda2c89079 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -116,9 +116,9 @@ static int update_ind_extent_range(handle_t *handle, struct inode *inode,
+ 	int i, retval = 0;
+ 	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+ 
+-	bh = sb_bread(inode->i_sb, pblock);
+-	if (!bh)
+-		return -EIO;
++	bh = ext4_sb_bread(inode->i_sb, pblock);
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 
+ 	i_data = (__le32 *)bh->b_data;
+ 	for (i = 0; i < max_entries; i++) {
+@@ -145,9 +145,9 @@ static int update_dind_extent_range(handle_t *handle, struct inode *inode,
+ 	int i, retval = 0;
+ 	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+ 
+-	bh = sb_bread(inode->i_sb, pblock);
+-	if (!bh)
+-		return -EIO;
++	bh = ext4_sb_bread(inode->i_sb, pblock);
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 
+ 	i_data = (__le32 *)bh->b_data;
+ 	for (i = 0; i < max_entries; i++) {
+@@ -175,9 +175,9 @@ static int update_tind_extent_range(handle_t *handle, struct inode *inode,
+ 	int i, retval = 0;
+ 	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+ 
+-	bh = sb_bread(inode->i_sb, pblock);
+-	if (!bh)
+-		return -EIO;
++	bh = ext4_sb_bread(inode->i_sb, pblock);
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 
+ 	i_data = (__le32 *)bh->b_data;
+ 	for (i = 0; i < max_entries; i++) {
+@@ -224,9 +224,9 @@ static int free_dind_blocks(handle_t *handle,
+ 	struct buffer_head *bh;
+ 	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+ 
+-	bh = sb_bread(inode->i_sb, le32_to_cpu(i_data));
+-	if (!bh)
+-		return -EIO;
++	bh = ext4_sb_bread(inode->i_sb, le32_to_cpu(i_data));
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 
+ 	tmp_idata = (__le32 *)bh->b_data;
+ 	for (i = 0; i < max_entries; i++) {
+@@ -254,9 +254,9 @@ static int free_tind_blocks(handle_t *handle,
+ 	struct buffer_head *bh;
+ 	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
+ 
+-	bh = sb_bread(inode->i_sb, le32_to_cpu(i_data));
+-	if (!bh)
+-		return -EIO;
++	bh = ext4_sb_bread(inode->i_sb, le32_to_cpu(i_data));
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 
+ 	tmp_idata = (__le32 *)bh->b_data;
+ 	for (i = 0; i < max_entries; i++) {
+@@ -382,9 +382,9 @@ static int free_ext_idx(handle_t *handle, struct inode *inode,
+ 	struct ext4_extent_header *eh;
+ 
+ 	block = ext4_idx_pblock(ix);
+-	bh = sb_bread(inode->i_sb, block);
+-	if (!bh)
+-		return -EIO;
++	bh = ext4_sb_bread(inode->i_sb, block);
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 
+ 	eh = (struct ext4_extent_header *)bh->b_data;
+ 	if (eh->eh_depth != 0) {
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index a5efee34415f..718e8ab7ae73 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -127,10 +127,12 @@ static int verify_group_input(struct super_block *sb,
+ 	else if (free_blocks_count < 0)
+ 		ext4_warning(sb, "Bad blocks count %u",
+ 			     input->blocks_count);
+-	else if (!(bh = sb_bread(sb, end - 1)))
++	else if (IS_ERR(bh = ext4_sb_bread(sb, end - 1))) {
++		err = PTR_ERR(bh);
++		bh = NULL;
+ 		ext4_warning(sb, "Cannot read last block (%llu)",
+ 			     end - 1);
+-	else if (outside(input->block_bitmap, start, end))
++	} else if (outside(input->block_bitmap, start, end))
+ 		ext4_warning(sb, "Block bitmap not in group (block %llu)",
+ 			     (unsigned long long)input->block_bitmap);
+ 	else if (outside(input->inode_bitmap, start, end))
+@@ -781,11 +783,11 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+ 	unsigned long gdb_num = group / EXT4_DESC_PER_BLOCK(sb);
+ 	ext4_fsblk_t gdblock = EXT4_SB(sb)->s_sbh->b_blocknr + 1 + gdb_num;
+-	struct buffer_head **o_group_desc, **n_group_desc;
+-	struct buffer_head *dind;
+-	struct buffer_head *gdb_bh;
++	struct buffer_head **o_group_desc, **n_group_desc = NULL;
++	struct buffer_head *dind = NULL;
++	struct buffer_head *gdb_bh = NULL;
+ 	int gdbackups;
+-	struct ext4_iloc iloc;
++	struct ext4_iloc iloc = { .bh = NULL };
+ 	__le32 *data;
+ 	int err;
+ 
+@@ -794,21 +796,22 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 		       "EXT4-fs: ext4_add_new_gdb: adding group block %lu\n",
+ 		       gdb_num);
+ 
+-	gdb_bh = sb_bread(sb, gdblock);
+-	if (!gdb_bh)
+-		return -EIO;
++	gdb_bh = ext4_sb_bread(sb, gdblock);
++	if (IS_ERR(gdb_bh))
++		return PTR_ERR(gdb_bh);
+ 
+ 	gdbackups = verify_reserved_gdb(sb, group, gdb_bh);
+ 	if (gdbackups < 0) {
+ 		err = gdbackups;
+-		goto exit_bh;
++		goto errout;
+ 	}
+ 
+ 	data = EXT4_I(inode)->i_data + EXT4_DIND_BLOCK;
+-	dind = sb_bread(sb, le32_to_cpu(*data));
+-	if (!dind) {
+-		err = -EIO;
+-		goto exit_bh;
++	dind = ext4_sb_bread(sb, le32_to_cpu(*data));
++	if (IS_ERR(dind)) {
++		err = PTR_ERR(dind);
++		dind = NULL;
++		goto errout;
+ 	}
+ 
+ 	data = (__le32 *)dind->b_data;
+@@ -816,18 +819,18 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 		ext4_warning(sb, "new group %u GDT block %llu not reserved",
+ 			     group, gdblock);
+ 		err = -EINVAL;
+-		goto exit_dind;
++		goto errout;
+ 	}
+ 
+ 	BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
+ 	if (unlikely(err))
+-		goto exit_dind;
++		goto errout;
+ 
+ 	BUFFER_TRACE(gdb_bh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, gdb_bh);
+ 	if (unlikely(err))
+-		goto exit_dind;
++		goto errout;
+ 
+ 	BUFFER_TRACE(dind, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, dind);
+@@ -837,7 +840,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	/* ext4_reserve_inode_write() gets a reference on the iloc */
+ 	err = ext4_reserve_inode_write(handle, inode, &iloc);
+ 	if (unlikely(err))
+-		goto exit_dind;
++		goto errout;
+ 
+ 	n_group_desc = ext4_kvmalloc((gdb_num + 1) *
+ 				     sizeof(struct buffer_head *),
+@@ -846,7 +849,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 		err = -ENOMEM;
+ 		ext4_warning(sb, "not enough memory for %lu groups",
+ 			     gdb_num + 1);
+-		goto exit_inode;
++		goto errout;
+ 	}
+ 
+ 	/*
+@@ -862,7 +865,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	err = ext4_handle_dirty_metadata(handle, NULL, dind);
+ 	if (unlikely(err)) {
+ 		ext4_std_error(sb, err);
+-		goto exit_inode;
++		goto errout;
+ 	}
+ 	inode->i_blocks -= (gdbackups + 1) * sb->s_blocksize >>
+ 			   (9 - EXT4_SB(sb)->s_cluster_bits);
+@@ -871,8 +874,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
+ 	if (unlikely(err)) {
+ 		ext4_std_error(sb, err);
+-		iloc.bh = NULL;
+-		goto exit_inode;
++		goto errout;
+ 	}
+ 	brelse(dind);
+ 
+@@ -888,15 +890,11 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	err = ext4_handle_dirty_super(handle, sb);
+ 	if (err)
+ 		ext4_std_error(sb, err);
+-
+ 	return err;
+-
+-exit_inode:
++errout:
+ 	kvfree(n_group_desc);
+ 	brelse(iloc.bh);
+-exit_dind:
+ 	brelse(dind);
+-exit_bh:
+ 	brelse(gdb_bh);
+ 
+ 	ext4_debug("leaving with error %d\n", err);
+@@ -916,9 +914,9 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
+ 
+ 	gdblock = ext4_meta_bg_first_block_no(sb, group) +
+ 		   ext4_bg_has_super(sb, group);
+-	gdb_bh = sb_bread(sb, gdblock);
+-	if (!gdb_bh)
+-		return -EIO;
++	gdb_bh = ext4_sb_bread(sb, gdblock);
++	if (IS_ERR(gdb_bh))
++		return PTR_ERR(gdb_bh);
+ 	n_group_desc = ext4_kvmalloc((gdb_num + 1) *
+ 				     sizeof(struct buffer_head *),
+ 				     GFP_NOFS);
+@@ -975,9 +973,10 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
+ 		return -ENOMEM;
+ 
+ 	data = EXT4_I(inode)->i_data + EXT4_DIND_BLOCK;
+-	dind = sb_bread(sb, le32_to_cpu(*data));
+-	if (!dind) {
+-		err = -EIO;
++	dind = ext4_sb_bread(sb, le32_to_cpu(*data));
++	if (IS_ERR(dind)) {
++		err = PTR_ERR(dind);
++		dind = NULL;
+ 		goto exit_free;
+ 	}
+ 
+@@ -996,9 +995,10 @@ static int reserve_backup_gdb(handle_t *handle, struct inode *inode,
+ 			err = -EINVAL;
+ 			goto exit_bh;
+ 		}
+-		primary[res] = sb_bread(sb, blk);
+-		if (!primary[res]) {
+-			err = -EIO;
++		primary[res] = ext4_sb_bread(sb, blk);
++		if (IS_ERR(primary[res])) {
++			err = PTR_ERR(res);
++			primary[res] = NULL;
+ 			goto exit_bh;
+ 		}
+ 		gdbackups = verify_reserved_gdb(sb, group, primary[res]);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 53ff6c2a26ed..c09822001b25 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -140,6 +140,29 @@ MODULE_ALIAS_FS("ext3");
+ MODULE_ALIAS("ext3");
+ #define IS_EXT3_SB(sb) ((sb)->s_bdev->bd_holder == &ext3_fs_type)
+ 
++/*
++ * This works like sb_bread() except it uses ERR_PTR for error
++ * returns.  Currently with sb_bread it's impossible to distinguish
++ * between ENOMEM and EIO situations (since both result in a NULL
++ * return.
++ */
++struct buffer_head *
++ext4_sb_bread(struct super_block *sb, sector_t block)
++{
++	struct buffer_head *bh = sb_getblk(sb, block);
++
++	if (bh == NULL)
++		return ERR_PTR(-ENOMEM);
++	if (buffer_uptodate(bh))
++		return bh;
++	ll_rw_block(REQ_OP_READ, REQ_META | REQ_PRIO, 1, &bh);
++	wait_on_buffer(bh);
++	if (buffer_uptodate(bh))
++		return bh;
++	put_bh(bh);
++	return ERR_PTR(-EIO);
++}
++
+ static int ext4_verify_csum_type(struct super_block *sb,
+ 				 struct ext4_super_block *es)
+ {
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 7643d52c776c..3896fbd1fbb5 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -522,14 +522,13 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
+ 	ea_idebug(inode, "name=%d.%s, buffer=%p, buffer_size=%ld",
+ 		  name_index, name, buffer, (long)buffer_size);
+ 
+-	error = -ENODATA;
+ 	if (!EXT4_I(inode)->i_file_acl)
+-		goto cleanup;
++		return -ENODATA;
+ 	ea_idebug(inode, "reading block %llu",
+ 		  (unsigned long long)EXT4_I(inode)->i_file_acl);
+-	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+-	if (!bh)
+-		goto cleanup;
++	bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 	ea_bdebug(bh, "b_count=%d, refcount=%d",
+ 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
+ 	error = ext4_xattr_check_block(inode, bh);
+@@ -696,26 +695,23 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
+ 	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
+ 		  buffer, (long)buffer_size);
+ 
+-	error = 0;
+ 	if (!EXT4_I(inode)->i_file_acl)
+-		goto cleanup;
++		return NULL;
+ 	ea_idebug(inode, "reading block %llu",
+ 		  (unsigned long long)EXT4_I(inode)->i_file_acl);
+-	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+-	error = -EIO;
+-	if (!bh)
+-		goto cleanup;
++	bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
++	if (IS_ERR(bh))
++		return PTR_ERR(bh);
+ 	ea_bdebug(bh, "b_count=%d, refcount=%d",
+ 		atomic_read(&(bh->b_count)), le32_to_cpu(BHDR(bh)->h_refcount));
+ 	error = ext4_xattr_check_block(inode, bh);
+ 	if (error)
+ 		goto cleanup;
+ 	ext4_xattr_block_cache_insert(EA_BLOCK_CACHE(inode), bh);
+-	error = ext4_xattr_list_entries(dentry, BFIRST(bh), buffer, buffer_size);
+-
++	error = ext4_xattr_list_entries(dentry, BFIRST(bh), buffer,
++					buffer_size);
+ cleanup:
+ 	brelse(bh);
+-
+ 	return error;
+ }
+ 
+@@ -830,9 +826,9 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
+ 	}
+ 
+ 	if (EXT4_I(inode)->i_file_acl) {
+-		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+-		if (!bh) {
+-			ret = -EIO;
++		bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
++		if (IS_ERR(bh)) {
++			ret = PTR_ERR(bh);
+ 			goto out;
+ 		}
+ 
+@@ -1821,16 +1817,15 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
+ 
+ 	if (EXT4_I(inode)->i_file_acl) {
+ 		/* The inode already has an extended attribute block. */
+-		bs->bh = sb_bread(sb, EXT4_I(inode)->i_file_acl);
+-		error = -EIO;
+-		if (!bs->bh)
+-			goto cleanup;
++		bs->bh = ext4_sb_bread(sb, EXT4_I(inode)->i_file_acl);
++		if (IS_ERR(bs->bh))
++			return PTR_ERR(bs->bh);
+ 		ea_bdebug(bs->bh, "b_count=%d, refcount=%d",
+ 			atomic_read(&(bs->bh->b_count)),
+ 			le32_to_cpu(BHDR(bs->bh)->h_refcount));
+ 		error = ext4_xattr_check_block(inode, bs->bh);
+ 		if (error)
+-			goto cleanup;
++			return error;
+ 		/* Find the named attribute. */
+ 		bs->s.base = BHDR(bs->bh);
+ 		bs->s.first = BFIRST(bs->bh);
+@@ -1839,13 +1834,10 @@ ext4_xattr_block_find(struct inode *inode, struct ext4_xattr_info *i,
+ 		error = xattr_find_entry(inode, &bs->s.here, bs->s.end,
+ 					 i->name_index, i->name, 1);
+ 		if (error && error != -ENODATA)
+-			goto cleanup;
++			return error;
+ 		bs->s.not_found = error;
+ 	}
+-	error = 0;
+-
+-cleanup:
+-	return error;
++	return 0;
+ }
+ 
+ static int
+@@ -2274,9 +2266,9 @@ static struct buffer_head *ext4_xattr_get_block(struct inode *inode)
+ 
+ 	if (!EXT4_I(inode)->i_file_acl)
+ 		return NULL;
+-	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+-	if (!bh)
+-		return ERR_PTR(-EIO);
++	bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
++	if (IS_ERR(bh))
++		return bh;
+ 	error = ext4_xattr_check_block(inode, bh);
+ 	if (error) {
+ 		brelse(bh);
+@@ -2746,10 +2738,11 @@ int ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+ 	if (EXT4_I(inode)->i_file_acl) {
+ 		struct buffer_head *bh;
+ 
+-		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+-		error = -EIO;
+-		if (!bh)
++		bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
++		if (IS_ERR(bh)) {
++			error = PTR_ERR(bh);
+ 			goto cleanup;
++		}
+ 		error = ext4_xattr_check_block(inode, bh);
+ 		if (error) {
+ 			brelse(bh);
+@@ -2903,11 +2896,12 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
+ 	}
+ 
+ 	if (EXT4_I(inode)->i_file_acl) {
+-		bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+-		if (!bh) {
+-			EXT4_ERROR_INODE(inode, "block %llu read error",
+-					 EXT4_I(inode)->i_file_acl);
+-			error = -EIO;
++		bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
++		if (IS_ERR(bh)) {
++			error = PTR_ERR(bh);
++			if (error == -EIO)
++				EXT4_ERROR_INODE(inode, "block %llu read error",
++						 EXT4_I(inode)->i_file_acl);
+ 			goto cleanup;
+ 		}
+ 		error = ext4_xattr_check_block(inode, bh);
+@@ -3060,8 +3054,10 @@ ext4_xattr_block_cache_find(struct inode *inode,
+ 	while (ce) {
+ 		struct buffer_head *bh;
+ 
+-		bh = sb_bread(inode->i_sb, ce->e_value);
+-		if (!bh) {
++		bh = ext4_sb_bread(inode->i_sb, ce->e_value);
++		if (IS_ERR(bh)) {
++			if (PTR_ERR(bh) == -ENOMEM)
++				return NULL;
+ 			EXT4_ERROR_INODE(inode, "block %lu read error",
+ 					 (unsigned long)ce->e_value);
+ 		} else if (ext4_xattr_cmp(header, BHDR(bh)) == 0) {
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.19.1
