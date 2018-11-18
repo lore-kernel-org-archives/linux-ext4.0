@@ -1,133 +1,25 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37582 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726165AbeKUN5s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 08:57:48 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V11 02/19] block: introduce multi-page bvec helpers
-Date: Wed, 21 Nov 2018 11:23:10 +0800
-Message-Id: <20181121032327.8434-3-ming.lei@redhat.com>
-In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
+Return-Path: <SRS0=3cJ+=N5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from sv2113.xserver.jp ([183.90.242.14]:33870 "EHLO
+        sv2113.xserver.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726095AbeKSHN4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2018 02:13:56 -0500
+Reply-To: <reem51531593@gmail.com>
+From: "Reem Al-Hashimi" <zjruibang@chemnet.com>
+Subject: Important
+Date: Mon, 19 Nov 2018 02:45:57 +0700
+MIME-Version: 1.0
+Content-Type: text/plain;
+        charset="Windows-1251"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20181118194615.3E021418DC918F@sv2113.xserver.jp>
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch introduces helpers of 'segment_iter_*' for multipage
-bvec support.
+Hello,
 
-The introduced helpers treate one bvec as real multi-page segment,
-which may include more than one pages.
+My name is ms. Reem Al-Hashimi. The UAE minister of state for international cooparation. I got your contact from a certain email database from your country while i was looking for someone to handle a huge financial transaction for me in confidence. Can you receive and invest on behalf of my only son. Please reply to reem2018@daum.net, for more details if you are interested.
 
-The existed helpers of bvec_iter_* are interfaces for supporting current
-bvec iterator which is thought as single-page by drivers, fs, dm and
-etc. These introduced helpers will build single-page bvec in flight, so
-this way won't break current bio/bvec users, which needn't any change.
+Regards,
 
-Follows some multi-page bvec background:
-
-- bvecs stored in bio->bi_io_vec is always multi-page style
-
-- bvec(struct bio_vec) represents one physically contiguous I/O
-  buffer, now the buffer may include more than one page after
-  multi-page bvec is supported, and all these pages represented
-  by one bvec is physically contiguous. Before multi-page bvec
-  support, at most one page is included in one bvec, we call it
-  single-page bvec.
-
-- .bv_page of the bvec points to the 1st page in the multi-page bvec
-
-- .bv_offset of the bvec is the offset of the buffer in the bvec
-
-The effect on the current drivers/filesystem/dm/bcache/...:
-
-- almost everyone supposes that one bvec only includes one single
-  page, so we keep the sp interface not changed, for example,
-  bio_for_each_segment() still returns single-page bvec
-
-- bio_for_each_segment_all() will return single-page bvec too
-
-- during iterating, iterator variable(struct bvec_iter) is always
-  updated in multi-page bvec style, and bvec_iter_advance() is kept
-  not changed
-
-- returned(copied) single-page bvec is built in flight by bvec
-  helpers from the stored multi-page bvec
-
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- include/linux/bvec.h | 26 +++++++++++++++++++++++---
- 1 file changed, 23 insertions(+), 3 deletions(-)
-
-diff --git a/include/linux/bvec.h b/include/linux/bvec.h
-index 02c73c6aa805..ed90bbf4c9c9 100644
---- a/include/linux/bvec.h
-+++ b/include/linux/bvec.h
-@@ -23,6 +23,7 @@
- #include <linux/kernel.h>
- #include <linux/bug.h>
- #include <linux/errno.h>
-+#include <linux/mm.h>
- 
- /*
-  * was unsigned short, but we might as well be ready for > 64kB I/O pages
-@@ -50,16 +51,35 @@ struct bvec_iter {
-  */
- #define __bvec_iter_bvec(bvec, iter)	(&(bvec)[(iter).bi_idx])
- 
--#define bvec_iter_page(bvec, iter)				\
-+#define segment_iter_page(bvec, iter)				\
- 	(__bvec_iter_bvec((bvec), (iter))->bv_page)
- 
--#define bvec_iter_len(bvec, iter)				\
-+#define segment_iter_len(bvec, iter)				\
- 	min((iter).bi_size,					\
- 	    __bvec_iter_bvec((bvec), (iter))->bv_len - (iter).bi_bvec_done)
- 
--#define bvec_iter_offset(bvec, iter)				\
-+#define segment_iter_offset(bvec, iter)				\
- 	(__bvec_iter_bvec((bvec), (iter))->bv_offset + (iter).bi_bvec_done)
- 
-+#define segment_iter_page_idx(bvec, iter)			\
-+	(segment_iter_offset((bvec), (iter)) / PAGE_SIZE)
-+
-+/*
-+ * <page, offset,length> of single-page segment.
-+ *
-+ * This helpers are for building single-page bvec in flight.
-+ */
-+#define bvec_iter_offset(bvec, iter)					\
-+	(segment_iter_offset((bvec), (iter)) % PAGE_SIZE)
-+
-+#define bvec_iter_len(bvec, iter)					\
-+	min_t(unsigned, segment_iter_len((bvec), (iter)),		\
-+	      PAGE_SIZE - bvec_iter_offset((bvec), (iter)))
-+
-+#define bvec_iter_page(bvec, iter)					\
-+	nth_page(segment_iter_page((bvec), (iter)),		\
-+		 segment_iter_page_idx((bvec), (iter)))
-+
- #define bvec_iter_bvec(bvec, iter)				\
- ((struct bio_vec) {						\
- 	.bv_page	= bvec_iter_page((bvec), (iter)),	\
--- 
-2.9.5
+Ms. Reem Al-Hashimy
