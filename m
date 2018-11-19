@@ -1,73 +1,133 @@
-Return-Path: <SRS0=yllL=NN=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lj1-f193.google.com ([209.85.208.193]:37987 "EHLO
-        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726008AbeKBUDz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2018 16:03:55 -0400
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:57646 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726988AbeKSToH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 14:44:07 -0500
+Date: Mon, 19 Nov 2018 17:20:41 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 18/19] block: kill QUEUE_FLAG_NO_SG_MERGE
+Message-ID: <20181119092040.GP16736@ming.t460p>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-19-ming.lei@redhat.com>
+ <20181116135803.GN3165@lst.de>
 MIME-Version: 1.0
-References: <20181021171414.22674-1-miguel.ojeda.sandonis@gmail.com>
- <20181021171414.22674-3-miguel.ojeda.sandonis@gmail.com> <CAGXu5j+3pR2mfcdbURv7MrPxUVjmjQEDRHH8BLpTNGiasJs1pg@mail.gmail.com>
- <20181023053542.lsklua2p3lnbkqir@mwanda> <CANiq72nrd70qTxEAfxxuNHNoi19MBo=yrJnm9_EnfrpEMQHXCg@mail.gmail.com>
-In-Reply-To: <CANiq72nrd70qTxEAfxxuNHNoi19MBo=yrJnm9_EnfrpEMQHXCg@mail.gmail.com>
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Fri, 2 Nov 2018 11:56:58 +0100
-Message-ID: <CANiq72k3rniqgoEqLwZxpTO0N9-BqkZKRJr_M-T7-y6khR03ww@mail.gmail.com>
-Subject: Re: [PATCH 2/2] Compiler Attributes: auxdisplay: panel: use __fallthrough
-To: Dan <dan.carpenter@oracle.com>
-Cc: Kees Cook <keescook@chromium.org>,
-        "Gustavo A. R. Silva" <gustavo@embeddedor.com>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181116135803.GN3165@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 2, 2018 at 11:49 AM Miguel Ojeda
-<miguel.ojeda.sandonis@gmail.com> wrote:
->
-> Thanks for checking! Let's wait then a few months and see if we can
-> get cppcheck/Eclipse to support it.
+On Fri, Nov 16, 2018 at 02:58:03PM +0100, Christoph Hellwig wrote:
+> On Thu, Nov 15, 2018 at 04:53:05PM +0800, Ming Lei wrote:
+> > Since bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting"),
+> > physical segment number is mainly figured out in blk_queue_split() for
+> > fast path, and the flag of BIO_SEG_VALID is set there too.
+> > 
+> > Now only blk_recount_segments() and blk_recalc_rq_segments() use this
+> > flag.
+> > 
+> > Basically blk_recount_segments() is bypassed in fast path given BIO_SEG_VALID
+> > is set in blk_queue_split().
+> > 
+> > For another user of blk_recalc_rq_segments():
+> > 
+> > - run in partial completion branch of blk_update_request, which is an unusual case
+> > 
+> > - run in blk_cloned_rq_check_limits(), still not a big problem if the flag is killed
+> > since dm-rq is the only user.
+> > 
+> > Multi-page bvec is enabled now, QUEUE_FLAG_NO_SG_MERGE doesn't make sense any more.
+> > 
+> > Cc: Dave Chinner <dchinner@redhat.com>
+> > Cc: Kent Overstreet <kent.overstreet@gmail.com>
+> > Cc: Mike Snitzer <snitzer@redhat.com>
+> > Cc: dm-devel@redhat.com
+> > Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+> > Cc: linux-fsdevel@vger.kernel.org
+> > Cc: Shaohua Li <shli@kernel.org>
+> > Cc: linux-raid@vger.kernel.org
+> > Cc: linux-erofs@lists.ozlabs.org
+> > Cc: David Sterba <dsterba@suse.com>
+> > Cc: linux-btrfs@vger.kernel.org
+> > Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> > Cc: linux-xfs@vger.kernel.org
+> > Cc: Gao Xiang <gaoxiang25@huawei.com>
+> > Cc: Christoph Hellwig <hch@lst.de>
+> > Cc: Theodore Ts'o <tytso@mit.edu>
+> > Cc: linux-ext4@vger.kernel.org
+> > Cc: Coly Li <colyli@suse.de>
+> > Cc: linux-bcache@vger.kernel.org
+> > Cc: Boaz Harrosh <ooo@electrozaur.com>
+> > Cc: Bob Peterson <rpeterso@redhat.com>
+> > Cc: cluster-devel@redhat.com
+> > Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> > ---
+> >  block/blk-merge.c      | 31 ++++++-------------------------
+> >  block/blk-mq-debugfs.c |  1 -
+> >  block/blk-mq.c         |  3 ---
+> >  drivers/md/dm-table.c  | 13 -------------
+> >  include/linux/blkdev.h |  1 -
+> >  5 files changed, 6 insertions(+), 43 deletions(-)
+> > 
+> > diff --git a/block/blk-merge.c b/block/blk-merge.c
+> > index 153a659fde74..06be298be332 100644
+> > --- a/block/blk-merge.c
+> > +++ b/block/blk-merge.c
+> > @@ -351,8 +351,7 @@ void blk_queue_split(struct request_queue *q, struct bio **bio)
+> >  EXPORT_SYMBOL(blk_queue_split);
+> >  
+> >  static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+> > -					     struct bio *bio,
+> > -					     bool no_sg_merge)
+> > +					     struct bio *bio)
+> >  {
+> >  	struct bio_vec bv, bvprv = { NULL };
+> >  	int cluster, prev = 0;
+> > @@ -379,13 +378,6 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+> >  	nr_phys_segs = 0;
+> >  	for_each_bio(bio) {
+> >  		bio_for_each_bvec(bv, bio, iter) {
+> > -			/*
+> > -			 * If SG merging is disabled, each bio vector is
+> > -			 * a segment
+> > -			 */
+> > -			if (no_sg_merge)
+> > -				goto new_segment;
+> > -
+> >  			if (prev && cluster) {
+> >  				if (seg_size + bv.bv_len
+> >  				    > queue_max_segment_size(q))
+> > @@ -420,27 +412,16 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+> >  
+> >  void blk_recalc_rq_segments(struct request *rq)
+> >  {
+> > -	bool no_sg_merge = !!test_bit(QUEUE_FLAG_NO_SG_MERGE,
+> > -			&rq->q->queue_flags);
+> > -
+> > -	rq->nr_phys_segments = __blk_recalc_rq_segments(rq->q, rq->bio,
+> > -			no_sg_merge);
+> > +	rq->nr_phys_segments = __blk_recalc_rq_segments(rq->q, rq->bio);
+> 
+> Can we rename __blk_recalc_rq_segments to blk_recalc_rq_segments
+> can kill the old blk_recalc_rq_segments now?
 
-In the meantime, saved here too:
+Sure.
 
-  https://github.com/ojeda/linux/tree/compiler-attributes-fallthrough
-
-rebased on top of e468f5c06b5e ("Merge tag
-'compiler-attributes-for-linus-4.20-rc1' of
-https://github.com/ojeda/linux").
-
-Cheers,
-Miguel
+Thanks,
+Ming
