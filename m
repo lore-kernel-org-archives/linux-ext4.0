@@ -1,44 +1,91 @@
-Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mga18.intel.com ([134.134.136.126]:45833 "EHLO mga18.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725843AbeKUAGY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 20 Nov 2018 19:06:24 -0500
-Date: Tue, 20 Nov 2018 21:36:39 +0800
-From: kbuild test robot <lkp@intel.com>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: kbuild-all@01.org,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>, stable@kernel.org
-Subject: Re: [PATCH] ext4: add ext4_sb_bread() to disambiguate ENOMEM cases
-Message-ID: <201811202145.0H2GYODQ%fengguang.wu@intel.com>
-References: <20181117233523.8832-1-tytso@mit.edu>
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:35556 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725912AbeKSPrc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 10:47:32 -0500
+Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wAJ5P1aq096770
+        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:25:02 -0500
+Received: from e32.co.us.ibm.com (e32.co.us.ibm.com [32.97.110.150])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2nujcasrr0-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:25:01 -0500
+Received: from localhost
+        by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Mon, 19 Nov 2018 05:23:56 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, ebiggers@kernel.org,
+        tytso@mit.edu
+Subject: [PATCH 6/7] f2fs: use IS_VERITY() to check inode's fsverity status
+Date: Mon, 19 Nov 2018 10:53:23 +0530
+In-Reply-To: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
+References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181117233523.8832-1-tytso@mit.edu>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20181119052324.31456-7-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Theodore,
+This commit now uses IS_VERITY() macro to check if fsverity is
+enabled on an inode.
 
-I love your patch! Perhaps something to improve:
-
-[auto build test WARNING on ext4/dev]
-[also build test WARNING on v4.20-rc3 next-20181120]
-[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
-
-url:    https://github.com/0day-ci/linux/commits/Theodore-Ts-o/ext4-add-ext4_sb_bread-to-disambiguate-ENOMEM-cases/20181120-070629
-base:   https://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git dev
-
-
-coccinelle warnings: (new ones prefixed by >>)
-
->> fs/ext4/resize.c:1000:9-16: ERROR: PTR_ERR applied after initialization to constant on line 989
---
->> fs/ext4/resize.c:999:6-12: inconsistent IS_ERR and PTR_ERR on line 1000.
-
-Please review and possibly fold the followup patch.
-
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+ fs/f2fs/file.c  | 6 +++---
+ fs/f2fs/inode.c | 4 +++-
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 6c7ad15000b9..2eb4821d95d1 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -491,7 +491,7 @@ static int f2fs_file_open(struct inode *inode, struct file *filp)
+ 	if (err)
+ 		return err;
+ 
+-	if (f2fs_verity_file(inode)) {
++	if (IS_VERITY(inode)) {
+ 		err = fsverity_file_open(inode, filp);
+ 		if (err)
+ 			return err;
+@@ -701,7 +701,7 @@ int f2fs_getattr(const struct path *path, struct kstat *stat,
+ 	struct f2fs_inode *ri;
+ 	unsigned int flags;
+ 
+-	if (f2fs_verity_file(inode)) {
++	if (IS_VERITY(inode)) {
+ 		/*
+ 		 * For fs-verity we need to override i_size with the original
+ 		 * data i_size.  This requires I/O to the file which with
+@@ -800,7 +800,7 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (err)
+ 		return err;
+ 
+-	if (f2fs_verity_file(inode)) {
++	if (IS_VERITY(inode)) {
+ 		err = fsverity_prepare_setattr(dentry, attr);
+ 		if (err)
+ 			return err;
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index ddef483ad689..02806feed64c 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -45,9 +45,11 @@ void f2fs_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_DIRSYNC;
+ 	if (f2fs_encrypted_inode(inode))
+ 		new_fl |= S_ENCRYPTED;
++	if (f2fs_verity_file(inode))
++		new_fl |= S_VERITY;
+ 	inode_set_flags(inode, new_fl,
+ 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|
+-			S_ENCRYPTED);
++			S_ENCRYPTED|S_VERITY);
+ }
+ 
+ static void __get_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
+-- 
+2.19.1
