@@ -1,233 +1,135 @@
-Return-Path: <SRS0=yRHK=OD=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:48550 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728450AbeKXOfp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 24 Nov 2018 09:35:45 -0500
-Date: Fri, 23 Nov 2018 22:48:47 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Jean-Christophe Guillain <jcguillain@sequans.com>,
-        linux-ext4@vger.kernel.org
-Subject: Re: Metadata_csum is still enabled after trying to disable it.
-Message-ID: <20181124034847.GA12941@thunk.org>
-References: <E1gPWbq-0006F7-IZ@eureka>
- <20181122030119.GA6778@magnolia>
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:41718 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726088AbeKSPqW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 10:46:22 -0500
+Received: from pps.filterd (m0098413.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wAJ5EdS6049307
+        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:23:52 -0500
+Received: from e32.co.us.ibm.com (e32.co.us.ibm.com [32.97.110.150])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 2nujeqj1r5-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:23:52 -0500
+Received: from localhost
+        by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Mon, 19 Nov 2018 05:23:51 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, ebiggers@kernel.org,
+        tytso@mit.edu
+Subject: [PATCH 5/7] ext4: use IS_VERITY() to check inode's fsverity status
+Date: Mon, 19 Nov 2018 10:53:22 +0530
+In-Reply-To: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
+References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-In-Reply-To: <20181122030119.GA6778@magnolia>
+Content-Transfer-Encoding: 8bit
+Message-Id: <20181119052324.31456-6-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 21, 2018 at 07:01:19PM -0800, Darrick J. Wong wrote:
-> > Is it a bug ?
->=20
-> Yes.
->=20
-> > How can I actually disable this parameter ?
->
+This commit now uses IS_VERITY() macro to check if fsverity is
+enabled on an inode.
 
-Actually, the metadata_csum feature *was* disabled.  You would have
-seen that if you looked at the "Features: " line printed by dumpe2fs
--h or tune2fs -l.  The bug was that we were erroneously warning that
-the tune2fs -U operation would take a long time when flex_bg was
-enabled, but metadata_csum was not.  So it was misleading wrong, but
-it actually turning off the metadata_csum feature.
-
-Cheers,
-
-					- Ted
-
-=46rom 0eeb17d0610fd512c1038dabb39370420ffb47a4 Mon Sep 17 00:00:00 2001
-=46rom: Theodore Ts'o <tytso@mit.edu>
-Date: Fri, 23 Nov 2018 22:34:31 -0500
-Subject: [PATCH] tune2fs: fix false warning that a UUID change will take a
- long time
-
-If the file system only has the flex_bg feature enabled (with out the
-metadata_csum feature enabled), it won't take a long time time fix up
-the checksums after changing the UUID.  While it does need to
-recalculate all of the checksums in the block group descriptors, that
-doesn't take a long time.
-
-Also, if the ea_data feature is enabled, changing the UUID will also
-take a long time, and we weren't warning the user about that case.
-
-Fix up the warning message so it doesn't mislead people, and is more
-accurate.
-
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
- misc/tune2fs.c           | 17 +++++++++--------
- tests/t_dangerous/expect | 29 ++++++++++++++++++++++++-----
- tests/t_dangerous/script | 33 +++++++++++++++++++++++++++------
- 3 files changed, 60 insertions(+), 19 deletions(-)
+ fs/ext4/ext4.h     |  9 ---------
+ fs/ext4/file.c     |  2 +-
+ fs/ext4/inode.c    | 10 ++++++----
+ fs/ext4/readpage.c |  2 +-
+ 4 files changed, 8 insertions(+), 15 deletions(-)
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index ec977b8c3..7c5ba0c77 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -3221,6 +3221,15 @@ _("Warning: The journal is dirty. You may wish to re=
-play the journal like:\n\n"
- 		char buf[SUPERBLOCK_SIZE] __attribute__ ((aligned(8)));
- 		__u8 old_uuid[UUID_SIZE];
-=20
-+		if (!ext2fs_has_feature_csum_seed(fs->super) &&
-+		    (ext2fs_has_feature_metadata_csum(fs->super) ||
-+		     ext2fs_has_feature_ea_inode(fs->super))) {
-+			check_fsck_needed(fs,
-+				_("Setting the UUID on this "
-+				  "filesystem could take some time."));
-+			rewrite_checksums =3D 1;
-+		}
-+
- 		if (ext2fs_has_group_desc_csum(fs)) {
- 			/*
- 			 * Changing the UUID on a metadata_csum FS requires
-@@ -3241,10 +3250,6 @@ _("Warning: The journal is dirty. You may wish to re=
-play the journal like:\n\n"
- 				try_confirm_csum_seed_support();
- 				exit(1);
- 			}
--			if (!ext2fs_has_feature_csum_seed(fs->super))
--				check_fsck_needed(fs,
--					_("Setting UUID on a checksummed "
--					  "filesystem could take some time."));
-=20
- 			/*
- 			 * Determine if the block group checksums are
-@@ -3302,10 +3307,6 @@ _("Warning: The journal is dirty. You may wish to re=
-play the journal like:\n\n"
- 		}
-=20
- 		ext2fs_mark_super_dirty(fs);
--		if (!ext2fs_has_feature_csum_seed(fs->super) &&
--		    (ext2fs_has_feature_metadata_csum(fs->super) ||
--		     ext2fs_has_feature_ea_inode(fs->super)))
--			rewrite_checksums =3D 1;
- 	}
-=20
- 	if (I_flag) {
-diff --git a/tests/t_dangerous/expect b/tests/t_dangerous/expect
-index a9903b750..31aaf4fad 100644
---- a/tests/t_dangerous/expect
-+++ b/tests/t_dangerous/expect
-@@ -43,10 +43,6 @@ tune2fs -I 512 test.img
- Resizing inodes could take some time.
- Proceed anyway (or wait 5 seconds to proceed) ? (y,N)=20
- Exit status is 1
--tune2fs -U random test.img
--Setting UUID on a checksummed filesystem could take some time.
--Proceed anyway (or wait 5 seconds to proceed) ? (y,N)=20
--Exit status is 1
-=20
- Change in FS metadata:
- Pass 1: Checking inodes, blocks, and sizes
-@@ -79,7 +75,7 @@ Resizing inodes could take some time.
- Proceed anyway (or wait 5 seconds to proceed) ? (y,N) Setting inode size 5=
-12
- Exit status is 0
- tune2fs -U f0f0f0f0-f0f0-f0f0-f0f0-f0f0f0f0f0f0 test.img
--Setting UUID on a checksummed filesystem could take some time.
-+Setting the UUID on this filesystem could take some time.
- Proceed anyway (or wait 5 seconds to proceed) ? (y,N) Exit status is 0
- Backing up journal inode block information.
-=20
-@@ -99,3 +95,26 @@ Pass 4: Checking reference counts
- Pass 5: Checking group summary information
-=20
- Exit status is 0
-+=20
-+Testing with metadata checksum enabled
-+Creating filesystem with 524288 1k blocks and 65536 inodes
-+Superblock backups stored on blocks:=20
-+	8193, 24577, 40961, 57345, 73729, 204801, 221185, 401409
-+
-+Allocating group tables:      =08=08=08=08=08done                         =
-  =20
-+Writing inode tables:      =08=08=08=08=08done                           =
-=20
-+Creating journal (16384 blocks): done
-+Creating 445 huge file(s) with 1024 blocks each: done
-+Writing superblocks and filesystem accounting information:      =08=08=08=
-=08=08done
-+
-+Pass 1: Checking inodes, blocks, and sizes
-+Pass 2: Checking directory structure
-+Pass 3: Checking directory connectivity
-+Pass 4: Checking reference counts
-+Pass 5: Checking group summary information
-+
-+Exit status is 0
-+tune2fs -U random test.img
-+Setting the UUID on this filesystem could take some time.
-+Proceed anyway (or wait 5 seconds to proceed) ? (y,N)=20
-+Exit status is 1
-diff --git a/tests/t_dangerous/script b/tests/t_dangerous/script
-index b71421881..f684d56d3 100644
---- a/tests/t_dangerous/script
-+++ b/tests/t_dangerous/script
-@@ -17,6 +17,18 @@ cat > $CONF << ENDL
- 		hugefiles_size =3D 1M
- 		zero_hugefiles =3D false
- 	}
-+	ext4m =3D {
-+		features =3D has_journal,extent,huge_file,^flex_bg,uninit_bg,dir_nlink,e=
-xtra_isize,sparse_super,filetype,dir_index,ext_attr,resize_inode,64bit,meta=
-data_csum
-+		blocksize =3D 1024
-+		inode_size =3D 256
-+		make_hugefiles =3D true
-+		hugefiles_dir =3D /
-+		hugefiles_slack =3D 32M
-+		hugefiles_name =3D aaaaa
-+		hugefiles_digits =3D 4
-+		hugefiles_size =3D 1M
-+		zero_hugefiles =3D false
-+	}
- ENDL
-=20
- echo "tune2fs dangerous prompts test" > $OUT
-@@ -62,12 +74,6 @@ echo 'n' | TUNE2FS_FORCE_PROMPT=3D1 $TUNE2FS -I 512 $TMP=
-FILE >> $OUT 2>&1
- status=3D$?
- echo Exit status is $status >> $OUT
-=20
--# change uuid
--echo "tune2fs -U random test.img" >> $OUT
--echo 'n' | TUNE2FS_FORCE_PROMPT=3D1 $TUNE2FS -U random $TMPFILE >> $OUT 2>=
-&1
--status=3D$?
--echo Exit status is $status >> $OUT
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index db21df885186..64bf9fb7ef18 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2296,15 +2296,6 @@ extern unsigned ext4_free_clusters_after_init(struct super_block *sb,
+ 					      struct ext4_group_desc *gdp);
+ ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+ 
+-static inline bool ext4_verity_inode(struct inode *inode)
+-{
+-#ifdef CONFIG_EXT4_FS_VERITY
+-	return ext4_test_inode_flag(inode, EXT4_INODE_VERITY);
+-#else
+-	return false;
+-#endif
+-}
 -
- # check
- $FSCK -yD -N test_filesys $TMPFILE >> $OUT 2>&1
-=20
-@@ -111,6 +117,21 @@ $FSCK $FSCK_OPT -N test_filesys $TMPFILE >> $OUT 2>&1
- status=3D$?
- echo Exit status is $status >> $OUT
-=20
-+echo " " >> $OUT
-+echo "Testing with metadata checksum enabled" >> $OUT
-+
-+MKE2FS_CONFIG=3D$CONF $MKE2FS -F -T ext4m -U 6fc3daa4-180d-4f2b-a6f2-f7a5e=
-fb79bcf $TMPFILE 524288 >> $OUT 2>&1
-+$DUMPE2FS $TMPFILE 2> /dev/null | grep '^Group 0:' -B99 -A20 | sed -f $cmd=
-_dir/filter.sed > $OUT.before
-+$FSCK $FSCK_OPT -f -N test_filesys $TMPFILE >> $OUT 2>&1
-+status=3D$?
-+echo Exit status is $status >> $OUT
-+
-+# change uuid
-+echo "tune2fs -U random test.img" >> $OUT
-+echo 'n' | TUNE2FS_FORCE_PROMPT=3D1 $TUNE2FS -U random $TMPFILE >> $OUT 2>=
-&1
-+status=3D$?
-+echo Exit status is $status >> $OUT
-+
- rm $TMPFILE $OUT.before $OUT.after $CONF
-=20
- #
---=20
+ #ifdef CONFIG_FS_ENCRYPTION
+ static inline int ext4_fname_setup_filename(struct inode *dir,
+ 			const struct qstr *iname,
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index cb4b69ef01a2..30fbd663354f 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -444,7 +444,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 	if (ret)
+ 		return ret;
+ 
+-	if (ext4_verity_inode(inode)) {
++	if (IS_VERITY(inode)) {
+ 		ret = fsverity_file_open(inode, filp);
+ 		if (ret)
+ 			return ret;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ae6794649817..3786740b73fa 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3884,7 +3884,7 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+ 		return 0;
+ #endif
+ 
+-	if (ext4_verity_inode(inode))
++	if (IS_VERITY(inode))
+ 		return 0;
+ 
+ 	/*
+@@ -4726,7 +4726,7 @@ static bool ext4_should_use_dax(struct inode *inode)
+ 		return false;
+ 	if (IS_ENCRYPTED(inode))
+ 		return false;
+-	if (ext4_verity_inode(inode))
++	if (IS_VERITY(inode))
+ 		return false;
+ 	return true;
+ }
+@@ -4750,9 +4750,11 @@ void ext4_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_DAX;
+ 	if (flags & EXT4_ENCRYPT_FL)
+ 		new_fl |= S_ENCRYPTED;
++	if (flags & EXT4_VERITY_FL)
++		new_fl |= S_VERITY;
+ 	inode_set_flags(inode, new_fl,
+ 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
+-			S_ENCRYPTED);
++			S_ENCRYPTED|S_VERITY);
+ }
+ 
+ static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
+@@ -5510,7 +5512,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (error)
+ 		return error;
+ 
+-	if (ext4_verity_inode(inode)) {
++	if (IS_VERITY(inode)) {
+ 		error = fsverity_prepare_setattr(dentry, attr);
+ 		if (error)
+ 			return error;
+diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+index 7252f0a60cdb..2c037df629dd 100644
+--- a/fs/ext4/readpage.c
++++ b/fs/ext4/readpage.c
+@@ -206,7 +206,7 @@ static void mpage_end_io(struct bio *bio)
+ static inline loff_t ext4_readpage_limit(struct inode *inode)
+ {
+ #ifdef CONFIG_EXT4_FS_VERITY
+-	if (ext4_verity_inode(inode)) {
++	if (IS_VERITY(inode)) {
+ 		if (inode->i_verity_info)
+ 			/* limit to end of metadata region */
+ 			return fsverity_full_i_size(inode);
+-- 
 2.19.1
