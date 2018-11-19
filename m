@@ -1,122 +1,66 @@
-Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49292 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728699AbeKOTCw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 15 Nov 2018 14:02:52 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Ming Lei <ming.lei@redhat.com>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: [PATCH V10 10/19] block: loop: pass multi-page bvec to iov_iter
-Date: Thu, 15 Nov 2018 16:52:57 +0800
-Message-Id: <20181115085306.9910-11-ming.lei@redhat.com>
-In-Reply-To: <20181115085306.9910-1-ming.lei@redhat.com>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:36752 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729715AbeKTBws (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2018 20:52:48 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH e2fsprogs 3/9] libe2p: Helpers for configuring the encoding superblock fields
+References: <20181015211220.27370-1-krisman@collabora.co.uk>
+        <20181015211220.27370-4-krisman@collabora.co.uk>
+        <20181119042727.GH32299@thunk.org>
+Date: Mon, 19 Nov 2018 10:28:48 -0500
+In-Reply-To: <20181119042727.GH32299@thunk.org> (Theodore Y. Ts'o's message of
+        "Sun, 18 Nov 2018 23:27:27 -0500")
+Message-ID: <87efbht7bj.fsf@collabora.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-iov_iter is implemented with bvec itererator, so it is safe to pass
-multipage bvec to it, and this way is much more efficient than
-passing one page in each bvec.
+"Theodore Y. Ts'o" <tytso@mit.edu> writes:
 
-Cc: Dave Chinner <dchinner@redhat.com>
-Cc: Kent Overstreet <kent.overstreet@gmail.com>
-Cc: Mike Snitzer <snitzer@redhat.com>
-Cc: dm-devel@redhat.com
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org
-Cc: Shaohua Li <shli@kernel.org>
-Cc: linux-raid@vger.kernel.org
-Cc: linux-erofs@lists.ozlabs.org
-Cc: David Sterba <dsterba@suse.com>
-Cc: linux-btrfs@vger.kernel.org
-Cc: Darrick J. Wong <darrick.wong@oracle.com>
-Cc: linux-xfs@vger.kernel.org
-Cc: Gao Xiang <gaoxiang25@huawei.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Cc: Coly Li <colyli@suse.de>
-Cc: linux-bcache@vger.kernel.org
-Cc: Boaz Harrosh <ooo@electrozaur.com>
-Cc: Bob Peterson <rpeterso@redhat.com>
-Cc: cluster-devel@redhat.com
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- drivers/block/loop.c | 23 ++++++++++++-----------
- 1 file changed, 12 insertions(+), 11 deletions(-)
+> On Mon, Oct 15, 2018 at 05:12:14PM -0400, Gabriel Krisman Bertazi wrote:
+>> +#define EXT4_ENC_STRICT_MODE_FL		(1 << 0) /* Reject invalid sequences? */
+>
+> Why the question mark?
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index bf6bc35aaf88..a3fd418ec637 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -515,16 +515,16 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 	struct bio *bio = rq->bio;
- 	struct file *file = lo->lo_backing_file;
- 	unsigned int offset;
--	int segments = 0;
-+	int nr_bvec = 0;
- 	int ret;
- 
- 	if (rq->bio != rq->biotail) {
--		struct req_iterator iter;
-+		struct bvec_iter iter;
- 		struct bio_vec tmp;
- 
- 		__rq_for_each_bio(bio, rq)
--			segments += bio_segments(bio);
--		bvec = kmalloc_array(segments, sizeof(struct bio_vec),
-+			nr_bvec += bio_bvecs(bio);
-+		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
- 				     GFP_NOIO);
- 		if (!bvec)
- 			return -EIO;
-@@ -533,13 +533,14 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 		/*
- 		 * The bios of the request may be started from the middle of
- 		 * the 'bvec' because of bio splitting, so we can't directly
--		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_segment
-+		 * copy bio->bi_iov_vec to new bvec. The bio_for_each_bvec
- 		 * API will take care of all details for us.
- 		 */
--		rq_for_each_segment(tmp, rq, iter) {
--			*bvec = tmp;
--			bvec++;
--		}
-+		__rq_for_each_bio(bio, rq)
-+			bio_for_each_bvec(tmp, bio, iter) {
-+				*bvec = tmp;
-+				bvec++;
-+			}
- 		bvec = cmd->bvec;
- 		offset = 0;
- 	} else {
-@@ -550,11 +551,11 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 		 */
- 		offset = bio->bi_iter.bi_bvec_done;
- 		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
--		segments = bio_segments(bio);
-+		nr_bvec = bio_bvecs(bio);
- 	}
- 	atomic_set(&cmd->ref, 2);
- 
--	iov_iter_bvec(&iter, rw, bvec, segments, blk_rq_bytes(rq));
-+	iov_iter_bvec(&iter, rw, bvec, nr_bvec, blk_rq_bytes(rq));
- 	iter.iov_offset = offset;
- 
- 	cmd->iocb.ki_pos = pos;
+Hi Ted,
+
+The question mark is very redundant for a flag, I admit :).  It meant to
+say "Whether to reject invalid sequences" or something like that.  Will
+fix in the v2.
+
+>> +#define UTF8_NORMALIZATION_TYPE_NFKD	(1 << 1)
+>> +#define UTF8_CASEFOLD_TYPE_NFKDCF	(1 << 4)
+>> +
+>> +static const struct ext4_sb_encoding_map {
+>> +	char *name;
+>> +	__u16 default_flags;
+>> +} ext4_encoding_map[] = {
+>> +	/* 0x0 */ { "ascii", 0x0},
+>> +	/* 0x1 */ {"utf8-10.0.0", UTF8_NORMALIZATION_TYPE_NFKD|UTF8_CASEFOLD_TYPE_NFKDCF},
+>> +	{0x0, 0x0},
+>> +};
+>> +
+>>  #endif	/* _LINUX_EXT2_FS_H */
+>
+> What uses this?  I can't find any other references in either the kernel or
+> e2fsprogs patches.
+
+Only the instance ext4_encoding_map, itself, is used in this patch and
+in the next one, which modifies mkefs.  It stores the string for
+comparison with what the user passed in the command line.
+
+I guess naming the structure is unnecessary, since we have only this
+single const static instance.  I will change that in the v2, as well.
+
+The current series doesn't include the huge utf8 stuff, which makes use
+of the rest of the flags, but I will add that in v2 as well.
+
+
+Thanks!
+
 -- 
-2.9.5
+Gabriel Krisman Bertazi
