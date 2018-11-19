@@ -1,11 +1,11 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:49948 "EHLO newverein.lst.de"
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:33834 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727997AbeKPX6L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Nov 2018 18:58:11 -0500
-Date: Fri, 16 Nov 2018 14:45:41 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
+        id S1726348AbeKSSUg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 13:20:36 -0500
+Date: Mon, 19 Nov 2018 15:57:21 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Omar Sandoval <osandov@osandov.com>
 Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         Dave Chinner <dchinner@redhat.com>,
@@ -21,101 +21,87 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
         linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
-Message-ID: <20181116134541.GH3165@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-10-ming.lei@redhat.com>
+Subject: Re: [PATCH V10 05/19] block: introduce bvec_last_segment()
+Message-ID: <20181119075720.GC16519@ming.t460p>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-6-ming.lei@redhat.com>
+ <20181115232356.GA23238@vader>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-10-ming.lei@redhat.com>
+In-Reply-To: <20181115232356.GA23238@vader>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:52:56PM +0800, Ming Lei wrote:
-> There are still cases in which we need to use bio_bvecs() for get the
-> number of multi-page segment, so introduce it.
+On Thu, Nov 15, 2018 at 03:23:56PM -0800, Omar Sandoval wrote:
+> On Thu, Nov 15, 2018 at 04:52:52PM +0800, Ming Lei wrote:
+> > BTRFS and guard_bio_eod() need to get the last singlepage segment
+> > from one multipage bvec, so introduce this helper to make them happy.
+> > 
+> > Cc: Dave Chinner <dchinner@redhat.com>
+> > Cc: Kent Overstreet <kent.overstreet@gmail.com>
+> > Cc: Mike Snitzer <snitzer@redhat.com>
+> > Cc: dm-devel@redhat.com
+> > Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+> > Cc: linux-fsdevel@vger.kernel.org
+> > Cc: Shaohua Li <shli@kernel.org>
+> > Cc: linux-raid@vger.kernel.org
+> > Cc: linux-erofs@lists.ozlabs.org
+> > Cc: David Sterba <dsterba@suse.com>
+> > Cc: linux-btrfs@vger.kernel.org
+> > Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> > Cc: linux-xfs@vger.kernel.org
+> > Cc: Gao Xiang <gaoxiang25@huawei.com>
+> > Cc: Christoph Hellwig <hch@lst.de>
+> > Cc: Theodore Ts'o <tytso@mit.edu>
+> > Cc: linux-ext4@vger.kernel.org
+> > Cc: Coly Li <colyli@suse.de>
+> > Cc: linux-bcache@vger.kernel.org
+> > Cc: Boaz Harrosh <ooo@electrozaur.com>
+> > Cc: Bob Peterson <rpeterso@redhat.com>
+> > Cc: cluster-devel@redhat.com
+> 
+> Reviewed-by: Omar Sandoval <osandov@fb.com>
+> 
+> Minor comments below.
+> 
+> > Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> > ---
+> >  include/linux/bvec.h | 25 +++++++++++++++++++++++++
+> >  1 file changed, 25 insertions(+)
+> > 
+> > diff --git a/include/linux/bvec.h b/include/linux/bvec.h
+> > index 3d61352cd8cf..01616a0b6220 100644
+> > --- a/include/linux/bvec.h
+> > +++ b/include/linux/bvec.h
+> > @@ -216,4 +216,29 @@ static inline bool mp_bvec_iter_advance(const struct bio_vec *bv,
+> >  	.bi_bvec_done	= 0,						\
+> >  }
+> >  
+> > +/*
+> > + * Get the last singlepage segment from the multipage bvec and store it
+> > + * in @seg
+> > + */
+> > +static inline void bvec_last_segment(const struct bio_vec *bvec,
+> > +		struct bio_vec *seg)
+> 
+> Indentation is all messed up here.
 
-The only user in your final tree seems to be the loop driver, and
-even that one only uses the helper for read/write bios.
+Will fix it.
 
-I think something like this would be much simpler in the end:
+> 
+> > +{
+> > +	unsigned total = bvec->bv_offset + bvec->bv_len;
+> > +	unsigned last_page = total / PAGE_SIZE;
+> > +
+> > +	if (last_page * PAGE_SIZE == total)
+> > +		last_page--;
+> 
+> I think this could just be
+> 
+> 	unsigned int last_page = (total - 1) / PAGE_SIZE;
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index d509902a8046..712511815ac6 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -514,16 +514,18 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 	struct request *rq = blk_mq_rq_from_pdu(cmd);
- 	struct bio *bio = rq->bio;
- 	struct file *file = lo->lo_backing_file;
-+	struct bvec_iter bvec_iter;
-+	struct bio_vec tmp;
- 	unsigned int offset;
- 	int nr_bvec = 0;
- 	int ret;
- 
-+	__rq_for_each_bio(bio, rq)
-+		bio_for_each_bvec(tmp, bio, bvec_iter)
-+			nr_bvec++;
-+
- 	if (rq->bio != rq->biotail) {
--		struct bvec_iter iter;
--		struct bio_vec tmp;
- 
--		__rq_for_each_bio(bio, rq)
--			nr_bvec += bio_bvecs(bio);
- 		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
- 				     GFP_NOIO);
- 		if (!bvec)
-@@ -537,7 +539,7 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 		 * API will take care of all details for us.
- 		 */
- 		__rq_for_each_bio(bio, rq)
--			bio_for_each_bvec(tmp, bio, iter) {
-+			bio_for_each_bvec(tmp, bio, bvec_iter) {
- 				*bvec = tmp;
- 				bvec++;
- 			}
-@@ -551,7 +553,6 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 		 */
- 		offset = bio->bi_iter.bi_bvec_done;
- 		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
--		nr_bvec = bio_bvecs(bio);
- 	}
- 	atomic_set(&cmd->ref, 2);
- 
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index dcad0b69f57a..379440d1ced0 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -200,30 +200,6 @@ static inline unsigned bio_segments(struct bio *bio)
- 	}
- }
- 
--static inline unsigned bio_bvecs(struct bio *bio)
--{
--	unsigned bvecs = 0;
--	struct bio_vec bv;
--	struct bvec_iter iter;
--
--	/*
--	 * We special case discard/write same/write zeroes, because they
--	 * interpret bi_size differently:
--	 */
--	switch (bio_op(bio)) {
--	case REQ_OP_DISCARD:
--	case REQ_OP_SECURE_ERASE:
--	case REQ_OP_WRITE_ZEROES:
--		return 0;
--	case REQ_OP_WRITE_SAME:
--		return 1;
--	default:
--		bio_for_each_bvec(bv, bio, iter)
--			bvecs++;
--		return bvecs;
--	}
--}
--
- /*
-  * get a reference to a bio, so it won't disappear. the intended use is
-  * something like:
+This way is really elegant.
+
+Thanks,
+Ming
