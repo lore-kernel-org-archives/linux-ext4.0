@@ -1,52 +1,69 @@
-Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53852 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726386AbeK3S03 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Nov 2018 13:26:29 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 65C292FDFD
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 07:18:08 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Fri, 30 Nov 2018 07:18:08 +0000
-Message-ID: <bug-201685-13602-i3hxvaaSCq@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41372 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726903AbeKSMqB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 07:46:01 -0500
+Date: Mon, 19 Nov 2018 10:23:28 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 01/19] block: introduce multi-page page bvec helpers
+Message-ID: <20181119022327.GC10838@ming.t460p>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-2-ming.lei@redhat.com>
+ <20181116131305.GA3165@lst.de>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181116131305.GA3165@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
-
---- Comment #80 from Rainer Fiebig (jrf@mailbox.org) ---
-(In reply to Néstor A. Marchesini from comment #78)
-> Well, guys, this seems to pass the test, after several reboots every several
-> hours of use, I had no more corruptions of my four partitions mdadm raid1.
-> The solution was to delete the ext4 folder from my kernel 4.19.5 and copy
-> the ext4 folder from my previous kernel 4.18.20 and recompiling the tree
-> 4.19.5.
+On Fri, Nov 16, 2018 at 02:13:05PM +0100, Christoph Hellwig wrote:
+> > -#define bvec_iter_page(bvec, iter)				\
+> > +#define mp_bvec_iter_page(bvec, iter)				\
+> >  	(__bvec_iter_bvec((bvec), (iter))->bv_page)
+> >  
+> > -#define bvec_iter_len(bvec, iter)				\
+> > +#define mp_bvec_iter_len(bvec, iter)				\
 > 
-> $ uname -a
-> Linux pc-user 4.19.5-gentoo #1 SMP PREEMPT Thu Nov 29 00:45:31 2018 x86_64
-> AMD FX(tm)-8350 Eight-Core Processor AuthenticAMD GNU/Linux
+> I'd much prefer if we would stick to the segment naming that
+> we also use in the higher level helper.
 > 
-> I was comparing both folders /fs/ext4 of the 4.18.20 and 4.19.5 trees with
-> meld and there are several modifications, unfortunately it exceeds my
-> knowledge.
-> At least on this side I affirm that the problem is gone, we will see it
-> happen with later patches.
+> So segment_iter_page, segment_iter_len, etc.
 
-If you can bisect it as suggested in comment 79, please mind what Ted Tso has
-said in comment 69, para. 2.
+We discussed the naming problem before, one big problem is that the 'segment'
+in bio_for_each_segment*() means one single page segment actually.
 
-So, after you have hit a bad kernel, make sure that your fs is OK and do the
-next step (compiling) with a known-as-good-kernel (4.18.20). Otherwise you
-might get false negatives (wrong bads).
+If we use segment_iter_page() here for multi-page segment, it may
+confuse people.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Of course, I prefer to the naming of segment/page, 
+
+And Jens didn't agree to rename bio_for_each_segment*() before.
+
+So what is the solution we should take for moving on?
+
+> 
+> > + * This helpers are for building sp bvec in flight.
+> 
+> Please spell out single page, sp is not easy understandable.
+
+OK.
+
+Thanks,
+Ming
