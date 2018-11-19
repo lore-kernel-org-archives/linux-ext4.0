@@ -1,63 +1,33 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51428 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727092AbeKUOAC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 09:00:02 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V11 11/19] bcache: avoid to use bio_for_each_segment_all() in bch_bio_alloc_pages()
-Date: Wed, 21 Nov 2018 11:23:19 +0800
-Message-Id: <20181121032327.8434-12-ming.lei@redhat.com>
-In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga07-in.huawei.com ([45.249.212.35]:39482 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725908AbeKSQrR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 11:47:17 -0500
+Subject: Re: [PATCH 2/7] f2fs: use IS_ENCRYPTED() to check encryption status
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        <linux-fscrypt@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+        <linux-f2fs-devel@lists.sourceforge.net>
+CC: <ebiggers@kernel.org>, <tytso@mit.edu>
+References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
+ <20181119052324.31456-3-chandan@linux.vnet.ibm.com>
+From: Chao Yu <yuchao0@huawei.com>
+Message-ID: <6dec5660-46c0-8061-f1a9-618bed182876@huawei.com>
+Date: Mon, 19 Nov 2018 14:24:31 +0800
+MIME-Version: 1.0
+In-Reply-To: <20181119052324.31456-3-chandan@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="windows-1252"
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-bch_bio_alloc_pages() is always called on one new bio, so it is safe
-to access the bvec table directly. Given it is the only kind of this
-case, open code the bvec table access since bio_for_each_segment_all()
-will be changed to support for iterating over multipage bvec.
+On 2018/11/19 13:23, Chandan Rajendra wrote:
+> This commit removes the f2fs specific f2fs_encrypted_inode() and makes
+> use of the generic IS_ENCRYPTED() macro to check for the encryption
+> status of an inode.
+> 
+> Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 
-Acked-by: Coly Li <colyli@suse.de>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- drivers/md/bcache/util.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+Acked-by: Chao Yu <yuchao0@huawei.com>
 
-diff --git a/drivers/md/bcache/util.c b/drivers/md/bcache/util.c
-index 20eddeac1531..62fb917f7a4f 100644
---- a/drivers/md/bcache/util.c
-+++ b/drivers/md/bcache/util.c
-@@ -270,7 +270,11 @@ int bch_bio_alloc_pages(struct bio *bio, gfp_t gfp_mask)
- 	int i;
- 	struct bio_vec *bv;
- 
--	bio_for_each_segment_all(bv, bio, i) {
-+	/*
-+	 * This is called on freshly new bio, so it is safe to access the
-+	 * bvec table directly.
-+	 */
-+	for (i = 0, bv = bio->bi_io_vec; i < bio->bi_vcnt; bv++, i++) {
- 		bv->bv_page = alloc_page(gfp_mask);
- 		if (!bv->bv_page) {
- 			while (--bv >= bio->bi_io_vec)
--- 
-2.9.5
+Thanks,
