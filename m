@@ -1,76 +1,75 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:57683 "EHLO newverein.lst.de"
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:13312 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732079AbeKVVhp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 16:37:45 -0500
-Date: Thu, 22 Nov 2018 11:58:49 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        id S1727816AbeKSN56 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 08:57:58 -0500
+Date: Mon, 19 Nov 2018 11:35:14 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
         Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
         Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 07/19] fs/buffer.c: use bvec iterator to truncate
- the bio
-Message-ID: <20181122105849.GA30066@lst.de>
-References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-8-ming.lei@redhat.com>
+Subject: Re: [PATCH V10 01/19] block: introduce multi-page page bvec helpers
+Message-ID: <20181119033513.GF10838@ming.t460p>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-2-ming.lei@redhat.com>
+ <20181116131305.GA3165@lst.de>
+ <20181119022327.GC10838@ming.t460p>
+ <83fb4102-bffe-41f1-c8d0-3bdf61fe0ba8@kernel.dk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181121032327.8434-8-ming.lei@redhat.com>
+In-Reply-To: <83fb4102-bffe-41f1-c8d0-3bdf61fe0ba8@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Btw, given that this is the last user of bvec_last_segment after my
-other patches I think we should kill bvec_last_segment and do something
-like this here:
+On Sun, Nov 18, 2018 at 08:10:14PM -0700, Jens Axboe wrote:
+> On 11/18/18 7:23 PM, Ming Lei wrote:
+> > On Fri, Nov 16, 2018 at 02:13:05PM +0100, Christoph Hellwig wrote:
+> >>> -#define bvec_iter_page(bvec, iter)				\
+> >>> +#define mp_bvec_iter_page(bvec, iter)				\
+> >>>  	(__bvec_iter_bvec((bvec), (iter))->bv_page)
+> >>>  
+> >>> -#define bvec_iter_len(bvec, iter)				\
+> >>> +#define mp_bvec_iter_len(bvec, iter)				\
+> >>
+> >> I'd much prefer if we would stick to the segment naming that
+> >> we also use in the higher level helper.
+> >>
+> >> So segment_iter_page, segment_iter_len, etc.
+> > 
+> > We discussed the naming problem before, one big problem is that the 'segment'
+> > in bio_for_each_segment*() means one single page segment actually.
+> > 
+> > If we use segment_iter_page() here for multi-page segment, it may
+> > confuse people.
+> > 
+> > Of course, I prefer to the naming of segment/page, 
+> > 
+> > And Jens didn't agree to rename bio_for_each_segment*() before.
+> 
+> I didn't like frivolous renaming (and I still don't), but mp_
+> is horrible imho. Don't name these after the fact that they
+> are done in conjunction with supporting multipage bvecs. That
+> very fact will be irrelevant very soon
 
+OK, so what is your suggestion for the naming issue?
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index fa37ad52e962..af5e135d2b83 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -2981,6 +2981,14 @@ static void end_bio_bh_io_sync(struct bio *bio)
- 	bio_put(bio);
- }
- 
-+static void zero_trailing_sectors(struct bio_vec *bvec, unsigned bytes)
-+{
-+	unsigned last_page = (bvec->bv_offset + bvec->bv_len - 1) >> PAGE_SHIFT;
-+
-+	zero_user(nth_page(bvec->bv_page, last_page),
-+		  bvec->bv_offset % PAGE_SIZE + bvec->bv_len, bytes);
-+}
-+
- /*
-  * This allows us to do IO even on the odd last sectors
-  * of a device, even if the block size is some multiple
-@@ -3031,13 +3039,8 @@ void guard_bio_eod(int op, struct bio *bio)
- 	bvec->bv_len -= truncated_bytes;
- 
- 	/* ..and clear the end of the buffer for reads */
--	if (op == REQ_OP_READ) {
--		struct bio_vec bv;
--
--		bvec_last_segment(bvec, &bv);
--		zero_user(bv.bv_page, bv.bv_offset + bv.bv_len,
--				truncated_bytes);
--	}
-+	if (op == REQ_OP_READ)
-+		zero_trailing_sectors(bvec, truncated_bytes);
- }
- 
- static int submit_bh_wbc(int op, int op_flags, struct buffer_head *bh,
+Are you fine to use segment_iter_page() here? Then the term of 'segment'
+may be interpreted as multi-page segment here, but as single-page in
+bio_for_each_segment*().
+
+thanks
+Ming
