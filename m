@@ -1,81 +1,68 @@
-Return-Path: <SRS0=aByE=NM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:52162 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728081AbeKBH7Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 2 Nov 2018 03:59:16 -0400
-From: Eric Biggers <ebiggers@kernel.org>
-To: linux-fscrypt@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: [PATCH v2 07/12] fs-verity: add SHA-512 support
-Date: Thu,  1 Nov 2018 15:52:25 -0700
-Message-Id: <20181101225230.88058-8-ebiggers@kernel.org>
-In-Reply-To: <20181101225230.88058-1-ebiggers@kernel.org>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f194.google.com ([209.85.215.194]:36170 "EHLO
+        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727839AbeKSNc3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Nov 2018 08:32:29 -0500
+Received: by mail-pg1-f194.google.com with SMTP id n2so5982210pgm.3
+        for <linux-ext4@vger.kernel.org>; Sun, 18 Nov 2018 19:10:18 -0800 (PST)
+Subject: Re: [PATCH V10 01/19] block: introduce multi-page page bvec helpers
+To: Ming Lei <ming.lei@redhat.com>, Christoph Hellwig <hch@lst.de>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-2-ming.lei@redhat.com> <20181116131305.GA3165@lst.de>
+ <20181119022327.GC10838@ming.t460p>
+From: Jens Axboe <axboe@kernel.dk>
+Message-ID: <83fb4102-bffe-41f1-c8d0-3bdf61fe0ba8@kernel.dk>
+Date: Sun, 18 Nov 2018 20:10:14 -0700
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20181119022327.GC10838@ming.t460p>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Biggers <ebiggers@google.com>
+On 11/18/18 7:23 PM, Ming Lei wrote:
+> On Fri, Nov 16, 2018 at 02:13:05PM +0100, Christoph Hellwig wrote:
+>>> -#define bvec_iter_page(bvec, iter)				\
+>>> +#define mp_bvec_iter_page(bvec, iter)				\
+>>>  	(__bvec_iter_bvec((bvec), (iter))->bv_page)
+>>>  
+>>> -#define bvec_iter_len(bvec, iter)				\
+>>> +#define mp_bvec_iter_len(bvec, iter)				\
+>>
+>> I'd much prefer if we would stick to the segment naming that
+>> we also use in the higher level helper.
+>>
+>> So segment_iter_page, segment_iter_len, etc.
+> 
+> We discussed the naming problem before, one big problem is that the 'segment'
+> in bio_for_each_segment*() means one single page segment actually.
+> 
+> If we use segment_iter_page() here for multi-page segment, it may
+> confuse people.
+> 
+> Of course, I prefer to the naming of segment/page, 
+> 
+> And Jens didn't agree to rename bio_for_each_segment*() before.
 
-Add SHA-512 support to fs-verity.  This is primarily a demonstration of
-the (small) changes needed to support a new hash algorithm; it's
-anticipated that most users will still prefer SHA-256 due to the smaller
-space required to store the hashes, though some may prefer SHA-512.
+I didn't like frivolous renaming (and I still don't), but mp_
+is horrible imho. Don't name these after the fact that they
+are done in conjunction with supporting multipage bvecs. That
+very fact will be irrelevant very soon
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/verity/fsverity_private.h  | 2 +-
- fs/verity/hash_algs.c         | 5 +++++
- include/uapi/linux/fsverity.h | 1 +
- 3 files changed, 7 insertions(+), 1 deletion(-)
-
-diff --git a/fs/verity/fsverity_private.h b/fs/verity/fsverity_private.h
-index dfdbac3874d74..c3a261a598557 100644
---- a/fs/verity/fsverity_private.h
-+++ b/fs/verity/fsverity_private.h
-@@ -30,7 +30,7 @@
-  * Largest digest size among all hash algorithms supported by fs-verity.  This
-  * can be increased if needed.
-  */
--#define FS_VERITY_MAX_DIGEST_SIZE	SHA256_DIGEST_SIZE
-+#define FS_VERITY_MAX_DIGEST_SIZE	SHA512_DIGEST_SIZE
- 
- /* A hash algorithm supported by fs-verity */
- struct fsverity_hash_alg {
-diff --git a/fs/verity/hash_algs.c b/fs/verity/hash_algs.c
-index 9c19c9553f120..3174a0c08785d 100644
---- a/fs/verity/hash_algs.c
-+++ b/fs/verity/hash_algs.c
-@@ -18,6 +18,11 @@ struct fsverity_hash_alg fsverity_hash_algs[] = {
- 		.digest_size = 32,
- 		.cryptographic = true,
- 	},
-+	[FS_VERITY_ALG_SHA512] = {
-+		.name = "sha512",
-+		.digest_size = 64,
-+		.cryptographic = true,
-+	},
- };
- 
- /*
-diff --git a/include/uapi/linux/fsverity.h b/include/uapi/linux/fsverity.h
-index 55b9f32676220..67ed830ae2ece 100644
---- a/include/uapi/linux/fsverity.h
-+++ b/include/uapi/linux/fsverity.h
-@@ -28,6 +28,7 @@ struct fsverity_digest {
- 
- /* Supported hash algorithms */
- #define FS_VERITY_ALG_SHA256	1
-+#define FS_VERITY_ALG_SHA512	2
- 
- /* Metadata stored near the end of verity files, after the Merkle tree */
- /* This structure is 64 bytes long */
 -- 
-2.19.1.568.g152ad8e336-goog
+Jens Axboe
