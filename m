@@ -1,57 +1,88 @@
 Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36208 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726287AbeKSU1e (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 15:27:34 -0500
-Date: Mon, 19 Nov 2018 11:04:25 +0100
-From: Jan Kara <jack@suse.cz>
-To: Chengguang Xu <cgxu519@gmx.com>
-Cc: jack@suse.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2: compare old and new mode before setting
- update_mode flag
-Message-ID: <20181119100425.GD16427@quack2.suse.cz>
-References: <20181117090100.29063-1-cgxu519@gmx.com>
+Received: from mx1.redhat.com ([209.132.183.28]:60320 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726961AbeKSSuo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 13:50:44 -0500
+Date: Mon, 19 Nov 2018 16:27:23 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Omar Sandoval <osandov@osandov.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 11/19] bcache: avoid to use
+ bio_for_each_segment_all() in bch_bio_alloc_pages()
+Message-ID: <20181119082722.GE16736@ming.t460p>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-12-ming.lei@redhat.com>
+ <20181116004402.GF23828@vader>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181117090100.29063-1-cgxu519@gmx.com>
+In-Reply-To: <20181116004402.GF23828@vader>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 17-11-18 17:01:00, Chengguang Xu wrote:
-> If new mode is the same as old mode we don't have to reset
-> inode mode in the rest of the code, so compare old and new
-> mode before setting update_mode flag.
+On Thu, Nov 15, 2018 at 04:44:02PM -0800, Omar Sandoval wrote:
+> On Thu, Nov 15, 2018 at 04:52:58PM +0800, Ming Lei wrote:
+> > bch_bio_alloc_pages() is always called on one new bio, so it is safe
+> > to access the bvec table directly. Given it is the only kind of this
+> > case, open code the bvec table access since bio_for_each_segment_all()
+> > will be changed to support for iterating over multipage bvec.
+> > 
+> > Cc: Dave Chinner <dchinner@redhat.com>
+> > Cc: Kent Overstreet <kent.overstreet@gmail.com>
+> > Acked-by: Coly Li <colyli@suse.de>
+> > Cc: Mike Snitzer <snitzer@redhat.com>
+> > Cc: dm-devel@redhat.com
+> > Cc: Alexander Viro <viro@zeniv.linux.org.uk>
+> > Cc: linux-fsdevel@vger.kernel.org
+> > Cc: Shaohua Li <shli@kernel.org>
+> > Cc: linux-raid@vger.kernel.org
+> > Cc: linux-erofs@lists.ozlabs.org
+> > Cc: David Sterba <dsterba@suse.com>
+> > Cc: linux-btrfs@vger.kernel.org
+> > Cc: Darrick J. Wong <darrick.wong@oracle.com>
+> > Cc: linux-xfs@vger.kernel.org
+> > Cc: Gao Xiang <gaoxiang25@huawei.com>
+> > Cc: Christoph Hellwig <hch@lst.de>
+> > Cc: Theodore Ts'o <tytso@mit.edu>
+> > Cc: linux-ext4@vger.kernel.org
+> > Cc: Coly Li <colyli@suse.de>
+> > Cc: linux-bcache@vger.kernel.org
+> > Cc: Boaz Harrosh <ooo@electrozaur.com>
+> > Cc: Bob Peterson <rpeterso@redhat.com>
+> > Cc: cluster-devel@redhat.com
+> > Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> > ---
+> >  drivers/md/bcache/util.c | 2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > 
+> > diff --git a/drivers/md/bcache/util.c b/drivers/md/bcache/util.c
+> > index 20eddeac1531..8517aebcda2d 100644
+> > --- a/drivers/md/bcache/util.c
+> > +++ b/drivers/md/bcache/util.c
+> > @@ -270,7 +270,7 @@ int bch_bio_alloc_pages(struct bio *bio, gfp_t gfp_mask)
+> >  	int i;
+> >  	struct bio_vec *bv;
+> >  
+> > -	bio_for_each_segment_all(bv, bio, i) {
+> > +	for (i = 0, bv = bio->bi_io_vec; i < bio->bi_vcnt; bv++) {
 > 
-> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+> This is missing an i++.
 
-I don't think this is quite correct. E.g. I would think that i_ctime should
-be updated even if the effective mode resulting from acl did not change.
+Good catch, will fix it in next version.
 
-								Honza
-
-> ---
->  fs/ext2/acl.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext2/acl.c b/fs/ext2/acl.c
-> index cf4c77f8dd08..f4dd728393c8 100644
-> --- a/fs/ext2/acl.c
-> +++ b/fs/ext2/acl.c
-> @@ -226,7 +226,8 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
->  		error = posix_acl_update_mode(inode, &mode, &acl);
->  		if (error)
->  			return error;
-> -		update_mode = 1;
-> +		if (mode != inode->i_mode)
-> +			update_mode = 1;
->  	}
->  	error = __ext2_set_acl(inode, acl, type);
->  	if (!error && update_mode) {
-> -- 
-> 2.17.2
-> 
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+thanks,
+Ming
