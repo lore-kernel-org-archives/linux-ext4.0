@@ -1,310 +1,204 @@
 Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:42112 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1725912AbeKSPqt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 10:46:49 -0500
-Received: from pps.filterd (m0098413.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wAJ5OIcR071342
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:24:19 -0500
-Received: from e36.co.us.ibm.com (e36.co.us.ibm.com [32.97.110.154])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 2nujeqj1sx-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:24:18 -0500
-Received: from localhost
-        by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Mon, 19 Nov 2018 05:23:58 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, ebiggers@kernel.org,
+Received: from mail.kernel.org ([198.145.29.99]:37882 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725898AbeKTHtF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 20 Nov 2018 02:49:05 -0500
+Date: Mon, 19 Nov 2018 13:23:32 -0800
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Cc: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, ebiggers@kernel.org,
         tytso@mit.edu
-Subject: [PATCH 7/7] fsverity: Remove filesystem specific build config option
-Date: Mon, 19 Nov 2018 10:53:24 +0530
-In-Reply-To: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
+Subject: Re: [f2fs-dev] [PATCH 2/7] f2fs: use IS_ENCRYPTED() to check
+ encryption status
+Message-ID: <20181119212332.GB33805@jaegeuk-macbookpro.roam.corp.google.com>
 References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
+ <20181119052324.31456-3-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Message-Id: <20181119052324.31456-8-chandan@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181119052324.31456-3-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In order to have a common code base for fsverity "post read" processing
-for all filesystems which support per-file verity, this commit removes
-filesystem specific build config option (e.g. CONFIG_EXT4_FS_VERITY) and
-replaces it with a build option (i.e. CONFIG_FS_VERITY) whose value
-affects all the filesystems making use of fsverity.
+Hi Chandan,
 
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
----
- fs/ext4/Kconfig          | 20 --------------------
- fs/ext4/ext4.h           |  2 --
- fs/ext4/readpage.c       |  4 ++--
- fs/ext4/super.c          |  6 +++---
- fs/ext4/sysfs.c          |  4 ++--
- fs/f2fs/Kconfig          | 20 --------------------
- fs/f2fs/data.c           |  2 +-
- fs/f2fs/f2fs.h           |  2 --
- fs/f2fs/super.c          |  6 +++---
- fs/f2fs/sysfs.c          |  4 ++--
- fs/verity/Kconfig        |  2 +-
- include/linux/fsverity.h |  3 +--
- 12 files changed, 15 insertions(+), 60 deletions(-)
+Let me try to queue and test this patch separately from the patch-set in order
+to avoid merge conflicts. So, I think IS_ENCRYPTED should be merged in f2fs/ext4
+branches, and the others can be applied to fscrypt and fsverity into each trees.
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index e1002bbf35bf..031e5a82d556 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -96,26 +96,6 @@ config EXT4_FS_SECURITY
- 	  If you are not using a security module that requires using
- 	  extended attributes for file security labels, say N.
- 
--config EXT4_FS_VERITY
--	bool "Ext4 Verity"
--	depends on EXT4_FS
--	select FS_VERITY
--	help
--	  This option enables fs-verity for ext4.  fs-verity is the
--	  dm-verity mechanism implemented at the file level.  Userspace
--	  can append a Merkle tree (hash tree) to a file, then enable
--	  fs-verity on the file.  ext4 will then transparently verify
--	  any data read from the file against the Merkle tree.  The file
--	  is also made read-only.
--
--	  This serves as an integrity check, but the availability of the
--	  Merkle tree root hash also allows efficiently supporting
--	  various use cases where normally the whole file would need to
--	  be hashed at once, such as auditing and authenticity
--	  verification (appraisal).
--
--	  If unsure, say N.
--
- config EXT4_DEBUG
- 	bool "EXT4 debugging support"
- 	depends on EXT4_FS
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 64bf9fb7ef18..bff8d639dd0c 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -41,8 +41,6 @@
- #endif
- 
- #include <linux/fscrypt.h>
--
--#define __FS_HAS_VERITY IS_ENABLED(CONFIG_EXT4_FS_VERITY)
- #include <linux/fsverity.h>
- 
- #include <linux/compiler.h>
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index 2c037df629dd..8717ac0a5bb2 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -158,7 +158,7 @@ static struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
- 
- 	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
- 		post_read_steps |= 1 << STEP_DECRYPT;
--#ifdef CONFIG_EXT4_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- 	if (inode->i_verity_info != NULL &&
- 	    (index < ((i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT)))
- 		post_read_steps |= 1 << STEP_VERITY;
-@@ -205,7 +205,7 @@ static void mpage_end_io(struct bio *bio)
- 
- static inline loff_t ext4_readpage_limit(struct inode *inode)
- {
--#ifdef CONFIG_EXT4_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- 	if (IS_VERITY(inode)) {
- 		if (inode->i_verity_info)
- 			/* limit to end of metadata region */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 16fb483a6f4a..472338c7cd03 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1316,7 +1316,7 @@ static const struct fscrypt_operations ext4_cryptops = {
- };
- #endif
- 
--#ifdef CONFIG_EXT4_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- static int ext4_set_verity(struct inode *inode, loff_t data_i_size)
- {
- 	int err;
-@@ -1401,7 +1401,7 @@ static const struct fsverity_operations ext4_verityops = {
- 	.set_verity		= ext4_set_verity,
- 	.get_metadata_end	= ext4_get_metadata_end,
- };
--#endif /* CONFIG_EXT4_FS_VERITY */
-+#endif /* CONFIG_FS_VERITY */
- 
- #ifdef CONFIG_QUOTA
- static const char * const quotatypes[] = INITQFNAMES;
-@@ -4234,7 +4234,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #ifdef CONFIG_FS_ENCRYPTION
- 	sb->s_cop = &ext4_cryptops;
- #endif
--#ifdef CONFIG_EXT4_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- 	sb->s_vop = &ext4_verityops;
- #endif
- #ifdef CONFIG_QUOTA
-diff --git a/fs/ext4/sysfs.c b/fs/ext4/sysfs.c
-index 8bc915452a38..6fa0f47c3180 100644
---- a/fs/ext4/sysfs.c
-+++ b/fs/ext4/sysfs.c
-@@ -227,7 +227,7 @@ EXT4_ATTR_FEATURE(meta_bg_resize);
- #ifdef CONFIG_FS_ENCRYPTION
- EXT4_ATTR_FEATURE(encryption);
- #endif
--#ifdef CONFIG_EXT4_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- EXT4_ATTR_FEATURE(verity);
- #endif
- EXT4_ATTR_FEATURE(metadata_csum_seed);
-@@ -239,7 +239,7 @@ static struct attribute *ext4_feat_attrs[] = {
- #ifdef CONFIG_FS_ENCRYPTION
- 	ATTR_LIST(encryption),
- #endif
--#ifdef CONFIG_EXT4_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- 	ATTR_LIST(verity),
- #endif
- 	ATTR_LIST(metadata_csum_seed),
-diff --git a/fs/f2fs/Kconfig b/fs/f2fs/Kconfig
-index ce60e480fec1..708e23816575 100644
---- a/fs/f2fs/Kconfig
-+++ b/fs/f2fs/Kconfig
-@@ -70,26 +70,6 @@ config F2FS_CHECK_FS
- 
- 	  If you want to improve the performance, say N.
- 
--config F2FS_FS_VERITY
--	bool "F2FS Verity"
--	depends on F2FS_FS
--	select FS_VERITY
--	help
--	  This option enables fs-verity for f2fs.  fs-verity is the
--	  dm-verity mechanism implemented at the file level.  Userspace
--	  can append a Merkle tree (hash tree) to a file, then enable
--	  fs-verity on the file.  f2fs will then transparently verify
--	  any data read from the file against the Merkle tree.  The file
--	  is also made read-only.
--
--	  This serves as an integrity check, but the availability of the
--	  Merkle tree root hash also allows efficiently supporting
--	  various use cases where normally the whole file would need to
--	  be hashed at once, such as auditing and authenticity
--	  verification (appraisal).
--
--	  If unsure, say N.
--
- config F2FS_IO_TRACE
- 	bool "F2FS IO tracer"
- 	depends on F2FS_FS
-diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index 844ec573263e..83b59b985894 100644
---- a/fs/f2fs/data.c
-+++ b/fs/f2fs/data.c
-@@ -610,7 +610,7 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
- 
- 	if (f2fs_encrypted_file(inode))
- 		post_read_steps |= 1 << STEP_DECRYPT;
--#ifdef CONFIG_F2FS_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- 	if (inode->i_verity_info != NULL &&
- 	    (first_idx < ((i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT)))
- 		post_read_steps |= 1 << STEP_VERITY;
-diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-index ea8a5ffc4f1f..dc999af932f2 100644
---- a/fs/f2fs/f2fs.h
-+++ b/fs/f2fs/f2fs.h
-@@ -25,8 +25,6 @@
- #include <crypto/hash.h>
- 
- #include <linux/fscrypt.h>
--
--#define __FS_HAS_VERITY IS_ENABLED(CONFIG_F2FS_FS_VERITY)
- #include <linux/fsverity.h>
- 
- #ifdef CONFIG_F2FS_CHECK_FS
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index 4287cf348d3c..60d5338280fb 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -2197,7 +2197,7 @@ static const struct fscrypt_operations f2fs_cryptops = {
- };
- #endif
- 
--#ifdef CONFIG_F2FS_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- static int f2fs_set_verity(struct inode *inode, loff_t data_i_size)
- {
- 	int err;
-@@ -2222,7 +2222,7 @@ static const struct fsverity_operations f2fs_verityops = {
- 	.set_verity		= f2fs_set_verity,
- 	.get_metadata_end	= f2fs_get_metadata_end,
- };
--#endif /* CONFIG_F2FS_FS_VERITY */
-+#endif /* CONFIG_FS_VERITY */
- 
- static struct inode *f2fs_nfs_get_inode(struct super_block *sb,
- 		u64 ino, u32 generation)
-@@ -3146,7 +3146,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
- #ifdef CONFIG_FS_ENCRYPTION
- 	sb->s_cop = &f2fs_cryptops;
- #endif
--#ifdef CONFIG_F2FS_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- 	sb->s_vop = &f2fs_verityops;
- #endif
- 	sb->s_xattr = f2fs_xattr_handlers;
-diff --git a/fs/f2fs/sysfs.c b/fs/f2fs/sysfs.c
-index 737677655bc0..949e6d87f4e3 100644
---- a/fs/f2fs/sysfs.c
-+++ b/fs/f2fs/sysfs.c
-@@ -444,7 +444,7 @@ F2FS_FEATURE_RO_ATTR(flexible_inline_xattr, FEAT_FLEXIBLE_INLINE_XATTR);
- F2FS_FEATURE_RO_ATTR(quota_ino, FEAT_QUOTA_INO);
- F2FS_FEATURE_RO_ATTR(inode_crtime, FEAT_INODE_CRTIME);
- F2FS_FEATURE_RO_ATTR(lost_found, FEAT_LOST_FOUND);
--#ifdef CONFIG_F2FS_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- F2FS_FEATURE_RO_ATTR(verity, FEAT_VERITY);
- #endif
- F2FS_FEATURE_RO_ATTR(sb_checksum, FEAT_SB_CHECKSUM);
-@@ -507,7 +507,7 @@ static struct attribute *f2fs_feat_attrs[] = {
- 	ATTR_LIST(quota_ino),
- 	ATTR_LIST(inode_crtime),
- 	ATTR_LIST(lost_found),
--#ifdef CONFIG_F2FS_FS_VERITY
-+#ifdef CONFIG_FS_VERITY
- 	ATTR_LIST(verity),
- #endif
- 	ATTR_LIST(sb_checksum),
-diff --git a/fs/verity/Kconfig b/fs/verity/Kconfig
-index a7470a2e4892..b5a48a9ef0ca 100644
---- a/fs/verity/Kconfig
-+++ b/fs/verity/Kconfig
-@@ -1,5 +1,5 @@
- config FS_VERITY
--	tristate "FS Verity (read-only file-based authenticity protection)"
-+	bool "FS Verity (read-only file-based authenticity protection)"
- 	select CRYPTO
- 	# SHA-256 is selected as it's intended to be the default hash algorithm.
- 	# To avoid bloat, other wanted algorithms must be selected explicitly.
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index c30c4f6ed411..f37132c640ee 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -19,8 +19,7 @@ struct fsverity_operations {
- 	int (*get_metadata_end)(struct inode *inode, loff_t *metadata_end_ret);
- };
- 
--#if __FS_HAS_VERITY
--
-+#ifdef CONFIG_FS_VERITY
- /* ioctl.c */
- extern int fsverity_ioctl_enable(struct file *filp, const void __user *arg);
- extern int fsverity_ioctl_measure(struct file *filp, void __user *arg);
--- 
-2.19.1
+Thanks,
+
+On 11/19, Chandan Rajendra wrote:
+> This commit removes the f2fs specific f2fs_encrypted_inode() and makes
+> use of the generic IS_ENCRYPTED() macro to check for the encryption
+> status of an inode.
+> 
+> Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+> ---
+>  fs/f2fs/data.c  |  4 ++--
+>  fs/f2fs/dir.c   | 10 +++++-----
+>  fs/f2fs/file.c  | 10 +++++-----
+>  fs/f2fs/namei.c |  6 +++---
+>  4 files changed, 15 insertions(+), 15 deletions(-)
+> 
+> diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
+> index 09d9fc1676a7..844ec573263e 100644
+> --- a/fs/f2fs/data.c
+> +++ b/fs/f2fs/data.c
+> @@ -1491,7 +1491,7 @@ int f2fs_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+>  	}
+>  
+>  	if (size) {
+> -		if (f2fs_encrypted_inode(inode))
+> +		if (IS_ENCRYPTED(inode))
+>  			flags |= FIEMAP_EXTENT_DATA_ENCRYPTED;
+>  
+>  		ret = fiemap_fill_next_extent(fieinfo, logical,
+> @@ -1764,7 +1764,7 @@ static inline bool check_inplace_update_policy(struct inode *inode,
+>  	if (policy & (0x1 << F2FS_IPU_ASYNC) &&
+>  			fio && fio->op == REQ_OP_WRITE &&
+>  			!(fio->op_flags & REQ_SYNC) &&
+> -			!f2fs_encrypted_inode(inode))
+> +			!IS_ENCRYPTED(inode))
+>  		return true;
+>  
+>  	/* this is only set during fdatasync */
+> diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
+> index bacc667950b6..cf9e2564388d 100644
+> --- a/fs/f2fs/dir.c
+> +++ b/fs/f2fs/dir.c
+> @@ -385,7 +385,7 @@ struct page *f2fs_init_inode_metadata(struct inode *inode, struct inode *dir,
+>  		if (err)
+>  			goto put_error;
+>  
+> -		if ((f2fs_encrypted_inode(dir) || dummy_encrypt) &&
+> +		if ((IS_ENCRYPTED(dir) || dummy_encrypt) &&
+>  					f2fs_may_encrypt(inode)) {
+>  			err = fscrypt_inherit_context(dir, inode, page, false);
+>  			if (err)
+> @@ -399,7 +399,7 @@ struct page *f2fs_init_inode_metadata(struct inode *inode, struct inode *dir,
+>  
+>  	if (new_name) {
+>  		init_dent_inode(new_name, page);
+> -		if (f2fs_encrypted_inode(dir))
+> +		if (IS_ENCRYPTED(dir))
+>  			file_set_enc_name(inode);
+>  	}
+>  
+> @@ -808,7 +808,7 @@ int f2fs_fill_dentries(struct dir_context *ctx, struct f2fs_dentry_ptr *d,
+>  		de_name.name = d->filename[bit_pos];
+>  		de_name.len = le16_to_cpu(de->name_len);
+>  
+> -		if (f2fs_encrypted_inode(d->inode)) {
+> +		if (IS_ENCRYPTED(d->inode)) {
+>  			int save_len = fstr->len;
+>  
+>  			err = fscrypt_fname_disk_to_usr(d->inode,
+> @@ -852,7 +852,7 @@ static int f2fs_readdir(struct file *file, struct dir_context *ctx)
+>  	struct fscrypt_str fstr = FSTR_INIT(NULL, 0);
+>  	int err = 0;
+>  
+> -	if (f2fs_encrypted_inode(inode)) {
+> +	if (IS_ENCRYPTED(inode)) {
+>  		err = fscrypt_get_encryption_info(inode);
+>  		if (err && err != -ENOKEY)
+>  			goto out;
+> @@ -914,7 +914,7 @@ static int f2fs_readdir(struct file *file, struct dir_context *ctx)
+>  
+>  static int f2fs_dir_open(struct inode *inode, struct file *filp)
+>  {
+> -	if (f2fs_encrypted_inode(inode))
+> +	if (IS_ENCRYPTED(inode))
+>  		return fscrypt_get_encryption_info(inode) ? -EACCES : 0;
+>  	return 0;
+>  }
+> diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+> index 87794b2a45ff..6c7ad15000b9 100644
+> --- a/fs/f2fs/file.c
+> +++ b/fs/f2fs/file.c
+> @@ -585,7 +585,7 @@ static int truncate_partial_data_page(struct inode *inode, u64 from,
+>  	zero_user(page, offset, PAGE_SIZE - offset);
+>  
+>  	/* An encrypted inode should have a key and truncate the last page. */
+> -	f2fs_bug_on(F2FS_I_SB(inode), cache_only && f2fs_encrypted_inode(inode));
+> +	f2fs_bug_on(F2FS_I_SB(inode), cache_only && IS_ENCRYPTED(inode));
+>  	if (!cache_only)
+>  		set_page_dirty(page);
+>  	f2fs_put_page(page, 1);
+> @@ -730,7 +730,7 @@ int f2fs_getattr(const struct path *path, struct kstat *stat,
+>  		stat->attributes |= STATX_ATTR_APPEND;
+>  	if (flags & F2FS_COMPR_FL)
+>  		stat->attributes |= STATX_ATTR_COMPRESSED;
+> -	if (f2fs_encrypted_inode(inode))
+> +	if (IS_ENCRYPTED(inode))
+>  		stat->attributes |= STATX_ATTR_ENCRYPTED;
+>  	if (flags & F2FS_IMMUTABLE_FL)
+>  		stat->attributes |= STATX_ATTR_IMMUTABLE;
+> @@ -1587,7 +1587,7 @@ static long f2fs_fallocate(struct file *file, int mode,
+>  	if (!S_ISREG(inode->i_mode))
+>  		return -EINVAL;
+>  
+> -	if (f2fs_encrypted_inode(inode) &&
+> +	if (IS_ENCRYPTED(inode) &&
+>  		(mode & (FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_INSERT_RANGE)))
+>  		return -EOPNOTSUPP;
+>  
+> @@ -1671,7 +1671,7 @@ static int f2fs_ioc_getflags(struct file *filp, unsigned long arg)
+>  	struct f2fs_inode_info *fi = F2FS_I(inode);
+>  	unsigned int flags = fi->i_flags;
+>  
+> -	if (f2fs_encrypted_inode(inode))
+> +	if (IS_ENCRYPTED(inode))
+>  		flags |= F2FS_ENCRYPT_FL;
+>  	if (f2fs_has_inline_data(inode) || f2fs_has_inline_dentry(inode))
+>  		flags |= F2FS_INLINE_DATA_FL;
+> @@ -2430,7 +2430,7 @@ static int f2fs_move_file_range(struct file *file_in, loff_t pos_in,
+>  	if (!S_ISREG(src->i_mode) || !S_ISREG(dst->i_mode))
+>  		return -EINVAL;
+>  
+> -	if (f2fs_encrypted_inode(src) || f2fs_encrypted_inode(dst))
+> +	if (IS_ENCRYPTED(src) || IS_ENCRYPTED(dst))
+>  		return -EOPNOTSUPP;
+>  
+>  	if (src == dst) {
+> diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+> index 99299ede7429..6ae37e0cf6e3 100644
+> --- a/fs/f2fs/namei.c
+> +++ b/fs/f2fs/namei.c
+> @@ -75,7 +75,7 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode)
+>  	set_inode_flag(inode, FI_NEW_INODE);
+>  
+>  	/* If the directory encrypted, then we should encrypt the inode. */
+> -	if ((f2fs_encrypted_inode(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
+> +	if ((IS_ENCRYPTED(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
+>  				f2fs_may_encrypt(inode))
+>  		f2fs_set_encrypted_inode(inode);
+>  
+> @@ -476,7 +476,7 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
+>  		if (err)
+>  			goto out_iput;
+>  	}
+> -	if (f2fs_encrypted_inode(dir) &&
+> +	if (IS_ENCRYPTED(dir) &&
+>  	    (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)) &&
+>  	    !fscrypt_has_permitted_context(dir, inode)) {
+>  		f2fs_msg(inode->i_sb, KERN_WARNING,
+> @@ -803,7 +803,7 @@ static int f2fs_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+>  	if (unlikely(f2fs_cp_error(sbi)))
+>  		return -EIO;
+>  
+> -	if (f2fs_encrypted_inode(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) {
+> +	if (IS_ENCRYPTED(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) {
+>  		int err = fscrypt_get_encryption_info(dir);
+>  		if (err)
+>  			return err;
+> -- 
+> 2.19.1
+> 
+> 
+> 
+> _______________________________________________
+> Linux-f2fs-devel mailing list
+> Linux-f2fs-devel@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/linux-f2fs-devel
