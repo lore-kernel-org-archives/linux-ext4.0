@@ -1,32 +1,60 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:44498 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726210AbeKVFBI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 00:01:08 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6E86F2C631
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Nov 2018 18:25:41 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Wed, 21 Nov 2018 18:25:41 +0000
-Message-ID: <bug-201685-13602-nZTk1v9Ony@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:36660 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726784AbeKSSrL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 13:47:11 -0500
+Date: Mon, 19 Nov 2018 09:24:14 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Subject: Re: [PATCH V10 08/19] btrfs: move bio_pages_all() to btrfs
+Message-ID: <20181119082414.GA10678@lst.de>
+References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-9-ming.lei@redhat.com> <20181116133845.GG3165@lst.de> <20181119081922.GB16736@ming.t460p>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181119081922.GB16736@ming.t460p>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Mon, Nov 19, 2018 at 04:19:24PM +0800, Ming Lei wrote:
+> On Fri, Nov 16, 2018 at 02:38:45PM +0100, Christoph Hellwig wrote:
+> > On Thu, Nov 15, 2018 at 04:52:55PM +0800, Ming Lei wrote:
+> > > BTRFS is the only user of this helper, so move this helper into
+> > > BTRFS, and implement it via bio_for_each_segment_all(), since
+> > > bio->bi_vcnt may not equal to number of pages after multipage bvec
+> > > is enabled.
+> > 
+> > btrfs only uses the value to check if it is larger than 1.  No amount
+> > of multipage bio merging should ever make bi_vcnt go from 0 to 1 or
+> > vice versa.
+> 
+> Could you explain a bit why?
+> 
+> Suppose 2 physically continuous pages are added to this bio, .bi_vcnt
+> can be 1 in case of multi-page bvec, but it is 2 in case of single-page
+> bvec.
 
---- Comment #16 from Jimmy.Jazz@gmx.net ---
-Created attachment 279575
-  --> https://bugzilla.kernel.org/attachment.cgi?id=279575&action=edit
-.config of 4.19.2
+True, I did think of 0 vs 1.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+The magic here in btrfs still doesn't make much sense.  The comments
+down in btrfs_check_repairable talk about sectors, so it might be a
+leftover from the blocksize == PAGE_SIZE days (assuming those patches
+actually got merged).  I'd like to have the btrfs folks chime in,
+but in the end we should probably check if the bio was larger than
+a single sector here.
