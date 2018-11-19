@@ -1,44 +1,54 @@
-From: liusong@tom.com
-Subject: [PATCH] ext4: direct return when jinode allocate failed in ext4_inode_attach_jinode
-Date: Mon, 15 Oct 2018 00:05:22 +0800
-Message-ID: <20181014160522.3395-1-liusong@tom.com>
-Cc: liu.song11@zte.com.cn, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-To: tytso@mit.edu, adilger.kernel@dilger.ca
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:57698 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726784AbeKSSmo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 13:42:44 -0500
+Date: Mon, 19 Nov 2018 16:19:24 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 08/19] btrfs: move bio_pages_all() to btrfs
+Message-ID: <20181119081922.GB16736@ming.t460p>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-9-ming.lei@redhat.com>
+ <20181116133845.GG3165@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181116133845.GG3165@lst.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Liu Song <liu.song11@zte.com.cn>
+On Fri, Nov 16, 2018 at 02:38:45PM +0100, Christoph Hellwig wrote:
+> On Thu, Nov 15, 2018 at 04:52:55PM +0800, Ming Lei wrote:
+> > BTRFS is the only user of this helper, so move this helper into
+> > BTRFS, and implement it via bio_for_each_segment_all(), since
+> > bio->bi_vcnt may not equal to number of pages after multipage bvec
+> > is enabled.
+> 
+> btrfs only uses the value to check if it is larger than 1.  No amount
+> of multipage bio merging should ever make bi_vcnt go from 0 to 1 or
+> vice versa.
 
-Allocating memory for jinode do not need protected by *i_lock*.
-Should return directly if memory allocation fails without holding
-a spinlock.
+Could you explain a bit why?
 
-Signed-off-by: Liu Song <liu.song11@zte.com.cn>
----
- fs/ext4/inode.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+Suppose 2 physically continuous pages are added to this bio, .bi_vcnt
+can be 1 in case of multi-page bvec, but it is 2 in case of single-page
+bvec.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d0dd585add6a..341d84521d11 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4382,12 +4382,11 @@ int ext4_inode_attach_jinode(struct inode *inode)
- 		return 0;
- 
- 	jinode = jbd2_alloc_inode(GFP_KERNEL);
-+	if (!jinode)
-+		return -ENOMEM;
-+
- 	spin_lock(&inode->i_lock);
- 	if (!ei->jinode) {
--		if (!jinode) {
--			spin_unlock(&inode->i_lock);
--			return -ENOMEM;
--		}
- 		ei->jinode = jinode;
- 		jbd2_journal_init_jbd_inode(ei->jinode, inode);
- 		jinode = NULL;
--- 
-2.17.1
+Thanks,
+Ming
