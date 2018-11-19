@@ -1,53 +1,74 @@
-Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mout.gmx.net ([212.227.17.22]:56377 "EHLO mout.gmx.net"
+Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:52658 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726022AbeKNJYi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 14 Nov 2018 04:24:38 -0500
-From: Chengguang Xu <cgxu519@gmx.com>
-To: jack@suse.com
-Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH] ext2: remove redundant condition check
-Date: Wed, 14 Nov 2018 07:23:53 +0800
-Message-Id: <20181113232353.11011-1-cgxu519@gmx.com>
+        id S1726988AbeKSTlT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 19 Nov 2018 14:41:19 -0500
+Date: Mon, 19 Nov 2018 17:17:46 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Omar Sandoval <osandov@osandov.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V10 18/19] block: kill QUEUE_FLAG_NO_SG_MERGE
+Message-ID: <20181119091746.GO16736@ming.t460p>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-19-ming.lei@redhat.com>
+ <20181116021811.GM23828@vader>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181116021811.GM23828@vader>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext2_xattr_destroy_cache() can handle NULL pointer correctly,
-so there is no need to check NULL pointer before calling
-ext2_xattr_destroy_cache().
+On Thu, Nov 15, 2018 at 06:18:11PM -0800, Omar Sandoval wrote:
+> On Thu, Nov 15, 2018 at 04:53:05PM +0800, Ming Lei wrote:
+> > Since bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting"),
+> > physical segment number is mainly figured out in blk_queue_split() for
+> > fast path, and the flag of BIO_SEG_VALID is set there too.
+> > 
+> > Now only blk_recount_segments() and blk_recalc_rq_segments() use this
+> > flag.
+> > 
+> > Basically blk_recount_segments() is bypassed in fast path given BIO_SEG_VALID
+> > is set in blk_queue_split().
+> > 
+> > For another user of blk_recalc_rq_segments():
+> > 
+> > - run in partial completion branch of blk_update_request, which is an unusual case
+> > 
+> > - run in blk_cloned_rq_check_limits(), still not a big problem if the flag is killed
+> > since dm-rq is the only user.
+> > 
+> > Multi-page bvec is enabled now, QUEUE_FLAG_NO_SG_MERGE doesn't make sense any more.
+> 
+> This commit message wasn't very clear. Is it the case that
+> QUEUE_FLAG_NO_SG_MERGE is no longer set by any drivers?
 
-Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
----
- fs/ext2/super.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+OK, I will add the explanation to commit log in next version.
 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index cb91baa4275d..e4351c280608 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -148,10 +148,9 @@ static void ext2_put_super (struct super_block * sb)
- 
- 	ext2_quota_off_umount(sb);
- 
--	if (sbi->s_ea_block_cache) {
--		ext2_xattr_destroy_cache(sbi->s_ea_block_cache);
--		sbi->s_ea_block_cache = NULL;
--	}
-+	ext2_xattr_destroy_cache(sbi->s_ea_block_cache);
-+	sbi->s_ea_block_cache = NULL;
-+
- 	if (!sb_rdonly(sb)) {
- 		struct ext2_super_block *es = sbi->s_es;
- 
-@@ -1197,8 +1196,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 			sb->s_id);
- 	goto failed_mount;
- failed_mount3:
--	if (sbi->s_ea_block_cache)
--		ext2_xattr_destroy_cache(sbi->s_ea_block_cache);
-+	ext2_xattr_destroy_cache(sbi->s_ea_block_cache);
- 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
--- 
-2.17.2
+05f1dd53152173 (block: add queue flag for disabling SG merging) introduces this
+flag for NVMe performance purpose only, so that merging to segment can
+be bypassed for NVMe.
+
+Actually this optimization was bypassed by 54efd50bfd873e2d (block: make
+generic_make_request handle arbitrarily sized bios) and bdced438acd83ad83a6c
+("block: setup bi_phys_segments after splitting").
+
+Now segment computation can be very quick, given most of times one bvec
+can be thought as one segment, so we can remove the flag.
+
+thanks, 
+Ming
