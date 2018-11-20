@@ -1,59 +1,114 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pf1-f196.google.com ([209.85.210.196]:41873 "EHLO
-        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728607AbeKQCRd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 21:17:33 -0500
-Received: by mail-pf1-f196.google.com with SMTP id e22-v6so11602635pfn.8
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Nov 2018 08:04:37 -0800 (PST)
-Date: Fri, 16 Nov 2018 08:04:33 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Mike Snitzer <snitzer@redhat.com>, Ming Lei <ming.lei@redhat.com>,
-        Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        dm-devel@redhat.com, Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 03/19] block: use bio_for_each_bvec() to compute
- multi-page bvec count
-Message-ID: <20181116160433.GV23828@vader>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-4-ming.lei@redhat.com>
- <20181115202028.GC9348@vader>
- <20181115210510.GA24908@redhat.com>
- <20181115221847.GD9348@vader>
- <20181116091956.GA17604@lst.de>
+Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-qt1-f195.google.com ([209.85.160.195]:45840 "EHLO
+        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726460AbeKUFed (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 00:34:33 -0500
+Received: by mail-qt1-f195.google.com with SMTP id e5so1213640qtr.12
+        for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2018 11:03:53 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181116091956.GA17604@lst.de>
+References: <e3074993-0810-1954-7204-38b6d0b0f1e5@linux.alibaba.com> <20181120100533.GD8842@quack2.suse.cz>
+In-Reply-To: <20181120100533.GD8842@quack2.suse.cz>
+From: Liu Bo <obuil.liubo@gmail.com>
+Date: Tue, 20 Nov 2018 11:03:41 -0800
+Message-ID: <CANQeFDDAV+s5M9W8Y_VvQLOYaAjKM+J5f07HS_JUHuN0SqutWA@mail.gmail.com>
+Subject: Re: ext4: try to improve unwritten extents merges
+To: Jan Kara <jack@suse.cz>
+Cc: xiaoguang.wang@linux.alibaba.com, darrick.wong@oracle.com,
+        linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 16, 2018 at 10:19:56AM +0100, Christoph Hellwig wrote:
-> On Thu, Nov 15, 2018 at 02:18:47PM -0800, Omar Sandoval wrote:
-> > My only reason to prefer unsigned int is consistency. unsigned int is
-> > much more common in the kernel:
-> > 
-> > $ ag --cc -s 'unsigned\s+int' | wc -l
-> > 129632
-> > $ ag --cc -s 'unsigned\s+(?!char|short|int|long)' | wc -l
-> > 22435
-> > 
-> > checkpatch also warns on plain unsigned.
-> 
-> Talk about chicken and egg.  unsigned is perfectly valid C, and being
-> shorter often helps being more readable.  checkpath is as so often
-> wrongly opinionated..
+Hi Jan,
 
-Fair enough. Since enough people don't mind bare unsigned in the block
-code, I retract my comment :)
+(Cc linux-ext4...)
+
+On Tue, Nov 20, 2018 at 2:07 AM Jan Kara <jack@suse.cz> wrote:
+>
+> Hello!
+>
+> On Tue 20-11-18 17:01:25, Xiaoguang Wang wrote:
+> > First sorry to bother you again, recently we meet a
+> > "dioread_nolock,nodelalloc" slow writeback issue, Liu Bo has sent a patch to
+> > fix this issue. But here I also wonder whether we can merge unwritten
+> > extents as far as possible.
+> > In current codes:
+> >
+> > int
+> > ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
+> >                               struct ext4_extent *ex2)
+> > {
+> > ...
+> >       if (ext4_ext_is_unwritten(ex1) &&
+> >           (ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN) ||
+> >            atomic_read(&EXT4_I(inode)->i_unwritten) ||
+> >            (ext1_ee_len + ext2_ee_len > EXT_UNWRITTEN_MAX_LEN)))
+> >               return 0;
+> > ...
+> > }
+> > This was added by Darrick in 2014:
+> > commit a9b8241594adda0a7a4fb3b87bf29d2dff0d997d
+> > Author: Darrick J. Wong <darrick.wong@oracle.com>
+> > Date:   Thu Feb 20 21:17:35 2014 -0500
+> >
+> >     ext4: merge uninitialized extents
+> >
+> >     Allow for merging uninitialized extents.
+> >
+> >     Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+> >     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> >
+> > So long as we have a unwritten extents under io(which also means i_unwritten
+> > is not zero), then we can not do merge work for unwritten extents, I wonder
+> > whether this conditon is too strict. Assume that the
+> > begin of the file is under io, but middle or end of the file could not
+> > merge unwritten extetns, though they could be.
+> >
+> > I'm not sure whether we could directly remove
+> > "atomic_read(&EXT4_I(inode)->i_unwritten)",if not, here I make a simple
+> > patch to respect same semantics. The idea is simple, I use a red-black
+> > tree to record unwritten extents under io, when trying to merging
+> > unwritten extents, we search this per-inode tree, it not hit, we can
+> > merge. I have also run "xfstests quick group test cases", look like that
+> > it works well. dio maybe also go to this way.
+>
+> The reason why we don't merge unwritten extents if there is IO to unwritten
+> extents running is that we split unwritten extents to match exactly the IO
+> range on submission and then convert it to written extents on IO
+> completion. So we must avoid merging these split out extents while the IO
+> is running.
+>
+
+I can see why it is a must for the 'delalloc' case (as we may be not
+able to offer enough credits for doing split on IO completion).
+
+However, for the 'nodelalloc' case, extent splits are done in
+writepages() instead of endio, and we have reserved enough credits for
+either extent allocation or extent split.
+
+While I understand a more fine-grain track for unwritten extents is
+preferable, do you think if it's OK to have a workaround like [1] to
+mitigate the performance pain?
+
+[1]: https://patchwork.ozlabs.org/patch/1000284
+
+thanks,
+liubo
+
+> I agree that the condition in ext4_can_extents_be_merged() is rather coarse
+> so it would be nice to improve it so that unwritten extents on which IO is
+> not running can be merged. I've also observed that unwritten extents get
+> fragmented relatively easily under some workloads.
+>
+> Rather than introducing new RB-tree for this (which costs additional memory
+> and its maintenance costs also CPU time), I'd use extent status tree to
+> identify unwritten extent that got split out when preparing the IO (you
+> should mark such extent in ext4_map_blocks() when EXT4_GET_BLOCKS_IO_SUBMIT
+> flag is set). Then the flag would get cleared on extent conversion to
+> written one.
+>
+>                                                                 Honza
+>
+> --
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
