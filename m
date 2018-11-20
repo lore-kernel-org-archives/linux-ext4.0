@@ -1,65 +1,122 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:42138 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728283AbeKVBEb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 20:04:31 -0500
-Date: Wed, 21 Nov 2018 15:29:50 +0100
-From: Jan Kara <jack@suse.cz>
-To: cgxu519 <cgxu519@gmx.com>
-Cc: Jan Kara <jack@suse.cz>, jack@suse.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2: compare old and new mode before setting
- update_mode flag
-Message-ID: <20181121142950.GE28182@quack2.suse.cz>
-References: <20181117090100.29063-1-cgxu519@gmx.com>
- <20181119100425.GD16427@quack2.suse.cz>
- <e9db0f67-fc05-9ec8-5953-8e3724c43cc8@gmx.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <e9db0f67-fc05-9ec8-5953-8e3724c43cc8@gmx.com>
+Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:58163 "EHLO
+        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726883AbeKTQjB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 20 Nov 2018 11:39:01 -0500
+From: Liu Bo <bo.liu@linux.alibaba.com>
+To: <linux-ext4@vger.kernel.org>
+Cc: <tytso@mit.edu>
+Subject: [PATCH] Ext4: fix slow writeback under dioread_nolock and nodelalloc
+Date: Tue, 20 Nov 2018 14:11:10 +0800
+Message-Id: <1542694270-47732-1-git-send-email-bo.liu@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 21-11-18 18:55:28, cgxu519 wrote:
-> On 11/19/18 6:04 PM, Jan Kara wrote:
-> > On Sat 17-11-18 17:01:00, Chengguang Xu wrote:
-> > > If new mode is the same as old mode we don't have to reset
-> > > inode mode in the rest of the code, so compare old and new
-> > > mode before setting update_mode flag.
-> > > 
-> > > Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
-> > I don't think this is quite correct. E.g. I would think that i_ctime should
-> > be updated even if the effective mode resulting from acl did not change.
-> 
-> I think  __ext2_set_acl() will probably update i_ctime in this case, am I
-> missing something?
+With "nodelalloc", blocks are allocated at the time of writing, and with
+"dioread_nolock", these allocated blocks are marked as unwritten as well,
+so bh(s) attached to the blocks have BH_Unwritten and BH_Mapped.
 
-Yeah, you're right. But I'd still prefer to keep the code simple as is.
-There's no great reason to optimize this since saved time is going to be
-minimal and the code is not performance critical.
+Everything looks normal except with "dioread_nolock", all allocated
+extents are with EXT4_GET_BLOCKS_PRE_IO, which doesn't allow merging
+adjacent extents.
 
-								Honza
+And when it comes to writepages, given the fact that bh marked as
+BH_Unwritten, it has to hold a journal handle to process these extents,
+but when writepages() prepared a bunch of pages in a mpd, it could only
+find one block to map to and submit one page at a time, and loop to the
+next page over and over again.
 
+ext4_writepages
+  ...
+  # starting from the 1st dirty page
+  ext4_journal_start_with_reserve
+  mpage_prepare_extent_to_map
+    # batch up to 2048 dirty pages
+  mpage_map_and_submit_extent
+    mpage_map_one_extent
+      ext4_map_blocks #with EXT4_GET_BLOCKS_IO_CREATE_EXT
+        ext4_ext_map_blocks
+	  ext4_find_extent
+	    # find an extent with only one block at the offset
+	  ext4_ext_handle_unwritten_extents
+	    # try to split due to EXT4_GET_BLOCKS_PRE_IO,
+	    # but no need to in this case as there is
+	    # only one block in this extent
+    mpage_map_and_submit_buffers
+      #submit io for only 1st page
+  #start from the 2nd dirty page
+  ...
 
-> > diff --git a/fs/ext2/acl.c b/fs/ext2/acl.c
-> > index cf4c77f8dd08..f4dd728393c8 100644
-> > --- a/fs/ext2/acl.c
-> > +++ b/fs/ext2/acl.c
-> > @@ -226,7 +226,8 @@ ext2_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-> >   		error = posix_acl_update_mode(inode, &mode, &acl);
-> >   		if (error)
-> >   			return error;
-> > -		update_mode = 1;
-> > +		if (mode != inode->i_mode)
-> > +			update_mode = 1;
-> >   	}
-> >   	error = __ext2_set_acl(inode, acl, type);
-> >   	if (!error && update_mode) {
-> > -- 
-> > 2.17.2
-> > 
-> > 
+---
+
+Given this is for buffered writes, the nice thing we want from
+"dioread_nolock" is that extents are converted from unwritten at endio, so
+thus we really don't have to take PRE_IO which is desigend for direct IO
+path originally.
+
+With this, we do extent merging in case of "nodelalloc" and writeback
+doesn't need to do those extra batching and looping, the performance
+number is shown as follows:
+
+mount -o dioread_nolock,nodelalloc /dev/loop0 /mnt/
+xfs_io -f -c "pwrite -W 0 1G" $M/foobar
+
+- w/o:
+wrote 1073741824/1073741824 bytes at offset 0
+1 GiB, 262144 ops; 0:02:27.00 (6.951 MiB/sec and 1779.3791 ops/sec)
+
+- w/
+wrote 1073741824/1073741824 bytes at offset 0
+1 GiB, 262144 ops; 0:00:06.00 (161.915 MiB/sec and 41450.3184 ops/sec)
+
+Signed-off-by: Liu Bo <bo.liu@linux.alibaba.com>
+---
+ fs/ext4/extents.c | 8 +++++++-
+ fs/ext4/inode.c   | 2 +-
+ 2 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 240b6dea5441..2a95f55563ba 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1718,6 +1718,7 @@ static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
+ 				struct ext4_extent *ex2)
+ {
+ 	unsigned short ext1_ee_len, ext2_ee_len;
++	bool dioread_nolock = false;
+ 
+ 	if (ext4_ext_is_unwritten(ex1) != ext4_ext_is_unwritten(ex2))
+ 		return 0;
+@@ -1741,10 +1742,15 @@ static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
+ 	 * increment i_unwritten / set EXT4_STATE_DIO_UNWRITTEN only after
+ 	 * dropping i_data_sem. But reserved blocks should save us in that
+ 	 * case.
++	 *
++	 * In case of dioread_nolock, we allow merging extent for buffered
++	 * writes as the split happens in ext4_writepages (where blocks have
++	 * been reserved for updating extent) instead of endio.
+ 	 */
++	dioread_nolock = ext4_should_dioread_nolock(inode);
+ 	if (ext4_ext_is_unwritten(ex1) &&
+ 	    (ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN) ||
+-	     atomic_read(&EXT4_I(inode)->i_unwritten) ||
++	     (!dioread_nolock && atomic_read(&EXT4_I(inode)->i_unwritten)) ||
+ 	     (ext1_ee_len + ext2_ee_len > EXT_UNWRITTEN_MAX_LEN)))
+ 		return 0;
+ #ifdef AGGRESSIVE_TEST
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6df9c6d60981..71fb3e1654f8 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -812,7 +812,7 @@ int ext4_get_block_unwritten(struct inode *inode, sector_t iblock,
+ 	ext4_debug("ext4_get_block_unwritten: inode %lu, create flag %d\n",
+ 		   inode->i_ino, create);
+ 	return _ext4_get_block(inode, iblock, bh_result,
+-			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
++			       EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT);
+ }
+ 
+ /* Maximum number of blocks we map for direct IO at once. */
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+1.8.3.1
