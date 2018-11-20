@@ -1,14 +1,13 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:41940 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389057AbeKPKaa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 05:30:30 -0500
-Received: by mail-pl1-f196.google.com with SMTP id p16-v6so10246805plr.8
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 16:20:24 -0800 (PST)
-Date: Thu, 15 Nov 2018 16:20:20 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:46161 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727733AbeKUCqr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 20 Nov 2018 21:46:47 -0500
+Date: Tue, 20 Nov 2018 17:16:51 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Sagi Grimberg <sagi@grimberg.me>
+Cc: Christoph Hellwig <hch@lst.de>, Ming Lei <ming.lei@redhat.com>,
+        Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
@@ -19,72 +18,32 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 06/19] fs/buffer.c: use bvec iterator to truncate the
- bio
-Message-ID: <20181116002020.GA23828@vader>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-7-ming.lei@redhat.com>
+Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
+Message-ID: <20181120161651.GB2629@lst.de>
+References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-10-ming.lei@redhat.com> <20181116134541.GH3165@lst.de> <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-7-ming.lei@redhat.com>
+In-Reply-To: <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:52:53PM +0800, Ming Lei wrote:
-> Once multi-page bvec is enabled, the last bvec may include more than one
-> page, this patch use bvec_last_segment() to truncate the bio.
-> 
-> Cc: Dave Chinner <dchinner@redhat.com>
-> Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> Cc: Mike Snitzer <snitzer@redhat.com>
-> Cc: dm-devel@redhat.com
-> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> Cc: linux-fsdevel@vger.kernel.org
-> Cc: Shaohua Li <shli@kernel.org>
-> Cc: linux-raid@vger.kernel.org
-> Cc: linux-erofs@lists.ozlabs.org
-> Cc: David Sterba <dsterba@suse.com>
-> Cc: linux-btrfs@vger.kernel.org
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: linux-xfs@vger.kernel.org
-> Cc: Gao Xiang <gaoxiang25@huawei.com>
-> Cc: Christoph Hellwig <hch@lst.de>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Coly Li <colyli@suse.de>
-> Cc: linux-bcache@vger.kernel.org
-> Cc: Boaz Harrosh <ooo@electrozaur.com>
-> Cc: Bob Peterson <rpeterso@redhat.com>
-> Cc: cluster-devel@redhat.com
+On Mon, Nov 19, 2018 at 04:49:27PM -0800, Sagi Grimberg wrote:
+>
+>> The only user in your final tree seems to be the loop driver, and
+>> even that one only uses the helper for read/write bios.
+>>
+>> I think something like this would be much simpler in the end:
+>
+> The recently submitted nvme-tcp host driver should also be a user
+> of this. Does it make sense to keep it as a helper then?
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> ---
->  fs/buffer.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index 1286c2b95498..fa37ad52e962 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -3032,7 +3032,10 @@ void guard_bio_eod(int op, struct bio *bio)
->  
->  	/* ..and clear the end of the buffer for reads */
->  	if (op == REQ_OP_READ) {
-> -		zero_user(bvec->bv_page, bvec->bv_offset + bvec->bv_len,
-> +		struct bio_vec bv;
-> +
-> +		bvec_last_segment(bvec, &bv);
-> +		zero_user(bv.bv_page, bv.bv_offset + bv.bv_len,
->  				truncated_bytes);
->  	}
->  }
-> -- 
-> 2.9.5
-> 
+I did take a brief look at the code, and I really don't understand
+why the heck it even deals with bios to start with.  Like all the
+other nvme transports it is a blk-mq driver and should iterate
+over segments in a request and more or less ignore bios.  Something
+is horribly wrong in the design.
