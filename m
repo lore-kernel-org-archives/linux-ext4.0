@@ -1,14 +1,13 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:50081 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727727AbeKQAHo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Nov 2018 19:07:44 -0500
-Date: Fri, 16 Nov 2018 14:55:12 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
+Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-oi1-f196.google.com ([209.85.167.196]:43936 "EHLO
+        mail-oi1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725887AbeKUGme (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 01:42:34 -0500
+Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
+To: Christoph Hellwig <hch@lst.de>
+Cc: Ming Lei <ming.lei@redhat.com>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -17,31 +16,57 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 17/19] block: don't use bio->bi_vcnt to figure out
- segment number
-Message-ID: <20181116135512.GM3165@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-18-ming.lei@redhat.com>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-10-ming.lei@redhat.com> <20181116134541.GH3165@lst.de>
+ <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
+ <20181120161651.GB2629@lst.de>
+From: Sagi Grimberg <sagi@grimberg.me>
+Message-ID: <53526aae-fb9b-ee38-0a01-e5899e2d4e4d@grimberg.me>
+Date: Tue, 20 Nov 2018 12:11:35 -0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-18-ming.lei@redhat.com>
+In-Reply-To: <20181120161651.GB2629@lst.de>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:53:04PM +0800, Ming Lei wrote:
-> It is wrong to use bio->bi_vcnt to figure out how many segments
-> there are in the bio even though CLONED flag isn't set on this bio,
-> because this bio may be splitted or advanced.
+
+>>> The only user in your final tree seems to be the loop driver, and
+>>> even that one only uses the helper for read/write bios.
+>>>
+>>> I think something like this would be much simpler in the end:
+>>
+>> The recently submitted nvme-tcp host driver should also be a user
+>> of this. Does it make sense to keep it as a helper then?
 > 
-> So always use bio_segments() in blk_recount_segments(), and it shouldn't
-> cause any performance loss now because the physical segment number is figured
-> out in blk_queue_split() and BIO_SEG_VALID is set meantime since
-> bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting").
+> I did take a brief look at the code, and I really don't understand
+> why the heck it even deals with bios to start with.  Like all the
+> other nvme transports it is a blk-mq driver and should iterate
+> over segments in a request and more or less ignore bios.  Something
+> is horribly wrong in the design.
 
-Looks good, but shouldn't this go to the beginning of the series?
+Can you explain a little more? I'm more than happy to change that but
+I'm not completely clear how...
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Before we begin a data transfer, we need to set our own iterator that
+will advance with the progression of the data transfer. We also need to
+keep in mind that all the data transfer (both send and recv) are
+completely non blocking (and zero-copy when we send).
+
+That means that every data movement needs to be able to suspend
+and resume asynchronously. i.e. we cannot use the following pattern:
+rq_for_each_segment(bvec, rq, rq_iter) {
+	iov_iter_bvec(&iov_iter, WRITE, &bvec, 1, bvec.bv_len);
+	send(sock, iov_iter);
+}
+
+Given that a request can hold more than a single bio, I'm not clear on
+how we can achieve that without iterating over the bios in the request
+ourselves.
+
+Any useful insight?
