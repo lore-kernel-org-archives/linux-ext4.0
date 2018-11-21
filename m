@@ -1,146 +1,151 @@
-Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:55316 "EHLO
-        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726340AbeK2IiK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2018 03:38:10 -0500
-Date: Wed, 28 Nov 2018 13:35:03 -0800
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Artem Blagodarenko <artem.blagodarenko@gmail.com>,
-        linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
-        alexey.lyashkov@gmail.com
-Subject: Re: [PATCH v2] ext2fs: don't read group descriptors during e2label
-Message-ID: <20181128213503.GB8111@magnolia>
-References: <20181128204840.4544-1-artem.blagodarenko@gmail.com>
- <41473332-C973-4E58-8DF5-577E3C937846@dilger.ca>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:52660 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725995AbeKVDre (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 22:47:34 -0500
+Date: Wed, 21 Nov 2018 18:12:17 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V11 03/19] block: introduce bio_for_each_bvec()
+Message-ID: <20181121171217.GA6259@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-4-ming.lei@redhat.com> <20181121133244.GB1640@lst.de> <20181121153135.GB19111@ming.t460p> <20181121161025.GB4977@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <41473332-C973-4E58-8DF5-577E3C937846@dilger.ca>
+In-Reply-To: <20181121161025.GB4977@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 28, 2018 at 02:16:30PM -0700, Andreas Dilger wrote:
-> 
-> > On Nov 28, 2018, at 1:48 PM, Artem Blagodarenko <artem.blagodarenko@gmail.com> wrote:
-> > 
-> > tune2fs is used to make e2label duties.  ext2fs_open2() reads group
-> > descriptors which are not used during disk label obtaining, but
-> > takes a lot of time on large partitions.
-> > 
-> > This patch change ext2fs_open2(), so only initialized
-> > superblock is returned. without block descriptors. This save
-> > time dramatically.
-> > 
-> > Cray-bug-id: LUS-5777
-> > Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-> 
-> One minor nit at the end, but looks fine otherwise:
-> 
-> Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-> 
-> > 
-> > diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-> > index 5b87d395..2abb6f76 100644
-> > --- a/lib/ext2fs/ext2fs.h
-> > +++ b/lib/ext2fs/ext2fs.h
-> > @@ -204,6 +204,7 @@ typedef struct ext2_file *ext2_file_t;
-> > #define EXT2_FLAG_IGNORE_CSUM_ERRORS	0x200000
-> > #define EXT2_FLAG_SHARE_DUP		0x400000
-> > #define EXT2_FLAG_IGNORE_SB_ERRORS	0x800000
-> > +#define EXT2_FLAG_JOURNAL_ONLY		0x1000000
-> > 
-> > /*
-> >  * Special flag in the ext2 inode i_flag field that means that this is
-> > diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-> > index 85d73e2a..af671070 100644
-> > --- a/lib/ext2fs/openfs.c
-> > +++ b/lib/ext2fs/openfs.c
-> > @@ -135,6 +135,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
-> > 	int		j;
-> > #endif
-> > 	char		*time_env;
-> > +	unsigned long	enough_desc_blocks;
-> > 
-> > 	EXT2_CHECK_MAGIC(manager, EXT2_ET_MAGIC_IO_MANAGER);
-> > 
-> > @@ -440,12 +441,23 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
-> > 		dest += fs->blocksize*first_meta_bg;
-> > 	}
-> > 
-> > -	for (i = first_meta_bg ; i < fs->desc_blocks; i++) {
-> > +	/*
-> > +	 * Need superblock and journal inode only. Do not read
-> > +	 * met_bg group blocks if journal inode group already loaded
-> > +	 */
-> > +	if (flags & EXT2_FLAG_JOURNAL_ONLY)
-> > +		enough_desc_blocks =
-> > +			fs->super->s_journal_inum /
-> > +			EXT2_INODES_PER_GROUP(fs->super) + 1;
-> > +	else
-> > +		enough_desc_blocks = fs->desc_blocks;
-> > +
-> > +	for (i = first_meta_bg; i < enough_desc_blocks; i++) {
-> > 		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
-> > 		io_channel_cache_readahead(fs->io, blk, 1);
-> > 	}
-> > 
-> > -	for (i=first_meta_bg ; i < fs->desc_blocks; i++) {
-> > +	for (i = first_meta_bg; i < enough_desc_blocks; i++) {
-> > 		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
-> > 		retval = io_channel_read_blk64(fs->io, blk, 1, dest);
-> > 		if (retval)
-> > @@ -468,8 +480,12 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
-> > 	 */
-> > 	if (superblock > 1 && ext2fs_has_group_desc_csum(fs)) {
-> > 		dgrp_t group;
-> > +		dgrp_t enough_desc_count;
-> > +
-> > +		enough_desc_count = enough_desc_blocks *
-> > +				    EXT2_DESC_PER_BLOCK(fs->super);
-> > 
-> > -		for (group = 0; group < fs->group_desc_count; group++) {
-> > +		for (group = 0; group < enough_desc_count; group++) {
-> > 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
-> > 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_INODE_UNINIT);
-> > 			ext2fs_bg_itable_unused_set(fs, group, 0);
-> > diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-> > index cd4057c3..b226fdbf 100644
-> > --- a/misc/tune2fs.c
-> > +++ b/misc/tune2fs.c
-> > @@ -2882,6 +2882,12 @@ retry_open:
-> > 	/* keep the filesystem struct around to dump MMP data */
-> > 	open_flag |= EXT2_FLAG_NOFREE_ON_ERROR;
-> > 
-> > +	if (print_label || L_flag) {
-> > +		open_flag |= EXT2_FLAG_JOURNAL_ONLY;
-> > +		/* don't want metadata to be flushed at close */
-> > +		//open_flag &= ~EXT2_FLAG_RW;
+On Wed, Nov 21, 2018 at 05:10:25PM +0100, Christoph Hellwig wrote:
+> No - I think we can always use the code without any segment in
+> bvec_iter_advance.  Because bvec_iter_advance only operates on the
+> iteractor, the generation of an actual single-page or multi-page
+> bvec is left to the caller using the bvec_iter_bvec or segment_iter_bvec
+> helpers.  The only difference is how many bytes you can move the
+> iterator forward in a single loop iteration - so if you pass in
+> PAGE_SIZE as the max_seg_len you just will have to loop more often
+> for a large enough bytes, but not actually do anything different.
 
-Might want to remove this ^^^^^ commented out line too...
+FYI, this patch reverts the max_seg_len related changes back to where
+we are in mainline, and as expected everything works fine for me:
 
---D
-
-> > +	}
-> > +
-> > 	retval = ext2fs_open2(device_name, io_options, open_flag,
-> > 			      0, 0, io_ptr, &fs);
-> > 	if (retval) {
-> > @@ -2999,7 +3005,6 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
-> > 	if ((open_flag & EXT2_FLAG_RW) && !(mount_flags & (EXT2_MF_BUSY | EXT2_MF_MOUNTED)) &&
-> > 	    ext2fs_has_feature_journal_needs_recovery(fs->super)) {
-> > 		errcode_t err;
-> > -
-> > 		printf(_("Recovering journal.\n"));
-> > 		err = ext2fs_run_ext3_journal(&fs);
-> > 		if (err) {
-> 
-> Not sure why this hunk is here?  There should normally be a blank line after
-> local variable declarations.
-> 
-> Cheers, Andreas
-> 
-> 
-> 
-> 
-> 
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index e5b975fa0558..926550ce2d21 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -137,24 +137,18 @@ static inline bool bio_full(struct bio *bio)
+ 	for (i = 0, iter_all.idx = 0; iter_all.idx < (bio)->bi_vcnt; iter_all.idx++)	\
+ 		bvec_for_each_segment(bvl, &((bio)->bi_io_vec[iter_all.idx]), i, iter_all)
+ 
+-static inline void __bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
+-				      unsigned bytes, unsigned max_seg_len)
++static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
++				    unsigned bytes)
+ {
+ 	iter->bi_sector += bytes >> 9;
+ 
+ 	if (bio_no_advance_iter(bio))
+ 		iter->bi_size -= bytes;
+ 	else
+-		__bvec_iter_advance(bio->bi_io_vec, iter, bytes, max_seg_len);
++		bvec_iter_advance(bio->bi_io_vec, iter, bytes);
+ 		/* TODO: It is reasonable to complete bio with error here. */
+ }
+ 
+-static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
+-				    unsigned bytes)
+-{
+-	__bio_advance_iter(bio, iter, bytes, PAGE_SIZE);
+-}
+-
+ #define __bio_for_each_segment(bvl, bio, iter, start)			\
+ 	for (iter = (start);						\
+ 	     (iter).bi_size &&						\
+@@ -168,7 +162,7 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
+ 	for (iter = (start);						\
+ 	     (iter).bi_size &&						\
+ 		((bvl = bio_iter_mp_iovec((bio), (iter))), 1);	\
+-	     __bio_advance_iter((bio), &(iter), (bvl).bv_len, BVEC_MAX_LEN))
++	     bio_advance_iter((bio), &(iter), (bvl).bv_len))
+ 
+ /* returns one real segment(multi-page bvec) each time */
+ #define bio_for_each_bvec(bvl, bio, iter)			\
+diff --git a/include/linux/bvec.h b/include/linux/bvec.h
+index cab36d838ed0..138b4007b8f2 100644
+--- a/include/linux/bvec.h
++++ b/include/linux/bvec.h
+@@ -25,8 +25,6 @@
+ #include <linux/errno.h>
+ #include <linux/mm.h>
+ 
+-#define BVEC_MAX_LEN  ((unsigned int)-1)
+-
+ /*
+  * was unsigned short, but we might as well be ready for > 64kB I/O pages
+  */
+@@ -102,8 +100,8 @@ struct bvec_iter_all {
+ 	.bv_offset	= segment_iter_offset((bvec), (iter)),	\
+ })
+ 
+-static inline bool __bvec_iter_advance(const struct bio_vec *bv,
+-		struct bvec_iter *iter, unsigned bytes, unsigned max_seg_len)
++static inline bool bvec_iter_advance(const struct bio_vec *bv,
++		struct bvec_iter *iter, unsigned bytes)
+ {
+ 	if (WARN_ONCE(bytes > iter->bi_size,
+ 		     "Attempted to advance past end of bvec iter\n")) {
+@@ -112,18 +110,12 @@ static inline bool __bvec_iter_advance(const struct bio_vec *bv,
+ 	}
+ 
+ 	while (bytes) {
+-		unsigned segment_len = segment_iter_len(bv, *iter);
+-
+-		if (max_seg_len < BVEC_MAX_LEN)
+-			segment_len = min_t(unsigned, segment_len,
+-					    max_seg_len -
+-					    bvec_iter_offset(bv, *iter));
++		unsigned iter_len = bvec_iter_len(bv, *iter);
++		unsigned len = min(bytes, iter_len);
+ 
+-		segment_len = min(bytes, segment_len);
+-
+-		bytes -= segment_len;
+-		iter->bi_size -= segment_len;
+-		iter->bi_bvec_done += segment_len;
++		bytes -= len;
++		iter->bi_size -= len;
++		iter->bi_bvec_done += len;
+ 
+ 		if (iter->bi_bvec_done == __bvec_iter_bvec(bv, *iter)->bv_len) {
+ 			iter->bi_bvec_done = 0;
+@@ -157,13 +149,6 @@ static inline bool bvec_iter_rewind(const struct bio_vec *bv,
+ 	return true;
+ }
+ 
+-static inline bool bvec_iter_advance(const struct bio_vec *bv,
+-				     struct bvec_iter *iter,
+-				     unsigned bytes)
+-{
+-	return __bvec_iter_advance(bv, iter, bytes, PAGE_SIZE);
+-}
+-
+ #define for_each_bvec(bvl, bio_vec, iter, start)			\
+ 	for (iter = (start);						\
+ 	     (iter).bi_size &&						\
