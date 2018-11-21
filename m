@@ -1,53 +1,84 @@
-Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mout.gmx.net ([212.227.15.19]:44031 "EHLO mout.gmx.net"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725991AbeKMKBP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 13 Nov 2018 05:01:15 -0500
-From: Chengguang Xu <cgxu519@gmx.com>
-To: jack@suse.com
-Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH 10/10] ext2: fix coding style for xattr.c
-Date: Tue, 13 Nov 2018 08:04:48 +0800
-Message-Id: <20181113000448.16023-11-cgxu519@gmx.com>
-In-Reply-To: <20181113000448.16023-1-cgxu519@gmx.com>
-References: <20181113000448.16023-1-cgxu519@gmx.com>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:38599 "EHLO
+        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725937AbeKUNQf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 08:16:35 -0500
+Received: by mail-pl1-f194.google.com with SMTP id e5so3201564plb.5
+        for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2018 18:44:13 -0800 (PST)
+From: Eiichi Tsukata <devel@etsukata.com>
+To: andi@firstfloor.org, Chris Mason <clm@fb.com>,
+        Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-unionfs@vger.kernel.org
+Cc: Eiichi Tsukata <devel@etsukata.com>
+Subject: [PATCH v1 0/4] fs: fix race between llseek SEEK_END and write
+Date: Wed, 21 Nov 2018 11:43:56 +0900
+Message-Id: <20181121024400.4346-1-devel@etsukata.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix various complains from checkpatch.pl
+Some file systems (including ext4, xfs, ramfs ...) have the following
+problem as I've described in the commit message of the 1/4 patch.
 
-Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
----
- fs/ext2/xattr.c | 17 +++++++++--------
- 1 file changed, 9 insertions(+), 8 deletions(-)
+  The commit ef3d0fd27e90 ("vfs: do (nearly) lockless generic_file_llseek")
+  removed almost all locks in llseek() including SEEK_END. It based on the
+  idea that write() updates size atomically. But in fact, write() can be
+  divided into two or more parts in generic_perform_write() when pos
+  straddles over the PAGE_SIZE, which results in updating size multiple
+  times in one write(). It means that llseek() can see the size being
+  updated during write().
 
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 62d9a659a8ff..7908ff3a1884 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -88,14 +88,15 @@
- # define ea_bdebug(f...)
- #endif
- 
--static int ext2_xattr_set2(struct inode *, struct buffer_head *,
--			   struct ext2_xattr_header *);
--
--static int ext2_xattr_cache_insert(struct mb_cache *, struct buffer_head *);
--static struct buffer_head *ext2_xattr_cache_find(struct inode *,
--						 struct ext2_xattr_header *);
--static void ext2_xattr_rehash(struct ext2_xattr_header *,
--			      struct ext2_xattr_entry *);
-+static int ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
-+			   struct ext2_xattr_header *header);
-+
-+static int ext2_xattr_cache_insert(struct mb_cache *cache,
-+				   struct buffer_head *bh);
-+static struct buffer_head *ext2_xattr_cache_find(struct inode *inode,
-+					 struct ext2_xattr_header *header);
-+static void ext2_xattr_rehash(struct ext2_xattr_header *header,
-+			      struct ext2_xattr_entry *entry);
- 
- static const struct xattr_handler *ext2_xattr_handler_map[] = {
- 	[EXT2_XATTR_INDEX_USER]		     = &ext2_xattr_user_handler,
+  This race changes behavior of some applications. 'tail' is one of those
+  applications. It reads range [pos, pos_end] where pos_end is obtained
+  via llseek() SEEK_END. Sometimes, a read line could be broken.
+
+  reproducer:
+
+    $ while true; do echo 123456 >> out; done
+    $ while true; do tail out | grep -v 123456 ; done
+
+  example output(take 30 secs):
+
+    12345
+    1
+    1234
+    1
+    12
+    1234
+
+Note: Some file systems which indivisually implements llseek() and hold
+      inode mutex lock in it are not affected. ex:) btrfs, ocfs2
+
+Patch 1: re-implements inode lock for SEEK_END in generic_file_llseek()
+Patch 2 to 4: implement inode lock for SEEK_END in each file systems
+
+Eiichi Tsukata (4):
+  vfs: fix race between llseek SEEK_END and write
+  ext4: fix race between llseek SEEK_END and write
+  f2fs: fix race between llseek SEEK_END and write
+  overlayfs: fix race between llseek SEEK_END and write
+
+ fs/btrfs/file.c     |  2 +-
+ fs/ext4/file.c      | 10 ++++++++++
+ fs/f2fs/file.c      |  6 +-----
+ fs/fuse/file.c      |  5 +++--
+ fs/gfs2/file.c      |  3 ++-
+ fs/overlayfs/file.c | 23 ++++++++++++++++++++---
+ fs/read_write.c     | 37 ++++++++++++++++++++++++++++++++++---
+ include/linux/fs.h  |  2 ++
+ 8 files changed, 73 insertions(+), 15 deletions(-)
+
 -- 
-2.17.2
+2.19.1
