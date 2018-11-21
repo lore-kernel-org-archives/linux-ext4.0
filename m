@@ -1,49 +1,47 @@
-Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:46161 "EHLO newverein.lst.de"
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:51324 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727733AbeKUCqr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 20 Nov 2018 21:46:47 -0500
-Date: Tue, 20 Nov 2018 17:16:51 +0100
+        id S1727100AbeKUXxw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 18:53:52 -0500
+Date: Wed, 21 Nov 2018 14:19:28 +0100
 From: Christoph Hellwig <hch@lst.de>
-To: Sagi Grimberg <sagi@grimberg.me>
-Cc: Christoph Hellwig <hch@lst.de>, Ming Lei <ming.lei@redhat.com>,
-        Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
         Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
         Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
-Message-ID: <20181120161651.GB2629@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-10-ming.lei@redhat.com> <20181116134541.GH3165@lst.de> <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
+Subject: Re: [PATCH V11 02/19] block: introduce multi-page bvec helpers
+Message-ID: <20181121131928.GA1640@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-3-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
+In-Reply-To: <20181121032327.8434-3-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 19, 2018 at 04:49:27PM -0800, Sagi Grimberg wrote:
->
->> The only user in your final tree seems to be the loop driver, and
->> even that one only uses the helper for read/write bios.
->>
->> I think something like this would be much simpler in the end:
->
-> The recently submitted nvme-tcp host driver should also be a user
-> of this. Does it make sense to keep it as a helper then?
+On Wed, Nov 21, 2018 at 11:23:10AM +0800, Ming Lei wrote:
+> This patch introduces helpers of 'segment_iter_*' for multipage
+> bvec support.
+> 
+> The introduced helpers treate one bvec as real multi-page segment,
+> which may include more than one pages.
 
-I did take a brief look at the code, and I really don't understand
-why the heck it even deals with bios to start with.  Like all the
-other nvme transports it is a blk-mq driver and should iterate
-over segments in a request and more or less ignore bios.  Something
-is horribly wrong in the design.
+Unless I'm missing something these bvec vs segment names are exactly
+inverted vs how we use it elsewhere.
+
+In the iterators we use segment for single-page bvec, and bvec for multi
+page ones, and here it is inverse.  Please switch it around.
