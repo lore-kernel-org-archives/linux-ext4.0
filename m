@@ -1,68 +1,65 @@
 Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33540 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725939AbeKUPFF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 10:05:05 -0500
-Date: Tue, 20 Nov 2018 23:32:16 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: [PATCH e2fsprogs 3/9] libe2p: Helpers for configuring the
- encoding superblock fields
-Message-ID: <20181121043216.GA14968@thunk.org>
-References: <20181015211220.27370-1-krisman@collabora.co.uk>
- <20181015211220.27370-4-krisman@collabora.co.uk>
- <20181119042727.GH32299@thunk.org>
- <87efbht7bj.fsf@collabora.com>
+Received: from mail-pl1-f195.google.com ([209.85.214.195]:36546 "EHLO
+        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725995AbeKUQIK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 11:08:10 -0500
+Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+References: <20181115085306.9910-10-ming.lei@redhat.com>
+ <20181116134541.GH3165@lst.de>
+ <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
+ <20181120161651.GB2629@lst.de>
+ <53526aae-fb9b-ee38-0a01-e5899e2d4e4d@grimberg.me>
+ <20181121005902.GA31748@ming.t460p>
+ <2d9bee7a-f010-dcf4-1184-094101058584@grimberg.me>
+ <20181121034415.GA8408@ming.t460p>
+ <2a47d336-c19b-6bf4-c247-d7382871eeea@grimberg.me>
+ <7378bf49-5a7e-5622-d4d1-808ba37ce656@grimberg.me>
+ <20181121050359.GA31915@ming.t460p>
+From: Sagi Grimberg <sagi@grimberg.me>
+Message-ID: <fc268b0e-61b5-aacc-67be-cb7b266c6d8f@grimberg.me>
+Date: Tue, 20 Nov 2018 21:35:07 -0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <87efbht7bj.fsf@collabora.com>
+In-Reply-To: <20181121050359.GA31915@ming.t460p>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 19, 2018 at 10:28:48AM -0500, Gabriel Krisman Bertazi wrote:
+
+>> Wait, I see that the bvec is still a single array per bio. When you said
+>> a table I thought you meant a 2-dimentional array...
 > 
-> >> +#define UTF8_NORMALIZATION_TYPE_NFKD	(1 << 1)
-> >> +#define UTF8_CASEFOLD_TYPE_NFKDCF	(1 << 4)
+> I mean a new 1-d table A has to be created for multiple bios in one rq,
+> and build it in the following way
+> 
+>             rq_for_each_bvec(tmp, rq, rq_iter)
+>                      *A = tmp;
+> 
+> Then you can pass A to iov_iter_bvec() & send().
+> 
+> Given it is over TCP, I guess it should be doable for you to preallocate one
+> 256-bvec table in one page for each request, then sets the max segment size as
+> (unsigned int)-1, and max segment number as 256, the preallocated table
+> should work anytime.
 
-Where do these values come from?  And why are they (1 << 1) and (1 << 4),
-respectively?
-
-I just noticed that these are used in utf8's default flags, when then
-end up getting set in the superblock.  So if these are official ext4
-code points, they should have a EXT4_ prefix, not a UTF8_ prefix.  It
-also seems that it's not possible to set them in mke2fs (only the
-"strict" flag can be set or unset in e2p_str2encoding_flags).
-
-So are we going to support something other than NFKD, or not?  If it's
-in the superblock, then we need to make sure the kernel does something
-sane if they are something other than the default.  And if we are just
-going to make it be a rule that all ext4 file systems with encoding
-type utf8 v10 will be NFKD, then we should let it be configurable in
-the superblock.
-
-> >> +
-> >> +static const struct ext4_sb_encoding_map {
-> >> +	char *name;
-> >> +	__u16 default_flags;
-> >> +} ext4_encoding_map[] = {
-> >> +	/* 0x0 */ { "ascii", 0x0},
-> >> +	/* 0x1 */ {"utf8-10.0.0", UTF8_NORMALIZATION_TYPE_NFKD|UTF8_CASEFOLD_TYPE_NFKDCF},
- 
-It might be enough to just use "utf8-10.0".  Internally in the Unicode
-standard, they only use the X.Y notation, and given that we're already
-using the utf8 short-name, as opposed to something like "UTF-8
-encoding of Unicode 10.0.0", it might be better to shorten it to utf-8.
-
-I also noticed that Unicode 11.0 has been released in June 2018.  For
-poeple interested in scripts like Georgian Mtavruli (which has new
-case folding rules, so it's not just academic on our part), Hanifi
-Rohingya, Mayan Numberals, Historic Sanskrit etc., in their ext4 file
-names, I'm sure they'll appreciate it.  :-)
-
-Oh, and I think the FSF will be happier if we use Unicode 11.0, since
-it also features (in addition to a number of new emoji's), the
-Copyleft Symbol.  :-)
-
-					- Ted
+256 bvec table is really a lot to preallocate, especially when its not
+needed, I can easily initialize the bvec_iter on the bio bvec. If this
+involves preallocation of the worst-case than I don't consider this to
+be an improvement.
