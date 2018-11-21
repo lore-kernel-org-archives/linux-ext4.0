@@ -1,50 +1,45 @@
-Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:36114 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726355AbeK3QJI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Nov 2018 11:09:08 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 0E6012FEED
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 05:01:05 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Fri, 30 Nov 2018 05:01:04 +0000
-Message-ID: <bug-201685-13602-Hw0xhSpgl3@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:51539 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728499AbeKVAfk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 19:35:40 -0500
+Date: Wed, 21 Nov 2018 15:01:05 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V11 11/19] bcache: avoid to use
+ bio_for_each_segment_all() in bch_bio_alloc_pages()
+Message-ID: <20181121140105.GB2323@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-12-ming.lei@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181121032327.8434-12-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Wed, Nov 21, 2018 at 11:23:19AM +0800, Ming Lei wrote:
+> bch_bio_alloc_pages() is always called on one new bio, so it is safe
+> to access the bvec table directly. Given it is the only kind of this
+> case, open code the bvec table access since bio_for_each_segment_all()
+> will be changed to support for iterating over multipage bvec.
 
---- Comment #79 from Hao Wei Tee (angelsl@in04.sg) ---
-(In reply to Néstor A. Marchesini from comment #78)
-> Well, guys, this seems to pass the test, after several reboots every several
-> hours of use, I had no more corruptions of my four partitions mdadm raid1.
-> The solution was to delete the ext4 folder from my kernel 4.19.5 and copy
-> the ext4 folder from my previous kernel 4.18.20 and recompiling the tree
-> 4.19.5.
-> 
-> $ uname -a
-> Linux pc-user 4.19.5-gentoo #1 SMP PREEMPT Thu Nov 29 00:45:31 2018 x86_64
-> AMD FX(tm)-8350 Eight-Core Processor AuthenticAMD GNU/Linux
-> 
-> I was comparing both folders /fs/ext4 of the 4.18.20 and 4.19.5 trees with
-> meld and there are several modifications, unfortunately it exceeds my
-> knowledge.
-> At least on this side I affirm that the problem is gone, we will see it
-> happen with later patches.
+Looks good,
 
-If this is the case, perhaps you could bisect fs/ext4 between tags v4.18 and
-v4.19?
-
-$ git bisect start v4.19 v4.18 -- fs/ext4
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Reviewed-by: Christoph Hellwig <hch@lst.de>
