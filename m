@@ -1,16 +1,13 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:39052 "EHLO
-        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727087AbeK0JkW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:40:22 -0500
-Received: by mail-pg1-f193.google.com with SMTP id w6so6855018pgl.6
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:44:42 -0800 (PST)
-Date: Mon, 26 Nov 2018 14:44:39 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:47982 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727069AbeKUN7Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 08:59:16 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
         Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
@@ -24,55 +21,42 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
         Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
         Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V12 17/20] block: always define BIO_MAX_PAGES as 256
-Message-ID: <20181126224439.GN30411@vader>
-References: <20181126021720.19471-1-ming.lei@redhat.com>
- <20181126021720.19471-18-ming.lei@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181126021720.19471-18-ming.lei@redhat.com>
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V11 08/19] btrfs: use bvec_last_segment to get bio's last page
+Date: Wed, 21 Nov 2018 11:23:16 +0800
+Message-Id: <20181121032327.8434-9-ming.lei@redhat.com>
+In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
+References: <20181121032327.8434-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 26, 2018 at 10:17:17AM +0800, Ming Lei wrote:
-> Now multi-page bvec can cover CONFIG_THP_SWAP, so we don't need to
-> increase BIO_MAX_PAGES for it.
-> 
-> CONFIG_THP_SWAP needs to split one THP into normal pages and adds
-> them all to one bio. With multipage-bvec, it just takes one bvec to
-> hold them all.
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+Preparing for supporting multi-page bvec.
 
 Reviewed-by: Omar Sandoval <osandov@fb.com>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ fs/btrfs/extent_io.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> ---
->  include/linux/bio.h | 8 --------
->  1 file changed, 8 deletions(-)
-> 
-> diff --git a/include/linux/bio.h b/include/linux/bio.h
-> index 5505f74aef8b..7be48c55b14a 100644
-> --- a/include/linux/bio.h
-> +++ b/include/linux/bio.h
-> @@ -34,15 +34,7 @@
->  #define BIO_BUG_ON
->  #endif
->  
-> -#ifdef CONFIG_THP_SWAP
-> -#if HPAGE_PMD_NR > 256
-> -#define BIO_MAX_PAGES		HPAGE_PMD_NR
-> -#else
->  #define BIO_MAX_PAGES		256
-> -#endif
-> -#else
-> -#define BIO_MAX_PAGES		256
-> -#endif
->  
->  #define bio_prio(bio)			(bio)->bi_ioprio
->  #define bio_set_prio(bio, prio)		((bio)->bi_ioprio = prio)
-> -- 
-> 2.9.5
-> 
+diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+index d228f706ff3e..5d5965297e7e 100644
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -2720,11 +2720,12 @@ static int __must_check submit_one_bio(struct bio *bio, int mirror_num,
+ {
+ 	blk_status_t ret = 0;
+ 	struct bio_vec *bvec = bio_last_bvec_all(bio);
+-	struct page *page = bvec->bv_page;
++	struct bio_vec bv;
+ 	struct extent_io_tree *tree = bio->bi_private;
+ 	u64 start;
+ 
+-	start = page_offset(page) + bvec->bv_offset;
++	bvec_last_segment(bvec, &bv);
++	start = page_offset(bv.bv_page) + bv.bv_offset;
+ 
+ 	bio->bi_private = NULL;
+ 
+-- 
+2.9.5
