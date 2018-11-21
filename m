@@ -1,38 +1,36 @@
-Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34744 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1730710AbeKTQY4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 20 Nov 2018 11:24:56 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2F91B2A2F2
-        for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2018 05:57:36 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Tue, 20 Nov 2018 05:57:36 +0000
-Message-ID: <bug-201685-13602-e8CWRHaZRX@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:33640 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725939AbeKUPel (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 10:34:41 -0500
+Date: Wed, 21 Nov 2018 00:01:48 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH e2fsprogs 6/9] lib/ext2fs: Implement NLS support
+Message-ID: <20181121050148.GC26006@thunk.org>
+References: <20181015211220.27370-1-krisman@collabora.co.uk>
+ <20181015211220.27370-7-krisman@collabora.co.uk>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181015211220.27370-7-krisman@collabora.co.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Mon, Oct 15, 2018 at 05:12:17PM -0400, Gabriel Krisman Bertazi wrote:
+> Basic NLS support is required in e2fsprogs because of fsck, which
+> needsto calculate dx hashes for encoding aware filesystems.  this patch
+> implements this infrastructure as well as ascii support.
+> 
+> We don't need to do all the dance of versioning as we do in the kernel,
+> because we know before-hand which encodings and versions we
+> support (those we know how to store in the sb), so it is simpler just to
+> create static tables.
+> 
+> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-m@maltris.org changed:
+I see the case folding tables for ASCII, but it looks like the case
+folding tables for Unicode aren't included.  Am I missing something?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |m@maltris.org
-
---- Comment #7 from m@maltris.org ---
-Confirming for now, similar problems with 4.19.1, 4.19.2, 4.20-rc1, 4.20-rc2
-and 4.20-rc3 from the Ubuntu mainline-kernel repository
-(http://kernel.ubuntu.com/~kernel-ppa/mainline/).
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+	       	   	   	  	     - Ted
