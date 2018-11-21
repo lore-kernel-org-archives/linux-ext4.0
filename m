@@ -1,48 +1,85 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51824 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726722AbeKSSi1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 13:38:27 -0500
-Date: Mon, 19 Nov 2018 16:15:09 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Omar Sandoval <osandov@osandov.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 08/19] btrfs: move bio_pages_all() to btrfs
-Message-ID: <20181119081507.GA16736@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-9-ming.lei@redhat.com>
- <20181116002356.GC23828@vader>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181116002356.GC23828@vader>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail2.sequans.com ([194.98.51.148]:61670 "EHLO
+        mail2.sequans.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729936AbeKVEdV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 23:33:21 -0500
+To: <linux-ext4@vger.kernel.org>
+Subject: Metadata_csum is still enabled after trying to disable it.
+Message-Id: <E1gPWbq-0006F7-IZ@eureka>
+From: Jean-Christophe Guillain <jcguillain@sequans.com>
+Date: Wed, 21 Nov 2018 18:48:18 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:23:56PM -0800, Omar Sandoval wrote:
-> On Thu, Nov 15, 2018 at 04:52:55PM +0800, Ming Lei wrote:
-> > BTRFS is the only user of this helper, so move this helper into
-> > BTRFS, and implement it via bio_for_each_segment_all(), since
-> > bio->bi_vcnt may not equal to number of pages after multipage bvec
-> > is enabled.
-> 
-> Shouldn't you also get rid of bio_pages_all() in this patch?
+Hi,
 
-Good catch!
+I see a strange behaviour when playing with the metadata_csum parameter of ext4.
+(I use a Debian Stretch, with a kernel 4.9.0-8-amd64 #1 SMP Debian 4.9.110-3+deb9u6 (2018-10-08) x86_64 GNU/Linux)
 
-thanks,
-Ming
+How to reproduce :
+
+* I enable metada checksum : OK
+    root@test# tune2fs -O metadata_csum /dev/my_vol
+    tune2fs 1.43.4 (31-Jan-2017)
+    Enabling checksums could take some time.
+    Proceed anyway (or wait 5 seconds) ? (y,N) y
+
+* I check : Checksum enabled
+    root@test# tune2fs -l /dev/my_vol
+    tune2fs 1.43.4 (31-Jan-2017)
+    Filesystem volume name:   <none>
+    [...]
+    Journal backup:           inode blocks
+    Checksum type:            crc32c
+    Checksum:                 0xb0e3a180
+
+* I change filesystem UUID : OK
+    root@test# tune2fs -U random /dev/my_vol
+    tune2fs 1.43.4 (31-Jan-2017)
+    Setting UUID on a checksummed filesystem could take some time.
+    Proceed anyway (or wait 5 seconds) ? (y,N) y
+
+* I disable metadata checksum : OK
+    root@test# tune2fs -O ^metadata_csum /dev/my_vol
+    tune2fs 1.43.4 (31-Jan-2017)
+    Disabling checksums could take some time.
+    Proceed anyway (or wait 5 seconds) ? (y,N) y
+
+* I change filesystem UUID : It looks like metada checksum still is enabled
+    root@test# tune2fs -U random /dev/my_vol
+    tune2fs 1.43.4 (31-Jan-2017)
+    Setting UUID on a checksummed filesystem could take some time.
+    Proceed anyway (or wait 5 seconds) ? (y,N) y
+
+* I fsck the filesystem to see if it could fix this.
+    root@test# e2fsck -f /dev/my_vol
+    2fsck 1.43.4 (31-Jan-2017)
+    Pass 1: Checking inodes, blocks, and sizes
+    Pass 2: Checking directory structure
+    Pass 3: Checking directory connectivity
+    Pass 4: Checking reference counts
+    Pass 5: Checking group summary information
+    /dev/my_vol: 16303/3932160 files (0.9% non-contiguous), 1829950/15728640 blocks
+
+* I check : metadata checksum looks like disabled
+    root@test# tune2fs -l /dev/my_vol tune2fs 1.43.4 (31-Jan-2017)
+    Filesystem volume name:   <none>
+    [...]
+    Journal backup:           inode blocks
+
+* I change filesystem UUID : It looks like metada checksum still is enabled
+    root@test# tune2fs -U random /dev/my_vol
+    tune2fs 1.43.4 (31-Jan-2017)
+    Setting UUID on a checksummed filesystem could take some time.
+    Proceed anyway (or wait 5 seconds) ? (y,N) y
+
+Is it a bug ?
+How can I actually disable this parameter ?
+
+Best regards,
+jC Guillain
+
+
+-- IMPORTANT NOTICE: 
+
+The contents of this email and any attachments are confidential and may also be privileged. If you are not the intended recipient, please notify the sender immediately and do not disclose the contents to any other person, use it for any purpose, or store or copy the information in any medium. Thank you.
