@@ -1,123 +1,294 @@
-Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lj1-f196.google.com ([209.85.208.196]:37785 "EHLO
-        mail-lj1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725799AbeK2Hv6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2018 02:51:58 -0500
-Received: by mail-lj1-f196.google.com with SMTP id e5-v6so24723198lja.4
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 12:49:02 -0800 (PST)
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-To: linux-ext4@vger.kernel.org
-Cc: adilger.kernel@dilger.ca, alexey.lyashkov@gmail.com
-Subject: [PATCH v2] ext2fs: don't read group descriptors during e2label
-Date: Wed, 28 Nov 2018 23:48:40 +0300
-Message-Id: <20181128204840.4544-1-artem.blagodarenko@gmail.com>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:54452 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726165AbeKUN5P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 08:57:15 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V11 00/19] block: support multi-page bvec
+Date: Wed, 21 Nov 2018 11:23:08 +0800
+Message-Id: <20181121032327.8434-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-tune2fs is used to make e2label duties.  ext2fs_open2() reads group
-descriptors which are not used during disk label obtaining, but
-takes a lot of time on large partitions.
+Hi,
 
-This patch change ext2fs_open2(), so only initialized
-superblock is returned. without block descriptors. This save
-time dramatically.
+This patchset brings multi-page bvec into block layer:
 
-Cray-bug-id: LUS-5777
-Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
----
- lib/ext2fs/ext2fs.h |  1 +
- lib/ext2fs/openfs.c | 22 +++++++++++++++++++---
- misc/tune2fs.c      |  7 ++++++-
- 3 files changed, 26 insertions(+), 4 deletions(-)
+1) what is multi-page bvec?
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 5b87d395..2abb6f76 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -204,6 +204,7 @@ typedef struct ext2_file *ext2_file_t;
- #define EXT2_FLAG_IGNORE_CSUM_ERRORS	0x200000
- #define EXT2_FLAG_SHARE_DUP		0x400000
- #define EXT2_FLAG_IGNORE_SB_ERRORS	0x800000
-+#define EXT2_FLAG_JOURNAL_ONLY		0x1000000
- 
- /*
-  * Special flag in the ext2 inode i_flag field that means that this is
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 85d73e2a..af671070 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -135,6 +135,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 	int		j;
- #endif
- 	char		*time_env;
-+	unsigned long	enough_desc_blocks;
- 
- 	EXT2_CHECK_MAGIC(manager, EXT2_ET_MAGIC_IO_MANAGER);
- 
-@@ -440,12 +441,23 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 		dest += fs->blocksize*first_meta_bg;
- 	}
- 
--	for (i = first_meta_bg ; i < fs->desc_blocks; i++) {
-+	/*
-+	 * Need superblock and journal inode only. Do not read
-+	 * met_bg group blocks if journal inode group already loaded
-+	 */
-+	if (flags & EXT2_FLAG_JOURNAL_ONLY)
-+		enough_desc_blocks =
-+			fs->super->s_journal_inum /
-+			EXT2_INODES_PER_GROUP(fs->super) + 1;
-+	else
-+		enough_desc_blocks = fs->desc_blocks;
-+
-+	for (i = first_meta_bg; i < enough_desc_blocks; i++) {
- 		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
- 		io_channel_cache_readahead(fs->io, blk, 1);
- 	}
- 
--	for (i=first_meta_bg ; i < fs->desc_blocks; i++) {
-+	for (i = first_meta_bg; i < enough_desc_blocks; i++) {
- 		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
- 		retval = io_channel_read_blk64(fs->io, blk, 1, dest);
- 		if (retval)
-@@ -468,8 +480,12 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 	 */
- 	if (superblock > 1 && ext2fs_has_group_desc_csum(fs)) {
- 		dgrp_t group;
-+		dgrp_t enough_desc_count;
-+
-+		enough_desc_count = enough_desc_blocks *
-+				    EXT2_DESC_PER_BLOCK(fs->super);
- 
--		for (group = 0; group < fs->group_desc_count; group++) {
-+		for (group = 0; group < enough_desc_count; group++) {
- 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
- 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_INODE_UNINIT);
- 			ext2fs_bg_itable_unused_set(fs, group, 0);
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index cd4057c3..b226fdbf 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -2882,6 +2882,12 @@ retry_open:
- 	/* keep the filesystem struct around to dump MMP data */
- 	open_flag |= EXT2_FLAG_NOFREE_ON_ERROR;
- 
-+	if (print_label || L_flag) {
-+		open_flag |= EXT2_FLAG_JOURNAL_ONLY;
-+		/* don't want metadata to be flushed at close */
-+		//open_flag &= ~EXT2_FLAG_RW;
-+	}
-+
- 	retval = ext2fs_open2(device_name, io_options, open_flag,
- 			      0, 0, io_ptr, &fs);
- 	if (retval) {
-@@ -2999,7 +3005,6 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
- 	if ((open_flag & EXT2_FLAG_RW) && !(mount_flags & (EXT2_MF_BUSY | EXT2_MF_MOUNTED)) &&
- 	    ext2fs_has_feature_journal_needs_recovery(fs->super)) {
- 		errcode_t err;
--
- 		printf(_("Recovering journal.\n"));
- 		err = ext2fs_run_ext3_journal(&fs);
- 		if (err) {
+Multipage bvecs means that one 'struct bio_bvec' can hold multiple pages
+which are physically contiguous instead of one single page used in linux
+kernel for long time.
+
+2) why is multi-page bvec introduced?
+
+Kent proposed the idea[1] first. 
+
+As system's RAM becomes much bigger than before, and huge page, transparent
+huge page and memory compaction are widely used, it is a bit easy now
+to see physically contiguous pages from fs in I/O. On the other hand, from
+block layer's view, it isn't necessary to store intermediate pages into bvec,
+and it is enough to just store the physicallly contiguous 'segment' in each
+io vector.
+
+Also huge pages are being brought to filesystem and swap [2][6], we can
+do IO on a hugepage each time[3], which requires that one bio can transfer
+at least one huge page one time. Turns out it isn't flexiable to change
+BIO_MAX_PAGES simply[3][5]. Multipage bvec can fit in this case very well.
+As we saw, if CONFIG_THP_SWAP is enabled, BIO_MAX_PAGES can be configured
+as much bigger, such as 512, which requires at least two 4K pages for holding
+the bvec table.
+
+With multi-page bvec:
+
+- Inside block layer, both bio splitting and sg map can become more
+efficient than before by just traversing the physically contiguous
+'segment' instead of each page.
+
+- segment handling in block layer can be improved much in future since it
+should be quite easy to convert multipage bvec into segment easily. For
+example, we might just store segment in each bvec directly in future.
+
+- bio size can be increased and it should improve some high-bandwidth IO
+case in theory[4].
+
+- there is opportunity in future to improve memory footprint of bvecs. 
+
+3) how is multi-page bvec implemented in this patchset?
+
+Patch 1 fixes one issue of misusing on bio->bi_vcnt.
+
+Patches 2 ~ 15 implement multipage bvec in block layer:
+
+	- put all tricks into bvec/bio/rq iterators, and as far as
+	drivers and fs use these standard iterators, they are happy
+	with multipage bvec
+
+	- introduce bio_for_each_bvec() to iterate over multipage bvec for splitting
+	bio and mapping sg
+
+	- keep current bio_for_each_segment*() to itereate over singlepage bvec and
+	make sure current users won't be broken; especailly, convert to this
+	new helper prototype in single patch 21 given it is bascially a mechanism
+	conversion
+
+	- deal with iomap & xfs's sub-pagesize io vec in patch 13
+
+	- enalbe multipage bvec in patch 14 
+
+Patch 16 redefines BIO_MAX_PAGES as 256.
+
+Patch 17 documents usages of bio iterator helpers.
+
+Patch 18~19 kills NO_SG_MERGE.
+
+These patches can be found in the following git tree:
+
+	git:  https://github.com/ming1/linux.git  for-4.21-block-mp-bvec-V11
+
+Lots of test(blktest, xfstests, ltp io, ...) have been run with this patchset,
+and not see regression.
+
+Thanks Christoph for reviewing the early version and providing very good
+suggestions, such as: introduce bio_init_with_vec_table(), remove another
+unnecessary helpers for cleanup and so on.
+
+Thanks Chritoph and Omar for reviewing V10, and provides lots of helpful
+comments.
+
+Any comments are welcome!
+
+V11:
+	- address most of reviews from Omar and christoph
+	- rename mp_bvec_* as segment_* helpers
+	- remove 'mp' parameter from bvec_iter_advance() and related helpers
+	- cleanup patch on bvec_split_segs() and blk_bio_segment_split(),
+	  remove unnecessary checks
+	- simplify bvec_last_segment()
+	- drop bio_pages_all()
+	- introduce dedicated functions/file for handling non-cluser bio for
+	avoiding checking queue cluster before adding page to bio
+	- introduce bio_try_merge_segment() for simplifying iomap/xfs page
+	  accounting code
+	- Fix Document change
+
+V10:
+	- no any code change, just add more guys and list into patch's CC list,
+	as suggested by Christoph and Dave Chinner
+V9:
+	- fix regression on iomap's sub-pagesize io vec, covered by patch 13
+V8:
+	- remove prepare patches which all are merged to linus tree
+	- rebase on for-4.21/block
+	- address comments on V7
+	- add patches of killing NO_SG_MERGE
+
+V7:
+	- include Christoph and Mike's bio_clone_bioset() patches, which is
+	  actually prepare patches for multipage bvec
+	- address Christoph's comments
+
+V6:
+	- avoid to introduce lots of renaming, follow Jen's suggestion of
+	using the name of chunk for multipage io vector
+	- include Christoph's three prepare patches
+	- decrease stack usage for using bio_for_each_chunk_segment_all()
+	- address Kent's comment
+
+V5:
+	- remove some of prepare patches, which have been merged already
+	- add bio_clone_seg_bioset() to fix DM's bio clone, which
+	is introduced by 18a25da84354c6b (dm: ensure bio submission follows
+	a depth-first tree walk)
+	- rebase on the latest block for-v4.18
+
+V4:
+	- rename bio_for_each_segment*() as bio_for_each_page*(), rename
+	bio_segments() as bio_pages(), rename rq_for_each_segment() as
+	rq_for_each_pages(), because these helpers never return real
+	segment, and they always return single page bvec
+	
+	- introducing segment_for_each_page_all()
+
+	- introduce new bio_for_each_segment*()/rq_for_each_segment()/bio_segments()
+	for returning real multipage segment
+
+	- rewrite segment_last_page()
+
+	- rename bvec iterator helper as suggested by Christoph
+
+	- replace comment with applying bio helpers as suggested by Christoph
+
+	- document usage of bio iterator helpers
+
+	- redefine BIO_MAX_PAGES as 256 to make the biggest bvec table
+	accommodated in 4K page
+
+	- move bio_alloc_pages() into bcache as suggested by Christoph
+
+V3:
+	- rebase on v4.13-rc3 with for-next of block tree
+	- run more xfstests: xfs/ext4 over NVMe, Sata, DM(linear),
+	MD(raid1), and not see regressions triggered
+	- add Reviewed-by on some btrfs patches
+	- remove two MD patches because both are merged to linus tree
+	  already
+
+V2:
+	- bvec table direct access in raid has been cleaned, so NO_MP
+	flag is dropped
+	- rebase on recent Neil Brown's change on bio and bounce code
+	- reorganize the patchset
+
+V1:
+	- against v4.10-rc1 and some cleanup in V0 are in -linus already
+	- handle queue_virt_boundary() in mp bvec change and make NVMe happy
+	- further BTRFS cleanup
+	- remove QUEUE_FLAG_SPLIT_MP
+	- rename for two new helpers of bio_for_each_segment_all()
+	- fix bounce convertion
+	- address comments in V0
+
+[1], http://marc.info/?l=linux-kernel&m=141680246629547&w=2
+[2], https://patchwork.kernel.org/patch/9451523/
+[3], http://marc.info/?t=147735447100001&r=1&w=2
+[4], http://marc.info/?l=linux-mm&m=147745525801433&w=2
+[5], http://marc.info/?t=149569484500007&r=1&w=2
+[6], http://marc.info/?t=149820215300004&r=1&w=2
+
+
+
+Ming Lei (19):
+  block: don't use bio->bi_vcnt to figure out segment number
+  block: introduce multi-page bvec helpers
+  block: introduce bio_for_each_bvec()
+  block: use bio_for_each_bvec() to compute multi-page bvec count
+  block: use bio_for_each_bvec() to map sg
+  block: introduce bvec_last_segment()
+  fs/buffer.c: use bvec iterator to truncate the bio
+  btrfs: use bvec_last_segment to get bio's last page
+  btrfs: move bio_pages_all() to btrfs
+  block: loop: pass multi-page bvec to iov_iter
+  bcache: avoid to use bio_for_each_segment_all() in
+    bch_bio_alloc_pages()
+  block: allow bio_for_each_segment_all() to iterate over multi-page
+    bvec
+  block: move bounce_clone_bio into bio.c
+  block: handle non-cluster bio out of blk_bio_segment_split
+  block: enable multipage bvecs
+  block: always define BIO_MAX_PAGES as 256
+  block: document usage of bio iterator helpers
+  block: kill QUEUE_FLAG_NO_SG_MERGE
+  block: kill BLK_MQ_F_SG_MERGE
+
+ Documentation/block/biovecs.txt   |  24 +++++
+ block/Makefile                    |   3 +-
+ block/bio.c                       | 128 +++++++++++++++++++++---
+ block/blk-merge.c                 | 198 ++++++++++++++++++++++++--------------
+ block/blk-mq-debugfs.c            |   2 -
+ block/blk-mq.c                    |   3 -
+ block/blk.h                       |   4 +
+ block/bounce.c                    |  76 +--------------
+ block/non-cluster.c               |  70 ++++++++++++++
+ drivers/block/loop.c              |  22 ++---
+ drivers/block/nbd.c               |   2 +-
+ drivers/block/rbd.c               |   2 +-
+ drivers/block/skd_main.c          |   1 -
+ drivers/block/xen-blkfront.c      |   2 +-
+ drivers/md/bcache/btree.c         |   3 +-
+ drivers/md/bcache/util.c          |   6 +-
+ drivers/md/dm-crypt.c             |   3 +-
+ drivers/md/dm-rq.c                |   2 +-
+ drivers/md/dm-table.c             |  13 ---
+ drivers/md/raid1.c                |   3 +-
+ drivers/mmc/core/queue.c          |   3 +-
+ drivers/scsi/scsi_lib.c           |   2 +-
+ drivers/staging/erofs/data.c      |   3 +-
+ drivers/staging/erofs/unzip_vle.c |   3 +-
+ fs/block_dev.c                    |   6 +-
+ fs/btrfs/compression.c            |   3 +-
+ fs/btrfs/disk-io.c                |   3 +-
+ fs/btrfs/extent_io.c              |  29 ++++--
+ fs/btrfs/inode.c                  |   6 +-
+ fs/btrfs/raid56.c                 |   3 +-
+ fs/buffer.c                       |   5 +-
+ fs/crypto/bio.c                   |   3 +-
+ fs/direct-io.c                    |   4 +-
+ fs/exofs/ore.c                    |   3 +-
+ fs/exofs/ore_raid.c               |   3 +-
+ fs/ext4/page-io.c                 |   3 +-
+ fs/ext4/readpage.c                |   3 +-
+ fs/f2fs/data.c                    |   9 +-
+ fs/gfs2/lops.c                    |   6 +-
+ fs/gfs2/meta_io.c                 |   3 +-
+ fs/iomap.c                        |   8 +-
+ fs/mpage.c                        |   3 +-
+ fs/xfs/xfs_aops.c                 |   7 +-
+ include/linux/bio.h               |  50 ++++++----
+ include/linux/blk-mq.h            |   1 -
+ include/linux/blkdev.h            |   5 +-
+ include/linux/bvec.h              | 115 ++++++++++++++++++++--
+ 47 files changed, 595 insertions(+), 264 deletions(-)
+ create mode 100644 block/non-cluster.c
+
 -- 
-2.14.3
+2.9.5
