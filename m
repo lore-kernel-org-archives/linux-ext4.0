@@ -1,88 +1,212 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60320 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726961AbeKSSuo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 13:50:44 -0500
-Date: Mon, 19 Nov 2018 16:27:23 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Omar Sandoval <osandov@osandov.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 11/19] bcache: avoid to use
- bio_for_each_segment_all() in bch_bio_alloc_pages()
-Message-ID: <20181119082722.GE16736@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-12-ming.lei@redhat.com>
- <20181116004402.GF23828@vader>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:45988 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726393AbeKUKeF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 05:34:05 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v2 1/8] libe2p: Helpers for configuring the encoding superblock fields
+Date: Tue, 20 Nov 2018 19:01:59 -0500
+Message-Id: <20181121000206.15496-2-krisman@collabora.com>
+In-Reply-To: <20181121000206.15496-1-krisman@collabora.com>
+References: <20181121000206.15496-1-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181116004402.GF23828@vader>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:44:02PM -0800, Omar Sandoval wrote:
-> On Thu, Nov 15, 2018 at 04:52:58PM +0800, Ming Lei wrote:
-> > bch_bio_alloc_pages() is always called on one new bio, so it is safe
-> > to access the bvec table directly. Given it is the only kind of this
-> > case, open code the bvec table access since bio_for_each_segment_all()
-> > will be changed to support for iterating over multipage bvec.
-> > 
-> > Cc: Dave Chinner <dchinner@redhat.com>
-> > Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> > Acked-by: Coly Li <colyli@suse.de>
-> > Cc: Mike Snitzer <snitzer@redhat.com>
-> > Cc: dm-devel@redhat.com
-> > Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> > Cc: linux-fsdevel@vger.kernel.org
-> > Cc: Shaohua Li <shli@kernel.org>
-> > Cc: linux-raid@vger.kernel.org
-> > Cc: linux-erofs@lists.ozlabs.org
-> > Cc: David Sterba <dsterba@suse.com>
-> > Cc: linux-btrfs@vger.kernel.org
-> > Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> > Cc: linux-xfs@vger.kernel.org
-> > Cc: Gao Xiang <gaoxiang25@huawei.com>
-> > Cc: Christoph Hellwig <hch@lst.de>
-> > Cc: Theodore Ts'o <tytso@mit.edu>
-> > Cc: linux-ext4@vger.kernel.org
-> > Cc: Coly Li <colyli@suse.de>
-> > Cc: linux-bcache@vger.kernel.org
-> > Cc: Boaz Harrosh <ooo@electrozaur.com>
-> > Cc: Bob Peterson <rpeterso@redhat.com>
-> > Cc: cluster-devel@redhat.com
-> > Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> > ---
-> >  drivers/md/bcache/util.c | 2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > diff --git a/drivers/md/bcache/util.c b/drivers/md/bcache/util.c
-> > index 20eddeac1531..8517aebcda2d 100644
-> > --- a/drivers/md/bcache/util.c
-> > +++ b/drivers/md/bcache/util.c
-> > @@ -270,7 +270,7 @@ int bch_bio_alloc_pages(struct bio *bio, gfp_t gfp_mask)
-> >  	int i;
-> >  	struct bio_vec *bv;
-> >  
-> > -	bio_for_each_segment_all(bv, bio, i) {
-> > +	for (i = 0, bv = bio->bi_io_vec; i < bio->bi_vcnt; bv++) {
-> 
-> This is missing an i++.
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-Good catch, will fix it in next version.
+Implement helper functions to convert the encoding name and specific
+parameters requested by the user on the command line into the format
+that is written to disk.
 
-thanks,
-Ming
+Changes since v1:
+  - Drop struct ext4_encoding_map name.
+  - remove question mark in comment.
+  - Reword 0x0 -> NULL
+  - Prevent out of bound array access if requested invalid encoding
+
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+---
+ lib/e2p/Makefile.in  |  8 +++-
+ lib/e2p/e2p.h        |  5 +++
+ lib/e2p/encoding.c   | 97 ++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2_fs.h |  5 +++
+ 4 files changed, 113 insertions(+), 2 deletions(-)
+ create mode 100644 lib/e2p/encoding.c
+
+diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
+index 2b0aa1915130..68d534cdaf11 100644
+--- a/lib/e2p/Makefile.in
++++ b/lib/e2p/Makefile.in
+@@ -19,7 +19,8 @@ all::	e2p.pc
+ OBJS=		feature.o fgetflags.o fsetflags.o fgetversion.o fsetversion.o \
+ 		getflags.o getversion.o hashstr.o iod.o ls.o ljs.o mntopts.o \
+ 		parse_num.o pe.o pf.o ps.o setflags.o setversion.o uuid.o \
+-		ostype.o percent.o crypto_mode.o fgetproject.o fsetproject.o
++		ostype.o percent.o crypto_mode.o fgetproject.o fsetproject.o \
++		encoding.o
+ 
+ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
+ 		$(srcdir)/fsetflags.c $(srcdir)/fgetversion.c \
+@@ -29,7 +30,7 @@ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
+ 		$(srcdir)/pe.c $(srcdir)/pf.c $(srcdir)/ps.c \
+ 		$(srcdir)/setflags.c $(srcdir)/setversion.c $(srcdir)/uuid.c \
+ 		$(srcdir)/ostype.c $(srcdir)/percent.c $(srcdir)/crypto_mode.c \
+-		$(srcdir)/fgetproject.c $(srcdir)/fsetproject.c
++		$(srcdir)/fgetproject.c $(srcdir)/fsetproject.c $(srcdir)/encoding.c
+ HFILES= e2p.h
+ 
+ LIBRARY= libe2p
+@@ -147,6 +148,9 @@ getversion.o: $(srcdir)/getversion.c $(top_builddir)/lib/config.h \
+ hashstr.o: $(srcdir)/hashstr.c $(top_builddir)/lib/config.h \
+  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
+  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
++encoding.o: $(srcdir)/encoding.c $(top_builddir)/lib/config.h \
++ $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
++ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
+ iod.o: $(srcdir)/iod.c $(top_builddir)/lib/config.h \
+  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
+  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
+diff --git a/lib/e2p/e2p.h b/lib/e2p/e2p.h
+index d70b59a5d358..c3a6b2587bf6 100644
+--- a/lib/e2p/e2p.h
++++ b/lib/e2p/e2p.h
+@@ -80,3 +80,8 @@ unsigned int e2p_percent(int percent, unsigned int base);
+ 
+ const char *e2p_encmode2string(int num);
+ int e2p_string2encmode(char *string);
++
++int e2p_str2encoding(const char *string);
++const char *e2p_encoding2str(int encoding);
++int e2p_get_encoding_flags(int encoding);
++int e2p_str2encoding_flags(int encoding, char *param, __u16 *flags);
+diff --git a/lib/e2p/encoding.c b/lib/e2p/encoding.c
+new file mode 100644
+index 000000000000..b1e6262a73aa
+--- /dev/null
++++ b/lib/e2p/encoding.c
+@@ -0,0 +1,97 @@
++/*
++ * encoding.c --- convert between encoding magic numbers and strings
++ *
++ * Copyright (C) 2018  Collabora Ltd.
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Library
++ * General Public License, version 2.
++ * %End-Header%
++ */
++
++#include "config.h"
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <ctype.h>
++#include <errno.h>
++#include <stdio.h>
++
++#include "e2p.h"
++
++#define ARRAY_SIZE(array)			\
++        (sizeof(array) / sizeof(array[0]))
++
++static const struct {
++	char *name;
++	__u16 default_flags;
++} ext4_encoding_map[] = {
++	/* 0x0 */ { "ascii", 0},
++	/* 0x1 */ {"utf8-10.0.0",
++		   UTF8_NORMALIZATION_TYPE_NFKD | UTF8_CASEFOLD_TYPE_NFKDCF},
++};
++
++static const struct enc_flags {
++	__u16 flag;
++	char *param;
++} encoding_flags[] = {
++	{ EXT4_ENC_STRICT_MODE_FL, "strict" },
++};
++
++/* Return a positive number < 0xff indicating the encoding magic number
++ * or a negative value indicating error. */
++int e2p_str2encoding(const char *string)
++{
++	int i;
++
++	for (i = 0 ; i < ARRAY_SIZE(ext4_encoding_map); i++)
++		if (!strcmp(string, ext4_encoding_map[i].name))
++			return i;
++
++	return -EINVAL;
++}
++
++const char *e2p_encoding2str(int encoding)
++{
++	if (encoding < ARRAY_SIZE(ext4_encoding_map))
++		return ext4_encoding_map[encoding].name;
++	return NULL;
++}
++
++int e2p_get_encoding_flags(int encoding)
++{
++	if (encoding < ARRAY_SIZE(ext4_encoding_map))
++		return ext4_encoding_map[encoding].default_flags;
++	return 0;
++}
++
++int e2p_str2encoding_flags(int encoding, char *param, __u16 *flags)
++{
++	char *f = strtok(param, "-");
++	const struct enc_flags *fl;
++	int i, neg = 0;
++
++	while (f) {
++		neg = 0;
++		if (!strncmp("no", f, 2)) {
++			neg = 1;
++			f += 2;
++		}
++
++		for (i = 0; i < ARRAY_SIZE(encoding_flags); i++) {
++			fl = &encoding_flags[i];
++			if (!strcmp(fl->param, f)) {
++				if (neg)
++					*flags &= ~fl->flag;
++				else
++					*flags |= fl->flag;
++
++				goto next_flag;
++			}
++		}
++		return -EINVAL;
++	next_flag:
++		f = strtok(NULL, "-");
++	}
++	return 0;
++}
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index f1c405b76339..c0d0afc78e38 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -16,6 +16,7 @@
+ #ifndef _LINUX_EXT2_FS_H
+ #define _LINUX_EXT2_FS_H
+ 
++#include <stddef.h>
+ #include <ext2fs/ext2_types.h>		/* Changed from linux/types.h */
+ 
+ #ifndef __GNUC_PREREQ
+@@ -1127,4 +1128,8 @@ struct mmp_struct {
+  */
+ #define EXT4_INLINE_DATA_DOTDOT_SIZE	(4)
+ 
++#define EXT4_ENC_STRICT_MODE_FL		(1 << 0) /* Reject invalid sequences */
++#define UTF8_NORMALIZATION_TYPE_NFKD	(1 << 1)
++#define UTF8_CASEFOLD_TYPE_NFKDCF	(1 << 4)
++
+ #endif	/* _LINUX_EXT2_FS_H */
+-- 
+2.19.1
