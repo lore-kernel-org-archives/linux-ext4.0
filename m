@@ -1,41 +1,50 @@
-Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53732 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726304AbeKHVTH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Nov 2018 16:19:07 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 0E1762C4B7
-        for <linux-ext4@vger.kernel.org>; Thu,  8 Nov 2018 11:44:01 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date: Thu, 08 Nov 2018 11:44:00 +0000
-Message-ID: <bug-201631-13602-Lfr3muFSVm@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:36530 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1730375AbeKVC7l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 21:59:41 -0500
+Date: Wed, 21 Nov 2018 11:24:32 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext2fs: Fix build of new superblock fields on BE machines
+Message-ID: <20181121162432.GF26006@thunk.org>
+References: <20181121001127.1868-1-krisman@collabora.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181121001127.1868-1-krisman@collabora.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+On Tue, Nov 20, 2018 at 07:11:27PM -0500, Gabriel Krisman Bertazi wrote:
+> New superblock fields must be byte swapped before being accessed in Big
+> Endian machines.
+> 
+> Not tested on an actual BE machine.
+> 
+> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+> ---
+> 
+> I just noticed this today.  I don't see the patch that includes this
+> field already pushed to kernel.org, so if you want to squash this one to
+> that patch before pushing to make the result more bisectable in BE
+> machines, I am ok with that.
 
---- Comment #3 from erhard_f@mailbox.org ---
-(In reply to Theodore Tso from comment #2)
-> Can you reproduce this?
+Oops, sorry, I just pushed it out before I saw your note.  I'll add it
+as a follow-on commit right away.  Fortunately we don't do too much
+debugging on BE machines, so it's probably not worth breaking the git
+rules and rewinding, even though it's highly unlikely anyone has done
+a git pull in the last 10 minutes or so.
 
-I will continue to run 4.20-rc kernels and report back if this occurs again. It
-has not popped up on 4.19.x on my ppc machines so far.
+While we're at it, I should have noticed this earler before I acceptd
+patch 2 in your series.  Could you also send a follow up patch which
+adds a quick description of the fname_encoding feature to the ext4.5
+man page?
 
-> And you may also want to send a report to linux-mm@kvack.org, since although
-> it was tripped in ext4_set_page_dirty, the WARN_ON check which is it doing
-> are fundamentally page specific, so this may very well be an mm problem:
-> [...]
+Also, did your v2 patch series to e2fsprogs reflect any of the
+comments I made late last night on the rest of the v1 patch series?
 
-Done.
+Thanks, regards,
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+						- Ted
