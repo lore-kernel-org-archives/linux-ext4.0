@@ -1,61 +1,103 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:59166 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727690AbeK0Ksw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 27 Nov 2018 05:48:52 -0500
-Date: Mon, 26 Nov 2018 15:52:59 -0800
-From: Jaegeuk Kim <jaegeuk@kernel.org>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:49892 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728990AbeKVGJL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2018 01:09:11 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
 To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, ebiggers@kernel.org
-Subject: Re: [f2fs-dev] [PATCH 2/7] f2fs: use IS_ENCRYPTED() to check
- encryption status
-Message-ID: <20181126235259.GD55960@jaegeuk-macbookpro.roam.corp.google.com>
-References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
- <20181119052324.31456-3-chandan@linux.vnet.ibm.com>
- <20181119212332.GB33805@jaegeuk-macbookpro.roam.corp.google.com>
- <20181126034132.GC7904@thunk.org>
- <20181126040038.GD7904@thunk.org>
- <20181126173435.GA22888@thunk.org>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH e2fsprogs 3/9] libe2p: Helpers for configuring the encoding superblock fields
+References: <20181015211220.27370-1-krisman@collabora.co.uk>
+        <20181015211220.27370-4-krisman@collabora.co.uk>
+        <20181119042727.GH32299@thunk.org> <87efbht7bj.fsf@collabora.com>
+        <20181121043216.GA14968@thunk.org>
+Date: Wed, 21 Nov 2018 14:33:30 -0500
+In-Reply-To: <20181121043216.GA14968@thunk.org> (Theodore Y. Ts'o's message of
+        "Tue, 20 Nov 2018 23:32:16 -0500")
+Message-ID: <87pnuydy45.fsf@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181126173435.GA22888@thunk.org>
+Content-Type: text/plain
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+"Theodore Y. Ts'o" <tytso@mit.edu> writes:
 
-On 11/26, Theodore Y. Ts'o wrote:
-> On Sun, Nov 25, 2018 at 11:00:38PM -0500, Theodore Y. Ts'o wrote:
-> > 
-> > It might be that the simplest way to solve things is to merge the f2fs
-> > dev branch up to 79c66e75720c.  This will have the net effect of
-> > including the five patches listed above onto the fscrypt git tree.  So
-> > long you don't plan to rebase or otherwise change these five patches,
-> > it should avoid any merge conflicts.
-> 
-> I've set up a git branch which has the f2fs dev branch, 4.20-rc4, the
-> fsverity patches, and part of Chandan's patch series here:
-> 
-> git://git.kernel.org/pub/scm/linux/kernel/git/tytso/fscrypt.git test-working
-> 
-> There is a minor conflict when I did a trial merge with f2fs.git's dev
-> branch, but it's pretty obvious to how to resolve it.
-> 
-> Jaegeuk, Eric, Chandan, please take a look and let me know what you
-> think.
+> On Mon, Nov 19, 2018 at 10:28:48AM -0500, Gabriel Krisman Bertazi wrote:
+>> 
+>> >> +#define UTF8_NORMALIZATION_TYPE_NFKD	(1 << 1)
+>> >> +#define UTF8_CASEFOLD_TYPE_NFKDCF	(1 << 4)
+>
+> Where do these values come from?  And why are they (1 << 1) and (1 << 4),
+> respectively?
+>
+> I just noticed that these are used in utf8's default flags, when then
+> end up getting set in the superblock.  So if these are official ext4
+> code points, they should have a EXT4_ prefix, not a UTF8_ prefix.  It
+> also seems that it's not possible to set them in mke2fs (only the
+> "strict" flag can be set or unset in e2p_str2encoding_flags).
 
-I was about to rebase f2fs-dev branch to catch up -rc4, so could you please
-update test-working with the rebased one? Then, I'll test Eric & Chandan's
-patches in the test-working branch locally. If there is no issue, I'm okay
-to push all of their work via fscrypt.git, if you prefer.
+Hi,
 
-Afterward, merging f2fs patches till "f2fs: clean up f2fs_sb_has_##feature_name"
-into the test-working branch would be fine as well.
+They come from the nls.h kernel header.  These flags are passed to the
+NLS system to describe the behavior of normalization/casefold functions.
 
-Thanks,
+In order to maintain compatibility to previous kernel users, the utf8
+module (and others, eventually), still support the "no
+normalization/casefold" policy (which I call 'plain' in the kernel).
+When I merged utf8n into utf8, it became up to a flag set when loading
+the nls table to decide what kind of normalization, if any, should be
+done.
 
-> 
-> 	    	 		       	  - Ted
+> So are we going to support something other than NFKD, or not?  If it's
+> in the superblock, then we need to make sure the kernel does something
+> sane if they are something other than the default.  And if we are just
+> going to make it be a rule that all ext4 file systems with encoding
+> type utf8 v10 will be NFKD, then we should let it be configurable in
+> the superblock.
+
+The NLS code in the kernel supports PLAIN and NFKD, but there is no real
+reason for ext4 users to request PLAIN at all, which is only for
+backward compatibility with filesystems that used the utf8 module
+beforehand, so it can't be configured in e2fsprogs.  It still makes
+sense to store the normalization type in the superblock though, in case
+we support other normalization forms in the future and need to do some
+conversion.
+
+That said, I am not planning to support other normalization forms in
+ext4 in the future.
+
+If the kernel (nls_load_version) finds any value other than TYPE_PLAIN
+(0x0) or TYPE_NFKD in the superblock when loading the NLS table, it will
+fail the table creation, which, in turn,  fails the mount operation.
+
+If you agree with the design above, I will just fix the EXT4_ prefix.
+
+>
+>> >> +
+>> >> +static const struct ext4_sb_encoding_map {
+>> >> +	char *name;
+>> >> +	__u16 default_flags;
+>> >> +} ext4_encoding_map[] = {
+>> >> +	/* 0x0 */ { "ascii", 0x0},
+>> >> +	/* 0x1 */ {"utf8-10.0.0", UTF8_NORMALIZATION_TYPE_NFKD|UTF8_CASEFOLD_TYPE_NFKDCF},
+>
+> It might be enough to just use "utf8-10.0".  Internally in the Unicode
+> standard, they only use the X.Y notation, and given that we're already
+> using the utf8 short-name, as opposed to something like "UTF-8
+> encoding of Unicode 10.0.0", it might be better to shorten it to utf-8.
+>
+> I also noticed that Unicode 11.0 has been released in June 2018.  For
+> poeple interested in scripts like Georgian Mtavruli (which has new
+> case folding rules, so it's not just academic on our part), Hanifi
+> Rohingya, Mayan Numberals, Historic Sanskrit etc., in their ext4 file
+> names, I'm sure they'll appreciate it.  :-)
+>
+> Oh, and I think the FSF will be happier if we use Unicode 11.0, since
+> it also features (in addition to a number of new emoji's), the
+> Copyleft Symbol.  :-)
+
+I can do the update!
+
+
+-- 
+Gabriel Krisman Bertazi
