@@ -1,93 +1,52 @@
-Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:46008 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729147AbeK0UZ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 27 Nov 2018 15:25:56 -0500
-Date: Tue, 27 Nov 2018 10:28:36 +0100
-From: Jan Kara <jack@suse.cz>
-To: Colin King <colin.king@canonical.com>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: clean up indentation issues, remove extraneous tabs
-Message-ID: <20181127092836.GD16301@quack2.suse.cz>
-References: <20181123163043.14178-1-colin.king@canonical.com>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:46032 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726001AbeKUKn1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 05:43:27 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>
+Subject: [PATCH] ext2fs: Fix build of new superblock fields on BE machines
+Date: Tue, 20 Nov 2018 19:11:27 -0500
+Message-Id: <20181121001127.1868-1-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181123163043.14178-1-colin.king@canonical.com>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 23-11-18 16:30:43, Colin King wrote:
-> From: Colin Ian King <colin.king@canonical.com>
-> 
-> There are several lines that are indented too far, clean these
-> up by removing the tabs.
-> 
-> Signed-off-by: Colin Ian King <colin.king@canonical.com>
+New superblock fields must be byte swapped before being accessed in Big
+Endian machines.
 
-The patch looks good. You can add:
+Not tested on an actual BE machine.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+---
 
-								Honza
+I just noticed this today.  I don't see the patch that includes this
+field already pushed to kernel.org, so if you want to squash this one to
+that patch before pushing to make the result more bisectable in BE
+machines, I am ok with that.
 
-> ---
->  fs/ext4/migrate.c | 12 ++++++------
->  fs/ext4/super.c   |  2 +-
->  2 files changed, 7 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-> index 61a9d1927817..5ae61cd8c5c9 100644
-> --- a/fs/ext4/migrate.c
-> +++ b/fs/ext4/migrate.c
-> @@ -535,22 +535,22 @@ int ext4_ext_migrate(struct inode *inode)
->  	if (i_data[EXT4_IND_BLOCK]) {
->  		retval = update_ind_extent_range(handle, tmp_inode,
->  				le32_to_cpu(i_data[EXT4_IND_BLOCK]), &lb);
-> -			if (retval)
-> -				goto err_out;
-> +		if (retval)
-> +			goto err_out;
->  	} else
->  		lb.curr_block += max_entries;
->  	if (i_data[EXT4_DIND_BLOCK]) {
->  		retval = update_dind_extent_range(handle, tmp_inode,
->  				le32_to_cpu(i_data[EXT4_DIND_BLOCK]), &lb);
-> -			if (retval)
-> -				goto err_out;
-> +		if (retval)
-> +			goto err_out;
->  	} else
->  		lb.curr_block += max_entries * max_entries;
->  	if (i_data[EXT4_TIND_BLOCK]) {
->  		retval = update_tind_extent_range(handle, tmp_inode,
->  				le32_to_cpu(i_data[EXT4_TIND_BLOCK]), &lb);
-> -			if (retval)
-> -				goto err_out;
-> +		if (retval)
-> +			goto err_out;
->  	}
->  	/*
->  	 * Build the last extent
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 5603a4a1a864..15fc71398747 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1940,7 +1940,7 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
->  #ifdef CONFIG_FS_DAX
->  		ext4_msg(sb, KERN_WARNING,
->  		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
-> -			sbi->s_mount_opt |= m->mount_opt;
-> +		sbi->s_mount_opt |= m->mount_opt;
->  #else
->  		ext4_msg(sb, KERN_INFO, "dax option not supported");
->  		return -1;
-> -- 
-> 2.19.1
-> 
+ lib/ext2fs/swapfs.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/lib/ext2fs/swapfs.c b/lib/ext2fs/swapfs.c
+index b168a2f20208..a1560045d073 100644
+--- a/lib/ext2fs/swapfs.c
++++ b/lib/ext2fs/swapfs.c
+@@ -129,8 +129,11 @@ void ext2fs_swap_super(struct ext2_super_block * sb)
+ 	sb->s_lpf_ino = ext2fs_swab32(sb->s_lpf_ino);
+ 	sb->s_prj_quota_inum = ext2fs_swab32(sb->s_prj_quota_inum);
+ 	sb->s_checksum_seed = ext2fs_swab32(sb->s_checksum_seed);
++	/* s_*_time_hi are __u8 and does not need swabbing */
++	sb->s_encoding = ext2fs_swab16(sb->s_encoding);
++	sb->s_encoding_flags = ext2fs_swab16(sb->s_encoding_flags);
+ 	/* catch when new fields are used from s_reserved */
+-	EXT2FS_BUILD_BUG_ON(sizeof(sb->s_reserved) != 98 * sizeof(__le32));
++	EXT2FS_BUILD_BUG_ON(sizeof(sb->s_reserved) != 95 * sizeof(__le32));
+ 	sb->s_checksum = ext2fs_swab32(sb->s_checksum);
+ }
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.19.1
