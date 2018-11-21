@@ -1,39 +1,57 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from one.firstfloor.org ([193.170.194.197]:50450 "EHLO
-        one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728124AbeKQB5T (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 20:57:19 -0500
-Date: Fri, 16 Nov 2018 07:44:24 -0800
-From: Andi Kleen <andi@firstfloor.org>
-To: Eiichi Tsukata <devel@etsukata.com>
-Cc: andi@firstfloor.org, tytso@mit.edu, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [RFC PATCH 0/1] fs: fix race between llseek SEEK_END and write
-Message-ID: <20181116154424.da6uz56vatmvz7bo@two.firstfloor.org>
-References: <20181116083737.10596-1-devel@etsukata.com>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:46812 "EHLO
+        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725939AbeKUPOz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 10:14:55 -0500
+Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
+From: Sagi Grimberg <sagi@grimberg.me>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-10-ming.lei@redhat.com> <20181116134541.GH3165@lst.de>
+ <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
+ <20181120161651.GB2629@lst.de>
+ <53526aae-fb9b-ee38-0a01-e5899e2d4e4d@grimberg.me>
+ <20181121005902.GA31748@ming.t460p>
+ <2d9bee7a-f010-dcf4-1184-094101058584@grimberg.me>
+ <20181121034415.GA8408@ming.t460p>
+ <2a47d336-c19b-6bf4-c247-d7382871eeea@grimberg.me>
+Message-ID: <7378bf49-5a7e-5622-d4d1-808ba37ce656@grimberg.me>
+Date: Tue, 20 Nov 2018 20:42:04 -0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181116083737.10596-1-devel@etsukata.com>
+In-Reply-To: <2a47d336-c19b-6bf4-c247-d7382871eeea@grimberg.me>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> I would like to ask you the following questions;
+
+>> Yeah, that is the most common example, given merge is enabled
+>> in most of cases. If the driver or device doesn't care merge,
+>> you can disable it and always get single bio request, then the
+>> bio's bvec table can be reused for send().
 > 
-> Q1. Do you consider this behavior as a bug in kernel?
->     or userspace applications are responseible for it?
+> Does bvec_iter span bvecs with your patches? I didn't see that change?
 
-Yes I would consider it a bug.
+Wait, I see that the bvec is still a single array per bio. When you said
+a table I thought you meant a 2-dimentional array...
 
-> 
-> Q2. If it is a bug, how should we fix it?
-> 
-> Currently I'm planning to re-introduce generic_file_llseek_unlocked()
-> and inode lock in generic_file_llseek() for SEEK_END. Then replace
-> generic_file_llseek() with generic_file_llseek_unlocked() if it called
-> with inode lock in individual file systems. Please let me know if the
-> way is not appropreate or any other better way to fix it.
-
-Sounds reasonable.
-
--Andi
+Unless I'm not mistaken, I think that the change is pretty simple then.
+However, nvme-tcp still needs to be bio aware unless we have some
+abstraction in place.. Which will mean that nvme-tcp will need to
+open-code bio_bvecs.
