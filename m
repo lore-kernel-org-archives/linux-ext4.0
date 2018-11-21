@@ -1,60 +1,90 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54862 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:33592 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726784AbeKSTaM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 14:30:12 -0500
-Date: Mon, 19 Nov 2018 17:06:46 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Omar Sandoval <osandov@osandov.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 17/19] block: don't use bio->bi_vcnt to figure out
- segment number
-Message-ID: <20181119090645.GN16736@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-18-ming.lei@redhat.com>
- <20181116021140.GL23828@vader>
+        id S1725939AbeKUP1z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 10:27:55 -0500
+Date: Tue, 20 Nov 2018 23:55:03 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH e2fsprogs 4/9] mke2fs: Configure encoding during
+ superblock initialization
+Message-ID: <20181121045503.GA26006@thunk.org>
+References: <20181015211220.27370-1-krisman@collabora.co.uk>
+ <20181015211220.27370-5-krisman@collabora.co.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181116021140.GL23828@vader>
+In-Reply-To: <20181015211220.27370-5-krisman@collabora.co.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 06:11:40PM -0800, Omar Sandoval wrote:
-> On Thu, Nov 15, 2018 at 04:53:04PM +0800, Ming Lei wrote:
-> > It is wrong to use bio->bi_vcnt to figure out how many segments
-> > there are in the bio even though CLONED flag isn't set on this bio,
-> > because this bio may be splitted or advanced.
-> > 
-> > So always use bio_segments() in blk_recount_segments(), and it shouldn't
-> > cause any performance loss now because the physical segment number is figured
-> > out in blk_queue_split() and BIO_SEG_VALID is set meantime since
-> > bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting").
-> > 
-> > Cc: Dave Chinner <dchinner@redhat.com>
-> > Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> > Fixes: 7f60dcaaf91 ("block: blk-merge: fix blk_recount_segments()")
-> 
-> From what I can tell, the problem was originally introduced by
-> 76d8137a3113 ("blk-merge: recaculate segment if it isn't less than max segments")
-> 
-> Is that right?
+On Mon, Oct 15, 2018 at 05:12:15PM -0400, Gabriel Krisman Bertazi wrote:
+> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+> index f05003fc30b9..5ed7b987540e 100644
+> --- a/misc/mke2fs.c
+> +++ b/misc/mke2fs.c
+> @@ -790,6 +790,8 @@ static void parse_extended_opts(struct ext2_super_block *param,
+>  	int	len;
+>  	int	r_usage = 0;
+>  	int	ret;
+> +	int	encoding = -1;
+> +	char 	*encoding_flags = NULL;
 
-Indeed, will update it in next version.
+    ...
 
-Thanks,
-Ming
+> +	if (ext2fs_has_feature_fname_encoding(param)) {
+> +		param->s_encoding_flags =
+> +			ext4_encoding_map[encoding].default_flags;
+
+This code is assuming that users will specify the encoding via "-E encoding=utf8-10.0"
+and this will set the FNAME_ENCODING flag implicitly.
+
+But consider what happens if the user runs command like this:
+
+    mke2fs -t ext4 -O fname_encoding -E resize=12T
+
+When parse_extended_opts gets called, the variable encoding will still
+be -1, and so we'll end up trying to use a negative array index to
+ext4_encoding_map[] which will be... unfortunate.
+
+As I mentioned in another e-mail, I'm a bit dubious about having
+per-encoding default flags.  Those flags should either global ext4
+code points, or they should be forced to specific values given the
+encoding that is specified.
+ 
+We probably also want to have a default encoding if the user just
+specifies "-O fname_encoding".   Say, in /etc/mke2fs.conf:
+
+[options]
+    default_encoding = utf8-11.0
+
+Then at some point a few years from now, we might enable
+fname_encoding by default, so we might have in /etc/mke2fs.conf:
+
+[fs_types]
+	ext4 = {
+		features = has_journal,extent,huge_file,flex_bg,metadata_csum,64bit,dir_nlink,extra_isize,largedir,fname_encoding
+		inode_size = 256
+	}
+
+So having a way to specify the default encoding in /etc/mke2fs.conf is
+going to be important.  What will probably happen is two years, we'll
+be up to Unicode 13.0, and we might want to add support for Unicode
+13.0 in some future kernel version,, say, 5.8.  But then we won't want
+to make utf8-13.0 the default for some amount of time, since if the
+file system is mounted on an older kernel, it won't work; the kernel
+will have to reject mounting a file system with an unknown encoding.
+
+So that's why I always like to make these sorts of configuration
+defaults to be tuneable in /etc/mke2fs.conf.  Different distros will
+have different backwards compatibility policies.  For example, For
+enterprise distros, they might want to wait 7 years before creating
+file systems with utf8-13.0 as the default.  For a community distro,
+they might want to wait 2-3 years.  And for a purpose-built Linux
+gaming Valve box, where the kernel is under the control of the box
+manufacturers, they might want to be super-aggressive about adopting a
+new Unicode encoding, in order to crack that critical Ancient Sanskrit
+market.  :-)
+
+						- Ted
