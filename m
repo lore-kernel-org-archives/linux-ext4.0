@@ -1,74 +1,72 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:57417 "EHLO newverein.lst.de"
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:60458 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387625AbeKVVB7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 16:01:59 -0500
-Date: Thu, 22 Nov 2018 11:23:09 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
-        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 03/19] block: introduce bio_for_each_bvec()
-Message-ID: <20181122102309.GA29295@lst.de>
-References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-4-ming.lei@redhat.com> <20181121133244.GB1640@lst.de> <20181121153135.GB19111@ming.t460p> <20181121161025.GB4977@lst.de> <20181121171217.GA6259@lst.de> <20181122101527.GB27273@ming.t460p>
+        id S1726001AbeKUKjL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 05:39:11 -0500
+Date: Tue, 20 Nov 2018 19:07:18 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Liu Bo <bo.liu@linux.alibaba.com>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] Ext4: fix slow writeback under dioread_nolock and
+ nodelalloc
+Message-ID: <20181121000718.GC6401@thunk.org>
+References: <1542694270-47732-1-git-send-email-bo.liu@linux.alibaba.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181122101527.GB27273@ming.t460p>
+In-Reply-To: <1542694270-47732-1-git-send-email-bo.liu@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 22, 2018 at 06:15:28PM +0800, Ming Lei wrote:
-> >  	while (bytes) {
-> > -		unsigned segment_len = segment_iter_len(bv, *iter);
-> > -
-> > -		if (max_seg_len < BVEC_MAX_LEN)
-> > -			segment_len = min_t(unsigned, segment_len,
-> > -					    max_seg_len -
-> > -					    bvec_iter_offset(bv, *iter));
-> > +		unsigned iter_len = bvec_iter_len(bv, *iter);
-> > +		unsigned len = min(bytes, iter_len);
-> 
-> It may not work to always use bvec_iter_len() here, and 'segment_len'
-> should be max length of the passed 'bv', however we don't know if it is
-> single-page or mutli-page bvec if no one tells us.
+On Tue, Nov 20, 2018 at 02:11:10PM +0800, Liu Bo wrote:
+> With "nodelalloc", blocks are allocated at the time of writing, and with
+> "dioread_nolock", these allocated blocks are marked as unwritten as well,
+> so bh(s) attached to the blocks have BH_Unwritten and BH_Mapped.
 
-The plain revert I sent isn't totally correct in your current tree
-indeed because of the odd change that segment_iter_len now is the
-full bvec len, so it should be changed to that until we switch to the
-sane naming scheme used elsewhere.
+Hi Liu,
 
-But except for that, it will work.  The bvec we operate on (part of the
-array in the bio pointed to by the iter) is always a multi-page capable
-one. We only fake up a single page on for users using segment_iter_len.
+Could I ask a larger question, which is why is it that you find it
+desirable to use both nodelalloc and dioread_nolock at the same time?
+What's the use case which is causing you to want to do this?
 
-Think of what you are doing in the (I think mostly hypothetical) case
-that we call bvec_iter_advance with a bytes > PAGE_SIZE on a segment
-small than page size.
+One of the things which I have been thinking about doing to simplify
+ext4's test matrix and so we can improve performance in a more direct
+way --- and also so it would make it much easier for us to switch over
+to using more of iomap --- was to consider deprecating and removing
+some of ext4's flexibility.  This includes:
 
-In this case we will limit the current iteration to the while loop
-until we git a page boundary.  This means we will not hit the condition
-moving to the next (real, in the array) bvec at the end of the loop,
-and just go on into the next iteration of the loop with the reduced
-amount of bytes.  Depending on how large byte is this might repeat
-a few more times.  Then on the final one we hit the limit and move
-to the next (real, in the array) bvec.
+*) Making dioread_nolock the default for 4k --- and fixing
+   dioread_nolock so it works for cases where page_size != block_size.
+   Once that is done, we would use dioread_nolock everywhere and drop
+   the older code path.
 
-Now if we don't have the segment limit we do exactly the same thing,
-just a whole lot more efficiently in a single loop iteration.
-tree where segment_iter_len is the 
+*) Drop support for data=journal mode (it could be specified, but it
+   would be ignored).  It's not clear anyone is using it, since the
+   double-write overhead is huge.  Furthermore, requiring the use of
+   nodelalloc means is a further performance hit on data=journal mode.
+
+*) Drop support for nodelalloc, and make delayed allocation the
+   default.  (This requires dropping data=journal mode, since
+   data=journal mode does not co-exist with delalloc.)
+
+The last was assuming that there really wasn't good use cases where
+people would really want to use nodelalloc, aside from ext3
+bug-for-bug compatibility, and hopefully since most people are using
+ext4 these days, it becomes easier to make the case tha we don't need
+to support ext3's unusual performance attributes.
+
+The fact that you have done work trying to improve dioread_nolock &&
+nodelalloc implies that perhaps I'm wrong about my assumption.  So I'd
+like to understand more about what it is that you're trying to do, and
+to figure out of perhaps there's a better way to do it.  After all,
+delalloc makes it a lot easier for the block allocator to do a good
+job, and it also decreases the CPU overhead for the block allocator.
+And while forcing writes to the disk every five seconds might be
+advantageous for some application, it also can add significant latency
+variability for file system operations during a commit.
+
+What am I missing?
+
+Cheers,
+
+						- Ted
