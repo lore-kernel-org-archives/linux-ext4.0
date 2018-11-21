@@ -1,14 +1,14 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:49787 "EHLO newverein.lst.de"
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:37070 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727727AbeKPXmz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Nov 2018 18:42:55 -0500
-Date: Fri, 16 Nov 2018 14:30:28 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
+        id S1726195AbeKUORV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 09:17:21 -0500
+Date: Wed, 21 Nov 2018 11:44:16 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Sagi Grimberg <sagi@grimberg.me>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -17,131 +17,92 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 02/19] block: introduce bio_for_each_bvec()
-Message-ID: <20181116133028.GB3165@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-3-ming.lei@redhat.com>
+Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
+Message-ID: <20181121034415.GA8408@ming.t460p>
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-10-ming.lei@redhat.com>
+ <20181116134541.GH3165@lst.de>
+ <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
+ <20181120161651.GB2629@lst.de>
+ <53526aae-fb9b-ee38-0a01-e5899e2d4e4d@grimberg.me>
+ <20181121005902.GA31748@ming.t460p>
+ <2d9bee7a-f010-dcf4-1184-094101058584@grimberg.me>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-3-ming.lei@redhat.com>
+In-Reply-To: <2d9bee7a-f010-dcf4-1184-094101058584@grimberg.me>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> +static inline void __bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
-> +				      unsigned bytes, bool mp)
+On Tue, Nov 20, 2018 at 07:20:45PM -0800, Sagi Grimberg wrote:
+> 
+> > Not sure I understand the 'blocking' problem in this case.
+> > 
+> > We can build a bvec table from this req, and send them all
+> > in send(),
+> 
+> I would like to avoid growing bvec tables and keep everything
+> preallocated. Plus, a bvec_iter operates on a bvec which means
+> we'll need a table there as well... Not liking it so far...
 
-I think these magic 'bool np' arguments and wrappers over wrapper
-don't help anyone to actually understand the code.  I'd vote for
-removing as many wrappers as we really don't need, and passing the
-actual segment limit instead of the magic bool flag.  Something like
-this untested patch:
+In case of bios in one request, we can't know how many bvecs there
+are except for calling rq_bvecs(), so it may not be suitable to
+preallocate the table. If you have to send the IO request in one send(),
+runtime allocation may be inevitable.
 
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 277921ad42e7..dcad0b69f57a 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -138,30 +138,21 @@ static inline bool bio_full(struct bio *bio)
- 		bvec_for_each_segment(bvl, &((bio)->bi_io_vec[iter_all.idx]), i, iter_all)
- 
- static inline void __bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
--				      unsigned bytes, bool mp)
-+				      unsigned bytes, unsigned max_segment)
- {
- 	iter->bi_sector += bytes >> 9;
- 
- 	if (bio_no_advance_iter(bio))
- 		iter->bi_size -= bytes;
- 	else
--		if (!mp)
--			bvec_iter_advance(bio->bi_io_vec, iter, bytes);
--		else
--			mp_bvec_iter_advance(bio->bi_io_vec, iter, bytes);
-+		__bvec_iter_advance(bio->bi_io_vec, iter, bytes, max_segment);
- 		/* TODO: It is reasonable to complete bio with error here. */
- }
- 
- static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
- 				    unsigned bytes)
- {
--	__bio_advance_iter(bio, iter, bytes, false);
--}
--
--static inline void bio_advance_mp_iter(struct bio *bio, struct bvec_iter *iter,
--				       unsigned bytes)
--{
--	__bio_advance_iter(bio, iter, bytes, true);
-+	__bio_advance_iter(bio, iter, bytes, PAGE_SIZE);
- }
- 
- #define __bio_for_each_segment(bvl, bio, iter, start)			\
-@@ -177,7 +168,7 @@ static inline void bio_advance_mp_iter(struct bio *bio, struct bvec_iter *iter,
- 	for (iter = (start);						\
- 	     (iter).bi_size &&						\
- 		((bvl = bio_iter_mp_iovec((bio), (iter))), 1);	\
--	     bio_advance_mp_iter((bio), &(iter), (bvl).bv_len))
-+	     __bio_advance_iter((bio), &(iter), (bvl).bv_len, 0))
- 
- /* returns one real segment(multipage bvec) each time */
- #define bio_for_each_bvec(bvl, bio, iter)			\
-diff --git a/include/linux/bvec.h b/include/linux/bvec.h
-index 02f26d2b59ad..5e2ed46c1c88 100644
---- a/include/linux/bvec.h
-+++ b/include/linux/bvec.h
-@@ -138,8 +138,7 @@ struct bvec_iter_all {
- })
- 
- static inline bool __bvec_iter_advance(const struct bio_vec *bv,
--				       struct bvec_iter *iter,
--				       unsigned bytes, bool mp)
-+		struct bvec_iter *iter, unsigned bytes, unsigned max_segment)
- {
- 	if (WARN_ONCE(bytes > iter->bi_size,
- 		     "Attempted to advance past end of bvec iter\n")) {
-@@ -148,18 +147,18 @@ static inline bool __bvec_iter_advance(const struct bio_vec *bv,
- 	}
- 
- 	while (bytes) {
--		unsigned len;
-+		unsigned segment_len = mp_bvec_iter_len(bv, *iter);
- 
--		if (mp)
--			len = mp_bvec_iter_len(bv, *iter);
--		else
--			len = bvec_iter_len(bv, *iter);
-+		if (max_segment) {
-+			max_segment -= bvec_iter_offset(bv, *iter);
-+			segment_len = min(segment_len, max_segment);
-+		}
- 
--		len = min(bytes, len);
-+		segment_len = min(bytes, segment_len);
- 
--		bytes -= len;
--		iter->bi_size -= len;
--		iter->bi_bvec_done += len;
-+		bytes -= segment_len;
-+		iter->bi_size -= segment_len;
-+		iter->bi_bvec_done += segment_len;
- 
- 		if (iter->bi_bvec_done == __bvec_iter_bvec(bv, *iter)->bv_len) {
- 			iter->bi_bvec_done = 0;
-@@ -197,14 +196,7 @@ static inline bool bvec_iter_advance(const struct bio_vec *bv,
- 				     struct bvec_iter *iter,
- 				     unsigned bytes)
- {
--	return __bvec_iter_advance(bv, iter, bytes, false);
--}
--
--static inline bool mp_bvec_iter_advance(const struct bio_vec *bv,
--					struct bvec_iter *iter,
--					unsigned bytes)
--{
--	return __bvec_iter_advance(bv, iter, bytes, true);
-+	return __bvec_iter_advance(bv, iter, bytes, PAGE_SIZE);
- }
- 
- #define for_each_bvec(bvl, bio_vec, iter, start)			\
+If you don't require to send the IO request in one send(), you may send
+one bio in one time, and just uses the bio's bvec table directly,
+such as the single bio case in lo_rw_aio().
+
+> 
+> > can this way avoid your blocking issue? You may see this
+> > example in branch 'rq->bio != rq->biotail' of lo_rw_aio().
+> 
+> This is exactly an example of not ignoring the bios...
+
+Yeah, that is the most common example, given merge is enabled
+in most of cases. If the driver or device doesn't care merge,
+you can disable it and always get single bio request, then the
+bio's bvec table can be reused for send().
+
+> 
+> > If this way is what you need, I think you are right, even we may
+> > introduce the following helpers:
+> > 
+> > 	rq_for_each_bvec()
+> > 	rq_bvecs()
+> 
+> I'm not sure how this helps me either. Unless we can set a bvec_iter to
+> span bvecs or have an abstract bio crossing when we re-initialize the
+> bvec_iter I don't see how I can ignore bios completely...
+
+rq_for_each_bvec() will iterate over all bvecs from all bios, so you
+needn't to see any bio in this req.
+
+rq_bvecs() will return how many bvecs there are in this request(cover
+all bios in this req)
+
+> 
+> > So looks nvme-tcp host driver might be the 2nd driver which benefits
+> > from multi-page bvec directly.
+> > 
+> > The multi-page bvec V11 has passed my tests and addressed almost
+> > all the comments during review on V10. I removed bio_vecs() in V11,
+> > but it won't be big deal, we can introduce them anytime when there
+> > is the requirement.
+> 
+> multipage-bvecs and nvme-tcp are going to conflict, so it would be good
+> to coordinate on this. I think that nvme-tcp host needs some adjustments
+> as setting a bvec_iter. I'm under the impression that the change is rather
+> small and self-contained, but I'm not sure I have the full
+> picture here.
+
+I guess I may not get your exact requirement on block io iterator from nvme-tcp
+too, :-(
+
+thanks,
+Ming
