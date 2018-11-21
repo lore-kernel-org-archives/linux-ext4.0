@@ -1,38 +1,44 @@
 Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:49960 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726505AbeKVGV4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2018 01:21:56 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: [PATCH e2fsprogs 9/9] tune2fs: Prevent enabling encryption flag on encoding-aware fs
-References: <20181015211220.27370-1-krisman@collabora.co.uk>
-        <20181015211220.27370-10-krisman@collabora.co.uk>
-        <20181121050301.GD26006@thunk.org>
-Date: Wed, 21 Nov 2018 14:46:13 -0500
-In-Reply-To: <20181121050301.GD26006@thunk.org> (Theodore Y. Ts'o's message of
-        "Wed, 21 Nov 2018 00:03:01 -0500")
-Message-ID: <87d0qydxiy.fsf@collabora.com>
+Received: from verein.lst.de ([213.95.11.211]:52327 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731683AbeKVCqv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 21:46:51 -0500
+Date: Wed, 21 Nov 2018 17:11:45 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V11 14/19] block: handle non-cluster bio out of
+ blk_bio_segment_split
+Message-ID: <20181121161145.GC4977@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-15-ming.lei@redhat.com> <20181121143355.GB2594@lst.de> <20181121153726.GC19111@ming.t460p>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181121153726.GC19111@ming.t460p>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Theodore Y. Ts'o" <tytso@mit.edu> writes:
+On Wed, Nov 21, 2018 at 11:37:27PM +0800, Ming Lei wrote:
+> > +	bio = bio_alloc_bioset(GFP_NOIO, bio_segments(*bio_orig),
+> > +			&non_cluster_bio_set);
+> 
+> bio_segments(*bio_orig) may be > 256, so bio_alloc_bioset() may fail.
 
-> On Mon, Oct 15, 2018 at 05:12:20PM -0400, Gabriel Krisman Bertazi wrote:
->> The kernel will refuse to mount filesystems with the encryption and
->> encoding features enabled at the same time.  The encoding feature can
->> only be set at mount time, so we can just prevent encryption from being
->> set at a later time by tune2fs.
->> 
->> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
->
-> This check also needs to be in mke2fs, right?  I don't think I saw it
-> in your mke2fs patch.
-
-I hadn't noticed you could set the encryption flag at mkfs time.
-sorry.  will fix in v3.
--- 
-Gabriel Krisman Bertazi
+Nothing a little min with BIO_MAX_PAGES couldn't fix.  This patch
+was just intended as an idea how I think this code could work.
