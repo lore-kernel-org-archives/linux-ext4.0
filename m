@@ -1,54 +1,64 @@
-Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:37392 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731485AbeKHCtg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 7 Nov 2018 21:49:36 -0500
-Subject: Re: [PATCH 1/7] ext4: lost brelse in __ext4_read_dirblock()
-To: "Theodore Y. Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:42869 "EHLO
+        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726483AbeKUNQr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 08:16:47 -0500
+Received: by mail-pl1-f194.google.com with SMTP id x21-v6so3191026pln.9
+        for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2018 18:44:25 -0800 (PST)
+From: Eiichi Tsukata <devel@etsukata.com>
+To: andi@firstfloor.org, Chris Mason <clm@fb.com>,
+        Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-References: <cover.1541011937.git.vvs@virtuozzo.com>
- <60f19df8-1e65-99a0-cb6b-696d1b530fd4@virtuozzo.com>
- <20181107152549.GB9919@thunk.org>
-From: Vasily Averin <vvs@virtuozzo.com>
-Message-ID: <6e5c9e17-5916-7296-35a0-cc0600a79f27@virtuozzo.com>
-Date: Wed, 7 Nov 2018 20:18:13 +0300
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-unionfs@vger.kernel.org
+Cc: Eiichi Tsukata <devel@etsukata.com>
+Subject: [PATCH v1 2/4] ext4: fix race between llseek SEEK_END and write
+Date: Wed, 21 Nov 2018 11:43:58 +0900
+Message-Id: <20181121024400.4346-3-devel@etsukata.com>
+In-Reply-To: <20181121024400.4346-1-devel@etsukata.com>
+References: <20181121024400.4346-1-devel@etsukata.com>
 MIME-Version: 1.0
-In-Reply-To: <20181107152549.GB9919@thunk.org>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I was wrong here, but brelse is lost in next error in this function.
-I'll resend new patch.
+Implement individual lock for SEEK_END for ext4 which directly calls
+generic_file_llseek_size().
 
-On 11/7/18 6:25 PM, Theodore Y. Ts'o wrote:
-> On Wed, Oct 31, 2018 at 10:12:18PM +0300, Vasily Averin wrote:
->> Fixes dc6982ff4db1 ("ext4: refactor code to read directory blocks ...") # 3.9
->>
->> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
->> ---
->>  fs/ext4/namei.c | 1 +
->>  1 file changed, 1 insertion(+)
->>
->> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
->> index d388cce72db2..1a21e59ede72 100644
->> --- a/fs/ext4/namei.c
->> +++ b/fs/ext4/namei.c
->> @@ -111,6 +111,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
->>  	if (!bh) {
->>  		ext4_error_inode(inode, func, line, block,
->>  				 "Directory hole found");
->> +		brelse(bh);
->>  		return ERR_PTR(-EFSCORRUPTED);
->>  	}
->>  	dirent = (struct ext4_dir_entry *) bh->b_data;
-> 
-> Inside the conditional, bh == NULL, so the brelse isn't needed.
-> 
-> Cheers,
-> 
-> 						- Ted
-> 
+Signed-off-by: Eiichi Tsukata <devel@etsukata.com>
+---
+ fs/ext4/file.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 69d65d49837b..6479f3066043 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -477,6 +477,16 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int whence)
+ 	default:
+ 		return generic_file_llseek_size(file, offset, whence,
+ 						maxbytes, i_size_read(inode));
++	case SEEK_END:
++		/*
++		 * protects against inode size race with write so that llseek
++		 * doesn't see inode size being updated in generic_perform_write
++		 */
++		inode_lock_shared(inode);
++		offset = generic_file_llseek_size(file, offset, whence,
++						  maxbytes, i_size_read(inode));
++		inode_unlock_shared(inode);
++		return offset;
+ 	case SEEK_HOLE:
+ 		inode_lock_shared(inode);
+ 		offset = iomap_seek_hole(inode, offset, &ext4_iomap_ops);
+-- 
+2.19.1
