@@ -1,32 +1,76 @@
-Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from smtp.petrochina.com.cn ([61.232.0.57]:62448 "EHLO
-        mx4.cnpc.com.cn" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726683AbeK2Xgx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2018 18:36:53 -0500
-Content-Type: text/plain; charset="iso-8859-1"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8BIT
-Content-Description: Mail message body
-Subject: 2% Apply for urgent loan.
-To: Recipients <helpdesk@petrochina.com.cn>
-From: Robert Gigson Rob <helpdesk@petrochina.com.cn>
-Date: Thu, 29 Nov 2018 04:24:56 -0800
-Reply-To: robertmarythink@aol.com
-Message-Id: <18112920251605750d038e489f188884e61239df94ff@petrochina.com.cn>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:51938 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727004AbeKUOB3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 09:01:29 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V11 17/19] block: document usage of bio iterator helpers
+Date: Wed, 21 Nov 2018 11:23:25 +0800
+Message-Id: <20181121032327.8434-18-ming.lei@redhat.com>
+In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
+References: <20181121032327.8434-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Good Day,
-Getting a legitimate loan have always been a huge problem to clients who are in financial needs.The issue of credit and collateral are something that clients are always worried about when seeking a loan from a legitimate lender. Sun Finance Company has made that difference in the lending industry.We can arrange for a loan terms plan from the range of $5,000.Dollars to $500,000,000,
+Now multi-page bvec is supported, some helpers may return page by
+page, meantime some may return segment by segment, this patch
+documents the usage.
 
-Fill out the for m to your loan application:
-Full Names:
-Country:
-Amount Of Loan Needed:
-Occupation:
-Phone:
-Length of The Loan (years)
-Note: All mail must be sent to: robertmarythink@aol.com
-I hope to live your financial expectations.
-Thank You.
-© 2018 FAST LOAN Co-operation
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ Documentation/block/biovecs.txt | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
+index 25689584e6e0..bb008f7afb05 100644
+--- a/Documentation/block/biovecs.txt
++++ b/Documentation/block/biovecs.txt
+@@ -117,3 +117,27 @@ Other implications:
+    size limitations and the limitations of the underlying devices. Thus
+    there's no need to define ->merge_bvec_fn() callbacks for individual block
+    drivers.
++
++Usage of helpers:
++=================
++
++* The following helpers whose names have the suffix of "_all" can only be used
++on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
++shouldn't use them because the bio may have been split before it reached the
++driver.
++
++	bio_for_each_segment_all()
++	bio_first_bvec_all()
++	bio_first_page_all()
++	bio_last_bvec_all()
++
++* The following helpers iterate over single-page bvecs. The passed 'struct
++bio_vec' will contain a single-page IO vector during the iteration
++
++	bio_for_each_segment()
++	bio_for_each_segment_all()
++
++* The following helpers iterate over single-page bvecs. The passed 'struct
++bio_vec' will contain a single-page IO vector during the iteration
++
++	bio_for_each_bvec()
+-- 
+2.9.5
