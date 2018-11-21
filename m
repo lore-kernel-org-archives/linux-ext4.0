@@ -1,90 +1,193 @@
-Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:42346 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725949AbeKTUdy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 20 Nov 2018 15:33:54 -0500
-Date: Tue, 20 Nov 2018 11:05:33 +0100
-From: Jan Kara <jack@suse.cz>
-To: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-Cc: darrick.wong@oracle.com, Jan Kara <jack@suse.cz>,
-        linux-ext4@vger.kernel.org
-Subject: Re: ext4: try to improve unwritten extents merges
-Message-ID: <20181120100533.GD8842@quack2.suse.cz>
-References: <e3074993-0810-1954-7204-38b6d0b0f1e5@linux.alibaba.com>
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:51717 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726778AbeKVBIh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 20:08:37 -0500
+Date: Wed, 21 Nov 2018 15:33:55 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V11 14/19] block: handle non-cluster bio out of
+ blk_bio_segment_split
+Message-ID: <20181121143355.GB2594@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-15-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <e3074993-0810-1954-7204-38b6d0b0f1e5@linux.alibaba.com>
+In-Reply-To: <20181121032327.8434-15-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello!
+> +			non-cluster.o
 
-On Tue 20-11-18 17:01:25, Xiaoguang Wang wrote:
-> First sorry to bother you again, recently we meet a
-> "dioread_nolock,nodelalloc" slow writeback issue, Liu Bo has sent a patch to
-> fix this issue. But here I also wonder whether we can merge unwritten
-> extents as far as possible.
-> In current codes:
-> 
-> int
-> ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
-> 				struct ext4_extent *ex2)
-> {
-> ...
-> 	if (ext4_ext_is_unwritten(ex1) &&
-> 	    (ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN) ||
-> 	     atomic_read(&EXT4_I(inode)->i_unwritten) ||
-> 	     (ext1_ee_len + ext2_ee_len > EXT_UNWRITTEN_MAX_LEN)))
-> 		return 0;
-> ...
-> }
-> This was added by Darrick in 2014:
-> commit a9b8241594adda0a7a4fb3b87bf29d2dff0d997d
-> Author: Darrick J. Wong <darrick.wong@oracle.com>
-> Date:   Thu Feb 20 21:17:35 2014 -0500
-> 
->     ext4: merge uninitialized extents
-> 
->     Allow for merging uninitialized extents.
-> 
->     Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> So long as we have a unwritten extents under io(which also means i_unwritten
-> is not zero), then we can not do merge work for unwritten extents, I wonder
-> whether this conditon is too strict. Assume that the
-> begin of the file is under io, but middle or end of the file could not
-> merge unwritten extetns, though they could be.
-> 
-> I'm not sure whether we could directly remove
-> "atomic_read(&EXT4_I(inode)->i_unwritten)",if not, here I make a simple
-> patch to respect same semantics. The idea is simple, I use a red-black
-> tree to record unwritten extents under io, when trying to merging
-> unwritten extents, we search this per-inode tree, it not hit, we can
-> merge. I have also run "xfstests quick group test cases", look like that
-> it works well. dio maybe also go to this way.
+Do we really need a new source file for these few functions?
 
-The reason why we don't merge unwritten extents if there is IO to unwritten
-extents running is that we split unwritten extents to match exactly the IO
-range on submission and then convert it to written extents on IO
-completion. So we must avoid merging these split out extents while the IO
-is running.
+>  	default:
+> +		if (!blk_queue_cluster(q)) {
+> +			blk_queue_non_cluster_bio(q, bio);
+> +			return;
 
-I agree that the condition in ext4_can_extents_be_merged() is rather coarse
-so it would be nice to improve it so that unwritten extents on which IO is
-not running can be merged. I've also observed that unwritten extents get
-fragmented relatively easily under some workloads.
+I'd name this blk_bio_segment_split_singlepage or similar.
 
-Rather than introducing new RB-tree for this (which costs additional memory
-and its maintenance costs also CPU time), I'd use extent status tree to
-identify unwritten extent that got split out when preparing the IO (you
-should mark such extent in ext4_map_blocks() when EXT4_GET_BLOCKS_IO_SUBMIT
-flag is set). Then the flag would get cleared on extent conversion to
-written one.
+> +static __init int init_non_cluster_bioset(void)
+> +{
+> +	WARN_ON(bioset_init(&non_cluster_bio_set, BIO_POOL_SIZE, 0,
+> +			   BIOSET_NEED_BVECS));
+> +	WARN_ON(bioset_integrity_create(&non_cluster_bio_set, BIO_POOL_SIZE));
+> +	WARN_ON(bioset_init(&non_cluster_bio_split, BIO_POOL_SIZE, 0, 0));
 
-								Honza
+Please only allocate the resources once a queue without the cluster
+flag is registered, there are only very few modern drivers that do that.
 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> +static void non_cluster_end_io(struct bio *bio)
+> +{
+> +	struct bio *bio_orig = bio->bi_private;
+> +
+> +	bio_orig->bi_status = bio->bi_status;
+> +	bio_endio(bio_orig);
+> +	bio_put(bio);
+> +}
+
+Why can't we use bio_chain for the split bios?
+
+> +	bio_for_each_segment(from, *bio_orig, iter) {
+> +		if (i++ < max_segs)
+> +			sectors += from.bv_len >> 9;
+> +		else
+> +			break;
+> +	}
+
+The easy to read way would be:
+
+	bio_for_each_segment(from, *bio_orig, iter) {
+		if (i++ == max_segs)
+			break;
+		sectors += from.bv_len >> 9;
+	}
+
+> +	if (sectors < bio_sectors(*bio_orig)) {
+> +		bio = bio_split(*bio_orig, sectors, GFP_NOIO,
+> +				&non_cluster_bio_split);
+> +		bio_chain(bio, *bio_orig);
+> +		generic_make_request(*bio_orig);
+> +		*bio_orig = bio;
+
+I don't think this is very efficient, as this means we now
+clone the bio twice, first to split it at the sector boundary,
+and then again when converting it to single-page bio_vec.
+
+I think this could be something like this (totally untested):
+
+diff --git a/block/non-cluster.c b/block/non-cluster.c
+index 9c2910be9404..60389f275c43 100644
+--- a/block/non-cluster.c
++++ b/block/non-cluster.c
+@@ -13,58 +13,59 @@
+ 
+ #include "blk.h"
+ 
+-static struct bio_set non_cluster_bio_set, non_cluster_bio_split;
++static struct bio_set non_cluster_bio_set;
+ 
+ static __init int init_non_cluster_bioset(void)
+ {
+ 	WARN_ON(bioset_init(&non_cluster_bio_set, BIO_POOL_SIZE, 0,
+ 			   BIOSET_NEED_BVECS));
+ 	WARN_ON(bioset_integrity_create(&non_cluster_bio_set, BIO_POOL_SIZE));
+-	WARN_ON(bioset_init(&non_cluster_bio_split, BIO_POOL_SIZE, 0, 0));
+ 
+ 	return 0;
+ }
+ __initcall(init_non_cluster_bioset);
+ 
+-static void non_cluster_end_io(struct bio *bio)
+-{
+-	struct bio *bio_orig = bio->bi_private;
+-
+-	bio_orig->bi_status = bio->bi_status;
+-	bio_endio(bio_orig);
+-	bio_put(bio);
+-}
+-
+ void blk_queue_non_cluster_bio(struct request_queue *q, struct bio **bio_orig)
+ {
+-	struct bio *bio;
+ 	struct bvec_iter iter;
+-	struct bio_vec from;
+-	unsigned i = 0;
+-	unsigned sectors = 0;
+-	unsigned short max_segs = min_t(unsigned short, BIO_MAX_PAGES,
+-					queue_max_segments(q));
++	struct bio *bio;
++	struct bio_vec bv;
++	unsigned short max_segs, segs = 0;
++
++	bio = bio_alloc_bioset(GFP_NOIO, bio_segments(*bio_orig),
++			&non_cluster_bio_set);
++	bio->bi_disk		= (*bio_orig)->bi_disk;
++	bio->bi_partno		= (*bio_orig)->bi_partno;
++	bio_set_flag(bio, BIO_CLONED);
++	if (bio_flagged(*bio_orig, BIO_THROTTLED))
++		bio_set_flag(bio, BIO_THROTTLED);
++	bio->bi_opf		= (*bio_orig)->bi_opf;
++	bio->bi_ioprio		= (*bio_orig)->bi_ioprio;
++	bio->bi_write_hint	= (*bio_orig)->bi_write_hint;
++	bio->bi_iter.bi_sector	= (*bio_orig)->bi_iter.bi_sector;
++	bio->bi_iter.bi_size	= (*bio_orig)->bi_iter.bi_size;
++
++	if (bio_integrity(*bio_orig))
++		bio_integrity_clone(bio, *bio_orig, GFP_NOIO);
+ 
+-	bio_for_each_segment(from, *bio_orig, iter) {
+-		if (i++ < max_segs)
+-			sectors += from.bv_len >> 9;
+-		else
++	bio_clone_blkcg_association(bio, *bio_orig);
++
++	max_segs = min_t(unsigned short, queue_max_segments(q), BIO_MAX_PAGES);
++	bio_for_each_segment(bv, *bio_orig, iter) {
++		bio->bi_io_vec[segs++] = bv;
++		if (segs++ == max_segs)
+ 			break;
+ 	}
+ 
+-	if (sectors < bio_sectors(*bio_orig)) {
+-		bio = bio_split(*bio_orig, sectors, GFP_NOIO,
+-				&non_cluster_bio_split);
+-		bio_chain(bio, *bio_orig);
+-		generic_make_request(*bio_orig);
+-		*bio_orig = bio;
+-	}
+-	bio = bio_clone_bioset(*bio_orig, GFP_NOIO, &non_cluster_bio_set);
++	bio->bi_vcnt = segs;
++	bio->bi_phys_segments = segs;
++	bio_set_flag(bio, BIO_SEG_VALID);
++	bio_chain(bio, *bio_orig);
+ 
+-	bio->bi_phys_segments = bio_segments(bio);
+-        bio_set_flag(bio, BIO_SEG_VALID);
+-	bio->bi_end_io = non_cluster_end_io;
++	if (bio_integrity(bio))
++		bio_integrity_trim(bio);
++	bio_advance(bio, (*bio_orig)->bi_iter.bi_size);
+ 
+-	bio->bi_private = *bio_orig;
++	generic_make_request(*bio_orig);
+ 	*bio_orig = bio;
+ }
