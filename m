@@ -1,90 +1,141 @@
-Return-Path: <SRS0=yllL=NN=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lf1-f68.google.com ([209.85.167.68]:40507 "EHLO
-        mail-lf1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725987AbeKBK54 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2018 06:57:56 -0400
-Received: by mail-lf1-f68.google.com with SMTP id n3-v6so272165lfe.7
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Nov 2018 18:52:31 -0700 (PDT)
-Received: from mail-lf1-f54.google.com (mail-lf1-f54.google.com. [209.85.167.54])
-        by smtp.gmail.com with ESMTPSA id w21-v6sm686814lfe.73.2018.11.01.18.52.29
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 01 Nov 2018 18:52:30 -0700 (PDT)
-Received: by mail-lf1-f54.google.com with SMTP id p86so279014lfg.5
-        for <linux-ext4@vger.kernel.org>; Thu, 01 Nov 2018 18:52:29 -0700 (PDT)
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:34975 "EHLO
+        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725939AbeKUO6e (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 09:58:34 -0500
+Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+References: <20181115085306.9910-1-ming.lei@redhat.com>
+ <20181115085306.9910-10-ming.lei@redhat.com> <20181116134541.GH3165@lst.de>
+ <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
+ <20181120161651.GB2629@lst.de>
+ <53526aae-fb9b-ee38-0a01-e5899e2d4e4d@grimberg.me>
+ <20181121005902.GA31748@ming.t460p>
+ <2d9bee7a-f010-dcf4-1184-094101058584@grimberg.me>
+ <20181121034415.GA8408@ming.t460p>
+From: Sagi Grimberg <sagi@grimberg.me>
+Message-ID: <2a47d336-c19b-6bf4-c247-d7382871eeea@grimberg.me>
+Date: Tue, 20 Nov 2018 20:25:46 -0800
 MIME-Version: 1.0
-References: <20181022105944.GA1411@gmail.com> <CAHk-=whpBiV5sVTvPsWOVx5WYOouxbNG1fWeCdpK4oFiaH0Zqg@mail.gmail.com>
-In-Reply-To: <CAHk-=whpBiV5sVTvPsWOVx5WYOouxbNG1fWeCdpK4oFiaH0Zqg@mail.gmail.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 1 Nov 2018 18:46:17 -0700
-Message-ID: <CAHk-=widcG7zGELniGoqjPyBZAHehA_Gyi2n1aRO94G7SBzwNQ@mail.gmail.com>
-Subject: Re: [GIT PULL] Compiler Attributes for v4.20-rc1
-To: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>
-Cc: dan.carpenter@oracle.com, adilger.kernel@dilger.ca,
-        yamada.masahiro@socionext.com, michal.lkml@markovi.net,
-        rostedt@goodmis.org, mchehab+samsung@kernel.org, olof@lxom.net,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Kees Cook <keescook@chromium.org>, tglx@linutronix.de,
-        Ingo Molnar <mingo@kernel.org>, paullawrence@google.com,
-        sandipan@linux.vnet.ibm.com, andreyknvl@google.com,
-        David Woodhouse <dwmw2@infradead.org>, will.deacon@arm.com,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        paul.burton@mips.com, rientjes@google.com, w@1wt.eu,
-        msebor@gmail.com, sparse@chrisli.org,
-        Jonathan Corbet <corbet@lwn.net>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
-        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
-        stefan@agner.ch, luc.vanoostenryck@gmail.com,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20181121034415.GA8408@ming.t460p>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 1, 2018 at 10:06 AM Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
->
-> The logic for using __no_sanitize_address *used* to be
->
->     #if GCC_VERSION >= 40902
 
-Ok, looking around, I think this has less to do with the attribute
-being recognized, and simply just being because KASAN itself wants
-gcc-4.9.2.
+>> I would like to avoid growing bvec tables and keep everything
+>> preallocated. Plus, a bvec_iter operates on a bvec which means
+>> we'll need a table there as well... Not liking it so far...
+> 
+> In case of bios in one request, we can't know how many bvecs there
+> are except for calling rq_bvecs(), so it may not be suitable to
+> preallocate the table. If you have to send the IO request in one send(),
+> runtime allocation may be inevitable.
 
-I'm actually not seeing that KASAN dependency in the Kconfig scripts
-(and it probably _should_ be now that we can just add compiler version
-dependencies there), but that explains why the gcc version check is
-different from "gcc supports the attribute".
+I don't want to do that, I want to work on a single bvec at a time like
+the current implementation does.
 
-Anyway, I decided to do the merge by just getting rid of the
-GCC_VERSION check around __no_sanitize_address_or_inline entirely. If
-you enable KASAN, then a function with that marking just won't be
-marked inline.
+> If you don't require to send the IO request in one send(), you may send
+> one bio in one time, and just uses the bio's bvec table directly,
+> such as the single bio case in lo_rw_aio().
 
-End result: pulled. I'm as confused as you are as to why
-__no_sanitize_address_or_inline is in the gcc header, but I guess it
-ends up being the same issue: KASAN depends on gcc even if that
-dependency doesn't seem to be spelled out in lib/Kconfig.kasan.
+we'd need some indication that we need to reinit my iter with the
+new bvec, today we do:
 
-So I _think_ the KASAN config should have a
+static inline void nvme_tcp_advance_req(struct nvme_tcp_request *req,
+                 int len)
+{
+         req->snd.data_sent += len;
+         req->pdu_sent += len;
+         iov_iter_advance(&req->snd.iter, len);
+         if (!iov_iter_count(&req->snd.iter) &&
+             req->snd.data_sent < req->data_len) {
+                 req->snd.curr_bio = req->snd.curr_bio->bi_next;
+                 nvme_tcp_init_send_iter(req);
+         }
+}
 
-    depends on CC_IS_GCC && GCC_VERSION >= 40902
+and initialize the send iter. I imagine that now I will need to
+switch to the next bvec and only if I'm on the last I need to
+use the next bio...
 
-on it, but maybe there is something I'm missing.
+Do you offer an API for that?
 
-But from a pull standpoint, I don't want to mess with those
-(unrelated) issues, so I just kept the merge resolution as simple and
-straightforward as possible.
 
-Miguel, please do double-check the merge (it's not pushed out yet, I'm
-doing the usual build tests etc first).
+>>> can this way avoid your blocking issue? You may see this
+>>> example in branch 'rq->bio != rq->biotail' of lo_rw_aio().
+>>
+>> This is exactly an example of not ignoring the bios...
+> 
+> Yeah, that is the most common example, given merge is enabled
+> in most of cases. If the driver or device doesn't care merge,
+> you can disable it and always get single bio request, then the
+> bio's bvec table can be reused for send().
 
-                    Linus
+Does bvec_iter span bvecs with your patches? I didn't see that change?
+
+>> I'm not sure how this helps me either. Unless we can set a bvec_iter to
+>> span bvecs or have an abstract bio crossing when we re-initialize the
+>> bvec_iter I don't see how I can ignore bios completely...
+> 
+> rq_for_each_bvec() will iterate over all bvecs from all bios, so you
+> needn't to see any bio in this req.
+
+But I don't need this iteration, I need a transparent API like;
+bvec2 = rq_bvec_next(rq, bvec)
+
+This way I can simply always reinit my iter without thinking about how
+the request/bios/bvecs are constructed...
+
+> rq_bvecs() will return how many bvecs there are in this request(cover
+> all bios in this req)
+
+Still not very useful given that I don't want to use a table...
+
+>>> So looks nvme-tcp host driver might be the 2nd driver which benefits
+>>> from multi-page bvec directly.
+>>>
+>>> The multi-page bvec V11 has passed my tests and addressed almost
+>>> all the comments during review on V10. I removed bio_vecs() in V11,
+>>> but it won't be big deal, we can introduce them anytime when there
+>>> is the requirement.
+>>
+>> multipage-bvecs and nvme-tcp are going to conflict, so it would be good
+>> to coordinate on this. I think that nvme-tcp host needs some adjustments
+>> as setting a bvec_iter. I'm under the impression that the change is rather
+>> small and self-contained, but I'm not sure I have the full
+>> picture here.
+> 
+> I guess I may not get your exact requirement on block io iterator from nvme-tcp
+> too, :-(
+
+They are pretty much listed above. Today nvme-tcp sets an iterator with:
+
+vec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
+nsegs = bio_segments(bio);
+size = bio->bi_iter.bi_size;
+offset = bio->bi_iter.bi_bvec_done;
+iov_iter_bvec(&req->snd.iter, WRITE, vec, nsegs, size);
+
+and when done, iterate to the next bio and do the same.
+
+With multipage bvec it would be great if we can simply have
+something like rq_bvec_next() that would pretty much satisfy
+the requirements from the nvme-tcp side...
