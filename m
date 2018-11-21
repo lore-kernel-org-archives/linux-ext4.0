@@ -1,13 +1,14 @@
 Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58696 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.211]:51531 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726165AbeKUN6h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 08:58:37 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
+        id S1728520AbeKVAfB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 19:35:01 -0500
+Date: Wed, 21 Nov 2018 15:00:27 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
         Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
@@ -21,117 +22,33 @@ Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
         Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
         Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
         Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V11 05/19] block: use bio_for_each_bvec() to map sg
-Date: Wed, 21 Nov 2018 11:23:13 +0800
-Message-Id: <20181121032327.8434-6-ming.lei@redhat.com>
-In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V11 10/19] block: loop: pass multi-page bvec to iov_iter
+Message-ID: <20181121140027.GA2323@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-11-ming.lei@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181121032327.8434-11-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It is more efficient to use bio_for_each_bvec() to map sg, meantime
-we have to consider splitting multipage bvec as done in blk_bio_segment_split().
+> diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+> index 1ad6eafc43f2..a281b6737b61 100644
+> --- a/include/linux/blkdev.h
+> +++ b/include/linux/blkdev.h
+> @@ -805,6 +805,10 @@ struct req_iterator {
+>  	__rq_for_each_bio(_iter.bio, _rq)			\
+>  		bio_for_each_segment(bvl, _iter.bio, _iter.iter)
+>  
+> +#define rq_for_each_bvec(bvl, _rq, _iter)			\
+> +	__rq_for_each_bio(_iter.bio, _rq)			\
+> +		bio_for_each_bvec(bvl, _iter.bio, _iter.iter)
+> +
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- block/blk-merge.c | 68 +++++++++++++++++++++++++++++++++++++++----------------
- 1 file changed, 48 insertions(+), 20 deletions(-)
+I think this should go into the patch adding bio_for_each_bvec and
+friends.
 
-diff --git a/block/blk-merge.c b/block/blk-merge.c
-index ec0b93fa1ff8..8829c51b4e75 100644
---- a/block/blk-merge.c
-+++ b/block/blk-merge.c
-@@ -455,6 +455,52 @@ static int blk_phys_contig_segment(struct request_queue *q, struct bio *bio,
- 	return biovec_phys_mergeable(q, &end_bv, &nxt_bv);
- }
- 
-+static struct scatterlist *blk_next_sg(struct scatterlist **sg,
-+		struct scatterlist *sglist)
-+{
-+	if (!*sg)
-+		return sglist;
-+
-+	/*
-+	 * If the driver previously mapped a shorter list, we could see a
-+	 * termination bit prematurely unless it fully inits the sg table
-+	 * on each mapping. We KNOW that there must be more entries here
-+	 * or the driver would be buggy, so force clear the termination bit
-+	 * to avoid doing a full sg_init_table() in drivers for each command.
-+	 */
-+	sg_unmark_end(*sg);
-+	return sg_next(*sg);
-+}
-+
-+static unsigned blk_bvec_map_sg(struct request_queue *q,
-+		struct bio_vec *bvec, struct scatterlist *sglist,
-+		struct scatterlist **sg)
-+{
-+	unsigned nbytes = bvec->bv_len;
-+	unsigned nsegs = 0, total = 0;
-+
-+	while (nbytes > 0) {
-+		unsigned seg_size;
-+		struct page *pg;
-+		unsigned offset, idx;
-+
-+		*sg = blk_next_sg(sg, sglist);
-+
-+		seg_size = min(nbytes, queue_max_segment_size(q));
-+		offset = (total + bvec->bv_offset) % PAGE_SIZE;
-+		idx = (total + bvec->bv_offset) / PAGE_SIZE;
-+		pg = nth_page(bvec->bv_page, idx);
-+
-+		sg_set_page(*sg, pg, seg_size, offset);
-+
-+		total += seg_size;
-+		nbytes -= seg_size;
-+		nsegs++;
-+	}
-+
-+	return nsegs;
-+}
-+
- static inline void
- __blk_segment_map_sg(struct request_queue *q, struct bio_vec *bvec,
- 		     struct scatterlist *sglist, struct bio_vec *bvprv,
-@@ -472,25 +518,7 @@ __blk_segment_map_sg(struct request_queue *q, struct bio_vec *bvec,
- 		(*sg)->length += nbytes;
- 	} else {
- new_segment:
--		if (!*sg)
--			*sg = sglist;
--		else {
--			/*
--			 * If the driver previously mapped a shorter
--			 * list, we could see a termination bit
--			 * prematurely unless it fully inits the sg
--			 * table on each mapping. We KNOW that there
--			 * must be more entries here or the driver
--			 * would be buggy, so force clear the
--			 * termination bit to avoid doing a full
--			 * sg_init_table() in drivers for each command.
--			 */
--			sg_unmark_end(*sg);
--			*sg = sg_next(*sg);
--		}
--
--		sg_set_page(*sg, bvec->bv_page, nbytes, bvec->bv_offset);
--		(*nsegs)++;
-+		(*nsegs) += blk_bvec_map_sg(q, bvec, sglist, sg);
- 	}
- 	*bvprv = *bvec;
- }
-@@ -512,7 +540,7 @@ static int __blk_bios_map_sg(struct request_queue *q, struct bio *bio,
- 	int cluster = blk_queue_cluster(q), nsegs = 0;
- 
- 	for_each_bio(bio)
--		bio_for_each_segment(bvec, bio, iter)
-+		bio_for_each_bvec(bvec, bio, iter)
- 			__blk_segment_map_sg(q, &bvec, sglist, &bvprv, sg,
- 					     &nsegs, &cluster);
- 
--- 
-2.9.5
+Otherwise looks fine:
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
