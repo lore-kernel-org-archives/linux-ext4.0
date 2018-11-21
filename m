@@ -1,162 +1,60 @@
-Return-Path: <SRS0=aByE=NM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:52096 "EHLO mail.kernel.org"
+Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:52312 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727645AbeKBH7P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 2 Nov 2018 03:59:15 -0400
-From: Eric Biggers <ebiggers@kernel.org>
-To: linux-fscrypt@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: [PATCH v2 00/12] fs-verity: read-only file-based authenticity protection
-Date: Thu,  1 Nov 2018 15:52:18 -0700
-Message-Id: <20181101225230.88058-1-ebiggers@kernel.org>
+        id S1730072AbeKVCpb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 21:45:31 -0500
+Date: Wed, 21 Nov 2018 17:10:25 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V11 03/19] block: introduce bio_for_each_bvec()
+Message-ID: <20181121161025.GB4977@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-4-ming.lei@redhat.com> <20181121133244.GB1640@lst.de> <20181121153135.GB19111@ming.t460p>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181121153135.GB19111@ming.t460p>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+On Wed, Nov 21, 2018 at 11:31:36PM +0800, Ming Lei wrote:
+> > But while looking over this I wonder why we even need the max_seg_len
+> > here.  The only thing __bvec_iter_advance does it to move bi_bvec_done
+> > and bi_idx forward, with corresponding decrements of bi_size.  As far
+> > as I can tell the only thing that max_seg_len does is that we need
+> > to more iterations of the while loop to archive the same thing.
+> > 
+> > And actual bvec used by the caller will be obtained using
+> > bvec_iter_bvec or segment_iter_bvec depending on if they want multi-page
+> > or single-page variants.
+> 
+> Right, we let __bvec_iter_advance() serve for both multi-page and single-page
+> case, then we have to tell it via one way or another, now we use the constant
+> of 'max_seg_len'.
+> 
+> Or you suggest to implement two versions of __bvec_iter_advance()?
 
-This patchset implements fs-verity for ext4 and f2fs.  fs-verity is
-similar to dm-verity, but implemented on a per-file basis: a Merkle tree
-is used to measure (hash) the file's data as it is paged in.  ext4 and
-f2fs hide this Merkle tree beyond the end of the file, though other
-filesystems might implement it differently in the future.  In general,
-fs-verity is intended for use on writable filesystems; dm-verity is
-still recommended on read-only ones.
-
-Similar to fscrypt, most of the code is in fs/verity/, and not too many
-filesystem-specific changes are needed.  The Merkle tree is written by
-userspace before calling an ioctl to mark the file as a verity file; the
-file then becomes read-only and the verity metadata is hidden or moved.
-
-fs-verity provides a file measurement (hash) in constant time and
-verifies data on-demand.  Thus, it is useful for efficiently verifying
-the authenticity of large files of which only a small portion may be
-accessed, such as Android application package (APK) files.  It may also
-be useful in "audit" use cases where file hashes are logged.
-
-fs-verity also provides better protection against malicious disks than
-an ahead-of-time hash, since fs-verity re-verifies data each time it's
-paged in.  Note, however, that any authenticity guarantee is still
-dependent on verification of the file measurement and other relevant
-metadata in a way that makes sense for the overall system; fs-verity is
-only a tool to help with this.
-
-This patchset doesn't yet include IMA support for fs-verity file
-measurements.  This is planned and we'd like to collaborate with the IMA
-maintainers.  Although fs-verity can be used on its own without IMA,
-fs-verity is primarily a lower level feature (think of it as a way of
-hashing a file), so some users may still need IMA's policy mechanism.
-However, an optional in-kernel signature verification mechanism within
-fs-verity itself is also included.
-
-This patchset is based on Linus' tree as of today (commit 7c6c54b505b8a).
-It can also be found in git at tag "fsverity_2018-11-01" of:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git
-
-fs-verity has a userspace utility:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/fsverity-utils.git
-
-xfstests for fs-verity can be found at branch "fsverity" of:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/xfstests-dev.git
-
-fs-verity is supported by e2fsprogs v1.44.4-2+ and f2fs-tools v1.11.0+.
-
-Please see the documentation file Documentation/filesystems/fsverity.rst
-(added by patch 1) for details; this cover letter only gave an overview.
-Examples of setting up fs-verity protected files can also be found in
-the README file of fsverity-utils.
-
-Other useful references include:
-
-    - LWN coverage of v1 patchset: https://lwn.net/Articles/763729/
-
-    - Presentation at Linux Security Summit North America 2018:
-        - Slides: https://schd.ws/hosted_files/lssna18/af/fs-verity%20slide%20deck.pdf
-        - Video: https://www.youtube.com/watch?v=Aw5h6aBhu6M
-
-    - Notes from discussion at LSFMM 2018: https://lwn.net/Articles/752614/
-
-Changes since v1:
-
-- Added documentation file.
-- Require write permission for FS_IOC_ENABLE_VERITY, rather than
-  CAP_SYS_ADMIN.
-- Eliminated dependency on CONFIG_BLOCK and clarified that filesystems
-  can verify a page at a time rather than a bio at a time.
-- Fixed conditions for verifying holes.
-- ext4 now only allows fs-verity on extent-based files.
-- Eliminated most of the assumptions that the verity metadata is stored
-  beyond EOF, in case filesystems want to do things differently.
-- Other cleanups.
-
-Eric Biggers (12):
-  fs-verity: add a documentation file
-  fs-verity: add setup code, UAPI, and Kconfig
-  fs-verity: add MAINTAINERS file entry
-  fs-verity: add data verification hooks for ->readpages()
-  fs-verity: implement FS_IOC_ENABLE_VERITY ioctl
-  fs-verity: implement FS_IOC_MEASURE_VERITY ioctl
-  fs-verity: add SHA-512 support
-  fs-verity: add CRC-32C support
-  fs-verity: support builtin file signatures
-  ext4: add basic fs-verity support
-  ext4: add fs-verity read support
-  f2fs: fs-verity support
-
- Documentation/filesystems/fsverity.rst | 583 ++++++++++++++++
- Documentation/filesystems/index.rst    |  11 +
- Documentation/ioctl/ioctl-number.txt   |   1 +
- MAINTAINERS                            |  11 +
- fs/Kconfig                             |   2 +
- fs/Makefile                            |   1 +
- fs/ext4/Kconfig                        |  20 +
- fs/ext4/ext4.h                         |  22 +-
- fs/ext4/file.c                         |   6 +
- fs/ext4/inode.c                        |  11 +
- fs/ext4/ioctl.c                        |  12 +
- fs/ext4/readpage.c                     | 209 +++++-
- fs/ext4/super.c                        | 100 ++-
- fs/ext4/sysfs.c                        |   6 +
- fs/f2fs/Kconfig                        |  20 +
- fs/f2fs/data.c                         |  43 +-
- fs/f2fs/f2fs.h                         |  17 +-
- fs/f2fs/file.c                         |  58 ++
- fs/f2fs/inode.c                        |   3 +-
- fs/f2fs/super.c                        |  30 +
- fs/f2fs/sysfs.c                        |  11 +
- fs/verity/Kconfig                      |  52 ++
- fs/verity/Makefile                     |   5 +
- fs/verity/fsverity_private.h           | 135 ++++
- fs/verity/hash_algs.c                  | 115 ++++
- fs/verity/ioctl.c                      | 164 +++++
- fs/verity/setup.c                      | 908 +++++++++++++++++++++++++
- fs/verity/signature.c                  | 187 +++++
- fs/verity/verify.c                     | 298 ++++++++
- include/linux/fs.h                     |   9 +
- include/linux/fsverity.h               | 112 +++
- include/uapi/linux/fsverity.h          |  98 +++
- 32 files changed, 3218 insertions(+), 42 deletions(-)
- create mode 100644 Documentation/filesystems/fsverity.rst
- create mode 100644 fs/verity/Kconfig
- create mode 100644 fs/verity/Makefile
- create mode 100644 fs/verity/fsverity_private.h
- create mode 100644 fs/verity/hash_algs.c
- create mode 100644 fs/verity/ioctl.c
- create mode 100644 fs/verity/setup.c
- create mode 100644 fs/verity/signature.c
- create mode 100644 fs/verity/verify.c
- create mode 100644 include/linux/fsverity.h
- create mode 100644 include/uapi/linux/fsverity.h
-
--- 
-2.19.1.568.g152ad8e336-goog
+No - I think we can always use the code without any segment in
+bvec_iter_advance.  Because bvec_iter_advance only operates on the
+iteractor, the generation of an actual single-page or multi-page
+bvec is left to the caller using the bvec_iter_bvec or segment_iter_bvec
+helpers.  The only difference is how many bytes you can move the
+iterator forward in a single loop iteration - so if you pass in
+PAGE_SIZE as the max_seg_len you just will have to loop more often
+for a large enough bytes, but not actually do anything different.
