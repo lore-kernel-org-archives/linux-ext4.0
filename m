@@ -1,108 +1,151 @@
 Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37070 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8638 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726195AbeKUORV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 09:17:21 -0500
-Date: Wed, 21 Nov 2018 11:44:16 +0800
+        id S1731011AbeKVCHG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 21 Nov 2018 21:07:06 -0500
+Date: Wed, 21 Nov 2018 23:31:36 +0800
 From: Ming Lei <ming.lei@redhat.com>
-To: Sagi Grimberg <sagi@grimberg.me>
-Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
-        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
-Message-ID: <20181121034415.GA8408@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-10-ming.lei@redhat.com>
- <20181116134541.GH3165@lst.de>
- <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
- <20181120161651.GB2629@lst.de>
- <53526aae-fb9b-ee38-0a01-e5899e2d4e4d@grimberg.me>
- <20181121005902.GA31748@ming.t460p>
- <2d9bee7a-f010-dcf4-1184-094101058584@grimberg.me>
+Subject: Re: [PATCH V11 03/19] block: introduce bio_for_each_bvec()
+Message-ID: <20181121153135.GB19111@ming.t460p>
+References: <20181121032327.8434-1-ming.lei@redhat.com>
+ <20181121032327.8434-4-ming.lei@redhat.com>
+ <20181121133244.GB1640@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <2d9bee7a-f010-dcf4-1184-094101058584@grimberg.me>
+In-Reply-To: <20181121133244.GB1640@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 20, 2018 at 07:20:45PM -0800, Sagi Grimberg wrote:
+On Wed, Nov 21, 2018 at 02:32:44PM +0100, Christoph Hellwig wrote:
+> > +#define bio_iter_mp_iovec(bio, iter)				\
+> > +	segment_iter_bvec((bio)->bi_io_vec, (iter))
 > 
-> > Not sure I understand the 'blocking' problem in this case.
-> > 
-> > We can build a bvec table from this req, and send them all
-> > in send(),
-> 
-> I would like to avoid growing bvec tables and keep everything
-> preallocated. Plus, a bvec_iter operates on a bvec which means
-> we'll need a table there as well... Not liking it so far...
+> Besides the mp naming we'd like to get rid off there also is just
+> a single user of this macro, please just expand it there.
 
-In case of bios in one request, we can't know how many bvecs there
-are except for calling rq_bvecs(), so it may not be suitable to
-preallocate the table. If you have to send the IO request in one send(),
-runtime allocation may be inevitable.
-
-If you don't require to send the IO request in one send(), you may send
-one bio in one time, and just uses the bio's bvec table directly,
-such as the single bio case in lo_rw_aio().
+OK.
 
 > 
-> > can this way avoid your blocking issue? You may see this
-> > example in branch 'rq->bio != rq->biotail' of lo_rw_aio().
+> > +#define segment_iter_bvec(bvec, iter)				\
+> > +((struct bio_vec) {							\
+> > +	.bv_page	= segment_iter_page((bvec), (iter)),	\
+> > +	.bv_len		= segment_iter_len((bvec), (iter)),	\
+> > +	.bv_offset	= segment_iter_offset((bvec), (iter)),	\
+> > +})
 > 
-> This is exactly an example of not ignoring the bios...
+> And for this one please keep the segment vs bvec versions of these
+> macros close together in the file please, right now it follow the
+> bvec_iter_bvec variant closely.
 
-Yeah, that is the most common example, given merge is enabled
-in most of cases. If the driver or device doesn't care merge,
-you can disable it and always get single bio request, then the
-bio's bvec table can be reused for send().
-
-> 
-> > If this way is what you need, I think you are right, even we may
-> > introduce the following helpers:
-> > 
-> > 	rq_for_each_bvec()
-> > 	rq_bvecs()
-> 
-> I'm not sure how this helps me either. Unless we can set a bvec_iter to
-> span bvecs or have an abstract bio crossing when we re-initialize the
-> bvec_iter I don't see how I can ignore bios completely...
-
-rq_for_each_bvec() will iterate over all bvecs from all bios, so you
-needn't to see any bio in this req.
-
-rq_bvecs() will return how many bvecs there are in this request(cover
-all bios in this req)
+OK.
 
 > 
-> > So looks nvme-tcp host driver might be the 2nd driver which benefits
-> > from multi-page bvec directly.
-> > 
-> > The multi-page bvec V11 has passed my tests and addressed almost
-> > all the comments during review on V10. I removed bio_vecs() in V11,
-> > but it won't be big deal, we can introduce them anytime when there
-> > is the requirement.
+> > +static inline void __bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
+> > +				      unsigned bytes, unsigned max_seg_len)
+> >  {
+> >  	iter->bi_sector += bytes >> 9;
+> >  
+> >  	if (bio_no_advance_iter(bio))
+> >  		iter->bi_size -= bytes;
+> >  	else
+> > -		bvec_iter_advance(bio->bi_io_vec, iter, bytes);
+> > +		__bvec_iter_advance(bio->bi_io_vec, iter, bytes, max_seg_len);
+> >  		/* TODO: It is reasonable to complete bio with error here. */
+> >  }
+> >  
+> > +static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
+> > +				    unsigned bytes)
+> > +{
+> > +	__bio_advance_iter(bio, iter, bytes, PAGE_SIZE);
+> > +}
 > 
-> multipage-bvecs and nvme-tcp are going to conflict, so it would be good
-> to coordinate on this. I think that nvme-tcp host needs some adjustments
-> as setting a bvec_iter. I'm under the impression that the change is rather
-> small and self-contained, but I'm not sure I have the full
-> picture here.
+> Btw, I think the remaining users of bio_advance_iter() in bio.h
+> should probably switch to using __bio_advance_iter to make them a little
+> more clear to read.
 
-I guess I may not get your exact requirement on block io iterator from nvme-tcp
-too, :-(
+Good point.
 
-thanks,
+> 
+> > +/* returns one real segment(multi-page bvec) each time */
+> 
+> space before the brace, please.
+
+OK.
+
+> 
+> > +#define BVEC_MAX_LEN  ((unsigned int)-1)
+> 
+> >  	while (bytes) {
+> > +		unsigned segment_len = segment_iter_len(bv, *iter);
+> >  
+> > -		iter->bi_bvec_done += len;
+> > +		if (max_seg_len < BVEC_MAX_LEN)
+> > +			segment_len = min_t(unsigned, segment_len,
+> > +					    max_seg_len -
+> > +					    bvec_iter_offset(bv, *iter));
+> > +
+> > +		segment_len = min(bytes, segment_len);
+> 
+> Please stick to passing the magic zero here as can often generate more
+> efficient code.
+
+But zero may decrease the code readability. Actually the passed
+'max_seg_len' is just a constant, and complier should have generated
+same efficient code for any constant, either 0 or other.
+
+> 
+> Talking about efficent code - I wonder how much code size we'd save
+> by moving this function out of line..
+
+That is good point, see the following diff:
+
+[mingl@hp kernel]$ diff -u inline.size non_inline.size
+--- inline.size	2018-11-21 23:24:52.305312076 +0800
++++ non_inline.size	2018-11-21 23:24:59.908393010 +0800
+@@ -1,2 +1,2 @@
+    text	   data	    bss	    dec	    hex	filename
+-13429213	6893922	4292692	24615827	1779b93	vmlinux.inline
++13429153	6893346	4292692	24615191	1779917	vmlinux.non_inline
+
+vmlinux(non_inline) is built by just moving/exporting __bvec_iter_advance()
+into block/bio.c.
+
+The difference is about 276bytes.
+
+> 
+> But while looking over this I wonder why we even need the max_seg_len
+> here.  The only thing __bvec_iter_advance does it to move bi_bvec_done
+> and bi_idx forward, with corresponding decrements of bi_size.  As far
+> as I can tell the only thing that max_seg_len does is that we need
+> to more iterations of the while loop to archive the same thing.
+> 
+> And actual bvec used by the caller will be obtained using
+> bvec_iter_bvec or segment_iter_bvec depending on if they want multi-page
+> or single-page variants.
+
+Right, we let __bvec_iter_advance() serve for both multi-page and single-page
+case, then we have to tell it via one way or another, now we use the constant
+of 'max_seg_len'.
+
+Or you suggest to implement two versions of __bvec_iter_advance()?
+
+Thanks,
 Ming
