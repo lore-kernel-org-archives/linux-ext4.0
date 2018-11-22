@@ -1,42 +1,57 @@
-Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49418 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727372AbeKHBmi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 7 Nov 2018 20:42:38 -0500
-Date: Wed, 7 Nov 2018 11:11:31 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: Vasily Averin <vvs@virtuozzo.com>, linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org, Kalpak Shah <kalpak@clusterfs.com>
-Subject: Re: [PATCH 6/7] ext4: lost brelse in ext4_xattr_move_to_block()
-Message-ID: <20181107161131.GG9919@thunk.org>
-References: <cover.1541011937.git.vvs@virtuozzo.com>
- <76da5ae3-274d-efa4-58bb-6cd280763a37@virtuozzo.com>
- <20181107135016.GE25758@quack2.suse.cz>
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-io1-f65.google.com ([209.85.166.65]:37283 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2389389AbeKVQUq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2018 11:20:46 -0500
+Received: by mail-io1-f65.google.com with SMTP id a3so5794322ioc.4
+        for <linux-ext4@vger.kernel.org>; Wed, 21 Nov 2018 21:42:57 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181107135016.GE25758@quack2.suse.cz>
+References: <20181121024400.4346-1-devel@etsukata.com> <20181121024400.4346-4-devel@etsukata.com>
+ <20181121092314.GB10667@infradead.org>
+In-Reply-To: <20181121092314.GB10667@infradead.org>
+From: Eiichi Tsukata <devel@etsukata.com>
+Date: Thu, 22 Nov 2018 14:42:41 +0900
+Message-ID: <CANhTXPTk0BB7DTSx1uMMRGiBJD+x3qkde_Q6AmqiiY_t3dYTGg@mail.gmail.com>
+Subject: Re: [PATCH v1 3/4] f2fs: fix race between llseek SEEK_END and write
+To: hch@infradead.org
+Cc: andi@firstfloor.org, Chris Mason <clm@fb.com>,
+        Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
+        linux-unionfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 07, 2018 at 02:50:16PM +0100, Jan Kara wrote:
-> On Wed 31-10-18 22:13:00, Vasily Averin wrote:
-> > Fixes 3f2571c1f91f ("ext4: factor out xattr moving")
-> > cc: Jan Kara <jack@suse.cz>
-> > however issue was present in original ext4_expand_extra_isize_ea()
-> > Fixes 6dd4ee7cab7e ("ext4: Expand extra_inodes space per ...") # 2.6.23
-> > cc: Kalpak Shah <kalpak@clusterfs.com>
-> > 
-> > Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
-> 
-> Good catch. Thanks for the fix. The patch looks good. You can add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
+2018=E5=B9=B411=E6=9C=8821=E6=97=A5(=E6=B0=B4) 18:23 Christoph Hellwig <hch=
+@infradead.org>:
+>
+> On Wed, Nov 21, 2018 at 11:43:59AM +0900, Eiichi Tsukata wrote:
+> > This patch itself seems to be just a cleanup but with the
+> > commit b25bd1d9fd87 ("vfs: fix race between llseek SEEK_END and write")
+> > it fixes race.
+>
+> Please move this patch to the beginning of the series and replace
+> the commit log with something like the one below.  Note that your
+> commit id is different from the one that will appear once applied
+> upstream, so the aboe isn't too helpful.
+>
+> ---
+> f2fs: use generic_file_llseek
+>
+> f2fs always passes inode->i_sb->s_maxbytes to generic_file_llseek_size,
+> and thus should simply use generic_file_llseek.  For now this is a just
+> a cleanup, but it will allow f2fs to pick up a race fix in
+> generic_file_llseek for free.
 
-Thanks, applied.  I used the commit description:
-
-    ext4: fix buffer leak in ext4_xattr_move_to_block() on error path
-
-    	      	     	     - Ted
+Thanks, I'll fix it in v2.
