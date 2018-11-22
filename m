@@ -1,117 +1,73 @@
-Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:43603 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726271AbeKPI2a (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 03:28:30 -0500
-Received: by mail-pl1-f196.google.com with SMTP id g59-v6so10119219plb.10
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 14:18:50 -0800 (PST)
-Date: Thu, 15 Nov 2018 14:18:47 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Mike Snitzer <snitzer@redhat.com>
-Cc: Ming Lei <ming.lei@redhat.com>, Jens Axboe <axboe@kernel.dk>,
-        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Dave Chinner <dchinner@redhat.com>,
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:38064 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1732495AbeKVLy0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Nov 2018 06:54:26 -0500
+Date: Thu, 22 Nov 2018 09:17:06 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
-        dm-devel@redhat.com, Alexander Viro <viro@zeniv.linux.org.uk>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
         linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
         linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 03/19] block: use bio_for_each_bvec() to compute
- multi-page bvec count
-Message-ID: <20181115221847.GD9348@vader>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-4-ming.lei@redhat.com>
- <20181115202028.GC9348@vader>
- <20181115210510.GA24908@redhat.com>
+Subject: Re: [PATCH V11 03/19] block: introduce bio_for_each_bvec()
+Message-ID: <20181122011705.GC20814@ming.t460p>
+References: <20181121032327.8434-1-ming.lei@redhat.com>
+ <20181121032327.8434-4-ming.lei@redhat.com>
+ <20181121133244.GB1640@lst.de>
+ <20181121153135.GB19111@ming.t460p>
+ <20181121161025.GB4977@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181115210510.GA24908@redhat.com>
+In-Reply-To: <20181121161025.GB4977@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:05:10PM -0500, Mike Snitzer wrote:
-> On Thu, Nov 15 2018 at  3:20pm -0500,
-> Omar Sandoval <osandov@osandov.com> wrote:
-> 
-> > On Thu, Nov 15, 2018 at 04:52:50PM +0800, Ming Lei wrote:
-> > > First it is more efficient to use bio_for_each_bvec() in both
-> > > blk_bio_segment_split() and __blk_recalc_rq_segments() to compute how
-> > > many multi-page bvecs there are in the bio.
+On Wed, Nov 21, 2018 at 05:10:25PM +0100, Christoph Hellwig wrote:
+> On Wed, Nov 21, 2018 at 11:31:36PM +0800, Ming Lei wrote:
+> > > But while looking over this I wonder why we even need the max_seg_len
+> > > here.  The only thing __bvec_iter_advance does it to move bi_bvec_done
+> > > and bi_idx forward, with corresponding decrements of bi_size.  As far
+> > > as I can tell the only thing that max_seg_len does is that we need
+> > > to more iterations of the while loop to archive the same thing.
 > > > 
-> > > Secondly once bio_for_each_bvec() is used, the bvec may need to be
-> > > splitted because its length can be very longer than max segment size,
-> > > so we have to split the big bvec into several segments.
-> > > 
-> > > Thirdly when splitting multi-page bvec into segments, the max segment
-> > > limit may be reached, so the bio split need to be considered under
-> > > this situation too.
-> > > 
-> > > Cc: Dave Chinner <dchinner@redhat.com>
-> > > Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> > > Cc: Mike Snitzer <snitzer@redhat.com>
-> > > Cc: dm-devel@redhat.com
-> > > Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> > > Cc: linux-fsdevel@vger.kernel.org
-> > > Cc: Shaohua Li <shli@kernel.org>
-> > > Cc: linux-raid@vger.kernel.org
-> > > Cc: linux-erofs@lists.ozlabs.org
-> > > Cc: David Sterba <dsterba@suse.com>
-> > > Cc: linux-btrfs@vger.kernel.org
-> > > Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> > > Cc: linux-xfs@vger.kernel.org
-> > > Cc: Gao Xiang <gaoxiang25@huawei.com>
-> > > Cc: Christoph Hellwig <hch@lst.de>
-> > > Cc: Theodore Ts'o <tytso@mit.edu>
-> > > Cc: linux-ext4@vger.kernel.org
-> > > Cc: Coly Li <colyli@suse.de>
-> > > Cc: linux-bcache@vger.kernel.org
-> > > Cc: Boaz Harrosh <ooo@electrozaur.com>
-> > > Cc: Bob Peterson <rpeterso@redhat.com>
-> > > Cc: cluster-devel@redhat.com
-> > > Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> > > ---
-> > >  block/blk-merge.c | 90 ++++++++++++++++++++++++++++++++++++++++++++++---------
-> > >  1 file changed, 76 insertions(+), 14 deletions(-)
-> > > 
-> > > diff --git a/block/blk-merge.c b/block/blk-merge.c
-> > > index 91b2af332a84..6f7deb94a23f 100644
-> > > --- a/block/blk-merge.c
-> > > +++ b/block/blk-merge.c
-> > > @@ -160,6 +160,62 @@ static inline unsigned get_max_io_size(struct request_queue *q,
-> > >  	return sectors;
-> > >  }
-> > >  
-> > > +/*
-> > > + * Split the bvec @bv into segments, and update all kinds of
-> > > + * variables.
-> > > + */
-> > > +static bool bvec_split_segs(struct request_queue *q, struct bio_vec *bv,
-> > > +		unsigned *nsegs, unsigned *last_seg_size,
-> > > +		unsigned *front_seg_size, unsigned *sectors)
-> > > +{
-> > > +	bool need_split = false;
-> > > +	unsigned len = bv->bv_len;
-> > > +	unsigned total_len = 0;
-> > > +	unsigned new_nsegs = 0, seg_size = 0;
+> > > And actual bvec used by the caller will be obtained using
+> > > bvec_iter_bvec or segment_iter_bvec depending on if they want multi-page
+> > > or single-page variants.
 > > 
-> > "unsigned int" here and everywhere else.
+> > Right, we let __bvec_iter_advance() serve for both multi-page and single-page
+> > case, then we have to tell it via one way or another, now we use the constant
+> > of 'max_seg_len'.
+> > 
+> > Or you suggest to implement two versions of __bvec_iter_advance()?
 > 
-> Curious why?  I've wondered what govens use of "unsigned" vs "unsigned
-> int" recently and haven't found _the_ reason to pick one over the other.
+> No - I think we can always use the code without any segment in
+> bvec_iter_advance.  Because bvec_iter_advance only operates on the
+> iteractor, the generation of an actual single-page or multi-page
+> bvec is left to the caller using the bvec_iter_bvec or segment_iter_bvec
+> helpers.  The only difference is how many bytes you can move the
+> iterator forward in a single loop iteration - so if you pass in
+> PAGE_SIZE as the max_seg_len you just will have to loop more often
+> for a large enough bytes, but not actually do anything different.
 
-My only reason to prefer unsigned int is consistency. unsigned int is
-much more common in the kernel:
+Yeah, I see that.
 
-$ ag --cc -s 'unsigned\s+int' | wc -l
-129632
-$ ag --cc -s 'unsigned\s+(?!char|short|int|long)' | wc -l
-22435
+The difference is made by bio_iter_iovec()/bio_iter_mp_iovec() in
+__bio_for_each_segment()/__bio_for_each_bvec().
 
-checkpatch also warns on plain unsigned.
+
+Thanks,
+Ming
