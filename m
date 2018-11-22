@@ -1,13 +1,14 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43610 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:57741 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726101AbeKZNNF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Nov 2018 08:13:05 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
+        id S2387923AbeKVVmL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Nov 2018 16:42:11 -0500
+Date: Thu, 22 Nov 2018 12:03:15 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
         Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
@@ -21,44 +22,30 @@ Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
         Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
         Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
         Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V12 14/20] bcache: avoid to use bio_for_each_segment_all() in bch_bio_alloc_pages()
-Date: Mon, 26 Nov 2018 10:17:14 +0800
-Message-Id: <20181126021720.19471-15-ming.lei@redhat.com>
-In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
-References: <20181126021720.19471-1-ming.lei@redhat.com>
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V11 12/19] block: allow bio_for_each_segment_all() to
+ iterate over multi-page bvec
+Message-ID: <20181122110315.GA30369@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-13-ming.lei@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181121032327.8434-13-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-bch_bio_alloc_pages() is always called on one new bio, so it is safe
-to access the bvec table directly. Given it is the only kind of this
-case, open code the bvec table access since bio_for_each_segment_all()
-will be changed to support for iterating over multipage bvec.
+> +/* used for chunk_for_each_segment */
+> +static inline void bvec_next_segment(const struct bio_vec *bvec,
+> +				     struct bvec_iter_all *iter_all)
 
-Acked-by: Coly Li <colyli@suse.de>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- drivers/md/bcache/util.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+FYI, chunk_for_each_segment doesn't exist anymore, this is
+bvec_for_each_segment now.  Not sure the comment helps much, though.
 
-diff --git a/drivers/md/bcache/util.c b/drivers/md/bcache/util.c
-index 20eddeac1531..62fb917f7a4f 100644
---- a/drivers/md/bcache/util.c
-+++ b/drivers/md/bcache/util.c
-@@ -270,7 +270,11 @@ int bch_bio_alloc_pages(struct bio *bio, gfp_t gfp_mask)
- 	int i;
- 	struct bio_vec *bv;
- 
--	bio_for_each_segment_all(bv, bio, i) {
-+	/*
-+	 * This is called on freshly new bio, so it is safe to access the
-+	 * bvec table directly.
-+	 */
-+	for (i = 0, bv = bio->bi_io_vec; i < bio->bi_vcnt; bv++, i++) {
- 		bv->bv_page = alloc_page(gfp_mask);
- 		if (!bv->bv_page) {
- 			while (--bv >= bio->bi_io_vec)
--- 
-2.9.5
+> +{
+> +	struct bio_vec *bv = &iter_all->bv;
+> +
+> +	if (bv->bv_page) {
+> +		bv->bv_page += 1;
+
+I think this needs to use nth_page() given that with discontigmem
+page structures might not be allocated contigously.
