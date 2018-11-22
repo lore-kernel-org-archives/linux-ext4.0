@@ -1,46 +1,31 @@
-Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:44808 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727456AbeK0LbM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 27 Nov 2018 06:31:12 -0500
-Date: Mon, 26 Nov 2018 16:35:11 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Cc: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, tytso@mit.edu
-Subject: Re: [PATCH 1/7] ext4: use IS_ENCRYPTED() to check encryption status
-Message-ID: <20181127003510.GD11663@gmail.com>
-References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
- <20181119052324.31456-2-chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40348 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2404067AbeKVNO7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Nov 2018 08:14:59 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 3C7662C7DD
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Nov 2018 02:37:46 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Thu, 22 Nov 2018 02:37:45 +0000
+Message-ID: <bug-201685-13602-1aQeJfbMHI@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181119052324.31456-2-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Chandan,
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-On Mon, Nov 19, 2018 at 10:53:18AM +0530, Chandan Rajendra wrote:
-> @@ -4724,7 +4724,7 @@ static bool ext4_should_use_dax(struct inode *inode)
->  		return false;
->  	if (ext4_has_inline_data(inode))
->  		return false;
-> -	if (ext4_encrypted_inode(inode))
-> +	if (IS_ENCRYPTED(inode))
->  		return false;
->  	if (ext4_verity_inode(inode))
->  		return false;
+--- Comment #28 from Jens Axboe (axboe@kernel.dk) ---
+If it's not this, another hint might be a discard change. Is everyone affected
+using discard?
 
-I think this part is wrong.  See how ext4_should_use_dax() is called from
-ext4_set_inode_flags(), from ext4_set_context().  In this case,
-ext4_set_inode_flags() should set S_ENCRYPTED and clear S_DAX.  However, you've
-changed ext4_should_use_dax() to check S_ENCRYPTED instead of EXT4_ENCRYPT_FL;
-but S_ENCRYPTED isn't set until later in ext4_set_inode_flags(), so S_DAX won't
-be cleared anymore.
-
-So I think you need to use ext4_test_inode_flag() here instead.
-
-Similarly for the verity check.
-
-- Eric
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
