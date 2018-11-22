@@ -1,51 +1,72 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:49870 "EHLO newverein.lst.de"
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:34264 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727711AbeKPXti (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Nov 2018 18:49:38 -0500
-Date: Fri, 16 Nov 2018 14:37:10 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
+        id S2388243AbeKVVLf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Nov 2018 16:11:35 -0500
+Date: Thu, 22 Nov 2018 18:32:09 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
 Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
         linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
         linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 07/19] btrfs: use bvec_last_segment to get bio's
- last page
-Message-ID: <20181116133710.GF3165@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-8-ming.lei@redhat.com>
+Subject: Re: [PATCH V11 14/19] block: handle non-cluster bio out of
+ blk_bio_segment_split
+Message-ID: <20181122103208.GD27273@ming.t460p>
+References: <20181121032327.8434-1-ming.lei@redhat.com>
+ <20181121032327.8434-15-ming.lei@redhat.com>
+ <20181121143355.GB2594@lst.de>
+ <20181121153726.GC19111@ming.t460p>
+ <20181121174621.GA6961@lst.de>
+ <20181122093259.GA27007@ming.t460p>
+ <20181122100427.GA28871@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-8-ming.lei@redhat.com>
+In-Reply-To: <20181122100427.GA28871@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:52:54PM +0800, Ming Lei wrote:
-> index 2955a4ea2fa8..161e14b8b180 100644
-> --- a/fs/btrfs/compression.c
-> +++ b/fs/btrfs/compression.c
-> @@ -400,8 +400,11 @@ blk_status_t btrfs_submit_compressed_write(struct inode *inode, u64 start,
->  static u64 bio_end_offset(struct bio *bio)
->  {
->  	struct bio_vec *last = bio_last_bvec_all(bio);
-> +	struct bio_vec bv;
->  
-> -	return page_offset(last->bv_page) + last->bv_len + last->bv_offset;
-> +	bvec_last_segment(last, &bv);
-> +
-> +	return page_offset(bv.bv_page) + bv.bv_len + bv.bv_offset;
+On Thu, Nov 22, 2018 at 11:04:28AM +0100, Christoph Hellwig wrote:
+> On Thu, Nov 22, 2018 at 05:33:00PM +0800, Ming Lei wrote:
+> > However, using virt boundary limit on non-cluster seems over-kill,
+> > because the bio will be over-split(each small bvec may be split as one bio)
+> > if it includes lots of small segment.
+> 
+> The combination of the virt boundary of PAGE_SIZE - 1 and a
+> max_segment_size of PAGE_SIZE will only split if the to me merged
+> segment is in a different page than the previous one, which is exactly
+> what we need here.  Multiple small bvec inside the same page (e.g.
+> 512 byte buffer_heads) will still be merged.
+> 
+> > What we want to do is just to avoid to merge bvecs to segment, which
+> > should have been done by NO_SG_MERGE simply. However, after multi-page
+> > is enabled, two adjacent bvecs won't be merged any more, I just forget
+> > to remove the bvec merge code in V11.
+> > 
+> > So seems we can simply avoid to use virt boundary limit for non-cluster
+> > after multipage bvec is enabled?
+> 
+> No, we can't just remove it.  As explained in the patch there is one very
+> visible difference of setting the flag amd that is no segment will span a
+> page boundary, and at least the iSCSI code seems to rely on that.
 
-I don't think we need this.  If last is a multi-page bvec bv_offset
-will already contain the correct offset from the first page.
+IMO, we should use queue_segment_boundary() to enhance the rule during splitting
+segment after multi-page bvec is enabled.
+
+Seems we miss the segment boundary limit in bvec_split_segs().
+
+Thanks,
+Ming
