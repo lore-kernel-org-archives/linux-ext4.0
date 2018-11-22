@@ -1,78 +1,78 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:35227 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726398AbeKUNQ5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 08:16:57 -0500
-Received: by mail-pl1-f196.google.com with SMTP id v1-v6so3208954plo.2
-        for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2018 18:44:35 -0800 (PST)
-From: Eiichi Tsukata <devel@etsukata.com>
-To: andi@firstfloor.org, Chris Mason <clm@fb.com>,
-        Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:49112 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2387669AbeKVUMQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Nov 2018 15:12:16 -0500
+Date: Thu, 22 Nov 2018 17:33:00 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-unionfs@vger.kernel.org
-Cc: Eiichi Tsukata <devel@etsukata.com>
-Subject: [PATCH v1 4/4] overlayfs: fix race between llseek SEEK_END and write
-Date: Wed, 21 Nov 2018 11:44:00 +0900
-Message-Id: <20181121024400.4346-5-devel@etsukata.com>
-In-Reply-To: <20181121024400.4346-1-devel@etsukata.com>
-References: <20181121024400.4346-1-devel@etsukata.com>
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V11 14/19] block: handle non-cluster bio out of
+ blk_bio_segment_split
+Message-ID: <20181122093259.GA27007@ming.t460p>
+References: <20181121032327.8434-1-ming.lei@redhat.com>
+ <20181121032327.8434-15-ming.lei@redhat.com>
+ <20181121143355.GB2594@lst.de>
+ <20181121153726.GC19111@ming.t460p>
+ <20181121174621.GA6961@lst.de>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181121174621.GA6961@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Implement individual lock for SEEK_END for overlayfs which directly calls
-generic_file_llseek_size().
+On Wed, Nov 21, 2018 at 06:46:21PM +0100, Christoph Hellwig wrote:
+> Actually..
+> 
+> I think we can kill this code entirely.  If we look at what the
+> clustering setting is really about it is to avoid ever merging a
+> segement that spans a page boundary.  And we should be able to do
+> that with something like this before your series:
+> 
+> ---
+> From 0d46fa76c376493a74ea0dbe77305bd5fa2cf011 Mon Sep 17 00:00:00 2001
+> From: Christoph Hellwig <hch@lst.de>
+> Date: Wed, 21 Nov 2018 18:39:47 +0100
+> Subject: block: remove the "cluster" flag
+> 
+> The cluster flag implements some very old SCSI behavior.  As far as I
+> can tell the original intent was to enable or disable any kind of
+> segment merging.  But the actually visible effect to the LLDD is that
+> it limits each segments to be inside a single page, which we can
+> also affect by setting the maximum segment size and the virt
+> boundary.
 
-Signed-off-by: Eiichi Tsukata <devel@etsukata.com>
----
- fs/overlayfs/file.c | 23 ++++++++++++++++++++---
- 1 file changed, 20 insertions(+), 3 deletions(-)
+This approach is pretty good given we can do post-split during mapping
+sg.
 
-diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-index 84dd957efa24..57bc6538eea8 100644
---- a/fs/overlayfs/file.c
-+++ b/fs/overlayfs/file.c
-@@ -146,10 +146,27 @@ static int ovl_release(struct inode *inode, struct file *file)
- static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)
- {
- 	struct inode *realinode = ovl_inode_real(file_inode(file));
-+	loff_t ret;
- 
--	return generic_file_llseek_size(file, offset, whence,
--					realinode->i_sb->s_maxbytes,
--					i_size_read(realinode));
-+	switch (whence) {
-+	default:
-+		return generic_file_llseek_size(file, offset, whence,
-+						realinode->i_sb->s_maxbytes,
-+						i_size_read(realinode));
-+	case SEEK_END:
-+	case SEEK_DATA:
-+	case SEEK_HOLE:
-+		/*
-+		 * protects against inode size race with write so that llseek
-+		 * doesn't see inode size being updated in individual fs write
-+		 */
-+		inode_lock(realinode);
-+		ret = generic_file_llseek_size(file, offset, whence,
-+					       realinode->i_sb->s_maxbytes,
-+					       i_size_read(realinode));
-+		inode_unlock(realinode);
-+		return ret;
-+	}
- }
- 
- static void ovl_file_accessed(struct file *file)
--- 
-2.19.1
+However, using virt boundary limit on non-cluster seems over-kill,
+because the bio will be over-split(each small bvec may be split as one bio)
+if it includes lots of small segment.
+
+What we want to do is just to avoid to merge bvecs to segment, which
+should have been done by NO_SG_MERGE simply. However, after multi-page
+is enabled, two adjacent bvecs won't be merged any more, I just forget
+to remove the bvec merge code in V11.
+
+So seems we can simply avoid to use virt boundary limit for non-cluster
+after multipage bvec is enabled?
+
+
+thanks,
+Ming
