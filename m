@@ -1,110 +1,125 @@
-Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:54470 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726363AbeKHDpm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Nov 2018 22:45:42 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id ADD532BE62
-        for <linux-ext4@vger.kernel.org>; Wed,  7 Nov 2018 18:14:08 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201631] New: WARNING: CPU: 11 PID: 29593 at
- fs/ext4/inode.c:3927 .ext4_set_page_dirty+0x70/0xb0
-Date: Wed, 07 Nov 2018 18:14:07 +0000
-Message-ID: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:44646 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729105AbeKVXPP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Nov 2018 18:15:15 -0500
+Date: Thu, 22 Nov 2018 13:36:01 +0100
+From: Jan Kara <jack@suse.cz>
+To: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Cc: linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: fix deadlock while checkpoint thread waits commit
+ thread to finish
+Message-ID: <20181122123601.GO9840@quack2.suse.cz>
+References: <20181114114935.5250-1-xiaoguang.wang@linux.alibaba.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181114114935.5250-1-xiaoguang.wang@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+On Wed 14-11-18 19:49:35, Xiaoguang Wang wrote:
+> This issue was found when I tried to put checkpoint work in a separate thread,
+> the deadlock below happened:
+>          Thread1                                |   Thread2
+> __jbd2_log_wait_for_space                       |
+> jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
+>   if (jh->b_transaction != NULL)                |
+>     ...                                         |
+>     jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
+>                                                 |  will lock j_checkpoint_mutex,
+>                                                 |  but will be blocked here.
+>                                                 |
+>     jbd2_log_wait_commit(journal, tid);         |
+>     wait_event(journal->j_wait_done_commit,     |
+>      !tid_gt(tid, journal->j_commit_sequence)); |
+>      ...                                        |wake_up(j_wait_done_commit)
+>   }                                             |
+> 
+> then deadlock occurs, Thread1 will never be waken up.
+> 
+> To fix this issue, drop j_checkpoint_mutex in jbd2_log_do_checkpoint()
+> when we are going to wait for transaction commit.
+> 
+> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
 
-            Bug ID: 201631
-           Summary: WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
-                    .ext4_set_page_dirty+0x70/0xb0
-           Product: File System
-           Version: 2.5
-    Kernel Version: 4.20-rc1
-          Hardware: PPC-64
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: erhard_f@mailbox.org
-        Regression: No
+Thanks for the patch! One comment below...
 
-Created attachment 279373
-  --> https://bugzilla.kernel.org/attachment.cgi?id=279373&action=edit
-kernel config
+> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+> index 26f8d7e46462..e728844f2f0e 100644
+> --- a/fs/jbd2/checkpoint.c
+> +++ b/fs/jbd2/checkpoint.c
+> @@ -113,7 +113,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+>  	nblocks = jbd2_space_needed(journal);
+>  	while (jbd2_log_space_left(journal) < nblocks) {
+>  		write_unlock(&journal->j_state_lock);
+> -		mutex_lock(&journal->j_checkpoint_mutex);
+> +		mutex_lock_io(&journal->j_checkpoint_mutex);
+>  
+>  		/*
+>  		 * Test again, another process may have checkpointed while we
+> @@ -241,8 +241,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+>  	 * done (maybe it's a new transaction, but it fell at the same
+>  	 * address).
+>  	 */
+> -	if (journal->j_checkpoint_transactions != transaction ||
+> -	    transaction->t_tid != this_tid)
+> +	if (journal->j_checkpoint_transactions == NULL ||
+> +	    journal->j_checkpoint_transactions->t_tid != this_tid)
+>  		goto out;
 
-[ 3894.535640] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
-.ext4_set_page_dirty+0x70/0xb0
-[ 3894.535794] Modules linked in: rpcsec_gss_krb5 auth_rpcgss nfsv4
-dns_resolver nfs lockd grace sunrpc cfg80211 rfkill radeon evdev ghash_generic
-i2c_algo_bit gf128mul snd_hda_codec_hdmi ttm ecb drm_kms_helper snd_hda_intel
-snd_hda_codec cfbfillrect cfbimgblt mptsas syscopyarea sysimgblt xts snd_hwdep
-sysfillrect snd_hda_core scsi_transport_sas fb_sys_fops cfbcopyarea xhci_pci
-drm snd_pcm xhci_hcd mptscsih mptbase snd_timer ctr usbcore tg3 scsi_mod cbc
-at24 snd powernv_flash drm_panel_orientation_quirks backlight libphy usb_common
-mtd soundcore ibmpowernv vmx_crypto opal_prd hwmon crc32c_vpmsum lz4
-lz4_compress lz4_decompress zram zsmalloc
-[ 3894.535880] CPU: 11 PID: 29593 Comm: debugedit Not tainted 4.20.0-rc1 #1
-[ 3894.535886] NIP:  c000000000401d40 LR: c000000000250440 CTR:
-c000000000401cd0
-[ 3894.535893] REGS: c0000003c6d9f560 TRAP: 0700   Not tainted  (4.20.0-rc1)
-[ 3894.535898] MSR:  9000000000029032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24082488 
-XER: 20040000
-[ 3894.535913] CFAR: c000000000401d14 IRQMASK: 0 
-               GPR00: c000000000250440 c0000003c6d9f7e8 c0000000011d5d00
-c00a00800786e640 
-               GPR04: 00003fffb263e000 c0002001e1b99186 0000000000000001
-0000000000000000 
-               GPR08: 0000000000000000 0000000000000000 c00a0080095480c8
-0000000000000000 
-               GPR12: 0000000024082488 c0000003ffffb400 1000000000000000
-c0000000011e3918 
-               GPR16: 00003fffb263e000 e61fffffffffffff c0002001e1b99186
-c0002003e3a30960 
-               GPR20: 00003fffb263f000 c00a00800786e640 c00000035c777ab8
-c0000003c7692850 
-               GPR24: c0000003645aa1f0 fffffffffffffe7f c0000003c55b3c98
-0000000000000000 
-               GPR28: ffffffffffffffff 00003fffb2649000 0000000000000000
-c00a00800786e640 
-[ 3894.535957] NIP [c000000000401d40] .ext4_set_page_dirty+0x70/0xb0
-[ 3894.535965] LR [c000000000250440] .set_page_dirty+0xa0/0x150
-[ 3894.535970] Call Trace:
-[ 3894.535976] [c0000003c6d9f7e8] [c000000000247908]
-.__get_free_pages+0x18/0x70 (unreliable)
-[ 3894.535984] [c0000003c6d9f858] [c000000000250440] .set_page_dirty+0xa0/0x150
-[ 3894.535994] [c0000003c6d9f8d8] [c000000000298de0]
-.unmap_page_range+0xbf0/0xe10
-[ 3894.536001] [c0000003c6d9fa68] [c000000000299364] .unmap_vmas+0x84/0x130
-[ 3894.536009] [c0000003c6d9fb08] [c0000000002a3d98] .unmap_region+0xe8/0x190
-[ 3894.536016] [c0000003c6d9fc38] [c0000000002a6470] .__do_munmap+0x2f0/0x510
-[ 3894.536024] [c0000003c6d9fcf8] [c0000000002a6710] .__vm_munmap+0x80/0x110
-[ 3894.536031] [c0000003c6d9fdb8] [c0000000002a67d4] .__se_sys_munmap+0x14/0x30
-[ 3894.536040] [c0000003c6d9fe28] [c00000000000b3a4] system_call+0x5c/0x70
-[ 3894.536046] Instruction dump:
-[ 3894.536053] 71290008 4182002c e9230000 71292000 41820030 4bf6e8fd 60000000
-38210070 
-[ 3894.536066] e8010010 7c0803a6 4e800020 60000000 <0fe00000> e9230000 71292000
-4082ffd8 
-[ 3894.536080] irq event stamp: 18532
-[ 3894.536087] hardirqs last  enabled at (18531): [<c00000000024a120>]
-.get_page_from_freelist+0x2b0/0x1940
-[ 3894.536094] hardirqs last disabled at (18532): [<c000000000008f2c>]
-program_check_common+0x14c/0x160
-[ 3894.536103] softirqs last  enabled at (18306): [<c0000000009b2384>]
-.__do_softirq+0x4b4/0x5e4
-[ 3894.536111] softirqs last disabled at (18299): [<c0000000000b2128>]
-.irq_exit+0xf8/0x1b0
-[ 3894.536117] ---[ end trace ca79a42e82947be5 ]---
+Why did you change this? As far as I can tell there's no difference and the
+previous condition makes it more obvious that we are still looking at the
+same transaction.
 
+Otherwise the patch looks good so after removing the above hunk feel free to
+add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+
+> @@ -276,9 +276,22 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+>  		"JBD2: %s: Waiting for Godot: block %llu\n",
+>  		journal->j_devname, (unsigned long long) bh->b_blocknr);
+>  
+> +			if (batch_count)
+> +				__flush_batch(journal, &batch_count);
+>  			jbd2_log_start_commit(journal, tid);
+> +			/*
+> +			 * jbd2_journal_commit_transaction() may want
+> +			 * to take the checkpoint_mutex if JBD2_FLUSHED
+> +			 * is set, jbd2_update_log_tail() called by
+> +			 * jbd2_journal_commit_transaction() may also take
+> +			 * checkpoint_mutex.  So we need to temporarily
+> +			 * drop it.
+> +			 */
+> +			mutex_unlock(&journal->j_checkpoint_mutex);
+>  			jbd2_log_wait_commit(journal, tid);
+> -			goto retry;
+> +			mutex_lock_io(&journal->j_checkpoint_mutex);
+> +			spin_lock(&journal->j_list_lock);
+> +			goto restart;
+>  		}
+>  		if (!buffer_dirty(bh)) {
+>  			if (unlikely(buffer_write_io_error(bh)) && !result)
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 8ef6b6daaa7a..88d8f22d2cba 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -2067,7 +2067,7 @@ int jbd2_journal_wipe(journal_t *journal, int write)
+>  	err = jbd2_journal_skip_recovery(journal);
+>  	if (write) {
+>  		/* Lock to make assertions happy... */
+> -		mutex_lock(&journal->j_checkpoint_mutex);
+> +		mutex_lock_io(&journal->j_checkpoint_mutex);
+>  		jbd2_mark_journal_empty(journal, REQ_SYNC | REQ_FUA);
+>  		mutex_unlock(&journal->j_checkpoint_mutex);
+>  	}
+> -- 
+> 2.17.2
+> 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
