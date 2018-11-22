@@ -1,16 +1,17 @@
-Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:46720 "EHLO
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:35822 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726127AbeLAGEW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 01:04:22 -0500
+        by vger.kernel.org with ESMTP id S1726919AbeKVMqF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Nov 2018 07:46:05 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id E9FB53036E
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 18:54:08 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B14A42C7F5
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Nov 2018 02:08:58 +0000 (UTC)
 From: bugzilla-daemon@bugzilla.kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 201685] ext4 file system corruption
-Date: Fri, 30 Nov 2018 18:54:07 +0000
-Message-ID: <bug-201685-13602-4XNRLXUXwH@https.bugzilla.kernel.org/>
+Date: Thu, 22 Nov 2018 02:08:59 +0000
+Message-ID: <bug-201685-13602-FFgZzJSKee@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
 References: <bug-201685-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,15 +22,10 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
---- Comment #98 from Rainer Fiebig (jrf@mailbox.org) ---
-(In reply to Guenter Roeck from comment #97)
-> #94 makes me wonder if the problem may be related to
-> https://lkml.org/lkml/2018/5/21/71. Just wondering, and I may be completely
-> off track, but that problem is still seen against the mainline kernel.
-> 
-> #96: commit ac22b46a0b65 can be reverted cleanly with "git revert".
-
-Yep, but perhaps some people here don't use git and/or have cloned the repo.
+--- Comment #27 from Jens Axboe (axboe@kernel.dk) ---
+Created attachment 279581
+  --> https://bugzilla.kernel.org/attachment.cgi?id=279581&action=edit
+4.20-rc3 patch
 
 -- 
 You are receiving this mail because:
