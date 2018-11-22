@@ -1,11 +1,11 @@
 Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49112 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.211]:57683 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387669AbeKVUMQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 15:12:16 -0500
-Date: Thu, 22 Nov 2018 17:33:00 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
+        id S1732079AbeKVVhp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Nov 2018 16:37:45 -0500
+Date: Thu, 22 Nov 2018 11:58:49 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
 Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
@@ -19,60 +19,58 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 14/19] block: handle non-cluster bio out of
- blk_bio_segment_split
-Message-ID: <20181122093259.GA27007@ming.t460p>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
- <20181121032327.8434-15-ming.lei@redhat.com>
- <20181121143355.GB2594@lst.de>
- <20181121153726.GC19111@ming.t460p>
- <20181121174621.GA6961@lst.de>
+Subject: Re: [PATCH V11 07/19] fs/buffer.c: use bvec iterator to truncate
+ the bio
+Message-ID: <20181122105849.GA30066@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-8-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181121174621.GA6961@lst.de>
+In-Reply-To: <20181121032327.8434-8-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 21, 2018 at 06:46:21PM +0100, Christoph Hellwig wrote:
-> Actually..
-> 
-> I think we can kill this code entirely.  If we look at what the
-> clustering setting is really about it is to avoid ever merging a
-> segement that spans a page boundary.  And we should be able to do
-> that with something like this before your series:
-> 
-> ---
-> From 0d46fa76c376493a74ea0dbe77305bd5fa2cf011 Mon Sep 17 00:00:00 2001
-> From: Christoph Hellwig <hch@lst.de>
-> Date: Wed, 21 Nov 2018 18:39:47 +0100
-> Subject: block: remove the "cluster" flag
-> 
-> The cluster flag implements some very old SCSI behavior.  As far as I
-> can tell the original intent was to enable or disable any kind of
-> segment merging.  But the actually visible effect to the LLDD is that
-> it limits each segments to be inside a single page, which we can
-> also affect by setting the maximum segment size and the virt
-> boundary.
-
-This approach is pretty good given we can do post-split during mapping
-sg.
-
-However, using virt boundary limit on non-cluster seems over-kill,
-because the bio will be over-split(each small bvec may be split as one bio)
-if it includes lots of small segment.
-
-What we want to do is just to avoid to merge bvecs to segment, which
-should have been done by NO_SG_MERGE simply. However, after multi-page
-is enabled, two adjacent bvecs won't be merged any more, I just forget
-to remove the bvec merge code in V11.
-
-So seems we can simply avoid to use virt boundary limit for non-cluster
-after multipage bvec is enabled?
+Btw, given that this is the last user of bvec_last_segment after my
+other patches I think we should kill bvec_last_segment and do something
+like this here:
 
 
-thanks,
-Ming
+diff --git a/fs/buffer.c b/fs/buffer.c
+index fa37ad52e962..af5e135d2b83 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2981,6 +2981,14 @@ static void end_bio_bh_io_sync(struct bio *bio)
+ 	bio_put(bio);
+ }
+ 
++static void zero_trailing_sectors(struct bio_vec *bvec, unsigned bytes)
++{
++	unsigned last_page = (bvec->bv_offset + bvec->bv_len - 1) >> PAGE_SHIFT;
++
++	zero_user(nth_page(bvec->bv_page, last_page),
++		  bvec->bv_offset % PAGE_SIZE + bvec->bv_len, bytes);
++}
++
+ /*
+  * This allows us to do IO even on the odd last sectors
+  * of a device, even if the block size is some multiple
+@@ -3031,13 +3039,8 @@ void guard_bio_eod(int op, struct bio *bio)
+ 	bvec->bv_len -= truncated_bytes;
+ 
+ 	/* ..and clear the end of the buffer for reads */
+-	if (op == REQ_OP_READ) {
+-		struct bio_vec bv;
+-
+-		bvec_last_segment(bvec, &bv);
+-		zero_user(bv.bv_page, bv.bv_offset + bv.bv_len,
+-				truncated_bytes);
+-	}
++	if (op == REQ_OP_READ)
++		zero_trailing_sectors(bvec, truncated_bytes);
+ }
+ 
+ static int submit_bh_wbc(int op, int op_flags, struct buffer_head *bh,
