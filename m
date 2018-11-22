@@ -1,87 +1,74 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:44538 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726296AbeK0JPm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:15:42 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 03/12] chattr/lsattr: Support casefold attribute
-Date: Mon, 26 Nov 2018 17:19:40 -0500
-Message-Id: <20181126221949.12172-4-krisman@collabora.com>
-In-Reply-To: <20181126221949.12172-1-krisman@collabora.com>
-References: <20181126221949.12172-1-krisman@collabora.com>
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:57417 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2387625AbeKVVB7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 22 Nov 2018 16:01:59 -0500
+Date: Thu, 22 Nov 2018 11:23:09 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>,
+        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V11 03/19] block: introduce bio_for_each_bvec()
+Message-ID: <20181122102309.GA29295@lst.de>
+References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-4-ming.lei@redhat.com> <20181121133244.GB1640@lst.de> <20181121153135.GB19111@ming.t460p> <20181121161025.GB4977@lst.de> <20181121171217.GA6259@lst.de> <20181122101527.GB27273@ming.t460p>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181122101527.GB27273@ming.t460p>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+On Thu, Nov 22, 2018 at 06:15:28PM +0800, Ming Lei wrote:
+> >  	while (bytes) {
+> > -		unsigned segment_len = segment_iter_len(bv, *iter);
+> > -
+> > -		if (max_seg_len < BVEC_MAX_LEN)
+> > -			segment_len = min_t(unsigned, segment_len,
+> > -					    max_seg_len -
+> > -					    bvec_iter_offset(bv, *iter));
+> > +		unsigned iter_len = bvec_iter_len(bv, *iter);
+> > +		unsigned len = min(bytes, iter_len);
+> 
+> It may not work to always use bvec_iter_len() here, and 'segment_len'
+> should be max length of the passed 'bv', however we don't know if it is
+> single-page or mutli-page bvec if no one tells us.
 
-This flag can be set on directories to request insensitive file name
-lookups.
+The plain revert I sent isn't totally correct in your current tree
+indeed because of the odd change that segment_iter_len now is the
+full bvec len, so it should be changed to that until we switch to the
+sane naming scheme used elsewhere.
 
-I used the letter 'F', referring to "caseFold" for lack of a better
-option.
+But except for that, it will work.  The bvec we operate on (part of the
+array in the bio pointed to by the iter) is always a multi-page capable
+one. We only fake up a single page on for users using segment_iter_len.
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- lib/e2p/pf.c         | 1 +
- lib/ext2fs/ext2_fs.h | 5 +++--
- misc/chattr.c        | 3 ++-
- 3 files changed, 6 insertions(+), 3 deletions(-)
+Think of what you are doing in the (I think mostly hypothetical) case
+that we call bvec_iter_advance with a bytes > PAGE_SIZE on a segment
+small than page size.
 
-diff --git a/lib/e2p/pf.c b/lib/e2p/pf.c
-index 884f1671edae..0c6998c4b766 100644
---- a/lib/e2p/pf.c
-+++ b/lib/e2p/pf.c
-@@ -44,6 +44,7 @@ static struct flags_name flags_array[] = {
- 	{ EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
- 	{ EXT4_EXTENTS_FL, "e", "Extents" },
- 	{ FS_NOCOW_FL, "C", "No_COW" },
-+	{ EXT4_CASEFOLD_FL, "F", "Casefold" },
- 	{ EXT4_INLINE_DATA_FL, "N", "Inline_Data" },
- 	{ EXT4_PROJINHERIT_FL, "P", "Project_Hierarchy" },
- 	{ EXT4_VERITY_FL, "V", "Verity" },
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index 36ae7ae41c47..032f83ed5ed3 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -340,10 +340,11 @@ struct ext2_dx_tail {
- #define EXT4_SNAPFILE_SHRUNK_FL		0x08000000  /* Snapshot shrink has completed */
- #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data */
- #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
-+#define EXT4_CASEFOLD_FL		0x40000000 /* Casefolded file */
- #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
- 
--#define EXT2_FL_USER_VISIBLE		0x204BDFFF /* User visible flags */
--#define EXT2_FL_USER_MODIFIABLE		0x204B80FF /* User modifiable flags */
-+#define EXT2_FL_USER_VISIBLE		0x604BDFFF /* User visible flags */
-+#define EXT2_FL_USER_MODIFIABLE		0x604B80FF /* User modifiable flags */
- 
- /*
-  * ioctl commands
-diff --git a/misc/chattr.c b/misc/chattr.c
-index a5b401a741b7..a5d60170bdb6 100644
---- a/misc/chattr.c
-+++ b/misc/chattr.c
-@@ -86,7 +86,7 @@ static unsigned long sf;
- static void usage(void)
- {
- 	fprintf(stderr,
--		_("Usage: %s [-pRVf] [-+=aAcCdDeijPsStTu] [-v version] files...\n"),
-+		_("Usage: %s [-pRVf] [-+=aAcCdDeijPsStTuF] [-v version] files...\n"),
- 		program_name);
- 	exit(1);
- }
-@@ -112,6 +112,7 @@ static const struct flags_char flags_array[] = {
- 	{ EXT2_NOTAIL_FL, 't' },
- 	{ EXT2_TOPDIR_FL, 'T' },
- 	{ FS_NOCOW_FL, 'C' },
-+	{ EXT4_CASEFOLD_FL, 'F' },
- 	{ 0, 0 }
- };
- 
--- 
-2.19.2
+In this case we will limit the current iteration to the while loop
+until we git a page boundary.  This means we will not hit the condition
+moving to the next (real, in the array) bvec at the end of the loop,
+and just go on into the next iteration of the loop with the reduced
+amount of bytes.  Depending on how large byte is this might repeat
+a few more times.  Then on the final one we hit the limit and move
+to the next (real, in the array) bvec.
+
+Now if we don't have the segment limit we do exactly the same thing,
+just a whole lot more efficiently in a single loop iteration.
+tree where segment_iter_len is the 
