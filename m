@@ -1,37 +1,39 @@
-Return-Path: <SRS0=k8Ev=N4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-it1-f193.google.com ([209.85.166.193]:53878 "EHLO
-        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725853AbeKQRpK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 17 Nov 2018 12:45:10 -0500
-Received: by mail-it1-f193.google.com with SMTP id r12-v6so1248621ita.3
-        for <linux-ext4@vger.kernel.org>; Fri, 16 Nov 2018 23:29:24 -0800 (PST)
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:43824 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2438808AbeKWHxo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 23 Nov 2018 02:53:44 -0500
+Date: Thu, 22 Nov 2018 16:12:33 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Jan Kara <jack@suse.cz>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] ext4: add ext4_sb_bread() to disambiguate ENOMEM cases
+Message-ID: <20181122211233.GB7843@thunk.org>
+References: <20181117233523.8832-1-tytso@mit.edu>
+ <20181122122155.GN9840@quack2.suse.cz>
 MIME-Version: 1.0
-References: <20181116083737.10596-1-devel@etsukata.com> <20181116154424.da6uz56vatmvz7bo@two.firstfloor.org>
-In-Reply-To: <20181116154424.da6uz56vatmvz7bo@two.firstfloor.org>
-From: Eiichi Tsukata <devel@etsukata.com>
-Date: Sat, 17 Nov 2018 16:29:12 +0900
-Message-ID: <CANhTXPT81K5xbGeXbcMZ8YL1Td7JDqD+CQbnowK_-67acikyqQ@mail.gmail.com>
-Subject: Re: [RFC PATCH 0/1] fs: fix race between llseek SEEK_END and write
-To: andi@firstfloor.org
-Cc: "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181122122155.GN9840@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> >
-> > Q2. If it is a bug, how should we fix it?
-> >
-> > Currently I'm planning to re-introduce generic_file_llseek_unlocked()
-> > and inode lock in generic_file_llseek() for SEEK_END. Then replace
-> > generic_file_llseek() with generic_file_llseek_unlocked() if it called
-> > with inode lock in individual file systems. Please let me know if the
-> > way is not appropreate or any other better way to fix it.
->
-> Sounds reasonable.
->
-> -Andi
+On Thu, Nov 22, 2018 at 01:21:55PM +0100, Jan Kara wrote:
+> 
+> Is there a reason for REQ_PRIO? I'm not sure all REQ_META reads are really
+> a priority ones...
 
-Thanks for comments. I'll make a patch.
+Hmm, good question.  With the exception of readahead, most reads will
+be blocking some process.  We are currently using REQ_PRIO for all
+directory block reads.  The ext4_sb_read() function gets used for
+resizing, indirect block map to extent tree migration, and extended
+attribute reads.  The last is the most common, and arguably the most
+justifiable to be REQ_PRIO.  (Of course my understanding is that the
+block layer is ignoring REQ_PRIO, so this is mostly academic...)
 
-Eiichi
+So I think what I'll do is this.  I'll add a parameter to
+ext4_sb_read() so each caller can use use REQ_PRIO.  REQ_PRIO will be
+used from xattr.c, but not from fs/ext4/migrate.c and
+fs/ext4/resize.c.
+
+						- Ted
