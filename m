@@ -1,32 +1,46 @@
-Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51946 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728618AbeKHM4N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 8 Nov 2018 07:56:13 -0500
-Date: Wed, 7 Nov 2018 22:22:49 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Vasily Averin <vvs@virtuozzo.com>
-Cc: linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 7/7] ext4: lost brelse in ext4_expand_extra_isize_ea()
-Message-ID: <20181108032249.GC22459@thunk.org>
-References: <cover.1541011937.git.vvs@virtuozzo.com>
- <c5dc2118-ac42-c899-f218-4a78aa39c37f@virtuozzo.com>
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-wr1-f65.google.com ([209.85.221.65]:40763 "EHLO
+        mail-wr1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2404407AbeKWBVo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2018 20:21:44 -0500
+Received: by mail-wr1-f65.google.com with SMTP id p4so9504629wrt.7
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Nov 2018 06:42:04 -0800 (PST)
+Date: Thu, 22 Nov 2018 14:42:00 +0000
+From: Phillip Potter <phil@philpotter.co.uk>
+To: Jan Kara <jack@suse.cz>
+Cc: jack@suse.com, amir73il@gmail.com, viro@zeniv.linux.org.uk,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [RFC][PATCH v4 04/09] ext2: use common file type conversion
+Message-ID: <20181122144200.GA26035@pathfinder>
+References: <20181121190653.GA7710@pathfinder>
+ <20181122114023.GE9840@quack2.suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <c5dc2118-ac42-c899-f218-4a78aa39c37f@virtuozzo.com>
+In-Reply-To: <20181122114023.GE9840@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 31, 2018 at 10:13:09PM +0300, Vasily Averin wrote:
-> Fixes de05ca852679 ("ext4: move call to ext4_error() into ...") # 4.17
+On Thu, Nov 22, 2018 at 12:40:23PM +0100, Jan Kara wrote:
+> On Wed 21-11-18 19:06:53, Phillip Potter wrote:
+> > Deduplicate the ext2 file type conversion implementation - file systems
+> > that use the same file types as defined by POSIX do not need to define
+> > their own versions and can use the common helper functions decared in
+> > fs_types.h and implemented in fs_types.c
+> > 
+> > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> > Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
 > 
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> Looks good. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> 
+> 								Honza
 
-Thanks, applied.  I used the commit description:
+Dear Jan,
 
-    ext4: fix buffer leak in ext4_expand_extra_isize_ea() on error path
+Thank you for reviewing this patch, and for all the others too. Much
+appreciated.
 
-    	      	     	     			- Ted
+Regards,
+Phil
