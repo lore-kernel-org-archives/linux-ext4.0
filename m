@@ -1,74 +1,41 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52658 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726988AbeKSTlT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 14:41:19 -0500
-Date: Mon, 19 Nov 2018 17:17:46 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Omar Sandoval <osandov@osandov.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 18/19] block: kill QUEUE_FLAG_NO_SG_MERGE
-Message-ID: <20181119091746.GO16736@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-19-ming.lei@redhat.com>
- <20181116021811.GM23828@vader>
+Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:54816 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2404679AbeKWGiK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 23 Nov 2018 01:38:10 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id C0D112B102
+        for <linux-ext4@vger.kernel.org>; Thu, 22 Nov 2018 19:57:17 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Thu, 22 Nov 2018 19:57:17 +0000
+Message-ID: <bug-201685-13602-XoJbFniWIR@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181116021811.GM23828@vader>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 06:18:11PM -0800, Omar Sandoval wrote:
-> On Thu, Nov 15, 2018 at 04:53:05PM +0800, Ming Lei wrote:
-> > Since bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting"),
-> > physical segment number is mainly figured out in blk_queue_split() for
-> > fast path, and the flag of BIO_SEG_VALID is set there too.
-> > 
-> > Now only blk_recount_segments() and blk_recalc_rq_segments() use this
-> > flag.
-> > 
-> > Basically blk_recount_segments() is bypassed in fast path given BIO_SEG_VALID
-> > is set in blk_queue_split().
-> > 
-> > For another user of blk_recalc_rq_segments():
-> > 
-> > - run in partial completion branch of blk_update_request, which is an unusual case
-> > 
-> > - run in blk_cloned_rq_check_limits(), still not a big problem if the flag is killed
-> > since dm-rq is the only user.
-> > 
-> > Multi-page bvec is enabled now, QUEUE_FLAG_NO_SG_MERGE doesn't make sense any more.
-> 
-> This commit message wasn't very clear. Is it the case that
-> QUEUE_FLAG_NO_SG_MERGE is no longer set by any drivers?
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-OK, I will add the explanation to commit log in next version.
+Reindl Harald (harry@rhsoft.net) changed:
 
-05f1dd53152173 (block: add queue flag for disabling SG merging) introduces this
-flag for NVMe performance purpose only, so that merging to segment can
-be bypassed for NVMe.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |harry@rhsoft.net
 
-Actually this optimization was bypassed by 54efd50bfd873e2d (block: make
-generic_make_request handle arbitrarily sized bios) and bdced438acd83ad83a6c
-("block: setup bi_phys_segments after splitting").
+--- Comment #35 from Reindl Harald (harry@rhsoft.net) ---
+> /dev/sda2: Inode 12190197 extent tree (at level 2) could be narrower. 
+> IGNORED
 
-Now segment computation can be very quick, given most of times one bvec
-can be thought as one segment, so we can remove the flag.
+that is completly unrelated, i see that for years now on several machines and
+not cleaned up automatically and wasting my time to boot in rescure mode is not
+worth given the low importance of "could"
 
-thanks, 
-Ming
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
