@@ -1,50 +1,50 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:44554 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726296AbeK0JP4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:15:56 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v3 07/12] tune2fs: Prevent enabling encryption flag on encoding-aware fs
-Date: Mon, 26 Nov 2018 17:19:44 -0500
-Message-Id: <20181126221949.12172-8-krisman@collabora.com>
-In-Reply-To: <20181126221949.12172-1-krisman@collabora.com>
-References: <20181126221949.12172-1-krisman@collabora.com>
+Return-Path: <SRS0=kdxW=OC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:32884 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2388020AbeKWW7D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 23 Nov 2018 17:59:03 -0500
+Date: Fri, 23 Nov 2018 13:15:03 +0100
+From: Jan Kara <jack@suse.cz>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] ext4: add ext4_sb_bread() to disambiguate ENOMEM cases
+Message-ID: <20181123121503.GB31877@quack2.suse.cz>
+References: <20181117233523.8832-1-tytso@mit.edu>
+ <20181122122155.GN9840@quack2.suse.cz>
+ <20181122211233.GB7843@thunk.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181122211233.GB7843@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+On Thu 22-11-18 16:12:33, Theodore Y. Ts'o wrote:
+> On Thu, Nov 22, 2018 at 01:21:55PM +0100, Jan Kara wrote:
+> > 
+> > Is there a reason for REQ_PRIO? I'm not sure all REQ_META reads are really
+> > a priority ones...
+> 
+> Hmm, good question.  With the exception of readahead, most reads will
+> be blocking some process.  We are currently using REQ_PRIO for all
+> directory block reads.  The ext4_sb_read() function gets used for
+> resizing, indirect block map to extent tree migration, and extended
+> attribute reads.  The last is the most common, and arguably the most
+> justifiable to be REQ_PRIO.  (Of course my understanding is that the
+> block layer is ignoring REQ_PRIO, so this is mostly academic...)
 
-The kernel will refuse to mount filesystems with the encryption and
-encoding features enabled at the same time.  The encoding feature can
-only be set at mount time, so we can just prevent encryption from being
-set at a later time by tune2fs.
+Agreed that this is currently academic but AFAIR some blk-mq schedulers
+might be improved to consider REQ_PRIO again.
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- misc/tune2fs.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+> So I think what I'll do is this.  I'll add a parameter to
+> ext4_sb_read() so each caller can use use REQ_PRIO.  REQ_PRIO will be
+> used from xattr.c, but not from fs/ext4/migrate.c and
+> fs/ext4/resize.c.
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index a680b461cc86..4c92bee30b38 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -1459,6 +1459,12 @@ mmp_error:
- 	}
- 
- 	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_ENCRYPT)) {
-+		if (ext2fs_has_feature_fname_encoding(sb)) {
-+			fputs(_("Cannot enable encrypt feature on filesystems "
-+				"with the encoding feature enabled.\n"),
-+			      stderr);
-+			return 1;
-+		}
- 		fs->super->s_encrypt_algos[0] =
- 			EXT4_ENCRYPTION_MODE_AES_256_XTS;
- 		fs->super->s_encrypt_algos[1] =
+Sounds good. Thanks!
+
+								Honza
 -- 
-2.19.2
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
