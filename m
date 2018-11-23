@@ -1,69 +1,132 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41372 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726903AbeKSMqB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 07:46:01 -0500
-Date: Mon, 19 Nov 2018 10:23:28 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 01/19] block: introduce multi-page page bvec helpers
-Message-ID: <20181119022327.GC10838@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-2-ming.lei@redhat.com>
- <20181116131305.GA3165@lst.de>
+Return-Path: <SRS0=kdxW=OC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:47345 "EHLO
+        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727343AbeKWN1s (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 23 Nov 2018 08:27:48 -0500
+From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Subject: Re: [PATCH] ext4: fix deadlock while checkpoint thread waits commit
+ thread to finish
+To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+References: <20181114114935.5250-1-xiaoguang.wang@linux.alibaba.com>
+ <20181122123601.GO9840@quack2.suse.cz>
+Message-ID: <7f9dab38-26f8-6fd8-299e-30d711ee61b8@linux.alibaba.com>
+Date: Fri, 23 Nov 2018 10:45:20 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181116131305.GA3165@lst.de>
+In-Reply-To: <20181122123601.GO9840@quack2.suse.cz>
+Content-Type: text/plain; charset=gbk; format=flowed
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 16, 2018 at 02:13:05PM +0100, Christoph Hellwig wrote:
-> > -#define bvec_iter_page(bvec, iter)				\
-> > +#define mp_bvec_iter_page(bvec, iter)				\
-> >  	(__bvec_iter_bvec((bvec), (iter))->bv_page)
-> >  
-> > -#define bvec_iter_len(bvec, iter)				\
-> > +#define mp_bvec_iter_len(bvec, iter)				\
+hi,
+
+> On Wed 14-11-18 19:49:35, Xiaoguang Wang wrote:
+>> This issue was found when I tried to put checkpoint work in a separate thread,
+>> the deadlock below happened:
+>>           Thread1                                |   Thread2
+>> __jbd2_log_wait_for_space                       |
+>> jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
+>>    if (jh->b_transaction != NULL)                |
+>>      ...                                         |
+>>      jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
+>>                                                  |  will lock j_checkpoint_mutex,
+>>                                                  |  but will be blocked here.
+>>                                                  |
+>>      jbd2_log_wait_commit(journal, tid);         |
+>>      wait_event(journal->j_wait_done_commit,     |
+>>       !tid_gt(tid, journal->j_commit_sequence)); |
+>>       ...                                        |wake_up(j_wait_done_commit)
+>>    }                                             |
+>>
+>> then deadlock occurs, Thread1 will never be waken up.
+>>
+>> To fix this issue, drop j_checkpoint_mutex in jbd2_log_do_checkpoint()
+>> when we are going to wait for transaction commit.
+>>
+>> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
 > 
-> I'd much prefer if we would stick to the segment naming that
-> we also use in the higher level helper.
+> Thanks for the patch! One comment below...
 > 
-> So segment_iter_page, segment_iter_len, etc.
-
-We discussed the naming problem before, one big problem is that the 'segment'
-in bio_for_each_segment*() means one single page segment actually.
-
-If we use segment_iter_page() here for multi-page segment, it may
-confuse people.
-
-Of course, I prefer to the naming of segment/page, 
-
-And Jens didn't agree to rename bio_for_each_segment*() before.
-
-So what is the solution we should take for moving on?
-
+>> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+>> index 26f8d7e46462..e728844f2f0e 100644
+>> --- a/fs/jbd2/checkpoint.c
+>> +++ b/fs/jbd2/checkpoint.c
+>> @@ -113,7 +113,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+>>   	nblocks = jbd2_space_needed(journal);
+>>   	while (jbd2_log_space_left(journal) < nblocks) {
+>>   		write_unlock(&journal->j_state_lock);
+>> -		mutex_lock(&journal->j_checkpoint_mutex);
+>> +		mutex_lock_io(&journal->j_checkpoint_mutex);
+>>   
+>>   		/*
+>>   		 * Test again, another process may have checkpointed while we
+>> @@ -241,8 +241,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+>>   	 * done (maybe it's a new transaction, but it fell at the same
+>>   	 * address).
+>>   	 */
+>> -	if (journal->j_checkpoint_transactions != transaction ||
+>> -	    transaction->t_tid != this_tid)
+>> +	if (journal->j_checkpoint_transactions == NULL ||
+>> +	    journal->j_checkpoint_transactions->t_tid != this_tid)
+>>   		goto out;
 > 
-> > + * This helpers are for building sp bvec in flight.
+> Why did you change this? As far as I can tell there's no difference and the
+> previous condition makes it more obvious that we are still looking at the
+> same transaction.
+In this patch, we may drop j_checkpoint_mutex, then another thread may acquire
+this lock, do checkpoint work and freed current transaction, "transaction->t_tid"
+will cause an invalid pointer dereference.
+
+Regards,
+Xiaoguang Wang
 > 
-> Please spell out single page, sp is not easy understandable.
-
-OK.
-
-Thanks,
-Ming
+> Otherwise the patch looks good so after removing the above hunk feel free to
+> add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> 
+> 								Honza
+> 
+> 
+>> @@ -276,9 +276,22 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+>>   		"JBD2: %s: Waiting for Godot: block %llu\n",
+>>   		journal->j_devname, (unsigned long long) bh->b_blocknr);
+>>   
+>> +			if (batch_count)
+>> +				__flush_batch(journal, &batch_count);
+>>   			jbd2_log_start_commit(journal, tid);
+>> +			/*
+>> +			 * jbd2_journal_commit_transaction() may want
+>> +			 * to take the checkpoint_mutex if JBD2_FLUSHED
+>> +			 * is set, jbd2_update_log_tail() called by
+>> +			 * jbd2_journal_commit_transaction() may also take
+>> +			 * checkpoint_mutex.  So we need to temporarily
+>> +			 * drop it.
+>> +			 */
+>> +			mutex_unlock(&journal->j_checkpoint_mutex);
+>>   			jbd2_log_wait_commit(journal, tid);
+>> -			goto retry;
+>> +			mutex_lock_io(&journal->j_checkpoint_mutex);
+>> +			spin_lock(&journal->j_list_lock);
+>> +			goto restart;
+>>   		}
+>>   		if (!buffer_dirty(bh)) {
+>>   			if (unlikely(buffer_write_io_error(bh)) && !result)
+>> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+>> index 8ef6b6daaa7a..88d8f22d2cba 100644
+>> --- a/fs/jbd2/journal.c
+>> +++ b/fs/jbd2/journal.c
+>> @@ -2067,7 +2067,7 @@ int jbd2_journal_wipe(journal_t *journal, int write)
+>>   	err = jbd2_journal_skip_recovery(journal);
+>>   	if (write) {
+>>   		/* Lock to make assertions happy... */
+>> -		mutex_lock(&journal->j_checkpoint_mutex);
+>> +		mutex_lock_io(&journal->j_checkpoint_mutex);
+>>   		jbd2_mark_journal_empty(journal, REQ_SYNC | REQ_FUA);
+>>   		mutex_unlock(&journal->j_checkpoint_mutex);
+>>   	}
+>> -- 
+>> 2.17.2
+>>
