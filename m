@@ -1,86 +1,46 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f196.google.com ([209.85.214.196]:45058 "EHLO
-        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727245AbeK0Jje (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:39:34 -0500
-Received: by mail-pl1-f196.google.com with SMTP id a14so14552935plm.12
-        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:43:54 -0800 (PST)
-Date: Mon, 26 Nov 2018 14:43:51 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V12 18/20] block: document usage of bio iterator helpers
-Message-ID: <20181126224351.GM30411@vader>
-References: <20181126021720.19471-1-ming.lei@redhat.com>
- <20181126021720.19471-19-ming.lei@redhat.com>
+Return-Path: <SRS0=yRHK=OD=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:54018 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726407AbeKYA71 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 24 Nov 2018 19:59:27 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6F0CF2AB16
+        for <linux-ext4@vger.kernel.org>; Sat, 24 Nov 2018 14:10:56 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Sat, 24 Nov 2018 14:10:55 +0000
+Message-ID: <bug-201685-13602-iAzhw4k6FV@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181126021720.19471-19-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 26, 2018 at 10:17:18AM +0800, Ming Lei wrote:
-> Now multi-page bvec is supported, some helpers may return page by
-> page, meantime some may return segment by segment, this patch
-> documents the usage.
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
+--- Comment #40 from Rainer Fiebig (jrf@mailbox.org) ---
+(In reply to AdamB from comment #39)
+> I also experienced an ext4 file system corruption with 4.19.1, after
+> resuming from suspend-to-ram.
+> 
+> I've ran 4.12, 13, 14, 16, 17, and 18 on the same machine with near
+> identical .config and never had a file system corruption.
+> 
+> For all those kernels, I've had CONFIG_SCSI_MQ_DEFAULT=y.
 
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> ---
->  Documentation/block/biovecs.txt | 25 +++++++++++++++++++++++++
->  1 file changed, 25 insertions(+)
-> 
-> diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
-> index 25689584e6e0..ce6eccaf5df7 100644
-> --- a/Documentation/block/biovecs.txt
-> +++ b/Documentation/block/biovecs.txt
-> @@ -117,3 +117,28 @@ Other implications:
->     size limitations and the limitations of the underlying devices. Thus
->     there's no need to define ->merge_bvec_fn() callbacks for individual block
->     drivers.
-> +
-> +Usage of helpers:
-> +=================
-> +
-> +* The following helpers whose names have the suffix of "_all" can only be used
-> +on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
-> +shouldn't use them because the bio may have been split before it reached the
-> +driver.
-> +
-> +	bio_for_each_segment_all()
-> +	bio_first_bvec_all()
-> +	bio_first_page_all()
-> +	bio_last_bvec_all()
-> +
-> +* The following helpers iterate over single-page segment. The passed 'struct
-> +bio_vec' will contain a single-page IO vector during the iteration
-> +
-> +	bio_for_each_segment()
-> +	bio_for_each_segment_all()
-> +
-> +* The following helpers iterate over multi-page bvec. The passed 'struct
-> +bio_vec' will contain a multi-page IO vector during the iteration
-> +
-> +	bio_for_each_bvec()
-> +	rq_for_each_bvec()
-> -- 
-> 2.9.5
-> 
+I can say the same for CONFIG_SCSI_MQ_DEFAULT=n.
+But this is not exactly the same as running 4.19.x with
+CONFIG_SCSI_MQ_DEFAULT=n.
+
+As someone already pointed out: the best way to find out what's behind this is
+bisecting between 4.18 and 4.19 by someone affected by the problem. This is
+time consuming but in the end may also be the fastest way. A backup is IMO
+mandatory in this case.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
