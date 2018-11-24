@@ -1,59 +1,75 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail2.sequans.com ([194.98.51.148]:15614 "EHLO
-        mail2.sequans.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726201AbeK0AzU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Nov 2018 19:55:20 -0500
-Content-Type: multipart/mixed; boundary="===============5028384377000185114=="
+Return-Path: <SRS0=yRHK=OD=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42704 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726160AbeKXW4g (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 24 Nov 2018 17:56:36 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id EEEB02AE9B
+        for <linux-ext4@vger.kernel.org>; Sat, 24 Nov 2018 12:08:18 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Sat, 24 Nov 2018 12:08:18 +0000
+Message-ID: <bug-201685-13602-rqVtXMIXm9@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-To: <tytso@mit.edu>
-Cc: <darrick.wong@oracle.com>, <linux-ext4@vger.kernel.org>
-Subject: Re: Metadata_csum is still enabled after trying to disable it.
-Message-Id: <E1gRHIO-0002Z8-4e@eureka>
-From: Jean-Christophe Guillain <jcguillain@sequans.com>
-Date: Mon, 26 Nov 2018 14:51:28 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---===============5028384377000185114==
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-
------ On Nov 24, 2018, at 4:48 AM, Theodore Y. Ts'o tytso@mit.edu wrote:
-
-​​​​​> On Wed, Nov 21, 2018 at 07:01:19PM -0800, Darrick J. Wong wrote:
->> > Is it a bug ?
->> 
->> Yes.
->> 
->> > How can I actually disable this parameter ?
->>
+--- Comment #38 from Rainer Fiebig (jrf@mailbox.org) ---
+(In reply to Jimmy.Jazz from comment #37)
+> @Jen Axboe
 > 
-> Actually, the metadata_csum feature *was* disabled.  You would have
-> seen that if you looked at the "Features: " line printed by dumpe2fs
-> -h or tune2fs -l.  The bug was that we were erroneously warning that
-> the tune2fs -U operation would take a long time when flex_bg was
-> enabled, but metadata_csum was not.  So it was misleading wrong, but
-> it actually turning off the metadata_csum feature.
+> please read worth not worse in comment 33
 > 
+> I tried your patch for 4.19.3 and still get quite harmful ext4 errors like
+> this one,
+> 
+> EXT4-fs error (device dm-4): ext4_xattr_ibody_get:592: inode #4881425: comm
+> rsync: corrupted in-inode xattr
+> 
+> The filesystems were clean at boot time and the system was idle.
+> 
+> tune2fs ends with
+> FS Error count:           64
+> First error time:         Fri Nov 23 00:19:25 2018
+> First error function:     ext4_xattr_ibody_get
+> First error line #:       592
+> First error inode #:      4881425
+> First error block #:      0
+> Last error time:          Fri Nov 23 00:19:25 2018
+> Last error function:      ext4_xattr_ibody_get
+> Last error line #:        592
+> Last error inode #:       4881430
+> Last error block #:       0
+> MMP block number:         9255
+> MMP update interval:      5
+> 
+> If you are interested in its dumpe2fs result let me know.
+> 
+> I don't use binary modules.
 
-Thank you very much for your time !
+Jimmy,
 
-jC
+what *I* would do if I were in your shoes is 
 
+- run a kernel < 4.19, make sure the fs is OK and *backup important data* 
+- compile 4.19.3 with CONFIG_SCSI_MQ_DEFAULT *not* set
 
---===============5028384377000185114==
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
+and see what happens. If you still get corruption, CONFIG_SCSI_MQ_DEFAULT
+probably is not the culprit. If not, it has at least something to do with it.
 
+It seems that CONFIG_SCSI_MQ_DEFAULT *not* set was the default <= 4.18.19.
 
+Others here obviously don't have problems with CONFIG_SCSI_MQ_DEFAULT=y and
+kernels >= 4.19, but you never know.
 
--- IMPORTANT NOTICE: =
-
-
-The contents of this email and any attachments are confidential and may als=
-o be privileged. If you are not the intended recipient, please notify the s=
-ender immediately and do not disclose the contents to any other person, use=
- it for any purpose, or store or copy the information in any medium. Thank =
-you.
-
---===============5028384377000185114==--
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
