@@ -1,53 +1,102 @@
-Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47066 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726359AbeKHXu5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 8 Nov 2018 18:50:57 -0500
-Date: Thu, 8 Nov 2018 15:15:15 +0100
-From: Jan Kara <jack@suse.cz>
-To: Chengguang Xu <cgxu519@gmx.com>
-Cc: jack@suse.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2: avoid unnecessary operation in ext2_error()
-Message-ID: <20181108141515.GA28455@quack2.suse.cz>
-References: <20181107134704.15821-1-cgxu519@gmx.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181107134704.15821-1-cgxu519@gmx.com>
+Return-Path: <SRS0=jmd0=OE=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:51068 "EHLO
+        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727428AbeKYT1C (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 25 Nov 2018 14:27:02 -0500
+From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+To: linux-ext4@vger.kernel.org
+Cc: jack@suse.cz, Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Subject: [PATCH v2] jbd2: fix deadlock while checkpoint thread waits commit thread to finish
+Date: Sun, 25 Nov 2018 16:36:06 +0800
+Message-Id: <20181125083606.5273-1-xiaoguang.wang@linux.alibaba.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 07-11-18 21:47:04, Chengguang Xu wrote:
-> If filesystem has already mounted as read-only, then we don't have
-> to do it again.
-> 
-> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+This issue was found when I tried to put checkpoint work in a separate thread,
+the deadlock below happened:
+         Thread1                                |   Thread2
+__jbd2_log_wait_for_space                       |
+jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
+  if (jh->b_transaction != NULL)                |
+    ...                                         |
+    jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
+                                                |  will lock j_checkpoint_mutex,
+                                                |  but will be blocked here.
+                                                |
+    jbd2_log_wait_commit(journal, tid);         |
+    wait_event(journal->j_wait_done_commit,     |
+     !tid_gt(tid, journal->j_commit_sequence)); |
+     ...                                        |wake_up(j_wait_done_commit)
+  }                                             |
 
-Makes sense. Thanks for the patch. I have added it to my tree.
+then deadlock occurs, Thread1 will never be waken up.
 
-								Honza
+To fix this issue, drop j_checkpoint_mutex in jbd2_log_do_checkpoint()
+when we are going to wait for transaction commit.
 
-> ---
->  fs/ext2/super.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index cb91baa4275d..5e2861b947a6 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -73,7 +73,7 @@ void ext2_error(struct super_block *sb, const char *function,
->  
->  	if (test_opt(sb, ERRORS_PANIC))
->  		panic("EXT2-fs: panic from previous error\n");
-> -	if (test_opt(sb, ERRORS_RO)) {
-> +	if (!sb_rdonly(sb) && test_opt(sb, ERRORS_RO)) {
->  		ext2_msg(sb, KERN_CRIT,
->  			     "error: remounting filesystem read-only");
->  		sb->s_flags |= SB_RDONLY;
-> -- 
-> 2.17.2
-> 
-> 
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+
+----------------
+v2:
+    1, modify patch's subsys name from ext4 to jbd2
+    2, do not modify initial logic about whether transaction is gone in
+       jbd2_log_do_checkpoint();
+---
+ fs/jbd2/checkpoint.c | 17 +++++++++++++++--
+ fs/jbd2/journal.c    |  2 +-
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 26f8d7e46462..02e0b79753e7 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -113,7 +113,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
+ 	nblocks = jbd2_space_needed(journal);
+ 	while (jbd2_log_space_left(journal) < nblocks) {
+ 		write_unlock(&journal->j_state_lock);
+-		mutex_lock(&journal->j_checkpoint_mutex);
++		mutex_lock_io(&journal->j_checkpoint_mutex);
+ 
+ 		/*
+ 		 * Test again, another process may have checkpointed while we
+@@ -276,9 +276,22 @@ int jbd2_log_do_checkpoint(journal_t *journal)
+ 		"JBD2: %s: Waiting for Godot: block %llu\n",
+ 		journal->j_devname, (unsigned long long) bh->b_blocknr);
+ 
++			if (batch_count)
++				__flush_batch(journal, &batch_count);
+ 			jbd2_log_start_commit(journal, tid);
++			/*
++			 * jbd2_journal_commit_transaction() may want
++			 * to take the checkpoint_mutex if JBD2_FLUSHED
++			 * is set, jbd2_update_log_tail() called by
++			 * jbd2_journal_commit_transaction() may also take
++			 * checkpoint_mutex.  So we need to temporarily
++			 * drop it.
++			 */
++			mutex_unlock(&journal->j_checkpoint_mutex);
+ 			jbd2_log_wait_commit(journal, tid);
+-			goto retry;
++			mutex_lock_io(&journal->j_checkpoint_mutex);
++			spin_lock(&journal->j_list_lock);
++			goto restart;
+ 		}
+ 		if (!buffer_dirty(bh)) {
+ 			if (unlikely(buffer_write_io_error(bh)) && !result)
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 8ef6b6daaa7a..88d8f22d2cba 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2067,7 +2067,7 @@ int jbd2_journal_wipe(journal_t *journal, int write)
+ 	err = jbd2_journal_skip_recovery(journal);
+ 	if (write) {
+ 		/* Lock to make assertions happy... */
+-		mutex_lock(&journal->j_checkpoint_mutex);
++		mutex_lock_io(&journal->j_checkpoint_mutex);
+ 		jbd2_mark_journal_empty(journal, REQ_SYNC | REQ_FUA);
+ 		mutex_unlock(&journal->j_checkpoint_mutex);
+ 	}
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.17.2
