@@ -1,60 +1,42 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54188 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726348AbeKSScP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 13:32:15 -0500
-Date: Mon, 19 Nov 2018 16:09:00 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 07/19] btrfs: use bvec_last_segment to get bio's last
- page
-Message-ID: <20181119080854.GD16519@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-8-ming.lei@redhat.com>
- <20181116133710.GF3165@lst.de>
+Return-Path: <SRS0=jmd0=OE=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:57190 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726021AbeKZJQz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Nov 2018 04:16:55 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 058B1298A5
+        for <linux-ext4@vger.kernel.org>; Sun, 25 Nov 2018 22:24:47 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Sun, 25 Nov 2018 22:24:46 +0000
+Message-ID: <bug-201685-13602-H6AaTmpvWJ@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181116133710.GF3165@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 16, 2018 at 02:37:10PM +0100, Christoph Hellwig wrote:
-> On Thu, Nov 15, 2018 at 04:52:54PM +0800, Ming Lei wrote:
-> > index 2955a4ea2fa8..161e14b8b180 100644
-> > --- a/fs/btrfs/compression.c
-> > +++ b/fs/btrfs/compression.c
-> > @@ -400,8 +400,11 @@ blk_status_t btrfs_submit_compressed_write(struct inode *inode, u64 start,
-> >  static u64 bio_end_offset(struct bio *bio)
-> >  {
-> >  	struct bio_vec *last = bio_last_bvec_all(bio);
-> > +	struct bio_vec bv;
-> >  
-> > -	return page_offset(last->bv_page) + last->bv_len + last->bv_offset;
-> > +	bvec_last_segment(last, &bv);
-> > +
-> > +	return page_offset(bv.bv_page) + bv.bv_len + bv.bv_offset;
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
+
+--- Comment #45 from Henrique Rodrigues (henrique.rodrigues@ist.utl.pt) ---
+(In reply to Rainer Fiebig from comment #38)
+> what *I* would do if I were in your shoes is 
 > 
-> I don't think we need this.  If last is a multi-page bvec bv_offset
-> will already contain the correct offset from the first page.
+> - run a kernel < 4.19, make sure the fs is OK and *backup important data* 
+> - compile 4.19.3 with CONFIG_SCSI_MQ_DEFAULT *not* set
+> 
+> and see what happens.
 
-Yeah, it is true for this specific case, looks we can drop this patch.
 
+This is what I did: recompile my 4.19.3 kernel with CONFIG_SCSI_MQ_DEFAULT=n.
+I've used the computer normally, ran some heavy read/write operations, rebooted
+a bunch of times and had no problems since then. I'm on Ubuntu 18.10 with an
+SSD, encrypted LUKS root partition.
 
-thanks,
-Ming
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
