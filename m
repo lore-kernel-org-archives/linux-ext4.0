@@ -1,50 +1,78 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:36530 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730375AbeKVC7l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 21:59:41 -0500
-Date: Wed, 21 Nov 2018 11:24:32 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2fs: Fix build of new superblock fields on BE machines
-Message-ID: <20181121162432.GF26006@thunk.org>
-References: <20181121001127.1868-1-krisman@collabora.com>
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:39052 "EHLO
+        mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727087AbeK0JkW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:40:22 -0500
+Received: by mail-pg1-f193.google.com with SMTP id w6so6855018pgl.6
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:44:42 -0800 (PST)
+Date: Mon, 26 Nov 2018 14:44:39 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V12 17/20] block: always define BIO_MAX_PAGES as 256
+Message-ID: <20181126224439.GN30411@vader>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
+ <20181126021720.19471-18-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181121001127.1868-1-krisman@collabora.com>
+In-Reply-To: <20181126021720.19471-18-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 20, 2018 at 07:11:27PM -0500, Gabriel Krisman Bertazi wrote:
-> New superblock fields must be byte swapped before being accessed in Big
-> Endian machines.
+On Mon, Nov 26, 2018 at 10:17:17AM +0800, Ming Lei wrote:
+> Now multi-page bvec can cover CONFIG_THP_SWAP, so we don't need to
+> increase BIO_MAX_PAGES for it.
 > 
-> Not tested on an actual BE machine.
+> CONFIG_THP_SWAP needs to split one THP into normal pages and adds
+> them all to one bio. With multipage-bvec, it just takes one bvec to
+> hold them all.
 > 
-> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+
+> Signed-off-by: Ming Lei <ming.lei@redhat.com>
 > ---
+>  include/linux/bio.h | 8 --------
+>  1 file changed, 8 deletions(-)
 > 
-> I just noticed this today.  I don't see the patch that includes this
-> field already pushed to kernel.org, so if you want to squash this one to
-> that patch before pushing to make the result more bisectable in BE
-> machines, I am ok with that.
-
-Oops, sorry, I just pushed it out before I saw your note.  I'll add it
-as a follow-on commit right away.  Fortunately we don't do too much
-debugging on BE machines, so it's probably not worth breaking the git
-rules and rewinding, even though it's highly unlikely anyone has done
-a git pull in the last 10 minutes or so.
-
-While we're at it, I should have noticed this earler before I acceptd
-patch 2 in your series.  Could you also send a follow up patch which
-adds a quick description of the fname_encoding feature to the ext4.5
-man page?
-
-Also, did your v2 patch series to e2fsprogs reflect any of the
-comments I made late last night on the rest of the v1 patch series?
-
-Thanks, regards,
-
-						- Ted
+> diff --git a/include/linux/bio.h b/include/linux/bio.h
+> index 5505f74aef8b..7be48c55b14a 100644
+> --- a/include/linux/bio.h
+> +++ b/include/linux/bio.h
+> @@ -34,15 +34,7 @@
+>  #define BIO_BUG_ON
+>  #endif
+>  
+> -#ifdef CONFIG_THP_SWAP
+> -#if HPAGE_PMD_NR > 256
+> -#define BIO_MAX_PAGES		HPAGE_PMD_NR
+> -#else
+>  #define BIO_MAX_PAGES		256
+> -#endif
+> -#else
+> -#define BIO_MAX_PAGES		256
+> -#endif
+>  
+>  #define bio_prio(bio)			(bio)->bi_ioprio
+>  #define bio_set_prio(bio, prio)		((bio)->bi_ioprio = prio)
+> -- 
+> 2.9.5
+> 
