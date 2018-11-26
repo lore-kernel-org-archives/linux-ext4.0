@@ -1,13 +1,16 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38294 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726165AbeKUN7G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 08:59:06 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:46598 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726511AbeK0JKY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:10:24 -0500
+Received: by mail-pf1-f196.google.com with SMTP id c73so7248960pfe.13
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:14:49 -0800 (PST)
+Date: Mon, 26 Nov 2018 14:14:47 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
         Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
@@ -21,41 +24,58 @@ Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
         Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
         Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
         Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V11 07/19] fs/buffer.c: use bvec iterator to truncate the bio
-Date: Wed, 21 Nov 2018 11:23:15 +0800
-Message-Id: <20181121032327.8434-8-ming.lei@redhat.com>
-In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V12 04/20] block: don't use bio->bi_vcnt to figure out
+ segment number
+Message-ID: <20181126221447.GE30411@vader>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
+ <20181126021720.19471-5-ming.lei@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181126021720.19471-5-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Once multi-page bvec is enabled, the last bvec may include more than one
-page, this patch use bvec_last_segment() to truncate the bio.
+On Mon, Nov 26, 2018 at 10:17:04AM +0800, Ming Lei wrote:
+> It is wrong to use bio->bi_vcnt to figure out how many segments
+> there are in the bio even though CLONED flag isn't set on this bio,
+> because this bio may be splitted or advanced.
+> 
+> So always use bio_segments() in blk_recount_segments(), and it shouldn't
+> cause any performance loss now because the physical segment number is figured
+> out in blk_queue_split() and BIO_SEG_VALID is set meantime since
+> bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting").
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
 Reviewed-by: Omar Sandoval <osandov@fb.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- fs/buffer.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 1286c2b95498..fa37ad52e962 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -3032,7 +3032,10 @@ void guard_bio_eod(int op, struct bio *bio)
- 
- 	/* ..and clear the end of the buffer for reads */
- 	if (op == REQ_OP_READ) {
--		zero_user(bvec->bv_page, bvec->bv_offset + bvec->bv_len,
-+		struct bio_vec bv;
-+
-+		bvec_last_segment(bvec, &bv);
-+		zero_user(bv.bv_page, bv.bv_offset + bv.bv_len,
- 				truncated_bytes);
- 	}
- }
--- 
-2.9.5
+> Fixes: 76d8137a3113 ("blk-merge: recaculate segment if it isn't less than max segments")
+> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> ---
+>  block/blk-merge.c | 8 +-------
+>  1 file changed, 1 insertion(+), 7 deletions(-)
+> 
+> diff --git a/block/blk-merge.c b/block/blk-merge.c
+> index e69d8f8ba819..51ec6ca56a0a 100644
+> --- a/block/blk-merge.c
+> +++ b/block/blk-merge.c
+> @@ -367,13 +367,7 @@ void blk_recalc_rq_segments(struct request *rq)
+>  
+>  void blk_recount_segments(struct request_queue *q, struct bio *bio)
+>  {
+> -	unsigned short seg_cnt;
+> -
+> -	/* estimate segment number by bi_vcnt for non-cloned bio */
+> -	if (bio_flagged(bio, BIO_CLONED))
+> -		seg_cnt = bio_segments(bio);
+> -	else
+> -		seg_cnt = bio->bi_vcnt;
+> +	unsigned short seg_cnt = bio_segments(bio);
+>  
+>  	if (test_bit(QUEUE_FLAG_NO_SG_MERGE, &q->queue_flags) &&
+>  			(seg_cnt < queue_max_segments(q)))
+> -- 
+> 2.9.5
+> 
