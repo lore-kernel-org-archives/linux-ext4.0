@@ -1,77 +1,103 @@
-Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:44323 "EHLO
-        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726499AbeK1Eaf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 23:30:35 -0500
-Date: Tue, 27 Nov 2018 09:31:55 -0800
-From: Guenter Roeck <linux@roeck-us.net>
-To: Marek Habersack <grendel@twistedcode.net>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
-Message-ID: <20181127173155.GA12015@roeck-us.net>
-References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
- <b43fb902-9b64-22d9-25ca-c970b3842a43@roeck-us.net>
- <5d94f857-b31d-a02c-5a20-2796076f447e@twistedcode.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <5d94f857-b31d-a02c-5a20-2796076f447e@twistedcode.net>
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:58694 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726112AbeKZNLy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Nov 2018 08:11:54 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V12 08/20] block: introduce bio_for_each_bvec() and rq_for_each_bvec()
+Date: Mon, 26 Nov 2018 10:17:08 +0800
+Message-Id: <20181126021720.19471-9-ming.lei@redhat.com>
+In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 27, 2018 at 03:48:19PM +0100, Marek Habersack wrote:
-> On 27/11/2018 15:32, Guenter Roeck wrote:
-> Hi,
-> 
-> You might try to see if you have CONFIG_SCSI_MQ_DEFAULT=yes in your kernel config. Starting with 4.19.1 it somehow
+bio_for_each_bvec() is used for iterating over multi-page bvec for bio
+split & merge code.
 
-Yes, it is enabled in my configuration.
+rq_for_each_bvec() can be used for drivers which may handle the
+multi-page bvec directly, so far loop is one perfect use case.
 
-> interferes with ext4 and causes problems similar to the ones you list below. Ever since I disabled MQ (either recompile
-> your kernel or add `scsi_mod.use_blk_mq=0` to the kernel command line) none of those errors came back.
-> 
-I'll try that. Thanks a lot for the hint!
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ include/linux/bio.h    | 10 ++++++++++
+ include/linux/blkdev.h |  4 ++++
+ include/linux/bvec.h   |  7 +++++++
+ 3 files changed, 21 insertions(+)
 
-Guenter
-
-> hope it helps,
-> 
-> marek
-> > [trying again, this time with correct kernel.org address]
-> > 
-> > Hi,
-> > 
-> > I have seen the following and similar problems several times,
-> > with both v4.19.3 and v4.19.4:
-> > 
-> > Nov 23 04:32:25 mars kernel: [112668.673671] EXT4-fs error (device sdb1): ext4_iget:4831: inode #12602889: comm git: bad
-> > extra_isize 33661 (inode size 256)
-> > Nov 23 04:32:25 mars kernel: [112668.675217] Aborting journal on device sdb1-8.
-> > Nov 23 04:32:25 mars kernel: [112668.676681] EXT4-fs (sdb1): Remounting filesystem read-only
-> > Nov 23 04:32:25 mars kernel: [112668.808886] EXT4-fs error (device sdb1): ext4_iget:4831: inode #12602881: comm rm: bad
-> > extra_isize 33685 (inode size 256)
-> > ...
-> > 
-> > Nov 25 00:12:43 saturn kernel: [59377.725984] EXT4-fs error (device sda1): ext4_lookup:1578: inode #238034131: comm
-> > updatedb.mlocat: deleted inode referenced: 238160407
-> > Nov 25 00:12:43 saturn kernel: [59377.766638] Aborting journal on device sda1-8.
-> > Nov 25 00:12:43 saturn kernel: [59377.779372] EXT4-fs (sda1): Remounting filesystem read-only
-> > ...
-> > 
-> > Nov 24 01:52:31 saturn kernel: [189085.240016] EXT4-fs error (device sda1): ext4_lookup:1578: inode #52038457: comm
-> > nfsd: deleted inode referenced: 52043796
-> > Nov 24 01:52:31 saturn kernel: [189085.263427] Aborting journal on device sda1-8.
-> > Nov 24 01:52:31 saturn kernel: [189085.275313] EXT4-fs (sda1): Remounting filesystem read-only
-> > 
-> > 
-> > The same systems running v4.18.6 never experienced a problem.
-> > 
-> > Has anyone else seen similar problems ? Is there anything I can do
-> > to help tracking down the problem ?
-> > 
-> > Thanks,
-> > Guenter
-> > 
-> 
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 6a0ff02f4d1c..46fd0e03233b 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -156,6 +156,16 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
+ #define bio_for_each_segment(bvl, bio, iter)				\
+ 	__bio_for_each_segment(bvl, bio, iter, (bio)->bi_iter)
+ 
++#define __bio_for_each_bvec(bvl, bio, iter, start)		\
++	for (iter = (start);						\
++	     (iter).bi_size &&						\
++		((bvl = bvec_iter_bvec((bio)->bi_io_vec, (iter))), 1); \
++	     bio_advance_iter((bio), &(iter), (bvl).bv_len))
++
++/* iterate over multi-page bvec */
++#define bio_for_each_bvec(bvl, bio, iter)			\
++	__bio_for_each_bvec(bvl, bio, iter, (bio)->bi_iter)
++
+ #define bio_iter_last(bvec, iter) ((iter).bi_size == (bvec).bv_len)
+ 
+ static inline unsigned bio_segments(struct bio *bio)
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 399a7a415609..fa263de3f1d1 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -799,6 +799,10 @@ struct req_iterator {
+ 	__rq_for_each_bio(_iter.bio, _rq)			\
+ 		bio_for_each_segment(bvl, _iter.bio, _iter.iter)
+ 
++#define rq_for_each_bvec(bvl, _rq, _iter)			\
++	__rq_for_each_bio(_iter.bio, _rq)			\
++		bio_for_each_bvec(bvl, _iter.bio, _iter.iter)
++
+ #define rq_iter_last(bvec, _iter)				\
+ 		(_iter.bio->bi_next == NULL &&			\
+ 		 bio_iter_last(bvec, _iter.iter))
+diff --git a/include/linux/bvec.h b/include/linux/bvec.h
+index babc6316c117..d441486db605 100644
+--- a/include/linux/bvec.h
++++ b/include/linux/bvec.h
+@@ -65,6 +65,13 @@ struct bvec_iter {
+ #define bvec_iter_page_idx(bvec, iter)			\
+ 	(bvec_iter_offset((bvec), (iter)) / PAGE_SIZE)
+ 
++#define bvec_iter_bvec(bvec, iter)				\
++((struct bio_vec) {						\
++	.bv_page	= bvec_iter_page((bvec), (iter)),	\
++	.bv_len		= bvec_iter_len((bvec), (iter)),	\
++	.bv_offset	= bvec_iter_offset((bvec), (iter)),	\
++})
++
+ /* For building single-page bvec(segment) in flight */
+  #define segment_iter_offset(bvec, iter)				\
+ 	(bvec_iter_offset((bvec), (iter)) % PAGE_SIZE)
+-- 
+2.9.5
