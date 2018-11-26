@@ -1,62 +1,77 @@
-Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:44378 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727239AbeK2PwF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Nov 2018 10:52:05 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 7BAE72E657
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Nov 2018 04:48:03 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Thu, 29 Nov 2018 04:48:03 +0000
-Message-ID: <bug-201685-13602-2Tvvvp2F2p@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:58280 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726224AbeKZNNv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Nov 2018 08:13:51 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V12 18/20] block: document usage of bio iterator helpers
+Date: Mon, 26 Nov 2018 10:17:18 +0800
+Message-Id: <20181126021720.19471-19-ming.lei@redhat.com>
+In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+Now multi-page bvec is supported, some helpers may return page by
+page, meantime some may return segment by segment, this patch
+documents the usage.
 
---- Comment #70 from Néstor A. Marchesini (nestorm_des@hotmail.com) ---
-(In reply to Theodore Tso from comment #59)
-> 
-> But just to rule things out, I've uploaded the contents of fs/ext4 from
-> 4.18.   I've verified it can be transplanted on top of 4.19 kernel.   Could
-> the people who are experiencing problems with 4.19 try building a kernel
-> with the 4.18 fs/ext4 directory?   If you still see problems, then the
-> problem has to be elsewhere.   If you don't, then we can take a closer look
-> at the ext4 changes (although I'd then be really puzzled why it's only
-> showing up for some folks, but not others).
->
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ Documentation/block/biovecs.txt | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
-I copied /fs/ext4 from tree 4.18.20 to tree 4.19.5
-and compile everything from scratch the tree 4.19.5.
-Well, now we'll have to wait and cross our fingers every time I restart the PC.
-So far I had no problems, if they appear I would be posted again with data.
-Regarding my configuration of CONFIG_SCSI_MQ_DEFAULT it was always enabled for
-eons.
-
-# cat /boot/config-4.18.20-gentoo |grep CONFIG_SCSI_MQ_DEFAULT=
-CONFIG_SCSI_MQ_DEFAULT=y
-# cat /boot/config-4.19.4-gentoo |grep CONFIG_SCSI_MQ_DEFAULT=
-CONFIG_SCSI_MQ_DEFAULT=y
-# cat /boot/config-4.19.5-gentoo |grep CONFIG_SCSI_MQ_DEFAULT=
-CONFIG_SCSI_MQ_DEFAULT=y
-
-# eix -Ic e2fsprogs
-[I] sys-fs/e2fsprogs (1.44.4@07/11/18): Standard EXT2/EXT3/EXT4 filesystem
-utilities
-[I] sys-libs/e2fsprogs-libs (1.44.4@06/11/18): e2fsprogs libraries (common
-error and subsystem)
-Found 2 matches
-
-Regards
-
+diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
+index 25689584e6e0..ce6eccaf5df7 100644
+--- a/Documentation/block/biovecs.txt
++++ b/Documentation/block/biovecs.txt
+@@ -117,3 +117,28 @@ Other implications:
+    size limitations and the limitations of the underlying devices. Thus
+    there's no need to define ->merge_bvec_fn() callbacks for individual block
+    drivers.
++
++Usage of helpers:
++=================
++
++* The following helpers whose names have the suffix of "_all" can only be used
++on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
++shouldn't use them because the bio may have been split before it reached the
++driver.
++
++	bio_for_each_segment_all()
++	bio_first_bvec_all()
++	bio_first_page_all()
++	bio_last_bvec_all()
++
++* The following helpers iterate over single-page segment. The passed 'struct
++bio_vec' will contain a single-page IO vector during the iteration
++
++	bio_for_each_segment()
++	bio_for_each_segment_all()
++
++* The following helpers iterate over multi-page bvec. The passed 'struct
++bio_vec' will contain a multi-page IO vector during the iteration
++
++	bio_for_each_bvec()
++	rq_for_each_bvec()
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.9.5
