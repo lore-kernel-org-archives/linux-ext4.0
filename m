@@ -1,91 +1,87 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:35556 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725912AbeKSPrc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 10:47:32 -0500
-Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wAJ5P1aq096770
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:25:02 -0500
-Received: from e32.co.us.ibm.com (e32.co.us.ibm.com [32.97.110.150])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2nujcasrr0-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:25:01 -0500
-Received: from localhost
-        by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Mon, 19 Nov 2018 05:23:56 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, ebiggers@kernel.org,
-        tytso@mit.edu
-Subject: [PATCH 6/7] f2fs: use IS_VERITY() to check inode's fsverity status
-Date: Mon, 19 Nov 2018 10:53:23 +0530
-In-Reply-To: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
-References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:44538 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726296AbeK0JPm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:15:42 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v3 03/12] chattr/lsattr: Support casefold attribute
+Date: Mon, 26 Nov 2018 17:19:40 -0500
+Message-Id: <20181126221949.12172-4-krisman@collabora.com>
+In-Reply-To: <20181126221949.12172-1-krisman@collabora.com>
+References: <20181126221949.12172-1-krisman@collabora.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-Message-Id: <20181119052324.31456-7-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit now uses IS_VERITY() macro to check if fsverity is
-enabled on an inode.
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+This flag can be set on directories to request insensitive file name
+lookups.
+
+I used the letter 'F', referring to "caseFold" for lack of a better
+option.
+
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/f2fs/file.c  | 6 +++---
- fs/f2fs/inode.c | 4 +++-
- 2 files changed, 6 insertions(+), 4 deletions(-)
+ lib/e2p/pf.c         | 1 +
+ lib/ext2fs/ext2_fs.h | 5 +++--
+ misc/chattr.c        | 3 ++-
+ 3 files changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 6c7ad15000b9..2eb4821d95d1 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -491,7 +491,7 @@ static int f2fs_file_open(struct inode *inode, struct file *filp)
- 	if (err)
- 		return err;
+diff --git a/lib/e2p/pf.c b/lib/e2p/pf.c
+index 884f1671edae..0c6998c4b766 100644
+--- a/lib/e2p/pf.c
++++ b/lib/e2p/pf.c
+@@ -44,6 +44,7 @@ static struct flags_name flags_array[] = {
+ 	{ EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
+ 	{ EXT4_EXTENTS_FL, "e", "Extents" },
+ 	{ FS_NOCOW_FL, "C", "No_COW" },
++	{ EXT4_CASEFOLD_FL, "F", "Casefold" },
+ 	{ EXT4_INLINE_DATA_FL, "N", "Inline_Data" },
+ 	{ EXT4_PROJINHERIT_FL, "P", "Project_Hierarchy" },
+ 	{ EXT4_VERITY_FL, "V", "Verity" },
+diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
+index 36ae7ae41c47..032f83ed5ed3 100644
+--- a/lib/ext2fs/ext2_fs.h
++++ b/lib/ext2fs/ext2_fs.h
+@@ -340,10 +340,11 @@ struct ext2_dx_tail {
+ #define EXT4_SNAPFILE_SHRUNK_FL		0x08000000  /* Snapshot shrink has completed */
+ #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data */
+ #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
++#define EXT4_CASEFOLD_FL		0x40000000 /* Casefolded file */
+ #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
  
--	if (f2fs_verity_file(inode)) {
-+	if (IS_VERITY(inode)) {
- 		err = fsverity_file_open(inode, filp);
- 		if (err)
- 			return err;
-@@ -701,7 +701,7 @@ int f2fs_getattr(const struct path *path, struct kstat *stat,
- 	struct f2fs_inode *ri;
- 	unsigned int flags;
+-#define EXT2_FL_USER_VISIBLE		0x204BDFFF /* User visible flags */
+-#define EXT2_FL_USER_MODIFIABLE		0x204B80FF /* User modifiable flags */
++#define EXT2_FL_USER_VISIBLE		0x604BDFFF /* User visible flags */
++#define EXT2_FL_USER_MODIFIABLE		0x604B80FF /* User modifiable flags */
  
--	if (f2fs_verity_file(inode)) {
-+	if (IS_VERITY(inode)) {
- 		/*
- 		 * For fs-verity we need to override i_size with the original
- 		 * data i_size.  This requires I/O to the file which with
-@@ -800,7 +800,7 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (err)
- 		return err;
- 
--	if (f2fs_verity_file(inode)) {
-+	if (IS_VERITY(inode)) {
- 		err = fsverity_prepare_setattr(dentry, attr);
- 		if (err)
- 			return err;
-diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
-index ddef483ad689..02806feed64c 100644
---- a/fs/f2fs/inode.c
-+++ b/fs/f2fs/inode.c
-@@ -45,9 +45,11 @@ void f2fs_set_inode_flags(struct inode *inode)
- 		new_fl |= S_DIRSYNC;
- 	if (f2fs_encrypted_inode(inode))
- 		new_fl |= S_ENCRYPTED;
-+	if (f2fs_verity_file(inode))
-+		new_fl |= S_VERITY;
- 	inode_set_flags(inode, new_fl,
- 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|
--			S_ENCRYPTED);
-+			S_ENCRYPTED|S_VERITY);
+ /*
+  * ioctl commands
+diff --git a/misc/chattr.c b/misc/chattr.c
+index a5b401a741b7..a5d60170bdb6 100644
+--- a/misc/chattr.c
++++ b/misc/chattr.c
+@@ -86,7 +86,7 @@ static unsigned long sf;
+ static void usage(void)
+ {
+ 	fprintf(stderr,
+-		_("Usage: %s [-pRVf] [-+=aAcCdDeijPsStTu] [-v version] files...\n"),
++		_("Usage: %s [-pRVf] [-+=aAcCdDeijPsStTuF] [-v version] files...\n"),
+ 		program_name);
+ 	exit(1);
  }
+@@ -112,6 +112,7 @@ static const struct flags_char flags_array[] = {
+ 	{ EXT2_NOTAIL_FL, 't' },
+ 	{ EXT2_TOPDIR_FL, 'T' },
+ 	{ FS_NOCOW_FL, 'C' },
++	{ EXT4_CASEFOLD_FL, 'F' },
+ 	{ 0, 0 }
+ };
  
- static void __get_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
 -- 
-2.19.1
+2.19.2
