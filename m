@@ -1,50 +1,38 @@
-Return-Path: <SRS0=k8Ev=N4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mout.gmx.net ([212.227.17.21]:57227 "EHLO mout.gmx.net"
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from verein.lst.de ([213.95.11.211]:51828 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726020AbeKQXQG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 17 Nov 2018 18:16:06 -0500
-From: Chengguang Xu <cgxu519@gmx.com>
-To: jack@suse.com
-Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH] ext2: surround xattr related code with macro CONFIG_EXT2_FS_XATTR
-Date: Sat, 17 Nov 2018 20:59:16 +0800
-Message-Id: <20181117125916.31461-1-cgxu519@gmx.com>
+        id S1726567AbeKZXta (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Nov 2018 18:49:30 -0500
+Date: Mon, 26 Nov 2018 13:55:24 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V12 07/20] block: introduce multi-page bvec helpers
+Message-ID: <20181126125524.GC6383@lst.de>
+References: <20181126021720.19471-1-ming.lei@redhat.com> <20181126021720.19471-8-ming.lei@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181126021720.19471-8-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext2_xattr_destroy_cache() is only needed when macro
-CONFIG_EXT2_FS_XATTR is enabled, so surround related
-code with the macro.
+Looks fine,
 
-Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
----
- fs/ext2/super.c | 4 ++++
- 1 file changed, 4 insertions(+)
-
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index e4351c280608..67a71b0cb5e0 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -148,8 +148,10 @@ static void ext2_put_super (struct super_block * sb)
- 
- 	ext2_quota_off_umount(sb);
- 
-+#ifdef CONFIG_EXT2_FS_XATTR
- 	ext2_xattr_destroy_cache(sbi->s_ea_block_cache);
- 	sbi->s_ea_block_cache = NULL;
-+#endif
- 
- 	if (!sb_rdonly(sb)) {
- 		struct ext2_super_block *es = sbi->s_es;
-@@ -1196,7 +1198,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 			sb->s_id);
- 	goto failed_mount;
- failed_mount3:
-+#ifdef CONFIG_EXT2_FS_XATTR
- 	ext2_xattr_destroy_cache(sbi->s_ea_block_cache);
-+#endif
- 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
--- 
-2.17.2
+Reviewed-by: Christoph Hellwig <hch@lst.de>
