@@ -1,45 +1,41 @@
-Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40486 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726292AbeLAEcZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Nov 2018 23:32:25 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id EBBF0304E4
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 17:22:25 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Fri, 30 Nov 2018 17:22:26 +0000
-Message-ID: <bug-201685-13602-fzOg1wQ0Am@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:44570 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727291AbeK0JQJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:16:09 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>
+Subject: [PATCH v3 11/12] mke2fs.conf.5: Document fname_encoding configuration option
+Date: Mon, 26 Nov 2018 17:19:48 -0500
+Message-Id: <20181126221949.12172-12-krisman@collabora.com>
+In-Reply-To: <20181126221949.12172-1-krisman@collabora.com>
+References: <20181126221949.12172-1-krisman@collabora.com>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+---
+ misc/mke2fs.conf.5.in | 4 ++++
+ 1 file changed, 4 insertions(+)
 
---- Comment #91 from Néstor A. Marchesini (nestorm_des@hotmail.com) ---
-For me, the problem started with the release of 4.19.0, and looking at the
-commits of the tree 4.19.0, I see that many things of ext4 have been changed
-... very many I would say.
-If you search with ext4 within the list of comnits you will find several and
-with very important changes.
-
-https://cdn.kernel.org/pub/linux/kernel/v4.x/ChangeLog-4.19
-
-There are several massive, one of the most important is:
-
-https://github.com/torvalds/linux/commit/c140f8b072d16595c83d4d16a05693e72d9b1973
-
-This weekend I will try with git bisect, but it will be a very time-consuming
-task due to the large number of ext4 commits.
-I'm still using 4.19.5 with the ext4 folder of 4.18.20. I have not had problems
-so far.
-
+diff --git a/misc/mke2fs.conf.5.in b/misc/mke2fs.conf.5.in
+index c086b4113b50..ab93c7761a16 100644
+--- a/misc/mke2fs.conf.5.in
++++ b/misc/mke2fs.conf.5.in
+@@ -97,6 +97,10 @@ The following relations are defined in the
+ .I [options]
+ stanza.
+ .TP
++.I fname_encoding
++This relation defines the file name encoding to be used by mke2fs, in
++case the user doesn't specify an encoding in the command line.
++.TP
+ .I proceed_delay
+ If this relation is set to a positive integer, then mke2fs will
+ wait
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.19.2
