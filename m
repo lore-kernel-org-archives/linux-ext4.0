@@ -1,135 +1,64 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:41718 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726088AbeKSPqW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 10:46:22 -0500
-Received: from pps.filterd (m0098413.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wAJ5EdS6049307
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:23:52 -0500
-Received: from e32.co.us.ibm.com (e32.co.us.ibm.com [32.97.110.150])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 2nujeqj1r5-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Mon, 19 Nov 2018 00:23:52 -0500
-Received: from localhost
-        by e32.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Mon, 19 Nov 2018 05:23:51 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, ebiggers@kernel.org,
-        tytso@mit.edu
-Subject: [PATCH 5/7] ext4: use IS_VERITY() to check inode's fsverity status
-Date: Mon, 19 Nov 2018 10:53:22 +0530
-In-Reply-To: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
-References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Message-Id: <20181119052324.31456-6-chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:43610 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726101AbeKZNNF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Nov 2018 08:13:05 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V12 14/20] bcache: avoid to use bio_for_each_segment_all() in bch_bio_alloc_pages()
+Date: Mon, 26 Nov 2018 10:17:14 +0800
+Message-Id: <20181126021720.19471-15-ming.lei@redhat.com>
+In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit now uses IS_VERITY() macro to check if fsverity is
-enabled on an inode.
+bch_bio_alloc_pages() is always called on one new bio, so it is safe
+to access the bvec table directly. Given it is the only kind of this
+case, open code the bvec table access since bio_for_each_segment_all()
+will be changed to support for iterating over multipage bvec.
 
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Acked-by: Coly Li <colyli@suse.de>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
 ---
- fs/ext4/ext4.h     |  9 ---------
- fs/ext4/file.c     |  2 +-
- fs/ext4/inode.c    | 10 ++++++----
- fs/ext4/readpage.c |  2 +-
- 4 files changed, 8 insertions(+), 15 deletions(-)
+ drivers/md/bcache/util.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index db21df885186..64bf9fb7ef18 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2296,15 +2296,6 @@ extern unsigned ext4_free_clusters_after_init(struct super_block *sb,
- 					      struct ext4_group_desc *gdp);
- ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+diff --git a/drivers/md/bcache/util.c b/drivers/md/bcache/util.c
+index 20eddeac1531..62fb917f7a4f 100644
+--- a/drivers/md/bcache/util.c
++++ b/drivers/md/bcache/util.c
+@@ -270,7 +270,11 @@ int bch_bio_alloc_pages(struct bio *bio, gfp_t gfp_mask)
+ 	int i;
+ 	struct bio_vec *bv;
  
--static inline bool ext4_verity_inode(struct inode *inode)
--{
--#ifdef CONFIG_EXT4_FS_VERITY
--	return ext4_test_inode_flag(inode, EXT4_INODE_VERITY);
--#else
--	return false;
--#endif
--}
--
- #ifdef CONFIG_FS_ENCRYPTION
- static inline int ext4_fname_setup_filename(struct inode *dir,
- 			const struct qstr *iname,
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index cb4b69ef01a2..30fbd663354f 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -444,7 +444,7 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	if (ret)
- 		return ret;
- 
--	if (ext4_verity_inode(inode)) {
-+	if (IS_VERITY(inode)) {
- 		ret = fsverity_file_open(inode, filp);
- 		if (ret)
- 			return ret;
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ae6794649817..3786740b73fa 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3884,7 +3884,7 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
- 		return 0;
- #endif
- 
--	if (ext4_verity_inode(inode))
-+	if (IS_VERITY(inode))
- 		return 0;
- 
- 	/*
-@@ -4726,7 +4726,7 @@ static bool ext4_should_use_dax(struct inode *inode)
- 		return false;
- 	if (IS_ENCRYPTED(inode))
- 		return false;
--	if (ext4_verity_inode(inode))
-+	if (IS_VERITY(inode))
- 		return false;
- 	return true;
- }
-@@ -4750,9 +4750,11 @@ void ext4_set_inode_flags(struct inode *inode)
- 		new_fl |= S_DAX;
- 	if (flags & EXT4_ENCRYPT_FL)
- 		new_fl |= S_ENCRYPTED;
-+	if (flags & EXT4_VERITY_FL)
-+		new_fl |= S_VERITY;
- 	inode_set_flags(inode, new_fl,
- 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
--			S_ENCRYPTED);
-+			S_ENCRYPTED|S_VERITY);
- }
- 
- static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
-@@ -5510,7 +5512,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (error)
- 		return error;
- 
--	if (ext4_verity_inode(inode)) {
-+	if (IS_VERITY(inode)) {
- 		error = fsverity_prepare_setattr(dentry, attr);
- 		if (error)
- 			return error;
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index 7252f0a60cdb..2c037df629dd 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -206,7 +206,7 @@ static void mpage_end_io(struct bio *bio)
- static inline loff_t ext4_readpage_limit(struct inode *inode)
- {
- #ifdef CONFIG_EXT4_FS_VERITY
--	if (ext4_verity_inode(inode)) {
-+	if (IS_VERITY(inode)) {
- 		if (inode->i_verity_info)
- 			/* limit to end of metadata region */
- 			return fsverity_full_i_size(inode);
+-	bio_for_each_segment_all(bv, bio, i) {
++	/*
++	 * This is called on freshly new bio, so it is safe to access the
++	 * bvec table directly.
++	 */
++	for (i = 0, bv = bio->bi_io_vec; i < bio->bi_vcnt; bv++, i++) {
+ 		bv->bv_page = alloc_page(gfp_mask);
+ 		if (!bv->bv_page) {
+ 			while (--bv >= bio->bi_io_vec)
 -- 
-2.19.1
+2.9.5
