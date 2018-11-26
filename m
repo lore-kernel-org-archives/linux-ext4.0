@@ -1,106 +1,104 @@
-Return-Path: <SRS0=wBZF=NZ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out30-132.freemail.mail.aliyun.com ([115.124.30.132]:60578 "EHLO
-        out30-132.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728071AbeKNVyX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 14 Nov 2018 16:54:23 -0500
-From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-To: linux-ext4@vger.kernel.org
-Cc: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-Subject: [PATCH] ext4: fix deadlock while checkpoint thread waits commit thread to finish
-Date: Wed, 14 Nov 2018 19:49:35 +0800
-Message-Id: <20181114114935.5250-1-xiaoguang.wang@linux.alibaba.com>
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59110 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726091AbeKZNMw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Nov 2018 08:12:52 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V12 13/20] block: loop: pass multi-page bvec to iov_iter
+Date: Mon, 26 Nov 2018 10:17:13 +0800
+Message-Id: <20181126021720.19471-14-ming.lei@redhat.com>
+In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This issue was found when I tried to put checkpoint work in a separate thread,
-the deadlock below happened:
-         Thread1                                |   Thread2
-__jbd2_log_wait_for_space                       |
-jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
-  if (jh->b_transaction != NULL)                |
-    ...                                         |
-    jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
-                                                |  will lock j_checkpoint_mutex,
-                                                |  but will be blocked here.
-                                                |
-    jbd2_log_wait_commit(journal, tid);         |
-    wait_event(journal->j_wait_done_commit,     |
-     !tid_gt(tid, journal->j_commit_sequence)); |
-     ...                                        |wake_up(j_wait_done_commit)
-  }                                             |
+iov_iter is implemented on bvec itererator helpers, so it is safe to pass
+multi-page bvec to it, and this way is much more efficient than passing one
+page in each bvec.
 
-then deadlock occurs, Thread1 will never be waken up.
-
-To fix this issue, drop j_checkpoint_mutex in jbd2_log_do_checkpoint()
-when we are going to wait for transaction commit.
-
-Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
 ---
- fs/jbd2/checkpoint.c | 21 +++++++++++++++++----
- fs/jbd2/journal.c    |  2 +-
- 2 files changed, 18 insertions(+), 5 deletions(-)
+ drivers/block/loop.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 26f8d7e46462..e728844f2f0e 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -113,7 +113,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
- 	nblocks = jbd2_space_needed(journal);
- 	while (jbd2_log_space_left(journal) < nblocks) {
- 		write_unlock(&journal->j_state_lock);
--		mutex_lock(&journal->j_checkpoint_mutex);
-+		mutex_lock_io(&journal->j_checkpoint_mutex);
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index 176ab1f28eca..e3683211f12d 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -510,21 +510,22 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
+ 		     loff_t pos, bool rw)
+ {
+ 	struct iov_iter iter;
++	struct req_iterator rq_iter;
+ 	struct bio_vec *bvec;
+ 	struct request *rq = blk_mq_rq_from_pdu(cmd);
+ 	struct bio *bio = rq->bio;
+ 	struct file *file = lo->lo_backing_file;
++	struct bio_vec tmp;
+ 	unsigned int offset;
+-	int segments = 0;
++	int nr_bvec = 0;
+ 	int ret;
  
++	rq_for_each_bvec(tmp, rq, rq_iter)
++		nr_bvec++;
++
+ 	if (rq->bio != rq->biotail) {
+-		struct req_iterator iter;
+-		struct bio_vec tmp;
+ 
+-		__rq_for_each_bio(bio, rq)
+-			segments += bio_segments(bio);
+-		bvec = kmalloc_array(segments, sizeof(struct bio_vec),
++		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
+ 				     GFP_NOIO);
+ 		if (!bvec)
+ 			return -EIO;
+@@ -533,10 +534,10 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
  		/*
- 		 * Test again, another process may have checkpointed while we
-@@ -241,8 +241,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 	 * done (maybe it's a new transaction, but it fell at the same
- 	 * address).
- 	 */
--	if (journal->j_checkpoint_transactions != transaction ||
--	    transaction->t_tid != this_tid)
-+	if (journal->j_checkpoint_transactions == NULL ||
-+	    journal->j_checkpoint_transactions->t_tid != this_tid)
- 		goto out;
- 
- 	/* checkpoint all of the transaction's buffers */
-@@ -276,9 +276,22 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 		"JBD2: %s: Waiting for Godot: block %llu\n",
- 		journal->j_devname, (unsigned long long) bh->b_blocknr);
- 
-+			if (batch_count)
-+				__flush_batch(journal, &batch_count);
- 			jbd2_log_start_commit(journal, tid);
-+			/*
-+			 * jbd2_journal_commit_transaction() may want
-+			 * to take the checkpoint_mutex if JBD2_FLUSHED
-+			 * is set, jbd2_update_log_tail() called by
-+			 * jbd2_journal_commit_transaction() may also take
-+			 * checkpoint_mutex.  So we need to temporarily
-+			 * drop it.
-+			 */
-+			mutex_unlock(&journal->j_checkpoint_mutex);
- 			jbd2_log_wait_commit(journal, tid);
--			goto retry;
-+			mutex_lock_io(&journal->j_checkpoint_mutex);
-+			spin_lock(&journal->j_list_lock);
-+			goto restart;
+ 		 * The bios of the request may be started from the middle of
+ 		 * the 'bvec' because of bio splitting, so we can't directly
+-		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_segment
++		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_bvec
+ 		 * API will take care of all details for us.
+ 		 */
+-		rq_for_each_segment(tmp, rq, iter) {
++		rq_for_each_bvec(tmp, rq, rq_iter) {
+ 			*bvec = tmp;
+ 			bvec++;
  		}
- 		if (!buffer_dirty(bh)) {
- 			if (unlikely(buffer_write_io_error(bh)) && !result)
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8ef6b6daaa7a..88d8f22d2cba 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2067,7 +2067,7 @@ int jbd2_journal_wipe(journal_t *journal, int write)
- 	err = jbd2_journal_skip_recovery(journal);
- 	if (write) {
- 		/* Lock to make assertions happy... */
--		mutex_lock(&journal->j_checkpoint_mutex);
-+		mutex_lock_io(&journal->j_checkpoint_mutex);
- 		jbd2_mark_journal_empty(journal, REQ_SYNC | REQ_FUA);
- 		mutex_unlock(&journal->j_checkpoint_mutex);
+@@ -550,11 +551,10 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
+ 		 */
+ 		offset = bio->bi_iter.bi_bvec_done;
+ 		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
+-		segments = bio_segments(bio);
  	}
+ 	atomic_set(&cmd->ref, 2);
+ 
+-	iov_iter_bvec(&iter, rw, bvec, segments, blk_rq_bytes(rq));
++	iov_iter_bvec(&iter, rw, bvec, nr_bvec, blk_rq_bytes(rq));
+ 	iter.iov_offset = offset;
+ 
+ 	cmd->iocb.ki_pos = pos;
 -- 
-2.17.2
+2.9.5
