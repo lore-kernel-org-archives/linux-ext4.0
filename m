@@ -1,93 +1,61 @@
-Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34490 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726399AbeK2Ju0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Nov 2018 04:50:26 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 3DE392DFC6
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 22:47:13 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Wed, 28 Nov 2018 22:47:13 +0000
-Message-ID: <bug-201685-13602-lXPQIUvJiB@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:59166 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727690AbeK0Ksw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 27 Nov 2018 05:48:52 -0500
+Date: Mon, 26 Nov 2018 15:52:59 -0800
+From: Jaegeuk Kim <jaegeuk@kernel.org>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, ebiggers@kernel.org
+Subject: Re: [f2fs-dev] [PATCH 2/7] f2fs: use IS_ENCRYPTED() to check
+ encryption status
+Message-ID: <20181126235259.GD55960@jaegeuk-macbookpro.roam.corp.google.com>
+References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
+ <20181119052324.31456-3-chandan@linux.vnet.ibm.com>
+ <20181119212332.GB33805@jaegeuk-macbookpro.roam.corp.google.com>
+ <20181126034132.GC7904@thunk.org>
+ <20181126040038.GD7904@thunk.org>
+ <20181126173435.GA22888@thunk.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181126173435.GA22888@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+Hi Ted,
 
---- Comment #68 from Jimmy.Jazz@gmx.net ---
-# uname -a
-Linux seal 4.18.0-rc1-radeon-00048-ge1333462e3-dirty #36 SMP PREEMPT Wed Nov 28
-18:30:01 CET 2018 x86_64 AMD A10-5800K APU with Radeon(tm) HD Graphics
-AuthenticAMD GNU/Linux
+On 11/26, Theodore Y. Ts'o wrote:
+> On Sun, Nov 25, 2018 at 11:00:38PM -0500, Theodore Y. Ts'o wrote:
+> > 
+> > It might be that the simplest way to solve things is to merge the f2fs
+> > dev branch up to 79c66e75720c.  This will have the net effect of
+> > including the five patches listed above onto the fscrypt git tree.  So
+> > long you don't plan to rebase or otherwise change these five patches,
+> > it should avoid any merge conflicts.
+> 
+> I've set up a git branch which has the f2fs dev branch, 4.20-rc4, the
+> fsverity patches, and part of Chandan's patch series here:
+> 
+> git://git.kernel.org/pub/scm/linux/kernel/git/tytso/fscrypt.git test-working
+> 
+> There is a minor conflict when I did a trial merge with f2fs.git's dev
+> branch, but it's pretty obvious to how to resolve it.
+> 
+> Jaegeuk, Eric, Chandan, please take a look and let me know what you
+> think.
 
-I finally run a promising kernel that compiles, doesn't crash and cares about
-my filesystems.
-4.18.0-rc1-radeon-00048-ge1333462e3-dirty could be a winner.
+I was about to rebase f2fs-dev branch to catch up -rc4, so could you please
+update test-working with the rebased one? Then, I'll test Eric & Chandan's
+patches in the test-working branch locally. If there is no issue, I'm okay
+to push all of their work via fscrypt.git, if you prefer.
 
-This time the backup file system dm-4 could be efficiently cured and dirvish
-has done its work has expected.
-I could compile with it the kernel 4.19.4 as J.Axboe asked me to.
+Afterward, merging f2fs patches till "f2fs: clean up f2fs_sb_has_##feature_name"
+into the test-working branch would be fine as well.
 
-@T.Tso, if you still have an interest in dmesg, fsck (quite impressive) output
-with that kernel version, let me know.
-Actually, the interaction between e2fsck 1.44.4 and kernel 4.18 differs from
-4.19
+Thanks,
 
-An dmesg excerpt,
-[12421.017028] EXT4-fs warning (device dm-4): kmmpd:191: kmmpd being stopped
-since filesystem has been remounted as readonly.
-[12434.457445] EXT4-fs warning (device dm-4): ext4_multi_mount_protect:325: MMP
-interval 42 higher than expected, please wait.
-The warning didn't show off with kernel 4.19 and remount is slower. No ext4
-errors to see.
-
-# git bisect log
-git bisect start
-# good: [94710cac0ef4ee177a63b5227664b38c95bbf703] Linux 4.18
-git bisect good 94710cac0ef4ee177a63b5227664b38c95bbf703
-# bad: [9ff01193a20d391e8dbce4403dd5ef87c7eaaca6] Linux 4.20-rc3
-git bisect bad 9ff01193a20d391e8dbce4403dd5ef87c7eaaca6
-# bad: [9ff01193a20d391e8dbce4403dd5ef87c7eaaca6] Linux 4.20-rc3
-git bisect bad 9ff01193a20d391e8dbce4403dd5ef87c7eaaca6
-# bad: [84df9525b0c27f3ebc2ebb1864fa62a97fdedb7d] Linux 4.19
-git bisect bad 84df9525b0c27f3ebc2ebb1864fa62a97fdedb7d
-# bad: [f48097d294d6f76a38bf1a1cb579aa99ede44297] dt-bindings: display:
-renesas: du: Document r8a77990 bindings
-git bisect bad f48097d294d6f76a38bf1a1cb579aa99ede44297
-# bad: [f48097d294d6f76a38bf1a1cb579aa99ede44297] dt-bindings: display:
-renesas: du: Document r8a77990 bindings
-git bisect bad f48097d294d6f76a38bf1a1cb579aa99ede44297
-# bad: [54dbe75bbf1e189982516de179147208e90b5e45] Merge tag
-'drm-next-2018-08-15' of git://anongit.freedesktop.org/drm/drm
-git bisect bad 54dbe75bbf1e189982516de179147208e90b5e45
-# bad: [0a957467c5fd46142bc9c52758ffc552d4c5e2f7] x86: i8259: Add missing
-include file
-git bisect bad 0a957467c5fd46142bc9c52758ffc552d4c5e2f7
-# bad: [958f338e96f874a0d29442396d6adf9c1e17aa2d] Merge branch 'l1tf-final' of
-git://git.kernel.org/pub/scm/linux/kernel/git/tip/tip
-git bisect bad 958f338e96f874a0d29442396d6adf9c1e17aa2d
-# bad: [85a0b791bc17f7a49280b33e2905d109c062a47b] Merge branch 'for-linus' of
-git://git.kernel.org/pub/scm/linux/kernel/git/s390/linux
-git bisect bad 85a0b791bc17f7a49280b33e2905d109c062a47b
-# bad: [8603596a327c978534f5c45db135e6c36b4b1425] Merge branch
-'perf-core-for-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/tip/tip
-git bisect bad 8603596a327c978534f5c45db135e6c36b4b1425
-# bad: [2406fb8d94fb17fee3ace0c09427c08825eacb16] Merge branch
-'sched-urgent-for-linus' of
-git://git.kernel.org/pub/scm/linux/kernel/git/tip/tip
-git bisect bad 2406fb8d94fb17fee3ace0c09427c08825eacb16
-# bad: [cd23ac8ddb7be993f88bee893b89a8b4971c3651] rcu: Add comment to the last
-sleep in the rcu tasks loop
-git bisect bad cd23ac8ddb7be993f88bee893b89a8b4971c3651
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+> 
+> 	    	 		       	  - Ted
