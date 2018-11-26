@@ -1,143 +1,86 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:43972 "EHLO
-        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389033AbeKPKug (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 05:50:36 -0500
-Received: by mail-pg1-f195.google.com with SMTP id n10-v6so9769938pgv.10
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 16:40:24 -0800 (PST)
-Date: Thu, 15 Nov 2018 16:40:22 -0800
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f196.google.com ([209.85.214.196]:45058 "EHLO
+        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727245AbeK0Jje (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:39:34 -0500
+Received: by mail-pl1-f196.google.com with SMTP id a14so14552935plm.12
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:43:54 -0800 (PST)
+Date: Mon, 26 Nov 2018 14:43:51 -0800
 From: Omar Sandoval <osandov@osandov.com>
 To: Ming Lei <ming.lei@redhat.com>
 Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
         Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
         linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 10/19] block: loop: pass multi-page bvec to iov_iter
-Message-ID: <20181116004022.GE23828@vader>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-11-ming.lei@redhat.com>
+Subject: Re: [PATCH V12 18/20] block: document usage of bio iterator helpers
+Message-ID: <20181126224351.GM30411@vader>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
+ <20181126021720.19471-19-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-11-ming.lei@redhat.com>
+In-Reply-To: <20181126021720.19471-19-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:52:57PM +0800, Ming Lei wrote:
-> iov_iter is implemented with bvec itererator, so it is safe to pass
-> multipage bvec to it, and this way is much more efficient than
-> passing one page in each bvec.
-> 
-> Cc: Dave Chinner <dchinner@redhat.com>
-> Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> Cc: Mike Snitzer <snitzer@redhat.com>
-> Cc: dm-devel@redhat.com
-> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> Cc: linux-fsdevel@vger.kernel.org
-> Cc: Shaohua Li <shli@kernel.org>
-> Cc: linux-raid@vger.kernel.org
-> Cc: linux-erofs@lists.ozlabs.org
-> Cc: David Sterba <dsterba@suse.com>
-> Cc: linux-btrfs@vger.kernel.org
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: linux-xfs@vger.kernel.org
-> Cc: Gao Xiang <gaoxiang25@huawei.com>
-> Cc: Christoph Hellwig <hch@lst.de>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Coly Li <colyli@suse.de>
-> Cc: linux-bcache@vger.kernel.org
-> Cc: Boaz Harrosh <ooo@electrozaur.com>
-> Cc: Bob Peterson <rpeterso@redhat.com>
-> Cc: cluster-devel@redhat.com
+On Mon, Nov 26, 2018 at 10:17:18AM +0800, Ming Lei wrote:
+> Now multi-page bvec is supported, some helpers may return page by
+> page, meantime some may return segment by segment, this patch
+> documents the usage.
 
 Reviewed-by: Omar Sandoval <osandov@fb.com>
 
-Comments below.
-
 > Signed-off-by: Ming Lei <ming.lei@redhat.com>
 > ---
->  drivers/block/loop.c | 23 ++++++++++++-----------
->  1 file changed, 12 insertions(+), 11 deletions(-)
+>  Documentation/block/biovecs.txt | 25 +++++++++++++++++++++++++
+>  1 file changed, 25 insertions(+)
 > 
-> diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-> index bf6bc35aaf88..a3fd418ec637 100644
-> --- a/drivers/block/loop.c
-> +++ b/drivers/block/loop.c
-> @@ -515,16 +515,16 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
->  	struct bio *bio = rq->bio;
->  	struct file *file = lo->lo_backing_file;
->  	unsigned int offset;
-> -	int segments = 0;
-> +	int nr_bvec = 0;
->  	int ret;
->  
->  	if (rq->bio != rq->biotail) {
-> -		struct req_iterator iter;
-> +		struct bvec_iter iter;
->  		struct bio_vec tmp;
->  
->  		__rq_for_each_bio(bio, rq)
-> -			segments += bio_segments(bio);
-> -		bvec = kmalloc_array(segments, sizeof(struct bio_vec),
-> +			nr_bvec += bio_bvecs(bio);
-> +		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
->  				     GFP_NOIO);
->  		if (!bvec)
->  			return -EIO;
-> @@ -533,13 +533,14 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
->  		/*
->  		 * The bios of the request may be started from the middle of
->  		 * the 'bvec' because of bio splitting, so we can't directly
-> -		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_segment
-> +		 * copy bio->bi_iov_vec to new bvec. The bio_for_each_bvec
->  		 * API will take care of all details for us.
->  		 */
-> -		rq_for_each_segment(tmp, rq, iter) {
-> -			*bvec = tmp;
-> -			bvec++;
-> -		}
-> +		__rq_for_each_bio(bio, rq)
-> +			bio_for_each_bvec(tmp, bio, iter) {
-> +				*bvec = tmp;
-> +				bvec++;
-> +			}
-
-Even if they're not strictly necessary, could you please include the
-curly braces for __rq_for_each_bio() here?
-
->  		bvec = cmd->bvec;
->  		offset = 0;
->  	} else {
-> @@ -550,11 +551,11 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
->  		 */
->  		offset = bio->bi_iter.bi_bvec_done;
->  		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
-> -		segments = bio_segments(bio);
-> +		nr_bvec = bio_bvecs(bio);
-
-This scared me for a second, but it's fine to do here because we haven't
-actually enabled multipage bvecs yet, right?
-
->  	}
->  	atomic_set(&cmd->ref, 2);
->  
-> -	iov_iter_bvec(&iter, rw, bvec, segments, blk_rq_bytes(rq));
-> +	iov_iter_bvec(&iter, rw, bvec, nr_bvec, blk_rq_bytes(rq));
->  	iter.iov_offset = offset;
->  
->  	cmd->iocb.ki_pos = pos;
+> diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
+> index 25689584e6e0..ce6eccaf5df7 100644
+> --- a/Documentation/block/biovecs.txt
+> +++ b/Documentation/block/biovecs.txt
+> @@ -117,3 +117,28 @@ Other implications:
+>     size limitations and the limitations of the underlying devices. Thus
+>     there's no need to define ->merge_bvec_fn() callbacks for individual block
+>     drivers.
+> +
+> +Usage of helpers:
+> +=================
+> +
+> +* The following helpers whose names have the suffix of "_all" can only be used
+> +on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
+> +shouldn't use them because the bio may have been split before it reached the
+> +driver.
+> +
+> +	bio_for_each_segment_all()
+> +	bio_first_bvec_all()
+> +	bio_first_page_all()
+> +	bio_last_bvec_all()
+> +
+> +* The following helpers iterate over single-page segment. The passed 'struct
+> +bio_vec' will contain a single-page IO vector during the iteration
+> +
+> +	bio_for_each_segment()
+> +	bio_for_each_segment_all()
+> +
+> +* The following helpers iterate over multi-page bvec. The passed 'struct
+> +bio_vec' will contain a multi-page IO vector during the iteration
+> +
+> +	bio_for_each_bvec()
+> +	rq_for_each_bvec()
 > -- 
 > 2.9.5
 > 
