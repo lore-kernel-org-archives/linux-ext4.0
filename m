@@ -1,37 +1,59 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:49855 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727711AbeKPXsk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Nov 2018 18:48:40 -0500
-Date: Fri, 16 Nov 2018 14:36:11 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 06/19] fs/buffer.c: use bvec iterator to truncate
- the bio
-Message-ID: <20181116133611.GE3165@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-7-ming.lei@redhat.com>
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:44574 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727291AbeK0JQN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:16:13 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.com>
+Subject: [PATCH v3 12/12] chattr.1: Document the casefold attribute
+Date: Mon, 26 Nov 2018 17:19:49 -0500
+Message-Id: <20181126221949.12172-13-krisman@collabora.com>
+In-Reply-To: <20181126221949.12172-1-krisman@collabora.com>
+References: <20181126221949.12172-1-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-7-ming.lei@redhat.com>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Looks fine,
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+---
+ misc/chattr.1.in | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+diff --git a/misc/chattr.1.in b/misc/chattr.1.in
+index 028ae9e7ca4c..5949d096687b 100644
+--- a/misc/chattr.1.in
++++ b/misc/chattr.1.in
+@@ -29,7 +29,7 @@ The operator '+' causes the selected attributes to be added to the
+ existing attributes of the files; '-' causes them to be removed; and '='
+ causes them to be the only attributes that the files have.
+ .PP
+-The letters 'aAcCdDeijPsStTu' select the new attributes for the files:
++The letters 'aAcCdDeFijPsStTu' select the new attributes for the files:
+ append only (a),
+ no atime updates (A),
+ compressed (c),
+@@ -37,6 +37,7 @@ no copy on write (C),
+ no dump (d),
+ synchronous directory updates (D),
+ extent format (e),
++case-insensitive directory lookups (F),
+ immutable (i),
+ data journalling (j),
+ project hierarchy (P),
+@@ -119,6 +120,11 @@ set or reset using
+ although it can be displayed by
+ .BR lsattr (1).
+ .PP
++A directory with the 'F' attribute set indicates that all the path
++lookups inside that directory are made in a case-insensitive fashion.
++This attribute can only be changed in empty directories on file systems
++with the fname_encoding feature enabled.
++.PP
+ A file with the 'i' attribute cannot be modified: it cannot be deleted or
+ renamed, no link can be created to this file, most of the file's
+ metadata can not be modified, and the file can not be opened in write mode.
+-- 
+2.19.2
