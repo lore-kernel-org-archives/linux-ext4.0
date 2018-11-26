@@ -1,64 +1,81 @@
-Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:52436 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726659AbeLADWm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Nov 2018 22:22:42 -0500
-Date: Fri, 30 Nov 2018 11:12:51 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: Re: [PATCH v3 08/12] ext2fs: nls: Support UTF-8 11.0 with NFKD
- normalization
-Message-ID: <20181130161251.GA3512@thunk.org>
-References: <20181126221949.12172-1-krisman@collabora.com>
- <20181126221949.12172-9-krisman@collabora.com>
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f196.google.com ([209.85.215.196]:34061 "EHLO
+        mail-pg1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727277AbeK0JiV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:38:21 -0500
+Received: by mail-pg1-f196.google.com with SMTP id 17so6857585pgg.1
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:42:41 -0800 (PST)
+Date: Mon, 26 Nov 2018 14:42:39 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V12 15/20] block: allow bio_for_each_segment_all() to
+ iterate over multi-page bvec
+Message-ID: <20181126224239.GL30411@vader>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
+ <20181126021720.19471-16-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181126221949.12172-9-krisman@collabora.com>
+In-Reply-To: <20181126021720.19471-16-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 26, 2018 at 05:19:45PM -0500, Gabriel Krisman Bertazi wrote:
-> +static int utf8_casefold(const struct nls_table *table,
-> +			  const unsigned char *str, size_t len,
-> +			  unsigned char *dest, size_t dlen)
-> +{
-> +	const struct utf8data *data = utf8nfkdicf(UNICODE_AGE(10,0,0));
-> +	struct utf8cursor cur;
-> +	size_t nlen = 0;
-> +
-> +	if (utf8ncursor(&cur, data, str, len) < 0)
-> +		goto invalid_seq;
-> +
-> +	for (nlen = 0; nlen < dlen; nlen++) {
-> +		dest[nlen] = utf8byte(&cur);
-> +		if (!dest[nlen])
-> +			return nlen;
-> +		if (dest[nlen] == -1)
-> +			break;
-> +	}
-> +invalid_seq:
-> +	/* Treat the sequence as a binary blob. */
-> +	memcpy(dest, str, len);
-> +	return len;
-> +
-> +}
+On Mon, Nov 26, 2018 at 10:17:15AM +0800, Ming Lei wrote:
+> This patch introduces one extra iterator variable to bio_for_each_segment_all(),
+> then we can allow bio_for_each_segment_all() to iterate over multi-page bvec.
+> 
+> Given it is just one mechannical & simple change on all bio_for_each_segment_all()
+> users, this patch does tree-wide change in one single patch, so that we can
+> avoid to use a temporary helper for this conversion.
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-So it looks like the interface is if the destination buffer is too
-small OR if the string is not a valid UTF-8 string, we treat it as a
-binary blob.  I wonder if we would be better off if this function
-actually signalling that there is a problem?  (Buffer too small,
-invalid UTF-8 string).
+Reviewed-by: Omar Sandoval <osandov@fb.com>
 
-It's fine to treat it as a binary blob, and copy it out to the
-destination buffer, but I can imagine be use cases where knowing this
-will be useful.  *Especially* the destination buffer too small case;
-I'm actually a little nervous about having it silently ignoring that
-error condition and just copying the binary blob.
-
-Also, there *really* needs to be a check before dlen is assumed to be
->= len in the memcpy after the invalid_seq label.
-
-							- Ted
+> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> ---
+>  block/bio.c                       | 27 ++++++++++++++++++---------
+>  block/bounce.c                    |  6 ++++--
+>  drivers/md/bcache/btree.c         |  3 ++-
+>  drivers/md/dm-crypt.c             |  3 ++-
+>  drivers/md/raid1.c                |  3 ++-
+>  drivers/staging/erofs/data.c      |  3 ++-
+>  drivers/staging/erofs/unzip_vle.c |  3 ++-
+>  fs/block_dev.c                    |  6 ++++--
+>  fs/btrfs/compression.c            |  3 ++-
+>  fs/btrfs/disk-io.c                |  3 ++-
+>  fs/btrfs/extent_io.c              |  9 ++++++---
+>  fs/btrfs/inode.c                  |  6 ++++--
+>  fs/btrfs/raid56.c                 |  3 ++-
+>  fs/crypto/bio.c                   |  3 ++-
+>  fs/direct-io.c                    |  4 +++-
+>  fs/exofs/ore.c                    |  3 ++-
+>  fs/exofs/ore_raid.c               |  3 ++-
+>  fs/ext4/page-io.c                 |  3 ++-
+>  fs/ext4/readpage.c                |  3 ++-
+>  fs/f2fs/data.c                    |  9 ++++++---
+>  fs/gfs2/lops.c                    |  6 ++++--
+>  fs/gfs2/meta_io.c                 |  3 ++-
+>  fs/iomap.c                        |  6 ++++--
+>  fs/mpage.c                        |  3 ++-
+>  fs/xfs/xfs_aops.c                 |  5 +++--
+>  include/linux/bio.h               | 11 +++++++++--
+>  include/linux/bvec.h              | 30 ++++++++++++++++++++++++++++++
+>  27 files changed, 125 insertions(+), 45 deletions(-)
