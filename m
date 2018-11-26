@@ -1,82 +1,60 @@
-Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39404 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:53190 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728950AbeKOTE0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 15 Nov 2018 14:04:26 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Ming Lei <ming.lei@redhat.com>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: [PATCH V10 15/19] block: always define BIO_MAX_PAGES as 256
-Date: Thu, 15 Nov 2018 16:53:02 +0800
-Message-Id: <20181115085306.9910-16-ming.lei@redhat.com>
-In-Reply-To: <20181115085306.9910-1-ming.lei@redhat.com>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
+        id S1726124AbeKZOx3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Nov 2018 09:53:29 -0500
+Date: Sun, 25 Nov 2018 23:00:38 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Jaegeuk Kim <jaegeuk@kernel.org>
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, ebiggers@kernel.org
+Subject: Re: [f2fs-dev] [PATCH 2/7] f2fs: use IS_ENCRYPTED() to check
+ encryption status
+Message-ID: <20181126040038.GD7904@thunk.org>
+References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
+ <20181119052324.31456-3-chandan@linux.vnet.ibm.com>
+ <20181119212332.GB33805@jaegeuk-macbookpro.roam.corp.google.com>
+ <20181126034132.GC7904@thunk.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181126034132.GC7904@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now multi-page bvec can cover CONFIG_THP_SWAP, so we don't need to
-increase BIO_MAX_PAGES for it.
+On Sun, Nov 25, 2018 at 10:41:32PM -0500, Theodore Y. Ts'o wrote:
+> On Mon, Nov 19, 2018 at 01:23:32PM -0800, Jaegeuk Kim wrote:
+> > Hi Chandan,
+> > 
+> > Let me try to queue and test this patch separately from the patch-set in order
+> > to avoid merge conflicts. So, I think IS_ENCRYPTED should be merged in f2fs/ext4
+> > branches, and the others can be applied to fscrypt and fsverity into each trees.
+> 
+> Hi Jaeguk,
+> 
+> What conflicts are you anticipating?  I can't apply the rest of
+> Chandan's patches without unless we apply them in order, and I'd
+> prefer to avoid cross-merging, or spreading out this series across two
+> kernel releases.
 
-Cc: Dave Chinner <dchinner@redhat.com>
-Cc: Kent Overstreet <kent.overstreet@gmail.com>
-Cc: Mike Snitzer <snitzer@redhat.com>
-Cc: dm-devel@redhat.com
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org
-Cc: Shaohua Li <shli@kernel.org>
-Cc: linux-raid@vger.kernel.org
-Cc: linux-erofs@lists.ozlabs.org
-Cc: David Sterba <dsterba@suse.com>
-Cc: linux-btrfs@vger.kernel.org
-Cc: Darrick J. Wong <darrick.wong@oracle.com>
-Cc: linux-xfs@vger.kernel.org
-Cc: Gao Xiang <gaoxiang25@huawei.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Cc: Coly Li <colyli@suse.de>
-Cc: linux-bcache@vger.kernel.org
-Cc: Boaz Harrosh <ooo@electrozaur.com>
-Cc: Bob Peterson <rpeterso@redhat.com>
-Cc: cluster-devel@redhat.com
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- include/linux/bio.h | 8 --------
- 1 file changed, 8 deletions(-)
+Oh, I see the problem.  It's commit 79c66e7572 ("f2fs: clean up
+f2fs_sb_has_##feature_name") on the f2fs dev branch.  It changes the
+function signature of the f2fs_sb_has_<feature>() functions.
 
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 5040e9a2eb09..277921ad42e7 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -34,15 +34,7 @@
- #define BIO_BUG_ON
- #endif
- 
--#ifdef CONFIG_THP_SWAP
--#if HPAGE_PMD_NR > 256
--#define BIO_MAX_PAGES		HPAGE_PMD_NR
--#else
- #define BIO_MAX_PAGES		256
--#endif
--#else
--#define BIO_MAX_PAGES		256
--#endif
- 
- #define bio_prio(bio)			(bio)->bi_ioprio
- #define bio_set_prio(bio, prio)		((bio)->bi_ioprio = prio)
--- 
-2.9.5
+This is going to be a problem for merging the fsverity patch series as
+well.   How stable are these patches on the f2fs dev branch?
+
+79c66e75720c f2fs: clean up f2fs_sb_has_##feature_name
+6a917e69d3b8 f2fs: remove codes of unused wio_mutex
+67bdd2a68f0a f2fs: fix count of seg_freed to make sec_freed correct
+a5c7029ba357 f2fs: fix to account preflush command for noflush_merge mode
+83effa8865cc f2fs: avoid GC causing encrypted file corrupted
+
+It might be that the simplest way to solve things is to merge the f2fs
+dev branch up to 79c66e75720c.  This will have the net effect of
+including the five patches listed above onto the fscrypt git tree.  So
+long you don't plan to rebase or otherwise change these five patches,
+it should avoid any merge conflicts.
+
+						- Ted
