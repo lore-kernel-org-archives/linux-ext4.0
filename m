@@ -1,74 +1,81 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:52284 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1729303AbeKVFUJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 00:20:09 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 0C5782BD2E
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Nov 2018 18:44:39 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Wed, 21 Nov 2018 18:44:38 +0000
-Message-ID: <bug-201685-13602-0YcRPg2Lcb@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:60452 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726053AbeKZNKi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Nov 2018 08:10:38 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: [PATCH V12 02/20] btrfs: look at bi_size for repair decisions
+Date: Mon, 26 Nov 2018 10:17:02 +0800
+Message-Id: <20181126021720.19471-3-ming.lei@redhat.com>
+In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+From: Christoph Hellwig <hch@lst.de>
 
---- Comment #18 from Jimmy.Jazz@gmx.net ---
-kernel 4.19.2
-md0 (formerly md_d0)
+bio_readpage_error currently uses bi_vcnt to decide if it is worth
+retrying an I/O.  But the vector count is mostly an implementation
+artifact - it really should figure out if there is more than a
+single sector worth retrying.  Use bi_size for that and shift by
+PAGE_SHIFT.  This really should be blocks/sectors, but given that
+btrfs doesn't support a sector size different from the PAGE_SIZE
+using the page size keeps the changes to a minimum.
 
-is a raid1 GPT bootable device
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/btrfs/extent_io.c | 2 +-
+ include/linux/bio.h  | 6 ------
+ 2 files changed, 1 insertion(+), 7 deletions(-)
 
-md0 : active raid1 sda[0] sdb[1]
-      499976512 blocks super 1.2 [2/2] [UU]
-      bitmap: 3/4 pages [12KB], 65536KB chunk
-
-md0p1 is the grub boot partition
-
-# fdisk -l /dev/md0                                                    
-Disque /dev/md0 : 476,8 GiB, 511975948288 octets, 999953024 secteurs
-Unités : secteur de 1 × 512 = 512 octets
-Taille de secteur (logique / physique) : 512 octets / 512 octets
-taille d'E/S (minimale / optimale) : 512 octets / 512 octets
-Type d'étiquette de disque : gpt
-Identifiant de disque : 9A6C46CD-3B9C-4C64-AE3C-EDB416548134
-
-Périphérique   Début       Fin  Secteurs Taille Type
-/dev/md0p1        40      2088      2049     1M Amorçage BIOS
-/dev/md0p2      2096    264240    262145   128M Système de fichiers Linux
-/dev/md0p3    264248   2361400   2097153     1G Système de fichiers Linux
-/dev/md0p4   2361408   6555712   4194305     2G Système de fichiers Linux
-/dev/md0p5   6555720 999952984 993397265 473,7G Système de fichiers Linux
-
-# fdisk -l /dev/sdb                                                    
-Disque /dev/sdb : 477 GiB, 512110190592 octets, 1000215216 secteurs
-Modèle de disque : MKNSSDRE512GB   
-Unités : secteur de 1 × 512 = 512 octets
-Taille de secteur (logique / physique) : 512 octets / 512 octets
-taille d'E/S (minimale / optimale) : 512 octets / 512 octets
-Type d'étiquette de disque : dos
-Identifiant de disque : 0x58e9a5ac
-
-Périphérique Amorçage Début        Fin   Secteurs Taille Id Type
-/dev/sdb1                 8 1000215215 1000215208   477G fd RAID Linux
-autodétec
-
-idem for second computer same configuration but one HGST Travelstar 7K1000 disk
-attached and kernel cmdline has mdraid=forced
-
-If I missed something just let me know.
-
-Thx for your help.
-
+diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+index 15fd46582bb2..40751e86a2a9 100644
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -2368,7 +2368,7 @@ static int bio_readpage_error(struct bio *failed_bio, u64 phy_offset,
+ 	int read_mode = 0;
+ 	blk_status_t status;
+ 	int ret;
+-	unsigned failed_bio_pages = bio_pages_all(failed_bio);
++	unsigned failed_bio_pages = failed_bio->bi_iter.bi_size >> PAGE_SHIFT;
+ 
+ 	BUG_ON(bio_op(failed_bio) == REQ_OP_WRITE);
+ 
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 056fb627edb3..6f6bc331a5d1 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -263,12 +263,6 @@ static inline void bio_get_last_bvec(struct bio *bio, struct bio_vec *bv)
+ 		bv->bv_len = iter.bi_bvec_done;
+ }
+ 
+-static inline unsigned bio_pages_all(struct bio *bio)
+-{
+-	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
+-	return bio->bi_vcnt;
+-}
+-
+ static inline struct bio_vec *bio_first_bvec_all(struct bio *bio)
+ {
+ 	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.9.5
