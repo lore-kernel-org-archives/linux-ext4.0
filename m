@@ -1,65 +1,250 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:46399 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726594AbeKUNQw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 08:16:52 -0500
-Received: by mail-pl1-f195.google.com with SMTP id t13so3181976ply.13
-        for <linux-ext4@vger.kernel.org>; Tue, 20 Nov 2018 18:44:30 -0800 (PST)
-From: Eiichi Tsukata <devel@etsukata.com>
-To: andi@firstfloor.org, Chris Mason <clm@fb.com>,
-        Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:42754 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726053AbeKZNKu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 26 Nov 2018 08:10:50 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
         Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, cluster-devel@redhat.com,
-        linux-unionfs@vger.kernel.org
-Cc: Eiichi Tsukata <devel@etsukata.com>
-Subject: [PATCH v1 3/4] f2fs: fix race between llseek SEEK_END and write
-Date: Wed, 21 Nov 2018 11:43:59 +0900
-Message-Id: <20181121024400.4346-4-devel@etsukata.com>
-In-Reply-To: <20181121024400.4346-1-devel@etsukata.com>
-References: <20181121024400.4346-1-devel@etsukata.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V12 03/20] block: remove the "cluster" flag
+Date: Mon, 26 Nov 2018 10:17:03 +0800
+Message-Id: <20181126021720.19471-4-ming.lei@redhat.com>
+In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch itself seems to be just a cleanup but with the
-commit b25bd1d9fd87 ("vfs: fix race between llseek SEEK_END and write")
-it fixes race.
+From: Christoph Hellwig <hch@lst.de>
 
-Signed-off-by: Eiichi Tsukata <devel@etsukata.com>
+The cluster flag implements some very old SCSI behavior.  As far as I
+can tell the original intent was to enable or disable any kind of
+segment merging.  But the actually visible effect to the LLDD is that
+it limits each segments to be inside a single page, which we can
+also affect by setting the maximum segment size and the segment
+boundary.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+
+Replace virt boundary with segment boundary limit.
+
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
 ---
- fs/f2fs/file.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ block/blk-merge.c       | 20 ++++++++------------
+ block/blk-settings.c    |  3 ---
+ block/blk-sysfs.c       |  5 +----
+ drivers/scsi/scsi_lib.c | 20 ++++++++++++++++----
+ include/linux/blkdev.h  |  6 ------
+ 5 files changed, 25 insertions(+), 29 deletions(-)
 
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 88b124677189..14a923607eff 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -447,15 +447,11 @@ static loff_t f2fs_seek_block(struct file *file, loff_t offset, int whence)
+diff --git a/block/blk-merge.c b/block/blk-merge.c
+index 6be04ef8da5b..e69d8f8ba819 100644
+--- a/block/blk-merge.c
++++ b/block/blk-merge.c
+@@ -195,7 +195,7 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
+ 			goto split;
+ 		}
  
- static loff_t f2fs_llseek(struct file *file, loff_t offset, int whence)
+-		if (bvprvp && blk_queue_cluster(q)) {
++		if (bvprvp) {
+ 			if (seg_size + bv.bv_len > queue_max_segment_size(q))
+ 				goto new_segment;
+ 			if (!biovec_phys_mergeable(q, bvprvp, &bv))
+@@ -295,10 +295,10 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+ 					     bool no_sg_merge)
  {
--	struct inode *inode = file->f_mapping->host;
--	loff_t maxbytes = inode->i_sb->s_maxbytes;
+ 	struct bio_vec bv, bvprv = { NULL };
+-	int cluster, prev = 0;
+ 	unsigned int seg_size, nr_phys_segs;
+ 	struct bio *fbio, *bbio;
+ 	struct bvec_iter iter;
++	bool prev = false;
+ 
+ 	if (!bio)
+ 		return 0;
+@@ -313,7 +313,6 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+ 	}
+ 
+ 	fbio = bio;
+-	cluster = blk_queue_cluster(q);
+ 	seg_size = 0;
+ 	nr_phys_segs = 0;
+ 	for_each_bio(bio) {
+@@ -325,7 +324,7 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+ 			if (no_sg_merge)
+ 				goto new_segment;
+ 
+-			if (prev && cluster) {
++			if (prev) {
+ 				if (seg_size + bv.bv_len
+ 				    > queue_max_segment_size(q))
+ 					goto new_segment;
+@@ -343,7 +342,7 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+ 
+ 			nr_phys_segs++;
+ 			bvprv = bv;
+-			prev = 1;
++			prev = true;
+ 			seg_size = bv.bv_len;
+ 		}
+ 		bbio = bio;
+@@ -396,9 +395,6 @@ static int blk_phys_contig_segment(struct request_queue *q, struct bio *bio,
+ {
+ 	struct bio_vec end_bv = { NULL }, nxt_bv;
+ 
+-	if (!blk_queue_cluster(q))
+-		return 0;
 -
- 	switch (whence) {
- 	case SEEK_SET:
- 	case SEEK_CUR:
- 	case SEEK_END:
--		return generic_file_llseek_size(file, offset, whence,
--						maxbytes, i_size_read(inode));
-+		return generic_file_llseek(file, offset, whence);
- 	case SEEK_DATA:
- 	case SEEK_HOLE:
- 		if (offset < 0)
+ 	if (bio->bi_seg_back_size + nxt->bi_seg_front_size >
+ 	    queue_max_segment_size(q))
+ 		return 0;
+@@ -415,12 +411,12 @@ static int blk_phys_contig_segment(struct request_queue *q, struct bio *bio,
+ static inline void
+ __blk_segment_map_sg(struct request_queue *q, struct bio_vec *bvec,
+ 		     struct scatterlist *sglist, struct bio_vec *bvprv,
+-		     struct scatterlist **sg, int *nsegs, int *cluster)
++		     struct scatterlist **sg, int *nsegs)
+ {
+ 
+ 	int nbytes = bvec->bv_len;
+ 
+-	if (*sg && *cluster) {
++	if (*sg) {
+ 		if ((*sg)->length + nbytes > queue_max_segment_size(q))
+ 			goto new_segment;
+ 		if (!biovec_phys_mergeable(q, bvprv, bvec))
+@@ -466,12 +462,12 @@ static int __blk_bios_map_sg(struct request_queue *q, struct bio *bio,
+ {
+ 	struct bio_vec bvec, bvprv = { NULL };
+ 	struct bvec_iter iter;
+-	int cluster = blk_queue_cluster(q), nsegs = 0;
++	int nsegs = 0;
+ 
+ 	for_each_bio(bio)
+ 		bio_for_each_segment(bvec, bio, iter)
+ 			__blk_segment_map_sg(q, &bvec, sglist, &bvprv, sg,
+-					     &nsegs, &cluster);
++					     &nsegs);
+ 
+ 	return nsegs;
+ }
+diff --git a/block/blk-settings.c b/block/blk-settings.c
+index 3abe831e92c8..3e7038e475ee 100644
+--- a/block/blk-settings.c
++++ b/block/blk-settings.c
+@@ -56,7 +56,6 @@ void blk_set_default_limits(struct queue_limits *lim)
+ 	lim->alignment_offset = 0;
+ 	lim->io_opt = 0;
+ 	lim->misaligned = 0;
+-	lim->cluster = 1;
+ 	lim->zoned = BLK_ZONED_NONE;
+ }
+ EXPORT_SYMBOL(blk_set_default_limits);
+@@ -547,8 +546,6 @@ int blk_stack_limits(struct queue_limits *t, struct queue_limits *b,
+ 	t->io_min = max(t->io_min, b->io_min);
+ 	t->io_opt = lcm_not_zero(t->io_opt, b->io_opt);
+ 
+-	t->cluster &= b->cluster;
+-
+ 	/* Physical block size a multiple of the logical block size? */
+ 	if (t->physical_block_size & (t->logical_block_size - 1)) {
+ 		t->physical_block_size = t->logical_block_size;
+diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c
+index 80eef48fddc8..ef7b844a3e00 100644
+--- a/block/blk-sysfs.c
++++ b/block/blk-sysfs.c
+@@ -132,10 +132,7 @@ static ssize_t queue_max_integrity_segments_show(struct request_queue *q, char *
+ 
+ static ssize_t queue_max_segment_size_show(struct request_queue *q, char *page)
+ {
+-	if (blk_queue_cluster(q))
+-		return queue_var_show(queue_max_segment_size(q), (page));
+-
+-	return queue_var_show(PAGE_SIZE, (page));
++	return queue_var_show(queue_max_segment_size(q), page);
+ }
+ 
+ static ssize_t queue_logical_block_size_show(struct request_queue *q, char *page)
+diff --git a/drivers/scsi/scsi_lib.c b/drivers/scsi/scsi_lib.c
+index 0df15cb738d2..78d6d05992b0 100644
+--- a/drivers/scsi/scsi_lib.c
++++ b/drivers/scsi/scsi_lib.c
+@@ -1810,6 +1810,8 @@ static int scsi_map_queues(struct blk_mq_tag_set *set)
+ void __scsi_init_queue(struct Scsi_Host *shost, struct request_queue *q)
+ {
+ 	struct device *dev = shost->dma_dev;
++	unsigned max_segment_size = dma_get_max_seg_size(dev);
++	unsigned long segment_boundary = shost->dma_boundary;
+ 
+ 	/*
+ 	 * this limit is imposed by hardware restrictions
+@@ -1828,13 +1830,23 @@ void __scsi_init_queue(struct Scsi_Host *shost, struct request_queue *q)
+ 	blk_queue_max_hw_sectors(q, shost->max_sectors);
+ 	if (shost->unchecked_isa_dma)
+ 		blk_queue_bounce_limit(q, BLK_BOUNCE_ISA);
+-	blk_queue_segment_boundary(q, shost->dma_boundary);
+ 	dma_set_seg_boundary(dev, shost->dma_boundary);
+ 
+-	blk_queue_max_segment_size(q, dma_get_max_seg_size(dev));
++	/*
++	 * Clustering is a really old concept from the stone age of Linux
++	 * SCSI support.  But the basic idea is that we never give the
++	 * driver a segment that spans multiple pages.  For that we need
++	 * to limit the segment size, and set the segment boundary so that
++	 * we never merge a second segment which is no page aligned.
++	 */
++	if (!shost->use_clustering) {
++		max_segment_size = min_t(unsigned, max_segment_size, PAGE_SIZE);
++		segment_boundary = min_t(unsigned, segment_boundary,
++					 PAGE_SIZE - 1);
++	}
+ 
+-	if (!shost->use_clustering)
+-		q->limits.cluster = 0;
++	blk_queue_max_segment_size(q, max_segment_size);
++	blk_queue_segment_boundary(q, segment_boundary);
+ 
+ 	/*
+ 	 * Set a reasonable default alignment:  The larger of 32-byte (dword),
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 9b53db06ad08..399a7a415609 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -341,7 +341,6 @@ struct queue_limits {
+ 
+ 	unsigned char		misaligned;
+ 	unsigned char		discard_misaligned;
+-	unsigned char		cluster;
+ 	unsigned char		raid_partial_stripes_expensive;
+ 	enum blk_zoned_model	zoned;
+ };
+@@ -660,11 +659,6 @@ static inline bool queue_is_mq(struct request_queue *q)
+ 	return q->mq_ops;
+ }
+ 
+-static inline unsigned int blk_queue_cluster(struct request_queue *q)
+-{
+-	return q->limits.cluster;
+-}
+-
+ static inline enum blk_zoned_model
+ blk_queue_zoned_model(struct request_queue *q)
+ {
 -- 
-2.19.1
+2.9.5
