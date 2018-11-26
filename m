@@ -1,93 +1,92 @@
-Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.mailbox.org ([80.241.60.215]:9748 "EHLO mx2.mailbox.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728883AbeK2ECK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 28 Nov 2018 23:02:10 -0500
-Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
-To: "Theodore Y. Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-        "Andrey Jr. Melnikov" <temnota.am@gmail.com>,
-        linux-ext4@vger.kernel.org
-References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
- <20181128041555.GE31885@thunk.org> <en52df-5dh.ln1@banana.localnet>
- <2547416.7Vy7A2kRpU@siriux> <20181128161033.GH31885@thunk.org>
-From: Rainer Fiebig <jrf@mailbox.org>
-Message-ID: <ca0f3f35-aff6-78c9-3669-adb4acf7d46f@mailbox.org>
-Date: Wed, 28 Nov 2018 18:01:32 +0100
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f195.google.com ([209.85.214.195]:40781 "EHLO
+        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727330AbeK0Jlv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:41:51 -0500
+Received: by mail-pl1-f195.google.com with SMTP id u18so2006048plq.7
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:46:11 -0800 (PST)
+Date: Mon, 26 Nov 2018 14:46:08 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V12 02/20] btrfs: look at bi_size for repair decisions
+Message-ID: <20181126224608.GO30411@vader>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
+ <20181126021720.19471-3-ming.lei@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20181128161033.GH31885@thunk.org>
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="0QsFQGjkMyMDnEK94FEOhomEecNK9Layx"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181126021720.19471-3-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---0QsFQGjkMyMDnEK94FEOhomEecNK9Layx
-Content-Type: multipart/mixed; boundary="WXuAiaQpiTEknLRql6T46iqdg4NFSo8N5";
- protected-headers="v1"
-From: Rainer Fiebig <jrf@mailbox.org>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
- "Andrey Jr. Melnikov" <temnota.am@gmail.com>, linux-ext4@vger.kernel.org
-Message-ID: <ca0f3f35-aff6-78c9-3669-adb4acf7d46f@mailbox.org>
-Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
-References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
- <20181128041555.GE31885@thunk.org> <en52df-5dh.ln1@banana.localnet>
- <2547416.7Vy7A2kRpU@siriux> <20181128161033.GH31885@thunk.org>
-In-Reply-To: <20181128161033.GH31885@thunk.org>
+On Mon, Nov 26, 2018 at 10:17:02AM +0800, Ming Lei wrote:
+> From: Christoph Hellwig <hch@lst.de>
+> 
+> bio_readpage_error currently uses bi_vcnt to decide if it is worth
+> retrying an I/O.  But the vector count is mostly an implementation
+> artifact - it really should figure out if there is more than a
+> single sector worth retrying.  Use bi_size for that and shift by
+> PAGE_SHIFT.  This really should be blocks/sectors, but given that
+> btrfs doesn't support a sector size different from the PAGE_SIZE
+> using the page size keeps the changes to a minimum.
+> 
+> Reviewed-by: David Sterba <dsterba@suse.com>
 
---WXuAiaQpiTEknLRql6T46iqdg4NFSo8N5
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Reviewed-by: Omar Sandoval <osandov@fb.com>
 
-Am 28.11.18 um 17:10 schrieb Theodore Y. Ts'o:
-> On Wed, Nov 28, 2018 at 04:56:51PM +0100, Rainer Fiebig wrote:
->>
->> If you still see the errors, at least the Ubuntu-kernel could be ruled=
- out.
->=20
-> My impression is that some of the people reporting problems have been
-> using stock upstream kernels, so I wasn't really worried about the
-> Ubuntu kernel (although it could be something about the default
-> configs that Ubuntu sets up).  What I was more wondering was whether
-> there was something about userspace or default configs of Ubuntu.
-> This isn't necessarily a *problem* per se; for examople, not that long
-> ago some users were getting surprised when a problem showed up with an
-> older version of the LVM2 userspace with newer upstream kernels.
-> After a while, you learn to get super paranoid about making sure to
-> rule out all possibilities when trying to debug problems that are only
-> hitting a set of users.
->=20
-> 						- Ted
->=20
-
-OK, thanks. Perhaps Andrey can tell us then what impact the default
-=2Econfig had on the problem.
-
-Rainer Fiebig
-
-
---WXuAiaQpiTEknLRql6T46iqdg4NFSo8N5--
-
---0QsFQGjkMyMDnEK94FEOhomEecNK9Layx
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEE6yx5PjBNuGB2qJXG8OH3JiWK+PUFAlv+yfoACgkQ8OH3JiWK
-+PWHcxAAz1aNEye1dotyGls5Dh8WTLd/DAF8ddd80Gql+zta0h2AYT8vvbRQwZOI
-UO4qHPtL8Xgoh0uAibHjQ4sn5/t5Sr7PPQmYcft5aTS5SZ8I7NpS7yWtYwtN7258
-af+r0bFNJVP2iAqp/oPMSGB0AsyPK0SlZ6RhWP5wtpYYpaOR7ycfa7px/aMcpBne
-MOZKPR5O4mPU1tsHjxIFiCM8gXW1rVFqSdDkz0uiHNh65pssjnKGS3GdcYcq1gow
-bYTAUEGZRgx1vrKnS9phRypG5Vu6FVnVIRroJi+Lxf1vcH39Tvz47SP+zUv/1ecE
-LNm6hC5ZJX2wXLlkDrxKL6lGMZbd5PWLyGodbjNrHMurtbGwUrdKtRbMaaxJBt25
-m4aOnXS3vG6rSARXBSZY9hCBdDVxrv3wMT3GLSOjcKqsxnIsI6w8NwnNhkA4GcfO
-mkbUI6/+xviYIUOGW/bj5SEhy+KjyJvmeTAuGthDf7xB6glp6/tnPqIm17nKTNIz
-EepX7iEBEX8S54FCo1Kr9/C9ujeKCEfRLNKQmyC9Uhf2InOSNXyitBPm8Otjp7pU
-MIyeG87yLKS0Jokn6k+Zwe/htu1KE8DxR8I9j/42D8L1/VV0GXHziDHzOtrJn2Qu
-Vj0qUGlD1m6NPCiFqmKgbk7J2ndko//tzaDfjFK7XGz4o+HNKXw=
-=aOUD
------END PGP SIGNATURE-----
-
---0QsFQGjkMyMDnEK94FEOhomEecNK9Layx--
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/btrfs/extent_io.c | 2 +-
+>  include/linux/bio.h  | 6 ------
+>  2 files changed, 1 insertion(+), 7 deletions(-)
+> 
+> diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+> index 15fd46582bb2..40751e86a2a9 100644
+> --- a/fs/btrfs/extent_io.c
+> +++ b/fs/btrfs/extent_io.c
+> @@ -2368,7 +2368,7 @@ static int bio_readpage_error(struct bio *failed_bio, u64 phy_offset,
+>  	int read_mode = 0;
+>  	blk_status_t status;
+>  	int ret;
+> -	unsigned failed_bio_pages = bio_pages_all(failed_bio);
+> +	unsigned failed_bio_pages = failed_bio->bi_iter.bi_size >> PAGE_SHIFT;
+>  
+>  	BUG_ON(bio_op(failed_bio) == REQ_OP_WRITE);
+>  
+> diff --git a/include/linux/bio.h b/include/linux/bio.h
+> index 056fb627edb3..6f6bc331a5d1 100644
+> --- a/include/linux/bio.h
+> +++ b/include/linux/bio.h
+> @@ -263,12 +263,6 @@ static inline void bio_get_last_bvec(struct bio *bio, struct bio_vec *bv)
+>  		bv->bv_len = iter.bi_bvec_done;
+>  }
+>  
+> -static inline unsigned bio_pages_all(struct bio *bio)
+> -{
+> -	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
+> -	return bio->bi_vcnt;
+> -}
+> -
+>  static inline struct bio_vec *bio_first_bvec_all(struct bio *bio)
+>  {
+>  	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
+> -- 
+> 2.9.5
+> 
