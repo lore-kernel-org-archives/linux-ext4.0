@@ -1,65 +1,75 @@
-Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:55862 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726571AbeKHWFt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 8 Nov 2018 17:05:49 -0500
-Date: Thu, 8 Nov 2018 13:30:31 +0100
-From: Jan Kara <jack@suse.cz>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        Adrian Hunter <adrian.hunter@intel.com>
-Subject: Re: [PATCH] jbd2: Avoid long hold times of j_state_lock while
- committing a transaction
-Message-ID: <20181108123031.GC29349@quack2.suse.cz>
-References: <20181016094248.21359-1-jack@suse.cz>
- <20181106052051.GD6416@thunk.org>
- <20181106102230.GC25414@quack2.suse.cz>
- <20181106164759.GE6416@thunk.org>
- <20181106172119.GB19413@quack2.suse.cz>
+Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f193.google.com ([209.85.214.193]:41384 "EHLO
+        mail-pl1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727631AbeK0Jfp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 04:35:45 -0500
+Received: by mail-pl1-f193.google.com with SMTP id u6so14575847plm.8
+        for <linux-ext4@vger.kernel.org>; Mon, 26 Nov 2018 14:40:05 -0800 (PST)
+Date: Mon, 26 Nov 2018 14:40:03 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Ming Lei <ming.lei@redhat.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V12 14/20] bcache: avoid to use
+ bio_for_each_segment_all() in bch_bio_alloc_pages()
+Message-ID: <20181126224003.GK30411@vader>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
+ <20181126021720.19471-15-ming.lei@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181106172119.GB19413@quack2.suse.cz>
+In-Reply-To: <20181126021720.19471-15-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 06-11-18 18:21:19, Jan Kara wrote:
-> On Tue 06-11-18 11:47:59, Theodore Y. Ts'o wrote:
-> > On Tue, Nov 06, 2018 at 11:22:30AM +0100, Jan Kara wrote:
-> > >> So the buffer is on BJ_Shadow list while the assertion in
-> > > jbd2_journal_dirty_metadata() expects it to be in BJ_Metadata list. This is
-> > > really weird as we have also checked that jh->b_transaction ==
-> > > handle->h_transaction so the transaction couldn't have passed to commit
-> > > phase... Oh, I see, the code in start_this_handle() got racy with the
-> > > removal of j_state_lock protection from journal_commit_transaction() so now
-> > > transaction can start even though there are handles outstanding! I'll think
-> > > about the best solution for this. Thanks for report!
-> > 
-> > Thanks for the analysis!  I finished the bisection last night and it
-> > was too late for me to dive into how this was going on.  I should have
-> > realized this before I had suggested the approach in the patch.
-> > 
-> > The original complaint which Andrian made was that the long hold times
-> > of j_state_lock at the beginning of the commit.  What he didn't
-> > mention was what the other "high priority tasks" were blocked on, but
-> > they were almost certainly start_this_handle.  And that's fundamental;
-> > when we are trying to at the beginning of the commit process is
-> > waiting for the outstanding handles to close; and so we can't let new
-> > handles start.
+On Mon, Nov 26, 2018 at 10:17:14AM +0800, Ming Lei wrote:
+> bch_bio_alloc_pages() is always called on one new bio, so it is safe
+> to access the bvec table directly. Given it is the only kind of this
+> case, open code the bvec table access since bio_for_each_segment_all()
+> will be changed to support for iterating over multipage bvec.
 > 
-> As Adrian mentioned, the problem is really with j_state_lock hold times,
-> not with waiting for outstanding handles as such (because that happens with
-> j_state_lock droppped). And the holding of j_state_lock while checking
-> for outstanding handles is not a real source of latency so we can keep
-> that. We just have to introduce new transaction state so that once we have
-> checked there are no outstanding handles and are going to drop
-> j_state_lock, we switch to this new state to prevent new reserved handles
-> from joining the transaction. I'll send a patch tomorrow...
+> Acked-by: Coly Li <colyli@suse.de>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-OK, took a bit longer to go through dioread_nolock test run but everything
-seems to work fine now for me. I've sent v2 of the patch.
+Reviewed-by: Omar Sandoval <osandov@fb.com>
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> ---
+>  drivers/md/bcache/util.c | 6 +++++-
+>  1 file changed, 5 insertions(+), 1 deletion(-)
+> 
+> diff --git a/drivers/md/bcache/util.c b/drivers/md/bcache/util.c
+> index 20eddeac1531..62fb917f7a4f 100644
+> --- a/drivers/md/bcache/util.c
+> +++ b/drivers/md/bcache/util.c
+> @@ -270,7 +270,11 @@ int bch_bio_alloc_pages(struct bio *bio, gfp_t gfp_mask)
+>  	int i;
+>  	struct bio_vec *bv;
+>  
+> -	bio_for_each_segment_all(bv, bio, i) {
+> +	/*
+> +	 * This is called on freshly new bio, so it is safe to access the
+> +	 * bvec table directly.
+> +	 */
+> +	for (i = 0, bv = bio->bi_io_vec; i < bio->bi_vcnt; bv++, i++) {
+>  		bv->bv_page = alloc_page(gfp_mask);
+>  		if (!bv->bv_page) {
+>  			while (--bv >= bio->bi_io_vec)
+> -- 
+> 2.9.5
+> 
