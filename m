@@ -1,79 +1,77 @@
-Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:44940 "EHLO
+Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:44323 "EHLO
         mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727872AbeK2Aps (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Nov 2018 19:45:48 -0500
-Received: by mail-pg1-f195.google.com with SMTP id t13so9518047pgr.11
-        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 05:44:06 -0800 (PST)
-Subject: Re: [PATCH V12 00/20] block: support multi-page bvec
-To: Ming Lei <ming.lei@redhat.com>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-References: <20181126021720.19471-1-ming.lei@redhat.com>
-From: Jens Axboe <axboe@kernel.dk>
-Message-ID: <7096bc4e-0617-29d0-a90d-ae7caf09a16d@kernel.dk>
-Date: Wed, 28 Nov 2018 06:44:00 -0700
+        with ESMTP id S1726499AbeK1Eaf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 23:30:35 -0500
+Date: Tue, 27 Nov 2018 09:31:55 -0800
+From: Guenter Roeck <linux@roeck-us.net>
+To: Marek Habersack <grendel@twistedcode.net>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
+Message-ID: <20181127173155.GA12015@roeck-us.net>
+References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
+ <b43fb902-9b64-22d9-25ca-c970b3842a43@roeck-us.net>
+ <5d94f857-b31d-a02c-5a20-2796076f447e@twistedcode.net>
 MIME-Version: 1.0
-In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <5d94f857-b31d-a02c-5a20-2796076f447e@twistedcode.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 11/25/18 7:17 PM, Ming Lei wrote:
+On Tue, Nov 27, 2018 at 03:48:19PM +0100, Marek Habersack wrote:
+> On 27/11/2018 15:32, Guenter Roeck wrote:
 > Hi,
 > 
-> This patchset brings multi-page bvec into block layer:
-> 
-> 1) what is multi-page bvec?
-> 
-> Multipage bvecs means that one 'struct bio_bvec' can hold multiple pages
-> which are physically contiguous instead of one single page used in linux
-> kernel for long time.
-> 
-> 2) why is multi-page bvec introduced?
-> 
-> Kent proposed the idea[1] first. 
-> 
-> As system's RAM becomes much bigger than before, and huge page, transparent
-> huge page and memory compaction are widely used, it is a bit easy now
-> to see physically contiguous pages from fs in I/O. On the other hand, from
-> block layer's view, it isn't necessary to store intermediate pages into bvec,
-> and it is enough to just store the physicallly contiguous 'segment' in each
-> io vector.
-> 
-> Also huge pages are being brought to filesystem and swap [2][6], we can
-> do IO on a hugepage each time[3], which requires that one bio can transfer
-> at least one huge page one time. Turns out it isn't flexiable to change
-> BIO_MAX_PAGES simply[3][5]. Multipage bvec can fit in this case very well.
-> As we saw, if CONFIG_THP_SWAP is enabled, BIO_MAX_PAGES can be configured
-> as much bigger, such as 512, which requires at least two 4K pages for holding
-> the bvec table.
+> You might try to see if you have CONFIG_SCSI_MQ_DEFAULT=yes in your kernel config. Starting with 4.19.1 it somehow
 
-I'm pretty happy with this patchset at this point, looks like it just
-needs a respin to address the last comments. My only concern is whether
-it's a good idea to target this for 4.21, or if we should wait until
-4.22. 4.21 has a fairly substantial amount of changes in terms of block
-already, it's not the best timing for something of this magnitude too.
+Yes, it is enabled in my configuration.
 
-I'm going back and forth on those one a bit. Any concerns with
-pushing this to 4.22?
+> interferes with ext4 and causes problems similar to the ones you list below. Ever since I disabled MQ (either recompile
+> your kernel or add `scsi_mod.use_blk_mq=0` to the kernel command line) none of those errors came back.
+> 
+I'll try that. Thanks a lot for the hint!
 
--- 
-Jens Axboe
+Guenter
+
+> hope it helps,
+> 
+> marek
+> > [trying again, this time with correct kernel.org address]
+> > 
+> > Hi,
+> > 
+> > I have seen the following and similar problems several times,
+> > with both v4.19.3 and v4.19.4:
+> > 
+> > Nov 23 04:32:25 mars kernel: [112668.673671] EXT4-fs error (device sdb1): ext4_iget:4831: inode #12602889: comm git: bad
+> > extra_isize 33661 (inode size 256)
+> > Nov 23 04:32:25 mars kernel: [112668.675217] Aborting journal on device sdb1-8.
+> > Nov 23 04:32:25 mars kernel: [112668.676681] EXT4-fs (sdb1): Remounting filesystem read-only
+> > Nov 23 04:32:25 mars kernel: [112668.808886] EXT4-fs error (device sdb1): ext4_iget:4831: inode #12602881: comm rm: bad
+> > extra_isize 33685 (inode size 256)
+> > ...
+> > 
+> > Nov 25 00:12:43 saturn kernel: [59377.725984] EXT4-fs error (device sda1): ext4_lookup:1578: inode #238034131: comm
+> > updatedb.mlocat: deleted inode referenced: 238160407
+> > Nov 25 00:12:43 saturn kernel: [59377.766638] Aborting journal on device sda1-8.
+> > Nov 25 00:12:43 saturn kernel: [59377.779372] EXT4-fs (sda1): Remounting filesystem read-only
+> > ...
+> > 
+> > Nov 24 01:52:31 saturn kernel: [189085.240016] EXT4-fs error (device sda1): ext4_lookup:1578: inode #52038457: comm
+> > nfsd: deleted inode referenced: 52043796
+> > Nov 24 01:52:31 saturn kernel: [189085.263427] Aborting journal on device sda1-8.
+> > Nov 24 01:52:31 saturn kernel: [189085.275313] EXT4-fs (sda1): Remounting filesystem read-only
+> > 
+> > 
+> > The same systems running v4.18.6 never experienced a problem.
+> > 
+> > Has anyone else seen similar problems ? Is there anything I can do
+> > to help tracking down the problem ?
+> > 
+> > Thanks,
+> > Guenter
+> > 
+> 
