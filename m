@@ -1,67 +1,51 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:49676 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728545AbeKVFCv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2018 00:02:51 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext2fs: Fix build of new superblock fields on BE machines
-References: <20181121001127.1868-1-krisman@collabora.com>
-        <20181121162432.GF26006@thunk.org>
-Date: Wed, 21 Nov 2018 13:27:20 -0500
-In-Reply-To: <20181121162432.GF26006@thunk.org> (Theodore Y. Ts'o's message of
-        "Wed, 21 Nov 2018 11:24:32 -0500")
-Message-ID: <87h8gajng7.fsf@collabora.com>
+Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:44502 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726345AbeK1BaS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 20:30:18 -0500
+Subject: ext4 file system corruption with v4.19.3 / v4.19.4
+From: Guenter Roeck <linux@roeck-us.net>
+To: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
+Message-ID: <b43fb902-9b64-22d9-25ca-c970b3842a43@roeck-us.net>
+Date: Tue, 27 Nov 2018 06:32:08 -0800
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Theodore Y. Ts'o" <tytso@mit.edu> writes:
-
-> On Tue, Nov 20, 2018 at 07:11:27PM -0500, Gabriel Krisman Bertazi wrote:
->> New superblock fields must be byte swapped before being accessed in Big
->> Endian machines.
->> 
->> Not tested on an actual BE machine.
->> 
->> Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.com>
->> ---
->> 
->> I just noticed this today.  I don't see the patch that includes this
->> field already pushed to kernel.org, so if you want to squash this one to
->> that patch before pushing to make the result more bisectable in BE
->> machines, I am ok with that.
->
-
-
-> Oops, sorry, I just pushed it out before I saw your note.  I'll add it
-> as a follow-on commit right away.  Fortunately we don't do too much
-> debugging on BE machines, so it's probably not worth breaking the git
-> rules and rewinding, even though it's highly unlikely anyone has done
-> a git pull in the last 10 minutes or so.
->
-> While we're at it, I should have noticed this earler before I acceptd
-> patch 2 in your series.  Could you also send a follow up patch which
-> adds a quick description of the fname_encoding feature to the ext4.5
-> man page?
+[trying again, this time with correct kernel.org address]
 
 Hi,
 
-Thanks for pushing it and yes, I can send the follow up patch.
+I have seen the following and similar problems several times,
+with both v4.19.3 and v4.19.4:
 
->
-> Also, did your v2 patch series to e2fsprogs reflect any of the
-> comments I made late last night on the rest of the v1 patch series?
+Nov 23 04:32:25 mars kernel: [112668.673671] EXT4-fs error (device sdb1): ext4_iget:4831: inode #12602889: comm git: bad extra_isize 33661 (inode size 256)
+Nov 23 04:32:25 mars kernel: [112668.675217] Aborting journal on device sdb1-8.
+Nov 23 04:32:25 mars kernel: [112668.676681] EXT4-fs (sdb1): Remounting filesystem read-only
+Nov 23 04:32:25 mars kernel: [112668.808886] EXT4-fs error (device sdb1): ext4_iget:4831: inode #12602881: comm rm: bad extra_isize 33685 (inode size 256)
+...
 
-No, it only reflects the comments you made on the night before, up to
-patch 3/10, as I hadn't seen your new responses before submitting v2.
+Nov 25 00:12:43 saturn kernel: [59377.725984] EXT4-fs error (device sda1): ext4_lookup:1578: inode #238034131: comm updatedb.mlocat: deleted inode referenced: 238160407
+Nov 25 00:12:43 saturn kernel: [59377.766638] Aborting journal on device sda1-8.
+Nov 25 00:12:43 saturn kernel: [59377.779372] EXT4-fs (sda1): Remounting filesystem read-only
+...
 
-So, please disregard v2, and I will follow up with a new iteration
-applying your new suggestions.
+Nov 24 01:52:31 saturn kernel: [189085.240016] EXT4-fs error (device sda1): ext4_lookup:1578: inode #52038457: comm nfsd: deleted inode referenced: 52043796
+Nov 24 01:52:31 saturn kernel: [189085.263427] Aborting journal on device sda1-8.
+Nov 24 01:52:31 saturn kernel: [189085.275313] EXT4-fs (sda1): Remounting filesystem read-only
 
-Thanks.
 
--- 
-Gabriel Krisman Bertazi
+The same systems running v4.18.6 never experienced a problem.
+
+Has anyone else seen similar problems ? Is there anything I can do
+to help tracking down the problem ?
+
+Thanks,
+Guenter
