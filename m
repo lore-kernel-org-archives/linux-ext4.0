@@ -1,111 +1,111 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:37962 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1730328AbeKVEwc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 23:52:32 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 3E2C02C470
-        for <linux-ext4@vger.kernel.org>; Wed, 21 Nov 2018 18:17:06 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Wed, 21 Nov 2018 18:17:05 +0000
-Message-ID: <bug-201685-13602-xIX4jR99dl@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.hrz.uni-dortmund.de ([129.217.128.51]:33610 "EHLO
+        unimail.uni-dortmund.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726381AbeK1CFQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 21:05:16 -0500
+To: Jan Kara <jack@suse.cz>
+Cc: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>,
+        linux-ext4@vger.kernel.org
+From: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+Subject: [PATCH] Updated locking documentation for transaction_t
+Message-ID: <003451d5-42f7-2084-05b2-3f913f10ce3d@tu-dortmund.de>
+Date: Tue, 27 Nov 2018 15:54:06 +0100
 MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha512;
+ protocol="application/pgp-signature";
+ boundary="Jq34OMMVNp9WvB7qGdHNPsRWNZKpwWtD2"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--Jq34OMMVNp9WvB7qGdHNPsRWNZKpwWtD2
+Content-Type: multipart/mixed; boundary="zIN9U49RmtMVie6omxK3IsCxFOFlSOnz6";
+ protected-headers="v1"
+From: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+To: Jan Kara <jack@suse.cz>
+Cc: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>,
+ linux-ext4@vger.kernel.org
+Message-ID: <003451d5-42f7-2084-05b2-3f913f10ce3d@tu-dortmund.de>
+Subject: [PATCH] Updated locking documentation for transaction_t
 
---- Comment #13 from Jimmy.Jazz@gmx.net ---
-(In reply to Theodore Tso from comment #11)
-> Thanks Jimmy for your report.  Can you specify what sort of LVM devices are
-> you using?  
+--zIN9U49RmtMVie6omxK3IsCxFOFlSOnz6
+Content-Type: text/plain; charset=utf-8
+Content-Language: de-DE
+Content-Transfer-Encoding: quoted-printable
 
-Standard lvm linear volumes on top of a full /dev/md0p5 pv partition
-on both machines with respectively kernel 4.19.2 and 4.20.0-rc3
+The following members of struct transaction_s aka transaction_t
+were turned into lock-free variables in the past:
+- t_updates
+- t_outstanding_credits
+- t_handle_count
+However, the documentation has not been updated yet.
+This commit replaced the annotated lock by [none].
 
-> 
-> I just noticed that my .config file for my GCE testing has
-> CONFIG_SCSI_MQ_DEFAULT set to "no", which means I'm not using the new
-> block-mq data path.   So perhaps this is a MQ specific bug?   (Checking...
-> hmm, my laptop running 4.19.0 plus the ext4 commits landing in 4.20-rc2+ is
-> *also* using CONFIG_SCSI_MQ_DEFAULT=n.)   And Kconfig recommends that
-> SCSI_MQ_DEFAULT be defaulted to y.
+Found by LockDoc (Alexander Lochmann, Horst Schirmeier and Olaf Spinczyk)=
 
-CONFIG_SCSI_MQ_DEFAULT=y on both machines
-CONFIG_DM_MQ_DEFAULT is not set
 
-> This is why having people include their Kernel configs, and what devices
-> they use is so important.
+Signed-off-by: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+Signed-off-by: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>
+---
+ include/linux/jbd2.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-sorry it was an oversight. See attachments.
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index b708e5169d1d..f1cec174a4b8 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -662,13 +662,13 @@ struct transaction_s
 
-server with kernel 4.19.2
-# smartctl -i /dev/sdb                                                 
-smartctl 6.6 2017-11-05 r4594 [x86_64-linux-4.19.2-radeon] (local build)
+ 	/*
+ 	 * Number of outstanding updates running on this transaction
+-	 * [t_handle_lock]
++	 * [none]
+ 	 */
+ 	atomic_t		t_updates;
 
-=== START OF INFORMATION SECTION ===
-Device Model:     MKNSSDRE512GB
-Serial Number:    MK15090210005157A
-LU WWN Device Id: 5 888914 10005157a
-Firmware Version: N1007C
-User Capacity:    512 110 190 592 bytes [512 GB]
-Sector Size:      512 bytes logical/physical
-Rotation Rate:    Solid State Device
-Device is:        Not in smartctl database [for details use: -P showall]
-ATA Version is:   ACS-2 (minor revision not indicated)
-SATA Version is:  SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s)
-Local Time is:    Wed Nov 21 19:02:07 2018 CET
-SMART support is: Available - device has SMART capability.
-SMART support is: Enabled
+ 	/*
+ 	 * Number of buffers reserved for use by all handles in this transactio=
+n
+-	 * handle but not yet modified. [t_handle_lock]
++	 * handle but not yet modified. [none]
+ 	 */
+ 	atomic_t		t_outstanding_credits;
 
-# smartctl -i /dev/sda                                                 
-smartctl 6.6 2017-11-05 r4594 [x86_64-linux-4.19.2-radeon] (local build)
+@@ -690,7 +690,7 @@ struct transaction_s
+ 	ktime_t			t_start_time;
 
-=== START OF INFORMATION SECTION ===
-Device Model:     MKNSSDRE512GB
-Serial Number:    MK150902100051556
-LU WWN Device Id: 5 888914 100051556
-Firmware Version: N1007C
-User Capacity:    512 110 190 592 bytes [512 GB]
-Sector Size:      512 bytes logical/physical
-Rotation Rate:    Solid State Device
-Device is:        Not in smartctl database [for details use: -P showall]
-ATA Version is:   ACS-2 (minor revision not indicated)
-SATA Version is:  SATA 3.1, 6.0 Gb/s (current: 6.0 Gb/s)
-Local Time is:    Wed Nov 21 19:04:01 2018 CET
-SMART support is: Available - device has SMART capability.
-SMART support is: Enabled
+ 	/*
+-	 * How many handles used this transaction? [t_handle_lock]
++	 * How many handles used this transaction? [none]
+ 	 */
+ 	atomic_t		t_handle_count;
 
-server with 4.20.0-rc3
+--=20
+2.19.1
 
-# smartctl -i /dev/sda                                                
-=== START OF INFORMATION SECTION ===
-Model Family:     HGST Travelstar 7K1000
-Device Model:     HGST HTS721010A9E630
-Serial Number:    JR10004M0BD4YF
-LU WWN Device Id: 5 000cca 8a8c52dba
-Firmware Version: JB0OA3J0
-User Capacity:    1 000 204 886 016 bytes [1,00 TB]
-Sector Sizes:     512 bytes logical, 4096 bytes physical
-Rotation Rate:    7200 rpm
-Form Factor:      2.5 inches
-Device is:        In smartctl database [for details use: -P show]
-ATA Version is:   ATA8-ACS T13/1699-D revision 6
-SATA Version is:  SATA 3.0, 6.0 Gb/s (current: 6.0 Gb/s)
-Local Time is:    Wed Nov 21 19:02:21 2018 CET
-SMART support is: Available - device has SMART capability.
-SMART support is: Enabled
 
-I do periodic backup and the strange is dm-7 is only accessed read only and it
-just triggered ext4-iget failures.
+--zIN9U49RmtMVie6omxK3IsCxFOFlSOnz6--
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+--Jq34OMMVNp9WvB7qGdHNPsRWNZKpwWtD2
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEElhZsUHzVP0dbkjCRWT7tBbw+9v0FAlv9Wo4ACgkQWT7tBbw+
+9v2ugxAA1n6ouvt/DfAgjmvipU9MtPpYrl0e6QdfmTpi+0B0CjZqrhGCcFyme9gY
+aa8Vaq3r4LK1E7/sw0O7T3V8Qv/dGC1LnHff38Vs3ba1P29u48S8EkmIjppAQZlY
+L8p6v6O4XfAQ49whn7DU/QOcwtJvmaIJolsO29J8xJbmowEw+IJD4s5nuGFnaeGS
+qbGgjxriyxhfudiOmnGc1nSCTew98ERN+7NqBzSRXaYZeI+cXXSrX9njj19ue4lD
+sXxR03/wGCLrgQcZSuJn/zxEt8Kgl2Vsim8qu8AGOvnarPSnU+usjxeW92iX8yd1
+oiZNCB84theR6E7sddmzGdcjV93iThyOe/MGxyoP2jmd6iw9B4jBGwjKFH+AYZsD
+7QUuDS4cUF2mVEVkeKXf1ELubX1hcmiQnYP062sehqElXZfp/B92Sr299eYrkbbu
+yaVczU/rsjQLRQWdkihqJYaUWGZlYFyMOlsf8dI5DoHfqsm0D0WwfC/FQVwIJog8
+Rp0OfwWnqnNMN/dKhimIsfF0cehpP0ogYgA9Jax/xV3Fv1KvWQrmQ+e+cN8I9MaC
+GZucOSRDYgK638NZpdFGZczNFQmCkdplrwQtmu9J5IlYaOrRxbkh/aBBbNMgFf09
+aOf3lDnsUHYq87gm+E2KZjGHM/nHtRoW3DtR4cLuBKyAqrghYO8=
+=Y+uX
+-----END PGP SIGNATURE-----
+
+--Jq34OMMVNp9WvB7qGdHNPsRWNZKpwWtD2--
