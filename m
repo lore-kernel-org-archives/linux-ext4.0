@@ -1,41 +1,58 @@
-Return-Path: <SRS0=UtPy=NO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:33626 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726430AbeKDFkb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 4 Nov 2018 01:40:31 -0400
-Date: Sat, 3 Nov 2018 16:28:06 -0400
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Vasily Averin <vvs@virtuozzo.com>
-Cc: linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org,
-        Yongqiang Yang <xiaoqiangnk@gmail.com>,
-        Yongqiang Yang <yangyongqiang01@baidu.com>
-Subject: Re: [PATCH v2 02/11] ext4 resize: missing brelse() after errors in
- set_flexbg_block_bitmap()
-Message-ID: <20181103202806.GF28850@thunk.org>
-References: <cover.1540935522.git.vvs@virtuozzo.com>
- <de9191d6-1cb1-6725-f378-b886c9cd06d0@virtuozzo.com>
+Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:44890 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1730087AbeK0URA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 27 Nov 2018 15:17:00 -0500
+Date: Tue, 27 Nov 2018 10:19:43 +0100
+From: Jan Kara <jack@suse.cz>
+To: Pan Bian <bianpan2016@163.com>
+Cc: Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext2: fix potential use after free
+Message-ID: <20181127091943.GB16301@quack2.suse.cz>
+References: <1543107482-97334-1-git-send-email-bianpan2016@163.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <de9191d6-1cb1-6725-f378-b886c9cd06d0@virtuozzo.com>
+In-Reply-To: <1543107482-97334-1-git-send-email-bianpan2016@163.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 31, 2018 at 12:57:45AM +0300, Vasily Averin wrote:
-> Fixes 33afdcc5402d ("ext4: add a function which sets up group blocks ...") # 3.3
+On Sun 25-11-18 08:58:02, Pan Bian wrote:
+> The function ext2_xattr_set calls brelse(bh) to drop the reference count
+> of bh. After that, bh may be freed. However, following brelse(bh),
+> it reads bh->b_data via macro HDR(bh). This may result in a
+> use-after-free bug. This patch moves brelse(bh) after reading field.
 > 
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> Signed-off-by: Pan Bian <bianpan2016@163.com>
 
-Thanks, applied.  I adjusted the patch summary:
+Thanks for the fix! I've added the patch to my tree.
 
-    ext4: add missing brelse() in set_flexbg_block_bitmap()'s error path
+								Honza
 
-Also please note that properly Fixes should have a colon, and to add
-Cc: stable@kernel.org to trailer to make sure they get backported:
-    
-    Fixes: 33afdcc5402d ("ext4: add a function which sets up group blocks ...")
-    Cc: stable@kernel.org # 3.3
-
-						- Ted
+> ---
+>  fs/ext2/xattr.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index 62d9a659a..dd8f10d 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -612,9 +612,9 @@ bad_block:		ext2_error(sb, "ext2_xattr_set",
+>  	}
+>  
+>  cleanup:
+> -	brelse(bh);
+>  	if (!(bh && header == HDR(bh)))
+>  		kfree(header);
+> +	brelse(bh);
+>  	up_write(&EXT2_I(inode)->xattr_sem);
+>  
+>  	return error;
+> -- 
+> 2.7.4
+> 
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
