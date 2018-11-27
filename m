@@ -1,192 +1,204 @@
-Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58708 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728634AbeKOTBB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 15 Nov 2018 14:01:01 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Ming Lei <ming.lei@redhat.com>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: [PATCH V10 02/19] block: introduce bio_for_each_bvec()
-Date: Thu, 15 Nov 2018 16:52:49 +0800
-Message-Id: <20181115085306.9910-3-ming.lei@redhat.com>
-In-Reply-To: <20181115085306.9910-1-ming.lei@redhat.com>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
+Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:43778 "EHLO
+        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1729559AbeK0WqN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 27 Nov 2018 17:46:13 -0500
+From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Subject: jbd2 bh_shadow issue
+To: linux-ext4@vger.kernel.org
+Cc: fisherthepooh@protonmail.com, Jan Kara <jack@suse.cz>,
+        tytso@mit.edu
+Message-ID: <871f4cbf-f7bc-35d8-bd42-32721b44c458@linux.alibaba.com>
+Date: Tue, 27 Nov 2018 19:48:28 +0800
+MIME-Version: 1.0
+Content-Type: text/plain; charset=gbk; format=flowed
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This helper is used for iterating over multi-page bvec for bio
-split & merge code.
+hi,
 
-Cc: Dave Chinner <dchinner@redhat.com>
-Cc: Kent Overstreet <kent.overstreet@gmail.com>
-Cc: Mike Snitzer <snitzer@redhat.com>
-Cc: dm-devel@redhat.com
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org
-Cc: Shaohua Li <shli@kernel.org>
-Cc: linux-raid@vger.kernel.org
-Cc: linux-erofs@lists.ozlabs.org
-Cc: David Sterba <dsterba@suse.com>
-Cc: linux-btrfs@vger.kernel.org
-Cc: Darrick J. Wong <darrick.wong@oracle.com>
-Cc: linux-xfs@vger.kernel.org
-Cc: Gao Xiang <gaoxiang25@huawei.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Cc: Coly Li <colyli@suse.de>
-Cc: linux-bcache@vger.kernel.org
-Cc: Boaz Harrosh <ooo@electrozaur.com>
-Cc: Bob Peterson <rpeterso@redhat.com>
-Cc: cluster-devel@redhat.com
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
+I also meet this issue in our server, sometimes we got big latency for
+buffered writes. Using fio, I have done some tests to reproduce this issue,
+Please see test results in this mail:
+https://www.spinics.net/lists/linux-ext4/msg62885.html
+
+I agree that doing buffer copy-out for every journaled buffer wastes cpu
+time, so here I wonder whether we can only do buffer copy-out when buffer
+is BH_SHADOW state. The core idea is simple:
+     In do_get_write_access(), if buffer has already been in BH_SHADOW state,
+     we allocate a new page, make buffer's b_page point to this new page, and
+     following journal dirty work can be done in this patch. When transaction
+     commits, in jbd2_journal_write_metadata_buffer(), we copy new page's conten
+     to primary page, make buffer point to primary page and free the temporary
+     page.
+
+I have written a test patch, the big long latency will disapper. Do you think
+the method is useful? If you think so, I can submit a formal patch and do fstests.
+Anyway I think this issue is not good, maybe we should fix it:)
+
+Here I attach my test patch here:
+Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
 ---
- include/linux/bio.h  | 34 +++++++++++++++++++++++++++++++---
- include/linux/bvec.h | 36 ++++++++++++++++++++++++++++++++----
- 2 files changed, 63 insertions(+), 7 deletions(-)
+  fs/jbd2/journal.c            | 26 ++++++++++++++++++++++++--
+  fs/jbd2/transaction.c        | 31 +++++++++++++++++++++++++++----
+  include/linux/buffer_head.h  |  1 +
+  include/linux/jbd2.h         |  7 +++++++
+  include/linux/journal-head.h |  4 ++++
+  5 files changed, 63 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 056fb627edb3..1f0dcf109841 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -76,6 +76,9 @@
- #define bio_data_dir(bio) \
- 	(op_is_write(bio_op(bio)) ? WRITE : READ)
- 
-+#define bio_iter_mp_iovec(bio, iter)				\
-+	mp_bvec_iter_bvec((bio)->bi_io_vec, (iter))
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 8ef6b6daaa7a..bb0612cf5447 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -393,8 +393,30 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+  		new_page = virt_to_page(jh_in->b_frozen_data);
+  		new_offset = offset_in_page(jh_in->b_frozen_data);
+  	} else {
+-		new_page = jh2bh(jh_in)->b_page;
+-		new_offset = offset_in_page(jh2bh(jh_in)->b_data);
++		if (buffer_lege(bh_in)) {
++			char *primary, *temp_primary = jh_in->b_temp_data;
++			struct page *temp_page;
++			unsigned temp_offset;
 +
- /*
-  * Check whether this bio carries any data or not. A NULL bio is allowed.
-  */
-@@ -135,18 +138,33 @@ static inline bool bio_full(struct bio *bio)
- #define bio_for_each_segment_all(bvl, bio, i)				\
- 	for (i = 0, bvl = (bio)->bi_io_vec; i < (bio)->bi_vcnt; i++, bvl++)
- 
--static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
--				    unsigned bytes)
-+static inline void __bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
-+				      unsigned bytes, bool mp)
- {
- 	iter->bi_sector += bytes >> 9;
- 
- 	if (bio_no_advance_iter(bio))
- 		iter->bi_size -= bytes;
- 	else
--		bvec_iter_advance(bio->bi_io_vec, iter, bytes);
-+		if (!mp)
-+			bvec_iter_advance(bio->bi_io_vec, iter, bytes);
-+		else
-+			mp_bvec_iter_advance(bio->bi_io_vec, iter, bytes);
- 		/* TODO: It is reasonable to complete bio with error here. */
- }
- 
-+static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
-+				    unsigned bytes)
-+{
-+	__bio_advance_iter(bio, iter, bytes, false);
-+}
++			new_page = jh_in->page;
++			new_offset = jh_in->page_offset;
 +
-+static inline void bio_advance_mp_iter(struct bio *bio, struct bvec_iter *iter,
-+				       unsigned bytes)
-+{
-+	__bio_advance_iter(bio, iter, bytes, true);
-+}
++			temp_page = virt_to_page(temp_primary);
++			temp_offset = offset_in_page(temp_primary);
++			primary = kmap_atomic(new_page);
++			mapped_data = kmap_atomic(temp_page);
 +
- #define __bio_for_each_segment(bvl, bio, iter, start)			\
- 	for (iter = (start);						\
- 	     (iter).bi_size &&						\
-@@ -156,6 +174,16 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
- #define bio_for_each_segment(bvl, bio, iter)				\
- 	__bio_for_each_segment(bvl, bio, iter, (bio)->bi_iter)
- 
-+#define __bio_for_each_bvec(bvl, bio, iter, start)		\
-+	for (iter = (start);						\
-+	     (iter).bi_size &&						\
-+		((bvl = bio_iter_mp_iovec((bio), (iter))), 1);	\
-+	     bio_advance_mp_iter((bio), &(iter), (bvl).bv_len))
++			memcpy(primary + new_offset, mapped_data + temp_offset,
++			       bh_in->b_size);
++			set_bh_page(bh_in, new_page, new_offset);
++			kunmap_atomic(primary);
++			kunmap_atomic(temp_primary);
++			jbd2_free(temp_primary, bh_in->b_size);
++			clear_buffer_primarycopied(bh_in);
++		} else {
++			new_page = jh2bh(jh_in)->b_page;
++			new_offset = offset_in_page(jh2bh(jh_in)->b_data);
++		}
+  	}
+
+  	mapped_data = kmap_atomic(new_page);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index c0b66a7a795b..6ad8ec94c7b8 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -827,6 +827,7 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+  	journal_t *journal;
+  	int error;
+  	char *frozen_buffer = NULL;
++	char *tmp_primary = NULL;
+  	unsigned long start_lock, time_lock;
+
+  	if (is_handle_aborted(handle))
+@@ -956,10 +957,29 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+  	 * here.
+  	 */
+  	if (buffer_shadow(bh)) {
+-		JBUFFER_TRACE(jh, "on shadow: sleep");
+-		jbd_unlock_bh_state(bh);
+-		wait_on_bit_io(&bh->b_state, BH_Shadow, TASK_UNINTERRUPTIBLE);
+-		goto repeat;
++		char *mapped_data;
++		struct page *new_page;
++		unsigned int primary_offset, new_offset;
 +
-+/* returns one real segment(multipage bvec) each time */
-+#define bio_for_each_bvec(bvl, bio, iter)			\
-+	__bio_for_each_bvec(bvl, bio, iter, (bio)->bi_iter)
++		if (!tmp_primary) {
++			jbd_unlock_bh_state(bh);
++			tmp_primary = jbd2_alloc(bh->b_size, GFP_NOFS |
++						 __GFP_NOFAIL);
++			goto repeat;
++		}
 +
- #define bio_iter_last(bvec, iter) ((iter).bi_size == (bvec).bv_len)
- 
- static inline unsigned bio_segments(struct bio *bio)
-diff --git a/include/linux/bvec.h b/include/linux/bvec.h
-index 8ef904a50577..3d61352cd8cf 100644
---- a/include/linux/bvec.h
-+++ b/include/linux/bvec.h
-@@ -124,8 +124,16 @@ struct bvec_iter {
- 	.bv_offset	= bvec_iter_offset((bvec), (iter)),	\
- })
- 
--static inline bool bvec_iter_advance(const struct bio_vec *bv,
--		struct bvec_iter *iter, unsigned bytes)
-+#define mp_bvec_iter_bvec(bvec, iter)				\
-+((struct bio_vec) {							\
-+	.bv_page	= mp_bvec_iter_page((bvec), (iter)),	\
-+	.bv_len		= mp_bvec_iter_len((bvec), (iter)),	\
-+	.bv_offset	= mp_bvec_iter_offset((bvec), (iter)),	\
-+})
++		primary_offset = offset_in_page(bh->b_data);
++		mapped_data = kmap_atomic(bh->b_page);
++		memcpy(tmp_primary, mapped_data + primary_offset, bh->b_size);
++		kunmap_atomic(mapped_data);
 +
-+static inline bool __bvec_iter_advance(const struct bio_vec *bv,
-+				       struct bvec_iter *iter,
-+				       unsigned bytes, bool mp)
- {
- 	if (WARN_ONCE(bytes > iter->bi_size,
- 		     "Attempted to advance past end of bvec iter\n")) {
-@@ -134,8 +142,14 @@ static inline bool bvec_iter_advance(const struct bio_vec *bv,
- 	}
- 
- 	while (bytes) {
--		unsigned iter_len = bvec_iter_len(bv, *iter);
--		unsigned len = min(bytes, iter_len);
-+		unsigned len;
++		new_page = virt_to_page(tmp_primary);
++		new_offset = offset_in_page(tmp_primary);
++		jh->b_temp_data = tmp_primary;
++		jh->page = bh->b_page;
++		jh->page_offset = primary_offset;
++		set_bh_page(bh, new_page, new_offset);
++		set_buffer_primarycopied(bh);
+  	}
+
+  	/*
+@@ -1009,6 +1029,9 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+  	if (unlikely(frozen_buffer))	/* It's usually NULL */
+  		jbd2_free(frozen_buffer, bh->b_size);
+
++	if (tmp_primary)
++		jbd2_free(frozen_buffer, bh->b_size);
 +
-+		if (mp)
-+			len = mp_bvec_iter_len(bv, *iter);
-+		else
-+			len = bvec_iter_len(bv, *iter);
+  	JBUFFER_TRACE(jh, "exit");
+  	return error;
+  }
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 96225a77c112..88fbe345d291 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -66,6 +66,7 @@ struct buffer_head {
+  	struct page *b_page;		/* the page this bh is mapped to */
+
+  	sector_t b_blocknr;		/* start block number */
++	sector_t orig_blocknr;		/* start block number */
+  	size_t b_size;			/* size of mapping */
+  	char *b_data;			/* pointer to data within the page */
+
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index b708e5169d1d..0928f9bea8f4 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -321,6 +321,12 @@ enum jbd_state_bits {
+  	BH_Shadow,		/* IO on shadow buffer is running */
+  	BH_Verified,		/* Metadata block has been verified ok */
+  	BH_JBDPrivateStart,	/* First bit available for private use by FS */
++	/*
++	 * We can not dirty a bh while it's going to disk with BH_Shadow flag.
++	 * In this case, we can copy this bh and let later fs dirty operations
++	 * go to this new bh.
++	 */
++	BH_PrimaryCopied,
+  };
+
+  BUFFER_FNS(JBD, jbd)
+@@ -334,6 +340,7 @@ TAS_BUFFER_FNS(RevokeValid, revokevalid)
+  BUFFER_FNS(Freed, freed)
+  BUFFER_FNS(Shadow, shadow)
+  BUFFER_FNS(Verified, verified)
++BUFFER_FNS(PrimaryCopied, primarycopied)
+
+  static inline struct buffer_head *jh2bh(struct journal_head *jh)
+  {
+diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
+index 9fb870524314..0fa317124d9a 100644
+--- a/include/linux/journal-head.h
++++ b/include/linux/journal-head.h
+@@ -51,6 +51,10 @@ struct journal_head {
+  	 */
+  	char *b_frozen_data;
+
++	struct page *page;
++	unsigned int page_offset;
++	char *b_temp_data;
 +
-+		len = min(bytes, len);
- 
- 		bytes -= len;
- 		iter->bi_size -= len;
-@@ -173,6 +187,20 @@ static inline bool bvec_iter_rewind(const struct bio_vec *bv,
- 	return true;
- }
- 
-+static inline bool bvec_iter_advance(const struct bio_vec *bv,
-+				     struct bvec_iter *iter,
-+				     unsigned bytes)
-+{
-+	return __bvec_iter_advance(bv, iter, bytes, false);
-+}
-+
-+static inline bool mp_bvec_iter_advance(const struct bio_vec *bv,
-+					struct bvec_iter *iter,
-+					unsigned bytes)
-+{
-+	return __bvec_iter_advance(bv, iter, bytes, true);
-+}
-+
- #define for_each_bvec(bvl, bio_vec, iter, start)			\
- 	for (iter = (start);						\
- 	     (iter).bi_size &&						\
+  	/*
+  	 * Pointer to a saved copy of the buffer containing no uncommitted
+  	 * deallocation references, so that allocations can avoid overwriting
 -- 
-2.9.5
+2.14.4.44.g2045bb6
+
+
+
+
+
+Regards,
+Xiaoguang Wang
