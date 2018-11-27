@@ -1,74 +1,47 @@
-Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out4-smtp.messagingengine.com ([66.111.4.28]:58553 "EHLO
-        out4-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727341AbeK1TCy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 28 Nov 2018 14:02:54 -0500
-Reply-To: grendel@twistedcode.net
-Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        "Andrey Jr. Melnikov" <temnota.am@gmail.com>,
-        linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
- <b43fb902-9b64-22d9-25ca-c970b3842a43@roeck-us.net>
- <vb31df-25g.ln1@banana.localnet> <20181128041555.GE31885@thunk.org>
-From: Marek Habersack <grendel@twistedcode.net>
-Message-ID: <5d21196e-15d5-3351-e431-576d3640387f@twistedcode.net>
-Date: Wed, 28 Nov 2018 09:02:05 +0100
+Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:33828 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727625AbeK0NWC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 27 Nov 2018 08:22:02 -0500
+Date: Tue, 27 Nov 2018 10:25:19 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
+        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V12 16/20] block: enable multipage bvecs
+Message-ID: <20181127022517.GC25199@ming.t460p>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
+ <20181126021720.19471-17-ming.lei@redhat.com>
+ <20181126125842.GE6383@lst.de>
 MIME-Version: 1.0
-In-Reply-To: <20181128041555.GE31885@thunk.org>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181126125842.GE6383@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 28/11/2018 05:15, Theodore Y. Ts'o wrote:
-> On Wed, Nov 28, 2018 at 03:16:33AM +0300, Andrey Jr. Melnikov wrote:
->> Corrupted inodes - always directory, not touched at least year or
->> more for writing. Something wrong when updating atime?
-I've just seen the errors come back despite having MQ off :( However, this time it took 5 days for them to come back, so
-MQ must play a role here. Also, indeed, they happened after fstrim ran and this time *only* on the SSD disks reported
-below, another clue? This time the errors were "just" orphaned inodes + invalid free inode counts, all repaired without
-issues by fsck.
-
+On Mon, Nov 26, 2018 at 01:58:42PM +0100, Christoph Hellwig wrote:
+> > +		phys_addr_t vec_end_addr = page_to_phys(bv->bv_page) +
+> > +			bv->bv_offset + bv->bv_len;
 > 
-> We're not sure.  The frustrating thing is that it's not reproducing
-> for me.  I run extensive regression tests, and I'm using 4.19 on my
-> development laptop without notcing any problems.  If I could reproduce
-> it, I could debug it, but since I can't, I need to rely on those who
-> are seeing the problem to help pinpoint the problem.
-> 
-> I'm trying to figure out common factors from those people who are
-> reporting problems.
-> 
-> (a) What distribution are you running (it appears that many people
-> reporting problems are running Ubuntu, but this may be a sampling
-> issue; lots of people run Ubuntu)?  (For the record, I'm using Debian
-> Testing.)
-Ubuntu 18.10 here
+> The name is a little confusing, as the real end addr would be -1.  Maybe
+> throw the -1 in here, and adjust for it in the contigous check below?
 
-> 
-> (b) What hardware are you using?  (SSD?  SATA-attached?
-> NVMe-attached?)
-The errors occured on both SSD:
-  - Samsung SSD 850 EVO 1TB, firmware rev EMT03B6Q
-  - OCZ-AGILITY3, firmware rev 2.25
+Yeah, it makes sense.
 
-and spinning rust:
-  - Seagate ST2000DX001-1CM164, firmware revision CC43
-
-> 
-> (c) Are you using LVM?  LUKS (e.g., disk encrypted)?
-LUKS. Both the Samsung and the Seagate use DM for encryption.
-
-> (d) are you using discard?  One theory is a recent discard change may
-> be in play.   How do you use discard?   (mount option, fstrim, etc.)
-fstrim runs weekly and the Samsung SSD is mounted with
-
-   rw,nosuid,nodev,noatime,discard,helper=crypt
-
-marek
-> 
->       	      	     	     		- Ted
-> 
+thanks,
+Ming
