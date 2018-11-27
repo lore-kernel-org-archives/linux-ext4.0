@@ -1,94 +1,91 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:46385 "EHLO
-        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727348AbeKPMKE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 07:10:04 -0500
-Received: by mail-pg1-f195.google.com with SMTP id w7so9843280pgp.13
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 17:59:38 -0800 (PST)
-Date: Thu, 15 Nov 2018 17:59:36 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 15/19] block: always define BIO_MAX_PAGES as 256
-Message-ID: <20181116015936.GJ23828@vader>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-16-ming.lei@redhat.com>
+Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.hrz.uni-dortmund.de ([129.217.128.51]:33610 "EHLO
+        unimail.uni-dortmund.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726381AbeK1CFO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Nov 2018 21:05:14 -0500
+To: Jan Kara <jack@suse.cz>
+Cc: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>,
+        linux-ext4@vger.kernel.org
+From: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+Subject: [PATCH] inode_has_no_xattr() does not use proper sync
+Message-ID: <ce8c29d7-7f5e-5c78-dbd9-15364a384138@tu-dortmund.de>
+Date: Tue, 27 Nov 2018 15:54:28 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-16-ming.lei@redhat.com>
+Content-Type: multipart/signed; micalg=pgp-sha512;
+ protocol="application/pgp-signature";
+ boundary="Lz3rPUvLvUHq6MAurzvaFbaqH4Mjd2O68"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:53:02PM +0800, Ming Lei wrote:
-> Now multi-page bvec can cover CONFIG_THP_SWAP, so we don't need to
-> increase BIO_MAX_PAGES for it.
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--Lz3rPUvLvUHq6MAurzvaFbaqH4Mjd2O68
+Content-Type: multipart/mixed; boundary="9Ts6RDfIpviu5kSXZ92QAT7aFoLnnlWAo";
+ protected-headers="v1"
+From: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+To: Jan Kara <jack@suse.cz>
+Cc: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>,
+ linux-ext4@vger.kernel.org
+Message-ID: <ce8c29d7-7f5e-5c78-dbd9-15364a384138@tu-dortmund.de>
+Subject: [PATCH] inode_has_no_xattr() does not use proper sync
 
-You mentioned to it in the cover letter, but this needs more explanation
-in the commit message. Why did CONFIG_THP_SWAP require > 256? Why does
-multipage bvecs remove that requirement?
+--9Ts6RDfIpviu5kSXZ92QAT7aFoLnnlWAo
+Content-Type: text/plain; charset=utf-8
+Content-Language: de-DE
+Content-Transfer-Encoding: quoted-printable
 
-> Cc: Dave Chinner <dchinner@redhat.com>
-> Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> Cc: Mike Snitzer <snitzer@redhat.com>
-> Cc: dm-devel@redhat.com
-> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> Cc: linux-fsdevel@vger.kernel.org
-> Cc: Shaohua Li <shli@kernel.org>
-> Cc: linux-raid@vger.kernel.org
-> Cc: linux-erofs@lists.ozlabs.org
-> Cc: David Sterba <dsterba@suse.com>
-> Cc: linux-btrfs@vger.kernel.org
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: linux-xfs@vger.kernel.org
-> Cc: Gao Xiang <gaoxiang25@huawei.com>
-> Cc: Christoph Hellwig <hch@lst.de>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Coly Li <colyli@suse.de>
-> Cc: linux-bcache@vger.kernel.org
-> Cc: Boaz Harrosh <ooo@electrozaur.com>
-> Cc: Bob Peterson <rpeterso@redhat.com>
-> Cc: cluster-devel@redhat.com
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> ---
->  include/linux/bio.h | 8 --------
->  1 file changed, 8 deletions(-)
-> 
-> diff --git a/include/linux/bio.h b/include/linux/bio.h
-> index 5040e9a2eb09..277921ad42e7 100644
-> --- a/include/linux/bio.h
-> +++ b/include/linux/bio.h
-> @@ -34,15 +34,7 @@
->  #define BIO_BUG_ON
->  #endif
->  
-> -#ifdef CONFIG_THP_SWAP
-> -#if HPAGE_PMD_NR > 256
-> -#define BIO_MAX_PAGES		HPAGE_PMD_NR
-> -#else
->  #define BIO_MAX_PAGES		256
-> -#endif
-> -#else
-> -#define BIO_MAX_PAGES		256
-> -#endif
->  
->  #define bio_prio(bio)			(bio)->bi_ioprio
->  #define bio_set_prio(bio, prio)		((bio)->bi_ioprio = prio)
-> -- 
-> 2.9.5
-> 
+
+inode.i_flags is modified without any proper
+synchronisation used. inode_set_flags() is now used.
+
+Found by LockDoc (Alexander Lochmann, Horst Schirmeier and Olaf
+Spinczyk)
+
+Signed-off-by: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+Signed-off-by: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>
+---
+ include/linux/fs.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index c95c0807471f..54f3a21668a6 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -3446,7 +3446,7 @@ static inline int check_sticky(struct inode *dir,
+struct inode *inode)
+ static inline void inode_has_no_xattr(struct inode *inode)
+ {
+ 	if (!is_sxid(inode->i_mode) && (inode->i_sb->s_flags & SB_NOSEC))
+-		inode->i_flags |=3D S_NOSEC;
++		inode_set_flags(inode, S_NOSEC, S_NOSEC);
+ }
+
+ static inline bool is_root_inode(struct inode *inode)
+--=20
+2.19.1
+
+
+--9Ts6RDfIpviu5kSXZ92QAT7aFoLnnlWAo--
+
+--Lz3rPUvLvUHq6MAurzvaFbaqH4Mjd2O68
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEElhZsUHzVP0dbkjCRWT7tBbw+9v0FAlv9WqQACgkQWT7tBbw+
+9v22DQ/+PtgGQv0PAcOy1Ek4nMdd9rnURlvpEyxnjwYW924l4wVREkOxphGVaL5h
+inT7JZfO+egiVkLKEJ/EdS9woanp3XVArHSwOvuKIRcBC+gHrp48MUYQnKgiV0Gn
+izBq1ubnUID5JARZIhL4Hs0XgWSX6y5tEZuPjZoNIYGlg26ncG4FtO53CNGyAC5Z
+ev9lnY8Pmi7KMsbn/80BGzmyhR9+26YVI6bCX/93r7OK29T5z9XmByXw+qw+aldW
+Wd6ihjEIagd+qaVyHjqmnLlS2IFiXrOYjkZFE7D17Z0Jy773rlz8hZWagMyoibMo
+mYRKNq0FjweQ23GQf7nLk0hA9RNwVC95OrXDT5T+g0EPi03Z7uHGW1vcaDe/+EBX
+Y+AyalOwn045monQaHmHs0343UQkIbvuxTLUWBaipgtUmXCrBr/aPa7vUeM/94Vv
+SMnlNFqijquR+VpkyjnNiSSL/od9l8eyN71hV1g6SAHEAL0UKRKP2CsbxWNlfmje
+9ZFuDpBGMEWXhfCp9R7T0TOGw1o9be4WCRaFfeFYno5C+mSrziRLtmUaayKLs+Zk
+LBY+mWzGlCYgeB3762fSyE2/ML/miTqlsL+nC0CeANXUK4U+FxdA3nM4Jr201h+3
+qKNvVv4lHlKu6p9G04PLHHFst/tgNDsEBiraVly7xS4Q8/EVbr4=
+=7Mxw
+-----END PGP SIGNATURE-----
+
+--Lz3rPUvLvUHq6MAurzvaFbaqH4Mjd2O68--
