@@ -1,96 +1,93 @@
-Return-Path: <SRS0=JALT=N2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51260 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728948AbeKOTC2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 15 Nov 2018 14:02:28 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Ming Lei <ming.lei@redhat.com>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: [PATCH V10 08/19] btrfs: move bio_pages_all() to btrfs
-Date: Thu, 15 Nov 2018 16:52:55 +0800
-Message-Id: <20181115085306.9910-9-ming.lei@redhat.com>
-In-Reply-To: <20181115085306.9910-1-ming.lei@redhat.com>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
+Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:46008 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729147AbeK0UZ4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 27 Nov 2018 15:25:56 -0500
+Date: Tue, 27 Nov 2018 10:28:36 +0100
+From: Jan Kara <jack@suse.cz>
+To: Colin King <colin.king@canonical.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: clean up indentation issues, remove extraneous tabs
+Message-ID: <20181127092836.GD16301@quack2.suse.cz>
+References: <20181123163043.14178-1-colin.king@canonical.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181123163043.14178-1-colin.king@canonical.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-BTRFS is the only user of this helper, so move this helper into
-BTRFS, and implement it via bio_for_each_segment_all(), since
-bio->bi_vcnt may not equal to number of pages after multipage bvec
-is enabled.
+On Fri 23-11-18 16:30:43, Colin King wrote:
+> From: Colin Ian King <colin.king@canonical.com>
+> 
+> There are several lines that are indented too far, clean these
+> up by removing the tabs.
+> 
+> Signed-off-by: Colin Ian King <colin.king@canonical.com>
 
-Cc: Dave Chinner <dchinner@redhat.com>
-Cc: Kent Overstreet <kent.overstreet@gmail.com>
-Cc: Mike Snitzer <snitzer@redhat.com>
-Cc: dm-devel@redhat.com
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org
-Cc: Shaohua Li <shli@kernel.org>
-Cc: linux-raid@vger.kernel.org
-Cc: linux-erofs@lists.ozlabs.org
-Cc: David Sterba <dsterba@suse.com>
-Cc: linux-btrfs@vger.kernel.org
-Cc: Darrick J. Wong <darrick.wong@oracle.com>
-Cc: linux-xfs@vger.kernel.org
-Cc: Gao Xiang <gaoxiang25@huawei.com>
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Cc: Coly Li <colyli@suse.de>
-Cc: linux-bcache@vger.kernel.org
-Cc: Boaz Harrosh <ooo@electrozaur.com>
-Cc: Bob Peterson <rpeterso@redhat.com>
-Cc: cluster-devel@redhat.com
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- fs/btrfs/extent_io.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
+The patch looks good. You can add:
 
-diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
-index 5d5965297e7e..874bb9aeebdc 100644
---- a/fs/btrfs/extent_io.c
-+++ b/fs/btrfs/extent_io.c
-@@ -2348,6 +2348,18 @@ struct bio *btrfs_create_repair_bio(struct inode *inode, struct bio *failed_bio,
- 	return bio;
- }
- 
-+static unsigned btrfs_bio_pages_all(struct bio *bio)
-+{
-+	unsigned i;
-+	struct bio_vec *bv;
-+
-+	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
-+
-+	bio_for_each_segment_all(bv, bio, i)
-+		;
-+	return i;
-+}
-+
- /*
-  * this is a generic handler for readpage errors (default
-  * readpage_io_failed_hook). if other copies exist, read those and write back
-@@ -2368,7 +2380,7 @@ static int bio_readpage_error(struct bio *failed_bio, u64 phy_offset,
- 	int read_mode = 0;
- 	blk_status_t status;
- 	int ret;
--	unsigned failed_bio_pages = bio_pages_all(failed_bio);
-+	unsigned failed_bio_pages = btrfs_bio_pages_all(failed_bio);
- 
- 	BUG_ON(bio_op(failed_bio) == REQ_OP_WRITE);
- 
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/ext4/migrate.c | 12 ++++++------
+>  fs/ext4/super.c   |  2 +-
+>  2 files changed, 7 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+> index 61a9d1927817..5ae61cd8c5c9 100644
+> --- a/fs/ext4/migrate.c
+> +++ b/fs/ext4/migrate.c
+> @@ -535,22 +535,22 @@ int ext4_ext_migrate(struct inode *inode)
+>  	if (i_data[EXT4_IND_BLOCK]) {
+>  		retval = update_ind_extent_range(handle, tmp_inode,
+>  				le32_to_cpu(i_data[EXT4_IND_BLOCK]), &lb);
+> -			if (retval)
+> -				goto err_out;
+> +		if (retval)
+> +			goto err_out;
+>  	} else
+>  		lb.curr_block += max_entries;
+>  	if (i_data[EXT4_DIND_BLOCK]) {
+>  		retval = update_dind_extent_range(handle, tmp_inode,
+>  				le32_to_cpu(i_data[EXT4_DIND_BLOCK]), &lb);
+> -			if (retval)
+> -				goto err_out;
+> +		if (retval)
+> +			goto err_out;
+>  	} else
+>  		lb.curr_block += max_entries * max_entries;
+>  	if (i_data[EXT4_TIND_BLOCK]) {
+>  		retval = update_tind_extent_range(handle, tmp_inode,
+>  				le32_to_cpu(i_data[EXT4_TIND_BLOCK]), &lb);
+> -			if (retval)
+> -				goto err_out;
+> +		if (retval)
+> +			goto err_out;
+>  	}
+>  	/*
+>  	 * Build the last extent
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 5603a4a1a864..15fc71398747 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1940,7 +1940,7 @@ static int handle_mount_opt(struct super_block *sb, char *opt, int token,
+>  #ifdef CONFIG_FS_DAX
+>  		ext4_msg(sb, KERN_WARNING,
+>  		"DAX enabled. Warning: EXPERIMENTAL, use at your own risk");
+> -			sbi->s_mount_opt |= m->mount_opt;
+> +		sbi->s_mount_opt |= m->mount_opt;
+>  #else
+>  		ext4_msg(sb, KERN_INFO, "dax option not supported");
+>  		return -1;
+> -- 
+> 2.19.1
+> 
 -- 
-2.9.5
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
