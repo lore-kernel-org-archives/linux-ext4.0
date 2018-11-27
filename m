@@ -1,51 +1,61 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:57741 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2387923AbeKVVmL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 16:42:11 -0500
-Date: Thu, 22 Nov 2018 12:03:15 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 12/19] block: allow bio_for_each_segment_all() to
- iterate over multi-page bvec
-Message-ID: <20181122110315.GA30369@lst.de>
-References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-13-ming.lei@redhat.com>
+Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:44272 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1730050AbeK0UMK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 27 Nov 2018 15:12:10 -0500
+Date: Tue, 27 Nov 2018 10:14:53 +0100
+From: Jan Kara <jack@suse.cz>
+To: Pan Bian <bianpan2016@163.com>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext4: fix possible use after free in ext4_quota_enable
+Message-ID: <20181127091453.GA16301@quack2.suse.cz>
+References: <1543202466-68277-1-git-send-email-bianpan2016@163.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181121032327.8434-13-ming.lei@redhat.com>
+In-Reply-To: <1543202466-68277-1-git-send-email-bianpan2016@163.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> +/* used for chunk_for_each_segment */
-> +static inline void bvec_next_segment(const struct bio_vec *bvec,
-> +				     struct bvec_iter_all *iter_all)
+On Mon 26-11-18 11:21:06, Pan Bian wrote:
+> The function frees qf_inode via iput but then pass qf_inode to
+> lockdep_set_quota_inode on the failure path. This may result in a
+> use-after-free bug. The patch frees df_inode only when it is never used.
+> 
+> Signed-off-by: Pan Bian <bianpan2016@163.com>
+> Fixes: daf647d2dd5("ext4: add lockdep annotations for i_data_sem")
 
-FYI, chunk_for_each_segment doesn't exist anymore, this is
-bvec_for_each_segment now.  Not sure the comment helps much, though.
+Thanks for the fix! The patch looks good. You can add:
 
-> +{
-> +	struct bio_vec *bv = &iter_all->bv;
-> +
-> +	if (bv->bv_page) {
-> +		bv->bv_page += 1;
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-I think this needs to use nth_page() given that with discontigmem
-page structures might not be allocated contigously.
+								Honza
+
+> ---
+>  fs/ext4/super.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 53ff6c2..35689eb 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -5690,9 +5690,9 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
+>  	qf_inode->i_flags |= S_NOQUOTA;
+>  	lockdep_set_quota_inode(qf_inode, I_DATA_SEM_QUOTA);
+>  	err = dquot_enable(qf_inode, type, format_id, flags);
+> -	iput(qf_inode);
+>  	if (err)
+>  		lockdep_set_quota_inode(qf_inode, I_DATA_SEM_NORMAL);
+> +	iput(qf_inode);
+>  
+>  	return err;
+>  }
+> -- 
+> 2.7.4
+> 
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
