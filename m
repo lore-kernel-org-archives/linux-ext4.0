@@ -1,76 +1,50 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51938 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727004AbeKUOB3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 09:01:29 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V11 17/19] block: document usage of bio iterator helpers
-Date: Wed, 21 Nov 2018 11:23:25 +0800
-Message-Id: <20181121032327.8434-18-ming.lei@redhat.com>
-In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out4-smtp.messagingengine.com ([66.111.4.28]:33453 "EHLO
+        out4-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1728747AbeK2DUT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 28 Nov 2018 22:20:19 -0500
+Reply-To: grendel@twistedcode.net
+Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Rainer Fiebig <jrf@mailbox.org>, linux-kernel@vger.kernel.org,
+        "Andrey Jr. Melnikov" <temnota.am@gmail.com>,
+        linux-ext4@vger.kernel.org
+References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
+ <20181128041555.GE31885@thunk.org> <en52df-5dh.ln1@banana.localnet>
+ <2547416.7Vy7A2kRpU@siriux> <20181128161033.GH31885@thunk.org>
+From: Marek Habersack <grendel@twistedcode.net>
+Message-ID: <80caa2dd-c630-d69b-9095-f68846e60515@twistedcode.net>
+Date: Wed, 28 Nov 2018 17:18:00 +0100
+MIME-Version: 1.0
+In-Reply-To: <20181128161033.GH31885@thunk.org>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now multi-page bvec is supported, some helpers may return page by
-page, meantime some may return segment by segment, this patch
-documents the usage.
+On 28/11/2018 17:10, Theodore Y. Ts'o wrote:
+> On Wed, Nov 28, 2018 at 04:56:51PM +0100, Rainer Fiebig wrote:
+>>
+>> If you still see the errors, at least the Ubuntu-kernel could be ruled out.
+> 
+> My impression is that some of the people reporting problems have been
+> using stock upstream kernels, so I wasn't really worried about the
+Also, the Ubuntu mainline kernel doesn't patch the kernel code, it merely uses Ubuntu configs to build the stock kerenel
+(you can find the patches in e.g. http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.19.5/ at the top of the directory)
 
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- Documentation/block/biovecs.txt | 24 ++++++++++++++++++++++++
- 1 file changed, 24 insertions(+)
+> Ubuntu kernel (although it could be something about the default
+> configs that Ubuntu sets up).  What I was more wondering was whether
+> there was something about userspace or default configs of Ubuntu.
+> This isn't necessarily a *problem* per se; for examople, not that long
+> ago some users were getting surprised when a problem showed up with an
+> older version of the LVM2 userspace with newer upstream kernels.
+> After a while, you learn to get super paranoid about making sure to
+> rule out all possibilities when trying to debug problems that are only
+> hitting a set of users.
+> 
+> 						- Ted
+> 
 
-diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
-index 25689584e6e0..bb008f7afb05 100644
---- a/Documentation/block/biovecs.txt
-+++ b/Documentation/block/biovecs.txt
-@@ -117,3 +117,27 @@ Other implications:
-    size limitations and the limitations of the underlying devices. Thus
-    there's no need to define ->merge_bvec_fn() callbacks for individual block
-    drivers.
-+
-+Usage of helpers:
-+=================
-+
-+* The following helpers whose names have the suffix of "_all" can only be used
-+on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
-+shouldn't use them because the bio may have been split before it reached the
-+driver.
-+
-+	bio_for_each_segment_all()
-+	bio_first_bvec_all()
-+	bio_first_page_all()
-+	bio_last_bvec_all()
-+
-+* The following helpers iterate over single-page bvecs. The passed 'struct
-+bio_vec' will contain a single-page IO vector during the iteration
-+
-+	bio_for_each_segment()
-+	bio_for_each_segment_all()
-+
-+* The following helpers iterate over single-page bvecs. The passed 'struct
-+bio_vec' will contain a single-page IO vector during the iteration
-+
-+	bio_for_each_bvec()
--- 
-2.9.5
+marek
