@@ -1,46 +1,35 @@
-Return-Path: <SRS0=ApgQ=N6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60782 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726256AbeKSSPL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 19 Nov 2018 13:15:11 -0500
-Date: Mon, 19 Nov 2018 15:51:55 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 04/19] block: use bio_for_each_bvec() to map sg
-Message-ID: <20181119075154.GB16519@ming.t460p>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-5-ming.lei@redhat.com>
- <20181116133314.GC3165@lst.de>
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42444 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727268AbeK1Tba (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 28 Nov 2018 14:31:30 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 091A92CD95
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 08:30:42 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Wed, 28 Nov 2018 08:30:41 +0000
+Message-ID: <bug-201685-13602-MtKVZSKVup@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181116133314.GC3165@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 16, 2018 at 02:33:14PM +0100, Christoph Hellwig wrote:
-> > +	if (!*sg)
-> > +		return sglist;
-> > +	else {
-> 
-> No need for an else after an early return.
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-OK, good catch!
+--- Comment #61 from Henrique Rodrigues (henrique.rodrigues@ist.utl.pt) ---
+(In reply to Theodore Tso from comment #60)
+> Henrique -- what is dm-0?  How is it configured?   And are you using discard
+> (either the mount option, or fstrim)?   Thanks!!
 
-Thanks,
-Ming
+dm-o is a LUKS encrypted partition that I use as /. I have fstrim running
+weekly with "fstrim -av" (Ubuntu's default).
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
