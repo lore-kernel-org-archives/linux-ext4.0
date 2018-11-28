@@ -1,14 +1,15 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49008 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2390653AbeKVUys (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 15:54:48 -0500
-Date: Thu, 22 Nov 2018 18:15:28 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:44940 "EHLO
+        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727872AbeK2Aps (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Nov 2018 19:45:48 -0500
+Received: by mail-pg1-f195.google.com with SMTP id t13so9518047pgr.11
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 05:44:06 -0800 (PST)
+Subject: Re: [PATCH V12 00/20] block: support multi-page bvec
+To: Ming Lei <ming.lei@redhat.com>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
         Sagi Grimberg <sagi@grimberg.me>,
         Dave Chinner <dchinner@redhat.com>,
         Kent Overstreet <kent.overstreet@gmail.com>,
@@ -19,119 +20,60 @@ Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-btrfs@vger.kernel.org,
         "Darrick J . Wong" <darrick.wong@oracle.com>,
         linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 03/19] block: introduce bio_for_each_bvec()
-Message-ID: <20181122101527.GB27273@ming.t460p>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
- <20181121032327.8434-4-ming.lei@redhat.com>
- <20181121133244.GB1640@lst.de>
- <20181121153135.GB19111@ming.t460p>
- <20181121161025.GB4977@lst.de>
- <20181121171217.GA6259@lst.de>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
+From: Jens Axboe <axboe@kernel.dk>
+Message-ID: <7096bc4e-0617-29d0-a90d-ae7caf09a16d@kernel.dk>
+Date: Wed, 28 Nov 2018 06:44:00 -0700
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181121171217.GA6259@lst.de>
+In-Reply-To: <20181126021720.19471-1-ming.lei@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 21, 2018 at 06:12:17PM +0100, Christoph Hellwig wrote:
-> On Wed, Nov 21, 2018 at 05:10:25PM +0100, Christoph Hellwig wrote:
-> > No - I think we can always use the code without any segment in
-> > bvec_iter_advance.  Because bvec_iter_advance only operates on the
-> > iteractor, the generation of an actual single-page or multi-page
-> > bvec is left to the caller using the bvec_iter_bvec or segment_iter_bvec
-> > helpers.  The only difference is how many bytes you can move the
-> > iterator forward in a single loop iteration - so if you pass in
-> > PAGE_SIZE as the max_seg_len you just will have to loop more often
-> > for a large enough bytes, but not actually do anything different.
+On 11/25/18 7:17 PM, Ming Lei wrote:
+> Hi,
 > 
-> FYI, this patch reverts the max_seg_len related changes back to where
-> we are in mainline, and as expected everything works fine for me:
+> This patchset brings multi-page bvec into block layer:
 > 
-> diff --git a/include/linux/bio.h b/include/linux/bio.h
-> index e5b975fa0558..926550ce2d21 100644
-> --- a/include/linux/bio.h
-> +++ b/include/linux/bio.h
-> @@ -137,24 +137,18 @@ static inline bool bio_full(struct bio *bio)
->  	for (i = 0, iter_all.idx = 0; iter_all.idx < (bio)->bi_vcnt; iter_all.idx++)	\
->  		bvec_for_each_segment(bvl, &((bio)->bi_io_vec[iter_all.idx]), i, iter_all)
->  
-> -static inline void __bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
-> -				      unsigned bytes, unsigned max_seg_len)
-> +static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
-> +				    unsigned bytes)
->  {
->  	iter->bi_sector += bytes >> 9;
->  
->  	if (bio_no_advance_iter(bio))
->  		iter->bi_size -= bytes;
->  	else
-> -		__bvec_iter_advance(bio->bi_io_vec, iter, bytes, max_seg_len);
-> +		bvec_iter_advance(bio->bi_io_vec, iter, bytes);
->  		/* TODO: It is reasonable to complete bio with error here. */
->  }
->  
-> -static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
-> -				    unsigned bytes)
-> -{
-> -	__bio_advance_iter(bio, iter, bytes, PAGE_SIZE);
-> -}
-> -
->  #define __bio_for_each_segment(bvl, bio, iter, start)			\
->  	for (iter = (start);						\
->  	     (iter).bi_size &&						\
-> @@ -168,7 +162,7 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
->  	for (iter = (start);						\
->  	     (iter).bi_size &&						\
->  		((bvl = bio_iter_mp_iovec((bio), (iter))), 1);	\
-> -	     __bio_advance_iter((bio), &(iter), (bvl).bv_len, BVEC_MAX_LEN))
-> +	     bio_advance_iter((bio), &(iter), (bvl).bv_len))
->  
->  /* returns one real segment(multi-page bvec) each time */
->  #define bio_for_each_bvec(bvl, bio, iter)			\
-> diff --git a/include/linux/bvec.h b/include/linux/bvec.h
-> index cab36d838ed0..138b4007b8f2 100644
-> --- a/include/linux/bvec.h
-> +++ b/include/linux/bvec.h
-> @@ -25,8 +25,6 @@
->  #include <linux/errno.h>
->  #include <linux/mm.h>
->  
-> -#define BVEC_MAX_LEN  ((unsigned int)-1)
-> -
->  /*
->   * was unsigned short, but we might as well be ready for > 64kB I/O pages
->   */
-> @@ -102,8 +100,8 @@ struct bvec_iter_all {
->  	.bv_offset	= segment_iter_offset((bvec), (iter)),	\
->  })
->  
-> -static inline bool __bvec_iter_advance(const struct bio_vec *bv,
-> -		struct bvec_iter *iter, unsigned bytes, unsigned max_seg_len)
-> +static inline bool bvec_iter_advance(const struct bio_vec *bv,
-> +		struct bvec_iter *iter, unsigned bytes)
->  {
->  	if (WARN_ONCE(bytes > iter->bi_size,
->  		     "Attempted to advance past end of bvec iter\n")) {
-> @@ -112,18 +110,12 @@ static inline bool __bvec_iter_advance(const struct bio_vec *bv,
->  	}
->  
->  	while (bytes) {
-> -		unsigned segment_len = segment_iter_len(bv, *iter);
-> -
-> -		if (max_seg_len < BVEC_MAX_LEN)
-> -			segment_len = min_t(unsigned, segment_len,
-> -					    max_seg_len -
-> -					    bvec_iter_offset(bv, *iter));
-> +		unsigned iter_len = bvec_iter_len(bv, *iter);
-> +		unsigned len = min(bytes, iter_len);
+> 1) what is multi-page bvec?
+> 
+> Multipage bvecs means that one 'struct bio_bvec' can hold multiple pages
+> which are physically contiguous instead of one single page used in linux
+> kernel for long time.
+> 
+> 2) why is multi-page bvec introduced?
+> 
+> Kent proposed the idea[1] first. 
+> 
+> As system's RAM becomes much bigger than before, and huge page, transparent
+> huge page and memory compaction are widely used, it is a bit easy now
+> to see physically contiguous pages from fs in I/O. On the other hand, from
+> block layer's view, it isn't necessary to store intermediate pages into bvec,
+> and it is enough to just store the physicallly contiguous 'segment' in each
+> io vector.
+> 
+> Also huge pages are being brought to filesystem and swap [2][6], we can
+> do IO on a hugepage each time[3], which requires that one bio can transfer
+> at least one huge page one time. Turns out it isn't flexiable to change
+> BIO_MAX_PAGES simply[3][5]. Multipage bvec can fit in this case very well.
+> As we saw, if CONFIG_THP_SWAP is enabled, BIO_MAX_PAGES can be configured
+> as much bigger, such as 512, which requires at least two 4K pages for holding
+> the bvec table.
 
-It may not work to always use bvec_iter_len() here, and 'segment_len'
-should be max length of the passed 'bv', however we don't know if it is
-single-page or mutli-page bvec if no one tells us.
+I'm pretty happy with this patchset at this point, looks like it just
+needs a respin to address the last comments. My only concern is whether
+it's a good idea to target this for 4.21, or if we should wait until
+4.22. 4.21 has a fairly substantial amount of changes in terms of block
+already, it's not the best timing for something of this magnitude too.
 
-Thanks,
-Ming
+I'm going back and forth on those one a bit. Any concerns with
+pushing this to 4.22?
+
+-- 
+Jens Axboe
