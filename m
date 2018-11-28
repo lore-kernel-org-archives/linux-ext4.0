@@ -1,51 +1,48 @@
-Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54182 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726651AbeK2Stc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 29 Nov 2018 13:49:32 -0500
-Date: Thu, 29 Nov 2018 08:45:04 +0100
-From: Jan Kara <jack@suse.cz>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [GIT PULL] ext2 and udf fixes for v4.20-rc5
-Message-ID: <20181129074504.GA31087@quack2.suse.cz>
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:37106 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726989AbeK1PQI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 28 Nov 2018 10:16:08 -0500
+Date: Tue, 27 Nov 2018 23:15:55 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: "Andrey Jr. Melnikov" <temnota.am@gmail.com>
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
+Message-ID: <20181128041555.GE31885@thunk.org>
+References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
+ <b43fb902-9b64-22d9-25ca-c970b3842a43@roeck-us.net>
+ <vb31df-25g.ln1@banana.localnet>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+In-Reply-To: <vb31df-25g.ln1@banana.localnet>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
+On Wed, Nov 28, 2018 at 03:16:33AM +0300, Andrey Jr. Melnikov wrote:
+> Corrupted inodes - always directory, not touched at least year or
+> more for writing. Something wrong when updating atime?
 
-  could you please pull from
+We're not sure.  The frustrating thing is that it's not reproducing
+for me.  I run extensive regression tests, and I'm using 4.19 on my
+development laptop without notcing any problems.  If I could reproduce
+it, I could debug it, but since I can't, I need to rely on those who
+are seeing the problem to help pinpoint the problem.
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git fixes_for_v4.20-rc5
+I'm trying to figure out common factors from those people who are
+reporting problems.
 
-to get three small ext2 and udf fixes.
+(a) What distribution are you running (it appears that many people
+reporting problems are running Ubuntu, but this may be a sampling
+issue; lots of people run Ubuntu)?  (For the record, I'm using Debian
+Testing.)
 
-Top of the tree is 2aad26fa0a3d. The full shortlog is:
+(b) What hardware are you using?  (SSD?  SATA-attached?
+NVMe-attached?)
 
-Jan Kara (1):
-      udf: Allow mounting volumes with incorrect identification strings
+(c) Are you using LVM?  LUKS (e.g., disk encrypted)?
 
-Pan Bian (1):
-      ext2: fix potential use after free
+(d) are you using discard?  One theory is a recent discard change may
+be in play.   How do you use discard?   (mount option, fstrim, etc.)
 
-xingaopeng (1):
-      ext2: initialize opts.s_mount_opt as zero before using it
-
-The diffstat is
-
- fs/ext2/super.c  |  1 +
- fs/ext2/xattr.c  |  2 +-
- fs/udf/super.c   | 16 ++++++++++------
- fs/udf/unicode.c | 14 +++++++++++---
- 4 files changed, 23 insertions(+), 10 deletions(-)
-
-							Thanks
-								Honza
-
-
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+      	      	     	     		- Ted
