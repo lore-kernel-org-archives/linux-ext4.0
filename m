@@ -1,45 +1,41 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:51539 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728499AbeKVAfk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 19:35:40 -0500
-Date: Wed, 21 Nov 2018 15:01:05 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 11/19] bcache: avoid to use
- bio_for_each_segment_all() in bch_bio_alloc_pages()
-Message-ID: <20181121140105.GB2323@lst.de>
-References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-12-ming.lei@redhat.com>
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:58956 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1729103AbeK2EV7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 28 Nov 2018 23:21:59 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A15EF2D9A7
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 17:19:38 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date: Wed, 28 Nov 2018 17:19:39 +0000
+Message-ID: <bug-201631-13602-dUHSKjHOgl@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181121032327.8434-12-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 21, 2018 at 11:23:19AM +0800, Ming Lei wrote:
-> bch_bio_alloc_pages() is always called on one new bio, so it is safe
-> to access the bvec table directly. Given it is the only kind of this
-> case, open code the bvec table access since bio_for_each_segment_all()
-> will be changed to support for iterating over multipage bvec.
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
-Looks good,
+--- Comment #7 from erhard_f@mailbox.org ---
+Created attachment 279715
+  --> https://bugzilla.kernel.org/attachment.cgi?id=279715&action=edit
+kernel config (4.20-rc4)
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+The 2nd lockup from this bug seems reproducible. Happens every time at a
+certain stage when I try to build clang-7.0.1-rc2 when running the Talos II on
+kernel 4.20-rc4. I need to sigkill the build process or it stalls forever. When
+I run the machine on kernel 4.19.5 the build runs flawlessly, no lockups.
+
+Building takes place on a zram-partition (842 compressed, ext4), root
+filesystem is btrfs (zstd compressed).
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
