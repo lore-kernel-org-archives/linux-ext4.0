@@ -1,169 +1,123 @@
-Return-Path: <SRS0=65gx=NY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mout.gmx.net ([212.227.15.18]:40135 "EHLO mout.gmx.net"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725991AbeKMKA5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 13 Nov 2018 05:00:57 -0500
-From: Chengguang Xu <cgxu519@gmx.com>
-To: jack@suse.com
-Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
-Subject: [PATCH 04/10] ext2: fix coding style for ext2.h
-Date: Tue, 13 Nov 2018 08:04:42 +0800
-Message-Id: <20181113000448.16023-5-cgxu519@gmx.com>
-In-Reply-To: <20181113000448.16023-1-cgxu519@gmx.com>
-References: <20181113000448.16023-1-cgxu519@gmx.com>
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lj1-f196.google.com ([209.85.208.196]:37785 "EHLO
+        mail-lj1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725799AbeK2Hv6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2018 02:51:58 -0500
+Received: by mail-lj1-f196.google.com with SMTP id e5-v6so24723198lja.4
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 12:49:02 -0800 (PST)
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+To: linux-ext4@vger.kernel.org
+Cc: adilger.kernel@dilger.ca, alexey.lyashkov@gmail.com
+Subject: [PATCH v2] ext2fs: don't read group descriptors during e2label
+Date: Wed, 28 Nov 2018 23:48:40 +0300
+Message-Id: <20181128204840.4544-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix various complains from checkpatch.pl
+tune2fs is used to make e2label duties.  ext2fs_open2() reads group
+descriptors which are not used during disk label obtaining, but
+takes a lot of time on large partitions.
 
-Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+This patch change ext2fs_open2(), so only initialized
+superblock is returned. without block descriptors. This save
+time dramatically.
+
+Cray-bug-id: LUS-5777
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 ---
- fs/ext2/ext2.h | 100 ++++++++++++++++++++++++++++---------------------
- 1 file changed, 57 insertions(+), 43 deletions(-)
+ lib/ext2fs/ext2fs.h |  1 +
+ lib/ext2fs/openfs.c | 22 +++++++++++++++++++---
+ misc/tune2fs.c      |  7 ++++++-
+ 3 files changed, 26 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index e770cd100a6a..6b1a7633771e 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -80,10 +80,11 @@ struct ext2_sb_info {
- 	unsigned long s_groups_count;	/* Number of groups in the fs */
- 	unsigned long s_overhead_last;  /* Last calculated overhead */
- 	unsigned long s_blocks_last;    /* Last seen block count */
--	struct buffer_head * s_sbh;	/* Buffer containing the super block */
--	struct ext2_super_block * s_es;	/* Pointer to the super block in the buffer */
--	struct buffer_head ** s_group_desc;
--	unsigned long  s_mount_opt;
-+	struct buffer_head *s_sbh;	/* Buffer containing the super block */
-+	/* Pointer to the super block in the buffer */
-+	struct ext2_super_block *s_es;
-+	struct buffer_head **s_group_desc;
-+	unsigned long s_mount_opt;
- 	unsigned long s_sb_block;
- 	kuid_t s_resuid;
- 	kgid_t s_resgid;
-@@ -198,8 +199,8 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
-  */
- struct ext2_group_desc
- {
--	__le32	bg_block_bitmap;		/* Blocks bitmap block */
--	__le32	bg_inode_bitmap;		/* Inodes bitmap block */
-+	__le32	bg_block_bitmap;	/* Blocks bitmap block */
-+	__le32	bg_inode_bitmap;	/* Inodes bitmap block */
- 	__le32	bg_inode_table;		/* Inodes table block */
- 	__le16	bg_free_blocks_count;	/* Free blocks count */
- 	__le16	bg_free_inodes_count;	/* Free inodes count */
-@@ -735,62 +736,75 @@ static inline struct ext2_inode_info *EXT2_I(struct inode *inode)
- /* balloc.c */
- extern int ext2_bg_has_super(struct super_block *sb, int group);
- extern unsigned long ext2_bg_num_gdb(struct super_block *sb, int group);
--extern ext2_fsblk_t ext2_new_block(struct inode *, unsigned long, int *);
--extern ext2_fsblk_t ext2_new_blocks(struct inode *, unsigned long,
--				unsigned long *, int *);
--extern int ext2_data_block_valid(struct ext2_sb_info *sbi, ext2_fsblk_t start_blk,
--				 unsigned int count);
--extern void ext2_free_blocks (struct inode *, unsigned long,
--			      unsigned long);
--extern unsigned long ext2_count_free_blocks (struct super_block *);
--extern unsigned long ext2_count_dirs (struct super_block *);
--extern struct ext2_group_desc * ext2_get_group_desc(struct super_block * sb,
--						    unsigned int block_group,
--						    struct buffer_head ** bh);
--extern void ext2_discard_reservation (struct inode *);
-+extern ext2_fsblk_t ext2_new_block(struct inode *inode, unsigned long goal,
-+				   int *errp);
-+extern ext2_fsblk_t ext2_new_blocks(struct inode *inode, ext2_fsblk_t goal,
-+				    unsigned long *count, int *errp);
-+extern int ext2_data_block_valid(struct ext2_sb_info *sbi,
-+				 ext2_fsblk_t start_blk, unsigned int count);
-+extern void ext2_free_blocks(struct inode *inode, unsigned long block,
-+			     unsigned long count);
-+extern unsigned long ext2_count_free_blocks(struct super_block *sb);
-+extern unsigned long ext2_count_dirs(struct super_block *sb);
-+extern struct ext2_group_desc *ext2_get_group_desc(struct super_block *sb,
-+						   unsigned int block_group,
-+						   struct buffer_head **bh);
-+extern void ext2_discard_reservation(struct inode *inode);
- extern int ext2_should_retry_alloc(struct super_block *sb, int *retries);
--extern void ext2_init_block_alloc_info(struct inode *);
--extern void ext2_rsv_window_add(struct super_block *sb, struct ext2_reserve_window_node *rsv);
-+extern void ext2_init_block_alloc_info(struct inode *inode);
-+extern void ext2_rsv_window_add(struct super_block *sb,
-+				struct ext2_reserve_window_node *rsv);
-+extern unsigned long ext2_count_free(struct buffer_head *map,
-+				     unsigned int numchars);
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 5b87d395..2abb6f76 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -204,6 +204,7 @@ typedef struct ext2_file *ext2_file_t;
+ #define EXT2_FLAG_IGNORE_CSUM_ERRORS	0x200000
+ #define EXT2_FLAG_SHARE_DUP		0x400000
+ #define EXT2_FLAG_IGNORE_SB_ERRORS	0x800000
++#define EXT2_FLAG_JOURNAL_ONLY		0x1000000
  
- /* dir.c */
--extern int ext2_add_link (struct dentry *, struct inode *);
--extern ino_t ext2_inode_by_name(struct inode *, const struct qstr *);
--extern int ext2_make_empty(struct inode *, struct inode *);
--extern struct ext2_dir_entry_2 * ext2_find_entry (struct inode *,const struct qstr *, struct page **);
--extern int ext2_delete_entry (struct ext2_dir_entry_2 *, struct page *);
--extern int ext2_empty_dir (struct inode *);
--extern struct ext2_dir_entry_2 * ext2_dotdot (struct inode *, struct page **);
--extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, struct page *, struct inode *, int);
-+extern int ext2_add_link(struct dentry *dentry, struct inode *inode);
-+extern ino_t ext2_inode_by_name(struct inode *dir, const struct qstr *child);
-+extern int ext2_make_empty(struct inode *inode, struct inode *parent);
-+extern struct ext2_dir_entry_2 *ext2_find_entry(struct inode *dir,
-+						const struct qstr *child,
-+						struct page **res_page);
-+extern int ext2_delete_entry(struct ext2_dir_entry_2 *dir, struct page *page);
-+extern int ext2_empty_dir(struct inode *inode);
-+extern struct ext2_dir_entry_2 *ext2_dotdot(struct inode *dir, struct page **p);
-+extern void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
-+			  struct page *page, struct inode *inode,
-+			  int update_times);
+ /*
+  * Special flag in the ext2 inode i_flag field that means that this is
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 85d73e2a..af671070 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -135,6 +135,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	int		j;
+ #endif
+ 	char		*time_env;
++	unsigned long	enough_desc_blocks;
  
- /* ialloc.c */
--extern struct inode * ext2_new_inode (struct inode *, umode_t, const struct qstr *);
--extern void ext2_free_inode (struct inode *);
--extern unsigned long ext2_count_free_inodes (struct super_block *);
--extern unsigned long ext2_count_free (struct buffer_head *, unsigned);
-+extern struct inode *ext2_new_inode(struct inode *dir, umode_t mode,
-+				    const struct qstr *qstr);
-+extern void ext2_free_inode(struct inode *inode);
-+extern unsigned long ext2_count_free_inodes(struct super_block *sb);
+ 	EXT2_CHECK_MAGIC(manager, EXT2_ET_MAGIC_IO_MANAGER);
  
- /* inode.c */
--extern struct inode *ext2_iget (struct super_block *, unsigned long);
--extern int ext2_write_inode (struct inode *, struct writeback_control *);
--extern void ext2_evict_inode(struct inode *);
--extern int ext2_get_block(struct inode *, sector_t, struct buffer_head *, int);
--extern int ext2_setattr (struct dentry *, struct iattr *);
-+extern struct inode *ext2_iget(struct super_block *sb, unsigned long ino);
-+extern int ext2_write_inode(struct inode *inode,
-+			    struct writeback_control *do_sync);
-+extern void ext2_evict_inode(struct inode *inode);
-+extern int ext2_get_block(struct inode *inode, sector_t iblock,
-+			  struct buffer_head *bh_result, int creaate);
-+extern int ext2_setattr(struct dentry *dentry, struct iattr *iattr);
- extern void ext2_set_inode_flags(struct inode *inode);
- extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		       u64 start, u64 len);
+@@ -440,12 +441,23 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 		dest += fs->blocksize*first_meta_bg;
+ 	}
  
- /* ioctl.c */
--extern long ext2_ioctl(struct file *, unsigned int, unsigned long);
--extern long ext2_compat_ioctl(struct file *, unsigned int, unsigned long);
-+extern long ext2_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
-+extern long ext2_compat_ioctl(struct file *file, unsigned int cmd,
-+			      unsigned long arg);
+-	for (i = first_meta_bg ; i < fs->desc_blocks; i++) {
++	/*
++	 * Need superblock and journal inode only. Do not read
++	 * met_bg group blocks if journal inode group already loaded
++	 */
++	if (flags & EXT2_FLAG_JOURNAL_ONLY)
++		enough_desc_blocks =
++			fs->super->s_journal_inum /
++			EXT2_INODES_PER_GROUP(fs->super) + 1;
++	else
++		enough_desc_blocks = fs->desc_blocks;
++
++	for (i = first_meta_bg; i < enough_desc_blocks; i++) {
+ 		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
+ 		io_channel_cache_readahead(fs->io, blk, 1);
+ 	}
  
- /* namei.c */
- struct dentry *ext2_get_parent(struct dentry *child);
+-	for (i=first_meta_bg ; i < fs->desc_blocks; i++) {
++	for (i = first_meta_bg; i < enough_desc_blocks; i++) {
+ 		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
+ 		retval = io_channel_read_blk64(fs->io, blk, 1, dest);
+ 		if (retval)
+@@ -468,8 +480,12 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	 */
+ 	if (superblock > 1 && ext2fs_has_group_desc_csum(fs)) {
+ 		dgrp_t group;
++		dgrp_t enough_desc_count;
++
++		enough_desc_count = enough_desc_blocks *
++				    EXT2_DESC_PER_BLOCK(fs->super);
  
- /* super.c */
- extern __printf(3, 4)
--void ext2_error(struct super_block *, const char *, const char *, ...);
-+void ext2_error(struct super_block *sb, const char *function,
-+		const char *fmt, ...);
- extern __printf(3, 4)
--void ext2_msg(struct super_block *, const char *, const char *, ...);
--extern void ext2_update_dynamic_rev (struct super_block *sb);
-+void ext2_msg(struct super_block *sb, const char *prefix,
-+	      const char *fmt, ...);
-+extern void ext2_update_dynamic_rev(struct super_block *sb);
- extern void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es,
- 			    int wait);
+-		for (group = 0; group < fs->group_desc_count; group++) {
++		for (group = 0; group < enough_desc_count; group++) {
+ 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+ 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_INODE_UNINIT);
+ 			ext2fs_bg_itable_unused_set(fs, group, 0);
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index cd4057c3..b226fdbf 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2882,6 +2882,12 @@ retry_open:
+ 	/* keep the filesystem struct around to dump MMP data */
+ 	open_flag |= EXT2_FLAG_NOFREE_ON_ERROR;
  
++	if (print_label || L_flag) {
++		open_flag |= EXT2_FLAG_JOURNAL_ONLY;
++		/* don't want metadata to be flushed at close */
++		//open_flag &= ~EXT2_FLAG_RW;
++	}
++
+ 	retval = ext2fs_open2(device_name, io_options, open_flag,
+ 			      0, 0, io_ptr, &fs);
+ 	if (retval) {
+@@ -2999,7 +3005,6 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
+ 	if ((open_flag & EXT2_FLAG_RW) && !(mount_flags & (EXT2_MF_BUSY | EXT2_MF_MOUNTED)) &&
+ 	    ext2fs_has_feature_journal_needs_recovery(fs->super)) {
+ 		errcode_t err;
+-
+ 		printf(_("Recovering journal.\n"));
+ 		err = ext2fs_run_ext3_journal(&fs);
+ 		if (err) {
 -- 
-2.17.2
+2.14.3
