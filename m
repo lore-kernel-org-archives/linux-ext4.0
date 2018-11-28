@@ -1,17 +1,17 @@
-Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53704 "EHLO
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:55794 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726393AbeK3J75 (ORCPT
+        by vger.kernel.org with ESMTP id S1727074AbeK1QGm (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 30 Nov 2018 04:59:57 -0500
+        Wed, 28 Nov 2018 11:06:42 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id CCF382FB9D
-        for <linux-ext4@vger.kernel.org>; Thu, 29 Nov 2018 22:52:51 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id AFBC02CB95
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 05:06:22 +0000 (UTC)
 From: bugzilla-daemon@bugzilla.kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 201685] ext4 file system corruption
-Date: Thu, 29 Nov 2018 22:52:51 +0000
-Message-ID: <bug-201685-13602-rGK4JqLjzR@https.bugzilla.kernel.org/>
+Date: Wed, 28 Nov 2018 05:06:23 +0000
+Message-ID: <bug-201685-13602-I9uKo8HEmV@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
 References: <bug-201685-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -22,25 +22,12 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
---- Comment #75 from Jimmy.Jazz@gmx.net ---
-(In reply to Jens Axboe from comment #64)
-> only apply the part to block/blk-core.c
+Theodore Tso (tytso@mit.edu) changed:
 
-@T.Tso and J.Axboe
-e1333462e3 was not able to compile the 4.19.5 kernel.
-
-Long story, gcc begins to complain of missing elfutils package (it was
-installed already). I felt also in an old CONFIG_UNWINDER_ORC bug "Cannot
-generate ORC metadata". Compilations begin to fail with a "cannot make
-executable" error. As unbelievable it is, the bug was reported recently
-(https://lkml.org/lkml/2018/11/5/108).
-I'm using dev-libs/elfutils-0.175 and the kernel isn't affected by
-https://bugs.gentoo.org/671760
-
-The good news. 4.19.4 kernel with the part to 'block/blk-core.c' of your patch
-has compiled 4.19.5. It doesn't show any sign of ext4 corruption.
-
-I'm waiting for the next backup tomorrow.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+ Attachment #279687|Ext4 from 4.18              |Ext4 from 4.18 (tar.gz)
+        description|                            |
 
 -- 
 You are receiving this mail because:
