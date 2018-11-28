@@ -1,102 +1,70 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:48138 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729872AbeKVNir (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Nov 2018 08:38:47 -0500
-Date: Wed, 21 Nov 2018 19:01:19 -0800
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Jean-Christophe Guillain <jcguillain@sequans.com>
-Cc: linux-ext4@vger.kernel.org
-Subject: Re: Metadata_csum is still enabled after trying to disable it.
-Message-ID: <20181122030119.GA6778@magnolia>
-References: <E1gPWbq-0006F7-IZ@eureka>
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:43004 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1728181AbeK2D3D (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 28 Nov 2018 22:29:03 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 408302DA39
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 16:26:50 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Wed, 28 Nov 2018 16:26:50 +0000
+Message-ID: <bug-201685-13602-eRWxpD6Ed8@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <E1gPWbq-0006F7-IZ@eureka>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 21, 2018 at 06:48:18PM +0100, Jean-Christophe Guillain wrote:
-> Hi,
-> 
-> I see a strange behaviour when playing with the metadata_csum parameter of ext4.
-> (I use a Debian Stretch, with a kernel 4.9.0-8-amd64 #1 SMP Debian 4.9.110-3+deb9u6 (2018-10-08) x86_64 GNU/Linux)
-> 
-> How to reproduce :
-> 
-> * I enable metada checksum : OK
->     root@test# tune2fs -O metadata_csum /dev/my_vol
->     tune2fs 1.43.4 (31-Jan-2017)
->     Enabling checksums could take some time.
->     Proceed anyway (or wait 5 seconds) ? (y,N) y
-> 
-> * I check : Checksum enabled
->     root@test# tune2fs -l /dev/my_vol
->     tune2fs 1.43.4 (31-Jan-2017)
->     Filesystem volume name:   <none>
->     [...]
->     Journal backup:           inode blocks
->     Checksum type:            crc32c
->     Checksum:                 0xb0e3a180
-> 
-> * I change filesystem UUID : OK
->     root@test# tune2fs -U random /dev/my_vol
->     tune2fs 1.43.4 (31-Jan-2017)
->     Setting UUID on a checksummed filesystem could take some time.
->     Proceed anyway (or wait 5 seconds) ? (y,N) y
-> 
-> * I disable metadata checksum : OK
->     root@test# tune2fs -O ^metadata_csum /dev/my_vol
->     tune2fs 1.43.4 (31-Jan-2017)
->     Disabling checksums could take some time.
->     Proceed anyway (or wait 5 seconds) ? (y,N) y
-> 
-> * I change filesystem UUID : It looks like metada checksum still is enabled
->     root@test# tune2fs -U random /dev/my_vol
->     tune2fs 1.43.4 (31-Jan-2017)
->     Setting UUID on a checksummed filesystem could take some time.
->     Proceed anyway (or wait 5 seconds) ? (y,N) y
-> 
-> * I fsck the filesystem to see if it could fix this.
->     root@test# e2fsck -f /dev/my_vol
->     2fsck 1.43.4 (31-Jan-2017)
->     Pass 1: Checking inodes, blocks, and sizes
->     Pass 2: Checking directory structure
->     Pass 3: Checking directory connectivity
->     Pass 4: Checking reference counts
->     Pass 5: Checking group summary information
->     /dev/my_vol: 16303/3932160 files (0.9% non-contiguous), 1829950/15728640 blocks
-> 
-> * I check : metadata checksum looks like disabled
->     root@test# tune2fs -l /dev/my_vol tune2fs 1.43.4 (31-Jan-2017)
->     Filesystem volume name:   <none>
->     [...]
->     Journal backup:           inode blocks
-> 
-> * I change filesystem UUID : It looks like metada checksum still is enabled
->     root@test# tune2fs -U random /dev/my_vol
->     tune2fs 1.43.4 (31-Jan-2017)
->     Setting UUID on a checksummed filesystem could take some time.
->     Proceed anyway (or wait 5 seconds) ? (y,N) y
-> 
-> Is it a bug ?
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Yes.
+Néstor A. Marchesini (nestorm_des@hotmail.com) changed:
 
-> How can I actually disable this parameter ?
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |nestorm_des@hotmail.com
 
-I think you have to turn off the metadata_csum_seed feature, but tbh
-tune2fs really shouldn't pester about !metadata_csum,metadata_csum_seed
-filesystems...
+--- Comment #65 from Néstor A. Marchesini (nestorm_des@hotmail.com) ---
+Hi.
+My distro is gentoo testing, I also use 4 partitions raid1 ,are two discs of
+1T WD black that have never failed.
+These raid1 partitions use mdadm with metadata 0.90.
 
---D
+$ lsblk /dev/md*
+RM RO MODEL NAME LABEL      FSTYPE MOUNTPOINT   SIZE PHY-SEC LOG-SEC MODE      
+ 0  0       md0  GentooBoot ext4                128M     512     512 brw-rw----
+ 0  0       md1  GentooSwap swap   [SWAP]         4G     512     512 brw-rw----
+ 0  0       md2  GentooRaiz ext4   /             50G     512     512 brw-rw----
+ 0  0       md3  GentooHome ext4   /home      877,4G     512     512 brw-rw----
 
-> Best regards,
-> jC Guillain
-> 
-> 
-> -- IMPORTANT NOTICE: 
-> 
-> The contents of this email and any attachments are confidential and may also be privileged. If you are not the intended recipient, please notify the sender immediately and do not disclose the contents to any other person, use it for any purpose, or store or copy the information in any medium. Thank you.
-> 
+Effectively from 4.19.0 I started to have problems with the boot, the system
+always closed perfectly unmount all the partitions, but when booting the next
+time I fall in fsck and end in recovery console, ignoring these errors, restart
+again and I choose the kernel 4.18.20 and it does not fall in fsck, it also
+does
+not detect any error in the ext4 partitions.
+Sometimes these errors trigger the resynchronization of the partition that fsck
+detects false positives, I see it with $ cat /proc/mdstat
+For now I will continue using 4.18.20, the faults I have been doing since
+4.19.0
+4.19.1 4.19.2 4.19.3 4.19.4 and 4.19.5, given that this is something from the
+4.19.x branch
+
+$ uname -a
+Linux pc-user 4.18.20-gentoo #1 SMP PREEMPT Sat Nov 24 14:39:41
+
+$ eselect kernel list 
+Available kernel symlink targets:
+  [1]   linux-4.18.20-gentoo
+  [2]   linux-4.19.4-gentoo
+  [3]   linux-4.19.5-gentoo *
+
+Regards
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
