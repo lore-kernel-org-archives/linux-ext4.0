@@ -1,39 +1,86 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:50136 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727999AbeKQAML (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 16 Nov 2018 19:12:11 -0500
-Date: Fri, 16 Nov 2018 14:59:37 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 19/19] block: kill BLK_MQ_F_SG_MERGE
-Message-ID: <20181116135937.GP3165@lst.de>
-References: <20181115085306.9910-1-ming.lei@redhat.com> <20181115085306.9910-20-ming.lei@redhat.com>
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:45896 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727979AbeK2Bmm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 28 Nov 2018 20:42:42 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id E8AB62D564
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 14:40:48 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Wed, 28 Nov 2018 14:40:49 +0000
+Message-ID: <bug-201685-13602-lLib4m50u2@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-20-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:53:06PM +0800, Ming Lei wrote:
-> QUEUE_FLAG_NO_SG_MERGE has been killed, so kill BLK_MQ_F_SG_MERGE too.
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Looks fine,
+--- Comment #62 from Jimmy.Jazz@gmx.net ---
+If you don't mind, I'll continue bisecting.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+But generating a kernel becomes harder with the genuine kernel. Three times a
+raw I was unable to compile the kernel. It fails with,
+arch/x86/entry/vdso/vclock_gettime-x32.o:vclock_gettime.c:fonction__vdso_gettimeofday
+: erreur : débordement de relocalisation : référence à «
+vvar_vsyscall_gtod_data »
+
+If it fails again, I will need to patch it:
+--- arch/x86/entry/vdso/Makefile~ 2016-10-02 23:24:33.000000000 +0000
++++ arch/x86/entry/vdso/Makefile  2016-11-16 09:35:13.406216597 +0000
+@@ -97,6 +97,7 @@
+
+ CPPFLAGS_vdsox32.lds = $(CPPFLAGS_vdso.lds)
+ VDSO_LDFLAGS_vdsox32.lds = -Wl,-m,elf32_x86_64 \
++        -fuse-ld=bfd \
+         -Wl,-soname=linux-vdso.so.1 \
+         -Wl,-z,max-page-size=4096 \
+         -Wl,-z,common-page-size=4096
+
+ld gold is my default.
+
+And sorry, I should have patched l1tf_vmx_mitigation too. My mistake.
+
+diff --git a/arch/x86/kernel/cpu/bugs.c b/arch/x86/kernel/cpu/bugs.c
+index 27830880e7a7..cb4a16292aa7 100644
+--- arch/x86/kernel/cpu/bugs.c
++++ arch/x86/kernel/cpu/bugs.c
+@@ -664,10 +664,9 @@ void x86_spec_ctrl_setup_ap(void)
+ enum l1tf_mitigations l1tf_mitigation __ro_after_init = L1TF_MITIGATION_FLUSH;
+ #if IS_ENABLED(CONFIG_KVM_INTEL)
+ EXPORT_SYMBOL_GPL(l1tf_mitigation);
+-
++#endif
+ enum vmx_l1d_flush_state l1tf_vmx_mitigation = VMENTER_L1D_FLUSH_AUTO;
+ EXPORT_SYMBOL_GPL(l1tf_vmx_mitigation);
+-#endif
+
+ static void __init l1tf_select_mitigation(void)
+ {
+
+
+Neverless the ext4 issue as it seems to be doesn't make sens. I can compile
+packages during the test to maintain the cpu's activity on top to ease
+reproducing the issue.
+Each time I do a reboot, I do a fsck on the ext4 partitions (in both rescue
+mode and normal init process) and it's like for some partitions e2fsck is
+unable to handle (in any undetermined circumstances) 'Structure needs cleaning'
+issue (remember my remark about fsck -D). If that's confirmed, a corrupt fs
+could  still be corrupt on the next reboot and misguide us.
+
+In that case, Jens Axboe 4.19.4 patch does its work. I'm bisecting the kernel
+on a 4.19.4 patched kernel version. The only fs that's stay corrupt after each
+reboot is my backup partition (sig).
+Could someone investigate in that direction please ?
+
+I'm using e2fsprogs 1.44.4 package.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
