@@ -1,53 +1,123 @@
-Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:52676 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726354AbeK0XWN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 27 Nov 2018 18:22:13 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 358992B033
-        for <linux-ext4@vger.kernel.org>; Tue, 27 Nov 2018 12:24:28 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lj1-f195.google.com ([209.85.208.195]:40444 "EHLO
+        mail-lj1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728141AbeK2DpN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Nov 2018 22:45:13 -0500
+Received: by mail-lj1-f195.google.com with SMTP id n18-v6so24043160lji.7
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 08:42:57 -0800 (PST)
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Tue, 27 Nov 2018 12:24:28 +0000
-Message-ID: <bug-201685-13602-AJlvthpAV7@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+Cc: adilger.kernel@dilger.ca, alexey.lyashkov@gmail.com
+Subject: [PATCH] ext2fs: don't read group descriptors during e2label
+Date: Wed, 28 Nov 2018 19:42:38 +0300
+Message-Id: <20181128164238.2286-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+tune2fs is used to make e2label duties.  ext2fs_open2() reads group
+descriptors which are not used during disk label obtaining, but
+takes a lot of time on large partitions.
 
---- Comment #55 from Jimmy.Jazz@gmx.net ---
-I didn't make it with 4.18.0-radeon-07013-g54dbe75bbf-dirty because the radeon
-module gives me a black screen.
+This patch change ext2fs_open2(), so only initialized
+superblock is returned. without block descriptors. This save
+time dramatically.
 
-With 4.18.0-radeon-03131-g0a957467c5-dirty, ext4 filesystems were stable but
-2hours later an exception followed by a sudden reboot w/o warning. Next try,
-immediate reboot.
-Also bad too.
+Cray-bug-id: LUS-5777
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+---
+ lib/ext2fs/ext2fs.h |  1 +
+ lib/ext2fs/openfs.c | 22 +++++++++++++++++++---
+ misc/tune2fs.c      |  7 ++++++-
+ 3 files changed, 26 insertions(+), 4 deletions(-)
 
-During bzImage compilation, ld returned:
-ld.bfd: arch/x86/boot/compressed/head_64.o: warning: relocation in read-only
-section `.head.text'
-ld.bfd: warning: creating a DT_TEXTREL in object
-
-Is that something suspicious for you?
-
-FIK, I was stuck many times with the following message until I realized
-usr/.initramfs_data.cpio.xz.d file were not removed from the directory (sig).
-
-# make                                                                 
-  CALL    scripts/checksyscalls.sh
-  DESCEND  objtool
-  CHK     include/generated/compile.h
-usr/Makefile:48: *** motifs de cible multiples. Arrêt.
-make: *** [Makefile:1041: usr] Error 2
-
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 5b87d395..5318b14d 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -204,6 +204,7 @@ typedef struct ext2_file *ext2_file_t;
+ #define EXT2_FLAG_IGNORE_CSUM_ERRORS	0x200000
+ #define EXT2_FLAG_SHARE_DUP		0x400000
+ #define EXT2_FLAG_IGNORE_SB_ERRORS	0x800000
++#define EXT2_FLAG_LABEL			0x1000000
+ 
+ /*
+  * Special flag in the ext2 inode i_flag field that means that this is
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 85d73e2a..a5e97e6d 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -135,6 +135,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	int		j;
+ #endif
+ 	char		*time_env;
++	unsigned long	enough_desc_blocks;
+ 
+ 	EXT2_CHECK_MAGIC(manager, EXT2_ET_MAGIC_IO_MANAGER);
+ 
+@@ -440,12 +441,23 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 		dest += fs->blocksize*first_meta_bg;
+ 	}
+ 
+-	for (i = first_meta_bg ; i < fs->desc_blocks; i++) {
++	/*
++	 * Need superblock and journal inode only. Do not read
++	 * met_bg group blocks if journal inode group already loaded
++	 */
++	if (flags & EXT2_FLAG_LABEL)
++		enough_desc_blocks =
++			fs->super->s_journal_inum /
++			EXT2_INODES_PER_GROUP(fs->super) + 1;
++	else
++		enough_desc_blocks = fs->desc_blocks;
++
++	for (i = first_meta_bg; i < enough_desc_blocks; i++) {
+ 		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
+ 		io_channel_cache_readahead(fs->io, blk, 1);
+ 	}
+ 
+-	for (i=first_meta_bg ; i < fs->desc_blocks; i++) {
++	for (i = first_meta_bg; i < enough_desc_blocks; i++) {
+ 		blk = ext2fs_descriptor_block_loc2(fs, group_block, i);
+ 		retval = io_channel_read_blk64(fs->io, blk, 1, dest);
+ 		if (retval)
+@@ -468,8 +480,12 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	 */
+ 	if (superblock > 1 && ext2fs_has_group_desc_csum(fs)) {
+ 		dgrp_t group;
++		dgrp_t enough_desc_count;
++
++		enough_desc_count = enough_desc_blocks *
++				    EXT2_DESC_PER_BLOCK(fs->super);
+ 
+-		for (group = 0; group < fs->group_desc_count; group++) {
++		for (group = 0; group < enough_desc_count; group++) {
+ 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_BLOCK_UNINIT);
+ 			ext2fs_bg_flags_clear(fs, group, EXT2_BG_INODE_UNINIT);
+ 			ext2fs_bg_itable_unused_set(fs, group, 0);
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index cd4057c3..3d0c7d51 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -2882,6 +2882,12 @@ retry_open:
+ 	/* keep the filesystem struct around to dump MMP data */
+ 	open_flag |= EXT2_FLAG_NOFREE_ON_ERROR;
+ 
++	if (print_label || L_flag) {
++		open_flag |= EXT2_FLAG_LABEL;
++		/* don't want metadata to be flushed at close */
++		//open_flag &= ~EXT2_FLAG_RW;
++	}
++
+ 	retval = ext2fs_open2(device_name, io_options, open_flag,
+ 			      0, 0, io_ptr, &fs);
+ 	if (retval) {
+@@ -2999,7 +3005,6 @@ _("Warning: The journal is dirty. You may wish to replay the journal like:\n\n"
+ 	if ((open_flag & EXT2_FLAG_RW) && !(mount_flags & (EXT2_MF_BUSY | EXT2_MF_MOUNTED)) &&
+ 	    ext2fs_has_feature_journal_needs_recovery(fs->super)) {
+ 		errcode_t err;
+-
+ 		printf(_("Recovering journal.\n"));
+ 		err = ext2fs_run_ext3_journal(&fs);
+ 		if (err) {
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.14.3
