@@ -1,89 +1,56 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41014 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729105AbeKVXBG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 18:01:06 -0500
-Date: Thu, 22 Nov 2018 13:21:55 +0100
-From: Jan Kara <jack@suse.cz>
-To: Theodore Ts'o <tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        stable@kernel.org
-Subject: Re: [PATCH] ext4: add ext4_sb_bread() to disambiguate ENOMEM cases
-Message-ID: <20181122122155.GN9840@quack2.suse.cz>
-References: <20181117233523.8832-1-tytso@mit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181117233523.8832-1-tytso@mit.edu>
+Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lj1-f195.google.com ([209.85.208.195]:32819 "EHLO
+        mail-lj1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727979AbeK2DLR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 28 Nov 2018 22:11:17 -0500
+Received: by mail-lj1-f195.google.com with SMTP id v1-v6so23972519ljd.0
+        for <linux-ext4@vger.kernel.org>; Wed, 28 Nov 2018 08:09:07 -0800 (PST)
+Received: from localhost.localdomain ([195.208.173.203])
+        by smtp.gmail.com with ESMTPSA id u26-v6sm1191116lji.22.2018.11.28.08.09.04
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 28 Nov 2018 08:09:05 -0800 (PST)
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+To: linux-ext4@vger.kernel.org
+Subject: [PATCH] Fix tst_super_size after ext2_super_block changes
+Date: Wed, 28 Nov 2018 19:08:34 +0300
+Message-Id: <20181128160834.1729-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 17-11-18 18:35:23, Theodore Ts'o wrote:
-> Today, when sb_bread() returns NULL, this can either be because of an
-> I/O error or because the system failed to allocate the buffer.  Since
-> it's an old interface, changing would require changing many call
-> sites.
-> 
-> So instead we create our own ext4_sb_bread(), which also allows us to
-> set the REQ_META flag.
-> 
-> Also fixed a problem in the xattr code where a NULL return in a
-> function could also mean that the xattr was not found, which could
-> lead to the wrong error getting returned to userspace.
-> 
-> Fixes: ac27a0ec112a ("ext4: initial copy of files from ext3")
-> Cc: stable@kernel.org
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Commits "Reserve feature bit and SB field bit for filename encoding"
+and "Add timestamp extension bits to superblock" change
+ext2_super_block structure, but don't change tst_super_size test,
+so "make check" fails with message:
 
-...
+error: s_reserved size 380 should be 392
 
-> +/*
-> + * This works like sb_bread() except it uses ERR_PTR for error
-> + * returns.  Currently with sb_bread it's impossible to distinguish
-> + * between ENOMEM and EIO situations (since both result in a NULL
-> + * return.
-> + */
-> +struct buffer_head *
-> +ext4_sb_bread(struct super_block *sb, sector_t block)
-> +{
-> +	struct buffer_head *bh = sb_getblk(sb, block);
-> +
-> +	if (bh == NULL)
-> +		return ERR_PTR(-ENOMEM);
-> +	if (buffer_uptodate(bh))
-> +		return bh;
-> +	ll_rw_block(REQ_OP_READ, REQ_META | REQ_PRIO, 1, &bh);
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+---
+ lib/ext2fs/tst_super_size.c | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
 
-Is there a reason for REQ_PRIO? I'm not sure all REQ_META reads are really
-a priority ones...
-
-> +	wait_on_buffer(bh);
-> +	if (buffer_uptodate(bh))
-> +		return bh;
-> +	put_bh(bh);
-> +	return ERR_PTR(-EIO);
-> +}
-> +
->  static int ext4_verify_csum_type(struct super_block *sb,
->  				 struct ext4_super_block *es)
->  {
-
-...
-
-> @@ -696,26 +695,23 @@ ext4_xattr_block_list(struct dentry *dentry, char *buffer, size_t buffer_size)
->  	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
->  		  buffer, (long)buffer_size);
->  
-> -	error = 0;
->  	if (!EXT4_I(inode)->i_file_acl)
-> -		goto cleanup;
-> +		return NULL;
-
-NULL looks wrong here - should be 0 I guess...
-
-Otherwise the patch looks good to me.
-
-								Honza
+diff --git a/lib/ext2fs/tst_super_size.c b/lib/ext2fs/tst_super_size.c
+index 0adac411..a932685d 100644
+--- a/lib/ext2fs/tst_super_size.c
++++ b/lib/ext2fs/tst_super_size.c
+@@ -142,7 +142,16 @@ int main(int argc, char **argv)
+ 	check_field(s_lpf_ino, 4);
+ 	check_field(s_prj_quota_inum, 4);
+ 	check_field(s_checksum_seed, 4);
+-	check_field(s_reserved, 98 * 4);
++	check_field(s_wtime_hi, 1);
++	check_field(s_mtime_hi, 1);
++	check_field(s_mkfs_time_hi, 1);
++	check_field(s_lastcheck_hi, 1);
++	check_field(s_first_error_time_hi, 1);
++	check_field(s_last_error_time_hi, 1);
++	check_field(s_pad, 2);
++	check_field(s_encoding, 2);
++	check_field(s_encoding_flags, 2);
++	check_field(s_reserved, 95 * 4);
+ 	check_field(s_checksum, 4);
+ 	do_field("Superblock end", 0, 0, cur_offset, 1024);
+ #endif
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.14.3
