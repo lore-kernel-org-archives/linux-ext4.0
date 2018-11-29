@@ -1,41 +1,54 @@
-Return-Path: <SRS0=QVqk=OH=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40302 "EHLO imap.thunk.org"
+Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:44458 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727979AbeK2DMr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 28 Nov 2018 22:12:47 -0500
-Date: Wed, 28 Nov 2018 11:10:33 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Rainer Fiebig <jrf@mailbox.org>
-Cc: linux-kernel@vger.kernel.org,
-        "Andrey Jr. Melnikov" <temnota.am@gmail.com>,
-        linux-ext4@vger.kernel.org
-Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
-Message-ID: <20181128161033.GH31885@thunk.org>
-References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
- <20181128041555.GE31885@thunk.org>
- <en52df-5dh.ln1@banana.localnet>
- <2547416.7Vy7A2kRpU@siriux>
+        id S1727120AbeK2OfM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 29 Nov 2018 09:35:12 -0500
+Date: Thu, 29 Nov 2018 11:30:47 +0800
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: Mike Snitzer <snitzer@redhat.com>,
+        "Ewan D. Milne" <emilne@redhat.com>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        dm-devel@redhat.com, Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
+        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
+        linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V12 00/20] block: support multi-page bvec
+Message-ID: <20181129033046.GE23390@ming.t460p>
+References: <20181126021720.19471-1-ming.lei@redhat.com>
+ <7096bc4e-0617-29d0-a90d-ae7caf09a16d@kernel.dk>
+ <20181129012959.GC23249@ming.t460p>
+ <1983a2f5-07be-4102-fedc-54e2ad2e16dc@kernel.dk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <2547416.7Vy7A2kRpU@siriux>
+In-Reply-To: <1983a2f5-07be-4102-fedc-54e2ad2e16dc@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 28, 2018 at 04:56:51PM +0100, Rainer Fiebig wrote:
+On Wed, Nov 28, 2018 at 07:20:51PM -0700, Jens Axboe wrote:
+> On 11/28/18 6:30 PM, Ming Lei wrote:
+> >> I'm going back and forth on those one a bit. Any concerns with
+> >> pushing this to 4.22?
+> > 
+> > My only one concern is about the warning of
+> > "blk_cloned_rq_check_limits: over max segments limit" on dm multipath,
+> > and seems Ewan and Mike is waiting for this fix.
 > 
-> If you still see the errors, at least the Ubuntu-kernel could be ruled out.
+> Not familiar with this issue, can you post a link to it? I'd be fine
+> working around anything until 4.22, it's not going to be a new issue.
 
-My impression is that some of the people reporting problems have been
-using stock upstream kernels, so I wasn't really worried about the
-Ubuntu kernel (although it could be something about the default
-configs that Ubuntu sets up).  What I was more wondering was whether
-there was something about userspace or default configs of Ubuntu.
-This isn't necessarily a *problem* per se; for examople, not that long
-ago some users were getting surprised when a problem showed up with an
-older version of the LVM2 userspace with newer upstream kernels.
-After a while, you learn to get super paranoid about making sure to
-rule out all possibilities when trying to debug problems that are only
-hitting a set of users.
+https://marc.info/?t=153303425700002&r=1&w=2
 
-						- Ted
+thanks,
+Ming
