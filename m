@@ -1,98 +1,255 @@
-Return-Path: <SRS0=yRHK=OD=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:50488 "EHLO
-        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728450AbeKXO1f (ORCPT
+Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:45470 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1727018AbeK2WWl (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 24 Nov 2018 09:27:35 -0500
-Subject: Re: [PATCH] ext4: fix deadlock while checkpoint thread waits commit
- thread to finish
-To: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-References: <20181114114935.5250-1-xiaoguang.wang@linux.alibaba.com>
- <20181122123601.GO9840@quack2.suse.cz>
- <7f9dab38-26f8-6fd8-299e-30d711ee61b8@linux.alibaba.com>
- <20181123111515.GA31877@quack2.suse.cz>
-From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-Message-ID: <a3df7058-713d-a7d3-1e7b-4b8afaab24db@linux.alibaba.com>
-Date: Sat, 24 Nov 2018 11:40:41 +0800
+        Thu, 29 Nov 2018 17:22:41 -0500
+Received: from pps.filterd (m0098414.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wATBDdCg109298
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Nov 2018 06:17:39 -0500
+Received: from e06smtp01.uk.ibm.com (e06smtp01.uk.ibm.com [195.75.94.97])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 2p2dm4mdpt-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Nov 2018 06:17:39 -0500
+Received: from localhost
+        by e06smtp01.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <rppt@linux.ibm.com>;
+        Thu, 29 Nov 2018 11:17:37 -0000
+Date: Thu, 29 Nov 2018 13:17:24 +0200
+From: Mike Rapoport <rppt@linux.ibm.com>
+To: Nikolay Borisov <nborisov@suse.com>
+Cc: Michal Hocko <mhocko@kernel.org>, linux-kernel@vger.kernel.org,
+        David Howells <dhowells@redhat.com>, Chris Mason <clm@fb.com>,
+        Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>,
+        "Yan, Zheng" <zyan@redhat.com>, Sage Weil <sage@redhat.com>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Steve French <sfrench@samba.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Mark Fasheh <mark@fasheh.com>,
+        Joel Becker <jlbec@evilplan.org>,
+        Mike Marshall <hubcap@omnibond.com>,
+        Martin Brandenburg <martin@omnibond.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mike Rapoport <rppt@linux.vnet.ibm.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Randy Dunlap <rdunlap@infradead.org>,
+        YueHaibing <yuehaibing@huawei.com>,
+        Shakeel Butt <shakeelb@google.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com, devel@lists.orangefs.org,
+        linux-mm@kvack.org
+Subject: Re: [PATCH 2/2] fs: Don't open-code lru_to_page
+References: <20181129075301.29087-1-nborisov@suse.com>
+ <20181129075301.29087-2-nborisov@suse.com>
+ <20181129081826.GO6923@dhcp22.suse.cz>
+ <0921bc8f-b899-4925-51f2-a9f45d4c906a@suse.com>
 MIME-Version: 1.0
-In-Reply-To: <20181123111515.GA31877@quack2.suse.cz>
-Content-Type: text/plain; charset=gbk; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <0921bc8f-b899-4925-51f2-a9f45d4c906a@suse.com>
+Message-Id: <20181129111723.GD9315@rapoport-lnx>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Fri 23-11-18 10:45:20, Xiaoguang Wang wrote:
->> hi,
->>
->>> On Wed 14-11-18 19:49:35, Xiaoguang Wang wrote:
->>>> This issue was found when I tried to put checkpoint work in a separate thread,
->>>> the deadlock below happened:
->>>>            Thread1                                |   Thread2
->>>> __jbd2_log_wait_for_space                       |
->>>> jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
->>>>     if (jh->b_transaction != NULL)                |
->>>>       ...                                         |
->>>>       jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
->>>>                                                   |  will lock j_checkpoint_mutex,
->>>>                                                   |  but will be blocked here.
->>>>                                                   |
->>>>       jbd2_log_wait_commit(journal, tid);         |
->>>>       wait_event(journal->j_wait_done_commit,     |
->>>>        !tid_gt(tid, journal->j_commit_sequence)); |
->>>>        ...                                        |wake_up(j_wait_done_commit)
->>>>     }                                             |
->>>>
->>>> then deadlock occurs, Thread1 will never be waken up.
->>>>
->>>> To fix this issue, drop j_checkpoint_mutex in jbd2_log_do_checkpoint()
->>>> when we are going to wait for transaction commit.
->>>>
->>>> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
->>>
->>> Thanks for the patch! One comment below...
->>>
->>>> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
->>>> index 26f8d7e46462..e728844f2f0e 100644
->>>> --- a/fs/jbd2/checkpoint.c
->>>> +++ b/fs/jbd2/checkpoint.c
->>>> @@ -113,7 +113,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
->>>>    	nblocks = jbd2_space_needed(journal);
->>>>    	while (jbd2_log_space_left(journal) < nblocks) {
->>>>    		write_unlock(&journal->j_state_lock);
->>>> -		mutex_lock(&journal->j_checkpoint_mutex);
->>>> +		mutex_lock_io(&journal->j_checkpoint_mutex);
->>>>    		/*
->>>>    		 * Test again, another process may have checkpointed while we
->>>> @@ -241,8 +241,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
->>>>    	 * done (maybe it's a new transaction, but it fell at the same
->>>>    	 * address).
->>>>    	 */
->>>> -	if (journal->j_checkpoint_transactions != transaction ||
->>>> -	    transaction->t_tid != this_tid)
->>>> +	if (journal->j_checkpoint_transactions == NULL ||
->>>> +	    journal->j_checkpoint_transactions->t_tid != this_tid)
->>>>    		goto out;
->>>
->>> Why did you change this? As far as I can tell there's no difference and the
->>> previous condition makes it more obvious that we are still looking at the
->>> same transaction.
->> In this patch, we may drop j_checkpoint_mutex, then another thread may acquire
->> this lock, do checkpoint work and freed current transaction, "transaction->t_tid"
->> will cause an invalid pointer dereference.
+On Thu, Nov 29, 2018 at 10:50:08AM +0200, Nikolay Borisov wrote:
 > 
-> That is exactly the reason why we check:
 > 
-> if (journal->j_checkpoint_transactions != transaction || ...
+> On 29.11.18 г. 10:18 ч., Michal Hocko wrote:
+> > On Thu 29-11-18 09:52:57, Nikolay Borisov wrote:
+> >> There are a bunch of filesystems which essentially open-code lru_to_page
+> >> helper. Change them to using the helper. No functional changes.
+> > 
+> > I would just squash the two into a single patch. It makes the first one
+> > more obvious. Or is there any reason to have them separate?
 > 
-> So if this test is false and so transaction->t_tid != this_tid gets
-> evaluated we are sure that j_checkpoint_transactions actually still points
-> to our transaction.
-I just realize that "journal->j_checkpoint_transactions != transaction" returns false, we
-can make sure that transaction is valid, thanks. I'll send a patch v2 soon.
+> No reason, just didn't know how people would react so that's why I chose
+> to send as two separate.
 
-Regards,
-Xiaoguang Wang
+I'm with Michal on this, a single patch seems better here.
+Yet, for either way:
+
+Reviewed-by: Mike Rapoport <rppt@linux.ibm.com>
+ 
+> If I squash them who would be the best person to take them ?
 > 
-> 								Honza
+> > 
+> >> Signed-off-by: Nikolay Borisov <nborisov@suse.com>
+> > 
+> > Acked-by: Michal Hocko <mhocko@suse.com>
+> > 
+> >> ---
+> >>
+> >> Since this is a mostly mechanical change I've actually batched all of them in 
+> >> a single patch. 
+> >>
+> >>  fs/afs/file.c        | 5 +++--
+> >>  fs/btrfs/extent_io.c | 2 +-
+> >>  fs/ceph/addr.c       | 5 ++---
+> >>  fs/cifs/file.c       | 3 ++-
+> >>  fs/ext4/readpage.c   | 2 +-
+> >>  fs/ocfs2/aops.c      | 3 ++-
+> >>  fs/orangefs/inode.c  | 2 +-
+> >>  mm/swap.c            | 2 +-
+> >>  8 files changed, 13 insertions(+), 11 deletions(-)
+> >>
+> >> diff --git a/fs/afs/file.c b/fs/afs/file.c
+> >> index d6bc3f5d784b..323ae9912203 100644
+> >> --- a/fs/afs/file.c
+> >> +++ b/fs/afs/file.c
+> >> @@ -17,6 +17,7 @@
+> >>  #include <linux/writeback.h>
+> >>  #include <linux/gfp.h>
+> >>  #include <linux/task_io_accounting_ops.h>
+> >> +#include <linux/mm.h>
+> >>  #include "internal.h"
+> >>  
+> >>  static int afs_file_mmap(struct file *file, struct vm_area_struct *vma);
+> >> @@ -441,7 +442,7 @@ static int afs_readpages_one(struct file *file, struct address_space *mapping,
+> >>  	/* Count the number of contiguous pages at the front of the list.  Note
+> >>  	 * that the list goes prev-wards rather than next-wards.
+> >>  	 */
+> >> -	first = list_entry(pages->prev, struct page, lru);
+> >> +	first = lru_to_page(pages);
+> >>  	index = first->index + 1;
+> >>  	n = 1;
+> >>  	for (p = first->lru.prev; p != pages; p = p->prev) {
+> >> @@ -473,7 +474,7 @@ static int afs_readpages_one(struct file *file, struct address_space *mapping,
+> >>  	 * page at the end of the file.
+> >>  	 */
+> >>  	do {
+> >> -		page = list_entry(pages->prev, struct page, lru);
+> >> +		page = lru_to_page(pages);
+> >>  		list_del(&page->lru);
+> >>  		index = page->index;
+> >>  		if (add_to_page_cache_lru(page, mapping, index,
+> >> diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+> >> index 19f4b8fd654f..8332c5f4b1c3 100644
+> >> --- a/fs/btrfs/extent_io.c
+> >> +++ b/fs/btrfs/extent_io.c
+> >> @@ -4104,7 +4104,7 @@ int extent_readpages(struct address_space *mapping, struct list_head *pages,
+> >>  	u64 prev_em_start = (u64)-1;
+> >>  
+> >>  	for (page_idx = 0; page_idx < nr_pages; page_idx++) {
+> >> -		page = list_entry(pages->prev, struct page, lru);
+> >> +		page = lru_to_page(pages);
+> >>  
+> >>  		prefetchw(&page->flags);
+> >>  		list_del(&page->lru);
+> >> diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
+> >> index 8eade7a993c1..5d0c05e288cc 100644
+> >> --- a/fs/ceph/addr.c
+> >> +++ b/fs/ceph/addr.c
+> >> @@ -306,7 +306,7 @@ static int start_read(struct inode *inode, struct ceph_rw_context *rw_ctx,
+> >>  	struct ceph_osd_client *osdc =
+> >>  		&ceph_inode_to_client(inode)->client->osdc;
+> >>  	struct ceph_inode_info *ci = ceph_inode(inode);
+> >> -	struct page *page = list_entry(page_list->prev, struct page, lru);
+> >> +	struct page *page = lru_to_page(page_list);
+> >>  	struct ceph_vino vino;
+> >>  	struct ceph_osd_request *req;
+> >>  	u64 off;
+> >> @@ -333,8 +333,7 @@ static int start_read(struct inode *inode, struct ceph_rw_context *rw_ctx,
+> >>  			if (got)
+> >>  				ceph_put_cap_refs(ci, got);
+> >>  			while (!list_empty(page_list)) {
+> >> -				page = list_entry(page_list->prev,
+> >> -						  struct page, lru);
+> >> +				page = lru_to_page(page_list);
+> >>  				list_del(&page->lru);
+> >>  				put_page(page);
+> >>  			}
+> >> diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+> >> index 74c33d5fafc8..b16a4d887d17 100644
+> >> --- a/fs/cifs/file.c
+> >> +++ b/fs/cifs/file.c
+> >> @@ -33,6 +33,7 @@
+> >>  #include <linux/mount.h>
+> >>  #include <linux/slab.h>
+> >>  #include <linux/swap.h>
+> >> +#include <linux/mm.h>
+> >>  #include <asm/div64.h>
+> >>  #include "cifsfs.h"
+> >>  #include "cifspdu.h"
+> >> @@ -3975,7 +3976,7 @@ readpages_get_pages(struct address_space *mapping, struct list_head *page_list,
+> >>  
+> >>  	INIT_LIST_HEAD(tmplist);
+> >>  
+> >> -	page = list_entry(page_list->prev, struct page, lru);
+> >> +	page = lru_to_page(page_list);
+> >>  
+> >>  	/*
+> >>  	 * Lock the page and put it in the cache. Since no one else
+> >> diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+> >> index f461d75ac049..6aa282ee455a 100644
+> >> --- a/fs/ext4/readpage.c
+> >> +++ b/fs/ext4/readpage.c
+> >> @@ -128,7 +128,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
+> >>  
+> >>  		prefetchw(&page->flags);
+> >>  		if (pages) {
+> >> -			page = list_entry(pages->prev, struct page, lru);
+> >> +			page = lru_to_page(pages);
+> >>  			list_del(&page->lru);
+> >>  			if (add_to_page_cache_lru(page, mapping, page->index,
+> >>  				  readahead_gfp_mask(mapping)))
+> >> diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
+> >> index eb1ce30412dc..832c1759a09a 100644
+> >> --- a/fs/ocfs2/aops.c
+> >> +++ b/fs/ocfs2/aops.c
+> >> @@ -30,6 +30,7 @@
+> >>  #include <linux/quotaops.h>
+> >>  #include <linux/blkdev.h>
+> >>  #include <linux/uio.h>
+> >> +#include <linux/mm.h>
+> >>  
+> >>  #include <cluster/masklog.h>
+> >>  
+> >> @@ -397,7 +398,7 @@ static int ocfs2_readpages(struct file *filp, struct address_space *mapping,
+> >>  	 * Check whether a remote node truncated this file - we just
+> >>  	 * drop out in that case as it's not worth handling here.
+> >>  	 */
+> >> -	last = list_entry(pages->prev, struct page, lru);
+> >> +	last = lru_to_page(pages);
+> >>  	start = (loff_t)last->index << PAGE_SHIFT;
+> >>  	if (start >= i_size_read(inode))
+> >>  		goto out_unlock;
+> >> diff --git a/fs/orangefs/inode.c b/fs/orangefs/inode.c
+> >> index fe53381b26b1..f038235c64bd 100644
+> >> --- a/fs/orangefs/inode.c
+> >> +++ b/fs/orangefs/inode.c
+> >> @@ -77,7 +77,7 @@ static int orangefs_readpages(struct file *file,
+> >>  	for (page_idx = 0; page_idx < nr_pages; page_idx++) {
+> >>  		struct page *page;
+> >>  
+> >> -		page = list_entry(pages->prev, struct page, lru);
+> >> +		page = lru_to_page(pages);
+> >>  		list_del(&page->lru);
+> >>  		if (!add_to_page_cache(page,
+> >>  				       mapping,
+> >> diff --git a/mm/swap.c b/mm/swap.c
+> >> index aa483719922e..20b9e9d99652 100644
+> >> --- a/mm/swap.c
+> >> +++ b/mm/swap.c
+> >> @@ -126,7 +126,7 @@ void put_pages_list(struct list_head *pages)
+> >>  	while (!list_empty(pages)) {
+> >>  		struct page *victim;
+> >>  
+> >> -		victim = list_entry(pages->prev, struct page, lru);
+> >> +		victim = lru_to_page(pages);
+> >>  		list_del(&victim->lru);
+> >>  		put_page(victim);
+> >>  	}
+> >> -- 
+> >> 2.17.1
+> > 
 > 
+
+-- 
+Sincerely yours,
+Mike.
