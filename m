@@ -1,212 +1,72 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:45988 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726393AbeKUKeF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 21 Nov 2018 05:34:05 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v2 1/8] libe2p: Helpers for configuring the encoding superblock fields
-Date: Tue, 20 Nov 2018 19:01:59 -0500
-Message-Id: <20181121000206.15496-2-krisman@collabora.com>
-In-Reply-To: <20181121000206.15496-1-krisman@collabora.com>
-References: <20181121000206.15496-1-krisman@collabora.com>
+Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:39078 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726565AbeK2UJf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 29 Nov 2018 15:09:35 -0500
+Date: Thu, 29 Nov 2018 10:04:50 +0100
+From: Michal Hocko <mhocko@kernel.org>
+To: Nikolay Borisov <nborisov@suse.com>
+Cc: linux-kernel@vger.kernel.org, David Howells <dhowells@redhat.com>,
+        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>,
+        "Yan, Zheng" <zyan@redhat.com>, Sage Weil <sage@redhat.com>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Steve French <sfrench@samba.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Mark Fasheh <mark@fasheh.com>,
+        Joel Becker <jlbec@evilplan.org>,
+        Mike Marshall <hubcap@omnibond.com>,
+        Martin Brandenburg <martin@omnibond.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Mike Rapoport <rppt@linux.vnet.ibm.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Randy Dunlap <rdunlap@infradead.org>,
+        YueHaibing <yuehaibing@huawei.com>,
+        Shakeel Butt <shakeelb@google.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-ext4@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com, devel@lists.orangefs.org,
+        linux-mm@kvack.org
+Subject: Re: [PATCH 2/2] fs: Don't open-code lru_to_page
+Message-ID: <20181129090450.GR6923@dhcp22.suse.cz>
+References: <20181129075301.29087-1-nborisov@suse.com>
+ <20181129075301.29087-2-nborisov@suse.com>
+ <20181129081826.GO6923@dhcp22.suse.cz>
+ <0921bc8f-b899-4925-51f2-a9f45d4c906a@suse.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
+In-Reply-To: <0921bc8f-b899-4925-51f2-a9f45d4c906a@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+On Thu 29-11-18 10:50:08, Nikolay Borisov wrote:
+> 
+> 
+> On 29.11.18 г. 10:18 ч., Michal Hocko wrote:
+> > On Thu 29-11-18 09:52:57, Nikolay Borisov wrote:
+> >> There are a bunch of filesystems which essentially open-code lru_to_page
+> >> helper. Change them to using the helper. No functional changes.
+> > 
+> > I would just squash the two into a single patch. It makes the first one
+> > more obvious. Or is there any reason to have them separate?
+> 
+> No reason, just didn't know how people would react so that's why I chose
+> to send as two separate.
 
-Implement helper functions to convert the encoding name and specific
-parameters requested by the user on the command line into the format
-that is written to disk.
+This is a matter of taste I guess. But I usually prefer to have callers
+along with a new helper in a single patch. This is not a new helper
+per-se but doing it the same way seems reasonable to me. Not that I
+would insist of course. You can use my ack for both patch in case you
+decide to leave it as is.
 
-Changes since v1:
-  - Drop struct ext4_encoding_map name.
-  - remove question mark in comment.
-  - Reword 0x0 -> NULL
-  - Prevent out of bound array access if requested invalid encoding
+> If I squash them who would be the best person to take them ?
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- lib/e2p/Makefile.in  |  8 +++-
- lib/e2p/e2p.h        |  5 +++
- lib/e2p/encoding.c   | 97 ++++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2_fs.h |  5 +++
- 4 files changed, 113 insertions(+), 2 deletions(-)
- create mode 100644 lib/e2p/encoding.c
-
-diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
-index 2b0aa1915130..68d534cdaf11 100644
---- a/lib/e2p/Makefile.in
-+++ b/lib/e2p/Makefile.in
-@@ -19,7 +19,8 @@ all::	e2p.pc
- OBJS=		feature.o fgetflags.o fsetflags.o fgetversion.o fsetversion.o \
- 		getflags.o getversion.o hashstr.o iod.o ls.o ljs.o mntopts.o \
- 		parse_num.o pe.o pf.o ps.o setflags.o setversion.o uuid.o \
--		ostype.o percent.o crypto_mode.o fgetproject.o fsetproject.o
-+		ostype.o percent.o crypto_mode.o fgetproject.o fsetproject.o \
-+		encoding.o
- 
- SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/fsetflags.c $(srcdir)/fgetversion.c \
-@@ -29,7 +30,7 @@ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/pe.c $(srcdir)/pf.c $(srcdir)/ps.c \
- 		$(srcdir)/setflags.c $(srcdir)/setversion.c $(srcdir)/uuid.c \
- 		$(srcdir)/ostype.c $(srcdir)/percent.c $(srcdir)/crypto_mode.c \
--		$(srcdir)/fgetproject.c $(srcdir)/fsetproject.c
-+		$(srcdir)/fgetproject.c $(srcdir)/fsetproject.c $(srcdir)/encoding.c
- HFILES= e2p.h
- 
- LIBRARY= libe2p
-@@ -147,6 +148,9 @@ getversion.o: $(srcdir)/getversion.c $(top_builddir)/lib/config.h \
- hashstr.o: $(srcdir)/hashstr.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-+encoding.o: $(srcdir)/encoding.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
- iod.o: $(srcdir)/iod.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-diff --git a/lib/e2p/e2p.h b/lib/e2p/e2p.h
-index d70b59a5d358..c3a6b2587bf6 100644
---- a/lib/e2p/e2p.h
-+++ b/lib/e2p/e2p.h
-@@ -80,3 +80,8 @@ unsigned int e2p_percent(int percent, unsigned int base);
- 
- const char *e2p_encmode2string(int num);
- int e2p_string2encmode(char *string);
-+
-+int e2p_str2encoding(const char *string);
-+const char *e2p_encoding2str(int encoding);
-+int e2p_get_encoding_flags(int encoding);
-+int e2p_str2encoding_flags(int encoding, char *param, __u16 *flags);
-diff --git a/lib/e2p/encoding.c b/lib/e2p/encoding.c
-new file mode 100644
-index 000000000000..b1e6262a73aa
---- /dev/null
-+++ b/lib/e2p/encoding.c
-@@ -0,0 +1,97 @@
-+/*
-+ * encoding.c --- convert between encoding magic numbers and strings
-+ *
-+ * Copyright (C) 2018  Collabora Ltd.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
-+
-+#include "config.h"
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <ctype.h>
-+#include <errno.h>
-+#include <stdio.h>
-+
-+#include "e2p.h"
-+
-+#define ARRAY_SIZE(array)			\
-+        (sizeof(array) / sizeof(array[0]))
-+
-+static const struct {
-+	char *name;
-+	__u16 default_flags;
-+} ext4_encoding_map[] = {
-+	/* 0x0 */ { "ascii", 0},
-+	/* 0x1 */ {"utf8-10.0.0",
-+		   UTF8_NORMALIZATION_TYPE_NFKD | UTF8_CASEFOLD_TYPE_NFKDCF},
-+};
-+
-+static const struct enc_flags {
-+	__u16 flag;
-+	char *param;
-+} encoding_flags[] = {
-+	{ EXT4_ENC_STRICT_MODE_FL, "strict" },
-+};
-+
-+/* Return a positive number < 0xff indicating the encoding magic number
-+ * or a negative value indicating error. */
-+int e2p_str2encoding(const char *string)
-+{
-+	int i;
-+
-+	for (i = 0 ; i < ARRAY_SIZE(ext4_encoding_map); i++)
-+		if (!strcmp(string, ext4_encoding_map[i].name))
-+			return i;
-+
-+	return -EINVAL;
-+}
-+
-+const char *e2p_encoding2str(int encoding)
-+{
-+	if (encoding < ARRAY_SIZE(ext4_encoding_map))
-+		return ext4_encoding_map[encoding].name;
-+	return NULL;
-+}
-+
-+int e2p_get_encoding_flags(int encoding)
-+{
-+	if (encoding < ARRAY_SIZE(ext4_encoding_map))
-+		return ext4_encoding_map[encoding].default_flags;
-+	return 0;
-+}
-+
-+int e2p_str2encoding_flags(int encoding, char *param, __u16 *flags)
-+{
-+	char *f = strtok(param, "-");
-+	const struct enc_flags *fl;
-+	int i, neg = 0;
-+
-+	while (f) {
-+		neg = 0;
-+		if (!strncmp("no", f, 2)) {
-+			neg = 1;
-+			f += 2;
-+		}
-+
-+		for (i = 0; i < ARRAY_SIZE(encoding_flags); i++) {
-+			fl = &encoding_flags[i];
-+			if (!strcmp(fl->param, f)) {
-+				if (neg)
-+					*flags &= ~fl->flag;
-+				else
-+					*flags |= fl->flag;
-+
-+				goto next_flag;
-+			}
-+		}
-+		return -EINVAL;
-+	next_flag:
-+		f = strtok(NULL, "-");
-+	}
-+	return 0;
-+}
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index f1c405b76339..c0d0afc78e38 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -16,6 +16,7 @@
- #ifndef _LINUX_EXT2_FS_H
- #define _LINUX_EXT2_FS_H
- 
-+#include <stddef.h>
- #include <ext2fs/ext2_types.h>		/* Changed from linux/types.h */
- 
- #ifndef __GNUC_PREREQ
-@@ -1127,4 +1128,8 @@ struct mmp_struct {
-  */
- #define EXT4_INLINE_DATA_DOTDOT_SIZE	(4)
- 
-+#define EXT4_ENC_STRICT_MODE_FL		(1 << 0) /* Reject invalid sequences */
-+#define UTF8_NORMALIZATION_TYPE_NFKD	(1 << 1)
-+#define UTF8_CASEFOLD_TYPE_NFKDCF	(1 << 4)
-+
- #endif	/* _LINUX_EXT2_FS_H */
+Sounds like a mmotm material to me.
 -- 
-2.19.1
+Michal Hocko
+SUSE Labs
