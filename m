@@ -1,197 +1,239 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:17659 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726869AbeKUOBo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 09:01:44 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V11 18/19] block: kill QUEUE_FLAG_NO_SG_MERGE
-Date: Wed, 21 Nov 2018 11:23:26 +0800
-Message-Id: <20181121032327.8434-19-ming.lei@redhat.com>
-In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
+Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-yw1-f65.google.com ([209.85.161.65]:35301 "EHLO
+        mail-yw1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728233AbeK3BNO (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 29 Nov 2018 20:13:14 -0500
+MIME-Version: 1.0
+References: <1540858969-75803-1-git-send-email-bo.liu@linux.alibaba.com>
+ <20181127114249.GH16301@quack2.suse.cz> <20181128201122.r4sec265cnlxgj2x@US-160370MP2.local>
+ <20181129085238.GD31087@quack2.suse.cz> <20181129120253.GR6311@dastard> <20181129130002.GM31087@quack2.suse.cz>
+In-Reply-To: <20181129130002.GM31087@quack2.suse.cz>
+From: Zhengping Zhou <johnzzpcrystal@gmail.com>
+Date: Thu, 29 Nov 2018 22:07:44 +0800
+Message-ID: <CALXdtC7R=J3EdBgUeY5QzTEcPwUVvWdiDprMnV-aO3BZX-3rdg@mail.gmail.com>
+Subject: Re: [PATCH RFC] Ext4: fix deadlock on dirty pages between fault and writeback
+To: jack@suse.cz
+Cc: david@fromorbit.com, bo.liu@linux.alibaba.com,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting"),
-physical segment number is mainly figured out in blk_queue_split() for
-fast path, and the flag of BIO_SEG_VALID is set there too.
+in kenrel 4.20-rc1 , function shrink_page_list=EF=BC=9A
 
-Now only blk_recount_segments() and blk_recalc_rq_segments() use this
-flag.
+1227         if (PageWriteback(page)) {
+1228             /* Case 1 above */
+1229             if (current_is_kswapd() &&
+1230                 PageReclaim(page) &&
+1231                 test_bit(PGDAT_WRITEBACK, &pgdat->flags)) {
+1232                 nr_immediate++;
+1233                 goto activate_locked;
+1234
+1235             /* Case 2 above */
+1236             } else if (sane_reclaim(sc) ||
+1237                 !PageReclaim(page) || !may_enter_fs) {
+1238                 /*
+1239                  * This is slightly racy - end_page_writeback()
+1240                  * might have just cleared PageReclaim, then
+1241                  * setting PageReclaim here end up interpreted
+1242                  * as PageReadahead - but that does not matter
+1243                  * enough to care.  What we do want is for this
+1244                  * page to have PageReclaim set next time memcg
+1245                  * reclaim reaches the tests above, so it will
+1246                  * then wait_on_page_writeback() to avoid OOM;
+1247                  * and it's also appropriate in global reclaim.
+1248                  */
+1249                 SetPageReclaim(page);
+1250                 nr_writeback++;
+1251                 goto activate_locked;
+1252
+1253             /* Case 3 above */
+1254             } else {
+1255                 unlock_page(page);
+1256                 wait_on_page_writeback(page);
+1257                 /* then go back and try same page again */
+1258                 list_add_tail(&page->lru, page_list);
+1259                 continue;
+1260             }
+1261         }
 
-Basically blk_recount_segments() is bypassed in fast path given BIO_SEG_VALID
-is set in blk_queue_split().
 
-For another user of blk_recalc_rq_segments():
+What's your kernel version ? Seems we won't  wait_page_writeback with
+holding page lock in latest kernel version.
 
-- run in partial completion branch of blk_update_request, which is an unusual case
 
-- run in blk_cloned_rq_check_limits(), still not a big problem if the flag is killed
-since dm-rq is the only user.
-
-Multi-page bvec is enabled now, not doing S/G merging is rather pointless with the
-current setup of the I/O path, as it isn't going to save you a significant amount
-of cycles.
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- block/blk-merge.c      | 31 ++++++-------------------------
- block/blk-mq-debugfs.c |  1 -
- block/blk-mq.c         |  3 ---
- drivers/md/dm-table.c  | 13 -------------
- include/linux/blkdev.h |  1 -
- 5 files changed, 6 insertions(+), 43 deletions(-)
-
-diff --git a/block/blk-merge.c b/block/blk-merge.c
-index 7c44216c1b58..8fcac7855a45 100644
---- a/block/blk-merge.c
-+++ b/block/blk-merge.c
-@@ -343,8 +343,7 @@ void blk_queue_split(struct request_queue *q, struct bio **bio)
- EXPORT_SYMBOL(blk_queue_split);
- 
- static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
--					     struct bio *bio,
--					     bool no_sg_merge)
-+					     struct bio *bio)
- {
- 	struct bio_vec bv, bvprv = { NULL };
- 	int cluster, prev = 0;
-@@ -371,13 +370,6 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
- 	nr_phys_segs = 0;
- 	for_each_bio(bio) {
- 		bio_for_each_bvec(bv, bio, iter) {
--			/*
--			 * If SG merging is disabled, each bio vector is
--			 * a segment
--			 */
--			if (no_sg_merge)
--				goto new_segment;
--
- 			if (prev && cluster) {
- 				if (seg_size + bv.bv_len
- 				    > queue_max_segment_size(q))
-@@ -412,27 +404,16 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
- 
- void blk_recalc_rq_segments(struct request *rq)
- {
--	bool no_sg_merge = !!test_bit(QUEUE_FLAG_NO_SG_MERGE,
--			&rq->q->queue_flags);
--
--	rq->nr_phys_segments = __blk_recalc_rq_segments(rq->q, rq->bio,
--			no_sg_merge);
-+	rq->nr_phys_segments = __blk_recalc_rq_segments(rq->q, rq->bio);
- }
- 
- void blk_recount_segments(struct request_queue *q, struct bio *bio)
- {
--	unsigned short seg_cnt = bio_segments(bio);
--
--	if (test_bit(QUEUE_FLAG_NO_SG_MERGE, &q->queue_flags) &&
--			(seg_cnt < queue_max_segments(q)))
--		bio->bi_phys_segments = seg_cnt;
--	else {
--		struct bio *nxt = bio->bi_next;
-+	struct bio *nxt = bio->bi_next;
- 
--		bio->bi_next = NULL;
--		bio->bi_phys_segments = __blk_recalc_rq_segments(q, bio, false);
--		bio->bi_next = nxt;
--	}
-+	bio->bi_next = NULL;
-+	bio->bi_phys_segments = __blk_recalc_rq_segments(q, bio);
-+	bio->bi_next = nxt;
- 
- 	bio_set_flag(bio, BIO_SEG_VALID);
- }
-diff --git a/block/blk-mq-debugfs.c b/block/blk-mq-debugfs.c
-index a32bb79d6c95..d752fe4461af 100644
---- a/block/blk-mq-debugfs.c
-+++ b/block/blk-mq-debugfs.c
-@@ -127,7 +127,6 @@ static const char *const blk_queue_flag_name[] = {
- 	QUEUE_FLAG_NAME(SAME_FORCE),
- 	QUEUE_FLAG_NAME(DEAD),
- 	QUEUE_FLAG_NAME(INIT_DONE),
--	QUEUE_FLAG_NAME(NO_SG_MERGE),
- 	QUEUE_FLAG_NAME(POLL),
- 	QUEUE_FLAG_NAME(WC),
- 	QUEUE_FLAG_NAME(FUA),
-diff --git a/block/blk-mq.c b/block/blk-mq.c
-index 32b246ed44c0..0375c3bd410e 100644
---- a/block/blk-mq.c
-+++ b/block/blk-mq.c
-@@ -2755,9 +2755,6 @@ struct request_queue *blk_mq_init_allocated_queue(struct blk_mq_tag_set *set,
- 
- 	q->queue_flags |= QUEUE_FLAG_MQ_DEFAULT;
- 
--	if (!(set->flags & BLK_MQ_F_SG_MERGE))
--		blk_queue_flag_set(QUEUE_FLAG_NO_SG_MERGE, q);
--
- 	q->sg_reserved_size = INT_MAX;
- 
- 	INIT_DELAYED_WORK(&q->requeue_work, blk_mq_requeue_work);
-diff --git a/drivers/md/dm-table.c b/drivers/md/dm-table.c
-index 844f7d0f2ef8..a41832cf0c98 100644
---- a/drivers/md/dm-table.c
-+++ b/drivers/md/dm-table.c
-@@ -1698,14 +1698,6 @@ static int device_is_not_random(struct dm_target *ti, struct dm_dev *dev,
- 	return q && !blk_queue_add_random(q);
- }
- 
--static int queue_supports_sg_merge(struct dm_target *ti, struct dm_dev *dev,
--				   sector_t start, sector_t len, void *data)
--{
--	struct request_queue *q = bdev_get_queue(dev->bdev);
--
--	return q && !test_bit(QUEUE_FLAG_NO_SG_MERGE, &q->queue_flags);
--}
--
- static bool dm_table_all_devices_attribute(struct dm_table *t,
- 					   iterate_devices_callout_fn func)
- {
-@@ -1902,11 +1894,6 @@ void dm_table_set_restrictions(struct dm_table *t, struct request_queue *q,
- 	if (!dm_table_supports_write_zeroes(t))
- 		q->limits.max_write_zeroes_sectors = 0;
- 
--	if (dm_table_all_devices_attribute(t, queue_supports_sg_merge))
--		blk_queue_flag_clear(QUEUE_FLAG_NO_SG_MERGE, q);
--	else
--		blk_queue_flag_set(QUEUE_FLAG_NO_SG_MERGE, q);
--
- 	dm_table_verify_integrity(t);
- 
- 	/*
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index a281b6737b61..8e05966ffe94 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -590,7 +590,6 @@ struct request_queue {
- #define QUEUE_FLAG_SAME_FORCE  15	/* force complete on same CPU */
- #define QUEUE_FLAG_DEAD        16	/* queue tear-down finished */
- #define QUEUE_FLAG_INIT_DONE   17	/* queue is initialized */
--#define QUEUE_FLAG_NO_SG_MERGE 18	/* don't attempt to merge SG segments*/
- #define QUEUE_FLAG_POLL	       19	/* IO polling enabled if set */
- #define QUEUE_FLAG_WC	       20	/* Write back caching */
- #define QUEUE_FLAG_FUA	       21	/* device supports FUA writes */
--- 
-2.9.5
+Jan Kara <jack@suse.cz> =E4=BA=8E2018=E5=B9=B411=E6=9C=8829=E6=97=A5=E5=91=
+=A8=E5=9B=9B =E4=B8=8B=E5=8D=889:01=E5=86=99=E9=81=93=EF=BC=9A
+>
+> On Thu 29-11-18 23:02:53, Dave Chinner wrote:
+> > On Thu, Nov 29, 2018 at 09:52:38AM +0100, Jan Kara wrote:
+> > > On Wed 28-11-18 12:11:23, Liu Bo wrote:
+> > > > On Tue, Nov 27, 2018 at 12:42:49PM +0100, Jan Kara wrote:
+> > > > > CCed fsdevel since this may be interesting to other filesystem de=
+velopers
+> > > > > as well.
+> > > > >
+> > > > > On Tue 30-10-18 08:22:49, Liu Bo wrote:
+> > > > > > mpage_prepare_extent_to_map() tries to build up a large bio to =
+stuff down
+> > > > > > the pipe.  But if it needs to wait for a page lock, it needs to=
+ make sure
+> > > > > > and send down any pending writes so we don't deadlock with anyo=
+ne who has
+> > > > > > the page lock and is waiting for writeback of things inside the=
+ bio.
+> > > > >
+> > > > > Thanks for report! I agree the current code has a deadlock possib=
+ility you
+> > > > > describe. But I think the problem reaches a bit further than what=
+ your
+> > > > > patch fixes.  The problem is with pages that are unlocked but hav=
+e
+> > > > > PageWriteback set.  Page reclaim may end up waiting for these pag=
+es and
+> > > > > thus any memory allocation with __GFP_FS set can block on these. =
+So in our
+> > > > > current setting page writeback must not block on anything that ca=
+n be held
+> > > > > while doing memory allocation with __GFP_FS set. Page lock is jus=
+t one of
+> > > > > these possibilities, wait_on_page_writeback() in
+> > > > > mpage_prepare_extent_to_map() is another suspect and there mat be=
+ more. Or
+> > > > > to say it differently, if there's lock A and GFP_KERNEL allocatio=
+n can
+> > > > > happen under lock A, then A cannot be taken by the writeback path=
+. This is
+> > > > > actually pretty subtle deadlock possibility and our current lockd=
+ep
+> > > > > instrumentation isn't going to catch this.
+> > > > >
+> > > >
+> > > > Thanks for the nice summary, it's true that a lock A held in both
+> > > > writeback path and memory reclaim can end up with deadlock.
+> > > >
+> > > > Fortunately, by far there're only deadlock reports of page's lock b=
+it
+> > > > and writeback bit in both ext4 and btrfs[1].  I think
+> > > > wait_on_page_writeback() would be OK as it's been protected by page
+> > > > lock.
+> > > >
+> > > > [1]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux=
+.git/commit/?id=3D01d658f2ca3c85c1ffb20b306e30d16197000ce7
+> > >
+> > > Yes, but that may just mean that the other deadlocks are just harder =
+to
+> > > hit...
+> > >
+> > > > > So I see two ways how to fix this properly:
+> > > > >
+> > > > > 1) Change ext4 code to always submit the bio once we have a full =
+page
+> > > > > prepared for writing. This may be relatively simple but has a hig=
+her CPU
+> > > > > overhead for bio allocation & freeing (actual IO won't really dif=
+fer since
+> > > > > the plugging code should take care of merging the submitted bios)=
+. XFS
+> > > > > seems to be doing this.
+> > > >
+> > > > Seems that that's the safest way to do it, but as you said there's
+> > > > some tradeoff.
+> > > >
+> > > > (Just took a look at xfs's writepages, xfs also did the page
+> > > > collection if there're adjacent pages in xfs_add_to_ioend(), and si=
+nce
+> > > > xfs_vm_writepages() is using the generic helper write_cache_pages()
+> > > > which calls lock_page() as well, it's still possible to run into th=
+e
+> > > > above kind of deadlock.)
+> > >
+> > > Originally I thought XFS doesn't have this problem but now when I loo=
+k
+> > > again, you are right that their ioend may accumulate more pages to wr=
+ite
+> > > and so they are prone to the same deadlock ext4 is. Added XFS list to=
+ CC.
+> >
+> > I don't think XFS has a problem here, because the deadlock is
+> > dependent on holding a lock that writeback might take and then doing
+> > a GFP_KERNEL allocation. I don't think we do that anywhere in XFS -
+> > the only lock that is of concern here is the ip->i_ilock, and I
+> > think we always do GFP_NOFS allocations inside that lock.
+> >
+> > As it is, this sort of lock vs reclaim inversion should be caught by
+> > lockdep - allocations and reclaim contexts are recorded by lockdep
+> > we get reports if we do lock A - alloc and then do reclaim - lock A.
+> > We've always had problems with false positives from lockdep for
+> > these situations where common XFS code can be called from GFP_KERNEL
+> > valid contexts as well as reclaim or GFP_NOFS-only contexts, but I
+> > don't recall ever seeing such a report for the writeback path....
+>
+> I think for A =3D=3D page lock, XFS may have the problem (and lockdep won=
+'t
+> notice because it does not track page locks). There are some parts of
+> kernel which do GFP_KERNEL allocations under page lock - pte_alloc_one() =
+is
+> one such function which allocates page tables with GFP_KERNEL and gets
+> called with the faulted page locked. And I believe there are others.
+>
+> So direct reclaim from pte_alloc_one() can wait for writeback on page B
+> while holding lock on page A. And if B is just prepared (added to bio,
+> under writeback, unlocked) but not submitted in xfs_writepages() and we
+> block on lock_page(A), we have a deadlock.
+>
+> Generally deadlocks like these will be invisible to lockdep because it do=
+es
+> not track either PageWriteback or PageLocked as a dependency.
+>
+> > > > > 2) Change the code to unlock the page only when we submit the bio=
+.
+> >
+> > > > This sounds doable but not good IMO, the concern is that page locks
+> > > > can be held for too long, or if we do 2), submitting one bio per pa=
+ge
+> > > > in 1) is also needed.
+> > >
+> > > Hum, you're right that page lock hold times may increase noticeably a=
+nd
+> > > that's not very good. Ideally we'd need a way to submit whatever we h=
+ave
+> > > prepared when we are going to sleep but there's no easy way to do tha=
+t.
+> >
+> > XFS unlocks the page after it has been added to the bio and marked
+> > as under writeback, not when the bio is submitted. i.e.
+> >
+> > writepage w/ locked page dirty
+> > lock ilock
+> > <mapping, allocation>
+> > unlock ilock
+> > bio_add_page
+> > clear_page_dirty_for_io
+> > set_page_writeback
+> > unlock_page
+> > .....
+> > <gather more dirty pages into bio>
+> > .....
+> > <bio is full or discontiguous page to be written>
+> > submit_bio()
+>
+> Yes, ext4 works the same way. But thanks for confirmation.
+>
+> > If we switch away which holding a partially built bio, the only page
+> > we have locked is the one we are currently trying to add to the bio.
+> > Lock ordering prevents deadlocks on that one page, and all other
+> > pages in the bio being built are marked as under writeback and are
+> > not locked. Hence anything that wants to modify a page held in the
+> > bio will block waiting for page writeback to clear, not the page
+> > lock.
+>
+> Yes, and the blocking on writeback of such page in direct reclaim is
+> exactly one link in the deadlock chain...
+>
+>                                                                 Honza
+> --
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
