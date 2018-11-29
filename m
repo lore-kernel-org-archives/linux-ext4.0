@@ -1,107 +1,72 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:51393 "EHLO newverein.lst.de"
+Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:43034 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727486AbeKVAHL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 19:07:11 -0500
-Date: Wed, 21 Nov 2018 14:32:44 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 03/19] block: introduce bio_for_each_bvec()
-Message-ID: <20181121133244.GB1640@lst.de>
-References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-4-ming.lei@redhat.com>
+        id S1727359AbeK2PON (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 29 Nov 2018 10:14:13 -0500
+Date: Wed, 28 Nov 2018 23:10:14 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        alexey.lyashkov@gmail.com
+Subject: Re: [PATCH v2] ext2fs: don't read group descriptors during e2label
+Message-ID: <20181129041014.GJ31885@thunk.org>
+References: <20181128204840.4544-1-artem.blagodarenko@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181121032327.8434-4-ming.lei@redhat.com>
+In-Reply-To: <20181128204840.4544-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> +#define bio_iter_mp_iovec(bio, iter)				\
-> +	segment_iter_bvec((bio)->bi_io_vec, (iter))
+On Wed, Nov 28, 2018 at 11:48:40PM +0300, Artem Blagodarenko wrote:
+> tune2fs is used to make e2label duties.  ext2fs_open2() reads group
+> descriptors which are not used during disk label obtaining, but
+> takes a lot of time on large partitions.
 
-Besides the mp naming we'd like to get rid off there also is just
-a single user of this macro, please just expand it there.
+Are you trying to speed up using e2label to *read* the label, or
+e2label to *write* the label?  How often do you need to write the
+label, and do you need to write the label with a dirty journal?
 
-> +#define segment_iter_bvec(bvec, iter)				\
-> +((struct bio_vec) {							\
-> +	.bv_page	= segment_iter_page((bvec), (iter)),	\
-> +	.bv_len		= segment_iter_len((bvec), (iter)),	\
-> +	.bv_offset	= segment_iter_offset((bvec), (iter)),	\
-> +})
+I really don't like this patch because it makes the
+EXT2_FLAG_JOURNAL_ONLY flag an **extremely** hazardous flag to use.
+If the application uses it wrong, it could lead to extremely serious,
+disastrous data loss.
 
-And for this one please keep the segment vs bvec versions of these
-macros close together in the file please, right now it follow the
-bvec_iter_bvec variant closely.
+In fact, I'm going to guess that you only care about reading the
+label, and you didn't even test using "tune2fs -L new_label
+/dev/large_file_system_with_precious_data".  Because if you did, the
+tune2fs -L would call ext2fs_mark_super_dirty(), and then
+ext2fs_close() would call ext2fs_flushfs(), which would write out all
+of the block groups, writing uninitialized trash into all of the block
+group descriptor blocks beyond the first one, and your large
+production file system would be very sad.
 
-> +static inline void __bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
-> +				      unsigned bytes, unsigned max_seg_len)
->  {
->  	iter->bi_sector += bytes >> 9;
->  
->  	if (bio_no_advance_iter(bio))
->  		iter->bi_size -= bytes;
->  	else
-> -		bvec_iter_advance(bio->bi_io_vec, iter, bytes);
-> +		__bvec_iter_advance(bio->bi_io_vec, iter, bytes, max_seg_len);
->  		/* TODO: It is reasonable to complete bio with error here. */
->  }
->  
-> +static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
-> +				    unsigned bytes)
-> +{
-> +	__bio_advance_iter(bio, iter, bytes, PAGE_SIZE);
-> +}
+So, ah, NACK.  :-)
 
-Btw, I think the remaining users of bio_advance_iter() in bio.h
-should probably switch to using __bio_advance_iter to make them a little
-more clear to read.
+If what you care about is "print label" case, what I would suggest is
+a new interface which simply reads the superblock into a struct
+ext2_super_block and calls ext2fs_swap_super() on it.  This will speed
+up the e2label read case.
 
-> +/* returns one real segment(multi-page bvec) each time */
+If you want to speed up the e2label write case when the file system is
+cleanly unmounted, we could have a new interface that writes out the
+superblock, and tune2fs would use it if the file system does not need
+to have a journal replay.  But if the journal does need to be
+replayed, we would need to do a full ext2fs_open2() call.
 
-space before the brace, please.
+When designing library interfaces, it's always important to imagine
+how an well-meaning programmer calling them might misuse them.
+Leaving land-mines for programmers to trip over --- especially when
+you trip over them yourself in the same patch which introduces the
+interfaces --- is just not a nice thing to do.  For your amusement,
+I'll leave you with:
 
-> +#define BVEC_MAX_LEN  ((unsigned int)-1)
+Rusty Rusell's writeup, "How Do I Make This Hard to Misuse":
 
->  	while (bytes) {
-> +		unsigned segment_len = segment_iter_len(bv, *iter);
->  
-> -		iter->bi_bvec_done += len;
-> +		if (max_seg_len < BVEC_MAX_LEN)
-> +			segment_len = min_t(unsigned, segment_len,
-> +					    max_seg_len -
-> +					    bvec_iter_offset(bv, *iter));
-> +
-> +		segment_len = min(bytes, segment_len);
+   https://ozlabs.org/~rusty/index.cgi/tech/2008-03-30.html
 
-Please stick to passing the magic zero here as can often generate more
-efficient code.
+And the flip side, his "What If I Don't Actually Like My Users?"
 
-Talking about efficent code - I wonder how much code size we'd save
-by moving this function out of line..
+   https://ozlabs.org/~rusty/index.cgi/tech/2008-04-01.html
 
-But while looking over this I wonder why we even need the max_seg_len
-here.  The only thing __bvec_iter_advance does it to move bi_bvec_done
-and bi_idx forward, with corresponding decrements of bi_size.  As far
-as I can tell the only thing that max_seg_len does is that we need
-to more iterations of the while loop to archive the same thing.
-
-And actual bvec used by the caller will be obtained using
-bvec_iter_bvec or segment_iter_bvec depending on if they want multi-page
-or single-page variants.
+						- Ted
