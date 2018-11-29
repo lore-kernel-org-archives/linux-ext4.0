@@ -1,188 +1,171 @@
-Return-Path: <SRS0=Yxos=NQ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay.sw.ru ([185.231.240.75]:47536 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727275AbeKEUWV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 5 Nov 2018 15:22:21 -0500
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2] ext4: remove code duplication in
- update_ind/bind/tind_extent_range
-To: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-kernel@vger.kernel.org
-References: <E88DA3F6-D339-44D6-95A8-75256A8F57CC@dilger.ca>
-Message-ID: <bcd63c24-4a5c-8c75-554d-af0f80d1edf7@virtuozzo.com>
-Date: Mon, 5 Nov 2018 14:03:08 +0300
+Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from ipmail03.adl2.internode.on.net ([150.101.137.141]:55871 "EHLO
+        ipmail03.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726190AbeK3HrF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Nov 2018 02:47:05 -0500
+Date: Fri, 30 Nov 2018 07:40:19 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Liu Bo <bo.liu@linux.alibaba.com>, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [PATCH RFC] Ext4: fix deadlock on dirty pages between fault and
+ writeback
+Message-ID: <20181129204019.GS6311@dastard>
+References: <1540858969-75803-1-git-send-email-bo.liu@linux.alibaba.com>
+ <20181127114249.GH16301@quack2.suse.cz>
+ <20181128201122.r4sec265cnlxgj2x@US-160370MP2.local>
+ <20181129085238.GD31087@quack2.suse.cz>
+ <20181129120253.GR6311@dastard>
+ <20181129130002.GM31087@quack2.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <E88DA3F6-D339-44D6-95A8-75256A8F57CC@dilger.ca>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181129130002.GM31087@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-update_ind/bind/tind_extent_page() differs by one variable and can be
-replaced by unified function. These functions are called by similar way
-and their caller function can be simplified too.
+On Thu, Nov 29, 2018 at 02:00:02PM +0100, Jan Kara wrote:
+> On Thu 29-11-18 23:02:53, Dave Chinner wrote:
+> > On Thu, Nov 29, 2018 at 09:52:38AM +0100, Jan Kara wrote:
+> > > On Wed 28-11-18 12:11:23, Liu Bo wrote:
+> > > > On Tue, Nov 27, 2018 at 12:42:49PM +0100, Jan Kara wrote:
+> > > > > CCed fsdevel since this may be interesting to other filesystem developers
+> > > > > as well.
+> > > > > 
+> > > > > On Tue 30-10-18 08:22:49, Liu Bo wrote:
+> > > > > > mpage_prepare_extent_to_map() tries to build up a large bio to stuff down
+> > > > > > the pipe.  But if it needs to wait for a page lock, it needs to make sure
+> > > > > > and send down any pending writes so we don't deadlock with anyone who has
+> > > > > > the page lock and is waiting for writeback of things inside the bio.
+> > > > > 
+> > > > > Thanks for report! I agree the current code has a deadlock possibility you
+> > > > > describe. But I think the problem reaches a bit further than what your
+> > > > > patch fixes.  The problem is with pages that are unlocked but have
+> > > > > PageWriteback set.  Page reclaim may end up waiting for these pages and
+> > > > > thus any memory allocation with __GFP_FS set can block on these. So in our
+> > > > > current setting page writeback must not block on anything that can be held
+> > > > > while doing memory allocation with __GFP_FS set. Page lock is just one of
+> > > > > these possibilities, wait_on_page_writeback() in
+> > > > > mpage_prepare_extent_to_map() is another suspect and there mat be more. Or
+> > > > > to say it differently, if there's lock A and GFP_KERNEL allocation can
+> > > > > happen under lock A, then A cannot be taken by the writeback path. This is
+> > > > > actually pretty subtle deadlock possibility and our current lockdep
+> > > > > instrumentation isn't going to catch this.
+> > > > >
+> > > > 
+> > > > Thanks for the nice summary, it's true that a lock A held in both
+> > > > writeback path and memory reclaim can end up with deadlock.
+> > > > 
+> > > > Fortunately, by far there're only deadlock reports of page's lock bit
+> > > > and writeback bit in both ext4 and btrfs[1].  I think
+> > > > wait_on_page_writeback() would be OK as it's been protected by page
+> > > > lock.
+> > > > 
+> > > > [1]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=01d658f2ca3c85c1ffb20b306e30d16197000ce7
+> > > 
+> > > Yes, but that may just mean that the other deadlocks are just harder to
+> > > hit...
+> > > 
+> > > > > So I see two ways how to fix this properly:
+> > > > > 
+> > > > > 1) Change ext4 code to always submit the bio once we have a full page
+> > > > > prepared for writing. This may be relatively simple but has a higher CPU
+> > > > > overhead for bio allocation & freeing (actual IO won't really differ since
+> > > > > the plugging code should take care of merging the submitted bios). XFS
+> > > > > seems to be doing this.
+> > > > 
+> > > > Seems that that's the safest way to do it, but as you said there's
+> > > > some tradeoff.
+> > > > 
+> > > > (Just took a look at xfs's writepages, xfs also did the page
+> > > > collection if there're adjacent pages in xfs_add_to_ioend(), and since
+> > > > xfs_vm_writepages() is using the generic helper write_cache_pages()
+> > > > which calls lock_page() as well, it's still possible to run into the
+> > > > above kind of deadlock.)
+> > > 
+> > > Originally I thought XFS doesn't have this problem but now when I look
+> > > again, you are right that their ioend may accumulate more pages to write
+> > > and so they are prone to the same deadlock ext4 is. Added XFS list to CC.
+> > 
+> > I don't think XFS has a problem here, because the deadlock is
+> > dependent on holding a lock that writeback might take and then doing
+> > a GFP_KERNEL allocation. I don't think we do that anywhere in XFS -
+> > the only lock that is of concern here is the ip->i_ilock, and I
+> > think we always do GFP_NOFS allocations inside that lock.
+> > 
+> > As it is, this sort of lock vs reclaim inversion should be caught by
+> > lockdep - allocations and reclaim contexts are recorded by lockdep
+> > we get reports if we do lock A - alloc and then do reclaim - lock A.
+> > We've always had problems with false positives from lockdep for
+> > these situations where common XFS code can be called from GFP_KERNEL
+> > valid contexts as well as reclaim or GFP_NOFS-only contexts, but I
+> > don't recall ever seeing such a report for the writeback path....
+> 
+> I think for A == page lock, XFS may have the problem (and lockdep won't
+> notice because it does not track page locks). There are some parts of
+> kernel which do GFP_KERNEL allocations under page lock - pte_alloc_one() is
+> one such function which allocates page tables with GFP_KERNEL and gets
+> called with the faulted page locked. And I believe there are others.
 
-v2: minor style changes, thanks to Andreas Dilger
+Where in direct reclaim are we doing writeback to XFS?
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/ext4/migrate.c | 112 ++++++++++------------------------------------
- 1 file changed, 24 insertions(+), 88 deletions(-)
+It doesn't happen, and I've recently proposed we remove ->writepage
+support from XFS altogether so that memory reclaim never, ever
+tries to write pages to XFS filesystems, even from kswapd.
 
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 61a9d1927817..224e136d1c10 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -109,12 +109,13 @@ static int update_extent_range(handle_t *handle, struct inode *inode,
- 
- static int update_ind_extent_range(handle_t *handle, struct inode *inode,
- 				   ext4_fsblk_t pblock,
--				   struct migrate_struct *lb)
-+				   struct migrate_struct *lb,
-+				   ext4_lblk_t inc)
- {
- 	struct buffer_head *bh;
- 	__le32 *i_data;
- 	int i, retval = 0;
--	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
-+	ext4_lblk_t max_entries = inode->i_sb->s_blocksize >> 2;
- 
- 	bh = sb_bread(inode->i_sb, pblock);
- 	if (!bh)
-@@ -128,67 +129,7 @@ static int update_ind_extent_range(handle_t *handle, struct inode *inode,
- 			if (retval)
- 				break;
- 		} else {
--			lb->curr_block++;
--		}
--	}
--	put_bh(bh);
--	return retval;
--
--}
--
--static int update_dind_extent_range(handle_t *handle, struct inode *inode,
--				    ext4_fsblk_t pblock,
--				    struct migrate_struct *lb)
--{
--	struct buffer_head *bh;
--	__le32 *i_data;
--	int i, retval = 0;
--	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
--
--	bh = sb_bread(inode->i_sb, pblock);
--	if (!bh)
--		return -EIO;
--
--	i_data = (__le32 *)bh->b_data;
--	for (i = 0; i < max_entries; i++) {
--		if (i_data[i]) {
--			retval = update_ind_extent_range(handle, inode,
--						le32_to_cpu(i_data[i]), lb);
--			if (retval)
--				break;
--		} else {
--			/* Only update the file block number */
--			lb->curr_block += max_entries;
--		}
--	}
--	put_bh(bh);
--	return retval;
--
--}
--
--static int update_tind_extent_range(handle_t *handle, struct inode *inode,
--				    ext4_fsblk_t pblock,
--				    struct migrate_struct *lb)
--{
--	struct buffer_head *bh;
--	__le32 *i_data;
--	int i, retval = 0;
--	unsigned long max_entries = inode->i_sb->s_blocksize >> 2;
--
--	bh = sb_bread(inode->i_sb, pblock);
--	if (!bh)
--		return -EIO;
--
--	i_data = (__le32 *)bh->b_data;
--	for (i = 0; i < max_entries; i++) {
--		if (i_data[i]) {
--			retval = update_dind_extent_range(handle, inode,
--						le32_to_cpu(i_data[i]), lb);
--			if (retval)
--				break;
--		} else {
--			/* Only update the file block number */
--			lb->curr_block += max_entries * max_entries;
-+			lb->curr_block += inc;
- 		}
- 	}
- 	put_bh(bh);
-@@ -433,7 +374,7 @@ int ext4_ext_migrate(struct inode *inode)
- 	struct ext4_inode_info *ei;
- 	struct inode *tmp_inode = NULL;
- 	struct migrate_struct lb;
--	unsigned long max_entries;
-+	ext4_lblk_t max_entries, inc, mult;
- 	__u32 goal;
- 	uid_t owner[2];
- 
-@@ -523,34 +464,29 @@ int ext4_ext_migrate(struct inode *inode)
- 
- 	/* 32 bit block address 4 bytes */
- 	max_entries = inode->i_sb->s_blocksize >> 2;
--	for (i = 0; i < EXT4_NDIR_BLOCKS; i++) {
-+
-+	inc = 1; mult = 1;
-+	for (i = 0; i < EXT4_N_BLOCKS; i++) {
-+		inc *= mult;
-+		if (i == EXT4_IND_BLOCK)
-+			mult = max_entries;
-+
- 		if (i_data[i]) {
--			retval = update_extent_range(handle, tmp_inode,
-+			if (i < EXT4_IND_BLOCK)
-+				retval = update_extent_range(handle, tmp_inode,
- 						le32_to_cpu(i_data[i]), &lb);
-+			else
-+				retval = update_ind_extent_range(handle,
-+						tmp_inode,
-+						le32_to_cpu(i_data[i]),
-+						&lb, inc);
- 			if (retval)
- 				goto err_out;
--		} else
--			lb.curr_block++;
--	}
--	if (i_data[EXT4_IND_BLOCK]) {
--		retval = update_ind_extent_range(handle, tmp_inode,
--				le32_to_cpu(i_data[EXT4_IND_BLOCK]), &lb);
--			if (retval)
--				goto err_out;
--	} else
--		lb.curr_block += max_entries;
--	if (i_data[EXT4_DIND_BLOCK]) {
--		retval = update_dind_extent_range(handle, tmp_inode,
--				le32_to_cpu(i_data[EXT4_DIND_BLOCK]), &lb);
--			if (retval)
--				goto err_out;
--	} else
--		lb.curr_block += max_entries * max_entries;
--	if (i_data[EXT4_TIND_BLOCK]) {
--		retval = update_tind_extent_range(handle, tmp_inode,
--				le32_to_cpu(i_data[EXT4_TIND_BLOCK]), &lb);
--			if (retval)
--				goto err_out;
-+
-+		} else {
-+			if (i < EXT4_TIND_BLOCK)
-+				lb.curr_block += inc * mult;
-+		}
- 	}
- 	/*
- 	 * Build the last extent
+> So direct reclaim from pte_alloc_one() can wait for writeback on page B
+> while holding lock on page A. And if B is just prepared (added to bio,
+> under writeback, unlocked) but not submitted in xfs_writepages() and we
+> block on lock_page(A), we have a deadlock.
+
+Fundamentally, doing GFP_KERNEL allocations with a page lock
+held violates any ordering rules we might have for multiple page
+locking order. This is asking for random ABBA reclaim deadlocks to
+occur, and it's not a filesystem bug - that's a bug in the page
+table code. e.g if we are doing this in a filesystem/page cache
+context, it's always in ascending page->index order for pages
+referenced by the inode's mapping. Memory reclaim provides none of
+these lock ordering guarantees.
+
+Indeed, pte_alloc_one() doing hard coded GFP_KERNEL allocations is a
+problem we've repeatedly tried to get fixed over the past 15 years
+because of the need to call vmalloc in GFP_NOFS contexts. What we've
+got now is just a "blessed hack" of using task based NOFS context
+via memalloc_nofs_save() to override the hard coded pte allocation
+context.
+
+But that doesn't work with calls direct from page faults - it has no
+idea filesystems or page locking orders for multiple page locking.
+Using GFP_KERNEL while holding a page lock is a bug. Fix the damn
+bug, not force everyone else who is doing things safely and
+correctly to change their code.
+
+> Generally deadlocks like these will be invisible to lockdep because it does
+> not track either PageWriteback or PageLocked as a dependency.
+
+And, because lockdep doesn't report it, it's not a bug that needs
+fixing, eh?
+
+> > If we switch away which holding a partially built bio, the only page
+> > we have locked is the one we are currently trying to add to the bio.
+> > Lock ordering prevents deadlocks on that one page, and all other
+> > pages in the bio being built are marked as under writeback and are
+> > not locked. Hence anything that wants to modify a page held in the
+> > bio will block waiting for page writeback to clear, not the page
+> > lock.
+> 
+> Yes, and the blocking on writeback of such page in direct reclaim is
+> exactly one link in the deadlock chain...
+
+So, like preventing explicit writeback in direct reclaim, we either
+need to prevent direct reclaim from waiting on writeback or use
+GFP_NOFS allocation context when holding a page lock. The bug is not
+in the filesystem code here.
+
+Cheers,
+
+Dave.
 -- 
-2.17.1
+Dave Chinner
+david@fromorbit.com
