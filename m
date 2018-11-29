@@ -1,72 +1,52 @@
-Return-Path: <SRS0=c0SX=OB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34264 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388243AbeKVVLf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 22 Nov 2018 16:11:35 -0500
-Date: Thu, 22 Nov 2018 18:32:09 +0800
-From: Ming Lei <ming.lei@redhat.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 14/19] block: handle non-cluster bio out of
- blk_bio_segment_split
-Message-ID: <20181122103208.GD27273@ming.t460p>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
- <20181121032327.8434-15-ming.lei@redhat.com>
- <20181121143355.GB2594@lst.de>
- <20181121153726.GC19111@ming.t460p>
- <20181121174621.GA6961@lst.de>
- <20181122093259.GA27007@ming.t460p>
- <20181122100427.GA28871@lst.de>
+Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:51030 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726393AbeK3Jpf (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Nov 2018 04:45:35 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BE308288EC
+        for <linux-ext4@vger.kernel.org>; Thu, 29 Nov 2018 22:38:31 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Thu, 29 Nov 2018 22:38:21 +0000
+Message-ID: <bug-201685-13602-sJb3Lm1PNR@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181122100427.GA28871@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 22, 2018 at 11:04:28AM +0100, Christoph Hellwig wrote:
-> On Thu, Nov 22, 2018 at 05:33:00PM +0800, Ming Lei wrote:
-> > However, using virt boundary limit on non-cluster seems over-kill,
-> > because the bio will be over-split(each small bvec may be split as one bio)
-> > if it includes lots of small segment.
-> 
-> The combination of the virt boundary of PAGE_SIZE - 1 and a
-> max_segment_size of PAGE_SIZE will only split if the to me merged
-> segment is in a different page than the previous one, which is exactly
-> what we need here.  Multiple small bvec inside the same page (e.g.
-> 512 byte buffer_heads) will still be merged.
-> 
-> > What we want to do is just to avoid to merge bvecs to segment, which
-> > should have been done by NO_SG_MERGE simply. However, after multi-page
-> > is enabled, two adjacent bvecs won't be merged any more, I just forget
-> > to remove the bvec merge code in V11.
-> > 
-> > So seems we can simply avoid to use virt boundary limit for non-cluster
-> > after multipage bvec is enabled?
-> 
-> No, we can't just remove it.  As explained in the patch there is one very
-> visible difference of setting the flag amd that is no segment will span a
-> page boundary, and at least the iSCSI code seems to rely on that.
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-IMO, we should use queue_segment_boundary() to enhance the rule during splitting
-segment after multi-page bvec is enabled.
+Michael Orlitzky (michael@orlitzky.com) changed:
 
-Seems we miss the segment boundary limit in bvec_split_segs().
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |michael@orlitzky.com
 
-Thanks,
-Ming
+--- Comment #74 from Michael Orlitzky (michael@orlitzky.com) ---
+(In reply to Laurent Bonnaud from comment #67)
+> I am also experiencing ext4 corruptions with 4.19.x kernels.
+> 
+> One way to trigger this bug that works almost every time on my system is to
+> backup the whole FS with BorgBackup using this command:
+> 
+
+Ouch, me too. I've already been through two hard drives and a new SATA
+controller. I was just about to resign myself to replacing the whole PC.
+
+My system is an older AMD Phenom, with absolutely nothing fancy going on.
+Boring spinning disks, no RAID, and exactly the symptom above.
+
+After upgrading to 4.19.0 everything was fine for a week, and then Borg started
+reporting these errors. If I boot to a rescue CD and fsck, things go back to
+"normal," but then after a few more days I get corruption again. IIRC I skipped
+4.19.1 but had the same problem with 4.19.2, and now again on 4.19.3.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
