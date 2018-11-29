@@ -1,100 +1,93 @@
-Return-Path: <SRS0=yllL=NN=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lf1-f66.google.com ([209.85.167.66]:44261 "EHLO
-        mail-lf1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725987AbeKBTUH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 2 Nov 2018 15:20:07 -0400
+Return-Path: <SRS0=G5ay=OI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:56186 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725873AbeK3GLk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Nov 2018 01:11:40 -0500
+Date: Thu, 29 Nov 2018 11:05:13 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net
+Subject: Re: [f2fs-dev] [PATCH 2/7] f2fs: use IS_ENCRYPTED() to check
+ encryption status
+Message-ID: <20181129190512.GB168705@gmail.com>
+References: <20181119052324.31456-1-chandan@linux.vnet.ibm.com>
+ <20181126040038.GD7904@thunk.org>
+ <20181126173435.GA22888@thunk.org>
+ <2911123.OYxvaggYeN@localhost.localdomain>
 MIME-Version: 1.0
-References: <20181022105944.GA1411@gmail.com> <CAHk-=whpBiV5sVTvPsWOVx5WYOouxbNG1fWeCdpK4oFiaH0Zqg@mail.gmail.com>
- <CAHk-=widcG7zGELniGoqjPyBZAHehA_Gyi2n1aRO94G7SBzwNQ@mail.gmail.com>
-In-Reply-To: <CAHk-=widcG7zGELniGoqjPyBZAHehA_Gyi2n1aRO94G7SBzwNQ@mail.gmail.com>
-From: Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>
-Date: Fri, 2 Nov 2018 11:13:15 +0100
-Message-ID: <CANiq72=jj6J0BmykqcExC2P4f1W82YPLmtRHztPmRMmNY9Zvqg@mail.gmail.com>
-Subject: Re: [GIT PULL] Compiler Attributes for v4.20-rc1
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Dan <dan.carpenter@oracle.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Masahiro Yamada <yamada.masahiro@socionext.com>,
-        Michal Marek <michal.lkml@markovi.net>,
-        Steven Rostedt <rostedt@goodmis.org>,
-        Mauro Carvalho Chehab <mchehab+samsung@kernel.org>,
-        Olof Johansson <olof@lxom.net>,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Kees Cook <keescook@chromium.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Paul Lawrence <paullawrence@google.com>,
-        Sandipan Das <sandipan@linux.vnet.ibm.com>,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Will Deacon <will.deacon@arm.com>,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        Paul Burton <paul.burton@mips.com>,
-        David Rientjes <rientjes@google.com>, Willy Tarreau <w@1wt.eu>,
-        Martin Sebor <msebor@gmail.com>,
-        Christopher Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>, "Ted Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>,
-        Joe Perches <joe@perches.com>, Arnd Bergmann <arnd@arndb.de>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Stefan Agner <stefan@agner.ch>,
-        Luc Van Oostenryck <luc.vanoostenryck@gmail.com>,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        Linux Doc Mailing List <linux-doc@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <2911123.OYxvaggYeN@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 2, 2018 at 2:52 AM Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
->
-> Anyway, I decided to do the merge by just getting rid of the
-> GCC_VERSION check around __no_sanitize_address_or_inline entirely. If
-> you enable KASAN, then a function with that marking just won't be
-> marked inline.
+Hi Chandan,
 
-I was a bit confused when reading the gcc bug reports, i.e. why gcc
-did *not* complain in 4.9 but it did in 5.1 (when it was supposed to
-complain also in 4.9). It turns out that gcc 5.1 takes into account
-who is the actual caller due to this change:
+On Thu, Nov 29, 2018 at 04:08:31PM +0530, Chandan Rajendra wrote:
+> On Monday, November 26, 2018 11:04:35 PM IST Theodore Y. Ts'o wrote:
+> > On Sun, Nov 25, 2018 at 11:00:38PM -0500, Theodore Y. Ts'o wrote:
+> > > 
+> > > It might be that the simplest way to solve things is to merge the f2fs
+> > > dev branch up to 79c66e75720c.  This will have the net effect of
+> > > including the five patches listed above onto the fscrypt git tree.  So
+> > > long you don't plan to rebase or otherwise change these five patches,
+> > > it should avoid any merge conflicts.
+> > 
+> > I've set up a git branch which has the f2fs dev branch, 4.20-rc4, the
+> > fsverity patches, and part of Chandan's patch series here:
+> > 
+> > git://git.kernel.org/pub/scm/linux/kernel/git/tytso/fscrypt.git test-working
+> > 
+> > There is a minor conflict when I did a trial merge with f2fs.git's dev
+> > branch, but it's pretty obvious to how to resolve it.
+> > 
+> > Jaegeuk, Eric, Chandan, please take a look and let me know what you
+> > think.
+> 
+> Ted,
+> 
+> I have addressed the review comments provided by Eric. Hence three out of
+> the four patches in the test-working branch have new changes. I also got
+> UBIFS to use CONFIG_FS_ENCRYPTION instead of the per-filesystem config
+> symbol.
+> 
+> I am currently executing fstests to verify the changes.
+> 
+> 
+> Eric,
+> 
+> When executing generic/900, I noticed that sometimes xfs_io would get stuck
+> for an indefinite period. /proc/<pid of xfs_io>/stack showed that the task was
+> stuck in tty_read() inside the kernel. The following change fixed it,
+> 
+> diff --git a/tests/generic/900 b/tests/generic/900
+> index 290889ce..0831eed4 100755
+> --- a/tests/generic/900
+> +++ b/tests/generic/900
+> @@ -83,7 +83,7 @@ _fsv_create_enable_file $fsv_file >> $seqres.full
+>  echo "* reading"
+>  $XFS_IO_PROG -r $fsv_file -c ''
+>  echo "* xfs_io writing, should be O_RDWR"
+> -$XFS_IO_PROG $fsv_file |& _filter_scratch
+> +$XFS_IO_PROG -c '' $fsv_file 2>&1 | _filter_scratch
+>  echo "* bash >>, should be O_APPEND"
+>  bash -c "echo >> $fsv_file" |& _filter_scratch
+>  echo "* bash >, should be O_WRONLY|O_CREAT|O_TRUNC"
+> 
+> xfs_io gets into interactive mode when invoked without a "-c cmd" string.
+> 
+> However, I am not able recreate the scenario once again without the above
+> changes applied. I am not sure about what changed. 
+> 
 
-+  cgraph_node *caller = e->caller->global.inlined_to
-+                       ? e->caller->global.inlined_to : e->caller;
-...
--  else if (!sanitize_attrs_match_for_inline_p (e->caller->decl, callee->decl))
-+  else if (!sanitize_attrs_match_for_inline_p (caller->decl, callee->decl))
+The test is opening a verity file for read+write access, which should fail.  But
+it's incorrectly succeeding, hence the test is right to not pass.  Did you add
+the missing call to ext4_set_inode_flags() in ext4_set_verity() as I suggested?
 
-change; e.g. this:
+(But I'll make the suggested change to the test too, so it fails cleanly in this
+case rather than hangs reading from stdin.)
 
-#define really_inline inline __attribute__((always_inline))
-#define no_sanitize __attribute__((no_sanitize_address))
-
-really_inline void f() {}
-really_inline void g() { f(); }
-no_sanitize void h() { g(); }
-
-Complains in gcc 4.9 -O0, 5.1 -O0 and 5.1 -O2; but *not* in 4.9 -O2.
-https://godbolt.org/z/kNApqk
-
-Anyway, this is orthogonal but in case it clarifies that for someone else...
-
-> Miguel, please do double-check the merge (it's not pushed out yet, I'm
-> doing the usual build tests etc first).
-
-I was sleeping, didn't manage to see it (in your GitHub, I guess?).
-
-I did the merge myself, and arrived at the same thing as you. I
-quickly inspected the rest and seems fine. By the way, I spotted an
-extra space at:
-
-+ * we do one or the other.
-
-Cheers,
-Miguel
+- Eric
