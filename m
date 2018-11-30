@@ -1,54 +1,39 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:51531 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728520AbeKVAfB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 19:35:01 -0500
-Date: Wed, 21 Nov 2018 15:00:27 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V11 10/19] block: loop: pass multi-page bvec to iov_iter
-Message-ID: <20181121140027.GA2323@lst.de>
-References: <20181121032327.8434-1-ming.lei@redhat.com> <20181121032327.8434-11-ming.lei@redhat.com>
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:47630 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725842AbeLAGMy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 01:12:54 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 8CAE02F66A
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 19:02:39 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Fri, 30 Nov 2018 19:02:39 +0000
+Message-ID: <bug-201685-13602-lUGESz6Qkr@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181121032327.8434-11-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-> index 1ad6eafc43f2..a281b6737b61 100644
-> --- a/include/linux/blkdev.h
-> +++ b/include/linux/blkdev.h
-> @@ -805,6 +805,10 @@ struct req_iterator {
->  	__rq_for_each_bio(_iter.bio, _rq)			\
->  		bio_for_each_segment(bvl, _iter.bio, _iter.iter)
->  
-> +#define rq_for_each_bvec(bvl, _rq, _iter)			\
-> +	__rq_for_each_bio(_iter.bio, _rq)			\
-> +		bio_for_each_bvec(bvl, _iter.bio, _iter.iter)
-> +
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-I think this should go into the patch adding bio_for_each_bvec and
-friends.
+--- Comment #99 from Guenter Roeck (linux@roeck-us.net) ---
+#98: Good point.
 
-Otherwise looks fine:
+I am going to give it a try with the following on top of v4.19.5:
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Revert "ext4: handle layout changes to pinned DAX mappings"
+Revert "dax: remove VM_MIXEDMAP for fsdax and device dax"
+Revert "ext4: close race between direct IO and ext4_break_layouts()"
+Revert "ext4: improve code readability in ext4_iget()"
+Revert "ext4: readpages() should submit IO as read-ahead"
+
+Wild shot, but I figured it may be worth try.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
