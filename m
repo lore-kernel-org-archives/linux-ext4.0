@@ -1,63 +1,83 @@
-Return-Path: <SRS0=Yxos=NQ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lj1-f194.google.com ([209.85.208.194]:32792 "EHLO
-        mail-lj1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387475AbeKFBnF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Nov 2018 20:43:05 -0500
-Received: by mail-lj1-f194.google.com with SMTP id v1-v6so2367656ljd.0
-        for <linux-ext4@vger.kernel.org>; Mon, 05 Nov 2018 08:22:38 -0800 (PST)
-Received: from mail-lf1-f50.google.com (mail-lf1-f50.google.com. [209.85.167.50])
-        by smtp.gmail.com with ESMTPSA id z195-v6sm6902373lff.82.2018.11.05.08.22.35
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 05 Nov 2018 08:22:36 -0800 (PST)
-Received: by mail-lf1-f50.google.com with SMTP id p86so6585836lfg.5
-        for <linux-ext4@vger.kernel.org>; Mon, 05 Nov 2018 08:22:35 -0800 (PST)
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:44811 "EHLO
+        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725790AbeLAHGc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 02:06:32 -0500
+Received: by mail-pg1-f195.google.com with SMTP id t13so2923143pgr.11
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 11:56:09 -0800 (PST)
+Date: Fri, 30 Nov 2018 11:56:07 -0800
+From: Omar Sandoval <osandov@osandov.com>
+To: Huijin Park <huijin.park@samsung.com>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Michael Callahan <michaelcallahan@fb.com>,
+        Omar Sandoval <osandov@fb.com>, js07.lee@samsung.com,
+        Huijin Park <bbanghj.park@gmail.com>,
+        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH,1/2] genhd: avoid overflow of sectors in disk_stats
+Message-ID: <20181130195607.GA27411@vader>
+References: <CGME20181130093318eucas1p24feb8e649c8f244ce149a7f87e43c828@eucas1p2.samsung.com>
+ <1543570361-3168-1-git-send-email-huijin.park@samsung.com>
 MIME-Version: 1.0
-References: <20181022105944.GA1411@gmail.com> <CAHk-=whpBiV5sVTvPsWOVx5WYOouxbNG1fWeCdpK4oFiaH0Zqg@mail.gmail.com>
- <29dba7c2-f612-7b35-d665-9939d7e10eb8@virtuozzo.com> <CAHk-=wj2AEQbmhto6FwxaxLEwvh3GG8FD8p8UptOsh5bE7jcuQ@mail.gmail.com>
- <20181105070256.52c6fd8f@mschwideX1> <20181105141535.7394b16d@mschwideX1>
-In-Reply-To: <20181105141535.7394b16d@mschwideX1>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 5 Nov 2018 08:14:56 -0800
-Message-ID: <CAHk-=wi6OFJrhN2rmTy7oy2ZghvQb5Nhrq1O1G-+EPuPxdhEMQ@mail.gmail.com>
-Subject: Re: [GIT PULL] Compiler Attributes for v4.20-rc1
-To: Martin Schwidefsky <schwidefsky@de.ibm.com>
-Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Vasily Gorbik <gor@linux.ibm.com>,
-        Miguel Ojeda <miguel.ojeda.sandonis@gmail.com>,
-        dan.carpenter@oracle.com, adilger.kernel@dilger.ca,
-        yamada.masahiro@socionext.com, michal.lkml@markovi.net,
-        rostedt@goodmis.org, mchehab+samsung@kernel.org, olof@lxom.net,
-        Konstantin Ryabitsev <konstantin@linuxfoundation.org>,
-        David Miller <davem@davemloft.net>,
-        Kees Cook <keescook@chromium.org>, tglx@linutronix.de,
-        Ingo Molnar <mingo@kernel.org>, paullawrence@google.com,
-        sandipan@linux.vnet.ibm.com,
-        Andrey Konovalov <andreyknvl@google.com>,
-        David Woodhouse <dwmw2@infradead.org>, will.deacon@arm.com,
-        Philippe Ombredanne <pombredanne@nexb.com>,
-        paul.burton@mips.com, rientjes@google.com, w@1wt.eu,
-        msebor@gmail.com, Chris Li <sparse@chrisli.org>,
-        Jonathan Corbet <corbet@lwn.net>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Rasmus Villemoes <linux@rasmusvillemoes.dk>, joe@perches.com,
-        Arnd Bergmann <arnd@arndb.de>, asmadeus@codewreck.org,
-        stefan@agner.ch, luc.vanoostenryck@gmail.com,
-        Nick Desaulniers <ndesaulniers@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Greg KH <gregkh@linuxfoundation.org>,
-        linux-doc@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-sparse@vger.kernel.org, linux-kbuild@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1543570361-3168-1-git-send-email-huijin.park@samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 5, 2018 at 5:15 AM Martin Schwidefsky
-<schwidefsky@de.ibm.com> wrote:
->
-> This patch would work for me:
+On Fri, Nov 30, 2018 at 04:32:40AM -0500, Huijin Park wrote:
+> From: "huijin.park" <huijin.park@samsung.com>
+> 
+> This patch changes the 'sectors' type to an u64.
+> In 32 bit system, the 'sectors' can accumulate up to about 2TiB.
+> If a 32 bit system makes i/o over 2TiB while running,
+> the 'sectors' will overflow.
+> As a result, the part_stat_read(sectors), the diskstats in proc and
+> the (lifetime|session)_write_kbytes in sysfs return invalid statistic.
 
-Thanks, applied,
+What about parsers which expect it to be an unsigned long? E.g., iostat:
+https://github.com/sysstat/sysstat/blob/v12.1.1/rd_stats.c#L736
 
-                 Linus
+At least with glibc, scanf seems to truncate sanely, but this appears to
+be undefined.
+
+> Signed-off-by: huijin.park <huijin.park@samsung.com>
+> ---
+>  block/genhd.c         |    6 +++---
+>  include/linux/genhd.h |    2 +-
+>  2 files changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/block/genhd.c b/block/genhd.c
+> index 0145bcb..7518dcd 100644
+> --- a/block/genhd.c
+> +++ b/block/genhd.c
+> @@ -1343,10 +1343,10 @@ static int diskstats_show(struct seq_file *seqf, void *v)
+>  		part_stat_unlock();
+>  		part_in_flight(gp->queue, hd, inflight);
+>  		seq_printf(seqf, "%4d %7d %s "
+> -			   "%lu %lu %lu %u "
+> -			   "%lu %lu %lu %u "
+> +			   "%lu %lu %llu %u "
+> +			   "%lu %lu %llu %u "
+>  			   "%u %u %u "
+> -			   "%lu %lu %lu %u\n",
+> +			   "%lu %lu %llu %u\n",
+>  			   MAJOR(part_devt(hd)), MINOR(part_devt(hd)),
+>  			   disk_name(gp, hd->partno, buf),
+>  			   part_stat_read(hd, ios[STAT_READ]),
+> diff --git a/include/linux/genhd.h b/include/linux/genhd.h
+> index 0c5ee17..5bf86f9 100644
+> --- a/include/linux/genhd.h
+> +++ b/include/linux/genhd.h
+> @@ -84,7 +84,7 @@ struct partition {
+>  
+>  struct disk_stats {
+>  	u64 nsecs[NR_STAT_GROUPS];
+> -	unsigned long sectors[NR_STAT_GROUPS];
+> +	u64 sectors[NR_STAT_GROUPS];
+>  	unsigned long ios[NR_STAT_GROUPS];
+>  	unsigned long merges[NR_STAT_GROUPS];
+>  	unsigned long io_ticks;
+> -- 
+> 1.7.9.5
+> 
