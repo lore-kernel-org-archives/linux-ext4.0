@@ -1,123 +1,42 @@
-Return-Path: <SRS0=OKzU=N3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pf1-f195.google.com ([209.85.210.195]:43545 "EHLO
-        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727110AbeKPMQD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Nov 2018 07:16:03 -0500
-Received: by mail-pf1-f195.google.com with SMTP id w73so1276788pfk.10
-        for <linux-ext4@vger.kernel.org>; Thu, 15 Nov 2018 18:05:36 -0800 (PST)
-Date: Thu, 15 Nov 2018 18:05:33 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, Theodore Ts'o <tytso@mit.edu>,
-        linux-ext4@vger.kernel.org, Coly Li <colyli@suse.de>,
-        linux-bcache@vger.kernel.org, Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V10 16/19] block: document usage of bio iterator helpers
-Message-ID: <20181116020533.GK23828@vader>
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-17-ming.lei@redhat.com>
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:45734 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726507AbeK3WSa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Nov 2018 17:18:30 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 828482FF37
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 11:09:34 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Fri, 30 Nov 2018 11:09:33 +0000
+Message-ID: <bug-201685-13602-n9cI8ftM4H@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181115085306.9910-17-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 15, 2018 at 04:53:03PM +0800, Ming Lei wrote:
-> Now multi-page bvec is supported, some helpers may return page by
-> page, meantime some may return segment by segment, this patch
-> documents the usage.
-> 
-> Cc: Dave Chinner <dchinner@redhat.com>
-> Cc: Kent Overstreet <kent.overstreet@gmail.com>
-> Cc: Mike Snitzer <snitzer@redhat.com>
-> Cc: dm-devel@redhat.com
-> Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> Cc: linux-fsdevel@vger.kernel.org
-> Cc: Shaohua Li <shli@kernel.org>
-> Cc: linux-raid@vger.kernel.org
-> Cc: linux-erofs@lists.ozlabs.org
-> Cc: David Sterba <dsterba@suse.com>
-> Cc: linux-btrfs@vger.kernel.org
-> Cc: Darrick J. Wong <darrick.wong@oracle.com>
-> Cc: linux-xfs@vger.kernel.org
-> Cc: Gao Xiang <gaoxiang25@huawei.com>
-> Cc: Christoph Hellwig <hch@lst.de>
-> Cc: Theodore Ts'o <tytso@mit.edu>
-> Cc: linux-ext4@vger.kernel.org
-> Cc: Coly Li <colyli@suse.de>
-> Cc: linux-bcache@vger.kernel.org
-> Cc: Boaz Harrosh <ooo@electrozaur.com>
-> Cc: Bob Peterson <rpeterso@redhat.com>
-> Cc: cluster-devel@redhat.com
-> Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> ---
->  Documentation/block/biovecs.txt | 26 ++++++++++++++++++++++++++
->  1 file changed, 26 insertions(+)
-> 
-> diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
-> index 25689584e6e0..bfafb70d0d9e 100644
-> --- a/Documentation/block/biovecs.txt
-> +++ b/Documentation/block/biovecs.txt
-> @@ -117,3 +117,29 @@ Other implications:
->     size limitations and the limitations of the underlying devices. Thus
->     there's no need to define ->merge_bvec_fn() callbacks for individual block
->     drivers.
-> +
-> +Usage of helpers:
-> +=================
-> +
-> +* The following helpers whose names have the suffix of "_all" can only be used
-> +on non-BIO_CLONED bio, and usually they are used by filesystem code, and driver
-> +shouldn't use them because bio may have been split before they got to the driver:
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Putting an english teacher hat on, this is quite the run-on sentence.
-How about:
+--- Comment #85 from Hao Wei Tee (angelsl@in04.sg) ---
+(In reply to Rainer Fiebig from comment #83)
+> Interesting idea. But what works in one direction might not necessarily work
+> the other way round.
 
-* The following helpers whose names have the suffix of "_all" can only be used
-on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
-shouldn't use them because the bio may have been split before it reached the
-driver.
+Exactly my point. We know that (4.19 ext4 and kernel is broken), (4.18 ext4 and
+kernel is working), and (4.18 ext4 and 4.19 kernel is working).
 
-Maybe also an explanation of why the filesystem would want to use these?
+If (4.19 ext4 and 4.18 kernel) is broken, then _most likely_ the bug is caused
+by something that changed in v4.18..v4.19. If (4.19 ext4 and 4.18 kernel)
+*works*, then either the bug is in something else that changed, or there is an
+interaction between two changes that happened in v4.18..v4.19.
 
-> +	bio_for_each_segment_all()
-> +	bio_first_bvec_all()
-> +	bio_first_page_all()
-> +	bio_last_bvec_all()
-> +
-> +* The following helpers iterate over single-page bvec, and the local
-> +variable of 'struct bio_vec' or the reference records single-page IO
-> +vector during the itearation:
+In any case, bisecting v4.18..v4.19 will probably give us a clue.
 
-
-* The following helpers iterate over single-page bvecs. The passed 'struct
-bio_vec' will contain a single-page IO vector during the iteration.
-
-> +	bio_for_each_segment()
-> +	bio_for_each_segment_all()
-> +
-> +* The following helper iterates over multi-page bvec, and each bvec may
-> +include multiple physically contiguous pages, and the local variable of
-> +'struct bio_vec' or the reference records multi-page IO vector during the
-> +itearation:
-
-* The following helper iterates over multi-page bvecs. Each bvec may
-include multiple physically contiguous pages. The passed 'struct bio_vec' will
-contain a multi-page IO vector during the iteration.
-
-> +	bio_for_each_bvec()
-> -- 
-> 2.9.5
-> 
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
