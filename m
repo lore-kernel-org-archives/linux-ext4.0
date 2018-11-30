@@ -1,41 +1,48 @@
-Return-Path: <SRS0=F3Rs=OG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38640 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729387AbeK0UWc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 27 Nov 2018 15:22:32 -0500
-From: Maurizio Lombardi <mlombard@redhat.com>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org, lczerner@redhat.com
-Subject: [PATCH] ext4: missing unlock/put_page() in ext4_try_to_write_inline_data()
-Date: Tue, 27 Nov 2018 10:25:05 +0100
-Message-Id: <1543310705-11051-1-git-send-email-mlombard@redhat.com>
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:44086 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725817AbeLAFuy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 00:50:54 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 3ECC530563
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 18:40:43 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Fri, 30 Nov 2018 18:40:42 +0000
+Message-ID: <bug-201685-13602-bM9gHbYGvF@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+MIME-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In case of error, ext4_try_to_write_inline_data() should unlock
-and release the page it holds.
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Signed-off-by: Maurizio Lombardi <mlombard@redhat.com>
----
- fs/ext4/inline.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+--- Comment #96 from Rainer Fiebig (jrf@mailbox.org) ---
+(In reply to Jens Axboe from comment #94)
+> In terms of ext4 changes, it'd be interesting to just revert this one:
+> 
+> commit ac22b46a0b65dbeccbf4d458db95687e825bde90
+> Author: Jens Axboe <axboe@kernel.dk>
+> Date:   Fri Aug 17 15:45:42 2018 -0700
+> 
+>     ext4: readpages() should submit IO as read-ahead
+> 
+> as that guy is generally just not trust worthy. In all seriousness, though,
+> it shouldn't cause issues (or I would not have done it), and we already do
+> this for readpages in general, but I guess we could have an older bug in
+> ext4 that depends deeply on read-ahead NOT failing. Not sure how likely that
+> is, Ted can probably comment on that.
+> 
+> But it's a trivial revert, and it could potentially be implicated.
 
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 9c4bac1..27373d8 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -705,8 +705,11 @@ int ext4_try_to_write_inline_data(struct address_space *mapping,
- 
- 	if (!PageUptodate(page)) {
- 		ret = ext4_read_inline_page(inode, page);
--		if (ret < 0)
-+		if (ret < 0) {
-+			unlock_page(page);
-+			put_page(page);
- 			goto out_up_read;
-+		}
- 	}
- 
- 	ret = 1;
+Jens, could you provide the patch here, so that perhaps Jimmy and Nestor can
+revert it on their 4.19.x and tell us what they see? 
+Thanks.
+
 -- 
-Maurizio Lombardi
+You are receiving this mail because:
+You are watching the assignee of the bug.
