@@ -1,208 +1,48 @@
-Return-Path: <SRS0=ZxZh=OA=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55156 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726165AbeKUN6R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 21 Nov 2018 08:58:17 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V11 04/19] block: use bio_for_each_bvec() to compute multi-page bvec count
-Date: Wed, 21 Nov 2018 11:23:12 +0800
-Message-Id: <20181121032327.8434-5-ming.lei@redhat.com>
-In-Reply-To: <20181121032327.8434-1-ming.lei@redhat.com>
-References: <20181121032327.8434-1-ming.lei@redhat.com>
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:52418 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725991AbeLAFLg (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 00:11:36 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2532A301DD
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 18:01:31 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Fri, 30 Nov 2018 18:01:31 +0000
+Message-ID: <bug-201685-13602-ueJd0EajTi@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+MIME-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-First it is more efficient to use bio_for_each_bvec() in both
-blk_bio_segment_split() and __blk_recalc_rq_segments() to compute how
-many multi-page bvecs there are in the bio.
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Secondly once bio_for_each_bvec() is used, the bvec may need to be
-splitted because its length can be very longer than max segment size,
-so we have to split the big bvec into several segments.
+--- Comment #93 from Guenter Roeck (linux@roeck-us.net) ---
+Most of the ext4 patches in v4.19 have been backported to v4.18.y. Since
+v4.18.20 is reported to be stable, it is quite likely that the problem lies
+with one or more of the patches which have _not_ been backported. This would be
+one of the following patches.
 
-Thirdly when splitting multi-page bvec into segments, the max segment
-limit may be reached, so the bio split need to be considered under
-this situation too.
+ext4: close race between direct IO and ext4_break_layouts()
+ext4: add nonstring annotations to ext4.h
+ext4: readpages() should submit IO as read-ahead
+dax: remove VM_MIXEDMAP for fsdax and device dax
+ext4: remove unneeded variable "err" in ext4_mb_release_inode_pa()
+ext4: improve code readability in ext4_iget()
+ext4: handle layout changes to pinned DAX mappings
+ext4: use swap macro in mext_page_double_lock
+ext4: check allocation failure when duplicating "data" in ext4_remount()
+ext4: fix warning message in ext4_enable_quotas()
+ext4: super: extend timestamps to 40 bits
+ext4: use timespec64 for all inode times
+ext4: use ktime_get_real_seconds for i_dtime
+ext4: use 64-bit timestamps for mmp_time
+block: Define and use STAT_READ and STAT_WRITE
 
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- block/blk-merge.c | 87 +++++++++++++++++++++++++++++++++++++++++++------------
- 1 file changed, 68 insertions(+), 19 deletions(-)
-
-diff --git a/block/blk-merge.c b/block/blk-merge.c
-index f52400ce2187..ec0b93fa1ff8 100644
---- a/block/blk-merge.c
-+++ b/block/blk-merge.c
-@@ -161,6 +161,54 @@ static inline unsigned get_max_io_size(struct request_queue *q,
- 	return sectors;
- }
- 
-+/*
-+ * Split the bvec @bv into segments, and update all kinds of
-+ * variables.
-+ */
-+static bool bvec_split_segs(struct request_queue *q, struct bio_vec *bv,
-+		unsigned *nsegs, unsigned *last_seg_size,
-+		unsigned *front_seg_size, unsigned *sectors)
-+{
-+	unsigned len = bv->bv_len;
-+	unsigned total_len = 0;
-+	unsigned new_nsegs = 0, seg_size = 0;
-+
-+	/*
-+	 * Multipage bvec may be too big to hold in one segment,
-+	 * so the current bvec has to be splitted as multiple
-+	 * segments.
-+	 */
-+	while (len && new_nsegs + *nsegs < queue_max_segments(q)) {
-+		seg_size = min(queue_max_segment_size(q), len);
-+
-+		new_nsegs++;
-+		total_len += seg_size;
-+		len -= seg_size;
-+
-+		if ((bv->bv_offset + total_len) & queue_virt_boundary(q))
-+			break;
-+	}
-+
-+	/* update front segment size */
-+	if (!*nsegs) {
-+		unsigned first_seg_size = seg_size;
-+
-+		if (new_nsegs > 1)
-+			first_seg_size = queue_max_segment_size(q);
-+		if (*front_seg_size < first_seg_size)
-+			*front_seg_size = first_seg_size;
-+	}
-+
-+	/* update other varibles */
-+	*last_seg_size = seg_size;
-+	*nsegs += new_nsegs;
-+	if (sectors)
-+		*sectors += total_len >> 9;
-+
-+	/* split in the middle of the bvec if len != 0 */
-+	return !!len;
-+}
-+
- static struct bio *blk_bio_segment_split(struct request_queue *q,
- 					 struct bio *bio,
- 					 struct bio_set *bs,
-@@ -174,7 +222,7 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
- 	struct bio *new = NULL;
- 	const unsigned max_sectors = get_max_io_size(q, bio);
- 
--	bio_for_each_segment(bv, bio, iter) {
-+	bio_for_each_bvec(bv, bio, iter) {
- 		/*
- 		 * If the queue doesn't support SG gaps and adding this
- 		 * offset would create a gap, disallow it.
-@@ -189,8 +237,12 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
- 			 */
- 			if (nsegs < queue_max_segments(q) &&
- 			    sectors < max_sectors) {
--				nsegs++;
--				sectors = max_sectors;
-+				/* split in the middle of bvec */
-+				bv.bv_len = (max_sectors - sectors) << 9;
-+				bvec_split_segs(q, &bv, &nsegs,
-+						&seg_size,
-+						&front_seg_size,
-+						&sectors);
- 			}
- 			goto split;
- 		}
-@@ -212,14 +264,12 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
- 		if (nsegs == queue_max_segments(q))
- 			goto split;
- 
--		if (nsegs == 1 && seg_size > front_seg_size)
--			front_seg_size = seg_size;
--
--		nsegs++;
- 		bvprv = bv;
- 		bvprvp = &bvprv;
--		seg_size = bv.bv_len;
--		sectors += bv.bv_len >> 9;
-+
-+		if (bvec_split_segs(q, &bv, &nsegs, &seg_size,
-+				    &front_seg_size, &sectors))
-+			goto split;
- 
- 	}
- 
-@@ -233,8 +283,6 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
- 			bio = new;
- 	}
- 
--	if (nsegs == 1 && seg_size > front_seg_size)
--		front_seg_size = seg_size;
- 	bio->bi_seg_front_size = front_seg_size;
- 	if (seg_size > bio->bi_seg_back_size)
- 		bio->bi_seg_back_size = seg_size;
-@@ -297,6 +345,7 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
- 	struct bio_vec bv, bvprv = { NULL };
- 	int cluster, prev = 0;
- 	unsigned int seg_size, nr_phys_segs;
-+	unsigned front_seg_size = bio->bi_seg_front_size;
- 	struct bio *fbio, *bbio;
- 	struct bvec_iter iter;
- 
-@@ -317,7 +366,7 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
- 	seg_size = 0;
- 	nr_phys_segs = 0;
- 	for_each_bio(bio) {
--		bio_for_each_segment(bv, bio, iter) {
-+		bio_for_each_bvec(bv, bio, iter) {
- 			/*
- 			 * If SG merging is disabled, each bio vector is
- 			 * a segment
-@@ -337,20 +386,20 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
- 				continue;
- 			}
- new_segment:
--			if (nr_phys_segs == 1 && seg_size >
--			    fbio->bi_seg_front_size)
--				fbio->bi_seg_front_size = seg_size;
-+			if (nr_phys_segs == 1 && seg_size > front_seg_size)
-+				front_seg_size = seg_size;
- 
--			nr_phys_segs++;
- 			bvprv = bv;
- 			prev = 1;
--			seg_size = bv.bv_len;
-+			bvec_split_segs(q, &bv, &nr_phys_segs, &seg_size,
-+					&front_seg_size, NULL);
- 		}
- 		bbio = bio;
- 	}
- 
--	if (nr_phys_segs == 1 && seg_size > fbio->bi_seg_front_size)
--		fbio->bi_seg_front_size = seg_size;
-+	if (nr_phys_segs == 1 && seg_size > front_seg_size)
-+		front_seg_size = seg_size;
-+	fbio->bi_seg_front_size = front_seg_size;
- 	if (seg_size > bbio->bi_seg_back_size)
- 		bbio->bi_seg_back_size = seg_size;
- 
 -- 
-2.9.5
+You are receiving this mail because:
+You are watching the assignee of the bug.
