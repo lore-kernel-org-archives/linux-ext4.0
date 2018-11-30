@@ -1,33 +1,50 @@
-Return-Path: <SRS0=LXqi=NT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51976 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728499AbeKHNLw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 8 Nov 2018 08:11:52 -0500
-Date: Wed, 7 Nov 2018 22:38:25 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Vasily Averin <vvs@virtuozzo.com>
-Cc: linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] ext4: lost brelse in __ext4_read_dirblock()
-Message-ID: <20181108033825.GD22459@thunk.org>
-References: <6e5c9e17-5916-7296-35a0-cc0600a79f27@virtuozzo.com>
- <e269cf8c-b5ca-3eed-bd60-a8629378db8b@virtuozzo.com>
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:36114 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726355AbeK3QJI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Nov 2018 11:09:08 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 0E6012FEED
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 05:01:05 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Fri, 30 Nov 2018 05:01:04 +0000
+Message-ID: <bug-201685-13602-Hw0xhSpgl3@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <e269cf8c-b5ca-3eed-bd60-a8629378db8b@virtuozzo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 07, 2018 at 08:30:17PM +0300, Vasily Averin wrote:
-> Fixes dc6982ff4db1 ("ext4: refactor code to read directory blocks ...")
-> Cc: stable@kernel.org # 3.9
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
+
+--- Comment #79 from Hao Wei Tee (angelsl@in04.sg) ---
+(In reply to Néstor A. Marchesini from comment #78)
+> Well, guys, this seems to pass the test, after several reboots every several
+> hours of use, I had no more corruptions of my four partitions mdadm raid1.
+> The solution was to delete the ext4 folder from my kernel 4.19.5 and copy
+> the ext4 folder from my previous kernel 4.18.20 and recompiling the tree
+> 4.19.5.
 > 
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> $ uname -a
+> Linux pc-user 4.19.5-gentoo #1 SMP PREEMPT Thu Nov 29 00:45:31 2018 x86_64
+> AMD FX(tm)-8350 Eight-Core Processor AuthenticAMD GNU/Linux
+> 
+> I was comparing both folders /fs/ext4 of the 4.18.20 and 4.19.5 trees with
+> meld and there are several modifications, unfortunately it exceeds my
+> knowledge.
+> At least on this side I affirm that the problem is gone, we will see it
+> happen with later patches.
 
-Thanks, applied.  I used the commit description:
+If this is the case, perhaps you could bisect fs/ext4 between tags v4.18 and
+v4.19?
 
-    ext4: fix buffer leak in __ext4_read_dirblock() on error path
+$ git bisect start v4.19 v4.18 -- fs/ext4
 
-	      	     			    - Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
