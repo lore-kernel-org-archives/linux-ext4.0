@@ -1,43 +1,30 @@
-Return-Path: <SRS0=dvF+=N7=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-oi1-f193.google.com ([209.85.167.193]:33705 "EHLO
-        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726431AbeKTLP4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Nov 2018 06:15:56 -0500
-Subject: Re: [PATCH V10 09/19] block: introduce bio_bvecs()
-To: Christoph Hellwig <hch@lst.de>, Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Theodore Ts'o <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-References: <20181115085306.9910-1-ming.lei@redhat.com>
- <20181115085306.9910-10-ming.lei@redhat.com> <20181116134541.GH3165@lst.de>
-From: Sagi Grimberg <sagi@grimberg.me>
-Message-ID: <002fe56b-25e4-573e-c09b-bb12c3e8d25a@grimberg.me>
-Date: Mon, 19 Nov 2018 16:49:27 -0800
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53530 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725893AbeLAFRM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 00:17:12 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id AB61C30250
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 18:07:06 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Fri, 30 Nov 2018 18:07:06 +0000
+Message-ID: <bug-201685-13602-08UqJFaW6d@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-In-Reply-To: <20181116134541.GH3165@lst.de>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-> The only user in your final tree seems to be the loop driver, and
-> even that one only uses the helper for read/write bios.
-> 
-> I think something like this would be much simpler in the end:
+--- Comment #95 from Jens Axboe (axboe@kernel.dk) ---
+BTW, if that patch is to blame, then the bug is elsewhere in ext4 as there
+should be no way that read-ahead failing should cause corruption.
 
-The recently submitted nvme-tcp host driver should also be a user
-of this. Does it make sense to keep it as a helper then?
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
