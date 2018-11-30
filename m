@@ -1,48 +1,35 @@
-Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49172 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727203AbeKHA4k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 7 Nov 2018 19:56:40 -0500
-Date: Wed, 7 Nov 2018 10:25:49 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Vasily Averin <vvs@virtuozzo.com>
-Cc: linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 1/7] ext4: lost brelse in __ext4_read_dirblock()
-Message-ID: <20181107152549.GB9919@thunk.org>
-References: <cover.1541011937.git.vvs@virtuozzo.com>
- <60f19df8-1e65-99a0-cb6b-696d1b530fd4@virtuozzo.com>
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:35318 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726551AbeK3TAW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Nov 2018 14:00:22 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id AEC472F47E
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 07:51:56 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Fri, 30 Nov 2018 07:51:56 +0000
+Message-ID: <bug-201685-13602-5WXb5bOhMu@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <60f19df8-1e65-99a0-cb6b-696d1b530fd4@virtuozzo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 31, 2018 at 10:12:18PM +0300, Vasily Averin wrote:
-> Fixes dc6982ff4db1 ("ext4: refactor code to read directory blocks ...") # 3.9
-> 
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
-> ---
->  fs/ext4/namei.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index d388cce72db2..1a21e59ede72 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -111,6 +111,7 @@ static struct buffer_head *__ext4_read_dirblock(struct inode *inode,
->  	if (!bh) {
->  		ext4_error_inode(inode, func, line, block,
->  				 "Directory hole found");
-> +		brelse(bh);
->  		return ERR_PTR(-EFSCORRUPTED);
->  	}
->  	dirent = (struct ext4_dir_entry *) bh->b_data;
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Inside the conditional, bh == NULL, so the brelse isn't needed.
+--- Comment #82 from Hao Wei Tee (angelsl@in04.sg) ---
+I fear the bug might be caused by some interaction between something new in
+fs/ext4 and something new elsewhere... Sounds unlikely, but it's possible.
 
-Cheers,
+Since 4.18 ext4 seems to work on 4.19 kernel, maybe it's worth trying 4.19 ext4
+on 4.18 kernel (before a bisect), just to make sure the bisect won't lead us
+down a false trail?
 
-						- Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
