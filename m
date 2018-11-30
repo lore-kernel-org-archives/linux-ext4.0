@@ -1,132 +1,68 @@
-Return-Path: <SRS0=kdxW=OC=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:47345 "EHLO
-        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727343AbeKWN1s (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 23 Nov 2018 08:27:48 -0500
-From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-Subject: Re: [PATCH] ext4: fix deadlock while checkpoint thread waits commit
- thread to finish
-To: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-References: <20181114114935.5250-1-xiaoguang.wang@linux.alibaba.com>
- <20181122123601.GO9840@quack2.suse.cz>
-Message-ID: <7f9dab38-26f8-6fd8-299e-30d711ee61b8@linux.alibaba.com>
-Date: Fri, 23 Nov 2018 10:45:20 +0800
-MIME-Version: 1.0
-In-Reply-To: <20181122123601.GO9840@quack2.suse.cz>
-Content-Type: text/plain; charset=gbk; format=flowed
-Content-Transfer-Encoding: 7bit
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mailout1.w1.samsung.com ([210.118.77.11]:33848 "EHLO
+        mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726467AbeK3UmD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Nov 2018 15:42:03 -0500
+From: Huijin Park <huijin.park@samsung.com>
+To: Andreas Dilger <adilger.kernel@dilger.ca>,
+        Michael Callahan <michaelcallahan@fb.com>
+Cc: Omar Sandoval <osandov@fb.com>, js07.lee@samsung.com,
+        Huijin Park <huijin.park@samsung.com>,
+        Huijin Park <bbanghj.park@gmail.com>,
+        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH,1/2] genhd: avoid overflow of sectors in disk_stats
+Date: Fri, 30 Nov 2018 04:32:40 -0500
+Message-id: <1543570361-3168-1-git-send-email-huijin.park@samsung.com>
+References: <CGME20181130093318eucas1p24feb8e649c8f244ce149a7f87e43c828@eucas1p2.samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-hi,
+From: "huijin.park" <huijin.park@samsung.com>
 
-> On Wed 14-11-18 19:49:35, Xiaoguang Wang wrote:
->> This issue was found when I tried to put checkpoint work in a separate thread,
->> the deadlock below happened:
->>           Thread1                                |   Thread2
->> __jbd2_log_wait_for_space                       |
->> jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
->>    if (jh->b_transaction != NULL)                |
->>      ...                                         |
->>      jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
->>                                                  |  will lock j_checkpoint_mutex,
->>                                                  |  but will be blocked here.
->>                                                  |
->>      jbd2_log_wait_commit(journal, tid);         |
->>      wait_event(journal->j_wait_done_commit,     |
->>       !tid_gt(tid, journal->j_commit_sequence)); |
->>       ...                                        |wake_up(j_wait_done_commit)
->>    }                                             |
->>
->> then deadlock occurs, Thread1 will never be waken up.
->>
->> To fix this issue, drop j_checkpoint_mutex in jbd2_log_do_checkpoint()
->> when we are going to wait for transaction commit.
->>
->> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-> 
-> Thanks for the patch! One comment below...
-> 
->> diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
->> index 26f8d7e46462..e728844f2f0e 100644
->> --- a/fs/jbd2/checkpoint.c
->> +++ b/fs/jbd2/checkpoint.c
->> @@ -113,7 +113,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
->>   	nblocks = jbd2_space_needed(journal);
->>   	while (jbd2_log_space_left(journal) < nblocks) {
->>   		write_unlock(&journal->j_state_lock);
->> -		mutex_lock(&journal->j_checkpoint_mutex);
->> +		mutex_lock_io(&journal->j_checkpoint_mutex);
->>   
->>   		/*
->>   		 * Test again, another process may have checkpointed while we
->> @@ -241,8 +241,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
->>   	 * done (maybe it's a new transaction, but it fell at the same
->>   	 * address).
->>   	 */
->> -	if (journal->j_checkpoint_transactions != transaction ||
->> -	    transaction->t_tid != this_tid)
->> +	if (journal->j_checkpoint_transactions == NULL ||
->> +	    journal->j_checkpoint_transactions->t_tid != this_tid)
->>   		goto out;
-> 
-> Why did you change this? As far as I can tell there's no difference and the
-> previous condition makes it more obvious that we are still looking at the
-> same transaction.
-In this patch, we may drop j_checkpoint_mutex, then another thread may acquire
-this lock, do checkpoint work and freed current transaction, "transaction->t_tid"
-will cause an invalid pointer dereference.
+This patch changes the 'sectors' type to an u64.
+In 32 bit system, the 'sectors' can accumulate up to about 2TiB.
+If a 32 bit system makes i/o over 2TiB while running,
+the 'sectors' will overflow.
+As a result, the part_stat_read(sectors), the diskstats in proc and
+the (lifetime|session)_write_kbytes in sysfs return invalid statistic.
 
-Regards,
-Xiaoguang Wang
-> 
-> Otherwise the patch looks good so after removing the above hunk feel free to
-> add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> 
-> 								Honza
-> 
-> 
->> @@ -276,9 +276,22 @@ int jbd2_log_do_checkpoint(journal_t *journal)
->>   		"JBD2: %s: Waiting for Godot: block %llu\n",
->>   		journal->j_devname, (unsigned long long) bh->b_blocknr);
->>   
->> +			if (batch_count)
->> +				__flush_batch(journal, &batch_count);
->>   			jbd2_log_start_commit(journal, tid);
->> +			/*
->> +			 * jbd2_journal_commit_transaction() may want
->> +			 * to take the checkpoint_mutex if JBD2_FLUSHED
->> +			 * is set, jbd2_update_log_tail() called by
->> +			 * jbd2_journal_commit_transaction() may also take
->> +			 * checkpoint_mutex.  So we need to temporarily
->> +			 * drop it.
->> +			 */
->> +			mutex_unlock(&journal->j_checkpoint_mutex);
->>   			jbd2_log_wait_commit(journal, tid);
->> -			goto retry;
->> +			mutex_lock_io(&journal->j_checkpoint_mutex);
->> +			spin_lock(&journal->j_list_lock);
->> +			goto restart;
->>   		}
->>   		if (!buffer_dirty(bh)) {
->>   			if (unlikely(buffer_write_io_error(bh)) && !result)
->> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
->> index 8ef6b6daaa7a..88d8f22d2cba 100644
->> --- a/fs/jbd2/journal.c
->> +++ b/fs/jbd2/journal.c
->> @@ -2067,7 +2067,7 @@ int jbd2_journal_wipe(journal_t *journal, int write)
->>   	err = jbd2_journal_skip_recovery(journal);
->>   	if (write) {
->>   		/* Lock to make assertions happy... */
->> -		mutex_lock(&journal->j_checkpoint_mutex);
->> +		mutex_lock_io(&journal->j_checkpoint_mutex);
->>   		jbd2_mark_journal_empty(journal, REQ_SYNC | REQ_FUA);
->>   		mutex_unlock(&journal->j_checkpoint_mutex);
->>   	}
->> -- 
->> 2.17.2
->>
+Signed-off-by: huijin.park <huijin.park@samsung.com>
+---
+ block/genhd.c         |    6 +++---
+ include/linux/genhd.h |    2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/block/genhd.c b/block/genhd.c
+index 0145bcb..7518dcd 100644
+--- a/block/genhd.c
++++ b/block/genhd.c
+@@ -1343,10 +1343,10 @@ static int diskstats_show(struct seq_file *seqf, void *v)
+ 		part_stat_unlock();
+ 		part_in_flight(gp->queue, hd, inflight);
+ 		seq_printf(seqf, "%4d %7d %s "
+-			   "%lu %lu %lu %u "
+-			   "%lu %lu %lu %u "
++			   "%lu %lu %llu %u "
++			   "%lu %lu %llu %u "
+ 			   "%u %u %u "
+-			   "%lu %lu %lu %u\n",
++			   "%lu %lu %llu %u\n",
+ 			   MAJOR(part_devt(hd)), MINOR(part_devt(hd)),
+ 			   disk_name(gp, hd->partno, buf),
+ 			   part_stat_read(hd, ios[STAT_READ]),
+diff --git a/include/linux/genhd.h b/include/linux/genhd.h
+index 0c5ee17..5bf86f9 100644
+--- a/include/linux/genhd.h
++++ b/include/linux/genhd.h
+@@ -84,7 +84,7 @@ struct partition {
+ 
+ struct disk_stats {
+ 	u64 nsecs[NR_STAT_GROUPS];
+-	unsigned long sectors[NR_STAT_GROUPS];
++	u64 sectors[NR_STAT_GROUPS];
+ 	unsigned long ios[NR_STAT_GROUPS];
+ 	unsigned long merges[NR_STAT_GROUPS];
+ 	unsigned long io_ticks;
+-- 
+1.7.9.5
