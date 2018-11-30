@@ -1,70 +1,50 @@
-Return-Path: <SRS0=XuXQ=NS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:49530 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726752AbeKHCEy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 7 Nov 2018 21:04:54 -0500
-Date: Wed, 7 Nov 2018 11:33:46 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Vasily Averin <vvs@virtuozzo.com>
-Cc: linux-ext4@vger.kernel.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: missing !bh check in ext4_xattr_inode_write()
-Message-ID: <20181107163346.GH9919@thunk.org>
-References: <710ddac8-eb88-e631-3b27-74410039d15f@virtuozzo.com>
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:48564 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726521AbeK3XTd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 30 Nov 2018 18:19:33 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 1167F30012
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 12:10:28 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Fri, 30 Nov 2018 12:10:27 +0000
+Message-ID: <bug-201685-13602-MYeU74AAh8@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <710ddac8-eb88-e631-3b27-74410039d15f@virtuozzo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 04, 2018 at 08:29:39PM +0300, Vasily Averin wrote:
-> ext4_getblk() called with map_flags=0 can return NULL,
-> it can lead to oops on bh dereferemce
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
+
+--- Comment #86 from Rainer Fiebig (jrf@mailbox.org) ---
+(In reply to Hao Wei Tee from comment #85)
+> (In reply to Rainer Fiebig from comment #83)
+> > Interesting idea. But what works in one direction might not necessarily
+> work
+> > the other way round.
 > 
-> Fixes e50e5129f384 ("ext4: xattr-in-inode support")
-> Cc: stable@kernel.org # 4.13
+> Exactly my point. We know that (4.19 ext4 and kernel is broken), (4.18 ext4
+> and kernel is working), and (4.18 ext4 and 4.19 kernel is working).
 > 
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
-> ---
->  fs/ext4/xattr.c | 2 ++
->  1 file changed, 2 insertions(+)
+> If (4.19 ext4 and 4.18 kernel) is broken, then _most likely_ the bug is
+> caused by something that changed in v4.18..v4.19. If (4.19 ext4 and 4.18
+> kernel) *works*, then either the bug is in something else that changed, or
+> there is an interaction between two changes that happened in v4.18..v4.19.
 > 
-> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-> index 0b9688683526..6dc6c70828f0 100644
-> --- a/fs/ext4/xattr.c
-> +++ b/fs/ext4/xattr.c
-> @@ -1384,6 +1384,8 @@ static int ext4_xattr_inode_write(handle_t *handle, struct inode *ea_inode,
->  		bh = ext4_getblk(handle, ea_inode, block, 0);
->  		if (IS_ERR(bh))
->  			return PTR_ERR(bh);
-> +		if (!bh)
-> +			return -ENOMEM;
+Sure, I understand this. I would just shy away from recommending this to others
+without a nod from higher powers. But of course it's up to Nestor whether he
+wants to try this or not.
 
-ext4_getblk() should never return NULL here; and if it does, it won't
-be because of ENOMEM.  If we did have a memory allocation problem, we
-would have returned ERR_PTR(-ENOMEM). 
+> In any case, bisecting v4.18..v4.19 will probably give us a clue.
+Let's hope for the best. Perhaps bisecting fs/ext4 will provide enough of a
+clue already and spare the poor bisecter to have to bisect the whole beast. ;)
 
-In the while loop above this point, the blocks in ea_inode would have
-been allocated, and so when ext4_getblk() is called with map_flags ==
-0, it will return NULL if there is a hole in the inode --- but we had
-*just* allocated the blocks in question.
-
-The only time that bh could be NULL, then, would be in the case of
-something really going wrong; a programming error elsewhere (perhaps a
-wild pointer dereference) or I/O error causing on-disk file system
-corruption (although that would be highly unlikely given that we had
-*just* allocated the blocks and so the metadata blocks in question
-probably would still be in the cache).
-
-If we do want to handle this case, what we should do is something like
-call WARN_ON_ONCE(1), call ext4_error() since the file system may have
-gotten corrupted, and then return -EFSCORRUPTED.
-
-(Linus has said that there should be no new BUG_ON's, so the
-WARN_ON_ONE is to help debugging, and flaging the file system as
-corrupted is probably the best we could do here, and is marginally
-better than what we do now, which is just let the Oops take place.)
-
-						- Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
