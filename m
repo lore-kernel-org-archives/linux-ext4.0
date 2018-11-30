@@ -1,54 +1,43 @@
-Return-Path: <SRS0=7vaa=OF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:51987 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726227AbeK0AF2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 26 Nov 2018 19:05:28 -0500
-Date: Mon, 26 Nov 2018 14:11:20 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Ming Lei <ming.lei@redhat.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, Shaohua Li <shli@kernel.org>,
-        linux-raid@vger.kernel.org, David Sterba <dsterba@suse.com>,
-        linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-Subject: Re: [PATCH V12 09/20] block: use bio_for_each_bvec() to compute
- multi-page bvec count
-Message-ID: <20181126131120.GA6757@lst.de>
-References: <20181126021720.19471-1-ming.lei@redhat.com> <20181126021720.19471-10-ming.lei@redhat.com>
+Return-Path: <SRS0=01R6=OJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53088 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725991AbeLAFPu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 00:15:50 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 3D8D230199
+        for <linux-ext4@vger.kernel.org>; Fri, 30 Nov 2018 18:05:45 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Fri, 30 Nov 2018 18:05:45 +0000
+Message-ID: <bug-201685-13602-GWTT9BkV13@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181126021720.19471-10-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Looks fine:
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+--- Comment #94 from Jens Axboe (axboe@kernel.dk) ---
+In terms of ext4 changes, it'd be interesting to just revert this one:
 
-Nitpick below:
+commit ac22b46a0b65dbeccbf4d458db95687e825bde90
+Author: Jens Axboe <axboe@kernel.dk>
+Date:   Fri Aug 17 15:45:42 2018 -0700
 
-> +{
-> +	unsigned len = bv->bv_len;
-> +	unsigned total_len = 0;
-> +	unsigned new_nsegs = 0, seg_size = 0;
-> +
-> +	/*
-> +	 * Multipage bvec may be too big to hold in one segment,
-> +	 * so the current bvec has to be splitted as multiple
-> +	 * segments.
-> +	 */
+    ext4: readpages() should submit IO as read-ahead
 
-Please use up all 80 chars in a line.
+as that guy is generally just not trust worthy. In all seriousness, though, it
+shouldn't cause issues (or I would not have done it), and we already do this
+for readpages in general, but I guess we could have an older bug in ext4 that
+depends deeply on read-ahead NOT failing. Not sure how likely that is, Ted can
+probably comment on that.
+
+But it's a trivial revert, and it could potentially be implicated.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
