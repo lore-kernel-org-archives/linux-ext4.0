@@ -1,39 +1,34 @@
-Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38978 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725980AbeLDFSC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 4 Dec 2018 00:18:02 -0500
-Date: Tue, 4 Dec 2018 00:17:57 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: Colin King <colin.king@canonical.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: clean up indentation issues, remove extraneous tabs
-Message-ID: <20181204051757.GE4981@thunk.org>
-References: <20181123163043.14178-1-colin.king@canonical.com>
- <20181127092836.GD16301@quack2.suse.cz>
+Return-Path: <SRS0=IALa=OK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:54870 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726577AbeLBAKF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 19:10:05 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id C67572D44A
+        for <linux-ext4@vger.kernel.org>; Sat,  1 Dec 2018 12:57:36 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Sat, 01 Dec 2018 12:57:35 +0000
+Message-ID: <bug-201685-13602-FbuLtX3kBm@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181127092836.GD16301@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 27, 2018 at 10:28:36AM +0100, Jan Kara wrote:
-> On Fri 23-11-18 16:30:43, Colin King wrote:
-> > From: Colin Ian King <colin.king@canonical.com>
-> > 
-> > There are several lines that are indented too far, clean these
-> > up by removing the tabs.
-> > 
-> > Signed-off-by: Colin Ian King <colin.king@canonical.com>
-> 
-> The patch looks good. You can add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Thanks, applied.
+--- Comment #105 from Andreas John (himself@derjohn.de) ---
+FYI: 4.19.6 was just released, the is a DAX fixup inside:
 
-						- Ted
+dax: Avoid losing wakeup in dax_lock_mapping_entry
+
+Maybe the courageous testers should also consider that one, if the issue is DAX
+related?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
