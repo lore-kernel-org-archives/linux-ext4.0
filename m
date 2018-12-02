@@ -1,16 +1,16 @@
-Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:59864 "EHLO
+Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41224 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726146AbeLCLDR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2018 06:03:17 -0500
+        by vger.kernel.org with ESMTP id S1725788AbeLBVeR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 16:34:17 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2CC4F2B227
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 11:02:43 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 628142A81F
+        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 21:34:13 +0000 (UTC)
 From: bugzilla-daemon@bugzilla.kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 11:02:40 +0000
-Message-ID: <bug-201685-13602-IjKSZwXN0M@https.bugzilla.kernel.org/>
+Date: Sun, 02 Dec 2018 21:34:12 +0000
+Message-ID: <bug-201685-13602-psqcKX4Bhr@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
 References: <bug-201685-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,59 +21,46 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
---- Comment #194 from Marc Burkhardt (marc@osknowledge.org) ---
-(In reply to Rainer Fiebig from comment #192)
-> #136
-> 
-> It has been suggested that I/O-schedulers may play a role in this. So here's
-> are my settings for 4.19.x for comparison. They deviate from yours in some
-> points but I really don't know whether this has any relevance. You may want
-> to give it a try anyway. As I've said, 4.19.x is a nice kernel here.
-> 
-> > grep -i sched .config_4.19-rc5 
-> CONFIG_HAVE_UNSTABLE_SCHED_CLOCK=y
-> CONFIG_CGROUP_SCHED=y
-> CONFIG_FAIR_GROUP_SCHED=y
-> CONFIG_RT_GROUP_SCHED=y
-> CONFIG_SCHED_AUTOGROUP=y
-> CONFIG_SCHED_OMIT_FRAME_POINTER=y
-> CONFIG_SCHED_SMT=y
-> CONFIG_SCHED_MC=y
-> CONFIG_SCHED_MC_PRIO=y
-> CONFIG_SCHED_HRTICK=y
-> # CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL is not set
-> # CONFIG_CPU_FREQ_GOV_SCHEDUTIL is not set
-> # IO Schedulers
-> CONFIG_IOSCHED_NOOP=y
-> CONFIG_IOSCHED_DEADLINE=y
-> CONFIG_IOSCHED_CFQ=y
-> CONFIG_CFQ_GROUP_IOSCHED=y
-> CONFIG_DEFAULT_IOSCHED="deadline"
-> CONFIG_MQ_IOSCHED_DEADLINE=y
-> CONFIG_MQ_IOSCHED_KYBER=y
-> # CONFIG_IOSCHED_BFQ is not set
-> CONFIG_NET_SCHED=y
-> # Queueing/Scheduling
-> CONFIG_USB_EHCI_TT_NEWSCHED=y
-> CONFIG_SCHED_INFO=y
-> CONFIG_SCHED_TRACER=y
+Michel Roelofs (michel@michelroelofs.nl) changed:
 
-Really, how come you say "these are your settings"?
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |michel@michelroelofs.nl
 
-The settings are, what is actually being used not what has ben compiled-in or I
-miss anything?
+--- Comment #168 from Michel Roelofs (michel@michelroelofs.nl) ---
+Hereby my experience that may be related:
 
-What's the coincidence between 
+[ 2451.982816] EXT4-fs error (device dm-1): ext4_iget:4831: inode #6029313:
+comm ls: bad extra_isize 5 (inode size 256)
+root@ster:/# debugfs -R 'ncheck 6029313' /dev/dm-1
+debugfs 1.43.4 (31-Jan-2017)
+Inode   Pathname
+6029313 //sabnzb
+ncheck: Inode checksum does not match inode while doing inode scan
 
-CONFIG_DEFAULT_IOSCHED="deadline" + CONFIG_IOSCHED_DEADLINE=y
+root@ster:/# echo 2 > /proc/sys/vm/drop_caches
+root@ster:/# debugfs -R 'ncheck 6029313' /dev/dm-1
+debugfs 1.43.4 (31-Jan-2017)
+Inode   Pathname
+6029313 //sabnzb
+ncheck: Inode checksum does not match inode while doing inode scan
 
-and
+root@ster:/#  echo 3 > /proc/sys/vm/drop_caches
+root@ster:/# debugfs -R 'ncheck 6029313' /dev/dm-1
+debugfs 1.43.4 (31-Jan-2017)
+Inode   Pathname
+6029313 //sabnzb
 
-cat /sys/block/sda/queue/scheduler 
-mq-deadline [kyber] bfq none
+Kernel v4.19.5, CPU Intel Atom D525, Debian Linux 9.6, brand new WDC
+WD40EFRX-68N32N0, gcc 6.3.0-18+deb9u1.
 
-Please see #139 - wee need a list of what is effectively used and not what is
-actually possible. Bare metal or not. Intel? AMD? hugepages or nor?
+Also seen with an ext4 filesystem created on Nov 21 2018.
+
+Also seen with earlier 4.19.0 kernel, and older WDC WD30EFRX-68A in same
+computer.
+
+Going back to v4.18.<latest> kernel solved the issues. No disk corruption shown
+by e2fsck.
 
 -- 
 You are receiving this mail because:
