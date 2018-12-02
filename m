@@ -1,16 +1,16 @@
-Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:51866 "EHLO
+Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53412 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725811AbeLCDei (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 22:34:38 -0500
+        by vger.kernel.org with ESMTP id S1725859AbeLBOGX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 09:06:23 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 329702A94B
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 03:34:34 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 669B62AD5E
+        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 14:06:20 +0000 (UTC)
 From: bugzilla-daemon@bugzilla.kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 03:34:33 +0000
-Message-ID: <bug-201685-13602-FWmzxRozuV@https.bugzilla.kernel.org/>
+Date: Sun, 02 Dec 2018 14:06:19 +0000
+Message-ID: <bug-201685-13602-1RmJF1WMAC@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
 References: <bug-201685-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,20 +21,18 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
---- Comment #185 from Eric Benoit (eric@ecks.ca) ---
-(In reply to Guenter Roeck from comment #181)
-> #180: Eric, would you mind sharing the script used to create the files and
-> to read them back ?
+--- Comment #145 from Rainer Fiebig (jrf@mailbox.org) ---
+(In reply to Reindl Harald from comment #138)
+> at least continue security updates for 4.18.x would probably be a good idea
+> 
+> Fedora 28 is already on 4.19.x
+> 
+> i run now 4.18.20-100.fc27.x86_64 which was the last Fedora 27 update on
+> every F28 server and until this problem is solved i refuse to run 4.19.x in
+> production which essentially means no security fixes for a unknown amount of
+> time
 
-Just a pair of trivial one-liners:
-
-for i in {00000..13999}; do echo dd bs=1M count=64 if=/dev/urandom of=urand.$i;
-done
-
-for i in urand.*; do echo dd bs=1M if=$i of=/dev/null; done | parallel -j8
-
-I'm using /dev/urandom since I have lz4 compression enabled. I imagine
-/dev/zero would be just as effective if you don't.
+Perhaps you can use one of the LTS-kernels, like 4.14.84.
 
 -- 
 You are receiving this mail because:
