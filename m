@@ -1,47 +1,63 @@
-Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:51158 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726158AbeLKW1c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Dec 2018 17:27:32 -0500
-Date: Tue, 11 Dec 2018 17:27:21 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Krzysztof Kozlowski <krzk@kernel.org>
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
-        Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org
-Subject: Re: [BUG BISECT next] Files cannot be opened after "fsverity: Move
- verity status check to fsverity_file_open"
-Message-ID: <20181211222721.GC4464@thunk.org>
-References: <CAJKOXPdNS+Qs6t1GwrgYhWT5EbtORJwYMzSrDPf8oAxv7ndNBg@mail.gmail.com>
+Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:50810 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725843AbeLBNn2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 08:43:28 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6B1422AB1F
+        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 13:43:25 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Sun, 02 Dec 2018 13:43:23 +0000
+Message-ID: <bug-201685-13602-P7bZhjkgW1@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAJKOXPdNS+Qs6t1GwrgYhWT5EbtORJwYMzSrDPf8oAxv7ndNBg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 11, 2018 at 03:15:53PM +0100, Krzysztof Kozlowski wrote:
-> Hi,
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
+
+--- Comment #144 from Rainer Fiebig (jrf@mailbox.org) ---
+(In reply to Daniel Harding from comment #143)
+> Another datapoint:  I have observed Ext4 metadata corruption under both
+> 4.19.1 and 4.19.4.  I'm using LVM (but no RAID); the underlying drive is a
+> 1GB SATA-attached Samsung 850 PRO SSD.  I've not been able to reliably
+> reproduce, but an rsync-based backup of my home partition runs once an hour
+> and it usually starts reporting corruption errors within a day or two of
+> booting a 4.19.x kernel.  So far the corruption has only happened in
+> directories that I am not actively using - as far as I know they are only
+> being accessed by the rsync process.  Since I started seeing the corruption
+> under 4.19.x, I've run 4.18.16 for two stretches, one of which was twelve
+> days, without any problems, so I'm quite confident it is not an issue of
+> defective hardware.  I have a weekly cron job which runs fstrim, but at
+> least once I booted into 4.19.4 (previous boot was 4.18.16), and started
+> seeing metadata corruption after about 36 hours, but fstrim had not run
+> during that time.
 > 
-> Bisect from today's next pointed me to:
-> commit 4de97efb578a094e8fbf279522d41eb9ece1e3e0
-> Author: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-> Date:   Sat Dec 8 12:21:43 2018 +0530
->     fsverity: Move verity status check to fsverity_file_open
+> Some (possibly) relevant kernel configs:
+> CONFIG_SCSI_MQ_DEFAULT=y
+> # CONFIG_DM_MQ_DEFAULT is not set
+> # CONFIG_MQ_IOSCHED_DEADLINE is not set
+> # CONFIG_MQ_IOSCHED_KYBER is not set
+> CONFIG_DAX_DRIVER=y
+> CONFIG_DAX=y
+> # CONFIG_DEV_DAX is not set
+> # CONFIG_FS_DAX is not set
 > 
-> as a reason of "Operation not supported" when reading any file from
-> mounted ext4fs (from SD card). Rootfs from nfsroot works but reading
-> from /home with ext4fs fails.
+> $ cat /sys/block/sda/queue/scheduler
+> [none] bfq
+> 
+> I'm happy to report any more info about my kernel/system if it would be
+> helpful, but unfortunately I don't have the bandwidth to do any bisection
+> right now.
 
-Can you send me an compressed e2image of your sdcard?
+Bisecting just fs/ext4 (comment 79) wouldn't cost much time. Just 32 commits, 5
+steps. It won't get much cheaper than that.
 
-	e2image -Q /dev/mmcblk0p2 sdcard.qcow2
-	bzip2 -z sdcard.qcow2
-
-Thanks!
-
-					- Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
