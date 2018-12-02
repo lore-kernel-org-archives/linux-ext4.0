@@ -1,53 +1,39 @@
-Return-Path: <SRS0=ry50=O5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41680 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728803AbeLTNwz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 20 Dec 2018 08:52:55 -0500
-Date: Thu, 20 Dec 2018 14:52:52 +0100
-From: Jan Kara <jack@suse.cz>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: [GIT PULL] Ext2, udf, and quota changes for v4.21-rc1
-Message-ID: <20181220135252.GB15045@quack2.suse.cz>
+Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:49102 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725844AbeLBN2u (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 08:28:50 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id DAA2E2A43C
+        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 13:28:46 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Sun, 02 Dec 2018 13:28:45 +0000
+Message-ID: <bug-201685-13602-X2GCNeflXq@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello Linus,
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-  could you please pull from
+--- Comment #142 from Rainer Fiebig (jrf@mailbox.org) ---
+(In reply to carlphilippreh from comment #134)
+> Created attachment 279781 [details]
+> Config of second computer
 
-git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git fs_for_4.21-rc1
+Thanks. It'll take a while to sift through this.
 
-to get some ext2 cleanups, a fix for UDF crash on corrupted media, and one
-quota locking fix.
+As an alternative to 4.19 you may want to use one of the latest LTS-kernels,
+4.14.84 perhaps.[1]
+But before compiling/installing it, make sure the fs is OK (s. comment 114).
 
-Top of the tree is 2aad26fa0a3d. The full shortlog is:
-
-Chengguang Xu (3):
-      ext2: avoid unnecessary operation in ext2_error()
-      ext2: remove redundant condition check
-      ext2: change reusable parameter to true when calling mb_cache_entry_create()
-
-Jan Kara (1):
-      udf: Fix BUG on corrupted inode
-
-Javier Barrio (1):
-      quota: Lock s_umount in exclusive mode for Q_XQUOTA{ON,OFF} quotactls.
-
-The diffstat is
-
- fs/ext2/super.c  | 12 +++++-------
- fs/ext2/xattr.c  |  3 ++-
- fs/quota/quota.c |  3 ++-
- fs/udf/inode.c   |  6 ++++++
- 4 files changed, 15 insertions(+), 9 deletions(-)
-
-							Thanks
-								Honza
+[1] https://www.kernel.org/
 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
