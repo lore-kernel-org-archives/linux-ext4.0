@@ -1,120 +1,82 @@
-Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:44050 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726263AbeLLEJP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Dec 2018 23:09:15 -0500
-Received: from pps.filterd (m0098393.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC3xFwR128415
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:09:14 -0500
-Received: from e13.ny.us.ibm.com (e13.ny.us.ibm.com [129.33.205.203])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2paqq7etky-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:09:14 -0500
-Received: from localhost
-        by e13.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Wed, 12 Dec 2018 04:09:13 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
-        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
-        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
-        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
-        deanbo422@gmail.com, schwidefsky@de.ibm.com,
-        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
-        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
-Subject: [PATCH V4 9/9] fsverity: Move verity status check to fsverity_prepare_setattr
-Date: Wed, 12 Dec 2018 09:37:36 +0530
-In-Reply-To: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
-References: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40092 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725801AbeLBMHr (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 07:07:47 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BAB4E2AB05
+        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 12:07:46 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Sun, 02 Dec 2018 12:07:44 +0000
+Message-ID: <bug-201685-13602-ZVTBvlNkb1@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Message-Id: <20181212040736.2849-10-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Instead of conditionally checking for verity status of an inode before
-invoking fsverity_prepare_setattr(), this commit moves the check inside the
-definition of fsverity_prepare_setattr().
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
----
- fs/ext4/inode.c          | 8 +++-----
- fs/f2fs/file.c           | 8 +++-----
- fs/verity/setup.c        | 2 +-
- include/linux/fsverity.h | 5 ++++-
- 4 files changed, 11 insertions(+), 12 deletions(-)
+--- Comment #139 from Marc Burkhardt (marc@osknowledge.org) ---
+(In reply to carlphilippreh from comment #136)
+> (In reply to Rainer Fiebig from comment #132)
+> > (In reply to carlphilippreh from comment #129)
+> > > While I wasn't able to reproduce the bug for quite some time, it ended up
+> > > coming back. I'm currently running 4.19.6 and I see invalid metadata in
+> > > files that I have written using this version.
+> > 
+> > I think it could be helpful if you provided your .config(s) here.
+> > 
+> > And what kernel are you using: self-compiled/from your distribution
+> (which)?
+> > If self-compiled: have you made changes to the .config?
+> > 
+> > The set-up of the boxes you mentioned in comment 5 seems just right to hunt
+> > this down. ;)
+> 
+> I'm configuring the kernels myself. Two things that I always enable and that
+> _might_ be related are:
+> 
+> CONFIG_BLK_WBT / CONFIG_BLK_WBT_MQ
+> and
+> CONFIG_CFQ_GROUP_IOSCHED
+> 
+> Maybe I can come up with a way to reproduce this bug more quickly. Writing a
+> lot of (small) files and then deleting them seems like a good way so far.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 703f55635824..44561e68886b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5510,11 +5510,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (error)
- 		return error;
- 
--	if (IS_VERITY(inode)) {
--		error = fsverity_prepare_setattr(dentry, attr);
--		if (error)
--			return error;
--	}
-+	error = fsverity_prepare_setattr(dentry, attr);
-+	if (error)
-+		return error;
- 
- 	if (is_quota_modification(inode, attr)) {
- 		error = dquot_initialize(inode);
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 925c0d9608da..422907ca37c6 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -798,11 +798,9 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (err)
- 		return err;
- 
--	if (IS_VERITY(inode)) {
--		err = fsverity_prepare_setattr(dentry, attr);
--		if (err)
--			return err;
--	}
-+	err = fsverity_prepare_setattr(dentry, attr);
-+	if (err)
-+		return err;
- 
- 	if (is_quota_modification(inode, attr)) {
- 		err = dquot_initialize(inode);
-diff --git a/fs/verity/setup.c b/fs/verity/setup.c
-index bc463dc601b1..154556d72691 100644
---- a/fs/verity/setup.c
-+++ b/fs/verity/setup.c
-@@ -796,7 +796,7 @@ EXPORT_SYMBOL_GPL(fsverity_file_open);
-  */
- int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
- {
--	if (attr->ia_valid & ATTR_SIZE) {
-+	if (IS_VERITY(d_inode(dentry)) && (attr->ia_valid & ATTR_SIZE)) {
- 		pr_debug("Denying truncate of verity file (ino %lu)\n",
- 			 d_inode(dentry)->i_ino);
- 		return -EPERM;
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index c770025606e1..9ccc8ad9652a 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -69,7 +69,10 @@ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
- static inline int fsverity_prepare_setattr(struct dentry *dentry,
- 					   struct iattr *attr)
- {
--	return -EOPNOTSUPP;
-+	if (IS_VERITY(d_inode(dentry)))
-+		return -EOPNOTSUPP;
-+
-+	return 0;
- }
- 
- static inline int fsverity_prepare_getattr(struct inode *inode)
+I have these config options set and _currently_ no corruption.
+
+Having this compiled in is *probably* not what to look for. Rather people
+should seek for actual *usage* of these features. I use the deadline scheduler.
+
+root@marc:~ # egrep  "(BLK_WBT|IOSCH)" /boot/config-4.19.5loc64 
+CONFIG_BLK_WBT=y
+CONFIG_BLK_WBT_SQ=y
+CONFIG_BLK_WBT_MQ=y
+CONFIG_IOSCHED_NOOP=y
+CONFIG_IOSCHED_DEADLINE=y
+CONFIG_IOSCHED_CFQ=y
+CONFIG_CFQ_GROUP_IOSCHED=y
+CONFIG_DEFAULT_IOSCHED="deadline"
+CONFIG_MQ_IOSCHED_DEADLINE=y
+CONFIG_MQ_IOSCHED_KYBER=y
+CONFIG_IOSCHED_BFQ=y
+# CONFIG_BFQ_GROUP_IOSCHED is not set
+
+
+Could someone gather a list of what actually is in .configs but is
+relevant/irrelevant? I don't want to do is but I'm not really sure to not mess
+is up. I mean there was "DAX enabled in the .config" talked about but I have it
+compiled-in but I'm not actually using is.
+
+I would, moreover, like to gather actual setting used by people who run into
+the bug and those who are not, like currently used schedulers, nr_requests,
+discard, ...
+
 -- 
-2.19.1
+You are receiving this mail because:
+You are watching the assignee of the bug.
