@@ -1,38 +1,34 @@
-Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:38872 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725977AbeLDEdY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 3 Dec 2018 23:33:24 -0500
-Date: Mon, 3 Dec 2018 23:33:16 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Jan Kara <jack@suse.cz>
-Cc: Pan Bian <bianpan2016@163.com>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix possible use after free in ext4_quota_enable
-Message-ID: <20181204043316.GC4981@thunk.org>
-References: <1543202466-68277-1-git-send-email-bianpan2016@163.com>
- <20181127091453.GA16301@quack2.suse.cz>
+Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:55452 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726549AbeLCPZt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2018 10:25:49 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 654F52B4EC
+        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 15:25:47 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Mon, 03 Dec 2018 15:25:46 +0000
+Message-ID: <bug-201685-13602-eArWWrWNKx@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181127091453.GA16301@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 27, 2018 at 10:14:53AM +0100, Jan Kara wrote:
-> On Mon 26-11-18 11:21:06, Pan Bian wrote:
-> > The function frees qf_inode via iput but then pass qf_inode to
-> > lockdep_set_quota_inode on the failure path. This may result in a
-> > use-after-free bug. The patch frees df_inode only when it is never used.
-> > 
-> > Signed-off-by: Pan Bian <bianpan2016@163.com>
-> > Fixes: daf647d2dd5("ext4: add lockdep annotations for i_data_sem")
-> 
-> Thanks for the fix! The patch looks good. You can add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Thanks, applied.
+--- Comment #203 from Rainer Fiebig (jrf@mailbox.org) ---
+#199
+That it cannot be reproduced in VMs may still offer a clue, namely that it may
+indeed have something to do with hardware and/or configuration.
 
-						- Ted
+In the end there has to be a discriminating factor between those systems that
+have the problem and those that don't.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
