@@ -1,72 +1,39 @@
-Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from dmz-mailsec-scanner-3.mit.edu ([18.9.25.14]:52714 "EHLO
-        dmz-mailsec-scanner-3.mit.edu" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726614AbeLSAQM (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 18 Dec 2018 19:16:12 -0500
-Date: Tue, 18 Dec 2018 19:16:03 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Eric Biggers <ebiggers@kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181219001603.GD25775@mit.edu>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-2-ebiggers@kernel.org>
- <20181212091406.GA31723@infradead.org>
- <20181212202609.GA193967@gmail.com>
- <20181213202249.GA3797@infradead.org>
- <20181214044802.GA681@sol.localdomain>
- <20181217200039.GD8111@magnolia>
+Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41608 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726608AbeLCQUu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2018 11:20:50 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 28B5B2B1ED
+        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 16:20:42 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Mon, 03 Dec 2018 16:20:41 +0000
+Message-ID: <bug-201685-13602-0ahI3Sw8af@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181217200039.GD8111@magnolia>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 17, 2018 at 12:00:39PM -0800, Darrick J. Wong wrote:
-> FWIW, if I were (hypothetically) working on an xfs implementation, I
-> likely would have settled on passing a reference to a merkle tree
-> through a (fd, length) pair, because that allows us plenty of options
-> on the back end:
-> 
-> b) we could remap the tree into a new inode fork for merkle trees, or
-> a) remap it as posteof blocks like ext4/f2fs does, or
-> c) remap the blocks into the attribute fork as an (unusually large)
-> extended attribute value.
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Sure, but what would be the benefit of doing different things on the
-back end?  I think this is a really more of a philophical objection
-than anything else.  With both fsverity and fscrypt, well over 95% of
-the implementation is shared between ext4 and f2fs.  And from a
-cryptographic design, that's something I consider a feature, not a
-bug.  Cryptographic code is subtle in very different ways compared to
-file system code.  So it's a good thing to having it done once and
-audited by crypto specialists, as opposed to having each file system
-doing it differently / independently.
+--- Comment #204 from Guenter Roeck (linux@roeck-us.net) ---
+Another update:
 
-> If the merkle_fd isn't on the same filesystem as the fd we could at
-> least use generic_copy_file_range (i.e. page cache copying) to land the
-> merkle tree wherever we want.
-> 
-> Granted, it's not like we can't do any of those three things given the
-> current interface.  I gather most of the grumbling has to do with
-> feeling like we're associating the on-disk format to the ioctl interface
-> too closely?
+Still working on a reliable reproducer. I have been able to reproduce the
+problem again with v4.19.6 and the following patches reverted.
 
-Right, the current interface makes it somewhat more awkward to do
-these other things --- but the question is *why* would you want to in
-the first place?  Why add the extra complexity?  I'm a big believer of
-the KISS principle, and if there was a reason why a file system would
-want to store the Merkle tree somewhere else, we could talk about it,
-but I see only downside, and no upside.
+Revert "ext4: handle layout changes to pinned DAX mappings"
+Revert "dax: remove VM_MIXEDMAP for fsdax and device dax"
+Revert "ext4: close race between direct IO and ext4_break_layouts()"
 
-      	       		     	- Ted
+I used a modified version of #185, running on each drive on the affected
+system, plus a kernel build running in parallel.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
