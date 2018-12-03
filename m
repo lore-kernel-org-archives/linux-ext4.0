@@ -1,51 +1,44 @@
-Return-Path: <SRS0=7jnN=PI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from relay1.mentorg.com ([192.94.38.131]:51574 "EHLO
-        relay1.mentorg.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727557AbeLaRDx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Dec 2018 12:03:53 -0500
-Date: Mon, 31 Dec 2018 17:03:40 +0000
-From: Joseph Myers <joseph@codesourcery.com>
-To: Adhemerval Zanella <adhemerval.zanella@linaro.org>
-CC: Florian Weimer <fw@deneb.enyo.de>, <linux-fsdevel@vger.kernel.org>,
-        <linux-api@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>,
-        <v9fs-developer@lists.sourceforge.net>,
-        <libc-alpha@sourceware.org>, <qemu-devel@nongnu.org>,
-        <ericvh@gmail.com>, <rminnich@sandia.gov>, <lucho@ionkov.net>,
-        <hpa@zytor.com>, <arnd@arndb.de>
-Subject: Re: d_off field in struct dirent and 32-on-64 emulation
-In-Reply-To: <ae0530c9-5c46-5560-9734-1eacaf173b8d@linaro.org>
-Message-ID: <alpine.DEB.2.21.1812311657050.27287@digraph.polyomino.org.uk>
-References: <87bm56vqg4.fsf@mid.deneb.enyo.de> <957967d7-5717-8ada-fb30-dfdf19898b6b@linaro.org> <87pntmu9iw.fsf@mid.deneb.enyo.de> <ae0530c9-5c46-5560-9734-1eacaf173b8d@linaro.org>
+Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34366 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725792AbeLCCbp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 21:31:45 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B2A342A91C
+        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 02:31:42 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Mon, 03 Dec 2018 02:31:41 +0000
+Message-ID: <bug-201685-13602-TUJxFjjMNx@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 28 Dec 2018, Adhemerval Zanella wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-> >> Currently we only have nios2 and csky (unfortunately).  But since generic 
-> >> definition for off_t and off64_t still assumes non-LFS support, all new
-> >> 32-bits ports potentially might carry the issue.
-> > 
-> > For csky, we could still change the type of the non-standard d_off
-> > field to long long int.  This way, only telldir would have to fail
-> > when truncation is necessary, as mentioned below:
-> 
-> I think it makes no sense to continue making non-LFS as default for
-> newer 32 bits ports, the support will be emulated with LFS syscalls.
+--- Comment #180 from Eric Benoit (eric@ecks.ca) ---
+I've been able to reproduce the issue on the other workstation I'd mentioned
+earlier with ZFS:
 
-Any new 32-bit port that uses 64-bit time_t will also use 64-bit offsets 
-(because we don't have any glibc configurations that support the 
-combination of 64-bit time with 32-bit offsets, and don't want to add 
-them).  That should apply for RISC-V 32-bit at least.
+NAME                        STATE     READ WRITE CKSUM
+nipigon                     ONLINE       0     0     0 
+  mirror-0                  ONLINE       0     0     0 
+    wwn-0x5000c5006407e87e  ONLINE       0     0    17 
+    wwn-0x5000c5004e4e92a9  ONLINE       0     0     6 
 
-I've filed <https://sourceware.org/bugzilla/show_bug.cgi?id=24050> for 
-missing overflow checks in telldir when the default off_t is wider than 
-long int (currently just applies to x32; not sure why we don't see glibc 
-test failures on x32 resulting from the quiet truncation, as the issue is 
-certainly there in the source code).
+This isn't particularly hard to trigger; just a bunch of files filled with
+/dev/urandom (64M*14000) being read back concurrently (eight processes) over
+about 90 minutes.
+
+Kernel version is 4.19.6 compiled with gcc 8.2.0 (Gentoo 8.2.0-r5 p1.6).
+
+Have we any other ZFS users experiencing this?
 
 -- 
-Joseph S. Myers
-joseph@codesourcery.com
+You are receiving this mail because:
+You are watching the assignee of the bug.
