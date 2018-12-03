@@ -1,73 +1,43 @@
-Return-Path: <SRS0=oRRr=OR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lj1-f193.google.com ([209.85.208.193]:43177 "EHLO
-        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726115AbeLHXAH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2018 18:00:07 -0500
-Received: by mail-lj1-f193.google.com with SMTP id 83-v6so6499247ljf.10
-        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2018 15:00:06 -0800 (PST)
-Received: from mail-lj1-f172.google.com (mail-lj1-f172.google.com. [209.85.208.172])
-        by smtp.gmail.com with ESMTPSA id c203sm1306798lfe.95.2018.12.08.15.00.04
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Sat, 08 Dec 2018 15:00:04 -0800 (PST)
-Received: by mail-lj1-f172.google.com with SMTP id x85-v6so6527273ljb.2
-        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2018 15:00:04 -0800 (PST)
+Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:32914 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725811AbeLCFSL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 3 Dec 2018 00:18:11 -0500
+Date: Mon, 3 Dec 2018 00:18:06 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH e2fsprogs v4 0/9] Support encoding awareness and casefold
+Message-ID: <20181203051806.GA6639@thunk.org>
+References: <20181201003910.18982-1-krisman@collabora.com>
 MIME-Version: 1.0
-References: <20181206230903.30011-1-krisman@collabora.com> <20181208194128.GE20708@thunk.org>
- <CAHk-=wg2JvjXfdZ8K5Tv3vm6+bKRedotF5cr5AwVZVBypVfdAQ@mail.gmail.com> <CAHk-=wg9J+9H4kvzF0SmBP_CoSrBTxPc6xMRJKb3fDnOUs0DNw@mail.gmail.com>
-In-Reply-To: <CAHk-=wg9J+9H4kvzF0SmBP_CoSrBTxPc6xMRJKb3fDnOUs0DNw@mail.gmail.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Sat, 8 Dec 2018 14:59:47 -0800
-Message-ID: <CAHk-=wj62vGn5TeGDaPn41mev97VnA7px+R1Xor8+Ai_WmhQ9Q@mail.gmail.com>
-Subject: Re: [PATCH v4 00/23] Ext4 Encoding and Case-insensitive support
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        kernel@collabora.com, linux-ext4@vger.kernel.org,
-        krisman@collabora.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181201003910.18982-1-krisman@collabora.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 8, 2018 at 1:58 PM Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
->
-> I'm hoping you are at least doing it per-directory. That makes at
-> least the "oh, the whole filesystem needs to do this wrong" issue a
-> bit less bad.
+Hi Gabriel,
 
-So for example, if you do it per-directory, the rules could be something like:
+Thanks for all of your work on it so far.  There's still some work
+that we need to do, but I think this is good enough for merge what we
+have, so I've pulled this into the e2fsprogs master and next branches.
+There were a few commit description adjustments, and in one place I
+replaced a call to calloc() with a fixed-size buffer to just using a
+on-stack buffer.
 
- - new directories (ie "mkdir()") inherit the icase/folding semantics
-of the parent directory
+The main thing I noticed is that nothing is initializing fs->encoding.
+We need to do that in ext2fs_open() and ext2fs_initialize().  We also
+need to add some test cases --- if we did, we would have noticed the
+missing initialization of fs->encoding.
 
- - empty directories can have their case/folding rules changed with
-some well-defined interface
+I do want to include of the script which generates utf8data.h in
+e2fsprogs sources; we'll need to it in sync with the kernel sources,
+and so long as it stays in sync, we can always double check that
+version of utf8data.h in e2fsprogs matches the version the one in the
+kernel.  But for reasons of GPL compliance, we should keep a copy of
+the script which creates the generated .h file.
 
-and even from just those simple rules, now some icase behavior could
-be useful to testing.
+Again, thanks for the work so far!
 
-Not just filesystem testing (although that would be a thing - thing
-fsstress), but for doing app development in a test directory.
-
-Apps like git (and GNU fileutils) could use it for having test suites
-for FAT etc filesystems.
-
-And cross-platform apps could use it as a "I want to check that I do
-the right thing" if you do development on Linux, but might have a
-portable app for other platforms.
-
-If the whole filesystem is that way, nobody is going to do it. Sure,
-they could do it on a FAT filesystem using a USB disk, but nobody
-really does that. But if you can troivially just run your tests in a
-test subdirectory, it's another thing entirely.
-
-So this is the kind of thing I mean when I think icase behavior for a
-major Linux filesystem should have a real _design_. It's really quite
-fundamentally different from the "oh, I need FAT to be icase" hack
-that we have now.
-
-(We might also be able to make the dcache better at handling
-well-defined icase/folding rules, as opposed to the current "just give
-up, let the filesystem hash it" behavior).
-
-              Linus
+					- Ted
