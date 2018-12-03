@@ -1,16 +1,16 @@
 Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:46646 "EHLO
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:38402 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725785AbeLCBuW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 20:50:22 -0500
+        by vger.kernel.org with ESMTP id S1726657AbeLCRB7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2018 12:01:59 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 135F02A775
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 01:50:20 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 54F962B757
+        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 17:01:55 +0000 (UTC)
 From: bugzilla-daemon@bugzilla.kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 01:50:19 +0000
-Message-ID: <bug-201685-13602-AU33UMExcF@https.bugzilla.kernel.org/>
+Date: Mon, 03 Dec 2018 17:01:54 +0000
+Message-ID: <bug-201685-13602-ewh2EUbBVm@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
 References: <bug-201685-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,17 +21,13 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
---- Comment #179 from Theodore Tso (tytso@mit.edu) ---
-Michael Orlitzky: In your report, you've indicated that you've only been seeing
-bugs in files that are being *read* and that these were files that were written
-long ago.    If you reboot, or drop caches using "echo 3 >
-/proc/sys/vm/drop_caches" do the files stay corrupted?    Some of the reports
-(but not others) seem to indicate the problem is happening on read, not on
-write.  Of course, some of the reports are relating to metadata blocks getting
-corrupted on read, while your report is about data blocks getting reported on
-read. 
+--- Comment #205 from Rainer Fiebig (jrf@mailbox.org) ---
+#204
 
-Thanks!
+So, only 2 commits left in your creative drill-down-effort, right? I hope the
+huge amount of time you have invested pays off and puts an end to this crisis.
+
+If so, it will still be interesting to know: Why only some and not all?
 
 -- 
 You are receiving this mail because:
