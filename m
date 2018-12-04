@@ -1,41 +1,44 @@
-Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:48514 "EHLO
+Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:47990 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726716AbeLSW6Q (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 19 Dec 2018 17:58:16 -0500
+        by vger.kernel.org with ESMTP id S1725895AbeLDWSA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 17:18:00 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id CBC4328746
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Dec 2018 22:58:15 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D5A1B2C845
+        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 22:17:59 +0000 (UTC)
 From: bugzilla-daemon@bugzilla.kernel.org
 To: linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date: Wed, 19 Dec 2018 22:58:15 +0000
-Message-ID: <bug-201631-13602-lvsfzAPvsg@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Subject: [Bug 201685] ext4 file system corruption
+Date: Tue, 04 Dec 2018 22:17:58 +0000
+Message-ID: <bug-201685-13602-ctNHMj3Fn1@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-erhard_f@mailbox.org changed:
+--- Comment #252 from Jens Axboe (axboe@kernel.dk) ---
+(In reply to Guenter Roeck from comment #247)
+> #245: Is there a means to log the possible error case ?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
- Attachment #280057|0                           |1
-        is obsolete|                            |
+Yes, that's how I ended up verifying that this was indeed what was going on.
+Example:
 
---- Comment #23 from erhard_f@mailbox.org ---
-Created attachment 280101
-  --> https://bugzilla.kernel.org/attachment.cgi?id=280101&action=edit
-journalctl -k (4.20-rc7 on a Talos II)
+[  235.665576] issue_direct=13, 22080, ffff9ee3da59e400
+[  235.931483] bio_attempt_back_merge: MERGE ON NO PREP ffff9ee3da59e400
+[  235.931486] bio_attempt_back_merge: MERGE ON NO PREP ffff9ee3da59e400
+[  235.931489] bio_attempt_back_merge: MERGE ON NO PREP ffff9ee3da59e400
+[  235.934465] EXT4-fs error (device sda1): ext4_iget:4831: inode #7142: comm
+dpkg-query: bad extra_isize 24937 (inode size 256)
 
-Results with newest patch.
+Here we see req 0xffff9ee3da59e400 being rejected, due to resource starvation.
+Shortly thereafter, we see us happily merging more IO into that request. Once
+that request finishes, ext4 gets immediately unhappy as only a small part of
+the request contents were valid. The rest simply contained garbage.
 
 -- 
 You are receiving this mail because:
