@@ -1,312 +1,61 @@
 Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:39324 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725875AbeLDXMJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 4 Dec 2018 18:12:09 -0500
-Date: Tue, 4 Dec 2018 15:12:05 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
-        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
-        corbet@lwn.net, ralf@linux-mips.org, paul.burton@mips.com,
-        jhogan@kernel.org, green.hu@gmail.com, deanbo422@gmail.com,
-        schwidefsky@de.ibm.com, heiko.carstens@de.ibm.com, richard@nod.at,
-        dedekind1@gmail.com, adrian.hunter@intel.com,
-        viro@zeniv.linux.org.uk
-Subject: Re: [PATCH V2 1/7] ext4: use IS_ENCRYPTED() to check encryption
- status
-Message-ID: <20181204231203.GA70682@gmail.com>
-References: <20181204095650.12562-1-chandan@linux.vnet.ibm.com>
- <20181204095650.12562-2-chandan@linux.vnet.ibm.com>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34914 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726309AbeLDPDN (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 10:03:13 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9FBB52BD5A
+        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 15:03:10 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Tue, 04 Dec 2018 15:03:09 +0000
+Message-ID: <bug-201685-13602-ZRkcAfMl0g@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181204095650.12562-2-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 04, 2018 at 03:26:44PM +0530, Chandan Rajendra wrote:
-> This commit removes the ext4 specific ext4_encrypted_inode() and makes
-> use of the generic IS_ENCRYPTED() macro to check for the encryption
-> status of an inode.
-> 
-> Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Reviewed-by: Eric Biggers <ebiggers@google.com>
+--- Comment #223 from Guenter Roeck (linux@roeck-us.net) ---
+4.18.20 seems to be ok, except that my script overburdens it a bit.
 
-Though if you send this out again, there are a few places where you can remove a
-line break while remaining within 80 characters, due to IS_ENCRYPTED() being
-shorter than ext4_encrypted_inode().
+[ 1088.450369] INFO: task systemd-tmpfile:31954 blocked for more than 120
+seconds.
+[ 1088.450374]       Not tainted 4.18.20+ #1
+[ 1088.450375] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this
+message.
+[ 1088.450377] systemd-tmpfile D    0 31954      1 0x00000000
+[ 1088.450380] Call Trace:
+[ 1088.450389]  __schedule+0x3f1/0x8c0
+[ 1088.450392]  ? bit_wait+0x60/0x60
+[ 1088.450394]  schedule+0x36/0x80
+[ 1088.450398]  io_schedule+0x16/0x40
+[ 1088.450400]  bit_wait_io+0x11/0x60
+[ 1088.450403]  __wait_on_bit+0x63/0x90
+[ 1088.450405]  out_of_line_wait_on_bit+0x8e/0xb0
+[ 1088.450408]  ? init_wait_var_entry+0x50/0x50
+[ 1088.450411]  __wait_on_buffer+0x32/0x40
+[ 1088.450414]  __ext4_get_inode_loc+0x19f/0x3e0
+[ 1088.450416]  ext4_iget+0x8f/0xc30
 
-- Eric
+There is a key difference, though: With 4.18.20, cfq is active.
 
-> ---
->  fs/ext4/dir.c         |  8 ++++----
->  fs/ext4/ext4.h        |  5 -----
->  fs/ext4/ext4_jbd2.h   |  2 +-
->  fs/ext4/extents.c     |  4 ++--
->  fs/ext4/ialloc.c      |  2 +-
->  fs/ext4/inode.c       | 14 +++++++-------
->  fs/ext4/move_extent.c |  3 +--
->  fs/ext4/namei.c       |  8 ++++----
->  fs/ext4/page-io.c     |  2 +-
->  fs/ext4/readpage.c    |  2 +-
->  10 files changed, 22 insertions(+), 28 deletions(-)
-> 
-> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-> index f93f9881ec18..fb7a64ea5679 100644
-> --- a/fs/ext4/dir.c
-> +++ b/fs/ext4/dir.c
-> @@ -111,7 +111,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
->  	int dir_has_error = 0;
->  	struct fscrypt_str fstr = FSTR_INIT(NULL, 0);
->  
-> -	if (ext4_encrypted_inode(inode)) {
-> +	if (IS_ENCRYPTED(inode)) {
->  		err = fscrypt_get_encryption_info(inode);
->  		if (err && err != -ENOKEY)
->  			return err;
-> @@ -138,7 +138,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
->  			return err;
->  	}
->  
-> -	if (ext4_encrypted_inode(inode)) {
-> +	if (IS_ENCRYPTED(inode)) {
->  		err = fscrypt_fname_alloc_buffer(inode, EXT4_NAME_LEN, &fstr);
->  		if (err < 0)
->  			return err;
-> @@ -245,7 +245,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
->  			offset += ext4_rec_len_from_disk(de->rec_len,
->  					sb->s_blocksize);
->  			if (le32_to_cpu(de->inode)) {
-> -				if (!ext4_encrypted_inode(inode)) {
-> +				if (!IS_ENCRYPTED(inode)) {
->  					if (!dir_emit(ctx, de->name,
->  					    de->name_len,
->  					    le32_to_cpu(de->inode),
-> @@ -613,7 +613,7 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
->  
->  static int ext4_dir_open(struct inode * inode, struct file * filp)
->  {
-> -	if (ext4_encrypted_inode(inode))
-> +	if (IS_ENCRYPTED(inode))
->  		return fscrypt_get_encryption_info(inode) ? -EACCES : 0;
->  	return 0;
->  }
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 80957f9d3cbe..2ae6ab88f218 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -2297,11 +2297,6 @@ extern unsigned ext4_free_clusters_after_init(struct super_block *sb,
->  					      struct ext4_group_desc *gdp);
->  ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
->  
-> -static inline bool ext4_encrypted_inode(struct inode *inode)
-> -{
-> -	return ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT);
-> -}
-> -
->  static inline bool ext4_verity_inode(struct inode *inode)
->  {
->  #ifdef CONFIG_EXT4_FS_VERITY
-> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-> index 15b6dd733780..a1ac7e9245ec 100644
-> --- a/fs/ext4/ext4_jbd2.h
-> +++ b/fs/ext4/ext4_jbd2.h
-> @@ -411,7 +411,7 @@ static inline int ext4_inode_journal_mode(struct inode *inode)
->  	    (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
->  	    !test_opt(inode->i_sb, DELALLOC))) {
->  		/* We do not support data journalling for encrypted data */
-> -		if (S_ISREG(inode->i_mode) && ext4_encrypted_inode(inode))
-> +		if (S_ISREG(inode->i_mode) && IS_ENCRYPTED(inode))
->  			return EXT4_INODE_ORDERED_DATA_MODE;  /* ordered */
->  		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
->  	}
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 240b6dea5441..79d986dbf5af 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3631,7 +3631,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
->  		max_zeroout = sbi->s_extent_max_zeroout_kb >>
->  			(inode->i_sb->s_blocksize_bits - 10);
->  
-> -	if (ext4_encrypted_inode(inode))
-> +	if (IS_ENCRYPTED(inode))
->  		max_zeroout = 0;
->  
->  	/*
-> @@ -4818,7 +4818,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
->  	 * leave it disabled for encrypted inodes for now.  This is a
->  	 * bug we should fix....
->  	 */
-> -	if (ext4_encrypted_inode(inode) &&
-> +	if (IS_ENCRYPTED(inode) &&
->  	    (mode & (FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_INSERT_RANGE |
->  		     FALLOC_FL_ZERO_RANGE)))
->  		return -EOPNOTSUPP;
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 2addcb8730e1..3002f110eb4f 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -771,7 +771,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
->  	if (unlikely(ext4_forced_shutdown(sbi)))
->  		return ERR_PTR(-EIO);
->  
-> -	if ((ext4_encrypted_inode(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
-> +	if ((IS_ENCRYPTED(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
->  	    (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)) &&
->  	    !(i_flags & EXT4_EA_INODE_FL)) {
->  		err = fscrypt_get_encryption_info(dir);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index d7019f5dca6f..ef835bd46155 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -415,7 +415,7 @@ int ext4_issue_zeroout(struct inode *inode, ext4_lblk_t lblk, ext4_fsblk_t pblk,
->  {
->  	int ret;
->  
-> -	if (ext4_encrypted_inode(inode))
-> +	if (IS_ENCRYPTED(inode))
->  		return fscrypt_zeroout_range(inode, lblk, pblk, len);
->  
->  	ret = sb_issue_zeroout(inode->i_sb, pblk, len, GFP_NOFS);
-> @@ -1217,7 +1217,7 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
->  		    (block_start < from || block_end > to)) {
->  			ll_rw_block(REQ_OP_READ, 0, 1, &bh);
->  			*wait_bh++ = bh;
-> -			decrypt = ext4_encrypted_inode(inode) &&
-> +			decrypt = IS_ENCRYPTED(inode) &&
->  				S_ISREG(inode->i_mode);
->  		}
->  	}
-> @@ -3880,7 +3880,7 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
->  	ssize_t ret;
->  
->  #ifdef CONFIG_EXT4_FS_ENCRYPTION
-> -	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode))
-> +	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
->  		return 0;
->  #endif
->  
-> @@ -4068,7 +4068,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
->  		if (!buffer_uptodate(bh))
->  			goto unlock;
->  		if (S_ISREG(inode->i_mode) &&
-> -		    ext4_encrypted_inode(inode)) {
-> +		    IS_ENCRYPTED(inode)) {
->  			/* We expect the key to be set. */
->  			BUG_ON(!fscrypt_has_encryption_key(inode));
->  			BUG_ON(blocksize != PAGE_SIZE);
-> @@ -4144,7 +4144,7 @@ static int ext4_block_truncate_page(handle_t *handle,
->  	struct inode *inode = mapping->host;
->  
->  	/* If we are processing an encrypted inode during orphan list handling */
-> -	if (ext4_encrypted_inode(inode) && !fscrypt_has_encryption_key(inode))
-> +	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
->  		return 0;
->  
->  	blocksize = inode->i_sb->s_blocksize;
-> @@ -4724,7 +4724,7 @@ static bool ext4_should_use_dax(struct inode *inode)
->  		return false;
->  	if (ext4_has_inline_data(inode))
->  		return false;
-> -	if (ext4_encrypted_inode(inode))
-> +	if (ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT))
->  		return false;
->  	if (ext4_verity_inode(inode))
->  		return false;
-> @@ -5050,7 +5050,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->  			ret = -EFSCORRUPTED;
->  			goto bad_inode;
->  		}
-> -		if (ext4_encrypted_inode(inode)) {
-> +		if (IS_ENCRYPTED(inode)) {
->  			inode->i_op = &ext4_encrypted_symlink_inode_operations;
->  			ext4_set_aops(inode);
->  		} else if (ext4_inode_is_fast_symlink(inode)) {
-> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-> index 2f5be02fc6f6..1083a9f3f16a 100644
-> --- a/fs/ext4/move_extent.c
-> +++ b/fs/ext4/move_extent.c
-> @@ -592,8 +592,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
->  		return -EOPNOTSUPP;
->  	}
->  
-> -	if (ext4_encrypted_inode(orig_inode) ||
-> -	    ext4_encrypted_inode(donor_inode)) {
-> +	if (IS_ENCRYPTED(orig_inode) || IS_ENCRYPTED(donor_inode)) {
->  		ext4_msg(orig_inode->i_sb, KERN_ERR,
->  			 "Online defrag not supported for encrypted files");
->  		return -EOPNOTSUPP;
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index 67a38532032a..0de60207a963 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -620,7 +620,7 @@ static struct stats dx_show_leaf(struct inode *dir,
->  
->  				name  = de->name;
->  				len = de->name_len;
-> -				if (ext4_encrypted_inode(dir))
-> +				if (IS_ENCRYPTED(dir))
->  					res = fscrypt_get_encryption_info(dir);
->  				if (res) {
->  					printk(KERN_WARNING "Error setting up"
-> @@ -985,7 +985,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
->  					   EXT4_DIR_REC_LEN(0));
->  #ifdef CONFIG_EXT4_FS_ENCRYPTION
->  	/* Check if the directory is encrypted */
-> -	if (ext4_encrypted_inode(dir)) {
-> +	if (IS_ENCRYPTED(dir)) {
->  		err = fscrypt_get_encryption_info(dir);
->  		if (err < 0) {
->  			brelse(bh);
-> @@ -1014,7 +1014,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
->  			continue;
->  		if (de->inode == 0)
->  			continue;
-> -		if (!ext4_encrypted_inode(dir)) {
-> +		if (!IS_ENCRYPTED(dir)) {
->  			tmp_str.name = de->name;
->  			tmp_str.len = de->name_len;
->  			err = ext4_htree_store_dirent(dir_file,
-> @@ -1577,7 +1577,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
->  					 ino);
->  			return ERR_PTR(-EFSCORRUPTED);
->  		}
-> -		if (!IS_ERR(inode) && ext4_encrypted_inode(dir) &&
-> +		if (!IS_ERR(inode) && IS_ENCRYPTED(dir) &&
->  		    (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)) &&
->  		    !fscrypt_has_permitted_context(dir, inode)) {
->  			ext4_warning(inode->i_sb,
-> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
-> index 2aa62d58d8dd..008c20b58f98 100644
-> --- a/fs/ext4/page-io.c
-> +++ b/fs/ext4/page-io.c
-> @@ -477,7 +477,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
->  
->  	bh = head = page_buffers(page);
->  
-> -	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode) &&
-> +	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode) &&
->  	    nr_to_submit) {
->  		gfp_t gfp_flags = GFP_NOFS;
->  
-> diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-> index d3dd1ff745db..45e707fb9749 100644
-> --- a/fs/ext4/readpage.c
-> +++ b/fs/ext4/readpage.c
-> @@ -156,7 +156,7 @@ static struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
->  	unsigned int post_read_steps = 0;
->  	struct bio_post_read_ctx *ctx = NULL;
->  
-> -	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode))
-> +	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
->  		post_read_steps |= 1 << STEP_DECRYPT;
->  #ifdef CONFIG_EXT4_FS_VERITY
->  	if (inode->i_verity_info != NULL &&
-> -- 
-> 2.19.1
-> 
+$ cat /sys/block/sd*/queue/scheduler
+noop deadline [cfq] 
+noop deadline [cfq] 
+
+In 4.19, cfq is not available due to commit d5038a13eca72 ("scsi: core: switch
+to scsi-mq by default"). I'll repeat my tests with SCSI_MQ_DEFAULT disabled on
+v4.19, and with it enabled on v4.18.20. We know that disabling SCSI_MQ_DEFAULT
+alone does not help, but maybe there is more than one problem.
+
+Any takers for a round of bisects as suggested in #221 ?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
