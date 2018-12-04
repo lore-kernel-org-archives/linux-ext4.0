@@ -1,121 +1,312 @@
-Return-Path: <SRS0=IALa=OK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:32962 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726057AbeLALvP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 06:51:15 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 3/9] chattr/lsattr: Support casefold attribute
-Date: Fri, 30 Nov 2018 19:39:04 -0500
-Message-Id: <20181201003910.18982-4-krisman@collabora.com>
-In-Reply-To: <20181201003910.18982-1-krisman@collabora.com>
-References: <20181201003910.18982-1-krisman@collabora.com>
+Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:39324 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725875AbeLDXMJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 4 Dec 2018 18:12:09 -0500
+Date: Tue, 4 Dec 2018 15:12:05 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
+        corbet@lwn.net, ralf@linux-mips.org, paul.burton@mips.com,
+        jhogan@kernel.org, green.hu@gmail.com, deanbo422@gmail.com,
+        schwidefsky@de.ibm.com, heiko.carstens@de.ibm.com, richard@nod.at,
+        dedekind1@gmail.com, adrian.hunter@intel.com,
+        viro@zeniv.linux.org.uk
+Subject: Re: [PATCH V2 1/7] ext4: use IS_ENCRYPTED() to check encryption
+ status
+Message-ID: <20181204231203.GA70682@gmail.com>
+References: <20181204095650.12562-1-chandan@linux.vnet.ibm.com>
+ <20181204095650.12562-2-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181204095650.12562-2-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+On Tue, Dec 04, 2018 at 03:26:44PM +0530, Chandan Rajendra wrote:
+> This commit removes the ext4 specific ext4_encrypted_inode() and makes
+> use of the generic IS_ENCRYPTED() macro to check for the encryption
+> status of an inode.
+> 
+> Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 
-This flag can be set on directories to request insensitive file name
-lookups.
+Reviewed-by: Eric Biggers <ebiggers@google.com>
 
-I used the letter 'F', referring to "caseFold" for lack of a better
-option.
+Though if you send this out again, there are a few places where you can remove a
+line break while remaining within 80 characters, due to IS_ENCRYPTED() being
+shorter than ext4_encrypted_inode().
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- lib/e2p/pf.c         | 1 +
- lib/ext2fs/ext2_fs.h | 5 +++--
- misc/chattr.1.in     | 8 +++++++-
- misc/chattr.c        | 3 ++-
- 4 files changed, 13 insertions(+), 4 deletions(-)
+- Eric
 
-diff --git a/lib/e2p/pf.c b/lib/e2p/pf.c
-index 884f1671edae..0c6998c4b766 100644
---- a/lib/e2p/pf.c
-+++ b/lib/e2p/pf.c
-@@ -44,6 +44,7 @@ static struct flags_name flags_array[] = {
- 	{ EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
- 	{ EXT4_EXTENTS_FL, "e", "Extents" },
- 	{ FS_NOCOW_FL, "C", "No_COW" },
-+	{ EXT4_CASEFOLD_FL, "F", "Casefold" },
- 	{ EXT4_INLINE_DATA_FL, "N", "Inline_Data" },
- 	{ EXT4_PROJINHERIT_FL, "P", "Project_Hierarchy" },
- 	{ EXT4_VERITY_FL, "V", "Verity" },
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index c7d62b8d40b2..19bd94da008a 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -339,10 +339,11 @@ struct ext2_dx_tail {
- #define EXT4_SNAPFILE_SHRUNK_FL		0x08000000  /* Snapshot shrink has completed */
- #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data */
- #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
-+#define EXT4_CASEFOLD_FL		0x40000000 /* Casefolded file */
- #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
- 
--#define EXT2_FL_USER_VISIBLE		0x204BDFFF /* User visible flags */
--#define EXT2_FL_USER_MODIFIABLE		0x204B80FF /* User modifiable flags */
-+#define EXT2_FL_USER_VISIBLE		0x604BDFFF /* User visible flags */
-+#define EXT2_FL_USER_MODIFIABLE		0x604B80FF /* User modifiable flags */
- 
- /*
-  * ioctl commands
-diff --git a/misc/chattr.1.in b/misc/chattr.1.in
-index 028ae9e7ca4c..5949d096687b 100644
---- a/misc/chattr.1.in
-+++ b/misc/chattr.1.in
-@@ -29,7 +29,7 @@ The operator '+' causes the selected attributes to be added to the
- existing attributes of the files; '-' causes them to be removed; and '='
- causes them to be the only attributes that the files have.
- .PP
--The letters 'aAcCdDeijPsStTu' select the new attributes for the files:
-+The letters 'aAcCdDeFijPsStTu' select the new attributes for the files:
- append only (a),
- no atime updates (A),
- compressed (c),
-@@ -37,6 +37,7 @@ no copy on write (C),
- no dump (d),
- synchronous directory updates (D),
- extent format (e),
-+case-insensitive directory lookups (F),
- immutable (i),
- data journalling (j),
- project hierarchy (P),
-@@ -119,6 +120,11 @@ set or reset using
- although it can be displayed by
- .BR lsattr (1).
- .PP
-+A directory with the 'F' attribute set indicates that all the path
-+lookups inside that directory are made in a case-insensitive fashion.
-+This attribute can only be changed in empty directories on file systems
-+with the fname_encoding feature enabled.
-+.PP
- A file with the 'i' attribute cannot be modified: it cannot be deleted or
- renamed, no link can be created to this file, most of the file's
- metadata can not be modified, and the file can not be opened in write mode.
-diff --git a/misc/chattr.c b/misc/chattr.c
-index a5b401a741b7..a5d60170bdb6 100644
---- a/misc/chattr.c
-+++ b/misc/chattr.c
-@@ -86,7 +86,7 @@ static unsigned long sf;
- static void usage(void)
- {
- 	fprintf(stderr,
--		_("Usage: %s [-pRVf] [-+=aAcCdDeijPsStTu] [-v version] files...\n"),
-+		_("Usage: %s [-pRVf] [-+=aAcCdDeijPsStTuF] [-v version] files...\n"),
- 		program_name);
- 	exit(1);
- }
-@@ -112,6 +112,7 @@ static const struct flags_char flags_array[] = {
- 	{ EXT2_NOTAIL_FL, 't' },
- 	{ EXT2_TOPDIR_FL, 'T' },
- 	{ FS_NOCOW_FL, 'C' },
-+	{ EXT4_CASEFOLD_FL, 'F' },
- 	{ 0, 0 }
- };
- 
--- 
-2.20.0.rc1
+> ---
+>  fs/ext4/dir.c         |  8 ++++----
+>  fs/ext4/ext4.h        |  5 -----
+>  fs/ext4/ext4_jbd2.h   |  2 +-
+>  fs/ext4/extents.c     |  4 ++--
+>  fs/ext4/ialloc.c      |  2 +-
+>  fs/ext4/inode.c       | 14 +++++++-------
+>  fs/ext4/move_extent.c |  3 +--
+>  fs/ext4/namei.c       |  8 ++++----
+>  fs/ext4/page-io.c     |  2 +-
+>  fs/ext4/readpage.c    |  2 +-
+>  10 files changed, 22 insertions(+), 28 deletions(-)
+> 
+> diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+> index f93f9881ec18..fb7a64ea5679 100644
+> --- a/fs/ext4/dir.c
+> +++ b/fs/ext4/dir.c
+> @@ -111,7 +111,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>  	int dir_has_error = 0;
+>  	struct fscrypt_str fstr = FSTR_INIT(NULL, 0);
+>  
+> -	if (ext4_encrypted_inode(inode)) {
+> +	if (IS_ENCRYPTED(inode)) {
+>  		err = fscrypt_get_encryption_info(inode);
+>  		if (err && err != -ENOKEY)
+>  			return err;
+> @@ -138,7 +138,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>  			return err;
+>  	}
+>  
+> -	if (ext4_encrypted_inode(inode)) {
+> +	if (IS_ENCRYPTED(inode)) {
+>  		err = fscrypt_fname_alloc_buffer(inode, EXT4_NAME_LEN, &fstr);
+>  		if (err < 0)
+>  			return err;
+> @@ -245,7 +245,7 @@ static int ext4_readdir(struct file *file, struct dir_context *ctx)
+>  			offset += ext4_rec_len_from_disk(de->rec_len,
+>  					sb->s_blocksize);
+>  			if (le32_to_cpu(de->inode)) {
+> -				if (!ext4_encrypted_inode(inode)) {
+> +				if (!IS_ENCRYPTED(inode)) {
+>  					if (!dir_emit(ctx, de->name,
+>  					    de->name_len,
+>  					    le32_to_cpu(de->inode),
+> @@ -613,7 +613,7 @@ static int ext4_dx_readdir(struct file *file, struct dir_context *ctx)
+>  
+>  static int ext4_dir_open(struct inode * inode, struct file * filp)
+>  {
+> -	if (ext4_encrypted_inode(inode))
+> +	if (IS_ENCRYPTED(inode))
+>  		return fscrypt_get_encryption_info(inode) ? -EACCES : 0;
+>  	return 0;
+>  }
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 80957f9d3cbe..2ae6ab88f218 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -2297,11 +2297,6 @@ extern unsigned ext4_free_clusters_after_init(struct super_block *sb,
+>  					      struct ext4_group_desc *gdp);
+>  ext4_fsblk_t ext4_inode_to_goal_block(struct inode *);
+>  
+> -static inline bool ext4_encrypted_inode(struct inode *inode)
+> -{
+> -	return ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT);
+> -}
+> -
+>  static inline bool ext4_verity_inode(struct inode *inode)
+>  {
+>  #ifdef CONFIG_EXT4_FS_VERITY
+> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+> index 15b6dd733780..a1ac7e9245ec 100644
+> --- a/fs/ext4/ext4_jbd2.h
+> +++ b/fs/ext4/ext4_jbd2.h
+> @@ -411,7 +411,7 @@ static inline int ext4_inode_journal_mode(struct inode *inode)
+>  	    (ext4_test_inode_flag(inode, EXT4_INODE_JOURNAL_DATA) &&
+>  	    !test_opt(inode->i_sb, DELALLOC))) {
+>  		/* We do not support data journalling for encrypted data */
+> -		if (S_ISREG(inode->i_mode) && ext4_encrypted_inode(inode))
+> +		if (S_ISREG(inode->i_mode) && IS_ENCRYPTED(inode))
+>  			return EXT4_INODE_ORDERED_DATA_MODE;  /* ordered */
+>  		return EXT4_INODE_JOURNAL_DATA_MODE;	/* journal data */
+>  	}
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 240b6dea5441..79d986dbf5af 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3631,7 +3631,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		max_zeroout = sbi->s_extent_max_zeroout_kb >>
+>  			(inode->i_sb->s_blocksize_bits - 10);
+>  
+> -	if (ext4_encrypted_inode(inode))
+> +	if (IS_ENCRYPTED(inode))
+>  		max_zeroout = 0;
+>  
+>  	/*
+> @@ -4818,7 +4818,7 @@ long ext4_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+>  	 * leave it disabled for encrypted inodes for now.  This is a
+>  	 * bug we should fix....
+>  	 */
+> -	if (ext4_encrypted_inode(inode) &&
+> +	if (IS_ENCRYPTED(inode) &&
+>  	    (mode & (FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_INSERT_RANGE |
+>  		     FALLOC_FL_ZERO_RANGE)))
+>  		return -EOPNOTSUPP;
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 2addcb8730e1..3002f110eb4f 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -771,7 +771,7 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>  	if (unlikely(ext4_forced_shutdown(sbi)))
+>  		return ERR_PTR(-EIO);
+>  
+> -	if ((ext4_encrypted_inode(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
+> +	if ((IS_ENCRYPTED(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
+>  	    (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)) &&
+>  	    !(i_flags & EXT4_EA_INODE_FL)) {
+>  		err = fscrypt_get_encryption_info(dir);
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index d7019f5dca6f..ef835bd46155 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -415,7 +415,7 @@ int ext4_issue_zeroout(struct inode *inode, ext4_lblk_t lblk, ext4_fsblk_t pblk,
+>  {
+>  	int ret;
+>  
+> -	if (ext4_encrypted_inode(inode))
+> +	if (IS_ENCRYPTED(inode))
+>  		return fscrypt_zeroout_range(inode, lblk, pblk, len);
+>  
+>  	ret = sb_issue_zeroout(inode->i_sb, pblk, len, GFP_NOFS);
+> @@ -1217,7 +1217,7 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+>  		    (block_start < from || block_end > to)) {
+>  			ll_rw_block(REQ_OP_READ, 0, 1, &bh);
+>  			*wait_bh++ = bh;
+> -			decrypt = ext4_encrypted_inode(inode) &&
+> +			decrypt = IS_ENCRYPTED(inode) &&
+>  				S_ISREG(inode->i_mode);
+>  		}
+>  	}
+> @@ -3880,7 +3880,7 @@ static ssize_t ext4_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+>  	ssize_t ret;
+>  
+>  #ifdef CONFIG_EXT4_FS_ENCRYPTION
+> -	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode))
+> +	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
+>  		return 0;
+>  #endif
+>  
+> @@ -4068,7 +4068,7 @@ static int __ext4_block_zero_page_range(handle_t *handle,
+>  		if (!buffer_uptodate(bh))
+>  			goto unlock;
+>  		if (S_ISREG(inode->i_mode) &&
+> -		    ext4_encrypted_inode(inode)) {
+> +		    IS_ENCRYPTED(inode)) {
+>  			/* We expect the key to be set. */
+>  			BUG_ON(!fscrypt_has_encryption_key(inode));
+>  			BUG_ON(blocksize != PAGE_SIZE);
+> @@ -4144,7 +4144,7 @@ static int ext4_block_truncate_page(handle_t *handle,
+>  	struct inode *inode = mapping->host;
+>  
+>  	/* If we are processing an encrypted inode during orphan list handling */
+> -	if (ext4_encrypted_inode(inode) && !fscrypt_has_encryption_key(inode))
+> +	if (IS_ENCRYPTED(inode) && !fscrypt_has_encryption_key(inode))
+>  		return 0;
+>  
+>  	blocksize = inode->i_sb->s_blocksize;
+> @@ -4724,7 +4724,7 @@ static bool ext4_should_use_dax(struct inode *inode)
+>  		return false;
+>  	if (ext4_has_inline_data(inode))
+>  		return false;
+> -	if (ext4_encrypted_inode(inode))
+> +	if (ext4_test_inode_flag(inode, EXT4_INODE_ENCRYPT))
+>  		return false;
+>  	if (ext4_verity_inode(inode))
+>  		return false;
+> @@ -5050,7 +5050,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>  			ret = -EFSCORRUPTED;
+>  			goto bad_inode;
+>  		}
+> -		if (ext4_encrypted_inode(inode)) {
+> +		if (IS_ENCRYPTED(inode)) {
+>  			inode->i_op = &ext4_encrypted_symlink_inode_operations;
+>  			ext4_set_aops(inode);
+>  		} else if (ext4_inode_is_fast_symlink(inode)) {
+> diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+> index 2f5be02fc6f6..1083a9f3f16a 100644
+> --- a/fs/ext4/move_extent.c
+> +++ b/fs/ext4/move_extent.c
+> @@ -592,8 +592,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp, __u64 orig_blk,
+>  		return -EOPNOTSUPP;
+>  	}
+>  
+> -	if (ext4_encrypted_inode(orig_inode) ||
+> -	    ext4_encrypted_inode(donor_inode)) {
+> +	if (IS_ENCRYPTED(orig_inode) || IS_ENCRYPTED(donor_inode)) {
+>  		ext4_msg(orig_inode->i_sb, KERN_ERR,
+>  			 "Online defrag not supported for encrypted files");
+>  		return -EOPNOTSUPP;
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 67a38532032a..0de60207a963 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -620,7 +620,7 @@ static struct stats dx_show_leaf(struct inode *dir,
+>  
+>  				name  = de->name;
+>  				len = de->name_len;
+> -				if (ext4_encrypted_inode(dir))
+> +				if (IS_ENCRYPTED(dir))
+>  					res = fscrypt_get_encryption_info(dir);
+>  				if (res) {
+>  					printk(KERN_WARNING "Error setting up"
+> @@ -985,7 +985,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+>  					   EXT4_DIR_REC_LEN(0));
+>  #ifdef CONFIG_EXT4_FS_ENCRYPTION
+>  	/* Check if the directory is encrypted */
+> -	if (ext4_encrypted_inode(dir)) {
+> +	if (IS_ENCRYPTED(dir)) {
+>  		err = fscrypt_get_encryption_info(dir);
+>  		if (err < 0) {
+>  			brelse(bh);
+> @@ -1014,7 +1014,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+>  			continue;
+>  		if (de->inode == 0)
+>  			continue;
+> -		if (!ext4_encrypted_inode(dir)) {
+> +		if (!IS_ENCRYPTED(dir)) {
+>  			tmp_str.name = de->name;
+>  			tmp_str.len = de->name_len;
+>  			err = ext4_htree_store_dirent(dir_file,
+> @@ -1577,7 +1577,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+>  					 ino);
+>  			return ERR_PTR(-EFSCORRUPTED);
+>  		}
+> -		if (!IS_ERR(inode) && ext4_encrypted_inode(dir) &&
+> +		if (!IS_ERR(inode) && IS_ENCRYPTED(dir) &&
+>  		    (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)) &&
+>  		    !fscrypt_has_permitted_context(dir, inode)) {
+>  			ext4_warning(inode->i_sb,
+> diff --git a/fs/ext4/page-io.c b/fs/ext4/page-io.c
+> index 2aa62d58d8dd..008c20b58f98 100644
+> --- a/fs/ext4/page-io.c
+> +++ b/fs/ext4/page-io.c
+> @@ -477,7 +477,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
+>  
+>  	bh = head = page_buffers(page);
+>  
+> -	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode) &&
+> +	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode) &&
+>  	    nr_to_submit) {
+>  		gfp_t gfp_flags = GFP_NOFS;
+>  
+> diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
+> index d3dd1ff745db..45e707fb9749 100644
+> --- a/fs/ext4/readpage.c
+> +++ b/fs/ext4/readpage.c
+> @@ -156,7 +156,7 @@ static struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
+>  	unsigned int post_read_steps = 0;
+>  	struct bio_post_read_ctx *ctx = NULL;
+>  
+> -	if (ext4_encrypted_inode(inode) && S_ISREG(inode->i_mode))
+> +	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
+>  		post_read_steps |= 1 << STEP_DECRYPT;
+>  #ifdef CONFIG_EXT4_FS_VERITY
+>  	if (inode->i_verity_info != NULL &&
+> -- 
+> 2.19.1
+> 
