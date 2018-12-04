@@ -1,152 +1,38 @@
-Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:55654 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725963AbeLFWFX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 17:05:23 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 11/23] nls: ascii: Support validation and normalization operations
-Date: Thu,  6 Dec 2018 17:04:17 -0500
-Message-Id: <20181206220429.10722-12-krisman@collabora.com>
-In-Reply-To: <20181206220429.10722-1-krisman@collabora.com>
-References: <20181206220429.10722-1-krisman@collabora.com>
+Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:38592 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725937AbeLDCZT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 3 Dec 2018 21:25:19 -0500
+Date: Mon, 3 Dec 2018 21:25:16 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+        linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] Fix tst_super_size after ext2_super_block changes
+Message-ID: <20181204022516.GA32349@thunk.org>
+References: <20181128160834.1729-1-artem.blagodarenko@gmail.com>
+ <050FAC09-2437-417C-AF69-7637613BA7BB@dilger.ca>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <050FAC09-2437-417C-AF69-7637613BA7BB@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+On Wed, Nov 28, 2018 at 12:09:26PM -0700, Andreas Dilger wrote:
+> On Nov 28, 2018, at 9:08 AM, Artem Blagodarenko <artem.blagodarenko@gmail.com> wrote:
+> > 
+> > Commits "Reserve feature bit and SB field bit for filename encoding"
+> > and "Add timestamp extension bits to superblock" change
+> > ext2_super_block structure, but don't change tst_super_size test,
+> > so "make check" fails with message:
+> > 
+> > error: s_reserved size 380 should be 392
+> 
+> How did these patches even land without "make check" being run once?
+> Does this test failure not cause "make check" to fail?
 
-validation is trivial.  Any byte that has the MSB set is an invalid
-sequence.
+My bad; I failed to run the make check before pushing it out.  I fixed
+this before seeing Artem's patch, and the fix was what he pushed out.
 
-Casefold can be implemented with uppercase or lowercase, and we have no
-specification on that. Callers should be safe using either of them, as
-long as it doesn't change.
-
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- fs/nls/nls_ascii.c  | 50 +++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nls.h |  8 ++++++++
- 2 files changed, 58 insertions(+)
-
-diff --git a/fs/nls/nls_ascii.c b/fs/nls/nls_ascii.c
-index 2f4826478d3d..079a1574c19d 100644
---- a/fs/nls/nls_ascii.c
-+++ b/fs/nls/nls_ascii.c
-@@ -12,6 +12,7 @@
- #include <linux/string.h>
- #include <linux/nls.h>
- #include <linux/errno.h>
-+#include <linux/slab.h>
- 
- static const wchar_t charset2uni[256] = {
- 	/* 0x00*/
-@@ -117,6 +118,8 @@ static const unsigned char charset2upper[256] = {
- 	0x58, 0x59, 0x5a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, /* 0x78-0x7f */
- };
- 
-+#define VALID_ASCII(c) (c < 128)
-+
- static int uni2char(wchar_t uni, unsigned char *out, int boundlen)
- {
- 	const unsigned char *uni2charset;
-@@ -142,6 +145,16 @@ static int char2uni(const unsigned char *rawstring, int boundlen, wchar_t *uni)
- 	return 1;
- }
- 
-+static int ascii_validate(const struct nls_table *table,
-+			  const unsigned char *str, size_t len)
-+{
-+	int i;
-+	for (i = 0; i < len && str[i]; i++)
-+		if (!VALID_ASCII(str[i]))
-+			return -1;
-+	return 0;
-+}
-+
- static unsigned char charset_tolower(const struct nls_table *table,
- 				     unsigned int c){
- 	return charset2lower[c];
-@@ -152,11 +165,36 @@ static unsigned char charset_toupper(const struct nls_table *table,
- 	return charset2upper[c];
- }
- 
-+static int ascii_casefold(const struct nls_table *charset,
-+			  const unsigned char *str, size_t len,
-+			  unsigned char *dest, size_t dlen)
-+{
-+	unsigned int i;
-+
-+	if (dlen < len)
-+		return -EINVAL;
-+
-+	for (i = 0; i < len; i++) {
-+		if (IS_STRICT_MODE(charset) && !VALID_ASCII(str[i]))
-+			return -EINVAL;
-+
-+		if (IS_CASEFOLD_TYPE_ASCII_TOLOWER(charset))
-+			dest[i] = charset_tolower(charset, str[i]);
-+		else
-+			dest[i] = charset_toupper(charset, str[i]);
-+	}
-+	dest[len] = '\0';
-+
-+	return len;
-+}
-+
- static const struct nls_ops charset_ops = {
-+	.validate = ascii_validate,
- 	.lowercase = charset_toupper,
- 	.uppercase = charset_tolower,
- 	.uni2char = uni2char,
- 	.char2uni = char2uni,
-+	.casefold = ascii_casefold,
- };
- 
- static struct nls_charset nls_charset;
-@@ -165,9 +203,21 @@ static struct nls_table table = {
- 	.ops = &charset_ops,
- };
- 
-+struct nls_table *ascii_load_table(const char *version, unsigned int flags)
-+{
-+	if (flags & ~(NLS_STRICT_MODE) ||
-+	    (flags & NLS_NORMALIZATION_TYPE_MASK) != NLS_NORMALIZATION_TYPE_PLAIN)
-+		return ERR_PTR(-EINVAL);
-+
-+	table.flags = flags;
-+	return &table;
-+}
-+
-+
- static struct nls_charset nls_charset = {
- 	.charset = "ascii",
- 	.tables = &table,
-+	.load_table = ascii_load_table,
- };
- 
- static int __init init_nls_ascii(void)
-diff --git a/include/linux/nls.h b/include/linux/nls.h
-index 44a06a9c69e7..aab60d4858ee 100644
---- a/include/linux/nls.h
-+++ b/include/linux/nls.h
-@@ -178,6 +178,14 @@ IS_CASEFOLD_TYPE_##charset##_##type(const struct nls_table *c)		\
- NLS_NORMALIZATION_FUNCS(ALL, PLAIN, NLS_NORMALIZATION_TYPE_PLAIN)
- NLS_CASEFOLD_FUNCS(ALL, TOUPPER, NLS_CASEFOLD_TYPE_TOUPPER)
- 
-+/* ASCII */
-+
-+#define NLS_ASCII_CASEFOLD_TOUPPER NLS_CASEFOLD_TYPE_TOUPPER
-+#define NLS_ASCII_CASEFOLD_TOLOWER NLS_CASEFOLD_TYPE(1)
-+
-+NLS_CASEFOLD_FUNCS(ASCII, TOUPPER, NLS_ASCII_CASEFOLD_TOUPPER)
-+NLS_CASEFOLD_FUNCS(ASCII, TOLOWER, NLS_ASCII_CASEFOLD_TOLOWER)
-+
- /* nls_base.c */
- extern int __register_nls(struct nls_charset *, struct module *);
- extern int unregister_nls(struct nls_charset *);
--- 
-2.20.0.rc2
+     	    	   	   	      - Ted
