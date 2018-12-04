@@ -1,47 +1,42 @@
-Return-Path: <SRS0=P4kf=OT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:23530 "EHLO
-        mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727080AbeLJMwt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Dec 2018 07:52:49 -0500
-From: Kanchan Joshi <joshi.k@samsung.com>
-To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.com,
-        viro@zeniv.linux.org.uk, darrick.wong@oracle.com, axboe@kernel.dk,
-        jrdr.linux@gmail.com, ebiggers@google.com,
-        jooyoung.hwang@samsung.com, chur.lee@samsung.com,
-        prakash.v@samsung.com, Kanchan Joshi <joshi.k@samsung.com>
-Subject: [PATCH 0/2] fs,ext4,jbd2: Specifying write-hint for Ext4 journal
-Date: Mon, 10 Dec 2018 18:20:02 +0530
-Message-id: <1544446204-5291-1-git-send-email-joshi.k@samsung.com>
-References: <CGME20181210125245epcas2p202bc4336e91a55cee3786ed6abffea05@epcas2p2.samsung.com>
+Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:52478 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725874AbeLDU7v (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 15:59:51 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 72CC92C773
+        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 20:59:50 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Tue, 04 Dec 2018 20:59:49 +0000
+Message-ID: <bug-201685-13602-QHTM1shKUH@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+MIME-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-For NAND-based SSDs, mixing of data with different life-time reduces            
-efficiency of garbage-collection. During FS operations, series of journal       
-updates will follow/precede series of data/meta updates, causing intermixing    
-inside SSD. By passing a write-hint (a.k.a stream) with journal, its writes     
-can be isolated from other meta/data writes, leading to performance/endurance   
-benefit on multi-stream SSD.                                                    
-This is described in greater detail (along with results) in this "FAST 2018"    
-paper - https://www.usenix.org/system/files/conference/fast18/fast18-rho.pdf    
-                                                                                
-This patch is split into two parts. First patch introduces APIs to send         
-write-hint with buffer-head. Second one implement "journal_writehint" mount     
-option (inspired from "journal_ioprio") in Ext4/JBD2.
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Kanchan Joshi (2):
-  fs: introduce APIs to enable sending write-hint with buffer-head
-  fs/ext4,jbd2: Add support for passing write-hint with journal.
+--- Comment #240 from Guenter Roeck (linux@roeck-us.net) ---
+As mentioned earlier, I only ever saw the problem on two of four systems (see
+#57), all running the same kernel and the same version of Ubuntu. The only
+differences are mainboard, CPU, and attached drive types.
 
- fs/buffer.c                 | 21 +++++++++++++++++++++
- fs/ext4/super.c             | 33 +++++++++++++++++++++++++++------
- fs/jbd2/commit.c            | 11 +++++++----
- fs/jbd2/journal.c           |  2 +-
- fs/jbd2/revoke.c            |  2 +-
- include/linux/buffer_head.h |  3 +++
- include/linux/jbd2.h        |  7 +++++++
- 7 files changed, 67 insertions(+), 12 deletions(-)
+I don't think we know for sure what it takes to trigger the problem. We have
+seen various guesses, from gcc version to l1tf mitigation to CPU type, broken
+hard drives, and whatnot. At this time evidence points to the block subsystem,
+with bisect pointing to a commit which relies on the state of the HW queue
+(empty or not) in conjunction with the 'none' io scheduler. This may suggest
+that drive speed and access timing may be involved. That guess may of course be
+just as wrong as all the others.
+
+Let's just hope that Jens will be able to track down and fix the problem. Then
+we may be able to get a better idea what it actually takes to trigger it.
 
 -- 
-2.7.4
+You are receiving this mail because:
+You are watching the assignee of the bug.
