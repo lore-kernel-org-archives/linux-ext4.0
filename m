@@ -1,153 +1,33 @@
-Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:56108 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726322AbeLFXJt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 18:09:49 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: linux-fsdevel@vger.kernel.org, kernel@collabora.com,
-        linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 11/23] nls: ascii: Support validation and normalization operations
-Date: Thu,  6 Dec 2018 18:08:51 -0500
-Message-Id: <20181206230903.30011-12-krisman@collabora.com>
-In-Reply-To: <20181206230903.30011-1-krisman@collabora.com>
-References: <20181206230903.30011-1-krisman@collabora.com>
+Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:43220 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725904AbeLDWMJ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 17:12:09 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 951BB2C88E
+        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 22:12:08 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Tue, 04 Dec 2018 22:12:06 +0000
+Message-ID: <bug-201685-13602-APfI0zbCL6@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-validation is trivial.  Any byte that has the MSB set is an invalid
-sequence.
+--- Comment #251 from Guenter Roeck (linux@roeck-us.net) ---
+#248: Looks like you may be running my reproducer script. It tends to do that,
+especially on slow drives (ie anything but nvme), depending on the io scheduler
+used. I have seen it with "cfq", but not with "none". iostat would probably
+show you 90+ % iowait when it happens. That by itself does not indicate the
+error we are trying to track down here.
 
-Casefold can be implemented with uppercase or lowercase, and we have no
-specification on that. Callers should be safe using either of them, as
-long as it doesn't change.
-
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- fs/nls/nls_ascii.c  | 50 +++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nls.h |  8 ++++++++
- 2 files changed, 58 insertions(+)
-
-diff --git a/fs/nls/nls_ascii.c b/fs/nls/nls_ascii.c
-index 2f4826478d3d..079a1574c19d 100644
---- a/fs/nls/nls_ascii.c
-+++ b/fs/nls/nls_ascii.c
-@@ -12,6 +12,7 @@
- #include <linux/string.h>
- #include <linux/nls.h>
- #include <linux/errno.h>
-+#include <linux/slab.h>
- 
- static const wchar_t charset2uni[256] = {
- 	/* 0x00*/
-@@ -117,6 +118,8 @@ static const unsigned char charset2upper[256] = {
- 	0x58, 0x59, 0x5a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, /* 0x78-0x7f */
- };
- 
-+#define VALID_ASCII(c) (c < 128)
-+
- static int uni2char(wchar_t uni, unsigned char *out, int boundlen)
- {
- 	const unsigned char *uni2charset;
-@@ -142,6 +145,16 @@ static int char2uni(const unsigned char *rawstring, int boundlen, wchar_t *uni)
- 	return 1;
- }
- 
-+static int ascii_validate(const struct nls_table *table,
-+			  const unsigned char *str, size_t len)
-+{
-+	int i;
-+	for (i = 0; i < len && str[i]; i++)
-+		if (!VALID_ASCII(str[i]))
-+			return -1;
-+	return 0;
-+}
-+
- static unsigned char charset_tolower(const struct nls_table *table,
- 				     unsigned int c){
- 	return charset2lower[c];
-@@ -152,11 +165,36 @@ static unsigned char charset_toupper(const struct nls_table *table,
- 	return charset2upper[c];
- }
- 
-+static int ascii_casefold(const struct nls_table *charset,
-+			  const unsigned char *str, size_t len,
-+			  unsigned char *dest, size_t dlen)
-+{
-+	unsigned int i;
-+
-+	if (dlen < len)
-+		return -EINVAL;
-+
-+	for (i = 0; i < len; i++) {
-+		if (IS_STRICT_MODE(charset) && !VALID_ASCII(str[i]))
-+			return -EINVAL;
-+
-+		if (IS_CASEFOLD_TYPE_ASCII_TOLOWER(charset))
-+			dest[i] = charset_tolower(charset, str[i]);
-+		else
-+			dest[i] = charset_toupper(charset, str[i]);
-+	}
-+	dest[len] = '\0';
-+
-+	return len;
-+}
-+
- static const struct nls_ops charset_ops = {
-+	.validate = ascii_validate,
- 	.lowercase = charset_toupper,
- 	.uppercase = charset_tolower,
- 	.uni2char = uni2char,
- 	.char2uni = char2uni,
-+	.casefold = ascii_casefold,
- };
- 
- static struct nls_charset nls_charset;
-@@ -165,9 +203,21 @@ static struct nls_table table = {
- 	.ops = &charset_ops,
- };
- 
-+struct nls_table *ascii_load_table(const char *version, unsigned int flags)
-+{
-+	if (flags & ~(NLS_STRICT_MODE) ||
-+	    (flags & NLS_NORMALIZATION_TYPE_MASK) != NLS_NORMALIZATION_TYPE_PLAIN)
-+		return ERR_PTR(-EINVAL);
-+
-+	table.flags = flags;
-+	return &table;
-+}
-+
-+
- static struct nls_charset nls_charset = {
- 	.charset = "ascii",
- 	.tables = &table,
-+	.load_table = ascii_load_table,
- };
- 
- static int __init init_nls_ascii(void)
-diff --git a/include/linux/nls.h b/include/linux/nls.h
-index 44a06a9c69e7..aab60d4858ee 100644
---- a/include/linux/nls.h
-+++ b/include/linux/nls.h
-@@ -178,6 +178,14 @@ IS_CASEFOLD_TYPE_##charset##_##type(const struct nls_table *c)		\
- NLS_NORMALIZATION_FUNCS(ALL, PLAIN, NLS_NORMALIZATION_TYPE_PLAIN)
- NLS_CASEFOLD_FUNCS(ALL, TOUPPER, NLS_CASEFOLD_TYPE_TOUPPER)
- 
-+/* ASCII */
-+
-+#define NLS_ASCII_CASEFOLD_TOUPPER NLS_CASEFOLD_TYPE_TOUPPER
-+#define NLS_ASCII_CASEFOLD_TOLOWER NLS_CASEFOLD_TYPE(1)
-+
-+NLS_CASEFOLD_FUNCS(ASCII, TOUPPER, NLS_ASCII_CASEFOLD_TOUPPER)
-+NLS_CASEFOLD_FUNCS(ASCII, TOLOWER, NLS_ASCII_CASEFOLD_TOLOWER)
-+
- /* nls_base.c */
- extern int __register_nls(struct nls_charset *, struct module *);
- extern int unregister_nls(struct nls_charset *);
 -- 
-2.20.0.rc2
+You are receiving this mail because:
+You are watching the assignee of the bug.
