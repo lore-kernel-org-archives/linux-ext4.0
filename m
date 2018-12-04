@@ -1,50 +1,64 @@
-Return-Path: <SRS0=EV/E=O6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:53308 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725372AbeLUHEw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2018 02:04:52 -0500
-Date: Thu, 20 Dec 2018 23:04:47 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181221070447.GA21687@infradead.org>
-References: <20181219071420.GC2628@infradead.org>
- <20181219021953.GD31274@dastard>
- <20181219193005.GB6889@mit.edu>
- <20181219213552.GO6311@dastard>
- <20181220220158.GC2360@mit.edu>
+Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:46528 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725875AbeLDXtM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 4 Dec 2018 18:49:12 -0500
+Date: Tue, 4 Dec 2018 15:49:09 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
+        corbet@lwn.net, ralf@linux-mips.org, paul.burton@mips.com,
+        jhogan@kernel.org, green.hu@gmail.com, deanbo422@gmail.com,
+        schwidefsky@de.ibm.com, heiko.carstens@de.ibm.com, richard@nod.at,
+        dedekind1@gmail.com, adrian.hunter@intel.com,
+        viro@zeniv.linux.org.uk
+Subject: Re: [PATCH V2 4/7] Add S_VERITY and IS_VERITY()
+Message-ID: <20181204234908.GE70682@gmail.com>
+References: <20181204095650.12562-1-chandan@linux.vnet.ibm.com>
+ <20181204095650.12562-5-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181220220158.GC2360@mit.edu>
+In-Reply-To: <20181204095650.12562-5-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 20, 2018 at 05:01:58PM -0500, Theodore Y. Ts'o wrote:
-> That's simply not true.  Number one, fsverity is not mandatory for all
-> file systems to implement.  If XFS doesn't want to implement fscrypt
-> or fsverity, it doesn't have to.  Number two, we're not *making* any
-> changes to the kernel code; nothing in mm/filemap.c, et. al.  So
-> saying that we are making changes that are impacted by /everyone/ just
-> doesn't make any sense.
+On Tue, Dec 04, 2018 at 03:26:47PM +0530, Chandan Rajendra wrote:
+> Similar to S_ENCRYPTED/IS_ENCRYPTED(), this commit adds
+> S_VERITY/IS_VERITY() to be able to check if a VFS inode has verity
+> information associated with it.
+> 
+> Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+> ---
+>  include/linux/fs.h | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 389a35e028bf..de602d9f8d0e 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1938,6 +1938,7 @@ struct super_operations {
+>  #define S_DAX		0	/* Make all the DAX code disappear */
+>  #endif
+>  #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
+> +#define S_VERITY	32768	/* Verity file (using fs/verity/) */
+>  
+>  /*
+>   * Note that nosuid etc flags are inode-specific: setting some file-system
+> @@ -1978,6 +1979,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
+>  #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
+>  #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
+>  #define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
+> +#define IS_VERITY(inode)	((inode)->i_flags & S_VERITY)
+>  
+>  #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
+>  				 (inode)->i_rdev == WHITEOUT_DEV)
+> -- 
+> 2.19.1
+> 
 
-Ted, I think you know yourself this isn't true.  Whenever we added
-useful interface to one of the major file systems we had other pick
-it up, and that is a good thing because the last thing we need is
-fragmentation of interfaces.  And even if that wasn't the case I don't
-think we should take short cuts, because even if an interface was just
-for a file system or two it still needs to be properly desgined.
-
-There is no reason to rush interfacs in, because everytime we have done
-that it has turned out to be a very bad idea in retrospective.
+Reviewed-by: Eric Biggers <ebiggers@google.com>
