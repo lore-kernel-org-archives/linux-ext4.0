@@ -1,100 +1,81 @@
-Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:55658 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725963AbeLFWFZ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 17:05:25 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Olaf Weber <olaf@sgi.com>,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 12/23] nls: utf8: Add unicode character database files
-Date: Thu,  6 Dec 2018 17:04:18 -0500
-Message-Id: <20181206220429.10722-13-krisman@collabora.com>
-In-Reply-To: <20181206220429.10722-1-krisman@collabora.com>
-References: <20181206220429.10722-1-krisman@collabora.com>
+Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:45704 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725904AbeLDXnX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 4 Dec 2018 18:43:23 -0500
+Date: Tue, 4 Dec 2018 15:43:21 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
+        corbet@lwn.net, ralf@linux-mips.org, paul.burton@mips.com,
+        jhogan@kernel.org, green.hu@gmail.com, deanbo422@gmail.com,
+        schwidefsky@de.ibm.com, heiko.carstens@de.ibm.com, richard@nod.at,
+        dedekind1@gmail.com, adrian.hunter@intel.com,
+        viro@zeniv.linux.org.uk
+Subject: Re: [PATCH V2 3/7] fscrypt: remove filesystem specific build config
+ option
+Message-ID: <20181204234320.GC70682@gmail.com>
+References: <20181204095650.12562-1-chandan@linux.vnet.ibm.com>
+ <20181204095650.12562-4-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181204095650.12562-4-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Olaf Weber <olaf@sgi.com>
+Hi Chandan,
 
-Add files from the Unicode Character Database, version 11.0, to the
-source.  A helper program that generates a trie used for normalization
-from these files is part of a separate commit.
+On Tue, Dec 04, 2018 at 03:26:46PM +0530, Chandan Rajendra wrote:
+> In order to have a common code base for fscrypt "post read" processing
+> for all filesystems which support encryption, this commit removes
+> filesystem specific build config option (e.g. CONFIG_EXT4_FS_ENCRYPTION)
+> and replaces it with a build option (i.e. CONFIG_FS_ENCRYPTION) whose
+> value affects all the filesystems making use of fscrypt.
+> 
+> Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+[...]
+> -config F2FS_FS_ENCRYPTION
+> -	bool "F2FS Encryption"
+> -	depends on F2FS_FS
+> -	depends on F2FS_FS_XATTR
+> -	select FS_ENCRYPTION
+> -	help
+> -	  Enable encryption of f2fs files and directories.  This
+> -	  feature is similar to ecryptfs, but it is more memory
+> -	  efficient since it avoids caching the encrypted and
+> -	  decrypted pages in the page cache.
+> -
+[...]
+> -config UBIFS_FS_ENCRYPTION
+> -	bool "UBIFS Encryption"
+> -	depends on UBIFS_FS && UBIFS_FS_XATTR && BLOCK
+> -	select FS_ENCRYPTION
+> -	default n
+> -	help
+> -	  Enable encryption of UBIFS files and directories. This
+> -	  feature is similar to ecryptfs, but it is more memory
+> -	  efficient since it avoids caching the encrypted and
+> -	  decrypted pages in the page cache.
 
-- Notes on the update from 8.0.0 and 11.0:
+Will it cause problems that now f2fs encryption can be "enabled" without
+F2FS_FS_XATTR, and ubifs encryption without UBIFS_FS_XATTR && BLOCK?
 
-The structure of ucd files and special cases have not experienced any
-changes between versions 8.0.0 and 11.0.0.  8.0.0 saw the addition of
-Cherokee LC characters, which is an interesting case for case-folding.
-The update is accompanied by new tests on the test_ucd module to catch
-specific cases.  No changes to mkutf8data script was required for the
-update.
+Otherwise I think this patch looks fine.  I'm a bit concerned about the bloat
+from making FS_ENCRYPTION non-modular, but given that it will make sharing I/O
+code much easier, it's probably worthwhile.
 
-The actual files are not part of the commit submitted to the list
-because they are to big and would bounce.  Still, they can be obtained
-by the following script:
+It would help to strip down the dependencies of FS_ENCRYPTION to just the stuff
+needed for just AES-256-XTS and AES-256-CTS.  I already sent out a patch a
+couple months ago (https://patchwork.kernel.org/patch/10589319/) to remove
+CONFIG_CTR which isn't used at all; I'll remind Ted to apply that.  But we could
+also drop CONFIG_SHA256, which is only needed for AES-128-CBC contents
+encryption.  If we do that, it should be a separate patch, though.
 
-FILES="CaseFolding.txt DerivedAge.txt extracted/DerivedCombiningClass.txt
-       DerivedCoreProperties.txt NormalizationCorrections.txt
-       NormalizationTest.txt UnicodeData.txt"
-VERSION=11.0.0
-BASE=http://www.unicode.org/Public/${VERSION}/ucd
+Thanks,
 
-for i in ${FILES} ; do
-  wget "${BASE}/$i" -O fs/nls/ucd/$(basename ${i} .txt)-${VERSION}.txt
-done
-
-Signed-off-by: Olaf Weber <olaf@sgi.com>
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-  [Move ucd directory to fs/nls/]
-  [Update to Unicode 11.0.0]
----
- fs/nls/ucd/README | 34 ++++++++++++++++++++++++++++++++++
- 1 file changed, 34 insertions(+)
- create mode 100644 fs/nls/ucd/README
-
-diff --git a/fs/nls/ucd/README b/fs/nls/ucd/README
-new file mode 100644
-index 000000000000..553ce7e4c224
---- /dev/null
-+++ b/fs/nls/ucd/README
-@@ -0,0 +1,34 @@
-+The files in this directory are part of the Unicode Character Database
-+for version 11.0.0 of the Unicode standard.
-+
-+The full set of files can be found here:
-+
-+  http://www.unicode.org/Public/11.0.0/ucd/
-+
-+The latest released version of the UCD can be found here:
-+
-+  http://www.unicode.org/Public/UCD/latest/
-+
-+The files in this directory are identical, except that they have been
-+renamed with a suffix indicating the unicode version.
-+
-+Individual source links:
-+
-+  http://www.unicode.org/Public/11.0.0/ucd/CaseFolding.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/DerivedAge.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/extracted/DerivedCombiningClass.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/DerivedCoreProperties.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/NormalizationCorrections.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/NormalizationTest.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/UnicodeData.txt
-+
-+md5sums
-+
-+  414436796cf097df55f798e1585448ee  CaseFolding-11.0.0.txt
-+  6032a595fbb782694456491d86eecfac  DerivedAge-11.0.0.txt
-+  3240997d671297ac754ab0d27577acf7  DerivedCombiningClass-11.0.0.txt
-+  d41d8cd98f00b204e9800998ecf8427e  DerivedCombiningClass.txt
-+  2a4fe257d9d8184518e036194d2248ec  DerivedCoreProperties-11.0.0.txt
-+  4e7d383fa0dd3cd9d49d64e5b7b7c9e0  NormalizationCorrections-11.0.0.txt
-+  c9500c5b8b88e584469f056023ecc3f2  NormalizationTest-11.0.0.txt
-+  acc291106c3758d2025f8d7bd5518bee  UnicodeData-11.0.0.txt
--- 
-2.20.0.rc2
+- Eric
