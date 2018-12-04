@@ -1,16 +1,16 @@
-Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:38402 "EHLO
+Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:58648 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726657AbeLCRB7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2018 12:01:59 -0500
+        by vger.kernel.org with ESMTP id S1725886AbeLDWuR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 17:50:17 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 54F962B757
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 17:01:55 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B359C2C668
+        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 22:50:16 +0000 (UTC)
 From: bugzilla-daemon@bugzilla.kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 17:01:54 +0000
-Message-ID: <bug-201685-13602-ewh2EUbBVm@https.bugzilla.kernel.org/>
+Date: Tue, 04 Dec 2018 22:50:14 +0000
+Message-ID: <bug-201685-13602-gVSMXKGvul@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
 References: <bug-201685-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,13 +21,24 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
---- Comment #205 from Rainer Fiebig (jrf@mailbox.org) ---
-#204
+Jens Axboe (axboe@kernel.dk) changed:
 
-So, only 2 commits left in your creative drill-down-effort, right? I hope the
-huge amount of time you have invested pays off and puts an end to this crisis.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+ Attachment #279855|0                           |1
+        is obsolete|                            |
 
-If so, it will still be interesting to know: Why only some and not all?
+--- Comment #255 from Jens Axboe (axboe@kernel.dk) ---
+Created attachment 279857
+  --> https://bugzilla.kernel.org/attachment.cgi?id=279857&action=edit
+4.19/4.20 patch v3
+
+Here's the one I sent upstream, also tested this one. Should be the safest of
+them all, as we set REQ_NOMERGE at the source of when we attempt to queue it.
+That'll cover all cases, guaranteed.
+
+The folks that have seen this, please try this patch on top of 4.19 or 4.20-rc
+and report back.
 
 -- 
 You are receiving this mail because:
