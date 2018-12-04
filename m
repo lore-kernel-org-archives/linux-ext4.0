@@ -1,16 +1,16 @@
-Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41716 "EHLO
+Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41978 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725841AbeLEBkd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 20:40:33 -0500
+        by vger.kernel.org with ESMTP id S1725797AbeLDSrz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 13:47:55 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BBC342C9FD
-        for <linux-ext4@vger.kernel.org>; Wed,  5 Dec 2018 01:40:32 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9F7D12C33D
+        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 18:47:54 +0000 (UTC)
 From: bugzilla-daemon@bugzilla.kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 201685] ext4 file system corruption
-Date: Wed, 05 Dec 2018 01:40:31 +0000
-Message-ID: <bug-201685-13602-3s9PyKuKl0@https.bugzilla.kernel.org/>
+Date: Tue, 04 Dec 2018 18:47:53 +0000
+Message-ID: <bug-201685-13602-A9nXPABchp@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
 References: <bug-201685-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,8 +21,9 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
---- Comment #261 from Guenter Roeck (linux@roeck-us.net) ---
-Two hours. Agreed - looks like a winner.
+--- Comment #234 from Jens Axboe (axboe@kernel.dk) ---
+That's awesome, that makes some sense, finally! There's a later fix for that
+one that is also in 4.19, but I guess that doesn't fix every failure case.
 
 -- 
 You are receiving this mail because:
