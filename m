@@ -1,45 +1,55 @@
-Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:47990 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725895AbeLDWSA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 17:18:00 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D5A1B2C845
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 22:17:59 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Tue, 04 Dec 2018 22:17:58 +0000
-Message-ID: <bug-201685-13602-ctNHMj3Fn1@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:48184 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725904AbeLEAFb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 4 Dec 2018 19:05:31 -0500
+Date: Tue, 4 Dec 2018 16:05:28 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
+        corbet@lwn.net, ralf@linux-mips.org, paul.burton@mips.com,
+        jhogan@kernel.org, green.hu@gmail.com, deanbo422@gmail.com,
+        schwidefsky@de.ibm.com, heiko.carstens@de.ibm.com, richard@nod.at,
+        dedekind1@gmail.com, adrian.hunter@intel.com,
+        viro@zeniv.linux.org.uk
+Subject: Re: [PATCH V2 3/7] fscrypt: remove filesystem specific build config
+ option
+Message-ID: <20181205000528.GH70682@gmail.com>
+References: <20181204095650.12562-1-chandan@linux.vnet.ibm.com>
+ <20181204095650.12562-4-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181204095650.12562-4-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Tue, Dec 04, 2018 at 03:26:46PM +0530, Chandan Rajendra wrote:
+> diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+> index 952ab97af325..6ba193c23f37 100644
+> --- a/include/linux/fscrypt.h
+> +++ b/include/linux/fscrypt.h
+> @@ -2,9 +2,8 @@
+>  /*
+>   * fscrypt.h: declarations for per-file encryption
+>   *
+> - * Filesystems that implement per-file encryption include this header
+> - * file with the __FS_HAS_ENCRYPTION set according to whether that filesystem
+> - * is being built with encryption support or not.
+> + * Filesystems that implement per-file encryption must include this header
+> + * file.
+>   *
+>   * Copyright (C) 2015, Google, Inc.
+>   *
 
---- Comment #252 from Jens Axboe (axboe@kernel.dk) ---
-(In reply to Guenter Roeck from comment #247)
-> #245: Is there a means to log the possible error case ?
+There's still a definition of __FS_HAS_ENCRYPTION in
+fs/crypto/fscrypt_private.h.  This patch removes everything that checks
+__FS_HAS_ENCRYPTION, so that should be removed too.
 
-Yes, that's how I ended up verifying that this was indeed what was going on.
-Example:
+Thanks,
 
-[  235.665576] issue_direct=13, 22080, ffff9ee3da59e400
-[  235.931483] bio_attempt_back_merge: MERGE ON NO PREP ffff9ee3da59e400
-[  235.931486] bio_attempt_back_merge: MERGE ON NO PREP ffff9ee3da59e400
-[  235.931489] bio_attempt_back_merge: MERGE ON NO PREP ffff9ee3da59e400
-[  235.934465] EXT4-fs error (device sda1): ext4_iget:4831: inode #7142: comm
-dpkg-query: bad extra_isize 24937 (inode size 256)
-
-Here we see req 0xffff9ee3da59e400 being rejected, due to resource starvation.
-Shortly thereafter, we see us happily merging more IO into that request. Once
-that request finishes, ext4 gets immediately unhappy as only a small part of
-the request contents were valid. The rest simply contained garbage.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+- Eric
