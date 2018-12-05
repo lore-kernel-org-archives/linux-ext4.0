@@ -1,365 +1,145 @@
-Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from dmz-mailsec-scanner-5.mit.edu ([18.7.68.34]:57708 "EHLO
-        dmz-mailsec-scanner-5.mit.edu" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728582AbeLSRbk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 19 Dec 2018 12:31:40 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, stable@kernel.org
-Subject: [PATCH -v2] ext4: avoid declaring fs inconsistent due to invalid file handles
-Date: Wed, 19 Dec 2018 12:31:27 -0500
-Message-Id: <20181219173127.621-1-tytso@mit.edu>
-In-Reply-To: <20181218163539.GC25775@mit.edu>
-References: <20181218163539.GC25775@mit.edu>
+Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.hrz.uni-dortmund.de ([129.217.128.51]:62247 "EHLO
+        unimail.uni-dortmund.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726171AbeLELnj (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Dec 2018 06:43:39 -0500
+Subject: Re: [PATCH] inode_has_no_xattr() does not use proper sync
+To: Jan Kara <jack@suse.cz>
+Cc: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>,
+        linux-ext4@vger.kernel.org
+References: <ce8c29d7-7f5e-5c78-dbd9-15364a384138@tu-dortmund.de>
+ <20181205090117.GA22304@quack2.suse.cz>
+From: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+Message-ID: <8921ec9e-7c4c-71e2-0397-9e564824d9a4@tu-dortmund.de>
+Date: Wed, 5 Dec 2018 12:43:18 +0100
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20181205090117.GA22304@quack2.suse.cz>
+Content-Type: multipart/signed; micalg=pgp-sha512;
+ protocol="application/pgp-signature";
+ boundary="3Wlr7ToBPlZFzv5YWVsfEthhGBOAiqujP"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If we receive a file handle, either from NFS or open_by_handle_at(2),
-and it points at an inode which has not been initialized, and the file
-system has metadata checksums enabled, we shouldn't try to get the
-inode, discover the checksum is invalid, and then declare the file
-system as being inconsistent.
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--3Wlr7ToBPlZFzv5YWVsfEthhGBOAiqujP
+Content-Type: multipart/mixed; boundary="axQDTtgTlONbSZRRvSMgZkt387FnQoXFe";
+ protected-headers="v1"
+From: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+To: Jan Kara <jack@suse.cz>
+Cc: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>,
+ linux-ext4@vger.kernel.org
+Message-ID: <8921ec9e-7c4c-71e2-0397-9e564824d9a4@tu-dortmund.de>
+Subject: Re: [PATCH] inode_has_no_xattr() does not use proper sync
+References: <ce8c29d7-7f5e-5c78-dbd9-15364a384138@tu-dortmund.de>
+ <20181205090117.GA22304@quack2.suse.cz>
+In-Reply-To: <20181205090117.GA22304@quack2.suse.cz>
 
-This can be reproduced by creating a test file system via "mke2fs -t
-ext4 -O metadata_csum /tmp/foo.img 8M", mounting it, cd'ing into that
-directory, and then running the following program.
+--axQDTtgTlONbSZRRvSMgZkt387FnQoXFe
+Content-Type: text/plain; charset=utf-8
+Content-Language: de-DE
+Content-Transfer-Encoding: quoted-printable
 
-#define _GNU_SOURCE
-#include <fcntl.h>
 
-struct handle {
-	struct file_handle fh;
-	unsigned char fid[MAX_HANDLE_SZ];
-};
 
-int main(int argc, char **argv)
-{
-	struct handle h = {{8, 1 }, { 12, }};
+Am 05.12.18 um 10:01 schrieb Jan Kara:
+> On Tue 27-11-18 15:54:28, Alexander Lochmann wrote:
+>>
+>> inode.i_flags is modified without any proper
+>> synchronisation used. inode_set_flags() is now used.
+>>
+>> Found by LockDoc (Alexander Lochmann, Horst Schirmeier and Olaf
+>> Spinczyk)
+>>
+>> Signed-off-by: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
+>> Signed-off-by: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>
+>=20
+> Thanks for the patch! Couple notes to this patch:
+>=20
+> 1) This is a generic VFS helper as such, linux-fsdevel mailing list and=
+ VFS
+> maintainer Al Viro is the right forum to post this patch to. We do have=
 
-	open_by_handle_at(AT_FDCWD, &h.fh, O_RDONLY);
-	return 0;
-}
+> scripts/get_maintainer.pl script you can use on a patch / file to get i=
+dea
+> who's the best to post the change to. It is not perfect but usually wor=
+ks
+> fine.
+Oh, that's my fault. I thought this ml was the right place.
+>=20
+> 2) It would be good to include stacktrace showing where the unlocked ac=
+cess
+> happens in the changelog. It is non-trivial to find it by brief inspect=
+ion
+> as all standard filesystems call inode_has_no_xattr() under i_rwsem. Th=
+is
+> problem is really specific to blkdev_write_iter() AFAICT.
+>=20
+> 3) Also can you please add comment into inode_has_no_xattr() like:
+> 	/*
+> 	 * blkdev_write_iter() can call this without i_rwsem, need to be
+> 	 * careful with i_flags update.
+> 	 */
+2) + 3) Done. Will post the patch asap.
 
-Google-Bug-Id: 120690101
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@kernel.org
----
- fs/ext4/ext4.h   | 15 ++++++++++++--
- fs/ext4/ialloc.c |  2 +-
- fs/ext4/inode.c  | 54 +++++++++++++++++++++++++++++++++---------------
- fs/ext4/ioctl.c  |  2 +-
- fs/ext4/namei.c  |  4 ++--
- fs/ext4/resize.c |  5 +++--
- fs/ext4/super.c  | 19 +++++------------
- fs/ext4/xattr.c  |  5 +++--
- 8 files changed, 65 insertions(+), 41 deletions(-)
+- Alex
+>=20
+> 								Honza
+>> ---
+>>  include/linux/fs.h | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>
+>> diff --git a/include/linux/fs.h b/include/linux/fs.h
+>> index c95c0807471f..54f3a21668a6 100644
+>> --- a/include/linux/fs.h
+>> +++ b/include/linux/fs.h
+>> @@ -3446,7 +3446,7 @@ static inline int check_sticky(struct inode *dir=
+,
+>> struct inode *inode)
+>>  static inline void inode_has_no_xattr(struct inode *inode)
+>>  {
+>>  	if (!is_sxid(inode->i_mode) && (inode->i_sb->s_flags & SB_NOSEC))
+>> -		inode->i_flags |=3D S_NOSEC;
+>> +		inode_set_flags(inode, S_NOSEC, S_NOSEC);
+>>  }
+>>
+>>  static inline bool is_root_inode(struct inode *inode)
+>> --=20
+>> 2.19.1
+>>
+>=20
+>=20
+>=20
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b4621277e259..185a05d3257e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2454,8 +2454,19 @@ int do_journal_get_write_access(handle_t *handle,
- #define FALL_BACK_TO_NONDELALLOC 1
- #define CONVERT_INLINE_DATA	 2
- 
--extern struct inode *ext4_iget(struct super_block *, unsigned long);
--extern struct inode *ext4_iget_normal(struct super_block *, unsigned long);
-+typedef enum {
-+	EXT4_IGET_NORMAL =	0,
-+	EXT4_IGET_SPECIAL =	0x0001, /* OK to iget a system inode */
-+	EXT4_IGET_HANDLE = 	0x0002	/* Inode # is from a handle */
-+} ext4_iget_flags;
-+
-+extern struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
-+				 ext4_iget_flags flags, const char *function,
-+				 unsigned int line);
-+
-+#define ext4_iget(sb, ino, flags) \
-+	__ext4_iget((sb), (ino), (flags), __func__, __LINE__)
-+
- extern int  ext4_write_inode(struct inode *, struct writeback_control *);
- extern int  ext4_setattr(struct dentry *, struct iattr *);
- extern int  ext4_getattr(const struct path *, struct kstat *, u32, unsigned int);
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 014f6a698cb7..7ff14a1adba3 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -1225,7 +1225,7 @@ struct inode *ext4_orphan_get(struct super_block *sb, unsigned long ino)
- 	if (!ext4_test_bit(bit, bitmap_bh->b_data))
- 		goto bad_orphan;
- 
--	inode = ext4_iget(sb, ino);
-+	inode = ext4_iget(sb, ino, EXT4_IGET_NORMAL);
- 	if (IS_ERR(inode)) {
- 		err = PTR_ERR(inode);
- 		ext4_error(sb, "couldn't read orphan inode %lu (err %d)",
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 22a9d8159720..664b434ba836 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4817,7 +4817,9 @@ static inline u64 ext4_inode_peek_iversion(const struct inode *inode)
- 		return inode_peek_iversion(inode);
- }
- 
--struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
-+struct inode *__ext4_iget(struct super_block *sb, unsigned long ino,
-+			  ext4_iget_flags flags, const char *function,
-+			  unsigned int line)
- {
- 	struct ext4_iloc iloc;
- 	struct ext4_inode *raw_inode;
-@@ -4831,6 +4833,18 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	gid_t i_gid;
- 	projid_t i_projid;
- 
-+	if (((flags & EXT4_IGET_NORMAL) &&
-+	     (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)) ||
-+	    (ino < EXT4_ROOT_INO) ||
-+	    (ino > le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count))) {
-+		if (flags & EXT4_IGET_HANDLE)
-+			return ERR_PTR(-ESTALE);
-+		__ext4_error(sb, function, line,
-+			     "inode #%lu: comm %s: iget: illegal inode #",
-+			     ino, current->comm);
-+		return ERR_PTR(-EFSCORRUPTED);
-+	}
-+
- 	inode = iget_locked(sb, ino);
- 	if (!inode)
- 		return ERR_PTR(-ENOMEM);
-@@ -4846,18 +4860,26 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	raw_inode = ext4_raw_inode(&iloc);
- 
- 	if ((ino == EXT4_ROOT_INO) && (raw_inode->i_links_count == 0)) {
--		EXT4_ERROR_INODE(inode, "root inode unallocated");
-+		ext4_error_inode(inode, function, line, 0,
-+				 "iget: root inode unallocated");
- 		ret = -EFSCORRUPTED;
- 		goto bad_inode;
- 	}
- 
-+	if ((flags & EXT4_IGET_HANDLE) &&
-+	    (raw_inode->i_links_count == 0) && (raw_inode->i_mode == 0)) {
-+		ret = -ESTALE;
-+		goto bad_inode;
-+	}
-+
- 	if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
- 		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
- 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
- 			EXT4_INODE_SIZE(inode->i_sb) ||
- 		    (ei->i_extra_isize & 3)) {
--			EXT4_ERROR_INODE(inode,
--					 "bad extra_isize %u (inode size %u)",
-+			ext4_error_inode(inode, function, line, 0,
-+					 "iget: bad extra_isize %u "
-+					 "(inode size %u)",
- 					 ei->i_extra_isize,
- 					 EXT4_INODE_SIZE(inode->i_sb));
- 			ret = -EFSCORRUPTED;
-@@ -4879,7 +4901,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	}
- 
- 	if (!ext4_inode_csum_verify(inode, raw_inode, ei)) {
--		EXT4_ERROR_INODE(inode, "checksum invalid");
-+		ext4_error_inode(inode, function, line, 0,
-+				 "iget: checksum invalid");
- 		ret = -EFSBADCRC;
- 		goto bad_inode;
- 	}
-@@ -4936,7 +4959,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
- 	inode->i_size = ext4_isize(sb, raw_inode);
- 	if ((size = i_size_read(inode)) < 0) {
--		EXT4_ERROR_INODE(inode, "bad i_size value: %lld", size);
-+		ext4_error_inode(inode, function, line, 0,
-+				 "iget: bad i_size value: %lld", size);
- 		ret = -EFSCORRUPTED;
- 		goto bad_inode;
- 	}
-@@ -5012,7 +5036,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	ret = 0;
- 	if (ei->i_file_acl &&
- 	    !ext4_data_block_valid(EXT4_SB(sb), ei->i_file_acl, 1)) {
--		EXT4_ERROR_INODE(inode, "bad extended attribute block %llu",
-+		ext4_error_inode(inode, function, line, 0,
-+				 "iget: bad extended attribute block %llu",
- 				 ei->i_file_acl);
- 		ret = -EFSCORRUPTED;
- 		goto bad_inode;
-@@ -5040,8 +5065,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	} else if (S_ISLNK(inode->i_mode)) {
- 		/* VFS does not allow setting these so must be corruption */
- 		if (IS_APPEND(inode) || IS_IMMUTABLE(inode)) {
--			EXT4_ERROR_INODE(inode,
--			  "immutable or append flags not allowed on symlinks");
-+			ext4_error_inode(inode, function, line, 0,
-+					 "iget: immutable or append flags "
-+					 "not allowed on symlinks");
- 			ret = -EFSCORRUPTED;
- 			goto bad_inode;
- 		}
-@@ -5071,7 +5097,8 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 		make_bad_inode(inode);
- 	} else {
- 		ret = -EFSCORRUPTED;
--		EXT4_ERROR_INODE(inode, "bogus i_mode (%o)", inode->i_mode);
-+		ext4_error_inode(inode, function, line, 0,
-+				 "iget: bogus i_mode (%o)", inode->i_mode);
- 		goto bad_inode;
- 	}
- 	brelse(iloc.bh);
-@@ -5085,13 +5112,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	return ERR_PTR(ret);
- }
- 
--struct inode *ext4_iget_normal(struct super_block *sb, unsigned long ino)
--{
--	if (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)
--		return ERR_PTR(-EFSCORRUPTED);
--	return ext4_iget(sb, ino);
--}
--
- static int ext4_inode_blocks_set(handle_t *handle,
- 				struct ext4_inode *raw_inode,
- 				struct ext4_inode_info *ei)
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 0edee31913d1..d37dafa1d133 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -125,7 +125,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	    !inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN))
- 		return -EPERM;
- 
--	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO);
-+	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO, EXT4_IGET_SPECIAL);
- 	if (IS_ERR(inode_bl))
- 		return PTR_ERR(inode_bl);
- 	ei_bl = EXT4_I(inode_bl);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 437f71fe83ae..2b928eb07fa2 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1571,7 +1571,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
- 					 dentry);
- 			return ERR_PTR(-EFSCORRUPTED);
- 		}
--		inode = ext4_iget_normal(dir->i_sb, ino);
-+		inode = ext4_iget(dir->i_sb, ino, EXT4_IGET_NORMAL);
- 		if (inode == ERR_PTR(-ESTALE)) {
- 			EXT4_ERROR_INODE(dir,
- 					 "deleted inode referenced: %u",
-@@ -1613,7 +1613,7 @@ struct dentry *ext4_get_parent(struct dentry *child)
- 		return ERR_PTR(-EFSCORRUPTED);
- 	}
- 
--	return d_obtain_alias(ext4_iget_normal(child->d_sb, ino));
-+	return d_obtain_alias(ext4_iget(child->d_sb, ino, EXT4_IGET_NORMAL));
- }
- 
- /*
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index bc8ee0c498cc..48421de803b7 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -1637,7 +1637,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
- 		}
--		inode = ext4_iget(sb, EXT4_RESIZE_INO);
-+		inode = ext4_iget(sb, EXT4_RESIZE_INO, EXT4_IGET_SPECIAL);
- 		if (IS_ERR(inode)) {
- 			ext4_warning(sb, "Error opening resize inode");
- 			return PTR_ERR(inode);
-@@ -1965,7 +1965,8 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 		}
- 
- 		if (!resize_inode)
--			resize_inode = ext4_iget(sb, EXT4_RESIZE_INO);
-+			resize_inode = ext4_iget(sb, EXT4_RESIZE_INO,
-+						 EXT4_IGET_SPECIAL);
- 		if (IS_ERR(resize_inode)) {
- 			ext4_warning(sb, "Error opening resize inode");
- 			return PTR_ERR(resize_inode);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e862b82066ab..fc9071081600 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1173,20 +1173,11 @@ static struct inode *ext4_nfs_get_inode(struct super_block *sb,
- {
- 	struct inode *inode;
- 
--	if (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO)
--		return ERR_PTR(-ESTALE);
--	if (ino > le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count))
--		return ERR_PTR(-ESTALE);
--
--	/* iget isn't really right if the inode is currently unallocated!!
--	 *
--	 * ext4_read_inode will return a bad_inode if the inode had been
--	 * deleted, so we should be safe.
--	 *
-+	/*
- 	 * Currently we don't know the generation for parent directory, so
- 	 * a generation of 0 means "accept any"
- 	 */
--	inode = ext4_iget_normal(sb, ino);
-+	inode = ext4_iget(sb, ino, EXT4_IGET_HANDLE);
- 	if (IS_ERR(inode))
- 		return ERR_CAST(inode);
- 	if (generation && inode->i_generation != generation) {
-@@ -4350,7 +4341,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	 * so we can safely mount the rest of the filesystem now.
- 	 */
- 
--	root = ext4_iget(sb, EXT4_ROOT_INO);
-+	root = ext4_iget(sb, EXT4_ROOT_INO, EXT4_IGET_SPECIAL);
- 	if (IS_ERR(root)) {
- 		ext4_msg(sb, KERN_ERR, "get root inode failed");
- 		ret = PTR_ERR(root);
-@@ -4618,7 +4609,7 @@ static struct inode *ext4_get_journal_inode(struct super_block *sb,
- 	 * happen if we iget() an unused inode, as the subsequent iput()
- 	 * will try to delete it.
- 	 */
--	journal_inode = ext4_iget(sb, journal_inum);
-+	journal_inode = ext4_iget(sb, journal_inum, EXT4_IGET_SPECIAL);
- 	if (IS_ERR(journal_inode)) {
- 		ext4_msg(sb, KERN_ERR, "no journal found");
- 		return NULL;
-@@ -5700,7 +5691,7 @@ static int ext4_quota_enable(struct super_block *sb, int type, int format_id,
- 	if (!qf_inums[type])
- 		return -EPERM;
- 
--	qf_inode = ext4_iget(sb, qf_inums[type]);
-+	qf_inode = ext4_iget(sb, qf_inums[type], EXT4_IGET_SPECIAL);
- 	if (IS_ERR(qf_inode)) {
- 		ext4_error(sb, "Bad quota inode # %lu", qf_inums[type]);
- 		return PTR_ERR(qf_inode);
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 510c9bb7ce71..7fddd519adae 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -384,7 +384,7 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
- 	struct inode *inode;
- 	int err;
- 
--	inode = ext4_iget(parent->i_sb, ea_ino);
-+	inode = ext4_iget(parent->i_sb, ea_ino, EXT4_IGET_NORMAL);
- 	if (IS_ERR(inode)) {
- 		err = PTR_ERR(inode);
- 		ext4_error(parent->i_sb,
-@@ -1482,7 +1482,8 @@ ext4_xattr_inode_cache_find(struct inode *inode, const void *value,
- 	}
- 
- 	while (ce) {
--		ea_inode = ext4_iget(inode->i_sb, ce->e_value);
-+		ea_inode = ext4_iget(inode->i_sb, ce->e_value,
-+				     EXT4_IGET_NORMAL);
- 		if (!IS_ERR(ea_inode) &&
- 		    !is_bad_inode(ea_inode) &&
- 		    (EXT4_I(ea_inode)->i_flags & EXT4_EA_INODE_FL) &&
--- 
-2.19.1
+--=20
+Technische Universit=C3=A4t Dortmund
+Alexander Lochmann                PGP key: 0xBC3EF6FD
+Otto-Hahn-Str. 16                 phone:  +49.231.7556141
+D-44227 Dortmund                  fax:    +49.231.7556116
+http://ess.cs.tu-dortmund.de/Staff/al
+
+
+--axQDTtgTlONbSZRRvSMgZkt387FnQoXFe--
+
+--3Wlr7ToBPlZFzv5YWVsfEthhGBOAiqujP
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEElhZsUHzVP0dbkjCRWT7tBbw+9v0FAlwHudcACgkQWT7tBbw+
+9v1ZIA//ZP7WUv+yD8Vn6RBHvOmKyg8uo1mjnlviHJ4GHyNQaRKxqvPqs6C4Q7av
+Zzz+K+8UZGt7NjoY+Kx43Re6MrJn+Ep1ix5kfyflK7YdQWpcw4CoGX/IXmxFCKXP
+XC5aH3m3ofCOy7lKbS/ZnX76u+edEGQtA2SgQmhJALLQbpo7M1DDhnnob/en9Auh
+GgcUeTj/YrXVS2ZgjoIj2HWaF430sinzZ7Hw0G+XxWbc7Q7vsmcYOlMYZINB2NCI
+F+/yuPMRTWNS8q6xN0OhkKaPFKI3/7FVXOFWfdHwces3GKfCjWImq4e+k851kmlW
+6c7IMbP6KfAjjfUtvtnMgVtF7ZrQubUybRdUaMo1gWc99tfqtHHPDnMkPCCiRHmp
+PsxUo9T+6A2L6OD1Owk7Q/w1gbGn3Xg/B2y0uBXQC+UiowQFTskREV4vB6pfXn7X
+hsxP9MWMfAwZCFrxdd6lPkweibGxs7TFdYB5O1ShtAmQJwUCDhRepRICbc+x2IC2
++ScovMzKd7z4HX8pZjDlnSYa36hQUan3vFSUVQs837fuKlknKeJueWp9LOFKodxJ
+J56iaoWBk9WywvP3ipAM8BfH90kspSXtqdvWgt2oCNRkVlOqcxDh3gbQR2Xh5ADT
+JDttFCwkrQH1c4i7TFyTm+U5npV64lykTYbhyhYu/pt9zxm384U=
+=rQNA
+-----END PGP SIGNATURE-----
+
+--3Wlr7ToBPlZFzv5YWVsfEthhGBOAiqujP--
