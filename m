@@ -1,80 +1,115 @@
-Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:46952 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725928AbeLCUiQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2018 15:38:16 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 341772B6B1
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 20:38:15 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 20:38:13 +0000
-Message-ID: <bug-201685-13602-AGCy6M47sw@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-wm1-f68.google.com ([209.85.128.68]:40366 "EHLO
+        mail-wm1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727777AbeLEM6V (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Dec 2018 07:58:21 -0500
 MIME-Version: 1.0
+References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net>
+ <20181128041555.GE31885@thunk.org> <en52df-5dh.ln1@banana.localnet>
+ <2547416.7Vy7A2kRpU@siriux> <CA+PODjo-da79FKQCmpcH9Z9CBq35HbWu2m+nB3si7WgD9w-kGA@mail.gmail.com>
+ <cbdb2e6b-31a2-1e19-f51f-067dcbdcf183@mailbox.org> <CA+PODjpLRuc1u4SNSRqfWtx+Z+C8NGi6fs7yFuyKK0DwHggEdg@mail.gmail.com>
+ <de67b507-ca54-e827-867e-76d57e531cb9@mailbox.org>
+In-Reply-To: <de67b507-ca54-e827-867e-76d57e531cb9@mailbox.org>
+From: Andrey Melnikov <temnota.am@gmail.com>
+Date: Wed, 5 Dec 2018 15:58:06 +0300
+Message-ID: <CA+PODjrT=pXg-jbhk=q=M6j6-v0x+c05s4Lmi3+MLm0P4iirqg@mail.gmail.com>
+Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
+To: jrf@mailbox.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+        linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+=D0=BF=D0=BD, 3 =D0=B4=D0=B5=D0=BA. 2018 =D0=B3. =D0=B2 01:11, Rainer Fiebi=
+g <jrf@mailbox.org>:
+>
+> Am 02.12.18 um 21:19 schrieb Andrey Melnikov:
+> > =D1=87=D1=82, 29 =D0=BD=D0=BE=D1=8F=D0=B1. 2018 =D0=B3. =D0=B2 01:08, R=
+ainer Fiebig <jrf@mailbox.org>:
+> >>
+> >> Am 28.11.18 um 22:13 schrieb Andrey Melnikov:
+> >>> =D1=81=D1=80, 28 =D0=BD=D0=BE=D1=8F=D0=B1. 2018 =D0=B3. =D0=B2 18:55,=
+ Rainer Fiebig <jrf@mailbox.org>:
+> >>>>
+> >>>> Am Mittwoch, 28. November 2018, 13:02:56 schrieb Andrey Jr. Melnikov=
+:
+> >>>>> In gmane.comp.file-systems.ext4 Theodore Y. Ts'o <tytso@mit.edu> wr=
+ote:
+> >>>>>> On Wed, Nov 28, 2018 at 03:16:33AM +0300, Andrey Jr. Melnikov wrot=
+e:
+> >>>>>>> Corrupted inodes - always directory, not touched at least year or
+> >>>>>>> more for writing. Something wrong when updating atime?
+> >>>>>>
+> >>>>>> We're not sure.  The frustrating thing is that it's not reproducin=
+g
+> >>>>>> for me.  I run extensive regression tests, and I'm using 4.19 on m=
+y
+> >>>>>> development laptop without notcing any problems.  If I could repro=
+duce
+> >>>>>> it, I could debug it, but since I can't, I need to rely on those w=
+ho
+> >>>>>> are seeing the problem to help pinpoint the problem.
+> >>>>>
+> >>>>> My workstation hit this bug every time after boot. If you have an i=
+dea - I
+> >>>>> may test it.
+> >>>>>
+> >>>>>> I'm trying to figure out common factors from those people who are
+> >>>>>> reporting problems.
+> >>>>>>
+> >>>>>> (a) What distribution are you running (it appears that many people
+> >>>>>> reporting problems are running Ubuntu, but this may be a sampling
+> >>>>>> issue; lots of people run Ubuntu)?  (For the record, I'm using Deb=
+ian
+> >>>>>> Testing.)
+> >>>>>
+> >>>>> Debian sid but self-build kernel from ubuntu mainline-ppa.
+> >>>>
+> >>>> You could try a vanilla 4.19.5 from https://www.kernel.org/
+> >>>> and compile it with your current .config.
+> >>>
+> >>> mainline-ppa use vanilla kernel. Patches only adds debian specific
+> >>> build infrastructure.
+> >>>
+> >>>> If you still see the errors, at least the Ubuntu-kernel could be rul=
+ed out.
+> >>>>
+> >>>> In addition, if you still see the errors:
+> >>>>
+> >>>> - backup your .config in a *different* folder (so that you can later=
+ re-use
+> >>>> it)
+> >>>> - do a "make mrproper" (deletes the .config, see above)
+> >>>> - do a "make defconfig"
+> >>>> - and compile the kernel with that new .config
+> >>>
+> >>> defconfig is great - for abstract hardware in vacuum.
+> >>>
+> >>>> If you still have the problem after that, you may want to learn how =
+to bisect.
+> >>>> ;)
+> >>> I'm already know how-to bisect. From kernel 2.0 era. Without git ;)
+> >>>
+> >>> This problem simply non-bisectable, when same kernel corrupt FS on my
+> >>> workstation but normally working on other servers.
+> >>> And now - FS corrupted again with disabled CONFIG_EXT4_ENCRYPTION. Gr=
+eat.
+> >>
+> >> OK, - and now we are looking forward to *your* ideas how to solve this=
+.
+> >
+> > After four days playing games around git bisect - real winner is
+> > debian gcc-8.2.0-9. Upgrade it to 8.2.0-10 or use 7.3.0-30 version for
+> > same kernel + config - does not exhibit ext4 corruption.
+> >
+> > I think I hit this https://gcc.gnu.org/bugzilla/show_bug.cgi?id=3D87859
+> > with 8.2.0-9 version.
+> >
+> Good that it works for you. But others used gcc 5.4.0 or 6.3.0 and were
+> hit anyway: https://bugzilla.kernel.org/show_bug.cgi?id=3D201685#c165
 
---- Comment #209 from Néstor A. Marchesini (nestorm_des@hotmail.com) ---
-I am investigating the dates of the files and folders found by fsck.ext4 when
-repairing the partition and I find something surprising.
-
-# ls -l /lost+foud
--rw-r--r-- 1 portage portage 5051 dic 10  2013 '#1057825'
-drwxr-xr-x 3 portage portage 4096 dic 10  2013 '#1057827'
--rw-r--r-- 1 root    root    2022 oct 22 03:37 '#3184673'
--rw-r--r-- 1 root    root     634 oct 22 03:37 '#3184674'
--rw-r--r-- 1 root    root    1625 oct 22 03:37 '#3184675'
-
-Many lost files appear on October 22 at 3:37hs, all with the same time and the
-same day belonging to the root user, then a folder of December 10, 2013
-belonging to the user portage group portage, for those who do not use gentoo,
-only say that that user and that group is only in the system in /usr/portage
-
-the contents of this folder:
-
-# ls -l /lost+found/#1057827
-drwxr-xr-x 11 portage portage 4096 dic 10  2013 vba
-
-and inside that folder vba many more folders and files, all from the same ebuid
-of libreoffice at the end of 2013, probably from this version, when it was
-updated.
-
-$ genlop -t libreoffice
-     Fri Nov  1 00:34:35 2013 >>> app-office/libreoffice-4.1.3.2
-       merge time: 1 hour, 9 minutes and 14 seconds.
-
-This package for years that are no longer on my pc, when upgrade libreoffice
-they were deleted and now fsck finds them when scanning as if they were
-installed and they were corrupted, but it turns out that they were erased there
-for a long time and now they are found as broken and put in lost+found.
-
-So pay attention to the lost+found content of your partitions, to see if
-they are current files or something they had long ago and had already deleted.
-What I do not relate is because e2fsk.ext4 starts to detect these deleted
-fragments.
-
-It may be the journal of ext4 or one of its unsynchronized copies that
-remembers things that are no longer there and retrieves them from the liberated
-space?
-
-My system and partitions were created on April 10, 2012 and I never had
-corruption problems of this type.
-
-$ genlop -t gentoo-sources |head -n3
-     Wed Apr 11 23:39:02 2012 >>> sys-kernel/gentoo-sources-3.3.1
-
-# tune2fs -l /dev/md2 |grep "Filesystem created:"
-Filesystem created:       Tue Apr 10 16:18:28 2012
-
-Regards
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Depends on workload pattern. 4.19.5 built with 8.2.0-10 and 7.3.0-30 -
+crashed after 4 hours of usage (previous build crash in 5 min).
+So my assumption about broken gcc is wrong.
