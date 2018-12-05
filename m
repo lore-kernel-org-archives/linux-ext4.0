@@ -1,143 +1,61 @@
-Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out30-131.freemail.mail.aliyun.com ([115.124.30.131]:35799 "EHLO
-        out30-131.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726232AbeLLOCt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Dec 2018 09:02:49 -0500
-Subject: Re: [PATCH 1/2] ext4: try to merge unwritten extents who are also not
- under io
-To: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org
-References: <20181125085031.7141-1-xiaoguang.wang@linux.alibaba.com>
- <20181210161704.GP29289@quack2.suse.cz>
-From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-Message-ID: <f01efa1c-4d82-9310-6b9e-8d9ee5b3f759@linux.alibaba.com>
-Date: Wed, 12 Dec 2018 22:02:03 +0800
+Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:36756 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1728803AbeLEKDK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Dec 2018 05:03:10 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D6EC62CD65
+        for <linux-ext4@vger.kernel.org>; Wed,  5 Dec 2018 10:03:09 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Wed, 05 Dec 2018 10:03:08 +0000
+Message-ID: <bug-201685-13602-7OPDxHFBCm@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-In-Reply-To: <20181210161704.GP29289@quack2.suse.cz>
-Content-Type: text/plain; charset=gbk; format=flowed
-Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-> On Sun 25-11-18 16:50:31, Xiaoguang Wang wrote:
->> Currently in ext4_can_extents_be_merged(), if one file has unwritten
->> extents under io, we will not merge any other unwritten extents, even
->> they are not in range of those unwritten extents under io. This limit
->> is coarse, indeed we can merge these unwritten extents that are not
->> under io.
->>
->> Here add a new ES_IO_B flag to track unwritten extents under io in
->> extents status tree. When we try to merge unwritten extents, search
->> given extents in extents status tree, if not found, then we can merge
->> these unwritten extents.
->>
->> Note currently we only track unwritten extents under io.
+--- Comment #268 from Marc Burkhardt (marc@osknowledge.org) ---
+(In reply to Rainer Fiebig from comment #263)
+> (In reply to Guenter Roeck from comment #240)
+> > As mentioned earlier, I only ever saw the problem on two of four systems
+> > (see #57), all running the same kernel and the same version of Ubuntu. The
+> > only differences are mainboard, CPU, and attached drive types.
+> > 
+> > I don't think we know for sure what it takes to trigger the problem. We
+> have
+> > seen various guesses, from gcc version to l1tf mitigation to CPU type,
+> > broken hard drives, and whatnot. At this time evidence points to the block
+> > subsystem, with bisect pointing to a commit which relies on the state of
+> the
+> > HW queue (empty or not) in conjunction with the 'none' io scheduler. This
+> > may suggest that drive speed and access timing may be involved. That guess
+> > may of course be just as wrong as all the others.
+> > 
+> > Let's just hope that Jens will be able to track down and fix the problem.
+> > Then we may be able to get a better idea what it actually takes to trigger
+> > it.
 > 
-> Thanks for the patch.
->   
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index 240b6dea5441..a93378cd1152 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -1713,6 +1713,33 @@ static int ext4_ext_correct_indexes(handle_t *handle, struct inode *inode,
->>   	return err;
->>   }
->>   
->> +static int ext4_unwritten_extent_under_io(struct inode *inode,
->> +			struct ext4_extent *ex1, struct ext4_extent *ex2)
->> +{
+> It would indeed be nice to get a short summary *here* of what happened and
+> why, once the dust has settled.
 > 
-> What if this took just starting block and length? There's no big point in
-> passing two extents here...
-> 
->> +	unsigned short len;
->> +
->> +	/*
->> +	 * The check for IO to unwritten extent is somewhat racy as we
->> +	 * increment i_unwritten / set EXT4_STATE_DIO_UNWRITTEN only after
->> +	 * dropping i_data_sem. But reserved blocks should save us in that
->> +	 * case.
->> +	 */
->> +	if (atomic_read(&EXT4_I(inode)->i_unwritten) == 0)
->> +		return 0;
->> +
->> +	len = ext4_ext_get_actual_len(ex1);
->> +	if (ext4_es_scan_range(inode, &ext4_es_is_under_io, ex1->ee_block,
->> +	    ex1->ee_block + len - 1))
->> +		return 1;
->> +
->> +	len = ext4_ext_get_actual_len(ex2);
->> +	if (ext4_es_scan_range(inode, &ext4_es_is_under_io, ex2->ee_block,
->> +	    ex2->ee_block + len - 1))
->> +		return 1;
->> +
->> +	return 0;
->> +}
->> +
->>   int
->>   ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
->>   				struct ext4_extent *ex2)
->> @@ -1744,7 +1771,7 @@ ext4_can_extents_be_merged(struct inode *inode, struct ext4_extent *ex1,
->>   	 */
->>   	if (ext4_ext_is_unwritten(ex1) &&
->>   	    (ext4_test_inode_state(inode, EXT4_STATE_DIO_UNWRITTEN) ||
->> -	     atomic_read(&EXT4_I(inode)->i_unwritten) ||
->> +	    ext4_unwritten_extent_under_io(inode, ex1, ex2) ||
->>   	     (ext1_ee_len + ext2_ee_len > EXT_UNWRITTEN_MAX_LEN)))
-> 
-> I'd check ext1_ee_len + ext2_ee_len > EXT_UNWRITTEN_MAX_LEN before
-> ext4_unwritten_extent_under_io() as that is a cheaper check. Also we know
-> that extents are adjacent so we can just call:
-> 
-> 	ext4_unwritten_extent_under_io(inode, le32_to_cpu(ex1->ee_block),
-> 					ext1_ee_len + ext2_ee_len)
-> 
-> and save one extent status tree lookup & iteration.
-Your comments are good, thanks, and sorry for my bad codes, I should have realized
-this inprovement myself.
+> It would also be interesting to know why all the testing in the run-up to
+> 4.19 didn't catch it, including rc-kernels. It's imo for instance unlikely
+> that everybody just tested with CONFIG_SCSI_MQ_DEFAULT=n.
 
-> 
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index 22a9d8159720..516966197257 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -704,6 +704,16 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->>   		    ext4_es_scan_range(inode, &ext4_es_is_delayed, map->m_lblk,
->>   				       map->m_lblk + map->m_len - 1))
->>   			status |= EXTENT_STATUS_DELAYED;
->> +		/*
->> +		 * track unwritten extent under io. when io completes, we'll
->                     ^ capital T                      ^ capital W
-> 
->> +		 * convert unwritten extent to written, ext4_es_insert_extent()
->> +		 * will be called again to insert this written extent, then
->> +		 * EXTENT_STATUS_IO will be cleared automatically, see remove
->> +		 * logic in ext4_es_insert_extent().
->> +		 */
->> +		if ((status & EXTENT_STATUS_UNWRITTEN) && (flags &
->> +		    EXT4_GET_BLOCKS_IO_SUBMIT))
->> +			status |= EXTENT_STATUS_IO;
->>   		ret = ext4_es_insert_extent(inode, map->m_lblk, map->m_len,
->>   					    map->m_pblk, status);
->>   		if (ret < 0) {
-> 
-> OK, but you fail to clear EXTENT_STATUS_IO if we fail to submit IO for some
-> reason or if the IO ends with IO error, don't you? I guess for these error
-> cases you can just iterate through all the range covered by ioend and clear
-> EXTENT_STATUS_IO bits. We don't care about performance in that case and it
-> is the simplest solution I see.
-ok, I wrote new patch which will clear this EXTENT_STATUS_IO in mpage_map_and_submit_extent
-when there are errors. But for simplicity, I don't write new fucntion to iterate extent
-status range, which may need to splilt es into 2 or 3 es, and need to handle memory allocation
-failure. I still use ext4_es_insert_extent's feature that removes es firstly and inserts new es
-with new status.
-After fstests test, I'll send new patch soon, thanks.
+As mentioned earlier:
 
-Regards,
-Xiaougang Wang
+it would be nice to have a definitive list of ciscumstances that are likely to
+have the bug triggered so people can check if they are probably affected
+because the _ran_ their systems with these setting and possibly have garbage on
+their disks now...
 
-> 
-> 								Honza
-> 
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
