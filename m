@@ -1,37 +1,34 @@
-Return-Path: <SRS0=Jm56=PG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-eopbgr690120.outbound.protection.outlook.com ([40.107.69.120]:30087
-        "EHLO NAM04-CO1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725928AbeL2NyY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 29 Dec 2018 08:54:24 -0500
-Date: Sat, 29 Dec 2018 08:54:17 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Eryu Guan <guaneryu@gmail.com>
-CC: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Liu Bo <obuil.liubo@gmail.com>, <fstests@vger.kernel.org>
-Subject: Re: [PATCH] ext4/034: adjust commit which fixes the problem tested
- by ext4/034
-Message-ID: <20181229135417.GI5864@mit.edu>
-References: <20181226160805.8987-1-tytso@mit.edu>
- <20181229050846.GC21777@desktop>
+Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:56100 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726102AbeLEJdW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Dec 2018 04:33:22 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id CEE162CD7E
+        for <linux-ext4@vger.kernel.org>; Wed,  5 Dec 2018 09:33:21 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Wed, 05 Dec 2018 09:33:20 +0000
+Message-ID: <bug-201685-13602-YZVoxbBM2h@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
-In-Reply-To: <20181229050846.GC21777@desktop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 29, 2018 at 01:08:46PM +0800, Eryu Guan wrote:
-> On Wed, Dec 26, 2018 at 11:08:05AM -0500, Theodore Ts'o wrote:
-> > Also add a requirment that fallocate and fiemap is supported.
-> > (Fallocate isn't the case when we are emulating ext3, for example.)
-> > 
-> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> > Cc: Liu Bo <obuil.liubo@gmail.com>
-> 
-> Patch looks good, but I assume you meant to send it to
-> fstests@vger.kernel.org not linux-fstests@mit.edu :)
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Oops, yes, that'd be correct.
+--- Comment #265 from Ortwin Glück (odi@odi.ch) ---
+I think Jens pretty much summarized the situation in #245. To trigger the bug
+blk-mq must be used together with an underlying block device (such as SCSI or
+SATA) that is stateful after a rejected bio submit. Then it's just a matter of
+enough concurrent I/O.
 
-					- Ted
+So a workaround is to just disable blk-mq with SCIS: scsi_mod.use_blk_mq=1
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
