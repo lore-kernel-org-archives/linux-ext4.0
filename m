@@ -1,16 +1,16 @@
-Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:35048 "EHLO
+Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:56036 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725785AbeLCBDD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 20:03:03 -0500
+        by vger.kernel.org with ESMTP id S1726037AbeLEGbi (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Dec 2018 01:31:38 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 0B8822A704
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 01:03:02 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 668DB2C7EB
+        for <linux-ext4@vger.kernel.org>; Wed,  5 Dec 2018 06:31:38 +0000 (UTC)
 From: bugzilla-daemon@bugzilla.kernel.org
 To: linux-ext4@vger.kernel.org
 Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 01:03:00 +0000
-Message-ID: <bug-201685-13602-fDeICv0Nq2@https.bugzilla.kernel.org/>
+Date: Wed, 05 Dec 2018 06:31:36 +0000
+Message-ID: <bug-201685-13602-EK59iQZOn1@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
 References: <bug-201685-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -21,19 +21,28 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Lei Ming (tom.leiming@gmail.com) changed:
+--- Comment #262 from Néstor A. Marchesini (nestorm_des@hotmail.com) ---
+I have patched with #255 Jens Axboe 4.19/4.20 patch v3 to my trees 4.19.0
+4.19.5 4.19.6 and I can say that for the first time I am able to use 4.19.0
+reading #259 reminds me that every time I updated I started having problems
+with rsync and I had to do it several times to get it right ... I innocently
+thought it was a problem in the repository.
+I was investigating my hdds in case they did not have real physical problems
+but:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tom.leiming@gmail.com
+# smartctl -H /dev/sda
+SMART overall-health self-assessment test result: PASSED
 
---- Comment #173 from Lei Ming (tom.leiming@gmail.com) ---
-The commit 2a5cf35cd6c56b2924("block: fix single range discard merge") in linus
-tree may address one possible data loss, anyone who saw corruption in scsi
-may try this fix and see if it makes a difference.
+# smartctl -H /dev/sdb
+SMART overall-health self-assessment test result: PASSED
 
-Given the merged discard request isn't removed from elevator queue, it might
-be possible to be submitted to hardware again.
+Very glad that the cause of the evils has been found ...to see that it
+continues now.
+
+$ uname -r
+Linux pc-user 4.19.0-gentoo
+
+Regards
 
 -- 
 You are receiving this mail because:
