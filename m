@@ -1,71 +1,42 @@
-Return-Path: <SRS0=Jm56=PG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-eopbgr750091.outbound.protection.outlook.com ([40.107.75.91]:17717
-        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726011AbeL2CPB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 28 Dec 2018 21:15:01 -0500
-Date: Fri, 28 Dec 2018 21:11:57 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Peter Maydell <peter.maydell@linaro.org>
-CC: Andreas Dilger <adilger@dilger.ca>,
-        Florian Weimer <fw@deneb.enyo.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        <lucho@ionkov.net>, <libc-alpha@sourceware.org>,
-        Arnd Bergmann <arnd@arndb.de>, <ericvh@gmail.com>,
-        <hpa@zytor.com>,
-        lkml - Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        QEMU Developers <qemu-devel@nongnu.org>, <rminnich@sandia.gov>,
-        <v9fs-developer@lists.sourceforge.net>
-Subject: Re: [Qemu-devel] d_off field in struct dirent and 32-on-64 emulation
-Message-ID: <20181229021157.GG5864@mit.edu>
-References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
- <CAFEAcA92m4vhzjJ+B=mP_o6Wfhx1XSKo3uWxah3osh=u5UXFuw@mail.gmail.com>
- <9C6A7D45-CF53-4C61-B5DD-12CA0D419972@dilger.ca>
- <CAFEAcA9W+JK7_TrtTnL1P2ES1knNPJX9wcUvhfLwxLq9augq1w@mail.gmail.com>
+Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41464 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727495AbeLEKRq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Dec 2018 05:17:46 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 136DA2CD99
+        for <linux-ext4@vger.kernel.org>; Wed,  5 Dec 2018 10:17:46 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] Incorrect disk writes caused by blk-mq lead to file
+ system corruption
+Date: Wed, 05 Dec 2018 10:17:45 +0000
+Message-ID: <bug-201685-13602-P94YvQJviz@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
-In-Reply-To: <CAFEAcA9W+JK7_TrtTnL1P2ES1knNPJX9wcUvhfLwxLq9augq1w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 28, 2018 at 11:18:18AM +0000, Peter Maydell wrote:
-> In general inodes and offsets start from 0 and work up --
-> so almost all of the time they don't actually overflow.
-> The problem with ext4 directory hash "offsets" is that they
-> overflow all the time and immediately, so instead of "works
-> unless you have a weird edge case" like all the other filesystems,h
-> it's "never works".
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-Actually, XFS uses the inode number to encode the location of the
-inode (it doesn't have a fixed inode table, so it's effectively the
-block number shifted left by 3 or 4 bits, with the low bits indicating
-the slot in the 4k block).  It has a hack to provide backwards
-compatibility for 32-bit API's, but there is a similar, "oh, we're on
-a non-paleolithic CPU, let's use the full 64-bits" sort of logic that
-ext4 has.
+Artem S. Tashkinov (aros@gmx.com) changed:
 
-> The problem is that there is no 32-bit API in some cases
-> (unless I have misunderstood the kernel code) -- not all
-> host architectures implement compat syscalls or allow them
-> to be called from 64-bit processes or implement all the older
-> syscall variants that had smaller offets. If there was a guaranteed
-> "this syscall always exists and always gives me 32-bit offsets"
-> we could use it.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+          Component|ext4                        |Block Layer
+     Kernel Version|maybe one of 4.18.18 4.19.1 |4.19.x 4.20-rc
+                   |4.20-rc2                    |
+           Assignee|fs_ext4@kernel-bugs.osdl.or |axboe@kernel.dk
+                   |g                           |
+            Product|File System                 |IO/Storage
+         Regression|No                          |Yes
+            Summary|ext4 file system corruption |Incorrect disk writes
+                   |                            |caused by blk-mq lead to
+                   |                            |file system corruption
 
-Are there going to be cases where a process or a thread will sometimes
-want the 64-bit interface, and sometimes want the 32-bit interface?
-Or is it always going to be one or the other?  I wonder if we could
-simply add a new flag to the process personality(2) flags.
-
-> Yes, that has been suggested, but it seemed a bit dubious
-> to bake in knowledge of ext4's internal implementation details.
-> Can we rely on this as an ABI promise that will always work
-> for all versions of all file systems going forwards?
-
-Yeah, that seems dubious because I'm pretty sure there are other file
-systems that may have their own 32/64-bit quirks.
-
-						- Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
