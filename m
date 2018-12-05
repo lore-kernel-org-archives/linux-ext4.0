@@ -1,55 +1,30 @@
-Return-Path: <SRS0=zSAL=OS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:39702 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726194AbeLIUxd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 9 Dec 2018 15:53:33 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        kernel@collabora.com, linux-ext4@vger.kernel.org, sfrench@samba.org
-Subject: Re: [PATCH v4 00/23] Ext4 Encoding and Case-insensitive support
-References: <20181206230903.30011-1-krisman@collabora.com>
-        <20181208194128.GE20708@thunk.org>
-        <CAHk-=wg2JvjXfdZ8K5Tv3vm6+bKRedotF5cr5AwVZVBypVfdAQ@mail.gmail.com>
-        <CAHk-=wg9J+9H4kvzF0SmBP_CoSrBTxPc6xMRJKb3fDnOUs0DNw@mail.gmail.com>
-        <20181209050326.GA28659@mit.edu>
-        <CAHk-=wgLYy3pRFDxwXB1THf4ev2C6VOmK5m7tfSwwv+EC9pM3Q@mail.gmail.com>
-Date: Sun, 09 Dec 2018 15:53:28 -0500
-In-Reply-To: <CAHk-=wgLYy3pRFDxwXB1THf4ev2C6VOmK5m7tfSwwv+EC9pM3Q@mail.gmail.com>
-        (Linus Torvalds's message of "Sun, 9 Dec 2018 09:41:13 -0800")
-Message-ID: <871s6qo20n.fsf@collabora.com>
+Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:57058 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726001AbeLEBKT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 20:10:19 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 251EE2CAAF
+        for <linux-ext4@vger.kernel.org>; Wed,  5 Dec 2018 01:10:19 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201685] ext4 file system corruption
+Date: Wed, 05 Dec 2018 01:10:17 +0000
+Message-ID: <bug-201685-13602-q3v6wUJ2wo@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
+References: <bug-201685-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Linus Torvalds <torvalds@linux-foundation.org> writes:
+https://bugzilla.kernel.org/show_bug.cgi?id=201685
 
-> On Sat, Dec 8, 2018 at 9:03 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
-
-> Either you have a horrible fundamental design mistake that has
-> different per-filesystem locales, or you don't.
->
-> If you don't, you shouldn't be touching any of the nls code.
->
-> Whatever unicode tables you use for case folding shouldn't be in the nls code.
-
-Hi Linus,
-
-As Ted mentioned the SMB case, in my understanding, we might have more
-users for in-kernel ut8 normalization/casefold comparison functions than
-just ext4 in the future.  Steve French (in cc.), for instance, mentioned
-his interest in using this higher level NLS API when I first submitted
-these patches.
-
-My first RFC actually included this code as a separated module inside
-lib/ instead of touching NLS, but I found myself rewriting much of the
-same APIs that already existed in NLS.  That is why I merged my work
-with that subsystem.  I am open to rethinking it, if there is a better
-alternative.
-
-Thanks,
+--- Comment #260 from Eric Benoit (eric@ecks.ca) ---
+About an hour now with 4.19.6 and the patch from #255 without a peep from zed.
+I think we have a winner!
 
 -- 
-Gabriel Krisman Bertazi
+You are receiving this mail because:
+You are watching the assignee of the bug.
