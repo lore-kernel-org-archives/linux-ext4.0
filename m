@@ -1,74 +1,152 @@
-Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:51886 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726247AbeLLU0N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Dec 2018 15:26:13 -0500
-Date: Wed, 12 Dec 2018 12:26:10 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181212202609.GA193967@gmail.com>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-2-ebiggers@kernel.org>
- <20181212091406.GA31723@infradead.org>
+Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:55654 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725963AbeLFWFX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 17:05:23 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v4 11/23] nls: ascii: Support validation and normalization operations
+Date: Thu,  6 Dec 2018 17:04:17 -0500
+Message-Id: <20181206220429.10722-12-krisman@collabora.com>
+In-Reply-To: <20181206220429.10722-1-krisman@collabora.com>
+References: <20181206220429.10722-1-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181212091406.GA31723@infradead.org>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Christoph,
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-On Wed, Dec 12, 2018 at 01:14:06AM -0800, Christoph Hellwig wrote:
-> As this apparently got merged despite no proper reviews from VFS
-> level persons:
+validation is trivial.  Any byte that has the MSB set is an invalid
+sequence.
 
-fs-verity has been out for review since August, and Cc'ed to all relevant
-mailing lists including linux-fsdevel, linux-ext4, linux-f2fs-devel,
-linux-fscrypt, linux-integrity, and linux-kernel.  There are tests,
-documentation (since v2), and a userspace tool.  It's also been presented at
-multiple conferences, and has been covered by LWN multiple times.  If more
-people want to review it, then they should do so; there's nothing stopping them.
+Casefold can be implemented with uppercase or lowercase, and we have no
+specification on that. Callers should be safe using either of them, as
+long as it doesn't change.
 
-> 
-> NAK - the ioctl format that expects the verifycation hash in the file
-> data data with padding after the real data is simply not acceptable,
-> we can't just transform the data in the file itself based on a magic
-> calls like this.
-> 
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+---
+ fs/nls/nls_ascii.c  | 50 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nls.h |  8 ++++++++
+ 2 files changed, 58 insertions(+)
 
-Can you elaborate on the actual problems you think the current solution has, and
-exactly what solution you'd prefer instead?  Keep in mind that (1) for large
-files the Merkle tree can be gigabytes long, (2) Linux doesn't have an API for
-file streams, and (3) when fs-verity is combined with fscrypt, it's important
-that the hashes be encrypted, so as to not leak information about the plaintext.
-
-> Also the core code should not depend on this as a storage format,
-> which is a rather bad idea.  In any modern file system you can
-> store data like this out of line in something like the attr fork
-> in XFS, or the attr items in btrfs.
-
-As explained in the documentation, the core code uses the "metadata after EOF"
-format for the API, but not necessarily the on-disk format.  I.e.,
-FS_IOC_ENABLE_VERITY requires it, but during the ioctl the filesystem can choose
-to move the metadata into a different location, such as a file stream.
-
-We'd just need to update fsverity_read_metadata_page() and
-compute_tree_depth_and_offsets() to call out to the filesystem's
-fsverity_operations to read a metadata page and get the offset of the first
-metadata page, respectively.  The rest of fs/verity/ will still work.  I'd be
-glad to add those two fsverity_operations now, though they're not needed for
-ext4 and f2fs, if it would help clarify things further.
-
-Thanks,
-
-- Eric
+diff --git a/fs/nls/nls_ascii.c b/fs/nls/nls_ascii.c
+index 2f4826478d3d..079a1574c19d 100644
+--- a/fs/nls/nls_ascii.c
++++ b/fs/nls/nls_ascii.c
+@@ -12,6 +12,7 @@
+ #include <linux/string.h>
+ #include <linux/nls.h>
+ #include <linux/errno.h>
++#include <linux/slab.h>
+ 
+ static const wchar_t charset2uni[256] = {
+ 	/* 0x00*/
+@@ -117,6 +118,8 @@ static const unsigned char charset2upper[256] = {
+ 	0x58, 0x59, 0x5a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, /* 0x78-0x7f */
+ };
+ 
++#define VALID_ASCII(c) (c < 128)
++
+ static int uni2char(wchar_t uni, unsigned char *out, int boundlen)
+ {
+ 	const unsigned char *uni2charset;
+@@ -142,6 +145,16 @@ static int char2uni(const unsigned char *rawstring, int boundlen, wchar_t *uni)
+ 	return 1;
+ }
+ 
++static int ascii_validate(const struct nls_table *table,
++			  const unsigned char *str, size_t len)
++{
++	int i;
++	for (i = 0; i < len && str[i]; i++)
++		if (!VALID_ASCII(str[i]))
++			return -1;
++	return 0;
++}
++
+ static unsigned char charset_tolower(const struct nls_table *table,
+ 				     unsigned int c){
+ 	return charset2lower[c];
+@@ -152,11 +165,36 @@ static unsigned char charset_toupper(const struct nls_table *table,
+ 	return charset2upper[c];
+ }
+ 
++static int ascii_casefold(const struct nls_table *charset,
++			  const unsigned char *str, size_t len,
++			  unsigned char *dest, size_t dlen)
++{
++	unsigned int i;
++
++	if (dlen < len)
++		return -EINVAL;
++
++	for (i = 0; i < len; i++) {
++		if (IS_STRICT_MODE(charset) && !VALID_ASCII(str[i]))
++			return -EINVAL;
++
++		if (IS_CASEFOLD_TYPE_ASCII_TOLOWER(charset))
++			dest[i] = charset_tolower(charset, str[i]);
++		else
++			dest[i] = charset_toupper(charset, str[i]);
++	}
++	dest[len] = '\0';
++
++	return len;
++}
++
+ static const struct nls_ops charset_ops = {
++	.validate = ascii_validate,
+ 	.lowercase = charset_toupper,
+ 	.uppercase = charset_tolower,
+ 	.uni2char = uni2char,
+ 	.char2uni = char2uni,
++	.casefold = ascii_casefold,
+ };
+ 
+ static struct nls_charset nls_charset;
+@@ -165,9 +203,21 @@ static struct nls_table table = {
+ 	.ops = &charset_ops,
+ };
+ 
++struct nls_table *ascii_load_table(const char *version, unsigned int flags)
++{
++	if (flags & ~(NLS_STRICT_MODE) ||
++	    (flags & NLS_NORMALIZATION_TYPE_MASK) != NLS_NORMALIZATION_TYPE_PLAIN)
++		return ERR_PTR(-EINVAL);
++
++	table.flags = flags;
++	return &table;
++}
++
++
+ static struct nls_charset nls_charset = {
+ 	.charset = "ascii",
+ 	.tables = &table,
++	.load_table = ascii_load_table,
+ };
+ 
+ static int __init init_nls_ascii(void)
+diff --git a/include/linux/nls.h b/include/linux/nls.h
+index 44a06a9c69e7..aab60d4858ee 100644
+--- a/include/linux/nls.h
++++ b/include/linux/nls.h
+@@ -178,6 +178,14 @@ IS_CASEFOLD_TYPE_##charset##_##type(const struct nls_table *c)		\
+ NLS_NORMALIZATION_FUNCS(ALL, PLAIN, NLS_NORMALIZATION_TYPE_PLAIN)
+ NLS_CASEFOLD_FUNCS(ALL, TOUPPER, NLS_CASEFOLD_TYPE_TOUPPER)
+ 
++/* ASCII */
++
++#define NLS_ASCII_CASEFOLD_TOUPPER NLS_CASEFOLD_TYPE_TOUPPER
++#define NLS_ASCII_CASEFOLD_TOLOWER NLS_CASEFOLD_TYPE(1)
++
++NLS_CASEFOLD_FUNCS(ASCII, TOUPPER, NLS_ASCII_CASEFOLD_TOUPPER)
++NLS_CASEFOLD_FUNCS(ASCII, TOLOWER, NLS_ASCII_CASEFOLD_TOLOWER)
++
+ /* nls_base.c */
+ extern int __register_nls(struct nls_charset *, struct module *);
+ extern int unregister_nls(struct nls_charset *);
+-- 
+2.20.0.rc2
