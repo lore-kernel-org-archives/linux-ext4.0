@@ -1,39 +1,40 @@
-Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41608 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726608AbeLCQUu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2018 11:20:50 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 28B5B2B1ED
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 16:20:42 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 16:20:41 +0000
-Message-ID: <bug-201685-13602-0ahI3Sw8af@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:30472 "EHLO
+        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726047AbeLFWuM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 17:50:12 -0500
+Date: Fri, 7 Dec 2018 09:50:08 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc: tytso@mit.edu, kernel@collabora.com, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH v4 00/23] Ext4 Encoding and Case-insensitive support
+Message-ID: <20181206225008.GB19305@dastard>
+References: <20181206220429.10722-1-krisman@collabora.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181206220429.10722-1-krisman@collabora.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Thu, Dec 06, 2018 at 05:04:06PM -0500, Gabriel Krisman Bertazi wrote:
+> Hi,
+> 
+> Following the e2fsprogs changes, these are the corresponding kernel-side
+> modifications to support the fname_encoding feature.
+> 
+> The patches are split in two parts. The fist 14 patches are refactoring
+> and improvements to the NLS code, including the utf8 normalization
+> support.  The final patches implement the fname_encoding feature in ext4.
 
---- Comment #204 from Guenter Roeck (linux@roeck-us.net) ---
-Another update:
+Please repost this all to linux-fsdevel@vger.kernel.org. You're
+changing a significant amount of non-ext4 filesystem code, as well
+as adding core filesystem infrastructure so it needs to have wider
+visibility and review than just the ext4 list.
 
-Still working on a reliable reproducer. I have been able to reproduce the
-problem again with v4.19.6 and the following patches reverted.
+Thanks!
 
-Revert "ext4: handle layout changes to pinned DAX mappings"
-Revert "dax: remove VM_MIXEDMAP for fsdax and device dax"
-Revert "ext4: close race between direct IO and ext4_break_layouts()"
-
-I used a modified version of #185, running on each drive on the affected
-system, plus a kernel build running in parallel.
-
+-Dave.
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Dave Chinner
+david@fromorbit.com
