@@ -1,18 +1,17 @@
 Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:56146 "EHLO
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:55618 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726353AbeLFXKP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 18:10:15 -0500
+        with ESMTP id S1725997AbeLFWE5 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 17:04:57 -0500
 From: Gabriel Krisman Bertazi <krisman@collabora.com>
 To: tytso@mit.edu
-Cc: linux-fsdevel@vger.kernel.org, kernel@collabora.com,
-        linux-ext4@vger.kernel.org,
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 18/23] nls: utf8: Introduce test module for normalized utf8 implementation
-Date: Thu,  6 Dec 2018 18:08:58 -0500
-Message-Id: <20181206230903.30011-19-krisman@collabora.com>
-In-Reply-To: <20181206230903.30011-1-krisman@collabora.com>
-References: <20181206230903.30011-1-krisman@collabora.com>
+Subject: [PATCH v4 04/23] nls: Split default charset from NLS core
+Date: Thu,  6 Dec 2018 17:04:10 -0500
+Message-Id: <20181206220429.10722-5-krisman@collabora.com>
+In-Reply-To: <20181206220429.10722-1-krisman@collabora.com>
+References: <20181206220429.10722-1-krisman@collabora.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -20,375 +19,255 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-This implements a in-kernel sanity test module for the utf8
-normalization core.  At probe time, it will run basic sequences through
-the utf8n core, to identify problems will equivalent sequences and
-normalization/casefold code.  This is supposed to be useful for
-regression testing when adding support for a new version of utf8 to
-linux.
-
-Changes since RFC v2:
-  - Merge with NLS
-
-Changes since RFC v1:
-  - Include comparison tests for matching strings with different lengths.
-  - Include tests for characters included in unicode 8.0.0, 9.0.0 and 10.0.0.
-
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/nls/Kconfig             |   5 +
- fs/nls/Makefile            |   1 +
- fs/nls/nls_utf8-selftest.c | 316 +++++++++++++++++++++++++++++++++++++
- 3 files changed, 322 insertions(+)
- create mode 100644 fs/nls/nls_utf8-selftest.c
+ fs/nls/Makefile                      |  1 +
+ fs/nls/nls_core.c                    | 94 ++++++++++++++++++++++++++++
+ fs/nls/{nls_base.c => nls_default.c} | 93 +++------------------------
+ 3 files changed, 102 insertions(+), 86 deletions(-)
+ create mode 100644 fs/nls/nls_core.c
+ rename fs/nls/{nls_base.c => nls_default.c} (90%)
 
-diff --git a/fs/nls/Kconfig b/fs/nls/Kconfig
-index 7cb2848da608..b9c9b663d0ab 100644
---- a/fs/nls/Kconfig
-+++ b/fs/nls/Kconfig
-@@ -626,4 +626,9 @@ config NLS_UTF8_NORMALIZATION
- 	  Say Y here to enable utf8 NFKD normalization and casefolding
- 	  support.
- 
-+config NLS_UTF8_NORMALIZATION_SELFTEST
-+	tristate "Test UTF-8 normalization support"
-+	depends on NLS_UTF8
-+	default n
-+
- endif # NLS
 diff --git a/fs/nls/Makefile b/fs/nls/Makefile
-index bd13c1a90767..e88006d2f3ac 100644
+index ac54db297128..5f42ceff9d15 100644
 --- a/fs/nls/Makefile
 +++ b/fs/nls/Makefile
-@@ -47,6 +47,7 @@ obj-$(CONFIG_NLS_KOI8_U)	+= nls_koi8-u.o nls_koi8-ru.o
- obj-$(CONFIG_NLS_UTF8)		+= nls_utf8.o
- nls_utf8-y			+= nls_utf8-core.o
- nls_utf8-$(CONFIG_NLS_UTF8_NORMALIZATION) += nls_utf8-norm.o
-+obj-$(CONFIG_NLS_UTF8_NORMALIZATION_SELFTEST) += nls_utf8-selftest.o
+@@ -3,6 +3,7 @@
+ # Makefile for native language support
+ #
  
- obj-$(CONFIG_NLS_MAC_CELTIC)    += mac-celtic.o
- obj-$(CONFIG_NLS_MAC_CENTEURO)  += mac-centeuro.o
-diff --git a/fs/nls/nls_utf8-selftest.c b/fs/nls/nls_utf8-selftest.c
++nls_base-y := nls_core.o nls_default.o
+ obj-$(CONFIG_NLS)		+= nls_base.o
+ 
+ obj-$(CONFIG_NLS_CODEPAGE_437)	+= nls_cp437.o
+diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
 new file mode 100644
-index 000000000000..47e4f24a3f44
+index 000000000000..3f7de8f4c5b2
 --- /dev/null
-+++ b/fs/nls/nls_utf8-selftest.c
-@@ -0,0 +1,316 @@
++++ b/fs/nls/nls_core.c
+@@ -0,0 +1,94 @@
 +/*
-+ * Kernel module for testing utf-8 support.
++ * linux/fs/nls/nls_core.c
 + *
-+ * Copyright 2017 Collabora Ltd.
++ * Native language support--charsets and unicode translations.
++ * By Gordon Chaffee 1996, 1997
 + *
-+ * This software is licensed under the terms of the GNU General Public
-+ * License version 2, as published by the Free Software Foundation, and
-+ * may be copied, distributed, and modified under those terms.
++ * Unicode based case conversion 1999 by Wolfram Pienkoss
 + *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
 + */
 +
-+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-+
 +#include <linux/module.h>
-+#include <linux/printk.h>
++#include <linux/string.h>
 +#include <linux/nls.h>
++#include <linux/kernel.h>
++#include <linux/errno.h>
++#include <linux/kmod.h>
++#include <linux/spinlock.h>
 +
-+#include "utf8n.h"
++static struct nls_table default_table;
++static struct nls_table *tables = &default_table;
++static DEFINE_SPINLOCK(nls_lock);
 +
-+unsigned int failed_tests;
-+unsigned int total_tests;
-+
-+/* Tests will be based on this version. */
-+#define latest_maj 11
-+#define latest_min 0
-+#define latest_rev 0
-+
-+#define _test(cond, func, line, fmt, ...) do {				\
-+		total_tests++;						\
-+		if (!cond) {						\
-+			failed_tests++;					\
-+			pr_err("test %s:%d Failed: %s%s",		\
-+			       func, line, #cond, (fmt?":":"."));	\
-+			if (fmt)					\
-+				pr_err(fmt, ##__VA_ARGS__);		\
-+		}							\
-+	} while (0)
-+#define test_f(cond, fmt, ...) _test(cond, __func__, __LINE__, fmt, ##__VA_ARGS__)
-+#define test(cond) _test(cond, __func__, __LINE__, "")
-+
-+const static struct {
-+	/* UTF-8 strings in this vector _must_ be NULL-terminated. */
-+	unsigned char str[10];
-+	unsigned char dec[10];
-+} nfkdi_test_data[] = {
-+	/* Trivial sequence */
-+	{
-+		/* "ABba" decomposes to itself */
-+		.str = {0x41, 0x42, 0x62, 0x61, 0x00},
-+		.dec = {0x41, 0x42, 0x62, 0x61, 0x00}
-+	},
-+	/* Simple equivalent sequences */
-+	{
-+		/* 'VULGAR FRACTION ONE QUARTER' decomposes to
-+		   'NUMBER 1' + 'FRACTION SLASH' + 'NUMBER 4' */
-+		.str = {0xc2, 0xbc, 0x00},
-+		.dec = {0x31, 0xe2, 0x81, 0x84, 0x34, 0x00},
-+	},
-+	{
-+		/* 'LATIN SMALL LETTER A WITH DIAERESIS' decomposes to
-+		   'LETTER A' + 'COMBINING DIAERESIS' */
-+		.str = {0xc3, 0xa4, 0x00},
-+		.dec = {0x61, 0xcc, 0x88, 0x00},
-+	},
-+	{
-+		/* 'LATIN SMALL LETTER LJ' decomposes to
-+		   'LETTER L' + 'LETTER J' */
-+		.str = {0xC7, 0x89, 0x00},
-+		.dec = {0x6c, 0x6a, 0x00},
-+	},
-+	{
-+		/* GREEK ANO TELEIA decomposes to MIDDLE DOT */
-+		.str = {0xCE, 0x87, 0x00},
-+		.dec = {0xC2, 0xB7, 0x00}
-+	},
-+	/* Canonical ordering */
-+	{
-+		/* A + 'COMBINING ACUTE ACCENT' + 'COMBINING OGONEK' decomposes
-+		   to A + 'COMBINING OGONEK' + 'COMBINING ACUTE ACCENT' */
-+		.str = {0x41, 0xcc, 0x81, 0xcc, 0xa8, 0x0},
-+		.dec = {0x41, 0xcc, 0xa8, 0xcc, 0x81, 0x0},
-+	},
-+	{
-+		/* 'LATIN SMALL LETTER A WITH DIAERESIS' + 'COMBINING OGONEK'
-+		   decomposes to
-+		   'LETTER A' + 'COMBINING OGONEK' + 'COMBINING DIAERESIS' */
-+		.str = {0xc3, 0xa4, 0xCC, 0xA8, 0x00},
-+
-+		.dec = {0x61, 0xCC, 0xA8, 0xcc, 0x88, 0x00},
-+	},
-+
-+};
-+
-+const static struct {
-+	/* UTF-8 strings in this vector _must_ be NULL-terminated. */
-+	unsigned char str[30];
-+	unsigned char ncf[30];
-+} nfkdicf_test_data[] = {
-+	/* Trivial sequences */
-+	{
-+		/* "ABba" folds to lowercase */
-+		.str = {0x41, 0x42, 0x62, 0x61, 0x00},
-+		.ncf = {0x61, 0x62, 0x62, 0x61, 0x00},
-+	},
-+	{
-+		/* All ASCII folds to lower-case */
-+		.str = "ABCDEFGHIJKLMNOPRSTUVWXYZ0.1",
-+		.ncf = "abcdefghijklmnoprstuvwxyz0.1",
-+	},
-+	{
-+		/* LATIN SMALL LETTER SHARP S folds to
-+		   LATIN SMALL LETTER S + LATIN SMALL LETTER S */
-+		.str = {0xc3, 0x9f, 0x00},
-+		.ncf = {0x73, 0x73, 0x00},
-+	},
-+	{
-+		/* LATIN CAPITAL LETTER A WITH RING ABOVE folds to
-+		   LATIN SMALL LETTER A + COMBINING RING ABOVE */
-+		.str = {0xC3, 0x85, 0x00},
-+		.ncf = {0x61, 0xcc, 0x8a, 0x00},
-+	},
-+	/* Introduced by UTF-8.0.0. */
-+	/* Cherokee letters are interesting test-cases because they fold
-+	   to upper-case.  Before 8.0.0, Cherokee lowercase were
-+	   undefined, thus, the folding from LC is not stable between
-+	   7.0.0 -> 8.0.0, but it is from UC. */
-+	{
-+		/* CHEROKEE SMALL LETTER A folds to CHEROKEE LETTER A */
-+		.str = {0xea, 0xad, 0xb0, 0x00},
-+		.ncf = {0xe1, 0x8e, 0xa0, 0x00},
-+	},
-+	{
-+		/* CHEROKEE SMALL LETTER YE folds to CHEROKEE LETTER YE */
-+		.str = {0xe1, 0x8f, 0xb8, 0x00},
-+		.ncf = {0xe1, 0x8f, 0xb0, 0x00},
-+	},
-+	{
-+		/* OLD HUNGARIAN CAPITAL LETTER AMB folds to
-+		   OLD HUNGARIAN SMALL LETTER AMB */
-+		.str = {0xf0, 0x90, 0xb2, 0x83, 0x00},
-+		.ncf = {0xf0, 0x90, 0xb3, 0x83, 0x00},
-+	},
-+	/* Introduced by UTF-9.0.0. */
-+	{
-+		/* OSAGE CAPITAL LETTER CHA folds to
-+		   OSAGE SMALL LETTER CHA */
-+		.str = {0xf0, 0x90, 0x92, 0xb5, 0x00},
-+		.ncf = {0xf0, 0x90, 0x93, 0x9d, 0x00},
-+	},
-+	{
-+		/* LATIN CAPITAL LETTER SMALL CAPITAL I folds to
-+		   LATIN LETTER SMALL CAPITAL I */
-+		.str = {0xea, 0x9e, 0xae, 0x00},
-+		.ncf = {0xc9, 0xaa, 0x00},
-+	},
-+	/* Introduced by UTF-11.0.0. */
-+	{
-+		/* GEORGIAN SMALL LETTER AN folds to GEORGIAN MTAVRULI
-+		   CAPITAL LETTER AN */
-+		.str = {0xe1, 0xb2, 0x90, 0x00},
-+		.ncf = {0xe1, 0x83, 0x90, 0x00},
-+	}
-+};
-+
-+static void check_utf8_nfkdi(void)
++int __register_nls(struct nls_table *nls, struct module *owner)
 +{
-+	int i;
-+	struct utf8cursor u8c;
-+	const struct utf8data *data;
++	struct nls_table ** tmp = &tables;
 +
-+	data = utf8nfkdi(UNICODE_AGE(latest_maj, latest_min, latest_rev));
-+	if (!data) {
-+		pr_err("%s: Unable to load utf8-%d.%d.%d. Skipping.\n",
-+		       __func__, latest_maj, latest_min, latest_rev);
-+		return;
-+	}
++	if (nls->next)
++		return -EBUSY;
 +
-+	for (i = 0; i < ARRAY_SIZE(nfkdi_test_data); i++) {
-+		int len = strlen(nfkdi_test_data[i].str);
-+		int nlen = strlen(nfkdi_test_data[i].dec);
-+		int j = 0;
-+		unsigned char c;
-+
-+		test((utf8len(data, nfkdi_test_data[i].str) == nlen));
-+		test((utf8nlen(data, nfkdi_test_data[i].str, len) == nlen));
-+
-+		if (utf8cursor(&u8c, data, nfkdi_test_data[i].str) < 0)
-+			pr_err("can't create cursor\n");
-+
-+		while ((c = utf8byte(&u8c)) > 0) {
-+			test_f((c == nfkdi_test_data[i].dec[j]),
-+			       "Unexpected byte 0x%x should be 0x%x\n",
-+			       c, nfkdi_test_data[i].dec[j]);
-+			j++;
++	nls->owner = owner;
++	spin_lock(&nls_lock);
++	while (*tmp) {
++		if (nls == *tmp) {
++			spin_unlock(&nls_lock);
++			return -EBUSY;
 +		}
-+
-+		test((j == nlen));
++		tmp = &(*tmp)->next;
 +	}
-+}
-+
-+static void check_utf8_nfkdicf(void)
-+{
-+	int i;
-+	struct utf8cursor u8c;
-+	const struct utf8data *data;
-+
-+	data = utf8nfkdicf(UNICODE_AGE(latest_maj, latest_min, latest_rev));
-+	if (!data) {
-+		pr_err("%s: Unable to load utf8-%d.%d.%d. Skipping.\n",
-+		       __func__, latest_maj, latest_min, latest_rev);
-+		return;
-+	}
-+
-+	for (i = 0; i < ARRAY_SIZE(nfkdicf_test_data); i++) {
-+		int len = strlen(nfkdicf_test_data[i].str);
-+		int nlen = strlen(nfkdicf_test_data[i].ncf);
-+		int j = 0;
-+		unsigned char c;
-+
-+		test((utf8len(data, nfkdicf_test_data[i].str) == nlen));
-+		test((utf8nlen(data, nfkdicf_test_data[i].str, len) == nlen));
-+
-+		if (utf8cursor(&u8c, data, nfkdicf_test_data[i].str) < 0)
-+			pr_err("can't create cursor\n");
-+
-+		while ((c = utf8byte(&u8c)) > 0) {
-+			test_f((c == nfkdicf_test_data[i].ncf[j]),
-+			       "Unexpected byte 0x%x should be 0x%x\n",
-+			       c, nfkdicf_test_data[i].ncf[j]);
-+			j++;
-+		}
-+
-+		test((j == nlen));
-+	}
-+}
-+
-+static void check_utf8_comparisons(void)
-+{
-+	int i;
-+	struct nls_table *table = load_nls_version("utf8", "11.0.0",
-+						   NLS_UTF8_NORMALIZATION_TYPE_NFKD |
-+						   NLS_UTF8_CASEFOLD_TYPE_NFKDCF);
-+
-+	if (IS_ERR(table)) {
-+		pr_err("%s: Unable to load utf8 %d.%d.%d. Skipping.\n",
-+		       __func__, latest_maj, latest_min, latest_rev);
-+		return;
-+	}
-+
-+	for (i = 0; i < ARRAY_SIZE(nfkdi_test_data); i++) {
-+		const char *s1 = nfkdi_test_data[i].str;
-+		const char *s2 = nfkdi_test_data[i].dec;
-+
-+		test_f(!nls_strncmp(table, s1, strlen(s1), s2, strlen(s2)),
-+		       "%s %s comparison mismatch\n", s1, s2);
-+	}
-+	for (i = 0; i < ARRAY_SIZE(nfkdicf_test_data); i++) {
-+		const char *s1 = nfkdicf_test_data[i].str;
-+		const char *s2 = nfkdicf_test_data[i].ncf;
-+
-+		test_f(!nls_strncasecmp(table, s1, strlen(s1),
-+					s2, strlen(s2)),
-+		       "%s %s comparison mismatch\n", s1, s2);
-+	}
-+
-+	unload_nls(table);
-+}
-+
-+static void check_supported_versions(void)
-+{
-+	/* Unicode 7.0.0 should be supported. */
-+	test(utf8version_is_supported(7, 0, 0));
-+
-+	/* Unicode 9.0.0 should be supported. */
-+	test(utf8version_is_supported(9, 0, 0));
-+
-+	/* Unicode 1x.0.0 (the latest version) should be supported. */
-+	test(utf8version_is_supported(latest_maj, latest_min, latest_rev));
-+
-+	/* Next versions don't exist. */
-+	test(!utf8version_is_supported(12, 0, 0));
-+	test(!utf8version_is_supported(0, 0, 0));
-+	test(!utf8version_is_supported(-1, -1, -1));
-+}
-+
-+static int __init init_test_ucd(void)
-+{
-+	failed_tests = 0;
-+	total_tests = 0;
-+
-+	check_supported_versions();
-+	check_utf8_nfkdi();
-+	check_utf8_nfkdicf();
-+	check_utf8_comparisons();
-+
-+	if (!failed_tests)
-+		pr_info("All %u tests passed\n", total_tests);
-+	else
-+		pr_err("%u out of %u tests failed\n", failed_tests,
-+		       total_tests);
++	nls->next = tables;
++	tables = nls;
++	spin_unlock(&nls_lock);
 +	return 0;
 +}
++EXPORT_SYMBOL(__register_nls);
 +
-+static void __exit exit_test_ucd(void)
++int unregister_nls(struct nls_table * nls)
 +{
++	struct nls_table ** tmp = &tables;
++
++	spin_lock(&nls_lock);
++	while (*tmp) {
++		if (nls == *tmp) {
++			*tmp = nls->next;
++			spin_unlock(&nls_lock);
++			return 0;
++		}
++		tmp = &(*tmp)->next;
++	}
++	spin_unlock(&nls_lock);
++	return -EINVAL;
 +}
 +
-+module_init(init_test_ucd);
-+module_exit(exit_test_ucd);
++static struct nls_table *find_nls(char *charset)
++{
++	struct nls_table *nls;
++	spin_lock(&nls_lock);
++	for (nls = tables; nls; nls = nls->next) {
++		if (!strcmp(nls_charset_name(nls), charset))
++			break;
++		if (nls->alias && !strcmp(nls->alias, charset))
++			break;
++	}
++	if (nls && !try_module_get(nls->owner))
++		nls = NULL;
++	spin_unlock(&nls_lock);
++	return nls;
++}
 +
-+MODULE_AUTHOR("Gabriel Krisman Bertazi <krisman@collabora.co.uk>");
-+MODULE_LICENSE("GPL");
++struct nls_table *load_nls(char *charset)
++{
++	return try_then_request_module(find_nls(charset), "nls_%s", charset);
++}
++
++void unload_nls(struct nls_table *nls)
++{
++	if (nls)
++		module_put(nls->owner);
++}
++
++EXPORT_SYMBOL(unregister_nls);
++EXPORT_SYMBOL(unload_nls);
++EXPORT_SYMBOL(load_nls);
++
++MODULE_LICENSE("Dual BSD/GPL");
+diff --git a/fs/nls/nls_base.c b/fs/nls/nls_default.c
+similarity index 90%
+rename from fs/nls/nls_base.c
+rename to fs/nls/nls_default.c
+index 0bb0acf6893f..c5d7e8391b22 100644
+--- a/fs/nls/nls_base.c
++++ b/fs/nls/nls_default.c
+@@ -1,5 +1,5 @@
+ /*
+- * linux/fs/nls/nls_base.c
++ * linux/fs/nls/nls_default.c
+  *
+  * Native language support--charsets and unicode translations.
+  * By Gordon Chaffee 1996, 1997
+@@ -8,23 +8,17 @@
+  *
+  */
+ 
++/*
++ * Sample implementation from Unicode home page.
++ * http://www.stonehand.com/unicode/standard/fss-utf.html
++ */
++
+ #include <linux/module.h>
+-#include <linux/string.h>
+-#include <linux/nls.h>
+-#include <linux/kernel.h>
+-#include <linux/errno.h>
+-#include <linux/kmod.h>
+-#include <linux/spinlock.h>
+ #include <asm/byteorder.h>
++#include <linux/nls.h>
+ 
+ static struct nls_table default_table;
+-static struct nls_table *tables = &default_table;
+-static DEFINE_SPINLOCK(nls_lock);
+ 
+-/*
+- * Sample implementation from Unicode home page.
+- * http://www.stonehand.com/unicode/standard/fss-utf.html
+- */
+ struct utf8_table {
+ 	int     cmask;
+ 	int     cval;
+@@ -232,73 +226,6 @@ int utf16s_to_utf8s(const wchar_t *pwcs, int inlen, enum utf16_endian endian,
+ }
+ EXPORT_SYMBOL(utf16s_to_utf8s);
+ 
+-int __register_nls(struct nls_table *nls, struct module *owner)
+-{
+-	struct nls_table ** tmp = &tables;
+-
+-	if (nls->next)
+-		return -EBUSY;
+-
+-	nls->owner = owner;
+-	spin_lock(&nls_lock);
+-	while (*tmp) {
+-		if (nls == *tmp) {
+-			spin_unlock(&nls_lock);
+-			return -EBUSY;
+-		}
+-		tmp = &(*tmp)->next;
+-	}
+-	nls->next = tables;
+-	tables = nls;
+-	spin_unlock(&nls_lock);
+-	return 0;	
+-}
+-EXPORT_SYMBOL(__register_nls);
+-
+-int unregister_nls(struct nls_table * nls)
+-{
+-	struct nls_table ** tmp = &tables;
+-
+-	spin_lock(&nls_lock);
+-	while (*tmp) {
+-		if (nls == *tmp) {
+-			*tmp = nls->next;
+-			spin_unlock(&nls_lock);
+-			return 0;
+-		}
+-		tmp = &(*tmp)->next;
+-	}
+-	spin_unlock(&nls_lock);
+-	return -EINVAL;
+-}
+-
+-static struct nls_table *find_nls(char *charset)
+-{
+-	struct nls_table *nls;
+-	spin_lock(&nls_lock);
+-	for (nls = tables; nls; nls = nls->next) {
+-		if (!strcmp(nls_charset_name(nls), charset))
+-			break;
+-		if (nls->alias && !strcmp(nls->alias, charset))
+-			break;
+-	}
+-	if (nls && !try_module_get(nls->owner))
+-		nls = NULL;
+-	spin_unlock(&nls_lock);
+-	return nls;
+-}
+-
+-struct nls_table *load_nls(char *charset)
+-{
+-	return try_then_request_module(find_nls(charset), "nls_%s", charset);
+-}
+-
+-void unload_nls(struct nls_table *nls)
+-{
+-	if (nls)
+-		module_put(nls->owner);
+-}
+-
+ static const wchar_t charset2uni[256] = {
+ 	/* 0x00*/
+ 	0x0000, 0x0001, 0x0002, 0x0003,
+@@ -543,10 +470,4 @@ struct nls_table *load_nls_default(void)
+ 	else
+ 		return &default_table;
+ }
+-
+-EXPORT_SYMBOL(unregister_nls);
+-EXPORT_SYMBOL(unload_nls);
+-EXPORT_SYMBOL(load_nls);
+ EXPORT_SYMBOL(load_nls_default);
+-
+-MODULE_LICENSE("Dual BSD/GPL");
 -- 
 2.20.0.rc2
