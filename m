@@ -1,36 +1,76 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:50426 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725535AbeLBTUe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 14:20:34 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 46F602A6DE
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 19:20:33 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 19:20:32 +0000
-Message-ID: <bug-201685-13602-ISmYnaiNUx@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:55712 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725948AbeLFWGG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 17:06:06 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v4 23/23] docs: ext4.rst: Document encoding and case-insensitive
+Date: Thu,  6 Dec 2018 17:04:29 -0500
+Message-Id: <20181206220429.10722-24-krisman@collabora.com>
+In-Reply-To: <20181206220429.10722-1-krisman@collabora.com>
+References: <20181206220429.10722-1-krisman@collabora.com>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
---- Comment #160 from Guenter Roeck (linux@roeck-us.net) ---
+Introduces the encoding-awareness and case-insensitive features on ext4
+for system administrators.  Explain the minimum of design decisions that
+are important for sysadmins enabling this feature.
 
-Another update: I hit the problem almost immediately with the reverts from
-#156.
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+---
+ Documentation/admin-guide/ext4.rst | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
 
-[ 1826.738686] EXT4-fs error (device sda1): ext4_iget:4796: inode #7633436:
-comm borg: bad extra_isize 28534 (inode size 256)
-[ 1826.740744] Aborting journal on device sda1-8.
-[ 1826.747339] EXT4-fs (sda1): Remounting filesystem read-only
-
+diff --git a/Documentation/admin-guide/ext4.rst b/Documentation/admin-guide/ext4.rst
+index e506d3dae510..f42c682acecc 100644
+--- a/Documentation/admin-guide/ext4.rst
++++ b/Documentation/admin-guide/ext4.rst
+@@ -91,10 +91,39 @@ Currently Available
+ * large block (up to pagesize) support
+ * efficient new ordered mode in JBD2 and ext4 (avoid using buffer head to force
+   the ordering)
++* Encoding aware file names
++* Case insensitive file name lookups
+ 
+ [1] Filesystems with a block size of 1k may see a limit imposed by the
+ directory hash tree having a maximum depth of two.
+ 
++Encoding-aware file names and case-insensitive lookups
++======================================================
++
++Ext4 optionally supports filesystem-wide charset knowledge when handling
++file names, which allows the user to perform file system lookups using
++charset equivalent versions of the same file name, and optionally ensure
++that no invalid names are held by the filesystem.  charset encoding
++awareness is also essential for performing case-insensitive lookups,
++because it is what defines the casefold operation.
++
++The case-insensitive file name lookup feature is supported in a smaller
++granularity, on a per-directory basis, allowing the user to mix
++case-insensitive and case-sensitive directories in the same filesystem.
++It is enabled by flipping a file attribute on an empty directory.  For
++the reason stated above, the filesystem must have encoding enabled to
++use this feature.
++
++When we change from filenames as opaque byte sequences to seeing them as
++encoded strings we need to address what happens when a program tries to
++create a file with an invalid name.  The Natural Language System within
++the kernel leaves the decision of what to do in this case to the
++filesystem, which select its preferred behavior by enabling/disabling
++the strict mode in NLS.  When Ext4 encounters one of those strings, it
++falls back to considering the entire string as an opaque byte sequence,
++which still allows the user to operate on that file but the
++case-insensitive and equivalent sequence lookups won't work.
++
+ Options
+ =======
+ 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.20.0.rc2
