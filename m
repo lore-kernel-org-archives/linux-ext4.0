@@ -1,75 +1,153 @@
-Return-Path: <SRS0=Jm56=PG=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from nautica.notk.org ([91.121.71.147]:38046 "EHLO nautica.notk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726011AbeL2EXe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 28 Dec 2018 23:23:34 -0500
-Date: Sat, 29 Dec 2018 05:04:13 +0100
-From: Dominique Martinet <asmadeus@codewreck.org>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Peter Maydell <peter.maydell@linaro.org>,
-        Andreas Dilger <adilger@dilger.ca>,
-        Florian Weimer <fw@deneb.enyo.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        lucho@ionkov.net, libc-alpha@sourceware.org,
-        Arnd Bergmann <arnd@arndb.de>, ericvh@gmail.com, hpa@zytor.com,
-        lkml - Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        QEMU Developers <qemu-devel@nongnu.org>, rminnich@sandia.gov,
-        v9fs-developer@lists.sourceforge.net
-Subject: Re: [V9fs-developer] [Qemu-devel] d_off field in struct dirent and
- 32-on-64 emulation
-Message-ID: <20181229040413.GA18900@nautica>
-References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
- <CAFEAcA92m4vhzjJ+B=mP_o6Wfhx1XSKo3uWxah3osh=u5UXFuw@mail.gmail.com>
- <9C6A7D45-CF53-4C61-B5DD-12CA0D419972@dilger.ca>
- <CAFEAcA9W+JK7_TrtTnL1P2ES1knNPJX9wcUvhfLwxLq9augq1w@mail.gmail.com>
- <20181229021157.GG5864@mit.edu>
- <20181229023721.GA9291@nautica>
- <20181229031416.GH5864@mit.edu>
+Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:56108 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726322AbeLFXJt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 18:09:49 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: linux-fsdevel@vger.kernel.org, kernel@collabora.com,
+        linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v4 11/23] nls: ascii: Support validation and normalization operations
+Date: Thu,  6 Dec 2018 18:08:51 -0500
+Message-Id: <20181206230903.30011-12-krisman@collabora.com>
+In-Reply-To: <20181206230903.30011-1-krisman@collabora.com>
+References: <20181206230903.30011-1-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <20181229031416.GH5864@mit.edu>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Y. Ts'o wrote on Fri, Dec 28, 2018:
-> On Sat, Dec 29, 2018 at 03:37:21AM +0100, Dominique Martinet wrote:
-> > > Are there going to be cases where a process or a thread will sometimes
-> > > want the 64-bit interface, and sometimes want the 32-bit interface?
-> > > Or is it always going to be one or the other?  I wonder if we could
-> > > simply add a new flag to the process personality(2) flags.
-> > 
-> > That would likely work for qemu user, but the qemu system+9p case is
-> > going to be more painful..
-> > More precisely, the 9p protocol does not plan for anything other than
-> > 64bit offset so if the vfs needs to hand out a 32bit offset we'll need
-> > to make a correspondance table between the 32bit offsets we hand off and
-> > the 64bit ones to use; unless some flag can be passed at lopen to tell
-> > the server to always hand out 32bit offsets for this directory... And if
-> > we do that then 9p servers will need a way to use both APIs in parallel
-> > for both types of directories.
-> 
-> How about if we add a fcntl(2) mediated flag, which is tied to a
-> struct file?  Would that be more or less painful for 9p and qemu
-> system+9p?
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-Hmm. 9P2000.L doesn't have anything akin to fcntl either, the only two
-obvious places where we could pass a flag is lopen (which already
-handles a bunch of linux-specific flags, e.g. passing O_LARGEFILE
-O_NOATIME etc will just forward these through for qemu/diod at least),
-or adding a new parameter to the 9p readdir.
+validation is trivial.  Any byte that has the MSB set is an invalid
+sequence.
 
-The former would let us get away without modifying the protocol as
-servers will just ignore flags they don't handle on implementations I
-checked, so it'd definitely be the least effort choice from what I can
-tell.
+Casefold can be implemented with uppercase or lowercase, and we have no
+specification on that. Callers should be safe using either of them, as
+long as it doesn't change.
 
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+---
+ fs/nls/nls_ascii.c  | 50 +++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nls.h |  8 ++++++++
+ 2 files changed, 58 insertions(+)
 
-On the other hand a fcntl would solve the server-side problem, it'd
-allow the server to request appropriately-sized offsets per fd, so it's
-a good start; we "just" need to figure how to translate that on the wire.
-
+diff --git a/fs/nls/nls_ascii.c b/fs/nls/nls_ascii.c
+index 2f4826478d3d..079a1574c19d 100644
+--- a/fs/nls/nls_ascii.c
++++ b/fs/nls/nls_ascii.c
+@@ -12,6 +12,7 @@
+ #include <linux/string.h>
+ #include <linux/nls.h>
+ #include <linux/errno.h>
++#include <linux/slab.h>
+ 
+ static const wchar_t charset2uni[256] = {
+ 	/* 0x00*/
+@@ -117,6 +118,8 @@ static const unsigned char charset2upper[256] = {
+ 	0x58, 0x59, 0x5a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f, /* 0x78-0x7f */
+ };
+ 
++#define VALID_ASCII(c) (c < 128)
++
+ static int uni2char(wchar_t uni, unsigned char *out, int boundlen)
+ {
+ 	const unsigned char *uni2charset;
+@@ -142,6 +145,16 @@ static int char2uni(const unsigned char *rawstring, int boundlen, wchar_t *uni)
+ 	return 1;
+ }
+ 
++static int ascii_validate(const struct nls_table *table,
++			  const unsigned char *str, size_t len)
++{
++	int i;
++	for (i = 0; i < len && str[i]; i++)
++		if (!VALID_ASCII(str[i]))
++			return -1;
++	return 0;
++}
++
+ static unsigned char charset_tolower(const struct nls_table *table,
+ 				     unsigned int c){
+ 	return charset2lower[c];
+@@ -152,11 +165,36 @@ static unsigned char charset_toupper(const struct nls_table *table,
+ 	return charset2upper[c];
+ }
+ 
++static int ascii_casefold(const struct nls_table *charset,
++			  const unsigned char *str, size_t len,
++			  unsigned char *dest, size_t dlen)
++{
++	unsigned int i;
++
++	if (dlen < len)
++		return -EINVAL;
++
++	for (i = 0; i < len; i++) {
++		if (IS_STRICT_MODE(charset) && !VALID_ASCII(str[i]))
++			return -EINVAL;
++
++		if (IS_CASEFOLD_TYPE_ASCII_TOLOWER(charset))
++			dest[i] = charset_tolower(charset, str[i]);
++		else
++			dest[i] = charset_toupper(charset, str[i]);
++	}
++	dest[len] = '\0';
++
++	return len;
++}
++
+ static const struct nls_ops charset_ops = {
++	.validate = ascii_validate,
+ 	.lowercase = charset_toupper,
+ 	.uppercase = charset_tolower,
+ 	.uni2char = uni2char,
+ 	.char2uni = char2uni,
++	.casefold = ascii_casefold,
+ };
+ 
+ static struct nls_charset nls_charset;
+@@ -165,9 +203,21 @@ static struct nls_table table = {
+ 	.ops = &charset_ops,
+ };
+ 
++struct nls_table *ascii_load_table(const char *version, unsigned int flags)
++{
++	if (flags & ~(NLS_STRICT_MODE) ||
++	    (flags & NLS_NORMALIZATION_TYPE_MASK) != NLS_NORMALIZATION_TYPE_PLAIN)
++		return ERR_PTR(-EINVAL);
++
++	table.flags = flags;
++	return &table;
++}
++
++
+ static struct nls_charset nls_charset = {
+ 	.charset = "ascii",
+ 	.tables = &table,
++	.load_table = ascii_load_table,
+ };
+ 
+ static int __init init_nls_ascii(void)
+diff --git a/include/linux/nls.h b/include/linux/nls.h
+index 44a06a9c69e7..aab60d4858ee 100644
+--- a/include/linux/nls.h
++++ b/include/linux/nls.h
+@@ -178,6 +178,14 @@ IS_CASEFOLD_TYPE_##charset##_##type(const struct nls_table *c)		\
+ NLS_NORMALIZATION_FUNCS(ALL, PLAIN, NLS_NORMALIZATION_TYPE_PLAIN)
+ NLS_CASEFOLD_FUNCS(ALL, TOUPPER, NLS_CASEFOLD_TYPE_TOUPPER)
+ 
++/* ASCII */
++
++#define NLS_ASCII_CASEFOLD_TOUPPER NLS_CASEFOLD_TYPE_TOUPPER
++#define NLS_ASCII_CASEFOLD_TOLOWER NLS_CASEFOLD_TYPE(1)
++
++NLS_CASEFOLD_FUNCS(ASCII, TOUPPER, NLS_ASCII_CASEFOLD_TOUPPER)
++NLS_CASEFOLD_FUNCS(ASCII, TOLOWER, NLS_ASCII_CASEFOLD_TOLOWER)
++
+ /* nls_base.c */
+ extern int __register_nls(struct nls_charset *, struct module *);
+ extern int unregister_nls(struct nls_charset *);
 -- 
-Dominique Martinet | Asmadeus
+2.20.0.rc2
