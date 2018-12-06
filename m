@@ -1,139 +1,142 @@
-Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:58806 "EHLO
-        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727387AbeLSVf7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 19 Dec 2018 16:35:59 -0500
-Date: Thu, 20 Dec 2018 08:35:52 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181219213552.GO6311@dastard>
-References: <20181219071420.GC2628@infradead.org>
- <20181219021953.GD31274@dastard>
- <20181219193005.GB6889@mit.edu>
+Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:56100 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726300AbeLFXJn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 18:09:43 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: linux-fsdevel@vger.kernel.org, kernel@collabora.com,
+        linux-ext4@vger.kernel.org,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v4 09/23] nls: Add new interface for string comparisons
+Date: Thu,  6 Dec 2018 18:08:49 -0500
+Message-Id: <20181206230903.30011-10-krisman@collabora.com>
+In-Reply-To: <20181206230903.30011-1-krisman@collabora.com>
+References: <20181206230903.30011-1-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181219193005.GB6889@mit.edu>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 19, 2018 at 02:30:05PM -0500, Theodore Y. Ts'o wrote:
-> On Wed, Dec 19, 2018 at 01:19:53PM +1100, Dave Chinner wrote:
-> > Putting metadata in user files beyond EOF doesn't work with XFS's
-> > post-EOF speculative allocation algorithms.
-> > 
-> > i.e. Filesystem design/algorithms often assume that the region
-> > beyond EOF in user files is a write-only region.  e.g. We can allow
-> > extents beyond EOF to be uninitialised because they are in a write
-> > only region of the file and so there's no possibility of stale data
-> > exposure. Unfortunately, putting filesystem/security metadata beyond
-> > EOF breaks these assumptions - it's no longer a write-only region.
-> 
-> On Tue, Dec 18, 2018 at 11:14:20PM -0800, Christoph Hellwig wrote:
-> > Filesystems already use blocks beyond EOF for preallocation, either
-> > speculative by the file system itself, or explicitly by the user with
-> > fallocate.  I bet you will run into bugs with your creative abuse
-> > sooner or later.  Indepnd of that the interface simply is gross, which
-> > is enough of a reason not to merge it.
-> 
-> Both of these concerns aren't applicable for fs-verity because the
-> entire file will be read-only.  So there will be no preallocation or
-> fallocation going on --- or allowed --- for a file which is protected
-> by fs-verity.  Since no writes are allowed at all, it won't break any
-> file systems' assumptions about "write-only regions".
+From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-The file has to be written before it has been protected, which means
-it may very well have user space allocated beyond EOF before the
-merkle tree needs to be written. And, well, the fact that it is all
-read only after creation is a feature implementation detail that
-allows fsverity to "get away with" storing it's metadata in file
-data space.
+The existing stricmp() interface is limited by not accepting separated
+length parameters for each string being compared.  This is a problem for
+charsets doing normalization or full casefold comparison, since
+different sized strings can still be matched.  To resolve this problem,
+this patch implements a new interface, allowing charsets to do the
+comparison, if needed.
 
-But whether or not fsverity is enabled on the filesystem, the fact
-is that the kernel code now has to support storing and reading data
-from beyond EOF. Every user, whether they are using fsverity or not,
-is now exposed to that code and a filesystem that no longer
-considers the user data region beyond EOF as write only. i.e. it
-doesn't matter if fsverity is in use, then ext4/f2fs code now
-allows reading of information beyond EOF from user data files
+The original stricmp is left in the code, until we convert all caller to
+the new interface.  Nevertheless, it was reimplemented using the new
+interface.
 
-i.e. you've completely changed the way files appear to /everyone/,
-not just the users of fsverity. Not only that, you now have file
-data that has a specific metadata on-disk format encoded into file
-data space. That greatly complicates filesystem checking and
-scrubbing which typically /doesn't even look at the contents of
-user data/. So yeah, this hack might make the merkle tree
-verification "simple" but it greatly complicates everything else the
-filesystem has to do.
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+---
+ include/linux/nls.h | 69 +++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 66 insertions(+), 3 deletions(-)
 
-That's the problem here - fsverity completely redefines the layout
-of user data files for everyone, not just fsverity, and not just the
-filesystems that implement fsverity. You've taken an ext4 fsverity
-implementation feature and promoted it to being a linux-wide 
-file data layout standard that is encoded into the kernel/user
-ABI/API forever more.
-
-And you're trying to force this into the tree on everyone without
-adequate review because "a product is already shipping with this
-code in it". Didn't we learn the lessons of failing to "upstream
-first" new features more than 15 years ago?
-
-> As far as whether it's "gross" --- that's a taste question, and I
-> happen to think it's more "clever" than "gross". 
-
-You think it's clever because it's a neat hack that makes what you
-need simple to implement, and so you can ship it in phones quickly
-and without needing to involve upstream in more complex design
-discussions.
-
-I think it's gross because it bleeds implementation details all over
-the API and globally redefines the user data file layout for
-everyone, kernel wide in a manner that is incompatible with existing
-filesystem implementations.
-
-> It allows for a very
-> simple implementation, *leveraging* the fact that the file will never
-> change --- and especially, grow in length.  So why not use the space
-> after EOF?
-
-There have been many technical reasons given for why it's a bad interfaces,
-yet you only address entirely subjective arguments and claim that
-you have "good taste" in APIs because it is "clever".
-
-> The alternative requires adding Solaris-style alternate data streams
-> support.
-
-No, it does not. It simply requires a different userspace API to
-move the merkle tree data into the kernel, and a different
-implemetnation abstraction that allows filesystems to provide the
-merkle tree data pages on request. Darrick and Christoph have
-already suggested alternative user APIs that would work just fine,
-and they don't ahve a requirement that the merkle tree is held in
-the user data space beyond EOF.
-
-How filesystems store and retrieve merkle tree data should be a
-filesystem internal detail. If how metadata is stored in th e
-filesystem is defined by the userspace API or the kernel library
-code that implements the verification feature, then it lacks the
-necessary abstraction to be a generic Linux filesystem feature.
-IOWs, it needs to be redesigned and reworked before we should
-consider it for merging.
-
-Cheers,
-
-Dave.
+diff --git a/include/linux/nls.h b/include/linux/nls.h
+index c43746bd390e..980103d4c363 100644
+--- a/include/linux/nls.h
++++ b/include/linux/nls.h
+@@ -3,6 +3,7 @@
+ #define _LINUX_NLS_H
+ 
+ #include <linux/init.h>
++#include <linux/string.h>
+ 
+ /* Unicode has changed over the years.  Unicode code points no longer
+  * fit into 16 bits; as of Unicode 5 valid code points range from 0
+@@ -38,6 +39,32 @@ struct nls_ops {
+ 	 **/
+ 	int (*validate)(const struct nls_table *charset,
+ 			const unsigned char *str, size_t len);
++	/**
++	 * @strncmp:
++	 *
++	 * strncmp is the function for case-sensitive string comparison.
++	 * It only needs to be implemented by charsets that want to do
++	 * some fancy comparisons, like normalization-insensitive.
++	 *
++	 * Returns 0 if str1 and str2 are equal, otherwise return
++	 * non-zero.
++	 **/
++	int (*strncmp)(const struct nls_table *charset,
++		       const unsigned char *str1, size_t len1,
++		       const unsigned char *str2, size_t len2);
++
++	/**
++	 * @strncasecmp:
++	 *
++	 * strncasecmp is the function for case-insensitive string
++	 * comparison.
++	 *
++	 * Returns 0 if str1 and str2 are equal, otherwise return
++	 * non-zero.
++	 **/
++	int (*strncasecmp)(const struct nls_table *charset,
++			   const unsigned char *str1, size_t len1,
++			   const unsigned char *str2, size_t len2);
+ 	unsigned char (*lowercase)(const struct nls_table *charset,
+ 				   unsigned int c);
+ 	unsigned char (*uppercase)(const struct nls_table *charset,
+@@ -139,10 +166,21 @@ static inline unsigned char nls_toupper(const struct nls_table *t,
+ 	return nc ? nc : c;
+ }
+ 
+-static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
+-		const unsigned char *s2, int len)
++static inline int nls_strncasecmp(struct nls_table *t,
++				  const unsigned char *s1, size_t len1,
++				  const unsigned char *s2, size_t len2)
+ {
+-	while (len--) {
++	if (t->ops->strncasecmp)
++		return t->ops->strncasecmp(t, s1, len1, s2, len2);
++
++	if (IS_STRICT_MODE(t) &&
++	    (nls_validate(t, s1, len1) || nls_validate(t, s1, len1)))
++		return -EINVAL;
++
++	if (len1 != len2)
++		return 1;
++
++	while (len1--) {
+ 		if (nls_tolower(t, *s1++) != nls_tolower(t, *s2++))
+ 			return 1;
+ 	}
+@@ -150,6 +188,31 @@ static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
+ 	return 0;
+ }
+ 
++static inline int nls_strncmp(struct nls_table *t,
++			      const unsigned char *s1, size_t len1,
++			      const unsigned char *s2, size_t len2)
++{
++	if (t->ops->strncmp)
++		return t->ops->strncmp(t, s1, len1, s2, len2);
++
++	if (IS_STRICT_MODE(t) &&
++	    (nls_validate(t, s1, len1) || nls_validate(t, s1, len1)))
++		return -EINVAL;
++
++	if (len1 != len2)
++		return 1;
++
++	/* strnicmp did not return negative values. So let's keep the
++	 * abi for now */
++	return !!memcmp(s1, s2, len1);
++}
++
++static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
++		const unsigned char *s2, int len)
++{
++	return nls_strncasecmp(t, s1, len, s2, len);
++}
++
+ /*
+  * nls_nullsize - return length of null character for codepage
+  * @codepage - codepage for which to return length of NULL terminator
 -- 
-Dave Chinner
-david@fromorbit.com
+2.20.0.rc2
