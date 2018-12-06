@@ -1,59 +1,100 @@
-Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:37850 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725786AbeLCBXg (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 20:23:36 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2B6B92A76D
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 01:23:34 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 01:23:33 +0000
-Message-ID: <bug-201685-13602-E8N6ziPsta@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:55658 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725963AbeLFWFZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 17:05:25 -0500
+From: Gabriel Krisman Bertazi <krisman@collabora.com>
+To: tytso@mit.edu
+Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
+        Olaf Weber <olaf@sgi.com>,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH v4 12/23] nls: utf8: Add unicode character database files
+Date: Thu,  6 Dec 2018 17:04:18 -0500
+Message-Id: <20181206220429.10722-13-krisman@collabora.com>
+In-Reply-To: <20181206220429.10722-1-krisman@collabora.com>
+References: <20181206220429.10722-1-krisman@collabora.com>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+From: Olaf Weber <olaf@sgi.com>
 
---- Comment #176 from Theodore Tso (tytso@mit.edu) ---
-Hi Sune, alas for your theory in #169, I am already using gcc 8.2.0-9 from
-Debian testing.
+Add files from the Unicode Character Database, version 11.0, to the
+source.  A helper program that generates a trie used for normalization
+from these files is part of a separate commit.
 
-% gcc --version
-gcc (Debian 8.2.0-9) 8.2.0
+- Notes on the update from 8.0.0 and 11.0:
 
-Could it an Ubuntu-specific issue?   I don't think so, since there have been
-some people running Debian and Gentoo who have reported the problem, and one
-person who reported the problem was running Debian and was using gcc 8.2.0-9.
+The structure of ucd files and special cases have not experienced any
+changes between versions 8.0.0 and 11.0.0.  8.0.0 saw the addition of
+Cherokee LC characters, which is an interesting case for case-folding.
+The update is accompanied by new tests on the test_ucd module to catch
+specific cases.  No changes to mkutf8data script was required for the
+update.
 
-I have built kernels using gcc 8.2.0-9 and used them for regression testing
-using gce-xfstests:
+The actual files are not part of the commit submitted to the list
+because they are to big and would bounce.  Still, they can be obtained
+by the following script:
 
-% objdump -s --section .comment /build/ext4-64/vmlinux
+FILES="CaseFolding.txt DerivedAge.txt extracted/DerivedCombiningClass.txt
+       DerivedCoreProperties.txt NormalizationCorrections.txt
+       NormalizationTest.txt UnicodeData.txt"
+VERSION=11.0.0
+BASE=http://www.unicode.org/Public/${VERSION}/ucd
 
-Contents of section .comment:
- 0000 4743433a 20284465 6269616e 20382e32  GCC: (Debian 8.2
- 0010 2e302d39 2920382e 322e3000           .0-9) 8.2.0. 
+for i in ${FILES} ; do
+  wget "${BASE}/$i" -O fs/nls/ucd/$(basename ${i} .txt)-${VERSION}.txt
+done
 
-The kernel I am using on my personal development laptop was compiled using gcc
-8.2.0-8:
+Signed-off-by: Olaf Weber <olaf@sgi.com>
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+  [Move ucd directory to fs/nls/]
+  [Update to Unicode 11.0.0]
+---
+ fs/nls/ucd/README | 34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
+ create mode 100644 fs/nls/ucd/README
 
-% objdump -s --section .comment
-/usr/lib/debug/lib/modules/4.19.0-00022-g831156939ae8/vmlinux  
-
-Contents of section .comment:
- 0000 4743433a 20284465 6269616e 20382e32  GCC: (Debian 8.2
- 0010 2e302d38 2920382e 322e3000           .0-8) 8.2.0.
-
-Of course, I'm not doing anything more exciting than running chrome, mutt,
-emacs, and building kernels most of the time...
-
+diff --git a/fs/nls/ucd/README b/fs/nls/ucd/README
+new file mode 100644
+index 000000000000..553ce7e4c224
+--- /dev/null
++++ b/fs/nls/ucd/README
+@@ -0,0 +1,34 @@
++The files in this directory are part of the Unicode Character Database
++for version 11.0.0 of the Unicode standard.
++
++The full set of files can be found here:
++
++  http://www.unicode.org/Public/11.0.0/ucd/
++
++The latest released version of the UCD can be found here:
++
++  http://www.unicode.org/Public/UCD/latest/
++
++The files in this directory are identical, except that they have been
++renamed with a suffix indicating the unicode version.
++
++Individual source links:
++
++  http://www.unicode.org/Public/11.0.0/ucd/CaseFolding.txt
++  http://www.unicode.org/Public/11.0.0/ucd/DerivedAge.txt
++  http://www.unicode.org/Public/11.0.0/ucd/extracted/DerivedCombiningClass.txt
++  http://www.unicode.org/Public/11.0.0/ucd/DerivedCoreProperties.txt
++  http://www.unicode.org/Public/11.0.0/ucd/NormalizationCorrections.txt
++  http://www.unicode.org/Public/11.0.0/ucd/NormalizationTest.txt
++  http://www.unicode.org/Public/11.0.0/ucd/UnicodeData.txt
++
++md5sums
++
++  414436796cf097df55f798e1585448ee  CaseFolding-11.0.0.txt
++  6032a595fbb782694456491d86eecfac  DerivedAge-11.0.0.txt
++  3240997d671297ac754ab0d27577acf7  DerivedCombiningClass-11.0.0.txt
++  d41d8cd98f00b204e9800998ecf8427e  DerivedCombiningClass.txt
++  2a4fe257d9d8184518e036194d2248ec  DerivedCoreProperties-11.0.0.txt
++  4e7d383fa0dd3cd9d49d64e5b7b7c9e0  NormalizationCorrections-11.0.0.txt
++  c9500c5b8b88e584469f056023ecc3f2  NormalizationTest-11.0.0.txt
++  acc291106c3758d2025f8d7bd5518bee  UnicodeData-11.0.0.txt
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.20.0.rc2
