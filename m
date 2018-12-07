@@ -1,274 +1,120 @@
-Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:56074 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726270AbeLFXJY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 18:09:24 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: linux-fsdevel@vger.kernel.org, kernel@collabora.com,
-        linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 04/23] nls: Split default charset from NLS core
-Date: Thu,  6 Dec 2018 18:08:44 -0500
-Message-Id: <20181206230903.30011-5-krisman@collabora.com>
-In-Reply-To: <20181206230903.30011-1-krisman@collabora.com>
-References: <20181206230903.30011-1-krisman@collabora.com>
+Return-Path: <SRS0=bs/x=OQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:33182 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725948AbeLGHQU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 7 Dec 2018 02:16:20 -0500
+Date: Fri, 7 Dec 2018 08:16:15 +0100
+From: Michal Hocko <mhocko@kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Jan Kara <jack@suse.cz>, Liu Bo <bo.liu@linux.alibaba.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH RFC] Ext4: fix deadlock on dirty pages between fault and
+ writeback
+Message-ID: <20181207071615.GO1286@dhcp22.suse.cz>
+References: <1540858969-75803-1-git-send-email-bo.liu@linux.alibaba.com>
+ <20181127114249.GH16301@quack2.suse.cz>
+ <20181128201122.r4sec265cnlxgj2x@US-160370MP2.local>
+ <20181129085238.GD31087@quack2.suse.cz>
+ <20181129120253.GR6311@dastard>
+ <20181129130002.GM31087@quack2.suse.cz>
+ <20181129204019.GS6311@dastard>
+ <20181205170656.GJ30615@quack2.suse.cz>
+ <20181207052051.GB6311@dastard>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181207052051.GB6311@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+On Fri 07-12-18 16:20:51, Dave Chinner wrote:
+> On Wed, Dec 05, 2018 at 06:06:56PM +0100, Jan Kara wrote:
+> > Added MM people to CC since this starts to be relevant for them.
+> > 
+> > On Fri 30-11-18 07:40:19, Dave Chinner wrote:
+> > > On Thu, Nov 29, 2018 at 02:00:02PM +0100, Jan Kara wrote:
+> > > > On Thu 29-11-18 23:02:53, Dave Chinner wrote:
+> > > > > As it is, this sort of lock vs reclaim inversion should be caught by
+> > > > > lockdep - allocations and reclaim contexts are recorded by lockdep
+> > > > > we get reports if we do lock A - alloc and then do reclaim - lock A.
+> > > > > We've always had problems with false positives from lockdep for
+> > > > > these situations where common XFS code can be called from GFP_KERNEL
+> > > > > valid contexts as well as reclaim or GFP_NOFS-only contexts, but I
+> > > > > don't recall ever seeing such a report for the writeback path....
+> > > > 
+> > > > I think for A == page lock, XFS may have the problem (and lockdep won't
+> > > > notice because it does not track page locks). There are some parts of
+> > > > kernel which do GFP_KERNEL allocations under page lock - pte_alloc_one() is
+> > > > one such function which allocates page tables with GFP_KERNEL and gets
+> > > > called with the faulted page locked. And I believe there are others.
+> > > 
+> > > Where in direct reclaim are we doing writeback to XFS?
+> > > 
+> > > It doesn't happen, and I've recently proposed we remove ->writepage
+> > > support from XFS altogether so that memory reclaim never, ever
+> > > tries to write pages to XFS filesystems, even from kswapd.
+> > 
+> > Direct reclaim will never do writeback but it may still wait for writeback
+> > that has been started by someone else. That is enough for the deadlock to
+> > happen. But from what you write below you seem to understand that so I just
+> > write this comment here so that others don't get confused.
+> > 
+> > > > So direct reclaim from pte_alloc_one() can wait for writeback on page B
+> > > > while holding lock on page A. And if B is just prepared (added to bio,
+> > > > under writeback, unlocked) but not submitted in xfs_writepages() and we
+> > > > block on lock_page(A), we have a deadlock.
+> > > 
+> > > Fundamentally, doing GFP_KERNEL allocations with a page lock
+> > > held violates any ordering rules we might have for multiple page
+> > > locking order. This is asking for random ABBA reclaim deadlocks to
+> > > occur, and it's not a filesystem bug - that's a bug in the page
+> > > table code. e.g if we are doing this in a filesystem/page cache
+> > > context, it's always in ascending page->index order for pages
+> > > referenced by the inode's mapping. Memory reclaim provides none of
+> > > these lock ordering guarantees.
+> > 
+> > So this is where I'd like MM people to tell their opinion. Reclaim code
+> > tries to avoid possible deadlocks on page lock by always doing trylock on
+> > the page. But as this example shows it is not enough once is blocks in
+> > wait_on_page_writeback().
+> 
+> I think it only does this in a "legacy memcg" case, according to the
+> comment in shrink_page_list. Which is, apparently, a hack around the
+> fact that memcgs didn't used to have dirty page throttling. AFAIA,
+> balance_dirty_pages() has had memcg-based throttling for some time
+> now, so that kinda points to stale reclaim algorithms, right?
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- fs/nls/Makefile                      |  1 +
- fs/nls/nls_core.c                    | 94 ++++++++++++++++++++++++++++
- fs/nls/{nls_base.c => nls_default.c} | 93 +++------------------------
- 3 files changed, 102 insertions(+), 86 deletions(-)
- create mode 100644 fs/nls/nls_core.c
- rename fs/nls/{nls_base.c => nls_default.c} (90%)
+Memcg v1 indeed doesn't have any dirty IO throttling and this is a
+poor's man workaround. We still do not have that AFAIK and I do not know
+of an elegant way around that. Fortunatelly we shouldn't have that many
+GFP_KERNEL | __GFP_ACCOUNT allocations under page lock and we can work
+around this specific one quite easily. I haven't tested this yet but the
+following should work
 
-diff --git a/fs/nls/Makefile b/fs/nls/Makefile
-index ac54db297128..5f42ceff9d15 100644
---- a/fs/nls/Makefile
-+++ b/fs/nls/Makefile
-@@ -3,6 +3,7 @@
- # Makefile for native language support
- #
+diff --git a/mm/memory.c b/mm/memory.c
+index 4ad2d293ddc2..59c98eeb0260 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -2993,6 +2993,16 @@ static vm_fault_t __do_fault(struct vm_fault *vmf)
+ 	struct vm_area_struct *vma = vmf->vma;
+ 	vm_fault_t ret;
  
-+nls_base-y := nls_core.o nls_default.o
- obj-$(CONFIG_NLS)		+= nls_base.o
- 
- obj-$(CONFIG_NLS_CODEPAGE_437)	+= nls_cp437.o
-diff --git a/fs/nls/nls_core.c b/fs/nls/nls_core.c
-new file mode 100644
-index 000000000000..3f7de8f4c5b2
---- /dev/null
-+++ b/fs/nls/nls_core.c
-@@ -0,0 +1,94 @@
-+/*
-+ * linux/fs/nls/nls_core.c
-+ *
-+ * Native language support--charsets and unicode translations.
-+ * By Gordon Chaffee 1996, 1997
-+ *
-+ * Unicode based case conversion 1999 by Wolfram Pienkoss
-+ *
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/string.h>
-+#include <linux/nls.h>
-+#include <linux/kernel.h>
-+#include <linux/errno.h>
-+#include <linux/kmod.h>
-+#include <linux/spinlock.h>
-+
-+static struct nls_table default_table;
-+static struct nls_table *tables = &default_table;
-+static DEFINE_SPINLOCK(nls_lock);
-+
-+int __register_nls(struct nls_table *nls, struct module *owner)
-+{
-+	struct nls_table ** tmp = &tables;
-+
-+	if (nls->next)
-+		return -EBUSY;
-+
-+	nls->owner = owner;
-+	spin_lock(&nls_lock);
-+	while (*tmp) {
-+		if (nls == *tmp) {
-+			spin_unlock(&nls_lock);
-+			return -EBUSY;
-+		}
-+		tmp = &(*tmp)->next;
++	/*
++	 * Preallocate pte before we take page_lock because this might lead to
++	 * deadlocks for memcg reclaim which waits for pages under writeback.
++	 */
++	if (!vmf->prealloc_pte) {
++		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm>mm, vmf->address);
++		if (!vmf->prealloc_pte)
++			return VM_FAULT_OOM;
 +	}
-+	nls->next = tables;
-+	tables = nls;
-+	spin_unlock(&nls_lock);
-+	return 0;
-+}
-+EXPORT_SYMBOL(__register_nls);
 +
-+int unregister_nls(struct nls_table * nls)
-+{
-+	struct nls_table ** tmp = &tables;
-+
-+	spin_lock(&nls_lock);
-+	while (*tmp) {
-+		if (nls == *tmp) {
-+			*tmp = nls->next;
-+			spin_unlock(&nls_lock);
-+			return 0;
-+		}
-+		tmp = &(*tmp)->next;
-+	}
-+	spin_unlock(&nls_lock);
-+	return -EINVAL;
-+}
-+
-+static struct nls_table *find_nls(char *charset)
-+{
-+	struct nls_table *nls;
-+	spin_lock(&nls_lock);
-+	for (nls = tables; nls; nls = nls->next) {
-+		if (!strcmp(nls_charset_name(nls), charset))
-+			break;
-+		if (nls->alias && !strcmp(nls->alias, charset))
-+			break;
-+	}
-+	if (nls && !try_module_get(nls->owner))
-+		nls = NULL;
-+	spin_unlock(&nls_lock);
-+	return nls;
-+}
-+
-+struct nls_table *load_nls(char *charset)
-+{
-+	return try_then_request_module(find_nls(charset), "nls_%s", charset);
-+}
-+
-+void unload_nls(struct nls_table *nls)
-+{
-+	if (nls)
-+		module_put(nls->owner);
-+}
-+
-+EXPORT_SYMBOL(unregister_nls);
-+EXPORT_SYMBOL(unload_nls);
-+EXPORT_SYMBOL(load_nls);
-+
-+MODULE_LICENSE("Dual BSD/GPL");
-diff --git a/fs/nls/nls_base.c b/fs/nls/nls_default.c
-similarity index 90%
-rename from fs/nls/nls_base.c
-rename to fs/nls/nls_default.c
-index 0bb0acf6893f..c5d7e8391b22 100644
---- a/fs/nls/nls_base.c
-+++ b/fs/nls/nls_default.c
-@@ -1,5 +1,5 @@
- /*
-- * linux/fs/nls/nls_base.c
-+ * linux/fs/nls/nls_default.c
-  *
-  * Native language support--charsets and unicode translations.
-  * By Gordon Chaffee 1996, 1997
-@@ -8,23 +8,17 @@
-  *
-  */
- 
-+/*
-+ * Sample implementation from Unicode home page.
-+ * http://www.stonehand.com/unicode/standard/fss-utf.html
-+ */
-+
- #include <linux/module.h>
--#include <linux/string.h>
--#include <linux/nls.h>
--#include <linux/kernel.h>
--#include <linux/errno.h>
--#include <linux/kmod.h>
--#include <linux/spinlock.h>
- #include <asm/byteorder.h>
-+#include <linux/nls.h>
- 
- static struct nls_table default_table;
--static struct nls_table *tables = &default_table;
--static DEFINE_SPINLOCK(nls_lock);
- 
--/*
-- * Sample implementation from Unicode home page.
-- * http://www.stonehand.com/unicode/standard/fss-utf.html
-- */
- struct utf8_table {
- 	int     cmask;
- 	int     cval;
-@@ -232,73 +226,6 @@ int utf16s_to_utf8s(const wchar_t *pwcs, int inlen, enum utf16_endian endian,
- }
- EXPORT_SYMBOL(utf16s_to_utf8s);
- 
--int __register_nls(struct nls_table *nls, struct module *owner)
--{
--	struct nls_table ** tmp = &tables;
--
--	if (nls->next)
--		return -EBUSY;
--
--	nls->owner = owner;
--	spin_lock(&nls_lock);
--	while (*tmp) {
--		if (nls == *tmp) {
--			spin_unlock(&nls_lock);
--			return -EBUSY;
--		}
--		tmp = &(*tmp)->next;
--	}
--	nls->next = tables;
--	tables = nls;
--	spin_unlock(&nls_lock);
--	return 0;	
--}
--EXPORT_SYMBOL(__register_nls);
--
--int unregister_nls(struct nls_table * nls)
--{
--	struct nls_table ** tmp = &tables;
--
--	spin_lock(&nls_lock);
--	while (*tmp) {
--		if (nls == *tmp) {
--			*tmp = nls->next;
--			spin_unlock(&nls_lock);
--			return 0;
--		}
--		tmp = &(*tmp)->next;
--	}
--	spin_unlock(&nls_lock);
--	return -EINVAL;
--}
--
--static struct nls_table *find_nls(char *charset)
--{
--	struct nls_table *nls;
--	spin_lock(&nls_lock);
--	for (nls = tables; nls; nls = nls->next) {
--		if (!strcmp(nls_charset_name(nls), charset))
--			break;
--		if (nls->alias && !strcmp(nls->alias, charset))
--			break;
--	}
--	if (nls && !try_module_get(nls->owner))
--		nls = NULL;
--	spin_unlock(&nls_lock);
--	return nls;
--}
--
--struct nls_table *load_nls(char *charset)
--{
--	return try_then_request_module(find_nls(charset), "nls_%s", charset);
--}
--
--void unload_nls(struct nls_table *nls)
--{
--	if (nls)
--		module_put(nls->owner);
--}
--
- static const wchar_t charset2uni[256] = {
- 	/* 0x00*/
- 	0x0000, 0x0001, 0x0002, 0x0003,
-@@ -543,10 +470,4 @@ struct nls_table *load_nls_default(void)
- 	else
- 		return &default_table;
- }
--
--EXPORT_SYMBOL(unregister_nls);
--EXPORT_SYMBOL(unload_nls);
--EXPORT_SYMBOL(load_nls);
- EXPORT_SYMBOL(load_nls_default);
--
--MODULE_LICENSE("Dual BSD/GPL");
+ 	ret = vma->vm_ops->fault(vmf);
+ 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY |
+ 			    VM_FAULT_DONE_COW)))
+
+Is there any reliable reproducer?
 -- 
-2.20.0.rc2
+Michal Hocko
+SUSE Labs
