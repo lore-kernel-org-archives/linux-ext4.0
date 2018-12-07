@@ -1,44 +1,92 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:55348 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725856AbeLBOV0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 09:21:26 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BD0982AA26
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 14:21:23 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 14:21:22 +0000
-Message-ID: <bug-201685-13602-uNYh4L5pu5@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=bs/x=OQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:42524 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726029AbeLGLUk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 7 Dec 2018 06:20:40 -0500
+Date: Fri, 7 Dec 2018 12:20:36 +0100
+From: Michal Hocko <mhocko@kernel.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Jan Kara <jack@suse.cz>, Liu Bo <bo.liu@linux.alibaba.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH RFC] Ext4: fix deadlock on dirty pages between fault and
+ writeback
+Message-ID: <20181207112036.GA1286@dhcp22.suse.cz>
+References: <1540858969-75803-1-git-send-email-bo.liu@linux.alibaba.com>
+ <20181127114249.GH16301@quack2.suse.cz>
+ <20181128201122.r4sec265cnlxgj2x@US-160370MP2.local>
+ <20181129085238.GD31087@quack2.suse.cz>
+ <20181129120253.GR6311@dastard>
+ <20181129130002.GM31087@quack2.suse.cz>
+ <20181129204019.GS6311@dastard>
+ <20181205170656.GJ30615@quack2.suse.cz>
+ <20181207052051.GB6311@dastard>
+ <20181207071615.GO1286@dhcp22.suse.cz>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181207071615.GO1286@dhcp22.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
-
---- Comment #147 from Rainer Fiebig (jrf@mailbox.org) ---
-(In reply to Reindl Harald from comment #131)
-> has anybody ever seen that bug within a virtual machine?
+On Fri 07-12-18 08:16:15, Michal Hocko wrote:
+[...]
+> Memcg v1 indeed doesn't have any dirty IO throttling and this is a
+> poor's man workaround. We still do not have that AFAIK and I do not know
+> of an elegant way around that. Fortunatelly we shouldn't have that many
+> GFP_KERNEL | __GFP_ACCOUNT allocations under page lock and we can work
+> around this specific one quite easily. I haven't tested this yet but the
+> following should work
 > 
-> i currently run 4.19.x only inside VMs on VMware Workstation / VMware ESXi
-> and did not see any issues, my only phyiscal test was my homeserver which
-> completley crahsed 4 times like because of the VMware Workstation 14
-> kernel-modules lasted only for a weekend (RAID10, 2 Samsung Evo 850 2 TB, 2
-> Samsung Evo 860 2 TB) after the last crash left a 0 byte "firewall.sh" in
-> the nested VM i was working for hours
+> diff --git a/mm/memory.c b/mm/memory.c
+> index 4ad2d293ddc2..59c98eeb0260 100644
+> --- a/mm/memory.c
+> +++ b/mm/memory.c
+> @@ -2993,6 +2993,16 @@ static vm_fault_t __do_fault(struct vm_fault *vmf)
+>  	struct vm_area_struct *vma = vmf->vma;
+>  	vm_fault_t ret;
+>  
+> +	/*
+> +	 * Preallocate pte before we take page_lock because this might lead to
+> +	 * deadlocks for memcg reclaim which waits for pages under writeback.
+> +	 */
+> +	if (!vmf->prealloc_pte) {
+> +		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm>mm, vmf->address);
+> +		if (!vmf->prealloc_pte)
+> +			return VM_FAULT_OOM;
+> +	}
+> +
+>  	ret = vma->vm_ops->fault(vmf);
+>  	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY |
+>  			    VM_FAULT_DONE_COW)))
 
-I've installed 4.19.x with a defconfig in a VirtualBox-VM, hoping the issue
-would show up and I could bisect it there. I've also varied the config-params
-that have been discussed here.
+This is too eager to allocate pte even when it is not really needed.
+Jack has also pointed out that I am missing a write barrier. So here we
+go with an updated patch. This is essentially what fault around code
+does.
 
-But unfortunately that damn thing runs as nicely in the VM as it does on real
-iron - at least here. :)
-
+diff --git a/mm/memory.c b/mm/memory.c
+index 4ad2d293ddc2..1a73d2d4659e 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -2993,6 +2993,17 @@ static vm_fault_t __do_fault(struct vm_fault *vmf)
+ 	struct vm_area_struct *vma = vmf->vma;
+ 	vm_fault_t ret;
+ 
++	/*
++	 * Preallocate pte before we take page_lock because this might lead to
++	 * deadlocks for memcg reclaim which waits for pages under writeback.
++	 */
++	if (pmd_none(*vmf->pmd) && !vmf->prealloc_pte) {
++		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm>mm, vmf->address);
++		if (!vmf->prealloc_pte)
++			return VM_FAULT_OOM;
++		smp_wmb(); /* See comment in __pte_alloc() */
++	}
++
+ 	ret = vma->vm_ops->fault(vmf);
+ 	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY |
+ 			    VM_FAULT_DONE_COW)))
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Michal Hocko
+SUSE Labs
