@@ -1,70 +1,102 @@
-Return-Path: <SRS0=cNy7=PF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-qk1-f194.google.com ([209.85.222.194]:35228 "EHLO
-        mail-qk1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729902AbeL1MVK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Dec 2018 07:21:10 -0500
-Received: by mail-qk1-f194.google.com with SMTP id w204so12455720qka.2
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Dec 2018 04:21:09 -0800 (PST)
-To: Florian Weimer <fw@deneb.enyo.de>
-Cc: linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net, libc-alpha@sourceware.org,
-        qemu-devel@nongnu.org, ericvh@gmail.com, lucho@ionkov.net,
-        hpa@zytor.com, arnd@arndb.de
-References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
- <957967d7-5717-8ada-fb30-dfdf19898b6b@linaro.org>
- <87pntmu9iw.fsf@mid.deneb.enyo.de>
- <ae0530c9-5c46-5560-9734-1eacaf173b8d@linaro.org>
- <87k1jtvp8u.fsf@mid.deneb.enyo.de> <87ftuhvp08.fsf@mid.deneb.enyo.de>
-From: Adhemerval Zanella <adhemerval.zanella@linaro.org>
-Subject: Re: d_off field in struct dirent and 32-on-64 emulation
-Message-ID: <4ee7419d-6537-8683-bf40-175cbdc6b484@linaro.org>
-Date: Fri, 28 Dec 2018 10:21:03 -0200
+Return-Path: <SRS0=bs/x=OQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:48902 "EHLO
+        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726045AbeLGSyw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Dec 2018 13:54:52 -0500
+Date: Fri, 7 Dec 2018 10:51:04 -0800
+From: Liu Bo <bo.liu@linux.alibaba.com>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH RFC] Ext4: fix deadlock on dirty pages between fault and
+ writeback
+Message-ID: <20181207185102.2chvdfqwav5z6b7j@US-160370MP2.local>
+Reply-To: bo.liu@linux.alibaba.com
+References: <20181127114249.GH16301@quack2.suse.cz>
+ <20181128201122.r4sec265cnlxgj2x@US-160370MP2.local>
+ <20181129085238.GD31087@quack2.suse.cz>
+ <20181129120253.GR6311@dastard>
+ <20181129130002.GM31087@quack2.suse.cz>
+ <20181129204019.GS6311@dastard>
+ <20181205170656.GJ30615@quack2.suse.cz>
+ <20181207052051.GB6311@dastard>
+ <20181207071615.GO1286@dhcp22.suse.cz>
+ <20181207112036.GA1286@dhcp22.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <87ftuhvp08.fsf@mid.deneb.enyo.de>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-GB
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181207112036.GA1286@dhcp22.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-On 28/12/2018 10:01, Florian Weimer wrote:
-> * Florian Weimer:
+On Fri, Dec 07, 2018 at 12:20:36PM +0100, Michal Hocko wrote:
+> On Fri 07-12-18 08:16:15, Michal Hocko wrote:
+> [...]
+> > Memcg v1 indeed doesn't have any dirty IO throttling and this is a
+> > poor's man workaround. We still do not have that AFAIK and I do not know
+> > of an elegant way around that. Fortunatelly we shouldn't have that many
+> > GFP_KERNEL | __GFP_ACCOUNT allocations under page lock and we can work
+> > around this specific one quite easily. I haven't tested this yet but the
+> > following should work
+> > 
+> > diff --git a/mm/memory.c b/mm/memory.c
+> > index 4ad2d293ddc2..59c98eeb0260 100644
+> > --- a/mm/memory.c
+> > +++ b/mm/memory.c
+> > @@ -2993,6 +2993,16 @@ static vm_fault_t __do_fault(struct vm_fault *vmf)
+> >  	struct vm_area_struct *vma = vmf->vma;
+> >  	vm_fault_t ret;
+> >  
+> > +	/*
+> > +	 * Preallocate pte before we take page_lock because this might lead to
+> > +	 * deadlocks for memcg reclaim which waits for pages under writeback.
+> > +	 */
+> > +	if (!vmf->prealloc_pte) {
+> > +		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm>mm, vmf->address);
+> > +		if (!vmf->prealloc_pte)
+> > +			return VM_FAULT_OOM;
+> > +	}
+> > +
+> >  	ret = vma->vm_ops->fault(vmf);
+> >  	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY |
+> >  			    VM_FAULT_DONE_COW)))
 > 
->> * Adhemerval Zanella:
->>
->>> On 27/12/2018 16:09, Florian Weimer wrote:
->>>> * Adhemerval Zanella:
->>>>
->>>>> Also for glibc standpoint, although reverting it back to use getdents 
->>>>> syscall for non-LFS mode might fix this issue for architectures that
->>>>> provides non-LFS getdents syscall it won't be a fix for architectures 
->>>>> that still provides off_t different than off64_t *and* only provides 
->>>>> getdents64 syscall.
->>>>>
->>>>> Currently we only have nios2 and csky (unfortunately).  But since generic 
->>>>> definition for off_t and off64_t still assumes non-LFS support, all new
->>>>> 32-bits ports potentially might carry the issue.
->>>>
->>>> For csky, we could still change the type of the non-standard d_off
->>>> field to long long int.  This way, only telldir would have to fail
->>>> when truncation is necessary, as mentioned below:
->>>
->>> I think it makes no sense to continue making non-LFS as default for
->>> newer 32 bits ports, the support will be emulated with LFS syscalls.
->>
->> Sorry, I don't see how this matters.  seekdir and telldir are NOT
->> affected by LFS.
-> 
-> Ah, right.  If struct dirent is 64-bit only, then the d_off member
-> will be 64 bits as well.  But it is unclear whether you can use that
-> with lseek (probably yes, in its 64-bit variant), and it's unlikely
-> it's going to work with seekdir because of the POSIX-required long int
-> type.
+> This is too eager to allocate pte even when it is not really needed.
+> Jack has also pointed out that I am missing a write barrier. So here we
+> go with an updated patch. This is essentially what fault around code
+> does.
 > 
 
-I was referring to all other API that uses off_t as well (pread for
-instance), where new ports will have non-LFS variants that will call
-only LFS variants.
+Makes sense to me, unfortunately we don't have a local reproducer to verify it
+and we've disabled CONFIG_MEMCG_KMEM to workaround the problem.  Given the stack
+I put, the patch should address the deadlock at least.
+
+thanks,
+-liubo
+
+> diff --git a/mm/memory.c b/mm/memory.c
+> index 4ad2d293ddc2..1a73d2d4659e 100644
+> --- a/mm/memory.c
+> +++ b/mm/memory.c
+> @@ -2993,6 +2993,17 @@ static vm_fault_t __do_fault(struct vm_fault *vmf)
+>  	struct vm_area_struct *vma = vmf->vma;
+>  	vm_fault_t ret;
+>  
+> +	/*
+> +	 * Preallocate pte before we take page_lock because this might lead to
+> +	 * deadlocks for memcg reclaim which waits for pages under writeback.
+> +	 */
+> +	if (pmd_none(*vmf->pmd) && !vmf->prealloc_pte) {
+> +		vmf->prealloc_pte = pte_alloc_one(vmf->vma->vm>mm, vmf->address);
+> +		if (!vmf->prealloc_pte)
+> +			return VM_FAULT_OOM;
+> +		smp_wmb(); /* See comment in __pte_alloc() */
+> +	}
+> +
+>  	ret = vma->vm_ops->fault(vmf);
+>  	if (unlikely(ret & (VM_FAULT_ERROR | VM_FAULT_NOPAGE | VM_FAULT_RETRY |
+>  			    VM_FAULT_DONE_COW)))
+> -- 
+> Michal Hocko
+> SUSE Labs
