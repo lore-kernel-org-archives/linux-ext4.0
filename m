@@ -1,210 +1,136 @@
-Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:56158 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726353AbeLFXKX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 18:10:23 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: linux-fsdevel@vger.kernel.org, kernel@collabora.com,
-        linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 20/23] ext4: Include encoding information in the superblock
-Date: Thu,  6 Dec 2018 18:09:00 -0500
-Message-Id: <20181206230903.30011-21-krisman@collabora.com>
-In-Reply-To: <20181206230903.30011-1-krisman@collabora.com>
-References: <20181206230903.30011-1-krisman@collabora.com>
+Return-Path: <SRS0=oRRr=OR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:43786 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726237AbeLHGxE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2018 01:53:04 -0500
+Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wB86mON4108399
+        for <linux-ext4@vger.kernel.org>; Sat, 8 Dec 2018 01:53:03 -0500
+Received: from e16.ny.us.ibm.com (e16.ny.us.ibm.com [129.33.205.206])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2p88q2rmp3-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2018 01:53:02 -0500
+Received: from localhost
+        by e16.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Sat, 8 Dec 2018 06:53:01 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
+        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
+        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
+        deanbo422@gmail.com, schwidefsky@de.ibm.com,
+        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
+        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
+Subject: [PATCH V3 6/9] f2fs: use IS_VERITY() to check inode's fsverity status
+Date: Sat,  8 Dec 2018 12:21:41 +0530
+In-Reply-To: <20181208065144.19486-1-chandan@linux.vnet.ibm.com>
+References: <20181208065144.19486-1-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Message-Id: <20181208065144.19486-7-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+This commit removes the f2fs specific f2fs_verity_file() and makes use
+of the generic IS_VERITY() macro or file_is_verity() to check for the
+verity status of an inode.
 
-Support for encoding is considered an incompatible feature, since it has
-potential to create collisions of file names in existing filesystems.
-If the feature flag is not enabled, the entire filesystem will operate
-on opaque byte sequences, respecting the original behavior.
-
-The charset data is encoded in a new field in the superblock using a
-magic number specific to ext4.  This is the easiest way I found to avoid
-writing the name of the charset in the superblock.  The magic number is
-mapped to the exact NLS table, but the mapping is specific to ext4.
-Since we don't have any commitment to support old encodings, the only
-encodings I am supporting right now is utf8-11.0 and ascii, both
-using the NLS abstraction.
-
-The current implementation prevents the user from enabling encoding and
-per-directory encryption on the same filesystem at the same time.  The
-incompatibility between these features lies in how we do efficient
-directory searches when we cannot be sure the encryption of the user
-provided fname will match the actual hash stored in the disk without
-decrypting every directory entry, because of normalization cases.  My
-quickest solution is to simply block the concurrent use of these
-features for now, and enable it later, once we have a better solution.
-
-Changes since v2:
-  - Split superblock bitfield reservation into another patch.
-  - Rename s_ioencoding -> s_encoding
-  - Remove encoding_info from in-memory superblock.
-
-Changes since v1:
-  - Guard code with CONFIG_NLS.
-  - Use 16 bits for s_ioencoding.
-  - Split mount option from this patch
-
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
- fs/ext4/ext4.h  |  7 +++++
- fs/ext4/super.c | 77 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 84 insertions(+)
+ fs/f2fs/f2fs.h  | 7 +------
+ fs/f2fs/file.c  | 6 +++---
+ fs/f2fs/inode.c | 4 +++-
+ fs/f2fs/super.c | 1 +
+ 4 files changed, 8 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 52c9e8b948a0..c21717a19106 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1338,6 +1338,9 @@ struct ext4_super_block {
- /* Number of quota types we support */
- #define EXT4_MAXQUOTAS 3
- 
-+#define EXT4_ENC_ASCII		0
-+#define EXT4_ENC_UTF8_11_0	1
-+
- /*
-  * fourth extended-fs super-block data in memory
-  */
-@@ -1387,6 +1390,10 @@ struct ext4_sb_info {
- 	struct kobject s_kobj;
- 	struct completion s_kobj_unregister;
- 	struct super_block *s_sb;
-+#ifdef CONFIG_NLS
-+	struct nls_table *s_encoding;
-+	__u16 s_encoding_flags;
-+#endif
- 
- 	/* Journaling */
- 	struct journal_s *s_journal;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 53ff6c2a26ed..e64a9ed2ca12 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -42,6 +42,7 @@
- #include <linux/cleancache.h>
- #include <linux/uaccess.h>
- #include <linux/iversion.h>
-+#include <linux/nls.h>
- 
- #include <linux/kthread.h>
- #include <linux/freezer.h>
-@@ -1022,6 +1023,9 @@ static void ext4_put_super(struct super_block *sb)
- 		crypto_free_shash(sbi->s_chksum_driver);
- 	kfree(sbi->s_blockgroup_lock);
- 	fs_put_dax(sbi->s_daxdev);
-+#ifdef CONFIG_NLS
-+	unload_nls(sbi->s_encoding);
-+#endif
- 	kfree(sbi);
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index f9c8b0afc1de..54bd93c7b630 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -3448,18 +3448,13 @@ static inline void f2fs_set_encrypted_inode(struct inode *inode)
+ #endif
  }
  
-@@ -1716,6 +1720,37 @@ static const struct mount_opts {
- 	{Opt_err, 0, 0}
- };
+-static inline bool f2fs_verity_file(struct inode *inode)
+-{
+-	return file_is_verity(inode);
+-}
+-
+ /*
+  * Returns true if the reads of the inode's data need to undergo some
+  * postprocessing step, like decryption or authenticity verification.
+  */
+ static inline bool f2fs_post_read_required(struct inode *inode)
+ {
+-	return f2fs_encrypted_file(inode) || f2fs_verity_file(inode);
++	return f2fs_encrypted_file(inode) || IS_VERITY(inode);
+ }
  
-+#ifdef CONFIG_NLS
-+static const struct ext4_sb_encodings {
-+	__u16 magic;
-+	char *name;
-+	char *version;
-+} ext4_sb_encoding_map[] = {
-+	{EXT4_ENC_ASCII, "ascii", NULL},
-+	{EXT4_ENC_UTF8_11_0, "utf8", "11.0.0"},
-+};
-+
-+static int ext4_sb_read_encoding(const struct ext4_super_block *es,
-+				 const struct ext4_sb_encodings **encoding,
-+				 __u16 *flags)
-+{
-+	__u16 magic = le16_to_cpu(es->s_encoding);
-+	int i;
-+
-+	for (i = 0; i < ARRAY_SIZE(ext4_sb_encoding_map); i++)
-+		if (magic == ext4_sb_encoding_map[i].magic)
-+			break;
-+
-+	if (i >= ARRAY_SIZE(ext4_sb_encoding_map))
-+		return -EINVAL;
-+
-+	*encoding = &ext4_sb_encoding_map[i];
-+	*flags = le16_to_cpu(es->s_encoding_flags);
-+
-+	return 0;
-+}
-+#endif
-+
- static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 			    substring_t *args, unsigned long *journal_devnum,
- 			    unsigned int *journal_ioprio, int is_remount)
-@@ -3534,6 +3569,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	int err = 0;
- 	unsigned int journal_ioprio = DEFAULT_JOURNAL_IOPRIO;
- 	ext4_group_t first_not_zeroed;
-+#ifdef CONFIG_NLS
-+	struct nls_table *encoding;
-+	const struct ext4_sb_encodings *encoding_info;
-+	__u16 nls_flags;
-+#endif
+ #define F2FS_FEATURE_FUNCS(name, flagname) \
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 6c7ad15000b9..2eb4821d95d1 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -491,7 +491,7 @@ static int f2fs_file_open(struct inode *inode, struct file *filp)
+ 	if (err)
+ 		return err;
  
- 	if ((data && !orig_data) || !sbi)
- 		goto out_free_base;
-@@ -3706,6 +3746,38 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			   &journal_ioprio, 0))
- 		goto failed_mount;
+-	if (f2fs_verity_file(inode)) {
++	if (IS_VERITY(inode)) {
+ 		err = fsverity_file_open(inode, filp);
+ 		if (err)
+ 			return err;
+@@ -701,7 +701,7 @@ int f2fs_getattr(const struct path *path, struct kstat *stat,
+ 	struct f2fs_inode *ri;
+ 	unsigned int flags;
  
-+#ifdef CONFIG_NLS
-+	if (ext4_has_feature_fname_encoding(sb) && !sbi->s_encoding) {
-+		if (ext4_has_feature_encrypt(sb)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Can't mount with both encoding and encryption");
-+			goto failed_mount;
-+		}
-+
-+		if (ext4_sb_read_encoding(es, &encoding_info, &nls_flags)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Encoding requested by superblock is unknown");
-+			goto failed_mount;
-+		}
-+
-+		encoding = load_nls_version(encoding_info->name,
-+					    encoding_info->version, nls_flags);
-+		if (IS_ERR(encoding)) {
-+			ext4_msg(sb, KERN_ERR, "can't mount with superblock charset: "
-+				 "%s-%s not supported by the kernel. flags: 0x%x",
-+				 encoding_info->name, encoding_info->version,
-+				 nls_flags);
-+			goto failed_mount;
-+		}
-+		ext4_msg(sb, KERN_INFO,"Using encoding defined by superblock: "
-+			 "%s-%s with flags 0x%hx", encoding_info->name,
-+			 encoding_info->version?:"\b", nls_flags);
-+
-+		sbi->s_encoding = encoding;
-+		sbi->s_encoding_flags = nls_flags;
-+	}
-+#endif
-+
- 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
- 		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting "
- 			    "with data=journal disables delayed "
-@@ -4547,6 +4619,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- failed_mount:
- 	if (sbi->s_chksum_driver)
- 		crypto_free_shash(sbi->s_chksum_driver);
-+
-+#ifdef CONFIG_NLS
-+	unload_nls(sbi->s_encoding);
-+#endif
-+
- #ifdef CONFIG_QUOTA
- 	for (i = 0; i < EXT4_MAXQUOTAS; i++)
- 		kfree(sbi->s_qf_names[i]);
+-	if (f2fs_verity_file(inode)) {
++	if (IS_VERITY(inode)) {
+ 		/*
+ 		 * For fs-verity we need to override i_size with the original
+ 		 * data i_size.  This requires I/O to the file which with
+@@ -800,7 +800,7 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (err)
+ 		return err;
+ 
+-	if (f2fs_verity_file(inode)) {
++	if (IS_VERITY(inode)) {
+ 		err = fsverity_prepare_setattr(dentry, attr);
+ 		if (err)
+ 			return err;
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index d731d23aedee..ff9126616d65 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -45,9 +45,11 @@ void f2fs_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_DIRSYNC;
+ 	if (file_is_encrypt(inode))
+ 		new_fl |= S_ENCRYPTED;
++	if (file_is_verity(inode))
++		new_fl |= S_VERITY;
+ 	inode_set_flags(inode, new_fl,
+ 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|
+-			S_ENCRYPTED);
++			S_ENCRYPTED|S_VERITY);
+ }
+ 
+ static void __get_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 4287cf348d3c..73320202bd01 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -2207,6 +2207,7 @@ static int f2fs_set_verity(struct inode *inode, loff_t data_i_size)
+ 		return err;
+ 
+ 	file_set_verity(inode);
++	f2fs_set_inode_flags(inode);
+ 	f2fs_mark_inode_dirty_sync(inode, true);
+ 	return 0;
+ }
 -- 
-2.20.0.rc2
+2.19.1
