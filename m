@@ -1,59 +1,61 @@
-Return-Path: <SRS0=0ehA=O2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:37228 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387905AbeLQQtu (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Dec 2018 11:49:50 -0500
-Date: Mon, 17 Dec 2018 08:49:49 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181217164949.GA18626@infradead.org>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-2-ebiggers@kernel.org>
- <20181212091406.GA31723@infradead.org>
- <20181212202609.GA193967@gmail.com>
- <20181213202249.GA3797@infradead.org>
- <20181214044802.GA681@sol.localdomain>
+Return-Path: <SRS0=oRRr=OR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:36986 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726172AbeLHSgv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 8 Dec 2018 13:36:51 -0500
+Date: Sat, 8 Dec 2018 13:36:37 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc: linux-ext4@vger.kernel.org, kernel@collabora.com
+Subject: Re: [PATCH] e2p: Print encoding information in superblock dump
+Message-ID: <20181208183637.GD20708@thunk.org>
+References: <20181204211609.27477-1-krisman@collabora.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181214044802.GA681@sol.localdomain>
+In-Reply-To: <20181204211609.27477-1-krisman@collabora.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 13, 2018 at 08:48:03PM -0800, Eric Biggers wrote:
-> Sure, those specific people (modulo you just now) haven't responded to the
-> fs-verity patches yet.  But again, the patches have been out for review for
-> months.  Of course, we always prefer more reviews over fewer, and we strongly
-> encourage anyone interested to review fs-verity!  (The Documentation/ file may
-> be a good place to start.)  But ultimately we cannot force reviews, and as you
-> know kernel reviews can be very hard to come by.  Yet, people still need
-> fs-verity anyway; it isn't just some toy.  And we're committed to maintaining
-> it, similar to fscrypt.  The ext4 and f2fs maintainers are also satisfied with
-> the current approach to storing the verity metadata past EOF; in fact it was
-> even originally Ted's idea, I think.
+On Tue, Dec 04, 2018 at 04:16:09PM -0500, Gabriel Krisman Bertazi wrote:
+> diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
+> index a7586e094da1..bb1fc8aa94da 100644
+> --- a/lib/e2p/ls.c
+> +++ b/lib/e2p/ls.c
+    ....
+> +	if (encoding == EXT4_ENC_UTF8_11_0) {
+> +		if (flags & EXT4_UTF8_NORMALIZATION_TYPE_NFKD)
+> +			fputs(" NFKD", f);
+> +		else
+> +			fputs(" Unnormalized", f);
+> +		flags_found++;
+> +
+> +		if (flags & EXT4_UTF8_CASEFOLD_TYPE_NFKDCF)
+> +			fputs(" NFKDCF", f);
+> +		else
+> +			fputs(" toUpper", f);
+> +		flags_found++;
+> +	}
 
-But you also can't force inclusion.  And Linus just recently complained
-about merging common code patches through trees for a specific fs
-without proper VFS ACKs.  And that was a for a case without userspace
-ABI implications, so we really need a much better review here.
+I don't understand this.  Why is "toUpper" the opposite of
+"CASEFOLD_TYPE_NFKDCF"?  From what I can tell looking at the kernel
+patches, it appears that if CASEFOLD_TYPE_NFKDCF is not specified, no
+case folding is done at all.  And it appears the opposite of "toupper"
+is "tolower" --- for ASCII case folding.
 
-Including a VFS person ACK, CC to linux-abi and man pages for the
-interface.
+More generally, we don't have a way of setting these flags, and I'm
+wondering if we should just make a decision and be done with it.
+After all, without any way of changing the flags, there's only one
+code path that is going to be well tested, and realistically user
+programs will come to *expect* only one way file systems will do
+things.  The MacOS world has discovered the hard way what happens if
+they try to change normalization conventions from one to another,
+leading to all sorts of confusion for application programmers.
 
-> > Given that you alread use an ioctl as the interface what is the problem
-> > of passing this data through the ioctl?
-> 
-> Do you mean pass the verity metadata in a buffer?  That cannot work in general,
-> because it may be too large to fit into memory.
+So perhaps we should just remove these flags from the superblock, and
+only support one way of doing things.  We ask the opinion of various
+stake-holders --- the Samba folks, fsdevel, Steam, etc.  But whether
+we decide NFC, NFD, NFKC or NFKD, I suspect we'll be better off just
+picking one and only one way of doing things.   WDYT?
 
-Have a pointer in the ioctl and do get_user_pages on it.
+	    	     	     	      		- Ted
