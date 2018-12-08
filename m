@@ -1,71 +1,73 @@
-Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:46966 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726406AbeLLEI2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Dec 2018 23:08:28 -0500
-Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC3xAu7047883
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:08:27 -0500
-Received: from e15.ny.us.ibm.com (e15.ny.us.ibm.com [129.33.205.205])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2parkwn2h3-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:08:27 -0500
-Received: from localhost
-        by e15.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Wed, 12 Dec 2018 04:08:26 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
-        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
-        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
-        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
-        deanbo422@gmail.com, schwidefsky@de.ibm.com,
-        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
-        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
-Subject: [PATCH V4 4/9] Add S_VERITY and IS_VERITY()
-Date: Wed, 12 Dec 2018 09:37:31 +0530
-In-Reply-To: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
-References: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=oRRr=OR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lj1-f193.google.com ([209.85.208.193]:43177 "EHLO
+        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726115AbeLHXAH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2018 18:00:07 -0500
+Received: by mail-lj1-f193.google.com with SMTP id 83-v6so6499247ljf.10
+        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2018 15:00:06 -0800 (PST)
+Received: from mail-lj1-f172.google.com (mail-lj1-f172.google.com. [209.85.208.172])
+        by smtp.gmail.com with ESMTPSA id c203sm1306798lfe.95.2018.12.08.15.00.04
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sat, 08 Dec 2018 15:00:04 -0800 (PST)
+Received: by mail-lj1-f172.google.com with SMTP id x85-v6so6527273ljb.2
+        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2018 15:00:04 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Message-Id: <20181212040736.2849-5-chandan@linux.vnet.ibm.com>
+References: <20181206230903.30011-1-krisman@collabora.com> <20181208194128.GE20708@thunk.org>
+ <CAHk-=wg2JvjXfdZ8K5Tv3vm6+bKRedotF5cr5AwVZVBypVfdAQ@mail.gmail.com> <CAHk-=wg9J+9H4kvzF0SmBP_CoSrBTxPc6xMRJKb3fDnOUs0DNw@mail.gmail.com>
+In-Reply-To: <CAHk-=wg9J+9H4kvzF0SmBP_CoSrBTxPc6xMRJKb3fDnOUs0DNw@mail.gmail.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sat, 8 Dec 2018 14:59:47 -0800
+Message-ID: <CAHk-=wj62vGn5TeGDaPn41mev97VnA7px+R1Xor8+Ai_WmhQ9Q@mail.gmail.com>
+Subject: Re: [PATCH v4 00/23] Ext4 Encoding and Case-insensitive support
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        kernel@collabora.com, linux-ext4@vger.kernel.org,
+        krisman@collabora.com
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Similar to S_ENCRYPTED/IS_ENCRYPTED(), this commit adds
-S_VERITY/IS_VERITY() to be able to check if a VFS inode has verity
-information associated with it.
+On Sat, Dec 8, 2018 at 1:58 PM Linus Torvalds
+<torvalds@linux-foundation.org> wrote:
+>
+> I'm hoping you are at least doing it per-directory. That makes at
+> least the "oh, the whole filesystem needs to do this wrong" issue a
+> bit less bad.
 
-Reviewed-by: Eric Biggers <ebiggers@google.com>
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
----
- include/linux/fs.h | 2 ++
- 1 file changed, 2 insertions(+)
+So for example, if you do it per-directory, the rules could be something like:
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 389a35e028bf..de602d9f8d0e 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1938,6 +1938,7 @@ struct super_operations {
- #define S_DAX		0	/* Make all the DAX code disappear */
- #endif
- #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
-+#define S_VERITY	32768	/* Verity file (using fs/verity/) */
- 
- /*
-  * Note that nosuid etc flags are inode-specific: setting some file-system
-@@ -1978,6 +1979,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
- #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
- #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
- #define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
-+#define IS_VERITY(inode)	((inode)->i_flags & S_VERITY)
- 
- #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
- 				 (inode)->i_rdev == WHITEOUT_DEV)
--- 
-2.19.1
+ - new directories (ie "mkdir()") inherit the icase/folding semantics
+of the parent directory
+
+ - empty directories can have their case/folding rules changed with
+some well-defined interface
+
+and even from just those simple rules, now some icase behavior could
+be useful to testing.
+
+Not just filesystem testing (although that would be a thing - thing
+fsstress), but for doing app development in a test directory.
+
+Apps like git (and GNU fileutils) could use it for having test suites
+for FAT etc filesystems.
+
+And cross-platform apps could use it as a "I want to check that I do
+the right thing" if you do development on Linux, but might have a
+portable app for other platforms.
+
+If the whole filesystem is that way, nobody is going to do it. Sure,
+they could do it on a FAT filesystem using a USB disk, but nobody
+really does that. But if you can troivially just run your tests in a
+test subdirectory, it's another thing entirely.
+
+So this is the kind of thing I mean when I think icase behavior for a
+major Linux filesystem should have a real _design_. It's really quite
+fundamentally different from the "oh, I need FAT to be icase" hack
+that we have now.
+
+(We might also be able to make the dcache better at handling
+well-defined icase/folding rules, as opposed to the current "just give
+up, let the filesystem hash it" behavior).
+
+              Linus
