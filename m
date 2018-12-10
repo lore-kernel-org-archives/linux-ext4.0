@@ -1,70 +1,82 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:38210 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725535AbeLBSTP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 13:19:15 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 96D752A85F
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 18:19:12 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 18:19:11 +0000
-Message-ID: <bug-201685-13602-dqHvOLHx8p@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=P4kf=OT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga05-in.huawei.com ([45.249.212.191]:15668 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726292AbeLJJ0P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 10 Dec 2018 04:26:15 -0500
+Subject: Re: [PATCH] ext4: fix unsafe extent initialization
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+References: <20181208142558.47955-1-yi.zhang@huawei.com>
+ <20181210051037.GG1840@mit.edu>
+CC: <linux-ext4@vger.kernel.org>, <miaoxie@huawei.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+Message-ID: <38cb83c5-600b-c523-8006-5aab0a3eb9b0@huawei.com>
+Date: Mon, 10 Dec 2018 17:26:07 +0800
 MIME-Version: 1.0
+In-Reply-To: <20181210051037.GG1840@mit.edu>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
-
---- Comment #153 from James Courtier-Dutton (James@superbug.co.uk) ---
-(In reply to Theodore Tso from comment #127)
+On 2018/12/10 13:10, Theodore Y. Ts'o Wrote:
+> On Sat, Dec 08, 2018 at 10:25:58PM +0800, zhangyi (F) wrote:
+>> Current ext4 will call ext4_ext_convert_to_initialized() to split and
+>> initialize an unwritten extent if someone write something to it. It may
+>> also zeroout the nearby blocks and expand the split extent if the
+>> allocated extent is fully inside i_size or new_size. But it may lead to
+>> inode inconsistency when system crash or the power fails.
+>>
+>> Consider the following case:
+>>  - Create an empty file and buffer write from block A to D (with delay
+>>    allocate). It will update the i_size to D.
+>>  - Zero range from part of block B to D. It will allocate an unwritten
+>>    extent from B to D.
+>>  - The write back worker write block B and initialize the unwritten
+>>    extent from B to D, and then update the i_disksize to B.
+>>  - System crash.
+>>  - Remount and fsck complain about the extent size exceeds the inode
+>>    size.
+>>
+>> This patch add checking i_disksize and chose the small one between
+>> i_size to make sure it's safe to convert extent to initialized.
+>>
+>> ---------------------
+>>
+>> This problem can reproduce by xfstests generic/482 with fsstress seed
+>> 1544025012.
 > 
-> While there have been a few people who have reported problems with the
-> contents of their files, the vast majority of people are reporting problems
-> that seem to include complete garbage being written into metadata blocks ---
-> i.e., completely garbage in to inode table, block group descriptor, and
-> superblocks.    This is getting detected by the kernel noticing corruption,
-> or by e2fsck running and noticing that the file system metadata is
-> inconsistent.   More modern ext4 file systems have metadata checksum turned
-> on, but the reports from e2fsck seem to indicate that complete garbage (or,
-> more likely, data meant for block XXX is getting written to block YYY); as
-> such, the corruption is not subtle, so generally the kernel doesn't need
-> checksums to figure out that the metadata blocks are nonsensical.
+> Hmm, your explanation is great and the patch makes sense.  I haven't
+> been able to reproduce the problem by adding -s 1544025012 to the
+> fsstress arguments.  This may be because fsstress being run with two
+> processes (-p 2) and the failure may be timing dependent?
 > 
+Yes, it is timing dependent and not quite easy to make a simple fast reproducer.
+The default parameter of fsstress (tested by generic/482) on my machine is:
 
-Is it possible to determine the locality of these corruptions?
-I.e. Is the corruption to a contiguous page of data (e.g. 4096 bytes corrupted)
-or is the corruption scattered, a few bytes here, a few bytes there?
->From your comment about "data meant for block XXX is getting written to block
-YYY" can I assume this is fact, or is it still TBD?
+./ltp/fsstress -w -d /mnt/scratch -n 512 -p 8 -s 1544025012 -v
 
-If it is contiguous data, is there any pattern to the data that would help us
-identify where it came from?
+> How easily can you replicate the problem?
 
-Maybe that would help work out where the corruption was coming from.
-Maybe it is DMA from some totally unrelated device driver, but by looking at
-the data, we might determine which device driver it is?
-It might be some vulnerability in the kernel that some hacker is trying to
-exploit, but unsuccessfully, resulting in corruption. This could explain the
-reason why more people are not seeing the problem.
+It is about 2~5% probability to replicate this problem under generic/482 on my
+machine, and it can also appear in generic/019 and generic/455.
 
-Some people reporting that the corruptions are not getting persisted to disk in
-all cases, might imply that the corruption is happening outside the normal code
-paths, because the normal code path would have tagged the change as needing
-flushing to disk at some point.
+After reproducing and checking this problem again, I think the above explanation
+is not accurate. I simplify the running process in generic/482 and the real case
+could be:
 
-Looking at the corrupted data would also tell us if values are within expected
-ranges, that the normal code path would have validated. If they are outside
-those ranges, then it would again imply that the corrupt data is not being
-written by the normal ext4 code path, thus further implying that there is not a
-bug in the ext4 code, but something else in the kernel is writing to it by
-mistake.
+ - Create an empty file and buffer write from block A to D (with delay allocate).
+ - Buffer write from X to Z, now the i_size of this inode is updated to Z.
+ - Zero range from part of block B to D, it will allocate an unwritten extent
+   from B to D. Note that it also will skip disksize update in
+   ext4_zero_range() -> ext4_update_disksize_before_punch() because the i_size
+   is large than the end of this zero range.
+ - The write back kworker write block B and initialize the whole unwritten
+   extent from B to D, and then update the i_disksize to the end of B.
+ - ext4_journal_stop()
+ - kjournald2 process weakup and call jbd2_journal_commit_transaction() to commit
+   journal and send FUA.
+ - System crash.
+ - System reboot and fsck complain about the extent size exceeds the inode size.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks,
+Yi.
