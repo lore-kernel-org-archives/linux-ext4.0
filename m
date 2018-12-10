@@ -1,32 +1,34 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:60634 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725710AbeLBUri (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 15:47:38 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A30732A77F
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 20:47:34 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 20:47:33 +0000
-Message-ID: <bug-201685-13602-ZDz3o04gOj@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=P4kf=OT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:41090 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726422AbeLJGGo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 10 Dec 2018 01:06:44 -0500
+Date: Mon, 10 Dec 2018 01:06:10 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org, adilger.kernel@dilger.ca,
+        ebiggers@kernel.org, jaegeuk@kernel.org, yuchao0@huawei.com,
+        corbet@lwn.net, ralf@linux-mips.org, paul.burton@mips.com,
+        jhogan@kernel.org, green.hu@gmail.com, deanbo422@gmail.com,
+        schwidefsky@de.ibm.com, heiko.carstens@de.ibm.com, richard@nod.at,
+        dedekind1@gmail.com, adrian.hunter@intel.com,
+        viro@zeniv.linux.org.uk
+Subject: Re: [PATCH V3 0/9] Remove fs specific fscrypt and fsverity build
+ config options
+Message-ID: <20181210060610.GJ1840@mit.edu>
+References: <20181208065144.19486-1-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20181208065144.19486-1-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+Chandan,
 
---- Comment #166 from Jukka Santala (donwulff@nic.fi) ---
-However, at least here:
-cat /proc/version
-Linux version 4.19.6-041906-generic (kernel@gloin) (gcc version 8.2.0 (Ubuntu
-8.2.0-9ubuntu1)) #201812010432 SMP Sat Dec 1 09:34:07 UTC 2018
+Thanks!  I've applied this patch series to the fscrypt git tree.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+	      	      	   	 	- Ted
