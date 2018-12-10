@@ -1,111 +1,47 @@
 Return-Path: <SRS0=P4kf=OT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:35228 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727190AbeLJSE0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 10 Dec 2018 13:04:26 -0500
-Date: Mon, 10 Dec 2018 10:04:22 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
-        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
-        corbet@lwn.net, ralf@linux-mips.org, paul.burton@mips.com,
-        jhogan@kernel.org, green.hu@gmail.com, deanbo422@gmail.com,
-        schwidefsky@de.ibm.com, heiko.carstens@de.ibm.com, richard@nod.at,
-        dedekind1@gmail.com, adrian.hunter@intel.com,
-        viro@zeniv.linux.org.uk
-Subject: Re: [PATCH V2 3/7] fscrypt: remove filesystem specific build config
- option
-Message-ID: <20181210180422.GC92174@gmail.com>
-References: <20181204095650.12562-1-chandan@linux.vnet.ibm.com>
- <20181204095650.12562-4-chandan@linux.vnet.ibm.com>
- <20181204234320.GC70682@gmail.com>
- <2062340.ny9MuQaG0V@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <2062340.ny9MuQaG0V@localhost.localdomain>
+Received: from mailout4.samsung.com ([203.254.224.34]:23530 "EHLO
+        mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727080AbeLJMwt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Dec 2018 07:52:49 -0500
+From: Kanchan Joshi <joshi.k@samsung.com>
+To: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Cc: tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.com,
+        viro@zeniv.linux.org.uk, darrick.wong@oracle.com, axboe@kernel.dk,
+        jrdr.linux@gmail.com, ebiggers@google.com,
+        jooyoung.hwang@samsung.com, chur.lee@samsung.com,
+        prakash.v@samsung.com, Kanchan Joshi <joshi.k@samsung.com>
+Subject: [PATCH 0/2] fs,ext4,jbd2: Specifying write-hint for Ext4 journal
+Date: Mon, 10 Dec 2018 18:20:02 +0530
+Message-id: <1544446204-5291-1-git-send-email-joshi.k@samsung.com>
+References: <CGME20181210125245epcas2p202bc4336e91a55cee3786ed6abffea05@epcas2p2.samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 08, 2018 at 12:37:20PM +0530, Chandan Rajendra wrote:
-> On Wednesday, December 5, 2018 5:13:21 AM IST Eric Biggers wrote:
-> > Hi Chandan,
-> > 
-> > On Tue, Dec 04, 2018 at 03:26:46PM +0530, Chandan Rajendra wrote:
-> > > In order to have a common code base for fscrypt "post read" processing
-> > > for all filesystems which support encryption, this commit removes
-> > > filesystem specific build config option (e.g. CONFIG_EXT4_FS_ENCRYPTION)
-> > > and replaces it with a build option (i.e. CONFIG_FS_ENCRYPTION) whose
-> > > value affects all the filesystems making use of fscrypt.
-> > > 
-> > > Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-> > [...]
-> > > -config F2FS_FS_ENCRYPTION
-> > > -	bool "F2FS Encryption"
-> > > -	depends on F2FS_FS
-> > > -	depends on F2FS_FS_XATTR
-> > > -	select FS_ENCRYPTION
-> > > -	help
-> > > -	  Enable encryption of f2fs files and directories.  This
-> > > -	  feature is similar to ecryptfs, but it is more memory
-> > > -	  efficient since it avoids caching the encrypted and
-> > > -	  decrypted pages in the page cache.
-> > > -
-> > [...]
-> > > -config UBIFS_FS_ENCRYPTION
-> > > -	bool "UBIFS Encryption"
-> > > -	depends on UBIFS_FS && UBIFS_FS_XATTR && BLOCK
-> > > -	select FS_ENCRYPTION
-> > > -	default n
-> > > -	help
-> > > -	  Enable encryption of UBIFS files and directories. This
-> > > -	  feature is similar to ecryptfs, but it is more memory
-> > > -	  efficient since it avoids caching the encrypted and
-> > > -	  decrypted pages in the page cache.
-> > 
-> > Will it cause problems that now f2fs encryption can be "enabled" without
-> > F2FS_FS_XATTR, and ubifs encryption without UBIFS_FS_XATTR && BLOCK?
-> > 
-> > Otherwise I think this patch looks fine.  I'm a bit concerned about the bloat
-> > from making FS_ENCRYPTION non-modular, but given that it will make sharing I/O
-> > code much easier, it's probably worthwhile.
-> > 
-> > It would help to strip down the dependencies of FS_ENCRYPTION to just the stuff
-> > needed for just AES-256-XTS and AES-256-CTS.  I already sent out a patch a
-> > couple months ago (https://patchwork.kernel.org/patch/10589319/) to remove
-> > CONFIG_CTR which isn't used at all; I'll remind Ted to apply that.  But we could
-> > also drop CONFIG_SHA256, which is only needed for AES-128-CBC contents
-> > encryption.  If we do that, it should be a separate patch, though.
-> 
-> Hi Eric,
-> 
-> fscrypt_valid_enc_modes() allows FS_ENCRYPTION_MODE_AES_128_CBC to be used for
-> encryption of file's contents. This is consistent with what you had mentioned
-> above.
-> 
-> static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
->                                            u32 filenames_mode)
-> {
->         if (contents_mode == FS_ENCRYPTION_MODE_AES_128_CBC &&
->             filenames_mode == FS_ENCRYPTION_MODE_AES_128_CTS)
->                 return true;
-> 
->         if (contents_mode == FS_ENCRYPTION_MODE_AES_256_XTS &&
->             filenames_mode == FS_ENCRYPTION_MODE_AES_256_CTS)
->                 return true;
-> 
->         return false;
-> }
-> 
-> Hence FS_ENCRYPTION does need to have AES-128-CBC and by extension SHA256 code
-> compiled in right? 
-> 
+For NAND-based SSDs, mixing of data with different life-time reduces            
+efficiency of garbage-collection. During FS operations, series of journal       
+updates will follow/precede series of data/meta updates, causing intermixing    
+inside SSD. By passing a write-hint (a.k.a stream) with journal, its writes     
+can be isolated from other meta/data writes, leading to performance/endurance   
+benefit on multi-stream SSD.                                                    
+This is described in greater detail (along with results) in this "FAST 2018"    
+paper - https://www.usenix.org/system/files/conference/fast18/fast18-rho.pdf    
+                                                                                
+This patch is split into two parts. First patch introduces APIs to send         
+write-hint with buffer-head. Second one implement "journal_writehint" mount     
+option (inspired from "journal_ioprio") in Ext4/JBD2.
 
-No those algorithms don't have to be compiled in if userspace doesn't use the
-(FS_ENCRYPTION_MODE_AES_128_CBC, FS_ENCRYPTION_MODE_AES_128_CTS) pair, because
-the algorithms are allocated dynamically on-demand through the crypto API.
+Kanchan Joshi (2):
+  fs: introduce APIs to enable sending write-hint with buffer-head
+  fs/ext4,jbd2: Add support for passing write-hint with journal.
 
-- Eric
+ fs/buffer.c                 | 21 +++++++++++++++++++++
+ fs/ext4/super.c             | 33 +++++++++++++++++++++++++++------
+ fs/jbd2/commit.c            | 11 +++++++----
+ fs/jbd2/journal.c           |  2 +-
+ fs/jbd2/revoke.c            |  2 +-
+ include/linux/buffer_head.h |  3 +++
+ include/linux/jbd2.h        |  7 +++++++
+ 7 files changed, 67 insertions(+), 12 deletions(-)
+
+-- 
+2.7.4
