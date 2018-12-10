@@ -1,53 +1,53 @@
-Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:37910 "EHLO mail.kernel.org"
+Return-Path: <SRS0=P4kf=OT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:40960 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726554AbeLKOQH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Dec 2018 09:16:07 -0500
+        id S1726303AbeLJFKl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 10 Dec 2018 00:10:41 -0500
+Date: Mon, 10 Dec 2018 00:10:37 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: "zhangyi (F)" <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, miaoxie@huawei.com
+Subject: Re: [PATCH] ext4: fix unsafe extent initialization
+Message-ID: <20181210051037.GG1840@mit.edu>
+References: <20181208142558.47955-1-yi.zhang@huawei.com>
 MIME-Version: 1.0
-From: Krzysztof Kozlowski <krzk@kernel.org>
-Date: Tue, 11 Dec 2018 15:15:53 +0100
-Message-ID: <CAJKOXPdNS+Qs6t1GwrgYhWT5EbtORJwYMzSrDPf8oAxv7ndNBg@mail.gmail.com>
-Subject: [BUG BISECT next] Files cannot be opened after "fsverity: Move verity
- status check to fsverity_file_open"
-To: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
-        Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20181208142558.47955-1-yi.zhang@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Sat, Dec 08, 2018 at 10:25:58PM +0800, zhangyi (F) wrote:
+> Current ext4 will call ext4_ext_convert_to_initialized() to split and
+> initialize an unwritten extent if someone write something to it. It may
+> also zeroout the nearby blocks and expand the split extent if the
+> allocated extent is fully inside i_size or new_size. But it may lead to
+> inode inconsistency when system crash or the power fails.
+> 
+> Consider the following case:
+>  - Create an empty file and buffer write from block A to D (with delay
+>    allocate). It will update the i_size to D.
+>  - Zero range from part of block B to D. It will allocate an unwritten
+>    extent from B to D.
+>  - The write back worker write block B and initialize the unwritten
+>    extent from B to D, and then update the i_disksize to B.
+>  - System crash.
+>  - Remount and fsck complain about the extent size exceeds the inode
+>    size.
+> 
+> This patch add checking i_disksize and chose the small one between
+> i_size to make sure it's safe to convert extent to initialized.
+> 
+> ---------------------
+> 
+> This problem can reproduce by xfstests generic/482 with fsstress seed
+> 1544025012.
 
-Bisect from today's next pointed me to:
-commit 4de97efb578a094e8fbf279522d41eb9ece1e3e0
-Author: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Date:   Sat Dec 8 12:21:43 2018 +0530
-    fsverity: Move verity status check to fsverity_file_open
+Hmm, your explanation is great and the patch makes sense.  I haven't
+been able to reproduce the problem by adding -s 1544025012 to the
+fsstress arguments.  This may be because fsstress being run with two
+processes (-p 2) and the failure may be timing dependent?
 
-as a reason of "Operation not supported" when reading any file from
-mounted ext4fs (from SD card). Rootfs from nfsroot works but reading
-from /home with ext4fs fails.
+How easily can you replicate the problem?
 
-Mounts:
-192.168.1.10:/srv/nfs/odroidhc1 on / type nfs4
-(rw,relatime,vers=4.0,rsize=131072,wsize=131072,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.1.12,local_lock=none,addr=192.168.1.10)
-/dev/mmcblk0p2 on /home type ext4 (rw,relatime)
-
-Configuration:
-1. Arch ARM Linux
-2. exynos_defconfig
-  - All my Odroid boards (ARMv7, Exynos)
-    Systemd: v239, v238
-3. All boards boot from TFTP with NFS root (NFSv4)
-No specific errors in boot log:
-https://krzk.eu/#/builders/21/builds/1034/steps/12/logs/serial0
-
-Let me know if you need any more data.
-
-Best regards,
-Krzysztof
+						- Ted
