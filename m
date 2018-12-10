@@ -1,67 +1,75 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41224 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725788AbeLBVeR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 16:34:17 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 628142A81F
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 21:34:13 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 21:34:12 +0000
-Message-ID: <bug-201685-13602-psqcKX4Bhr@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=P4kf=OT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:32774 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727313AbeLJPlc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 10 Dec 2018 10:41:32 -0500
+Date: Mon, 10 Dec 2018 16:41:21 +0100
+From: Jan Kara <jack@suse.cz>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: Jan Kara <jack@suse.cz>, Kanchan Joshi <joshi.k@samsung.com>,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.com,
+        viro@zeniv.linux.org.uk, darrick.wong@oracle.com,
+        jrdr.linux@gmail.com, ebiggers@google.com,
+        jooyoung.hwang@samsung.com, chur.lee@samsung.com,
+        prakash.v@samsung.com
+Subject: Re: [PATCH 2/2] fs/ext4,jbd2: Add support for passing write-hint
+ with journal.
+Message-ID: <20181210154121.GO29289@quack2.suse.cz>
+References: <1544446204-5291-1-git-send-email-joshi.k@samsung.com>
+ <CGME20181210125256epcas1p1e4142cfefb9b21dfb8dad927fbd49143@epcas1p1.samsung.com>
+ <1544446204-5291-3-git-send-email-joshi.k@samsung.com>
+ <20181210141226.GM29289@quack2.suse.cz>
+ <9f693dd1-3c29-cdb4-90cd-83a27e21df4a@kernel.dk>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <9f693dd1-3c29-cdb4-90cd-83a27e21df4a@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Mon 10-12-18 08:17:18, Jens Axboe wrote:
+> On 12/10/18 7:12 AM, Jan Kara wrote:
+> > On Mon 10-12-18 18:20:04, Kanchan Joshi wrote:
+> >> This patch introduces "j_writehint" in JBD2 journal,
+> >> which is set based by Ext4 depending on "journal_writehint"
+> >> mount option (inspired from "journal_ioprio").
+> > 
+> > Thanks for the patch! It would be good to provide the explanation you have
+> > in the cover letter in this patch as well so that it gets recorded in git
+> > logs.
+> > 
+> > Also I don't like the fact that users have to set the hint via a mount
+> > option for this to be enabled. OTOH the WRITE_FILE_<foo> hints defined in
+> > fs.h are generally supposed to be used by userspace so it's difficult to
+> > pick anything if we don't know what the userspace is going to do. I'd argue
+> > it's even difficult for the sysadmin to pick any good value even if he
+> > actually knows that he might benefit from setting some. Jens, is there
+> > some reasonable way for fs to automatically pick some stream value for its
+> > journal?
+> 
+> I think we have two options here:
+> 
+> 1) It's _probably_ safe to assume that journal data is short lived. While
+>    hints are all relative to the specific use case, the size of the journal
+>    compared to the rest of the drive is most likely very small. Hence a
+>    default of WRITE_LIFE_SHORT is probably a good idea.
 
-Michel Roelofs (michel@michelroelofs.nl) changed:
+That's what I was thinking as well. But there are some exceptions like
+heavy DB load where there's very little of metadata modified (and thus
+almost no journal IO) compared to the DB data. So journal blocks may have
+actually longer life time than data blocks. OTOH if there's little journal
+IO there's no big benefit in specifying a stream for it so WRITE_LIFE_SHORT
+is probably a good default anyway.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |michel@michelroelofs.nl
+> 2) We add a specific internal life time hint for fs journals.
+> 
+> #2 makes the most sense to me, but requires a bit more work...
 
---- Comment #168 from Michel Roelofs (michel@michelroelofs.nl) ---
-Hereby my experience that may be related:
+Yeah, #2 would look more natural to me but I guess it needs some mapping to
+what the drive offers, doesn't it?
 
-[ 2451.982816] EXT4-fs error (device dm-1): ext4_iget:4831: inode #6029313:
-comm ls: bad extra_isize 5 (inode size 256)
-root@ster:/# debugfs -R 'ncheck 6029313' /dev/dm-1
-debugfs 1.43.4 (31-Jan-2017)
-Inode   Pathname
-6029313 //sabnzb
-ncheck: Inode checksum does not match inode while doing inode scan
-
-root@ster:/# echo 2 > /proc/sys/vm/drop_caches
-root@ster:/# debugfs -R 'ncheck 6029313' /dev/dm-1
-debugfs 1.43.4 (31-Jan-2017)
-Inode   Pathname
-6029313 //sabnzb
-ncheck: Inode checksum does not match inode while doing inode scan
-
-root@ster:/#  echo 3 > /proc/sys/vm/drop_caches
-root@ster:/# debugfs -R 'ncheck 6029313' /dev/dm-1
-debugfs 1.43.4 (31-Jan-2017)
-Inode   Pathname
-6029313 //sabnzb
-
-Kernel v4.19.5, CPU Intel Atom D525, Debian Linux 9.6, brand new WDC
-WD40EFRX-68N32N0, gcc 6.3.0-18+deb9u1.
-
-Also seen with an ext4 filesystem created on Nov 21 2018.
-
-Also seen with earlier 4.19.0 kernel, and older WDC WD30EFRX-68A in same
-computer.
-
-Going back to v4.18.<latest> kernel solved the issues. No disk corruption shown
-by e2fsck.
-
+								Honza
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
