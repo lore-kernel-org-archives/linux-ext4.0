@@ -1,142 +1,193 @@
-Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:56100 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726300AbeLFXJn (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 18:09:43 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: linux-fsdevel@vger.kernel.org, kernel@collabora.com,
-        linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 09/23] nls: Add new interface for string comparisons
-Date: Thu,  6 Dec 2018 18:08:49 -0500
-Message-Id: <20181206230903.30011-10-krisman@collabora.com>
-In-Reply-To: <20181206230903.30011-1-krisman@collabora.com>
-References: <20181206230903.30011-1-krisman@collabora.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Return-Path: <SRS0=P4kf=OT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f196.google.com ([209.85.214.196]:43873 "EHLO
+        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726392AbeLJUS3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Dec 2018 15:18:29 -0500
+Received: by mail-pl1-f196.google.com with SMTP id gn14so5756101plb.10
+        for <linux-ext4@vger.kernel.org>; Mon, 10 Dec 2018 12:18:29 -0800 (PST)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <C2F1A10B-9035-409F-AF7C-EDCF9C1648C3@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_9EE5F8AA-C1E8-4F4B-A917-1629EA14F85D";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH v2] fs: Convert open-coded "is inode open for write" check
+Date: Mon, 10 Dec 2018 13:18:25 -0700
+In-Reply-To: <20181210132500.10864-1-nborisov@suse.com>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>, linux-integrity@vger.kernel.org,
+        Mimi Zohar <zohar@linux.vnet.ibm.com>,
+        Amir Goldstein <amir73il@gmail.com>, jmorris@namei.org,
+        jlayton@kernel.org, "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>
+To: Nikolay Borisov <nborisov@suse.com>
+References: <20181210131903.4528-1-nborisov@suse.com>
+ <20181210132500.10864-1-nborisov@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-The existing stricmp() interface is limited by not accepting separated
-length parameters for each string being compared.  This is a problem for
-charsets doing normalization or full casefold comparison, since
-different sized strings can still be matched.  To resolve this problem,
-this patch implements a new interface, allowing charsets to do the
-comparison, if needed.
+--Apple-Mail=_9EE5F8AA-C1E8-4F4B-A917-1629EA14F85D
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-The original stricmp is left in the code, until we convert all caller to
-the new interface.  Nevertheless, it was reimplemented using the new
-interface.
+On Dec 10, 2018, at 6:25 AM, Nikolay Borisov <nborisov@suse.com> wrote:
+>=20
+> There is a generic helper inode_is_open_for_write that could be used
+> when checking i_writecount. Use it instead of opencoding
+> if (i_writecount > 0) check.
+>=20
+> Signed-off-by: Nikolay Borisov <nborisov@suse.com>
+> ---
+>=20
+> Changes v2:
+> * This time actually compile-tested it, doh...
+>=20
+>=20
+> fs/ext4/inode.c                    | 2 +-
+> fs/ext4/mballoc.c                  | 7 +++----
+> fs/locks.c                         | 2 +-
+> fs/notify/fanotify/fanotify_user.c | 2 +-
+> security/integrity/ima/ima_main.c  | 2 +-
+> 5 files changed, 7 insertions(+), 8 deletions(-)
+>=20
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 22a9d8159720..04e5bc0b5c8d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -391,7 +391,7 @@ void ext4_da_update_reserve_space(struct inode =
+*inode,
+> 	 * inode's preallocations.
+> 	 */
+> 	if ((ei->i_reserved_data_blocks =3D=3D 0) &&
+> -	    (atomic_read(&inode->i_writecount) =3D=3D 0))
+> +	    !inode_is_open_for_write(inode))
+> 		ext4_discard_preallocations(inode);
+> }
+>=20
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index e2248083cdca..b811a9cb896e 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4176,9 +4176,8 @@ static void ext4_mb_group_or_file(struct =
+ext4_allocation_context *ac)
+> 	isize =3D (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - =
+1)
+> 		>> bsbits;
+>=20
+> -	if ((size =3D=3D isize) &&
+> -	    !ext4_fs_is_busy(sbi) &&
+> -	    (atomic_read(&ac->ac_inode->i_writecount) =3D=3D 0)) {
+> +	if ((size =3D=3D isize) && !ext4_fs_is_busy(sbi)
+> +	    && !inode_is_open_for_write(ac->ac_inode)) {
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- include/linux/nls.h | 69 +++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 66 insertions(+), 3 deletions(-)
+If you will note the other cases in this patch, the "&&" operator should =
+go
+at the end of the previous line, instead of the start of the continued =
+line.
 
-diff --git a/include/linux/nls.h b/include/linux/nls.h
-index c43746bd390e..980103d4c363 100644
---- a/include/linux/nls.h
-+++ b/include/linux/nls.h
-@@ -3,6 +3,7 @@
- #define _LINUX_NLS_H
- 
- #include <linux/init.h>
-+#include <linux/string.h>
- 
- /* Unicode has changed over the years.  Unicode code points no longer
-  * fit into 16 bits; as of Unicode 5 valid code points range from 0
-@@ -38,6 +39,32 @@ struct nls_ops {
- 	 **/
- 	int (*validate)(const struct nls_table *charset,
- 			const unsigned char *str, size_t len);
-+	/**
-+	 * @strncmp:
-+	 *
-+	 * strncmp is the function for case-sensitive string comparison.
-+	 * It only needs to be implemented by charsets that want to do
-+	 * some fancy comparisons, like normalization-insensitive.
-+	 *
-+	 * Returns 0 if str1 and str2 are equal, otherwise return
-+	 * non-zero.
-+	 **/
-+	int (*strncmp)(const struct nls_table *charset,
-+		       const unsigned char *str1, size_t len1,
-+		       const unsigned char *str2, size_t len2);
-+
-+	/**
-+	 * @strncasecmp:
-+	 *
-+	 * strncasecmp is the function for case-insensitive string
-+	 * comparison.
-+	 *
-+	 * Returns 0 if str1 and str2 are equal, otherwise return
-+	 * non-zero.
-+	 **/
-+	int (*strncasecmp)(const struct nls_table *charset,
-+			   const unsigned char *str1, size_t len1,
-+			   const unsigned char *str2, size_t len2);
- 	unsigned char (*lowercase)(const struct nls_table *charset,
- 				   unsigned int c);
- 	unsigned char (*uppercase)(const struct nls_table *charset,
-@@ -139,10 +166,21 @@ static inline unsigned char nls_toupper(const struct nls_table *t,
- 	return nc ? nc : c;
- }
- 
--static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
--		const unsigned char *s2, int len)
-+static inline int nls_strncasecmp(struct nls_table *t,
-+				  const unsigned char *s1, size_t len1,
-+				  const unsigned char *s2, size_t len2)
- {
--	while (len--) {
-+	if (t->ops->strncasecmp)
-+		return t->ops->strncasecmp(t, s1, len1, s2, len2);
-+
-+	if (IS_STRICT_MODE(t) &&
-+	    (nls_validate(t, s1, len1) || nls_validate(t, s1, len1)))
-+		return -EINVAL;
-+
-+	if (len1 != len2)
-+		return 1;
-+
-+	while (len1--) {
- 		if (nls_tolower(t, *s1++) != nls_tolower(t, *s2++))
- 			return 1;
- 	}
-@@ -150,6 +188,31 @@ static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
- 	return 0;
- }
- 
-+static inline int nls_strncmp(struct nls_table *t,
-+			      const unsigned char *s1, size_t len1,
-+			      const unsigned char *s2, size_t len2)
-+{
-+	if (t->ops->strncmp)
-+		return t->ops->strncmp(t, s1, len1, s2, len2);
-+
-+	if (IS_STRICT_MODE(t) &&
-+	    (nls_validate(t, s1, len1) || nls_validate(t, s1, len1)))
-+		return -EINVAL;
-+
-+	if (len1 != len2)
-+		return 1;
-+
-+	/* strnicmp did not return negative values. So let's keep the
-+	 * abi for now */
-+	return !!memcmp(s1, s2, len1);
-+}
-+
-+static inline int nls_strnicmp(struct nls_table *t, const unsigned char *s1,
-+		const unsigned char *s2, int len)
-+{
-+	return nls_strncasecmp(t, s1, len, s2, len);
-+}
-+
- /*
-  * nls_nullsize - return length of null character for codepage
-  * @codepage - codepage for which to return length of NULL terminator
--- 
-2.20.0.rc2
+Cheers, Andreas
+
+> 		ac->ac_flags |=3D EXT4_MB_HINT_NOPREALLOC;
+> 		return;
+> 	}
+> @@ -4258,7 +4257,7 @@ ext4_mb_initialize_context(struct =
+ext4_allocation_context *ac,
+> 			(unsigned) ar->goal, ac->ac_flags, =
+ac->ac_2order,
+> 			(unsigned) ar->lleft, (unsigned) ar->pleft,
+> 			(unsigned) ar->lright, (unsigned) ar->pright,
+> -			atomic_read(&ar->inode->i_writecount) ? "" : =
+"non-");
+> +			inode_is_open_for_write(ar->inode) ? "" : =
+"non-");
+> 	return 0;
+>=20
+> }
+> diff --git a/fs/locks.c b/fs/locks.c
+> index 2ecb4db8c840..16ea7d89a67d 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -1646,7 +1646,7 @@ check_conflicting_open(const struct dentry =
+*dentry, const long arg, int flags)
+> 	if (flags & FL_LAYOUT)
+> 		return 0;
+>=20
+> -	if ((arg =3D=3D F_RDLCK) && (atomic_read(&inode->i_writecount) > =
+0))
+> +	if ((arg =3D=3D F_RDLCK) && inode_is_open_for_write(inode))
+> 		return -EAGAIN;
+>=20
+> 	if ((arg =3D=3D F_WRLCK) && ((d_count(dentry) > 1) ||
+> diff --git a/fs/notify/fanotify/fanotify_user.c =
+b/fs/notify/fanotify/fanotify_user.c
+> index e03be5071362..98b0769e4cf2 100644
+> --- a/fs/notify/fanotify/fanotify_user.c
+> +++ b/fs/notify/fanotify/fanotify_user.c
+> @@ -669,7 +669,7 @@ static int fanotify_add_inode_mark(struct =
+fsnotify_group *group,
+> 	 */
+> 	if ((flags & FAN_MARK_IGNORED_MASK) &&
+> 	    !(flags & FAN_MARK_IGNORED_SURV_MODIFY) &&
+> -	    (atomic_read(&inode->i_writecount) > 0))
+> +	    inode_is_open_for_write(inode))
+> 		return 0;
+>=20
+> 	return fanotify_add_mark(group, &inode->i_fsnotify_marks,
+> diff --git a/security/integrity/ima/ima_main.c =
+b/security/integrity/ima/ima_main.c
+> index 1b88d58e1325..05fbf8a2fa42 100644
+> --- a/security/integrity/ima/ima_main.c
+> +++ b/security/integrity/ima/ima_main.c
+> @@ -103,7 +103,7 @@ static void ima_rdwr_violation_check(struct file =
+*file,
+> 	} else {
+> 		if (must_measure)
+> 			set_bit(IMA_MUST_MEASURE, &iint->atomic_flags);
+> -		if ((atomic_read(&inode->i_writecount) > 0) && =
+must_measure)
+> +		if (inode_is_open_for_write(inode) && must_measure)
+> 			send_writers =3D true;
+> 	}
+>=20
+> --
+> 2.17.1
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_9EE5F8AA-C1E8-4F4B-A917-1629EA14F85D
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlwOyhEACgkQcqXauRfM
+H+DMQRAAlvYnyuEgpMxEvTJjpqOrRviRqc1o/MVYMjG2FYYDvClzOGvN61aptfSi
+xHar6ErrCE2a15BIzuhKYBYkTEbYEMo36EzxGz5JGh4P21V3aielddiZ7/JBfjLM
+lJ99SelgXxZahH0d7Vh6fDUVY22L3iaJS9D1q45cIc8EcaN8yp7JpDg/0YyWitWf
+Mfdtn1mPaNnPYkfRTCFm03kzFRY3tVw3HtikFoVyCJBSdzgscoovfVifjzjtlmt9
+LNq6Nd69x7Jwn64KSv/KgZ3QGoCezI5tGbpG9grhgnuPWJTYtshphGW2qMWFPrxA
+Xi1ueNhtL/mZb3xskkxlifBl0aj9bY7vpy9OLHlHSue6bVuyhqFbPp+8w4FB8JmV
+xT0hlV1uK5y5o4sgQMlwYHPJg2WJtGnSypObukRjT7QZqMkCLT3fEhXSJOrsu84b
+nJ3U+6v6uFcHpcguzalzkNqPpvOAWFkQFb9oSKgpUo5hq6cFkW82OJp/v+xm0zSi
+pF7DSFAWKGCGkQ2N4gVU86SZLnug8Ao49SuSBrtWT1oLjjhENZfdm1n3DCoj7yPr
+hOobSvWo4oRQBmLV4fL47k/k4Gxhkz7S28h9LLyQl6cMGshVb3C2KlB4CTQSeezv
+SmoZABr1HScHkyBKUQ4zst8PQt+SedC4aJmkqmPxWEJKvBDD38E=
+=zEA3
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_9EE5F8AA-C1E8-4F4B-A917-1629EA14F85D--
