@@ -1,73 +1,67 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34986 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725294AbeLBEHa (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 23:07:30 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id D4D442BC26
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 04:07:28 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 04:07:28 +0000
-Message-ID: <bug-201685-13602-KBLRpVlZQr@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:57064 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726069AbeLKIYC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 03:24:02 -0500
+From: Nikolay Borisov <nborisov@suse.com>
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        Nikolay Borisov <nborisov@suse.com>
+Subject: [PATCH] ext4: Replace opencoded i_writecount usage with inode_is_open_for_write
+Date: Tue, 11 Dec 2018 10:23:55 +0200
+Message-Id: <20181211082355.19841-1-nborisov@suse.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+There is a function which clearly conveys the objective of checking
+i_writecount. Additionally the usage in ext4_mb_initialize_context was
+wrong, since a node would have wrongfully been reported as writable if
+i_writecount had a negative value (MMAP_DENY_WRITE).
 
---- Comment #127 from Theodore Tso (tytso@mit.edu) ---
-In reply to #118, from James Courtier-Dutton:
+Reviewed-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Nikolay Borisov <nborisov@suse.com>
+---
+ fs/ext4/inode.c   | 2 +-
+ fs/ext4/mballoc.c | 7 +++----
+ 2 files changed, 4 insertions(+), 5 deletions(-)
 
-While there have been a few people who have reported problems with the contents
-of their files, the vast majority of people are reporting problems that seem to
-include complete garbage being written into metadata blocks --- i.e.,
-completely garbage in to inode table, block group descriptor, and superblocks. 
-  This is getting detected by the kernel noticing corruption, or by e2fsck
-running and noticing that the file system metadata is inconsistent.   More
-modern ext4 file systems have metadata checksum turned on, but the reports from
-e2fsck seem to indicate that complete garbage (or, more likely, data meant for
-block XXX is getting written to block YYY); as such, the corruption is not
-subtle, so generally the kernel doesn't need checksums to figure out that the
-metadata blocks are nonsensical.
-
-It should be noted that ext4 has very strong checks to prevent this from
-happening.  In particular, when a inode's logical block number is converted to
-a physical block number, there is block_validity checking to make sure that the
-physical block number for a data block does not map onto a metadata block. 
-This prevents a corrupted extent tree from causing ext4 to try to write data
-meant for a data block on top of an inode table block, which would cause the
-sort of symptoms that some users have reported.
-
-One possible cause is that something below ext4 (e.g. the block layer, or an
-I/O scheduler) is scrambling the block number so that a file write meant for
-data block XXX is getting writen to metadata block YYY.   If Eric Benoit's
-report in comment #126 is to believed, and he is seeing the same behavior with
-ZFS, then that might be consistent with a bug in the block layer.
-
-However, some people who have reported that transplanting ext4 from 4.18 onto
-4.19 has caused the problem to go away.  That would be an argument in favor of
-the problem being in ext4. 
-
-Of course, both observations might be flawed (see my previous comments about
-false positive and negative reports).  And there might be more than one bug
-that we are chasing at the moment. 
-
-But the big question which we don't understand is why are some people seeing
-it, but not others.   There are a huge number of variables, from kernel
-configs, to what I/O scheduler might be selected, etc.    The bug also seems to
-be very flaky, and there is some hint that heavy I/O load is required to
-trigger the bug.  So it might be that people who think their kernel is fine,
-might actually be buggy, because they simply haven't pushed their system hard
-enough.  Or it might require heavy workloads of a specific type (e.g., Direct
-I/O or Async I/O), or one kind of workload racing with another type of
-workload.    This is what makes tracking down this kind of bug really hard.
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 22a9d8159720..04e5bc0b5c8d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -391,7 +391,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
+ 	 * inode's preallocations.
+ 	 */
+ 	if ((ei->i_reserved_data_blocks == 0) &&
+-	    (atomic_read(&inode->i_writecount) == 0))
++	    !inode_is_open_for_write(inode))
+ 		ext4_discard_preallocations(inode);
+ }
+ 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index e2248083cdca..6fb76d408093 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4176,9 +4176,8 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+ 	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
+ 		>> bsbits;
+ 
+-	if ((size == isize) &&
+-	    !ext4_fs_is_busy(sbi) &&
+-	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
++	if ((size == isize) && !ext4_fs_is_busy(sbi) &&
++	    !inode_is_open_for_write(ac->ac_inode)) {
+ 		ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
+ 		return;
+ 	}
+@@ -4258,7 +4257,7 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
+ 			(unsigned) ar->goal, ac->ac_flags, ac->ac_2order,
+ 			(unsigned) ar->lleft, (unsigned) ar->pleft,
+ 			(unsigned) ar->lright, (unsigned) ar->pright,
+-			atomic_read(&ar->inode->i_writecount) ? "" : "non-");
++			inode_is_open_for_write(ar->inode) ? "" : "non-");
+ 	return 0;
+ 
+ }
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.17.1
