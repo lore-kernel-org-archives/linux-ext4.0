@@ -1,82 +1,53 @@
-Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail01.adl6.internode.on.net ([150.101.137.136]:10775 "EHLO
-        ipmail01.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726744AbeLSCUF (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 18 Dec 2018 21:20:05 -0500
-Date: Wed, 19 Dec 2018 13:19:53 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181219021953.GD31274@dastard>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-2-ebiggers@kernel.org>
- <20181212091406.GA31723@infradead.org>
- <20181212202609.GA193967@gmail.com>
- <20181213202249.GA3797@infradead.org>
- <20181214044802.GA681@sol.localdomain>
- <20181217200039.GD8111@magnolia>
- <20181219001603.GD25775@mit.edu>
+Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from muru.com ([72.249.23.125]:57510 "EHLO muru.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726340AbeLKTMY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 14:12:24 -0500
+Date: Tue, 11 Dec 2018 11:12:20 -0800
+From: Tony Lindgren <tony@atomide.com>
+To: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Theodore Ts'o <tytso@mit.edu>
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-arm-kernel@lists.infradead.org, linux-omap@vger.kernel.org
+Subject: Regression in next-20181211 with fsverity changes
+Message-ID: <20181211191220.GW6707@atomide.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181219001603.GD25775@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 18, 2018 at 07:16:03PM -0500, Theodore Y. Ts'o wrote:
-> On Mon, Dec 17, 2018 at 12:00:39PM -0800, Darrick J. Wong wrote:
-> > FWIW, if I were (hypothetically) working on an xfs implementation, I
-> > likely would have settled on passing a reference to a merkle tree
-> > through a (fd, length) pair, because that allows us plenty of options
-> > on the back end:
-> > 
-> > b) we could remap the tree into a new inode fork for merkle trees, or
-> > a) remap it as posteof blocks like ext4/f2fs does, or
-> > c) remap the blocks into the attribute fork as an (unusually large)
-> > extended attribute value.
-> 
-> Sure, but what would be the benefit of doing different things on the
-> back end?  I think this is a really more of a philophical objection
-> than anything else.
+Hi,
 
-Putting metadata in user files beyond EOF doesn't work with XFS's
-post-EOF speculative allocation algorithms.
+Looks like commit 4de97efb578a ("fsverity: Move verity status check
+to fsverity_file_open") causes a boot regression for me with root
+on ext4 SDIO card, see below.
 
-i.e. Filesystem design/algorithms often assume that the region
-beyond EOF in user files is a write-only region.  e.g. We can allow
-extents beyond EOF to be uninitialised because they are in a write
-only region of the file and so there's no possibility of stale data
-exposure. Unfortunately, putting filesystem/security metadata beyond
-EOF breaks these assumptions - it's no longer a write-only region.
+Any ideas what goes wrong?
 
-IOWs, all these existing assumptions and implementation details are
-exposed to a new attack surface involving tricking the filesystem
-into thinking it has readable data beyond EOF. And because it can
-now read from the "write only" region beyond EOF (because that's the
-mechanism by which fsverity does it's verification) we no longer
-have a clear line of protection against exposing such data to
-userspace.
+Regards,
 
-Putting the merkel tree somewhere else in the filesystem metadata
-and providing a separate API to manipulate it avoids this problem.
-It allows filesystems to keep their internal metadata and
-security-related verification information in a separate channel (and
-trust path) that is completely out of user data/access scope.
+Tony
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+8< ----------------------
+Starting init: /bin/sh exists but couldn't execute it (error -95)
+Kernel panic - not syncing: No working init found.  Try passing init= option to kernel. See Linux Documentation/admin-guide/init.rst for guidance.
+CPU1: stopping
+CPU: 1 PID: 0 Comm: swapper/1 Not tainted 4.20.0-rc6-next-20181211 #1080
+Hardware name: Generic OMAP4 (Flattened Device Tree)
+[<c0112a18>] (unwind_backtrace) from [<c010d090>] (show_stack+0x10/0x14)
+[<c010d090>] (show_stack) from [<c08eb854>] (dump_stack+0xb0/0xe8)
+[<c08eb854>] (dump_stack) from [<c0110da4>] (handle_IPI+0x318/0x380)
+[<c0110da4>] (handle_IPI) from [<c0534930>] (gic_handle_irq+0x94/0xa8)
+[<c0534930>] (gic_handle_irq) from [<c01019f0>] (__irq_svc+0x70/0x98)
+Exception stack(0xee911ef8 to 0xee911f40)
+1ee0:                                                       00000001 00000001
+1f00: 00000000 ee90a180 00000000 c0e13fc4 00000000 ef6afbb8 c0ec8830 de03d29f
+1f20: 00000000 00000000 00000000 ee911f48 c01a4120 c06f8fb4 20000153 ffffffff
+[<c01019f0>] (__irq_svc) from [<c06f8fb4>] (cpuidle_enter_state+0x270/0x46c)
+[<c06f8fb4>] (cpuidle_enter_state) from [<c06fb0a4>] (cpuidle_enter_state_coupled+0x148/0x3e0)
+[<c06fb0a4>] (cpuidle_enter_state_coupled) from [<c0173398>] (do_idle+0x234/0x2b8)
+[<c0173398>] (do_idle) from [<c01737b4>] (cpu_startup_entry+0x18/0x1c)
+[<c01737b4>] (cpu_startup_entry) from [<8010274c>] (0x8010274c)
+---[ end Kernel panic - not syncing: No working init found.  Try passing init= option to kernel. See Linux Documentation/admin-guide/init.rst for guidance. ]---
