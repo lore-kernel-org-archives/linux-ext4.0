@@ -1,29 +1,35 @@
-Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:58010 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725797AbeLDSdJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 13:33:09 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 7FA872C48F
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 18:33:08 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Tue, 04 Dec 2018 18:33:07 +0000
-Message-ID: <bug-201685-13602-cqoIqRdPqm@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:40512 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726338AbeLKWsI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 17:48:08 -0500
+From: Eric Biggers <ebiggers@kernel.org>
+To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Krzysztof Kozlowski <krzk@kernel.org>,
+        linux-ext4@vger.kernel.org, Tony Lindgren <tony@atomide.com>,
+        Kirill Tkhai <ktkhai@virtuozzo.com>
+Subject: [PATCH 0/2] fs-verity: fix !CONFIG_FS_VERITY case
+Date: Tue, 11 Dec 2018 14:46:49 -0800
+Message-Id: <20181211224651.112510-1-ebiggers@kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+Replace the two patches that broken the !CONFIG_FS_VERITY case with
+fixed verisons.
 
---- Comment #230 from Jens Axboe (axboe@kernel.dk) ---
-Guenter, can you attach the .config you are running with?
+Chandan Rajendra (2):
+  fsverity: Move verity status check to fsverity_file_open
+  fsverity: Move verity status check to fsverity_prepare_setattr
+
+ fs/ext4/file.c           |  8 +++----
+ fs/ext4/inode.c          |  8 +++----
+ fs/f2fs/file.c           | 16 +++++--------
+ fs/verity/setup.c        | 32 ++++---------------------
+ include/linux/fsverity.h | 50 ++++++++++++++++++++++++++++++++++++----
+ 5 files changed, 61 insertions(+), 53 deletions(-)
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.20.0.405.gbc1bbc6f85-goog
