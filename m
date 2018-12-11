@@ -1,157 +1,59 @@
 Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:40552 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726256AbeLKWsJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Dec 2018 17:48:09 -0500
-From: Eric Biggers <ebiggers@kernel.org>
-To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Krzysztof Kozlowski <krzk@kernel.org>,
-        linux-ext4@vger.kernel.org, Tony Lindgren <tony@atomide.com>,
-        Kirill Tkhai <ktkhai@virtuozzo.com>
-Subject: [PATCH 2/2] fsverity: Move verity status check to fsverity_prepare_setattr
-Date: Tue, 11 Dec 2018 14:46:51 -0800
-Message-Id: <20181211224651.112510-3-ebiggers@kernel.org>
-In-Reply-To: <20181211224651.112510-1-ebiggers@kernel.org>
-References: <20181211224651.112510-1-ebiggers@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:35762 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726170AbeLKLVS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 06:21:18 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 39D272A472
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 11:21:17 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date: Tue, 11 Dec 2018 11:21:17 +0000
+Message-ID: <bug-201631-13602-72DMTbeQQ3@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
-Instead of conditionally checking for verity status of an inode before
-invoking fsverity_prepare_setattr(), this commit moves the check inside the
-definition of fsverity_prepare_setattr().
+Jan Kara (jack@suse.cz) changed:
 
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-(EB: fix the !CONFIG_FS_VERITY case and inline the IS_VERITY() check)
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ext4/inode.c          |  8 +++-----
- fs/f2fs/file.c           |  8 +++-----
- fs/verity/setup.c        | 14 ++------------
- include/linux/fsverity.h | 25 ++++++++++++++++++++++---
- 4 files changed, 30 insertions(+), 25 deletions(-)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |benh@kernel.crashing.org,
+                   |                            |jack@suse.cz,
+                   |                            |michael@ellerman.id.au
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b83ab0e812483..817b67c3083be 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5510,11 +5510,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (error)
- 		return error;
- 
--	if (IS_VERITY(inode)) {
--		error = fsverity_prepare_setattr(dentry, attr);
--		if (error)
--			return error;
--	}
-+	error = fsverity_prepare_setattr(dentry, attr);
-+	if (error)
-+		return error;
- 
- 	if (is_quota_modification(inode, attr)) {
- 		error = dquot_initialize(inode);
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 6eea508d8656e..b73609a43baa7 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -798,11 +798,9 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
- 	if (err)
- 		return err;
- 
--	if (IS_VERITY(inode)) {
--		err = fsverity_prepare_setattr(dentry, attr);
--		if (err)
--			return err;
--	}
-+	err = fsverity_prepare_setattr(dentry, attr);
-+	if (err)
-+		return err;
- 
- 	if (is_quota_modification(inode, attr)) {
- 		err = dquot_initialize(inode);
-diff --git a/fs/verity/setup.c b/fs/verity/setup.c
-index 4ecaeb89166b4..2b707589999c4 100644
---- a/fs/verity/setup.c
-+++ b/fs/verity/setup.c
-@@ -767,17 +767,7 @@ int __fsverity_file_open(struct inode *inode, struct file *filp)
- }
- EXPORT_SYMBOL_GPL(__fsverity_file_open);
- 
--/**
-- * fsverity_prepare_setattr - prepare to change a verity inode's attributes
-- * @dentry: dentry through which the inode is being changed
-- * @attr: attributes to change
-- *
-- * Verity files are immutable, so deny truncates.  This isn't covered by the
-- * open-time check because sys_truncate() takes a path, not a file descriptor.
-- *
-- * Return: 0 on success, -errno on failure
-- */
--int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
-+int __fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
- {
- 	if (attr->ia_valid & ATTR_SIZE) {
- 		pr_debug("Denying truncate of verity file (ino %lu)\n",
-@@ -786,7 +776,7 @@ int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
- 	}
- 	return 0;
- }
--EXPORT_SYMBOL_GPL(fsverity_prepare_setattr);
-+EXPORT_SYMBOL_GPL(__fsverity_prepare_setattr);
- 
- /**
-  * fsverity_prepare_getattr - prepare to get a verity inode's attributes
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index 0ce170c2c1676..099fc34936fa6 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -26,7 +26,8 @@ extern int fsverity_ioctl_measure(struct file *filp, void __user *arg);
- 
- /* setup.c */
- extern int __fsverity_file_open(struct inode *inode, struct file *filp);
--extern int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
-+extern int __fsverity_prepare_setattr(struct dentry *dentry,
-+				      struct iattr *attr);
- extern int fsverity_prepare_getattr(struct inode *inode);
- extern void fsverity_cleanup_inode(struct inode *inode);
- extern loff_t fsverity_full_i_size(const struct inode *inode);
-@@ -63,8 +64,8 @@ static inline int __fsverity_file_open(struct inode *inode, struct file *filp)
- 	return -EOPNOTSUPP;
- }
- 
--static inline int fsverity_prepare_setattr(struct dentry *dentry,
--					   struct iattr *attr)
-+static inline int __fsverity_prepare_setattr(struct dentry *dentry,
-+					     struct iattr *attr)
- {
- 	return -EOPNOTSUPP;
- }
-@@ -129,4 +130,22 @@ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
- 	return 0;
- }
- 
-+/**
-+ * fsverity_prepare_setattr - prepare to change a verity inode's attributes
-+ * @dentry: dentry through which the inode is being changed
-+ * @attr: attributes to change
-+ *
-+ * Verity files are immutable, so deny truncates.  This isn't covered by the
-+ * open-time check because sys_truncate() takes a path, not a file descriptor.
-+ *
-+ * Return: 0 on success, -errno on failure
-+ */
-+static inline int fsverity_prepare_setattr(struct dentry *dentry,
-+					   struct iattr *attr)
-+{
-+	if (IS_VERITY(d_inode(dentry)))
-+		return __fsverity_prepare_setattr(dentry, attr);
-+	return 0;
-+}
-+
- #endif	/* _LINUX_FSVERITY_H */
+--- Comment #8 from Jan Kara (jack@suse.cz) ---
+The lockups and ext4 warnings are likely a different thing. So please report
+the lockup to linux-fsdevel@vger.kernel.org and also CC Al Viro
+<viro@zeniv.linux.org.uk> on it.
+
+The WARN_ON we hit in ext4 is likely:
+
+WARN_ON_ONCE(!PageLocked(page) && !PageDirty(page));
+
+because we don't expect page cache page to be marked dirty when unmapping it
+from page tables. It could be a powerpc specific race in handling of page table
+entry (PTE) flags as I don't see how PTE could be marked dirty without a page
+being already dirty.
+
+Seeing you hit this already twice on 4.20-rc's and never on 4.19.x, it could be
+some recent powerpc change that is triggering this. I've skimmed through
+powerpc changelogs and didn't find anything obviously matching but there were
+quite some mm changes pulled in this merge window. Powerpc guys, any idea how
+could _PAGE_DIRTY PTE bit get spuriously set? Normally, we should clear the
+_PAGE_DIRTY bit in page_mkclean() together with write-protecting the PTE and we
+are marking the page dirty whenever writeable PTE is created... So clean
+pagecache page with _PAGE_DIRTY in PTE is an invalid combination.
+
 -- 
-2.20.0.405.gbc1bbc6f85-goog
+You are receiving this mail because:
+You are watching the assignee of the bug.
