@@ -1,64 +1,157 @@
-Return-Path: <SRS0=EV/E=O6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:35196 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726604AbeLUQem (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2018 11:34:42 -0500
-Date: Fri, 21 Dec 2018 08:34:38 -0800
-From: Matthew Wilcox <willy@infradead.org>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181221163438.GE10600@bombadil.infradead.org>
-References: <20181219071420.GC2628@infradead.org>
- <20181219021953.GD31274@dastard>
- <20181219193005.GB6889@mit.edu>
- <20181219213552.GO6311@dastard>
- <20181220220158.GC2360@mit.edu>
- <20181221070447.GA21687@infradead.org>
- <20181221154714.GA26547@mit.edu>
- <20181221155354.GC10600@bombadil.infradead.org>
- <20181221162813.GB26547@mit.edu>
+Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:40552 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726256AbeLKWsJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 17:48:09 -0500
+From: Eric Biggers <ebiggers@kernel.org>
+To: linux-fscrypt@vger.kernel.org, "Theodore Y . Ts'o" <tytso@mit.edu>
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Krzysztof Kozlowski <krzk@kernel.org>,
+        linux-ext4@vger.kernel.org, Tony Lindgren <tony@atomide.com>,
+        Kirill Tkhai <ktkhai@virtuozzo.com>
+Subject: [PATCH 2/2] fsverity: Move verity status check to fsverity_prepare_setattr
+Date: Tue, 11 Dec 2018 14:46:51 -0800
+Message-Id: <20181211224651.112510-3-ebiggers@kernel.org>
+In-Reply-To: <20181211224651.112510-1-ebiggers@kernel.org>
+References: <20181211224651.112510-1-ebiggers@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181221162813.GB26547@mit.edu>
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 21, 2018 at 11:28:13AM -0500, Theodore Y. Ts'o wrote:
-> On Fri, Dec 21, 2018 at 07:53:54AM -0800, Matthew Wilcox wrote:
-> > In contrast to "we'll just fix it up later" (which usually applies
-> > to in-kernel interfaces), we have a policy of not breaking userspace,
-> > so accepting this interface means setting it in stone.  We should get
-> > it right.
-> 
-> I'm not convinced it's a "fix", but my point is that if later on you
-> want to add extra complexity transforming
-> 
->      ioctl(fd, FS_IOC_ENABLE_VERITY);
-> 
-> so it does the equivalent of
-> 
->      ioctl(fd, FS_IOC_ENABLE_VERITY_NOW_WITH_EXTRA_USELESS_COMPLEXITY,
-> 	   fd, sizeof_data, sizeof_verity_data);
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 
-I disagree with your EXTRA_USELESS_COMPLEXITY appendage.  The interface
-you designed reflects the implementation you did in ext4, so I understand
-why it seems simple from your point of view.  From the user point of view,
-it looks completely weird.  You write a file, being a series of bytes,
-then all of a sudden have to know that it's composed of blocks, seek
-to the next block, write a header, then this Merkle data structure,
-then write a footer which isn't allowed to cross a block boundary
-for some unknowable reason.  It seems much more logical to have the
-header+Merkle+footer as a separate data stream which the filesystem can
-then layout according to its own rules.
+Instead of conditionally checking for verity status of an inode before
+invoking fsverity_prepare_setattr(), this commit moves the check inside the
+definition of fsverity_prepare_setattr().
+
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+(EB: fix the !CONFIG_FS_VERITY case and inline the IS_VERITY() check)
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/inode.c          |  8 +++-----
+ fs/f2fs/file.c           |  8 +++-----
+ fs/verity/setup.c        | 14 ++------------
+ include/linux/fsverity.h | 25 ++++++++++++++++++++++---
+ 4 files changed, 30 insertions(+), 25 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b83ab0e812483..817b67c3083be 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5510,11 +5510,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (error)
+ 		return error;
+ 
+-	if (IS_VERITY(inode)) {
+-		error = fsverity_prepare_setattr(dentry, attr);
+-		if (error)
+-			return error;
+-	}
++	error = fsverity_prepare_setattr(dentry, attr);
++	if (error)
++		return error;
+ 
+ 	if (is_quota_modification(inode, attr)) {
+ 		error = dquot_initialize(inode);
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 6eea508d8656e..b73609a43baa7 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -798,11 +798,9 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (err)
+ 		return err;
+ 
+-	if (IS_VERITY(inode)) {
+-		err = fsverity_prepare_setattr(dentry, attr);
+-		if (err)
+-			return err;
+-	}
++	err = fsverity_prepare_setattr(dentry, attr);
++	if (err)
++		return err;
+ 
+ 	if (is_quota_modification(inode, attr)) {
+ 		err = dquot_initialize(inode);
+diff --git a/fs/verity/setup.c b/fs/verity/setup.c
+index 4ecaeb89166b4..2b707589999c4 100644
+--- a/fs/verity/setup.c
++++ b/fs/verity/setup.c
+@@ -767,17 +767,7 @@ int __fsverity_file_open(struct inode *inode, struct file *filp)
+ }
+ EXPORT_SYMBOL_GPL(__fsverity_file_open);
+ 
+-/**
+- * fsverity_prepare_setattr - prepare to change a verity inode's attributes
+- * @dentry: dentry through which the inode is being changed
+- * @attr: attributes to change
+- *
+- * Verity files are immutable, so deny truncates.  This isn't covered by the
+- * open-time check because sys_truncate() takes a path, not a file descriptor.
+- *
+- * Return: 0 on success, -errno on failure
+- */
+-int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
++int __fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
+ {
+ 	if (attr->ia_valid & ATTR_SIZE) {
+ 		pr_debug("Denying truncate of verity file (ino %lu)\n",
+@@ -786,7 +776,7 @@ int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
+ 	}
+ 	return 0;
+ }
+-EXPORT_SYMBOL_GPL(fsverity_prepare_setattr);
++EXPORT_SYMBOL_GPL(__fsverity_prepare_setattr);
+ 
+ /**
+  * fsverity_prepare_getattr - prepare to get a verity inode's attributes
+diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+index 0ce170c2c1676..099fc34936fa6 100644
+--- a/include/linux/fsverity.h
++++ b/include/linux/fsverity.h
+@@ -26,7 +26,8 @@ extern int fsverity_ioctl_measure(struct file *filp, void __user *arg);
+ 
+ /* setup.c */
+ extern int __fsverity_file_open(struct inode *inode, struct file *filp);
+-extern int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
++extern int __fsverity_prepare_setattr(struct dentry *dentry,
++				      struct iattr *attr);
+ extern int fsverity_prepare_getattr(struct inode *inode);
+ extern void fsverity_cleanup_inode(struct inode *inode);
+ extern loff_t fsverity_full_i_size(const struct inode *inode);
+@@ -63,8 +64,8 @@ static inline int __fsverity_file_open(struct inode *inode, struct file *filp)
+ 	return -EOPNOTSUPP;
+ }
+ 
+-static inline int fsverity_prepare_setattr(struct dentry *dentry,
+-					   struct iattr *attr)
++static inline int __fsverity_prepare_setattr(struct dentry *dentry,
++					     struct iattr *attr)
+ {
+ 	return -EOPNOTSUPP;
+ }
+@@ -129,4 +130,22 @@ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
+ 	return 0;
+ }
+ 
++/**
++ * fsverity_prepare_setattr - prepare to change a verity inode's attributes
++ * @dentry: dentry through which the inode is being changed
++ * @attr: attributes to change
++ *
++ * Verity files are immutable, so deny truncates.  This isn't covered by the
++ * open-time check because sys_truncate() takes a path, not a file descriptor.
++ *
++ * Return: 0 on success, -errno on failure
++ */
++static inline int fsverity_prepare_setattr(struct dentry *dentry,
++					   struct iattr *attr)
++{
++	if (IS_VERITY(d_inode(dentry)))
++		return __fsverity_prepare_setattr(dentry, attr);
++	return 0;
++}
++
+ #endif	/* _LINUX_FSVERITY_H */
+-- 
+2.20.0.405.gbc1bbc6f85-goog
