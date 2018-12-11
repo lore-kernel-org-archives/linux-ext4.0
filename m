@@ -1,68 +1,57 @@
-Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from dmz-mailsec-scanner-1.mit.edu ([18.9.25.12]:59742 "EHLO
-        dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727383AbeLSTaN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 19 Dec 2018 14:30:13 -0500
-Date: Wed, 19 Dec 2018 14:30:05 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@infradead.org>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
+Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:33872 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726202AbeLKWgW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 17:36:22 -0500
+Date: Tue, 11 Dec 2018 14:36:20 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Krzysztof Kozlowski <krzk@kernel.org>,
         Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181219193005.GB6889@mit.edu>
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org
+Subject: Re: [BUG BISECT next] Files cannot be opened after "fsverity: Move
+ verity status check to fsverity_file_open"
+Message-ID: <20181211223619.GF221175@gmail.com>
+References: <CAJKOXPdNS+Qs6t1GwrgYhWT5EbtORJwYMzSrDPf8oAxv7ndNBg@mail.gmail.com>
+ <20181211222721.GC4464@thunk.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181219071420.GC2628@infradead.org>
- <20181219021953.GD31274@dastard>
+In-Reply-To: <20181211222721.GC4464@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 19, 2018 at 01:19:53PM +1100, Dave Chinner wrote:
-> Putting metadata in user files beyond EOF doesn't work with XFS's
-> post-EOF speculative allocation algorithms.
+On Tue, Dec 11, 2018 at 05:27:21PM -0500, Theodore Y. Ts'o wrote:
+> On Tue, Dec 11, 2018 at 03:15:53PM +0100, Krzysztof Kozlowski wrote:
+> > Hi,
+> > 
+> > Bisect from today's next pointed me to:
+> > commit 4de97efb578a094e8fbf279522d41eb9ece1e3e0
+> > Author: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+> > Date:   Sat Dec 8 12:21:43 2018 +0530
+> >     fsverity: Move verity status check to fsverity_file_open
+> > 
+> > as a reason of "Operation not supported" when reading any file from
+> > mounted ext4fs (from SD card). Rootfs from nfsroot works but reading
+> > from /home with ext4fs fails.
 > 
-> i.e. Filesystem design/algorithms often assume that the region
-> beyond EOF in user files is a write-only region.  e.g. We can allow
-> extents beyond EOF to be uninitialised because they are in a write
-> only region of the file and so there's no possibility of stale data
-> exposure. Unfortunately, putting filesystem/security metadata beyond
-> EOF breaks these assumptions - it's no longer a write-only region.
+> Can you send me an compressed e2image of your sdcard?
+> 
+> 	e2image -Q /dev/mmcblk0p2 sdcard.qcow2
+> 	bzip2 -z sdcard.qcow2
+> 
+> Thanks!
+> 
+> 					- Ted
 
-On Tue, Dec 18, 2018 at 11:14:20PM -0800, Christoph Hellwig wrote:
-> Filesystems already use blocks beyond EOF for preallocation, either
-> speculative by the file system itself, or explicitly by the user with
-> fallocate.  I bet you will run into bugs with your creative abuse
-> sooner or later.  Indepnd of that the interface simply is gross, which
-> is enough of a reason not to merge it.
+I don't think that's necessary.  Due to the bug, ext4_file_open() and
+ext4_setattr() always return -EOPNOTSUPP when !CONFIG_FS_VERITY.
 
-Both of these concerns aren't applicable for fs-verity because the
-entire file will be read-only.  So there will be no preallocation or
-fallocation going on --- or allowed --- for a file which is protected
-by fs-verity.  Since no writes are allowed at all, it won't break any
-file systems' assumptions about "write-only regions".
+I'm working on a fixed version of the two patches to replace the ones currently
+in the fscrypt tree.  Will send out soon.
 
-As far as whether it's "gross" --- that's a taste question, and I
-happen to think it's more "clever" than "gross".  It allows for a very
-simple implementation, *leveraging* the fact that the file will never
-change --- and especially, grow in length.  So why not use the space
-after EOF?
-
-The alternative requires adding Solaris-style alternate data streams
-support.  Whether or not ADS is a good idea or just an invitation to
-malware authors[1] is something which can be debated, but my position
-is it's unnecessary given the requirements of fs-verity.  And avoiding
-such complexity is a *good* thing, not a bad thing.
-
-[1] https://www.deepinstinct.com/2018/06/12/the-abuse-of-alternate-data-stream-hasnt-disappeared/
-
-						- Ted
+- Eric
