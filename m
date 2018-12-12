@@ -1,53 +1,85 @@
-Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from muru.com ([72.249.23.125]:57510 "EHLO muru.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726340AbeLKTMY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Dec 2018 14:12:24 -0500
-Date: Tue, 11 Dec 2018 11:12:20 -0800
-From: Tony Lindgren <tony@atomide.com>
-To: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Theodore Ts'o <tytso@mit.edu>
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:53622 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726241AbeLLELS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 23:11:18 -0500
+Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC4A3XQ093143
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:11:17 -0500
+Received: from e06smtp01.uk.ibm.com (e06smtp01.uk.ibm.com [195.75.94.97])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2par2q6s5a-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:11:17 -0500
+Received: from localhost
+        by e06smtp01.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Wed, 12 Dec 2018 04:11:15 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Krzysztof Kozlowski <krzk@kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
         linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-arm-kernel@lists.infradead.org, linux-omap@vger.kernel.org
-Subject: Regression in next-20181211 with fsverity changes
-Message-ID: <20181211191220.GW6707@atomide.com>
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org
+Subject: Re: [BUG BISECT next] Files cannot be opened after "fsverity: Move verity status check to fsverity_file_open"
+Date: Wed, 12 Dec 2018 09:41:18 +0530
+In-Reply-To: <20181211174116.GB221175@gmail.com>
+References: <CAJKOXPdNS+Qs6t1GwrgYhWT5EbtORJwYMzSrDPf8oAxv7ndNBg@mail.gmail.com> <20181211174116.GB221175@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Transfer-Encoding: 7Bit
+Content-Type: text/plain; charset="us-ascii"
+Message-Id: <3791832.MWVI2j2YUV@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tuesday, December 11, 2018 11:11:17 PM IST Eric Biggers wrote:
+> On Tue, Dec 11, 2018 at 03:15:53PM +0100, Krzysztof Kozlowski wrote:
+> > Hi,
+> > 
+> > Bisect from today's next pointed me to:
+> > commit 4de97efb578a094e8fbf279522d41eb9ece1e3e0
+> > Author: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+> > Date:   Sat Dec 8 12:21:43 2018 +0530
+> >     fsverity: Move verity status check to fsverity_file_open
+> > 
+> > as a reason of "Operation not supported" when reading any file from
+> > mounted ext4fs (from SD card). Rootfs from nfsroot works but reading
+> > from /home with ext4fs fails.
+> > 
+> > Mounts:
+> > 192.168.1.10:/srv/nfs/odroidhc1 on / type nfs4
+> > (rw,relatime,vers=4.0,rsize=131072,wsize=131072,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.1.12,local_lock=none,addr=192.168.1.10)
+> > /dev/mmcblk0p2 on /home type ext4 (rw,relatime)
+> > 
+> > Configuration:
+> > 1. Arch ARM Linux
+> > 2. exynos_defconfig
+> >   - All my Odroid boards (ARMv7, Exynos)
+> >     Systemd: v239, v238
+> > 3. All boards boot from TFTP with NFS root (NFSv4)
+> > No specific errors in boot log:
+> > https://krzk.eu/#/builders/21/builds/1034/steps/12/logs/serial0
+> > 
+> > Let me know if you need any more data.
+> > 
+> > Best regards,
+> > Krzysztof
+> 
+> Thanks Krzysztof.  Ted, this is the same bug I pointed out in my review of this
+> patch yesterday (https://patchwork.kernel.org/patch/10719197/#22371523).  Can
+> you fix or revert the two broken patches?  Thanks,
+> 
+
 Hi,
 
-Looks like commit 4de97efb578a ("fsverity: Move verity status check
-to fsverity_file_open") causes a boot regression for me with root
-on ext4 SDIO card, see below.
+I have sent version V4 of the patchset now. My plan was to include the fix for
+"Kconfig recursive dependency" issue reported for IA64 architecture. But I
+would need some more time to understand the problem and provide a correct
+fix. Hence the V4 patchset was sent with a fix to only address the problem
+reported in this mail.
 
-Any ideas what goes wrong?
-
-Regards,
-
-Tony
-
-8< ----------------------
-Starting init: /bin/sh exists but couldn't execute it (error -95)
-Kernel panic - not syncing: No working init found.  Try passing init= option to kernel. See Linux Documentation/admin-guide/init.rst for guidance.
-CPU1: stopping
-CPU: 1 PID: 0 Comm: swapper/1 Not tainted 4.20.0-rc6-next-20181211 #1080
-Hardware name: Generic OMAP4 (Flattened Device Tree)
-[<c0112a18>] (unwind_backtrace) from [<c010d090>] (show_stack+0x10/0x14)
-[<c010d090>] (show_stack) from [<c08eb854>] (dump_stack+0xb0/0xe8)
-[<c08eb854>] (dump_stack) from [<c0110da4>] (handle_IPI+0x318/0x380)
-[<c0110da4>] (handle_IPI) from [<c0534930>] (gic_handle_irq+0x94/0xa8)
-[<c0534930>] (gic_handle_irq) from [<c01019f0>] (__irq_svc+0x70/0x98)
-Exception stack(0xee911ef8 to 0xee911f40)
-1ee0:                                                       00000001 00000001
-1f00: 00000000 ee90a180 00000000 c0e13fc4 00000000 ef6afbb8 c0ec8830 de03d29f
-1f20: 00000000 00000000 00000000 ee911f48 c01a4120 c06f8fb4 20000153 ffffffff
-[<c01019f0>] (__irq_svc) from [<c06f8fb4>] (cpuidle_enter_state+0x270/0x46c)
-[<c06f8fb4>] (cpuidle_enter_state) from [<c06fb0a4>] (cpuidle_enter_state_coupled+0x148/0x3e0)
-[<c06fb0a4>] (cpuidle_enter_state_coupled) from [<c0173398>] (do_idle+0x234/0x2b8)
-[<c0173398>] (do_idle) from [<c01737b4>] (cpu_startup_entry+0x18/0x1c)
-[<c01737b4>] (cpu_startup_entry) from [<8010274c>] (0x8010274c)
----[ end Kernel panic - not syncing: No working init found.  Try passing init= option to kernel. See Linux Documentation/admin-guide/init.rst for guidance. ]---
+-- 
+chandan
