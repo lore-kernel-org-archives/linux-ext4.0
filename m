@@ -1,48 +1,49 @@
-Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:37090 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727159AbeLSHTQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Dec 2018 02:19:16 -0500
-Date: Tue, 18 Dec 2018 23:19:14 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>, ebiggers@kernel.org,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181219071914.GA18852@infradead.org>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-2-ebiggers@kernel.org>
- <20181212091406.GA31723@infradead.org>
- <20181212202609.GA193967@gmail.com>
- <20181213202249.GA3797@infradead.org>
- <20181214044802.GA681@sol.localdomain>
- <20181217200039.GD8111@magnolia>
- <20181219071149.GB2628@infradead.org>
- <CAHk-=wiB8vGbje+NgNkMZupHsZ_cqg6YEBV+ZXSF4wnywFLRHQ@mail.gmail.com>
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mout.gmx.net ([212.227.15.19]:52825 "EHLO mout.gmx.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726232AbeLLNtm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 12 Dec 2018 08:49:42 -0500
+Subject: Re: [PATCH 00/10] fix coding style for ext2 filesystem
+To: Jan Kara <jack@suse.cz>
+Cc: jack@suse.com, linux-ext4@vger.kernel.org
+References: <20181113000448.16023-1-cgxu519@gmx.com>
+ <20181212131518.GE10902@quack2.suse.cz>
+From: cgxu519 <cgxu519@gmx.com>
+Message-ID: <de145a89-8788-f896-3019-9fd461bc0df1@gmx.com>
+Date: Wed, 12 Dec 2018 21:49:26 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAHk-=wiB8vGbje+NgNkMZupHsZ_cqg6YEBV+ZXSF4wnywFLRHQ@mail.gmail.com>
+In-Reply-To: <20181212131518.GE10902@quack2.suse.cz>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 8bit
+Content-Language: en-US
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 18, 2018 at 11:16:08PM -0800, Linus Torvalds wrote:
-> On Tue, Dec 18, 2018, 23:11 Christoph Hellwig <hch@infradead.org wrote:
-> 
-> >
-> > I think the fd would have to be on the same fs for this interface to
-> > make sense. But it could be an O_TMPFILE one.  And given that ext4
-> > already supports a variant of swapext this interface should also work
-> > with the existing ext4 on disk format.
-> >
-> 
-> Why is the merkle tree not just an xattr of the file?
+On 12/12/18 9:15 PM, Jan Kara wrote:
+> On Tue 13-11-18 08:04:38, Chengguang Xu wrote:
+>> This patch set fixes some coding style warnings which are from
+>> checkpatch.pl.
+>>
+>> Detail warning/error messages are below:
+>>
+>> WARNING: function definition argument 'struct inode *' should
+>> also have an identifier name
+>>
+>> WARNING: space prohibited between function name and open
+>> parenthesis '('
+>>
+>> WARNING: line over 80 characters
+>>
+>> ERROR: "foo * bar" should be "foo *bar"
+> Thanks for the series! I had a look into the patches but I don't think
+> these whitespace fixes are really worth the churn. Sorry.
 
-Because it is too large for our awkward xattrs interface..
+Hi Jan
+
+Thanks for the check. The motivation of that series is just for avoiding 
+annoying checkpatch complains.
+However, we can also fix the coding style problem when we actually 
+touch  the particular code,  that will be fine.
+
+Thanks,
+Chengguang
