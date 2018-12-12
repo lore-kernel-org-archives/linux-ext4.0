@@ -1,88 +1,178 @@
-Return-Path: <SRS0=rRm4=PB=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-eopbgr730095.outbound.protection.outlook.com ([40.107.73.95]:21136
-        "EHLO NAM05-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726648AbeLXExp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 23 Dec 2018 23:53:45 -0500
-Date: Sun, 23 Dec 2018 23:53:34 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: <torvalds@linux-foundation.org>
-CC: <linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>
-Subject: [GIT PULL] ext4 updates for 4.21-rc1
-Message-ID: <20181224045334.GA20828@mit.edu>
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:44784 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726877AbeLLJwH (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 12 Dec 2018 04:52:07 -0500
+Received: from pps.filterd (m0098414.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC9nL0N016836
+        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:52:05 -0500
+Received: from e36.co.us.ibm.com (e36.co.us.ibm.com [32.97.110.154])
+        by mx0b-001b2d01.pphosted.com with ESMTP id 2pay29u4qh-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:52:05 -0500
+Received: from localhost
+        by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Wed, 12 Dec 2018 09:52:03 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
+        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
+        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
+        deanbo422@gmail.com, schwidefsky@de.ibm.com,
+        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
+        adrian.hunter@intel.com, viro@zeniv.linux.org.uk,
+        Eric Biggers <ebiggers@google.com>
+Subject: [PATCH V5 8/9] fsverity: Move verity status check to fsverity_file_open
+Date: Wed, 12 Dec 2018 15:20:17 +0530
+In-Reply-To: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
+References: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
+Message-Id: <20181212095018.12648-9-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit 2e6e902d185027f8e3cb8b7305238f7e35d6a436:
+Instead of conditionally checking for verity status of an inode before
+invoking fsverity_file_open(), this commit moves the check inside the
+definition of fsverity_file_open().
 
-  Linux 4.20-rc4 (2018-11-25 14:19:31 -0800)
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+(EB: fix the !CONFIG_FS_VERITY case and inline the IS_VERITY() check)
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/ext4/file.c           |  8 +++-----
+ fs/f2fs/file.c           |  8 +++-----
+ fs/verity/setup.c        | 18 ++----------------
+ include/linux/fsverity.h | 25 +++++++++++++++++++++++--
+ 4 files changed, 31 insertions(+), 28 deletions(-)
 
-are available in the Git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
-
-for you to fetch changes up to 18f2c4fcebf2582f96cbd5f2238f4f354a0e4847:
-
-  ext4: check for shutdown and r/o file system in ext4_write_inode() (2018-12-19 14:36:58 -0500)
-
-----------------------------------------------------------------
-All cleanups and bug fixes; most notably, fix some problems discovered
-in ext4's NFS support, and fix an ioctl (EXT4_IOC_GROUP_ADD) used by
-old versions of e2fsprogs which we accidentally broke a while back.
-Also fixed some error paths in ext4's quota and inline data support.
-Finally, improve tail latency in jbd2's commit code.
-
-----------------------------------------------------------------
-Alexander Lochmann (1):
-      jbd2: update locking documentation for transaction_t
-
-Chengguang Xu (2):
-      ext4: remove redundant condition check
-      ext4: compare old and new mode before setting update_mode flag
-
-Colin Ian King (2):
-      ext4: clean up indentation issues, remove extraneous tabs
-      jbd2: clean up indentation issue, replace spaces with tab
-
-Eric Sandeen (1):
-      ext4: hard fail dax mount on unsupported devices
-
-Jan Kara (1):
-      jbd2: avoid long hold times of j_state_lock while committing a transaction
-
-Maurizio Lombardi (1):
-      ext4: missing unlock/put_page() in ext4_try_to_write_inline_data()
-
-Pan Bian (1):
-      ext4: fix possible use after free in ext4_quota_enable
-
-Theodore Ts'o (5):
-      ext4: add ext4_sb_bread() to disambiguate ENOMEM cases
-      ext4: include terminating u32 in size of xattr entries when expanding inodes
-      ext4: avoid declaring fs inconsistent due to invalid file handles
-      ext4: force inode writes when nfsd calls commit_metadata()
-      ext4: check for shutdown and r/o file system in ext4_write_inode()
-
-ruippan (潘睿) (1):
-      ext4: fix EXT4_IOC_GROUP_ADD ioctl
-
- fs/ext4/acl.c               |  3 +-
- fs/ext4/ext4.h              | 17 ++++++++-
- fs/ext4/ialloc.c            |  2 +-
- fs/ext4/inline.c            |  5 ++-
- fs/ext4/inode.c             | 63 +++++++++++++++++++++----------
- fs/ext4/ioctl.c             |  2 +-
- fs/ext4/migrate.c           | 48 ++++++++++++------------
- fs/ext4/namei.c             |  4 +-
- fs/ext4/resize.c            | 79 +++++++++++++++++++--------------------
- fs/ext4/super.c             | 92 ++++++++++++++++++++++++++++------------------
- fs/ext4/xattr.c             | 83 ++++++++++++++++++++---------------------
- fs/jbd2/commit.c            |  3 ++
- fs/jbd2/transaction.c       | 45 ++++++++++++++++++++---
- include/linux/jbd2.h        |  7 ++--
- include/trace/events/ext4.h | 20 ++++++++++
- 15 files changed, 296 insertions(+), 177 deletions(-)
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 30fbd663354f..b404a857cd48 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -444,11 +444,9 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
+ 	if (ret)
+ 		return ret;
+ 
+-	if (IS_VERITY(inode)) {
+-		ret = fsverity_file_open(inode, filp);
+-		if (ret)
+-			return ret;
+-	}
++	ret = fsverity_file_open(inode, filp);
++	if (ret)
++		return ret;
+ 
+ 	/*
+ 	 * Set up the jbd2_inode if we are opening the inode for
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 2eb4821d95d1..925c0d9608da 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -491,11 +491,9 @@ static int f2fs_file_open(struct inode *inode, struct file *filp)
+ 	if (err)
+ 		return err;
+ 
+-	if (IS_VERITY(inode)) {
+-		err = fsverity_file_open(inode, filp);
+-		if (err)
+-			return err;
+-	}
++	err = fsverity_file_open(inode, filp);
++	if (err)
++		return err;
+ 
+ 	filp->f_mode |= FMODE_NOWAIT;
+ 
+diff --git a/fs/verity/setup.c b/fs/verity/setup.c
+index 08b609127531..4ecaeb89166b 100644
+--- a/fs/verity/setup.c
++++ b/fs/verity/setup.c
+@@ -755,21 +755,7 @@ static int setup_fsverity_info(struct inode *inode)
+ 	return 0;
+ }
+ 
+-/**
+- * fsverity_file_open - prepare to open a verity file
+- * @inode: the inode being opened
+- * @filp: the struct file being set up
+- *
+- * When opening a verity file, deny the open if it is for writing.  Otherwise,
+- * set up the inode's ->i_verity_info (if not already done) by parsing the
+- * verity metadata at the end of the file.
+- *
+- * When combined with fscrypt, this must be called after fscrypt_file_open().
+- * Otherwise, we won't have the key set up to decrypt the verity metadata.
+- *
+- * Return: 0 on success, -errno on failure
+- */
+-int fsverity_file_open(struct inode *inode, struct file *filp)
++int __fsverity_file_open(struct inode *inode, struct file *filp)
+ {
+ 	if (filp->f_mode & FMODE_WRITE) {
+ 		pr_debug("Denying opening verity file (ino %lu) for write\n",
+@@ -779,7 +765,7 @@ int fsverity_file_open(struct inode *inode, struct file *filp)
+ 
+ 	return setup_fsverity_info(inode);
+ }
+-EXPORT_SYMBOL_GPL(fsverity_file_open);
++EXPORT_SYMBOL_GPL(__fsverity_file_open);
+ 
+ /**
+  * fsverity_prepare_setattr - prepare to change a verity inode's attributes
+diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+index ea8c418bd7d5..0ce170c2c167 100644
+--- a/include/linux/fsverity.h
++++ b/include/linux/fsverity.h
+@@ -25,7 +25,7 @@ extern int fsverity_ioctl_enable(struct file *filp, const void __user *arg);
+ extern int fsverity_ioctl_measure(struct file *filp, void __user *arg);
+ 
+ /* setup.c */
+-extern int fsverity_file_open(struct inode *inode, struct file *filp);
++extern int __fsverity_file_open(struct inode *inode, struct file *filp);
+ extern int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
+ extern int fsverity_prepare_getattr(struct inode *inode);
+ extern void fsverity_cleanup_inode(struct inode *inode);
+@@ -58,7 +58,7 @@ static inline int fsverity_ioctl_measure(struct file *filp, void __user *arg)
+ 
+ /* setup.c */
+ 
+-static inline int fsverity_file_open(struct inode *inode, struct file *filp)
++static inline int __fsverity_file_open(struct inode *inode, struct file *filp)
+ {
+ 	return -EOPNOTSUPP;
+ }
+@@ -108,4 +108,25 @@ static inline bool fsverity_check_hole(struct inode *inode, struct page *page)
+ 
+ #endif	/* ! CONFIG_FS_VERITY */
+ 
++/**
++ * fsverity_file_open - prepare to open a verity file
++ * @inode: the inode being opened
++ * @filp: the struct file being set up
++ *
++ * When opening a verity file, deny the open if it is for writing.  Otherwise,
++ * set up the inode's ->i_verity_info (if not already done) by parsing the
++ * verity metadata at the end of the file.
++ *
++ * When combined with fscrypt, this must be called after fscrypt_file_open().
++ * Otherwise, we won't have the key set up to decrypt the verity metadata.
++ *
++ * Return: 0 on success, -errno on failure
++ */
++static inline int fsverity_file_open(struct inode *inode, struct file *filp)
++{
++	if (IS_VERITY(inode))
++		return __fsverity_file_open(inode, filp);
++	return 0;
++}
++
+ #endif	/* _LINUX_FSVERITY_H */
+-- 
+2.19.1
