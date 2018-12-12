@@ -1,234 +1,120 @@
-Return-Path: <SRS0=IALa=OK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:32966 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726653AbeLALvR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 06:51:17 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 4/9] lib/ext2fs: Implement NLS support
-Date: Fri, 30 Nov 2018 19:39:05 -0500
-Message-Id: <20181201003910.18982-5-krisman@collabora.com>
-In-Reply-To: <20181201003910.18982-1-krisman@collabora.com>
-References: <20181201003910.18982-1-krisman@collabora.com>
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:44050 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726263AbeLLEJP (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 23:09:15 -0500
+Received: from pps.filterd (m0098393.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC3xFwR128415
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:09:14 -0500
+Received: from e13.ny.us.ibm.com (e13.ny.us.ibm.com [129.33.205.203])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2paqq7etky-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:09:14 -0500
+Received: from localhost
+        by e13.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Wed, 12 Dec 2018 04:09:13 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
+        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
+        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
+        deanbo422@gmail.com, schwidefsky@de.ibm.com,
+        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
+        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
+Subject: [PATCH V4 9/9] fsverity: Move verity status check to fsverity_prepare_setattr
+Date: Wed, 12 Dec 2018 09:37:36 +0530
+In-Reply-To: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
+References: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Message-Id: <20181212040736.2849-10-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Instead of conditionally checking for verity status of an inode before
+invoking fsverity_prepare_setattr(), this commit moves the check inside the
+definition of fsverity_prepare_setattr().
 
-Basic NLS support is required in e2fsprogs because of fsck, which
-needsto calculate dx hashes for encoding aware filesystems.  this patch
-implements this infrastructure as well as ascii support.
-
-We don't need to do all the dance of versioning as we do in the kernel,
-because we know before-hand which encodings and versions we
-support (those we know how to store in the sb), so it is simpler just to
-create static tables.
-
-Changes since v3:
-  - Prevent buffer overflow during normalization/casefold.
-  - Signal invalid sequences and let caller handle it.
-
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
- lib/ext2fs/Makefile.in | 10 ++++--
- lib/ext2fs/nls.h       | 70 ++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/nls_ascii.c | 68 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 146 insertions(+), 2 deletions(-)
- create mode 100644 lib/ext2fs/nls.h
- create mode 100644 lib/ext2fs/nls_ascii.c
+ fs/ext4/inode.c          | 8 +++-----
+ fs/f2fs/file.c           | 8 +++-----
+ fs/verity/setup.c        | 2 +-
+ include/linux/fsverity.h | 5 ++++-
+ 4 files changed, 11 insertions(+), 12 deletions(-)
 
-diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
-index 4a197cdf4e4a..a2f07403c9ae 100644
---- a/lib/ext2fs/Makefile.in
-+++ b/lib/ext2fs/Makefile.in
-@@ -20,6 +20,9 @@ COMPILE_ET=	_ET_DIR_OVERRIDE=$(srcdir)/../et ../et/compile_et
- @TEST_IO_CMT@TEST_IO_LIB_OBJS = test_io.o
- @IMAGER_CMT@E2IMAGE_LIB_OBJS = imager.o
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 703f55635824..44561e68886b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5510,11 +5510,9 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (error)
+ 		return error;
  
-+NLS_OBJS=nls_ascii.o
-+NLS_SRCS=nls_ascii.c
-+
- DEBUG_OBJS= debug_cmds.o extent_cmds.o tst_cmds.o debugfs.o util.o \
- 	ncheck.o icheck.o ls.o lsdel.o dump.o set_fields.o logdump.o \
- 	htree.o unused.o e2freefrag.o filefrag.o extent_inode.o zap.o \
-@@ -130,7 +133,8 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
- 	unlink.o \
- 	valid_blk.o \
- 	version.o \
--	rbtree.o
-+	rbtree.o \
-+	$(NLS_OBJS)
+-	if (IS_VERITY(inode)) {
+-		error = fsverity_prepare_setattr(dentry, attr);
+-		if (error)
+-			return error;
+-	}
++	error = fsverity_prepare_setattr(dentry, attr);
++	if (error)
++		return error;
  
- SRCS= ext2_err.c \
- 	$(srcdir)/alloc.c \
-@@ -222,7 +226,8 @@ SRCS= ext2_err.c \
- 	$(srcdir)/write_bb_file.c \
- 	$(srcdir)/rbtree.c \
- 	$(srcdir)/tst_libext2fs.c \
--	$(DEBUG_SRCS)
-+	$(DEBUG_SRCS) \
-+	$(NLS_SRCS)
+ 	if (is_quota_modification(inode, attr)) {
+ 		error = dquot_initialize(inode);
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 925c0d9608da..422907ca37c6 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -798,11 +798,9 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (err)
+ 		return err;
  
- HFILES= bitops.h ext2fs.h ext2_io.h ext2_fs.h ext2_ext_attr.h ext3_extents.h \
- 	tdb.h qcow2.h hashmap.h
-@@ -1412,3 +1417,4 @@ do_journal.o: $(top_srcdir)/debugfs/do_journal.c $(top_builddir)/lib/config.h \
-  $(top_srcdir)/lib/support/quotaio_tree.h $(srcdir)/kernel-jbd.h \
-  $(srcdir)/jfs_compat.h $(srcdir)/kernel-list.h \
-  $(top_srcdir)/debugfs/journal.h $(srcdir)/../../e2fsck/jfs_user.h
-+$(NLS_OBJS): $(srcdir)/nls.h
-diff --git a/lib/ext2fs/nls.h b/lib/ext2fs/nls.h
-new file mode 100644
-index 000000000000..adfd92300688
---- /dev/null
-+++ b/lib/ext2fs/nls.h
-@@ -0,0 +1,70 @@
-+/*
-+ * nls.h - Header for encoding support functions
-+ *
-+ * Copyright (C) 2017 Collabora Ltd.
-+ *
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ *  it under the terms of the GNU General Public License as published by
-+ *  the Free Software Foundation; either version 3 of the License, or (at
-+ *  your option) any later version.
-+ *
-+ *  This program is distributed in the hope that it will be useful,
-+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ *  GNU General Public License for more details.
-+ *
-+ *  You should have received a copy of the GNU General Public License
-+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-+ */
+-	if (IS_VERITY(inode)) {
+-		err = fsverity_prepare_setattr(dentry, attr);
+-		if (err)
+-			return err;
+-	}
++	err = fsverity_prepare_setattr(dentry, attr);
++	if (err)
++		return err;
+ 
+ 	if (is_quota_modification(inode, attr)) {
+ 		err = dquot_initialize(inode);
+diff --git a/fs/verity/setup.c b/fs/verity/setup.c
+index bc463dc601b1..154556d72691 100644
+--- a/fs/verity/setup.c
++++ b/fs/verity/setup.c
+@@ -796,7 +796,7 @@ EXPORT_SYMBOL_GPL(fsverity_file_open);
+  */
+ int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr)
+ {
+-	if (attr->ia_valid & ATTR_SIZE) {
++	if (IS_VERITY(d_inode(dentry)) && (attr->ia_valid & ATTR_SIZE)) {
+ 		pr_debug("Denying truncate of verity file (ino %lu)\n",
+ 			 d_inode(dentry)->i_ino);
+ 		return -EPERM;
+diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+index c770025606e1..9ccc8ad9652a 100644
+--- a/include/linux/fsverity.h
++++ b/include/linux/fsverity.h
+@@ -69,7 +69,10 @@ static inline int fsverity_file_open(struct inode *inode, struct file *filp)
+ static inline int fsverity_prepare_setattr(struct dentry *dentry,
+ 					   struct iattr *attr)
+ {
+-	return -EOPNOTSUPP;
++	if (IS_VERITY(d_inode(dentry)))
++		return -EOPNOTSUPP;
 +
-+#ifndef EXT2FS_NLS_H
-+#define EXT2FS_NLS_H
-+
-+#include <unistd.h>
-+#include <string.h>
-+#include <stdio.h>
-+
-+#include "ext2_fs.h"
-+
-+struct nls_table;
-+
-+#define ARRAY_SIZE(array)			\
-+        (sizeof(array) / sizeof(array[0]))
-+
-+struct nls_ops {
-+	int (*normalize)(const struct nls_table *charset,
-+			 const unsigned char *str, size_t len,
-+			 unsigned char *dest, size_t dlen);
-+
-+	int (*casefold)(const struct nls_table *charset,
-+			const unsigned char *str, size_t len,
-+			unsigned char *dest, size_t dlen);
-+};
-+
-+struct nls_table {
-+	int version;
-+	const struct nls_ops *ops;
-+};
-+
-+extern const struct nls_table nls_ascii;
-+
-+static const struct {
-+	int encoding_magic;
-+	const struct nls_table *tbl;
-+} nls_map[] = {
-+	{ EXT4_ENC_ASCII, &nls_ascii },
-+};
-+
-+static const struct nls_table *nls_load_table(int encoding)
-+{
-+	int i;
-+
-+	for (i = 0; i < ARRAY_SIZE(nls_map); i++) {
-+		if (encoding == nls_map[i].encoding_magic)
-+			return nls_map[i].tbl;
-+	}
-+	return NULL;
-+}
-+
-+#endif
-diff --git a/lib/ext2fs/nls_ascii.c b/lib/ext2fs/nls_ascii.c
-new file mode 100644
-index 000000000000..5d513df404c1
---- /dev/null
-+++ b/lib/ext2fs/nls_ascii.c
-@@ -0,0 +1,68 @@
-+#include "nls.h"
-+
-+#include <errno.h>
-+#include <string.h>
-+
-+
-+static unsigned char charset_tolower(const struct nls_table *table,
-+				     unsigned int c)
-+{
-+	if (c >= 'A' && c <= 'Z')
-+		return (c | 0x20);
-+	return c;
-+}
-+
-+static unsigned char charset_toupper(const struct nls_table *table,
-+				     unsigned int c)
-+{
-+	if (c >= 'a' && c <= 'z')
-+		return (c & ~0x20);
-+	return c;
-+}
-+
-+static int ascii_casefold(const struct nls_table *table,
-+			  const unsigned char *str, size_t len,
-+			  unsigned char *dest, size_t dlen)
-+{
-+	int i;
-+
-+	if (dlen < len)
-+		return -ENAMETOOLONG;
-+
-+	for (i = 0; i < len; i++) {
-+		if (str[i] & 0x80)
-+			return -EINVAL;
-+
-+		dest[i] = charset_toupper(table, str[i]);
-+	}
-+
-+	return len;
-+}
-+
-+static int ascii_normalize(const struct nls_table *table,
-+			   const unsigned char *str, size_t len,
-+			   unsigned char *dest, size_t dlen)
-+{
-+	int i;
-+
-+	if (dlen < len)
-+		return -ENAMETOOLONG;
-+
-+	for (i = 0; i < len; i++) {
-+		if (str[i] & 0x80)
-+			return -EINVAL;
-+
-+		dest[i] = str[i];
-+	}
-+
-+	return len;
-+}
-+
-+const static struct nls_ops ascii_ops = {
-+	.casefold = ascii_casefold,
-+	.normalize = ascii_normalize,
-+};
-+
-+const struct nls_table nls_ascii = {
-+	.ops = &ascii_ops,
-+};
++	return 0;
+ }
+ 
+ static inline int fsverity_prepare_getattr(struct inode *inode)
 -- 
-2.20.0.rc1
+2.19.1
