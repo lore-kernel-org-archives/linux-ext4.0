@@ -1,99 +1,138 @@
-Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from dmz-mailsec-scanner-1.mit.edu ([18.9.25.12]:52576 "EHLO
-        dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728697AbeLSRcL (ORCPT
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:56872 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726943AbeLLJvj (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 19 Dec 2018 12:32:11 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH] ext4: force inode writes when nfsd calls commit_metadata()
-Date: Wed, 19 Dec 2018 12:32:04 -0500
-Message-Id: <20181219173204.716-1-tytso@mit.edu>
+        Wed, 12 Dec 2018 04:51:39 -0500
+Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC9ndak056688
+        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:51:38 -0500
+Received: from e34.co.us.ibm.com (e34.co.us.ibm.com [32.97.110.152])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2pax8253kb-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:51:37 -0500
+Received: from localhost
+        by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Wed, 12 Dec 2018 09:51:36 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
+        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
+        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
+        deanbo422@gmail.com, schwidefsky@de.ibm.com,
+        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
+        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
+Subject: [PATCH V5 6/9] f2fs: use IS_VERITY() to check inode's fsverity status
+Date: Wed, 12 Dec 2018 15:20:15 +0530
+In-Reply-To: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
+References: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Message-Id: <20181212095018.12648-7-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some time back, nfsd switched from calling vfs_fsync() to using a new
-commit_metadata() hook in export_operations().  If the file system did
-not provide a commit_metadata() hook, it fell back to using
-sync_inode_metadata().  Unfortunately doesn't work on all file
-systems.  In particular, it doesn't work on ext4 due to how the inode
-gets journalled --- the VFS writeback code never ends up calling
-ext4_write_inode().
+This commit removes the f2fs specific f2fs_verity_file() and makes use
+of the generic IS_VERITY() macro or file_is_verity() to check for the
+verity status of an inode.
 
-So we need to provide our own ext4_nfs_commit_metdata() method which
-calls ext4_write_inode() directly.
-
-Google-Bug-Id: 121195940
-
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Reviewed-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
- fs/ext4/super.c             | 12 ++++++++++++
- include/trace/events/ext4.h | 20 ++++++++++++++++++++
- 2 files changed, 32 insertions(+)
+ fs/f2fs/f2fs.h  | 7 +------
+ fs/f2fs/file.c  | 6 +++---
+ fs/f2fs/inode.c | 4 +++-
+ fs/f2fs/super.c | 1 +
+ 4 files changed, 8 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index fc9071081600..378977cf8c19 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1202,6 +1202,17 @@ static struct dentry *ext4_fh_to_parent(struct super_block *sb, struct fid *fid,
- 				    ext4_nfs_get_inode);
+diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
+index f9c8b0afc1de..54bd93c7b630 100644
+--- a/fs/f2fs/f2fs.h
++++ b/fs/f2fs/f2fs.h
+@@ -3448,18 +3448,13 @@ static inline void f2fs_set_encrypted_inode(struct inode *inode)
+ #endif
  }
  
-+static int ext4_nfs_commit_metadata(struct inode *inode)
-+{
-+	struct writeback_control wbc = {
-+		.sync_mode = WB_SYNC_ALL
-+	};
-+
-+	trace_ext4_nfs_commit_metadata(inode);
-+	ext4_write_inode(inode, &wbc);
-+	return 0;
-+}
-+
+-static inline bool f2fs_verity_file(struct inode *inode)
+-{
+-	return file_is_verity(inode);
+-}
+-
  /*
-  * Try to release metadata pages (indirect blocks, directories) which are
-  * mapped via the block device.  Since these pages could have journal heads
-@@ -1406,6 +1417,7 @@ static const struct export_operations ext4_export_ops = {
- 	.fh_to_dentry = ext4_fh_to_dentry,
- 	.fh_to_parent = ext4_fh_to_parent,
- 	.get_parent = ext4_get_parent,
-+	.commit_metadata = ext4_nfs_commit_metadata,
- };
+  * Returns true if the reads of the inode's data need to undergo some
+  * postprocessing step, like decryption or authenticity verification.
+  */
+ static inline bool f2fs_post_read_required(struct inode *inode)
+ {
+-	return f2fs_encrypted_file(inode) || f2fs_verity_file(inode);
++	return f2fs_encrypted_file(inode) || IS_VERITY(inode);
+ }
  
- enum {
-diff --git a/include/trace/events/ext4.h b/include/trace/events/ext4.h
-index 698e0d8a5ca4..d68e9e536814 100644
---- a/include/trace/events/ext4.h
-+++ b/include/trace/events/ext4.h
-@@ -226,6 +226,26 @@ TRACE_EVENT(ext4_drop_inode,
- 		  (unsigned long) __entry->ino, __entry->drop)
- );
+ #define F2FS_FEATURE_FUNCS(name, flagname) \
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 6c7ad15000b9..2eb4821d95d1 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -491,7 +491,7 @@ static int f2fs_file_open(struct inode *inode, struct file *filp)
+ 	if (err)
+ 		return err;
  
-+TRACE_EVENT(ext4_nfs_commit_metadata,
-+	TP_PROTO(struct inode *inode),
-+
-+	TP_ARGS(inode),
-+
-+	TP_STRUCT__entry(
-+		__field(	dev_t,	dev			)
-+		__field(	ino_t,	ino			)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->dev	= inode->i_sb->s_dev;
-+		__entry->ino	= inode->i_ino;
-+	),
-+
-+	TP_printk("dev %d,%d ino %lu",
-+		  MAJOR(__entry->dev), MINOR(__entry->dev),
-+		  (unsigned long) __entry->ino)
-+);
-+
- TRACE_EVENT(ext4_mark_inode_dirty,
- 	TP_PROTO(struct inode *inode, unsigned long IP),
+-	if (f2fs_verity_file(inode)) {
++	if (IS_VERITY(inode)) {
+ 		err = fsverity_file_open(inode, filp);
+ 		if (err)
+ 			return err;
+@@ -701,7 +701,7 @@ int f2fs_getattr(const struct path *path, struct kstat *stat,
+ 	struct f2fs_inode *ri;
+ 	unsigned int flags;
  
+-	if (f2fs_verity_file(inode)) {
++	if (IS_VERITY(inode)) {
+ 		/*
+ 		 * For fs-verity we need to override i_size with the original
+ 		 * data i_size.  This requires I/O to the file which with
+@@ -800,7 +800,7 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if (err)
+ 		return err;
+ 
+-	if (f2fs_verity_file(inode)) {
++	if (IS_VERITY(inode)) {
+ 		err = fsverity_prepare_setattr(dentry, attr);
+ 		if (err)
+ 			return err;
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index d731d23aedee..ff9126616d65 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -45,9 +45,11 @@ void f2fs_set_inode_flags(struct inode *inode)
+ 		new_fl |= S_DIRSYNC;
+ 	if (file_is_encrypt(inode))
+ 		new_fl |= S_ENCRYPTED;
++	if (file_is_verity(inode))
++		new_fl |= S_VERITY;
+ 	inode_set_flags(inode, new_fl,
+ 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|
+-			S_ENCRYPTED);
++			S_ENCRYPTED|S_VERITY);
+ }
+ 
+ static void __get_inode_rdev(struct inode *inode, struct f2fs_inode *ri)
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 4287cf348d3c..73320202bd01 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -2207,6 +2207,7 @@ static int f2fs_set_verity(struct inode *inode, loff_t data_i_size)
+ 		return err;
+ 
+ 	file_set_verity(inode);
++	f2fs_set_inode_flags(inode);
+ 	f2fs_mark_inode_dirty_sync(inode, true);
+ 	return 0;
+ }
 -- 
 2.19.1
