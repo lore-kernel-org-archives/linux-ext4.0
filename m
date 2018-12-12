@@ -1,48 +1,81 @@
-Return-Path: <SRS0=0ehA=O2=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:35330 "EHLO mail.kernel.org"
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:38468 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388003AbeLQScJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 17 Dec 2018 13:32:09 -0500
-Date: Mon, 17 Dec 2018 10:32:06 -0800
+        id S1726237AbeLLCsP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 21:48:15 -0500
+Date: Tue, 11 Dec 2018 18:48:12 -0800
 From: Eric Biggers <ebiggers@kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181217183205.GA141684@gmail.com>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-2-ebiggers@kernel.org>
- <20181212091406.GA31723@infradead.org>
- <20181212202609.GA193967@gmail.com>
- <20181213202249.GA3797@infradead.org>
- <20181214044802.GA681@sol.localdomain>
- <20181217164949.GA18626@infradead.org>
+To: Guenter Roeck <linux@roeck-us.net>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
+        corbet@lwn.net, ralf@linux-mips.org, paul.burton@mips.com,
+        jhogan@kernel.org, green.hu@gmail.com, deanbo422@gmail.com,
+        schwidefsky@de.ibm.com, heiko.carstens@de.ibm.com, richard@nod.at,
+        dedekind1@gmail.com, adrian.hunter@intel.com,
+        viro@zeniv.linux.org.uk
+Subject: Re: [PATCH V2 3/7] fscrypt: remove filesystem specific build config
+ option
+Message-ID: <20181212024811.GB722@sol.localdomain>
+References: <20181204095650.12562-1-chandan@linux.vnet.ibm.com>
+ <20181204095650.12562-4-chandan@linux.vnet.ibm.com>
+ <20181212015211.GA23905@roeck-us.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181217164949.GA18626@infradead.org>
+In-Reply-To: <20181212015211.GA23905@roeck-us.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 17, 2018 at 08:49:49AM -0800, Christoph Hellwig wrote:
+On Tue, Dec 11, 2018 at 05:52:11PM -0800, Guenter Roeck wrote:
+> Hi,
 > 
-> > > Given that you alread use an ioctl as the interface what is the problem
-> > > of passing this data through the ioctl?
+> On Tue, Dec 04, 2018 at 03:26:46PM +0530, Chandan Rajendra wrote:
+> > In order to have a common code base for fscrypt "post read" processing
+> > for all filesystems which support encryption, this commit removes
+> > filesystem specific build config option (e.g. CONFIG_EXT4_FS_ENCRYPTION)
+> > and replaces it with a build option (i.e. CONFIG_FS_ENCRYPTION) whose
+> > value affects all the filesystems making use of fscrypt.
 > > 
-> > Do you mean pass the verity metadata in a buffer?  That cannot work in general,
-> > because it may be too large to fit into memory.
+> > Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 > 
-> Have a pointer in the ioctl and do get_user_pages on it.
+> this patch causes a recursive dependency when trying to build ia64 images.
+> 
+> make ARCH=ia64 allnoconfig:
+> 
+> scripts/kconfig/conf  --allnoconfig Kconfig
+> arch/ia64/Kconfig:126:error: recursive dependency detected!
+> arch/ia64/Kconfig:126:	choice <choice> contains symbol IA64_HP_SIM
+> arch/ia64/Kconfig:200:	symbol IA64_HP_SIM is part of choice PM
+> kernel/power/Kconfig:144:	symbol PM is selected by PM_SLEEP
+> kernel/power/Kconfig:104:	symbol PM_SLEEP depends on HIBERNATE_CALLBACKS
+> kernel/power/Kconfig:31:	symbol HIBERNATE_CALLBACKS is selected by HIBERNATION
+> kernel/power/Kconfig:34:	symbol HIBERNATION depends on SWAP
+> init/Kconfig:250:	symbol SWAP depends on BLOCK
+> block/Kconfig:5:	symbol BLOCK is selected by UBIFS_FS
+> fs/ubifs/Kconfig:1:	symbol UBIFS_FS depends on MISC_FILESYSTEMS
+> fs/Kconfig:220:	symbol MISC_FILESYSTEMS is selected by ACPI_APEI
+> drivers/acpi/apei/Kconfig:8:	symbol ACPI_APEI depends on ACPI
+> drivers/acpi/Kconfig:9:	symbol ACPI depends on ARCH_SUPPORTS_ACPI
+> drivers/acpi/Kconfig:6:	symbol ARCH_SUPPORTS_ACPI is selected by IA64_HP_SIM
+> arch/ia64/Kconfig:200:	symbol IA64_HP_SIM is part of choice <choice>
+> For a resolution refer to Documentation/kbuild/kconfig-language.txt
+> subsection "Kconfig recursive dependency limitations"
+> 
+> scripts/kconfig/Makefile:69: recipe for target 'allnoconfig' failed
+> 
+> Reverting the patch fixes the problem.
+> 
 
-I don't see how that helps.  The Merkle tree can still be too large to fit in
-memory.  In the worst case, it might not even fit in the address space.  And I
-don't see how get_user_pages() helps either over just copy_from_user(); what are
-you proposing to do with the pages after getting them, exactly?
+Thanks for the report.  Chandan, it appears the problem is UBIFS_FS selecting
+BLOCK.  It's actually not necessary because now the parts of fs/crypto/ that
+depend on BLOCK are separated out into a separate file fs/crypto/bio.c that is
+only compiled with CONFIG_BLOCK.  So how about just removing the selection of
+BLOCK from fs/ubifs/Kconfig:
+
+	select BLOCK if FS_ENCRYPTION
 
 - Eric
