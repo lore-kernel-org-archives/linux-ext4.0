@@ -1,90 +1,64 @@
-Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:52530 "EHLO mail.kernel.org"
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:52600 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726437AbeLNEsG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Dec 2018 23:48:06 -0500
-Date: Thu, 13 Dec 2018 20:48:03 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
+        id S1726218AbeLLEHM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 23:07:12 -0500
+Date: Tue, 11 Dec 2018 23:07:03 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: linux-fscrypt@vger.kernel.org,
         Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181214044802.GA681@sol.localdomain>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-2-ebiggers@kernel.org>
- <20181212091406.GA31723@infradead.org>
- <20181212202609.GA193967@gmail.com>
- <20181213202249.GA3797@infradead.org>
+        Krzysztof Kozlowski <krzk@kernel.org>,
+        linux-ext4@vger.kernel.org, Tony Lindgren <tony@atomide.com>,
+        Kirill Tkhai <ktkhai@virtuozzo.com>,
+        linux-f2fs-devel@lists.sourceforge.net
+Subject: Re: [PATCH 0/2] fs-verity: fix !CONFIG_FS_VERITY case
+Message-ID: <20181212040703.GA21718@thunk.org>
+References: <20181211224651.112510-1-ebiggers@kernel.org>
+ <20181212023018.GD4464@thunk.org>
+ <20181212024221.GA722@sol.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181213202249.GA3797@infradead.org>
+In-Reply-To: <20181212024221.GA722@sol.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Christoph,
-
-On Thu, Dec 13, 2018 at 12:22:49PM -0800, Christoph Hellwig wrote:
-> On Wed, Dec 12, 2018 at 12:26:10PM -0800, Eric Biggers wrote:
-> > > As this apparently got merged despite no proper reviews from VFS
-> > > level persons:
-> > 
-> > fs-verity has been out for review since August, and Cc'ed to all relevant
-> > mailing lists including linux-fsdevel, linux-ext4, linux-f2fs-devel,
-> > linux-fscrypt, linux-integrity, and linux-kernel.  There are tests,
-> > documentation (since v2), and a userspace tool.  It's also been presented at
-> > multiple conferences, and has been covered by LWN multiple times.  If more
-> > people want to review it, then they should do so; there's nothing stopping them.
+On Tue, Dec 11, 2018 at 06:42:22PM -0800, Eric Biggers wrote:
 > 
-> But you did not got a review from someone like Al, Linus, Andrew or me,
-> did you?
+> Either works, but I slightly prefer my version since it minimizes the overhead
+> on non-verity files when the kconfig option is enabled: it's just an i_flags
+> check, rather than a function call plus an i_flags check.  The same approach is
+> used in the fscrypt hooks.  Also shouldn't it be EOPNOTSUPP, not ENOTSUPP?
 
-Sure, those specific people (modulo you just now) haven't responded to the
-fs-verity patches yet.  But again, the patches have been out for review for
-months.  Of course, we always prefer more reviews over fewer, and we strongly
-encourage anyone interested to review fs-verity!  (The Documentation/ file may
-be a good place to start.)  But ultimately we cannot force reviews, and as you
-know kernel reviews can be very hard to come by.  Yet, people still need
-fs-verity anyway; it isn't just some toy.  And we're committed to maintaining
-it, similar to fscrypt.  The ext4 and f2fs maintainers are also satisfied with
-the current approach to storing the verity metadata past EOF; in fact it was
-even originally Ted's idea, I think.
+It's the same for both, since in the !CONFIG_FS_VERITY case the two
+functions are inline functions.
 
-> 
-> > Can you elaborate on the actual problems you think the current solution has, and
-> > exactly what solution you'd prefer instead?  Keep in mind that (1) for large
-> > files the Merkle tree can be gigabytes long, (2) Linux doesn't have an API for
-> > file streams, and (3) when fs-verity is combined with fscrypt, it's important
-> > that the hashes be encrypted, so as to not leak information about the plaintext.
-> 
-> Given that you alread use an ioctl as the interface what is the problem
-> of passing this data through the ioctl?
+There's actually a bigger issue that I've been meaning to raise, which
+is that right now we'll set S_VERITY even if the VERITY feature flag
+is not set.  What we should do, in my opinion, is to make ext4 fail a
+r/w mount if it tries to mount the file system with the VERITY feature
+flag set and the kernel is mounted with the VERITY flag set.
 
-Do you mean pass the verity metadata in a buffer?  That cannot work in general,
-because it may be too large to fit into memory.
+Also, if the kernel is compiled without CONFIG_FS_VERITY enabled,
+IS_VERITY(inode) should be defined to 0, and if the an inode is found
+with EXT4_VERITY_FL and the VERITY feature is not set, we should
+declare the file system corrupted.
 
-Or do you mean pass it via a second file descriptor?  That could work, but it
-doesn't seem better than the current approach.  It would force every filesystem
-to move the metadata around, whereas currently ext4 and f2fs can simply leave it
-in place.  If you meant this, are there advantages you have in mind that would
-outweigh this?
+The problem is that f2fs doesn't check **any** file system features at
+all.  If you mount a file system with f2fs features that the kernel
+doesn't support, the f2fs file system doesn't say boo.  I suspect
+hilarity would ensue if new f2fs file system with new features are
+mounted on an older kernel, or a kernel where features like encryption
+and verity are disabled.
 
-We also considered generating the Merkle tree in the kernel, in which case
-FS_IOC_ENABLE_VERITY would just take a small structure similar to the current
-fsverity_descriptor.  But that would add extra complexity to the kernel, and
-generating a Merkle tree over a large file is the type of parallelizable, CPU
-intensive work that really should be done in userspace.  Also, having userspace
-provide the Merkle tree allows for it to be pre-generated and distributed with
-the file, e.g. provided in a package to be installed on many systems.
+So I could easily make these changes for ext4, but what we would do
+for f2fs isn't clear.  I think f2fs is very broken here, but I
+hesitate defining IS_VERITY(x) to 0 if !CONFIG_FS_VERITY might cause
+f2fs to break even more than it does today.  I would prefer to do that
+since it would remove dead code from ext4 and f2fs in the
+!CONFIG_FS_VERITY case, but I think we clarify with the f2fs folks why
+it is that they aren't checking the f2fs feature mask when mounting a
+file system first.
 
-But please do let us know if you have any better ideas.
-
-Thanks!
-
-- Eric
+       	    	      	       	    - Ted
