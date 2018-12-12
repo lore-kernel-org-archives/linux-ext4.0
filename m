@@ -1,46 +1,31 @@
-Return-Path: <SRS0=7jnN=PI=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-eopbgr820113.outbound.protection.outlook.com ([40.107.82.113]:59061
-        "EHLO NAM01-SN1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727405AbeLaTsp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 31 Dec 2018 14:48:45 -0500
-From: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-CC: Theodore Ts'o <tytso@mit.edu>, <stable@kernel.org>
-Subject: [PATCH 3/3] ext4: track writeback errors using the generic tracking infrastructure
-Date: Mon, 31 Dec 2018 14:48:36 -0500
-Message-ID: <20181231194836.3761-3-tytso@mit.edu>
-In-Reply-To: <20181231194836.3761-1-tytso@mit.edu>
-References: <20181231194836.3761-1-tytso@mit.edu>
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:52332 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726211AbeLLCzd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 11 Dec 2018 21:55:33 -0500
+Date: Tue, 11 Dec 2018 21:55:25 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Krzysztof Kozlowski <krzk@kernel.org>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
+        Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org
+Subject: Re: [BUG BISECT next] Files cannot be opened after "fsverity: Move
+ verity status check to fsverity_file_open"
+Message-ID: <20181212025525.GF4464@thunk.org>
+References: <CAJKOXPdNS+Qs6t1GwrgYhWT5EbtORJwYMzSrDPf8oAxv7ndNBg@mail.gmail.com>
+ <20181211222721.GC4464@thunk.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181211222721.GC4464@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We already using mapping_set_error() in fs/ext4/page_io.c, so all we
-need to do is to use file_check_and_advance_wb_err() when handling
-fsync() requests in ext4_sync_file().
+The fscrypt.git tree has been updated with for the problem.  Apologies
+for not testing the !CONFIG_FS_VERITY case.
 
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Cc: stable@kernel.org
----
- fs/ext4/fsync.c | 3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index 87a7ff00ef62..712f00995390 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -164,6 +164,9 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
- 			ret = err;
- 	}
- out:
-+	err = file_check_and_advance_wb_err(file);
-+	if (ret == 0)
-+		ret = err;
- 	trace_ext4_sync_file_exit(inode, ret);
- 	return ret;
- }
--- 
-2.19.1
+							- Ted
