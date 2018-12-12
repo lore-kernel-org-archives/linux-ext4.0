@@ -1,116 +1,71 @@
-Return-Path: <SRS0=7LHW=OY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from out30-132.freemail.mail.aliyun.com ([115.124.30.132]:44074 "EHLO
-        out30-132.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1729245AbeLOFwb (ORCPT
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:46966 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726406AbeLLEI2 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 15 Dec 2018 00:52:31 -0500
-From: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-To: linux-ext4@vger.kernel.org
-Cc: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>,
-        Liu Bo <bo.liu@linux.alibaba.com>
-Subject: [PATCH v2 2/2] ext4: fix slow writeback under dioread_nolock and nodelalloc
-Date: Sat, 15 Dec 2018 13:48:40 +0800
-Message-Id: <20181215054840.5960-2-xiaoguang.wang@linux.alibaba.com>
-In-Reply-To: <20181215054840.5960-1-xiaoguang.wang@linux.alibaba.com>
-References: <20181215054840.5960-1-xiaoguang.wang@linux.alibaba.com>
+        Tue, 11 Dec 2018 23:08:28 -0500
+Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC3xAu7047883
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:08:27 -0500
+Received: from e15.ny.us.ibm.com (e15.ny.us.ibm.com [129.33.205.205])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2parkwn2h3-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:08:27 -0500
+Received: from localhost
+        by e15.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Wed, 12 Dec 2018 04:08:26 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
+        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
+        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
+        deanbo422@gmail.com, schwidefsky@de.ibm.com,
+        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
+        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
+Subject: [PATCH V4 4/9] Add S_VERITY and IS_VERITY()
+Date: Wed, 12 Dec 2018 09:37:31 +0530
+In-Reply-To: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
+References: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+Message-Id: <20181212040736.2849-5-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With "nodelalloc", blocks are allocated at the time of writing, and with
-"dioread_nolock", these allocated blocks are marked as unwritten as well,
-so bh(s) attached to the blocks have BH_Unwritten and BH_Mapped.
+Similar to S_ENCRYPTED/IS_ENCRYPTED(), this commit adds
+S_VERITY/IS_VERITY() to be able to check if a VFS inode has verity
+information associated with it.
 
-Everything looks normal except with "dioread_nolock", all allocated
-extents are with EXT4_GET_BLOCKS_PRE_IO, which doesn't allow merging
-adjacent extents.
-
-And when it comes to writepages, given the fact that bh marked as
-BH_Unwritten, it has to hold a journal handle to process these extents,
-but when writepages() prepared a bunch of pages in a mpd, it could only
-find one block to map to and submit one page at a time, and loop to the
-next page over and over again.
-
-ext4_writepages
-  ...
-  # starting from the 1st dirty page
-  ext4_journal_start_with_reserve
-  mpage_prepare_extent_to_map
-    # batch up to 2048 dirty pages
-  mpage_map_and_submit_extent
-    mpage_map_one_extent
-      ext4_map_blocks #with EXT4_GET_BLOCKS_IO_CREATE_EXT
-        ext4_ext_map_blocks
-          ext4_find_extent
-            # find an extent with only one block at the offset
-          ext4_ext_handle_unwritten_extents
-            # try to split due to EXT4_GET_BLOCKS_PRE_IO,
-            # but no need to in this case as there is
-            # only one block in this extent
-    mpage_map_and_submit_buffers
-      #submit io for only 1st page
-  #start from the 2nd dirty page
-  ...
-
+Reviewed-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
+ include/linux/fs.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Given this is for buffered writes, the nice thing we want from
-"dioread_nolock" is that extents are converted from unwritten at endio, so
-thus we really don't have to take PRE_IO which is desigend for direct IO
-path originally.
-
-With this, we do extent merging in case of "nodelalloc" and writeback
-doesn't need to do those extra batching and looping, the performance
-number is shown as follows:
-
-mount -o dioread_nolock,nodelalloc /dev/loop0 /mnt/
-xfs_io -f -c "pwrite -W 0 1G" $M/foobar
-
-- w/o:
-wrote 1073741824/1073741824 bytes at offset 0
-1 GiB, 262144 ops; 0:02:27.00 (6.951 MiB/sec and 1779.3791 ops/sec)
-
-- w/
-wrote 1073741824/1073741824 bytes at offset 0
-1 GiB, 262144 ops; 0:00:06.00 (161.915 MiB/sec and 41450.3184 ops/sec)
-
-Signed-off-by: Liu Bo <bo.liu@linux.alibaba.com>
-Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
----
- fs/ext4/extents.c | 6 +++++-
- fs/ext4/inode.c   | 2 +-
- 2 files changed, 6 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 444c739470a5..de73b0152892 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -4038,9 +4038,13 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
- 	/*
- 	 * repeat fallocate creation request
- 	 * we already have an unwritten extent
-+	 *
-+	 * With nodelalloc + dioread_nolock, write can also come here,
-+	 * so make sure map is set with new to avoid exposing stale
-+	 * data to reads.
- 	 */
- 	if (flags & EXT4_GET_BLOCKS_UNWRIT_EXT) {
--		map->m_flags |= EXT4_MAP_UNWRITTEN;
-+		map->m_flags |= EXT4_MAP_UNWRITTEN | EXT4_MAP_NEW;
- 		goto map_out;
- 	}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 389a35e028bf..de602d9f8d0e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1938,6 +1938,7 @@ struct super_operations {
+ #define S_DAX		0	/* Make all the DAX code disappear */
+ #endif
+ #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
++#define S_VERITY	32768	/* Verity file (using fs/verity/) */
  
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index ba557a731081..4dbb43ab9d6e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -822,7 +822,7 @@ int ext4_get_block_unwritten(struct inode *inode, sector_t iblock,
- 	ext4_debug("ext4_get_block_unwritten: inode %lu, create flag %d\n",
- 		   inode->i_ino, create);
- 	return _ext4_get_block(inode, iblock, bh_result,
--			       EXT4_GET_BLOCKS_IO_CREATE_EXT);
-+			       EXT4_GET_BLOCKS_CREATE_UNWRIT_EXT);
- }
+ /*
+  * Note that nosuid etc flags are inode-specific: setting some file-system
+@@ -1978,6 +1979,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
+ #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
+ #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
+ #define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
++#define IS_VERITY(inode)	((inode)->i_flags & S_VERITY)
  
- /* Maximum number of blocks we map for direct IO at once. */
+ #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
+ 				 (inode)->i_rdev == WHITEOUT_DEV)
 -- 
-2.17.2
+2.19.1
