@@ -1,110 +1,71 @@
-Return-Path: <SRS0=vjzE=OW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from smtp-out-no.shaw.ca ([64.59.134.13]:60446 "EHLO
-        smtp-out-no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727511AbeLMSOt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Dec 2018 13:14:49 -0500
-From: Andreas Dilger <adilger@dilger.ca>
-To: tytso@mit.edu
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
-Subject: [PATCH v3] tests: replace perl usage with shell built-in
-Date: Thu, 13 Dec 2018 11:06:39 -0700
-Message-Id: <1544724399-84147-1-git-send-email-adilger@dilger.ca>
+Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:51116 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726896AbeLLJvT (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 12 Dec 2018 04:51:19 -0500
+Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC9njVj057259
+        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:51:18 -0500
+Received: from e35.co.us.ibm.com (e35.co.us.ibm.com [32.97.110.153])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2pax8252vr-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:51:18 -0500
+Received: from localhost
+        by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
+        Wed, 12 Dec 2018 09:51:17 -0000
+From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
+        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
+        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
+        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
+        deanbo422@gmail.com, schwidefsky@de.ibm.com,
+        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
+        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
+Subject: [PATCH V5 4/9] Add S_VERITY and IS_VERITY()
+Date: Wed, 12 Dec 2018 15:20:13 +0530
+In-Reply-To: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
+References: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+Message-Id: <20181212095018.12648-5-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-A couple of tests use perl only for generating a string of
-N characters long.  Instead of requiring perl just for a few
-tests, use shell built-in commands and don't spawn a separate
-subshell just to get a string of characters.
+Similar to S_ENCRYPTED/IS_ENCRYPTED(), this commit adds
+S_VERITY/IS_VERITY() to be able to check if a VFS inode has verity
+information associated with it.
 
-Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+Reviewed-by: Eric Biggers <ebiggers@google.com>
+Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
 ---
- tests/d_xattr_sorting/script    |  3 ++-
- tests/f_badsymlinks2/mkimage.sh |  4 +++-
- tests/f_create_symlinks/script  | 12 ++++++------
- util/gen-sample-fs              |  4 +++-
- 4 files changed, 14 insertions(+), 9 deletions(-)
+ include/linux/fs.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/tests/d_xattr_sorting/script b/tests/d_xattr_sorting/script
-index 8666115..49bcece 100644
---- a/tests/d_xattr_sorting/script
-+++ b/tests/d_xattr_sorting/script
-@@ -22,7 +22,8 @@ echo Exit status is $status >> $OUT.new
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 389a35e028bf..de602d9f8d0e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1938,6 +1938,7 @@ struct super_operations {
+ #define S_DAX		0	/* Make all the DAX code disappear */
+ #endif
+ #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
++#define S_VERITY	32768	/* Verity file (using fs/verity/) */
  
- B=$(mktemp ${TMPDIR:-/tmp}/b.XXXXXX)
+ /*
+  * Note that nosuid etc flags are inode-specific: setting some file-system
+@@ -1978,6 +1979,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
+ #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
+ #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
+ #define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
++#define IS_VERITY(inode)	((inode)->i_flags & S_VERITY)
  
--perl -e 'print "x" x 256;' > $B
-+F="xxxx"; F+=$F$F$F; F+=$F$F$F; F+=$F$F$F
-+printf "%s" $F > $B
- 
- echo "ea_set -f /tmp/b / security.SMEG64" >> $OUT.new
- $DEBUGFS -w -R "ea_set -f $B / security.SMEG64" $TMPFILE >> $OUT.new 2>&1
-diff --git a/tests/f_badsymlinks2/mkimage.sh b/tests/f_badsymlinks2/mkimage.sh
-index 6bbf020..fe0ebb7 100755
---- a/tests/f_badsymlinks2/mkimage.sh
-+++ b/tests/f_badsymlinks2/mkimage.sh
-@@ -18,10 +18,12 @@ do_tune2fs() {
- 	mount image mnt
- }
- 
-+A="AAAA"; A+=$A$A$A; A+=$A$A$A; A+=$A$A$A; A+=$A$A$A; A+=$A$A$A
- symlink() {
- 	local len=$1
- 	local src=$2
--	local target=$(perl -e 'print "A" x '$len)
-+	local target=${A:0:$len}
-+
- 	ln -s $target $src
- 	stat -c %i $src
- }
-diff --git a/tests/f_create_symlinks/script b/tests/f_create_symlinks/script
-index 169f58d..72741fd 100644
---- a/tests/f_create_symlinks/script
-+++ b/tests/f_create_symlinks/script
-@@ -15,22 +15,22 @@ fi
- dd if=/dev/zero of=$TMPFILE bs=1k count=512 > /dev/null 2>&1
- 
- echo mke2fs -q -F -o Linux -b 1024 -g 256 -O inline_data,extents -I 256 test.img 1024 > $OUT.new
--$MKE2FS -q -F -o Linux -b 1024 -g 256 -O inline_data,extents -I 256 $TMPFILE 1024 >> $OUT 2>&1
-+$MKE2FS -q -F -o Linux -b 1024 -g 256 -O inline_data,extents -I 256 $TMPFILE 1024 >> $OUT.new 2>&1
- 
- $FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT.new 2>&1
- status=$?
- echo Exit status is $status >> $OUT.new
- 
-+B="xxxx"; B+=$B$B$B; B+=$B$B$B; B+=$B$B$B; B+=$B$B$B$B$B
- for i in 30 60 70 500 1023 1024 1500; do
--	echo "debugfs -R \"symlink /l_$i $(perl -e "print 'x' x $i;")\" test.img" >> $OUT.new
--	$DEBUGFS -w -R "symlink /l_$i $(perl -e "print 'x' x $i;")" $TMPFILE \
--		 2>&1 | sed -f $cmd_dir/filter.sed >> $OUT.new
-+	echo "debugfs -R \"symlink /l_$i ${B:0:i}\" test.img" >> $OUT.new
-+	$DEBUGFS -w -R "symlink /l_$i ${B:0:i}" $TMPFILE >> $OUT.new 2>&1
- done
-+unset B
- 
- for i in 30 60 70 500 1023 1024 1500; do
- 	echo "debugfs -R \"stat /l_$i\" test.img" >> $OUT.new
--	$DEBUGFS -R "stat /l_$i" $TMPFILE 2>&1 | \
--		 grep -v "time: " >> $OUT.new
-+	$DEBUGFS -R "stat /l_$i" $TMPFILE 2>&1 | grep -v "time: " >> $OUT.new
- done
- 
- $FSCK $FSCK_OPT  -N test_filesys $TMPFILE >> $OUT.new 2>&1
-diff --git a/util/gen-sample-fs b/util/gen-sample-fs
-index 8e13916..a92c822 100755
---- a/util/gen-sample-fs
-+++ b/util/gen-sample-fs
-@@ -7,8 +7,10 @@ cp /dev/null $FS
- mke2fs -q -t ext4 -O inline_data,^has_journal -I 256 -b 4096 -N 64 $FS 256
- mount -t ext4 $FS $MNT
- ln -s symlink_data $MNT/symlink
-+
-+L="xxxx"; L+=$L$L$L; L+=$L$L$L; L+=$L$L$L; L+=$L$L$L
- for i in 30 70 500 1023 1024; do
--	ln -s /$(perl -e "print 'x' x $i;") $MNT/l_$i
-+	ln -s /${L:0:$i} $MNT/l_$i
- done
- touch $MNT/acl
- setfacl -m u:daemon:r $MNT/acl
+ #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
+ 				 (inode)->i_rdev == WHITEOUT_DEV)
 -- 
-1.8.0
+2.19.1
