@@ -1,34 +1,44 @@
-Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:56100 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726102AbeLEJdW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Dec 2018 04:33:22 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id CEE162CD7E
-        for <linux-ext4@vger.kernel.org>; Wed,  5 Dec 2018 09:33:21 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
+Return-Path: <SRS0=vjzE=OW=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-it1-f196.google.com ([209.85.166.196]:56045 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726435AbeLMVch (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Dec 2018 16:32:37 -0500
+Received: by mail-it1-f196.google.com with SMTP id o19so5929924itg.5
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Dec 2018 13:32:37 -0800 (PST)
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Wed, 05 Dec 2018 09:33:20 +0000
-Message-ID: <bug-201685-13602-YZVoxbBM2h@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+Cc: adilger.kernel@dilger.ca
+Subject: [PATCH 1/2] e2fsck: allow to check >2GB sized directory
+Date: Fri, 14 Dec 2018 00:31:55 +0300
+Message-Id: <20181213213156.44773-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+After large_dir feature has been added, e2fsprogs is
+ready for directories > 2GB, so we can remove e2fsck
+directory size check.
 
---- Comment #265 from Ortwin Glück (odi@odi.ch) ---
-I think Jens pretty much summarized the situation in #245. To trigger the bug
-blk-mq must be used together with an underlying block device (such as SCSI or
-SATA) that is stateful after a rejected bio submit. Then it's just a matter of
-enough concurrent I/O.
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+---
+ e2fsck/pass1.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-So a workaround is to just disable blk-mq with SCIS: scsi_mod.use_blk_mq=1
-
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 5c0b92d5..3318d881 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -3647,9 +3647,10 @@ static int process_block(ext2_filsys fs,
+ 		}
+ 	}
+ 
+-	if (p->is_dir && blockcnt > (1 << (21 - fs->super->s_log_block_size)))
++	if (p->is_dir && !ext2fs_has_feature_largedir(fs->super) &&
++	    blockcnt > (1 << (21 - fs->super->s_log_block_size)))
+ 		problem = PR_1_TOOBIG_DIR;
+-	if (p->is_reg && p->num_blocks+1 >= p->max_blocks)
++	if ((p->is_reg || p->is_dir) && p->num_blocks + 1 >= p->max_blocks)
+ 		problem = PR_1_TOOBIG_REG;
+ 	if (!p->is_dir && !p->is_reg && blockcnt > 0)
+ 		problem = PR_1_TOOBIG_SYMLINK;
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.14.3
