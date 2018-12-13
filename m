@@ -1,50 +1,44 @@
-Return-Path: <SRS0=IALa=OK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:32978 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726014AbeLALv0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 06:51:26 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 7/9] tune2fs: Prevent enabling encryption flag on encoding-aware fs
-Date: Fri, 30 Nov 2018 19:39:08 -0500
-Message-Id: <20181201003910.18982-8-krisman@collabora.com>
-In-Reply-To: <20181201003910.18982-1-krisman@collabora.com>
-References: <20181201003910.18982-1-krisman@collabora.com>
+Return-Path: <SRS0=vjzE=OW=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga05-in.huawei.com ([45.249.212.191]:15687 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726500AbeLMH4N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Dec 2018 02:56:13 -0500
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+Subject: Question about commit "ext4: always initialize the crc32c checksum
+ driver"
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+CC: <linux-ext4@vger.kernel.org>, Miao Xie <miaoxie@huawei.com>,
+        yangerkun <yangerkun@huawei.com>, <yi.zhang@huawei.com>
+Message-ID: <d686d167-9ad2-bfd6-3464-fb35c10ae63d@huawei.com>
+Date: Thu, 13 Dec 2018 15:56:04 +0800
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="gbk"
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Hi Ted,
 
-The kernel will refuse to mount filesystems with the encryption and
-encoding features enabled at the same time.  The encoding feature can
-only be set at mount time, so we can just prevent encryption from being
-set at a later time by tune2fs.
+I am checking a CVE patch a45403b515 "ext4: always initialize the crc32c checksum driver"[1]
+in CVE-2018-1094[2] recently, and have a question about the commit log in this patch.
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- misc/tune2fs.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+The patch commit log said:
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index a680b461cc86..4c92bee30b38 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -1459,6 +1459,12 @@ mmp_error:
- 	}
- 
- 	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_ENCRYPT)) {
-+		if (ext2fs_has_feature_fname_encoding(sb)) {
-+			fputs(_("Cannot enable encrypt feature on filesystems "
-+				"with the encoding feature enabled.\n"),
-+			      stderr);
-+			return 1;
-+		}
- 		fs->super->s_encrypt_algos[0] =
- 			EXT4_ENCRYPTION_MODE_AES_256_XTS;
- 		fs->super->s_encrypt_algos[1] =
--- 
-2.20.0.rc1
+> The extended attribute code now uses the crc32c checksum for hashing
+> purposes, so we should just always always initialize it.  We also want
+> to prevent NULL pointer dereferences if one of the metadata checksum
+> features is enabled after the file sytsem is originally mounted.
+
+This first fix is clear. But I don't understand the second fix. IIUC, the kernel does not call
+ext4_set_feature_metadata_csum() to enable metadata checksum, and this feature can only be enabled
+by mkfs,turn2fs or change the image directly. So this feature bit will never change once the
+file system is mounted, the second case could never happen ?
+
+BTW, does this patch need on the old kernel before dec214d00e "ext4: xattr inode deduplication" ?
+
+------
+[1]. https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=a45403b51582a
+[2]. https://nvd.nist.gov/vuln/detail/CVE-2018-1094
+
+Thanks,
+Yi.
