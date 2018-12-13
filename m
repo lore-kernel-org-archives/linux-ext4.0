@@ -1,45 +1,52 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:48898 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725535AbeLBTRh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 14:17:37 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 44B972A7D4
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 19:17:34 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 19:17:31 +0000
-Message-ID: <bug-201685-13602-QWuoDTDERH@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=vjzE=OW=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.133]:53152 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726408AbeLMUWu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Dec 2018 15:22:50 -0500
+Date: Thu, 13 Dec 2018 12:22:49 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Eric Biggers <ebiggers@kernel.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+Message-ID: <20181213202249.GA3797@infradead.org>
+References: <20181101225230.88058-1-ebiggers@kernel.org>
+ <20181101225230.88058-2-ebiggers@kernel.org>
+ <20181212091406.GA31723@infradead.org>
+ <20181212202609.GA193967@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181212202609.GA193967@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Wed, Dec 12, 2018 at 12:26:10PM -0800, Eric Biggers wrote:
+> > As this apparently got merged despite no proper reviews from VFS
+> > level persons:
+> 
+> fs-verity has been out for review since August, and Cc'ed to all relevant
+> mailing lists including linux-fsdevel, linux-ext4, linux-f2fs-devel,
+> linux-fscrypt, linux-integrity, and linux-kernel.  There are tests,
+> documentation (since v2), and a userspace tool.  It's also been presented at
+> multiple conferences, and has been covered by LWN multiple times.  If more
+> people want to review it, then they should do so; there's nothing stopping them.
 
-Michael Duell (reg@akurei.me) changed:
+But you did not got a review from someone like Al, Linus, Andrew or me,
+did you?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |reg@akurei.me
+> Can you elaborate on the actual problems you think the current solution has, and
+> exactly what solution you'd prefer instead?  Keep in mind that (1) for large
+> files the Merkle tree can be gigabytes long, (2) Linux doesn't have an API for
+> file streams, and (3) when fs-verity is combined with fscrypt, it's important
+> that the hashes be encrypted, so as to not leak information about the plaintext.
 
---- Comment #157 from Michael Duell (reg@akurei.me) ---
-I have had file system corruption with 4.19 on a BTRFS file system as well.
-4.19.2 Kernel. I think this has to be related. No files were actually corrupted
-but the Kernel set the file system read-only as soon as the error occurred.
-
-I have even tried a NEW and FRESH btrfs file system created via a LiveCD system
-and it happened there as well as soon as I did a btrfs send/receive operation.
-
-I am on a Thinkpad T450.
-
-lspci -vvv 
-https://paste.pound-python.org/show/9tZLWlry0Iy7Z629VPea/
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Given that you alread use an ioctl as the interface what is the problem
+of passing this data through the ioctl?
