@@ -1,30 +1,30 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:51408 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725791AbeLBKY4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 05:24:56 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 81CDA2B251
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 10:24:54 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 10:24:54 +0000
-Message-ID: <bug-201685-13602-VRhUTxmFUm@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from imap.thunk.org ([74.207.234.97]:35226 "EHLO imap.thunk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726480AbeLNDL4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 13 Dec 2018 22:11:56 -0500
+Date: Thu, 13 Dec 2018 22:11:54 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
+Subject: Re: [PATCH 2/2] debugfs: output large directory size
+Message-ID: <20181214031154.GB20880@thunk.org>
+References: <20181213213156.44773-1-artem.blagodarenko@gmail.com>
+ <20181213213156.44773-2-artem.blagodarenko@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181213213156.44773-2-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Fri, Dec 14, 2018 at 12:31:56AM +0300, Artem Blagodarenko wrote:
+> Use hight part of directory size in debugfs output.
 
---- Comment #130 from carlphilippreh@gmail.com ---
-Just as I was writing this, my third computer running Linux (currently at
-4.19.6) is now also running into this issue.
+"high", not "hight".  Also, it would be better if the discription
+explained the context of this being needed for directories with the
+largedir feature being enabled.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks,
+
+					- Ted
