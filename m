@@ -1,47 +1,46 @@
-Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:55146 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725797AbeLDS3w (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 13:29:52 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id ACB4F2C33F
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 18:29:51 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
+Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-it1-f195.google.com ([209.85.166.195]:33771 "EHLO
+        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726533AbeLNHv2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Dec 2018 02:51:28 -0500
+Received: by mail-it1-f195.google.com with SMTP id m8so18339281itk.0
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Dec 2018 23:51:27 -0800 (PST)
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
 To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Tue, 04 Dec 2018 18:29:49 +0000
-Message-ID: <bug-201685-13602-qw7XTyvWCa@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+Cc: adilger.kernel@dilger.ca
+Subject: [PATCH v2 1/2] e2fsck: allow to check >2GB sized directory
+Date: Fri, 14 Dec 2018 10:50:53 +0300
+Message-Id: <20181214075054.47359-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+After large_dir feature has been added, e2fsprogs is
+ready for directories > 2GB, so we can remove e2fsck
+directory size check.
 
---- Comment #229 from Jens Axboe (axboe@kernel.dk) ---
-(In reply to Guenter Roeck from comment #228)
-> I guess I should have been more specific. With CONFIG_SCSI_MQ_DEFAULT=y (or
-> scsi_mod.use_blk_mq=1), cfq is not available. That applies to any kernel
-> version with CONFIG_SCSI_MQ_DEFAULT=y (or scsi_mod.use_blk_mq=1), not just
-> to 4.19, and it doesn't apply to 4.19 if CONFIG_SCSI_MQ_DEFAULT=n (or
-> scsi_mod.use_blk_mq=0).
-> 
-> It is quite irrelevant if other schedulers are available if
-> CONFIG_SCSI_MQ_DEFAULT=y (or scsi_mod.use_blk_mq=1). cfq is not available,
-> and it doesn't matter if it is set as default or not.
-> 
-> I hope this is specific enough this time. My apologies if I missed some
-> other means to enable or disable blk_mq.
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+---
+ e2fsck/pass1.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-My clarification was for Steven, not you.
-
-In terms of scheduler, CFQ will change the patterns a lot. For the non-mq case,
-I'd recommend using noop or deadline for testing, otherwise I fear we're
-testing a lot more than mq vs non-mq.
-
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index 5c0b92d5..5c413610 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -3647,9 +3647,12 @@ static int process_block(ext2_filsys fs,
+ 		}
+ 	}
+ 
+-	if (p->is_dir && blockcnt > (1 << (21 - fs->super->s_log_block_size)))
++	if (p->is_dir && !ext2fs_has_feature_largedir(fs->super) &&
++	    blockcnt > (1 << (21 - fs->super->s_log_block_size)))
+ 		problem = PR_1_TOOBIG_DIR;
+-	if (p->is_reg && p->num_blocks+1 >= p->max_blocks)
++	if (p->is_dir && p->num_blocks + 1 >= p->max_blocks)
++		problem = PR_1_TOOBIG_DIR;
++	if (p->is_reg && p->num_blocks + 1 >= p->max_blocks)
+ 		problem = PR_1_TOOBIG_REG;
+ 	if (!p->is_dir && !p->is_reg && blockcnt > 0)
+ 		problem = PR_1_TOOBIG_SYMLINK;
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.14.3
