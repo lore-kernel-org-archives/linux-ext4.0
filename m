@@ -1,220 +1,76 @@
-Return-Path: <SRS0=IALa=OK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:32954 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726057AbeLALvI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Dec 2018 06:51:08 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: kernel@collabora.com, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 1/9] libe2p: Helpers for configuring the encoding superblock fields
-Date: Fri, 30 Nov 2018 19:39:02 -0500
-Message-Id: <20181201003910.18982-2-krisman@collabora.com>
-In-Reply-To: <20181201003910.18982-1-krisman@collabora.com>
-References: <20181201003910.18982-1-krisman@collabora.com>
+Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga07-in.huawei.com ([45.249.212.35]:47925 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726500AbeLNHvu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 14 Dec 2018 02:51:50 -0500
+Subject: Re: Question about commit "ext4: always initialize the crc32c
+ checksum driver"
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+References: <d686d167-9ad2-bfd6-3464-fb35c10ae63d@huawei.com>
+ <20181214034052.GC20880@thunk.org>
+CC: <linux-ext4@vger.kernel.org>, Miao Xie <miaoxie@huawei.com>,
+        yangerkun <yangerkun@huawei.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+Message-ID: <a03c59d0-db30-6e11-420b-077114268f1a@huawei.com>
+Date: Fri, 14 Dec 2018 15:51:38 +0800
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <20181214034052.GC20880@thunk.org>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Thanks for your deep explanation, I get it.
 
-Implement helper functions to convert the encoding name and specific
-parameters requested by the user on the command line into the format
-that is written to disk.
+Thanks,
+Yi.
 
-Changes since v3:
-  - Don't require version at mkfs time
-
-Changes since v2:
-  - Rename defines to add EXT4_ prefix
-  - Use unicode X.Y versioning scheme
-
-Changes since v1:
-  - Drop struct ext4_encoding_map name.
-  - remove question mark in comment.
-  - Reword 0x0 -> NULL
-  - Prevent out of bound array access if requested invalid encoding
-
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- lib/e2p/Makefile.in  |   8 +++-
- lib/e2p/e2p.h        |   4 ++
- lib/e2p/encoding.c   | 104 +++++++++++++++++++++++++++++++++++++++++++
- lib/ext2fs/ext2_fs.h |   7 +++
- 4 files changed, 121 insertions(+), 2 deletions(-)
- create mode 100644 lib/e2p/encoding.c
-
-diff --git a/lib/e2p/Makefile.in b/lib/e2p/Makefile.in
-index 2b0aa1915130..68d534cdaf11 100644
---- a/lib/e2p/Makefile.in
-+++ b/lib/e2p/Makefile.in
-@@ -19,7 +19,8 @@ all::	e2p.pc
- OBJS=		feature.o fgetflags.o fsetflags.o fgetversion.o fsetversion.o \
- 		getflags.o getversion.o hashstr.o iod.o ls.o ljs.o mntopts.o \
- 		parse_num.o pe.o pf.o ps.o setflags.o setversion.o uuid.o \
--		ostype.o percent.o crypto_mode.o fgetproject.o fsetproject.o
-+		ostype.o percent.o crypto_mode.o fgetproject.o fsetproject.o \
-+		encoding.o
- 
- SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/fsetflags.c $(srcdir)/fgetversion.c \
-@@ -29,7 +30,7 @@ SRCS=		$(srcdir)/feature.c $(srcdir)/fgetflags.c \
- 		$(srcdir)/pe.c $(srcdir)/pf.c $(srcdir)/ps.c \
- 		$(srcdir)/setflags.c $(srcdir)/setversion.c $(srcdir)/uuid.c \
- 		$(srcdir)/ostype.c $(srcdir)/percent.c $(srcdir)/crypto_mode.c \
--		$(srcdir)/fgetproject.c $(srcdir)/fsetproject.c
-+		$(srcdir)/fgetproject.c $(srcdir)/fsetproject.c $(srcdir)/encoding.c
- HFILES= e2p.h
- 
- LIBRARY= libe2p
-@@ -147,6 +148,9 @@ getversion.o: $(srcdir)/getversion.c $(top_builddir)/lib/config.h \
- hashstr.o: $(srcdir)/hashstr.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-+encoding.o: $(srcdir)/encoding.c $(top_builddir)/lib/config.h \
-+ $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-+ $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
- iod.o: $(srcdir)/iod.c $(top_builddir)/lib/config.h \
-  $(top_builddir)/lib/dirpaths.h $(srcdir)/e2p.h \
-  $(top_srcdir)/lib/ext2fs/ext2_fs.h $(top_builddir)/lib/ext2fs/ext2_types.h
-diff --git a/lib/e2p/e2p.h b/lib/e2p/e2p.h
-index d70b59a5d358..cc2dbf39bfeb 100644
---- a/lib/e2p/e2p.h
-+++ b/lib/e2p/e2p.h
-@@ -80,3 +80,7 @@ unsigned int e2p_percent(int percent, unsigned int base);
- 
- const char *e2p_encmode2string(int num);
- int e2p_string2encmode(char *string);
-+
-+int e2p_str2encoding(const char *string);
-+int e2p_get_encoding_flags(int encoding);
-+int e2p_str2encoding_flags(int encoding, char *param, __u16 *flags);
-diff --git a/lib/e2p/encoding.c b/lib/e2p/encoding.c
-new file mode 100644
-index 000000000000..88433310a1dd
---- /dev/null
-+++ b/lib/e2p/encoding.c
-@@ -0,0 +1,104 @@
-+/*
-+ * encoding.c --- convert between encoding magic numbers and strings
-+ *
-+ * Copyright (C) 2018  Collabora Ltd.
-+ *
-+ * %Begin-Header%
-+ * This file may be redistributed under the terms of the GNU Library
-+ * General Public License, version 2.
-+ * %End-Header%
-+ */
-+
-+#include "config.h"
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <ctype.h>
-+#include <errno.h>
-+#include <stdio.h>
-+
-+#include "e2p.h"
-+
-+#define ARRAY_SIZE(array)			\
-+        (sizeof(array) / sizeof(array[0]))
-+
-+static const struct {
-+	char *name;
-+	__u16 encoding_magic;
-+	__u16 default_flags;
-+
-+} ext4_encoding_map[] = {
-+	{
-+		.encoding_magic = EXT4_ENC_ASCII,
-+		.name = "ascii",
-+		.default_flags = 0
-+	},
-+	{
-+		.encoding_magic = EXT4_ENC_UTF8_11_0,
-+		.name = "utf8",
-+		.default_flags = (EXT4_UTF8_NORMALIZATION_TYPE_NFKD |
-+				  EXT4_UTF8_CASEFOLD_TYPE_NFKDCF)
-+	},
-+};
-+
-+static const struct enc_flags {
-+	__u16 flag;
-+	char *param;
-+} encoding_flags[] = {
-+	{ EXT4_ENC_STRICT_MODE_FL, "strict" },
-+};
-+
-+/* Return a positive number < 0xff indicating the encoding magic number
-+ * or a negative value indicating error. */
-+int e2p_str2encoding(const char *string)
-+{
-+	int i;
-+
-+	for (i = 0 ; i < ARRAY_SIZE(ext4_encoding_map); i++)
-+		if (!strcmp(string, ext4_encoding_map[i].name))
-+			return ext4_encoding_map[i].encoding_magic;
-+
-+	return -EINVAL;
-+}
-+
-+int e2p_get_encoding_flags(int encoding)
-+{
-+	int i;
-+
-+	for (i = 0 ; i < ARRAY_SIZE(ext4_encoding_map); i++)
-+		if (ext4_encoding_map[i].encoding_magic == encoding)
-+			return ext4_encoding_map[encoding].default_flags;
-+
-+	return 0;
-+}
-+
-+int e2p_str2encoding_flags(int encoding, char *param, __u16 *flags)
-+{
-+	char *f = strtok(param, "-");
-+	const struct enc_flags *fl;
-+	int i, neg = 0;
-+
-+	while (f) {
-+		neg = 0;
-+		if (!strncmp("no", f, 2)) {
-+			neg = 1;
-+			f += 2;
-+		}
-+
-+		for (i = 0; i < ARRAY_SIZE(encoding_flags); i++) {
-+			fl = &encoding_flags[i];
-+			if (!strcmp(fl->param, f)) {
-+				if (neg)
-+					*flags &= ~fl->flag;
-+				else
-+					*flags |= fl->flag;
-+
-+				goto next_flag;
-+			}
-+		}
-+		return -EINVAL;
-+	next_flag:
-+		f = strtok(NULL, "-");
-+	}
-+	return 0;
-+}
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index f1c405b76339..c7d62b8d40b2 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -1127,4 +1127,11 @@ struct mmp_struct {
-  */
- #define EXT4_INLINE_DATA_DOTDOT_SIZE	(4)
- 
-+#define EXT4_ENC_ASCII		0
-+#define EXT4_ENC_UTF8_11_0	1
-+
-+#define EXT4_ENC_STRICT_MODE_FL			(1 << 0) /* Reject invalid sequences */
-+#define EXT4_UTF8_NORMALIZATION_TYPE_NFKD	(1 << 1)
-+#define EXT4_UTF8_CASEFOLD_TYPE_NFKDCF		(1 << 4)
-+
- #endif	/* _LINUX_EXT2_FS_H */
--- 
-2.20.0.rc1
+On 2018/12/14 11:40, Theodore Y. Ts'o Wrote:
+> On Thu, Dec 13, 2018 at 03:56:04PM +0800, zhangyi (F) wrote:
+>> I am checking a CVE patch a45403b515 "ext4: always initialize the crc32c checksum driver"[1]
+>> in CVE-2018-1094[2] recently, and have a question about the commit log in this patch.
+>>
+>> The patch commit log said:
+>>
+>>> The extended attribute code now uses the crc32c checksum for hashing
+>>> purposes, so we should just always always initialize it.  We also want
+>>> to prevent NULL pointer dereferences if one of the metadata checksum
+>>> features is enabled after the file sytsem is originally mounted.
+>>
+>> This first fix is clear. But I don't understand the second fix. IIUC, the kernel does not call
+>> ext4_set_feature_metadata_csum() to enable metadata checksum, and this feature can only be enabled
+>> by mkfs,turn2fs or change the image directly. So this feature bit will never change once the
+>> file system is mounted, the second case could never happen ?
+> 
+> This was triggered by a maliciously created file system where the
+> journal contained a superblock which had the metadata checksum feature
+> enabled (although the superblock which was visible to the kernel when
+> it was initially mounted did not have the metadata checksum field
+> set).
+> 
+> So the file system would get mounted, with metadata_csum not enabled,
+> so the crc32c checksum was not initialized.  Then the journal replay
+> would overwrite the superblock with a version that had the
+> metadata_csum feature set.  And then the next time the kernel tried to
+> fetch an inode, it would try to check the inode's metadata checksum,
+> and dereference a NULL pointer.... and boom.
+> 
+> This was found by a researcher that was investigating file system
+> fuzzing techniques.  So if you have a system with automount enabled,
+> this is one more way that someone with access to the USB port could
+> plug in a maliciously crafted file system, and cause the system to
+> crash, or at least oops.  I don't think *this* particular one could be
+> exploited to cause a remote execution attack, just a DOS, but it's why
+> it was assigned a CVE.
+> 
+>> BTW, does this patch need on the old kernel before dec214d00e "ext4: xattr inode deduplication" ?
+> 
+> It's needed on any old kernel which supports the metadata checksum
+> feature.
+> 
+> Cheers,
+> 
+> 					- Ted
+> 
+> .
+> 
