@@ -1,42 +1,88 @@
 Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35212 "EHLO imap.thunk.org"
+Received: from imap.thunk.org ([74.207.234.97]:35554 "EHLO imap.thunk.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726465AbeLNDKM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Dec 2018 22:10:12 -0500
-Date: Thu, 13 Dec 2018 22:10:09 -0500
+        id S1726437AbeLNFR3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 14 Dec 2018 00:17:29 -0500
+Date: Fri, 14 Dec 2018 00:17:22 -0500
 From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-Subject: Re: [PATCH 1/2] e2fsck: allow to check >2GB sized directory
-Message-ID: <20181214031009.GA20880@thunk.org>
-References: <20181213213156.44773-1-artem.blagodarenko@gmail.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Eric Biggers <ebiggers@kernel.org>, linux-fscrypt@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+Message-ID: <20181214051722.GF20880@thunk.org>
+References: <20181101225230.88058-1-ebiggers@kernel.org>
+ <20181101225230.88058-2-ebiggers@kernel.org>
+ <20181212091406.GA31723@infradead.org>
+ <20181212202609.GA193967@gmail.com>
+ <20181213202249.GA3797@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181213213156.44773-1-artem.blagodarenko@gmail.com>
+In-Reply-To: <20181213202249.GA3797@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 14, 2018 at 12:31:55AM +0300, Artem Blagodarenko wrote:
-> After large_dir feature has been added, e2fsprogs is
-> ready for directories > 2GB, so we can remove e2fsck
-> directory size check.
+On Thu, Dec 13, 2018 at 12:22:49PM -0800, Christoph Hellwig wrote:
+> On Wed, Dec 12, 2018 at 12:26:10PM -0800, Eric Biggers wrote:
+> > > As this apparently got merged despite no proper reviews from VFS
+> > > level persons:
+> > 
+> > fs-verity has been out for review since August, and Cc'ed to all relevant
+> > mailing lists including linux-fsdevel, linux-ext4, linux-f2fs-devel,
+> > linux-fscrypt, linux-integrity, and linux-kernel.  There are tests,
+> > documentation (since v2), and a userspace tool.  It's also been presented at
+> > multiple conferences, and has been covered by LWN multiple times.  If more
+> > people want to review it, then they should do so; there's nothing stopping them.
 > 
->  
-> -	if (p->is_dir && blockcnt > (1 << (21 - fs->super->s_log_block_size)))
-> +	if (p->is_dir && !ext2fs_has_feature_largedir(fs->super) &&
-> +	    blockcnt > (1 << (21 - fs->super->s_log_block_size)))
->  		problem = PR_1_TOOBIG_DIR;
-> -	if (p->is_reg && p->num_blocks+1 >= p->max_blocks)
-> +	if ((p->is_reg || p->is_dir) && p->num_blocks + 1 >= p->max_blocks)
->  		problem = PR_1_TOOBIG_REG;
->  	if (!p->is_dir && !p->is_reg && blockcnt > 0)
->  		problem = PR_1_TOOBIG_SYMLINK;
+> But you did not got a review from someone like Al, Linus, Andrew or me,
+> did you?
 
-In the largedir case, if the directory is too big, it will return
-PR_1_TOOBIG_REG; it should still return PR_1_TOOBIG_DIR, so the
-message is not confusing.
+I don't consider fs-verity to be part of core VFS, but rather a
+library that happens to be used by ext4 and f2fs.  This is much like
+fscrypt, which was originally an ext4-only thing, but the code was
+always set up so it could be used by other file systems, and when f2fs
+was interested in using it, we moved it to fs/crypto.  As such the
+fscrypto code never got a review from Al, Andrew, or you, and when I
+pushed it to Linus, he accepted the pull request.
 
-Could you fix this, please?   Thanks!!
+The difference this time is that ext4 and f2fs are interested in using
+common code from the beginning.
 
-					- Ted
+> > Can you elaborate on the actual problems you think the current solution has, and
+> > exactly what solution you'd prefer instead?  Keep in mind that (1) for large
+> > files the Merkle tree can be gigabytes long, (2) Linux doesn't have an API for
+> > file streams, and (3) when fs-verity is combined with fscrypt, it's important
+> > that the hashes be encrypted, so as to not leak information about the plaintext.
+> 
+> Given that you alread use an ioctl as the interface what is the problem
+> of passing this data through the ioctl?
+
+The size of the Merkle tree is roughly size/129.  So for a 100MB file
+(and there can be Android APK files that bug), the Merkle tree could
+be almost 800k.  That's not really a size that we would want to push
+through an ioctl.
+
+We could treat the ioctl as write-like interface, but using write(2)
+seemed to make a lot more sense.  Also, the fscrypt common code
+leveraged by f2fs and ext4 assume that the verity tree will be stored
+after the data blocks.
+
+Given that the semantics of a verity-protected file is that it is
+immutable, you *could* store the Merkle tree in a separate file
+stream, but it really doesn't buy you anything --- by definition, you
+can't append to a fs-verity protected file.  Furthermore, it would
+require extra complexity in the common fsverity code --- which looks
+for the Merkle tree at the end of file data --- for no real benefit.
+
+Cheers,
+
+						- Ted
+
+P.S.  And if you've purchased a Pixel 3 device, it's already using the
+fsverity code, so it's quite well tested (and yes, we have xfstests).
