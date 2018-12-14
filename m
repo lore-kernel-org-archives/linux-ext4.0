@@ -1,56 +1,60 @@
-Return-Path: <SRS0=EV/E=O6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:58178 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725845AbeLUPx6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2018 10:53:58 -0500
-Date: Fri, 21 Dec 2018 07:53:54 -0800
-From: Matthew Wilcox <willy@infradead.org>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181221155354.GC10600@bombadil.infradead.org>
-References: <20181219071420.GC2628@infradead.org>
- <20181219021953.GD31274@dastard>
- <20181219193005.GB6889@mit.edu>
- <20181219213552.GO6311@dastard>
- <20181220220158.GC2360@mit.edu>
- <20181221070447.GA21687@infradead.org>
- <20181221154714.GA26547@mit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181221154714.GA26547@mit.edu>
+Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-it1-f194.google.com ([209.85.166.194]:38539 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726533AbeLNHvc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Dec 2018 02:51:32 -0500
+Received: by mail-it1-f194.google.com with SMTP id h65so8024169ith.3
+        for <linux-ext4@vger.kernel.org>; Thu, 13 Dec 2018 23:51:31 -0800 (PST)
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+To: linux-ext4@vger.kernel.org
+Cc: adilger.kernel@dilger.ca
+Subject: [PATCH v2 2/2] debugfs: output large directory size
+Date: Fri, 14 Dec 2018 10:50:54 +0300
+Message-Id: <20181214075054.47359-2-artem.blagodarenko@gmail.com>
+In-Reply-To: <20181214075054.47359-1-artem.blagodarenko@gmail.com>
+References: <20181214075054.47359-1-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 21, 2018 at 10:47:14AM -0500, Theodore Y. Ts'o wrote:
-> Linus --- we're going round and round, and I don't think this is
-> really a technical dispute at this point, but rather an aesthetics
-> one.  Will you be willing to accept my pull request for a feature
-> which is being shippped on millions of Android phones, has been out
-> for review for months, and for which, if we *really* need to add
-> uselessly complicated interface later, we can do that?  It's always
-> been the case for internal Kernel interfaces not to add code "just in
-> case" it's useful, but rather when a user turns up.  I argue we should
-> be doing the same thing for user-space visible interfaces.
+large_dir option allows to create directory with size > 2GB.
+debugfs utility outputs negative size value for large directories
+and ignores high part of directory size.
 
-To look at it another way, this is an aesthetic dispute in which all those
-who have offered opinions from outside Google -- myself, Dave Chinner &
-Christoph all really dislike this interface.  I'd be happy to discuss
-alternative interfaces, particularly ones which allow for the current
-internal implementation, but I think this interface is really bad.
+Fix debugfs to use high part of directory size in debugfs output
+and use appropriate output format.
 
-In contrast to "we'll just fix it up later" (which usually applies
-to in-kernel interfaces), we have a policy of not breaking userspace,
-so accepting this interface means setting it in stone.  We should get
-it right.
+Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+---
+ debugfs/debugfs.c | 2 +-
+ debugfs/ls.c      | 3 ---
+ 2 files changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index e03519c4..2e600b92 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -848,7 +848,7 @@ void internal_dump_inode(FILE *out, const char *prefix,
+ 	if (is_large_inode && large_inode->i_extra_isize >= 32)
+ 		fprintf(out, "   Project: %5d", large_inode->i_projid);
+ 	fputs("   Size: ", out);
+-	if (LINUX_S_ISREG(inode->i_mode))
++	if (LINUX_S_ISREG(inode->i_mode) || LINUX_S_ISDIR(inode->i_mode))
+ 		fprintf(out, "%llu\n", EXT2_I_SIZE(inode));
+ 	else
+ 		fprintf(out, "%d\n", inode->i_size);
+diff --git a/debugfs/ls.c b/debugfs/ls.c
+index a1e8f4e9..41af15d2 100644
+--- a/debugfs/ls.c
++++ b/debugfs/ls.c
+@@ -152,9 +152,6 @@ static int list_dir_proc(ext2_ino_t dir EXT2FS_ATTR((unused)),
+ 		fprintf(ls->f, "(%d)  %5d  %5d   ",
+ 			ext2fs_dirent_file_type(dirent),
+ 			inode_uid(inode), inode_gid(inode));
+-		if (LINUX_S_ISDIR(inode.i_mode))
+-			fprintf(ls->f, "%5d", inode.i_size);
+-		else
+ 			fprintf(ls->f, "%5llu", EXT2_I_SIZE(&inode));
+ 		fprintf(ls->f, " %s ", datestr);
+ 		print_filename(ls->f, dirent, options);
+-- 
+2.14.3
