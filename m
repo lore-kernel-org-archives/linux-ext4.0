@@ -1,44 +1,73 @@
-Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:60238 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725797AbeLDSes (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 13:34:48 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9C0FF2C4AF
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 18:34:47 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Tue, 04 Dec 2018 18:34:45 +0000
-Message-ID: <bug-201685-13602-HDn3mfgQXK@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=0ehA=O2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:34418 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726914AbeLQTPw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 17 Dec 2018 14:15:52 -0500
+Date: Mon, 17 Dec 2018 11:15:50 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "Theodore Y. Ts'o" <tytso@mit.edu>, linux-fscrypt@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+Message-ID: <20181217191549.GB141684@gmail.com>
+References: <20181101225230.88058-1-ebiggers@kernel.org>
+ <20181101225230.88058-2-ebiggers@kernel.org>
+ <20181212091406.GA31723@infradead.org>
+ <20181212202609.GA193967@gmail.com>
+ <20181213202249.GA3797@infradead.org>
+ <20181214051722.GF20880@thunk.org>
+ <20181217165231.GB18626@infradead.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181217165231.GB18626@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+Hi Christoph,
 
---- Comment #231 from Steven Noonan (steven@uplinklabs.net) ---
-(In reply to Jens Axboe from comment #227)
-> (In reply to Steven Noonan from comment #225)
-> > When scsi_mod.use_blk_mq=1 (i.e. result of CONFIG_SCSI_MQ_DEFAULT=y), the
-> > I/O scheduler is just "none", and you cannot set a different scheduler.
+On Mon, Dec 17, 2018 at 08:52:31AM -0800, Christoph Hellwig wrote:
+> [FYI, your mail never made it to my inbox, although I found the copy
+> in linux-fsdevel now]
 > 
-> That's not true, you can set MQ capable schedulers. CFQ is from the legacy
-> stack, it doesn't support MQ. But you can set none/bfq/mq-deadline/kyber,
-> for instance.
+> On Fri, Dec 14, 2018 at 12:17:22AM -0500, Theodore Y. Ts'o wrote:
+> > I don't consider fs-verity to be part of core VFS, but rather a
+> > library that happens to be used by ext4 and f2fs.  This is much like
+> > fscrypt, which was originally an ext4-only thing, but the code was
+> > always set up so it could be used by other file systems, and when f2fs
+> > was interested in using it, we moved it to fs/crypto.  As such the
+> > fscrypto code never got a review from Al, Andrew, or you, and when I
+> > pushed it to Linus, he accepted the pull request.
+> 
+> And as a result we are stuck with a pretty bad interface, so this is
+> a very good example for how to not do thing!  Just because a user
+> interface is only implemented by one or two file systems doesn't mean
+> it should skip the userspace ABI review, because we tend to generalize
+> them unless they are deeply specific to fs internals.
+> 
 
-My bad. I was basing my response on outdated information:
+While I do have some improvements planned for the fscrypt interface,
+specifically how encryption keys are managed [1], the issues are subtle enough
+that I don't think there's any chance they could have been gotten "right" the
+first time around, even if lots more people had reviewed it.  It took me over a
+year working with fscrypt to put together my proposal for how to improve things,
+and it was only really possible because I was able to consider all the people
+actually using fscrypt and what problems they are having, if any.
 
-https://mahmoudhatem.wordpress.com/2016/02/08/oracle-uek-4-where-is-my-io-scheduler-none-multi-queue-model-blk-mq/
+Even so, the current fscrypt interface is actually good enough that there still
+hasn't been much real interest in getting my proposed improvements merged yet.
+(Not surprisingly, they've also been completely ignored by all the "VFS people"
+you say should be reviewing this stuff...)
 
-(Also didn't want to risk turning on MQ on one of my machines just to word my
-response, especially if not having CFQ is somehow involved in this corruption
-bug!)
+So for fscrypt I personally don't think that waiting would have changed much in
+practice, besides ensuring that users wouldn't have any solution at all.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+[1] https://lwn.net/Articles/737274/
+
+- Eric
