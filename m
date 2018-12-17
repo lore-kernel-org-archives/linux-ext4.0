@@ -1,66 +1,35 @@
-Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35300 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726437AbeLNDk4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Dec 2018 22:40:56 -0500
-Date: Thu, 13 Dec 2018 22:40:52 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: "zhangyi (F)" <yi.zhang@huawei.com>
-Cc: linux-ext4@vger.kernel.org, Miao Xie <miaoxie@huawei.com>,
-        yangerkun <yangerkun@huawei.com>
-Subject: Re: Question about commit "ext4: always initialize the crc32c
- checksum driver"
-Message-ID: <20181214034052.GC20880@thunk.org>
-References: <d686d167-9ad2-bfd6-3464-fb35c10ae63d@huawei.com>
+Return-Path: <SRS0=0ehA=O2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:50466 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726831AbeLQLvS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 17 Dec 2018 06:51:18 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id BE5DD29C53
+        for <linux-ext4@vger.kernel.org>; Mon, 17 Dec 2018 11:51:17 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date: Mon, 17 Dec 2018 11:51:18 +0000
+Message-ID: <bug-201631-13602-oDRmIYMLyj@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <d686d167-9ad2-bfd6-3464-fb35c10ae63d@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 13, 2018 at 03:56:04PM +0800, zhangyi (F) wrote:
-> I am checking a CVE patch a45403b515 "ext4: always initialize the crc32c checksum driver"[1]
-> in CVE-2018-1094[2] recently, and have a question about the commit log in this patch.
-> 
-> The patch commit log said:
-> 
-> > The extended attribute code now uses the crc32c checksum for hashing
-> > purposes, so we should just always always initialize it.  We also want
-> > to prevent NULL pointer dereferences if one of the metadata checksum
-> > features is enabled after the file sytsem is originally mounted.
-> 
-> This first fix is clear. But I don't understand the second fix. IIUC, the kernel does not call
-> ext4_set_feature_metadata_csum() to enable metadata checksum, and this feature can only be enabled
-> by mkfs,turn2fs or change the image directly. So this feature bit will never change once the
-> file system is mounted, the second case could never happen ?
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
-This was triggered by a maliciously created file system where the
-journal contained a superblock which had the metadata checksum feature
-enabled (although the superblock which was visible to the kernel when
-it was initially mounted did not have the metadata checksum field
-set).
+--- Comment #14 from erhard_f@mailbox.org ---
+(In reply to Jan Kara from comment #13)
+> Erhard, could you please run your machines with this patch applied and
+> report what gets recorded when the warning hits again? Thanks!
 
-So the file system would get mounted, with metadata_csum not enabled,
-so the crc32c checksum was not initialized.  Then the journal replay
-would overwrite the superblock with a version that had the
-metadata_csum feature set.  And then the next time the kernel tried to
-fetch an inode, it would try to check the inode's metadata checksum,
-and dereference a NULL pointer.... and boom.
+Sure! How do I apply the patch? Should I stay at rc6 or use the new rc7?
 
-This was found by a researcher that was investigating file system
-fuzzing techniques.  So if you have a system with automount enabled,
-this is one more way that someone with access to the USB port could
-plug in a maliciously crafted file system, and cause the system to
-crash, or at least oops.  I don't think *this* particular one could be
-exploited to cause a remote execution attack, just a DOS, but it's why
-it was assigned a CVE.
-
-> BTW, does this patch need on the old kernel before dec214d00e "ext4: xattr inode deduplication" ?
-
-It's needed on any old kernel which supports the metadata checksum
-feature.
-
-Cheers,
-
-					- Ted
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
