@@ -1,121 +1,75 @@
-Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:45750 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726431AbeLLEJE (ORCPT
+Return-Path: <SRS0=0j4F=O3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from dmz-mailsec-scanner-1.mit.edu ([18.9.25.12]:58972 "EHLO
+        dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727540AbeLRQnP (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Dec 2018 23:09:04 -0500
-Received: from pps.filterd (m0098396.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC43urm137677
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:09:04 -0500
-Received: from e16.ny.us.ibm.com (e16.ny.us.ibm.com [129.33.205.206])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2parc1deg3-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:09:04 -0500
-Received: from localhost
-        by e16.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Wed, 12 Dec 2018 04:09:02 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
-        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
-        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
-        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
-        deanbo422@gmail.com, schwidefsky@de.ibm.com,
-        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
-        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
-Subject: [PATCH V4 8/9] fsverity: Move verity status check to fsverity_file_open
-Date: Wed, 12 Dec 2018 09:37:35 +0530
-In-Reply-To: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
-References: <20181212040736.2849-1-chandan@linux.vnet.ibm.com>
+        Tue, 18 Dec 2018 11:43:15 -0500
+Date: Tue, 18 Dec 2018 11:35:39 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Subject: Re: [PATCH] ext4: avoid declaring fs inconsistent due to invalid
+ file handles
+Message-ID: <20181218163539.GC25775@mit.edu>
+References: <20181213175107.29464-1-tytso@mit.edu>
+ <A3D72248-487E-412E-B341-7450C773E81F@dilger.ca>
+ <20181218044541.GB25775@mit.edu>
+ <F169A778-5219-4FDD-8899-3074DFFDD8A4@dilger.ca>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Message-Id: <20181212040736.2849-9-chandan@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <F169A778-5219-4FDD-8899-3074DFFDD8A4@dilger.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Instead of conditionally checking for verity status of an inode before
-invoking fsverity_file_open(), this commit moves the check inside the
-definition of fsverity_file_open().
+On Mon, Dec 17, 2018 at 10:43:40PM -0700, Andreas Dilger wrote:
+> I don't think that it is verboten to use binary flag values in an enum,
+> if you explicitly specify the values, which is why I used "0x01", "0x02"
+> to make it more clear these are binary values.  IMHO, using a named enum
+> is a good way to annotate the function parameters rather than a generic
+> "int flag" parameter that is ambiguous unless you look at the function
+> code to see what the values of "flag" might be.
 
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
----
- fs/ext4/file.c           | 8 +++-----
- fs/f2fs/file.c           | 8 +++-----
- fs/verity/setup.c        | 3 +++
- include/linux/fsverity.h | 5 ++++-
- 4 files changed, 13 insertions(+), 11 deletions(-)
+I tend to only use enums in this kind of way:
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 30fbd663354f..b404a857cd48 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -444,11 +444,9 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	if (ret)
- 		return ret;
- 
--	if (IS_VERITY(inode)) {
--		ret = fsverity_file_open(inode, filp);
--		if (ret)
--			return ret;
--	}
-+	ret = fsverity_file_open(inode, filp);
-+	if (ret)
-+		return ret;
- 
- 	/*
- 	 * Set up the jbd2_inode if we are opening the inode for
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 2eb4821d95d1..925c0d9608da 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -491,11 +491,9 @@ static int f2fs_file_open(struct inode *inode, struct file *filp)
- 	if (err)
- 		return err;
- 
--	if (IS_VERITY(inode)) {
--		err = fsverity_file_open(inode, filp);
--		if (err)
--			return err;
--	}
-+	err = fsverity_file_open(inode, filp);
-+	if (err)
-+		return err;
- 
- 	filp->f_mode |= FMODE_NOWAIT;
- 
-diff --git a/fs/verity/setup.c b/fs/verity/setup.c
-index 08b609127531..bc463dc601b1 100644
---- a/fs/verity/setup.c
-+++ b/fs/verity/setup.c
-@@ -771,6 +771,9 @@ static int setup_fsverity_info(struct inode *inode)
-  */
- int fsverity_file_open(struct inode *inode, struct file *filp)
- {
-+	if (!IS_VERITY(inode))
-+		return 0;
-+
- 	if (filp->f_mode & FMODE_WRITE) {
- 		pr_debug("Denying opening verity file (ino %lu) for write\n",
- 			 inode->i_ino);
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index ea8c418bd7d5..c770025606e1 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -60,7 +60,10 @@ static inline int fsverity_ioctl_measure(struct file *filp, void __user *arg)
- 
- static inline int fsverity_file_open(struct inode *inode, struct file *filp)
- {
--	return -EOPNOTSUPP;
-+	if (IS_VERITY(inode))
-+		return -EOPNOTSUPP;
-+
-+	return 0;
- }
- 
- static inline int fsverity_prepare_setattr(struct dentry *dentry,
--- 
-2.19.1
+enum classification_levels { 
+	FOR_OFFICIAL_USE_ONLY, 
+	CONFIDENTIAL,
+	SECRET, 
+	TOP_SECRET, 
+};
+
+I think the reason why I've never used it for type checking is because
+for gcc and sparse, it doesn't work.  For the below example, "gcc
+-Wall foo.c" won't complain at all.  Sparse complains only about the
+"return a | b;" line, because we're combining two different enum
+types.  Sparse doesn't say boo that I passed EXT4_IGET_NORMAL where a
+classification_levels, and secret where an ext4_iget_flags is
+expected:
+
+enum ext4_iget_flags {
+	EXT4_IGET_RESERVED = 0x00,    /* just guessing, see further below */
+	EXT4_IGET_NORMAL   = 0x01,
+	EXT4_IGET_HANDLE   = 0x02
+};
+
+int combine(enum classification_levels a, enum ext4_iget_flags b)
+{
+	return a | b;
+}
+
+
+int main(int argc, char **argv)
+{
+	printf("%d\n", combine(EXT4_IGET_NORMAL, secret));
+	exit(1);
+}
+	
+Then again, llvm does correctly complain, and at least for Android
+configs, llvm will complain kernels correctly (although I'm not sure
+enterprise distros trust LLVM just yet), and I do agree that it's
+useful from a documentation perspective.
+
+Cheers,
+
+					- Ted
