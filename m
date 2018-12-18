@@ -1,54 +1,76 @@
-Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:48372 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725798AbeLCDIU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 22:08:20 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 8C4AE2A95F
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 03:08:15 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 03:08:14 +0000
-Message-ID: <bug-201685-13602-nBXwfTKoVZ@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=0j4F=O3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-eopbgr750057.outbound.protection.outlook.com ([40.107.75.57]:37216
+        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726426AbeLRO0D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 18 Dec 2018 09:26:03 -0500
+From: Wang Shilong <wshilong@ddn.com>
+To: "zhangyi (F)" <yi.zhang@huawei.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+CC: "tytso@mit.edu" <tytso@mit.edu>,
+        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+        "miaoxie@huawei.com" <miaoxie@huawei.com>
+Subject: Re: [PATCH 1/2] ext4: fix race when setting the bitmap corrupted flag
+ again
+Date: Tue, 18 Dec 2018 14:25:20 +0000
+Message-ID: <0861E7C3-E642-464F-8987-B7094EFD1B2B@ddn.com>
+References: <1545134401-104523-1-git-send-email-yi.zhang@huawei.com>
+In-Reply-To: <1545134401-104523-1-git-send-email-yi.zhang@huawei.com>
+Content-Language: zh-CN
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <3F6225A70C6D424AAF25259C434AA681@namprd19.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
-
---- Comment #184 from Lei Ming (tom.leiming@gmail.com) ---
-The commit 2a5cf35cd6c56b2924("block: fix single range discard merge") in linus
-tree may address one possible data loss, anyone who saw corruption in scsi
-may try this fix and see if it makes a difference.
-
-Given the merged discard request isn't removed from elevator queue, it might
-be possible to be submitted to hardware again.(In reply to Theodore Tso from
-comment #174)
-> One of the reasons why this is bug hunt is so confounding.   While I was
-> looking at older reports to try to see if I could find common factors, I
-> found Jimmy's dmesg report in #50, and this one looks different from many of
-> the others that people have reported.   In this one, the EXT4 errors are
-> preceeded by a USB disconnect followed by disk-level errors.    
-> 
-> This is why it's important that we try very hard to filter out false
-> positives and false negative reports.  We have multiple reports which both
-> strongly indicate that it's an ext4 bug, and others which strongly indicate
-> it is a bug below the file system layer.   And then we have ones like this
-> which look like a USB disconnect....
-> 
-> [52967.931390] usb 4-1: reset SuperSpeed Gen 1 USB device number 2 using
-> xhci_hcd
-
-IMO it should be a usb device reset instead of disconnect, and reset
-is often triggered in SCSI EH.
-
-Thanks,
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+SGksDQoNCu+7v+WcqCAyMDE4LzEyLzE4IOS4i+WNiDc6NTfvvIzigJx6aGFuZ3lpIChGKeKAnTx5
+aS56aGFuZ0BodWF3ZWkuY29tPiDlhpnlhaU6DQoNCiAgICBDb21taXQgOWFmMGIzZDEyNTc3ICJl
+eHQ0OiBmaXggcmFjZSB3aGVuIHNldHRpbmcgdGhlIGJpdG1hcCBjb3JydXB0ZWQNCiAgICBmbGFn
+IiB3YW50IHRvIGZpeCByYWNlIGJldHdlZW4gc2V0dGluZyBpbm9kZS9ibG9jayBiaXRtYXAgY29y
+cnVwdGVkDQogICAgZmxhZyBhbmQgcmVkdWNpbmcgZnJlZSBncm91cCBpbm9kZXMvY2x1c3RlcnMg
+Y291bnRlciB0byBwcmV2ZW50DQogICAgbXVsdGlwbGUgZnJlZXMuIEJ1dCBleHQ0X3Rlc3RfYW5k
+X3NldF9iaXQoKSB3aWxsIGludm9rZQ0KICAgIF9fdGVzdF9hbmRfc2V0X2JpdCgpIHdoaWNoIGlz
+IG5vbi1hdG9taWMsIHNvIHRoZSByYWNlIGlzIHN0aWxsIHRoZXJlLg0KICAgIEZpeCB0aGlzIGJ5
+IGludm9rZSB0ZXN0X2FuZF9zZXRfYml0KCkgaW5zdGVhZC4NCiAgIA0KICAgIEZpeGVzOiA5YWYw
+YjNkMTI1NzcgKCJleHQ0OiBmaXggcmFjZSB3aGVuIHNldHRpbmcgdGhlIGJpdG1hcCBjb3JydXB0
+ZWQgZmxhZyIpDQogICAgU2lnbmVkLW9mZi1ieTogemhhbmd5aSAoRikgPHlpLnpoYW5nQGh1YXdl
+aS5jb20+DQoNClRoYW5rcyBmb3IgZml4aW5nIHRoaXMhLCBJIHdhcyBub3QgYXdhcmUgb2YgX190
+ZXN0X2FuZF9zZXRfYml0KCkgaXMgbm90IG5vbi1hdG9taWMgb3BlcmF0aW9uIGJlZm9yZS4NCg0K
+UmV2aWV3ZWQtYnk6IFdhbmcgU2hpbG9uZyA8d3NoaWxvbmdAZGRuLmNvbT4NCg0KQnR3IGZvciBh
+IHN0YWJsZSBwcm9jZXNzIHF1ZXN0aW9uLCBjb21taXQgOWFmMGIzZDEyNTc3IGhhZCBDQyB0YWcg
+dG8gU3RhYmxlIGtlcm5lbCwgc2hvdWxkIHdlDQphZGQgaXQgYWdhaW4gaGVyZSBvciB3aXRoICdG
+aXhlcycgdGFnLCBpdCB3aWxsIGJlIGluY2x1ZGVkIGF1dG9tYXRpY2FsbHk/DQoNClRoYW5rcywN
+ClNoaWxvbmcNCiAgICAtLS0NCiAgICAgZnMvZXh0NC9leHQ0LmggIHwgNiArKysrKysNCiAgICAg
+ZnMvZXh0NC9zdXBlci5jIHwgNiArKy0tLS0NCiAgICAgMiBmaWxlcyBjaGFuZ2VkLCA4IGluc2Vy
+dGlvbnMoKyksIDQgZGVsZXRpb25zKC0pDQogICAgDQogICAgZGlmZiAtLWdpdCBhL2ZzL2V4dDQv
+ZXh0NC5oIGIvZnMvZXh0NC9leHQ0LmgNCiAgICBpbmRleCAzZjg5ZDBhLi43NTViYTE0IDEwMDY0
+NA0KICAgIC0tLSBhL2ZzL2V4dDQvZXh0NC5oDQogICAgKysrIGIvZnMvZXh0NC9leHQ0LmgNCiAg
+ICBAQCAtMjg4OCw2ICsyODg4LDEyIEBAIHN0cnVjdCBleHQ0X2dyb3VwX2luZm8gew0KICAgICAJ
+KHRlc3RfYml0KEVYVDRfR1JPVVBfSU5GT19CQklUTUFQX0NPUlJVUFRfQklULCAmKChncnApLT5i
+Yl9zdGF0ZSkpKQ0KICAgICAjZGVmaW5lIEVYVDRfTUJfR1JQX0lCSVRNQVBfQ09SUlVQVChncnAp
+CVwNCiAgICAgCSh0ZXN0X2JpdChFWFQ0X0dST1VQX0lORk9fSUJJVE1BUF9DT1JSVVBUX0JJVCwg
+JigoZ3JwKS0+YmJfc3RhdGUpKSkNCiAgICArI2RlZmluZSBFWFQ0X01CX0dSUF9URVNUX0FORF9T
+RVRfQkJJVE1BUF9DT1JSVVBUKGdycCkJXA0KICAgICsJKHRlc3RfYW5kX3NldF9iaXQoRVhUNF9H
+Uk9VUF9JTkZPX0JCSVRNQVBfQ09SUlVQVF9CSVQsIFwNCiAgICArCQkJICAmKChncnApLT5iYl9z
+dGF0ZSkpKQ0KICAgICsjZGVmaW5lIEVYVDRfTUJfR1JQX1RFU1RfQU5EX1NFVF9JQklUTUFQX0NP
+UlJVUFQoZ3JwKQlcDQogICAgKwkodGVzdF9hbmRfc2V0X2JpdChFWFQ0X0dST1VQX0lORk9fSUJJ
+VE1BUF9DT1JSVVBUX0JJVCwgXA0KICAgICsJCQkgICYoKGdycCktPmJiX3N0YXRlKSkpDQogICAg
+IA0KICAgICAjZGVmaW5lIEVYVDRfTUJfR1JQX1dBU19UUklNTUVEKGdycCkJXA0KICAgICAJKHRl
+c3RfYml0KEVYVDRfR1JPVVBfSU5GT19XQVNfVFJJTU1FRF9CSVQsICYoKGdycCktPmJiX3N0YXRl
+KSkpDQogICAgZGlmZiAtLWdpdCBhL2ZzL2V4dDQvc3VwZXIuYyBiL2ZzL2V4dDQvc3VwZXIuYw0K
+ICAgIGluZGV4IDUzZmY2YzIuLjViODM3NjUgMTAwNjQ0DQogICAgLS0tIGEvZnMvZXh0NC9zdXBl
+ci5jDQogICAgKysrIGIvZnMvZXh0NC9zdXBlci5jDQogICAgQEAgLTc5OCwxNiArNzk4LDE0IEBA
+IHZvaWQgZXh0NF9tYXJrX2dyb3VwX2JpdG1hcF9jb3JydXB0ZWQoc3RydWN0IHN1cGVyX2Jsb2Nr
+ICpzYiwNCiAgICAgCWludCByZXQ7DQogICAgIA0KICAgICAJaWYgKGZsYWdzICYgRVhUNF9HUk9V
+UF9JTkZPX0JCSVRNQVBfQ09SUlVQVCkgew0KICAgIC0JCXJldCA9IGV4dDRfdGVzdF9hbmRfc2V0
+X2JpdChFWFQ0X0dST1VQX0lORk9fQkJJVE1BUF9DT1JSVVBUX0JJVCwNCiAgICAtCQkJCQkgICAg
+JmdycC0+YmJfc3RhdGUpOw0KICAgICsJCXJldCA9IEVYVDRfTUJfR1JQX1RFU1RfQU5EX1NFVF9C
+QklUTUFQX0NPUlJVUFQoZ3JwKTsNCiAgICAgCQlpZiAoIXJldCkNCiAgICAgCQkJcGVyY3B1X2Nv
+dW50ZXJfc3ViKCZzYmktPnNfZnJlZWNsdXN0ZXJzX2NvdW50ZXIsDQogICAgIAkJCQkJICAgZ3Jw
+LT5iYl9mcmVlKTsNCiAgICAgCX0NCiAgICAgDQogICAgIAlpZiAoZmxhZ3MgJiBFWFQ0X0dST1VQ
+X0lORk9fSUJJVE1BUF9DT1JSVVBUKSB7DQogICAgLQkJcmV0ID0gZXh0NF90ZXN0X2FuZF9zZXRf
+Yml0KEVYVDRfR1JPVVBfSU5GT19JQklUTUFQX0NPUlJVUFRfQklULA0KICAgIC0JCQkJCSAgICAm
+Z3JwLT5iYl9zdGF0ZSk7DQogICAgKwkJcmV0ID0gRVhUNF9NQl9HUlBfVEVTVF9BTkRfU0VUX0lC
+SVRNQVBfQ09SUlVQVChncnApOw0KICAgICAJCWlmICghcmV0ICYmIGdkcCkgew0KICAgICAJCQlp
+bnQgY291bnQ7DQogICAgIA0KICAgIC0tIA0KICAgIDIuNy40DQogICAgDQogICAgDQoNCg==
