@@ -1,91 +1,369 @@
-Return-Path: <SRS0=ry50=O5=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-wm1-f65.google.com ([209.85.128.65]:36011 "EHLO
-        mail-wm1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729096AbeLTNgj (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Dec 2018 08:36:39 -0500
-Received: by mail-wm1-f65.google.com with SMTP id p6so2220704wmc.1
-        for <linux-ext4@vger.kernel.org>; Thu, 20 Dec 2018 05:36:38 -0800 (PST)
+Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga07-in.huawei.com ([45.249.212.35]:57557 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726600AbeLSDsk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 18 Dec 2018 22:48:40 -0500
+Subject: Re: [PATCH 2/2] ext4: clean up group state test macros with predicate
+ functions
+To: Wang Shilong <wshilong@ddn.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+References: <1545134401-104523-1-git-send-email-yi.zhang@huawei.com>
+ <1545134401-104523-2-git-send-email-yi.zhang@huawei.com>
+ <8C3DB78D-BCF8-4FDE-891A-2941486573AC@ddn.com>
+CC: "tytso@mit.edu" <tytso@mit.edu>,
+        "adilger.kernel@dilger.ca" <adilger.kernel@dilger.ca>,
+        "miaoxie@huawei.com" <miaoxie@huawei.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+Message-ID: <9cef5f8a-707e-cb7e-e79c-22dfb49e9dcb@huawei.com>
+Date: Wed, 19 Dec 2018 11:48:28 +0800
 MIME-Version: 1.0
-Reply-To: smaralsaid@gmail.com
-From: Omar Al Said <jfjfgfgfrgrytigkhlk7@gmail.com>
-Date: Thu, 20 Dec 2018 14:36:36 +0100
-Message-ID: <CANWdd1LWWW1tJ5V1gg4KWNSRGVTk5TwxEN8s8XXStHxUULs_SQ@mail.gmail.com>
-Subject: Greetings My Good Friend
-To: undisclosed-recipients:;
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <8C3DB78D-BCF8-4FDE-891A-2941486573AC@ddn.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dear Friend,
+On 2018/12/18 22:40, Wang Shilong Wrote:
+> Hi,
+> 
+> ﻿在 2018/12/18 下午7:57，“zhangyi (F)”<yi.zhang@huawei.com> 写入:
+> 
+>     Create separate predicate functions to test/set/clear/test_and_set
+>     bb_state flags in ext4_group_info like features testing, and then
+>     replace all old macros and the places where we use
+>     EXT4_GROUP_INFO_XXX_BIT directly.
+>     
+>     Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+>     ---
+>      fs/ext4/balloc.c  |  6 +++---
+>      fs/ext4/ext4.h    | 45 ++++++++++++++++++++++++++-------------------
+>      fs/ext4/ialloc.c  |  8 ++++----
+>      fs/ext4/mballoc.c | 35 +++++++++++++++++------------------
+>      fs/ext4/super.c   |  4 ++--
+>      5 files changed, 52 insertions(+), 46 deletions(-)
+> 
+> Patch Looks fine, but what is obvious benefits of this patch? except
+> Converting function name to low-case letter, and patch introduce more 6 lines than before...
+> 
 
-With due respect to your person and much sincerity of purpose, I make
-this contact with you as I believe that you can be of great assistance
-to me. My name is Mr Omar Al Said, from Ouagadougou Republic of
-BURKINA FASO, West Africa . Presently i work in the African
-development Bank as telex manager. I have been searching for your
-contact since you left our country some years ago.
+This patch is not just converting function name to low-case letter, it use macro
+function instead.
 
-I do not know whether this is your correct email address or not
-because I only used your name initials to search for your contact .In
-case you are not the person I am supposed to contact, please see this
-as a confidential message and do not reveal it to another person but
-if you are not the intended receiver, do let me know whether you can
-be of assistance regarding my proposal below because it is top secret.
+I checked all places where testing/setting/clearing the bb_state flags, some of
+them use EXT4_MB_GRP_XXX() macros but others invoke [clear|set|test]_bit() with
+EXT4_GROUP_INFO_XXX_BIT directly, It's better to unify them for easy access.
 
-I am about to retire from active Bank service to start a new life but
-I am sceptical to reveal this particular secret to a stranger. You
-must assure me that everything will be handled confidentially because
-we are not going to suffer again in life.
+At the same time, the ext4 features and the ext4_inode_info bit flags were
+also changed by macro functions, so unify the coding style as well.
 
-It has been 10 years now that most of the greedy African Politicians
-used our bank to launder money overseas through the help of their
-Political advisers. Most of the funds which they transferred out of
-the shores of Africa were gold and oil money that was supposed to have
-been used to develop the continent. Their Political advisers always
-inflated the amounts before transfer to foreign accounts so I also
-used the opportunity to divert part of the funds hence I am aware that
-there is no official trace of how much was transferred as all the
-accounts used for such transfers were being closed after transfer.
+Thanks,
+Yi.
 
-I acted as the Bank Officer to most of the politicians and when I
-discovered that they were using me to succeed in their greedy act; I
-also cleaned some of their banking records from the Bank files and no
-one cared to ask me because the money was too much for them to
-control. They laundered over $5b Dollars during the process .As I am
-sending this message to you, I was able to divert thirty five million
-united state dollars ($35m) to an escrow account belonging to no one
-in the bank. The bank is anxious now to know who the beneficiary to
-the funds is because they have made a lot of profits with the funds.
-
-It is more than Eight years now and most of the politicians are no
-longer using our bank to transfer funds overseas. The ($35) Million
-Dollars has been laying waste but I don't want to retire from the bank
-without transferring the funds to a foreign account to enable me share
-the proceeds with the receiver. The money will be shared 60% for me
-and 40% for you..
-
-There is no one coming to ask you about the funds because I secured
-everything. I only want you to assist me by providing a bank account
-where the funds can be transferred. You are not to face any
-difficulties or legal implications as I am going to handle the
-transfer personally. If you are capable of receiving the funds, do let
-me know immediately to enable me give you a detailed information on
-what to do.
-
-For me, I have not stolen the money from anyone because the other
-people that took the whole money did not face any problems. This is my
-chance also to grab my own but you must keep the details of the funds
-secret to avoid any leakages as no one in the bank knows about the
-funds.
-
-Please get back to me if you are interested and capable to handle this project
-
-I shall intimate you on what to do when I hear from your confirmation
-and acceptance. If you are capable of being my trusted associate, do
-declare your consent to me .
-
-Waiting for your urgent response.
-
-Yours Faithfully,
-
-Mr. Omar Al Said
+> Thanks,
+> Shilong
+>     
+>     diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+>     index e5d6ee6..082387a 100644
+>     --- a/fs/ext4/balloc.c
+>     +++ b/fs/ext4/balloc.c
+>     @@ -364,7 +364,7 @@ static int ext4_validate_block_bitmap(struct super_block *sb,
+>      
+>      	if (buffer_verified(bh))
+>      		return 0;
+>     -	if (EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+>     +	if (ext4_mb_grp_bbitmap_corrupt(grp))
+>      		return -EFSCORRUPTED;
+>      
+>      	ext4_lock_group(sb, block_group);
+>     @@ -699,7 +699,7 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
+>      		grp = NULL;
+>      		if (EXT4_SB(sb)->s_group_info)
+>      			grp = ext4_get_group_info(sb, i);
+>     -		if (!grp || !EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+>     +		if (!grp || !ext4_mb_grp_bbitmap_corrupt(grp))
+>      			desc_count += ext4_free_group_clusters(sb, gdp);
+>      		brelse(bitmap_bh);
+>      		bitmap_bh = ext4_read_block_bitmap(sb, i);
+>     @@ -729,7 +729,7 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
+>      		grp = NULL;
+>      		if (EXT4_SB(sb)->s_group_info)
+>      			grp = ext4_get_group_info(sb, i);
+>     -		if (!grp || !EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
+>     +		if (!grp || !ext4_mb_grp_bbitmap_corrupt(grp))
+>      			desc_count += ext4_free_group_clusters(sb, gdp);
+>      	}
+>      
+>     diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+>     index 755ba14..e460b05 100644
+>     --- a/fs/ext4/ext4.h
+>     +++ b/fs/ext4/ext4.h
+>     @@ -2882,25 +2882,32 @@ struct ext4_group_info {
+>      #define EXT4_GROUP_INFO_IBITMAP_CORRUPT		\
+>      	(1 << EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT)
+>      
+>     -#define EXT4_MB_GRP_NEED_INIT(grp)	\
+>     -	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
+>     -#define EXT4_MB_GRP_BBITMAP_CORRUPT(grp)	\
+>     -	(test_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &((grp)->bb_state)))
+>     -#define EXT4_MB_GRP_IBITMAP_CORRUPT(grp)	\
+>     -	(test_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &((grp)->bb_state)))
+>     -#define EXT4_MB_GRP_TEST_AND_SET_BBITMAP_CORRUPT(grp)	\
+>     -	(test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, \
+>     -			  &((grp)->bb_state)))
+>     -#define EXT4_MB_GRP_TEST_AND_SET_IBITMAP_CORRUPT(grp)	\
+>     -	(test_and_set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, \
+>     -			  &((grp)->bb_state)))
+>     -
+>     -#define EXT4_MB_GRP_WAS_TRIMMED(grp)	\
+>     -	(test_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+>     -#define EXT4_MB_GRP_SET_TRIMMED(grp)	\
+>     -	(set_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+>     -#define EXT4_MB_GRP_CLEAR_TRIMMED(grp)	\
+>     -	(clear_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+>     +
+>     +#define EXT4_MB_GROUP_STATE_FUNCS(name, statename)			\
+>     +static inline int ext4_mb_grp_##name(struct ext4_group_info *grp)	\
+>     +{									\
+>     +	return test_bit(EXT4_GROUP_INFO_##statename##_BIT,		\
+>     +			&(grp->bb_state));				\
+>     +}									\
+>     +static inline void ext4_mb_grp_set_##name(struct ext4_group_info *grp)	\
+>     +{									\
+>     +	set_bit(EXT4_GROUP_INFO_##statename##_BIT, &(grp->bb_state));	\
+>     +}									\
+>     +static inline void ext4_mb_grp_clear_##name(struct ext4_group_info *grp)\
+>     +{									\
+>     +	clear_bit(EXT4_GROUP_INFO_##statename##_BIT, &(grp->bb_state));	\
+>     +}									\
+>     +static inline int ext4_mb_grp_test_and_set_##name(struct ext4_group_info *grp) \
+>     +{									\
+>     +	return test_and_set_bit(EXT4_GROUP_INFO_##statename##_BIT,	\
+>     +				&(grp->bb_state));			\
+>     +}
+>     +
+>     +EXT4_MB_GROUP_STATE_FUNCS(need_init, NEED_INIT)
+>     +EXT4_MB_GROUP_STATE_FUNCS(trimmed, WAS_TRIMMED)
+>     +EXT4_MB_GROUP_STATE_FUNCS(bbitmap_corrupt, BBITMAP_CORRUPT)
+>     +EXT4_MB_GROUP_STATE_FUNCS(ibitmap_corrupt, IBITMAP_CORRUPT)
+>     +
+>      
+>      #define EXT4_MAX_CONTENTION		8
+>      #define EXT4_CONTENTION_THRESHOLD	2
+>     diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+>     index 014f6a6..ca86368 100644
+>     --- a/fs/ext4/ialloc.c
+>     +++ b/fs/ext4/ialloc.c
+>     @@ -86,7 +86,7 @@ static int ext4_validate_inode_bitmap(struct super_block *sb,
+>      
+>      	if (buffer_verified(bh))
+>      		return 0;
+>     -	if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp))
+>     +	if (ext4_mb_grp_ibitmap_corrupt(grp))
+>      		return -EFSCORRUPTED;
+>      
+>      	ext4_lock_group(sb, block_group);
+>     @@ -293,7 +293,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+>      		bitmap_bh = NULL;
+>      		goto error_return;
+>      	}
+>     -	if (unlikely(EXT4_MB_GRP_IBITMAP_CORRUPT(grp))) {
+>     +	if (unlikely(ext4_mb_grp_ibitmap_corrupt(grp))) {
+>      		fatal = -EFSCORRUPTED;
+>      		goto error_return;
+>      	}
+>     @@ -898,13 +898,13 @@ struct inode *__ext4_new_inode(handle_t *handle, struct inode *dir,
+>      
+>      		grp = ext4_get_group_info(sb, group);
+>      		/* Skip groups with already-known suspicious inode tables */
+>     -		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp))
+>     +		if (ext4_mb_grp_ibitmap_corrupt(grp))
+>      			goto next_group;
+>      
+>      		brelse(inode_bitmap_bh);
+>      		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
+>      		/* Skip groups with suspicious inode tables */
+>     -		if (EXT4_MB_GRP_IBITMAP_CORRUPT(grp) ||
+>     +		if (ext4_mb_grp_ibitmap_corrupt(grp) ||
+>      		    IS_ERR(inode_bitmap_bh)) {
+>      			inode_bitmap_bh = NULL;
+>      			goto next_group;
+>     diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>     index e224808..4151c76 100644
+>     --- a/fs/ext4/mballoc.c
+>     +++ b/fs/ext4/mballoc.c
+>     @@ -622,7 +622,7 @@ static int __mb_check_buddy(struct ext4_buddy *e4b, char *file,
+>      			MB_CHECK_ASSERT(mb_test_bit(k, buddy2));
+>      		}
+>      	}
+>     -	MB_CHECK_ASSERT(!EXT4_MB_GRP_NEED_INIT(e4b->bd_info));
+>     +	MB_CHECK_ASSERT(!ext4_mb_grp_need_init(e4b->bd_info));
+>      	MB_CHECK_ASSERT(e4b->bd_info->bb_fragments == fragments);
+>      
+>      	grp = ext4_get_group_info(sb, e4b->bd_group);
+>     @@ -755,7 +755,7 @@ void ext4_mb_generate_buddy(struct super_block *sb,
+>      	}
+>      	mb_set_largest_free_order(sb, grp);
+>      
+>     -	clear_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
+>     +	ext4_mb_grp_clear_need_init(grp);
+>      
+>      	period = get_cycles() - period;
+>      	spin_lock(&sbi->s_bal_lock);
+>     @@ -857,7 +857,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore, gfp_t gfp)
+>      		 * we must skip all initialized uptodate buddies on the page,
+>      		 * which may be currently in use by an allocating task.
+>      		 */
+>     -		if (PageUptodate(page) && !EXT4_MB_GRP_NEED_INIT(grinfo)) {
+>     +		if (PageUptodate(page) && !ext4_mb_grp_need_init(grinfo)) {
+>      			bh[i] = NULL;
+>      			continue;
+>      		}
+>     @@ -1050,7 +1050,7 @@ int ext4_mb_init_group(struct super_block *sb, ext4_group_t group, gfp_t gfp)
+>      	 * page accessed.
+>      	 */
+>      	ret = ext4_mb_get_buddy_page_lock(sb, group, &e4b, gfp);
+>     -	if (ret || !EXT4_MB_GRP_NEED_INIT(this_grp)) {
+>     +	if (ret || !ext4_mb_grp_need_init(this_grp)) {
+>      		/*
+>      		 * somebody initialized the group
+>      		 * return without doing anything
+>     @@ -1122,7 +1122,7 @@ ext4_mb_load_buddy_gfp(struct super_block *sb, ext4_group_t group,
+>      	e4b->bd_buddy_page = NULL;
+>      	e4b->bd_bitmap_page = NULL;
+>      
+>     -	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
+>     +	if (unlikely(ext4_mb_grp_need_init(grp))) {
+>      		/*
+>      		 * we need full data about the group
+>      		 * to make a good selection
+>     @@ -1424,7 +1424,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+>      	BUG_ON(last >= (sb->s_blocksize << 3));
+>      	assert_spin_locked(ext4_group_lock_ptr(sb, e4b->bd_group));
+>      	/* Don't bother if the block group is corrupt. */
+>     -	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info)))
+>     +	if (unlikely(ext4_mb_grp_bbitmap_corrupt(e4b->bd_info)))
+>      		return;
+>      
+>      	mb_check_buddy(e4b);
+>     @@ -1833,7 +1833,7 @@ int ext4_mb_find_by_goal(struct ext4_allocation_context *ac,
+>      	if (err)
+>      		return err;
+>      
+>     -	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(e4b->bd_info))) {
+>     +	if (unlikely(ext4_mb_grp_bbitmap_corrupt(e4b->bd_info))) {
+>      		ext4_mb_unload_buddy(e4b);
+>      		return 0;
+>      	}
+>     @@ -2046,11 +2046,11 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+>      	if (cr <= 2 && free < ac->ac_g_ex.fe_len)
+>      		return 0;
+>      
+>     -	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(grp)))
+>     +	if (unlikely(ext4_mb_grp_bbitmap_corrupt(grp)))
+>      		return 0;
+>      
+>      	/* We only do this if the grp has never been initialized */
+>     -	if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
+>     +	if (unlikely(ext4_mb_grp_need_init(grp))) {
+>      		int ret = ext4_mb_init_group(ac->ac_sb, group, GFP_NOFS);
+>      		if (ret)
+>      			return ret;
+>     @@ -2304,7 +2304,7 @@ static int ext4_mb_seq_groups_show(struct seq_file *seq, void *v)
+>      
+>      	grinfo = ext4_get_group_info(sb, group);
+>      	/* Load the group info in memory only if not already loaded. */
+>     -	if (unlikely(EXT4_MB_GRP_NEED_INIT(grinfo))) {
+>     +	if (unlikely(ext4_mb_grp_need_init(grinfo))) {
+>      		err = ext4_mb_load_buddy(sb, group, &e4b);
+>      		if (err) {
+>      			seq_printf(seq, "#%-5u: I/O error\n", group);
+>     @@ -2418,8 +2418,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+>      		ext4_msg(sb, KERN_ERR, "can't allocate buddy mem");
+>      		goto exit_group_info;
+>      	}
+>     -	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT,
+>     -		&(meta_group_info[i]->bb_state));
+>     +	ext4_mb_grp_set_need_init(meta_group_info[i]);
+>      
+>      	/*
+>      	 * initialize bb_free to be able to skip
+>     @@ -2807,7 +2806,7 @@ static void ext4_free_data_in_buddy(struct super_block *sb,
+>      	 * is supported and the free blocks will be trimmed online.
+>      	 */
+>      	if (!test_opt(sb, DISCARD))
+>     -		EXT4_MB_GRP_CLEAR_TRIMMED(db);
+>     +		ext4_mb_grp_clear_trimmed(db);
+>      
+>      	if (!db->bb_free_root.rb_node) {
+>      		/* No more items in the per group rb tree
+>     @@ -4790,7 +4789,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+>      	overflow = 0;
+>      	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
+>      
+>     -	if (unlikely(EXT4_MB_GRP_BBITMAP_CORRUPT(
+>     +	if (unlikely(ext4_mb_grp_bbitmap_corrupt(
+>      			ext4_get_group_info(sb, block_group))))
+>      		return;
+>      
+>     @@ -4896,7 +4895,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+>      					 " with %d", block_group, bit, count,
+>      					 err);
+>      		} else
+>     -			EXT4_MB_GRP_CLEAR_TRIMMED(e4b.bd_info);
+>     +			ext4_mb_grp_clear_trimmed(e4b.bd_info);
+>      
+>      		ext4_lock_group(sb, block_group);
+>      		mb_clear_bits(bitmap_bh->b_data, bit, count_clusters);
+>     @@ -5169,7 +5168,7 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+>      	bitmap = e4b.bd_bitmap;
+>      
+>      	ext4_lock_group(sb, group);
+>     -	if (EXT4_MB_GRP_WAS_TRIMMED(e4b.bd_info) &&
+>     +	if (ext4_mb_grp_trimmed(e4b.bd_info) &&
+>      	    minblocks >= atomic_read(&EXT4_SB(sb)->s_last_trim_minblks))
+>      		goto out;
+>      
+>     @@ -5210,7 +5209,7 @@ ext4_trim_all_free(struct super_block *sb, ext4_group_t group,
+>      
+>      	if (!ret) {
+>      		ret = count;
+>     -		EXT4_MB_GRP_SET_TRIMMED(e4b.bd_info);
+>     +		ext4_mb_grp_set_trimmed(e4b.bd_info);
+>      	}
+>      out:
+>      	ext4_unlock_group(sb, group);
+>     @@ -5273,7 +5272,7 @@ int ext4_trim_fs(struct super_block *sb, struct fstrim_range *range)
+>      	for (group = first_group; group <= last_group; group++) {
+>      		grp = ext4_get_group_info(sb, group);
+>      		/* We only do this if the grp has never been initialized */
+>     -		if (unlikely(EXT4_MB_GRP_NEED_INIT(grp))) {
+>     +		if (unlikely(ext4_mb_grp_need_init(grp))) {
+>      			ret = ext4_mb_init_group(sb, group, GFP_NOFS);
+>      			if (ret)
+>      				break;
+>     diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>     index 5b83765..d08bcd7 100644
+>     --- a/fs/ext4/super.c
+>     +++ b/fs/ext4/super.c
+>     @@ -798,14 +798,14 @@ void ext4_mark_group_bitmap_corrupted(struct super_block *sb,
+>      	int ret;
+>      
+>      	if (flags & EXT4_GROUP_INFO_BBITMAP_CORRUPT) {
+>     -		ret = EXT4_MB_GRP_TEST_AND_SET_BBITMAP_CORRUPT(grp);
+>     +		ret = ext4_mb_grp_test_and_set_bbitmap_corrupt(grp);
+>      		if (!ret)
+>      			percpu_counter_sub(&sbi->s_freeclusters_counter,
+>      					   grp->bb_free);
+>      	}
+>      
+>      	if (flags & EXT4_GROUP_INFO_IBITMAP_CORRUPT) {
+>     -		ret = EXT4_MB_GRP_TEST_AND_SET_IBITMAP_CORRUPT(grp);
+>     +		ret = ext4_mb_grp_test_and_set_ibitmap_corrupt(grp);
+>      		if (!ret && gdp) {
+>      			int count;
+>      
+>     -- 
+>     2.7.4
+>     
+>     
+> 
