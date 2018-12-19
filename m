@@ -1,63 +1,61 @@
-Return-Path: <SRS0=P4kf=OT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-io1-f68.google.com ([209.85.166.68]:33608 "EHLO
-        mail-io1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727903AbeLJPRW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Dec 2018 10:17:22 -0500
-Received: by mail-io1-f68.google.com with SMTP id t24so9051041ioi.0
-        for <linux-ext4@vger.kernel.org>; Mon, 10 Dec 2018 07:17:22 -0800 (PST)
-Subject: Re: [PATCH 2/2] fs/ext4,jbd2: Add support for passing write-hint with
- journal.
-To: Jan Kara <jack@suse.cz>, Kanchan Joshi <joshi.k@samsung.com>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.com,
-        viro@zeniv.linux.org.uk, darrick.wong@oracle.com,
-        jrdr.linux@gmail.com, ebiggers@google.com,
-        jooyoung.hwang@samsung.com, chur.lee@samsung.com,
-        prakash.v@samsung.com
-References: <1544446204-5291-1-git-send-email-joshi.k@samsung.com>
- <CGME20181210125256epcas1p1e4142cfefb9b21dfb8dad927fbd49143@epcas1p1.samsung.com>
- <1544446204-5291-3-git-send-email-joshi.k@samsung.com>
- <20181210141226.GM29289@quack2.suse.cz>
-From: Jens Axboe <axboe@kernel.dk>
-Message-ID: <9f693dd1-3c29-cdb4-90cd-83a27e21df4a@kernel.dk>
-Date: Mon, 10 Dec 2018 08:17:18 -0700
+Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.133]:36950 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726716AbeLSHOX (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Dec 2018 02:14:23 -0500
+Date: Tue, 18 Dec 2018 23:14:20 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Biggers <ebiggers@kernel.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+Message-ID: <20181219071420.GC2628@infradead.org>
+References: <20181101225230.88058-1-ebiggers@kernel.org>
+ <20181101225230.88058-2-ebiggers@kernel.org>
+ <20181212091406.GA31723@infradead.org>
+ <20181212202609.GA193967@gmail.com>
+ <20181213202249.GA3797@infradead.org>
+ <20181214044802.GA681@sol.localdomain>
+ <20181217200039.GD8111@magnolia>
+ <20181219001603.GD25775@mit.edu>
 MIME-Version: 1.0
-In-Reply-To: <20181210141226.GM29289@quack2.suse.cz>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181219001603.GD25775@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12/10/18 7:12 AM, Jan Kara wrote:
-> On Mon 10-12-18 18:20:04, Kanchan Joshi wrote:
->> This patch introduces "j_writehint" in JBD2 journal,
->> which is set based by Ext4 depending on "journal_writehint"
->> mount option (inspired from "journal_ioprio").
-> 
-> Thanks for the patch! It would be good to provide the explanation you have
-> in the cover letter in this patch as well so that it gets recorded in git
-> logs.
-> 
-> Also I don't like the fact that users have to set the hint via a mount
-> option for this to be enabled. OTOH the WRITE_FILE_<foo> hints defined in
-> fs.h are generally supposed to be used by userspace so it's difficult to
-> pick anything if we don't know what the userspace is going to do. I'd argue
-> it's even difficult for the sysadmin to pick any good value even if he
-> actually knows that he might benefit from setting some. Jens, is there
-> some reasonable way for fs to automatically pick some stream value for its
-> journal?
+On Tue, Dec 18, 2018 at 07:16:03PM -0500, Theodore Y. Ts'o wrote:
+> Sure, but what would be the benefit of doing different things on the
+> back end?  I think this is a really more of a philophical objection
+> than anything else.  With both fsverity and fscrypt, well over 95% of
+> the implementation is shared between ext4 and f2fs.  And from a
+> cryptographic design, that's something I consider a feature, not a
+> bug.  Cryptographic code is subtle in very different ways compared to
+> file system code.  So it's a good thing to having it done once and
+> audited by crypto specialists, as opposed to having each file system
+> doing it differently / independently.
 
-I think we have two options here:
+Where the data is located on disk should not matter for the crypto
+details.  If it does you have severe implementation issues.
 
-1) It's _probably_ safe to assume that journal data is short lived. While
-   hints are all relative to the specific use case, the size of the journal
-   compared to the rest of the drive is most likely very small. Hence a
-   default of WRITE_LIFE_SHORT is probably a good idea.
+> Right, the current interface makes it somewhat more awkward to do
+> these other things --- but the question is *why* would you want to in
+> the first place?  Why add the extra complexity?  I'm a big believer of
+> the KISS principle, and if there was a reason why a file system would
+> want to store the Merkle tree somewhere else, we could talk about it,
+> but I see only downside, and no upside.
 
-2) We add a specific internal life time hint for fs journals.
-
-#2 makes the most sense to me, but requires a bit more work...
-
--- 
-Jens Axboe
+Filesystems already use blocks beyond EOF for preallocation, either
+speculative by the file system itself, or explicitly by the user with
+fallocate.  I bet you will run into bugs with your creative abuse
+sooner or later.  Indepnd of that the interface simply is gross, which
+is enough of a reason not to merge it.
