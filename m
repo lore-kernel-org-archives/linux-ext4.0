@@ -1,36 +1,48 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:51870 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725825AbeLBKZl (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 05:25:41 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id ABA8D2B22B
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 10:25:39 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 10:25:39 +0000
-Message-ID: <bug-201685-13602-KGoNh1D8pI@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.133]:37090 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727159AbeLSHTQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Dec 2018 02:19:16 -0500
+Date: Tue, 18 Dec 2018 23:19:14 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>, ebiggers@kernel.org,
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+Message-ID: <20181219071914.GA18852@infradead.org>
+References: <20181101225230.88058-1-ebiggers@kernel.org>
+ <20181101225230.88058-2-ebiggers@kernel.org>
+ <20181212091406.GA31723@infradead.org>
+ <20181212202609.GA193967@gmail.com>
+ <20181213202249.GA3797@infradead.org>
+ <20181214044802.GA681@sol.localdomain>
+ <20181217200039.GD8111@magnolia>
+ <20181219071149.GB2628@infradead.org>
+ <CAHk-=wiB8vGbje+NgNkMZupHsZ_cqg6YEBV+ZXSF4wnywFLRHQ@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAHk-=wiB8vGbje+NgNkMZupHsZ_cqg6YEBV+ZXSF4wnywFLRHQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Tue, Dec 18, 2018 at 11:16:08PM -0800, Linus Torvalds wrote:
+> On Tue, Dec 18, 2018, 23:11 Christoph Hellwig <hch@infradead.org wrote:
+> 
+> >
+> > I think the fd would have to be on the same fs for this interface to
+> > make sense. But it could be an O_TMPFILE one.  And given that ext4
+> > already supports a variant of swapext this interface should also work
+> > with the existing ext4 on disk format.
+> >
+> 
+> Why is the merkle tree not just an xattr of the file?
 
---- Comment #131 from Reindl Harald (harry@rhsoft.net) ---
-has anybody ever seen that bug within a virtual machine?
-
-i currently run 4.19.x only inside VMs on VMware Workstation / VMware ESXi and
-did not see any issues, my only phyiscal test was my homeserver which
-completley crahsed 4 times like because of the VMware Workstation 14
-kernel-modules lasted only for a weekend (RAID10, 2 Samsung Evo 850 2 TB, 2
-Samsung Evo 860 2 TB) after the last crash left a 0 byte "firewall.sh" in the
-nested VM i was working for hours
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Because it is too large for our awkward xattrs interface..
