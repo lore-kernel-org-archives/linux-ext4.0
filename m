@@ -1,85 +1,45 @@
-Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:53622 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726241AbeLLELS (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 11 Dec 2018 23:11:18 -0500
-Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC4A3XQ093143
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:11:17 -0500
-Received: from e06smtp01.uk.ibm.com (e06smtp01.uk.ibm.com [195.75.94.97])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2par2q6s5a-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Tue, 11 Dec 2018 23:11:17 -0500
-Received: from localhost
-        by e06smtp01.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Wed, 12 Dec 2018 04:11:15 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.133]:35206 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728051AbeLSHJR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Dec 2018 02:09:17 -0500
+Date: Tue, 18 Dec 2018 23:09:15 -0800
+From: Christoph Hellwig <hch@infradead.org>
 To: Eric Biggers <ebiggers@kernel.org>
-Cc: Krzysztof Kozlowski <krzk@kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <yuchao0@huawei.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org
-Subject: Re: [BUG BISECT next] Files cannot be opened after "fsverity: Move verity status check to fsverity_file_open"
-Date: Wed, 12 Dec 2018 09:41:18 +0530
-In-Reply-To: <20181211174116.GB221175@gmail.com>
-References: <CAJKOXPdNS+Qs6t1GwrgYhWT5EbtORJwYMzSrDPf8oAxv7ndNBg@mail.gmail.com> <20181211174116.GB221175@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Theodore Y . Ts'o" <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+Message-ID: <20181219070915.GA2628@infradead.org>
+References: <20181101225230.88058-1-ebiggers@kernel.org>
+ <20181101225230.88058-2-ebiggers@kernel.org>
+ <20181212091406.GA31723@infradead.org>
+ <20181212202609.GA193967@gmail.com>
+ <20181213202249.GA3797@infradead.org>
+ <20181214044802.GA681@sol.localdomain>
+ <20181217164949.GA18626@infradead.org>
+ <20181217183205.GA141684@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="us-ascii"
-Message-Id: <3791832.MWVI2j2YUV@localhost.localdomain>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181217183205.GA141684@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday, December 11, 2018 11:11:17 PM IST Eric Biggers wrote:
-> On Tue, Dec 11, 2018 at 03:15:53PM +0100, Krzysztof Kozlowski wrote:
-> > Hi,
-> > 
-> > Bisect from today's next pointed me to:
-> > commit 4de97efb578a094e8fbf279522d41eb9ece1e3e0
-> > Author: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-> > Date:   Sat Dec 8 12:21:43 2018 +0530
-> >     fsverity: Move verity status check to fsverity_file_open
-> > 
-> > as a reason of "Operation not supported" when reading any file from
-> > mounted ext4fs (from SD card). Rootfs from nfsroot works but reading
-> > from /home with ext4fs fails.
-> > 
-> > Mounts:
-> > 192.168.1.10:/srv/nfs/odroidhc1 on / type nfs4
-> > (rw,relatime,vers=4.0,rsize=131072,wsize=131072,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.1.12,local_lock=none,addr=192.168.1.10)
-> > /dev/mmcblk0p2 on /home type ext4 (rw,relatime)
-> > 
-> > Configuration:
-> > 1. Arch ARM Linux
-> > 2. exynos_defconfig
-> >   - All my Odroid boards (ARMv7, Exynos)
-> >     Systemd: v239, v238
-> > 3. All boards boot from TFTP with NFS root (NFSv4)
-> > No specific errors in boot log:
-> > https://krzk.eu/#/builders/21/builds/1034/steps/12/logs/serial0
-> > 
-> > Let me know if you need any more data.
-> > 
-> > Best regards,
-> > Krzysztof
-> 
-> Thanks Krzysztof.  Ted, this is the same bug I pointed out in my review of this
-> patch yesterday (https://patchwork.kernel.org/patch/10719197/#22371523).  Can
-> you fix or revert the two broken patches?  Thanks,
-> 
+On Mon, Dec 17, 2018 at 10:32:06AM -0800, Eric Biggers wrote:
+> I don't see how that helps.  The Merkle tree can still be too large to fit in
+> memory.  In the worst case, it might not even fit in the address space.  And I
+> don't see how get_user_pages() helps either over just copy_from_user(); what are
+> you proposing to do with the pages after getting them, exactly?
 
-Hi,
-
-I have sent version V4 of the patchset now. My plan was to include the fix for
-"Kconfig recursive dependency" issue reported for IA64 architecture. But I
-would need some more time to understand the problem and provide a correct
-fix. Hence the V4 patchset was sent with a fix to only address the problem
-reported in this mail.
-
--- 
-chandan
+Write them out to a file system specific area on the media.  Note
+that get_user_pages is indeed not going to work if you run out of
+address space, but that seems like an odd use case.  Out of of memory
+is not an issue as we generally iterate over a small number of pages
+for each individual get_user_pages call.
