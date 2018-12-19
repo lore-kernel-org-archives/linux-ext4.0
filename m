@@ -1,151 +1,139 @@
-Return-Path: <SRS0=EV/E=O6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:60650 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727387AbeLUQLw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2018 11:11:52 -0500
-Date: Fri, 21 Dec 2018 08:11:50 -0800
-From: Matthew Wilcox <willy@infradead.org>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:58806 "EHLO
+        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727387AbeLSVf7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 19 Dec 2018 16:35:59 -0500
+Date: Thu, 20 Dec 2018 08:35:52 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Biggers <ebiggers@kernel.org>,
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "Theodore Y . Ts'o" <tytso@mit.edu>,
         Jaegeuk Kim <jaegeuk@kernel.org>,
         Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181221161150.GD10600@bombadil.infradead.org>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-2-ebiggers@kernel.org>
+Message-ID: <20181219213552.GO6311@dastard>
+References: <20181219071420.GC2628@infradead.org>
+ <20181219021953.GD31274@dastard>
+ <20181219193005.GB6889@mit.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181101225230.88058-2-ebiggers@kernel.org>
+In-Reply-To: <20181219193005.GB6889@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 01, 2018 at 03:52:19PM -0700, Eric Biggers wrote:
-> +In the recommended configuration of SHA-256 and 4K blocks, 128 hash
-> +values fit in each block.  Thus, each level of the hash tree is 128
-> +times smaller than the previous, and for large files the Merkle tree's
-> +size converges to approximately 1/129 of the original file size.
+On Wed, Dec 19, 2018 at 02:30:05PM -0500, Theodore Y. Ts'o wrote:
+> On Wed, Dec 19, 2018 at 01:19:53PM +1100, Dave Chinner wrote:
+> > Putting metadata in user files beyond EOF doesn't work with XFS's
+> > post-EOF speculative allocation algorithms.
+> > 
+> > i.e. Filesystem design/algorithms often assume that the region
+> > beyond EOF in user files is a write-only region.  e.g. We can allow
+> > extents beyond EOF to be uninitialised because they are in a write
+> > only region of the file and so there's no possibility of stale data
+> > exposure. Unfortunately, putting filesystem/security metadata beyond
+> > EOF breaks these assumptions - it's no longer a write-only region.
+> 
+> On Tue, Dec 18, 2018 at 11:14:20PM -0800, Christoph Hellwig wrote:
+> > Filesystems already use blocks beyond EOF for preallocation, either
+> > speculative by the file system itself, or explicitly by the user with
+> > fallocate.  I bet you will run into bugs with your creative abuse
+> > sooner or later.  Indepnd of that the interface simply is gross, which
+> > is enough of a reason not to merge it.
+> 
+> Both of these concerns aren't applicable for fs-verity because the
+> entire file will be read-only.  So there will be no preallocation or
+> fallocation going on --- or allowed --- for a file which is protected
+> by fs-verity.  Since no writes are allowed at all, it won't break any
+> file systems' assumptions about "write-only regions".
 
-I think you mean 1/127, not 1/129.
+The file has to be written before it has been protected, which means
+it may very well have user space allocated beyond EOF before the
+merkle tree needs to be written. And, well, the fact that it is all
+read only after creation is a feature implementation detail that
+allows fsverity to "get away with" storing it's metadata in file
+data space.
 
-> +fsveritysetup format
-> +--------------------
-> +
-> +When enabling fs-verity on a file via the `FS_IOC_ENABLE_VERITY`_
-> +ioctl, the kernel requires that the verity metadata has been appended
-> +to the file contents.  Specifically, the file must be arranged as:
-> +
-> +#. Original file contents
-> +#. Zero-padding to next block boundary
-> +#. `Merkle tree`_
-> +#. `fs-verity descriptor`_
-> +#. fs-verity footer
-> +
-> +We call this file format the "fsveritysetup format".  It is not
-> +necessarily the on-disk format actually used by the filesystem, since
-> +the filesystem is free to move things around during the ioctl.
-> +However, the easiest way to implement fs-verity is to just keep this
-> +arrangement in-place, as ext4 and f2fs do; see `Filesystem support`_.
-> +
-> +Note that "block" here means the fs-verity block size, which is not
-> +necessarily the same as the filesystem's block size.  For example, on
-> +ext4, fs-verity can use 4K blocks on top of a filesystem formatted to
-> +use a 1K block size.
-> +
-> +The fs-verity footer is a structure of the following format::
-> +
-> +    struct fsverity_footer {
-> +            __le32 desc_reverse_offset;
-> +            __u8 magic[8];
-> +    };
-> +
-> +``desc_reverse_offset`` is the distance in bytes from the end of the
-> +fs-verity footer to the beginning of the fs-verity descriptor; this
-> +allows software to find the fs-verity descriptor.  ``magic`` is the
-> +ASCII bytes "FSVerity"; this allows software to quickly identify a
-> +file as being in the "fsveritysetup" format as well as find the
-> +fs-verity footer if zeroes have been appended.
-> +
-> +The kernel cannot handle fs-verity footers that cross a page boundary.
-> +Padding must be prepended as needed to meet this constaint.
+But whether or not fsverity is enabled on the filesystem, the fact
+is that the kernel code now has to support storing and reading data
+from beyond EOF. Every user, whether they are using fsverity or not,
+is now exposed to that code and a filesystem that no longer
+considers the user data region beyond EOF as write only. i.e. it
+doesn't matter if fsverity is in use, then ext4/f2fs code now
+allows reading of information beyond EOF from user data files
 
-I think this ioctl is the start of the disagreement.  How about this
-strawman:
+i.e. you've completely changed the way files appear to /everyone/,
+not just the users of fsverity. Not only that, you now have file
+data that has a specific metadata on-disk format encoded into file
+data space. That greatly complicates filesystem checking and
+scrubbing which typically /doesn't even look at the contents of
+user data/. So yeah, this hack might make the merkle tree
+verification "simple" but it greatly complicates everything else the
+filesystem has to do.
 
-verity_fd = ioctl(fd, FS_IOC_VERITY_FD);
-write(verity_fd, &merkle_tree);
-close(verity_fd);
+That's the problem here - fsverity completely redefines the layout
+of user data files for everyone, not just fsverity, and not just the
+filesystems that implement fsverity. You've taken an ext4 fsverity
+implementation feature and promoted it to being a linux-wide 
+file data layout standard that is encoded into the kernel/user
+ABI/API forever more.
 
-At final close of that verity_fd, the filesystem behaves in the same way
-that it does on receipt of this FS_IOC_ENABLE_VERITY ioctl today.
+And you're trying to force this into the tree on everyone without
+adequate review because "a product is already shipping with this
+code in it". Didn't we learn the lessons of failing to "upstream
+first" new features more than 15 years ago?
 
-> +FS_IOC_MEASURE_VERITY
-> +---------------------
-> +
-> +The FS_IOC_MEASURE_VERITY ioctl retrieves the fs-verity measurement of
-> +a regular file.  This is a digest that cryptographically summarizes
-> +the file contents that are being enforced on reads.  The file must
-> +have fs-verity enabled.
-> +
-> +This ioctl takes in a pointer to a variable-length structure::
-> +
-> +    struct fsverity_digest {
-> +            __u16 digest_algorithm;
-> +            __u16 digest_size; /* input/output */
-> +            __u8 digest[];
-> +    };
-> +
-> +``digest_size`` is an input/output field.  On input, it must be
-> +initialized to the number of bytes allocated for the variable-length
-> +``digest`` field.
-> +
-> +On success, 0 is returned and the kernel fills in the structure as
-> +follows:
-> +
-> +- ``digest_algorithm`` will be the hash algorithm used for the file
-> +  measurement.  It will match the algorithm used in the Merkle tree,
-> +  e.g. FS_VERITY_ALG_SHA256.  See ``include/uapi/linux/fsverity.h``
-> +  for the list of possible values.
-> +- ``digest_size`` will be the size of the digest in bytes, e.g. 32
-> +  for SHA-256.  (This can be redundant with ``digest_algorithm``.)
-> +- ``digest`` will be the actual bytes of the digest.
-> +
-> +This ioctl is guaranteed to be very fast.  Due to fs-verity's use of a
-> +Merkle tree, its running time is independent of the file size.
-> +
-> +This ioctl can fail with the following errors:
-> +
-> +- ``EFAULT``: invalid buffer was specified
-> +- ``ENODATA``: the file is not a verity file
-> +- ``ENOTTY``: this type of filesystem does not implement fs-verity
-> +- ``EOPNOTSUPP``: the kernel was not configured with fs-verity support
-> +  for this filesystem, or the filesystem superblock has not had the
-> +  'verity' feature enabled on it.  (See `Filesystem support`_.)
-> +- ``EOVERFLOW``: the file measurement is longer than the specified
-> +  ``digest_size`` bytes.  Try providing a larger buffer.
+> As far as whether it's "gross" --- that's a taste question, and I
+> happen to think it's more "clever" than "gross". 
 
-Should this ioctl be better implemented as an xattr?
+You think it's clever because it's a neat hack that makes what you
+need simple to implement, and so you can ship it in phones quickly
+and without needing to involve upstream in more complex design
+discussions.
 
-> +- Direct I/O is not supported on verity files.  Attempts to use direct
-> +  I/O on such files will fall back to buffered I/O.
+I think it's gross because it bleeds implementation details all over
+the API and globally redefines the user data file layout for
+everyone, kernel wide in a manner that is incompatible with existing
+filesystem implementations.
 
-That makes sense; the filesystem can't verify the data before presenting
-it to userspace if it's being copied directly into userspace.
+> It allows for a very
+> simple implementation, *leveraging* the fact that the file will never
+> change --- and especially, grow in length.  So why not use the space
+> after EOF?
 
-> +- DAX (Direct Access) is not supported on verity files.
+There have been many technical reasons given for why it's a bad interfaces,
+yet you only address entirely subjective arguments and claim that
+you have "good taste" in APIs because it is "clever".
 
-That makes less sense.  The kernel can check the checksum before
-copying the data to the user.  Is this simply a current limitation of
-the implementation?
+> The alternative requires adding Solaris-style alternate data streams
+> support.
 
-> +Thus, when ascending the tree reading hash pages, fs-verity can stop
-> +as soon as it finds an already-checked hash page.  This optimization,
-> +which is also used by dm-verity, results in excellent sequential read
-> +performance since usually the deepest needed hash page will already be
-> +cached and checked.  However, random reads perform worse.
+No, it does not. It simply requires a different userspace API to
+move the merkle tree data into the kernel, and a different
+implemetnation abstraction that allows filesystems to provide the
+merkle tree data pages on request. Darrick and Christoph have
+already suggested alternative user APIs that would work just fine,
+and they don't ahve a requirement that the merkle tree is held in
+the user data space beyond EOF.
 
-I think you mean "all but the deepest"?
+How filesystems store and retrieve merkle tree data should be a
+filesystem internal detail. If how metadata is stored in th e
+filesystem is defined by the userspace API or the kernel library
+code that implements the verification feature, then it lacks the
+necessary abstraction to be a generic Linux filesystem feature.
+IOWs, it needs to be redesigned and reworked before we should
+consider it for merging.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
