@@ -1,30 +1,44 @@
-Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:35226 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726480AbeLNDL4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 13 Dec 2018 22:11:56 -0500
-Date: Thu, 13 Dec 2018 22:11:54 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-Cc: linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca
-Subject: Re: [PATCH 2/2] debugfs: output large directory size
-Message-ID: <20181214031154.GB20880@thunk.org>
-References: <20181213213156.44773-1-artem.blagodarenko@gmail.com>
- <20181213213156.44773-2-artem.blagodarenko@gmail.com>
+Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:48130 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1729603AbeLSRDd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 19 Dec 2018 12:03:33 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 607952B57E
+        for <linux-ext4@vger.kernel.org>; Wed, 19 Dec 2018 17:03:32 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date: Wed, 19 Dec 2018 17:03:32 +0000
+Message-ID: <bug-201631-13602-8daAlnZ2qn@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181213213156.44773-2-artem.blagodarenko@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 14, 2018 at 12:31:56AM +0300, Artem Blagodarenko wrote:
-> Use hight part of directory size in debugfs output.
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
-"high", not "hight".  Also, it would be better if the discription
-explained the context of this being needed for directories with the
-largedir feature being enabled.
+Jan Kara (jack@suse.cz) changed:
 
-Thanks,
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+ Attachment #280051|0                           |1
+        is obsolete|                            |
 
-					- Ted
+--- Comment #22 from Jan Kara (jack@suse.cz) ---
+Created attachment 280097
+  --> https://bugzilla.kernel.org/attachment.cgi?id=280097&action=edit
+mm: Dump page and PTE state and some history
+
+New debug patch to try which will also dump more about what was happening with
+the page. Can you please try running with this patch and report when the
+warning hits? Thanks!
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
