@@ -1,46 +1,78 @@
-Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-it1-f195.google.com ([209.85.166.195]:33771 "EHLO
-        mail-it1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726533AbeLNHv2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Dec 2018 02:51:28 -0500
-Received: by mail-it1-f195.google.com with SMTP id m8so18339281itk.0
-        for <linux-ext4@vger.kernel.org>; Thu, 13 Dec 2018 23:51:27 -0800 (PST)
-From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
-To: linux-ext4@vger.kernel.org
-Cc: adilger.kernel@dilger.ca
-Subject: [PATCH v2 1/2] e2fsck: allow to check >2GB sized directory
-Date: Fri, 14 Dec 2018 10:50:53 +0300
-Message-Id: <20181214075054.47359-1-artem.blagodarenko@gmail.com>
+Return-Path: <SRS0=ry50=O5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga07-in.huawei.com ([45.249.212.35]:57963 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725795AbeLTJTT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Dec 2018 04:19:19 -0500
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+To: <linux-ext4@vger.kernel.org>
+CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <wshilong@ddn.com>,
+        <yi.zhang@huawei.com>, <miaoxie@huawei.com>
+Subject: [PATCH v2 1/2] ext4: fix race when setting the bitmap corrupted flag again
+Date: Thu, 20 Dec 2018 17:22:20 +0800
+Message-ID: <1545297741-49408-1-git-send-email-yi.zhang@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-After large_dir feature has been added, e2fsprogs is
-ready for directories > 2GB, so we can remove e2fsck
-directory size check.
+Commit 9af0b3d12577 "ext4: fix race when setting the bitmap corrupted
+flag" want to fix race between setting inode/block bitmap corrupted
+flag and reducing free group inodes/clusters counter to prevent
+multiple frees. But ext4_test_and_set_bit() will invoke
+__test_and_set_bit() which is non-atomic, so the race is still there.
+Fix this by invoke test_and_set_bit() instead.
 
-Signed-off-by: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Fixes: 9af0b3d12577 ("ext4: fix race when setting the bitmap corrupted flag")
+Cc: stable@vger.kernel.org
+Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+Reviewed-by: Wang Shilong <wshilong@ddn.com>
 ---
- e2fsck/pass1.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+Change since v1
+ - add CC stable tag as shilong suggested.
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 5c0b92d5..5c413610 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -3647,9 +3647,12 @@ static int process_block(ext2_filsys fs,
- 		}
+ fs/ext4/ext4.h  | 6 ++++++
+ fs/ext4/super.c | 6 ++----
+ 2 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3f89d0a..755ba14 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2888,6 +2888,12 @@ struct ext4_group_info {
+ 	(test_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &((grp)->bb_state)))
+ #define EXT4_MB_GRP_IBITMAP_CORRUPT(grp)	\
+ 	(test_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &((grp)->bb_state)))
++#define EXT4_MB_GRP_TEST_AND_SET_BBITMAP_CORRUPT(grp)	\
++	(test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, \
++			  &((grp)->bb_state)))
++#define EXT4_MB_GRP_TEST_AND_SET_IBITMAP_CORRUPT(grp)	\
++	(test_and_set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, \
++			  &((grp)->bb_state)))
+ 
+ #define EXT4_MB_GRP_WAS_TRIMMED(grp)	\
+ 	(test_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 53ff6c2..5b83765 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -798,16 +798,14 @@ void ext4_mark_group_bitmap_corrupted(struct super_block *sb,
+ 	int ret;
+ 
+ 	if (flags & EXT4_GROUP_INFO_BBITMAP_CORRUPT) {
+-		ret = ext4_test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
+-					    &grp->bb_state);
++		ret = EXT4_MB_GRP_TEST_AND_SET_BBITMAP_CORRUPT(grp);
+ 		if (!ret)
+ 			percpu_counter_sub(&sbi->s_freeclusters_counter,
+ 					   grp->bb_free);
  	}
  
--	if (p->is_dir && blockcnt > (1 << (21 - fs->super->s_log_block_size)))
-+	if (p->is_dir && !ext2fs_has_feature_largedir(fs->super) &&
-+	    blockcnt > (1 << (21 - fs->super->s_log_block_size)))
- 		problem = PR_1_TOOBIG_DIR;
--	if (p->is_reg && p->num_blocks+1 >= p->max_blocks)
-+	if (p->is_dir && p->num_blocks + 1 >= p->max_blocks)
-+		problem = PR_1_TOOBIG_DIR;
-+	if (p->is_reg && p->num_blocks + 1 >= p->max_blocks)
- 		problem = PR_1_TOOBIG_REG;
- 	if (!p->is_dir && !p->is_reg && blockcnt > 0)
- 		problem = PR_1_TOOBIG_SYMLINK;
+ 	if (flags & EXT4_GROUP_INFO_IBITMAP_CORRUPT) {
+-		ret = ext4_test_and_set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT,
+-					    &grp->bb_state);
++		ret = EXT4_MB_GRP_TEST_AND_SET_IBITMAP_CORRUPT(grp);
+ 		if (!ret && gdp) {
+ 			int count;
+ 
 -- 
-2.14.3
+2.7.4
