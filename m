@@ -1,73 +1,44 @@
-Return-Path: <SRS0=0j4F=O3=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from szxga04-in.huawei.com ([45.249.212.190]:16594 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726430AbeLRL5B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 18 Dec 2018 06:57:01 -0500
-From: "zhangyi (F)" <yi.zhang@huawei.com>
-To: <linux-ext4@vger.kernel.org>
-CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <wshilong@ddn.com>,
-        <yi.zhang@huawei.com>, <miaoxie@huawei.com>
-Subject: [PATCH 1/2] ext4: fix race when setting the bitmap corrupted flag again
-Date: Tue, 18 Dec 2018 20:00:00 +0800
-Message-ID: <1545134401-104523-1-git-send-email-yi.zhang@huawei.com>
+Return-Path: <SRS0=ry50=O5=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:50442 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727694AbeLTEPQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 19 Dec 2018 23:15:16 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 488392866F
+        for <linux-ext4@vger.kernel.org>; Thu, 20 Dec 2018 04:15:16 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date: Thu, 20 Dec 2018 04:15:15 +0000
+Message-ID: <bug-201631-13602-vLhTCyuRHs@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit 9af0b3d12577 "ext4: fix race when setting the bitmap corrupted
-flag" want to fix race between setting inode/block bitmap corrupted
-flag and reducing free group inodes/clusters counter to prevent
-multiple frees. But ext4_test_and_set_bit() will invoke
-__test_and_set_bit() which is non-atomic, so the race is still there.
-Fix this by invoke test_and_set_bit() instead.
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
-Fixes: 9af0b3d12577 ("ext4: fix race when setting the bitmap corrupted flag")
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
----
- fs/ext4/ext4.h  | 6 ++++++
- fs/ext4/super.c | 6 ++----
- 2 files changed, 8 insertions(+), 4 deletions(-)
+aneesh.kumar@linux.ibm.com changed:
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3f89d0a..755ba14 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -2888,6 +2888,12 @@ struct ext4_group_info {
- 	(test_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &((grp)->bb_state)))
- #define EXT4_MB_GRP_IBITMAP_CORRUPT(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &((grp)->bb_state)))
-+#define EXT4_MB_GRP_TEST_AND_SET_BBITMAP_CORRUPT(grp)	\
-+	(test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, \
-+			  &((grp)->bb_state)))
-+#define EXT4_MB_GRP_TEST_AND_SET_IBITMAP_CORRUPT(grp)	\
-+	(test_and_set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, \
-+			  &((grp)->bb_state)))
- 
- #define EXT4_MB_GRP_WAS_TRIMMED(grp)	\
- 	(test_bit(EXT4_GROUP_INFO_WAS_TRIMMED_BIT, &((grp)->bb_state)))
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 53ff6c2..5b83765 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -798,16 +798,14 @@ void ext4_mark_group_bitmap_corrupted(struct super_block *sb,
- 	int ret;
- 
- 	if (flags & EXT4_GROUP_INFO_BBITMAP_CORRUPT) {
--		ret = ext4_test_and_set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT,
--					    &grp->bb_state);
-+		ret = EXT4_MB_GRP_TEST_AND_SET_BBITMAP_CORRUPT(grp);
- 		if (!ret)
- 			percpu_counter_sub(&sbi->s_freeclusters_counter,
- 					   grp->bb_free);
- 	}
- 
- 	if (flags & EXT4_GROUP_INFO_IBITMAP_CORRUPT) {
--		ret = ext4_test_and_set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT,
--					    &grp->bb_state);
-+		ret = EXT4_MB_GRP_TEST_AND_SET_IBITMAP_CORRUPT(grp);
- 		if (!ret && gdp) {
- 			int count;
- 
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |aneesh.kumar@linux.ibm.com
+
+--- Comment #25 from aneesh.kumar@linux.ibm.com ---
+(In reply to Benjamin Herrenschmidt from comment #24)
+> Out of curiosity, how does this work in the context of pages that are GUPed
+> either by a driver or by KVM when using file backed guest memory ?
+> 
+> GUP will not "see" the mkclean or attempt at making read only...
+
+page_mkclean_one do call
+        mmu_notifier_invalidate_range_start(vma->vm_mm, start, end);
+
 -- 
-2.7.4
+You are receiving this mail because:
+You are watching the assignee of the bug.
