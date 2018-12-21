@@ -1,56 +1,78 @@
-Return-Path: <SRS0=iZZ9=OM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:45986 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725785AbeLCBsf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 20:48:35 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 75FEA2A716
-        for <linux-ext4@vger.kernel.org>; Mon,  3 Dec 2018 01:48:33 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Mon, 03 Dec 2018 01:48:30 +0000
-Message-ID: <bug-201685-13602-B369hVghjb@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=EV/E=O6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-wr1-f68.google.com ([209.85.221.68]:35235 "EHLO
+        mail-wr1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731648AbeLUKHB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2018 05:07:01 -0500
 MIME-Version: 1.0
+References: <20181219071420.GC2628@infradead.org> <20181219021953.GD31274@dastard>
+ <20181219193005.GB6889@mit.edu> <20181219213552.GO6311@dastard>
+ <20181220220158.GC2360@mit.edu> <20181221070447.GA21687@infradead.org>
+In-Reply-To: <20181221070447.GA21687@infradead.org>
+From: Richard Weinberger <richard.weinberger@gmail.com>
+Date: Fri, 21 Dec 2018 11:06:45 +0100
+Message-ID: <CAFLxGvxKPNDBQfBnx0obRrriCq9S3U_JsE4bwDwM8QxE+En9=w@mail.gmail.com>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Dave Chinner <david@fromorbit.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Biggers <ebiggers@kernel.org>,
+        linux-fscrypt@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org,
+        LKML <linux-kernel@vger.kernel.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Fri, Dec 21, 2018 at 9:58 AM Christoph Hellwig <hch@infradead.org> wrote:
+>
+> On Thu, Dec 20, 2018 at 05:01:58PM -0500, Theodore Y. Ts'o wrote:
+> > That's simply not true.  Number one, fsverity is not mandatory for all
+> > file systems to implement.  If XFS doesn't want to implement fscrypt
+> > or fsverity, it doesn't have to.  Number two, we're not *making* any
+> > changes to the kernel code; nothing in mm/filemap.c, et. al.  So
+> > saying that we are making changes that are impacted by /everyone/ just
+> > doesn't make any sense.
+>
+> Ted, I think you know yourself this isn't true.  Whenever we added
+> useful interface to one of the major file systems we had other pick
+> it up, and that is a good thing because the last thing we need is
+> fragmentation of interfaces.  And even if that wasn't the case I don't
+> think we should take short cuts, because even if an interface was just
+> for a file system or two it still needs to be properly desgined.
+>
+> There is no reason to rush interfacs in, because everytime we have done
+> that it has turned out to be a very bad idea in retrospective.
 
---- Comment #178 from Sune Mølgaard (molgaard@gmail.com) ---
-Hi Theodore,
+Speaking of interfaces, one thing that needs IMHO more thought is the
+user facing interface. Not only in the fsverity case, in all cases.
 
-I am not much of a kernel developer, let alone and FS one, so your guesses
-would be vastly better founded than mine.
+Linux has currently many different ways to implement and check
+(cryptographic)-integrity.
+Just to name a few, fsverity, UBIFS' auth feature, BTRFS csum,
+EVM/IMA, dm-integrity,
+dm-verity, ...
 
-I could imagine, though, that a combination of GCC version, .config and,
-possibly, the creation time (kernel version-wise) of the FSs in question, could
-create a sort of "cocktail effect". For my part, none of my FSs are < at least
-a year old.
+At least for filesystems it would be good to have a common interface
+to query the
+integrity status of a file.
+So far we have mixture of different return codes (EPERM, EUCLEAN, EINVAL),
+audit events plus cryptic kernel logs.
 
-FWIW, I started seeing the problem specifically with 4.19.3 (4.19.0 being good,
-and built with 8.2.0-7), but that was after skipping 4.19.[12].
+In UBIFS we return EPERM in case of an auth failure, we followed EVM/IMA.
+fsverity goes the EUCLEAN route, just like BTRFS for check sum failures.
 
-I note that the first Ubuntu kernel-ppa kernel the be built with 8.2.0-9 was
-4.19.1, so if my ongoing bisect ends without any triggering of the bug I see, I
-shall try kernel-ppa 4.19.1 - if that exhibits the bug, then that further
-points to GCC, but as you say, perhaps specifically for the Ubuntu kernels.
+Before everything is set in stone, let's try to consolidate at least this.
 
-Now, as someone else stated somewhere, the only things that kernel-ppa patches,
-are some Ubuntu-specific build and package structure, as well as .config hte
-lst part being available at
-http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.19.1/0006-configs-based-on-Ubuntu-4.19.0-4.5.patch
-.
-
-As promised above, I have written the kernel-ppa team lead, Bradd Figg, and I
-would expect him and his team to be better at pinpointing which combination of
-GCC 8.2.0-9 and .config options might be problematic, but if they find that the
-problem goes away with a GCC upgrade, they might opt for letting that be it.
+Along with that, what about the statx() interface?
+We have already STATX_ATTR_ENCRYPTED, why no STATX_ATTR_AUTHENTICATED?
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Thanks,
+//richard
