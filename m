@@ -1,31 +1,116 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:35178 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725535AbeLBRuR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 12:50:17 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id CBACA2A7DF
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 17:50:13 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 17:50:13 +0000
-Message-ID: <bug-201685-13602-w4OIK8ZBVZ@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=EV/E=O6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from m12-15.163.com ([220.181.12.15]:46392 "EHLO m12-15.163.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S2388455AbeLUBLc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 20 Dec 2018 20:11:32 -0500
+From: "Gwlao" <mi62840628amh@163.com>
+To: "zongjingli" <zongjingli@jxjrgs.com>
+Cc: linux-ext4@vger.kernel.org, info@TheShowChoir.com
+Subject: xH5xBE3
+Message-ID: <201812210910588796283@163.com>
+Date: Fri, 21 Dec 2018 09:10:58 +0800
 MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=seqc697_4850_210758605.735685"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+This is a multi-part message in MIME format.
 
---- Comment #152 from Jimmy.Jazz@gmx.net ---
-Created attachment 279801
-  --> https://bugzilla.kernel.org/attachment.cgi?id=279801&action=edit
-new generated server
+------=seqc697_4850_210758605.735685
+Content-Type: text/plain;
+	charset="UTF-8"
+Content-Transfer-Encoding: base64
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+MTUwLjIxNC4xNjYuMjE=
+
+------=seqc697_4850_210758605.735685
+Content-Type: image/jpeg;
+	name="Serd6748.jpg"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+	filename="Serd6748.jpg"
+
+/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCkbGBYWGDIkJh4pOzQ+PTo0
+OThBSV5QQUVZRjg5Um9TWWFkaWppP09ze3Jmel5naWX/2wBDARESEhgVGDAbGzBlQzlDZWVlZWVl
+ZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWX/wAARCAAcArgDASIA
+AhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQA
+AAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3
+ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWm
+p6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEA
+AwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSEx
+BhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElK
+U1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3
+uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDpy93L
+qOoWq3CxgW0bQMIwfLZvMBJz97lQew7epJo5ndbmSa7luI/OaOLzFQFQh2tnao6sG/DHQ5p0xsbG
+9mvJXdJngZ3Jd2Hlx4ydvTjd2GeT6mpbZLZopIoCwVJmLqGZSH3bznvyTn0IPoa0IKGu6sbCW2iW
+aKAPIhkklIGV8xVKrnrwWJIztA5xuBqZ5LqDVoFed2inZlwyKIx8rEKuPn34UEknbjd0OAJNUn07
+yXt7+4RML5xjEpWTCfNuAU7uNuePSqtrc6TJqQ8pbhbhpCAskUyorlSxwGG1WK5PYnJ9TkAt61NP
+b6Nez20ixzRQs6sy7sYGen+fx6UX008V9pyxyKsUszJIu3Jb927Dntyv8vxdfQ2o0qaK8L/ZEiPm
+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
+
+------=seqc697_4850_210758605.735685--
