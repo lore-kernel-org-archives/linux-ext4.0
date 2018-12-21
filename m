@@ -1,51 +1,63 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40026 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725743AbeLBLv2 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 06:51:28 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 2CE1E2C084
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 00:37:42 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 00:37:41 +0000
-Message-ID: <bug-201685-13602-85aZ64r9j3@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=EV/E=O6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from dmz-mailsec-scanner-6.mit.edu ([18.7.68.35]:55450 "EHLO
+        dmz-mailsec-scanner-6.mit.edu" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1731121AbeLUQ2b (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 21 Dec 2018 11:28:31 -0500
+Date: Fri, 21 Dec 2018 11:28:13 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Matthew Wilcox <willy@infradead.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Biggers <ebiggers@kernel.org>,
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+Message-ID: <20181221162813.GB26547@mit.edu>
+References: <20181219071420.GC2628@infradead.org>
+ <20181219021953.GD31274@dastard>
+ <20181219193005.GB6889@mit.edu>
+ <20181219213552.GO6311@dastard>
+ <20181220220158.GC2360@mit.edu>
+ <20181221070447.GA21687@infradead.org>
+ <20181221154714.GA26547@mit.edu>
+ <20181221155354.GC10600@bombadil.infradead.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181221155354.GC10600@bombadil.infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Fri, Dec 21, 2018 at 07:53:54AM -0800, Matthew Wilcox wrote:
+> In contrast to "we'll just fix it up later" (which usually applies
+> to in-kernel interfaces), we have a policy of not breaking userspace,
+> so accepting this interface means setting it in stone.  We should get
+> it right.
 
-James Courtier-Dutton (James@superbug.co.uk) changed:
+I'm not convinced it's a "fix", but my point is that if later on you
+want to add extra complexity transforming
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |James@superbug.co.uk
+     ioctl(fd, FS_IOC_ENABLE_VERITY);
 
---- Comment #118 from James Courtier-Dutton (James@superbug.co.uk) ---
-I have not observed the problem, but I have been thinking of maybe a more
-reliable way to detect a problem.
-btrfs has a "scrub" command that essentially verifies the checksum of every
-file on the disk.
-Now, ext4 does not have such a feature (as far as I know).
-How about people who are seeing this problem, do a recursive sha1sum -b of
-every file on the disk while in a known good state, and then do a sha1sum -c 
-of every file on the disk to see which ones got corrupted.
-This might help when doing git bisect and checking that we are back to a known
-good file system, and in cases like comment #116, item 2.
+so it does the equivalent of
 
-Also, I think there is a way to force a reboot to a particular kernel, using
-grub, so one could script and git bisect, reboot to old working kernel, fsck,
-then reboot to problem kernel and start next git bisect all using automated
-scripts.
+     ioctl(fd, FS_IOC_ENABLE_VERITY_NOW_WITH_EXTRA_USELESS_COMPLEXITY,
+	   fd, sizeof_data, sizeof_verity_data);
 
-Anyway, just ideas.
+it adds essentially no complexity to provide this backwards
+compatibility.  But if we need to implement
+FS_IOC_ENABLE_VERITY_NOW_WITH_EXTRA_USELESS_COMPLEXITY *now*, we gain
+nothing, other than pushing back when fsverity lands upstream.  We'd
+have to provide that backwards compatibility interface anyway, since
+there are a lot of users for that existing interface.
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+So why?
+
+				- Ted
