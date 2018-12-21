@@ -1,34 +1,50 @@
-Return-Path: <SRS0=P4kf=OT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from imap.thunk.org ([74.207.234.97]:40992 "EHLO imap.thunk.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726224AbeLJFZv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 10 Dec 2018 00:25:51 -0500
-Date: Mon, 10 Dec 2018 00:25:46 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Chengguang Xu <cgxu519@gmx.com>
-Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: compare old and new mode before setting
- update_mode flag
-Message-ID: <20181210052546.GH1840@mit.edu>
-References: <20181117090152.29132-1-cgxu519@gmx.com>
+Return-Path: <SRS0=EV/E=O6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.133]:53308 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725372AbeLUHEw (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Dec 2018 02:04:52 -0500
+Date: Thu, 20 Dec 2018 23:04:47 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Biggers <ebiggers@kernel.org>,
+        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+Message-ID: <20181221070447.GA21687@infradead.org>
+References: <20181219071420.GC2628@infradead.org>
+ <20181219021953.GD31274@dastard>
+ <20181219193005.GB6889@mit.edu>
+ <20181219213552.GO6311@dastard>
+ <20181220220158.GC2360@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20181117090152.29132-1-cgxu519@gmx.com>
+In-Reply-To: <20181220220158.GC2360@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Nov 17, 2018 at 05:01:52PM +0800, Chengguang Xu wrote:
-> If new mode is the same as old mode we don't have to reset
-> inode mode in the rest of the code, so compare old and new
-> mode before setting update_mode flag.
-> 
-> Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
+On Thu, Dec 20, 2018 at 05:01:58PM -0500, Theodore Y. Ts'o wrote:
+> That's simply not true.  Number one, fsverity is not mandatory for all
+> file systems to implement.  If XFS doesn't want to implement fscrypt
+> or fsverity, it doesn't have to.  Number two, we're not *making* any
+> changes to the kernel code; nothing in mm/filemap.c, et. al.  So
+> saying that we are making changes that are impacted by /everyone/ just
+> doesn't make any sense.
 
-Thanks, applied.
+Ted, I think you know yourself this isn't true.  Whenever we added
+useful interface to one of the major file systems we had other pick
+it up, and that is a good thing because the last thing we need is
+fragmentation of interfaces.  And even if that wasn't the case I don't
+think we should take short cuts, because even if an interface was just
+for a file system or two it still needs to be properly desgined.
 
-I know Jan declined the equivalent patch for ext2; but it doesn't add
-_that_ much extra complexity, and ext4_mark_inode_dirty() is rather
-more heavyweight than ext2_mark_inode_dirty().
-
-						- Ted
+There is no reason to rush interfacs in, because everytime we have done
+that it has turned out to be a very bad idea in retrospective.
