@@ -1,43 +1,35 @@
-Return-Path: <SRS0=b4XO=OX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:45258 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726445AbeLNFjJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 14 Dec 2018 00:39:09 -0500
-Date: Thu, 13 Dec 2018 21:39:06 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-Message-ID: <20181214053905.GA710@sol.localdomain>
-References: <20181101225230.88058-1-ebiggers@kernel.org>
- <20181101225230.88058-2-ebiggers@kernel.org>
- <20181212091406.GA31723@infradead.org>
- <20181212202609.GA193967@gmail.com>
- <20181213202249.GA3797@infradead.org>
- <20181214051722.GF20880@thunk.org>
+Return-Path: <SRS0=yT4f=O7=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:56720 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2392729AbeLVRsn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 22 Dec 2018 12:48:43 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 53395289D0
+        for <linux-ext4@vger.kernel.org>; Sat, 22 Dec 2018 14:13:29 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date: Sat, 22 Dec 2018 14:13:29 +0000
+Message-ID: <bug-201631-13602-VGBhS9sGvE@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20181214051722.GF20880@thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 14, 2018 at 12:17:22AM -0500, Theodore Y. Ts'o wrote:
-> Furthermore, it would require extra complexity in the common fsverity code
-> --- which looks for the Merkle tree at the end of file data --- for no real
-> benefit.
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
-To clarify, while this is technically true currently, as I mentioned it's been
-kept flexible enough such that a filesystem *could* store the metadata elsewhere
-with only some slight changes to the common fs/verity/ code which won't break
-other filesystems.  Though of course, keeping all filesystems using the
-"metadata after EOF" approach does allow a couple simplifications.
+--- Comment #38 from erhard_f@mailbox.org ---
+(In reply to Benjamin Herrenschmidt from comment #37)
+> I would advise against those DMA patches. If the GPU tries to map an sglist
+> entry that crosses a 1G boundary, bad things will happen.
+Did not install them, I am running a vanilla kernel. So if they have not been
+upstreamed they are not in my kernel. ;)
 
-- Eric
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
