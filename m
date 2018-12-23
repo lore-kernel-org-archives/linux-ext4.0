@@ -1,55 +1,72 @@
-Return-Path: <SRS0=z94b=OO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:48184 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725904AbeLEAFb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 4 Dec 2018 19:05:31 -0500
-Date: Tue, 4 Dec 2018 16:05:28 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
-        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
-        corbet@lwn.net, ralf@linux-mips.org, paul.burton@mips.com,
-        jhogan@kernel.org, green.hu@gmail.com, deanbo422@gmail.com,
-        schwidefsky@de.ibm.com, heiko.carstens@de.ibm.com, richard@nod.at,
-        dedekind1@gmail.com, adrian.hunter@intel.com,
-        viro@zeniv.linux.org.uk
-Subject: Re: [PATCH V2 3/7] fscrypt: remove filesystem specific build config
- option
-Message-ID: <20181205000528.GH70682@gmail.com>
-References: <20181204095650.12562-1-chandan@linux.vnet.ibm.com>
- <20181204095650.12562-4-chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=TkYx=PA=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from dmz-mailsec-scanner-1.mit.edu ([18.9.25.12]:63706 "EHLO
+        dmz-mailsec-scanner-1.mit.edu" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S2389933AbeLWEp7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 22 Dec 2018 23:45:59 -0500
+Date: Sat, 22 Dec 2018 23:45:53 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Matthew Wilcox <willy@infradead.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Biggers <ebiggers@kernel.org>,
+        linux-fscrypt@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org,
+        Linux List Kernel Mailing <linux-kernel@vger.kernel.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+Message-ID: <20181223044553.GG26547@mit.edu>
+References: <20181219071420.GC2628@infradead.org>
+ <20181219021953.GD31274@dastard>
+ <20181219193005.GB6889@mit.edu>
+ <20181219213552.GO6311@dastard>
+ <20181220220158.GC2360@mit.edu>
+ <20181221070447.GA21687@infradead.org>
+ <20181221154714.GA26547@mit.edu>
+ <CAHk-=wgdzWgoPSuHeVcqmGE1hB3Gan72r2_AhtC14e60=z45yg@mail.gmail.com>
+ <20181222041712.GC26547@mit.edu>
+ <20181223041007.GL10600@bombadil.infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20181204095650.12562-4-chandan@linux.vnet.ibm.com>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20181223041007.GL10600@bombadil.infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 04, 2018 at 03:26:46PM +0530, Chandan Rajendra wrote:
-> diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-> index 952ab97af325..6ba193c23f37 100644
-> --- a/include/linux/fscrypt.h
-> +++ b/include/linux/fscrypt.h
-> @@ -2,9 +2,8 @@
->  /*
->   * fscrypt.h: declarations for per-file encryption
->   *
-> - * Filesystems that implement per-file encryption include this header
-> - * file with the __FS_HAS_ENCRYPTION set according to whether that filesystem
-> - * is being built with encryption support or not.
-> + * Filesystems that implement per-file encryption must include this header
-> + * file.
->   *
->   * Copyright (C) 2015, Google, Inc.
->   *
+On Sat, Dec 22, 2018 at 08:10:07PM -0800, Matthew Wilcox wrote:
+> Pretty much every file format has the ability to put arbitrary blocks
+> of information into a file somewhere the tools which don't know about
+> it will skip it.  For example, ZIP "includes an extra field facility
+> within file headers, which can be used to store extra data not defined
+> by existing ZIP specifications, and which allow compliant archivers that
+> do not recognize the fields to safely skip them. Header IDs 0–31 are
+> reserved for use by PKWARE. The remaining IDs can be used by third-party
+> vendors for proprietary usage. " (Wikipedia)
+> 
+> ELF, PNG, PDF and many other formats have the ability to put data
+> _somewhere_.  It might not be at the tail of the file, but there's
+> somewhere to do it.
+> 
+> (I appreciate this isn't what Linus is asking for, but I'm pointing out
+> that this is by no means as intractable as you make it sound.)
 
-There's still a definition of __FS_HAS_ENCRYPTION in
-fs/crypto/fscrypt_private.h.  This patch removes everything that checks
-__FS_HAS_ENCRYPTION, so that should be removed too.
+That design would require the fs-verity code to know the type of eacho
+file, and where to find the in-band Merkle tree for each file type
+that we wanted to support.  And if you wanted to use fs-verity to
+protect a sudoers text configuration file (for example), we'd have to
+teach sudo how to ignore the userspace visible Merkle tree.
 
-Thanks,
+So I agree with you that it's *possible*.  But it's ***ugly***.  *Way*
+uglier than putting the Merkle tree at the end of the file data and
+then making it invisible to userspace.
 
-- Eric
+Cheers,
+
+						- Ted
