@@ -1,50 +1,79 @@
-Return-Path: <SRS0=cNy7=PF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from albireo.enyo.de ([5.158.152.32]:55106 "EHLO albireo.enyo.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727027AbeL1L4i (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 28 Dec 2018 06:56:38 -0500
-From: Florian Weimer <fw@deneb.enyo.de>
-To: Adhemerval Zanella <adhemerval.zanella@linaro.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net, libc-alpha@sourceware.org,
-        qemu-devel@nongnu.org, ericvh@gmail.com, rminnich@sandia.gov,
-        lucho@ionkov.net, hpa@zytor.com, arnd@arndb.de
-Subject: Re: d_off field in struct dirent and 32-on-64 emulation
-References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
-        <957967d7-5717-8ada-fb30-dfdf19898b6b@linaro.org>
-        <87pntmu9iw.fsf@mid.deneb.enyo.de>
-        <ae0530c9-5c46-5560-9734-1eacaf173b8d@linaro.org>
-Date: Fri, 28 Dec 2018 12:56:33 +0100
-In-Reply-To: <ae0530c9-5c46-5560-9734-1eacaf173b8d@linaro.org> (Adhemerval
-        Zanella's message of "Fri, 28 Dec 2018 09:53:21 -0200")
-Message-ID: <87k1jtvp8u.fsf@mid.deneb.enyo.de>
+Return-Path: <SRS0=Oy82=PD=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-qt1-f193.google.com ([209.85.160.193]:42392 "EHLO
+        mail-qt1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725870AbeLZAKh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Dec 2018 19:10:37 -0500
+Received: by mail-qt1-f193.google.com with SMTP id d19so16012040qtq.9
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Dec 2018 16:10:37 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain
+References: <20181225053326.7012-1-tytso@mit.edu>
+In-Reply-To: <20181225053326.7012-1-tytso@mit.edu>
+From: Liu Bo <obuil.liubo@gmail.com>
+Date: Tue, 25 Dec 2018 16:10:25 -0800
+Message-ID: <CANQeFDAL=Bx6dq69Rzmz_OWXkXMz=KzLvEkw4rQSSqMW9OHWMQ@mail.gmail.com>
+Subject: Re: [PATCH] ext4: make sure enough credits are reserved for
+ dioread_nolock writes
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        stable@kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Adhemerval Zanella:
-
-> On 27/12/2018 16:09, Florian Weimer wrote:
->> * Adhemerval Zanella:
->> 
->>> Also for glibc standpoint, although reverting it back to use getdents 
->>> syscall for non-LFS mode might fix this issue for architectures that
->>> provides non-LFS getdents syscall it won't be a fix for architectures 
->>> that still provides off_t different than off64_t *and* only provides 
->>> getdents64 syscall.
->>>
->>> Currently we only have nios2 and csky (unfortunately).  But since generic 
->>> definition for off_t and off64_t still assumes non-LFS support, all new
->>> 32-bits ports potentially might carry the issue.
->> 
->> For csky, we could still change the type of the non-standard d_off
->> field to long long int.  This way, only telldir would have to fail
->> when truncation is necessary, as mentioned below:
+</bo.liu@linux.alibaba.com>
+On Mon, Dec 24, 2018 at 9:36 PM Theodore Ts'o <tytso@mit.edu> wrote:
 >
-> I think it makes no sense to continue making non-LFS as default for
-> newer 32 bits ports, the support will be emulated with LFS syscalls.
+> There are enough credits reserved for most dioread_nolock writes;
+> however, if the extent tree is sufficiently deep, and/or quota is
+> enabled, the code was not allowing for all eventualities when
+> reserving journal credits for the unwritten extent conversion.
+>
+> This problem can be seen using xfstests ext4/034:
+>
+>    WARNING: CPU: 1 PID: 257 at fs/ext4/ext4_jbd2.c:271 __ext4_handle_dirty_metadata+0x10c/0x180
+>    Workqueue: ext4-rsv-conversion ext4_end_io_rsv_work
+>    RIP: 0010:__ext4_handle_dirty_metadata+0x10c/0x180
+>         ...
+>    EXT4-fs: ext4_free_blocks:4938: aborting transaction: error 28 in __ext4_handle_dirty_metadata
+>    EXT4: jbd2_journal_dirty_metadata failed: handle type 11 started at line 4921, credits 4/0, errcode -28
+>    EXT4-fs error (device dm-1) in ext4_free_blocks:4950: error 28
+>
 
-Sorry, I don't see how this matters.  seekdir and telldir are NOT
-affected by LFS.
+I had a patch[1] to address the problem but with adding reservation
+only when we need to (in ext4_ext_try_to_merge_up).
+
+I'm fine with either way.
+
+Reviewed-by: Liu Bo <bo.liu@linux.alibaba.com>
+
+BTW, the ext4/034 may need to be updated with the correct patch title/commit.
+
+thanks,
+liubo
+
+[1]:
+https://patchwork.ozlabs.org/patch/991794/
+
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: stable@kernel.org
+> ---
+>  fs/ext4/inode.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 9affabd07682..165ff331d998 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2778,7 +2778,8 @@ static int ext4_writepages(struct address_space *mapping,
+>                  * We may need to convert up to one extent per block in
+>                  * the page and we may dirty the inode.
+>                  */
+> -               rsv_blocks = 1 + (PAGE_SIZE >> inode->i_blkbits);
+> +               rsv_blocks = 1 + ext4_chunk_trans_blocks(inode,
+> +                                               PAGE_SIZE >> inode->i_blkbits);
+>         }
+>
+>         /*
+> --
+> 2.19.1
+>
