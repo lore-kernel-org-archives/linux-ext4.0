@@ -1,93 +1,41 @@
-Return-Path: <SRS0=cNy7=PF=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-oi1-f194.google.com ([209.85.167.194]:46346 "EHLO
-        mail-oi1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730887AbeL1LSb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Dec 2018 06:18:31 -0500
-Received: by mail-oi1-f194.google.com with SMTP id x202so17092630oif.13
-        for <linux-ext4@vger.kernel.org>; Fri, 28 Dec 2018 03:18:30 -0800 (PST)
+Return-Path: <SRS0=Oy82=PD=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-eopbgr780094.outbound.protection.outlook.com ([40.107.78.94]:10752
+        "EHLO NAM03-BY2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725905AbeLZEH1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 25 Dec 2018 23:07:27 -0500
+Date: Tue, 25 Dec 2018 23:07:13 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Liu Bo <obuil.liubo@gmail.com>
+CC: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        <stable@kernel.org>
+Subject: Re: [PATCH] ext4: make sure enough credits are reserved for
+ dioread_nolock writes
+Message-ID: <20181226040713.GA4158@mit.edu>
+References: <20181225053326.7012-1-tytso@mit.edu>
+ <CANQeFDAL=Bx6dq69Rzmz_OWXkXMz=KzLvEkw4rQSSqMW9OHWMQ@mail.gmail.com>
 MIME-Version: 1.0
-References: <87bm56vqg4.fsf@mid.deneb.enyo.de> <CAFEAcA92m4vhzjJ+B=mP_o6Wfhx1XSKo3uWxah3osh=u5UXFuw@mail.gmail.com>
- <9C6A7D45-CF53-4C61-B5DD-12CA0D419972@dilger.ca>
-In-Reply-To: <9C6A7D45-CF53-4C61-B5DD-12CA0D419972@dilger.ca>
-From: Peter Maydell <peter.maydell@linaro.org>
-Date: Fri, 28 Dec 2018 11:18:18 +0000
-Message-ID: <CAFEAcA9W+JK7_TrtTnL1P2ES1knNPJX9wcUvhfLwxLq9augq1w@mail.gmail.com>
-Subject: Re: [Qemu-devel] d_off field in struct dirent and 32-on-64 emulation
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Florian Weimer <fw@deneb.enyo.de>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        lucho@ionkov.net, libc-alpha@sourceware.org,
-        Arnd Bergmann <arnd@arndb.de>, ericvh@gmail.com, hpa@zytor.com,
-        lkml - Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        QEMU Developers <qemu-devel@nongnu.org>, rminnich@sandia.gov,
-        v9fs-developer@lists.sourceforge.net
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="us-ascii"
+Content-Disposition: inline
+In-Reply-To: <CANQeFDAL=Bx6dq69Rzmz_OWXkXMz=KzLvEkw4rQSSqMW9OHWMQ@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 28 Dec 2018 at 00:23, Andreas Dilger <adilger@dilger.ca> wrote:
-> On Dec 27, 2018, at 10:41 AM, Peter Maydell <peter.maydell@linaro.org> wrote:
-> > As you note, this causes breakage for userspace programs which
-> > need to implement an API/ABI with 32-bit offset but which only
-> > have access to the kernel's 64-bit offset API/ABI.
->
-> This is (IMHO) a bit of an oxymoron, isn't it?  Applications using
-> the 64-bit API, but storing the value in a 32-bit field?
+On Tue, Dec 25, 2018 at 04:10:25PM -0800, Liu Bo wrote:
+> 
+> I had a patch[1] to address the problem but with adding reservation
+> only when we need to (in ext4_ext_try_to_merge_up).
 
-I didn't say "which choose to store the value in a 32-bit field",
-I said "which have to implement an API/ABI which has 32-bit fields".
-In QEMU's case, we use the host kernel's ABI, which has 64-bit
-offset fields. We implement a syscall ABI for the guest binary
-we are running under emulation, which may have 32-bit offset fields
-(for instance if we are running a 32-bit Arm binary.) Both of
-these ABIs are fixed -- QEMU doesn't have a choice here, it
-just has to make the best effort it can with what the host kernel
-provides it, to provide the semantics the guest binary needs.
-My suggestion in this thread is that the host kernel provides
-a wider range of facilities so that QEMU can do the job it's
-trying to do.
+Sorry, I had forgotten that you had that patch pending.  I believe
+that merging up isn't the only case we need to worry about, though.
+For example, if we write into the middle of a larger unwritten region,
+we might havec to change a single region into three regions, which
+might require a node split --- and in that case, it's not optional, as
+would be in the try_to_merge_up situation.  If we don't have enough
+credits to do a node split our only choices would be mark the file
+system as corrupted, or to fail the write with ENOSPC (which would be
+very confusing to the user/application).
 
->  The same
-> problem would exist for filesystems with 64-bit inodes or 64-bit
-> file offsets trying to store these values in 32-bit variables.
-> It might work most of the time, but it can also break randomly.
+Cheers,
 
-In general inodes and offsets start from 0 and work up --
-so almost all of the time they don't actually overflow.
-The problem with ext4 directory hash "offsets" is that they
-overflow all the time and immediately, so instead of "works
-unless you have a weird edge case" like all the other filesystems,
-it's "never works".
-
-> > I think the best fix for this would be for the kernel to either
-> > (a) consistently use a 32-bit hash or (b) to provide an API
-> > so that userspace can use the FMODE_32BITHASH flag the way
-> > that kernel-internal users already can.
->
-> It would be relatively straight forward to add a "32bitapi" mount
-> option to return a 32-bit directory hash to userspace for operations
-> on that mountpoint (ext4 doesn't have 64-bit inode numbers yet).
-> However, I can't think of an easy way to do this on a per-process
-> basis without just having it call the 32-bit API directly.
-
-The problem is that there is no 32-bit API in some cases
-(unless I have misunderstood the kernel code) -- not all
-host architectures implement compat syscalls or allow them
-to be called from 64-bit processes or implement all the older
-syscall variants that had smaller offets. If there was a guaranteed
-"this syscall always exists and always gives me 32-bit offsets"
-we could use it.
-
-> For ext4 at least, you could just shift the high 32-bit part of
-> the 64-bit hash down into a 32-bit value in telldir(), and
-> shift it back up when seekdir() is called.
-
-Yes, that has been suggested, but it seemed a bit dubious
-to bake in knowledge of ext4's internal implementation details.
-Can we rely on this as an ABI promise that will always work
-for all versions of all file systems going forwards?
-
-thanks
--- PMM
+					- Ted
