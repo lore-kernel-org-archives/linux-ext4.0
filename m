@@ -1,250 +1,124 @@
-Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:40008 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726856AbeLLJzy (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Dec 2018 04:55:54 -0500
-Received: from pps.filterd (m0098396.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC9ngkn141605
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:55:53 -0500
-Received: from e33.co.us.ibm.com (e33.co.us.ibm.com [32.97.110.151])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2paycqtepd-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:55:53 -0500
-Received: from localhost
-        by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Wed, 12 Dec 2018 09:50:53 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
-        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
-        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
-        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
-        deanbo422@gmail.com, schwidefsky@de.ibm.com,
-        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
-        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
-Subject: [PATCH V5 2/9] f2fs: use IS_ENCRYPTED() to check encryption status
-Date: Wed, 12 Dec 2018 15:20:11 +0530
-In-Reply-To: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
-References: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=rhwh=PE=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-qt1-f194.google.com ([209.85.160.194]:41506 "EHLO
+        mail-qt1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725937AbeL0R6y (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Dec 2018 12:58:54 -0500
+Received: by mail-qt1-f194.google.com with SMTP id l12so20855915qtf.8
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Dec 2018 09:58:53 -0800 (PST)
+To: Florian Weimer <fw@deneb.enyo.de>, linux-fsdevel@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
+        libc-alpha@sourceware.org, qemu-devel@nongnu.org, ericvh@gmail.com,
+        rminnich@sandia.gov, lucho@ionkov.net, hpa@zytor.com, arnd@arndb.de
+References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
+From: Adhemerval Zanella <adhemerval.zanella@linaro.org>
+Subject: Re: d_off field in struct dirent and 32-on-64 emulation
+Message-ID: <957967d7-5717-8ada-fb30-dfdf19898b6b@linaro.org>
+Date: Thu, 27 Dec 2018 15:58:47 -0200
 MIME-Version: 1.0
+In-Reply-To: <87bm56vqg4.fsf@mid.deneb.enyo.de>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-GB
 Content-Transfer-Encoding: 8bit
-Message-Id: <20181212095018.12648-3-chandan@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This commit removes the f2fs specific f2fs_encrypted_inode() and makes
-use of the generic IS_ENCRYPTED() macro to check for the encryption
-status of an inode.
 
-Acked-by: Chao Yu <yuchao0@huawei.com>
-Reviewed-by: Eric Biggers <ebiggers@google.com>
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
----
- fs/f2fs/data.c  |  4 ++--
- fs/f2fs/dir.c   | 10 +++++-----
- fs/f2fs/f2fs.h  |  7 +------
- fs/f2fs/file.c  | 10 +++++-----
- fs/f2fs/inode.c |  4 ++--
- fs/f2fs/namei.c |  6 +++---
- 6 files changed, 18 insertions(+), 23 deletions(-)
 
-diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index 09d9fc1676a7..844ec573263e 100644
---- a/fs/f2fs/data.c
-+++ b/fs/f2fs/data.c
-@@ -1491,7 +1491,7 @@ int f2fs_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 	}
- 
- 	if (size) {
--		if (f2fs_encrypted_inode(inode))
-+		if (IS_ENCRYPTED(inode))
- 			flags |= FIEMAP_EXTENT_DATA_ENCRYPTED;
- 
- 		ret = fiemap_fill_next_extent(fieinfo, logical,
-@@ -1764,7 +1764,7 @@ static inline bool check_inplace_update_policy(struct inode *inode,
- 	if (policy & (0x1 << F2FS_IPU_ASYNC) &&
- 			fio && fio->op == REQ_OP_WRITE &&
- 			!(fio->op_flags & REQ_SYNC) &&
--			!f2fs_encrypted_inode(inode))
-+			!IS_ENCRYPTED(inode))
- 		return true;
- 
- 	/* this is only set during fdatasync */
-diff --git a/fs/f2fs/dir.c b/fs/f2fs/dir.c
-index bacc667950b6..cf9e2564388d 100644
---- a/fs/f2fs/dir.c
-+++ b/fs/f2fs/dir.c
-@@ -385,7 +385,7 @@ struct page *f2fs_init_inode_metadata(struct inode *inode, struct inode *dir,
- 		if (err)
- 			goto put_error;
- 
--		if ((f2fs_encrypted_inode(dir) || dummy_encrypt) &&
-+		if ((IS_ENCRYPTED(dir) || dummy_encrypt) &&
- 					f2fs_may_encrypt(inode)) {
- 			err = fscrypt_inherit_context(dir, inode, page, false);
- 			if (err)
-@@ -399,7 +399,7 @@ struct page *f2fs_init_inode_metadata(struct inode *inode, struct inode *dir,
- 
- 	if (new_name) {
- 		init_dent_inode(new_name, page);
--		if (f2fs_encrypted_inode(dir))
-+		if (IS_ENCRYPTED(dir))
- 			file_set_enc_name(inode);
- 	}
- 
-@@ -808,7 +808,7 @@ int f2fs_fill_dentries(struct dir_context *ctx, struct f2fs_dentry_ptr *d,
- 		de_name.name = d->filename[bit_pos];
- 		de_name.len = le16_to_cpu(de->name_len);
- 
--		if (f2fs_encrypted_inode(d->inode)) {
-+		if (IS_ENCRYPTED(d->inode)) {
- 			int save_len = fstr->len;
- 
- 			err = fscrypt_fname_disk_to_usr(d->inode,
-@@ -852,7 +852,7 @@ static int f2fs_readdir(struct file *file, struct dir_context *ctx)
- 	struct fscrypt_str fstr = FSTR_INIT(NULL, 0);
- 	int err = 0;
- 
--	if (f2fs_encrypted_inode(inode)) {
-+	if (IS_ENCRYPTED(inode)) {
- 		err = fscrypt_get_encryption_info(inode);
- 		if (err && err != -ENOKEY)
- 			goto out;
-@@ -914,7 +914,7 @@ static int f2fs_readdir(struct file *file, struct dir_context *ctx)
- 
- static int f2fs_dir_open(struct inode *inode, struct file *filp)
- {
--	if (f2fs_encrypted_inode(inode))
-+	if (IS_ENCRYPTED(inode))
- 		return fscrypt_get_encryption_info(inode) ? -EACCES : 0;
- 	return 0;
- }
-diff --git a/fs/f2fs/f2fs.h b/fs/f2fs/f2fs.h
-index dadb5f468f20..368c7e78fe6b 100644
---- a/fs/f2fs/f2fs.h
-+++ b/fs/f2fs/f2fs.h
-@@ -3436,14 +3436,9 @@ void f2fs_unregister_sysfs(struct f2fs_sb_info *sbi);
- /*
-  * crypto support
-  */
--static inline bool f2fs_encrypted_inode(struct inode *inode)
--{
--	return file_is_encrypt(inode);
--}
--
- static inline bool f2fs_encrypted_file(struct inode *inode)
- {
--	return f2fs_encrypted_inode(inode) && S_ISREG(inode->i_mode);
-+	return IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode);
- }
- 
- static inline void f2fs_set_encrypted_inode(struct inode *inode)
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 87794b2a45ff..6c7ad15000b9 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -585,7 +585,7 @@ static int truncate_partial_data_page(struct inode *inode, u64 from,
- 	zero_user(page, offset, PAGE_SIZE - offset);
- 
- 	/* An encrypted inode should have a key and truncate the last page. */
--	f2fs_bug_on(F2FS_I_SB(inode), cache_only && f2fs_encrypted_inode(inode));
-+	f2fs_bug_on(F2FS_I_SB(inode), cache_only && IS_ENCRYPTED(inode));
- 	if (!cache_only)
- 		set_page_dirty(page);
- 	f2fs_put_page(page, 1);
-@@ -730,7 +730,7 @@ int f2fs_getattr(const struct path *path, struct kstat *stat,
- 		stat->attributes |= STATX_ATTR_APPEND;
- 	if (flags & F2FS_COMPR_FL)
- 		stat->attributes |= STATX_ATTR_COMPRESSED;
--	if (f2fs_encrypted_inode(inode))
-+	if (IS_ENCRYPTED(inode))
- 		stat->attributes |= STATX_ATTR_ENCRYPTED;
- 	if (flags & F2FS_IMMUTABLE_FL)
- 		stat->attributes |= STATX_ATTR_IMMUTABLE;
-@@ -1587,7 +1587,7 @@ static long f2fs_fallocate(struct file *file, int mode,
- 	if (!S_ISREG(inode->i_mode))
- 		return -EINVAL;
- 
--	if (f2fs_encrypted_inode(inode) &&
-+	if (IS_ENCRYPTED(inode) &&
- 		(mode & (FALLOC_FL_COLLAPSE_RANGE | FALLOC_FL_INSERT_RANGE)))
- 		return -EOPNOTSUPP;
- 
-@@ -1671,7 +1671,7 @@ static int f2fs_ioc_getflags(struct file *filp, unsigned long arg)
- 	struct f2fs_inode_info *fi = F2FS_I(inode);
- 	unsigned int flags = fi->i_flags;
- 
--	if (f2fs_encrypted_inode(inode))
-+	if (IS_ENCRYPTED(inode))
- 		flags |= F2FS_ENCRYPT_FL;
- 	if (f2fs_has_inline_data(inode) || f2fs_has_inline_dentry(inode))
- 		flags |= F2FS_INLINE_DATA_FL;
-@@ -2430,7 +2430,7 @@ static int f2fs_move_file_range(struct file *file_in, loff_t pos_in,
- 	if (!S_ISREG(src->i_mode) || !S_ISREG(dst->i_mode))
- 		return -EINVAL;
- 
--	if (f2fs_encrypted_inode(src) || f2fs_encrypted_inode(dst))
-+	if (IS_ENCRYPTED(src) || IS_ENCRYPTED(dst))
- 		return -EOPNOTSUPP;
- 
- 	if (src == dst) {
-diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
-index ddef483ad689..d731d23aedee 100644
---- a/fs/f2fs/inode.c
-+++ b/fs/f2fs/inode.c
-@@ -43,7 +43,7 @@ void f2fs_set_inode_flags(struct inode *inode)
- 		new_fl |= S_NOATIME;
- 	if (flags & F2FS_DIRSYNC_FL)
- 		new_fl |= S_DIRSYNC;
--	if (f2fs_encrypted_inode(inode))
-+	if (file_is_encrypt(inode))
- 		new_fl |= S_ENCRYPTED;
- 	inode_set_flags(inode, new_fl,
- 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|
-@@ -453,7 +453,7 @@ struct inode *f2fs_iget(struct super_block *sb, unsigned long ino)
- 		inode->i_mapping->a_ops = &f2fs_dblock_aops;
- 		inode_nohighmem(inode);
- 	} else if (S_ISLNK(inode->i_mode)) {
--		if (f2fs_encrypted_inode(inode))
-+		if (file_is_encrypt(inode))
- 			inode->i_op = &f2fs_encrypted_symlink_inode_operations;
- 		else
- 			inode->i_op = &f2fs_symlink_inode_operations;
-diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
-index 99299ede7429..6ae37e0cf6e3 100644
---- a/fs/f2fs/namei.c
-+++ b/fs/f2fs/namei.c
-@@ -75,7 +75,7 @@ static struct inode *f2fs_new_inode(struct inode *dir, umode_t mode)
- 	set_inode_flag(inode, FI_NEW_INODE);
- 
- 	/* If the directory encrypted, then we should encrypt the inode. */
--	if ((f2fs_encrypted_inode(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
-+	if ((IS_ENCRYPTED(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) &&
- 				f2fs_may_encrypt(inode))
- 		f2fs_set_encrypted_inode(inode);
- 
-@@ -476,7 +476,7 @@ static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
- 		if (err)
- 			goto out_iput;
- 	}
--	if (f2fs_encrypted_inode(dir) &&
-+	if (IS_ENCRYPTED(dir) &&
- 	    (S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)) &&
- 	    !fscrypt_has_permitted_context(dir, inode)) {
- 		f2fs_msg(inode->i_sb, KERN_WARNING,
-@@ -803,7 +803,7 @@ static int f2fs_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
- 	if (unlikely(f2fs_cp_error(sbi)))
- 		return -EIO;
- 
--	if (f2fs_encrypted_inode(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) {
-+	if (IS_ENCRYPTED(dir) || DUMMY_ENCRYPTION_ENABLED(sbi)) {
- 		int err = fscrypt_get_encryption_info(dir);
- 		if (err)
- 			return err;
--- 
-2.19.1
+On 27/12/2018 15:18, Florian Weimer wrote:
+> We have a bit of an interesting problem with respect to the d_off
+> field in struct dirent.
+> 
+> When running a 64-bit kernel on certain file systems, notably ext4,
+> this field uses the full 63 bits even for small directories (strace -v
+> output, wrapped here for readability):
+> 
+> getdents(3, [
+>   {d_ino=1494304, d_off=3901177228673045825, d_reclen=40, d_name="authorized_keys", d_type=DT_REG},
+>   {d_ino=1494277, d_off=7491915799041650922, d_reclen=24, d_name=".", d_type=DT_DIR},
+>   {d_ino=1314655, d_off=9223372036854775807, d_reclen=24, d_name="..", d_type=DT_DIR}
+> ], 32768) = 88
+> 
+> When running in 32-bit compat mode, this value is somehow truncated to
+> 31 bits, for both the getdents and the getdents64 (!) system call (at
+> least on i386).
+> 
+> In an effort to simplify support for future architectures which only
+> have the getdents64 system call, we changed glibc 2.28 to use the
+> getdents64 system call unconditionally, and perform translation if
+> necessary.  This translation is noteworthy because it includes
+> overflow checking for the d_ino and d_off members of struct dirent.
+> We did not initially observe a regression because the kernel performs
+> consistent d_off truncation (with the ext4 file system; small
+> directories do not show this issue on XFS), so the overflow check does
+> not fire.
+> 
+> However, both qemu-user and the 9p file system can run in such a way
+> that the kernel is entered from a 64-bit process, but the actual usage
+> is from a 32-bit process:
+> 
+>   <https://sourceware.org/bugzilla/show_bug.cgi?id=23960>
+> 
+> I think diagrammatically, this looks like this:
+> 
+>   guest process  (32-bit)
+>     | getdents64, 32-bit UAPI
+>   qemu-user (64-bit)
+>     | getdents, 64-bit UAPI
+>   host kernel (64-bit)
+> 
+> Or:
+> 
+>   guest process 
+>     | getdents64, 32-bit UAPI
+>   guest kernel (64-bit)
+>     | 9p over virtio (64-bit d_off in struct p9_dirent)
+>   qemu
+>     | getdents, 64-bit UAPI
+>   host kernel (64-bit)
+> 
+> Back when we still called getdents, in the first case, the 32-bit
+> getdents system call emulation in a 64-bit qemu-user process would
+> just silently truncate the d_off field as part of the translation, not
+> reporting an error.  The second case is more complicated, and I have
+> not figured out where the truncation happens.
+> 
+> This truncation has always been a bug; it breaks telldir/seekdir at
+> least in some cases.  But use of telldir/seekdir is comparatively
+> rare.  In contrast, now that we detect d_off overflow in glibc,
+> readdir will always fail in the sketched configurations, which is bad.
+> (glibc exposes the d_off field to applications, and it cannot know
+> whether the application will use it or not, so there is no direct way
+> to restrict the overflow error to the telldir/seekdir use case.)
+> 
+> We could switch glibc to call getdents again if the system call is
+> available.  But that merely relies on the existence of the truncation
+> bug somewhere else in the file system stack.  This is why I don't
+> think it's the right solution, just the path of least resistance.
+> 
+> I don't want to reimplement the ext4 truncation behavior in glibc (it
+> doesn't look like a straightforward truncation), and it wouldn't work
+> for the second scenario where we see the 9p file system in the 32-bit
+> glibc, not the ext4 file system.  So that's not a good solution.
+
+Also for glibc standpoint, although reverting it back to use getdents 
+syscall for non-LFS mode might fix this issue for architectures that
+provides non-LFS getdents syscall it won't be a fix for architectures 
+that still provides off_t different than off64_t *and* only provides 
+getdents64 syscall.
+
+Currently we only have nios2 and csky (unfortunately).  But since generic 
+definition for off_t and off64_t still assumes non-LFS support, all new
+32-bits ports potentially might carry the issue.
+
+> 
+> There is another annoying aspect: The standards expose d_off through
+> the telldir function, and that returns long int on all architectures
+> (not off_t, so unchanged by _FILE_OFFSET_BITS).  That's mostly a
+> userspace issue and thus needing different steps to resolve (possibly
+> standards action).
+> 
+> Any suggestions how to solve this?  Why does the kernel return
+> different d_off values for 32-bit and 64-bit processes even when using
+> getdents64, for the same directory?
+> 
