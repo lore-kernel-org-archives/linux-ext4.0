@@ -1,178 +1,153 @@
-Return-Path: <SRS0=RWfY=OV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:44784 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726877AbeLLJwH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 12 Dec 2018 04:52:07 -0500
-Received: from pps.filterd (m0098414.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wBC9nL0N016836
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:52:05 -0500
-Received: from e36.co.us.ibm.com (e36.co.us.ibm.com [32.97.110.154])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 2pay29u4qh-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Wed, 12 Dec 2018 04:52:05 -0500
-Received: from localhost
-        by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Wed, 12 Dec 2018 09:52:03 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
-        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
-        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
-        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
-        deanbo422@gmail.com, schwidefsky@de.ibm.com,
-        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
-        adrian.hunter@intel.com, viro@zeniv.linux.org.uk,
-        Eric Biggers <ebiggers@google.com>
-Subject: [PATCH V5 8/9] fsverity: Move verity status check to fsverity_file_open
-Date: Wed, 12 Dec 2018 15:20:17 +0530
-In-Reply-To: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
-References: <20181212095018.12648-1-chandan@linux.vnet.ibm.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Message-Id: <20181212095018.12648-9-chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=cNy7=PF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f195.google.com ([209.85.214.195]:36810 "EHLO
+        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727439AbeL1XQ2 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Dec 2018 18:16:28 -0500
+Received: by mail-pl1-f195.google.com with SMTP id g9so10542163plo.3
+        for <linux-ext4@vger.kernel.org>; Fri, 28 Dec 2018 15:16:27 -0800 (PST)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <1EF1B31A-83D8-4642-BEBF-F56E45485223@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_08DEB4F4-6BEB-4500-881F-7C4F24C62FEB";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [Qemu-devel] d_off field in struct dirent and 32-on-64 emulation
+Date: Fri, 28 Dec 2018 16:16:21 -0700
+In-Reply-To: <CAFEAcA9W+JK7_TrtTnL1P2ES1knNPJX9wcUvhfLwxLq9augq1w@mail.gmail.com>
+Cc: Florian Weimer <fw@deneb.enyo.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        lucho@ionkov.net, libc-alpha@sourceware.org,
+        Arnd Bergmann <arnd@arndb.de>, ericvh@gmail.com, hpa@zytor.com,
+        lkml - Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        QEMU Developers <qemu-devel@nongnu.org>, rminnich@sandia.gov,
+        v9fs-developer@lists.sourceforge.net
+To: Peter Maydell <peter.maydell@linaro.org>
+References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
+ <CAFEAcA92m4vhzjJ+B=mP_o6Wfhx1XSKo3uWxah3osh=u5UXFuw@mail.gmail.com>
+ <9C6A7D45-CF53-4C61-B5DD-12CA0D419972@dilger.ca>
+ <CAFEAcA9W+JK7_TrtTnL1P2ES1knNPJX9wcUvhfLwxLq9augq1w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Instead of conditionally checking for verity status of an inode before
-invoking fsverity_file_open(), this commit moves the check inside the
-definition of fsverity_file_open().
 
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-(EB: fix the !CONFIG_FS_VERITY case and inline the IS_VERITY() check)
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- fs/ext4/file.c           |  8 +++-----
- fs/f2fs/file.c           |  8 +++-----
- fs/verity/setup.c        | 18 ++----------------
- include/linux/fsverity.h | 25 +++++++++++++++++++++++--
- 4 files changed, 31 insertions(+), 28 deletions(-)
+--Apple-Mail=_08DEB4F4-6BEB-4500-881F-7C4F24C62FEB
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 30fbd663354f..b404a857cd48 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -444,11 +444,9 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	if (ret)
- 		return ret;
- 
--	if (IS_VERITY(inode)) {
--		ret = fsverity_file_open(inode, filp);
--		if (ret)
--			return ret;
--	}
-+	ret = fsverity_file_open(inode, filp);
-+	if (ret)
-+		return ret;
- 
- 	/*
- 	 * Set up the jbd2_inode if we are opening the inode for
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 2eb4821d95d1..925c0d9608da 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -491,11 +491,9 @@ static int f2fs_file_open(struct inode *inode, struct file *filp)
- 	if (err)
- 		return err;
- 
--	if (IS_VERITY(inode)) {
--		err = fsverity_file_open(inode, filp);
--		if (err)
--			return err;
--	}
-+	err = fsverity_file_open(inode, filp);
-+	if (err)
-+		return err;
- 
- 	filp->f_mode |= FMODE_NOWAIT;
- 
-diff --git a/fs/verity/setup.c b/fs/verity/setup.c
-index 08b609127531..4ecaeb89166b 100644
---- a/fs/verity/setup.c
-+++ b/fs/verity/setup.c
-@@ -755,21 +755,7 @@ static int setup_fsverity_info(struct inode *inode)
- 	return 0;
- }
- 
--/**
-- * fsverity_file_open - prepare to open a verity file
-- * @inode: the inode being opened
-- * @filp: the struct file being set up
-- *
-- * When opening a verity file, deny the open if it is for writing.  Otherwise,
-- * set up the inode's ->i_verity_info (if not already done) by parsing the
-- * verity metadata at the end of the file.
-- *
-- * When combined with fscrypt, this must be called after fscrypt_file_open().
-- * Otherwise, we won't have the key set up to decrypt the verity metadata.
-- *
-- * Return: 0 on success, -errno on failure
-- */
--int fsverity_file_open(struct inode *inode, struct file *filp)
-+int __fsverity_file_open(struct inode *inode, struct file *filp)
- {
- 	if (filp->f_mode & FMODE_WRITE) {
- 		pr_debug("Denying opening verity file (ino %lu) for write\n",
-@@ -779,7 +765,7 @@ int fsverity_file_open(struct inode *inode, struct file *filp)
- 
- 	return setup_fsverity_info(inode);
- }
--EXPORT_SYMBOL_GPL(fsverity_file_open);
-+EXPORT_SYMBOL_GPL(__fsverity_file_open);
- 
- /**
-  * fsverity_prepare_setattr - prepare to change a verity inode's attributes
-diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
-index ea8c418bd7d5..0ce170c2c167 100644
---- a/include/linux/fsverity.h
-+++ b/include/linux/fsverity.h
-@@ -25,7 +25,7 @@ extern int fsverity_ioctl_enable(struct file *filp, const void __user *arg);
- extern int fsverity_ioctl_measure(struct file *filp, void __user *arg);
- 
- /* setup.c */
--extern int fsverity_file_open(struct inode *inode, struct file *filp);
-+extern int __fsverity_file_open(struct inode *inode, struct file *filp);
- extern int fsverity_prepare_setattr(struct dentry *dentry, struct iattr *attr);
- extern int fsverity_prepare_getattr(struct inode *inode);
- extern void fsverity_cleanup_inode(struct inode *inode);
-@@ -58,7 +58,7 @@ static inline int fsverity_ioctl_measure(struct file *filp, void __user *arg)
- 
- /* setup.c */
- 
--static inline int fsverity_file_open(struct inode *inode, struct file *filp)
-+static inline int __fsverity_file_open(struct inode *inode, struct file *filp)
- {
- 	return -EOPNOTSUPP;
- }
-@@ -108,4 +108,25 @@ static inline bool fsverity_check_hole(struct inode *inode, struct page *page)
- 
- #endif	/* ! CONFIG_FS_VERITY */
- 
-+/**
-+ * fsverity_file_open - prepare to open a verity file
-+ * @inode: the inode being opened
-+ * @filp: the struct file being set up
-+ *
-+ * When opening a verity file, deny the open if it is for writing.  Otherwise,
-+ * set up the inode's ->i_verity_info (if not already done) by parsing the
-+ * verity metadata at the end of the file.
-+ *
-+ * When combined with fscrypt, this must be called after fscrypt_file_open().
-+ * Otherwise, we won't have the key set up to decrypt the verity metadata.
-+ *
-+ * Return: 0 on success, -errno on failure
-+ */
-+static inline int fsverity_file_open(struct inode *inode, struct file *filp)
-+{
-+	if (IS_VERITY(inode))
-+		return __fsverity_file_open(inode, filp);
-+	return 0;
-+}
-+
- #endif	/* _LINUX_FSVERITY_H */
--- 
-2.19.1
+On Dec 28, 2018, at 4:18 AM, Peter Maydell <peter.maydell@linaro.org> =
+wrote:
+>=20
+> On Fri, 28 Dec 2018 at 00:23, Andreas Dilger <adilger@dilger.ca> =
+wrote:
+>> On Dec 27, 2018, at 10:41 AM, Peter Maydell =
+<peter.maydell@linaro.org> wrote:
+>>> As you note, this causes breakage for userspace programs which
+>>> need to implement an API/ABI with 32-bit offset but which only
+>>> have access to the kernel's 64-bit offset API/ABI.
+>>=20
+>> This is (IMHO) a bit of an oxymoron, isn't it?  Applications using
+>> the 64-bit API, but storing the value in a 32-bit field?
+>=20
+> I didn't say "which choose to store the value in a 32-bit field",
+> I said "which have to implement an API/ABI which has 32-bit fields".
+> In QEMU's case, we use the host kernel's ABI, which has 64-bit
+> offset fields. We implement a syscall ABI for the guest binary
+> we are running under emulation, which may have 32-bit offset fields
+> (for instance if we are running a 32-bit Arm binary.) Both of
+> these ABIs are fixed -- QEMU doesn't have a choice here, it
+> just has to make the best effort it can with what the host kernel
+> provides it, to provide the semantics the guest binary needs.
+> My suggestion in this thread is that the host kernel provides
+> a wider range of facilities so that QEMU can do the job it's
+> trying to do.
+>=20
+>> The same
+>> problem would exist for filesystems with 64-bit inodes or 64-bit
+>> file offsets trying to store these values in 32-bit variables.
+>> It might work most of the time, but it can also break randomly.
+>=20
+> In general inodes and offsets start from 0 and work up --
+> so almost all of the time they don't actually overflow.
+> The problem with ext4 directory hash "offsets" is that they
+> overflow all the time and immediately, so instead of "works
+> unless you have a weird edge case" like all the other filesystems,
+> it's "never works".
+>=20
+>>> I think the best fix for this would be for the kernel to either
+>>> (a) consistently use a 32-bit hash or (b) to provide an API
+>>> so that userspace can use the FMODE_32BITHASH flag the way
+>>> that kernel-internal users already can.
+>>=20
+>> It would be relatively straight forward to add a "32bitapi" mount
+>> option to return a 32-bit directory hash to userspace for operations
+>> on that mountpoint (ext4 doesn't have 64-bit inode numbers yet).
+>> However, I can't think of an easy way to do this on a per-process
+>> basis without just having it call the 32-bit API directly.
+>=20
+> The problem is that there is no 32-bit API in some cases
+> (unless I have misunderstood the kernel code) -- not all
+> host architectures implement compat syscalls or allow them
+> to be called from 64-bit processes or implement all the older
+> syscall variants that had smaller offets. If there was a guaranteed
+> "this syscall always exists and always gives me 32-bit offsets"
+> we could use it.
+
+The "32bitapi" mount option would use 32-bit hash for seekdir
+and telldir, regardless of what kernel API was used.  That would
+just set the FMODE_32BITHASH flag in the file->f_mode for all files.
+
+Using 32-bit directory hash values is not necessarily harmful, but
+it returns the possibility to hit the problem with hash collisions
+that previously existed before the move to 64-bit hash values.
+This becomes more of a problem as directory sizes increase.
+
+>> For ext4 at least, you could just shift the high 32-bit part of
+>> the 64-bit hash down into a 32-bit value in telldir(), and
+>> shift it back up when seekdir() is called.
+>=20
+> Yes, that has been suggested, but it seemed a bit dubious
+> to bake in knowledge of ext4's internal implementation details.
+> Can we rely on this as an ABI promise that will always work
+> for all versions of all file systems going forwards?
+
+Well, the directory cookies need to be relatively stable over
+time because they are exported to applications and possibly
+remote nodes via NFS, so it can't be changed very much.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_08DEB4F4-6BEB-4500-881F-7C4F24C62FEB
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlwmrsUACgkQcqXauRfM
+H+BcEQ//QtSwKaRnVgyNL34t9fYOhxAIo5A4AwgxC6dafaNLpFdDCfow3frNBTFj
+wtyqIoCmGFa10unoaI1hY+u9gTgs+//zAOtggfvLV3VRHzupxc5g2dILnAo4jVVW
+td+CgZamBXFaMrYkTX4gx2rm/9Bc/W0R/1KasC/DXtNQEMrUybwv1x2OMmhx8cfH
+fcVcjLbl94JNqfVZLVtCF08sqECh2dvBNWHB95Mfnzy6qEeLyI4VS32ydZ2HEAcB
+tkRGukzGn3eDhh3nZl5FiqWEEB5ZYSTE8KIPkZ/h2dCsSZjvW5gB/o6EC7Ig+A80
+IuBddSkTF023UmQ6PiGKDr8BmKGYf7lJxa6IYW+2HjT6Vp89XmJSTCdoFRJnFW9z
+nKHTA2mFmHZN3L4DAvdMGc3VfXBEHyTw4V1q/Mf37QtP8Z+FSYvAGll22DbMMysl
+hlNFqothpjCNcjWpuT22Pu6T9gKLmwSvLYA0cr8C8dYGHt2F8+jbhL7ld5I0kBPA
+IGREujjMVKuA46BMrqQ8oL12PrYhAo0HbPvaAvwJ2HHcYtwjuv3bUOc6VgV8oipq
+wOFgTk8WAZfHEPQrfSoG5TatNixl58Q+GvBD7S8TS4/hgxaMluhxfw9sqQ6C7SwO
+JFVtp2MYJumNd6niFwfR8J52SV3+lIXohPfbccr6LEtvc7fMtIc=
+=Hl10
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_08DEB4F4-6BEB-4500-881F-7C4F24C62FEB--
