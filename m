@@ -1,100 +1,54 @@
-Return-Path: <SRS0=bC55=OP=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:56112 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726322AbeLFXJw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Dec 2018 18:09:52 -0500
-From: Gabriel Krisman Bertazi <krisman@collabora.com>
-To: tytso@mit.edu
-Cc: linux-fsdevel@vger.kernel.org, kernel@collabora.com,
-        linux-ext4@vger.kernel.org, Olaf Weber <olaf@sgi.com>,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v4 12/23] nls: utf8: Add unicode character database files
-Date: Thu,  6 Dec 2018 18:08:52 -0500
-Message-Id: <20181206230903.30011-13-krisman@collabora.com>
-In-Reply-To: <20181206230903.30011-1-krisman@collabora.com>
-References: <20181206230903.30011-1-krisman@collabora.com>
+Return-Path: <SRS0=cNy7=PF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from albireo.enyo.de ([5.158.152.32]:52790 "EHLO albireo.enyo.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729313AbeL1Hqf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 28 Dec 2018 02:46:35 -0500
+From: Florian Weimer <fw@deneb.enyo.de>
+To: "Dmitry V. Levin" <ldv@altlinux.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net, libc-alpha@sourceware.org,
+        qemu-devel@nongnu.org, ericvh@gmail.com, rminnich@sandia.gov,
+        lucho@ionkov.net, hpa@zytor.com, arnd@arndb.de
+Subject: Re: d_off field in struct dirent and 32-on-64 emulation
+References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
+        <20181228022338.GA27992@altlinux.org>
+Date: Fri, 28 Dec 2018 08:38:17 +0100
+In-Reply-To: <20181228022338.GA27992@altlinux.org> (Dmitry V. Levin's message
+        of "Fri, 28 Dec 2018 05:23:39 +0300")
+Message-ID: <87bm56w17a.fsf@mid.deneb.enyo.de>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Olaf Weber <olaf@sgi.com>
+* Dmitry V. Levin:
 
-Add files from the Unicode Character Database, version 11.0, to the
-source.  A helper program that generates a trie used for normalization
-from these files is part of a separate commit.
+> On Thu, Dec 27, 2018 at 06:18:19PM +0100, Florian Weimer wrote:
+>> We have a bit of an interesting problem with respect to the d_off
+>> field in struct dirent.
+>> 
+>> When running a 64-bit kernel on certain file systems, notably ext4,
+>> this field uses the full 63 bits even for small directories (strace -v
+>> output, wrapped here for readability):
+>> 
+>> getdents(3, [
+>>   {d_ino=1494304, d_off=3901177228673045825, d_reclen=40,
+>> d_name="authorized_keys", d_type=DT_REG},
+>>   {d_ino=1494277, d_off=7491915799041650922, d_reclen=24,
+>> d_name=".", d_type=DT_DIR},
+>>   {d_ino=1314655, d_off=9223372036854775807, d_reclen=24,
+>> d_name="..", d_type=DT_DIR}
+>> ], 32768) = 88
+>> 
+>> When running in 32-bit compat mode, this value is somehow truncated to
+>> 31 bits, for both the getdents and the getdents64 (!) system call (at
+>> least on i386).
+>
+> Why getdents64 system call is affected by this truncation,
+> isn't it a kernel bug that has to be fixed in the kernel instead?
 
-- Notes on the update from 8.0.0 and 11.0:
-
-The structure of ucd files and special cases have not experienced any
-changes between versions 8.0.0 and 11.0.0.  8.0.0 saw the addition of
-Cherokee LC characters, which is an interesting case for case-folding.
-The update is accompanied by new tests on the test_ucd module to catch
-specific cases.  No changes to mkutf8data script was required for the
-update.
-
-The actual files are not part of the commit submitted to the list
-because they are to big and would bounce.  Still, they can be obtained
-by the following script:
-
-FILES="CaseFolding.txt DerivedAge.txt extracted/DerivedCombiningClass.txt
-       DerivedCoreProperties.txt NormalizationCorrections.txt
-       NormalizationTest.txt UnicodeData.txt"
-VERSION=11.0.0
-BASE=http://www.unicode.org/Public/${VERSION}/ucd
-
-for i in ${FILES} ; do
-  wget "${BASE}/$i" -O fs/nls/ucd/$(basename ${i} .txt)-${VERSION}.txt
-done
-
-Signed-off-by: Olaf Weber <olaf@sgi.com>
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-  [Move ucd directory to fs/nls/]
-  [Update to Unicode 11.0.0]
----
- fs/nls/ucd/README | 34 ++++++++++++++++++++++++++++++++++
- 1 file changed, 34 insertions(+)
- create mode 100644 fs/nls/ucd/README
-
-diff --git a/fs/nls/ucd/README b/fs/nls/ucd/README
-new file mode 100644
-index 000000000000..553ce7e4c224
---- /dev/null
-+++ b/fs/nls/ucd/README
-@@ -0,0 +1,34 @@
-+The files in this directory are part of the Unicode Character Database
-+for version 11.0.0 of the Unicode standard.
-+
-+The full set of files can be found here:
-+
-+  http://www.unicode.org/Public/11.0.0/ucd/
-+
-+The latest released version of the UCD can be found here:
-+
-+  http://www.unicode.org/Public/UCD/latest/
-+
-+The files in this directory are identical, except that they have been
-+renamed with a suffix indicating the unicode version.
-+
-+Individual source links:
-+
-+  http://www.unicode.org/Public/11.0.0/ucd/CaseFolding.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/DerivedAge.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/extracted/DerivedCombiningClass.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/DerivedCoreProperties.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/NormalizationCorrections.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/NormalizationTest.txt
-+  http://www.unicode.org/Public/11.0.0/ucd/UnicodeData.txt
-+
-+md5sums
-+
-+  414436796cf097df55f798e1585448ee  CaseFolding-11.0.0.txt
-+  6032a595fbb782694456491d86eecfac  DerivedAge-11.0.0.txt
-+  3240997d671297ac754ab0d27577acf7  DerivedCombiningClass-11.0.0.txt
-+  d41d8cd98f00b204e9800998ecf8427e  DerivedCombiningClass.txt
-+  2a4fe257d9d8184518e036194d2248ec  DerivedCoreProperties-11.0.0.txt
-+  4e7d383fa0dd3cd9d49d64e5b7b7c9e0  NormalizationCorrections-11.0.0.txt
-+  c9500c5b8b88e584469f056023ecc3f2  NormalizationTest-11.0.0.txt
-+  acc291106c3758d2025f8d7bd5518bee  UnicodeData-11.0.0.txt
--- 
-2.20.0.rc2
+It's required because POSIX specifies that telldir and seekdir use
+long int (and not off_t) as the seek offset.  If the kernel does not
+truncate while keeping a useful value, these functions would turn
+unusable.
