@@ -1,29 +1,29 @@
-Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:57268 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725962AbeLDDj0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Dec 2018 22:39:26 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 375852B389
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 03:39:26 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Tue, 04 Dec 2018 03:39:25 +0000
-Message-ID: <bug-201685-13602-115NwczPd6@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-MIME-Version: 1.0
+Return-Path: <SRS0=cNy7=PF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:57806 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731369AbeL1BpE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 27 Dec 2018 20:45:04 -0500
+Subject: Re: [GIT PULL] ext4 updates for 4.21-rc1
+From: pr-tracker-bot@kernel.org
+In-Reply-To: <20181224045334.GA20828@mit.edu>
+References: <20181224045334.GA20828@mit.edu>
+Message-Id: <20181228014503.3597.52246.pr-tracker-bot@pdx-korg-gitolite-1.ci.codeaurora.org>
+Date: Fri, 28 Dec 2018 01:45:03 +0000
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc: <torvalds@linux-foundation.org>, <linux-kernel@vger.kernel.org>,
+        <linux-ext4@vger.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+The pull request you sent on Sun, 23 Dec 2018 23:53:34 -0500:
 
---- Comment #215 from Guenter Roeck (linux@roeck-us.net) ---
-#214: Not yet. Still trying.
+> git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
+
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/f6b1495fba0b66cfa05efa0ca2370513b79b45b6
+
+Thank you!
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Deet-doot-dot, I am a bot.
+https://korg.wiki.kernel.org/userdoc/prtracker
