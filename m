@@ -1,116 +1,150 @@
-Return-Path: <SRS0=EV/E=O6=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from m12-15.163.com ([220.181.12.15]:46392 "EHLO m12-15.163.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2388455AbeLUBLc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 20 Dec 2018 20:11:32 -0500
-From: "Gwlao" <mi62840628amh@163.com>
-To: "zongjingli" <zongjingli@jxjrgs.com>
-Cc: linux-ext4@vger.kernel.org, info@TheShowChoir.com
-Subject: xH5xBE3
-Message-ID: <201812210910588796283@163.com>
-Date: Fri, 21 Dec 2018 09:10:58 +0800
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="----=seqc697_4850_210758605.735685"
+Return-Path: <SRS0=cNy7=PF=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pf1-f193.google.com ([209.85.210.193]:36008 "EHLO
+        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727922AbeL1AXb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 27 Dec 2018 19:23:31 -0500
+Received: by mail-pf1-f193.google.com with SMTP id b85so9743968pfc.3
+        for <linux-ext4@vger.kernel.org>; Thu, 27 Dec 2018 16:23:31 -0800 (PST)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <9C6A7D45-CF53-4C61-B5DD-12CA0D419972@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_6F3080DD-1C91-40F7-84C8-6E083D782885";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [Qemu-devel] d_off field in struct dirent and 32-on-64 emulation
+Date: Thu, 27 Dec 2018 17:23:28 -0700
+In-Reply-To: <CAFEAcA92m4vhzjJ+B=mP_o6Wfhx1XSKo3uWxah3osh=u5UXFuw@mail.gmail.com>
+Cc: Florian Weimer <fw@deneb.enyo.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        lucho@ionkov.net, libc-alpha@sourceware.org,
+        Arnd Bergmann <arnd@arndb.de>, ericvh@gmail.com, hpa@zytor.com,
+        lkml - Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        QEMU Developers <qemu-devel@nongnu.org>, rminnich@sandia.gov,
+        v9fs-developer@lists.sourceforge.net
+To: Peter Maydell <peter.maydell@linaro.org>
+References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
+ <CAFEAcA92m4vhzjJ+B=mP_o6Wfhx1XSKo3uWxah3osh=u5UXFuw@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
 
-------=seqc697_4850_210758605.735685
+--Apple-Mail=_6F3080DD-1C91-40F7-84C8-6E083D782885
+Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
-	charset="UTF-8"
-Content-Transfer-Encoding: base64
+	charset=us-ascii
 
-MTUwLjIxNC4xNjYuMjE=
+On Dec 27, 2018, at 10:41 AM, Peter Maydell <peter.maydell@linaro.org> =
+wrote:
+>=20
+> On Thu, 27 Dec 2018 at 17:19, Florian Weimer <fw@deneb.enyo.de> wrote:
+>> We have a bit of an interesting problem with respect to the d_off
+>> field in struct dirent.
+>>=20
+>> When running a 64-bit kernel on certain file systems, notably ext4,
+>> this field uses the full 63 bits even for small directories (strace =
+-v
+>> output, wrapped here for readability):
+>>=20
+>> getdents(3, [
+>>  {d_ino=3D1494304, d_off=3D3901177228673045825, d_reclen=3D40, =
+d_name=3D"authorized_keys", d_type=3DDT_REG},
+>>  {d_ino=3D1494277, d_off=3D7491915799041650922, d_reclen=3D24, =
+d_name=3D".", d_type=3DDT_DIR},
+>>  {d_ino=3D1314655, d_off=3D9223372036854775807, d_reclen=3D24, =
+d_name=3D"..", d_type=3DDT_DIR}
+>> ], 32768) =3D 88
+>>=20
+>> When running in 32-bit compat mode, this value is somehow truncated =
+to
+>> 31 bits, for both the getdents and the getdents64 (!) system call (at
+>> least on i386).
+>=20
+> Yes -- look for hash2pos() and friends in fs/ext4/dir.c.
+> The ext4 code in the kernel uses a 32 bit hash if (a) the kernel
+> is 32 bit (b) this is a compat syscall (b) some other bit of
+> the kernel asked it to via the FMODE_32BITHASH flag (currently only
+> NFS does that I think).
+>=20
+> As you note, this causes breakage for userspace programs which
+> need to implement an API/ABI with 32-bit offset but which only
+> have access to the kernel's 64-bit offset API/ABI.
 
-------=seqc697_4850_210758605.735685
-Content-Type: image/jpeg;
-	name="Serd6748.jpg"
-Content-Transfer-Encoding: base64
+This is (IMHO) a bit of an oxymoron, isn't it?  Applications using
+the 64-bit API, but storing the value in a 32-bit field?  The same
+problem would exist for filesystems with 64-bit inodes or 64-bit
+file offsets trying to store these values in 32-bit variables.
+It might work most of the time, but it can also break randomly.
+
+> I think the best fix for this would be for the kernel to either
+> (a) consistently use a 32-bit hash or (b) to provide an API
+> so that userspace can use the FMODE_32BITHASH flag the way
+> that kernel-internal users already can.
+
+It would be relatively straight forward to add a "32bitapi" mount
+option to return a 32-bit directory hash to userspace for operations
+on that mountpoint (ext4 doesn't have 64-bit inode numbers yet).
+However, I can't think of an easy way to do this on a per-process
+basis without just having it call the 32-bit API directly.
+
+> I couldn't think of or find any existing way for userspace
+> to get the right results here, which is why
+> 32-bit-guest-on-64-bit-host QEMU doesn't work on these filesystems
+> (depending on what exactly the guest's libc etc do).
+>=20
+>> the 32-bit getdents system call emulation in a 64-bit qemu-user
+>> process would just silently truncate the d_off field as part of
+>> the translation, not reporting an error.
+>> [...]
+>> This truncation has always been a bug; it breaks telldir/seekdir
+>> at least in some cases.
+>=20
+> Yes; you can't fit a quart into a pint pot, so if the guest
+> only handles 32-bit offsets then truncation is about all we
+> can do. This works fine if offsets are offsets, assuming the
+> directory isn't so enormous it would have broken the guest
+> anyway. I'm not aware of any issues with this other than the
+> oddball ext4 offsets-are-hashes situation -- could you expand
+> on the telldir/seekdir issue? (I suppose we should probably
+> make QEMU's syscall emulation layer return "no more entries"
+> rather than entries with truncated hashes.)
+
+For ext4 at least, you could just shift the high 32-bit part of
+the 64-bit hash down into a 32-bit value in telldir(), and
+shift it back up when seekdir() is called.
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_6F3080DD-1C91-40F7-84C8-6E083D782885
+Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
-	filename="Serd6748.jpg"
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
 
-/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCkbGBYWGDIkJh4pOzQ+PTo0
-OThBSV5QQUVZRjg5Um9TWWFkaWppP09ze3Jmel5naWX/2wBDARESEhgVGDAbGzBlQzlDZWVlZWVl
-ZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWVlZWX/wAARCAAcArgDASIA
-AhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQA
-AAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3
-ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWm
-p6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEA
-AwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSEx
-BhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElK
-U1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3
-uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDpy93L
-qOoWq3CxgW0bQMIwfLZvMBJz97lQew7epJo5ndbmSa7luI/OaOLzFQFQh2tnao6sG/DHQ5p0xsbG
-9mvJXdJngZ3Jd2Hlx4ydvTjd2GeT6mpbZLZopIoCwVJmLqGZSH3bznvyTn0IPoa0IKGu6sbCW2iW
-aKAPIhkklIGV8xVKrnrwWJIztA5xuBqZ5LqDVoFed2inZlwyKIx8rEKuPn34UEknbjd0OAJNUn07
-yXt7+4RML5xjEpWTCfNuAU7uNuePSqtrc6TJqQ8pbhbhpCAskUyorlSxwGG1WK5PYnJ9TkAt61NP
-b6Nez20ixzRQs6sy7sYGen+fx6UX008V9pyxyKsUszJIu3Jb927Dntyv8vxdfQ2o0qaK8L/ZEiPm
-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
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
 
-------=seqc697_4850_210758605.735685--
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlwlbQEACgkQcqXauRfM
+H+DTmRAAtE1K8llCpAAh6pb9XLbHF5UY+Ku7sXMR9kxGgLgoV2aU7jgT/kPCwR+p
+wHucd80Rfr4pA57R7H53zrUZ23p4yY+vYil+TMYp17KOb0YoO6QJHI93D9dta7sg
+hV0+v1Xf1BpEfhtEhAj3WGgsPVE5rvCQDCGABF/ZmiN6/nLRIe73LaJbdxVdCh4G
+bTsX8V+oaEvR0GEzjoGwoXB2id8RemUWX6Md7gWUdmmNDeF5Ic11YYqvX/R83F/r
+JGgqh5P4p9L/LbbfYDIBVMX+VHZTaUrE45OeULR6dPP9I//zk57NWB2fjTLEyUVL
+VMTxU7l4SNBGIXkaRiE/mwe8cWRpM4aIZOT3UVId7f4Urjk3n/92GQ3dHK4b7rda
+YeOff8Cgni60CSXw6kjzaivSwce2DM3hWpwKRITS9+ast+Av6X/VcrmETCKQ5Orx
+Vt7kh9O8+RjApPBPTpB45e23439pKbv4oiPWG9vyLQjkO00R6KzVnYRXyy5XHH/g
+julO83BrEcmA2/ZyK6yp49AbUdRcxNxarx/YbphtyOBKrmnjMa5lD8clnickveHO
+A3GWDZwA2T1zH+ymZK5K4QdlFjDMg7RE95P9mQYFdV6k3rWhD4OVr2dVvZ7t+ZET
+whSDJ7dvGGG1j0Px27FsUhhXCHnD20j0TvyOyxAr7oj/1e+Utrg=
+=JCC9
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_6F3080DD-1C91-40F7-84C8-6E083D782885--
