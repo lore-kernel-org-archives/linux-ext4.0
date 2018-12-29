@@ -1,44 +1,67 @@
-Return-Path: <SRS0=7ScE=O4=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:48130 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1729603AbeLSRDd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 19 Dec 2018 12:03:33 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 607952B57E
-        for <linux-ext4@vger.kernel.org>; Wed, 19 Dec 2018 17:03:32 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date: Wed, 19 Dec 2018 17:03:32 +0000
-Message-ID: <bug-201631-13602-8daAlnZ2qn@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=Jm56=PG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from nautica.notk.org ([91.121.71.147]:33823 "EHLO nautica.notk.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727815AbeL2Chj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 28 Dec 2018 21:37:39 -0500
+Date: Sat, 29 Dec 2018 03:37:21 +0100
+From: Dominique Martinet <asmadeus@codewreck.org>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Peter Maydell <peter.maydell@linaro.org>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Florian Weimer <fw@deneb.enyo.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        lucho@ionkov.net, libc-alpha@sourceware.org,
+        Arnd Bergmann <arnd@arndb.de>, ericvh@gmail.com, hpa@zytor.com,
+        lkml - Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        QEMU Developers <qemu-devel@nongnu.org>, rminnich@sandia.gov,
+        v9fs-developer@lists.sourceforge.net
+Subject: Re: [Qemu-devel] d_off field in struct dirent and 32-on-64 emulation
+Message-ID: <20181229023721.GA9291@nautica>
+References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
+ <CAFEAcA92m4vhzjJ+B=mP_o6Wfhx1XSKo3uWxah3osh=u5UXFuw@mail.gmail.com>
+ <9C6A7D45-CF53-4C61-B5DD-12CA0D419972@dilger.ca>
+ <CAFEAcA9W+JK7_TrtTnL1P2ES1knNPJX9wcUvhfLwxLq9augq1w@mail.gmail.com>
+ <20181229021157.GG5864@mit.edu>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20181229021157.GG5864@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+Theodore Y. Ts'o wrote on Fri, Dec 28, 2018:
+> > The problem is that there is no 32-bit API in some cases
+> > (unless I have misunderstood the kernel code) -- not all
+> > host architectures implement compat syscalls or allow them
+> > to be called from 64-bit processes or implement all the older
+> > syscall variants that had smaller offets. If there was a guaranteed
+> > "this syscall always exists and always gives me 32-bit offsets"
+> > we could use it.
+> 
+> Are there going to be cases where a process or a thread will sometimes
+> want the 64-bit interface, and sometimes want the 32-bit interface?
+> Or is it always going to be one or the other?  I wonder if we could
+> simply add a new flag to the process personality(2) flags.
 
-Jan Kara (jack@suse.cz) changed:
+That would likely work for qemu user, but the qemu system+9p case is
+going to be more painful..
+More precisely, the 9p protocol does not plan for anything other than
+64bit offset so if the vfs needs to hand out a 32bit offset we'll need
+to make a correspondance table between the 32bit offsets we hand off and
+the 64bit ones to use; unless some flag can be passed at lopen to tell
+the server to always hand out 32bit offsets for this directory... And if
+we do that then 9p servers will need a way to use both APIs in parallel
+for both types of directories.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
- Attachment #280051|0                           |1
-        is obsolete|                            |
+(Although I'd rather not have to do either in the first place, keeping
+track of all used offsets just in case seems like a waste even if we
+only do it for processes in 32bit mode, and a new flag would be a
+protocol change with 9p not being designed to catter for subtle protocol
+changes so would be rather painful to roll out)
 
---- Comment #22 from Jan Kara (jack@suse.cz) ---
-Created attachment 280097
-  --> https://bugzilla.kernel.org/attachment.cgi?id=280097&action=edit
-mm: Dump page and PTE state and some history
 
-New debug patch to try which will also dump more about what was happening with
-the page. Can you please try running with this patch and report when the
-warning hits? Thanks!
-
+No bright idea here, sorry.
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Dominique Martinet | Asmadeus
