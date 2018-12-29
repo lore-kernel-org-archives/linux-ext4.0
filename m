@@ -1,103 +1,59 @@
-Return-Path: <SRS0=oRRr=OR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:50136 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726265AbeLHGxX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Dec 2018 01:53:23 -0500
-Received: from pps.filterd (m0098413.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id wB86mO6N020858
-        for <linux-ext4@vger.kernel.org>; Sat, 8 Dec 2018 01:53:22 -0500
-Received: from e17.ny.us.ibm.com (e17.ny.us.ibm.com [129.33.205.207])
-        by mx0b-001b2d01.pphosted.com with ESMTP id 2p890984y8-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Sat, 08 Dec 2018 01:53:21 -0500
-Received: from localhost
-        by e17.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.vnet.ibm.com>;
-        Sat, 8 Dec 2018 06:53:21 -0000
-From: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-To: linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-doc@vger.kernel.org, linux-mips@linux-mips.org,
-        linux-s390@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-fsdevel@vger.kernel.org
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
-        yuchao0@huawei.com, corbet@lwn.net, ralf@linux-mips.org,
-        paul.burton@mips.com, jhogan@kernel.org, green.hu@gmail.com,
-        deanbo422@gmail.com, schwidefsky@de.ibm.com,
-        heiko.carstens@de.ibm.com, richard@nod.at, dedekind1@gmail.com,
-        adrian.hunter@intel.com, viro@zeniv.linux.org.uk
-Subject: [PATCH V3 8/9] fsverity: Move verity status check to fsverity_file_open
-Date: Sat,  8 Dec 2018 12:21:43 +0530
-In-Reply-To: <20181208065144.19486-1-chandan@linux.vnet.ibm.com>
-References: <20181208065144.19486-1-chandan@linux.vnet.ibm.com>
+Return-Path: <SRS0=Jm56=PG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.133]:37346 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726011AbeL2By7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 28 Dec 2018 20:54:59 -0500
+Date: Fri, 28 Dec 2018 17:54:54 -0800
+From: Matthew Wilcox <willy@infradead.org>
+To: Peter Maydell <peter.maydell@linaro.org>
+Cc: Andreas Dilger <adilger@dilger.ca>,
+        Florian Weimer <fw@deneb.enyo.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Latchesar Ionkov <lucho@ionkov.net>, libc-alpha@sourceware.org,
+        Arnd Bergmann <arnd@arndb.de>,
+        Eric Van Hensbergen <ericvh@gmail.com>, hpa@zytor.com,
+        lkml - Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        QEMU Developers <qemu-devel@nongnu.org>, rminnich@sandia.gov,
+        v9fs-developer@lists.sourceforge.net
+Subject: Re: [Qemu-devel] d_off field in struct dirent and 32-on-64 emulation
+Message-ID: <20181229015453.GA6310@bombadil.infradead.org>
+References: <87bm56vqg4.fsf@mid.deneb.enyo.de>
+ <CAFEAcA92m4vhzjJ+B=mP_o6Wfhx1XSKo3uWxah3osh=u5UXFuw@mail.gmail.com>
+ <9C6A7D45-CF53-4C61-B5DD-12CA0D419972@dilger.ca>
+ <CAFEAcA9W+JK7_TrtTnL1P2ES1knNPJX9wcUvhfLwxLq9augq1w@mail.gmail.com>
+ <1EF1B31A-83D8-4642-BEBF-F56E45485223@dilger.ca>
+ <CAFEAcA8Yq=CEyAUer1TcaSzuzcdNi3OUi4c67B6e+OkhmcKvbg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Message-Id: <20181208065144.19486-9-chandan@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAFEAcA8Yq=CEyAUer1TcaSzuzcdNi3OUi4c67B6e+OkhmcKvbg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Instead of conditionally checking for verity status of an inode before
-invoking fsverity_file_open(), this commit moves the check inside the
-definition of fsverity_file_open().
+On Sat, Dec 29, 2018 at 12:12:27AM +0000, Peter Maydell wrote:
+> On Fri, 28 Dec 2018 at 23:16, Andreas Dilger <adilger@dilger.ca> wrot
+> > On Dec 28, 2018, at 4:18 AM, Peter Maydell <peter.maydell@linaro.org> wrote:
+> > > The problem is that there is no 32-bit API in some cases
+> > > (unless I have misunderstood the kernel code) -- not all
+> > > host architectures implement compat syscalls or allow them
+> > > to be called from 64-bit processes or implement all the older
+> > > syscall variants that had smaller offets. If there was a guaranteed
+> > > "this syscall always exists and always gives me 32-bit offsets"
+> > > we could use it.
+> >
+> > The "32bitapi" mount option would use 32-bit hash for seekdir
+> > and telldir, regardless of what kernel API was used.  That would
+> > just set the FMODE_32BITHASH flag in the file->f_mode for all files.
+> 
+> A mount option wouldn't be much use to QEMU -- we can't tell
+> our users how to mount their filesystems, which they're
+> often doing lots of other things with besides running QEMU.
+> (Otherwise we could just tell them "don't use ext4", which
+> would also solve the problem :-)) We need something we can
+> use at the individual-syscall level.
 
-Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
----
- fs/ext4/file.c    | 8 +++-----
- fs/f2fs/file.c    | 8 +++-----
- fs/verity/setup.c | 3 +++
- 3 files changed, 9 insertions(+), 10 deletions(-)
-
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 30fbd663354f..b404a857cd48 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -444,11 +444,9 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
- 	if (ret)
- 		return ret;
- 
--	if (IS_VERITY(inode)) {
--		ret = fsverity_file_open(inode, filp);
--		if (ret)
--			return ret;
--	}
-+	ret = fsverity_file_open(inode, filp);
-+	if (ret)
-+		return ret;
- 
- 	/*
- 	 * Set up the jbd2_inode if we are opening the inode for
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 2eb4821d95d1..925c0d9608da 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -491,11 +491,9 @@ static int f2fs_file_open(struct inode *inode, struct file *filp)
- 	if (err)
- 		return err;
- 
--	if (IS_VERITY(inode)) {
--		err = fsverity_file_open(inode, filp);
--		if (err)
--			return err;
--	}
-+	err = fsverity_file_open(inode, filp);
-+	if (err)
-+		return err;
- 
- 	filp->f_mode |= FMODE_NOWAIT;
- 
-diff --git a/fs/verity/setup.c b/fs/verity/setup.c
-index 08b609127531..bc463dc601b1 100644
---- a/fs/verity/setup.c
-+++ b/fs/verity/setup.c
-@@ -771,6 +771,9 @@ static int setup_fsverity_info(struct inode *inode)
-  */
- int fsverity_file_open(struct inode *inode, struct file *filp)
- {
-+	if (!IS_VERITY(inode))
-+		return 0;
-+
- 	if (filp->f_mode & FMODE_WRITE) {
- 		pr_debug("Denying opening verity file (ino %lu) for write\n",
- 			 inode->i_ino);
--- 
-2.19.1
+Could you use a prctl to set whether you were running in 32 or 64 bit
+mode?  Or do you change which kind of task you're emulating too often
+to make this a good idea?
