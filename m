@@ -1,67 +1,63 @@
-Return-Path: <SRS0=J55O=OU=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mailout4.samsung.com ([203.254.224.34]:51498 "EHLO
-        mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726154AbeLKL71 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 11 Dec 2018 06:59:27 -0500
-Subject: Re: [PATCH 1/2] fs: introduce APIs to enable sending write-hint
- with buffer-head
-To: Jan Kara <jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        tytso@mit.edu, adilger.kernel@dilger.ca, jack@suse.com,
-        viro@zeniv.linux.org.uk, darrick.wong@oracle.com, axboe@kernel.dk,
-        jrdr.linux@gmail.com, ebiggers@google.com,
-        jooyoung.hwang@samsung.com, chur.lee@samsung.com,
-        prakash.v@samsung.com
-From: Kanchan Joshi <joshi.k@samsung.com>
-Message-id: <2e15501c-cbdd-aca2-19fd-4519093cacab@samsung.com>
-Date: Tue, 11 Dec 2018 17:27:16 +0530
-MIME-version: 1.0
-In-reply-to: <20181210134949.GL29289@quack2.suse.cz>
-Content-type: text/plain; charset="utf-8"; format="flowed"
-Content-language: en-US
-Content-transfer-encoding: 7bit
-References: <1544446204-5291-1-git-send-email-joshi.k@samsung.com>
-        <CGME20181210125251epcas1p3023db72cc08d6b2f899141d551d53f61@epcas1p3.samsung.com>
-        <1544446204-5291-2-git-send-email-joshi.k@samsung.com>
-        <20181210134949.GL29289@quack2.suse.cz>
+Return-Path: <SRS0=Jm56=PG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pl1-f196.google.com ([209.85.214.196]:44932 "EHLO
+        mail-pl1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725923AbeL2FIz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 29 Dec 2018 00:08:55 -0500
+Date: Sat, 29 Dec 2018 13:08:46 +0800
+From: Eryu Guan <guaneryu@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Liu Bo <obuil.liubo@gmail.com>, fstests@vger.kernel.org
+Subject: Re: [PATCH] ext4/034: adjust commit which fixes the problem tested
+ by ext4/034
+Message-ID: <20181229050846.GC21777@desktop>
+References: <20181226160805.8987-1-tytso@mit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20181226160805.8987-1-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thank you for review and suggestion.
-I will make that change in V2, once things become clear for second patch
-of this set.
+On Wed, Dec 26, 2018 at 11:08:05AM -0500, Theodore Ts'o wrote:
+> Also add a requirment that fallocate and fiemap is supported.
+> (Fallocate isn't the case when we are emulating ext3, for example.)
+> 
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> Cc: Liu Bo <obuil.liubo@gmail.com>
 
-On Monday 10 December 2018 07:19 PM, Jan Kara wrote:
-> On Mon 10-12-18 18:20:03, Kanchan Joshi wrote:
->> submit_bh and write_dirty_buffer do not take write-hint as
->> parameter. This patch introduces variants which do.
->>
->> Signed-off-by: Kanchan Joshi <joshi.k@samsung.com>
+Patch looks good, but I assume you meant to send it to
+fstests@vger.kernel.org not linux-fstests@mit.edu :)
+
+Thanks,
+Eryu
+
+> ---
+>  tests/ext4/034 | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
 > 
-> ...
-> 
->> @@ -3162,6 +3169,20 @@ void write_dirty_buffer(struct buffer_head *bh, int op_flags)
->>   }
->>   EXPORT_SYMBOL(write_dirty_buffer);
->>   
->> +void write_dirty_buffer_write_hint(struct buffer_head *bh, int op_flags,
->> +				   enum rw_hint hint)
->> +{
->> +	lock_buffer(bh);
->> +	if (!test_clear_buffer_dirty(bh)) {
->> +		unlock_buffer(bh);
->> +		return;
->> +	}
->> +	bh->b_end_io = end_buffer_write_sync;
->> +	get_bh(bh);
->> +	submit_bh_wbc(REQ_OP_WRITE, op_flags, bh, hint, NULL);
->> +}
->> +EXPORT_SYMBOL(write_dirty_buffer_write_hint);
->> +
-> 
-> Please implement write_dirty_buffer() as a call to
-> write_dirty_buffer_write_hint() so that we don't unnecessarily duplicate
-> the code. Otherwise the patch looks good.
-> 
-> 								Honza
+> diff --git a/tests/ext4/034 b/tests/ext4/034
+> index 5c34d0d9..f9e4bfaf 100755
+> --- a/tests/ext4/034
+> +++ b/tests/ext4/034
+> @@ -8,7 +8,7 @@
+>  # "-o dioread_nolock,nodelalloc" is used.
+>  #
+>  # The bug was fixed by commit
+> -# "Ext4: fix ENOSPC when both quota and dioread_nolock are enabled"
+> +# "ext4: make sure enough credits are reserved for dioread_nolock writes"
+>  #
+>  seq=`basename $0`
+>  seqres=$RESULT_DIR/$seq
+> @@ -41,6 +41,8 @@ _supported_os Linux
+>  _require_scratch
+>  _require_quota
+>  _require_nobody
+> +_require_xfs_io_command "falloc"
+> +_require_xfs_io_command "fiemap"
+>  _require_xfs_io_command "syncfs"
+>  
+>  echo "Format and mount"
+> -- 
+> 2.19.1
 > 
