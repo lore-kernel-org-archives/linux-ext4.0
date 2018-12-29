@@ -1,51 +1,81 @@
-From: "Andrey Jr. Melnikov" <temnota.am@gmail.com>
-Subject: Re: ext4 file system corruption with v4.19.3 / v4.19.4
-Date: Wed, 28 Nov 2018 13:02:56 +0300
-Message-ID: <en52df-5dh.ln1@banana.localnet>
-References: <065643a0-f9aa-a361-715a-03ca978d9228@roeck-us.net> <b43fb902-9b64-22d9-25ca-c970b3842a43@roeck-us.net> <vb31df-25g.ln1@banana.localnet> <20181128041555.GE31885@thunk.org>
-Cc: linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-Path: <SRS0=Jm56=PG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:51306 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726543AbeL2Qtf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 29 Dec 2018 11:49:35 -0500
+Received: from mail-wm1-f50.google.com (mail-wm1-f50.google.com [209.85.128.50])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id D38D621907
+        for <linux-ext4@vger.kernel.org>; Sat, 29 Dec 2018 16:49:33 +0000 (UTC)
+Received: by mail-wm1-f50.google.com with SMTP id f81so21764612wmd.4
+        for <linux-ext4@vger.kernel.org>; Sat, 29 Dec 2018 08:49:33 -0800 (PST)
+MIME-Version: 1.0
+References: <87bm56vqg4.fsf@mid.deneb.enyo.de> <CAFEAcA92m4vhzjJ+B=mP_o6Wfhx1XSKo3uWxah3osh=u5UXFuw@mail.gmail.com>
+ <9C6A7D45-CF53-4C61-B5DD-12CA0D419972@dilger.ca> <CAFEAcA9W+JK7_TrtTnL1P2ES1knNPJX9wcUvhfLwxLq9augq1w@mail.gmail.com>
+ <1EF1B31A-83D8-4642-BEBF-F56E45485223@dilger.ca> <CAFEAcA8Yq=CEyAUer1TcaSzuzcdNi3OUi4c67B6e+OkhmcKvbg@mail.gmail.com>
+ <20181229015453.GA6310@bombadil.infradead.org>
+In-Reply-To: <20181229015453.GA6310@bombadil.infradead.org>
+From: Andy Lutomirski <luto@kernel.org>
+Date: Sat, 29 Dec 2018 08:49:19 -0800
+Message-ID: <CALCETrUJn4cV+o3scP1EzYS=JA--5KUXvjuxZDbsnhXra1vrwA@mail.gmail.com>
+Subject: Re: [Qemu-devel] d_off field in struct dirent and 32-on-64 emulation
+To: Matthew Wilcox <willy@infradead.org>
+Cc: Peter Maydell <peter.maydell@linaro.org>,
+        Andreas Dilger <adilger@dilger.ca>,
+        Florian Weimer <fw@deneb.enyo.de>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        libc-alpha <libc-alpha@sourceware.org>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        "H. Peter Anvin" <hpa@zytor.com>,
+        lkml - Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        QEMU Developers <qemu-devel@nongnu.org>,
+        Ron Minnich <rminnich@sandia.gov>,
+        V9FS Developers <v9fs-developer@lists.sourceforge.net>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-In gmane.comp.file-systems.ext4 Theodore Y. Ts'o <tytso@mit.edu> wrote:
-> On Wed, Nov 28, 2018 at 03:16:33AM +0300, Andrey Jr. Melnikov wrote:
-> > Corrupted inodes - always directory, not touched at least year or
-> > more for writing. Something wrong when updating atime?
+> On Dec 28, 2018, at 6:54 PM, Matthew Wilcox <willy@infradead.org> wrote:
+>
+>> On Sat, Dec 29, 2018 at 12:12:27AM +0000, Peter Maydell wrote:
+>> On Fri, 28 Dec 2018 at 23:16, Andreas Dilger <adilger@dilger.ca> wrot
+>>> On Dec 28, 2018, at 4:18 AM, Peter Maydell <peter.maydell@linaro.org> w=
+rote:
+>>>> The problem is that there is no 32-bit API in some cases
+>>>> (unless I have misunderstood the kernel code) -- not all
+>>>> host architectures implement compat syscalls or allow them
+>>>> to be called from 64-bit processes or implement all the older
+>>>> syscall variants that had smaller offets. If there was a guaranteed
+>>>> "this syscall always exists and always gives me 32-bit offsets"
+>>>> we could use it.
+>>>
+>>> The "32bitapi" mount option would use 32-bit hash for seekdir
+>>> and telldir, regardless of what kernel API was used.  That would
+>>> just set the FMODE_32BITHASH flag in the file->f_mode for all files.
+>>
+>> A mount option wouldn't be much use to QEMU -- we can't tell
+>> our users how to mount their filesystems, which they're
+>> often doing lots of other things with besides running QEMU.
+>> (Otherwise we could just tell them "don't use ext4", which
+>> would also solve the problem :-)) We need something we can
+>> use at the individual-syscall level.
+>
+> Could you use a prctl to set whether you were running in 32 or 64 bit
+> mode?  Or do you change which kind of task you're emulating too often
+> to make this a good idea?
 
-> We're not sure.  The frustrating thing is that it's not reproducing
-> for me.  I run extensive regression tests, and I'm using 4.19 on my
-> development laptop without notcing any problems.  If I could reproduce
-> it, I could debug it, but since I can't, I need to rely on those who
-> are seeing the problem to help pinpoint the problem.
 
-My workstation hit this bug every time after boot. If you have an idea - I
-may test it.
+How would this work?  We already have the separate
+COMPAT_DEFINE_SYSCALL entries *and* in_compat_syscall(). Now we=E2=80=99d h=
+ave
+a third degree of freedom.
 
-> I'm trying to figure out common factors from those people who are
-> reporting problems.
-
-> (a) What distribution are you running (it appears that many people
-> reporting problems are running Ubuntu, but this may be a sampling
-> issue; lots of people run Ubuntu)?  (For the record, I'm using Debian
-> Testing.)
-Debian sid but self-build kernel from ubuntu mainline-ppa.
-
-> (b) What hardware are you using?  (SSD?  SATA-attached?
-> NVMe-attached?)
-SATA HDD WDC WD20EZRZ-00Z5HB0.
-
-> (c) Are you using LVM?  LUKS (e.g., disk encrypted)?
-No and no. Plain ext4.
--- cut --
-debugfs:  features 
-Filesystem features: has_journal ext_attr resize_inode dir_index filetype
-needs_recovery extent 64bit flex_bg sparse_super large_file huge_file
-dir_nlink extra_isize metadata_csum
--- cut --
-
-> (d) are you using discard?  One theory is a recent discard change may
-> be in play.   How do you use discard?   (mount option, fstrim, etc.)
-
-no
+Either the arches people care about should add reasonable ways to
+issue 32-bit syscalls from 64-bit mode or there should be an explicit
+way to ask for the 32-bit directory offsets.
