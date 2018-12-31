@@ -1,36 +1,51 @@
-Return-Path: <SRS0=gW7+=OL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:39380 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725801AbeLBMCJ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Dec 2018 07:02:09 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 96F8A2ADD6
-        for <linux-ext4@vger.kernel.org>; Sun,  2 Dec 2018 12:02:05 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Sun, 02 Dec 2018 12:01:58 +0000
-Message-ID: <bug-201685-13602-u5izKoFaTL@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=7jnN=PI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from relay1.mentorg.com ([192.94.38.131]:51574 "EHLO
+        relay1.mentorg.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727557AbeLaRDx (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 31 Dec 2018 12:03:53 -0500
+Date: Mon, 31 Dec 2018 17:03:40 +0000
+From: Joseph Myers <joseph@codesourcery.com>
+To: Adhemerval Zanella <adhemerval.zanella@linaro.org>
+CC: Florian Weimer <fw@deneb.enyo.de>, <linux-fsdevel@vger.kernel.org>,
+        <linux-api@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>,
+        <v9fs-developer@lists.sourceforge.net>,
+        <libc-alpha@sourceware.org>, <qemu-devel@nongnu.org>,
+        <ericvh@gmail.com>, <rminnich@sandia.gov>, <lucho@ionkov.net>,
+        <hpa@zytor.com>, <arnd@arndb.de>
+Subject: Re: d_off field in struct dirent and 32-on-64 emulation
+In-Reply-To: <ae0530c9-5c46-5560-9734-1eacaf173b8d@linaro.org>
+Message-ID: <alpine.DEB.2.21.1812311657050.27287@digraph.polyomino.org.uk>
+References: <87bm56vqg4.fsf@mid.deneb.enyo.de> <957967d7-5717-8ada-fb30-dfdf19898b6b@linaro.org> <87pntmu9iw.fsf@mid.deneb.enyo.de> <ae0530c9-5c46-5560-9734-1eacaf173b8d@linaro.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+On Fri, 28 Dec 2018, Adhemerval Zanella wrote:
 
---- Comment #138 from Reindl Harald (harry@rhsoft.net) ---
-at least continue security updates for 4.18.x would probably be a good idea
+> >> Currently we only have nios2 and csky (unfortunately).  But since generic 
+> >> definition for off_t and off64_t still assumes non-LFS support, all new
+> >> 32-bits ports potentially might carry the issue.
+> > 
+> > For csky, we could still change the type of the non-standard d_off
+> > field to long long int.  This way, only telldir would have to fail
+> > when truncation is necessary, as mentioned below:
+> 
+> I think it makes no sense to continue making non-LFS as default for
+> newer 32 bits ports, the support will be emulated with LFS syscalls.
 
-Fedora 28 is already on 4.19.x
+Any new 32-bit port that uses 64-bit time_t will also use 64-bit offsets 
+(because we don't have any glibc configurations that support the 
+combination of 64-bit time with 32-bit offsets, and don't want to add 
+them).  That should apply for RISC-V 32-bit at least.
 
-i run now 4.18.20-100.fc27.x86_64 which was the last Fedora 27 update on every
-F28 server and until this problem is solved i refuse to run 4.19.x in
-production which essentially means no security fixes for a unknown amount of
-time
+I've filed <https://sourceware.org/bugzilla/show_bug.cgi?id=24050> for 
+missing overflow checks in telldir when the default off_t is wider than 
+long int (currently just applies to x32; not sure why we don't see glibc 
+test failures on x32 resulting from the quiet truncation, as the issue is 
+certainly there in the source code).
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Joseph S. Myers
+joseph@codesourcery.com
