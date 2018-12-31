@@ -1,40 +1,46 @@
-Return-Path: <SRS0=EHOS=ON=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53128 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725797AbeLDSWm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Dec 2018 13:22:42 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 674AE2C106
-        for <linux-ext4@vger.kernel.org>; Tue,  4 Dec 2018 18:22:41 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201685] ext4 file system corruption
-Date: Tue, 04 Dec 2018 18:22:40 +0000
-Message-ID: <bug-201685-13602-xqc5s3y2zD@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201685-13602@https.bugzilla.kernel.org/>
-References: <bug-201685-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=7jnN=PI=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-eopbgr820113.outbound.protection.outlook.com ([40.107.82.113]:59061
+        "EHLO NAM01-SN1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727405AbeLaTsp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 31 Dec 2018 14:48:45 -0500
+From: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+CC: Theodore Ts'o <tytso@mit.edu>, <stable@kernel.org>
+Subject: [PATCH 3/3] ext4: track writeback errors using the generic tracking infrastructure
+Date: Mon, 31 Dec 2018 14:48:36 -0500
+Message-ID: <20181231194836.3761-3-tytso@mit.edu>
+In-Reply-To: <20181231194836.3761-1-tytso@mit.edu>
+References: <20181231194836.3761-1-tytso@mit.edu>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201685
+We already using mapping_set_error() in fs/ext4/page_io.c, so all we
+need to do is to use file_check_and_advance_wb_err() when handling
+fsync() requests in ext4_sync_file().
 
---- Comment #228 from Guenter Roeck (linux@roeck-us.net) ---
-I guess I should have been more specific. With CONFIG_SCSI_MQ_DEFAULT=y (or
-scsi_mod.use_blk_mq=1), cfq is not available. That applies to any kernel
-version with CONFIG_SCSI_MQ_DEFAULT=y (or scsi_mod.use_blk_mq=1), not just to
-4.19, and it doesn't apply to 4.19 if CONFIG_SCSI_MQ_DEFAULT=n (or
-scsi_mod.use_blk_mq=0).
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Cc: stable@kernel.org
+---
+ fs/ext4/fsync.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-It is quite irrelevant if other schedulers are available if
-CONFIG_SCSI_MQ_DEFAULT=y (or scsi_mod.use_blk_mq=1). cfq is not available, and
-it doesn't matter if it is set as default or not.
-
-I hope this is specific enough this time. My apologies if I missed some other
-means to enable or disable blk_mq.
-
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 87a7ff00ef62..712f00995390 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -164,6 +164,9 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
+ 			ret = err;
+ 	}
+ out:
++	err = file_check_and_advance_wb_err(file);
++	if (ret == 0)
++		ret = err;
+ 	trace_ext4_sync_file_exit(inode, ret);
+ 	return ret;
+ }
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.19.1
