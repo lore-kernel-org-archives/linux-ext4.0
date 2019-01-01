@@ -1,104 +1,51 @@
-Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59764 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=/7aD=PJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mout.gmx.net ([212.227.17.21]:46953 "EHLO mout.gmx.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725446AbfAKLEu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Jan 2019 06:04:50 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V13 12/19] block: loop: pass multi-page bvec to iov_iter
-Date: Fri, 11 Jan 2019 19:01:20 +0800
-Message-Id: <20190111110127.21664-13-ming.lei@redhat.com>
-In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
-References: <20190111110127.21664-1-ming.lei@redhat.com>
+        id S1728493AbfAANap (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 1 Jan 2019 08:30:45 -0500
+From: Chengguang Xu <cgxu519@gmx.com>
+To: jack@suse.com
+Cc: linux-ext4@vger.kernel.org, Chengguang Xu <cgxu519@gmx.com>
+Subject: [PATCH] ext2: set proper return code
+Date: Tue,  1 Jan 2019 21:30:28 +0800
+Message-Id: <20190101133028.18021-1-cgxu519@gmx.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-iov_iter is implemented on bvec itererator helpers, so it is safe to pass
-multi-page bvec to it, and this way is much more efficient than passing one
-page in each bvec.
+Set proper return code when failing from allocating
+memory in ext2_fill_super().
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
+Signed-off-by: Chengguang Xu <cgxu519@gmx.com>
 ---
- drivers/block/loop.c | 20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ fs/ext2/super.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index b8a0720d3653..28dd22c6f83f 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -511,21 +511,22 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 		     loff_t pos, bool rw)
- {
- 	struct iov_iter iter;
-+	struct req_iterator rq_iter;
- 	struct bio_vec *bvec;
- 	struct request *rq = blk_mq_rq_from_pdu(cmd);
- 	struct bio *bio = rq->bio;
- 	struct file *file = lo->lo_backing_file;
-+	struct bio_vec tmp;
- 	unsigned int offset;
--	int segments = 0;
-+	int nr_bvec = 0;
- 	int ret;
- 
-+	rq_for_each_bvec(tmp, rq, rq_iter)
-+		nr_bvec++;
-+
- 	if (rq->bio != rq->biotail) {
--		struct req_iterator iter;
--		struct bio_vec tmp;
- 
--		__rq_for_each_bio(bio, rq)
--			segments += bio_segments(bio);
--		bvec = kmalloc_array(segments, sizeof(struct bio_vec),
-+		bvec = kmalloc_array(nr_bvec, sizeof(struct bio_vec),
- 				     GFP_NOIO);
- 		if (!bvec)
- 			return -EIO;
-@@ -534,10 +535,10 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 		/*
- 		 * The bios of the request may be started from the middle of
- 		 * the 'bvec' because of bio splitting, so we can't directly
--		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_segment
-+		 * copy bio->bi_iov_vec to new bvec. The rq_for_each_bvec
- 		 * API will take care of all details for us.
- 		 */
--		rq_for_each_segment(tmp, rq, iter) {
-+		rq_for_each_bvec(tmp, rq, rq_iter) {
- 			*bvec = tmp;
- 			bvec++;
- 		}
-@@ -551,11 +552,10 @@ static int lo_rw_aio(struct loop_device *lo, struct loop_cmd *cmd,
- 		 */
- 		offset = bio->bi_iter.bi_bvec_done;
- 		bvec = __bvec_iter_bvec(bio->bi_io_vec, bio->bi_iter);
--		segments = bio_segments(bio);
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 73b2d528237f..b6d8402f5c62 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -1087,12 +1087,14 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 					   sizeof(struct buffer_head *),
+ 					   GFP_KERNEL);
+ 	if (sbi->s_group_desc == NULL) {
++		ret = -ENOMEM;
+ 		ext2_msg(sb, KERN_ERR, "error: not enough memory");
+ 		goto failed_mount;
  	}
- 	atomic_set(&cmd->ref, 2);
- 
--	iov_iter_bvec(&iter, rw, bvec, segments, blk_rq_bytes(rq));
-+	iov_iter_bvec(&iter, rw, bvec, nr_bvec, blk_rq_bytes(rq));
- 	iter.iov_offset = offset;
- 
- 	cmd->iocb.ki_pos = pos;
+ 	bgl_lock_init(sbi->s_blockgroup_lock);
+ 	sbi->s_debts = kcalloc(sbi->s_groups_count, sizeof(*sbi->s_debts), GFP_KERNEL);
+ 	if (!sbi->s_debts) {
++		ret = -ENOMEM;
+ 		ext2_msg(sb, KERN_ERR, "error: not enough memory");
+ 		goto failed_mount_group_desc;
+ 	}
+@@ -1148,6 +1150,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ #ifdef CONFIG_EXT2_FS_XATTR
+ 	sbi->s_ea_block_cache = ext2_xattr_create_cache();
+ 	if (!sbi->s_ea_block_cache) {
++		ret = -ENOMEM;
+ 		ext2_msg(sb, KERN_ERR, "Failed to create ea_block_cache");
+ 		goto failed_mount3;
+ 	}
 -- 
-2.9.5
+2.17.2
