@@ -1,263 +1,163 @@
-Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42828 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730329AbfAINvn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 9 Jan 2019 08:51:43 -0500
-From: Pankaj Gupta <pagupta@redhat.com>
-To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
-        qemu-devel@nongnu.org, linux-nvdimm@ml01.01.org,
-        linux-fsdevel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        linux-acpi@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Cc: jack@suse.cz, stefanha@redhat.com, dan.j.williams@intel.com,
-        riel@surriel.com, nilal@redhat.com, kwolf@redhat.com,
-        pbonzini@redhat.com, zwisler@kernel.org, vishal.l.verma@intel.com,
-        dave.jiang@intel.com, david@redhat.com, jmoyer@redhat.com,
-        xiaoguangrong.eric@gmail.com, hch@infradead.org, mst@redhat.com,
-        jasowang@redhat.com, lcapitulino@redhat.com, imammedo@redhat.com,
-        eblake@redhat.com, willy@infradead.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, darrick.wong@oracle.com,
-        rjw@rjwysocki.net, pagupta@redhat.com
-Subject: [PATCH v3 1/5] libnvdimm: nd_region flush callback support
-Date: Wed,  9 Jan 2019 19:20:20 +0530
-Message-Id: <20190109135024.14093-2-pagupta@redhat.com>
-In-Reply-To: <20190109135024.14093-1-pagupta@redhat.com>
-References: <20190109135024.14093-1-pagupta@redhat.com>
+Return-Path: <SRS0=/7aD=PJ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-it1-f194.google.com ([209.85.166.194]:53906 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725958AbfAAVIF (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jan 2019 16:08:05 -0500
+Received: by mail-it1-f194.google.com with SMTP id g85so38930567ita.3
+        for <linux-ext4@vger.kernel.org>; Tue, 01 Jan 2019 13:08:04 -0800 (PST)
+From: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+To: linux-ext4@vger.kernel.org
+Cc: adilger.kernel@dilger.ca
+Subject: [PATCH v6 1/4] ext2fs: opening filesystem code refactoring
+Date: Tue,  1 Jan 2019 22:07:34 +0100
+Message-Id: <20190101210737.87248-2-c17828@cray.com>
+In-Reply-To: <20190101210737.87248-1-c17828@cray.com>
+References: <20190101210737.87248-1-c17828@cray.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds functionality to perform flush from guest
-to host over VIRTIO. We are registering a callback based
-on 'nd_region' type. virtio_pmem driver requires this special
-flush function. For rest of the region types we are registering
-existing flush function. Report error returned by host fsync
-failure to userspace.
+There are similar opening filesystem code in different utilities.
 
-This also handles asynchronous flush requests from the block layer
-by creating a child bio and chaining it with parent bio.
+The patch moves improved handling from try_open_fs()
+into ext2fs_open(). This function make one of the action
+based on parameters:
+1) open filesystem with given superblock, superblock size
+2) open filesystem with given superblock, but try to
+find right block size
+3) open filesystem with default superblock and block size
 
-Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
+Signed-off-by: Artem Blagodarenko <c17828@cray.com>
 ---
- drivers/acpi/nfit/core.c     |  4 ++--
- drivers/nvdimm/claim.c       |  6 ++++--
- drivers/nvdimm/nd.h          |  1 +
- drivers/nvdimm/pmem.c        | 12 ++++++++----
- drivers/nvdimm/region_devs.c | 38 ++++++++++++++++++++++++++++++++++++--
- include/linux/libnvdimm.h    |  5 ++++-
- 6 files changed, 55 insertions(+), 11 deletions(-)
+ e2fsck/unix.c       | 28 +++-------------------------
+ lib/ext2fs/openfs.c | 41 +++++++++++++++++++++++++++++++++++++----
+ misc/dumpe2fs.c     | 17 ++---------------
+ 3 files changed, 42 insertions(+), 44 deletions(-)
 
-diff --git a/drivers/acpi/nfit/core.c b/drivers/acpi/nfit/core.c
-index b072cfc..f154852 100644
---- a/drivers/acpi/nfit/core.c
-+++ b/drivers/acpi/nfit/core.c
-@@ -2234,7 +2234,7 @@ static void write_blk_ctl(struct nfit_blk *nfit_blk, unsigned int bw,
- 		offset = to_interleave_offset(offset, mmio);
- 
- 	writeq(cmd, mmio->addr.base + offset);
--	nvdimm_flush(nfit_blk->nd_region);
-+	nvdimm_flush(nfit_blk->nd_region, NULL, false);
- 
- 	if (nfit_blk->dimm_flags & NFIT_BLK_DCR_LATCH)
- 		readq(mmio->addr.base + offset);
-@@ -2283,7 +2283,7 @@ static int acpi_nfit_blk_single_io(struct nfit_blk *nfit_blk,
- 	}
- 
- 	if (rw)
--		nvdimm_flush(nfit_blk->nd_region);
-+		nvdimm_flush(nfit_blk->nd_region, NULL, false);
- 
- 	rc = read_blk_stat(nfit_blk, lane) ? -EIO : 0;
- 	return rc;
-diff --git a/drivers/nvdimm/claim.c b/drivers/nvdimm/claim.c
-index fb667bf..a1dfa06 100644
---- a/drivers/nvdimm/claim.c
-+++ b/drivers/nvdimm/claim.c
-@@ -263,7 +263,7 @@ static int nsio_rw_bytes(struct nd_namespace_common *ndns,
- 	struct nd_namespace_io *nsio = to_nd_namespace_io(&ndns->dev);
- 	unsigned int sz_align = ALIGN(size + (offset & (512 - 1)), 512);
- 	sector_t sector = offset >> 9;
--	int rc = 0;
-+	int rc = 0, ret = 0;
- 
- 	if (unlikely(!size))
- 		return 0;
-@@ -301,7 +301,9 @@ static int nsio_rw_bytes(struct nd_namespace_common *ndns,
- 	}
- 
- 	memcpy_flushcache(nsio->addr + offset, buf, size);
--	nvdimm_flush(to_nd_region(ndns->dev.parent));
-+	ret = nvdimm_flush(to_nd_region(ndns->dev.parent), NULL, false);
-+	if (ret)
-+		rc = ret;
- 
- 	return rc;
- }
-diff --git a/drivers/nvdimm/nd.h b/drivers/nvdimm/nd.h
-index 98317e7..d53a2d1 100644
---- a/drivers/nvdimm/nd.h
-+++ b/drivers/nvdimm/nd.h
-@@ -160,6 +160,7 @@ struct nd_region {
- 	struct nd_interleave_set *nd_set;
- 	struct nd_percpu_lane __percpu *lane;
- 	struct nd_mapping mapping[0];
-+	int (*flush)(struct nd_region *nd_region);
- };
- 
- struct nd_blk_region {
-diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
-index 6071e29..5d6a4a1 100644
---- a/drivers/nvdimm/pmem.c
-+++ b/drivers/nvdimm/pmem.c
-@@ -192,6 +192,7 @@ static blk_status_t pmem_do_bvec(struct pmem_device *pmem, struct page *page,
- 
- static blk_qc_t pmem_make_request(struct request_queue *q, struct bio *bio)
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 5b3552ec..ddcf52a4 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -1151,31 +1151,9 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
+ 			     ext2_filsys *ret_fs)
  {
-+	int ret = 0;
- 	blk_status_t rc = 0;
- 	bool do_acct;
- 	unsigned long start;
-@@ -201,7 +202,7 @@ static blk_qc_t pmem_make_request(struct request_queue *q, struct bio *bio)
- 	struct nd_region *nd_region = to_region(pmem);
- 
- 	if (bio->bi_opf & REQ_PREFLUSH)
--		nvdimm_flush(nd_region);
-+		ret = nvdimm_flush(nd_region, bio, true);
- 
- 	do_acct = nd_iostat_start(bio, &start);
- 	bio_for_each_segment(bvec, bio, iter) {
-@@ -216,7 +217,10 @@ static blk_qc_t pmem_make_request(struct request_queue *q, struct bio *bio)
- 		nd_iostat_end(bio, start);
- 
- 	if (bio->bi_opf & REQ_FUA)
--		nvdimm_flush(nd_region);
-+		ret = nvdimm_flush(nd_region, bio, true);
-+
-+	if (ret)
-+		bio->bi_status = errno_to_blk_status(ret);
- 
- 	bio_endio(bio);
- 	return BLK_QC_T_NONE;
-@@ -528,14 +532,14 @@ static int nd_pmem_remove(struct device *dev)
- 		sysfs_put(pmem->bb_state);
- 		pmem->bb_state = NULL;
- 	}
--	nvdimm_flush(to_nd_region(dev->parent));
-+	nvdimm_flush(to_nd_region(dev->parent), NULL, false);
- 
- 	return 0;
- }
- 
- static void nd_pmem_shutdown(struct device *dev)
- {
--	nvdimm_flush(to_nd_region(dev->parent));
-+	nvdimm_flush(to_nd_region(dev->parent), NULL, false);
- }
- 
- static void nd_pmem_notify(struct device *dev, enum nvdimm_event event)
-diff --git a/drivers/nvdimm/region_devs.c b/drivers/nvdimm/region_devs.c
-index fa37afc..5508727 100644
---- a/drivers/nvdimm/region_devs.c
-+++ b/drivers/nvdimm/region_devs.c
-@@ -290,7 +290,9 @@ static ssize_t deep_flush_store(struct device *dev, struct device_attribute *att
- 		return rc;
- 	if (!flush)
- 		return -EINVAL;
--	nvdimm_flush(nd_region);
-+	rc = nvdimm_flush(nd_region, NULL, false);
-+	if (rc)
-+		return rc;
- 
- 	return len;
- }
-@@ -1065,6 +1067,11 @@ static struct nd_region *nd_region_create(struct nvdimm_bus *nvdimm_bus,
- 	dev->of_node = ndr_desc->of_node;
- 	nd_region->ndr_size = resource_size(ndr_desc->res);
- 	nd_region->ndr_start = ndr_desc->res->start;
-+	if (ndr_desc->flush)
-+		nd_region->flush = ndr_desc->flush;
-+	else
-+		nd_region->flush = generic_nvdimm_flush;
-+
- 	nd_device_register(dev);
- 
- 	return nd_region;
-@@ -1105,11 +1112,36 @@ struct nd_region *nvdimm_volatile_region_create(struct nvdimm_bus *nvdimm_bus,
- }
- EXPORT_SYMBOL_GPL(nvdimm_volatile_region_create);
- 
-+int nvdimm_flush(struct nd_region *nd_region, struct bio *bio, bool async)
-+{
-+	int rc = 0;
-+
-+	/* Create child bio for asynchronous flush and chain with
-+	 * parent bio. Otherwise directly call nd_region flush.
-+	 */
-+	if (async && bio->bi_iter.bi_sector != -1) {
-+
-+		struct bio *child = bio_alloc(GFP_ATOMIC, 0);
-+
-+		if (!child)
-+			return -ENOMEM;
-+		bio_copy_dev(child, bio);
-+		child->bi_opf = REQ_PREFLUSH;
-+		child->bi_iter.bi_sector = -1;
-+		bio_chain(child, bio);
-+		submit_bio(child);
-+	} else {
-+		if (nd_region->flush(nd_region))
-+			rc = -EIO;
-+	}
-+
-+	return rc;
-+}
- /**
-  * nvdimm_flush - flush any posted write queues between the cpu and pmem media
-  * @nd_region: blk or interleaved pmem region
+ 	errcode_t retval;
+-
+-	*ret_fs = NULL;
+-	if (ctx->superblock && ctx->blocksize) {
+-		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
+-				      flags, ctx->superblock, ctx->blocksize,
+-				      io_ptr, ret_fs);
+-	} else if (ctx->superblock) {
+-		int blocksize;
+-		for (blocksize = EXT2_MIN_BLOCK_SIZE;
+-		     blocksize <= EXT2_MAX_BLOCK_SIZE; blocksize *= 2) {
+-			if (*ret_fs) {
+-				ext2fs_free(*ret_fs);
+-				*ret_fs = NULL;
+-			}
+-			retval = ext2fs_open2(ctx->filesystem_name,
+-					      ctx->io_options, flags,
+-					      ctx->superblock, blocksize,
+-					      io_ptr, ret_fs);
+-			if (!retval)
+-				break;
+-		}
+-	} else
+-		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
+-				      flags, 0, 0, io_ptr, ret_fs);
+-
++	retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
++			   flags, ctx->superblock, ctx->blocksize,
++			   io_ptr, ret_fs);
+ 	if (retval == 0) {
+ 		(*ret_fs)->priv_data = ctx;
+ 		e2fsck_set_bitmap_type(*ret_fs, EXT2FS_BMAP64_RBTREE,
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 85d73e2a..7c16e386 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -114,10 +114,10 @@ static void block_sha_map_free_entry(void *data)
+  *	EXT2_FLAG_64BITS - Allow 64-bit bitfields (needed for large
+  *				filesystems)
   */
--void nvdimm_flush(struct nd_region *nd_region)
-+int generic_nvdimm_flush(struct nd_region *nd_region)
+-errcode_t ext2fs_open2(const char *name, const char *io_options,
+-		       int flags, int superblock,
+-		       unsigned int block_size, io_manager manager,
+-		       ext2_filsys *ret_fs)
++static errcode_t __ext2fs_open2(const char *name, const char *io_options,
++				int flags, int superblock,
++				unsigned int block_size, io_manager manager,
++				ext2_filsys *ret_fs)
  {
- 	struct nd_region_data *ndrd = dev_get_drvdata(&nd_region->dev);
- 	int i, idx;
-@@ -1133,6 +1165,8 @@ void nvdimm_flush(struct nd_region *nd_region)
- 		if (ndrd_get_flush_wpq(ndrd, i, 0))
- 			writeq(1, ndrd_get_flush_wpq(ndrd, i, idx));
- 	wmb();
-+
-+	return 0;
+ 	ext2_filsys	fs;
+ 	errcode_t	retval;
+@@ -515,6 +515,39 @@ cleanup:
+ 	return retval;
  }
- EXPORT_SYMBOL_GPL(nvdimm_flush);
  
-diff --git a/include/linux/libnvdimm.h b/include/linux/libnvdimm.h
-index 097072c..b49632c 100644
---- a/include/linux/libnvdimm.h
-+++ b/include/linux/libnvdimm.h
-@@ -115,6 +115,7 @@ struct nd_mapping_desc {
- 	int position;
- };
- 
-+struct nd_region;
- struct nd_region_desc {
- 	struct resource *res;
- 	struct nd_mapping_desc *mapping;
-@@ -126,6 +127,7 @@ struct nd_region_desc {
- 	int numa_node;
- 	unsigned long flags;
- 	struct device_node *of_node;
-+	int (*flush)(struct nd_region *nd_region);
- };
- 
- struct device;
-@@ -201,7 +203,8 @@ unsigned long nd_blk_memremap_flags(struct nd_blk_region *ndbr);
- unsigned int nd_region_acquire_lane(struct nd_region *nd_region);
- void nd_region_release_lane(struct nd_region *nd_region, unsigned int lane);
- u64 nd_fletcher64(void *addr, size_t len, bool le);
--void nvdimm_flush(struct nd_region *nd_region);
-+int nvdimm_flush(struct nd_region *nd_region, struct bio *bio, bool async);
-+int generic_nvdimm_flush(struct nd_region *nd_region);
- int nvdimm_has_flush(struct nd_region *nd_region);
- int nvdimm_has_cache(struct nd_region *nd_region);
- 
++errcode_t ext2fs_open2(const char *name, const char *io_options,
++		       int flags, int superblock,
++		       unsigned int block_size, io_manager manager,
++		       ext2_filsys *ret_fs)
++{
++	errcode_t retval;
++
++	*ret_fs = NULL;
++	if (superblock && block_size) {
++		retval = __ext2fs_open2(name, io_options,
++				      flags, superblock, block_size,
++				      manager, ret_fs);
++	} else if (superblock) {
++		int block_size;
++
++		for (block_size = EXT2_MIN_BLOCK_SIZE;
++		     block_size <= EXT2_MAX_BLOCK_SIZE; block_size *= 2) {
++			if (*ret_fs) {
++				ext2fs_free(*ret_fs);
++				*ret_fs = NULL;
++			}
++			retval = __ext2fs_open2(name, io_options, flags,
++						superblock, block_size,
++						manager, ret_fs);
++			if (!retval)
++				break;
++		}
++	} else
++		retval = __ext2fs_open2(name, io_options,
++				      flags, 0, 0, manager, ret_fs);
++	return retval;
++}
++
+ /*
+  * Set/get the filesystem data I/O channel.
+  *
+diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+index 384ce925..183e2f6f 100644
+--- a/misc/dumpe2fs.c
++++ b/misc/dumpe2fs.c
+@@ -667,21 +667,8 @@ int main (int argc, char ** argv)
+ 	if (image_dump)
+ 		flags |= EXT2_FLAG_IMAGE_FILE;
+ try_open_again:
+-	if (use_superblock && !use_blocksize) {
+-		for (use_blocksize = EXT2_MIN_BLOCK_SIZE;
+-		     use_blocksize <= EXT2_MAX_BLOCK_SIZE;
+-		     use_blocksize *= 2) {
+-			retval = ext2fs_open (device_name, flags,
+-					      use_superblock,
+-					      use_blocksize, unix_io_manager,
+-					      &fs);
+-			if (!retval)
+-				break;
+-		}
+-	} else {
+-		retval = ext2fs_open(device_name, flags, use_superblock,
+-				     use_blocksize, unix_io_manager, &fs);
+-	}
++	retval = ext2fs_open2(device_name, 0, flags, use_superblock,
++			      use_blocksize, unix_io_manager, &fs);
+ 	flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
+ 	if (retval && !retval_csum) {
+ 		retval_csum = retval;
 -- 
-2.9.3
+2.14.3
