@@ -1,45 +1,44 @@
 Return-Path: <SRS0=jZge=PK=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44938 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729846AbfABQp2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 2 Jan 2019 11:45:28 -0500
-Date: Wed, 2 Jan 2019 17:45:26 +0100
-From: Jan Kara <jack@suse.cz>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Jan Kara <jack@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: Re: [GIT PULL] Ext2, udf, and quota changes for v4.21-rc1
-Message-ID: <20190102164526.GC23089@quack2.suse.cz>
-References: <20181220135252.GB15045@quack2.suse.cz>
- <CAHk-=wgagiSgqXu_53p+Dx-aGfU4w6z1xLzqZTqpbKvg=7ahhg@mail.gmail.com>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53558 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727864AbfABPKL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jan 2019 10:10:11 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 19DA428932
+        for <linux-ext4@vger.kernel.org>; Wed,  2 Jan 2019 15:10:11 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date: Wed, 02 Jan 2019 15:10:10 +0000
+Message-ID: <bug-201631-13602-xKaJXT0Sp2@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAHk-=wgagiSgqXu_53p+Dx-aGfU4w6z1xLzqZTqpbKvg=7ahhg@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 27-12-18 17:02:09, Linus Torvalds wrote:
-> On Thu, Dec 20, 2018 at 5:52 AM Jan Kara <jack@suse.cz> wrote:
-> >
-> > git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git fs_for_4.21-rc1
-> >
-> > to get some ext2 cleanups, a fix for UDF crash on corrupted media, and one
-> > quota locking fix.
-> >
-> > Top of the tree is 2aad26fa0a3d.
-> 
-> This time the tag name was correct, but once again the "Top of tree is
-> 2aad26fa0a3d" was entirely untrue.
-> 
-> Please check and fix your scripting, because it's broken.
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
-Yes, it's broken. I'm really sorry for that (it got confused by me sending
-pull requests before you've tagged v4.20). I've fixed it up and will verify
-it produced correct output next time I'll send the pull request.
+--- Comment #39 from Jan Kara (jack@suse.cz) ---
+(In reply to erhard_f from comment #35)
+> Created attachment 280117 [details]
+> journalctl -k (4.20-rc7 on a Talos II)
+> 
+> Results with latest patch.
 
-								Honza
+Thanks for the results! Erhard, are you sure this kernel was with the latest
+version of the patch? Because the line:
+
+page 137: b_state 21, b_blocknr 2726281, b_mapped 0, b_cleaned 1498120697108,
+now 1498125595648
+
+shows that b_mapped is zero effectively meaning that ext4_block_mkwrite() was
+never called for the page. Which would be very strange for a page that has
+writeable PTE.
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
