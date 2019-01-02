@@ -1,43 +1,36 @@
-Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lf1-f65.google.com ([209.85.167.65]:40381 "EHLO
-        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1730470AbfAORg0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2019 12:36:26 -0500
-Received: by mail-lf1-f65.google.com with SMTP id v5so2677595lfe.7
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 09:36:25 -0800 (PST)
-Received: from mail-lf1-f42.google.com (mail-lf1-f42.google.com. [209.85.167.42])
-        by smtp.gmail.com with ESMTPSA id e14-v6sm654975ljb.31.2019.01.15.09.36.22
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 15 Jan 2019 09:36:23 -0800 (PST)
-Received: by mail-lf1-f42.google.com with SMTP id a16so2697634lfg.3
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 09:36:22 -0800 (PST)
-MIME-Version: 1.0
-References: <20190102174736.GB29127@quack2.suse.cz> <20190108100500.GA15801@quack2.suse.cz>
- <20190115092414.GA4138@quack2.suse.cz>
-In-Reply-To: <20190115092414.GA4138@quack2.suse.cz>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 16 Jan 2019 05:36:06 +1200
-Message-ID: <CAHk-=wiW=4k3iBkDzz5_LuyCRcduZJuk-Vwhz9vqrUMML6WVkg@mail.gmail.com>
-Subject: Re: [GIT PULL] dtype handling cleanup for v4.21-rc1
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
+Return-Path: <SRS0=jZge=PK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:46324 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1729586AbfABPA3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jan 2019 10:00:29 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 70D9F2896D
+        for <linux-ext4@vger.kernel.org>; Wed,  2 Jan 2019 15:00:29 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 198187] jbd2_log_wait_commit hangs
+Date: Wed, 02 Jan 2019 15:00:28 +0000
+Message-ID: <bug-198187-13602-8AtdGefzuM@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-198187-13602@https.bugzilla.kernel.org/>
+References: <bug-198187-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+MIME-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 15, 2019 at 9:24 PM Jan Kara <jack@suse.cz> wrote:
->
-> What has happened to this pull request? It may be too late for this to be
-> merged now but I'd like to understand why it was not merged or rejected...
+https://bugzilla.kernel.org/show_bug.cgi?id=198187
 
-Sorry, initially I left if for later consideration after rc1, and then
-I just forgot about it.
+pkb07815 (pankajcabs@gmail.com) changed:
 
-I didn't see much point to the cleanup when it actually adds lots of
-lines and no actual advantage. The whole dentry type translation
-really is fs-specific and it might just happen to be shared. But why
-share it if it only adds complexity and unnecessary abstraction?
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |pankajcabs@gmail.com
 
-               Linus
+--- Comment #13 from pkb07815 (pankajcabs@gmail.com) ---
+I am facing similar problem with 4.9.86 kernel, do we have the root cause for
+IO hangs?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
