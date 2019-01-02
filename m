@@ -1,121 +1,230 @@
-Return-Path: <SRS0=njA7=PY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60626 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1731741AbfAPMH5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 16 Jan 2019 07:07:57 -0500
-Date: Wed, 16 Jan 2019 13:07:54 +0100
-From: Jan Kara <jack@suse.cz>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Matthew Wilcox <willy@infradead.org>, Jan Kara <jack@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        Phillip Potter <phil@philpotter.co.uk>,
-        Amir Goldstein <amir73il@gmail.com>
-Subject: Re: [GIT PULL] dtype handling cleanup for v4.21-rc1
-Message-ID: <20190116120754.GF26069@quack2.suse.cz>
-References: <20190102174736.GB29127@quack2.suse.cz>
- <20190108100500.GA15801@quack2.suse.cz>
- <20190115092414.GA4138@quack2.suse.cz>
- <CAHk-=wiW=4k3iBkDzz5_LuyCRcduZJuk-Vwhz9vqrUMML6WVkg@mail.gmail.com>
- <20190115180156.GB6310@bombadil.infradead.org>
- <CAHk-=whor678X0A4Mz95KSoG2f0O_F8a5PEQNXLqPxDehs+7Fg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAHk-=whor678X0A4Mz95KSoG2f0O_F8a5PEQNXLqPxDehs+7Fg@mail.gmail.com>
+Return-Path: <SRS0=jZge=PK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pf1-f193.google.com ([209.85.210.193]:38229 "EHLO
+        mail-pf1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726609AbfABSR6 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jan 2019 13:17:58 -0500
+Received: by mail-pf1-f193.google.com with SMTP id q1so15506059pfi.5
+        for <linux-ext4@vger.kernel.org>; Wed, 02 Jan 2019 10:17:57 -0800 (PST)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <921FAE3E-D135-4705-82B4-8B353FED5021@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_EF044333-3AD8-450B-BB56-B8EBFCA786F4";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH v6 1/4] ext2fs: opening filesystem code refactoring
+Date: Wed, 2 Jan 2019 11:17:54 -0700
+In-Reply-To: <20190101210737.87248-2-c17828@cray.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Artem Blagodarenko <artem.blagodarenko@gmail.com>
+References: <20190101210737.87248-1-c17828@cray.com>
+ <20190101210737.87248-2-c17828@cray.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[Added Phillip and Amir to CC (authors)]
 
-On Wed 16-01-19 07:25:01, Linus Torvalds wrote:
-> On Wed, Jan 16, 2019 at 6:01 AM Matthew Wilcox <willy@infradead.org> wrote:
-> >
-> > The ext2/ext4 patches don't show much improvement.  The other patches show
-> > more:
-> >
-> >  fs/nilfs2/dir.c                    | 52 ++++++++++--------------------
-> >  include/uapi/linux/nilfs2_ondisk.h |  1 +
-> >  2 files changed, 18 insertions(+), 35 deletions(-)
-> >
-> > (for example).
-> >
-> > UFS ends up benefiting the most.  You can see the whole diffstat here:
-> >
-> > https://lore.kernel.org/lkml/20181023201952.GA15676@pathfinder/
-> 
-> Well, even with _all_ the filesystems converted, you actually have
-> more lines added than removed by this "cleanup".
-> 
-> Sharing code just isn't a win here.
-> 
-> That said, it's not really the number of lines per se that make me
-> question this, I think that's really more of a symptom than the root
-> cause. The root cause for the newly adde lines is that this whole
-> approach requires that all the numbers are in sync, but then they have
-> different *names*.
-> 
-> Honestly, my gut feel is that I should not pull this in this form.
-> 
-> I have a suggestion: if people want to do this, and actually share the
-> transformation, then the filesystems that use this common code should
-> simply *NOT* have their own private names for the enumerations. They
-> should actually use those standard names.
-> 
-> So if the patch for ext2 (for example) were to entirely get rid of the
-> whole EXT2_FT_DIR define entirely, and ext2 would just use the actual
-> FT_DIR define, than I'd be ok with it. At that point you don't add a
-> pointless and expensive abstraction. At that point you say "ext2 uses
-> the standard values, so ext2 can just use the standard #defines
-> directly".
+--Apple-Mail=_EF044333-3AD8-450B-BB56-B8EBFCA786F4
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-OK, I'm fine with that. We just have to have a big fat warning at FT_
-definitions that these are on-disk values for several filesystems and thus
-cannot ever change. As Amir mentioned in another email, the original
-motivation for this is that quite a few filesystems copy-pasted ext2 code
-and that is slightly buggy. So I still do think there's value in this
-cleanup excercise.
+On Jan 1, 2019, at 2:07 PM, Artem Blagodarenko =
+<artem.blagodarenko@gmail.com> wrote:
+>=20
+> There are similar opening filesystem code in different utilities.
+>=20
+> The patch moves improved handling from try_open_fs()
+> into ext2fs_open(). This function make one of the action
+> based on parameters:
+> 1) open filesystem with given superblock, superblock size
+> 2) open filesystem with given superblock, but try to
+> find right block size
+> 3) open filesystem with default superblock and block size
+>=20
+> Signed-off-by: Artem Blagodarenko <c17828@cray.com>
 
-> See my argument?
-> 
-> I think it is completely disgsting to have stuff like this:
-> 
-> + BUILD_BUG_ON(EXT2_FT_UNKNOWN != FT_UNKNOWN);
-> + BUILD_BUG_ON(EXT2_FT_REG_FILE != FT_REG_FILE);
-> + BUILD_BUG_ON(EXT2_FT_DIR != FT_DIR);
-> + BUILD_BUG_ON(EXT2_FT_CHRDEV != FT_CHRDEV);
-> + BUILD_BUG_ON(EXT2_FT_BLKDEV != FT_BLKDEV);
-> + BUILD_BUG_ON(EXT2_FT_FIFO != FT_FIFO);
-> + BUILD_BUG_ON(EXT2_FT_SOCK != FT_SOCK);
-> + BUILD_BUG_ON(EXT2_FT_SYMLINK != FT_SYMLINK);
-> + BUILD_BUG_ON(EXT2_FT_MAX != FT_MAX);
-> 
-> the above is just *garbage*.
-> 
-> If you fundamentally need the values to be the same, then you simply
-> shouldn't have two different set of #defines.
-> 
-> Get rid of the EXT2_FT_xyz enumeration entirely, and the whole
-> craziness goes away.
-> 
-> > We'd see a lot more improvement in line count if Philip weren't quite
-> > so paranoid about checking FOOFS_FT_* == FT_* at build time; eg for btrfs:
-> 
-> Exact same issue.
-> 
-> So the more I look at this, the less I like it.
-> 
-> But if people are actually willing to use *truly* shared code, instead
-> of using their own values and then having the crazy "they need to
-> match", then it would be a different issue. As it is, I think the
-> patch series adds complexity rather than helping anything.
-> 
-> More complexity and more lines of code? There is absolutely zero upside.
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
-OK, understood. Phillip, could you please rework the patches as Linus
-suggests? Thanks!
+> ---
+> e2fsck/unix.c       | 28 +++-------------------------
+> lib/ext2fs/openfs.c | 41 +++++++++++++++++++++++++++++++++++++----
+> misc/dumpe2fs.c     | 17 ++---------------
+> 3 files changed, 42 insertions(+), 44 deletions(-)
+>=20
+> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+> index 5b3552ec..ddcf52a4 100644
+> --- a/e2fsck/unix.c
+> +++ b/e2fsck/unix.c
+> @@ -1151,31 +1151,9 @@ static errcode_t try_open_fs(e2fsck_t ctx, int =
+flags, io_manager io_ptr,
+> 			     ext2_filsys *ret_fs)
+> {
+> 	errcode_t retval;
+> -
+> -	*ret_fs =3D NULL;
+> -	if (ctx->superblock && ctx->blocksize) {
+> -		retval =3D ext2fs_open2(ctx->filesystem_name, =
+ctx->io_options,
+> -				      flags, ctx->superblock, =
+ctx->blocksize,
+> -				      io_ptr, ret_fs);
+> -	} else if (ctx->superblock) {
+> -		int blocksize;
+> -		for (blocksize =3D EXT2_MIN_BLOCK_SIZE;
+> -		     blocksize <=3D EXT2_MAX_BLOCK_SIZE; blocksize *=3D =
+2) {
+> -			if (*ret_fs) {
+> -				ext2fs_free(*ret_fs);
+> -				*ret_fs =3D NULL;
+> -			}
+> -			retval =3D ext2fs_open2(ctx->filesystem_name,
+> -					      ctx->io_options, flags,
+> -					      ctx->superblock, =
+blocksize,
+> -					      io_ptr, ret_fs);
+> -			if (!retval)
+> -				break;
+> -		}
+> -	} else
+> -		retval =3D ext2fs_open2(ctx->filesystem_name, =
+ctx->io_options,
+> -				      flags, 0, 0, io_ptr, ret_fs);
+> -
+> +	retval =3D ext2fs_open2(ctx->filesystem_name, ctx->io_options,
+> +			   flags, ctx->superblock, ctx->blocksize,
+> +			   io_ptr, ret_fs);
+> 	if (retval =3D=3D 0) {
+> 		(*ret_fs)->priv_data =3D ctx;
+> 		e2fsck_set_bitmap_type(*ret_fs, EXT2FS_BMAP64_RBTREE,
+> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+> index 85d73e2a..7c16e386 100644
+> --- a/lib/ext2fs/openfs.c
+> +++ b/lib/ext2fs/openfs.c
+> @@ -114,10 +114,10 @@ static void block_sha_map_free_entry(void *data)
+>  *	EXT2_FLAG_64BITS - Allow 64-bit bitfields (needed for large
+>  *				filesystems)
+>  */
+> -errcode_t ext2fs_open2(const char *name, const char *io_options,
+> -		       int flags, int superblock,
+> -		       unsigned int block_size, io_manager manager,
+> -		       ext2_filsys *ret_fs)
+> +static errcode_t __ext2fs_open2(const char *name, const char =
+*io_options,
+> +				int flags, int superblock,
+> +				unsigned int block_size, io_manager =
+manager,
+> +				ext2_filsys *ret_fs)
+> {
+> 	ext2_filsys	fs;
+> 	errcode_t	retval;
+> @@ -515,6 +515,39 @@ cleanup:
+> 	return retval;
+> }
+>=20
+> +errcode_t ext2fs_open2(const char *name, const char *io_options,
+> +		       int flags, int superblock,
+> +		       unsigned int block_size, io_manager manager,
+> +		       ext2_filsys *ret_fs)
+> +{
+> +	errcode_t retval;
+> +
+> +	*ret_fs =3D NULL;
+> +	if (superblock && block_size) {
+> +		retval =3D __ext2fs_open2(name, io_options,
+> +				      flags, superblock, block_size,
+> +				      manager, ret_fs);
+> +	} else if (superblock) {
+> +		int block_size;
+> +
+> +		for (block_size =3D EXT2_MIN_BLOCK_SIZE;
+> +		     block_size <=3D EXT2_MAX_BLOCK_SIZE; block_size *=3D =
+2) {
+> +			if (*ret_fs) {
+> +				ext2fs_free(*ret_fs);
+> +				*ret_fs =3D NULL;
+> +			}
+> +			retval =3D __ext2fs_open2(name, io_options, =
+flags,
+> +						superblock, block_size,
+> +						manager, ret_fs);
+> +			if (!retval)
+> +				break;
+> +		}
+> +	} else
+> +		retval =3D __ext2fs_open2(name, io_options,
+> +				      flags, 0, 0, manager, ret_fs);
+> +	return retval;
+> +}
+> +
+> /*
+>  * Set/get the filesystem data I/O channel.
+>  *
+> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
+> index 384ce925..183e2f6f 100644
+> --- a/misc/dumpe2fs.c
+> +++ b/misc/dumpe2fs.c
+> @@ -667,21 +667,8 @@ int main (int argc, char ** argv)
+> 	if (image_dump)
+> 		flags |=3D EXT2_FLAG_IMAGE_FILE;
+> try_open_again:
+> -	if (use_superblock && !use_blocksize) {
+> -		for (use_blocksize =3D EXT2_MIN_BLOCK_SIZE;
+> -		     use_blocksize <=3D EXT2_MAX_BLOCK_SIZE;
+> -		     use_blocksize *=3D 2) {
+> -			retval =3D ext2fs_open (device_name, flags,
+> -					      use_superblock,
+> -					      use_blocksize, =
+unix_io_manager,
+> -					      &fs);
+> -			if (!retval)
+> -				break;
+> -		}
+> -	} else {
+> -		retval =3D ext2fs_open(device_name, flags, =
+use_superblock,
+> -				     use_blocksize, unix_io_manager, =
+&fs);
+> -	}
+> +	retval =3D ext2fs_open2(device_name, 0, flags, use_superblock,
+> +			      use_blocksize, unix_io_manager, &fs);
+> 	flags |=3D EXT2_FLAG_IGNORE_CSUM_ERRORS;
+> 	if (retval && !retval_csum) {
+> 		retval_csum =3D retval;
+> --
+> 2.14.3
+>=20
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_EF044333-3AD8-450B-BB56-B8EBFCA786F4
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlwtAFMACgkQcqXauRfM
+H+DMmRAAkK89HiQeFB+htAQh1AqaYDBGyxuDh2qn7ztQZlCEeywYv8Hx/HszrFQy
+JeSszHA1u16xFQhGfyml89WueuxoZbw2R5ZyAcEGilKifYypfckmPQ+pUuAPTYSo
+4M0l7R9fLkYHePBhd7SuhIvee3XlWiqyvZbojo3TH2vOTVUqCH5KYLxu8uHFZ583
+U4Lu9HcJFbz4Wj5EmuyXo4TuVHeLW0zkw6bi+aifQ1D1UVZO0aNESTxicU4PCDzF
+jmmNvo3U2KtZUAM2TSsF5SdxVxFmkFSccid6quEFXfjY/2PZLfpaVKygYxRootNZ
+0MqTwKqcVtskzUAQxzrFmsqFz35XyMjZkDCILSE7Ze8rXeXGE6sbOOUvNva6cUTV
+drsyXPLFmhjWb37AnDggFL3XEzGVHTX5V8UrTbQJTFtlI5ZlKPxlUJwaTiv9iC3k
+a3udtmvhIsKnxYP7V/7Ra0QQyW6eOyHv2BQEGeZpL+aJ+sI93+6/2H+LcMS6Wmdp
+CDCAIFNL5oA0rEJmiPPhgHFw28xHD8WIRza8Yu+38Bd9Jh6HxdrVTnf/hiyiBelL
+20VmmofpIPzy7kjnPLHqqTWUtENZhGb7eOcr4uaZDmKuDBMOr4h8pW+AAO5CwEf6
+8ZYx5X3Jf2IdEceJvD2u9H3ZyO1tYo6BLAU5pHORtd1odA5m6n4=
+=Xfei
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_EF044333-3AD8-450B-BB56-B8EBFCA786F4--
