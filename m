@@ -1,39 +1,40 @@
-Return-Path: <SRS0=tdqe=PQ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:50102 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727772AbfAHXCN (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jan 2019 18:02:13 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9B64F28E22
-        for <linux-ext4@vger.kernel.org>; Tue,  8 Jan 2019 23:02:12 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
+Return-Path: <SRS0=jZge=PK=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from [188.214.93.119] ([188.214.93.119]:48071 "EHLO
+        xtremewashgear.com" rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1729741AbfABO0e (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jan 2019 09:26:34 -0500
 To: linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date: Tue, 08 Jan 2019 23:02:12 +0000
-Message-ID: <bug-201631-13602-N7V4gi6jc0@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Subject: For your photos again
+Message-ID: <84ba78d9b987991a0939d455ed9fe432@horsetackco.com>
+Date: Wed, 02 Jan 2019 11:55:22 +0100
+From: "Lucy" <tederainteerrpatnloak@verizon.net>
+Reply-To: sharetelco@aliyun.com
 MIME-Version: 1.0
+Content-Type: text/plain; format=flowed; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+We have got a team of professional to do image editing service and it will
+help you submitted your project timely.
 
-erhard_f@mailbox.org changed:
+We have 20 image editors and if you want to know more about us please reply
+back.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
- Attachment #279715|0                           |1
-        is obsolete|                            |
+If you want to check our quality of work please send us a photo with
+instruction and we will work on it.
 
---- Comment #42 from erhard_f@mailbox.org ---
-Created attachment 280347
-  --> https://bugzilla.kernel.org/attachment.cgi?id=280347&action=edit
-kernel .config (5.0-rc1, Talos II)
+Our Services:
+Image cutting out
+Color, brightness
+Beauty, Model retouching, skin retouching.
+Image cropping and resizing
+Correcting the shape and size
 
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Our Service is 24-48 hours but we can deliver the images sooner in case of
+emergency.
+
+We do unlimited revisions until you are satisfied with the work.
+
+Thanks,
+Lucy King
