@@ -1,88 +1,78 @@
-Return-Path: <SRS0=xLGb=PZ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-yb1-f193.google.com ([209.85.219.193]:45046 "EHLO
-        mail-yb1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726739AbfAQLRV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2019 06:17:21 -0500
+Return-Path: <SRS0=m/y1=PL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:34550 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729118AbfACMG4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 3 Jan 2019 07:06:56 -0500
+Subject: Re: [PATCH] ext4: Replace opencoded i_writecount usage with
+ inode_is_open_for_write
+To: tytso@mit.edu
+Cc: adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+References: <20181211082355.19841-1-nborisov@suse.com>
+From: Nikolay Borisov <nborisov@suse.com>
+Message-ID: <403814af-e9af-3f95-653f-d6ab572d49f3@suse.com>
+Date: Thu, 3 Jan 2019 14:06:52 +0200
 MIME-Version: 1.0
-References: <20190102174736.GB29127@quack2.suse.cz> <20190108100500.GA15801@quack2.suse.cz>
- <20190115092414.GA4138@quack2.suse.cz> <CAHk-=wiW=4k3iBkDzz5_LuyCRcduZJuk-Vwhz9vqrUMML6WVkg@mail.gmail.com>
- <20190115180156.GB6310@bombadil.infradead.org> <CAHk-=whor678X0A4Mz95KSoG2f0O_F8a5PEQNXLqPxDehs+7Fg@mail.gmail.com>
- <20190116120754.GF26069@quack2.suse.cz> <CAA=Fs0mrvr2mErpG-DBLW7Kg2xUXU_1+J4Eg4Fi+T=x5sH7BDQ@mail.gmail.com>
- <20190116165147.GI26069@quack2.suse.cz> <CAOQ4uxipOf-MH3eC8fbV6ZrF63thq0+PyBpoNMzv=WWF_=vs2w@mail.gmail.com>
- <20190117093555.GC9378@quack2.suse.cz>
-In-Reply-To: <20190117093555.GC9378@quack2.suse.cz>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Thu, 17 Jan 2019 13:17:08 +0200
-Message-ID: <CAOQ4uxgrTnuP7bVx1Ssv__R0cX9Ayzjx5Uc+6cq4XSp-Qa95CA@mail.gmail.com>
-Subject: Re: [GIT PULL] dtype handling cleanup for v4.21-rc1
-To: Phillip Potter <phil@philpotter.co.uk>
-Cc: Jan Kara <jack@suse.cz>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "cc: Matthew Wilcox" <willy@infradead.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Ext4 <linux-ext4@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20181211082355.19841-1-nborisov@suse.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 17, 2019 at 11:35 AM Jan Kara <jack@suse.cz> wrote:
->
-> On Wed 16-01-19 18:56:17, Amir Goldstein wrote:
-> > On Wed, Jan 16, 2019 at 6:51 PM Jan Kara <jack@suse.cz> wrote:
-> > >
-> > > On Wed 16-01-19 16:34:36, Phillip Potter wrote:
-> > > > Dear Jan,
-> > > >
-> > > > I am happy to rework the patches, all fair comment. Slight problem
-> > > > being my computer is in a box right now as I've just moved house. I
-> > > > will get this done in the next few days if that's ok?
-> > >
-> > > Sure, no problem. Patches won't make it in this release cycle so we have
-> > > like three weeks to get them ready for the next merge window.
-> > >
-> >
-> > Also, and Jan will correct me if I am wrong.
-> > I think that reworking only the common and ext2 patches would
-> > be sufficient for this cycle.
->
-> Yes, that's also true.
->
-> > You can prepare the rest of the patches for next cycle after
-> > the common patch has landed.
->
-> Correct, since the plan is for these to land through other maintainers'
-> trees. But still it would be nice if we had them earlier just to see of
-> other maintainers don't seriously oppose the idea. To that end it is
-> probably good to reference the discussion with Linus in the cover letter
-> and the email with common infrastructure, explaining why converting to
-> common defines instead of keeping filesystem specific ones was done.
->
 
-Phillip,
 
-While I see no problem with Linus' proposal to get rid of EXT2_FT_*
-completely. That may be practical for EXOFS_FT_*, F2FS_FT_*, ...
-But some fs maintainers may prefer to define (not re-define) the
-fs specific constants, e.g.:
+On 11.12.18 г. 10:23 ч., Nikolay Borisov wrote:
+> There is a function which clearly conveys the objective of checking
+> i_writecount. Additionally the usage in ext4_mb_initialize_context was
+> wrong, since a node would have wrongfully been reported as writable if
+> i_writecount had a negative value (MMAP_DENY_WRITE).
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Nikolay Borisov <nborisov@suse.com>
 
-#define EXT4_FT_DIR FT_DIR
+Gentle ping
 
-If for no other reason, it will result in slightly less code churn.
-
-However, note that you may NOT get rid of defines in uapi headers:
-BTRFS_FT_*, NILFS_FT_*
-and defining them to the common constant will require exporting
-common constants to uapi headers.
-That is one mess you do not want to get yourself into.
-
-So I'm afraid for btrfs/nilfs, the "disgusting" BUILD_BUG_ON()
-statements in the only practical outlet if they want to use the common
-conversions code.
-
-If you prepare the patch series with several options as described
-above (choose one option per fs), then later maintainers can use
-either option when applying the individual patches.
-
-Thanks,
-Amir.
+> ---
+>  fs/ext4/inode.c   | 2 +-
+>  fs/ext4/mballoc.c | 7 +++----
+>  2 files changed, 4 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 22a9d8159720..04e5bc0b5c8d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -391,7 +391,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
+>  	 * inode's preallocations.
+>  	 */
+>  	if ((ei->i_reserved_data_blocks == 0) &&
+> -	    (atomic_read(&inode->i_writecount) == 0))
+> +	    !inode_is_open_for_write(inode))
+>  		ext4_discard_preallocations(inode);
+>  }
+>  
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index e2248083cdca..6fb76d408093 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4176,9 +4176,8 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+>  	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
+>  		>> bsbits;
+>  
+> -	if ((size == isize) &&
+> -	    !ext4_fs_is_busy(sbi) &&
+> -	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
+> +	if ((size == isize) && !ext4_fs_is_busy(sbi) &&
+> +	    !inode_is_open_for_write(ac->ac_inode)) {
+>  		ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
+>  		return;
+>  	}
+> @@ -4258,7 +4257,7 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
+>  			(unsigned) ar->goal, ac->ac_flags, ac->ac_2order,
+>  			(unsigned) ar->lleft, (unsigned) ar->pleft,
+>  			(unsigned) ar->lright, (unsigned) ar->pright,
+> -			atomic_read(&ar->inode->i_writecount) ? "" : "non-");
+> +			inode_is_open_for_write(ar->inode) ? "" : "non-");
+>  	return 0;
+>  
+>  }
+> 
