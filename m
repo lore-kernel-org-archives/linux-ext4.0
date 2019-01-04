@@ -1,139 +1,93 @@
-Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54038 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726886AbfAOCTZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 14 Jan 2019 21:19:25 -0500
-Date: Mon, 14 Jan 2019 21:19:09 -0500
-From: "Michael S. Tsirkin" <mst@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Dan Williams <dan.j.williams@intel.com>,
-        Pankaj Gupta <pagupta@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        KVM list <kvm@vger.kernel.org>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        linux-nvdimm <linux-nvdimm@ml01.01.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        virtualization@lists.linux-foundation.org,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Rik van Riel <riel@surriel.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Kevin Wolf <kwolf@redhat.com>,
-        Paolo Bonzini <pbonzini@redhat.com>,
-        Ross Zwisler <zwisler@kernel.org>,
-        vishal l verma <vishal.l.verma@intel.com>,
-        dave jiang <dave.jiang@intel.com>,
-        David Hildenbrand <david@redhat.com>,
-        jmoyer <jmoyer@redhat.com>,
-        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Jason Wang <jasowang@redhat.com>, lcapitulino@redhat.com,
-        Igor Mammedov <imammedo@redhat.com>,
-        Eric Blake <eblake@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
-        adilger kernel <adilger.kernel@dilger.ca>,
-        darrick wong <darrick.wong@oracle.com>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>
-Subject: Re: [PATCH v3 0/5] kvm "virtio pmem" device
-Message-ID: <20190114205031-mutt-send-email-mst@kernel.org>
-References: <20190109144736.17452-1-pagupta@redhat.com>
- <20190110012617.GA4205@dastard>
- <1326478078.61913951.1547192704870.JavaMail.zimbra@redhat.com>
- <20190113232902.GD4205@dastard>
- <20190113233820.GX6310@bombadil.infradead.org>
- <942065073.64011540.1547450140670.JavaMail.zimbra@redhat.com>
- <20190114212501.GG4205@dastard>
- <CAPcyv4jtPcLV-s0sKNHwwk0ug7GLBV6699dpm1h3r2xSo879dg@mail.gmail.com>
- <20190114222132.GH4205@dastard>
+Return-Path: <SRS0=AL/t=PM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-vs1-f65.google.com ([209.85.217.65]:43768 "EHLO
+        mail-vs1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726021AbfADUlh (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2019 15:41:37 -0500
+Received: by mail-vs1-f65.google.com with SMTP id x1so23368527vsc.10
+        for <linux-ext4@vger.kernel.org>; Fri, 04 Jan 2019 12:41:36 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190114222132.GH4205@dastard>
+References: <20181219071420.GC2628@infradead.org> <20181219021953.GD31274@dastard>
+ <20181219193005.GB6889@mit.edu> <20181219213552.GO6311@dastard>
+ <20181220220158.GC2360@mit.edu> <20181221070447.GA21687@infradead.org>
+ <20181221154714.GA26547@mit.edu> <CAHk-=wgdzWgoPSuHeVcqmGE1hB3Gan72r2_AhtC14e60=z45yg@mail.gmail.com>
+ <20181222041712.GC26547@mit.edu> <20181223041007.GL10600@bombadil.infradead.org>
+ <20181223044553.GG26547@mit.edu>
+In-Reply-To: <20181223044553.GG26547@mit.edu>
+From: Daniel Colascione <dancol@google.com>
+Date: Fri, 4 Jan 2019 12:41:24 -0800
+Message-ID: <CAKOZuesHHSRCzQEtGEQbm7v7j53hAjkJq-8Pgcyk+M40o-ia0g@mail.gmail.com>
+Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
+To: "Theodore Y. Ts'o" <tytso@mit.edu>,
+        Matthew Wilcox <willy@infradead.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Dave Chinner <david@fromorbit.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Biggers <ebiggers@kernel.org>,
+        linux-fscrypt@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-integrity@vger.kernel.org,
+        Linux List Kernel Mailing <linux-kernel@vger.kernel.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Victor Hsieh <victorhsieh@google.com>,
+        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 15, 2019 at 09:21:32AM +1100, Dave Chinner wrote:
-> On Mon, Jan 14, 2019 at 01:35:57PM -0800, Dan Williams wrote:
-> > On Mon, Jan 14, 2019 at 1:25 PM Dave Chinner <david@fromorbit.com> wrote:
-> > >
-> > > On Mon, Jan 14, 2019 at 02:15:40AM -0500, Pankaj Gupta wrote:
-> > > >
-> > > > > > Until you have images (and hence host page cache) shared between
-> > > > > > multiple guests. People will want to do this, because it means they
-> > > > > > only need a single set of pages in host memory for executable
-> > > > > > binaries rather than a set of pages per guest. Then you have
-> > > > > > multiple guests being able to detect residency of the same set of
-> > > > > > pages. If the guests can then, in any way, control eviction of the
-> > > > > > pages from the host cache, then we have a guest-to-guest information
-> > > > > > leak channel.
-> > > > >
-> > > > > I don't think we should ever be considering something that would allow a
-> > > > > guest to evict page's from the host's pagecache [1].  The guest should
-> > > > > be able to kick its own references to the host's pagecache out of its
-> > > > > own pagecache, but not be able to influence whether the host or another
-> > > > > guest has a read-only mapping cached.
-> > > > >
-> > > > > [1] Unless the guest is allowed to modify the host's file; obviously
-> > > > > truncation, holepunching, etc are going to evict pages from the host's
-> > > > > page cache.
-> > > >
-> > > > This is so correct. Guest does not not evict host page cache pages directly.
-> > >
-> > > They don't right now.
-> > >
-> > > But someone is going to end up asking for discard to work so that
-> > > the guest can free unused space in the underlying spares image (i.e.
-> > > make use of fstrim or mount -o discard) because they have workloads
-> > > that have bursts of space usage and they need to trim the image
-> > > files afterwards to keep their overall space usage under control.
-> > >
-> > > And then....
-> > 
-> > ...we reject / push back on that patch citing the above concern.
-> 
-> So at what point do we draw the line?
-> 
-> We're allowing writable DAX mappings, but as I've pointed out that
-> means we are going to be allowing  a potential information leak via
-> files with shared extents to be directly mapped and written to.
-> 
-> But we won't allow useful admin operations that allow better
-> management of host side storage space similar to how normal image
-> files are used by guests because it's an information leak vector?
-> 
-> That's splitting some really fine hairs there...
+On Sat, Dec 22, 2018 at 8:46 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+>
+> On Sat, Dec 22, 2018 at 08:10:07PM -0800, Matthew Wilcox wrote:
+> > Pretty much every file format has the ability to put arbitrary blocks
+> > of information into a file somewhere the tools which don't know about
+> > it will skip it.  For example, ZIP "includes an extra field facility
+> > within file headers, which can be used to store extra data not defined
+> > by existing ZIP specifications, and which allow compliant archivers tha=
+t
+> > do not recognize the fields to safely skip them. Header IDs 0=E2=80=933=
+1 are
+> > reserved for use by PKWARE. The remaining IDs can be used by third-part=
+y
+> > vendors for proprietary usage. " (Wikipedia)
+> >
+> > ELF, PNG, PDF and many other formats have the ability to put data
+> > _somewhere_.  It might not be at the tail of the file, but there's
+> > somewhere to do it.
+> >
+> > (I appreciate this isn't what Linus is asking for, but I'm pointing out
+> > that this is by no means as intractable as you make it sound.)
+>
+> That design would require the fs-verity code to know the type of eacho
+> file, and where to find the in-band Merkle tree for each file type
+> that we wanted to support.  And if you wanted to use fs-verity to
+> protect a sudoers text configuration file (for example), we'd have to
+> teach sudo how to ignore the userspace visible Merkle tree.
 
-May I summarize that th security implications need to
-be documented?
+I'm pretty late to the game, but I just want to bring up one approach
+that I'm not sure people have previously considered. You can't put the
+verification blob in an xattr due to xattr size limits, but you *can*
+put a filename in an xattr. What if, at open time, fs-verity looked
+for a specially-named xattr attached to a file, resolved that name
+like a symlink target, opened the pointed-to file, and just used
+*that* as the authentication blob? It'd also be possible to teach
+unlink to delete the pointed-to file when the pointer file is deleted
+--- sort of like a simple and stupid kind of data fork.
 
-In fact that would make a fine security implications section
-in the device specification.
+For example, if you wanted to secure /usr/bin/emacs, you could set an
+security.fsverify.verification_file xattr (in the system namespace
+because the xattr has special semantics) to
+"/.verification-blobs/@usr@bin@emacs.hashtree" or something like that.
+Then, open(2) on /usr/bin/emacs would, internally to VFS, also open
+/.verification-blobs/@usr@bin@emacs.hashtree and read verification
+data from it, transparently to both users and the underlying
+filesystem. If someone deleted /usr/bin/emacs, VFS would automatically
+delete /.verification-blobs/@usr@bin@emacs.hashtree. If
+/.verification-blobs/@usr@bin@emacs.hashtree didn't exist at time of
+open(2) of /usr/bin/emacs, or couldn't be opened for whatever reason,
+the open(2) of /usr/bin/emacs would fail.
 
-
-
-
-
-> > > > In case of virtio-pmem & DAX, guest clears guest page cache exceptional entries.
-> > > > Its solely decision of host to take action on the host page cache pages.
-> > > >
-> > > > In case of virtio-pmem, guest does not modify host file directly i.e don't
-> > > > perform hole punch & truncation operation directly on host file.
-> > >
-> > > ... this will no longer be true, and the nuclear landmine in this
-> > > driver interface will have been armed....
-> > 
-> > I agree with the need to be careful when / if explicit cache control
-> > is added, but that's not the case today.
-> 
-> "if"?
-> 
-> I expect it to be "when", not if. Expect the worst, plan for it now.
-> 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
+ISTM that a scheme like this would give you some of the advantages of
+jumbo xattrs, but with much less implementation complexity. If
+someone's proposed something like this before, sorry for the noise.
