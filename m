@@ -1,40 +1,47 @@
-Return-Path: <SRS0=NmFT=PW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from xavier.telenet-ops.be ([195.130.132.52]:54566 "EHLO
-        xavier.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726478AbfANLAt (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2019 06:00:49 -0500
-From: Geert Uytterhoeven <geert+renesas@glider.be>
-To: Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Geert Uytterhoeven <geert+renesas@glider.be>
-Subject: [PATCH] ext4: Change debugging support help prefix from EXT4 to Ext4
-Date: Mon, 14 Jan 2019 12:00:45 +0100
-Message-Id: <20190114110045.10013-1-geert+renesas@glider.be>
+Return-Path: <SRS0=sDDi=PO=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-eopbgr680118.outbound.protection.outlook.com ([40.107.68.118]:39782
+        "EHLO NAM04-BN3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726414AbfAFNjv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 6 Jan 2019 08:39:51 -0500
+Date: Sun, 6 Jan 2019 08:39:43 -0500
+From: "Theodore Y. Ts'o" <tytso@mit.edu>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] ext4 bug fixes for 4.21
+Message-ID: <20190106133943.GA10099@mit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-All other configuration options for the ext* family of file systems use
-"Ext%u" instead of "EXT%u".
+The following changes since commit 18f2c4fcebf2582f96cbd5f2238f4f354a0e4847:
 
-Fixes: 6ba495e9259cd9a0 ("ext4: Add configurable run-time mballoc debugging")
-Signed-off-by: Geert Uytterhoeven <geert+renesas@glider.be>
----
- fs/ext4/Kconfig | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+  ext4: check for shutdown and r/o file system in ext4_write_inode() (2018-12-19 14:36:58 -0500)
 
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 031e5a82d556dbe9..06f77ca7f36ee737 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -97,7 +97,7 @@ config EXT4_FS_SECURITY
- 	  extended attributes for file security labels, say N.
- 
- config EXT4_DEBUG
--	bool "EXT4 debugging support"
-+	bool "Ext4 debugging support"
- 	depends on EXT4_FS
- 	help
- 	  Enables run-time debugging support for the ext4 filesystem.
--- 
-2.17.1
+are available in the Git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+
+for you to fetch changes up to 191ce17876c9367819c4b0a25b503c0f6d9054d8:
+
+  ext4: fix special inode number checks in __ext4_iget() (2018-12-31 22:34:31 -0500)
+
+----------------------------------------------------------------
+Fix a number of ext4 bugs.
+
+----------------------------------------------------------------
+Theodore Ts'o (6):
+      ext4: make sure enough credits are reserved for dioread_nolock writes
+      ext4: fix a potential fiemap/page fault deadlock w/ inline_data
+      ext4: avoid kernel warning when writing the superblock to a dead device
+      ext4: use ext4_write_inode() when fsyncing w/o a journal
+      ext4: track writeback errors using the generic tracking infrastructure
+      ext4: fix special inode number checks in __ext4_iget()
+
+ fs/ext4/fsync.c  | 16 ++++++++++++----
+ fs/ext4/inline.c |  6 +++---
+ fs/ext4/inode.c  |  5 +++--
+ fs/ext4/super.c  |  2 +-
+ 4 files changed, 19 insertions(+), 10 deletions(-)
