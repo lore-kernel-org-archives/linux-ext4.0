@@ -1,103 +1,59 @@
-Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51512 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:15115 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725789AbfAKLDY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Jan 2019 06:03:24 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V13 06/19] block: introduce bio_for_each_bvec() and rq_for_each_bvec()
-Date: Fri, 11 Jan 2019 19:01:14 +0800
-Message-Id: <20190111110127.21664-7-ming.lei@redhat.com>
-In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
-References: <20190111110127.21664-1-ming.lei@redhat.com>
+        id S1732080AbfAIOuR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 9 Jan 2019 09:50:17 -0500
+From: Pankaj Gupta <pagupta@redhat.com>
+To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
+        qemu-devel@nongnu.org, linux-nvdimm@ml01.01.org,
+        linux-fsdevel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        linux-acpi@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+Cc: jack@suse.cz, stefanha@redhat.com, dan.j.williams@intel.com,
+        riel@surriel.com, nilal@redhat.com, kwolf@redhat.com,
+        pbonzini@redhat.com, zwisler@kernel.org, vishal.l.verma@intel.com,
+        dave.jiang@intel.com, david@redhat.com, jmoyer@redhat.com,
+        xiaoguangrong.eric@gmail.com, hch@infradead.org, mst@redhat.com,
+        jasowang@redhat.com, lcapitulino@redhat.com, imammedo@redhat.com,
+        eblake@redhat.com, willy@infradead.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, darrick.wong@oracle.com,
+        rjw@rjwysocki.net, pagupta@redhat.com
+Subject: [PATCH v3 5/5] xfs: disable map_sync for virtio pmem
+Date: Wed,  9 Jan 2019 20:17:36 +0530
+Message-Id: <20190109144736.17452-6-pagupta@redhat.com>
+In-Reply-To: <20190109144736.17452-1-pagupta@redhat.com>
+References: <20190109144736.17452-1-pagupta@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-bio_for_each_bvec() is used for iterating over multi-page bvec for bio
-split & merge code.
+Virtio pmem provides asynchronous host page cache flush
+mechanism. we don't support 'MAP_SYNC' with virtio pmem 
+and xfs.
 
-rq_for_each_bvec() can be used for drivers which may handle the
-multi-page bvec directly, so far loop is one perfect use case.
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
+Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
 ---
- include/linux/bio.h    | 10 ++++++++++
- include/linux/blkdev.h |  4 ++++
- include/linux/bvec.h   |  7 +++++++
- 3 files changed, 21 insertions(+)
+ fs/xfs/xfs_file.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 16a65361535f..06888d45beb4 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -156,6 +156,16 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
- #define bio_for_each_segment(bvl, bio, iter)				\
- 	__bio_for_each_segment(bvl, bio, iter, (bio)->bi_iter)
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index e474250..eae4aa4 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -1190,6 +1190,14 @@ xfs_file_mmap(
+ 	if (!IS_DAX(file_inode(filp)) && (vma->vm_flags & VM_SYNC))
+ 		return -EOPNOTSUPP;
  
-+#define __bio_for_each_bvec(bvl, bio, iter, start)		\
-+	for (iter = (start);						\
-+	     (iter).bi_size &&						\
-+		((bvl = bvec_iter_bvec((bio)->bi_io_vec, (iter))), 1); \
-+	     bio_advance_iter((bio), &(iter), (bvl).bv_len))
++	/* We don't support synchronous mappings with guest direct access
++	 * and virtio based host page cache mechanism.
++	 */
++	if (IS_DAX(file_inode(filp)) && virtio_pmem_host_cache_enabled(
++		xfs_find_daxdev_for_inode(file_inode(filp))) &&
++					(vma->vm_flags & VM_SYNC))
++		return -EOPNOTSUPP;
 +
-+/* iterate over multi-page bvec */
-+#define bio_for_each_bvec(bvl, bio, iter)			\
-+	__bio_for_each_bvec(bvl, bio, iter, (bio)->bi_iter)
-+
- #define bio_iter_last(bvec, iter) ((iter).bi_size == (bvec).bv_len)
- 
- static inline unsigned bio_segments(struct bio *bio)
-diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 338604dff7d0..7f4ca073e2f3 100644
---- a/include/linux/blkdev.h
-+++ b/include/linux/blkdev.h
-@@ -797,6 +797,10 @@ struct req_iterator {
- 	__rq_for_each_bio(_iter.bio, _rq)			\
- 		bio_for_each_segment(bvl, _iter.bio, _iter.iter)
- 
-+#define rq_for_each_bvec(bvl, _rq, _iter)			\
-+	__rq_for_each_bio(_iter.bio, _rq)			\
-+		bio_for_each_bvec(bvl, _iter.bio, _iter.iter)
-+
- #define rq_iter_last(bvec, _iter)				\
- 		(_iter.bio->bi_next == NULL &&			\
- 		 bio_iter_last(bvec, _iter.iter))
-diff --git a/include/linux/bvec.h b/include/linux/bvec.h
-index babc6316c117..d441486db605 100644
---- a/include/linux/bvec.h
-+++ b/include/linux/bvec.h
-@@ -65,6 +65,13 @@ struct bvec_iter {
- #define bvec_iter_page_idx(bvec, iter)			\
- 	(bvec_iter_offset((bvec), (iter)) / PAGE_SIZE)
- 
-+#define bvec_iter_bvec(bvec, iter)				\
-+((struct bio_vec) {						\
-+	.bv_page	= bvec_iter_page((bvec), (iter)),	\
-+	.bv_len		= bvec_iter_len((bvec), (iter)),	\
-+	.bv_offset	= bvec_iter_offset((bvec), (iter)),	\
-+})
-+
- /* For building single-page bvec(segment) in flight */
-  #define segment_iter_offset(bvec, iter)				\
- 	(bvec_iter_offset((bvec), (iter)) % PAGE_SIZE)
+ 	file_accessed(filp);
+ 	vma->vm_ops = &xfs_file_vm_ops;
+ 	if (IS_DAX(file_inode(filp)))
 -- 
-2.9.5
+2.9.3
