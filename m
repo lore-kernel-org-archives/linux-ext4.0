@@ -1,43 +1,87 @@
-Return-Path: <SRS0=tdqe=PQ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:49926 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727772AbfAHXAd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 8 Jan 2019 18:00:33 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5938D28C92
-        for <linux-ext4@vger.kernel.org>; Tue,  8 Jan 2019 23:00:32 +0000 (UTC)
-From: bugzilla-daemon@bugzilla.kernel.org
-To: linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date: Tue, 08 Jan 2019 23:00:30 +0000
-Message-ID: <bug-201631-13602-n6HXPOaXv9@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:59578 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1730775AbfAILmy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 9 Jan 2019 06:42:54 -0500
+Date: Wed, 9 Jan 2019 12:42:51 +0100
+From: Jan Kara <jack@suse.cz>
+To: Jiang Ying <jiangying13@meituan.com>
+Cc: tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] jbd2: adjust location of journal->j_list_lock
+Message-ID: <20190109114251.GF15397@quack2.suse.cz>
+References: <1547004897-187803-1-git-send-email-jiangying13@meituan.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1547004897-187803-1-git-send-email-jiangying13@meituan.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+On Wed 09-01-19 11:34:57, Jiang Ying wrote:
+> From: jiangying13 <jiangying13@meituan.com>
+> 
+> kernel panics with kernel BUG at fs/jbd2/journal.c:2526! which is
+> J_ASSERT_JH(jh, jh->b_transaction == NULL)
+> 
+> Locate the spinlock of journal->j_list_lock after
+> J_ASSERT_JH(jh, jh->b_transaction == commit_transaction) that can ensure
+> jh->b_transaction not NULL, advoiding jh->b_transaction is set NULL
+> before executing __jbd2_journal_remove_checkpoint.
+> 
+> The bug is not easy to reproduce, the call trace is as following:
+> 
+>  Call Trace:
+>   [<ffffffffc02b7e7b>] __jbd2_journal_remove_checkpoint+0x5b/0x160 [jbd2]
+>   [<ffffffffc02b616e>] jbd2_journal_commit_transaction+0x10be/0x1950 [jbd2]
+>   [<ffffffff81029557>] ? __switch_to+0xd7/0x510
+>   [<ffffffffc02bba99>] kjournald2+0xc9/0x260 [jbd2]
+>   [<ffffffff810b1930>] ? wake_up_atomic_t+0x30/0x30
+>   [<ffffffffc02bb9d0>] ? commit_timeout+0x10/0x10 [jbd2]
+>   [<ffffffff810b09af>] kthread+0xcf/0xe0
+>   [<ffffffff810b08e0>] ? insert_kthread_work+0x40/0x40
+>   [<ffffffff816ba358>] ret_from_fork+0x58/0x90
+>   [<ffffffff810b08e0>] ? insert_kthread_work+0x40/0x40
+> 
+> Signed-off-by: jiangying13 <jiangying13@meituan.com>
 
-erhard_f@mailbox.org changed:
+Hum, why do you think the patch below changes anything for the assertion
+failure you mention above? The code that gets additionally covered by
+j_list_lock is just handling of journal head frozen & b_committed_data
+buffers...
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
- Attachment #280117|0                           |1
-        is obsolete|                            |
+With which kernel version did you see the assertion failure?
 
---- Comment #41 from erhard_f@mailbox.org ---
-Created attachment 280345
-  --> https://bugzilla.kernel.org/attachment.cgi?id=280345&action=edit
-journalctl -k (5.0-rc1 on a Talos II)
+								Honza
 
-Results with latest patch (20.12.2018).
-
-So far building llvm-7 + tests in my ext4-zramdisk reliably triggers it.
-
+> ---
+>  fs/jbd2/commit.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index 2eb55c3..19aa2b0 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -930,6 +930,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+>  		 * We also know that the frozen data has already fired
+>  		 * its triggers if they exist, so we can clear that too.
+>  		 */
+> +		spin_lock(&journal->j_list_lock);
+>  		if (jh->b_committed_data) {
+>  			jbd2_free(jh->b_committed_data, bh->b_size);
+>  			jh->b_committed_data = NULL;
+> @@ -944,7 +945,6 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+>  			jh->b_frozen_triggers = NULL;
+>  		}
+>  
+> -		spin_lock(&journal->j_list_lock);
+>  		cp_transaction = jh->b_cp_transaction;
+>  		if (cp_transaction) {
+>  			JBUFFER_TRACE(jh, "remove from old cp transaction");
+> -- 
+> 1.8.3.1
+> 
+> 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
