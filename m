@@ -1,92 +1,132 @@
-Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from szxga06-in.huawei.com ([45.249.212.32]:48004 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728679AbfAOMqO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 15 Jan 2019 07:46:14 -0500
-Received: from DGGEMS403-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 442FF77D4041247AAAD9
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 20:46:12 +0800 (CST)
-Subject: Re: [PATCH] ext2: add check for blocksize in ext2_fill_super
-To: Jan Kara <jack@suse.cz>
-CC: <linux-ext4@vger.kernel.org>, <miaoxie@huawei.com>,
-        <houtao1@huawei.com>, <yi.zhang@huawei.com>
-References: <20190110053145.138518-1-yangerkun@huawei.com>
-From: yangerkun <yangerkun@huawei.com>
-Message-ID: <422fbc79-12a1-62d4-ee4a-0bc9b652cd89@huawei.com>
-Date: Tue, 15 Jan 2019 20:46:01 +0800
-MIME-Version: 1.0
-In-Reply-To: <20190110053145.138518-1-yangerkun@huawei.com>
-Content-Type: text/plain; charset="utf-8"; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mailout1.samsung.com ([203.254.224.24]:23882 "EHLO
+        mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1732319AbfAIPdq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jan 2019 10:33:46 -0500
+From: Kanchan Joshi <joshi.k@samsung.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nvme@lists.infradead.org, jack@suse.com, david@fromorbit.com,
+        tytso@mit.edu, prakash.v@samsung.com,
+        Kanchan Joshi <joshi.k@samsung.com>
+Subject: [PATCH 4/4] fs/ext4,jbd2: add support for passing write-hint with
+ journal.
+Date: Wed, 09 Jan 2019 21:01:01 +0530
+Message-id: <1547047861-7271-5-git-send-email-joshi.k@samsung.com>
+In-reply-to: <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
+References: <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
+        <CGME20190109153342epcas2p3208f62a4dd876f8e1765b48f8aec2432@epcas2p3.samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Jan Kara,
+For NAND based SSDs, mixing of data with different life-time reduces
+efficiency of internal garbage-collection. During FS operations, series
+of journal updates will follow/precede series of data/meta updates, causing
+intermixing inside SSD. By passing a write-hint with journal, its write
+can be isolated from other data/meta writes, leading to endurance/performance
+benefit on SSD.
 
-Could you please help me to check this patch?
+This patch introduces "j_writehint" member in JBD2 journal, using which
+Ext4 specifies write-hint (as SHORT) for journal.
 
-Besides, i have notice that EXT2_MAX_BLOCK_SIZE has never been used 
-before. So there maybe someone using ext2fs which blocksize exceed 
-EXT2_MAX_BLOCK_SIZE in the os that page size exceed 4K? And if it's 
-true, this patch will lead to a unused ext2fs.
+Signed-off-by: Kanchan Joshi <joshi.k@samsung.com>
+---
+ fs/ext4/super.c      |  2 ++
+ fs/jbd2/commit.c     | 11 +++++++----
+ fs/jbd2/journal.c    |  3 ++-
+ fs/jbd2/revoke.c     |  3 ++-
+ include/linux/jbd2.h |  8 ++++++++
+ 5 files changed, 21 insertions(+), 6 deletions(-)
 
-Also, we can fix the problem by modify ext2_max_size, but it's difficult 
-to get the accurate result, it may not a good idea too...
-
-Thanks a lot,
-Kun.
-
-
-yangerkun wrote on 2019/1/10 13:31:
-> While mkfs with '-b 65536' and then mount this fs with arm 64KB page
-> size, function mount_fs will trigger WARNING because that ext2_max_size
-> will return value less than 0. Also, we cannot write any file in this
-> fs since the sb->s_maxbytes is less than 0. Avoid this by check blocksize
-> in ext2_fill_super like ext4_fill_super.
-> 
-> Signed-off-by: yangerkun <yangerkun@huawei.com>
-> ---
->   fs/ext2/ext2.h  |  1 +
->   fs/ext2/super.c | 15 +++++++++++++++
->   2 files changed, 16 insertions(+)
-> 
-> diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-> index e770cd1..ba95316 100644
-> --- a/fs/ext2/ext2.h
-> +++ b/fs/ext2/ext2.h
-> @@ -177,6 +177,7 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb)
->   #define EXT2_MIN_BLOCK_SIZE		1024
->   #define	EXT2_MAX_BLOCK_SIZE		4096
->   #define EXT2_MIN_BLOCK_LOG_SIZE		  10
-> +#define EXT2_MAX_BLOCK_LOG_SIZE		  12
->   #define EXT2_BLOCK_SIZE(s)		((s)->s_blocksize)
->   #define	EXT2_ADDR_PER_BLOCK(s)		(EXT2_BLOCK_SIZE(s) / sizeof (__u32))
->   #define EXT2_BLOCK_SIZE_BITS(s)		((s)->s_blocksize_bits)
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index 73b2d52..029945e 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -960,6 +960,21 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->   	}
->   
->   	blocksize = BLOCK_SIZE << le32_to_cpu(sbi->s_es->s_log_block_size);
-> +	if (blocksize < EXT2_MIN_BLOCK_SIZE ||
-> +		blocksize > EXT2_MAX_BLOCK_SIZE) {
-> +		ext2_msg(sb, KERN_ERR,
-> +				"Unsupported filesystem blocksize %d (%d log_block_size)",
-> +				blocksize, le32_to_cpu(es->s_log_block_size));
-> +		goto failed_mount;
-> +	}
-> +
-> +	if (le32_to_cpu(es->s_log_block_size) >
-> +		(EXT2_MAX_BLOCK_LOG_SIZE - EXT2_MIN_BLOCK_LOG_SIZE)) {
-> +			ext2_msg(sb, KERN_ERR,
-> +				"Invalid log block size: %u",
-> +				le32_to_cpu(es->s_log_block_size));
-> +			goto failed_mount;
-> +		}
->   
->   	if (sbi->s_mount_opt & EXT2_MOUNT_DAX) {
->   		if (!bdev_dax_supported(sb->s_bdev, blocksize)) {
-> 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d6c142d..3af4049 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4289,6 +4289,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 
+ 	set_task_ioprio(sbi->s_journal->j_task, journal_ioprio);
+ 
++	sbi->s_journal->j_writehint = KERN_WRITE_LIFE_SHORT;
++
+ 	sbi->s_journal->j_commit_callback = ext4_journal_commit_callback;
+ 
+ no_journal:
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 2eb55c3..6da4c28 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -153,10 +153,12 @@ static int journal_submit_commit_record(journal_t *journal,
+ 
+ 	if (journal->j_flags & JBD2_BARRIER &&
+ 	    !jbd2_has_feature_async_commit(journal))
+-		ret = submit_bh(REQ_OP_WRITE,
+-			REQ_SYNC | REQ_PREFLUSH | REQ_FUA, bh);
++		ret = submit_bh_write_hint(REQ_OP_WRITE,
++			REQ_SYNC | REQ_PREFLUSH | REQ_FUA, bh,
++			journal->j_writehint);
+ 	else
+-		ret = submit_bh(REQ_OP_WRITE, REQ_SYNC, bh);
++		ret = submit_bh_write_hint(REQ_OP_WRITE, REQ_SYNC, bh,
++			journal->j_writehint);
+ 
+ 	*cbh = bh;
+ 	return ret;
+@@ -711,7 +713,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 				clear_buffer_dirty(bh);
+ 				set_buffer_uptodate(bh);
+ 				bh->b_end_io = journal_end_buffer_io_sync;
+-				submit_bh(REQ_OP_WRITE, REQ_SYNC, bh);
++				submit_bh_write_hint(REQ_OP_WRITE, REQ_SYNC,
++						bh, journal->j_writehint);
+ 			}
+ 			cond_resched();
+ 			stats.run.rs_blocks_logged += bufs;
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 8ef6b6d..804dc2c 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1384,7 +1384,8 @@ static int jbd2_write_superblock(journal_t *journal, int write_flags)
+ 	jbd2_superblock_csum_set(journal, sb);
+ 	get_bh(bh);
+ 	bh->b_end_io = end_buffer_write_sync;
+-	ret = submit_bh(REQ_OP_WRITE, write_flags, bh);
++	ret = submit_bh_write_hint(REQ_OP_WRITE, write_flags, bh,
++				journal->j_writehint);
+ 	wait_on_buffer(bh);
+ 	if (buffer_write_io_error(bh)) {
+ 		clear_buffer_write_io_error(bh);
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index a1143e5..376b1d8 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -642,7 +642,8 @@ static void flush_descriptor(journal_t *journal,
+ 	set_buffer_jwrite(descriptor);
+ 	BUFFER_TRACE(descriptor, "write");
+ 	set_buffer_dirty(descriptor);
+-	write_dirty_buffer(descriptor, REQ_SYNC);
++	write_dirty_buffer_with_hint(descriptor, REQ_SYNC,
++				journal->j_writehint);
+ }
+ #endif
+ 
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 0f919d5..918f21e 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1139,6 +1139,14 @@ struct journal_s
+ 	 */
+ 	__u32 j_csum_seed;
+ 
++	/**
++	 * @j_writehint:
++	 *
++	 * write-hint for journal (set by FS).
++	 */
++	enum rw_hint	j_writehint;
++
++
+ #ifdef CONFIG_DEBUG_LOCK_ALLOC
+ 	/**
+ 	 * @j_trans_commit_map:
+-- 
+2.7.4
