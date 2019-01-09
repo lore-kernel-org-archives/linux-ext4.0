@@ -1,56 +1,69 @@
-Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from smtprz15.163.net ([106.3.154.248]:38250 "EHLO smtp.tom.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1728566AbfAORP1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 15 Jan 2019 12:15:27 -0500
-Received: from 172.25.16.148 (unknown [172.25.16.148])
-        by freemail02.tom.com (Postfix) with ESMTP id AB724B00DCD
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 22:10:50 +0800 (CST)
-Received: from 172.25.16.91 (HELO smtp.tom.com) ([172.25.16.91])
-          by localhost (TOM SMTP Server) with SMTP ID -1959878928
-          for <linux-ext4@vger.kernel.org>;
-          Tue, 15 Jan 2019 22:10:50 +0800 (CST)
-Received: from antispam2.tom.com (unknown [172.25.16.56])
-        by freemail02.tom.com (Postfix) with ESMTP id 93F46B00DAA
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 22:10:49 +0800 (CST)
-Received: from antispam2.tom.com (antispam2.tom.com [127.0.0.1])
-        by antispam2.tom.com (Postfix) with ESMTP id 877828162C
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 22:10:49 +0800 (CST)
-Received: from antispam2.tom.com ([127.0.0.1])
-        by antispam2.tom.com (antispam2.tom.com [127.0.0.1]) (amavisd-new, port 10024)
-        with ESMTP id Cvli00mdV7Wi for <linux-ext4@vger.kernel.org>;
-        Tue, 15 Jan 2019 22:10:48 +0800 (CST)
-From: Liu Xiang <liu.xiang6@zte.com.cn>
-To: linux-ext4@vger.kernel.org
-Cc: jack@suse.com, linux-kernel@vger.kernel.org, liuxiang_1999@126.com,
-        Liu Xiang <liu.xiang6@zte.com.cn>
-Subject: [PATCH] ext2: Remove redundant check on s_inode_size
-Date: Tue, 15 Jan 2019 22:10:43 +0800
-Message-Id: <1547561443-3411-1-git-send-email-liu.xiang6@zte.com.cn>
+Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:30136 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731733AbfAIOy2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 9 Jan 2019 09:54:28 -0500
+Date: Wed, 9 Jan 2019 09:54:19 -0500 (EST)
+From: Pankaj Gupta <pagupta@redhat.com>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
+        qemu-devel@nongnu.org, linux-nvdimm@ml01.01.org,
+        linux-fsdevel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        linux-acpi@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, stefanha@redhat.com,
+        dan j williams <dan.j.williams@intel.com>, riel@surriel.com,
+        nilal@redhat.com, kwolf@redhat.com, pbonzini@redhat.com,
+        zwisler@kernel.org, vishal l verma <vishal.l.verma@intel.com>,
+        dave jiang <dave.jiang@intel.com>, david@redhat.com,
+        jmoyer@redhat.com,
+        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
+        hch@infradead.org, mst@redhat.com, jasowang@redhat.com,
+        lcapitulino@redhat.com, imammedo@redhat.com, eblake@redhat.com,
+        willy@infradead.org, tytso@mit.edu,
+        adilger kernel <adilger.kernel@dilger.ca>,
+        darrick wong <darrick.wong@oracle.com>, rjw@rjwysocki.net
+Message-ID: <1413703615.61223613.1547045659656.JavaMail.zimbra@redhat.com>
+In-Reply-To: <20190109144215.GI15397@quack2.suse.cz>
+References: <20190109135606.15401-1-pagupta@redhat.com> <20190109144215.GI15397@quack2.suse.cz>
+Subject: Re: [PATCH v3 4/5] ext4: disable map_sync for virtio pmem
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The case of (EXT2_INODE_SIZE(sb) == 0) is included in
-(sbi->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE).
-So there is no need to check again.
 
-Signed-off-by: Liu Xiang <liu.xiang6@zte.com.cn>
----
- fs/ext2/super.c | 2 --
- 1 file changed, 2 deletions(-)
+> 
+> On Wed 09-01-19 19:26:05, Pankaj Gupta wrote:
+> > Virtio pmem provides asynchronous host page cache flush
+> > mechanism. We don't support 'MAP_SYNC' with virtio pmem
+> > and ext4.
+> > 
+> > Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
+> ...
+> > @@ -371,6 +373,13 @@ static int ext4_file_mmap(struct file *file, struct
+> > vm_area_struct *vma)
+> >  	if (!IS_DAX(file_inode(file)) && (vma->vm_flags & VM_SYNC))
+> >  		return -EOPNOTSUPP;
+> >  
+> > +	/* We don't support synchronous mappings with guest direct access
+> > +	 * and virtio based host page cache flush mechanism.
+> > +	 */
+> > +	if (IS_DAX(file_inode(file)) && virtio_pmem_host_cache_enabled(dax_dev)
+> > +						&& (vma->vm_flags & VM_SYNC))
+> > +		return -EOPNOTSUPP;
+> > +
+> 
+> Shouldn't there rather be some generic way of doing this? Having
+> virtio_pmem_host_cache_enabled() check in filesystem code just looks like
+> filesystem sniffing into details is should not care about... Maybe just
+> naming this (or having a wrapper) dax_dev_map_sync_supported()?
 
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 73b2d52..c71c2e3 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -1024,8 +1024,6 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_frags_per_group = le32_to_cpu(es->s_frags_per_group);
- 	sbi->s_inodes_per_group = le32_to_cpu(es->s_inodes_per_group);
- 
--	if (EXT2_INODE_SIZE(sb) == 0)
--		goto cantfind_ext2;
- 	sbi->s_inodes_per_block = sb->s_blocksize / EXT2_INODE_SIZE(sb);
- 	if (sbi->s_inodes_per_block == 0 || sbi->s_inodes_per_group == 0)
- 		goto cantfind_ext2;
--- 
-1.9.1
+Thanks for the feedback.
+
+Just wanted to avoid 'dax' in function name just to differentiate this with real dax.
+But yes can add a wrapper: dax_dev_map_sync_supported()
+
+Thanks,
+Pankaj
