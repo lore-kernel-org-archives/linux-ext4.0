@@ -1,60 +1,28 @@
-Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:11439 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725446AbfAKLEU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Jan 2019 06:04:20 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V13 10/19] fs/buffer.c: use bvec iterator to truncate the bio
-Date: Fri, 11 Jan 2019 19:01:18 +0800
-Message-Id: <20190111110127.21664-11-ming.lei@redhat.com>
-In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
-References: <20190111110127.21664-1-ming.lei@redhat.com>
+Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from destinchamber.com ([185.244.39.84]:44504 "EHLO catchco.com"
+        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728356AbfAITvW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 9 Jan 2019 14:51:22 -0500
+To: linux-ext4@vger.kernel.org
+Subject: Path your photos?
+Message-ID: <5f958380fa562560e10d787d46c01318@annthegran.com>
+Date: Wed, 09 Jan 2019 11:58:40 +0100
+From: "Jane" <jeffoprecinteerpaznlop@verizon.net>
+Reply-To: sunchekam@sina.com
+MIME-Version: 1.0
+Content-Type: text/plain; format=flowed; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Once multi-page bvec is enabled, the last bvec may include more than one
-page, this patch use bvec_last_segment() to truncate the bio.
+Do you have photos for editing? We asked this because we see your photos on
+your website.
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- fs/buffer.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+We mainly supply service for photos cut out , clipping path, and
+retouching.
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 52d024bfdbc1..fb72ac21f2b1 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -3032,7 +3032,10 @@ void guard_bio_eod(int op, struct bio *bio)
- 
- 	/* ..and clear the end of the buffer for reads */
- 	if (op == REQ_OP_READ) {
--		zero_user(bvec->bv_page, bvec->bv_offset + bvec->bv_len,
-+		struct bio_vec bv;
-+
-+		bvec_last_segment(bvec, &bv);
-+		zero_user(bv.bv_page, bv.bv_offset + bv.bv_len,
- 				truncated_bytes);
- 	}
- }
--- 
-2.9.5
+You may just send us a photo, we can provide you test editing to check
+quality.
+
+Thanks,
+Jane
