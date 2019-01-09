@@ -1,70 +1,91 @@
-Return-Path: <SRS0=NmFT=PW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:45458 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726782AbfANQpv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2019 11:45:51 -0500
-Date: Mon, 14 Jan 2019 08:45:49 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Kurt Miller <kurt@intricatesoftware.com>,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-block@vger.kernel.org
-Subject: Re: Block device flush ordering
-Message-ID: <20190114164549.GA26523@infradead.org>
-References: <1547130601.20294.152.camel@intricatesoftware.com>
- <20190113224244.GC4205@dastard>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190113224244.GC4205@dastard>
+Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mailout1.samsung.com ([203.254.224.24]:23873 "EHLO
+        mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1730795AbfAIPdp (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jan 2019 10:33:45 -0500
+From: Kanchan Joshi <joshi.k@samsung.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nvme@lists.infradead.org, jack@suse.com, david@fromorbit.com,
+        tytso@mit.edu, prakash.v@samsung.com,
+        Kanchan Joshi <joshi.k@samsung.com>
+Subject: [PATCH 3/4] fs: introduce APIs to enable sending write-hint with
+ buffer-head
+Date: Wed, 09 Jan 2019 21:01:00 +0530
+Message-id: <1547047861-7271-4-git-send-email-joshi.k@samsung.com>
+In-reply-to: <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
+References: <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
+        <CGME20190109153339epcas2p4691a898dde0174a7565d62fcb3be0b6d@epcas2p4.samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 14, 2019 at 09:42:44AM +1100, Dave Chinner wrote:
-> On Thu, Jan 10, 2019 at 09:30:01AM -0500, Kurt Miller wrote:
-> > For a well behaved block device that has a writeback cache,
-> > what is the proper behavior of flush when there are more
-> > then one outstanding flush operations? Is it;
-> > 
-> > Flush all writes seen since the last flush.
-> > or
-> > Flush all writes received prior to the flush including
-> > those before any prior flush.
+submit_bh and write_dirty_buffer do not take write-hint as parameter.
+This patch introduces variants which do.
 
-The requirement is that all write operations that have been completed
-before the flush was seen are on stable storage.  How that is
-implemented in detail is up to the device.  The typical implementation
-is simply to writeback the whole cache everytime a flush operation
-is received.
+Signed-off-by: Kanchan Joshi <joshi.k@samsung.com>
+---
+ fs/buffer.c                 | 18 ++++++++++++++++--
+ include/linux/buffer_head.h |  3 +++
+ 2 files changed, 19 insertions(+), 2 deletions(-)
 
-> > 
-> > For example take the following order of requests presented
-> > to the block device:
-> > 
-> > 	writes 1-5
-> > 	flush 1
-> > 	write 6
-> > 	flush 2
-> > 
-> > Can flush 2 finish with success as soon as write 6 is flushed
-> > (which may be before flush 1 success)? Or must it wait for
-> > all prior write operations to flush (writes 1-6)?
-
-No.  For all the usual protocols as well as the linux kernel semantics
-there is no overall command ordering, especially as there is no way
-to even enforce that in a multi-queue environment.
-
->
->  * C1. At any given time, only one flush shall be in progress.  This makes
->  *     double buffering sufficient.
-
-Very specific implementation detail inside the request layer.
-
-> Then flush 1 does not guarantee any of the writes are on stable
-> storage. They *may* be on stable storage if the timing is right, but
-> it is not guaranteed by the OS code. Likewise, flush 2 only
-> guarantees writes 1, 3 and 5 are on stable storage becase they are
-> the only writes that have been signalled as complete when flush 2
-> was submitted.
-
-Exactly.
+diff --git a/fs/buffer.c b/fs/buffer.c
+index d60d61e..2a94676 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -3094,6 +3094,13 @@ int submit_bh(int op, int op_flags, struct buffer_head *bh)
+ }
+ EXPORT_SYMBOL(submit_bh);
+ 
++int submit_bh_write_hint(int op, int op_flags, struct buffer_head *bh,
++			 enum rw_hint hint)
++{
++	return submit_bh_wbc(op, op_flags, bh, hint, NULL);
++}
++EXPORT_SYMBOL(submit_bh_write_hint);
++
+ /**
+  * ll_rw_block: low-level access to block devices (DEPRECATED)
+  * @op: whether to %READ or %WRITE
+@@ -3151,6 +3158,13 @@ EXPORT_SYMBOL(ll_rw_block);
+ 
+ void write_dirty_buffer(struct buffer_head *bh, int op_flags)
+ {
++	write_dirty_buffer_with_hint(bh, op_flags, 0);
++}
++EXPORT_SYMBOL(write_dirty_buffer);
++
++void write_dirty_buffer_with_hint(struct buffer_head *bh, int op_flags,
++				   enum rw_hint hint)
++{
+ 	lock_buffer(bh);
+ 	if (!test_clear_buffer_dirty(bh)) {
+ 		unlock_buffer(bh);
+@@ -3158,9 +3172,9 @@ void write_dirty_buffer(struct buffer_head *bh, int op_flags)
+ 	}
+ 	bh->b_end_io = end_buffer_write_sync;
+ 	get_bh(bh);
+-	submit_bh(REQ_OP_WRITE, op_flags, bh);
++	submit_bh_wbc(REQ_OP_WRITE, op_flags, bh, hint, NULL);
+ }
+-EXPORT_SYMBOL(write_dirty_buffer);
++EXPORT_SYMBOL(write_dirty_buffer_with_hint);
+ 
+ /*
+  * For a data-integrity writeout, we need to wait upon any in-progress I/O
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 7b73ef7..3d682ac 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -200,7 +200,10 @@ void ll_rw_block(int, int, int, struct buffer_head * bh[]);
+ int sync_dirty_buffer(struct buffer_head *bh);
+ int __sync_dirty_buffer(struct buffer_head *bh, int op_flags);
+ void write_dirty_buffer(struct buffer_head *bh, int op_flags);
++void write_dirty_buffer_with_hint(struct buffer_head *bh, int op_flags,
++				   enum rw_hint hint);
+ int submit_bh(int, int, struct buffer_head *);
++int submit_bh_write_hint(int, int, struct buffer_head *, enum rw_hint hint);
+ void write_boundary_block(struct block_device *bdev,
+ 			sector_t bblock, unsigned blocksize);
+ int bh_uptodate_or_lock(struct buffer_head *bh);
+-- 
+2.7.4
