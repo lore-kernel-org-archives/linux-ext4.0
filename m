@@ -1,87 +1,113 @@
-Return-Path: <SRS0=NmFT=PW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33288 "EHLO mx1.suse.de"
+Return-Path: <SRS0=QTyG=PS=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:39962 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726609AbfANJzX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 14 Jan 2019 04:55:23 -0500
-Date: Mon, 14 Jan 2019 10:55:20 +0100
+        id S1727534AbfAJK2Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 10 Jan 2019 05:28:16 -0500
+Date: Thu, 10 Jan 2019 11:28:12 +0100
 From: Jan Kara <jack@suse.cz>
-To: Pankaj Gupta <pagupta@redhat.com>
-Cc: Dan Williams <dan.j.williams@intel.com>, Jan Kara <jack@suse.cz>,
-        KVM list <kvm@vger.kernel.org>,
-        David Hildenbrand <david@redhat.com>,
-        linux-nvdimm <linux-nvdimm@ml01.01.org>,
-        Jason Wang <jasowang@redhat.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        virtualization@lists.linux-foundation.org,
-        adilger kernel <adilger.kernel@dilger.ca>,
-        Ross Zwisler <zwisler@kernel.org>,
-        dave jiang <dave.jiang@intel.com>,
-        darrick wong <darrick.wong@oracle.com>,
-        vishal l verma <vishal.l.verma@intel.com>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        jmoyer <jmoyer@redhat.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Rik van Riel <riel@surriel.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Igor Mammedov <imammedo@redhat.com>, lcapitulino@redhat.com,
-        Kevin Wolf <kwolf@redhat.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Paolo Bonzini <pbonzini@redhat.com>
-Subject: Re: [Qemu-devel] [PATCH v3 0/5] kvm "virtio pmem" device
-Message-ID: <20190114095520.GC13316@quack2.suse.cz>
-References: <20190109144736.17452-1-pagupta@redhat.com>
- <20190110012617.GA4205@dastard>
- <20190110101757.GC15790@quack2.suse.cz>
- <1354249849.63357171.1547343519970.JavaMail.zimbra@redhat.com>
- <CAPcyv4hwcgTUpgNCefCGu4DvgkYBp5b=f+hJ+FC=s5APYKoycg@mail.gmail.com>
- <540171952.63371441.1547345866585.JavaMail.zimbra@redhat.com>
+To: "zhangyi (F)" <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, miaoxie@huawei.com
+Subject: Re: [PATCH 1/2] jbd2: fix compile warning when using JBUFFER_TRACE
+Message-ID: <20190110102812.GD15790@quack2.suse.cz>
+References: <1547100399-127915-1-git-send-email-yi.zhang@huawei.com>
+ <1547100399-127915-2-git-send-email-yi.zhang@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <540171952.63371441.1547345866585.JavaMail.zimbra@redhat.com>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <1547100399-127915-2-git-send-email-yi.zhang@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat 12-01-19 21:17:46, Pankaj Gupta wrote:
-> > > > Right. Thinking about this I would be more concerned about the fact that
-> > > > guest can effectively pin amount of host's page cache upto size of the
-> > > > device/file passed to guest as PMEM, can't it Pankaj? Or is there some
-> > > > QEMU
-> > > > magic that avoids this?
-> > >
-> > > Yes, guest will pin these host page cache pages using 'get_user_pages' by
-> > > elevating the page reference count. But these pages can be reclaimed by
-> > > host
-> > > at any time when there is memory pressure.
-> > 
-> > Wait, how can the guest pin the host pages? I would expect this to
-> > happen only when using vfio and device assignment. Otherwise, no the
-> > host can't reclaim a pinned page, that's the whole point of a pin to
-> > prevent the mm from reclaiming ownership.
+On Thu 10-01-19 14:06:38, zhangyi (F) wrote:
+> The jh pointer may be used uninitialized in the two cases below and the
+> compiler complain about it when enabling JBUFFER_TRACE macro, fix them.
 > 
-> yes. You are right I just used the pin word but it does not actually pin pages 
-> permanently. I had gone through the discussion on existing problems with 
-> get_user_pages and DMA e.g [1] to understand Jan's POV. It does mention GUP 
-> pin pages so I also used the word 'pin'. But guest does not permanently pin 
-> these pages and these pages can be reclaimed by host.
+> In file included from fs/jbd2/transaction.c:19:0:
+> fs/jbd2/transaction.c: In function ‘jbd2_journal_get_undo_access’:
+> ./include/linux/jbd2.h:1637:38: warning: ‘jh’ is used uninitialized in this function [-Wuninitialized]
+>  #define JBUFFER_TRACE(jh, info) do { printk("%s: %d\n", __func__, jh->b_jcount);} while (0)
+>                                       ^
+> fs/jbd2/transaction.c:1219:23: note: ‘jh’ was declared here
+>   struct journal_head *jh;
+>                        ^
+> In file included from fs/jbd2/transaction.c:19:0:
+> fs/jbd2/transaction.c: In function ‘jbd2_journal_dirty_metadata’:
+> ./include/linux/jbd2.h:1637:38: warning: ‘jh’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+>  #define JBUFFER_TRACE(jh, info) do { printk("%s: %d\n", __func__, jh->b_jcount);} while (0)
+>                                       ^
+> fs/jbd2/transaction.c:1332:23: note: ‘jh’ was declared here
+>   struct journal_head *jh;
+>                        ^
+> 
+> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/jbd2/transaction.c | 16 ++++++++--------
+>  1 file changed, 8 insertions(+), 8 deletions(-)
 
-OK, then I was just confused how virtio-pmem is going to work. Thanks for
-explanation! So can I imagine this as guest mmaping the host file and
-providing the mapped range as "NVDIMM pages" to the kernel inside the
-guest? Or is it more complex?
+The patch looks good. Thanks! You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
+
+> 
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index c0b66a7..4b51177 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -1219,11 +1219,12 @@ int jbd2_journal_get_undo_access(handle_t *handle, struct buffer_head *bh)
+>  	struct journal_head *jh;
+>  	char *committed_data = NULL;
+>  
+> -	JBUFFER_TRACE(jh, "entry");
+>  	if (jbd2_write_access_granted(handle, bh, true))
+>  		return 0;
+>  
+>  	jh = jbd2_journal_add_journal_head(bh);
+> +	JBUFFER_TRACE(jh, "entry");
+> +
+>  	/*
+>  	 * Do this first --- it can drop the journal lock, so we want to
+>  	 * make sure that obtaining the committed_data is done
+> @@ -1334,15 +1335,17 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+>  
+>  	if (is_handle_aborted(handle))
+>  		return -EROFS;
+> -	if (!buffer_jbd(bh)) {
+> -		ret = -EUCLEAN;
+> -		goto out;
+> -	}
+> +	if (!buffer_jbd(bh))
+> +		return -EUCLEAN;
+> +
+>  	/*
+>  	 * We don't grab jh reference here since the buffer must be part
+>  	 * of the running transaction.
+>  	 */
+>  	jh = bh2jh(bh);
+> +	jbd_debug(5, "journal_head %p\n", jh);
+> +	JBUFFER_TRACE(jh, "entry");
+> +
+>  	/*
+>  	 * This and the following assertions are unreliable since we may see jh
+>  	 * in inconsistent state unless we grab bh_state lock. But this is
+> @@ -1376,9 +1379,6 @@ int jbd2_journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+>  	}
+>  
+>  	journal = transaction->t_journal;
+> -	jbd_debug(5, "journal_head %p\n", jh);
+> -	JBUFFER_TRACE(jh, "entry");
+> -
+>  	jbd_lock_bh_state(bh);
+>  
+>  	if (jh->b_modified == 0) {
+> -- 
+> 2.7.4
+> 
 -- 
 Jan Kara <jack@suse.com>
 SUSE Labs, CR
