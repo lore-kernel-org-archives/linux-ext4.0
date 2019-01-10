@@ -1,55 +1,67 @@
-Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:44098 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1731121AbfAOSB6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2019 13:01:58 -0500
-Date: Tue, 15 Jan 2019 10:01:56 -0800
-From: Matthew Wilcox <willy@infradead.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Jan Kara <jack@suse.cz>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [GIT PULL] dtype handling cleanup for v4.21-rc1
-Message-ID: <20190115180156.GB6310@bombadil.infradead.org>
-References: <20190102174736.GB29127@quack2.suse.cz>
- <20190108100500.GA15801@quack2.suse.cz>
- <20190115092414.GA4138@quack2.suse.cz>
- <CAHk-=wiW=4k3iBkDzz5_LuyCRcduZJuk-Vwhz9vqrUMML6WVkg@mail.gmail.com>
+Return-Path: <SRS0=QTyG=PS=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:38170 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727692AbfAJKSC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 10 Jan 2019 05:18:02 -0500
+Date: Thu, 10 Jan 2019 11:17:57 +0100
+From: Jan Kara <jack@suse.cz>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Pankaj Gupta <pagupta@redhat.com>, linux-kernel@vger.kernel.org,
+        kvm@vger.kernel.org, qemu-devel@nongnu.org,
+        linux-nvdimm@ml01.01.org, linux-fsdevel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        linux-acpi@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, jack@suse.cz, stefanha@redhat.com,
+        dan.j.williams@intel.com, riel@surriel.com, nilal@redhat.com,
+        kwolf@redhat.com, pbonzini@redhat.com, zwisler@kernel.org,
+        vishal.l.verma@intel.com, dave.jiang@intel.com, david@redhat.com,
+        jmoyer@redhat.com, xiaoguangrong.eric@gmail.com, hch@infradead.org,
+        mst@redhat.com, jasowang@redhat.com, lcapitulino@redhat.com,
+        imammedo@redhat.com, eblake@redhat.com, willy@infradead.org,
+        tytso@mit.edu, adilger.kernel@dilger.ca, darrick.wong@oracle.com,
+        rjw@rjwysocki.net
+Subject: Re: [PATCH v3 0/5] kvm "virtio pmem" device
+Message-ID: <20190110101757.GC15790@quack2.suse.cz>
+References: <20190109144736.17452-1-pagupta@redhat.com>
+ <20190110012617.GA4205@dastard>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <CAHk-=wiW=4k3iBkDzz5_LuyCRcduZJuk-Vwhz9vqrUMML6WVkg@mail.gmail.com>
+In-Reply-To: <20190110012617.GA4205@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 16, 2019 at 05:36:06AM +1200, Linus Torvalds wrote:
-> On Tue, Jan 15, 2019 at 9:24 PM Jan Kara <jack@suse.cz> wrote:
-> >
-> > What has happened to this pull request? It may be too late for this to be
-> > merged now but I'd like to understand why it was not merged or rejected...
+On Thu 10-01-19 12:26:17, Dave Chinner wrote:
+> On Wed, Jan 09, 2019 at 08:17:31PM +0530, Pankaj Gupta wrote:
+> >  This patch series has implementation for "virtio pmem". 
+> >  "virtio pmem" is fake persistent memory(nvdimm) in guest 
+> >  which allows to bypass the guest page cache. This also
+> >  implements a VIRTIO based asynchronous flush mechanism.  
 > 
-> Sorry, initially I left if for later consideration after rc1, and then
-> I just forgot about it.
+> Hmmmm. Sharing the host page cache direct into the guest VM. Sounds
+> like a good idea, but.....
 > 
-> I didn't see much point to the cleanup when it actually adds lots of
-> lines and no actual advantage. The whole dentry type translation
-> really is fs-specific and it might just happen to be shared. But why
-> share it if it only adds complexity and unnecessary abstraction?
+> This means the guest VM can now run timing attacks to observe host
+> side page cache residency, and depending on the implementation I'm
+> guessing that the guest will be able to control host side page
+> cache eviction, too (e.g. via discard or hole punch operations).
+> 
+> Which means this functionality looks to me like a new vector for
+> information leakage into and out of the guest VM via guest
+> controlled host page cache manipulation.
+> 
+> https://arxiv.org/pdf/1901.01161
+> 
+> I might be wrong, but if I'm not we're going to have to be very
+> careful about how guest VMs can access and manipulate host side
+> resources like the page cache.....
 
-The ext2/ext4 patches don't show much improvement.  The other patches show
-more:
+Right. Thinking about this I would be more concerned about the fact that
+guest can effectively pin amount of host's page cache upto size of the
+device/file passed to guest as PMEM, can't it Pankaj? Or is there some QEMU
+magic that avoids this?
 
- fs/nilfs2/dir.c                    | 52 ++++++++++--------------------
- include/uapi/linux/nilfs2_ondisk.h |  1 +
- 2 files changed, 18 insertions(+), 35 deletions(-)
-
-(for example).
-
-UFS ends up benefiting the most.  You can see the whole diffstat here:
-
-https://lore.kernel.org/lkml/20181023201952.GA15676@pathfinder/
-
-We'd see a lot more improvement in line count if Philip weren't quite
-so paranoid about checking FOOFS_FT_* == FT_* at build time; eg for btrfs:
-
-https://lore.kernel.org/lkml/20181023211728.GA16584@pathfinder/
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
