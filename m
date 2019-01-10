@@ -1,70 +1,71 @@
-Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52206 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725789AbfAKLC0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Jan 2019 06:02:26 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V13 02/19] block: don't use bio->bi_vcnt to figure out segment number
-Date: Fri, 11 Jan 2019 19:01:10 +0800
-Message-Id: <20190111110127.21664-3-ming.lei@redhat.com>
-In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
-References: <20190111110127.21664-1-ming.lei@redhat.com>
+Return-Path: <SRS0=QTyG=PS=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga07-in.huawei.com ([45.249.212.35]:60678 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726987AbfAJDdX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 9 Jan 2019 22:33:23 -0500
+Received: from DGGEMS403-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id 8C75B567F56A3EC5E2CD
+        for <linux-ext4@vger.kernel.org>; Thu, 10 Jan 2019 11:33:20 +0800 (CST)
+From: yangerkun <yangerkun@huawei.com>
+To: <linux-ext4@vger.kernel.org>
+CC: <miaoxie@huawei.com>, <houtao1@huawei.com>, <yi.zhang@huawei.com>,
+        <yangerkun@huawei.com>
+Subject: [PATCH 4/4] ext4: add mask of ext4 flags to swap
+Date: Thu, 10 Jan 2019 11:36:50 +0800
+Message-ID: <20190110033650.108403-5-yangerkun@huawei.com>
+In-Reply-To: <20190110033650.108403-1-yangerkun@huawei.com>
+References: <20190110033650.108403-1-yangerkun@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It is wrong to use bio->bi_vcnt to figure out how many segments
-there are in the bio even though CLONED flag isn't set on this bio,
-because this bio may be splitted or advanced.
+Not all flags should be swap, add a mask to do this.
 
-So always use bio_segments() in blk_recount_segments(), and it shouldn't
-cause any performance loss now because the physical segment number is figured
-out in blk_queue_split() and BIO_SEG_VALID is set meantime since
-bdced438acd83ad83a6c ("block: setup bi_phys_segments after splitting").
-
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Fixes: 76d8137a3113 ("blk-merge: recaculate segment if it isn't less than max segments")
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
+Signed-off-by: yangerkun <yangerkun@huawei.com>
 ---
- block/blk-merge.c | 8 +-------
- 1 file changed, 1 insertion(+), 7 deletions(-)
+ fs/ext4/ext4.h  | 4 ++++
+ fs/ext4/ioctl.c | 6 +++++-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
 
-diff --git a/block/blk-merge.c b/block/blk-merge.c
-index 71e9ac03f621..f85d878f313d 100644
---- a/block/blk-merge.c
-+++ b/block/blk-merge.c
-@@ -367,13 +367,7 @@ void blk_recalc_rq_segments(struct request *rq)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3f89d0a..b438a7c 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -426,6 +426,10 @@ struct flex_groups {
+ /* Flags that are appropriate for non-directories/regular files. */
+ #define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
  
- void blk_recount_segments(struct request_queue *q, struct bio *bio)
++/* Flags that should be swap */
++#define EXT4_FL_SHOULD_SWAP (EXT4_COMPR_FL | EXT4_COMPRBLK_FL | EXT4_NOCOMPR_FL |\
++			EXT4_HUGE_FILE_FL | EXT4_EXTENTS_FL)
++
+ /* Mask out flags that are inappropriate for the given type of inode. */
+ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
  {
--	unsigned short seg_cnt;
--
--	/* estimate segment number by bi_vcnt for non-cloned bio */
--	if (bio_flagged(bio, BIO_CLONED))
--		seg_cnt = bio_segments(bio);
--	else
--		seg_cnt = bio->bi_vcnt;
-+	unsigned short seg_cnt = bio_segments(bio);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 60d406f..53e26a6 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -66,6 +66,7 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+ 	struct inode *big_inode;
+ 	struct inode *small_inode;
+ 	qsize_t size1, size2, diff;
++	unsigned long tmp;
  
- 	if (test_bit(QUEUE_FLAG_NO_SG_MERGE, &q->queue_flags) &&
- 			(seg_cnt < queue_max_segments(q)))
+ 	ei1 = EXT4_I(inode1);
+ 	ei2 = EXT4_I(inode2);
+@@ -75,7 +76,10 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+ 	swap(inode1->i_mtime, inode2->i_mtime);
+ 
+ 	memswap(ei1->i_data, ei2->i_data, sizeof(ei1->i_data));
+-	swap(ei1->i_flags, ei2->i_flags);
++	tmp = ei1->i_flags & EXT4_FL_SHOULD_SWAP;
++	ei1->i_flags = (ei2->i_flags & EXT4_FL_SHOULD_SWAP) |
++		(ei1->i_flags & ~EXT4_FL_SHOULD_SWAP);
++	ei2->i_flags = tmp | (ei2->i_flags & ~EXT4_FL_SHOULD_SWAP);
+ 	swap(ei1->i_disksize, ei2->i_disksize);
+ 	ext4_es_remove_extent(inode1, 0, EXT_MAX_BLOCKS);
+ 	ext4_es_remove_extent(inode2, 0, EXT_MAX_BLOCKS);
 -- 
 2.9.5
