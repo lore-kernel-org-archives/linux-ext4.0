@@ -1,68 +1,61 @@
-Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58296 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725267AbfAKLGG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Jan 2019 06:06:06 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V13 16/19] block: always define BIO_MAX_PAGES as 256
-Date: Fri, 11 Jan 2019 19:01:24 +0800
-Message-Id: <20190111110127.21664-17-ming.lei@redhat.com>
-In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
-References: <20190111110127.21664-1-ming.lei@redhat.com>
+Return-Path: <SRS0=QTyG=PS=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:40088 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726255AbfAJK2v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 10 Jan 2019 05:28:51 -0500
+Date: Thu, 10 Jan 2019 11:28:50 +0100
+From: Jan Kara <jack@suse.cz>
+To: "zhangyi (F)" <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, miaoxie@huawei.com
+Subject: Re: [PATCH 2/2] ext4: fix compile error when using BUFFER_TRACE
+Message-ID: <20190110102850.GE15790@quack2.suse.cz>
+References: <1547100399-127915-1-git-send-email-yi.zhang@huawei.com>
+ <1547100399-127915-3-git-send-email-yi.zhang@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <1547100399-127915-3-git-send-email-yi.zhang@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now multi-page bvec can cover CONFIG_THP_SWAP, so we don't need to
-increase BIO_MAX_PAGES for it.
+On Thu 10-01-19 14:06:39, zhangyi (F) wrote:
+> Fix compile error below when using BUFFER_TRACE.
+> 
+> fs/ext4/inode.c: In function ‘ext4_expand_extra_isize’:
+> fs/ext4/inode.c:5979:19: error: request for member ‘bh’ in something not a structure or union
+>   BUFFER_TRACE(iloc.bh, "get_write_access");
+> 
+> Fixes: c03b45b853f58 ("ext4, project: expand inode extra size if possible")
+> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+> ---
+>  fs/ext4/inode.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 
-CONFIG_THP_SWAP needs to split one THP into normal pages and adds
-them all to one bio. With multipage-bvec, it just takes one bvec to
-hold them all.
+Looks good. You can add:
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- include/linux/bio.h | 8 --------
- 1 file changed, 8 deletions(-)
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 1ece9f30294b..54ef81f11f83 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -34,15 +34,7 @@
- #define BIO_BUG_ON
- #endif
- 
--#ifdef CONFIG_THP_SWAP
--#if HPAGE_PMD_NR > 256
--#define BIO_MAX_PAGES		HPAGE_PMD_NR
--#else
- #define BIO_MAX_PAGES		256
--#endif
--#else
--#define BIO_MAX_PAGES		256
--#endif
- 
- #define bio_prio(bio)			(bio)->bi_ioprio
- #define bio_set_prio(bio, prio)		((bio)->bi_ioprio = prio)
+								Honza
+
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 22a9d81..b7384d5 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -5976,7 +5976,7 @@ int ext4_expand_extra_isize(struct inode *inode,
+>  
+>  	ext4_write_lock_xattr(inode, &no_expand);
+>  
+> -	BUFFER_TRACE(iloc.bh, "get_write_access");
+> +	BUFFER_TRACE(iloc->bh, "get_write_access");
+>  	error = ext4_journal_get_write_access(handle, iloc->bh);
+>  	if (error) {
+>  		brelse(iloc->bh);
+> -- 
+> 2.7.4
+> 
 -- 
-2.9.5
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
