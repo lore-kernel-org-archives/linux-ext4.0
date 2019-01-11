@@ -1,82 +1,81 @@
-Return-Path: <SRS0=njA7=PY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from szxga05-in.huawei.com ([45.249.212.191]:2242 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1733118AbfAPNey (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 16 Jan 2019 08:34:54 -0500
-From: "zhangyi (F)" <yi.zhang@huawei.com>
-To: <linux-ext4@vger.kernel.org>
-CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <miaoxie@huawei.com>, <yi.zhang@huawei.com>
-Subject: [PATCH v2] jbd2: make sure dirty flag is cleared while revorking a buffer which belongs to older transaction
-Date: Wed, 16 Jan 2019 21:38:23 +0800
-Message-ID: <1547645903-57295-1-git-send-email-yi.zhang@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59064 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729905AbfAKLCK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 06:02:10 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: [PATCH V13 01/19] btrfs: look at bi_size for repair decisions
+Date: Fri, 11 Jan 2019 19:01:09 +0800
+Message-Id: <20190111110127.21664-2-ming.lei@redhat.com>
+In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
+References: <20190111110127.21664-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now, we capture a data corruption problem on ext4 while we're truncating
-an extent index block. Imaging that if we are revoking a buffer which
-has been journaled by the committing transaction, the buffer's jbddirty
-flag will not be cleared in jbd2_journal_forget(), so the commit code
-will set the buffer dirty flag again after refile the buffer.
+From: Christoph Hellwig <hch@lst.de>
 
-fsx                               kjournald2
-                                  jbd2_journal_commit_transaction
-jbd2_journal_revoke                commit phase 1~5...
- jbd2_journal_forget
-   belongs to older transaction    commit phase 6
-   jbddirty not clear               __jbd2_journal_refile_buffer
-                                     __jbd2_journal_unfile_buffer
-                                      test_clear_buffer_jbddirty
-                                       mark_buffer_dirty
+bio_readpage_error currently uses bi_vcnt to decide if it is worth
+retrying an I/O.  But the vector count is mostly an implementation
+artifact - it really should figure out if there is more than a
+single sector worth retrying.  Use bi_size for that and shift by
+PAGE_SHIFT.  This really should be blocks/sectors, but given that
+btrfs doesn't support a sector size different from the PAGE_SIZE
+using the page size keeps the changes to a minimum.
 
-Finally, if the freed extent index block was allocated again as data
-block by some other files, it may corrupt the file data when writing
-cached pages later, such as during umount time.
-
-This patch mark buffer as freed and set j_next_transaction to the new
-transaction when it already belongs to the committing transaction in
-jbd2_journal_forget(), so that commit code knows it should clear dirty
-bits when it is done with the buffer.
-
-This problem can be reproduced by xfstests generic/455 easily with
-seeds (3246 3247 3248 3249).
-
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
-Cc: stable@vger.kernel.org
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Reviewed-by: David Sterba <dsterba@suse.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/jbd2/transaction.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
+ fs/btrfs/extent_io.c | 2 +-
+ include/linux/bio.h  | 6 ------
+ 2 files changed, 1 insertion(+), 7 deletions(-)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index f07f006..f7f9647 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -1609,14 +1609,19 @@ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
- 		/* However, if the buffer is still owned by a prior
- 		 * (committing) transaction, we can't drop it yet... */
- 		JBUFFER_TRACE(jh, "belongs to older transaction");
--		/* ... but we CAN drop it from the new transaction if we
--		 * have also modified it since the original commit. */
-+		/* ... but we CAN drop it from the new transaction, mark
-+		 * buffer as freed and set j_next_transaction to the new
-+		 * transaction so that commit code knows it should clear
-+		 * dirty bits when it is done with the buffer. */
+diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+index 52abe4082680..dc8ba3ee515d 100644
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -2350,7 +2350,7 @@ static int bio_readpage_error(struct bio *failed_bio, u64 phy_offset,
+ 	int read_mode = 0;
+ 	blk_status_t status;
+ 	int ret;
+-	unsigned failed_bio_pages = bio_pages_all(failed_bio);
++	unsigned failed_bio_pages = failed_bio->bi_iter.bi_size >> PAGE_SHIFT;
  
--		if (jh->b_next_transaction) {
--			J_ASSERT(jh->b_next_transaction == transaction);
-+		set_buffer_freed(bh);
-+
-+		if (!jh->b_next_transaction) {
- 			spin_lock(&journal->j_list_lock);
--			jh->b_next_transaction = NULL;
-+			jh->b_next_transaction = transaction;
- 			spin_unlock(&journal->j_list_lock);
-+		} else {
-+			J_ASSERT(jh->b_next_transaction == transaction);
+ 	BUG_ON(bio_op(failed_bio) == REQ_OP_WRITE);
  
- 			/*
- 			 * only drop a reference if this transaction modified
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 7380b094dcca..72b4f7be2106 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -263,12 +263,6 @@ static inline void bio_get_last_bvec(struct bio *bio, struct bio_vec *bv)
+ 		bv->bv_len = iter.bi_bvec_done;
+ }
+ 
+-static inline unsigned bio_pages_all(struct bio *bio)
+-{
+-	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
+-	return bio->bi_vcnt;
+-}
+-
+ static inline struct bio_vec *bio_first_bvec_all(struct bio *bio)
+ {
+ 	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
 -- 
-2.7.4
+2.9.5
