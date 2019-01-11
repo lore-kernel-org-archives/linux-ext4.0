@@ -1,90 +1,153 @@
-Return-Path: <SRS0=NEJw=PV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:61147 "EHLO
-        ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725837AbfAMX3I (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 13 Jan 2019 18:29:08 -0500
-Date: Mon, 14 Jan 2019 10:29:02 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Pankaj Gupta <pagupta@redhat.com>
-Cc: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
-        qemu-devel@nongnu.org, linux-nvdimm@ml01.01.org,
-        linux-fsdevel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        linux-acpi@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, jack@suse.cz, stefanha@redhat.com,
-        dan j williams <dan.j.williams@intel.com>, riel@surriel.com,
-        nilal@redhat.com, kwolf@redhat.com, pbonzini@redhat.com,
-        zwisler@kernel.org, vishal l verma <vishal.l.verma@intel.com>,
-        dave jiang <dave.jiang@intel.com>, david@redhat.com,
-        jmoyer@redhat.com,
-        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
-        hch@infradead.org, mst@redhat.com, jasowang@redhat.com,
-        lcapitulino@redhat.com, imammedo@redhat.com, eblake@redhat.com,
-        willy@infradead.org, tytso@mit.edu,
-        adilger kernel <adilger.kernel@dilger.ca>,
-        darrick wong <darrick.wong@oracle.com>, rjw@rjwysocki.net
-Subject: Re: [PATCH v3 0/5] kvm "virtio pmem" device
-Message-ID: <20190113232902.GD4205@dastard>
-References: <20190109144736.17452-1-pagupta@redhat.com>
- <20190110012617.GA4205@dastard>
- <1326478078.61913951.1547192704870.JavaMail.zimbra@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1326478078.61913951.1547192704870.JavaMail.zimbra@redhat.com>
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:52316 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725267AbfAKLGD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 06:06:03 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V13 15/19] block: enable multipage bvecs
+Date: Fri, 11 Jan 2019 19:01:23 +0800
+Message-Id: <20190111110127.21664-16-ming.lei@redhat.com>
+In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
+References: <20190111110127.21664-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 11, 2019 at 02:45:04AM -0500, Pankaj Gupta wrote:
-> 
-> > 
-> > On Wed, Jan 09, 2019 at 08:17:31PM +0530, Pankaj Gupta wrote:
-> > >  This patch series has implementation for "virtio pmem".
-> > >  "virtio pmem" is fake persistent memory(nvdimm) in guest
-> > >  which allows to bypass the guest page cache. This also
-> > >  implements a VIRTIO based asynchronous flush mechanism.
-> > 
-> > Hmmmm. Sharing the host page cache direct into the guest VM. Sounds
-> > like a good idea, but.....
-> > 
-> > This means the guest VM can now run timing attacks to observe host
-> > side page cache residency, and depending on the implementation I'm
-> > guessing that the guest will be able to control host side page
-> > cache eviction, too (e.g. via discard or hole punch operations).
-> 
-> Not sure how? this is similar to mmapping virtual memory by any userspace 
-> process. Any host userspace process can do such attack on host page cache
-> using mincore & mmap shared file. 
+This patch pulls the trigger for multi-page bvecs.
 
-Mincore is for monitoring, not cached eviction. And it's not
-required to observe cache residency, either. That's a wide open
-field containing an uncountable number of moles...
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ block/bio.c         | 22 +++++++++++++++-------
+ fs/iomap.c          |  4 ++--
+ fs/xfs/xfs_aops.c   |  4 ++--
+ include/linux/bio.h |  2 +-
+ 4 files changed, 20 insertions(+), 12 deletions(-)
 
-> But i don't think guest can do this alone. For virtio-pmem usecase
-> guest won't be using page cache so timing attack from only guest
-> side is not possible unless host userspace can run checks on page
-> cache eviction state using mincore etc.  As rightly described by
-> Rik, guest will only access its own page cache pages and if guest
-> page cache is managed directly by host, this saves alot of effort
-> for guest in transferring guest state of page cache.  
-
-Until you have images (and hence host page cache) shared between
-multiple guests. People will want to do this, because it means they
-only need a single set of pages in host memory for executable
-binaries rather than a set of pages per guest. Then you have
-multiple guests being able to detect residency of the same set of
-pages. If the guests can then, in any way, control eviction of the
-pages from the host cache, then we have a guest-to-guest information
-leak channel.
-
-i.e. it's something we need to be aware of and really careful about
-enabling infrastructure that /will/ be abused if guests can find a
-way to influence the host side cache residency.
-
-Cheers,
-
-Dave.
+diff --git a/block/bio.c b/block/bio.c
+index 968b12fea564..83a2dfa417ca 100644
+--- a/block/bio.c
++++ b/block/bio.c
+@@ -753,6 +753,8 @@ EXPORT_SYMBOL(bio_add_pc_page);
+  * @page: page to add
+  * @len: length of the data to add
+  * @off: offset of the data in @page
++ * @same_page: if %true only merge if the new data is in the same physical
++ *		page as the last segment of the bio.
+  *
+  * Try to add the data at @page + @off to the last bvec of @bio.  This is a
+  * a useful optimisation for file systems with a block size smaller than the
+@@ -761,19 +763,25 @@ EXPORT_SYMBOL(bio_add_pc_page);
+  * Return %true on success or %false on failure.
+  */
+ bool __bio_try_merge_page(struct bio *bio, struct page *page,
+-		unsigned int len, unsigned int off)
++		unsigned int len, unsigned int off, bool same_page)
+ {
+ 	if (WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED)))
+ 		return false;
+ 
+ 	if (bio->bi_vcnt > 0) {
+ 		struct bio_vec *bv = &bio->bi_io_vec[bio->bi_vcnt - 1];
++		phys_addr_t vec_end_addr = page_to_phys(bv->bv_page) +
++			bv->bv_offset + bv->bv_len - 1;
++		phys_addr_t page_addr = page_to_phys(page);
+ 
+-		if (page == bv->bv_page && off == bv->bv_offset + bv->bv_len) {
+-			bv->bv_len += len;
+-			bio->bi_iter.bi_size += len;
+-			return true;
+-		}
++		if (vec_end_addr + 1 != page_addr + off)
++			return false;
++		if (same_page && (vec_end_addr & PAGE_MASK) != page_addr)
++			return false;
++
++		bv->bv_len += len;
++		bio->bi_iter.bi_size += len;
++		return true;
+ 	}
+ 	return false;
+ }
+@@ -819,7 +827,7 @@ EXPORT_SYMBOL_GPL(__bio_add_page);
+ int bio_add_page(struct bio *bio, struct page *page,
+ 		 unsigned int len, unsigned int offset)
+ {
+-	if (!__bio_try_merge_page(bio, page, len, offset)) {
++	if (!__bio_try_merge_page(bio, page, len, offset, false)) {
+ 		if (bio_full(bio))
+ 			return 0;
+ 		__bio_add_page(bio, page, len, offset);
+diff --git a/fs/iomap.c b/fs/iomap.c
+index af736acd9006..0c350e658b7f 100644
+--- a/fs/iomap.c
++++ b/fs/iomap.c
+@@ -318,7 +318,7 @@ iomap_readpage_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+ 	 */
+ 	sector = iomap_sector(iomap, pos);
+ 	if (ctx->bio && bio_end_sector(ctx->bio) == sector) {
+-		if (__bio_try_merge_page(ctx->bio, page, plen, poff))
++		if (__bio_try_merge_page(ctx->bio, page, plen, poff, true))
+ 			goto done;
+ 		is_contig = true;
+ 	}
+@@ -349,7 +349,7 @@ iomap_readpage_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+ 		ctx->bio->bi_end_io = iomap_read_end_io;
+ 	}
+ 
+-	__bio_add_page(ctx->bio, page, plen, poff);
++	bio_add_page(ctx->bio, page, plen, poff);
+ done:
+ 	/*
+ 	 * Move the caller beyond our range so that it keeps making progress.
+diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+index 1f1829e506e8..b9fd44168f61 100644
+--- a/fs/xfs/xfs_aops.c
++++ b/fs/xfs/xfs_aops.c
+@@ -616,12 +616,12 @@ xfs_add_to_ioend(
+ 				bdev, sector);
+ 	}
+ 
+-	if (!__bio_try_merge_page(wpc->ioend->io_bio, page, len, poff)) {
++	if (!__bio_try_merge_page(wpc->ioend->io_bio, page, len, poff, true)) {
+ 		if (iop)
+ 			atomic_inc(&iop->write_count);
+ 		if (bio_full(wpc->ioend->io_bio))
+ 			xfs_chain_bio(wpc->ioend, wbc, bdev, sector);
+-		__bio_add_page(wpc->ioend->io_bio, page, len, poff);
++		bio_add_page(wpc->ioend->io_bio, page, len, poff);
+ 	}
+ 
+ 	wpc->ioend->io_size += len;
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index c5231e5c7e85..1ece9f30294b 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -441,7 +441,7 @@ extern int bio_add_page(struct bio *, struct page *, unsigned int,unsigned int);
+ extern int bio_add_pc_page(struct request_queue *, struct bio *, struct page *,
+ 			   unsigned int, unsigned int);
+ bool __bio_try_merge_page(struct bio *bio, struct page *page,
+-		unsigned int len, unsigned int off);
++		unsigned int len, unsigned int off, bool same_page);
+ void __bio_add_page(struct bio *bio, struct page *page,
+ 		unsigned int len, unsigned int off);
+ int bio_iov_iter_get_pages(struct bio *bio, struct iov_iter *iter);
 -- 
-Dave Chinner
-david@fromorbit.com
+2.9.5
