@@ -1,49 +1,129 @@
-Return-Path: <SRS0=/7aD=PJ=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-qt1-f195.google.com ([209.85.160.195]:46113 "EHLO
-        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725941AbfAAXlE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jan 2019 18:41:04 -0500
-Received: by mail-qt1-f195.google.com with SMTP id y20so32008949qtm.13
-        for <linux-ext4@vger.kernel.org>; Tue, 01 Jan 2019 15:41:04 -0800 (PST)
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga06-in.huawei.com ([45.249.212.32]:56786 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728591AbfAKNo2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 08:44:28 -0500
+Subject: Re: [PATCH] jbd2: set freed flag while revoking a buffer which
+ belongs to older transaction
+To: Jan Kara <jack@suse.cz>
+References: <1547100722-132243-1-git-send-email-yi.zhang@huawei.com>
+ <20190110112023.GF15790@quack2.suse.cz>
+ <5b2cb7b3-1eff-21d2-cf12-ee844f54eda0@huawei.com>
+ <20190111103029.GA4098@quack2.suse.cz>
+CC: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <miaoxie@huawei.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+Message-ID: <937d4aa4-20bc-a1ab-1494-866e1f7a95a8@huawei.com>
+Date: Fri, 11 Jan 2019 21:44:14 +0800
 MIME-Version: 1.0
-References: <20181225053326.7012-1-tytso@mit.edu> <CANQeFDAL=Bx6dq69Rzmz_OWXkXMz=KzLvEkw4rQSSqMW9OHWMQ@mail.gmail.com>
- <20181226040713.GA4158@mit.edu>
-In-Reply-To: <20181226040713.GA4158@mit.edu>
-From: Liu Bo <obuil.liubo@gmail.com>
-Date: Tue, 1 Jan 2019 15:40:52 -0800
-Message-ID: <CANQeFDBmnp=GJxzTw9ntPjK5rn2-MU8OTyzuVLCytnQTnj031A@mail.gmail.com>
-Subject: Re: [PATCH] ext4: make sure enough credits are reserved for
- dioread_nolock writes
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        stable@kernel.org
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20190111103029.GA4098@quack2.suse.cz>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 25, 2018 at 8:07 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
->
-> On Tue, Dec 25, 2018 at 04:10:25PM -0800, Liu Bo wrote:
-> >
-> > I had a patch[1] to address the problem but with adding reservation
-> > only when we need to (in ext4_ext_try_to_merge_up).
->
-> Sorry, I had forgotten that you had that patch pending.  I believe
-> that merging up isn't the only case we need to worry about, though.
-> For example, if we write into the middle of a larger unwritten region,
-> we might havec to change a single region into three regions, which
-> might require a node split --- and in that case, it's not optional, as
-> would be in the try_to_merge_up situation.  If we don't have enough
-> credits to do a node split our only choices would be mark the file
-> system as corrupted, or to fail the write with ENOSPC (which would be
-> very confusing to the user/application).
->
+Thanks a lot for your in-depth explanation, I check the code and get it now.
+Will modify the patch as you suggested and post v2 after test.
 
-I see it now, thanks for the explanation.
+Thanks,
+Yi.
 
-thanks,
-liubo
-
-> Cheers,
->
->                                         - Ted
+On 2019/1/11 18:30, Jan Kara Wrote:
+> On Fri 11-01-19 14:11:31, zhangyi (F) wrote:
+>> On 2019/1/10 19:20, Jan Kara Wrote:
+>>> On Thu 10-01-19 14:12:02, zhangyi (F) wrote:
+>>>> Now, we capture a data corruption problem on ext4 while we're truncating
+>>>> an extent index block. Imaging that if we are revoking a buffer which
+>>>> has been journaled by the committing transaction, the buffer's jbddirty
+>>>> flag will not be cleared in jbd2_journal_forget(), so the commit code
+>>>> will set the buffer dirty flag again after refile the buffer.
+>>>>
+>>>> fsx                               kjournald2
+>>>>                                   jbd2_journal_commit_transaction
+>>>> jbd2_journal_revoke                commit phase 1~5...
+>>>>  jbd2_journal_forget
+>>>>    belongs to older transaction    commit phase 6
+>>>>    jbddirty not clear               __jbd2_journal_refile_buffer
+>>>>                                      __jbd2_journal_unfile_buffer
+>>>>                                       test_clear_buffer_jbddirty
+>>>>                                        mark_buffer_dirty
+>>>>
+>>>> Finally, if the freed extent index block was allocated again as data
+>>>> block by some other files, it may corrupt the file data when writing
+>>>> cached pages later, such as during umount time.
+>>>>
+>>>> This patch mark buffer as freed when it already belongs to the
+>>>> committing transaction in jbd2_journal_forget(), so that commit code
+>>>> knows it should clear dirty bits when it is done with the buffer.
+>>>>
+>>>> This problem can be reproduced by xfstests generic/455 easily with
+>>>> seeds (3246 3247 3248 3249).
+>>>>
+>>>> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+>>>> Cc: stable@vger.kernel.org
+>>>
+>>> Thanks a lot for the analysis and the patch! I fully agree with your
+>>> analysis however I think just setting buffer as freed isn't completely
+>>> correct. The problem is following: The metadata buffer X has been modified
+>>> by the commiting transaction - let's call it A. It has been freed in the
+>>> currently running transaction B. Now jbd2_journal_forget() clears
+>>> b_next_transaction and if you set buffer freed flag, X will not be added to
+>>> the checkpoint list. So when transaction A finishes commit, it can get
+>>> checkpointed (without writing out X) before transaction B commits. So if a
+>>> crash occurs before B commits, we'd loose modification of X from
+>>> transaction A and thus cause filesystem corruption.
+>>>
+>> Thanks for your explanation! There are still two points I don't quite
+>> understand.
+>>
+>> I check all three cases of doing checkpoint. IIUC, both jbd2_journal_destroy()
+>> and jbd2_journal_flush() wait the current running transaction B to complete
+>> before doing checkpoint besides __jbd2_log_wait_for_space(). So I guess this is
+>> the case that you mentioned of transaction A could be checkpointed before B
+>> commits, am I right?
+> 
+> Yes, __jbd2_log_wait_for_space() can checkpoint already committed
+> transactions (i.e., A in our case) without waiting for the running
+> transaction (B in our case).
+> 
+>> For another case, jbd2_update_log_tail() will be invoked after transaction B
+>> complete, so the problem above also can't happen here, right?
+> 
+> I'm not sure which "another case" you speak about here...
+> 
+>>> What rather needs to happen is the same thing that is done in
+>>> journal_unmap_buffer() in this case: We set buffer freed flag and we also
+>>> set b_next_transaction to the currently running transaction (B). This will
+>>> prevent A from being checkpointed before B commits and thus avoids the
+>>> problem above.
+>>>
+>> Sorry, I don't get this point. I find that the difference between setting
+>> b_next_transaction or not is just re-added the buffer X to the BJ_Reserved
+>> list or not. How could we avoid the problem above.
+> 
+> Currently, X will be removed from transaction B by jbd2_journal_revoke().
+> So once A commits, it will not be in the running transaction and thus
+> checkpoint of A can complete before B is committed.
+> 
+> If we set X->b_next_transaction to B, X will be part of transaction B. The
+> handling of buffer_freed() buffer in commit code thus will not clear
+> jbddirty bit and X will get inserted in X as buffer for checkpointing. And
+> thus checkpoint of A will not be able to complete before B commits, fixing
+> the problem I have described.
+>  
+>> BTW, I am thinking of a similar case. If we modify buffer X instead of
+>> revork it in the transaction B, we also need to avoid transaction A from
+>> being checkpointed before B commits, because current buffer X contains the
+>> modified data (modified by B). So we should prevent writing it before
+>> B commits, otherwise it will corrupt metadata. How do we handle this
+>> situation now?
+> 
+> Buffers that are part of the running transaction never have buffer_dirty
+> bit set (look how jbd2_journal_file_buffer() clears this bit). Thus
+> background writeback will not write these buffers. Also checkpointing code
+> checks whether the buffer is part of running / committing transaction and
+> handles these buffers specially exactly because they cannot be written out
+> directly.
+> 
+> 								Honza
+> 
