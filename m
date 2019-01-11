@@ -1,85 +1,220 @@
-Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-qt1-f179.google.com ([209.85.160.179]:45614 "EHLO
-        mail-qt1-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727883AbfAOOfo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2019 09:35:44 -0500
-Message-ID: <1547562941.20294.196.camel@intricatesoftware.com>
-Subject: Re: Block device flush ordering
-From: Kurt Miller <kurt@intricatesoftware.com>
-To: Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>
-Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-block@vger.kernel.org
-Date: Tue, 15 Jan 2019 09:35:41 -0500
-In-Reply-To: <20190114164549.GA26523@infradead.org>
-References: <1547130601.20294.152.camel@intricatesoftware.com>
-         <20190113224244.GC4205@dastard> <20190114164549.GA26523@infradead.org>
-Content-Type: text/plain; charset="ISO-8859-1"
-Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59066 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725789AbfAKLDh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 06:03:37 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V13 07/19] block: use bio_for_each_bvec() to compute multi-page bvec count
+Date: Fri, 11 Jan 2019 19:01:15 +0800
+Message-Id: <20190111110127.21664-8-ming.lei@redhat.com>
+In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
+References: <20190111110127.21664-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 2019-01-14 at 08:45 -0800, Christoph Hellwig wrote:
-> On Mon, Jan 14, 2019 at 09:42:44AM +1100, Dave Chinner wrote:
-> > 
-> > On Thu, Jan 10, 2019 at 09:30:01AM -0500, Kurt Miller wrote:
-> > > 
-> > > For a well behaved block device that has a writeback cache,
-> > > what is the proper behavior of flush when there are more
-> > > then one outstanding flush operations? Is it;
-> > > 
-> > > Flush all writes seen since the last flush.
-> > > or
-> > > Flush all writes received prior to the flush including
-> > > those before any prior flush.
-> The requirement is that all write operations that have been completed
-> before the flush was seen are on stable storage.  How that is
-> implemented in detail is up to the device.  The typical implementation
-> is simply to writeback the whole cache everytime a flush operation
-> is received.
-> 
-> > 
-> > > 
-> > > 
-> > > For example take the following order of requests presented
-> > > to the block device:
-> > > 
-> > > 	writes 1-5
-> > > 	flush 1
-> > > 	write 6
-> > > 	flush 2
-> > > 
-> > > Can flush 2 finish with success as soon as write 6 is flushed
-> > > (which may be before flush 1 success)? Or must it wait for
-> > > all prior write operations to flush (writes 1-6)?
-> No.  For all the usual protocols as well as the linux kernel semantics
-> there is no overall command ordering, especially as there is no way
-> to even enforce that in a multi-queue environment.
-> 
-> > 
-> > 
-> >  * C1. At any given time, only one flush shall be in progress.  This makes
-> >  *     double buffering sufficient.
-> Very specific implementation detail inside the request layer.
-> 
-> > 
-> > Then flush 1 does not guarantee any of the writes are on stable
-> > storage. They *may* be on stable storage if the timing is right, but
-> > it is not guaranteed by the OS code. Likewise, flush 2 only
-> > guarantees writes 1, 3 and 5 are on stable storage becase they are
-> > the only writes that have been signalled as complete when flush 2
-> > was submitted.
-> Exactly.
+First it is more efficient to use bio_for_each_bvec() in both
+blk_bio_segment_split() and __blk_recalc_rq_segments() to compute how
+many multi-page bvecs there are in the bio.
 
-Thank you both for the detailed answers. They have been very helpful.
-Also after spending an afternoon reading kernel code (xlog_sync though
-blk_flush_complete_seq) I understand it better. The multiple concurrent
-flush requests comment I made in another reply was a logging issue in
-our nbd implementation where we were logging completions after replying
-to the kernel. As a result our log messages were out of order and
-misleading. With that corrected in our code we see only one flush at a
-time.
+Secondly once bio_for_each_bvec() is used, the bvec may need to be
+splitted because its length can be very longer than max segment size,
+so we have to split the big bvec into several segments.
 
-Best,
--Kurt
+Thirdly when splitting multi-page bvec into segments, the max segment
+limit may be reached, so the bio split need to be considered under
+this situation too.
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ block/blk-merge.c | 99 ++++++++++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 79 insertions(+), 20 deletions(-)
+
+diff --git a/block/blk-merge.c b/block/blk-merge.c
+index f85d878f313d..abe1c89c1253 100644
+--- a/block/blk-merge.c
++++ b/block/blk-merge.c
+@@ -161,6 +161,69 @@ static inline unsigned get_max_io_size(struct request_queue *q,
+ 	return sectors;
+ }
+ 
++static unsigned get_max_segment_size(struct request_queue *q,
++				     unsigned offset)
++{
++	unsigned long mask = queue_segment_boundary(q);
++
++	return min_t(unsigned long, mask - (mask & offset) + 1,
++		     queue_max_segment_size(q));
++}
++
++/*
++ * Split the bvec @bv into segments, and update all kinds of
++ * variables.
++ */
++static bool bvec_split_segs(struct request_queue *q, struct bio_vec *bv,
++		unsigned *nsegs, unsigned *last_seg_size,
++		unsigned *front_seg_size, unsigned *sectors)
++{
++	unsigned len = bv->bv_len;
++	unsigned total_len = 0;
++	unsigned new_nsegs = 0, seg_size = 0;
++
++	/*
++	 * Multi-page bvec may be too big to hold in one segment, so the
++	 * current bvec has to be splitted as multiple segments.
++	 */
++	while (len && new_nsegs + *nsegs < queue_max_segments(q)) {
++		seg_size = get_max_segment_size(q, bv->bv_offset + total_len);
++		seg_size = min(seg_size, len);
++
++		new_nsegs++;
++		total_len += seg_size;
++		len -= seg_size;
++
++		if ((bv->bv_offset + total_len) & queue_virt_boundary(q))
++			break;
++	}
++
++	if (!new_nsegs)
++		return !!len;
++
++	/* update front segment size */
++	if (!*nsegs) {
++		unsigned first_seg_size;
++
++		if (new_nsegs == 1)
++			first_seg_size = get_max_segment_size(q, bv->bv_offset);
++		else
++			first_seg_size = queue_max_segment_size(q);
++
++		if (*front_seg_size < first_seg_size)
++			*front_seg_size = first_seg_size;
++	}
++
++	/* update other varibles */
++	*last_seg_size = seg_size;
++	*nsegs += new_nsegs;
++	if (sectors)
++		*sectors += total_len >> 9;
++
++	/* split in the middle of the bvec if len != 0 */
++	return !!len;
++}
++
+ static struct bio *blk_bio_segment_split(struct request_queue *q,
+ 					 struct bio *bio,
+ 					 struct bio_set *bs,
+@@ -174,7 +237,7 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
+ 	struct bio *new = NULL;
+ 	const unsigned max_sectors = get_max_io_size(q, bio);
+ 
+-	bio_for_each_segment(bv, bio, iter) {
++	bio_for_each_bvec(bv, bio, iter) {
+ 		/*
+ 		 * If the queue doesn't support SG gaps and adding this
+ 		 * offset would create a gap, disallow it.
+@@ -189,8 +252,12 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
+ 			 */
+ 			if (nsegs < queue_max_segments(q) &&
+ 			    sectors < max_sectors) {
+-				nsegs++;
+-				sectors = max_sectors;
++				/* split in the middle of bvec */
++				bv.bv_len = (max_sectors - sectors) << 9;
++				bvec_split_segs(q, &bv, &nsegs,
++						&seg_size,
++						&front_seg_size,
++						&sectors);
+ 			}
+ 			goto split;
+ 		}
+@@ -212,14 +279,12 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
+ 		if (nsegs == queue_max_segments(q))
+ 			goto split;
+ 
+-		if (nsegs == 1 && seg_size > front_seg_size)
+-			front_seg_size = seg_size;
+-
+-		nsegs++;
+ 		bvprv = bv;
+ 		bvprvp = &bvprv;
+-		seg_size = bv.bv_len;
+-		sectors += bv.bv_len >> 9;
++
++		if (bvec_split_segs(q, &bv, &nsegs, &seg_size,
++				    &front_seg_size, &sectors))
++			goto split;
+ 
+ 	}
+ 
+@@ -233,8 +298,6 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
+ 			bio = new;
+ 	}
+ 
+-	if (nsegs == 1 && seg_size > front_seg_size)
+-		front_seg_size = seg_size;
+ 	bio->bi_seg_front_size = front_seg_size;
+ 	if (seg_size > bio->bi_seg_back_size)
+ 		bio->bi_seg_back_size = seg_size;
+@@ -297,6 +360,7 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+ 	struct bio_vec bv, bvprv = { NULL };
+ 	int prev = 0;
+ 	unsigned int seg_size, nr_phys_segs;
++	unsigned front_seg_size = bio->bi_seg_front_size;
+ 	struct bio *fbio, *bbio;
+ 	struct bvec_iter iter;
+ 
+@@ -316,7 +380,7 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+ 	seg_size = 0;
+ 	nr_phys_segs = 0;
+ 	for_each_bio(bio) {
+-		bio_for_each_segment(bv, bio, iter) {
++		bio_for_each_bvec(bv, bio, iter) {
+ 			/*
+ 			 * If SG merging is disabled, each bio vector is
+ 			 * a segment
+@@ -336,20 +400,15 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+ 				continue;
+ 			}
+ new_segment:
+-			if (nr_phys_segs == 1 && seg_size >
+-			    fbio->bi_seg_front_size)
+-				fbio->bi_seg_front_size = seg_size;
+-
+-			nr_phys_segs++;
+ 			bvprv = bv;
+ 			prev = 1;
+-			seg_size = bv.bv_len;
++			bvec_split_segs(q, &bv, &nr_phys_segs, &seg_size,
++					&front_seg_size, NULL);
+ 		}
+ 		bbio = bio;
+ 	}
+ 
+-	if (nr_phys_segs == 1 && seg_size > fbio->bi_seg_front_size)
+-		fbio->bi_seg_front_size = seg_size;
++	fbio->bi_seg_front_size = front_seg_size;
+ 	if (seg_size > bbio->bi_seg_back_size)
+ 		bbio->bi_seg_back_size = seg_size;
+ 
+-- 
+2.9.5
