@@ -1,86 +1,103 @@
-Return-Path: <SRS0=NEJw=PV=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:15530 "EHLO
-        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726565AbfAMWms (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 13 Jan 2019 17:42:48 -0500
-Date: Mon, 14 Jan 2019 09:42:44 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Kurt Miller <kurt@intricatesoftware.com>
-Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-block@vger.kernel.org
-Subject: Re: Block device flush ordering
-Message-ID: <20190113224244.GC4205@dastard>
-References: <1547130601.20294.152.camel@intricatesoftware.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1547130601.20294.152.camel@intricatesoftware.com>
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:51512 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725789AbfAKLDY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 06:03:24 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V13 06/19] block: introduce bio_for_each_bvec() and rq_for_each_bvec()
+Date: Fri, 11 Jan 2019 19:01:14 +0800
+Message-Id: <20190111110127.21664-7-ming.lei@redhat.com>
+In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
+References: <20190111110127.21664-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[ cc'd linux-block@vger.kernel.org, where questions about block
-device behaviour are better directed. ]
+bio_for_each_bvec() is used for iterating over multi-page bvec for bio
+split & merge code.
 
-On Thu, Jan 10, 2019 at 09:30:01AM -0500, Kurt Miller wrote:
-> For a well behaved block device that has a writeback cache,
-> what is the proper behavior of flush when there are more
-> then one outstanding flush operations? Is it;
-> 
-> Flush all writes seen since the last flush.
-> or
-> Flush all writes received prior to the flush including
-> those before any prior flush.
-> 
-> For example take the following order of requests presented
-> to the block device:
-> 
-> 	writes 1-5
-> 	flush 1
-> 	write 6
-> 	flush 2
-> 
-> Can flush 2 finish with success as soon as write 6 is flushed
-> (which may be before flush 1 success)? Or must it wait for
-> all prior write operations to flush (writes 1-6)?
+rq_for_each_bvec() can be used for drivers which may handle the
+multi-page bvec directly, so far loop is one perfect use case.
 
-Don't take what I say as gospel, but according to block/blk-flush.c:
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ include/linux/bio.h    | 10 ++++++++++
+ include/linux/blkdev.h |  4 ++++
+ include/linux/bvec.h   |  7 +++++++
+ 3 files changed, 21 insertions(+)
 
-.....
- * Currently, the following conditions are used to determine when to issue
- * flush.
- *
- * C1. At any given time, only one flush shall be in progress.  This makes
- *     double buffering sufficient.
-.....
-
-However, flushes can be deferred and re-ordered vs other non-flush
-write IO dispatch. As such, the rules we work to with filesystems is
-that a flush only guarantees IO that is already completed will be
-written to stable storage.  i.e. the filesystem has to wait for IO
-completion of a write IO it needs to be stable before it can issue
-(and wait for) a flush that will guarantee that it is on stable
-storage.
-
-IOWs, if your above scenario is:
-
-	submit writes 1-5
-	flush 1
-	submit write 6
-	writes 1,3,5 complete
-	flush 2
-	writes 2,4,6 complete
-
-Then flush 1 does not guarantee any of the writes are on stable
-storage. They *may* be on stable storage if the timing is right, but
-it is not guaranteed by the OS code. Likewise, flush 2 only
-guarantees writes 1, 3 and 5 are on stable storage becase they are
-the only writes that have been signalled as complete when flush 2
-was submitted.
-
-Cheers,
-
-Dave.
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 16a65361535f..06888d45beb4 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -156,6 +156,16 @@ static inline void bio_advance_iter(struct bio *bio, struct bvec_iter *iter,
+ #define bio_for_each_segment(bvl, bio, iter)				\
+ 	__bio_for_each_segment(bvl, bio, iter, (bio)->bi_iter)
+ 
++#define __bio_for_each_bvec(bvl, bio, iter, start)		\
++	for (iter = (start);						\
++	     (iter).bi_size &&						\
++		((bvl = bvec_iter_bvec((bio)->bi_io_vec, (iter))), 1); \
++	     bio_advance_iter((bio), &(iter), (bvl).bv_len))
++
++/* iterate over multi-page bvec */
++#define bio_for_each_bvec(bvl, bio, iter)			\
++	__bio_for_each_bvec(bvl, bio, iter, (bio)->bi_iter)
++
+ #define bio_iter_last(bvec, iter) ((iter).bi_size == (bvec).bv_len)
+ 
+ static inline unsigned bio_segments(struct bio *bio)
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 338604dff7d0..7f4ca073e2f3 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -797,6 +797,10 @@ struct req_iterator {
+ 	__rq_for_each_bio(_iter.bio, _rq)			\
+ 		bio_for_each_segment(bvl, _iter.bio, _iter.iter)
+ 
++#define rq_for_each_bvec(bvl, _rq, _iter)			\
++	__rq_for_each_bio(_iter.bio, _rq)			\
++		bio_for_each_bvec(bvl, _iter.bio, _iter.iter)
++
+ #define rq_iter_last(bvec, _iter)				\
+ 		(_iter.bio->bi_next == NULL &&			\
+ 		 bio_iter_last(bvec, _iter.iter))
+diff --git a/include/linux/bvec.h b/include/linux/bvec.h
+index babc6316c117..d441486db605 100644
+--- a/include/linux/bvec.h
++++ b/include/linux/bvec.h
+@@ -65,6 +65,13 @@ struct bvec_iter {
+ #define bvec_iter_page_idx(bvec, iter)			\
+ 	(bvec_iter_offset((bvec), (iter)) / PAGE_SIZE)
+ 
++#define bvec_iter_bvec(bvec, iter)				\
++((struct bio_vec) {						\
++	.bv_page	= bvec_iter_page((bvec), (iter)),	\
++	.bv_len		= bvec_iter_len((bvec), (iter)),	\
++	.bv_offset	= bvec_iter_offset((bvec), (iter)),	\
++})
++
+ /* For building single-page bvec(segment) in flight */
+  #define segment_iter_offset(bvec, iter)				\
+ 	(bvec_iter_offset((bvec), (iter)) % PAGE_SIZE)
 -- 
-Dave Chinner
-david@fromorbit.com
+2.9.5
