@@ -1,57 +1,61 @@
-Return-Path: <SRS0=NmFT=PW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36078 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726449AbfANMuU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 14 Jan 2019 07:50:20 -0500
-Date: Mon, 14 Jan 2019 13:50:17 +0100
-From: Jan Kara <jack@suse.cz>
-To: Geert Uytterhoeven <geert@linux-m68k.org>
-Cc: Andreas Dilger <adilger@dilger.ca>, Jan Kara <jack@suse.com>,
-        Theodore Tso <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: Preserving a rev 0.0 ext2 filesystem
-Message-ID: <20190114125017.GI13316@quack2.suse.cz>
-References: <CAMuHMdULrGHfgF+RRGf5gXAc=V3KaB4549NezxEc3CvfsKWOyA@mail.gmail.com>
- <3A06C183-19FF-48B3-9C49-60353BEC9DB8@dilger.ca>
- <CAMuHMdWt+6Aeius=PFr9vQgF7LGde78f9nyai4m1P8QL+oqY0A@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAMuHMdWt+6Aeius=PFr9vQgF7LGde78f9nyai4m1P8QL+oqY0A@mail.gmail.com>
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:55248 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725446AbfAKLEe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 06:04:34 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V13 11/19] btrfs: use bvec_last_segment to get bio's last page
+Date: Fri, 11 Jan 2019 19:01:19 +0800
+Message-Id: <20190111110127.21664-12-ming.lei@redhat.com>
+In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
+References: <20190111110127.21664-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 14-01-19 11:23:30, Geert Uytterhoeven wrote:
-> Thanks, since ext2 also has the ext2_update_dynamic_rev() function, I
-> assumed it would be called as well.  But indeed, mounting the old file
-> system using the real ext2 driver retains its revision.
+Preparing for supporting multi-page bvec.
 
-Thanks for trying that out and I'm glad that it still works ;)
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ fs/btrfs/extent_io.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-> JFYI, this is what was changed by mounting and unmounting it using the
-> ext2 driver:
-> 
-> --- ramdisk.orig 2019-01-14 09:23:15.578434706 +0100
-> +++ ramdisk.mounted-by-ext2 2019-01-14 09:23:16.362434253 +0100
-> @@ -3,7 +3,7 @@
->  00000400  f8 00 00 00 78 05 00 00  00 00 00 00 20 00 00 00  |....x....... ...|
->  00000410  09 00 00 00 01 00 00 00  00 00 00 00 00 00 00 00  |................|
->  00000420  00 20 00 00 00 20 00 00  f8 00 00 00 f7 5e a3 32  |. ... .......^.2|
-> -00000430  9e 5e a3 32 03 00 14 00  53 ef 01 00 01 00 00 00  |.^.2....S.......|
-> +00000430  84 46 3c 5c 04 00 14 00  53 ef 01 00 01 00 00 00  |.F<\....S.......|
->  00000440  53 5d a3 32 00 4e ed 00  00 00 00 00 00 00 00 00  |S].2.N..........|
->  00000450  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
->  00000460  00 00 00 00 00 00 00 00  87 6b 6d 86 4c 96 11 d0  |.........km.L...|
-> 
-> Which is just the last write time, and mount count, as expected.
-> Interestingly, the last mount time was not updated.
-
-Yeah, that looks like a bug that got introduced in 269c8db30cf5b6 "ext2:
-Set the write time in ext2_sync_fs()" in 2010. I'll fix it. Thanks for
-report.
-
-								Honza
+diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+index dc8ba3ee515d..c092f88700bd 100644
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -2697,11 +2697,12 @@ static int __must_check submit_one_bio(struct bio *bio, int mirror_num,
+ {
+ 	blk_status_t ret = 0;
+ 	struct bio_vec *bvec = bio_last_bvec_all(bio);
+-	struct page *page = bvec->bv_page;
++	struct bio_vec bv;
+ 	struct extent_io_tree *tree = bio->bi_private;
+ 	u64 start;
+ 
+-	start = page_offset(page) + bvec->bv_offset;
++	bvec_last_segment(bvec, &bv);
++	start = page_offset(bv.bv_page) + bv.bv_offset;
+ 
+ 	bio->bi_private = NULL;
+ 
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.9.5
