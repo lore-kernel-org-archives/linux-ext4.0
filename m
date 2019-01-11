@@ -1,43 +1,60 @@
-Return-Path: <SRS0=ORgn=PU=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-vs1-f48.google.com ([209.85.217.48]:41304 "EHLO
-        mail-vs1-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725816AbfALJnW (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Jan 2019 04:43:22 -0500
-MIME-Version: 1.0
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Date: Sat, 12 Jan 2019 10:43:10 +0100
-Message-ID: <CAMuHMdULrGHfgF+RRGf5gXAc=V3KaB4549NezxEc3CvfsKWOyA@mail.gmail.com>
-Subject: Preserving a rev 0.0 ext2 filesystem
-To: Theodore Tso <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:11439 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725446AbfAKLEU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 06:04:20 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V13 10/19] fs/buffer.c: use bvec iterator to truncate the bio
+Date: Fri, 11 Jan 2019 19:01:18 +0800
+Message-Id: <20190111110127.21664-11-ming.lei@redhat.com>
+In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
+References: <20190111110127.21664-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Once multi-page bvec is enabled, the last bvec may include more than one
+page, this patch use bvec_last_segment() to truncate the bio.
 
-I'm still regularly using a Linux rev 0.0 ext2 filesystem as a  ramdisk
-on m68k, containing mid-90's binaries, from right after the a.out-to-ELF
-transition, so I notice if someone breaks old syscall support.
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ fs/buffer.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-Recently I wanted to change /dev/console on that ramdisk from a symlink
-to chardev 5 0.  Unfortunately I cannot mount it, without it being
-upgraded automatically to a rev 1.0 ext2 filesystem.  Apparently the
-kernel has been doing that upgrade for ages.
-
-Do you have a suggestion how to make that change, while preserving the
-ext2 revision?
-
-Thanks!
-
-Gr{oetje,eeting}s,
-
-                        Geert
-
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 52d024bfdbc1..fb72ac21f2b1 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -3032,7 +3032,10 @@ void guard_bio_eod(int op, struct bio *bio)
+ 
+ 	/* ..and clear the end of the buffer for reads */
+ 	if (op == REQ_OP_READ) {
+-		zero_user(bvec->bv_page, bvec->bv_offset + bvec->bv_len,
++		struct bio_vec bv;
++
++		bvec_last_segment(bvec, &bv);
++		zero_user(bv.bv_page, bv.bv_offset + bv.bv_len,
+ 				truncated_bytes);
+ 	}
+ }
 -- 
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+2.9.5
