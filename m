@@ -1,88 +1,85 @@
-Return-Path: <SRS0=NmFT=PW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33476 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:42248 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726187AbfANKQ6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 14 Jan 2019 05:16:58 -0500
-Date: Mon, 14 Jan 2019 05:16:55 -0500 (EST)
-From: Pankaj Gupta <pagupta@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Dan Williams <dan.j.williams@intel.com>,
-        KVM list <kvm@vger.kernel.org>,
-        David Hildenbrand <david@redhat.com>,
-        linux-nvdimm <linux-nvdimm@ml01.01.org>,
-        Jason Wang <jasowang@redhat.com>,
-        Dave Chinner <david@fromorbit.com>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        virtualization@lists.linux-foundation.org,
-        adilger kernel <adilger.kernel@dilger.ca>,
-        Ross Zwisler <zwisler@kernel.org>,
-        dave jiang <dave.jiang@intel.com>,
-        darrick wong <darrick.wong@oracle.com>,
-        vishal l verma <vishal.l.verma@intel.com>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        jmoyer <jmoyer@redhat.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Rik van Riel <riel@surriel.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Igor Mammedov <imammedo@redhat.com>, lcapitulino@redhat.com,
-        Kevin Wolf <kwolf@redhat.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Paolo Bonzini <pbonzini@redhat.com>
-Message-ID: <2011860338.64100587.1547461015822.JavaMail.zimbra@redhat.com>
-In-Reply-To: <20190114095520.GC13316@quack2.suse.cz>
-References: <20190109144736.17452-1-pagupta@redhat.com> <20190110012617.GA4205@dastard> <20190110101757.GC15790@quack2.suse.cz> <1354249849.63357171.1547343519970.JavaMail.zimbra@redhat.com> <CAPcyv4hwcgTUpgNCefCGu4DvgkYBp5b=f+hJ+FC=s5APYKoycg@mail.gmail.com> <540171952.63371441.1547345866585.JavaMail.zimbra@redhat.com> <20190114095520.GC13316@quack2.suse.cz>
-Subject: Re: [Qemu-devel] [PATCH v3 0/5] kvm "virtio pmem" device
+        id S1726369AbfAKBBT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 10 Jan 2019 20:01:19 -0500
+Date: Thu, 10 Jan 2019 17:01:17 -0800
+From: Eric Biggers <ebiggers@kernel.org>
+To: Guenter Roeck <linux@roeck-us.net>, Theodore Ts'o <tytso@mit.edu>
+Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-kernel@vger.kernel.org
+Subject: Re: [f2fs-dev] [PATCH] fscrypt: remove filesystem specific build
+ config option
+Message-ID: <20190111010116.GG149637@gmail.com>
+References: <20190110233230.GA23953@roeck-us.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190110233230.GA23953@roeck-us.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-> > > > > Right. Thinking about this I would be more concerned about the fact
-> > > > > that
-> > > > > guest can effectively pin amount of host's page cache upto size of
-> > > > > the
-> > > > > device/file passed to guest as PMEM, can't it Pankaj? Or is there
-> > > > > some
-> > > > > QEMU
-> > > > > magic that avoids this?
-> > > >
-> > > > Yes, guest will pin these host page cache pages using 'get_user_pages'
-> > > > by
-> > > > elevating the page reference count. But these pages can be reclaimed by
-> > > > host
-> > > > at any time when there is memory pressure.
-> > > 
-> > > Wait, how can the guest pin the host pages? I would expect this to
-> > > happen only when using vfio and device assignment. Otherwise, no the
-> > > host can't reclaim a pinned page, that's the whole point of a pin to
-> > > prevent the mm from reclaiming ownership.
+On Thu, Jan 10, 2019 at 03:32:30PM -0800, Guenter Roeck wrote:
+> On Sat, Dec 08, 2018 at 12:21:38PM +0530, Chandan Rajendra wrote:
+> > In order to have a common code base for fscrypt "post read" processing
+> > for all filesystems which support encryption, this commit removes
+> > filesystem specific build config option (e.g. CONFIG_EXT4_FS_ENCRYPTION)
+> > and replaces it with a build option (i.e. CONFIG_FS_ENCRYPTION) whose
+> > value affects all the filesystems making use of fscrypt.
 > > 
-> > yes. You are right I just used the pin word but it does not actually pin
-> > pages
-> > permanently. I had gone through the discussion on existing problems with
-> > get_user_pages and DMA e.g [1] to understand Jan's POV. It does mention GUP
-> > pin pages so I also used the word 'pin'. But guest does not permanently pin
-> > these pages and these pages can be reclaimed by host.
+> > Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
+> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 > 
-> OK, then I was just confused how virtio-pmem is going to work. Thanks for
-> explanation! So can I imagine this as guest mmaping the host file and
-> providing the mapped range as "NVDIMM pages" to the kernel inside the
-> guest? Or is it more complex?
+> This results in:
+> 
+> Building ia64:allnoconfig ... failed
+> --------------
+> Error log:
+> make[1]: Entering directory '/tmp/buildbot-builddir.7Wft3'
+>   GEN     Makefile
+> scripts/kconfig/conf  --allnoconfig Kconfig
+> arch/ia64/Kconfig:128:error: recursive dependency detected!
+> arch/ia64/Kconfig:128:	choice <choice> contains symbol IA64_HP_SIM
+> arch/ia64/Kconfig:202:	symbol IA64_HP_SIM is part of choice PM
+> kernel/power/Kconfig:144:	symbol PM is selected by PM_SLEEP
+> kernel/power/Kconfig:104:	symbol PM_SLEEP depends on HIBERNATE_CALLBACKS
+> kernel/power/Kconfig:31:	symbol HIBERNATE_CALLBACKS is selected by HIBERNATION
+> kernel/power/Kconfig:34:	symbol HIBERNATION depends on SWAP
+> init/Kconfig:250:	symbol SWAP depends on BLOCK
+> block/Kconfig:5:	symbol BLOCK is selected by UBIFS_FS
+> fs/ubifs/Kconfig:1:	symbol UBIFS_FS depends on MISC_FILESYSTEMS
+> fs/Kconfig:227:	symbol MISC_FILESYSTEMS is selected by ACPI_APEI
+> drivers/acpi/apei/Kconfig:8:	symbol ACPI_APEI depends on ACPI
+> drivers/acpi/Kconfig:9:	symbol ACPI depends on ARCH_SUPPORTS_ACPI
+> drivers/acpi/Kconfig:6:	symbol ARCH_SUPPORTS_ACPI is selected by IA64_HP_SIM
+> arch/ia64/Kconfig:202:	symbol IA64_HP_SIM is part of choice <choice>
+> For a resolution refer to Documentation/kbuild/kconfig-language.txt
+> subsection "Kconfig recursive dependency limitations"
+> 
+> Didn't we have exactly the same problem before ?
+> 
+> Guenter
 
-yes, that's correct. Host's Qemu process virtual address range is used as guest physical 
-address and a direct mapping(EPT/NPT) is established. At guest side, this physical memory
-range is plugged into guest system memory map and DAX mapping is setup using nvdimm calls.
+Indeed, Chandan Rajendra sent out a new version of the patch which fixes the
+problem (by removing the 'select BLOCK' from fs/ubifs/Kconfig), but it never
+made it into the fscrypt tree and hence never made it into linux-next.
 
-Thanks,
-Pankaj
+Ted, what you are planning to do with the fscrypt tree following the fsverity
+discussion?  IMO, we should keep the fsverity stuff in its own branch, separate
+from any fscrypt changes.  As a suggestion, in the branch "fscrypt" of my
+linux.git repo [1], I applied just these four patches on top of v5.0-rc1 and
+resolved the conflicts with them no longer being on top of fsverity:
+
+	fscrypt: remove CRYPTO_CTR dependency
+	ext4: use IS_ENCRYPTED() to check encryption status
+	f2fs: use IS_ENCRYPTED() to check encryption status
+	fscrypt: remove filesystem specific build config option
+
+(The last patch is the fixed version.)
+
+Please consider doing the same with the official fscrypt tree.  Thanks!
+
+[1] https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git/log/?h=fscrypt
+
+- Eric
