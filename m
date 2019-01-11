@@ -1,8 +1,8 @@
 Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51440 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55732 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729011AbfAKLFG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Jan 2019 06:05:06 -0500
+        id S1725446AbfAKLEF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 06:04:05 -0500
 From: Ming Lei <ming.lei@redhat.com>
 To: Jens Axboe <axboe@kernel.dk>
 Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -22,43 +22,53 @@ Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
         Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
         Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V13 13/19] bcache: avoid to use bio_for_each_segment_all() in bch_bio_alloc_pages()
-Date: Fri, 11 Jan 2019 19:01:21 +0800
-Message-Id: <20190111110127.21664-14-ming.lei@redhat.com>
+Subject: [PATCH V13 09/19] block: introduce bvec_last_segment()
+Date: Fri, 11 Jan 2019 19:01:17 +0800
+Message-Id: <20190111110127.21664-10-ming.lei@redhat.com>
 In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
 References: <20190111110127.21664-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-bch_bio_alloc_pages() is always called on one new bio, so it is safe
-to access the bvec table directly. Given it is the only kind of this
-case, open code the bvec table access since bio_for_each_segment_all()
-will be changed to support for iterating over multipage bvec.
+BTRFS and guard_bio_eod() need to get the last singlepage segment
+from one multipage bvec, so introduce this helper to make them happy.
 
-Acked-by: Coly Li <colyli@suse.de>
 Reviewed-by: Omar Sandoval <osandov@fb.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Ming Lei <ming.lei@redhat.com>
 ---
- drivers/md/bcache/util.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ include/linux/bvec.h | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
-diff --git a/drivers/md/bcache/util.c b/drivers/md/bcache/util.c
-index 20eddeac1531..62fb917f7a4f 100644
---- a/drivers/md/bcache/util.c
-+++ b/drivers/md/bcache/util.c
-@@ -270,7 +270,11 @@ int bch_bio_alloc_pages(struct bio *bio, gfp_t gfp_mask)
- 	int i;
- 	struct bio_vec *bv;
+diff --git a/include/linux/bvec.h b/include/linux/bvec.h
+index d441486db605..ca6e630f88ab 100644
+--- a/include/linux/bvec.h
++++ b/include/linux/bvec.h
+@@ -131,4 +131,26 @@ static inline bool bvec_iter_advance(const struct bio_vec *bv,
+ 	.bi_bvec_done	= 0,						\
+ }
  
--	bio_for_each_segment_all(bv, bio, i) {
-+	/*
-+	 * This is called on freshly new bio, so it is safe to access the
-+	 * bvec table directly.
-+	 */
-+	for (i = 0, bv = bio->bi_io_vec; i < bio->bi_vcnt; bv++, i++) {
- 		bv->bv_page = alloc_page(gfp_mask);
- 		if (!bv->bv_page) {
- 			while (--bv >= bio->bi_io_vec)
++/*
++ * Get the last single-page segment from the multi-page bvec and store it
++ * in @seg
++ */
++static inline void bvec_last_segment(const struct bio_vec *bvec,
++				     struct bio_vec *seg)
++{
++	unsigned total = bvec->bv_offset + bvec->bv_len;
++	unsigned last_page = (total - 1) / PAGE_SIZE;
++
++	seg->bv_page = nth_page(bvec->bv_page, last_page);
++
++	/* the whole segment is inside the last page */
++	if (bvec->bv_offset >= last_page * PAGE_SIZE) {
++		seg->bv_offset = bvec->bv_offset % PAGE_SIZE;
++		seg->bv_len = bvec->bv_len;
++	} else {
++		seg->bv_offset = 0;
++		seg->bv_len = total - last_page * PAGE_SIZE;
++	}
++}
++
+ #endif /* __LINUX_BVEC_ITER_H */
 -- 
 2.9.5
