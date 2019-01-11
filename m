@@ -1,47 +1,78 @@
-Return-Path: <SRS0=QTyG=PS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from szxga07-in.huawei.com ([45.249.212.35]:35840 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725536AbfAJGDP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 10 Jan 2019 01:03:15 -0500
-From: "zhangyi (F)" <yi.zhang@huawei.com>
-To: <linux-ext4@vger.kernel.org>
-CC: <tytso@mit.edu>, <adilger.kernel@dilger.ca>, <jack@suse.cz>,
-        <miaoxie@huawei.com>, <yi.zhang@huawei.com>
-Subject: [PATCH 2/2] ext4: fix compile error when using BUFFER_TRACE
-Date: Thu, 10 Jan 2019 14:06:39 +0800
-Message-ID: <1547100399-127915-3-git-send-email-yi.zhang@huawei.com>
-In-Reply-To: <1547100399-127915-1-git-send-email-yi.zhang@huawei.com>
-References: <1547100399-127915-1-git-send-email-yi.zhang@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:44744 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1731513AbfAKLGJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 06:06:09 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V13 17/19] block: document usage of bio iterator helpers
+Date: Fri, 11 Jan 2019 19:01:25 +0800
+Message-Id: <20190111110127.21664-18-ming.lei@redhat.com>
+In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
+References: <20190111110127.21664-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix compile error below when using BUFFER_TRACE.
+Now multi-page bvec is supported, some helpers may return page by
+page, meantime some may return segment by segment, this patch
+documents the usage.
 
-fs/ext4/inode.c: In function ‘ext4_expand_extra_isize’:
-fs/ext4/inode.c:5979:19: error: request for member ‘bh’ in something not a structure or union
-  BUFFER_TRACE(iloc.bh, "get_write_access");
-
-Fixes: c03b45b853f58 ("ext4, project: expand inode extra size if possible")
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
 ---
- fs/ext4/inode.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ Documentation/block/biovecs.txt | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 22a9d81..b7384d5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5976,7 +5976,7 @@ int ext4_expand_extra_isize(struct inode *inode,
- 
- 	ext4_write_lock_xattr(inode, &no_expand);
- 
--	BUFFER_TRACE(iloc.bh, "get_write_access");
-+	BUFFER_TRACE(iloc->bh, "get_write_access");
- 	error = ext4_journal_get_write_access(handle, iloc->bh);
- 	if (error) {
- 		brelse(iloc->bh);
+diff --git a/Documentation/block/biovecs.txt b/Documentation/block/biovecs.txt
+index 25689584e6e0..ce6eccaf5df7 100644
+--- a/Documentation/block/biovecs.txt
++++ b/Documentation/block/biovecs.txt
+@@ -117,3 +117,28 @@ Other implications:
+    size limitations and the limitations of the underlying devices. Thus
+    there's no need to define ->merge_bvec_fn() callbacks for individual block
+    drivers.
++
++Usage of helpers:
++=================
++
++* The following helpers whose names have the suffix of "_all" can only be used
++on non-BIO_CLONED bio. They are usually used by filesystem code. Drivers
++shouldn't use them because the bio may have been split before it reached the
++driver.
++
++	bio_for_each_segment_all()
++	bio_first_bvec_all()
++	bio_first_page_all()
++	bio_last_bvec_all()
++
++* The following helpers iterate over single-page segment. The passed 'struct
++bio_vec' will contain a single-page IO vector during the iteration
++
++	bio_for_each_segment()
++	bio_for_each_segment_all()
++
++* The following helpers iterate over multi-page bvec. The passed 'struct
++bio_vec' will contain a multi-page IO vector during the iteration
++
++	bio_for_each_bvec()
++	rq_for_each_bvec()
 -- 
-2.7.4
+2.9.5
