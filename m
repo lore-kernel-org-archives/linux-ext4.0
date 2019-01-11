@@ -1,52 +1,80 @@
-Return-Path: <SRS0=njA7=PY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from smtp6-g21.free.fr ([212.27.42.6]:14146 "EHLO smtp6-g21.free.fr"
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59380 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729732AbfAPVeZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 16 Jan 2019 16:34:25 -0500
-Received: from localhost.localdomain (unknown [88.185.151.243])
-        by smtp6-g21.free.fr (Postfix) with ESMTPS id 2A37B7802FE
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Jan 2019 22:34:24 +0100 (CET)
-Date: Wed, 16 Jan 2019 22:34:23 +0100
-From: Etienne Buira <etienne.buira@free.fr>
-To: linux-ext4@vger.kernel.org
-Subject: ext4fs block role, debugfs testb and icheck mismatch
-Message-ID: <20190116213423.GA20263@Z926fQmE5jqhFMgp6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+        id S1725789AbfAKLC3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 06:02:29 -0500
+From: Ming Lei <ming.lei@redhat.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V13 03/19] block: remove bvec_iter_rewind()
+Date: Fri, 11 Jan 2019 19:01:11 +0800
+Message-Id: <20190111110127.21664-4-ming.lei@redhat.com>
+In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
+References: <20190111110127.21664-1-ming.lei@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+Commit 7759eb23fd980 ("block: remove bio_rewind_iter()") removes
+bio_rewind_iter(), then no one uses bvec_iter_rewind() any more,
+so remove it.
 
-For the background: i've hit defect sectors (on part of md array), and i
-want to rewrite those sectors to force hdd reallocation, so i need to
-figure out what they are used for.
+Reviewed-by: Omar Sandoval <osandov@fb.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Ming Lei <ming.lei@redhat.com>
+---
+ include/linux/bvec.h | 24 ------------------------
+ 1 file changed, 24 deletions(-)
 
-Unrolling the layers under fs, i'm interested in a 4K blocks range that
-starts at 2035, here starts the trouble:
-debugfs 1.43.9 (8-Feb-2018)
-debugfs:  testb 2035
-Block 2035 marked in use
-debugfs:  icheck 2035
-Block   Inode number
-2035    <block not found>
-
->From this result, i tried to figure out if this block were used for fs
-internal structures.
-Using dumpe2fs, i see that this block belongs to group 0, and falls
-beyond fs structures (last block for inode table is reported as 1568).
-Block 2035 is not reported as free blocks.
-
-Running forced (fs was marked clean) RO check with e2fsck (on mounted
-filesystem) did not report block 2035 in block bitmap differences.
-
-Oh, and yes, unmounting the filesystem would be a costy operation, so
-better if avoided (that's why i ran e2fsck RO, and only looked for
-results about the block of interest).
-
-So, how can i know how this (these, actually) block is used?
-
-Regards.
-
-PS: I'm not subscribed to the list, so please CC me.
+diff --git a/include/linux/bvec.h b/include/linux/bvec.h
+index 02c73c6aa805..ba0ae40e77c9 100644
+--- a/include/linux/bvec.h
++++ b/include/linux/bvec.h
+@@ -92,30 +92,6 @@ static inline bool bvec_iter_advance(const struct bio_vec *bv,
+ 	return true;
+ }
+ 
+-static inline bool bvec_iter_rewind(const struct bio_vec *bv,
+-				     struct bvec_iter *iter,
+-				     unsigned int bytes)
+-{
+-	while (bytes) {
+-		unsigned len = min(bytes, iter->bi_bvec_done);
+-
+-		if (iter->bi_bvec_done == 0) {
+-			if (WARN_ONCE(iter->bi_idx == 0,
+-				      "Attempted to rewind iter beyond "
+-				      "bvec's boundaries\n")) {
+-				return false;
+-			}
+-			iter->bi_idx--;
+-			iter->bi_bvec_done = __bvec_iter_bvec(bv, *iter)->bv_len;
+-			continue;
+-		}
+-		bytes -= len;
+-		iter->bi_size += len;
+-		iter->bi_bvec_done -= len;
+-	}
+-	return true;
+-}
+-
+ #define for_each_bvec(bvl, bio_vec, iter, start)			\
+ 	for (iter = (start);						\
+ 	     (iter).bi_size &&						\
+-- 
+2.9.5
