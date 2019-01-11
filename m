@@ -1,88 +1,121 @@
-Return-Path: <SRS0=NmFT=PW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-vs1-f66.google.com ([209.85.217.66]:36178 "EHLO
-        mail-vs1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726187AbfANKZT (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2019 05:25:19 -0500
-Received: by mail-vs1-f66.google.com with SMTP id v205so13283490vsc.3
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Jan 2019 02:25:18 -0800 (PST)
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga07-in.huawei.com ([45.249.212.35]:40350 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728042AbfAKGLm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 01:11:42 -0500
+Subject: Re: [PATCH] jbd2: set freed flag while revoking a buffer which
+ belongs to older transaction
+To: Jan Kara <jack@suse.cz>
+References: <1547100722-132243-1-git-send-email-yi.zhang@huawei.com>
+ <20190110112023.GF15790@quack2.suse.cz>
+CC: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <miaoxie@huawei.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+Message-ID: <5b2cb7b3-1eff-21d2-cf12-ee844f54eda0@huawei.com>
+Date: Fri, 11 Jan 2019 14:11:31 +0800
 MIME-Version: 1.0
-References: <CAMuHMdULrGHfgF+RRGf5gXAc=V3KaB4549NezxEc3CvfsKWOyA@mail.gmail.com>
- <1547339800-50257-1-git-send-email-adilger@dilger.ca>
-In-Reply-To: <1547339800-50257-1-git-send-email-adilger@dilger.ca>
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Date: Mon, 14 Jan 2019 11:25:06 +0100
-Message-ID: <CAMuHMdX+vHL5ZTq-PJFLSy+wW6y5fgtJR30Tdy6BtabeMMVyjg@mail.gmail.com>
-Subject: Re: [PATCH] ext4: don't update s_rev_level if not required
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
+In-Reply-To: <20190110112023.GF15790@quack2.suse.cz>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas,
+On 2019/1/10 19:20, Jan Kara Wrote:
+> On Thu 10-01-19 14:12:02, zhangyi (F) wrote:
+>> Now, we capture a data corruption problem on ext4 while we're truncating
+>> an extent index block. Imaging that if we are revoking a buffer which
+>> has been journaled by the committing transaction, the buffer's jbddirty
+>> flag will not be cleared in jbd2_journal_forget(), so the commit code
+>> will set the buffer dirty flag again after refile the buffer.
+>>
+>> fsx                               kjournald2
+>>                                   jbd2_journal_commit_transaction
+>> jbd2_journal_revoke                commit phase 1~5...
+>>  jbd2_journal_forget
+>>    belongs to older transaction    commit phase 6
+>>    jbddirty not clear               __jbd2_journal_refile_buffer
+>>                                      __jbd2_journal_unfile_buffer
+>>                                       test_clear_buffer_jbddirty
+>>                                        mark_buffer_dirty
+>>
+>> Finally, if the freed extent index block was allocated again as data
+>> block by some other files, it may corrupt the file data when writing
+>> cached pages later, such as during umount time.
+>>
+>> This patch mark buffer as freed when it already belongs to the
+>> committing transaction in jbd2_journal_forget(), so that commit code
+>> knows it should clear dirty bits when it is done with the buffer.
+>>
+>> This problem can be reproduced by xfstests generic/455 easily with
+>> seeds (3246 3247 3248 3249).
+>>
+>> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+>> Cc: stable@vger.kernel.org
+> 
+> Thanks a lot for the analysis and the patch! I fully agree with your
+> analysis however I think just setting buffer as freed isn't completely
+> correct. The problem is following: The metadata buffer X has been modified
+> by the commiting transaction - let's call it A. It has been freed in the
+> currently running transaction B. Now jbd2_journal_forget() clears
+> b_next_transaction and if you set buffer freed flag, X will not be added to
+> the checkpoint list. So when transaction A finishes commit, it can get
+> checkpointed (without writing out X) before transaction B commits. So if a
+> crash occurs before B commits, we'd loose modification of X from
+> transaction A and thus cause filesystem corruption.
+> 
+Thanks for your explanation! There are still two points I don't quite
+understand.
 
-On Sun, Jan 13, 2019 at 1:36 AM Andreas Dilger <adilger@dilger.ca> wrote:
-> Don't update the superblock s_rev_level during mount if it isn't
-> actually necessary, only if superblock features are being set by
-> the kernel.  This was originally added for ext3 since it always
-> set the INCOMPAT_RECOVER and HAS_JOURNAL features during mount,
-> but this is not needed since no journal mode was added to ext4.
->
-> That will allow Geert to mount his 20-year-old ext2 rev 0.0 m68k
-> filesystem, as a testament of the backward compatibility of ext4.
->
-> Fixes: 0390131ba84f ("ext4: Allow ext4 to run without a journal")
-> Signed-off-by: Andreas Dilger <adilger@dilger.ca>
+I check all three cases of doing checkpoint. IIUC, both jbd2_journal_destroy()
+and jbd2_journal_flush() wait the current running transaction B to complete
+before doing checkpoint besides __jbd2_log_wait_for_space(). So I guess this is
+the case that you mentioned of transaction A could be checkpointed before B
+commits, am I right?
 
-Thanks for your patch!
+For another case, jbd2_update_log_tail() will be invoked after transaction B
+complete, so the problem above also can't happen here, right?
 
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1670,6 +1670,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
->  } \
->  static inline void ext4_set_feature_##name(struct super_block *sb) \
->  { \
-> +       ext4_update_dynamic_rev(sb); \
+> What rather needs to happen is the same thing that is done in
+> journal_unmap_buffer() in this case: We set buffer freed flag and we also
+> set b_next_transaction to the currently running transaction (B). This will
+> prevent A from being checkpointed before B commits and thus avoids the
+> problem above.
+> 
+Sorry, I don't get this point. I find that the difference between setting
+b_next_transaction or not is just re-added the buffer X to the BJ_Reserved
+list or not. How could we avoid the problem above.
 
-This doesn't compile, as ext4_update_dynamic_rev() is used before its
-declaration:
+BTW, I am thinking of a similar case. If we modify buffer X instead of
+revork it in the transaction B, we also need to avoid transaction A from
+being checkpointed before B commits, because current buffer X contains the
+modified data (modified by B). So we should prevent writing it before
+B commits, otherwise it will corrupt metadata. How do we handle this
+situation now?
 
-In file included from fs/ext4/bitmap.c:12:0:
-fs/ext4/ext4.h: In function ‘ext4_set_feature_dir_prealloc’:
-fs/ext4/ext4.h:1673:2: error: implicit declaration of function
-‘ext4_update_dynamic_rev’ [-Werror=implicit-function-declaration]
-  ext4_update_dynamic_rev(sb); \
-  ^
-fs/ext4/ext4.h:1719:1: note: in expansion of macro ‘EXT4_FEATURE_COMPAT_FUNCS’
- EXT4_FEATURE_COMPAT_FUNCS(dir_prealloc,  DIR_PREALLOC)
- ^~~~~~~~~~~~~~~~~~~~~~~~~
-fs/ext4/ext4.h: At top level:
-fs/ext4/ext4.h:2678:13: warning: conflicting types for ‘ext4_update_dynamic_rev’
- extern void ext4_update_dynamic_rev(struct super_block *sb);
-             ^~~~~~~~~~~~~~~~~~~~~~~
-fs/ext4/ext4.h:1673:2: note: previous implicit declaration of
-‘ext4_update_dynamic_rev’ was here
-  ext4_update_dynamic_rev(sb); \
-  ^
-fs/ext4/ext4.h:1719:1: note: in expansion of macro ‘EXT4_FEATURE_COMPAT_FUNCS’
- EXT4_FEATURE_COMPAT_FUNCS(dir_prealloc,  DIR_PREALLOC)
- ^~~~~~~~~~~~~~~~~~~~~~~~~
+Thanks,
+Yi.
 
-Moving the declaration up fixes that.
-
-Hence with that fixed:
-Tested-by: Geert Uytterhoeven <geert@linux-m68k.org>
-
-Thanks!
-
-Gr{oetje,eeting}s,
-
-                        Geert
-
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+>> ---
+>>  fs/jbd2/transaction.c | 6 ++++++
+>>  1 file changed, 6 insertions(+)
+>>
+>> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+>> index 4b51177..fcb65f2 100644
+>> --- a/fs/jbd2/transaction.c
+>> +++ b/fs/jbd2/transaction.c
+>> @@ -1592,6 +1592,12 @@ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
+>>  			if (was_modified)
+>>  				drop_reserve = 1;
+>>  		}
+>> +
+>> +		/*
+>> +		 * Mark buffer as freed so that commit code know it should
+>> +		 * clear dirty bits when it is done with the buffer.
+>> +		 */
+>> +		set_buffer_freed(bh);
+>>  	}
+>>  
+>>  not_jbd:
+>> -- 
+>> 2.7.4
+>>
