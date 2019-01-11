@@ -1,14 +1,14 @@
-Return-Path: <SRS0=NmFT=PW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37780 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:54766 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726067AbfANHPn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 14 Jan 2019 02:15:43 -0500
-Date: Mon, 14 Jan 2019 02:15:40 -0500 (EST)
+        id S1727578AbfAKHpI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 11 Jan 2019 02:45:08 -0500
+Date: Fri, 11 Jan 2019 02:45:04 -0500 (EST)
 From: Pankaj Gupta <pagupta@redhat.com>
-To: Matthew Wilcox <willy@infradead.org>
-Cc: Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
-        kvm@vger.kernel.org, qemu-devel@nongnu.org,
-        linux-nvdimm@ml01.01.org, linux-fsdevel@vger.kernel.org,
+To: Dave Chinner <david@fromorbit.com>
+Cc: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
+        qemu-devel@nongnu.org, linux-nvdimm@ml01.01.org,
+        linux-fsdevel@vger.kernel.org,
         virtualization@lists.linux-foundation.org,
         linux-acpi@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, jack@suse.cz, stefanha@redhat.com,
@@ -20,11 +20,12 @@ Cc: Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
         xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
         hch@infradead.org, mst@redhat.com, jasowang@redhat.com,
         lcapitulino@redhat.com, imammedo@redhat.com, eblake@redhat.com,
-        tytso@mit.edu, adilger kernel <adilger.kernel@dilger.ca>,
+        willy@infradead.org, tytso@mit.edu,
+        adilger kernel <adilger.kernel@dilger.ca>,
         darrick wong <darrick.wong@oracle.com>, rjw@rjwysocki.net
-Message-ID: <942065073.64011540.1547450140670.JavaMail.zimbra@redhat.com>
-In-Reply-To: <20190113233820.GX6310@bombadil.infradead.org>
-References: <20190109144736.17452-1-pagupta@redhat.com> <20190110012617.GA4205@dastard> <1326478078.61913951.1547192704870.JavaMail.zimbra@redhat.com> <20190113232902.GD4205@dastard> <20190113233820.GX6310@bombadil.infradead.org>
+Message-ID: <1326478078.61913951.1547192704870.JavaMail.zimbra@redhat.com>
+In-Reply-To: <20190110012617.GA4205@dastard>
+References: <20190109144736.17452-1-pagupta@redhat.com> <20190110012617.GA4205@dastard>
 Subject: Re: [PATCH v3 0/5] kvm "virtio pmem" device
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
@@ -33,31 +34,55 @@ Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-> > Until you have images (and hence host page cache) shared between
-> > multiple guests. People will want to do this, because it means they
-> > only need a single set of pages in host memory for executable
-> > binaries rather than a set of pages per guest. Then you have
-> > multiple guests being able to detect residency of the same set of
-> > pages. If the guests can then, in any way, control eviction of the
-> > pages from the host cache, then we have a guest-to-guest information
-> > leak channel.
 > 
-> I don't think we should ever be considering something that would allow a
-> guest to evict page's from the host's pagecache [1].  The guest should
-> be able to kick its own references to the host's pagecache out of its
-> own pagecache, but not be able to influence whether the host or another
-> guest has a read-only mapping cached.
+> On Wed, Jan 09, 2019 at 08:17:31PM +0530, Pankaj Gupta wrote:
+> >  This patch series has implementation for "virtio pmem".
+> >  "virtio pmem" is fake persistent memory(nvdimm) in guest
+> >  which allows to bypass the guest page cache. This also
+> >  implements a VIRTIO based asynchronous flush mechanism.
 > 
-> [1] Unless the guest is allowed to modify the host's file; obviously
-> truncation, holepunching, etc are going to evict pages from the host's
-> page cache.
+> Hmmmm. Sharing the host page cache direct into the guest VM. Sounds
+> like a good idea, but.....
+> 
+> This means the guest VM can now run timing attacks to observe host
+> side page cache residency, and depending on the implementation I'm
+> guessing that the guest will be able to control host side page
+> cache eviction, too (e.g. via discard or hole punch operations).
 
-This is so correct. Guest does not not evict host page cache pages directly. 
-In case of virtio-pmem & DAX, guest clears guest page cache exceptional entries.
-Its solely decision of host to take action on the host page cache pages.
+Not sure how? this is similar to mmapping virtual memory by any userspace 
+process. Any host userspace process can do such attack on host page cache
+using mincore & mmap shared file. 
 
-In case of virtio-pmem, guest does not modify host file directly i.e don't
-perform hole punch & truncation operation directly on host file.  
+But i don't think guest can do this alone. For virtio-pmem usecase guest 
+won't be using page cache so timing attack from only guest side is not 
+possible unless host userspace can run checks on page cache eviction state
+using mincore etc. 
+
+As rightly described by Rik, guest will only access its own page cache pages 
+and if guest page cache is managed directly by host, this saves alot of 
+effort for guest in transferring guest state of page cache.  
+
+> 
+> Which means this functionality looks to me like a new vector for
+> information leakage into and out of the guest VM via guest
+> controlled host page cache manipulation.
+> 
+> https://arxiv.org/pdf/1901.01161
+> 
+> I might be wrong, but if I'm not we're going to have to be very
+> careful about how guest VMs can access and manipulate host side
+> resources like the page cache.....
+
+If I am following correctly the discussions in MM thread. 
+Important steps to mitigate this:
+
+* Avoid running mincore in privilege mode: to safeguard page evict state of any 
+  page cache page.
+* tweaking RWF_NOWAIT 
+
+I think if we secure ways to find current state(cached/evicted) of a page in host, 
+we should be able to mitigate the impact for any page cache page access attack 
+including virtio-pmem.
 
 Thanks,
-Pankaj 
+Pankaj
