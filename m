@@ -1,93 +1,43 @@
-Return-Path: <SRS0=AL/t=PM=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-vs1-f65.google.com ([209.85.217.65]:43768 "EHLO
-        mail-vs1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726021AbfADUlh (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 4 Jan 2019 15:41:37 -0500
-Received: by mail-vs1-f65.google.com with SMTP id x1so23368527vsc.10
-        for <linux-ext4@vger.kernel.org>; Fri, 04 Jan 2019 12:41:36 -0800 (PST)
+Return-Path: <SRS0=ORgn=PU=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-vs1-f48.google.com ([209.85.217.48]:41304 "EHLO
+        mail-vs1-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725816AbfALJnW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Jan 2019 04:43:22 -0500
 MIME-Version: 1.0
-References: <20181219071420.GC2628@infradead.org> <20181219021953.GD31274@dastard>
- <20181219193005.GB6889@mit.edu> <20181219213552.GO6311@dastard>
- <20181220220158.GC2360@mit.edu> <20181221070447.GA21687@infradead.org>
- <20181221154714.GA26547@mit.edu> <CAHk-=wgdzWgoPSuHeVcqmGE1hB3Gan72r2_AhtC14e60=z45yg@mail.gmail.com>
- <20181222041712.GC26547@mit.edu> <20181223041007.GL10600@bombadil.infradead.org>
- <20181223044553.GG26547@mit.edu>
-In-Reply-To: <20181223044553.GG26547@mit.edu>
-From: Daniel Colascione <dancol@google.com>
-Date: Fri, 4 Jan 2019 12:41:24 -0800
-Message-ID: <CAKOZuesHHSRCzQEtGEQbm7v7j53hAjkJq-8Pgcyk+M40o-ia0g@mail.gmail.com>
-Subject: Re: [PATCH v2 01/12] fs-verity: add a documentation file
-To: "Theodore Y. Ts'o" <tytso@mit.edu>,
-        Matthew Wilcox <willy@infradead.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-integrity@vger.kernel.org,
-        Linux List Kernel Mailing <linux-kernel@vger.kernel.org>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Victor Hsieh <victorhsieh@google.com>,
-        Chandan Rajendra <chandan@linux.vnet.ibm.com>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Sat, 12 Jan 2019 10:43:10 +0100
+Message-ID: <CAMuHMdULrGHfgF+RRGf5gXAc=V3KaB4549NezxEc3CvfsKWOyA@mail.gmail.com>
+Subject: Preserving a rev 0.0 ext2 filesystem
+To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 22, 2018 at 8:46 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
->
-> On Sat, Dec 22, 2018 at 08:10:07PM -0800, Matthew Wilcox wrote:
-> > Pretty much every file format has the ability to put arbitrary blocks
-> > of information into a file somewhere the tools which don't know about
-> > it will skip it.  For example, ZIP "includes an extra field facility
-> > within file headers, which can be used to store extra data not defined
-> > by existing ZIP specifications, and which allow compliant archivers tha=
-t
-> > do not recognize the fields to safely skip them. Header IDs 0=E2=80=933=
-1 are
-> > reserved for use by PKWARE. The remaining IDs can be used by third-part=
-y
-> > vendors for proprietary usage. " (Wikipedia)
-> >
-> > ELF, PNG, PDF and many other formats have the ability to put data
-> > _somewhere_.  It might not be at the tail of the file, but there's
-> > somewhere to do it.
-> >
-> > (I appreciate this isn't what Linus is asking for, but I'm pointing out
-> > that this is by no means as intractable as you make it sound.)
->
-> That design would require the fs-verity code to know the type of eacho
-> file, and where to find the in-band Merkle tree for each file type
-> that we wanted to support.  And if you wanted to use fs-verity to
-> protect a sudoers text configuration file (for example), we'd have to
-> teach sudo how to ignore the userspace visible Merkle tree.
+Hi Ted,
 
-I'm pretty late to the game, but I just want to bring up one approach
-that I'm not sure people have previously considered. You can't put the
-verification blob in an xattr due to xattr size limits, but you *can*
-put a filename in an xattr. What if, at open time, fs-verity looked
-for a specially-named xattr attached to a file, resolved that name
-like a symlink target, opened the pointed-to file, and just used
-*that* as the authentication blob? It'd also be possible to teach
-unlink to delete the pointed-to file when the pointer file is deleted
---- sort of like a simple and stupid kind of data fork.
+I'm still regularly using a Linux rev 0.0 ext2 filesystem as a  ramdisk
+on m68k, containing mid-90's binaries, from right after the a.out-to-ELF
+transition, so I notice if someone breaks old syscall support.
 
-For example, if you wanted to secure /usr/bin/emacs, you could set an
-security.fsverify.verification_file xattr (in the system namespace
-because the xattr has special semantics) to
-"/.verification-blobs/@usr@bin@emacs.hashtree" or something like that.
-Then, open(2) on /usr/bin/emacs would, internally to VFS, also open
-/.verification-blobs/@usr@bin@emacs.hashtree and read verification
-data from it, transparently to both users and the underlying
-filesystem. If someone deleted /usr/bin/emacs, VFS would automatically
-delete /.verification-blobs/@usr@bin@emacs.hashtree. If
-/.verification-blobs/@usr@bin@emacs.hashtree didn't exist at time of
-open(2) of /usr/bin/emacs, or couldn't be opened for whatever reason,
-the open(2) of /usr/bin/emacs would fail.
+Recently I wanted to change /dev/console on that ramdisk from a symlink
+to chardev 5 0.  Unfortunately I cannot mount it, without it being
+upgraded automatically to a rev 1.0 ext2 filesystem.  Apparently the
+kernel has been doing that upgrade for ages.
 
-ISTM that a scheme like this would give you some of the advantages of
-jumbo xattrs, but with much less implementation complexity. If
-someone's proposed something like this before, sorry for the noise.
+Do you have a suggestion how to make that change, while preserving the
+ext2 revision?
+
+Thanks!
+
+Gr{oetje,eeting}s,
+
+                        Geert
+
+-- 
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
