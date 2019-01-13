@@ -1,153 +1,87 @@
-Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52316 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725267AbfAKLGD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Jan 2019 06:06:03 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V13 15/19] block: enable multipage bvecs
-Date: Fri, 11 Jan 2019 19:01:23 +0800
-Message-Id: <20190111110127.21664-16-ming.lei@redhat.com>
-In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
-References: <20190111110127.21664-1-ming.lei@redhat.com>
+Return-Path: <SRS0=NEJw=PV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from smtp-out-no.shaw.ca ([64.59.134.12]:60996 "EHLO
+        smtp-out-no.shaw.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726412AbfAMAgn (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Jan 2019 19:36:43 -0500
+From: Andreas Dilger <adilger@dilger.ca>
+To: tytso@mit.edu, Geert Uytterhoeven <geert@linux-m68k.org>
+Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@dilger.ca>
+Subject: [PATCH] ext4: don't update s_rev_level if not required
+Date: Sat, 12 Jan 2019 17:36:40 -0700
+Message-Id: <1547339800-50257-1-git-send-email-adilger@dilger.ca>
+In-Reply-To: <CAMuHMdULrGHfgF+RRGf5gXAc=V3KaB4549NezxEc3CvfsKWOyA@mail.gmail.com>
+References: <CAMuHMdULrGHfgF+RRGf5gXAc=V3KaB4549NezxEc3CvfsKWOyA@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch pulls the trigger for multi-page bvecs.
+Don't update the superblock s_rev_level during mount if it isn't
+actually necessary, only if superblock features are being set by
+the kernel.  This was originally added for ext3 since it always
+set the INCOMPAT_RECOVER and HAS_JOURNAL features during mount,
+but this is not needed since no journal mode was added to ext4.
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
+That will allow Geert to mount his 20-year-old ext2 rev 0.0 m68k
+filesystem, as a testament of the backward compatibility of ext4.
+
+Fixes: 0390131ba84f ("ext4: Allow ext4 to run without a journal")
+Signed-off-by: Andreas Dilger <adilger@dilger.ca>
 ---
- block/bio.c         | 22 +++++++++++++++-------
- fs/iomap.c          |  4 ++--
- fs/xfs/xfs_aops.c   |  4 ++--
- include/linux/bio.h |  2 +-
- 4 files changed, 20 insertions(+), 12 deletions(-)
+ fs/ext4/ext4.h  | 3 +++
+ fs/ext4/inode.c | 1 -
+ fs/ext4/super.c | 1 -
+ 3 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/block/bio.c b/block/bio.c
-index 968b12fea564..83a2dfa417ca 100644
---- a/block/bio.c
-+++ b/block/bio.c
-@@ -753,6 +753,8 @@ EXPORT_SYMBOL(bio_add_pc_page);
-  * @page: page to add
-  * @len: length of the data to add
-  * @off: offset of the data in @page
-+ * @same_page: if %true only merge if the new data is in the same physical
-+ *		page as the last segment of the bio.
-  *
-  * Try to add the data at @page + @off to the last bvec of @bio.  This is a
-  * a useful optimisation for file systems with a block size smaller than the
-@@ -761,19 +763,25 @@ EXPORT_SYMBOL(bio_add_pc_page);
-  * Return %true on success or %false on failure.
-  */
- bool __bio_try_merge_page(struct bio *bio, struct page *page,
--		unsigned int len, unsigned int off)
-+		unsigned int len, unsigned int off, bool same_page)
- {
- 	if (WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED)))
- 		return false;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 185a05d..a1357f3 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1670,6 +1670,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ } \
+ static inline void ext4_set_feature_##name(struct super_block *sb) \
+ { \
++	ext4_update_dynamic_rev(sb); \
+ 	EXT4_SB(sb)->s_es->s_feature_compat |= \
+ 		cpu_to_le32(EXT4_FEATURE_COMPAT_##flagname); \
+ } \
+@@ -1687,6 +1688,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ } \
+ static inline void ext4_set_feature_##name(struct super_block *sb) \
+ { \
++	ext4_update_dynamic_rev(sb); \
+ 	EXT4_SB(sb)->s_es->s_feature_ro_compat |= \
+ 		cpu_to_le32(EXT4_FEATURE_RO_COMPAT_##flagname); \
+ } \
+@@ -1704,6 +1706,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
+ } \
+ static inline void ext4_set_feature_##name(struct super_block *sb) \
+ { \
++	ext4_update_dynamic_rev(sb); \
+ 	EXT4_SB(sb)->s_es->s_feature_incompat |= \
+ 		cpu_to_le32(EXT4_FEATURE_INCOMPAT_##flagname); \
+ } \
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 34d7e07..f21f2ac 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5351,7 +5351,6 @@ static int ext4_do_update_inode(handle_t *handle,
+ 		err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
+ 		if (err)
+ 			goto out_brelse;
+-		ext4_update_dynamic_rev(sb);
+ 		ext4_set_feature_large_file(sb);
+ 		ext4_handle_sync(handle);
+ 		err = ext4_handle_dirty_super(handle, sb);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index fb12d3c..6e4cac6 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2249,7 +2249,6 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 		es->s_max_mnt_count = cpu_to_le16(EXT4_DFL_MAX_MNT_COUNT);
+ 	le16_add_cpu(&es->s_mnt_count, 1);
+ 	ext4_update_tstamp(es, s_mtime);
+-	ext4_update_dynamic_rev(sb);
+ 	if (sbi->s_journal)
+ 		ext4_set_feature_journal_needs_recovery(sb);
  
- 	if (bio->bi_vcnt > 0) {
- 		struct bio_vec *bv = &bio->bi_io_vec[bio->bi_vcnt - 1];
-+		phys_addr_t vec_end_addr = page_to_phys(bv->bv_page) +
-+			bv->bv_offset + bv->bv_len - 1;
-+		phys_addr_t page_addr = page_to_phys(page);
- 
--		if (page == bv->bv_page && off == bv->bv_offset + bv->bv_len) {
--			bv->bv_len += len;
--			bio->bi_iter.bi_size += len;
--			return true;
--		}
-+		if (vec_end_addr + 1 != page_addr + off)
-+			return false;
-+		if (same_page && (vec_end_addr & PAGE_MASK) != page_addr)
-+			return false;
-+
-+		bv->bv_len += len;
-+		bio->bi_iter.bi_size += len;
-+		return true;
- 	}
- 	return false;
- }
-@@ -819,7 +827,7 @@ EXPORT_SYMBOL_GPL(__bio_add_page);
- int bio_add_page(struct bio *bio, struct page *page,
- 		 unsigned int len, unsigned int offset)
- {
--	if (!__bio_try_merge_page(bio, page, len, offset)) {
-+	if (!__bio_try_merge_page(bio, page, len, offset, false)) {
- 		if (bio_full(bio))
- 			return 0;
- 		__bio_add_page(bio, page, len, offset);
-diff --git a/fs/iomap.c b/fs/iomap.c
-index af736acd9006..0c350e658b7f 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -318,7 +318,7 @@ iomap_readpage_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 	 */
- 	sector = iomap_sector(iomap, pos);
- 	if (ctx->bio && bio_end_sector(ctx->bio) == sector) {
--		if (__bio_try_merge_page(ctx->bio, page, plen, poff))
-+		if (__bio_try_merge_page(ctx->bio, page, plen, poff, true))
- 			goto done;
- 		is_contig = true;
- 	}
-@@ -349,7 +349,7 @@ iomap_readpage_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 		ctx->bio->bi_end_io = iomap_read_end_io;
- 	}
- 
--	__bio_add_page(ctx->bio, page, plen, poff);
-+	bio_add_page(ctx->bio, page, plen, poff);
- done:
- 	/*
- 	 * Move the caller beyond our range so that it keeps making progress.
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index 1f1829e506e8..b9fd44168f61 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -616,12 +616,12 @@ xfs_add_to_ioend(
- 				bdev, sector);
- 	}
- 
--	if (!__bio_try_merge_page(wpc->ioend->io_bio, page, len, poff)) {
-+	if (!__bio_try_merge_page(wpc->ioend->io_bio, page, len, poff, true)) {
- 		if (iop)
- 			atomic_inc(&iop->write_count);
- 		if (bio_full(wpc->ioend->io_bio))
- 			xfs_chain_bio(wpc->ioend, wbc, bdev, sector);
--		__bio_add_page(wpc->ioend->io_bio, page, len, poff);
-+		bio_add_page(wpc->ioend->io_bio, page, len, poff);
- 	}
- 
- 	wpc->ioend->io_size += len;
-diff --git a/include/linux/bio.h b/include/linux/bio.h
-index c5231e5c7e85..1ece9f30294b 100644
---- a/include/linux/bio.h
-+++ b/include/linux/bio.h
-@@ -441,7 +441,7 @@ extern int bio_add_page(struct bio *, struct page *, unsigned int,unsigned int);
- extern int bio_add_pc_page(struct request_queue *, struct bio *, struct page *,
- 			   unsigned int, unsigned int);
- bool __bio_try_merge_page(struct bio *bio, struct page *page,
--		unsigned int len, unsigned int off);
-+		unsigned int len, unsigned int off, bool same_page);
- void __bio_add_page(struct bio *bio, struct page *page,
- 		unsigned int len, unsigned int off);
- int bio_iov_iter_get_pages(struct bio *bio, struct iov_iter *iter);
 -- 
-2.9.5
+1.8.0
