@@ -1,14 +1,14 @@
-Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:30136 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=NEJw=PV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:34792 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731733AbfAIOy2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 9 Jan 2019 09:54:28 -0500
-Date: Wed, 9 Jan 2019 09:54:19 -0500 (EST)
+        id S1726474AbfAMBin (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 12 Jan 2019 20:38:43 -0500
+Date: Sat, 12 Jan 2019 20:38:39 -0500 (EST)
 From: Pankaj Gupta <pagupta@redhat.com>
 To: Jan Kara <jack@suse.cz>
-Cc: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
-        qemu-devel@nongnu.org, linux-nvdimm@ml01.01.org,
-        linux-fsdevel@vger.kernel.org,
+Cc: Dave Chinner <david@fromorbit.com>, linux-kernel@vger.kernel.org,
+        kvm@vger.kernel.org, qemu-devel@nongnu.org,
+        linux-nvdimm@ml01.01.org, linux-fsdevel@vger.kernel.org,
         virtualization@lists.linux-foundation.org,
         linux-acpi@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, stefanha@redhat.com,
@@ -23,10 +23,10 @@ Cc: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
         willy@infradead.org, tytso@mit.edu,
         adilger kernel <adilger.kernel@dilger.ca>,
         darrick wong <darrick.wong@oracle.com>, rjw@rjwysocki.net
-Message-ID: <1413703615.61223613.1547045659656.JavaMail.zimbra@redhat.com>
-In-Reply-To: <20190109144215.GI15397@quack2.suse.cz>
-References: <20190109135606.15401-1-pagupta@redhat.com> <20190109144215.GI15397@quack2.suse.cz>
-Subject: Re: [PATCH v3 4/5] ext4: disable map_sync for virtio pmem
+Message-ID: <1354249849.63357171.1547343519970.JavaMail.zimbra@redhat.com>
+In-Reply-To: <20190110101757.GC15790@quack2.suse.cz>
+References: <20190109144736.17452-1-pagupta@redhat.com> <20190110012617.GA4205@dastard> <20190110101757.GC15790@quack2.suse.cz>
+Subject: Re: [PATCH v3 0/5] kvm "virtio pmem" device
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: 7bit
@@ -34,36 +34,46 @@ Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
+
 > 
-> On Wed 09-01-19 19:26:05, Pankaj Gupta wrote:
-> > Virtio pmem provides asynchronous host page cache flush
-> > mechanism. We don't support 'MAP_SYNC' with virtio pmem
-> > and ext4.
+> On Thu 10-01-19 12:26:17, Dave Chinner wrote:
+> > On Wed, Jan 09, 2019 at 08:17:31PM +0530, Pankaj Gupta wrote:
+> > >  This patch series has implementation for "virtio pmem".
+> > >  "virtio pmem" is fake persistent memory(nvdimm) in guest
+> > >  which allows to bypass the guest page cache. This also
+> > >  implements a VIRTIO based asynchronous flush mechanism.
 > > 
-> > Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
-> ...
-> > @@ -371,6 +373,13 @@ static int ext4_file_mmap(struct file *file, struct
-> > vm_area_struct *vma)
-> >  	if (!IS_DAX(file_inode(file)) && (vma->vm_flags & VM_SYNC))
-> >  		return -EOPNOTSUPP;
-> >  
-> > +	/* We don't support synchronous mappings with guest direct access
-> > +	 * and virtio based host page cache flush mechanism.
-> > +	 */
-> > +	if (IS_DAX(file_inode(file)) && virtio_pmem_host_cache_enabled(dax_dev)
-> > +						&& (vma->vm_flags & VM_SYNC))
-> > +		return -EOPNOTSUPP;
-> > +
+> > Hmmmm. Sharing the host page cache direct into the guest VM. Sounds
+> > like a good idea, but.....
+> > 
+> > This means the guest VM can now run timing attacks to observe host
+> > side page cache residency, and depending on the implementation I'm
+> > guessing that the guest will be able to control host side page
+> > cache eviction, too (e.g. via discard or hole punch operations).
+> > 
+> > Which means this functionality looks to me like a new vector for
+> > information leakage into and out of the guest VM via guest
+> > controlled host page cache manipulation.
+> > 
+> > https://arxiv.org/pdf/1901.01161
+> > 
+> > I might be wrong, but if I'm not we're going to have to be very
+> > careful about how guest VMs can access and manipulate host side
+> > resources like the page cache.....
 > 
-> Shouldn't there rather be some generic way of doing this? Having
-> virtio_pmem_host_cache_enabled() check in filesystem code just looks like
-> filesystem sniffing into details is should not care about... Maybe just
-> naming this (or having a wrapper) dax_dev_map_sync_supported()?
+> Right. Thinking about this I would be more concerned about the fact that
+> guest can effectively pin amount of host's page cache upto size of the
+> device/file passed to guest as PMEM, can't it Pankaj? Or is there some QEMU
+> magic that avoids this?
 
-Thanks for the feedback.
+Yes, guest will pin these host page cache pages using 'get_user_pages' by
+elevating the page reference count. But these pages can be reclaimed by host
+at any time when there is memory pressure.
 
-Just wanted to avoid 'dax' in function name just to differentiate this with real dax.
-But yes can add a wrapper: dax_dev_map_sync_supported()
+KVM does not permanently pin pages. vfio does that but we are not using
+it here.
+
+Could you please elaborate what you are thinking?
 
 Thanks,
 Pankaj
