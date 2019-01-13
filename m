@@ -1,72 +1,112 @@
-Return-Path: <SRS0=ORgn=PU=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-qk1-f174.google.com ([209.85.222.174]:43981 "EHLO
-        mail-qk1-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726217AbfALAau (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jan 2019 19:30:50 -0500
-Message-ID: <1547253047.20294.182.camel@intricatesoftware.com>
-Subject: Re: Block device flush ordering
-From: Kurt Miller <kurt@intricatesoftware.com>
-To: Stefan Ring <stefanrin@gmail.com>
-Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org
-Date: Fri, 11 Jan 2019 19:30:47 -0500
-In-Reply-To: <CAAxjCEymRj+FQ-Zw1OAKVoh5LE=dwvy6PRU_BwxCoFZ6r0usyw@mail.gmail.com>
-References: <1547130601.20294.152.camel@intricatesoftware.com>
-         <CAAxjCEymRj+FQ-Zw1OAKVoh5LE=dwvy6PRU_BwxCoFZ6r0usyw@mail.gmail.com>
-Content-Type: text/plain; charset="ISO-8859-1"
-Mime-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Return-Path: <SRS0=NEJw=PV=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59792 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726472AbfAMCRt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 12 Jan 2019 21:17:49 -0500
+Date: Sat, 12 Jan 2019 21:17:46 -0500 (EST)
+From: Pankaj Gupta <pagupta@redhat.com>
+To: Dan Williams <dan.j.williams@intel.com>
+Cc: Jan Kara <jack@suse.cz>, KVM list <kvm@vger.kernel.org>,
+        David Hildenbrand <david@redhat.com>,
+        linux-nvdimm <linux-nvdimm@ml01.01.org>,
+        Jason Wang <jasowang@redhat.com>,
+        Dave Chinner <david@fromorbit.com>,
+        Qemu Developers <qemu-devel@nongnu.org>,
+        virtualization@lists.linux-foundation.org,
+        adilger kernel <adilger.kernel@dilger.ca>,
+        Ross Zwisler <zwisler@kernel.org>,
+        dave jiang <dave.jiang@intel.com>,
+        darrick wong <darrick.wong@oracle.com>,
+        vishal l verma <vishal.l.verma@intel.com>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Linux ACPI <linux-acpi@vger.kernel.org>,
+        jmoyer <jmoyer@redhat.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Rik van Riel <riel@surriel.com>,
+        Stefan Hajnoczi <stefanha@redhat.com>,
+        Igor Mammedov <imammedo@redhat.com>, lcapitulino@redhat.com,
+        Kevin Wolf <kwolf@redhat.com>,
+        Nitesh Narayan Lal <nilal@redhat.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
+        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Paolo Bonzini <pbonzini@redhat.com>
+Message-ID: <540171952.63371441.1547345866585.JavaMail.zimbra@redhat.com>
+In-Reply-To: <CAPcyv4hwcgTUpgNCefCGu4DvgkYBp5b=f+hJ+FC=s5APYKoycg@mail.gmail.com>
+References: <20190109144736.17452-1-pagupta@redhat.com> <20190110012617.GA4205@dastard> <20190110101757.GC15790@quack2.suse.cz> <1354249849.63357171.1547343519970.JavaMail.zimbra@redhat.com> <CAPcyv4hwcgTUpgNCefCGu4DvgkYBp5b=f+hJ+FC=s5APYKoycg@mail.gmail.com>
+Subject: Re: [Qemu-devel] [PATCH v3 0/5] kvm "virtio pmem" device
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2019-01-11 at 10:24 +0100, Stefan Ring wrote:
-> On Thu, Jan 10, 2019 at 3:31 PM Kurt Miller <kurt@intricatesoftware.com> wrote:
-> > 
-> > 
-> > For a well behaved block device that has a writeback cache,
-> > what is the proper behavior of flush when there are more
-> > then one outstanding flush operations? Is it;
-> > 
-> > Flush all writes seen since the last flush.
-> > or
-> > Flush all writes received prior to the flush including
-> > those before any prior flush.
-> > 
-> > For example take the following order of requests presented
-> > to the block device:
-> > 
-> >         writes 1-5
-> >         flush 1
-> >         write 6
-> >         flush 2
-> > 
-> > Can flush 2 finish with success as soon as write 6 is flushed
-> > (which may be before flush 1 success)? Or must it wait for
-> > all prior write operations to flush (writes 1-6)?
-> > 
-> > This question has come up in our implementation of an NBD
-> > user-space block device and have not found a definitive answer
-> > on which behavior is correct for us to conform to. We want to
-> > ensure we behave as required for file-system commit write
-> > ordering.
-> As an interested outstanding observer who has had a bit of exposure to
-> memory models I would pose the question differently: Should flushes be
-> allowed to execute concurrently or should there be a total order? If a
-> total order is imposed, the premise of the question does not exist,
-> and otherwise I cannot see a single good reason to "wait for all prior
-> write operations to flush" because the second thread (the one
-> executing write 6 and flush 2) cannot even determine in a non-esoteric
-> way if another flush is ongoing or not.
 
-Hi Stefan,
+> >
+> >
+> >
+> > >
+> > > On Thu 10-01-19 12:26:17, Dave Chinner wrote:
+> > > > On Wed, Jan 09, 2019 at 08:17:31PM +0530, Pankaj Gupta wrote:
+> > > > >  This patch series has implementation for "virtio pmem".
+> > > > >  "virtio pmem" is fake persistent memory(nvdimm) in guest
+> > > > >  which allows to bypass the guest page cache. This also
+> > > > >  implements a VIRTIO based asynchronous flush mechanism.
+> > > >
+> > > > Hmmmm. Sharing the host page cache direct into the guest VM. Sounds
+> > > > like a good idea, but.....
+> > > >
+> > > > This means the guest VM can now run timing attacks to observe host
+> > > > side page cache residency, and depending on the implementation I'm
+> > > > guessing that the guest will be able to control host side page
+> > > > cache eviction, too (e.g. via discard or hole punch operations).
+> > > >
+> > > > Which means this functionality looks to me like a new vector for
+> > > > information leakage into and out of the guest VM via guest
+> > > > controlled host page cache manipulation.
+> > > >
+> > > > https://arxiv.org/pdf/1901.01161
+> > > >
+> > > > I might be wrong, but if I'm not we're going to have to be very
+> > > > careful about how guest VMs can access and manipulate host side
+> > > > resources like the page cache.....
+> > >
+> > > Right. Thinking about this I would be more concerned about the fact that
+> > > guest can effectively pin amount of host's page cache upto size of the
+> > > device/file passed to guest as PMEM, can't it Pankaj? Or is there some
+> > > QEMU
+> > > magic that avoids this?
+> >
+> > Yes, guest will pin these host page cache pages using 'get_user_pages' by
+> > elevating the page reference count. But these pages can be reclaimed by
+> > host
+> > at any time when there is memory pressure.
+> 
+> Wait, how can the guest pin the host pages? I would expect this to
+> happen only when using vfio and device assignment. Otherwise, no the
+> host can't reclaim a pinned page, that's the whole point of a pin to
+> prevent the mm from reclaiming ownership.
 
-Thank you for your comments. Our nbd block device implementation is
-asynchronous in nature. We are able to conform to either behavior.
+yes. You are right I just used the pin word but it does not actually pin pages 
+permanently. I had gone through the discussion on existing problems with 
+get_user_pages and DMA e.g [1] to understand Jan's POV. It does mention GUP 
+pin pages so I also used the word 'pin'. But guest does not permanently pin 
+these pages and these pages can be reclaimed by host.
 
-I can confirm that the kernel does in fact send multiple concurrent
-REQ_OP_FLUSH requests to block devices. So I'm trying to determine what
-behavior is acceptable when this occurs. Should we impose total ordering
-of the flush operations or allow flush operations to complete out of
-order when they finish first?
+> 
+> > KVM does not permanently pin pages. vfio does that but we are not using
+> > it here.
+> 
+> Right, so I'm confused by your pin assertion above.
 
-Best,
--Kurt
+Sorry! for the confusion. 
+
+[1] https://lwn.net/Articles/753027/
+
+Thanks,
+Pankaj
