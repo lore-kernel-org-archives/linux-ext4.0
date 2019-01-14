@@ -1,124 +1,70 @@
-Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55068 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726570AbfAISVb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 9 Jan 2019 13:21:31 -0500
-Date: Wed, 9 Jan 2019 13:21:29 -0500 (EST)
-From: Pankaj Gupta <pagupta@redhat.com>
-To: Dan Williams <dan.j.williams@intel.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        KVM list <kvm@vger.kernel.org>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        linux-nvdimm <linux-nvdimm@ml01.01.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        virtualization@lists.linux-foundation.org,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Rik van Riel <riel@surriel.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Kevin Wolf <kwolf@redhat.com>,
-        Paolo Bonzini <pbonzini@redhat.com>,
-        Ross Zwisler <zwisler@kernel.org>,
-        Vishal L Verma <vishal.l.verma@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>,
-        David Hildenbrand <david@redhat.com>,
-        jmoyer <jmoyer@redhat.com>,
-        Xiao Guangrong <xiaoguangrong.eric@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Jason Wang <jasowang@redhat.com>, lcapitulino@redhat.com,
-        Igor Mammedov <imammedo@redhat.com>,
-        Eric Blake <eblake@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>
-Message-ID: <888499462.61280342.1547058089165.JavaMail.zimbra@redhat.com>
-In-Reply-To: <CAPcyv4jsa709BVPAx_BT5eFrODf-PUPOZ4aguDsjZVawVXTVHQ@mail.gmail.com>
-References: <20190109135024.14093-1-pagupta@redhat.com> <20190109135024.14093-4-pagupta@redhat.com> <CAPcyv4jsa709BVPAx_BT5eFrODf-PUPOZ4aguDsjZVawVXTVHQ@mail.gmail.com>
-Subject: Re: [PATCH v3 3/5] libnvdimm: add nd_region buffered dax_dev flag
+Return-Path: <SRS0=NmFT=PW=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from bombadil.infradead.org ([198.137.202.133]:45458 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726782AbfANQpv (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2019 11:45:51 -0500
+Date: Mon, 14 Jan 2019 08:45:49 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Dave Chinner <david@fromorbit.com>
+Cc: Kurt Miller <kurt@intricatesoftware.com>,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-block@vger.kernel.org
+Subject: Re: Block device flush ordering
+Message-ID: <20190114164549.GA26523@infradead.org>
+References: <1547130601.20294.152.camel@intricatesoftware.com>
+ <20190113224244.GC4205@dastard>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190113224244.GC4205@dastard>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Jan 14, 2019 at 09:42:44AM +1100, Dave Chinner wrote:
+> On Thu, Jan 10, 2019 at 09:30:01AM -0500, Kurt Miller wrote:
+> > For a well behaved block device that has a writeback cache,
+> > what is the proper behavior of flush when there are more
+> > then one outstanding flush operations? Is it;
+> > 
+> > Flush all writes seen since the last flush.
+> > or
+> > Flush all writes received prior to the flush including
+> > those before any prior flush.
 
-> >
-> > This patch adds 'DAXDEV_BUFFERED' flag which is set
-> > for virtio pmem corresponding nd_region. This later
-> > is used to disable MAP_SYNC functionality for ext4
-> > & xfs filesystem.
-> >
-> > Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
-> > ---
-> >  drivers/dax/super.c          | 17 +++++++++++++++++
-> >  drivers/nvdimm/pmem.c        |  3 +++
-> >  drivers/nvdimm/region_devs.c |  7 +++++++
-> >  drivers/virtio/pmem.c        |  1 +
-> >  include/linux/dax.h          |  9 +++++++++
-> >  include/linux/libnvdimm.h    |  6 ++++++
-> >  6 files changed, 43 insertions(+)
-> >
-> > diff --git a/drivers/dax/super.c b/drivers/dax/super.c
-> > index 6e928f3..9128740 100644
-> > --- a/drivers/dax/super.c
-> > +++ b/drivers/dax/super.c
-> > @@ -167,6 +167,8 @@ enum dax_device_flags {
-> >         DAXDEV_ALIVE,
-> >         /* gate whether dax_flush() calls the low level flush routine */
-> >         DAXDEV_WRITE_CACHE,
-> > +       /* flag to disable MAP_SYNC for virtio based host page cache flush
-> > */
-> > +       DAXDEV_BUFFERED,
-> >  };
-> >
-> >  /**
-> > @@ -335,6 +337,21 @@ bool dax_write_cache_enabled(struct dax_device
-> > *dax_dev)
-> >  }
-> >  EXPORT_SYMBOL_GPL(dax_write_cache_enabled);
-> >
-> > +void virtio_pmem_host_cache(struct dax_device *dax_dev, bool wc)
-> > +{
-> > +       if (wc)
-> > +               set_bit(DAXDEV_BUFFERED, &dax_dev->flags);
-> > +       else
-> > +               clear_bit(DAXDEV_BUFFERED, &dax_dev->flags);
-> > +}
-> > +EXPORT_SYMBOL_GPL(virtio_pmem_host_cache);
-> 
-> The "write_cache" property was structured this way because it can
-> conceivably change at runtime. The MAP_SYNC capability should be
-> static and never changed after init.
+The requirement is that all write operations that have been completed
+before the flush was seen are on stable storage.  How that is
+implemented in detail is up to the device.  The typical implementation
+is simply to writeback the whole cache everytime a flush operation
+is received.
 
-o.k. Will change.
+> > 
+> > For example take the following order of requests presented
+> > to the block device:
+> > 
+> > 	writes 1-5
+> > 	flush 1
+> > 	write 6
+> > 	flush 2
+> > 
+> > Can flush 2 finish with success as soon as write 6 is flushed
+> > (which may be before flush 1 success)? Or must it wait for
+> > all prior write operations to flush (writes 1-6)?
 
-> 
-> > +bool virtio_pmem_host_cache_enabled(struct dax_device *dax_dev)
-> > +{
-> > +       return test_bit(DAXDEV_BUFFERED, &dax_dev->flags);
-> > +}
-> > +EXPORT_SYMBOL_GPL(virtio_pmem_host_cache_enabled);
-> 
-> Echoing Darrick and Jan this is should be a generic property of a
-> dax_device and not specific to virtio. I don't like the "buffered"
-> designation as that's not accurate. There may be hardware reasons why
-> a dax_device is not synchronous, like a requirement to flush a
-> write-pending queue or otherwise notify the device of new writes.
+No.  For all the usual protocols as well as the linux kernel semantics
+there is no overall command ordering, especially as there is no way
+to even enforce that in a multi-queue environment.
 
-Agree.
+>
+>  * C1. At any given time, only one flush shall be in progress.  This makes
+>  *     double buffering sufficient.
 
-> 
-> I would just have a dax_synchronous() helper and a DAXDEV_SYNC flag. I
-> would also modify alloc_dax() to take a flags argument so that the
-> capability can be instantiated when the dax_device is allocated.
+Very specific implementation detail inside the request layer.
 
-o.k. Will make the change.
+> Then flush 1 does not guarantee any of the writes are on stable
+> storage. They *may* be on stable storage if the timing is right, but
+> it is not guaranteed by the OS code. Likewise, flush 2 only
+> guarantees writes 1, 3 and 5 are on stable storage becase they are
+> the only writes that have been signalled as complete when flush 2
+> was submitted.
 
-Thanks,
-Pankaj
-> 
+Exactly.
