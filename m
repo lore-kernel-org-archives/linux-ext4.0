@@ -1,56 +1,42 @@
-Return-Path: <SRS0=m/y1=PL=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:35732 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727888AbfACLi0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jan 2019 06:38:26 -0500
-Date: Thu, 3 Jan 2019 14:38:11 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Andreas Dilger <adilger.kernel@dilger.ca>,
-        linux-ext4@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: [PATCH] ext4: Fix some error pointer dereferences
-Message-ID: <20190103113811.GA13543@kadam>
+Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:54014 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728560AbfAONmG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 15 Jan 2019 08:42:06 -0500
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 2EA3881DF3
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 13:42:06 +0000 (UTC)
+Received: from localhost.localdomain.com (unknown [10.40.205.18])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 8C3BB60606
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 13:42:05 +0000 (UTC)
+From: Lukas Czerner <lczerner@redhat.com>
+To: linux-ext4@vger.kernel.org
+Subject: [PATCH 1/2] e2freefrag: fix memory leak in scan_online()
+Date: Tue, 15 Jan 2019 14:42:02 +0100
+Message-Id: <20190115134203.11448-1-lczerner@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We can't pass error pointers to brelse().
-
-Fixes: fb265c9cb49e ("ext4: add ext4_sb_bread() to disambiguate ENOMEM cases")
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 ---
- fs/ext4/xattr.c | 3 +++
- 1 file changed, 3 insertions(+)
+ misc/e2freefrag.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 7fddd519adae..6ddbbe21fdd8 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -829,6 +829,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
- 		bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl, REQ_PRIO);
- 		if (IS_ERR(bh)) {
- 			ret = PTR_ERR(bh);
-+			bh = NULL;
- 			goto out;
- 		}
+diff --git a/misc/e2freefrag.c b/misc/e2freefrag.c
+index f7fede54..935ae225 100644
+--- a/misc/e2freefrag.c
++++ b/misc/e2freefrag.c
+@@ -236,6 +236,7 @@ static int scan_online(ext2_filsys fs, struct chunk_info *info,
+ 		fsmap_advance(fsmap);
+ 	}
  
-@@ -2903,6 +2904,7 @@ int ext4_xattr_delete_inode(handle_t *handle, struct inode *inode,
- 			if (error == -EIO)
- 				EXT4_ERROR_INODE(inode, "block %llu read error",
- 						 EXT4_I(inode)->i_file_acl);
-+			bh = NULL;
- 			goto cleanup;
- 		}
- 		error = ext4_xattr_check_block(inode, bh);
-@@ -3059,6 +3061,7 @@ ext4_xattr_block_cache_find(struct inode *inode,
- 		if (IS_ERR(bh)) {
- 			if (PTR_ERR(bh) == -ENOMEM)
- 				return NULL;
-+			bh = NULL;
- 			EXT4_ERROR_INODE(inode, "block %lu read error",
- 					 (unsigned long)ce->e_value);
- 		} else if (ext4_xattr_cmp(header, BHDR(bh)) == 0) {
++	free(fsmap);
+ 	return 1;
+ }
+ #else
 -- 
-2.17.1
+2.20.1
