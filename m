@@ -1,176 +1,163 @@
-Return-Path: <SRS0=BVhb=PR=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54258 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729152AbfAINwx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 9 Jan 2019 08:52:53 -0500
-From: Pankaj Gupta <pagupta@redhat.com>
-To: linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
-        qemu-devel@nongnu.org, linux-nvdimm@ml01.01.org,
-        linux-fsdevel@vger.kernel.org,
+Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from ipmail02.adl2.internode.on.net ([150.101.137.139]:44910 "EHLO
+        ipmail02.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1730179AbfAOUma (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 15 Jan 2019 15:42:30 -0500
+Date: Wed, 16 Jan 2019 07:42:23 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Pankaj Gupta <pagupta@redhat.com>
+Cc: Dan Williams <dan.j.williams@intel.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        KVM list <kvm@vger.kernel.org>,
+        Qemu Developers <qemu-devel@nongnu.org>,
+        linux-nvdimm <linux-nvdimm@ml01.01.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         virtualization@lists.linux-foundation.org,
-        linux-acpi@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Cc: jack@suse.cz, stefanha@redhat.com, dan.j.williams@intel.com,
-        riel@surriel.com, nilal@redhat.com, kwolf@redhat.com,
-        pbonzini@redhat.com, zwisler@kernel.org, vishal.l.verma@intel.com,
-        dave.jiang@intel.com, david@redhat.com, jmoyer@redhat.com,
-        xiaoguangrong.eric@gmail.com, hch@infradead.org, mst@redhat.com,
-        jasowang@redhat.com, lcapitulino@redhat.com, imammedo@redhat.com,
-        eblake@redhat.com, willy@infradead.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, darrick.wong@oracle.com,
-        rjw@rjwysocki.net, pagupta@redhat.com
-Subject: [PATCH v3 3/5] libnvdimm: add nd_region buffered dax_dev flag
-Date: Wed,  9 Jan 2019 19:20:22 +0530
-Message-Id: <20190109135024.14093-4-pagupta@redhat.com>
-In-Reply-To: <20190109135024.14093-1-pagupta@redhat.com>
-References: <20190109135024.14093-1-pagupta@redhat.com>
+        Linux ACPI <linux-acpi@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>, Jan Kara <jack@suse.cz>,
+        Stefan Hajnoczi <stefanha@redhat.com>,
+        Rik van Riel <riel@surriel.com>,
+        Nitesh Narayan Lal <nilal@redhat.com>,
+        Kevin Wolf <kwolf@redhat.com>,
+        Paolo Bonzini <pbonzini@redhat.com>,
+        Ross Zwisler <zwisler@kernel.org>,
+        vishal l verma <vishal.l.verma@intel.com>,
+        dave jiang <dave.jiang@intel.com>,
+        David Hildenbrand <david@redhat.com>,
+        jmoyer <jmoyer@redhat.com>,
+        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Jason Wang <jasowang@redhat.com>, lcapitulino@redhat.com,
+        Igor Mammedov <imammedo@redhat.com>,
+        Eric Blake <eblake@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
+        adilger kernel <adilger.kernel@dilger.ca>,
+        darrick wong <darrick.wong@oracle.com>,
+        "Rafael J. Wysocki" <rjw@rjwysocki.net>
+Subject: Re: [PATCH v3 0/5] kvm "virtio pmem" device
+Message-ID: <20190115204222.GK4205@dastard>
+References: <20190109144736.17452-1-pagupta@redhat.com>
+ <1326478078.61913951.1547192704870.JavaMail.zimbra@redhat.com>
+ <20190113232902.GD4205@dastard>
+ <20190113233820.GX6310@bombadil.infradead.org>
+ <942065073.64011540.1547450140670.JavaMail.zimbra@redhat.com>
+ <20190114212501.GG4205@dastard>
+ <CAPcyv4jtPcLV-s0sKNHwwk0ug7GLBV6699dpm1h3r2xSo879dg@mail.gmail.com>
+ <20190114222132.GH4205@dastard>
+ <1684638419.64320214.1547530506805.JavaMail.zimbra@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1684638419.64320214.1547530506805.JavaMail.zimbra@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds 'DAXDEV_BUFFERED' flag which is set
-for virtio pmem corresponding nd_region. This later
-is used to disable MAP_SYNC functionality for ext4
-& xfs filesystem.
+On Tue, Jan 15, 2019 at 12:35:06AM -0500, Pankaj Gupta wrote:
+> 
+> > > > On Mon, Jan 14, 2019 at 02:15:40AM -0500, Pankaj Gupta wrote:
+> > > > >
+> > > > > > > Until you have images (and hence host page cache) shared between
+> > > > > > > multiple guests. People will want to do this, because it means they
+> > > > > > > only need a single set of pages in host memory for executable
+> > > > > > > binaries rather than a set of pages per guest. Then you have
+> > > > > > > multiple guests being able to detect residency of the same set of
+> > > > > > > pages. If the guests can then, in any way, control eviction of the
+> > > > > > > pages from the host cache, then we have a guest-to-guest
+> > > > > > > information
+> > > > > > > leak channel.
+> > > > > >
+> > > > > > I don't think we should ever be considering something that would
+> > > > > > allow a
+> > > > > > guest to evict page's from the host's pagecache [1].  The guest
+> > > > > > should
+> > > > > > be able to kick its own references to the host's pagecache out of its
+> > > > > > own pagecache, but not be able to influence whether the host or
+> > > > > > another
+> > > > > > guest has a read-only mapping cached.
+> > > > > >
+> > > > > > [1] Unless the guest is allowed to modify the host's file; obviously
+> > > > > > truncation, holepunching, etc are going to evict pages from the
+> > > > > > host's
+> > > > > > page cache.
+> > > > >
+> > > > > This is so correct. Guest does not not evict host page cache pages
+> > > > > directly.
+> > > >
+> > > > They don't right now.
+> > > >
+> > > > But someone is going to end up asking for discard to work so that
+> > > > the guest can free unused space in the underlying spares image (i.e.
+> > > > make use of fstrim or mount -o discard) because they have workloads
+> > > > that have bursts of space usage and they need to trim the image
+> > > > files afterwards to keep their overall space usage under control.
+> > > >
+> > > > And then....
+> > > 
+> > > ...we reject / push back on that patch citing the above concern.
+> > 
+> > So at what point do we draw the line?
+> > 
+> > We're allowing writable DAX mappings, but as I've pointed out that
+> > means we are going to be allowing  a potential information leak via
+> > files with shared extents to be directly mapped and written to.
+> > 
+> > But we won't allow useful admin operations that allow better
+> > management of host side storage space similar to how normal image
+> > files are used by guests because it's an information leak vector?
+> 
+> First of all Thank you for all the useful discussions. 
+> I am summarizing here:
+> 
+> - We have to live with the limitation to not support fstrim and 
+>   mount -o discard options with virtio-pmem as they will evict 
+>   host page cache pages. We cannot allow this for virtio-pmem
+>   for security reasons. These filesystem commands will just zero out 
+>   unused pages currently.
 
-Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
----
- drivers/dax/super.c          | 17 +++++++++++++++++
- drivers/nvdimm/pmem.c        |  3 +++
- drivers/nvdimm/region_devs.c |  7 +++++++
- drivers/virtio/pmem.c        |  1 +
- include/linux/dax.h          |  9 +++++++++
- include/linux/libnvdimm.h    |  6 ++++++
- 6 files changed, 43 insertions(+)
+Not sure I follow you here - what pages are going to be zeroed and
+when will they be zeroed? If discard is not allowed, filesystems
+just don't issue such commands and the underlying device will never
+seen them.
 
-diff --git a/drivers/dax/super.c b/drivers/dax/super.c
-index 6e928f3..9128740 100644
---- a/drivers/dax/super.c
-+++ b/drivers/dax/super.c
-@@ -167,6 +167,8 @@ enum dax_device_flags {
- 	DAXDEV_ALIVE,
- 	/* gate whether dax_flush() calls the low level flush routine */
- 	DAXDEV_WRITE_CACHE,
-+	/* flag to disable MAP_SYNC for virtio based host page cache flush */
-+	DAXDEV_BUFFERED,
- };
- 
- /**
-@@ -335,6 +337,21 @@ bool dax_write_cache_enabled(struct dax_device *dax_dev)
- }
- EXPORT_SYMBOL_GPL(dax_write_cache_enabled);
- 
-+void virtio_pmem_host_cache(struct dax_device *dax_dev, bool wc)
-+{
-+	if (wc)
-+		set_bit(DAXDEV_BUFFERED, &dax_dev->flags);
-+	else
-+		clear_bit(DAXDEV_BUFFERED, &dax_dev->flags);
-+}
-+EXPORT_SYMBOL_GPL(virtio_pmem_host_cache);
-+
-+bool virtio_pmem_host_cache_enabled(struct dax_device *dax_dev)
-+{
-+	return test_bit(DAXDEV_BUFFERED, &dax_dev->flags);
-+}
-+EXPORT_SYMBOL_GPL(virtio_pmem_host_cache_enabled);
-+
- bool dax_alive(struct dax_device *dax_dev)
- {
- 	lockdep_assert_held(&dax_srcu);
-diff --git a/drivers/nvdimm/pmem.c b/drivers/nvdimm/pmem.c
-index fe1217b..8d190a3 100644
---- a/drivers/nvdimm/pmem.c
-+++ b/drivers/nvdimm/pmem.c
-@@ -472,6 +472,9 @@ static int pmem_attach_disk(struct device *dev,
- 		return -ENOMEM;
- 	}
- 	dax_write_cache(dax_dev, nvdimm_has_cache(nd_region));
-+
-+	/* Set buffered bit in 'dax_dev' for virtio pmem */
-+	virtio_pmem_host_cache(dax_dev, nvdimm_is_buffered(nd_region));
- 	pmem->dax_dev = dax_dev;
- 
- 	gendev = disk_to_dev(disk);
-diff --git a/drivers/nvdimm/region_devs.c b/drivers/nvdimm/region_devs.c
-index f8218b4..1f8b2be 100644
---- a/drivers/nvdimm/region_devs.c
-+++ b/drivers/nvdimm/region_devs.c
-@@ -1264,6 +1264,13 @@ int nd_region_conflict(struct nd_region *nd_region, resource_size_t start,
- 	return device_for_each_child(&nvdimm_bus->dev, &ctx, region_conflict);
- }
- 
-+int nvdimm_is_buffered(struct nd_region *nd_region)
-+{
-+	return is_nd_pmem(&nd_region->dev) &&
-+		test_bit(ND_REGION_BUFFERED, &nd_region->flags);
-+}
-+EXPORT_SYMBOL_GPL(nvdimm_is_buffered);
-+
- void __exit nd_region_devs_exit(void)
- {
- 	ida_destroy(&region_ida);
-diff --git a/drivers/virtio/pmem.c b/drivers/virtio/pmem.c
-index 51f5349..901767b 100644
---- a/drivers/virtio/pmem.c
-+++ b/drivers/virtio/pmem.c
-@@ -81,6 +81,7 @@ static int virtio_pmem_probe(struct virtio_device *vdev)
- 	ndr_desc.numa_node = nid;
- 	ndr_desc.flush = virtio_pmem_flush;
- 	set_bit(ND_REGION_PAGEMAP, &ndr_desc.flags);
-+	set_bit(ND_REGION_BUFFERED, &ndr_desc.flags);
- 	nd_region = nvdimm_pmem_region_create(nvdimm_bus, &ndr_desc);
- 	nd_region->provider_data =  dev_to_virtio
- 					(nd_region->dev.parent->parent);
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index 0dd316a..d16e03e 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -37,6 +37,8 @@ void put_dax(struct dax_device *dax_dev);
- void kill_dax(struct dax_device *dax_dev);
- void dax_write_cache(struct dax_device *dax_dev, bool wc);
- bool dax_write_cache_enabled(struct dax_device *dax_dev);
-+void virtio_pmem_host_cache(struct dax_device *dax_dev, bool wc);
-+bool virtio_pmem_host_cache_enabled(struct dax_device *dax_dev);
- #else
- static inline struct dax_device *dax_get_by_host(const char *host)
- {
-@@ -64,6 +66,13 @@ static inline bool dax_write_cache_enabled(struct dax_device *dax_dev)
- {
- 	return false;
- }
-+static inline void virtio_pmem_host_cache(struct dax_device *dax_dev, bool wc)
-+{
-+}
-+static inline bool virtio_pmem_host_cache_enabled(struct dax_device *dax_dev)
-+{
-+	return false;
-+}
- #endif
- 
- struct writeback_control;
-diff --git a/include/linux/libnvdimm.h b/include/linux/libnvdimm.h
-index ca8bc07..94616f1 100644
---- a/include/linux/libnvdimm.h
-+++ b/include/linux/libnvdimm.h
-@@ -64,6 +64,11 @@ enum {
- 	 */
- 	ND_REGION_PERSIST_MEMCTRL = 2,
- 
-+	/* provides virtio based asynchronous flush mechanism for buffered
-+	 * host page cache.
-+	 */
-+	ND_REGION_BUFFERED = 3,
-+
- 	/* mark newly adjusted resources as requiring a label update */
- 	DPA_RESOURCE_ADJUSTED = 1 << 0,
- };
-@@ -265,6 +270,7 @@ int generic_nvdimm_flush(struct nd_region *nd_region);
- int nvdimm_has_flush(struct nd_region *nd_region);
- int nvdimm_has_cache(struct nd_region *nd_region);
- int nvdimm_in_overwrite(struct nvdimm *nvdimm);
-+int nvdimm_is_buffered(struct nd_region *nd_region);
- 
- static inline int nvdimm_ctl(struct nvdimm *nvdimm, unsigned int cmd, void *buf,
- 		unsigned int buf_len, int *cmd_rc)
+> - If alot of space is unused and not freed guest can request host 
+>   Administrator for truncating the host backing image. 
+
+You can't use truncate to free space in a disk image file. The only
+way to do it safely in a generic, filesystem agnositic way is to
+mount the disk image (e.g. on loopback) and run fstrim on it. The
+loopback device will punches holes in the file where all the free
+space is reported by the filesystem via discard requests.
+
+Which is kinda my point - this could only be done if the guest is
+shut down, which makes it very difficult for admins to manage. 
+
+>   We are also planning to support qcow2 sparse image format at 
+>   host side with virtio-pmem.
+
+So you're going to be remapping a huge number of disjoint regions
+into a linear pmem mapping? ISTR discussions about similar things
+for virtio+fuse+dax that came up against "large numbers of mapped
+regions don't scale" and so it wasn't a practical solution compared
+to a just using raw sparse files....
+
+> - There is no existing solution for Qemu persistent memory 
+>   emulation with write support currently. This solution provides 
+>   us the paravartualized way of emulating persistent memory.
+
+Sure, but the question is why do you need to create an emulation
+that doesn't actually perform like pmem? The whole point of pmem is
+performance, and emulating pmem by mmap() of a file on spinning
+disks is going to be horrible for performance. Even on SSDs it's
+going to be orders of magnitudes slower than real pmem.
+
+So exactly what problem are you trying to solve with this driver?
+
+Cheers,
+
+Dave.
 -- 
-2.9.3
+Dave Chinner
+david@fromorbit.com
