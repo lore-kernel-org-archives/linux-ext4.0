@@ -1,85 +1,56 @@
-Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:42248 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726369AbfAKBBT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 10 Jan 2019 20:01:19 -0500
-Date: Thu, 10 Jan 2019 17:01:17 -0800
-From: Eric Biggers <ebiggers@kernel.org>
-To: Guenter Roeck <linux@roeck-us.net>, Theodore Ts'o <tytso@mit.edu>
-Cc: Chandan Rajendra <chandan@linux.vnet.ibm.com>,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-kernel@vger.kernel.org
-Subject: Re: [f2fs-dev] [PATCH] fscrypt: remove filesystem specific build
- config option
-Message-ID: <20190111010116.GG149637@gmail.com>
-References: <20190110233230.GA23953@roeck-us.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190110233230.GA23953@roeck-us.net>
+Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from smtprz15.163.net ([106.3.154.248]:38250 "EHLO smtp.tom.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728566AbfAORP1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 15 Jan 2019 12:15:27 -0500
+Received: from 172.25.16.148 (unknown [172.25.16.148])
+        by freemail02.tom.com (Postfix) with ESMTP id AB724B00DCD
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 22:10:50 +0800 (CST)
+Received: from 172.25.16.91 (HELO smtp.tom.com) ([172.25.16.91])
+          by localhost (TOM SMTP Server) with SMTP ID -1959878928
+          for <linux-ext4@vger.kernel.org>;
+          Tue, 15 Jan 2019 22:10:50 +0800 (CST)
+Received: from antispam2.tom.com (unknown [172.25.16.56])
+        by freemail02.tom.com (Postfix) with ESMTP id 93F46B00DAA
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 22:10:49 +0800 (CST)
+Received: from antispam2.tom.com (antispam2.tom.com [127.0.0.1])
+        by antispam2.tom.com (Postfix) with ESMTP id 877828162C
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 22:10:49 +0800 (CST)
+Received: from antispam2.tom.com ([127.0.0.1])
+        by antispam2.tom.com (antispam2.tom.com [127.0.0.1]) (amavisd-new, port 10024)
+        with ESMTP id Cvli00mdV7Wi for <linux-ext4@vger.kernel.org>;
+        Tue, 15 Jan 2019 22:10:48 +0800 (CST)
+From: Liu Xiang <liu.xiang6@zte.com.cn>
+To: linux-ext4@vger.kernel.org
+Cc: jack@suse.com, linux-kernel@vger.kernel.org, liuxiang_1999@126.com,
+        Liu Xiang <liu.xiang6@zte.com.cn>
+Subject: [PATCH] ext2: Remove redundant check on s_inode_size
+Date: Tue, 15 Jan 2019 22:10:43 +0800
+Message-Id: <1547561443-3411-1-git-send-email-liu.xiang6@zte.com.cn>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 10, 2019 at 03:32:30PM -0800, Guenter Roeck wrote:
-> On Sat, Dec 08, 2018 at 12:21:38PM +0530, Chandan Rajendra wrote:
-> > In order to have a common code base for fscrypt "post read" processing
-> > for all filesystems which support encryption, this commit removes
-> > filesystem specific build config option (e.g. CONFIG_EXT4_FS_ENCRYPTION)
-> > and replaces it with a build option (i.e. CONFIG_FS_ENCRYPTION) whose
-> > value affects all the filesystems making use of fscrypt.
-> > 
-> > Signed-off-by: Chandan Rajendra <chandan@linux.vnet.ibm.com>
-> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> 
-> This results in:
-> 
-> Building ia64:allnoconfig ... failed
-> --------------
-> Error log:
-> make[1]: Entering directory '/tmp/buildbot-builddir.7Wft3'
->   GEN     Makefile
-> scripts/kconfig/conf  --allnoconfig Kconfig
-> arch/ia64/Kconfig:128:error: recursive dependency detected!
-> arch/ia64/Kconfig:128:	choice <choice> contains symbol IA64_HP_SIM
-> arch/ia64/Kconfig:202:	symbol IA64_HP_SIM is part of choice PM
-> kernel/power/Kconfig:144:	symbol PM is selected by PM_SLEEP
-> kernel/power/Kconfig:104:	symbol PM_SLEEP depends on HIBERNATE_CALLBACKS
-> kernel/power/Kconfig:31:	symbol HIBERNATE_CALLBACKS is selected by HIBERNATION
-> kernel/power/Kconfig:34:	symbol HIBERNATION depends on SWAP
-> init/Kconfig:250:	symbol SWAP depends on BLOCK
-> block/Kconfig:5:	symbol BLOCK is selected by UBIFS_FS
-> fs/ubifs/Kconfig:1:	symbol UBIFS_FS depends on MISC_FILESYSTEMS
-> fs/Kconfig:227:	symbol MISC_FILESYSTEMS is selected by ACPI_APEI
-> drivers/acpi/apei/Kconfig:8:	symbol ACPI_APEI depends on ACPI
-> drivers/acpi/Kconfig:9:	symbol ACPI depends on ARCH_SUPPORTS_ACPI
-> drivers/acpi/Kconfig:6:	symbol ARCH_SUPPORTS_ACPI is selected by IA64_HP_SIM
-> arch/ia64/Kconfig:202:	symbol IA64_HP_SIM is part of choice <choice>
-> For a resolution refer to Documentation/kbuild/kconfig-language.txt
-> subsection "Kconfig recursive dependency limitations"
-> 
-> Didn't we have exactly the same problem before ?
-> 
-> Guenter
+The case of (EXT2_INODE_SIZE(sb) == 0) is included in
+(sbi->s_inode_size < EXT2_GOOD_OLD_INODE_SIZE).
+So there is no need to check again.
 
-Indeed, Chandan Rajendra sent out a new version of the patch which fixes the
-problem (by removing the 'select BLOCK' from fs/ubifs/Kconfig), but it never
-made it into the fscrypt tree and hence never made it into linux-next.
+Signed-off-by: Liu Xiang <liu.xiang6@zte.com.cn>
+---
+ fs/ext2/super.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-Ted, what you are planning to do with the fscrypt tree following the fsverity
-discussion?  IMO, we should keep the fsverity stuff in its own branch, separate
-from any fscrypt changes.  As a suggestion, in the branch "fscrypt" of my
-linux.git repo [1], I applied just these four patches on top of v5.0-rc1 and
-resolved the conflicts with them no longer being on top of fsverity:
-
-	fscrypt: remove CRYPTO_CTR dependency
-	ext4: use IS_ENCRYPTED() to check encryption status
-	f2fs: use IS_ENCRYPTED() to check encryption status
-	fscrypt: remove filesystem specific build config option
-
-(The last patch is the fixed version.)
-
-Please consider doing the same with the official fscrypt tree.  Thanks!
-
-[1] https://git.kernel.org/pub/scm/linux/kernel/git/ebiggers/linux.git/log/?h=fscrypt
-
-- Eric
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 73b2d52..c71c2e3 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -1024,8 +1024,6 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_frags_per_group = le32_to_cpu(es->s_frags_per_group);
+ 	sbi->s_inodes_per_group = le32_to_cpu(es->s_inodes_per_group);
+ 
+-	if (EXT2_INODE_SIZE(sb) == 0)
+-		goto cantfind_ext2;
+ 	sbi->s_inodes_per_block = sb->s_blocksize / EXT2_INODE_SIZE(sb);
+ 	if (sbi->s_inodes_per_block == 0 || sbi->s_inodes_per_group == 0)
+ 		goto cantfind_ext2;
+-- 
+1.9.1
