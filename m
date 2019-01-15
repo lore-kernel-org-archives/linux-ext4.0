@@ -1,147 +1,108 @@
-Return-Path: <SRS0=njA7=PY=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-lj1-f193.google.com ([209.85.208.193]:40165 "EHLO
-        mail-lj1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729532AbfAPStC (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jan 2019 13:49:02 -0500
-Received: by mail-lj1-f193.google.com with SMTP id n18-v6so6347653lji.7
-        for <linux-ext4@vger.kernel.org>; Wed, 16 Jan 2019 10:48:59 -0800 (PST)
+Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-lf1-f66.google.com ([209.85.167.66]:38644 "EHLO
+        mail-lf1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728780AbfAOTZW (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jan 2019 14:25:22 -0500
+Received: by mail-lf1-f66.google.com with SMTP id a8so2955827lfk.5
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 11:25:21 -0800 (PST)
+Received: from mail-lj1-f174.google.com (mail-lj1-f174.google.com. [209.85.208.174])
+        by smtp.gmail.com with ESMTPSA id m1sm767361lfb.56.2019.01.15.11.25.18
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 15 Jan 2019 11:25:18 -0800 (PST)
+Received: by mail-lj1-f174.google.com with SMTP id t9-v6so3349972ljh.6
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jan 2019 11:25:18 -0800 (PST)
 MIME-Version: 1.0
-References: <CAAQ4vX2wrzxzP6=bP9Bbt89Hvs_JRJuZxSQGfPw2vUrtOqh3UA@mail.gmail.com>
- <20180913223252.GD30588@thunk.org> <CAAQ4vX2nujND+s7mK-3EztS+MtLeNsNgmd=kwFQmVSa1ABjrKQ@mail.gmail.com>
- <CAAQ4vX3a5RrD_Dt7tFJ23cof=FAK3fd5jrF+c45YujbjwNcKmw@mail.gmail.com> <20181019001849.GC2407@thunk.org>
-In-Reply-To: <20181019001849.GC2407@thunk.org>
-From: Nathan Peterson <nathan@uwgrads.com>
-Date: Wed, 16 Jan 2019 10:48:46 -0800
-Message-ID: <CAAQ4vX2Sh1+rA3Ov1rvy3YO2seVaZ2AkbAOZAhzOx+KqX9-NTA@mail.gmail.com>
-Subject: Re: Unable to mount an ext4 RAID6 array
-To: "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
+References: <20190102174736.GB29127@quack2.suse.cz> <20190108100500.GA15801@quack2.suse.cz>
+ <20190115092414.GA4138@quack2.suse.cz> <CAHk-=wiW=4k3iBkDzz5_LuyCRcduZJuk-Vwhz9vqrUMML6WVkg@mail.gmail.com>
+ <20190115180156.GB6310@bombadil.infradead.org>
+In-Reply-To: <20190115180156.GB6310@bombadil.infradead.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 16 Jan 2019 07:25:01 +1200
+Message-ID: <CAHk-=whor678X0A4Mz95KSoG2f0O_F8a5PEQNXLqPxDehs+7Fg@mail.gmail.com>
+Subject: Re: [GIT PULL] dtype handling cleanup for v4.21-rc1
+To: Matthew Wilcox <willy@infradead.org>
+Cc: Jan Kara <jack@suse.cz>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
-
-Long overdue update.  I confirmed(thanks to Ted) it was indeed a HW
-issue.  Long story short, that issue is resolved and I am able to run
-e2fsck.
-
-The next issue I ran into was lack of swapfile space.  This was
-causing the e2fsck to fail during the check(as expected).
-
-I resolved this(so far) by increasing the swapfile size to 50GB.
-sudo e2fsck -y -C 0 /dev/mapper/enc6 is the command I sent and it has
-been running for 38days straight.
-Currently the swapfile size is at 13.2GB and growing.
-
-           Version : 1.2
-     Creation Time : Sun Nov 26 23:03:26 2017
-        Raid Level : raid6
-        Array Size : 42975741952 (40984.86 GiB 44007.16 GB)
-     Used Dev Size : 3906885632 (3725.90 GiB 4000.65 GB)
-      Raid Devices : 13
-     Total Devices : 13
-       Persistence : Superblock is persistent
-
-     Intent Bitmap : Internal
-
-       Update Time : Sun Jan  6 09:21:27 2019
-             State : clean
-    Active Devices : 13
-   Working Devices : 13
-    Failed Devices : 0
-     Spare Devices : 0
-
-            Layout : left-symmetric
-        Chunk Size : 512K
-
-Consistency Policy : bitmap
-
-ps -eo comm,tty | grep fsck
-e2fsck          ?
-
-ps -ef | grep fsck
-root      1890     1  0  2018 ?        00:00:00 sudo e2fsck -y -C 0
-/dev/mapper/enc6
-root      1891  1890  0  2018 ?        02:01:24 e2fsck -y -C 0 /dev/mapper/enc6
-
-These are found in the dmesg log and are rare occurrence:
-[Jan16 00:14] INFO: task mandb:25013 blocked for more than 120 seconds.
-[  +0.000001]       Tainted: G           OE    4.15.0-42-generic #45-Ubuntu
-[  +0.000001] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs"
-disables this message.
-[  +0.000000] mandb           D    0 25013  25009 0x00000000
-[  +0.000002] Call Trace:
-[  +0.000005]  __schedule+0x291/0x8a0
-[  +0.000002]  ? blk_queue_bio+0x32a/0x450
-[  +0.000002]  ? bit_wait+0x60/0x60
-[  +0.000001]  schedule+0x2c/0x80
-[  +0.000002]  io_schedule+0x16/0x40
-[  +0.000001]  bit_wait_io+0x11/0x60
-[  +0.000001]  __wait_on_bit+0x4c/0x90
-[  +0.000001]  ? submit_bio+0x73/0x140
-[  +0.000001]  out_of_line_wait_on_bit+0x90/0xb0
-[  +0.000003]  ? bit_waitqueue+0x40/0x40
-[  +0.000001]  __wait_on_buffer+0x32/0x40
-[  +0.000003]  __ext4_get_inode_loc+0x1b5/0x410
-[  +0.000001]  ext4_iget+0x92/0xb90
-[  +0.000002]  ? legitimize_path.isra.28+0x2e/0x60
-[  +0.000001]  ext4_iget_normal+0x30/0x40
-[  +0.000002]  ext4_lookup+0xf0/0x210
-[  +0.000001]  path_openat+0xd30/0x1770
-[  +0.000001]  ? pipe_wait+0xc0/0xc0
-[  +0.000002]  do_filp_open+0x9b/0x110
-[  +0.000001]  ? user_path_at_empty+0x36/0x40
-[  +0.000001]  ? user_path_at_empty+0x36/0x40
-[  +0.000002]  ? __check_object_size+0xaf/0x1b0
-[  +0.000002]  ? __alloc_fd+0x46/0x170
-[  +0.000002]  do_sys_open+0x1bb/0x2c0
-[  +0.000001]  ? do_sys_open+0x1bb/0x2c0
-[  +0.000002]  ? __put_cred+0x3d/0x50
-[  +0.000001]  ? SyS_access+0x13d/0x230
-[  +0.000002]  SyS_openat+0x14/0x20
-[  +0.000002]  do_syscall_64+0x73/0x130
-[  +0.000002]  entry_SYSCALL_64_after_hwframe+0x3d/0xa2
-[  +0.000002] RIP: 0033:0x7f28799c9cdd
-[  +0.000000] RSP: 002b:00007ffcf9ce33c8 EFLAGS: 00000287 ORIG_RAX:
-0000000000000101
-[  +0.000001] RAX: ffffffffffffffda RBX: 00007ffcf9ce3670 RCX: 00007f28799c9cdd
-[  +0.000001] RDX: 0000000000080000 RSI: 00007ffcf9ce3450 RDI: 00000000ffffff9c
-[  +0.000001] RBP: 00007ffcf9ce3430 R08: 0000000000000000 R09: 00007ffcf9ce365f
-[  +0.000000] R10: 0000000000000000 R11: 0000000000000287 R12: 0000000000000007
-[  +0.000001] R13: 0000000000000000 R14: 00007ffcf9ce3450 R15: 0000000000000000
-
-
-My question, Is it possible to see the progress or at least know this
-is going somewhere positive?
-
-Thanks
--Nathan
-
-On Thu, Oct 18, 2018 at 5:18 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+On Wed, Jan 16, 2019 at 6:01 AM Matthew Wilcox <willy@infradead.org> wrote:
 >
-> Hi,
+> The ext2/ext4 patches don't show much improvement.  The other patches show
+> more:
 >
-> Sorry I didn't get back to you sooner.  This e-mail thread got lost in
-> my inbox, so thanks for pinging me about it.
+>  fs/nilfs2/dir.c                    | 52 ++++++++++--------------------
+>  include/uapi/linux/nilfs2_ondisk.h |  1 +
+>  2 files changed, 18 insertions(+), 35 deletions(-)
 >
-> These lines in the logs clearly show that it is a hardware problem.
-> It could be an issue with the SATA controller, or cables, or even
-> something in the motherboard.
+> (for example).
 >
-> [  +0.000006] ata1: irq_stat 0x00400040, connection status changed
-> [  +0.000004] ata1: SError: { HostInt PHYRdyChg 10B8B DevExch }
-> [  +0.000005] ata1: hard resetting link
-> [  +5.634542] ata1: SATA link up 6.0 Gbps (SStatus 133 SControl 300)
-> [  +0.001809] ata1.00: configured for UDMA/133
-> [  +0.000003] ata1: EH complete
-> [Sep13 19:47] ata1: exception Emask 0x50 SAct 0x0 SErr 0x4090800
+> UFS ends up benefiting the most.  You can see the whole diffstat here:
 >
-> The following article (found via Google) on Serverfault might be
-> helpful:
->
-> https://serverfault.com/questions/749433/hard-resetting-link-exception-emask-0x50-sact-0x0-serr-0x4090800-action-0xe-froz
->
-> Good luck,
->
->                                         - Ted
+> https://lore.kernel.org/lkml/20181023201952.GA15676@pathfinder/
+
+Well, even with _all_ the filesystems converted, you actually have
+more lines added than removed by this "cleanup".
+
+Sharing code just isn't a win here.
+
+That said, it's not really the number of lines per se that make me
+question this, I think that's really more of a symptom than the root
+cause. The root cause for the newly adde lines is that this whole
+approach requires that all the numbers are in sync, but then they have
+different *names*.
+
+Honestly, my gut feel is that I should not pull this in this form.
+
+I have a suggestion: if people want to do this, and actually share the
+transformation, then the filesystems that use this common code should
+simply *NOT* have their own private names for the enumerations. They
+should actually use those standard names.
+
+So if the patch for ext2 (for example) were to entirely get rid of the
+whole EXT2_FT_DIR define entirely, and ext2 would just use the actual
+FT_DIR define, than I'd be ok with it. At that point you don't add a
+pointless and expensive abstraction. At that point you say "ext2 uses
+the standard values, so ext2 can just use the standard #defines
+directly".
+
+See my argument?
+
+I think it is completely disgsting to have stuff like this:
+
++ BUILD_BUG_ON(EXT2_FT_UNKNOWN != FT_UNKNOWN);
++ BUILD_BUG_ON(EXT2_FT_REG_FILE != FT_REG_FILE);
++ BUILD_BUG_ON(EXT2_FT_DIR != FT_DIR);
++ BUILD_BUG_ON(EXT2_FT_CHRDEV != FT_CHRDEV);
++ BUILD_BUG_ON(EXT2_FT_BLKDEV != FT_BLKDEV);
++ BUILD_BUG_ON(EXT2_FT_FIFO != FT_FIFO);
++ BUILD_BUG_ON(EXT2_FT_SOCK != FT_SOCK);
++ BUILD_BUG_ON(EXT2_FT_SYMLINK != FT_SYMLINK);
++ BUILD_BUG_ON(EXT2_FT_MAX != FT_MAX);
+
+the above is just *garbage*.
+
+If you fundamentally need the values to be the same, then you simply
+shouldn't have two different set of #defines.
+
+Get rid of the EXT2_FT_xyz enumeration entirely, and the whole
+craziness goes away.
+
+> We'd see a lot more improvement in line count if Philip weren't quite
+> so paranoid about checking FOOFS_FT_* == FT_* at build time; eg for btrfs:
+
+Exact same issue.
+
+So the more I look at this, the less I like it.
+
+But if people are actually willing to use *truly* shared code, instead
+of using their own values and then having the crazy "they need to
+match", then it would be a different issue. As it is, I think the
+patch series adds complexity rather than helping anything.
+
+More complexity and more lines of code? There is absolutely zero upside.
+
+               Linus
