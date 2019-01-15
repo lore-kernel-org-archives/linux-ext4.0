@@ -1,139 +1,153 @@
-Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33042 "EHLO mx1.redhat.com"
+Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:60184 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725789AbfAKLDw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Jan 2019 06:03:52 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V13 08/19] block: use bio_for_each_bvec() to map sg
-Date: Fri, 11 Jan 2019 19:01:16 +0800
-Message-Id: <20190111110127.21664-9-ming.lei@redhat.com>
-In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
-References: <20190111110127.21664-1-ming.lei@redhat.com>
+        id S1725929AbfAOFhY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 15 Jan 2019 00:37:24 -0500
+Date: Tue, 15 Jan 2019 00:37:22 -0500 (EST)
+From: Pankaj Gupta <pagupta@redhat.com>
+To: "Michael S. Tsirkin" <mst@redhat.com>
+Cc: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+        KVM list <kvm@vger.kernel.org>,
+        David Hildenbrand <david@redhat.com>,
+        linux-nvdimm <linux-nvdimm@ml01.01.org>,
+        Jason Wang <jasowang@redhat.com>,
+        Qemu Developers <qemu-devel@nongnu.org>,
+        virtualization@lists.linux-foundation.org,
+        adilger kernel <adilger.kernel@dilger.ca>,
+        Ross Zwisler <zwisler@kernel.org>,
+        dave jiang <dave.jiang@intel.com>,
+        darrick wong <darrick.wong@oracle.com>,
+        vishal l verma <vishal.l.verma@intel.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Linux ACPI <linux-acpi@vger.kernel.org>,
+        jmoyer <jmoyer@redhat.com>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        Rik van Riel <riel@surriel.com>,
+        Stefan Hajnoczi <stefanha@redhat.com>,
+        Igor Mammedov <imammedo@redhat.com>,
+        Dan Williams <dan.j.williams@intel.com>,
+        lcapitulino@redhat.com, Kevin Wolf <kwolf@redhat.com>,
+        Nitesh Narayan Lal <nilal@redhat.com>,
+        Theodore Ts'o <tytso@mit.edu>,
+        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
+        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Paolo Bonzini <pbonzini@redhat.com>
+Message-ID: <208236727.64320322.1547530642536.JavaMail.zimbra@redhat.com>
+In-Reply-To: <20190114205031-mutt-send-email-mst@kernel.org>
+References: <20190109144736.17452-1-pagupta@redhat.com> <20190113232902.GD4205@dastard> <20190113233820.GX6310@bombadil.infradead.org> <942065073.64011540.1547450140670.JavaMail.zimbra@redhat.com> <20190114212501.GG4205@dastard> <CAPcyv4jtPcLV-s0sKNHwwk0ug7GLBV6699dpm1h3r2xSo879dg@mail.gmail.com> <20190114222132.GH4205@dastard> <20190114205031-mutt-send-email-mst@kernel.org>
+Subject: Re: [Qemu-devel] [PATCH v3 0/5] kvm "virtio pmem" device
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It is more efficient to use bio_for_each_bvec() to map sg, meantime
-we have to consider splitting multipage bvec as done in blk_bio_segment_split().
 
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- block/blk-merge.c | 70 +++++++++++++++++++++++++++++++++++++++----------------
- 1 file changed, 50 insertions(+), 20 deletions(-)
+> > > >
+> > > > On Mon, Jan 14, 2019 at 02:15:40AM -0500, Pankaj Gupta wrote:
+> > > > >
+> > > > > > > Until you have images (and hence host page cache) shared between
+> > > > > > > multiple guests. People will want to do this, because it means
+> > > > > > > they
+> > > > > > > only need a single set of pages in host memory for executable
+> > > > > > > binaries rather than a set of pages per guest. Then you have
+> > > > > > > multiple guests being able to detect residency of the same set of
+> > > > > > > pages. If the guests can then, in any way, control eviction of
+> > > > > > > the
+> > > > > > > pages from the host cache, then we have a guest-to-guest
+> > > > > > > information
+> > > > > > > leak channel.
+> > > > > >
+> > > > > > I don't think we should ever be considering something that would
+> > > > > > allow a
+> > > > > > guest to evict page's from the host's pagecache [1].  The guest
+> > > > > > should
+> > > > > > be able to kick its own references to the host's pagecache out of
+> > > > > > its
+> > > > > > own pagecache, but not be able to influence whether the host or
+> > > > > > another
+> > > > > > guest has a read-only mapping cached.
+> > > > > >
+> > > > > > [1] Unless the guest is allowed to modify the host's file;
+> > > > > > obviously
+> > > > > > truncation, holepunching, etc are going to evict pages from the
+> > > > > > host's
+> > > > > > page cache.
+> > > > >
+> > > > > This is so correct. Guest does not not evict host page cache pages
+> > > > > directly.
+> > > >
+> > > > They don't right now.
+> > > >
+> > > > But someone is going to end up asking for discard to work so that
+> > > > the guest can free unused space in the underlying spares image (i.e.
+> > > > make use of fstrim or mount -o discard) because they have workloads
+> > > > that have bursts of space usage and they need to trim the image
+> > > > files afterwards to keep their overall space usage under control.
+> > > >
+> > > > And then....
+> > > 
+> > > ...we reject / push back on that patch citing the above concern.
+> > 
+> > So at what point do we draw the line?
+> > 
+> > We're allowing writable DAX mappings, but as I've pointed out that
+> > means we are going to be allowing  a potential information leak via
+> > files with shared extents to be directly mapped and written to.
+> > 
+> > But we won't allow useful admin operations that allow better
+> > management of host side storage space similar to how normal image
+> > files are used by guests because it's an information leak vector?
+> > 
+> > That's splitting some really fine hairs there...
+> 
+> May I summarize that th security implications need to
+> be documented?
+> 
+> In fact that would make a fine security implications section
+> in the device specification.
 
-diff --git a/block/blk-merge.c b/block/blk-merge.c
-index abe1c89c1253..bf736d2b3710 100644
---- a/block/blk-merge.c
-+++ b/block/blk-merge.c
-@@ -460,6 +460,54 @@ static int blk_phys_contig_segment(struct request_queue *q, struct bio *bio,
- 	return biovec_phys_mergeable(q, &end_bv, &nxt_bv);
- }
- 
-+static struct scatterlist *blk_next_sg(struct scatterlist **sg,
-+		struct scatterlist *sglist)
-+{
-+	if (!*sg)
-+		return sglist;
-+
-+	/*
-+	 * If the driver previously mapped a shorter list, we could see a
-+	 * termination bit prematurely unless it fully inits the sg table
-+	 * on each mapping. We KNOW that there must be more entries here
-+	 * or the driver would be buggy, so force clear the termination bit
-+	 * to avoid doing a full sg_init_table() in drivers for each command.
-+	 */
-+	sg_unmark_end(*sg);
-+	return sg_next(*sg);
-+}
-+
-+static unsigned blk_bvec_map_sg(struct request_queue *q,
-+		struct bio_vec *bvec, struct scatterlist *sglist,
-+		struct scatterlist **sg)
-+{
-+	unsigned nbytes = bvec->bv_len;
-+	unsigned nsegs = 0, total = 0, offset = 0;
-+
-+	while (nbytes > 0) {
-+		unsigned seg_size;
-+		struct page *pg;
-+		unsigned idx;
-+
-+		*sg = blk_next_sg(sg, sglist);
-+
-+		seg_size = get_max_segment_size(q, bvec->bv_offset + total);
-+		seg_size = min(nbytes, seg_size);
-+
-+		offset = (total + bvec->bv_offset) % PAGE_SIZE;
-+		idx = (total + bvec->bv_offset) / PAGE_SIZE;
-+		pg = nth_page(bvec->bv_page, idx);
-+
-+		sg_set_page(*sg, pg, seg_size, offset);
-+
-+		total += seg_size;
-+		nbytes -= seg_size;
-+		nsegs++;
-+	}
-+
-+	return nsegs;
-+}
-+
- static inline void
- __blk_segment_map_sg(struct request_queue *q, struct bio_vec *bvec,
- 		     struct scatterlist *sglist, struct bio_vec *bvprv,
-@@ -477,25 +525,7 @@ __blk_segment_map_sg(struct request_queue *q, struct bio_vec *bvec,
- 		(*sg)->length += nbytes;
- 	} else {
- new_segment:
--		if (!*sg)
--			*sg = sglist;
--		else {
--			/*
--			 * If the driver previously mapped a shorter
--			 * list, we could see a termination bit
--			 * prematurely unless it fully inits the sg
--			 * table on each mapping. We KNOW that there
--			 * must be more entries here or the driver
--			 * would be buggy, so force clear the
--			 * termination bit to avoid doing a full
--			 * sg_init_table() in drivers for each command.
--			 */
--			sg_unmark_end(*sg);
--			*sg = sg_next(*sg);
--		}
--
--		sg_set_page(*sg, bvec->bv_page, nbytes, bvec->bv_offset);
--		(*nsegs)++;
-+		(*nsegs) += blk_bvec_map_sg(q, bvec, sglist, sg);
- 	}
- 	*bvprv = *bvec;
- }
-@@ -517,7 +547,7 @@ static int __blk_bios_map_sg(struct request_queue *q, struct bio *bio,
- 	int nsegs = 0;
- 
- 	for_each_bio(bio)
--		bio_for_each_segment(bvec, bio, iter)
-+		bio_for_each_bvec(bvec, bio, iter)
- 			__blk_segment_map_sg(q, &bvec, sglist, &bvprv, sg,
- 					     &nsegs);
- 
--- 
-2.9.5
+This is a very good suggestion. 
+
+I will document the security implications in details in device specification
+with details of what all filesystem features we don't support and why.
+
+Best regards,
+Pankaj
+
+> 
+> 
+> 
+> 
+> 
+> > > > > In case of virtio-pmem & DAX, guest clears guest page cache
+> > > > > exceptional entries.
+> > > > > Its solely decision of host to take action on the host page cache
+> > > > > pages.
+> > > > >
+> > > > > In case of virtio-pmem, guest does not modify host file directly i.e
+> > > > > don't
+> > > > > perform hole punch & truncation operation directly on host file.
+> > > >
+> > > > ... this will no longer be true, and the nuclear landmine in this
+> > > > driver interface will have been armed....
+> > > 
+> > > I agree with the need to be careful when / if explicit cache control
+> > > is added, but that's not the case today.
+> > 
+> > "if"?
+> > 
+> > I expect it to be "when", not if. Expect the worst, plan for it now.
+> > 
+> > Cheers,
+> > 
+> > Dave.
+> > --
+> > Dave Chinner
+> > david@fromorbit.com
+> 
+> 
