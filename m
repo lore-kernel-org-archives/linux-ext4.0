@@ -1,128 +1,52 @@
-Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-pl1-f194.google.com ([209.85.214.194]:35539 "EHLO
-        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727835AbfAODpE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jan 2019 22:45:04 -0500
-Received: by mail-pl1-f194.google.com with SMTP id p8so638114plo.2
-        for <linux-ext4@vger.kernel.org>; Mon, 14 Jan 2019 19:45:03 -0800 (PST)
-Subject: Re: [PATCH V13 00/19] block: support multi-page bvec
-To: Ming Lei <ming.lei@redhat.com>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
-References: <20190111110127.21664-1-ming.lei@redhat.com>
-From: Jens Axboe <axboe@kernel.dk>
-Message-ID: <49d610a4-0c2b-f7e7-6505-9dde59343b75@kernel.dk>
-Date: Mon, 14 Jan 2019 20:44:59 -0700
+Return-Path: <SRS0=njA7=PY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from smtp6-g21.free.fr ([212.27.42.6]:14146 "EHLO smtp6-g21.free.fr"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729732AbfAPVeZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 16 Jan 2019 16:34:25 -0500
+Received: from localhost.localdomain (unknown [88.185.151.243])
+        by smtp6-g21.free.fr (Postfix) with ESMTPS id 2A37B7802FE
+        for <linux-ext4@vger.kernel.org>; Wed, 16 Jan 2019 22:34:24 +0100 (CET)
+Date: Wed, 16 Jan 2019 22:34:23 +0100
+From: Etienne Buira <etienne.buira@free.fr>
+To: linux-ext4@vger.kernel.org
+Subject: ext4fs block role, debugfs testb and icheck mismatch
+Message-ID: <20190116213423.GA20263@Z926fQmE5jqhFMgp6>
 MIME-Version: 1.0
-In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 1/11/19 4:01 AM, Ming Lei wrote:
-> Hi,
-> 
-> This patchset brings multi-page bvec into block layer:
-> 
-> 1) what is multi-page bvec?
-> 
-> Multipage bvecs means that one 'struct bio_bvec' can hold multiple pages
-> which are physically contiguous instead of one single page used in linux
-> kernel for long time.
-> 
-> 2) why is multi-page bvec introduced?
-> 
-> Kent proposed the idea[1] first. 
-> 
-> As system's RAM becomes much bigger than before, and huge page, transparent
-> huge page and memory compaction are widely used, it is a bit easy now
-> to see physically contiguous pages from fs in I/O. On the other hand, from
-> block layer's view, it isn't necessary to store intermediate pages into bvec,
-> and it is enough to just store the physicallly contiguous 'segment' in each
-> io vector.
-> 
-> Also huge pages are being brought to filesystem and swap [2][6], we can
-> do IO on a hugepage each time[3], which requires that one bio can transfer
-> at least one huge page one time. Turns out it isn't flexiable to change
-> BIO_MAX_PAGES simply[3][5]. Multipage bvec can fit in this case very well.
-> As we saw, if CONFIG_THP_SWAP is enabled, BIO_MAX_PAGES can be configured
-> as much bigger, such as 512, which requires at least two 4K pages for holding
-> the bvec table.
-> 
-> With multi-page bvec:
-> 
-> - Inside block layer, both bio splitting and sg map can become more
-> efficient than before by just traversing the physically contiguous
-> 'segment' instead of each page.
-> 
-> - segment handling in block layer can be improved much in future since it
-> should be quite easy to convert multipage bvec into segment easily. For
-> example, we might just store segment in each bvec directly in future.
-> 
-> - bio size can be increased and it should improve some high-bandwidth IO
-> case in theory[4].
-> 
-> - there is opportunity in future to improve memory footprint of bvecs. 
-> 
-> 3) how is multi-page bvec implemented in this patchset?
-> 
-> Patch 1 ~ 4 parpares for supporting multi-page bvec. 
-> 
-> Patches 5 ~ 15 implement multipage bvec in block layer:
-> 
-> 	- put all tricks into bvec/bio/rq iterators, and as far as
-> 	drivers and fs use these standard iterators, they are happy
-> 	with multipage bvec
-> 
-> 	- introduce bio_for_each_bvec() to iterate over multipage bvec for splitting
-> 	bio and mapping sg
-> 
-> 	- keep current bio_for_each_segment*() to itereate over singlepage bvec and
-> 	make sure current users won't be broken; especailly, convert to this
-> 	new helper prototype in single patch 21 given it is bascially a mechanism
-> 	conversion
-> 
-> 	- deal with iomap & xfs's sub-pagesize io vec in patch 13
-> 
-> 	- enalbe multipage bvec in patch 14 
-> 
-> Patch 16 redefines BIO_MAX_PAGES as 256.
-> 
-> Patch 17 documents usages of bio iterator helpers.
-> 
-> Patch 18~19 kills NO_SG_MERGE.
-> 
-> These patches can be found in the following git tree:
-> 
-> 	git:  https://github.com/ming1/linux.git  for-4.21-block-mp-bvec-V12
-> 
-> Lots of test(blktest, xfstests, ltp io, ...) have been run with this patchset,
-> and not see regression.
-> 
-> Thanks Christoph for reviewing the early version and providing very good
-> suggestions, such as: introduce bio_init_with_vec_table(), remove another
-> unnecessary helpers for cleanup and so on.
-> 
-> Thanks Chritoph and Omar for reviewing V10/V11/V12, and provides lots of
-> helpful comments.
+Hi all,
 
-Thanks for persisting in this endeavor, Ming, I've applied this for 5.1.
+For the background: i've hit defect sectors (on part of md array), and i
+want to rewrite those sectors to force hdd reallocation, so i need to
+figure out what they are used for.
 
--- 
-Jens Axboe
+Unrolling the layers under fs, i'm interested in a 4K blocks range that
+starts at 2035, here starts the trouble:
+debugfs 1.43.9 (8-Feb-2018)
+debugfs:  testb 2035
+Block 2035 marked in use
+debugfs:  icheck 2035
+Block   Inode number
+2035    <block not found>
+
+>From this result, i tried to figure out if this block were used for fs
+internal structures.
+Using dumpe2fs, i see that this block belongs to group 0, and falls
+beyond fs structures (last block for inode table is reported as 1568).
+Block 2035 is not reported as free blocks.
+
+Running forced (fs was marked clean) RO check with e2fsck (on mounted
+filesystem) did not report block 2035 in block bitmap differences.
+
+Oh, and yes, unmounting the filesystem would be a costy operation, so
+better if avoided (that's why i ran e2fsck RO, and only looked for
+results about the block of interest).
+
+So, how can i know how this (these, actually) block is used?
+
+Regards.
+
+PS: I'm not subscribed to the list, so please CC me.
