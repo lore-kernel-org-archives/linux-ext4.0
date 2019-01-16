@@ -1,180 +1,104 @@
-Return-Path: <SRS0=9YHU=PT=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8185 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730124AbfAKLGd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 11 Jan 2019 06:06:33 -0500
-From: Ming Lei <ming.lei@redhat.com>
-To: Jens Axboe <axboe@kernel.dk>
-Cc: linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
-        Omar Sandoval <osandov@fb.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Dave Chinner <dchinner@redhat.com>,
-        Kent Overstreet <kent.overstreet@gmail.com>,
-        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
-        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
-        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
-        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
-        Boaz Harrosh <ooo@electrozaur.com>,
-        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
-        Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V13 19/19] block: kill BLK_MQ_F_SG_MERGE
-Date: Fri, 11 Jan 2019 19:01:27 +0800
-Message-Id: <20190111110127.21664-20-ming.lei@redhat.com>
-In-Reply-To: <20190111110127.21664-1-ming.lei@redhat.com>
-References: <20190111110127.21664-1-ming.lei@redhat.com>
+Return-Path: <SRS0=njA7=PY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:41588 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2387533AbfAPOgs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 16 Jan 2019 09:36:48 -0500
+Date: Wed, 16 Jan 2019 15:36:45 +0100
+From: Jan Kara <jack@suse.cz>
+To: "zhangyi (F)" <yi.zhang@huawei.com>
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jack@suse.cz, miaoxie@huawei.com
+Subject: Re: [PATCH v2] jbd2: make sure dirty flag is cleared while revorking
+ a buffer which belongs to older transaction
+Message-ID: <20190116143645.GG26069@quack2.suse.cz>
+References: <1547645903-57295-1-git-send-email-yi.zhang@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1547645903-57295-1-git-send-email-yi.zhang@huawei.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-QUEUE_FLAG_NO_SG_MERGE has been killed, so kill BLK_MQ_F_SG_MERGE too.
+On Wed 16-01-19 21:38:23, zhangyi (F) wrote:
+> Now, we capture a data corruption problem on ext4 while we're truncating
+> an extent index block. Imaging that if we are revoking a buffer which
+> has been journaled by the committing transaction, the buffer's jbddirty
+> flag will not be cleared in jbd2_journal_forget(), so the commit code
+> will set the buffer dirty flag again after refile the buffer.
+> 
+> fsx                               kjournald2
+>                                   jbd2_journal_commit_transaction
+> jbd2_journal_revoke                commit phase 1~5...
+>  jbd2_journal_forget
+>    belongs to older transaction    commit phase 6
+>    jbddirty not clear               __jbd2_journal_refile_buffer
+>                                      __jbd2_journal_unfile_buffer
+>                                       test_clear_buffer_jbddirty
+>                                        mark_buffer_dirty
+> 
+> Finally, if the freed extent index block was allocated again as data
+> block by some other files, it may corrupt the file data when writing
+> cached pages later, such as during umount time.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Omar Sandoval <osandov@fb.com>
-Signed-off-by: Ming Lei <ming.lei@redhat.com>
----
- block/blk-mq-debugfs.c       | 1 -
- drivers/block/loop.c         | 2 +-
- drivers/block/nbd.c          | 2 +-
- drivers/block/rbd.c          | 2 +-
- drivers/block/skd_main.c     | 1 -
- drivers/block/xen-blkfront.c | 2 +-
- drivers/md/dm-rq.c           | 2 +-
- drivers/mmc/core/queue.c     | 3 +--
- drivers/scsi/scsi_lib.c      | 2 +-
- include/linux/blk-mq.h       | 1 -
- 10 files changed, 7 insertions(+), 11 deletions(-)
+Thanks for the patch! I'm sorry this didn't occur to me the first time when
+I was reading your analysis but now there is one question I have: When the
+freed extent index block gets reallocated as data block, we should call
+clean_bdev_aliases() or clean_bdev_bh_alias() for it (it usually happens
+shortly after block allocation either in ext4_block_write_begin() or
+mpage_map_one_extent()). Which will clear the buffer dirty bit and thus
+should avoid this kind of corruption. So how come this didn't work? Is it
+that we for some reason didn't call clean_bdev_aliases() or that function
+didn't work for some reason? Can you debug that with your reproducer?
+Thanks a lot!
 
-diff --git a/block/blk-mq-debugfs.c b/block/blk-mq-debugfs.c
-index 2f9a11ef5bad..2ba0aa05ce13 100644
---- a/block/blk-mq-debugfs.c
-+++ b/block/blk-mq-debugfs.c
-@@ -250,7 +250,6 @@ static const char *const alloc_policy_name[] = {
- static const char *const hctx_flag_name[] = {
- 	HCTX_FLAG_NAME(SHOULD_MERGE),
- 	HCTX_FLAG_NAME(TAG_SHARED),
--	HCTX_FLAG_NAME(SG_MERGE),
- 	HCTX_FLAG_NAME(BLOCKING),
- 	HCTX_FLAG_NAME(NO_SCHED),
- };
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 28dd22c6f83f..e3b9212ec7a1 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -1906,7 +1906,7 @@ static int loop_add(struct loop_device **l, int i)
- 	lo->tag_set.queue_depth = 128;
- 	lo->tag_set.numa_node = NUMA_NO_NODE;
- 	lo->tag_set.cmd_size = sizeof(struct loop_cmd);
--	lo->tag_set.flags = BLK_MQ_F_SHOULD_MERGE | BLK_MQ_F_SG_MERGE;
-+	lo->tag_set.flags = BLK_MQ_F_SHOULD_MERGE;
- 	lo->tag_set.driver_data = lo;
- 
- 	err = blk_mq_alloc_tag_set(&lo->tag_set);
-diff --git a/drivers/block/nbd.c b/drivers/block/nbd.c
-index 08696f5f00bb..999c94de78e5 100644
---- a/drivers/block/nbd.c
-+++ b/drivers/block/nbd.c
-@@ -1570,7 +1570,7 @@ static int nbd_dev_add(int index)
- 	nbd->tag_set.numa_node = NUMA_NO_NODE;
- 	nbd->tag_set.cmd_size = sizeof(struct nbd_cmd);
- 	nbd->tag_set.flags = BLK_MQ_F_SHOULD_MERGE |
--		BLK_MQ_F_SG_MERGE | BLK_MQ_F_BLOCKING;
-+		BLK_MQ_F_BLOCKING;
- 	nbd->tag_set.driver_data = nbd;
- 
- 	err = blk_mq_alloc_tag_set(&nbd->tag_set);
-diff --git a/drivers/block/rbd.c b/drivers/block/rbd.c
-index 8e5140bbf241..3dfd300b5283 100644
---- a/drivers/block/rbd.c
-+++ b/drivers/block/rbd.c
-@@ -3988,7 +3988,7 @@ static int rbd_init_disk(struct rbd_device *rbd_dev)
- 	rbd_dev->tag_set.ops = &rbd_mq_ops;
- 	rbd_dev->tag_set.queue_depth = rbd_dev->opts->queue_depth;
- 	rbd_dev->tag_set.numa_node = NUMA_NO_NODE;
--	rbd_dev->tag_set.flags = BLK_MQ_F_SHOULD_MERGE | BLK_MQ_F_SG_MERGE;
-+	rbd_dev->tag_set.flags = BLK_MQ_F_SHOULD_MERGE;
- 	rbd_dev->tag_set.nr_hw_queues = 1;
- 	rbd_dev->tag_set.cmd_size = sizeof(struct work_struct);
- 
-diff --git a/drivers/block/skd_main.c b/drivers/block/skd_main.c
-index a10d5736d8f7..a7040f9a1b1b 100644
---- a/drivers/block/skd_main.c
-+++ b/drivers/block/skd_main.c
-@@ -2843,7 +2843,6 @@ static int skd_cons_disk(struct skd_device *skdev)
- 		skdev->sgs_per_request * sizeof(struct scatterlist);
- 	skdev->tag_set.numa_node = NUMA_NO_NODE;
- 	skdev->tag_set.flags = BLK_MQ_F_SHOULD_MERGE |
--		BLK_MQ_F_SG_MERGE |
- 		BLK_ALLOC_POLICY_TO_MQ_FLAG(BLK_TAG_ALLOC_FIFO);
- 	skdev->tag_set.driver_data = skdev;
- 	rc = blk_mq_alloc_tag_set(&skdev->tag_set);
-diff --git a/drivers/block/xen-blkfront.c b/drivers/block/xen-blkfront.c
-index 0ed4b200fa58..d43a5677ccbc 100644
---- a/drivers/block/xen-blkfront.c
-+++ b/drivers/block/xen-blkfront.c
-@@ -977,7 +977,7 @@ static int xlvbd_init_blk_queue(struct gendisk *gd, u16 sector_size,
- 	} else
- 		info->tag_set.queue_depth = BLK_RING_SIZE(info);
- 	info->tag_set.numa_node = NUMA_NO_NODE;
--	info->tag_set.flags = BLK_MQ_F_SHOULD_MERGE | BLK_MQ_F_SG_MERGE;
-+	info->tag_set.flags = BLK_MQ_F_SHOULD_MERGE;
- 	info->tag_set.cmd_size = sizeof(struct blkif_req);
- 	info->tag_set.driver_data = info;
- 
-diff --git a/drivers/md/dm-rq.c b/drivers/md/dm-rq.c
-index 4eb5f8c56535..b2f8eb2365ee 100644
---- a/drivers/md/dm-rq.c
-+++ b/drivers/md/dm-rq.c
-@@ -527,7 +527,7 @@ int dm_mq_init_request_queue(struct mapped_device *md, struct dm_table *t)
- 	md->tag_set->ops = &dm_mq_ops;
- 	md->tag_set->queue_depth = dm_get_blk_mq_queue_depth();
- 	md->tag_set->numa_node = md->numa_node_id;
--	md->tag_set->flags = BLK_MQ_F_SHOULD_MERGE | BLK_MQ_F_SG_MERGE;
-+	md->tag_set->flags = BLK_MQ_F_SHOULD_MERGE;
- 	md->tag_set->nr_hw_queues = dm_get_blk_mq_nr_hw_queues();
- 	md->tag_set->driver_data = md;
- 
-diff --git a/drivers/mmc/core/queue.c b/drivers/mmc/core/queue.c
-index 35cc138b096d..cc19e71c71d4 100644
---- a/drivers/mmc/core/queue.c
-+++ b/drivers/mmc/core/queue.c
-@@ -410,8 +410,7 @@ int mmc_init_queue(struct mmc_queue *mq, struct mmc_card *card)
- 	else
- 		mq->tag_set.queue_depth = MMC_QUEUE_DEPTH;
- 	mq->tag_set.numa_node = NUMA_NO_NODE;
--	mq->tag_set.flags = BLK_MQ_F_SHOULD_MERGE | BLK_MQ_F_SG_MERGE |
--			    BLK_MQ_F_BLOCKING;
-+	mq->tag_set.flags = BLK_MQ_F_SHOULD_MERGE | BLK_MQ_F_BLOCKING;
- 	mq->tag_set.nr_hw_queues = 1;
- 	mq->tag_set.cmd_size = sizeof(struct mmc_queue_req);
- 	mq->tag_set.driver_data = mq;
-diff --git a/drivers/scsi/scsi_lib.c b/drivers/scsi/scsi_lib.c
-index b13cc9288ba0..afad57071cb6 100644
---- a/drivers/scsi/scsi_lib.c
-+++ b/drivers/scsi/scsi_lib.c
-@@ -1899,7 +1899,7 @@ int scsi_mq_setup_tags(struct Scsi_Host *shost)
- 	shost->tag_set.queue_depth = shost->can_queue;
- 	shost->tag_set.cmd_size = cmd_size;
- 	shost->tag_set.numa_node = NUMA_NO_NODE;
--	shost->tag_set.flags = BLK_MQ_F_SHOULD_MERGE | BLK_MQ_F_SG_MERGE;
-+	shost->tag_set.flags = BLK_MQ_F_SHOULD_MERGE;
- 	shost->tag_set.flags |=
- 		BLK_ALLOC_POLICY_TO_MQ_FLAG(shost->hostt->tag_alloc_policy);
- 	shost->tag_set.driver_data = shost;
-diff --git a/include/linux/blk-mq.h b/include/linux/blk-mq.h
-index 0e030f5f76b6..b0c814bcc7e3 100644
---- a/include/linux/blk-mq.h
-+++ b/include/linux/blk-mq.h
-@@ -218,7 +218,6 @@ struct blk_mq_ops {
- enum {
- 	BLK_MQ_F_SHOULD_MERGE	= 1 << 0,
- 	BLK_MQ_F_TAG_SHARED	= 1 << 1,
--	BLK_MQ_F_SG_MERGE	= 1 << 2,
- 	BLK_MQ_F_BLOCKING	= 1 << 5,
- 	BLK_MQ_F_NO_SCHED	= 1 << 6,
- 	BLK_MQ_F_ALLOC_POLICY_START_BIT = 8,
+								Honza
+
+> This patch mark buffer as freed and set j_next_transaction to the new
+> transaction when it already belongs to the committing transaction in
+> jbd2_journal_forget(), so that commit code knows it should clear dirty
+> bits when it is done with the buffer.
+> 
+> This problem can be reproduced by xfstests generic/455 easily with
+> seeds (3246 3247 3248 3249).
+> 
+> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/jbd2/transaction.c | 15 ++++++++++-----
+>  1 file changed, 10 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index f07f006..f7f9647 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -1609,14 +1609,19 @@ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
+>  		/* However, if the buffer is still owned by a prior
+>  		 * (committing) transaction, we can't drop it yet... */
+>  		JBUFFER_TRACE(jh, "belongs to older transaction");
+> -		/* ... but we CAN drop it from the new transaction if we
+> -		 * have also modified it since the original commit. */
+> +		/* ... but we CAN drop it from the new transaction, mark
+> +		 * buffer as freed and set j_next_transaction to the new
+> +		 * transaction so that commit code knows it should clear
+> +		 * dirty bits when it is done with the buffer. */
+>  
+> -		if (jh->b_next_transaction) {
+> -			J_ASSERT(jh->b_next_transaction == transaction);
+> +		set_buffer_freed(bh);
+> +
+> +		if (!jh->b_next_transaction) {
+>  			spin_lock(&journal->j_list_lock);
+> -			jh->b_next_transaction = NULL;
+> +			jh->b_next_transaction = transaction;
+>  			spin_unlock(&journal->j_list_lock);
+> +		} else {
+> +			J_ASSERT(jh->b_next_transaction == transaction);
+>  
+>  			/*
+>  			 * only drop a reference if this transaction modified
+> -- 
+> 2.7.4
+> 
 -- 
-2.9.5
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
