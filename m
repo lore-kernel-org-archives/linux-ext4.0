@@ -1,64 +1,49 @@
-Return-Path: <SRS0=QTyG=PS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-eopbgr800102.outbound.protection.outlook.com ([40.107.80.102]:2785
-        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725379AbfAJFPJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 10 Jan 2019 00:15:09 -0500
-Date: Thu, 10 Jan 2019 00:15:00 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Dave Chinner <david@fromorbit.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@kernel.org>,
-        <linux-fscrypt@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        <linux-ext4@vger.kernel.org>,
-        <linux-f2fs-devel@lists.sourceforge.net>
-Subject: Proposal: A new fs-verity interface
-Message-ID: <20190110051500.GA32361@mit.edu>
+Return-Path: <SRS0=njA7=PY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-yw1-f47.google.com ([209.85.161.47]:37516 "EHLO
+        mail-yw1-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731103AbfAPQ4a (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jan 2019 11:56:30 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Disposition: inline
+References: <20190102174736.GB29127@quack2.suse.cz> <20190108100500.GA15801@quack2.suse.cz>
+ <20190115092414.GA4138@quack2.suse.cz> <CAHk-=wiW=4k3iBkDzz5_LuyCRcduZJuk-Vwhz9vqrUMML6WVkg@mail.gmail.com>
+ <20190115180156.GB6310@bombadil.infradead.org> <CAHk-=whor678X0A4Mz95KSoG2f0O_F8a5PEQNXLqPxDehs+7Fg@mail.gmail.com>
+ <20190116120754.GF26069@quack2.suse.cz> <CAA=Fs0mrvr2mErpG-DBLW7Kg2xUXU_1+J4Eg4Fi+T=x5sH7BDQ@mail.gmail.com>
+ <20190116165147.GI26069@quack2.suse.cz>
+In-Reply-To: <20190116165147.GI26069@quack2.suse.cz>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Wed, 16 Jan 2019 18:56:17 +0200
+Message-ID: <CAOQ4uxipOf-MH3eC8fbV6ZrF63thq0+PyBpoNMzv=WWF_=vs2w@mail.gmail.com>
+Subject: Re: [GIT PULL] dtype handling cleanup for v4.21-rc1
+To: Jan Kara <jack@suse.cz>
+Cc: Phillip Potter <phil@philpotter.co.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "cc: Matthew Wilcox" <willy@infradead.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Ext4 <linux-ext4@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following approach is based in Darrick's suggestion:
+On Wed, Jan 16, 2019 at 6:51 PM Jan Kara <jack@suse.cz> wrote:
+>
+> On Wed 16-01-19 16:34:36, Phillip Potter wrote:
+> > Dear Jan,
+> >
+> > I am happy to rework the patches, all fair comment. Slight problem
+> > being my computer is in a box right now as I've just moved house. I
+> > will get this done in the next few days if that's ok?
+>
+> Sure, no problem. Patches won't make it in this release cycle so we have
+> like three weeks to get them ready for the next merge window.
+>
 
-int ioctl(fd, FS_IOC_ENABLE_VERITY, struct fsverity_arg *arg);
+Also, and Jan will correct me if I am wrong.
+I think that reworking only the common and ext2 patches would
+be sufficient for this cycle.
 
-struct fsverity_arg {
-       int fsv_donor_fd;
-       u64 fsv_offset;
-       u64 fsv_size;
-};
-
-fsv_offset and fsz_size must be a multiple of the file system block
-size.  If the ioctl comples successfully, as a side effect the
-donor_fd will have a hole punch operation on the specified range.  In
-other words, the equivalent of operation of fallocate(fsv_donor_fd,
-FALLOC_FL_PUNCH_HOLE, fsv_offset, fsv_size), and the file specified by
-fd will be protected using fsverity.
-
-It will be legal for fsv_donor_fd == fd, so this interface is a
-superset of the original FS_IOC_ENABLE_VERITY ioctl.
-
-This will hopefully make Christoph and Dave happy because the
-interface does not presuppose how ext4 and f2fs will implement
-fsverity behind the scenes.  However, it does not forbid it, and the
-net cost is that ext4 and f2fs will have to implement code which
-transplants the blocks from the donor_fd to fd in the case where
-donor_fd != fd --- and in the case where blocks are encrypted using
-fscrypt, we will have to decrypt the blocks from donor_fd and possibly
-re-encrypt then in fd's per-file key, which means we'll have to add
-extra complexity to implement the decrypt and re-encrypt passing
-through the page cache.
-
-But if this helps resolve Christoph and Dave's objections, it
-shouldn't be _too_ much extra complexity.  Before we go ahead an
-implement it, though, I'd appreciate a confirmation that this will
-indeed actually resolve their complaints.
+You can prepare the rest of the patches for next cycle after
+the common patch has landed.
 
 Thanks,
-
-					- Ted
+Amir.
