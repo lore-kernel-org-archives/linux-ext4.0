@@ -1,47 +1,67 @@
-Return-Path: <SRS0=sDDi=PO=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mail-eopbgr680118.outbound.protection.outlook.com ([40.107.68.118]:39782
-        "EHLO NAM04-BN3-obe.outbound.protection.outlook.com"
+Return-Path: <SRS0=xLGb=PZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:54256 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726414AbfAFNjv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 6 Jan 2019 08:39:51 -0500
-Date: Sun, 6 Jan 2019 08:39:43 -0500
-From: "Theodore Y. Ts'o" <tytso@mit.edu>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: <linux-ext4@vger.kernel.org>, <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] ext4 bug fixes for 4.21
-Message-ID: <20190106133943.GA10099@mit.edu>
+        id S1726914AbfAQJf5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 17 Jan 2019 04:35:57 -0500
+Date: Thu, 17 Jan 2019 10:35:55 +0100
+From: Jan Kara <jack@suse.cz>
+To: Amir Goldstein <amir73il@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, Phillip Potter <phil@philpotter.co.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "cc: Matthew Wilcox" <willy@infradead.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Ext4 <linux-ext4@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: [GIT PULL] dtype handling cleanup for v4.21-rc1
+Message-ID: <20190117093555.GC9378@quack2.suse.cz>
+References: <20190102174736.GB29127@quack2.suse.cz>
+ <20190108100500.GA15801@quack2.suse.cz>
+ <20190115092414.GA4138@quack2.suse.cz>
+ <CAHk-=wiW=4k3iBkDzz5_LuyCRcduZJuk-Vwhz9vqrUMML6WVkg@mail.gmail.com>
+ <20190115180156.GB6310@bombadil.infradead.org>
+ <CAHk-=whor678X0A4Mz95KSoG2f0O_F8a5PEQNXLqPxDehs+7Fg@mail.gmail.com>
+ <20190116120754.GF26069@quack2.suse.cz>
+ <CAA=Fs0mrvr2mErpG-DBLW7Kg2xUXU_1+J4Eg4Fi+T=x5sH7BDQ@mail.gmail.com>
+ <20190116165147.GI26069@quack2.suse.cz>
+ <CAOQ4uxipOf-MH3eC8fbV6ZrF63thq0+PyBpoNMzv=WWF_=vs2w@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+In-Reply-To: <CAOQ4uxipOf-MH3eC8fbV6ZrF63thq0+PyBpoNMzv=WWF_=vs2w@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following changes since commit 18f2c4fcebf2582f96cbd5f2238f4f354a0e4847:
+On Wed 16-01-19 18:56:17, Amir Goldstein wrote:
+> On Wed, Jan 16, 2019 at 6:51 PM Jan Kara <jack@suse.cz> wrote:
+> >
+> > On Wed 16-01-19 16:34:36, Phillip Potter wrote:
+> > > Dear Jan,
+> > >
+> > > I am happy to rework the patches, all fair comment. Slight problem
+> > > being my computer is in a box right now as I've just moved house. I
+> > > will get this done in the next few days if that's ok?
+> >
+> > Sure, no problem. Patches won't make it in this release cycle so we have
+> > like three weeks to get them ready for the next merge window.
+> >
+> 
+> Also, and Jan will correct me if I am wrong.
+> I think that reworking only the common and ext2 patches would
+> be sufficient for this cycle.
 
-  ext4: check for shutdown and r/o file system in ext4_write_inode() (2018-12-19 14:36:58 -0500)
+Yes, that's also true.
 
-are available in the Git repository at:
+> You can prepare the rest of the patches for next cycle after
+> the common patch has landed.
 
-  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
+Correct, since the plan is for these to land through other maintainers'
+trees. But still it would be nice if we had them earlier just to see of
+other maintainers don't seriously oppose the idea. To that end it is
+probably good to reference the discussion with Linus in the cover letter
+and the email with common infrastructure, explaining why converting to
+common defines instead of keeping filesystem specific ones was done.
 
-for you to fetch changes up to 191ce17876c9367819c4b0a25b503c0f6d9054d8:
-
-  ext4: fix special inode number checks in __ext4_iget() (2018-12-31 22:34:31 -0500)
-
-----------------------------------------------------------------
-Fix a number of ext4 bugs.
-
-----------------------------------------------------------------
-Theodore Ts'o (6):
-      ext4: make sure enough credits are reserved for dioread_nolock writes
-      ext4: fix a potential fiemap/page fault deadlock w/ inline_data
-      ext4: avoid kernel warning when writing the superblock to a dead device
-      ext4: use ext4_write_inode() when fsyncing w/o a journal
-      ext4: track writeback errors using the generic tracking infrastructure
-      ext4: fix special inode number checks in __ext4_iget()
-
- fs/ext4/fsync.c  | 16 ++++++++++++----
- fs/ext4/inline.c |  6 +++---
- fs/ext4/inode.c  |  5 +++--
- fs/ext4/super.c  |  2 +-
- 4 files changed, 19 insertions(+), 10 deletions(-)
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
