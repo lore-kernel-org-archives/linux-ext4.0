@@ -1,128 +1,128 @@
-Return-Path: <SRS0=NmFT=PW=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from ipmail01.adl6.internode.on.net ([150.101.137.136]:52594 "EHLO
-        ipmail01.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726794AbfANWVi (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 14 Jan 2019 17:21:38 -0500
-Date: Tue, 15 Jan 2019 09:21:32 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Dan Williams <dan.j.williams@intel.com>
-Cc: Pankaj Gupta <pagupta@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        KVM list <kvm@vger.kernel.org>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        linux-nvdimm <linux-nvdimm@ml01.01.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        virtualization@lists.linux-foundation.org,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>, Jan Kara <jack@suse.cz>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Rik van Riel <riel@surriel.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Kevin Wolf <kwolf@redhat.com>,
-        Paolo Bonzini <pbonzini@redhat.com>,
-        Ross Zwisler <zwisler@kernel.org>,
-        vishal l verma <vishal.l.verma@intel.com>,
-        dave jiang <dave.jiang@intel.com>,
-        David Hildenbrand <david@redhat.com>,
-        jmoyer <jmoyer@redhat.com>,
-        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Jason Wang <jasowang@redhat.com>, lcapitulino@redhat.com,
-        Igor Mammedov <imammedo@redhat.com>,
-        Eric Blake <eblake@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
-        adilger kernel <adilger.kernel@dilger.ca>,
-        darrick wong <darrick.wong@oracle.com>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>
-Subject: Re: [PATCH v3 0/5] kvm "virtio pmem" device
-Message-ID: <20190114222132.GH4205@dastard>
-References: <20190109144736.17452-1-pagupta@redhat.com>
- <20190110012617.GA4205@dastard>
- <1326478078.61913951.1547192704870.JavaMail.zimbra@redhat.com>
- <20190113232902.GD4205@dastard>
- <20190113233820.GX6310@bombadil.infradead.org>
- <942065073.64011540.1547450140670.JavaMail.zimbra@redhat.com>
- <20190114212501.GG4205@dastard>
- <CAPcyv4jtPcLV-s0sKNHwwk0ug7GLBV6699dpm1h3r2xSo879dg@mail.gmail.com>
+Return-Path: <SRS0=xLGb=PZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from szxga07-in.huawei.com ([45.249.212.35]:38494 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1728241AbfAQK7C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 17 Jan 2019 05:59:02 -0500
+Subject: Re: [PATCH v2] jbd2: make sure dirty flag is cleared while revorking
+ a buffer which belongs to older transaction
+To: Jan Kara <jack@suse.cz>
+References: <1547645903-57295-1-git-send-email-yi.zhang@huawei.com>
+ <20190116143645.GG26069@quack2.suse.cz>
+CC: <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <miaoxie@huawei.com>
+From: "zhangyi (F)" <yi.zhang@huawei.com>
+Message-ID: <942a44fe-4350-2f59-9913-c47ee6ff9031@huawei.com>
+Date: Thu, 17 Jan 2019 18:58:51 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAPcyv4jtPcLV-s0sKNHwwk0ug7GLBV6699dpm1h3r2xSo879dg@mail.gmail.com>
+In-Reply-To: <20190116143645.GG26069@quack2.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 14, 2019 at 01:35:57PM -0800, Dan Williams wrote:
-> On Mon, Jan 14, 2019 at 1:25 PM Dave Chinner <david@fromorbit.com> wrote:
-> >
-> > On Mon, Jan 14, 2019 at 02:15:40AM -0500, Pankaj Gupta wrote:
-> > >
-> > > > > Until you have images (and hence host page cache) shared between
-> > > > > multiple guests. People will want to do this, because it means they
-> > > > > only need a single set of pages in host memory for executable
-> > > > > binaries rather than a set of pages per guest. Then you have
-> > > > > multiple guests being able to detect residency of the same set of
-> > > > > pages. If the guests can then, in any way, control eviction of the
-> > > > > pages from the host cache, then we have a guest-to-guest information
-> > > > > leak channel.
-> > > >
-> > > > I don't think we should ever be considering something that would allow a
-> > > > guest to evict page's from the host's pagecache [1].  The guest should
-> > > > be able to kick its own references to the host's pagecache out of its
-> > > > own pagecache, but not be able to influence whether the host or another
-> > > > guest has a read-only mapping cached.
-> > > >
-> > > > [1] Unless the guest is allowed to modify the host's file; obviously
-> > > > truncation, holepunching, etc are going to evict pages from the host's
-> > > > page cache.
-> > >
-> > > This is so correct. Guest does not not evict host page cache pages directly.
-> >
-> > They don't right now.
-> >
-> > But someone is going to end up asking for discard to work so that
-> > the guest can free unused space in the underlying spares image (i.e.
-> > make use of fstrim or mount -o discard) because they have workloads
-> > that have bursts of space usage and they need to trim the image
-> > files afterwards to keep their overall space usage under control.
-> >
-> > And then....
+On 2019/1/16 22:36, Jan Kara Wrote:
+> On Wed 16-01-19 21:38:23, zhangyi (F) wrote:
+>> Now, we capture a data corruption problem on ext4 while we're truncating
+>> an extent index block. Imaging that if we are revoking a buffer which
+>> has been journaled by the committing transaction, the buffer's jbddirty
+>> flag will not be cleared in jbd2_journal_forget(), so the commit code
+>> will set the buffer dirty flag again after refile the buffer.
+>>
+>> fsx                               kjournald2
+>>                                   jbd2_journal_commit_transaction
+>> jbd2_journal_revoke                commit phase 1~5...
+>>  jbd2_journal_forget
+>>    belongs to older transaction    commit phase 6
+>>    jbddirty not clear               __jbd2_journal_refile_buffer
+>>                                      __jbd2_journal_unfile_buffer
+>>                                       test_clear_buffer_jbddirty
+>>                                        mark_buffer_dirty
+>>
+>> Finally, if the freed extent index block was allocated again as data
+>> block by some other files, it may corrupt the file data when writing
+>> cached pages later, such as during umount time.
 > 
-> ...we reject / push back on that patch citing the above concern.
-
-So at what point do we draw the line?
-
-We're allowing writable DAX mappings, but as I've pointed out that
-means we are going to be allowing  a potential information leak via
-files with shared extents to be directly mapped and written to.
-
-But we won't allow useful admin operations that allow better
-management of host side storage space similar to how normal image
-files are used by guests because it's an information leak vector?
-
-That's splitting some really fine hairs there...
-
-> > > In case of virtio-pmem & DAX, guest clears guest page cache exceptional entries.
-> > > Its solely decision of host to take action on the host page cache pages.
-> > >
-> > > In case of virtio-pmem, guest does not modify host file directly i.e don't
-> > > perform hole punch & truncation operation directly on host file.
-> >
-> > ... this will no longer be true, and the nuclear landmine in this
-> > driver interface will have been armed....
+> Thanks for the patch! I'm sorry this didn't occur to me the first time when
+> I was reading your analysis but now there is one question I have: When the
+> freed extent index block gets reallocated as data block, we should call
+> clean_bdev_aliases() or clean_bdev_bh_alias() for it (it usually happens
+> shortly after block allocation either in ext4_block_write_begin() or
+> mpage_map_one_extent()). Which will clear the buffer dirty bit and thus
+> should avoid this kind of corruption. So how come this didn't work? Is it
+> that we for some reason didn't call clean_bdev_aliases() or that function
+> didn't work for some reason? Can you debug that with your reproducer?
+> Thanks a lot!
 > 
-> I agree with the need to be careful when / if explicit cache control
-> is added, but that's not the case today.
 
-"if"?
+Indeed，I figure out that the root cause is ext4_ext_convert_to_initialized() return
+incorrect when it does try to zeroout the head of the first extent (see case 2 or 5)[1].
+If we zeroout the tail of the second extent firstly, and then it will set "map->m_len"
+to "allocated" directly in case 2 or 5(cut the zeroed out range). Finally,
+ext4_ext_handle_unwritten_extents() will skip invoking clean_bdev_aliases() for
+the expanded region.
 
-I expect it to be "when", not if. Expect the worst, plan for it now.
+At the same time, IIUC, it also have another two problems,
+1) It doesn't call clean_bdev_aliases() for the head of the extent if zeroout extra
+blocks (unmap the tail of the extent only)[2].
+2) If "allocated = ee_len - (map->m_lblk - ee_block)" but doesn't zeroout any extra
+blocks at all, the return value maybe large than requested and cover the uninitialized
+region (seems doesn't serious recently)[3].
 
-Cheers,
+For the problem [1][2], I think we could move clean_bdev_aliases() into ext4_ext_zeroout().
+For the problem [3], it seems that ext4_ext_convert_to_initialized() return extra blocks
+number is unnecessary, return the request value on success is also fine after we do the
+previous job. Suggestions?
 
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+BTW, this patch is still need, I can edit the commit log and re-post a patchset
+to fix this problem.
+
+Thanks,
+Yi.
+
+> 
+>> This patch mark buffer as freed and set j_next_transaction to the new
+>> transaction when it already belongs to the committing transaction in
+>> jbd2_journal_forget(), so that commit code knows it should clear dirty
+>> bits when it is done with the buffer.
+>>
+>> This problem can be reproduced by xfstests generic/455 easily with
+>> seeds (3246 3247 3248 3249).
+>>
+>> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+>> Cc: stable@vger.kernel.org
+>> ---
+>>  fs/jbd2/transaction.c | 15 ++++++++++-----
+>>  1 file changed, 10 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+>> index f07f006..f7f9647 100644
+>> --- a/fs/jbd2/transaction.c
+>> +++ b/fs/jbd2/transaction.c
+>> @@ -1609,14 +1609,19 @@ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
+>>  		/* However, if the buffer is still owned by a prior
+>>  		 * (committing) transaction, we can't drop it yet... */
+>>  		JBUFFER_TRACE(jh, "belongs to older transaction");
+>> -		/* ... but we CAN drop it from the new transaction if we
+>> -		 * have also modified it since the original commit. */
+>> +		/* ... but we CAN drop it from the new transaction, mark
+>> +		 * buffer as freed and set j_next_transaction to the new
+>> +		 * transaction so that commit code knows it should clear
+>> +		 * dirty bits when it is done with the buffer. */
+>>  
+>> -		if (jh->b_next_transaction) {
+>> -			J_ASSERT(jh->b_next_transaction == transaction);
+>> +		set_buffer_freed(bh);
+>> +
+>> +		if (!jh->b_next_transaction) {
+>>  			spin_lock(&journal->j_list_lock);
+>> -			jh->b_next_transaction = NULL;
+>> +			jh->b_next_transaction = transaction;
+>>  			spin_unlock(&journal->j_list_lock);
+>> +		} else {
+>> +			J_ASSERT(jh->b_next_transaction == transaction);
+>>  
+>>  			/*
+>>  			 * only drop a reference if this transaction modified
+>> -- 
+>> 2.7.4
+>>
