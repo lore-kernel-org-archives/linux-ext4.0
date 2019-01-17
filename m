@@ -1,44 +1,44 @@
-Return-Path: <SRS0=vryG=PX=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58638 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727273AbfAOJYP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 15 Jan 2019 04:24:15 -0500
-Date: Tue, 15 Jan 2019 10:24:14 +0100
-From: Jan Kara <jack@suse.cz>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [GIT PULL] dtype handling cleanup for v4.21-rc1
-Message-ID: <20190115092414.GA4138@quack2.suse.cz>
-References: <20190102174736.GB29127@quack2.suse.cz>
- <20190108100500.GA15801@quack2.suse.cz>
+Return-Path: <SRS0=xLGb=PZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:39454 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726952AbfAQLs4 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 17 Jan 2019 06:48:56 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 7F19D2C2C7
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2019 11:48:55 +0000 (UTC)
+From: bugzilla-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date: Thu, 17 Jan 2019 11:48:54 +0000
+Message-ID: <bug-201631-13602-iBWFEVeMeS@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190108100500.GA15801@quack2.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello Linus,
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
-On Tue 08-01-19 11:05:00, Jan Kara wrote:
-> On Wed 02-01-19 18:47:36, Jan Kara wrote:
-> >   could you please pull from
-> > 
-> > git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git dtype_for_v4.21-rc1
-> > 
-> > to get a patch to provide generic functions for dtype handling and use those
-> > for ext2. Other filesystems (ext4, btrfs, ocfs2, ...) can then merge the
-> > cleanup patches through their trees.
-> 
-> I didn't get any reply WRT this pull request and you didn't pull yet. I
-> guess you just wanted to have a deeper look and didn't get to it yet? Or do
-> you have some problem with the patches?
+Jan Kara (jack@suse.cz) changed:
 
-What has happened to this pull request? It may be too late for this to be
-merged now but I'd like to understand why it was not merged or rejected...
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+ Attachment #280103|0                           |1
+        is obsolete|                            |
 
-								Honza
+--- Comment #44 from Jan Kara (jack@suse.cz) ---
+Created attachment 280551
+  --> https://bugzilla.kernel.org/attachment.cgi?id=280551&action=edit
+mm: Dump page and PTE state and some history (v3)
+
+OK, new version of the debug patch that also tracks when last PTE for a page
+got set and dumps some more information about VMA and the page. Please report
+what the kernel prints now. Thanks a lot!
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+You are receiving this mail because:
+You are watching the assignee of the bug.
