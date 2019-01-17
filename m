@@ -1,97 +1,113 @@
-Return-Path: <SRS0=QTyG=PS=vger.kernel.org=linux-ext4-owner@kernel.org>
-Received: from szxga07-in.huawei.com ([45.249.212.35]:60680 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726978AbfAJDdW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 9 Jan 2019 22:33:22 -0500
-Received: from DGGEMS403-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id 8FEF63BED078F0CF1348
-        for <linux-ext4@vger.kernel.org>; Thu, 10 Jan 2019 11:33:20 +0800 (CST)
-From: yangerkun <yangerkun@huawei.com>
-To: <linux-ext4@vger.kernel.org>
-CC: <miaoxie@huawei.com>, <houtao1@huawei.com>, <yi.zhang@huawei.com>,
-        <yangerkun@huawei.com>
-Subject: [PATCH 3/4] ext4: update quota information while swapping boot loader inode
-Date: Thu, 10 Jan 2019 11:36:49 +0800
-Message-ID: <20190110033650.108403-4-yangerkun@huawei.com>
-In-Reply-To: <20190110033650.108403-1-yangerkun@huawei.com>
-References: <20190110033650.108403-1-yangerkun@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Return-Path: <SRS0=xLGb=PZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:43194 "EHLO
+        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728562AbfAQRjS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 17 Jan 2019 12:39:18 -0500
+Received: by mail-pg1-f195.google.com with SMTP id v28so4734886pgk.10
+        for <linux-ext4@vger.kernel.org>; Thu, 17 Jan 2019 09:39:17 -0800 (PST)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <965D4A30-6A3A-4A13-8C4C-3D75BF9B4BF1@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_E35A060D-0284-4083-ABFD-E0BA10F4B0E9";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH 1/2] ext4: annotate implicit fall throughs
+Date: Thu, 17 Jan 2019 10:38:56 -0700
+In-Reply-To: <20190114203945.20233-1-malat@debian.org>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Mathieu Malaterre <malat@debian.org>
+References: <20190114203945.20233-1-malat@debian.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The quota information should also be update.
 
-Signed-off-by: yangerkun <yangerkun@huawei.com>
----
- fs/ext4/ioctl.c | 29 +++++++++++++++++++++++++++--
- 1 file changed, 27 insertions(+), 2 deletions(-)
+--Apple-Mail=_E35A060D-0284-4083-ABFD-E0BA10F4B0E9
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index fdfada3..60d406f 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -63,13 +63,14 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
- 	loff_t isize;
- 	struct ext4_inode_info *ei1;
- 	struct ext4_inode_info *ei2;
-+	struct inode *big_inode;
-+	struct inode *small_inode;
-+	qsize_t size1, size2, diff;
- 
- 	ei1 = EXT4_I(inode1);
- 	ei2 = EXT4_I(inode2);
- 
- 	swap(inode1->i_version, inode2->i_version);
--	swap(inode1->i_blocks, inode2->i_blocks);
--	swap(inode1->i_bytes, inode2->i_bytes);
- 	swap(inode1->i_atime, inode2->i_atime);
- 	swap(inode1->i_mtime, inode2->i_mtime);
- 
-@@ -79,6 +80,21 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
- 	ext4_es_remove_extent(inode1, 0, EXT_MAX_BLOCKS);
- 	ext4_es_remove_extent(inode2, 0, EXT_MAX_BLOCKS);
- 
-+	size1 = (qsize_t)(inode1->i_blocks) * (1 << 9) + inode1->i_bytes;
-+	size2 = (qsize_t)(inode2->i_blocks) * (1 << 9) + inode2->i_bytes;
-+	if (size1 > size2) {
-+		big_inode = inode1;
-+		small_inode = inode2;
-+		diff = size1 - size2;
-+	} else {
-+		big_inode = inode2;
-+		small_inode = inode1;
-+		diff = size2 - size1;
-+	}
-+
-+	dquot_alloc_space_nofail(small_inode, diff);
-+	dquot_free_space(big_inode, diff);
-+
- 	isize = i_size_read(inode1);
- 	i_size_write(inode1, i_size_read(inode2));
- 	i_size_write(inode2, isize);
-@@ -180,6 +196,14 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 			memset(ei_bl->i_data, 0, sizeof(ei_bl->i_data));
- 	}
- 
-+	err = dquot_initialize(inode);
-+	if (err)
-+		goto err_out1;
-+
-+	err = dquot_initialize(inode_bl);
-+	if (err)
-+		goto err_out1;
-+
- 	swap_inode_data(inode, inode_bl);
- 
- 	inode->i_ctime = inode_bl->i_ctime = current_time(inode);
-@@ -211,6 +235,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 			ext4_mark_inode_dirty(handle, inode_bl);
- 		}
- 	}
-+err_out1:
- 	ext4_journal_stop(handle);
- 	ext4_double_up_write_data_sem(inode, inode_bl);
- 
--- 
-2.9.5
+
+> On Jan 14, 2019, at 1:39 PM, Mathieu Malaterre <malat@debian.org> =
+wrote:
+>=20
+> There is a plan to build the kernel with -Wimplicit-fallthrough and
+> these places in the code produced warnings (W=3D1). Fix them up.
+>=20
+> This commit remove the following warnings:
+>=20
+>  fs/ext4/hash.c:233:15: warning: this statement may fall through =
+[-Wimplicit-fallthrough=3D]
+>  fs/ext4/hash.c:246:15: warning: this statement may fall through =
+[-Wimplicit-fallthrough=3D]
+>=20
+> Signed-off-by: Mathieu Malaterre <malat@debian.org>
+
+Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+
+> ---
+> fs/ext4/hash.c | 2 ++
+> 1 file changed, 2 insertions(+)
+>=20
+> diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+> index e22dcfab308b..46b24da33a28 100644
+> --- a/fs/ext4/hash.c
+> +++ b/fs/ext4/hash.c
+> @@ -231,6 +231,7 @@ int ext4fs_dirhash(const char *name, int len, =
+struct dx_hash_info *hinfo)
+> 		break;
+> 	case DX_HASH_HALF_MD4_UNSIGNED:
+> 		str2hashbuf =3D str2hashbuf_unsigned;
+> +		/* fall through */
+> 	case DX_HASH_HALF_MD4:
+> 		p =3D name;
+> 		while (len > 0) {
+> @@ -244,6 +245,7 @@ int ext4fs_dirhash(const char *name, int len, =
+struct dx_hash_info *hinfo)
+> 		break;
+> 	case DX_HASH_TEA_UNSIGNED:
+> 		str2hashbuf =3D str2hashbuf_unsigned;
+> +		/* fall through */
+> 	case DX_HASH_TEA:
+> 		p =3D name;
+> 		while (len > 0) {
+> --
+> 2.19.2
+>=20
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_E35A060D-0284-4083-ABFD-E0BA10F4B0E9
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlxAvcEACgkQcqXauRfM
+H+AGhQ/+LnOrJ9kpc86G+XPgBkXotiBcyTomHDxl82+FpT5vrR9vppCcAzHzhSh6
+dYBy0pr4ygNpLbZaf1bJk3CmjXC/7QeV2WuSfxDnqdOG4snPdUFsRVqe75giCAHT
+4zofdwqeoZqZ7o95DJ1jqJ/CajfoCcCo86uxDmqSI1YBFKol96dD0eeB8y7p1SOG
+Ya7ui+Zb/Iyep2a13je2uz/ECNeNQl9ohLZFF/JopRAYezSGkkUTAI66vh1XtLNn
+EDoZEZFeSX14D2sWayPtNGZmB/cQDPg+kXruuwX6Yh4oShZI1d92/D3a8JCGQ0H5
+6JgMYChoPbnd+SyUuXJZ8G/6kdZiGH11yndbLAHkqG7ynIomwkt/dtkGlBAUZqt/
+EKSOmL7fkRnbpBTgU3e/UbnDRXEDWI5k3KjMkts6kRJGTNRuuMpMXyEaFob6EAaa
+35zSYDAtTKGFgzxx+SiJRJxa+38cHRBMl022NXwvSojCGHZml1uCw2vLYyJiE3Lx
+iF3+GB3Z+/k2naQkf8zk/nMLPey+jAYXgjB9yqZEn7WNQRv6mUgK8EzR4yWvGQsU
+yxmWcFu6z2WEUCVkvCuPqWri0kpTMnkkYGzf8f3Nk8qUySNb5GM/IDGCq4EioJJW
+TM18WyDOsVQbgzI3GyU2SOu6Wk2kKlgbKQGn0TuvcJojbgQPJx8=
+=jAzx
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_E35A060D-0284-4083-ABFD-E0BA10F4B0E9--
