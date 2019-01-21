@@ -2,182 +2,335 @@ Return-Path: <SRS0=MuWy=P5=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9451EC282F1
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Jan 2019 08:09:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E8E0C282DB
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Jan 2019 08:18:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 61B9F20823
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Jan 2019 08:09:57 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=philpotter-co-uk.20150623.gappssmtp.com header.i=@philpotter-co-uk.20150623.gappssmtp.com header.b="y5KGbn/S"
+	by mail.kernel.org (Postfix) with ESMTP id 326622085A
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Jan 2019 08:18:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727695AbfAUIJ4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Jan 2019 03:09:56 -0500
-Received: from mail-wr1-f68.google.com ([209.85.221.68]:34943 "EHLO
-        mail-wr1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728275AbfAUIJz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jan 2019 03:09:55 -0500
-Received: by mail-wr1-f68.google.com with SMTP id 96so22164649wrb.2
-        for <linux-ext4@vger.kernel.org>; Mon, 21 Jan 2019 00:09:54 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=philpotter-co-uk.20150623.gappssmtp.com; s=20150623;
-        h=date:from:to:cc:subject:message-id:mime-version:content-disposition
-         :user-agent;
-        bh=g2pwAxxnRqmK6UpMSZkTtNDyPXMXCJYQJ4n71D5SADc=;
-        b=y5KGbn/Sp9d7pEjFW4LRU7j6S7wjKgk21oP+uQ3dVvEtTK3RzBg9m8kTgpZLPof3Q5
-         cbVkvNf/xz2aXGyhCzQ/IOtPmdZ1m+xl+UZ8sUXSelI+5fZxznGREm+ZXNpzDA2qTjTd
-         qvyFI2gQeFq6zmQ/K5C5paWx7RnrJ6v01U57jQV5/7ZIFvonLXBZNEd1IdhiS1RrhzgB
-         jkuEuAnS54woKRABVCQnvQkRcbhs4pmcQ/S+l+qzDrvKLYhS2e4rr4MS5OozwFPaxk/m
-         HsBMHY/brlS7Rx08lZ83Fk0GRaCLcGMW+jZUIkrGZSG2puFQ9kyz+XNtqgEpgsCy1HfB
-         eTdg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:from:to:cc:subject:message-id:mime-version
-         :content-disposition:user-agent;
-        bh=g2pwAxxnRqmK6UpMSZkTtNDyPXMXCJYQJ4n71D5SADc=;
-        b=ZmholesAN9d6UteVbnn0cj73lUP0yFQbL5dML61ceduXIlWRzdQh4DrFXtJ09qe+mU
-         LH5V4oTamQMrfhq0WA0hAUokrD9p2d+agBkIThC1JmIjqdStaWu1N6eDsZ1EPhZg42CF
-         R2yofITsKtCnBwpJMb56LpsUeh4S6MhN2SEP4gbAVaG6Pv0ff+84jtc0ixIIyH8yaFd+
-         5PWrANO5lIyNwyWfRnqw3edlXJm42wt9HMbsQXX2+kRUfLuk0h3Z1aBC4KasxzfNiGvP
-         ZwmfrXmVPj4AGxtPKjt0S7fyuXs8WDXhKubZhHnylNmNA9vuXXaL0d8v8HSxNvECQ3rO
-         6coA==
-X-Gm-Message-State: AJcUukc1Ctq/X/EnzAFDOby/IjZJzBg3dfRiF+9or+fz+uHlwRlC6xhl
-        J4X4qZu+9qaLYxbhRXu38NIlRLuA3qfnGSRi
-X-Google-Smtp-Source: ALg8bN6/sn4JXVfqiPI4as1E5Akfc8byW0ijvuPuijdke1ibMJJigXeh5tsUvDiOAUW6pypv3WO0/A==
-X-Received: by 2002:adf:f785:: with SMTP id q5mr24952841wrp.9.1548032072851;
-        Sun, 20 Jan 2019 16:54:32 -0800 (PST)
-Received: from pathfinder ([90.222.17.17])
-        by smtp.gmail.com with ESMTPSA id g67sm101302456wmd.38.2019.01.20.16.54.31
-        (version=TLS1_3 cipher=AEAD-AES256-GCM-SHA384 bits=256/256);
-        Sun, 20 Jan 2019 16:54:32 -0800 (PST)
-Date:   Mon, 21 Jan 2019 00:54:31 +0000
-From:   Phillip Potter <phil@philpotter.co.uk>
-To:     jack@suse.cz
-Cc:     amir73il@gmail.com, viro@zeniv.linux.org.uk,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [RFC][PATCH v5 04/09] ext2: use common file type conversion
-Message-ID: <20190121005431.GA32343@pathfinder>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-User-Agent: Mutt/1.10.1 (2018-07-13)
+        id S1728275AbfAUISY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Jan 2019 03:18:24 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:46456 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727695AbfAUISY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 21 Jan 2019 03:18:24 -0500
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 134FC5F797;
+        Mon, 21 Jan 2019 08:18:23 +0000 (UTC)
+Received: from localhost (ovpn-8-22.pek2.redhat.com [10.72.8.22])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id BB6FC19C7D;
+        Mon, 21 Jan 2019 08:18:09 +0000 (UTC)
+From:   Ming Lei <ming.lei@redhat.com>
+To:     Jens Axboe <axboe@kernel.dk>
+Cc:     linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Theodore Ts'o <tytso@mit.edu>,
+        Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ming Lei <ming.lei@redhat.com>
+Subject: [PATCH V14 00/18] block: support multi-page bvec
+Date:   Mon, 21 Jan 2019 16:17:47 +0800
+Message-Id: <20190121081805.32727-1-ming.lei@redhat.com>
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.39]); Mon, 21 Jan 2019 08:18:24 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Deduplicate the ext2 file type conversion implementation and remove
-EXT2_FT_* definitions - file systems that use the same file types as
-defined by POSIX do not need to define their own versions and can
-use the common helper functions decared in fs_types.h and implemented
-in fs_types.c
+Hi,
 
-Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
----
- fs/ext2/dir.c  | 35 ++++++-----------------------------
- fs/ext2/ext2.h | 16 ----------------
- 2 files changed, 6 insertions(+), 45 deletions(-)
+This patchset brings multi-page bvec into block layer:
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 3b8114def693..13318e255ebf 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -252,33 +252,10 @@ ext2_validate_entry(char *base, unsigned offset, unsigned mask)
- 	return (char *)p - base;
- }
- 
--static unsigned char ext2_filetype_table[EXT2_FT_MAX] = {
--	[EXT2_FT_UNKNOWN]	= DT_UNKNOWN,
--	[EXT2_FT_REG_FILE]	= DT_REG,
--	[EXT2_FT_DIR]		= DT_DIR,
--	[EXT2_FT_CHRDEV]	= DT_CHR,
--	[EXT2_FT_BLKDEV]	= DT_BLK,
--	[EXT2_FT_FIFO]		= DT_FIFO,
--	[EXT2_FT_SOCK]		= DT_SOCK,
--	[EXT2_FT_SYMLINK]	= DT_LNK,
--};
--
--#define S_SHIFT 12
--static unsigned char ext2_type_by_mode[S_IFMT >> S_SHIFT] = {
--	[S_IFREG >> S_SHIFT]	= EXT2_FT_REG_FILE,
--	[S_IFDIR >> S_SHIFT]	= EXT2_FT_DIR,
--	[S_IFCHR >> S_SHIFT]	= EXT2_FT_CHRDEV,
--	[S_IFBLK >> S_SHIFT]	= EXT2_FT_BLKDEV,
--	[S_IFIFO >> S_SHIFT]	= EXT2_FT_FIFO,
--	[S_IFSOCK >> S_SHIFT]	= EXT2_FT_SOCK,
--	[S_IFLNK >> S_SHIFT]	= EXT2_FT_SYMLINK,
--};
--
- static inline void ext2_set_de_type(ext2_dirent *de, struct inode *inode)
- {
--	umode_t mode = inode->i_mode;
- 	if (EXT2_HAS_INCOMPAT_FEATURE(inode->i_sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
--		de->file_type = ext2_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
-+		de->file_type = fs_umode_to_ftype(inode->i_mode);
- 	else
- 		de->file_type = 0;
- }
-@@ -293,14 +270,14 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 	unsigned long n = pos >> PAGE_SHIFT;
- 	unsigned long npages = dir_pages(inode);
- 	unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
--	unsigned char *types = NULL;
- 	bool need_revalidate = !inode_eq_iversion(inode, file->f_version);
-+	bool has_filetype;
- 
- 	if (pos > inode->i_size - EXT2_DIR_REC_LEN(1))
- 		return 0;
- 
--	if (EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
--		types = ext2_filetype_table;
-+	has_filetype =
-+		EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE);
- 
- 	for ( ; n < npages; n++, offset = 0) {
- 		char *kaddr, *limit;
-@@ -335,8 +312,8 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 			if (de->inode) {
- 				unsigned char d_type = DT_UNKNOWN;
- 
--				if (types && de->file_type < EXT2_FT_MAX)
--					d_type = types[de->file_type];
-+				if (has_filetype)
-+					d_type = fs_ftype_to_dtype(de->file_type);
- 
- 				if (!dir_emit(ctx, de->name, de->name_len,
- 						le32_to_cpu(de->inode),
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index e770cd100a6a..93fcfe7bbb3b 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -603,22 +603,6 @@ struct ext2_dir_entry_2 {
- 	char	name[];			/* File name, up to EXT2_NAME_LEN */
- };
- 
--/*
-- * Ext2 directory file types.  Only the low 3 bits are used.  The
-- * other bits are reserved for now.
-- */
--enum {
--	EXT2_FT_UNKNOWN		= 0,
--	EXT2_FT_REG_FILE	= 1,
--	EXT2_FT_DIR		= 2,
--	EXT2_FT_CHRDEV		= 3,
--	EXT2_FT_BLKDEV		= 4,
--	EXT2_FT_FIFO		= 5,
--	EXT2_FT_SOCK		= 6,
--	EXT2_FT_SYMLINK		= 7,
--	EXT2_FT_MAX
--};
--
- /*
-  * EXT2_DIR_PAD defines the directory entries boundaries
-  *
+1) what is multi-page bvec?
+
+Multipage bvecs means that one 'struct bio_bvec' can hold multiple pages
+which are physically contiguous instead of one single page used in linux
+kernel for long time.
+
+2) why is multi-page bvec introduced?
+
+Kent proposed the idea[1] first. 
+
+As system's RAM becomes much bigger than before, and huge page, transparent
+huge page and memory compaction are widely used, it is a bit easy now
+to see physically contiguous pages from fs in I/O. On the other hand, from
+block layer's view, it isn't necessary to store intermediate pages into bvec,
+and it is enough to just store the physicallly contiguous 'segment' in each
+io vector.
+
+Also huge pages are being brought to filesystem and swap [2][6], we can
+do IO on a hugepage each time[3], which requires that one bio can transfer
+at least one huge page one time. Turns out it isn't flexiable to change
+BIO_MAX_PAGES simply[3][5]. Multipage bvec can fit in this case very well.
+As we saw, if CONFIG_THP_SWAP is enabled, BIO_MAX_PAGES can be configured
+as much bigger, such as 512, which requires at least two 4K pages for holding
+the bvec table.
+
+With multi-page bvec:
+
+- Inside block layer, both bio splitting and sg map can become more
+efficient than before by just traversing the physically contiguous
+'segment' instead of each page.
+
+- segment handling in block layer can be improved much in future since it
+should be quite easy to convert multipage bvec into segment easily. For
+example, we might just store segment in each bvec directly in future.
+
+- bio size can be increased and it should improve some high-bandwidth IO
+case in theory[4].
+
+- there is opportunity in future to improve memory footprint of bvecs. 
+
+3) how is multi-page bvec implemented in this patchset?
+
+Patch 1 ~ 3 parpares for supporting multi-page bvec. 
+
+Patches 4 ~ 14 implement multipage bvec in block layer:
+
+	- put all tricks into bvec/bio/rq iterators, and as far as
+	drivers and fs use these standard iterators, they are happy
+	with multipage bvec
+
+	- introduce bio_for_each_bvec() to iterate over multipage bvec for splitting
+	bio and mapping sg
+
+	- keep current bio_for_each_segment*() to itereate over singlepage bvec and
+	make sure current users won't be broken; especailly, convert to this
+	new helper prototype in single patch 21 given it is bascially a mechanism
+	conversion
+
+	- deal with iomap & xfs's sub-pagesize io vec in patch 13
+
+	- enalbe multipage bvec in patch 14 
+
+Patch 15 redefines BIO_MAX_PAGES as 256.
+
+Patch 16 documents usages of bio iterator helpers.
+
+Patch 17~18 kills NO_SG_MERGE.
+
+These patches can be found in the following git tree:
+
+	git:  https://github.com/ming1/linux.git  v5.0-blk_mp_bvec_v14
+
+Lots of test(blktest, xfstests, ltp io, ...) have been run with this patchset,
+and not see regression.
+
+Thanks Christoph for reviewing the early version and providing very good
+suggestions, such as: introduce bio_init_with_vec_table(), remove another
+unnecessary helpers for cleanup and so on.
+
+Thanks Chritoph and Omar for reviewing V10/V11/V12, and provides lots of
+helpful comments.
+
+V14:
+	- drop patch(patch 4 in V13) for renaming bvec helpers, as suggested by Jens
+	- use mp_bvec_* as multi-page bvec helper name
+	- fix one build issue, which is caused by missing one converion of
+	bio_for_each_segment_all in fs/gfs2
+	- fix one 32bit ARCH specific issue caused by segment boundary mask
+	overflow
+
+V13:
+	- rebase on v5.0-rc2
+	- address Omar's comment on patch 1 of V12 by using V11's approach
+	- rename one local vairable in patch 15 as suggested by Christoph
+
+V12:
+	- deal with non-cluster by max segment size & segment boundary limit
+	- rename bvec helper's name
+	- revert new change on bvec_iter_advance() in V11
+	- introduce rq_for_each_bvec()
+	- use simpler check on enalbing multi-page bvec
+	- fix Document change
+
+V11:
+	- address most of reviews from Omar and christoph
+	- rename mp_bvec_* as segment_* helpers
+	- remove 'mp' parameter from bvec_iter_advance() and related helpers
+	- cleanup patch on bvec_split_segs() and blk_bio_segment_split(),
+	  remove unnecessary checks
+	- simplify bvec_last_segment()
+	- drop bio_pages_all()
+	- introduce dedicated functions/file for handling non-cluser bio for
+	avoiding checking queue cluster before adding page to bio
+	- introduce bio_try_merge_segment() for simplifying iomap/xfs page
+	  accounting code
+	- Fix Document change
+
+V10:
+	- no any code change, just add more guys and list into patch's CC list,
+	as suggested by Christoph and Dave Chinner
+V9:
+	- fix regression on iomap's sub-pagesize io vec, covered by patch 13
+V8:
+	- remove prepare patches which all are merged to linus tree
+	- rebase on for-4.21/block
+	- address comments on V7
+	- add patches of killing NO_SG_MERGE
+
+V7:
+	- include Christoph and Mike's bio_clone_bioset() patches, which is
+	  actually prepare patches for multipage bvec
+	- address Christoph's comments
+
+V6:
+	- avoid to introduce lots of renaming, follow Jen's suggestion of
+	using the name of chunk for multipage io vector
+	- include Christoph's three prepare patches
+	- decrease stack usage for using bio_for_each_chunk_segment_all()
+	- address Kent's comment
+
+V5:
+	- remove some of prepare patches, which have been merged already
+	- add bio_clone_seg_bioset() to fix DM's bio clone, which
+	is introduced by 18a25da84354c6b (dm: ensure bio submission follows
+	a depth-first tree walk)
+	- rebase on the latest block for-v4.18
+
+V4:
+	- rename bio_for_each_segment*() as bio_for_each_page*(), rename
+	bio_segments() as bio_pages(), rename rq_for_each_segment() as
+	rq_for_each_pages(), because these helpers never return real
+	segment, and they always return single page bvec
+	
+	- introducing segment_for_each_page_all()
+
+	- introduce new bio_for_each_segment*()/rq_for_each_segment()/bio_segments()
+	for returning real multipage segment
+
+	- rewrite segment_last_page()
+
+	- rename bvec iterator helper as suggested by Christoph
+
+	- replace comment with applying bio helpers as suggested by Christoph
+
+	- document usage of bio iterator helpers
+
+	- redefine BIO_MAX_PAGES as 256 to make the biggest bvec table
+	accommodated in 4K page
+
+	- move bio_alloc_pages() into bcache as suggested by Christoph
+
+V3:
+	- rebase on v4.13-rc3 with for-next of block tree
+	- run more xfstests: xfs/ext4 over NVMe, Sata, DM(linear),
+	MD(raid1), and not see regressions triggered
+	- add Reviewed-by on some btrfs patches
+	- remove two MD patches because both are merged to linus tree
+	  already
+
+V2:
+	- bvec table direct access in raid has been cleaned, so NO_MP
+	flag is dropped
+	- rebase on recent Neil Brown's change on bio and bounce code
+	- reorganize the patchset
+
+V1:
+	- against v4.10-rc1 and some cleanup in V0 are in -linus already
+	- handle queue_virt_boundary() in mp bvec change and make NVMe happy
+	- further BTRFS cleanup
+	- remove QUEUE_FLAG_SPLIT_MP
+	- rename for two new helpers of bio_for_each_segment_all()
+	- fix bounce convertion
+	- address comments in V0
+
+[1], http://marc.info/?l=linux-kernel&m=141680246629547&w=2
+[2], https://patchwork.kernel.org/patch/9451523/
+[3], http://marc.info/?t=147735447100001&r=1&w=2
+[4], http://marc.info/?l=linux-mm&m=147745525801433&w=2
+[5], http://marc.info/?t=149569484500007&r=1&w=2
+[6], http://marc.info/?t=149820215300004&r=1&w=2
+
+
+Christoph Hellwig (1):
+  btrfs: look at bi_size for repair decisions
+
+Ming Lei (17):
+  block: don't use bio->bi_vcnt to figure out segment number
+  block: remove bvec_iter_rewind()
+  block: introduce multi-page bvec helpers
+  block: introduce bio_for_each_mp_bvec() and rq_for_each_mp_bvec()
+  block: use bio_for_each_mp_bvec() to compute multi-page bvec count
+  block: use bio_for_each_mp_bvec() to map sg
+  block: introduce mp_bvec_last_segment()
+  fs/buffer.c: use bvec iterator to truncate the bio
+  btrfs: use mp_bvec_last_segment to get bio's last page
+  block: loop: pass multi-page bvec to iov_iter
+  bcache: avoid to use bio_for_each_segment_all() in
+    bch_bio_alloc_pages()
+  block: allow bio_for_each_segment_all() to iterate over multi-page
+    bvec
+  block: enable multipage bvecs
+  block: always define BIO_MAX_PAGES as 256
+  block: document usage of bio iterator helpers
+  block: kill QUEUE_FLAG_NO_SG_MERGE
+  block: kill BLK_MQ_F_SG_MERGE
+
+ Documentation/block/biovecs.txt   |  25 +++++
+ block/bio.c                       |  49 ++++++---
+ block/blk-merge.c                 | 210 +++++++++++++++++++++++++-------------
+ block/blk-mq-debugfs.c            |   2 -
+ block/blk-mq.c                    |   3 -
+ block/bounce.c                    |   6 +-
+ drivers/block/loop.c              |  22 ++--
+ drivers/block/nbd.c               |   2 +-
+ drivers/block/rbd.c               |   2 +-
+ drivers/block/skd_main.c          |   1 -
+ drivers/block/xen-blkfront.c      |   2 +-
+ drivers/md/bcache/btree.c         |   3 +-
+ drivers/md/bcache/util.c          |   6 +-
+ drivers/md/dm-crypt.c             |   3 +-
+ drivers/md/dm-rq.c                |   2 +-
+ drivers/md/dm-table.c             |  13 ---
+ drivers/md/raid1.c                |   3 +-
+ drivers/mmc/core/queue.c          |   3 +-
+ drivers/scsi/scsi_lib.c           |   2 +-
+ drivers/staging/erofs/data.c      |   3 +-
+ drivers/staging/erofs/unzip_vle.c |   3 +-
+ fs/block_dev.c                    |   6 +-
+ fs/btrfs/compression.c            |   3 +-
+ fs/btrfs/disk-io.c                |   3 +-
+ fs/btrfs/extent_io.c              |  16 +--
+ fs/btrfs/inode.c                  |   6 +-
+ fs/btrfs/raid56.c                 |   3 +-
+ fs/buffer.c                       |   5 +-
+ fs/crypto/bio.c                   |   3 +-
+ fs/direct-io.c                    |   4 +-
+ fs/exofs/ore.c                    |   3 +-
+ fs/exofs/ore_raid.c               |   3 +-
+ fs/ext4/page-io.c                 |   3 +-
+ fs/ext4/readpage.c                |   3 +-
+ fs/f2fs/data.c                    |   9 +-
+ fs/gfs2/lops.c                    |   9 +-
+ fs/gfs2/meta_io.c                 |   3 +-
+ fs/iomap.c                        |  10 +-
+ fs/mpage.c                        |   3 +-
+ fs/xfs/xfs_aops.c                 |   9 +-
+ include/linux/bio.h               |  37 ++++---
+ include/linux/blk-mq.h            |   1 -
+ include/linux/blkdev.h            |   5 +-
+ include/linux/bvec.h              | 106 ++++++++++++++-----
+ 44 files changed, 404 insertions(+), 214 deletions(-)
+
 -- 
-2.20.1
+2.9.5
 
