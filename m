@@ -4,162 +4,87 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B8C0C2F3D5
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Jan 2019 14:21:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C1E5CC2F421
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Jan 2019 15:56:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 35AB120879
-	for <linux-ext4@archiver.kernel.org>; Mon, 21 Jan 2019 14:21:47 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9225420823
+	for <linux-ext4@archiver.kernel.org>; Mon, 21 Jan 2019 15:56:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729861AbfAUOVq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 21 Jan 2019 09:21:46 -0500
-Received: from mx2.suse.de ([195.135.220.15]:46312 "EHLO mx1.suse.de"
+        id S1729509AbfAUP4W (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 21 Jan 2019 10:56:22 -0500
+Received: from mx2.suse.de ([195.135.220.15]:37850 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729830AbfAUOVo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 21 Jan 2019 09:21:44 -0500
+        id S1728761AbfAUP4W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 21 Jan 2019 10:56:22 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 9D91DAF0B;
-        Mon, 21 Jan 2019 14:21:42 +0000 (UTC)
+Received: from relay1.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id CFFE3AC3B;
+        Mon, 21 Jan 2019 15:56:20 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 7A2831E1584; Mon, 21 Jan 2019 15:21:41 +0100 (CET)
-Date:   Mon, 21 Jan 2019 15:21:41 +0100
+        id E4E1F1E1584; Mon, 21 Jan 2019 16:56:19 +0100 (CET)
+Date:   Mon, 21 Jan 2019 16:56:19 +0100
 From:   Jan Kara <jack@suse.cz>
-To:     Phillip Potter <phil@philpotter.co.uk>
-Cc:     jack@suse.cz, amir73il@gmail.com, viro@zeniv.linux.org.uk,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [RFC][PATCH v5 04/09] ext2: use common file type conversion
-Message-ID: <20190121142141.GA16403@quack2.suse.cz>
-References: <20190121005431.GA32343@pathfinder>
+To:     "zhangyi (F)" <yi.zhang@huawei.com>
+Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, miaoxie@huawei.com
+Subject: Re: [PATCH v2 1/2] ext4: use i_size_read() when converting
+ initialized extent
+Message-ID: <20190121155619.GC21694@quack2.suse.cz>
+References: <1545141822-3082-1-git-send-email-yi.zhang@huawei.com>
+ <1545141822-3082-2-git-send-email-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190121005431.GA32343@pathfinder>
+In-Reply-To: <1545141822-3082-2-git-send-email-yi.zhang@huawei.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 21-01-19 00:54:31, Phillip Potter wrote:
-> Deduplicate the ext2 file type conversion implementation and remove
-> EXT2_FT_* definitions - file systems that use the same file types as
-> defined by POSIX do not need to define their own versions and can
-> use the common helper functions decared in fs_types.h and implemented
-> in fs_types.c
+On Tue 18-12-18 22:03:41, zhangyi (F) wrote:
+> Use i_size_read() in ext4_ext_convert_to_initialized() and
+> ext4_split_convert_extents() because we haven't taken inode->i_rwsem
+> in these two functions.
 > 
-> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-> Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
+> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
 
-This patch and the generic one look good to me. I'll wait couple more
-days whether someone won't object to the general idea and then push these
-two patches to my tree.
+The patch looks good. You can add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
 > ---
->  fs/ext2/dir.c  | 35 ++++++-----------------------------
->  fs/ext2/ext2.h | 16 ----------------
->  2 files changed, 6 insertions(+), 45 deletions(-)
+>  fs/ext4/extents.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-> index 3b8114def693..13318e255ebf 100644
-> --- a/fs/ext2/dir.c
-> +++ b/fs/ext2/dir.c
-> @@ -252,33 +252,10 @@ ext2_validate_entry(char *base, unsigned offset, unsigned mask)
->  	return (char *)p - base;
->  }
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 240b6de..0307fc6 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3483,7 +3483,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		(unsigned long long)map->m_lblk, map_len);
 >  
-> -static unsigned char ext2_filetype_table[EXT2_FT_MAX] = {
-> -	[EXT2_FT_UNKNOWN]	= DT_UNKNOWN,
-> -	[EXT2_FT_REG_FILE]	= DT_REG,
-> -	[EXT2_FT_DIR]		= DT_DIR,
-> -	[EXT2_FT_CHRDEV]	= DT_CHR,
-> -	[EXT2_FT_BLKDEV]	= DT_BLK,
-> -	[EXT2_FT_FIFO]		= DT_FIFO,
-> -	[EXT2_FT_SOCK]		= DT_SOCK,
-> -	[EXT2_FT_SYMLINK]	= DT_LNK,
-> -};
-> -
-> -#define S_SHIFT 12
-> -static unsigned char ext2_type_by_mode[S_IFMT >> S_SHIFT] = {
-> -	[S_IFREG >> S_SHIFT]	= EXT2_FT_REG_FILE,
-> -	[S_IFDIR >> S_SHIFT]	= EXT2_FT_DIR,
-> -	[S_IFCHR >> S_SHIFT]	= EXT2_FT_CHRDEV,
-> -	[S_IFBLK >> S_SHIFT]	= EXT2_FT_BLKDEV,
-> -	[S_IFIFO >> S_SHIFT]	= EXT2_FT_FIFO,
-> -	[S_IFSOCK >> S_SHIFT]	= EXT2_FT_SOCK,
-> -	[S_IFLNK >> S_SHIFT]	= EXT2_FT_SYMLINK,
-> -};
-> -
->  static inline void ext2_set_de_type(ext2_dirent *de, struct inode *inode)
->  {
-> -	umode_t mode = inode->i_mode;
->  	if (EXT2_HAS_INCOMPAT_FEATURE(inode->i_sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
-> -		de->file_type = ext2_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
-> +		de->file_type = fs_umode_to_ftype(inode->i_mode);
->  	else
->  		de->file_type = 0;
->  }
-> @@ -293,14 +270,14 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
->  	unsigned long n = pos >> PAGE_SHIFT;
->  	unsigned long npages = dir_pages(inode);
->  	unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
-> -	unsigned char *types = NULL;
->  	bool need_revalidate = !inode_eq_iversion(inode, file->f_version);
-> +	bool has_filetype;
+>  	sbi = EXT4_SB(inode->i_sb);
+> -	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
+> +	eof_block = (i_size_read(inode) + inode->i_sb->s_blocksize - 1) >>
+>  		inode->i_sb->s_blocksize_bits;
+>  	if (eof_block < map->m_lblk + map_len)
+>  		eof_block = map->m_lblk + map_len;
+> @@ -3739,7 +3739,7 @@ static int ext4_split_convert_extents(handle_t *handle,
+>  		  __func__, inode->i_ino,
+>  		  (unsigned long long)map->m_lblk, map->m_len);
 >  
->  	if (pos > inode->i_size - EXT2_DIR_REC_LEN(1))
->  		return 0;
->  
-> -	if (EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE))
-> -		types = ext2_filetype_table;
-> +	has_filetype =
-> +		EXT2_HAS_INCOMPAT_FEATURE(sb, EXT2_FEATURE_INCOMPAT_FILETYPE);
->  
->  	for ( ; n < npages; n++, offset = 0) {
->  		char *kaddr, *limit;
-> @@ -335,8 +312,8 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
->  			if (de->inode) {
->  				unsigned char d_type = DT_UNKNOWN;
->  
-> -				if (types && de->file_type < EXT2_FT_MAX)
-> -					d_type = types[de->file_type];
-> +				if (has_filetype)
-> +					d_type = fs_ftype_to_dtype(de->file_type);
->  
->  				if (!dir_emit(ctx, de->name, de->name_len,
->  						le32_to_cpu(de->inode),
-> diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-> index e770cd100a6a..93fcfe7bbb3b 100644
-> --- a/fs/ext2/ext2.h
-> +++ b/fs/ext2/ext2.h
-> @@ -603,22 +603,6 @@ struct ext2_dir_entry_2 {
->  	char	name[];			/* File name, up to EXT2_NAME_LEN */
->  };
->  
-> -/*
-> - * Ext2 directory file types.  Only the low 3 bits are used.  The
-> - * other bits are reserved for now.
-> - */
-> -enum {
-> -	EXT2_FT_UNKNOWN		= 0,
-> -	EXT2_FT_REG_FILE	= 1,
-> -	EXT2_FT_DIR		= 2,
-> -	EXT2_FT_CHRDEV		= 3,
-> -	EXT2_FT_BLKDEV		= 4,
-> -	EXT2_FT_FIFO		= 5,
-> -	EXT2_FT_SOCK		= 6,
-> -	EXT2_FT_SYMLINK		= 7,
-> -	EXT2_FT_MAX
-> -};
-> -
->  /*
->   * EXT2_DIR_PAD defines the directory entries boundaries
->   *
+> -	eof_block = (inode->i_size + inode->i_sb->s_blocksize - 1) >>
+> +	eof_block = (i_size_read(inode) + inode->i_sb->s_blocksize - 1) >>
+>  		inode->i_sb->s_blocksize_bits;
+>  	if (eof_block < map->m_lblk + map->m_len)
+>  		eof_block = map->m_lblk + map->m_len;
 > -- 
-> 2.20.1
+> 2.7.4
 > 
 -- 
 Jan Kara <jack@suse.com>
