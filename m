@@ -2,24 +2,24 @@ Return-Path: <SRS0=Ozrj=P6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,TVD_PH_SUBJ_META1,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 345C8C282C4
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6854AC282C3
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0F15C20861
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3BDD320861
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727245AbfAVGyu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Jan 2019 01:54:50 -0500
-Received: from szxga07-in.huawei.com ([45.249.212.35]:44030 "EHLO huawei.com"
+        id S1727268AbfAVGyv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Jan 2019 01:54:51 -0500
+Received: from szxga07-in.huawei.com ([45.249.212.35]:44024 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727313AbfAVGyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        id S1727312AbfAVGyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
         Tue, 22 Jan 2019 01:54:49 -0500
 Received: from DGGEMS409-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 85102498FA8E2331B831;
+        by Forcepoint Email with ESMTP id 80AAFDD5CDB767B230CC;
         Tue, 22 Jan 2019 14:54:46 +0800 (CST)
 Received: from RH5885H-V3.huawei.com (10.90.53.225) by
  DGGEMS409-HUB.china.huawei.com (10.3.19.209) with Microsoft SMTP Server id
@@ -28,10 +28,12 @@ From:   yangerkun <yangerkun@huawei.com>
 To:     <tytso@mit.edu>, <jack@suse.com>
 CC:     <miaoxie@huawei.com>, <yi.zhang@huawei.com>, <houtao1@huawei.com>,
         <yangerkun@huawei.com>, <linux-ext4@vger.kernel.org>
-Subject: [PATCH V2 0/4] fix bugs for ioctl EXT4_IOC_SWAP_BOOT
-Date:   Tue, 22 Jan 2019 14:58:19 +0800
-Message-ID: <20190122065823.67957-1-yangerkun@huawei.com>
+Subject: [PATCH V2 3/4] ext4: update quota information while swapping boot loader inode
+Date:   Tue, 22 Jan 2019 14:58:22 +0800
+Message-ID: <20190122065823.67957-4-yangerkun@huawei.com>
 X-Mailer: git-send-email 2.9.5
+In-Reply-To: <20190122065823.67957-1-yangerkun@huawei.com>
+References: <20190122065823.67957-1-yangerkun@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 X-Originating-IP: [10.90.53.225]
@@ -41,91 +43,110 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Changelog v1 ==> v2:
-1.Modify the first patch since it will conflit with
-8a36397("ext4: avoid declaring fs inconsistent due to invalid file handles").
+While do swap between two inode, they swap i_data without update
+quota information. Also, swap_inode_boot_loader can do "revert"
+somtimes, so update the quota while all operations has been finished.
 
-2.Add the explain in each patch.
+Signed-off-by: yangerkun <yangerkun@huawei.com>
+---
+ fs/ext4/ioctl.c | 56 +++++++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 43 insertions(+), 13 deletions(-)
 
-3.Give up using dquot_alloc_space_nofail, since it may exceed hard limit of quota.
-Now we update the quota information when all swap function has been finished and won't
-trigger a 'Revert'.
-
-The latter program running with a ext3fs or ext4fs with nodealloc
-will trigger a warning show as bellow:
-
-[  123.644524] EXT4-fs (vdb): mounting ext3 file system using the ext4 subsystem
-[  123.647408] EXT4-fs (vdb): mounted filesystem with ordered data mode. Opts: (null)
-[  138.323196] WARNING: CPU: 1 PID: 1130 at fs/ext4/ext4_jbd2.c:271 __ext4_handle_dirty_metadata+0x103/0x1a0
-[  138.323198] Modules linked in:
-[  138.323203] CPU: 1 PID: 1130 Comm: a.out Not tainted 5.0.0-rc2opt+ #62
-[  138.323205] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.12.0-0-ga698c8995f-prebuilt.qemu.org 04/01/2014
-[  138.323208] RIP: 0010:__ext4_handle_dirty_metadata+0x103/0x1a0
-[  138.323210] Code: 00 48 8b 40 68 48 89 90 d8 01 00 00 48 8b 4b 18 44 89 fa e8 ff c3 04 00 eb 84 48 89 df 45 31 ed e8 52 40 f9 ff e9 74 ff ff ff <0f> 0b 48 c7 c2 c0 88 e4 b1 45 89 e8 48 89 e9 44 89 fe 4c 89 f7 e8
-[  138.323211] RSP: 0018:ffffb997422bfc00 EFLAGS: 00010286
-[  138.323212] RAX: ffff9f0ab10ef800 RBX: ffff9f0a8cc74208 RCX: 0000000000000000
-[  138.323213] RDX: ffff9f0a8cc64000 RSI: ffff9f0a8cc74208 RDI: ffff9f0a8cc64000
-[  138.323214] RBP: ffff9f0a8cc64000 R08: ffff9f0a8cc74208 R09: ffffffffb1375300
-[  138.323215] R10: 0000000000000020 R11: ffff9f0a8cc74208 R12: 0000000000000000
-[  138.323216] R13: 00000000ffffff8b R14: ffffffffb1e496e8 R15: 0000000000000559
-[  138.323217] FS:  00007f878e152440(0000) GS:ffff9f0ab3a40000(0000) knlGS:0000000000000000
-[  138.323218] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  138.323219] CR2: 00007f878dcec395 CR3: 000000041bbc5000 CR4: 00000000000006e0
-[  138.323223] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[  138.323223] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-[  138.323224] Call Trace:
-[  138.323282]  write_end_fn+0x42/0x50
-[  138.323303]  ext4_walk_page_buffers+0x72/0xa0
-[  138.323320]  ? __ext4_expand_extra_isize+0x90/0x90
-[  138.323322]  ext4_journalled_write_end+0xdb/0x510
-[  138.323335]  ? copyin+0x22/0x30
-[  138.323355]  generic_perform_write+0xfd/0x1b0
-[  138.323385]  __generic_file_write_iter+0x196/0x1e0
-[  138.323402]  ? generic_write_checks+0x4c/0xb0
-[  138.323404]  ext4_file_write_iter+0xc7/0x400
-[  138.323439]  ? tty_write+0x1bf/0x2e0
-[  138.323441]  ? n_tty_open+0xa0/0xa0
-[  138.323453]  __vfs_write+0x11e/0x1b0
-[  138.323479]  vfs_write+0xb3/0x1b0
-[  138.323481]  ksys_write+0x52/0xc0
-[  138.323487]  do_syscall_64+0x55/0x170
-[  138.323523]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
-[  138.323555] RIP: 0033:0x7f878dc6b130
-[  138.323556] Code: 73 01 c3 48 8b 0d 58 ed 2c 00 f7 d8 64 89 01 48 83 c8 ff c3 66 0f 1f 44 00 00 83 3d b9 45 2d 00 00 75 10 b8 01 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 31 c3 48 83 ec 08 e8 3e f3 01 00 48 89 04 24
-[  138.323557] RSP: 002b:00007ffe8104ecc8 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
-[  138.323559] RAX: ffffffffffffffda RBX: 00007f878dd035b0 RCX: 00007f878dc6b130
-[  138.323560] RDX: 0000000000000020 RSI: 0000000000601080 RDI: 0000000000000003
-[  138.323560] RBP: 00007ffe8104ed10 R08: 0000000000000000 R09: 0000000000000000
-[  138.323561] R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000400610
-[  138.323562] R13: 00007ffe8104edf0 R14: 0000000000000000 R15: 0000000000000000
-[  138.323564] ---[ end trace 8c5d15ab55f9bea9 ]---
-[  138.323586] EXT4-fs: write_end_fn:1369: aborting transaction: Corrupt filesystem in __ext4_handle_dirty_metadata
-[  138.326177] EXT4: jbd2_journal_dirty_metadata failed: handle type 2 started at line 1289, credits 19/17, errcode -117
-[  138.326231] EXT4-fs error (device vdb) in ext4_do_update_inode:5362: Readonly filesystem
-[  138.329147] EXT4-fs error (device vdb) in ext4_journalled_write_end:1550: Corrupt filesystem
-
-
-And the problem is that swap_inode_data in swap_inode_boot_loader
-will swap inode flags without reset aops. In this scene, ext4_should_journal_data
-in ext4_write_begin will return false and there won't a journal_head append to
-buffer_head, but we will still use ext4_journalled_write_end, this function
-will return false while do 'buffer_jbd' check and trigger the warning.
-
-We can reset the aops while swapping, but it may better to add a mask to distinguish
-the flags should be swapped or not.
-
-Also, there is some other fix about this ioctl.
-
-yangerkun (4):
-  ext4: fix check of inode in swap_inode_boot_loader
-  ext4: cleanup pagecache before swap i_data
-  ext4: update quota information while swapping boot loader inode
-  ext4: add mask of ext4 flags to swap
-
- fs/ext4/ext4.h  |   4 +++
- fs/ext4/ioctl.c | 100 +++++++++++++++++++++++++++++++++++++++++---------------
- 2 files changed, 77 insertions(+), 27 deletions(-)
-
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index ea05e8d..eff6835 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -68,8 +68,6 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+ 	ei2 = EXT4_I(inode2);
+ 
+ 	swap(inode1->i_version, inode2->i_version);
+-	swap(inode1->i_blocks, inode2->i_blocks);
+-	swap(inode1->i_bytes, inode2->i_bytes);
+ 	swap(inode1->i_atime, inode2->i_atime);
+ 	swap(inode1->i_mtime, inode2->i_mtime);
+ 
+@@ -115,6 +113,9 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 	int err;
+ 	struct inode *inode_bl;
+ 	struct ext4_inode_info *ei_bl;
++	qsize_t size, size_bl, diff;
++	blkcnt_t blocks;
++	unsigned short bytes;
+ 
+ 	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO, EXT4_IGET_SPECIAL);
+ 	if (IS_ERR(inode_bl))
+@@ -180,6 +181,13 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 			memset(ei_bl->i_data, 0, sizeof(ei_bl->i_data));
+ 	}
+ 
++	err = dquot_initialize(inode);
++	if (err)
++		goto err_out1;
++
++	size = (qsize_t)(inode->i_blocks) * (1 << 9) + inode->i_bytes;
++	size_bl = (qsize_t)(inode_bl->i_blocks) * (1 << 9) + inode_bl->i_bytes;
++	diff = size - size_bl;
+ 	swap_inode_data(inode, inode_bl);
+ 
+ 	inode->i_ctime = inode_bl->i_ctime = current_time(inode);
+@@ -193,24 +201,46 @@ static long swap_inode_boot_loader(struct super_block *sb,
+ 
+ 	err = ext4_mark_inode_dirty(handle, inode);
+ 	if (err < 0) {
++		/* No need to update quota information. */
+ 		ext4_warning(inode->i_sb,
+ 			"couldn't mark inode #%lu dirty (err %d)",
+ 			inode->i_ino, err);
+ 		/* Revert all changes: */
+ 		swap_inode_data(inode, inode_bl);
+ 		ext4_mark_inode_dirty(handle, inode);
+-	} else {
+-		err = ext4_mark_inode_dirty(handle, inode_bl);
+-		if (err < 0) {
+-			ext4_warning(inode_bl->i_sb,
+-				"couldn't mark inode #%lu dirty (err %d)",
+-				inode_bl->i_ino, err);
+-			/* Revert all changes: */
+-			swap_inode_data(inode, inode_bl);
+-			ext4_mark_inode_dirty(handle, inode);
+-			ext4_mark_inode_dirty(handle, inode_bl);
+-		}
++		goto err_out1;
++	}
++
++	blocks = inode_bl->i_blocks;
++	bytes = inode_bl->i_bytes;
++	inode_bl->i_blocks = inode->i_blocks;
++	inode_bl->i_bytes = inode->i_bytes;
++	err = ext4_mark_inode_dirty(handle, inode_bl);
++	if (err < 0) {
++		/* No need to update quota information. */
++		ext4_warning(inode_bl->i_sb,
++			"couldn't mark inode #%lu dirty (err %d)",
++			inode_bl->i_ino, err);
++		goto revert;
+ 	}
++
++	/* Bootloader inode should not be counted into quota information. */
++	if (diff > 0)
++		dquot_free_space(inode, diff);
++	else
++		err = dquot_alloc_space(inode, -1 * diff);
++
++	if (err < 0) {
++revert:
++		/* Revert all changes: */
++		inode_bl->i_blocks = blocks;
++		inode_bl->i_bytes = bytes;
++		swap_inode_data(inode, inode_bl);
++		ext4_mark_inode_dirty(handle, inode);
++		ext4_mark_inode_dirty(handle, inode_bl);
++	}
++
++err_out1:
+ 	ext4_journal_stop(handle);
+ 	ext4_double_up_write_data_sem(inode, inode_bl);
+ 
 -- 
 2.9.5
 
