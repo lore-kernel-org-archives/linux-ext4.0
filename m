@@ -2,38 +2,36 @@ Return-Path: <SRS0=Ozrj=P6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE9DEC282C3
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 345C8C282C4
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AEC9820861
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0F15C20861
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727227AbfAVGyu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        id S1727245AbfAVGyu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
         Tue, 22 Jan 2019 01:54:50 -0500
-Received: from szxga07-in.huawei.com ([45.249.212.35]:44026 "EHLO huawei.com"
+Received: from szxga07-in.huawei.com ([45.249.212.35]:44030 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727302AbfAVGyu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Jan 2019 01:54:50 -0500
+        id S1727313AbfAVGyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Jan 2019 01:54:49 -0500
 Received: from DGGEMS409-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 7786E72CFE34BA781156;
+        by Forcepoint Email with ESMTP id 85102498FA8E2331B831;
         Tue, 22 Jan 2019 14:54:46 +0800 (CST)
 Received: from RH5885H-V3.huawei.com (10.90.53.225) by
  DGGEMS409-HUB.china.huawei.com (10.3.19.209) with Microsoft SMTP Server id
- 14.3.408.0; Tue, 22 Jan 2019 14:54:40 +0800
+ 14.3.408.0; Tue, 22 Jan 2019 14:54:39 +0800
 From:   yangerkun <yangerkun@huawei.com>
 To:     <tytso@mit.edu>, <jack@suse.com>
 CC:     <miaoxie@huawei.com>, <yi.zhang@huawei.com>, <houtao1@huawei.com>,
         <yangerkun@huawei.com>, <linux-ext4@vger.kernel.org>
-Subject: [PATCH V2 4/4] ext4: add mask of ext4 flags to swap
-Date:   Tue, 22 Jan 2019 14:58:23 +0800
-Message-ID: <20190122065823.67957-5-yangerkun@huawei.com>
+Subject: [PATCH V2 0/4] fix bugs for ioctl EXT4_IOC_SWAP_BOOT
+Date:   Tue, 22 Jan 2019 14:58:19 +0800
+Message-ID: <20190122065823.67957-1-yangerkun@huawei.com>
 X-Mailer: git-send-email 2.9.5
-In-Reply-To: <20190122065823.67957-1-yangerkun@huawei.com>
-References: <20190122065823.67957-1-yangerkun@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 X-Originating-IP: [10.90.53.225]
@@ -43,45 +41,18 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-With program:
+Changelog v1 ==> v2:
+1.Modify the first patch since it will conflit with
+8a36397("ext4: avoid declaring fs inconsistent due to invalid file handles").
 
-char buf[32];
-int main(int argc, char **argv)
-{
-	int fd;
-	ssize_t cnt;
-	int err;
-	unsigned int flags;
+2.Add the explain in each patch.
 
-	fd = open("hi", O_RDWR | O_CREAT | O_TRUNC, 0644);
-	assert(fd >= 0);
+3.Give up using dquot_alloc_space_nofail, since it may exceed hard limit of quota.
+Now we update the quota information when all swap function has been finished and won't
+trigger a 'Revert'.
 
-	cnt = write(fd, buf, sizeof(buf));
-	assert(cnt == sizeof(buf));
-
-	/* EXT4_JOURNAL_DATA_FL */
-	flags = 0x00004000;
-	/* FS_IOC_SETFLAGS */
-	err = ioctl(fd, _IOW('f', 2, long), &flags);
-	assert(err == 0);
-
-	/* EXT4_IOC_SWAP_BOOT */
-	err = ioctl(fd, _IO('f', 17), 0);
-	assert(err == 0);
-
-	close(fd);
-
-	fd = open("hi", O_RDWR);
-	assert(fd >= 0);
-	cnt = write(fd, buf, sizeof(buf));
-
-	close(fd);
-
-	return 0;
-}
-
-It will trigger a warning for the case of ext3fs or ext4fs with
-nodealloc as follow:
+The latter program running with a ext3fs or ext4fs with nodealloc
+will trigger a warning show as bellow:
 
 [  123.644524] EXT4-fs (vdb): mounting ext3 file system using the ext4 subsystem
 [  123.647408] EXT4-fs (vdb): mounted filesystem with ordered data mode. Opts: (null)
@@ -133,61 +104,28 @@ nodealloc as follow:
 [  138.326231] EXT4-fs error (device vdb) in ext4_do_update_inode:5362: Readonly filesystem
 [  138.329147] EXT4-fs error (device vdb) in ext4_journalled_write_end:1550: Corrupt filesystem
 
-The reason is that while swapping two inode, we swap the flags too. In this
-program, file 'hi' has change to journal_data mode after the first ioctl, but
-with flag swap after the second ioctl, ext4_should_journal_data in
-ext4_write_begin will return false, so there won't be any journal_head append
-to this buffer_head, and while do ext4_journalled_write_end, it will trigger
-the warning since the buffer_jbd check fail in jbd2_journal_dirty_metadata.
 
-We can fix this by reset aops of the address_space, but it's prefer to
-set a mask to distinguish the flags which should be swap or not.
+And the problem is that swap_inode_data in swap_inode_boot_loader
+will swap inode flags without reset aops. In this scene, ext4_should_journal_data
+in ext4_write_begin will return false and there won't a journal_head append to
+buffer_head, but we will still use ext4_journalled_write_end, this function
+will return false while do 'buffer_jbd' check and trigger the warning.
 
-Signed-off-by: yangerkun <yangerkun@huawei.com>
----
- fs/ext4/ext4.h  | 4 ++++
- fs/ext4/ioctl.c | 6 +++++-
- 2 files changed, 9 insertions(+), 1 deletion(-)
+We can reset the aops while swapping, but it may better to add a mask to distinguish
+the flags should be swapped or not.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 185a05d..30f782e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -426,6 +426,10 @@ struct flex_groups {
- /* Flags that are appropriate for non-directories/regular files. */
- #define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
- 
-+/* Flags that should be swap */
-+#define EXT4_FL_SHOULD_SWAP (EXT4_COMPR_FL | EXT4_COMPRBLK_FL | EXT4_NOCOMPR_FL |\
-+			EXT4_HUGE_FILE_FL | EXT4_EXTENTS_FL)
-+
- /* Mask out flags that are inappropriate for the given type of inode. */
- static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
- {
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index eff6835..2e76fb5 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -63,6 +63,7 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
- 	loff_t isize;
- 	struct ext4_inode_info *ei1;
- 	struct ext4_inode_info *ei2;
-+	unsigned long tmp;
- 
- 	ei1 = EXT4_I(inode1);
- 	ei2 = EXT4_I(inode2);
-@@ -72,7 +73,10 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
- 	swap(inode1->i_mtime, inode2->i_mtime);
- 
- 	memswap(ei1->i_data, ei2->i_data, sizeof(ei1->i_data));
--	swap(ei1->i_flags, ei2->i_flags);
-+	tmp = ei1->i_flags & EXT4_FL_SHOULD_SWAP;
-+	ei1->i_flags = (ei2->i_flags & EXT4_FL_SHOULD_SWAP) |
-+		(ei1->i_flags & ~EXT4_FL_SHOULD_SWAP);
-+	ei2->i_flags = tmp | (ei2->i_flags & ~EXT4_FL_SHOULD_SWAP);
- 	swap(ei1->i_disksize, ei2->i_disksize);
- 	ext4_es_remove_extent(inode1, 0, EXT_MAX_BLOCKS);
- 	ext4_es_remove_extent(inode2, 0, EXT_MAX_BLOCKS);
+Also, there is some other fix about this ioctl.
+
+yangerkun (4):
+  ext4: fix check of inode in swap_inode_boot_loader
+  ext4: cleanup pagecache before swap i_data
+  ext4: update quota information while swapping boot loader inode
+  ext4: add mask of ext4 flags to swap
+
+ fs/ext4/ext4.h  |   4 +++
+ fs/ext4/ioctl.c | 100 +++++++++++++++++++++++++++++++++++++++++---------------
+ 2 files changed, 77 insertions(+), 27 deletions(-)
+
 -- 
 2.9.5
 
