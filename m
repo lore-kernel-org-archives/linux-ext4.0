@@ -6,31 +6,31 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4AF10C282C4
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DE9DEC282C3
 	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1A50120861
+	by mail.kernel.org (Postfix) with ESMTP id AEC9820861
 	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727219AbfAVGyt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Jan 2019 01:54:49 -0500
-Received: from szxga07-in.huawei.com ([45.249.212.35]:44032 "EHLO huawei.com"
+        id S1727227AbfAVGyu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Jan 2019 01:54:50 -0500
+Received: from szxga07-in.huawei.com ([45.249.212.35]:44026 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727303AbfAVGyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Jan 2019 01:54:49 -0500
+        id S1727302AbfAVGyu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 22 Jan 2019 01:54:50 -0500
 Received: from DGGEMS409-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 8978369B12092F0E14F0;
+        by Forcepoint Email with ESMTP id 7786E72CFE34BA781156;
         Tue, 22 Jan 2019 14:54:46 +0800 (CST)
 Received: from RH5885H-V3.huawei.com (10.90.53.225) by
  DGGEMS409-HUB.china.huawei.com (10.3.19.209) with Microsoft SMTP Server id
- 14.3.408.0; Tue, 22 Jan 2019 14:54:39 +0800
+ 14.3.408.0; Tue, 22 Jan 2019 14:54:40 +0800
 From:   yangerkun <yangerkun@huawei.com>
 To:     <tytso@mit.edu>, <jack@suse.com>
 CC:     <miaoxie@huawei.com>, <yi.zhang@huawei.com>, <houtao1@huawei.com>,
         <yangerkun@huawei.com>, <linux-ext4@vger.kernel.org>
-Subject: [PATCH V2 2/4] ext4: cleanup pagecache before swap i_data
-Date:   Tue, 22 Jan 2019 14:58:21 +0800
-Message-ID: <20190122065823.67957-3-yangerkun@huawei.com>
+Subject: [PATCH V2 4/4] ext4: add mask of ext4 flags to swap
+Date:   Tue, 22 Jan 2019 14:58:23 +0800
+Message-ID: <20190122065823.67957-5-yangerkun@huawei.com>
 X-Mailer: git-send-email 2.9.5
 In-Reply-To: <20190122065823.67957-1-yangerkun@huawei.com>
 References: <20190122065823.67957-1-yangerkun@huawei.com>
@@ -43,66 +43,151 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-While do swap, we should make sure there has no new dirty page since we
-should swap i_data between two inode:
-1.We should locki i_mmap_sem with write to avoid new pagecache from mmap
-read/write;
-2.Change filemap_flush to filemap_write_and_wait and move them to the
-space protected by inode lock to avoid new pagecache from buffer read/write.
+With program:
+
+char buf[32];
+int main(int argc, char **argv)
+{
+	int fd;
+	ssize_t cnt;
+	int err;
+	unsigned int flags;
+
+	fd = open("hi", O_RDWR | O_CREAT | O_TRUNC, 0644);
+	assert(fd >= 0);
+
+	cnt = write(fd, buf, sizeof(buf));
+	assert(cnt == sizeof(buf));
+
+	/* EXT4_JOURNAL_DATA_FL */
+	flags = 0x00004000;
+	/* FS_IOC_SETFLAGS */
+	err = ioctl(fd, _IOW('f', 2, long), &flags);
+	assert(err == 0);
+
+	/* EXT4_IOC_SWAP_BOOT */
+	err = ioctl(fd, _IO('f', 17), 0);
+	assert(err == 0);
+
+	close(fd);
+
+	fd = open("hi", O_RDWR);
+	assert(fd >= 0);
+	cnt = write(fd, buf, sizeof(buf));
+
+	close(fd);
+
+	return 0;
+}
+
+It will trigger a warning for the case of ext3fs or ext4fs with
+nodealloc as follow:
+
+[  123.644524] EXT4-fs (vdb): mounting ext3 file system using the ext4 subsystem
+[  123.647408] EXT4-fs (vdb): mounted filesystem with ordered data mode. Opts: (null)
+[  138.323196] WARNING: CPU: 1 PID: 1130 at fs/ext4/ext4_jbd2.c:271 __ext4_handle_dirty_metadata+0x103/0x1a0
+[  138.323198] Modules linked in:
+[  138.323203] CPU: 1 PID: 1130 Comm: a.out Not tainted 5.0.0-rc2opt+ #62
+[  138.323205] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS rel-1.12.0-0-ga698c8995f-prebuilt.qemu.org 04/01/2014
+[  138.323208] RIP: 0010:__ext4_handle_dirty_metadata+0x103/0x1a0
+[  138.323210] Code: 00 48 8b 40 68 48 89 90 d8 01 00 00 48 8b 4b 18 44 89 fa e8 ff c3 04 00 eb 84 48 89 df 45 31 ed e8 52 40 f9 ff e9 74 ff ff ff <0f> 0b 48 c7 c2 c0 88 e4 b1 45 89 e8 48 89 e9 44 89 fe 4c 89 f7 e8
+[  138.323211] RSP: 0018:ffffb997422bfc00 EFLAGS: 00010286
+[  138.323212] RAX: ffff9f0ab10ef800 RBX: ffff9f0a8cc74208 RCX: 0000000000000000
+[  138.323213] RDX: ffff9f0a8cc64000 RSI: ffff9f0a8cc74208 RDI: ffff9f0a8cc64000
+[  138.323214] RBP: ffff9f0a8cc64000 R08: ffff9f0a8cc74208 R09: ffffffffb1375300
+[  138.323215] R10: 0000000000000020 R11: ffff9f0a8cc74208 R12: 0000000000000000
+[  138.323216] R13: 00000000ffffff8b R14: ffffffffb1e496e8 R15: 0000000000000559
+[  138.323217] FS:  00007f878e152440(0000) GS:ffff9f0ab3a40000(0000) knlGS:0000000000000000
+[  138.323218] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  138.323219] CR2: 00007f878dcec395 CR3: 000000041bbc5000 CR4: 00000000000006e0
+[  138.323223] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[  138.323223] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+[  138.323224] Call Trace:
+[  138.323282]  write_end_fn+0x42/0x50
+[  138.323303]  ext4_walk_page_buffers+0x72/0xa0
+[  138.323320]  ? __ext4_expand_extra_isize+0x90/0x90
+[  138.323322]  ext4_journalled_write_end+0xdb/0x510
+[  138.323335]  ? copyin+0x22/0x30
+[  138.323355]  generic_perform_write+0xfd/0x1b0
+[  138.323385]  __generic_file_write_iter+0x196/0x1e0
+[  138.323402]  ? generic_write_checks+0x4c/0xb0
+[  138.323404]  ext4_file_write_iter+0xc7/0x400
+[  138.323439]  ? tty_write+0x1bf/0x2e0
+[  138.323441]  ? n_tty_open+0xa0/0xa0
+[  138.323453]  __vfs_write+0x11e/0x1b0
+[  138.323479]  vfs_write+0xb3/0x1b0
+[  138.323481]  ksys_write+0x52/0xc0
+[  138.323487]  do_syscall_64+0x55/0x170
+[  138.323523]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+[  138.323555] RIP: 0033:0x7f878dc6b130
+[  138.323556] Code: 73 01 c3 48 8b 0d 58 ed 2c 00 f7 d8 64 89 01 48 83 c8 ff c3 66 0f 1f 44 00 00 83 3d b9 45 2d 00 00 75 10 b8 01 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 31 c3 48 83 ec 08 e8 3e f3 01 00 48 89 04 24
+[  138.323557] RSP: 002b:00007ffe8104ecc8 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+[  138.323559] RAX: ffffffffffffffda RBX: 00007f878dd035b0 RCX: 00007f878dc6b130
+[  138.323560] RDX: 0000000000000020 RSI: 0000000000601080 RDI: 0000000000000003
+[  138.323560] RBP: 00007ffe8104ed10 R08: 0000000000000000 R09: 0000000000000000
+[  138.323561] R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000400610
+[  138.323562] R13: 00007ffe8104edf0 R14: 0000000000000000 R15: 0000000000000000
+[  138.323564] ---[ end trace 8c5d15ab55f9bea9 ]---
+[  138.323586] EXT4-fs: write_end_fn:1369: aborting transaction: Corrupt filesystem in __ext4_handle_dirty_metadata
+[  138.326177] EXT4: jbd2_journal_dirty_metadata failed: handle type 2 started at line 1289, credits 19/17, errcode -117
+[  138.326231] EXT4-fs error (device vdb) in ext4_do_update_inode:5362: Readonly filesystem
+[  138.329147] EXT4-fs error (device vdb) in ext4_journalled_write_end:1550: Corrupt filesystem
+
+The reason is that while swapping two inode, we swap the flags too. In this
+program, file 'hi' has change to journal_data mode after the first ioctl, but
+with flag swap after the second ioctl, ext4_should_journal_data in
+ext4_write_begin will return false, so there won't be any journal_head append
+to this buffer_head, and while do ext4_journalled_write_end, it will trigger
+the warning since the buffer_jbd check fail in jbd2_journal_dirty_metadata.
+
+We can fix this by reset aops of the address_space, but it's prefer to
+set a mask to distinguish the flags which should be swap or not.
 
 Signed-off-by: yangerkun <yangerkun@huawei.com>
 ---
- fs/ext4/ioctl.c | 16 ++++++++++++----
- 1 file changed, 12 insertions(+), 4 deletions(-)
+ fs/ext4/ext4.h  | 4 ++++
+ fs/ext4/ioctl.c | 6 +++++-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 185a05d..30f782e 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -426,6 +426,10 @@ struct flex_groups {
+ /* Flags that are appropriate for non-directories/regular files. */
+ #define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
+ 
++/* Flags that should be swap */
++#define EXT4_FL_SHOULD_SWAP (EXT4_COMPR_FL | EXT4_COMPRBLK_FL | EXT4_NOCOMPR_FL |\
++			EXT4_HUGE_FILE_FL | EXT4_EXTENTS_FL)
++
+ /* Mask out flags that are inappropriate for the given type of inode. */
+ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
+ {
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 597e8b6..ea05e8d 100644
+index eff6835..2e76fb5 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
-@@ -121,9 +121,6 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 		return PTR_ERR(inode_bl);
- 	ei_bl = EXT4_I(inode_bl);
+@@ -63,6 +63,7 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+ 	loff_t isize;
+ 	struct ext4_inode_info *ei1;
+ 	struct ext4_inode_info *ei2;
++	unsigned long tmp;
  
--	filemap_flush(inode->i_mapping);
--	filemap_flush(inode_bl->i_mapping);
--
- 	/* Protect orig inodes against a truncate and make sure,
- 	 * that only 1 swap_inode_boot_loader is running. */
- 	lock_two_nondirectories(inode, inode_bl);
-@@ -141,6 +138,15 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 		goto journal_err_out;
- 	}
+ 	ei1 = EXT4_I(inode1);
+ 	ei2 = EXT4_I(inode2);
+@@ -72,7 +73,10 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
+ 	swap(inode1->i_mtime, inode2->i_mtime);
  
-+	down_write(&EXT4_I(inode)->i_mmap_sem);
-+	err = filemap_write_and_wait(inode->i_mapping);
-+	if (err)
-+		goto err_out;
-+
-+	err = filemap_write_and_wait(inode_bl->i_mapping);
-+	if (err)
-+		goto err_out;
-+
- 	/* Wait for all existing dio workers */
- 	inode_dio_wait(inode);
- 	inode_dio_wait(inode_bl);
-@@ -151,7 +157,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	handle = ext4_journal_start(inode_bl, EXT4_HT_MOVE_EXTENTS, 2);
- 	if (IS_ERR(handle)) {
- 		err = -EINVAL;
--		goto journal_err_out;
-+		goto err_out;
- 	}
- 
- 	/* Protect extent tree against block allocations via delalloc */
-@@ -208,6 +214,8 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	ext4_journal_stop(handle);
- 	ext4_double_up_write_data_sem(inode, inode_bl);
- 
-+err_out:
-+	up_write(&EXT4_I(inode)->i_mmap_sem);
- journal_err_out:
- 	unlock_two_nondirectories(inode, inode_bl);
- 	iput(inode_bl);
+ 	memswap(ei1->i_data, ei2->i_data, sizeof(ei1->i_data));
+-	swap(ei1->i_flags, ei2->i_flags);
++	tmp = ei1->i_flags & EXT4_FL_SHOULD_SWAP;
++	ei1->i_flags = (ei2->i_flags & EXT4_FL_SHOULD_SWAP) |
++		(ei1->i_flags & ~EXT4_FL_SHOULD_SWAP);
++	ei2->i_flags = tmp | (ei2->i_flags & ~EXT4_FL_SHOULD_SWAP);
+ 	swap(ei1->i_disksize, ei2->i_disksize);
+ 	ext4_es_remove_extent(inode1, 0, EXT_MAX_BLOCKS);
+ 	ext4_es_remove_extent(inode2, 0, EXT_MAX_BLOCKS);
 -- 
 2.9.5
 
