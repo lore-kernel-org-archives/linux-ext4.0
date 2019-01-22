@@ -2,151 +2,98 @@ Return-Path: <SRS0=Ozrj=P6=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,TVD_PH_SUBJ_META1,
-	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.5 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6854AC282C3
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0DD1EC282C5
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 10:00:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3BDD320861
-	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 06:54:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D2CA220823
+	for <linux-ext4@archiver.kernel.org>; Tue, 22 Jan 2019 10:00:21 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=philpotter-co-uk.20150623.gappssmtp.com header.i=@philpotter-co-uk.20150623.gappssmtp.com header.b="K/33qtzx"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727268AbfAVGyv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 22 Jan 2019 01:54:51 -0500
-Received: from szxga07-in.huawei.com ([45.249.212.35]:44024 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727312AbfAVGyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 22 Jan 2019 01:54:49 -0500
-Received: from DGGEMS409-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 80AAFDD5CDB767B230CC;
-        Tue, 22 Jan 2019 14:54:46 +0800 (CST)
-Received: from RH5885H-V3.huawei.com (10.90.53.225) by
- DGGEMS409-HUB.china.huawei.com (10.3.19.209) with Microsoft SMTP Server id
- 14.3.408.0; Tue, 22 Jan 2019 14:54:39 +0800
-From:   yangerkun <yangerkun@huawei.com>
-To:     <tytso@mit.edu>, <jack@suse.com>
-CC:     <miaoxie@huawei.com>, <yi.zhang@huawei.com>, <houtao1@huawei.com>,
-        <yangerkun@huawei.com>, <linux-ext4@vger.kernel.org>
-Subject: [PATCH V2 3/4] ext4: update quota information while swapping boot loader inode
-Date:   Tue, 22 Jan 2019 14:58:22 +0800
-Message-ID: <20190122065823.67957-4-yangerkun@huawei.com>
-X-Mailer: git-send-email 2.9.5
-In-Reply-To: <20190122065823.67957-1-yangerkun@huawei.com>
-References: <20190122065823.67957-1-yangerkun@huawei.com>
+        id S1727783AbfAVKAV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 22 Jan 2019 05:00:21 -0500
+Received: from mail-wm1-f66.google.com ([209.85.128.66]:53537 "EHLO
+        mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727299AbfAVKAV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jan 2019 05:00:21 -0500
+Received: by mail-wm1-f66.google.com with SMTP id d15so13465418wmb.3
+        for <linux-ext4@vger.kernel.org>; Tue, 22 Jan 2019 02:00:19 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=philpotter-co-uk.20150623.gappssmtp.com; s=20150623;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to:user-agent;
+        bh=GhFIv8J25HgNKwXu1nW+Nin5xpaFtifQ9/YdY0m9u5k=;
+        b=K/33qtzxgW5LZbNWGpJrgWf92WAdRSwcCkqlEqnBOk9QwqL3uDXeoOMTG7rD7+QVa1
+         XY+3wg4nViqGD09eU6LmAkZ/pGkzLpkGgGurNNUPgPUQGn4HQun96frYv52ulWdkCXNX
+         UjBKSlHY474G2r3ZYcn7jMqUWzRQX380buNG6I/DuE0QWz1WNSDYoBWZsr5z4JEGlECy
+         5SpQNV/G4KwBMRnautu+bi+UBi2dI544vzPk+LwURSD+DW8Frg1KIZj/pD8nJ1A8DHSS
+         NQHGztv3WvG3xirXrlkR31RuTbDpu18sbTTkdYQOLeEHb55yNnP3zD7C9+KPi2jXKJZS
+         lr8w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to:user-agent;
+        bh=GhFIv8J25HgNKwXu1nW+Nin5xpaFtifQ9/YdY0m9u5k=;
+        b=K7TCLLBtQUwv1WIHa1suTcqbs5PXnhfUOdIj0t19lPqHkRotNmK0E85FEMOk2VH516
+         k/CA8oRBzM1876cx2Qje7Yk8E0sSfo+H0W5ADeEqI0lzXwo2n4S+WyA2IiWrBrFe3X4G
+         acbN+d3dNZ63FfRXEGLQmVSNdw/A/wMsgfPuwtv+DonnmFBPqPE1TN8GeecHnHNASDWY
+         3oyX40OPaEm/MjmxX/rbbwVkek+m1afu2TVimI0yir8KuCNQkx1wL4qWYm6EPCphyEvi
+         pQE9BV6jEnSul5LOiOXEJmGjPAPJPf0ENRKOnX3AvEKpRrhn8cw5j1xKI880VYuqmQUQ
+         BBBQ==
+X-Gm-Message-State: AJcUukc9W8bXhA6O8zY/gDWAIc6QTPUE0gSC8M17dk0bbYsiXduZujjF
+        7NWJwcyf3NsGHl55+FzJAIru/A==
+X-Google-Smtp-Source: ALg8bN6l1/hjTdgWzXjYnPubrv8QVLXGhjXYZjc/iA26VZvK8jmuIpDDX7uQfby9/1E/t3f0N+GNmQ==
+X-Received: by 2002:a1c:968a:: with SMTP id y132mr2896058wmd.107.1548151218403;
+        Tue, 22 Jan 2019 02:00:18 -0800 (PST)
+Received: from pathfinder ([90.222.17.17])
+        by smtp.gmail.com with ESMTPSA id s5sm33772414wmh.37.2019.01.22.02.00.17
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Tue, 22 Jan 2019 02:00:17 -0800 (PST)
+Date:   Tue, 22 Jan 2019 10:00:16 +0000
+From:   Phillip Potter <phil@philpotter.co.uk>
+To:     Jan Kara <jack@suse.cz>
+Cc:     tytso@mit.edu, amir73il@gmail.com, viro@zeniv.linux.org.uk,
+        adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [RFC][PATCH v5 07/09] ext4: use common file type conversion
+Message-ID: <20190122100016.GB3245@pathfinder>
+References: <20190121005435.GA32365@pathfinder>
+ <20190121142048.GB21694@quack2.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.90.53.225]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190121142048.GB21694@quack2.suse.cz>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-While do swap between two inode, they swap i_data without update
-quota information. Also, swap_inode_boot_loader can do "revert"
-somtimes, so update the quota while all operations has been finished.
+On Mon, Jan 21, 2019 at 03:20:48PM +0100, Jan Kara wrote:
+> On Mon 21-01-19 00:54:35, Phillip Potter wrote:
+> > Deduplicate the ext4 file type conversion implementation and define
+> > EXT4_FT_* to match shared FT_* - file systems that use the same file
+> > types as defined by POSIX do not need to define their own versions
+> > and can use the common helper functions decared in fs_types.h and
+> > implemented in fs_types.c
+> > 
+> > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> > Signed-off-by: Phillip Potter <phil@philpotter.co.uk>
+> 
+> Looks good to me. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> 
+> 								Honza
+> 
+Dear Jan,
 
-Signed-off-by: yangerkun <yangerkun@huawei.com>
----
- fs/ext4/ioctl.c | 56 +++++++++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 43 insertions(+), 13 deletions(-)
+Thank you for this, much appreciated.
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index ea05e8d..eff6835 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -68,8 +68,6 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
- 	ei2 = EXT4_I(inode2);
- 
- 	swap(inode1->i_version, inode2->i_version);
--	swap(inode1->i_blocks, inode2->i_blocks);
--	swap(inode1->i_bytes, inode2->i_bytes);
- 	swap(inode1->i_atime, inode2->i_atime);
- 	swap(inode1->i_mtime, inode2->i_mtime);
- 
-@@ -115,6 +113,9 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 	int err;
- 	struct inode *inode_bl;
- 	struct ext4_inode_info *ei_bl;
-+	qsize_t size, size_bl, diff;
-+	blkcnt_t blocks;
-+	unsigned short bytes;
- 
- 	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO, EXT4_IGET_SPECIAL);
- 	if (IS_ERR(inode_bl))
-@@ -180,6 +181,13 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 			memset(ei_bl->i_data, 0, sizeof(ei_bl->i_data));
- 	}
- 
-+	err = dquot_initialize(inode);
-+	if (err)
-+		goto err_out1;
-+
-+	size = (qsize_t)(inode->i_blocks) * (1 << 9) + inode->i_bytes;
-+	size_bl = (qsize_t)(inode_bl->i_blocks) * (1 << 9) + inode_bl->i_bytes;
-+	diff = size - size_bl;
- 	swap_inode_data(inode, inode_bl);
- 
- 	inode->i_ctime = inode_bl->i_ctime = current_time(inode);
-@@ -193,24 +201,46 @@ static long swap_inode_boot_loader(struct super_block *sb,
- 
- 	err = ext4_mark_inode_dirty(handle, inode);
- 	if (err < 0) {
-+		/* No need to update quota information. */
- 		ext4_warning(inode->i_sb,
- 			"couldn't mark inode #%lu dirty (err %d)",
- 			inode->i_ino, err);
- 		/* Revert all changes: */
- 		swap_inode_data(inode, inode_bl);
- 		ext4_mark_inode_dirty(handle, inode);
--	} else {
--		err = ext4_mark_inode_dirty(handle, inode_bl);
--		if (err < 0) {
--			ext4_warning(inode_bl->i_sb,
--				"couldn't mark inode #%lu dirty (err %d)",
--				inode_bl->i_ino, err);
--			/* Revert all changes: */
--			swap_inode_data(inode, inode_bl);
--			ext4_mark_inode_dirty(handle, inode);
--			ext4_mark_inode_dirty(handle, inode_bl);
--		}
-+		goto err_out1;
-+	}
-+
-+	blocks = inode_bl->i_blocks;
-+	bytes = inode_bl->i_bytes;
-+	inode_bl->i_blocks = inode->i_blocks;
-+	inode_bl->i_bytes = inode->i_bytes;
-+	err = ext4_mark_inode_dirty(handle, inode_bl);
-+	if (err < 0) {
-+		/* No need to update quota information. */
-+		ext4_warning(inode_bl->i_sb,
-+			"couldn't mark inode #%lu dirty (err %d)",
-+			inode_bl->i_ino, err);
-+		goto revert;
- 	}
-+
-+	/* Bootloader inode should not be counted into quota information. */
-+	if (diff > 0)
-+		dquot_free_space(inode, diff);
-+	else
-+		err = dquot_alloc_space(inode, -1 * diff);
-+
-+	if (err < 0) {
-+revert:
-+		/* Revert all changes: */
-+		inode_bl->i_blocks = blocks;
-+		inode_bl->i_bytes = bytes;
-+		swap_inode_data(inode, inode_bl);
-+		ext4_mark_inode_dirty(handle, inode);
-+		ext4_mark_inode_dirty(handle, inode_bl);
-+	}
-+
-+err_out1:
- 	ext4_journal_stop(handle);
- 	ext4_double_up_write_data_sem(inode, inode_bl);
- 
--- 
-2.9.5
-
+Regards,
+Phil
