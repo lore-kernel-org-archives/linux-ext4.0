@@ -2,38 +2,38 @@ Return-Path: <SRS0=JWl4=P7=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7AA9BC282C0
-	for <linux-ext4@archiver.kernel.org>; Wed, 23 Jan 2019 05:30:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A3C4DC282C2
+	for <linux-ext4@archiver.kernel.org>; Wed, 23 Jan 2019 06:27:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2C3AB217D4
-	for <linux-ext4@archiver.kernel.org>; Wed, 23 Jan 2019 05:30:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4528521019
+	for <linux-ext4@archiver.kernel.org>; Wed, 23 Jan 2019 06:27:46 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=mit.edu header.i=@mit.edu header.b="TovcpZ8S"
+	dkim=pass (1024-bit key) header.d=mit.edu header.i=@mit.edu header.b="s8T1BRa9"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726102AbfAWFao (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 23 Jan 2019 00:30:44 -0500
-Received: from mail-eopbgr800129.outbound.protection.outlook.com ([40.107.80.129]:9280
-        "EHLO NAM03-DM3-obe.outbound.protection.outlook.com"
+        id S1726029AbfAWG1q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 23 Jan 2019 01:27:46 -0500
+Received: from mail-eopbgr790122.outbound.protection.outlook.com ([40.107.79.122]:6076
+        "EHLO NAM03-CO1-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726057AbfAWFao (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 23 Jan 2019 00:30:44 -0500
+        id S1725899AbfAWG1p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 23 Jan 2019 01:27:45 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=H4dftK+to0zuPSyElCIdiq8XsCQLIN3mOkkNXXAIVlw=;
- b=TovcpZ8Sljn2bDm06iQZYS4qGdO4xU/OFLhBdsI21I6S1Ay7AZeNg2LyrQFwcfSHwYchxgxFJCDWlY4U0wazA6SpHkqvx8uBb9W33vw20tH+BuFnBCEvS8x+14P8O5p0ueuEUatRiOjgMoIKwESPbZetgstQRnkhq64d/sYR3+c=
-Received: from DM5PR0101CA0014.prod.exchangelabs.com (2603:10b6:4:28::27) by
- DM6PR01MB3753.prod.exchangelabs.com (2603:10b6:5:82::18) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1558.16; Wed, 23 Jan 2019 05:30:39 +0000
-Received: from BY2NAM03FT037.eop-NAM03.prod.protection.outlook.com
- (2a01:111:f400:7e4a::203) by DM5PR0101CA0014.outlook.office365.com
- (2603:10b6:4:28::27) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.1558.17 via Frontend
- Transport; Wed, 23 Jan 2019 05:30:39 +0000
+ bh=m/3eVRsaYDieI7a0Fcya+kKKkMC7iq0KaKOdirKsoFY=;
+ b=s8T1BRa9h4NwPWswcqRt90G06UURLYySusVwrg8tPU1SToVEFjq7ZYMJW70rbzLfqMjyfX5t/8hl412HiKcg55Mda9TCt3AKkivWCxD95u+foBrmmIm6DBhdkrNhBn/JMiIV5bgxSwbcFjMzOJ/HWRyYFzMxi+zL98Cb05hRkvA=
+Received: from BL0PR0102CA0015.prod.exchangelabs.com (2603:10b6:207:18::28) by
+ BL0PR01MB4481.prod.exchangelabs.com (2603:10b6:208:81::28) with Microsoft
+ SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1537.27; Wed, 23 Jan 2019 06:27:42 +0000
+Received: from CO1NAM03FT056.eop-NAM03.prod.protection.outlook.com
+ (2a01:111:f400:7e48::209) by BL0PR0102CA0015.outlook.office365.com
+ (2603:10b6:207:18::28) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.1537.31 via Frontend
+ Transport; Wed, 23 Jan 2019 06:27:41 +0000
 Authentication-Results: spf=pass (sender IP is 18.9.28.11)
  smtp.mailfrom=mit.edu; vger.kernel.org; dkim=none (message not signed)
  header.d=none;vger.kernel.org; dmarc=bestguesspass action=none
@@ -42,109 +42,126 @@ Received-SPF: Pass (protection.outlook.com: domain of mit.edu designates
  18.9.28.11 as permitted sender) receiver=protection.outlook.com;
  client-ip=18.9.28.11; helo=outgoing.mit.edu;
 Received: from outgoing.mit.edu (18.9.28.11) by
- BY2NAM03FT037.mail.protection.outlook.com (10.152.84.188) with Microsoft SMTP
+ CO1NAM03FT056.mail.protection.outlook.com (10.152.81.144) with Microsoft SMTP
  Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1558.11 via Frontend Transport; Wed, 23 Jan 2019 05:30:38 +0000
+ 15.20.1558.11 via Frontend Transport; Wed, 23 Jan 2019 06:27:40 +0000
 Received: from callcc.thunk.org ([66.31.38.53])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x0N5UZ3A012878
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x0N6RcmB024224
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 23 Jan 2019 00:30:37 -0500
+        Wed, 23 Jan 2019 01:27:39 -0500
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 7EF037A4C0E; Wed, 23 Jan 2019 00:30:35 -0500 (EST)
-Date:   Wed, 23 Jan 2019 00:30:35 -0500
+        id 107867A4C0E; Wed, 23 Jan 2019 01:27:38 -0500 (EST)
+Date:   Wed, 23 Jan 2019 01:27:38 -0500
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
 To:     Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
-CC:     <linux-ext4@vger.kernel.org>, <jack@suse.cz>
-Subject: Re: [PATCH v2] jbd2: fix deadlock while checkpoint thread waits
- commit thread to finish
-Message-ID: <20190123053035.GB8785@mit.edu>
-References: <20181125083606.5273-1-xiaoguang.wang@linux.alibaba.com>
+CC:     <linux-ext4@vger.kernel.org>, Liu Bo <bo.liu@linux.alibaba.com>
+Subject: Re: [PATCH v2 2/2] ext4: fix slow writeback under dioread_nolock and
+ nodelalloc
+Message-ID: <20190123062737.GC7597@mit.edu>
+References: <20181215054840.5960-1-xiaoguang.wang@linux.alibaba.com>
+ <20181215054840.5960-2-xiaoguang.wang@linux.alibaba.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Disposition: inline
-In-Reply-To: <20181125083606.5273-1-xiaoguang.wang@linux.alibaba.com>
+In-Reply-To: <20181215054840.5960-2-xiaoguang.wang@linux.alibaba.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 X-EOPAttributedMessage: 0
-X-Forefront-Antispam-Report: CIP:18.9.28.11;IPV:CAL;SCL:-1;CTRY:US;EFV:NLI;SFV:NSPM;SFS:(10019020)(39860400002)(376002)(346002)(396003)(136003)(2980300002)(199004)(189003)(106002)(90966002)(4744005)(75432002)(229853002)(8676002)(4326008)(23726003)(486006)(246002)(316002)(76176011)(11346002)(2616005)(26005)(2906002)(88552002)(336012)(86362001)(6916009)(33656002)(476003)(126002)(186003)(305945005)(446003)(6266002)(47776003)(6246003)(786003)(36756003)(52956003)(8936002)(1076003)(46406003)(97756001)(16586007)(103686004)(478600001)(58126008)(356004)(26826003)(54906003)(42186006)(36906005)(106466001)(50466002)(14444005)(18370500001);DIR:OUT;SFP:1102;SCL:1;SRVR:DM6PR01MB3753;H:outgoing.mit.edu;FPR:;SPF:Pass;LANG:en;PTR:outgoing-auth-1.mit.edu;A:1;MX:1;
-X-Microsoft-Exchange-Diagnostics: 1;BY2NAM03FT037;1:lEOqyOFw5Xamae7czHsIQvWUtxwHU2WNLsQGEwMCOyyNSRmbU1eH+wdPn1a5aqmFcsPaVzg9cBVpMinaJ0F1ZMXVwq3uhQflIan1wiyp4Zvl+cKQhqpYNXbyyuvb1UWUW+felQmyiYbmshE0fyDMnQ==
+X-Forefront-Antispam-Report: CIP:18.9.28.11;IPV:CAL;SCL:-1;CTRY:US;EFV:NLI;SFV:NSPM;SFS:(10019020)(39860400002)(396003)(376002)(136003)(346002)(2980300002)(199004)(189003)(46406003)(90966002)(106466001)(97756001)(2616005)(476003)(6246003)(47776003)(103686004)(6266002)(336012)(26826003)(2906002)(50466002)(4326008)(126002)(76176011)(186003)(33656002)(11346002)(88552002)(26005)(229853002)(486006)(446003)(36756003)(42186006)(246002)(86362001)(23726003)(36906005)(16586007)(58126008)(1076003)(786003)(356004)(75432002)(8676002)(6916009)(14444005)(305945005)(5024004)(478600001)(316002)(54906003)(8936002)(52956003)(106002)(18370500001);DIR:OUT;SFP:1102;SCL:1;SRVR:BL0PR01MB4481;H:outgoing.mit.edu;FPR:;SPF:Pass;LANG:en;PTR:outgoing-auth-1.mit.edu;A:1;MX:1;
+X-Microsoft-Exchange-Diagnostics: 1;CO1NAM03FT056;1:D1HkHPOor12cUbn8E8wfKceB5MMac25T1/6VoJ32Wr26V9W7tuBy/TpWvXV3yX7lCkRTghvpF7OiscJ15W8GuMxyWbTsKbfH+WBnbdZykFfvQuWYUaLP5JM75c3xj7w7KSQJsJmJKMz0eiEMq/U07qFdfzBPmEXVxXN953UfxvM=
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 7e7befbd-feda-4211-dccf-08d680f3e8eb
-X-Microsoft-Antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600110)(711020)(4605077)(4608076)(4709027)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7153060);SRVR:DM6PR01MB3753;
-X-Microsoft-Exchange-Diagnostics: 1;DM6PR01MB3753;3:b8cww225988DKJPqTsMOrVeZzdWp9X+FmEsBSR/VVQSmIxP+lwlt+yEmLd33oXbyh4jpkBotTBQQ6sjFws3L0YjVHBlnN4KRVBoLB3h2ctvRui+wIwgVyPYTnx2x7/4X2WMqNypMr3tFnNhqiQ7KLMtq+PZZWArNyRRgoi40T3m32RTKFAUT/sjP9SsCFoTJdb7fYgXBWNgJmidvO5BQG74ulZbnHODP2B1KC25gqn3Ng2TGNISYGNVo0bOWRW6G+Ja63VIVYRbBxV50Je+yEf3zwEuk5Oejz6mYxGteqJpR9tcQ7a3RYIahgOiQb1nW2SQ7za+qdf/ggbraITV6gAiLbXv+12yy0WeWJ8yfkfjb6zUzz8/d88tYWU0DqFl5;25:7xKO2i6sihSppwn4ZAc0SfiUIpDRya/SxkUBSJTsOaSVyZD2ZYfLD/zLtC0W4ljwDh56+/kgQa/70ZNLYFvCI6ELhvkB97rt7vEbbU2u+lCBtQBn0uv/H6nSrS2WbesQPnWqH5/t+zDHrcNLqpMUcIm4cV/x6bTJe/Jlp/ule4+l4/YMvwiidQp65r/8HLVYulTguxRve5fG6ihG70yyQbeeRWKxg7YYsKH9TsZCXB9C5bC3k6rBa8qqUyiXWrnw1PMm9c1LnhIfhscx+bwzk9keVjLjdZTNP3E5nDDIEGiX/oRSJfn1DxK514WeR2bWPlDeiCDVjW1Q+pr1iZqicA==
-X-MS-TrafficTypeDiagnostic: DM6PR01MB3753:
+X-MS-Office365-Filtering-Correlation-Id: 3e45664d-0807-4e5a-162e-08d680fbe07e
+X-Microsoft-Antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(5600110)(711020)(4605077)(4608076)(4709027)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(2017052603328)(7153060);SRVR:BL0PR01MB4481;
+X-Microsoft-Exchange-Diagnostics: 1;BL0PR01MB4481;3:G3GOb+wjt83Q7QRYH3NgHBkDOYdN/W9U+W6p3A9oz4aTNrfckDqpVNSkF4TttKycaUBu1T5KWYM0VKA9uYzogaiv4cLi8lTwDFilARDkNp9gP2o341MEwuTWeTqa+styKuAOfhOwBxvUE9vx3Tlq28prOrN9rb3AqCabuOu4XSG9yfX/HiKJidrOA5R7+BhA1bcQaOmoHNIlwJ70ZgrBNaz1kfGza82ZPU1yRstiRGu45QvufyDFAmUg6p+PY3tW6rzOeN76w5tXfykGCk7aXOtMLNOOKlUhdq1JZxjAC11kHoBldhGaYvX/cUkzzGn124J4Im5L/di8n3DvxHAA6qeVCRRp9bbwNQLZ6bDMDsvV/jTsRK3EClSEWQA57Nrh;25:vHFI5M8eK38ey8n5mVnC9tJsQNLp6D0JnkR1OCBUS+5Kc69xDMckQWGWaH5+Pd4o5ubt+BR/RhBQDb+kCYX6sVv2XVByH9xtLfQouLOXaWwetKMLQ/q/tAy/HHkn/mqJZ+9ndi3H4dQcMjOUC8tx39CMgfhf22MCizlNWH/B87aJPhToxzDGodaUX2CfZXQ1G3Kne6hZmOmM23NGophK2omRFUFe9TsoCGw3/1QCKxdUNLmF6crfiowFX56z/9WmgUOk6s5AqhlwZUWkZacvcdo+8LcgEl35ffeB37oc5r5zBhCF9VYoUdzQOA5bGyiH9LVfgOpqgCGyV6trYVXbdQ==
+X-MS-TrafficTypeDiagnostic: BL0PR01MB4481:
 X-LD-Processed: 64afd9ba-0ecf-4acf-bc36-935f6235ba8b,ExtAddr
-X-Microsoft-Exchange-Diagnostics: 1;DM6PR01MB3753;31:dnWRC1A0uv3BC3EkHl68+ebbbkIxAmRG7za66/W0+BCiy7tnNL0W3fRP1nrhsZcoQXMv/AZViU1Hb2bn7AXaFNwS1MPPP5kuNU+6wLH4o5Pi6/Rb7zQm15vr8hLoly86OX+egVSORBJZ9FM7/4ZJie2PO7mgaBojo7ywCA2cLCcdER4EqfEIG3r44n4iUO/WWy+mq90O3vdehSAfFQblxtW5TvgzTl1lM11nKdU0NU4=;20:/HWOl7spMc2pEBdjkUVS2cE74/rAYiqVXQn2uq/SUplwQ8J0nLZNi52kDV2yXOnKVDjiBJ+kv4YmJfctDiIU2Odtx/adDWe2vDs5zAn9iqdTirRT7ruLZtMr9MdnelzRK5w+ZbX9n6hoJ31wZjjFLfLzUVa0BkF3d02aoGeziPHs+ym0iG0E69W2gjuGWh9mj9jx4bRG6+FEf5w5TnYdhAlGDg7Uus3v9+ZHGet3GW0TM/YM6EYY0Sbq6Kx0dXOtzVivs2jhMW67L36UFYUaQR4eAqDkeryFk09cwz6wPjZaRad0NPE7t5reCBa4EggIOtYAkXV/s/HA6VsScgC47o4hQlktEtM2GIiwv39dEe1y6VsG3NWOYqJJ6cmqv/7hPmJskZi6uDgYxYcgiMU2R7+w9Ap2klKyVK4Y8mo+ClgyK2/uaAbG8oi6jnCspo63xP4KjC4MUBqQffyoT2QU3pRxVldTt7k/j6hfnt8abAIi8amZ2bY7bVSz07kedaNWxnl+o+erILKP6jxYVMgj/0VfneUF3UgMYQfslgUr1RoEKJJ2b86BVxqV1iQu8g0mi4r+biAlMjeHQdStSI/JA2BJ1kSNxoAD6vOets5hxQA=
-X-Microsoft-Antispam-PRVS: <DM6PR01MB37532AFCC6CA460A6FA4118DB5990@DM6PR01MB3753.prod.exchangelabs.com>
-X-Microsoft-Exchange-Diagnostics: 1;DM6PR01MB3753;4:ZmMAflYre+GJ9o5Fb9v+BRz8cOsk8vOEf3t0cT2ooXPh9C7Cd/sMZyhKW3xg7VT4eNmy3ZfOaDYeOu2F9zNoc/yfSTJCDzTh3b8EMTYkvLNTaVo//hgrofQvSKm4bSJZj5uBUGn25KYNwH6ETEG7qkQQvSfTmNDshRDlTwYkciTdD5AH4aZfdHqdGCQoK5SGOLwMvGKKSj/koiQtVrMFdlKjkZWZIv1s7tesG109e2pAMa2z6pjg0hV3f5H8i/5zydSR8Eeed5TAWSEx8rMlKwdorXxjLlx4OnRqo9syF3gqiq+4O1Wpjw4NYVz4rEOw
+X-Microsoft-Exchange-Diagnostics: 1;BL0PR01MB4481;31:Z0b6a2uav3kGaUxdRTlGzY49Lc339jLzXKKqTnKsrW0n1XYa5wPN9a6hXcWzND8XAH1cqslYGmlSsmxP6suH2yq7oybRi9WSwYh+iPftUDTHvtGakxzy8Kc05/14sZpzG1wuqBRgcB+vpLLih3swNafO4iPqoJbTlTjjXUAsH4wSAD1PXDod7KDWFBnvVUayqjnchWoo1MKHlCctnNOl4MJBdH6mtPUEbuK0aw1Mnow=;20:ALjNp3A9JYbXEY0fj1EaPmxYj3Q4ULpmUMuS3gg+jIPREDPrmFdIF5kFwLpVeWUPoT94R8pSLbcsSguK9seutqOURx+VpjfP435drrtUlc9cTsMQxPhvdETXu3p7a0IDiUBV/3uj6LgOFkblZ8gEDhpNoq2YdN0Csicop/j0kx5GVtgF9v6yuivSolWz2rQZ4qHMRMFF59LlfHKCqXys8xLkx9gbQffUSXUP8JIj735XnvhWhjrfnx1mZpGvvebXalW64oA5NignJ5V+54xLkSWm6mgzdOToMCvj6+vMyQtC0i7CFTva+ZHQXog4DwQV1X5oF9/BUrlyglwNa/+QVn1pBoRi2w8OYkJXk4zAzZR1Y+88QcPyLE/imsUCPc81SrSd6PA26v2k0sxeeI4z7wJLf3cheANbhp8B5ctzmo0I8P77ZrO26AR/fmhABUSMPlr11WuHh7ED0ZVUfP8M/LdpGA5R6ixa30j1JxwdF4V84PuR33/yD1kRkc/sXsDBbiDcUxkHmjEsahJJYvbVYARNBWOcZ9/xNpYLpVAqEPnQXUasiYgaFP1cThVnniRJ0xGd10vQmGWSw5jqDu8qGMEDCSt5kF77fZ8V9J09ftc=
+X-Microsoft-Antispam-PRVS: <BL0PR01MB44818298AE5468A8C648C301B5990@BL0PR01MB4481.prod.exchangelabs.com>
+X-Microsoft-Exchange-Diagnostics: 1;BL0PR01MB4481;4:9UQWqNNezjgJ7vJDuT0FpG/SxkDZPJf918zI5ztaNzM5kzPbDDJErtwT2A2Xqnsh5v42KDJ8xwGsBVr0FKw1p1Sn7vsz+BU7eb26KB26dmUBvux1UDQXpVwasIpUK/a5xLpH4W0z6NEqRStFfwQyrS/E5TCnkVOn14x4DIM8A7xJz48tdocmUWws5q6JtHb3hrutl89gcxeSSa5HU2nu3Lcwx3uVEozBTFAnoDlYWDVtJE/DoOosvZ+HwZCN795BnGZGEFcIe+NWgMEU5tZA4nNGzPB+3TQhWjw/dKEQ1kpXUWMmMW7S64cJ7MBrNjzc
 X-Forefront-PRVS: 0926B0E013
-X-Microsoft-Exchange-Diagnostics: =?us-ascii?Q?1;DM6PR01MB3753;23:R+tfHsRw1FINzWGNVsX8564Nsx48gpfLfDBo8+g7z?=
- =?us-ascii?Q?q0GfWbMfT9TOt9u1OfHxfSf2864/nkl8c11iCG8R3LzR2C8JvoPgnTD97Js5?=
- =?us-ascii?Q?bhoF5DHAMO00N6LoI1O8A8K1hFYu5ghU1l9xHjlGxuaXjV1YbRAoQ9/7fCMF?=
- =?us-ascii?Q?wC/L6usVuY1y5txAknZEn8NPWXZ+3jlUee4jBEaGXw80r4GKPp2058GxhqMU?=
- =?us-ascii?Q?wnwmnf7+rBwbnQqHxSgoWbPv4tMTV4KSAT93fId91IzotJlgyY0GQnTnEnZM?=
- =?us-ascii?Q?hQDxaj1nm8Ow8lCTaCns1PyAto8QKuJTyElWc2927be3ojR+x9L/FrqySf5j?=
- =?us-ascii?Q?VF2W2nFITlEDOYH27JXT83UMzaMtqrvFmZoE3eXLRovY4hBgATVV/aaqyvM7?=
- =?us-ascii?Q?/Sh/JZ+g1NJYo7DgM0csy3eRbkCBCSL+f+FU29ZzdQnIW/20KSUa8v73SH/G?=
- =?us-ascii?Q?pqzRZFMAa1IzA6pv62fI89g8luJ+HauGNLlTsG0mR5tZGz8FrL7pp+ulbfhn?=
- =?us-ascii?Q?8A/uqeotPwHWzDliSmRG7zentaH7ObJK3xGwQSWtFwEH84U2n2qefIPj3HqT?=
- =?us-ascii?Q?n6oOybCawH0YzKrVMuFfXPAGv+3kTWQnLskklpbjUwiulamBR09AM8MVzMHP?=
- =?us-ascii?Q?gaU2iFFxFajvqWsBTTgEmEFehFjsJ9ELqVx+laBYY1lEyF1WEnb6CT1fX+BF?=
- =?us-ascii?Q?Bc3vG9Cnj+LpoA0CfnRJe0uXA6zegpO5oiGlC45UKXmbVRF7cfOp5cZg75hj?=
- =?us-ascii?Q?3l1vaoo18ZU3JO8gy/Gn2FSyI2AO59KkDR0/6bmpizpZocwlDZH82wsvt+wO?=
- =?us-ascii?Q?jgXDS9ZFVmHZJOuSDHPpldzk0ETzKpfOYmVG4ZQFC4/tkFOaBl6YVvvTQG06?=
- =?us-ascii?Q?fiwydpfd1815GO8aILQTmXUPSI/o1OlU24xXum1S85/IMeNzYgpMkm+hy9k4?=
- =?us-ascii?Q?oYSHTkirzicHUfmz4bXEWCKnmTA38C1s/ZG5v2Knq5MWgqr9s8MdoCoWfenO?=
- =?us-ascii?Q?mzwI2W07e8zR0GpvdEAyb30vx40XDwjf2j67Sca/FHSuMG5i/2Ez6eizi06O?=
- =?us-ascii?Q?TUDCRopm73mEkwegMOGoJ37A2jDwx0dEg27tUpw05DgNpgfhEQ3dxEeSYCtx?=
- =?us-ascii?Q?y68tNFFfT4R6xPLojyvJztiEHILASZvlxp2R9HWyN2js93o9p2uGRyUJ60I6?=
- =?us-ascii?Q?t2eUSjdo0W1lgbVss43UmppcUeqaLJExPPXP9AbtJoM/0vTXsHTH5xOKt6Vu?=
- =?us-ascii?Q?bxDgynpqyCdkPQQnP8=3D?=
+X-Microsoft-Exchange-Diagnostics: =?us-ascii?Q?1;BL0PR01MB4481;23:isVwGesu52C1ZcULku+6mtdrfluF6CDXg10nya4Ap?=
+ =?us-ascii?Q?nxsImMA7QjSs40WDf66JWx1gMTmyeejxdIl6LvKEUxAGKvGvdzDNHcOYtTFg?=
+ =?us-ascii?Q?Qg6TZFrm0BsBRIF1+QG10YOlDOihN5RsDz9efmEA84oTmAUCb+nNIZw3Tqb3?=
+ =?us-ascii?Q?I1POWEusZ683huJ0UAxdlk1vy4y24bCdBaRT0UUeicdn2VQwTF6tIOdCJ3x6?=
+ =?us-ascii?Q?U6sh3kvrcyBVq59KFETmgU9O62Z8dLdcmf16n4EOoleu1EHIGBylGfkuTSpo?=
+ =?us-ascii?Q?lCaWWDl95KpgSm2kINHHnqyyDsODuKUjrW+A6O1DjLYpa4f6SdAvBjZna++g?=
+ =?us-ascii?Q?UmbxcFe6B8FOZENxv/fXQDpoaU3AQD0nvU1LSnNhvhNbXNfQkQW3YiUqSa/M?=
+ =?us-ascii?Q?duD+4ID/lkdFdyVDQN09tug3yAzLsYRYJ78YvUAx9CcxWMM+5SFiOkjMjVr1?=
+ =?us-ascii?Q?9XEKVRPwiVYFYHBVEJ1k2G1xrj6jNGotsYD9ghIaSOgCybBgJySSD+lgXqIq?=
+ =?us-ascii?Q?FNommYawwXvdcMCPgzLKt7+5fQykaz8RegOE9duRGrpf1qlNdMQP92ASoWk0?=
+ =?us-ascii?Q?wxH25BGpn4QMncM5hvt4JMZsV40USKhfYJ7b5J3TtBOuiQNtD6itf6hAjsN6?=
+ =?us-ascii?Q?qHdxeoAJmy8wpeZdVdmD4btzHRII9Q4hjnxbeq+jMVaY2fpBlm5We5m4UcVC?=
+ =?us-ascii?Q?KSfKu9SqMUxMvMXRhR0GY6eGx1HukB9F/pCpXGUzNZYvVX5p097bBpF32Aul?=
+ =?us-ascii?Q?ZXfE46AKAJGqgcvxIQonvW+4Nt8TT9NVdMJge7xlSi79rJjuQil2bTR+05PM?=
+ =?us-ascii?Q?CdKQi0iNhOoG+CEoRNYGK20ohvKO7wavQQIRskJKudRij4ZPXq6UhPHtZAQY?=
+ =?us-ascii?Q?W4wQOdRAeUrLT9A6GBmSVMWnO3G2L/tvcYfMomjBrhqlTvrpamMkOAUves6g?=
+ =?us-ascii?Q?TYzu2fxaGjP9ygt5jLy9qp2qxzlELynGJR/GzFjtg8ilAFNZd2OybnQz0set?=
+ =?us-ascii?Q?UCU2rdo12gBnra5/9lIeu38cxZrPDidLjP3UcpRoJ6se+OpHc3L4SRFNI/vr?=
+ =?us-ascii?Q?Q4tsOCky9EJyD+y3Hh+9PeSpY/f1crJNLsYnLS8qq3NPkGHkmeH6sdm1Gc44?=
+ =?us-ascii?Q?VP9GTToTMnsBFIvUlwClZLORgLNP+eGW1GAgRksdNimYTFK5aJUZVV8+d3lG?=
+ =?us-ascii?Q?vB4gexZ9Wjykkuh1KYtZdMjN344FNmMTZmFseoYI+puOQKCnErk2+asWl9B3?=
+ =?us-ascii?Q?7TKELDiWZC62Szw/M4=3D?=
 X-MS-Exchange-SenderADCheck: 1
-X-Microsoft-Antispam-Message-Info: FxdTadwqGjt2MieUyulCkcIKbs3IaghrrvTJ1CqnN7eqMrgU01MLtx3FbZXbeQ9UOUkN+fAawXJpDs5h5BvA1nRN5l92plTLzCPl4Lz+IXVMPrOd3zi1EN90m3PjaZNLe4hMHvN4z3sCAutgvw32Z2e8MwBKXMpZXIWwZ8tczlxI31DJwZ3Ej9s7aOvW4jjagmXRsVs221kFpFvvQIpY4nSSKqwPEGCMnqbG0WcTawVFC1BO8t9oTVJ+wJP7DPFiTxHea6CXe7Xv68MHYOlwbT2S/7hHfpJl1P1kPrHyiHsaWkrZYRYYp5diIF0eJ7OuzoVP7YSfXyaQCMFuBFCuvSy3r6YmyL7Ew4LgRtn1/FpDbUpRgRB7zvNBEIKJxTjRY9NguQ+KT9UpgMrooUl3a+GNWGS0pwyHHy8mbK1QLGY=
-X-Microsoft-Exchange-Diagnostics: 1;DM6PR01MB3753;6:V89x4kBq+HrgeJk+OC+NtIkDuIf7fYKuRY93i52jk0xDTLisVRtvX4vhgAyLnP8IM2e6nQ3opFUGl5WMWj9UISJqks7QU2x9g0SQlEnXJEIZEc3kfQIg5W7sn+2X4bKLdxeM2FRGrrmSfGFotaWKSO33uuWN9kFYirDsLiJKy69enfuCLAigtgWdEBjB/GRyvbYnon+65H8qQzzApkaL8NbRIc/dub4q9Si8fgCSnYcMX/S5+EnUEncdlqrsyjYu+qenvvp92dP+WFFQNpF2rUQfWkVqCDsUrz7Eu4vMwNH3eRvCFgwlDE04e5YWwGHtq+mWJL3JYbF5gp+4JhAwjNTx4cMGX7m6OXirY8+93gSEUB2x6ab4HEyBGRo7h4XYx9DS/0eVBxvGPSaRRDXI3uoCjwgDLfdF+BEBGvIEK8gmJ4+ZBLNBJe/+iJRGtv1QUtGZ4LCmv0jnT1q4DxrONA==;5:JMHVFko/Jzh6H3L4CevtVOGMlS2caph1CQN1wpGtq/Xz0tWM2XXhSFDNv9YfE6i/dZMfrtYxLf30WsPzvhIKWORvI7ntEqD4kT23DhBuPMS24k3E2CZw7KEQLIGdcSPVFa4YxLeUGwZlJOE2fUkMWty1C1L+N7WC+vmCjfF3CuvTd7qFlPC8/p2IOJZjpFGqDDKJemrjkhm/DY3ncs/4zA==;7:VGNSdkZTToyjlKwbQQvWw+FHkX7XCWKfwm4cN3OGlIYoO9/P7J4tKkhTEdq5evvBi+/eHzQUaQ+Zz+D+NF7oQQN04jYJwBxu6g6XJYhYX8gw8cqe/ySGHAMjFPA16LgCLiYsmJUCu4va3Nk0saUk8Q==
+X-Microsoft-Antispam-Message-Info: ZFmWsM28dv5kTAcFi1dVpd0JUjXHkmqvF/7HRh5gElScRXsIPPvfJrzymvA43XQ/hOPfbbsZJ6sbKt95801kRPJOuJ3yjEM53PtYBIlsIynq/eptSYJ5TOC++M+yeMWAYyLA0sE7B8zMeic/52aTO03KIFe14eAy9fPINkurqhucAVWsVbNTyPIJdfkAwrkK8hRjxIvekVSyEWZu5CqBeC61O4+wLrtW6S5Win1fF+6cZigH/othqvnrQHS7rJYos2khRg90rSW90pJLoPE4eU8Lvk4YSgeII8LWlNlpTeR1Mbd+AMQCDIPoQ2tHhpn2Z6mJFpG0Pi348jgnlIPSKHPse0UepYdF+H/0iFwqw5SoyM3tbGAT9dVUnXT/mkiG7+3ftMBrQpO3CNaBnCr0yEZPh4cTJjW6S1Y4cv+TrZg=
+X-Microsoft-Exchange-Diagnostics: 1;BL0PR01MB4481;6:TBnz43Tbq6hwmaWTnTf2YXAJi7mw2bV3JkWuAFz0wc+i/5EU0PozH/vvIEh7x5/wRwqUg0j8GxNWJ2Utw2M5nIhB1y8XLB3grg9csDM3btxZlKUOhuLs5+9WUja7E+LJRJbv7VzwmZqdPi8Oz601vx7OZ7+01uYljCA6N86+1RpnjKUcY4BRSGDiFCk3RkEhgG1panOlbl2wkX++o31K+kIb3UwXy8Afj14ejyIrRpG4DunkUncIvqvr/zioLYt+VVZafO0LjAezE2k7qaswspmBUNJ9CbwkemN01sp2ASQw9Ef+eaoNEnqskcDSB4GxgFvWxttSSQO1BLndNArNxeKE0QWBCLMe2ImlT85pt5CpNHNjNwZrM6i6Shww2XZlirik8F4Ac54NoF49ROV6Msp15O4qqv96tAmIRBCbZAA6FWpnu//vDYxlQ8aKqU7xSZ4cCgakg8iLl8bsJRH5yg==;5:v3WD88QyHfOs9GB0Jxepr2WA+W+coRypVppsVcojbKd+nthi/quN792USr3Szv3cBV87XD183d8ORy7oivPDVpIOwk0g+B91nMBqsCg7nLtCo2QlYBJ0mzi2wyFawgKCb+m61b0Xoi328sjyB3DPMfccWEUzTLvXPuxA2Y+kxuNE8odQ0S4Us73D9KbRnVlH89VoaZDFM08hBh57uKMeCw==;7:3BxUiM/nyXmO/wTQ2Inhc7kc2zrfycMm3oB4o+z+vvnWzMZDDZYetHCl206H7nem1xt8lpB5sIUM735QAnF4nO8j/GsYNU+rmk6Fu1vSIq7DJ1NjA1eWrC2SLPz9ViptEgKSbi12LwaCPs0k9E/SdA==
 SpamDiagnosticOutput: 1:99
 SpamDiagnosticMetadata: NSPM
 X-OriginatorOrg: mit.edu
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 23 Jan 2019 05:30:38.9558
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 23 Jan 2019 06:27:40.6947
  (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: 7e7befbd-feda-4211-dccf-08d680f3e8eb
+X-MS-Exchange-CrossTenant-Network-Message-Id: 3e45664d-0807-4e5a-162e-08d680fbe07e
 X-MS-Exchange-CrossTenant-Id: 64afd9ba-0ecf-4acf-bc36-935f6235ba8b
 X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=64afd9ba-0ecf-4acf-bc36-935f6235ba8b;Ip=[18.9.28.11];Helo=[outgoing.mit.edu]
 X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM6PR01MB3753
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BL0PR01MB4481
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, Nov 25, 2018 at 04:36:06PM +0800, Xiaoguang Wang wrote:
-> This issue was found when I tried to put checkpoint work in a separate thread,
-> the deadlock below happened:
->          Thread1                                |   Thread2
-> __jbd2_log_wait_for_space                       |
-> jbd2_log_do_checkpoint (hold j_checkpoint_mutex)|
->   if (jh->b_transaction != NULL)                |
->     ...                                         |
->     jbd2_log_start_commit(journal, tid);        |jbd2_update_log_tail
->                                                 |  will lock j_checkpoint_mutex,
->                                                 |  but will be blocked here.
->                                                 |
->     jbd2_log_wait_commit(journal, tid);         |
->     wait_event(journal->j_wait_done_commit,     |
->      !tid_gt(tid, journal->j_commit_sequence)); |
->      ...                                        |wake_up(j_wait_done_commit)
->   }                                             |
-> 
-> then deadlock occurs, Thread1 will never be waken up.
-> 
-> To fix this issue, drop j_checkpoint_mutex in jbd2_log_do_checkpoint()
-> when we are going to wait for transaction commit.
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+On Sat, Dec 15, 2018 at 01:48:40PM +0800, Xiaoguang Wang wrote:
+> With "nodelalloc", blocks are allocated at the time of writing, and with
+> "dioread_nolock", these allocated blocks are marked as unwritten as well,
+> so bh(s) attached to the blocks have BH_Unwritten and BH_Mapped.
 
-Thanks, applied.
+I've been looking at your patches, and it seems that a simpler way,
+perhaps more maintainable approach in the long term is to change how
+we write to newly allocated blocks.  Today, we have two ways of doing
+this:
 
-						- Ted
+1) In the dioread_nolock case, we allocate blocks, insert an entry in
+the extent tree with the blocks marked uninitialized, write the
+blocks, and then mark the blocks initialized.
+
+2) In the !dioread_nolock case, we allocate blocks, insert an entry to
+the extent tree, write the blocks --- and if we start a commit, we
+write out all dirty pages associated with that inode (in the default
+data=writeback case) to avoid stale writes.
+
+So what if we change the dioread_nolock case to do write the blocks
+first, and *then* insert the entry into the extent tree?  This avoids
+stale data getting exposed, either by a direct I/O read, or after a
+crash (which means we avoid needing to do the force write-out).
+
+So what we would need to do is to pass a flag to ext4_map_blocks()
+which causes it to *not* make any on-disk changes.  Instead, it would
+track the fact that blocks have be reserved in the buddy bitmap (this
+is how we prevent blocks from being preallocated after they are
+deleted, but before the transaction has been committed), and the
+location of the assigned blocks in the extent_status tree.  Since no
+on-disk changes are being made, we wouldn't need to hold the
+transaction open.
+
+Then in the callback after the blocks are written, using the starting
+logical block number stored in the io_end structure, we either convert
+the unwritten extents or actually insert the newly allocated blocks in
+the extent tree and update the on-disk bitmap allocation bitmaps.
+
+Once we get this working, it should be easy to make dioread_nolock for
+1k block sizes; it keeps the time that the handle open very short; and
+it completely obviates the need for data=writeback.
+
+What do folks think?
+
+						 - Ted
