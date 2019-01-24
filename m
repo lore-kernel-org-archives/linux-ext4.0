@@ -2,188 +2,144 @@ Return-Path: <SRS0=8KOi=QA=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E2CAAC282C6
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Jan 2019 09:23:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FB83C282C3
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Jan 2019 11:01:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B40A02184C
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Jan 2019 09:23:54 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=javigon-com.20150623.gappssmtp.com header.i=@javigon-com.20150623.gappssmtp.com header.b="q8aoglYn"
+	by mail.kernel.org (Postfix) with ESMTP id 216F3218A2
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Jan 2019 11:01:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726199AbfAXJXx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Jan 2019 04:23:53 -0500
-Received: from mail-ed1-f67.google.com ([209.85.208.67]:34897 "EHLO
-        mail-ed1-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725939AbfAXJXx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jan 2019 04:23:53 -0500
-Received: by mail-ed1-f67.google.com with SMTP id x30so4008192edx.2
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Jan 2019 01:23:51 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=javigon-com.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=hazvHEbzHlDqYsmMEu8W14zUjeP0zUZTkCQb1dt0eUQ=;
-        b=q8aoglYnAJuQYRQUnSNzn1ctrHw93ML1rLpvdb27JoNLtAIeEK3wEimXsO9NNwjju/
-         tvchnR1NGuDBRa9Ot91sQWhKeu3CJ3QgHQ+NRZzOEud+ER2vOwtXO7cASCEu8ccGzF2Z
-         torGYOBY3YNghxopWmDzGISu4LFXg7NukGQWkVIRRkSmHj+j19ZVC3lFotxJs6UgP4P9
-         ws9jYKjwjoCOEmCh/JT7Sy7bon+n3MYWc2cpuk01Q/0YrDnhxRhVOhjMY0okQ/0Z23Ae
-         6XYwVB9lScsaRXnZY6C7O5M5rtw7urcH1/2RvlGLqFdL0TYC6EVKgg9MTwlP391SYzDg
-         5g4w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=hazvHEbzHlDqYsmMEu8W14zUjeP0zUZTkCQb1dt0eUQ=;
-        b=pFXmZx6lB7j9mnqrCnS9Q8Tr9W4DfVm4l2blSPz9jJeNUO1hR+BaljqPeUJImEPElo
-         2IZuWRBy2hdgZsgOk9Gtt1df8YsyoA1V3BCVsUzrpp+b+QL4LpJJL2p4DHBNEfFNlD6i
-         kOOQdwVnFWnHajMTEmDadAixePGyBbJ0gGwif2OSIJcpZ5N5ASOBnp7pUZoMPNvGSiq4
-         yBaK4YjdswK4X74d+C6EANGkze0ldzS5iFpTWg21DY13MjbRbFO+OkeV5MA20OjKXZW1
-         zpanlb2nLUVFXxweWv7M34fmfrrBukJLpAq391jH1hkhlqjb64Np0zB67o7q+TYQjnL1
-         xeLA==
-X-Gm-Message-State: AJcUukfAlW0H1hFm+m8vdabZy6rARCBN9TlF601waVf9ynPds204NXYt
-        jhnMGX9HMaUhBbSkInhIGRsX+Q8EQXcBqQ==
-X-Google-Smtp-Source: ALg8bN5sxoEjzFgr0jiHUYeJuF6tyRWpjNifCnTAyCYQYadzthO/x8istF+WsPcZnvWFKEjOHlo8vA==
-X-Received: by 2002:a50:bc12:: with SMTP id j18mr6036401edh.50.1548321831072;
-        Thu, 24 Jan 2019 01:23:51 -0800 (PST)
-Received: from [192.168.1.85] (ip-5-186-122-168.cgn.fibianet.dk. [5.186.122.168])
-        by smtp.gmail.com with ESMTPSA id gy12-v6sm6096573ejb.44.2019.01.24.01.23.50
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 24 Jan 2019 01:23:50 -0800 (PST)
-From:   =?utf-8?Q?Javier_Gonz=C3=A1lez?= <javier@javigon.com>
-Message-Id: <2C518FDB-F9A4-4884-9317-A3AC207E316D@javigon.com>
-Content-Type: multipart/signed;
-        boundary="Apple-Mail=_B00D8D2F-6C7C-4FE7-9B2E-0877BFFC739A";
-        protocol="application/pgp-signature";
-        micalg=pgp-sha512
-Mime-Version: 1.0 (Mac OS X Mail 12.2 \(3445.102.3\))
-Subject: Re: [PATCH 2/4] introduce four macros for in-kernel hints
-Date:   Thu, 24 Jan 2019 10:23:49 +0100
-In-Reply-To: <20190124083536.GB12184@quack2.suse.cz>
-Cc:     Kanchan Joshi <joshi.k@samsung.com>, linux-fsdevel@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-nvme@lists.infradead.org, jack@suse.com, david@fromorbit.com,
-        tytso@mit.edu, prakash.v@samsung.com, Jens Axboe <axboe@kernel.dk>
-To:     Jan Kara <jack@suse.cz>
-References: <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
- <CGME20190109153336epcas2p29b3275b6c545e483a3f43b92268f08bf@epcas2p2.samsung.com>
- <1547047861-7271-3-git-send-email-joshi.k@samsung.com>
- <B4980620-2CFF-41C1-8EE7-C33F1FE431C0@javigon.com>
- <20190124083536.GB12184@quack2.suse.cz>
-X-Mailer: Apple Mail (2.3445.102.3)
+        id S1727535AbfAXLBm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Jan 2019 06:01:42 -0500
+Received: from mx2.suse.de ([195.135.220.15]:55950 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727522AbfAXLBm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Jan 2019 06:01:42 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 6CCE7ADD8;
+        Thu, 24 Jan 2019 11:01:40 +0000 (UTC)
+Subject: Re: [PATCH] ext4: Replace opencoded i_writecount usage with
+ inode_is_open_for_write
+To:     tytso@mit.edu
+Cc:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, jack@suse.cz
+References: <20181211082355.19841-1-nborisov@suse.com>
+From:   Nikolay Borisov <nborisov@suse.com>
+Openpgp: preference=signencrypt
+Autocrypt: addr=nborisov@suse.com; prefer-encrypt=mutual; keydata=
+ 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
+Message-ID: <434d8a65-ff6b-c0c6-24be-7f4b26138554@suse.com>
+Date:   Thu, 24 Jan 2019 13:01:39 +0200
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.2.1
+MIME-Version: 1.0
+In-Reply-To: <20181211082355.19841-1-nborisov@suse.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 
---Apple-Mail=_B00D8D2F-6C7C-4FE7-9B2E-0877BFFC739A
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=utf-8
 
+On 11.12.18 г. 10:23 ч., Nikolay Borisov wrote:
+> There is a function which clearly conveys the objective of checking
+> i_writecount. Additionally the usage in ext4_mb_initialize_context was
+> wrong, since a node would have wrongfully been reported as writable if
+> i_writecount had a negative value (MMAP_DENY_WRITE).
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Nikolay Borisov <nborisov@suse.com>
 
-> On 24 Jan 2019, at 09.35, Jan Kara <jack@suse.cz> wrote:
->=20
-> On Wed 23-01-19 19:27:12, Javier Gonz=C3=A1lez wrote:
->>> On 9 Jan 2019, at 16.30, Kanchan Joshi <joshi.k@samsung.com> wrote:
->>>=20
->>> Exiting write-hints are exposed to user-mode. There is a possiblity
->>> of conflict if kernel happens to use those. This patch introduces =
-four
->>> write-hints for exclusive kernel-mode use.
->>>=20
->>> Signed-off-by: Kanchan Joshi <joshi.k@samsung.com>
->>> ---
->>> include/linux/fs.h | 5 +++++
->>> 1 file changed, 5 insertions(+)
->>>=20
->>> diff --git a/include/linux/fs.h b/include/linux/fs.h
->>> index 811c777..e8548eb 100644
->>> --- a/include/linux/fs.h
->>> +++ b/include/linux/fs.h
->>> @@ -291,6 +291,11 @@ enum rw_hint {
->>> 	WRITE_LIFE_MEDIUM	=3D RWH_WRITE_LIFE_MEDIUM,
->>> 	WRITE_LIFE_LONG		=3D RWH_WRITE_LIFE_LONG,
->>> 	WRITE_LIFE_EXTREME	=3D RWH_WRITE_LIFE_EXTREME,
->>> +/* below ones are meant for in-kernel use */
->>> +	KERN_WRITE_LIFE_SHORT,
->>> +	KERN_WRITE_LIFE_MEDIUM,
->>> +	KERN_WRITE_LIFE_LONG,
->>> +	KERN_WRITE_LIFE_EXTREME
->>> };
->>=20
->> I think Jens and Dave meant kernel hints to go top down. This would =
-also
->> give space for supporting more hints / streams from both ends for =
-user
->> and kernel.
->=20
-> Yes, that was the idea however if I understand it right, the write =
-hints do
-> not really have to be consistent boot-to-boot since they aren't stored
-> persistently by the disk, are they? If that's the case, it doesn't =
-really
-> matter which numbers we pick.
->=20
+Yet another ping, if something is wrong with the patch I'm happy to fix
+it and get it merged.
 
-I guess this is implementation specific. Some times the drive will want
-to store this to improve GC. For the current "coldness" hint I does not
-matter much, but if the hint were to express other metric it can become
-relevant.
-
-Anyway, the comment was more to separate user / kernel hints and allow
-them to grow from the ends.
-
-
-> One thing I don't quite like is the naming of KERN_WRITE_LIFE_SHORT =
-etc.. It
-> is upto filesystem to assign meanings to the write hints. So I think =
-it is
-> enough to provide something like KERN_WRITE_HINT_MIN which is the =
-first
-> hint available to the kernel and then the number of hints available to =
-the
-> kernel.
->=20
-
-Makes sense to me. Then we can rename the hint for each FS to give it
-proper mening.
-
-> 								Honza
->=20
-> --
-> Jan Kara <jack@suse.com>
-> SUSE Labs, CR
-
-Javier
-
---Apple-Mail=_B00D8D2F-6C7C-4FE7-9B2E-0877BFFC739A
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCgAdFiEEU1dMZpvMIkj0jATvPEYBfS0leOAFAlxJhCUACgkQPEYBfS0l
-eOCfqw/+OAPsQEb+p6m8d765keQKVs7rRTbuTrj9+7rwHKgCFq34+fO7NbGgcDxE
-BE8strFx3oUXGEoF3VX8+PJEXWEebKQ8FvQ6i3YylHhcW15PXBrnY0kUkPvAzshJ
-yfkn5WUZM9UTEEFP6SeYaIKUIt9lZwEB3+xOCBbEEceCs55nBcc7grb7GA6BGhWQ
-DobjMDCbFDXm7BwvDkyN+rvzj+zLvAWeTBdHrsQUQXZr1owclr9qSdxIO7+mZpJo
-2gw1ufg/U60bmb6lfgcL5Dlh9U5by1cmHdo/CJsCbOYEg2mff5MzAlcg7pWssPUv
-guJ5atDffHudLpgLi0D+skLtzOYn067otjlfYiZYSEXkwdlJE14octZAQp+B/rMQ
-xDqQ1BkrHlgmf/ex3oGHqEG3GrO/4bpW+nctgA/QdKVPHVlMaqcFGJjozhvG0ebg
-NMS91G9cNDprPjAu9jPgsVHJKBSd79exCRMmECNxyzVDtmdtl0tCo16ez12gECvq
-qkSQyPI1w4jNJYcXjpJqdn9thXinhwbF+loI9sLjtecqb+g1rUnSUYFuLWOktf92
-Yn9KRzSCtlpdCRmr9CRbJhkisL8ERr0PywqjMk7LDQfSd/Nc4vyCpewH/FX3s1U5
-2+JdCebzvIFIKypx2+ocXx50za6dY/phVmYMZFz9UYIK6iZ9Tf4=
-=tt2d
------END PGP SIGNATURE-----
-
---Apple-Mail=_B00D8D2F-6C7C-4FE7-9B2E-0877BFFC739A--
+> ---
+>  fs/ext4/inode.c   | 2 +-
+>  fs/ext4/mballoc.c | 7 +++----
+>  2 files changed, 4 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 22a9d8159720..04e5bc0b5c8d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -391,7 +391,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
+>  	 * inode's preallocations.
+>  	 */
+>  	if ((ei->i_reserved_data_blocks == 0) &&
+> -	    (atomic_read(&inode->i_writecount) == 0))
+> +	    !inode_is_open_for_write(inode))
+>  		ext4_discard_preallocations(inode);
+>  }
+>  
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index e2248083cdca..6fb76d408093 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4176,9 +4176,8 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
+>  	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
+>  		>> bsbits;
+>  
+> -	if ((size == isize) &&
+> -	    !ext4_fs_is_busy(sbi) &&
+> -	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
+> +	if ((size == isize) && !ext4_fs_is_busy(sbi) &&
+> +	    !inode_is_open_for_write(ac->ac_inode)) {
+>  		ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
+>  		return;
+>  	}
+> @@ -4258,7 +4257,7 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
+>  			(unsigned) ar->goal, ac->ac_flags, ac->ac_2order,
+>  			(unsigned) ar->lleft, (unsigned) ar->pleft,
+>  			(unsigned) ar->lright, (unsigned) ar->pright,
+> -			atomic_read(&ar->inode->i_writecount) ? "" : "non-");
+> +			inode_is_open_for_write(ar->inode) ? "" : "non-");
+>  	return 0;
+>  
+>  }
+> 
