@@ -2,116 +2,91 @@ Return-Path: <SRS0=8KOi=QA=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 856ACC282C3
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Jan 2019 08:15:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D44AC282C3
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Jan 2019 08:29:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6073B21855
-	for <linux-ext4@archiver.kernel.org>; Thu, 24 Jan 2019 08:15:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 47E7E218A2
+	for <linux-ext4@archiver.kernel.org>; Thu, 24 Jan 2019 08:29:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727153AbfAXIP4 convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Jan 2019 03:15:56 -0500
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53600 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725986AbfAXIPz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 24 Jan 2019 03:15:55 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 47B162E341
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Jan 2019 08:15:54 +0000 (UTC)
-Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 3C0052E36F; Thu, 24 Jan 2019 08:15:54 +0000 (UTC)
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date:   Thu, 24 Jan 2019 08:15:52 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: jack@suse.cz
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-201631-13602-Cvx1eJA3Np@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1727455AbfAXI3g (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Jan 2019 03:29:36 -0500
+Received: from mx2.suse.de ([195.135.220.15]:60656 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725939AbfAXI3f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Jan 2019 03:29:35 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 41DCEAE98;
+        Thu, 24 Jan 2019 08:29:34 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 321AB1E3FF5; Thu, 24 Jan 2019 09:29:33 +0100 (CET)
+Date:   Thu, 24 Jan 2019 09:29:33 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Kanchan Joshi <joshi.k@samsung.com>
+Cc:     linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-nvme@lists.infradead.org,
+        jack@suse.com, david@fromorbit.com, tytso@mit.edu,
+        prakash.v@samsung.com
+Subject: Re: [PATCH v2 0/4] Write-hint for FS journal
+Message-ID: <20190124082933.GA12184@quack2.suse.cz>
+References: <CGME20190109153328epcas2p4643cbdc7a2182b47893a2bcaa0778e17@epcas2p4.samsung.com>
+ <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
 MIME-Version: 1.0
-X-Virus-Scanned: ClamAV using ClamSMTP
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+Hello,
 
---- Comment #51 from Jan Kara (jack@suse.cz) ---
-(In reply to Aneesh Kumar KV from comment #50)
-> (In reply to Jan Kara from comment #47)
-> > OK, so it seems to be more and more clear that PPC indeed has some race in
-> > page table updates. What I can see in the latest report is:
-> > 
-> > Clean page (index 92, ino 681741, i_size 828368, flags 7fff0000002016,
-> > mapcount 1) with dirty PTE (pte_val c0000005f7fae186) on unmap! Vma flags
-> > fb, pgoff 0, file ino 681741
-> > ...
-> > page 92: b_state 21, b_blocknr 2801084, b_mapped 1452389112002, b_mapped2
-> 0,
-> > b_cleaned 1452396217779, now 1452400395514
-> > 
-> > So "Vma flags fb" shows its a normal shared, writeable file mapping. Page
-> is
-> > somewhere in the middle of the file (file size is 828368, page is at offset
-> > 376832). The page has been writeably mapped 11ms ago (you are using ext2
-> > filesystem which was confusing my previous debug attempts so only this one
-> > has shown proper times) and written back 4ms ago (which should have
-> > writeprotected the pte) but we still have writeable pte now on which the
-> > assertion hits. So either page_mkclean() failed to clear the PTE or someone
-> > created new writeable PTE without telling ext4.
-> > 
-> > I'll attach a new version of debug patch to distinguish these two cases.
+On Wed 09-01-19 21:00:57, Kanchan Joshi wrote:
+> Towards supporing write-hints/streams for filesystem journal.                   
+>                                                                                 
+> Here is the v1 patch for background -                                           
+> https://marc.info/?l=linux-fsdevel&m=154444637519020&w=2                        
+>                                                                                 
+> Changes since v1:                                                               
+> - introduce four more hints for in-kernel use, as recommended by Dave chinner   
+>   & Jens axboe. This isolates kernel-mode hints from user-mode ones.            
+> - remove mount-option to specify write-hint, as recommended by Jan kara &       
+>   Dave chinner. Rather, FS always sets write-hint for journal. This gets ignored
+>   if device does not support stream.                                            
+> - Removed code-redundancy for write_dirty_buffer (Jan kara's review comment)
+
+I guess the series should also go to Jens since he was the original author
+of write-hint support so he has the best idea about the architecture.
+
+								Honza
+
+> Kanchan Joshi (4):
+>   block: Increase count of supported write-hints
+>   fs: introduce four macros for in-kernel hints
+>   fs: introduce APIs to enable sending write-hint with buffer-head
+>   fs/ext4,jbd2: add support for passing write-hint with journal.
 > 
-> The fact that we did try to write out the page at (bh_cleaned
-> 1452396217779)implies we should have cleared the _PAGE_WRITE bit right
-> (clear_page_dirty_for_io())? 
-
-Yes, clear_page_dirty_for_io() calls page_mkclean() which clears _PAGE_WRITE
-bit. So at b_cleaned time there should be no writeable PTE.
-
-> So we should either find that bit cleared in
-> pte (if we missed a related tlb flush and tlb still has that pte with
-> _PAGE_WRITE) or we find that set. In this case, we find _PAGE_WRITE set in
-> the pte during zap. Does that imply we did call finish_fault()? which should
-> have ideally resulted in we calling page_mkwrite().
-
-The race is not clear to me either but the rule is that if you are creating
-writeable PTE for a page, you must call ->page_mkwrite(). And from the debug
-output page_mkclean() was called and no ->page_mkwrite() after that so there
-should be no writeable PTE. But somehow there is one as zapping reports so we
-need to find out who and when creates it without calling ->page_mkwrite(). New
-version of my debug patch should tell us a bit more.
-
-Note that there are other places that play with PTEs other than fault - like
-page migration, mremap, mprotect, etc. All these seem to properly use PTE locks
-to serialize with page_mkclean() but well... reality is what it is and there
-must be bug somewhere :) After all there are close to 200 calls of set_pte_at()
-in the kernel...
-
+>  fs/buffer.c                 | 18 ++++++++++++++++--
+>  fs/ext4/super.c             |  2 ++
+>  fs/jbd2/commit.c            | 11 +++++++----
+>  fs/jbd2/journal.c           |  3 ++-
+>  fs/jbd2/revoke.c            |  3 ++-
+>  include/linux/blkdev.h      |  5 ++++-
+>  include/linux/buffer_head.h |  3 +++
+>  include/linux/fs.h          |  5 +++++
+>  include/linux/jbd2.h        |  8 ++++++++
+>  9 files changed, 49 insertions(+), 9 deletions(-)
+> 
+> -- 
+> 2.7.4
+> 
+> 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
