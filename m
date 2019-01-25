@@ -2,134 +2,131 @@ Return-Path: <SRS0=p9Mw=QB=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B42C8C282C3
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 00:35:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E093C282C3
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 02:02:27 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7D047218D9
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 00:35:27 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux-foundation.org header.i=@linux-foundation.org header.b="InXpXF9+"
+	by mail.kernel.org (Postfix) with ESMTP id 02F45218D2
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 02:02:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726815AbfAYAf1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 24 Jan 2019 19:35:27 -0500
-Received: from mail-lf1-f44.google.com ([209.85.167.44]:40299 "EHLO
-        mail-lf1-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726271AbfAYAf0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jan 2019 19:35:26 -0500
-Received: by mail-lf1-f44.google.com with SMTP id v5so5692213lfe.7
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Jan 2019 16:35:25 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=BnVIWA/bqxaBN7mZRvqsnanUFf4GDlcibE52RUtQMjk=;
-        b=InXpXF9+hhsBoLRbR4pMdXGqQe3cHhaCrz4rfHqoqarWQ5XUEL9rwAjAqHZD0K5YFT
-         rm4qqmF2qtCn3M0LyRYl1EJu278USw4lDP0snNn8FEjpJ+Pj2uxxQHMbgFu3Fi9NLJ14
-         wf07D97fgxquZ6Nlrt89ns54rxOFQsLPjHyxk=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=BnVIWA/bqxaBN7mZRvqsnanUFf4GDlcibE52RUtQMjk=;
-        b=mirA8QnOEXvEelZD5Ubj8cho6nNR8NNNrt2Dnn4kMHh9N1ecGOJyUzbm3xy1Zv+qB5
-         pX2hBw8LDw+GLh2iaBFxi9YYqgi3UqRICOkaf22QhDCiDQvrXvaNT3mMhDR61D9WvHGP
-         Dj0O4ySHJhpPmc5GKvhtdE/jjtNghpyR67I2iLRL8xQ0yLDG7PS5ra4ZIFNR+q1PO36L
-         zSU41wM+2KZZVF/BymiT6WeDU4JcyVx9KoPGv4oO43wkNvYBPRaCP2MKt/G1FU2KQn2U
-         CtBZ7h7NBfVHrCAzNMLfNwBLu5AHj5oaVF/IkArUp29Tndx67GSDzhYnrXYPtqp4QfNT
-         jhNg==
-X-Gm-Message-State: AJcUuke3WPn3o0UNZsfJDZuPtd2YdBZ/YEhPc+HKnZblBT1qvGetWVuC
-        D1kShNTV2Rgw0pXG5CPSC2Bw6ZYdqZGsBw==
-X-Google-Smtp-Source: ALg8bN7WXewMm0ynzzODLISJrGVBvtCqP0rXfKk7lh1nUzIxl8APFErOTEJQEKnB9VMDz9efj9hRvA==
-X-Received: by 2002:a19:3fcf:: with SMTP id m198mr6283187lfa.106.1548376524184;
-        Thu, 24 Jan 2019 16:35:24 -0800 (PST)
-Received: from mail-lf1-f44.google.com (mail-lf1-f44.google.com. [209.85.167.44])
-        by smtp.gmail.com with ESMTPSA id h12-v6sm1213187ljb.80.2019.01.24.16.35.22
-        for <linux-ext4@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 24 Jan 2019 16:35:22 -0800 (PST)
-Received: by mail-lf1-f44.google.com with SMTP id a16so5703652lfg.3
-        for <linux-ext4@vger.kernel.org>; Thu, 24 Jan 2019 16:35:22 -0800 (PST)
-X-Received: by 2002:a19:24c6:: with SMTP id k189mr6921466lfk.77.1548376522191;
- Thu, 24 Jan 2019 16:35:22 -0800 (PST)
+        id S1728199AbfAYCC0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 24 Jan 2019 21:02:26 -0500
+Received: from out30-45.freemail.mail.aliyun.com ([115.124.30.45]:40683 "EHLO
+        out30-45.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727983AbfAYCC0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 24 Jan 2019 21:02:26 -0500
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R411e4;CH=green;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01e07487;MF=xiaoguang.wang@linux.alibaba.com;NM=1;PH=DS;RN=4;SR=0;TI=SMTPD_---0TIxfOHb_1548381742;
+Received: from 30.5.112.244(mailfrom:xiaoguang.wang@linux.alibaba.com fp:SMTPD_---0TIxfOHb_1548381742)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Fri, 25 Jan 2019 10:02:23 +0800
+Subject: Re: [PATCH v2 2/2] ext4: fix slow writeback under dioread_nolock and
+ nodelalloc
+To:     Jan Kara <jack@suse.cz>, "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org, Liu Bo <bo.liu@linux.alibaba.com>
+References: <20181215054840.5960-1-xiaoguang.wang@linux.alibaba.com>
+ <20181215054840.5960-2-xiaoguang.wang@linux.alibaba.com>
+ <20190123062737.GC7597@mit.edu> <20190123124823.GE20927@quack2.suse.cz>
+From:   Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+Message-ID: <57434a9c-888b-1aea-9c44-1d20650959cd@linux.alibaba.com>
+Date:   Fri, 25 Jan 2019 10:02:22 +0800
+User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.4.0
 MIME-Version: 1.0
-References: <20190110051500.GA32361@mit.edu> <20190114234101.GQ27534@dastard>
- <20190123051017.GA8785@mit.edu> <20190124212544.GS6173@dastard>
- <CAHk-=wh7jq6U3+ou_FDujB-ipg9JcJAGSjEQ_niCwLG313x6UA@mail.gmail.com> <20190124232237.GH8785@mit.edu>
-In-Reply-To: <20190124232237.GH8785@mit.edu>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Fri, 25 Jan 2019 13:35:05 +1300
-X-Gmail-Original-Message-ID: <CAHk-=wjw+tAKu7fM3GwUX9i7LBFuvB=ohqXj+KgQQaW3pCzfxg@mail.gmail.com>
-Message-ID: <CAHk-=wjw+tAKu7fM3GwUX9i7LBFuvB=ohqXj+KgQQaW3pCzfxg@mail.gmail.com>
-Subject: Re: Proposal: A new fs-verity interface
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     Dave Chinner <david@fromorbit.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Biggers <ebiggers@kernel.org>,
-        linux-fscrypt@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20190123124823.GE20927@quack2.suse.cz>
+Content-Type: text/plain; charset=gbk; format=flowed
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Jan 25, 2019 at 12:22 PM Theodore Y. Ts'o <tytso@mit.edu> wrote:
->
->
-> > I understand that you don't want to load the whole merkle tree into
-> > memory, and that is the reason that you want to point to some "stable
-> > on disk" area, but the hole punching does seem to be a particularly
-> > nasty part of it. It would be much better to have the merkle data in
-> > some place where it doesn't then need to be hidden again, no?
->
-> It's not really a "hole punch", but we are moving the data around.
-> That's because Dave Chinner and Christoph demanded it.  The original
-> approach was to put it at the end of the file, and then hide it.  If
-> the question is "why hide the metadata", it's because it's metadata.
-> We certainly don't want to make it be visible as part of the file
-> stream.
+hi,
 
-But that's the whole hiding thing. Why do you feel you need to do
-that? Why not just leave it alone, and leave it visible, and say "hey,
-the merkle data for file X comes from here".
 
-Punching a hole, or moving it somewhere else, or hiding or, or
-whatever you want to do, all mean "you have to modify the filesystem".
-They also mean "you can't back up the original sanely any more and
-move it somewhere else".
+> On Wed 23-01-19 01:27:38, Theodore Y. Ts'o wrote:
+>> On Sat, Dec 15, 2018 at 01:48:40PM +0800, Xiaoguang Wang wrote:
+>>> With "nodelalloc", blocks are allocated at the time of writing, and with
+>>> "dioread_nolock", these allocated blocks are marked as unwritten as well,
+>>> so bh(s) attached to the blocks have BH_Unwritten and BH_Mapped.
+>>
+>> I've been looking at your patches, and it seems that a simpler way,
+>> perhaps more maintainable approach in the long term is to change how
+>> we write to newly allocated blocks.  Today, we have two ways of doing
+>> this:
+>>
+>> 1) In the dioread_nolock case, we allocate blocks, insert an entry in
+>> the extent tree with the blocks marked uninitialized, write the
+>> blocks, and then mark the blocks initialized.
+>>
+>> 2) In the !dioread_nolock case, we allocate blocks, insert an entry to
+>> the extent tree, write the blocks --- and if we start a commit, we
+>> write out all dirty pages associated with that inode (in the default
+>> data=writeback case) to avoid stale writes.
+>>
+>> So what if we change the dioread_nolock case to do write the blocks
+>> first, and *then* insert the entry into the extent tree?  This avoids
+>> stale data getting exposed, either by a direct I/O read, or after a
+>> crash (which means we avoid needing to do the force write-out).
+>>
+>> So what we would need to do is to pass a flag to ext4_map_blocks()
+>> which causes it to *not* make any on-disk changes.  Instead, it would
+>> track the fact that blocks have be reserved in the buddy bitmap (this
+>> is how we prevent blocks from being preallocated after they are
+>> deleted, but before the transaction has been committed), and the
+>> location of the assigned blocks in the extent_status tree.  Since no
+>> on-disk changes are being made, we wouldn't need to hold the
+>> transaction open.
+>>
+>> Then in the callback after the blocks are written, using the starting
+>> logical block number stored in the io_end structure, we either convert
+>> the unwritten extents or actually insert the newly allocated blocks in
+>> the extent tree and update the on-disk bitmap allocation bitmaps.
+>>
+>> Once we get this working, it should be easy to make dioread_nolock for
+>> 1k block sizes; it keeps the time that the handle open very short; and
+>> it completely obviates the need for data=writeback.
+>>
+>> What do folks think?
+> 
+> Hum, so there is the problem that adding extent to the extent tree may need
+> some block allocations for metadata. So we'd have to carry over delalloc
+> reservations upto the io-end time. But that should be doable, just needs
+> some work. Also in the dioread_nolock case we don't have problems with
+> page lock & page writeback vs transaction start deadlocks as I've described
+> in my another email regarding ext4_writepages(). So I don't see any hole in
+> this and the performance should be good. I like this!
+First sorry for late response, I was busy with some internal work.
+I really like your ideas, thanks both of you. Writing dirty pages while holding
+open jbd2 handle will result in some issues, for example, system load will be high,
+many tasks in the D state, some of them is stuck in wait_transaction_locked().
 
-Wouldn't it be much nicer to simple have a *separate* stream. If it's
-not an xattr, then maybe just a separate file entirely. A file that
-just contains the merkle data, and has no alignment things because
-there's no "it's at the end of the file that it describes" issues,
-it's just a standalone thing that is still visible so that you can
-copy the original data and it's still valid (even if the merkle tree
-then isn't _enabled_ in the copy, but now you could re-enable it in a
-new location).
+Currently I have tried some methods to fix this issue, for example, change
+MAX_WRITEPAGES_EXTENT_LEN to 256, then we can make sure that one bio will
+be generated at most, and this bio will be submitted after journal stop:
+		if (!ext4_handle_valid(handle) || handle->h_sync == 0) {
+			ext4_journal_stop(handle);
+			handle = NULL;
+			mpd.do_map = 0;
+		}
+		/* Submit prepared bio */
+		ext4_io_submit(&mpd.io_submit);
+After this change, the number of tasks in D state will decrease much,
+Of course, my method is not good, I just say writing diry pages while holding
+open jbd2 handle is not good :) and I believe that your ideas can fix this kind
+of problems, thanks again.
 
-> We could store the metadata somewhere else --- for example, we could
-> store it in another inode.  But inodes have overhead, and that would
-> mean using two inodes for every fs-verity protected files --- and we
-> don't need all of the other metadata (mtime, ctime, etc.) for the
-> Merkle tree.
+Regards,
+Xiaoguang Wang
 
-Well, if one of the issues is that the merkle data ends up being
-megabytes, I don't see this as being  a huge issue. Particularly since
-the alignemnt restrictions in the unified thing means that you still
-aren't exactly "packing" the merkle data efficiently to begin with..
 
-In fact, if you want to have merkle data for small files (where the
-merkle data itself is just a  few words), then having it in a separate
-file and as part of the inode inline data doesn't seem like it's
-likely any worse (and might be *better*) than having it at some block
-boundary due to alignment...
 
-Hmm?
+Regards,
+Xiaoguang Wang
 
-            Linus
+> 
+> 								Honza
+> 
