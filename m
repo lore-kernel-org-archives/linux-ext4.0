@@ -3,34 +3,34 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E0F34C282C6
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 12:27:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B07C8C282C0
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 12:27:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B1AE82085B
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 12:27:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8992B2085B
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 12:27:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727955AbfAYM1W (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 25 Jan 2019 07:27:22 -0500
-Received: from szxga07-in.huawei.com ([45.249.212.35]:36096 "EHLO huawei.com"
+        id S1727145AbfAYM1Y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 25 Jan 2019 07:27:24 -0500
+Received: from szxga07-in.huawei.com ([45.249.212.35]:36102 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727145AbfAYM1V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 25 Jan 2019 07:27:21 -0500
+        id S1726825AbfAYM1W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 25 Jan 2019 07:27:22 -0500
 Received: from DGGEMS411-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id C8CDF59771A5C5A8EEE6;
+        by Forcepoint Email with ESMTP id D4354F6DD218B2A79483;
         Fri, 25 Jan 2019 20:27:19 +0800 (CST)
 Received: from huawei.com (10.90.53.225) by DGGEMS411-HUB.china.huawei.com
  (10.3.19.211) with Microsoft SMTP Server id 14.3.408.0; Fri, 25 Jan 2019
- 20:27:11 +0800
+ 20:27:10 +0800
 From:   "zhangyi (F)" <yi.zhang@huawei.com>
 To:     <linux-ext4@vger.kernel.org>
 CC:     <tytso@mit.edu>, <jack@suse.cz>, <adilger.kernel@dilger.ca>,
         <yi.zhang@huawei.com>, <miaoxie@huawei.com>
-Subject: [PATCH v3 4/4] ext4: convert ext4_split_extent() to return requested length
-Date:   Fri, 25 Jan 2019 20:30:56 +0800
-Message-ID: <1548419456-4331-5-git-send-email-yi.zhang@huawei.com>
+Subject: [PATCH v3 1/4] jbd2: make sure dirty flag is cleared while revorking a buffer which belongs to older transaction
+Date:   Fri, 25 Jan 2019 20:30:53 +0800
+Message-ID: <1548419456-4331-2-git-send-email-yi.zhang@huawei.com>
 X-Mailer: git-send-email 2.7.4
 In-Reply-To: <1548419456-4331-1-git-send-email-yi.zhang@huawei.com>
 References: <1548419456-4331-1-git-send-email-yi.zhang@huawei.com>
@@ -43,66 +43,75 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-After we remove clean_bdev_aliases() calls which used to unmap extra
-blocks in ext4_ext_handle_unwritten_extents(), return extra initialized
-region in ext4_ext_convert_to_initialized() is no longer needed, so
-in order to simplify logic, this patch convert to return the requested
-size instead.
+Now, we capture a data corruption problem on ext4 while we're truncating
+an extent index block. Imaging that if we are revoking a buffer which
+has been journaled by the committing transaction, the buffer's jbddirty
+flag will not be cleared in jbd2_journal_forget(), so the commit code
+will set the buffer dirty flag again after refile the buffer.
+
+fsx                               kjournald2
+                                  jbd2_journal_commit_transaction
+jbd2_journal_revoke                commit phase 1~5...
+ jbd2_journal_forget
+   belongs to older transaction    commit phase 6
+   jbddirty not clear               __jbd2_journal_refile_buffer
+                                     __jbd2_journal_unfile_buffer
+                                      test_clear_buffer_jbddirty
+                                       mark_buffer_dirty
+
+Finally, if the freed extent index block was allocated again as data
+block by some other files, it may corrupt the file data after writing
+cached pages later, such as during unmount time. (In general,
+clean_bdev_aliases() related helpers should be invoked after
+re-allocation to prevent the above corruption, but unfortunately we
+missed it when zeroout the head of extra extent blocks in
+ext4_ext_handle_unwritten_extents()).
+
+This patch mark buffer as freed and set j_next_transaction to the new
+transaction when it already belongs to the committing transaction in
+jbd2_journal_forget(), so that commit code knows it should clear dirty
+bits when it is done with the buffer.
+
+This problem can be reproduced by xfstests generic/455 easily with
+seeds (3246 3247 3248 3249).
 
 Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+Cc: stable@vger.kernel.org
 ---
- fs/ext4/extents.c | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ fs/jbd2/transaction.c | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ffb72d8..ffe9671 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3456,9 +3456,8 @@ static int ext4_split_extent(handle_t *handle,
-  *    of the logical span [map->m_lblk, map->m_lblk + map->m_len).
-  *
-  * Post-conditions on success:
-- *  - the returned value is the number of blocks beyond map->l_lblk
-- *    that are allocated and initialized.
-- *    It is guaranteed to be >= map->m_len.
-+ *  - The returned value is the minimum number of requested blocks or
-+ *    initialized blocks. It is guaranteed to be <= map->m_len.
-  */
- static int ext4_ext_convert_to_initialized(handle_t *handle,
- 					   struct inode *inode,
-@@ -3700,7 +3699,6 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index f07f006..0c0cbda 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -1609,14 +1609,21 @@ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
+ 		/* However, if the buffer is still owned by a prior
+ 		 * (committing) transaction, we can't drop it yet... */
+ 		JBUFFER_TRACE(jh, "belongs to older transaction");
+-		/* ... but we CAN drop it from the new transaction if we
+-		 * have also modified it since the original commit. */
++		/* ... but we CAN drop it from the new transaction through
++		 * marking the buffer as freed and set j_next_transaction to
++		 * the new transaction, so that not only the commit code
++		 * knows it should clear dirty bits when it is done with the
++		 * buffer, but also we can avoid this buffer be checkpointed
++		 * without writing out before the new transaction complete. */
  
- 			split_map.m_len += split_map.m_lblk - ee_block;
- 			split_map.m_lblk = ee_block;
--			allocated = map->m_len;
- 		}
- 	}
- 
-@@ -3709,6 +3707,9 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
- 	if (err > 0)
- 		err = 0;
- out:
-+	if (allocated > map->m_len)
-+		allocated = map->m_len;
+-		if (jh->b_next_transaction) {
+-			J_ASSERT(jh->b_next_transaction == transaction);
++		set_buffer_freed(bh);
 +
- 	/* If we have gotten a failure, don't zero out status tree */
- 	if (!err) {
- 		err = ext4_zeroout_es(inode, &zero_ex1);
-@@ -4065,11 +4066,10 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
- 	if (ret <= 0) {
- 		err = ret;
- 		goto out2;
--	} else
--		allocated = ret;
-+	}
-+
-+	allocated = ret;
- 	map->m_flags |= EXT4_MAP_NEW;
--	if (allocated > map->m_len)
--		allocated = map->m_len;
- 	map->m_len = allocated;
++		if (!jh->b_next_transaction) {
+ 			spin_lock(&journal->j_list_lock);
+-			jh->b_next_transaction = NULL;
++			jh->b_next_transaction = transaction;
+ 			spin_unlock(&journal->j_list_lock);
++		} else {
++			J_ASSERT(jh->b_next_transaction == transaction);
  
- map_out:
+ 			/*
+ 			 * only drop a reference if this transaction modified
 -- 
 2.7.4
 
