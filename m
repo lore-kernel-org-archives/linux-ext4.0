@@ -2,62 +2,76 @@ Return-Path: <SRS0=p9Mw=QB=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5DF7AC282C6
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 16:24:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0CC49C282C0
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 18:09:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 1D853218F0
-	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 16:24:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D097F218B0
+	for <linux-ext4@archiver.kernel.org>; Fri, 25 Jan 2019 18:09:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726361AbfAYQYv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 25 Jan 2019 11:24:51 -0500
-Received: from mga06.intel.com ([134.134.136.31]:15129 "EHLO mga06.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726108AbfAYQYv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 25 Jan 2019 11:24:51 -0500
-X-Amp-Result: UNSCANNABLE
-X-Amp-File-Uploaded: False
-Received: from orsmga006.jf.intel.com ([10.7.209.51])
-  by orsmga104.jf.intel.com with ESMTP/TLS/DHE-RSA-AES256-GCM-SHA384; 25 Jan 2019 08:24:50 -0800
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="5.56,521,1539673200"; 
-   d="scan'208";a="111068853"
-Received: from unknown (HELO localhost.localdomain) ([10.232.112.69])
-  by orsmga006.jf.intel.com with ESMTP; 25 Jan 2019 08:24:49 -0800
-Date:   Fri, 25 Jan 2019 09:23:53 -0700
-From:   Keith Busch <keith.busch@intel.com>
-To:     Kanchan Joshi <joshi.k@samsung.com>
-Cc:     linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-nvme@lists.infradead.org,
-        jack@suse.com, david@fromorbit.com, tytso@mit.edu,
-        prakash.v@samsung.com
-Subject: Re: [PATCH v2 0/4] Write-hint for FS journal
-Message-ID: <20190125162353.GA11210@localhost.localdomain>
-References: <CGME20190109153328epcas2p4643cbdc7a2182b47893a2bcaa0778e17@epcas2p4.samsung.com>
- <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
-User-Agent: Mutt/1.9.1 (2017-09-22)
+        id S1729200AbfAYSJs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 25 Jan 2019 13:09:48 -0500
+Received: from smtprz14.163.net ([106.3.154.247]:1728 "EHLO smtp.tom.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729129AbfAYSJr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 25 Jan 2019 13:09:47 -0500
+Received: from 172.25.16.148 (unknown [172.25.16.148])
+        by freemail01.tom.com (Postfix) with ESMTP id BDB6C1C819B2
+        for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2019 22:01:11 +0800 (CST)
+Received: from 172.25.16.90 (HELO smtp.tom.com) ([172.25.16.90])
+          by localhost (TOM SMTP Server) with SMTP ID 1352252021
+          for <linux-ext4@vger.kernel.org>;
+          Fri, 25 Jan 2019 22:01:11 +0800 (CST)
+Received: from antispam1.tom.com (unknown [172.25.16.55])
+        by freemail01.tom.com (Postfix) with ESMTP id A04221C819AA
+        for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2019 22:01:11 +0800 (CST)
+Received: from antispam1.tom.com (antispam1.tom.com [127.0.0.1])
+        by antispam1.tom.com (Postfix) with ESMTP id A13DC10016C2
+        for <linux-ext4@vger.kernel.org>; Fri, 25 Jan 2019 22:01:11 +0800 (CST)
+X-Virus-Scanned: Debian amavisd-new at antispam1.tom.com
+Received: from antispam1.tom.com ([127.0.0.1])
+        by antispam1.tom.com (antispam1.tom.com [127.0.0.1]) (amavisd-new, port 10024)
+        with ESMTP id UyupXL4DP_6W for <linux-ext4@vger.kernel.org>;
+        Fri, 25 Jan 2019 22:01:10 +0800 (CST)
+Received: from localhost (unknown [222.209.19.163])
+        by antispam1.tom.com (Postfix) with ESMTPA id 58B691001670;
+        Fri, 25 Jan 2019 22:01:10 +0800 (CST)
+From:   Liu Xiang <liu.xiang6@zte.com.cn>
+To:     jack@suse.com
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        liuxiang_1999@126.com, Liu Xiang <liu.xiang6@zte.com.cn>
+Subject: [PATCH] ext2: Remove useless reset code
+Date:   Fri, 25 Jan 2019 22:01:04 +0800
+Message-Id: <1548424864-4647-1-git-send-email-liu.xiang6@zte.com.cn>
+X-Mailer: git-send-email 1.9.1
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Jan 09, 2019 at 09:00:57PM +0530, Kanchan Joshi wrote:
-> Towards supporing write-hints/streams for filesystem journal.                   
->                                                                                 
-> Here is the v1 patch for background -                                           
-> https://marc.info/?l=linux-fsdevel&m=154444637519020&w=2                        
->                                                                                 
-> Changes since v1:                                                               
-> - introduce four more hints for in-kernel use, as recommended by Dave chinner   
->   & Jens axboe. This isolates kernel-mode hints from user-mode ones.            
+If ((char *)de == dir_end) is true, the name_len will not be used
+in the subsequent routine. So the reset code can be removed.
 
-The nvme driver disables streams if the controller doesn't support
-BLK_MAX_WRITE_HINT number of streams, so this series breaks the feature
-for controllers that only support up to 4.
+Signed-off-by: Liu Xiang <liu.xiang6@zte.com.cn>
+---
+ fs/ext2/dir.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+index 3b8114d..5ec497f 100644
+--- a/fs/ext2/dir.c
++++ b/fs/ext2/dir.c
+@@ -517,7 +517,6 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
+ 		while ((char *)de <= kaddr) {
+ 			if ((char *)de == dir_end) {
+ 				/* We hit i_size */
+-				name_len = 0;
+ 				rec_len = chunk_size;
+ 				de->rec_len = ext2_rec_len_to_disk(chunk_size);
+ 				de->inode = 0;
+-- 
+1.9.1
+
