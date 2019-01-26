@@ -2,68 +2,90 @@ Return-Path: <SRS0=T0j3=QC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.0 required=3.0 tests=INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 75F2CC282C0
-	for <linux-ext4@archiver.kernel.org>; Sat, 26 Jan 2019 01:05:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DCE0BC282C7
+	for <linux-ext4@archiver.kernel.org>; Sat, 26 Jan 2019 16:03:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2023A21855
-	for <linux-ext4@archiver.kernel.org>; Sat, 26 Jan 2019 01:05:48 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=protonmail.ch header.i=@protonmail.ch header.b="ccjUFGed"
+	by mail.kernel.org (Postfix) with ESMTP id B0EFB218B0
+	for <linux-ext4@archiver.kernel.org>; Sat, 26 Jan 2019 16:03:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725975AbfAZBFr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 25 Jan 2019 20:05:47 -0500
-Received: from mail-40130.protonmail.ch ([185.70.40.130]:38073 "EHLO
-        mail-40130.protonmail.ch" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725550AbfAZBFr (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jan 2019 20:05:47 -0500
-Date:   Sat, 26 Jan 2019 01:05:41 +0000
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=protonmail.ch;
-        s=default; t=1548464745;
-        bh=HadiSusPsChtp3xvTKvNwnhHxeEdXOcaTRIABH0EPu8=;
-        h=Date:To:From:Reply-To:Subject:In-Reply-To:References:Feedback-ID:
-         From;
-        b=ccjUFGedo8PKqqvSE4bX9S0QlrENXgGeFMJ2Cy5q4nw5zi7wmPoidkQFnGA7+i4Rc
-         PnMaLu7DrSo/B5iaGhkTvPi8RjIH7fjXs3UGO3xAw0W2qWXCHk9+Q8S6Y5Dsqi/XhF
-         mn2dHn8aCPqiFIEgT31yyre7Gszr3pd3JzPxC6Lc=
-To:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-From:   Fedja Beader <fedja@protonmail.ch>
-Reply-To: Fedja Beader <fedja@protonmail.ch>
-Subject: Re: Mapping bad sectors to damaged files and metadata with debugfs
-Message-ID: <YSHl21eLrbp4cNJwsAVzgU1tw67IZVF8IPNLZ5XGrqi4kv3HOQbsyFCk52oq-f94umWsVjjEGxeF7tTAgS25wg==@protonmail.ch>
-In-Reply-To: <tiftrgc60XsZ86vnazKgWPb052qaGzAhH-SiNGKI5f7li-WQ29WzGYDSNwgTpgxgxRQY11lm5TBuCr_YaaDeFg==@protonmail.ch>
-References: <uXbvtHxFZd89nVEfBMggkMBdYrr0WN0i7BC8QsEC93nJ_ovrC5II6anYz3ECVZEGhhSNYspC4H-LlI8fMVv-FA==@protonmail.ch>
- <tiftrgc60XsZ86vnazKgWPb052qaGzAhH-SiNGKI5f7li-WQ29WzGYDSNwgTpgxgxRQY11lm5TBuCr_YaaDeFg==@protonmail.ch>
-Feedback-ID: -L-TZdAWyKm9T9TlpFzSU8fKTYzKLGsXsnnbxE45IGOq-K3Q56ZjHKtfgfHprDH4K4Ol3x8Z6XXNVjs0u_owvA==:Ext:ProtonMail
+        id S1726176AbfAZQDb convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 26 Jan 2019 11:03:31 -0500
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:39436 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726075AbfAZQDb (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sat, 26 Jan 2019 11:03:31 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A9B182D254
+        for <linux-ext4@vger.kernel.org>; Sat, 26 Jan 2019 16:03:30 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+        id 99C6F2D2C7; Sat, 26 Jan 2019 16:03:30 +0000 (UTC)
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date:   Sat, 26 Jan 2019 16:03:30 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: erhard_f@mailbox.org
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-201631-13602-Fklkg2piG9@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+X-Virus-Scanned: ClamAV using ClamSMTP
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-*bump*
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
+--- Comment #52 from erhard_f@mailbox.org ---
+(In reply to Aneesh Kumar KV from comment #49)
+> Can you try this change?
+> 
+> diff --git a/arch/powerpc/mm/tlb-radix.c b/arch/powerpc/mm/tlb-radix.c
+> index 6a23b9ebd2a1..c42f91ba7067 100644
+> --- a/arch/powerpc/mm/tlb-radix.c
+> +++ b/arch/powerpc/mm/tlb-radix.c
+> @@ -644,10 +644,12 @@ void radix__flush_tlb_page_psize(struct mm_struct *mm,
+> unsigned long vmaddr,
+>         preempt_disable();
+>         smp_mb(); /* see radix__flush_tlb_mm */
+>         if (!mm_is_thread_local(mm)) {
+> +/*
+>                 if (unlikely(mm_is_singlethreaded(mm))) {
+>                         exit_flush_lazy_tlbs(mm);
+>                         goto local;
+>                 }
+> +*/
+>                 _tlbie_va(vmaddr, pid, psize, RIC_FLUSH_TLB);
+>         } else {
+>  local:
 
-- Fedja
+Should I apply this in addition to Jan's patch or standalone?
 
-=E2=80=90=E2=80=90=E2=80=90=E2=80=90=E2=80=90=E2=80=90=E2=80=90 Original Me=
-ssage =E2=80=90=E2=80=90=E2=80=90=E2=80=90=E2=80=90=E2=80=90=E2=80=90
-On Saturday, April 21, 2018 9:50 PM, Fedja Beader <fedja@protonmail.ch> wro=
-te:
-
-> Is there a shortcut to "testb X", "icheck X" -> X Y, "ncheck Y" where X i=
-s the block inside a damaged filesystem? Is there a way for ncheck to also =
-tell me the offset into the file if the damage is inside a file?
->
-> In case the former is not possible, is it possible to somehow turn down d=
-ebugfs's verbosity so it can be automated more easily?
->
-> -Fedja
-
-
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
