@@ -6,73 +6,84 @@ X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7740FC282CD
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 14:48:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 15020C282C8
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 14:51:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 518AF2082E
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 14:48:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D951A20844
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 14:51:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726735AbfA1Osv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Jan 2019 09:48:51 -0500
-Received: from mx2.suse.de ([195.135.220.15]:57096 "EHLO mx1.suse.de"
+        id S1726714AbfA1OvH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Jan 2019 09:51:07 -0500
+Received: from mx2.suse.de ([195.135.220.15]:57378 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726266AbfA1Osu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 28 Jan 2019 09:48:50 -0500
+        id S1726647AbfA1OvG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 28 Jan 2019 09:51:06 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 9D61AAE5D;
-        Mon, 28 Jan 2019 14:48:49 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 8B3DFAEF3;
+        Mon, 28 Jan 2019 14:51:05 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 71D281E3FEF; Mon, 28 Jan 2019 15:48:47 +0100 (CET)
-Date:   Mon, 28 Jan 2019 15:48:47 +0100
+        id 3FA621E3FEF; Mon, 28 Jan 2019 15:51:05 +0100 (CET)
+Date:   Mon, 28 Jan 2019 15:51:05 +0100
 From:   Jan Kara <jack@suse.cz>
-To:     Liu Xiang <liu.xiang6@zte.com.cn>
-Cc:     jack@suse.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, liuxiang_1999@126.com
-Subject: Re: [PATCH] ext2: Remove useless reset code
-Message-ID: <20190128144847.GG27972@quack2.suse.cz>
-References: <1548424864-4647-1-git-send-email-liu.xiang6@zte.com.cn>
+To:     Mathieu Malaterre <malat@debian.org>
+Cc:     Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] ext2: Annotate implicit fall through in
+ __ext2_truncate_blocks
+Message-ID: <20190128145105.GA5858@quack2.suse.cz>
+References: <20190124180504.19912-1-malat@debian.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1548424864-4647-1-git-send-email-liu.xiang6@zte.com.cn>
+In-Reply-To: <20190124180504.19912-1-malat@debian.org>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 25-01-19 22:01:04, Liu Xiang wrote:
-> If ((char *)de == dir_end) is true, the name_len will not be used
-> in the subsequent routine. So the reset code can be removed.
+On Thu 24-01-19 19:05:04, Mathieu Malaterre wrote:
+> There is a plan to build the kernel with -Wimplicit-fallthrough and
+> these places in the code produced warnings (W=1).
 > 
-> Signed-off-by: Liu Xiang <liu.xiang6@zte.com.cn>
+> This commit removes the following warnings:
+> 
+>   fs/ext2/inode.c:1237:7: warning: this statement may fall through [-Wimplicit-fallthrough=]
+>   fs/ext2/inode.c:1244:7: warning: this statement may fall through [-Wimplicit-fallthrough=]
+> 
+> Signed-off-by: Mathieu Malaterre <malat@debian.org>
 
-Thanks for the patch. I agree with your analysis but I prefer to keep the
-code as is - it prevents warnings about uninitialized variable being used
-for compilers than cannot infer that and also for humans reading the code
-is easier this way.
+Thanks for the patch! I've added it to my tree.
 
 								Honza
 
 > ---
->  fs/ext2/dir.c | 1 -
->  1 file changed, 1 deletion(-)
+>  fs/ext2/inode.c | 2 ++
+>  1 file changed, 2 insertions(+)
 > 
-> diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-> index 3b8114d..5ec497f 100644
-> --- a/fs/ext2/dir.c
-> +++ b/fs/ext2/dir.c
-> @@ -517,7 +517,6 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
->  		while ((char *)de <= kaddr) {
->  			if ((char *)de == dir_end) {
->  				/* We hit i_size */
-> -				name_len = 0;
->  				rec_len = chunk_size;
->  				de->rec_len = ext2_rec_len_to_disk(chunk_size);
->  				de->inode = 0;
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index e4bb9386c045..e64029b1bd50 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -1239,6 +1239,7 @@ static void __ext2_truncate_blocks(struct inode *inode, loff_t offset)
+>  				mark_inode_dirty(inode);
+>  				ext2_free_branches(inode, &nr, &nr+1, 1);
+>  			}
+> +			/* fall through */
+>  		case EXT2_IND_BLOCK:
+>  			nr = i_data[EXT2_DIND_BLOCK];
+>  			if (nr) {
+> @@ -1246,6 +1247,7 @@ static void __ext2_truncate_blocks(struct inode *inode, loff_t offset)
+>  				mark_inode_dirty(inode);
+>  				ext2_free_branches(inode, &nr, &nr+1, 2);
+>  			}
+> +			/* fall through */
+>  		case EXT2_DIND_BLOCK:
+>  			nr = i_data[EXT2_TIND_BLOCK];
+>  			if (nr) {
 > -- 
-> 1.9.1
+> 2.19.2
 > 
 > 
 -- 
