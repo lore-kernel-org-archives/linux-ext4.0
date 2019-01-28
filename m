@@ -2,113 +2,116 @@ Return-Path: <SRS0=NyoO=QE=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 39400C282C8
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 15:26:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 51468C282C8
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 15:39:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0B83020881
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 15:26:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1D3C42148E
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 15:39:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726735AbfA1P0R (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Jan 2019 10:26:17 -0500
-Received: from mx2.suse.de ([195.135.220.15]:34930 "EHLO mx1.suse.de"
+        id S1726694AbfA1Pju (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Jan 2019 10:39:50 -0500
+Received: from mx2.suse.de ([195.135.220.15]:36762 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726678AbfA1P0R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 28 Jan 2019 10:26:17 -0500
+        id S1726266AbfA1Pju (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 28 Jan 2019 10:39:50 -0500
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 95A03AE04;
-        Mon, 28 Jan 2019 15:26:16 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 7B8FCAD1A;
+        Mon, 28 Jan 2019 15:39:49 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 6EF9B1E3FEF; Mon, 28 Jan 2019 16:26:16 +0100 (CET)
-Date:   Mon, 28 Jan 2019 16:26:16 +0100
+        id 2FBBD1E3FEF; Mon, 28 Jan 2019 16:39:49 +0100 (CET)
+Date:   Mon, 28 Jan 2019 16:39:49 +0100
 From:   Jan Kara <jack@suse.cz>
 To:     "zhangyi (F)" <yi.zhang@huawei.com>
 Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu, jack@suse.cz,
         adilger.kernel@dilger.ca, miaoxie@huawei.com
-Subject: Re: [PATCH v3 2/4] jbd2: discard dirty data when forgetting an
- un-journalled buffer
-Message-ID: <20190128152616.GF5858@quack2.suse.cz>
+Subject: Re: [PATCH v3 4/4] ext4: convert ext4_split_extent() to return
+ requested length
+Message-ID: <20190128153949.GG5858@quack2.suse.cz>
 References: <1548419456-4331-1-git-send-email-yi.zhang@huawei.com>
- <1548419456-4331-3-git-send-email-yi.zhang@huawei.com>
+ <1548419456-4331-5-git-send-email-yi.zhang@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1548419456-4331-3-git-send-email-yi.zhang@huawei.com>
+In-Reply-To: <1548419456-4331-5-git-send-email-yi.zhang@huawei.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri 25-01-19 20:30:54, zhangyi (F) wrote:
-> We do not unmap and clear dirty flag when forgetting a buffer without
-> journal or does not belongs to any transaction, so the invalid dirty
-> data may still be written to the disk later. It's fine if the
-> corresponding block is never used before the next mount, and it's also
-> fine that we invoke clean_bdev_aliases() related functions to unmap
-> the block device mapping when re-allocating such freed block as data
-> block. But this logic is somewhat fragile and risky that may lead to
-> data corruption if we forget to clean bdev aliases. So, It's better to
-> discard dirty data during forget time.
+On Fri 25-01-19 20:30:56, zhangyi (F) wrote:
+> After we remove clean_bdev_aliases() calls which used to unmap extra
+> blocks in ext4_ext_handle_unwritten_extents(), return extra initialized
+> region in ext4_ext_convert_to_initialized() is no longer needed, so
+> in order to simplify logic, this patch convert to return the requested
+> size instead.
 > 
-> We have been already handled all the cases of forgetting journalled
-> buffer, this patch deal with the remaining two cases.
-> 
-> - buffer is not journalled yet,
-> - buffer is journalled but doesn't belongs to any transaction.
-> 
-> We invoke __bforget() instead of __brelese() when forgetting an
-> un-journalled buffer in jbd2_journal_forget(). After this patch we can
-> remove all clean_bdev_aliases() related calls in ext4.
-> 
-> Suggested-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
 
-Thanks for the patch! Just one small comment below:
-
-> +		/*
-> +		 * The buffer is still not written to disk, we should
-> +		 * attach this buffer to current transaction to prevent
-> +		 * missing writing back when doing checkpoint before
-> +		 * the current transaction complete submittion.
-> +		 */
-> +		__jbd2_journal_temp_unlink_buffer(jh);
-
-Calling __jbd2_journal_temp_unlink_buffer() is not needed when you know the
-buffer does not belong to any transaction. Otherwise the patch looks good
-to me so feel free to add:
+Looks good to me. You can add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
-after fixing this.
-
 								Honza
 
-> +		clear_buffer_dirty(bh);
-> +		__jbd2_journal_file_buffer(jh, transaction, BJ_Forget);
-> +		spin_unlock(&journal->j_list_lock);
+> ---
+>  fs/ext4/extents.c | 16 ++++++++--------
+>  1 file changed, 8 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index ffb72d8..ffe9671 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3456,9 +3456,8 @@ static int ext4_split_extent(handle_t *handle,
+>   *    of the logical span [map->m_lblk, map->m_lblk + map->m_len).
+>   *
+>   * Post-conditions on success:
+> - *  - the returned value is the number of blocks beyond map->l_lblk
+> - *    that are allocated and initialized.
+> - *    It is guaranteed to be >= map->m_len.
+> + *  - The returned value is the minimum number of requested blocks or
+> + *    initialized blocks. It is guaranteed to be <= map->m_len.
+>   */
+>  static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  					   struct inode *inode,
+> @@ -3700,7 +3699,6 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  
+>  			split_map.m_len += split_map.m_lblk - ee_block;
+>  			split_map.m_lblk = ee_block;
+> -			allocated = map->m_len;
+>  		}
 >  	}
 >  
-> -not_jbd:
->  	jbd_unlock_bh_state(bh);
->  	__brelse(bh);
->  drop:
-> @@ -1643,6 +1673,11 @@ int jbd2_journal_forget (handle_t *handle, struct buffer_head *bh)
->  		handle->h_buffer_credits++;
->  	}
->  	return err;
+> @@ -3709,6 +3707,9 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  	if (err > 0)
+>  		err = 0;
+>  out:
+> +	if (allocated > map->m_len)
+> +		allocated = map->m_len;
 > +
-> +not_jbd:
-> +	jbd_unlock_bh_state(bh);
-> +	__bforget(bh);
-> +	goto drop;
->  }
+>  	/* If we have gotten a failure, don't zero out status tree */
+>  	if (!err) {
+>  		err = ext4_zeroout_es(inode, &zero_ex1);
+> @@ -4065,11 +4066,10 @@ ext4_ext_handle_unwritten_extents(handle_t *handle, struct inode *inode,
+>  	if (ret <= 0) {
+>  		err = ret;
+>  		goto out2;
+> -	} else
+> -		allocated = ret;
+> +	}
+> +
+> +	allocated = ret;
+>  	map->m_flags |= EXT4_MAP_NEW;
+> -	if (allocated > map->m_len)
+> -		allocated = map->m_len;
+>  	map->m_len = allocated;
 >  
->  /**
+>  map_out:
 > -- 
 > 2.7.4
 > 
