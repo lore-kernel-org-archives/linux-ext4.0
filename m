@@ -1,79 +1,70 @@
-Return-Path: <SRS0=bsag=QD=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=NyoO=QE=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D783C282CB
-	for <linux-ext4@archiver.kernel.org>; Sun, 27 Jan 2019 14:48:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A7BC3C282CF
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 12:47:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F3414214D8
-	for <linux-ext4@archiver.kernel.org>; Sun, 27 Jan 2019 14:48:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7A30B20881
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 12:47:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726947AbfA0Osp convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 27 Jan 2019 09:48:45 -0500
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:34844 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726535AbfA0Oso (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 27 Jan 2019 09:48:44 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id EBFED2AE9E
-        for <linux-ext4@vger.kernel.org>; Sun, 27 Jan 2019 14:48:43 +0000 (UTC)
-Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id D85522AEAE; Sun, 27 Jan 2019 14:48:43 +0000 (UTC)
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date:   Sun, 27 Jan 2019 14:48:42 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: erhard_f@mailbox.org
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: attachments.isobsolete attachments.created
-Message-ID: <bug-201631-13602-pt6heZb3wM@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1726803AbfA1MrM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Jan 2019 07:47:12 -0500
+Received: from mx2.suse.de ([195.135.220.15]:36582 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726647AbfA1MrM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 28 Jan 2019 07:47:12 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 9D9F4AC70;
+        Mon, 28 Jan 2019 12:47:10 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id F07AD1E3FEF; Mon, 28 Jan 2019 13:47:09 +0100 (CET)
+Date:   Mon, 28 Jan 2019 13:47:09 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Keith Busch <keith.busch@intel.com>
+Cc:     Kanchan Joshi <joshi.k@samsung.com>, linux-fsdevel@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nvme@lists.infradead.org, jack@suse.com, david@fromorbit.com,
+        tytso@mit.edu, prakash.v@samsung.com
+Subject: Re: [PATCH v2 0/4] Write-hint for FS journal
+Message-ID: <20190128124709.GB27972@quack2.suse.cz>
+References: <CGME20190109153328epcas2p4643cbdc7a2182b47893a2bcaa0778e17@epcas2p4.samsung.com>
+ <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
+ <20190125162353.GA11210@localhost.localdomain>
 MIME-Version: 1.0
-X-Virus-Scanned: ClamAV using ClamSMTP
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190125162353.GA11210@localhost.localdomain>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+On Fri 25-01-19 09:23:53, Keith Busch wrote:
+> On Wed, Jan 09, 2019 at 09:00:57PM +0530, Kanchan Joshi wrote:
+> > Towards supporing write-hints/streams for filesystem journal.                   
+> >                                                                                 
+> > Here is the v1 patch for background -                                           
+> > https://marc.info/?l=linux-fsdevel&m=154444637519020&w=2                        
+> >                                                                                 
+> > Changes since v1:                                                               
+> > - introduce four more hints for in-kernel use, as recommended by Dave chinner   
+> >   & Jens axboe. This isolates kernel-mode hints from user-mode ones.            
+> 
+> The nvme driver disables streams if the controller doesn't support
+> BLK_MAX_WRITE_HINT number of streams, so this series breaks the feature
+> for controllers that only support up to 4.
 
-erhard_f@mailbox.org changed:
+Right. Do you know if there are such controllers? Or are you just afraid
+that there could be?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
- Attachment #280679|0                           |1
-        is obsolete|                            |
-
---- Comment #53 from erhard_f@mailbox.org ---
-Created attachment 280809
-  --> https://bugzilla.kernel.org/attachment.cgi?id=280809&action=edit
-journalctl -k (5.0-rc3 on a Talos II)
-
-Results with Jans v4 patch.
-
+									Honza
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
