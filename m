@@ -6,21 +6,21 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,
 	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 207ACC282C8
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 21:32:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A6AEC282CD
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 21:33:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E487821738
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 21:32:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C82C021738
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 21:33:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728248AbfA1Vc4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Jan 2019 16:32:56 -0500
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:58218 "EHLO
+        id S1728257AbfA1Vc7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Jan 2019 16:32:59 -0500
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:58238 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727156AbfA1Vc4 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jan 2019 16:32:56 -0500
+        with ESMTP id S1727156AbfA1Vc7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jan 2019 16:32:59 -0500
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id B12C727FB81
+        with ESMTPSA id D925827FB83
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     tytso@mit.edu
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -28,9 +28,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         samba-technical@lists.samba.org, jlayton@kernel.org,
         bfields@fieldses.org, paulus@samba.org,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RFC v5 08/11] ext4: Include encoding information in the superblock
-Date:   Mon, 28 Jan 2019 16:32:20 -0500
-Message-Id: <20190128213223.31512-9-krisman@collabora.com>
+Subject: [PATCH RFC v5 09/11] ext4: Support encoding-aware file name lookups
+Date:   Mon, 28 Jan 2019 16:32:21 -0500
+Message-Id: <20190128213223.31512-10-krisman@collabora.com>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190128213223.31512-1-krisman@collabora.com>
 References: <20190128213223.31512-1-krisman@collabora.com>
@@ -43,245 +43,539 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-Support for encoding is considered an incompatible feature, since it has
-potential to create collisions of file names in existing filesystems.
-If the feature flag is not enabled, the entire filesystem will operate
-on opaque byte sequences, respecting the original behavior.
+This patch implements the actual support for encoding-aware file name
+lookups in ext4, based on the feature bit and the encoding stored in the
+superblock.
 
-The s_encoding field stores a magic number indicating the encoding
-format and version used globally by file and directory names in the
-filesystem.  The s_encoding_flags defines policies for using the charset
-encoding, like how to handle invalid sequences.  The magic number is
-mapped to the exact charset table, but the mapping is specific to ext4.
-Since we don't have any commitment to support old encodings, the only
-encoding I am supporting right now is utf8-11.0.
+A filesystem that has the fname_encoding feature set is able to find
+files even if the name used by userspace is not a byte per byte match,
+but is an equivalent unicode string.  This operation will be called and
+inexact-match name search.
 
-The current implementation prevents the user from enabling encoding and
-per-directory encryption on the same filesystem at the same time.  The
-incompatibility between these features lies in how we do efficient
-directory searches when we cannot be sure the encryption of the user
-provided fname will match the actual hash stored in the disk without
-decrypting every directory entry, because of normalization cases.  My
-quickest solution is to simply block the concurrent use of these
-features for now, and enable it later, once we have a better solution.
+* dcache handling:
+
+Ext4 only stores the first equivalent name dentry used in the
+dcache. This is done to prevent unintentional duplication of dentries in
+the dcache, while also allowing the VFS code to quickly find the right
+entry in the cache despite what equivalent string was used without
+resorting to ->lookup().
+
+d_hash() is implemented as the hash of the normalized string, such that
+we always have a well-known bucket for all the equivalencies of the same
+string. d_compare uses the nls_strncmp() infrastructure, which should
+handle the comparison of equivalent names as well.  If the filesystem's
+normalization type is PLAIN, though, we can just reuse the VFS hash.
+
+For now, negative lookups are not inserted in the dcache, since they
+would need to be invalidated anyway, because we can't trust missing file
+dentries.  This is bad for performance but requires some leveraging of
+the vfs layer to fix.  We can live without that for now, and so does
+everyone else.
+
+* on-disk data:
+
+Despite using a specific version of the name as the internal
+representation within the dcache, the name stored and fetch from the
+disk is a byte-per-byte match with what the user requested, making this
+implementation Name-preserving. i.e. no actual information is lost when
+writing to the storage.
+
+DX is supported by modifying the hashes to make them encoding-aware.
+The new disk hashes are also calculated as the hash of the normalized
+string, instead of the string directly.  This allows us to efficiently
+search for file names in the htree without requiring the user to provide
+the exact name.
+
+* Dealing with invalid sequences:
+
+By default, when a invalid UTF-8 sequence is identified, ext4 will treat
+it as an opaque byte sequence, ignoring the encoding and reverting to
+the old behavior for that unique file.  This means that inexact-match
+lookups and (future) casefold will not work for that file only.  An
+optional bit can be set in the superblock telling the filesystem code
+and userspace tools to enforce the encoding.  When that flag is set, any
+attempt to create a file name using an invalid UTF-8 sequence will fail.
+
+* Normalization algorithm:
+
+The UTF-8 algorithm used to lookup and compare strings in ext4 is
+implemented by fs/unicode, and is based on a previous developed by SGI.
+It implements the Canonical decomposition (NFD) algorithm described by
+the Unicode specification 11.0, or higher, combined with the elimination
+of ignorable code points (NFDi) as documented in fs/unicode/utf8_norm.c.
+
+NFD seems to be the best normalization method because:
+
+  - It has a lower cost than NFC/NFKC (which requires
+    decomposing to NFD as an intermediary step)
+  - It doesn't eliminate important semantic meaning like NFKD.
+
+But:
+
+  - It ignores valid equivalent sequences in some languages, which
+  would be invalid on anothers: the ff ligature, in o_ff_i_c_e, and the
+  usual spelling o_f_f_i_c_e, for instance, will no longer match.  On
+  the other hand, the ash grapheme (formed by a ligature of AE )
+  can be represented as a different letter than A plus E, which is
+  correct in Danish, Norwegian, Icelandic, and Faroese.
+
+  - This implementation is not linguistic accurate, because different
+    languages have conflicting rules, which would require the
+    specialization of the filesystem to a given locale, which brings all
+    sorts of problems for removable media and for users who use more
+    than one language.
 
 Changes since v4:
-  - Move from fs/nls to fs/unicode
+  - Migrate NFKD -> NFD
 
 Changes since v2:
-  - Split superblock bitfield reservation into another patch.
-  - Rename s_ioencoding -> s_encoding
-  - Remove encoding_info from in-memory superblock.
+  - Don't use d_add_ci.
+  - Squash the dcache hooks into this patch.
+  - Rename sbi->encoding -> sbi->s_encoding.
 
 Changes since v1:
+  - Support normalized htree hashes.
   - Guard code with CONFIG_NLS.
-  - Use 16 bits for s_ioencoding.
-  - Split mount option from this patch
+  - Use qstr->len instead of strlen in dcache hookups.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/ext4/ext4.h  | 21 +++++++++++-
- fs/ext4/super.c | 85 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 105 insertions(+), 1 deletion(-)
+ fs/ext4/dir.c    |  40 +++++++++++++++++++
+ fs/ext4/ext4.h   |  12 +++++-
+ fs/ext4/hash.c   |  35 ++++++++++++++++-
+ fs/ext4/ialloc.c |   2 +-
+ fs/ext4/inline.c |   2 +-
+ fs/ext4/namei.c  | 100 +++++++++++++++++++++++++++++++++++++++++------
+ fs/ext4/super.c  |   6 +++
+ 7 files changed, 181 insertions(+), 16 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 3f89d0ab08fc..683fa2fe4b38 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1311,7 +1311,9 @@ struct ext4_super_block {
- 	__u8	s_first_error_time_hi;
- 	__u8	s_last_error_time_hi;
- 	__u8	s_pad[2];
--	__le32	s_reserved[96];		/* Padding to the end of the block */
-+	__le16  s_encoding;		/* Filename charset encoding */
-+	__le16  s_encoding_flags;	/* Filename charset encoding flags */
-+	__le32	s_reserved[95];		/* Padding to the end of the block */
- 	__le32	s_checksum;		/* crc32c(superblock) */
- };
- 
-@@ -1336,6 +1338,16 @@ struct ext4_super_block {
- /* Number of quota types we support */
- #define EXT4_MAXQUOTAS 3
- 
-+#define EXT4_ENC_UTF8_11_0	1
-+
-+/*
-+ * Flags for ext4_sb_info.s_encoding_flags.
-+ */
-+#define EXT4_ENC_STRICT_MODE_FL	(1 << 0)
-+
-+#define ext4_has_strict_mode(sbi) \
-+	(sbi->s_encoding_flags & EXT4_ENC_STRICT_MODE_FL)
-+
- /*
-  * fourth extended-fs super-block data in memory
-  */
-@@ -1385,6 +1397,10 @@ struct ext4_sb_info {
- 	struct kobject s_kobj;
- 	struct completion s_kobj_unregister;
- 	struct super_block *s_sb;
-+#ifdef CONFIG_UNICODE
-+	struct unicode_map *s_encoding;
-+	__u16 s_encoding_flags;
-+#endif
- 
- 	/* Journaling */
- 	struct journal_s *s_journal;
-@@ -1661,6 +1677,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_INCOMPAT_LARGEDIR		0x4000 /* >2GB or 3-lvl htree */
- #define EXT4_FEATURE_INCOMPAT_INLINE_DATA	0x8000 /* data in inode */
- #define EXT4_FEATURE_INCOMPAT_ENCRYPT		0x10000
-+#define EXT4_FEATURE_INCOMPAT_FNAME_ENCODING	0x20000
- 
- #define EXT4_FEATURE_COMPAT_FUNCS(name, flagname) \
- static inline bool ext4_has_feature_##name(struct super_block *sb) \
-@@ -1749,6 +1766,7 @@ EXT4_FEATURE_INCOMPAT_FUNCS(csum_seed,		CSUM_SEED)
- EXT4_FEATURE_INCOMPAT_FUNCS(largedir,		LARGEDIR)
- EXT4_FEATURE_INCOMPAT_FUNCS(inline_data,	INLINE_DATA)
- EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
-+EXT4_FEATURE_INCOMPAT_FUNCS(fname_encoding,	FNAME_ENCODING)
- 
- #define EXT2_FEATURE_COMPAT_SUPP	EXT4_FEATURE_COMPAT_EXT_ATTR
- #define EXT2_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
-@@ -1776,6 +1794,7 @@ EXT4_FEATURE_INCOMPAT_FUNCS(encrypt,		ENCRYPT)
- 					 EXT4_FEATURE_INCOMPAT_MMP | \
- 					 EXT4_FEATURE_INCOMPAT_INLINE_DATA | \
- 					 EXT4_FEATURE_INCOMPAT_ENCRYPT | \
-+					 EXT4_FEATURE_INCOMPAT_FNAME_ENCODING | \
- 					 EXT4_FEATURE_INCOMPAT_CSUM_SEED | \
- 					 EXT4_FEATURE_INCOMPAT_LARGEDIR)
- #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 53ff6c2a26ed..bcc2bc192403 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -42,6 +42,7 @@
- #include <linux/cleancache.h>
- #include <linux/uaccess.h>
+diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
+index f93f9881ec18..c8d2669e17dc 100644
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -26,6 +26,7 @@
+ #include <linux/buffer_head.h>
+ #include <linux/slab.h>
  #include <linux/iversion.h>
 +#include <linux/unicode.h>
+ #include "ext4.h"
+ #include "xattr.h"
  
- #include <linux/kthread.h>
- #include <linux/freezer.h>
-@@ -1022,6 +1023,9 @@ static void ext4_put_super(struct super_block *sb)
- 		crypto_free_shash(sbi->s_chksum_driver);
- 	kfree(sbi->s_blockgroup_lock);
- 	fs_put_dax(sbi->s_daxdev);
+@@ -662,3 +663,42 @@ const struct file_operations ext4_dir_operations = {
+ 	.open		= ext4_dir_open,
+ 	.release	= ext4_release_dir,
+ };
++
 +#ifdef CONFIG_UNICODE
-+	utf8_unload(sbi->s_encoding);
++static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
++			  const char *str, const struct qstr *name)
++{
++	struct qstr qstr = {.name = str, .len = len };
++
++	return ext4_encoding_cmp(dentry->d_parent->d_inode, name, &qstr);
++}
++
++static int ext4_d_hash(const struct dentry *dentry, struct qstr *str)
++{
++	const struct ext4_sb_info *sbi = EXT4_SB(dentry->d_sb);
++	const struct unicode_map *um = sbi->s_encoding;
++	unsigned char *norm;
++	int len, ret = 0;
++
++	norm = kmalloc(PATH_MAX, GFP_ATOMIC);
++	if (!norm)
++		return -ENOMEM;
++
++	len = utf8_normalize(um, str, norm, PATH_MAX);
++
++	if (len < 0) {
++		if (ext4_has_strict_mode(sbi))
++			ret = -EINVAL;
++		goto out;
++	}
++	str->hash = full_name_hash(dentry, norm, len);
++out:
++	kfree(norm);
++	return ret;
++}
++
++const struct dentry_operations ext4_dentry_ops = {
++	.d_hash = ext4_d_hash,
++	.d_compare = ext4_d_compare,
++};
 +#endif
- 	kfree(sbi);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 683fa2fe4b38..009fab63c8e1 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -2394,8 +2394,8 @@ extern int ext4_check_all_de(struct inode *dir, struct buffer_head *bh,
+ extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
+ 
+ /* hash.c */
+-extern int ext4fs_dirhash(const char *name, int len, struct
+-			  dx_hash_info *hinfo);
++extern int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
++			  struct dx_hash_info *hinfo);
+ 
+ /* ialloc.c */
+ extern struct inode *__ext4_new_inode(handle_t *, struct inode *, umode_t,
+@@ -2979,6 +2979,10 @@ static inline void ext4_unlock_group(struct super_block *sb,
+ /* dir.c */
+ extern const struct file_operations ext4_dir_operations;
+ 
++#ifdef CONFIG_UNICODE
++extern const struct dentry_operations ext4_dentry_ops;
++#endif
++
+ /* file.c */
+ extern const struct inode_operations ext4_file_inode_operations;
+ extern const struct file_operations ext4_file_operations;
+@@ -3071,6 +3075,10 @@ extern void initialize_dirent_tail(struct ext4_dir_entry_tail *t,
+ extern int ext4_handle_dirty_dirent_node(handle_t *handle,
+ 					 struct inode *inode,
+ 					 struct buffer_head *bh);
++extern int ext4_encoding_cmp(const struct inode *parent,
++			     const struct qstr *name,
++			     const struct qstr *entry);
++
+ #define S_SHIFT 12
+ static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
+ 	[S_IFREG >> S_SHIFT]	= EXT4_FT_REG_FILE,
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index e22dcfab308b..12a7b0eda132 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include <linux/fs.h>
++#include <linux/unicode.h>
+ #include <linux/compiler.h>
+ #include <linux/bitops.h>
+ #include "ext4.h"
+@@ -196,7 +197,8 @@ static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
+  * represented, and whether or not the returned hash is 32 bits or 64
+  * bits.  32 bit hashes will return 0 for the minor hash.
+  */
+-int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
++static int __ext4fs_dirhash(const char *name, int len,
++			    struct dx_hash_info *hinfo)
+ {
+ 	__u32	hash;
+ 	__u32	minor_hash = 0;
+@@ -266,3 +268,34 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 	hinfo->minor_hash = minor_hash;
+ 	return 0;
+ }
++
++int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
++		   struct dx_hash_info *hinfo)
++{
++#ifdef CONFIG_UNICODE
++	const struct unicode_map *um = EXT4_SB(dir->i_sb)->s_encoding;
++	int r, dlen;
++	unsigned char *buff;
++	struct qstr qstr = {.name = name, .len = len };
++
++	if (len && um) {
++		buff = kzalloc(sizeof(char) * PATH_MAX, GFP_KERNEL);
++		if (!buff)
++			return -1;
++
++		dlen = utf8_normalize(um, &qstr, buff, PATH_MAX);
++
++		if (dlen < 0) {
++			kfree(buff);
++			goto opaque_seq;
++		}
++
++		r = __ext4fs_dirhash(buff, dlen, hinfo);
++
++		kfree(buff);
++		return r;
++	}
++opaque_seq:
++#endif
++	return __ext4fs_dirhash(name, len, hinfo);
++}
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 014f6a698cb7..1ef355549abf 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -455,7 +455,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 		if (qstr) {
+ 			hinfo.hash_version = DX_HASH_HALF_MD4;
+ 			hinfo.seed = sbi->s_hash_seed;
+-			ext4fs_dirhash(qstr->name, qstr->len, &hinfo);
++			ext4fs_dirhash(parent, qstr->name, qstr->len, &hinfo);
+ 			grp = hinfo.hash;
+ 		} else
+ 			grp = prandom_u32();
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 9c4bac18cc6c..10b9d3dcec4e 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1404,7 +1404,7 @@ int htree_inlinedir_to_tree(struct file *dir_file,
+ 			}
+ 		}
+ 
+-		ext4fs_dirhash(de->name, de->name_len, hinfo);
++		ext4fs_dirhash(dir, de->name, de->name_len, hinfo);
+ 		if ((hinfo->hash < start_hash) ||
+ 		    ((hinfo->hash == start_hash) &&
+ 		     (hinfo->minor_hash < start_minor_hash)))
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 437f71fe83ae..99d936a1c58e 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -35,6 +35,7 @@
+ #include <linux/buffer_head.h>
+ #include <linux/bio.h>
+ #include <linux/iversion.h>
++#include <linux/unicode.h>
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+ 
+@@ -629,7 +630,7 @@ static struct stats dx_show_leaf(struct inode *dir,
+ 				}
+ 				if (!fscrypt_has_encryption_key(dir)) {
+ 					/* Directory is not encrypted */
+-					ext4fs_dirhash(de->name,
++					ext4fs_dirhash(dir, de->name,
+ 						de->name_len, &h);
+ 					printk("%*.s:(U)%x.%u ", len,
+ 					       name, h.hash,
+@@ -662,8 +663,8 @@ static struct stats dx_show_leaf(struct inode *dir,
+ 						name = fname_crypto_str.name;
+ 						len = fname_crypto_str.len;
+ 					}
+-					ext4fs_dirhash(de->name, de->name_len,
+-						       &h);
++					ext4fs_dirhash(dir, de->name,
++						       de->name_len, &h);
+ 					printk("%*.s:(E)%x.%u ", len, name,
+ 					       h.hash, (unsigned) ((char *) de
+ 								   - base));
+@@ -673,7 +674,7 @@ static struct stats dx_show_leaf(struct inode *dir,
+ #else
+ 				int len = de->name_len;
+ 				char *name = de->name;
+-				ext4fs_dirhash(de->name, de->name_len, &h);
++				ext4fs_dirhash(dir, de->name, de->name_len, &h);
+ 				printk("%*.s:%x.%u ", len, name, h.hash,
+ 				       (unsigned) ((char *) de - base));
+ #endif
+@@ -762,7 +763,7 @@ dx_probe(struct ext4_filename *fname, struct inode *dir,
+ 		hinfo->hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 	if (fname && fname_name(fname))
+-		ext4fs_dirhash(fname_name(fname), fname_len(fname), hinfo);
++		ext4fs_dirhash(dir, fname_name(fname), fname_len(fname), hinfo);
+ 	hash = hinfo->hash;
+ 
+ 	if (root->info.unused_flags & 1) {
+@@ -1008,7 +1009,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 			/* silently ignore the rest of the block */
+ 			break;
+ 		}
+-		ext4fs_dirhash(de->name, de->name_len, hinfo);
++		ext4fs_dirhash(dir, de->name, de->name_len, hinfo);
+ 		if ((hinfo->hash < start_hash) ||
+ 		    ((hinfo->hash == start_hash) &&
+ 		     (hinfo->minor_hash < start_minor_hash)))
+@@ -1197,7 +1198,7 @@ static int dx_make_map(struct inode *dir, struct ext4_dir_entry_2 *de,
+ 
+ 	while ((char *) de < base + blocksize) {
+ 		if (de->name_len && de->inode) {
+-			ext4fs_dirhash(de->name, de->name_len, &h);
++			ext4fs_dirhash(dir, de->name, de->name_len, &h);
+ 			map_tail--;
+ 			map_tail->hash = h.hash;
+ 			map_tail->offs = ((char *) de - base)>>2;
+@@ -1252,15 +1253,45 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
+ 	dx_set_count(entries, count + 1);
  }
  
-@@ -1716,6 +1720,36 @@ static const struct mount_opts {
- 	{Opt_err, 0, 0}
- };
- 
 +#ifdef CONFIG_UNICODE
-+static const struct ext4_sb_encodings {
-+	__u16 magic;
-+	char *name;
-+	char *version;
-+} ext4_sb_encoding_map[] = {
-+	{EXT4_ENC_UTF8_11_0, "utf8", "11.0.0"},
-+};
-+
-+static int ext4_sb_read_encoding(const struct ext4_super_block *es,
-+				 const struct ext4_sb_encodings **encoding,
-+				 __u16 *flags)
++int ext4_encoding_cmp(const struct inode *parent, const struct qstr *name,
++		      const struct qstr *entry)
 +{
-+	__u16 magic = le16_to_cpu(es->s_encoding);
-+	int i;
++	const struct ext4_sb_info *sbi = EXT4_SB(parent->i_sb);
++	const struct unicode_map *um = sbi->s_encoding;
++	int ret;
 +
-+	for (i = 0; i < ARRAY_SIZE(ext4_sb_encoding_map); i++)
-+		if (magic == ext4_sb_encoding_map[i].magic)
-+			break;
++	ret = utf8_strncmp(um, name, entry);
++	if (ret < 0) {
++		/* Handle invalid character sequence as either an error
++		 * or as an opaque byte sequence.
++		 */
++		if (ext4_has_strict_mode(sbi))
++			return -EINVAL;
 +
-+	if (i >= ARRAY_SIZE(ext4_sb_encoding_map))
-+		return -EINVAL;
++		if (name->len != entry->len)
++			return 1;
 +
-+	*encoding = &ext4_sb_encoding_map[i];
-+	*flags = le16_to_cpu(es->s_encoding_flags);
++		return !!memcmp(name->name, entry->name, name->len);
++	}
 +
-+	return 0;
++	return ret;
 +}
 +#endif
 +
- static int handle_mount_opt(struct super_block *sb, char *opt, int token,
- 			    substring_t *args, unsigned long *journal_devnum,
- 			    unsigned int *journal_ioprio, int is_remount)
-@@ -2847,6 +2881,15 @@ static int ext4_feature_set_ok(struct super_block *sb, int readonly)
- 		return 0;
+ /*
+  * Test whether a directory entry matches the filename being searched for.
+  *
+  * Return: %true if the directory entry matches, otherwise %false.
+  */
+-static inline bool ext4_match(const struct ext4_filename *fname,
++static inline bool ext4_match(const struct inode *parent,
++			      const struct ext4_filename *fname,
+ 			      const struct ext4_dir_entry_2 *de)
+ {
+ 	struct fscrypt_name f;
++#ifdef CONFIG_UNICODE
++	const struct qstr entry = {.name = de->name, .len = de->name_len};
++#endif
+ 
+ 	if (!de->inode)
+ 		return false;
+@@ -1270,6 +1301,12 @@ static inline bool ext4_match(const struct ext4_filename *fname,
+ #ifdef CONFIG_EXT4_FS_ENCRYPTION
+ 	f.crypto_buf = fname->crypto_buf;
+ #endif
++
++#ifdef CONFIG_UNICODE
++	if (EXT4_SB(parent->i_sb)->s_encoding)
++		return !ext4_encoding_cmp(parent, fname->usr_fname, &entry);
++#endif
++
+ 	return fscrypt_match_name(&f, de->name, de->name_len);
+ }
+ 
+@@ -1290,7 +1327,7 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
+ 		/* this code is executed quadratically often */
+ 		/* do minimal checking `by hand' */
+ 		if ((char *) de + de->name_len <= dlimit &&
+-		    ext4_match(fname, de)) {
++		    ext4_match(dir, fname, de)) {
+ 			/* found a match - just to be sure, do
+ 			 * a full check */
+ 			if (ext4_check_dir_entry(dir, NULL, de, bh, bh->b_data,
+@@ -1588,6 +1625,17 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
+ 			return ERR_PTR(-EPERM);
+ 		}
  	}
- 
-+#ifndef CONFIG_UNICODE
-+	if (ext4_has_feature_fname_encoding(sb)) {
-+		ext4_msg(sb, KERN_ERR,
-+			 "Filesystem with fname_encoding feature cannot be "
-+			 "mounted without CONFIG_UNICODE");
-+		return 0;
-+	}
-+#endif
-+
- 	if (readonly)
- 		return 1;
- 
-@@ -3706,6 +3749,43 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			   &journal_ioprio, 0))
- 		goto failed_mount;
- 
-+#ifdef CONFIG_UNICODE
-+	if (ext4_has_feature_fname_encoding(sb) && !sbi->s_encoding) {
-+		const struct ext4_sb_encodings *encoding_info;
-+		struct unicode_map *encoding;
-+		__u16 encoding_flags;
-+
-+		if (ext4_has_feature_encrypt(sb)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Can't mount with encoding and encryption");
-+			goto failed_mount;
-+		}
-+
-+		if (ext4_sb_read_encoding(es, &encoding_info,
-+					  &encoding_flags)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "Encoding requested by superblock is unknown");
-+			goto failed_mount;
-+		}
-+
-+		encoding = utf8_load(encoding_info->version);
-+		if (IS_ERR(encoding)) {
-+			ext4_msg(sb, KERN_ERR,
-+				 "can't mount with superblock charset: %s-%s "
-+				 "not supported by the kernel. flags: 0x%x.",
-+				 encoding_info->name, encoding_info->version,
-+				 encoding_flags);
-+			goto failed_mount;
-+		}
-+		ext4_msg(sb, KERN_INFO,"Using encoding defined by superblock: "
-+			 "%s-%s with flags 0x%hx", encoding_info->name,
-+			 encoding_info->version?:"\b", encoding_flags);
-+
-+		sbi->s_encoding = encoding;
-+		sbi->s_encoding_flags = encoding_flags;
-+	}
-+#endif
-+
- 	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
- 		printk_once(KERN_WARNING "EXT4-fs: Warning: mounting "
- 			    "with data=journal disables delayed "
-@@ -4547,6 +4627,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- failed_mount:
- 	if (sbi->s_chksum_driver)
- 		crypto_free_shash(sbi->s_chksum_driver);
 +
 +#ifdef CONFIG_UNICODE
-+	utf8_unload(sbi->s_encoding);
++	if (EXT4_SB(dir->i_sb)->s_encoding && !inode) {
++		/* Eventually we want to call d_add_ci(dentry, NULL)
++		 * for negative dentries in the encoding case as
++		 * well.  For now, prevent the negative dentry
++		 * from being cached.
++		 */
++		return NULL;
++	}
++#endif
+ 	return d_splice_alias(inode, dentry);
+ }
+ 
+@@ -1798,7 +1846,7 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
+ 		if (ext4_check_dir_entry(dir, NULL, de, bh,
+ 					 buf, buf_size, offset))
+ 			return -EFSCORRUPTED;
+-		if (ext4_match(fname, de))
++		if (ext4_match(dir, fname, de))
+ 			return -EEXIST;
+ 		nlen = EXT4_DIR_REC_LEN(de->name_len);
+ 		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
+@@ -1983,7 +2031,7 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
+ 	if (fname->hinfo.hash_version <= DX_HASH_TEA)
+ 		fname->hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	fname->hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+-	ext4fs_dirhash(fname_name(fname), fname_len(fname), &fname->hinfo);
++	ext4fs_dirhash(dir, fname_name(fname), fname_len(fname), &fname->hinfo);
+ 
+ 	memset(frames, 0, sizeof(frames));
+ 	frame = frames;
+@@ -2036,6 +2084,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 	struct ext4_dir_entry_2 *de;
+ 	struct ext4_dir_entry_tail *t;
+ 	struct super_block *sb;
++	struct ext4_sb_info *sbi;
+ 	struct ext4_filename fname;
+ 	int	retval;
+ 	int	dx_fallback=0;
+@@ -2047,10 +2096,17 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
+ 		csum_size = sizeof(struct ext4_dir_entry_tail);
+ 
+ 	sb = dir->i_sb;
++	sbi = EXT4_SB(sb);
+ 	blocksize = sb->s_blocksize;
+ 	if (!dentry->d_name.len)
+ 		return -EINVAL;
+ 
++#ifdef CONFIG_UNICODE
++	if (sbi->s_encoding_flags & EXT4_ENC_STRICT_MODE_FL &&
++	    utf8_validate(sbi->s_encoding, &dentry->d_name))
++		return -EINVAL;
 +#endif
 +
- #ifdef CONFIG_QUOTA
- 	for (i = 0; i < EXT4_MAXQUOTAS; i++)
- 		kfree(sbi->s_qf_names[i]);
+ 	retval = ext4_fname_setup_filename(dir, &dentry->d_name, 0, &fname);
+ 	if (retval)
+ 		return retval;
+@@ -2975,6 +3031,17 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 	ext4_update_dx_flag(dir);
+ 	ext4_mark_inode_dirty(handle, dir);
+ 
++#ifdef CONFIG_UNICODE
++	/* VFS negative dentries are incompatible with Encoding and
++	 * Case-insensitiveness. Eventually we'll want avoid
++	 * invalidating the dentries here, alongside with returning the
++	 * negative dentries at ext4_lookup(), when it is better
++	 * supported by the VFS for the CI case.
++	 */
++	if (EXT4_SB(dir->i_sb)->s_encoding)
++		d_invalidate(dentry);
++#endif
++
+ end_rmdir:
+ 	brelse(bh);
+ 	if (handle)
+@@ -3044,6 +3111,17 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 	inode->i_ctime = current_time(inode);
+ 	ext4_mark_inode_dirty(handle, inode);
+ 
++#ifdef CONFIG_UNICODE
++	/* VFS negative dentries are incompatible with Encoding and
++	 * Case-insensitiveness. Eventually we'll want avoid
++	 * invalidating the dentries here, alongside with returning the
++	 * negative dentries at ext4_lookup(), when it is  better
++	 * supported by the VFS for the CI case.
++	 */
++	if (EXT4_SB(dir->i_sb)->s_encoding)
++		d_invalidate(dentry);
++#endif
++
+ end_unlink:
+ 	brelse(bh);
+ 	if (handle)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bcc2bc192403..408099b9a15a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4420,6 +4420,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		iput(root);
+ 		goto failed_mount4;
+ 	}
++
++#ifdef CONFIG_UNICODE
++	if (sbi->s_encoding)
++		sb->s_d_op = &ext4_dentry_ops;
++#endif
++
+ 	sb->s_root = d_make_root(root);
+ 	if (!sb->s_root) {
+ 		ext4_msg(sb, KERN_ERR, "get root dentry failed");
 -- 
 2.20.1
 
