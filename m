@@ -2,36 +2,39 @@ Return-Path: <SRS0=NyoO=QE=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 53485C282C8
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 21:32:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 53294C4151A
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 21:32:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2A1D821738
-	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 21:32:31 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2A3F921738
+	for <linux-ext4@archiver.kernel.org>; Mon, 28 Jan 2019 21:32:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726976AbfA1Vca (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 28 Jan 2019 16:32:30 -0500
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:58010 "EHLO
+        id S1727838AbfA1Vcc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 28 Jan 2019 16:32:32 -0500
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:58044 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726661AbfA1Vca (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jan 2019 16:32:30 -0500
+        with ESMTP id S1726661AbfA1Vcc (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jan 2019 16:32:32 -0500
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id 1D86727FB4C
+        with ESMTPSA id F271127FB76
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     tytso@mit.edu
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         sfrench@samba.org, darrick.wong@oracle.com,
         samba-technical@lists.samba.org, jlayton@kernel.org,
-        bfields@fieldses.org, paulus@samba.org,
-        Gabriel Krisman Bertazi <krisman@collabora.com>
-Subject: [PATCH RFC v5 00/11] Ext4 Encoding and Case-insensitive support
-Date:   Mon, 28 Jan 2019 16:32:12 -0500
-Message-Id: <20190128213223.31512-1-krisman@collabora.com>
+        bfields@fieldses.org, paulus@samba.org, Olaf Weber <olaf@sgi.com>,
+        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH RFC v5 01/11] unicode: Add unicode character database files
+Date:   Mon, 28 Jan 2019 16:32:13 -0500
+Message-Id: <20190128213223.31512-2-krisman@collabora.com>
 X-Mailer: git-send-email 2.20.1
+In-Reply-To: <20190128213223.31512-1-krisman@collabora.com>
+References: <20190128213223.31512-1-krisman@collabora.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -39,115 +42,83 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Ted,
+From: Olaf Weber <olaf@sgi.com>
 
-Following Linus comments, this version is back as an RFC, in order to
-discuss the normalization method used.  At a first glance, you will
-notice the series got a lot smaller, with the separation of unicode code
-from the NLS subsystem, as Linus requested.  The ext4 parts are pretty
-much the same, with only the addition of a verification in
-ext4_feature_set_ok() to fail encoding mounts when without
-CONFIG_UNICODE on newer kernels.
+Add files from the Unicode Character Database, version 11.0, to the
+source.  A helper program that generates a trie used for normalization
+from these files is part of a separate commit.
 
-The main change presented here is a proposal to migrate the
-normalization method from NFKD to NFD.  After our discussions, and
-reviewing other operating systems and languages aspects, I am more
-convinced that canonical decomposition is more viable solution than
-compatibility decomposition, because it doesn't ignore eliminate any
-semantic meaning, like the definitive case of superscript numbers.  NFD
-is also the documented method used by HFS+ and APFS, so there is
-precedent. Notice however, that as far as my research goes, APFS doesn't
-completely follows NFD, and in some cases, like <compat> flags, it
-actually does NFKD, but not in others (<fraction>), where it applies the
-canonical form.  We take a more consistent approach and always do plain NFD.
+- Notes on the update from 8.0.0 and 11.0:
 
-This RFC, therefore, aims to resume/start conversation with some
-stalkeholders that may have something to say regarding the normalization
-method used.  I added people from SMB, NFS and FS development who
-might be interested on this.
+The structure of ucd files and special cases have not experienced any
+changes between versions 8.0.0 and 11.0.0.  8.0.0 saw the addition of
+Cherokee LC characters, which is an interesting case for case-folding.
+The update is accompanied by new tests on the test_ucd module to catch
+specific cases.  No changes to mkutf8data script was required for the
+update.
 
-Regarding Casefold, I am unsure whether Casefold Common + Full still
-makes sense after migrating from the compatibility to the canonical
-form.  While Casefold Full, by definition, addresses cases where the
-casefolding grows in size, like the casefold of the german eszett to SS,
-it also is responsible for folding smallcase ligatures without a
-corresponding uppercase to their compatible counterpart.  Which means
-that on -F directories, o_f_f_i_c_e and o_ff_i_c_e will differ, while on
-+F directories they will match.  This seems unaceptable to me,
-suggesting that we should start to use Common + Simple instead of Common
-+ Full, but I would like more input on what seems more reasonable to
-you.
+The actual files are not part of the commit submitted to the list
+because they are to big and would bounce.  Still, they can be obtained
+by the following script:
 
-After we decide on this, I will be sending new patches to update
-e2fsprogs to the agreed method and remove the normalization/casefold
-type flags (EXT4_UTF8_NORMALIZATION_TYPE_NFKD,
-EXT4_UTF8_CASEFOLD_TYPE_NFKDCF), before actually proposing the current
-patch series for inclusion in the kernel.
+FILES="CaseFolding.txt DerivedAge.txt extracted/DerivedCombiningClass.txt
+       DerivedCoreProperties.txt NormalizationCorrections.txt
+       NormalizationTest.txt UnicodeData.txt"
+VERSION=11.0.0
+BASE=http://www.unicode.org/Public/${VERSION}/ucd
 
-Practical things, w.r.t. this patch series:
+for i in ${FILES} ; do
+  wget "${BASE}/$i" -O fs/unicode/ucd/$(basename ${i} .txt)-${VERSION}.txt
+done
 
-  - As usual, the UCD files are not part of the series, because they
-  would bounce.  To test this one would need to fetch the files as
-  explained in the commit message.
-
-  - If you prefer, you can checkout from
-     https://gitlab.collabora.com/krisman/linux -b ext4-ci-directory-no-nls
-
-  - More details on the design decisions restricted to ext4 are
-    available in the corresponding commit messages.
-
-Thanks for keeping up with this.
-
-Gabriel Krisman Bertazi (7):
-  unicode: Implement higher level API for string handling
-  unicode: Introduce test module for normalized utf8 implementation
-  MAINTAINERS: Add Unicode subsystem entry
-  ext4: Include encoding information in the superblock
-  ext4: Support encoding-aware file name lookups
-  ext4: Implement EXT4_CASEFOLD_FL flag
-  docs: ext4.rst: Document encoding and case-insensitive
-
-Olaf Weber (4):
-  unicode: Add unicode character database files
-  scripts: add trie generator for UTF-8
-  unicode: Introduce code for UTF-8 normalization
-  unicode: reduce the size of utf8data[]
-
- Documentation/admin-guide/ext4.rst |   41 +
- MAINTAINERS                        |    6 +
- fs/Kconfig                         |    1 +
- fs/Makefile                        |    1 +
- fs/ext4/dir.c                      |   43 +
- fs/ext4/ext4.h                     |   42 +-
- fs/ext4/hash.c                     |   38 +-
- fs/ext4/ialloc.c                   |    2 +-
- fs/ext4/inline.c                   |    2 +-
- fs/ext4/inode.c                    |    4 +-
- fs/ext4/ioctl.c                    |   18 +
- fs/ext4/namei.c                    |  104 +-
- fs/ext4/super.c                    |   91 +
- fs/unicode/Kconfig                 |   13 +
- fs/unicode/Makefile                |   22 +
- fs/unicode/ucd/README              |   33 +
- fs/unicode/utf8-core.c             |  183 ++
- fs/unicode/utf8-norm.c             |  797 +++++++
- fs/unicode/utf8-selftest.c         |  320 +++
- fs/unicode/utf8n.h                 |  117 +
- include/linux/fs.h                 |    2 +
- include/linux/unicode.h            |   30 +
- scripts/Makefile                   |    1 +
- scripts/mkutf8data.c               | 3418 ++++++++++++++++++++++++++++
- 24 files changed, 5307 insertions(+), 22 deletions(-)
- create mode 100644 fs/unicode/Kconfig
- create mode 100644 fs/unicode/Makefile
+Signed-off-by: Olaf Weber <olaf@sgi.com>
+Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+  [Move ucd directory to fs/unicode/]
+  [Update to Unicode 11.0.0]
+---
+ fs/unicode/ucd/README | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
  create mode 100644 fs/unicode/ucd/README
- create mode 100644 fs/unicode/utf8-core.c
- create mode 100644 fs/unicode/utf8-norm.c
- create mode 100644 fs/unicode/utf8-selftest.c
- create mode 100644 fs/unicode/utf8n.h
- create mode 100644 include/linux/unicode.h
- create mode 100644 scripts/mkutf8data.c
 
+diff --git a/fs/unicode/ucd/README b/fs/unicode/ucd/README
+new file mode 100644
+index 000000000000..5f89017b35ee
+--- /dev/null
++++ b/fs/unicode/ucd/README
+@@ -0,0 +1,33 @@
++The files in this directory are part of the Unicode Character Database
++for version 11.0.0 of the Unicode standard.
++
++The full set of files can be found here:
++
++  http://www.unicode.org/Public/11.0.0/ucd/
++
++The latest released version of the UCD can be found here:
++
++  http://www.unicode.org/Public/UCD/latest/
++
++The files in this directory are identical, except that they have been
++renamed with a suffix indicating the unicode version.
++
++Individual source links:
++
++  http://www.unicode.org/Public/11.0.0/ucd/CaseFolding.txt
++  http://www.unicode.org/Public/11.0.0/ucd/DerivedAge.txt
++  http://www.unicode.org/Public/11.0.0/ucd/extracted/DerivedCombiningClass.txt
++  http://www.unicode.org/Public/11.0.0/ucd/DerivedCoreProperties.txt
++  http://www.unicode.org/Public/11.0.0/ucd/NormalizationCorrections.txt
++  http://www.unicode.org/Public/11.0.0/ucd/NormalizationTest.txt
++  http://www.unicode.org/Public/11.0.0/ucd/UnicodeData.txt
++
++md5sums
++
++  414436796cf097df55f798e1585448ee  CaseFolding-11.0.0.txt
++  6032a595fbb782694456491d86eecfac  DerivedAge-11.0.0.txt
++  3240997d671297ac754ab0d27577acf7  DerivedCombiningClass-11.0.0.txt
++  2a4fe257d9d8184518e036194d2248ec  DerivedCoreProperties-11.0.0.txt
++  4e7d383fa0dd3cd9d49d64e5b7b7c9e0  NormalizationCorrections-11.0.0.txt
++  c9500c5b8b88e584469f056023ecc3f2  NormalizationTest-11.0.0.txt
++  acc291106c3758d2025f8d7bd5518bee  UnicodeData-11.0.0.txt
 -- 
 2.20.1
 
