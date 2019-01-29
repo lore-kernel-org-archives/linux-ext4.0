@@ -8,59 +8,59 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E66EC169C4
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 17:52:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C643AC169C4
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 17:52:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3D4912175B
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 17:52:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8AF792175B
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 17:52:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PCFPfbwk"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="K/iVqFOU"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728022AbfA2RwA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Jan 2019 12:52:00 -0500
-Received: from mail-it1-f194.google.com ([209.85.166.194]:38446 "EHLO
-        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727100AbfA2Rv7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jan 2019 12:51:59 -0500
-Received: by mail-it1-f194.google.com with SMTP id z20so5891141itc.3
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 09:51:59 -0800 (PST)
+        id S1728162AbfA2RwC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Jan 2019 12:52:02 -0500
+Received: from mail-it1-f196.google.com ([209.85.166.196]:35088 "EHLO
+        mail-it1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727100AbfA2RwC (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jan 2019 12:52:02 -0500
+Received: by mail-it1-f196.google.com with SMTP id p197so5923887itp.0
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 09:52:01 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=3+Et5nP7uv92grLMjDx+Rta0GfSYsc+7mr2xH64pblU=;
-        b=PCFPfbwk2KC//PzyPJz5PxBMAFRircsD0XjgwRBlqVUMWIpPpprcyM7Ewxktmrwwv3
-         xm+VqiNvh3eYqBH/piEGPW1d+3Wtl65Dlis0xSmMOJwpS06MtYBijFX99IXcHBS8g3KR
-         ChbDlnU28S+ZpP2SUaLYlaRclQUW7uGOF+sUEyzMD9R17g37JTaGpPOEke8ZC0V0lMu7
-         oQxzBsOI03W6n3koHwM0BKgZCx1fRpmL4jd68LkU3ZJJ7F6VFQyuqC8O3tDdMbL5BqtZ
-         WnRlUv2wNY4op3z85xJ/iHGmBhUmIHVyBKj/jruqSHfPYr/kPh1Rl1HxXVMt0VnCuV+E
-         mtvQ==
+        bh=pjIqhj17ud7k7lsqJuPirzMlFDbU86F7EHNftih3+qk=;
+        b=K/iVqFOUcwU5DrOYzjsVlwFJ1JwisPS2EF/OKBCkTlWJAi5G3BfaiNJVVSIa1spqdt
+         Ay/Dd9iTb26loBFSOFUUbdAvlSzTgovsERwnkO151J8vRx10f83lCyOQzVhoQZvn2kM5
+         Pb/udwfG+eARiV2qrTNOo+DOpcv5Bb2KaNHSzuwjB6bPiRrx8g/qwqWa4amUg6fHEHJR
+         ZCINN8wmdmnsbWNmeMnXgpbVXeDMRg9Bfn796eH/qgnccoY3iSh30YU27O76YS0zHn6Q
+         6iAEKD3QvxIjfIy7zBa9ejuKQoAaosLZ5EdOMzIPPpGaLwR/iHDAfk7S9ia7LsD5rogf
+         1lEg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=3+Et5nP7uv92grLMjDx+Rta0GfSYsc+7mr2xH64pblU=;
-        b=auC1clNmsrX1UrD2XEbsYKCpeW2aldHMIOdbKIN9yp8eKidiLJJg8uG58Btr2qyLVF
-         9TELoXZK0EB9MEUBu/eWidNFXc7tMS3C4NxE5YgaKUNzKMIXjhS4FUjOQf4TS8qdOpeT
-         2Pb87QziiXY6B8nL+2ReX64hGIF6kzP/OtFlwCk4rOxvimHG3x1wCvitB4HT6hCzPCJa
-         a/GOkpJUWTVxvPJO/2q+5JrkoYd5Sf+TqX2sWjEH1jbv0kSO7E9Xu3hatL0Hl4J3Wa+x
-         1OlrJVnLT6EnnOXJZkyN/VZFffuMjmQXs6iswBn8lBv1bgj1ckIkVyXbcMr4g1LSot65
-         iEwA==
-X-Gm-Message-State: AJcUukcP7WHVXNKW5VS5J6JkgkJNE9DQ/vjagUtYZvn8hEiqe7NN5Irr
-        OXeMilK4/90BdxJP1epu6YRI3bR/ooI=
-X-Google-Smtp-Source: ALg8bN5sX1IemyK14o27WySLJFWNGb1POb/hXzIBvGdBMNuMP4tgvXNSnwLAlI4CAW39uF8KtFi1zg==
-X-Received: by 2002:a02:85ae:: with SMTP id d43mr17034558jai.70.1548784318464;
-        Tue, 29 Jan 2019 09:51:58 -0800 (PST)
+        bh=pjIqhj17ud7k7lsqJuPirzMlFDbU86F7EHNftih3+qk=;
+        b=JbpvrdCYLa0B0/LdTC45Rf2hFC2k3MMTyANPF0KYm7ZMfzODz6mb4BapeE+2dc9In7
+         0YOtyt4ZoZ6vtSNWG4zAoCyXXNEXBylIDw4yxWramlar2OKWt5fm0uvW20z9AKijglCu
+         gIvPvfhTTq/csvYG9C+w5kDZuHCAeN8IcZXkjIsrKIacniXdjCkptPmChIk8+/IM+4s9
+         rp5WkfseQtCbEc8XZ4nWQKfzVM4iJ00U+bB963umTYmCy22gLNH4CPjY6Ho0fpY0K4ms
+         +ZaLs77ZE40OpkPuduTynR5dL4GG/i4zt5Yna2HVti3GyJ3WxRCjodnBN18whXyajjB/
+         tKUg==
+X-Gm-Message-State: AJcUukcrFyA1vkq1THeSR87NHWr6HYs/tiY89Cap4dexttBdYEWNZLfS
+        CCKoLLYwxiOPzjTzosrnp8ha7cznErU=
+X-Google-Smtp-Source: ALg8bN4BGtQmoIR8PXSfd6MAJFzcIl5186QBB5KLqfq+KmSWHLgjVBXdBYHdkdeAtxHCjUC/sJ+Dxw==
+X-Received: by 2002:a02:a15e:: with SMTP id m30mr17041324jah.143.1548784320492;
+        Tue, 29 Jan 2019 09:52:00 -0800 (PST)
 Received: from C02TN4C6HTD6.us.cray.com ([63.239.150.218])
-        by smtp.gmail.com with ESMTPSA id b5sm15838778ioc.21.2019.01.29.09.51.56
+        by smtp.gmail.com with ESMTPSA id b5sm15838778ioc.21.2019.01.29.09.51.58
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 29 Jan 2019 09:51:58 -0800 (PST)
+        Tue, 29 Jan 2019 09:52:00 -0800 (PST)
 From:   Artem Blagodarenko <artem.blagodarenko@gmail.com>
 X-Google-Original-From: Artem Blagodarenko <c17828@cray.com>
 To:     linux-ext4@vger.kernel.org
 Cc:     adilger.kernel@dilger.ca
-Subject: [PATCH v7 1/4] ext2fs: opening filesystem code refactoring
-Date:   Tue, 29 Jan 2019 20:51:31 +0300
-Message-Id: <20190129175134.26652-2-c17828@cray.com>
+Subject: [PATCH v7 2/4] e2image: add -b and -B options to use supperblock backup
+Date:   Tue, 29 Jan 2019 20:51:32 +0300
+Message-Id: <20190129175134.26652-3-c17828@cray.com>
 X-Mailer: git-send-email 2.14.3
 In-Reply-To: <20190129175134.26652-1-c17828@cray.com>
 References: <20190129175134.26652-1-c17828@cray.com>
@@ -69,146 +69,183 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-There are similar opening filesystem code in different utilities.
+e2image has no ability to use superblock backup to copy metadata.
+This feature can be useful if someone wants to make partition
+image and fix it using e2fsck utility.
 
-The patch moves improved handling from try_open_fs()
-into ext2fs_open(). This function make one of the action
-based on parameters:
-1) open filesystem with given superblock, superblock size
-2) open filesystem with given superblock, but try to
-find right block size
+New -b option allows to pass superblock number, like e2fsck utility does.
+e2image doesn't change primary superblock and store it as is, so
+it can be fixed using e2fsck latter. Option -B allows setting
+superblock size.
 
 Signed-off-by: Artem Blagodarenko <c17828@cray.com>
 ---
- e2fsck/unix.c       | 28 +++-------------------------
- lib/ext2fs/openfs.c | 39 +++++++++++++++++++++++++++++++++++----
- misc/dumpe2fs.c     | 17 ++---------------
- 3 files changed, 40 insertions(+), 44 deletions(-)
+ misc/e2image.8.in | 33 +++++++++++++++++++++++++++++++++
+ misc/e2image.c    | 43 +++++++++++++++++++++++++++++++++++++------
+ 2 files changed, 70 insertions(+), 6 deletions(-)
 
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index 5b3552ec..ddcf52a4 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -1151,31 +1151,9 @@ static errcode_t try_open_fs(e2fsck_t ctx, int flags, io_manager io_ptr,
- 			     ext2_filsys *ret_fs)
+diff --git a/misc/e2image.8.in b/misc/e2image.8.in
+index a7bfdf24..bbbb57ae 100644
+--- a/misc/e2image.8.in
++++ b/misc/e2image.8.in
+@@ -12,6 +12,15 @@ e2image \- Save critical ext2/ext3/ext4 filesystem metadata to a file
+ ]
+ [
+ .B \-f
++.B \-b
++.I superblock
++]
++[
++.B \-B
++.I blocksize
++]
++[
++.B \-fr
+ ]
+ .I device
+ .I image-file
+@@ -167,6 +176,22 @@ the
+ option will prevent analysis of problems related to hash-tree indexed
+ directories.
+ .PP
++Option
++.B \-b
++.I superblock
++can be used to get image from partition with broken primary superblock.
++The partition is copied as-is including broken primary superblock.
++.PP
++Option
++.B \-B
++.I blocksize
++can be used to set superblock block size. Normally, e2fsck will search
++for the superblock at various different block sizes in an attempt to find
++the appropriate blocksize. This search can be fooled in some cases.  This
++option forces e2fsck to only try locating the superblock at a particular
++blocksize. If the superblock is not found, e2fsck will terminate with a
++fatal error.
++.PP
+ Note that this will work even if you substitute "/dev/hda1" for another raw
+ disk image, or QCOW2 image previously created by
+ .BR e2image .
+@@ -217,6 +242,14 @@ This can be useful to write a qcow2 image containing all data to a
+ sparse image file where it can be loop mounted, or to a disk partition.
+ Note that this may not work with qcow2 images not generated by e2image.
+ .PP
++Options
++.B \-b
++.I superblock
++and
++.B \-B
++.I blocksize
++can be used same way as for raw images.
++.PP
+ .SH INCLUDING DATA
+ Normally
+ .B e2image
+diff --git a/misc/e2image.c b/misc/e2image.c
+index 9e21d0db..3c881fee 100644
+--- a/misc/e2image.c
++++ b/misc/e2image.c
+@@ -104,7 +104,8 @@ static int get_bits_from_size(size_t size)
+ 
+ static void usage(void)
  {
- 	errcode_t retval;
--
--	*ret_fs = NULL;
--	if (ctx->superblock && ctx->blocksize) {
--		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
--				      flags, ctx->superblock, ctx->blocksize,
--				      io_ptr, ret_fs);
--	} else if (ctx->superblock) {
--		int blocksize;
--		for (blocksize = EXT2_MIN_BLOCK_SIZE;
--		     blocksize <= EXT2_MAX_BLOCK_SIZE; blocksize *= 2) {
--			if (*ret_fs) {
--				ext2fs_free(*ret_fs);
--				*ret_fs = NULL;
--			}
--			retval = ext2fs_open2(ctx->filesystem_name,
--					      ctx->io_options, flags,
--					      ctx->superblock, blocksize,
--					      io_ptr, ret_fs);
--			if (!retval)
--				break;
--		}
--	} else
--		retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
--				      flags, 0, 0, io_ptr, ret_fs);
--
-+	retval = ext2fs_open2(ctx->filesystem_name, ctx->io_options,
-+			   flags, ctx->superblock, ctx->blocksize,
-+			   io_ptr, ret_fs);
- 	if (retval == 0) {
- 		(*ret_fs)->priv_data = ctx;
- 		e2fsck_set_bitmap_type(*ret_fs, EXT2FS_BMAP64_RBTREE,
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 85d73e2a..16d36200 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -114,10 +114,10 @@ static void block_sha_map_free_entry(void *data)
-  *	EXT2_FLAG_64BITS - Allow 64-bit bitfields (needed for large
-  *				filesystems)
-  */
--errcode_t ext2fs_open2(const char *name, const char *io_options,
--		       int flags, int superblock,
--		       unsigned int block_size, io_manager manager,
--		       ext2_filsys *ret_fs)
-+static errcode_t __ext2fs_open2(const char *name, const char *io_options,
-+				int flags, int superblock,
-+				unsigned int block_size, io_manager manager,
-+				ext2_filsys *ret_fs)
- {
- 	ext2_filsys	fs;
- 	errcode_t	retval;
-@@ -515,6 +515,37 @@ cleanup:
- 	return retval;
+-	fprintf(stderr, _("Usage: %s [ -r|Q ] [ -f ] device image-file\n"),
++	fprintf(stderr, _("Usage: %s [ -r|Q ] [ -f ] [ -b superblock ] [ -B blocksize]"
++			  "[ -fr ] device image-file\n"),
+ 		program_name);
+ 	fprintf(stderr, _("       %s -I device image-file\n"), program_name);
+ 	fprintf(stderr, _("       %s -ra  [  -cfnp  ] [ -o src_offset ] "
+@@ -1267,7 +1268,8 @@ static void output_qcow2_meta_data_blocks(ext2_filsys fs, int fd)
+ 	free_qcow2_image(img);
  }
  
-+errcode_t ext2fs_open2(const char *name, const char *io_options,
-+		       int flags, int superblock,
-+		       unsigned int block_size, io_manager manager,
-+		       ext2_filsys *ret_fs)
-+{
-+	errcode_t retval;
+-static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags)
++static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags,
++				 blk64_t superblock)
+ {
+ 	struct process_block_struct	pb;
+ 	struct ext2_inode		inode;
+@@ -1295,6 +1297,22 @@ static void write_raw_image_file(ext2_filsys fs, int fd, int type, int flags)
+ 		}
+ 	}
+ 
++	if (superblock) {
++		int j;
 +
-+	*ret_fs = NULL;
-+	if (superblock && block_size) {
-+		retval = __ext2fs_open2(name, io_options,
-+				      flags, superblock, block_size,
-+				      manager, ret_fs);
-+	} else {
-+		int size;
++		ext2fs_mark_block_bitmap2(meta_block_map, superblock);
++		meta_blocks_count++;
 +
-+		for (size = EXT2_MIN_BLOCK_SIZE;
-+		     size <= EXT2_MAX_BLOCK_SIZE; size *= 2) {
-+			if (*ret_fs) {
-+				ext2fs_free(*ret_fs);
-+				*ret_fs = NULL;
-+			}
-+			retval = __ext2fs_open2(name, io_options, flags,
-+						superblock, size,
-+						manager, ret_fs);
-+			if (!retval)
-+				break;
++		/*
++		 * Mark the backup superblock descriptors
++		 */
++		for (j = 0; j < fs->desc_blocks; j++) {
++			ext2fs_mark_block_bitmap2(meta_block_map,
++			ext2fs_descriptor_block_loc2(fs, superblock, j));
 +		}
++		meta_blocks_count += fs->desc_blocks;
 +	}
-+	return retval;
-+}
 +
- /*
-  * Set/get the filesystem data I/O channel.
-  *
-diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index 384ce925..183e2f6f 100644
---- a/misc/dumpe2fs.c
-+++ b/misc/dumpe2fs.c
-@@ -667,21 +667,8 @@ int main (int argc, char ** argv)
- 	if (image_dump)
- 		flags |= EXT2_FLAG_IMAGE_FILE;
- try_open_again:
--	if (use_superblock && !use_blocksize) {
--		for (use_blocksize = EXT2_MIN_BLOCK_SIZE;
--		     use_blocksize <= EXT2_MAX_BLOCK_SIZE;
--		     use_blocksize *= 2) {
--			retval = ext2fs_open (device_name, flags,
--					      use_superblock,
--					      use_blocksize, unix_io_manager,
--					      &fs);
--			if (!retval)
--				break;
--		}
--	} else {
--		retval = ext2fs_open(device_name, flags, use_superblock,
--				     use_blocksize, unix_io_manager, &fs);
--	}
-+	retval = ext2fs_open2(device_name, 0, flags, use_superblock,
-+			      use_blocksize, unix_io_manager, &fs);
- 	flags |= EXT2_FLAG_IGNORE_CSUM_ERRORS;
- 	if (retval && !retval_csum) {
- 		retval_csum = retval;
+ 	mark_table_blocks(fs);
+ 	if (show_progress)
+ 		fprintf(stderr, "%s", _("Scanning inodes...\n"));
+@@ -1474,6 +1492,8 @@ int main (int argc, char ** argv)
+ 	int ignore_rw_mount = 0;
+ 	int check = 0;
+ 	struct stat st;
++	blk64_t superblock = 0;
++	int blocksize = 0;
+ 
+ #ifdef ENABLE_NLS
+ 	setlocale(LC_MESSAGES, "");
+@@ -1487,8 +1507,14 @@ int main (int argc, char ** argv)
+ 	if (argc && *argv)
+ 		program_name = *argv;
+ 	add_error_table(&et_ext2_error_table);
+-	while ((c = getopt(argc, argv, "nrsIQafo:O:pc")) != EOF)
++	while ((c = getopt(argc, argv, "b:B:nrsIQafo:O:pc")) != EOF)
+ 		switch (c) {
++		case 'b':
++			superblock = strtoull(optarg, NULL, 0);
++			break;
++		case 'B':
++			blocksize = strtoul(optarg, NULL, 0);
++			break;
+ 		case 'I':
+ 			flags |= E2IMAGE_INSTALL_FLAG;
+ 			break;
+@@ -1540,6 +1566,11 @@ int main (int argc, char ** argv)
+ 						 "with raw or QCOW2 images."));
+ 		exit(1);
+ 	}
++	if (superblock && !img_type) {
++		com_err(program_name, 0, "%s", _("-b option can only be used "
++						 "with raw or QCOW2 images."));
++		exit(1);
++	}
+ 	if ((source_offset || dest_offset) && img_type != E2IMAGE_RAW) {
+ 		com_err(program_name, 0, "%s",
+ 			_("Offsets are only allowed with raw images."));
+@@ -1590,8 +1621,8 @@ int main (int argc, char ** argv)
+ 		}
+ 	}
+ 	sprintf(offset_opt, "offset=%llu", source_offset);
+-	retval = ext2fs_open2(device_name, offset_opt, open_flag, 0, 0,
+-			      unix_io_manager, &fs);
++	retval = ext2fs_open2(device_name, offset_opt, open_flag,
++			      superblock, blocksize, unix_io_manager, &fs);
+         if (retval) {
+ 		com_err (program_name, retval, _("while trying to open %s"),
+ 			 device_name);
+@@ -1681,7 +1712,7 @@ skip_device:
+ 		exit(1);
+ 	}
+ 	if (img_type)
+-		write_raw_image_file(fs, fd, img_type, flags);
++		write_raw_image_file(fs, fd, img_type, flags, superblock);
+ 	else
+ 		write_image_file(fs, fd);
+ 
 -- 
 2.14.3
 
