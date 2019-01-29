@@ -2,90 +2,76 @@ Return-Path: <SRS0=tjTT=QF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BE0BC169C4
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 12:13:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D4AB0C169C4
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 14:34:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id EF31C2086C
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 12:13:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AD25720989
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 14:34:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727939AbfA2MNP convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Jan 2019 07:13:15 -0500
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41380 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725811AbfA2MNP (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Jan 2019 07:13:15 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 62E492B263
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 12:13:14 +0000 (UTC)
-Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 610372BFC0; Tue, 29 Jan 2019 12:13:14 +0000 (UTC)
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date:   Tue, 29 Jan 2019 12:13:13 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: erhard_f@mailbox.org
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-201631-13602-qgBDFO48LX@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
-MIME-Version: 1.0
-X-Virus-Scanned: ClamAV using ClamSMTP
+        id S1725911AbfA2Oeu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Jan 2019 09:34:50 -0500
+Received: from smtprz15.163.net ([106.3.154.248]:18621 "EHLO smtp.tom.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725769AbfA2Oeu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 29 Jan 2019 09:34:50 -0500
+Received: from 172.25.16.148 (unknown [172.25.16.148])
+        by freemail01.tom.com (Postfix) with ESMTP id 828511C81B6C
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 20:39:54 +0800 (CST)
+Received: from 172.25.16.90 (HELO smtp.tom.com) ([172.25.16.90])
+          by localhost (TOM SMTP Server) with SMTP ID -1328089285
+          for <linux-ext4@vger.kernel.org>;
+          Tue, 29 Jan 2019 20:39:54 +0800 (CST)
+Received: from antispam1.tom.com (unknown [172.25.16.55])
+        by freemail01.tom.com (Postfix) with ESMTP id B48AA1C81BCE
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 20:39:53 +0800 (CST)
+Received: from antispam1.tom.com (antispam1.tom.com [127.0.0.1])
+        by antispam1.tom.com (Postfix) with ESMTP id 9E4A31001741
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 20:39:53 +0800 (CST)
+X-Virus-Scanned: Debian amavisd-new at antispam1.tom.com
+Received: from antispam1.tom.com ([127.0.0.1])
+        by antispam1.tom.com (antispam1.tom.com [127.0.0.1]) (amavisd-new, port 10024)
+        with ESMTP id CIaYwXCenDGv for <linux-ext4@vger.kernel.org>;
+        Tue, 29 Jan 2019 20:39:52 +0800 (CST)
+Received: from localhost (unknown [222.209.19.163])
+        by antispam1.tom.com (Postfix) with ESMTPA id 6F1D81001589;
+        Tue, 29 Jan 2019 20:39:52 +0800 (CST)
+From:   Liu Xiang <liu.xiang6@zte.com.cn>
+To:     jack@suse.com
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        liuxiang_1999@126.com, Liu Xiang <liu.xiang6@zte.com.cn>
+Subject: [PATCH] ext2: Fix a typo in comment
+Date:   Tue, 29 Jan 2019 20:39:49 +0800
+Message-Id: <1548765589-2920-1-git-send-email-liu.xiang6@zte.com.cn>
+X-Mailer: git-send-email 1.9.1
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+Fix a typo in ext2_get_blocks comment.
 
---- Comment #56 from erhard_f@mailbox.org ---
-(In reply to Jan Kara from comment #55)
-> Created attachment 280841 [details]
-> mm: Dump page and PTE state and some history (v5)
-> 
-> Erhard, please test with this debug patch. Thanks!
+Signed-off-by: Liu Xiang <liu.xiang6@zte.com.cn>
+---
+ fs/ext2/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-I would, but the patch does not apply against -rc4. ;)
-
-/usr/src/linux-5.0-rc4 # patch -p1 < mm.patch 
-patching file fs/ext4/file.c
-patching file fs/ext4/inode.c
-Hunk #3 succeeded at 3933 (offset 1 line).
-Hunk #4 succeeded at 6327 (offset 26 lines).
-patching file include/linux/buffer_head.h
-patching file mm/memory.c
-Hunk #2 succeeded at 1081 (offset -1 lines).
-Hunk #6 succeeded at 3253 (offset 23 lines).
-patching file mm/page_vma_mapped.c
-patching file mm/rmap.c
-Hunk #3 succeeded at 894 with fuzz 2.
-Hunk #4 FAILED at 902.
-Hunk #5 succeeded at 921 (offset 2 lines).
-Hunk #6 succeeded at 979 (offset 2 lines).
-1 out of 6 hunks FAILED -- saving rejects to file mm/rmap.c.rej
-
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index e4bb938..11da3fb 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -717,7 +717,7 @@ static int ext2_get_blocks(struct inode *inode,
+ 	/* the number of blocks need to allocate for [d,t]indirect blocks */
+ 	indirect_blks = (chain + depth) - partial - 1;
+ 	/*
+-	 * Next look up the indirect map to count the totoal number of
++	 * Next look up the indirect map to count the total number of
+ 	 * direct blocks to allocate for this branch.
+ 	 */
+ 	count = ext2_blks_to_allocate(partial, indirect_blks,
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+1.9.1
+
