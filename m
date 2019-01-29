@@ -5,30 +5,30 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF115C169C4
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 09:40:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 168F6C169C4
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 09:41:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8D8AC2082E
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 09:40:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D794E2082E
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 09:41:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728160AbfA2JkF convert rfc822-to-8bit (ORCPT
+        id S1727041AbfA2JlD convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Jan 2019 04:40:05 -0500
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42850 "EHLO
+        Tue, 29 Jan 2019 04:41:03 -0500
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42976 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727041AbfA2JkE (ORCPT
+        by vger.kernel.org with ESMTP id S1726923AbfA2JlD (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Jan 2019 04:40:04 -0500
+        Tue, 29 Jan 2019 04:41:03 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id E641E2B29D
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 09:40:03 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id ADA332B3AF
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 09:41:02 +0000 (UTC)
 Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id D518B2B29E; Tue, 29 Jan 2019 09:40:03 +0000 (UTC)
+        id A1B302B39C; Tue, 29 Jan 2019 09:41:02 +0000 (UTC)
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
  .ext4_set_page_dirty+0x70/0xb0
-Date:   Tue, 29 Jan 2019 09:40:03 +0000
+Date:   Tue, 29 Jan 2019 09:41:02 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -43,8 +43,8 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-201631-13602-E0nZwrefms@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: attachments.created
+Message-ID: <bug-201631-13602-6jrXLtn6cG@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
 References: <bug-201631-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -60,25 +60,12 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
---- Comment #54 from Jan Kara (jack@suse.cz) ---
-Thanks for the results Erhard. Finally something to go on in the debug results.
-The pages have been normally faulted in for writing and PTE got set at time
-1036580120591 from wp_page_reuse(). But then, although we've called
-clear_page_dirty_for_io() which calls page_mkclean() (at time 1036587452118),
-we've never reached the debug point in page_mkclean_one() where PTE write bit
-gets cleared. So it looks that for some reason page_mkclean() doesn't do what
-it should on your machines.
+--- Comment #55 from Jan Kara (jack@suse.cz) ---
+Created attachment 280841
+  --> https://bugzilla.kernel.org/attachment.cgi?id=280841&action=edit
+mm: Dump page and PTE state and some history (v5)
 
-I was considering a race with munmap() but page_mkclean() uses mapping->i_mmap
-tree to find the VMA and we remove vmas from that tree only after
-unmap_page_range() is complete so that does not look possible. Also it is very
-strange because this is common code for all architectures but you seem to be
-the only one hitting the problem so far.
-
-Aneesh, any idea?
-
-Anyway, I've added more debugging to page_mkclean() to see which paths it is
-taking and maybe that'll tell us something.
+Erhard, please test with this debug patch. Thanks!
 
 -- 
 You are receiving this mail because:
