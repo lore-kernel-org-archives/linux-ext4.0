@@ -2,324 +2,164 @@ Return-Path: <SRS0=tjTT=QF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7DEEAC169C4
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 16:42:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2C27C169C4
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 16:54:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4E5FF214DA
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 16:42:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 9C09E20881
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 16:54:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728029AbfA2QmM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Jan 2019 11:42:12 -0500
-Received: from mx2.suse.de ([195.135.220.15]:34442 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726374AbfA2QmL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Jan 2019 11:42:11 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id B7003B169;
-        Tue, 29 Jan 2019 16:42:08 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 3BD161E3FFD; Tue, 29 Jan 2019 17:42:08 +0100 (CET)
-Date:   Tue, 29 Jan 2019 17:42:08 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     yangerkun <yangerkun@huawei.com>
-Cc:     jack@suse.cz, miaoxie@huawei.com, yi.zhang@huawei.com,
-        houtao1@huawei.com, linux-ext4@vger.kernel.org
-Subject: Re: [PATCH 2/2] ext2: get the exact max filesize in ext2_max_size
-Message-ID: <20190129164208.GF29981@quack2.suse.cz>
-References: <20190123131409.126156-1-yangerkun@huawei.com>
- <20190123131409.126156-3-yangerkun@huawei.com>
+        id S1727499AbfA2QyG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Jan 2019 11:54:06 -0500
+Received: from fieldses.org ([173.255.197.46]:54370 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726992AbfA2QyG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 29 Jan 2019 11:54:06 -0500
+Received: by fieldses.org (Postfix, from userid 2815)
+        id 77EF91B9A; Tue, 29 Jan 2019 11:54:05 -0500 (EST)
+Date:   Tue, 29 Jan 2019 11:54:05 -0500
+From:   "J. Bruce Fields" <bfields@fieldses.org>
+To:     Gabriel Krisman Bertazi <krisman@collabora.com>
+Cc:     tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, sfrench@samba.org,
+        darrick.wong@oracle.com, samba-technical@lists.samba.org,
+        jlayton@kernel.org, paulus@samba.org
+Subject: Re: [PATCH RFC v5 00/11] Ext4 Encoding and Case-insensitive support
+Message-ID: <20190129165405.GG19683@fieldses.org>
+References: <20190128213223.31512-1-krisman@collabora.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="IS0zKkzwUGydFO0o"
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190123131409.126156-3-yangerkun@huawei.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20190128213223.31512-1-krisman@collabora.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-
---IS0zKkzwUGydFO0o
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Wed 23-01-19 21:14:09, yangerkun wrote:
-> When mkfs.ext2 with '-b 65536' and mount(arm 64KB page size), function
-> mount_fs will trigger WARNING since ext2_max_size will return value less
-> than 0. Also, we cannot write any file in this fs since the sb->maxbytes
-> is less than 0.
+On Mon, Jan 28, 2019 at 04:32:12PM -0500, Gabriel Krisman Bertazi wrote:
+> Following Linus comments, this version is back as an RFC, in order to
+> discuss the normalization method used.  At a first glance, you will
+> notice the series got a lot smaller, with the separation of unicode code
+> from the NLS subsystem, as Linus requested.  The ext4 parts are pretty
+> much the same, with only the addition of a verification in
+> ext4_feature_set_ok() to fail encoding mounts when without
+> CONFIG_UNICODE on newer kernels.
 > 
-> Fix it by get the exact max file size. First, get the max depth for
-> indirect blocks and check does the max data blocks add indirect blocks
-> will execced upper_limit. If right, bisect to get exact data blocks
-> number which satisfy 'data blocks number + indirect blocks number ==
-> upper_limit'.
+> The main change presented here is a proposal to migrate the
+> normalization method from NFKD to NFD.  After our discussions, and
+> reviewing other operating systems and languages aspects, I am more
+> convinced that canonical decomposition is more viable solution than
+> compatibility decomposition, because it doesn't ignore eliminate any
+> semantic meaning, like the definitive case of superscript numbers.  NFD
+> is also the documented method used by HFS+ and APFS, so there is
+> precedent. Notice however, that as far as my research goes, APFS doesn't
+> completely follows NFD, and in some cases, like <compat> flags, it
+> actually does NFKD, but not in others (<fraction>), where it applies the
+> canonical form.  We take a more consistent approach and always do plain NFD.
 > 
-> Signed-off-by: yangerkun <yangerkun@huawei.com>
+> This RFC, therefore, aims to resume/start conversation with some
+> stalkeholders that may have something to say regarding the normalization
+> method used.  I added people from SMB, NFS and FS development who
+> might be interested on this.
 
-Thanks for the patches but I was really looking for something simpler.
-Something like the attached patch. Although your more precise function will
-raise the maximum file size by couple of kilobytes I don't think the
-complexity is really worth it...
+For what it's worth, knfsd will just pass through pathnames unchanged
+the client, and the Linux client will pass them on to applications
+unchanged.  I don't know what other clients might do.  But it's hard for
+NFS clients and servers to do anything more clever, because behavior of
+exported filesystems varies, users have preexisting filesystems with
+random encodings, and on the client side in the Linux case, the kernel
+doesn't know about process locales.  So, whatever behavior ext4
+implements is likely the same behavior that will be seen by an
+application on a client accessing an ext4 filesystem over NFS.
 
-								Honza
+--b.
 
-> ---
->  fs/ext2/super.c | 115 ++++++++++++++++++++++++++++++++++++++++++++------------
->  1 file changed, 92 insertions(+), 23 deletions(-)
 > 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index 73b2d52..b3eb6e9 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -753,11 +753,16 @@ static int ext2_check_descriptors(struct super_block *sb)
->   * block limit, and also a limit of (2^32 - 1) 512-byte sectors in i_blocks.
->   * We need to be 1 filesystem block less than the 2^32 sector limit.
->   */
-> -static loff_t ext2_max_size(int bits)
-> +static loff_t ext2_max_size(struct super_block *sb, int bits)
->  {
-> -	loff_t res = EXT2_NDIR_BLOCKS;
-> -	int meta_blocks;
-> +	loff_t res;
-> +	loff_t max_meta_blocks;
-> +	loff_t used_data_blocks;
-> +	loff_t max_data_blocks;
->  	loff_t upper_limit;
-> +	int depth;
-> +	loff_t high, low;
-> +
->  
->  	/* This is calculated to be the largest file size for a
->  	 * dense, file such that the total number of
-> @@ -771,24 +776,88 @@ static loff_t ext2_max_size(int bits)
->  	/* total blocks in file system block size */
->  	upper_limit >>= (bits - 9);
->  
-> +	/* Try to get max depth of metadata blocks */
-> +	depth = 0;
-> +	max_meta_blocks = 0;
-> +	used_data_blocks = 0;
-> +	max_data_blocks = EXT2_NDIR_BLOCKS;
-> +	if (max_meta_blocks + max_data_blocks > upper_limit)
-> +		goto bisect;
-> +
-> +	depth++;
-> +	max_meta_blocks = 1;
-> +	used_data_blocks = max_data_blocks;
-> +	max_data_blocks += 1LL << (bits - 2);
-> +	if (max_meta_blocks + max_data_blocks > upper_limit)
-> +		goto bisect;
-> +
-> +	depth++;
-> +	max_meta_blocks += 1 + (1LL << (bits - 2));
-> +	used_data_blocks = max_data_blocks;
-> +	max_data_blocks += 1LL << (2 * (bits - 2));
-> +	if (max_meta_blocks + max_data_blocks > upper_limit)
-> +		goto bisect;
-> +
-> +	depth++;
-> +	max_meta_blocks += 1 + (1LL << (bits - 2)) + (1LL << (2 * (bits - 2)));
-> +	used_data_blocks = max_data_blocks;
-> +	max_data_blocks += 1LL << (3 * (bits - 2));
-> +	if (max_meta_blocks + max_data_blocks > upper_limit)
-> +		goto bisect;
-> +
-> +	goto out;
-> +bisect:
-> +	low = 0;
-> +	if (depth == 0)
-> +		high = EXT2_NDIR_BLOCKS;
-> +	else
-> +		high = 1 << (depth * (bits - 2));
-> +	while (low <= high) {
-> +		int offsets[4];
-> +		loff_t mid = (low + high) >> 1;
-> +		depth = ext2_block_to_path(sb, mid + used_data_blocks - 1, offsets, NULL);
-> +		if (!depth)
-> +			return -EIO;
-> +
-> +		max_meta_blocks = 0;
-> +		if (depth == 1)
-> +			max_meta_blocks = 0;
-> +
-> +		if (depth == 2)
-> +			max_meta_blocks = 1;
-> +
-> +		if (depth == 3) {
-> +			/* Indirect blocks */
-> +			max_meta_blocks += 1;
-> +			/* Double indirect blocks */
-> +			max_meta_blocks += 1;
-> +			max_meta_blocks += offsets[1];
-> +		}
->  
-> -	/* indirect blocks */
-> -	meta_blocks = 1;
-> -	/* double indirect blocks */
-> -	meta_blocks += 1 + (1LL << (bits-2));
-> -	/* tripple indirect blocks */
-> -	meta_blocks += 1 + (1LL << (bits-2)) + (1LL << (2*(bits-2)));
-> -
-> -	upper_limit -= meta_blocks;
-> -	upper_limit <<= bits;
-> -
-> -	res += 1LL << (bits-2);
-> -	res += 1LL << (2*(bits-2));
-> -	res += 1LL << (3*(bits-2));
-> -	res <<= bits;
-> -	if (res > upper_limit)
-> -		res = upper_limit;
-> -
-> +		if (depth == 4) {
-> +			/* Indirect blocks */
-> +			max_meta_blocks += 1;
-> +			/* Double indirect blocks */
-> +			max_meta_blocks += 1 + (1 << (bits - 2));
-> +			/* Tripple indirect blocks */
-> +			max_meta_blocks += 1;
-> +			if (offsets[1])
-> +				max_meta_blocks += (offsets[1] - 1) * (1 << (bits - 2));
-> +
-> +			max_meta_blocks += 1;
-> +			max_meta_blocks += offsets[2];
-> +		}
-> +		if (max_meta_blocks + mid + used_data_blocks > upper_limit)
-> +			high = mid - 1;
-> +		if (max_meta_blocks + mid + used_data_blocks < upper_limit)
-> +			low = mid + 1;
-> +		if (max_meta_blocks + mid + used_data_blocks == upper_limit) {
-> +			max_data_blocks = mid + used_data_blocks;
-> +			break;
-> +		}
-> +	}
-> +out:
-> +	res = max_data_blocks << bits;
->  	if (res > MAX_LFS_FILESIZE)
->  		res = MAX_LFS_FILESIZE;
->  
-> @@ -995,7 +1064,9 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  		}
->  	}
->  
-> -	sb->s_maxbytes = ext2_max_size(sb->s_blocksize_bits);
-> +	sbi->s_addr_per_block_bits =
-> +		ilog2 (EXT2_ADDR_PER_BLOCK(sb));
-> +	sb->s_maxbytes = ext2_max_size(sb, sb->s_blocksize_bits);
->  	sb->s_max_links = EXT2_LINK_MAX;
->  
->  	if (le32_to_cpu(es->s_rev_level) == EXT2_GOOD_OLD_REV) {
-> @@ -1035,8 +1106,6 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
->  					sizeof (struct ext2_group_desc);
->  	sbi->s_sbh = bh;
->  	sbi->s_mount_state = le16_to_cpu(es->s_state);
-> -	sbi->s_addr_per_block_bits =
-> -		ilog2 (EXT2_ADDR_PER_BLOCK(sb));
->  	sbi->s_desc_per_block_bits =
->  		ilog2 (EXT2_DESC_PER_BLOCK(sb));
->  
+> Regarding Casefold, I am unsure whether Casefold Common + Full still
+> makes sense after migrating from the compatibility to the canonical
+> form.  While Casefold Full, by definition, addresses cases where the
+> casefolding grows in size, like the casefold of the german eszett to SS,
+> it also is responsible for folding smallcase ligatures without a
+> corresponding uppercase to their compatible counterpart.  Which means
+> that on -F directories, o_f_f_i_c_e and o_ff_i_c_e will differ, while on
+> +F directories they will match.  This seems unaceptable to me,
+> suggesting that we should start to use Common + Simple instead of Common
+> + Full, but I would like more input on what seems more reasonable to
+> you.
+> 
+> After we decide on this, I will be sending new patches to update
+> e2fsprogs to the agreed method and remove the normalization/casefold
+> type flags (EXT4_UTF8_NORMALIZATION_TYPE_NFKD,
+> EXT4_UTF8_CASEFOLD_TYPE_NFKDCF), before actually proposing the current
+> patch series for inclusion in the kernel.
+> 
+> Practical things, w.r.t. this patch series:
+> 
+>   - As usual, the UCD files are not part of the series, because they
+>   would bounce.  To test this one would need to fetch the files as
+>   explained in the commit message.
+> 
+>   - If you prefer, you can checkout from
+>      https://gitlab.collabora.com/krisman/linux -b ext4-ci-directory-no-nls
+> 
+>   - More details on the design decisions restricted to ext4 are
+>     available in the corresponding commit messages.
+> 
+> Thanks for keeping up with this.
+> 
+> Gabriel Krisman Bertazi (7):
+>   unicode: Implement higher level API for string handling
+>   unicode: Introduce test module for normalized utf8 implementation
+>   MAINTAINERS: Add Unicode subsystem entry
+>   ext4: Include encoding information in the superblock
+>   ext4: Support encoding-aware file name lookups
+>   ext4: Implement EXT4_CASEFOLD_FL flag
+>   docs: ext4.rst: Document encoding and case-insensitive
+> 
+> Olaf Weber (4):
+>   unicode: Add unicode character database files
+>   scripts: add trie generator for UTF-8
+>   unicode: Introduce code for UTF-8 normalization
+>   unicode: reduce the size of utf8data[]
+> 
+>  Documentation/admin-guide/ext4.rst |   41 +
+>  MAINTAINERS                        |    6 +
+>  fs/Kconfig                         |    1 +
+>  fs/Makefile                        |    1 +
+>  fs/ext4/dir.c                      |   43 +
+>  fs/ext4/ext4.h                     |   42 +-
+>  fs/ext4/hash.c                     |   38 +-
+>  fs/ext4/ialloc.c                   |    2 +-
+>  fs/ext4/inline.c                   |    2 +-
+>  fs/ext4/inode.c                    |    4 +-
+>  fs/ext4/ioctl.c                    |   18 +
+>  fs/ext4/namei.c                    |  104 +-
+>  fs/ext4/super.c                    |   91 +
+>  fs/unicode/Kconfig                 |   13 +
+>  fs/unicode/Makefile                |   22 +
+>  fs/unicode/ucd/README              |   33 +
+>  fs/unicode/utf8-core.c             |  183 ++
+>  fs/unicode/utf8-norm.c             |  797 +++++++
+>  fs/unicode/utf8-selftest.c         |  320 +++
+>  fs/unicode/utf8n.h                 |  117 +
+>  include/linux/fs.h                 |    2 +
+>  include/linux/unicode.h            |   30 +
+>  scripts/Makefile                   |    1 +
+>  scripts/mkutf8data.c               | 3418 ++++++++++++++++++++++++++++
+>  24 files changed, 5307 insertions(+), 22 deletions(-)
+>  create mode 100644 fs/unicode/Kconfig
+>  create mode 100644 fs/unicode/Makefile
+>  create mode 100644 fs/unicode/ucd/README
+>  create mode 100644 fs/unicode/utf8-core.c
+>  create mode 100644 fs/unicode/utf8-norm.c
+>  create mode 100644 fs/unicode/utf8-selftest.c
+>  create mode 100644 fs/unicode/utf8n.h
+>  create mode 100644 include/linux/unicode.h
+>  create mode 100644 scripts/mkutf8data.c
+> 
 > -- 
-> 2.9.5
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
-
---IS0zKkzwUGydFO0o
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-ext2-Fix-underflow-in-ext2_max_size.patch"
-
-From a06dc132deae0c0f9b7cb681940ba1e0b40b40dc Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 29 Jan 2019 17:17:24 +0100
-Subject: [PATCH] ext2: Fix underflow in ext2_max_size()
-
-When ext2 filesystem is created with 64k block size, ext2_max_size()
-will return value less than 0. Also, we cannot write any file in this fs
-since the sb->maxbytes is less than 0. The core of the problem is that
-the size of block index tree for such large block size is more than
-i_blocks can carry. So fix the computation to count with this
-possibility.
-
-File size limits computed with the new function for the full range of
-possible block sizes look like:
-
-bits file_size
-10     17247252480
-11    275415851008
-12   2196873666560
-13   2197948973056
-14   2198486220800
-15   2198754689024
-16   2198888775680
-
-Reported-by: yangerkun <yangerkun@huawei.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext2/super.c | 30 ++++++++++++++++++------------
- 1 file changed, 18 insertions(+), 12 deletions(-)
-
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 73b2d528237f..5cc04a2a78a1 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -758,6 +758,7 @@ static loff_t ext2_max_size(int bits)
- 	loff_t res = EXT2_NDIR_BLOCKS;
- 	int meta_blocks;
- 	loff_t upper_limit;
-+	unsigned int ppb = 1 << (bits-2);
- 
- 	/* This is calculated to be the largest file size for a
- 	 * dense, file such that the total number of
-@@ -771,24 +772,29 @@ static loff_t ext2_max_size(int bits)
- 	/* total blocks in file system block size */
- 	upper_limit >>= (bits - 9);
- 
-+	/* Compute how many blocks we can address by block tree */
-+	res += 1LL << (bits-2);
-+	res += 1LL << (2*(bits-2));
-+	res += 1LL << (3*(bits-2));
-+	/* Does block tree limit file size? */
-+	if (res < upper_limit)
-+		goto check_lfs;
- 
-+	res = upper_limit;
-+	/* How many metadata blocks are needed for addressing upper_limit? */
-+	upper_limit -= EXT2_NDIR_BLOCKS;
- 	/* indirect blocks */
- 	meta_blocks = 1;
-+	upper_limit -= 1LL << (bits-2);
- 	/* double indirect blocks */
- 	meta_blocks += 1 + (1LL << (bits-2));
--	/* tripple indirect blocks */
--	meta_blocks += 1 + (1LL << (bits-2)) + (1LL << (2*(bits-2)));
--
--	upper_limit -= meta_blocks;
--	upper_limit <<= bits;
--
--	res += 1LL << (bits-2);
--	res += 1LL << (2*(bits-2));
--	res += 1LL << (3*(bits-2));
-+	upper_limit -= 1LL << (2*(bits-2));
-+	/* tripple indirect blocks for the rest */
-+	meta_blocks += 1 + DIV_ROUND_UP(upper_limit, ppb) +
-+		DIV_ROUND_UP(upper_limit, ppb*ppb);
-+	res -= meta_blocks;
-+check_lfs:
- 	res <<= bits;
--	if (res > upper_limit)
--		res = upper_limit;
--
- 	if (res > MAX_LFS_FILESIZE)
- 		res = MAX_LFS_FILESIZE;
- 
--- 
-2.16.4
-
-
---IS0zKkzwUGydFO0o--
+> 2.20.1
