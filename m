@@ -2,71 +2,90 @@ Return-Path: <SRS0=tjTT=QF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 168F6C169C4
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 09:41:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EE9C8C4151A
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 10:07:05 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D794E2082E
-	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 09:41:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C7F2B20881
+	for <linux-ext4@archiver.kernel.org>; Tue, 29 Jan 2019 10:07:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727041AbfA2JlD convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Jan 2019 04:41:03 -0500
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42976 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726923AbfA2JlD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 29 Jan 2019 04:41:03 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id ADA332B3AF
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 09:41:02 +0000 (UTC)
-Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id A1B302B39C; Tue, 29 Jan 2019 09:41:02 +0000 (UTC)
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date:   Tue, 29 Jan 2019 09:41:02 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: jack@suse.cz
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-201631-13602-6jrXLtn6cG@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1727513AbfA2KHF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Jan 2019 05:07:05 -0500
+Received: from mx2.suse.de ([195.135.220.15]:36094 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725799AbfA2KHE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 29 Jan 2019 05:07:04 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 51B5DB01F;
+        Tue, 29 Jan 2019 10:07:03 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 47B8F1E3FEA; Tue, 29 Jan 2019 11:07:02 +0100 (CET)
+Date:   Tue, 29 Jan 2019 11:07:02 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Keith Busch <keith.busch@intel.com>
+Cc:     Jan Kara <jack@suse.cz>, Kanchan Joshi <joshi.k@samsung.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nvme@lists.infradead.org" <linux-nvme@lists.infradead.org>,
+        "jack@suse.com" <jack@suse.com>,
+        "david@fromorbit.com" <david@fromorbit.com>,
+        "tytso@mit.edu" <tytso@mit.edu>,
+        "prakash.v@samsung.com" <prakash.v@samsung.com>,
+        Jens Axboe <axboe@kernel.dk>
+Subject: Re: [PATCH v2 0/4] Write-hint for FS journal
+Message-ID: <20190129100702.GA29981@quack2.suse.cz>
+References: <CGME20190109153328epcas2p4643cbdc7a2182b47893a2bcaa0778e17@epcas2p4.samsung.com>
+ <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
+ <20190125162353.GA11210@localhost.localdomain>
+ <20190128124709.GB27972@quack2.suse.cz>
+ <20190128232423.GD15302@localhost.localdomain>
 MIME-Version: 1.0
-X-Virus-Scanned: ClamAV using ClamSMTP
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190128232423.GD15302@localhost.localdomain>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+On Mon 28-01-19 16:24:24, Keith Busch wrote:
+> On Mon, Jan 28, 2019 at 04:47:09AM -0800, Jan Kara wrote:
+> > On Fri 25-01-19 09:23:53, Keith Busch wrote:
+> > > On Wed, Jan 09, 2019 at 09:00:57PM +0530, Kanchan Joshi wrote:
+> > > > Towards supporing write-hints/streams for filesystem journal.                   
+> > > >                                                                                 
+> > > > Here is the v1 patch for background -                                           
+> > > > https://marc.info/?l=linux-fsdevel&m=154444637519020&w=2                        
+> > > >                                                                                 
+> > > > Changes since v1:                                                               
+> > > > - introduce four more hints for in-kernel use, as recommended by Dave chinner   
+> > > >   & Jens axboe. This isolates kernel-mode hints from user-mode ones.            
+> > > 
+> > > The nvme driver disables streams if the controller doesn't support
+> > > BLK_MAX_WRITE_HINT number of streams, so this series breaks the feature
+> > > for controllers that only support up to 4.
+> > 
+> > Right. Do you know if there are such controllers? Or are you just afraid
+> > that there could be?
+> 
+> I've asked around, and the concensus I received is all currently support
+> at least 8, but they couldn't say if that would be true for potential
+> lower budget products. Can we implement a reasonable fallback to use
+> what's available?
 
---- Comment #55 from Jan Kara (jack@suse.cz) ---
-Created attachment 280841
-  --> https://bugzilla.kernel.org/attachment.cgi?id=280841&action=edit
-mm: Dump page and PTE state and some history (v5)
+OK, thanks for input. So probably we should just map kernel stream IDs to 0
+if the device doesn't support them. But that probably means we need to
+propagate number of available streams up from NVME into the block layer so
+that this can be handled reasonably seamlessly. Jens, Kanchan?
 
-Erhard, please test with this debug patch. Thanks!
+								Honza
 
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
