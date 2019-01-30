@@ -4,68 +4,71 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1487CC169C4
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jan 2019 03:01:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EAE9DC169C4
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jan 2019 03:07:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B10E920989
-	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jan 2019 03:01:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A93B020989
+	for <linux-ext4@archiver.kernel.org>; Wed, 30 Jan 2019 03:07:02 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="ZWMV6pU/"
+	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="V+thjOE5"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729299AbfA3DBI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 29 Jan 2019 22:01:08 -0500
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:32830 "EHLO
-        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728356AbfA3DBH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jan 2019 22:01:07 -0500
-Received: by mail-pg1-f195.google.com with SMTP id z11so9709351pgu.0
-        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 19:01:07 -0800 (PST)
+        id S1729954AbfA3DHC (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 29 Jan 2019 22:07:02 -0500
+Received: from mail-pf1-f196.google.com ([209.85.210.196]:37612 "EHLO
+        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728356AbfA3DHB (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jan 2019 22:07:01 -0500
+Received: by mail-pf1-f196.google.com with SMTP id y126so10714593pfb.4
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Jan 2019 19:07:01 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=dilger-ca.20150623.gappssmtp.com; s=20150623;
         h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
          :references;
-        bh=4NvFRUns+GF3mJh8htfT1ecScFz0Eom9Of98XLiEceY=;
-        b=ZWMV6pU/Bmxn99ENXO8du4KEe8FTNhKHM3khsYnEcTJfhQSGLtn35Grp2aLJR/SJ2v
-         xPP8WnzKtdh6dt0bfqzSakiUWICVkVo7MDfNI/Sw7PXcZk3SymWh00/7IuwZ62ArmBid
-         BX0oJPMzn4NSY++P9pHYtUgwQhEQ4EHoRIGCQfw1CJLiMR9lDrTNWdSo4hZvfRoF+MIe
-         se8cRgbJQs0i687JI2JgTCk42hA9AAuyDXnwRxQKgVIbSjPlTappUDDOEAShVM7Sq4hn
-         wGWGmQ/mYjGz8SMPyFopzeNfyeW8exIXsp3gvOXHNq3UTBcZsOV9CY7XS+9kxPKboBKG
-         TH0A==
+        bh=95vhoGtG5CBxhy937IH8bdn4sAr1loHp5/BOnkMuPno=;
+        b=V+thjOE5jN+l4u1x6QuSRSqfMYaL7oJCg2rEMMMgPlbyS8/wJDLLGm7kpDMC977yWf
+         u0qGOGpXs9D2gdqMcLiMqQzdz/kfPx+x+KFr+o4U3B4Y1ZyjdAzisr5FC0d3O7SLVlcL
+         YCLftKmx9W2GJryEtnG4TRmzMkqdBgT7sFhFheBUwN+7K/R9HseOuKPjEzF1RhD+gglR
+         j70uCiEhJkCfPUeyQH/NKSd9JPYRnEL8WzDbK+37sh7Og2areszjw//Lw6CPI0WFeiBI
+         pVftTjQwTIgtEpMcTJyWN5nj/dhQARVG48LGTiaZ6X/kem+ylcizRwo4TVUDXOxQYuMV
+         /KjA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:message-id:mime-version:subject:date
          :in-reply-to:cc:to:references;
-        bh=4NvFRUns+GF3mJh8htfT1ecScFz0Eom9Of98XLiEceY=;
-        b=JQpZcEi5ERoq3PsQkIghpdLjVKuW+gpIphOhe43NvddbNhW1l9pvW3y8ptQe9zm4NU
-         e2b/agH17wCzWbTQFVmQvFuEhV5w2MPHkpzRTr3uUtzqswMayyA0QNisUH/T1k7lMea4
-         eCbo0EnTw/tUcMEHKNR6s5LSH4vVLeGyIApU2+J6N3C2W9unEpJ4nEbf/KK9i0YeLHoj
-         XaInKtSUCVPY9TwLYzTAdojsy+sJ8jmcj/PTuu73uh7DhPfaQMbEq0Zcj4yIT1BFe6Ee
-         EJ/QJEjwAWKqNwzkYDeF09Yu+LkCdfGuQ1xUQMZhwy7yVAlXEZqeJrvFCm0wQqtoVRgZ
-         2Xwg==
-X-Gm-Message-State: AJcUuke5wVMpsI56a8vD59FeRBus+JPBKErG25yOCJL/tQRviTXxflv4
-        9Y65k9GcpNwQI1k0M8JJ3UA6gQ==
-X-Google-Smtp-Source: ALg8bN6YUAzU7hDLUuhETU6jaMojDLnq5E90srn4rN1r1P72+oYIISLAvZ/23t267OcOEjoRhoDvvw==
-X-Received: by 2002:a63:6cc:: with SMTP id 195mr26143684pgg.401.1548817266614;
-        Tue, 29 Jan 2019 19:01:06 -0800 (PST)
+        bh=95vhoGtG5CBxhy937IH8bdn4sAr1loHp5/BOnkMuPno=;
+        b=NSwoCtD7XDI8s/Mlp6QPKfGJqtJCUFcpDD8IUhOlcf7ga8b0NU+oqzQFEFrjoVQfmK
+         0Ph6ESJ+rvBDZorjTs1aOQqFI6R+O22UmK+gnkhjmwjubz20MmrnuPiANoR/HF5s5zAJ
+         fXyRnPh5C1eRxCYm2BLMuxWCXx8TeqMHIL8/Y3Q+uaSDUWcCiiFTrbCuPLgPI8z1X1NY
+         Sp9u+6zkhLJWvrjWNh2x6upKWXx7eSjSRh41KcJI1gJa/7lozAwiNgOMFNPfKUFOgJno
+         DYEBMh5iA4CKesye/+P8C/0qV0YTJO6CDX3pFzesFIn1hKf5oXZxquhWKOcTDgzOnAR0
+         w7Ig==
+X-Gm-Message-State: AJcUukf0VaszonScJyqS+dfALvnEbBFTwwJUMD6/lO/MDoltzICdMX0p
+        XDlseVAp+mSTsU8q66yeIlY1dgSnl28=
+X-Google-Smtp-Source: ALg8bN4zrPoxs+Z8w5FblzsEl1OtaArHUKOE0YHzlQ23yCXGe3PuhEUIvCFupsClQr2wOLyKxHn/SA==
+X-Received: by 2002:a62:1a91:: with SMTP id a139mr29789252pfa.64.1548817620711;
+        Tue, 29 Jan 2019 19:07:00 -0800 (PST)
 Received: from ?IPv6:2605:8d80:4a0:7c8a:14fc:648d:efbb:9e54? ([2605:8d80:4a0:7c8a:14fc:648d:efbb:9e54])
-        by smtp.gmail.com with ESMTPSA id o1sm197228pgn.63.2019.01.29.19.01.04
+        by smtp.gmail.com with ESMTPSA id d18sm259452pfj.47.2019.01.29.19.06.59
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 29 Jan 2019 19:01:04 -0800 (PST)
+        Tue, 29 Jan 2019 19:07:00 -0800 (PST)
 From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <BDB26C76-310F-4925-BE41-034D62B2797B@dilger.ca>
+Message-Id: <7B615222-18AC-4006-8565-717F10FCAEF5@dilger.ca>
 Content-Type: multipart/signed;
- boundary="Apple-Mail=_518C01EE-D4D3-49EB-B727-660A010E6807";
+ boundary="Apple-Mail=_DD7030A3-A6F1-408B-AEBE-CD86616DB23A";
  protocol="application/pgp-signature"; micalg=pgp-sha256
 Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH v7 1/4] ext2fs: opening filesystem code refactoring
-Date:   Tue, 29 Jan 2019 20:01:03 -0700
-In-Reply-To: <20190129175134.26652-2-c17828@cray.com>
+Subject: Re: [PATCH v7 2/4] e2image: add -b and -B options to use supperblock
+ backup
+Date:   Tue, 29 Jan 2019 20:06:58 -0700
+In-Reply-To: <20190129175134.26652-3-c17828@cray.com>
 Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-To:     Artem Blagodarenko <artem.blagodarenko@gmail.com>
+To:     Artem Blagodarenko <artem.blagodarenko@gmail.com>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>
 References: <20190129175134.26652-1-c17828@cray.com>
- <20190129175134.26652-2-c17828@cray.com>
+ <20190129175134.26652-3-c17828@cray.com>
 X-Mailer: Apple Mail (2.3273)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
@@ -73,169 +76,224 @@ List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
 
---Apple-Mail=_518C01EE-D4D3-49EB-B727-660A010E6807
+--Apple-Mail=_DD7030A3-A6F1-408B-AEBE-CD86616DB23A
 Content-Transfer-Encoding: quoted-printable
 Content-Type: text/plain;
 	charset=us-ascii
 
-On Jan 29, 2019, at 10:51 AM, Artem Blagodarenko =
+
+> On Jan 29, 2019, at 10:51 AM, Artem Blagodarenko =
 <artem.blagodarenko@gmail.com> wrote:
 >=20
-> There are similar opening filesystem code in different utilities.
+> e2image has no ability to use superblock backup to copy metadata.
+> This feature can be useful if someone wants to make partition
+> image and fix it using e2fsck utility.
 >=20
-> The patch moves improved handling from try_open_fs()
-> into ext2fs_open(). This function make one of the action
-> based on parameters:
-> 1) open filesystem with given superblock, superblock size
-> 2) open filesystem with given superblock, but try to
-> find right block size
+> New -b option allows to pass superblock number, like e2fsck utility =
+does.
+> e2image doesn't change primary superblock and store it as is, so
+> it can be fixed using e2fsck latter. Option -B allows setting
+> superblock size.
 >=20
 > Signed-off-by: Artem Blagodarenko <c17828@cray.com>
 
 Reviewed-by: Andreas Dilger <adilger@dilger.ca>
 
 > ---
-> e2fsck/unix.c       | 28 +++-------------------------
-> lib/ext2fs/openfs.c | 39 +++++++++++++++++++++++++++++++++++----
-> misc/dumpe2fs.c     | 17 ++---------------
-> 3 files changed, 40 insertions(+), 44 deletions(-)
+> misc/e2image.8.in | 33 +++++++++++++++++++++++++++++++++
+> misc/e2image.c    | 43 +++++++++++++++++++++++++++++++++++++------
+> 2 files changed, 70 insertions(+), 6 deletions(-)
 >=20
-> diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-> index 5b3552ec..ddcf52a4 100644
-> --- a/e2fsck/unix.c
-> +++ b/e2fsck/unix.c
-> @@ -1151,31 +1151,9 @@ static errcode_t try_open_fs(e2fsck_t ctx, int =
-flags, io_manager io_ptr,
-> 			     ext2_filsys *ret_fs)
+> diff --git a/misc/e2image.8.in b/misc/e2image.8.in
+> index a7bfdf24..bbbb57ae 100644
+> --- a/misc/e2image.8.in
+> +++ b/misc/e2image.8.in
+> @@ -12,6 +12,15 @@ e2image \- Save critical ext2/ext3/ext4 filesystem =
+metadata to a file
+> ]
+> [
+> .B \-f
+> +.B \-b
+> +.I superblock
+> +]
+> +[
+> +.B \-B
+> +.I blocksize
+> +]
+> +[
+> +.B \-fr
+> ]
+> .I device
+> .I image-file
+> @@ -167,6 +176,22 @@ the
+> option will prevent analysis of problems related to hash-tree indexed
+> directories.
+> .PP
+> +Option
+> +.B \-b
+> +.I superblock
+> +can be used to get image from partition with broken primary =
+superblock.
+> +The partition is copied as-is including broken primary superblock.
+> +.PP
+> +Option
+> +.B \-B
+> +.I blocksize
+> +can be used to set superblock block size. Normally, e2fsck will =
+search
+> +for the superblock at various different block sizes in an attempt to =
+find
+> +the appropriate blocksize. This search can be fooled in some cases.  =
+This
+> +option forces e2fsck to only try locating the superblock at a =
+particular
+> +blocksize. If the superblock is not found, e2fsck will terminate with =
+a
+> +fatal error.
+> +.PP
+> Note that this will work even if you substitute "/dev/hda1" for =
+another raw
+> disk image, or QCOW2 image previously created by
+> .BR e2image .
+> @@ -217,6 +242,14 @@ This can be useful to write a qcow2 image =
+containing all data to a
+> sparse image file where it can be loop mounted, or to a disk =
+partition.
+> Note that this may not work with qcow2 images not generated by =
+e2image.
+> .PP
+> +Options
+> +.B \-b
+> +.I superblock
+> +and
+> +.B \-B
+> +.I blocksize
+> +can be used same way as for raw images.
+> +.PP
+> .SH INCLUDING DATA
+> Normally
+> .B e2image
+> diff --git a/misc/e2image.c b/misc/e2image.c
+> index 9e21d0db..3c881fee 100644
+> --- a/misc/e2image.c
+> +++ b/misc/e2image.c
+> @@ -104,7 +104,8 @@ static int get_bits_from_size(size_t size)
+>=20
+> static void usage(void)
 > {
-> 	errcode_t retval;
-> -
-> -	*ret_fs =3D NULL;
-> -	if (ctx->superblock && ctx->blocksize) {
-> -		retval =3D ext2fs_open2(ctx->filesystem_name, =
-ctx->io_options,
-> -				      flags, ctx->superblock, =
-ctx->blocksize,
-> -				      io_ptr, ret_fs);
-> -	} else if (ctx->superblock) {
-> -		int blocksize;
-> -		for (blocksize =3D EXT2_MIN_BLOCK_SIZE;
-> -		     blocksize <=3D EXT2_MAX_BLOCK_SIZE; blocksize *=3D =
-2) {
-> -			if (*ret_fs) {
-> -				ext2fs_free(*ret_fs);
-> -				*ret_fs =3D NULL;
-> -			}
-> -			retval =3D ext2fs_open2(ctx->filesystem_name,
-> -					      ctx->io_options, flags,
-> -					      ctx->superblock, =
-blocksize,
-> -					      io_ptr, ret_fs);
-> -			if (!retval)
-> -				break;
-> -		}
-> -	} else
-> -		retval =3D ext2fs_open2(ctx->filesystem_name, =
-ctx->io_options,
-> -				      flags, 0, 0, io_ptr, ret_fs);
-> -
-> +	retval =3D ext2fs_open2(ctx->filesystem_name, ctx->io_options,
-> +			   flags, ctx->superblock, ctx->blocksize,
-> +			   io_ptr, ret_fs);
-> 	if (retval =3D=3D 0) {
-> 		(*ret_fs)->priv_data =3D ctx;
-> 		e2fsck_set_bitmap_type(*ret_fs, EXT2FS_BMAP64_RBTREE,
-> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-> index 85d73e2a..16d36200 100644
-> --- a/lib/ext2fs/openfs.c
-> +++ b/lib/ext2fs/openfs.c
-> @@ -114,10 +114,10 @@ static void block_sha_map_free_entry(void *data)
->  *	EXT2_FLAG_64BITS - Allow 64-bit bitfields (needed for large
->  *				filesystems)
->  */
-> -errcode_t ext2fs_open2(const char *name, const char *io_options,
-> -		       int flags, int superblock,
-> -		       unsigned int block_size, io_manager manager,
-> -		       ext2_filsys *ret_fs)
-> +static errcode_t __ext2fs_open2(const char *name, const char =
-*io_options,
-> +				int flags, int superblock,
-> +				unsigned int block_size, io_manager =
-manager,
-> +				ext2_filsys *ret_fs)
-> {
-> 	ext2_filsys	fs;
-> 	errcode_t	retval;
-> @@ -515,6 +515,37 @@ cleanup:
-> 	return retval;
+> -	fprintf(stderr, _("Usage: %s [ -r|Q ] [ -f ] device =
+image-file\n"),
+> +	fprintf(stderr, _("Usage: %s [ -r|Q ] [ -f ] [ -b superblock ] [ =
+-B blocksize]"
+> +			  "[ -fr ] device image-file\n"),
+> 		program_name);
+> 	fprintf(stderr, _("       %s -I device image-file\n"), =
+program_name);
+> 	fprintf(stderr, _("       %s -ra  [  -cfnp  ] [ -o src_offset ] =
+"
+> @@ -1267,7 +1268,8 @@ static void =
+output_qcow2_meta_data_blocks(ext2_filsys fs, int fd)
+> 	free_qcow2_image(img);
 > }
 >=20
-> +errcode_t ext2fs_open2(const char *name, const char *io_options,
-> +		       int flags, int superblock,
-> +		       unsigned int block_size, io_manager manager,
-> +		       ext2_filsys *ret_fs)
-> +{
-> +	errcode_t retval;
+> -static void write_raw_image_file(ext2_filsys fs, int fd, int type, =
+int flags)
+> +static void write_raw_image_file(ext2_filsys fs, int fd, int type, =
+int flags,
+> +				 blk64_t superblock)
+> {
+> 	struct process_block_struct	pb;
+> 	struct ext2_inode		inode;
+> @@ -1295,6 +1297,22 @@ static void write_raw_image_file(ext2_filsys =
+fs, int fd, int type, int flags)
+> 		}
+> 	}
+>=20
+> +	if (superblock) {
+> +		int j;
 > +
-> +	*ret_fs =3D NULL;
-> +	if (superblock && block_size) {
-> +		retval =3D __ext2fs_open2(name, io_options,
-> +				      flags, superblock, block_size,
-> +				      manager, ret_fs);
-> +	} else {
-> +		int size;
+> +		ext2fs_mark_block_bitmap2(meta_block_map, superblock);
+> +		meta_blocks_count++;
 > +
-> +		for (size =3D EXT2_MIN_BLOCK_SIZE;
-> +		     size <=3D EXT2_MAX_BLOCK_SIZE; size *=3D 2) {
-> +			if (*ret_fs) {
-> +				ext2fs_free(*ret_fs);
-> +				*ret_fs =3D NULL;
-> +			}
-> +			retval =3D __ext2fs_open2(name, io_options, =
-flags,
-> +						superblock, size,
-> +						manager, ret_fs);
-> +			if (!retval)
-> +				break;
+> +		/*
+> +		 * Mark the backup superblock descriptors
+> +		 */
+> +		for (j =3D 0; j < fs->desc_blocks; j++) {
+> +			ext2fs_mark_block_bitmap2(meta_block_map,
+> +			ext2fs_descriptor_block_loc2(fs, superblock, =
+j));
 > +		}
+> +		meta_blocks_count +=3D fs->desc_blocks;
 > +	}
-> +	return retval;
-> +}
 > +
-> /*
->  * Set/get the filesystem data I/O channel.
->  *
-> diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-> index 384ce925..183e2f6f 100644
-> --- a/misc/dumpe2fs.c
-> +++ b/misc/dumpe2fs.c
-> @@ -667,21 +667,8 @@ int main (int argc, char ** argv)
-> 	if (image_dump)
-> 		flags |=3D EXT2_FLAG_IMAGE_FILE;
-> try_open_again:
-> -	if (use_superblock && !use_blocksize) {
-> -		for (use_blocksize =3D EXT2_MIN_BLOCK_SIZE;
-> -		     use_blocksize <=3D EXT2_MAX_BLOCK_SIZE;
-> -		     use_blocksize *=3D 2) {
-> -			retval =3D ext2fs_open (device_name, flags,
-> -					      use_superblock,
-> -					      use_blocksize, =
-unix_io_manager,
-> -					      &fs);
-> -			if (!retval)
-> -				break;
-> -		}
-> -	} else {
-> -		retval =3D ext2fs_open(device_name, flags, =
-use_superblock,
-> -				     use_blocksize, unix_io_manager, =
+> 	mark_table_blocks(fs);
+> 	if (show_progress)
+> 		fprintf(stderr, "%s", _("Scanning inodes...\n"));
+> @@ -1474,6 +1492,8 @@ int main (int argc, char ** argv)
+> 	int ignore_rw_mount =3D 0;
+> 	int check =3D 0;
+> 	struct stat st;
+> +	blk64_t superblock =3D 0;
+> +	int blocksize =3D 0;
+>=20
+> #ifdef ENABLE_NLS
+> 	setlocale(LC_MESSAGES, "");
+> @@ -1487,8 +1507,14 @@ int main (int argc, char ** argv)
+> 	if (argc && *argv)
+> 		program_name =3D *argv;
+> 	add_error_table(&et_ext2_error_table);
+> -	while ((c =3D getopt(argc, argv, "nrsIQafo:O:pc")) !=3D EOF)
+> +	while ((c =3D getopt(argc, argv, "b:B:nrsIQafo:O:pc")) !=3D EOF)
+> 		switch (c) {
+> +		case 'b':
+> +			superblock =3D strtoull(optarg, NULL, 0);
+> +			break;
+> +		case 'B':
+> +			blocksize =3D strtoul(optarg, NULL, 0);
+> +			break;
+> 		case 'I':
+> 			flags |=3D E2IMAGE_INSTALL_FLAG;
+> 			break;
+> @@ -1540,6 +1566,11 @@ int main (int argc, char ** argv)
+> 						 "with raw or QCOW2 =
+images."));
+> 		exit(1);
+> 	}
+> +	if (superblock && !img_type) {
+> +		com_err(program_name, 0, "%s", _("-b option can only be =
+used "
+> +						 "with raw or QCOW2 =
+images."));
+> +		exit(1);
+> +	}
+> 	if ((source_offset || dest_offset) && img_type !=3D E2IMAGE_RAW) =
+{
+> 		com_err(program_name, 0, "%s",
+> 			_("Offsets are only allowed with raw images."));
+> @@ -1590,8 +1621,8 @@ int main (int argc, char ** argv)
+> 		}
+> 	}
+> 	sprintf(offset_opt, "offset=3D%llu", source_offset);
+> -	retval =3D ext2fs_open2(device_name, offset_opt, open_flag, 0, =
+0,
+> -			      unix_io_manager, &fs);
+> +	retval =3D ext2fs_open2(device_name, offset_opt, open_flag,
+> +			      superblock, blocksize, unix_io_manager, =
 &fs);
-> -	}
-> +	retval =3D ext2fs_open2(device_name, 0, flags, use_superblock,
-> +			      use_blocksize, unix_io_manager, &fs);
-> 	flags |=3D EXT2_FLAG_IGNORE_CSUM_ERRORS;
-> 	if (retval && !retval_csum) {
-> 		retval_csum =3D retval;
+>         if (retval) {
+> 		com_err (program_name, retval, _("while trying to open =
+%s"),
+> 			 device_name);
+> @@ -1681,7 +1712,7 @@ skip_device:
+> 		exit(1);
+> 	}
+> 	if (img_type)
+> -		write_raw_image_file(fs, fd, img_type, flags);
+> +		write_raw_image_file(fs, fd, img_type, flags, =
+superblock);
+> 	else
+> 		write_image_file(fs, fd);
+>=20
 > --
 > 2.14.3
 >=20
@@ -248,7 +306,7 @@ Cheers, Andreas
 
 
 
---Apple-Mail=_518C01EE-D4D3-49EB-B727-660A010E6807
+--Apple-Mail=_DD7030A3-A6F1-408B-AEBE-CD86616DB23A
 Content-Transfer-Encoding: 7bit
 Content-Disposition: attachment;
 	filename=signature.asc
@@ -259,19 +317,19 @@ Content-Description: Message signed with OpenPGP
 -----BEGIN PGP SIGNATURE-----
 Comment: GPGTools - http://gpgtools.org
 
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlxRE28ACgkQcqXauRfM
-H+DE6A//fQU/hHNd7+BLGC0SlTlosmT6mez8k3H77fL+Q4a6D6azIh3hI5VZ6A9w
-FN5Q7ZABUKa6Q3Ei9lYuLtBt9rALZFNwIB3G3y17qxXWThEUBjXyZUn2f6/bBR2A
-632Q61ClkJw8HYUz7AQqJSmiendMjL2SPWYi9wlnqCA3i788hqGF/1p60NjqFwZZ
-d1/8IPhVGH2X/GT+nffQ3m2Ka9D3oyByZwAUEw2FsmOb7gn4Ls8Si1QMN80fVE4Y
-DGcRTQQyY2/edpoIxjG+OEyFe1DgSkVMNnrfLAkqy86ioXO/gV05gsFVc3bw7n5n
-tN47+IHVULQ88WU8n/qIOFtBfJ0eRqaclQLlNjw4rtolmbR3i8ohm7moNAPIY3w5
-TJVLCgcmBLfHH1R7TFYzzyQC61b51yW/ZRzXpXDJAfoIPXSzO2LDbCYh1MMs8oyo
-nDhj/O0hX5WoS4LueA0JP13imqbwjmaK3GWW9J0DHvwZ+Q0mx1/Ni2Vs/mJ31cZN
-J2V0bl8BsSjkYF6E8a/VAkDjJ4Rn8WOzQL4PHZWuYGDGXFsFHnI8Z9tBGZDjdyw2
-T6+jCQwhSW2vXyynsspyedAyPrMkp1b5ag+JMyhHGNHUN5e27QMlnz80FlzPvUCz
-zPUEfclTOBD7u8P1g00XCcB0IV10CR9gE2fJRA5od0mkd7Nw6D0=
-=56Yu
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlxRFNIACgkQcqXauRfM
+H+DViBAAhjOktUABjCBYmT0JFJ7fUQa+HbPtCHPchvA4yaKOxmr1PoIvFG2RBFca
+qI5uUInODHeUCJRwqcvzkR25nWNRm5rldsWkqqpi9Pta9Z6Ya697WBvE1kfD8sUX
+0NoIf6o+ZfFEG2CB6dPPf2ouae3YgrW1lcH0OKb/N4NZpmQ0WEojx3yYCwXNG3QY
+WQpCKgaSy0pvk8cIPlTMGUxCIIvv7AuQITVUjq2y0rfzMyLZWHQuq5AaR9XVBhRO
+ackgSI4OjjJcwrwLlIwIB3pCAHCcxKj/JzyqZNgVXmh++5V/KiFoAmgsmplq+eL4
+GfIUwPDAPnlwuKD4Sd0KP8uxY4xSqqS2k/wElxHltNYcdIVbAk1KSXRKusKBzTaW
+uxU+KMq5dX5/C1AAYUS1abgPhxxGYDwcXlye6I20Eg/nG/9Ftg0WxbODNWO/liNB
+/c/h0ZZwEwlkYApxbEBFaSZSpTYvFd5AsBpuUUVC9hhYsgvlWMOR2h9fgrm/UZHw
+I5GrwNOR4R+3meVvoy5FdfiXuvlaBUYjUmNrf/+NAl2cbaxx4PbsKL+2UCrFt3fL
+aTcYVX4/+vwsMT2XNtk6KYU98uF+e3pMpqqqeYtLJu7piERc6m7fq+kqaIePP5w4
+lFnBh7V6G4laf3gnuaKM+dyIr25Esy7y/Rttqobva9KpBWOQP7s=
+=DilD
 -----END PGP SIGNATURE-----
 
---Apple-Mail=_518C01EE-D4D3-49EB-B727-660A010E6807--
+--Apple-Mail=_DD7030A3-A6F1-408B-AEBE-CD86616DB23A--
