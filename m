@@ -5,30 +5,30 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS,
 	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 302D7C282D7
-	for <linux-ext4@archiver.kernel.org>; Thu, 31 Jan 2019 00:31:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8ECA9C282D7
+	for <linux-ext4@archiver.kernel.org>; Thu, 31 Jan 2019 00:32:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DA5232085B
-	for <linux-ext4@archiver.kernel.org>; Thu, 31 Jan 2019 00:31:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4CA832085B
+	for <linux-ext4@archiver.kernel.org>; Thu, 31 Jan 2019 00:32:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726233AbfAaAbn convert rfc822-to-8bit (ORCPT
+        id S1726455AbfAaAct convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 30 Jan 2019 19:31:43 -0500
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:49970 "EHLO
+        Wed, 30 Jan 2019 19:32:49 -0500
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53708 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725828AbfAaAbn (ORCPT
+        by vger.kernel.org with ESMTP id S1725828AbfAaAcs (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 30 Jan 2019 19:31:43 -0500
+        Wed, 30 Jan 2019 19:32:48 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id A768E304D7
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Jan 2019 00:31:42 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 45C0830610
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Jan 2019 00:32:48 +0000 (UTC)
 Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id A551330560; Thu, 31 Jan 2019 00:31:42 +0000 (UTC)
+        id 446C03061C; Thu, 31 Jan 2019 00:32:48 +0000 (UTC)
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
  .ext4_set_page_dirty+0x70/0xb0
-Date:   Thu, 31 Jan 2019 00:31:41 +0000
+Date:   Thu, 31 Jan 2019 00:32:46 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -43,8 +43,8 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-201631-13602-357vr7V10Z@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: attachments.isobsolete attachments.created
+Message-ID: <bug-201631-13602-WLVMOu1jBK@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
 References: <bug-201631-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -60,14 +60,19 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
---- Comment #60 from erhard_f@mailbox.org ---
-(In reply to Jan Kara from comment #54)
-> Also it is very strange because this is common code for all architectures but
-> seem to be the only one hitting the problem so far.
+erhard_f@mailbox.org changed:
 
-Maybe there are not that may people running a debug kernel on ppc64, building
-loads of stuff on an ext2 (sorry for originally stating it as ext4, I just
-forgot to pay attention to this detail) zram disk. ;)
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+ Attachment #280809|0                           |1
+        is obsolete|                            |
+
+--- Comment #61 from erhard_f@mailbox.org ---
+Created attachment 280881
+  --> https://bugzilla.kernel.org/attachment.cgi?id=280881&action=edit
+journalctl -k (5.0-rc4 on a Talos II)
+
+Results with Jans v6 patch.
 
 -- 
 You are receiving this mail because:
