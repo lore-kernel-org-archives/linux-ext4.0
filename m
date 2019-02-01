@@ -6,97 +6,122 @@ X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 066E2C169C4
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Feb 2019 00:14:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0CF6BC169C4
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Feb 2019 01:45:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BF7AF218A6
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Feb 2019 00:14:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B0ED320844
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Feb 2019 01:45:34 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="wwh1cEsv"
+	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="D6KXrh/w"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728824AbfBAAOV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 31 Jan 2019 19:14:21 -0500
-Received: from mail-it1-f175.google.com ([209.85.166.175]:51690 "EHLO
-        mail-it1-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728696AbfBAAOU (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jan 2019 19:14:20 -0500
-Received: by mail-it1-f175.google.com with SMTP id w18so6695172ite.1
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Jan 2019 16:14:20 -0800 (PST)
+        id S1727438AbfBABpe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 31 Jan 2019 20:45:34 -0500
+Received: from mail-pf1-f169.google.com ([209.85.210.169]:33576 "EHLO
+        mail-pf1-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726425AbfBABpd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jan 2019 20:45:33 -0500
+Received: by mail-pf1-f169.google.com with SMTP id c123so2368764pfb.0
+        for <linux-ext4@vger.kernel.org>; Thu, 31 Jan 2019 17:45:33 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=intel-com.20150623.gappssmtp.com; s=20150623;
-        h=mime-version:from:date:message-id:subject:to;
-        bh=/ikGVur2BTna97J6i165vB4u7wCyrtv7CxkPfqopJ+o=;
-        b=wwh1cEsvhapaDB/sRyGBk9Q5yehvXZBX+LjdpqRtgZjhQM4U8PHgq95Ed9kJ6b5eea
-         WztXdv3RR/Oj/lMs2hV5Wx9vu7YwlXkXWepMuT4zK0T8SylgFTVuVer/Skkd5aBk+QFv
-         HdMCGXZqROdvjaVGE5qTHzhV4nIMUGcaTGLAqnlbGrc11z7KrZjghPP8eSvP5gk6mF3v
-         01ETmFGpHYSe4nPuKQs8WMh1fTnWAap7gj+zVEzUnB5uYcIxTtjMZoXSSydOjZ87eYTW
-         zZJHqyrlPDNp/aCBQpHe4uI5gsdkOD/3ws2P11txkAPv2vxwU3ujhcVpdWfdUa/1uC/A
-         oJZA==
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=Dk9TPM/GdHHvDXo1P3dyIp+qMpX7IJSJ1nAf4Wsnz0Y=;
+        b=D6KXrh/wqM7FCn4S0q58BwA3kcEMo33yNHTvxVpN429OKJp43/xeAdY0pM7yt4N946
+         6lHbO6w5exNiaCQ7XhaWi5jcIaY728E6+kI9ix1UtJ75cpMBeBIwJ8hiySL01Rpcbfs2
+         tire1n7RDse+Rh/ftC0IUIzL1Hlgng2W6oDByKtvwp/9DwlCBsf2qmSHx6Cp6Cy3XWDq
+         u2c4PdvLEqile+fgvfoNe2GuVS+SWGVYlXkPfhdo6tSVBxBo/am4SY6uc2dLubVOAKIF
+         Vxscwivs+hLJGa4/4ZAr/w0UVe9UddVOu8Ye5ep96vNqrG5nkxxcZy+PcfNtUHNd7SBI
+         6jcQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:from:date:message-id:subject:to;
-        bh=/ikGVur2BTna97J6i165vB4u7wCyrtv7CxkPfqopJ+o=;
-        b=GyPEyBAF1yzBxD2nwK1rG40SHCycUuiUFf9UtaZHOBauUVNvlukPbtwanI/Jxruwzr
-         YqxPDIBtlWmHWq4DI+j4qhGstRrV9N98IoqZSt3VAwfJEB/QXphOHKOv8SQzrU0VhaaX
-         Syf0Hl9R/UoTHqZAHBDy294AUDZKZ0wYjp/zU1G1k62BalK04SfH52s95uI1HMCbFXey
-         3ESWo54r6SBdXwIuiIirvI8LI7LtFFRzYhL1QcdxRcQq0SE1kZmv/gSC4H8qrU6W+AUq
-         gDSUTU87VzCobcmY4ebQAM0Dd44zfhLZ+DHTX3egJt+BZHyqPElfSbK4cuDky4dn8o6b
-         1H+Q==
-X-Gm-Message-State: AJcUukfZvr4BB6DsUnzX6y5UkMQIxdpHEO5SMmGGjQP6Sf0c7p7jJByp
-        lFguvOvFqZLo/fWDjZOjirjeW56gZ1Mft8RWcSvL457KSZ4=
-X-Google-Smtp-Source: ALg8bN5xF6oSKxY8ab7/PWeMSD9u/9c0ZdAEGUcSY0a6th8w3/b0PJTz3bGTa5K0RhL35DKm7RksrdZIRBeaiVaQBko=
-X-Received: by 2002:a02:1bc5:: with SMTP id 66mr24528906jas.105.1548980059560;
- Thu, 31 Jan 2019 16:14:19 -0800 (PST)
-MIME-Version: 1.0
-From:   "Burton, Ross" <ross.burton@intel.com>
-Date:   Fri, 1 Feb 2019 00:14:08 +0000
-Message-ID: <CAJTo0LYhwc978ywMkZ1v3xZHsW4DVwrszKnPoewvzvNixD_Pcg@mail.gmail.com>
-Subject: Writing large files into a ext4 with mkfs is truncating files
-To:     linux-ext4 <linux-ext4@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=Dk9TPM/GdHHvDXo1P3dyIp+qMpX7IJSJ1nAf4Wsnz0Y=;
+        b=o+ec5aKkPF4p5JBNqsW051vSbCkwqhTkHly+uzFHRNGdfbI7qc9iOzhg73UozqtMJ0
+         Y5d9WyDOSoDzLkTZoojIvWRh4/5hgBo3AUqKB1LcvfO/ttjo79hUioJD/A9iR9du3AR/
+         wIueLHT2HVUIZ2eCaVxonZR9gVdiKOByq9v5wIimmF+QV5OY5rN6RseG/LPEmssB0mzJ
+         rAGNkbgVT9c5VI06FWnJTuR9xOl79aaSN+rKzqva9sy6wmFy0c0uzIVElmGq3ujYYi3a
+         phE3aIT9CSdsK7X0eE3ckcEL3S/QQydFBqd4VG6T+EVgwA9r9VlbDdSOqrKZmEMzdInW
+         a+xA==
+X-Gm-Message-State: AJcUukeRVQRiV8PTSMnp0MtvvYplqdn3nDuZTjOWQk7YGWs82fOn8ccR
+        mG4W4y7CbuaIyHK4+Tx5sdU/yYvGIvQ=
+X-Google-Smtp-Source: ALg8bN4ZiIzZ49m+I3ISHk5IHfEg60V/WKdkjVf/NH+TbBIVfXb/EKxmHT+m+QrOt1fPbD9YGhDPQQ==
+X-Received: by 2002:a65:50c1:: with SMTP id s1mr32886387pgp.350.1548985532648;
+        Thu, 31 Jan 2019 17:45:32 -0800 (PST)
+Received: from cabot.adilger.ext (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
+        by smtp.gmail.com with ESMTPSA id l74sm10617797pfb.145.2019.01.31.17.45.31
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 31 Jan 2019 17:45:31 -0800 (PST)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <B510E1BD-618E-4E26-88B1-8D70F78C9EEF@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_3D2DBF02-7125-4239-A639-44D714FE66E6";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: question about ext4 backup block group descriptors
+Date:   Thu, 31 Jan 2019 18:45:29 -0700
+In-Reply-To: <4fc3271a-3098-afcd-24c1-e2e130e1e86a@linux.alibaba.com>
+Cc:     linux-ext4@vger.kernel.org
+To:     Xiaoguang Wang <xiaoguang.wang@linux.alibaba.com>
+References: <4fc3271a-3098-afcd-24c1-e2e130e1e86a@linux.alibaba.com>
+X-Mailer: Apple Mail (2.3273)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
 
-We're creating file systems using mkfs.ext4 -d /path/to/fs, but I'm
-seeing file corruption when adding a large file, which appears to
-trigger if the file is over 4GB.
+--Apple-Mail=_3D2DBF02-7125-4239-A639-44D714FE66E6
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-For example, 3GB of random data:
-$ mkdir fs
-$ dd if=/dev/urandom of=fs/foo status=progress bs=1M count=3K
-$ md5sum fs/foo
-e3c7e0243208b49b55dd8e4f7681302f  fs/foo
-$ truncate -s 6G foo.ext4
-$ /sbin/mkfs.ext4  foo.ext4 -d fs/
-$ sudo mount foo.ext4 /mnt
-$ md5sum /mnt/foo
-e3c7e0243208b49b55dd8e4f7681302f  /mnt/foo
+On Jan 31, 2019, at 1:07 AM, Xiaoguang Wang =
+<xiaoguang.wang@linux.alibaba.com> wrote:
+>=20
+> Anyone can help answer when ext4's backup block group descriptors are =
+updated?
+> I had used blktrace to track the corresponding backup block group =
+descriptor
+> block, but didn't find that any backup blocks were written.
+> Thanks in advance.
 
-But by just changing count=3K to count=5K:
+The ext4 kernel code never updates the backup block group descriptors.  =
+That is only
+done by e2fsck.
 
-...
-a2c04fdb5e717f3b79f6989390e1ce50  fs/foo
-e5e54aec74285b3e750fe0b877363e1d  /mnt/foo
+Cheers, Andreas
 
-A little sleuthing:
 
-$ cmp fs/foo  /mnt/foo
-fs/foo /mnt/foo differ: byte 1073741825, line 4194938
 
-Okay that's not the 4GB boundary. But dumping the values 10 bytes
-either side of that point:
 
-$ dd if=fs/foo skip=1073741815 bs=1 count=20|od -b -Anone
- 333 024 335 134 327 122 306 256 064 107 345 031 037 125 107 355
-$ dd if=/mnt/foo skip=1073741815 bs=1 count=20|od -b -Anone
- 333 024 335 134 327 122 306 256 064 000 000 000 000 000 000 000
 
-At some point mkfs.ext4 stopped copying content and simply padded with zeros.
 
-This is e2fsprogs 1.43.4 and 1.44.3.  I've not yet tried 1.44.5 or git master.
+--Apple-Mail=_3D2DBF02-7125-4239-A639-44D714FE66E6
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
 
-Ross
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlxTpLkACgkQcqXauRfM
+H+A3kQ//dVyUSJXrLZe5yszNJlo94dOJeoG8DFaMosKr+6J8KBvwWo0OdToGYjB+
+ms+/Ct6q7m4vAcd+J9nTj3a0YMFqKFKX21DZRzGDaqXnyhKOly+U/3Eb1iQMWcU1
+IqFuCIEIqEJh/y1f9L87izhsahlu0qesQ4QH8M0fHZxuuHrEQZ01wLFS/BPWGDzn
+7seHrG4Sdg/+pRInVg1n266gl0s9K23wMvh0caYqf9F6/j2Xk+u80/eOWmWeMbbK
+LKAkROJgbYorPoKgt+aOWGdkhzWbpROg6jvC/xeRrys1Ye6jaejTf4NsMuwb7268
+vPI+WbrLw5WsI0dGff4tBz+FxqEGu1pAXu/nxl4H52B5dNjOv0aZuJIQ6S6VHu5e
+dVpDjZsgkdKwfyDHvHu0M65CCXyhX1HMzpLcznjFKGrSirXVVkyJXxaUMvSx4Ks/
+nAPH96ih0vDR2ZA3TRsQpqr3OidddhS4r6NcWTVe+tc0R2cB17pgxs/wgMkyJhPH
+aJtam5ceMAoOzmy/drh2BL6yTP4XRF46a32WAImB3o/JdKN4rnA3R0XRBu5+e45U
+LEtLpGi2ywR55EyAO2axoF3LBOK5rC9HSEayADOxqpqnFq7lp8gxZrbED+nQendI
+lMCTWETn3R5J/9F5nM5wi29IEegE/pqZruK4COP7TqfaFZXE3M4=
+=adm6
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_3D2DBF02-7125-4239-A639-44D714FE66E6--
