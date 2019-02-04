@@ -2,165 +2,140 @@ Return-Path: <SRS0=rNbD=QL=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3C8BC282C4
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Feb 2019 19:31:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 072DCC282C4
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Feb 2019 22:30:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AC51920821
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Feb 2019 19:31:47 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="PZo2AlEt"
+	by mail.kernel.org (Postfix) with ESMTP id D0E172081B
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Feb 2019 22:30:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727946AbfBDTbr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 4 Feb 2019 14:31:47 -0500
-Received: from mail-pl1-f194.google.com ([209.85.214.194]:39778 "EHLO
-        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726585AbfBDTbq (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2019 14:31:46 -0500
-Received: by mail-pl1-f194.google.com with SMTP id 101so391088pld.6
-        for <linux-ext4@vger.kernel.org>; Mon, 04 Feb 2019 11:31:46 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=AhLc97Jv6QAdhtdoWraCNs3f3pafCeyrXV1LQqGCxZ8=;
-        b=PZo2AlEt/gUHltBZ2UdHuXFp2g2EJNBMz1gnqjrvp6ie295WAN0dFKNCQLmCwv9zM+
-         4sMQqyJRzGI/tCeF1znAUic8ZvKh5l+qqE8SADA9CXW34yxumD3HCe3jyR6GUnKfQiE7
-         k87oex8pi5PcX5ALFtVgji7sfuD/Ne5r6JhIFLF9VCsSNpgP9Nt9tkZ2bpFXQyPA0Ci5
-         xpldbvvz3m4K0uE9i9gbNRIS/X5hvcAjZ5pL5aryrmH8AXAEEbEBqKRCnxiMtVtrZIiZ
-         0MJTmMrdJKPj9cmWstoPwbxw+acNlvIg1SR5hgMJzuQ2FIHn7qVuteceIUTh8A1V8Dgr
-         1cWQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=AhLc97Jv6QAdhtdoWraCNs3f3pafCeyrXV1LQqGCxZ8=;
-        b=arlCdjjLM53ZJ4ZWAj/6YeQuTd1p0osvKSBBP3QVM4Vk9nUMDkAl9+H8TnHI/NJMll
-         4fIyOHc+LyuXPKMvtprxbmC8J0uVjfJDTWe7bbheGzLwtrJ/BGnAB4h6nsXWDQxSEeVA
-         +a70/5VqjItEw/q8XT5MlqM/oliaYCC6fhHGqWvK3l62VF5OBjmciI9uKV1z3Wz61Rbn
-         P8PUgJXNCa8BSNknb/RzHmaOn4kAXDcH5PrwttDczZFSIPEUNaP9k3MCCCv8k5bKrQ7O
-         Fbn3qIO0kTa/hU+WsU2DuzWTkFlWo1cnxKb2fUIq9QiTM6O1fZ+T776y0DxT733jmBur
-         ftvA==
-X-Gm-Message-State: AHQUAuYGpREyMS8R13+CRBKybXfBvaJcdNzpa1MTil+Lq+niKRjsIVDA
-        tKC5HJDklQT9sKrmcwxVMYlz3A==
-X-Google-Smtp-Source: AHgI3IZep4jwxUtNaoUeOHD0L7Hz2B3rA5I607DwyOITVlioQdVN0StpDGWqUXYg68OafZr5oyIETg==
-X-Received: by 2002:a17:902:a40d:: with SMTP id p13mr999592plq.59.1549308705788;
-        Mon, 04 Feb 2019 11:31:45 -0800 (PST)
-Received: from cabot-wlan.adilger.int (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
-        by smtp.gmail.com with ESMTPSA id i5sm1097453pfg.34.2019.02.04.11.31.44
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 04 Feb 2019 11:31:44 -0800 (PST)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <818181A2-66E3-42D3-A65E-64F950C48516@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_5D6FB81B-DA5D-4A8A-A593-F41BC084E941";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH v2] ext4: shrink directory when last block is empty
-Date:   Mon, 4 Feb 2019 12:31:40 -0700
-In-Reply-To: <20190201093813.122491-1-harshadshirwadkar@gmail.com>
-Cc:     linux-ext4@vger.kernel.org, tytso@mit.edu, umka@cloudlinux.com
-To:     harshadshirwadkar@gmail.com
-References: <20190201093813.122491-1-harshadshirwadkar@gmail.com>
-X-Mailer: Apple Mail (2.3273)
+        id S1727858AbfBDWac convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 4 Feb 2019 17:30:32 -0500
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:59318 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726676AbfBDWac (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Feb 2019 17:30:32 -0500
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id EDD4D2AC4F
+        for <linux-ext4@vger.kernel.org>; Mon,  4 Feb 2019 22:30:30 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+        id DF3B72ADC0; Mon,  4 Feb 2019 22:30:30 +0000 (UTC)
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
+ .ext4_set_page_dirty+0x70/0xb0
+Date:   Mon, 04 Feb 2019 22:30:30 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: erhard_f@mailbox.org
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-201631-13602-uVUJEYyI4b@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
+References: <bug-201631-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
+MIME-Version: 1.0
+X-Virus-Scanned: ClamAV using ClamSMTP
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+https://bugzilla.kernel.org/show_bug.cgi?id=201631
 
---Apple-Mail=_5D6FB81B-DA5D-4A8A-A593-F41BC084E941
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
+--- Comment #66 from erhard_f@mailbox.org ---
+Currently I am testing this, the 2 patches from Aneesh applied and the one from
+Jan. So far I was not able to provoke the original bug. I faced however another
+one, don't know wether it's related:
 
-On Feb 1, 2019, at 2:38 AM, harshadshirwadkar@gmail.com wrote:
-> 
-> From: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
-> 
-> This patch is the first step towards shrinking htree based directories
-> when files are deleted. We truncate directory inode when a directory
-> entry removal causes last directory block to be empty. In order to be
-> backwards compatible, we don't remove empty last directory block if it
-> results in one of the intermediate htree nodes to be empty.
-> 
-> Changes since v1:
-> - not freeing the last block if it makes intermediate htree block empty
-> - style fixes
-> 
-> Signed-off-by: Harshad Shirwadkar <harshadshirwadkar@gmail.com>
+[...]
+Feb 04 23:11:43 T1000 kernel: BUG: Kernel NULL pointer dereference at
+0x00000028
+Feb 04 23:11:43 T1000 kernel: Faulting instruction address: 0xc0000000002a20ac
+Feb 04 23:11:43 T1000 kernel: Oops: Kernel access of bad area, sig: 11 [#1]
+Feb 04 23:11:43 T1000 kernel: BE SMP NR_CPUS=192 NUMA PowerNV
+Feb 04 23:11:43 T1000 kernel: Modules linked in: rpcsec_gss_krb5 auth_rpcgss
+nfsv4 dns_resolver nfs lockd grace sunrpc sr_mod cdrom cfg80211 rfkill evdev
+radeon ghash_generic gf128mul ecb xts snd_hda_codec_hdmi>
+Feb 04 23:11:43 T1000 kernel: CPU: 0 PID: 218 Comm: kswapd0 Not tainted
+5.0.0-rc4 #2
+Feb 04 23:11:43 T1000 kernel: NIP:  c0000000002a20ac LR: c0000000002a209c CTR:
+c0000000002bd280
+Feb 04 23:11:43 T1000 kernel: REGS: c0000007f8c76fa0 TRAP: 0300   Not tainted 
+(5.0.0-rc4)
+Feb 04 23:11:43 T1000 kernel: MSR:  900000000280b032
+<SF,HV,VEC,VSX,EE,FP,ME,IR,DR,RI>  CR: 44222288  XER: 00000000
+Feb 04 23:11:43 T1000 kernel: CFAR: c000000000281724 DAR: 0000000000000028
+DSISR: 40000000 IRQMASK: 0 
+                              GPR00: c0000000002a5a48 c0000007f8c77230
+c0000000011e2a00 c0000007e2cb8000 
+                              GPR04: c000000000bebb70 00003fff92170000
+0000000000000040 c0000007f4f9e600 
+                              GPR08: c0000000011f54d8 0000000000000000
+0000000000000000 0000000000000000 
+                              GPR12: 0000000024222282 c000000001e2b000
+c0000007e2cb8000 0000000000000000 
+                              GPR16: 0000000000000001 c00a00001ed74ac0
+c0000007f8c77798 0000000000000000 
+                              GPR20: c00a00001ed74ac8 5deadbeef0000100
+0000000020000000 c0000007f4f9e718 
+                              GPR24: c0000007f4f9ea40 7c00000000000000
+7800000000000000 c0000007f4f9ea38 
+                              GPR28: c0000007f4f9e600 c0000007d18cfa90
+c00a00001ed74ac0 c00a00001ed74ac0 
+Feb 04 23:11:43 T1000 kernel: NIP [c0000000002a20ac] .is_ext4_page+0x3c/0x4b0
+Feb 04 23:11:43 T1000 kernel: LR [c0000000002a209c] .is_ext4_page+0x2c/0x4b0
+Feb 04 23:11:43 T1000 kernel: Call Trace:
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77230] [c0000007f9d0d880]
+0xc0000007f9d0d880 (unreliable)
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c772b0] [c0000000002a5a48]
+.get_ext4_bh_nowarn+0x18/0x80
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77330] [c0000000002b963c]
+.page_vma_mapped_walk+0x3c/0x9d0
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77410] [c0000000002bd3d8]
+.try_to_unmap_one+0x158/0x950
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77560] [c0000000002bc018]
+.rmap_walk_anon+0x148/0x3a0
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77610] [c0000000002bf364]
+.try_to_unmap+0x104/0x160
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c776c0] [c000000000270958]
+.shrink_page_list+0x738/0x11e0
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77840] [c000000000271f7c]
+.shrink_inactive_list+0x34c/0x7f0
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77950] [c000000000272e94]
+.shrink_node_memcg+0x3c4/0x7e0
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77ab0] [c0000000002733c4]
+.shrink_node+0x114/0x670
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77bd0] [c000000000275158]
+.kswapd+0x3f8/0xc30
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77d60] [c0000000000dfb6c]
+.kthread+0x19c/0x1b0
+Feb 04 23:11:43 T1000 kernel: [c0000007f8c77e20] [c00000000000b790]
+.ret_from_kernel_thread+0x58/0x68
+Feb 04 23:11:43 T1000 kernel: Instruction dump:
+Feb 04 23:11:43 T1000 kernel: f8010010 f821ff81 4bfdf62d 60000000 2fa30000
+419e0150 7fe3fb78 4bfdf619 
+Feb 04 23:11:43 T1000 kernel: 60000000 3c82ffa1 e9230000 38849170 <e9290028>
+e9290028 e8690000 78690520 
+Feb 04 23:11:43 T1000 kernel: ---[ end trace 9d98850d9aa63397 ]---
+[...]
 
-Some minor style nits below, but looks fine otherwise, you can add:
-
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
-
-Have you run any kind of test (e.g. create 100k entries, ls -ld to get the
-directory size, delete all entries, ls -ld to get the final "empty" size)
-to see how much the directory shrinks from the maximum size?  Some info
-about how well this works without further optimizations would be useful to
-include into the commit comment.
-
-It would also be good to run a loop with the above workload creating files
-with different names (to change hash ordering), then unmount the filesystem
-and run "e2fsck -f" on it to verify there are no errors introduced.
-
-As the next step, it makes sense to implement checking if the previous leaf
-block in the directory is also empty and free that as well.  Even before we
-get to recursively freeing htree index blocks, being able to free all but
-one leaf block per htree would give us a 509x reduction in space used by the
-directory.
-
-Cheers, Andreas
-
-> +static inline bool is_empty_dirent_block(struct inode *dir,
-> +					 struct buffer_head *bh)
-> +{
-> +	struct ext4_dir_entry_2 *de = (struct ext4_dir_entry_2 *)bh->b_data;
-> +
-> +	return 	ext4_rec_len_from_disk(de->rec_len, dir->i_sb->s_blocksize)
-
-(style) remove extra space after "return"
-
-> +			== dir->i_sb->s_blocksize && de->inode == 0;
-> +}
-
-(style) "==" should go at the end of the previous line
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_5D6FB81B-DA5D-4A8A-A593-F41BC084E941
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlxYkx0ACgkQcqXauRfM
-H+Dj/Q/+NsNMo4mHuEVfEnb+avBwWaldYX/OzIX1zGkH/NvQSosKqb3tV7DAmrXa
-NNY/z6E/86ODqdE5C3Z9E7dVRufhPyebAZfo98Pndj14ERr4OT8xN51SF5pNUHYi
-1ls1S4s/DVzRcpHlHUte9Mgg0ilHSEg5+vafEeS3JazCzCCeRHRF66bQj2vnfCX7
-tTkrQx0J5DbhBPhCOfa/29jivMj7k8hOYf/ZeO6XPHLAtFUN+I2RwJ8ZkMM6conf
-WseYa1sp8NVQUoYnZFKT7UpU51BLzVX0PLORiUNSNOf3hBBE4bYg3jjf5CYTwXYr
-Pfn40YjbvCVjiXNZCleGj5cf8LJEpp+xog+ARx6CnJ4FbgPzWJkV730G6JECnDEo
-rrm5rvltKgcsy1IH3RU++1k6ipr3BWptNEwhQqaKVvgLu8qWdId5jVb6K84w7MW/
-3P2JQpd0dnFY5yqkhIvMKq/bFG0NKBqRr3dDqE2fEKNPKahN2gZBTvq80d0THXOZ
-+vIVDIqC/I/mYTF/U89UPVVWOBdcMDxNyyUzhkxoyPLse/RyAkDtHCuRB8FDsP6n
-bFJjcodgIFQwMqZCfxTl0jtF9wn0nsxDoEX/YXGwWy9OiNF4Ksf6u+j4GY8KGboN
-0xDuYLSqE79N2wsH38eRc8wxubLPHvyFLJRs1dfj4bX8Jpx3Ig4=
-=RRX2
------END PGP SIGNATURE-----
-
---Apple-Mail=_5D6FB81B-DA5D-4A8A-A593-F41BC084E941--
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
