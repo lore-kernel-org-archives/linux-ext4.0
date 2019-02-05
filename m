@@ -2,130 +2,146 @@ Return-Path: <SRS0=Sz5y=QM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 606FFC282CB
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Feb 2019 11:43:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ACA9AC282CB
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Feb 2019 11:50:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 340ED2080D
-	for <linux-ext4@archiver.kernel.org>; Tue,  5 Feb 2019 11:43:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 833632080D
+	for <linux-ext4@archiver.kernel.org>; Tue,  5 Feb 2019 11:50:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727790AbfBELnf convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Feb 2019 06:43:35 -0500
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:36352 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726065AbfBELnf (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Feb 2019 06:43:35 -0500
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 6F3222ACF8
-        for <linux-ext4@vger.kernel.org>; Tue,  5 Feb 2019 11:43:34 +0000 (UTC)
-Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 630552AD6B; Tue,  5 Feb 2019 11:43:34 +0000 (UTC)
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 201631] WARNING: CPU: 11 PID: 29593 at fs/ext4/inode.c:3927
- .ext4_set_page_dirty+0x70/0xb0
-Date:   Tue, 05 Feb 2019 11:43:33 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: erhard_f@mailbox.org
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-201631-13602-cPw13Mnrtp@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-201631-13602@https.bugzilla.kernel.org/>
-References: <bug-201631-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1728534AbfBELuv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 5 Feb 2019 06:50:51 -0500
+Received: from mx2.suse.de ([195.135.220.15]:38094 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726622AbfBELuv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 5 Feb 2019 06:50:51 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id EAFCFAF20;
+        Tue,  5 Feb 2019 11:50:48 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 4F44D1E3FED; Tue,  5 Feb 2019 12:50:48 +0100 (CET)
+Date:   Tue, 5 Feb 2019 12:50:48 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     Kanchan Joshi <joshi.k@samsung.com>
+Cc:     Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>,
+        Keith Busch <keith.busch@intel.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "linux-nvme@lists.infradead.org" <linux-nvme@lists.infradead.org>,
+        "jack@suse.com" <jack@suse.com>, "tytso@mit.edu" <tytso@mit.edu>,
+        "prakash.v@samsung.com" <prakash.v@samsung.com>,
+        Jens Axboe <axboe@fb.com>
+Subject: Re: [PATCH v2 0/4] Write-hint for FS journal
+Message-ID: <20190205115048.GC3872@quack2.suse.cz>
+References: <CGME20190109153328epcas2p4643cbdc7a2182b47893a2bcaa0778e17@epcas2p4.samsung.com>
+ <1547047861-7271-1-git-send-email-joshi.k@samsung.com>
+ <20190125162353.GA11210@localhost.localdomain>
+ <20190128124709.GB27972@quack2.suse.cz>
+ <20190128232423.GD15302@localhost.localdomain>
+ <20190129100702.GA29981@quack2.suse.cz>
+ <20190130001349.GT6173@dastard>
+ <0ab2f0e1-27f2-7ab4-1772-f96c1430ea3b@samsung.com>
 MIME-Version: 1.0
-X-Virus-Scanned: ClamAV using ClamSMTP
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <0ab2f0e1-27f2-7ab4-1772-f96c1430ea3b@samsung.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=201631
+On Wed 30-01-19 19:24:39, Kanchan Joshi wrote:
+> 
+> On Wednesday 30 January 2019 05:43 AM, Dave Chinner wrote:
+> > On Tue, Jan 29, 2019 at 11:07:02AM +0100, Jan Kara wrote:
+> > > On Mon 28-01-19 16:24:24, Keith Busch wrote:
+> > > > On Mon, Jan 28, 2019 at 04:47:09AM -0800, Jan Kara wrote:
+> > > > > On Fri 25-01-19 09:23:53, Keith Busch wrote:
+> > > > > > On Wed, Jan 09, 2019 at 09:00:57PM +0530, Kanchan Joshi wrote:
+> > > > > > > Towards supporing write-hints/streams for filesystem journal.
+> > > > > > > Here is the v1 patch for background -
+> > > > > > > https://marc.info/?l=linux-fsdevel&m=154444637519020&w=2
+> > > > > > > Changes since v1:
+> > > > > > > - introduce four more hints for in-kernel use, as recommended by Dave chinner
+> > > > > > >    & Jens axboe. This isolates kernel-mode hints from user-mode ones.
+> > > > > > 
+> > > > > > The nvme driver disables streams if the controller doesn't support
+> > > > > > BLK_MAX_WRITE_HINT number of streams, so this series breaks the feature
+> > > > > > for controllers that only support up to 4.
+> > > > > 
+> > > > > Right. Do you know if there are such controllers? Or are you just afraid
+> > > > > that there could be?
+> > > > 
+> > > > I've asked around, and the concensus I received is all currently support
+> > > > at least 8, but they couldn't say if that would be true for potential
+> > > > lower budget products. Can we implement a reasonable fallback to use
+> > > > what's available?
+> > > 
+> > > OK, thanks for input. So probably we should just map kernel stream IDs to 0
+> > > if the device doesn't support them. But that probably means we need to
+> > > propagate number of available streams up from NVME into the block layer so
+> > > that this can be handled reasonably seamlessly. Jens, Kanchan?
+> > 
+> > Yeah, that's basically what I said we needed to do when this was
+> > last discussed. i.e. that the block layer needed to know how many
+> > streams the hardware had and map the 4 "kernel internal" hints
+> > appropriately to what he device supports.
+> > 
+> > e.g. if the device only supports 4 hints, then it needs to map the
+> > kernel hints either to zero. If it supports less than 8 streams,
+> > then they need otbe mapped into the hints above index 5. If there
+> > are N streams, then they need to be mapped to the hints {N-3,N}
+> > 
+> > And, to top it all off, there needs to be guards so that if we want
+> > to grow the userspace hints to more than 4 hints, they don't crash
+> > into ranges the kernel is already reserving because of limited
+> > device range support.
+> > 
+> > Nothing is ever simple....
+> > 
+> Thanks all for feedback.
+> user-hints, when they reach to kernel via fcntl path, are sanity-checked
+> (rw_hint_valid function).
+> Currently streams are enabled when nvme driver is made to run with "streams
+> =1" option, while stream users always pass some write-hint, without
+> bothering whether streams (and how many of those) are operational or not.
+> This keeps configuration simple for stream users. Second, block layer does
+> not translate write-hint to stream-number, rather it is done inside nvme
+> driver. I suppose I should keep both these properties intact.
+> And considering all the suggestions, this is the plan for V3 -
+> 
+> [In block layer]
+> 1. Introduce one macro "KERN_WRITE_HINT_MIN" which will take the value
+> "user_hint_cnt + 1".
+> FS code will use this value (onwards) to define their own streams.
+> 
+> 2. Introduce another macro "BLK_MAX_KERNEL_WRITE_HINTS" which will be set to
+> 4 for now.
+> 
+> [In nvme driver]
+> 1. Continue working as before if device supports just 4 streams. All these
+> streams are used by user-hints, and kernel-hints are translated to 0.
+> 
+> 2. If device supports any more than 4 streams, those will be mapped to serve
+> kernel-hints, starting from KERN_WRITE_HINT_MIN onwards.
+> For example, if device has 6 streams, four streams (numbers = 1,2,3,4) will
+> be used to serve user-hints and two streams ( numbers = 65535, 65534) will
+> be used to serve first two kernel hints. Other kernel-hints get mapped to 0.
+> OTOH, if device has 10 streams, first four kernel-hints will be mapped to
+> non-zero values (65535 to 65532) and anything else would get turned to 0.
 
---- Comment #70 from erhard_f@mailbox.org ---
-(In reply to Aneesh Kumar KV from comment #69)
-> Ok, can we try with only Revert-powerpc-mm-book3s-Enable-THP-migration
-> patch? I am looking at whether we are getting the migration check on page
-> table entries wrong.
-Applied only Revert-powerpc-mm-book3s-Enable-THP-migration to -rc5. This
-provokes the bug after 1 x llvm debug build (my usual test case):
+Well, I'm not sure if the mapping should happen in the NVME driver. In
+future, there will be potentially more drivers supporting write hints and
+we probably don't want each of them to replicate the mapping behavior. So
+IMO the mapping should rather belong to the block layer...
 
-[...]
-[ 1596.523635] WARNING: CPU: 15 PID: 1709 at fs/ext4/inode.c:3928
-.ext4_set_page_dirty+0x70/0xb0
-[ 1596.523768] Modules linked in: rpcsec_gss_krb5 auth_rpcgss nfsv4
-dns_resolver nfs lockd grace sunrpc
-sr_mod cdrom cfg80211 rfkill radeon evdev ghash_generic gf128mul
-snd_hda_codec_hdmi i2c_algo_bit ttm ecb
- drm_kms_helper snd_hda_intel snd_hda_codec xts snd_hwdep cfbfillrect
-snd_hda_core cfbimgblt xhci_pci sy
-scopyarea sysimgblt snd_pcm sysfillrect fb_sys_fops cbc xhci_hcd mptsas
-cfbcopyarea scsi_transport_sas u
-sbcore mptscsih drm tg3 vmx_crypto powernv_flash snd_timer snd libphy mtd
-mptbase at24 crc32c_vpmsum ibm
-powernv opal_prd scsi_mod hwmon soundcore drm_panel_orientation_quirks
-backlight usb_common lz4 lz4_comp
-ress lz4_decompress zram zsmalloc
-[ 1596.523840] CPU: 15 PID: 1709 Comm: debugedit Not tainted 5.0.0-rc5 #1
-[ 1596.523846] NIP:  c00000000040f330 LR: c00000000025bd20 CTR:
-c00000000040f2c0
-[ 1596.523851] REGS: c0000007b56b7530 TRAP: 0700   Not tainted  (5.0.0-rc5)
-[ 1596.523854] MSR:  9000000000029032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24082498 
-XER: 20040000
-[ 1596.523866] CFAR: c00000000040f304 IRQMASK: 0
-               GPR00: c00000000025bd20 c0000007b56b77c0 c0000000011e2b00
-c00a00001a63ff40
-               GPR04: 00003fffa7a33000 c000000698ffd186 0000000000000001
-0000000000000000
-               GPR08: 0000000000000000 0000000000000000 c00a00001a63ff08
-0000000000000000
-               GPR12: 0000000024082492 c0000007ffffa400 c000000698ffd186
-1000000000000000
-               GPR16: 00003fffa7a33000 e61fffffffffffff c0000007ab96a190
-c0000000011f3918
-               GPR20: 00003fffa7a34000 c00a00001a63ff40 c0000004bdc64ce8
-c0000007ce95fc50
-               GPR24: c0000007ab5069e8 c0000007de586198 fffffffffffffe7f
-0000000000000000
-               GPR28: 00003fffa7a9b000 ffffffffffffffff 0000000000000000
-c00a00001a63ff40
-[ 1596.523898] NIP [c00000000040f330] .ext4_set_page_dirty+0x70/0xb0
-[ 1596.523903] LR [c00000000025bd20] .set_page_dirty+0xa0/0x150
-[ 1596.523907] Call Trace:
-[ 1596.523913] [c0000007b56b77c0] [c000000000266070] .activate_page+0xf0/0x160
-(unreliable)
-[ 1596.523920] [c0000007b56b7830] [c00000000025bd20] .set_page_dirty+0xa0/0x150
-[ 1596.523927] [c0000007b56b78b0] [c0000000002a4c90]
-.unmap_page_range+0xc10/0xe10
-[ 1596.523932] [c0000007b56b7a40] [c0000000002a5224] .unmap_vmas+0xa4/0x150
-[ 1596.523938] [c0000007b56b7b00] [c0000000002afc18] .unmap_region+0xe8/0x190
-[ 1596.523944] [c0000007b56b7c30] [c0000000002b22f0] .__do_munmap+0x2f0/0x510
-[ 1596.523949] [c0000007b56b7cf0] [c0000000002b2590] .__vm_munmap+0x80/0x110
-[ 1596.523955] [c0000007b56b7db0] [c0000000002b2654] .__se_sys_munmap+0x14/0x30
-[ 1596.523962] [c0000007b56b7e20] [c00000000000b3a4] system_call+0x5c/0x70
-[ 1596.523966] Instruction dump:
-[ 1596.523971] 71290008 4182002c e9230000 71292000 41820030 4bf6d80d 60000000
-38210070
-[ 1596.523981] e8010010 7c0803a6 4e800020 60000000 <0fe00000> e9230000 71292000
-4082ffd8               C
-
+								Honza
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
