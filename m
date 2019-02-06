@@ -3,216 +3,221 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
-	version=3.4.0
+	MAILING_LIST_MULTI,SPF_PASS,UNPARSEABLE_RELAY autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D1B41C4151A
-	for <linux-ext4@archiver.kernel.org>; Wed,  6 Feb 2019 14:00:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42406C282C2
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Feb 2019 16:04:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AB0A820844
-	for <linux-ext4@archiver.kernel.org>; Wed,  6 Feb 2019 14:00:51 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 11C6F217F9
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Feb 2019 16:04:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729625AbfBFOAm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 6 Feb 2019 09:00:42 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:58712 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725928AbfBFOAm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 6 Feb 2019 09:00:42 -0500
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 473DE89AE4;
-        Wed,  6 Feb 2019 14:00:40 +0000 (UTC)
-Received: from [10.36.117.191] (ovpn-117-191.ams2.redhat.com [10.36.117.191])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 0D04527065;
-        Wed,  6 Feb 2019 14:00:27 +0000 (UTC)
-Subject: Re: security implications of caching with virtio pmem (was Re: [PATCH
- v3 0/5] kvm "virtio pmem" device)
-To:     "Michael S. Tsirkin" <mst@redhat.com>,
-        Pankaj Gupta <pagupta@redhat.com>
-Cc:     linux-kernel@vger.kernel.org, kvm@vger.kernel.org,
-        qemu-devel@nongnu.org, linux-nvdimm@ml01.01.org,
-        linux-fsdevel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        linux-acpi@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, jack@suse.cz, stefanha@redhat.com,
-        dan.j.williams@intel.com, riel@surriel.com, nilal@redhat.com,
-        kwolf@redhat.com, pbonzini@redhat.com, zwisler@kernel.org,
-        vishal.l.verma@intel.com, dave.jiang@intel.com, jmoyer@redhat.com,
-        xiaoguangrong.eric@gmail.com, hch@infradead.org,
-        jasowang@redhat.com, lcapitulino@redhat.com, imammedo@redhat.com,
-        eblake@redhat.com, willy@infradead.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, darrick.wong@oracle.com,
-        rjw@rjwysocki.net, Andrea Arcangeli <aarcange@redhat.com>
-References: <20190109144736.17452-1-pagupta@redhat.com>
- <20190204170515-mutt-send-email-mst@kernel.org>
-From:   David Hildenbrand <david@redhat.com>
-Openpgp: preference=signencrypt
-Autocrypt: addr=david@redhat.com; prefer-encrypt=mutual; keydata=
- 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
- SE+xAvmumFBY
-Organization: Red Hat GmbH
-Message-ID: <5b8a06a7-be44-698f-f319-6b2cbcf1eb8a@redhat.com>
-Date:   Wed, 6 Feb 2019 15:00:26 +0100
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.4.0
+        id S1730566AbfBFQEa convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 6 Feb 2019 11:04:30 -0500
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:46482 "EHLO
+        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727212AbfBFQEa (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Feb 2019 11:04:30 -0500
+Received: from [127.0.0.1] (localhost [127.0.0.1])
+        (Authenticated sender: krisman)
+        with ESMTPSA id A028F27DB0B
+From:   Gabriel Krisman Bertazi <krisman@collabora.com>
+To:     Pali =?utf-8?Q?Roh=C3=A1r?= <pali.rohar@gmail.com>
+Cc:     tytso@mit.edu, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, sfrench@samba.org,
+        darrick.wong@oracle.com, samba-technical@lists.samba.org,
+        jlayton@kernel.org, bfields@fieldses.org, paulus@samba.org
+Subject: Re: [PATCH RFC v5 00/11] Ext4 Encoding and Case-insensitive support
+Organization: Collabora
+References: <20190128213223.31512-1-krisman@collabora.com>
+        <20190205181041.cdyt5jt7yrqswyy2@pali> <8736p2jbov.fsf@collabora.com>
+        <20190206084752.nwjkeiixjks34vao@pali>
+Date:   Wed, 06 Feb 2019 11:04:24 -0500
+In-Reply-To: <20190206084752.nwjkeiixjks34vao@pali> ("Pali =?utf-8?Q?Roh?=
+ =?utf-8?Q?=C3=A1r=22's?= message of
+        "Wed, 6 Feb 2019 09:47:52 +0100")
+Message-ID: <87sgx0hpiv.fsf@collabora.com>
+User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
 MIME-Version: 1.0
-In-Reply-To: <20190204170515-mutt-send-email-mst@kernel.org>
 Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.26]); Wed, 06 Feb 2019 14:00:41 +0000 (UTC)
+Content-Transfer-Encoding: 8BIT
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 04.02.19 23:56, Michael S. Tsirkin wrote:
-> 
-> On Wed, Jan 09, 2019 at 08:17:31PM +0530, Pankaj Gupta wrote:
->>  This patch series has implementation for "virtio pmem". 
->>  "virtio pmem" is fake persistent memory(nvdimm) in guest 
->>  which allows to bypass the guest page cache. This also
->>  implements a VIRTIO based asynchronous flush mechanism.  
-> 
-> 
-> At Pankaj's request I looked at information leak implications of virtio
-> pmem in light of the recent page cache side channels paper
-> (https://arxiv.org/pdf/1901.01161.pdf) - to see what
-> kind of side channels it might create if any.  TLDR - I think that
-> depending on the host side implementation there could be some, but this
-> might be addressable by better documentation in both code and spec.
-> The fake dax approach backing the guest memory by a host page cache
-> does seem to have potential issues.
-> 
-> For clarity: we are talking about leaking information either to a VM, or
-> within a VM (I did not look into leaks to hypervisor in configurations
-> such as SEV) through host page cache.
-> 
-> Leaks into a VM: It seems clear that while pmem allows memory accesses
-> versus read/write with e.g. a block device, from host page cache point
-> of view this doesn't matter much: reads populate cache in the same way
-> as memory faults.  Thus ignoring presence of information leaks (which is
-> an interesting question e.g. in light of recent discard support) pmem
-> doesn't seem to be any better or worse for leaking information into a
-> VM.
+Pali Rohár <pali.rohar@gmail.com> writes:
 
-+1, just a different way to access that cache.
+> On Tuesday 05 February 2019 14:08:00 Gabriel Krisman Bertazi wrote:
+>> Pali Rohár <pali.rohar@gmail.com> writes:
+>> 
+>> > On Monday 28 January 2019 16:32:12 Gabriel Krisman Bertazi wrote:
+>> >> The main change presented here is a proposal to migrate the
+>> >> normalization method from NFKD to NFD.  After our discussions, and
+>> >> reviewing other operating systems and languages aspects, I am more
+>> >> convinced that canonical decomposition is more viable solution than
+>> >> compatibility decomposition, because it doesn't ignore eliminate any
+>> >> semantic meaning, like the definitive case of superscript numbers.  NFD
+>> >> is also the documented method used by HFS+ and APFS, so there is
+>> >> precedent. Notice however, that as far as my research goes, APFS doesn't
+>> >> completely follows NFD, and in some cases, like <compat> flags, it
+>> >> actually does NFKD, but not in others (<fraction>), where it applies the
+>> >> canonical form.  We take a more consistent approach and always do plain NFD.
+>> >> 
+>> >> This RFC, therefore, aims to resume/start conversation with some
+>> >> stalkeholders that may have something to say regarding the normalization
+>> >> method used.  I added people from SMB, NFS and FS development who
+>> >> might be interested on this.
+>> >
+>> > Hello! I think that choice of NFD normalization is not right decision.
+>> > Some reasons:
+>> >
+>> > 1) NFD is not widely used. Even Apple does not use it (as you wrote
+>> >    Apple has own normalization form).
+>> 
+>> To be exact, Apple claims to use NFD in their specification [1] .
+>
+> Interesting...
+>
+>> What I
+>> observed is that they don't ignore some types of compatibility
+>> characters correctly as they should. For instance, the ff ligature is
+>> decomposed into f + f.
+>
+> I'm sure that Apple does not do NFD, but their own invented normal form.
+> Some graphemes are decomposed, and some not.
+>
+>> > 2) All filesystems which I known either do not use any normalization or
+>> >    use NFC.
+>> > 3) Lot of existing Linux application generate file names in NFC.
+>> >
+>> 
+>> Most do use NFC.  But this is an internal representation for ext4 and it
+>> is name preserving.
+>
+> Ok. I was in impression that it does not preserve original names, just
+> like implementation in Apple's system, where char* passed to creat()
+> does not appear in readdir().
+>
+>> We only use the normalization when comparing if names
+>> matches and to calculate dcache and dx hashes.  The unicode standard
+>> recomends the D forms for internal representation.
+>
+> Ok, this should be less destructive and less visible to userspace.
+>
+>> > 4) Linux GUI libraries like Qt and Gtk generate strings from key strokes
+>> >    in NFC. So if user type file name in Qt/Gtk box it would be in NFC.
+>> >
+>> > So why to use NFD in ext4 filesystem if Linux userspace ecosystem
+>> > already uses NFC?
+>> 
+>> NFC is costlier to calculate, usually requiring an intermediate NFD
+>> step.  Whether it is prohibitively expensive to do in the dcache path, I
+>> don't know, but since it is a critical path, any gain matters.
+>> 
+>> > NFD here just makes another layer of problems, unexpected things and
+>> > make it somehow different.
+>> 
+>> Is there any case where
+>>    NFC(x) == NFC(y) && NFD(x) != NFD(y)   , or
+>>    NFC(x) != NFC(y) && NFD(x) == NFD(y)
+>
+> This is good question. And I think we should get definite answer for it
+> prior inclusion of normalization into kernel.
+>
+>> I am having a hard time thinking of an example.  This is the main
+>> (only?) scenario where choosing C or D form for an internal
+>> representation would affect userspace.
+>
+> For decision between normal format, probably yes.
+>
+>> >
+>> > Why not rather choose NFS? It would be more compatible with Linux GUI
+>> > applications and also with Microsoft Windows systems, which uses NFC
+>> > too.
+>> >
+>> > Please, really consider to not use NFD. Most Linux applications really
+>> > do not do any normalization or do NFC. And usage of decomposition form
+>> > for application which do not implement full Unicode grapheme algorithms
+>> > just make for them another problems.
+>> 
+>> > Yes, there are still lot of legacy application which expect that one
+>> > code point = one visible symbol (therefore one Unicode grapheme). And
+>> > because GUI in most cases generates NFC strings, also existing file
+>> > names are in NFC, these application works in most cases without problem.
+>> > Force usage of NFD filenames just break them.
+>> 
+>> As I said, this shouldn't be a problem because what the application
+>> creates and retrieves is the exact name that was used before, we'd
+>> only use this format for internal metadata on the disk (hashes) and for
+>> in-kernel comparisons.
+>
+> There is another problem for userspace applications:
+>
+> Currently ext4 accepts as file name any sequence of bytes which do not
+> contain nul byte and '/'. So having Latin1 file name is perfectly
+> correct.
+>
+> What would happen if userspace application want to create following two
+> file names? "\xDF" and "\F0"? First one is sharp S second one is eth (in
+> Latin1). But file names are invalid UTF-8 sequences. Is it disallowed to
+> create such file names? Or both file names are internally converted to
+> "U+FFFD" (replacement character) and because NFD(first U+FFFD) ==
+> NFD(second U+FFFD) only first file would be created?
+>
+> And what happen in general with invalid UTF-8 sequences? Because there
+> are many different types of invalid UTF-8 sequences, like non-shortest
+> sequence for valid code point, valid sequence for invalid code points
+> (either surrogate pairs code points, or code points above U+10FFFF,
+> ...), incorrect byte which should start new code point, incorrect byte
+> when decoding of code point started, ...
+>
+> Different (userspace) application handles these invalid UTF-8 sequences
+> differently, some of them accept some kind of "incorrectness" (e.g.
+> non-shortest form of code point representation), some not. Some
+> applications replace invalid parts of UTF-8 sequence by sequence of
+> UTF-8 replacement character, some not. Also it can be observed that some
+> applications use just one replacement characters and some other replace
+> invalid UTF-8 sequence by more replacement characters.
+>
+> So trying to "recover" from invalid UTF-8 sequence to valid one is done
+> in more ways... And usage of any existing way could cause problems...
+> E.g. not possible to create two files "\xDF\xF0" and "\xF0\xDF"...
 
-Conceptually a virtio-pmem devices is from the guest view a "device with
-a managed buffer". Some accesses might be faster than others. There are
-no guarantees on how fast a certain access is. And yes, actions on other
-guests can result in accesses being slower but not faster.
+Basically there are 2 ways to sanely handle invalid utf-8 sequences
+inside the kernel.  I don't see much gain in handling different levels
+of incorrectness.  Opening up to "we now accept surrogate characters,
+but reject unmapped code points (which we must do, because of stability
+of future unicode versions)", makes everything much more unpredictable.
 
-Also other storage devices have caches like that (well, the caches size
-depends on the device) - thinking especially about storage systems -
-which would in my opinion, also allow similar leaks. How are such
-security concerns handled there? Are they different (besides eventually
-access speed)?
+Anyway, two ways to handle invalid sequences...
 
-> 
-> Leaks within VM: Right now pmem seems to bypass the guest page cache
-> completely.  Whether pmem memory is then resident in a page cache would
-> be up to the device/host. Assuming that it is, the "Preventing
-> Efficient Eviction while Increasing the System Performance"
-> countermeasure for the page cache side channel attack would appear to
-> become ineffective with pmem. What is suggested is a per-process
-> management of the page cache, and host does not have visibility of
-> processes within a VM. Another possible countermeasure - not discussed
-> in the paper - could be modify the applications to lock the security
-> relevant pages in memory.  Again this becomes impractical with pmem as
-> host does not have visibility into that. However note that as long
-> as the only countermeasure linux uses is "Privileged Access"
-> (i.e. blocking mincore) nothing can be done as guest page cache
-> remains as vulnerable as host page cache.
+  - 1. An invalid filename can't exist in the disk.  This means
+    reject the sequence and fail the syscall when coming from the
+    userspace, and flagging it as an error to be fixed by fsck when
+    identifying any of these sequences already on the disk.  This has
+    obvious backward compatibility problems with applications that want
+    to create filenames with invalid sequences.
 
-This sounds very use-case specific. If I run a VM only with a very
-specific workload (say, a container running one application), I usually
-don't care about leaks within the VM. At least not leaks between
-applications ;)
+  - 2. An invalid filename can exist in the disk as a unique sequence.
+    In this case, we must decide how to handle invalid sequences that
+    eventually will appear.  The only sane way is to consider the entire
+    sequence an opaque byte sequence, essentially falling back to the
+    old behavior, which prevents userspace breakage.  We loose the
+    normalization/casefold feature for that directory entry only, but
+    the file is still accessible when using the exact match.
 
-In contrast, to running different applications (e.g. containers from
-different customers) on one system, I really care about leaks within a VM.
+Any variant of these, like trying to fix invalid sequences or trying to
+do a partial normalization/casefold as a best effort are insane to do in
+kernel space.
 
-> 
-> 
-> Countermeasures: which host-side countermeasures can be designed would
-> depend on which countermeasures are used guest-side - we would need to
-> make sure they are not broken by pmem.  For "Preventing Efficient
-> Eviction while Increasing the System Performance" modifying the host
-> implementation to ensure that pmem device bypasses the host page cache
-> would seem to address the security problem.Similarly, ensuring that a
-> real memory device (e.g. DAX, RAM such as hugetlbfs, pmem for nested
-> virt) is used for pmem would make the memory locking countermeasure
-> work.  Whether with such limitations the device is still useful
-> performance wise is an open question.  These questions probably should
-> be addressed in the documentation, spec and possible qemu code.
-> 
-I also want to note that using a disk/file as memory backend with
-NVDIMMs in QEMU essentially results in the exact same questions we have
-with virtio-pmem.
+Patch 09 already implements both of the sane behaviors.  Through a
+flag in the file system, which defaults to the second case, ext4 will
+either reject or treat invalid sequences as opaque byte sequences.
 
-E.g. kata-containers use nvdimms for the rootfile system (read-only) as
-far as I am aware.
-
-Conceptually, a virtio-pmem device is just an emulated nvdimm device
-with a flush interface. And the nice thing is, that it is designed to
-also work on architectures that don't speak "nvdimm".
-
-> 
-> Severity of the security implications: some people argue that the
-> security implications of the page cache leaks are minor.  I do not have
-> an opinion on this: the severity would seem to depend on the specific
-> configuration.
-
-I guess configuration and use case.
-
-Nice summary, thanks for looking into this Michael!
-
+There are more details about handling of invalid sequences in the patch
+description.
 
 -- 
-
-Thanks,
-
-David / dhildenb
+Gabriel Krisman Bertazi
