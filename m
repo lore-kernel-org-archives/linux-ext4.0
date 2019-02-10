@@ -2,144 +2,147 @@ Return-Path: <SRS0=BtLx=QR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A42CC282C2
-	for <linux-ext4@archiver.kernel.org>; Sun, 10 Feb 2019 10:47:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 615C8C4151A
+	for <linux-ext4@archiver.kernel.org>; Sun, 10 Feb 2019 14:07:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 68D89214DA
-	for <linux-ext4@archiver.kernel.org>; Sun, 10 Feb 2019 10:47:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3AE2121773
+	for <linux-ext4@archiver.kernel.org>; Sun, 10 Feb 2019 14:07:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726005AbfBJKrI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 10 Feb 2019 05:47:08 -0500
-Received: from mx2.suse.de ([195.135.220.15]:45178 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725999AbfBJKrI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 10 Feb 2019 05:47:08 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 8A58EAE6B;
-        Sun, 10 Feb 2019 10:47:06 +0000 (UTC)
-Subject: Re: [PATCH] ext4: Replace opencoded i_writecount usage with
- inode_is_open_for_write
-To:     tytso@mit.edu
-Cc:     linux-ext4@vger.kernel.org
-References: <20181211082355.19841-1-nborisov@suse.com>
-From:   Nikolay Borisov <nborisov@suse.com>
-Openpgp: preference=signencrypt
-Autocrypt: addr=nborisov@suse.com; prefer-encrypt=mutual; keydata=
- mQINBFiKBz4BEADNHZmqwhuN6EAzXj9SpPpH/nSSP8YgfwoOqwrP+JR4pIqRK0AWWeWCSwmZ
- T7g+RbfPFlmQp+EwFWOtABXlKC54zgSf+uulGwx5JAUFVUIRBmnHOYi/lUiE0yhpnb1KCA7f
- u/W+DkwGerXqhhe9TvQoGwgCKNfzFPZoM+gZrm+kWv03QLUCr210n4cwaCPJ0Nr9Z3c582xc
- bCUVbsjt7BN0CFa2BByulrx5xD9sDAYIqfLCcZetAqsTRGxM7LD0kh5WlKzOeAXj5r8DOrU2
- GdZS33uKZI/kZJZVytSmZpswDsKhnGzRN1BANGP8sC+WD4eRXajOmNh2HL4P+meO1TlM3GLl
- EQd2shHFY0qjEo7wxKZI1RyZZ5AgJnSmehrPCyuIyVY210CbMaIKHUIsTqRgY5GaNME24w7h
- TyyVCy2qAM8fLJ4Vw5bycM/u5xfWm7gyTb9V1TkZ3o1MTrEsrcqFiRrBY94Rs0oQkZvunqia
- c+NprYSaOG1Cta14o94eMH271Kka/reEwSZkC7T+o9hZ4zi2CcLcY0DXj0qdId7vUKSJjEep
- c++s8ncFekh1MPhkOgNj8pk17OAESanmDwksmzh1j12lgA5lTFPrJeRNu6/isC2zyZhTwMWs
- k3LkcTa8ZXxh0RfWAqgx/ogKPk4ZxOXQEZetkEyTFghbRH2BIwARAQABtCNOaWtvbGF5IEJv
- cmlzb3YgPG5ib3Jpc292QHN1c2UuY29tPokCOAQTAQIAIgUCWIo48QIbAwYLCQgHAwIGFQgC
- CQoLBBYCAwECHgECF4AACgkQcb6CRuU/KFc0eg/9GLD3wTQz9iZHMFbjiqTCitD7B6dTLV1C
- ddZVlC8Hm/TophPts1bWZORAmYIihHHI1EIF19+bfIr46pvfTu0yFrJDLOADMDH+Ufzsfy2v
- HSqqWV/nOSWGXzh8bgg/ncLwrIdEwBQBN9SDS6aqsglagvwFD91UCg/TshLlRxD5BOnuzfzI
- Leyx2c6YmH7Oa1R4MX9Jo79SaKwdHt2yRN3SochVtxCyafDlZsE/efp21pMiaK1HoCOZTBp5
- VzrIP85GATh18pN7YR9CuPxxN0V6IzT7IlhS4Jgj0NXh6vi1DlmKspr+FOevu4RVXqqcNTSS
- E2rycB2v6cttH21UUdu/0FtMBKh+rv8+yD49FxMYnTi1jwVzr208vDdRU2v7Ij/TxYt/v4O8
- V+jNRKy5Fevca/1xroQBICXsNoFLr10X5IjmhAhqIH8Atpz/89ItS3+HWuE4BHB6RRLM0gy8
- T7rN6ja+KegOGikp/VTwBlszhvfLhyoyjXI44Tf3oLSFM+8+qG3B7MNBHOt60CQlMkq0fGXd
- mm4xENl/SSeHsiomdveeq7cNGpHi6i6ntZK33XJLwvyf00PD7tip/GUj0Dic/ZUsoPSTF/mG
- EpuQiUZs8X2xjK/AS/l3wa4Kz2tlcOKSKpIpna7V1+CMNkNzaCOlbv7QwprAerKYywPCoOSC
- 7P25Ag0EWIoHPgEQAMiUqvRBZNvPvki34O/dcTodvLSyOmK/MMBDrzN8Cnk302XfnGlW/YAQ
- csMWISKKSpStc6tmD+2Y0z9WjyRqFr3EGfH1RXSv9Z1vmfPzU42jsdZn667UxrRcVQXUgoKg
- QYx055Q2FdUeaZSaivoIBD9WtJq/66UPXRRr4H/+Y5FaUZx+gWNGmBT6a0S/GQnHb9g3nonD
- jmDKGw+YO4P6aEMxyy3k9PstaoiyBXnzQASzdOi39BgWQuZfIQjN0aW+Dm8kOAfT5i/yk59h
- VV6v3NLHBjHVw9kHli3jwvsizIX9X2W8tb1SefaVxqvqO1132AO8V9CbE1DcVT8fzICvGi42
- FoV/k0QOGwq+LmLf0t04Q0csEl+h69ZcqeBSQcIMm/Ir+NorfCr6HjrB6lW7giBkQl6hhomn
- l1mtDP6MTdbyYzEiBFcwQD4terc7S/8ELRRybWQHQp7sxQM/Lnuhs77MgY/e6c5AVWnMKd/z
- MKm4ru7A8+8gdHeydrRQSWDaVbfy3Hup0Ia76J9FaolnjB8YLUOJPdhI2vbvNCQ2ipxw3Y3c
- KhVIpGYqwdvFIiz0Fej7wnJICIrpJs/+XLQHyqcmERn3s/iWwBpeogrx2Lf8AGezqnv9woq7
- OSoWlwXDJiUdaqPEB/HmGfqoRRN20jx+OOvuaBMPAPb+aKJyle8zABEBAAGJAh8EGAECAAkF
- AliKBz4CGwwACgkQcb6CRuU/KFdacg/+M3V3Ti9JYZEiIyVhqs+yHb6NMI1R0kkAmzsGQ1jU
- zSQUz9AVMR6T7v2fIETTT/f5Oout0+Hi9cY8uLpk8CWno9V9eR/B7Ifs2pAA8lh2nW43FFwp
- IDiSuDbH6oTLmiGCB206IvSuaQCp1fed8U6yuqGFcnf0ZpJm/sILG2ECdFK9RYnMIaeqlNQm
- iZicBY2lmlYFBEaMXHoy+K7nbOuizPWdUKoKHq+tmZ3iA+qL5s6Qlm4trH28/fPpFuOmgP8P
- K+7LpYLNSl1oQUr+WlqilPAuLcCo5Vdl7M7VFLMq4xxY/dY99aZx0ZJQYFx0w/6UkbDdFLzN
- upT7NIN68lZRucImffiWyN7CjH23X3Tni8bS9ubo7OON68NbPz1YIaYaHmnVQCjDyDXkQoKC
- R82Vf9mf5slj0Vlpf+/Wpsv/TH8X32ajva37oEQTkWNMsDxyw3aPSps6MaMafcN7k60y2Wk/
- TCiLsRHFfMHFY6/lq/c0ZdOsGjgpIK0G0z6et9YU6MaPuKwNY4kBdjPNBwHreucrQVUdqRRm
- RcxmGC6ohvpqVGfhT48ZPZKZEWM+tZky0mO7bhZYxMXyVjBn4EoNTsXy1et9Y1dU3HVJ8fod
- 5UqrNrzIQFbdeM0/JqSLrtlTcXKJ7cYFa9ZM2AP7UIN9n1UWxq+OPY9YMOewVfYtL8M=
-Message-ID: <893e1633-3c0e-9981-64dd-d451bdaec870@suse.com>
-Date:   Sun, 10 Feb 2019 12:47:05 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.2.1
-MIME-Version: 1.0
-In-Reply-To: <20181211082355.19841-1-nborisov@suse.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
+        id S1726158AbfBJOHQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 10 Feb 2019 09:07:16 -0500
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:41986 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726130AbfBJOHQ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 10 Feb 2019 09:07:16 -0500
+Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x1AE3Y5S017327
+        for <linux-ext4@vger.kernel.org>; Sun, 10 Feb 2019 09:07:15 -0500
+Received: from e06smtp07.uk.ibm.com (e06smtp07.uk.ibm.com [195.75.94.103])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2qjcnbh0rm-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Sun, 10 Feb 2019 09:07:15 -0500
+Received: from localhost
+        by e06smtp07.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <zohar@linux.ibm.com>;
+        Sun, 10 Feb 2019 14:07:12 -0000
+Received: from b06cxnps3074.portsmouth.uk.ibm.com (9.149.109.194)
+        by e06smtp07.uk.ibm.com (192.168.101.137) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Sun, 10 Feb 2019 14:07:08 -0000
+Received: from d06av21.portsmouth.uk.ibm.com (d06av21.portsmouth.uk.ibm.com [9.149.105.232])
+        by b06cxnps3074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x1AE77rs55967756
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sun, 10 Feb 2019 14:07:07 GMT
+Received: from d06av21.portsmouth.uk.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 580AF52050;
+        Sun, 10 Feb 2019 14:07:07 +0000 (GMT)
+Received: from localhost.localdomain (unknown [9.80.91.85])
+        by d06av21.portsmouth.uk.ibm.com (Postfix) with ESMTP id 0D27C52052;
+        Sun, 10 Feb 2019 14:07:05 +0000 (GMT)
+Subject: Re: Proposal: Yet another possible fs-verity interface
+From:   Mimi Zohar <zohar@linux.ibm.com>
+To:     Linus Torvalds <torvalds@linux-foundation.org>,
+        "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     Dave Chinner <david@fromorbit.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Biggers <ebiggers@kernel.org>,
+        linux-fscrypt@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        James Bottomley <James.Bottomley@HansenPartnership.com>
+Date:   Sun, 10 Feb 2019 09:06:55 -0500
+In-Reply-To: <CAHk-=wh2j+Yy28H_QxEdsP=k9xcHxjCG1PqKAF2Uv=ckK8oPug@mail.gmail.com>
+References: <20190207031101.GA7387@mit.edu>
+         <CAHk-=wh2j+Yy28H_QxEdsP=k9xcHxjCG1PqKAF2Uv=ckK8oPug@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+X-Mailer: Evolution 3.20.5 (3.20.5-1.fc24) 
+Mime-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+x-cbid: 19021014-0028-0000-0000-00000346D218
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 19021014-0029-0000-0000-00002404EA8F
+Message-Id: <1549807615.12743.109.camel@linux.ibm.com>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-02-10_14:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
+ clxscore=1011 lowpriorityscore=0 mlxscore=0 impostorscore=0
+ mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.0.1-1810050000 definitions=main-1902100109
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-
-
-On 11.12.18 г. 10:23 ч., Nikolay Borisov wrote:
-> There is a function which clearly conveys the objective of checking
-> i_writecount. Additionally the usage in ext4_mb_initialize_context was
-> wrong, since a node would have wrongfully been reported as writable if
-> i_writecount had a negative value (MMAP_DENY_WRITE).
+On Sat, 2019-02-09 at 12:38 -0800, Linus Torvalds wrote:
+> On Thu, Feb 7, 2019 at 8:10 AM Theodore Y. Ts'o <tytso@mit.edu> wrote:
+> >
+> > After doing a lot of thinking and conferring with the other fs-verity
+> > developers, our current thinking is to simply move the Merkle tree
+> > creation into the kernel.  The upside of doing this is it completely
+> > bypasses all of the complaints about how to transfer the Merkle tree
+> > from userspace to the kernel.
 > 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Nikolay Borisov <nborisov@suse.com>
+> This sounds very sane to me.
 
-Yet another ping ?
+One of the more interesting use cases for fs-verity, at least to me,
+was remote file systems.  Hopefully support for remote file systems
+will be included in the new design.
 
-
-> ---
->  fs/ext4/inode.c   | 2 +-
->  fs/ext4/mballoc.c | 7 +++----
->  2 files changed, 4 insertions(+), 5 deletions(-)
 > 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 22a9d8159720..04e5bc0b5c8d 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -391,7 +391,7 @@ void ext4_da_update_reserve_space(struct inode *inode,
->  	 * inode's preallocations.
->  	 */
->  	if ((ei->i_reserved_data_blocks == 0) &&
-> -	    (atomic_read(&inode->i_writecount) == 0))
-> +	    !inode_is_open_for_write(inode))
->  		ext4_discard_preallocations(inode);
->  }
->  
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index e2248083cdca..6fb76d408093 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -4176,9 +4176,8 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
->  	isize = (i_size_read(ac->ac_inode) + ac->ac_sb->s_blocksize - 1)
->  		>> bsbits;
->  
-> -	if ((size == isize) &&
-> -	    !ext4_fs_is_busy(sbi) &&
-> -	    (atomic_read(&ac->ac_inode->i_writecount) == 0)) {
-> +	if ((size == isize) && !ext4_fs_is_busy(sbi) &&
-> +	    !inode_is_open_for_write(ac->ac_inode)) {
->  		ac->ac_flags |= EXT4_MB_HINT_NOPREALLOC;
->  		return;
->  	}
-> @@ -4258,7 +4257,7 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
->  			(unsigned) ar->goal, ac->ac_flags, ac->ac_2order,
->  			(unsigned) ar->lleft, (unsigned) ar->pleft,
->  			(unsigned) ar->lright, (unsigned) ar->pright,
-> -			atomic_read(&ar->inode->i_writecount) ? "" : "non-");
-> +			inode_is_open_for_write(ar->inode) ? "" : "non-");
->  	return 0;
->  
->  }
+> In particular, may I suggest that  the interface be made idempotent,
+> so that you can do the merkle tree operation several times with the
+> same offset/length arguments, and if the merkle tree has already been
+> calculated, you just return the resulting root hash directly.
 > 
+> Why? That allows you to "validate" images on filesystems that don't
+> actually have any long-term storage model for the merkle tree. IOW,
+> you could do the merkle tree calculation (and verification) every time
+> at bootup, and on a filesystem that supports the long-term storage of
+> said merkle data, it's a very cheap operation, but on a filesystem
+> that doesn't, it would still be *possible* to just calculate the hash
+> and mark it "finalized" for that boot (or that mount). IOW, it would
+> work for something like ramfs (but you could also make it work for any
+> random on-disk filesystem that doesn't support long-term storage).
+
+For which files will the Merkle tree be created?  Is this for all
+files on a per file system basis?  Or is there some sort of "flag" or
+policy?  The original design was based on an ioctl enabling/disabling
+a flag.  In this new design, is there still an ioctl?
+
+> 
+> At that point, the merkle tree thing ends up fairly equivalent to the
+> IMA "measurement" thing, with the exception that the filesystem *may*
+> optimize it to be long-term. Hmm?
+
+Wouldn't fs-verity then be similar to IMA-appraisal?  Instead of
+verifying the file hash, fs-verity verifies the Merkle tree file root
+hash.  The file "measurement", in this case the Merkle tree file root
+hash, could be used to extend the TPM and added to a measurement list
+or in TCG terminology an event log.
+
+> 
+> Now, since I assume that only the merkle tree root hash would be
+> returned by the "enable merkle tree" operation (so that the code
+> enabling it can verify that the hash matches the expected value), you
+> do have to worry about the preimage attack, and make sure that you
+> can't fool the hashing by making the (bad) file contents themselves be
+> just the hashes of the (good) blocks. So each level of the merkle tree
+> needs to have a hash seeding thing or whatever.
+
+Agreed, but wouldn't the Merkle tree file root hash then be system
+specific?
+
+The existing file hashes included in the measurement list and the
+audit log, are currently being used for remote attestation, forensics
+and security analytics.
+
+Mimi
+
