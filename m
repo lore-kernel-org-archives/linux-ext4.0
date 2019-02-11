@@ -6,151 +6,72 @@ X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ACDBEC169C4
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 22:12:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AFC68C169C4
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 22:29:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 84439218A3
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 22:12:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7D1A22080F
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 22:29:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727231AbfBKWMy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Feb 2019 17:12:54 -0500
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:47029 "EHLO
-        ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726173AbfBKWMy (ORCPT
+        id S1727487AbfBKW3M (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 Feb 2019 17:29:12 -0500
+Received: from ipmail01.adl2.internode.on.net ([150.101.137.133]:21674 "EHLO
+        ipmail01.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726751AbfBKW3M (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 11 Feb 2019 17:12:54 -0500
+        Mon, 11 Feb 2019 17:29:12 -0500
 Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
-  by ipmail06.adl2.internode.on.net with ESMTP; 12 Feb 2019 08:42:51 +1030
+  by ipmail01.adl2.internode.on.net with ESMTP; 12 Feb 2019 08:59:08 +1030
 Received: from dave by dastard with local (Exim 4.80)
         (envelope-from <david@fromorbit.com>)
-        id 1gtJon-0002HS-4g; Tue, 12 Feb 2019 09:12:49 +1100
-Date:   Tue, 12 Feb 2019 09:12:49 +1100
+        id 1gtK4Z-0002IS-MO; Tue, 12 Feb 2019 09:29:07 +1100
+Date:   Tue, 12 Feb 2019 09:29:07 +1100
 From:   Dave Chinner <david@fromorbit.com>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-crypto@vger.kernel.org, linux-api@vger.kernel.org,
-        keyrings@vger.kernel.org, Satya Tangirala <satyat@google.com>,
-        Paul Crowley <paulcrowley@google.com>
-Subject: Re: [RFC PATCH v2 11/20] fscrypt: add FS_IOC_REMOVE_ENCRYPTION_KEY
- ioctl
-Message-ID: <20190211221249.GH20493@dastard>
-References: <20190211172738.4633-1-ebiggers@kernel.org>
- <20190211172738.4633-12-ebiggers@kernel.org>
+To:     Pankaj Gupta <pagupta@redhat.com>
+Cc:     "Michael S. Tsirkin" <mst@redhat.com>, dchinner@redhat.com,
+        jack@suse.cz, kvm@vger.kernel.org, david@redhat.com,
+        linux-nvdimm@ml01.01.org, jasowang@redhat.com,
+        qemu-devel@nongnu.org, virtualization@lists.linux-foundation.org,
+        adilger kernel <adilger.kernel@dilger.ca>, zwisler@kernel.org,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        dave jiang <dave.jiang@intel.com>,
+        darrick wong <darrick.wong@oracle.com>,
+        vishal l verma <vishal.l.verma@intel.com>,
+        willy@infradead.org, hch@infradead.org, linux-acpi@vger.kernel.org,
+        jmoyer@redhat.com, nilal@redhat.com, riel@surriel.com,
+        stefanha@redhat.com, imammedo@redhat.com,
+        dan j williams <dan.j.williams@intel.com>,
+        lcapitulino@redhat.com, kwolf@redhat.com,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
+        rjw@rjwysocki.net, linux-kernel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        pbonzini@redhat.com
+Subject: Re: [Qemu-devel] security implications of caching with virtio pmem
+ (was Re: [PATCH v3 0/5] kvm "virtio pmem" device)
+Message-ID: <20190211222907.GR14116@dastard>
+References: <20190109144736.17452-1-pagupta@redhat.com>
+ <20190204170515-mutt-send-email-mst@kernel.org>
+ <888328358.132676.1549870186945.JavaMail.zimbra@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190211172738.4633-12-ebiggers@kernel.org>
+In-Reply-To: <888328358.132676.1549870186945.JavaMail.zimbra@redhat.com>
 User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Feb 11, 2019 at 09:27:29AM -0800, Eric Biggers wrote:
-> From: Eric Biggers <ebiggers@google.com>
-> 
-> Add a new fscrypt ioctl, FS_IOC_REMOVE_ENCRYPTION_KEY.  This ioctl
-> removes an encryption key that was added by FS_IOC_ADD_ENCRYPTION_KEY.
-> It wipes the secret key itself, then "locks" the encrypted files and
-> directories that had been unlocked using that key -- implemented by
-> evicting the relevant dentries and inodes from the VFS caches.
-> 
-> The problem this solves is that many fscrypt users want the ability to
-> remove encryption keys, causing the corresponding encrypted directories
-> to appear "locked" (presented in ciphertext form) again.  Moreover,
-> users want removing an encryption key to *really* remove it, in the
-> sense that the removed keys cannot be recovered even if kernel memory is
-> compromised, e.g. by the exploit of a kernel security vulnerability or
-> by a physical attack.  This is desirable after a user logs out of the
-> system, for example.  In many cases users even already assume this to be
-> the case and are surprised to hear when it's not.
-> 
-> It is not sufficient to simply unlink the master key from the keyring
-> (or to revoke or invalidate it), since the actual encryption transform
-> objects are still pinned in memory by their inodes.  Therefore, to
-> really remove a key we must also evict the relevant inodes.
-> 
-> Currently one workaround is to run 'sync && echo 2 >
-> /proc/sys/vm/drop_caches'.  But, that evicts all unused inodes in the
-> system rather than just the inodes associated with the key being
-> removed, causing severe performance problems.  Moreover, it requires
-> root privileges, so regular users can't "lock" their encrypted files.
-> 
-> Another workaround, used in Chromium OS kernels, is to add a new
-> VFS-level ioctl FS_IOC_DROP_CACHE which is a more restricted version of
-> drop_caches that operates on a single super_block.  It does:
-> 
->         shrink_dcache_sb(sb);
->         invalidate_inodes(sb, false);
-> 
-> But it's still a hack.  Yet, the major users of filesystem encryption
-> want this feature badly enough that they are actually using these hacks.
-> 
-> To properly solve the problem, start maintaining a list of the inodes
-> which have been "unlocked" using each master key.  Originally this
-> wasn't possible because the kernel didn't keep track of in-use master
-> keys at all.  But, with the ->s_master_keys keyring it is now possible.
-> 
-> Then, add an ioctl FS_IOC_REMOVE_ENCRYPTION_KEY.  It finds the specified
-> master key in ->s_master_keys, then wipes the secret key itself, which
-> prevents any additional inodes from being unlocked with the key.  Then,
-> it syncs the filesystem and evicts the inodes in the key's list.  The
-> normal inode eviction code will free and wipe the per-file keys (in
-> ->i_crypt_info).  Note that freeing ->i_crypt_info without evicting the
-> inodes was also considered, but would have been racy.
+On Mon, Feb 11, 2019 at 02:29:46AM -0500, Pankaj Gupta wrote:
+> Hello Dave,
+> Are we okay with this?
 
-The solution is still so gross. Exporting all the inode cache
-internal functions so you can invalidate an external list of inodes
-is, IMO, not an appropriate solution for anything.
+Sure.
 
-Indeed, this is exactly what ->drop_inode() is for.
-
-Take this function:
-
-> +static void evict_dentries_for_decrypted_inodes(struct fscrypt_master_key *mk)
-> +{
-> +	struct fscrypt_info *ci;
-> +	struct inode *inode;
-> +	struct inode *toput_inode = NULL;
-> +
-> +	spin_lock(&mk->mk_decrypted_inodes_lock);
-> +
-> +	list_for_each_entry(ci, &mk->mk_decrypted_inodes, ci_master_key_link) {
-> +		inode = ci->ci_inode;
-> +		spin_lock(&inode->i_lock);
-> +		if (inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) {
-> +			spin_unlock(&inode->i_lock);
-> +			continue;
-> +		}
-> +		__iget(inode);
-> +		spin_unlock(&inode->i_lock);
-> +		spin_unlock(&mk->mk_decrypted_inodes_lock);
-> +
-> +		shrink_dcache_inode(inode);
-> +		iput(toput_inode);
-> +		toput_inode = inode;
-> +
-> +		spin_lock(&mk->mk_decrypted_inodes_lock);
-> +	}
-> +
-> +	spin_unlock(&mk->mk_decrypted_inodes_lock);
-> +	iput(toput_inode);
-> +}
-
-It takes a new reference to each decrypted inode, and then drops it
-again after all the dentry cache references have been killed and
-we've got a reference to the next inode in the list.  Killing the
-dentry references to the inode means it should only have in-use
-references and the reference this function holds on it.
-
-If the inode is not in use then there will be only one, and so it
-will fall into iput_final() and the ->drop_inode() function
-determines if the inode should be evicted from the cache and
-destroyed immediately.  IOWs, implement fscrypt_drop_inode() to do
-the right thing when the key has been destroyed, and you can get rid
-of all this crazy inode cache walk-and-invalidate hackery.
+I'm not sure I agree with all the analysis presented, but, well, I
+haven't looked any deeper because I'm tired of being shouted at and
+being called argumentative for daring to ask hard questions about
+this topic....
 
 Cheers,
 
