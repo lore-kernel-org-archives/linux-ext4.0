@@ -4,36 +4,37 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-5.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9DD5C169C4
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 17:55:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0FEA5C282DA
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 18:43:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7679821B68
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 17:55:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BFCAA21B68
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 18:43:44 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=mit.edu header.i=@mit.edu header.b="J4hJXxJG"
+	dkim=pass (1024-bit key) header.d=mit.edu header.i=@mit.edu header.b="aiU7ztiW"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728482AbfBKRzU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Feb 2019 12:55:20 -0500
-Received: from mail-eopbgr690107.outbound.protection.outlook.com ([40.107.69.107]:50016
-        "EHLO NAM04-CO1-obe.outbound.protection.outlook.com"
+        id S1732591AbfBKSnn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 Feb 2019 13:43:43 -0500
+Received: from mail-eopbgr760123.outbound.protection.outlook.com ([40.107.76.123]:31921
+        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726104AbfBKRzU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 11 Feb 2019 12:55:20 -0500
+        id S1732117AbfBKSnn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 11 Feb 2019 13:43:43 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=2wC7x2ya9BdgEm7EYYr3zAaU/WQ8G6hwNU0yfWwn/ms=;
- b=J4hJXxJGHmDHvwpdqmT/g1O46R6JV726gxNN/8OAmYuK/e8Sgle2oB9YifFK4U0DMtbP6o84XsX04yeNSfznLu/uZuCoiQ3ymjG6JUwCYwynDk1rRkwqrCcUQp0g62PYmM9Kj5J1D9GSrLkSPR90a0oA+QJ9P2MxBbPo5FmtNP8=
-Received: from SN2PR01CA0017.prod.exchangelabs.com (2603:10b6:804:2::27) by
- BYAPR01MB4982.prod.exchangelabs.com (2603:10b6:a03:79::31) with Microsoft
+ bh=GsR8X91EcxndK2pdPwJXpFnGjgqht5j2H1ViQ78VHG8=;
+ b=aiU7ztiWBo7j6FRGNLzeFLK6vDqeOUEX+HabxrKqtNyKf467n3Ic0kSWWw4wXmuZARiLom6CZUQJ6Ihqapj0QiZV/mz/4M13ul7T4N/wjO5lmG+9V6tlPq3kLEzjR1JReJbR8QgUiHOy/iG+Eq4I+cp46wtkYMduvS6dSlyxJP0=
+Received: from BYAPR01CA0001.prod.exchangelabs.com (2603:10b6:a02:80::14) by
+ SN6PR01MB3757.prod.exchangelabs.com (2603:10b6:805:17::10) with Microsoft
  SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1601.19; Mon, 11 Feb 2019 17:55:16 +0000
-Received: from DM3NAM03FT055.eop-NAM03.prod.protection.outlook.com
- (2a01:111:f400:7e49::202) by SN2PR01CA0017.outlook.office365.com
- (2603:10b6:804:2::27) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.1601.17 via Frontend
- Transport; Mon, 11 Feb 2019 17:55:16 +0000
+ 15.20.1601.17; Mon, 11 Feb 2019 18:43:38 +0000
+Received: from BY2NAM03FT028.eop-NAM03.prod.protection.outlook.com
+ (2a01:111:f400:7e4a::205) by BYAPR01CA0001.outlook.office365.com
+ (2603:10b6:a02:80::14) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id 15.20.1601.19 via Frontend
+ Transport; Mon, 11 Feb 2019 18:43:38 +0000
 Authentication-Results: spf=pass (sender IP is 18.9.28.11)
  smtp.mailfrom=mit.edu; vger.kernel.org; dkim=none (message not signed)
  header.d=none;vger.kernel.org; dmarc=bestguesspass action=none
@@ -42,86 +43,101 @@ Received-SPF: Pass (protection.outlook.com: domain of mit.edu designates
  18.9.28.11 as permitted sender) receiver=protection.outlook.com;
  client-ip=18.9.28.11; helo=outgoing.mit.edu;
 Received: from outgoing.mit.edu (18.9.28.11) by
- DM3NAM03FT055.mail.protection.outlook.com (10.152.83.209) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1580.10 via Frontend Transport; Mon, 11 Feb 2019 17:55:16 +0000
+ BY2NAM03FT028.mail.protection.outlook.com (10.152.84.238) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id
+ 15.20.1580.10 via Frontend Transport; Mon, 11 Feb 2019 18:43:37 +0000
 Received: from callcc.thunk.org (guestnat-104-133-0-100.corp.google.com [104.133.0.100] (may be forged))
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x1BHtEuB024020
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x1BIhZGD011570
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 11 Feb 2019 12:55:15 -0500
+        Mon, 11 Feb 2019 13:43:36 -0500
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 489C07A4B9D; Mon, 11 Feb 2019 12:55:14 -0500 (EST)
-Date:   Mon, 11 Feb 2019 12:55:14 -0500
+        id A1DDD7A4EA7; Mon, 11 Feb 2019 13:43:35 -0500 (EST)
+Date:   Mon, 11 Feb 2019 13:43:35 -0500
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
-To:     Lukas Czerner <lczerner@redhat.com>
-CC:     <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH 2/2] e2fsprogs: fix potential memory leak in path_append()
-Message-ID: <20190211175514.GA25892@mit.edu>
-References: <20190115134203.11448-1-lczerner@redhat.com>
- <20190115134203.11448-2-lczerner@redhat.com>
+To:     Jan Kara <jack@suse.cz>
+CC:     <linux-ext4@vger.kernel.org>, <stable@vger.kernel.org>
+Subject: Re: [PATCH] ext4: Fix crash during online resizing
+Message-ID: <20190211184335.GN23000@mit.edu>
+References: <20190124162606.9686-1-jack@suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Disposition: inline
-In-Reply-To: <20190115134203.11448-2-lczerner@redhat.com>
+In-Reply-To: <20190124162606.9686-1-jack@suse.cz>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 X-EOPAttributedMessage: 0
-X-Forefront-Antispam-Report: CIP:18.9.28.11;IPV:CAL;SCL:-1;CTRY:US;EFV:NLI;SFV:NSPM;SFS:(10019020)(346002)(376002)(39860400002)(136003)(396003)(2980300002)(199004)(189003)(26005)(97756001)(33656002)(103686004)(336012)(75432002)(186003)(16586007)(6916009)(90966002)(88552002)(46406003)(42186006)(58126008)(316002)(786003)(106002)(47776003)(36906005)(229853002)(2906002)(6266002)(6246003)(23726003)(558084003)(4326008)(36756003)(76176011)(50466002)(26826003)(478600001)(8676002)(246002)(52956003)(126002)(1076003)(86362001)(2616005)(106466001)(476003)(356004)(446003)(11346002)(486006)(8936002)(305945005)(18370500001)(42866002);DIR:OUT;SFP:1102;SCL:1;SRVR:BYAPR01MB4982;H:outgoing.mit.edu;FPR:;SPF:Pass;LANG:en;PTR:outgoing-auth-1.mit.edu;A:1;MX:1;
-X-Microsoft-Exchange-Diagnostics: 1;DM3NAM03FT055;1:XCam+iXQaT9tmhN18B+aJKTcx84RSxOi8sHjeNcX/+znFGXB+3O6zEBI6p4Zyj+YLaJ55+5cxJLo/9RD4Qb8LstG3slc18W6z8I2ane5gFWTael91Z3lOjp6khk2aIxAjRaBvuHtMICBxV7dPB9B0D49G96UkPABYL5yKSfFz9A=
+X-Forefront-Antispam-Report: CIP:18.9.28.11;IPV:CAL;SCL:-1;CTRY:US;EFV:NLI;SFV:NSPM;SFS:(10019020)(376002)(346002)(136003)(396003)(39860400002)(2980300002)(189003)(199004)(6266002)(50466002)(90966002)(76176011)(33656002)(486006)(23726003)(26005)(106002)(446003)(11346002)(336012)(6246003)(2616005)(47776003)(126002)(476003)(186003)(4326008)(6916009)(36756003)(2906002)(229853002)(52956003)(106466001)(8676002)(8936002)(46406003)(356004)(246002)(42186006)(26826003)(305945005)(86362001)(786003)(316002)(16586007)(36906005)(75432002)(97756001)(54906003)(478600001)(58126008)(1076003)(88552002)(103686004)(18370500001)(42866002);DIR:OUT;SFP:1102;SCL:1;SRVR:SN6PR01MB3757;H:outgoing.mit.edu;FPR:;SPF:Pass;LANG:en;PTR:outgoing-auth-1.mit.edu;MX:1;A:1;
+X-Microsoft-Exchange-Diagnostics: 1;BY2NAM03FT028;1:Wh6XxcrReHcB3PRB0xqzeXENGXGbA/MbuVzKzTS5i+5cxKrahtcaki97+JcpEPfzXI/IwITKuW837sSO+QYaOM6ViGU3CCO8nvn3NLZDob4YSoqsDnsxbCWaoLYakSgK9tGdL96zYrdATzR4fidYyTc4iUcFIy6lo53S7Z7xzos=
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: f7c37466-9568-428e-94c9-08d6904a1485
-X-Microsoft-Antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600110)(711020)(4605077)(4608076)(4709027)(2017052603328)(7153060);SRVR:BYAPR01MB4982;
-X-Microsoft-Exchange-Diagnostics: 1;BYAPR01MB4982;3:ApSUYHqjeW0M+kwf3OUcI3Ju7ZF4aj/dcAqB6pYDAov3omhIYtzZIoSDlnGzLjoJbXyfGiC4wl2rAASxOV6WRKt2po3LYUjFqQOOi7dEAyWCy7RwdWKUqPnitY5jMm9YvpHkBsnMhOj46rf5ubi24k8TBOdjHTg/ETrUV4PxBcP8iqMmaP2TR79EWkF9DMOMfnv//UhUvBY65qkWqvUDXF7WgVI1QeWmJM9xEV61Du3IQUuzFyFd+D7f/k0mgxE8DaguhO0Kb+TQk+Up7G7kMufsTu3utvUm9DNZq9u5CHU+1Yc79MnT+WchEZV4zxRLxUWcnkQ5CLJoFQYoM2i1RTIOjXo4gzksfh/pJS/7OuPnwVr16yfNIORa2pZGwRqK;25:SRjgju8dkv+mYfZVHG2cjJTT/YcT6FtYT9afg4mQySgb7rShjSz5HJSkf4wMRuiqwQ6wB6UHitjxmKzMY6fo3QPMlAk+39AFhVQvyjfeA1PJxNPUNKRAXwskrG6Vq0iGwc15Wv8KPjEQR4PPCxRYbO8UgbESaaJOe3Eqf9UgMmDwgSm+NwJYLgwl5gf6LgvhpHYpbQ/xn3n8BzvlygQvEZmiOQ+dmP7mU9xA1XmEd1Swb/1HbEzIfhOG1JplzLIH98PzZPZojlzIh0+95n4iVRTMsRTVRu1+uCPv7unFJduzOqtSjz2Ws9y0h2b0XHolMdkoFgpW2mzhVA0Eedsvkw==
-X-MS-TrafficTypeDiagnostic: BYAPR01MB4982:
+X-MS-Office365-Filtering-Correlation-Id: 7a381d7f-2be5-4cc9-2eb3-08d69050d62d
+X-Microsoft-Antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600110)(711020)(4605077)(4608076)(4709027)(2017052603328)(7153060);SRVR:SN6PR01MB3757;
+X-Microsoft-Exchange-Diagnostics: 1;SN6PR01MB3757;3:RO7NJfX6m4YL+yRgLrWUgYDkTcbrwi/jfrVY4pF5BeNTO/b6QQFBlWi7wrX1QZHua1JkSwr1DHFJQh+ykxhohwccuTGcRWWZH5KJP5dorTlCnAKs8g8Dg3ebeU8XmrPz0+4/p7f7iiYpH+cDq8K1k4FrgykJKjH5tziKIbgacAUQPo8mNYuRg65dSeitwFJglAOLLA9V3ZAl9+Ly0XirvJNyqUDQkifMWv9F14wMGyfI+eiLGspsZJ192CXIDpR6asC35CyWWr/0WusIxqVonAlf906tl5eyiKeaf7uti5LwjnFffcl/zZxC+ZhBkrrReRO8z3tjdY7d09phFzTO6lCSA+xkattvn0elWFeQytVMXuDkcsIBd15ONoNngBE3;25:1tc0Xezispx3+s5XsWFAX82MJekmp8Zc3IEoQNSEFDUivjkY3RYRFEvQKI5JC/1G8V3iaLD5yuGmQhhIEYmXjxqCSA9DagwLNoVoHr4t3QLtdxaCEg1y4uF4n1HR2377piJIzhHotMBRggPMw3Shp1tCEPbZ/W+oS9LdMQ3aUkRA2p6CDx6uTkd9fzvfdPneQRztF2l6R+/l/t++WrdGEaE97pFvqxbe5LjQRqBARvmttjCnXojvcDDwOhGmvKcOxC/BjeXNVlM+f3vNQ8QE9x+BIdQQp9mXu7cEGvcZSP3evPZ951AFCeIqPhIAGe+e02rtaTHtpvX4prZ4DhB5Tg==
+X-MS-TrafficTypeDiagnostic: SN6PR01MB3757:
 X-LD-Processed: 64afd9ba-0ecf-4acf-bc36-935f6235ba8b,ExtAddr
-X-Microsoft-Exchange-Diagnostics: 1;BYAPR01MB4982;31:0NG/xeLMyNtqMKqsIlpR0lgouIpFZxLEQMCWXJ4YTnQnjSChDbU4BX+GxcD42Th2gBqgLrUWCy1x8QAOYcbYtv8enMwGIho8ktASSXauPNx0e6Ryn56fy9kEG6SH15wEduYusNtrlBMh2rgYxYFRc4UKGuSYb90EII7P7ZfaGOcRxns57gqL1FMkOeJhjR9uk0jMeVTynSVlEw35dU4PH6NU1sZhLY85cKNbifnrFQA=;20:CgvQ9c4UlqNl1GbDidu0YeqUwGvrGd+Ci5JVwhPth9Ey4RgNlJ0h4WRtv37q+b0kSB3wEWWrrMovzmjds7yOeHcmYY2A69V09TCmQIdhvvzlWPrx598xsuEHxABnb5B0lJLSkrBztkKrvId0BPhYISu8aUy26iO0x/xmBPivY37VNILRfGftffxHOYfpaNltoHS0LPpuIsdDVyycyTAD/YXaLetSqHsnGcewJuQK4NXyTOKcKFEko2Gk34ru3GKl9b9Lc0CwupNd4AWyxY9FG0NMc0g721xQ4BvQCXyajmEasWQCmoz7LysXvgO/WN9R6mVWB+CDZVfrTMcCRND3x/OMS7TfFC5Y5FZkbuCba6w2pJvLidnaxCSU9I5KJcHyLZR5vVNnBqCDc3A0r6G4YjlT79ZmScOiyzE9kRUT5m25hScQqvtykkPGYoCT/Ce530kK5qq1pO7s8N0gYAVX0B+uHmEN+birJlKCgfQPJE/HxWKMZUWUAEekfxWMqpUxQzaAnJa+WRQeX5tJHWsobD2PoZ8wHrhhgntIk6eLo60t8SF1itb1+5wo+N4qCm92FkFMw5f3afI284+rszgWZD74iiaXmVoMNdQBJi1zAUI=
-X-Microsoft-Antispam-PRVS: <BYAPR01MB4982CD281DD4318B32958317B5640@BYAPR01MB4982.prod.exchangelabs.com>
-X-Microsoft-Exchange-Diagnostics: 1;BYAPR01MB4982;4:z12HNxMz4oPGH+Wr31TEIUsFXGXQXz0GffSPu1Sb4AjBUQhZWIhgw33wW1XbD4hTHr9unFu7o37pAkCmV+r+qThX06xqon0oRClzZiWnpCbQBDCi5cGCSOctyquZ4N0Xu+M9JAbz+tVmDTt/nsFfffIjp/yedMHahQeWy6yUGjkVBnI5HehCnlGWyelf8jpMwZJMCkySXY5oVuEQct4jTcyolRvqqDBoWF5AKmw4MCX5S63biM9AWgyaFI4yziEaavrUZPWCXlGjHmw6LOnGgMT3Lsqbk9bs7oUYBKEsDDI=
+X-Microsoft-Exchange-Diagnostics: 1;SN6PR01MB3757;31:0CX9nUe6K8AqfryuvCc1+uAsubS895gln4d3Migb2n/L+6VftK+wNw7yWtsCRN996aTp+UOVQMiGm+wDyUxzr7/9E76nn7eFaOZUhsLhptEm6afLZ1XhL/WVNh6FcvJkWjQddBoRyqONqVvZtnTYcQvXFrJNz8e/w4kCu/te9wk6T+ctH11ej8sn8RYcDbRvgiMAwPtQ8PXOcI2XMyjI/dkyxYvBHGLgBBulCZYPZ4o=;20:9FznxSJY6WGdo5Y8IdCzwKMMuMhX5ji515mMWSWB2U2oUSks8ty5tVZI8H5svgro7coUbOAwJOF0dOUEzIU8hzWlOWgh8z/JhSfMQbArh/j9smm7T1OGuhSeSCRWFVizeAx9nth/pRdQXfkN7M4Vp2SkuaSQn9Poy4ZGC4A0siNylAdj4Kp8zcWqtCyCVTpxxIzIADbAgwXCXSoxlpUthx7lcfPmXmTyJSeKCvs3IiP2sksnkKztNPdpWTiXo6p1iwPHGGyYjx/3QF7XDa/S6KUSRKywE22Vrw0wLtbik99Ux/YL40sY1QNOg402tNDNMNLGwv+dhT86lpkZ3QiFrVm55ItEKqpiW/kdvWSivrre68qaYeGYjWfwmk1C/rSV0EvL6w1lmx279ZENhhoVQgG1TaAFFzPVxLFUbfmbQTs2dijLPL445rfX47fNrYAdGT7lazWgcOLfs+ChJWb4OLrf8iJPmFkDp5wH074WNqAq4esS+kkAKEqumzjKc3MSBbI4z/kP+d6d9NMpIG9sDBH37cAyumXvEVJr3ai15GgSHxg5lEY/u4yO1qaOU4tqkbRPR1G10fME50LKdPnA2mNqKX6uiRiXm59tEg63Jt4=
+X-Microsoft-Antispam-PRVS: <SN6PR01MB3757E69DAFC8FAB0FC85E3A8B5640@SN6PR01MB3757.prod.exchangelabs.com>
+X-Microsoft-Exchange-Diagnostics: 1;SN6PR01MB3757;4:Pfnhyq2cBHT8gnn6ekHglYHYRQp+UzGlMxpyYNCgjpvWI84vPEKybllKcoAPZ8RFwdJDYau1erbNxDcChQzymjSWqzUJqlytOZJBcKXX/EDnTgGKKIxII71uHG3OhkjZeDWcszKHXkZ6VU3PJQUCfosNqH9uI0sWR+6Rl2HIOj1VVKp9rQfqFN7u7i9J/6NBQebi9XsGeGvy1x+G9S0JVPPzlVFVvPxRv5dxz2byhRTnofsMeM7NihpiYv/rOA/1oU6mNt1ou8hZlXExQRpz1QQn+JTvTfSilRnCnOsLqsc=
 X-Forefront-PRVS: 0945B0CC72
-X-Microsoft-Exchange-Diagnostics: =?us-ascii?Q?1;BYAPR01MB4982;23:H2AC/IluTswONFmaW7pBaN9ZEPqwXfH3L7fyfo95h?=
- =?us-ascii?Q?+8c4cDtLhOJIe2n/Ex8Mb3ZRLRIkMKvjDa/9JjHStt50QuSWo4Z/pYGP7EnL?=
- =?us-ascii?Q?90e18N/dpnsSglPm2Jqt3ZdsncKcMuHwIoxnugQYiWVH4xcEmhAYGvBGyiB7?=
- =?us-ascii?Q?dCKNh10qTSrw20cWTo6vul20akhWtvxGX1onpg4s5mjH0dYkmvGbKLVEMg9i?=
- =?us-ascii?Q?WRGLLqHaS3lcflICNUouPPEVjb5L1F1n7FnmKb3fVl2El4PJysqOClShX0Lr?=
- =?us-ascii?Q?x9zKl3Pbfx3Khb+rXXjvwZkYRhDc1Z+cHMt9+gyIVWTOfywt1CzY7B65D7xh?=
- =?us-ascii?Q?UGrR0qqfWDmrMIVqCdFlEykfB1CCrG4B4yPWa/61dAMJ0f/ZR/e3f6/IEpvh?=
- =?us-ascii?Q?WZtVayjimsXyCtJr62zzKsVVCjC2XvqDNlGtWXT9Y8dWYIy/73YTFlPJGXDm?=
- =?us-ascii?Q?09JAvev0BmIj93TMUFM6HHcVymzDo2ZMG7r/gi1s6A1mGPRX8WHdWYx3l2SG?=
- =?us-ascii?Q?IauG5wFzNeCeew3eUkSYFq4gmQWwyFGBanEHhfwnmm52fuYu54U0wGOR7TSZ?=
- =?us-ascii?Q?BmByDdGRFVWhnYKXjiqxOMC4tb9hXSYrXPWkgNravptgyF635i6Iw/Tl7U5i?=
- =?us-ascii?Q?EFiJtkUCFFMFQledwnDm2/gQWF6fWmdujEFCoxzMCGH7Gg9I9IheYoA6ClKJ?=
- =?us-ascii?Q?dGHJgdwr3Ex8H0wTekPM3ePkWLHRALOtx4EXYWSP9RXmag9ryhLd9ACX9BTS?=
- =?us-ascii?Q?GIXjz2SG7i5wpoKd5tmQ/9lyH1W7W0afK/fF6LCu4/fZ4qCkoGruIoxZT8Wx?=
- =?us-ascii?Q?XCFk1IDXqdtxVEskphrqv0yfmYW9o70+NHPrZvY+GLmrZQ/Sbth6zvcp7wKw?=
- =?us-ascii?Q?nZw5l/wudWQuLarL/ovmwbokMtW/uz8ZltRQ4LlVQTQ+Xt3TESbZxuJ+emxA?=
- =?us-ascii?Q?mKAe3F4/qolma2Eb+NzMs8KgCoiszUeJcvwUE4nltrqS7gWI/1ZQnDSMuBep?=
- =?us-ascii?Q?VRvKZDR8Gx3SaTgiudeT385dDeHd5LzF/VgnLdPq1jAg2LpbTLO9eYU8pfw4?=
- =?us-ascii?Q?bfkei2sBd1/XJVRIuPI1x9Xuh5UWaFGr2Ox4j43kTmwNn2TdyAtDa51QNu9I?=
- =?us-ascii?Q?07+HHbYZy66A7MmA4LZZhQh8MDzXsN5u6OGb7ncKOW5bE7CdLncdhO7sXk7j?=
- =?us-ascii?Q?T8do//mrgFNGXHjok7Sr8VuRvQzVVzEsw7snS2TKu7NRTKWz3cJtyeoPg=3D?=
+X-Microsoft-Exchange-Diagnostics: =?us-ascii?Q?1;SN6PR01MB3757;23:Z/vur1qscbJdDvwjC3QUChMjND3Vh1M6vRjGqvUaN?=
+ =?us-ascii?Q?gPl5dz5/y/Hgb4wq73cNboqTLwMzxg+/cNgMlOQS+KKg75RLJmpqpMEX/nTf?=
+ =?us-ascii?Q?EgsmWlGQ8KDbsYwwqHM7vYkeUyfCsV0QTi2QUof8DtN46ebq2aSmwhIblBTp?=
+ =?us-ascii?Q?fI+HmCepvIpH1Bmanesl/rry0tRvaRl4mo6WSi0xUpmdQdNbMzMAvBhO+FiT?=
+ =?us-ascii?Q?3ob0wX77ND041vucPh6o7ht84EZnYys7PNzDzKI+LKEEJh1mAPSc1cmxz1hA?=
+ =?us-ascii?Q?JWjtv6JTwKuDreYWyx730l01dRbJtMRMr61i7f0D/lw6UlsVcDwQydREd4qx?=
+ =?us-ascii?Q?TcAuG1qJDMMFY/x+JCEnL/vyrwaG8f9pUQguel4lkd06Yo2kO4wKG4gzIkOL?=
+ =?us-ascii?Q?6xt7rc+VDzviMKnL7Cg4LtCSNh+KCxnuiKP2B9POgLeKpiJhlk9OarlPRvFQ?=
+ =?us-ascii?Q?84aZs68eTTC7BeVJgeRsIIemChagEP00OzNAgcvS1j3jKYV38oJGPWjRQVjP?=
+ =?us-ascii?Q?u1LVVVxoaVBAMCQYbTPgGoNTO+V8srE1FmMEifytCPpN9KM0upRo7VDGuFWs?=
+ =?us-ascii?Q?Hk1IQPvcNIhQ0tClcbz2IxmJCeNTuNYoThP1n2TZA/j5buKacKjAHLsMsZAv?=
+ =?us-ascii?Q?z76KYiXXUmkn6FeAjOQyBmUqFgMidtTQWeZdXvAR05M2WKcIw7U4ksYMvVvW?=
+ =?us-ascii?Q?Neg5NeOw4iqASYmvtOjroa4a5bgrnOjcezrQ6JZhiINSPDdMO96DxSNlr5VS?=
+ =?us-ascii?Q?iOnWx1OV6HNxGSyX/hkDbC8HOKUYYYap51qrhU3PlEMhU7/rF0E5ZlKlMmCp?=
+ =?us-ascii?Q?mbLCiw3JQ11Ob0OXbYCt2/6cJv1EtieTN63ZnPrYxxhFFu3Ai4dkP4uIybct?=
+ =?us-ascii?Q?35FCSTrnlgPVq43+yx6CktDB7hvcVV3WQZA1wKM2XeH01lvV0lZi4/82UkFX?=
+ =?us-ascii?Q?wZhQmNH8EDhB/cFOqme7Bo2USg+Vg+BAVWtoJOXHOAsKuHHa+/OqSaiQLp75?=
+ =?us-ascii?Q?LQnF1A+rKgh+l5ptNqexNUlxlV1cvYIuAk7b1RYhqyvArJnoJYpcvLJHdAOp?=
+ =?us-ascii?Q?kMeJDZptiamMQE5Oh76vEKT79p1A4JUOHtks63flwVDBNZ8feXsLODJ1ciN3?=
+ =?us-ascii?Q?f+coC+xlLtLn0eExNG+O7lgpWQQI4OhFP6hIGbQyFw3Wba9Ko9bLdtBv+rQZ?=
+ =?us-ascii?Q?P38X70reFmvRYxhRlO7AFuAPCPx11hfunRkQYHWJnCPr2T5zNUGO8Nhng=3D?=
  =?us-ascii?Q?=3D?=
 X-MS-Exchange-SenderADCheck: 1
-X-Microsoft-Antispam-Message-Info: eMGiP5tWI0jl6DbUigsXTigkQIpv1mOXnfCAFpZh+RY2lkcEfrV1O1eGF/gcaBpVraggUjT0Oqt39+iGAiwZquTGuGkJ+V9JaJPOZsnDi4r8Hn9oq5Aae5sZN6vp9iSiX+ZhagAXNU9CBUicNDPX6EewgCzEstzJE039DFTBbyIXHnqIZhjgIkbRjVMD6wN1kZDOKdVsV4VkGoQRZz3JgBjqbVMdFnMI99ORRky6nhsOimOmI8tQZERdGygZHbGWKxvh32Ic6NJ8oAhZl73sJQ+4sBBmlbcQ7Nt4rHGXUmRueGKpvwcHtXrV9gG1ySWznUXVIViV3xALPeN3tCCizNNZqxJJped2Rn4lfUcTRPBHQi9qWMuDxHsKSYx1sy7lxgrxSy/olL2nqnXpcj16vYu+S6Jyq0gzEehrjbFebCM=
-X-Microsoft-Exchange-Diagnostics: 1;BYAPR01MB4982;6:z6D+D9pHHAV3Qz0rM4H/mfJebWOLnAi7wune4dIQUkNArSUAGg7io/F/m7MLm7NPU7MPMNH/b+/th43+wKvIr+fi/fIumOtl6crOhRRgFlRNZUjyn9BEkR2U3JmIrxw77g2PWiNrHU0arbbG2FfMwElTTBA4PREQu8lkc/VU3NCCI/YbWjIBR7YbQmvDgFIzNGj94Jt9+86z5yrX0kPHYZOQbwDXmQzCyz6CplHmIk2ZCTr25a1Js/7EEJG7q3+zrb9z5ad8ypEprron3AAhcST6Qn4Gkh6105np9KCsXe38WI6hZ1y/JL6nnaQgQi5+q+iIPbGZYBdwjDO1TTlL9WMEQtomV6l+d6y8Xz7SVkx6cNAPG96q9WvJd+nDVaI7bF+NnYNJP+q/lU5lNAoTHeKT8Uwt/qlNIHPM8co4yI06vbZLzz/UlOBbRFz/ijUF9JidVynMflfq2JFpJwwZyQ==;5:9g8d+gjNdseWW+YCvbUKVsN6hfrlmeUOgYzLJKTW1agD9LCR5sSt7dWdbEMi8pqUdc0PGh27EzDT5E6S4lYNi+DBDtlM7g9/VxylrE7xnUrmJ70k2Fqwld7mpnBoXPMGAujeRPYSf40iufXYAQ4mRusgq8KtWeThvYzif5td6CQhi3VY5QK0ep2KS/wF0vtSZhltdEafcUr0olngh7t6Yg==;7:sMAgYXw+5HCJt3fiHBDZMwHev3rBviBVye32e4TA31fpKccmR3gfcyPoQyr9E50qyHUYjEWmrBSV1KHgUAFWUrHL3zbXcs/D6Q1PoF3VFlYy5sdE3SMFttKHMMv1xaGYqhi9ST8rmldRa2VjI1DwWg==
+X-Microsoft-Antispam-Message-Info: /3yGToBHfEZBrDEf5qtx40ZGe3edziD5xJUP40iDR1g74vBd2PyjtCPvE0nhSUaDUz04/E01/e/ZvN6z2/RErhIByoRwJsRmHTVQK9FgaGasQ+5eVJCs0YhdeDriKu72G5zQWedThYkL2iiYtxmPpoK3DyW0iFHClKF8cRF4CU8mym+kslgIX36QReRwAOGW6LxyhIkRICk/MbPKNPgII7Oj3/hcCgopiku1T2UIyAnQrFEXQtfOiObURnSTAhlSSXPzSLeaBfNLbH71QpP+5bavJ0s/VDDaNxdtNdDiGU9YexKhPZSudPuEZjCzCWINdm5LRIEHpt6wqsmfmLfzNJytIhMdWFC8Qaa9NxP6F3swATYUc6h/yD2XXGgNo2U8FdCwsay42a30mWLvfuTC9Vses7MkeZzxQFTJplrVX9A=
+X-Microsoft-Exchange-Diagnostics: 1;SN6PR01MB3757;6:+iNkaP11jXARbReZOaMzuX5zCUI72xqnJ91EMRzLiMBwrf3keq4DlyETKGqvxero3IFkeZawBgPbSVgF2EHtu0hT4RM/U8/6GKlSRqbIRWEsy6E1xdJ0I9efOPAF41rJ1FQRqzCBl6BVTUUZzhIR23eXLVxWHI0hzEiaFR/FePdenuYvEeUqUSLHMdudLqvtT3Occ81on76zX7ioU70KZ9AZiGkeaa2DAvUSdzvYwdJUmo0j+K/xkn1fi5ybCNStm0GuJo3xzyaZxHDeC7L+xb2H3BncPIIgV3uOOwDuS8Q07oAZ9FXJhxfC5lw9FfZFbNX5kq1nFddrRYqt7nYkXuG5LoPx1B+UHI68lAcXIk+18mJLHcC258hN8lGZacj0g6fFcL2sggMFoYDd0SZeZaZGIZ4/nP5hUEjrl5R62/dH3w/Ap3c1Cz9gsC3b42F1yPPNZw9ylvixFHSyyISUWw==;5:nXh06Ksk+tP50BIE7+UkmIdw5CDwIod1zyLw7ekjxTuzPOesXtJm4zrFoyAQNvhIspt21wO77xQHtyzItrwGL25jjduskR3Wz0FpXfVavFlwiKM+f49k5EGPD93ndnmb70XwNmG88Xgktlacgo84hgZX10va29u38XwHvzf89q9/62QP69JIpJA2CJt+KVrd8/QD+2QeGTzZP5oQgxX7PQ==;7:CVBrKj4ri4mgbjNxtO4Q8rrK8HJP6Dp1nGrcLFbd3Alt0158Hjm3iydQkkq1GUrcRNEdbqHgJpaSyw1dJ2diSZP8+LXluY19S7D6CouLtaGsWBPldG1HFU6aq+YK/YiIJmF5FDkBAoSuk6+I5KRXbA==
 X-OriginatorOrg: mit.edu
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 11 Feb 2019 17:55:16.2239
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 11 Feb 2019 18:43:37.9818
  (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: f7c37466-9568-428e-94c9-08d6904a1485
+X-MS-Exchange-CrossTenant-Network-Message-Id: 7a381d7f-2be5-4cc9-2eb3-08d69050d62d
 X-MS-Exchange-CrossTenant-Id: 64afd9ba-0ecf-4acf-bc36-935f6235ba8b
 X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=64afd9ba-0ecf-4acf-bc36-935f6235ba8b;Ip=[18.9.28.11];Helo=[outgoing.mit.edu]
 X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BYAPR01MB4982
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: SN6PR01MB3757
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Jan 15, 2019 at 02:42:03PM +0100, Lukas Czerner wrote:
-> If realloc() fails in path_append() we will lose a memory pointed to by
-> target->path. Fix it.
+On Thu, Jan 24, 2019 at 05:26:06PM +0100, Jan Kara wrote:
+> When computing maximum size of filesystem possible with given number of
+> group descriptor blocks, we forget to include s_first_data_block into
+> the number of blocks. Thus for filesystems with non-zero
+> s_first_data_block it can happen that computed maximum filesystem size
+> is actually lower than current filesystem size which confuses the code
+> and eventually leads to a BUG_ON in ext4_alloc_group_tables() hitting on
+> flex_gd->count == 0. The problem can be reproduced like:
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> truncate -s 100g /tmp/image
+> mkfs.ext4 -b 1024 -E resize=262144 /tmp/image 32768
+> mount -t ext4 -o loop /tmp/image /mnt
+> resize2fs /dev/loop0 262145
+> resize2fs /dev/loop0 300000
+> 
+> Fix the problem by properly including s_first_data_block into the
+> computed number of filesystem blocks.
+> 
+> CC: stable@vger.kernel.org
+> Fixes: 1c6bd7173d66 "ext4: convert file system to meta_bg if needed..."
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
 Thanks, applied.
 
