@@ -6,37 +6,37 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7EFC4C282DA
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 17:29:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 72E93C282CE
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 17:29:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4E9902229E
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 17:29:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3D41B2229E
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 17:29:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1549906189;
-	bh=EAE5XTp2CnZtPTu38eM/2/yI4Xw18GQgFMm3/m3KB8M=;
+	s=default; t=1549906194;
+	bh=RxmThjyQGZezMAPIikCXFJ4D0uxaucRjm1f8JdkleM8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=VCisEGWy9gqSZN5URwt8giSweLFe9JwVN79bD7wxFSgwXBZOWbUr/WhA4ChOLp8UI
-	 kcAk7OCzz1MGmloFhv+a4DutXnSeok6XV7krvbFgzqfXS/He/OjnHn67DYii6q+lDO
-	 gDOn6CIN4c8Vg6X+h1n06Vv1KhJ46QgBBJSxYj9k=
+	b=YZsltu+vL1bH8kqPCRsVRvax4AR4Eo7eeElB3ttVpzVlckt1O//HMRDlCFkHsZHx5
+	 CXjY4ZtIaN5bAhcsD8tFv9aN0l14vEgFaw+wSse9BHIbrJpdOgse6yy+5RMk/RBpSW
+	 Je+4xHTSUyAlxUqwaN2G6Qfsp3HowvyKkHMw6CWk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1730774AbfBKR3p (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Feb 2019 12:29:45 -0500
-Received: from mail.kernel.org ([198.145.29.99]:46482 "EHLO mail.kernel.org"
+        id S1730984AbfBKR3w (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 Feb 2019 12:29:52 -0500
+Received: from mail.kernel.org ([198.145.29.99]:46562 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726365AbfBKR3j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 11 Feb 2019 12:29:39 -0500
+        id S1730796AbfBKR3r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 11 Feb 2019 12:29:47 -0500
 Received: from sol.localdomain (c-107-3-167-184.hsd1.ca.comcast.net [107.3.167.184])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 3A0F4222A4;
-        Mon, 11 Feb 2019 17:29:38 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 82113222AD;
+        Mon, 11 Feb 2019 17:29:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1549906178;
-        bh=EAE5XTp2CnZtPTu38eM/2/yI4Xw18GQgFMm3/m3KB8M=;
+        s=default; t=1549906182;
+        bh=RxmThjyQGZezMAPIikCXFJ4D0uxaucRjm1f8JdkleM8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=IHTmzwqOLeP3vsvuXl1B6MAKnM3/9Md/Ms6o7izCjd4LViDs4k6M+8JXLciu5iVne
-         FQZDmdI6p3PbHkCdArAP4Q8RhLvWt/IcYJJ2VMFnG9aie92OdqeqOjN04pbAjUjY9F
-         bN3Aa74FhUm7lm53iUnUaHPs/G5rgKEmmSYmE/Mo=
+        b=iMod+ZUqS8UOwSIo3YafwFqHGXU55VUiSUENGfdZPObwbgl7/uWbmEOC9cn9fRXHP
+         hX/hkbqHMBoVI4jqiWY+gRclLUMsXpZ5l14BA+QQ7J3O1TSNy+donJ6qcjwl0W0kbi
+         KLKqlUbT00MwFzCz6uUM/G4rTQs5h6WDPfSocnHE=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
@@ -44,9 +44,9 @@ Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-crypto@vger.kernel.org, linux-api@vger.kernel.org,
         keyrings@vger.kernel.org, Satya Tangirala <satyat@google.com>,
         Paul Crowley <paulcrowley@google.com>
-Subject: [RFC PATCH v2 04/20] fs: add ->s_master_keys to struct super_block
-Date:   Mon, 11 Feb 2019 09:27:22 -0800
-Message-Id: <20190211172738.4633-5-ebiggers@kernel.org>
+Subject: [RFC PATCH v2 13/20] fscrypt: add an HKDF-SHA512 implementation
+Date:   Mon, 11 Feb 2019 09:27:31 -0800
+Message-Id: <20190211172738.4633-14-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190211172738.4633-1-ebiggers@kernel.org>
 References: <20190211172738.4633-1-ebiggers@kernel.org>
@@ -59,60 +59,289 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Add an ->s_master_keys keyring to 'struct super_block'.  New fscrypt
-ioctls will allow adding and removing encryption keys from this keyring.
-This will enable solving multiple interrelated problems with how fscrypt
-keys are provided and managed currently, including:
+Add an implementation of HKDF (RFC 5869) to fscrypt, for the purpose of
+deriving additional key material from the fscrypt master keys for v2
+encryption policies.  HKDF is a key derivation function built on top of
+HMAC.  We choose SHA-512 for the underlying unkeyed hash, and use an
+"hmac(sha512)" transform allocated from the crypto API.
 
-- Making the key status (which is currently per-process) match the
-  filesystem-level status of which encrypted files are "unlocked".
+We'll be using this to replace the AES-ECB based KDF currently used to
+derive the per-file encryption keys.  While the AES-ECB based KDF is
+believed to meet the original security requirements, it is nonstandard
+and has problems that don't exist in modern KDFs such as HKDF:
 
-- Supporting a proper API to remove encryption keys, "locking" the
-  corresponding encrypted files.
+1. It's reversible.  Given a derived key and nonce, an attacker can
+   easily compute the master key.  This is okay if the master key and
+   derived keys are equally hard to compromise, but now we'd like to be
+   more robust against threats such as a derived key being compromised
+   through a timing attack, or a derived key for an in-use file being
+   compromised after the master key has already been removed.
 
-- Caching an HMAC transform for each master key, allowing the use of
-  HKDF while still retaining good performance.
+2. It doesn't evenly distribute the entropy from the master key; each 16
+   input bytes only affects the corresponding 16 output bytes.
 
-- Preventing denial of service via keyctl_invalidate().
+3. It isn't easily extensible to deriving other values or keys that are
+   or will be needed, such as per-mode keys (which is what DIRECT_KEY
+   policies really should use, rather than the master key directly as
+   they do now) or a public hash for securely identifying the key (to
+   ensure that an encrypted file cannot be set up with the wrong key).
 
-Similar to the existing ->s_cop, the keyring is added to the VFS-level
-superblock struct rather than separately to the ext4, f2fs, and ubifs
-superblock structs so that it can be used by the shared code in
-fs/crypto/.  To minimize overhead, the keyring will only be allocated if
-userspace actually adds a key; otherwise will stay NULL.
+HKDF solves all the above problems.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/super.c         | 3 +++
- include/linux/fs.h | 1 +
- 2 files changed, 4 insertions(+)
+ fs/crypto/Kconfig           |   2 +
+ fs/crypto/Makefile          |   1 +
+ fs/crypto/fscrypt_private.h |  15 +++
+ fs/crypto/hkdf.c            | 188 ++++++++++++++++++++++++++++++++++++
+ 4 files changed, 206 insertions(+)
+ create mode 100644 fs/crypto/hkdf.c
 
-diff --git a/fs/super.c b/fs/super.c
-index 48e25eba8465..7ca05dda905c 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -291,6 +291,9 @@ static void __put_super(struct super_block *s)
- 		security_sb_free(s);
- 		put_user_ns(s->s_user_ns);
- 		kfree(s->s_subtype);
-+#ifdef CONFIG_FS_ENCRYPTION
-+		key_put(s->s_master_keys);
-+#endif
- 		call_rcu(&s->rcu, destroy_super_rcu);
- 	}
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ba7889bb9ef6..70d929ac89f9 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1405,6 +1405,7 @@ struct super_block {
- 	const struct xattr_handler **s_xattr;
- #ifdef CONFIG_FS_ENCRYPTION
- 	const struct fscrypt_operations	*s_cop;
-+	struct key		*s_master_keys; /* master crypto keys in use */
- #endif
- 	struct hlist_bl_head	s_roots;	/* alternate root dentries for NFS */
- 	struct list_head	s_mounts;	/* list of mounts; _not_ for fs use */
+diff --git a/fs/crypto/Kconfig b/fs/crypto/Kconfig
+index f0de238000c0..c160598a9fe2 100644
+--- a/fs/crypto/Kconfig
++++ b/fs/crypto/Kconfig
+@@ -7,6 +7,8 @@ config FS_ENCRYPTION
+ 	select CRYPTO_XTS
+ 	select CRYPTO_CTS
+ 	select CRYPTO_SHA256
++	select CRYPTO_SHA512
++	select CRYPTO_HMAC
+ 	select KEYS
+ 	help
+ 	  Enable encryption of files and directories.  This
+diff --git a/fs/crypto/Makefile b/fs/crypto/Makefile
+index accdd622c908..4977b4347928 100644
+--- a/fs/crypto/Makefile
++++ b/fs/crypto/Makefile
+@@ -2,6 +2,7 @@ obj-$(CONFIG_FS_ENCRYPTION)	+= fscrypto.o
+ 
+ fscrypto-y := crypto.o \
+ 	      fname.o \
++	      hkdf.o \
+ 	      hooks.o \
+ 	      keyring.o \
+ 	      keysetup.o \
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index b09fc2939a89..f8b8358e9527 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -175,6 +175,21 @@ extern bool fscrypt_fname_encrypted_size(const struct inode *inode,
+ 					 u32 orig_len, u32 max_len,
+ 					 u32 *encrypted_len_ret);
+ 
++/* hkdf.c */
++
++struct fscrypt_hkdf {
++	struct crypto_shash *hmac_tfm;
++};
++
++extern int fscrypt_init_hkdf(struct fscrypt_hkdf *hkdf, const u8 *master_key,
++			     unsigned int master_key_size);
++
++extern int fscrypt_hkdf_expand(struct fscrypt_hkdf *hkdf, u8 context,
++			       const u8 *info, unsigned int infolen,
++			       u8 *okm, unsigned int okmlen);
++
++extern void fscrypt_destroy_hkdf(struct fscrypt_hkdf *hkdf);
++
+ /* keyring.c */
+ 
+ /*
+diff --git a/fs/crypto/hkdf.c b/fs/crypto/hkdf.c
+new file mode 100644
+index 000000000000..9c6346e3f227
+--- /dev/null
++++ b/fs/crypto/hkdf.c
+@@ -0,0 +1,188 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Implementation of HKDF ("HMAC-based Extract-and-Expand Key Derivation
++ * Function"), aka RFC 5869.  See also the original paper (Krawczyk 2010):
++ * "Cryptographic Extraction and Key Derivation: The HKDF Scheme".
++ *
++ * This is used to derive keys from the fscrypt master keys.
++ *
++ * Copyright 2019 Google LLC
++ */
++
++#include <crypto/hash.h>
++#include <crypto/sha.h>
++
++#include "fscrypt_private.h"
++
++/*
++ * HKDF supports any unkeyed cryptographic hash algorithm, but fscrypt uses
++ * SHA-512 because it is reasonably secure and efficient; and since it produces
++ * a 64-byte digest, deriving an AES-256-XTS key preserves all 64 bytes of
++ * entropy from the master key and requires only one iteration of HKDF-Expand.
++ */
++#define HKDF_HMAC_ALG		"hmac(sha512)"
++#define HKDF_HASHLEN		SHA512_DIGEST_SIZE
++
++/*
++ * HKDF consists of two steps:
++ *
++ * 1. HKDF-Extract: extract a pseudorandom key of length HKDF_HASHLEN bytes from
++ *    the input keying material and optional salt.
++ * 2. HKDF-Expand: expand the pseudorandom key into output keying material of
++ *    any length, parameterized by an application-specific info string.
++ *
++ * HKDF-Extract can be skipped if the input is already a pseudorandom key of
++ * length HKDF_HASHLEN bytes.  However, cipher modes other than AES-256-XTS take
++ * shorter keys, and we don't want to force users of those modes to generate
++ * unnecessarily long keys.  Thus fscrypt still does HKDF-Extract.
++ *
++ * HKDF-Extract also supports a salt.  Choosing a random salt per input key
++ * would permit the input key to come from *any* source with sufficient entropy,
++ * even if it's not distributed uniformly.  However, fscrypt doesn't take
++ * advantage of this because userspace should already provide good pseudorandom
++ * keys, which makes this unnecessary; also, having to persist a random salt per
++ * key from kernel mode would pose significant implementation complexity.  Thus
++ * fscrypt uses a fixed salt.  But to be slightly more robust against userspace
++ * (unwisely) reusing the fscrypt keys for another purpose, and to force
++ * brute-force attacks to target the fscrypt KDF specifically, fscrypt uses
++ * "fscrypt_hkdf_salt" rather than the default of all 0's defined by RFC 5869.
++ */
++
++#define HKDF_SALT		"fscrypt_hkdf_salt"
++#define HKDF_SALT_LEN		CONST_STRLEN(HKDF_SALT)
++
++/* HKDF-Extract (RFC 5869 section 2.2), see explanation above */
++static int hkdf_extract(struct crypto_shash *hmac_tfm, const u8 *ikm,
++			unsigned int ikmlen, u8 prk[HKDF_HASHLEN])
++{
++	SHASH_DESC_ON_STACK(desc, hmac_tfm);
++	int err;
++
++	desc->tfm = hmac_tfm;
++	desc->flags = 0;
++
++	err = crypto_shash_setkey(hmac_tfm, HKDF_SALT, HKDF_SALT_LEN);
++	if (err)
++		goto out;
++
++	err = crypto_shash_digest(desc, ikm, ikmlen, prk);
++out:
++	shash_desc_zero(desc);
++	return err;
++}
++
++/*
++ * Compute HKDF-Extract using the given master key as the input keying material,
++ * and prepare an HMAC transform object keyed by the resulting pseudorandom key.
++ *
++ * Afterwards, the keyed HMAC transform object can be used for HKDF-Expand many
++ * times without having to recompute HKDF-Extract each time.
++ */
++int fscrypt_init_hkdf(struct fscrypt_hkdf *hkdf, const u8 *master_key,
++		      unsigned int master_key_size)
++{
++	struct crypto_shash *hmac_tfm;
++	u8 prk[HKDF_HASHLEN];
++	int err;
++
++	hmac_tfm = crypto_alloc_shash(HKDF_HMAC_ALG, 0, 0);
++	if (IS_ERR(hmac_tfm)) {
++		fscrypt_warn(NULL, "error allocating " HKDF_HMAC_ALG ": %ld",
++			     PTR_ERR(hmac_tfm));
++		return PTR_ERR(hmac_tfm);
++	}
++
++	BUG_ON(crypto_shash_digestsize(hmac_tfm) != sizeof(prk));
++
++	err = hkdf_extract(hmac_tfm, master_key, master_key_size, prk);
++	if (err)
++		goto err_free_tfm;
++
++	err = crypto_shash_setkey(hmac_tfm, prk, sizeof(prk));
++	if (err)
++		goto err_free_tfm;
++
++	hkdf->hmac_tfm = hmac_tfm;
++	goto out;
++
++err_free_tfm:
++	crypto_free_shash(hmac_tfm);
++out:
++	memzero_explicit(prk, sizeof(prk));
++	return err;
++}
++
++/*
++ * HKDF-Expand (RFC 5869 section 2.3).  This expands the pseudorandom key, which
++ * was already keyed into 'hkdf->hmac_tfm' by fscrypt_init_hkdf(), into 'okmlen'
++ * bytes of output keying material parameterized by the application-specific
++ * 'info' of length 'infolen' bytes, prefixed with the 'context' byte.  This is
++ * thread-safe and may be called by multiple threads in parallel.
++ *
++ * ('context' isn't part of the HKDF specification; it's just a prefix fscrypt
++ * adds to its application-specific info strings to guarantee that it doesn't
++ * accidentally repeat an info string when using HKDF for different purposes.)
++ */
++int fscrypt_hkdf_expand(struct fscrypt_hkdf *hkdf, u8 context,
++			const u8 *info, unsigned int infolen,
++			u8 *okm, unsigned int okmlen)
++{
++	SHASH_DESC_ON_STACK(desc, hkdf->hmac_tfm);
++	int err;
++	const u8 *prev = NULL;
++	unsigned int i;
++	u8 counter = 1;
++	u8 tmp[HKDF_HASHLEN];
++
++	desc->tfm = hkdf->hmac_tfm;
++	desc->flags = 0;
++
++	if (WARN_ON(okmlen > 255 * HKDF_HASHLEN))
++		return -EINVAL;
++
++	for (i = 0; i < okmlen; i += HKDF_HASHLEN) {
++
++		err = crypto_shash_init(desc);
++		if (err)
++			goto out;
++
++		if (prev) {
++			err = crypto_shash_update(desc, prev, HKDF_HASHLEN);
++			if (err)
++				goto out;
++		}
++
++		err = crypto_shash_update(desc, &context, 1);
++		if (err)
++			goto out;
++
++		err = crypto_shash_update(desc, info, infolen);
++		if (err)
++			goto out;
++
++		if (okmlen - i < HKDF_HASHLEN) {
++			err = crypto_shash_finup(desc, &counter, 1, tmp);
++			if (err)
++				goto out;
++			memcpy(&okm[i], tmp, okmlen - i);
++			memzero_explicit(tmp, sizeof(tmp));
++		} else {
++			err = crypto_shash_finup(desc, &counter, 1, &okm[i]);
++			if (err)
++				goto out;
++		}
++		counter++;
++		prev = &okm[i];
++	}
++	err = 0;
++out:
++	if (unlikely(err))
++		memzero_explicit(okm, okmlen); /* so caller doesn't need to */
++	shash_desc_zero(desc);
++	return err;
++}
++
++void fscrypt_destroy_hkdf(struct fscrypt_hkdf *hkdf)
++{
++	crypto_free_shash(hkdf->hmac_tfm);
++}
 -- 
 2.20.1
 
