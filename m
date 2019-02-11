@@ -2,167 +2,159 @@ Return-Path: <SRS0=deMF=QS=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CCDF3C169C4
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 20:39:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ACDBEC169C4
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 22:12:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 975C12084D
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 20:39:05 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="qt+mG3bP"
+	by mail.kernel.org (Postfix) with ESMTP id 84439218A3
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Feb 2019 22:12:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727141AbfBKUjE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Feb 2019 15:39:04 -0500
-Received: from mail-pf1-f196.google.com ([209.85.210.196]:35442 "EHLO
-        mail-pf1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726104AbfBKUjE (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Feb 2019 15:39:04 -0500
-Received: by mail-pf1-f196.google.com with SMTP id z9so124202pfi.2
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Feb 2019 12:39:04 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=vCmSf4wiX7uyCAXj4jA6mUXOQGiPXIr2xxg/eIy0T1Y=;
-        b=qt+mG3bPuNRgPl1EOPbMrbpqc6iHycRZaAmlh2BdB+ybjGGvJD0AnIlv56dHXnx0qZ
-         EP17BpEpg2Rjis4zTCXDi3Et7VH8/8EWAgXON9CnICq1M2QPD/DoxhmEqDscG2ud9Uai
-         gNNM6NVEHKg7IPSAltd5k24a6QXPf9JNzmRzNMpOFwYC8fDgS8a+lSL3Kjzs5oy/8oLx
-         3zK03qWoTcLC+9omG8uS8ZfDcqayW2jHVQ2kCWNRK0XoKctHptO5e8KRcHMGtgEs5AUv
-         skC4+M7CDXLkh2i+xLSSj+s8Iiqx+H6k7zoX9p/66cuoiF8ZqeF6JsRE0IYyUHP4+qpL
-         zlsw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=vCmSf4wiX7uyCAXj4jA6mUXOQGiPXIr2xxg/eIy0T1Y=;
-        b=huYSrBaV6z7DJY9mb49KiQexLVZbV+qu69T2fzegvuUFbftk6CriDB4YEhbd4p7N2D
-         CB3v9vCiZxZJ9QgmGQR9hdnCt2qZ4qtswsdhvkoQon5Z4NTGH49YKtJu56/Z4MQMYR4f
-         W6qr/scnK6DMRg6Ro/SeOav0Jbcl3b1B5VondFy81PWhyEB9EeK4hwbObqFTifj57uws
-         VGdqbx6YUWatYbRaGKiL0Bn8fI9iilB4UySvoTEp/0rsVu61ZA46VSi2Qb+feBkQvDm1
-         5l/QH4RWb/H7vmk2RcGWOKupbgEMqz+oFKeaUurWFsGnx3DIt7GC0Hk3bqOLYPxr3r67
-         ukiA==
-X-Gm-Message-State: AHQUAuZYIGUD7KtDv8Ow3eyAPe+rLMdLuPR/7j7OxovISr4pliyEKXUY
-        nkYz7oXBTsaFcFvAVyauGNtXVA==
-X-Google-Smtp-Source: AHgI3IaCF0p78MRjlu2HaIdXjHpzouAa4Fp8iEYBu+qFpL7apPgpDth66PYeey9VrXgnafxgwtoWNw==
-X-Received: by 2002:a63:2905:: with SMTP id p5mr116415pgp.178.1549917543801;
-        Mon, 11 Feb 2019 12:39:03 -0800 (PST)
-Received: from cabot-wlan.adilger.int (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
-        by smtp.gmail.com with ESMTPSA id z62sm19268832pfi.4.2019.02.11.12.39.02
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 11 Feb 2019 12:39:03 -0800 (PST)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <A695FC57-D150-42A9-9E55-32DC8D1AED76@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_3D210E50-F019-4E8A-B7FE-48774CBE3F77";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH] ext4: prevent very high s_inode_readahead_blks
-Date:   Mon, 11 Feb 2019 13:38:59 -0700
-In-Reply-To: <20190211184459.GB22106@kadam>
-Cc:     Theodore Ts'o <tytso@mit.edu>,
-        Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        kernel-janitors@vger.kernel.org
-To:     Dan Carpenter <dan.carpenter@oracle.com>
-References: <20190211184459.GB22106@kadam>
-X-Mailer: Apple Mail (2.3273)
+        id S1727231AbfBKWMy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 11 Feb 2019 17:12:54 -0500
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:47029 "EHLO
+        ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726173AbfBKWMy (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 11 Feb 2019 17:12:54 -0500
+Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
+  by ipmail06.adl2.internode.on.net with ESMTP; 12 Feb 2019 08:42:51 +1030
+Received: from dave by dastard with local (Exim 4.80)
+        (envelope-from <david@fromorbit.com>)
+        id 1gtJon-0002HS-4g; Tue, 12 Feb 2019 09:12:49 +1100
+Date:   Tue, 12 Feb 2019 09:12:49 +1100
+From:   Dave Chinner <david@fromorbit.com>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-fsdevel@vger.kernel.org,
+        linux-crypto@vger.kernel.org, linux-api@vger.kernel.org,
+        keyrings@vger.kernel.org, Satya Tangirala <satyat@google.com>,
+        Paul Crowley <paulcrowley@google.com>
+Subject: Re: [RFC PATCH v2 11/20] fscrypt: add FS_IOC_REMOVE_ENCRYPTION_KEY
+ ioctl
+Message-ID: <20190211221249.GH20493@dastard>
+References: <20190211172738.4633-1-ebiggers@kernel.org>
+ <20190211172738.4633-12-ebiggers@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190211172738.4633-12-ebiggers@kernel.org>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-
---Apple-Mail=_3D210E50-F019-4E8A-B7FE-48774CBE3F77
-Content-Transfer-Encoding: 7bit
-Content-Type: text/plain;
-	charset=us-ascii
-
-On Feb 11, 2019, at 11:44 AM, Dan Carpenter <dan.carpenter@oracle.com> wrote:
+On Mon, Feb 11, 2019 at 09:27:29AM -0800, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> My static checker complains that "arg" can be negative.  That does seem
-> possible.  I don't know if it causes an issue at run time but it seems
-> safest to allow negatives.
-
-The option declaration requires that "arg" be greater than zero:
-
-        {Opt_inode_readahead_blks, 2, MOPT_GTE0},
-
-and this is checked earlier in handle_mount_opt():
-
-        if (args->from && (m->flags & MOPT_GTE0) && (arg < 0))
-                return -1;
-
-but I agree that having false static checking warnings is annoying
-and potentially also hides other issues.
-
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> ---
-> fs/ext4/super.c | 2 +-
-> 1 file changed, 1 insertion(+), 1 deletion(-)
+> Add a new fscrypt ioctl, FS_IOC_REMOVE_ENCRYPTION_KEY.  This ioctl
+> removes an encryption key that was added by FS_IOC_ADD_ENCRYPTION_KEY.
+> It wipes the secret key itself, then "locks" the encrypted files and
+> directories that had been unlocked using that key -- implemented by
+> evicting the relevant dentries and inodes from the VFS caches.
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 60da0a6e4d86..4e0845708c52 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1838,7 +1838,7 @@ static int handle_mount_opt(struct super_block *sb,
-> 	} else if (token == Opt_min_batch_time) {
-> 		sbi->s_min_batch_time = arg;
-> 	} else if (token == Opt_inode_readahead_blks) {
-> -		if (arg && (arg > (1 << 30) || !is_power_of_2(arg))) {
-> +		if (arg && (arg > (1U << 30) || !is_power_of_2(arg))) {
+> The problem this solves is that many fscrypt users want the ability to
+> remove encryption keys, causing the corresponding encrypted directories
+> to appear "locked" (presented in ciphertext form) again.  Moreover,
+> users want removing an encryption key to *really* remove it, in the
+> sense that the removed keys cannot be recovered even if kernel memory is
+> compromised, e.g. by the exploit of a kernel security vulnerability or
+> by a physical attack.  This is desirable after a user logs out of the
+> system, for example.  In many cases users even already assume this to be
+> the case and are surprised to hear when it's not.
+> 
+> It is not sufficient to simply unlink the master key from the keyring
+> (or to revoke or invalidate it), since the actual encryption transform
+> objects are still pinned in memory by their inodes.  Therefore, to
+> really remove a key we must also evict the relevant inodes.
+> 
+> Currently one workaround is to run 'sync && echo 2 >
+> /proc/sys/vm/drop_caches'.  But, that evicts all unused inodes in the
+> system rather than just the inodes associated with the key being
+> removed, causing severe performance problems.  Moreover, it requires
+> root privileges, so regular users can't "lock" their encrypted files.
+> 
+> Another workaround, used in Chromium OS kernels, is to add a new
+> VFS-level ioctl FS_IOC_DROP_CACHE which is a more restricted version of
+> drop_caches that operates on a single super_block.  It does:
+> 
+>         shrink_dcache_sb(sb);
+>         invalidate_inodes(sb, false);
+> 
+> But it's still a hack.  Yet, the major users of filesystem encryption
+> want this feature badly enough that they are actually using these hacks.
+> 
+> To properly solve the problem, start maintaining a list of the inodes
+> which have been "unlocked" using each master key.  Originally this
+> wasn't possible because the kernel didn't keep track of in-use master
+> keys at all.  But, with the ->s_master_keys keyring it is now possible.
+> 
+> Then, add an ioctl FS_IOC_REMOVE_ENCRYPTION_KEY.  It finds the specified
+> master key in ->s_master_keys, then wipes the secret key itself, which
+> prevents any additional inodes from being unlocked with the key.  Then,
+> it syncs the filesystem and evicts the inodes in the key's list.  The
+> normal inode eviction code will free and wipe the per-file keys (in
+> ->i_crypt_info).  Note that freeing ->i_crypt_info without evicting the
+> inodes was also considered, but would have been racy.
 
-This may "fix" the problem by virtue of implicitly forcing an unsigned
-comparison, but doesn't necessarily make the issue more obvious to the
-reader.
+The solution is still so gross. Exporting all the inode cache
+internal functions so you can invalidate an external list of inodes
+is, IMO, not an appropriate solution for anything.
 
-That said, it doesn't look like _any_ use of "arg" allows a negative
-value, regardless of whether MOPT_GTE0 is set or not, so we should
-just declare arg as an unsigned int or explicitly refuse all negatives:
+Indeed, this is exactly what ->drop_inode() is for.
 
-	if (args->from && !(m->flags & MOPT_STRING)) {
-		if (match_int(args, &arg))
-			return -1;
-		if (arg < 0)
-			return -1;
-	}
+Take this function:
 
-This should keep the static checker happy, since the only place that
-"arg" is set away from zero it is also verified not to be negative.
-At that point it would also be possible to remove MOPT_GTE0 completely.
+> +static void evict_dentries_for_decrypted_inodes(struct fscrypt_master_key *mk)
+> +{
+> +	struct fscrypt_info *ci;
+> +	struct inode *inode;
+> +	struct inode *toput_inode = NULL;
+> +
+> +	spin_lock(&mk->mk_decrypted_inodes_lock);
+> +
+> +	list_for_each_entry(ci, &mk->mk_decrypted_inodes, ci_master_key_link) {
+> +		inode = ci->ci_inode;
+> +		spin_lock(&inode->i_lock);
+> +		if (inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) {
+> +			spin_unlock(&inode->i_lock);
+> +			continue;
+> +		}
+> +		__iget(inode);
+> +		spin_unlock(&inode->i_lock);
+> +		spin_unlock(&mk->mk_decrypted_inodes_lock);
+> +
+> +		shrink_dcache_inode(inode);
+> +		iput(toput_inode);
+> +		toput_inode = inode;
+> +
+> +		spin_lock(&mk->mk_decrypted_inodes_lock);
+> +	}
+> +
+> +	spin_unlock(&mk->mk_decrypted_inodes_lock);
+> +	iput(toput_inode);
+> +}
 
-Cheers, Andreas
+It takes a new reference to each decrypted inode, and then drops it
+again after all the dentry cache references have been killed and
+we've got a reference to the next inode in the list.  Killing the
+dentry references to the inode means it should only have in-use
+references and the reference this function holds on it.
 
+If the inode is not in use then there will be only one, and so it
+will fall into iput_final() and the ->drop_inode() function
+determines if the inode should be evicted from the cache and
+destroyed immediately.  IOWs, implement fscrypt_drop_inode() to do
+the right thing when the key has been destroyed, and you can get rid
+of all this crazy inode cache walk-and-invalidate hackery.
 
+Cheers,
 
-
-
-
---Apple-Mail=_3D210E50-F019-4E8A-B7FE-48774CBE3F77
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlxh3WQACgkQcqXauRfM
-H+D2xxAAoumeTLnQUIy54hROhS0j1AEOlzF9hIOkSxvzkT1BtMvN6SYACoYUWGKl
-R0rKBu2TIEvmWl8zcgPpaDcI9fCh5ZnLU87FhdHUVgUft21/AQRvI1E6pe/GrIj0
-Eq398vFvaUsCRbKjmKlBiIdl9IeQeQ1IuwO0vIYErPBb0QXPLa494PbpxXIWLqOU
-n6a/TZcdeddS4oYvHTNtzNc+GD3mM5I9hBsiWU0ySYmB1ISLxvwuzQVZ2bm0MWUB
-KqUzVn9QQgNdQBEpc7vNDp8fY3iOS60LKPYJrrLzSNT4b/BbXDy8dvhs+zDZ7Ipd
-OC9JsHSl4NTm12Ix0bVGtrLzmuWddHE3VlCWTQoZgHcXl8PehNHqPhQVHt9i9/wm
-Gi8/rkKHX62zQk6NXNGWyfByWqyI2ucjL1+Qho1O+y8tjtyKYx1DMmh0IA0F0UZP
-TPq+uXlpIzIJcVaNEG44BXWQ/eixxnTrJDowSbBeZlUXUdrtcvkGRSCcsZDhS/q8
-QlAfL3wgOTEEg5ebpUlxZbnTRPpCXQJGMWNJ4MaRjRNOkzKWqWSgfurscihsomdA
-hTo1crIunS2IFsP3FpJOCA4fyUawb8epjgaMKenQqI+uJkEr/6qsfrMdIKvmt/lX
-4zVpalGNEk4GJZiaoRdg45KLvkwKh9r90IZ5LG3Jhxuay9GgcoM=
-=Vw24
------END PGP SIGNATURE-----
-
---Apple-Mail=_3D210E50-F019-4E8A-B7FE-48774CBE3F77--
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
