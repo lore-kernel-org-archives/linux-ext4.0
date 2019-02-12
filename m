@@ -2,104 +2,75 @@ Return-Path: <SRS0=DlHj=QT=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ECFB2C282CE
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Feb 2019 12:20:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 41BEDC282C4
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Feb 2019 12:42:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C6A7C20863
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Feb 2019 12:20:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1ADD220821
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Feb 2019 12:42:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728571AbfBLMUy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Feb 2019 07:20:54 -0500
-Received: from szxga06-in.huawei.com ([45.249.212.32]:57124 "EHLO huawei.com"
+        id S1729409AbfBLMmH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Feb 2019 07:42:07 -0500
+Received: from szxga04-in.huawei.com ([45.249.212.190]:3188 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726550AbfBLMUy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 12 Feb 2019 07:20:54 -0500
-Received: from DGGEMS401-HUB.china.huawei.com (unknown [172.30.72.58])
-        by Forcepoint Email with ESMTP id 1E9455CDFBBEFF5AA300;
-        Tue, 12 Feb 2019 20:20:51 +0800 (CST)
-Received: from [127.0.0.1] (10.177.244.145) by DGGEMS401-HUB.china.huawei.com
- (10.3.19.201) with Microsoft SMTP Server id 14.3.408.0; Tue, 12 Feb 2019
- 20:20:43 +0800
-Subject: Re: [PATCH v4 1/4] jbd2: make sure dirty flag is cleared while
- revorking a buffer which belongs to older transaction
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-References: <1548830980-29482-1-git-send-email-yi.zhang@huawei.com>
- <1548830980-29482-2-git-send-email-yi.zhang@huawei.com>
- <20190211042433.GE23000@mit.edu>
-CC:     <linux-ext4@vger.kernel.org>, <jack@suse.cz>,
-        <adilger.kernel@dilger.ca>, <miaoxie@huawei.com>
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
-Message-ID: <bb69d5d1-662f-7653-0dfe-91e0c763c9e3@huawei.com>
-Date:   Tue, 12 Feb 2019 20:20:42 +0800
-User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:45.0) Gecko/20100101
- Thunderbird/45.4.0
+        id S1727763AbfBLMmH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 12 Feb 2019 07:42:07 -0500
+Received: from DGGEMS410-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id 58A379BF77D202D4D28C;
+        Tue, 12 Feb 2019 20:42:04 +0800 (CST)
+Received: from [127.0.0.1] (10.177.33.43) by DGGEMS410-HUB.china.huawei.com
+ (10.3.19.210) with Microsoft SMTP Server id 14.3.408.0; Tue, 12 Feb 2019
+ 20:41:54 +0800
+Subject: Re: [PATCH] ext4: disallow files with EXT4_JOURNAL_DATA_FL from
+ EXT4_IOC_SWAP_BOOT
+To:     Theodore Ts'o <tytso@mit.edu>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>
+CC:     <jack@suse.com>, <miaoxie@huawei.com>, <yi.zhang@huawei.com>,
+        <houtao1@huawei.com>
+References: <20190211061537.32386-1-tytso@mit.edu>
+From:   yangerkun <yangerkun@huawei.com>
+Message-ID: <bc382233-35ff-943e-d9f7-b17f9dce193d@huawei.com>
+Date:   Tue, 12 Feb 2019 20:41:23 +0800
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.4.0
 MIME-Version: 1.0
-In-Reply-To: <20190211042433.GE23000@mit.edu>
-Content-Type: text/plain; charset="windows-1252"
+In-Reply-To: <20190211061537.32386-1-tytso@mit.edu>
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Language: en-US
 Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.177.244.145]
+X-Originating-IP: [10.177.33.43]
 X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 2019/2/11 12:24, Theodore Y. Ts'o Wrote:
-> On Wed, Jan 30, 2019 at 02:49:37PM +0800, zhangyi (F) wrote:
->> Now, we capture a data corruption problem on ext4 while we're truncating
->> an extent index block. Imaging that if we are revoking a buffer which
->> has been journaled by the committing transaction, the buffer's jbddirty
->> flag will not be cleared in jbd2_journal_forget(), so the commit code
->> will set the buffer dirty flag again after refile the buffer.
->>
->> fsx                               kjournald2
->>                                   jbd2_journal_commit_transaction
->> jbd2_journal_revoke                commit phase 1~5...
->>  jbd2_journal_forget
->>    belongs to older transaction    commit phase 6
->>    jbddirty not clear               __jbd2_journal_refile_buffer
->>                                      __jbd2_journal_unfile_buffer
->>                                       test_clear_buffer_jbddirty
->>                                        mark_buffer_dirty
->>
->> Finally, if the freed extent index block was allocated again as data
->> block by some other files, it may corrupt the file data after writing
->> cached pages later, such as during unmount time. (In general,
->> clean_bdev_aliases() related helpers should be invoked after
->> re-allocation to prevent the above corruption, but unfortunately we
->> missed it when zeroout the head of extra extent blocks in
->> ext4_ext_handle_unwritten_extents()).
->>
->> This patch mark buffer as freed and set j_next_transaction to the new
->> transaction when it already belongs to the committing transaction in
->> jbd2_journal_forget(), so that commit code knows it should clear dirty
->> bits when it is done with the buffer.
->>
->> This problem can be reproduced by xfstests generic/455 easily with
->> seeds (3246 3247 3248 3249).
->>
->> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
->> Reviewed-by: Jan Kara <jack@suse.cz>
->> Cc: stable@vger.kernel.org
+Reviewed-by: yangerkun <yangerkun@huawei.com>
+
+Theodore Ts'o wrote on 2019/2/11 14:15:
+> A malicious/clueless root user can use EXT4_IOC_SWAP_BOOT to force a
+> corner casew which can lead to the file system getting corrupted.
+> There's no usefulness to allowing this, so just prohibit this case.
 > 
-> Thanks, applied.
+> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> ---
+>   fs/ext4/ioctl.c | 1 +
+>   1 file changed, 1 insertion(+)
 > 
-> By the way, I wasn't able to easily reproduce the problem using the
-> given seeds.  Out of curiosity, what sort test system were you using?
-> (e.g., how many CPU's, how much memory, what kind of storage device,
-> etc.)
-
-Yes, I was also not able to reproduce the problem quite easily, because
-it depends on block allocation logic. So in order to increase the
-probability, I choice a relatively small prartition(5GB).
-
-I reprocude this problem on a x86_64 kvm virtual machine which have 16
-cores, 16GB memory and two 5GB virtio block devices(base on ssd RIAD).
-
-Thanks,
-Yi.
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index 2e76fb55d94a..eb8ca8d80885 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -132,6 +132,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
+>   
+>   	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode) ||
+>   	    IS_SWAPFILE(inode) || IS_ENCRYPTED(inode) ||
+> +	    (EXT4_I(inode)->i_flags & EXT4_JOURNAL_DATA_FL) ||
+>   	    ext4_has_inline_data(inode)) {
+>   		err = -EINVAL;
+>   		goto journal_err_out;
+> 
 
