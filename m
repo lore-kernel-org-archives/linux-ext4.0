@@ -6,34 +6,34 @@ X-Spam-Status: No, score=-2.3 required=3.0 tests=DKIM_INVALID,DKIM_SIGNED,
 	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6DA78C282CE
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Feb 2019 17:11:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AAD19C282C4
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Feb 2019 17:24:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3F6DD20700
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Feb 2019 17:11:21 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3E1F6222C2
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Feb 2019 17:24:42 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=fail reason="signature verification failed" (1024-bit key) header.d=mit.edu header.i=@mit.edu header.b="b7OwjCVC"
+	dkim=fail reason="signature verification failed" (1024-bit key) header.d=mit.edu header.i=@mit.edu header.b="likcoE1o"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731130AbfBLRLU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Feb 2019 12:11:20 -0500
-Received: from mail-eopbgr760094.outbound.protection.outlook.com ([40.107.76.94]:20552
-        "EHLO NAM02-CY1-obe.outbound.protection.outlook.com"
+        id S1730451AbfBLRYl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Feb 2019 12:24:41 -0500
+Received: from mail-eopbgr710095.outbound.protection.outlook.com ([40.107.71.95]:30528
+        "EHLO NAM05-BY2-obe.outbound.protection.outlook.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1729536AbfBLRLT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 12 Feb 2019 12:11:19 -0500
+        id S1730324AbfBLRYk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 12 Feb 2019 12:24:40 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=mit.edu; s=selector1;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=ORamBFDRIV00CLhS3LUHcO/GmG4g9XMk7QoJZDhu69I=;
- b=b7OwjCVCyfgdwDGZGVtUyStJlulDezlw8bLrlLAiQ9ThcYbgtrrguYRAdL3WXZHrQ7lzJ/f0knsX2B89WhM31CYxOoZuSU6FdZgiruILaXAbBAaKBT7eBwY/xClj7kf9dJ2yvemqSMA8sWL8lfTPOHciSjMMbz6ysOcDEwG5T9g=
-Received: from SN2PR01CA0027.prod.exchangelabs.com (2603:10b6:804:2::37) by
- DM6PR01MB4938.prod.exchangelabs.com (2603:10b6:5:57::26) with Microsoft SMTP
+ bh=QsaWWwC33EDt3XWsQXQihHBj8ubo9TCD1/f3InnQY3E=;
+ b=likcoE1ovqwplLbC33CTDURoNIeVHhVujSzQFOUlBdNdWNCwaNnz60M58u32KoyiFTmKQFdEew45Bu4V84VoCsl3h42TGusdtH4QW3WEiuHpHmT8bXqAkSNsUaHpOXkpBgblUByeOK/uOiGZhXvOVoREA/eufEXV7/5K4tjgZfs=
+Received: from CY4PR01CA0024.prod.exchangelabs.com (2603:10b6:903:1f::34) by
+ CY1SPR00MB23.prod.exchangelabs.com (2603:10b6:600:1::27) with Microsoft SMTP
  Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1601.21; Tue, 12 Feb 2019 17:11:14 +0000
-Received: from CO1NAM03FT029.eop-NAM03.prod.protection.outlook.com
- (2a01:111:f400:7e48::204) by SN2PR01CA0027.outlook.office365.com
- (2603:10b6:804:2::37) with Microsoft SMTP Server (version=TLS1_2,
+ 15.20.1601.21; Tue, 12 Feb 2019 17:24:37 +0000
+Received: from BY2NAM03FT038.eop-NAM03.prod.protection.outlook.com
+ (2a01:111:f400:7e4a::207) by CY4PR01CA0024.outlook.office365.com
+ (2603:10b6:903:1f::34) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id 15.20.1601.19 via Frontend
- Transport; Tue, 12 Feb 2019 17:11:14 +0000
+ Transport; Tue, 12 Feb 2019 17:24:37 +0000
 Authentication-Results: spf=pass (sender IP is 18.9.28.11)
  smtp.mailfrom=mit.edu; vger.kernel.org; dkim=none (message not signed)
  header.d=none;vger.kernel.org; dmarc=bestguesspass action=none
@@ -42,18 +42,18 @@ Received-SPF: Pass (protection.outlook.com: domain of mit.edu designates
  18.9.28.11 as permitted sender) receiver=protection.outlook.com;
  client-ip=18.9.28.11; helo=outgoing.mit.edu;
 Received: from outgoing.mit.edu (18.9.28.11) by
- CO1NAM03FT029.mail.protection.outlook.com (10.152.80.168) with Microsoft SMTP
+ BY2NAM03FT038.mail.protection.outlook.com (10.152.84.170) with Microsoft SMTP
  Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id
- 15.20.1580.10 via Frontend Transport; Tue, 12 Feb 2019 17:11:13 +0000
+ 15.20.1580.10 via Frontend Transport; Tue, 12 Feb 2019 17:24:36 +0000
 Received: from callcc.thunk.org (guestnat-104-133-0-100.corp.google.com [104.133.0.100] (may be forged))
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x1CHBAji013865
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x1CHOYlt018808
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Tue, 12 Feb 2019 12:11:11 -0500
+        Tue, 12 Feb 2019 12:24:34 -0500
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id CF5927A4EA7; Tue, 12 Feb 2019 12:11:09 -0500 (EST)
-Date:   Tue, 12 Feb 2019 12:11:09 -0500
+        id C64C97A4EA7; Tue, 12 Feb 2019 12:24:33 -0500 (EST)
+Date:   Tue, 12 Feb 2019 12:24:33 -0500
 From:   "Theodore Y. Ts'o" <tytso@mit.edu>
 To:     Mimi Zohar <zohar@linux.ibm.com>
 CC:     Linus Torvalds <torvalds@linux-foundation.org>,
@@ -64,106 +64,126 @@ CC:     Linus Torvalds <torvalds@linux-foundation.org>,
         <linux-fscrypt@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
         <linux-ext4@vger.kernel.org>,
-        <linux-f2fs-devel@lists.sourceforge.net>
+        <linux-f2fs-devel@lists.sourceforge.net>,
+        James Bottomley <James.Bottomley@HansenPartnership.com>
 Subject: Re: Proposal: Yet another possible fs-verity interface
-Message-ID: <20190212171109.GS23000@mit.edu>
+Message-ID: <20190212172433.GT23000@mit.edu>
 References: <20190207031101.GA7387@mit.edu>
  <CAHk-=wh2j+Yy28H_QxEdsP=k9xcHxjCG1PqKAF2Uv=ckK8oPug@mail.gmail.com>
- <20190212051237.GQ23000@mit.edu>
- <1549982679.12743.248.camel@linux.ibm.com>
+ <1549807615.12743.109.camel@linux.ibm.com>
+ <20190212053123.GR23000@mit.edu>
+ <1549976812.12743.225.camel@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="iso-8859-1"
 Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <1549982679.12743.248.camel@linux.ibm.com>
+In-Reply-To: <1549976812.12743.225.camel@linux.ibm.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 X-EOPAttributedMessage: 0
-X-Forefront-Antispam-Report: CIP:18.9.28.11;IPV:CAL;SCL:-1;CTRY:US;EFV:NLI;SFV:NSPM;SFS:(10019020)(136003)(376002)(346002)(39860400002)(396003)(2980300002)(189003)(199004)(23756003)(126002)(33656002)(336012)(58126008)(54906003)(76176011)(2616005)(11346002)(446003)(476003)(36906005)(786003)(42186006)(316002)(2906002)(486006)(26826003)(88552002)(2870700001)(106466001)(90966002)(75432002)(50466002)(26005)(478600001)(93886005)(186003)(52956003)(229853002)(6246003)(47776003)(106002)(6916009)(8936002)(1076003)(246002)(8676002)(14444005)(4326008)(6266002)(305945005)(356004)(103686004)(36756003)(7416002)(86362001)(18370500001)(42866002);DIR:OUT;SFP:1102;SCL:1;SRVR:DM6PR01MB4938;H:outgoing.mit.edu;FPR:;SPF:Pass;LANG:en;PTR:outgoing-auth-1.mit.edu;MX:1;A:1;
-X-Microsoft-Exchange-Diagnostics: 1;CO1NAM03FT029;1:8dPst4+9Qsni5xGeJJuQYSMjulMIvW6Jd/hWmHfARkX6Um6RESkdq+Tuxmu92+KvkgyQZcnSSzJ9lO6Xgp11xC6hV3ObNF6gM9GYxcjgTxh4kvzk9Clrq3MNMJYrWNP1bx8SkqG8Adp8ko7fzQ9skQ==
+X-Forefront-Antispam-Report: CIP:18.9.28.11;IPV:CAL;SCL:-1;CTRY:US;EFV:NLI;SFV:NSPM;SFS:(10019020)(376002)(39860400002)(346002)(136003)(396003)(2980300002)(189003)(199004)(2616005)(6246003)(103686004)(36756003)(6266002)(7416002)(8676002)(336012)(126002)(476003)(76176011)(23756003)(86362001)(486006)(93886005)(229853002)(52956003)(4326008)(14444005)(26826003)(356004)(106002)(316002)(786003)(54906003)(246002)(478600001)(58126008)(75432002)(36906005)(6916009)(42186006)(90966002)(88552002)(2870700001)(8936002)(50466002)(11346002)(446003)(106466001)(33656002)(47776003)(186003)(26005)(1076003)(2906002)(305945005)(18370500001)(42866002);DIR:OUT;SFP:1102;SCL:1;SRVR:CY1SPR00MB23;H:outgoing.mit.edu;FPR:;SPF:Pass;LANG:en;PTR:outgoing-auth-1.mit.edu;MX:1;A:1;
+X-Microsoft-Exchange-Diagnostics: 1;BY2NAM03FT038;1:d2T2z2fgonn1qMXMRWX1s2gYk1DGE1tHH8aSuzelqkjbn43ySnUX7KZazjgR0aai8yZKO2TDsnxrqGRHphA7mhCa7kI6GJdE5c7jIncepuHiUrbBTm/cEXrXOZvEBuLcPqEOBMxIRh73R9B/yCLTvw==
 X-MS-PublicTrafficType: Email
-X-MS-Office365-Filtering-Correlation-Id: 3fc2de95-9933-4c38-d763-08d6910d17bf
-X-Microsoft-Antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600110)(711020)(4605077)(4608076)(4709027)(2017052603328)(7153060);SRVR:DM6PR01MB4938;
-X-MS-TrafficTypeDiagnostic: DM6PR01MB4938:
+X-MS-Office365-Filtering-Correlation-Id: c25df7a8-6dea-432e-bf45-08d6910ef6ab
+X-Microsoft-Antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600110)(711020)(4605077)(4608076)(4709027)(2017052603328)(7153060);SRVR:CY1SPR00MB23;
+X-MS-TrafficTypeDiagnostic: CY1SPR00MB23:
 X-LD-Processed: 64afd9ba-0ecf-4acf-bc36-935f6235ba8b,ExtAddr
-X-Microsoft-Exchange-Diagnostics: 1;DM6PR01MB4938;20:5VS7kLwFiPOEH4iZ20v9eqlFng2RLqwl0eza7Iz7Wk/aop2P3NzmdagaaWaFfVeCx/61tU+iAcP7oBVjExsPr659VeozB5e6rLcriAWooqjSXdFDMhsNGvMtANakP6pYswllzIKqI254+0z7TK82lSDBaVPxufRmEkmv6ouSFhOcXMl/2AFyMPh9lsJJmbCplViAd5Renc0i8SsvM4el9l9YRap5l3yX7jenpk4TtRQ6atpJ88WZR5fkIPj0sJRbRxbALqLHqEbLhvkgEvtdG7tOW3IAA2jIVnmzdp4c58l727fsaj5vvTutOc4Rvm6Gg8f0409nAHIiGzYvN4+FzqwaU+RCpTnPe5UTnK+nclugkmuNijo264pO7+w9S8acCZSN0QaAgPGj7Z7Ujfiz4Ov3+msH4Wy4dX/B3stBSxJaw891Arfa9nMpIFBe0Z/9/FbLvUTDkOQC5hDAzFqqFhNbbNu8ysXGledxASY8CuRPWDFMwYthV1xjX1cEYtrPnTcmcX4Yf3JdVey2a/llT5TN5BtPfG0od1Y0+jYlhAQkYdv6Kkr4rb4PpgHKbHGPWL6WNE2aRG6b1gY0ic2kXQBHRvcr52D3zbQlvsj+Xtc=
-X-Microsoft-Antispam-PRVS: <DM6PR01MB493869F04E2CC95411EF12D8B5650@DM6PR01MB4938.prod.exchangelabs.com>
+X-Microsoft-Exchange-Diagnostics: 1;CY1SPR00MB23;20:8OUPw6v9zNGKgGH6+2KVeHUqAOwamDMBq+rnWnXg4WHTf4rxRp+vvUh0ulWqtGDPO9TbFDMdEYY9Ze3cJrlSlOv6Y7PunR6xpKrkIyYBFYYe2DdLfOS0798vmS2j8gdRuLaVrc4J7pCq7yIzD7buOBLSsz19OZLbaWbA2h0i7tDVtYiZcJ+XVbX5IxeAPSoaRkkrWvmtjjWyb3EKnr9dNTKNlTxy2AOvYwU1nriB1y0pJApxEf00UCSXS3Fwo3ZqUW8NT82gXLAKQtKQn2mmRr60Was65qUddEl/K5Y4lCOAorZFseHKQVggXbUf0PMpY29ej0CA9pyFrLRoeVgH+24IBO/eB16amasEn/mS8p642o+Dw7rL35xMDwlo2f9bVy9xJhE3ma1+P12c6uEBVq8KItl5xBtefLOkWTuRrmgS/4tewSjFRiT9iLwY+SLcD6lJm87oWcOhmcGuVCu4Wmpd6QM7EfnZ8cEnYty+Xv1Ol27P4ykO36odKDBmTRWbXm2gd5xc3fUgE/4TUekBxJ3CvAtZt7nrkCB4Mx2aMr7roAnEGOFvrj58MHcT4osNLjfdlS9cDvSyg2ZbP6prwqKuwqwFaTGGfFfjp0cdf84=
+X-Microsoft-Antispam-PRVS: <CY1SPR00MB236A070A8A9A3DF048315DB5650@CY1SPR00MB23.prod.exchangelabs.com>
 X-Forefront-PRVS: 0946DC87A1
-X-Microsoft-Exchange-Diagnostics: =?iso-8859-1?Q?1;DM6PR01MB4938;23:iuGlMzlwFme+LgjIv9CXobyTEcgp4BFTtjHCpi3?=
- =?iso-8859-1?Q?X9ogA3d/CButXoThOsGySjyOadMH4ampEs02CcsaQYnqCAi76jgHWa8siU?=
- =?iso-8859-1?Q?hBHP3x0tKJ/sbOJeldVfzArIlqS7M4lBrU1DmJvFF7PioN5pL+y/I7szId?=
- =?iso-8859-1?Q?FmPlizlXK5wfHWPCzKN7ebEZB/f+04j82xs5QHHtAgd3e2a3O4gY188to0?=
- =?iso-8859-1?Q?sLfPqJvE7gbOhO8WBptyJKxJcER0/8f9pRUG1UFZ2NXRmQ6kP5/f0LDjzw?=
- =?iso-8859-1?Q?VRxdCizFCBew/qi9WPwgvMKvAF+7GOj5CX2MTcqUJWRZxC6SXQNcd6toDz?=
- =?iso-8859-1?Q?WSjFnVU9fSCfd6PDmdYTwE2SQVdsHezcv9/KB0HyXbRsAQnRAOuW0cAXWu?=
- =?iso-8859-1?Q?e2bQ3awpt089fk3VSSH8UTIDZoIcP8rAYeR4qBw/f0Z/dcn5gd48mT6wGH?=
- =?iso-8859-1?Q?8Y5HaZfGYyZxnjq3OFYtS6mXnDyLJnjaMiisKH/MoTlPqt18GO1WCJeMYc?=
- =?iso-8859-1?Q?OfvUpJpaS4aO1/qqTLVwhJioibZTPkG+MN43KViN8orQY4RFB3ETO4ACPa?=
- =?iso-8859-1?Q?SmxxVnnT12lgAWkk8R0MdYIZzjNeu0tLfrrjCL6Jy9O+XU5ubp1y8dcuwC?=
- =?iso-8859-1?Q?hmKkCp9BFiAxzQgbdAb4mICjOF9luCak5TmMxmwlJr7U2+0sHwuJXk/LTv?=
- =?iso-8859-1?Q?ouZH3qEFPsmETbh9DRlBWfPawsLDaAMEw4roYbTczSZ6GKK83KvJf9q/6U?=
- =?iso-8859-1?Q?nyQJ6pWWtDS6dkLu/2m48lzv88203fDCXo2tQB3SXtRZh3OQx+4r5JheEC?=
- =?iso-8859-1?Q?2K7SWfxEJr00ySsAHwMEg0NH9e61vASwgLJdOX1ghLjEQOyMY4JE6V4TcB?=
- =?iso-8859-1?Q?qPxm1U/4/cCSKO+um2hGct6rDv85aLoSk0HyoA0yjLkuEmwZ/wV549ILBa?=
- =?iso-8859-1?Q?aDhM794mmzegpWkuzYafUMAUYHnwoZkjcXrCgcIyE0kvUCbeKBlysefZzS?=
- =?iso-8859-1?Q?+Qc7Z0oigIJnX/4f7zKG0rQ/kOGZM8IoGNQB71cuCx9l8jX699xC+2rmQy?=
- =?iso-8859-1?Q?izaMXrMJgoVzWayw1CeLmVyAQS/Unmm15MpP7ZvTh7GmHhpZmgOxn+mHYy?=
- =?iso-8859-1?Q?BY/oM+GDMVMVaiuswYUK/gMvD2+mfVVe+8u2VTfEtiWPwkzj5fpBapbrpy?=
- =?iso-8859-1?Q?0pAkEjQVwp7fTk/4xNulJWc/IRd9CIo8wuxE9z4zjTfxqYf9rPjMtI4vvR?=
- =?iso-8859-1?Q?Q9i+DHaaA0J6jUYs/hB76G8K79DjCNBFDFHZpGhynTshC8xSG6BCN3Gnub?=
- =?iso-8859-1?Q?mU=3D?=
+X-Microsoft-Exchange-Diagnostics: =?iso-8859-1?Q?1;CY1SPR00MB23;23:qyDigX7y93/4xROP0cOYn5Qon/Q2Pnh7j1aCXapA?=
+ =?iso-8859-1?Q?PqanfhBz1SAcuEtNSm3pqnvy/FwMqshA/A/WxeN0iXfkRQHj3iIk+EXBDD?=
+ =?iso-8859-1?Q?K2AA/B3VKqCqv0Duc/xAINInyBCSIXBkddBxRe1NIiS3RZaBNNweOxEz5r?=
+ =?iso-8859-1?Q?ghCWb5y7ZUsyVDImb+nnq8SDEDt6x90ZdLjNk+IryEqKtXj9zQmCEvSmUc?=
+ =?iso-8859-1?Q?TilCMsI/EgFm84SULJBia2s36TYAvBJH77F3gISIPtBdEUjwZzC8gp2vzT?=
+ =?iso-8859-1?Q?suotfzwhOC24vGEsr1iw/tjWZ2AtBv3hXnafm1+mbnK1LuAiVDkkE72wzZ?=
+ =?iso-8859-1?Q?WS3jz/iGA7Fd6xHkIOLFHZvFJ6TLjPBoYns7Z6CXoFcVQM2+H9vtW+2+jq?=
+ =?iso-8859-1?Q?S8/73pOF4yuJJ/sxgLnnuptZ5S9XyhXoLM5D02isnnVHmYq3eNbFqBKlrZ?=
+ =?iso-8859-1?Q?xDaR10vQuh5tPd3sNjz5udmLAxkM/IymRY2dJ5qYxzqxDhrcQoaYnE+AsS?=
+ =?iso-8859-1?Q?G5Y+DbGZ+RXjvbIG4sQr0UGifYXx3nw6lFkJuFr1T1f2o2dsqHzBdmANYv?=
+ =?iso-8859-1?Q?zr97uGQSAlVRiD4UgE4N0t+/Rb2su4unFQRiIkqZjhqkzDUAT7jeyx+M+V?=
+ =?iso-8859-1?Q?ZPU7GesEfYQYZZwRRkuNf+BPiCFLcUoIx3N6LQS32pkTwzrWVojLXKhwSL?=
+ =?iso-8859-1?Q?/w6dO2/9KqAClS0zeyzo1sa0hEBO3DfelYFZARh+lQAmPDUDgN6QwZUiJf?=
+ =?iso-8859-1?Q?JdhjL8jayGlvePpnZ5+LTTZf9ISpc3hKbjcH7+hNCFp7AHhuJQKKGJps1f?=
+ =?iso-8859-1?Q?wnlbkWf1aNFO76woBxLZY90luTnb1QHe8NV4rMOAuTfAP8HpP27z44vtFG?=
+ =?iso-8859-1?Q?aJqGS2XTxCveaXvTo3fXfSovsggZpVPiR8IXTHdu+Fu+2EAjyEs+Texscr?=
+ =?iso-8859-1?Q?EOdPFP98NIu9WFmXuYX6uRFtqjnQ+zjmBld9y4Ms7p35s0LiFqGf4EXwXY?=
+ =?iso-8859-1?Q?nHuX45nTsRiQ3NT0cg49HfDKKazqyQkuZxdW7XqgB4IoJFNuwg7n3zOJWN?=
+ =?iso-8859-1?Q?2u0J64ZgybraeLutbDlirAnhlSglED6t89I31YAsNui/+KxWdUZ4s6juaw?=
+ =?iso-8859-1?Q?eQalvULkbjCxRgeg8rB48RNC7j39vGSgZvZh/5taJ2nNZpr2BiHIF0tjHz?=
+ =?iso-8859-1?Q?14M+fjmOGTbas38PI2xrzamguac9dxI93XuPDwuWM7Sd//dR0kP1KqGwHA?=
+ =?iso-8859-1?Q?/ckteekn5oARtQBUE7S+c1/dcHY+8oxWmFpiyd4Yi9Gm+oo4H1nDnRVx05?=
+ =?iso-8859-1?Q?Q=3D?=
 X-MS-Exchange-SenderADCheck: 1
-X-Microsoft-Antispam-Message-Info: 9C8GCQnqk/nC4ucrCNBVoWijiKm5IBifZaoGwbLWwVMD94+uZo3Ozkg2aBN6DrruIcIT4cEbmTv6kDXBbarYW5eh1ZFN6+AOt7JIsfO0OdTxamnVeyAWMr9OOEE0VvLq+I8TmBVdd7q6m4OXE4gl+tlj039AX6kFlFt4PPQFnNoY4Sc2+IvT82aEMUxuQe+aDxCKahd2+gg320bfHZSbgH2WcS5mPpVG7iGG/IrQe8fRz6I/2lKXxb+PaZ4diyttIM6aXrLLWiCPf0Fc91zJ0ntFQAgOCeqRNDfnK+aUhGmsVzWdJQGeNwV+z7YlmPtBxef/BLAdb+ceG/oH2kfmZrs0mzZTnLVC8OU9YGLw/UGlEbnIIDOm0UPc33hvqj42DH6CyLipvkk1/DBCICIwwEqcY6VFTbsA/7L3y9zmb7s=
+X-Microsoft-Antispam-Message-Info: fpKCesXNIhHGvEszaNU+gDdURE0SH2tkS84xMksyMQms3Y2xr0ClHHNFRQmDcJitH7MNX3JW00ZxVkWVWAm33xOcA0a71I/2FtSIsQ4aMltQK2Agf6TubK3CZL8L6YBfGnycOZVmT63qifQC0QTqtRfR6vdWq0MkkL/02ssn6sYSUiKTfSCDRO1QOpj2YFNU3YjXiwOG815TPZHPvw8O5hLpW6vdm8KaHgvK54H7YUtitIueMITzB9D8Yg1D5F1Qw2lJQzZ1Ih01HlJENB/GDSL75F7q45TRRY4872g1Dssnr9W7IMmr/Gzq5jKLCwnFf431jPUP2NFhHrggtgVRhgQbzztKuLNrDH5Nh7ZV2U2sYCHcFlt6X+QKPN8CT+TjonpTTGneX3H1g4kzbKili2e54NN4WlxXFUZgVPoQm+c=
 X-OriginatorOrg: mit.edu
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 Feb 2019 17:11:13.2536
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 Feb 2019 17:24:36.9420
  (UTC)
-X-MS-Exchange-CrossTenant-Network-Message-Id: 3fc2de95-9933-4c38-d763-08d6910d17bf
+X-MS-Exchange-CrossTenant-Network-Message-Id: c25df7a8-6dea-432e-bf45-08d6910ef6ab
 X-MS-Exchange-CrossTenant-Id: 64afd9ba-0ecf-4acf-bc36-935f6235ba8b
 X-MS-Exchange-CrossTenant-OriginalAttributedTenantConnectingIp: TenantId=64afd9ba-0ecf-4acf-bc36-935f6235ba8b;Ip=[18.9.28.11];Helo=[outgoing.mit.edu]
 X-MS-Exchange-CrossTenant-FromEntityHeader: HybridOnPrem
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM6PR01MB4938
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CY1SPR00MB23
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Feb 12, 2019 at 09:44:39AM -0500, Mimi Zohar wrote:
-> Ted, one of the problems with IMA is that the file hash/signature
-> verification is at file open.  It isn't aware when files are brought
-> in from cache.  Does fs-verity re-verify blocks as they're restored
-> from cache?  For some use cases, that might justify the up front cost
-> associated with building the Merkle tree.
+On Tue, Feb 12, 2019 at 08:06:52AM -0500, Mimi Zohar wrote:
+> Yes, I understand that your primary goal hasn't changed.  Linus was
+> suggesting "the interface be made idempotent" to support "filesystems
+> that don't actually have any long-term storage model for the merkle
+> tree.  IOW, you could do the merkle tree calculation (and
+> verification) every time at bootup".  In that context, I asked whether
+> the Merkle tree file hash would be for every file on the filesystem or
+> not, and how to identify those files.
 
-fs-verity as designed and implemented today *only* verifies blocks as
-they are read from the file system.  The Merkle tree is stored on
-disk, and we don't verify all of the pages at open time.  That's the
-whole *point* of fs-verity.  So when you say re-verify, that's simply
-not correct.
+I have no idea; *we're* certainly never going to use it in that mode.
+Until we have a use case, answering your questions about when the
+Merkle tree hash would be calculated, etc. is not something I can do.
 
-Could we change it so that there is an optional mode where Merkle tree
-is kept pinned in memory and recalculated the first time the file is
-opened?  I suppose; the overhead is "only" 0.8% of the file size.  But
-for big files, it adds up; and if you never use most of the file (say,
-it's an unstripped executable with debugging information), you end up
-paying twice --- once to calculate the Merkle tree (in CPU and Disk
-time wasted), and a second time by pinning the full Merkle tree in
-memory.  Also, it leaves open the question of how aggressively we drop
-the Merkle tree once the file is closed.  Do we wait until the inode
-gets purged from the inode cache?  That might pin the memory for way
-too long.  Do we drop the Merkle tree the moment the inode's open
-count goes to zero?
+If IMA wants to use it in that way, let's talk, and we probably can
+drop everyone off the cc line.  But there's a limit to much work the
+open source community can expect to extort out of people who are
+trying to get a feature upstream.  If it's very closely related, and
+it's a small amount of work, that's a no-brainer.  But past a certain
+point, it's a completely new feature, and it stops being fair....
 
-If it's not too hard to add, and if we're generating the Merkle tree
-in the kernel, it's something we could do, I suppose.  But it's not
-something *we're* going to use, so I'm not terribly excited about
-wasting effort on work that just bitrots if no one is actually going
-to use it in that way.
+> > > The existing file hashes included in the measurement list and the
+> > > audit log, are currently being used for remote attestation, forensics
+> > > and security analytics.
+> 
+> Again, the context for this comment was Linus' suggestion "each level
+> of the merkle tree needs to have a hash seeding thing or whatever."
+> Up to this point, I had assumed the Merkle tree file root hash could
+> be used as an identifier, similar to the file hash.  With his
+> suggestion, it sounds like the Merkle tree file root hash would be
+> system dependent, making it useless for the above usages.
 
-If you are willing to commit that IMA will use it in that way, and
-you're fairly sure IMA users are going to be willing to pay the memory
-tax, we can look into adding it, if it's doesn't add too much effort
-on our part.  I just want to be clear that this is a "yes, we would
-definitely use such a thing", as opposed to, "it might be nice...."
+Yeah, I have no idea what Linus was talking about there.  The only
+thing that really makes sense is that if you don't have any
+file-system place to store a seed, you don't use a seed for the Merkle
+tree, and for a given set of bytes, the Merkle root hash is the same.
+So it's basically an expensive to calculate crypto checksum, as I said.
 
-Cheers,
+If that's helpful to IMA, we need a crisp set of requirements and
+expectations of how IMA would use it.  And this includes, as I
+mentioned in my other e-mail, questions like how long do we keep the
+Merkle tree pinned in memory, how it would be used (I assume it would
+be something called from IMA's measurement hook, but maybe you have
+other ideas).  Bottom line --- I need *you* to answer the questions
+that you posed.  :-)
+
+Once we get the requirements, we can figure out how we can architect
+something sane --- but adding this extra feature is going to be a lot
+work, make no mistake about it.  One of the other things we will need
+to figure out is how to hook into other file systems's readpages
+model.  There's no standardization here, since file systems don't even
+have to use the page cache!
+
+So my strong preference would be to get the base fs-verity feature in,
+and then we can look into how it would be extended for this new,
+completely different use case.  And hopefully, the people who would
+benefit from this new use case, would be willing to contribute some of
+the engineering effort to make it happen?  :-)
 
 					- Ted
