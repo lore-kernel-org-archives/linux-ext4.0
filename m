@@ -4,64 +4,64 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C935C43381
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 Feb 2019 10:01:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7149EC10F04
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 Feb 2019 10:01:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F1AAC222A1
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 Feb 2019 10:01:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 40C6C222A1
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 Feb 2019 10:01:16 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=osandov-com.20150623.gappssmtp.com header.i=@osandov-com.20150623.gappssmtp.com header.b="ifdVfFk0"
+	dkim=pass (2048-bit key) header.d=osandov-com.20150623.gappssmtp.com header.i=@osandov-com.20150623.gappssmtp.com header.b="KBigOq3G"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2438167AbfBNKBL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 14 Feb 2019 05:01:11 -0500
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:33819 "EHLO
-        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2438158AbfBNKBK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Feb 2019 05:01:10 -0500
-Received: by mail-pg1-f195.google.com with SMTP id i130so2827456pgd.1
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2019 02:01:09 -0800 (PST)
+        id S2438174AbfBNKBO (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 14 Feb 2019 05:01:14 -0500
+Received: from mail-pl1-f194.google.com ([209.85.214.194]:41716 "EHLO
+        mail-pl1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2438162AbfBNKBL (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Feb 2019 05:01:11 -0500
+Received: by mail-pl1-f194.google.com with SMTP id k15so2897212pls.8
+        for <linux-ext4@vger.kernel.org>; Thu, 14 Feb 2019 02:01:10 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=osandov-com.20150623.gappssmtp.com; s=20150623;
         h=from:to:cc:subject:date:message-id:in-reply-to:references
          :mime-version:content-transfer-encoding;
-        bh=V1G1bYaq+Km34RtW+askrdx+tkF2tFwueJG4dIbkPeU=;
-        b=ifdVfFk0kW/IIFB8WwdV72Z5zOa+dcqSXcayZEKzpjOldBkQtPG1dDGADxg7jRHanq
-         lqtuH6c3Ts3p6Pw00eubcFHxMZ1LVcx2dtxQWTJ3PEPQ0fsnsvn7hVeMxPjiTHpXhjI/
-         lHRli2E/l7df8XeZytTiC73YTJKLizSkB+RLKQlM6lXI8jtqAt9g/jZb/zrAMGebK58K
-         ulj6ICONDTdHq4S5eLU/nw7h1wpfwpjqmTlbjSzuRFyEtFc50jWRdr+9u7wUiZu6Gb+L
-         CvgUt/mpWsuK8cjMmOfCD6R4BAAcWMEpNktr7ZtmajNLsKcyni7oZep2kZB4x3v7Um/r
-         OwaA==
+        bh=d+8KZV8DZGLRgOGveg0J5W9rdB86sPJhcL3c0ZOutP4=;
+        b=KBigOq3GMXA46Jf89YvNpjxlwERRxbxOiixUCSXyzVypgfz18m0TnCHmw1LyIEsxR4
+         u6CDoAfa4rQ7KY/p2gcWjJ1ObjGVOW3ndV/O1b2WxLe6RXzRJL/NzNrCBqafIlJ2aOkD
+         p1rSTMbHQlWEAH6xxKIC7HjRBeUfOO/OF/1RI60Wax/m60qqEMkaBcjKkonAp2tKzI3y
+         wEXdVnN0IFQ1ApKeOt118c68aubGz8o/bcxwq+WwMYe02S6SaHSWHwIOSzs8jfA/6fFo
+         ze21Yp4QeNw1EvEH8PPzRIVKuRm+9Erw+MntpM8yfHD+Z66bffp5tU+lqClAB13QjgeH
+         IbLQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references:mime-version:content-transfer-encoding;
-        bh=V1G1bYaq+Km34RtW+askrdx+tkF2tFwueJG4dIbkPeU=;
-        b=gvBWvcrq8Op+1RIps/Ed+9XmTJYHVes9ROHp5D18YH/OAUJZvZWXG56YfbnLXFqEyy
-         KwUwQeSJrJpdXZylHz5nJHy/sz1Nm788ufn054bpUYHwBI3PDDd6CoUetDFi44A66Z2e
-         SCc58hYZ1gv+9Wt/wmaXduDZP22RNN4hOBLozYsLQ49dtRKfhwl7NyLPK4RNnCZIFezj
-         KN9/bP77VH09LX8H8iMmwLdLAc5tACH0IwnwcP1jybIbGa/ofKTJNOhJ/J/JTay/UqD8
-         SjkDBJmeMZ8M2tPjGnKVI9k3bSDxGjl4otuAvwKDij6181lTzVYaWd8cUiHS26TMA8nF
-         ADzQ==
-X-Gm-Message-State: AHQUAuYwKbybYf4XsHgH4ZL2Rfwxu776SoPv4eFuaSN9Fyu7gOP4P9R2
-        VOf0XL35OTFyI/N8ukgOgkIvBQ==
-X-Google-Smtp-Source: AHgI3IZIAJ2VnYK3yffJToNRbYzNLIRAyaxiNDlheljliI94feBaBjQoFhYs3ER9wmq+6PXudHZ08g==
-X-Received: by 2002:a65:4101:: with SMTP id w1mr2941529pgp.257.1550138469062;
-        Thu, 14 Feb 2019 02:01:09 -0800 (PST)
+        bh=d+8KZV8DZGLRgOGveg0J5W9rdB86sPJhcL3c0ZOutP4=;
+        b=VA2fQpsIbNvLxPgAYsSoSQNYNaooMU+OGVrAVlvWx3/x0osxZfN9AKNheadawtpgeX
+         HfDs6apCtafiYzlklzZal+u7+KzOTHJAPE96/4PUTr1qohBljaj730JM0k+kC2cUPcSX
+         jx1U5MnsyD7WPEWeYawTCcfgEop399oTbNi5X+5O/4Jpl6b8TO0LDv8ToLfDy7EfbCzG
+         Yj3gpl210fUmI/pjMMcGAqDEa+/vffo7OtZ9mLxRkhxvIfCD+Ukrc8Azg2sm4y6UUKcr
+         she7Wz8Kuw8ML4Wjr5eOrLzqEQ2lRZHtxw0vp0OATSM7Th7CVsbg1cLE9gwApfCYhR+P
+         ibHQ==
+X-Gm-Message-State: AHQUAuZ6nfd2q3Nvs4JKXLCqltuzbWbSs5KvTNwm4NscN4SQcYNxw7Sg
+        KkSKEasrEg5GVF4mdT5ga1ZBDpo5JW8=
+X-Google-Smtp-Source: AHgI3IZogSV5UwpjCxYG7lGfREUHa8OCIB5+L9KpQ00X2q5DUXho0Vqz3KaP7xFD8o20aziCZ1rMAg==
+X-Received: by 2002:a17:902:8303:: with SMTP id bd3mr3361013plb.10.1550138470199;
+        Thu, 14 Feb 2019 02:01:10 -0800 (PST)
 Received: from vader.thefacebook.com ([2620:10d:c090:180::1:5849])
-        by smtp.gmail.com with ESMTPSA id i184sm2686952pfc.41.2019.02.14.02.01.07
+        by smtp.gmail.com with ESMTPSA id i184sm2686952pfc.41.2019.02.14.02.01.09
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 14 Feb 2019 02:01:08 -0800 (PST)
+        Thu, 14 Feb 2019 02:01:09 -0800 (PST)
 From:   Omar Sandoval <osandov@osandov.com>
 To:     linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
 Cc:     kernel-team@fb.com, linux-api@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org
-Subject: [PATCH] generic: add a test for AT_UTIME_BTIME
-Date:   Thu, 14 Feb 2019 02:00:14 -0800
-Message-Id: <c0d9cb0b181db011a3068fb96bb85e732f508b73.1550138186.git.osandov@fb.com>
+Subject: [PATCH] utimensat2: document AT_UTIME_BTIME
+Date:   Thu, 14 Feb 2019 02:00:15 -0800
+Message-Id: <4717a88b238f1f03272598295942ebe8f24c2939.1550138203.git.osandov@fb.com>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <cover.1550136164.git.osandov@fb.com>
 References: <cover.1550136164.git.osandov@fb.com>
@@ -74,143 +74,74 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Omar Sandoval <osandov@fb.com>
 
-Test that on filesystems supporting btime, the timestamp is updated as
-expected.
-
 Signed-off-by: Omar Sandoval <osandov@fb.com>
 ---
- common/rc             | 14 ++++++++++
- tests/generic/526     | 64 +++++++++++++++++++++++++++++++++++++++++++
- tests/generic/526.out | 14 ++++++++++
- tests/generic/group   |  1 +
- 4 files changed, 93 insertions(+)
- create mode 100755 tests/generic/526
- create mode 100644 tests/generic/526.out
+ man2/utimensat.2 | 38 +++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 37 insertions(+), 1 deletion(-)
 
-diff --git a/common/rc b/common/rc
-index b8ed1776..d2f43a21 100644
---- a/common/rc
-+++ b/common/rc
-@@ -3843,6 +3843,20 @@ _require_btime()
- 	rm -f $TEST_DIR/test_creation_time
- }
- 
-+_require_utime_btime()
-+{
-+	_require_btime
-+	_require_xfs_io_command utimes
-+	testio=`$XFS_IO_PROG -f -c "utimes 0 0 0 0 0 0" "$TEST_DIR/$$.xfs_io" 2>&1`
-+	echo $testio | grep -q "expected 4 arguments" && \
-+		_notrun "xfs_io utimes btime support is missing"
-+	echo $testio | grep -q "Operation not supported" && \
-+		_notrun "updating inode creation time not supported by this filesystem"
-+	echo $testio | grep -q "Invalid" && \
-+		_notrun "updating inode creation time not supported by this kernel"
-+	rm -f $testfile > /dev/null 2>&1
-+}
-+
- _require_scratch_btime()
- {
- 	_require_scratch
-diff --git a/tests/generic/526 b/tests/generic/526
-new file mode 100755
-index 00000000..c2e47a27
---- /dev/null
-+++ b/tests/generic/526
-@@ -0,0 +1,64 @@
-+#! /bin/bash
-+# SPDX-License-Identifier: GPL-2.0
-+# Copyright (c) 2019 Omar Sandoval.  All Rights Reserved.
-+#
-+# FS QA Test 526
-+#
-+# Test basic AT_UTIME_BTIME functionality.
-+#
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1	# failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -f $tmp.*
-+	rm -f "$TEST_DIR/$$"
-+}
-+
-+# get standard environment, filters and checks
-+. ./common/rc
-+. ./common/filter
-+
-+# remove previous $seqres.full before test
-+rm -f $seqres.full
-+_supported_fs generic
-+_supported_os Linux
-+_require_test
-+_require_utime_btime
-+
-+SEC=683153828
-+UTIME_NOW=$(((1 << 30) - 1))
-+UTIME_OMIT=$(((1 << 30) - 2))
-+
-+touch "$TEST_DIR/$$"
-+
-+echo "Set btime"
-+$XFS_IO_PROG -c "utimes 0 $UTIME_OMIT 0 $UTIME_OMIT $SEC 0" "$TEST_DIR/$$"
-+$XFS_IO_PROG -c 'statx -r' "$TEST_DIR/$$" | grep btime
-+
-+echo "Set atime and mtime"
-+$XFS_IO_PROG -c "utimes 0 $UTIME_NOW 0 $UTIME_NOW" "$TEST_DIR/$$"
-+$XFS_IO_PROG -c 'statx -r' "$TEST_DIR/$$" | grep btime
-+
-+echo "Omit btime"
-+$XFS_IO_PROG -c "utimes 0 $UTIME_NOW 0 $UTIME_NOW 0 $UTIME_OMIT" "$TEST_DIR/$$"
-+$XFS_IO_PROG -c 'statx -r' "$TEST_DIR/$$" | grep btime
-+
-+echo "Cycle mount"
-+_test_cycle_mount
-+$XFS_IO_PROG -c 'statx -r' "$TEST_DIR/$$" | grep btime
-+
-+echo "Set btime to now"
-+$XFS_IO_PROG -c "utimes 0 $UTIME_OMIT 0 $UTIME_OMIT 0 $UTIME_NOW" "$TEST_DIR/$$"
-+# The timestamp changed, so this shouldn't output anything.
-+$XFS_IO_PROG -c 'statx -r' "$TEST_DIR/$$" | grep -w "$SEC"
-+
-+status=0
-+exit
-diff --git a/tests/generic/526.out b/tests/generic/526.out
-new file mode 100644
-index 00000000..f9ec18e9
---- /dev/null
-+++ b/tests/generic/526.out
-@@ -0,0 +1,14 @@
-+QA output created by 526
-+Set btime
-+stat.btime.tv_sec = 683153828
-+stat.btime.tv_nsec = 0
-+Set atime and mtime
-+stat.btime.tv_sec = 683153828
-+stat.btime.tv_nsec = 0
-+Omit btime
-+stat.btime.tv_sec = 683153828
-+stat.btime.tv_nsec = 0
-+Cycle mount
-+stat.btime.tv_sec = 683153828
-+stat.btime.tv_nsec = 0
-+Set btime to now
-diff --git a/tests/generic/group b/tests/generic/group
-index cfd003d3..2e0203fc 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -528,3 +528,4 @@
- 523 auto quick attr
- 524 auto quick
- 525 auto quick rw
-+526 auto quick
+diff --git a/man2/utimensat.2 b/man2/utimensat.2
+index d61b43e96..3b7c62181 100644
+--- a/man2/utimensat.2
++++ b/man2/utimensat.2
+@@ -211,7 +211,7 @@ is ignored.
+ .PP
+ The
+ .I flags
+-field is a bit mask that may be 0, or include the following constant,
++field is a bit mask that may be 0, or include the following constants,
+ defined in
+ .IR <fcntl.h> :
+ .TP
+@@ -220,6 +220,36 @@ If
+ .I pathname
+ specifies a symbolic link, then update the timestamps of the link,
+ rather than the file to which it refers.
++.TP
++.B AT_UTIME_BTIME
++Also update the file's "creation time" (\fIbtime\fP). If
++.I times
++is not NULL, then its length must be at least 3, and
++.IR times [2]
++specifies the new creation time. The
++.I tv_nsec
++field may be
++.BR UTIME_NOW
++or
++.BR UTIME_OMIT ;
++this has the same meaning as for the first two timestamps.
++If
++.I times
++is NULL, then the creation time is set to the current time.
++.IP
++Not all filesystems store the file creation time; if a filesystem does not, an
++error is returned. At least the following filesystems store the creation time:
++.RS
++.IP * 3
++Btrfs
++.IP *
++ext4, if the filesystem was created with an inode size of at least 256
++.IP *
++F2FS, if the filesystem was created with the inode_crtime feature
++.IP *
++XFS, if the filesystem was created with the v5 format (i.e., with CRCs enabled)
++.HP
++Support for this flag was added in Linux 5.2.
+ .SH RETURN VALUE
+ On success,
+ .BR utimensat ()
+@@ -359,6 +389,12 @@ or, one of the prefix components of
+ .I pathname
+ is not a directory.
+ .TP
++.B EOPNOTSUPP
++.I flags
++contains
++.BR AT_UTIME_BTIME
++but the filesystem does not store the file creation time.
++.TP
+ .B EPERM
+ The caller attempted to change one or both timestamps to a value
+ other than the current time,
 -- 
 2.20.1
 
