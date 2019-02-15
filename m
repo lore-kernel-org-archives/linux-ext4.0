@@ -2,125 +2,57 @@ Return-Path: <SRS0=7ymp=QW=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 52A66C43381
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 14:14:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 556D4C43381
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 14:51:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 16D412192D
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 14:14:27 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=samba.org header.i=@samba.org header.b="WqvsOVgI"
+	by mail.kernel.org (Postfix) with ESMTP id 2E8402192D
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 14:51:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2406166AbfBOOOT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Feb 2019 09:14:19 -0500
-Received: from hr2.samba.org ([144.76.82.148]:37642 "EHLO hr2.samba.org"
+        id S2387553AbfBOOva (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Feb 2019 09:51:30 -0500
+Received: from verein.lst.de ([213.95.11.211]:58390 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726324AbfBOOOT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 15 Feb 2019 09:14:19 -0500
-X-Greylist: delayed 1018 seconds by postgrey-1.27 at vger.kernel.org; Fri, 15 Feb 2019 09:14:17 EST
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=samba.org;
-         s=42627210; h=Message-ID:Cc:To:From:Date;
-        bh=bJIXTtIh3Dt2xOJyT4ps56QmCs//rBoHU0bO5ffxP0I=; b=WqvsOVgI++LmpH2gq+TF33p7IH
-        ktygqcRyBThK+RAZyEwjj10+Noe5PgQ1d0vuAkrcDKpEaDqV6SL4YUx94AiiR9dwKt8MmkhwWkbUY
-        9wECuBuCnyracm7ZanoxDjro95hbG5sR6zqwo/1iGppKL/x7GM3SOLtiDw0hPWN67KYI=;
-Received: from [127.0.0.2] (localhost [127.0.0.1])
-        by hr2.samba.org with esmtpsa (TLS1.2:ECDHE_ECDSA_AES_256_GCM_SHA384:256)
-        (Exim)
-        id 1gudzR-0005Ja-54; Fri, 15 Feb 2019 13:57:17 +0000
-Date:   Fri, 15 Feb 2019 14:57:13 +0100
-From:   David Disseldorp <ddiss@samba.org>
-To:     Omar Sandoval <osandov@osandov.com>,
-        Samba Technical <samba-technical@lists.samba.org>
-Cc:     Dave Chinner <david@fromorbit.com>, linux-fsdevel@vger.kernel.org,
-        Al Viro <viro@zeniv.linux.org.uk>, kernel-team@fb.com,
-        linux-api@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-xfs@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Steve French <sfrench@samba.org>
-Subject: Re: [RFC PATCH 0/6] Allow setting file birth time with utimensat()
-Message-ID: <20190215145713.33b0748e@samba.org>
-In-Reply-To: <20190215065947.GG9819@vader>
-References: <cover.1550136164.git.osandov@fb.com>
-        <20190214220626.GV14116@dastard>
-        <20190214231429.GE9819@vader>
-        <20190215001657.GY14116@dastard>
-        <20190215065947.GG9819@vader>
-X-Mailer: Claws Mail 3.13.2 (GTK+ 2.24.31; x86_64-suse-linux-gnu)
+        id S1726139AbfBOOva (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 15 Feb 2019 09:51:30 -0500
+Received: by newverein.lst.de (Postfix, from userid 2407)
+        id 233C668D93; Fri, 15 Feb 2019 15:51:27 +0100 (CET)
+Date:   Fri, 15 Feb 2019 15:51:26 +0100
+From:   Christoph Hellwig <hch@lst.de>
+To:     Ming Lei <ming.lei@redhat.com>
+Cc:     Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH V15 00/18] block: support multi-page bvec
+Message-ID: <20190215145126.GA16717@lst.de>
+References: <20190215111324.30129-1-ming.lei@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190215111324.30129-1-ming.lei@redhat.com>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, 14 Feb 2019 22:59:47 -0800, Omar Sandoval wrote:
-
-> On Fri, Feb 15, 2019 at 11:16:57AM +1100, Dave Chinner wrote:
-> > On Thu, Feb 14, 2019 at 03:14:29PM -0800, Omar Sandoval wrote:  
-> > > On Fri, Feb 15, 2019 at 09:06:26AM +1100, Dave Chinner wrote:  
-...
-> > > > Inode create time is forensic metadata in XFS  - information we use
-> > > > for sequence of event and inode lifetime analysis during examination
-> > > > of broken filesystem images and systems that have been broken into.
-> > > > Just because it's exposed to userspace via statx(), it doesn't mean
-> > > > that it is information that users should be allowed to change. i.e.
-> > > > allowing users to be able to change the create time on files makes
-> > > > it completely useless for the purpose it was added to XFS for...
-> > > > 
-> > > > And allowing root to change the create time doesn't really help,
-> > > > because once you've broken into a system, this makes it really easy
-> > > > to cover tracks  
-> > > 
-> > > If the threat model is that the attacker has root, then they can
-> > > overwrite the timestamp on disk anyways, no?  
-> > 
-> > Modifying the block devicee under an active filesystem is fraught
-> > with danger, and there's no guarantee it will work if the metadata
-> > being modified is still active in memory. Corrupting the filesystem
-> > is a sure way to get noticed....
-> >   
-> > > > (e.g. we can't find files that were created and
-> > > > unlinked during the break in window anymore) and lay false
-> > > > trails....  
-> > > 
-> > > Fair point, although there's still ctime during the break-in window,  
-> > 
-> > Unless you're smart enough to know how to trigger S_NOCMTIME or
-> > FMODE_NOCMTIME....
-> >   
-> > > which I assume you'd be looking for anyways since files modified during
-> > > the break-in window are also of interest.  
-
-I'm not sure I follow the forensics use-case for immutable btime. I'd
-expect dm-verity or selinux/apparmor audits to do a better job for those
-worried about this kind of attack.
-
-> > ... and then that also can't be guaranteed. :/
-> >   
-> > > I see a few options, none of which are particularly nice:
-> > > 
-> > > 1. Filesystems like XFS could choose not to support setting btime even
-> > >    if they support reading it.
-> > > 2. XFS could add a second, writeable btime which is used for
-> > >    statx/utimes when available (it would fit in di_pad2...).
-> > > 3. We could add a btime_writable sysctl/mount option/mkfs option.  
-> > 
-> > 4. create time remains a read-only field, and btrfs grows its own
-> > special interface to twiddle it in btrfs-recv if it really is
-> > necessary.  
-> 
-> I'm curious to hear what the ext4/f2fs/CIFS developers think. If no one
-> else wants btime to be mutable, then I might as well make it
-> Btrfs-specific. That is, assuming we reach consensus on the Btrfs side
-> that btrfs receive should set btime.
-
-Samba currently uses a user.DOSATTRIB xattr for tracking creation time.
-IMO a mutable btime accessible via statx would be useful for
-cross-protocol interoperability.
-
-Cheers, David
+I still don't understand why mp_bvec_last_segment isn't simply
+called bvec_last_segment as there is no conflict.  But I don't
+want to hold this series up on that as there only are two users
+left and we can always just fix it up later.
