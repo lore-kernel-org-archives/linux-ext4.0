@@ -6,26 +6,26 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12A4DC10F02
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 11:17:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B88DC10F02
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 11:17:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DFFF521B1A
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 11:17:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6587921B1A
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 11:17:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2390182AbfBOLPq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Feb 2019 06:15:46 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:54780 "EHLO mx1.redhat.com"
+        id S2389553AbfBOLRG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Feb 2019 06:17:06 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:45178 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726160AbfBOLPq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 15 Feb 2019 06:15:46 -0500
+        id S1729151AbfBOLRG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 15 Feb 2019 06:17:06 -0500
 Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 0A7472D6E46;
-        Fri, 15 Feb 2019 11:15:44 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 826C08E6E5;
+        Fri, 15 Feb 2019 11:17:04 +0000 (UTC)
 Received: from localhost (ovpn-8-22.pek2.redhat.com [10.72.8.22])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 2EF8E5D707;
-        Fri, 15 Feb 2019 11:15:10 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id C61CD5D6A9;
+        Fri, 15 Feb 2019 11:16:43 +0000 (UTC)
 From:   Ming Lei <ming.lei@redhat.com>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -45,208 +45,137 @@ Cc:     linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
         Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
         Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V15 06/18] block: use bio_for_each_bvec() to compute multi-page bvec count
-Date:   Fri, 15 Feb 2019 19:13:12 +0800
-Message-Id: <20190215111324.30129-7-ming.lei@redhat.com>
+Subject: [PATCH V15 14/18] block: enable multipage bvecs
+Date:   Fri, 15 Feb 2019 19:13:20 +0800
+Message-Id: <20190215111324.30129-15-ming.lei@redhat.com>
 In-Reply-To: <20190215111324.30129-1-ming.lei@redhat.com>
 References: <20190215111324.30129-1-ming.lei@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.29]); Fri, 15 Feb 2019 11:15:45 +0000 (UTC)
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.25]); Fri, 15 Feb 2019 11:17:05 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-First it is more efficient to use bio_for_each_bvec() in both
-blk_bio_segment_split() and __blk_recalc_rq_segments() to compute how
-many multi-page bvecs there are in the bio.
+This patch pulls the trigger for multi-page bvecs.
 
-Secondly once bio_for_each_bvec() is used, the bvec may need to be
-splitted because its length can be very longer than max segment size,
-so we have to split the big bvec into several segments.
-
-Thirdly when splitting multi-page bvec into segments, the max segment
-limit may be reached, so the bio split need to be considered under
-this situation too.
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Omar Sandoval <osandov@fb.com>
 Signed-off-by: Ming Lei <ming.lei@redhat.com>
 ---
- block/blk-merge.c | 103 +++++++++++++++++++++++++++++++++++++++++++-----------
- 1 file changed, 83 insertions(+), 20 deletions(-)
+ block/bio.c         | 22 +++++++++++++++-------
+ fs/iomap.c          |  4 ++--
+ fs/xfs/xfs_aops.c   |  4 ++--
+ include/linux/bio.h |  2 +-
+ 4 files changed, 20 insertions(+), 12 deletions(-)
 
-diff --git a/block/blk-merge.c b/block/blk-merge.c
-index f85d878f313d..4ef56b2d2aa5 100644
---- a/block/blk-merge.c
-+++ b/block/blk-merge.c
-@@ -161,6 +161,73 @@ static inline unsigned get_max_io_size(struct request_queue *q,
- 	return sectors;
+diff --git a/block/bio.c b/block/bio.c
+index 968b12fea564..83a2dfa417ca 100644
+--- a/block/bio.c
++++ b/block/bio.c
+@@ -753,6 +753,8 @@ EXPORT_SYMBOL(bio_add_pc_page);
+  * @page: page to add
+  * @len: length of the data to add
+  * @off: offset of the data in @page
++ * @same_page: if %true only merge if the new data is in the same physical
++ *		page as the last segment of the bio.
+  *
+  * Try to add the data at @page + @off to the last bvec of @bio.  This is a
+  * a useful optimisation for file systems with a block size smaller than the
+@@ -761,19 +763,25 @@ EXPORT_SYMBOL(bio_add_pc_page);
+  * Return %true on success or %false on failure.
+  */
+ bool __bio_try_merge_page(struct bio *bio, struct page *page,
+-		unsigned int len, unsigned int off)
++		unsigned int len, unsigned int off, bool same_page)
+ {
+ 	if (WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED)))
+ 		return false;
+ 
+ 	if (bio->bi_vcnt > 0) {
+ 		struct bio_vec *bv = &bio->bi_io_vec[bio->bi_vcnt - 1];
++		phys_addr_t vec_end_addr = page_to_phys(bv->bv_page) +
++			bv->bv_offset + bv->bv_len - 1;
++		phys_addr_t page_addr = page_to_phys(page);
+ 
+-		if (page == bv->bv_page && off == bv->bv_offset + bv->bv_len) {
+-			bv->bv_len += len;
+-			bio->bi_iter.bi_size += len;
+-			return true;
+-		}
++		if (vec_end_addr + 1 != page_addr + off)
++			return false;
++		if (same_page && (vec_end_addr & PAGE_MASK) != page_addr)
++			return false;
++
++		bv->bv_len += len;
++		bio->bi_iter.bi_size += len;
++		return true;
+ 	}
+ 	return false;
  }
- 
-+static unsigned get_max_segment_size(struct request_queue *q,
-+				     unsigned offset)
-+{
-+	unsigned long mask = queue_segment_boundary(q);
-+
-+	/* default segment boundary mask means no boundary limit */
-+	if (mask == BLK_SEG_BOUNDARY_MASK)
-+		return queue_max_segment_size(q);
-+
-+	return min_t(unsigned long, mask - (mask & offset) + 1,
-+		     queue_max_segment_size(q));
-+}
-+
-+/*
-+ * Split the bvec @bv into segments, and update all kinds of
-+ * variables.
-+ */
-+static bool bvec_split_segs(struct request_queue *q, struct bio_vec *bv,
-+		unsigned *nsegs, unsigned *last_seg_size,
-+		unsigned *front_seg_size, unsigned *sectors)
-+{
-+	unsigned len = bv->bv_len;
-+	unsigned total_len = 0;
-+	unsigned new_nsegs = 0, seg_size = 0;
-+
-+	/*
-+	 * Multi-page bvec may be too big to hold in one segment, so the
-+	 * current bvec has to be splitted as multiple segments.
-+	 */
-+	while (len && new_nsegs + *nsegs < queue_max_segments(q)) {
-+		seg_size = get_max_segment_size(q, bv->bv_offset + total_len);
-+		seg_size = min(seg_size, len);
-+
-+		new_nsegs++;
-+		total_len += seg_size;
-+		len -= seg_size;
-+
-+		if ((bv->bv_offset + total_len) & queue_virt_boundary(q))
-+			break;
-+	}
-+
-+	if (!new_nsegs)
-+		return !!len;
-+
-+	/* update front segment size */
-+	if (!*nsegs) {
-+		unsigned first_seg_size;
-+
-+		if (new_nsegs == 1)
-+			first_seg_size = get_max_segment_size(q, bv->bv_offset);
-+		else
-+			first_seg_size = queue_max_segment_size(q);
-+
-+		if (*front_seg_size < first_seg_size)
-+			*front_seg_size = first_seg_size;
-+	}
-+
-+	/* update other varibles */
-+	*last_seg_size = seg_size;
-+	*nsegs += new_nsegs;
-+	if (sectors)
-+		*sectors += total_len >> 9;
-+
-+	/* split in the middle of the bvec if len != 0 */
-+	return !!len;
-+}
-+
- static struct bio *blk_bio_segment_split(struct request_queue *q,
- 					 struct bio *bio,
- 					 struct bio_set *bs,
-@@ -174,7 +241,7 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
- 	struct bio *new = NULL;
- 	const unsigned max_sectors = get_max_io_size(q, bio);
- 
--	bio_for_each_segment(bv, bio, iter) {
-+	bio_for_each_bvec(bv, bio, iter) {
- 		/*
- 		 * If the queue doesn't support SG gaps and adding this
- 		 * offset would create a gap, disallow it.
-@@ -189,8 +256,12 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
- 			 */
- 			if (nsegs < queue_max_segments(q) &&
- 			    sectors < max_sectors) {
--				nsegs++;
--				sectors = max_sectors;
-+				/* split in the middle of bvec */
-+				bv.bv_len = (max_sectors - sectors) << 9;
-+				bvec_split_segs(q, &bv, &nsegs,
-+						&seg_size,
-+						&front_seg_size,
-+						&sectors);
- 			}
- 			goto split;
- 		}
-@@ -212,14 +283,12 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
- 		if (nsegs == queue_max_segments(q))
- 			goto split;
- 
--		if (nsegs == 1 && seg_size > front_seg_size)
--			front_seg_size = seg_size;
--
--		nsegs++;
- 		bvprv = bv;
- 		bvprvp = &bvprv;
--		seg_size = bv.bv_len;
--		sectors += bv.bv_len >> 9;
-+
-+		if (bvec_split_segs(q, &bv, &nsegs, &seg_size,
-+				    &front_seg_size, &sectors))
-+			goto split;
- 
+@@ -819,7 +827,7 @@ EXPORT_SYMBOL_GPL(__bio_add_page);
+ int bio_add_page(struct bio *bio, struct page *page,
+ 		 unsigned int len, unsigned int offset)
+ {
+-	if (!__bio_try_merge_page(bio, page, len, offset)) {
++	if (!__bio_try_merge_page(bio, page, len, offset, false)) {
+ 		if (bio_full(bio))
+ 			return 0;
+ 		__bio_add_page(bio, page, len, offset);
+diff --git a/fs/iomap.c b/fs/iomap.c
+index af736acd9006..0c350e658b7f 100644
+--- a/fs/iomap.c
++++ b/fs/iomap.c
+@@ -318,7 +318,7 @@ iomap_readpage_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+ 	 */
+ 	sector = iomap_sector(iomap, pos);
+ 	if (ctx->bio && bio_end_sector(ctx->bio) == sector) {
+-		if (__bio_try_merge_page(ctx->bio, page, plen, poff))
++		if (__bio_try_merge_page(ctx->bio, page, plen, poff, true))
+ 			goto done;
+ 		is_contig = true;
+ 	}
+@@ -349,7 +349,7 @@ iomap_readpage_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+ 		ctx->bio->bi_end_io = iomap_read_end_io;
  	}
  
-@@ -233,8 +302,6 @@ static struct bio *blk_bio_segment_split(struct request_queue *q,
- 			bio = new;
+-	__bio_add_page(ctx->bio, page, plen, poff);
++	bio_add_page(ctx->bio, page, plen, poff);
+ done:
+ 	/*
+ 	 * Move the caller beyond our range so that it keeps making progress.
+diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+index 1f1829e506e8..b9fd44168f61 100644
+--- a/fs/xfs/xfs_aops.c
++++ b/fs/xfs/xfs_aops.c
+@@ -616,12 +616,12 @@ xfs_add_to_ioend(
+ 				bdev, sector);
  	}
  
--	if (nsegs == 1 && seg_size > front_seg_size)
--		front_seg_size = seg_size;
- 	bio->bi_seg_front_size = front_seg_size;
- 	if (seg_size > bio->bi_seg_back_size)
- 		bio->bi_seg_back_size = seg_size;
-@@ -297,6 +364,7 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
- 	struct bio_vec bv, bvprv = { NULL };
- 	int prev = 0;
- 	unsigned int seg_size, nr_phys_segs;
-+	unsigned front_seg_size = bio->bi_seg_front_size;
- 	struct bio *fbio, *bbio;
- 	struct bvec_iter iter;
- 
-@@ -316,7 +384,7 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
- 	seg_size = 0;
- 	nr_phys_segs = 0;
- 	for_each_bio(bio) {
--		bio_for_each_segment(bv, bio, iter) {
-+		bio_for_each_bvec(bv, bio, iter) {
- 			/*
- 			 * If SG merging is disabled, each bio vector is
- 			 * a segment
-@@ -336,20 +404,15 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
- 				continue;
- 			}
- new_segment:
--			if (nr_phys_segs == 1 && seg_size >
--			    fbio->bi_seg_front_size)
--				fbio->bi_seg_front_size = seg_size;
--
--			nr_phys_segs++;
- 			bvprv = bv;
- 			prev = 1;
--			seg_size = bv.bv_len;
-+			bvec_split_segs(q, &bv, &nr_phys_segs, &seg_size,
-+					&front_seg_size, NULL);
- 		}
- 		bbio = bio;
+-	if (!__bio_try_merge_page(wpc->ioend->io_bio, page, len, poff)) {
++	if (!__bio_try_merge_page(wpc->ioend->io_bio, page, len, poff, true)) {
+ 		if (iop)
+ 			atomic_inc(&iop->write_count);
+ 		if (bio_full(wpc->ioend->io_bio))
+ 			xfs_chain_bio(wpc->ioend, wbc, bdev, sector);
+-		__bio_add_page(wpc->ioend->io_bio, page, len, poff);
++		bio_add_page(wpc->ioend->io_bio, page, len, poff);
  	}
  
--	if (nr_phys_segs == 1 && seg_size > fbio->bi_seg_front_size)
--		fbio->bi_seg_front_size = seg_size;
-+	fbio->bi_seg_front_size = front_seg_size;
- 	if (seg_size > bbio->bi_seg_back_size)
- 		bbio->bi_seg_back_size = seg_size;
- 
+ 	wpc->ioend->io_size += len;
+diff --git a/include/linux/bio.h b/include/linux/bio.h
+index 089370eb84d9..9f77adcfde82 100644
+--- a/include/linux/bio.h
++++ b/include/linux/bio.h
+@@ -441,7 +441,7 @@ extern int bio_add_page(struct bio *, struct page *, unsigned int,unsigned int);
+ extern int bio_add_pc_page(struct request_queue *, struct bio *, struct page *,
+ 			   unsigned int, unsigned int);
+ bool __bio_try_merge_page(struct bio *bio, struct page *page,
+-		unsigned int len, unsigned int off);
++		unsigned int len, unsigned int off, bool same_page);
+ void __bio_add_page(struct bio *bio, struct page *page,
+ 		unsigned int len, unsigned int off);
+ int bio_iov_iter_get_pages(struct bio *bio, struct iov_iter *iter);
 -- 
 2.9.5
 
