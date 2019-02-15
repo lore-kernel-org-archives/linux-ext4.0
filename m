@@ -2,166 +2,271 @@ Return-Path: <SRS0=7ymp=QW=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C9506C43381
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 18:25:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C69AAC10F02
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 22:40:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8F4A52192C
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 18:25:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 90131222DD
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 22:40:57 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=MendixTechnologyBV.onmicrosoft.com header.i=@MendixTechnologyBV.onmicrosoft.com header.b="hCRvaWI5"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="DlWuhRsQ"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389452AbfBOSZ0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Feb 2019 13:25:26 -0500
-Received: from mail-eopbgr00045.outbound.protection.outlook.com ([40.107.0.45]:64320
-        "EHLO EUR02-AM5-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2388405AbfBOSZZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 15 Feb 2019 13:25:25 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=MendixTechnologyBV.onmicrosoft.com; s=selector1-mendix-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=j1pnFuVQn6mwBWmhArg6PuWd5aRs7crgF1OfviLcxHE=;
- b=hCRvaWI5/LQHinFAxwHjgmQ+Yi8TN8WvtLi5rRdZwDzFV+fgjkPrcrRi1F7umazGtTi38+WcKn1es/FOxUft9BCTjeLXkegqIcCFQmjJSgMvM1QkezB1C0wfNfDY6KXx9qvDohlPY135BZgmKbG8lhfNVM3C/4eDSR/8tOD0yeY=
-Received: from DB7PR06MB5767.eurprd06.prod.outlook.com (20.177.193.208) by
- DB7PR06MB6011.eurprd06.prod.outlook.com (20.178.107.220) with Microsoft SMTP
- Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.1622.19; Fri, 15 Feb 2019 18:25:19 +0000
-Received: from DB7PR06MB5767.eurprd06.prod.outlook.com
- ([fe80::c575:c4a8:1776:a21e]) by DB7PR06MB5767.eurprd06.prod.outlook.com
- ([fe80::c575:c4a8:1776:a21e%4]) with mapi id 15.20.1622.018; Fri, 15 Feb 2019
- 18:25:19 +0000
-From:   Hans van Kranenburg <Hans.van.Kranenburg@mendix.com>
-To:     Omar Sandoval <osandov@osandov.com>
-CC:     "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        "kernel-team@fb.com" <kernel-team@fb.com>,
-        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
-        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "linux-f2fs-devel@lists.sourceforge.net" 
-        <linux-f2fs-devel@lists.sourceforge.net>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>
-Subject: Re: [RFC PATCH 0/6] Allow setting file birth time with utimensat()
-Thread-Topic: [RFC PATCH 0/6] Allow setting file birth time with utimensat()
-Thread-Index: AQHUxEwyy8uC6XsJfEapprTWnlJQYaXgK9IAgAAtUgCAANXagA==
-Date:   Fri, 15 Feb 2019 18:25:18 +0000
-Message-ID: <d0f971c8-5b86-0f4f-7009-fdb199b7e820@mendix.com>
-References: <cover.1550136164.git.osandov@fb.com>
- <1190dcc0-7054-72b4-2a88-33d0b97e332c@mendix.com>
- <20190215053950.GF9819@vader>
-In-Reply-To: <20190215053950.GF9819@vader>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-user-agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.3.0
-x-originating-ip: [2001:980:4a41:fb::12]
-x-clientproxiedby: AM6PR08CA0027.eurprd08.prod.outlook.com
- (2603:10a6:20b:c0::15) To DB7PR06MB5767.eurprd06.prod.outlook.com
- (2603:10a6:10:5f::16)
-authentication-results: spf=none (sender IP is )
- smtp.mailfrom=Hans.van.Kranenburg@mendix.com; 
-x-ms-exchange-messagesentrepresentingtype: 1
-x-ms-publictraffictype: Email
-x-ms-office365-filtering-correlation-id: 52815c91-cd30-4a88-9f1a-08d69372ef0e
-x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600110)(711020)(4605077)(2017052603328)(7153060)(7193020);SRVR:DB7PR06MB6011;
-x-ms-traffictypediagnostic: DB7PR06MB6011:
-x-microsoft-exchange-diagnostics: =?utf-8?B?MTtEQjdQUjA2TUI2MDExOzIzOjRqTVNxYXdpc1pEZ2RaOS82THhHaFNYMXUy?=
- =?utf-8?B?akI2RWZLc1I0dWlEdW5nQnhsU1ovdXI2MkJkY055eUhkcjZncHBZQkliQ2Fp?=
- =?utf-8?B?UUZDb0xkdk1ZNEZwUmtrenNNWk9hSy9OTWVrNWdXellIQ1V3QTdXdk1FQWp6?=
- =?utf-8?B?ejF3c3V0cFpHZkZaVHFLUHJ0dWRJbEJoSTBkNHNXeHp6eGNNU21UVXFyUGRK?=
- =?utf-8?B?WmZXS2VZNDJtRHZ3MXdiMVpxSTExNytNd2N4SWx2UEFTaGZQcWh6c29DeXJM?=
- =?utf-8?B?N2N5RnQ0aE5KVlZYbFNtNUhLMnVmUFlrcjBsVUdYZ0FwcThpTVNNd0pwMDhr?=
- =?utf-8?B?c3ExZnFkQmhqYnFXRW9wbGZjOXFCT1BvOEVKK0RVNDFCWUQ5RkJ0akhrbFNG?=
- =?utf-8?B?dTBPNHV5WWExT2s2N2lzV3RQVGhZWUpTWTl6a2JZVmlSU0RGUGZ2UGJySG1U?=
- =?utf-8?B?R2ZKNHBKSkRUNkFYdTRtNGZMbWhFdS9sMU4wMmxxZUtWQ3VIbkd2c2hDL21q?=
- =?utf-8?B?RTN6TGFDTkpPeTN3ZXd2UmdIRExqWHptcnFqQnpFV3hmS1ZKRytsZzJ5bTZF?=
- =?utf-8?B?alhIQ3d3YWFtdmJqS0JpbFJHejA2YXRmVW0wQmpCeS9iRkk2dThIeGJ3Lyth?=
- =?utf-8?B?VW9hbTJDMDlDcjdtTi9Cc1ErWnZCbmtieDcrMGNnNENlaFFpZFBBYWs0QzRM?=
- =?utf-8?B?dGVnM0JiZmY4bTh3R1I3SUUwbUVLV3BsNUVkeG9yUm8vdnNGbW9iUExyZ0Ro?=
- =?utf-8?B?dGE0SEtqWDhCbENHODg3TGk4QkV2T0NmbUM2VzlvRTFGcXYzTUVyRlU5V2Nx?=
- =?utf-8?B?VzNhZFdib2VnMUJNVUZkcE5SRWlLQ0hIYVg5NHU2QlJCeWd6ZzFQZ2QrbFBq?=
- =?utf-8?B?bWUxVnd5aXMwb0lYQTVQRjlpNHFqTThqRWU4bmxrNHcwZTFneGxYOSsvSXVO?=
- =?utf-8?B?RzhZY3ZvaUlCclhqTWhkSTI3RGFmZmYwbDZtTFcrQVRmYlhOS0tWaUpsVVZ0?=
- =?utf-8?B?RXVjdHkwWnV2SEdFM2cwUU5iTGo0aisxWm0zUnMzUGY1WVBLTlhONEZ6VWRk?=
- =?utf-8?B?UHRnY0xTeXhpMVJnbHcrVmNNTDRGVitjSWFRdEVXL2N0M3RZQ21PNGxIZkJ0?=
- =?utf-8?B?Y2lzR0lGbGN4SC9wYXhtejN1UWtzWGl3MUYrdmRxRGJuZ2tEOFFQY0J2ME5y?=
- =?utf-8?B?WGU1Y0gvY28wM01md0VWem9aODZIdStaMjVBSDhFb1VtRE5PUFU5c2ZyUjBB?=
- =?utf-8?B?dEdLU0drMGxFbFZqQm44NFM2d21NUFF6NFZadnRITm9mOTFESTV0endaa0Jq?=
- =?utf-8?B?blh4T0hUUFl4WTVSdmI1TVUwY0MvN0pnUXlpZEE5Y0NFOVlDRzcrUUNzNWVz?=
- =?utf-8?B?VlhveEU5cVpscXFJeTV3eFhTdCtXSW9UUEF0MG4wNnhEWklWMTU0REdyNVFI?=
- =?utf-8?B?dWhnWWV5WTJQcjMrNndWcm5CdjRUck92Vk9pVFk3Qks5WFN6TnRRT3ZlTXN3?=
- =?utf-8?B?blUvQ2J1U284eVp4aUp1UnlmdFBsazdzdTl1OTludE51alhidWlrRGVFYnFR?=
- =?utf-8?B?dGhOTXZranpSSFdNeVV1ZkVoK0ZSVlBBVWkzWDBlcVd5OHc2bjByU3AwSE94?=
- =?utf-8?B?TVRuMlFDcGxFb1VGNFh0SXNKOGh4R0RBaXRVZTVFR3kxNVlyOEhQdDZ3Mkgx?=
- =?utf-8?B?OW95UDJraFFZZHJWVkVFaFZmTGYxMEpnbnVpbStSMllMRlVwanh5QVIxcTdC?=
- =?utf-8?B?S2dyTTRYbC9ZUlZhY3BSbmJXR2hJRlZMa2krNm12bCttNHI1bGc1UlFNdVM3?=
- =?utf-8?B?NW5MT2t5bSttdzl6VFJ3SDVjTW5MZTlnNnpVUjRKZU5tRno5RSt5aW1LTFAx?=
- =?utf-8?Q?M1CsLeiVTta3d1Dlb3bePoTbY8TF+wLE?=
-x-microsoft-antispam-prvs: <DB7PR06MB6011B72C1C5A5C3D38DC95BED4600@DB7PR06MB6011.eurprd06.prod.outlook.com>
-x-forefront-prvs: 09497C15EB
-x-forefront-antispam-report: SFV:NSPM;SFS:(10009020)(136003)(346002)(376002)(39850400004)(396003)(366004)(51914003)(199004)(189003)(217873002)(8676002)(106356001)(8936002)(99286004)(68736007)(81156014)(53546011)(65826007)(186003)(81166006)(6486002)(386003)(25786009)(86362001)(2906002)(6506007)(31696002)(31686004)(305945005)(7736002)(229853002)(105586002)(6916009)(97736004)(65956001)(65806001)(53936002)(46003)(11346002)(6512007)(54906003)(6436002)(256004)(476003)(14444005)(76176011)(446003)(14454004)(2616005)(58126008)(52116002)(6246003)(316002)(64126003)(478600001)(102836004)(71190400001)(71200400001)(72206003)(36756003)(4326008)(6116002)(486006);DIR:OUT;SFP:1101;SCL:1;SRVR:DB7PR06MB6011;H:DB7PR06MB5767.eurprd06.prod.outlook.com;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;A:1;MX:1;
-received-spf: None (protection.outlook.com: mendix.com does not designate
- permitted sender hosts)
-x-ms-exchange-senderadcheck: 1
-x-microsoft-antispam-message-info: XiBlu9/hRqqxl28LFk6WheutPWc2NVdc8jGNXFr1T/gdjvjNaVSDiXW+KZiUhoaw8yJVP2L4STWcxZ/dJX53x/U0tm55o4DRfhuR6QbbzSErlJk6pFeJwubd00sVuwKT1m5bQ8WgSBPS7dv45olkn09e2ZZruo5hyajMEXjEJpNWeSFMLvREkQbhsrJ31O6cf3n8o/yto7XFnzOv8l2OvjxywjtVcK1MT3IiSpQXjEKgUq3NLHgi2uE/x9snFPafVsp20UTefxazLcQUWA/OCRwveHDdl/7YszEBtPFT7LokgYydOpS4S/2DA4Jprn0JMZjyQxI9WG3Vi82SLWqslaLZp6SjaDhQXEAb6ly9RWuXo1wb2+P767Z4mzdBDybKMCI2Hkisy7VE0onK2teGIPJb8p7rpVeYXfNdTAfeL78=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <FAC717E3C0B1D14DA7B8988A46B27A8D@eurprd06.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        id S2404465AbfBOWky (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Feb 2019 17:40:54 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:56686 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2404455AbfBOWku (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Feb 2019 17:40:50 -0500
+Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
+        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x1FMcxWe146163;
+        Fri, 15 Feb 2019 22:39:37 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2018-07-02;
+ bh=rFBuPAUp3qyHrOOVnWy4HHWdGelJ0ySma1MEojBeK4Y=;
+ b=DlWuhRsQN5kmw/90osRqZIUez1X7TeWVRLI7Kmo3JJLaKkBIv/m6V3c1AfzbcvH/Fbv+
+ Pat6xx5UMyo9oCVRyHCxwxWw36YcaWzwhLQybvwJNUtbYmWmiDXFFunEW33PVOvPUoXA
+ QXGfkWN/0Z9F0oJjJtCSx3wAragBKmNc9NDTbsAQzGrHgvDE+dmf6X1MnccK3sZSLsqd
+ y414B1CWKpfaaRFfeNsWyrhr3YsdHnUhXpCyIumo1j6uZgNE0s/q0K3/QUb07LBRYli/
+ hXX4XlAFW5Ylxq3u/f3kV4GyW9T6f6uyQXsPYlFhYDrSG1WTLIp47m4Jj7sPgUTCu9mn 5A== 
+Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
+        by userp2130.oracle.com with ESMTP id 2qhrem0cbf-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 15 Feb 2019 22:39:36 +0000
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x1FMdTnq026520
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 15 Feb 2019 22:39:30 GMT
+Received: from abhmp0022.oracle.com (abhmp0022.oracle.com [141.146.116.28])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x1FMdR7l015082;
+        Fri, 15 Feb 2019 22:39:28 GMT
+Received: from localhost (/10.145.178.102)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Fri, 15 Feb 2019 14:39:27 -0800
+Date:   Fri, 15 Feb 2019 14:39:25 -0800
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     clm@fb.com, josef@toxicpanda.com, dsterba@suse.com,
+        viro@zeniv.linux.org.uk, jack@suse.com, tytso@mit.edu,
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com,
+        hughd@google.com, hch@infradead.org
+Cc:     richard@nod.at, dedekind1@gmail.com, adrian.hunter@intel.com,
+        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-mm@kvack.org,
+        amir73il@gmail.com
+Subject: [PATCH v2] vfs: don't decrement i_nlink in d_tmpfile
+Message-ID: <20190215223925.GO32253@magnolia>
+References: <20190214234908.GA6474@magnolia>
 MIME-Version: 1.0
-X-OriginatorOrg: mendix.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 52815c91-cd30-4a88-9f1a-08d69372ef0e
-X-MS-Exchange-CrossTenant-originalarrivaltime: 15 Feb 2019 18:25:16.1118
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-id: b4e3c78d-8e3b-46d8-bc56-5540da23ba4d
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DB7PR06MB6011
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190214234908.GA6474@magnolia>
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9168 signatures=668683
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=831 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1902150147
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-T24gMi8xNS8xOSA2OjM5IEFNLCBPbWFyIFNhbmRvdmFsIHdyb3RlOg0KPiBPbiBGcmksIEZlYiAx
-NSwgMjAxOSBhdCAwMTo1NzozOUFNICswMDAwLCBIYW5zIHZhbiBLcmFuZW5idXJnIHdyb3RlOg0K
-Pj4gSGksDQo+Pg0KPj4gT24gMi8xNC8xOSAxMTowMCBBTSwgT21hciBTYW5kb3ZhbCB3cm90ZToN
-Cj4+PiBGcm9tOiBPbWFyIFNhbmRvdmFsIDxvc2FuZG92QGZiLmNvbT4NCj4+Pg0KPj4+IFNpbmNl
-IHN0YXR4IHdhcyBhZGRlZCBpbiA0LjExLCB1c2Vyc3BhY2UgaGFzIGhhZCBhbiBpbnRlcmZhY2Ug
-Zm9yDQo+Pj4gcmVhZGluZyBidGltZSAoZmlsZSBjcmVhdGlvbiB0aW1lKSwgYnV0IG5vIHdheSB0
-byBzZXQgaXQuIFRoaXMgUkZDIHBhdGNoDQo+Pj4gc2VyaWVzIGFkZHMgc3VwcG9ydCBmb3IgY2hh
-bmdpbmcgYnRpbWUgd2l0aCB1dGltZW5zYXQoKS4gUGF0Y2ggMSBhZGRzDQo+Pj4gdGhlIFZGUyBp
-bmZyYXN0cnVjdHVyZSwgcGF0Y2ggMiBhZGRzIHRoZSBzdXBwb3J0IHRvIHV0aW1lbnNhdCgpIHdp
-dGggYQ0KPj4+IG5ldyBmbGFnLCBhbmQgdGhlIHJlc3Qgb2YgdGhlIHBhdGNoZXMgYWRkIGZpbGVz
-eXN0ZW0gc3VwcG9ydDsgSSBleGNsdWRlZA0KPj4+IENJRlMgZm9yIG5vdyBiZWNhdXNlIEkgZG9u
-J3QgaGF2ZSBhIENJRlMgc2V0dXAgdG8gdGVzdCBpdCBvbi4NCj4+Pg0KPj4+IFVwZGF0aW5nIGJ0
-aW1lIGlzIHVzZWZ1bCBmb3IgYXQgbGVhc3QgYSBjb3VwbGUgb2YgdXNlIGNhc2VzOg0KPj4+DQo+
-Pj4gLSBCYWNrdXAvcmVzdG9yZSBwcm9ncmFtcyAobXkgbW90aXZhdGlvbiBmb3IgdGhpcyBmZWF0
-dXJlIGlzIGJ0cmZzIHNlbmQpDQo+Pg0KPj4gQ2FuIHlvdSBnaXZlIGFuIGV4YW1wbGUgb2Ygc3Vj
-aCB1c2VmdWxuZXNzPyBXaGF0J3MgdGhlIHRoaW5nIHlvdSBydW4NCj4+IGludG8gdGhhdCB5b3Ug
-Y2FuJ3QgZG8gd2l0aG91dCBoYXZpbmcgdGhpcz8NCj4gDQo+IFRoYXQgYm9pbHMgZG93biB0byB3
-aGF0J3MgdXNlZnVsIGFib3V0IGhhdmluZyB0aGUgZmlsZSBjcmVhdGlvbiB0aW1lLA0KPiBhbmQg
-aXQncyByZWFsbHkganVzdCBhbm90aGVyIHRpZGJpdCBvZiBpbmZvcm1hdGlvbiB3aGljaCB5b3Ug
-bWF5IG9yIG1heQ0KPiBub3QgY2FyZSBhYm91dC4gTWF5YmUgeW91IGhhdmUgYSBkb2N1bWVudCB0
-aGF0IHlvdSd2ZSBiZWVuIGVkaXRpbmcgZm9yDQo+IGF3aGlsZSwgYW5kIHlvdSB3YW50IHRvIGtu
-b3cgd2hlbiB5b3Ugc3RhcnRlZCB3b3JraW5nIG9uIGl0LiBPciwgeW91DQo+IHdhbnQgdG8ga25v
-dyB3aGVuIGEgdXNlciBjcmVhdGVkIHNvbWUgZGlyZWN0b3J5IHRoYXQgdGhleSBrZWVwIGFkZGlu
-Zw0KPiBmaWxlcyB0by4NCj4gDQo+IElmIHRoZSBmaWxlIGNyZWF0aW9uIHRpbWUgaXMgdXNlZnVs
-IHRvIHlvdSwgdGhlbiB5b3UgbGlrZWx5IHdhbnQgaXQNCj4gcHJlc2VydmVkIGlmIHlvdSBoYXZl
-IHRvIHJlc3RvcmUgZnJvbSBiYWNrdXBzLiBJZiBJIGhhZCB0byByZXN0b3JlIGZyb20NCj4gYmFj
-a3VwcyB5ZXN0ZXJkYXkgYW5kIEknbSB0cnlpbmcgdG8gZmlndXJlIG91dCB3aGVuIEkgc3RhcnRl
-ZCB0aGF0DQo+IGRvY3VtZW50LCBJIGRvbid0IGNhcmUgdGhhdCBJIHJlc3RvcmVkIHRoYXQgZmls
-ZSB5ZXN0ZXJkYXksIEkgd2FudCB0aGUNCj4gcmVhbCBjcmVhdGlvbiBkYXRlLg0KPiANCj4gSWYg
-eW91J3ZlIG5ldmVyIHdvbmRlcmVkIHdoZW4gYSBmaWxlIHdhcyBjcmVhdGVkLCB0aGVuIEknbSBz
-dXJlIHlvdQ0KPiB3b24ndCBjYXJlIHdoZXRoZXIgYnRyZnMgc2VuZC9yZWNlaXZlIHByZXNlcnZl
-cyBpdCA6KQ0KDQpUaGFua3MgZm9yIHRoZSBlbGFib3JhdGUgYW5zd2VyLiBJIHdhcyBqdXN0IGN1
-cmlvdXMgaWYgdGhpcyB3YXMgdG8gbWFrZQ0Kc2VuZCAibW9yZSBmZWF0dXJlIGNvbXBsZXRlIiBv
-ciBpZiB0aGVyZSB3YXMgc29tZXRoaW5nIGVsc2Ugc3BlY2lhbCB0bw0KaXQsIGFuZCBpdCBzZWVt
-cyB0byBiZSB0aGUgZmlyc3Qgb25lLiA7XQ0KDQpBbmQgZm9yIG15c2VsZiwgSSBtb3N0bHkgdHJl
-YXQgYnRyZnMgc2VuZC9yZWNlaXZlIGxpa2UgYSBpbXByb3ZlZA0KcmVwbGFjZW1lbnQgZm9yIHJz
-eW5jIGFuZCB1c3VhbGx5IGRvbid0IGNhcmUgdGhhdCBtdWNoIGFib3V0IGJ0aW1lICBpbmRlZWQu
-DQoNClRoYW5rcywNCi0tIA0KSGFucyB2YW4gS3JhbmVuYnVyZw0K
+From: Darrick J. Wong <darrick.wong@oracle.com>
+
+d_tmpfile was introduced to instantiate an inode in the dentry cache as
+a temporary file.  This helper decrements the inode's nlink count and
+dirties the inode, presumably so that filesystems could call new_inode
+to create a new inode with nlink == 1 and then call d_tmpfile which will
+decrement nlink.
+
+However, this doesn't play well with XFS, which needs to allocate,
+initialize, and insert a tempfile inode on its unlinked list in a single
+transaction.  In order to maintain referential integrity of the XFS
+metadata, we cannot have an inode on the unlinked list with nlink >= 1.
+
+XFS and btrfs hack around d_tmpfile's behavior by creating the inode
+with nlink == 0 and then incrementing it just prior to calling
+d_tmpfile, anticipating that it will be reset to 0.
+
+Everywhere else, it appears that nlink updates and persistence is
+the responsibility of individual filesystems.  Therefore, move the nlink
+decrement out of d_tmpfile into the callers, and require that callers
+only pass in inodes with nlink already set to 0.
+
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+v2: convert BUG_ON to WARN_ON per review comment
+---
+ fs/btrfs/inode.c  |    8 --------
+ fs/dcache.c       |   10 ++++++----
+ fs/ext2/namei.c   |    2 +-
+ fs/ext4/namei.c   |    1 +
+ fs/f2fs/namei.c   |    1 +
+ fs/minix/namei.c  |    2 +-
+ fs/ubifs/dir.c    |    1 +
+ fs/udf/namei.c    |    2 +-
+ fs/xfs/xfs_iops.c |   13 ++-----------
+ mm/shmem.c        |    1 +
+ 10 files changed, 15 insertions(+), 26 deletions(-)
+
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index 5c349667c761..bd189fc50f83 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -10382,14 +10382,6 @@ static int btrfs_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 	if (ret)
+ 		goto out;
+ 
+-	/*
+-	 * We set number of links to 0 in btrfs_new_inode(), and here we set
+-	 * it to 1 because d_tmpfile() will issue a warning if the count is 0,
+-	 * through:
+-	 *
+-	 *    d_tmpfile() -> inode_dec_link_count() -> drop_nlink()
+-	 */
+-	set_nlink(inode, 1);
+ 	d_tmpfile(dentry, inode);
+ 	unlock_new_inode(inode);
+ 	mark_inode_dirty(inode);
+diff --git a/fs/dcache.c b/fs/dcache.c
+index aac41adf4743..bb349d423055 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -3042,12 +3042,14 @@ void d_genocide(struct dentry *parent)
+ 
+ EXPORT_SYMBOL(d_genocide);
+ 
++/*
++ * Instantiate an inode in the dentry cache as a temporary file.  Callers must
++ * ensure that @inode has a zero link count.
++ */
+ void d_tmpfile(struct dentry *dentry, struct inode *inode)
+ {
+-	inode_dec_link_count(inode);
+-	BUG_ON(dentry->d_name.name != dentry->d_iname ||
+-		!hlist_unhashed(&dentry->d_u.d_alias) ||
+-		!d_unlinked(dentry));
++	WARN_ON(dentry->d_name.name != dentry->d_iname ||
++		!d_unlinked(dentry) || inode->i_nlink != 0);
+ 	spin_lock(&dentry->d_parent->d_lock);
+ 	spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
+ 	dentry->d_name.len = sprintf(dentry->d_iname, "#%llu",
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 0c26dcc5d850..8542e9ce9677 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -117,7 +117,7 @@ static int ext2_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 		return PTR_ERR(inode);
+ 
+ 	ext2_set_file_ops(inode);
+-	mark_inode_dirty(inode);
++	inode_dec_link_count(inode);
+ 	d_tmpfile(dentry, inode);
+ 	unlock_new_inode(inode);
+ 	return 0;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 2b928eb07fa2..7502432f9816 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2517,6 +2517,7 @@ static int ext4_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 		inode->i_op = &ext4_file_inode_operations;
+ 		inode->i_fop = &ext4_file_operations;
+ 		ext4_set_aops(inode);
++		inode_dec_link_count(inode);
+ 		d_tmpfile(dentry, inode);
+ 		err = ext4_orphan_add(handle, inode);
+ 		if (err)
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index 62d9829f3a6a..31a556af5f3a 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -780,6 +780,7 @@ static int __f2fs_tmpfile(struct inode *dir, struct dentry *dentry,
+ 		f2fs_i_links_write(inode, false);
+ 		*whiteout = inode;
+ 	} else {
++		inode_dec_link_count(inode);
+ 		d_tmpfile(dentry, inode);
+ 	}
+ 	/* link_count was changed by d_tmpfile as well. */
+diff --git a/fs/minix/namei.c b/fs/minix/namei.c
+index 1a6084d2b02e..3249f86c476a 100644
+--- a/fs/minix/namei.c
++++ b/fs/minix/namei.c
+@@ -57,7 +57,7 @@ static int minix_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 	struct inode *inode = minix_new_inode(dir, mode, &error);
+ 	if (inode) {
+ 		minix_set_inode(inode, 0);
+-		mark_inode_dirty(inode);
++		inode_dec_link_count(inode);
+ 		d_tmpfile(dentry, inode);
+ 	}
+ 	return error;
+diff --git a/fs/ubifs/dir.c b/fs/ubifs/dir.c
+index 5767b373a8ff..7187e4fd7561 100644
+--- a/fs/ubifs/dir.c
++++ b/fs/ubifs/dir.c
+@@ -419,6 +419,7 @@ static int do_tmpfile(struct inode *dir, struct dentry *dentry,
+ 		drop_nlink(inode);
+ 		*whiteout = inode;
+ 	} else {
++		inode_dec_link_count(inode);
+ 		d_tmpfile(dentry, inode);
+ 	}
+ 	ubifs_assert(c, ui->dirty);
+diff --git a/fs/udf/namei.c b/fs/udf/namei.c
+index 58cc2414992b..38bd021f9673 100644
+--- a/fs/udf/namei.c
++++ b/fs/udf/namei.c
+@@ -652,7 +652,7 @@ static int udf_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 		inode->i_data.a_ops = &udf_aops;
+ 	inode->i_op = &udf_file_inode_operations;
+ 	inode->i_fop = &udf_file_operations;
+-	mark_inode_dirty(inode);
++	inode_dec_link_count(inode);
+ 	d_tmpfile(dentry, inode);
+ 	unlock_new_inode(inode);
+ 	return 0;
+diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+index 1efef69a7f1c..f48ffd7a8d3e 100644
+--- a/fs/xfs/xfs_iops.c
++++ b/fs/xfs/xfs_iops.c
+@@ -191,18 +191,9 @@ xfs_generic_create(
+ 
+ 	xfs_setup_iops(ip);
+ 
+-	if (tmpfile) {
+-		/*
+-		 * The VFS requires that any inode fed to d_tmpfile must have
+-		 * nlink == 1 so that it can decrement the nlink in d_tmpfile.
+-		 * However, we created the temp file with nlink == 0 because
+-		 * we're not allowed to put an inode with nlink > 0 on the
+-		 * unlinked list.  Therefore we have to set nlink to 1 so that
+-		 * d_tmpfile can immediately set it back to zero.
+-		 */
+-		set_nlink(inode, 1);
++	if (tmpfile)
+ 		d_tmpfile(dentry, inode);
+-	} else
++	else
+ 		d_instantiate(dentry, inode);
+ 
+ 	xfs_finish_inode_setup(ip);
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 6ece1e2fe76e..4a7810093561 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -2818,6 +2818,7 @@ shmem_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
+ 		error = simple_acl_create(dir, inode);
+ 		if (error)
+ 			goto out_iput;
++		inode_dec_link_count(inode);
+ 		d_tmpfile(dentry, inode);
+ 	}
+ 	return error;
