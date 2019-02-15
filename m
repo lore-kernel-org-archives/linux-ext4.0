@@ -6,26 +6,26 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8B88DC10F02
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 11:17:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 74AD9C43381
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 11:17:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6587921B1A
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 11:17:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 467DF21B1A
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Feb 2019 11:17:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389553AbfBOLRG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Feb 2019 06:17:06 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:45178 "EHLO mx1.redhat.com"
+        id S2394089AbfBOLRf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Feb 2019 06:17:35 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:52598 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729151AbfBOLRG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 15 Feb 2019 06:17:06 -0500
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        id S1729151AbfBOLRe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 15 Feb 2019 06:17:34 -0500
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 826C08E6E5;
-        Fri, 15 Feb 2019 11:17:04 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id ECFE6C0AD406;
+        Fri, 15 Feb 2019 11:17:33 +0000 (UTC)
 Received: from localhost (ovpn-8-22.pek2.redhat.com [10.72.8.22])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C61CD5D6A9;
-        Fri, 15 Feb 2019 11:16:43 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 9B90A26E74;
+        Fri, 15 Feb 2019 11:17:06 +0000 (UTC)
 From:   Ming Lei <ming.lei@redhat.com>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
@@ -45,137 +45,52 @@ Cc:     linux-block@vger.kernel.org, linux-kernel@vger.kernel.org,
         Boaz Harrosh <ooo@electrozaur.com>,
         Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
         Ming Lei <ming.lei@redhat.com>
-Subject: [PATCH V15 14/18] block: enable multipage bvecs
-Date:   Fri, 15 Feb 2019 19:13:20 +0800
-Message-Id: <20190215111324.30129-15-ming.lei@redhat.com>
+Subject: [PATCH V15 15/18] block: always define BIO_MAX_PAGES as 256
+Date:   Fri, 15 Feb 2019 19:13:21 +0800
+Message-Id: <20190215111324.30129-16-ming.lei@redhat.com>
 In-Reply-To: <20190215111324.30129-1-ming.lei@redhat.com>
 References: <20190215111324.30129-1-ming.lei@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.15
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.25]); Fri, 15 Feb 2019 11:17:05 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.31]); Fri, 15 Feb 2019 11:17:34 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch pulls the trigger for multi-page bvecs.
+Now multi-page bvec can cover CONFIG_THP_SWAP, so we don't need to
+increase BIO_MAX_PAGES for it.
+
+CONFIG_THP_SWAP needs to split one THP into normal pages and adds
+them all to one bio. With multipage-bvec, it just takes one bvec to
+hold them all.
 
 Reviewed-by: Omar Sandoval <osandov@fb.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Ming Lei <ming.lei@redhat.com>
 ---
- block/bio.c         | 22 +++++++++++++++-------
- fs/iomap.c          |  4 ++--
- fs/xfs/xfs_aops.c   |  4 ++--
- include/linux/bio.h |  2 +-
- 4 files changed, 20 insertions(+), 12 deletions(-)
+ include/linux/bio.h | 8 --------
+ 1 file changed, 8 deletions(-)
 
-diff --git a/block/bio.c b/block/bio.c
-index 968b12fea564..83a2dfa417ca 100644
---- a/block/bio.c
-+++ b/block/bio.c
-@@ -753,6 +753,8 @@ EXPORT_SYMBOL(bio_add_pc_page);
-  * @page: page to add
-  * @len: length of the data to add
-  * @off: offset of the data in @page
-+ * @same_page: if %true only merge if the new data is in the same physical
-+ *		page as the last segment of the bio.
-  *
-  * Try to add the data at @page + @off to the last bvec of @bio.  This is a
-  * a useful optimisation for file systems with a block size smaller than the
-@@ -761,19 +763,25 @@ EXPORT_SYMBOL(bio_add_pc_page);
-  * Return %true on success or %false on failure.
-  */
- bool __bio_try_merge_page(struct bio *bio, struct page *page,
--		unsigned int len, unsigned int off)
-+		unsigned int len, unsigned int off, bool same_page)
- {
- 	if (WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED)))
- 		return false;
- 
- 	if (bio->bi_vcnt > 0) {
- 		struct bio_vec *bv = &bio->bi_io_vec[bio->bi_vcnt - 1];
-+		phys_addr_t vec_end_addr = page_to_phys(bv->bv_page) +
-+			bv->bv_offset + bv->bv_len - 1;
-+		phys_addr_t page_addr = page_to_phys(page);
- 
--		if (page == bv->bv_page && off == bv->bv_offset + bv->bv_len) {
--			bv->bv_len += len;
--			bio->bi_iter.bi_size += len;
--			return true;
--		}
-+		if (vec_end_addr + 1 != page_addr + off)
-+			return false;
-+		if (same_page && (vec_end_addr & PAGE_MASK) != page_addr)
-+			return false;
-+
-+		bv->bv_len += len;
-+		bio->bi_iter.bi_size += len;
-+		return true;
- 	}
- 	return false;
- }
-@@ -819,7 +827,7 @@ EXPORT_SYMBOL_GPL(__bio_add_page);
- int bio_add_page(struct bio *bio, struct page *page,
- 		 unsigned int len, unsigned int offset)
- {
--	if (!__bio_try_merge_page(bio, page, len, offset)) {
-+	if (!__bio_try_merge_page(bio, page, len, offset, false)) {
- 		if (bio_full(bio))
- 			return 0;
- 		__bio_add_page(bio, page, len, offset);
-diff --git a/fs/iomap.c b/fs/iomap.c
-index af736acd9006..0c350e658b7f 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -318,7 +318,7 @@ iomap_readpage_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 	 */
- 	sector = iomap_sector(iomap, pos);
- 	if (ctx->bio && bio_end_sector(ctx->bio) == sector) {
--		if (__bio_try_merge_page(ctx->bio, page, plen, poff))
-+		if (__bio_try_merge_page(ctx->bio, page, plen, poff, true))
- 			goto done;
- 		is_contig = true;
- 	}
-@@ -349,7 +349,7 @@ iomap_readpage_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 		ctx->bio->bi_end_io = iomap_read_end_io;
- 	}
- 
--	__bio_add_page(ctx->bio, page, plen, poff);
-+	bio_add_page(ctx->bio, page, plen, poff);
- done:
- 	/*
- 	 * Move the caller beyond our range so that it keeps making progress.
-diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
-index 1f1829e506e8..b9fd44168f61 100644
---- a/fs/xfs/xfs_aops.c
-+++ b/fs/xfs/xfs_aops.c
-@@ -616,12 +616,12 @@ xfs_add_to_ioend(
- 				bdev, sector);
- 	}
- 
--	if (!__bio_try_merge_page(wpc->ioend->io_bio, page, len, poff)) {
-+	if (!__bio_try_merge_page(wpc->ioend->io_bio, page, len, poff, true)) {
- 		if (iop)
- 			atomic_inc(&iop->write_count);
- 		if (bio_full(wpc->ioend->io_bio))
- 			xfs_chain_bio(wpc->ioend, wbc, bdev, sector);
--		__bio_add_page(wpc->ioend->io_bio, page, len, poff);
-+		bio_add_page(wpc->ioend->io_bio, page, len, poff);
- 	}
- 
- 	wpc->ioend->io_size += len;
 diff --git a/include/linux/bio.h b/include/linux/bio.h
-index 089370eb84d9..9f77adcfde82 100644
+index 9f77adcfde82..bdd11d4c2f05 100644
 --- a/include/linux/bio.h
 +++ b/include/linux/bio.h
-@@ -441,7 +441,7 @@ extern int bio_add_page(struct bio *, struct page *, unsigned int,unsigned int);
- extern int bio_add_pc_page(struct request_queue *, struct bio *, struct page *,
- 			   unsigned int, unsigned int);
- bool __bio_try_merge_page(struct bio *bio, struct page *page,
--		unsigned int len, unsigned int off);
-+		unsigned int len, unsigned int off, bool same_page);
- void __bio_add_page(struct bio *bio, struct page *page,
- 		unsigned int len, unsigned int off);
- int bio_iov_iter_get_pages(struct bio *bio, struct iov_iter *iter);
+@@ -34,15 +34,7 @@
+ #define BIO_BUG_ON
+ #endif
+ 
+-#ifdef CONFIG_THP_SWAP
+-#if HPAGE_PMD_NR > 256
+-#define BIO_MAX_PAGES		HPAGE_PMD_NR
+-#else
+ #define BIO_MAX_PAGES		256
+-#endif
+-#else
+-#define BIO_MAX_PAGES		256
+-#endif
+ 
+ #define bio_prio(bio)			(bio)->bi_ioprio
+ #define bio_set_prio(bio, prio)		((bio)->bi_ioprio = prio)
 -- 
 2.9.5
 
