@@ -2,160 +2,97 @@ Return-Path: <SRS0=geXL=QZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 255DAC43381
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 01:02:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C8E2C4360F
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 02:22:50 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E5A06218AD
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 01:02:55 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 413C6218D8
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 02:22:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727885AbfBRBCz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 17 Feb 2019 20:02:55 -0500
-Received: from szxga06-in.huawei.com ([45.249.212.32]:53588 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727872AbfBRBCy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 17 Feb 2019 20:02:54 -0500
-Received: from DGGEMS403-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id CCB723DA13DF2EEF1459;
-        Mon, 18 Feb 2019 09:02:52 +0800 (CST)
-Received: from RH5885H-V3.huawei.com (10.90.53.225) by
- DGGEMS403-HUB.china.huawei.com (10.3.19.203) with Microsoft SMTP Server id
- 14.3.408.0; Mon, 18 Feb 2019 09:02:45 +0800
-From:   yangerkun <yangerkun@huawei.com>
-To:     <jack@suse.com>
-CC:     <yi.zhang@huawei.com>, <houtao1@huawei.com>, <miaoxie@huawei.com>,
-        <yangerkun@huawei.com>, <linux-ext4@vger.kernel.org>
-Subject: [PATCH] ext2: support statx syscall
-Date:   Mon, 18 Feb 2019 09:07:02 +0800
-Message-ID: <20190218010702.101058-1-yangerkun@huawei.com>
-X-Mailer: git-send-email 2.9.5
+        id S1728174AbfBRCWs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 17 Feb 2019 21:22:48 -0500
+Received: from ipmail03.adl6.internode.on.net ([150.101.137.143]:28706 "EHLO
+        ipmail03.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727266AbfBRCWs (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 17 Feb 2019 21:22:48 -0500
+Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
+  by ipmail03.adl6.internode.on.net with ESMTP; 18 Feb 2019 12:52:45 +1030
+Received: from dave by dastard with local (Exim 4.80)
+        (envelope-from <david@fromorbit.com>)
+        id 1gvYZw-0002oT-0V; Mon, 18 Feb 2019 13:22:44 +1100
+Date:   Mon, 18 Feb 2019 13:22:43 +1100
+From:   Dave Chinner <david@fromorbit.com>
+To:     Ric Wheeler <ricwheeler@gmail.com>
+Cc:     lsf-pc@lists.linux-foundation.org,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-block@vger.kernel.org
+Subject: Re: [LSF/MM TOPIC] More async operations for file systems - async
+ discard?
+Message-ID: <20190218022243.GC14116@dastard>
+References: <92ab41f7-35bc-0f56-056f-ed88526b8ea4@gmail.com>
+ <20190217210948.GB14116@dastard>
+ <46540876-c222-0889-ddce-44815dcaad04@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.90.53.225]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <46540876-c222-0889-ddce-44815dcaad04@gmail.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Since statx, every filesystem should fill the attributes/attributes_mask
-in routine getattr. But the generic_fillattr has not fill that, so add
-ext2_getattr to do this. This can fix generic/424 while testing ext2.
+On Sun, Feb 17, 2019 at 06:42:59PM -0500, Ric Wheeler wrote:
+> On 2/17/19 4:09 PM, Dave Chinner wrote:
+> >On Sun, Feb 17, 2019 at 03:36:10PM -0500, Ric Wheeler wrote:
+> >>One proposal for btrfs was that we should look at getting discard
+> >>out of the synchronous path in order to minimize the slowdown
+> >>associated with enabling discard at mount time. Seems like an
+> >>obvious win for "hint" like operations like discard.
+> >We already have support for that. blkdev_issue_discard() is
+> >synchornous, yes, but __blkdev_issue_discard() will only build the
+> >discard bio chain - it is up to the caller to submit and wait for it.
+> >
+> >Some callers (XFS, dm-thinp, nvmet, etc) use a bio completion to
+> >handle the discard IO completion, hence allowing async dispatch and
+> >processing of the discard chain without blocking the caller. Others
+> >(like ext4) simply call submit_bio_wait() to do wait synchronously
+> >on completion of the discard bio chain.
+> >
+> >>I do wonder where we stand now with the cost of the various discard
+> >>commands - how painful is it for modern SSD's?
+> >AIUI, it still depends on the SSD implementation, unfortunately.
+> 
+> I think the variability makes life really miserable for layers above it.
 
-Reviewed-by: zhangyi (F) <yi.zhang@huawei.com>
-Signed-off-by: yangerkun <yangerkun@huawei.com>
----
- fs/ext2/ext2.h    |  1 +
- fs/ext2/file.c    |  1 +
- fs/ext2/inode.c   | 26 ++++++++++++++++++++++++++
- fs/ext2/namei.c   |  2 ++
- fs/ext2/symlink.c |  2 ++
- 5 files changed, 32 insertions(+)
+Yup, that it does.
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index e770cd1..ae0cd9e 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -774,6 +774,7 @@ extern int ext2_write_inode (struct inode *, struct writeback_control *);
- extern void ext2_evict_inode(struct inode *);
- extern int ext2_get_block(struct inode *, sector_t, struct buffer_head *, int);
- extern int ext2_setattr (struct dentry *, struct iattr *);
-+extern int ext2_getattr (const struct path *, struct kstat *, u32, unsigned int);
- extern void ext2_set_inode_flags(struct inode *inode);
- extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		       u64 start, u64 len);
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 28b2609..39c4772 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -199,6 +199,7 @@ const struct inode_operations ext2_file_inode_operations = {
- #ifdef CONFIG_EXT2_FS_XATTR
- 	.listxattr	= ext2_listxattr,
- #endif
-+	.getattr	= ext2_getattr,
- 	.setattr	= ext2_setattr,
- 	.get_acl	= ext2_get_acl,
- 	.set_acl	= ext2_set_acl,
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index e4bb938..8e6f3ca 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1635,6 +1635,32 @@ int ext2_write_inode(struct inode *inode, struct writeback_control *wbc)
- 	return __ext2_write_inode(inode, wbc->sync_mode == WB_SYNC_ALL);
- }
- 
-+int ext2_getattr(const struct path *path, struct kstat *stat,
-+		u32 request_mask, unsigned int query_falgs)
-+{
-+	struct inode *inode = d_inode(path->dentry);
-+	struct ext2_inode_info *ei = EXT2_I(inode);
-+	unsigned int flags;
-+
-+	flags = ei->i_flags & EXT2_FL_USER_VISIBLE;
-+	if (flags & EXT2_APPEND_FL)
-+		stat->attributes |= STATX_ATTR_APPEND;
-+	if (flags & EXT2_COMPR_FL)
-+		stat->attributes |= STATX_ATTR_COMPRESSED;
-+	if (flags & EXT2_IMMUTABLE_FL)
-+		stat->attributes |= STATX_ATTR_IMMUTABLE;
-+	if (flags & EXT2_NODUMP_FL)
-+		stat->attributes |= STATX_ATTR_NODUMP;
-+	stat->attributes_mask |= (STATX_ATTR_APPEND |
-+			STATX_ATTR_COMPRESSED |
-+			STATX_ATTR_ENCRYPTED |
-+			STATX_ATTR_IMMUTABLE |
-+			STATX_ATTR_NODUMP);
-+
-+	generic_fillattr(inode, stat);
-+	return 0;
-+}
-+
- int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
- {
- 	struct inode *inode = d_inode(dentry);
-diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-index 0c26dcc..ccfbbf5 100644
---- a/fs/ext2/namei.c
-+++ b/fs/ext2/namei.c
-@@ -416,6 +416,7 @@ const struct inode_operations ext2_dir_inode_operations = {
- #ifdef CONFIG_EXT2_FS_XATTR
- 	.listxattr	= ext2_listxattr,
- #endif
-+	.getattr	= ext2_getattr,
- 	.setattr	= ext2_setattr,
- 	.get_acl	= ext2_get_acl,
- 	.set_acl	= ext2_set_acl,
-@@ -426,6 +427,7 @@ const struct inode_operations ext2_special_inode_operations = {
- #ifdef CONFIG_EXT2_FS_XATTR
- 	.listxattr	= ext2_listxattr,
- #endif
-+	.getattr	= ext2_getattr,
- 	.setattr	= ext2_setattr,
- 	.get_acl	= ext2_get_acl,
- 	.set_acl	= ext2_set_acl,
-diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
-index d5589dd..00cdb86 100644
---- a/fs/ext2/symlink.c
-+++ b/fs/ext2/symlink.c
-@@ -23,6 +23,7 @@
- 
- const struct inode_operations ext2_symlink_inode_operations = {
- 	.get_link	= page_get_link,
-+	.getattr	= ext2_getattr,
- 	.setattr	= ext2_setattr,
- #ifdef CONFIG_EXT2_FS_XATTR
- 	.listxattr	= ext2_listxattr,
-@@ -31,6 +32,7 @@ const struct inode_operations ext2_symlink_inode_operations = {
-  
- const struct inode_operations ext2_fast_symlink_inode_operations = {
- 	.get_link	= simple_get_link,
-+	.getattr	= ext2_getattr,
- 	.setattr	= ext2_setattr,
- #ifdef CONFIG_EXT2_FS_XATTR
- 	.listxattr	= ext2_listxattr,
+> Might be worth constructing some tooling that we can use to validate
+> or shame vendors over
+
+That doesn't seem to work.
+
+> - testing things like a full device discard,
+> discard of fs block size and big chunks, discard against already
+> discarded, etc.
+
+We did that many years ago because discard on SSDs sucked:
+
+https://people.redhat.com/lczerner/discard/test_discard.html
+https://sourceforge.net/projects/test-discard/files/
+
+And, really, that didn't changed a thing - discard still sucks...
+
+Cheers,
+
+Dave.
 -- 
-2.9.5
-
+Dave Chinner
+david@fromorbit.com
