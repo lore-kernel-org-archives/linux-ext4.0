@@ -6,93 +6,144 @@ X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C8E2C4360F
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 02:22:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E79AAC4360F
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 07:49:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 413C6218D8
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 02:22:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BE10B217F5
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 07:49:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728174AbfBRCWs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 17 Feb 2019 21:22:48 -0500
-Received: from ipmail03.adl6.internode.on.net ([150.101.137.143]:28706 "EHLO
-        ipmail03.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727266AbfBRCWs (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 17 Feb 2019 21:22:48 -0500
-Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
-  by ipmail03.adl6.internode.on.net with ESMTP; 18 Feb 2019 12:52:45 +1030
-Received: from dave by dastard with local (Exim 4.80)
-        (envelope-from <david@fromorbit.com>)
-        id 1gvYZw-0002oT-0V; Mon, 18 Feb 2019 13:22:44 +1100
-Date:   Mon, 18 Feb 2019 13:22:43 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Ric Wheeler <ricwheeler@gmail.com>
-Cc:     lsf-pc@lists.linux-foundation.org,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-block@vger.kernel.org
-Subject: Re: [LSF/MM TOPIC] More async operations for file systems - async
- discard?
-Message-ID: <20190218022243.GC14116@dastard>
-References: <92ab41f7-35bc-0f56-056f-ed88526b8ea4@gmail.com>
- <20190217210948.GB14116@dastard>
- <46540876-c222-0889-ddce-44815dcaad04@gmail.com>
+        id S1728892AbfBRHtl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Feb 2019 02:49:41 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:53296 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725881AbfBRHtk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 18 Feb 2019 02:49:40 -0500
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 50FDE36887;
+        Mon, 18 Feb 2019 07:49:39 +0000 (UTC)
+Received: from ming.t460p (ovpn-8-22.pek2.redhat.com [10.72.8.22])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 01D95608C7;
+        Mon, 18 Feb 2019 07:49:12 +0000 (UTC)
+Date:   Mon, 18 Feb 2019 15:49:08 +0800
+From:   Ming Lei <ming.lei@redhat.com>
+To:     Jens Axboe <axboe@kernel.dk>
+Cc:     Bart Van Assche <bvanassche@acm.org>,
+        Mike Snitzer <snitzer@redhat.com>, linux-mm@kvack.org,
+        dm-devel@redhat.com, Christoph Hellwig <hch@lst.de>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Omar Sandoval <osandov@fb.com>, cluster-devel@redhat.com,
+        linux-ext4@vger.kernel.org,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Gao Xiang <gaoxiang25@huawei.com>, Coly Li <colyli@suse.de>,
+        linux-raid@vger.kernel.org, Bob Peterson <rpeterso@redhat.com>,
+        linux-bcache@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Dave Chinner <dchinner@redhat.com>,
+        David Sterba <dsterba@suse.com>, linux-block@vger.kernel.org,
+        Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [dm-devel] [PATCH V15 00/18] block: support multi-page bvec
+Message-ID: <20190218074907.GA806@ming.t460p>
+References: <20190215111324.30129-1-ming.lei@redhat.com>
+ <c52b6a8b-d1d4-67ff-f81c-371d09cc6d5b@kernel.dk>
+ <1550250855.31902.102.camel@acm.org>
+ <18c711a9-ca13-885d-43cd-4d48e683a6a2@kernel.dk>
+ <20190217131332.GC7296@ming.t460p>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <46540876-c222-0889-ddce-44815dcaad04@gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <20190217131332.GC7296@ming.t460p>
+User-Agent: Mutt/1.9.1 (2017-09-22)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.30]); Mon, 18 Feb 2019 07:49:40 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Sun, Feb 17, 2019 at 06:42:59PM -0500, Ric Wheeler wrote:
-> On 2/17/19 4:09 PM, Dave Chinner wrote:
-> >On Sun, Feb 17, 2019 at 03:36:10PM -0500, Ric Wheeler wrote:
-> >>One proposal for btrfs was that we should look at getting discard
-> >>out of the synchronous path in order to minimize the slowdown
-> >>associated with enabling discard at mount time. Seems like an
-> >>obvious win for "hint" like operations like discard.
-> >We already have support for that. blkdev_issue_discard() is
-> >synchornous, yes, but __blkdev_issue_discard() will only build the
-> >discard bio chain - it is up to the caller to submit and wait for it.
-> >
-> >Some callers (XFS, dm-thinp, nvmet, etc) use a bio completion to
-> >handle the discard IO completion, hence allowing async dispatch and
-> >processing of the discard chain without blocking the caller. Others
-> >(like ext4) simply call submit_bio_wait() to do wait synchronously
-> >on completion of the discard bio chain.
-> >
-> >>I do wonder where we stand now with the cost of the various discard
-> >>commands - how painful is it for modern SSD's?
-> >AIUI, it still depends on the SSD implementation, unfortunately.
+On Sun, Feb 17, 2019 at 09:13:32PM +0800, Ming Lei wrote:
+> On Fri, Feb 15, 2019 at 10:59:47AM -0700, Jens Axboe wrote:
+> > On 2/15/19 10:14 AM, Bart Van Assche wrote:
+> > > On Fri, 2019-02-15 at 08:49 -0700, Jens Axboe wrote:
+> > >> On 2/15/19 4:13 AM, Ming Lei wrote:
+> > >>> This patchset brings multi-page bvec into block layer:
+> > >>
+> > >> Applied, thanks Ming. Let's hope it sticks!
+> > > 
+> > > Hi Jens and Ming,
+> > > 
+> > > Test nvmeof-mp/002 fails with Jens' for-next branch from this morning.
+> > > I have not yet tried to figure out which patch introduced the failure.
+> > > Anyway, this is what I see in the kernel log for test nvmeof-mp/002:
+> > > 
+> > > [  475.611363] BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
+> > > [  475.621188] #PF error: [normal kernel read fault]
+> > > [  475.623148] PGD 0 P4D 0  
+> > > [  475.624737] Oops: 0000 [#1] PREEMPT SMP KASAN
+> > > [  475.626628] CPU: 1 PID: 277 Comm: kworker/1:1H Tainted: G    B             5.0.0-rc6-dbg+ #1
+> > > [  475.630232] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.10.2-1 04/01/2014
+> > > [  475.633855] Workqueue: kblockd blk_mq_requeue_work
+> > > [  475.635777] RIP: 0010:__blk_recalc_rq_segments+0xbe/0x590
+> > > [  475.670948] Call Trace:
+> > > [  475.693515]  blk_recalc_rq_segments+0x2f/0x50
+> > > [  475.695081]  blk_insert_cloned_request+0xbb/0x1c0
+> > > [  475.701142]  dm_mq_queue_rq+0x3d1/0x770
+> > > [  475.707225]  blk_mq_dispatch_rq_list+0x5fc/0xb10
+> > > [  475.717137]  blk_mq_sched_dispatch_requests+0x256/0x300
+> > > [  475.721767]  __blk_mq_run_hw_queue+0xd6/0x180
+> > > [  475.725920]  __blk_mq_delay_run_hw_queue+0x25c/0x290
+> > > [  475.727480]  blk_mq_run_hw_queue+0x119/0x1b0
+> > > [  475.732019]  blk_mq_run_hw_queues+0x7b/0xa0
+> > > [  475.733468]  blk_mq_requeue_work+0x2cb/0x300
+> > > [  475.736473]  process_one_work+0x4f1/0xa40
+> > > [  475.739424]  worker_thread+0x67/0x5b0
+> > > [  475.741751]  kthread+0x1cf/0x1f0
+> > > [  475.746034]  ret_from_fork+0x24/0x30
+> > > 
+> > > (gdb) list *(__blk_recalc_rq_segments+0xbe)
+> > > 0xffffffff816a152e is in __blk_recalc_rq_segments (block/blk-merge.c:366).
+> > > 361                                                  struct bio *bio)
+> > > 362     {
+> > > 363             struct bio_vec bv, bvprv = { NULL };
+> > > 364             int prev = 0;
+> > > 365             unsigned int seg_size, nr_phys_segs;
+> > > 366             unsigned front_seg_size = bio->bi_seg_front_size;
+> > > 367             struct bio *fbio, *bbio;
+> > > 368             struct bvec_iter iter;
+> > > 369
+> > > 370             if (!bio)
+> > 
+> > Just ran a few tests, and it also seems to cause about a 5% regression
+> > in per-core IOPS throughput. Prior to this work, I could get 1620K 4k
+> > rand read IOPS out of core, now I'm at ~1535K. The cycler stealer seems
+> > to be blk_queue_split() and blk_rq_map_sg().
 > 
-> I think the variability makes life really miserable for layers above it.
+> Could you share us your test setting?
+> 
+> I will run null_blk first and see if it can be reproduced.
 
-Yup, that it does.
+Looks this performance drop isn't reproduced on null_blk with the following
+setting by me:
 
-> Might be worth constructing some tooling that we can use to validate
-> or shame vendors over
+- modprobe null_blk nr_devices=4 submit_queues=48
+- test machine : dual socket, two NUMA nodes, 24cores/socket
+- fio script:
+fio --direct=1 --size=128G --bsrange=4k-4k --runtime=40 --numjobs=48 --ioengine=libaio --iodepth=64 --group_reporting=1 --filename=/dev/nullb0 --name=randread --rw=randread
 
-That doesn't seem to work.
+result: 10.7M IOPS(base kernel), 10.6M IOPS(patched kernel)
 
-> - testing things like a full device discard,
-> discard of fs block size and big chunks, discard against already
-> discarded, etc.
+And if 'bs' is increased to 256k, 512k, 1024k, IOPS improvement can be ~8%
+with multi-page bvec patches in above test.
 
-We did that many years ago because discard on SSDs sucked:
+BTW, there isn't cost added to bio_for_each_bvec(), so blk_queue_split() and
+blk_rq_map_sg() should be fine. However, bio_for_each_segment_all()
+may not be quick as before.
 
-https://people.redhat.com/lczerner/discard/test_discard.html
-https://sourceforge.net/projects/test-discard/files/
 
-And, really, that didn't changed a thing - discard still sucks...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Thanks,
+Ming
