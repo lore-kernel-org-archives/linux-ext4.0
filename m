@@ -2,176 +2,171 @@ Return-Path: <SRS0=geXL=QZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS autolearn=ham
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8E126C43381
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 10:18:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2027AC43381
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 14:16:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4E01521736
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 10:18:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EF51E2177E
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 14:16:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728939AbfBRKSm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Feb 2019 05:18:42 -0500
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:35786 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728586AbfBRKSm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 18 Feb 2019 05:18:42 -0500
-Received: from pps.filterd (m0098393.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x1IACIqI070014
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2019 05:18:41 -0500
-Received: from e06smtp04.uk.ibm.com (e06smtp04.uk.ibm.com [195.75.94.100])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2qqtn88h3g-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Mon, 18 Feb 2019 05:18:41 -0500
-Received: from localhost
-        by e06smtp04.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
-        Mon, 18 Feb 2019 10:18:39 -0000
-Received: from b06cxnps4076.portsmouth.uk.ibm.com (9.149.109.198)
-        by e06smtp04.uk.ibm.com (192.168.101.134) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
-        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Mon, 18 Feb 2019 10:18:35 -0000
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (b06wcsmtp001.portsmouth.uk.ibm.com [9.149.105.160])
-        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x1IAIYdr18743542
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 18 Feb 2019 10:18:34 GMT
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 89419A4054;
-        Mon, 18 Feb 2019 10:18:34 +0000 (GMT)
-Received: from b06wcsmtp001.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 41051A405F;
-        Mon, 18 Feb 2019 10:18:33 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.124.35.115])
-        by b06wcsmtp001.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Mon, 18 Feb 2019 10:18:33 +0000 (GMT)
-From:   Chandan Rajendra <chandan@linux.ibm.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
-        yuchao0@huawei.com
-Subject: Re: [RFC PATCH 00/10] Consolidate Post read processing code
-Date:   Mon, 18 Feb 2019 15:49:13 +0530
-Organization: IBM
-In-Reply-To: <20190218100433.20048-1-chandan@linux.ibm.com>
-References: <20190218100433.20048-1-chandan@linux.ibm.com>
+        id S2392014AbfBROQM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Feb 2019 09:16:12 -0500
+Received: from mx2.suse.de ([195.135.220.15]:53950 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S2391798AbfBROQH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 18 Feb 2019 09:16:07 -0500
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 36AADB024;
+        Mon, 18 Feb 2019 14:16:05 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id B7A431E088D; Mon, 18 Feb 2019 15:16:04 +0100 (CET)
+Date:   Mon, 18 Feb 2019 15:16:04 +0100
+From:   Jan Kara <jack@suse.cz>
+To:     yangerkun <yangerkun@huawei.com>
+Cc:     jack@suse.com, yi.zhang@huawei.com, houtao1@huawei.com,
+        miaoxie@huawei.com, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext2: support statx syscall
+Message-ID: <20190218141604.GD20919@quack2.suse.cz>
+References: <20190218010702.101058-1-yangerkun@huawei.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="us-ascii"
-X-TM-AS-GCONF: 00
-x-cbid: 19021810-0016-0000-0000-00000257B6DF
-X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19021810-0017-0000-0000-000032B1F4BB
-Message-Id: <2149979.e1aSEps7Pq@localhost.localdomain>
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-02-18_07:,,
- signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
- malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
- clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
- mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.0.1-1810050000 definitions=main-1902180078
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190218010702.101058-1-yangerkun@huawei.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Monday, February 18, 2019 3:34:23 PM IST Chandan Rajendra wrote:
-> This patchset moves the "post read processing" code into a file of its
-> own and gets the generic do_mpage_readpge() to make use of the
-> functionality provided. With these changes in place, the patchset
-> changes Ext4 to use mpage_readpage[s] instead of its own custom
-> ext4_readpages() function. This is done to reduce duplicity of code
-> across filesystems. Based on the reviews provided for this patchset, I
-> will change F2FS to use mpage_readpage[s] and post the next version of
-> this patchset to linux-fsdevel mailing list.
+On Mon 18-02-19 09:07:02, yangerkun wrote:
+> Since statx, every filesystem should fill the attributes/attributes_mask
+> in routine getattr. But the generic_fillattr has not fill that, so add
+> ext2_getattr to do this. This can fix generic/424 while testing ext2.
 > 
-> The patchset also includes patches from previous postings i.e.
-> patches to replace per-filesystem encryption config options with a
-> single config option that affects all filesystems making use of
-> fscrypt code.
+> Reviewed-by: zhangyi (F) <yi.zhang@huawei.com>
+> Signed-off-by: yangerkun <yangerkun@huawei.com>
 
-The patchset is based on fsverity_2019-01-30 branch of Eric's git tree. It can
-also be obtained from "https://github.com/chandanr/linux.git
-use-mpage-readpage-rfc".
+Thanks for the patch. I have added it to my tree.
 
-> 
-> Chandan Rajendra (10):
->   ext4: use IS_ENCRYPTED() to check encryption status
->   f2fs: use IS_ENCRYPTED() to check encryption status
->   fscrypt: remove filesystem specific build config option
->   Consolidate "post read processing" into a new file
->   fsverity: Add call back to decide if verity check has to be performed
->   Introduce REQ_POST_READ_PROC bio flag
->   fsverity: Add call back to determine readpage limit
->   fsverity: Add call back to verify file holes
->   fs/mpage.c: Integrate post read processing
->   ext4: Wire up ext4_readpage[s] to use mpage_readpage[s]
-> 
->  Documentation/filesystems/fscrypt.rst   |   4 +-
->  arch/mips/configs/generic_defconfig     |   2 +-
->  arch/nds32/configs/defconfig            |   2 +-
->  arch/s390/configs/debug_defconfig       |   2 +-
->  arch/s390/configs/performance_defconfig |   2 +-
->  fs/Makefile                             |   3 +-
->  fs/crypto/Kconfig                       |   5 +-
->  fs/crypto/bio.c                         |  21 +-
->  fs/crypto/crypto.c                      |   1 +
->  fs/crypto/fscrypt_private.h             |   4 +-
->  fs/ext4/Kconfig                         |  15 -
->  fs/ext4/Makefile                        |   2 +-
->  fs/ext4/dir.c                           |  10 +-
->  fs/ext4/ext4.h                          |  14 +-
->  fs/ext4/ext4_jbd2.h                     |   2 +-
->  fs/ext4/extents.c                       |   4 +-
->  fs/ext4/ialloc.c                        |   2 +-
->  fs/ext4/inode.c                         |  29 +-
->  fs/ext4/ioctl.c                         |   4 +-
->  fs/ext4/move_extent.c                   |   3 +-
->  fs/ext4/namei.c                         |  18 +-
->  fs/ext4/page-io.c                       |   9 +-
->  fs/ext4/readpage.c                      | 444 ------------------------
->  fs/ext4/super.c                         |  43 ++-
->  fs/ext4/sysfs.c                         |   4 +-
->  fs/f2fs/Kconfig                         |  12 +-
->  fs/f2fs/data.c                          |   4 +-
->  fs/f2fs/dir.c                           |  10 +-
->  fs/f2fs/f2fs.h                          |  14 +-
->  fs/f2fs/file.c                          |  10 +-
->  fs/f2fs/inode.c                         |   4 +-
->  fs/f2fs/namei.c                         |   6 +-
->  fs/f2fs/super.c                         |   8 +-
->  fs/f2fs/sysfs.c                         |   4 +-
->  fs/mpage.c                              |  77 +++-
->  fs/post_read_process.c                  | 128 +++++++
->  fs/ubifs/Kconfig                        |  12 +-
->  fs/ubifs/Makefile                       |   2 +-
->  fs/ubifs/ioctl.c                        |   4 +-
->  fs/ubifs/sb.c                           |   2 +-
->  fs/ubifs/super.c                        |   2 +-
->  fs/ubifs/ubifs.h                        |   5 +-
->  fs/verity/verify.c                      |  12 +
->  include/linux/blk_types.h               |   2 +
->  include/linux/fs.h                      |   4 +-
->  include/linux/fscrypt.h                 | 405 ++++++++++++++++++++-
->  include/linux/fscrypt_notsupp.h         | 231 ------------
->  include/linux/fscrypt_supp.h            | 204 -----------
->  include/linux/fsverity.h                |   3 +
->  include/linux/post_read_process.h       |  21 ++
->  50 files changed, 757 insertions(+), 1078 deletions(-)
->  delete mode 100644 fs/ext4/readpage.c
->  create mode 100644 fs/post_read_process.c
->  delete mode 100644 include/linux/fscrypt_notsupp.h
->  delete mode 100644 include/linux/fscrypt_supp.h
->  create mode 100644 include/linux/post_read_process.h
-> 
-> 
+								Honza
 
-
+> ---
+>  fs/ext2/ext2.h    |  1 +
+>  fs/ext2/file.c    |  1 +
+>  fs/ext2/inode.c   | 26 ++++++++++++++++++++++++++
+>  fs/ext2/namei.c   |  2 ++
+>  fs/ext2/symlink.c |  2 ++
+>  5 files changed, 32 insertions(+)
+> 
+> diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+> index e770cd1..ae0cd9e 100644
+> --- a/fs/ext2/ext2.h
+> +++ b/fs/ext2/ext2.h
+> @@ -774,6 +774,7 @@ extern int ext2_write_inode (struct inode *, struct writeback_control *);
+>  extern void ext2_evict_inode(struct inode *);
+>  extern int ext2_get_block(struct inode *, sector_t, struct buffer_head *, int);
+>  extern int ext2_setattr (struct dentry *, struct iattr *);
+> +extern int ext2_getattr (const struct path *, struct kstat *, u32, unsigned int);
+>  extern void ext2_set_inode_flags(struct inode *inode);
+>  extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+>  		       u64 start, u64 len);
+> diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+> index 28b2609..39c4772 100644
+> --- a/fs/ext2/file.c
+> +++ b/fs/ext2/file.c
+> @@ -199,6 +199,7 @@ const struct inode_operations ext2_file_inode_operations = {
+>  #ifdef CONFIG_EXT2_FS_XATTR
+>  	.listxattr	= ext2_listxattr,
+>  #endif
+> +	.getattr	= ext2_getattr,
+>  	.setattr	= ext2_setattr,
+>  	.get_acl	= ext2_get_acl,
+>  	.set_acl	= ext2_set_acl,
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index e4bb938..8e6f3ca 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -1635,6 +1635,32 @@ int ext2_write_inode(struct inode *inode, struct writeback_control *wbc)
+>  	return __ext2_write_inode(inode, wbc->sync_mode == WB_SYNC_ALL);
+>  }
+>  
+> +int ext2_getattr(const struct path *path, struct kstat *stat,
+> +		u32 request_mask, unsigned int query_falgs)
+> +{
+> +	struct inode *inode = d_inode(path->dentry);
+> +	struct ext2_inode_info *ei = EXT2_I(inode);
+> +	unsigned int flags;
+> +
+> +	flags = ei->i_flags & EXT2_FL_USER_VISIBLE;
+> +	if (flags & EXT2_APPEND_FL)
+> +		stat->attributes |= STATX_ATTR_APPEND;
+> +	if (flags & EXT2_COMPR_FL)
+> +		stat->attributes |= STATX_ATTR_COMPRESSED;
+> +	if (flags & EXT2_IMMUTABLE_FL)
+> +		stat->attributes |= STATX_ATTR_IMMUTABLE;
+> +	if (flags & EXT2_NODUMP_FL)
+> +		stat->attributes |= STATX_ATTR_NODUMP;
+> +	stat->attributes_mask |= (STATX_ATTR_APPEND |
+> +			STATX_ATTR_COMPRESSED |
+> +			STATX_ATTR_ENCRYPTED |
+> +			STATX_ATTR_IMMUTABLE |
+> +			STATX_ATTR_NODUMP);
+> +
+> +	generic_fillattr(inode, stat);
+> +	return 0;
+> +}
+> +
+>  int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
+>  {
+>  	struct inode *inode = d_inode(dentry);
+> diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+> index 0c26dcc..ccfbbf5 100644
+> --- a/fs/ext2/namei.c
+> +++ b/fs/ext2/namei.c
+> @@ -416,6 +416,7 @@ const struct inode_operations ext2_dir_inode_operations = {
+>  #ifdef CONFIG_EXT2_FS_XATTR
+>  	.listxattr	= ext2_listxattr,
+>  #endif
+> +	.getattr	= ext2_getattr,
+>  	.setattr	= ext2_setattr,
+>  	.get_acl	= ext2_get_acl,
+>  	.set_acl	= ext2_set_acl,
+> @@ -426,6 +427,7 @@ const struct inode_operations ext2_special_inode_operations = {
+>  #ifdef CONFIG_EXT2_FS_XATTR
+>  	.listxattr	= ext2_listxattr,
+>  #endif
+> +	.getattr	= ext2_getattr,
+>  	.setattr	= ext2_setattr,
+>  	.get_acl	= ext2_get_acl,
+>  	.set_acl	= ext2_set_acl,
+> diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
+> index d5589dd..00cdb86 100644
+> --- a/fs/ext2/symlink.c
+> +++ b/fs/ext2/symlink.c
+> @@ -23,6 +23,7 @@
+>  
+>  const struct inode_operations ext2_symlink_inode_operations = {
+>  	.get_link	= page_get_link,
+> +	.getattr	= ext2_getattr,
+>  	.setattr	= ext2_setattr,
+>  #ifdef CONFIG_EXT2_FS_XATTR
+>  	.listxattr	= ext2_listxattr,
+> @@ -31,6 +32,7 @@ const struct inode_operations ext2_symlink_inode_operations = {
+>   
+>  const struct inode_operations ext2_fast_symlink_inode_operations = {
+>  	.get_link	= simple_get_link,
+> +	.getattr	= ext2_getattr,
+>  	.setattr	= ext2_setattr,
+>  #ifdef CONFIG_EXT2_FS_XATTR
+>  	.listxattr	= ext2_listxattr,
+> -- 
+> 2.9.5
+> 
+> 
 -- 
-chandan
-
-
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
