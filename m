@@ -1,115 +1,161 @@
-Return-Path: <SRS0=V5lK=QY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=geXL=QZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 826FDC4151A
-	for <linux-ext4@archiver.kernel.org>; Sun, 17 Feb 2019 23:43:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 255DAC43381
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 01:02:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 524C1217D9
-	for <linux-ext4@archiver.kernel.org>; Sun, 17 Feb 2019 23:43:06 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="BEEpneuA"
+	by mail.kernel.org (Postfix) with ESMTP id E5A06218AD
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Feb 2019 01:02:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727591AbfBQXnE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 17 Feb 2019 18:43:04 -0500
-Received: from mail-qt1-f196.google.com ([209.85.160.196]:46000 "EHLO
-        mail-qt1-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727475AbfBQXnD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Feb 2019 18:43:03 -0500
-Received: by mail-qt1-f196.google.com with SMTP id d18so7305832qtg.12;
-        Sun, 17 Feb 2019 15:43:02 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=subject:to:cc:references:from:message-id:date:user-agent
-         :mime-version:in-reply-to:content-transfer-encoding:content-language;
-        bh=qsOKvt/Pmq5PIpTfxKjwbzK8GeiIgQ/5xK2omtv8d+I=;
-        b=BEEpneuAcqyyy4hChUjYmziADOnQ/sC1O2ZccQWouw7Gu+9rnNjh+gDLa5Qaz168d1
-         gPXOdDXck7IMWIec8RimmX6r1xoR28IdkW3XnMmfnX+nIG7X/HF3LsexUfSuVCQE4XSd
-         T157DSTVOLVeaMzcSc1SQmrPAXndxuvhOz4NwiMrFb9XWy1fpo7W8kzlkQjL/cVifhbM
-         91sg2F+4Qehsc2PEDMfisuH+A7FvyM610M4FNE+gVwHBDbO7DYNM9h2VmCjn1b9nrokA
-         OCoCLnv/ks+MefMIlXPXK8E+HlxRfs3yUp5G7gweyX2bcekp2RyjJR10bz8s8sNmUH92
-         u+FQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
-         :user-agent:mime-version:in-reply-to:content-transfer-encoding
-         :content-language;
-        bh=qsOKvt/Pmq5PIpTfxKjwbzK8GeiIgQ/5xK2omtv8d+I=;
-        b=HNq6yXEz0ZIsec55PnI+/RWKpdFluy4nnClNYftsS4UJih/ZqsU07pl0ofx/rxiZ8s
-         Hr5cFHUl9ogtfj1yggQGIf1m/koDHYQcx7/U4Ps5z/CcqweUphtFkGCuj5vh8Anhcy6V
-         KBtoHYfRtDOmWKgwoQ5hTVeHCbvTJloNq5sbv95a0gzk8rdOfBUaz/UZi18K9iehxELQ
-         gOSt5759oFc0yW5zi+LiMyxR5yRtsqw31e7V2hX+koYb2YmT4PczsnJe/eEMDDFbrZoK
-         QFxYcMf/zDMPvjzj6oJHZvov3pGwQAlcs7KZS0ySb2VaIs007FYTnDeOuE2w4phB5JSV
-         HdHQ==
-X-Gm-Message-State: AHQUAubXvAzkZ0MXkakmCV8tqH67hUEep/0oy8HwPPTgWtOVfkF0oe/u
-        3ki5Tlpm811EDOZh2NMK4d/DOH4sGyI=
-X-Google-Smtp-Source: AHgI3IZ+IL1g9tgvhWtr3WnHiEf6unpawASr/uNVdUj5ymR7QydNV3UD2Q1Ndf1OA2ttxRjVc/7zwg==
-X-Received: by 2002:ac8:30c5:: with SMTP id w5mr15845380qta.323.1550446981604;
-        Sun, 17 Feb 2019 15:43:01 -0800 (PST)
-Received: from [192.168.1.204] (pool-108-7-72-149.bstnma.fios.verizon.net. [108.7.72.149])
-        by smtp.gmail.com with ESMTPSA id t26sm7919040qkl.73.2019.02.17.15.42.59
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Sun, 17 Feb 2019 15:43:00 -0800 (PST)
-Subject: Re: [LSF/MM TOPIC] More async operations for file systems - async
- discard?
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     lsf-pc@lists.linux-foundation.org,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-block@vger.kernel.org
-References: <92ab41f7-35bc-0f56-056f-ed88526b8ea4@gmail.com>
- <20190217210948.GB14116@dastard>
-From:   Ric Wheeler <ricwheeler@gmail.com>
-Message-ID: <46540876-c222-0889-ddce-44815dcaad04@gmail.com>
-Date:   Sun, 17 Feb 2019 18:42:59 -0500
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
- Thunderbird/60.3.1
+        id S1727885AbfBRBCz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 17 Feb 2019 20:02:55 -0500
+Received: from szxga06-in.huawei.com ([45.249.212.32]:53588 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1727872AbfBRBCy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 17 Feb 2019 20:02:54 -0500
+Received: from DGGEMS403-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id CCB723DA13DF2EEF1459;
+        Mon, 18 Feb 2019 09:02:52 +0800 (CST)
+Received: from RH5885H-V3.huawei.com (10.90.53.225) by
+ DGGEMS403-HUB.china.huawei.com (10.3.19.203) with Microsoft SMTP Server id
+ 14.3.408.0; Mon, 18 Feb 2019 09:02:45 +0800
+From:   yangerkun <yangerkun@huawei.com>
+To:     <jack@suse.com>
+CC:     <yi.zhang@huawei.com>, <houtao1@huawei.com>, <miaoxie@huawei.com>,
+        <yangerkun@huawei.com>, <linux-ext4@vger.kernel.org>
+Subject: [PATCH] ext2: support statx syscall
+Date:   Mon, 18 Feb 2019 09:07:02 +0800
+Message-ID: <20190218010702.101058-1-yangerkun@huawei.com>
+X-Mailer: git-send-email 2.9.5
 MIME-Version: 1.0
-In-Reply-To: <20190217210948.GB14116@dastard>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Content-Language: en-US
+Content-Type: text/plain
+X-Originating-IP: [10.90.53.225]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 2/17/19 4:09 PM, Dave Chinner wrote:
-> On Sun, Feb 17, 2019 at 03:36:10PM -0500, Ric Wheeler wrote:
->> One proposal for btrfs was that we should look at getting discard
->> out of the synchronous path in order to minimize the slowdown
->> associated with enabling discard at mount time. Seems like an
->> obvious win for "hint" like operations like discard.
-> We already have support for that. blkdev_issue_discard() is
-> synchornous, yes, but __blkdev_issue_discard() will only build the
-> discard bio chain - it is up to the caller to submit and wait for it.
->
-> Some callers (XFS, dm-thinp, nvmet, etc) use a bio completion to
-> handle the discard IO completion, hence allowing async dispatch and
-> processing of the discard chain without blocking the caller. Others
-> (like ext4) simply call submit_bio_wait() to do wait synchronously
-> on completion of the discard bio chain.
->
->> I do wonder where we stand now with the cost of the various discard
->> commands - how painful is it for modern SSD's?
-> AIUI, it still depends on the SSD implementation, unfortunately.
+Since statx, every filesystem should fill the attributes/attributes_mask
+in routine getattr. But the generic_fillattr has not fill that, so add
+ext2_getattr to do this. This can fix generic/424 while testing ext2.
 
-I think the variability makes life really miserable for layers above it.
+Reviewed-by: zhangyi (F) <yi.zhang@huawei.com>
+Signed-off-by: yangerkun <yangerkun@huawei.com>
+---
+ fs/ext2/ext2.h    |  1 +
+ fs/ext2/file.c    |  1 +
+ fs/ext2/inode.c   | 26 ++++++++++++++++++++++++++
+ fs/ext2/namei.c   |  2 ++
+ fs/ext2/symlink.c |  2 ++
+ 5 files changed, 32 insertions(+)
 
-Might be worth constructing some tooling that we can use to validate or shame 
-vendors over - testing things like a full device discard, discard of fs block 
-size and big chunks, discard against already discarded, etc.
-
-Regards,
-
-Ric
-
-
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index e770cd1..ae0cd9e 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -774,6 +774,7 @@ extern int ext2_write_inode (struct inode *, struct writeback_control *);
+ extern void ext2_evict_inode(struct inode *);
+ extern int ext2_get_block(struct inode *, sector_t, struct buffer_head *, int);
+ extern int ext2_setattr (struct dentry *, struct iattr *);
++extern int ext2_getattr (const struct path *, struct kstat *, u32, unsigned int);
+ extern void ext2_set_inode_flags(struct inode *inode);
+ extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		       u64 start, u64 len);
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 28b2609..39c4772 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -199,6 +199,7 @@ const struct inode_operations ext2_file_inode_operations = {
+ #ifdef CONFIG_EXT2_FS_XATTR
+ 	.listxattr	= ext2_listxattr,
+ #endif
++	.getattr	= ext2_getattr,
+ 	.setattr	= ext2_setattr,
+ 	.get_acl	= ext2_get_acl,
+ 	.set_acl	= ext2_set_acl,
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index e4bb938..8e6f3ca 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -1635,6 +1635,32 @@ int ext2_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 	return __ext2_write_inode(inode, wbc->sync_mode == WB_SYNC_ALL);
+ }
+ 
++int ext2_getattr(const struct path *path, struct kstat *stat,
++		u32 request_mask, unsigned int query_falgs)
++{
++	struct inode *inode = d_inode(path->dentry);
++	struct ext2_inode_info *ei = EXT2_I(inode);
++	unsigned int flags;
++
++	flags = ei->i_flags & EXT2_FL_USER_VISIBLE;
++	if (flags & EXT2_APPEND_FL)
++		stat->attributes |= STATX_ATTR_APPEND;
++	if (flags & EXT2_COMPR_FL)
++		stat->attributes |= STATX_ATTR_COMPRESSED;
++	if (flags & EXT2_IMMUTABLE_FL)
++		stat->attributes |= STATX_ATTR_IMMUTABLE;
++	if (flags & EXT2_NODUMP_FL)
++		stat->attributes |= STATX_ATTR_NODUMP;
++	stat->attributes_mask |= (STATX_ATTR_APPEND |
++			STATX_ATTR_COMPRESSED |
++			STATX_ATTR_ENCRYPTED |
++			STATX_ATTR_IMMUTABLE |
++			STATX_ATTR_NODUMP);
++
++	generic_fillattr(inode, stat);
++	return 0;
++}
++
+ int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
+ {
+ 	struct inode *inode = d_inode(dentry);
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 0c26dcc..ccfbbf5 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -416,6 +416,7 @@ const struct inode_operations ext2_dir_inode_operations = {
+ #ifdef CONFIG_EXT2_FS_XATTR
+ 	.listxattr	= ext2_listxattr,
+ #endif
++	.getattr	= ext2_getattr,
+ 	.setattr	= ext2_setattr,
+ 	.get_acl	= ext2_get_acl,
+ 	.set_acl	= ext2_set_acl,
+@@ -426,6 +427,7 @@ const struct inode_operations ext2_special_inode_operations = {
+ #ifdef CONFIG_EXT2_FS_XATTR
+ 	.listxattr	= ext2_listxattr,
+ #endif
++	.getattr	= ext2_getattr,
+ 	.setattr	= ext2_setattr,
+ 	.get_acl	= ext2_get_acl,
+ 	.set_acl	= ext2_set_acl,
+diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
+index d5589dd..00cdb86 100644
+--- a/fs/ext2/symlink.c
++++ b/fs/ext2/symlink.c
+@@ -23,6 +23,7 @@
+ 
+ const struct inode_operations ext2_symlink_inode_operations = {
+ 	.get_link	= page_get_link,
++	.getattr	= ext2_getattr,
+ 	.setattr	= ext2_setattr,
+ #ifdef CONFIG_EXT2_FS_XATTR
+ 	.listxattr	= ext2_listxattr,
+@@ -31,6 +32,7 @@ const struct inode_operations ext2_symlink_inode_operations = {
+  
+ const struct inode_operations ext2_fast_symlink_inode_operations = {
+ 	.get_link	= simple_get_link,
++	.getattr	= ext2_getattr,
+ 	.setattr	= ext2_setattr,
+ #ifdef CONFIG_EXT2_FS_XATTR
+ 	.listxattr	= ext2_listxattr,
+-- 
+2.9.5
 
