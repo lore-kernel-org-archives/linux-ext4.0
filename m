@@ -2,98 +2,80 @@ Return-Path: <SRS0=xo2J=Q3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.7 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 119A8C10F01
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 07:54:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ADDBDC43381
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 07:57:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D48B921773
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 07:54:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1550649249;
-	bh=tLOAeQqo8uWF4VkUGKhfz71PVfoAaoBcFMjA2Hj/aW4=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=sC2Ok0Vd/SyZ2bHsaswOK1GOs+zCVNd/pm6RpO2ovSRhk7gaE7NECKm7qKSzGTUU6
-	 QUteIINJztXf+T8plbe+hwt81vQTyTMG/pK9HwDhvyE4uJZYLvwtkOUjkzCOLA8W7J
-	 gtt16wGs3ORLSeWEOguhzfd/N7ls5NdRLT9IrNYw=
+	by mail.kernel.org (Postfix) with ESMTP id 847CC2146E
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 07:57:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726167AbfBTHyI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Feb 2019 02:54:08 -0500
-Received: from mail.kernel.org ([198.145.29.99]:59448 "EHLO mail.kernel.org"
+        id S1725804AbfBTH5i (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Feb 2019 02:57:38 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:60642 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725832AbfBTHyI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 Feb 2019 02:54:08 -0500
-Received: from sol.localdomain (c-107-3-167-184.hsd1.ca.comcast.net [107.3.167.184])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        id S1725379AbfBTH5h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Feb 2019 02:57:37 -0500
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 440E12083B;
-        Wed, 20 Feb 2019 07:54:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1550649247;
-        bh=tLOAeQqo8uWF4VkUGKhfz71PVfoAaoBcFMjA2Hj/aW4=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=uKU7DBXp0Hq4FeA1WZfTzMFWadwa1LkoRF0dY1fWJnZzqaXsWKu0MxvnvLR4xhY/x
-         N4GzMOv6bJBGyoKjWblU/NQBBWCJVWZ3EjomIutqG/+Cp/IswqT1iNP09jb+GiEy1z
-         Px/6RiDKz01hM58Rv3p9YP2CEnzugDFeckUdhp8Q=
-Date:   Tue, 19 Feb 2019 23:54:05 -0800
-From:   Eric Biggers <ebiggers@kernel.org>
+        by mx1.redhat.com (Postfix) with ESMTPS id B3CFD80461;
+        Wed, 20 Feb 2019 07:57:37 +0000 (UTC)
+Received: from localhost (ovpn-117-203.ams2.redhat.com [10.36.117.203])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 592DA600C0;
+        Wed, 20 Feb 2019 07:57:37 +0000 (UTC)
+Date:   Wed, 20 Feb 2019 07:57:36 +0000
+From:   "Richard W.M. Jones" <rjones@redhat.com>
 To:     Andreas Dilger <adilger@dilger.ca>
-Cc:     linux-fscrypt@vger.kernel.org, Satya Tangirala <satyat@google.com>,
-        linux-api@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        keyrings@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-crypto@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Paul Crowley <paulcrowley@google.com>
-Subject: Re: [RFC PATCH v3 00/18] fscrypt: key management improvements
-Message-ID: <20190220075404.GA974@sol.localdomain>
-References: <20190220065249.32099-1-ebiggers@kernel.org>
- <1660609D-3525-4485-9652-57976DB020F4@dilger.ca>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: Create ext2 filesystem from a directory
+Message-ID: <20190220075736.GE12500@redhat.com>
+References: <20190219080333.GA2912@redhat.com>
+ <A7D7D6A2-E789-4175-9ABC-E35774D5DA2F@dilger.ca>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <1660609D-3525-4485-9652-57976DB020F4@dilger.ca>
-User-Agent: Mutt/1.11.3 (2019-02-01)
+In-Reply-To: <A7D7D6A2-E789-4175-9ABC-E35774D5DA2F@dilger.ca>
+User-Agent: Mutt/1.5.21 (2010-09-15)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.28]); Wed, 20 Feb 2019 07:57:37 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Feb 19, 2019 at 11:18:21PM -0800, Andreas Dilger wrote:
-> On Feb 19, 2019, at 10:52 PM, Eric Biggers <ebiggers@kernel.org> wrote:
+On Tue, Feb 19, 2019 at 10:31:24PM -0800, Andreas Dilger wrote:
+> On Feb 19, 2019, at 12:03 AM, Richard W.M. Jones <rjones@redhat.com> wrote:
 > > 
-> > Hello,
 > > 
-> > This patchset makes major improvements to how keys are added, removed,
-> > and derived in fscrypt, aka ext4/f2fs/ubifs encryption.  It does this by
-> > adding new ioctls that add and remove encryption keys directly to/from
-> > the filesystem, and by adding a new encryption policy version ("v2")
-> > where the user-provided keys are only used as input to HKDF-SHA512 and
-> > are identified by their cryptographic hash.
+> > This might interest/disgust/shock/scare(?!) people on this list:
+> > 
+> > $ time ./nbdkit --filter=partition -U - linuxdisk . partition=1 --run 'qemu-img convert $nbd /var/tmp/ext2fs.img'
+> > 
+> > real   0m1.314s
+> > user   0m0.424s
+> > sys    0m0.889s
+> > 
+> > $ ls -lh /var/tmp/ext2fs.img
+> > -rw-r--r--. 1 rjones rjones 351M Feb 19 07:44 /var/tmp/ext2fs.img
+> > 
+> > Code here:
+> > 
+> > https://github.com/rwmjones/nbdkit/commit/6e7908c828e60f082d84d866070fe8406e6f2b04
 > 
-> Just to confirm for the layman reader - the fact that the crypto keys
-> are registered with the filesystem and not with the user process doesn't
-> prevent user(s) from having different crypto keys for different subdirs
-> in a single filesystem?
+> How does this compare to "mke2fs -d <source_dir>"?
 
-Correct, that hasn't changed.  Different directories can use different keys.
+Wow, good question.  I was completely unaware of this option until
+now, but it'll make the implementation massively simpler.  (We still
+need the linuxdisk plugin.)
 
-> 
-> Secondly, does this progress fscrypt toward allowing multiple master keys
-> to decrypt a single per-file key?
-> 
+Rich.
 
-It's not a goal of this patchset as no one has really been asking for it yet.
-Per-file keys are still derived from the master key.
-
-Note that it's already possible to wrap the master keys in userspace.  Thus you
-can already have multiple passwords that unlock the same encrypted directory.
-You just can't do this with *individual files*.  Maybe that's good enough.
-
-However, this patchset does fix the denial of service vulnerabilities that
-currently exist when users share an encrypted directory.  Also, since it adds a
-real KDF, it makes it much easier to derive a wrapping key to wrap the per-file
-keys if that were to become a requirement.  (The master key could be used as the
-wrapping key directly, but that's inflexible and more error-prone.)
-
-- Eric
+-- 
+Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
+Read my programming and virtualization blog: http://rwmj.wordpress.com
+virt-df lists disk usage of guests without needing to install any
+software inside the virtual machine.  Supports Linux and Windows.
+http://people.redhat.com/~rjones/virt-df/
