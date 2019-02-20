@@ -2,95 +2,123 @@ Return-Path: <SRS0=xo2J=Q3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-4.0 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FSL_HELO_FAKE,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 65CB9C10F08
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 18:36:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EAE8EC4360F
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 23:20:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3349121841
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 18:36:25 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1550687785;
-	bh=yyDVto/5qGBteLMWT92Jqi7x2n0brJDILjRi/mEhxKU=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=MniIZUJcVGCq2a7zMf5jB3wLPi8sYtFZk8Hyk1AHHp/lfY2mmLYamRJAs9D1dNI9W
-	 Aht34yjBc8p1BBlDjsv3NsfmSdBMJGqavwFBUqnfOU955iBeAsbYZv4h/eHItWnDYY
-	 ZWFluLiyJmhUuN8Us5HzxlPBqnTr5E5kPs3mdyJ0=
+	by mail.kernel.org (Postfix) with ESMTP id B7DBA21841
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 23:20:15 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NfV443U0"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726213AbfBTSgX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Feb 2019 13:36:23 -0500
-Received: from mail.kernel.org ([198.145.29.99]:46672 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725834AbfBTSgX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 Feb 2019 13:36:23 -0500
-Received: from gmail.com (unknown [104.132.1.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 0BD5F2146E;
-        Wed, 20 Feb 2019 18:36:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1550687782;
-        bh=yyDVto/5qGBteLMWT92Jqi7x2n0brJDILjRi/mEhxKU=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=qYJU8vZf6BazayR2FnpgVdjIvZbnxDnnYgPiuCH+AQCJ+UYyHGeC81qpgcOegIACh
-         w3DRQBAGcB8AeqFtEbZBszvA4P3ddEU8wpLz0wHx6BrIIGSAWC5Yt1pbKMg1xZB3ho
-         yN5xqDY7gf0c7nVCUNxAK6QoxIw1D+X1UGfhEW1Q=
-Date:   Wed, 20 Feb 2019 10:36:20 -0800
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     David Howells <dhowells@redhat.com>
-Cc:     linux-fscrypt@vger.kernel.org, Satya Tangirala <satyat@google.com>,
-        linux-api@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        keyrings@vger.kernel.org, linux-mtd@lists.infradead.org,
-        linux-crypto@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, Paul Crowley <paulcrowley@google.com>
-Subject: Re: [RFC PATCH v3 00/18] fscrypt: key management improvements
-Message-ID: <20190220183619.GA177939@gmail.com>
-References: <20190220065249.32099-1-ebiggers@kernel.org>
- <14023.1550686042@warthog.procyon.org.uk>
+        id S1726358AbfBTXUK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Feb 2019 18:20:10 -0500
+Received: from mail-wm1-f66.google.com ([209.85.128.66]:35436 "EHLO
+        mail-wm1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725804AbfBTXUK (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Feb 2019 18:20:10 -0500
+Received: by mail-wm1-f66.google.com with SMTP id y15so8125227wma.0;
+        Wed, 20 Feb 2019 15:20:07 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=7Ins5SyXMErLIBGwpAEI4+DBCUKf26tDWyMTuCKUOUc=;
+        b=NfV443U0Jcnfy6bnrxZteDTcKePL/CRtH8s/kdhxdgg4urIsLioKO8RfpVs3buxjrL
+         uqRH/GhD+8rvjqkGiLC45VUpcJ3JJ3b6AHSEDYP/1T8hrp+HXNOiQu0s0kBL0jzEW44g
+         tfw+f9Zw/zXB0PgtqqAhkyf9Rmittt/Jf3oT7NS1ka/zCoc9ovcAYW5CduzuU1WEcgkM
+         FwMCP7+p517q6ImLXhUnSUcPjc8eIFv5x1NJ5NAGzPBCJmc98bRwkw0laUu5QE2I9dIH
+         puscTPDMWPZcgqfbsTrNf8G+Y7zU3ZrbZXPkCMcM0LJVJn3ijgd7A5UlQZYFKHWR9vG9
+         NtAA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=7Ins5SyXMErLIBGwpAEI4+DBCUKf26tDWyMTuCKUOUc=;
+        b=KuEtSwedK2aJI9L58ctcCw1Gqe9xun2eidfJIUgK+K7akX4Odp2HDy9RxZwtabxy0Q
+         PH4KO3ibmFYjP4/jm0oNAuz4IYLjTgr7S1e+wQIFoe7Kil3isYcSaTFhmxPXFYhKltIu
+         jn51X/UbusN5uSytSLlrqBck4RCJ8ZPGrrAs8UM6sLlBdqyDIqSnrXb7dpBWN8loqE/f
+         hcEPypnkX3aK0g9wMWiI4pteV7/q//kv6GdGYk7+sbCFigLX99R7PQ6sG27yKGAnPz3a
+         ieaeC/tsAsCZXDEB2ESGPSYagt1lBv/2f38LsJwru/bvMLvaCeNJm8GxTwTmBLGBE0kH
+         eUww==
+X-Gm-Message-State: AHQUAua70JCchPsw+YS45WOLpNbufh7Xd27cCCJWeYHW5A2bSBx4cGkS
+        7ydMs6THTBnZ9xk8xe+neLnm5S871jRCszYvREkp/g==
+X-Google-Smtp-Source: AHgI3Iam+0XE6fSvTXehqi+p9lvz9Zn5TXYAUy2xKlS2Wf6cWRWWndzfq69Q09+NpDaZfma0KI14mqqq8AZCbYgookg=
+X-Received: by 2002:a1c:1fc8:: with SMTP id f191mr3491639wmf.110.1550704806748;
+ Wed, 20 Feb 2019 15:20:06 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <14023.1550686042@warthog.procyon.org.uk>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+References: <20190220065249.32099-1-ebiggers@kernel.org> <20190220065249.32099-5-ebiggers@kernel.org>
+In-Reply-To: <20190220065249.32099-5-ebiggers@kernel.org>
+From:   Richard Weinberger <richard.weinberger@gmail.com>
+Date:   Thu, 21 Feb 2019 00:19:54 +0100
+Message-ID: <CAFLxGvxLYL1raaXZPyyMS7CUUak3L6GncZ_GKYz2SSsGHEHpnQ@mail.gmail.com>
+Subject: Re: [RFC PATCH v3 04/18] fs: add ->s_master_keys to struct super_block
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org, linux-ext4@vger.kernel.org,
+        "open list:ABI/API" <linux-api@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, keyrings@vger.kernel.org,
+        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Satya Tangirala <satyat@google.com>,
+        Paul Crowley <paulcrowley@google.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi David,
+On Wed, Feb 20, 2019 at 7:55 AM Eric Biggers <ebiggers@kernel.org> wrote:
+>
+> From: Eric Biggers <ebiggers@google.com>
+>
+> Add an ->s_master_keys keyring to 'struct super_block'.  New fscrypt
+> ioctls will allow adding and removing encryption keys from this keyring.
+> This will enable solving multiple interrelated problems with how fscrypt
+> keys are provided and managed currently, including:
+>
+> - Making the key status (which is currently per-process) match the
+>   filesystem-level status of which encrypted files are "unlocked".
+>
+> - Supporting a proper API to remove encryption keys, "locking" the
+>   corresponding encrypted files.
+>
+> - Caching an HMAC transform for each master key, allowing the use of
+>   HKDF while still retaining good performance.
+>
+> - Preventing denial of service via keyctl_invalidate().
+>
+> Similar to the existing ->s_cop, the keyring is added to the VFS-level
+> superblock struct rather than separately to the ext4, f2fs, and ubifs
+> superblock structs so that it can be used by the shared code in
+> fs/crypto/.  To minimize overhead, the keyring will only be allocated if
+> userspace actually adds a key; otherwise will stay NULL.
+>
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
+> ---
+>  fs/super.c         | 3 +++
+>  include/linux/fs.h | 1 +
+>  2 files changed, 4 insertions(+)
+>
+> diff --git a/fs/super.c b/fs/super.c
+> index 48e25eba8465..7ca05dda905c 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -291,6 +291,9 @@ static void __put_super(struct super_block *s)
+>                 security_sb_free(s);
+>                 put_user_ns(s->s_user_ns);
+>                 kfree(s->s_subtype);
+> +#ifdef CONFIG_FS_ENCRYPTION
+> +               key_put(s->s_master_keys);
+> +#endif
 
-On Wed, Feb 20, 2019 at 06:07:22PM +0000, David Howells wrote:
-> I have a couple of patches that add ACLs to keyrings, that you can find at the
-> top of the branch here:
-> 
-> 	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=keys-acl
-> 
-> I have other patches that allow tags to be used as subjects in the ACL, with a
-> container supplying a tag, e.g.:
-> 
-> 	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/commit/?h=container&id=e0fdc5613a32b9475b025f58e7a2267329b3f3a4
-> 
-> Might something similar be of use to you here, perhaps specifying a tag
-> referring to the blockdev of interest rather than the container?
-> 
-> David
+Please wrap this in a static inline function such that you can get rid
+of the ifdef here.
+Just like put_user_ns() does.
 
-I don't think so.  The main point of adding keys directly to the filesystem is
-that it's generally inappropriate to apply OS-level access control or
-process-based visibility restrictions to fscrypt keys given that:
-
-- The unlocked/locked status of files is already filesystem-level.
-- The purpose of encryption is orthogonal to OS-level access control.
-
-The ioctl based interface also makes it *much* easier to implement all the
-semantics needed for removing fscrypt keys.
-
-I don't see how key ACLs would be appropriate here, except that key ACLs would
-allow userspace to opt-in to fixing the denial of service vulnerability where
-keyctl_invalidate() only requires Search permission.  But for fscrypt that's
-addressed by my proposal too, and is just one of many problems it addresses.
-
-- Eric
+-- 
+Thanks,
+//richard
