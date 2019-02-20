@@ -2,193 +2,98 @@ Return-Path: <SRS0=xo2J=Q3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+X-Spam-Status: No, score=-2.7 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96C65C10F01
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 07:47:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 119A8C10F01
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 07:54:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 56DB820818
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 07:47:45 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="zBpVLXxt"
+	by mail.kernel.org (Postfix) with ESMTP id D48B921773
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 07:54:09 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1550649249;
+	bh=tLOAeQqo8uWF4VkUGKhfz71PVfoAaoBcFMjA2Hj/aW4=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=sC2Ok0Vd/SyZ2bHsaswOK1GOs+zCVNd/pm6RpO2ovSRhk7gaE7NECKm7qKSzGTUU6
+	 QUteIINJztXf+T8plbe+hwt81vQTyTMG/pK9HwDhvyE4uJZYLvwtkOUjkzCOLA8W7J
+	 gtt16wGs3ORLSeWEOguhzfd/N7ls5NdRLT9IrNYw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725863AbfBTHrm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Feb 2019 02:47:42 -0500
-Received: from mail-pg1-f195.google.com ([209.85.215.195]:36168 "EHLO
-        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725779AbfBTHrm (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Feb 2019 02:47:42 -0500
-Received: by mail-pg1-f195.google.com with SMTP id r124so11454640pgr.3
-        for <linux-ext4@vger.kernel.org>; Tue, 19 Feb 2019 23:47:41 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=lnoGqHwn7MDEoxyiISiEua4zUkWGNhEEXEzgpolNYAQ=;
-        b=zBpVLXxt+y7GYoNI1bijNKk4FS6pna4U40R2VcXDj4563qKKQaN/DL4EqiQhB9R4fg
-         697anGYbzVxt3BEyRRTog1mEK3OIg+TaxhB1njyRzMrb0a3w304sP2OwS+3z2uGzCOc6
-         0SGeLhdW8Datiiw7TTf0zJlMPcig7Z6p4F6MBWNowX8/W592PwPcJpT+gTU2Rnb9lelw
-         +KQBoEc+uCmjPZraw9jG+R0g9B4cnEka0gkaEjEukW4489VH8qY0JnorcmGrokVl79Jp
-         MEKfo27uRMMXvUV6iZl8XSSqaOXJkDVQF6sdMTnwthY+vclYWoamL1cbeaogdv+n13zY
-         Kbng==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=lnoGqHwn7MDEoxyiISiEua4zUkWGNhEEXEzgpolNYAQ=;
-        b=p0tUGZ9SU/jUQ3mJV5Bw472QQuUgoQZajNFhGLOjCuHTeTd2oseuwWpsf0rj5cyp6l
-         wk4ww6rMnOp+CNILHMk4wEC3/ErtDmFU7w1FCRMcS9mFi2AlWzC5fALpqX0mJQO4Tc4D
-         FOSu45YUTcyMVReBz57PgqjA7Nr8N0NcVxY6RrHW3MEhobDGQc4zryX9EZtB0nmBGH6i
-         rTBFBwMsbXVVl4phX4IlcniGgcsRpdHCf8hDPoDeJz1mjulKEaklJvOhRHg7COVE2xj4
-         tT6Iypy4Iyn1psDQa9+pYNcoD4PuwXgfZj89gG2TkDUHYcrONO3lDtcLvk8+tUl5oO9k
-         TVCQ==
-X-Gm-Message-State: AHQUAuaa3/b4MRIXd0zMuvMep/oQbQn0yuA+aZu57jkc4/V4gRboj9D+
-        v+Eauhx4tdDjx/igWYZHb/84Aw==
-X-Google-Smtp-Source: AHgI3IYcnlKQbcCoOw2PAgihV4PZx8/WUOf+NrsDLS69rsCYbaiXVDjnDw3xCorSwoVjxLEWZ8or5Q==
-X-Received: by 2002:a63:d709:: with SMTP id d9mr27509541pgg.157.1550648861370;
-        Tue, 19 Feb 2019 23:47:41 -0800 (PST)
-Received: from cabot.frontierlocal.net ([47.158.158.91])
-        by smtp.gmail.com with ESMTPSA id k66sm37513812pgc.24.2019.02.19.23.47.39
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 19 Feb 2019 23:47:40 -0800 (PST)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <8778DF81-C710-473B-9817-574DE9D7DE9B@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_10F92983-9723-4CD5-9FC3-52159FA26C5F";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [RFC PATCH 0/6] Allow setting file birth time with utimensat()
-Date:   Tue, 19 Feb 2019 23:47:57 -0800
-In-Reply-To: <6a9dc05a-0445-d0ab-0140-1de4fee7ba9b@gmail.com>
-Cc:     Dave Chinner <david@fromorbit.com>,
-        Omar Sandoval <osandov@osandov.com>,
-        linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        kernel-team@fb.com, linux-api@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-xfs@vger.kernel.org
-To:     Boaz Harrosh <openosd@gmail.com>
-References: <cover.1550136164.git.osandov@fb.com>
- <20190214220626.GV14116@dastard>
- <6a9dc05a-0445-d0ab-0140-1de4fee7ba9b@gmail.com>
-X-Mailer: Apple Mail (2.3273)
+        id S1726167AbfBTHyI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Feb 2019 02:54:08 -0500
+Received: from mail.kernel.org ([198.145.29.99]:59448 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1725832AbfBTHyI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Feb 2019 02:54:08 -0500
+Received: from sol.localdomain (c-107-3-167-184.hsd1.ca.comcast.net [107.3.167.184])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id 440E12083B;
+        Wed, 20 Feb 2019 07:54:07 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1550649247;
+        bh=tLOAeQqo8uWF4VkUGKhfz71PVfoAaoBcFMjA2Hj/aW4=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=uKU7DBXp0Hq4FeA1WZfTzMFWadwa1LkoRF0dY1fWJnZzqaXsWKu0MxvnvLR4xhY/x
+         N4GzMOv6bJBGyoKjWblU/NQBBWCJVWZ3EjomIutqG/+Cp/IswqT1iNP09jb+GiEy1z
+         Px/6RiDKz01hM58Rv3p9YP2CEnzugDFeckUdhp8Q=
+Date:   Tue, 19 Feb 2019 23:54:05 -0800
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Andreas Dilger <adilger@dilger.ca>
+Cc:     linux-fscrypt@vger.kernel.org, Satya Tangirala <satyat@google.com>,
+        linux-api@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        keyrings@vger.kernel.org, linux-mtd@lists.infradead.org,
+        linux-crypto@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, Paul Crowley <paulcrowley@google.com>
+Subject: Re: [RFC PATCH v3 00/18] fscrypt: key management improvements
+Message-ID: <20190220075404.GA974@sol.localdomain>
+References: <20190220065249.32099-1-ebiggers@kernel.org>
+ <1660609D-3525-4485-9652-57976DB020F4@dilger.ca>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1660609D-3525-4485-9652-57976DB020F4@dilger.ca>
+User-Agent: Mutt/1.11.3 (2019-02-01)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+On Tue, Feb 19, 2019 at 11:18:21PM -0800, Andreas Dilger wrote:
+> On Feb 19, 2019, at 10:52 PM, Eric Biggers <ebiggers@kernel.org> wrote:
+> > 
+> > Hello,
+> > 
+> > This patchset makes major improvements to how keys are added, removed,
+> > and derived in fscrypt, aka ext4/f2fs/ubifs encryption.  It does this by
+> > adding new ioctls that add and remove encryption keys directly to/from
+> > the filesystem, and by adding a new encryption policy version ("v2")
+> > where the user-provided keys are only used as input to HKDF-SHA512 and
+> > are identified by their cryptographic hash.
+> 
+> Just to confirm for the layman reader - the fact that the crypto keys
+> are registered with the filesystem and not with the user process doesn't
+> prevent user(s) from having different crypto keys for different subdirs
+> in a single filesystem?
 
---Apple-Mail=_10F92983-9723-4CD5-9FC3-52159FA26C5F
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Correct, that hasn't changed.  Different directories can use different keys.
 
-On Feb 17, 2019, at 8:35 AM, Boaz Harrosh <openosd@gmail.com> wrote:
->=20
-> On 15/02/19 00:06, Dave Chinner wrote:
->> On Thu, Feb 14, 2019 at 02:00:07AM -0800, Omar Sandoval wrote:
->>> From: Omar Sandoval <osandov@fb.com>
->>>=20
->>> Hi,
->>>=20
->>> Since statx was added in 4.11, userspace has had an interface for
->>> reading btime (file creation time), but no way to set it. This RFC =
-patch
->>> series adds support for changing btime with utimensat(). Patch 1 =
-adds
->>> the VFS infrastructure, patch 2 adds the support to utimensat() with =
-a
->>> new flag, and the rest of the patches add filesystem support; I =
-excluded
->>> CIFS for now because I don't have a CIFS setup to test it on.
->>>=20
->>> Updating btime is useful for at least a couple of use cases:
->>>=20
-> [1]
->>> - Backup/restore programs (my motivation for this feature is btrfs =
-send)
->>> - File servers which interoperate with operating systems that allow
->>>  updating file creation time, including Mac OS [1] and Windows [2]
->>=20
->> So you're adding an interface that allows users to change the create
->> time of files without needing any privileges?
->>=20
-> [2]
->> Inode create time is forensic metadata in XFS  - information we use
->> for sequence of event and inode lifetime analysis during examination
->> of broken filesystem images and systems that have been broken into.
->> Just because it's exposed to userspace via statx(), it doesn't mean
->> that it is information that users should be allowed to change. i.e.
->> allowing users to be able to change the create time on files makes
->> it completely useless for the purpose it was added to XFS for...
->>=20
-> <snap>
->=20
-> I think the difference in opinion here is that there are two totally
-> different BTIme out in the world. For two somewhat opposite =
-motivations
-> and it seems they both try to be crammed into the same on disk space.
->=20
-> One - Author creation time
->  This is a Windows originated creature and later MAC (and all vendors =
-who
->  make a living by serving cifs (hint see my email address))
->=20
->  This is a tag carried globally on the globe denoting the time of the
->  original creator of the file. copy, download, backup-restore and so
->  on preserve it from the very first original creation.
->  This creature is a user oriented information. That needs to be =
-carefully
->  orchestrated by all parties.
+> 
+> Secondly, does this progress fscrypt toward allowing multiple master keys
+> to decrypt a single per-file key?
+> 
 
-One of the issues with user-supplied "creation time" is that it is =
-vague.
-If Vim (or many other programs) is writing out an existing file, it
-will actually create a new file and rename it over the old file, so even
-though the newly-written file is "created" at write time, the content is
-older.  Unless the creation time is actually stored internal to the file
-itself, rather than as filesystem metadata, it is unlikely to be kept
-across filesystems, between systems, etc.
+It's not a goal of this patchset as no one has really been asking for it yet.
+Per-file keys are still derived from the master key.
 
-Conversely, there is already such metadata in existing file formats, =
-e.g.
-.jpg (Exif.Image.DateTime), .png (tEXt Creation Time), .docx (Date =
-Completed),
-etc. that sticks with the file regardless of the underlying storage =
-medium.
+Note that it's already possible to wrap the master keys in userspace.  Thus you
+can already have multiple passwords that unlock the same encrypted directory.
+You just can't do this with *individual files*.  Maybe that's good enough.
 
-Cheers, Andreas
+However, this patchset does fix the denial of service vulnerabilities that
+currently exist when users share an encrypted directory.  Also, since it adds a
+real KDF, it makes it much easier to derive a wrapping key to wrap the per-file
+keys if that were to become a requirement.  (The master key could be used as the
+wrapping key directly, but that's inflexible and more error-prone.)
 
-
-
-
-
-
---Apple-Mail=_10F92983-9723-4CD5-9FC3-52159FA26C5F
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlxtBi0ACgkQcqXauRfM
-H+CEjxAAhbR5dOgpALSr9iorpUu/bTTAIVrYRKPTa05jj9GfzyUyV7lb1dkXbOc9
-8tpQ9+Ib2P/Xe1kDMXO76mmJbEGuzmegxOhLChr4LfweVTGxSjn4ak3MKQhNTaO5
-AyRLMu1alKmkm7DLODd7DV6PidGo2YPVf4bUkyJX03AaaIbfZBVs98i7HdY5e15Z
-4NxUkoyKCyo6G3ac+wTe+IT52ZPnrCXysbhTksGEs+7jLOuIXuOC+x4sMA/T20iZ
-MChP/g1r54yYAqSqC5+uSU/e1t/AkGAkt9alueGuA+h4UmR/mRpmxuBgvi41sV1+
-FT+CdpTiZoTkBOxbgYqYDM+26MOLgZ+lQI5q1+gV/f+4iiB4Lf7ohZ5MhXDzMZ3G
-6NfHDgxlknWklcoQ0iaHBLgFzkXK8VLCoU36HqKjKYlfAr5N3rZsRw9sDTInyhFp
-eGep9enMgdatdStIurbwoLzJXcwox9cRtD4T0Dow20Pkjm3nUp3JOGIadUYbvtJI
-vIwRfHyarTXkrZaRWA3yhaC+5mK2+cXrqGwoeGTFxeQuIoKEjxz7HInRZYmjoGpZ
-KVtl9KSwzV/8x23o46A8/pXxlBzN4NJcjT18I52cbBjprNF5CxhfbbaVJ5omaeOs
-EmC+xbyZbB3Izf1VjsqnwUj2SPcZyTpILgvI5BPKe2O8vA2Q5Hc=
-=P9aX
------END PGP SIGNATURE-----
-
---Apple-Mail=_10F92983-9723-4CD5-9FC3-52159FA26C5F--
+- Eric
