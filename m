@@ -7,147 +7,96 @@ X-Spam-Status: No, score=-5.0 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56A55C43381
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 00:21:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 122F6C43381
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 00:35:11 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 23C432147A
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 00:21:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C9D3E21773
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 00:35:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1550622064;
-	bh=8jAL+i/Xw4E/DoMBjFlCXfus2xR1vOVXl7Qqb5+987s=;
+	s=default; t=1550622910;
+	bh=DoDSSXimdGnYd1I3HUBRoWytUw/pdr0NyGTPDovoQFg=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=SYxLxY7qafHonKux+jCkhgbc5OBLFGGfkIOE+vUWE909QZ5bcQ1jyX+IcLuZiUCZJ
-	 zYai+uv06rsavSp3yDlsrXuUNVnB6Qls9rKDSOEJ2MhStdkSmlYqV7QFu+9r1F6VyA
-	 MIKbfGz7B4jcsr3AwVHGQNlqsi1lXHhzSKRnBtiI=
+	b=LJ5mQbGnwQgKaNSHCFFcc11sAV4mMPbXz5FTsbmWwIfnSvrCTtenMiIbFn4ZtRlGx
+	 iXs7HNpNfLbR2oMU/KmIkxt9WikHbr/PRpIY/QeF7TiqPGeBu71+nZ1F7TEkGw37rW
+	 UTW6tulw6ZYs+NwtNtNfjS49o/nbMwtC1GzLKaWg=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729092AbfBTAVD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Feb 2019 19:21:03 -0500
-Received: from mail.kernel.org ([198.145.29.99]:54110 "EHLO mail.kernel.org"
+        id S1730019AbfBTAfK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Feb 2019 19:35:10 -0500
+Received: from mail.kernel.org ([198.145.29.99]:59990 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727476AbfBTAVD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 19 Feb 2019 19:21:03 -0500
+        id S1728290AbfBTAfK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 19 Feb 2019 19:35:10 -0500
 Received: from gmail.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id B5EEF20855;
-        Wed, 20 Feb 2019 00:21:01 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 606A821738;
+        Wed, 20 Feb 2019 00:35:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1550622061;
-        bh=8jAL+i/Xw4E/DoMBjFlCXfus2xR1vOVXl7Qqb5+987s=;
+        s=default; t=1550622909;
+        bh=DoDSSXimdGnYd1I3HUBRoWytUw/pdr0NyGTPDovoQFg=;
         h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=s7xt0CyWARUJ7rEDvfMwZpDqgu0h8U6ZeqW+r5dJG1ap2yN/qSdDLAOX81ZfGkw9P
-         WuPHuQW+HpLkmn+lUCSEufyvs8XmQmiH/X3egeZs4kaK053E0HbpHxqcM3GU7K6Ht4
-         Oemxhh+q2u+QeU9PJEz8HSqpguhNXsogUJhXqcFA=
-Date:   Tue, 19 Feb 2019 16:21:00 -0800
+        b=RmusjfPGMSCZOQNUdu2DYiW4mYjPGZPDh79GB+GkJNEmb+sgbebjztvjslfLeiyYe
+         moyOlheSHPkJyLly+dbp1VtVMKPrSWsY8WEPFCkld7tL92VQE0HLaJUy3NayL6rIL4
+         aXoRnA795dRniNeQEiNRESqV38PWiIXimv/CHEt4=
+Date:   Tue, 19 Feb 2019 16:35:07 -0800
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     Chandan Rajendra <chandan@linux.ibm.com>
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-fscrypt@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, jaegeuk@kernel.org
-Subject: Re: [f2fs-dev] [RFC PATCH 06/10] Introduce REQ_POST_READ_PROC bio
- flag
-Message-ID: <20190220002059.GG12177@gmail.com>
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com
+Subject: Re: [RFC PATCH 08/10] fsverity: Add call back to verify file holes
+Message-ID: <20190220003507.GH12177@gmail.com>
 References: <20190218100433.20048-1-chandan@linux.ibm.com>
- <20190218100433.20048-7-chandan@linux.ibm.com>
+ <20190218100433.20048-9-chandan@linux.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190218100433.20048-7-chandan@linux.ibm.com>
+In-Reply-To: <20190218100433.20048-9-chandan@linux.ibm.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Chandan,
+On Mon, Feb 18, 2019 at 03:34:31PM +0530, Chandan Rajendra wrote:
+> readpage() implmentations zero out part of the page-cache page mapping a
+> file hole. This commit adds a call back to "struct fsverity_operations"
+> which readpage() can invoke to verify the file hole.
 
-On Mon, Feb 18, 2019 at 03:34:29PM +0530, Chandan Rajendra wrote:
-> Ext4 and F2FS currently use a non-NULL value stored at bio->bi_private
-> to determine if the contents of the bio need to be "post processed"
-> i.e. whether its contents need to be decrypted and/or verified. For
-> block size < page size scenario, bio->bi_private would hold a pointer to
-> buffer_head. Hence, this commit adds the new flag REQ_POST_READ_PROC to
-> be able to decisively check for post process requirement for a bio.
+I don't see why this is needed.  Since now CONFIG_FS_VERITY will be a bool,
+can't you just call fsverity_verify_hole() directly?
+
 > 
 > Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
 > ---
->  fs/ext4/readpage.c        | 11 +++++++++--
->  fs/post_read_process.c    |  2 +-
->  include/linux/blk_types.h |  2 ++
->  3 files changed, 12 insertions(+), 3 deletions(-)
+>  fs/ext4/super.c          | 1 +
+>  include/linux/fsverity.h | 1 +
+>  2 files changed, 2 insertions(+)
 > 
-> diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-> index 8943fc41fd33..c7dbab35deaa 100644
-> --- a/fs/ext4/readpage.c
-> +++ b/fs/ext4/readpage.c
-> @@ -245,6 +245,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
->  		}
->  		if (bio == NULL) {
->  			struct bio_post_read_ctx *ctx;
-> +			unsigned int op_flags = 0;
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 4493ddc357c6..94e0d4b56653 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1459,6 +1459,7 @@ static const struct fsverity_operations ext4_verityops = {
+>  	.read_metadata_page	= ext4_read_verity_metadata_page,
+>  	.verity_required	= ext4_verity_required,
+>  	.readpage_limit		= ext4_readpage_limit,
+> +	.check_hole		= fsverity_check_hole,
+>  };
+>  #endif /* CONFIG_FS_VERITY */
 >  
->  			bio = bio_alloc(GFP_KERNEL,
->  				min_t(int, nr_pages, BIO_MAX_PAGES));
-> @@ -259,8 +260,14 @@ int ext4_mpage_readpages(struct address_space *mapping,
->  			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
->  			bio->bi_end_io = mpage_end_io;
->  			bio->bi_private = ctx;
-> -			bio_set_op_attrs(bio, REQ_OP_READ,
-> -						is_readahead ? REQ_RAHEAD : 0);
-> +
-> +			if (is_readahead)
-> +				op_flags |= REQ_RAHEAD;
-> +
-> +			if (ctx)
-> +				op_flags |= REQ_POST_READ_PROC;
-> +
-> +			bio_set_op_attrs(bio, REQ_OP_READ, op_flags);
->  		}
+> diff --git a/include/linux/fsverity.h b/include/linux/fsverity.h
+> index fc8113acbbfe..8bc28b07d550 100644
+> --- a/include/linux/fsverity.h
+> +++ b/include/linux/fsverity.h
+> @@ -20,6 +20,7 @@ struct fsverity_operations {
+>  	struct page *(*read_metadata_page)(struct inode *inode, pgoff_t index);
+>  	bool (*verity_required)(struct inode *inode, pgoff_t index);
+>  	loff_t (*readpage_limit)(struct inode *inode);
+> +	bool (*check_hole)(struct inode *inode, struct page *page);
+>  };
 >  
->  		length = first_hole << blkbits;
-> diff --git a/fs/post_read_process.c b/fs/post_read_process.c
-> index 1f8663d70247..66c1c6e57e70 100644
-> --- a/fs/post_read_process.c
-> +++ b/fs/post_read_process.c
-> @@ -104,7 +104,7 @@ void put_bio_post_read_ctx(struct bio_post_read_ctx *ctx)
->  
->  bool bio_post_read_required(struct bio *bio)
->  {
-> -	return bio->bi_private && !bio->bi_status;
-> +	return bio->bi_opf & REQ_POST_READ_PROC;
->  }
->  
->  static int __init bio_init_post_read_processing(void)
-> diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
-> index 5c7e7f859a24..6904945c8c40 100644
-> --- a/include/linux/blk_types.h
-> +++ b/include/linux/blk_types.h
-> @@ -320,6 +320,7 @@ enum req_flag_bits {
->  	__REQ_RAHEAD,		/* read ahead, can fail anytime */
->  	__REQ_BACKGROUND,	/* background IO */
->  	__REQ_NOWAIT,           /* Don't wait if request will block */
-> +	__REQ_POST_READ_PROC,
->  
->  	/* command specific flags for REQ_OP_WRITE_ZEROES: */
->  	__REQ_NOUNMAP,		/* do not free blocks when zeroing */
-> @@ -346,6 +347,7 @@ enum req_flag_bits {
->  #define REQ_RAHEAD		(1ULL << __REQ_RAHEAD)
->  #define REQ_BACKGROUND		(1ULL << __REQ_BACKGROUND)
->  #define REQ_NOWAIT		(1ULL << __REQ_NOWAIT)
-> +#define REQ_POST_READ_PROC	(1ULL << __REQ_POST_READ_PROC)
->  #define REQ_NOUNMAP		(1ULL << __REQ_NOUNMAP)
->  #define REQ_HIPRI		(1ULL << __REQ_HIPRI)
->  
+>  #ifdef CONFIG_FS_VERITY
 > -- 
 > 2.19.1
 > 
-> 
-> 
-
-I don't think this is an appropriate use of a request flag, as request flags are
-meant for the block layer.
-
-Also doesn't the bio still need a pointer to the bio_post_read_ctx anyway?  So I
-don't see how this would solve the problem, if ->bi_private is already used.
-
-- Eric
