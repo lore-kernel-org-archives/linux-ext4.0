@@ -2,99 +2,135 @@ Return-Path: <SRS0=xo2J=Q3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C4432C43381
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 00:55:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9A0E0C43381
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 01:17:55 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9A3402147A
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 00:55:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 72EB021738
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Feb 2019 01:17:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729671AbfBTAzR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 19 Feb 2019 19:55:17 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:57740 "EHLO mx1.redhat.com"
+        id S1730136AbfBTBRu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 19 Feb 2019 20:17:50 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:36102 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727035AbfBTAzQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 19 Feb 2019 19:55:16 -0500
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        id S1725616AbfBTBRt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 19 Feb 2019 20:17:49 -0500
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 8994CC059B8C;
-        Wed, 20 Feb 2019 00:55:16 +0000 (UTC)
-Received: from localhost (ovpn-117-203.ams2.redhat.com [10.36.117.203])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 2D17B66084;
-        Wed, 20 Feb 2019 00:55:15 +0000 (UTC)
-Date:   Wed, 20 Feb 2019 00:55:15 +0000
-From:   "Richard W.M. Jones" <rjones@redhat.com>
-To:     "Theodore Y. Ts'o" <tytso@mit.edu>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: Create ext2 filesystem from a directory
-Message-ID: <20190220005515.GD12500@redhat.com>
-References: <20190219080333.GA2912@redhat.com>
- <20190220004416.GA31238@mit.edu>
+        by mx1.redhat.com (Postfix) with ESMTPS id 14EB83D978;
+        Wed, 20 Feb 2019 01:17:48 +0000 (UTC)
+Received: from ming.t460p (ovpn-8-26.pek2.redhat.com [10.72.8.26])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 86BC461B93;
+        Wed, 20 Feb 2019 01:17:25 +0000 (UTC)
+Date:   Wed, 20 Feb 2019 09:17:20 +0800
+From:   Ming Lei <ming.lei@redhat.com>
+To:     Bart Van Assche <bvanassche@acm.org>
+Cc:     Jens Axboe <axboe@kernel.dk>, Mike Snitzer <snitzer@redhat.com>,
+        linux-mm@kvack.org, dm-devel@redhat.com,
+        Christoph Hellwig <hch@lst.de>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Omar Sandoval <osandov@fb.com>, cluster-devel@redhat.com,
+        linux-ext4@vger.kernel.org,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Gao Xiang <gaoxiang25@huawei.com>, Coly Li <colyli@suse.de>,
+        linux-raid@vger.kernel.org, Bob Peterson <rpeterso@redhat.com>,
+        linux-bcache@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Dave Chinner <dchinner@redhat.com>,
+        David Sterba <dsterba@suse.com>, linux-block@vger.kernel.org,
+        Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [dm-devel] [PATCH V15 00/18] block: support multi-page bvec
+Message-ID: <20190220011719.GA13035@ming.t460p>
+References: <20190215111324.30129-1-ming.lei@redhat.com>
+ <c52b6a8b-d1d4-67ff-f81c-371d09cc6d5b@kernel.dk>
+ <1550250855.31902.102.camel@acm.org>
+ <20190217131128.GB7296@ming.t460p>
+ <1550593699.31902.115.camel@acm.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190220004416.GA31238@mit.edu>
-User-Agent: Mutt/1.5.21 (2010-09-15)
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Wed, 20 Feb 2019 00:55:16 +0000 (UTC)
+In-Reply-To: <1550593699.31902.115.camel@acm.org>
+User-Agent: Mutt/1.9.1 (2017-09-22)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.30]); Wed, 20 Feb 2019 01:17:49 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Feb 19, 2019 at 07:44:16PM -0500, Theodore Y. Ts'o wrote:
-> On Tue, Feb 19, 2019 at 08:03:33AM +0000, Richard W.M. Jones wrote:
+On Tue, Feb 19, 2019 at 08:28:19AM -0800, Bart Van Assche wrote:
+> On Sun, 2019-02-17 at 21:11 +0800, Ming Lei wrote:
+> > The following patch should fix this issue:
 > > 
-> > This might interest/disgust/shock/scare(?!) people on this list:
 > > 
-> > $ time ./nbdkit --filter=partition -U - linuxdisk . partition=1 --run 'qemu-img convert $nbd /var/tmp/ext2fs.img'
-> > 
+> > diff --git a/block/blk-merge.c b/block/blk-merge.c
+> > index bed065904677..066b66430523 100644
+> > --- a/block/blk-merge.c
+> > +++ b/block/blk-merge.c
+> > @@ -363,13 +363,15 @@ static unsigned int __blk_recalc_rq_segments(struct request_queue *q,
+> >  	struct bio_vec bv, bvprv = { NULL };
+> >  	int prev = 0;
+> >  	unsigned int seg_size, nr_phys_segs;
+> > -	unsigned front_seg_size = bio->bi_seg_front_size;
+> > +	unsigned front_seg_size;
+> >  	struct bio *fbio, *bbio;
+> >  	struct bvec_iter iter;
+> >  
+> >  	if (!bio)
+> >  		return 0;
+> >  
+> > +	front_seg_size = bio->bi_seg_front_size;
+> > +
+> >  	switch (bio_op(bio)) {
+> >  	case REQ_OP_DISCARD:
+> >  	case REQ_OP_SECURE_ERASE:
 > 
-> For those of us who aren't really familiar with nbdkit, what does this do?
+> Hi Ming,
+> 
+> With this patch applied test nvmeof-mp/002 fails as follows:
+> 
+> [  694.700400] kernel BUG at lib/sg_pool.c:103!
+> [  694.705932] invalid opcode: 0000 [#1] PREEMPT SMP KASAN
+> [  694.708297] CPU: 2 PID: 349 Comm: kworker/2:1H Tainted: G    B             5.0.0-rc6-dbg+ #2
+> [  694.711730] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.10.2-1 04/01/2014
+> [  694.715113] Workqueue: kblockd blk_mq_run_work_fn
+> [  694.716894] RIP: 0010:sg_alloc_table_chained+0xe5/0xf0
+> [  694.758222] Call Trace:
+> [  694.759645]  nvme_rdma_queue_rq+0x2aa/0xcc0 [nvme_rdma]
+> [  694.764915]  blk_mq_try_issue_directly+0x2a5/0x4b0
+> [  694.771779]  blk_insert_cloned_request+0x11e/0x1c0
+> [  694.778417]  dm_mq_queue_rq+0x3d1/0x770
+> [  694.793400]  blk_mq_dispatch_rq_list+0x5fc/0xb10
+> [  694.798386]  blk_mq_sched_dispatch_requests+0x2f7/0x300
+> [  694.803180]  __blk_mq_run_hw_queue+0xd6/0x180
+> [  694.808933]  blk_mq_run_work_fn+0x27/0x30
+> [  694.810315]  process_one_work+0x4f1/0xa40
+> [  694.813178]  worker_thread+0x67/0x5b0
+> [  694.814487]  kthread+0x1cf/0x1f0
+> [  694.819134]  ret_from_fork+0x24/0x30
+> 
+> The code in sg_pool.c that triggers the BUG() statement is as follows:
+> 
+> int sg_alloc_table_chained(struct sg_table *table, int nents,
+> 		struct scatterlist *first_chunk)
+> {
+> 	int ret;
+> 
+> 	BUG_ON(!nents);
+> [ ... ]
+> 
+> Bart.
 
-There's quite a lot packed into a small space ...
+I can reproduce this issue("kernel BUG at lib/sg_pool.c:103") without mp-bvec patches,
+so looks it isn't the fault of this patchset.
 
-Firstly nbdkit is an NBD server which is unique in having plugins to
-implement different data sources.  In this case I have written a
-plugin called "linuxdisk" which creates a GPT-partitioned
-ext2-formatted disk image from a local directory ("." in this case).
-
-nbdkit can serve over IP or Unix domain sockets, including randomly
-created Unix domain sockets ("-U -").
-
-nbdkit can also run other commands and exit when those commands have
-finished (we call this "captive nbdkit").  In this case we ask nbdkit
-to run a qemu-img command and then exit when qemu-img finishes.
-
-"qemu-img convert $nbd /var/tmp/ext2fs.img" connects to the private
-Unix domain socket (nbdkit sets $nbd to a suitable string to make this
-happen).  It then copies the data out of that NBD socket to a local
-file, optionally doing a format conversion although not in this case.
-
-Finally nbdkit has a concept of filters which can be placed on top of
-plugins to select parts of the data.  Remember that the "linuxdisk"
-plugin creates GPT-partitioned ext2 disk images.  However we want only
-the naked filesystem.  Therefore we place the partition filter on top
-to pick out and serve only the partition content, which is the naked
-ext2 filesystem.
-
-I recently did a talk about nbdkit if you want to find out more:
-https://rwmj.wordpress.com/2019/02/04/video-take-your-loop-mounts-to-the-next-level-with-nbdkit/
-
-Here's another fun thing you can do with the linuxdisk plugin:
-https://rwmj.wordpress.com/2019/02/19/nbdkit-linuxdisk-plugin/
-
-Hope that helps!
-
-Rich.
-
--- 
-Richard Jones, Virtualization Group, Red Hat http://people.redhat.com/~rjones
-Read my programming and virtualization blog: http://rwmj.wordpress.com
-virt-top is 'top' for virtual machines.  Tiny program with many
-powerful monitoring features, net stats, disk stats, logging, etc.
-http://people.redhat.com/~rjones/virt-top
+Thanks,
+Ming
