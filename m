@@ -6,69 +6,69 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ECDF3C00319
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 13:32:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 28414C43381
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 13:32:29 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A75962084F
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 13:32:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EA8DD2084F
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 13:32:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726251AbfBUNcD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Feb 2019 08:32:03 -0500
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:39022 "EHLO
+        id S1728022AbfBUNc2 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Feb 2019 08:32:28 -0500
+Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:33120 "EHLO
         mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725920AbfBUNcD (ORCPT
+        by vger.kernel.org with ESMTP id S1725385AbfBUNc1 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 21 Feb 2019 08:32:03 -0500
-Received: from pps.filterd (m0098393.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x1LDTja9086573
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2019 08:31:59 -0500
-Received: from e06smtp03.uk.ibm.com (e06smtp03.uk.ibm.com [195.75.94.99])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2qsvvj06yg-1
+        Thu, 21 Feb 2019 08:32:27 -0500
+Received: from pps.filterd (m0098394.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x1LDTnCq008339
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2019 08:32:27 -0500
+Received: from e06smtp04.uk.ibm.com (e06smtp04.uk.ibm.com [195.75.94.100])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2qsupvkkf1-1
         (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2019 08:31:59 -0500
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Feb 2019 08:32:26 -0500
 Received: from localhost
-        by e06smtp03.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        by e06smtp04.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
         for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
-        Thu, 21 Feb 2019 13:31:56 -0000
-Received: from b06cxnps3074.portsmouth.uk.ibm.com (9.149.109.194)
-        by e06smtp03.uk.ibm.com (192.168.101.133) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        Thu, 21 Feb 2019 13:32:24 -0000
+Received: from b06cxnps4074.portsmouth.uk.ibm.com (9.149.109.196)
+        by e06smtp04.uk.ibm.com (192.168.101.134) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
         (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Thu, 21 Feb 2019 13:31:53 -0000
-Received: from d06av24.portsmouth.uk.ibm.com (mk.ibm.com [9.149.105.60])
-        by b06cxnps3074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x1LDVqlx39780456
+        Thu, 21 Feb 2019 13:32:20 -0000
+Received: from d06av24.portsmouth.uk.ibm.com (d06av24.portsmouth.uk.ibm.com [9.149.105.60])
+        by b06cxnps4074.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x1LDWJS521823738
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL);
-        Thu, 21 Feb 2019 13:31:52 GMT
+        Thu, 21 Feb 2019 13:32:19 GMT
 Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id A03BB42049;
-        Thu, 21 Feb 2019 13:31:52 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 5B9244204F;
+        Thu, 21 Feb 2019 13:32:19 +0000 (GMT)
 Received: from d06av24.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id CF93842042;
-        Thu, 21 Feb 2019 13:31:50 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id B12C742054;
+        Thu, 21 Feb 2019 13:32:17 +0000 (GMT)
 Received: from localhost.localdomain (unknown [9.85.75.223])
         by d06av24.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Thu, 21 Feb 2019 13:31:50 +0000 (GMT)
+        Thu, 21 Feb 2019 13:32:17 +0000 (GMT)
 From:   Chandan Rajendra <chandan@linux.ibm.com>
 To:     Eric Biggers <ebiggers@kernel.org>
 Cc:     linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
         linux-fscrypt@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, jaegeuk@kernel.org, yuchao0@huawei.com
-Subject: Re: [RFC PATCH 04/10] Consolidate "post read processing" into a new file
-Date:   Thu, 21 Feb 2019 18:21:05 +0530
+        adilger.kernel@dilger.ca, jaegeuk@kernel.org
+Subject: Re: [f2fs-dev] [RFC PATCH 06/10] Introduce REQ_POST_READ_PROC bio flag
+Date:   Thu, 21 Feb 2019 18:33:24 +0530
 Organization: IBM
-In-Reply-To: <20190219232243.GE12177@gmail.com>
-References: <20190218100433.20048-1-chandan@linux.ibm.com> <20190218100433.20048-5-chandan@linux.ibm.com> <20190219232243.GE12177@gmail.com>
+In-Reply-To: <20190220002059.GG12177@gmail.com>
+References: <20190218100433.20048-1-chandan@linux.ibm.com> <20190218100433.20048-7-chandan@linux.ibm.com> <20190220002059.GG12177@gmail.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 7Bit
 Content-Type: text/plain; charset="us-ascii"
 X-TM-AS-GCONF: 00
-x-cbid: 19022113-0012-0000-0000-000002F87A3D
+x-cbid: 19022113-0016-0000-0000-000002593138
 X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19022113-0013-0000-0000-000021301036
-Message-Id: <3910597.haRVTmAmja@localhost.localdomain>
+x-cbparentid: 19022113-0017-0000-0000-000032B38159
+Message-Id: <8936377.epoSEyofgi@localhost.localdomain>
 X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-02-21_08:,,
  signatures=0
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
- malwarescore=0 suspectscore=7 phishscore=0 bulkscore=0 spamscore=0
+ malwarescore=0 suspectscore=5 phishscore=0 bulkscore=0 spamscore=0
  clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
  mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
  scancount=1 engine=8.0.1-1810050000 definitions=main-1902210099
@@ -77,614 +77,104 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wednesday, February 20, 2019 4:52:44 AM IST Eric Biggers wrote:
+On Wednesday, February 20, 2019 5:51:00 AM IST Eric Biggers wrote:
 > Hi Chandan,
 > 
-> On Mon, Feb 18, 2019 at 03:34:27PM +0530, Chandan Rajendra wrote:
-> > The post read processing code is used by both Ext4 and F2FS. Hence to
-> > remove duplicity, this commit moves the code into
-> > include/linux/post_read_process.h and fs/post_read_process.c.
-> > 
-> > The corresponding decrypt and verity "work" functions have been moved
-> > inside fscrypt and fsverity sources. With these in place, the post
-> > processing code now has to just invoke enqueue functions provided by
-> > fscrypt and fsverity.
+> On Mon, Feb 18, 2019 at 03:34:29PM +0530, Chandan Rajendra wrote:
+> > Ext4 and F2FS currently use a non-NULL value stored at bio->bi_private
+> > to determine if the contents of the bio need to be "post processed"
+> > i.e. whether its contents need to be decrypted and/or verified. For
+> > block size < page size scenario, bio->bi_private would hold a pointer to
+> > buffer_head. Hence, this commit adds the new flag REQ_POST_READ_PROC to
+> > be able to decisively check for post process requirement for a bio.
 > > 
 > > Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
 > > ---
-> >  fs/Makefile                       |   3 +-
-> >  fs/crypto/bio.c                   |  21 ++--
-> >  fs/crypto/crypto.c                |   1 +
-> >  fs/crypto/fscrypt_private.h       |   3 +
-> >  fs/ext4/ext4.h                    |   2 -
-> >  fs/ext4/readpage.c                | 153 +-----------------------------
-> >  fs/ext4/super.c                   |   9 +-
-> >  fs/post_read_process.c            | 127 +++++++++++++++++++++++++
-> >  fs/verity/verify.c                |  12 +++
-> >  include/linux/fscrypt.h           |  11 ---
-> >  include/linux/post_read_process.h |  21 ++++
-> >  11 files changed, 176 insertions(+), 187 deletions(-)
-> >  create mode 100644 fs/post_read_process.c
-> >  create mode 100644 include/linux/post_read_process.h
+> >  fs/ext4/readpage.c        | 11 +++++++++--
+> >  fs/post_read_process.c    |  2 +-
+> >  include/linux/blk_types.h |  2 ++
+> >  3 files changed, 12 insertions(+), 3 deletions(-)
 > > 
-> > diff --git a/fs/Makefile b/fs/Makefile
-> > index 10b37f651ffd..5f6c0cba102b 100644
-> > --- a/fs/Makefile
-> > +++ b/fs/Makefile
-> > @@ -12,7 +12,8 @@ obj-y :=	open.o read_write.o file_table.o super.o \
-> >  		attr.o bad_inode.o file.o filesystems.o namespace.o \
-> >  		seq_file.o xattr.o libfs.o fs-writeback.o \
-> >  		pnode.o splice.o sync.o utimes.o d_path.o \
-> > -		stack.o fs_struct.o statfs.o fs_pin.o nsfs.o
-> > +		stack.o fs_struct.o statfs.o fs_pin.o nsfs.o \
-> > +		post_read_process.o
-> >  
-> 
-> To avoid bloating every Linux kernel in existence, post_read_process.c should
-> only be compiled if CONFIG_FS_ENCRYPTION || CONFIG_FS_VERITY.
->
-
-Will do.
-
-> >  ifeq ($(CONFIG_BLOCK),y)
-> >  obj-y +=	buffer.o block_dev.o direct-io.o mpage.o
-> > diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
-> > index 0959044c5cee..a659a76c05e4 100644
-> > --- a/fs/crypto/bio.c
-> > +++ b/fs/crypto/bio.c
-> > @@ -24,6 +24,8 @@
-> >  #include <linux/module.h>
-> >  #include <linux/bio.h>
-> >  #include <linux/namei.h>
-> > +#include <linux/post_read_process.h>
-> > +
-> >  #include "fscrypt_private.h"
-> >  
-> >  static void __fscrypt_decrypt_bio(struct bio *bio, bool done)
-> > @@ -53,24 +55,15 @@ void fscrypt_decrypt_bio(struct bio *bio)
-> >  }
-> >  EXPORT_SYMBOL(fscrypt_decrypt_bio);
-> >  
-> > -static void completion_pages(struct work_struct *work)
-> > +void fscrypt_decrypt_work(struct work_struct *work)
-> >  {
-> > -	struct fscrypt_ctx *ctx =
-> > -		container_of(work, struct fscrypt_ctx, r.work);
-> > -	struct bio *bio = ctx->r.bio;
-> > +	struct bio_post_read_ctx *ctx =
-> > +		container_of(work, struct bio_post_read_ctx, work);
-> >  
-> > -	__fscrypt_decrypt_bio(bio, true);
-> > -	fscrypt_release_ctx(ctx);
-> > -	bio_put(bio);
-> > -}
-> > +	fscrypt_decrypt_bio(ctx->bio);
-> >  
-> > -void fscrypt_enqueue_decrypt_bio(struct fscrypt_ctx *ctx, struct bio *bio)
-> > -{
-> > -	INIT_WORK(&ctx->r.work, completion_pages);
-> > -	ctx->r.bio = bio;
-> > -	fscrypt_enqueue_decrypt_work(&ctx->r.work);
-> > +	bio_post_read_processing(ctx);
-> >  }
-> > -EXPORT_SYMBOL(fscrypt_enqueue_decrypt_bio);
-> >  
-> >  void fscrypt_pullback_bio_page(struct page **page, bool restore)
-> >  {
-> > diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
-> > index 4dc788e3bc96..36d599784e5a 100644
-> > --- a/fs/crypto/crypto.c
-> > +++ b/fs/crypto/crypto.c
-> > @@ -53,6 +53,7 @@ struct kmem_cache *fscrypt_info_cachep;
-> >  
-> >  void fscrypt_enqueue_decrypt_work(struct work_struct *work)
-> >  {
-> > +	INIT_WORK(work, fscrypt_decrypt_work);
-> >  	queue_work(fscrypt_read_workqueue, work);
-> >  }
-> >  EXPORT_SYMBOL(fscrypt_enqueue_decrypt_work);
-> > diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
-> > index 7da276159593..412a3bcf9efd 100644
-> > --- a/fs/crypto/fscrypt_private.h
-> > +++ b/fs/crypto/fscrypt_private.h
-> > @@ -114,6 +114,9 @@ static inline bool fscrypt_valid_enc_modes(u32 contents_mode,
-> >  	return false;
-> >  }
-> >  
-> > +/* bio.c */
-> > +void fscrypt_decrypt_work(struct work_struct *work);
-> > +
-> >  /* crypto.c */
-> >  extern struct kmem_cache *fscrypt_info_cachep;
-> >  extern int fscrypt_initialize(unsigned int cop_flags);
-> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> > index 0ffa84772667..c0245820bafe 100644
-> > --- a/fs/ext4/ext4.h
-> > +++ b/fs/ext4/ext4.h
-> > @@ -3088,8 +3088,6 @@ static inline void ext4_set_de_type(struct super_block *sb,
-> >  extern int ext4_mpage_readpages(struct address_space *mapping,
-> >  				struct list_head *pages, struct page *page,
-> >  				unsigned nr_pages, bool is_readahead);
-> > -extern int __init ext4_init_post_read_processing(void);
-> > -extern void ext4_exit_post_read_processing(void);
-> >  
-> >  /* symlink.c */
-> >  extern const struct inode_operations ext4_encrypted_symlink_inode_operations;
 > > diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-> > index 93fbc15177a3..8943fc41fd33 100644
+> > index 8943fc41fd33..c7dbab35deaa 100644
 > > --- a/fs/ext4/readpage.c
 > > +++ b/fs/ext4/readpage.c
-> > @@ -44,14 +44,10 @@
-> >  #include <linux/backing-dev.h>
-> >  #include <linux/pagevec.h>
-> >  #include <linux/cleancache.h>
-> > +#include <linux/post_read_process.h>
+> > @@ -245,6 +245,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
+> >  		}
+> >  		if (bio == NULL) {
+> >  			struct bio_post_read_ctx *ctx;
+> > +			unsigned int op_flags = 0;
 > >  
-> >  #include "ext4.h"
+> >  			bio = bio_alloc(GFP_KERNEL,
+> >  				min_t(int, nr_pages, BIO_MAX_PAGES));
+> > @@ -259,8 +260,14 @@ int ext4_mpage_readpages(struct address_space *mapping,
+> >  			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
+> >  			bio->bi_end_io = mpage_end_io;
+> >  			bio->bi_private = ctx;
+> > -			bio_set_op_attrs(bio, REQ_OP_READ,
+> > -						is_readahead ? REQ_RAHEAD : 0);
+> > +
+> > +			if (is_readahead)
+> > +				op_flags |= REQ_RAHEAD;
+> > +
+> > +			if (ctx)
+> > +				op_flags |= REQ_POST_READ_PROC;
+> > +
+> > +			bio_set_op_attrs(bio, REQ_OP_READ, op_flags);
+> >  		}
 > >  
-> > -#define NUM_PREALLOC_POST_READ_CTXS	128
-> > -
-> > -static struct kmem_cache *bio_post_read_ctx_cache;
-> > -static mempool_t *bio_post_read_ctx_pool;
-> > -
-> >  static inline bool ext4_bio_encrypted(struct bio *bio)
-> >  {
-> >  #ifdef CONFIG_FS_ENCRYPTION
-> > @@ -61,124 +57,6 @@ static inline bool ext4_bio_encrypted(struct bio *bio)
-> >  #endif
-> >  }
-> >  
-> > -/* postprocessing steps for read bios */
-> > -enum bio_post_read_step {
-> > -	STEP_INITIAL = 0,
-> > -	STEP_DECRYPT,
-> > -	STEP_VERITY,
-> > -};
-> > -
-> > -struct bio_post_read_ctx {
-> > -	struct bio *bio;
-> > -	struct work_struct work;
-> > -	unsigned int cur_step;
-> > -	unsigned int enabled_steps;
-> > -};
-> > -
-> > -static void __read_end_io(struct bio *bio)
-> > -{
-> > -	struct page *page;
-> > -	struct bio_vec *bv;
-> > -	int i;
-> > -
-> > -	bio_for_each_segment_all(bv, bio, i) {
-> > -		page = bv->bv_page;
-> > -
-> > -		/* PG_error was set if any post_read step failed */
-> > -		if (bio->bi_status || PageError(page)) {
-> > -			ClearPageUptodate(page);
-> > -			SetPageError(page);
-> > -		} else {
-> > -			SetPageUptodate(page);
-> > -		}
-> > -		unlock_page(page);
-> > -	}
-> > -	if (bio->bi_private)
-> > -		mempool_free(bio->bi_private, bio_post_read_ctx_pool);
-> > -	bio_put(bio);
-> > -}
-> > -
-> > -static void bio_post_read_processing(struct bio_post_read_ctx *ctx);
-> > -
-> > -static void decrypt_work(struct work_struct *work)
-> > -{
-> > -	struct bio_post_read_ctx *ctx =
-> > -		container_of(work, struct bio_post_read_ctx, work);
-> > -
-> > -	fscrypt_decrypt_bio(ctx->bio);
-> > -
-> > -	bio_post_read_processing(ctx);
-> > -}
-> > -
-> > -static void verity_work(struct work_struct *work)
-> > -{
-> > -	struct bio_post_read_ctx *ctx =
-> > -		container_of(work, struct bio_post_read_ctx, work);
-> > -
-> > -	fsverity_verify_bio(ctx->bio);
-> > -
-> > -	bio_post_read_processing(ctx);
-> > -}
-> > -
-> > -static void bio_post_read_processing(struct bio_post_read_ctx *ctx)
-> > -{
-> > -	/*
-> > -	 * We use different work queues for decryption and for verity because
-> > -	 * verity may require reading metadata pages that need decryption, and
-> > -	 * we shouldn't recurse to the same workqueue.
-> > -	 */
-> > -	switch (++ctx->cur_step) {
-> > -	case STEP_DECRYPT:
-> > -		if (ctx->enabled_steps & (1 << STEP_DECRYPT)) {
-> > -			INIT_WORK(&ctx->work, decrypt_work);
-> > -			fscrypt_enqueue_decrypt_work(&ctx->work);
-> > -			return;
-> > -		}
-> > -		ctx->cur_step++;
-> > -		/* fall-through */
-> > -	case STEP_VERITY:
-> > -		if (ctx->enabled_steps & (1 << STEP_VERITY)) {
-> > -			INIT_WORK(&ctx->work, verity_work);
-> > -			fsverity_enqueue_verify_work(&ctx->work);
-> > -			return;
-> > -		}
-> > -		ctx->cur_step++;
-> > -		/* fall-through */
-> > -	default:
-> > -		__read_end_io(ctx->bio);
-> > -	}
-> > -}
-> > -
-> > -static struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
-> > -						       struct bio *bio,
-> > -						       pgoff_t index)
-> > -{
-> > -	unsigned int post_read_steps = 0;
-> > -	struct bio_post_read_ctx *ctx = NULL;
-> > -
-> > -	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
-> > -		post_read_steps |= 1 << STEP_DECRYPT;
-> > -#ifdef CONFIG_FS_VERITY
-> > -	if (inode->i_verity_info != NULL &&
-> > -	    (index < ((i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT)))
-> > -		post_read_steps |= 1 << STEP_VERITY;
-> > -#endif
-> > -	if (post_read_steps) {
-> > -		ctx = mempool_alloc(bio_post_read_ctx_pool, GFP_NOFS);
-> > -		if (!ctx)
-> > -			return ERR_PTR(-ENOMEM);
-> > -		ctx->bio = bio;
-> > -		ctx->enabled_steps = post_read_steps;
-> > -		bio->bi_private = ctx;
-> > -	}
-> > -	return ctx;
-> > -}
-> > -
-> > -static bool bio_post_read_required(struct bio *bio)
-> > -{
-> > -	return bio->bi_private && !bio->bi_status;
-> > -}
-> > -
-> >  /*
-> >   * I/O completion handler for multipage BIOs.
-> >   *
-> > @@ -196,11 +74,10 @@ static void mpage_end_io(struct bio *bio)
-> >  	if (bio_post_read_required(bio)) {
-> >  		struct bio_post_read_ctx *ctx = bio->bi_private;
-> >  
-> > -		ctx->cur_step = STEP_INITIAL;
-> >  		bio_post_read_processing(ctx);
-> >  		return;
-> >  	}
-> > -	__read_end_io(bio);
-> > +	end_bio_post_read_processing(bio);
-> >  }
-> >  
-> >  static inline loff_t ext4_readpage_limit(struct inode *inode)
-> > @@ -416,29 +293,3 @@ int ext4_mpage_readpages(struct address_space *mapping,
-> >  		submit_bio(bio);
-> >  	return 0;
-> >  }
-> > -
-> > -int __init ext4_init_post_read_processing(void)
-> > -{
-> > -	bio_post_read_ctx_cache =
-> > -		kmem_cache_create("ext4_bio_post_read_ctx",
-> > -				  sizeof(struct bio_post_read_ctx), 0, 0, NULL);
-> > -	if (!bio_post_read_ctx_cache)
-> > -		goto fail;
-> > -	bio_post_read_ctx_pool =
-> > -		mempool_create_slab_pool(NUM_PREALLOC_POST_READ_CTXS,
-> > -					 bio_post_read_ctx_cache);
-> > -	if (!bio_post_read_ctx_pool)
-> > -		goto fail_free_cache;
-> > -	return 0;
-> > -
-> > -fail_free_cache:
-> > -	kmem_cache_destroy(bio_post_read_ctx_cache);
-> > -fail:
-> > -	return -ENOMEM;
-> > -}
-> > -
-> > -void ext4_exit_post_read_processing(void)
-> > -{
-> > -	mempool_destroy(bio_post_read_ctx_pool);
-> > -	kmem_cache_destroy(bio_post_read_ctx_cache);
-> > -}
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index 95a5d9fbbb9f..9314dddfbf34 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -6102,10 +6102,6 @@ static int __init ext4_init_fs(void)
-> >  		return err;
-> >  
-> >  	err = ext4_init_pending();
-> > -	if (err)
-> > -		goto out7;
-> > -
-> > -	err = ext4_init_post_read_processing();
-> >  	if (err)
-> >  		goto out6;
-> >  
-> > @@ -6147,10 +6143,8 @@ static int __init ext4_init_fs(void)
-> >  out4:
-> >  	ext4_exit_pageio();
-> >  out5:
-> > -	ext4_exit_post_read_processing();
-> > -out6:
-> >  	ext4_exit_pending();
-> > -out7:
-> > +out6:
-> >  	ext4_exit_es();
-> >  
-> >  	return err;
-> > @@ -6167,7 +6161,6 @@ static void __exit ext4_exit_fs(void)
-> >  	ext4_exit_sysfs();
-> >  	ext4_exit_system_zone();
-> >  	ext4_exit_pageio();
-> > -	ext4_exit_post_read_processing();
-> >  	ext4_exit_es();
-> >  	ext4_exit_pending();
-> >  }
+> >  		length = first_hole << blkbits;
 > > diff --git a/fs/post_read_process.c b/fs/post_read_process.c
-> > new file mode 100644
-> > index 000000000000..9720eeff0160
-> > --- /dev/null
+> > index 1f8663d70247..66c1c6e57e70 100644
+> > --- a/fs/post_read_process.c
 > > +++ b/fs/post_read_process.c
-> > @@ -0,0 +1,127 @@
-> > +// SPDX-License-Identifier: GPL-2.0
-> > +#include <linux/module.h>
-> > +#include <linux/mm.h>
-> > +#include <linux/pagemap.h>
-> > +#include <linux/bio.h>
-> > +#include <linux/fscrypt.h>
-> > +#include <linux/fsverity.h>
-> > +#include <linux/post_read_process.h>
-> 
-> To help people who come across this code, please add a comment at the top of
-> this file that briefly describes what it is.
->
-
-Sure, I will add a header describing the the code's utility.
-
-> > +
-> > +#define NUM_PREALLOC_POST_READ_CTXS	128
-> > +
-> > +static struct kmem_cache *bio_post_read_ctx_cache;
-> > +static mempool_t *bio_post_read_ctx_pool;
-> > +
-> > +/* postprocessing steps for read bios */
-> > +enum bio_post_read_step {
-> > +	STEP_INITIAL = 0,
-> > +	STEP_DECRYPT,
-> > +	STEP_VERITY,
-> > +};
-> > +
-> > +void end_bio_post_read_processing(struct bio *bio)
-> > +{
-> > +	struct page *page;
-> > +	struct bio_vec *bv;
-> > +	int i;
-> > +
-> > +	bio_for_each_segment_all(bv, bio, i) {
-> > +		page = bv->bv_page;
-> > +
-> > +		/* PG_error was set if any post_read step failed */
-> > +		if (bio->bi_status || PageError(page)) {
-> > +			ClearPageUptodate(page);
-> > +			SetPageError(page);
-> > +		} else {
-> > +			SetPageUptodate(page);
-> > +		}
-> > +		unlock_page(page);
-> > +	}
-> > +	if (bio->bi_private)
-> > +		put_bio_post_read_ctx(bio->bi_private);
-> > +	bio_put(bio);
-> > +}
-> > +
-> > +void bio_post_read_processing(struct bio_post_read_ctx *ctx)
-> > +{
-> > +	/*
-> > +	 * We use different work queues for decryption and for verity because
-> > +	 * verity may require reading metadata pages that need decryption, and
-> > +	 * we shouldn't recurse to the same workqueue.
-> > +	 */
-> > +	switch (++ctx->cur_step) {
-> > +	case STEP_DECRYPT:
-> > +		if (ctx->enabled_steps & (1 << STEP_DECRYPT)) {
-> > +			fscrypt_enqueue_decrypt_work(&ctx->work);
-> > +			return;
-> > +		}
-> > +		ctx->cur_step++;
-> > +		/* fall-through */
-> > +	case STEP_VERITY:
-> > +		if (ctx->enabled_steps & (1 << STEP_VERITY)) {
-> > +			fsverity_enqueue_verify_work(&ctx->work);
-> > +			return;
-> > +		}
-> > +		ctx->cur_step++;
-> > +		/* fall-through */
-> > +	default:
-> > +		end_bio_post_read_processing(ctx->bio);
-> > +	}
-> > +}
-> > +
-> > +struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
-> > +						struct bio *bio,
-> > +						pgoff_t index)
-> > +{
-> > +	unsigned int post_read_steps = 0;
-> > +	struct bio_post_read_ctx *ctx = NULL;
-> > +
-> > +	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
-> > +		post_read_steps |= 1 << STEP_DECRYPT;
-> > +#ifdef CONFIG_FS_VERITY
-> > +	if (inode->i_verity_info != NULL &&
-> > +		(index < ((i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT)))
-> > +		post_read_steps |= 1 << STEP_VERITY;
-> > +#endif
-> > +	if (post_read_steps) {
-> > +		ctx = mempool_alloc(bio_post_read_ctx_pool, GFP_NOFS);
-> > +		if (!ctx)
-> > +			return ERR_PTR(-ENOMEM);
-> > +		ctx->bio = bio;
-> > +		ctx->inode = inode;
-> > +		ctx->enabled_steps = post_read_steps;
-> > +		ctx->cur_step = STEP_INITIAL;
-> > +		bio->bi_private = ctx;
-> > +	}
-> > +	return ctx;
-> > +}
-> > +
-> > +void put_bio_post_read_ctx(struct bio_post_read_ctx *ctx)
-> > +{
-> > +	mempool_free(ctx, bio_post_read_ctx_pool);
-> > +}
-> > +
-> > +bool bio_post_read_required(struct bio *bio)
-> > +{
-> > +	return bio->bi_private && !bio->bi_status;
-> > +}
-> > +
-> > +static int __init bio_init_post_read_processing(void)
-> > +{
-> > +	bio_post_read_ctx_cache = KMEM_CACHE(bio_post_read_ctx, 0);
-> > +	if (!bio_post_read_ctx_cache)
-> > +		goto fail;
-> > +	bio_post_read_ctx_pool =
-> > +		mempool_create_slab_pool(NUM_PREALLOC_POST_READ_CTXS,
-> > +					 bio_post_read_ctx_cache);
-> > +	if (!bio_post_read_ctx_pool)
-> > +		goto fail_free_cache;
-> > +	return 0;
-> > +
-> > +fail_free_cache:
-> > +	kmem_cache_destroy(bio_post_read_ctx_cache);
-> > +fail:
-> > +	return -ENOMEM;
-> > +}
-> > +
-> > +fs_initcall(bio_init_post_read_processing);
-> > diff --git a/fs/verity/verify.c b/fs/verity/verify.c
-> > index fbfb68eff358..4f7cd2269e83 100644
-> > --- a/fs/verity/verify.c
-> > +++ b/fs/verity/verify.c
-> > @@ -13,6 +13,7 @@
-> >  #include <linux/pagemap.h>
-> >  #include <linux/ratelimit.h>
-> >  #include <linux/scatterlist.h>
-> > +#include <linux/post_read_process.h>
+> > @@ -104,7 +104,7 @@ void put_bio_post_read_ctx(struct bio_post_read_ctx *ctx)
 > >  
-> >  struct workqueue_struct *fsverity_read_workqueue;
-> >  
-> > @@ -283,6 +284,16 @@ void fsverity_verify_bio(struct bio *bio)
-> >  EXPORT_SYMBOL_GPL(fsverity_verify_bio);
-> >  #endif /* CONFIG_BLOCK */
-> >  
-> > +static void fsverity_verify_work(struct work_struct *work)
-> > +{
-> > +	struct bio_post_read_ctx *ctx =
-> > +		container_of(work, struct bio_post_read_ctx, work);
-> > +
-> > +	fsverity_verify_bio(ctx->bio);
-> > +
-> > +	bio_post_read_processing(ctx);
-> > +}
-> > +
-> >  /**
-> >   * fsverity_enqueue_verify_work - enqueue work on the fs-verity workqueue
-> >   *
-> > @@ -290,6 +301,7 @@ EXPORT_SYMBOL_GPL(fsverity_verify_bio);
-> >   */
-> >  void fsverity_enqueue_verify_work(struct work_struct *work)
+> >  bool bio_post_read_required(struct bio *bio)
 > >  {
-> > +	INIT_WORK(work, fsverity_verify_work);
-> >  	queue_work(fsverity_read_workqueue, work);
-> >  }
-> >  EXPORT_SYMBOL_GPL(fsverity_enqueue_verify_work);
-> > diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
-> > index 6ba193c23f37..13f70e22aff2 100644
-> > --- a/include/linux/fscrypt.h
-> > +++ b/include/linux/fscrypt.h
-> > @@ -68,10 +68,6 @@ struct fscrypt_ctx {
-> >  			struct page *bounce_page;	/* Ciphertext page */
-> >  			struct page *control_page;	/* Original page  */
-> >  		} w;
-> > -		struct {
-> > -			struct bio *bio;
-> > -			struct work_struct work;
-> > -		} r;
-> 
-> Now that 'struct fscrypt_ctx' is only used for writes, the 'w' part should be
-> changed to an anonymous struct.
-
-Ok. I will change that.
-
-> 
-> >  		struct list_head free_list;	/* Free list */
-> >  	};
-> >  	u8 flags;				/* Flags */
-> > @@ -206,8 +202,6 @@ static inline bool fscrypt_match_name(const struct fscrypt_name *fname,
-> >  
-> >  /* bio.c */
-> >  extern void fscrypt_decrypt_bio(struct bio *);
-> > -extern void fscrypt_enqueue_decrypt_bio(struct fscrypt_ctx *ctx,
-> > -					struct bio *bio);
-> >  extern void fscrypt_pullback_bio_page(struct page **, bool);
-> >  extern int fscrypt_zeroout_range(const struct inode *, pgoff_t, sector_t,
-> >  				 unsigned int);
-> > @@ -376,11 +370,6 @@ static inline void fscrypt_decrypt_bio(struct bio *bio)
-> >  {
+> > -	return bio->bi_private && !bio->bi_status;
+> > +	return bio->bi_opf & REQ_POST_READ_PROC;
 > >  }
 > >  
-> > -static inline void fscrypt_enqueue_decrypt_bio(struct fscrypt_ctx *ctx,
-> > -					       struct bio *bio)
-> > -{
-> > -}
-> > -
-> >  static inline void fscrypt_pullback_bio_page(struct page **page, bool restore)
-> >  {
-> >  	return;
-> > diff --git a/include/linux/post_read_process.h b/include/linux/post_read_process.h
-> > new file mode 100644
-> > index 000000000000..09e52928f861
-> > --- /dev/null
-> > +++ b/include/linux/post_read_process.h
-> > @@ -0,0 +1,21 @@
-> > +/* SPDX-License-Identifier: GPL-2.0 */
-> > +#ifndef _POST_READ_PROCESS_H
-> > +#define _POST_READ_PROCESS_H
-> > +
-> > +struct bio_post_read_ctx {
-> > +	struct bio *bio;
-> > +	struct inode *inode;
-> > +	struct work_struct work;
-> > +	unsigned int cur_step;
-> > +	unsigned int enabled_steps;
-> > +};
-> > +
-> > +void end_bio_post_read_processing(struct bio *bio);
-> > +void bio_post_read_processing(struct bio_post_read_ctx *ctx);
-> > +struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
-> > +						struct bio *bio,
-> > +						pgoff_t index);
-> > +void put_bio_post_read_ctx(struct bio_post_read_ctx *ctx);
-> > +bool bio_post_read_required(struct bio *bio);
-> > +
-> > +#endif	/* _POST_READ_PROCESS_H */
+> >  static int __init bio_init_post_read_processing(void)
+> > diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+> > index 5c7e7f859a24..6904945c8c40 100644
+> > --- a/include/linux/blk_types.h
+> > +++ b/include/linux/blk_types.h
+> > @@ -320,6 +320,7 @@ enum req_flag_bits {
+> >  	__REQ_RAHEAD,		/* read ahead, can fail anytime */
+> >  	__REQ_BACKGROUND,	/* background IO */
+> >  	__REQ_NOWAIT,           /* Don't wait if request will block */
+> > +	__REQ_POST_READ_PROC,
+> >  
+> >  	/* command specific flags for REQ_OP_WRITE_ZEROES: */
+> >  	__REQ_NOUNMAP,		/* do not free blocks when zeroing */
+> > @@ -346,6 +347,7 @@ enum req_flag_bits {
+> >  #define REQ_RAHEAD		(1ULL << __REQ_RAHEAD)
+> >  #define REQ_BACKGROUND		(1ULL << __REQ_BACKGROUND)
+> >  #define REQ_NOWAIT		(1ULL << __REQ_NOWAIT)
+> > +#define REQ_POST_READ_PROC	(1ULL << __REQ_POST_READ_PROC)
+> >  #define REQ_NOUNMAP		(1ULL << __REQ_NOUNMAP)
+> >  #define REQ_HIPRI		(1ULL << __REQ_HIPRI)
+> >  
 > 
-> - Eric
+> I don't think this is an appropriate use of a request flag, as request flags are
+> meant for the block layer.
 > 
-> 
+> Also doesn't the bio still need a pointer to the bio_post_read_ctx anyway?  So I
+> don't see how this would solve the problem, if ->bi_private is already used.
 
+I had glanced across block_read_full_page() function which implements reading
+non-contiguous blocks mapped by the page in block size < page size
+scenario. Here bio->bi_private would point to the buffer head that represents
+the block on which read I/O was performed. In such a case,
+bio_post_read_required() would always return true. Hence I decided to add this
+request flag.
+
+Now, I believe we can actually save away the ctx pointer in bh->b_private
+member and later decide on whether the buffer head requires post processing
+based on bh->bi_private's non-NULL value. I will have to read up the code more
+thoroughly to confirm this.
 
 -- 
 chandan
