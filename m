@@ -2,97 +2,153 @@ Return-Path: <SRS0=OaGm=Q4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 23D69C4360F
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 09:33:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B89AC43381
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 09:58:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F204721734
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 09:33:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E707820880
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 09:58:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727210AbfBUJdR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Feb 2019 04:33:17 -0500
-Received: from lithops.sigma-star.at ([195.201.40.130]:36892 "EHLO
-        lithops.sigma-star.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725385AbfBUJdR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Feb 2019 04:33:17 -0500
-Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 5E19D6083265;
-        Thu, 21 Feb 2019 10:33:14 +0100 (CET)
-Received: from lithops.sigma-star.at ([127.0.0.1])
-        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id dbO284T6jKnl; Thu, 21 Feb 2019 10:33:13 +0100 (CET)
-Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id DD3AC6083268;
-        Thu, 21 Feb 2019 10:33:13 +0100 (CET)
-Received: from lithops.sigma-star.at ([127.0.0.1])
-        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id izVKilIaD7-H; Thu, 21 Feb 2019 10:33:13 +0100 (CET)
-Received: from blindfold.localnet (unknown [82.150.214.1])
-        by lithops.sigma-star.at (Postfix) with ESMTPSA id 4BB0F6083265;
-        Thu, 21 Feb 2019 10:33:13 +0100 (CET)
-From:   Richard Weinberger <richard@nod.at>
-To:     Eric Biggers <ebiggers@kernel.org>, linux-fscrypt@vger.kernel.org
-Cc:     Satya Tangirala <satyat@google.com>,
-        "open list:ABI/API" <linux-api@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net, keyrings@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Paul Crowley <paulcrowley@google.com>
-Subject: Re: [RFC PATCH v3 07/18] fscrypt: add FS_IOC_ADD_ENCRYPTION_KEY ioctl
-Date:   Thu, 21 Feb 2019 10:33:12 +0100
-Message-ID: <2024630.T9XyBPH5Ub@blindfold>
-In-Reply-To: <20190221054938.GA12467@sol.localdomain>
-References: <20190220065249.32099-1-ebiggers@kernel.org> <CAFLxGvy7WsV7Qo42yTbsZf9YnW563a0k6Yx2-NmASNtoektu_Q@mail.gmail.com> <20190221054938.GA12467@sol.localdomain>
+        id S1727918AbfBUJ6K (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Feb 2019 04:58:10 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:51240 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727486AbfBUJ6J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 21 Feb 2019 04:58:09 -0500
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 616343084298;
+        Thu, 21 Feb 2019 09:58:08 +0000 (UTC)
+Received: from ming.t460p (ovpn-8-27.pek2.redhat.com [10.72.8.27])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id A375960933;
+        Thu, 21 Feb 2019 09:57:39 +0000 (UTC)
+Date:   Thu, 21 Feb 2019 17:57:34 +0800
+From:   Ming Lei <ming.lei@redhat.com>
+To:     Marek Szyprowski <m.szyprowski@samsung.com>
+Cc:     Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ulf Hansson <ulf.hansson@linaro.org>,
+        "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
+        'Linux Samsung SOC' <linux-samsung-soc@vger.kernel.org>,
+        Krzysztof Kozlowski <krzk@kernel.org>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Bartlomiej Zolnierkiewicz <b.zolnierkie@samsung.com>
+Subject: Re: [PATCH V15 14/18] block: enable multipage bvecs
+Message-ID: <20190221095733.GA12448@ming.t460p>
+References: <20190215111324.30129-1-ming.lei@redhat.com>
+ <20190215111324.30129-15-ming.lei@redhat.com>
+ <CGME20190221084301eucas1p11e8841a62b4b1da3cccca661b6f4c29d@eucas1p1.samsung.com>
+ <6c9ae4de-c56f-a2b3-2542-da7d8b95601d@samsung.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <6c9ae4de-c56f-a2b3-2542-da7d8b95601d@samsung.com>
+User-Agent: Mutt/1.9.1 (2017-09-22)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.40]); Thu, 21 Feb 2019 09:58:08 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Eric,
-
-Am Donnerstag, 21. Februar 2019, 06:49:39 CET schrieb Eric Biggers:
-> Hi Richard,
+On Thu, Feb 21, 2019 at 09:42:59AM +0100, Marek Szyprowski wrote:
+> Dear All,
 > 
-> On Thu, Feb 21, 2019 at 12:52:38AM +0100, Richard Weinberger wrote:
-> > On Wed, Feb 20, 2019 at 7:55 AM Eric Biggers <ebiggers@kernel.org> wrote:
-> > > +#define FSCRYPT_FS_KEYRING_DESCRIPTION_SIZE    \
-> > > +       (CONST_STRLEN("fscrypt-") + FIELD_SIZEOF(struct super_block, s_id))
-> > > +
-> > > +#define FSCRYPT_MK_DESCRIPTION_SIZE    (2 * FSCRYPT_KEY_DESCRIPTOR_SIZE + 1)
-> > > +
-> > > +static void format_fs_keyring_description(
-> > > +                       char description[FSCRYPT_FS_KEYRING_DESCRIPTION_SIZE],
-> > > +                       const struct super_block *sb)
-> > > +{
-> > > +       sprintf(description, "fscrypt-%s", sb->s_id);
-> > > +}
-> > 
-> > I fear ->s_id is not the right thing.
-> > For filesystems such as ext4 ->s_id is the name of the backing block device,
-> > so it is per filesysem instance unique.
-> > But this is not guaranteed. For UBIFS ->s_id is just "ubifs", always.
-> > So the names will clash.
-> > 
+> On 2019-02-15 12:13, Ming Lei wrote:
+> > This patch pulls the trigger for multi-page bvecs.
+> >
+> > Reviewed-by: Omar Sandoval <osandov@fb.com>
+> > Signed-off-by: Ming Lei <ming.lei@redhat.com>
 > 
-> What name do you suggest using for UBIFS filesystems?  The keyring name could be
-> set by the filesystem via a fscrypt_operations callback if needed.
+> Since Linux next-20190218 I've observed problems with block layer on one
+> of my test devices (Odroid U3 with EXT4 rootfs on SD card). Bisecting
+> this issue led me to this change. This is also the first linux-next
+> release with this change merged. The issue is fully reproducible and can
+> be observed in the following kernel log:
+> 
+> sdhci: Secure Digital Host Controller Interface driver
+> sdhci: Copyright(c) Pierre Ossman
+> s3c-sdhci 12530000.sdhci: clock source 2: mmc_busclk.2 (100000000 Hz)
+> s3c-sdhci 12530000.sdhci: Got CD GPIO
+> mmc0: SDHCI controller on samsung-hsmmc [12530000.sdhci] using ADMA
+> mmc0: new high speed SDHC card at address aaaa
+> mmcblk0: mmc0:aaaa SL16G 14.8 GiB
+> 
+> ...
+> 
+> EXT4-fs (mmcblk0p2): INFO: recovery required on readonly filesystem
+> EXT4-fs (mmcblk0p2): write access will be enabled during recovery
+> EXT4-fs (mmcblk0p2): recovery complete
+> EXT4-fs (mmcblk0p2): mounted filesystem with ordered data mode. Opts: (null)
+> VFS: Mounted root (ext4 filesystem) readonly on device 179:2.
+> devtmpfs: mounted
+> Freeing unused kernel memory: 1024K
+> hub 1-3:1.0: USB hub found
+> Run /sbin/init as init process
+> hub 1-3:1.0: 3 ports detected
+> *** stack smashing detected ***: <unknown> terminated
+> Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000004
+> CPU: 1 PID: 1 Comm: init Not tainted 5.0.0-rc6-next-20190218 #1546
+> Hardware name: SAMSUNG EXYNOS (Flattened Device Tree)
+> [<c01118d0>] (unwind_backtrace) from [<c010d794>] (show_stack+0x10/0x14)
+> [<c010d794>] (show_stack) from [<c09ff8a4>] (dump_stack+0x90/0xc8)
+> [<c09ff8a4>] (dump_stack) from [<c0125944>] (panic+0xfc/0x304)
+> [<c0125944>] (panic) from [<c012bc98>] (do_exit+0xabc/0xc6c)
+> [<c012bc98>] (do_exit) from [<c012c100>] (do_group_exit+0x3c/0xbc)
+> [<c012c100>] (do_group_exit) from [<c0138908>] (get_signal+0x130/0xbf4)
+> [<c0138908>] (get_signal) from [<c010c7a0>] (do_work_pending+0x130/0x618)
+> [<c010c7a0>] (do_work_pending) from [<c0101034>]
+> (slow_work_pending+0xc/0x20)
+> Exception stack(0xe88c3fb0 to 0xe88c3ff8)
+> 3fa0:                                     00000000 bea7787c 00000005
+> b6e8d0b8
+> 3fc0: bea77a18 b6f92010 b6e8d0b8 00000001 b6e8d0c8 00000001 b6e8c000
+> bea77b60
+> 3fe0: 00000020 bea77998 ffffffff b6d52368 60000050 ffffffff
+> CPU3: stopping
+> 
+> I would like to help debugging and fixing this issue, but I don't really
+> have idea where to start. Here are some more detailed information about
+> my test system:
+> 
+> 1. Board: ARM 32bit Samsung Exynos4412-based Odroid U3 (device tree
+> source: arch/arm/boot/dts/exynos4412-odroidu3.dts)
+> 
+> 2. Block device: MMC/SDHCI/SDHCI-S3C with SD card
+> (drivers/mmc/host/sdhci-s3c.c driver, sdhci_2 device node in the device
+> tree)
+> 
+> 3. Rootfs: Ext4
+> 
+> 4. Kernel config: arch/arm/configs/exynos_defconfig
+> 
+> I can gather more logs if needed, just let me which kernel option to
+> enable. Reverting this commit on top of next-20190218 as well as current
+> linux-next (tested with next-20190221) fixes this issue and makes the
+> system bootable again.
 
-IMHO the BDI name should be used. 
+Could you test the patch in following link and see if it can make a difference?
 
-> Note that the keyring name isn't particularly important, since the ioctls will
-> work regardless.  But we might as well choose something logical, since the
-> keyring name will still show up in /proc/keys.
-
-I'm not done with reviewing your patches, but will it be possible to use keyctl?
-For the a unique name is helpful. :)
+https://marc.info/?l=linux-aio&m=155070355614541&w=2
 
 Thanks,
-//richard
-
-
+Ming
