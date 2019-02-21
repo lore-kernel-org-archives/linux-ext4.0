@@ -2,33 +2,61 @@ Return-Path: <SRS0=OaGm=Q4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-4.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1B89AC43381
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 09:58:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C0629C00319
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 10:08:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E707820880
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 09:58:15 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8FE342147A
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Feb 2019 10:08:34 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="viZscJb8"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727918AbfBUJ6K (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Feb 2019 04:58:10 -0500
-Received: from mx1.redhat.com ([209.132.183.28]:51240 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1727486AbfBUJ6J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 21 Feb 2019 04:58:09 -0500
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 616343084298;
-        Thu, 21 Feb 2019 09:58:08 +0000 (UTC)
-Received: from ming.t460p (ovpn-8-27.pek2.redhat.com [10.72.8.27])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id A375960933;
-        Thu, 21 Feb 2019 09:57:39 +0000 (UTC)
-Date:   Thu, 21 Feb 2019 17:57:34 +0800
-From:   Ming Lei <ming.lei@redhat.com>
-To:     Marek Szyprowski <m.szyprowski@samsung.com>
+        id S1727408AbfBUKI1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Feb 2019 05:08:27 -0500
+Received: from mailout1.w1.samsung.com ([210.118.77.11]:44395 "EHLO
+        mailout1.w1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726246AbfBUKI0 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Feb 2019 05:08:26 -0500
+Received: from eucas1p2.samsung.com (unknown [182.198.249.207])
+        by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20190221100823euoutp01c8800466c60ffd43c88376eaded2afc2~FWS6yCvLR1720417204euoutp01Y;
+        Thu, 21 Feb 2019 10:08:23 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.w1.samsung.com 20190221100823euoutp01c8800466c60ffd43c88376eaded2afc2~FWS6yCvLR1720417204euoutp01Y
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
+        s=mail20170921; t=1550743703;
+        bh=MVi2CGXU4cvPoR7+81AtFxRL5Jytnmo8E2nT4MfJIOU=;
+        h=Subject:To:Cc:From:Date:In-Reply-To:References:From;
+        b=viZscJb8uegqmNprg1h2N4D8aqSdn20l2Ly1taI2orz9pI1XZHRtIHt39Z/fGHzLS
+         B7NdySR2fu9QAYsSqgT94qmhoLuHerIlquMxjwk6hNEQBSMrKc2FaoYINd2+KdXJKs
+         mE4NaMmX86GNcN8rnbnh7MZ1NEc95UkV+VNvCLBg=
+Received: from eusmges3new.samsung.com (unknown [203.254.199.245]) by
+        eucas1p1.samsung.com (KnoxPortal) with ESMTP id
+        20190221100823eucas1p110853bdfa043ad5a3cf3a539f2667a62~FWS6HC3rF0811408114eucas1p1g;
+        Thu, 21 Feb 2019 10:08:23 +0000 (GMT)
+Received: from eucas1p1.samsung.com ( [182.198.249.206]) by
+        eusmges3new.samsung.com (EUCPMTA) with SMTP id 09.C5.04806.6987E6C5; Thu, 21
+        Feb 2019 10:08:22 +0000 (GMT)
+Received: from eusmtrp1.samsung.com (unknown [182.198.249.138]) by
+        eucas1p2.samsung.com (KnoxPortal) with ESMTPA id
+        20190221100821eucas1p2ec6440cf2b734261cbddb47321b37fd7~FWS5C6gmE2936529365eucas1p2b;
+        Thu, 21 Feb 2019 10:08:21 +0000 (GMT)
+Received: from eusmgms2.samsung.com (unknown [182.198.249.180]) by
+        eusmtrp1.samsung.com (KnoxPortal) with ESMTP id
+        20190221100821eusmtrp15492a1e2268ee2cbb4e06f771dbe1f3a~FWS4ycOTB0967009670eusmtrp1h;
+        Thu, 21 Feb 2019 10:08:21 +0000 (GMT)
+X-AuditID: cbfec7f5-34dff700000012c6-c1-5c6e78968a6f
+Received: from eusmtip1.samsung.com ( [203.254.199.221]) by
+        eusmgms2.samsung.com (EUCPMTA) with SMTP id 53.4E.04128.5987E6C5; Thu, 21
+        Feb 2019 10:08:21 +0000 (GMT)
+Received: from [106.116.147.30] (unknown [106.116.147.30]) by
+        eusmtip1.samsung.com (KnoxPortal) with ESMTPA id
+        20190221100820eusmtip173e0051c5cb37c326434925225590ecb~FWS3fu0qy3193531935eusmtip1q;
+        Thu, 21 Feb 2019 10:08:20 +0000 (GMT)
+Subject: Re: [PATCH V15 14/18] block: enable multipage bvecs
+To:     Ming Lei <ming.lei@redhat.com>
 Cc:     Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
@@ -51,104 +79,149 @@ Cc:     Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
         Krzysztof Kozlowski <krzk@kernel.org>,
         Adrian Hunter <adrian.hunter@intel.com>,
         Bartlomiej Zolnierkiewicz <b.zolnierkie@samsung.com>
-Subject: Re: [PATCH V15 14/18] block: enable multipage bvecs
-Message-ID: <20190221095733.GA12448@ming.t460p>
-References: <20190215111324.30129-1-ming.lei@redhat.com>
- <20190215111324.30129-15-ming.lei@redhat.com>
- <CGME20190221084301eucas1p11e8841a62b4b1da3cccca661b6f4c29d@eucas1p1.samsung.com>
- <6c9ae4de-c56f-a2b3-2542-da7d8b95601d@samsung.com>
+From:   Marek Szyprowski <m.szyprowski@samsung.com>
+Message-ID: <ba39138d-d65b-335d-d709-b95dbde1fd5c@samsung.com>
+Date:   Thu, 21 Feb 2019 11:08:19 +0100
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:60.0) Gecko/20100101
+        Thunderbird/60.5.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
+In-Reply-To: <20190221095733.GA12448@ming.t460p>
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <6c9ae4de-c56f-a2b3-2542-da7d8b95601d@samsung.com>
-User-Agent: Mutt/1.9.1 (2017-09-22)
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.40]); Thu, 21 Feb 2019 09:58:08 +0000 (UTC)
+Content-Language: en-US
+X-Brightmail-Tracker: H4sIAAAAAAAAA01SbUyTVxj1vt80q7kWJ8/82GKzYbYFULdkd1un0y3bm5m4mZDoNjJW9R0Q
+        20JaquISA9SPWYmKuAlFh2RRkDIKla/ylQiVpkOpChitlCxYtwmjZBsGmVpm+1bHv/Oc55x7
+        npNcgVaNcouFLEOuZDRodWpOwTT3zvQn/bDbkLayqiKJeIO1HLEHjnKkodTBEq/9DkdOFvh4
+        EphsYcmVsdM86QyVs+TqgwKKTIWHWHLefoki7sI9xOer50lv8w2KdPpfJ9fvVPOk7MdhjnR0
+        ehky0HaKIyO1syxxzx5F5GBFGyKlvi6KtD1q5Ul3iYUif4wnkp6RIYZYy/dzpG58kiEHGu4j
+        sr9ohieenzcT32MP+/5ysW6qlBWLLSFedNkCvOgbaWDEfe4JVvyp4x4lDlwxi86aQ5zo/Ps4
+        Lw7f6ODE9lv5nFh4+RIt/nXXz4iTXUOceKSxBomOxiHms/gvFJrtki5rp2RMWfO1IvPY6UKU
+        c+7F3RcmHrL5yPmCFcUJgN+ElqIezooUggpXI/iz5B6ShykE7ZYxWh7+QdBa5eefWpy3f4up
+        qhD0Vthj/kkEtz1VTEQVjzUweq4WRfBCrIZAwM5HRDQOC7Bveia64PAqsE5YuQhW4jXwy3kH
+        HcEMfgWagwPRh57HaXCi383LmgXgLQtG+Ti8EvrLXFE9jV8CS1N5DCeAP1hBRcIAt8TB47LD
+        lHz3h1A9fI2TcTyMeRpjfZZCX0kRIxssCA6W2nh5KELQdKo15ngXejzXWCsSnkS8Co62FJle
+        B5WdjigNeD7cnFggHzEfjjefpGVaCd8dUMnqRLB56p7FXrx6nT6G1LY51Wxz6tjm1LH9n3sG
+        MTUoQTKb9BmS6Q2DtCvZpNWbzIaM5G3Zeid68vP7wp77rajr0dZuhAWkfk5Zv0WfpmK1O015
+        +m4EAq1eqPwky5CmUm7X5u2RjNnpRrNOMnWjJQKjTlB+O+/XL1U4Q5sr7ZCkHMn4dEsJcYvz
+        UbKqadmGvNQVi1Kca99eVj5agNNzdlVWnsDb3nqQmjSrQWenwzs2aYo/DaUub98UNg/Ofq7R
+        HG4Yi3elf3wk1De8bnD994mrra71Kwa/eu+yInRB53rn4a3ivWL21DdnNn4UXFqX/8FWv7EE
+        X5y+Oc+deffljn+3LNl7yKsryPy9fjzXqWZMmdpVr9FGk/Y/FfDcNfUDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAA02Sa0xTZxiA952eG8S6Y8HwjRA3T4bGW6Fc1pfZdfulZ/6ZzjiNYvSIJ0Ck
+        rfa0KsSYAlNCt3hXoBUxOnVchFIRFUGlIFhvVbGYMUo2AeMl0OjYJhvCgLqEf0/yPs+bvMnL
+        KlR/UNFsptEimY1iFk+Hk3dG2wOLju40psYXVMeCt6+KhsrAfhpqi2so8Fb20lCU62MgELxE
+        wb2XpQw0DTopePA2l4ChUT8F5ZU3CWjNywGfz8VAW30nAU1dC+BR788MlJzopqGxyUtCR8Nx
+        GnqqxihoHduPoKCsAUGx7xoBDSOXGfAczifg+as50NLjJ8Hu3END9asgCXtr/0Sw58dhBtrP
+        rwbfu3bqq9lC9VAxJRzMH2SEK44AI/h6aknh+9YBSjjd+IIQOu5ZBXdFIS243xxihO7ORlq4
+        +ouNFvLu3lQIr/u7SCF4zU8L++oqkFBT5yeXR6xV68wmq0X6JMMkW77g12kgQa1JAXVCUopa
+        k6hd/3lCMh+n122WsjK3S+Y4/UZ1xoHSPLT17KydFwb+pWzI/ZEdhbGYS8LuX58hOwpnVdwZ
+        hJsLHqLQIAZ7j9moEEfgkU47HZIGEH5wdEgxMYjgdPjp2arJIJLjcSBQyUxICs4Whp86m5lQ
+        UUTgf26N0hMWzWmwfcA+yUpOj2+X10xuIrlYXN/XQdoRy87kUrH/PgopM7C3pI+c4DAuHt8v
+        uTKpK7i5eOTEo/f8Mc6/6HzPUbirr4w4gFSOKbljSuKYkjimJCcRWYEiJatsSDfICWpZNMhW
+        Y7o6zWRwo/GHq28brruM7IMrPYhjET9N6VpjSFVR4nY52+BBmFXwkcplmcZUlXKzmJ0jmU0b
+        zNYsSfag5PHbDiqiZ6aZxt/XaNmgSdZoIUWjTdQmfgZ8lNIXn71WxaWLFmmLJG2VzP93BBsW
+        bUOnY4q++SmiMKC/NXdV/ykXLN290bzJNfzSNTyvdaz82ePpK4hPxXfdv8fdrYHfxjqqV3/Z
+        2/Zkly749eI0T3p42QfzlycdWTjvbctj/TT+W1G193ppu27bd9rCpYt8ubffKLfFuBa3fFi4
+        5dCsc07LDvavnObYYJUzKmWJ3H1j398/nJnBk3KGqJmvMMvif2o9hduGAwAA
+X-CMS-MailID: 20190221100821eucas1p2ec6440cf2b734261cbddb47321b37fd7
+X-Msg-Generator: CA
+Content-Type: text/plain; charset="utf-8"
+X-RootMTR: 20190221084301eucas1p11e8841a62b4b1da3cccca661b6f4c29d
+X-EPHeader: CA
+CMS-TYPE: 201P
+X-CMS-RootMailID: 20190221084301eucas1p11e8841a62b4b1da3cccca661b6f4c29d
+References: <20190215111324.30129-1-ming.lei@redhat.com>
+        <20190215111324.30129-15-ming.lei@redhat.com>
+        <CGME20190221084301eucas1p11e8841a62b4b1da3cccca661b6f4c29d@eucas1p1.samsung.com>
+        <6c9ae4de-c56f-a2b3-2542-da7d8b95601d@samsung.com>
+        <20190221095733.GA12448@ming.t460p>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Feb 21, 2019 at 09:42:59AM +0100, Marek Szyprowski wrote:
-> Dear All,
-> 
-> On 2019-02-15 12:13, Ming Lei wrote:
-> > This patch pulls the trigger for multi-page bvecs.
-> >
-> > Reviewed-by: Omar Sandoval <osandov@fb.com>
-> > Signed-off-by: Ming Lei <ming.lei@redhat.com>
-> 
-> Since Linux next-20190218 I've observed problems with block layer on one
-> of my test devices (Odroid U3 with EXT4 rootfs on SD card). Bisecting
-> this issue led me to this change. This is also the first linux-next
-> release with this change merged. The issue is fully reproducible and can
-> be observed in the following kernel log:
-> 
-> sdhci: Secure Digital Host Controller Interface driver
-> sdhci: Copyright(c) Pierre Ossman
-> s3c-sdhci 12530000.sdhci: clock source 2: mmc_busclk.2 (100000000 Hz)
-> s3c-sdhci 12530000.sdhci: Got CD GPIO
-> mmc0: SDHCI controller on samsung-hsmmc [12530000.sdhci] using ADMA
-> mmc0: new high speed SDHC card at address aaaa
-> mmcblk0: mmc0:aaaa SL16G 14.8 GiB
-> 
-> ...
-> 
-> EXT4-fs (mmcblk0p2): INFO: recovery required on readonly filesystem
-> EXT4-fs (mmcblk0p2): write access will be enabled during recovery
-> EXT4-fs (mmcblk0p2): recovery complete
-> EXT4-fs (mmcblk0p2): mounted filesystem with ordered data mode. Opts: (null)
-> VFS: Mounted root (ext4 filesystem) readonly on device 179:2.
-> devtmpfs: mounted
-> Freeing unused kernel memory: 1024K
-> hub 1-3:1.0: USB hub found
-> Run /sbin/init as init process
-> hub 1-3:1.0: 3 ports detected
-> *** stack smashing detected ***: <unknown> terminated
-> Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000004
-> CPU: 1 PID: 1 Comm: init Not tainted 5.0.0-rc6-next-20190218 #1546
-> Hardware name: SAMSUNG EXYNOS (Flattened Device Tree)
-> [<c01118d0>] (unwind_backtrace) from [<c010d794>] (show_stack+0x10/0x14)
-> [<c010d794>] (show_stack) from [<c09ff8a4>] (dump_stack+0x90/0xc8)
-> [<c09ff8a4>] (dump_stack) from [<c0125944>] (panic+0xfc/0x304)
-> [<c0125944>] (panic) from [<c012bc98>] (do_exit+0xabc/0xc6c)
-> [<c012bc98>] (do_exit) from [<c012c100>] (do_group_exit+0x3c/0xbc)
-> [<c012c100>] (do_group_exit) from [<c0138908>] (get_signal+0x130/0xbf4)
-> [<c0138908>] (get_signal) from [<c010c7a0>] (do_work_pending+0x130/0x618)
-> [<c010c7a0>] (do_work_pending) from [<c0101034>]
-> (slow_work_pending+0xc/0x20)
-> Exception stack(0xe88c3fb0 to 0xe88c3ff8)
-> 3fa0:                                     00000000 bea7787c 00000005
-> b6e8d0b8
-> 3fc0: bea77a18 b6f92010 b6e8d0b8 00000001 b6e8d0c8 00000001 b6e8c000
-> bea77b60
-> 3fe0: 00000020 bea77998 ffffffff b6d52368 60000050 ffffffff
-> CPU3: stopping
-> 
-> I would like to help debugging and fixing this issue, but I don't really
-> have idea where to start. Here are some more detailed information about
-> my test system:
-> 
-> 1. Board: ARM 32bit Samsung Exynos4412-based Odroid U3 (device tree
-> source: arch/arm/boot/dts/exynos4412-odroidu3.dts)
-> 
-> 2. Block device: MMC/SDHCI/SDHCI-S3C with SD card
-> (drivers/mmc/host/sdhci-s3c.c driver, sdhci_2 device node in the device
-> tree)
-> 
-> 3. Rootfs: Ext4
-> 
-> 4. Kernel config: arch/arm/configs/exynos_defconfig
-> 
-> I can gather more logs if needed, just let me which kernel option to
-> enable. Reverting this commit on top of next-20190218 as well as current
-> linux-next (tested with next-20190221) fixes this issue and makes the
-> system bootable again.
+Hi Ming,
 
-Could you test the patch in following link and see if it can make a difference?
+On 2019-02-21 10:57, Ming Lei wrote:
+> On Thu, Feb 21, 2019 at 09:42:59AM +0100, Marek Szyprowski wrote:
+>> On 2019-02-15 12:13, Ming Lei wrote:
+>>> This patch pulls the trigger for multi-page bvecs.
+>>>
+>>> Reviewed-by: Omar Sandoval <osandov@fb.com>
+>>> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+>> Since Linux next-20190218 I've observed problems with block layer on one
+>> of my test devices (Odroid U3 with EXT4 rootfs on SD card). Bisecting
+>> this issue led me to this change. This is also the first linux-next
+>> release with this change merged. The issue is fully reproducible and can
+>> be observed in the following kernel log:
+>>
+>> sdhci: Secure Digital Host Controller Interface driver
+>> sdhci: Copyright(c) Pierre Ossman
+>> s3c-sdhci 12530000.sdhci: clock source 2: mmc_busclk.2 (100000000 Hz)
+>> s3c-sdhci 12530000.sdhci: Got CD GPIO
+>> mmc0: SDHCI controller on samsung-hsmmc [12530000.sdhci] using ADMA
+>> mmc0: new high speed SDHC card at address aaaa
+>> mmcblk0: mmc0:aaaa SL16G 14.8 GiB
+>>
+>> ...
+>>
+>> EXT4-fs (mmcblk0p2): INFO: recovery required on readonly filesystem
+>> EXT4-fs (mmcblk0p2): write access will be enabled during recovery
+>> EXT4-fs (mmcblk0p2): recovery complete
+>> EXT4-fs (mmcblk0p2): mounted filesystem with ordered data mode. Opts: (null)
+>> VFS: Mounted root (ext4 filesystem) readonly on device 179:2.
+>> devtmpfs: mounted
+>> Freeing unused kernel memory: 1024K
+>> hub 1-3:1.0: USB hub found
+>> Run /sbin/init as init process
+>> hub 1-3:1.0: 3 ports detected
+>> *** stack smashing detected ***: <unknown> terminated
+>> Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000004
+>> CPU: 1 PID: 1 Comm: init Not tainted 5.0.0-rc6-next-20190218 #1546
+>> Hardware name: SAMSUNG EXYNOS (Flattened Device Tree)
+>> [<c01118d0>] (unwind_backtrace) from [<c010d794>] (show_stack+0x10/0x14)
+>> [<c010d794>] (show_stack) from [<c09ff8a4>] (dump_stack+0x90/0xc8)
+>> [<c09ff8a4>] (dump_stack) from [<c0125944>] (panic+0xfc/0x304)
+>> [<c0125944>] (panic) from [<c012bc98>] (do_exit+0xabc/0xc6c)
+>> [<c012bc98>] (do_exit) from [<c012c100>] (do_group_exit+0x3c/0xbc)
+>> [<c012c100>] (do_group_exit) from [<c0138908>] (get_signal+0x130/0xbf4)
+>> [<c0138908>] (get_signal) from [<c010c7a0>] (do_work_pending+0x130/0x618)
+>> [<c010c7a0>] (do_work_pending) from [<c0101034>]
+>> (slow_work_pending+0xc/0x20)
+>> Exception stack(0xe88c3fb0 to 0xe88c3ff8)
+>> 3fa0:Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â Â  00000000 bea7787c 00000005
+>> b6e8d0b8
+>> 3fc0: bea77a18 b6f92010 b6e8d0b8 00000001 b6e8d0c8 00000001 b6e8c000
+>> bea77b60
+>> 3fe0: 00000020 bea77998 ffffffff b6d52368 60000050 ffffffff
+>> CPU3: stopping
+>>
+>> I would like to help debugging and fixing this issue, but I don't really
+>> have idea where to start. Here are some more detailed information about
+>> my test system:
+>>
+>> 1. Board: ARM 32bit Samsung Exynos4412-based Odroid U3 (device tree
+>> source: arch/arm/boot/dts/exynos4412-odroidu3.dts)
+>>
+>> 2. Block device: MMC/SDHCI/SDHCI-S3C with SD card
+>> (drivers/mmc/host/sdhci-s3c.c driver, sdhci_2 device node in the device
+>> tree)
+>>
+>> 3. Rootfs: Ext4
+>>
+>> 4. Kernel config: arch/arm/configs/exynos_defconfig
+>>
+>> I can gather more logs if needed, just let me which kernel option to
+>> enable. Reverting this commit on top of next-20190218 as well as current
+>> linux-next (tested with next-20190221) fixes this issue and makes the
+>> system bootable again.
+> Could you test the patch in following link and see if it can make a difference?
+>
+> https://marc.info/?l=linux-aio&m=155070355614541&w=2
 
-https://marc.info/?l=linux-aio&m=155070355614541&w=2
+I've tested that patch, but it doesn't make any difference on the test
+system. In the log I see no warning added by it.
 
-Thanks,
-Ming
+Best regards
+-- 
+Marek Szyprowski, PhD
+Samsung R&D Institute Poland
+
