@@ -1,104 +1,94 @@
-Return-Path: <SRS0=4ybF=RB=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=GcgC=RC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5AFCC43381
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 Feb 2019 16:35:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 94C7BC43381
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Feb 2019 02:22:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7F36A2184D
-	for <linux-ext4@archiver.kernel.org>; Tue, 26 Feb 2019 16:35:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 67949218CD
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Feb 2019 02:22:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728195AbfBZQfG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 26 Feb 2019 11:35:06 -0500
-Received: from mx2.suse.de ([195.135.220.15]:34060 "EHLO mx1.suse.de"
+        id S1729610AbfB0CWu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 26 Feb 2019 21:22:50 -0500
+Received: from szxga07-in.huawei.com ([45.249.212.35]:33226 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727108AbfBZQfG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 26 Feb 2019 11:35:06 -0500
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id E0DB3AAAE;
-        Tue, 26 Feb 2019 16:35:04 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 1F5771E4255; Tue, 26 Feb 2019 17:35:04 +0100 (CET)
-Date:   Tue, 26 Feb 2019 17:35:04 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Liu Song <fishland@aliyun.com>
-Cc:     tytso@mit.edu, jack@suse.com, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, liu.song11@zte.com.cn
-Subject: Re: [PATCH] jbd2: jbd2_get_transaction does not need to return a
- value
-Message-ID: <20190226163504.GA24711@quack2.suse.cz>
-References: <20190226160728.38587-1-fishland@aliyun.com>
+        id S1729527AbfB0CWu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 26 Feb 2019 21:22:50 -0500
+Received: from DGGEMS403-HUB.china.huawei.com (unknown [172.30.72.59])
+        by Forcepoint Email with ESMTP id 707BED1C77651EBE3B3C;
+        Wed, 27 Feb 2019 10:22:48 +0800 (CST)
+Received: from huawei.com (10.175.124.28) by DGGEMS403-HUB.china.huawei.com
+ (10.3.19.203) with Microsoft SMTP Server id 14.3.408.0; Wed, 27 Feb 2019
+ 10:22:39 +0800
+From:   Jason Yan <yanaijie@huawei.com>
+To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
+        <linux-ext4@vger.kernel.org>
+CC:     Jason Yan <yanaijie@huawei.com>
+Subject: [PATCH] ext4: remove useless ext4_pin_inode()
+Date:   Wed, 27 Feb 2019 10:20:48 +0800
+Message-ID: <20190227022048.22887-1-yanaijie@huawei.com>
+X-Mailer: git-send-email 2.14.5
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190226160728.38587-1-fishland@aliyun.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Type: text/plain
+X-Originating-IP: [10.175.124.28]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 27-02-19 00:07:27, Liu Song wrote:
-> In jbd2_get_transaction, a new transaction is initialized,
-> and set to the j_running_transaction. No need for a return
-> value, so remove it.
-> Also, adjust some comments to match the actual operation
-> of this function.
-> 
-> Signed-off-by: Liu Song <liu.song11@zte.com.cn>
+This function is never used from the beginning. Let's remove it.
 
-Looks good. You can add:
+Signed-off-by: Jason Yan <yanaijie@huawei.com>
+---
+ fs/ext4/inode.c | 30 ------------------------------
+ 1 file changed, 30 deletions(-)
 
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-> ---
->  fs/jbd2/transaction.c | 8 +++-----
->  1 file changed, 3 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index cc35537232f2..79a028a7a579 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -63,7 +63,7 @@ void jbd2_journal_free_transaction(transaction_t *transaction)
->  /*
->   * jbd2_get_transaction: obtain a new transaction_t object.
->   *
-> - * Simply allocate and initialise a new transaction.  Create it in
-> + * Simply initialise a new transaction. Initialize it in
->   * RUNNING state and add it to the current journal (which should not
->   * have an existing running transaction: we only make a new transaction
->   * once we have started to commit the old one).
-> @@ -75,8 +75,8 @@ void jbd2_journal_free_transaction(transaction_t *transaction)
->   *
->   */
->  
-> -static transaction_t *
-> -jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
-> +static void jbd2_get_transaction(journal_t *journal,
-> +				transaction_t *transaction)
->  {
->  	transaction->t_journal = journal;
->  	transaction->t_state = T_RUNNING;
-> @@ -100,8 +100,6 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
->  	transaction->t_max_wait = 0;
->  	transaction->t_start = jiffies;
->  	transaction->t_requested = 0;
-> -
-> -	return transaction;
->  }
->  
->  /*
-> -- 
-> 2.19.1
-> 
-> 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 34d7e0703cc6..0060d08edd92 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -6089,36 +6089,6 @@ void ext4_dirty_inode(struct inode *inode, int flags)
+ 	return;
+ }
+ 
+-#if 0
+-/*
+- * Bind an inode's backing buffer_head into this transaction, to prevent
+- * it from being flushed to disk early.  Unlike
+- * ext4_reserve_inode_write, this leaves behind no bh reference and
+- * returns no iloc structure, so the caller needs to repeat the iloc
+- * lookup to mark the inode dirty later.
+- */
+-static int ext4_pin_inode(handle_t *handle, struct inode *inode)
+-{
+-	struct ext4_iloc iloc;
+-
+-	int err = 0;
+-	if (handle) {
+-		err = ext4_get_inode_loc(inode, &iloc);
+-		if (!err) {
+-			BUFFER_TRACE(iloc.bh, "get_write_access");
+-			err = jbd2_journal_get_write_access(handle, iloc.bh);
+-			if (!err)
+-				err = ext4_handle_dirty_metadata(handle,
+-								 NULL,
+-								 iloc.bh);
+-			brelse(iloc.bh);
+-		}
+-	}
+-	ext4_std_error(inode->i_sb, err);
+-	return err;
+-}
+-#endif
+-
+ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+ {
+ 	journal_t *journal;
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+2.14.5
+
