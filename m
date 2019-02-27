@@ -2,121 +2,112 @@ Return-Path: <SRS0=GcgC=RC=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D679C43381
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Feb 2019 22:02:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3A4AC10F06
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Feb 2019 23:30:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6796220818
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Feb 2019 22:02:41 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tn4WP5CC"
+	by mail.kernel.org (Postfix) with ESMTP id A8E4E21850
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Feb 2019 23:30:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729412AbfB0WCl (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 27 Feb 2019 17:02:41 -0500
-Received: from mail-qt1-f195.google.com ([209.85.160.195]:37105 "EHLO
-        mail-qt1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726594AbfB0WCk (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Feb 2019 17:02:40 -0500
-Received: by mail-qt1-f195.google.com with SMTP id a48so21215062qtb.4
-        for <linux-ext4@vger.kernel.org>; Wed, 27 Feb 2019 14:02:40 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=from:to:cc:subject:date:message-id;
-        bh=iOjb6bVbAO9dxNoEMJ70Ddn6Eba9sKOZb5rrW3uqQBE=;
-        b=tn4WP5CC5ReMtZh69apIJipuH1Elx+6v9a2HN7IZzk0C2QAQLYxQvaJC0DZ5NuruGJ
-         rfQx4Dx6vij56d0daQxrvAk2xj74z6ggG158FI3nKAmbKeJtSOZZjuK+42zodHatJNb7
-         Zew8EG/+Z5BuooZo6noZzIhnG+YbqyV9MOAUpbTj+EKmtS4cQMnkpzRTVMyBAjyknI9t
-         D3GKVrQBcVfsisDGosxW4D/SHqIthJjDUhjD6/6u9XRU3NgfVuMQaoFtU6VazGsF8Avw
-         n3VbttIZlHYoHovOXzLVdOyatyPxekVLgmzuRUlNifDFl/6YPT8UEkznept5a0aU0hC2
-         cGIg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:to:cc:subject:date:message-id;
-        bh=iOjb6bVbAO9dxNoEMJ70Ddn6Eba9sKOZb5rrW3uqQBE=;
-        b=q5PCHdbqnhbQEHvadT71QaDuoLiak9nREBG2RVYukWAwYSaKNicTRu9wLH6hr3e+BR
-         PVE6hcvdFqrEQnpIeY0OtH4rlZDzv7eGrRVoFRSbo1h7YaHOqMJSBB2BFM5JvFtq+EMy
-         3aja2Sh3dHqaAYK6Qatx+qYaoOH9yFevDzwhaMnuw3XwsUGXuGnSvjZGhn7SDySP79zw
-         aQ8RtaaF5wvc8EEv7tsx44Z7nBJJZ0C97J4HcPK4TQuwvNwI+1axZVyMMpgddBopJTLf
-         1BZglFaQMYx5A3LPT+MffykjrvNDnBbqoM5EFjm680KxmLd5neY0iimG6Bk0FuKr9i6d
-         voPg==
-X-Gm-Message-State: AHQUAubQYjDumOM8LupyN0u32a4VKTWCTALeT5GgGXSX72zW/hFYQ3rF
-        Uja3BlGJ9dTNePSyyRqhBw0DzKH2
-X-Google-Smtp-Source: APXvYqw2jT2Qk/NyfuqmeT0Au8PXuqyNeP+5eGC0PCoPB/1Kl9gLVriKnB2EOVqie0I3LGW9DICUuA==
-X-Received: by 2002:ac8:96c:: with SMTP id z41mr3557517qth.305.1551304959570;
-        Wed, 27 Feb 2019 14:02:39 -0800 (PST)
-Received: from localhost.localdomain (c-73-60-226-25.hsd1.nh.comcast.net. [73.60.226.25])
-        by smtp.gmail.com with ESMTPSA id j11sm12066923qtk.26.2019.02.27.14.02.38
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 27 Feb 2019 14:02:39 -0800 (PST)
-From:   Eric Whitney <enwlinux@gmail.com>
-To:     linux-ext4@vger.kernel.org
-Cc:     tytso@mit.edu, Eric Whitney <enwlinux@gmail.com>
-Subject: [PATCH] ext4: fix bigalloc cluster freeing when hole punching under load
-Date:   Wed, 27 Feb 2019 17:02:04 -0500
-Message-Id: <20190227220204.31804-1-enwlinux@gmail.com>
-X-Mailer: git-send-email 2.11.0
+        id S1730438AbfB0XaM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 27 Feb 2019 18:30:12 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:50092 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1730139AbfB0XaM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 27 Feb 2019 18:30:12 -0500
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 7CB5030842B2;
+        Wed, 27 Feb 2019 23:30:11 +0000 (UTC)
+Received: from ming.t460p (ovpn-8-16.pek2.redhat.com [10.72.8.16])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 7E34F5E7A3;
+        Wed, 27 Feb 2019 23:29:46 +0000 (UTC)
+Date:   Thu, 28 Feb 2019 07:29:41 +0800
+From:   Ming Lei <ming.lei@redhat.com>
+To:     Jon Hunter <jonathanh@nvidia.com>
+Cc:     Marek Szyprowski <m.szyprowski@samsung.com>,
+        Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Theodore Ts'o <tytso@mit.edu>, Omar Sandoval <osandov@fb.com>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Dave Chinner <dchinner@redhat.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        Mike Snitzer <snitzer@redhat.com>, dm-devel@redhat.com,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-raid@vger.kernel.org,
+        David Sterba <dsterba@suse.com>, linux-btrfs@vger.kernel.org,
+        "Darrick J . Wong" <darrick.wong@oracle.com>,
+        linux-xfs@vger.kernel.org, Gao Xiang <gaoxiang25@huawei.com>,
+        Christoph Hellwig <hch@lst.de>, linux-ext4@vger.kernel.org,
+        Coly Li <colyli@suse.de>, linux-bcache@vger.kernel.org,
+        Boaz Harrosh <ooo@electrozaur.com>,
+        Bob Peterson <rpeterso@redhat.com>, cluster-devel@redhat.com,
+        Ulf Hansson <ulf.hansson@linaro.org>,
+        "linux-mmc@vger.kernel.org" <linux-mmc@vger.kernel.org>,
+        'Linux Samsung SOC' <linux-samsung-soc@vger.kernel.org>,
+        Krzysztof Kozlowski <krzk@kernel.org>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Bartlomiej Zolnierkiewicz <b.zolnierkie@samsung.com>,
+        linux-tegra <linux-tegra@vger.kernel.org>
+Subject: Re: [PATCH V15 14/18] block: enable multipage bvecs
+Message-ID: <20190227232940.GA13319@ming.t460p>
+References: <20190215111324.30129-1-ming.lei@redhat.com>
+ <20190215111324.30129-15-ming.lei@redhat.com>
+ <CGME20190221084301eucas1p11e8841a62b4b1da3cccca661b6f4c29d@eucas1p1.samsung.com>
+ <6c9ae4de-c56f-a2b3-2542-da7d8b95601d@samsung.com>
+ <0dbbee64-5c6b-0374-4360-6dc218c70d58@nvidia.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <0dbbee64-5c6b-0374-4360-6dc218c70d58@nvidia.com>
+User-Agent: Mutt/1.9.1 (2017-09-22)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.40]); Wed, 27 Feb 2019 23:30:12 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Ext4 may not free clusters correctly when punching holes in bigalloc
-file systems under high load conditions.  If it's not possible to
-extend and restart the journal in ext4_ext_rm_leaf() when preparing to
-remove blocks from a punched region, a retry of the entire punch
-operation is triggered in ext4_ext_remove_space().  This causes a
-partial cluster to be set to the first cluster in the extent found to
-the right of the punched region.  However, if the punch operation
-prior to the retry had made enough progress to delete one or more
-extents and a partial cluster candidate for freeing had already been
-recorded, the retry would overwrite the partial cluster.  The loss of
-this information makes it impossible to correctly free the original
-partial cluster in all cases.
+On Wed, Feb 27, 2019 at 08:47:09PM +0000, Jon Hunter wrote:
+> 
+> On 21/02/2019 08:42, Marek Szyprowski wrote:
+> > Dear All,
+> > 
+> > On 2019-02-15 12:13, Ming Lei wrote:
+> >> This patch pulls the trigger for multi-page bvecs.
+> >>
+> >> Reviewed-by: Omar Sandoval <osandov@fb.com>
+> >> Signed-off-by: Ming Lei <ming.lei@redhat.com>
+> > 
+> > Since Linux next-20190218 I've observed problems with block layer on one
+> > of my test devices (Odroid U3 with EXT4 rootfs on SD card). Bisecting
+> > this issue led me to this change. This is also the first linux-next
+> > release with this change merged. The issue is fully reproducible and can
+> > be observed in the following kernel log:
+> > 
+> > sdhci: Secure Digital Host Controller Interface driver
+> > sdhci: Copyright(c) Pierre Ossman
+> > s3c-sdhci 12530000.sdhci: clock source 2: mmc_busclk.2 (100000000 Hz)
+> > s3c-sdhci 12530000.sdhci: Got CD GPIO
+> > mmc0: SDHCI controller on samsung-hsmmc [12530000.sdhci] using ADMA
+> > mmc0: new high speed SDHC card at address aaaa
+> > mmcblk0: mmc0:aaaa SL16G 14.8 GiB
+> I have also noticed some failures when writing to an eMMC device on one
+> of our Tegra boards. We have a simple eMMC write/read test and it is
+> currently failing because the data written does not match the source.
+> 
+> I did not seem the same crash as reported here, however, in our case the
+> rootfs is NFS mounted and so probably would not. However, the bisect
+> points to this commit and reverting on top of -next fixes the issues.
 
-This bug can cause generic/476 to fail when run as part of
-xfstests-bld's bigalloc and bigalloc_1k test cases.  The failure is
-reported when e2fsck detects bad iblocks counts greater than expected
-in units of whole clusters and also detects a number of negative block
-bitmap differences equal to the iblocks discrepancy in cluster units.
+It is sdhci, probably related with max segment size, could you test the
+following patch:
 
-Signed-off-by: Eric Whitney <enwlinux@gmail.com>
----
- fs/ext4/extents.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+https://marc.info/?l=linux-mmc&m=155128334122951&w=2
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 240b6dea5441..252bbbb5a2f4 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2956,14 +2956,17 @@ int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start,
- 			if (err < 0)
- 				goto out;
- 
--		} else if (sbi->s_cluster_ratio > 1 && end >= ex_end) {
-+		} else if (sbi->s_cluster_ratio > 1 && end >= ex_end &&
-+			   partial.state == initial) {
- 			/*
--			 * If there's an extent to the right its first cluster
--			 * contains the immediate right boundary of the
--			 * truncated/punched region.  Set partial_cluster to
--			 * its negative value so it won't be freed if shared
--			 * with the current extent.  The end < ee_block case
--			 * is handled in ext4_ext_rm_leaf().
-+			 * If we're punching, there's an extent to the right.
-+			 * If the partial cluster hasn't been set, set it to
-+			 * that extent's first cluster and its state to nofree
-+			 * so it won't be freed should it contain blocks to be
-+			 * removed. If it's already set (tofree/nofree), we're
-+			 * retrying and keep the original partial cluster info
-+			 * so a cluster marked tofree as a result of earlier
-+			 * extent removal is not lost.
- 			 */
- 			lblk = ex_end + 1;
- 			err = ext4_ext_search_right(inode, path, &lblk, &pblk,
--- 
-2.11.0
-
+Thanks,
+Ming
