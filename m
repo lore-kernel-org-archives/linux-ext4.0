@@ -2,66 +2,66 @@ Return-Path: <SRS0=HQ1C=RE=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+X-Spam-Status: No, score=-6.3 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E6ADC43381
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 14:06:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EAE41C10F06
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 14:06:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 0D6BE20850
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 14:06:05 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B70AE2085A
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 14:06:07 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="SX+uNue+"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="bwMkidqD"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388715AbfCAOGD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 1 Mar 2019 09:06:03 -0500
-Received: from mail-pg1-f193.google.com ([209.85.215.193]:40261 "EHLO
+        id S2388179AbfCAOGG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 1 Mar 2019 09:06:06 -0500
+Received: from mail-pg1-f193.google.com ([209.85.215.193]:37739 "EHLO
         mail-pg1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387836AbfCAOGD (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Mar 2019 09:06:03 -0500
-Received: by mail-pg1-f193.google.com with SMTP id u9so11500508pgo.7;
-        Fri, 01 Mar 2019 06:06:02 -0800 (PST)
+        with ESMTP id S2387836AbfCAOGG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Mar 2019 09:06:06 -0500
+Received: by mail-pg1-f193.google.com with SMTP id q206so11506265pgq.4;
+        Fri, 01 Mar 2019 06:06:05 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=kiBqi2ro6Was0nH/4v7l9Y+bERxMStLUscG8eBAQsj0=;
-        b=SX+uNue+3ebwSjAa8BHgXn7OCuuRd2C160dkvB2QZ2uv35fJB5FBoVHLB2LcgjC/IK
-         cHVvC6reRpMh9h07ewIGOuvZjaCo2AJSnpWA42M/XJiNt1IdznUL7QeI1zAr9p5R1Qzp
-         7/xfc1tzsww/vSdr9jPDUzx6LpM7OHiC7gVhL0kv7C49UpKcSHmE3r4XlZaZaazYrsuc
-         TlyVZsHfpz/S2z/buBML3Po/SwNqyevjFPayjYVMYZIyMRixkwgzP8voMVACoWn8iDuU
-         q96kMuMYcAxIGT6jgJkyM3+gFZUhMwvA94uVOXhOA7XaYLSd7IIfH9/x9O5DHX4wxbvZ
-         UZqg==
+        bh=csWCm9wcihuFFL4oUEGmYUPt6om3ctC29q/OFYjhErk=;
+        b=bwMkidqD6m5h/zOFkwkGPoK7AvAU84RKMKIz7CKeP2TRDv3BdjKH8nnRl0SVBmIFGR
+         cjHWcbAMH8vCKY/SpvhD2TFi2r5/32QH4oIJgK2IxnamqlNkaqmLa2mcF4wg+5kdEeAt
+         QCpbjkmDsR0LQhuYbY3CycDzsSKv04bnIQHp+TBHLuDRs55mE6nwd3Ioor3XAHR62+3e
+         3ZmMEnA1QRZ01x2TPzFO8Q5JJm9NxCkEqSvjprkSzGftQAkVCXZK8VFLstIrrz1KXzOX
+         zquVBGre5Qf+JK545vfw4Uvq3bBmnnG9T9cJzyP5NRCs2vrOcQOUQ5WevFiERGRjhQja
+         cKtA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=kiBqi2ro6Was0nH/4v7l9Y+bERxMStLUscG8eBAQsj0=;
-        b=TAXmB5q9tctpFFKPYpxo9sWhvvwkln6vDvHgYWutLaVwsHWGSfnOsAZUu5Tfz6+2hJ
-         dbxLXUguQ7wp+S1U8c0/z/Y1A8Y087Dc3SzSC9gPXKolg7kncJy8CecIFk06CpqJFUW1
-         Gkd82IZQU2WLriEDjV4U/mYFHdYtJH9a3ckWE7Lo+AWJc89Nv/hryZ7BIHs/OeiwlCG/
-         fShglYdd51t6KN9SpIhx6R9wrRCy3YLzfpcxHrchSmbSrMqD6pIXVqb8KwzBu0SjbXyq
-         BDiuuI+cn4I/6vs6sOGfZp4/BSNwpFOQXVhtr4L3Irx9VYceIsF/5nDi6P+hu1ZH9yP/
-         6vdg==
-X-Gm-Message-State: APjAAAXBBOifXW8A+qtFIpPRQ0fUsCz5CcH+51HsnB0r8TbvIbeA1dc1
-        Lf5t6h4VAaqo428hgVKwlRHz9u5L
-X-Google-Smtp-Source: APXvYqxs83m9fgN5dV2CJgXI6uEH5sRmWf0fOcCVY44WdZLR4d1IKMN20N8XkCRMTTljsoiAjTyYCQ==
-X-Received: by 2002:a62:be08:: with SMTP id l8mr5659352pff.162.1551449161625;
-        Fri, 01 Mar 2019 06:06:01 -0800 (PST)
+        bh=csWCm9wcihuFFL4oUEGmYUPt6om3ctC29q/OFYjhErk=;
+        b=YdgUE+ot128CYbWJQaEIiCYYcSTT0zOjsO2T+vcfFxyuWqU6gEkmPN4oqLy53oEmRD
+         OGgmTE0uQyFq2o72ntTsyEa/YVsIBkiW/bu6Ko/psw3OUWmSdEAAn6Z+oER9IEjKEwnF
+         SSkktNqlqXeQTLB894LnddDxY0XXKnIHYRP2ZQ5+anwrfzB1PloTdzWOQEWg3upjYzkH
+         L6F9jms6LWElMwZrdnTCZBVAPK4lwsvjlSe+RofzGq2CD1LXqNyuri0YyLoAS2YGVnSI
+         1vCeRPS7qCOItuVcunu3eJSSJ1y2yeuWaWM2UdSbujxNZbvldvWlQvWO985hDKK5KvXn
+         a3CA==
+X-Gm-Message-State: AHQUAubhlX+rem6fcXvM0iIyZxzPjaQ4iU7vTMk6pzuOemHRTm2bP4Zk
+        F4VKWXI/yWMRJDm26bNPFJcPb4P/
+X-Google-Smtp-Source: AHgI3IboBpcdD5M0lYdeSrL6Z5y9WAduUlI23iLXpgtGfPDBkrRvf+2Oz1kj+RJzL4YffpHKwpp9Kg==
+X-Received: by 2002:a62:6d81:: with SMTP id i123mr5647563pfc.235.1551449164026;
+        Fri, 01 Mar 2019 06:06:04 -0800 (PST)
 Received: from localhost.localdomain (fs276ec80e.tkyc203.ap.nuro.jp. [39.110.200.14])
-        by smtp.gmail.com with ESMTPSA id a184sm12458089pge.68.2019.03.01.06.05.59
+        by smtp.gmail.com with ESMTPSA id a184sm12458089pge.68.2019.03.01.06.06.01
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 01 Mar 2019 06:06:00 -0800 (PST)
+        Fri, 01 Mar 2019 06:06:03 -0800 (PST)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 X-Google-Original-From: Wang Shilong <wshilong1991@gmail.com>
 To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
 Cc:     lixi@ddn.com, adilger@dilger.ca, Wang Shilong <wshilong@ddn.com>
-Subject: [PATCH 4/8] xfs: support project ID in xfs_setattr()
-Date:   Fri,  1 Mar 2019 23:05:37 +0900
-Message-Id: <1551449141-7884-5-git-send-email-wshilong1991@gmail.com>
+Subject: [PATCH 5/8] fs: add project support to statx
+Date:   Fri,  1 Mar 2019 23:05:38 +0900
+Message-Id: <1551449141-7884-6-git-send-email-wshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1551449141-7884-1-git-send-email-wshilong1991@gmail.com>
 References: <1551449141-7884-1-git-send-email-wshilong1991@gmail.com>
@@ -74,181 +74,112 @@ From: Wang Shilong <wshilong@ddn.com>
 
 From: Wang Shilong <wshilong@ddn.com>
 
+Extend statx to support project ID and inherit attribute.
+
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- fs/xfs/xfs_iops.c  | 51 +++++++++++++++++++++++++++++++++++++---------
- fs/xfs/xfs_linux.h | 10 +++++++++
- 2 files changed, 51 insertions(+), 10 deletions(-)
+ fs/stat.c                       | 1 +
+ include/linux/stat.h            | 2 ++
+ include/uapi/linux/stat.h       | 8 ++++++--
+ tools/include/uapi/linux/stat.h | 8 ++++++--
+ 4 files changed, 15 insertions(+), 4 deletions(-)
 
-diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index f48ffd7a8d3e..c10466fe6ed4 100644
---- a/fs/xfs/xfs_iops.c
-+++ b/fs/xfs/xfs_iops.c
-@@ -589,7 +589,8 @@ xfs_vn_change_ok(
- 	struct dentry	*dentry,
- 	struct iattr	*iattr)
- {
--	struct xfs_mount	*mp = XFS_I(d_inode(dentry))->i_mount;
-+	struct xfs_inode	*ip = XFS_I(d_inode(dentry));
-+	struct xfs_mount	*mp = ip->i_mount;
+diff --git a/fs/stat.c b/fs/stat.c
+index adbfcd86c81b..82d855c4647c 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -551,6 +551,7 @@ cp_statx(const struct kstat *stat, struct statx __user *buffer)
+ 	tmp.stx_rdev_minor = MINOR(stat->rdev);
+ 	tmp.stx_dev_major = MAJOR(stat->dev);
+ 	tmp.stx_dev_minor = MINOR(stat->dev);
++	tmp.stx_projid = (u32)from_kprojid(&init_user_ns, stat->projid);
  
- 	if (mp->m_flags & XFS_MOUNT_RDONLY)
- 		return -EROFS;
-@@ -597,6 +598,13 @@ xfs_vn_change_ok(
- 	if (XFS_FORCED_SHUTDOWN(mp))
- 		return -EIO;
- 
-+	 if ((iattr->ia_valid & ATTR_PROJID) &&
-+	     current_user_ns() != &init_user_ns) {
-+		if (!projid_eq(xfs_projid_to_kprojid(xfs_get_projid(ip)),
-+			       iattr->ia_projid))
-+			return -EPERM;
-+	}
-+
- 	return setattr_prepare(dentry, iattr);
+ 	return copy_to_user(buffer, &tmp, sizeof(tmp)) ? -EFAULT : 0;
  }
+diff --git a/include/linux/stat.h b/include/linux/stat.h
+index 765573dc17d6..72c9d2ab5343 100644
+--- a/include/linux/stat.h
++++ b/include/linux/stat.h
+@@ -18,6 +18,7 @@
+ #include <linux/types.h>
+ #include <linux/time.h>
+ #include <linux/uidgid.h>
++#include <linux/projid.h>
  
-@@ -619,8 +627,10 @@ xfs_setattr_nonsize(
- 	int			error;
- 	kuid_t			uid = GLOBAL_ROOT_UID, iuid = GLOBAL_ROOT_UID;
- 	kgid_t			gid = GLOBAL_ROOT_GID, igid = GLOBAL_ROOT_GID;
--	struct xfs_dquot	*udqp = NULL, *gdqp = NULL;
-+	kprojid_t		projid, iprojid;
-+	struct xfs_dquot	*udqp = NULL, *gdqp = NULL, *pdqp = NULL;
- 	struct xfs_dquot	*olddquot1 = NULL, *olddquot2 = NULL;
-+	struct xfs_dquot	*olddquot3 = NULL;
+ #define KSTAT_QUERY_FLAGS (AT_STATX_SYNC_TYPE)
  
- 	ASSERT((mask & ATTR_SIZE) == 0);
+@@ -40,6 +41,7 @@ struct kstat {
+ 	dev_t		rdev;
+ 	kuid_t		uid;
+ 	kgid_t		gid;
++	kprojid_t	projid;
+ 	loff_t		size;
+ 	struct timespec64 atime;
+ 	struct timespec64 mtime;
+diff --git a/include/uapi/linux/stat.h b/include/uapi/linux/stat.h
+index 7b35e98d3c58..56d35a2cbd0c 100644
+--- a/include/uapi/linux/stat.h
++++ b/include/uapi/linux/stat.h
+@@ -123,7 +123,9 @@ struct statx {
+ 	__u32	stx_dev_major;	/* ID of device containing file [uncond] */
+ 	__u32	stx_dev_minor;
+ 	/* 0x90 */
+-	__u64	__spare2[14];	/* Spare space for future expansion */
++	__u32	stx_projid;	/* Project ID of file */
++	__u32	__spare1[1];
++	__u64	__spare2[13];	/* Spare space for future expansion */
+ 	/* 0x100 */
+ };
  
-@@ -632,7 +642,7 @@ xfs_setattr_nonsize(
- 	 * If the IDs do change before we take the ilock, we're covered
- 	 * because the i_*dquot fields will get updated anyway.
- 	 */
--	if (XFS_IS_QUOTA_ON(mp) && (mask & (ATTR_UID|ATTR_GID))) {
-+	if (XFS_IS_QUOTA_ON(mp) && (mask & (ATTR_UID|ATTR_GID|ATTR_PROJID))) {
- 		uint	qflags = 0;
+@@ -148,7 +150,8 @@ struct statx {
+ #define STATX_BLOCKS		0x00000400U	/* Want/got stx_blocks */
+ #define STATX_BASIC_STATS	0x000007ffU	/* The stuff in the normal stat struct */
+ #define STATX_BTIME		0x00000800U	/* Want/got stx_btime */
+-#define STATX_ALL		0x00000fffU	/* All currently supported flags */
++#define STATX_PROJID		0x00001000U	/* Want/Got stx_projid */
++#define STATX_ALL		0x00001fffU	/* All currently supported flags */
+ #define STATX__RESERVED		0x80000000U	/* Reserved for future struct statx expansion */
  
- 		if ((mask & ATTR_UID) && XFS_IS_UQUOTA_ON(mp)) {
-@@ -647,18 +657,25 @@ xfs_setattr_nonsize(
- 		}  else {
- 			gid = inode->i_gid;
- 		}
-+		if ((mask & ATTR_PROJID) && XFS_IS_PQUOTA_ON(mp)) {
-+			projid = iattr->ia_projid;
-+			qflags |= XFS_QMOPT_PQUOTA;
-+		}  else {
-+			projid = xfs_projid_to_kprojid(xfs_get_projid(ip));
-+		}
+ /*
+@@ -170,5 +173,6 @@ struct statx {
  
- 		/*
--		 * We take a reference when we initialize udqp and gdqp,
-+		 * We take a reference when we initialize udqp,gdqp and pdqp,
- 		 * so it is important that we never blindly double trip on
- 		 * the same variable. See xfs_create() for an example.
- 		 */
- 		ASSERT(udqp == NULL);
- 		ASSERT(gdqp == NULL);
-+		ASSERT(pdqp == NULL);
- 		error = xfs_qm_vop_dqalloc(ip, xfs_kuid_to_uid(uid),
- 					   xfs_kgid_to_gid(gid),
--					   xfs_get_projid(ip),
--					   qflags, &udqp, &gdqp, NULL);
-+					   xfs_kprojid_to_projid(projid),
-+					   qflags, &udqp, &gdqp, &pdqp);
- 		if (error)
- 			return error;
- 	}
-@@ -673,7 +690,7 @@ xfs_setattr_nonsize(
- 	/*
- 	 * Change file ownership.  Must be the owner or privileged.
- 	 */
--	if (mask & (ATTR_UID|ATTR_GID)) {
-+	if (mask & (ATTR_UID|ATTR_GID|ATTR_PROJID)) {
- 		/*
- 		 * These IDs could have changed since we last looked at them.
- 		 * But, we're assured that if the ownership did change
-@@ -682,8 +699,10 @@ xfs_setattr_nonsize(
- 		 */
- 		iuid = inode->i_uid;
- 		igid = inode->i_gid;
-+		iprojid = xfs_projid_to_kprojid(xfs_get_projid(ip));
- 		gid = (mask & ATTR_GID) ? iattr->ia_gid : igid;
- 		uid = (mask & ATTR_UID) ? iattr->ia_uid : iuid;
-+		projid = (mask & ATTR_PROJID) ? iattr->ia_projid : iprojid;
+ #define STATX_ATTR_AUTOMOUNT		0x00001000 /* Dir: Automount trigger */
  
- 		/*
- 		 * Do a quota reservation only if uid/gid is actually
-@@ -691,10 +710,11 @@ xfs_setattr_nonsize(
- 		 */
- 		if (XFS_IS_QUOTA_RUNNING(mp) &&
- 		    ((XFS_IS_UQUOTA_ON(mp) && !uid_eq(iuid, uid)) ||
--		     (XFS_IS_GQUOTA_ON(mp) && !gid_eq(igid, gid)))) {
-+		     (XFS_IS_GQUOTA_ON(mp) && !gid_eq(igid, gid)) ||
-+		     (XFS_IS_PQUOTA_ON(mp) && !projid_eq(iprojid, projid)))) {
- 			ASSERT(tp);
- 			error = xfs_qm_vop_chown_reserve(tp, ip, udqp, gdqp,
--						NULL, capable(CAP_FOWNER) ?
-+						pdqp, capable(CAP_FOWNER) ?
- 						XFS_QMOPT_FORCE_RES : 0);
- 			if (error)	/* out of quota */
- 				goto out_cancel;
-@@ -704,7 +724,7 @@ xfs_setattr_nonsize(
- 	/*
- 	 * Change file ownership.  Must be the owner or privileged.
- 	 */
--	if (mask & (ATTR_UID|ATTR_GID)) {
-+	if (mask & (ATTR_UID|ATTR_GID|ATTR_PROJID)) {
- 		/*
- 		 * CAP_FSETID overrides the following restrictions:
- 		 *
-@@ -741,6 +761,15 @@ xfs_setattr_nonsize(
- 			ip->i_d.di_gid = xfs_kgid_to_gid(gid);
- 			inode->i_gid = gid;
- 		}
-+		if (!projid_eq(iprojid, projid)) {
-+			if (XFS_IS_QUOTA_RUNNING(mp) && XFS_IS_PQUOTA_ON(mp)) {
-+				ASSERT(mask & ATTR_PROJID);
-+				ASSERT(pdqp);
-+				olddquot3 = xfs_qm_vop_chown(tp, ip,
-+							&ip->i_pdquot, pdqp);
-+			}
-+			xfs_set_projid(ip, xfs_kprojid_to_projid(projid));
-+		}
- 	}
++#define STATX_ATTR_PROJINHERIT		0x00002000 /* [I] File project inherit is set */
  
- 	if (mask & ATTR_MODE)
-@@ -763,8 +792,10 @@ xfs_setattr_nonsize(
- 	 */
- 	xfs_qm_dqrele(olddquot1);
- 	xfs_qm_dqrele(olddquot2);
-+	xfs_qm_dqrele(olddquot3);
- 	xfs_qm_dqrele(udqp);
- 	xfs_qm_dqrele(gdqp);
-+	xfs_qm_dqrele(pdqp);
+ #endif /* _UAPI_LINUX_STAT_H */
+diff --git a/tools/include/uapi/linux/stat.h b/tools/include/uapi/linux/stat.h
+index 7b35e98d3c58..21b542b3b061 100644
+--- a/tools/include/uapi/linux/stat.h
++++ b/tools/include/uapi/linux/stat.h
+@@ -123,7 +123,9 @@ struct statx {
+ 	__u32	stx_dev_major;	/* ID of device containing file [uncond] */
+ 	__u32	stx_dev_minor;
+ 	/* 0x90 */
+-	__u64	__spare2[14];	/* Spare space for future expansion */
++	__u32   stx_projid;     /* Project ID of file */
++	__u32   __spare1[1];
++	__u64   __spare2[13];   /* Spare space for future expansion */
+ 	/* 0x100 */
+ };
  
- 	if (error)
- 		return error;
-diff --git a/fs/xfs/xfs_linux.h b/fs/xfs/xfs_linux.h
-index edbd5a210df2..80f5ea32823d 100644
---- a/fs/xfs/xfs_linux.h
-+++ b/fs/xfs/xfs_linux.h
-@@ -191,6 +191,16 @@ static inline kgid_t xfs_gid_to_kgid(uint32_t gid)
- 	return make_kgid(&init_user_ns, gid);
- }
+@@ -148,7 +150,8 @@ struct statx {
+ #define STATX_BLOCKS		0x00000400U	/* Want/got stx_blocks */
+ #define STATX_BASIC_STATS	0x000007ffU	/* The stuff in the normal stat struct */
+ #define STATX_BTIME		0x00000800U	/* Want/got stx_btime */
+-#define STATX_ALL		0x00000fffU	/* All currently supported flags */
++#define STATX_PROJID		0x00001000U	/* Want/Got stx_projid */
++#define STATX_ALL		0x00001fffU	/* All currently supported flags */
+ #define STATX__RESERVED		0x80000000U	/* Reserved for future struct statx expansion */
  
-+static inline uint32_t xfs_kprojid_to_projid(kprojid_t projid)
-+{
-+	return from_kprojid(&init_user_ns, projid);
-+}
-+
-+static inline kprojid_t xfs_projid_to_kprojid(uint32_t projid)
-+{
-+	return make_kprojid(&init_user_ns, projid);
-+}
-+
- static inline dev_t xfs_to_linux_dev_t(xfs_dev_t dev)
- {
- 	return MKDEV(sysv_major(dev) & 0x1ff, sysv_minor(dev));
+ /*
+@@ -170,5 +173,6 @@ struct statx {
+ 
+ #define STATX_ATTR_AUTOMOUNT		0x00001000 /* Dir: Automount trigger */
+ 
++#define STATX_ATTR_PROJINHERIT		0x00002000 /* [I] File project inherit is set */
+ 
+ #endif /* _UAPI_LINUX_STAT_H */
 -- 
 2.19.1
 
