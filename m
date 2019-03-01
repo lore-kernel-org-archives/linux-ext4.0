@@ -2,134 +2,66 @@ Return-Path: <SRS0=HQ1C=RE=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A789C43381
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 15:52:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6583C43381
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 17:16:39 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 471F920851
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 15:52:07 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="TRp2EMux"
+	by mail.kernel.org (Postfix) with ESMTP id 8EB9220850
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 17:16:39 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388458AbfCAPwG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 1 Mar 2019 10:52:06 -0500
-Received: from userp2130.oracle.com ([156.151.31.86]:51582 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728172AbfCAPwG (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Mar 2019 10:52:06 -0500
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x21FnI3Z158307;
-        Fri, 1 Mar 2019 15:51:51 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : references : mime-version : content-type :
- in-reply-to; s=corp-2018-07-02;
- bh=TzdYiN5KAR7glc2nbUkwL6JFo5ZamSRcbMIvnbTskFU=;
- b=TRp2EMux2a6lqZw5XqfvuzoKKYrd4l6U0DYOIpfs2olJLXq7SeomK3uSWfy8KzqvcZW7
- iUbut8wcSOnElZZZeZ8DPwbDXN+k3CQ42D3JZfKmIyUocIcnaiug+7m37AMBNthbtqVZ
- 12rHhsNKZrP5NGwl/cfw9pzvpcLoX+XmbMnWslxgOOtElCalOmgiRHo8IylBQ4ENVZ3I
- CDmgQTM9c0xNrosw7zPLfjgJEDPw31gPG7gLY0LXaWr2bR+0cOLeHUeNt1Vqfdu09/8K
- 9gGkWcUvYosk/FN7vk35+r1rKhhzNfk8A8D246N853wnMVlmG7vZpnLlHwSSZlvzzDqM DA== 
-Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
-        by userp2130.oracle.com with ESMTP id 2qtwkur56g-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 01 Mar 2019 15:51:51 +0000
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x21FppBL030739
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 1 Mar 2019 15:51:51 GMT
-Received: from abhmp0001.oracle.com (abhmp0001.oracle.com [141.146.116.7])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x21Fponn029189;
-        Fri, 1 Mar 2019 15:51:50 GMT
-Received: from localhost (/67.169.218.210)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 01 Mar 2019 07:51:49 -0800
-Date:   Fri, 1 Mar 2019 07:51:45 -0800
-From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     Wang Shilong <wangshilong1991@gmail.com>
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        lixi@ddn.com, adilger@dilger.ca, Wang Shilong <wshilong@ddn.com>,
-        linux-man@vger.kernel.org
-Subject: Re: [PATCH 2/2] statx.2: add project support update
-Message-ID: <20190301155145.GO21626@magnolia>
-References: <1551449184-7942-1-git-send-email-wshilong1991@gmail.com>
- <1551449184-7942-3-git-send-email-wshilong1991@gmail.com>
+        id S1732514AbfCARQi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 1 Mar 2019 12:16:38 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:41018 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1728347AbfCARQi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 1 Mar 2019 12:16:38 -0500
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id AC42630B7DD2
+        for <linux-ext4@vger.kernel.org>; Fri,  1 Mar 2019 17:15:07 +0000 (UTC)
+Received: from localhost.localdomain (ovpn-204-79.brq.redhat.com [10.40.204.79])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E95E05D964
+        for <linux-ext4@vger.kernel.org>; Fri,  1 Mar 2019 17:15:06 +0000 (UTC)
+From:   Lukas Czerner <lczerner@redhat.com>
+To:     linux-ext4@vger.kernel.org
+Subject: [PATCH] ext4: Add missing brelse() in add_new_gdb_meta_bg()
+Date:   Fri,  1 Mar 2019 18:15:04 +0100
+Message-Id: <20190301171504.8583-1-lczerner@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1551449184-7942-3-git-send-email-wshilong1991@gmail.com>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9181 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1903010111
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.48]); Fri, 01 Mar 2019 17:15:07 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Mar 01, 2019 at 11:06:24PM +0900, Wang Shilong wrote:
-> From: Wang Shilong <wshilong@ddn.com>
-> 
-> Cc: linux-man@vger.kernel.org
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
-> ---
->  man2/statx.2 | 8 ++++++++
->  1 file changed, 8 insertions(+)
-> 
-> diff --git a/man2/statx.2 b/man2/statx.2
-> index 7265d8ace..6a9dede8b 100644
-> --- a/man2/statx.2
-> +++ b/man2/statx.2
-> @@ -82,6 +82,7 @@ struct statx {
->         containing the filesystem where the file resides */
->      __u32 stx_dev_major;   /* Major ID */
->      __u32 stx_dev_minor;   /* Minor ID */
-> +    __u32 stx_projid;      /* Project ID of file */
->  };
->  .EE
->  .in
-> @@ -261,6 +262,7 @@ STATX_SIZE	Want stx_size
->  STATX_BLOCKS	Want stx_blocks
->  STATX_BASIC_STATS	[All of the above]
->  STATX_BTIME	Want stx_btime
-> +STATX_PROJID	Want stx_projid
->  STATX_ALL	[All currently available fields]
->  .TE
->  .in
-> @@ -412,6 +414,9 @@ The device on which this file (inode) resides.
->  .IR stx_rdev_major " and "  stx_rdev_minor
->  The device that this file (inode) represents if the file is of block or
->  character device type.
-> +.TP
-> +.I stx_projid
-> +The file's project ID.
->  .PP
->  For further information on the above fields, see
->  .BR inode (7).
-> @@ -458,6 +463,9 @@ See
->  .TP
->  .B STATX_ATTR_ENCRYPTED
->  A key is required for the file to be encrypted by the filesystem.
-> +.TP
-> +.B STATX_ATTR_PROJINHERIT
-> +Sub directories or files will inherit parent's project ID automatically.
+Currently in add_new_gdb_meta_bg() there is a missing brelse of gdb_bh
+in case ext4_journal_get_write_access() fails. Fix it.
 
-"Newly created files and directories will inherit...", I think?
+Fixes: 61a9c11e5e7a ("ext4: add missing brelse() add_new_gdb_meta_bg()'s error path")
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+---
+ fs/ext4/resize.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-I appreciate the manpage and fstests updates immensely. :)
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 48421de803b7..e945f412cf58 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -937,6 +937,8 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
+ 	kvfree(o_group_desc);
+ 	BUFFER_TRACE(gdb_bh, "get_write_access");
+ 	err = ext4_journal_get_write_access(handle, gdb_bh);
++	if (err)
++		brelse(gdb_bh);
+ 	return err;
+ }
+ 
+-- 
+2.20.1
 
---D
-
->  .SH RETURN VALUE
->  On success, zero is returned.
->  On error, \-1 is returned, and
-> -- 
-> 2.19.1
-> 
