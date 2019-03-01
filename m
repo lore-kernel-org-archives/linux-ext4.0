@@ -7,60 +7,60 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E34CFC43381
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 14:06:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F146C4360F
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 14:06:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B09FF20851
-	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 14:06:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E260620851
+	for <linux-ext4@archiver.kernel.org>; Fri,  1 Mar 2019 14:06:01 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="tU1wb65W"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="exlkfKaa"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388701AbfCAOF7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 1 Mar 2019 09:05:59 -0500
-Received: from mail-pg1-f194.google.com ([209.85.215.194]:40254 "EHLO
-        mail-pg1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387836AbfCAOF6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Mar 2019 09:05:58 -0500
-Received: by mail-pg1-f194.google.com with SMTP id u9so11500378pgo.7;
-        Fri, 01 Mar 2019 06:05:57 -0800 (PST)
+        id S2388710AbfCAOGB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 1 Mar 2019 09:06:01 -0500
+Received: from mail-pf1-f195.google.com ([209.85.210.195]:40105 "EHLO
+        mail-pf1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387836AbfCAOGA (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Mar 2019 09:06:00 -0500
+Received: by mail-pf1-f195.google.com with SMTP id h1so11485495pfo.7;
+        Fri, 01 Mar 2019 06:05:59 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20161025;
         h=from:to:cc:subject:date:message-id:in-reply-to:references;
-        bh=dWZB+q6W6k3q14qYvq1GaOP2EZmB/ZM9cMIANHKAgk4=;
-        b=tU1wb65WuMD5wE6rWsc4MLw2R8YQOYYFA+oB2PqQe0NyxIoIbz8WaxKiJAnBm9TS0L
-         Cho4VAqqbXD0b28VBKrLFlbF93CHV5HU8YJOCGFr2pFX9n87t/5ctxI7U6wGxS7dkSF9
-         xcdKDzdRyjPClqjF07+CSg/VnhhMnUzzrPTB50ojMXNjIzVyJ+Naepw0jEiQ2641Z9ic
-         iMIuij6ddMhn+BHMwAE9/kC3TwpNK6XemFavDRZ/D65YF1ycyLTEx+3VU1+dUHI/OiG2
-         yDPCm4feJ/lWaAsDBLAkoOoipVsbbdqkAH/jDTCHi1URM/xWktp0+lJE9Kfhs4FuIa6+
-         DVDw==
+        bh=dNvrqz8W2pGUfo3r5kGYI6TG6CApMjIeNboQwS8ZZkU=;
+        b=exlkfKaa5sFT77GYbt5GRit2amWQuXjrWQmz3S0pewNX5P5YykB2fR5qLAi2JFZHLH
+         YlIVYFkj9Ep6uPQwCc5HkVuPC3BE7wJ/huD3BmsKx7rf3CViH/GLz16pVhCIwKbeJUHx
+         3uSROEfRI8d6PoAFLHe4+5w5CU/0AwlWGgQ1gqA1H4SE6Hoi1Q+SFm5ZYT18C6CGBjFE
+         CmvMbR3iAcgtavS9n20AEwjyTeuVz5XTggnKGfAVseHuW0qybuPWL6IiUMOC0x/yFv/p
+         egcqN6w9NqIgnM+yppLNv1/e4Yq5sy8pA57amWTFS1xRCaxW7hIlILMw1oqyjq+YdrpD
+         Xupg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:from:to:cc:subject:date:message-id:in-reply-to
          :references;
-        bh=dWZB+q6W6k3q14qYvq1GaOP2EZmB/ZM9cMIANHKAgk4=;
-        b=mPYeOSH0NazLECYdmK39hYq+gSvsirQyazLixoQrbWjWd6w/T0mZookh/5xbft9yJM
-         nthNLrwH0gjGqzafnYGLXG+kbviNQvO4lj3hfVeZgkNHAiBy45bPRfG3+hf8LCR36xV5
-         ksBSO3eoAKZ/b/iuC49WBPHOE8VA7PDZOjn82xFw7Kw7xxBt1ip4QtVjvd0jJjf/MoH0
-         aYf6jecdFBG9PGgB6hMi1riBdrkceaANK88s4/wXFZl3nbOUZFxld0M3w5RCU0x9wOtQ
-         be5E7Z6vLwCcBo0CXr3FHjCS3Sx0xBPASKYsuKKstu6ORRNevgdOP44ghpRwDQ0tSkHm
-         TSVw==
-X-Gm-Message-State: APjAAAW2UUzHppoVZhobV9UoiKAGpkV3UkANqfWJiJPO1hqgpBsV4KWz
-        r7wZ4PdPS2M1oKNZU0R1w7Wqq4ZH
-X-Google-Smtp-Source: APXvYqzNd1nxNy+yoPlwDYHBTnB0/p0OgCiyliUIihR1WzV7iQQL36ZDA0RNmEucWkhz8XzfHj4+/g==
-X-Received: by 2002:a63:6985:: with SMTP id e127mr4978637pgc.101.1551449156746;
-        Fri, 01 Mar 2019 06:05:56 -0800 (PST)
+        bh=dNvrqz8W2pGUfo3r5kGYI6TG6CApMjIeNboQwS8ZZkU=;
+        b=HuqQc+Zzj6+4tjWPJff8u/VDRINIjIh9Dm6orICsf3n21QKrCca3mOhzN9h7k3dtWQ
+         246+ywOQrV4eh+B7pRc+8AjniV6W5KM+t4lIJv/VyKeBCuNzjAgN7qcdkcxrgy/DDSo5
+         Kl6d6VmxzbGMhpnuiKwQfozK+C3Nm0bxuhItFKyjhbrj7nnZHTPZ1Qat9LmVpwzuyq2K
+         NglS+f3+vpJQQiPLubxoT7P1aMfQ/Fcn5s5w+pOLpXG5/lqzyIjrnt/aq2U/zvvISSuo
+         QHN36IreUSGRA39UrVKdCuuH4cEtfQub7e0BKD0SpOAoZa83Ad/Y9RUQIzTgKVkjBjFz
+         ZuqA==
+X-Gm-Message-State: APjAAAU9bXjAxrqFDSqtGw6eCtQ34pRab+jSDMmihLHrJtPupME+YKRC
+        EHeDtYg6LsUVCMStttS3/oh/f9S6
+X-Google-Smtp-Source: APXvYqyLaLAUDlXplLOzKyuqdb2QSgRnuNUsPEcmA9Ea68eiHEeuZosC1fFzJBjzU1uif5o8n944Qg==
+X-Received: by 2002:a65:4243:: with SMTP id d3mr4986129pgq.56.1551449159212;
+        Fri, 01 Mar 2019 06:05:59 -0800 (PST)
 Received: from localhost.localdomain (fs276ec80e.tkyc203.ap.nuro.jp. [39.110.200.14])
-        by smtp.gmail.com with ESMTPSA id a184sm12458089pge.68.2019.03.01.06.05.54
+        by smtp.gmail.com with ESMTPSA id a184sm12458089pge.68.2019.03.01.06.05.56
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 01 Mar 2019 06:05:55 -0800 (PST)
+        Fri, 01 Mar 2019 06:05:58 -0800 (PST)
 From:   Wang Shilong <wangshilong1991@gmail.com>
 X-Google-Original-From: Wang Shilong <wshilong1991@gmail.com>
 To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
 Cc:     lixi@ddn.com, adilger@dilger.ca, Wang Shilong <wshilong@ddn.com>
-Subject: [PATCH 2/8] ext4: support project ID in ext4_setattr()
-Date:   Fri,  1 Mar 2019 23:05:35 +0900
-Message-Id: <1551449141-7884-3-git-send-email-wshilong1991@gmail.com>
+Subject: [PATCH 3/8] f2fs: support project ID in f2fs_setattr()
+Date:   Fri,  1 Mar 2019 23:05:36 +0900
+Message-Id: <1551449141-7884-4-git-send-email-wshilong1991@gmail.com>
 X-Mailer: git-send-email 1.7.1
 In-Reply-To: <1551449141-7884-1-git-send-email-wshilong1991@gmail.com>
 References: <1551449141-7884-1-git-send-email-wshilong1991@gmail.com>
@@ -75,36 +75,32 @@ From: Wang Shilong <wshilong@ddn.com>
 
 Signed-off-by: Wang Shilong <wshilong@ddn.com>
 ---
- fs/ext4/inode.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ fs/f2fs/file.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 34d7e0703cc6..b6c451407dcd 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -5537,10 +5537,12 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
- 			return error;
- 	}
- 	if ((ia_valid & ATTR_UID && !uid_eq(attr->ia_uid, inode->i_uid)) ||
--	    (ia_valid & ATTR_GID && !gid_eq(attr->ia_gid, inode->i_gid))) {
-+	    (ia_valid & ATTR_GID && !gid_eq(attr->ia_gid, inode->i_gid)) ||
-+	    (ia_valid & ATTR_PROJID && !projid_eq(attr->ia_projid,
-+						  EXT4_I(inode)->i_projid))) {
- 		handle_t *handle;
- 
--		/* (user+group)*(old+new) structure, inode write (sb,
-+		/* (user+group+project)*(old+new) structure, inode write (sb,
- 		 * inode block, ? - but truncate inode update has it) */
- 		handle = ext4_journal_start(inode, EXT4_HT_QUOTA,
- 			(EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb) +
-@@ -5567,6 +5569,8 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index bba56b39dcc5..8eaca056e857 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -789,7 +789,9 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
+ 	if ((attr->ia_valid & ATTR_UID &&
+ 		!uid_eq(attr->ia_uid, inode->i_uid)) ||
+ 		(attr->ia_valid & ATTR_GID &&
+-		!gid_eq(attr->ia_gid, inode->i_gid))) {
++		!gid_eq(attr->ia_gid, inode->i_gid)) ||
++		(attr->ia_valid & ATTR_PROJID &&
++		!projid_eq(attr->ia_projid, F2FS_I(inode)->i_projid))) {
+ 		f2fs_lock_op(F2FS_I_SB(inode));
+ 		err = dquot_transfer(inode, attr);
+ 		if (err) {
+@@ -806,6 +808,8 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
  			inode->i_uid = attr->ia_uid;
  		if (attr->ia_valid & ATTR_GID)
  			inode->i_gid = attr->ia_gid;
 +		if (attr->ia_valid & ATTR_PROJID)
-+			EXT4_I(inode)->i_projid = attr->ia_projid;
- 		error = ext4_mark_inode_dirty(handle, inode);
- 		ext4_journal_stop(handle);
++			F2FS_I(inode)->i_projid = attr->ia_projid;
+ 		f2fs_mark_inode_dirty_sync(inode, true);
+ 		f2fs_unlock_op(F2FS_I_SB(inode));
  	}
 -- 
 2.19.1
