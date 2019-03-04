@@ -1,87 +1,102 @@
-Return-Path: <SRS0=87aU=RG=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=/gtt=RH=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D2D18C4360F
-	for <linux-ext4@archiver.kernel.org>; Sun,  3 Mar 2019 23:08:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6CE16C43381
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Mar 2019 01:31:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A73DD20818
-	for <linux-ext4@archiver.kernel.org>; Sun,  3 Mar 2019 23:08:26 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 442C020830
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Mar 2019 01:31:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725998AbfCCXIY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 3 Mar 2019 18:08:24 -0500
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:41219 "EHLO
-        ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725933AbfCCXIY (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Mar 2019 18:08:24 -0500
-Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
-  by ipmail06.adl6.internode.on.net with ESMTP; 04 Mar 2019 09:38:22 +1030
-Received: from dave by dastard with local (Exim 4.80)
-        (envelope-from <david@fromorbit.com>)
-        id 1h0aDU-0005Zb-E9; Mon, 04 Mar 2019 10:08:20 +1100
-Date:   Mon, 4 Mar 2019 10:08:20 +1100
-From:   Dave Chinner <david@fromorbit.com>
-To:     Wang Shilong <wangshilong1991@gmail.com>
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        lixi@ddn.com, adilger@dilger.ca, Wang Shilong <wshilong@ddn.com>,
-        linux-man@vger.kernel.org
-Subject: Re: [PATCH 1/2] fchownat.2: add project support updates
-Message-ID: <20190303230820.GU23020@dastard>
-References: <1551449184-7942-1-git-send-email-wshilong1991@gmail.com>
+        id S1726069AbfCDBbM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 3 Mar 2019 20:31:12 -0500
+Received: from szxga05-in.huawei.com ([45.249.212.191]:4764 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726012AbfCDBbM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 3 Mar 2019 20:31:12 -0500
+Received: from DGGEMS402-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id F0BC8533A7EBF971EE40;
+        Mon,  4 Mar 2019 09:31:10 +0800 (CST)
+Received: from [127.0.0.1] (10.177.96.203) by DGGEMS402-HUB.china.huawei.com
+ (10.3.19.202) with Microsoft SMTP Server id 14.3.408.0; Mon, 4 Mar 2019
+ 09:31:07 +0800
+Subject: Re: [PATCH] ext4: remove useless ext4_pin_inode()
+To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
+        <linux-ext4@vger.kernel.org>
+References: <20190227022048.22887-1-yanaijie@huawei.com>
+From:   Jason Yan <yanaijie@huawei.com>
+Message-ID: <8ea5a72f-d339-450c-2604-49f730afa43b@huawei.com>
+Date:   Mon, 4 Mar 2019 09:31:06 +0800
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1551449184-7942-1-git-send-email-wshilong1991@gmail.com>
-User-Agent: Mutt/1.5.21 (2010-09-15)
+In-Reply-To: <20190227022048.22887-1-yanaijie@huawei.com>
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.177.96.203]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Fri, Mar 01, 2019 at 11:06:22PM +0900, Wang Shilong wrote:
-> From: Wang Shilong <wshilong@ddn.com>
+Friendly ping...
+
+Anyone can help to review this patch?
+
+On 2019/2/27 10:20, Jason Yan wrote:
+> This function is never used from the beginning. Let's remove it.
 > 
-> From: Wang Shilong <wshilong@ddn.com>
-> 
-> Cc: linux-man@vger.kernel.org
-> Signed-off-by: Wang Shilong <wshilong@ddn.com>
+> Signed-off-by: Jason Yan <yanaijie@huawei.com>
 > ---
->  man2/chown.2 | 5 +++++
->  1 file changed, 5 insertions(+)
+>   fs/ext4/inode.c | 30 ------------------------------
+>   1 file changed, 30 deletions(-)
 > 
-> diff --git a/man2/chown.2 b/man2/chown.2
-> index 50db789ac..fad74df20 100644
-> --- a/man2/chown.2
-> +++ b/man2/chown.2
-> @@ -217,6 +217,11 @@ instead operate on the link itself, like
->  .BR fchownat ()
->  dereferences symbolic links, like
->  .BR chown ().)
-> +.TP
-> +.B AT_FCHOWN_PROJID
-> +Use
-> +.I group
-> +to change file's project ID instead of its group ID.
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 34d7e0703cc6..0060d08edd92 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -6089,36 +6089,6 @@ void ext4_dirty_inode(struct inode *inode, int flags)
+>   	return;
+>   }
+>   
+> -#if 0
+> -/*
+> - * Bind an inode's backing buffer_head into this transaction, to prevent
+> - * it from being flushed to disk early.  Unlike
+> - * ext4_reserve_inode_write, this leaves behind no bh reference and
+> - * returns no iloc structure, so the caller needs to repeat the iloc
+> - * lookup to mark the inode dirty later.
+> - */
+> -static int ext4_pin_inode(handle_t *handle, struct inode *inode)
+> -{
+> -	struct ext4_iloc iloc;
+> -
+> -	int err = 0;
+> -	if (handle) {
+> -		err = ext4_get_inode_loc(inode, &iloc);
+> -		if (!err) {
+> -			BUFFER_TRACE(iloc.bh, "get_write_access");
+> -			err = jbd2_journal_get_write_access(handle, iloc.bh);
+> -			if (!err)
+> -				err = ext4_handle_dirty_metadata(handle,
+> -								 NULL,
+> -								 iloc.bh);
+> -			brelse(iloc.bh);
+> -		}
+> -	}
+> -	ext4_std_error(inode->i_sb, err);
+> -	return err;
+> -}
+> -#endif
+> -
+>   int ext4_change_inode_journal_flag(struct inode *inode, int val)
+>   {
+>   	journal_t *journal;
+> 
 
-Needs to document init_user_ns constraint.
-
->  .PP
->  See
->  .BR openat (2)
-
-Also missing new ENOSPC error that attempting to change a project ID
-can result in. Also should document the EPERM error condition when
-changing project ID in wrong userns, and EINVAL if an invalid
-project ID is supplied.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
