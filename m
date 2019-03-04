@@ -2,101 +2,106 @@ Return-Path: <SRS0=/gtt=RH=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_NEOMUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6CE16C43381
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Mar 2019 01:31:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B0D6FC43381
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Mar 2019 12:23:33 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 442C020830
-	for <linux-ext4@archiver.kernel.org>; Mon,  4 Mar 2019 01:31:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8A9262075B
+	for <linux-ext4@archiver.kernel.org>; Mon,  4 Mar 2019 12:23:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726069AbfCDBbM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 3 Mar 2019 20:31:12 -0500
-Received: from szxga05-in.huawei.com ([45.249.212.191]:4764 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726012AbfCDBbM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 3 Mar 2019 20:31:12 -0500
-Received: from DGGEMS402-HUB.china.huawei.com (unknown [172.30.72.60])
-        by Forcepoint Email with ESMTP id F0BC8533A7EBF971EE40;
-        Mon,  4 Mar 2019 09:31:10 +0800 (CST)
-Received: from [127.0.0.1] (10.177.96.203) by DGGEMS402-HUB.china.huawei.com
- (10.3.19.202) with Microsoft SMTP Server id 14.3.408.0; Mon, 4 Mar 2019
- 09:31:07 +0800
-Subject: Re: [PATCH] ext4: remove useless ext4_pin_inode()
-To:     <tytso@mit.edu>, <adilger.kernel@dilger.ca>,
-        <linux-ext4@vger.kernel.org>
-References: <20190227022048.22887-1-yanaijie@huawei.com>
-From:   Jason Yan <yanaijie@huawei.com>
-Message-ID: <8ea5a72f-d339-450c-2604-49f730afa43b@huawei.com>
-Date:   Mon, 4 Mar 2019 09:31:06 +0800
-User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:60.0) Gecko/20100101
- Thunderbird/60.5.0
+        id S1726126AbfCDMXb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 4 Mar 2019 07:23:31 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:52010 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726041AbfCDMXa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 4 Mar 2019 07:23:30 -0500
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 72C3330198BA;
+        Mon,  4 Mar 2019 12:23:30 +0000 (UTC)
+Received: from work (ovpn-204-114.brq.redhat.com [10.40.204.114])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 62C872CFD5;
+        Mon,  4 Mar 2019 12:23:27 +0000 (UTC)
+Date:   Mon, 4 Mar 2019 13:23:22 +0100
+From:   Lukas Czerner <lczerner@redhat.com>
+To:     "Theodore Y. Ts'o" <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Add missing brelse() in add_new_gdb_meta_bg()
+Message-ID: <20190304122322.6n5vo7rx5tgoxkev@work>
+References: <20190301171504.8583-1-lczerner@redhat.com>
+ <20190303020723.GC7930@mit.edu>
 MIME-Version: 1.0
-In-Reply-To: <20190227022048.22887-1-yanaijie@huawei.com>
-Content-Type: text/plain; charset="utf-8"; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.177.96.203]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190303020723.GC7930@mit.edu>
+User-Agent: NeoMutt/20180716
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.16
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Mon, 04 Mar 2019 12:23:30 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Friendly ping...
-
-Anyone can help to review this patch?
-
-On 2019/2/27 10:20, Jason Yan wrote:
-> This function is never used from the beginning. Let's remove it.
+On Sat, Mar 02, 2019 at 09:07:23PM -0500, Theodore Y. Ts'o wrote:
+> On Fri, Mar 01, 2019 at 06:15:04PM +0100, Lukas Czerner wrote:
+> > Currently in add_new_gdb_meta_bg() there is a missing brelse of gdb_bh
+> > in case ext4_journal_get_write_access() fails. Fix it.
+> > 
+> > Fixes: 61a9c11e5e7a ("ext4: add missing brelse() add_new_gdb_meta_bg()'s error path")
+> > Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> > ---
+> >  fs/ext4/resize.c | 2 ++
+> >  1 file changed, 2 insertions(+)
+> > 
+> > diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+> > index 48421de803b7..e945f412cf58 100644
+> > --- a/fs/ext4/resize.c
+> > +++ b/fs/ext4/resize.c
+> > @@ -937,6 +937,8 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
+> >  	kvfree(o_group_desc);
+> >  	BUFFER_TRACE(gdb_bh, "get_write_access");
+> >  	err = ext4_journal_get_write_access(handle, gdb_bh);
+> > +	if (err)
+> > +		brelse(gdb_bh);
 > 
-> Signed-off-by: Jason Yan <yanaijie@huawei.com>
-> ---
->   fs/ext4/inode.c | 30 ------------------------------
->   1 file changed, 30 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 34d7e0703cc6..0060d08edd92 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -6089,36 +6089,6 @@ void ext4_dirty_inode(struct inode *inode, int flags)
->   	return;
->   }
->   
-> -#if 0
-> -/*
-> - * Bind an inode's backing buffer_head into this transaction, to prevent
-> - * it from being flushed to disk early.  Unlike
-> - * ext4_reserve_inode_write, this leaves behind no bh reference and
-> - * returns no iloc structure, so the caller needs to repeat the iloc
-> - * lookup to mark the inode dirty later.
-> - */
-> -static int ext4_pin_inode(handle_t *handle, struct inode *inode)
-> -{
-> -	struct ext4_iloc iloc;
-> -
-> -	int err = 0;
-> -	if (handle) {
-> -		err = ext4_get_inode_loc(inode, &iloc);
-> -		if (!err) {
-> -			BUFFER_TRACE(iloc.bh, "get_write_access");
-> -			err = jbd2_journal_get_write_access(handle, iloc.bh);
-> -			if (!err)
-> -				err = ext4_handle_dirty_metadata(handle,
-> -								 NULL,
-> -								 iloc.bh);
-> -			brelse(iloc.bh);
-> -		}
-> -	}
-> -	ext4_std_error(inode->i_sb, err);
-> -	return err;
-> -}
-> -#endif
-> -
->   int ext4_change_inode_journal_flag(struct inode *inode, int val)
->   {
->   	journal_t *journal;
-> 
+> I believe this isn't the right fix --- or at least, it's not
+> sufficient.  We're releasing gdb_bh, but there is still a pointer left
+> in n_group_desc[gdb_num] (which is now invalid), and we've already
+> replaced o_group_desc with n_group_desc, and incremented s_gdb_count.
 
+Right, I missed that.
+
+> 
+> So we should move the call to ext4_journal_get_write_access() earlier
+> in the function.
+> 
+> Ric's comments about checking similar function is also right;
+> add_new_gdb() doesn't really get the error handling right, but that's
+> an extremely deprecated interface.  We actually had a bug in the old
+> resizing ioctl's that was accidentally introduce in 4.4, and no once
+> until until December of last year.  (I think it was some crazy user
+> with an enterprise distro still using e2fsprogs 1.42, and they tried
+> going to a modern kernel, and online resizing didn't work for them.)
+> 
+> Anyway, while fixing add_new_gdb() might be nice, we can save that for
+> another patch and I don't think it's super high priority since it's an
+> error handling path for a code path that almost no one uses and was
+> broken for two years without no one noticing (although maybe Red Hat
+> would prioritize it differently :-).  But could you resend this with
+> the call to ext4_journal_get_write_access() moved up earlier in the
+> function?
+
+Agreed, I'll resend.
+
+Thanks!
+-Lukas
+
+> 
+> Thanks!
+> 
+> 					- Ted
+> 		
