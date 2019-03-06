@@ -2,93 +2,114 @@ Return-Path: <SRS0=J2/x=RJ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6CED3C43381
-	for <linux-ext4@archiver.kernel.org>; Wed,  6 Mar 2019 01:47:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 763BBC10F00
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Mar 2019 11:06:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D237020684
-	for <linux-ext4@archiver.kernel.org>; Wed,  6 Mar 2019 01:47:57 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="X1p8t2D6"
+	by mail.kernel.org (Postfix) with ESMTP id 4E76220675
+	for <linux-ext4@archiver.kernel.org>; Wed,  6 Mar 2019 11:06:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727809AbfCFBr5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 5 Mar 2019 20:47:57 -0500
-Received: from userp2120.oracle.com ([156.151.31.85]:58452 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726069AbfCFBr5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Mar 2019 20:47:57 -0500
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x261iKNG011422
-        for <linux-ext4@vger.kernel.org>; Wed, 6 Mar 2019 01:47:56 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : subject :
- date : message-id; s=corp-2018-07-02;
- bh=nv2P6BCHMkFNltG1W00tvXFO4U9BcGajLIpuy3miA9A=;
- b=X1p8t2D6aY2zANk1RKQzikoZwJEjGN3YEY5lYF/3qI1nU8MYxrXuH4gxqYlHdvg2xJu3
- xzQy7dQhZkkHRyuHTChCJvb4kWIoHpw6O7/fKIftOxO8XdykvnZScSgjqLfv1+IHExn5
- DsxKfrrTDxPkdPRxY/6Ld35JZw2Hk51/1UlL2AvNZJ3sXpUf4B3LHuvwdM746ng2iaCK
- qSRVLR7JRet/9UQ3L0qMxSfSdnJdDRBYdizEPVYRseSpMZWzSWE/RQsSQwahG4n9OJhw
- bS859JVih6+zeX0SBEZoXTodUgzquwiKYUY/2UhpWXqXGBo38IkkiNDigHP02/j0vU8x 4w== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by userp2120.oracle.com with ESMTP id 2qyjfrgw97-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-ext4@vger.kernel.org>; Wed, 06 Mar 2019 01:47:55 +0000
-Received: from userv0122.oracle.com (userv0122.oracle.com [156.151.31.75])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x261lsfe006167
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-        for <linux-ext4@vger.kernel.org>; Wed, 6 Mar 2019 01:47:55 GMT
-Received: from abhmp0013.oracle.com (abhmp0013.oracle.com [141.146.116.19])
-        by userv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x261lsuf002940
-        for <linux-ext4@vger.kernel.org>; Wed, 6 Mar 2019 01:47:54 GMT
-Received: from ol6u9ext3.cn.oracle.com (/10.182.70.234)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Tue, 05 Mar 2019 17:47:54 -0800
-From:   Shuning Zhang <sunny.s.zhang@oracle.com>
+        id S1729786AbfCFLGq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 6 Mar 2019 06:06:46 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:55496 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1729272AbfCFLGq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 6 Mar 2019 06:06:46 -0500
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 0233D87622;
+        Wed,  6 Mar 2019 11:06:46 +0000 (UTC)
+Received: from localhost.localdomain (ovpn-204-114.brq.redhat.com [10.40.204.114])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id D60D619C6A;
+        Wed,  6 Mar 2019 11:06:44 +0000 (UTC)
+From:   Lukas Czerner <lczerner@redhat.com>
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH] ext2: Adjust the comment of function ext2_alloc_branch
-Date:   Wed,  6 Mar 2019 09:47:35 +0800
-Message-Id: <1551836855-10316-1-git-send-email-sunny.s.zhang@oracle.com>
-X-Mailer: git-send-email 1.7.1
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9186 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=1 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1903060009
+Cc:     Frank Sorenson <fsorenso@redhat.com>, stable@vger.kernel.org
+Subject: [PATCH] ext4: Fix data corruption caused by unaligned direct AIO
+Date:   Wed,  6 Mar 2019 12:06:42 +0100
+Message-Id: <20190306110642.11804-1-lczerner@redhat.com>
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.26]); Wed, 06 Mar 2019 11:06:46 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-The name of argument is error in the header comment.
-@num should be @indirect_blks.
-At the same time, there was a lack of description of the two parameters
-@blks and @goal.
-This commit therefore fixes this header comment.
+Ext4 needs to serialize unaligned direct AIO because the zeroing of
+partial blocks of two competing unaligned AIOs can result in data
+corruption.
 
-Signed-off-by: Shuning Zhang <sunny.s.zhang@oracle.com>
+However it decides not to serialize if the potentially unaligned aio is
+past i_size with the rationale that no pending writes are possible past
+i_size. Unfortunately if the i_size is not block aligned and the second
+unaligned write lands past i_size, but still into the same block, it has
+the potential of corrupting the previous unaligned write to the same
+block.
+
+This is (very simplified) reproducer from Frank
+
+    // 41472 = (10 * 4096) + 512
+    // 37376 = 41472 - 4096
+
+    ftruncate(fd, 41472);
+    io_prep_pwrite(iocbs[0], fd, buf[0], 4096, 37376);
+    io_prep_pwrite(iocbs[1], fd, buf[1], 4096, 41472);
+
+    io_submit(io_ctx, 1, &iocbs[1]);
+    io_submit(io_ctx, 1, &iocbs[2]);
+
+    io_getevents(io_ctx, 2, 2, events, NULL);
+
+Without this patch the 512B range from 40960 up to the start of the
+second unaligned write (41472) is going to be zeroed overwriting the data
+written by the first write. This is a data corruption.
+
+00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
+*
+00009200  30 30 30 30 30 30 30 30  30 30 30 30 30 30 30 30
+*
+0000a000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
+*
+0000a200  31 31 31 31 31 31 31 31  31 31 31 31 31 31 31 31
+
+With this patch the data corruption is avoided because we will recognize
+the unaligned_aio and wait for the unwritten extent conversion.
+
+00000000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00
+*
+00009200  30 30 30 30 30 30 30 30  30 30 30 30 30 30 30 30
+*
+0000a200  31 31 31 31 31 31 31 31  31 31 31 31 31 31 31 31
+*
+0000b200
+
+Reported-by: Frank Sorenson <fsorenso@redhat.com>
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Fixes: e9e3bcecf44c ("ext4: serialize unaligned asynchronous DIO")
+Cc: <stable@vger.kernel.org>
 ---
- fs/ext2/inode.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/ext4/file.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index e4bb938..3f404c3 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -451,7 +451,9 @@ static int ext2_alloc_blocks(struct inode *inode,
- /**
-  *	ext2_alloc_branch - allocate and set up a chain of blocks.
-  *	@inode: owner
-- *	@num: depth of the chain (number of blocks to allocate)
-+ *	@indirect_blks: depth of the chain (number of blocks to allocate)
-+ *	@blks: number of allocated direct blocks
-+ *	@goal: preferred place for allocation
-  *	@offsets: offsets (in the blocks) to store the pointers to next.
-  *	@branch: place to store the chain in.
-  *
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 69d65d49837b..98ec11f69cd4 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -125,7 +125,7 @@ ext4_unaligned_aio(struct inode *inode, struct iov_iter *from, loff_t pos)
+ 	struct super_block *sb = inode->i_sb;
+ 	int blockmask = sb->s_blocksize - 1;
+ 
+-	if (pos >= i_size_read(inode))
++	if (pos >= ALIGN(i_size_read(inode), sb->s_blocksize))
+ 		return 0;
+ 
+ 	if ((pos | iov_iter_alignment(from)) & blockmask)
 -- 
-2.7.4
+2.20.1
 
