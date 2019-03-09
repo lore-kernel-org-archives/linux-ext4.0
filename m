@@ -1,33 +1,33 @@
-Return-Path: <SRS0=idm8=RL=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=yN3J=RM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D404DC43381
-	for <linux-ext4@archiver.kernel.org>; Fri,  8 Mar 2019 18:10:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 78CF2C43381
+	for <linux-ext4@archiver.kernel.org>; Sat,  9 Mar 2019 07:43:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A6EE920857
-	for <linux-ext4@archiver.kernel.org>; Fri,  8 Mar 2019 18:10:54 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 50D8F20866
+	for <linux-ext4@archiver.kernel.org>; Sat,  9 Mar 2019 07:43:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726992AbfCHSKy convert rfc822-to-8bit (ORCPT
+        id S1726544AbfCIHnm convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 8 Mar 2019 13:10:54 -0500
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:37212 "EHLO
+        Sat, 9 Mar 2019 02:43:42 -0500
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:41344 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726761AbfCHSKx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 8 Mar 2019 13:10:53 -0500
+        by vger.kernel.org with ESMTP id S1726262AbfCIHnm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 9 Mar 2019 02:43:42 -0500
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 326552F9CC
-        for <linux-ext4@vger.kernel.org>; Fri,  8 Mar 2019 18:10:53 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 830042D626
+        for <linux-ext4@vger.kernel.org>; Sat,  9 Mar 2019 07:43:41 +0000 (UTC)
 Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 25DC92FA01; Fri,  8 Mar 2019 18:10:53 +0000 (UTC)
+        id 737902D694; Sat,  9 Mar 2019 07:43:41 +0000 (UTC)
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 202809] ext4: ext4_xattr_ibody_get:591: comm systemd-journal:
  corrupted in-inode xattr
-Date:   Fri, 08 Mar 2019 18:10:52 +0000
+Date:   Sat, 09 Mar 2019 07:43:41 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -36,14 +36,14 @@ X-Bugzilla-Component: ext4
 X-Bugzilla-Version: 2.5
 X-Bugzilla-Keywords: 
 X-Bugzilla-Severity: high
-X-Bugzilla-Who: tytso@mit.edu
+X-Bugzilla-Who: feng.tang@intel.com
 X-Bugzilla-Status: NEW
 X-Bugzilla-Resolution: 
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
 X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-202809-13602-vgkRVf2C9V@https.bugzilla.kernel.org/>
+Message-ID: <bug-202809-13602-lmZKbx5FD0@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-202809-13602@https.bugzilla.kernel.org/>
 References: <bug-202809-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -59,17 +59,13 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=202809
 
---- Comment #2 from Theodore Tso (tytso@mit.edu) ---
-Can you try reproducing the problem when using something more robust than an
-emmc storage card?   The errors:
+--- Comment #3 from Feng Tang (feng.tang@intel.com) ---
+Thanks for your prompt response.
 
-Multiply-claimed block(s) in inode 164223: 656535
-
-alongside the xattr errors strongly suggest read or writes being corrupted.
-
-So the first thing I would ask is: (a) can you reproduce this on multiple emmc
-cards?   (b) can you use some other storage, say, a USB-attached SSD, as
-opposed to crap flash (or to be politically correct, "cost-optimized flash" :-)
+We cannot change the emmc card as it is fixed on the board. One other
+interesting thing is, we have 2 labs, each has 10 boards to do the stress test,
+and only the boards in one lab can reproduce the issue, so we are doubting some
+env setup trigger the issue, and not the emmc hw issue.
 
 -- 
 You are receiving this mail because:
