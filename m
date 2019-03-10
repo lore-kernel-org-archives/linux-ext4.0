@@ -1,216 +1,132 @@
-Return-Path: <SRS0=yN3J=RM=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=ldal=RN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AEEE0C43381
-	for <linux-ext4@archiver.kernel.org>; Sat,  9 Mar 2019 13:15:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ACC25C43381
+	for <linux-ext4@archiver.kernel.org>; Sun, 10 Mar 2019 17:57:07 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7FFBB2081B
-	for <linux-ext4@archiver.kernel.org>; Sat,  9 Mar 2019 13:15:00 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7E16F20657
+	for <linux-ext4@archiver.kernel.org>; Sun, 10 Mar 2019 17:57:07 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1552240627;
+	bh=YKlQhc+3xwVfIkir+oMl4E9ELow6HKN8pWFc0Y2JaQc=;
+	h=References:In-Reply-To:From:Date:Subject:To:Cc:List-ID:From;
+	b=0qa4jl9nLpGcUEjC8gbA1QF+uTfpwH83y0+Hoy0VU2AMTkwNWAoDe+OWlU1jgzBe1
+	 slpHn9jLPY1H7Zv6DRm0OotX7Di3aKM7Nwe4Tm44EGAevMJL4V8LK88AN/5JbYmFX6
+	 mn2T5fb8AqMaPrdY6NOAasgMo1KVbyDNuykHHzN8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726296AbfCINO7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 9 Mar 2019 08:14:59 -0500
-Received: from szxga04-in.huawei.com ([45.249.212.190]:4662 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726233AbfCINO7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sat, 9 Mar 2019 08:14:59 -0500
-Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 7B562251A329D8EDCC2A;
-        Sat,  9 Mar 2019 21:14:56 +0800 (CST)
-Received: from huawei.com (10.90.53.225) by DGGEMS404-HUB.china.huawei.com
- (10.3.19.204) with Microsoft SMTP Server id 14.3.408.0; Sat, 9 Mar 2019
- 21:14:47 +0800
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
-To:     <linux-ext4@vger.kernel.org>
-CC:     <tytso@mit.edu>, <jack@suse.cz>, <adilger.kernel@dilger.ca>,
-        <yi.zhang@huawei.com>, <miaoxie@huawei.com>
-Subject: [PATCH] ext4: brelse all indirect buffers in ext4_ind_remove_space()
-Date:   Sat, 9 Mar 2019 21:19:07 +0800
-Message-ID: <1552137547-115352-1-git-send-email-yi.zhang@huawei.com>
-X-Mailer: git-send-email 2.7.4
+        id S1726700AbfCJR4y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 10 Mar 2019 13:56:54 -0400
+Received: from mail-lf1-f68.google.com ([209.85.167.68]:38169 "EHLO
+        mail-lf1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726432AbfCJR4y (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 10 Mar 2019 13:56:54 -0400
+Received: by mail-lf1-f68.google.com with SMTP id k136so1732780lfg.5
+        for <linux-ext4@vger.kernel.org>; Sun, 10 Mar 2019 10:56:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linux-foundation.org; s=google;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=YNjjXZADjhmJVaKjYy+j0qqaxm7Gg8fP7jq8b4+YfQk=;
+        b=FDLicbUmCuRizhZ0rvzSrdZk5xbiWaLIpsCpG9IcziikBpdke4T8VKBMQqOquZAwQu
+         W6UtoNSOnxRO19+e5tpBiPFXowj5l0lTuu4Np0zMVzc7tokV0LNdIGxYQOnKTkun1s6T
+         E/i1YN4e6Ut9Tom+gMqXPvfwAKJsnRpKnNTAw=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=YNjjXZADjhmJVaKjYy+j0qqaxm7Gg8fP7jq8b4+YfQk=;
+        b=ihlv8914vZ32ULWaWsFI+AQ7XyuRGdDj2yRUvZlIjALwTWv5td76N7zw1iCAXQ0HYc
+         dWKLY9Mw+HSrqIRMceOIwSNUtKXqwTYCtd5/gcfNfTbobsRt9h5GngZPCDHgthGsUdv+
+         EOLZYtLgcsXV31ZSfXZrrIbSUnKdLBvsYLMTHy7at3TbP9DafNwmIZQ4G9XYXT/a07tC
+         CZFZyhZGRnCqTE9ZOLE8bDw3vYmKqzJva65PgZj4MTBZKOCnjWdQPEsz+x9cnvjMejMk
+         Osjy/3AYp4UT3v2lEfGoLrkOCjMyuNtt7w/EpX8W4PZXK5W7lKSWzldK+iMeIGLVyENW
+         uNNQ==
+X-Gm-Message-State: APjAAAVtPTRx74D5Ljql+pvTkQhrt8jqzWPARQ36JeskPUQVZvKsVKC+
+        L6h01lgLpSI2q2fho9YTLIf2lCpuWig=
+X-Google-Smtp-Source: APXvYqy2mTg3QDGfccGvYp2M35BanQ5iv9UCtYJqe45F8aLi7EocuQQwPtZTwAQAK6UjXQUF0PigGw==
+X-Received: by 2002:a19:f008:: with SMTP id p8mr15198785lfc.134.1552240611941;
+        Sun, 10 Mar 2019 10:56:51 -0700 (PDT)
+Received: from mail-lj1-f177.google.com (mail-lj1-f177.google.com. [209.85.208.177])
+        by smtp.gmail.com with ESMTPSA id r5sm737099lfm.68.2019.03.10.10.56.50
+        for <linux-ext4@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 10 Mar 2019 10:56:50 -0700 (PDT)
+Received: by mail-lj1-f177.google.com with SMTP id q128so2044013ljb.11
+        for <linux-ext4@vger.kernel.org>; Sun, 10 Mar 2019 10:56:50 -0700 (PDT)
+X-Received: by 2002:a2e:9117:: with SMTP id m23mr14276429ljg.94.1552240609957;
+ Sun, 10 Mar 2019 10:56:49 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Originating-IP: [10.90.53.225]
-X-CFilter-Loop: Reflected
+References: <20190306132938.hzyb7gee5actx3l3@pathway.suse.cz>
+In-Reply-To: <20190306132938.hzyb7gee5actx3l3@pathway.suse.cz>
+From:   Linus Torvalds <torvalds@linux-foundation.org>
+Date:   Sun, 10 Mar 2019 10:56:34 -0700
+X-Gmail-Original-Message-ID: <CAHk-=wi=m7vcLJB2uqTPcVd603ygCeKr7NBtR5y0M8KHtMzFWg@mail.gmail.com>
+Message-ID: <CAHk-=wi=m7vcLJB2uqTPcVd603ygCeKr7NBtR5y0M8KHtMzFWg@mail.gmail.com>
+Subject: Re: [question] panic() during reboot -f (reboot syscall)
+To:     Petr Mladek <pmladek@suse.com>
+Cc:     Linux List Kernel Mailing <linux-kernel@vger.kernel.org>,
+        "Rafael J. Wysocky" <rafael.j.wysocki@intel.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        linux-ext4@vger.kernel.org, Thomas Gleixner <tglx@linutronix.de>,
+        Andy Shevchenko <andy.shevchenko@gmail.com>,
+        Peter Zijlstra <peterz@infradead.org>, Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-All indirect buffers get by ext4_find_shared() should be released no
-mater the branch should be freed or not. But now, we forget to release
-the lower depth indirect buffers when removing space from the same
-higher depth indirect block. It will lead to buffer leak and futher
-more, it may lead to quota information corruption when using old quota,
-consider the following case.
+On Wed, Mar 6, 2019 at 5:29 AM Petr Mladek <pmladek@suse.com> wrote:
+>
+> I wonder if it is "normal" to get panic() when the system is rebooted
+> using "reboot -f". I looks a bit weird to me.
 
- - Create and mount an empty ext4 filesystem without extent and quota
-   features,
- - quotacheck and enable the user & group quota,
- - Create some files and write some data to them, and then punch hole
-   to some files of them, it may trigger the buffer leak problem
-   mentioned above.
- - Disable quota and run quotacheck again, it will create two new
-   aquota files and write the checked quota information to them, which
-   probably may reuse the freed indirect block(the buffer and page
-   cache was not freed) as data block.
- - Enable quota again, it will invoke
-   vfs_load_quota_inode()->invalidate_bdev() to try to clean unused
-   buffers and pagecache. Unfortunately, because of the buffer of quota
-   data block is still referenced, quota code cannot read the up to date
-   quota info from the device and lead to quota information corruption.
+No, a panic is never normal (except possibly for test modules etc, of course).
 
-This problem can be reproduced by xfstests generic/231 on ext3 file
-system or ext4 filesystem without extent and quota feature.
+> Now, "reboot -f" just calls the reboot() syscall. I do not see
+> anything that would stop processes.
 
-This patch fix this problem by brelse all indirect buffers, and also
-do some cleanup of the brelse code in ext4_ind_remove_space().
+There isn't supposed to be anything. It's meant for "things are
+screwed up, just reboot *now* without doing anything else".
 
-Reported-by: Hulk Robot <hulkci@huawei.com>
-Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
----
- fs/ext4/indirect.c | 43 ++++++++++++++++++++++---------------------
- 1 file changed, 22 insertions(+), 21 deletions(-)
+The "reboot now" is basically meant to be a poor man's power cycle.
 
-diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
-index bf7fa15..6f3f7d5 100644
---- a/fs/ext4/indirect.c
-+++ b/fs/ext4/indirect.c
-@@ -1219,6 +1219,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 	ext4_lblk_t offsets[4], offsets2[4];
- 	Indirect chain[4], chain2[4];
- 	Indirect *partial, *partial2;
-+	Indirect *p = NULL, *p2 = NULL;
- 	ext4_lblk_t max_block;
- 	__le32 nr = 0, nr2 = 0;
- 	int n = 0, n2 = 0;
-@@ -1260,7 +1261,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 		}
- 
- 
--		partial = ext4_find_shared(inode, n, offsets, chain, &nr);
-+		partial = p = ext4_find_shared(inode, n, offsets, chain, &nr);
- 		if (nr) {
- 			if (partial == chain) {
- 				/* Shared branch grows from the inode */
-@@ -1285,13 +1286,11 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 				partial->p + 1,
- 				(__le32 *)partial->bh->b_data+addr_per_block,
- 				(chain+n-1) - partial);
--			BUFFER_TRACE(partial->bh, "call brelse");
--			brelse(partial->bh);
- 			partial--;
- 		}
- 
- end_range:
--		partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
-+		partial2 = p2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
- 		if (nr2) {
- 			if (partial2 == chain2) {
- 				/*
-@@ -1321,16 +1320,14 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 					   (__le32 *)partial2->bh->b_data,
- 					   partial2->p,
- 					   (chain2+n2-1) - partial2);
--			BUFFER_TRACE(partial2->bh, "call brelse");
--			brelse(partial2->bh);
- 			partial2--;
- 		}
- 		goto do_indirects;
- 	}
- 
- 	/* Punch happened within the same level (n == n2) */
--	partial = ext4_find_shared(inode, n, offsets, chain, &nr);
--	partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
-+	partial = p = ext4_find_shared(inode, n, offsets, chain, &nr);
-+	partial2 = p2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
- 
- 	/* Free top, but only if partial2 isn't its subtree. */
- 	if (nr) {
-@@ -1387,11 +1384,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 					   partial->p + 1,
- 					   partial2->p,
- 					   (chain+n-1) - partial);
--			BUFFER_TRACE(partial->bh, "call brelse");
--			brelse(partial->bh);
--			BUFFER_TRACE(partial2->bh, "call brelse");
--			brelse(partial2->bh);
--			return 0;
-+			goto clean_up;
- 		}
- 
- 		/*
-@@ -1406,8 +1399,6 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 					   partial->p + 1,
- 					   (__le32 *)partial->bh->b_data+addr_per_block,
- 					   (chain+n-1) - partial);
--			BUFFER_TRACE(partial->bh, "call brelse");
--			brelse(partial->bh);
- 			partial--;
- 		}
- 		if (partial2 > chain2 && depth2 <= depth) {
-@@ -1415,11 +1406,21 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 					   (__le32 *)partial2->bh->b_data,
- 					   partial2->p,
- 					   (chain2+n2-1) - partial2);
--			BUFFER_TRACE(partial2->bh, "call brelse");
--			brelse(partial2->bh);
- 			partial2--;
- 		}
- 	}
-+
-+clean_up:
-+	while (p && p > chain) {
-+		BUFFER_TRACE(p->bh, "call brelse");
-+		brelse(p->bh);
-+		p--;
-+	}
-+	while (p2 && p2 > chain2) {
-+		BUFFER_TRACE(p2->bh, "call brelse");
-+		brelse(p2->bh);
-+		p2--;
-+	}
- 	return 0;
- 
- do_indirects:
-@@ -1427,7 +1428,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 	switch (offsets[0]) {
- 	default:
- 		if (++n >= n2)
--			return 0;
-+			break;
- 		nr = i_data[EXT4_IND_BLOCK];
- 		if (nr) {
- 			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 1);
-@@ -1435,7 +1436,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 		}
- 	case EXT4_IND_BLOCK:
- 		if (++n >= n2)
--			return 0;
-+			break;
- 		nr = i_data[EXT4_DIND_BLOCK];
- 		if (nr) {
- 			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 2);
-@@ -1443,7 +1444,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 		}
- 	case EXT4_DIND_BLOCK:
- 		if (++n >= n2)
--			return 0;
-+			break;
- 		nr = i_data[EXT4_TIND_BLOCK];
- 		if (nr) {
- 			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 3);
-@@ -1452,5 +1453,5 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
- 	case EXT4_TIND_BLOCK:
- 		;
- 	}
--	return 0;
-+	goto clean_up;
- }
--- 
-2.7.4
+> But it shuts down devices very early, via:
+>
+>   + kernel_restart()
+>     + kernel_restart_prepare()
+>       + blocking_notifier_call_chain(&reboot_notifier_list, SYS_RESTART, cmd);
+>       + device_shutdown()
 
+The problem is that there are conflicting goals here, and the kernel
+doesn't even *know* if this is supposed to be a normal clean reboot,
+or a "reboot -f" that just shuts down everything.
+
+On a nice clean reboot (where init has shut everything down) we
+obviously _do_ want to shut devices down etc. Quite often you need to
+do it just to make sure they come up nicely again (because the
+firmware isn't even always re-initializing things properly on a soft
+reboot).
+
+But on a "reboot -f", user space _hasn't_ cleaned up, and just wants
+things to reboot. But the kernel doesn't really know. It just gets the
+reboot system call in both cases.
+
+> By other words. It looks like the panic() is possible by design.
+> But it looks a bit weird. Any opinion?
+
+It's definitely not "by design", but it might be unavoidable in this case.
+
+Of course, "unavoidable" is relative. There could be workarounds that
+are reasonably ok in practice.
+
+Like having the filesystem panic code see "oh, system_state isn't
+SYSTEM_RUNNING, so I shouldn't be panicing".
+
+                Linus
