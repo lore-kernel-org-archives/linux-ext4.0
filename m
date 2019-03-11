@@ -5,29 +5,30 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9FCBEC43381
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Mar 2019 18:59:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ABE3CC43381
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Mar 2019 18:59:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7CC1120643
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Mar 2019 18:59:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8DF90206BA
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Mar 2019 18:59:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728294AbfCKS7N convert rfc822-to-8bit (ORCPT
+        id S1728330AbfCKS7g convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Mar 2019 14:59:13 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40690 "EHLO
+        Mon, 11 Mar 2019 14:59:36 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40838 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727008AbfCKS7M (ORCPT
+        by vger.kernel.org with ESMTP id S1728510AbfCKS7c (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 11 Mar 2019 14:59:12 -0400
+        Mon, 11 Mar 2019 14:59:32 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5339A28622
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Mar 2019 18:59:12 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 63DC8291BC
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Mar 2019 18:59:31 +0000 (UTC)
 Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 47FD428565; Mon, 11 Mar 2019 18:59:12 +0000 (UTC)
+        id 5831929190; Mon, 11 Mar 2019 18:59:31 +0000 (UTC)
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Subject: [Bug 202879] Segmentation fault while running crafted program
-Date:   Mon, 11 Mar 2019 18:59:11 +0000
+Subject: [Bug 202877] failure at
+ fs/jbd2/commit.c:818/jbd2_journal_commit_transaction()!
+Date:   Mon, 11 Mar 2019 18:59:30 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -43,9 +44,9 @@ X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
 X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-202879-13602-PdrPKbEL8Y@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-202879-13602@https.bugzilla.kernel.org/>
-References: <bug-202879-13602@https.bugzilla.kernel.org/>
+Message-ID: <bug-202877-13602-YPw7FYRPRR@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-202877-13602@https.bugzilla.kernel.org/>
+References: <bug-202877-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 X-Bugzilla-URL: https://bugzilla.kernel.org/
@@ -57,12 +58,12 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=202879
+https://bugzilla.kernel.org/show_bug.cgi?id=202877
 
---- Comment #2 from Jungyeon (jungyeon@gatech.edu) ---
-Created attachment 281729
-  --> https://bugzilla.kernel.org/attachment.cgi?id=281729&action=edit
-poc_01.c
+--- Comment #1 from Jungyeon (jungyeon@gatech.edu) ---
+Created attachment 281731
+  --> https://bugzilla.kernel.org/attachment.cgi?id=281731&action=edit
+min_02.c.raw
 
 -- 
 You are receiving this mail because:
