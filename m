@@ -5,31 +5,31 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C9D8C43381
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Mar 2019 18:57:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 84BEDC10F06
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Mar 2019 18:58:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D4B7E206BA
-	for <linux-ext4@archiver.kernel.org>; Mon, 11 Mar 2019 18:57:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 66FE620643
+	for <linux-ext4@archiver.kernel.org>; Mon, 11 Mar 2019 18:58:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728416AbfCKS5p convert rfc822-to-8bit (ORCPT
+        id S1727957AbfCKS65 convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 11 Mar 2019 14:57:45 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40340 "EHLO
+        Mon, 11 Mar 2019 14:58:57 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:40560 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1728404AbfCKS5o (ORCPT
+        by vger.kernel.org with ESMTP id S1727304AbfCKS64 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 11 Mar 2019 14:57:44 -0400
+        Mon, 11 Mar 2019 14:58:56 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 5BCDC292A8
-        for <linux-ext4@vger.kernel.org>; Mon, 11 Mar 2019 18:57:43 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 20ADF292A0
+        for <linux-ext4@vger.kernel.org>; Mon, 11 Mar 2019 18:58:56 +0000 (UTC)
 Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 50267292AD; Mon, 11 Mar 2019 18:57:43 +0000 (UTC)
+        id 12238292AE; Mon, 11 Mar 2019 18:58:56 +0000 (UTC)
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Subject: [Bug 202879] New: Segmentation fault while running crafted program
-Date:   Mon, 11 Mar 2019 18:57:42 +0000
+Subject: [Bug 202879] Segmentation fault while running crafted program
+Date:   Mon, 11 Mar 2019 18:58:55 +0000
 X-Bugzilla-Reason: None
-X-Bugzilla-Type: new
+X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Product: File System
 X-Bugzilla-Component: ext4
@@ -42,10 +42,10 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: bug_id short_desc product version
- cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
- priority component assigned_to reporter cf_regression attachments.created
-Message-ID: <bug-202879-13602@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: attachments.created
+Message-ID: <bug-202879-13602-YjWO9RjF8C@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-202879-13602@https.bugzilla.kernel.org/>
+References: <bug-202879-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 X-Bugzilla-URL: https://bugzilla.kernel.org/
@@ -59,142 +59,10 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=202879
 
-            Bug ID: 202879
-           Summary: Segmentation fault while running crafted program
-           Product: File System
-           Version: 2.5
-    Kernel Version: 5.0-rc8
-          Hardware: All
-                OS: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-          Assignee: fs_ext4@kernel-bugs.osdl.org
-          Reporter: jungyeon@gatech.edu
-        Regression: No
-
-Created attachment 281725
-  --> https://bugzilla.kernel.org/attachment.cgi?id=281725&action=edit
-The (compressed) crafted image which causes crash
-
-- Overview
-After mounting crafted image and running the attached program, I got this
-segmentation fault while running attached program.
-I also tried to reproduce on vm, but it only failed on lkl.
-
-- Produces
-./lkl/tools/lkl/ext4-combined -t ext4 -i tmp.img -p poc_01.c.raw -v
-(poc_01.c shows it's internal programs)
-
-- Messages
-./lkl/tools/lkl/ext4-combined -t ext4 -i tmp.img -p tmp.c.raw -v
-./lkl/tools/lkl/ext4-combined -t ext4 -i tmp.img -p poc_01.c.raw -v
-[    0.000000] Linux version 5.0.0-rc6+ (jungyeon@copper) (gcc version 7.3.0
-(Ubuntu 7.3.0-27ubuntu1~18.04)) #1 Mon Mar 11 14:49:22 EDT 2019
-[    0.000000] memblock address range: 0x7face0000000 - 0x7face7fff000
-[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 32319
-[    0.000000] Kernel command line: mem=128M virtio_mmio.device=316@0x1000000:1
-[    0.000000] Dentry cache hash table entries: 16384 (order: 5, 131072 bytes)
-[    0.000000] Inode-cache hash table entries: 8192 (order: 4, 65536 bytes)
-[    0.000000] Memory available: 129044k/131068k RAM
-[    0.000000] SLUB: HWalign=32, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
-[    0.000000] NR_IRQS: 4096
-[    0.000000] lkl: irqs initialized
-[    0.000000] clocksource: lkl: mask: 0xffffffffffffffff max_cycles:
-0x1cd42e4dffb, max_idle_ns: 881590591483 ns
-[    0.000004] lkl: time and timers initialized (irq2)
-[    0.000011] pid_max: default: 4096 minimum: 301
-[    0.000074] Mount-cache hash table entries: 512 (order: 0, 4096 bytes)
-[    0.000084] Mountpoint-cache hash table entries: 512 (order: 0, 4096 bytes)
-[    0.002643] printk: console [lkl_console0] enabled
-[    0.002673] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff,
-max_idle_ns: 19112604462750000 ns
-[    0.004396] clocksource: Switched to clocksource lkl
-[    0.004672] virtio-mmio: Registering device virtio-mmio.0 at
-0x1000000-0x100013b, IRQ 1.
-[    0.005205] workingset: timestamp_bits=62 max_order=15 bucket_order=0
-[    0.015834] virtio-mmio virtio-mmio.0: Failed to enable 64-bit or 32-bit
-DMA.  Trying to continue, but this might not work.
-[    0.016070] virtio_blk virtio0: [vda] 32768 512-byte logical blocks (16.8
-MB/16.0 MiB)
-[    0.016903] random: get_random_bytes called from init_oops_id+0x35/0x40 with
-crng_init=0
-[    0.017356] Warning: unable to open an initial console.
-[    0.017395] This architecture does not have kernel memory protection.
-[    0.017402] Run /init as init process
-[    0.019260] EXT4-fs (vda): barriers disabled
-[    0.019867] [EXT4 FS bs=1024, gc=2, bpg=8192, ipg=2048, mo=e000c42c,
-mo2=0002]
-[    0.019890] System zones: 1-2, 66-581, 8193-8194
-[    0.020020] EXT4-fs (vda): mounting with "discard" option, but the device
-does not support discard
-[    0.020030] EXT4-fs (vda): mounted filesystem with journalled data mode.
-Opts: errors=remount-ro
-        v13 = syscall(SYS_open, (long)v2, 65536, 0);
-        syscall(SYS_getdents64, (long)v13, (long)v1, 2344);
-        syscall(SYS_fsync, (long)v13);
-        syscall(SYS_fsync, (long)v13);
-        syscall(SYS_readlink, (long)v10, (long)v1, 8192);
-        v15 = syscall(SYS_open, (long)v14, 66, 438);
-        syscall(SYS_write, (long)v15, (long)v1, 2229);
-        syscall(SYS_write, (long)v15, (long)v1, 3563);
-        syscall(SYS_ftruncate, (long)v15, 7336);
-        syscall(SYS_getdents64, (long)v13, (long)v1, 4633);
-        syscall(SYS_mkdir, (long)v16, 511);
-        syscall(SYS_fsync, (long)v13);
-        syscall(SYS_fsync, (long)v15);
-        syscall(SYS_unlink, (long)v8);
-        syscall(SYS_write, (long)v15, (long)v1, 7178);
-        syscall(SYS_readlink, (long)v14, (long)v1, 8192);
-        syscall(SYS_utimes, (long)v11, (long)v1);
-        syscall(SYS_ftruncate, (long)v15, 4018);
-        syscall(SYS_utimes, (long)v10, (long)v1);
-        syscall(SYS_ftruncate, (long)v15, 6005);
-        syscall(SYS_fsync, (long)v15);
-        syscall(SYS_rmdir, (long)v12);
-        syscall(SYS_pwrite64, (long)v15, (long)v1, 7752, 4527);
-        syscall(SYS_getdents64, (long)v13, (long)v1, 3796);
-        syscall(SYS_mkdir, (long)v17, 511);
-        syscall(SYS_removexattr, (long)v3, (long)v18);
-        syscall(SYS_ftruncate, (long)v15, 53);
-        syscall(SYS_listxattr, (long)v5, (long)v1, 4138);
-        syscall(SYS_pwrite64, (long)v15, (long)v1, 7728, 1584);
-        syscall(SYS_fsync, (long)v15);
-        syscall(SYS_fsync, (long)v15);
-        syscall(SYS_write, (long)v15, (long)v1, 1974);
-        syscall(SYS_unlink, (long)v14);
-        syscall(SYS_write, (long)v15, (long)v1, 1752);
-        syscall(SYS_getdents64, (long)v13, (long)v1, 1582);
-        syscall(SYS_pwrite64, (long)v15, (long)v1, 5142, 5178);
-        syscall(SYS_removexattr, (long)v16, (long)v19);
-        v20 = syscall(SYS_open, (long)v3, 65536, 0);
-        syscall(SYS_fsync, (long)v15);
-        syscall(SYS_symlink, (long)v5, (long)v21);
-        syscall(SYS_link, (long)v10, (long)v22);
-        v23 = syscall(SYS_open, (long)v7, 2, 0);
-        syscall(SYS_ftruncate, (long)v15, 2545);
-        syscall(SYS_write, (long)v23, (long)v1, 2067);
-        syscall(SYS_fdatasync, (long)v23);
-        syscall(SYS_link, (long)v10, (long)v24);
-        syscall(SYS_symlink, (long)v9, (long)v25);
-        syscall(SYS_fsync, (long)v15);
-        syscall(SYS_mkdir, (long)v26, 511);
-[    0.084492] random: fast init done
-        syscall(SYS_fdatasync, (long)v23);
-        syscall(SYS_write, (long)v23, (long)v1, 969);
-        syscall(SYS_readlink, (long)v2, (long)v1, 8192);
-        syscall(SYS_chmod, (long)v25, 3072);
-        syscall(SYS_fdatasync, (long)v23);
-        syscall(SYS_pwrite64, (long)v23, (long)v1, 1520, 1423);
-        syscall(SYS_fallocate, (long)v15, 65, 5353, 6797);
-        syscall(SYS_fsync, (long)v23);
-        syscall(SYS_listxattr, (long)v22, (long)v1, 1808);
-        syscall(SYS_pwrite64, (long)v23, (long)v1, 4742, 7814);
-        syscall(SYS_newlstat, (long)v21, (long)v1);
-        syscall(SYS_fsync, (long)v20);
-Segmentation fault (core dumped)
+--- Comment #1 from Jungyeon (jungyeon@gatech.edu) ---
+Created attachment 281727
+  --> https://bugzilla.kernel.org/attachment.cgi?id=281727&action=edit
+poc_01.c.raw
 
 -- 
 You are receiving this mail because:
