@@ -2,184 +2,142 @@ Return-Path: <SRS0=vuM7=RP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-12.5 required=3.0
+	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PULL_REQUEST,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E239C43381
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Mar 2019 16:01:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AAA7C43381
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Mar 2019 19:59:23 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 175322054F
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Mar 2019 16:01:42 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 5E7E6214AE
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Mar 2019 19:59:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726415AbfCLQBm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Mar 2019 12:01:42 -0400
-Received: from mx2.suse.de ([195.135.220.15]:49330 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726365AbfCLQBm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 12 Mar 2019 12:01:42 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 60157B162;
-        Tue, 12 Mar 2019 16:01:40 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 45B4B1E426A; Tue, 12 Mar 2019 17:01:39 +0100 (CET)
-Date:   Tue, 12 Mar 2019 17:01:39 +0100
-From:   Jan Kara <jack@suse.cz>
-To:     Petr Mladek <pmladek@suse.com>
-Cc:     Jan Kara <jack@suse.cz>, Ted Tso <tytso@mit.edu>,
+        id S1726885AbfCLT7R (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Mar 2019 15:59:17 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:53190 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726329AbfCLT7R (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Mar 2019 15:59:17 -0400
+X-Greylist: delayed 491 seconds by postgrey-1.27 at vger.kernel.org; Tue, 12 Mar 2019 15:59:16 EDT
+Received: from callcc.thunk.org (guestnat-104-133-0-99.corp.google.com [104.133.0.99] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2CJp0GK012123
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 12 Mar 2019 15:51:00 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id B64FA4207E1; Tue, 12 Mar 2019 15:50:59 -0400 (EDT)
+Date:   Tue, 12 Mar 2019 15:50:59 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     torvalds@linux-foundation.org
+Cc:     linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Subject: [GIT PULL] ext4 changes for 5.1
+Message-ID: <20190312195059.GA19660@mit.edu>
+Mail-Followup-To: Theodore Ts'o <tytso@mit.edu>,
+        torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-ext4@vger.kernel.org
-Subject: Re: [PATCH] ext4: Avoid panic during forced reboot
-Message-ID: <20190312160139.GC32521@quack2.suse.cz>
-References: <20190312094906.5974-1-jack@suse.cz>
- <20190312122106.xzko4pmtpyreq6ih@pathway.suse.cz>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="PmA2V3Z32TCmWXqI"
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190312122106.xzko4pmtpyreq6ih@pathway.suse.cz>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+Sorry, I thought I had sent this a week ago, but I had failed to push
+the send button apparently...
 
---PmA2V3Z32TCmWXqI
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+The following changes since commit 49a57857aeea06ca831043acbb0fa5e0f50602fd:
 
-On Tue 12-03-19 13:21:06, Petr Mladek wrote:
-> On Tue 2019-03-12 10:49:06, Jan Kara wrote:
-> > When admin calls "reboot -f" - i.e., does a hard system reboot by
-> > directly calling reboot(2) - ext4 filesystem mounted with errors=panic
-> > can panic the system. This happens because the underlying device gets
-> > disabled without unmounting the filesystem and thus some syscall running
-> > in parallel to reboot(2) can result in the filesystem getting IO errors.
-> > 
-> > This is somewhat surprising to the users so try improve the behavior by
-> > switching to errors=remount-ro behavior when the system is running
-> > reboot(2).
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/ext4/super.c | 13 ++++++++++++-
-> >  1 file changed, 12 insertions(+), 1 deletion(-)
-> > 
-> > What do people think about this? Arguably this change has some potential
-> > for breakage if e.g. an ext4 error would somehow block reboot(2). I don't
-> > see how that would be possible but I wanted to raise this just in case...
-> > 
-> > diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> > index 60da0a6e4d86..f7b6f95fa8dd 100644
-> > --- a/fs/ext4/super.c
-> > +++ b/fs/ext4/super.c
-> > @@ -430,6 +430,12 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
-> >  	spin_unlock(&sbi->s_md_lock);
-> >  }
-> >  
-> > +static bool system_going_down(void)
-> > +{
-> > +	return system_state == SYSTEM_HALT || system_state == SYSTEM_POWER_OFF
-> > +		|| system_state == SYSTEM_RESTART;
-> > +}
-> > +
-> >  /* Deal with the reporting of failure conditions on a filesystem such as
-> >   * inconsistencies detected or read IO failures.
-> >   *
-> > @@ -460,7 +466,12 @@ static void ext4_handle_error(struct super_block *sb)
-> >  		if (journal)
-> >  			jbd2_journal_abort(journal, -EIO);
-> >  	}
-> > -	if (test_opt(sb, ERRORS_RO)) {
-> > +	/*
-> > +	 * We force ERRORS_RO behavior when system is rebooting. Otherwise we
-> > +	 * could panic during 'reboot -f' as the underlying device got already
-> > +	 * disabled.
-> > +	 */
-> > +	if (test_opt(sb, ERRORS_RO) || system_going_down()) {
-> 
-> If I read the code correctly then this will not avoid the panic().
-> 
-> There is no return in this branch. Therefore it still continues
-> with the ERRORS_PANIC check...
-> 
-> Or do I miss anything, please?
+  Linux 5.0-rc3 (2019-01-21 13:14:44 +1300)
 
-No, you are right. Attached is a fixed up patch.
+are available in the Git repository at:
 
-								Honza
+  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus
 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+for you to fetch changes up to 0df6f46995a9fc92a6b9e591428e77527dd9609a:
 
---PmA2V3Z32TCmWXqI
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-ext4-Avoid-panic-during-forced-reboot.patch"
+  jbd2: jbd2_get_transaction does not need to return a value (2019-03-01 00:36:57 -0500)
 
-From 15b830d4e877ed908c733ab3219801d1026af256 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 12 Mar 2019 10:38:19 +0100
-Subject: [PATCH] ext4: Avoid panic during forced reboot
+----------------------------------------------------------------
+A large number of bug fixes and cleanups.  One new feature to allow
+users to more easily find the jbd2 journal thread for a particular
+ext4 file system.
 
-When admin calls "reboot -f" - i.e., does a hard system reboot by
-directly calling reboot(2) - ext4 filesystem mounted with errors=panic
-can panic the system. This happens because the underlying device gets
-disabled without unmounting the filesystem and thus some syscall running
-in parallel to reboot(2) can result in the filesystem getting IO errors.
+----------------------------------------------------------------
+Andreas Dilger (1):
+      ext4: don't update s_rev_level if not required
 
-This is somewhat surprising to the users so try improve the behavior by
-switching to errors=remount-ro behavior when the system is running
-reboot(2).
+Dan Carpenter (1):
+      ext4: fix some error pointer dereferences
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/super.c | 16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
+Eric Whitney (1):
+      ext4: fix bigalloc cluster freeing when hole punching under load
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 60da0a6e4d86..b7b621d5d87a 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -430,6 +430,12 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
- 	spin_unlock(&sbi->s_md_lock);
- }
- 
-+static bool system_going_down(void)
-+{
-+	return system_state == SYSTEM_HALT || system_state == SYSTEM_POWER_OFF
-+		|| system_state == SYSTEM_RESTART;
-+}
-+
- /* Deal with the reporting of failure conditions on a filesystem such as
-  * inconsistencies detected or read IO failures.
-  *
-@@ -460,7 +466,12 @@ static void ext4_handle_error(struct super_block *sb)
- 		if (journal)
- 			jbd2_journal_abort(journal, -EIO);
- 	}
--	if (test_opt(sb, ERRORS_RO)) {
-+	/*
-+	 * We force ERRORS_RO behavior when system is rebooting. Otherwise we
-+	 * could panic during 'reboot -f' as the underlying device got already
-+	 * disabled.
-+	 */
-+	if (test_opt(sb, ERRORS_RO) || system_going_down()) {
- 		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
- 		/*
- 		 * Make sure updated value of ->s_mount_flags will be visible
-@@ -468,8 +479,7 @@ static void ext4_handle_error(struct super_block *sb)
- 		 */
- 		smp_wmb();
- 		sb->s_flags |= SB_RDONLY;
--	}
--	if (test_opt(sb, ERRORS_PANIC)) {
-+	} else if (test_opt(sb, ERRORS_PANIC)) {
- 		if (EXT4_SB(sb)->s_journal &&
- 		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
- 			return;
--- 
-2.16.4
+Geert Uytterhoeven (1):
+      ext4: Change debugging support help prefix from EXT4 to Ext4
 
+Jan Kara (1):
+      ext4: fix crash during online resizing
 
---PmA2V3Z32TCmWXqI--
+Konstantin Khlebnikov (1):
+      ext4: add sysfs attr /sys/fs/ext4/<disk>/journal_task
+
+Liu Song (1):
+      jbd2: jbd2_get_transaction does not need to return a value
+
+Mathieu Malaterre (2):
+      ext4: annotate implicit fall throughs
+      ext4: annotate more implicit fall throughs
+
+Nikolay Borisov (1):
+      ext4: replace opencoded i_writecount usage with inode_is_open_for_write()
+
+Theodore Ts'o (4):
+      Revert "ext4: use ext4_write_inode() when fsyncing w/o a journal"
+      ext4: disallow files with EXT4_JOURNAL_DATA_FL from EXT4_IOC_SWAP_BOOT
+      jbd2: fix race when writing superblock
+      jbd2: fold jbd2_superblock_csum_{verify,set} into their callers
+
+Xiaoguang Wang (2):
+      jbd2: fix deadlock while checkpoint thread waits commit thread to finish
+      ext4: unlock unused_pages timely when doing writeback
+
+luojiajun (1):
+      jbd2: fix invalid descriptor block checksum
+
+yangerkun (4):
+      ext4: fix check of inode in swap_inode_boot_loader
+      ext4: cleanup pagecache before swap i_data
+      ext4: update quota information while swapping boot loader inode
+      ext4: add mask of ext4 flags to swap
+
+zhangyi (F) (5):
+      jbd2: clear dirty flag when revoking a buffer from an older transaction
+      jbd2: discard dirty data when forgetting an un-journalled buffer
+      ext4: cleanup clean_bdev_aliases() calls
+      jbd2: fix compile warning when using JBUFFER_TRACE
+      ext4: fix compile error when using BUFFER_TRACE
+
+ Documentation/ABI/testing/sysfs-fs-ext4 |   7 +++
+ fs/ext4/Kconfig                         |   2 +-
+ fs/ext4/ext4.h                          |   9 ++-
+ fs/ext4/extents.c                       |  29 ++++-----
+ fs/ext4/fsync.c                         |  13 ++--
+ fs/ext4/hash.c                          |   2 +
+ fs/ext4/indirect.c                      |   6 ++
+ fs/ext4/inode.c                         |  21 +++----
+ fs/ext4/ioctl.c                         | 101 +++++++++++++++++++++++---------
+ fs/ext4/mballoc.c                       |   7 +--
+ fs/ext4/page-io.c                       |   4 +-
+ fs/ext4/resize.c                        |   3 +-
+ fs/ext4/super.c                         |   1 -
+ fs/ext4/sysfs.c                         |  13 ++++
+ fs/ext4/xattr.c                         |   3 +
+ fs/jbd2/checkpoint.c                    |  17 +++++-
+ fs/jbd2/commit.c                        |   6 +-
+ fs/jbd2/journal.c                       |  90 ++++++++++++----------------
+ fs/jbd2/transaction.c                   |  83 +++++++++++++++++++-------
+ 19 files changed, 261 insertions(+), 156 deletions(-)
