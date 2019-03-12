@@ -2,108 +2,104 @@ Return-Path: <SRS0=vuM7=RP=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_NEOMUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 32D33C43381
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Mar 2019 11:00:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BE26CC43381
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Mar 2019 12:21:08 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F39F0206DF
-	for <linux-ext4@archiver.kernel.org>; Tue, 12 Mar 2019 11:00:33 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8C0DB20883
+	for <linux-ext4@archiver.kernel.org>; Tue, 12 Mar 2019 12:21:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726534AbfCLLAd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 12 Mar 2019 07:00:33 -0400
-Received: from out30-130.freemail.mail.aliyun.com ([115.124.30.130]:55065 "EHLO
-        out30-130.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726434AbfCLLAd (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 12 Mar 2019 07:00:33 -0400
-X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R201e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04392;MF=jiufei.xue@linux.alibaba.com;NM=1;PH=DS;RN=3;SR=0;TI=SMTPD_---0TMYD4Uo_1552388429;
-Received: from ali-186590e05fa3.local(mailfrom:jiufei.xue@linux.alibaba.com fp:SMTPD_---0TMYD4Uo_1552388429)
-          by smtp.aliyun-inc.com(127.0.0.1);
-          Tue, 12 Mar 2019 19:00:30 +0800
-Subject: Re: [PATCH] ext4: fix NULL pointer dereference while journal is
- aborted
-To:     Joseph Qi <joseph.qi@linux.alibaba.com>,
-        linux-ext4@vger.kernel.org, tytso@mit.edu
-References: <20190311063528.112996-1-jiufei.xue@linux.alibaba.com>
- <82869475-fc3b-441e-e87b-866e9aa1d93b@linux.alibaba.com>
-From:   Jiufei Xue <jiufei.xue@linux.alibaba.com>
-Message-ID: <600cf315-b3bc-75f4-5816-757eef4d6689@linux.alibaba.com>
-Date:   Tue, 12 Mar 2019 19:00:29 +0800
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:60.0)
- Gecko/20100101 Thunderbird/60.3.3
+        id S1726504AbfCLMVI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 12 Mar 2019 08:21:08 -0400
+Received: from mx2.suse.de ([195.135.220.15]:34996 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725917AbfCLMVI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 12 Mar 2019 08:21:08 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 0B5D8B053;
+        Tue, 12 Mar 2019 12:21:07 +0000 (UTC)
+Date:   Tue, 12 Mar 2019 13:21:06 +0100
+From:   Petr Mladek <pmladek@suse.com>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Ted Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] ext4: Avoid panic during forced reboot
+Message-ID: <20190312122106.xzko4pmtpyreq6ih@pathway.suse.cz>
+References: <20190312094906.5974-1-jack@suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <82869475-fc3b-441e-e87b-866e9aa1d93b@linux.alibaba.com>
-Content-Type: text/plain; charset=utf-8
-Content-Language: en-US
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190312094906.5974-1-jack@suse.cz>
+User-Agent: NeoMutt/20170421 (1.8.2)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi Ted,
+On Tue 2019-03-12 10:49:06, Jan Kara wrote:
+> When admin calls "reboot -f" - i.e., does a hard system reboot by
+> directly calling reboot(2) - ext4 filesystem mounted with errors=panic
+> can panic the system. This happens because the underlying device gets
+> disabled without unmounting the filesystem and thus some syscall running
+> in parallel to reboot(2) can result in the filesystem getting IO errors.
+> 
+> This is somewhat surprising to the users so try improve the behavior by
+> switching to errors=remount-ro behavior when the system is running
+> reboot(2).
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/super.c | 13 ++++++++++++-
+>  1 file changed, 12 insertions(+), 1 deletion(-)
+> 
+> What do people think about this? Arguably this change has some potential
+> for breakage if e.g. an ext4 error would somehow block reboot(2). I don't
+> see how that would be possible but I wanted to raise this just in case...
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 60da0a6e4d86..f7b6f95fa8dd 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -430,6 +430,12 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
+>  	spin_unlock(&sbi->s_md_lock);
+>  }
+>  
+> +static bool system_going_down(void)
+> +{
+> +	return system_state == SYSTEM_HALT || system_state == SYSTEM_POWER_OFF
+> +		|| system_state == SYSTEM_RESTART;
+> +}
+> +
+>  /* Deal with the reporting of failure conditions on a filesystem such as
+>   * inconsistencies detected or read IO failures.
+>   *
+> @@ -460,7 +466,12 @@ static void ext4_handle_error(struct super_block *sb)
+>  		if (journal)
+>  			jbd2_journal_abort(journal, -EIO);
+>  	}
+> -	if (test_opt(sb, ERRORS_RO)) {
+> +	/*
+> +	 * We force ERRORS_RO behavior when system is rebooting. Otherwise we
+> +	 * could panic during 'reboot -f' as the underlying device got already
+> +	 * disabled.
+> +	 */
+> +	if (test_opt(sb, ERRORS_RO) || system_going_down()) {
 
-Would you please review this patch?
+If I read the code correctly then this will not avoid the panic().
 
-Thanks,
-Jiufei
+There is no return in this branch. Therefore it still continues
+with the ERRORS_PANIC check...
 
-On 2019/3/11 下午2:45, Joseph Qi wrote:
-> 
-> 
-> On 19/3/11 14:35, Jiufei Xue wrote:
->> We see the following NULL pointer dereference while running xfstests
->> generic/475:
->> BUG: unable to handle kernel NULL pointer dereference at 0000000000000008
->> PGD 8000000c84bad067 P4D 8000000c84bad067 PUD c84e62067 PMD 0
->> Oops: 0000 [#1] SMP PTI
->> CPU: 7 PID: 9886 Comm: fsstress Kdump: loaded Not tainted 5.0.0-rc8 #10
->> RIP: 0010:ext4_do_update_inode+0x4ec/0x760
->> ...
->> Call Trace:
->> ? jbd2_journal_get_write_access+0x42/0x50
->> ? __ext4_journal_get_write_access+0x2c/0x70
->> ? ext4_truncate+0x186/0x3f0
->> ext4_mark_iloc_dirty+0x61/0x80
->> ext4_mark_inode_dirty+0x62/0x1b0
->> ext4_truncate+0x186/0x3f0
->> ? unmap_mapping_pages+0x56/0x100
->> ext4_setattr+0x817/0x8b0
->> notify_change+0x1df/0x430
->> do_truncate+0x5e/0x90
->> ? generic_permission+0x12b/0x1a0
->>
->> This is triggered because the NULL pointer handle->h_transaction was
->> dereferenced in function ext4_update_inode_fsync_trans().
->> I found that the h_transaction was set to NULL in jbd2__journal_restart
->> but failed to attached to a new transaction while the journal is aborted.
->>
->> Fix this by checking the handle before updating the inode.
->>
->> Signed-off-by: Jiufei Xue <jiufei.xue@linux.alibaba.com>
-> 
-> Looks good.
-> Reviewed-by: Joseph Qi <joseph.qi@linux.alibaba.com>
-> 
->> ---
->>  fs/ext4/ext4_jbd2.h | 2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
->> index a1ac7e9245ec..75a5309f2231 100644
->> --- a/fs/ext4/ext4_jbd2.h
->> +++ b/fs/ext4/ext4_jbd2.h
->> @@ -384,7 +384,7 @@ static inline void ext4_update_inode_fsync_trans(handle_t *handle,
->>  {
->>  	struct ext4_inode_info *ei = EXT4_I(inode);
->>  
->> -	if (ext4_handle_valid(handle)) {
->> +	if (ext4_handle_valid(handle) && !is_handle_aborted(handle)) {
->>  		ei->i_sync_tid = handle->h_transaction->t_tid;
->>  		if (datasync)
->>  			ei->i_datasync_tid = handle->h_transaction->t_tid;
->>
-> 
+Or do I miss anything, please?
+
+Best Regards,
+Petr
+
+>  		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
+>  		/*
+>  		 * Make sure updated value of ->s_mount_flags will be visible
+> -- 
+> 2.16.4
