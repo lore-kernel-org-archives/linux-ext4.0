@@ -2,136 +2,269 @@ Return-Path: <SRS0=Ur5Y=RR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS,
-	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E3328C43381
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 Mar 2019 00:43:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A4BFC43381
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 Mar 2019 02:19:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B242920854
-	for <linux-ext4@archiver.kernel.org>; Thu, 14 Mar 2019 00:43:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 43C4D2087C
+	for <linux-ext4@archiver.kernel.org>; Thu, 14 Mar 2019 02:19:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726427AbfCNAnR convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 13 Mar 2019 20:43:17 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:44230 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726078AbfCNAnQ (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 13 Mar 2019 20:43:16 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 9208B2A0A7
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Mar 2019 00:43:15 +0000 (UTC)
-Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 908F22A0AA; Thu, 14 Mar 2019 00:43:15 +0000 (UTC)
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 202879] Segmentation fault while running crafted program
-Date:   Thu, 14 Mar 2019 00:43:13 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: jungyeon@gatech.edu
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cf_kernel_version
-Message-ID: <bug-202879-13602-XWaAmVffIR@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-202879-13602@https.bugzilla.kernel.org/>
-References: <bug-202879-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1726774AbfCNCTs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 13 Mar 2019 22:19:48 -0400
+Received: from szxga07-in.huawei.com ([45.249.212.35]:49436 "EHLO huawei.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1726564AbfCNCTs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 13 Mar 2019 22:19:48 -0400
+Received: from DGGEMS404-HUB.china.huawei.com (unknown [172.30.72.58])
+        by Forcepoint Email with ESMTP id 9F9E3D86DC21A4F65E5F;
+        Thu, 14 Mar 2019 10:19:45 +0800 (CST)
+Received: from [127.0.0.1] (10.177.244.145) by DGGEMS404-HUB.china.huawei.com
+ (10.3.19.204) with Microsoft SMTP Server id 14.3.408.0; Thu, 14 Mar 2019
+ 10:19:35 +0800
+Subject: Re: [PATCH] ext4: brelse all indirect buffers in
+ ext4_ind_remove_space()
+To:     Jan Kara <jack@suse.cz>
+References: <1552137547-115352-1-git-send-email-yi.zhang@huawei.com>
+ <20190313173437.GL9108@quack2.suse.cz>
+CC:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <miaoxie@huawei.com>
+From:   "zhangyi (F)" <yi.zhang@huawei.com>
+Message-ID: <cab559a2-c2e7-f283-1069-2c308b1a7a2a@huawei.com>
+Date:   Thu, 14 Mar 2019 10:19:35 +0800
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:45.0) Gecko/20100101
+ Thunderbird/45.4.0
 MIME-Version: 1.0
-X-Virus-Scanned: ClamAV using ClamSMTP
+In-Reply-To: <20190313173437.GL9108@quack2.suse.cz>
+Content-Type: text/plain; charset="windows-1252"
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.177.244.145]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=202879
+On 2019/3/14 1:34, Jan Kara Wrote:
+> On Sat 09-03-19 21:19:07, zhangyi (F) wrote:
+>> All indirect buffers get by ext4_find_shared() should be released no
+>> mater the branch should be freed or not. But now, we forget to release
+>> the lower depth indirect buffers when removing space from the same
+>> higher depth indirect block. It will lead to buffer leak and futher
+>> more, it may lead to quota information corruption when using old quota,
+>> consider the following case.
+>>
+>>  - Create and mount an empty ext4 filesystem without extent and quota
+>>    features,
+>>  - quotacheck and enable the user & group quota,
+>>  - Create some files and write some data to them, and then punch hole
+>>    to some files of them, it may trigger the buffer leak problem
+>>    mentioned above.
+>>  - Disable quota and run quotacheck again, it will create two new
+>>    aquota files and write the checked quota information to them, which
+>>    probably may reuse the freed indirect block(the buffer and page
+>>    cache was not freed) as data block.
+>>  - Enable quota again, it will invoke
+>>    vfs_load_quota_inode()->invalidate_bdev() to try to clean unused
+>>    buffers and pagecache. Unfortunately, because of the buffer of quota
+>>    data block is still referenced, quota code cannot read the up to date
+>>    quota info from the device and lead to quota information corruption.
+>>
+>> This problem can be reproduced by xfstests generic/231 on ext3 file
+>> system or ext4 filesystem without extent and quota feature.
+>>
+>> This patch fix this problem by brelse all indirect buffers, and also
+>> do some cleanup of the brelse code in ext4_ind_remove_space().
+>>
+>> Reported-by: Hulk Robot <hulkci@huawei.com>
+>> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+> 
+> Thanks for the report and the patch! I think it is correct but I'd find it
+> simpler (not only the patch as such but also the resulting code in the
+> function) to just fix that one place that seems to leak bh references.
+> Something like:
+> 
+>                 if (partial > chain && partial2 > chain2 &&
+>                     partial->bh->b_blocknr == partial2->bh->b_blocknr) {
+>                         /*
+>                          * We've converged on the same block. Clear the range,
+>                          * then we're done.
+>                          */
+>                         ext4_free_branches(handle, inode, partial->bh,
+>                                            partial->p + 1,
+>                                            partial2->p,
+>                                            (chain+n-1) - partial);
+> -                       BUFFER_TRACE(partial->bh, "call brelse");
+> -                       brelse(partial->bh);
+> -                       BUFFER_TRACE(partial2->bh, "call brelse");
+> -                       brelse(partial2->bh);
+> +			while (partial > chain) {
+> +				BUFFER_TRACE(partial->bh, "call brelse");
+> +				brelse(partial->bh);
+> +			}
+> +			while (partial2 > chain2) {
+> +				BUFFER_TRACE(partial2->bh, "call brelse");
+> +				brelse(partial2->bh);
+> +			}
+>                         return 0;
+>                 }
+> 
+> Or is there some other problem I miss?
+> 
 
-Jungyeon (jungyeon@gatech.edu) changed:
+Hi Jan, thanks for your suggestion. There are no other problems, and the
+code you suggest can fix this bh references leak correctly.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-     Kernel Version|5.0-rc8                     |5.0.0
+But now we put the release code everywhere in ext4_ind_remove_space(), I
+think it's fragile and hard to read & maintain, so I not only want to fix
+this problem but also do some cleanup in this patch(maybe split to a single
+patch will be better). Suggestions?
 
---- Comment #6 from Jungyeon (jungyeon@gatech.edu) ---
-Sorry for my lack of explanation. 
-Yes, LKL is Linux Kernel Library. poc-01.c is a program that calls lists of
-system calls in userspace and the craft image is a potentially faulty image to
-test error cases.
+Thanks,
+Yi.
 
-We are going to release our source code so that you can build the ext4-combined
-shortly. We needs some clean-up inside the codes before making it public.
+>> ---
+>>  fs/ext4/indirect.c | 43 ++++++++++++++++++++++---------------------
+>>  1 file changed, 22 insertions(+), 21 deletions(-)
+>>
+>> diff --git a/fs/ext4/indirect.c b/fs/ext4/indirect.c
+>> index bf7fa15..6f3f7d5 100644
+>> --- a/fs/ext4/indirect.c
+>> +++ b/fs/ext4/indirect.c
+>> @@ -1219,6 +1219,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  	ext4_lblk_t offsets[4], offsets2[4];
+>>  	Indirect chain[4], chain2[4];
+>>  	Indirect *partial, *partial2;
+>> +	Indirect *p = NULL, *p2 = NULL;
+>>  	ext4_lblk_t max_block;
+>>  	__le32 nr = 0, nr2 = 0;
+>>  	int n = 0, n2 = 0;
+>> @@ -1260,7 +1261,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  		}
+>>  
+>>  
+>> -		partial = ext4_find_shared(inode, n, offsets, chain, &nr);
+>> +		partial = p = ext4_find_shared(inode, n, offsets, chain, &nr);
+>>  		if (nr) {
+>>  			if (partial == chain) {
+>>  				/* Shared branch grows from the inode */
+>> @@ -1285,13 +1286,11 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  				partial->p + 1,
+>>  				(__le32 *)partial->bh->b_data+addr_per_block,
+>>  				(chain+n-1) - partial);
+>> -			BUFFER_TRACE(partial->bh, "call brelse");
+>> -			brelse(partial->bh);
+>>  			partial--;
+>>  		}
+>>  
+>>  end_range:
+>> -		partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
+>> +		partial2 = p2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
+>>  		if (nr2) {
+>>  			if (partial2 == chain2) {
+>>  				/*
+>> @@ -1321,16 +1320,14 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  					   (__le32 *)partial2->bh->b_data,
+>>  					   partial2->p,
+>>  					   (chain2+n2-1) - partial2);
+>> -			BUFFER_TRACE(partial2->bh, "call brelse");
+>> -			brelse(partial2->bh);
+>>  			partial2--;
+>>  		}
+>>  		goto do_indirects;
+>>  	}
+>>  
+>>  	/* Punch happened within the same level (n == n2) */
+>> -	partial = ext4_find_shared(inode, n, offsets, chain, &nr);
+>> -	partial2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
+>> +	partial = p = ext4_find_shared(inode, n, offsets, chain, &nr);
+>> +	partial2 = p2 = ext4_find_shared(inode, n2, offsets2, chain2, &nr2);
+>>  
+>>  	/* Free top, but only if partial2 isn't its subtree. */
+>>  	if (nr) {
+>> @@ -1387,11 +1384,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  					   partial->p + 1,
+>>  					   partial2->p,
+>>  					   (chain+n-1) - partial);
+>> -			BUFFER_TRACE(partial->bh, "call brelse");
+>> -			brelse(partial->bh);
+>> -			BUFFER_TRACE(partial2->bh, "call brelse");
+>> -			brelse(partial2->bh);
+>> -			return 0;
+>> +			goto clean_up;
+>>  		}
+>>  
+>>  		/*
+>> @@ -1406,8 +1399,6 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  					   partial->p + 1,
+>>  					   (__le32 *)partial->bh->b_data+addr_per_block,
+>>  					   (chain+n-1) - partial);
+>> -			BUFFER_TRACE(partial->bh, "call brelse");
+>> -			brelse(partial->bh);
+>>  			partial--;
+>>  		}
+>>  		if (partial2 > chain2 && depth2 <= depth) {
+>> @@ -1415,11 +1406,21 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  					   (__le32 *)partial2->bh->b_data,
+>>  					   partial2->p,
+>>  					   (chain2+n2-1) - partial2);
+>> -			BUFFER_TRACE(partial2->bh, "call brelse");
+>> -			brelse(partial2->bh);
+>>  			partial2--;
+>>  		}
+>>  	}
+>> +
+>> +clean_up:
+>> +	while (p && p > chain) {
+>> +		BUFFER_TRACE(p->bh, "call brelse");
+>> +		brelse(p->bh);
+>> +		p--;
+>> +	}
+>> +	while (p2 && p2 > chain2) {
+>> +		BUFFER_TRACE(p2->bh, "call brelse");
+>> +		brelse(p2->bh);
+>> +		p2--;
+>> +	}
+>>  	return 0;
+>>  
+>>  do_indirects:
+>> @@ -1427,7 +1428,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  	switch (offsets[0]) {
+>>  	default:
+>>  		if (++n >= n2)
+>> -			return 0;
+>> +			break;
+>>  		nr = i_data[EXT4_IND_BLOCK];
+>>  		if (nr) {
+>>  			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 1);
+>> @@ -1435,7 +1436,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  		}
+>>  	case EXT4_IND_BLOCK:
+>>  		if (++n >= n2)
+>> -			return 0;
+>> +			break;
+>>  		nr = i_data[EXT4_DIND_BLOCK];
+>>  		if (nr) {
+>>  			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 2);
+>> @@ -1443,7 +1444,7 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  		}
+>>  	case EXT4_DIND_BLOCK:
+>>  		if (++n >= n2)
+>> -			return 0;
+>> +			break;
+>>  		nr = i_data[EXT4_TIND_BLOCK];
+>>  		if (nr) {
+>>  			ext4_free_branches(handle, inode, NULL, &nr, &nr+1, 3);
+>> @@ -1452,5 +1453,5 @@ int ext4_ind_remove_space(handle_t *handle, struct inode *inode,
+>>  	case EXT4_TIND_BLOCK:
+>>  		;
+>>  	}
+>> -	return 0;
+>> +	goto clean_up;
+>>  }
+>> -- 
+>> 2.7.4
+>>
 
-I'm attaching stack dump at the last.
-The problem here is that bh is NULL at the first place of this function, so
-that it leads to an error on J_ASSERT_JH(jh, jh->b_jcount >= 0).
-To get the stack dump, I temporarily inserted BUG_ON on condition of jh being
-NULL.
-
-Additionally I used Linux version 5.0.0+ for this trace (and in the linked
-ext4-combined binary)
-
-2534 static void __journal_remove_journal_head(struct buffer_head *bh)
-2535 {
-2536     struct journal_head *jh = bh2jh(bh);
-2537 
-2538     BUG_ON(jh == NULL);
-2539     J_ASSERT_JH(jh, jh->b_jcount >= 0);
-2540     J_ASSERT_JH(jh, jh->b_transaction == NULL);
-2541     J_ASSERT_JH(jh, jh->b_next_transaction == NULL);
-2542     J_ASSERT_JH(jh, jh->b_cp_transaction == NULL);
-2543     J_ASSERT_JH(jh, jh->b_jlist == BJ_None);
-2544     J_ASSERT_BH(bh, buffer_jbd(bh));
-2545     J_ASSERT_BH(bh, jh2bh(jh) == bh);
-2546     BUFFER_TRACE(bh, "remove journal_head");
-2547     if (jh->b_frozen_data) {
-2548         printk(KERN_WARNING "%s: freeing b_frozen_data\n", __func__);
-2549         jbd2_free(jh->b_frozen_data, bh->b_size);
-2550     }
-
-
-- Stack dump
-[    0.089081] BUG: failure at
-fs/jbd2/journal.c:2538/__journal_remove_journal_head()!
-[    0.089096] Kernel panic - not syncing: BUG!
-[    0.089101] Call Trace:
-[    0.089110] (____ptrval____):  [<55555559bc94>] .LC81+0x5f/0xfb
-[    0.089118] (____ptrval____):  [<5555555c6025>] major_names+0x75/0x80
-[    0.089125] (____ptrval____):  [<5555555978f4>] .LC11+0x14/0x20
-[    0.089133] (____ptrval____):  [<5555556b1e40>] submit_bh+0x40/0x50
-[    0.089141] (____ptrval____):  [<55555580286d>]
-jbd2_journal_put_journal_head+0x6cd/0x6d0
-[    0.089147] (____ptrval____):  [<5555557ec6e8>]
-__jbd2_journal_refile_buffer+0x2d8/0x3c0
-[    0.089153] (____ptrval____):  [<5555557f641a>]
-__jbd2_journal_remove_checkpoint+0x17a/0x2f0
-[    0.089164] (____ptrval____):  [<5555557eff12>]
-jbd2_journal_commit_transaction+0x2fc2/0x3fc0
-[    0.089173] (____ptrval____):  [<555555597353>] .LC18+0x3/0x10
-[    0.089181] (____ptrval____):  [<5555555b8fb9>] try_to_wake_up+0x169/0x190
-[    0.089190] (____ptrval____):  [<5555558031be>] kjournald2+0x34e/0x400
-[    0.089199] (____ptrval____):  [<5555555bfd30>]
-autoremove_wake_function+0x0/0x40
-[    0.089206] (____ptrval____):  [<5555555978f4>] .LC11+0x14/0x20
-[    0.089214] (____ptrval____):  [<5555555b3acb>] kthread+0x15b/0x170
-[    0.089221] (____ptrval____):  [<555555802e70>] kjournald2+0x0/0x400
-[    0.089228] (____ptrval____):  [<5555555b3970>] kthread+0x0/0x170
-[    0.089237] (____ptrval____):  [<5555555970ab>] uidhash_table+0x3b/0x40
-
-Thanks.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
