@@ -2,70 +2,74 @@ Return-Path: <SRS0=fczw=RS=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT autolearn=ham
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FAABC43381
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Mar 2019 04:24:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E76E0C43381
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Mar 2019 04:31:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 63E082186A
-	for <linux-ext4@archiver.kernel.org>; Fri, 15 Mar 2019 04:24:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C1D1B21871
+	for <linux-ext4@archiver.kernel.org>; Fri, 15 Mar 2019 04:31:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725990AbfCOEYI (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 15 Mar 2019 00:24:08 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:38520 "EHLO
+        id S1726666AbfCOEbZ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 15 Mar 2019 00:31:25 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:39623 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725857AbfCOEYH (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Mar 2019 00:24:07 -0400
+        with ESMTP id S1726458AbfCOEbZ (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Mar 2019 00:31:25 -0400
 Received: from callcc.thunk.org ([66.31.38.53])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2F4Nwt8001831
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2F4VKLg003557
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 15 Mar 2019 00:23:58 -0400
+        Fri, 15 Mar 2019 00:31:21 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 1582B420AA8; Fri, 15 Mar 2019 00:23:58 -0400 (EDT)
-Date:   Fri, 15 Mar 2019 00:23:58 -0400
+        id 74388420AA8; Fri, 15 Mar 2019 00:31:20 -0400 (EDT)
+Date:   Fri, 15 Mar 2019 00:31:20 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Lukas Czerner <lczerner@redhat.com>
-Cc:     linux-ext4@vger.kernel.org
-Subject: Re: [PATCH v2 2/2] ext4: Report real fs size after failed resize
-Message-ID: <20190315042357.GH11334@mit.edu>
-References: <20190305105400.4960-1-lczerner@redhat.com>
- <20190305105400.4960-2-lczerner@redhat.com>
+To:     Artem Blagodarenko <artem.blagodarenko@gmail.com>
+Cc:     linux-ext4@vger.kernel.org, adilger.kernel@dilger.ca,
+        alexey.lyashkov@gmail.com
+Subject: Re: [PATCH] ext4: check if group has free space
+Message-ID: <20190315043120.GI11334@mit.edu>
+References: <20190307114914.86453-1-c17828@cray.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190305105400.4960-2-lczerner@redhat.com>
+In-Reply-To: <20190307114914.86453-1-c17828@cray.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Mar 05, 2019 at 11:54:00AM +0100, Lukas Czerner wrote:
-> Currently when the file system resize using ext4_resize_fs() fails it
-> will report into log that "resized filesystem to <requested block
-> count>". However this may not be true in the case of failure. Use the
-> current block count as returned by ext4_blocks_count() to report the
-> block count.
-> Additionally report to log that "error occurred during file system
-> resize"
+On Thu, Mar 07, 2019 at 02:49:14PM +0300, Artem Blagodarenko wrote:
+> Regular allocator make four groups processing loops to
+> find good group to allocate blocks. On 4th loop it accept any
+> group, even if there is no free space at all.
 > 
-> Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+> This patch adds group free space check to skip full groups.
+> 
+> Sigend-off-by: Artem Blagodarenko <c17828@cray.com>
 
-Thanks, applied with one minor change.  In call to ext4_warning(), I
-changed it to include error code so the warning message will be more
-useful:
+This patch doesn't change anything.  Note the check that we have at
+the very beginning of ext4_mb_good_group():
 
-> +	if (err)
-> +		ext4_warning(sb, "error occurred during file system resize");
+	free = grp->bb_free;
+	if (free == 0)
+		return 0;
 
-is now
+This is before we even go into the case statement, so your change:
 
-+       if (err)
-+               ext4_warning(sb, "error (%d) occurred during "
-+                            "file system resize", err);
+>  	case 3:
+> -		return 1;
+> +		/* Skip group without any free space */
+> +		return free ? 1 : 0;
 
-  				 		 - Ted
+is a no-op; we will always be returning 1, since if free == 0, we would
+have bailed out at the top of the function.
+
+Cheers,
+
+					- Ted
