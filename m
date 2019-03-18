@@ -1,112 +1,82 @@
 Return-Path: <SRS0=HZ/b=RV=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
-X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Level: *
+X-Spam-Status: No, score=1.2 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FSL_HELO_FAKE,MAILING_LIST_MULTI,SPF_PASS,
+	USER_AGENT_MUTT autolearn=no autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 74118C43381
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Mar 2019 20:28:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42607C43381
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Mar 2019 20:29:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4C6E820989
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Mar 2019 20:28:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0FDCE21741
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Mar 2019 20:29:53 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1552940993;
+	bh=Dmlphi4l2Zt8PpWEbiCl/F8vnpJiqjDGGWh6hUHbQAI=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=ZGfNhd0geBLS9K/JZ/3R6J/h8FJ4Rd21WhT07NXUExVSddmICFN6GUCvGjhEHkTV3
+	 oWRVYv7LxgO4BCcZuhTzA1aKmA8LbmEJe0716pJk3AOOgPKa2d/SCcVlDIGCVhsGtR
+	 UHzB/rsTPDGCfmd+Ydg+5IMie/+nZQEQqZZr3dWg=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727783AbfCRU2k (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Mar 2019 16:28:40 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:33120 "EHLO
-        bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727393AbfCRU2k (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Mar 2019 16:28:40 -0400
-Received: from [127.0.0.1] (localhost [127.0.0.1])
-        (Authenticated sender: krisman)
-        with ESMTPSA id E4ADB2811A2
-From:   Gabriel Krisman Bertazi <krisman@collabora.com>
-To:     tytso@mit.edu
-Cc:     linux-ext4@vger.kernel.org, sfrench@samba.org,
-        darrick.wong@oracle.com, jlayton@kernel.org, bfields@fieldses.org,
-        paulus@samba.org, linux-fsdevel@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH RFC v6 11/11] docs: ext4.rst: Document encoding and case-insensitive
-Date:   Mon, 18 Mar 2019 16:27:45 -0400
-Message-Id: <20190318202745.5200-12-krisman@collabora.com>
-X-Mailer: git-send-email 2.20.1
-In-Reply-To: <20190318202745.5200-1-krisman@collabora.com>
-References: <20190318202745.5200-1-krisman@collabora.com>
+        id S1727719AbfCRU3w (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Mar 2019 16:29:52 -0400
+Received: from mail.kernel.org ([198.145.29.99]:57186 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1727193AbfCRU3v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 18 Mar 2019 16:29:51 -0400
+Received: from gmail.com (unknown [104.132.1.77])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id E37A920989;
+        Mon, 18 Mar 2019 20:29:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1552940991;
+        bh=Dmlphi4l2Zt8PpWEbiCl/F8vnpJiqjDGGWh6hUHbQAI=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=Fxbp2Kwe3a6Swg9eL/xrLwuumd8A1jQ6Isry5uEYNr2P5uIBIBN0hk8d9GjbY0Ncm
+         jRqJ1byWxZ2qUjfGfiUQmx8hcINS5kM0w5rVGpGVIhq0ds5dzOAJukx6HcCnknpcN5
+         NAJugmFI1r43MVUBjOOQOQFd7ZhfNPt6li1OPUzQ=
+Date:   Mon, 18 Mar 2019 13:29:49 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Al Viro <viro@zeniv.linux.org.uk>
+Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-unionfs@vger.kernel.org,
+        Sarthak Kukreti <sarthakkukreti@chromium.org>,
+        Gao Xiang <gaoxiang25@huawei.com>
+Subject: Re: [PATCH 1/5] fscrypt: clean up and improve dentry revalidation
+Message-ID: <20190318202948.GD194307@gmail.com>
+References: <20190317200444.5967-1-ebiggers@kernel.org>
+ <20190317200444.5967-2-ebiggers@kernel.org>
+ <20190317203822.GH2217@ZenIV.linux.org.uk>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190317203822.GH2217@ZenIV.linux.org.uk>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+On Sun, Mar 17, 2019 at 08:38:22PM +0000, Al Viro wrote:
+> On Sun, Mar 17, 2019 at 01:04:40PM -0700, Eric Biggers wrote:
+> > +	/*
+> > +	 * Ciphertext name; valid if the directory's key is still unavailable.
+> > +	 *
+> > +	 * Note: since fscrypt forbids rename() on ciphertext names, it should
+> > +	 * be safe to access ->d_parent directly here.
+> 
+> No, it is not.  Again, d_splice_alias() on buggered fs image picking a reference
+> to your subdirectory when doing a lookup elsewhere.  It can relocate the
+> damn thing, without rename() being allowed for _anything_.
 
-Introduces the encoding-awareness and case-insensitive features on ext4
-for system administrators.  Explain the minimum of design decisions that
-are important for sysadmins wanting to enable this feature.
+You're talking about directory hard links, right?  E.g. if there's a directory
+with two links a/dir and b/dir, and fscrypt_d_revalidate() is running on 'dir'
+via a lookup in a/, it could be the case that b/dir is being concurrently looked
+up.  Then the concurrent d_splice_alias() will move the whole dentry tree rooted
+at 'dir' from a/ to b/ in the dcache.  Okay, it looks like you're right; I'll
+update my comment to clarify that dget_parent() is still needed...
 
-Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
----
- Documentation/admin-guide/ext4.rst | 41 ++++++++++++++++++++++++++++++
- 1 file changed, 41 insertions(+)
-
-diff --git a/Documentation/admin-guide/ext4.rst b/Documentation/admin-guide/ext4.rst
-index e506d3dae510..4e08d0309f1e 100644
---- a/Documentation/admin-guide/ext4.rst
-+++ b/Documentation/admin-guide/ext4.rst
-@@ -91,10 +91,51 @@ Currently Available
- * large block (up to pagesize) support
- * efficient new ordered mode in JBD2 and ext4 (avoid using buffer head to force
-   the ordering)
-+* Encoding aware file names
-+* Case insensitive file name lookups
- 
- [1] Filesystems with a block size of 1k may see a limit imposed by the
- directory hash tree having a maximum depth of two.
- 
-+Encoding-aware file names and case-insensitive lookups
-+======================================================
-+
-+Ext4 optionally supports filesystem-wide charset knowledge when handling
-+file names, which allows the user to perform file system lookups using
-+charset equivalent versions of the same file name, and optionally ensure
-+that no invalid names are held by the filesystem.  charset encoding
-+awareness is also essential for performing case-insensitive lookups,
-+because it is what defines the casefold operation.
-+
-+The case-insensitive file name lookup feature is supported in a smaller
-+granularity, on a per-directory basis, allowing the user to mix
-+case-insensitive and case-sensitive directories in the same filesystem.
-+It is enabled by flipping a file attribute on an empty directory.  For
-+the reason stated above, the filesystem must have encoding enabled to
-+use this feature.
-+
-+Both encoding-awareness and case-awareness are name-preserving on the
-+disk, meaning that the file name provided by userspace is a
-+byte-per-byte match to what is actually written in the disk.  The
-+Unicode normalization format used by the kernel is thus an internal
-+representation, and not exposed to the userspace nor to the disk, with
-+the important exception of disk hashes, used on large directories with
-+DX feature.  On DX directories, the hash must be calculated using the
-+normalized version of the filename, meaning that the normalization
-+format used actually has an impact on where the directory entry is
-+stored.
-+
-+When we change from viewing filenames as opaque byte sequences to seeing
-+them as encoded strings we need to address what happens when a program
-+tries to create a file with an invalid name.  The Unicode subsystem
-+within the kernel leaves the decision of what to do in this case to the
-+filesystem, which select its preferred behavior by enabling/disabling
-+the strict mode.  When Ext4 encounters one of those strings and the
-+filesystem did not require strict mode, it falls back to considering the
-+entire string as an opaque byte sequence, which still allows the user to
-+operate on that file but the case-insensitive and equivalent sequence
-+lookups won't work.
-+
- Options
- =======
- 
--- 
-2.20.1
-
+- Eric
