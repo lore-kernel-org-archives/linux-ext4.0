@@ -6,62 +6,101 @@ X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 79F21C43381
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Mar 2019 21:25:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 32B2DC43381
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Mar 2019 21:47:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 474D32085A
-	for <linux-ext4@archiver.kernel.org>; Mon, 18 Mar 2019 21:25:27 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 0AEB22133D
+	for <linux-ext4@archiver.kernel.org>; Mon, 18 Mar 2019 21:47:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727000AbfCRVZ0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 18 Mar 2019 17:25:26 -0400
-Received: from zeniv.linux.org.uk ([195.92.253.2]:54506 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726773AbfCRVZ0 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Mar 2019 17:25:26 -0400
-Received: from viro by ZenIV.linux.org.uk with local (Exim 4.92 #3 (Red Hat Linux))
-        id 1h5zl4-000597-7o; Mon, 18 Mar 2019 21:25:22 +0000
-Date:   Mon, 18 Mar 2019 21:25:22 +0000
-From:   Al Viro <viro@zeniv.linux.org.uk>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-unionfs@vger.kernel.org,
-        Sarthak Kukreti <sarthakkukreti@chromium.org>,
-        Gao Xiang <gaoxiang25@huawei.com>
-Subject: Re: [PATCH 1/5] fscrypt: clean up and improve dentry revalidation
-Message-ID: <20190318212522.GI2217@ZenIV.linux.org.uk>
-References: <20190317200444.5967-1-ebiggers@kernel.org>
- <20190317200444.5967-2-ebiggers@kernel.org>
- <20190317203822.GH2217@ZenIV.linux.org.uk>
- <20190318202948.GD194307@gmail.com>
+        id S1727439AbfCRVrk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 18 Mar 2019 17:47:40 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:45421 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726983AbfCRVrk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Mar 2019 17:47:40 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-99.corp.google.com [104.133.0.99] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2ILlIZj004932
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 18 Mar 2019 17:47:18 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id CBDCA420AA8; Mon, 18 Mar 2019 17:47:17 -0400 (EDT)
+Date:   Mon, 18 Mar 2019 17:47:17 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Paul Menzel <pmenzel@molgen.mpg.de>
+Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
+        linux-ext4@vger.kernel.org
+Subject: Re: New service e2scrub_reap
+Message-ID: <20190318214717.GB3859@mit.edu>
+References: <fb05730f-c078-ec94-72d3-83a398f936a7@molgen.mpg.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20190318202948.GD194307@gmail.com>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <fb05730f-c078-ec94-72d3-83a398f936a7@molgen.mpg.de>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Mar 18, 2019 at 01:29:49PM -0700, Eric Biggers wrote:
-> On Sun, Mar 17, 2019 at 08:38:22PM +0000, Al Viro wrote:
-> > On Sun, Mar 17, 2019 at 01:04:40PM -0700, Eric Biggers wrote:
-> > > +	/*
-> > > +	 * Ciphertext name; valid if the directory's key is still unavailable.
-> > > +	 *
-> > > +	 * Note: since fscrypt forbids rename() on ciphertext names, it should
-> > > +	 * be safe to access ->d_parent directly here.
-> > 
-> > No, it is not.  Again, d_splice_alias() on buggered fs image picking a reference
-> > to your subdirectory when doing a lookup elsewhere.  It can relocate the
-> > damn thing, without rename() being allowed for _anything_.
+On Mon, Mar 18, 2019 at 12:24:55PM +0100, Paul Menzel wrote:
+> Dear Ted, dear Darrick,
 > 
-> You're talking about directory hard links, right?
+> On Debian Sid/unstable, I noticed the new service `scrub/e2scrub_reap.service`
+> installed in the default target [1][2].
+> 
+> $ systemctl status -o short-precise e2scrub_reap.service
+> ● e2scrub_reap.service - Remove Stale Online ext4 Metadata Check Snapshots
+>    Loaded: loaded (/lib/systemd/system/e2scrub_reap.service; enabled; vendor preset: enabled)
+>    Active: inactive (dead) since Mon 2019-03-18 12:17:13 CET; 1min 1s ago
+>      Docs: man:e2scrub_all(8)
+>   Process: 447 ExecStart=/sbin/e2scrub_all -A -r (code=exited, status=0/SUCCESS)
+>  Main PID: 447 (code=exited, status=0/SUCCESS)
+> 
+> Mar 18 12:17:08.223560 plumpsklo systemd[1]: Starting Remove Stale Online ext4 Metadata Check Snapshots...
+> Mar 18 12:17:13.996465 plumpsklo systemd[1]: e2scrub_reap.service: Succeeded.
+> Mar 18 12:17:13.996808 plumpsklo systemd[1]: Started Remove Stale Online ext4 Metadata Check Snapshots.
 
-In case of corrupted fs image - yes; the same can happen if you have a network
-filesystem with subdirectory moved around on server at the same time, but
-there you'll need a lot more elaborate ->d_revalidate() anyway.
+Yeah, that's unfortunate.  I'm seeing a similar time on my (fairly
+high-end) laptop:
 
-Directory hardlinks are certainly not allowed; however, we need the kernel
-to survive when it runs into that kind of crap on disk...
+# time e2scrub_all -A -r 
+
+real	0m4.356s
+user	0m0.677s
+sys	0m1.285s
+
+
+We should be able to fix this in general by avoiding the use of lsblk
+at all, and in the case of e2scrub -r, just simply iterating over the
+output of:
+
+lvs --name-prefixes -o vg_name,lv_name,lv_path,origin -S lv_role=snapshot
+
+(which takes about a fifth of a second on my laptop and it should be
+even faster if there are no LVM volumes on the system)
+
+And without the -r option, we should just be able to do this:
+
+lvs --name-prefixes -o vg_name,lv_name,lv_path -S lv_active=active,lv_role=public
+
+Right now we're calling lvs for every single block device emitted by
+lsblk, and from what I can tell, we can do a much better job
+optimizing e2scrub_all.
+
+> Reading the manual, the switch `-r` “removes e2scrub snapshots but do not
+> check anything”.
+> 
+> Does this have to be done during boot-up, or could it be done after the
+> default target was reached, or even during shutting down?
+
+This shouldn't be blocking any other targets, I think there should be
+a way to configure the unit file so that it runs in parallel with the
+other systemd units.  My systemd-fu is not super strong, so I'll have
+to do some investigating to see how we can fix this.
+
+Regards,
+
+					- Ted
