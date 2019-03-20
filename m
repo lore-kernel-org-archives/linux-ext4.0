@@ -2,79 +2,127 @@ Return-Path: <SRS0=eYnO=RX=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-3.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EC9CAC43381
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Mar 2019 16:17:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 11261C10F05
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Mar 2019 18:40:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C5A8F2183E
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Mar 2019 16:17:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id DF3CF218A3
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Mar 2019 18:40:16 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1553107216;
+	bh=VLKOyjiTo4zNBcYy+Dh3fGC61v1rZeuQPK7QsXfa/kc=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=SGHZLepMqHi4JX+CUHHcklPeWw3HTLqn2HUmPk/QhyF6b93KsPUUmYEltgoPZNnjw
+	 bAMGYiC4ErVFCs/8CQKgfOmrlr+y7ybf1hnOVY/EAV4L7lV6RUcD7OhizE8RnIAM55
+	 wKGoOML4Nc8AtB/K6p6KmWzb8TQ06W6hHRbFCGt4=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727330AbfCTQRc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Mar 2019 12:17:32 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:45662 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726803AbfCTQRc (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Mar 2019 12:17:32 -0400
-Received: from callcc.thunk.org (guestnat-104-133-0-99.corp.google.com [104.133.0.99] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2KGH97Z032395
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Wed, 20 Mar 2019 12:17:10 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id D6BD7420AA8; Wed, 20 Mar 2019 12:17:08 -0400 (EDT)
-Date:   Wed, 20 Mar 2019 12:17:08 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Lukas Czerner <lczerner@redhat.com>
-Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
-        linux-ext4@vger.kernel.org, Paul Menzel <pmenzel@molgen.mpg.de>
-Subject: Re: [PATCH] e2scrub_all: refactor device probe loop
-Message-ID: <20190320161708.GA32021@mit.edu>
-References: <20190319001732.GB4916@magnolia>
- <20190319105824.apzsygxgl5dt3fq6@work>
+        id S1727508AbfCTSkP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Mar 2019 14:40:15 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36546 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726812AbfCTSkP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Mar 2019 14:40:15 -0400
+Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mail.kernel.org (Postfix) with ESMTPSA id A6F812146E;
+        Wed, 20 Mar 2019 18:40:13 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1553107213;
+        bh=VLKOyjiTo4zNBcYy+Dh3fGC61v1rZeuQPK7QsXfa/kc=;
+        h=From:To:Cc:Subject:Date:From;
+        b=kCLPwNsxKjBi1Cf0dZQ8mzosH4wpgpoPRGZIiZ+TJq67qp1EPXw1oJEkLwXC7Qy49
+         o8DMUYha//gs3Z1TECuZ2GWGWH11EH2+btPL8IFsMzjiFOgFr+4sNO/3s6MQB+tZkg
+         sTY06QYUuiNmrpsIfnD+6V52mI/AEtWWDfsTXja8=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-fscrypt@vger.kernel.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, linux-unionfs@vger.kernel.org,
+        Sarthak Kukreti <sarthakkukreti@chromium.org>,
+        Gao Xiang <gaoxiang25@huawei.com>
+Subject: [PATCH v2 0/5] fscrypt: d_revalidate fixes and cleanups
+Date:   Wed, 20 Mar 2019 11:39:08 -0700
+Message-Id: <20190320183913.12686-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.21.0.225.g810b269d1ac-goog
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190319105824.apzsygxgl5dt3fq6@work>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Mar 19, 2019 at 11:58:24AM +0100, Lukas Czerner wrote:
-> >  # Find scrub targets, make sure we only do this once.
-> > -ls_scrub_targets() {
-> > -	lsblk -o NAME,FSTYPE,MOUNTPOINT -p -P -n | while read vars; do
-> > +ls_scan_targets() {
-> > +	lvs --name-prefixes -o vg_name,lv_name,lv_path \
-> > +			-S lv_active=active,lv_role=public --noheadings | \
-> 
-> You're not using vg_name, nor lv_name so you can drop it maybe ? Also
-> you're missing lv_role since you're checking it later, however you can
-> do this instead
-> 
-> 	-S lv_active=active,lv_role=public -S lv_role!=snapshot
+From: Eric Biggers <ebiggers@google.com>
 
-We don't need to check lv_role at all, since the command already
-included:
+This patch series improves dentry revalidation in fscrypt.
 
-	-S lv_active=active,lv_role=public
+To recap, fscrypt (aka ext4/f2fs/ubifs encryption) encrypts both file
+contents and file names in individual directory trees.  A single
+filesystem can contain many encrypted directory trees using many
+different encryption keys.  Major users of fscrypt require the ability
+to delete encrypted files when their encryption key is unavailable, e.g.
+when the system needs to delete a removed user's home directory or free
+up space from a logged-out user's cache directory.
 
-And we need to do lv_role=public and not lv_role!=snapshot, since we
-need to also exclude thinpools.
+Therefore fscrypt allows listing, looking up, and deleting files in
+encrypted directories via encoded ciphertext names, but only before the
+key is added.  After the key is added, the ciphertext names are
+invalidated via ->d_revalidate() and plaintext names are shown instead.
 
-Speaking of thinpools, although we *can* take a thick snapshot of a
-thinp volume, in the future we might want to add support for taking a
-thinp snapshot.  (Although that will make the check which I've been
-working on to make sure there's enough free space a bit more
-complicated.)
+fscrypt isn't a stacked filesystem, and it's explicitly for storage
+encryption, not OS-level access control.  Thus, whether each directory
+inode has its key or not is a global state, not per-process.  Also, the
+inode keeps its key until it's evicted from the inode cache.  So,
+plaintext names shouldn't ever get invalidated by ->d_revalidate().
 
-I have some other patches queued for e2scrub, so I'll take a whack and
-trying to make a reivison of this patch, and then send out a stack of
-patches against e2scrub for folks to look at.
+This patch series makes the following improvements:
 
-			    	     	  - Ted
+- Only assign ->d_revalidate() to ciphertext filenames, thus allowing
+  overlayfs to use an fscrypt-encrypted upperdir in some cases.
+  (Previous discussion: https://lkml.org/lkml/2019/3/13/255)
+
+- Fix cases where plaintext filenames would wrongly be invalidated,
+  including a real-world bug recently reported on Chromium OS.
+
+- Fix cases where ciphertext filenames would wrongly not be invalidated.
+
+- Allow rcu-walk lookups in encrypted directories with the key, which
+  improves performance.
+  (Previous attempt: https://patchwork.kernel.org/patch/10594133/)
+
+- Fix cases where rename() and link() could succeed on ciphertext names.
+
+Changed since v1:
+
+- Fixed comment in fscrypt_d_revalidate() to explain that dget_parent()
+  is actually still required.
+
+- Moved clearing DCACHE_ENCRYPTED_NAME into fscrypt.h, to avoid an extra
+  #ifdef and cluttering up dcache.c.
+
+Eric Biggers (5):
+  fscrypt: clean up and improve dentry revalidation
+  fscrypt: fix race allowing rename() and link() of ciphertext dentries
+  fs, fscrypt: clear DCACHE_ENCRYPTED_NAME when unaliasing directory
+  fscrypt: only set dentry_operations on ciphertext dentries
+  fscrypt: fix race where ->lookup() marks plaintext dentry as
+    ciphertext
+
+ fs/crypto/crypto.c      | 58 ++++++++++++++++---------------
+ fs/crypto/fname.c       |  1 +
+ fs/crypto/hooks.c       | 28 ++++++++++-----
+ fs/dcache.c             |  2 ++
+ fs/ext4/ext4.h          | 62 +++++++++++++++++++++++++--------
+ fs/ext4/namei.c         | 76 ++++++++++++++++++++++++++++-------------
+ fs/f2fs/namei.c         | 17 +++++----
+ fs/ubifs/dir.c          |  8 ++---
+ include/linux/dcache.h  |  2 +-
+ include/linux/fscrypt.h | 61 +++++++++++++++++++++++----------
+ 10 files changed, 208 insertions(+), 107 deletions(-)
+
+-- 
+2.21.0.225.g810b269d1ac-goog
+
