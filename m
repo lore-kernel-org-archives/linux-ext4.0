@@ -2,41 +2,41 @@ Return-Path: <SRS0=eYnO=RX=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 11261C10F05
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C966C4360F
 	for <linux-ext4@archiver.kernel.org>; Wed, 20 Mar 2019 18:40:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DF3CF218A3
-	for <linux-ext4@archiver.kernel.org>; Wed, 20 Mar 2019 18:40:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 35B1D218A3
+	for <linux-ext4@archiver.kernel.org>; Wed, 20 Mar 2019 18:40:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1553107216;
-	bh=VLKOyjiTo4zNBcYy+Dh3fGC61v1rZeuQPK7QsXfa/kc=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=SGHZLepMqHi4JX+CUHHcklPeWw3HTLqn2HUmPk/QhyF6b93KsPUUmYEltgoPZNnjw
-	 bAMGYiC4ErVFCs/8CQKgfOmrlr+y7ybf1hnOVY/EAV4L7lV6RUcD7OhizE8RnIAM55
-	 wKGoOML4Nc8AtB/K6p6KmWzb8TQ06W6hHRbFCGt4=
+	s=default; t=1553107217;
+	bh=gw7hzL2AWULkDpqnra8Btn4G36d3e2QHfPxFEHxuM+Q=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=YN3Ts92YoBOc+pcgmeGmuOkQN0kMm5ERr8v2hVSbxkqe8zgmSXHyLgdUY0L/Xf8bX
+	 y3RxzPerlerXoEscje0nosbEuhCk+MRSnKGBO4RD3zTaVdQiVLkZeMbHdvI/sfOYgy
+	 C+PEDE6pB66MTGDK0LxB94+zXIUoi7RjNb/tGST8=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727508AbfCTSkP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 20 Mar 2019 14:40:15 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36546 "EHLO mail.kernel.org"
+        id S1727518AbfCTSkQ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 20 Mar 2019 14:40:16 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36580 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726812AbfCTSkP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 20 Mar 2019 14:40:15 -0400
+        id S1727271AbfCTSkQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 20 Mar 2019 14:40:16 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id A6F812146E;
-        Wed, 20 Mar 2019 18:40:13 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6FE002184D;
+        Wed, 20 Mar 2019 18:40:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1553107213;
-        bh=VLKOyjiTo4zNBcYy+Dh3fGC61v1rZeuQPK7QsXfa/kc=;
-        h=From:To:Cc:Subject:Date:From;
-        b=kCLPwNsxKjBi1Cf0dZQ8mzosH4wpgpoPRGZIiZ+TJq67qp1EPXw1oJEkLwXC7Qy49
-         o8DMUYha//gs3Z1TECuZ2GWGWH11EH2+btPL8IFsMzjiFOgFr+4sNO/3s6MQB+tZkg
-         sTY06QYUuiNmrpsIfnD+6V52mI/AEtWWDfsTXja8=
+        s=default; t=1553107214;
+        bh=gw7hzL2AWULkDpqnra8Btn4G36d3e2QHfPxFEHxuM+Q=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=Qye2SP4yuT5Mn/ZZSTmiWX1eRJQP2xdtgpmqL0MfroLwNJuTe0KmM5BHjAxFeQ6GS
+         dueVl8MsoLVeMGaUZc3y+gRl9R5CqJltDFCcsy4uJBrCUYtZycfq/+HWHtxm1xO3X7
+         xODg9CUj76XYwKA0NZbwW9jxbvBq/M5BugWipLIE=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -44,10 +44,12 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-mtd@lists.infradead.org, linux-unionfs@vger.kernel.org,
         Sarthak Kukreti <sarthakkukreti@chromium.org>,
         Gao Xiang <gaoxiang25@huawei.com>
-Subject: [PATCH v2 0/5] fscrypt: d_revalidate fixes and cleanups
-Date:   Wed, 20 Mar 2019 11:39:08 -0700
-Message-Id: <20190320183913.12686-1-ebiggers@kernel.org>
+Subject: [PATCH v2 2/5] fscrypt: fix race allowing rename() and link() of ciphertext dentries
+Date:   Wed, 20 Mar 2019 11:39:10 -0700
+Message-Id: <20190320183913.12686-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0.225.g810b269d1ac-goog
+In-Reply-To: <20190320183913.12686-1-ebiggers@kernel.org>
+References: <20190320183913.12686-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -57,72 +59,93 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-This patch series improves dentry revalidation in fscrypt.
+Close some race conditions where fscrypt allowed rename() and link() on
+ciphertext dentries that had been looked up just prior to the key being
+concurrently added.  It's better to return -ENOKEY in this case.
 
-To recap, fscrypt (aka ext4/f2fs/ubifs encryption) encrypts both file
-contents and file names in individual directory trees.  A single
-filesystem can contain many encrypted directory trees using many
-different encryption keys.  Major users of fscrypt require the ability
-to delete encrypted files when their encryption key is unavailable, e.g.
-when the system needs to delete a removed user's home directory or free
-up space from a logged-out user's cache directory.
+This avoids doing the nonsensical thing of encrypting the names a second
+time when searching for the actual on-disk dir entries.  It also
+guarantees that DCACHE_ENCRYPTED_NAME dentries are never rename()d, so
+the dcache won't have support all possible combinations of moving
+DCACHE_ENCRYPTED_NAME around during __d_move().
 
-Therefore fscrypt allows listing, looking up, and deleting files in
-encrypted directories via encoded ciphertext names, but only before the
-key is added.  After the key is added, the ciphertext names are
-invalidated via ->d_revalidate() and plaintext names are shown instead.
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ fs/crypto/hooks.c       | 12 +++++++++++-
+ include/linux/fscrypt.h |  9 +++++----
+ 2 files changed, 16 insertions(+), 5 deletions(-)
 
-fscrypt isn't a stacked filesystem, and it's explicitly for storage
-encryption, not OS-level access control.  Thus, whether each directory
-inode has its key or not is a global state, not per-process.  Also, the
-inode keeps its key until it's evicted from the inode cache.  So,
-plaintext names shouldn't ever get invalidated by ->d_revalidate().
-
-This patch series makes the following improvements:
-
-- Only assign ->d_revalidate() to ciphertext filenames, thus allowing
-  overlayfs to use an fscrypt-encrypted upperdir in some cases.
-  (Previous discussion: https://lkml.org/lkml/2019/3/13/255)
-
-- Fix cases where plaintext filenames would wrongly be invalidated,
-  including a real-world bug recently reported on Chromium OS.
-
-- Fix cases where ciphertext filenames would wrongly not be invalidated.
-
-- Allow rcu-walk lookups in encrypted directories with the key, which
-  improves performance.
-  (Previous attempt: https://patchwork.kernel.org/patch/10594133/)
-
-- Fix cases where rename() and link() could succeed on ciphertext names.
-
-Changed since v1:
-
-- Fixed comment in fscrypt_d_revalidate() to explain that dget_parent()
-  is actually still required.
-
-- Moved clearing DCACHE_ENCRYPTED_NAME into fscrypt.h, to avoid an extra
-  #ifdef and cluttering up dcache.c.
-
-Eric Biggers (5):
-  fscrypt: clean up and improve dentry revalidation
-  fscrypt: fix race allowing rename() and link() of ciphertext dentries
-  fs, fscrypt: clear DCACHE_ENCRYPTED_NAME when unaliasing directory
-  fscrypt: only set dentry_operations on ciphertext dentries
-  fscrypt: fix race where ->lookup() marks plaintext dentry as
-    ciphertext
-
- fs/crypto/crypto.c      | 58 ++++++++++++++++---------------
- fs/crypto/fname.c       |  1 +
- fs/crypto/hooks.c       | 28 ++++++++++-----
- fs/dcache.c             |  2 ++
- fs/ext4/ext4.h          | 62 +++++++++++++++++++++++++--------
- fs/ext4/namei.c         | 76 ++++++++++++++++++++++++++++-------------
- fs/f2fs/namei.c         | 17 +++++----
- fs/ubifs/dir.c          |  8 ++---
- include/linux/dcache.h  |  2 +-
- include/linux/fscrypt.h | 61 +++++++++++++++++++++++----------
- 10 files changed, 208 insertions(+), 107 deletions(-)
-
+diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
+index a9492f75bbe13..2e7498a821a48 100644
+--- a/fs/crypto/hooks.c
++++ b/fs/crypto/hooks.c
+@@ -49,7 +49,8 @@ int fscrypt_file_open(struct inode *inode, struct file *filp)
+ }
+ EXPORT_SYMBOL_GPL(fscrypt_file_open);
+ 
+-int __fscrypt_prepare_link(struct inode *inode, struct inode *dir)
++int __fscrypt_prepare_link(struct inode *inode, struct inode *dir,
++			   struct dentry *dentry)
+ {
+ 	int err;
+ 
+@@ -57,6 +58,10 @@ int __fscrypt_prepare_link(struct inode *inode, struct inode *dir)
+ 	if (err)
+ 		return err;
+ 
++	/* ... in case we looked up ciphertext name before key was added */
++	if (dentry->d_flags & DCACHE_ENCRYPTED_NAME)
++		return -ENOKEY;
++
+ 	if (!fscrypt_has_permitted_context(dir, inode))
+ 		return -EXDEV;
+ 
+@@ -78,6 +83,11 @@ int __fscrypt_prepare_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (err)
+ 		return err;
+ 
++	/* ... in case we looked up ciphertext name(s) before key was added */
++	if ((old_dentry->d_flags | new_dentry->d_flags) &
++	    DCACHE_ENCRYPTED_NAME)
++		return -ENOKEY;
++
+ 	if (old_dir != new_dir) {
+ 		if (IS_ENCRYPTED(new_dir) &&
+ 		    !fscrypt_has_permitted_context(new_dir,
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index 5a0c3fee1ea2b..4ad7a856e0f1c 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -214,7 +214,8 @@ extern int fscrypt_zeroout_range(const struct inode *, pgoff_t, sector_t,
+ 
+ /* hooks.c */
+ extern int fscrypt_file_open(struct inode *inode, struct file *filp);
+-extern int __fscrypt_prepare_link(struct inode *inode, struct inode *dir);
++extern int __fscrypt_prepare_link(struct inode *inode, struct inode *dir,
++				  struct dentry *dentry);
+ extern int __fscrypt_prepare_rename(struct inode *old_dir,
+ 				    struct dentry *old_dentry,
+ 				    struct inode *new_dir,
+@@ -401,8 +402,8 @@ static inline int fscrypt_file_open(struct inode *inode, struct file *filp)
+ 	return 0;
+ }
+ 
+-static inline int __fscrypt_prepare_link(struct inode *inode,
+-					 struct inode *dir)
++static inline int __fscrypt_prepare_link(struct inode *inode, struct inode *dir,
++					 struct dentry *dentry)
+ {
+ 	return -EOPNOTSUPP;
+ }
+@@ -497,7 +498,7 @@ static inline int fscrypt_prepare_link(struct dentry *old_dentry,
+ 				       struct dentry *dentry)
+ {
+ 	if (IS_ENCRYPTED(dir))
+-		return __fscrypt_prepare_link(d_inode(old_dentry), dir);
++		return __fscrypt_prepare_link(d_inode(old_dentry), dir, dentry);
+ 	return 0;
+ }
+ 
 -- 
 2.21.0.225.g810b269d1ac-goog
 
