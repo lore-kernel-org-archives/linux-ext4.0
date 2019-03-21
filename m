@@ -2,158 +2,105 @@ Return-Path: <SRS0=3UD1=RY=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C83FC4360F
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 20:25:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B677C43381
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 20:48:42 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DA09A218FD
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 20:25:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6637F218A5
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 20:48:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728921AbfCUUZg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Mar 2019 16:25:36 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52570 "EHLO
+        id S1726377AbfCUUsm (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Mar 2019 16:48:42 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:57976 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1728901AbfCUUZb (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2019 16:25:31 -0400
+        with ESMTP id S1726247AbfCUUsl (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2019 16:48:41 -0400
 Received: from callcc.thunk.org (guestnat-104-133-0-99.corp.google.com [104.133.0.99] (may be forged))
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2LKPKHu017033
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2LKmO9Z025443
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 21 Mar 2019 16:25:20 -0400
+        Thu, 21 Mar 2019 16:48:25 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 14163420AB0; Thu, 21 Mar 2019 16:25:19 -0400 (EDT)
+        id CA921420AA8; Thu, 21 Mar 2019 16:48:23 -0400 (EDT)
+Date:   Thu, 21 Mar 2019 16:48:23 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Cc:     darrick.wong@oracle.com, lczerner@redhat.com,
-        "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 8/9] e2scrub_all: refactor device probe loop
-Date:   Thu, 21 Mar 2019 16:25:12 -0400
-Message-Id: <20190321202513.1969-9-tytso@mit.edu>
-X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190321202513.1969-1-tytso@mit.edu>
-References: <20190321202513.1969-1-tytso@mit.edu>
+To:     Lukas Czerner <lczerner@redhat.com>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        darrick.wong@oracle.com
+Subject: Re: [PATCH 8/9] e2scrub_all: refactor device probe loop
+Message-ID: <20190321204823.GJ9434@mit.edu>
+References: <20190321020218.5154-1-tytso@mit.edu>
+ <20190321020218.5154-8-tytso@mit.edu>
+ <20190321102742.k2oos4epoj6fyjao@work>
+ <20190321143141.GB9434@mit.edu>
+ <20190321155703.ili5ghofgm3hneq5@work>
+ <20190321182456.GG9434@mit.edu>
+ <20190321201710.vw5g2kfp6p2b3jxk@work>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190321201710.vw5g2kfp6p2b3jxk@work>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+On Thu, Mar 21, 2019 at 09:17:10PM +0100, Lukas Czerner wrote:
+> 
+> Right, I did mention it later in the reply. It can be filtered
+> 
+> grep -v '^/dev/'
 
-Paul Menzel reported that the e2scrub_all reaper service that runs at
-startup takes a long time to run, and Ted Ts'o pointed out that we could
-do a lot less work by using lvs as the outer loop in the ext4 filesystem
-probe function so that we only have to lsblk the lvm devices containing
-ext4 filesystems.
+Well, that assumes all device nodes are in /dev.  Which is not
+necessarily always the case, especially in some of the more _whacky_
+container setups which I've seen.   (Hmm, is whacky redundant here?)
 
-Therefore, refactor the loops to put lvs first, which should boost speed
-a bit.
+I suppose can test whether or not the path is a block device or a
+directory.....
 
-[ Made some of the further optimizations suggested by Lukas Czerner.  -- TYT ]
+> 
+> For me this new function is the wors of all.
+> 
+> cold cache:
+> real	0m2.115s
+> user	0m0.040s
+> sys	0m0.154s
+> 
+> second time:
+> real	0m1.100s
+> user	0m0.037s
+> sys	0m0.122s
+> 
+> But that's because of blkid which is terribly slow for some reason.
 
-Reported-by: Paul Menzel <pmenzel@molgen.mpg.de>
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- scrub/e2scrub_all.in | 49 ++++++++++++++++++++++----------------------
- 1 file changed, 24 insertions(+), 25 deletions(-)
+I ran my test on a system with a NVMe SSD, and no HDD's attached.  I
+just did an strace, and I see the util-linux folks have really done a
+great job of pessimizing blkid.  :-(
 
-diff --git a/scrub/e2scrub_all.in b/scrub/e2scrub_all.in
-index 4cb90a0de..81340b76f 100644
---- a/scrub/e2scrub_all.in
-+++ b/scrub/e2scrub_all.in
-@@ -22,6 +22,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
- 
- scrub_all=0
- snap_size_mb=256
-+reap=0
- conffile="@root_sysconfdir@/e2scrub.conf"
- 
- test -f "${conffile}" && . "${conffile}"
-@@ -65,7 +66,7 @@ exitcode() {
- while getopts "nrAV" opt; do
- 	case "${opt}" in
- 	"n") DBG="echo Would execute: " ;;
--	"r") scrub_args="${scrub_args} -r";;
-+	"r") scrub_args="${scrub_args} -r"; reap=1;;
- 	"A") scrub_all=1;;
- 	"V") print_version; exitcode 0;;
- 	*) print_help; exitcode 2;;
-@@ -88,36 +89,34 @@ if ! type lvcreate >& /dev/null ; then
- fi
- 
- # Find scrub targets, make sure we only do this once.
--ls_scrub_targets() {
--	lsblk -o NAME,FSTYPE,MOUNTPOINT -p -P -n | while read vars; do
--		eval "${vars}"
--
-+ls_scan_targets() {
-+	for NAME in $(lvs -o lv_path --noheadings \
-+		   -S "lv_active=active,lv_role=public,lv_role!=snapshot,vg_free>${snap_size_mb}") ; do
- 		# Skip non-ext[234]
--		case "${FSTYPE}" in
-+		case "$(blkid -o value -s TYPE ${NAME})" in
- 		ext[234])	;;
- 		*)		continue;;
- 		esac
- 
--		# Skip unmounted filesystems unless -A
--		if [ "${scrub_all}" -eq 0 ] && [ -z "${MOUNTPOINT}" ]; then
--			continue;
-+		if [ "${scrub_all}" -eq 1 ] ||
-+		   [ -n "$(lsblk -o MOUNTPOINT --noheadings ${NAME})" ]; then
-+		    echo ${NAME}
- 		fi
-+	done | sort | uniq
-+}
- 
--		# Skip non-lvm devices and lvm snapshots
--		lvm_vars="$(lvs --nameprefixes -o vg_name,lv_name,lv_role --noheadings "${NAME}" 2> /dev/null)"
--		test $? -ne 0 && continue
--		eval "${lvm_vars}"
--		echo "${LVM2_LV_ROLE}" | grep -q "snapshot" && continue
--
--		free_space="$(vgs -o vg_free --units m --noheadings --no-suffix "${LVM2_VG_NAME}" 2> /dev/null | sed -e 's/\..*//')"
--		test "${snap_size_mb}" -gt "${free_space}" && continue
-+# Find leftover scrub snapshots
-+ls_reap_targets() {
-+	lvs -o lv_path -S lv_role=snapshot -S lv_name=~\(e2scrub$\) --noheadings
-+}
- 
--		if [ -n "${MOUNTPOINT}" ]; then
--			echo "${MOUNTPOINT}"
--		else
--			echo "${NAME}"
--		fi
--	done | sort | uniq
-+# Figure out what we're targeting
-+ls_targets() {
-+	if [ "${reap}" -eq 1 ]; then
-+		ls_reap_targets
-+	else
-+		ls_scan_targets
-+	fi
- }
- 
- # systemd doesn't know to do path escaping on the instance variable we pass
-@@ -140,10 +139,10 @@ escape_path_for_systemd() {
- 
- # Scrub any mounted fs on lvm by creating a snapshot and fscking that.
- stdin="$(realpath /dev/stdin)"
--ls_scrub_targets | while read tgt; do
-+ls_targets | while read tgt; do
- 	# If we're not reaping and systemd is present, try invoking the
- 	# systemd service.
--	if [ -z "${scrub_args}" ] && type systemctl > /dev/null 2>&1; then
-+	if [ "${reap}" -ne 1 ] && type systemctl > /dev/null 2>&1; then
- 		tgt_esc="$(escape_path_for_systemd "${tgt}")"
- 		${DBG} systemctl start "e2scrub@${tgt_esc}" 2> /dev/null < "${stdin}"
- 		res=$?
--- 
-2.19.1
+My version used to just pull the information from the blkid cache file
+and then verified the results, but it looks like the new, improved
+util-linux version of blkid scans the /dev directory and opens and
+reads from each device node, even when we're querying a single block
+device.  <groan>
 
+Even lsblk is *amazingly* inefficient in terms of the number of
+useless file opens which it performs, although at least they are all
+/sysfs files.
+
+I'm half tempted to create and ship a binary which just calls
+ext2fs_check_mount_point() and returns the value, since it's the most
+efficient.  This command
+
+sudo strace -o /tmp/st /build/e2fsprogs-maint/lib/ext2fs/tst_ismounted  /dev/lambda/tp
+
+Opens /proc/mounts and does a trial mount of /dev/lambda/tp to make
+sure it's actually busy, and that's it.
+
+Sigh...
+
+						- Ted
