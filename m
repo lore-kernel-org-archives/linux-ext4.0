@@ -6,118 +6,154 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C10FC10F00
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 20:25:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C83FC4360F
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 20:25:37 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 19E61218FD
+	by mail.kernel.org (Postfix) with ESMTP id DA09A218FD
 	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 20:25:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728920AbfCUUZf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Mar 2019 16:25:35 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52576 "EHLO
+        id S1728921AbfCUUZg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Mar 2019 16:25:36 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52570 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1728906AbfCUUZb (ORCPT
+        with ESMTP id S1728901AbfCUUZb (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2019 16:25:31 -0400
 Received: from callcc.thunk.org (guestnat-104-133-0-99.corp.google.com [104.133.0.99] (may be forged))
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2LKPKv9017035
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2LKPKHu017033
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 21 Mar 2019 16:25:21 -0400
+        Thu, 21 Mar 2019 16:25:20 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 095CC420AAE; Thu, 21 Mar 2019 16:25:19 -0400 (EDT)
+        id 14163420AB0; Thu, 21 Mar 2019 16:25:19 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc:     darrick.wong@oracle.com, lczerner@redhat.com,
         "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 6/9] e2scrub_all: add the -n option which shows what e2scrub_all would do
-Date:   Thu, 21 Mar 2019 16:25:10 -0400
-Message-Id: <20190321202513.1969-7-tytso@mit.edu>
+Subject: [PATCH 8/9] e2scrub_all: refactor device probe loop
+Date:   Thu, 21 Mar 2019 16:25:12 -0400
+Message-Id: <20190321202513.1969-9-tytso@mit.edu>
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20190321202513.1969-1-tytso@mit.edu>
 References: <20190321202513.1969-1-tytso@mit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Also fix the copyright symbol so it is properly formatted when
-processed into postscript or pdf.
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 
+Paul Menzel reported that the e2scrub_all reaper service that runs at
+startup takes a long time to run, and Ted Ts'o pointed out that we could
+do a lot less work by using lvs as the outer loop in the ext4 filesystem
+probe function so that we only have to lsblk the lvm devices containing
+ext4 filesystems.
+
+Therefore, refactor the loops to put lvs first, which should boost speed
+a bit.
+
+[ Made some of the further optimizations suggested by Lukas Czerner.  -- TYT ]
+
+Reported-by: Paul Menzel <pmenzel@molgen.mpg.de>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- scrub/e2scrub_all.8.in | 17 ++++++++++++++---
- scrub/e2scrub_all.in   |  8 +++++---
- 2 files changed, 19 insertions(+), 6 deletions(-)
+ scrub/e2scrub_all.in | 49 ++++++++++++++++++++++----------------------
+ 1 file changed, 24 insertions(+), 25 deletions(-)
 
-diff --git a/scrub/e2scrub_all.8.in b/scrub/e2scrub_all.8.in
-index ba3b8735e..e2cd5e44a 100644
---- a/scrub/e2scrub_all.8.in
-+++ b/scrub/e2scrub_all.8.in
-@@ -20,12 +20,23 @@ See the
- manual page for more information about how the checking is performed.
- .SH OPTIONS
- .TP
--\fB-A\fR
--Scrub all ext[234] filesystems even if they are not mounted.
-+\fB-n\fR
-+Print what commands
-+.B e2scrub_all
-+would execute to initiate the e2scrub operations.
-+(Note: these commands will not actually be executed; however, since
-+.B e2scrub_all
-+needs to run some additional, privileged commands to query the
-+system to determine which
-+.B e2scrub
-+commands would be executed, it still needs to be run as root.)
- .TP
- \fB-r\fR
- Remove e2scrub snapshots but do not check anything.
- .TP
-+\fB-A\fR
-+Scrub all ext[234] filesystems even if they are not mounted.
-+.TP
- \fB-V\fR
- Print version information and exit.
- .SH SEE ALSO
-@@ -33,4 +44,4 @@ Print version information and exit.
- .SH AUTHOR
- Darrick J. Wong <darrick.wong@oracle.com>
- .SH COPYRIGHT
--Copyright ©2018 Oracle.  License is GPLv2+. <http://www.gnu.org/licenses/gpl-2.0.html>
-+Copyright \[co]2018 Oracle.  License is GPLv2+. <http://www.gnu.org/licenses/gpl-2.0.html>
 diff --git a/scrub/e2scrub_all.in b/scrub/e2scrub_all.in
-index d725a7f2e..8bc868aa0 100644
+index 4cb90a0de..81340b76f 100644
 --- a/scrub/e2scrub_all.in
 +++ b/scrub/e2scrub_all.in
-@@ -29,8 +29,9 @@ scrub_args=""
+@@ -22,6 +22,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
  
- print_help() {
- 	echo "Usage: $0 [OPTIONS]"
--	echo " -A: Scrub all ext[234] filesystems even if not mounted."
-+	echo " -n: Show what commands e2scrub_all would execute."
- 	echo " -r: Remove e2scrub snapshots."
-+	echo " -A: Scrub all ext[234] filesystems even if not mounted."
- 	echo " -V: Print version information and exit."
- }
+ scrub_all=0
+ snap_size_mb=256
++reap=0
+ conffile="@root_sysconfdir@/e2scrub.conf"
  
-@@ -60,10 +61,11 @@ exitcode() {
- 	exit "${ret}"
- }
- 
--while getopts "ArV" opt; do
-+while getopts "nrAV" opt; do
+ test -f "${conffile}" && . "${conffile}"
+@@ -65,7 +66,7 @@ exitcode() {
+ while getopts "nrAV" opt; do
  	case "${opt}" in
--	"A") scrub_all=1;;
-+	"n") DBG="echo Would execute: " ;;
- 	"r") scrub_args="${scrub_args} -r";;
-+	"A") scrub_all=1;;
+ 	"n") DBG="echo Would execute: " ;;
+-	"r") scrub_args="${scrub_args} -r";;
++	"r") scrub_args="${scrub_args} -r"; reap=1;;
+ 	"A") scrub_all=1;;
  	"V") print_version; exitcode 0;;
  	*) print_help; exitcode 2;;
- 	esac
+@@ -88,36 +89,34 @@ if ! type lvcreate >& /dev/null ; then
+ fi
+ 
+ # Find scrub targets, make sure we only do this once.
+-ls_scrub_targets() {
+-	lsblk -o NAME,FSTYPE,MOUNTPOINT -p -P -n | while read vars; do
+-		eval "${vars}"
+-
++ls_scan_targets() {
++	for NAME in $(lvs -o lv_path --noheadings \
++		   -S "lv_active=active,lv_role=public,lv_role!=snapshot,vg_free>${snap_size_mb}") ; do
+ 		# Skip non-ext[234]
+-		case "${FSTYPE}" in
++		case "$(blkid -o value -s TYPE ${NAME})" in
+ 		ext[234])	;;
+ 		*)		continue;;
+ 		esac
+ 
+-		# Skip unmounted filesystems unless -A
+-		if [ "${scrub_all}" -eq 0 ] && [ -z "${MOUNTPOINT}" ]; then
+-			continue;
++		if [ "${scrub_all}" -eq 1 ] ||
++		   [ -n "$(lsblk -o MOUNTPOINT --noheadings ${NAME})" ]; then
++		    echo ${NAME}
+ 		fi
++	done | sort | uniq
++}
+ 
+-		# Skip non-lvm devices and lvm snapshots
+-		lvm_vars="$(lvs --nameprefixes -o vg_name,lv_name,lv_role --noheadings "${NAME}" 2> /dev/null)"
+-		test $? -ne 0 && continue
+-		eval "${lvm_vars}"
+-		echo "${LVM2_LV_ROLE}" | grep -q "snapshot" && continue
+-
+-		free_space="$(vgs -o vg_free --units m --noheadings --no-suffix "${LVM2_VG_NAME}" 2> /dev/null | sed -e 's/\..*//')"
+-		test "${snap_size_mb}" -gt "${free_space}" && continue
++# Find leftover scrub snapshots
++ls_reap_targets() {
++	lvs -o lv_path -S lv_role=snapshot -S lv_name=~\(e2scrub$\) --noheadings
++}
+ 
+-		if [ -n "${MOUNTPOINT}" ]; then
+-			echo "${MOUNTPOINT}"
+-		else
+-			echo "${NAME}"
+-		fi
+-	done | sort | uniq
++# Figure out what we're targeting
++ls_targets() {
++	if [ "${reap}" -eq 1 ]; then
++		ls_reap_targets
++	else
++		ls_scan_targets
++	fi
+ }
+ 
+ # systemd doesn't know to do path escaping on the instance variable we pass
+@@ -140,10 +139,10 @@ escape_path_for_systemd() {
+ 
+ # Scrub any mounted fs on lvm by creating a snapshot and fscking that.
+ stdin="$(realpath /dev/stdin)"
+-ls_scrub_targets | while read tgt; do
++ls_targets | while read tgt; do
+ 	# If we're not reaping and systemd is present, try invoking the
+ 	# systemd service.
+-	if [ -z "${scrub_args}" ] && type systemctl > /dev/null 2>&1; then
++	if [ "${reap}" -ne 1 ] && type systemctl > /dev/null 2>&1; then
+ 		tgt_esc="$(escape_path_for_systemd "${tgt}")"
+ 		${DBG} systemctl start "e2scrub@${tgt_esc}" 2> /dev/null < "${stdin}"
+ 		res=$?
 -- 
 2.19.1
 
