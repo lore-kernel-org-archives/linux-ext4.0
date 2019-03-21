@@ -2,68 +2,78 @@ Return-Path: <SRS0=3UD1=RY=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.7 required=3.0 tests=FROM_LOCAL_HEX,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 600FCC10F00
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 17:30:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FD10C43381
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 17:48:30 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 2C0B621874
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 17:30:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id EDCC021902
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 17:48:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728513AbfCURaB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Mar 2019 13:30:01 -0400
-Received: from mail-io1-f70.google.com ([209.85.166.70]:42740 "EHLO
-        mail-io1-f70.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727958AbfCURaB (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2019 13:30:01 -0400
-Received: by mail-io1-f70.google.com with SMTP id i1so5723941ioq.9
-        for <linux-ext4@vger.kernel.org>; Thu, 21 Mar 2019 10:30:00 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:date:in-reply-to:message-id:subject
-         :from:to;
-        bh=fLQGdQSSgHknyy/V+VRgiv7MKw96VhP0gMOndDdmz54=;
-        b=fvs9h+H9HRNJy5sxrCnd+fZEWfOeU8cBJgkkYZNn6pfNYFSRjUaC90DNfRAlqew3SV
-         +0d/1BJt6XFPhsGo0L/Dq0MH8pQ3mNcnuKIVe9HREMZypPjfNIdpl4qiQ6iSnMdl3K9Z
-         Uy6ouXLGWNCCZHQFqgMPblx+XRmaKL5RDudcrPHpmVDYx81nzMWyNHzm35q9LnOhQSD7
-         UKMxwqh+eeaa4USrMlHribzX6Sv34hdqHGcRbKWZANt/TL+5OOnhuWJSDFm7mOxWf6ux
-         f8RIk0dtqGLG7t4YyOVnFMpk1qKiM0ONqD3kvJSvOVU+JhilMLyZfdwyv8lg2hakdoMH
-         H3Ng==
-X-Gm-Message-State: APjAAAUoXoxot7KJwHxqYMWGnFCFoNPYz9N676VjaQ5ljjwZ3pc+/3sF
-        c94eEa1G6BWzh9iKb2ArSYEe7WQQR0sgxOGua4xr2YvXCvyE
-X-Google-Smtp-Source: APXvYqzypj0cLkZAe6ywra+tvAN6+dxA3Nmkam8kTumR99hdy+/cb70Mef6MK220NE7gIEXRtPP046FqMRCL6SISXTyrEiM2xBLn
+        id S1728305AbfCURs3 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Mar 2019 13:48:29 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:43348 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1728069AbfCURs3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2019 13:48:29 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-99.corp.google.com [104.133.0.99] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2LHmCSG021729
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 21 Mar 2019 13:48:12 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 0B04D420AA8; Thu, 21 Mar 2019 13:48:12 -0400 (EDT)
+Date:   Thu, 21 Mar 2019 13:48:11 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Lukas Czerner <lczerner@redhat.com>
+Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        darrick.wong@oracle.com
+Subject: Re: [PATCH 8/9] e2scrub_all: refactor device probe loop
+Message-ID: <20190321174811.GF9434@mit.edu>
+References: <20190321020218.5154-1-tytso@mit.edu>
+ <20190321020218.5154-8-tytso@mit.edu>
+ <20190321102742.k2oos4epoj6fyjao@work>
 MIME-Version: 1.0
-X-Received: by 2002:a6b:8d87:: with SMTP id p129mr3674003iod.10.1553189400392;
- Thu, 21 Mar 2019 10:30:00 -0700 (PDT)
-Date:   Thu, 21 Mar 2019 10:30:00 -0700
-In-Reply-To: <0000000000009a01370582c6772a@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <0000000000007ab8ab05849e1647@google.com>
-Subject: Re: INFO: rcu detected stall in ext4_file_write_iter
-From:   syzbot <syzbot+7d19c5fe6a3f1161abb7@syzkaller.appspotmail.com>
-To:     acme@kernel.org, adilger.kernel@dilger.ca, dvyukov@google.com,
-        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, mingo@redhat.com,
-        peterz@infradead.org, syzkaller-bugs@googlegroups.com,
-        tytso@mit.edu
-Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190321102742.k2oos4epoj6fyjao@work>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Bisection is inconclusive: the bug happens on the oldest tested release.
+On Thu, Mar 21, 2019 at 11:27:42AM +0100, Lukas Czerner wrote:
+> 
+> Snapshot of a thinspanshot is allowed though, so we might want to
+> include those. Not sure if it's wise to do it by default, but regardless
+> it's probably something for a separate change.
 
-bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=17b1becf200000
-start commit:   [unknown
-git tree:       upstream
-final crash:    https://syzkaller.appspot.com/x/report.txt?x=1471becf200000
-console output: https://syzkaller.appspot.com/x/log.txt?x=1071becf200000
-dashboard link: https://syzkaller.appspot.com/bug?extid=7d19c5fe6a3f1161abb7
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=103908f8c00000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=105e5cd0c00000
+Yeah, it's definitely a separate change.  One potential design
+question is that for a thin volume, you can do both a thin or a think
+snapshot, and in some cases one might succeed while the other will
+fail.  So do we make this choice be a parameter that we set in the
+config file, or do we try to see if there is sufficient spare
+freespace for a thick snapshot (and then do that), or a thin snapshot
+(and then do that) --- and which should use prefer?
 
-For information about bisection process see: https://goo.gl/tpsmEJ#bisection
+The other thing I'll note is that in order for us to tell whether
+something is a thin or thick LV, we're going to to need to ask lvs to
+return multiple parameters, so the optimization of using:
+
+	for NAME in $(lvs -o lv_path --noheadings -S...) ; do
+	    ...
+	done
+
+will no longer work.  (Or we end up calling lvs a second time, which
+is less efficient.)
+
+Just curious --- do we know how commonly thin LV's are being used by
+customers of various distros?  I assume enterprise distro users will
+be the most conservative, but how common is the uptake of thin LV's by
+Fedora and OpenSuSE users?
+
+						- Ted
