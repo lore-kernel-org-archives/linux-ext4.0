@@ -6,33 +6,33 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5FBAFC10F00
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 991AAC43381
 	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 20:25:32 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 38DED218FD
+	by mail.kernel.org (Postfix) with ESMTP id 73746218FD
 	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 20:25:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728912AbfCUUZb (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Mar 2019 16:25:31 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52571 "EHLO
+        id S1728913AbfCUUZc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Mar 2019 16:25:32 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52578 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1728902AbfCUUZb (ORCPT
+        with ESMTP id S1728093AbfCUUZb (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2019 16:25:31 -0400
 Received: from callcc.thunk.org (guestnat-104-133-0-99.corp.google.com [104.133.0.99] (may be forged))
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2LKPJQj017004
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2LKPJBN017002
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
         Thu, 21 Mar 2019 16:25:19 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id E90F7420AAA; Thu, 21 Mar 2019 16:25:18 -0400 (EDT)
+        id EDFEF420AAB; Thu, 21 Mar 2019 16:25:18 -0400 (EDT)
 From:   "Theodore Ts'o" <tytso@mit.edu>
 To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
 Cc:     darrick.wong@oracle.com, lczerner@redhat.com,
         "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH 2/9] debian: drop lvm2 from the recommends line
-Date:   Thu, 21 Mar 2019 16:25:06 -0400
-Message-Id: <20190321202513.1969-3-tytso@mit.edu>
+Subject: [PATCH 3/9] Fix "make install-strip"
+Date:   Thu, 21 Mar 2019 16:25:07 -0400
+Message-Id: <20190321202513.1969-4-tytso@mit.edu>
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20190321202513.1969-1-tytso@mit.edu>
 References: <20190321202513.1969-1-tytso@mit.edu>
@@ -43,30 +43,79 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-If the user doesn't intend to use lvm2, and it's not installed,
-installing e2fsprogs shouldn't drag it (and all of its dependencies)
-into the system.
-
-Addresses-Debian-Bug: 924275
-
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 ---
- debian/control | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ lib/Makefile.bsd-lib     | 2 +-
+ lib/Makefile.darwin-lib  | 2 +-
+ lib/Makefile.elf-lib     | 2 +-
+ lib/Makefile.library     | 2 ++
+ lib/Makefile.solaris-lib | 2 +-
+ 5 files changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/debian/control b/debian/control
-index 1bb8adb15..e454687f9 100644
---- a/debian/control
-+++ b/debian/control
-@@ -191,7 +191,7 @@ XB-Important: yes
- Pre-Depends: ${shlibs:Depends}, ${misc:Depends}, libblkid1, libuuid1
- Multi-Arch: foreign
- Suggests: gpart, parted, fuse2fs, e2fsck-static
--Recommends: e2fsprogs-l10n, lvm2
-+Recommends: e2fsprogs-l10n
- Architecture: any
- Description: ext2/ext3/ext4 file system utilities
-  The ext2, ext3 and ext4 file systems are successors of the original ext
+diff --git a/lib/Makefile.bsd-lib b/lib/Makefile.bsd-lib
+index db0947f9a..2792ba3df 100644
+--- a/lib/Makefile.bsd-lib
++++ b/lib/Makefile.bsd-lib
+@@ -36,7 +36,7 @@ install-shlibs install:: $(BSD_LIB)
+ 
+ install-strip: install
+ 
+-install-shlibs-strip: install-shlibs
++install-shlibs-strip:: install-shlibs
+ 
+ uninstall-shlibs uninstall::
+ 	$(RM) -f $(DESTDIR)$(BSDLIB_INSTALL_DIR)/$(BSD_LIB)
+diff --git a/lib/Makefile.darwin-lib b/lib/Makefile.darwin-lib
+index c94a5e721..95cdd4b49 100644
+--- a/lib/Makefile.darwin-lib
++++ b/lib/Makefile.darwin-lib
+@@ -39,7 +39,7 @@ install-shlibs install:: $(BSD_LIB)
+ 
+ install-strip: install
+ 
+-install-shlibs-strip: install-shlibs
++install-shlibs-strip:: install-shlibs
+ 
+ uninstall-shlibs uninstall::
+ 	$(RM) -f $(DESTDIR)$(BSDLIB_INSTALL_DIR)/$(BSD_LIB)
+diff --git a/lib/Makefile.elf-lib b/lib/Makefile.elf-lib
+index bd7b2b3c4..f850f3ddb 100644
+--- a/lib/Makefile.elf-lib
++++ b/lib/Makefile.elf-lib
+@@ -58,7 +58,7 @@ install-strip: install
+ 	$(Q) $(STRIP) --strip-unneeded --remove-section=.comment \
+ 		--remove-section=.note $(DESTDIR)$(ELF_INSTALL_DIR)/$(ELF_LIB)
+ 
+-install-shlibs-strip: install-shlibs
++install-shlibs-strip:: install-shlibs
+ 	$(E) "	STRIP-LIB $(ELF_INSTALL_DIR)/$(ELF_LIB)"
+ 	$(Q) $(STRIP) --strip-unneeded --remove-section=.comment \
+ 		--remove-section=.note $(DESTDIR)$(ELF_INSTALL_DIR)/$(ELF_LIB)
+diff --git a/lib/Makefile.library b/lib/Makefile.library
+index 1b86b0235..f78467aa7 100644
+--- a/lib/Makefile.library
++++ b/lib/Makefile.library
+@@ -1,5 +1,7 @@
+ all:: subdirs $(LIBRARY).a
+ 
++install-shlibs-strip::
++
+ install-shlibs::
+ 
+ uninstall-shlibs::
+diff --git a/lib/Makefile.solaris-lib b/lib/Makefile.solaris-lib
+index 304df7d40..1e636368f 100644
+--- a/lib/Makefile.solaris-lib
++++ b/lib/Makefile.solaris-lib
+@@ -50,7 +50,7 @@ install-shlibs install:: $(ELF_LIB) installdirs-elf-lib
+ install-strip: install
+ 	$(STRIP) -x $(DESTDIR)$(ELF_INSTALL_DIR)/$(ELF_LIB)
+ 
+-install-shlibs-strip: install-shlibs
++install-shlibs-strip:: install-shlibs
+ 	$(STRIP) -x $(DESTDIR)$(ELF_INSTALL_DIR)/$(ELF_LIB)
+ 
+ uninstall-shlibs uninstall::
 -- 
 2.19.1
 
