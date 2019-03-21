@@ -2,185 +2,242 @@ Return-Path: <SRS0=3UD1=RY=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 93881C43381
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 04:05:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4369CC43381
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 09:29:38 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 60639218A5
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 04:05:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F2C1721873
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 09:29:37 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="CJ1LjFzE"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QwgjG8E1"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725877AbfCUEF6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Mar 2019 00:05:58 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:47292 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725854AbfCUEF6 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2019 00:05:58 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x2L3wu4C081742;
-        Thu, 21 Mar 2019 04:05:56 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : references : mime-version : content-type :
- in-reply-to; s=corp-2018-07-02;
- bh=KaienRJaYj5PTmn+kA5XGqEZ7z3fN+ZeflkXt9dC1Ko=;
- b=CJ1LjFzELU/ulkpY5L7GmfokzMG6zC0Qz/NDP68paFTb4EdK1E4zhhJ7hLQNb+ebwGzd
- gX16qYfyu+tGYgfSUbGNPSDpbt0min2mDyFqFPhNN8sIKIz9pwlCtFZiKi/I/uVY/0rF
- 0bbPcpfVUKI2vBBsdU3GerimEV2AUATIj8gsTxx7eq9q77bb5uj4kRCqcL19xyNMNT9M
- 3trRJdRsLEMlEUw+6PmKIciwj3fV+XQO8VGP3KrViIvaC0PXYI9I/Gf/lo4zWUnIhg5G
- hFH1obOjsbkEF4tLPI+kvZsC7ekfm67NmIXyqchN4lSQrix1SIVH4S+lQSbDB/TgSOY8 ng== 
-Received: from userv0021.oracle.com (userv0021.oracle.com [156.151.31.71])
-        by userp2130.oracle.com with ESMTP id 2r8rjuxbca-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 21 Mar 2019 04:05:55 +0000
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by userv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x2L45ogf007851
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 21 Mar 2019 04:05:50 GMT
-Received: from abhmp0011.oracle.com (abhmp0011.oracle.com [141.146.116.17])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x2L45oXI000807;
-        Thu, 21 Mar 2019 04:05:50 GMT
-Received: from localhost (/10.159.247.212)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Wed, 20 Mar 2019 21:05:49 -0700
-Date:   Wed, 20 Mar 2019 21:05:51 -0700
-From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>
-Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>
-Subject: Re: [PATCH 8/9] e2scrub_all: refactor device probe loop
-Message-ID: <20190321040551.GG1173@magnolia>
-References: <20190321020218.5154-1-tytso@mit.edu>
- <20190321020218.5154-8-tytso@mit.edu>
+        id S1727986AbfCUJ3h (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Mar 2019 05:29:37 -0400
+Received: from mail-lf1-f65.google.com ([209.85.167.65]:36658 "EHLO
+        mail-lf1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727870AbfCUJ3h (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2019 05:29:37 -0400
+Received: by mail-lf1-f65.google.com with SMTP id d18so4097795lfn.3
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Mar 2019 02:29:34 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=subject:to:cc:references:from:openpgp:autocrypt:message-id:date
+         :user-agent:mime-version:in-reply-to;
+        bh=CLedUwqhxF+R5WJmpzJrZZ4h952dWY02weYXKrnz16M=;
+        b=QwgjG8E1pLO6IFRgtm8oIbYmTJoRS24l0k91O4WB4WAa/7PBD64ueEfZHTWmV0bdpT
+         86faxdOIYlfCR1O0I9zPSndALRjyoSSTHszmhLeqjRhy5X7IaZOsrIzw4DLW4asSyB0s
+         CMl4PCUvo96NMc/oCNKXXi6zX55dT7Y2PjUVSKNe52k5lzx9mcLsSsIf7LpDxZPOHCjO
+         CHkquOQOcksTGISbHZ1e3dRVsK1AuTVdan4IrAkrXrAlQc+4J9+ps32qYqWrwh++upFr
+         YsbxhuxIJgtLTm2VDuhcgL1FrXW5JLoC6Z9PkSfnX8er3OjyWk2S6P4SKAW05jEeT75G
+         PqXQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:openpgp:autocrypt
+         :message-id:date:user-agent:mime-version:in-reply-to;
+        bh=CLedUwqhxF+R5WJmpzJrZZ4h952dWY02weYXKrnz16M=;
+        b=mU7qj/C+yt1SHxrE7yiDjjSFMQbh5dFxKXwr7bG9VybOfuy65GGXL6my+fG7K8ASOj
+         UQ12U9INmDlQ3a68CvwvEtuhrZ3u4keGPwE6EeiccAPkaKikHgScqtPxx76O7/IRoMGP
+         CxTM/CgvSU3JfUh3UewMvmgZ282jBk1oWbZTW7yWotD2e1tz7oaS0EARmFbZCjoXq8AD
+         ILVfQG6VbZiVON9JlboXowDg4g+8Ow296L7LPDDHW+6iZI+WxeITIQjrKON5PWZLJ2YS
+         PVahumlsnPvxnNuOpgsTGM4qAnbJUVrJLb0ZyhlK77PugWJRy596thzl99UFAdvl57BC
+         q9DQ==
+X-Gm-Message-State: APjAAAVKm7Y2pvOmN/aKpMxJ1iM7mfji2OXPVJe8BsL/IQaPhFM4woHj
+        CUznoUS09LZT9MlrCUpxAbCEwUyz
+X-Google-Smtp-Source: APXvYqwrRUF6UbUtRay/bSFvKDI8fBYCFjAFk9neKkuuUsYVHxnEz5Bym5uep3S6DhJpOiVqbrkpPQ==
+X-Received: by 2002:a19:7007:: with SMTP id h7mr1434743lfc.23.1553160573471;
+        Thu, 21 Mar 2019 02:29:33 -0700 (PDT)
+Received: from localhost ([5.172.255.105])
+        by smtp.gmail.com with ESMTPSA id g24sm855537lfb.49.2019.03.21.02.29.32
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 21 Mar 2019 02:29:32 -0700 (PDT)
+Subject: Re: Question about ext4 extents and file fragmentation
+To:     Theodore Ts'o <tytso@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+References: <aad2611a-9640-9ec1-108a-f67ba662c301@gmail.com>
+ <20190321031833.GB32021@mit.edu>
+From:   Mikhail Morfikov <mmorfikov@gmail.com>
+Openpgp: preference=signencrypt
+Autocrypt: addr=mmorfikov@gmail.com; prefer-encrypt=mutual; keydata=
+ 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
+ VyIzwTcJuLgTKoPQBcfsUkg=
+Message-ID: <a1dba5a8-ecdd-4618-0dc2-7cf4a67b0d40@gmail.com>
+Date:   Thu, 21 Mar 2019 10:29:23 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190321020218.5154-8-tytso@mit.edu>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9201 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=29 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1903210026
+In-Reply-To: <20190321031833.GB32021@mit.edu>
+Content-Type: multipart/signed; micalg=pgp-sha512;
+ protocol="application/pgp-signature";
+ boundary="ZfwKZG9yaXO0lsffW53751r3zSayYjmj3"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Mar 20, 2019 at 10:02:17PM -0400, Theodore Ts'o wrote:
-> From: "Darrick J. Wong" <darrick.wong@oracle.com>
-> 
-> Paul Menzel reported that the e2scrub_all reaper service that runs at
-> startup takes a long time to run, and Ted Ts'o pointed out that we could
-> do a lot less work by using lvs as the outer loop in the ext4 filesystem
-> probe function so that we only have to lsblk the lvm devices containing
-> ext4 filesystems.
-> 
-> Therefore, refactor the loops to put lvs first, which should boost speed
-> a bit.
-> 
-> [ Made some of the further optimizations suggested by Lukas Czerner.  -- TYT ]
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--ZfwKZG9yaXO0lsffW53751r3zSayYjmj3
+Content-Type: multipart/mixed; boundary="YbyqMDX5x3IgPDmJWNnXXtHC1uoE1jg5N";
+ protected-headers="v1"
+From: Mikhail Morfikov <mmorfikov@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Message-ID: <a1dba5a8-ecdd-4618-0dc2-7cf4a67b0d40@gmail.com>
+Subject: Re: Question about ext4 extents and file fragmentation
+References: <aad2611a-9640-9ec1-108a-f67ba662c301@gmail.com>
+ <20190321031833.GB32021@mit.edu>
+In-Reply-To: <20190321031833.GB32021@mit.edu>
 
-Those chnages LGTM,
-Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+--YbyqMDX5x3IgPDmJWNnXXtHC1uoE1jg5N
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: quoted-printable
 
---D
+On 21/03/2019 04:18, Theodore Ts'o wrote:
+> On Wed, Mar 20, 2019 at 11:44:19PM +0100, Mikhail Morfikov wrote:
+>> When we have a big file on an ext4 partition, and filefrag shows
+>> the following:
+>>
+>> filefrag -ve /bigfile
+>> Filesystem type is: ef53
+>> File size of /bigfile is 1439201280 (351368 blocks of 4096 bytes)
+>>  ext:     logical_offset:        physical_offset: length:   expected: =
+flags:
+>>    0:        0..   32767:      34816..     67583:  32768:           =20
+>>    1:    32768..   63487:      67584..     98303:  30720:           =20
+>>    2:    63488..   96255:     100352..    133119:  32768:      98304:
+>>    3:    96256..  126975:     133120..    163839:  30720:           =20
+>>    4:   126976..  159743:     165888..    198655:  32768:     163840:
+>>    5:   159744..  190463:     198656..    229375:  30720:           =20
+>>    6:   190464..  223231:     231424..    264191:  32768:     229376:
+>>    7:   223232..  253951:     264192..    294911:  30720:           =20
+>>    8:   253952..  286719:     296960..    329727:  32768:     294912:
+>>    9:   286720..  319487:     329728..    362495:  32768:           =20
+>>   10:   319488..  351367:     362496..    394375:  31880:             =
+last,eof
+>> /bigfile: 5 extents found
+>>
+>> 1. How many fragments does this file really have? 11 or 5?=20
+>> 2. Should the extents 0 and 1 be treated as one fragment or two=20
+>>    separate ones? I know they could be one from the human=20
+>>    perspective, but is it really one for ext4 filesystem?
+>=20
+> They are encoded as two separate physical extents on disk.  Logically,
+> extents 0, 1, and 2 are contiguous regions on idks.So 5 fragments then?=
 
-> 
-> Reported-by: Paul Menzel <pmenzel@molgen.mpg.de>
-> Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
-> Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-> ---
->  scrub/e2scrub_all.in | 34 +++++++++++++++++++++++-----------
->  1 file changed, 23 insertions(+), 11 deletions(-)
-> 
-> diff --git a/scrub/e2scrub_all.in b/scrub/e2scrub_all.in
-> index 4cb90a0de..cad232987 100644
-> --- a/scrub/e2scrub_all.in
-> +++ b/scrub/e2scrub_all.in
-> @@ -22,6 +22,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
->  
->  scrub_all=0
->  snap_size_mb=256
-> +reap=0
->  conffile="@root_sysconfdir@/e2scrub.conf"
->  
->  test -f "${conffile}" && . "${conffile}"
-> @@ -65,7 +66,7 @@ exitcode() {
->  while getopts "nrAV" opt; do
->  	case "${opt}" in
->  	"n") DBG="echo Would execute: " ;;
-> -	"r") scrub_args="${scrub_args} -r";;
-> +	"r") scrub_args="${scrub_args} -r"; reap=1;;
->  	"A") scrub_all=1;;
->  	"V") print_version; exitcode 0;;
->  	*) print_help; exitcode 2;;
-> @@ -88,9 +89,12 @@ if ! type lvcreate >& /dev/null ; then
->  fi
->  
->  # Find scrub targets, make sure we only do this once.
-> -ls_scrub_targets() {
-> -	lsblk -o NAME,FSTYPE,MOUNTPOINT -p -P -n | while read vars; do
-> +ls_scan_targets() {
-> +	lvs --name-prefixes -o vg_name,lv_path \
-> +			-S lv_active=active,lv_role=public --noheadings | \
-> +	while read vars; do
->  		eval "${vars}"
-> +		eval "$(lsblk -o FSTYPE,MOUNTPOINT -p -P -n "${LVM2_LV_PATH}")"
->  
->  		# Skip non-ext[234]
->  		case "${FSTYPE}" in
-> @@ -103,12 +107,6 @@ ls_scrub_targets() {
->  			continue;
->  		fi
->  
-> -		# Skip non-lvm devices and lvm snapshots
-> -		lvm_vars="$(lvs --nameprefixes -o vg_name,lv_name,lv_role --noheadings "${NAME}" 2> /dev/null)"
-> -		test $? -ne 0 && continue
-> -		eval "${lvm_vars}"
-> -		echo "${LVM2_LV_ROLE}" | grep -q "snapshot" && continue
-> -
->  		free_space="$(vgs -o vg_free --units m --noheadings --no-suffix "${LVM2_VG_NAME}" 2> /dev/null | sed -e 's/\..*//')"
->  		test "${snap_size_mb}" -gt "${free_space}" && continue
->  
-> @@ -120,6 +118,20 @@ ls_scrub_targets() {
->  	done | sort | uniq
->  }
->  
-> +# Find leftover scrub snapshots
-> +ls_reap_targets() {
-> +	lvs -o lv_path -S lv_role=snapshot -S lv_name=~\(e2scrub$\) --noheadings
-> +}
-> +
-> +# Figure out what we're targeting
-> +ls_targets() {
-> +	if [ "${reap}" -eq 1 ]; then
-> +		ls_reap_targets
-> +	else
-> +		ls_scan_targets
-> +	fi
-> +}
-> +
->  # systemd doesn't know to do path escaping on the instance variable we pass
->  # to the e2scrub service, which breaks things if there is a dash in the path
->  # name.  Therefore, do the path escaping ourselves if needed.
-> @@ -140,10 +152,10 @@ escape_path_for_systemd() {
->  
->  # Scrub any mounted fs on lvm by creating a snapshot and fscking that.
->  stdin="$(realpath /dev/stdin)"
-> -ls_scrub_targets | while read tgt; do
-> +ls_targets | while read tgt; do
->  	# If we're not reaping and systemd is present, try invoking the
->  	# systemd service.
-> -	if [ -z "${scrub_args}" ] && type systemctl > /dev/null 2>&1; then
-> +	if [ "${reap}" -ne 1 ] && type systemctl > /dev/null 2>&1; then
->  		tgt_esc="$(escape_path_for_systemd "${tgt}")"
->  		${DBG} systemctl start "e2scrub@${tgt_esc}" 2> /dev/null < "${stdin}"
->  		res=$?
-> -- 
-> 2.19.1
-> 
+
+>> 3. What does actually happen during the read in the case of=20
+>>    some HDD and its magnetic heads? If the head finishes reading=20
+>>    the whole extent (ext 0), will it be able to read the data of=20
+>>    the next extent (ext 1) without any delays like in the case of
+>>    raw read (for instance dd if=3D/dev/sda ...), or will it be=20
+>>    delayed because of the filesystem layer, and the head will=20
+>>    have to spend some time to be positioned again in order to=20
+>>    read the next extent?
+>=20
+> The delay won't be because of the file system layer, as the
+> information about these first three extents will all be stored on the
+> same block on disk.  In addition, ext4 has an in-memory "extent cache"
+> which stores the logical->physical block mapping, and in memory, it
+> will be stored as a single entry in the extent cache.
+>=20
+> It takes *time* to read 128 megabytes (32768 4k blocks), and from a
+> hard drive perspective, you are doing a streaming sequential read, how
+> the file system metadata is stored is not going to be the limiting
+> factor.  In fact, it's likely that they won't be issued to the hard
+> drive as a single I/O request anyway.  But that doesn't matter; the
+> hard drive has an I/O request queue, and so the right thing will
+> happen.
+>=20
+
+Yes, I know that many things can happen during the 128M read. But wecan a=
+ssume that we have some simplified environment, where we have=20
+only one disk, one file we want to read at the moment, and we have=20
+time to do it without any external interferences.
+
+If I understood correctly, as long as the extents reside on a contiguous =
+
+region, they will be read sequentially without any delays, right? So if=20
+the file in question was one big contiguous region, would it be read=20
+sequentially from the beginning of the file to its end?=20
+
+Also I have a question concerning the following sentence[1]:=20
+  "When there are more than four extents to a file, the rest of the=20
+  extents are indexed in a tree."=20
+Does this mean that only four extents can be read sequentially in a=20
+file that have only contiguous blocks of data, or because of the=20
+extent cache, the whole file can be read sequentially anyway?
+
+[1] https://en.wikipedia.org/wiki/Ext4#Features
+
+
+
+--YbyqMDX5x3IgPDmJWNnXXtHC1uoE1jg5N--
+
+--ZfwKZG9yaXO0lsffW53751r3zSayYjmj3
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCgAdFiEE5JPPWm5C7TFDUMqpzQRoEHcbZSAFAlyTWXMACgkQzQRoEHcb
+ZSDaVA//c5y+IvcZRKsns7EuuHhcFoWIP+eiLP/qCNaMaARQFb7ZomH48BI/28rR
+O3ysEaiZJo3hP9uyLYEavwmjLUzd8JT5gQ3MXl8HiOCvaca1GT/LbmwMQltzwq3r
+UM/9kWCdcNeyHWjS1NYXIRYe4hiZMGKqsF+uFW7Q+J8BIBx2BLC3gFrxQ8mh+I+6
+wMga7Mvqb9w7JlNEzxcGkWD+HH5UGFsp7UBaCiP8qOxi4byEjVLVhhdGsXtSD6uA
+foRQ1Hx/aXVaoMDdoMIeaugJ2uFtU4VnHMvZNUdbCqpN330Qu+VEAr5pkqUjyu5P
+qB5+YhUkDNvOy5RzueQo4rnx+PEmXiX0S3vrVJ/gBBescxHMm2efpj5+QnSQ06Tk
+JkySu5TEjfuiRq8ozb0R4Wr0IduTP+hJhyW5ABjSF5KVEMFCfzc6dWHdlLCK8+k6
+kXrWaRZjsxzvAin3vGxR3EgvZZ+iWxCt+OlDr3p3cLolDDNk9Pd/XL4Q8W65xr7B
+gzwmGIwXWQRdexaz6tjTWoocKK+bIaJt95a41CkeMZvgxRaB2k9av9Odn7jCw8jd
+58dRyOlyIeJCKLU4hcZft95OsKX6DYkmLu6853aX7UDvYDayArblnOdePfijW122
+8PRXFEikHtT0CpHuvO9aOKj9xb5WeAm9xi35EDh2mwFIO+TSB0w=
+=MVnJ
+-----END PGP SIGNATURE-----
+
+--ZfwKZG9yaXO0lsffW53751r3zSayYjmj3--
