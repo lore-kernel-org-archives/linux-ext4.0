@@ -2,261 +2,187 @@ Return-Path: <SRS0=3UD1=RY=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_NEOMUTT autolearn=ham
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 18B75C10F00
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 15:57:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E60C3C43381
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 15:59:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DF496218E2
-	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 15:57:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id AADEA21874
+	for <linux-ext4@archiver.kernel.org>; Thu, 21 Mar 2019 15:59:47 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="j/gfm5Jz"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728316AbfCUP5K (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 21 Mar 2019 11:57:10 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:45372 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728088AbfCUP5J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 21 Mar 2019 11:57:09 -0400
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id DA60E88AB1;
-        Thu, 21 Mar 2019 15:57:08 +0000 (UTC)
-Received: from work (ovpn-204-90.brq.redhat.com [10.40.204.90])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id BCDDD5D9C5;
-        Thu, 21 Mar 2019 15:57:07 +0000 (UTC)
-Date:   Thu, 21 Mar 2019 16:57:03 +0100
-From:   Lukas Czerner <lczerner@redhat.com>
+        id S1728231AbfCUP7r (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 21 Mar 2019 11:59:47 -0400
+Received: from mail-lj1-f180.google.com ([209.85.208.180]:42046 "EHLO
+        mail-lj1-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1728013AbfCUP7r (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 21 Mar 2019 11:59:47 -0400
+Received: by mail-lj1-f180.google.com with SMTP id v22so5732696lje.9
+        for <linux-ext4@vger.kernel.org>; Thu, 21 Mar 2019 08:59:44 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=subject:to:cc:references:from:openpgp:autocrypt:message-id:date
+         :user-agent:mime-version:in-reply-to;
+        bh=wR7yoRq52RgK4xNiDnd7qZmPBbQfKwDqcHytURCgh+E=;
+        b=j/gfm5JzXi0+7WAwquyvQdwN5VZIBBPwA8hIuIYLFAKpgDh3pLcn1otpt+46xIZbF0
+         a0LDC11wjmV1ct5k8iwG7XeGP3XXKedD6O82wpB9FaEU9S/N5Yj4srSdmiEx4WpCINTx
+         hlzVGz/Rrcr2DdQ1GIBoDyZtj4DSdT7d84UTsee3yONcZ2qWdW41KxGT2LqBmg7wXBB7
+         USMX846SppvbeCQr4YAt5IWMgYxMahN5CR1OU4L2l0+KQ8XyV0RV8bTcPAUvc8ULC57e
+         ct5v3xlFK7I7Irr75NRrxkzv6VrJhnLT7xkWlm25PJ+lJ5Ni5ILOutHAXgQrWr9r1t81
+         v0gw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:openpgp:autocrypt
+         :message-id:date:user-agent:mime-version:in-reply-to;
+        bh=wR7yoRq52RgK4xNiDnd7qZmPBbQfKwDqcHytURCgh+E=;
+        b=KEnk3sWI+qqz2bN46W034k2FrvNQDPfxoFncf3Id5hej+ivIjZweDPkVbv90kwkvqC
+         8l/bThd3XFri+3/x7zzfYW7Nft3KEBZWOypKNlBb+z/ziJcOVIfretEe+CTmEocOgaui
+         wpQ1xAeJAkE3KFIAI9U6Rt7uE2dEDwuaePr8BybqS1qPIkCI8l6P/xdrB/+4KFZjYsqm
+         D0125suwwZ9Cyq9I4qOheT92H8suEg6bEkK3+kj+Gjf342nLTHN9HyNhwh1v/VDMrncr
+         6++/1JksgAVthLwhs9rNDgdVyegzuq3vycBeeIdYOFXXxDRMwo1HM2HmhVUIYwP7eQzy
+         uZOA==
+X-Gm-Message-State: APjAAAVLLp4ewvHZWV5s2ar456fKnFXso5PqP8RhgMV2tvvV1jQbpRWv
+        33oH6dX07j01LNs3y21c6GmWGJaH
+X-Google-Smtp-Source: APXvYqxAAd6fwBS1XHI7+0MGalF37vxepvv1VHqXqfU3wJvRtz47EufzV9eni1qVQaoyKV7Gdviekw==
+X-Received: by 2002:a2e:8701:: with SMTP id m1mr2445973lji.132.1553183983855;
+        Thu, 21 Mar 2019 08:59:43 -0700 (PDT)
+Received: from localhost ([5.172.255.168])
+        by smtp.gmail.com with ESMTPSA id 15sm1027449lft.88.2019.03.21.08.59.42
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 21 Mar 2019 08:59:43 -0700 (PDT)
+Subject: Re: Question about ext4 extents and file fragmentation
 To:     Theodore Ts'o <tytso@mit.edu>
-Cc:     Ext4 Developers List <linux-ext4@vger.kernel.org>,
-        darrick.wong@oracle.com
-Subject: Re: [PATCH 8/9] e2scrub_all: refactor device probe loop
-Message-ID: <20190321155703.ili5ghofgm3hneq5@work>
-References: <20190321020218.5154-1-tytso@mit.edu>
- <20190321020218.5154-8-tytso@mit.edu>
- <20190321102742.k2oos4epoj6fyjao@work>
- <20190321143141.GB9434@mit.edu>
+Cc:     linux-ext4@vger.kernel.org
+References: <aad2611a-9640-9ec1-108a-f67ba662c301@gmail.com>
+ <20190321031833.GB32021@mit.edu>
+ <a1dba5a8-ecdd-4618-0dc2-7cf4a67b0d40@gmail.com>
+ <20190321150520.GE9434@mit.edu>
+From:   Mikhail Morfikov <mmorfikov@gmail.com>
+Openpgp: preference=signencrypt
+Autocrypt: addr=mmorfikov@gmail.com; prefer-encrypt=mutual; keydata=
+ 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
+ VyIzwTcJuLgTKoPQBcfsUkg=
+Message-ID: <d32355a6-19b3-7861-9323-a761ea02d9f5@gmail.com>
+Date:   Thu, 21 Mar 2019 16:59:34 +0100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.5.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190321143141.GB9434@mit.edu>
-User-Agent: NeoMutt/20180716
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.26]); Thu, 21 Mar 2019 15:57:08 +0000 (UTC)
+In-Reply-To: <20190321150520.GE9434@mit.edu>
+Content-Type: multipart/signed; micalg=pgp-sha512;
+ protocol="application/pgp-signature";
+ boundary="0CQslNEktQ03I0Tdzk8zN80nzu56XiWbQ"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Mar 21, 2019 at 10:31:41AM -0400, Theodore Ts'o wrote:
-> On Thu, Mar 21, 2019 at 11:27:42AM +0100, Lukas Czerner wrote:
-> > 
-> > lv_role=public does not exclude snapshots and so it will fail later in
-> > e2scrub when you try to create a snapshot of a thicksnapshot which is
-> > not supported.
-> 
-> Ah, good point.  Thanks for pointing that out.
-> 
-> > Also I am not sure what's the rush, but it seems you've ignored my other
-> > suggestions.
-> 
-> I did consider them all, but there were reasons why I didn't use them.
-> One of them wasn't practical because I needed LVM2_VG_NAME; when you
-> made that suggestion, I hadn't published the patch needed to fix
-> Debian Bug #924301.  Of course, if we use your suggestion of using "-S
-> vg_free > ${snap_size}" it will obviate that need; so thanks for that
-> suggestion.
-> 
-> The reason why I didn't take one of your other suggestions is that we
-> need to check whether or not the file system is mounted, and so we
-> needed the mountpoint in lsblk, and once you ask for the mountpoint,
-> we can no longer use awk to select a field, since an unmounted file
-> system shows up as a an empty column.
-> 
-> % sudo lsblk -o MOUNTPOINT,FSTYPE,NAME -l
->            LVM2_member nvme0n1p3_crypt
->            ext4        lambda-uroot
-> [SWAP]     swap        lambda-swap_1
-> /          ext4        lambda-root
->            ext4        lambda-old--files
->            ext4        lambda-library
->            ext4        lambda-test--4k
->            ext4        lambda-scratch
->            ext4        lambda-test--1k
->                        lambda-scratch2
->                        lambda-scratch3
->            ext4        lambda-results
->                        lambda-thinpool_tmeta
->                        lambda-thinpool_tdata
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--0CQslNEktQ03I0Tdzk8zN80nzu56XiWbQ
+Content-Type: multipart/mixed; boundary="F2dwoE7XqK1AQQupyKxcTfG0bCPqW1hMR";
+ protected-headers="v1"
+From: Mikhail Morfikov <mmorfikov@gmail.com>
+To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Message-ID: <d32355a6-19b3-7861-9323-a761ea02d9f5@gmail.com>
+Subject: Re: Question about ext4 extents and file fragmentation
+References: <aad2611a-9640-9ec1-108a-f67ba662c301@gmail.com>
+ <20190321031833.GB32021@mit.edu>
+ <a1dba5a8-ecdd-4618-0dc2-7cf4a67b0d40@gmail.com>
+ <20190321150520.GE9434@mit.edu>
+In-Reply-To: <20190321150520.GE9434@mit.edu>
 
-So the good news is that it's not really a problem. What you really want
-is the mountpoint if it exists and the device otherwise right ?
+--F2dwoE7XqK1AQQupyKxcTfG0bCPqW1hMR
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: quoted-printable
 
-Then my suggestion will do just that becuase awk will separate the fieds
-with FS (field separator) which by default is a single space. But space
-is special in awk becuase the fields will be separated by a runs of
-space, so if you pick the fileds just right you'll get what you want.
+On 21/03/2019 16:05, Theodore Ts'o wrote:
+> It *could* be read sequentially from the beginning of the file to the
+> end.  There are many things that might cause that not to happen, that
+> have nothing to do with how we store the logical to physicla map.
 
-So if I run this on my system
+And this is what I wanted to know, because some people tell that if you=20
+store a file in a filesystem, it can't be read sequentially as a whole=20
+because of the filesystem layer (compared to "dd if=3D/dev/sda ..."). So =
 
-# lsblk -o MOUNTPOINT,NAME,FSTYPE -p -n -l `lvs -o lv_path -S lv_active=active,lv_role=public,lv_role!=snapshot,vg_free\>256 --noheadings`
+the filesystem layer doesn't really matter and doesn't really add any=20
+additional delays compared to the raw read of a device when we deal with =
 
-I'll get
+data that is stored in contiguous blocks. I know that many things can=20
+prevent the sequential read from happening, but I just wanted it to be=20
+clarified.=20
 
-            /dev/mapper/vg_perpetuum-ext4--suck
-            /dev/mapper/vg_perpetuum-fedora29
-            /dev/mapper/vg_perpetuum-fedora29--2
-            /dev/mapper/vg_perpetuum-freebsd
-/mnt/kernel /dev/mapper/vg_perpetuum-kernel      ext4
-/home       /dev/mapper/vg_perpetuum-lv_home     xfs
-/           /dev/mapper/vg_perpetuum-lv_root     xfs
-[SWAP]      /dev/mapper/vg_perpetuum-lv_swap     swap
-/var        /dev/mapper/vg_perpetuum-lv_var      xfs
-            /dev/mapper/vg_perpetuum-lvol001     ext4
-            /dev/mapper/vg_perpetuum-overlay     ext4
-            /dev/mapper/vg_perpetuum-rhel7
-            /dev/mapper/vg_perpetuum-rhel8
-            /dev/mapper/vg_perpetuum-test0       ext3
-            /dev/mapper/vg_perpetuum-test1       xfs
-            /dev/mapper/vg_perpetuum-test10      ext4
-            /dev/mapper/vg_perpetuum-test11      ext4
-            /dev/mapper/vg_perpetuum-test12
-            /dev/mapper/vg_perpetuum-test2
-            /dev/mapper/vg_perpetuum-test3       ext4
-            /dev/mapper/vg_perpetuum-test4       ext4
-            /dev/mapper/vg_perpetuum-test5
-            /dev/mapper/vg_perpetuum-test6       LVM2_member
-            /dev/mapper/vg_perpetuum-test7
-            /dev/mapper/vg_perpetuum-test8
-            /dev/mapper/vg_perpetuum-test9       ext4
-            /dev/mapper/vg_perpetuum-testing     ext4
-            /dev/mapper/vg_perpetuum-testing1    xfs
-            /dev/mapper/vg_perpetuum-thinvolume
-
-now if I add 
-
-| awk '{print $1}'
-
-I'll get
-
-/dev/mapper/vg_perpetuum-ext4--suck
-/dev/mapper/vg_perpetuum-fedora29
-/dev/mapper/vg_perpetuum-fedora29--2
-/dev/mapper/vg_perpetuum-freebsd
-/mnt/kernel
-/home
-/
-[SWAP]
-/var
-/dev/mapper/vg_perpetuum-lvol001
-/dev/mapper/vg_perpetuum-overlay
-/dev/mapper/vg_perpetuum-rhel7
-/dev/mapper/vg_perpetuum-rhel8
-/dev/mapper/vg_perpetuum-test0
-/dev/mapper/vg_perpetuum-test1
-/dev/mapper/vg_perpetuum-test10
-/dev/mapper/vg_perpetuum-test11
-/dev/mapper/vg_perpetuum-test12
-/dev/mapper/vg_perpetuum-test2
-/dev/mapper/vg_perpetuum-test3
-/dev/mapper/vg_perpetuum-test4
-/dev/mapper/vg_perpetuum-test5
-/dev/mapper/vg_perpetuum-test6
-/dev/mapper/vg_perpetuum-test7
-/dev/mapper/vg_perpetuum-test8
-/dev/mapper/vg_perpetuum-test9
-/dev/mapper/vg_perpetuum-testing
-/dev/mapper/vg_perpetuum-testing1
-/dev/mapper/vg_perpetuum-thinvolume
+Thank you for the answer, I really appreciate it.
 
 
-hence I get mountpoin where the volume is mounted and the device where
-it is not. That's what we need right ?
 
-What I did not consider was [SWAP] but we can get rid of that easily.
+--F2dwoE7XqK1AQQupyKxcTfG0bCPqW1hMR--
 
-grep -v '[SWAP]'
+--0CQslNEktQ03I0Tdzk8zN80nzu56XiWbQ
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
 
-> 
-> I also really didn't like using grep to select the file system type
-> ext[234], since if it would falsely select a LV name that contained
-> "ext4", e.g.:
-> 
-> /home/dave       xfs        rhel-ext4--sucks
+-----BEGIN PGP SIGNATURE-----
 
-That can be dealt with as well as well just by grepping for ' ext[234]$'
+iQIzBAEBCgAdFiEE5JPPWm5C7TFDUMqpzQRoEHcbZSAFAlyTtOwACgkQzQRoEHcb
+ZSAiihAAv1/G2ZphjsZ2aVwCnTjazcEc8OxWLf0K4tpr+3vxjjDPR59ENyD/YQjf
+rCrJgyJR9ahu/A17PonwcFUPduVtqr2KeFvwztqlpaIr1o9zT1hAoPX8TQN1+dy+
+MGgi8gsePRdOCynb4gkTYiFPU+/NKVueN6bDl14/Ud+oB7Dh42FtJphG3Z96wdsr
+DY5lvAlb5Zrkx3aBK/TxKHvT2MmTGEEkJVxmYj/D5+ZZlegr8xO3qFdVbYn/l/W9
+9vBjad9+1oIr7dOl1OxPtMJ3TZ25gBsFIx+Rg3a11QOjH0AvpX1v7YvTwCAcGwcG
+I3tCY1pT+DAeXXoTOIAShWts+YI9wXjwZOIVH6z+kU98Isi2BPsl/3Mr6Hk4EqAX
+x2CGc9cn/jf8v+HJ4Xk9Ddah9AK+ETG/xizYoOysOrL31QSFiFfJSxSdNy2t20S1
+mzP9fQ8KSREJOPbXKPlRNVMqQBu91eM+Uky7Tq8064xGVow1ULV3l0dwR7K94nAS
+nsYkDTsqcdGFLL2uGcLL8dLHowwFqbAyyq7Uj1iS+vo4+GgejmroZnXzpMnEfiKu
+BNUT4zM/lpCwVkNMH4OYqp5NIE6zWhULQhRrvUheLHf2BMDH5qEZ4E395aPoeKZz
+dLCXuaeu1DIZtnJKPDGvlaYWM+emoFTlRz/csan7yNtrs01GrQU=
+=4UPo
+-----END PGP SIGNATURE-----
 
-So in the end we'll have something like
-
-# lsblk -o MOUNTPOINT,NAME,FSTYPE -p -n -l `lvs -o lv_path -S lv_active=active,lv_role=public,lv_role!=snapshot,vg_free\>256 --noheadings` | grep -v '[SWAP]' | grep ' ext[234]$' | awk '{print $1}'
-
-and so on my system this gives me
-
-/mnt/kernel
-/dev/mapper/vg_perpetuum-lvol001
-/dev/mapper/vg_perpetuum-overlay
-/dev/mapper/vg_perpetuum-test0
-/dev/mapper/vg_perpetuum-test10
-/dev/mapper/vg_perpetuum-test11
-/dev/mapper/vg_perpetuum-test3
-/dev/mapper/vg_perpetuum-test4
-/dev/mapper/vg_perpetuum-test9
-/dev/mapper/vg_perpetuum-testing
-
-And leaving out mounted file systems is again as simple as
-
-grep -v '^/dev/'
-
-Have I missed something ?
-
-
-Now for the performance. I drop caches, then run each twice
-
-the ls_scan_targets function runs
-
-real	0m0.575s
-user	0m0.086s
-sys	0m0.179s
-
-real	0m0.241s
-user	0m0.088s
-sys	0m0.169s
-
-
-My one-line suggestion runs
-
-real	0m0.275s
-user	0m0.027s
-sys	0m0.047s
-
-real	0m0.069s
-user	0m0.015s
-sys	0m0.052s
-
-
-So the difference is significant, although I would not consider it
-meaningful since it's really low anyway, but some people complained so I
-guess someone cares and people do have different systems so...
-
-> 
-> :-)
-> 
-> We could have used awk to select the field, but that still doesn't
-> deal with the mountpoint column being empty when it is unmounted.  I
-> did briefly consider using lsblk -J, but I didn't want to add a
-> dependency on the jq[1] package (and I didn't even know if RHEL/Fedora
-> packages jq).
-> 
-> [1] https://packages.debian.org/stretch/jq
-
-Yes Fedora does have it, but I agree that adding this dependency is not
-ideal.
-
-Thanks!
--Lukas
-
-> 
-> Cheers,
-> 
-> 					- Ted
+--0CQslNEktQ03I0Tdzk8zN80nzu56XiWbQ--
