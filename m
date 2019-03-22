@@ -2,79 +2,103 @@ Return-Path: <SRS0=JWMb=RZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.7 required=3.0 tests=FROM_LOCAL_HEX,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,
-	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8B08C43381
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Mar 2019 21:28:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 655DAC43381
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Mar 2019 22:02:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 800E321900
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Mar 2019 21:28:07 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 39A442190A
+	for <linux-ext4@archiver.kernel.org>; Fri, 22 Mar 2019 22:02:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727307AbfCVV2C (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Mar 2019 17:28:02 -0400
-Received: from mail-it1-f200.google.com ([209.85.166.200]:33306 "EHLO
-        mail-it1-f200.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726014AbfCVV2C (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2019 17:28:02 -0400
-Received: by mail-it1-f200.google.com with SMTP id a184so4004513itc.0
-        for <linux-ext4@vger.kernel.org>; Fri, 22 Mar 2019 14:28:01 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:date:in-reply-to:message-id:subject
-         :from:to;
-        bh=INpl/ImInpVvjNg6VwEIcNPDm6BB2I+j6XhGbJu9JZM=;
-        b=lPIf0WGHWohjrxqoFsZ+XahK7agy560VZPj/4Qm+W4IBCeVclUyn901xi4S48GvZwh
-         WeHpL3wwju93MeHxKF9O4aK5VuWxbeVLPaq4y7QlPFIePR8ciUmRWi1n6cmLUUx8F0Nb
-         QoEPE/lpK2TAYJUxiB7wy+14ATGVBsu0S1JBv1OqgNna0zEvsFrjdAEx0NiZXR0JX5Dy
-         p4WdPwupMYSS6cTKQyzNb1cx/YHFDUkWemIfNQG69CGtHhnkBdpOCYLb/h3W84wQWPFL
-         aelFk9SmYoSGBpFJ6a2I6Ty5PYVey6Gm4Gc+WIsR6LPz9FHKU0imYeSVNk4AabiOag6R
-         lVQg==
-X-Gm-Message-State: APjAAAWoHO4PpGn9EoYpPmgKlNnFr7xGAAI6sjfeyJv6znV9IR92ENbu
-        Jigs7WA1kObxhNKTBjsqexevWRzD6Fp2pDqYiM1Ii3+uHEhj
-X-Google-Smtp-Source: APXvYqwVb9A5zyH076xjfKH6jANX5aTwiLOj7SbypYsinLvTB/jSN5NNa+XCnr57mt6sD2F849iSWjBJOYF/V7SU/hZ7lYJPkAms
+        id S1727685AbfCVWCz convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Mar 2019 18:02:55 -0400
+Received: from lithops.sigma-star.at ([195.201.40.130]:35062 "EHLO
+        lithops.sigma-star.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1727440AbfCVWCz (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2019 18:02:55 -0400
+Received: from localhost (localhost [127.0.0.1])
+        by lithops.sigma-star.at (Postfix) with ESMTP id 22AD4608A395;
+        Fri, 22 Mar 2019 23:02:52 +0100 (CET)
+Received: from lithops.sigma-star.at ([127.0.0.1])
+        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
+        with ESMTP id bxgElapSClzg; Fri, 22 Mar 2019 23:02:51 +0100 (CET)
+Received: from localhost (localhost [127.0.0.1])
+        by lithops.sigma-star.at (Postfix) with ESMTP id B507760F6D61;
+        Fri, 22 Mar 2019 23:02:51 +0100 (CET)
+Received: from lithops.sigma-star.at ([127.0.0.1])
+        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
+        with ESMTP id SkcTucd3wTxy; Fri, 22 Mar 2019 23:02:51 +0100 (CET)
+Received: from blindfold.localnet (213-47-184-186.cable.dynamic.surfer.at [213.47.184.186])
+        by lithops.sigma-star.at (Postfix) with ESMTPSA id 1D02D608A395;
+        Fri, 22 Mar 2019 23:02:51 +0100 (CET)
+From:   Richard Weinberger <richard@nod.at>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org, Satya Tangirala <satyat@google.com>,
+        "open list:ABI/API" <linux-api@vger.kernel.org>,
+        linux-f2fs-devel@lists.sourceforge.net, keyrings@vger.kernel.org,
+        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, Paul Crowley <paulcrowley@google.com>
+Subject: Re: [RFC PATCH v3 07/18] fscrypt: add FS_IOC_ADD_ENCRYPTION_KEY ioctl
+Date:   Fri, 22 Mar 2019 23:02:49 +0100
+Message-ID: <4190811.5ckf3pJJgb@blindfold>
+In-Reply-To: <20190318230830.GA40545@gmail.com>
+References: <20190220065249.32099-1-ebiggers@kernel.org> <20190221184203.GB140206@gmail.com> <20190318230830.GA40545@gmail.com>
 MIME-Version: 1.0
-X-Received: by 2002:a02:f8b:: with SMTP id 11mr9069901jao.53.1553290081395;
- Fri, 22 Mar 2019 14:28:01 -0700 (PDT)
-Date:   Fri, 22 Mar 2019 14:28:01 -0700
-In-Reply-To: <000000000000cd1e2205785951c2@google.com>
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <00000000000088ea3e0584b5872d@google.com>
-Subject: Re: possible deadlock in __generic_file_fsync
-From:   syzbot <syzbot+5cd33f0e6abe2bb3e397@syzkaller.appspotmail.com>
-To:     adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        syzkaller-bugs@googlegroups.com, torvalds@linux-foundation.org,
-        tytso@mit.edu, viro@zeniv.linux.org.uk
-Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+Content-Transfer-Encoding: 8BIT
+Content-Type: text/plain; charset="iso-8859-1"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-syzbot has bisected this bug to:
+Ericm
 
-commit 9022ada8ab6f1f1a932a3c93815061042e6548a5
-Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Fri Aug 24 20:16:36 2018 +0000
+Am Dienstag, 19. März 2019, 00:08:31 CET schrieb Eric Biggers:
+> I tried using sb->s_bdi->name, but it's still "ubifs" for all UBIFS filesystems.
 
-     Merge branch 'for-4.19' of  
-git://git.kernel.org/pub/scm/linux/kernel/git/tj/wq
+hmpf.
+ 
+> Perhaps there's a way you can make ->s_id for UBIFS unique?  There are already
+> existing places that log ->s_id, so perhaps you should do it anyway regardless
+> of this patchset?
 
-bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=15330437200000
-start commit:   270b77a0 Merge tag 'drm-fixes-2018-10-20-1' of git://anong..
-git tree:       upstream
-final crash:    https://syzkaller.appspot.com/x/report.txt?x=17330437200000
-console output: https://syzkaller.appspot.com/x/log.txt?x=13330437200000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=b3f55cb3dfcc6c33
-dashboard link: https://syzkaller.appspot.com/bug?extid=5cd33f0e6abe2bb3e397
-syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1436fc45400000
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=11058e2d400000
+Yes, let me implement that.
+ubifs does:
+super_setup_bdi_name(sb, "ubifs_%d_%d", c->vi.ubi_num, c->vi.vol_id);
 
-Reported-by: syzbot+5cd33f0e6abe2bb3e397@syzkaller.appspotmail.com
-Fixes: 9022ada8ab6f ("Merge branch 'for-4.19' of  
-git://git.kernel.org/pub/scm/linux/kernel/git/tj/wq")
+So, I try to set ->s_id also to ubifs_%d_%d.
 
-For information about bisection process see: https://goo.gl/tpsmEJ#bisection
+> > > 
+> > > > Note that the keyring name isn't particularly important, since the ioctls will
+> > > > work regardless.  But we might as well choose something logical, since the
+> > > > keyring name will still show up in /proc/keys.
+> > > 
+> > > I'm not done with reviewing your patches, but will it be possible to use keyctl?
+> > > For the a unique name is helpful. :)
+> > > 
+> > 
+> > Not for adding keys, removing keys, or getting a key's status -- those are what
+> > the ioctls are for.
+> > 
+> > See e.g. the discussion in patch 7 ("fscrypt: add FS_IOC_ADD_ENCRYPTION_KEY
+> > ioctl") for why the keyrings syscalls are a poor fit for fscrypt.
+> > 
+> 
+> Anyway, perhaps I should reconsider whether fscrypt should even use the keyrings
+> subsystem at all, even just "internally", as its quirks still leak out a bit.
+> I'd prefer a nice clean API without any quirks like having to name the keyrings
+> and assign SELinux labels to the keys just to make the keyrings subsystem happy.
+
+IMHO the keys subsytem is a good fit. For example for stuff like this one:
+https://www.mail-archive.com/linux-kernel@vger.kernel.org/msg1945778.html
+
+We use UBIFS on many embedded systems with crypto hardware.
+
+Thanks,
+//richard
+
+
