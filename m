@@ -1,104 +1,85 @@
-Return-Path: <SRS0=JWMb=RZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=oERZ=R2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 655DAC43381
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Mar 2019 22:02:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BEBB4C43381
+	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:01:59 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 39A442190A
-	for <linux-ext4@archiver.kernel.org>; Fri, 22 Mar 2019 22:02:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8D6DB213F2
+	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:01:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727685AbfCVWCz convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Mar 2019 18:02:55 -0400
-Received: from lithops.sigma-star.at ([195.201.40.130]:35062 "EHLO
-        lithops.sigma-star.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727440AbfCVWCz (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2019 18:02:55 -0400
-Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 22AD4608A395;
-        Fri, 22 Mar 2019 23:02:52 +0100 (CET)
-Received: from lithops.sigma-star.at ([127.0.0.1])
-        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id bxgElapSClzg; Fri, 22 Mar 2019 23:02:51 +0100 (CET)
-Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id B507760F6D61;
-        Fri, 22 Mar 2019 23:02:51 +0100 (CET)
-Received: from lithops.sigma-star.at ([127.0.0.1])
-        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id SkcTucd3wTxy; Fri, 22 Mar 2019 23:02:51 +0100 (CET)
-Received: from blindfold.localnet (213-47-184-186.cable.dynamic.surfer.at [213.47.184.186])
-        by lithops.sigma-star.at (Postfix) with ESMTPSA id 1D02D608A395;
-        Fri, 22 Mar 2019 23:02:51 +0100 (CET)
-From:   Richard Weinberger <richard@nod.at>
-To:     Eric Biggers <ebiggers@kernel.org>
-Cc:     linux-fscrypt@vger.kernel.org, Satya Tangirala <satyat@google.com>,
-        "open list:ABI/API" <linux-api@vger.kernel.org>,
-        linux-f2fs-devel@lists.sourceforge.net, keyrings@vger.kernel.org,
-        linux-mtd@lists.infradead.org, linux-crypto@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Paul Crowley <paulcrowley@google.com>
-Subject: Re: [RFC PATCH v3 07/18] fscrypt: add FS_IOC_ADD_ENCRYPTION_KEY ioctl
-Date:   Fri, 22 Mar 2019 23:02:49 +0100
-Message-ID: <4190811.5ckf3pJJgb@blindfold>
-In-Reply-To: <20190318230830.GA40545@gmail.com>
-References: <20190220065249.32099-1-ebiggers@kernel.org> <20190221184203.GB140206@gmail.com> <20190318230830.GA40545@gmail.com>
+        id S1726916AbfCVX5y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Mar 2019 19:57:54 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:42357 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1725999AbfCVX5y (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2019 19:57:54 -0400
+Received: from callcc.thunk.org (180.sub-174-220-8.myvzw.com [174.220.8.180])
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2MNv8Zd020502
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 22 Mar 2019 19:57:10 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 54854421A01; Fri, 22 Mar 2019 19:57:08 -0400 (EDT)
+Date:   Fri, 22 Mar 2019 19:57:08 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Randy Dunlap <rdunlap@infradead.org>
+Cc:     Gabriel Krisman Bertazi <krisman@collabora.com>,
+        linux-ext4@vger.kernel.org, sfrench@samba.org,
+        darrick.wong@oracle.com, jlayton@kernel.org, bfields@fieldses.org,
+        paulus@samba.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH RFC v6 00/11] Ext4 Encoding and Case-insensitive support
+Message-ID: <20190322235708.GA5675@mit.edu>
+References: <20190318202745.5200-1-krisman@collabora.com>
+ <05dfd6a7-49f0-81a7-cd68-ff9f07182461@infradead.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8BIT
-Content-Type: text/plain; charset="iso-8859-1"
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <05dfd6a7-49f0-81a7-cd68-ff9f07182461@infradead.org>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Ericm
-
-Am Dienstag, 19. März 2019, 00:08:31 CET schrieb Eric Biggers:
-> I tried using sb->s_bdi->name, but it's still "ubifs" for all UBIFS filesystems.
-
-hmpf.
- 
-> Perhaps there's a way you can make ->s_id for UBIFS unique?  There are already
-> existing places that log ->s_id, so perhaps you should do it anyway regardless
-> of this patchset?
-
-Yes, let me implement that.
-ubifs does:
-super_setup_bdi_name(sb, "ubifs_%d_%d", c->vi.ubi_num, c->vi.vol_id);
-
-So, I try to set ->s_id also to ubifs_%d_%d.
-
-> > > 
-> > > > Note that the keyring name isn't particularly important, since the ioctls will
-> > > > work regardless.  But we might as well choose something logical, since the
-> > > > keyring name will still show up in /proc/keys.
-> > > 
-> > > I'm not done with reviewing your patches, but will it be possible to use keyctl?
-> > > For the a unique name is helpful. :)
-> > > 
-> > 
-> > Not for adding keys, removing keys, or getting a key's status -- those are what
-> > the ioctls are for.
-> > 
-> > See e.g. the discussion in patch 7 ("fscrypt: add FS_IOC_ADD_ENCRYPTION_KEY
-> > ioctl") for why the keyrings syscalls are a poor fit for fscrypt.
-> > 
+On Thu, Mar 21, 2019 at 03:30:35PM -0700, Randy Dunlap wrote:
+> I briefly scanned but did not look terribly closely:
 > 
-> Anyway, perhaps I should reconsider whether fscrypt should even use the keyrings
-> subsystem at all, even just "internally", as its quirks still leak out a bit.
-> I'd prefer a nice clean API without any quirks like having to name the keyrings
-> and assign SELinux labels to the keys just to make the keyrings subsystem happy.
+> Does this patch series ignore ext3 filesystems that are being handled
+> by the ext4fs code?
 
-IMHO the keys subsytem is a good fit. For example for stuff like this one:
-https://www.mail-archive.com/linux-kernel@vger.kernel.org/msg1945778.html
+Like all ext2/3/4 features, new functionality is gated by a feature
+bit in the compat, rocompat, or incompat bitmasks.  A file system
+implementation (e.g., in the Linux kernel, NetBSD/FreeBSD, Grub,
+et. al) which sees a feature bit it doesn't recognize in an rocompat
+bitmask will only allow the file system to be mounted read-only.  If
+it sees a bit in the incompat bitmask it doesn't recognize, it won't
+allow the file system to be mounted at all.  The kernel doesn't care
+if it finds a bit it doesn't recognize in the compat bitmask; however,
+e2fsck will not touch a file system that has a compat bit which it
+doesn't know how to deal with.
 
-We use UBIFS on many embedded systems with crypto hardware.
+Strictly speaking, there is no such thing as an "ext3 file system".
+There are just file systems with a set of feature bits set.  And the
+set of features supported by NetBSD or the Grub installer may not fall
+neatly into the "ext2", "ext3", or "ext4" buckets. 
 
-Thanks,
-//richard
+If by "ext3 file system" you mean a file system with those featire
+bits set by mke2fs -t ext3 by default (e.g., not overridden by the -O
+option, or by the system administrator editing /etc/mke2fs.conf), then
+yes, this patch series will not result in any substantive change for
+"ext3 file systems", since it by default "mke2fs -t ext3" or
+"mkfs.ext3" will not enable the feature flag that turns on
+case-insensitive support.
 
+For more information, see the ext4 and mke2fs.conf manual pages.
+
+Cheers,
+
+					- Ted
 
