@@ -2,84 +2,174 @@ Return-Path: <SRS0=oERZ=R2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BEBB4C43381
-	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:01:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AB011C43381
+	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:35:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8D6DB213F2
-	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:01:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 68FC92192B
+	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:35:41 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="5Mnk398Z"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726916AbfCVX5y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Mar 2019 19:57:54 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:42357 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1725999AbfCVX5y (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2019 19:57:54 -0400
-Received: from callcc.thunk.org (180.sub-174-220-8.myvzw.com [174.220.8.180])
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2MNv8Zd020502
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Fri, 22 Mar 2019 19:57:10 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id 54854421A01; Fri, 22 Mar 2019 19:57:08 -0400 (EDT)
-Date:   Fri, 22 Mar 2019 19:57:08 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Randy Dunlap <rdunlap@infradead.org>
-Cc:     Gabriel Krisman Bertazi <krisman@collabora.com>,
-        linux-ext4@vger.kernel.org, sfrench@samba.org,
-        darrick.wong@oracle.com, jlayton@kernel.org, bfields@fieldses.org,
-        paulus@samba.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH RFC v6 00/11] Ext4 Encoding and Case-insensitive support
-Message-ID: <20190322235708.GA5675@mit.edu>
-References: <20190318202745.5200-1-krisman@collabora.com>
- <05dfd6a7-49f0-81a7-cd68-ff9f07182461@infradead.org>
+        id S1727267AbfCWAfk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Mar 2019 20:35:40 -0400
+Received: from aserp2130.oracle.com ([141.146.126.79]:52086 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726589AbfCWAfk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2019 20:35:40 -0400
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x2N0YpBU042596;
+        Sat, 23 Mar 2019 00:35:38 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : mime-version : content-type; s=corp-2018-07-02;
+ bh=IaryWyFf+MLnvXtXMqYkpY9bSdHkbtFhdBc3gu+208I=;
+ b=5Mnk398ZM/PDbyZv9+SXGn81ySAWcd+1B9d+SBkouPSTP4hkyekFPtpg+GGTbJ8zgz+s
+ zYbTNLHIavfiBRKerH/S/z2Xr1j8J1NQgy+Gf8h71/SlwCwt0OFQynVFtNNXPy37jrjI
+ DJrJbpD9rG20E3UmgORzUolWLGufTM+rZhM2keI3PqXdCqOTNSzuXw4w04cDIpGPbIzY
+ s31wjoDPzS/rjG/dQ8FWOLTGlmmho7x5iIxxEQDGVTAmZdOKM+Og7q6IeZEfqhFBptWW
+ eP8+calZ1J1ufkOl628ebhWDnuy5ClLnoIZt/VjD4YSg4rxhEcxnAn5vM08v5Xn1ML8d ow== 
+Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
+        by aserp2130.oracle.com with ESMTP id 2rdaae009g-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 23 Mar 2019 00:35:37 +0000
+Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
+        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x2N0ZaL7017362
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Sat, 23 Mar 2019 00:35:36 GMT
+Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x2N0ZalO014261;
+        Sat, 23 Mar 2019 00:35:36 GMT
+Received: from localhost (/67.169.218.210)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Fri, 22 Mar 2019 17:35:36 -0700
+Date:   Fri, 22 Mar 2019 17:35:32 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
+To:     Eryu Guan <guaneryu@gmail.com>
+Cc:     fstests <fstests@vger.kernel.org>, xfs <linux-xfs@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>
+Subject: [PATCH] generic: prohibit fstrim on journalled filesystems with
+ norecovery
+Message-ID: <20190323003532.GB1180@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <05dfd6a7-49f0-81a7-cd68-ff9f07182461@infradead.org>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9203 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=2 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1903230002
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Mar 21, 2019 at 03:30:35PM -0700, Randy Dunlap wrote:
-> I briefly scanned but did not look terribly closely:
-> 
-> Does this patch series ignore ext3 filesystems that are being handled
-> by the ext4fs code?
+From: Darrick J. Wong <darrick.wong@oracle.com>
 
-Like all ext2/3/4 features, new functionality is gated by a feature
-bit in the compat, rocompat, or incompat bitmasks.  A file system
-implementation (e.g., in the Linux kernel, NetBSD/FreeBSD, Grub,
-et. al) which sees a feature bit it doesn't recognize in an rocompat
-bitmask will only allow the file system to be mounted read-only.  If
-it sees a bit in the incompat bitmask it doesn't recognize, it won't
-allow the file system to be mounted at all.  The kernel doesn't care
-if it finds a bit it doesn't recognize in the compat bitmask; however,
-e2fsck will not touch a file system that has a compat bit which it
-doesn't know how to deal with.
+This test makes sure that we can't use stale unrecovered fs metadata to
+drive a DISCARD festival on a disk and thereby destroy user data by
+accident.
 
-Strictly speaking, there is no such thing as an "ext3 file system".
-There are just file systems with a set of feature bits set.  And the
-set of features supported by NetBSD or the Grub installer may not fall
-neatly into the "ext2", "ext3", or "ext4" buckets. 
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+---
+ tests/generic/714     |   61 +++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/714.out |    4 +++
+ tests/generic/group   |    1 +
+ 3 files changed, 66 insertions(+)
+ create mode 100755 tests/generic/714
+ create mode 100644 tests/generic/714.out
 
-If by "ext3 file system" you mean a file system with those featire
-bits set by mke2fs -t ext3 by default (e.g., not overridden by the -O
-option, or by the system administrator editing /etc/mke2fs.conf), then
-yes, this patch series will not result in any substantive change for
-"ext3 file systems", since it by default "mke2fs -t ext3" or
-"mkfs.ext3" will not enable the feature flag that turns on
-case-insensitive support.
-
-For more information, see the ext4 and mke2fs.conf manual pages.
-
-Cheers,
-
-					- Ted
-
+diff --git a/tests/generic/714 b/tests/generic/714
+new file mode 100755
+index 00000000..1849a5e9
+--- /dev/null
++++ b/tests/generic/714
+@@ -0,0 +1,61 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0+
++# Copyright (c) 2019, Oracle and/or its affiliates.  All Rights Reserved.
++#
++# FS QA Test No. 714
++#
++# Ensure that we can't call fstrim on filesystems mounted norecovery, because
++# FSTRIM implementations use free space metadata to drive the discard requests
++# and we told the filesystem not to make sure the metadata are up to date.
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1    # failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++    cd /
++    rm -rf $tmp.*
++}
++
++# get standard environment, filters and checks
++. ./common/rc
++. ./common/filter
++
++# real QA test starts here
++_supported_os Linux
++_require_scratch
++_require_fstrim
++
++rm -f $seqres.full
++
++_scratch_mkfs > $seqres.full 2>&1
++_require_metadata_journaling $SCRATCH_DEV
++
++echo "fstrim on regular mount"
++_scratch_mount >> $seqres.full 2>&1
++$FSTRIM_PROG -v $SCRATCH_MNT >> $seqres.full 2>&1 || \
++	_notrun "FSTRIM not supported"
++_scratch_unmount
++
++echo "fstrim on ro mount"
++_scratch_mount -o ro >> $seqres.full 2>&1
++$FSTRIM_PROG -v $SCRATCH_MNT >> $seqres.full 2>&1
++_scratch_unmount
++
++echo "fstrim on ro mount with no log replay"
++norecovery="norecovery"
++test $FSTYP = "btrfs" && norecovery=nologreplay
++_scratch_mount -o ro,$norecovery >> $seqres.full 2>&1
++$FSTRIM_PROG -v $SCRATCH_MNT >> $seqres.full 2>&1 && \
++	echo "fstrim with unrecovered metadata just ate your filesystem"
++_scratch_unmount
++
++# success, all done
++status=0
++exit
+diff --git a/tests/generic/714.out b/tests/generic/714.out
+new file mode 100644
+index 00000000..1158a2ff
+--- /dev/null
++++ b/tests/generic/714.out
+@@ -0,0 +1,4 @@
++QA output created by 714
++fstrim on regular mount
++fstrim on ro mount
++fstrim on ro mount with no log replay
+diff --git a/tests/generic/group b/tests/generic/group
+index 2e4341fb..c2046293 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -538,6 +538,7 @@
+ 533 auto quick attr
+ 534 auto quick log
+ 535 auto quick log
++714 auto trim
+ 940 auto quick clone punch
+ 941 auto quick clone punch
+ 942 auto quick clone punch
