@@ -2,103 +2,119 @@ Return-Path: <SRS0=oERZ=R2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-13.6 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	MENTIONS_GIT_HOSTING,SPF_PASS,URIBL_BLOCKED,USER_IN_DEF_DKIM_WL
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E99E3C43381
-	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:38:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 905F2C43381
+	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 07:16:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B49AD2192B
-	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:38:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 591AA218B0
+	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 07:16:53 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="QlkA6a1/"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="tuYtwl0s"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727611AbfCWAiW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Mar 2019 20:38:22 -0400
-Received: from userp2120.oracle.com ([156.151.31.85]:32804 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726589AbfCWAiV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2019 20:38:21 -0400
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x2N0ZduM016304;
-        Sat, 23 Mar 2019 00:38:18 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : references : mime-version : content-type :
- in-reply-to; s=corp-2018-07-02;
- bh=WSeohjimBCPtZgWD93uZs9LUbtApfDJqmU1I9KWKYEg=;
- b=QlkA6a1/JzzPKajk7vm283n+VoW6kk0YiQKind/s3GM4K0lM4vaneT2S6Z2Zms9I4oBx
- nuIfH8jfpiPu3msRFlNjCk05ad2gz9bMrzxbtswzpVqRtb8zKfYVOsEQbSU02T6XW8OF
- D322w0S/U5vYC5Nt6KEzZ+6nuAzG0UbAHrJ/UcJFY7D0zGwmbRA01x6QoRjD0ZY9a0P6
- g0vvg/1j+VALrF+U57aM4DWWrpjW5Aruj/Wf4/zKUdhYUXHvtHmN5sLpA8dMa/+d8twE
- mPFhEn/niQkwVkSvD9DvAbJeJ75ne4DGPNrqI90kz4P2oeOxZSyeCL3VnD0AoZnuyXXD 2w== 
-Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by userp2120.oracle.com with ESMTP id 2r8sss0gkb-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 23 Mar 2019 00:38:18 +0000
-Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x2N0cHI3030540
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 23 Mar 2019 00:38:17 GMT
-Received: from abhmp0008.oracle.com (abhmp0008.oracle.com [141.146.116.14])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x2N0cHdT019620;
-        Sat, 23 Mar 2019 00:38:17 GMT
-Received: from localhost (/67.169.218.210)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 22 Mar 2019 17:38:17 -0700
-Date:   Fri, 22 Mar 2019 17:38:13 -0700
-From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>
-Cc:     Eryu Guan <guaneryu@gmail.com>, fstests <fstests@vger.kernel.org>,
-        xfs <linux-xfs@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>
-Subject: [PATCH] ext4: prohibit fstrim in norecovery mode
-Message-ID: <20190323003813.GR1183@magnolia>
-References: <20190323003532.GB1180@magnolia>
+        id S1726453AbfCWHQt (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 23 Mar 2019 03:16:49 -0400
+Received: from mail-it1-f193.google.com ([209.85.166.193]:52414 "EHLO
+        mail-it1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726256AbfCWHQt (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Mar 2019 03:16:49 -0400
+Received: by mail-it1-f193.google.com with SMTP id g17so6878922ita.2
+        for <linux-ext4@vger.kernel.org>; Sat, 23 Mar 2019 00:16:48 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=TkFN6mZO3jzTkDHV/Hmyrf49PT5DaBxkKPm0fJ0JB7Y=;
+        b=tuYtwl0sHaOtGRyid88R8OtvWqz5AG2NwDMia7jT+e90eHXqDasnpyMefZi2K/GvPT
+         U3on/kdx21QSFCm9IPSlvNpcSjtK8tx16vJ9ETOe9kGwfzM8dgj4KEa5QGWzR6fDe2Hn
+         CTCLi3dqKZjeM2+LkTvCYoYxuGAAXc/J5EaupsrUj8NjZyS5WGNtQbhDsXuXLWHXyKMR
+         TpkNS+GdHeKvgfzrJPyIV7S6gWcvbHtf1s3SRVrAEuAHBwWPLTa2EK33+iLp4pFIOIT3
+         pgmJC3U1wTUXK77iRBp0EH5YVV721kW33C3zP0zreR/SgUTgd6QGmyS5pS0VGdQ7P8aj
+         iEmw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=TkFN6mZO3jzTkDHV/Hmyrf49PT5DaBxkKPm0fJ0JB7Y=;
+        b=KwoJeheqzbp5vNxkxxaorvfO9uNXFfeA1s1iZHyPYTxcmJLLqRYMqj2R3pxMJYH3y3
+         gbPde4KulvVEiMQImI26dLu5oYcjMkyiBcTl2a9J2BHWwqcHeunzdbthBIYZ7Vo6d+hO
+         MJcFda1lV1XZERDQp6c8sBLKnYSMhnj8E7MrWtvg0MhsVl2SeD2AouzTOWZgQLzBEm7V
+         Zf/zmkdwA/KyE8o72KVQcycHjbijVh8aYZs9hWaqNcvEws/Cpf3UOQiWckr7NHCivvPa
+         ZVzCsiAP5wiSuA/W6ogc4yyidcGOYj3zyL4k4kLDD8ZG/rOkazHBmHCJTODHfh91LRmm
+         hFCw==
+X-Gm-Message-State: APjAAAVdnXANj56Z5Qgzx/lFAfV4ZU9gGmN+Kap9UlFkwyhGlLMocdVz
+        bQ9nF+M1xr+a+xAUWp/uEPjt6tTgaJVIYVGk+4vSMw==
+X-Google-Smtp-Source: APXvYqwu0jZl1WMHUfwjCc8eNXQNMtRUY6cTb9zGogIf9gHJFZeSly1uN/MHdmpZevTU/Dnp0Zw/aw7coEIvqtnVR94=
+X-Received: by 2002:a24:3281:: with SMTP id j123mr3898152ita.166.1553325407533;
+ Sat, 23 Mar 2019 00:16:47 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190323003532.GB1180@magnolia>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9203 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=2 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1903230002
+References: <000000000000cd1e2205785951c2@google.com> <00000000000088ea3e0584b5872d@google.com>
+In-Reply-To: <00000000000088ea3e0584b5872d@google.com>
+From:   Dmitry Vyukov <dvyukov@google.com>
+Date:   Sat, 23 Mar 2019 08:16:36 +0100
+Message-ID: <CACT4Y+bBPvfnU4T=4ojw67FP0GBC49L2kKV+HQYxsV-DwT2b7w@mail.gmail.com>
+Subject: Re: possible deadlock in __generic_file_fsync
+To:     syzbot <syzbot+5cd33f0e6abe2bb3e397@syzkaller.appspotmail.com>
+Cc:     Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        syzkaller-bugs <syzkaller-bugs@googlegroups.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, Al Viro <viro@zeniv.linux.org.uk>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Darrick J. Wong <darrick.wong@oracle.com>
+On Fri, Mar 22, 2019 at 10:28 PM syzbot
+<syzbot+5cd33f0e6abe2bb3e397@syzkaller.appspotmail.com> wrote:
+>
+> syzbot has bisected this bug to:
+>
+> commit 9022ada8ab6f1f1a932a3c93815061042e6548a5
+> Author: Linus Torvalds <torvalds@linux-foundation.org>
+> Date:   Fri Aug 24 20:16:36 2018 +0000
+>
+>      Merge branch 'for-4.19' of
+> git://git.kernel.org/pub/scm/linux/kernel/git/tj/wq
+>
+> bisection log:  https://syzkaller.appspot.com/x/bisect.txt?x=15330437200000
+> start commit:   270b77a0 Merge tag 'drm-fixes-2018-10-20-1' of git://anong..
+> git tree:       upstream
+> final crash:    https://syzkaller.appspot.com/x/report.txt?x=17330437200000
+> console output: https://syzkaller.appspot.com/x/log.txt?x=13330437200000
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=b3f55cb3dfcc6c33
+> dashboard link: https://syzkaller.appspot.com/bug?extid=5cd33f0e6abe2bb3e397
+> syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1436fc45400000
+> C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=11058e2d400000
+>
+> Reported-by: syzbot+5cd33f0e6abe2bb3e397@syzkaller.appspotmail.com
+> Fixes: 9022ada8ab6f ("Merge branch 'for-4.19' of
+> git://git.kernel.org/pub/scm/linux/kernel/git/tj/wq")
+>
+> For information about bisection process see: https://goo.gl/tpsmEJ#bisection
 
-The ext4 fstrim implementation uses the block bitmaps to find free space
-that can be discarded.  If we haven't replayed the journal, the bitmaps
-will be stale and we absolutely *cannot* use stale metadata to zap the
-underlying storage.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/ext4/ioctl.c |    7 +++++++
- 1 file changed, 7 insertions(+)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 3c4f8bb59f8a..bab3da4f1e0d 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -1000,6 +1000,13 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		if (!blk_queue_discard(q))
- 			return -EOPNOTSUPP;
- 
-+		/*
-+		 * We haven't replayed the journal, so we cannot use our
-+		 * block-bitmap-guided storage zapping commands.
-+		 */
-+		if (test_opt(sb, NOLOAD) && ext4_has_feature_journal(sb))
-+			return -EROFS;
-+
- 		if (copy_from_user(&range, (struct fstrim_range __user *)arg,
- 		    sizeof(range)))
- 			return -EFAULT;
+This is a lockdep-detected bug, but it is reproduced with very low probability:
+
+testing commit 270b77a0f30e7bc61a9081b86d74dbb62fa6a69d with gcc (GCC) 8.1.0
+run #0: crashed: possible deadlock in __generic_file_fsync
+run #1: OK
+run #2: OK
+run #3: OK
+run #4: OK
+run #5: OK
+run #6: OK
+run #7: OK
+run #8: OK
+run #9: OK
+
+I would expect that for lockdep it's only enough to trigger each path
+involved in the deadlock once. Why is it so hard to reproduce then? Is
+it something to improve in lockdep?
