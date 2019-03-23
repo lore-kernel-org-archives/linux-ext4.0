@@ -7,52 +7,55 @@ X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 52DADC43381
-	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:37:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E99E3C43381
+	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:38:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 202D12192B
-	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:37:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B49AD2192B
+	for <linux-ext4@archiver.kernel.org>; Sat, 23 Mar 2019 00:38:22 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="OVV57YTT"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="QlkA6a1/"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727599AbfCWAh1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 22 Mar 2019 20:37:27 -0400
-Received: from userp2130.oracle.com ([156.151.31.86]:52752 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726589AbfCWAh1 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2019 20:37:27 -0400
-Received: from pps.filterd (userp2130.oracle.com [127.0.0.1])
-        by userp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x2N0YSBH008994;
-        Sat, 23 Mar 2019 00:37:25 GMT
+        id S1727611AbfCWAiW (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 22 Mar 2019 20:38:22 -0400
+Received: from userp2120.oracle.com ([156.151.31.85]:32804 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726589AbfCWAiV (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Mar 2019 20:38:21 -0400
+Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
+        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x2N0ZduM016304;
+        Sat, 23 Mar 2019 00:38:18 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : mime-version : content-type : in-reply-to;
- s=corp-2018-07-02; bh=AqFC1IkFJA/njrQDUkjWsExuU7SgnafpNSL2bHQV66Y=;
- b=OVV57YTTcGBMWjTnU+NieOTDgzJ4P6mCn1KNsQw/40I3h1ZxIqB4uooL44OEczBzpbTZ
- nzluY5Mk+5Z0Urt3BnrUyrP0kGS9D6cll5Ti6SoQJR0cNt5mJ/0abNPRRz4HLVLfRr9X
- iKFfshrNnD/NlWNwFBfr3MEmwMLFD7FTIzDrPeezHuvjXTRMJ4jgKO9X2QSbJFZwz4uF
- Zdn7gvhcHaV7SFoM1Hbhubw+MZsMTQ8f/tWEj9HnewNkLeAzqkAqtg/UxG20Q2Od9QCf
- yOT8LlMz9wtGdC1qr8+jFDBdUvjreJSwhCl8U6VqJ1JTRdsNhGX941aUEwqc2DlXAYaV pw== 
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2018-07-02;
+ bh=WSeohjimBCPtZgWD93uZs9LUbtApfDJqmU1I9KWKYEg=;
+ b=QlkA6a1/JzzPKajk7vm283n+VoW6kk0YiQKind/s3GM4K0lM4vaneT2S6Z2Zms9I4oBx
+ nuIfH8jfpiPu3msRFlNjCk05ad2gz9bMrzxbtswzpVqRtb8zKfYVOsEQbSU02T6XW8OF
+ D322w0S/U5vYC5Nt6KEzZ+6nuAzG0UbAHrJ/UcJFY7D0zGwmbRA01x6QoRjD0ZY9a0P6
+ g0vvg/1j+VALrF+U57aM4DWWrpjW5Aruj/Wf4/zKUdhYUXHvtHmN5sLpA8dMa/+d8twE
+ mPFhEn/niQkwVkSvD9DvAbJeJ75ne4DGPNrqI90kz4P2oeOxZSyeCL3VnD0AoZnuyXXD 2w== 
 Received: from aserv0021.oracle.com (aserv0021.oracle.com [141.146.126.233])
-        by userp2130.oracle.com with ESMTP id 2r8rjv8n18-1
+        by userp2120.oracle.com with ESMTP id 2r8sss0gkb-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 23 Mar 2019 00:37:25 +0000
+        Sat, 23 Mar 2019 00:38:18 +0000
 Received: from aserv0121.oracle.com (aserv0121.oracle.com [141.146.126.235])
-        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x2N0bODd029108
+        by aserv0021.oracle.com (8.14.4/8.14.4) with ESMTP id x2N0cHI3030540
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sat, 23 Mar 2019 00:37:24 GMT
-Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
-        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x2N0bOOm019233;
-        Sat, 23 Mar 2019 00:37:24 GMT
+        Sat, 23 Mar 2019 00:38:17 GMT
+Received: from abhmp0008.oracle.com (abhmp0008.oracle.com [141.146.116.14])
+        by aserv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x2N0cHdT019620;
+        Sat, 23 Mar 2019 00:38:17 GMT
 Received: from localhost (/67.169.218.210)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Fri, 22 Mar 2019 17:37:24 -0700
-Date:   Fri, 22 Mar 2019 17:37:20 -0700
+        with ESMTP ; Fri, 22 Mar 2019 17:38:17 -0700
+Date:   Fri, 22 Mar 2019 17:38:13 -0700
 From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     xfs <linux-xfs@vger.kernel.org>
-Cc:     fstests <fstests@vger.kernel.org>, Eryu Guan <guaneryu@gmail.com>,
+To:     "Theodore Ts'o" <tytso@mit.edu>
+Cc:     Eryu Guan <guaneryu@gmail.com>, fstests <fstests@vger.kernel.org>,
+        xfs <linux-xfs@vger.kernel.org>,
         linux-ext4 <linux-ext4@vger.kernel.org>
-Subject: [PATCH] xfs: prohibit fstrim in norecovery mode
-Message-ID: <20190323003720.GQ1183@magnolia>
+Subject: [PATCH] ext4: prohibit fstrim in norecovery mode
+Message-ID: <20190323003813.GR1183@magnolia>
+References: <20190323003532.GB1180@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
@@ -71,32 +74,31 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Darrick J. Wong <darrick.wong@oracle.com>
 
-The xfs fstrim implementation uses the free space btrees to find free
-space that can be discarded.  If we haven't recovered the log, the bnobt
+The ext4 fstrim implementation uses the block bitmaps to find free space
+that can be discarded.  If we haven't replayed the journal, the bitmaps
 will be stale and we absolutely *cannot* use stale metadata to zap the
 underlying storage.
 
 Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 ---
- fs/xfs/xfs_discard.c |    8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/ext4/ioctl.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/fs/xfs/xfs_discard.c b/fs/xfs/xfs_discard.c
-index 93f07edafd81..9ee2a7d02e70 100644
---- a/fs/xfs/xfs_discard.c
-+++ b/fs/xfs/xfs_discard.c
-@@ -161,6 +161,14 @@ xfs_ioc_trim(
- 		return -EPERM;
- 	if (!blk_queue_discard(q))
- 		return -EOPNOTSUPP;
-+
-+	/*
-+	 * We haven't recovered the log, so we cannot use our bnobt-guided
-+	 * storage zapping commands.
-+	 */
-+	if (mp->m_flags & XFS_MOUNT_NORECOVERY)
-+		return -EROFS;
-+
- 	if (copy_from_user(&range, urange, sizeof(range)))
- 		return -EFAULT;
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 3c4f8bb59f8a..bab3da4f1e0d 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -1000,6 +1000,13 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 		if (!blk_queue_discard(q))
+ 			return -EOPNOTSUPP;
  
++		/*
++		 * We haven't replayed the journal, so we cannot use our
++		 * block-bitmap-guided storage zapping commands.
++		 */
++		if (test_opt(sb, NOLOAD) && ext4_has_feature_journal(sb))
++			return -EROFS;
++
+ 		if (copy_from_user(&range, (struct fstrim_range __user *)arg,
+ 		    sizeof(range)))
+ 			return -EFAULT;
