@@ -1,99 +1,98 @@
-Return-Path: <SRS0=L97M=R3=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=eNh3=R4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.5 required=3.0
-	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PULL_REQUEST,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 00898C43381
-	for <linux-ext4@archiver.kernel.org>; Sun, 24 Mar 2019 19:18:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1BC19C43381
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 03:40:28 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C509120823
-	for <linux-ext4@archiver.kernel.org>; Sun, 24 Mar 2019 19:18:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D384220879
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 03:40:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727137AbfCXTSe (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 24 Mar 2019 15:18:34 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:59603 "EHLO
-        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726743AbfCXTSe (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 24 Mar 2019 15:18:34 -0400
-Received: from callcc.thunk.org (96-72-84-49-static.hfc.comcastbusiness.net [96.72.84.49] (may be forged))
-        (authenticated bits=0)
-        (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x2OJISTm030416
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 24 Mar 2019 15:18:29 -0400
-Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id C2DFD421A01; Sun, 24 Mar 2019 15:18:27 -0400 (EDT)
-Date:   Sun, 24 Mar 2019 15:18:27 -0400
-From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     torvalds@linux-foundation.org
-Cc:     linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-Subject: Re: [GIT PULL] ext4 bug fixes for 5.1
-Message-ID: <20190324191827.GG5675@mit.edu>
-Mail-Followup-To: Theodore Ts'o <tytso@mit.edu>,
-        torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-References: <20190324191431.GA29605@mit.edu>
+        id S1729414AbfCYDk1 convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 24 Mar 2019 23:40:27 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:37504 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1729298AbfCYDk1 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 24 Mar 2019 23:40:27 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id E04F52923B
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2019 03:40:25 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+        id C2A3B29239; Mon, 25 Mar 2019 03:40:25 +0000 (UTC)
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 202879] Segmentation fault while running crafted program
+Date:   Mon, 25 Mar 2019 03:40:25 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: tytso@mit.edu
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-202879-13602-b5LULnlGRk@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-202879-13602@https.bugzilla.kernel.org/>
+References: <bug-202879-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190324191431.GA29605@mit.edu>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Virus-Scanned: ClamAV using ClamSMTP
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Apologies, I forgot to add the CC's before I hit the send button....
+https://bugzilla.kernel.org/show_bug.cgi?id=202879
 
-	     	       	   - Ted
+--- Comment #8 from Theodore Tso (tytso@mit.edu) ---
+Jungyeon,
 
-On Sun, Mar 24, 2019 at 03:14:31PM -0400, Theodore Ts'o wrote:
-> The following changes since commit 0df6f46995a9fc92a6b9e591428e77527dd9609a:
-> 
->   jbd2: jbd2_get_transaction does not need to return a value (2019-03-01 00:36:57 -0500)
-> 
-> are available in the Git repository at:
-> 
->   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git tags/ext4_for_linus_stable
-> 
-> for you to fetch changes up to 18915b5873f07e5030e6fb108a050fa7c71c59fb:
-> 
->   ext4: prohibit fstrim in norecovery mode (2019-03-23 12:10:29 -0400)
-> 
-> ----------------------------------------------------------------
-> Miscellaneous ext4 bug fixes for 5.1.
-> 
-> ----------------------------------------------------------------
-> Darrick J. Wong (1):
->       ext4: prohibit fstrim in norecovery mode
-> 
-> Jan Kara (1):
->       ext4: avoid panic during forced reboot
-> 
-> Jason Yan (1):
->       ext4: remove useless ext4_pin_inode()
-> 
-> Jiufei Xue (1):
->       ext4: fix NULL pointer dereference while journal is aborted
-> 
-> Lukas Czerner (3):
->       ext4: fix data corruption caused by unaligned direct AIO
->       ext4: add missing brelse() in add_new_gdb_meta_bg()
->       ext4: report real fs size after failed resize
-> 
-> zhangyi (F) (2):
->       ext4: brelse all indirect buffer in ext4_ind_remove_space()
->       ext4: cleanup bh release code in ext4_ind_remove_space()
-> 
->  fs/ext4/ext4_jbd2.h |  2 +-
->  fs/ext4/file.c      |  2 +-
->  fs/ext4/indirect.c  | 43 ++++++++++++++++++++++---------------------
->  fs/ext4/inode.c     | 30 ------------------------------
->  fs/ext4/ioctl.c     |  7 +++++++
->  fs/ext4/resize.c    | 17 ++++++++++++++---
->  fs/ext4/super.c     | 16 +++++++++++++---
->  7 files changed, 58 insertions(+), 59 deletions(-)
+One of the things you can do which would be helpful when creating a minimal
+reproducer, is to fix some of the gratuitous corruptions in the file system
+image, so we can be 100% sure which file sysutem corruption is combining with
+your test syscall load to trigger the failure.
+
+For example, both of these super block corruptions which cause e2fsck to stop
+dead in its track because it views the superblock as being too compromised for
+automated machine assumptions to be safe are probably things we can clear and
+still have ext4-combined dump core:
+
+% e2fsck -fy /tmp/tmp.img 
+e2fsck 1.45.0 (6-Mar-2019)
+Found invalid V2 journal superblock fields (from V1 journal).
+Clearing fields beyond the V1 journal superblock...
+
+Corruption found in superblock.  (desc_size = 33667).
+
+E2fsck fixed up the first problem automatically, and the second I could fix up
+using debugfs: debugfs -w -R "ssv s_desc_size 64" /tmp/tmp.img
+
+I'm suspect that root cause is that the block allocation bitmap has a block
+which is also used by the journal as being free.   And if that block gets
+reallocated so that a directory block (which, being metadata is accessed via a
+buffer head) overlaps with the journal block, I can imagine all sorts of
+hilarity enusing.   
+
+I will attach a proposed patch which should detect this case, and block the
+reuse of a block belonging to the journal.   Can you try applying this patch to
+your LKL ext4-combined program, and see if it traps the file system corruption
+early enough that core dump doesn't get triggered?
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
