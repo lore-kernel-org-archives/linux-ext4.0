@@ -2,165 +2,242 @@ Return-Path: <SRS0=eNh3=R4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 71DA5C43381
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 18:14:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 58B9FC4360F
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 20:00:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 465C6206DF
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 18:14:49 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2493E20850
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 20:00:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="DvrjHK7z"
+	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="DcP7yrUI"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729914AbfCYSOo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 25 Mar 2019 14:14:44 -0400
-Received: from aserp2130.oracle.com ([141.146.126.79]:43648 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729238AbfCYSOo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Mar 2019 14:14:44 -0400
-Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x2PIE5MO074994;
-        Mon, 25 Mar 2019 18:14:31 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
- : subject : message-id : references : mime-version : content-type :
- in-reply-to; s=corp-2018-07-02;
- bh=jo3Bob4cdRs1bV5NhlO4YDp1KXeRPUJkiPauAObNPMo=;
- b=DvrjHK7z9J5drV3Qp/wqaxKhVuE1hBjVK3cI7XpW57tRNG4VsOwHTFJ+NaNp6NjNDPvA
- 0KV9JD5oqzCHlO4GLpC8vON4OYS/TRzncbQcSLNNE68PhNZcD4lDbGeHx02Poumt5xGS
- RHjanLynevuDxjRtxbqGUxVs5jwtMr0V9Locj8ohnceXZXHOoMBy45XwCT6/QDclmdRc
- fvSMrHgWJISmVHb+k68DL83cHxmMMtcmYffF7Jz25aQDBYdXvK05ubi1ep9n9kUoa/7m
- sGEK2OChytMGT73NkMbWH2ZDc+CD5qjDtXflt+/eKjCAQvL7N9ONFCHuQkyJ9SIeFhYi Dw== 
-Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
-        by aserp2130.oracle.com with ESMTP id 2re6g0nrhm-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 25 Mar 2019 18:14:30 +0000
-Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
-        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x2PIERmM016767
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 25 Mar 2019 18:14:30 GMT
-Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
-        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x2PIEOYP030352;
-        Mon, 25 Mar 2019 18:14:24 GMT
-Received: from localhost (/10.159.240.244)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Mon, 25 Mar 2019 11:14:24 -0700
-Date:   Mon, 25 Mar 2019 11:14:22 -0700
-From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     Arnd Bergmann <arnd@arndb.de>
-Cc:     "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
+        id S1730261AbfCYUAH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 25 Mar 2019 16:00:07 -0400
+Received: from mail-pg1-f195.google.com ([209.85.215.195]:46557 "EHLO
+        mail-pg1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729548AbfCYUAG (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Mar 2019 16:00:06 -0400
+Received: by mail-pg1-f195.google.com with SMTP id a22so7060958pgg.13
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2019 13:00:05 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
+        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
+         :references;
+        bh=1zXhpRZO0WAdOqWP7x2ebolGGLk+YEfDkHo8iks+akk=;
+        b=DcP7yrUImHYE0ppg3I7gbMEVbKEqKEtqdx2yKINGm7hZbPC6vrJJmiUuBcct7zn1w/
+         1KxBW8Ec5Hn1eWG24P+RNGU/VdyCAVF/ef2moRdrYnNtbgK7G6uohnNLrr6FoUKMGEG2
+         JxIt1UJbZJQU9o9Bh1Rxw99c/zwR3oRdSUXWAnVO5JEyQOX42QWd4IaVh2FVYAdYRwr8
+         D0D7dZ/Fx0/iOmN0X2XlOYQEjBl6Rm3Lv99/1pHZPLOI0lrgRsdlsnvdFIDDUYCFxfZ6
+         CXx1sNvxaYOPoHp5Ujr610RqtyQrobzMcTjr2kRQ1mp4+VsLXhVIBIMC820Zf0FdOU7T
+         gEDQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:message-id:mime-version:subject:date
+         :in-reply-to:cc:to:references;
+        bh=1zXhpRZO0WAdOqWP7x2ebolGGLk+YEfDkHo8iks+akk=;
+        b=Jd8zcuwFbahlQqanJoCo8stYbChaCkMeqjNqlf9tipnZn2lei0FKhWHwYwgP03syKi
+         OH9TZCdptGyRyl8IOQoS/iBBHQd+ufTX3PSGjgHn2sTzECLBm0ivgRNv3qrA4n6zpphy
+         h26x5e/k2g33nawsoVbp/wdLoz+eyA90R2Yi295PHVGbi+RVRRD9O+V53ba3LLyeNIC6
+         in0o4RIRTTUa0wUDtJKcGdL6qjsaF6WJLIG9hMX4kh+NI/x5RGI797fOB+2AXY1C8FA5
+         2Y9EzVAFgCEMrY0lrLG+MLDh8F76+HxJGewqgKt1a826tklJMqPD8pUT1VWDyenvUT4i
+         IqmA==
+X-Gm-Message-State: APjAAAWB0TvQ1zTNX+Nim1uSniAvm3whkJzYyIBTY5eh89Ef9yqQ23cg
+        DxBHlHZn07dqUac/gkXk9gbZpA==
+X-Google-Smtp-Source: APXvYqycHrRTeR58160gy46GMcWU9UDYo3aBHMoqKWs/6YkXHeuUFWmC/woYJiDY61Jz0aSxOhZV+A==
+X-Received: by 2002:a62:4746:: with SMTP id u67mr25748583pfa.243.1553544004607;
+        Mon, 25 Mar 2019 13:00:04 -0700 (PDT)
+Received: from cabot.adilger.ext (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
+        by smtp.gmail.com with ESMTPSA id i1sm1022990pgc.63.2019.03.25.13.00.02
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 25 Mar 2019 13:00:03 -0700 (PDT)
+From:   Andreas Dilger <adilger@dilger.ca>
+Message-Id: <9F56F958-2DEF-4350-8BBC-9A40598D0365@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_73BE7F53-B23C-4F73-89F8-8310F4842D0D";
+ protocol="application/pgp-signature"; micalg=pgp-sha256
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH] ext4: use BUG() instead of BUG_ON(1)
+Date:   Mon, 25 Mar 2019 13:59:58 -0600
+In-Reply-To: <20190325181422.GH1173@magnolia>
+Cc:     Arnd Bergmann <arnd@arndb.de>, Theodore Ts'o <tytso@mit.edu>,
         clang-built-linux@googlegroups.com,
         Nick Desaulniers <ndesaulniers@google.com>,
         Nathan Chancellor <natechancellor@gmail.com>,
         Eric Whitney <enwlinux@gmail.com>,
         Sean Fu <fxinrong@gmail.com>, Jan Kara <jack@suse.cz>,
-        Eric Biggers <ebiggers@google.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: use BUG() instead of BUG_ON(1)
-Message-ID: <20190325181422.GH1173@magnolia>
+        Eric Biggers <ebiggers@google.com>,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        open list <linux-kernel@vger.kernel.org>
+To:     "Darrick J. Wong" <darrick.wong@oracle.com>
 References: <20190325130040.1437445-1-arnd@arndb.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190325130040.1437445-1-arnd@arndb.de>
-User-Agent: Mutt/1.9.4 (2018-02-28)
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9206 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1903250131
+ <20190325181422.GH1173@magnolia>
+X-Mailer: Apple Mail (2.3273)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon, Mar 25, 2019 at 02:00:25PM +0100, Arnd Bergmann wrote:
-> BUG_ON(1) leads to bogus warnings from clang when
-> CONFIG_PROFILE_ANNOTATED_BRANCHES is set:
-> 
->  fs/ext4/inode.c:544:4: error: variable 'retval' is used uninitialized whenever 'if' condition is false
->       [-Werror,-Wsometimes-uninitialized]
->                         BUG_ON(1);
->                         ^~~~~~~~~
->  include/asm-generic/bug.h:61:36: note: expanded from macro 'BUG_ON'
->                                    ^~~~~~~~~~~~~~~~~~~
->  include/linux/compiler.h:48:23: note: expanded from macro 'unlikely'
->                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
->  fs/ext4/inode.c:591:6: note: uninitialized use occurs here
->         if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
->             ^~~~~~
->  fs/ext4/inode.c:544:4: note: remove the 'if' if its condition is always true
->                         BUG_ON(1);
->                         ^
->  include/asm-generic/bug.h:61:32: note: expanded from macro 'BUG_ON'
->                                ^
->  fs/ext4/inode.c:502:12: note: initialize the variable 'retval' to silence this warning
-> 
-> Change it to BUG() so clang can see that this code path can never
-> continue.
 
-I grok that most of these look like "should never get here" assertions,
-but shouldn't we be converting these BUG*() calls to "shut down fs,
-bounce error back to userspace" instead of killing the whole kernel?
+--Apple-Mail=_73BE7F53-B23C-4F73-89F8-8310F4842D0D
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-(He says knowing that ripping all of those out is its own project... :P)
+On Mar 25, 2019, at 12:14 PM, Darrick J. Wong <darrick.wong@oracle.com> =
+wrote:
+>=20
+> On Mon, Mar 25, 2019 at 02:00:25PM +0100, Arnd Bergmann wrote:
+>> BUG_ON(1) leads to bogus warnings from clang when
+>> CONFIG_PROFILE_ANNOTATED_BRANCHES is set:
+>>=20
+>> fs/ext4/inode.c:544:4: error: variable 'retval' is used uninitialized =
+whenever 'if' condition is false
+>>      [-Werror,-Wsometimes-uninitialized]
+>>                        BUG_ON(1);
+>>                        ^~~~~~~~~
+>> include/asm-generic/bug.h:61:36: note: expanded from macro 'BUG_ON'
+>>                                   ^~~~~~~~~~~~~~~~~~~
+>> include/linux/compiler.h:48:23: note: expanded from macro 'unlikely'
+>>                        =
+^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+>> fs/ext4/inode.c:591:6: note: uninitialized use occurs here
+>>        if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+>>            ^~~~~~
+>> fs/ext4/inode.c:544:4: note: remove the 'if' if its condition is =
+always true
+>>                        BUG_ON(1);
+>>                        ^
+>> include/asm-generic/bug.h:61:32: note: expanded from macro 'BUG_ON'
+>>                               ^
+>> fs/ext4/inode.c:502:12: note: initialize the variable 'retval' to =
+silence this warning
+>>=20
+>> Change it to BUG() so clang can see that this code path can never
+>> continue.
+>=20
+> I grok that most of these look like "should never get here" =
+assertions,
+> but shouldn't we be converting these BUG*() calls to "shut down fs,
+> bounce error back to userspace" instead of killing the whole kernel?
+>=20
+> (He says knowing that ripping all of those out is its own project... =
+:P)
 
---D
+We definitely shouldn't be adding "BUG()" or "BUG_ON()" to active code, =
+but
+rather call ext4_error() and let the admin to set "errors=3Dpanic" if =
+they
+want this action, or leave "errors=3Dremount-ro" (which is the default =
+these
+days) and just return an error to userspace.
 
-> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-> ---
->  fs/ext4/extents_status.c | 4 ++--
->  fs/ext4/inode.c          | 4 ++--
->  2 files changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-> index 2b439afafe13..023a3eb3afa3 100644
-> --- a/fs/ext4/extents_status.c
-> +++ b/fs/ext4/extents_status.c
-> @@ -711,7 +711,7 @@ static void ext4_es_insert_extent_ind_check(struct inode *inode,
->  			 * We don't need to check unwritten extent because
->  			 * indirect-based file doesn't have it.
->  			 */
-> -			BUG_ON(1);
-> +			BUG();
->  		}
->  	} else if (retval == 0) {
->  		if (ext4_es_is_written(es)) {
-> @@ -780,7 +780,7 @@ static int __es_insert_extent(struct inode *inode, struct extent_status *newes)
->  			}
->  			p = &(*p)->rb_right;
->  		} else {
-> -			BUG_ON(1);
-> +			BUG();
->  			return -EINVAL;
->  		}
->  	}
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index b32a57bc5d5d..190f0478582a 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -541,7 +541,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
->  			map->m_len = retval;
->  			retval = 0;
->  		} else {
-> -			BUG_ON(1);
-> +			BUG();
->  		}
->  #ifdef ES_AGGRESSIVE_TEST
->  		ext4_map_blocks_es_recheck(handle, inode, map,
-> @@ -1876,7 +1876,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
->  		else if (ext4_es_is_unwritten(&es))
->  			map->m_flags |= EXT4_MAP_UNWRITTEN;
->  		else
-> -			BUG_ON(1);
-> +			BUG();
->  
->  #ifdef ES_AGGRESSIVE_TEST
->  		ext4_map_blocks_es_recheck(NULL, inode, map, &orig_map, 0);
-> -- 
-> 2.20.0
-> 
+Looking at the nearby code, it is using pr_warn("ES insert assertion =
+failed..."
+instead of using an actual assertion for the failure cases.
+
+I guess a saving grace is that this code is only enabled if =
+ES_AGGRESSIVE_TEST
+is defined, which it is not by default, so probably it is only when some
+developer is testing this code.  So using BUG() is probably OK in this =
+case.
+
+Cheers, Andreas
+
+>=20
+>> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+>> ---
+>> fs/ext4/extents_status.c | 4 ++--
+>> fs/ext4/inode.c          | 4 ++--
+>> 2 files changed, 4 insertions(+), 4 deletions(-)
+>>=20
+>> diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+>> index 2b439afafe13..023a3eb3afa3 100644
+>> --- a/fs/ext4/extents_status.c
+>> +++ b/fs/ext4/extents_status.c
+>> @@ -711,7 +711,7 @@ static void =
+ext4_es_insert_extent_ind_check(struct inode *inode,
+>> 			 * We don't need to check unwritten extent =
+because
+>> 			 * indirect-based file doesn't have it.
+>> 			 */
+>> -			BUG_ON(1);
+>> +			BUG();
+>> 		}
+>> 	} else if (retval =3D=3D 0) {
+>> 		if (ext4_es_is_written(es)) {
+>> @@ -780,7 +780,7 @@ static int __es_insert_extent(struct inode =
+*inode, struct extent_status *newes)
+>> 			}
+>> 			p =3D &(*p)->rb_right;
+>> 		} else {
+>> -			BUG_ON(1);
+>> +			BUG();
+>> 			return -EINVAL;
+>> 		}
+>> 	}
+>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+>> index b32a57bc5d5d..190f0478582a 100644
+>> --- a/fs/ext4/inode.c
+>> +++ b/fs/ext4/inode.c
+>> @@ -541,7 +541,7 @@ int ext4_map_blocks(handle_t *handle, struct =
+inode *inode,
+>> 			map->m_len =3D retval;
+>> 			retval =3D 0;
+>> 		} else {
+>> -			BUG_ON(1);
+>> +			BUG();
+>> 		}
+>> #ifdef ES_AGGRESSIVE_TEST
+>> 		ext4_map_blocks_es_recheck(handle, inode, map,
+>> @@ -1876,7 +1876,7 @@ static int ext4_da_map_blocks(struct inode =
+*inode, sector_t iblock,
+>> 		else if (ext4_es_is_unwritten(&es))
+>> 			map->m_flags |=3D EXT4_MAP_UNWRITTEN;
+>> 		else
+>> -			BUG_ON(1);
+>> +			BUG();
+>>=20
+>> #ifdef ES_AGGRESSIVE_TEST
+>> 		ext4_map_blocks_es_recheck(NULL, inode, map, &orig_map, =
+0);
+>> --
+>> 2.20.0
+
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_73BE7F53-B23C-4F73-89F8-8310F4842D0D
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlyZMz8ACgkQcqXauRfM
+H+Ceyw//Z1p1TGsGEo81YLhmCfuKm6wwixRreNCbZVn1BpHU18I7XdKGq3wwHLeK
+key5dIj6CuukFB4IyiesTgYvDSIgVgn6+twub0mPzya/oRm0BJhjwiZSvUOvwYDc
+lqLEDUrk9Ow9pYyUR+U14nEvQ10I9+tMx4u3iT6aTWcbdMnQAyzYVwr/6QGlJMCy
+yjy1wv9VVBhImj7mjPoCuRXckl6fxFtu2dYgXp2Bhx6g7RSxaOJPpIrBEXY0qH3E
+23Qvef3+6sdp30B40yFGmQC4uvoE6HHg6sUjC2YhWLqJIVcMvrS1MBnvHPYk+dZ3
+dlDNN/S4Gn5rfRRKRufsLEiHgAHB4RnMsg1o3D9VtqIyXtqYmcmizQrlu6mc/JmX
+hcfkUp7qT6wg/EzPrm8BVaOyn1lXKitx4wQUomNwnkzaWHE6xyu01r60fvzqx0ve
+RYRxo7xkSRHw4RAHFQQEM46Bm3GEFCSFwDAy6OXb5nf4oZoEcqnU+F5NKEP7Gd+d
+GLHu+QsR8Grn/zwMosUxbP5Y7uhgKBbhVa0Phok6GbPe8wuhoxf8jACOTARJEmSG
+nkdrLsMz++R+CzTvEPBPZL07fuE/ATAoXyRh2OhSpXveBYwJc6zo/6utCLDv1pOQ
+j27f3OyDdaLC158bHsCl4SvtAb39B0dHCrhPJ70cB3B+AQFvchQ=
+=kTBH
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_73BE7F53-B23C-4F73-89F8-8310F4842D0D--
