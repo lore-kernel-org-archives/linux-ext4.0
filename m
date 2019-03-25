@@ -5,29 +5,30 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8640DC43381
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 03:41:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A3886C43381
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 04:01:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5DEE62082C
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 03:41:29 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 783BC20850
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 04:01:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729430AbfCYDl2 convert rfc822-to-8bit (ORCPT
+        id S1725446AbfCYEBp convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 24 Mar 2019 23:41:28 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:37600 "EHLO
+        Mon, 25 Mar 2019 00:01:45 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:38382 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1729298AbfCYDl2 (ORCPT
+        by vger.kernel.org with ESMTP id S1725294AbfCYEBo (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 24 Mar 2019 23:41:28 -0400
+        Mon, 25 Mar 2019 00:01:44 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B9EE029238
-        for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2019 03:41:27 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 16523290DA
+        for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2019 04:01:44 +0000 (UTC)
 Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id AD2CC2923E; Mon, 25 Mar 2019 03:41:27 +0000 (UTC)
+        id 0A7662914C; Mon, 25 Mar 2019 04:01:44 +0000 (UTC)
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Subject: [Bug 202879] Segmentation fault while running crafted program
-Date:   Mon, 25 Mar 2019 03:41:27 +0000
+Subject: [Bug 202877] failure at
+ fs/jbd2/commit.c:818/jbd2_journal_commit_transaction()!
+Date:   Mon, 25 Mar 2019 04:01:42 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -42,10 +43,10 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-202879-13602-xy6l2WWyEL@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-202879-13602@https.bugzilla.kernel.org/>
-References: <bug-202879-13602@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: cc
+Message-ID: <bug-202877-13602-EWIybv9OZT@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-202877-13602@https.bugzilla.kernel.org/>
+References: <bug-202877-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: 8BIT
 X-Bugzilla-URL: https://bugzilla.kernel.org/
@@ -57,12 +58,45 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=202879
+https://bugzilla.kernel.org/show_bug.cgi?id=202877
 
---- Comment #9 from Theodore Tso (tytso@mit.edu) ---
-Created attachment 281995
-  --> https://bugzilla.kernel.org/attachment.cgi?id=281995&action=edit
-possible patch to detect the problem early
+Theodore Tso (tytso@mit.edu) changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+--- Comment #6 from Theodore Tso (tytso@mit.edu) ---
+This looks like another case where the allocation bitmap has been corrupted
+exposing blocks that belong to the journal inode from getting reallocated.
+
+Can you try two experiments?
+
+1)  See if patching the image file as follows:
+
+debugfs -w tmp.img
+debugfs: setb 8258 1024
+   <will spew a lot of messages of the form:
+          setb: Warning: block NNN already set
+    that's fine, ignore them.>
+debugfs: quit
+
+Causes your repro to no longer trigger a crash of your LKL binary.
+(I guess I could do that, but it's late and I'm too lazy to set up a proper
+contained sandbox environment where I'd feel safe downloading a random 16MB
+binary executable from an unknown source and running it; so it's much more
+convenient if you could run this experiment for me.)
+
+2)  Take the possible-fix patch which I just attached to kernel bugzilla
+#202879
+ and see if it intercepts the failure and declares the file system corrupt such
+that the stack trace leading to the crash of your LKL binary no longer happens.
+  (This is something I *can't* do, since the sources and instructions for
+taking a patched version of the kernel and building a new LKL binary have not
+yet been made available.   So if you could also run this experiment and let me
+know the results, I would be much obliged.)
+
+Thanks!!
 
 -- 
 You are receiving this mail because:
