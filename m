@@ -2,102 +2,137 @@ Return-Path: <SRS0=eNh3=R4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A3886C43381
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 04:01:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6216FC43381
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 13:00:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 783BC20850
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 04:01:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3BF6C20830
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 13:00:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725446AbfCYEBp convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 25 Mar 2019 00:01:45 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:38382 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725294AbfCYEBo (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 25 Mar 2019 00:01:44 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 16523290DA
-        for <linux-ext4@vger.kernel.org>; Mon, 25 Mar 2019 04:01:44 +0000 (UTC)
-Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 0A7662914C; Mon, 25 Mar 2019 04:01:44 +0000 (UTC)
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 202877] failure at
- fs/jbd2/commit.c:818/jbd2_journal_commit_transaction()!
-Date:   Mon, 25 Mar 2019 04:01:42 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: normal
-X-Bugzilla-Who: tytso@mit.edu
-X-Bugzilla-Status: NEW
-X-Bugzilla-Resolution: 
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: cc
-Message-ID: <bug-202877-13602-EWIybv9OZT@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-202877-13602@https.bugzilla.kernel.org/>
-References: <bug-202877-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1731264AbfCYNAu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 25 Mar 2019 09:00:50 -0400
+Received: from mout.kundenserver.de ([212.227.126.134]:52003 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1731166AbfCYNAu (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Mar 2019 09:00:50 -0400
+Received: from wuerfel.lan ([149.172.19.189]) by mrelayeu.kundenserver.de
+ (mreue012 [212.227.15.129]) with ESMTPA (Nemesis) id
+ 1MYcy3-1hVBFa3ZjP-00Vckl; Mon, 25 Mar 2019 14:00:41 +0100
+From:   Arnd Bergmann <arnd@arndb.de>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc:     clang-built-linux@googlegroups.com,
+        Nick Desaulniers <ndesaulniers@google.com>,
+        Nathan Chancellor <natechancellor@gmail.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Eric Whitney <enwlinux@gmail.com>,
+        Sean Fu <fxinrong@gmail.com>, Jan Kara <jack@suse.cz>,
+        Eric Biggers <ebiggers@google.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] ext4: use BUG() instead of BUG_ON(1)
+Date:   Mon, 25 Mar 2019 14:00:25 +0100
+Message-Id: <20190325130040.1437445-1-arnd@arndb.de>
+X-Mailer: git-send-email 2.20.0
 MIME-Version: 1.0
-X-Virus-Scanned: ClamAV using ClamSMTP
+Content-Transfer-Encoding: 8bit
+X-Provags-ID: V03:K1:XEkcvIk1pYTWgdR+sAkYhTO1RRjWg8B5vvNlB7QcoiS1tnjfmVG
+ NPe1IiRrQRvV9hkJRruQShim4S9Jspnd6/IY0wVET/d+LwgNT8B1iba+CjRBEKoZw5i6cRd
+ q5VQk2r9smg0mi+ONUBTkBGjdBFY4kS4RkfjThhQhRT8D6DMK4kDgv0hBzaq2F9WstvUfhU
+ Edkcxj4DdWAZm4ouyF95g==
+X-UI-Out-Filterresults: notjunk:1;V03:K0:xQ9yD33iYgY=:PBt945K92l971pKmGyQkhW
+ Tn9t1UZ28/jKk1IIWZJX0Tc5NsaYqQPq3w4Q7B2T1PP1XpKWIVBxMWuD33oA1fA5ieYH+wKsR
+ pz8xHFRLC3PgDrfy2aKJjFkNrfFnB3OovpaeM7ZoIDJ3qzXvpq6KQnIKIWLs5ldb9+dcS8Q3V
+ vs6bazv+eqp8Tyj4J9+jRf3Xb5kQwhsAEQktguc+sr9Od681prnmP7NVDp4W1EH4nZnaPLNDG
+ leqsVkTk5Q2QfA771hEc3amD+1djhoX3xeIKCqNelBzLiglX8sZHNmDsoKzLh5AHa4IGr0SGO
+ BZEz0ixmiU5HIOwVkw6piTdrkEiMxHRh5eZVLhT32ANF2oDKEkPeToZNJdhNDguw1lOoCc8if
+ D3BcwewlEfGnuUfW59SoEeln74ACh0w7t7YG81u6JXolnVcU4D4SzvA5hq4QS2PWOuDnZAsJP
+ Ok4w63/46y9VNz5B7gQKlP4x1tv31OJu25MBzc+utK/p/UN6OOcEdFademrPGZyBKH3GH6e5z
+ YL6q3/2bx50Q9HIPtR/XHsGnGJFK+skTFaKovzOa9WvL3ZCLMVNAJBmHFQZSe0avcHEOcPUPZ
+ B+7qZIiB3WWWnEZKpEdPDUxBhN/zbEkoPOyJEKGh5MgKdDQ030RdDmpnasiNEm/N+JOr0yKXd
+ bhGrXrsl9WPYADLB1N/mXnSqENIiXij479WZe1RmhVL3EGut1pIOJA4HLRUIzk5VrHlD7p3z+
+ bHt4cwucBRUlC1ofXZGkc8CwGk8nlkY0C3ppwQ==
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=202877
+BUG_ON(1) leads to bogus warnings from clang when
+CONFIG_PROFILE_ANNOTATED_BRANCHES is set:
 
-Theodore Tso (tytso@mit.edu) changed:
+ fs/ext4/inode.c:544:4: error: variable 'retval' is used uninitialized whenever 'if' condition is false
+      [-Werror,-Wsometimes-uninitialized]
+                        BUG_ON(1);
+                        ^~~~~~~~~
+ include/asm-generic/bug.h:61:36: note: expanded from macro 'BUG_ON'
+                                   ^~~~~~~~~~~~~~~~~~~
+ include/linux/compiler.h:48:23: note: expanded from macro 'unlikely'
+                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ fs/ext4/inode.c:591:6: note: uninitialized use occurs here
+        if (retval > 0 && map->m_flags & EXT4_MAP_MAPPED) {
+            ^~~~~~
+ fs/ext4/inode.c:544:4: note: remove the 'if' if its condition is always true
+                        BUG_ON(1);
+                        ^
+ include/asm-generic/bug.h:61:32: note: expanded from macro 'BUG_ON'
+                               ^
+ fs/ext4/inode.c:502:12: note: initialize the variable 'retval' to silence this warning
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |tytso@mit.edu
+Change it to BUG() so clang can see that this code path can never
+continue.
 
---- Comment #6 from Theodore Tso (tytso@mit.edu) ---
-This looks like another case where the allocation bitmap has been corrupted
-exposing blocks that belong to the journal inode from getting reallocated.
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/ext4/extents_status.c | 4 ++--
+ fs/ext4/inode.c          | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-Can you try two experiments?
-
-1)  See if patching the image file as follows:
-
-debugfs -w tmp.img
-debugfs: setb 8258 1024
-   <will spew a lot of messages of the form:
-          setb: Warning: block NNN already set
-    that's fine, ignore them.>
-debugfs: quit
-
-Causes your repro to no longer trigger a crash of your LKL binary.
-(I guess I could do that, but it's late and I'm too lazy to set up a proper
-contained sandbox environment where I'd feel safe downloading a random 16MB
-binary executable from an unknown source and running it; so it's much more
-convenient if you could run this experiment for me.)
-
-2)  Take the possible-fix patch which I just attached to kernel bugzilla
-#202879
- and see if it intercepts the failure and declares the file system corrupt such
-that the stack trace leading to the crash of your LKL binary no longer happens.
-  (This is something I *can't* do, since the sources and instructions for
-taking a patched version of the kernel and building a new LKL binary have not
-yet been made available.   So if you could also run this experiment and let me
-know the results, I would be much obliged.)
-
-Thanks!!
-
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 2b439afafe13..023a3eb3afa3 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -711,7 +711,7 @@ static void ext4_es_insert_extent_ind_check(struct inode *inode,
+ 			 * We don't need to check unwritten extent because
+ 			 * indirect-based file doesn't have it.
+ 			 */
+-			BUG_ON(1);
++			BUG();
+ 		}
+ 	} else if (retval == 0) {
+ 		if (ext4_es_is_written(es)) {
+@@ -780,7 +780,7 @@ static int __es_insert_extent(struct inode *inode, struct extent_status *newes)
+ 			}
+ 			p = &(*p)->rb_right;
+ 		} else {
+-			BUG_ON(1);
++			BUG();
+ 			return -EINVAL;
+ 		}
+ 	}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b32a57bc5d5d..190f0478582a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -541,7 +541,7 @@ int ext4_map_blocks(handle_t *handle, struct inode *inode,
+ 			map->m_len = retval;
+ 			retval = 0;
+ 		} else {
+-			BUG_ON(1);
++			BUG();
+ 		}
+ #ifdef ES_AGGRESSIVE_TEST
+ 		ext4_map_blocks_es_recheck(handle, inode, map,
+@@ -1876,7 +1876,7 @@ static int ext4_da_map_blocks(struct inode *inode, sector_t iblock,
+ 		else if (ext4_es_is_unwritten(&es))
+ 			map->m_flags |= EXT4_MAP_UNWRITTEN;
+ 		else
+-			BUG_ON(1);
++			BUG();
+ 
+ #ifdef ES_AGGRESSIVE_TEST
+ 		ext4_map_blocks_es_recheck(NULL, inode, map, &orig_map, 0);
 -- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+2.20.0
+
