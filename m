@@ -2,32 +2,55 @@ Return-Path: <SRS0=eNh3=R4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
+X-Spam-Status: No, score=-8.6 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,USER_AGENT_MUTT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E042DC4360F
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 17:31:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 71DA5C43381
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 18:14:49 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B72CD205C9
-	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 17:31:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 465C6206DF
+	for <linux-ext4@archiver.kernel.org>; Mon, 25 Mar 2019 18:14:49 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="DvrjHK7z"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729825AbfCYRa7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 25 Mar 2019 13:30:59 -0400
-Received: from mx2.suse.de ([195.135.220.15]:55132 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726217AbfCYRa7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 25 Mar 2019 13:30:59 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id CD4B7B023;
-        Mon, 25 Mar 2019 17:30:56 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 110591E429A; Mon, 25 Mar 2019 18:30:56 +0100 (CET)
-Date:   Mon, 25 Mar 2019 18:30:56 +0100
-From:   Jan Kara <jack@suse.cz>
+        id S1729914AbfCYSOo (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 25 Mar 2019 14:14:44 -0400
+Received: from aserp2130.oracle.com ([141.146.126.79]:43648 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729238AbfCYSOo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Mar 2019 14:14:44 -0400
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x2PIE5MO074994;
+        Mon, 25 Mar 2019 18:14:31 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=date : from : to : cc
+ : subject : message-id : references : mime-version : content-type :
+ in-reply-to; s=corp-2018-07-02;
+ bh=jo3Bob4cdRs1bV5NhlO4YDp1KXeRPUJkiPauAObNPMo=;
+ b=DvrjHK7z9J5drV3Qp/wqaxKhVuE1hBjVK3cI7XpW57tRNG4VsOwHTFJ+NaNp6NjNDPvA
+ 0KV9JD5oqzCHlO4GLpC8vON4OYS/TRzncbQcSLNNE68PhNZcD4lDbGeHx02Poumt5xGS
+ RHjanLynevuDxjRtxbqGUxVs5jwtMr0V9Locj8ohnceXZXHOoMBy45XwCT6/QDclmdRc
+ fvSMrHgWJISmVHb+k68DL83cHxmMMtcmYffF7Jz25aQDBYdXvK05ubi1ep9n9kUoa/7m
+ sGEK2OChytMGT73NkMbWH2ZDc+CD5qjDtXflt+/eKjCAQvL7N9ONFCHuQkyJ9SIeFhYi Dw== 
+Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
+        by aserp2130.oracle.com with ESMTP id 2re6g0nrhm-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 25 Mar 2019 18:14:30 +0000
+Received: from userv0121.oracle.com (userv0121.oracle.com [156.151.31.72])
+        by userv0022.oracle.com (8.14.4/8.14.4) with ESMTP id x2PIERmM016767
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 25 Mar 2019 18:14:30 GMT
+Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
+        by userv0121.oracle.com (8.14.4/8.13.8) with ESMTP id x2PIEOYP030352;
+        Mon, 25 Mar 2019 18:14:24 GMT
+Received: from localhost (/10.159.240.244)
+        by default (Oracle Beehive Gateway v4.0)
+        with ESMTP ; Mon, 25 Mar 2019 11:14:24 -0700
+Date:   Mon, 25 Mar 2019 11:14:22 -0700
+From:   "Darrick J. Wong" <darrick.wong@oracle.com>
 To:     Arnd Bergmann <arnd@arndb.de>
-Cc:     Theodore Ts'o <tytso@mit.edu>,
+Cc:     "Theodore Ts'o" <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         clang-built-linux@googlegroups.com,
         Nick Desaulniers <ndesaulniers@google.com>,
@@ -37,19 +60,25 @@ Cc:     Theodore Ts'o <tytso@mit.edu>,
         Eric Biggers <ebiggers@google.com>, linux-ext4@vger.kernel.org,
         linux-kernel@vger.kernel.org
 Subject: Re: [PATCH] ext4: use BUG() instead of BUG_ON(1)
-Message-ID: <20190325173056.GK8308@quack2.suse.cz>
+Message-ID: <20190325181422.GH1173@magnolia>
 References: <20190325130040.1437445-1-arnd@arndb.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 In-Reply-To: <20190325130040.1437445-1-arnd@arndb.de>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+User-Agent: Mutt/1.9.4 (2018-02-28)
+X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9206 signatures=668685
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1011
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1903250131
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 25-03-19 14:00:25, Arnd Bergmann wrote:
+On Mon, Mar 25, 2019 at 02:00:25PM +0100, Arnd Bergmann wrote:
 > BUG_ON(1) leads to bogus warnings from clang when
 > CONFIG_PROFILE_ANNOTATED_BRANCHES is set:
 > 
@@ -73,15 +102,16 @@ On Mon 25-03-19 14:00:25, Arnd Bergmann wrote:
 > 
 > Change it to BUG() so clang can see that this code path can never
 > continue.
-> 
+
+I grok that most of these look like "should never get here" assertions,
+but shouldn't we be converting these BUG*() calls to "shut down fs,
+bounce error back to userspace" instead of killing the whole kernel?
+
+(He says knowing that ripping all of those out is its own project... :P)
+
+--D
+
 > Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-
-Sure. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
 > ---
 >  fs/ext4/extents_status.c | 4 ++--
 >  fs/ext4/inode.c          | 4 ++--
@@ -134,6 +164,3 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 > -- 
 > 2.20.0
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
