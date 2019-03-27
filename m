@@ -4,49 +4,50 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
 	DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C71BC4360F
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Mar 2019 18:44:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BFB8C43381
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Mar 2019 18:53:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 44947205C9
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Mar 2019 18:44:28 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id F35C6205C9
+	for <linux-ext4@archiver.kernel.org>; Wed, 27 Mar 2019 18:53:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1553712268;
-	bh=WL1ye6weSf789Gn69V70fqgfnS05W55G6SFX1+W99Dw=;
+	s=default; t=1553712795;
+	bh=YFGDJeDT/9ISdfpuQ1J/FTsmV9BUwYce9LFuQn6S5TI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=mr6o6BAAqEuwjoykGO1pIJBweVnO8gyQa7m6QDkNXd8cDowXH+xXKmp4pkcQEQ0aS
-	 GdzfEgVtyQGDU+Sbm52q+ksPzN2yU0V6zO59IItWVZ5mPRttWmmx5yNcCFIn4OEG12
-	 AgL/pHIZ4AaZcCnys9klHX1llXwtcSZJeuq4mOYk=
+	b=LQgDk/CqZhadRA3qE8TKbCKzesHUzJsUp6pMxKKfQ2SIhMxrDCNQ3GotwNxagWYPl
+	 83WrXcVkliPyuYv4yJ4jXi9s6o/MKB9egI020JWxoNZvS+KWnfkkh//ivWJkxFgNct
+	 TyNNuhH7fn/GgilAJ5JOHa1pZ3JGkYfc7+3akd48=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2391025AbfC0So1 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 27 Mar 2019 14:44:27 -0400
-Received: from mail.kernel.org ([198.145.29.99]:39102 "EHLO mail.kernel.org"
+        id S2390017AbfC0SxJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 27 Mar 2019 14:53:09 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33792 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S2391106AbfC0SVR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 27 Mar 2019 14:21:17 -0400
+        id S2390266AbfC0SRX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 27 Mar 2019 14:17:23 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id E8C532082F;
-        Wed, 27 Mar 2019 18:21:15 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 6BDC42177E;
+        Wed, 27 Mar 2019 18:17:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1553710876;
-        bh=WL1ye6weSf789Gn69V70fqgfnS05W55G6SFX1+W99Dw=;
+        s=default; t=1553710643;
+        bh=YFGDJeDT/9ISdfpuQ1J/FTsmV9BUwYce9LFuQn6S5TI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=0BbsJwwGw++ATsTSKmYWkhrvcNaYs+l2A9iXkQhU6vYDwQL+C6Njkxm6CtCNM3scP
-         9YwK06vVr5J0x6zK++gIPg6V2JNA+o9fbGjtlTtTxwdE06hDD4RbBxin1eEly0/MdL
-         D29dRhVFputV37qUuOrfZJo3jB13hAUfCvE3o+0o=
+        b=0xKhHvB5HmkFk39TNt+3vMU5Si1nbtXY03BKTr3ijnh/wRWGzb7ORJ8BegaKh2oxG
+         uSB33bRuzq1542CFBEntSEeJs8jwpJ9mDdJMMQdTmOPgXiQtPSwBf1z1B4n5XIW3U9
+         uCwI3QCaBrxD4CFkSjljJ//f1vBY2a8Cv61s3tEw=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     luojiajun <luojiajun3@huawei.com>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 21/87] jbd2: fix invalid descriptor block checksum
-Date:   Wed, 27 Mar 2019 14:19:34 -0400
-Message-Id: <20190327182040.17444-21-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 029/123] jbd2: fix invalid descriptor block checksum
+Date:   Wed, 27 Mar 2019 14:14:53 -0400
+Message-Id: <20190327181628.15899-29-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190327182040.17444-1-sashal@kernel.org>
-References: <20190327182040.17444-1-sashal@kernel.org>
+In-Reply-To: <20190327181628.15899-1-sashal@kernel.org>
+References: <20190327181628.15899-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
@@ -84,10 +85,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 31f8ca046639..10ec27676191 100644
+index 3c1c31321d9b..d11401afd52f 100644
 --- a/fs/jbd2/commit.c
 +++ b/fs/jbd2/commit.c
-@@ -700,9 +700,11 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+@@ -693,9 +693,11 @@ void jbd2_journal_commit_transaction(journal_t *journal)
                             the last tag we set up. */
  
  			tag->t_flags |= cpu_to_be16(JBD2_FLAG_LAST_TAG);
