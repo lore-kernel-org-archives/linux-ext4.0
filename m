@@ -1,106 +1,79 @@
-Return-Path: <SRS0=Z8NG=R6=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=RF5E=R7=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,
-	USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,
+	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BA048C43381
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Mar 2019 19:30:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8218CC43381
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 Mar 2019 09:18:21 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 89CB421734
-	for <linux-ext4@archiver.kernel.org>; Wed, 27 Mar 2019 19:30:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1553715005;
-	bh=vOWr6nCvbaiF3lCzop1vDUGXuj5KMLJjAQGHE5o7Rks=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=yb8et6iar1Q+HRBKFxnAv3ULv38XqPkNtOBHL3Yf9weH9i8cD7IOnZBZwSWvRF1aU
-	 Pn+WAHmpiM/zNCpbFT3YUQV2jxjrwj8wcpZpYXDa+wtKXCHC0+EIMYoKz0/24ZFnn5
-	 X9ePjllaKe1Ap7ubLdo+r2EMIyhE+FkFlfjcP7Kk=
+	by mail.kernel.org (Postfix) with ESMTP id 5C1402173C
+	for <linux-ext4@archiver.kernel.org>; Thu, 28 Mar 2019 09:18:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732705AbfC0TaA (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 27 Mar 2019 15:30:00 -0400
-Received: from mail.kernel.org ([198.145.29.99]:43966 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732672AbfC0SDj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 27 Mar 2019 14:03:39 -0400
-Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 038F42183E;
-        Wed, 27 Mar 2019 18:03:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1553709818;
-        bh=vOWr6nCvbaiF3lCzop1vDUGXuj5KMLJjAQGHE5o7Rks=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=KE14pBeOt3Oolsruv8TsytJ47J77/UdF8oO2LpMarwBhcXYhKmXcpIc17NgVWAqmd
-         YhLKgygog5kz1jYGqaGMn3S5fzO8Cx+OgGGL0ijEeRqy1EitnqolEKXPq7GePuFaKW
-         tMjAXR2+Uu0MjXB8kue+74Y92RGXvPOldolHmaD4=
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     luojiajun <luojiajun3@huawei.com>, Theodore Ts'o <tytso@mit.edu>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.0 057/262] jbd2: fix invalid descriptor block checksum
-Date:   Wed, 27 Mar 2019 13:58:32 -0400
-Message-Id: <20190327180158.10245-57-sashal@kernel.org>
-X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190327180158.10245-1-sashal@kernel.org>
-References: <20190327180158.10245-1-sashal@kernel.org>
+        id S1726087AbfC1JSU (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 28 Mar 2019 05:18:20 -0400
+Received: from out30-42.freemail.mail.aliyun.com ([115.124.30.42]:43244 "EHLO
+        out30-42.freemail.mail.aliyun.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725948AbfC1JSU (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 28 Mar 2019 05:18:20 -0400
+X-Alimail-AntiSpam: AC=PASS;BC=-1|-1;BR=01201311R111e4;CH=green;DM=||false|;FP=0|-1|-1|-1|0|-1|-1|-1;HT=e01f04389;MF=jiufei.xue@linux.alibaba.com;NM=1;PH=DS;RN=4;SR=0;TI=SMTPD_---0TNqWOH2_1553764694;
+Received: from localhost(mailfrom:jiufei.xue@linux.alibaba.com fp:SMTPD_---0TNqWOH2_1553764694)
+          by smtp.aliyun-inc.com(127.0.0.1);
+          Thu, 28 Mar 2019 17:18:15 +0800
+From:   Jiufei Xue <jiufei.xue@linux.alibaba.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     tytso@mit.edu, jack@suse.cz, renzhen@linux.alibaba.com
+Subject: [PATCH] jbd2: check superblock mapped prior to committing
+Date:   Thu, 28 Mar 2019 17:18:14 +0800
+Message-Id: <20190328091814.46168-1-jiufei.xue@linux.alibaba.com>
+X-Mailer: git-send-email 2.19.1.856.g8858448bb
 MIME-Version: 1.0
-X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: luojiajun <luojiajun3@huawei.com>
+We hit a BUG at fs/buffer.c:3057 if we detached the nbd device
+before unmounting ext4 filesystem.
 
-[ Upstream commit 6e876c3dd205d30b0db6850e97a03d75457df007 ]
+The typical chain of events leading to the BUG:
+jbd2_write_superblock
+  submit_bh
+    submit_bh_wbc
+      BUG_ON(!buffer_mapped(bh));
 
-In jbd2_journal_commit_transaction(), if we are in abort mode,
-we may flush the buffer without setting descriptor block checksum
-by goto start_journal_io. Then fs is mounted,
-jbd2_descriptor_block_csum_verify() failed.
+The block device is removed and all the pages are invalidated. JBD2
+was trying to write journal superblock to the block device which is
+no longer present.
 
-[  271.379811] EXT4-fs (vdd): shut down requested (2)
-[  271.381827] Aborting journal on device vdd-8.
-[  271.597136] JBD2: Invalid checksum recovering block 22199 in log
-[  271.598023] JBD2: recovery failed
-[  271.598484] EXT4-fs (vdd): error loading journal
+Fix this by checking the journal superblock's buffer head prior to
+submitting.
 
-Fix this problem by keep setting descriptor block checksum if the
-descriptor buffer is not NULL.
-
-This checksum problem can be reproduced by xfstests generic/388.
-
-Signed-off-by: luojiajun <luojiajun3@huawei.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Cc: stable@kernel.org
+Reported-by: Eric Ren <renzhen@linux.alibaba.com>
+Signed-off-by: Jiufei Xue <jiufei.xue@linux.alibaba.com>
 ---
- fs/jbd2/commit.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/jbd2/journal.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 2eb55c3361a8..efd0ce9489ae 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -694,9 +694,11 @@ void jbd2_journal_commit_transaction(journal_t *journal)
-                            the last tag we set up. */
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 382c030cc78b..90fd3ed0a232 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1350,6 +1350,9 @@ static int jbd2_write_superblock(journal_t *journal, int write_flags)
+ 	journal_superblock_t *sb = journal->j_superblock;
+ 	int ret;
  
- 			tag->t_flags |= cpu_to_be16(JBD2_FLAG_LAST_TAG);
--
--			jbd2_descriptor_block_csum_set(journal, descriptor);
- start_journal_io:
-+			if (descriptor)
-+				jbd2_descriptor_block_csum_set(journal,
-+							descriptor);
++	if (!buffer_mapped(bh))
++		return -EIO;
 +
- 			for (i = 0; i < bufs; i++) {
- 				struct buffer_head *bh = wbuf[i];
- 				/*
+ 	trace_jbd2_write_superblock(journal, write_flags);
+ 	if (!(journal->j_flags & JBD2_BARRIER))
+ 		write_flags &= ~(REQ_FUA | REQ_PREFLUSH);
 -- 
-2.19.1
+2.19.1.856.g8858448bb
 
