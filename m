@@ -6,45 +6,44 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DF39FC43381
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 00:59:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5C234C43381
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:00:13 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AD635206DD
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 00:59:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 11BE6206DD
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:00:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1553907549;
-	bh=qW2A3pzZhdCEAwNbFIboI9FbT4nJ0KMg+zBoOwSMQcY=;
+	s=default; t=1553907613;
+	bh=yztPiWvUA7CL8JpVq1R9n/8I+LTZMWNWDSpcYss84pk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=IG+3L+WPqS7B+4e2887VmItbOBlVvRMSkKAna4PNOU0Fmj+wZgtPgciN2SRTojedo
-	 oTvDRnlzkXGUjIFN5yPZxur45+hD+n+WxPX7heE4rsl1phyUblOqz/eWhKVXUHnj5x
-	 rVpCIgn5OiEPAvvTVPOq5/KCEqVTQwG2yLq4awaU=
+	b=n7jjB2QveHxI2+A7wxSaWCzyNWRAfNAKFbYUk2NZqJlK0gd76GqHeD8rUGlpnsHep
+	 xgsj+clMZEZKjbhjNVOVUf2Ggk3qGN2hCy0xtcnMnItSHQ0z/isugZqLgGG6GCdwCP
+	 pR73y+IRKEDyOHCXTPquDOTp5tiPEl7ft8ShwiFg=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731852AbfC3A7E (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 29 Mar 2019 20:59:04 -0400
-Received: from mail.kernel.org ([198.145.29.99]:37774 "EHLO mail.kernel.org"
+        id S1731689AbfC3BAG (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 29 Mar 2019 21:00:06 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36794 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1732127AbfC3A5b (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 29 Mar 2019 20:57:31 -0400
+        id S1732015AbfC3A4y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 29 Mar 2019 20:56:54 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id AA83821901;
-        Sat, 30 Mar 2019 00:57:29 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 5E910218AC;
+        Sat, 30 Mar 2019 00:56:53 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1553907450;
-        bh=qW2A3pzZhdCEAwNbFIboI9FbT4nJ0KMg+zBoOwSMQcY=;
+        s=default; t=1553907414;
+        bh=yztPiWvUA7CL8JpVq1R9n/8I+LTZMWNWDSpcYss84pk=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=HZDzzaIbT4JXRl4lgucNuj/sbSF+ELEJdWqL277sM5Y7rj7z0SaasBSNChr9tiCnw
-         r3YK3Qct1zyxqKXURh0Y7axJNEAXafRivFst0C5Ot3kt7BhKlb+s8LgXlQ7aIFx6QP
-         bG6b/EETFgah8F84SW+HJkFDSecgQ1vk9SMMoaug=
+        b=dK3ZHpuUpCUPzXVa43+LBgWhYmBfFNRsd6NsubzDBcsTmzKyzQnquIQTTgGwfQmyd
+         kpXOJVnGQm58/F04Z8Sjan8leXqSH/8v/ZeqRe/9D/F2rU43hGF13VcAKGRHWIjvVE
+         xgFJ2vIR9ueZGLrnXynxeEAOp3GSFLpKeB7Mbkn0=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
-        linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.4 21/21] ext4: prohibit fstrim in norecovery mode
-Date:   Fri, 29 Mar 2019 20:56:49 -0400
-Message-Id: <20190330005649.28475-21-sashal@kernel.org>
+Cc:     Lukas Czerner <lczerner@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
+        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.4 03/21] ext4: report real fs size after failed resize
+Date:   Fri, 29 Mar 2019 20:56:31 -0400
+Message-Id: <20190330005649.28475-3-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20190330005649.28475-1-sashal@kernel.org>
 References: <20190330005649.28475-1-sashal@kernel.org>
@@ -57,40 +56,42 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
+From: Lukas Czerner <lczerner@redhat.com>
 
-[ Upstream commit 18915b5873f07e5030e6fb108a050fa7c71c59fb ]
+[ Upstream commit 6c7328400e0488f7d49e19e02290ba343b6811b2 ]
 
-The ext4 fstrim implementation uses the block bitmaps to find free space
-that can be discarded.  If we haven't replayed the journal, the bitmaps
-will be stale and we absolutely *cannot* use stale metadata to zap the
-underlying storage.
+Currently when the file system resize using ext4_resize_fs() fails it
+will report into log that "resized filesystem to <requested block
+count>".  However this may not be true in the case of failure.  Use the
+current block count as returned by ext4_blocks_count() to report the
+block count.
 
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
+Additionally, report a warning that "error occurred during file system
+resize"
+
+Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/ioctl.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ fs/ext4/resize.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index bcd7c4788903..e44e3cd738b6 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -599,6 +599,13 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		if (!blk_queue_discard(q))
- 			return -EOPNOTSUPP;
- 
-+		/*
-+		 * We haven't replayed the journal, so we cannot use our
-+		 * block-bitmap-guided storage zapping commands.
-+		 */
-+		if (test_opt(sb, NOLOAD) && ext4_has_feature_journal(sb))
-+			return -EROFS;
-+
- 		if (copy_from_user(&range, (struct fstrim_range __user *)arg,
- 		    sizeof(range)))
- 			return -EFAULT;
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 22c90eb9a4e0..5223eb25bf59 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -2047,6 +2047,10 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
+ 		free_flex_gd(flex_gd);
+ 	if (resize_inode != NULL)
+ 		iput(resize_inode);
+-	ext4_msg(sb, KERN_INFO, "resized filesystem to %llu", n_blocks_count);
++	if (err)
++		ext4_warning(sb, "error (%d) occurred during "
++			     "file system resize", err);
++	ext4_msg(sb, KERN_INFO, "resized filesystem to %llu",
++		 ext4_blocks_count(es));
+ 	return err;
+ }
 -- 
 2.19.1
 
