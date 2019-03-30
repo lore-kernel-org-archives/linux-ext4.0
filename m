@@ -4,47 +4,47 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
-	version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 65751C10F05
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 00:53:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 493B6C10F05
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 00:54:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 35461218EA
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 00:53:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 07826206DD
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 00:54:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1553907193;
-	bh=NH009Ir/2Wr7mR+8dEzF0LGR9Yow18sYrmheC3DGcy4=;
+	s=default; t=1553907281;
+	bh=cRkDvbkGVjYnAxmFphy6GMC2+BOMm5V6n+aNWwX+i6M=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=DHtXwikCwVYI9OxSIvum/cxwlcbULpAc1jtgm2bWfDGM8QnYHHT55KSbR3qPNgAAN
-	 YYcEDlBlnStaP+OQocDi3pFOxyr0i6C3Ml2nGq+TT6htG3/EsH/UaSisDi0tMSUnUy
-	 fcCkR3qymzLjZ/2TjmGTofgiQZGtt664h9eZJJYs=
+	b=acuyJU/T4579wVee5A4oLpT9LXfXxyFOkdcEoqYXfcBdT16IQ94eLzKNWTXoJojrm
+	 N7XpQTJ/uUSVsTTfaxdYCH9pP/HP41gh2z7dXgvtT++bQTERCSo8Jk4+9BcpN/71Ie
+	 pLcDuURaGEV0RHFvr6hlU+5vlcPtIMwRRRxlxuto=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731214AbfC3AxM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 29 Mar 2019 20:53:12 -0400
-Received: from mail.kernel.org ([198.145.29.99]:60032 "EHLO mail.kernel.org"
+        id S1731568AbfC3Ayk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 29 Mar 2019 20:54:40 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33652 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731202AbfC3AxL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 29 Mar 2019 20:53:11 -0400
+        id S1730667AbfC3Ayj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 29 Mar 2019 20:54:39 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 5BDA9218FE;
-        Sat, 30 Mar 2019 00:53:10 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id A1031218D3;
+        Sat, 30 Mar 2019 00:54:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1553907191;
-        bh=NH009Ir/2Wr7mR+8dEzF0LGR9Yow18sYrmheC3DGcy4=;
+        s=default; t=1553907278;
+        bh=cRkDvbkGVjYnAxmFphy6GMC2+BOMm5V6n+aNWwX+i6M=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=I8V8/DAe2IbS+0SK00KZCPKeEYJyoOt8SkN5qVZPdP/oZhsrE8jMXvDak07MFq+dr
-         aUHMTalVkkD3/QNaWerZ6YWAz1sQRzpHjcHVQiWgMOYfcz4DsVOvgge4/qurBLgOHh
-         89RUvLYMgiEXiBOjSZP+dcn30L8UJ5PCF4Sj+6eo=
+        b=RSIG1gii2TUfnUHEuSkVtImHP2grqUg/OEZVubk/UYtBL7sqP97SsuY0j9Xs/eEnI
+         Xkm+baXeXahjoD4Dlndqg+2H1WIHqx3Gocx8DtshD7Zogx10fEaqfOWNa1qRqIkc2t
+         xET8d7LuZ62CwWujfxmg7GIW92mqpOHdzQA9d8qc=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Jan Kara <jack@suse.cz>, Theodore Ts'o <tytso@mit.edu>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.19 06/52] ext4: avoid panic during forced reboot
-Date:   Fri, 29 Mar 2019 20:52:13 -0400
-Message-Id: <20190330005301.26868-6-sashal@kernel.org>
+Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.19 52/52] ext4: prohibit fstrim in norecovery mode
+Date:   Fri, 29 Mar 2019 20:52:59 -0400
+Message-Id: <20190330005301.26868-52-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20190330005301.26868-1-sashal@kernel.org>
 References: <20190330005301.26868-1-sashal@kernel.org>
@@ -57,68 +57,40 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Jan Kara <jack@suse.cz>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 
-[ Upstream commit 1dc1097ff60e4105216da7cd0aa99032b039a994 ]
+[ Upstream commit 18915b5873f07e5030e6fb108a050fa7c71c59fb ]
 
-When admin calls "reboot -f" - i.e., does a hard system reboot by
-directly calling reboot(2) - ext4 filesystem mounted with errors=panic
-can panic the system. This happens because the underlying device gets
-disabled without unmounting the filesystem and thus some syscall running
-in parallel to reboot(2) can result in the filesystem getting IO errors.
+The ext4 fstrim implementation uses the block bitmaps to find free space
+that can be discarded.  If we haven't replayed the journal, the bitmaps
+will be stale and we absolutely *cannot* use stale metadata to zap the
+underlying storage.
 
-This is somewhat surprising to the users so try improve the behavior by
-switching to errors=remount-ro behavior when the system is running
-reboot(2).
-
-Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/super.c | 16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
+ fs/ext4/ioctl.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a1cf7d68b4f0..abba7ece78e9 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -430,6 +430,12 @@ static void ext4_journal_commit_callback(journal_t *journal, transaction_t *txn)
- 	spin_unlock(&sbi->s_md_lock);
- }
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 2e76fb55d94a..5f24fdc140ad 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -999,6 +999,13 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 		if (!blk_queue_discard(q))
+ 			return -EOPNOTSUPP;
  
-+static bool system_going_down(void)
-+{
-+	return system_state == SYSTEM_HALT || system_state == SYSTEM_POWER_OFF
-+		|| system_state == SYSTEM_RESTART;
-+}
++		/*
++		 * We haven't replayed the journal, so we cannot use our
++		 * block-bitmap-guided storage zapping commands.
++		 */
++		if (test_opt(sb, NOLOAD) && ext4_has_feature_journal(sb))
++			return -EROFS;
 +
- /* Deal with the reporting of failure conditions on a filesystem such as
-  * inconsistencies detected or read IO failures.
-  *
-@@ -460,7 +466,12 @@ static void ext4_handle_error(struct super_block *sb)
- 		if (journal)
- 			jbd2_journal_abort(journal, -EIO);
- 	}
--	if (test_opt(sb, ERRORS_RO)) {
-+	/*
-+	 * We force ERRORS_RO behavior when system is rebooting. Otherwise we
-+	 * could panic during 'reboot -f' as the underlying device got already
-+	 * disabled.
-+	 */
-+	if (test_opt(sb, ERRORS_RO) || system_going_down()) {
- 		ext4_msg(sb, KERN_CRIT, "Remounting filesystem read-only");
- 		/*
- 		 * Make sure updated value of ->s_mount_flags will be visible
-@@ -468,8 +479,7 @@ static void ext4_handle_error(struct super_block *sb)
- 		 */
- 		smp_wmb();
- 		sb->s_flags |= SB_RDONLY;
--	}
--	if (test_opt(sb, ERRORS_PANIC)) {
-+	} else if (test_opt(sb, ERRORS_PANIC)) {
- 		if (EXT4_SB(sb)->s_journal &&
- 		  !(EXT4_SB(sb)->s_journal->j_flags & JBD2_REC_ERR))
- 			return;
+ 		if (copy_from_user(&range, (struct fstrim_range __user *)arg,
+ 		    sizeof(range)))
+ 			return -EFAULT;
 -- 
 2.19.1
 
