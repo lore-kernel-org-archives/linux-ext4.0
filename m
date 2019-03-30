@@ -4,50 +4,50 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F6A4C4360F
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:08:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D1E6AC43381
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:34:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C7B6B206DD
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:08:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 92D7F2183F
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:34:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1553908090;
-	bh=zSoqEq5ZCwLh2ApenEVJzG3l9Ztn3aAeNCnVJBQdzxE=;
+	s=default; t=1553909642;
+	bh=qW2A3pzZhdCEAwNbFIboI9FbT4nJ0KMg+zBoOwSMQcY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=w+ShYFQ+f+wyo+dhvullg7/CijhvNlJ9nB2qTXjLCs8cB58QeYF3k5Nr6tIdui4W7
-	 ICVFJx8bL+hsjvYRTUXzI4QEC3uZSy6ZiXyM3+cyIW4vWVa3YAkBxKFfNMVGVFTDk3
-	 FBK7xW1ZKvSgbMAAjkeUlCIyXBJLhBozNjsu1BLM=
+	b=N/raicHDEG+Ow5swoXQYmXB90/o0q7TiSlsxWif2QQ7/hRbTS/uVZB1VI/iU2KVe4
+	 ydk8exw88LltaduPxYMPM9nKnl4QnEQNJSUMUOuSyGPFkyMvdmytQ3cZMzeoVIuGbD
+	 IG4sJHorr4XLBy9IEVSEhRr1cM/VDuBMnsnUBH7o=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731277AbfC3BIK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 29 Mar 2019 21:08:10 -0400
-Received: from mail.kernel.org ([198.145.29.99]:59780 "EHLO mail.kernel.org"
+        id S1731641AbfC3Bd4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 29 Mar 2019 21:33:56 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40254 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730716AbfC3Aw7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 29 Mar 2019 20:52:59 -0400
+        id S1732301AbfC3BcP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 29 Mar 2019 21:32:15 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 48C65218CD;
-        Sat, 30 Mar 2019 00:52:58 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 19300218E2;
+        Sat, 30 Mar 2019 01:32:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1553907179;
-        bh=zSoqEq5ZCwLh2ApenEVJzG3l9Ztn3aAeNCnVJBQdzxE=;
+        s=default; t=1553909534;
+        bh=qW2A3pzZhdCEAwNbFIboI9FbT4nJ0KMg+zBoOwSMQcY=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=I43xEA0P4OP5sz0Z+x82e5hwbLAjd03E9OHZ9I7k7d5mXIwxTZ5KDDsHTcDzdKGvc
-         L99y7h2aTOG2W9tZ+qKmNQOnwUtlftqrwa/aFeRxzlHEv7AqHFGs+pX2Tut1/XaCbD
-         WW/OcMvclcWj6t5csHxIizfT3Ne/ZhddTVX9RC5c=
+        b=0GVdleChpl1PBUqtN/NsKZqpC/qyaHqhdgWIx8E0OfFbGn+iq58nJKOnemveVFCom
+         Bek5F7fhCpNN0o0p19PNjl1QN9vP6fnkINPMD0va+UEaQ7tVtj4K4c5+i77SImOcr4
+         2xR41c1xS29o1RzDi8WXC6b91xR9Ilc1fuvGUkTk=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
         Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
         linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.0 67/67] ext4: prohibit fstrim in norecovery mode
-Date:   Fri, 29 Mar 2019 20:50:47 -0400
-Message-Id: <20190330005047.25998-67-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.4 12/16] ext4: prohibit fstrim in norecovery mode
+Date:   Fri, 29 Mar 2019 21:31:56 -0400
+Message-Id: <20190330013200.1130-12-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190330005047.25998-1-sashal@kernel.org>
-References: <20190330005047.25998-1-sashal@kernel.org>
+In-Reply-To: <20190330013200.1130-1-sashal@kernel.org>
+References: <20190330013200.1130-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -74,10 +74,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 7 insertions(+)
 
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 2e76fb55d94a..5f24fdc140ad 100644
+index bcd7c4788903..e44e3cd738b6 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
-@@ -999,6 +999,13 @@ resizefs_out:
+@@ -599,6 +599,13 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
  		if (!blk_queue_discard(q))
  			return -EOPNOTSUPP;
  
