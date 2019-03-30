@@ -4,49 +4,50 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C640AC43381
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:02:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B456DC10F05
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:02:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8D6712064A
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:02:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 848312064A
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:02:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1553907724;
-	bh=ylLX97jOmURa25+FlZykWTi/bk0+C0VHG6dI2Vz59JE=;
+	s=default; t=1553907738;
+	bh=DmawPRaMrk1HaIMhcxgDMlWe2Oo1jLyWLs30oNu+jug=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=wIgKke/0gcpZ4LCJmf+bnCAf5FkX75D7RRA1WzL8j/s6RWUd1/kxwZLewDSgc7yr/
-	 oAhURKGzR2wqBC+C7B9KB4coGtGGER+dPZ69PTEapHznFvU0nZ1EniLixRbmBqdyIb
-	 HHLq49WFj8QIvLGi9dish8YbFHjgw6c/qSxzfA50=
+	b=v0L8JVHFzG+Lx45s+3v6TyLbs2S/AOFOXhKRYt8KZzu061vkJrFYUHvNDVURY5W9w
+	 AIDFvpMmx1hk8Px4mbnkxE6pTre8azjQPuQhsK8fuKgHVrQwc+2CuH2a+wd9isBsGD
+	 ShAL94AL4dVzYm2d7cRoPNql9uWFradegVp+6vKw=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731865AbfC3BCD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 29 Mar 2019 21:02:03 -0400
-Received: from mail.kernel.org ([198.145.29.99]:35424 "EHLO mail.kernel.org"
+        id S1731847AbfC3Az6 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 29 Mar 2019 20:55:58 -0400
+Received: from mail.kernel.org ([198.145.29.99]:35248 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731843AbfC3A4A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 29 Mar 2019 20:56:00 -0400
+        id S1731843AbfC3Azx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 29 Mar 2019 20:55:53 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 5FC7C206DD;
-        Sat, 30 Mar 2019 00:55:59 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 622FF218AC;
+        Sat, 30 Mar 2019 00:55:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1553907360;
-        bh=ylLX97jOmURa25+FlZykWTi/bk0+C0VHG6dI2Vz59JE=;
+        s=default; t=1553907353;
+        bh=DmawPRaMrk1HaIMhcxgDMlWe2Oo1jLyWLs30oNu+jug=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=dODbx+BX7YjvEeJDvTEVTPrSIY/wylQlWjUbFIFy7ZNEIqtTqEXmmqaktMZmn4huv
-         TfNav93zILXmPcRplgOflKvy7LkReQVirb/vApkC3tC582hL7Pw7eMCeTiAgDwUsxw
-         ioIp9taMBBcUU3vZ70g9oNt2KipQifUXr5Ay/0uM=
+        b=oRuzwWW3uCofR2AFdjGHGL9aZyv7DN2+rlWxZr3oFFHyrSssJyo5l4SPmQmpGhDIq
+         zwDYOi7UzEIwMDcVlCZigf5Ez1Swqw1Hrot+E6QkMBvNjk8suJnUJKyN9AD6J/YBzM
+         TIZu7T1QlYcPwgIBRgf4spQFwD/SD0luIumQko1Q=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Lukas Czerner <lczerner@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
-        Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.9 03/27] ext4: add missing brelse() in add_new_gdb_meta_bg()
-Date:   Fri, 29 Mar 2019 20:55:29 -0400
-Message-Id: <20190330005555.28087-3-sashal@kernel.org>
+Cc:     "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Theodore Ts'o <tytso@mit.edu>, Sasha Levin <sashal@kernel.org>,
+        linux-ext4@vger.kernel.org
+Subject: [PATCH AUTOSEL 4.14 37/37] ext4: prohibit fstrim in norecovery mode
+Date:   Fri, 29 Mar 2019 20:54:38 -0400
+Message-Id: <20190330005441.27540-37-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190330005555.28087-1-sashal@kernel.org>
-References: <20190330005555.28087-1-sashal@kernel.org>
+In-Reply-To: <20190330005441.27540-1-sashal@kernel.org>
+References: <20190330005441.27540-1-sashal@kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
@@ -56,49 +57,40 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Lukas Czerner <lczerner@redhat.com>
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
 
-[ Upstream commit d64264d6218e6892edd832dc3a5a5857c2856c53 ]
+[ Upstream commit 18915b5873f07e5030e6fb108a050fa7c71c59fb ]
 
-Currently in add_new_gdb_meta_bg() there is a missing brelse of gdb_bh
-in case ext4_journal_get_write_access() fails.
-Additionally kvfree() is missing in the same error path. Fix it by
-moving the ext4_journal_get_write_access() before the ext4 sb update as
-Ted suggested and release n_group_desc and gdb_bh in case it fails.
+The ext4 fstrim implementation uses the block bitmaps to find free space
+that can be discarded.  If we haven't replayed the journal, the bitmaps
+will be stale and we absolutely *cannot* use stale metadata to zap the
+underlying storage.
 
-Fixes: 61a9c11e5e7a ("ext4: add missing brelse() add_new_gdb_meta_bg()'s error path")
-Signed-off-by: Lukas Czerner <lczerner@redhat.com>
+Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/resize.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ fs/ext4/ioctl.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 67b359629a66..e16fb545d441 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -907,11 +907,18 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
- 	memcpy(n_group_desc, o_group_desc,
- 	       EXT4_SB(sb)->s_gdb_count * sizeof(struct buffer_head *));
- 	n_group_desc[gdb_num] = gdb_bh;
-+
-+	BUFFER_TRACE(gdb_bh, "get_write_access");
-+	err = ext4_journal_get_write_access(handle, gdb_bh);
-+	if (err) {
-+		kvfree(n_group_desc);
-+		brelse(gdb_bh);
-+		return err;
-+	}
-+
- 	EXT4_SB(sb)->s_group_desc = n_group_desc;
- 	EXT4_SB(sb)->s_gdb_count++;
- 	kvfree(o_group_desc);
--	BUFFER_TRACE(gdb_bh, "get_write_access");
--	err = ext4_journal_get_write_access(handle, gdb_bh);
- 	return err;
- }
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 7917cc89ab21..3dbf4e414706 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -940,6 +940,13 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 		if (!blk_queue_discard(q))
+ 			return -EOPNOTSUPP;
  
++		/*
++		 * We haven't replayed the journal, so we cannot use our
++		 * block-bitmap-guided storage zapping commands.
++		 */
++		if (test_opt(sb, NOLOAD) && ext4_has_feature_journal(sb))
++			return -EROFS;
++
+ 		if (copy_from_user(&range, (struct fstrim_range __user *)arg,
+ 		    sizeof(range)))
+ 			return -EFAULT;
 -- 
 2.19.1
 
