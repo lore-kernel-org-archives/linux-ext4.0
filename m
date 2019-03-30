@@ -6,44 +6,44 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
 	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E08C3C4360F
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:04:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B144BC43381
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:04:26 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AA0F1206DD
-	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:04:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 7FCCA206DD
+	for <linux-ext4@archiver.kernel.org>; Sat, 30 Mar 2019 01:04:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1553907858;
-	bh=ijo4EvYM3HuiSUgVvme9ei7VgavrUuFyV+ucPmMbVl0=;
+	s=default; t=1553907866;
+	bh=Zrnq++i9sAQkEmK2WHf0h6T85FD/MRgt4KIzCPkskLA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=xTzLhs0/HzOGyl86C9vPzjpWeIdcBA/+gK91OmRZYkhHLTaM2uYTJXPYTKBIiWZO/
-	 fZNsOsvn1RO/VIGh/qiUcfBLyIR0+pHT/WURsZOZz9C3zL51itkrj4fYuUdrtOzSd7
-	 CweLsq8dalc5NcD+i2ePEqiP++WNUtrwJ+07Zt/w=
+	b=x3hOpO8GDtaHWH4XyzeF5n37xNG0HUsRfQxdQK9r29g5dJr1ZGuYvC9V/bCBI0cSI
+	 Sssbt/1PR2TQrTZohHsuXzoQCneflsoibIbFayZe9Vzh5t7Y8s2gFHLHidCu7FFlF/
+	 DCAMzKWT5Qi7RDaVZTEf1ZRcfMBVNkiDp/W2Dmng=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731615AbfC3Ayu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 29 Mar 2019 20:54:50 -0400
-Received: from mail.kernel.org ([198.145.29.99]:33924 "EHLO mail.kernel.org"
+        id S1731701AbfC3BET (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 29 Mar 2019 21:04:19 -0400
+Received: from mail.kernel.org ([198.145.29.99]:33864 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731609AbfC3Ayt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 29 Mar 2019 20:54:49 -0400
+        id S1731601AbfC3Ays (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 29 Mar 2019 20:54:48 -0400
 Received: from sasha-vm.mshome.net (c-73-47-72-35.hsd1.nh.comcast.net [73.47.72.35])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id D3D6D218CD;
-        Sat, 30 Mar 2019 00:54:47 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id BDF8B2064A;
+        Sat, 30 Mar 2019 00:54:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1553907288;
-        bh=ijo4EvYM3HuiSUgVvme9ei7VgavrUuFyV+ucPmMbVl0=;
+        s=default; t=1553907287;
+        bh=Zrnq++i9sAQkEmK2WHf0h6T85FD/MRgt4KIzCPkskLA=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=yj6uYhxkgQHf1C4qCBkMRKfy63UDT3o3g/B8qaO1HEEWvpksWWWwMS6yGmSZY0loj
-         AA39XCFLZ11bPLNIABTIMRkkG7FAE2Pgxd6b575+DQyhkh0nUt4mfVKoez3PhzNSr0
-         4jBBbrZzzhWXtk/TDVMrFo8iw96hg0bh4LmcIsBU=
+        b=dfuhKuZ5U3bvTlZD3eJ3+DE3Ix13gg4xvWpnsmfkF56vay4In5c+UmEuj6AUIh8Dz
+         2eNJvN6mJXpDPq37BG+WhLDxXNtHAxkaZ8lna8YogPGmBXDfYtbnIhf9N47x2Ne4jc
+         rYfhMV3TOfNnswtwCrVpj3D5wr2YBp7Zvboslr+k=
 From:   Sasha Levin <sashal@kernel.org>
 To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
 Cc:     Lukas Czerner <lczerner@redhat.com>, Theodore Ts'o <tytso@mit.edu>,
         Sasha Levin <sashal@kernel.org>, linux-ext4@vger.kernel.org
-Subject: [PATCH AUTOSEL 4.14 05/37] ext4: report real fs size after failed resize
-Date:   Fri, 29 Mar 2019 20:54:06 -0400
-Message-Id: <20190330005441.27540-5-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 4.14 04/37] ext4: add missing brelse() in add_new_gdb_meta_bg()
+Date:   Fri, 29 Mar 2019 20:54:05 -0400
+Message-Id: <20190330005441.27540-4-sashal@kernel.org>
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20190330005441.27540-1-sashal@kernel.org>
 References: <20190330005441.27540-1-sashal@kernel.org>
@@ -58,40 +58,47 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Lukas Czerner <lczerner@redhat.com>
 
-[ Upstream commit 6c7328400e0488f7d49e19e02290ba343b6811b2 ]
+[ Upstream commit d64264d6218e6892edd832dc3a5a5857c2856c53 ]
 
-Currently when the file system resize using ext4_resize_fs() fails it
-will report into log that "resized filesystem to <requested block
-count>".  However this may not be true in the case of failure.  Use the
-current block count as returned by ext4_blocks_count() to report the
-block count.
+Currently in add_new_gdb_meta_bg() there is a missing brelse of gdb_bh
+in case ext4_journal_get_write_access() fails.
+Additionally kvfree() is missing in the same error path. Fix it by
+moving the ext4_journal_get_write_access() before the ext4 sb update as
+Ted suggested and release n_group_desc and gdb_bh in case it fails.
 
-Additionally, report a warning that "error occurred during file system
-resize"
-
+Fixes: 61a9c11e5e7a ("ext4: add missing brelse() add_new_gdb_meta_bg()'s error path")
 Signed-off-by: Lukas Czerner <lczerner@redhat.com>
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/ext4/resize.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/ext4/resize.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index fb9fbf993e22..333fba05e1a5 100644
+index 6f0acfe31418..fb9fbf993e22 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -2049,6 +2049,10 @@ int ext4_resize_fs(struct super_block *sb, ext4_fsblk_t n_blocks_count)
- 		free_flex_gd(flex_gd);
- 	if (resize_inode != NULL)
- 		iput(resize_inode);
--	ext4_msg(sb, KERN_INFO, "resized filesystem to %llu", n_blocks_count);
-+	if (err)
-+		ext4_warning(sb, "error (%d) occurred during "
-+			     "file system resize", err);
-+	ext4_msg(sb, KERN_INFO, "resized filesystem to %llu",
-+		 ext4_blocks_count(es));
+@@ -907,11 +907,18 @@ static int add_new_gdb_meta_bg(struct super_block *sb,
+ 	memcpy(n_group_desc, o_group_desc,
+ 	       EXT4_SB(sb)->s_gdb_count * sizeof(struct buffer_head *));
+ 	n_group_desc[gdb_num] = gdb_bh;
++
++	BUFFER_TRACE(gdb_bh, "get_write_access");
++	err = ext4_journal_get_write_access(handle, gdb_bh);
++	if (err) {
++		kvfree(n_group_desc);
++		brelse(gdb_bh);
++		return err;
++	}
++
+ 	EXT4_SB(sb)->s_group_desc = n_group_desc;
+ 	EXT4_SB(sb)->s_gdb_count++;
+ 	kvfree(o_group_desc);
+-	BUFFER_TRACE(gdb_bh, "get_write_access");
+-	err = ext4_journal_get_write_access(handle, gdb_bh);
  	return err;
  }
+ 
 -- 
 2.19.1
 
