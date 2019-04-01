@@ -1,90 +1,111 @@
-Return-Path: <SRS0=w/cN=SC=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=tO+/=SD=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0626DC43381
-	for <linux-ext4@archiver.kernel.org>; Sun, 31 Mar 2019 08:11:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 80BF5C43381
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Apr 2019 05:03:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CBCD12146F
-	for <linux-ext4@archiver.kernel.org>; Sun, 31 Mar 2019 08:11:50 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 57C5720828
+	for <linux-ext4@archiver.kernel.org>; Mon,  1 Apr 2019 05:03:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726672AbfCaILu (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 31 Mar 2019 04:11:50 -0400
-Received: from smtprz14.163.net ([106.3.154.247]:34635 "EHLO smtp.tom.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726339AbfCaILu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 31 Mar 2019 04:11:50 -0400
-Received: from 172.25.16.147 (unknown [172.25.16.147])
-        by freemail02.tom.com (Postfix) with ESMTP id D54FEB0152F
-        for <linux-ext4@vger.kernel.org>; Sun, 31 Mar 2019 16:11:46 +0800 (CST)
-Received: from 172.25.16.91 (HELO smtp.tom.com) ([172.25.16.91])
-          by localhost (TOM SMTP Server) with SMTP ID -1738974630
-          for <linux-ext4@vger.kernel.org>;
-          Sun, 31 Mar 2019 16:11:46 +0800 (CST)
-Received: from antispam2.tom.com (unknown [172.25.16.56])
-        by freemail02.tom.com (Postfix) with ESMTP id 58D8FB0150A
-        for <linux-ext4@vger.kernel.org>; Sun, 31 Mar 2019 16:11:46 +0800 (CST)
-Received: from antispam2.tom.com (antispam2.tom.com [127.0.0.1])
-        by antispam2.tom.com (Postfix) with ESMTP id 4EAB681774
-        for <linux-ext4@vger.kernel.org>; Sun, 31 Mar 2019 16:11:46 +0800 (CST)
-X-Virus-Scanned: Debian amavisd-new at antispam2.tom.com
-Received: from antispam2.tom.com ([127.0.0.1])
-        by antispam2.tom.com (antispam2.tom.com [127.0.0.1]) (amavisd-new, port 10024)
-        with ESMTP id uI6kK9q-6lYz for <linux-ext4@vger.kernel.org>;
-        Sun, 31 Mar 2019 16:11:45 +0800 (CST)
-Received: from localhost (unknown [222.209.17.169])
-        by antispam2.tom.com (Postfix) with ESMTPA id 084CA81518;
-        Sun, 31 Mar 2019 16:11:44 +0800 (CST)
-From:   Liu Xiang <liu.xiang6@zte.com.cn>
-To:     linux-ext4@vger.kernel.org
-Cc:     linux-kernel@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, liuxiang_1999@126.com,
-        Liu Xiang <liu.xiang6@zte.com.cn>
-Subject: [PATCH v2] ext4: fix prefetchw of NULL page
-Date:   Sun, 31 Mar 2019 16:11:34 +0800
-Message-Id: <1554019894-11041-1-git-send-email-liu.xiang6@zte.com.cn>
-X-Mailer: git-send-email 1.9.1
+        id S1726628AbfDAFDE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 1 Apr 2019 01:03:04 -0400
+Received: from ipmail03.adl6.internode.on.net ([150.101.137.143]:30778 "EHLO
+        ipmail03.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725817AbfDAFDD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Apr 2019 01:03:03 -0400
+Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
+  by ipmail03.adl6.internode.on.net with ESMTP; 01 Apr 2019 15:32:57 +1030
+Received: from dave by dastard with local (Exim 4.80)
+        (envelope-from <david@fromorbit.com>)
+        id 1hAp5z-0004MY-CL; Mon, 01 Apr 2019 16:02:55 +1100
+Date:   Mon, 1 Apr 2019 16:02:55 +1100
+From:   Dave Chinner <david@fromorbit.com>
+To:     Kanchan Joshi <joshi.k@samsung.com>
+Cc:     linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-nvme@lists.infradead.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, axboe@fb.com, prakash.v@samsung.com,
+        anshul@samsung.com, joshiiitr@gmail.com
+Subject: Re: [PATCH v3 1/7] block: extend stream count for in-kernel use
+Message-ID: <20190401050255.GP23020@dastard>
+References: <1553846032-4451-1-git-send-email-joshi.k@samsung.com>
+ <CGME20190329075743epcas1p12f1d290e65ddf84eb74ed94a5ae6eb74@epcas1p1.samsung.com>
+ <1553846032-4451-2-git-send-email-joshi.k@samsung.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <1553846032-4451-2-git-send-email-joshi.k@samsung.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-In ext4_mpage_readpages(), if the parameter pages is not NULL, another
-parameter page is NULL. At the first time prefetchw(&page->flags)
-works on NULL. From second time, prefetchw(&page->flags) always works on
-the last consumed page. This might do little improvment for handling
-current page. So prefetchw() should be called while the page pointer
-has just been updated.
+On Fri, Mar 29, 2019 at 01:23:46PM +0530, Kanchan Joshi wrote:
+> This patch bumps up stream count to suppor in-kernel hints. It also
+> adds 'streamid' member in 'request' and declares new API for driver
+> to register stream-info with block layer.
+> 
+> Signed-off-by: Kanchan Joshi <joshi.k@samsung.com>
+> ---
+>  include/linux/blkdev.h | 9 +++++++--
+>  1 file changed, 7 insertions(+), 2 deletions(-)
+> 
+> diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+> index 338604d..4088e21 100644
+> --- a/include/linux/blkdev.h
+> +++ b/include/linux/blkdev.h
+> @@ -214,6 +214,7 @@ struct request {
+>  #endif
+>  
+>  	unsigned short write_hint;
+> +	unsigned short streamid;
+>  	unsigned short ioprio;
+>  
+>  	void *special;		/* opaque pointer available for LLD use */
+> @@ -341,6 +342,8 @@ struct queue_limits {
+>  	unsigned char		misaligned;
+>  	unsigned char		discard_misaligned;
+>  	unsigned char		raid_partial_stripes_expensive;
+> +
+> +	unsigned short		nr_streams;
+>  	enum blk_zoned_model	zoned;
+>  };
+>  
+> @@ -567,8 +570,9 @@ struct request_queue {
+>  	size_t			cmd_size;
+>  
+>  	struct work_struct	release_work;
+> -
+> -#define BLK_MAX_WRITE_HINTS	5
+> +#define BLK_MAX_USER_HINTS	(WRITE_LIFE_KERN_MIN - 2)
 
-Signed-off-by: Liu Xiang <liu.xiang6@zte.com.cn>
----
+WRITE_LIFE_KERN_MIN is undefined.
 
-Changes in v2:
- remove prefetchw() when pages is NULL and change comment
+-Dave.
 
- fs/ext4/readpage.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+> +#define BLK_MAX_KERN_HINTS	4
+> +#define BLK_MAX_WRITE_HINTS	(1 + BLK_MAX_USER_HINTS + BLK_MAX_KERN_HINTS)
+>  	u64			write_hints[BLK_MAX_WRITE_HINTS];
+>  };
+>  
+> @@ -1071,6 +1075,7 @@ extern void blk_queue_update_dma_alignment(struct request_queue *, int);
+>  extern void blk_queue_rq_timeout(struct request_queue *, unsigned int);
+>  extern void blk_queue_flush_queueable(struct request_queue *q, bool queueable);
+>  extern void blk_queue_write_cache(struct request_queue *q, bool enabled, bool fua);
+> +extern void blk_queue_stream_limits(struct request_queue *, unsigned short);
+>  
+>  /*
+>   * Number of physical segments as sent to the device.
+> -- 
+> 2.7.4
+> 
+> 
 
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-index 6aa282e..f138c47 100644
---- a/fs/ext4/readpage.c
-+++ b/fs/ext4/readpage.c
-@@ -126,9 +126,10 @@ int ext4_mpage_readpages(struct address_space *mapping,
- 		int fully_mapped = 1;
- 		unsigned first_hole = blocks_per_page;
- 
--		prefetchw(&page->flags);
- 		if (pages) {
- 			page = lru_to_page(pages);
-+
-+			prefetchw(&page->flags);
- 			list_del(&page->lru);
- 			if (add_to_page_cache_lru(page, mapping, page->index,
- 				  readahead_gfp_mask(mapping)))
 -- 
-1.9.1
-
+Dave Chinner
+david@fromorbit.com
