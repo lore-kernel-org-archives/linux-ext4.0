@@ -4,39 +4,39 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A08C1C10F0B
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Apr 2019 15:48:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DAB0BC10F0C
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Apr 2019 15:48:46 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6B3302133D
-	for <linux-ext4@archiver.kernel.org>; Tue,  2 Apr 2019 15:48:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id A04A12147A
+	for <linux-ext4@archiver.kernel.org>; Tue,  2 Apr 2019 15:48:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1554220121;
-	bh=sXTzCdkJrYXxv/SHdPjmdIL5PN0MRwSnIQ9nL31vSRk=;
+	s=default; t=1554220126;
+	bh=KmBDsI/LcwOa4M+22k/4vkcxnmCJ0qhjQzd+/krrPaU=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
-	b=u1udFXzMwwATlFG2lCze8kFgA+3XpKrUy5mvmBHHNNN5olMw52Yg74WkEpqbNCkRW
-	 mFFT0Q/RkMFoSBe1lkwNUWQsrPUowlAf8X84qlBlKt+ieCo0ErzSffDFpVqvGrWqbL
-	 ipCK02+YheOFcvPN1JzR8MP/+W3knKZXxIeAyV90=
+	b=NZDmckiaIo4zidAyGkQBilcMth+TafIcrbV+dmnqGX9kUuLK0o0CC3OgyWpCNXlV8
+	 5+4h9yWerGd8P2V/fk1UYo21DPTdYjaQtd5JRZwisKrJLcjLaQFb4Jr0xsnrZagHaz
+	 fwLtUU0qQI55IipQJ2LIoabHMkcC28TKxLgCEQ2Y=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1731428AbfDBPsk (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 2 Apr 2019 11:48:40 -0400
-Received: from mail.kernel.org ([198.145.29.99]:37136 "EHLO mail.kernel.org"
+        id S1731463AbfDBPso (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 2 Apr 2019 11:48:44 -0400
+Received: from mail.kernel.org ([198.145.29.99]:36926 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1731383AbfDBPsj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 2 Apr 2019 11:48:39 -0400
+        id S1731323AbfDBPsi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 2 Apr 2019 11:48:38 -0400
 Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id D789321741;
-        Tue,  2 Apr 2019 15:48:37 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id E6A492171F;
+        Tue,  2 Apr 2019 15:48:36 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1554220118;
-        bh=sXTzCdkJrYXxv/SHdPjmdIL5PN0MRwSnIQ9nL31vSRk=;
+        s=default; t=1554220117;
+        bh=KmBDsI/LcwOa4M+22k/4vkcxnmCJ0qhjQzd+/krrPaU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ganR7fpq8u+FfoCR+Ev16F1/7Te9U+qa4UwB7Hu9reApO8UOxEaElRGkAex1tkmqp
-         wyH4sEp0exKkh0p2Qe/uAa88fMSTWm8n0ERqHpymeftJDZLQWi8Q3cLeAUpyo9T9Jc
-         EMuq1Ps8/0cB4CHthASEFkp7JlIc56eHoG4mM5BU=
+        b=GsirEp018qvIrQseciOMD7LrbZGpdhwpWtaf46Ny4AnrJxvomreGOxsi3XFZO5ani
+         d0gk1NZ+7as4xISRZXqEUO2J9U5Mcgw6cp0/bdYBWCHV6tzs+kb8gJJqPW8G4Htfue
+         tOdwPNfBTIaMWa8MIQQiuGhiKUuqXkGA0Po2rCDM=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -45,9 +45,9 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-crypto@vger.kernel.org, keyrings@vger.kernel.org,
         Paul Crowley <paulcrowley@google.com>,
         Satya Tangirala <satyat@google.com>
-Subject: [PATCH v4 15/17] f2fs: wire up new fscrypt ioctls
-Date:   Tue,  2 Apr 2019 08:45:58 -0700
-Message-Id: <20190402154600.32432-16-ebiggers@kernel.org>
+Subject: [PATCH v4 13/17] fscrypt: require that key be added when setting a v2 encryption policy
+Date:   Tue,  2 Apr 2019 08:45:56 -0700
+Message-Id: <20190402154600.32432-14-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0
 In-Reply-To: <20190402154600.32432-1-ebiggers@kernel.org>
 References: <20190402154600.32432-1-ebiggers@kernel.org>
@@ -60,105 +60,120 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Eric Biggers <ebiggers@google.com>
 
-Wire up the new ioctls for adding and removing fscrypt keys to/from the
-filesystem, and the new ioctl for retrieving v2 encryption policies.
+By looking up the master keys in a filesystem-level keyring rather than
+in the calling processes' key hierarchy, it becomes possible for a user
+to set an encryption policy which refers to some key they don't actually
+know, then encrypt their files using that key.  Cryptographically this
+isn't much of a problem, but the semantics of this would be a bit weird.
+Thus, enforce that a v2 encryption policy can only be set if the user
+has previously added the key, or has capable(CAP_FOWNER).
 
-FS_IOC_REMOVE_ENCRYPTION_KEY also required making f2fs_drop_inode() call
-fscrypt_drop_inode().
-
-For more details see Documentation/filesystems/fscrypt.rst, as well as
-the fscrypt patches that added the implementation of these ioctls.
+We tolerate that this problem will continue to exist for v1 encryption
+policies, however; there is no way around that.
 
 Signed-off-by: Eric Biggers <ebiggers@google.com>
 ---
- fs/f2fs/file.c  | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/f2fs/super.c |  2 ++
- 2 files changed, 48 insertions(+)
+ fs/crypto/fscrypt_private.h |  3 +++
+ fs/crypto/keyring.c         | 47 +++++++++++++++++++++++++++++++++++++
+ fs/crypto/policy.c          |  6 +++++
+ 3 files changed, 56 insertions(+)
 
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 5742ab8b57dc6..251e374353da8 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -2095,6 +2095,40 @@ static int f2fs_ioc_get_encryption_pwsalt(struct file *filp, unsigned long arg)
- 	return err;
- }
+diff --git a/fs/crypto/fscrypt_private.h b/fs/crypto/fscrypt_private.h
+index 5f679ba32cece..a398383ae9e34 100644
+--- a/fs/crypto/fscrypt_private.h
++++ b/fs/crypto/fscrypt_private.h
+@@ -411,6 +411,9 @@ extern struct key *
+ fscrypt_find_master_key(struct super_block *sb,
+ 			const struct fscrypt_key_specifier *mk_spec);
  
-+static int f2fs_ioc_get_encryption_policy_ex(struct file *filp,
-+					     unsigned long arg)
-+{
-+	if (!f2fs_sb_has_encrypt(F2FS_I_SB(file_inode(filp))))
-+		return -EOPNOTSUPP;
++extern int fscrypt_verify_key_added(struct super_block *sb,
++				    const u8 identifier[FSCRYPT_KEY_IDENTIFIER_SIZE]);
 +
-+	return fscrypt_ioctl_get_policy_ex(filp, (void __user *)arg);
-+}
-+
-+static int f2fs_ioc_add_encryption_key(struct file *filp, unsigned long arg)
-+{
-+	if (!f2fs_sb_has_encrypt(F2FS_I_SB(file_inode(filp))))
-+		return -EOPNOTSUPP;
-+
-+	return fscrypt_ioctl_add_key(filp, (void __user *)arg);
-+}
-+
-+static int f2fs_ioc_remove_encryption_key(struct file *filp, unsigned long arg)
-+{
-+	if (!f2fs_sb_has_encrypt(F2FS_I_SB(file_inode(filp))))
-+		return -EOPNOTSUPP;
-+
-+	return fscrypt_ioctl_remove_key(filp, (const void __user *)arg);
-+}
-+
-+static int f2fs_ioc_get_encryption_key_status(struct file *filp,
-+					      unsigned long arg)
-+{
-+	if (!f2fs_sb_has_encrypt(F2FS_I_SB(file_inode(filp))))
-+		return -EOPNOTSUPP;
-+
-+	return fscrypt_ioctl_get_key_status(filp, (void __user *)arg);
-+}
-+
- static int f2fs_ioc_gc(struct file *filp, unsigned long arg)
- {
- 	struct inode *inode = file_inode(filp);
-@@ -3000,6 +3034,14 @@ long f2fs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		return f2fs_ioc_get_encryption_policy(filp, arg);
- 	case F2FS_IOC_GET_ENCRYPTION_PWSALT:
- 		return f2fs_ioc_get_encryption_pwsalt(filp, arg);
-+	case FS_IOC_GET_ENCRYPTION_POLICY_EX:
-+		return f2fs_ioc_get_encryption_policy_ex(filp, arg);
-+	case FS_IOC_ADD_ENCRYPTION_KEY:
-+		return f2fs_ioc_add_encryption_key(filp, arg);
-+	case FS_IOC_REMOVE_ENCRYPTION_KEY:
-+		return f2fs_ioc_remove_encryption_key(filp, arg);
-+	case FS_IOC_GET_ENCRYPTION_KEY_STATUS:
-+		return f2fs_ioc_get_encryption_key_status(filp, arg);
- 	case F2FS_IOC_GARBAGE_COLLECT:
- 		return f2fs_ioc_gc(filp, arg);
- 	case F2FS_IOC_GARBAGE_COLLECT_RANGE:
-@@ -3119,6 +3161,10 @@ long f2fs_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
- 	case F2FS_IOC_SET_ENCRYPTION_POLICY:
- 	case F2FS_IOC_GET_ENCRYPTION_PWSALT:
- 	case F2FS_IOC_GET_ENCRYPTION_POLICY:
-+	case FS_IOC_GET_ENCRYPTION_POLICY_EX:
-+	case FS_IOC_ADD_ENCRYPTION_KEY:
-+	case FS_IOC_REMOVE_ENCRYPTION_KEY:
-+	case FS_IOC_GET_ENCRYPTION_KEY_STATUS:
- 	case F2FS_IOC_GARBAGE_COLLECT:
- 	case F2FS_IOC_GARBAGE_COLLECT_RANGE:
- 	case F2FS_IOC_WRITE_CHECKPOINT:
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index f2aaa2cc6b3e0..7219b3b2af759 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -934,6 +934,8 @@ static int f2fs_drop_inode(struct inode *inode)
- 		return 0;
- 	}
- 	ret = generic_drop_inode(inode);
-+	if (!ret)
-+		ret = fscrypt_drop_inode(inode);
- 	trace_f2fs_drop_inode(inode, ret);
- 	return ret;
+ extern int __init fscrypt_init_keyring(void);
+ extern void fscrypt_exit_keyring(void);
+ 
+diff --git a/fs/crypto/keyring.c b/fs/crypto/keyring.c
+index 3d17c13136a4a..2ccabf95f294c 100644
+--- a/fs/crypto/keyring.c
++++ b/fs/crypto/keyring.c
+@@ -562,6 +562,53 @@ int fscrypt_ioctl_add_key(struct file *filp, void __user *_uarg)
  }
+ EXPORT_SYMBOL_GPL(fscrypt_ioctl_add_key);
+ 
++/*
++ * Verify that the current user has added a master key with the given identifier
++ * (returns -ENOKEY if not).  This is needed to prevent a user from encrypting
++ * their files using some other user's key which they don't actually know.
++ * Cryptographically this isn't much of a problem, but the semantics of this
++ * would be a bit weird, so it's best to just forbid it.
++ *
++ * The system administrator (CAP_FOWNER) can override this, which should be
++ * enough for any use cases where encryption policies are being set using keys
++ * that were chosen ahead of time but aren't available at the moment.
++ *
++ * Note that the key may have already removed by the time this returns, but
++ * that's okay; we just care whether the key was there at some point.
++ *
++ * Return: 0 if the key is added, -ENOKEY if it isn't, or another -errno code
++ */
++int fscrypt_verify_key_added(struct super_block *sb,
++			     const u8 identifier[FSCRYPT_KEY_IDENTIFIER_SIZE])
++{
++	struct fscrypt_key_specifier mk_spec;
++	struct key *key, *mk_user;
++	struct fscrypt_master_key *mk;
++	int err;
++
++	mk_spec.type = FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER;
++	memcpy(mk_spec.u.identifier, identifier, FSCRYPT_KEY_IDENTIFIER_SIZE);
++
++	key = fscrypt_find_master_key(sb, &mk_spec);
++	if (IS_ERR(key)) {
++		err = PTR_ERR(key);
++		goto out;
++	}
++	mk = key->payload.data[0];
++	mk_user = find_master_key_user(mk);
++	if (IS_ERR(mk_user)) {
++		err = PTR_ERR(mk_user);
++	} else {
++		key_put(mk_user);
++		err = 0;
++	}
++	key_put(key);
++out:
++	if (err == -ENOKEY && capable(CAP_FOWNER))
++		err = 0;
++	return err;
++}
++
+ static void evict_dentries_for_decrypted_inodes(struct fscrypt_master_key *mk)
+ {
+ 	struct fscrypt_info *ci;
+diff --git a/fs/crypto/policy.c b/fs/crypto/policy.c
+index 912ff1d030796..fa86f96741308 100644
+--- a/fs/crypto/policy.c
++++ b/fs/crypto/policy.c
+@@ -209,6 +209,7 @@ static int set_encryption_policy(struct inode *inode,
+ {
+ 	union fscrypt_context ctx;
+ 	int ctxsize;
++	int err;
+ 
+ 	if (!fscrypt_supported_policy(policy))
+ 		return -EINVAL;
+@@ -227,6 +228,11 @@ static int set_encryption_policy(struct inode *inode,
+ 		 */
+ 		pr_warn_once("%s (pid %d) is setting deprecated v1 encryption policy; recommend upgrading to v2.\n",
+ 			     current->comm, current->pid);
++	} else {
++		err = fscrypt_verify_key_added(inode->i_sb,
++					       policy->v2.master_key_identifier);
++		if (err)
++			return err;
+ 	}
+ 
+ 	ctxsize = fscrypt_new_context_from_policy(&ctx, policy);
 -- 
 2.21.0
 
