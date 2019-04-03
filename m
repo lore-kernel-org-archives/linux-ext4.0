@@ -2,78 +2,220 @@ Return-Path: <SRS0=wlmB=SF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7879C4360F
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 09:36:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2152EC10F06
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 10:40:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BEACA21473
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 09:36:18 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E6501206DD
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 10:40:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726074AbfDCJgN (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 3 Apr 2019 05:36:13 -0400
-Received: from mx2.suse.de ([195.135.220.15]:34246 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1725935AbfDCJgN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Apr 2019 05:36:13 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 266ACABF0;
-        Wed,  3 Apr 2019 09:36:12 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 351CA1E3FFD; Wed,  3 Apr 2019 11:36:10 +0200 (CEST)
-Date:   Wed, 3 Apr 2019 11:36:10 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Dave Chinner <david@fromorbit.com>
-Cc:     Jan Kara <jack@suse.cz>, Kanchan Joshi <joshi.k@samsung.com>,
-        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-nvme@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, axboe@fb.com, prakash.v@samsung.com,
-        anshul@samsung.com, joshiiitr@gmail.com
-Subject: Re: [PATCH v3 3/7] block: add write-hint to stream-id conversion
-Message-ID: <20190403093610.GE8836@quack2.suse.cz>
-References: <1553846032-4451-1-git-send-email-joshi.k@samsung.com>
- <CGME20190329075749epcas2p22b85cbdbb7ccb4f7f3ecf69b84f75dc9@epcas2p2.samsung.com>
- <1553846032-4451-4-git-send-email-joshi.k@samsung.com>
- <20190401050821.GQ23020@dastard>
- <20190402092044.GE12133@quack2.suse.cz>
- <20190402203508.GT26298@dastard>
+        id S1726427AbfDCKko (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 3 Apr 2019 06:40:44 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:55720 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726263AbfDCKko (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Apr 2019 06:40:44 -0400
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 4D5CA3082141;
+        Wed,  3 Apr 2019 10:40:43 +0000 (UTC)
+Received: from dhcp201-121.englab.pnq.redhat.com (dhcp-10-65-161-59.pnq.redhat.com [10.65.161.59])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 9E5C619731;
+        Wed,  3 Apr 2019 10:40:21 +0000 (UTC)
+From:   Pankaj Gupta <pagupta@redhat.com>
+To:     linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org, kvm@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-acpi@vger.kernel.org,
+        qemu-devel@nongnu.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+Cc:     dan.j.williams@intel.com, zwisler@kernel.org,
+        vishal.l.verma@intel.com, dave.jiang@intel.com, mst@redhat.com,
+        jasowang@redhat.com, willy@infradead.org, rjw@rjwysocki.net,
+        hch@infradead.org, lenb@kernel.org, jack@suse.cz, tytso@mit.edu,
+        adilger.kernel@dilger.ca, darrick.wong@oracle.com,
+        lcapitulino@redhat.com, kwolf@redhat.com, imammedo@redhat.com,
+        jmoyer@redhat.com, nilal@redhat.com, riel@surriel.com,
+        stefanha@redhat.com, aarcange@redhat.com, david@redhat.com,
+        david@fromorbit.com, cohuck@redhat.com,
+        xiaoguangrong.eric@gmail.com, pagupta@redhat.com
+Subject: [PATCH v4 0/5] virtio pmem driver 
+Date:   Wed,  3 Apr 2019 16:10:13 +0530
+Message-Id: <20190403104018.23947-1-pagupta@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190402203508.GT26298@dastard>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.42]); Wed, 03 Apr 2019 10:40:43 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed 03-04-19 07:35:08, Dave Chinner wrote:
-> On Tue, Apr 02, 2019 at 11:20:44AM +0200, Jan Kara wrote:
-> > On Mon 01-04-19 16:08:21, Dave Chinner wrote:
-> > > On Fri, Mar 29, 2019 at 01:23:48PM +0530, Kanchan Joshi wrote:
-> > > > +		if(streamid > nr_streams)
-> > > > +			streamid = 0;
-> > > 
-> > > So, basically, we'll compress all the kernel hints down to "no hint"
-> > > if there are more user streams than the device supports?
-> > > 
-> > > Surely we should be reserving a stream for the kernel hints separate
-> > > from the user and "none" streams when we have limited device streams
-> > > available...
-> > 
-> > The question is what to do in a situation when the device has exactly as
-> > many hints as we currently offer to userspace.
-> 
-> Then do what we do now for that case. For every other case, the
-> kernel should have reserved space and not get intermingled with
-> userspace hints.
+ This patch series has implementation for "virtio pmem". 
+ "virtio pmem" is fake persistent memory(nvdimm) in guest 
+ which allows to bypass the guest page cache. This also
+ implements a VIRTIO based asynchronous flush mechanism.  
+ 
+ Sharing guest kernel driver in this patchset with the 
+ changes suggested in v3. Tested with Qemu side device 
+ emulation [6] for virtio-pmem. 
 
-Yup, we are on the same page then.
+ We have incorporated all the suggestions in V3. Documented 
+ the impact of possible page cache side channel attacks with 
+ suggested countermeasures.
+ 
+ Details of project idea for 'virtio pmem' flushing interface 
+ is shared [3] & [4].
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+ Implementation is divided into two parts:
+ New virtio pmem guest driver and qemu code changes for new 
+ virtio pmem paravirtualized device.
+
+1. Guest virtio-pmem kernel driver
+---------------------------------
+   - Reads persistent memory range from paravirt device and 
+     registers with 'nvdimm_bus'.  
+   - 'nvdimm/pmem' driver uses this information to allocate 
+     persistent memory region and setup filesystem operations 
+     to the allocated memory. 
+   - virtio pmem driver implements asynchronous flushing 
+     interface to flush from guest to host.
+
+2. Qemu virtio-pmem device
+---------------------------------
+   - Creates virtio pmem device and exposes a memory range to 
+     KVM guest. 
+   - At host side this is file backed memory which acts as 
+     persistent memory. 
+   - Qemu side flush uses aio thread pool API's and virtio 
+     for asynchronous guest multi request handling. 
+
+   David Hildenbrand CCed also posted a modified version[7] of 
+   qemu virtio-pmem code based on updated Qemu memory device API. 
+
+ Virtio-pmem security implications and countermeasures:
+ -----------------------------------------------------
+
+ In previous posting of kernel driver, there was discussion [9]
+ on possible implications of page cache side channel attacks with 
+ virtio pmem. After thorough analysis of details of known side 
+ channel attacks, below are the suggestions:
+
+ - Depends entirely on how host backing image file is mapped 
+   into guest address space. 
+
+ - virtio-pmem device emulation, by default shared mapping is used
+   to map host backing file. It is recommended to use separate
+   backing file at host side for every guest. This will prevent
+   any possibility of executing common code from multiple guests
+   and any chance of inferring guest local data based based on 
+   execution time.
+
+ - If backing file is required to be shared among multiple guests 
+   it is recommended to don't support host page cache eviction 
+   commands from the guest driver. This will avoid any possibility
+   of inferring guest local data or host data from another guest. 
+
+ - Proposed device specification [8] for virtio-pmem device with 
+   details of possible security implications and suggested 
+   countermeasures for device emulation.
+
+ Virtio-pmem errors handling:
+ ----------------------------------------
+  Checked behaviour of virtio-pmem for below types of errors
+  Need suggestions on expected behaviour for handling these errors?
+
+  - Hardware Errors: Uncorrectable recoverable Errors: 
+  a] virtio-pmem: 
+    - As per current logic if error page belongs to Qemu process, 
+      host MCE handler isolates(hwpoison) that page and send SIGBUS. 
+      Qemu SIGBUS handler injects exception to KVM guest. 
+    - KVM guest then isolates the page and send SIGBUS to guest 
+      userspace process which has mapped the page. 
+  
+  b] Existing implementation for ACPI pmem driver: 
+    - Handles such errors with MCE notifier and creates a list 
+      of bad blocks. Read/direct access DAX operation return EIO 
+      if accessed memory page fall in bad block list.
+    - It also starts backgound scrubbing.  
+    - Similar functionality can be reused in virtio-pmem with MCE 
+      notifier but without scrubbing(no ACPI/ARS)? Need inputs to 
+      confirm if this behaviour is ok or needs any change?
+
+Changes from PATCH v3: [1]
+
+- Use generic dax_synchronous() helper to check for DAXDEV_SYNC 
+  flag - [Dan, Darrick, Jan]
+- Add 'is_nvdimm_async' function
+- Document page cache side channel attacks implications & 
+  countermeasures - [Dave Chinner, Michael]
+
+Changes from PATCH v2: [2]
+- Disable MAP_SYNC for ext4 & XFS filesystems - [Dan] 
+- Use name 'virtio pmem' in place of 'fake dax' 
+
+Changes from PATCH v1: 
+- 0-day build test for build dependency on libnvdimm 
+
+ Changes suggested by - [Dan Williams]
+- Split the driver into two parts virtio & pmem  
+- Move queuing of async block request to block layer
+- Add "sync" parameter in nvdimm_flush function
+- Use indirect call for nvdimm_flush
+- Don’t move declarations to common global header e.g nd.h
+- nvdimm_flush() return 0 or -EIO if it fails
+- Teach nsio_rw_bytes() that the flush can fail
+- Rename nvdimm_flush() to generic_nvdimm_flush()
+- Use 'nd_region->provider_data' for long dereferencing
+- Remove virtio_pmem_freeze/restore functions
+- Remove BSD license text with SPDX license text
+
+- Add might_sleep() in virtio_pmem_flush - [Luiz]
+- Make spin_lock_irqsave() narrow
+
+Changes from RFC v3
+- Rebase to latest upstream - Luiz
+- Call ndregion->flush in place of nvdimm_flush- Luiz
+- kmalloc return check - Luiz
+- virtqueue full handling - Stefan
+- Don't map entire virtio_pmem_req to device - Stefan
+- request leak, correct sizeof req- Stefan
+- Move declaration to virtio_pmem.c
+
+Changes from RFC v2:
+- Add flush function in the nd_region in place of switching
+  on a flag - Dan & Stefan
+- Add flush completion function with proper locking and wait
+  for host side flush completion - Stefan & Dan
+- Keep userspace API in uapi header file - Stefan, MST
+- Use LE fields & New device id - MST
+- Indentation & spacing suggestions - MST & Eric
+- Remove extra header files & add licensing - Stefan
+
+Changes from RFC v1:
+- Reuse existing 'pmem' code for registering persistent 
+  memory and other operations instead of creating an entirely 
+  new block driver.
+- Use VIRTIO driver to register memory information with 
+  nvdimm_bus and create region_type accordingly. 
+- Call VIRTIO flush from existing pmem driver.
+
+Pankaj Gupta (5):
+   libnvdimm: nd_region flush callback support
+   virtio-pmem: Add virtio-pmem guest driver
+   libnvdimm: add nd_region buffered dax_dev flag
+   ext4: disable map_sync for virtio pmem
+   xfs: disable map_sync for virtio pmem
+
+[1] https://lkml.org/lkml/2019/1/9/471
+[2] https://lkml.org/lkml/2018/10/13/117
+[3] https://www.spinics.net/lists/kvm/msg149761.html
+[4] https://www.spinics.net/lists/kvm/msg153095.html  
+[5] https://lkml.org/lkml/2018/8/31/413
+[6] https://marc.info/?l=linux-kernel&m=153572228719237&w=2 
+[7] https://marc.info/?l=qemu-devel&m=153555721901824&w=2
+[8] https://lists.oasis-open.org/archives/virtio-dev/201903/msg00083.html
