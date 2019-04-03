@@ -1,125 +1,117 @@
 Return-Path: <SRS0=wlmB=SF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
-X-Spam-Level: *
-X-Spam-Status: No, score=1.5 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FSL_HELO_FAKE,MAILING_LIST_MULTI,SPF_PASS,
-	USER_AGENT_MUTT autolearn=no autolearn_force=no version=3.4.0
+X-Spam-Level: 
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BEEEAC4360F
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 20:36:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6E89C4360F
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 22:09:24 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7BF7D214AF
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 20:36:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1554323815;
-	bh=Iljr8qYLbE/Z4wI3N8qP1R/1VTfPA2d67crL/gJcouc=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=vnVYqHzJYMws0mOmyQniR9bbb5O4CnIs+pAtg+eKCG99GcuKuHukelN6WfJ6p75HU
-	 4uuNydVYx3XJJAsu9Orz8v0UsZoMk/yRUPp2fbvDTyVVWsBCbpQIXBoRm+f1IEbYFC
-	 sr699txn6q7qNX553Tc5zF3amqvpByIThd2QsDfw=
+	by mail.kernel.org (Postfix) with ESMTP id 90EFD2084B
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 22:09:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726199AbfDCUgy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 3 Apr 2019 16:36:54 -0400
-Received: from mail.kernel.org ([198.145.29.99]:43324 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726064AbfDCUgy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Apr 2019 16:36:54 -0400
-Received: from gmail.com (unknown [104.132.1.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 38C5F2082C;
-        Wed,  3 Apr 2019 20:36:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1554323813;
-        bh=Iljr8qYLbE/Z4wI3N8qP1R/1VTfPA2d67crL/gJcouc=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=HEgTqnOgpxH+fIuff7IzRnDTwxrf4M1Pm8bDgCAgCPNM+qRy5MZyT+UD9ZpnLpU7X
-         akevXAs6fD/uzgg6CFNIOOWAZMwtNegcllUWAgngFqKMTJkrGhaLZ++ldDrtAPE3bF
-         I4uj+UwZi9tpQotr0vITgsJmcwbRcq4EBrFFDp9A=
-Date:   Wed, 3 Apr 2019 13:36:51 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Al Viro <viro@zeniv.linux.org.uk>
-Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, linux-api@vger.kernel.org,
-        linux-crypto@vger.kernel.org, keyrings@vger.kernel.org,
-        Paul Crowley <paulcrowley@google.com>,
-        Satya Tangirala <satyat@google.com>
-Subject: Re: [PATCH v4 07/17] fs/dcache.c: add shrink_dcache_inode()
-Message-ID: <20190403203650.GA216239@gmail.com>
-References: <20190402154600.32432-1-ebiggers@kernel.org>
- <20190402154600.32432-8-ebiggers@kernel.org>
- <20190403183411.GV2217@ZenIV.linux.org.uk>
+        id S1726425AbfDCWJT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 3 Apr 2019 18:09:19 -0400
+Received: from ipmail03.adl6.internode.on.net ([150.101.137.143]:44905 "EHLO
+        ipmail03.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726316AbfDCWJS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Apr 2019 18:09:18 -0400
+Received: from ppp59-167-129-252.static.internode.on.net (HELO dastard) ([59.167.129.252])
+  by ipmail03.adl6.internode.on.net with ESMTP; 04 Apr 2019 08:39:14 +1030
+Received: from dave by dastard with local (Exim 4.80)
+        (envelope-from <david@fromorbit.com>)
+        id 1hBo4G-0008N8-Ip; Thu, 04 Apr 2019 09:09:12 +1100
+Date:   Thu, 4 Apr 2019 09:09:12 +1100
+From:   Dave Chinner <david@fromorbit.com>
+To:     Pankaj Gupta <pagupta@redhat.com>
+Cc:     linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org, kvm@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-acpi@vger.kernel.org,
+        qemu-devel@nongnu.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, dan.j.williams@intel.com,
+        zwisler@kernel.org, vishal.l.verma@intel.com, dave.jiang@intel.com,
+        mst@redhat.com, jasowang@redhat.com, willy@infradead.org,
+        rjw@rjwysocki.net, hch@infradead.org, lenb@kernel.org,
+        jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
+        darrick.wong@oracle.com, lcapitulino@redhat.com, kwolf@redhat.com,
+        imammedo@redhat.com, jmoyer@redhat.com, nilal@redhat.com,
+        riel@surriel.com, stefanha@redhat.com, aarcange@redhat.com,
+        david@redhat.com, cohuck@redhat.com, xiaoguangrong.eric@gmail.com
+Subject: Re: [PATCH v4 5/5] xfs: disable map_sync for async flush
+Message-ID: <20190403220912.GB26298@dastard>
+References: <20190403104018.23947-1-pagupta@redhat.com>
+ <20190403104018.23947-6-pagupta@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190403183411.GV2217@ZenIV.linux.org.uk>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20190403104018.23947-6-pagupta@redhat.com>
+User-Agent: Mutt/1.5.21 (2010-09-15)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 03, 2019 at 07:34:12PM +0100, Al Viro wrote:
-> On Tue, Apr 02, 2019 at 08:45:50AM -0700, Eric Biggers wrote:
-> > From: Eric Biggers <ebiggers@google.com>
-> > 
-> > When a filesystem encryption key is removed, we need all files which had
-> > been "unlocked" (had ->i_crypt_info set up) with it to appear "locked"
-> > again.  This is most easily done by evicting the inodes.  This can
-> > currently be done using 'echo 2 > /proc/sys/vm/drop_caches'; however,
-> > that is overkill and not usable by non-root users.
-> > 
-> > To evict just the needed inodes we also need the ability to evict those
-> > inodes' dentries, since an inode is pinned by its dentries.  Therefore,
-> > add a function shrink_dcache_inode() which iterates through an inode's
-> > dentries and evicts any unused ones as well as any unused descendants
-> > (since there may be negative dentries pinning the inode's dentries).
+On Wed, Apr 03, 2019 at 04:10:18PM +0530, Pankaj Gupta wrote:
+> Virtio pmem provides asynchronous host page cache flush
+> mechanism. we don't support 'MAP_SYNC' with virtio pmem 
+> and xfs.
 > 
-> Huh?
+> Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
+> ---
+>  fs/xfs/xfs_file.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
 > 
-> > + * Evict all unused aliases of the specified inode from the dcache.  This is
-> > + * intended to be used when trying to evict a specific inode, since inodes are
-> > + * pinned by their dentries.  We also have to descend to ->d_subdirs for each
-> > + * alias, since aliases may be pinned by negative child dentries.
-> > + */
-> > +void shrink_dcache_inode(struct inode *inode)
-> > +{
-> > +	for (;;) {
-> > +		struct select_data data;
-> > +		struct dentry *dentry;
-> > +
-> > +		INIT_LIST_HEAD(&data.dispose);
-> > +		data.start = NULL;
-> > +		data.found = 0;
-> > +
-> > +		spin_lock(&inode->i_lock);
-> > +		hlist_for_each_entry(dentry, &inode->i_dentry, d_u.d_alias)
-> > +			d_walk(dentry, &data, select_collect);
-> > +		spin_unlock(&inode->i_lock);
-> > +
-> > +		if (!data.found)
-> > +			break;
-> > +
-> > +		shrink_dentry_list(&data.dispose);
-> > +		cond_resched();
-> 
-> This is... odd.  What's wrong with
-> 	if (S_ISDIR(inode->i_mode)) {
-> 		dentry = d_find_any_alias(inode);
-> 		if (dentry) {
-> 			shrink_dcache_parent(dentry);
-> 			dput(dentry);
-> 		}
-> 	}
-> 	d_prune_aliases(inode);
-> instead of that thing?
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index 1f2e2845eb76..dced2eb8c91a 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -1203,6 +1203,14 @@ xfs_file_mmap(
+>  	if (!IS_DAX(file_inode(filp)) && (vma->vm_flags & VM_SYNC))
+>  		return -EOPNOTSUPP;
+>  
+> +	/* We don't support synchronous mappings with DAX files if
+> +	 * dax_device is not synchronous.
+> +	 */
+> +	if (IS_DAX(file_inode(filp)) && !dax_synchronous(
+> +		xfs_find_daxdev_for_inode(file_inode(filp))) &&
+> +					(vma->vm_flags & VM_SYNC))
+> +		return -EOPNOTSUPP;
+> +
+>  	file_accessed(filp);
+>  	vma->vm_ops = &xfs_file_vm_ops;
+>  	if (IS_DAX(file_inode(filp)))
 
-That works, as far as I can tell, so I'll do that instead.
+All this ad hoc IS_DAX conditional logic is getting pretty nasty.
 
-I don't think I noticed that d_prune_aliases() existed when I wrote this.
+xfs_file_mmap(
+....
+{
+	struct inode	*inode = file_inode(filp);
 
-Thanks for the suggestion!
+	if (vma->vm_flags & VM_SYNC) {
+		if (!IS_DAX(inode))
+			return -EOPNOTSUPP;
+		if (!dax_synchronous(xfs_find_daxdev_for_inode(inode))
+			return -EOPNOTSUPP;
+	}
 
-- Eric
+	file_accessed(filp);
+	vma->vm_ops = &xfs_file_vm_ops;
+	if (IS_DAX(inode))
+		vma->vm_flags |= VM_HUGEPAGE;
+	return 0;
+}
+
+
+Even better, factor out all the "MAP_SYNC supported" checks into a
+helper so that the filesystem code just doesn't have to care about
+the details of checking for DAX+MAP_SYNC support....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
