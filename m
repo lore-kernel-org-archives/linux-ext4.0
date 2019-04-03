@@ -2,86 +2,109 @@ Return-Path: <SRS0=wlmB=SF=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F3D58C4360F
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 10:42:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6DC61C4360F
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 11:31:01 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CD4A5206DD
-	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 10:42:46 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3F0D42082C
+	for <linux-ext4@archiver.kernel.org>; Wed,  3 Apr 2019 11:31:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1725990AbfDCKmg (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 3 Apr 2019 06:42:36 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:60484 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725935AbfDCKmg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 3 Apr 2019 06:42:36 -0400
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 84698C04FFF1;
-        Wed,  3 Apr 2019 10:42:35 +0000 (UTC)
-Received: from dhcp201-121.englab.pnq.redhat.com (dhcp-10-65-161-59.pnq.redhat.com [10.65.161.59])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 7307A19736;
-        Wed,  3 Apr 2019 10:42:10 +0000 (UTC)
-From:   Pankaj Gupta <pagupta@redhat.com>
-To:     linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
+        id S1726083AbfDCLay (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 3 Apr 2019 07:30:54 -0400
+Received: from mx2.suse.de ([195.135.220.15]:59004 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1725935AbfDCLay (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 3 Apr 2019 07:30:54 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id D469DAE0E;
+        Wed,  3 Apr 2019 11:30:51 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id BF4351E3FFD; Wed,  3 Apr 2019 13:30:49 +0200 (CEST)
+Date:   Wed, 3 Apr 2019 13:30:49 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Pankaj Gupta <pagupta@redhat.com>
+Cc:     linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
         virtualization@lists.linux-foundation.org, kvm@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-acpi@vger.kernel.org,
         qemu-devel@nongnu.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Cc:     dan.j.williams@intel.com, zwisler@kernel.org,
-        vishal.l.verma@intel.com, dave.jiang@intel.com, mst@redhat.com,
-        jasowang@redhat.com, willy@infradead.org, rjw@rjwysocki.net,
-        hch@infradead.org, lenb@kernel.org, jack@suse.cz, tytso@mit.edu,
-        adilger.kernel@dilger.ca, darrick.wong@oracle.com,
-        lcapitulino@redhat.com, kwolf@redhat.com, imammedo@redhat.com,
-        jmoyer@redhat.com, nilal@redhat.com, riel@surriel.com,
-        stefanha@redhat.com, aarcange@redhat.com, david@redhat.com,
-        david@fromorbit.com, cohuck@redhat.com,
-        xiaoguangrong.eric@gmail.com, pagupta@redhat.com
-Subject: [PATCH v4 5/5] xfs: disable map_sync for async flush
-Date:   Wed,  3 Apr 2019 16:10:18 +0530
-Message-Id: <20190403104018.23947-6-pagupta@redhat.com>
-In-Reply-To: <20190403104018.23947-1-pagupta@redhat.com>
+        linux-xfs@vger.kernel.org, dan.j.williams@intel.com,
+        zwisler@kernel.org, vishal.l.verma@intel.com, dave.jiang@intel.com,
+        mst@redhat.com, jasowang@redhat.com, willy@infradead.org,
+        rjw@rjwysocki.net, hch@infradead.org, lenb@kernel.org,
+        jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
+        darrick.wong@oracle.com, lcapitulino@redhat.com, kwolf@redhat.com,
+        imammedo@redhat.com, jmoyer@redhat.com, nilal@redhat.com,
+        riel@surriel.com, stefanha@redhat.com, aarcange@redhat.com,
+        david@redhat.com, david@fromorbit.com, cohuck@redhat.com,
+        xiaoguangrong.eric@gmail.com
+Subject: Re: [PATCH v4 4/5] ext4: disable map_sync for async flush
+Message-ID: <20190403113049.GF8836@quack2.suse.cz>
 References: <20190403104018.23947-1-pagupta@redhat.com>
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.31]); Wed, 03 Apr 2019 10:42:35 +0000 (UTC)
+ <20190403104018.23947-5-pagupta@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190403104018.23947-5-pagupta@redhat.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Virtio pmem provides asynchronous host page cache flush
-mechanism. we don't support 'MAP_SYNC' with virtio pmem 
-and xfs.
+On Wed 03-04-19 16:10:17, Pankaj Gupta wrote:
+> Virtio pmem provides asynchronous host page cache flush
+> mechanism. We don't support 'MAP_SYNC' with virtio pmem 
+> and ext4. 
+> 
+> Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
 
-Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
----
- fs/xfs/xfs_file.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+The patch looks good to me. You can add:
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 1f2e2845eb76..dced2eb8c91a 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -1203,6 +1203,14 @@ xfs_file_mmap(
- 	if (!IS_DAX(file_inode(filp)) && (vma->vm_flags & VM_SYNC))
- 		return -EOPNOTSUPP;
- 
-+	/* We don't support synchronous mappings with DAX files if
-+	 * dax_device is not synchronous.
-+	 */
-+	if (IS_DAX(file_inode(filp)) && !dax_synchronous(
-+		xfs_find_daxdev_for_inode(file_inode(filp))) &&
-+					(vma->vm_flags & VM_SYNC))
-+		return -EOPNOTSUPP;
-+
- 	file_accessed(filp);
- 	vma->vm_ops = &xfs_file_vm_ops;
- 	if (IS_DAX(file_inode(filp)))
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/ext4/file.c | 11 ++++++++++-
+>  1 file changed, 10 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+> index 69d65d49837b..86e4bf464320 100644
+> --- a/fs/ext4/file.c
+> +++ b/fs/ext4/file.c
+> @@ -360,8 +360,10 @@ static const struct vm_operations_struct ext4_file_vm_ops = {
+>  static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+>  {
+>  	struct inode *inode = file->f_mapping->host;
+> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+> +	struct dax_device *dax_dev = sbi->s_daxdev;
+>  
+> -	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
+> +	if (unlikely(ext4_forced_shutdown(sbi)))
+>  		return -EIO;
+>  
+>  	/*
+> @@ -371,6 +373,13 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+>  	if (!IS_DAX(file_inode(file)) && (vma->vm_flags & VM_SYNC))
+>  		return -EOPNOTSUPP;
+>  
+> +	/* We don't support synchronous mappings with DAX files if
+> +	 * dax_device is not synchronous.
+> +	 */
+> +	if (IS_DAX(file_inode(file)) && !dax_synchronous(dax_dev)
+> +						&& (vma->vm_flags & VM_SYNC))
+> +		return -EOPNOTSUPP;
+> +
+>  	file_accessed(file);
+>  	if (IS_DAX(file_inode(file))) {
+>  		vma->vm_ops = &ext4_dax_vm_ops;
+> -- 
+> 2.20.1
+> 
 -- 
-2.20.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
