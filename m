@@ -2,141 +2,113 @@ Return-Path: <SRS0=e1E2=SG=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED,USER_AGENT_NEOMUTT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AF034C4360F
-	for <linux-ext4@archiver.kernel.org>; Thu,  4 Apr 2019 12:47:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AF315C4360F
+	for <linux-ext4@archiver.kernel.org>; Thu,  4 Apr 2019 13:08:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 820B0214AF
-	for <linux-ext4@archiver.kernel.org>; Thu,  4 Apr 2019 12:47:04 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6E9142075E
+	for <linux-ext4@archiver.kernel.org>; Thu,  4 Apr 2019 13:08:45 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=shutemov-name.20150623.gappssmtp.com header.i=@shutemov-name.20150623.gappssmtp.com header.b="gH2HKKrq"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729859AbfDDMrE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 4 Apr 2019 08:47:04 -0400
-Received: from szxga04-in.huawei.com ([45.249.212.190]:5666 "EHLO huawei.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727051AbfDDMrE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 4 Apr 2019 08:47:04 -0400
-Received: from DGGEMS413-HUB.china.huawei.com (unknown [172.30.72.59])
-        by Forcepoint Email with ESMTP id 26CB4F276120C4E0B79E;
-        Thu,  4 Apr 2019 20:47:02 +0800 (CST)
-Received: from [127.0.0.1] (10.177.244.145) by DGGEMS413-HUB.china.huawei.com
- (10.3.19.213) with Microsoft SMTP Server id 14.3.408.0; Thu, 4 Apr 2019
- 20:46:56 +0800
-Subject: Re: [PATCH] ext4: add inode to ordered data list when extending file
- without block allocation
+        id S1727051AbfDDNIp (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 4 Apr 2019 09:08:45 -0400
+Received: from mail-lf1-f68.google.com ([209.85.167.68]:44089 "EHLO
+        mail-lf1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725914AbfDDNIo (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Apr 2019 09:08:44 -0400
+Received: by mail-lf1-f68.google.com with SMTP id v71so1715532lfa.11
+        for <linux-ext4@vger.kernel.org>; Thu, 04 Apr 2019 06:08:43 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=shutemov-name.20150623.gappssmtp.com; s=20150623;
+        h=date:from:to:cc:subject:message-id:references:mime-version
+         :content-disposition:in-reply-to:user-agent;
+        bh=ydhQYDsYO5blITLWkKkMOKoBtLuqbWY/Tzn56seZhUY=;
+        b=gH2HKKrq1I97KbmXoHT0RPv9oGKzcranbkpFUNclk2IQ/PlMg+i+bBHEhKoYTJXg4e
+         LtoEjliHav/Yfdhpq1UclvTyx4s8eb3Dnx63eGac0SrVNZ930iHOldoOoYvwMld/TWrO
+         1wADWyFBeJ7EmzZlulI+klB53ianLFmNr8Y+DXSCqjyLWSp3oank3TR+VTki5vnNNKUS
+         TvBQPMbhiWn/99s0PdvOiuUnfeIPzy639yCVMFKMb1sPm+avXRlvtTlo4ZHWx/q9d/Gi
+         H92iFBioHoQJuSTW5sPfJwpDnPV1tFj+tsZZoE1zhYEJVhfxwrq3185bw/gPAF7l2ILZ
+         PhfA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:date:from:to:cc:subject:message-id:references
+         :mime-version:content-disposition:in-reply-to:user-agent;
+        bh=ydhQYDsYO5blITLWkKkMOKoBtLuqbWY/Tzn56seZhUY=;
+        b=GeTOOKwWHJktGF5oadKk4HJEnfB6LRCTGHRadlzqoaJDfETQS1pmJYpXcolsTW5wY0
+         nFuuRwcrcdiLtc0/coR8Rbn5QfW5FqJoLY8rAq0U3YU6SU33DuB281uk0VzWhgeRL2/m
+         bWh8Nw9VF3NmO6Ymfmu15SVJRegcCl4bxNM5S64P1n45o8qqW/7kxj93pjvurNVfxZrV
+         EDVclEw3RU1hSdi7rVgCyR1M/SDMZQX3Nvh9JXCkZKmrSYG960H04WUqaA9m0zh5LEZl
+         hq/h0YFNX7fpXfpLKDMwDTEWAB4Ki9blrchquWnti2ZpjfnjlSH8Kirh03FxuEDhmRgg
+         GEQQ==
+X-Gm-Message-State: APjAAAVsZqxahjJkbwx5DY03Xxb3USQ/uZ9C57iBRmS3qIVmAqEFcMRE
+        j+Zdp/EKKG7O45z0h9/UuCJKUMzw7/QdEQ==
+X-Google-Smtp-Source: APXvYqzAwanZ+nskhouSYnB3oZZUeZzTzBAZAbOnXlbYnKQKzGspAQ0VLl1GDm/+7D/PYNzC/4Gt0g==
+X-Received: by 2002:a19:5201:: with SMTP id m1mr3222474lfb.68.1554383322830;
+        Thu, 04 Apr 2019 06:08:42 -0700 (PDT)
+Received: from kshutemo-mobl1.localdomain ([178.127.198.154])
+        by smtp.gmail.com with ESMTPSA id v26sm3970728lja.60.2019.04.04.06.08.41
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 04 Apr 2019 06:08:41 -0700 (PDT)
+Received: by kshutemo-mobl1.localdomain (Postfix, from userid 1000)
+        id C004C30039B; Thu,  4 Apr 2019 16:08:39 +0300 (+03)
+Date:   Thu, 4 Apr 2019 16:08:39 +0300
+From:   "Kirill A. Shutemov" <kirill@shutemov.name>
 To:     Jan Kara <jack@suse.cz>
-References: <1554370192-113254-1-git-send-email-yi.zhang@huawei.com>
- <20190404101823.GA22313@quack2.suse.cz>
-CC:     <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
-        <adilger.kernel@dilger.ca>, <miaoxie@huawei.com>
-From:   "zhangyi (F)" <yi.zhang@huawei.com>
-Message-ID: <c37e682d-a5b3-c23d-0a2c-e09474b64426@huawei.com>
-Date:   Thu, 4 Apr 2019 20:46:47 +0800
-User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:45.0) Gecko/20100101
- Thunderbird/45.4.0
+Cc:     bugzilla-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: [Bug 203107] New: Bad page map in process during boot
+Message-ID: <20190404130839.5tkpwihuct4mex32@kshutemo-mobl1>
+References: <bug-203107-13602@https.bugzilla.kernel.org/>
+ <20190402101613.GF12133@quack2.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <20190404101823.GA22313@quack2.suse.cz>
-Content-Type: text/plain; charset="windows-1252"
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.177.244.145]
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190402101613.GF12133@quack2.suse.cz>
+User-Agent: NeoMutt/20180716
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On 2019/4/4 18:18, Jan Kara Wrote:
-> On Thu 04-04-19 17:29:52, zhangyi (F) wrote:
->> Currently we capture a NULL data exposure problem after a crash or
->> poweroff when append writing a file in the data=ordered mode. The
->> problem is that we were not add inode to the transaction's order data
->> list when updating i_disksize without new block allocation no matter
->> the delay allocated block feature is enabled or not.
->>
->> write                           jbd2                    writeback
->> append write in allocated block
->> mark buffer dirty
->> update i_disksize
->> mark inode dirty
->>                           commit transaction
->>                           write inode
->>                           (data exposure after a crash)
->>                                                     write dirty buffer
->>
->> It's fine in the case of new block allocation because we do this job in
->> ext4_map_blocks(). To fix this problem, this patch add inode to current
->> transaction's order data list after new data is copied and needing
->> update i_disksize in the case of no block allocation.
->>
->> Fixes: 06bd3c36a733ac ("ext4: fix data exposure after a crash")
->> Fixes: f3b59291a69d0b ("ext4: remove calls to ext4_jbd2_file_inode() from delalloc write path")
->> Signed-off-by: zhangyi (F) <yi.zhang@huawei.com>
+On Tue, Apr 02, 2019 at 12:16:13PM +0200, Jan Kara wrote:
+> Switching to email...
 > 
-> Thanks for the patch. The current behavior is a deliberate decision.
-> data=ordered mode does guarantee there is no stale data visible in case of
-> crash. However it does not guarantee you cannot see zeros where data was
-> written. 
+> On Fri 29-03-19 20:46:22, bugzilla-daemon@bugzilla.kernel.org wrote:
+> > https://bugzilla.kernel.org/show_bug.cgi?id=203107
+> > 
+> >             Bug ID: 203107
+> >            Summary: Bad page map in process during boot
+> >            Product: File System
+> >            Version: 2.5
+> >     Kernel Version: 5.0.5
+> >           Hardware: All
+> >                 OS: Linux
+> >               Tree: Mainline
+> >             Status: NEW
+> >           Severity: normal
+> >           Priority: P1
+> >          Component: ext4
+> >           Assignee: fs_ext4@kernel-bugs.osdl.org
+> >           Reporter: echto1@gmail.com
+> >         Regression: No
+> > 
+> > Error occurs randomly at boot after upgrading kernel from 5.0.0 to 5.0.4.
+> > 
+> > https://justpaste.it/387uf
 > 
+> I don't think this is an ext4 error. Sure this is an error in file mapping
+> of libblkid.so.1.1.0 (which is handled by ext4) but the filesystem has very
+> little to say wrt how or which PTEs are installed. And the problem is that
+> invalid PTE (dead000000000100) is present in page tables. So this looks
+> more like a problem in MM itself. Adding MM guys to CC.
 
-Hi Jan,
-Thanks a lot for your explanation. I read the Documentation/admin-guide/ext4.rst,
-which said about the ordered mode:
+0xdead000000000100 and 0xdead000000000200 are LIST_POISON1 and
+LIST_POISON2 repectively. Have no idea how would they end up in page table.
 
-> ... When it's time to write the new metadata out to disk, the associated data
-> blocks are written first...
-
-So I reckon that the dirty data block should be written to disk before committing
-i_disksize and we cannot see the zero data. Now, I don't find any offical docs to
-record the behavior you mentioned, do you have some links talk about this behavior
-or am I miss something ?
-
-Thanks,
-Yi.
-
->> ---
->>  fs/ext4/inode.c | 19 +++++++++++++++++++
->>  1 file changed, 19 insertions(+)
->>
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index b32a57b..5cfa066 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -1419,6 +1419,16 @@ static int ext4_write_end(struct file *file,
->>  	if (i_size_changed || inline_data)
->>  		ext4_mark_inode_dirty(handle, inode);
->>  
->> +	/*
->> +	 * Updating i_disksize when extending file without block
->> +	 * allocation, the newly written data where should be visible
->> +	 * after transaction commit must be on transaction's ordered
->> +	 * data list.
->> +	 */
->> +	if (copied && (i_size_changed & 0x2) &&
->> +	    ext4_should_order_data(inode))
->> +		ext4_jbd2_inode_add_write(handle, inode);
->> +
->>  	if (pos + len > inode->i_size && ext4_can_truncate(inode))
->>  		/* if we have allocated more blocks and copied
->>  		 * less. We will have blocks allocated outside
->> @@ -3185,6 +3195,15 @@ static int ext4_da_write_end(struct file *file,
->>  			 * bu greater than i_disksize.(hint delalloc)
->>  			 */
->>  			ext4_mark_inode_dirty(handle, inode);
->> +
->> +			/*
->> +			 * Updating i_disksize when extending file without
->> +			 * block allocation, the newly written data where
->> +			 * should be visible after transaction commit must
->> +			 * be on transaction's ordered data list.
->> +			 */
->> +			if (ext4_should_order_data(inode))
->> +				ext4_jbd2_inode_add_write(handle, inode);
->>  		}
->>  	}
->>  
->> -- 
->> 2.7.4
->>
-
+-- 
+ Kirill A. Shutemov
