@@ -5,29 +5,29 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BCDEEC282CE
-	for <linux-ext4@archiver.kernel.org>; Fri,  5 Apr 2019 20:16:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 547CDC282CE
+	for <linux-ext4@archiver.kernel.org>; Fri,  5 Apr 2019 21:37:41 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 92FA32146F
-	for <linux-ext4@archiver.kernel.org>; Fri,  5 Apr 2019 20:16:09 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 23A8A21726
+	for <linux-ext4@archiver.kernel.org>; Fri,  5 Apr 2019 21:37:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726124AbfDEUQJ convert rfc822-to-8bit (ORCPT
+        id S1726167AbfDEVhk convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 5 Apr 2019 16:16:09 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:49458 "EHLO
+        Fri, 5 Apr 2019 17:37:40 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:47960 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1725946AbfDEUQI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Apr 2019 16:16:08 -0400
+        by vger.kernel.org with ESMTP id S1725973AbfDEVhk (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Apr 2019 17:37:40 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 3852728740
-        for <linux-ext4@vger.kernel.org>; Fri,  5 Apr 2019 20:16:08 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id DF44A2872E
+        for <linux-ext4@vger.kernel.org>; Fri,  5 Apr 2019 21:37:39 +0000 (UTC)
 Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 2CE9028B70; Fri,  5 Apr 2019 20:16:08 +0000 (UTC)
+        id D21ED28A99; Fri,  5 Apr 2019 21:37:39 +0000 (UTC)
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 202897] BUG: unable to handle kernel paging request at
  __memmove
-Date:   Fri, 05 Apr 2019 20:16:07 +0000
+Date:   Fri, 05 Apr 2019 21:37:37 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
@@ -36,14 +36,14 @@ X-Bugzilla-Component: ext4
 X-Bugzilla-Version: 2.5
 X-Bugzilla-Keywords: 
 X-Bugzilla-Severity: normal
-X-Bugzilla-Who: jungyeon@gatech.edu
+X-Bugzilla-Who: tytso@mit.edu
 X-Bugzilla-Status: NEW
 X-Bugzilla-Resolution: 
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
 X-Bugzilla-Changed-Fields: 
-Message-ID: <bug-202897-13602-Ms5Nxgapl6@https.bugzilla.kernel.org/>
+Message-ID: <bug-202897-13602-D7JSf6hgq6@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-202897-13602@https.bugzilla.kernel.org/>
 References: <bug-202897-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -59,9 +59,15 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=202897
 
---- Comment #7 from Jungyeon (jungyeon@gatech.edu) ---
-Thanks again for the patch. The above suggested patch passes the aforementioned
-testcase.
+--- Comment #8 from Theodore Tso (tytso@mit.edu) ---
+Thanks for the confirmation!  I was about to ping you to ask if you could do
+test, since it's not something I can test for myself at the moment.
+
+This does underline that releasing instructions on how to build the userspace
+test library automatically from a particular kernel version is going to be
+critically important, since if it is only reproducible using the LKL userspace
+program, we need to be able to build a modified binary if we are to confirm
+that issue has been addressed.
 
 -- 
 You are receiving this mail because:
