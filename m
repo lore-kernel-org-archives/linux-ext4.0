@@ -2,122 +2,131 @@ Return-Path: <SRS0=afbN=SJ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84407C282DE
-	for <linux-ext4@archiver.kernel.org>; Sun,  7 Apr 2019 20:27:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C8942C10F0E
+	for <linux-ext4@archiver.kernel.org>; Sun,  7 Apr 2019 21:13:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5144420880
-	for <linux-ext4@archiver.kernel.org>; Sun,  7 Apr 2019 20:27:44 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="FqmdE+7E"
+	by mail.kernel.org (Postfix) with ESMTP id 9F0B52083E
+	for <linux-ext4@archiver.kernel.org>; Sun,  7 Apr 2019 21:13:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726545AbfDGU1m (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 7 Apr 2019 16:27:42 -0400
-Received: from aserp2130.oracle.com ([141.146.126.79]:52360 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726501AbfDGU1m (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Apr 2019 16:27:42 -0400
-Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
-        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x37KJMGV068386;
-        Sun, 7 Apr 2019 20:27:38 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=subject : from : to :
- cc : date : message-id : in-reply-to : references : mime-version :
- content-type : content-transfer-encoding; s=corp-2018-07-02;
- bh=Kv3ME1CHuNV3vr0SQcA7uFv9ps91/aQadFGc+0Oqa8Q=;
- b=FqmdE+7Eb0IBxrlLL177cZCTndZa9EnxerIHOWMihSBaobMZoAfDXGpnG3KAO2PnBn5o
- ZwG+Nv8XeBhXoUuCDPMo8M6rqDJSbmbEMqxwPv4JvxiPs+yGhldsSkGZVrESeou6My2N
- yVdhuQWdBtjo0gBw/obdeV1UDO9cU9SZxVz+DXGoP/q9uqrwEFpn1oKfKMntBqCVoB2r
- k6SHjsQde/s5HkMbDT/OuNcUZsVVVYdGUyBDXfwPr2Rf7bQPHrMNVV4VgkrME2zEiIpD
- OatzVYGxPrgkE2508YGx0ghlOoT1YMXn9+yO4UA3nQj/gqeupshVeoyk/7VZABXza44u Cw== 
-Received: from userp3020.oracle.com (userp3020.oracle.com [156.151.31.79])
-        by aserp2130.oracle.com with ESMTP id 2rphme3be7-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 07 Apr 2019 20:27:38 +0000
-Received: from pps.filterd (userp3020.oracle.com [127.0.0.1])
-        by userp3020.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x37KRcwU195361;
-        Sun, 7 Apr 2019 20:27:38 GMT
-Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by userp3020.oracle.com with ESMTP id 2rpkehdurk-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 07 Apr 2019 20:27:37 +0000
-Received: from abhmp0018.oracle.com (abhmp0018.oracle.com [141.146.116.24])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x37KRauR032494;
-        Sun, 7 Apr 2019 20:27:36 GMT
-Received: from localhost (/67.169.218.210)
-        by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Sun, 07 Apr 2019 13:27:36 -0700
-Subject: [PATCH 4/4] xfs: don't allow most setxattr to immutable files
-From:   "Darrick J. Wong" <darrick.wong@oracle.com>
-To:     darrick.wong@oracle.com
-Cc:     david@fromorbit.com, linux-xfs@vger.kernel.org, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org
-Date:   Sun, 07 Apr 2019 13:27:29 -0700
-Message-ID: <155466884962.633834.14320700092446721044.stgit@magnolia>
-In-Reply-To: <155466882175.633834.15261194784129614735.stgit@magnolia>
-References: <155466882175.633834.15261194784129614735.stgit@magnolia>
-User-Agent: StGit/0.17.1-dirty
+        id S1726558AbfDGVNd (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 7 Apr 2019 17:13:33 -0400
+Received: from sandeen.net ([63.231.237.45]:53980 "EHLO sandeen.net"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1726493AbfDGVNd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Sun, 7 Apr 2019 17:13:33 -0400
+Received: from [10.0.0.4] (liberator [10.0.0.4])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by sandeen.net (Postfix) with ESMTPSA id 635B778C8;
+        Sun,  7 Apr 2019 16:13:09 -0500 (CDT)
+Subject: Re: [PATCH] bootfs: simple bootloader filesystem
+To:     "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc:     Theodore Ts'o <tytso@mit.edu>, Dave Chinner <david@fromorbit.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        xfs <linux-xfs@vger.kernel.org>
+References: <20190401070001.GJ1173@magnolia> <20190401214632.GS26298@dastard>
+ <20190402045519.GK1173@magnolia> <20190406232717.GH18897@mit.edu>
+ <e358c920-d49e-8319-ee19-4b3fa930b0f5@sandeen.net>
+ <20190407201328.GR15524@magnolia>
+From:   Eric Sandeen <sandeen@sandeen.net>
+Openpgp: preference=signencrypt
+Autocrypt: addr=sandeen@sandeen.net; prefer-encrypt=mutual; keydata=
+ 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 pA==
+Message-ID: <fab3a4eb-caf7-f36d-f068-6004ce673162@sandeen.net>
+Date:   Sun, 7 Apr 2019 16:13:32 -0500
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:60.0)
+ Gecko/20100101 Thunderbird/60.6.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20190407201328.GR15524@magnolia>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
 Content-Transfer-Encoding: 7bit
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9220 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=1 malwarescore=0
- phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
- adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1904070194
-X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9220 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=1 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
- lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1904070193
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Darrick J. Wong <darrick.wong@oracle.com>
+On 4/7/19 3:13 PM, Darrick J. Wong wrote:
+> On Sun, Apr 07, 2019 at 01:10:55PM -0500, Eric Sandeen wrote:
+>> On 4/6/19 6:27 PM, Theodore Ts'o wrote:
+>>> On Mon, Apr 01, 2019 at 09:55:19PM -0700, Darrick J. Wong wrote:
+>>>>
+>>>> When Ted is done laughing, I really would like to consider something
+>>>> like this to solve the problem of grub-style bootloaders requiring a
+>>>> lease on the blocks underneath a file with a term exceeding that of the
+>>>> running kernel.
+>>>>
+>>>> We can probably skip the harsh synchronous writes in favor of fsync on
+>>>> close, but we would need to keep the critical component of checkpointing
+>>>> the journal on fsync and syncfs.
+>>>
+>>> At least for ext4, we don't need to add anything new, since FIFREEZE
+>>> force a journal checkpoint.  So we could try to get a patch into grub
+>>> which causes update_grub to open each kernel that it finds, and calls
+>>> fsync(2) on it, and then for all file systems where it finds a kernel,
+>>> it can call FIFREEZE and FITHAW on it, and that would be that.
+>>
+>> Certain operating systems have hacked this in.  My concern would be when
+>> /boot is on / ... calling FIFREEZE on the root fs would most likely be
+>> a bad thing.  Certain operating systems avoid calling FIFREEZE for
+>> /boot-on-root.  ;)
+>>
+>> Doing it for a standalone /boot seems like a reasonable (if hacky)
+>> workaround as long as we lack a more targeted quiesce interface...
+> 
+> The other problem we noticed is that neither the grub scripts nor the
+> rpm package scripts bother to call fsync on the files they write (or
+> sync after they're done to mop up after everyone else), so I figured as
+> long as I'm ("jokingly") working around it all in kernel space, why not
+> just go all the way? :P
+> 
+> Ok, I'll go work on an ioctl or something.
 
-The chattr manpage has this to say about immutable files:
 
-"A file with the 'i' attribute cannot be modified: it cannot be deleted
-or renamed, no link can be created to this file, most of the file's
-metadata can not be modified, and the file can not be opened in write
-mode."
+FWIW, I didn't mean that I didn't like bootfs! I kind of like bootfs!
 
-However, we don't actually check the immutable flag in the setattr code,
-which means that we can update project ids and extent size hints on
-supposedly immutable files.  Therefore, reject a setattr call on an
-immutable file except for the case where we're trying to unset
-IMMUTABLE.
-
-Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
----
- fs/xfs/xfs_ioctl.c |    8 ++++++++
- 1 file changed, 8 insertions(+)
-
-
-diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-index 5a1b96dad901..1215713d7814 100644
---- a/fs/xfs/xfs_ioctl.c
-+++ b/fs/xfs/xfs_ioctl.c
-@@ -1061,6 +1061,14 @@ xfs_ioctl_setattr_xflags(
- 	    !capable(CAP_LINUX_IMMUTABLE))
- 		return -EPERM;
- 
-+	/*
-+	 * If immutable is set and we are not clearing it, we're not allowed
-+	 * to change anything else in the inode.
-+	 */
-+	if ((ip->i_d.di_flags & XFS_DIFLAG_IMMUTABLE) &&
-+	    (fa->fsx_xflags & FS_XFLAG_IMMUTABLE))
-+		return -EPERM;
-+
- 	/* diflags2 only valid for v3 inodes. */
- 	di_flags2 = xfs_flags2diflags2(ip, fa->fsx_xflags);
- 	if (di_flags2 && ip->i_d.di_version < 3)
-
+-Eric
