@@ -2,93 +2,230 @@ Return-Path: <SRS0=EtEF=SK=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT autolearn=unavailable
+X-Spam-Status: No, score=-0.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DF002C282DD
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 08:35:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 046A7C282DD
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 09:02:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id ADE8720880
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 08:35:22 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C89A520B1F
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 09:02:47 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=tu-dortmund.de header.i=@tu-dortmund.de header.b="bPOtHBlA"
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="r+laZdvX"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726412AbfDHIfR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 8 Apr 2019 04:35:17 -0400
-Received: from mx1.hrz.uni-dortmund.de ([129.217.128.51]:54283 "EHLO
-        unimail.uni-dortmund.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726189AbfDHIfR (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Apr 2019 04:35:17 -0400
-Received: from ios.cs.uni-dortmund.de (ios.cs.uni-dortmund.de [129.217.43.100])
-        (authenticated bits=0)
-        by unimail.uni-dortmund.de (8.16.0.41/8.16.0.41) with ESMTPSA id x388Z04q016387
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT);
-        Mon, 8 Apr 2019 10:35:04 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=tu-dortmund.de;
-        s=unimail; t=1554712504;
-        bh=x27WdPJIvTASEktR14WEHuD39tiDkGt0trZKznQVjgc=;
-        h=From:To:Cc:Subject:Date;
-        b=bPOtHBlA6mMk/blHk8rN6mRrKRB7NNhc5XU7G0UE6jGX0ycgfw0y6WIK0S7JQmpVB
-         ZkYsUPjRbU47c7ItCGsMDhwANCBG6Quxq0FI5SZa0uS1ETGw30lKfvJiSXfCgUNyXX
-         UsalZbKNw+WjeC/aMYoWsdOGvvxeYOCAmwAiqbXw=
-From:   Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
-To:     tytso@mit.edu
-Cc:     Alexander Lochmann <alexander.lochmann@tu-dortmund.de>,
-        Horst Schirmeier <horst.schirmeier@tu-dortmund.de>,
-        Jan Kara <jack@suse.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH v3] Updated locking documentation for transaction_t
-Date:   Mon,  8 Apr 2019 10:35:00 +0200
-Message-Id: <20190408083500.66759-1-alexander.lochmann@tu-dortmund.de>
-X-Mailer: git-send-email 2.20.1
+        id S1726538AbfDHJCr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 8 Apr 2019 05:02:47 -0400
+Received: from mail-yb1-f195.google.com ([209.85.219.195]:43659 "EHLO
+        mail-yb1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726189AbfDHJCq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Apr 2019 05:02:46 -0400
+Received: by mail-yb1-f195.google.com with SMTP id d20so4840863ybm.10;
+        Mon, 08 Apr 2019 02:02:46 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=RgtIeHH0fFF5+OCcgPntaKTns1SdIniun5nRvYr2M1k=;
+        b=r+laZdvXRFbmeXArJswfBXSm6pTOr0YVhPD8Zvp47CePAA2CyRDQnMw4oc1AkfoQg+
+         dmlJXdvRGBinzvck5a8/JK6CapV515vcAxUj+QRE8FpS66V3pq0Kxks5e+cBKqJyh///
+         n+nYLXyenSuYxuVPZvDHr/Kd/XfpWfZ7EarwrWz4DpRyuCOseKZClcu3SSibzFTEdeW3
+         M/AscyY0R29Y8id/rxbcZ1fYUoy/ztwcfLJzKSHaAdxASHSMPJSFA/R7oxXIDl4PwSxo
+         D8R1vwF4Luvclz8IFh099qhIsBfqm+Q2Mtu6F93IcyVAGgclAUZNbaGYtqQhU0iludlg
+         h96Q==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=RgtIeHH0fFF5+OCcgPntaKTns1SdIniun5nRvYr2M1k=;
+        b=hUPjaWla+Ib9AWADOM8VyS+3A/K5xrjGhLirYA+xc25ByR2Y+VwNdIdR22px1pnJZ0
+         XKuliG8tNu0JuWBiauqw9Vi8u2Pe1cpf9P5XH6IqVYAAZ+hqI8aw1hN7QJmqEZr+U64i
+         c2/y/yA5iCbynM0Fm6tuu0X5zUs3z8dWsl3oGszYTlZ+U32GkAu/qY1fuPvUZkOVFIM6
+         JVMtwtoMH5jusmqi8wJGSdkJ9KCJlntzPEvlPb4+PTnBkx150jVXaqi/SvGQ4jBymJDA
+         5Sf+nDL001PggRvGhnv6FESz42eCVCL+KWK+yCunVIP8n6rolJWkCXiAdgyisGAK/est
+         MZ0w==
+X-Gm-Message-State: APjAAAWceqCVMU2LmaeoYxLYWcaW0kn/vkB+qNl1PEfvidraQUAKivZc
+        aQP+AQHG12vkBfilmd0dFATmgiwSQOThey4Ii2Q=
+X-Google-Smtp-Source: APXvYqzQguSttcvI5VzJ9A2cGTs2Bjf5rbKh6FFd+8EHgzsWzWuCBqLEGkNJLQ/znt8z76dlHrAjerCM7UYUlL0H21s=
+X-Received: by 2002:a25:774f:: with SMTP id s76mr13132999ybc.197.1554714165528;
+ Mon, 08 Apr 2019 02:02:45 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20190404165737.30889-1-amir73il@gmail.com> <20190404211730.GD26298@dastard>
+ <CAOQ4uxjQNmxqmtA_VbYW0Su9rKRk2zobJmahcyeaEVOFKVQ5dw@mail.gmail.com> <20190407232728.GF26298@dastard>
+In-Reply-To: <20190407232728.GF26298@dastard>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Mon, 8 Apr 2019 12:02:34 +0300
+Message-ID: <CAOQ4uxgD4ErSUtbu0xqb5dSm_tM4J92qt6=hGH8GRc5KNGqP9A@mail.gmail.com>
+Subject: Re: [POC][PATCH] xfs: reduce ilock contention on buffered randrw workload
+To:     Dave Chinner <david@fromorbit.com>
+Cc:     "Darrick J . Wong" <darrick.wong@oracle.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Matthew Wilcox <willy@infradead.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Ext4 <linux-ext4@vger.kernel.org>,
+        Lukas Czerner <lczerner@redhat.com>,
+        Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-We used LockDoc to derive locking rules for each member
-of struct transaction_t.
-Based on those results, we extended the existing documentation
-by more members of struct transaction_t, and updated the existing
-documentation.
+On Mon, Apr 8, 2019 at 2:27 AM Dave Chinner <david@fromorbit.com> wrote:
+>
+> On Fri, Apr 05, 2019 at 05:02:33PM +0300, Amir Goldstein wrote:
+> > On Fri, Apr 5, 2019 at 12:17 AM Dave Chinner <david@fromorbit.com> wrote:
+> > >
+> > > On Thu, Apr 04, 2019 at 07:57:37PM +0300, Amir Goldstein wrote:
+> > > > This patch improves performance of mixed random rw workload
+> > > > on xfs without relaxing the atomic buffered read/write guaranty
+> > > > that xfs has always provided.
+> > > >
+> > > > We achieve that by calling generic_file_read_iter() twice.
+> > > > Once with a discard iterator to warm up page cache before taking
+> > > > the shared ilock and once again under shared ilock.
+> > >
+> > > This will race with thing like truncate, hole punching, etc that
+> > > serialise IO and invalidate the page cache for data integrity
+> > > reasons under the IOLOCK. These rely on there being no IO to the
+> > > inode in progress at all to work correctly, which this patch
+> > > violates. IOWs, while this is fast, it is not safe and so not a
+> > > viable approach to solving the problem.
+> > >
+> >
+> > This statement leaves me wondering, if ext4 does not takes
+> > i_rwsem on generic_file_read_iter(), how does ext4 (or any other
+> > fs for that matter) guaranty buffered read synchronization with
+> > truncate, hole punching etc?
+> > The answer in ext4 case is i_mmap_sem, which is read locked
+> > in the page fault handler.
+>
+> Nope, the  i_mmap_sem is for serialisation of /page faults/ against
+> truncate, holepunching, etc. Completely irrelevant to the read()
+> path.
+>
 
-Signed-off-by: Alexander Lochmann <alexander.lochmann@tu-dortmund.de>
-Signed-off-by: Horst Schirmeier <horst.schirmeier@tu-dortmund.de>
----
- include/linux/jbd2.h | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+I'm at lost here. Why are page faults completely irrelevant to read()
+path? Aren't full pages supposed to be faulted in on read() after
+truncate_pagecache_range()? And aren't partial pages supposed
+to be partially zeroed and uptodate after truncate_pagecache_range()?
 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index 0f919d5fe84f..34b728e2b702 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -534,6 +534,7 @@ struct transaction_chp_stats_s {
-  * The transaction keeps track of all of the buffers modified by a
-  * running transaction, and all of the buffers committed but not yet
-  * flushed to home for finished transactions.
-+ * (Locking Documentation improved by LockDoc)
-  */
- 
- /*
-@@ -652,12 +653,12 @@ struct transaction_s
- 	unsigned long		t_start;
- 
- 	/*
--	 * When commit was requested
-+	 * When commit was requested [journal_t.j_state_lock]
- 	 */
- 	unsigned long		t_requested;
- 
- 	/*
--	 * Checkpointing stats [j_checkpoint_sem]
-+	 * Checkpointing stats [journal_t.j_list_lock]
- 	 */
- 	struct transaction_chp_stats_s t_chp_stats;
- 
--- 
-2.20.1
+> > And xfs does the same type of synchronization with MMAPLOCK,
+> > so while my patch may not be safe, I cannot follow why from your
+> > explanation, so please explain if I am missing something.
+>
+> mmap_sem inversions require independent locks for IO path and page
+> faults - the MMAPLOCK does not protect anything in the
+> read()/write() IO path.
+>
+[...]
+>
+> All you see is this:
+>
+> truncate:                               read()
+>
+> IOLOCK_EXCL
+>   flush relevant cached data
+>   truncate page cache
+>                                         pre-read page cache between
+>                                         new eof and old eof
+>                                         IOLOCK_SHARED
+>                                         <blocks>
+>   start transaction
+>   ILOCK_EXCL
+>     update isize
+>     remove extents
+> ....
+>   commit xactn
+> IOLOCK unlock
+>                                         <gets lock>
+>                                         sees beyond EOF, returns 0
+>
+>
+> So you see the read() doing the right thing (detect EOF, returning
+> short read). Great.
+>
+> But what I see is uptodate pages containing stale data being left in
+> the page cache beyond EOF. That is th eproblem here - truncate must
+> not leave stale pages beyond EOF behind - it's the landmine that
+> causes future things to go wrong.
+>
+> e.g. now the app does post-eof preallocation so the range those
+> pages are cached over are allocated as unwritten - the filesystem
+> will do this without even looking at the page cache because it's
+> beyond EOF.  Now we extend the file past those cached pages, and
+> iomap_zero() sees the range as unwritten and so does not write zeros
+> to the blocks between the old EOF and the new EOF. Now the app reads
+> from that range (say it does a sub-page write, triggering a page
+> cache RMW cycle). the read goes to instantiate the page cache page,
+> finds a page already in the cache that is uptodate, and uses it
+> without zeroing or reading from disk.
+>
+> And now we have stale data exposure and/or data corruption.
+>
+> If can come up with quite a few scenarios where this particular
+> "populate cache after invalidation" race can cause similar problems
+> for XFS. Hole punch and most of the other fallocate extent
+> manipulations have the same serialisation requirements - no IO over
+> the range of the operation can be *initiated* between the /start/ of
+> the page cache invalidation and the end of the specific extent
+> manipulation operation.
+>
+> So how does ext4 avoid this problem on truncate?
+>
+> History lesson: truncate in Linux (and hence ext4) has traditionally
+> been serialised by the hacky post-page-lock checks that are strewn
+> all through the page cache and mm/ subsystem. i.e. every time you
+> look up and lock a page cache page, you have to check the
+> page->mapping and page->index to ensure that the lookup-and-lock
+> hasn't raced with truncate. This only works because truncate
+> requires the inode size to be updated before invalidating the page
+> cache - that's the "hacky" part of it.
+>
+> IOWs, the burden of detecting truncate races is strewn throughout
+> the mm/ subsystem, rather than being the responisibility of the
+> filesystem. This is made worse by the fact this mechanism simply
+> doesn't work for hole punching because there is no file size change
+> to indicate that the page lookup is racing with an in-progress
+> invalidation.
+>
+> That means the mm/ and page cache code is unable to detect hole
+> punch races, and so the serialisation of invalidation vs page cache
+> instantiation has to be done in the filesystem. And no Linux native
+> filesystem had the infrastructure for such serialisation because
+> they never had to implement anything to ensure truncate was
+> serialised against new and in-progress IO.
+>
+> The result of this is that, AFAICT, ext4 does not protect against
+> read() vs hole punch races - it's hole punching code it does:
+>
+> Hole Punch:                             read():
+>
+> inode_lock()
+> inode_dio_wait(inode);
+> down_write(i_mmap_sem)
+> truncate_pagecache_range()
+>                                         ext4_file_iter_read()
+>                                           ext4_map_blocks()
+>                                             down_read(i_data_sem)
+>                                              <gets mapping>
+>                                         <populates page cache over hole>
+>                                         <reads stale data into cache>
+>                                         .....
+> down_write(i_data_sem)
+>   remove extents
+>
+> IOWs, ext4 is safe against truncate because of the
+> change-inode-size-before-invalidation hacks, but the lack of
+> serialise buffered reads means that hole punch and other similar
+> fallocate based extent manipulations can race against reads....
+>
 
+Adding some ext4 folks to comment on the above.
+Could it be that those races were already addressed by Lukas' work:
+https://lore.kernel.org/patchwork/cover/371861/
+
+Thanks,
+Amir.
