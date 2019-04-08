@@ -7,81 +7,84 @@ X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C51B3C282DE
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 05:49:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 083B0C282CE
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 05:57:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 909CB2083E
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 05:49:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CB9A620870
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 05:57:14 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="kgirDgby"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="WYgqC6pB"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726554AbfDHFtV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 8 Apr 2019 01:49:21 -0400
-Received: from userp2120.oracle.com ([156.151.31.85]:54380 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725995AbfDHFtV (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Apr 2019 01:49:21 -0400
-Received: from pps.filterd (userp2120.oracle.com [127.0.0.1])
-        by userp2120.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x385i9fQ032524;
-        Mon, 8 Apr 2019 05:49:17 GMT
+        id S1726349AbfDHF5M (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 8 Apr 2019 01:57:12 -0400
+Received: from aserp2130.oracle.com ([141.146.126.79]:46658 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725877AbfDHF5L (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Apr 2019 01:57:11 -0400
+Received: from pps.filterd (aserp2130.oracle.com [127.0.0.1])
+        by aserp2130.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x385sgcb036045;
+        Mon, 8 Apr 2019 05:57:08 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=subject : to : cc :
  references : from : message-id : date : mime-version : in-reply-to :
  content-type : content-transfer-encoding; s=corp-2018-07-02;
- bh=027zM/YiSxoqXFDKPDkpG0BuEZrLNy/aYPmVOdfq8sE=;
- b=kgirDgby8kRRxyY4w4Kl6rjVzP7KiusnwL7fBE7Pm6hJold9hb8SIxCv1V1evILgtjBU
- 3z20Mi5TEwSwHLC0pZSkDyKoYuwbHuh1yzbShn4Ake6ZQ6LVFi/p7p5Q847izG27O8C6
- r2tfsfOj8pfgmd29YVY+wCdgk8wwIrKmwnCl2DLhcNE6nBKe6AH9FHc0FpaxA3GOskDQ
- PPoqaO4G+UDUnUUh0GoCQfN8qwbt7yXGJ09a8LfqV3gjM81+ctSVnkE+wL3VgUzaSNJq
- aoRT7QF1UD5ZJpEJGDSdZ6IspOZ4mGzSk5+7LmHB4boOF0iGwKb0BOaGRNslThz6uT7P Ug== 
+ bh=wQX1rb1k/cm4XL6b3IKZuKbRnlB1j5P4QIaPgjZ0cxA=;
+ b=WYgqC6pBPZUdvrMsxum++NTrKTxuFp/EcVWgRRGMKyAHjUhRVfD0ajXEie5Rf+9Gr/3x
+ a11/1rH8/xmwcC4w753/o91DrpOACSZW1cKSyMJY3gZFdUUX8Y7/PQ4/Rw9nZ9+f2VMg
+ Vfn+I+IwlTqD5LDMdONbWYcG6Lc9DPPngZfGj5hDV7MihFCCc+NTlibIbtiL1jK7lI2K
+ FeEQhTgnaKDrWHpz9oc/8EiHVdW4xcglzM1vNsBEnErchJ4U5t9xjNJkhC1MFuo4qqbn
+ 6nMoBJhAEwyhCFqbeykYtxFwlk3s4dkuIP/PkyPFaq93HMCJQBrPtr//22kSWjldMugG yw== 
 Received: from aserp3030.oracle.com (aserp3030.oracle.com [141.146.126.71])
-        by userp2120.oracle.com with ESMTP id 2rpmrpuy2r-1
+        by aserp2130.oracle.com with ESMTP id 2rphme47y6-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 08 Apr 2019 05:49:17 +0000
+        Mon, 08 Apr 2019 05:57:07 +0000
 Received: from pps.filterd (aserp3030.oracle.com [127.0.0.1])
-        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x385liMV034085;
-        Mon, 8 Apr 2019 05:49:16 GMT
+        by aserp3030.oracle.com (8.16.0.27/8.16.0.27) with SMTP id x385tTlo045835;
+        Mon, 8 Apr 2019 05:57:07 GMT
 Received: from aserv0122.oracle.com (aserv0122.oracle.com [141.146.126.236])
-        by aserp3030.oracle.com with ESMTP id 2rpj59t5jx-1
+        by aserp3030.oracle.com with ESMTP id 2rpj59t7b8-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 08 Apr 2019 05:49:16 +0000
-Received: from abhmp0015.oracle.com (abhmp0015.oracle.com [141.146.116.21])
-        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x385nGHr030113;
-        Mon, 8 Apr 2019 05:49:16 GMT
+        Mon, 08 Apr 2019 05:57:07 +0000
+Received: from abhmp0002.oracle.com (abhmp0002.oracle.com [141.146.116.8])
+        by aserv0122.oracle.com (8.14.4/8.14.4) with ESMTP id x385v7LK001151;
+        Mon, 8 Apr 2019 05:57:07 GMT
 Received: from [192.168.1.226] (/70.176.225.12)
         by default (Oracle Beehive Gateway v4.0)
-        with ESMTP ; Sun, 07 Apr 2019 22:49:15 -0700
-Subject: Re: [PATCH 3/4] xfs: flush page mappings as part of setting immutable
+        with ESMTP ; Sun, 07 Apr 2019 22:57:06 -0700
+Subject: Re: [PATCH 4/4] xfs: don't allow most setxattr to immutable files
 To:     "Darrick J. Wong" <darrick.wong@oracle.com>
 Cc:     david@fromorbit.com, linux-xfs@vger.kernel.org, linux-mm@kvack.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-btrfs@vger.kernel.org
 References: <155466882175.633834.15261194784129614735.stgit@magnolia>
- <155466884294.633834.1486289166159962611.stgit@magnolia>
+ <155466884962.633834.14320700092446721044.stgit@magnolia>
 From:   Allison Henderson <allison.henderson@oracle.com>
-Message-ID: <e5749655-2c12-a3a0-7ce8-8f5a9a9eb20e@oracle.com>
-Date:   Sun, 7 Apr 2019 22:49:14 -0700
+Message-ID: <4b6985a9-a386-90e9-63b4-b906d2cb216a@oracle.com>
+Date:   Sun, 7 Apr 2019 22:57:05 -0700
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
  Thunderbird/60.6.1
 MIME-Version: 1.0
-In-Reply-To: <155466884294.633834.1486289166159962611.stgit@magnolia>
+In-Reply-To: <155466884962.633834.14320700092446721044.stgit@magnolia>
 Content-Type: text/plain; charset=utf-8; format=flowed
 Content-Language: en-US
 Content-Transfer-Encoding: 7bit
 X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9220 signatures=668685
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=2 malwarescore=0
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
  phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
  adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.0.1-1810050000 definitions=main-1904080053
+ engine=8.0.1-1810050000 definitions=main-1904080054
 X-Proofpoint-Virus-Version: vendor=nai engine=5900 definitions=9220 signatures=668685
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
- suspectscore=2 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
  lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
- definitions=main-1904080053
+ definitions=main-1904080054
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
+
+Looks ok:
+Reviewed-by: Allison Henderson <allison.henderson@oracle.com>
 
 On 4/7/19 1:27 PM, Darrick J. Wong wrote:
 > From: Darrick J. Wong <darrick.wong@oracle.com>
@@ -93,109 +96,35 @@ On 4/7/19 1:27 PM, Darrick J. Wong wrote:
 > metadata can not be modified, and the file can not be opened in write
 > mode."
 > 
-> This means that we need to flush the page cache when setting the
-> immutable flag so that all mappings will become read-only again and
-> therefore programs cannot continue to write to writable mappings.
+> However, we don't actually check the immutable flag in the setattr code,
+> which means that we can update project ids and extent size hints on
+> supposedly immutable files.  Therefore, reject a setattr call on an
+> immutable file except for the case where we're trying to unset
+> IMMUTABLE.
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
->   fs/xfs/xfs_ioctl.c |   51 ++++++++++++++++++++++++++++++++++++++++++++-------
->   1 file changed, 44 insertions(+), 7 deletions(-)
+>   fs/xfs/xfs_ioctl.c |    8 ++++++++
+>   1 file changed, 8 insertions(+)
 > 
 > 
 > diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-> index 91938c4f3c67..5a1b96dad901 100644
+> index 5a1b96dad901..1215713d7814 100644
 > --- a/fs/xfs/xfs_ioctl.c
 > +++ b/fs/xfs/xfs_ioctl.c
-> @@ -998,6 +998,31 @@ xfs_diflags_to_linux(
->   #endif
->   }
->   
-> +/*
-> + * Lock the inode against file io and page faults, then flush all dirty pages
-> + * and wait for writeback and direct IO operations to finish.  Returns with
-> + * the relevant inode lock flags set in @join_flags.  Caller is responsible for
-> + * unlocking even on error return.
-> + */
-> +static int
-> +xfs_ioctl_setattr_flush(
-> +	struct xfs_inode	*ip,
-> +	int			*join_flags)
-> +{
-> +	struct inode		*inode = VFS_I(ip);
-> +
-> +	/* Already locked the inode from IO?  Assume we're done. */
-> +	if (((*join_flags) & (XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL)) ==
-> +			     (XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL))
-> +		return 0;
-> +
-> +	/* Lock and flush all mappings and IO in preparation for flag change */
-> +	*join_flags = XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL;
-Did you mean |= here?  It looks like this code came from 
-xfs_ioctl_setattr_dax_invalidate, but now calling from 
-xfs_ioctl_setattr, we may be over writing flags where we previously had 
-not, so that may not be expected.
-
-Allison
-
-> +	xfs_ilock(ip, *join_flags);
-> +	inode_dio_wait(inode);
-> +	return filemap_write_and_wait(inode->i_mapping);
-> +}
-> +
->   static int
->   xfs_ioctl_setattr_xflags(
->   	struct xfs_trans	*tp,
-> @@ -1092,25 +1117,22 @@ xfs_ioctl_setattr_dax_invalidate(
->   	if (!(fa->fsx_xflags & FS_XFLAG_DAX) && !IS_DAX(inode))
->   		return 0;
->   
-> -	if (S_ISDIR(inode->i_mode))
-> +	if (!S_ISREG(inode->i_mode))
->   		return 0;
->   
->   	/* lock, flush and invalidate mapping in preparation for flag change */
-> -	xfs_ilock(ip, XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL);
-> -	error = filemap_write_and_wait(inode->i_mapping);
-> +	error = xfs_ioctl_setattr_flush(ip, join_flags);
->   	if (error)
->   		goto out_unlock;
->   	error = invalidate_inode_pages2(inode->i_mapping);
->   	if (error)
->   		goto out_unlock;
-> -
-> -	*join_flags = XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL;
->   	return 0;
->   
->   out_unlock:
-> -	xfs_iunlock(ip, XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL);
-> +	xfs_iunlock(ip, *join_flags);
-> +	*join_flags = 0;
->   	return error;
-> -
->   }
->   
->   /*
-> @@ -1356,6 +1378,21 @@ xfs_ioctl_setattr(
->   	if (code)
->   		goto error_free_dquots;
+> @@ -1061,6 +1061,14 @@ xfs_ioctl_setattr_xflags(
+>   	    !capable(CAP_LINUX_IMMUTABLE))
+>   		return -EPERM;
 >   
 > +	/*
-> +	 * If we are trying to set immutable on a file then flush everything to
-> +	 * disk to force all writable memory mappings back through the
-> +	 * pagefault handler.
+> +	 * If immutable is set and we are not clearing it, we're not allowed
+> +	 * to change anything else in the inode.
 > +	 */
-> +	if (S_ISREG(VFS_I(ip)->i_mode) && !IS_IMMUTABLE(VFS_I(ip)) &&
-> +	    (fa->fsx_xflags & FS_XFLAG_IMMUTABLE)) {
-> +		code = xfs_ioctl_setattr_flush(ip, &join_flags);
-> +		if (code) {
-> +			xfs_iunlock(ip, join_flags);
-> +			join_flags = 0;
-> +			goto error_free_dquots;
-> +		}
-> +	}
+> +	if ((ip->i_d.di_flags & XFS_DIFLAG_IMMUTABLE) &&
+> +	    (fa->fsx_xflags & FS_XFLAG_IMMUTABLE))
+> +		return -EPERM;
 > +
->   	tp = xfs_ioctl_setattr_get_trans(ip, join_flags);
->   	if (IS_ERR(tp)) {
->   		code = PTR_ERR(tp);
+>   	/* diflags2 only valid for v3 inodes. */
+>   	di_flags2 = xfs_flags2diflags2(ip, fa->fsx_xflags);
+>   	if (di_flags2 && ip->i_d.di_version < 3)
 > 
