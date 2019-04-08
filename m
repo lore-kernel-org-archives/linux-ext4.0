@@ -2,179 +2,139 @@ Return-Path: <SRS0=EtEF=SK=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EACA1C10F13
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 11:28:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 82E00C10F13
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 12:03:34 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id BA30520663
-	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 11:28:05 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="LgVaDXti"
+	by mail.kernel.org (Postfix) with ESMTP id 4E59E20880
+	for <linux-ext4@archiver.kernel.org>; Mon,  8 Apr 2019 12:03:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726554AbfDHL2F (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 8 Apr 2019 07:28:05 -0400
-Received: from mail-wr1-f66.google.com ([209.85.221.66]:37831 "EHLO
-        mail-wr1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726531AbfDHL2F (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Apr 2019 07:28:05 -0400
-Received: by mail-wr1-f66.google.com with SMTP id w10so15944621wrm.4
-        for <linux-ext4@vger.kernel.org>; Mon, 08 Apr 2019 04:28:03 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=oiJ0Wvle+szpTFkmYNO05HUKknsuWLrMw41dLM0s07M=;
-        b=LgVaDXtiWTE/mWB/LQOW8aIS77zMP/PK5iXQZxK4XZaTAL+Gf58jX4+v25N3uy2XEP
-         W47KAYd4GSVhr4kALmzp96v4/lE4nPPtY8z6apLn01zN1qW9c2m3bxVOtyDwqcW2T/Uf
-         nOgGfGtkibxecu3/kzaxJ8EFwqFbv9I6DVKjumo7C7drmUGG/GCyWhnMl2oc2a4S6tGJ
-         rimOiUk26vabzAwzWKKGgVj3U7ADGJpahP1EH+/SliymX3WPpTczQ9KEyJkaTs/+6Rv1
-         6MHxs8aB3rXOQUXLvMKt4jQBr9IaGT9kU/43sSZbiK9CAgrLOcnNJ4knuH4SdILgom/1
-         RLTg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=oiJ0Wvle+szpTFkmYNO05HUKknsuWLrMw41dLM0s07M=;
-        b=bRBZjopmrOGhpz/DZwAh3QkC2ElQvAagNrqZCTZ7qaUztJlioWPyfzl+yeThFA4EjV
-         CNc92lQpjl+5uHbkiY/+QECGBtcuXGnQ7kH179nL5jt8NAF3XHmYozeu7kfehGNsAKrI
-         cVkEZFOqPrLgqoCwj1cVVdDW7naVDOhzg/aWV9M5785oDZUjA3xokMZOXxUTbDu6l8pg
-         A203XEH23Xhi+xwH/alH1pk+MU7GHSGoTUjF/cq4llMLXwQZRA//Yt/tPPh1SbenX8mw
-         rBeJbHqyGX4DS7B/YsoziQes4uxrsl9p3Yv01A+kHI6OlvZB4b5p9ggzCsXNwu0S5yBK
-         VqIw==
-X-Gm-Message-State: APjAAAWCt7v3cyiVMOjqGn7WILtfHRCCvYWw6Mnf6NEiNmBWepJhjOD6
-        MbF5gvmXs+RoBtPBmZsE7EJprQ==
-X-Google-Smtp-Source: APXvYqzyJXb717bcJB5NUQG+wlJXrHej+SeWnDwrrRDsvfC3GrmMJ7P44jLPbrVhK8m3SM082qhZlQ==
-X-Received: by 2002:adf:ed90:: with SMTP id c16mr19536761wro.74.1554722882748;
-        Mon, 08 Apr 2019 04:28:02 -0700 (PDT)
-Received: from konferenz-8d46b9eb.on.site.uni-stuttgart.net (konferenz-8d46b9eb.on.site.uni-stuttgart.net. [141.70.185.235])
-        by smtp.gmail.com with ESMTPSA id c2sm20773812wrr.13.2019.04.08.04.28.01
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 08 Apr 2019 04:28:01 -0700 (PDT)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <581BC10D-6743-4E2E-A4C1-C8C3F9BE9DA3@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_074D479C-955D-476D-91A4-AD19BEDCE174";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH] bootfs: simple bootloader filesystem
-Date:   Mon, 8 Apr 2019 05:28:23 -0600
-In-Reply-To: <20190407201328.GR15524@magnolia>
-Cc:     Eric Sandeen <sandeen@sandeen.net>, Theodore Ts'o <tytso@mit.edu>,
-        Dave Chinner <david@fromorbit.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        xfs <linux-xfs@vger.kernel.org>
-To:     "Darrick J. Wong" <darrick.wong@oracle.com>
-References: <20190401070001.GJ1173@magnolia> <20190401214632.GS26298@dastard>
- <20190402045519.GK1173@magnolia> <20190406232717.GH18897@mit.edu>
- <e358c920-d49e-8319-ee19-4b3fa930b0f5@sandeen.net>
- <20190407201328.GR15524@magnolia>
-X-Mailer: Apple Mail (2.3273)
+        id S1726512AbfDHMDd convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 8 Apr 2019 08:03:33 -0400
+Received: from mx0b-002e3701.pphosted.com ([148.163.143.35]:51546 "EHLO
+        mx0b-002e3701.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1726050AbfDHMDd (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Apr 2019 08:03:33 -0400
+Received: from pps.filterd (m0150244.ppops.net [127.0.0.1])
+        by mx0b-002e3701.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x38C1Kc3026755;
+        Mon, 8 Apr 2019 12:03:11 GMT
+Received: from g9t5009.houston.hpe.com (g9t5009.houston.hpe.com [15.241.48.73])
+        by mx0b-002e3701.pphosted.com with ESMTP id 2rr2um9h2a-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Mon, 08 Apr 2019 12:03:10 +0000
+Received: from G1W8106.americas.hpqcorp.net (g1w8106.austin.hp.com [16.193.72.61])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by g9t5009.houston.hpe.com (Postfix) with ESMTPS id BA20CA8;
+        Mon,  8 Apr 2019 12:03:04 +0000 (UTC)
+Received: from G9W8667.americas.hpqcorp.net (16.220.49.26) by
+ G1W8106.americas.hpqcorp.net (16.193.72.61) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3; Mon, 8 Apr 2019 12:02:51 +0000
+Received: from G9W9209.americas.hpqcorp.net (2002:10dc:429c::10dc:429c) by
+ G9W8667.americas.hpqcorp.net (2002:10dc:311a::10dc:311a) with Microsoft SMTP
+ Server (TLS) id 15.0.1367.3; Mon, 8 Apr 2019 12:02:50 +0000
+Received: from NAM02-BL2-obe.outbound.protection.outlook.com (15.241.52.13) by
+ G9W9209.americas.hpqcorp.net (16.220.66.156) with Microsoft SMTP Server (TLS)
+ id 15.0.1367.3 via Frontend Transport; Mon, 8 Apr 2019 12:02:50 +0000
+Received: from DF4PR8401MB1305.NAMPRD84.PROD.OUTLOOK.COM (10.169.82.150) by
+ DF4PR8401MB1161.NAMPRD84.PROD.OUTLOOK.COM (10.169.92.139) with Microsoft SMTP
+ Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.20.1771.15; Mon, 8 Apr 2019 12:02:49 +0000
+Received: from DF4PR8401MB1305.NAMPRD84.PROD.OUTLOOK.COM
+ ([fe80::dc0a:c295:f8a9:6d31]) by DF4PR8401MB1305.NAMPRD84.PROD.OUTLOOK.COM
+ ([fe80::dc0a:c295:f8a9:6d31%6]) with mapi id 15.20.1771.016; Mon, 8 Apr 2019
+ 12:02:49 +0000
+From:   "Weber, Olaf (HPC Data Management & Storage)" <olaf.weber@hpe.com>
+To:     Theodore Ts'o <tytso@mit.edu>,
+        Gabriel Krisman Bertazi <krisman@collabora.com>
+CC:     "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "sfrench@samba.org" <sfrench@samba.org>,
+        "darrick.wong@oracle.com" <darrick.wong@oracle.com>,
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "paulus@samba.org" <paulus@samba.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Olaf Weber <olaf@sgi.com>,
+        "Gabriel Krisman Bertazi" <krisman@collabora.co.uk>
+Subject: RE: [PATCH RFC v6 04/11] unicode: reduce the size of utf8data[]
+Thread-Topic: [PATCH RFC v6 04/11] unicode: reduce the size of utf8data[]
+Thread-Index: AQHU3ckozABztBO3pUm6I27ECEeW/aYvqUwAgAKevwA=
+Date:   Mon, 8 Apr 2019 12:02:49 +0000
+Message-ID: <DF4PR8401MB13058AE34765190922714B2F852C0@DF4PR8401MB1305.NAMPRD84.PROD.OUTLOOK.COM>
+References: <20190318202745.5200-1-krisman@collabora.com>
+ <20190318202745.5200-5-krisman@collabora.com>
+ <20190406195342.GA18897@mit.edu>
+In-Reply-To: <20190406195342.GA18897@mit.edu>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-originating-ip: [80.100.180.176]
+x-ms-publictraffictype: Email
+x-ms-office365-filtering-correlation-id: c23b5529-5bf5-4256-3cce-08d6bc1a1ef5
+x-ms-office365-filtering-ht: Tenant
+x-microsoft-antispam: BCL:0;PCL:0;RULEID:(2390118)(7020095)(4652040)(8989299)(4534185)(4627221)(201703031133081)(201702281549075)(8990200)(5600139)(711020)(4605104)(4618075)(2017052603328)(7193020);SRVR:DF4PR8401MB1161;
+x-ms-traffictypediagnostic: DF4PR8401MB1161:
+x-microsoft-antispam-prvs: <DF4PR8401MB11617C490BCCF9DA549CB2FC852C0@DF4PR8401MB1161.NAMPRD84.PROD.OUTLOOK.COM>
+x-forefront-prvs: 0001227049
+x-forefront-antispam-report: SFV:NSPM;SFS:(10019020)(39860400002)(376002)(366004)(346002)(396003)(136003)(189003)(199004)(316002)(186003)(81156014)(8936002)(14444005)(7416002)(256004)(66066001)(33656002)(2906002)(99286004)(3846002)(4326008)(26005)(446003)(11346002)(486006)(6506007)(7736002)(106356001)(305945005)(8676002)(14454004)(478600001)(110136005)(6116002)(229853002)(6246003)(52536014)(102836004)(71200400001)(105586002)(81166006)(54906003)(97736004)(5660300002)(74316002)(25786009)(6436002)(7696005)(86362001)(68736007)(476003)(76176011)(53936002)(2171002)(71190400001)(55016002)(9686003)(32563001);DIR:OUT;SFP:1102;SCL:1;SRVR:DF4PR8401MB1161;H:DF4PR8401MB1305.NAMPRD84.PROD.OUTLOOK.COM;FPR:;SPF:None;LANG:en;PTR:InfoNoRecords;MX:1;A:1;
+received-spf: None (protection.outlook.com: hpe.com does not designate
+ permitted sender hosts)
+x-ms-exchange-senderadcheck: 1
+x-microsoft-antispam-message-info: QAVsW4a2irNMSxxTmvx7EKoeivaParnT4wB38HVK/rYLnQ3y5vvi/jCERcC5zEQ4GZoOGgCvOHqgEgfObu+4vMtpjROPxXkSbI2Svr0HvRRezqOXaql1SZMi1mhkXPX+X8Z6PGnVPWpiXsa5qZSzYNdViVgGgVEmy9MJ0rBFLTWs3Od23DV9IbT8wvbzf2xxZpcgytBBwdCc+hhdbRIGgn8f9lNFoqRuZtg8ZrAIR9gMrc4xo1JyYZE7/WPwSDe4IQ5zGyJ73/KbHASWP4d3jVeEFFnmrqSVI3ZVxXgBZs3HIAc94bSseem42yBw4QN7BpLZSTOD/JMy+cXKb/wqco/1yPW/J5OOGewo8ddDSJlWFSEcGuPyZcuz2MC0gYq0hz9Km9si4e6BPZ3MASS6Hp29b7xI2M0FDmDekwcbWLU=
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+MIME-Version: 1.0
+X-MS-Exchange-CrossTenant-Network-Message-Id: c23b5529-5bf5-4256-3cce-08d6bc1a1ef5
+X-MS-Exchange-CrossTenant-originalarrivaltime: 08 Apr 2019 12:02:49.3073
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 105b2061-b669-4b31-92ac-24d304d195dc
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: DF4PR8401MB1161
+X-OriginatorOrg: hpe.com
+X-HPE-SCL: -1
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-04-08_04:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
+ clxscore=1011 lowpriorityscore=0 mlxscore=0 impostorscore=0
+ mlxlogscore=866 adultscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.0.1-1810050000 definitions=main-1904080104
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+From: Theodore Ts'o
+> On Mon, Mar 18, 2019 at 04:27:38PM -0400, Gabriel Krisman Bertazi wrote:
+> > From: Olaf Weber <olaf@sgi.com>
+> >
+> > Remove the Hangul decompositions from the utf8data trie, and do
+> > algorithmic decomposition to calculate them on the fly. To store
+> > the decomposition the caller of utf8lookup()/utf8nlookup() must
+> > provide a 12-byte buffer, which is used to synthesize a leaf with
+> > the decomposition. Trie size is reduced from 245kB to 90kB.
+> 
+> I'm seeing sizes much smaller; the actual utf8data[] array is 63,584.
+> And size utf8-norm.o reports:
+> 
+>    text	   data	    bss	    dec	    hex	filename
+>   68752	     96	      0	  68848	  10cf0	fs/unicode/utf8-norm.o
+> 
+> Were you measuring the size of the utf8-norm.o file?  That will vary
+> in size depending on whether debugging symbols are enabled, etc.
+> 
+>    		     	     	       	       - Ted
 
---Apple-Mail=_074D479C-955D-476D-91A4-AD19BEDCE174
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+These numbers came from the size of the array reported in utf8data.h,
+and were correct for the NFKDI + NFKDICF normalizations for Unicode 9.
+The switch to NFDI + NFDICF reduced the size, and it looks like the commit
+message was not updated to account for this.
 
-On Apr 7, 2019, at 2:13 PM, Darrick J. Wong <darrick.wong@oracle.com> =
-wrote:
->=20
-> On Sun, Apr 07, 2019 at 01:10:55PM -0500, Eric Sandeen wrote:
->> On 4/6/19 6:27 PM, Theodore Ts'o wrote:
->>> On Mon, Apr 01, 2019 at 09:55:19PM -0700, Darrick J. Wong wrote:
->>>>=20
->>>> When Ted is done laughing, I really would like to consider =
-something
->>>> like this to solve the problem of grub-style bootloaders requiring =
-a
->>>> lease on the blocks underneath a file with a term exceeding that of =
-the
->>>> running kernel.
->>>>=20
->>>> We can probably skip the harsh synchronous writes in favor of fsync =
-on
->>>> close, but we would need to keep the critical component of =
-checkpointing
->>>> the journal on fsync and syncfs.
->>>=20
->>> At least for ext4, we don't need to add anything new, since FIFREEZE
->>> force a journal checkpoint.  So we could try to get a patch into =
-grub
->>> which causes update_grub to open each kernel that it finds, and =
-calls
->>> fsync(2) on it, and then for all file systems where it finds a =
-kernel,
->>> it can call FIFREEZE and FITHAW on it, and that would be that.
->>=20
->> Certain operating systems have hacked this in.  My concern would be =
-when
->> /boot is on / ... calling FIFREEZE on the root fs would most likely =
-be
->> a bad thing.  Certain operating systems avoid calling FIFREEZE for
->> /boot-on-root.  ;)
->>=20
->> Doing it for a standalone /boot seems like a reasonable (if hacky)
->> workaround as long as we lack a more targeted quiesce interface...
->=20
-> The other problem we noticed is that neither the grub scripts nor the
-> rpm package scripts bother to call fsync on the files they write (or
-> sync after they're done to mop up after everyone else), so I figured =
-as
-> long as I'm ("jokingly") working around it all in kernel space, why =
-not
-> just go all the way? :P
->=20
-> Ok, I'll go work on an ioctl or something.
+Olaf
 
-If Grub isn't even bothering to call fsync() on a file, what is the =
-chance
-that they would call a special ioctl on the file?
-
-What about doing "chattr +S /boot" so that all file IO in this directory =
-is
-done synchronously, which would work even if /boot is not on a separate
-filesystem?  The "+S" flag is inherited by new files created in the =
-directory.
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_074D479C-955D-476D-91A4-AD19BEDCE174
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAlyrMFcACgkQcqXauRfM
-H+AwZg//fiemXK1qKdfgFiIOC+jx4FZgypk/xTfHZOr5wXiGqhLey3vd0VrlBH1E
-fowWz1NIv3yEFsdi9gmBIHSabb9/ewE3BirB/kwQz9E7DYLkVB30LdI66/CdjxFK
-J6Zo+w06ACsaRwfnS5g9Bvx7bKTttt1Rk+1jhmexvwfttgALGRWuUAdWEyDYRwY9
-/4PNbfcjfTCVMb2SlZFKIsB5zG8Xc7O6CEGc/jeucUVu57uaB1Bi5nQoKsp6xOaC
-JI5QeWA7rZIiksF1mC6dFlwGB8FDXpfPM7DICDi6FjYtpyfynadGwpAtW4I9TqXp
-GS2SpRclX+PqLdYSBEzibluz30S7AXoPKcjU7pSG43a1bU8vXDshkPJdeXuSuuRB
-6hLBLbhcnFwjCnlnzO+rPPdC7UtOW2gh5O9TIU+6IJgo0mRMIoB+s+XbY2u8zi5U
-A53Ndzl+CniXecZ05/obMW9GGjewyS9q2KWRqHEPJFvb4t91uEQ3Mb0VAC098NuF
-69YO+Yx6toWz4nzasqNOlq6mNLkmr96E7qIstx4nNSFtY8Lr2qdWu5FQSaAZt0RR
-/DEeP6EnvU5kKl1sk2CdThEc/l04Y4UlbCb0L6mTLvbFIMKCofz+GwcxAsEEJmPY
-kIkjDU5SVxLHBJcUtlPGVSsHRD/p1UF7FrNyX0jlPBadA4XQGw4=
-=sWaQ
------END PGP SIGNATURE-----
-
---Apple-Mail=_074D479C-955D-476D-91A4-AD19BEDCE174--
