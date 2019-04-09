@@ -2,144 +2,98 @@ Return-Path: <SRS0=i6rR=SL=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT autolearn=ham
+X-Spam-Status: No, score=-4.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=unavailable
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 10242C10F0E
-	for <linux-ext4@archiver.kernel.org>; Tue,  9 Apr 2019 08:26:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E776C282CE
+	for <linux-ext4@archiver.kernel.org>; Tue,  9 Apr 2019 13:12:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D644820880
-	for <linux-ext4@archiver.kernel.org>; Tue,  9 Apr 2019 08:26:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E13A3217F4
+	for <linux-ext4@archiver.kernel.org>; Tue,  9 Apr 2019 13:12:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726632AbfDII0I (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 9 Apr 2019 04:26:08 -0400
-Received: from mx2.suse.de ([195.135.220.15]:48230 "EHLO mx1.suse.de"
+        id S1727289AbfDINMj (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 9 Apr 2019 09:12:39 -0400
+Received: from szxga05-in.huawei.com ([45.249.212.191]:6717 "EHLO huawei.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1726079AbfDII0I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 Apr 2019 04:26:08 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id B531AAF49;
-        Tue,  9 Apr 2019 08:26:05 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 2FDCB1E429B; Tue,  9 Apr 2019 10:26:05 +0200 (CEST)
-Date:   Tue, 9 Apr 2019 10:26:05 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     Jan Kara <jack@suse.cz>, Dave Chinner <david@fromorbit.com>,
-        "Darrick J . Wong" <darrick.wong@oracle.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Ext4 <linux-ext4@vger.kernel.org>,
-        Lukas Czerner <lczerner@redhat.com>,
-        Theodore Tso <tytso@mit.edu>, Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [POC][PATCH] xfs: reduce ilock contention on buffered randrw
- workload
-Message-ID: <20190409082605.GA8107@quack2.suse.cz>
-References: <20190404165737.30889-1-amir73il@gmail.com>
- <20190404211730.GD26298@dastard>
- <CAOQ4uxjQNmxqmtA_VbYW0Su9rKRk2zobJmahcyeaEVOFKVQ5dw@mail.gmail.com>
- <20190407232728.GF26298@dastard>
- <CAOQ4uxgD4ErSUtbu0xqb5dSm_tM4J92qt6=hGH8GRc5KNGqP9A@mail.gmail.com>
- <20190408141114.GC15023@quack2.suse.cz>
- <CAOQ4uxhxgYASST1k-UaqfbLL9ERquHaKL2jtydB2+iF9aT8SRQ@mail.gmail.com>
+        id S1727070AbfDINMi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 9 Apr 2019 09:12:38 -0400
+Received: from DGGEMS405-HUB.china.huawei.com (unknown [172.30.72.60])
+        by Forcepoint Email with ESMTP id 374B09D1F641A5F1B7F6;
+        Tue,  9 Apr 2019 21:12:32 +0800 (CST)
+Received: from [127.0.0.1] (10.184.189.120) by DGGEMS405-HUB.china.huawei.com
+ (10.3.19.205) with Microsoft SMTP Server id 14.3.408.0; Tue, 9 Apr 2019
+ 21:12:25 +0800
+From:   "zhangxiaoxu (A)" <zhangxiaoxu5@huawei.com>
+Subject: Re: [PATCH] fs/buffer.c: Fix data corruption when buffer write with
+ IO error
+To:     Jan Kara <jack@suse.cz>
+CC:     <viro@zeniv.linux.org.uk>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <linux-fsdevel@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <linux-ext4@vger.kernel.org>,
+        <yi.zhang@huawei.com>
+References: <1554534793-31444-1-git-send-email-zhangxiaoxu5@huawei.com>
+ <20190408111108.GB18662@quack2.suse.cz>
+Message-ID: <cdc7faed-20a0-4024-9405-ab74d7d18ab8@huawei.com>
+Date:   Tue, 9 Apr 2019 21:11:22 +0800
+User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:60.0) Gecko/20100101
+ Thunderbird/60.0
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAOQ4uxhxgYASST1k-UaqfbLL9ERquHaKL2jtydB2+iF9aT8SRQ@mail.gmail.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+In-Reply-To: <20190408111108.GB18662@quack2.suse.cz>
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+X-Originating-IP: [10.184.189.120]
+X-CFilter-Loop: Reflected
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 08-04-19 20:41:09, Amir Goldstein wrote:
-> On Mon, Apr 8, 2019 at 5:11 PM Jan Kara <jack@suse.cz> wrote:
-> >
-> > On Mon 08-04-19 12:02:34, Amir Goldstein wrote:
-> > > On Mon, Apr 8, 2019 at 2:27 AM Dave Chinner <david@fromorbit.com> wrote:
-> > > >
-> > > > On Fri, Apr 05, 2019 at 05:02:33PM +0300, Amir Goldstein wrote:
-> > > > > On Fri, Apr 5, 2019 at 12:17 AM Dave Chinner <david@fromorbit.com> wrote:
-> > > > > >
-> > > > > > On Thu, Apr 04, 2019 at 07:57:37PM +0300, Amir Goldstein wrote:
-> > > > > > > This patch improves performance of mixed random rw workload
-> > > > > > > on xfs without relaxing the atomic buffered read/write guaranty
-> > > > > > > that xfs has always provided.
-> > > > > > >
-> > > > > > > We achieve that by calling generic_file_read_iter() twice.
-> > > > > > > Once with a discard iterator to warm up page cache before taking
-> > > > > > > the shared ilock and once again under shared ilock.
-> > > > > >
-> > > > > > This will race with thing like truncate, hole punching, etc that
-> > > > > > serialise IO and invalidate the page cache for data integrity
-> > > > > > reasons under the IOLOCK. These rely on there being no IO to the
-> > > > > > inode in progress at all to work correctly, which this patch
-> > > > > > violates. IOWs, while this is fast, it is not safe and so not a
-> > > > > > viable approach to solving the problem.
-> > > > > >
-> > > > >
-> > > > > This statement leaves me wondering, if ext4 does not takes
-> > > > > i_rwsem on generic_file_read_iter(), how does ext4 (or any other
-> > > > > fs for that matter) guaranty buffered read synchronization with
-> > > > > truncate, hole punching etc?
-> > > > > The answer in ext4 case is i_mmap_sem, which is read locked
-> > > > > in the page fault handler.
-> > > >
-> > > > Nope, the  i_mmap_sem is for serialisation of /page faults/ against
-> > > > truncate, holepunching, etc. Completely irrelevant to the read()
-> > > > path.
-> > > >
-> > >
-> > > I'm at lost here. Why are page faults completely irrelevant to read()
-> > > path? Aren't full pages supposed to be faulted in on read() after
-> > > truncate_pagecache_range()?
-> >
-> > During read(2), pages are not "faulted in". Just look at
-> > what generic_file_buffered_read() does. It uses completely separate code to
-> > add page to page cache, trigger readahead, and possibly call ->readpage() to
-> > fill the page with data. "fault" path (handled by filemap_fault()) applies
-> > only to accesses from userspace to mmaps.
-> >
+
+
+On 4/8/2019 7:11 PM, Jan Kara wrote:
+> On Sat 06-04-19 15:13:13, ZhangXiaoxu wrote:
+>> When the buffer write failed, 'end_buffer_write_sync' and
+>> 'end_buffer_async_write' will clear the uptodate flag. But the
+>> data in the buffer maybe newer than disk. In some case, this
+>> will lead data corruption.
+>>
+>> For example: ext4 flush metadata to disk failed, it will clear
+>> the uptodate flag. when a new coming call want the buffer, it will
+>> read it from the disk(because the buffer no uptodate flag). But
+>> the journal not checkpoint now, it will read old data from disk.
+>> If read successfully, ext4 will write the old data to the new
+>> journal, the data will corruption.
+>>
+>> So, don't clear the uptodate flag when write the buffer failed.
+>>
+>> Signed-off-by: ZhangXiaoxu<zhangxiaoxu5@huawei.com>
+> Thanks for the patch. But what are the chances that after the write has
+> failed the read will succeed? Also there were places that were using
+> buffer_uptodate() to detect IO errors. Did you check all those got
+> converted to using buffer_write_io_error() instead?
 > 
-> Oh! thanks for fixing my blind spot.
-> So if you agree with Dave that ext4, and who knows what other fs,
-> are vulnerable to populating page cache with stale "uptodate" data,
+> 								Honza
+> 
+I encountered this situation when using iscsi target as the ext4 volume,
+if the network down a while when ext4 write metadata to disk, and maybe
+read will success after the network recovered.
+In my testcase, just create and delete files, when disconnect the network,
+the dir entry maybe corruption. I add some logs when read entry buffer from
+disk, the buffer stats maybe buffer_write_io_error() and !buffer_uptodate().
+In this case, the ext4 will corruption high probability. Because the buffer
+is read from disk, and some newer information just on journal. In this case,
+we should not read buffer from the disk.
 
-Not that many filesystems support punching holes but you're right.
+I don't know any other filesystem how to use the uptodate flag. But I think
+uptodate means the buffer is valid and newer than disk, am I right?
 
-> then it seems to me that also xfs is vulnerable via readahead(2) and
-> posix_fadvise().
+I just test ext4 use the xfstest.
 
-Yes, this is correct AFAICT.
+Any other idea about my problem?
 
-> Mind you, I recently added an fadvise f_op, so it could be used by
-> xfs to synchronize with IOLOCK.
 
-And yes, this should work.
 
-> Perhaps a better solution would be for truncate_pagecache_range()
-> to leave zeroed or Unwritten (i.e. lazy zeroed by read) pages in page
-> cache. When we have shared pages for files, these pages could be
-> deduped.
 
-No, I wouldn't really mess with sharing pages due to this. It would be hard
-to make that scale resonably and would be rather complex. We really need a
-proper and reasonably simple synchronization mechanism between operations
-removing blocks from inode and operations filling in page cache of the
-inode. Page lock was supposed to provide this but doesn't quite work
-because hole punching first remove pagecache pages and then go removing all
-blocks.
 
-So I agree with Dave that going for range lock is really the cleanest way
-forward here without causing big regressions for mixed rw workloads. I'm
-just thinking how to best do that without introducing lot of boilerplate
-code into each filesystem.
-
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
