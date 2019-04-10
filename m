@@ -2,171 +2,138 @@ Return-Path: <SRS0=PpJq=SM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-5.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SPF_PASS,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-6.2 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,
+	UNWANTED_LANGUAGE_BODY,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A38BBC10F0E
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 02:58:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D7072C10F0E
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 03:39:12 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 725D720874
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 02:58:13 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1554865093;
-	bh=cDi8swnRku4+wFxL1Fo8ODezu5/CGoMbA7IZ4H1+/6M=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=sVZP6w/F8ahnB6ZfK5xe2Z0yRbL2GMC7uOlQkTwFVGYcxxTHzTyndm7OtfZfsQxAN
-	 8ctRBmHRNlICrT3m60RoudjpcJtmOb+MVWeCjl9nh6kLxNBtiDVC2wOV418s1jlBdD
-	 eP0o+vLYyLgojUPFYQERoPo/PpoIZiFODH5KN7ak=
+	by mail.kernel.org (Postfix) with ESMTP id ACD0C2082E
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 03:39:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726763AbfDJC6M (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 9 Apr 2019 22:58:12 -0400
-Received: from mail.kernel.org ([198.145.29.99]:34142 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726577AbfDJC6M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 9 Apr 2019 22:58:12 -0400
-Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 87EA72084F;
-        Wed, 10 Apr 2019 02:58:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1554865090;
-        bh=cDi8swnRku4+wFxL1Fo8ODezu5/CGoMbA7IZ4H1+/6M=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=Z8wDfxFHKqBUcqqdoXoeuQDyjDbsuF6R3vBjRrAEiZ/xdlAw1wNUADAGX+Ud9tqkb
-         f1a+H7AFo/W2ADL2LNKRDKgrn8zRze/tuMyrwT3h/jO2srsa4rZAOChCJgXpxf7CG6
-         UzVW9Dxc0OIdcd5pKimusq2FX5RDLLiqDke9wu60=
-Date:   Tue, 9 Apr 2019 19:58:08 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Al Viro <viro@zeniv.linux.org.uk>
-Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
-Subject: Re: [PATCH] fscrypt: cache decrypted symlink target in ->i_link
-Message-ID: <20190410025808.GA7140@sol.localdomain>
-References: <20190409233544.156665-1-ebiggers@kernel.org>
- <20190410003346.GT2217@ZenIV.linux.org.uk>
- <20190410004553.GA2454@sol.localdomain>
- <20190410010425.GU2217@ZenIV.linux.org.uk>
- <20190410012247.GB2454@sol.localdomain>
- <20190410013934.GV2217@ZenIV.linux.org.uk>
+        id S1727017AbfDJDjM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 9 Apr 2019 23:39:12 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:40956 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726825AbfDJDjM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Apr 2019 23:39:12 -0400
+Received: from callcc.thunk.org (guestnat-104-133-9-102.corp.google.com [104.133.9.102] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x3A3d6x4029345
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 9 Apr 2019 23:39:08 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 07D88421A0D; Tue,  9 Apr 2019 23:39:05 -0400 (EDT)
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH] ext4: protect journal inode's blocks using block_validity
+Date:   Tue,  9 Apr 2019 23:38:59 -0400
+Message-Id: <20190410033859.5328-1-tytso@mit.edu>
+X-Mailer: git-send-email 2.19.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190410013934.GV2217@ZenIV.linux.org.uk>
-User-Agent: Mutt/1.11.4 (2019-03-13)
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 10, 2019 at 02:39:34AM +0100, Al Viro wrote:
-> On Tue, Apr 09, 2019 at 06:22:49PM -0700, Eric Biggers wrote:
-> 
-> > > Non-NULL ->get_link() => DCACHE_SYMLINK_TYPE in ->d_flags =>
-> > > d_is_symlink() true => step_into() progresses to pick_link().
-> > > 
-> > > IOW, non-NULL ->get_link() is what tells you that we have
-> > > a symlink there.
-> > 
-> > I think that's pretty unintuitive.  The fact that multiple filesystems including
-> > ext4 set ->i_link on fast symlinks, then set ->get_link() to a function that
-> > returns ->i_link, made me assume that's the mechanism by which such symlink
-> > targets are returned to the VFS.  When in fact fs/namei.c just uses ->i_link,
-> > and never calls ->get_link().
-> > 
-> > Is there any reason why d_flags_for_inode() doesn't check S_ISLNK() instead, and
-> > then fs/namei.c would call ->get_link() if non-NULL, otherwise use ->i_link?
-> 
-> Extra check and dereference on hot path with no visible benefits of doing it
-> that way, for starters.  Really, what _is_ the benefit of pessimizing that?  
-> Most of the symlinks we run into will have ->i_link set; checking ->i_op->get_link
-> first is extra work for no good reason...
-> 
-> What's more, ->get_link is visible in inode_operations; ->i_link (let alone ->i_mode)
-> isn't.  As it is, we can easily tell symlink inode_operations from everything else
-> on the source level.  With your scheme we won't.
+Add the blocks which belong to the journal inode to block_validity's
+system zone so attempts to deallocate or overwrite the journal due a
+corrupted file system where the journal blocks are also claimed by
+another inode.
 
-It could check a flag IOP_GET_LINK in ->i_opflags instead, so it would be the
-same number of checks.  See patch below.
+Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=202879
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+---
+ fs/ext4/block_validity.c | 48 ++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/inode.c          |  4 ++++
+ 2 files changed, 52 insertions(+)
 
-Benefits are that we get code that isn't actively misleading (via
-simple_get_link() existing but actually never being called), and filesystems can
-cache a symlink target in ->i_link if it becomes available later, i.e. if it's
-not immediately available at iget() time.  Otherwise a filesystem-private field
-has to be used instead.  (For fscrypt, I'd probably use fscrypt_info::ci_link.)
-
-Anyway, if we're going to stick with the current approach we should at least add
-a comment to simple_get_link() explaining what it's really for...
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index aac41adf47433..df0e2f092a481 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1820,12 +1820,11 @@ static unsigned d_flags_for_inode(struct inode *inode)
- 		goto type_determined;
+diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
+index 913061c0de1b..9409b1e11a22 100644
+--- a/fs/ext4/block_validity.c
++++ b/fs/ext4/block_validity.c
+@@ -137,6 +137,48 @@ static void debug_print_tree(struct ext4_sb_info *sbi)
+ 	printk(KERN_CONT "\n");
+ }
+ 
++static int ext4_protect_reserved_inode(struct super_block *sb, u32 ino)
++{
++	struct inode *inode;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_map_blocks map;
++	u32 i = 0, err = 0, num, n;
++
++	if ((ino < EXT4_ROOT_INO) ||
++	    (ino > le32_to_cpu(sbi->s_es->s_inodes_count)))
++		return -EINVAL;
++	inode = ext4_iget(sb, ino, EXT4_IGET_SPECIAL);
++	if (IS_ERR(inode))
++		return PTR_ERR(inode);
++	num = (inode->i_size + sb->s_blocksize - 1) >> sb->s_blocksize_bits;
++	while (i < num) {
++		map.m_lblk = i;
++		map.m_len = num - i;
++		n = ext4_map_blocks(NULL, inode, &map, 0);
++		if (n < 0) {
++			err = n;
++			break;
++		}
++		if (n == 0) {
++			i++;
++		} else {
++			if (!ext4_data_block_valid(sbi, map.m_pblk, n)) {
++				ext4_error(sb, "blocks %llu-%llu from inode %u "
++					   "overlap system zone", map.m_pblk,
++					   map.m_pblk + map.m_len - 1, ino);
++				err = -EFSCORRUPTED;
++				break;
++			}
++			err = add_system_zone(sbi, map.m_pblk, n);
++			if (err < 0)
++				break;
++			i += n;
++		}
++	}
++	iput(inode);
++	return err;
++}
++
+ int ext4_setup_system_zone(struct super_block *sb)
+ {
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+@@ -171,6 +213,12 @@ int ext4_setup_system_zone(struct super_block *sb)
+ 		if (ret)
+ 			return ret;
  	}
++	if (ext4_has_feature_journal(sb) && sbi->s_es->s_journal_inum) {
++		ret = ext4_protect_reserved_inode(sb,
++				le32_to_cpu(sbi->s_es->s_journal_inum));
++		if (ret)
++			return ret;
++	}
  
--	if (unlikely(!(inode->i_opflags & IOP_NOFOLLOW))) {
--		if (unlikely(inode->i_op->get_link)) {
--			add_flags = DCACHE_SYMLINK_TYPE;
--			goto type_determined;
--		}
--		inode->i_opflags |= IOP_NOFOLLOW;
-+	if (unlikely(S_ISLNK(inode->i_mode))) {
-+		add_flags = DCACHE_SYMLINK_TYPE;
-+		if (inode->i_op->get_link)
-+			inode->i_opflags |= IOP_GET_LINK;
-+		goto type_determined;
- 	}
- 
- 	if (unlikely(!S_ISREG(inode->i_mode)))
-diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
-index dd05af983092d..315e4622db3d2 100644
---- a/fs/ext4/symlink.c
-+++ b/fs/ext4/symlink.c
-@@ -67,7 +67,6 @@ const struct inode_operations ext4_symlink_inode_operations = {
- };
- 
- const struct inode_operations ext4_fast_symlink_inode_operations = {
--	.get_link	= simple_get_link,
- 	.setattr	= ext4_setattr,
- 	.getattr	= ext4_getattr,
- 	.listxattr	= ext4_listxattr,
-diff --git a/fs/namei.c b/fs/namei.c
-index dede0147b3f6e..d99275f0cd3d7 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1067,7 +1067,7 @@ const char *get_link(struct nameidata *nd)
- 
- 	nd->last_type = LAST_BIND;
- 	res = inode->i_link;
--	if (!res) {
-+	if (inode->i_opflags & IOP_GET_LINK) {
- 		const char * (*get)(struct dentry *, struct inode *,
- 				struct delayed_call *);
- 		get = inode->i_op->get_link;
-@@ -4730,7 +4730,7 @@ int vfs_readlink(struct dentry *dentry, char __user *buffer, int buflen)
- 	}
- 
- 	link = inode->i_link;
--	if (!link) {
-+	if (inode->i_opflags & IOP_GET_LINK) {
- 		link = inode->i_op->get_link(dentry, inode, &done);
- 		if (IS_ERR(link))
- 			return PTR_ERR(link);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index dd28e76790891..f6353aa40355b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -604,7 +604,7 @@ is_uncached_acl(struct posix_acl *acl)
- 
- #define IOP_FASTPERM	0x0001
- #define IOP_LOOKUP	0x0002
--#define IOP_NOFOLLOW	0x0004
-+#define IOP_GET_LINK	0x0004
- #define IOP_XATTR	0x0008
- #define IOP_DEFAULT_READLINK	0x0010
- 
+ 	if (test_opt(sb, DEBUG))
+ 		debug_print_tree(sbi);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 190f0478582a..609c8366d029 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -399,6 +399,10 @@ static int __check_block_validity(struct inode *inode, const char *func,
+ 				unsigned int line,
+ 				struct ext4_map_blocks *map)
+ {
++	if (ext4_has_feature_journal(inode->i_sb) &&
++	    (inode->i_ino ==
++	     le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_journal_inum)))
++		return 0;
+ 	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), map->m_pblk,
+ 				   map->m_len)) {
+ 		ext4_error_inode(inode, func, line, map->m_pblk,
+-- 
+2.19.1
 
-- Eric
