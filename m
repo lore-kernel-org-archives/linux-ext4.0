@@ -5,30 +5,30 @@ X-Spam-Level:
 X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
 	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BEFBFC10F11
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 18:06:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 14781C10F11
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 18:21:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9D4B620830
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 18:06:40 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id D80C42077C
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 18:21:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729496AbfDJSGk convert rfc822-to-8bit (ORCPT
+        id S1730245AbfDJSV5 convert rfc822-to-8bit (ORCPT
         <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 10 Apr 2019 14:06:40 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:53170 "EHLO
+        Wed, 10 Apr 2019 14:21:57 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:59494 "EHLO
         mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727305AbfDJSGj (ORCPT
+        by vger.kernel.org with ESMTP id S1727583AbfDJSV5 (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Apr 2019 14:06:39 -0400
+        Wed, 10 Apr 2019 14:21:57 -0400
 Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id 8B95728BDA
-        for <linux-ext4@vger.kernel.org>; Wed, 10 Apr 2019 18:06:39 +0000 (UTC)
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id B1D8628C11
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Apr 2019 18:21:56 +0000 (UTC)
 Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id 6ED0628BC5; Wed, 10 Apr 2019 18:06:39 +0000 (UTC)
+        id A61CF28C14; Wed, 10 Apr 2019 18:21:56 +0000 (UTC)
 From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
 Subject: [Bug 203247] jbd2 gets stuck at jbd2_journal_commit_transaction
  frequently
-Date:   Wed, 10 Apr 2019 18:06:39 +0000
+Date:   Wed, 10 Apr 2019 18:21:54 +0000
 X-Bugzilla-Reason: None
 X-Bugzilla-Type: changed
 X-Bugzilla-Watch-Reason: AssignedTo fs_ext3@kernel-bugs.osdl.org
@@ -43,8 +43,8 @@ X-Bugzilla-Resolution:
 X-Bugzilla-Priority: P1
 X-Bugzilla-Assigned-To: fs_ext3@kernel-bugs.osdl.org
 X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: attachments.created
-Message-ID: <bug-203247-13602-R6pGeM9T28@https.bugzilla.kernel.org/>
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-203247-13602-ASgdb3Qi5s@https.bugzilla.kernel.org/>
 In-Reply-To: <bug-203247-13602@https.bugzilla.kernel.org/>
 References: <bug-203247-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
@@ -60,10 +60,24 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 https://bugzilla.kernel.org/show_bug.cgi?id=203247
 
---- Comment #7 from pkb07815 (pankajcabs@gmail.com) ---
-Created attachment 282273
-  --> https://bugzilla.kernel.org/attachment.cgi?id=282273&action=edit
-iostat
+--- Comment #8 from pkb07815 (pankajcabs@gmail.com) ---
+issue is reproducible:
+
+I have use dd command to generate file in /data area to compete with the
+postgres operation and using iostat -x to monitor the io condition.
+
+Here is how I create the dd with variation of count value and sleep time:
+for i in {1..100}; do nice -n 10 dd if=/dev/zero
+of=/data/tmp/testonly/tmpfile$i.txt count=1024 bs=1048576; echo "done tmpfile
+$i"; sleep 10; done &
+
+I use postgresql utility pgbench paired with other in-house sql commands for
+test of transactions: 
+su -s /bin/bash postgres -c "/usr/postgresql/bin/pgbench -T 90000 -c 8 bench2"
+&
+
+When I execute the pgbench and dd both..I see the processes going into D state
+and stuck there for long (atleast for 140 seconds).
 
 -- 
 You are receiving this mail because:
