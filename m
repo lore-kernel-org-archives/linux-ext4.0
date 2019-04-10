@@ -2,105 +2,128 @@ Return-Path: <SRS0=PpJq=SM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-2.6 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
+	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6EE9AC10F14
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 05:04:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F3B8C10F11
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 08:25:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3C404217D6
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 05:04:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1554872690;
-	bh=7C5EkI6QcgUdOcfhNlLnkQP6w5KekGPVI5d0/1MYD0g=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=maOsv7yTKiz1yhsjyk+mxk7ZH/9lRhcSDw/UAyzY5w40VZ3YnhLePfiqaRJXuN5qB
-	 4a0jMw8AFz/q17t6Y18NGj0xRks2gjhz4YhnO9yrEeNaNfhau9efgHKU24uRCozKqR
-	 ST8Rl+7jEzZIyiaWSx3pOJ4Hv7IpYULu3GxeksQA=
+	by mail.kernel.org (Postfix) with ESMTP id 77BE0206B6
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 08:25:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726478AbfDJFEs (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 10 Apr 2019 01:04:48 -0400
-Received: from mail.kernel.org ([198.145.29.99]:36722 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725999AbfDJFEs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Apr 2019 01:04:48 -0400
-Received: from sol.localdomain (c-24-5-143-220.hsd1.ca.comcast.net [24.5.143.220])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id D31682064B;
-        Wed, 10 Apr 2019 05:04:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1554872688;
-        bh=7C5EkI6QcgUdOcfhNlLnkQP6w5KekGPVI5d0/1MYD0g=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=OzoOgq5U3eekqjiR4C85EbGknOw9ShC1eifpQgg/fuXnrJKJrcUtfvjYl2d/ubiWk
-         HvLmZSDlNrcoVMGoaGTaNIzaj3RAXWccUeeIodJMb3decCCwFy2ve4eXVIqp67rgel
-         YNfq7NClPEv/LDulwdD/boElFRTU1ELs1t633xBQ=
-Date:   Tue, 9 Apr 2019 22:04:46 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Al Viro <viro@zeniv.linux.org.uk>
-Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net
-Subject: Re: [PATCH] fscrypt: cache decrypted symlink target in ->i_link
-Message-ID: <20190410050445.GE7140@sol.localdomain>
-References: <20190409233544.156665-1-ebiggers@kernel.org>
- <20190410003346.GT2217@ZenIV.linux.org.uk>
- <20190410004553.GA2454@sol.localdomain>
- <20190410010425.GU2217@ZenIV.linux.org.uk>
- <20190410012247.GB2454@sol.localdomain>
- <20190410013934.GV2217@ZenIV.linux.org.uk>
- <20190410025808.GA7140@sol.localdomain>
- <20190410034414.GW2217@ZenIV.linux.org.uk>
- <20190410040413.GC7140@sol.localdomain>
- <20190410043135.GX2217@ZenIV.linux.org.uk>
+        id S1729561AbfDJIZJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 10 Apr 2019 04:25:09 -0400
+Received: from mx2.suse.de ([195.135.220.15]:52422 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1729258AbfDJIZI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 10 Apr 2019 04:25:08 -0400
+X-Virus-Scanned: by amavisd-new at test-mx.suse.de
+Received: from relay2.suse.de (unknown [195.135.220.254])
+        by mx1.suse.de (Postfix) with ESMTP id 30A60ABD4;
+        Wed, 10 Apr 2019 08:25:06 +0000 (UTC)
+Received: by quack2.suse.cz (Postfix, from userid 1000)
+        id 1D74A1E429B; Wed, 10 Apr 2019 10:25:04 +0200 (CEST)
+Date:   Wed, 10 Apr 2019 10:25:04 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Pankaj Gupta <pagupta@redhat.com>
+Cc:     linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
+        virtualization@lists.linux-foundation.org, kvm@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-acpi@vger.kernel.org,
+        qemu-devel@nongnu.org, linux-ext4@vger.kernel.org,
+        linux-xfs@vger.kernel.org, dan.j.williams@intel.com,
+        zwisler@kernel.org, vishal.l.verma@intel.com, dave.jiang@intel.com,
+        mst@redhat.com, jasowang@redhat.com, willy@infradead.org,
+        rjw@rjwysocki.net, hch@infradead.org, lenb@kernel.org,
+        jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
+        darrick.wong@oracle.com, lcapitulino@redhat.com, kwolf@redhat.com,
+        imammedo@redhat.com, jmoyer@redhat.com, nilal@redhat.com,
+        riel@surriel.com, stefanha@redhat.com, aarcange@redhat.com,
+        david@redhat.com, david@fromorbit.com, cohuck@redhat.com,
+        xiaoguangrong.eric@gmail.com, pbonzini@redhat.com,
+        kilobyte@angband.pl, yuval.shaia@oracle.com
+Subject: Re: [PATCH v5 4/6] dax: check synchronous mapping is supported
+Message-ID: <20190410082504.GF1426@quack2.suse.cz>
+References: <20190410040826.24371-1-pagupta@redhat.com>
+ <20190410040826.24371-5-pagupta@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190410043135.GX2217@ZenIV.linux.org.uk>
-User-Agent: Mutt/1.11.4 (2019-03-13)
+In-Reply-To: <20190410040826.24371-5-pagupta@redhat.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 10, 2019 at 05:31:35AM +0100, Al Viro wrote:
-> On Tue, Apr 09, 2019 at 09:04:15PM -0700, Eric Biggers wrote:
+On Wed 10-04-19 09:38:24, Pankaj Gupta wrote:
+> This patch introduces 'daxdev_mapping_supported' helper
+> which checks if 'MAP_SYNC' is supported with filesystem
+> mapping. It also checks if corresponding dax_device is
+> synchronous. Virtio pmem device is asynchronous and
+> does not not support VM_SYNC. 
 > 
-> > > What's to stop you from doing just that right now?  You'd need to take
-> > > care with barriers, but you'd need that anyway... As soon as ->i_link is set
-> > > you'll get no more ->get_link() on that sucker, using the cached value
-> > > from that point on.  IDGI...
-> > 
-> > 1.) The VFS won't know to drop of RCU-walk mode, so waiting an RCU grace period
-> >     before freeing the symlink target becomes mandatory.  (Which I'd like to do
-> >     for fscrypt anyway, but doing it sanely appears to require implementing
-> >     .destroy_inode() for ext4, f2fs, and ubifs.  I hoped I could do non-RCU mode
-> >     as a simpler first step.)
+> Suggested-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
+> ---
+>  include/linux/dax.h | 23 +++++++++++++++++++++++
+>  1 file changed, 23 insertions(+)
 > 
-> You might want to check those filesystems.  All three you've mentioned *have*
-> ->destroy_inode() already.
->  
+> diff --git a/include/linux/dax.h b/include/linux/dax.h
+> index b896706a5ee9..4a2a60ffec86 100644
+> --- a/include/linux/dax.h
+> +++ b/include/linux/dax.h
+> @@ -38,6 +38,24 @@ void kill_dax(struct dax_device *dax_dev);
+>  void dax_write_cache(struct dax_device *dax_dev, bool wc);
+>  bool dax_write_cache_enabled(struct dax_device *dax_dev);
+>  bool dax_synchronous(struct dax_device *dax_dev);
+> +
+> +/*
+> + * Callers check if synchronous mapping is enabled for DAX file
+> + * and attached dax device is also synchronous.
+> + *
+> + * dax_synchronous function verifies if dax device is synchronous.
+> + * Currently, only virtio pmem device supports asynchronous device
+> + * flush.
+> + */
 
-Yep, I just noticed that.
+Thanks for the patch! I'd restructure this comment like:
 
-> > 2.) The VFS won't know to use a read memory barrier when loading i_link.
-> >     The VFS could issue one unconditionally, but it would be unnecessary for
-> >     regular fast symlinks.
-> 
-> Not really.  All we need on the read side is READ_ONCE(); it will supply
-> smp_read_barrier_depends() (which is a no-op except for alpha).  On the
-> write side we need smp_store_release() to set ->i_link (in addition to
-> whatever serialization we want for actual calculation of the value to
-> be cached, of course).
+/*
+ * Check if given mapping is supported by the file / underlying device.
+ */
+> +static inline bool daxdev_mapping_supported(struct vm_area_struct *vma,
+> +				struct dax_device *dax_dev)
+> +{
 
-Okay, I didn't realize that READ_ONCE() would be sufficient.  I thought
-smp_load_acquire() was needed.  I guess you're right; we'd only read what the
-pointer points to, so it's a data dependency.
+	/* Everyone supports non-sync mappings */
+> +	if (!(vma->vm_flags & VM_SYNC))
+> +		return true;
+	/* Sync mappings are supported only for files using DAX */
+> +	if (!IS_DAX(file_inode(vma->vm_file)))
+> +		return false;
+	/* Underlying device must support persisting through CPU instructions */
+> +	return dax_synchronous(dax_dev);
+> +}
+>  #else
+>  static inline struct dax_device *dax_get_by_host(const char *host)
+>  {
+> @@ -69,6 +87,11 @@ static inline bool dax_synchronous(struct dax_device *dax_dev)
+>  {
+>  	return true;
+>  }
+> +static inline bool daxdev_mapping_supported(struct vm_area_struct *vma,
+> +				struct dax_device *dax_dev)
+> +{
+> +	return true;
 
-Do you see any problem with using cmpxchg_release() on the write side, so no
-additional lock is needed?  (Like what we do for ->i_crypt_info, except
-currently it's actually cmpxchg() there, with a direct access on the read side.
-IIUC now, that should be changed to cmpxchg_release() and READ_ONCE().)
+This looks wrong. Shouldn't it rather be:
 
-- Eric
+	return !(vma->flags & VM_SYNC);
+
+?
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
