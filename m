@@ -2,143 +2,170 @@ Return-Path: <SRS0=PpJq=SM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-12.0 required=3.0
-	tests=HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	MENTIONS_GIT_HOSTING,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 94426C10F11
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 16:53:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E4A8BC10F11
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 17:57:48 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 6E65120818
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 16:53:13 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id BFD5E2063F
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 17:57:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388110AbfDJQxF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 10 Apr 2019 12:53:05 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:59608 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1730479AbfDJQxF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Apr 2019 12:53:05 -0400
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 5F5B38046D;
-        Wed, 10 Apr 2019 16:53:04 +0000 (UTC)
-Received: from gondolin (ovpn-204-33.brq.redhat.com [10.40.204.33])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 0CC6A104C421;
-        Wed, 10 Apr 2019 16:52:45 +0000 (UTC)
-Date:   Wed, 10 Apr 2019 18:52:41 +0200
-From:   Cornelia Huck <cohuck@redhat.com>
-To:     "Michael S. Tsirkin" <mst@redhat.com>
-Cc:     Pankaj Gupta <pagupta@redhat.com>, jack@suse.cz,
-        kvm@vger.kernel.org, david@redhat.com, jasowang@redhat.com,
-        david@fromorbit.com, qemu-devel@nongnu.org,
-        virtualization@lists.linux-foundation.org,
-        adilger kernel <adilger.kernel@dilger.ca>, zwisler@kernel.org,
-        aarcange@redhat.com, dave jiang <dave.jiang@intel.com>,
-        linux-nvdimm@lists.01.org,
-        vishal l verma <vishal.l.verma@intel.com>,
-        willy@infradead.org, hch@infradead.org, linux-acpi@vger.kernel.org,
-        jmoyer@redhat.com, linux-ext4@vger.kernel.org, lenb@kernel.org,
-        kilobyte@angband.pl, riel@surriel.com,
-        yuval shaia <yuval.shaia@oracle.com>, stefanha@redhat.com,
-        pbonzini@redhat.com, dan j williams <dan.j.williams@intel.com>,
-        lcapitulino@redhat.com, kwolf@redhat.com, nilal@redhat.com,
-        tytso@mit.edu, xiaoguangrong eric <xiaoguangrong.eric@gmail.com>,
-        darrick wong <darrick.wong@oracle.com>, rjw@rjwysocki.net,
-        linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, imammedo@redhat.com
-Subject: Re: [Qemu-devel] [PATCH v5 2/5] virtio-pmem: Add virtio pmem driver
-Message-ID: <20190410185241.1b0b1982.cohuck@redhat.com>
-In-Reply-To: <20190410124114-mutt-send-email-mst@kernel.org>
-References: <20190410040826.24371-1-pagupta@redhat.com>
-        <20190410040826.24371-3-pagupta@redhat.com>
-        <20190410091216-mutt-send-email-mst@kernel.org>
-        <127904196.20807948.1554904981681.JavaMail.zimbra@redhat.com>
-        <20190410163139.4a04175e.cohuck@redhat.com>
-        <20190410124114-mutt-send-email-mst@kernel.org>
-Organization: Red Hat GmbH
+        id S1731000AbfDJR5s convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 10 Apr 2019 13:57:48 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:42232 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1730819AbfDJR5s (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 10 Apr 2019 13:57:48 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id F2F46284FC
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Apr 2019 17:57:46 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+        id E73E228A08; Wed, 10 Apr 2019 17:57:46 +0000 (UTC)
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 203247] jbd2 gets stuck at jbd2_journal_commit_transaction
+ frequently
+Date:   Wed, 10 Apr 2019 17:57:45 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: changed
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext3@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext3
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: high
+X-Bugzilla-Who: pankajcabs@gmail.com
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext3@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: 
+Message-ID: <bug-203247-13602-cPGCcf4Ckz@https.bugzilla.kernel.org/>
+In-Reply-To: <bug-203247-13602@https.bugzilla.kernel.org/>
+References: <bug-203247-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.22
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.28]); Wed, 10 Apr 2019 16:53:04 +0000 (UTC)
+X-Virus-Scanned: ClamAV using ClamSMTP
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, 10 Apr 2019 12:46:12 -0400
-"Michael S. Tsirkin" <mst@redhat.com> wrote:
+https://bugzilla.kernel.org/show_bug.cgi?id=203247
 
-> On Wed, Apr 10, 2019 at 04:31:39PM +0200, Cornelia Huck wrote:
-> > On Wed, 10 Apr 2019 10:03:01 -0400 (EDT)
-> > Pankaj Gupta <pagupta@redhat.com> wrote:
-> >   
-> > > > 
-> > > > On Wed, Apr 10, 2019 at 09:38:22AM +0530, Pankaj Gupta wrote:    
-> > > > > This patch adds virtio-pmem driver for KVM guest.
-> > > > > 
-> > > > > Guest reads the persistent memory range information from
-> > > > > Qemu over VIRTIO and registers it on nvdimm_bus. It also
-> > > > > creates a nd_region object with the persistent memory
-> > > > > range information so that existing 'nvdimm/pmem' driver
-> > > > > can reserve this into system memory map. This way
-> > > > > 'virtio-pmem' driver uses existing functionality of pmem
-> > > > > driver to register persistent memory compatible for DAX
-> > > > > capable filesystems.
-> > > > > 
-> > > > > This also provides function to perform guest flush over
-> > > > > VIRTIO from 'pmem' driver when userspace performs flush
-> > > > > on DAX memory range.
-> > > > > 
-> > > > > Signed-off-by: Pankaj Gupta <pagupta@redhat.com>  
-> >   
-> > > > > diff --git a/include/uapi/linux/virtio_ids.h
-> > > > > b/include/uapi/linux/virtio_ids.h
-> > > > > index 6d5c3b2d4f4d..346389565ac1 100644
-> > > > > --- a/include/uapi/linux/virtio_ids.h
-> > > > > +++ b/include/uapi/linux/virtio_ids.h
-> > > > > @@ -43,5 +43,6 @@
-> > > > >  #define VIRTIO_ID_INPUT        18 /* virtio input */
-> > > > >  #define VIRTIO_ID_VSOCK        19 /* virtio vsock transport */
-> > > > >  #define VIRTIO_ID_CRYPTO       20 /* virtio crypto */
-> > > > > +#define VIRTIO_ID_PMEM         25 /* virtio pmem */
-> > > > >  
-> > > > >  #endif /* _LINUX_VIRTIO_IDS_H */    
-> > > > 
-> > > > Didn't Paolo point out someone is using 25 for audio?    
-> > > 
-> > > 
-> > > Sorry! I did not notice this.
-> > >   
-> > > > 
-> > > > Please, reserve an ID with the Virtio TC before using it.    
-> > > 
-> > > I thought I requested[1] ID 25.
-> > > 
-> > > [1] https://github.com/oasis-tcs/virtio-spec/issues/38
-> > > [2] https://lists.oasis-open.org/archives/virtio-dev/201805/threads.html
-> > > 
-> > > In that case I will send request for next available ID i.e 26?  
-> > 
-> > Have the folks using this for audio sent a reservation request as well?
-> > If not, I'd say the first requester should get the id...  
-> 
-> No but I think they ship their's already. No one ships pmem
-> so it's less pain for everyone if we just skip 25.
+--- Comment #5 from pkb07815 (pankajcabs@gmail.com) ---
+Here is the information:
 
-Ugh. Ok, then we should change pmem...
+# show raid
+Raid configuration:
+  Model:            LSI MegaRAID SAS 9260-4i
+  Serial:           SK72468112
+  Firmware Version: 2.130.383-2315
 
-> 
-> > (And yes, we need to be quicker with voting on/applying id
-> > reservations :/)  
-> 
-> We can't vote on what was not proposed for a vote.
-> At the moment that responsibility is with the commented
-> once discussion on the comment has taken place.
-> 
-> I think what's missing is a description of the process
-> in the README. Want to write it up and post it?
+Apr  9 00:44:22 ex-etp3 kernel:scsi host0: Avago SAS based MegaRAID driver
+Apr  9 00:44:22 ex-etp3 kernel:scsi 0:2:0:0: Direct-Access     LSI     
+MR9260-4i        2.13 PQ: 0 ANSI: 5
 
-I can add that to my TODO list, can't promise speedy resolution, though.
+Apr  9 00:44:22 ex-etp3 kernel:sd 0:2:0:0: [sda] 1171062784 512-byte logical
+blocks: (600 GB/558 GiB)
+Apr  9 00:44:22 ex-etp3 kernel:sd 0:2:0:0: Attached scsi generic sg0 type 0
+Apr  9 00:44:22 ex-etp3 kernel:sd 0:2:0:0: [sda] Write Protect is off
+Apr  9 00:44:22 ex-etp3 kernel:sd 0:2:0:0: [sda] Mode Sense: 1f 00 10 08
+Apr  9 00:44:22 ex-etp3 kernel:sd 0:2:0:0: [sda] Write cache: disabled, read
+cache: enabled, supports DPO and FUA
+
+[admin@ex-etp3 ~]# df -h
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda5       2.0G  1.8G  106M  95% /
+tmpfs            63G  3.0G   60G   5% /dev/shm
+/dev/sda2       120M   30M   84M  27% /boot
+/dev/sda1       119M  1.8M  111M   2% /bootmgr
+/dev/sda8       182M   50M  123M  29% /config
+/dev/sda9        30G   22G  6.3G  78% /var
+/dev/sda10      453G  329G  102G  77% /data
+tmpfs            63G   24K   63G   1% /run
+tmpfs            64M  980K   64M   2% /vtmp
+[admin@ex-etp3 ~]# mount
+/dev/sda5 on / type ext3 (rw)
+proc on /proc type proc (rw)
+sysfs on /sys type sysfs (rw)
+devpts on /dev/pts type devpts (rw,gid=5,mode=620)
+tmpfs on /dev/shm type tmpfs (rw)
+/dev/sda2 on /boot type ext3 (ro,noatime,noexec)
+/dev/sda1 on /bootmgr type ext3 (ro,noatime,noexec)
+/dev/sda8 on /config type ext3 (rw,noatime,noexec)
+/dev/sda9 on /var type ext3 (rw,noatime)
+/dev/sda10 on /data type ext3 (rw,noatime,barrier=0)
+tmpfs on /dev/shm type tmpfs (rw)
+tmpfs on /run type tmpfs (rw,nosuid,nodev,strictatime,mode=0755)
+tmpfs on /vtmp type tmpfs (rw,size=64M)
+
+
+
+
+ description: Motherboard
+       product: H8DGU
+       vendor: Supermicro
+       physical id: 0
+       version: 1234567890
+       serial: NM179S600489
+       slot: To Be Filled By O.E.M.
+     *-firmware
+          description: BIOS
+          vendor: American Megatrends Inc.
+          physical id: 0
+          version: FI3.0c
+          date: 12/31/2013
+
+cpu:0
+          description: CPU
+          product: (To Be Filled By O.E.M.)
+          vendor: Advanced Micro Devices [AMD]
+          physical id: 4
+          bus info: cpu@0
+          version: AMD Opteron(tm) Processor 6380
+
+ *-storage
+                description: RAID bus controller
+                product: MegaRAID SAS 2108 [Liberator]
+                vendor: LSI Logic / Symbios Logic
+                physical id: 0
+                bus info: pci@0000:02:00.0
+                logical name: scsi0
+                version: 05
+                width: 64 bits
+                clock: 33MHz
+                capabilities: storage pm pciexpress vpd msi msix bus_master
+cap_list rom
+                configuration: driver=megaraid_sas latency=0
+                resources: irq:19 ioport:c000(size=256)
+memory:fd59c000-fd59ffff memory:fd5c0000-fd5fffff memory:fd5a0000-fd5bffff
+              *-disk
+                   description: SCSI Disk
+                   product: MR9260-4i
+                   vendor: LSI
+                   physical id: 2.0.0
+                   bus info: scsi@0:2.0.0
+                   logical name: /dev/sda
+                   version: 2.13
+                   serial: 003307152fc3005222f0e91a0db00506
+                   size: 558GiB (599GB)
+
+
+kernel:Linux version 4.9.86 (gcc version 4.8.5 20150623 (Red Hat 4.8.5-4) (GCC)
+) #1 SMP PREEMPT
+
+
+the system has lot of IO traffic, this happens intermittently. We are seeing
+issue mainly after upgrading from 4.1 to 4.9.75 and 4.9.86.
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
