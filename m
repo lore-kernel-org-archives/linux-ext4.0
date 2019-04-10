@@ -2,50 +2,52 @@ Return-Path: <SRS0=PpJq=SM=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 730B0C10F14
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 20:26:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B55CC10F14
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 20:26:15 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 3866B21741
-	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 20:26:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2D2BE21741
+	for <linux-ext4@archiver.kernel.org>; Wed, 10 Apr 2019 20:26:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1554927972;
-	bh=gyyZYzbbhDHtMy/kZVs0+EooltdNhiZvXVja1enYQsY=;
-	h=From:To:Cc:Subject:Date:List-ID:From;
-	b=L3W1nrDmVHcqTx3DFGDWW44J0+5PktYrVsl6lvKplgQ9ZW3ByfHJRlhjbmnWHGH7Q
-	 WcmBWbIXnoZK9iOR1sv7nUhl0Di2O3BYL4IGPX/FVmzh57DiTkl71WfyXMzRZk67m2
-	 tp2yVrM0w/uxnE+Y5hDNSEs4HkflTnHpiiB4I41o=
+	s=default; t=1554927975;
+	bh=VDmT4xzZUjDkDpFHhejkkvkOiLKui48p6i+hZ0JUYRM=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:List-ID:From;
+	b=RTHu7SM2zkjXfyLMVVlpQ5ApJYH3zZKdIAHW5xCGSQbmnHR1NJhFcpuk6CtOxI8/c
+	 0Kigz5WaE1lqhdAycfJ9JpZZzLBzx6oiQdcQLgNwVhri1VitPGmRPH7kuscwlpgy1v
+	 FzY2akgzvDMGUA1wLHOBpbpH3b6+0YGGvNBgfVUk=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726699AbfDJU0K (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 10 Apr 2019 16:26:10 -0400
-Received: from mail.kernel.org ([198.145.29.99]:47038 "EHLO mail.kernel.org"
+        id S1726716AbfDJU0O (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 10 Apr 2019 16:26:14 -0400
+Received: from mail.kernel.org ([198.145.29.99]:47056 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726014AbfDJU0J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Apr 2019 16:26:09 -0400
+        id S1726680AbfDJU0K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Wed, 10 Apr 2019 16:26:10 -0400
 Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
         (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 6F83D2082E;
-        Wed, 10 Apr 2019 20:26:08 +0000 (UTC)
+        by mail.kernel.org (Postfix) with ESMTPSA id 1E3D42133D;
+        Wed, 10 Apr 2019 20:26:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1554927968;
-        bh=gyyZYzbbhDHtMy/kZVs0+EooltdNhiZvXVja1enYQsY=;
-        h=From:To:Cc:Subject:Date:From;
-        b=rThJbB1AmEh0utqHL2XB2L12FFyNirVTjT3zMUnaXB49hGdmpbsBO7533r9Zx9kq2
-         LTGJ8t0ssNylib0mcoFKorsMooQ816+rvConipvpSpACwj+GAN1pNIg2HlXKLQWTWW
-         ml7uJUHUYeT/PB2/psPq+p9hLYHzJjNbOD88EJ88=
+        s=default; t=1554927969;
+        bh=VDmT4xzZUjDkDpFHhejkkvkOiLKui48p6i+hZ0JUYRM=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=xfxnsur+xcfBjsUiulzuVBPdpTXd6yg3nR7qkYnmFRT4cqYMtxmDC96sFmi8pUyB8
+         HA+0NPnEBn2jFvgHiEr6JjVF1OR63J6/cd9lNqUQXwAt9MK7F59ptW1QnevwBPVoJt
+         xyOzSLomMYvHTIEMVMdseom1So0lXVJRzb6+g1vc=
 From:   Eric Biggers <ebiggers@kernel.org>
 To:     linux-fscrypt@vger.kernel.org
 Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org
-Subject: [PATCH v2 0/2] fscrypt: improve encrypted symlink performance
-Date:   Wed, 10 Apr 2019 13:21:13 -0700
-Message-Id: <20190410202115.64501-1-ebiggers@kernel.org>
+        linux-mtd@lists.infradead.org, Al Viro <viro@zeniv.linux.org.uk>
+Subject: [PATCH v2 2/2] fscrypt: cache decrypted symlink target in ->i_link
+Date:   Wed, 10 Apr 2019 13:21:15 -0700
+Message-Id: <20190410202115.64501-3-ebiggers@kernel.org>
 X-Mailer: git-send-email 2.21.0.392.gf8f6787159e-goog
+In-Reply-To: <20190410202115.64501-1-ebiggers@kernel.org>
+References: <20190410202115.64501-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
@@ -53,22 +55,231 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This series improves the performance of following encrypted symlinks on
-ext4, f2fs, and ubifs.
+From: Eric Biggers <ebiggers@google.com>
 
-Eric Biggers (2):
-  vfs: use READ_ONCE() to access ->i_link
-  fscrypt: cache decrypted symlink target in ->i_link
+Path lookups that traverse encrypted symlink(s) are very slow because
+each encrypted symlink needs to be decrypted each time it's followed.
+This also involves dropping out of rcu-walk mode.
 
+Make encrypted symlinks faster by caching the decrypted symlink target
+in ->i_link.  The first call to fscrypt_get_symlink() sets it.  Then,
+the existing VFS path lookup code uses the non-NULL ->i_link to take the
+fast path where ->get_link() isn't called, and lookups in rcu-walk mode
+remain in rcu-walk mode.
+
+Also set ->i_link immediately when a new encrypted symlink is created.
+
+To safely free the symlink target after an RCU grace period has elapsed,
+introduce a new function fscrypt_free_inode(), and make the relevant
+filesystems call it just before actually freeing the inode.
+
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
  fs/crypto/hooks.c       | 40 +++++++++++++++++++++++++++++++++-------
  fs/crypto/keyinfo.c     | 21 +++++++++++++++++++++
  fs/ext4/super.c         |  3 +++
  fs/f2fs/super.c         |  3 +++
- fs/namei.c              |  4 ++--
  fs/ubifs/super.c        |  3 +++
  include/linux/fscrypt.h |  5 +++++
- 7 files changed, 70 insertions(+), 9 deletions(-)
+ 6 files changed, 68 insertions(+), 7 deletions(-)
 
+diff --git a/fs/crypto/hooks.c b/fs/crypto/hooks.c
+index 56debb1fcf5eb..0bbe88a4d4b3f 100644
+--- a/fs/crypto/hooks.c
++++ b/fs/crypto/hooks.c
+@@ -179,11 +179,9 @@ int __fscrypt_encrypt_symlink(struct inode *inode, const char *target,
+ 	sd->len = cpu_to_le16(ciphertext_len);
+ 
+ 	err = fname_encrypt(inode, &iname, sd->encrypted_path, ciphertext_len);
+-	if (err) {
+-		if (!disk_link->name)
+-			kfree(sd);
+-		return err;
+-	}
++	if (err)
++		goto err_free_sd;
++
+ 	/*
+ 	 * Null-terminating the ciphertext doesn't make sense, but we still
+ 	 * count the null terminator in the length, so we might as well
+@@ -191,9 +189,20 @@ int __fscrypt_encrypt_symlink(struct inode *inode, const char *target,
+ 	 */
+ 	sd->encrypted_path[ciphertext_len] = '\0';
+ 
++	/* Cache the plaintext symlink target for later use by get_link() */
++	err = -ENOMEM;
++	inode->i_link = kmemdup(target, len + 1, GFP_NOFS);
++	if (!inode->i_link)
++		goto err_free_sd;
++
+ 	if (!disk_link->name)
+ 		disk_link->name = (unsigned char *)sd;
+ 	return 0;
++
++err_free_sd:
++	if (!disk_link->name)
++		kfree(sd);
++	return err;
+ }
+ EXPORT_SYMBOL_GPL(__fscrypt_encrypt_symlink);
+ 
+@@ -202,7 +211,7 @@ EXPORT_SYMBOL_GPL(__fscrypt_encrypt_symlink);
+  * @inode: the symlink inode
+  * @caddr: the on-disk contents of the symlink
+  * @max_size: size of @caddr buffer
+- * @done: if successful, will be set up to free the returned target
++ * @done: if successful, will be set up to free the returned target if needed
+  *
+  * If the symlink's encryption key is available, we decrypt its target.
+  * Otherwise, we encode its target for presentation.
+@@ -217,12 +226,18 @@ const char *fscrypt_get_symlink(struct inode *inode, const void *caddr,
+ {
+ 	const struct fscrypt_symlink_data *sd;
+ 	struct fscrypt_str cstr, pstr;
++	bool has_key;
+ 	int err;
+ 
+ 	/* This is for encrypted symlinks only */
+ 	if (WARN_ON(!IS_ENCRYPTED(inode)))
+ 		return ERR_PTR(-EINVAL);
+ 
++	/* If the decrypted target is already cached, just return it. */
++	pstr.name = READ_ONCE(inode->i_link);
++	if (pstr.name)
++		return pstr.name;
++
+ 	/*
+ 	 * Try to set up the symlink's encryption key, but we can continue
+ 	 * regardless of whether the key is available or not.
+@@ -230,6 +245,7 @@ const char *fscrypt_get_symlink(struct inode *inode, const void *caddr,
+ 	err = fscrypt_get_encryption_info(inode);
+ 	if (err)
+ 		return ERR_PTR(err);
++	has_key = fscrypt_has_encryption_key(inode);
+ 
+ 	/*
+ 	 * For historical reasons, encrypted symlink targets are prefixed with
+@@ -261,7 +277,17 @@ const char *fscrypt_get_symlink(struct inode *inode, const void *caddr,
+ 		goto err_kfree;
+ 
+ 	pstr.name[pstr.len] = '\0';
+-	set_delayed_call(done, kfree_link, pstr.name);
++
++	/*
++	 * Cache decrypted symlink targets in i_link for later use.  Don't cache
++	 * symlink targets encoded without the key, since those become outdated
++	 * once the key is added.  This pairs with the READ_ONCE() above and in
++	 * the VFS path lookup code.
++	 */
++	if (!has_key ||
++	    cmpxchg_release(&inode->i_link, NULL, pstr.name) != NULL)
++		set_delayed_call(done, kfree_link, pstr.name);
++
+ 	return pstr.name;
+ 
+ err_kfree:
+diff --git a/fs/crypto/keyinfo.c b/fs/crypto/keyinfo.c
+index 322ce9686bdba..34c4682f23bee 100644
+--- a/fs/crypto/keyinfo.c
++++ b/fs/crypto/keyinfo.c
+@@ -584,9 +584,30 @@ int fscrypt_get_encryption_info(struct inode *inode)
+ }
+ EXPORT_SYMBOL(fscrypt_get_encryption_info);
+ 
++/**
++ * fscrypt_put_encryption_info - free most of an inode's fscrypt data
++ *
++ * Free the inode's fscrypt_info.  Filesystems must call this when the inode is
++ * being evicted.  An RCU grace period need not have elapsed yet.
++ */
+ void fscrypt_put_encryption_info(struct inode *inode)
+ {
+ 	put_crypt_info(inode->i_crypt_info);
+ 	inode->i_crypt_info = NULL;
+ }
+ EXPORT_SYMBOL(fscrypt_put_encryption_info);
++
++/**
++ * fscrypt_free_inode - free an inode's fscrypt data requiring RCU delay
++ *
++ * Free the inode's cached decrypted symlink target, if any.  Filesystems must
++ * call this after an RCU grace period, just before they free the inode.
++ */
++void fscrypt_free_inode(struct inode *inode)
++{
++	if (IS_ENCRYPTED(inode) && S_ISLNK(inode->i_mode)) {
++		kfree(inode->i_link);
++		inode->i_link = NULL;
++	}
++}
++EXPORT_SYMBOL(fscrypt_free_inode);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 6ed4eb81e6743..5b92054bf8ea0 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1110,6 +1110,9 @@ static int ext4_drop_inode(struct inode *inode)
+ static void ext4_i_callback(struct rcu_head *head)
+ {
+ 	struct inode *inode = container_of(head, struct inode, i_rcu);
++
++	fscrypt_free_inode(inode);
++
+ 	kmem_cache_free(ext4_inode_cachep, EXT4_I(inode));
+ }
+ 
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index f2aaa2cc6b3e0..11b3a039a1881 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -1003,6 +1003,9 @@ static void f2fs_dirty_inode(struct inode *inode, int flags)
+ static void f2fs_i_callback(struct rcu_head *head)
+ {
+ 	struct inode *inode = container_of(head, struct inode, i_rcu);
++
++	fscrypt_free_inode(inode);
++
+ 	kmem_cache_free(f2fs_inode_cachep, F2FS_I(inode));
+ }
+ 
+diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
+index 12628184772c0..19fd210987457 100644
+--- a/fs/ubifs/super.c
++++ b/fs/ubifs/super.c
+@@ -276,7 +276,10 @@ static void ubifs_i_callback(struct rcu_head *head)
+ {
+ 	struct inode *inode = container_of(head, struct inode, i_rcu);
+ 	struct ubifs_inode *ui = ubifs_inode(inode);
++
+ 	kfree(ui->data);
++	fscrypt_free_inode(inode);
++
+ 	kmem_cache_free(ubifs_inode_slab, ui);
+ }
+ 
+diff --git a/include/linux/fscrypt.h b/include/linux/fscrypt.h
+index e5194fc3983e9..9215fca9fd835 100644
+--- a/include/linux/fscrypt.h
++++ b/include/linux/fscrypt.h
+@@ -114,6 +114,7 @@ extern int fscrypt_inherit_context(struct inode *, struct inode *,
+ /* keyinfo.c */
+ extern int fscrypt_get_encryption_info(struct inode *);
+ extern void fscrypt_put_encryption_info(struct inode *);
++extern void fscrypt_free_inode(struct inode *);
+ 
+ /* fname.c */
+ extern int fscrypt_setup_filename(struct inode *, const struct qstr *,
+@@ -322,6 +323,10 @@ static inline void fscrypt_put_encryption_info(struct inode *inode)
+ 	return;
+ }
+ 
++static inline void fscrypt_free_inode(struct inode *inode)
++{
++}
++
+  /* fname.c */
+ static inline int fscrypt_setup_filename(struct inode *dir,
+ 					 const struct qstr *iname,
 -- 
 2.21.0.392.gf8f6787159e-goog
 
