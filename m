@@ -2,191 +2,94 @@ Return-Path: <SRS0=GMxu=SN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-0.0 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,FSL_HELO_FAKE,MAILING_LIST_MULTI,SPF_PASS,
+	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF5DBC10F13
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 16:23:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 28A14C282CE
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 17:28:51 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id A6CFD2073F
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 16:23:10 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E80F0217D4
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 17:28:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1555003731;
+	bh=Z0/DmaNrnDC9OrljK1poyZTLwzQJq8FwEv9dGTtd81Q=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
+	b=F4MWvvfRtsXgnGwlnlVeB6/yKG/mO36KPvoRBTZg7HwxkByHpvdea5OJ11UkGjHUk
+	 7rNem1rwQ88Pyoozmvh9jd+SzpFGlMH4jY9RB5zrgRK7i86C3Rp4Cjoce/TJlOd/WA
+	 aiWq9Lqa66c+zRXj3cNnRdyvxIisZz1/95TFwIbI=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726585AbfDKQXD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 11 Apr 2019 12:23:03 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:58814 "EHLO mx1.redhat.com"
+        id S1726963AbfDKR2s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 11 Apr 2019 13:28:48 -0400
+Received: from mail.kernel.org ([198.145.29.99]:40404 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726264AbfDKQXD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 11 Apr 2019 12:23:03 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        id S1726585AbfDKR2s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 11 Apr 2019 13:28:48 -0400
+Received: from gmail.com (unknown [104.132.1.77])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 2E7A03134342;
-        Thu, 11 Apr 2019 16:23:03 +0000 (UTC)
-Received: from colo-mx.corp.redhat.com (colo-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.21])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id DCC38183DC;
-        Thu, 11 Apr 2019 16:23:01 +0000 (UTC)
-Received: from zmail21.collab.prod.int.phx2.redhat.com (zmail21.collab.prod.int.phx2.redhat.com [10.5.83.24])
-        by colo-mx.corp.redhat.com (Postfix) with ESMTP id 5DC143FB10;
-        Thu, 11 Apr 2019 16:23:00 +0000 (UTC)
-Date:   Thu, 11 Apr 2019 12:23:00 -0400 (EDT)
-From:   Pankaj Gupta <pagupta@redhat.com>
-To:     Dan Williams <dan.j.williams@intel.com>
-Cc:     cohuck@redhat.com, Jan Kara <jack@suse.cz>,
-        KVM list <kvm@vger.kernel.org>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Jason Wang <jasowang@redhat.com>, david <david@fromorbit.com>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        virtualization@lists.linux-foundation.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Ross Zwisler <zwisler@kernel.org>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Jiang <dave.jiang@intel.com>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Vishal L Verma <vishal.l.verma@intel.com>,
-        David Hildenbrand <david@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        jmoyer <jmoyer@redhat.com>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Len Brown <lenb@kernel.org>, kilobyte@angband.pl,
-        Rik van Riel <riel@surriel.com>,
-        yuval shaia <yuval.shaia@oracle.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Paolo Bonzini <pbonzini@redhat.com>, lcapitulino@redhat.com,
-        Kevin Wolf <kwolf@redhat.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Xiao Guangrong <xiaoguangrong.eric@gmail.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Igor Mammedov <imammedo@redhat.com>
-Message-ID: <1150671088.21162726.1554999780030.JavaMail.zimbra@redhat.com>
-In-Reply-To: <CAPcyv4gOPtgmVyk+zayRBtkbSivEvBNn1tyKL2ycT_q_nTHUUA@mail.gmail.com>
-References: <20190410040826.24371-1-pagupta@redhat.com> <20190410040826.24371-2-pagupta@redhat.com> <CAPcyv4i1FjBzfcWtzeCvj-giHa9xaX0dMQ==q4LZC_L8VEqkHg@mail.gmail.com> <1463291806.21158433.1554998258746.JavaMail.zimbra@redhat.com> <CAPcyv4gOPtgmVyk+zayRBtkbSivEvBNn1tyKL2ycT_q_nTHUUA@mail.gmail.com>
-Subject: Re: [Qemu-devel] [PATCH v5 1/6] libnvdimm: nd_region flush callback
- support
+        by mail.kernel.org (Postfix) with ESMTPSA id 08C462084D;
+        Thu, 11 Apr 2019 17:28:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1555003727;
+        bh=Z0/DmaNrnDC9OrljK1poyZTLwzQJq8FwEv9dGTtd81Q=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=rUL2CvSaEyQQ2WRpMdkdT2D3P6oXuBAQymfy8FzOSYy4nTmeel9KPNRTM/uBXT6Pa
+         mAdwIJKBw9vOpFZKrCZd5pEgrYP0ta6vZbmgICqodIuasVHUWpf2BUo9hW+PH5zgZH
+         r0XyIAKdCd250xyT9oprWqE3nQsgIGpkd1lw2VgQ=
+Date:   Thu, 11 Apr 2019 10:28:45 -0700
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     Al Viro <viro@zeniv.linux.org.uk>
+Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org
+Subject: Re: [PATCH v2 1/2] vfs: use READ_ONCE() to access ->i_link
+Message-ID: <20190411172844.GA225654@gmail.com>
+References: <20190410202115.64501-1-ebiggers@kernel.org>
+ <20190410202115.64501-2-ebiggers@kernel.org>
+ <20190410210657.GA2217@ZenIV.linux.org.uk>
+ <20190410231547.GC120258@gmail.com>
+ <20190411022514.GC2217@ZenIV.linux.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.67.116.71, 10.4.195.1]
-Thread-Topic: libnvdimm: nd_region flush callback support
-Thread-Index: gw3ZQ9aBgaO/mtRYQSpGSYATa+Jryw==
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.49]); Thu, 11 Apr 2019 16:23:03 +0000 (UTC)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190411022514.GC2217@ZenIV.linux.org.uk>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-
-> > > > This patch adds functionality to perform flush from guest
-> > > > to host over VIRTIO. We are registering a callback based
-> > > > on 'nd_region' type. virtio_pmem driver requires this special
-> > > > flush function. For rest of the region types we are registering
-> > > > existing flush function. Report error returned by host fsync
-> > > > failure to userspace.
-> > > >
-> > > > This also handles asynchronous flush requests from the block layer
-> > > > by creating a child bio and chaining it with parent bio.
-> > > >
-> > > > Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
-> > > > ---bio_chain Dan williams
-> > > [..]
-> > > > diff --git a/drivers/nvdimm/region_devs.c
-> > > > b/drivers/nvdimm/region_devs.c
-> > > > index b4ef7d9ff22e..fb1041ab32a6 100644
-> > > > --- a/drivers/nvdimm/region_devs.c
-> > > > +++ b/drivers/nvdimm/region_devs.c
-> > > > @@ -295,7 +295,9 @@ static ssize_t deep_flush_store(struct device *dev,
-> > > > struct device_attribute *att
-> > > >                 return rc;
-> > > >         if (!flush)
-> > > >                 return -EINVAL;
-> > > > -       nvdimm_flush(nd_region);
-> > > > +       rc = nvdimm_flush(nd_region, NULL, false);
-> > > > +       if (rc)
-> > > > +               return rc;
-> > > >
-> > > >         return len;
-> > > >  }
-> > > > @@ -1085,6 +1087,11 @@ static struct nd_region *nd_region_create(struct
-> > > > nvdimm_bus *nvdimm_bus,
-> > > >         dev->of_node = ndr_desc->of_node;
-> > > >         nd_region->ndr_size = resource_size(ndr_desc->res);
-> > > >         nd_region->ndr_start = ndr_desc->res->start;
-> > > > +       if (ndr_desc->flush)
-> > > > +               nd_region->flush = ndr_desc->flush;
-> > > > +       else
-> > > > +               nd_region->flush = generic_nvdimm_flush;
-> > > > +
-> > > >         nd_device_register(dev);
-> > > >
-> > > >         return nd_region;
-> > > > @@ -1125,11 +1132,36 @@ struct nd_region
-> > > > *nvdimm_volatile_region_create(struct nvdimm_bus *nvdimm_bus,
-> > > >  }
-> > > >  EXPORT_SYMBOL_GPL(nvdimm_volatile_region_create);
-> > > >
-> > > > +int nvdimm_flush(struct nd_region *nd_region, struct bio *bio, bool
-> > > > async)
-> > > > +{
-> > >
-> > > I don't quite see the point of the 'async' argument. All the usages of
-> > > this routine are either
-> > >
-> > > nvdimm_flush(nd_region, bio, true)
-> > > ...or:
-> > > nvdimm_flush(nd_region, NULL, false)
-> >
-> > Agree.
-> >
-> > >
-> > > ...so why not gate async behavior on the presence of the 'bio' argument?
-> >
-> > Sure.
-> >
-> > >
-> > >
-> > > > +       int rc = 0;
-> > > > +
-> > > > +       /* Create child bio for asynchronous flush and chain with
-> > > > +        * parent bio. Otherwise directly call nd_region flush.
-> > > > +        */
-> > > > +       if (async && bio->bi_iter.bi_sector != -1) {
-> > > > +
-> > > > +               struct bio *child = bio_alloc(GFP_ATOMIC, 0);
-> > > > +
-> > > > +               if (!child)
-> > > > +                       return -ENOMEM;
-> > > > +               bio_copy_dev(child, bio);
-> > > > +               child->bi_opf = REQ_PREFLUSH;
-> > > > +               child->bi_iter.bi_sector = -1;
-> > > > +               bio_chain(child, bio);
-> > > > +               submit_bio(child);
-> > >
-> > > I understand how this works, but it's a bit too "magical" for my
-> > > taste. I would prefer that all flush implementations take an optional
-> > > 'bio' argument rather than rely on the make_request implementation to
-> > > stash the bio away on a driver specific list.
-> >
-> > I did this to make use of "bio_chain" for chaining child bio for async
-> > flush
-> > suggested [1]. Are you saying to remove this and just call "flush" based on
-> > bio argument? Or I implemented the 'bio_chain' request entirely wrong?
+On Thu, Apr 11, 2019 at 03:25:15AM +0100, Al Viro wrote:
+> On Wed, Apr 10, 2019 at 04:15:48PM -0700, Eric Biggers wrote:
+> > On Wed, Apr 10, 2019 at 10:06:57PM +0100, Al Viro wrote:
+> > > On Wed, Apr 10, 2019 at 01:21:14PM -0700, Eric Biggers wrote:
+> > > > From: Eric Biggers <ebiggers@google.com>
+> > > > 
+> > > > Use 'READ_ONCE(inode->i_link)' to explicitly support filesystems caching
+> > > > the symlink target in ->i_link later if it was unavailable at iget()
+> > > > time, or wasn't easily available.  I'll be doing this in fscrypt, to
+> > > > improve the performance of encrypted symlinks on ext4, f2fs, and ubifs.
+> > > > 
+> > > > ->i_link will start NULL and may later be set to a non-NULL value by a
+> > > > smp_store_release() or cmpxchg_release().  READ_ONCE() is needed on the
+> > > > read side.  smp_load_acquire() is unnecessary because only a data
+> > > > dependency barrier is required.  (Thanks to Al for pointing this out.)
+> > > 
+> > > You've missed vfs_readlink()...
+> > 
+> > How so?  The patch already updates vfs_readlink().
 > 
-> No, I think you implemented it correctly. I'm just asking for the
-> chaining to be performed internal to the ->flush() callback rather
-> than in the common nvdimm_flush() front-end.
+> Huh?  Right you are - fsck knows how have I managed to misread that...
+> Anyway, I can pick that READ_ONCE() patch through vfs.git if you wish,
+> or it can go through your tree with my Acked-by - up to you...
 
-Sure. Perfect!
+Unless you expect merge conflicts, it's easier for me to take it through the
+fscrypt tree, since it's a small patch and the second patch technically isn't
+correct without it.  I'll add your Acked-by.
 
-Thank you very much for all the suggestions. 
+Are you planning to review the second patch too?
 
-Best regards,
-Pankaj
-> 
+Thanks!
+
+- Eric
