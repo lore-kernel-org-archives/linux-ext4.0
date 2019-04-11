@@ -2,77 +2,65 @@ Return-Path: <SRS0=GMxu=SN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=unavailable
+	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF517C10F11
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 01:40:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7C8A0C282CE
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 02:25:18 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 9540E2075B
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 01:40:36 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4A22B20818
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 02:25:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726181AbfDKBka convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 10 Apr 2019 21:40:30 -0400
-Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:54164 "EHLO
-        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726023AbfDKBka (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 10 Apr 2019 21:40:30 -0400
-Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
-        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id EB7A928B6D
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2019 01:40:29 +0000 (UTC)
-Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
-        id E011028B83; Thu, 11 Apr 2019 01:40:29 +0000 (UTC)
-From:   bugzilla-daemon@bugzilla.kernel.org
-To:     linux-ext4@vger.kernel.org
-Subject: [Bug 202809] ext4: ext4_xattr_ibody_get:591: comm systemd-journal:
- corrupted in-inode xattr
-Date:   Thu, 11 Apr 2019 01:40:29 +0000
-X-Bugzilla-Reason: None
-X-Bugzilla-Type: changed
-X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: ext4
-X-Bugzilla-Version: 2.5
-X-Bugzilla-Keywords: 
-X-Bugzilla-Severity: high
-X-Bugzilla-Who: feng.tang@intel.com
-X-Bugzilla-Status: RESOLVED
-X-Bugzilla-Resolution: INVALID
-X-Bugzilla-Priority: P1
-X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
-X-Bugzilla-Flags: 
-X-Bugzilla-Changed-Fields: bug_status resolution
-Message-ID: <bug-202809-13602-vgWXPAWXzY@https.bugzilla.kernel.org/>
-In-Reply-To: <bug-202809-13602@https.bugzilla.kernel.org/>
-References: <bug-202809-13602@https.bugzilla.kernel.org/>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-X-Bugzilla-URL: https://bugzilla.kernel.org/
-Auto-Submitted: auto-generated
+        id S1726680AbfDKCZR (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 10 Apr 2019 22:25:17 -0400
+Received: from zeniv.linux.org.uk ([195.92.253.2]:47258 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726577AbfDKCZR (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Apr 2019 22:25:17 -0400
+Received: from viro by ZenIV.linux.org.uk with local (Exim 4.92 #3 (Red Hat Linux))
+        id 1hEPOt-0002JD-BR; Thu, 11 Apr 2019 02:25:15 +0000
+Date:   Thu, 11 Apr 2019 03:25:15 +0100
+From:   Al Viro <viro@zeniv.linux.org.uk>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org
+Subject: Re: [PATCH v2 1/2] vfs: use READ_ONCE() to access ->i_link
+Message-ID: <20190411022514.GC2217@ZenIV.linux.org.uk>
+References: <20190410202115.64501-1-ebiggers@kernel.org>
+ <20190410202115.64501-2-ebiggers@kernel.org>
+ <20190410210657.GA2217@ZenIV.linux.org.uk>
+ <20190410231547.GC120258@gmail.com>
 MIME-Version: 1.0
-X-Virus-Scanned: ClamAV using ClamSMTP
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190410231547.GC120258@gmail.com>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-https://bugzilla.kernel.org/show_bug.cgi?id=202809
+On Wed, Apr 10, 2019 at 04:15:48PM -0700, Eric Biggers wrote:
+> On Wed, Apr 10, 2019 at 10:06:57PM +0100, Al Viro wrote:
+> > On Wed, Apr 10, 2019 at 01:21:14PM -0700, Eric Biggers wrote:
+> > > From: Eric Biggers <ebiggers@google.com>
+> > > 
+> > > Use 'READ_ONCE(inode->i_link)' to explicitly support filesystems caching
+> > > the symlink target in ->i_link later if it was unavailable at iget()
+> > > time, or wasn't easily available.  I'll be doing this in fscrypt, to
+> > > improve the performance of encrypted symlinks on ext4, f2fs, and ubifs.
+> > > 
+> > > ->i_link will start NULL and may later be set to a non-NULL value by a
+> > > smp_store_release() or cmpxchg_release().  READ_ONCE() is needed on the
+> > > read side.  smp_load_acquire() is unnecessary because only a data
+> > > dependency barrier is required.  (Thanks to Al for pointing this out.)
+> > 
+> > You've missed vfs_readlink()...
+> 
+> How so?  The patch already updates vfs_readlink().
 
-Feng Tang (feng.tang@intel.com) changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|---                         |INVALID
-
---- Comment #4 from Feng Tang (feng.tang@intel.com) ---
-We has some more findings, if we disable the HW cache feature of the eMMC card
-hardened in our board, then the issue cannot be reproduced.
-
-So it seems to be like a HW issue, let's close it. And thanks for your help.
-
--- 
-You are receiving this mail because:
-You are watching the assignee of the bug.
+Huh?  Right you are - fsck knows how have I managed to misread that...
+Anyway, I can pick that READ_ONCE() patch through vfs.git if you wish,
+or it can go through your tree with my Acked-by - up to you...
