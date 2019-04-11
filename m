@@ -2,94 +2,106 @@ Return-Path: <SRS0=GMxu=SN=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-0.0 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,FSL_HELO_FAKE,MAILING_LIST_MULTI,SPF_PASS,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-2.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,USER_AGENT_MUTT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 28A14C282CE
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 17:28:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7760EC10F13
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 21:23:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id E80F0217D4
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 17:28:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1555003731;
-	bh=Z0/DmaNrnDC9OrljK1poyZTLwzQJq8FwEv9dGTtd81Q=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:List-ID:From;
-	b=F4MWvvfRtsXgnGwlnlVeB6/yKG/mO36KPvoRBTZg7HwxkByHpvdea5OJ11UkGjHUk
-	 7rNem1rwQ88Pyoozmvh9jd+SzpFGlMH4jY9RB5zrgRK7i86C3Rp4Cjoce/TJlOd/WA
-	 aiWq9Lqa66c+zRXj3cNnRdyvxIisZz1/95TFwIbI=
+	by mail.kernel.org (Postfix) with ESMTP id 4CAD22077C
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 21:23:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726963AbfDKR2s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 11 Apr 2019 13:28:48 -0400
-Received: from mail.kernel.org ([198.145.29.99]:40404 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726585AbfDKR2s (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 11 Apr 2019 13:28:48 -0400
-Received: from gmail.com (unknown [104.132.1.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id 08C462084D;
-        Thu, 11 Apr 2019 17:28:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1555003727;
-        bh=Z0/DmaNrnDC9OrljK1poyZTLwzQJq8FwEv9dGTtd81Q=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=rUL2CvSaEyQQ2WRpMdkdT2D3P6oXuBAQymfy8FzOSYy4nTmeel9KPNRTM/uBXT6Pa
-         mAdwIJKBw9vOpFZKrCZd5pEgrYP0ta6vZbmgICqodIuasVHUWpf2BUo9hW+PH5zgZH
-         r0XyIAKdCd250xyT9oprWqE3nQsgIGpkd1lw2VgQ=
-Date:   Thu, 11 Apr 2019 10:28:45 -0700
-From:   Eric Biggers <ebiggers@kernel.org>
-To:     Al Viro <viro@zeniv.linux.org.uk>
-Cc:     linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org
-Subject: Re: [PATCH v2 1/2] vfs: use READ_ONCE() to access ->i_link
-Message-ID: <20190411172844.GA225654@gmail.com>
-References: <20190410202115.64501-1-ebiggers@kernel.org>
- <20190410202115.64501-2-ebiggers@kernel.org>
- <20190410210657.GA2217@ZenIV.linux.org.uk>
- <20190410231547.GC120258@gmail.com>
- <20190411022514.GC2217@ZenIV.linux.org.uk>
+        id S1726865AbfDKVXr (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 11 Apr 2019 17:23:47 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:56657 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726773AbfDKVXq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2019 17:23:46 -0400
+Received: from callcc.thunk.org (guestnat-104-133-9-102.corp.google.com [104.133.9.102] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x3BLNeIO012343
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 11 Apr 2019 17:23:42 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id 4DD4242048A; Thu, 11 Apr 2019 17:23:40 -0400 (EDT)
+Date:   Thu, 11 Apr 2019 17:23:40 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Andrea Lo Pumo <alopumo@movia.biz>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: Run mkfs.ext4 on an already existing ext4 filesystem. Seeking
+ professional help or programming hints for the recovery.
+Message-ID: <20190411212340.GB28307@mit.edu>
+References: <CABxFBzGv9vJsw_f9FJmJvQ2GZaz1NnVkK9a6y6CT58bv3mZj2A@mail.gmail.com>
+ <CABxFBzE-kOtf3hO26RH1S7CmM+AeB6qso8OQBDOysH1L9rmjnQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190411022514.GC2217@ZenIV.linux.org.uk>
+In-Reply-To: <CABxFBzE-kOtf3hO26RH1S7CmM+AeB6qso8OQBDOysH1L9rmjnQ@mail.gmail.com>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Thu, Apr 11, 2019 at 03:25:15AM +0100, Al Viro wrote:
-> On Wed, Apr 10, 2019 at 04:15:48PM -0700, Eric Biggers wrote:
-> > On Wed, Apr 10, 2019 at 10:06:57PM +0100, Al Viro wrote:
-> > > On Wed, Apr 10, 2019 at 01:21:14PM -0700, Eric Biggers wrote:
-> > > > From: Eric Biggers <ebiggers@google.com>
-> > > > 
-> > > > Use 'READ_ONCE(inode->i_link)' to explicitly support filesystems caching
-> > > > the symlink target in ->i_link later if it was unavailable at iget()
-> > > > time, or wasn't easily available.  I'll be doing this in fscrypt, to
-> > > > improve the performance of encrypted symlinks on ext4, f2fs, and ubifs.
-> > > > 
-> > > > ->i_link will start NULL and may later be set to a non-NULL value by a
-> > > > smp_store_release() or cmpxchg_release().  READ_ONCE() is needed on the
-> > > > read side.  smp_load_acquire() is unnecessary because only a data
-> > > > dependency barrier is required.  (Thanks to Al for pointing this out.)
-> > > 
-> > > You've missed vfs_readlink()...
-> > 
-> > How so?  The patch already updates vfs_readlink().
-> 
-> Huh?  Right you are - fsck knows how have I managed to misread that...
-> Anyway, I can pick that READ_ONCE() patch through vfs.git if you wish,
-> or it can go through your tree with my Acked-by - up to you...
+On Thu, Apr 11, 2019 at 11:37:55AM +0200, Andrea Lo Pumo wrote:
+> - The inode map has been overwritten too.
+> - However, the data is still there in the disk, and also the related
+> inode structures. (Just the inode map is missing right?). So, if one
+> is able to locate these inode structures, the relative files could be
+> recovered. We know the name of important directories and files to be
+> recovered. Could this help?
 
-Unless you expect merge conflicts, it's easier for me to take it through the
-fscrypt tree, since it's a small patch and the second patch technically isn't
-correct without it.  I'll add your Acked-by.
+Unfortunately, what gets overwritten is the inode table, which
+contains the inode structures.  So all of the information which says,
+"logical block N of inode M is located on physical block P" is gone.
 
-Are you planning to review the second patch too?
+So your only hope is going to be to use a program which looks at
+individual data blocks, and assumes that (for the most part) files
+tend to be allocated contiguously on the storage device.  Fortunately,
+such a tool has already been written, and it is an open source tool
+called PhotoRec[1].  I see however, you've already tried PhotoRec.
 
-Thanks!
+> I could also invest some programming efforts to solve this issue, by
+> hacking some available tools, if this could help and is not too
+> complex. In this regard, I have this question: given that I know the
+> name of some important directories and files to be recovered,
+> theoretically I could write a program that "greps" the name of the
+> file in /dev/sda1 and, around that point, I should locate the inode
+> structure, and with the inode recover the whole file? Any hint toward
+> this direction? I don't have experience with ext programming, but I am
+> willing to hack.
 
-- Eric
+Yeah, unfortunately, no.  You'll be able to find the directory data
+block, sure.  And that will contain the inode number.  But mke2fs
+overwrites the entire inode table, so there's nothing that you can
+find.
+
+> Final question: are there tools to handle this situation? testdisk and
+> ext4magic do not seem to give good results. Photorec is useless to
+> recover large .tar.gz and .ogg files, and more importantly the name of
+> the file, which we also need.
+
+You've listed the primary tools that are available already.  It is
+possible to configure mke2fs to create an undo file, and then when
+something screws up they can use the e2undo file to unwind the
+modifications made by mke2fs (or e2fsck, if the undo file generation
+is enabled by e2fsck).
+
+This feature is not enabled by default, mainly because (a) it slows
+down the mke2fs and e2fsck operations, and that tends to make system
+administrators cranky, and (b) you have to put the e2undo file
+somewhere, and you need to have some kind of scheme to delete old
+e2undo files.  So there is a lot of distribution integration changes
+that has never been done.
+
+Telling you this now isn't particularly helpful, since it's basically
+suggesting that you close the barn door after the horse has escaped.
+However, along with other changes you might want to make to your
+procedures (such as doing regular backups) to avoid future mistakes of
+this ilk, it might be something to consider.
+
+Good luck, and sorry there's not much else help we can offer you,
+
+					- Ted
