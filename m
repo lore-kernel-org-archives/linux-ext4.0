@@ -6,56 +6,56 @@ X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
 	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
 	SIGNED_OFF_BY,SPF_PASS autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 192F4C282CE
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 14:52:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7DC37C10F13
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 14:56:53 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CDAC02077C
-	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 14:52:03 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E4092077C
+	for <linux-ext4@archiver.kernel.org>; Thu, 11 Apr 2019 14:56:53 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="zi4I18XM"
+	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="Q3uBcTGn"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726676AbfDKOwB (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 11 Apr 2019 10:52:01 -0400
-Received: from mail-ot1-f68.google.com ([209.85.210.68]:44382 "EHLO
-        mail-ot1-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1726424AbfDKOwA (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2019 10:52:00 -0400
-Received: by mail-ot1-f68.google.com with SMTP id d24so5441299otl.11
-        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2019 07:52:00 -0700 (PDT)
+        id S1726644AbfDKO4s (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 11 Apr 2019 10:56:48 -0400
+Received: from mail-ot1-f65.google.com ([209.85.210.65]:33202 "EHLO
+        mail-ot1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726599AbfDKO4r (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Apr 2019 10:56:47 -0400
+Received: by mail-ot1-f65.google.com with SMTP id j10so5513142otq.0
+        for <linux-ext4@vger.kernel.org>; Thu, 11 Apr 2019 07:56:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=intel-com.20150623.gappssmtp.com; s=20150623;
         h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=HrHI1yUQh4ijcB7YHVwA9JPy3wKlBzvWJG6Efesd/f0=;
-        b=zi4I18XMGtYXeCFOI7IgUdbB0EOZdbnJeoa3l20X2Gqlcl0YR55UhU5luYmUa6cHU5
-         EqcmShYr64nYFlNtn7Rd+1lIJH9XABBmZCQPUOavNMLs+0n9I8m1OuY2+KD0JtN93YcX
-         3rvvNLyeug/w5aNDC5fj4CjwQPXARfaplfRzq12KFQ4x2cbAHrzA+mENqSKh1c617RSg
-         xlJAToPXjpLqe1zcSJodjCgmY5dhUdHQiVkQchFEI36jgwV1c+a/Zf73ibOfskPgdlC8
-         PjhIrDB/UX3hLAtfZ9Gz/P0KisQxQ6VH57FKrSFjl+UerDKSD8YHx1TPbaLhBc3i7fUT
-         dpzg==
+        bh=Q39WY1QwbNiopzjiE9clWXmypKuvpRyCVeYXAVT0ZNM=;
+        b=Q3uBcTGnIjZa7/KTp2qiPOTYOZa2YOHA6wen6rcf4+KfoSQ0dYkzRF2BB3Hh9J2hV5
+         1WBEO7/TSq9DfFY0FU6SEBYDgiByc7D+9QK6Os47nmX4kd7vSs5p0pZVuhMDKFPnhkVp
+         oD4wLyF6G1hd93q1lXUNEZYVQVdvlRk1We0zXgcvjD2Ot+YWI9AjPTndAx7YBokeV1fZ
+         ctpp4sE7+T/qGAEjWerHgwvW+3YBraMDq/4HNGPh7AtRvvMtqu1zk5yP07hribDH8Jb+
+         nyZtJUGLAAxZcI9GzgiobzP4HXPPNL+stbL0F3dlu1oxNrRIZqBzxUp5n1X0A+I5ZFl8
+         B6zg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
         h=x-gm-message-state:mime-version:references:in-reply-to:from:date
          :message-id:subject:to:cc;
-        bh=HrHI1yUQh4ijcB7YHVwA9JPy3wKlBzvWJG6Efesd/f0=;
-        b=eTX6qUVH13zhSIgP8ilk2Kl0r4ie1jLmug1X6e+zyVt4IyRv0QlgtsO9mJDEu/9EsC
-         8Z5Z4wBZ/rB18B6PLMEseaGJL9zZCIwccojEOeIOPkDu3RMBhhXShxys02deXPypryV5
-         8ndw+OQW7qGxwW2dA2rkAWVlVKdfUKX3dYa6+R+mdd8IthvKjncCLgOousIRwZ3NtS5J
-         vz5M16W2CNgPs5ceDQP5wNpnPH20SLB5OuRYdgbJhH1tcfJHi8CuN7ajG8yIK1f5ufgn
-         sx7tFP5O4KIDk+zrL3RB4B2mTMzx4oShQATH42coa++IvvTFP0DSbOYi//iGKBSTKPOZ
-         X70w==
-X-Gm-Message-State: APjAAAWzTqYBX78ICiWOVtz8meBX7wvXhkfNUz7GHavsxl2nv2JMKdPa
-        PikolfWbEqmeztUai8mSqmbHk6ar4pQN5WMOiK4/Lg==
-X-Google-Smtp-Source: APXvYqzmftlTRUTwhQDYzvgypbDnyLvMFUn2U/nKPouHN/rEyYp+JGo6QjH+KjaSpQBo5LMn3j6ZwzdKIOwlKbwUyTU=
-X-Received: by 2002:a9d:3f4b:: with SMTP id m69mr32615377otc.246.1554994319729;
- Thu, 11 Apr 2019 07:51:59 -0700 (PDT)
+        bh=Q39WY1QwbNiopzjiE9clWXmypKuvpRyCVeYXAVT0ZNM=;
+        b=RiImqyvJivzqIMcFbVo4LA2AtEp8Fj7leBv+09Z3W6H465Ire/hZDhdLCvjuiVXgPl
+         wpYtg8uJ8z8g2qGf3A63w+n6uLHeBI1qYfl6S0kaxGZJ+ZVy47qXPPZyDkhRt5hMfwvb
+         ZQTxAO4twF/wTWGlOkB3Tz1uEDzONYN5aVkKyFLwECHSUNzbl8uya+G9DI7r1gZksKgC
+         OiH7+SygiueNnCFZqWZH89stjvuKXNX624FTtG4xIFRq4XARK0sBwaELSAbO3WcVbOK7
+         f8SOURj70LKrQq8Q1MFcEW4inZiRquy1FNh7lajZJMs2T2RXm9hEd3zaoSrej1CaEr7Z
+         H2mg==
+X-Gm-Message-State: APjAAAUSdKwqXgKHgLPuMAP/SUi2P3s99MoIk7cpt1ha87a/SwV7r7iH
+        H3pNsPpPxCeZNLAxRp6j7xI6LN+EQIsVDEdeGuvWTA==
+X-Google-Smtp-Source: APXvYqzvG/DsITk24XWD/XR4qg9tvxLhxXa18JIum6UEPT4QFmqdzUuqxzJ5VPbogGv+LebEcpWY095S2YoG/n/LrP8=
+X-Received: by 2002:a9d:6a88:: with SMTP id l8mr32863157otq.260.1554994607197;
+ Thu, 11 Apr 2019 07:56:47 -0700 (PDT)
 MIME-Version: 1.0
-References: <20190410040826.24371-1-pagupta@redhat.com> <20190410040826.24371-2-pagupta@redhat.com>
-In-Reply-To: <20190410040826.24371-2-pagupta@redhat.com>
+References: <20190410040826.24371-1-pagupta@redhat.com> <20190410040826.24371-4-pagupta@redhat.com>
+In-Reply-To: <20190410040826.24371-4-pagupta@redhat.com>
 From:   Dan Williams <dan.j.williams@intel.com>
-Date:   Thu, 11 Apr 2019 07:51:48 -0700
-Message-ID: <CAPcyv4i1FjBzfcWtzeCvj-giHa9xaX0dMQ==q4LZC_L8VEqkHg@mail.gmail.com>
-Subject: Re: [PATCH v5 1/6] libnvdimm: nd_region flush callback support
+Date:   Thu, 11 Apr 2019 07:56:36 -0700
+Message-ID: <CAPcyv4gXwE2k3JU94GPav0xn2LEgR6-7ZEVYyTHFRjCfTYjerw@mail.gmail.com>
+Subject: Re: [PATCH v5 3/6] libnvdimm: add dax_dev sync flag
 To:     Pankaj Gupta <pagupta@redhat.com>
 Cc:     linux-nvdimm <linux-nvdimm@lists.01.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
@@ -96,94 +96,38 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Apr 9, 2019 at 9:09 PM Pankaj Gupta <pagupta@redhat.com> wrote:
+On Tue, Apr 9, 2019 at 9:10 PM Pankaj Gupta <pagupta@redhat.com> wrote:
 >
-> This patch adds functionality to perform flush from guest
-> to host over VIRTIO. We are registering a callback based
-> on 'nd_region' type. virtio_pmem driver requires this special
-> flush function. For rest of the region types we are registering
-> existing flush function. Report error returned by host fsync
-> failure to userspace.
->
-> This also handles asynchronous flush requests from the block layer
-> by creating a child bio and chaining it with parent bio.
+> This patch adds 'DAXDEV_SYNC' flag which is set
+> for nd_region doing synchronous flush. This later
+> is used to disable MAP_SYNC functionality for
+> ext4 & xfs filesystem for devices don't support
+> synchronous flush.
 >
 > Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
 > ---
-[..]
-> diff --git a/drivers/nvdimm/region_devs.c b/drivers/nvdimm/region_devs.c
-> index b4ef7d9ff22e..fb1041ab32a6 100644
-> --- a/drivers/nvdimm/region_devs.c
-> +++ b/drivers/nvdimm/region_devs.c
-> @@ -295,7 +295,9 @@ static ssize_t deep_flush_store(struct device *dev, struct device_attribute *att
->                 return rc;
->         if (!flush)
->                 return -EINVAL;
-> -       nvdimm_flush(nd_region);
-> +       rc = nvdimm_flush(nd_region, NULL, false);
-> +       if (rc)
-> +               return rc;
+>  drivers/dax/bus.c            |  2 +-
+>  drivers/dax/super.c          | 13 ++++++++++++-
+>  drivers/md/dm.c              |  2 +-
+>  drivers/nvdimm/pmem.c        |  3 ++-
+>  drivers/nvdimm/region_devs.c |  7 +++++++
+>  include/linux/dax.h          |  9 +++++++--
+>  include/linux/libnvdimm.h    |  1 +
+>  7 files changed, 31 insertions(+), 6 deletions(-)
 >
->         return len;
->  }
-> @@ -1085,6 +1087,11 @@ static struct nd_region *nd_region_create(struct nvdimm_bus *nvdimm_bus,
->         dev->of_node = ndr_desc->of_node;
->         nd_region->ndr_size = resource_size(ndr_desc->res);
->         nd_region->ndr_start = ndr_desc->res->start;
-> +       if (ndr_desc->flush)
-> +               nd_region->flush = ndr_desc->flush;
-> +       else
-> +               nd_region->flush = generic_nvdimm_flush;
-> +
->         nd_device_register(dev);
->
->         return nd_region;
-> @@ -1125,11 +1132,36 @@ struct nd_region *nvdimm_volatile_region_create(struct nvdimm_bus *nvdimm_bus,
->  }
->  EXPORT_SYMBOL_GPL(nvdimm_volatile_region_create);
->
-> +int nvdimm_flush(struct nd_region *nd_region, struct bio *bio, bool async)
-> +{
+> diff --git a/drivers/dax/bus.c b/drivers/dax/bus.c
+> index 2109cfe80219..431bf7d2a7f9 100644
+> --- a/drivers/dax/bus.c
+> +++ b/drivers/dax/bus.c
+> @@ -388,7 +388,7 @@ struct dev_dax *__devm_create_dev_dax(struct dax_region *dax_region, int id,
+>          * No 'host' or dax_operations since there is no access to this
+>          * device outside of mmap of the resulting character device.
+>          */
+> -       dax_dev = alloc_dax(dev_dax, NULL, NULL);
+> +       dax_dev = alloc_dax(dev_dax, NULL, NULL, true);
 
-I don't quite see the point of the 'async' argument. All the usages of
-this routine are either
+I find apis that take a boolean as unreadable. What does 'true' mean?
+It wastes time to go look at the function definition vs something
+like:
 
-nvdimm_flush(nd_region, bio, true)
-...or:
-nvdimm_flush(nd_region, NULL, false)
-
-...so why not gate async behavior on the presence of the 'bio' argument?
-
-
-> +       int rc = 0;
-> +
-> +       /* Create child bio for asynchronous flush and chain with
-> +        * parent bio. Otherwise directly call nd_region flush.
-> +        */
-> +       if (async && bio->bi_iter.bi_sector != -1) {
-> +
-> +               struct bio *child = bio_alloc(GFP_ATOMIC, 0);
-> +
-> +               if (!child)
-> +                       return -ENOMEM;
-> +               bio_copy_dev(child, bio);
-> +               child->bi_opf = REQ_PREFLUSH;
-> +               child->bi_iter.bi_sector = -1;
-> +               bio_chain(child, bio);
-> +               submit_bio(child);
-
-I understand how this works, but it's a bit too "magical" for my
-taste. I would prefer that all flush implementations take an optional
-'bio' argument rather than rely on the make_request implementation to
-stash the bio away on a driver specific list.
-
-> +       } else {
-> +               if (nd_region->flush(nd_region))
-> +                       rc = -EIO;
-
-Given the common case wants to be fast and synchronous I think we
-should try to avoid retpoline overhead by default. So something like
-this:
-
-if (nd_region->flush == generic_nvdimm_flush)
-    rc = generic_nvdimm_flush(...);
+    alloc_dax(dev_dax, NULL, NULL, DAXDEV_F_SYNC);
