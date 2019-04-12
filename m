@@ -2,106 +2,161 @@ Return-Path: <SRS0=VzNY=SO=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS,URIBL_BLOCKED autolearn=unavailable
+X-Spam-Status: No, score=-8.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS,USER_AGENT_GIT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DD3A4C10F14
-	for <linux-ext4@archiver.kernel.org>; Fri, 12 Apr 2019 13:12:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B8B7C10F0E
+	for <linux-ext4@archiver.kernel.org>; Fri, 12 Apr 2019 17:10:04 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B6AD62171F
-	for <linux-ext4@archiver.kernel.org>; Fri, 12 Apr 2019 13:12:45 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 1F868218A3
+	for <linux-ext4@archiver.kernel.org>; Fri, 12 Apr 2019 17:10:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727074AbfDLNMi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 12 Apr 2019 09:12:38 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:46064 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726714AbfDLNMi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 12 Apr 2019 09:12:38 -0400
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 83CB5C05681F;
-        Fri, 12 Apr 2019 13:12:26 +0000 (UTC)
-Received: from segfault.boston.devel.redhat.com (segfault.boston.devel.redhat.com [10.19.60.26])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 537D519C6F;
-        Fri, 12 Apr 2019 13:12:11 +0000 (UTC)
-From:   Jeff Moyer <jmoyer@redhat.com>
-To:     Jan Kara <jack@suse.cz>
-Cc:     Dan Williams <dan.j.williams@intel.com>,
-        Pankaj Gupta <pagupta@redhat.com>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        virtualization@lists.linux-foundation.org,
-        KVM list <kvm@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Ross Zwisler <zwisler@kernel.org>,
-        Vishal L Verma <vishal.l.verma@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Jason Wang <jasowang@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
-        Christoph Hellwig <hch@infradead.org>,
-        Len Brown <lenb@kernel.org>, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        lcapitulino@redhat.com, Kevin Wolf <kwolf@redhat.com>,
-        Igor Mammedov <imammedo@redhat.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Rik van Riel <riel@surriel.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        David Hildenbrand <david@redhat.com>,
-        david <david@fromorbit.com>, cohuck@redhat.com,
-        Xiao Guangrong <xiaoguangrong.eric@gmail.com>,
-        Paolo Bonzini <pbonzini@redhat.com>, kilobyte@angband.pl,
-        yuval.shaia@oracle.com
-Subject: Re: [PATCH v5 1/6] libnvdimm: nd_region flush callback support
-References: <20190410040826.24371-1-pagupta@redhat.com>
-        <20190410040826.24371-2-pagupta@redhat.com>
-        <CAPcyv4i1FjBzfcWtzeCvj-giHa9xaX0dMQ==q4LZC_L8VEqkHg@mail.gmail.com>
-        <20190412083230.GA29850@quack2.suse.cz>
-X-PGP-KeyID: 1F78E1B4
-X-PGP-CertKey: F6FE 280D 8293 F72C 65FD  5A58 1FF8 A7CA 1F78 E1B4
-Date:   Fri, 12 Apr 2019 09:12:10 -0400
-In-Reply-To: <20190412083230.GA29850@quack2.suse.cz> (Jan Kara's message of
-        "Fri, 12 Apr 2019 10:32:30 +0200")
-Message-ID: <x494l73z7th.fsf@segfault.boston.devel.redhat.com>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
+        id S1726780AbfDLRKD (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 12 Apr 2019 13:10:03 -0400
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:37374 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1726685AbfDLRKD (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 12 Apr 2019 13:10:03 -0400
+Received: from pps.filterd (m0098417.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x3CH8fXR125330
+        for <linux-ext4@vger.kernel.org>; Fri, 12 Apr 2019 13:10:01 -0400
+Received: from e33.co.us.ibm.com (e33.co.us.ibm.com [32.97.110.151])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2rtwn2u7m9-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Fri, 12 Apr 2019 13:10:01 -0400
+Received: from localhost
+        by e33.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
+        Fri, 12 Apr 2019 18:10:00 +0100
+Received: from b03cxnp08025.gho.boulder.ibm.com (9.17.130.17)
+        by e33.co.us.ibm.com (192.168.1.133) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Fri, 12 Apr 2019 18:09:57 +0100
+Received: from b03ledav003.gho.boulder.ibm.com (b03ledav003.gho.boulder.ibm.com [9.17.130.234])
+        by b03cxnp08025.gho.boulder.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x3CH9u6232571518
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 12 Apr 2019 17:09:56 GMT
+Received: from b03ledav003.gho.boulder.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 8A0726A047;
+        Fri, 12 Apr 2019 17:09:56 +0000 (GMT)
+Received: from b03ledav003.gho.boulder.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id E475F6A04F;
+        Fri, 12 Apr 2019 17:09:52 +0000 (GMT)
+Received: from localhost.localdomain.com (unknown [9.85.82.25])
+        by b03ledav003.gho.boulder.ibm.com (Postfix) with ESMTP;
+        Fri, 12 Apr 2019 17:09:52 +0000 (GMT)
+From:   Chandan Rajendra <chandan@linux.ibm.com>
+To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org
+Cc:     Chandan Rajendra <chandan@linux.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
+        yuchao0@huawei.com
+Subject: [RFC PATCH 00/14] Consolidate Post read processing code
+Date:   Fri, 12 Apr 2019 22:40:27 +0530
+X-Mailer: git-send-email 2.19.1
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Scanned-By: MIMEDefang 2.84 on 10.5.11.23
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.32]); Fri, 12 Apr 2019 13:12:38 +0000 (UTC)
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+x-cbid: 19041217-0036-0000-0000-00000AA7F5ED
+X-IBM-SpamModules-Scores: 
+X-IBM-SpamModules-Versions: BY=3.00010914; HX=3.00000242; KW=3.00000007;
+ PH=3.00000004; SC=3.00000284; SDB=6.01188096; UDB=6.00622386; IPR=6.00968863;
+ MB=3.00026412; MTD=3.00000008; XFM=3.00000015; UTC=2019-04-12 17:10:00
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 19041217-0037-0000-0000-00004B5D4D49
+Message-Id: <20190412171041.31995-1-chandan@linux.ibm.com>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-04-12_10:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
+ clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
+ mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.0.1-1810050000 definitions=main-1904120115
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Jan Kara <jack@suse.cz> writes:
+This patchset moves the "post read processing" code into a file of its
+own (i.e. fs/post_read_process.c) and modifies the generic
+do_mpage_readpge() to make use of the functionality provided. With
+these changes in place, the patchset changes Ext4 to use
+mpage_readpage[s] instead of its own custom ext4_readpage[s]()
+functions. This is done to reduce duplicity of code across
+filesystems. Also, Post read processing sources will be built only if
+one of CONFIG_FS_ENCRYPTION and CONFIG_FS_VERITY is enabled.
 
-> On Thu 11-04-19 07:51:48, Dan Williams wrote:
->> On Tue, Apr 9, 2019 at 9:09 PM Pankaj Gupta <pagupta@redhat.com> wrote:
->> > +       } else {
->> > +               if (nd_region->flush(nd_region))
->> > +                       rc = -EIO;
->> 
->> Given the common case wants to be fast and synchronous I think we
->> should try to avoid retpoline overhead by default. So something like
->> this:
->> 
->> if (nd_region->flush == generic_nvdimm_flush)
->>     rc = generic_nvdimm_flush(...);
->
-> I'd either add a comment about avoiding retpoline overhead here or just
-> make ->flush == NULL mean generic_nvdimm_flush(). Just so that people don't
-> get confused by the code.
+Members of "struct fscrypt_ctx" that tracked status of a "write"
+operation are now made an anonymous structure since the decryption
+state tracking members are now moved into "struct post_read_ctx".
 
-Isn't this premature optimization?  I really don't like adding things
-like this without some numbers to show it's worth it.
+The patchset also modifies fs/buffer.c and fscrypt functionality to
+get file encryption/decryption to work with subpage-sized blocks.
 
--Jeff
+The following fixes from Eric Biggers are prerequisites for this
+patchset,
+  fscrypt: fix race where ->lookup() marks plaintext dentry as ciphertext
+  fscrypt: only set dentry_operations on ciphertext dentries
+  fscrypt: clear DCACHE_ENCRYPTED_NAME when unaliasing directory
+  fscrypt: fix race allowing rename() and link() of ciphertext dentries
+  fscrypt: clean up and improve dentry revalidation
+
+The patches can also be obtained from,
+"https://github.com/chandanr/linux.git subpage-encryption"
+
+TODO:
+1. The subset of the fscrypt_encrypt_page() that deals with
+   FS_CFLG_OWN_PAGES case still needs to be tested. UBIFS seems to be the
+   only user of this piece of code.
+2. Verity changes needs to be added for F2FS and I will add them in the
+   next patchset based on the review comments obtained for the current
+   patchset.
+
+Chandan Rajendra (14):
+  ext4: Clear BH_Uptodate flag on decryption error
+  Consolidate "post read processing" into a new file
+  fsverity: Add call back to decide if verity check has to be performed
+  fsverity: Add call back to determine readpage limit
+  fs/mpage.c: Integrate post read processing
+  ext4: Wire up ext4_readpage[s] to use mpage_readpage[s]
+  Remove the term "bio" from post read processing
+  Add decryption support for sub-pagesized blocks
+  ext4: Decrypt all boundary blocks when doing buffered write
+  ext4: Decrypt the block that needs to be partially zeroed
+  fscrypt_encrypt_page: Loop across all blocks mapped by a page range
+  ext4: Compute logical block and the page range to be encrypted
+  fscrypt_zeroout_range: Encrypt all zeroed out blocks of a page
+  ext4: Enable encryption for subpage-sized blocks
+
+ Documentation/filesystems/fscrypt.rst |   4 +-
+ fs/Makefile                           |   4 +
+ fs/buffer.c                           |  82 +++--
+ fs/crypto/bio.c                       | 109 ++++---
+ fs/crypto/crypto.c                    |  73 +++--
+ fs/crypto/fscrypt_private.h           |   3 +
+ fs/ext4/Makefile                      |   2 +-
+ fs/ext4/ext4.h                        |   2 -
+ fs/ext4/inode.c                       |  47 ++-
+ fs/ext4/page-io.c                     |   9 +-
+ fs/ext4/readpage.c                    | 445 --------------------------
+ fs/ext4/super.c                       |  40 ++-
+ fs/f2fs/data.c                        | 148 ++-------
+ fs/f2fs/super.c                       |   9 +-
+ fs/mpage.c                            |  45 ++-
+ fs/post_read_process.c                | 155 +++++++++
+ fs/verity/verify.c                    |  12 +
+ include/linux/buffer_head.h           |   1 +
+ include/linux/fscrypt.h               |  20 +-
+ include/linux/fsverity.h              |   2 +
+ include/linux/post_read_process.h     |  22 ++
+ 21 files changed, 503 insertions(+), 731 deletions(-)
+ delete mode 100644 fs/ext4/readpage.c
+ create mode 100644 fs/post_read_process.c
+ create mode 100644 include/linux/post_read_process.h
+
+-- 
+2.19.1
+
