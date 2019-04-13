@@ -6,28 +6,28 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,
 	USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CAF22C10F14
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Apr 2019 19:26:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C3E50C10F14
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 Apr 2019 19:26:19 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8D4A1208E3
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Apr 2019 19:26:16 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 96624208E3
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 Apr 2019 19:26:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727167AbfDMT0Q (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 13 Apr 2019 15:26:16 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:39216 "EHLO
+        id S1727171AbfDMT0T (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 13 Apr 2019 15:26:19 -0400
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:39224 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727166AbfDMT0Q (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Apr 2019 15:26:16 -0400
+        with ESMTP id S1727166AbfDMT0T (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Apr 2019 15:26:19 -0400
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id B41D5282140
+        with ESMTPSA id 697A3282140
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     tytso@mit.edu
 Cc:     linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v7 09/10] ext4: Support case-insensitive file name lookups
-Date:   Sat, 13 Apr 2019 15:25:32 -0400
-Message-Id: <20190413192533.2549-10-krisman@collabora.com>
+Subject: [PATCH v7 10/10] docs: ext4.rst: Document case-insensitive directories
+Date:   Sat, 13 Apr 2019 15:25:33 -0400
+Message-Id: <20190413192533.2549-11-krisman@collabora.com>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190413192533.2549-1-krisman@collabora.com>
 References: <20190413192533.2549-1-krisman@collabora.com>
@@ -40,666 +40,68 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-This patch implements the actual support for case-insensitive file name
-lookups in ext4, based on the feature bit and the encoding stored in the
-superblock.
-
-A filesystem that has the fname_encoding feature set is able to
-configure directories with the +F (EXT4_CASEFOLD_FL) attribute, enabling
-lookups to succeed in that directory in a case-insensitive fashion, i.e:
-match a directory entry even if the name used by userspace is not a byte
-per byte match with the disk name, but is an equivalent case-insensitive
-version of the Unicode string.  This operation is called a
-case-insensitive file name lookup.
-
-The feature is configured as an inode attribute applied to directories
-and inherited by its children.  This attribute can only be enabled on
-empty directories for filesystems that support the encoding feature,
-thus preventing collision of file names that only differ by case.
-
-* dcache handling:
-
-For a +F directory, Ext4 only stores the first equivalent name dentry
-used in the dcache. This is done to prevent unintentional duplication of
-dentries in the dcache, while also allowing the VFS code to quickly find
-the right entry in the cache despite which equivalent string was used in
-a previous lookup, without having to resort to ->lookup().
-
-d_hash() of casefolded directories is implemented as the hash of the
-casefolded string, such that we always have a well-known bucket for all
-the equivalencies of the same string. d_compare() uses the
-utf8_strncasecmp() infrastructure, which handles the comparison of
-equivalent, same case, names as well.
-
-For now, negative lookups are not inserted in the dcache, since they
-would need to be invalidated anyway, because we can't trust missing file
-dentries.  This is bad for performance but requires some leveraging of
-the vfs layer to fix.  We can live without that for now, and so does
-everyone else.
-
-* on-disk data:
-
-Despite using a specific version of the name as the internal
-representation within the dcache, the name stored and fetched from the
-disk is a byte-per-byte match with what the user requested, making this
-implementation 'name-preserving'. i.e. no actual information is lost
-when writing to storage.
-
-DX is supported by modifying the hashes used in +F directories to make
-them case/encoding-aware.  The new disk hashes are calculated as the
-hash of the full casefolded string, instead of the string directly.
-This allows us to efficiently search for file names in the htree without
-requiring the user to provide an exact name.
-
-* Dealing with invalid sequences:
-
-By default, when a invalid UTF-8 sequence is identified, ext4 will treat
-it as an opaque byte sequence, ignoring the encoding and reverting to
-the old behavior for that unique file.  This means that case-insensitive
-file name lookup will not work only for that file.  An optional bit can
-be set in the superblock telling the filesystem code and userspace tools
-to enforce the encoding.  When that optional bit is set, any attempt to
-create a file name using an invalid UTF-8 sequence will fail and return
-an error to userspace.
-
-* Normalization algorithm:
-
-The UTF-8 algorithms used to compare strings in ext4 is implemented
-lives in fs/unicode, and is based on a previous version developed by
-SGI.  It implements the Canonical decomposition (NFD) algorithm
-described by the Unicode specification 12.0, or higher, combined with
-the elimination of ignorable code points (NFDi) and full
-case-folding (CF) as documented in fs/unicode/utf8_norm.c.
-
-NFD seems to be the best normalization method for EXT4 because:
-
-  - It has a lower cost than NFC/NFKC (which requires
-    decomposing to NFD as an intermediary step)
-  - It doesn't eliminate important semantic meaning like
-    compatibility decompositions.
-
-Although:
-
-  - This implementation is not completely linguistic accurate, because
-  different languages have conflicting rules, which would require the
-  specialization of the filesystem to a given locale, which brings all
-  sorts of problems for removable media and for users who use more than
-  one language.
-
-Changes since v6:
-  - Return -ENOMEM in ext4fs_dirhash allocation failure. (0-day)
-  - Treat -F directories in the original way, as opaque
-    sequences (tytso)
-  - Update to Unicode 12.0.0
-Changes since v4:
-  - Migrate NFKD -> NFD
-
-Changes since v2:
-  - Don't use d_add_ci.
-  - Squash the dcache hooks into this patch.
-  - Rename sbi->encoding -> sbi->s_encoding.
-
-Changes since v1:
-  - Support normalized htree hashes.
-  - Guard code with CONFIG_NLS.
-  - Use qstr->len instead of strlen in dcache hookups.
-  - Moved the CASEFOLD_FL to prevent collision with reserved verity flag.
+Introduces the case-insensitive features on ext4 for system
+administrators.  Explain the minimum of design decisions that are
+important for sysadmins wanting to enable this feature.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/ext4/dir.c      |  48 ++++++++++++++++++++
- fs/ext4/ext4.h     |  21 ++++++---
- fs/ext4/hash.c     |  34 +++++++++++++-
- fs/ext4/ialloc.c   |   2 +-
- fs/ext4/inline.c   |   2 +-
- fs/ext4/inode.c    |   4 +-
- fs/ext4/ioctl.c    |  18 ++++++++
- fs/ext4/namei.c    | 107 ++++++++++++++++++++++++++++++++++++++++-----
- fs/ext4/super.c    |   6 +++
- include/linux/fs.h |   2 +
- 10 files changed, 223 insertions(+), 21 deletions(-)
+ Documentation/admin-guide/ext4.rst | 38 ++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index 0ccd51f72048..884a6e776809 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -26,6 +26,7 @@
- #include <linux/buffer_head.h>
- #include <linux/slab.h>
- #include <linux/iversion.h>
-+#include <linux/unicode.h>
- #include "ext4.h"
- #include "xattr.h"
+diff --git a/Documentation/admin-guide/ext4.rst b/Documentation/admin-guide/ext4.rst
+index e506d3dae510..9e8b35ed7cd9 100644
+--- a/Documentation/admin-guide/ext4.rst
++++ b/Documentation/admin-guide/ext4.rst
+@@ -91,10 +91,48 @@ Currently Available
+ * large block (up to pagesize) support
+ * efficient new ordered mode in JBD2 and ext4 (avoid using buffer head to force
+   the ordering)
++* Case-insensitive file name lookups
  
-@@ -660,3 +661,50 @@ const struct file_operations ext4_dir_operations = {
- 	.open		= ext4_dir_open,
- 	.release	= ext4_release_dir,
- };
-+
-+#ifdef CONFIG_UNICODE
-+static int ext4_d_compare(const struct dentry *dentry, unsigned int len,
-+			  const char *str, const struct qstr *name)
-+{
-+	struct qstr qstr = {.name = str, .len = len };
-+
-+	if (!IS_CASEFOLDED(dentry->d_parent->d_inode)) {
-+		if (len != name->len)
-+			return -1;
-+		return !memcmp(str, name, len);
-+	}
-+
-+	return ext4_ci_compare(dentry->d_parent->d_inode, name, &qstr);
-+}
-+
-+static int ext4_d_hash(const struct dentry *dentry, struct qstr *str)
-+{
-+	const struct ext4_sb_info *sbi = EXT4_SB(dentry->d_sb);
-+	const struct unicode_map *um = sbi->s_encoding;
-+	unsigned char *norm;
-+	int len, ret = 0;
-+
-+	if (!IS_CASEFOLDED(dentry->d_inode))
-+		return 0;
-+
-+	norm = kmalloc(PATH_MAX, GFP_ATOMIC);
-+	if (!norm)
-+		return -ENOMEM;
-+
-+	len = utf8_casefold(um, str, norm, PATH_MAX);
-+	if (len < 0) {
-+		if (ext4_has_strict_mode(sbi))
-+			ret = -EINVAL;
-+		goto out;
-+	}
-+	str->hash = full_name_hash(dentry, norm, len);
-+out:
-+	kfree(norm);
-+	return ret;
-+}
-+
-+const struct dentry_operations ext4_dentry_ops = {
-+	.d_hash = ext4_d_hash,
-+	.d_compare = ext4_d_compare,
-+};
-+#endif
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 45f6b4119ffc..c0b98e882b33 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -399,10 +399,11 @@ struct flex_groups {
- #define EXT4_EOFBLOCKS_FL		0x00400000 /* Blocks allocated beyond EOF */
- #define EXT4_INLINE_DATA_FL		0x10000000 /* Inode has inline data. */
- #define EXT4_PROJINHERIT_FL		0x20000000 /* Create with parents projid */
-+#define EXT4_CASEFOLD_FL		0x40000000 /* Casefolded file */
- #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+ [1] Filesystems with a block size of 1k may see a limit imposed by the
+ directory hash tree having a maximum depth of two.
  
--#define EXT4_FL_USER_VISIBLE		0x304BDFFF /* User visible flags */
--#define EXT4_FL_USER_MODIFIABLE		0x204BC0FF /* User modifiable flags */
-+#define EXT4_FL_USER_VISIBLE		0x704BDFFF /* User visible flags */
-+#define EXT4_FL_USER_MODIFIABLE		0x604BC0FF /* User modifiable flags */
- 
- /* Flags we can manipulate with through EXT4_IOC_FSSETXATTR */
- #define EXT4_FL_XFLAG_VISIBLE		(EXT4_SYNC_FL | \
-@@ -417,10 +418,10 @@ struct flex_groups {
- 			   EXT4_SYNC_FL | EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
- 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
- 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL |\
--			   EXT4_PROJINHERIT_FL)
-+			   EXT4_PROJINHERIT_FL | EXT4_CASEFOLD_FL)
- 
- /* Flags that are appropriate for regular files (all but dir-specific ones). */
--#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
-+#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL | EXT4_CASEFOLD_FL))
- 
- /* Flags that are appropriate for non-directories/regular files. */
- #define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
-@@ -2396,8 +2397,8 @@ extern int ext4_check_all_de(struct inode *dir, struct buffer_head *bh,
- extern int ext4_sync_file(struct file *, loff_t, loff_t, int);
- 
- /* hash.c */
--extern int ext4fs_dirhash(const char *name, int len, struct
--			  dx_hash_info *hinfo);
-+extern int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
-+			  struct dx_hash_info *hinfo);
- 
- /* ialloc.c */
- extern struct inode *__ext4_new_inode(handle_t *, struct inode *, umode_t,
-@@ -2993,6 +2994,10 @@ static inline void ext4_unlock_group(struct super_block *sb,
- /* dir.c */
- extern const struct file_operations ext4_dir_operations;
- 
-+#ifdef CONFIG_UNICODE
-+extern const struct dentry_operations ext4_dentry_ops;
-+#endif
++case-insensitive file name lookups
++======================================================
 +
- /* file.c */
- extern const struct inode_operations ext4_file_inode_operations;
- extern const struct file_operations ext4_file_operations;
-@@ -3085,6 +3090,10 @@ extern void initialize_dirent_tail(struct ext4_dir_entry_tail *t,
- extern int ext4_handle_dirty_dirent_node(handle_t *handle,
- 					 struct inode *inode,
- 					 struct buffer_head *bh);
-+extern int ext4_ci_compare(const struct inode *parent,
-+			   const struct qstr *name,
-+			   const struct qstr *entry);
++The case-insensitive file name lookup feature is supported on a
++per-directory basis, allowing the user to mix case-insensitive and
++case-sensitive directories in the same filesystem.  It is enabled by
++flipping the +F inode attribute of an empty directory.  The
++case-insensitive string match operation is only defined when we know how
++text in encoded in a byte sequence.  For that reason, in order to enable
++case-insensitive directories, the filesystem must have the
++fname_encoding feature, which stores the filesystem-wide encoding
++model used.  By default, the charset adopted is the latest version of
++Unicode (12.0.0, by the time of this writing), encoded in the UTF-8
++form.  The comparison algorithm is implemented by normalizing the
++strings to the Canonical decomposition form, as defined by Unicode,
++followed by a byte per byte comparison.
 +
- #define S_SHIFT 12
- static const unsigned char ext4_type_by_mode[(S_IFMT >> S_SHIFT) + 1] = {
- 	[S_IFREG >> S_SHIFT]	= EXT4_FT_REG_FILE,
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index 46b24da33a28..d358bfcb6b3f 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -6,6 +6,7 @@
-  */
++The case-awareness is name-preserving on the disk, meaning that the file
++name provided by userspace is a byte-per-byte match to what is actually
++written in the disk.  The Unicode normalization format used by the
++kernel is thus an internal representation, and not exposed to the
++userspace nor to the disk, with the important exception of disk hashes,
++used on large case-insensitive directories with DX feature.  On DX
++directories, the hash must be calculated using the casefolded version of
++the filename, meaning that the normalization format used actually has an
++impact on where the directory entry is stored.
++
++When we change from viewing filenames as opaque byte sequences to seeing
++them as encoded strings we need to address what happens when a program
++tries to create a file with an invalid name.  The Unicode subsystem
++within the kernel leaves the decision of what to do in this case to the
++filesystem, which select its preferred behavior by enabling/disabling
++the strict mode.  When Ext4 encounters one of those strings and the
++filesystem did not require strict mode, it falls back to considering the
++entire string as an opaque byte sequence, which still allows the user to
++operate on that file, but the case-insensitive lookups won't work.
++
+ Options
+ =======
  
- #include <linux/fs.h>
-+#include <linux/unicode.h>
- #include <linux/compiler.h>
- #include <linux/bitops.h>
- #include "ext4.h"
-@@ -196,7 +197,8 @@ static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
-  * represented, and whether or not the returned hash is 32 bits or 64
-  * bits.  32 bit hashes will return 0 for the minor hash.
-  */
--int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
-+static int __ext4fs_dirhash(const char *name, int len,
-+			    struct dx_hash_info *hinfo)
- {
- 	__u32	hash;
- 	__u32	minor_hash = 0;
-@@ -268,3 +270,33 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 	hinfo->minor_hash = minor_hash;
- 	return 0;
- }
-+
-+int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
-+		   struct dx_hash_info *hinfo)
-+{
-+#ifdef CONFIG_UNICODE
-+	const struct unicode_map *um = EXT4_SB(dir->i_sb)->s_encoding;
-+	int r, dlen;
-+	unsigned char *buff;
-+	struct qstr qstr = {.name = name, .len = len };
-+
-+	if (len && IS_CASEFOLDED(dir)) {
-+		buff = kzalloc(sizeof(char) * PATH_MAX, GFP_KERNEL);
-+		if (!buff)
-+			return -ENOMEM;
-+
-+		dlen = utf8_casefold(um, &qstr, buff, PATH_MAX);
-+		if (dlen < 0) {
-+			kfree(buff);
-+			goto opaque_seq;
-+		}
-+
-+		r = __ext4fs_dirhash(buff, dlen, hinfo);
-+
-+		kfree(buff);
-+		return r;
-+	}
-+opaque_seq:
-+#endif
-+	return __ext4fs_dirhash(name, len, hinfo);
-+}
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index f3e17a8c84b4..764ff4c56233 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -455,7 +455,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 		if (qstr) {
- 			hinfo.hash_version = DX_HASH_HALF_MD4;
- 			hinfo.seed = sbi->s_hash_seed;
--			ext4fs_dirhash(qstr->name, qstr->len, &hinfo);
-+			ext4fs_dirhash(parent, qstr->name, qstr->len, &hinfo);
- 			grp = hinfo.hash;
- 		} else
- 			grp = prandom_u32();
-diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
-index 56f6e1782d5f..f73bc3925282 100644
---- a/fs/ext4/inline.c
-+++ b/fs/ext4/inline.c
-@@ -1407,7 +1407,7 @@ int htree_inlinedir_to_tree(struct file *dir_file,
- 			}
- 		}
- 
--		ext4fs_dirhash(de->name, de->name_len, hinfo);
-+		ext4fs_dirhash(dir, de->name, de->name_len, hinfo);
- 		if ((hinfo->hash < start_hash) ||
- 		    ((hinfo->hash == start_hash) &&
- 		     (hinfo->minor_hash < start_minor_hash)))
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b32a57bc5d5d..1d7259b5f7ad 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4738,9 +4738,11 @@ void ext4_set_inode_flags(struct inode *inode)
- 		new_fl |= S_DAX;
- 	if (flags & EXT4_ENCRYPT_FL)
- 		new_fl |= S_ENCRYPTED;
-+	if (flags & EXT4_CASEFOLD_FL)
-+		new_fl |= S_CASEFOLD;
- 	inode_set_flags(inode, new_fl,
- 			S_SYNC|S_APPEND|S_IMMUTABLE|S_NOATIME|S_DIRSYNC|S_DAX|
--			S_ENCRYPTED);
-+			S_ENCRYPTED|S_CASEFOLD);
- }
- 
- static blkcnt_t ext4_inode_blocks(struct ext4_inode *raw_inode,
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index bab3da4f1e0d..b856b326cb21 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -278,6 +278,7 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 	struct ext4_iloc iloc;
- 	unsigned int oldflags, mask, i;
- 	unsigned int jflag;
-+	struct super_block *sb = inode->i_sb;
- 
- 	/* Is it quota file? Do not allow user to mess with it */
- 	if (ext4_is_quota_file(inode))
-@@ -322,6 +323,23 @@ static int ext4_ioctl_setflags(struct inode *inode,
- 			goto flags_out;
- 	}
- 
-+	if ((flags ^ oldflags) & EXT4_CASEFOLD_FL) {
-+		if (!ext4_has_feature_fname_encoding(sb)) {
-+			err = -EOPNOTSUPP;
-+			goto flags_out;
-+		}
-+
-+		if (!S_ISDIR(inode->i_mode)) {
-+			err = -ENOTDIR;
-+			goto flags_out;
-+		}
-+
-+		if (!ext4_empty_dir(inode)) {
-+			err = -ENOTEMPTY;
-+			goto flags_out;
-+		}
-+	}
-+
- 	handle = ext4_journal_start(inode, EXT4_HT_INODE, 1);
- 	if (IS_ERR(handle)) {
- 		err = PTR_ERR(handle);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 980166a8122a..e917830eae84 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -35,6 +35,7 @@
- #include <linux/buffer_head.h>
- #include <linux/bio.h>
- #include <linux/iversion.h>
-+#include <linux/unicode.h>
- #include "ext4.h"
- #include "ext4_jbd2.h"
- 
-@@ -629,7 +630,7 @@ static struct stats dx_show_leaf(struct inode *dir,
- 				}
- 				if (!fscrypt_has_encryption_key(dir)) {
- 					/* Directory is not encrypted */
--					ext4fs_dirhash(de->name,
-+					ext4fs_dirhash(dir, de->name,
- 						de->name_len, &h);
- 					printk("%*.s:(U)%x.%u ", len,
- 					       name, h.hash,
-@@ -662,8 +663,8 @@ static struct stats dx_show_leaf(struct inode *dir,
- 						name = fname_crypto_str.name;
- 						len = fname_crypto_str.len;
- 					}
--					ext4fs_dirhash(de->name, de->name_len,
--						       &h);
-+					ext4fs_dirhash(dir, de->name,
-+						       de->name_len, &h);
- 					printk("%*.s:(E)%x.%u ", len, name,
- 					       h.hash, (unsigned) ((char *) de
- 								   - base));
-@@ -673,7 +674,7 @@ static struct stats dx_show_leaf(struct inode *dir,
- #else
- 				int len = de->name_len;
- 				char *name = de->name;
--				ext4fs_dirhash(de->name, de->name_len, &h);
-+				ext4fs_dirhash(dir, de->name, de->name_len, &h);
- 				printk("%*.s:%x.%u ", len, name, h.hash,
- 				       (unsigned) ((char *) de - base));
- #endif
-@@ -762,7 +763,7 @@ dx_probe(struct ext4_filename *fname, struct inode *dir,
- 		hinfo->hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
- 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
- 	if (fname && fname_name(fname))
--		ext4fs_dirhash(fname_name(fname), fname_len(fname), hinfo);
-+		ext4fs_dirhash(dir, fname_name(fname), fname_len(fname), hinfo);
- 	hash = hinfo->hash;
- 
- 	if (root->info.unused_flags & 1) {
-@@ -1008,7 +1009,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 			/* silently ignore the rest of the block */
- 			break;
- 		}
--		ext4fs_dirhash(de->name, de->name_len, hinfo);
-+		ext4fs_dirhash(dir, de->name, de->name_len, hinfo);
- 		if ((hinfo->hash < start_hash) ||
- 		    ((hinfo->hash == start_hash) &&
- 		     (hinfo->minor_hash < start_minor_hash)))
-@@ -1197,7 +1198,7 @@ static int dx_make_map(struct inode *dir, struct ext4_dir_entry_2 *de,
- 
- 	while ((char *) de < base + blocksize) {
- 		if (de->name_len && de->inode) {
--			ext4fs_dirhash(de->name, de->name_len, &h);
-+			ext4fs_dirhash(dir, de->name, de->name_len, &h);
- 			map_tail--;
- 			map_tail->hash = h.hash;
- 			map_tail->offs = ((char *) de - base)>>2;
-@@ -1252,15 +1253,52 @@ static void dx_insert_block(struct dx_frame *frame, u32 hash, ext4_lblk_t block)
- 	dx_set_count(entries, count + 1);
- }
- 
-+#ifdef CONFIG_UNICODE
-+/*
-+ * Test whether a case-insensitive directory entry matches the filename
-+ * being searched for.
-+ *
-+ * Returns: 0 if the directory entry matches, more than 0 if it
-+ * doesn't match or less than zero on error.
-+ */
-+int ext4_ci_compare(const struct inode *parent, const struct qstr *name,
-+		    const struct qstr *entry)
-+{
-+	const struct ext4_sb_info *sbi = EXT4_SB(parent->i_sb);
-+	const struct unicode_map *um = sbi->s_encoding;
-+	int ret;
-+
-+	ret = utf8_strncasecmp(um, name, entry);
-+	if (ret < 0) {
-+		/* Handle invalid character sequence as either an error
-+		 * or as an opaque byte sequence.
-+		 */
-+		if (ext4_has_strict_mode(sbi))
-+			return -EINVAL;
-+
-+		if (name->len != entry->len)
-+			return 1;
-+
-+		return !!memcmp(name->name, entry->name, name->len);
-+	}
-+
-+	return ret;
-+}
-+#endif
-+
- /*
-  * Test whether a directory entry matches the filename being searched for.
-  *
-  * Return: %true if the directory entry matches, otherwise %false.
-  */
--static inline bool ext4_match(const struct ext4_filename *fname,
-+static inline bool ext4_match(const struct inode *parent,
-+			      const struct ext4_filename *fname,
- 			      const struct ext4_dir_entry_2 *de)
- {
- 	struct fscrypt_name f;
-+#ifdef CONFIG_UNICODE
-+	const struct qstr entry = {.name = de->name, .len = de->name_len};
-+#endif
- 
- 	if (!de->inode)
- 		return false;
-@@ -1270,6 +1308,12 @@ static inline bool ext4_match(const struct ext4_filename *fname,
- #ifdef CONFIG_FS_ENCRYPTION
- 	f.crypto_buf = fname->crypto_buf;
- #endif
-+
-+#ifdef CONFIG_UNICODE
-+	if (EXT4_SB(parent->i_sb)->s_encoding && IS_CASEFOLDED(parent))
-+		return (ext4_ci_compare(parent, fname->usr_fname, &entry) == 0);
-+#endif
-+
- 	return fscrypt_match_name(&f, de->name, de->name_len);
- }
- 
-@@ -1290,7 +1334,7 @@ int ext4_search_dir(struct buffer_head *bh, char *search_buf, int buf_size,
- 		/* this code is executed quadratically often */
- 		/* do minimal checking `by hand' */
- 		if ((char *) de + de->name_len <= dlimit &&
--		    ext4_match(fname, de)) {
-+		    ext4_match(dir, fname, de)) {
- 			/* found a match - just to be sure, do
- 			 * a full check */
- 			if (ext4_check_dir_entry(dir, NULL, de, bh, bh->b_data,
-@@ -1588,6 +1632,17 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, unsi
- 			return ERR_PTR(-EPERM);
- 		}
- 	}
-+
-+#ifdef CONFIG_UNICODE
-+	if (!inode && IS_CASEFOLDED(dir)) {
-+		/* Eventually we want to call d_add_ci(dentry, NULL)
-+		 * for negative dentries in the encoding case as
-+		 * well.  For now, prevent the negative dentry
-+		 * from being cached.
-+		 */
-+		return NULL;
-+	}
-+#endif
- 	return d_splice_alias(inode, dentry);
- }
- 
-@@ -1798,7 +1853,7 @@ int ext4_find_dest_de(struct inode *dir, struct inode *inode,
- 		if (ext4_check_dir_entry(dir, NULL, de, bh,
- 					 buf, buf_size, offset))
- 			return -EFSCORRUPTED;
--		if (ext4_match(fname, de))
-+		if (ext4_match(dir, fname, de))
- 			return -EEXIST;
- 		nlen = EXT4_DIR_REC_LEN(de->name_len);
- 		rlen = ext4_rec_len_from_disk(de->rec_len, buf_size);
-@@ -1983,7 +2038,7 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
- 	if (fname->hinfo.hash_version <= DX_HASH_TEA)
- 		fname->hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
- 	fname->hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
--	ext4fs_dirhash(fname_name(fname), fname_len(fname), &fname->hinfo);
-+	ext4fs_dirhash(dir, fname_name(fname), fname_len(fname), &fname->hinfo);
- 
- 	memset(frames, 0, sizeof(frames));
- 	frame = frames;
-@@ -2036,6 +2091,7 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 	struct ext4_dir_entry_2 *de;
- 	struct ext4_dir_entry_tail *t;
- 	struct super_block *sb;
-+	struct ext4_sb_info *sbi;
- 	struct ext4_filename fname;
- 	int	retval;
- 	int	dx_fallback=0;
-@@ -2047,10 +2103,17 @@ static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
- 		csum_size = sizeof(struct ext4_dir_entry_tail);
- 
- 	sb = dir->i_sb;
-+	sbi = EXT4_SB(sb);
- 	blocksize = sb->s_blocksize;
- 	if (!dentry->d_name.len)
- 		return -EINVAL;
- 
-+#ifdef CONFIG_UNICODE
-+	if (ext4_has_strict_mode(sbi) && IS_CASEFOLDED(dir) &&
-+	    utf8_validate(sbi->s_encoding, &dentry->d_name))
-+		return -EINVAL;
-+#endif
-+
- 	retval = ext4_fname_setup_filename(dir, &dentry->d_name, 0, &fname);
- 	if (retval)
- 		return retval;
-@@ -2975,6 +3038,17 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 	ext4_update_dx_flag(dir);
- 	ext4_mark_inode_dirty(handle, dir);
- 
-+#ifdef CONFIG_UNICODE
-+	/* VFS negative dentries are incompatible with Encoding and
-+	 * Case-insensitiveness. Eventually we'll want avoid
-+	 * invalidating the dentries here, alongside with returning the
-+	 * negative dentries at ext4_lookup(), when it is better
-+	 * supported by the VFS for the CI case.
-+	 */
-+	if (IS_CASEFOLDED(dir))
-+		d_invalidate(dentry);
-+#endif
-+
- end_rmdir:
- 	brelse(bh);
- 	if (handle)
-@@ -3044,6 +3118,17 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 	inode->i_ctime = current_time(inode);
- 	ext4_mark_inode_dirty(handle, inode);
- 
-+#ifdef CONFIG_UNICODE
-+	/* VFS negative dentries are incompatible with Encoding and
-+	 * Case-insensitiveness. Eventually we'll want avoid
-+	 * invalidating the dentries here, alongside with returning the
-+	 * negative dentries at ext4_lookup(), when it is  better
-+	 * supported by the VFS for the CI case.
-+	 */
-+	if (IS_CASEFOLDED(dir))
-+		d_invalidate(dentry);
-+#endif
-+
- end_unlink:
- 	brelse(bh);
- 	if (handle)
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7caba9d98bdf..3870866840f9 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4453,6 +4453,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		iput(root);
- 		goto failed_mount4;
- 	}
-+
-+#ifdef CONFIG_UNICODE
-+	if (sbi->s_encoding)
-+		sb->s_d_op = &ext4_dentry_ops;
-+#endif
-+
- 	sb->s_root = d_make_root(root);
- 	if (!sb->s_root) {
- 		ext4_msg(sb, KERN_ERR, "get root dentry failed");
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8b42df09b04c..6261090e605b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1953,6 +1953,7 @@ struct super_operations {
- #define S_DAX		0	/* Make all the DAX code disappear */
- #endif
- #define S_ENCRYPTED	16384	/* Encrypted file (using fs/crypto/) */
-+#define S_CASEFOLD	32768	/* Casefolded file */
- 
- /*
-  * Note that nosuid etc flags are inode-specific: setting some file-system
-@@ -1993,6 +1994,7 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
- #define IS_NOSEC(inode)		((inode)->i_flags & S_NOSEC)
- #define IS_DAX(inode)		((inode)->i_flags & S_DAX)
- #define IS_ENCRYPTED(inode)	((inode)->i_flags & S_ENCRYPTED)
-+#define IS_CASEFOLDED(inode)	((inode)->i_flags & S_CASEFOLD)
- 
- #define IS_WHITEOUT(inode)	(S_ISCHR(inode->i_mode) && \
- 				 (inode)->i_rdev == WHITEOUT_DEV)
 -- 
 2.20.1
 
