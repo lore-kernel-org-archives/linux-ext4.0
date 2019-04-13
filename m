@@ -6,28 +6,28 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,UNPARSEABLE_RELAY,
 	URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 93598C10F11
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Apr 2019 19:25:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 42C80C10F14
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 Apr 2019 19:26:02 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 64C27208E3
-	for <linux-ext4@archiver.kernel.org>; Sat, 13 Apr 2019 19:25:58 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 08FCA208E3
+	for <linux-ext4@archiver.kernel.org>; Sat, 13 Apr 2019 19:26:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727114AbfDMTZ5 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sat, 13 Apr 2019 15:25:57 -0400
-Received: from bhuna.collabora.co.uk ([46.235.227.227]:39196 "EHLO
+        id S1727137AbfDMT0B (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sat, 13 Apr 2019 15:26:01 -0400
+Received: from bhuna.collabora.co.uk ([46.235.227.227]:39200 "EHLO
         bhuna.collabora.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1727105AbfDMTZ5 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Apr 2019 15:25:57 -0400
+        with ESMTP id S1727105AbfDMT0B (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sat, 13 Apr 2019 15:26:01 -0400
 Received: from [127.0.0.1] (localhost [127.0.0.1])
         (Authenticated sender: krisman)
-        with ESMTPSA id B6FE8282140
+        with ESMTPSA id 322D5282140
 From:   Gabriel Krisman Bertazi <krisman@collabora.com>
 To:     tytso@mit.edu
 Cc:     linux-ext4@vger.kernel.org,
         Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: [PATCH v7 04/10] unicode: Implement higher level API for string handling
-Date:   Sat, 13 Apr 2019 15:25:27 -0400
-Message-Id: <20190413192533.2549-5-krisman@collabora.com>
+Subject: [PATCH v7 05/10] unicode: Introduce test module for normalized utf8 implementation
+Date:   Sat, 13 Apr 2019 15:25:28 -0400
+Message-Id: <20190413192533.2549-6-krisman@collabora.com>
 X-Mailer: git-send-email 2.20.1
 In-Reply-To: <20190413192533.2549-1-krisman@collabora.com>
 References: <20190413192533.2549-1-krisman@collabora.com>
@@ -40,308 +40,379 @@ X-Mailing-List: linux-ext4@vger.kernel.org
 
 From: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 
-This patch integrates the utf8n patches with some higher level API to
-perform UTF-8 string comparison, normalization and casefolding
-operations.  Implemented is a variation of NFD, and casefold is
-performed by doing full casefold on top of NFD.  These algorithms are
-based on the core implemented by Olaf Weber from SGI.
-
-Changes since v6:
-  - Fix sparse warnings (0-day)
+This implements a in-kernel sanity test module for the utf8
+normalization core.  At probe time, it will run basic sequences through
+the utf8n core, to identify problems will equivalent sequences and
+normalization/casefold code.  This is supposed to be useful for
+regression testing when adding support for a new version of utf8 to
+linux.
 
 Changes since v4:
-  - integrate in fs/unicode
+  - integrate with fs/unicode
 
 Changes since RFC v1:
-  - Change error return code from EIO to EINVAL. (Olaf Weber)
-  - Fix issues with strncmp/strcmp.  (Olaf Weber)
-  - Remove stack buffer in normalization/casefold. (Olaf Weber)
-  - Include length parameter for second string on comparison functions.
-  - Change length type to size_t.
+  - Include comparison tests for matching strings with different lengths.
+  - Include tests for characters included in unicode 8.0.0, 9.0.0 and 10.0.0.
 
 Signed-off-by: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
 ---
- fs/unicode/Makefile     |   4 +-
- fs/unicode/utf8-core.c  | 187 ++++++++++++++++++++++++++++++++++++++++
- fs/unicode/utf8-norm.c  |   6 ++
- fs/unicode/utf8n.h      |   1 +
- include/linux/unicode.h |  30 +++++++
- 5 files changed, 227 insertions(+), 1 deletion(-)
- create mode 100644 fs/unicode/utf8-core.c
- create mode 100644 include/linux/unicode.h
+ fs/unicode/Kconfig         |   5 +
+ fs/unicode/Makefile        |   1 +
+ fs/unicode/utf8-selftest.c | 320 +++++++++++++++++++++++++++++++++++++
+ 3 files changed, 326 insertions(+)
+ create mode 100644 fs/unicode/utf8-selftest.c
 
+diff --git a/fs/unicode/Kconfig b/fs/unicode/Kconfig
+index f41520f57dff..b560a879edf7 100644
+--- a/fs/unicode/Kconfig
++++ b/fs/unicode/Kconfig
+@@ -6,3 +6,8 @@ config UNICODE
+ 	help
+ 	  Say Y here to enable UTF-8 NFD normalization and NFD+CF casefolding
+ 	  support.
++
++config UNICODE_NORMALIZATION_SELFTEST
++	tristate "Test UTF-8 normalization support"
++	depends on UNICODE
++	default n
 diff --git a/fs/unicode/Makefile b/fs/unicode/Makefile
-index 16d43d180416..bfb0360687df 100644
+index bfb0360687df..671d31f83006 100644
 --- a/fs/unicode/Makefile
 +++ b/fs/unicode/Makefile
-@@ -1,6 +1,8 @@
+@@ -1,6 +1,7 @@
  # SPDX-License-Identifier: GPL-2.0
  
--obj-$(CONFIG_UNICODE) += utf8-norm.o
-+obj-$(CONFIG_UNICODE) += unicode.o
-+
-+unicode-y := utf8-norm.o utf8-core.o
+ obj-$(CONFIG_UNICODE) += unicode.o
++obj-$(CONFIG_UNICODE_NORMALIZATION_SELFTEST) += utf8-selftest.o
  
- # This rule is not invoked during the kernel compilation.  It is used to
- # regenerate the utf8data.h header file.
-diff --git a/fs/unicode/utf8-core.c b/fs/unicode/utf8-core.c
+ unicode-y := utf8-norm.o utf8-core.o
+ 
+diff --git a/fs/unicode/utf8-selftest.c b/fs/unicode/utf8-selftest.c
 new file mode 100644
-index 000000000000..6afab4fdce90
+index 000000000000..492d934d5c1c
 --- /dev/null
-+++ b/fs/unicode/utf8-core.c
-@@ -0,0 +1,187 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
++++ b/fs/unicode/utf8-selftest.c
+@@ -0,0 +1,320 @@
++/*
++ * Kernel module for testing utf-8 support.
++ *
++ * Copyright 2017 Collabora Ltd.
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
++
 +#include <linux/module.h>
-+#include <linux/kernel.h>
-+#include <linux/string.h>
-+#include <linux/slab.h>
-+#include <linux/parser.h>
-+#include <linux/errno.h>
++#include <linux/printk.h>
 +#include <linux/unicode.h>
++#include <linux/dcache.h>
 +
 +#include "utf8n.h"
 +
-+int utf8_validate(const struct unicode_map *um, const struct qstr *str)
-+{
-+	const struct utf8data *data = utf8nfdi(um->version);
++unsigned int failed_tests;
++unsigned int total_tests;
 +
-+	if (utf8nlen(data, str->name, str->len) < 0)
-+		return -1;
-+	return 0;
-+}
-+EXPORT_SYMBOL(utf8_validate);
++/* Tests will be based on this version. */
++#define latest_maj 11
++#define latest_min 0
++#define latest_rev 0
 +
-+int utf8_strncmp(const struct unicode_map *um,
-+		 const struct qstr *s1, const struct qstr *s2)
-+{
-+	const struct utf8data *data = utf8nfdi(um->version);
-+	struct utf8cursor cur1, cur2;
-+	int c1, c2;
++#define _test(cond, func, line, fmt, ...) do {				\
++		total_tests++;						\
++		if (!cond) {						\
++			failed_tests++;					\
++			pr_err("test %s:%d Failed: %s%s",		\
++			       func, line, #cond, (fmt?":":"."));	\
++			if (fmt)					\
++				pr_err(fmt, ##__VA_ARGS__);		\
++		}							\
++	} while (0)
++#define test_f(cond, fmt, ...) _test(cond, __func__, __LINE__, fmt, ##__VA_ARGS__)
++#define test(cond) _test(cond, __func__, __LINE__, "")
 +
-+	if (utf8ncursor(&cur1, data, s1->name, s1->len) < 0)
-+		return -EINVAL;
++const static struct {
++	/* UTF-8 strings in this vector _must_ be NULL-terminated. */
++	unsigned char str[10];
++	unsigned char dec[10];
++} nfdi_test_data[] = {
++	/* Trivial sequence */
++	{
++		/* "ABba" decomposes to itself */
++		.str = "aBba",
++		.dec = "aBba",
++	},
++	/* Simple equivalent sequences */
++	{
++               /* 'VULGAR FRACTION ONE QUARTER' cannot decompose to
++                  'NUMBER 1' + 'FRACTION SLASH' + 'NUMBER 4' on
++                  canonical decomposition */
++               .str = {0xc2, 0xbc, 0x00},
++	       .dec = {0xc2, 0xbc, 0x00},
++	},
++	{
++		/* 'LATIN SMALL LETTER A WITH DIAERESIS' decomposes to
++		   'LETTER A' + 'COMBINING DIAERESIS' */
++		.str = {0xc3, 0xa4, 0x00},
++		.dec = {0x61, 0xcc, 0x88, 0x00},
++	},
++	{
++		/* 'LATIN SMALL LETTER LJ' can't decompose to
++		   'LETTER L' + 'LETTER J' on canonical decomposition */
++		.str = {0xC7, 0x89, 0x00},
++		.dec = {0xC7, 0x89, 0x00},
++	},
++	{
++		/* GREEK ANO TELEIA decomposes to MIDDLE DOT */
++		.str = {0xCE, 0x87, 0x00},
++		.dec = {0xC2, 0xB7, 0x00}
++	},
++	/* Canonical ordering */
++	{
++		/* A + 'COMBINING ACUTE ACCENT' + 'COMBINING OGONEK' decomposes
++		   to A + 'COMBINING OGONEK' + 'COMBINING ACUTE ACCENT' */
++		.str = {0x41, 0xcc, 0x81, 0xcc, 0xa8, 0x0},
++		.dec = {0x41, 0xcc, 0xa8, 0xcc, 0x81, 0x0},
++	},
++	{
++		/* 'LATIN SMALL LETTER A WITH DIAERESIS' + 'COMBINING OGONEK'
++		   decomposes to
++		   'LETTER A' + 'COMBINING OGONEK' + 'COMBINING DIAERESIS' */
++		.str = {0xc3, 0xa4, 0xCC, 0xA8, 0x00},
 +
-+	if (utf8ncursor(&cur2, data, s2->name, s2->len) < 0)
-+		return -EINVAL;
++		.dec = {0x61, 0xCC, 0xA8, 0xcc, 0x88, 0x00},
++	},
 +
-+	do {
-+		c1 = utf8byte(&cur1);
-+		c2 = utf8byte(&cur2);
-+
-+		if (c1 < 0 || c2 < 0)
-+			return -EINVAL;
-+		if (c1 != c2)
-+			return 1;
-+	} while (c1);
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL(utf8_strncmp);
-+
-+int utf8_strncasecmp(const struct unicode_map *um,
-+		     const struct qstr *s1, const struct qstr *s2)
-+{
-+	const struct utf8data *data = utf8nfdicf(um->version);
-+	struct utf8cursor cur1, cur2;
-+	int c1, c2;
-+
-+	if (utf8ncursor(&cur1, data, s1->name, s1->len) < 0)
-+		return -EINVAL;
-+
-+	if (utf8ncursor(&cur2, data, s2->name, s2->len) < 0)
-+		return -EINVAL;
-+
-+	do {
-+		c1 = utf8byte(&cur1);
-+		c2 = utf8byte(&cur2);
-+
-+		if (c1 < 0 || c2 < 0)
-+			return -EINVAL;
-+		if (c1 != c2)
-+			return 1;
-+	} while (c1);
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL(utf8_strncasecmp);
-+
-+int utf8_casefold(const struct unicode_map *um, const struct qstr *str,
-+		  unsigned char *dest, size_t dlen)
-+{
-+	const struct utf8data *data = utf8nfdicf(um->version);
-+	struct utf8cursor cur;
-+	size_t nlen = 0;
-+
-+	if (utf8ncursor(&cur, data, str->name, str->len) < 0)
-+		return -EINVAL;
-+
-+	for (nlen = 0; nlen < dlen; nlen++) {
-+		int c = utf8byte(&cur);
-+
-+		dest[nlen] = c;
-+		if (!c)
-+			return nlen;
-+		if (c == -1)
-+			break;
-+	}
-+	return -EINVAL;
-+}
-+
-+EXPORT_SYMBOL(utf8_casefold);
-+
-+int utf8_normalize(const struct unicode_map *um, const struct qstr *str,
-+		   unsigned char *dest, size_t dlen)
-+{
-+	const struct utf8data *data = utf8nfdi(um->version);
-+	struct utf8cursor cur;
-+	ssize_t nlen = 0;
-+
-+	if (utf8ncursor(&cur, data, str->name, str->len) < 0)
-+		return -EINVAL;
-+
-+	for (nlen = 0; nlen < dlen; nlen++) {
-+		int c = utf8byte(&cur);
-+
-+		dest[nlen] = c;
-+		if (!c)
-+			return nlen;
-+		if (c == -1)
-+			break;
-+	}
-+	return -EINVAL;
-+}
-+
-+EXPORT_SYMBOL(utf8_normalize);
-+
-+static int utf8_parse_version(const char *version, unsigned int *maj,
-+			      unsigned int *min, unsigned int *rev)
-+{
-+	substring_t args[3];
-+	char version_string[12];
-+	const struct match_token token[] = {
-+		{1, "%d.%d.%d"},
-+		{0, NULL}
-+	};
-+
-+	strncpy(version_string, version, sizeof(version_string));
-+
-+	if (match_token(version_string, token, args) != 1)
-+		return -EINVAL;
-+
-+	if (match_int(&args[0], maj) || match_int(&args[1], min) ||
-+	    match_int(&args[2], rev))
-+		return -EINVAL;
-+
-+	return 0;
-+}
-+
-+struct unicode_map *utf8_load(const char *version)
-+{
-+	struct unicode_map *um = NULL;
-+	int unicode_version;
-+
-+	if (version) {
-+		unsigned int maj, min, rev;
-+
-+		if (utf8_parse_version(version, &maj, &min, &rev) < 0)
-+			return ERR_PTR(-EINVAL);
-+
-+		if (!utf8version_is_supported(maj, min, rev))
-+			return ERR_PTR(-EINVAL);
-+
-+		unicode_version = UNICODE_AGE(maj, min, rev);
-+	} else {
-+		unicode_version = utf8version_latest();
-+		printk(KERN_WARNING"UTF-8 version not specified. "
-+		       "Assuming latest supported version (%d.%d.%d).",
-+		       (unicode_version >> 16) & 0xff,
-+		       (unicode_version >> 8) & 0xff,
-+		       (unicode_version & 0xff));
-+	}
-+
-+	um = kzalloc(sizeof(struct unicode_map), GFP_KERNEL);
-+	if (!um)
-+		return ERR_PTR(-ENOMEM);
-+
-+	um->charset = "UTF-8";
-+	um->version = unicode_version;
-+
-+	return um;
-+}
-+EXPORT_SYMBOL(utf8_load);
-+
-+void utf8_unload(struct unicode_map *um)
-+{
-+	kfree(um);
-+}
-+EXPORT_SYMBOL(utf8_unload);
-+
-+MODULE_LICENSE("GPL v2");
-diff --git a/fs/unicode/utf8-norm.c b/fs/unicode/utf8-norm.c
-index 848b93e97f50..20d440c3f2db 100644
---- a/fs/unicode/utf8-norm.c
-+++ b/fs/unicode/utf8-norm.c
-@@ -38,6 +38,12 @@ int utf8version_is_supported(u8 maj, u8 min, u8 rev)
- }
- EXPORT_SYMBOL(utf8version_is_supported);
- 
-+int utf8version_latest(void)
-+{
-+	return utf8vers;
-+}
-+EXPORT_SYMBOL(utf8version_latest);
-+
- /*
-  * UTF-8 valid ranges.
-  *
-diff --git a/fs/unicode/utf8n.h b/fs/unicode/utf8n.h
-index b63a9091dc39..a120638014c1 100644
---- a/fs/unicode/utf8n.h
-+++ b/fs/unicode/utf8n.h
-@@ -32,6 +32,7 @@
- 
- /* Highest unicode version supported by the data tables. */
- extern int utf8version_is_supported(u8 maj, u8 min, u8 rev);
-+extern int utf8version_latest(void);
- 
- /*
-  * Look for the correct const struct utf8data for a unicode version.
-diff --git a/include/linux/unicode.h b/include/linux/unicode.h
-new file mode 100644
-index 000000000000..aec2c6d800aa
---- /dev/null
-+++ b/include/linux/unicode.h
-@@ -0,0 +1,30 @@
-+/* SPDX-License-Identifier: GPL-2.0 */
-+#ifndef _LINUX_UNICODE_H
-+#define _LINUX_UNICODE_H
-+
-+#include <linux/init.h>
-+#include <linux/dcache.h>
-+
-+struct unicode_map {
-+	const char *charset;
-+	int version;
 +};
 +
-+int utf8_validate(const struct unicode_map *um, const struct qstr *str);
++const static struct {
++	/* UTF-8 strings in this vector _must_ be NULL-terminated. */
++	unsigned char str[30];
++	unsigned char ncf[30];
++} nfdicf_test_data[] = {
++	/* Trivial sequences */
++	{
++		/* "ABba" folds to lowercase */
++		.str = {0x41, 0x42, 0x62, 0x61, 0x00},
++		.ncf = {0x61, 0x62, 0x62, 0x61, 0x00},
++	},
++	{
++		/* All ASCII folds to lower-case */
++		.str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0.1",
++		.ncf = "abcdefghijklmnopqrstuvwxyz0.1",
++	},
++	{
++		/* LATIN SMALL LETTER SHARP S folds to
++		   LATIN SMALL LETTER S + LATIN SMALL LETTER S */
++		.str = {0xc3, 0x9f, 0x00},
++		.ncf = {0x73, 0x73, 0x00},
++	},
++	{
++		/* LATIN CAPITAL LETTER A WITH RING ABOVE folds to
++		   LATIN SMALL LETTER A + COMBINING RING ABOVE */
++		.str = {0xC3, 0x85, 0x00},
++		.ncf = {0x61, 0xcc, 0x8a, 0x00},
++	},
++	/* Introduced by UTF-8.0.0. */
++	/* Cherokee letters are interesting test-cases because they fold
++	   to upper-case.  Before 8.0.0, Cherokee lowercase were
++	   undefined, thus, the folding from LC is not stable between
++	   7.0.0 -> 8.0.0, but it is from UC. */
++	{
++		/* CHEROKEE SMALL LETTER A folds to CHEROKEE LETTER A */
++		.str = {0xea, 0xad, 0xb0, 0x00},
++		.ncf = {0xe1, 0x8e, 0xa0, 0x00},
++	},
++	{
++		/* CHEROKEE SMALL LETTER YE folds to CHEROKEE LETTER YE */
++		.str = {0xe1, 0x8f, 0xb8, 0x00},
++		.ncf = {0xe1, 0x8f, 0xb0, 0x00},
++	},
++	{
++		/* OLD HUNGARIAN CAPITAL LETTER AMB folds to
++		   OLD HUNGARIAN SMALL LETTER AMB */
++		.str = {0xf0, 0x90, 0xb2, 0x83, 0x00},
++		.ncf = {0xf0, 0x90, 0xb3, 0x83, 0x00},
++	},
++	/* Introduced by UTF-9.0.0. */
++	{
++		/* OSAGE CAPITAL LETTER CHA folds to
++		   OSAGE SMALL LETTER CHA */
++		.str = {0xf0, 0x90, 0x92, 0xb5, 0x00},
++		.ncf = {0xf0, 0x90, 0x93, 0x9d, 0x00},
++	},
++	{
++		/* LATIN CAPITAL LETTER SMALL CAPITAL I folds to
++		   LATIN LETTER SMALL CAPITAL I */
++		.str = {0xea, 0x9e, 0xae, 0x00},
++		.ncf = {0xc9, 0xaa, 0x00},
++	},
++	/* Introduced by UTF-11.0.0. */
++	{
++		/* GEORGIAN SMALL LETTER AN folds to GEORGIAN MTAVRULI
++		   CAPITAL LETTER AN */
++		.str = {0xe1, 0xb2, 0x90, 0x00},
++		.ncf = {0xe1, 0x83, 0x90, 0x00},
++	}
++};
 +
-+int utf8_strncmp(const struct unicode_map *um,
-+		 const struct qstr *s1, const struct qstr *s2);
++static void check_utf8_nfdi(void)
++{
++	int i;
++	struct utf8cursor u8c;
++	const struct utf8data *data;
 +
-+int utf8_strncasecmp(const struct unicode_map *um,
-+		 const struct qstr *s1, const struct qstr *s2);
++	data = utf8nfdi(UNICODE_AGE(latest_maj, latest_min, latest_rev));
++	if (!data) {
++		pr_err("%s: Unable to load utf8-%d.%d.%d. Skipping.\n",
++		       __func__, latest_maj, latest_min, latest_rev);
++		return;
++	}
 +
-+int utf8_normalize(const struct unicode_map *um, const struct qstr *str,
-+		   unsigned char *dest, size_t dlen);
++	for (i = 0; i < ARRAY_SIZE(nfdi_test_data); i++) {
++		int len = strlen(nfdi_test_data[i].str);
++		int nlen = strlen(nfdi_test_data[i].dec);
++		int j = 0;
++		unsigned char c;
 +
-+int utf8_casefold(const struct unicode_map *um, const struct qstr *str,
-+		  unsigned char *dest, size_t dlen);
++		test((utf8len(data, nfdi_test_data[i].str) == nlen));
++		test((utf8nlen(data, nfdi_test_data[i].str, len) == nlen));
 +
-+struct unicode_map *utf8_load(const char *version);
-+void utf8_unload(struct unicode_map *um);
++		if (utf8cursor(&u8c, data, nfdi_test_data[i].str) < 0)
++			pr_err("can't create cursor\n");
 +
-+#endif /* _LINUX_UNICODE_H */
++		while ((c = utf8byte(&u8c)) > 0) {
++			test_f((c == nfdi_test_data[i].dec[j]),
++			       "Unexpected byte 0x%x should be 0x%x\n",
++			       c, nfdi_test_data[i].dec[j]);
++			j++;
++		}
++
++		test((j == nlen));
++	}
++}
++
++static void check_utf8_nfdicf(void)
++{
++	int i;
++	struct utf8cursor u8c;
++	const struct utf8data *data;
++
++	data = utf8nfdicf(UNICODE_AGE(latest_maj, latest_min, latest_rev));
++	if (!data) {
++		pr_err("%s: Unable to load utf8-%d.%d.%d. Skipping.\n",
++		       __func__, latest_maj, latest_min, latest_rev);
++		return;
++	}
++
++	for (i = 0; i < ARRAY_SIZE(nfdicf_test_data); i++) {
++		int len = strlen(nfdicf_test_data[i].str);
++		int nlen = strlen(nfdicf_test_data[i].ncf);
++		int j = 0;
++		unsigned char c;
++
++		test((utf8len(data, nfdicf_test_data[i].str) == nlen));
++		test((utf8nlen(data, nfdicf_test_data[i].str, len) == nlen));
++
++		if (utf8cursor(&u8c, data, nfdicf_test_data[i].str) < 0)
++			pr_err("can't create cursor\n");
++
++		while ((c = utf8byte(&u8c)) > 0) {
++			test_f((c == nfdicf_test_data[i].ncf[j]),
++			       "Unexpected byte 0x%x should be 0x%x\n",
++			       c, nfdicf_test_data[i].ncf[j]);
++			j++;
++		}
++
++		test((j == nlen));
++	}
++}
++
++static void check_utf8_comparisons(void)
++{
++	int i;
++	struct unicode_map *table = utf8_load("11.0.0");
++
++	if (IS_ERR(table)) {
++		pr_err("%s: Unable to load utf8 %d.%d.%d. Skipping.\n",
++		       __func__, latest_maj, latest_min, latest_rev);
++		return;
++	}
++
++	for (i = 0; i < ARRAY_SIZE(nfdi_test_data); i++) {
++		const struct qstr s1 = {.name = nfdi_test_data[i].str,
++					.len = sizeof(nfdi_test_data[i].str)};
++		const struct qstr s2 = {.name = nfdi_test_data[i].dec,
++					.len = sizeof(nfdi_test_data[i].dec)};
++
++		test_f(!utf8_strncmp(table, &s1, &s2),
++		       "%s %s comparison mismatch\n", s1.name, s2.name);
++	}
++
++	for (i = 0; i < ARRAY_SIZE(nfdicf_test_data); i++) {
++		const struct qstr s1 = {.name = nfdicf_test_data[i].str,
++					.len = sizeof(nfdicf_test_data[i].str)};
++		const struct qstr s2 = {.name = nfdicf_test_data[i].ncf,
++					.len = sizeof(nfdicf_test_data[i].ncf)};
++
++		test_f(!utf8_strncasecmp(table, &s1, &s2),
++		       "%s %s comparison mismatch\n", s1.name, s2.name);
++	}
++
++	utf8_unload(table);
++}
++
++static void check_supported_versions(void)
++{
++	/* Unicode 7.0.0 should be supported. */
++	test(utf8version_is_supported(7, 0, 0));
++
++	/* Unicode 9.0.0 should be supported. */
++	test(utf8version_is_supported(9, 0, 0));
++
++	/* Unicode 1x.0.0 (the latest version) should be supported. */
++	test(utf8version_is_supported(latest_maj, latest_min, latest_rev));
++
++	/* Next versions don't exist. */
++	test(!utf8version_is_supported(12, 0, 0));
++	test(!utf8version_is_supported(0, 0, 0));
++	test(!utf8version_is_supported(-1, -1, -1));
++}
++
++static int __init init_test_ucd(void)
++{
++	failed_tests = 0;
++	total_tests = 0;
++
++	check_supported_versions();
++	check_utf8_nfdi();
++	check_utf8_nfdicf();
++	check_utf8_comparisons();
++
++	if (!failed_tests)
++		pr_info("All %u tests passed\n", total_tests);
++	else
++		pr_err("%u out of %u tests failed\n", failed_tests,
++		       total_tests);
++	return 0;
++}
++
++static void __exit exit_test_ucd(void)
++{
++}
++
++module_init(init_test_ucd);
++module_exit(exit_test_ucd);
++
++MODULE_AUTHOR("Gabriel Krisman Bertazi <krisman@collabora.co.uk>");
++MODULE_LICENSE("GPL");
 -- 
 2.20.1
 
