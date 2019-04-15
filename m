@@ -2,130 +2,130 @@ Return-Path: <SRS0=3Woa=SR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
-	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
-	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,
-	URIBL_BLOCKED autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D43CC10F0E
-	for <linux-ext4@archiver.kernel.org>; Mon, 15 Apr 2019 07:14:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6A2BC10F0E
+	for <linux-ext4@archiver.kernel.org>; Mon, 15 Apr 2019 07:58:52 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 37B8820693
-	for <linux-ext4@archiver.kernel.org>; Mon, 15 Apr 2019 07:14:00 +0000 (UTC)
-Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="JrwGDgB5"
+	by mail.kernel.org (Postfix) with ESMTP id 8FAAD20833
+	for <linux-ext4@archiver.kernel.org>; Mon, 15 Apr 2019 07:58:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726293AbfDOHNw (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 15 Apr 2019 03:13:52 -0400
-Received: from mail-qk1-f193.google.com ([209.85.222.193]:40634 "EHLO
-        mail-qk1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1725777AbfDOHNw (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Apr 2019 03:13:52 -0400
-Received: by mail-qk1-f193.google.com with SMTP id w20so9222115qka.7;
-        Mon, 15 Apr 2019 00:13:51 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20161025;
-        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
-         :cc;
-        bh=j3kbi0uMsvxuG8GVHcYa0jx5Oj3tt+hVtJy5E3Znkxk=;
-        b=JrwGDgB5paFkpvAjGR+HpKqcels7xSMDLHDkKHKBTJAoS/z6H9fgmh3RNxZqzc3Mbm
-         QqSqZhVlA9zZVYfzKoS2GakuhjjZtcmjdzIMdIlu0qNsfmJX1jziQcZhLbENNuRRuB0U
-         LHuvdr+q6ZqkE4bfgrFNqV2eswVxaVeO6uNJevx033Hh/Rd+UoimJ7G+gYtHuIeYPMWD
-         X5VMK38WMr6pT61Rl5cUQWfx7lNFGQPHPF+tQM99t/6d8XLQkopXcinifQM05fzvN5bG
-         Rj4dnQxCOvY7n+f5zJtyj3G9LiHzyXy1mZL7LeIKSbHI3hryRq3UU6NxFxyXvuohYpgZ
-         GDPw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20161025;
-        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
-         :message-id:subject:to:cc;
-        bh=j3kbi0uMsvxuG8GVHcYa0jx5Oj3tt+hVtJy5E3Znkxk=;
-        b=CmI1h0q5jRfI7B6CQtMOBYAPgipGAxvfyia1v+ku+q46+tceZCLvrizUpK0QBx/f0x
-         U/R0v9zGwrH+zfilu9ZuCwmdcVG5kiIE/bcrXJ9xGmx1K4FyHP1qkoqj0gPorwXTBrOG
-         1c+ZFzz3i6CS+tXYjl6pE6osqH9DfuqDxIIpryTtECx/nrBjOan7d0a+dvCEI0qM7Pfq
-         WuUTBq0KwAcAnDlBu8LXnTYX2VY/X/+5F5kksGCtmUcQCxAhHz/F3o70ZIvQK3inXtLG
-         MbVGanqR49r6N8h8L+/V4gKdTM9MMWVUDdA7UgHOkvuR84mrxRlL0JaRmrJiugu6CUag
-         6N8Q==
-X-Gm-Message-State: APjAAAVi1n4spk1u+VfekM1123pFlBcF6jy1NLhZ5m/SdXDK8OD46CPt
-        +UCOUd0lNzzIz3F14yi/01C1nBeEX937pdhqrss=
-X-Google-Smtp-Source: APXvYqy7BiJy6sUxQsLMNeqGjVsNKTqXYv8xm887nUujgxsP1xwvfSah5gmuWcJIRxcv3C225rHZNDuC/Qf7KE3MLFo=
-X-Received: by 2002:a37:4e4d:: with SMTP id c74mr56333890qkb.230.1555312430704;
- Mon, 15 Apr 2019 00:13:50 -0700 (PDT)
-MIME-Version: 1.0
-References: <20190414091452.22275-1-shyam.saini@amarulasolutions.com> <CAADnVQKx5WrUYxr_gSc5ai=fJh2cM9e26NZL1mRPkoSVQxAd0Q@mail.gmail.com>
-In-Reply-To: <CAADnVQKx5WrUYxr_gSc5ai=fJh2cM9e26NZL1mRPkoSVQxAd0Q@mail.gmail.com>
-From:   Shyam Saini <mayhs11saini@gmail.com>
-Date:   Mon, 15 Apr 2019 12:43:39 +0530
-Message-ID: <CAOfkYf5FZdN3v9pkcdNmyJM5O=789bKwFmFsMTp20RE=gVgwqQ@mail.gmail.com>
-Subject: Re: [PATCH 1/2] include: linux: Regularise the use of FIELD_SIZEOF macro
-To:     Alexei Starovoitov <alexei.starovoitov@gmail.com>
-Cc:     Shyam Saini <shyam.saini@amarulasolutions.com>,
-        Kernel Hardening <kernel-hardening@lists.openwall.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Kees Cook <keescook@chromium.org>,
-        linux-arm-kernel@lists.infradead.org, linux-mips@vger.kernel.org,
-        intel-gvt-dev@lists.freedesktop.org,
-        intel-gfx@lists.freedesktop.org,
-        dri-devel <dri-devel@lists.freedesktop.org>,
-        Network Development <netdev@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, devel@lists.orangefs.org,
-        linux-mm <linux-mm@kvack.org>, linux-sctp@vger.kernel.org,
-        bpf <bpf@vger.kernel.org>, kvm@vger.kernel.org
+        id S1726531AbfDOH6w convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 15 Apr 2019 03:58:52 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:48992 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1725779AbfDOH6w (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 15 Apr 2019 03:58:52 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id E13DB28869
+        for <linux-ext4@vger.kernel.org>; Mon, 15 Apr 2019 07:58:50 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+        id D4E6D2888A; Mon, 15 Apr 2019 07:58:50 +0000 (UTC)
+From:   bugzilla-daemon@bugzilla.kernel.org
+To:     linux-ext4@vger.kernel.org
+Subject: [Bug 203317] New: WARNING: CPU: 2 PID: 925 at fs/ext4/inode.c:3897
+ ext4_set_page_dirty+0x39/0x50
+Date:   Mon, 15 Apr 2019 07:58:49 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: new
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: normal
+X-Bugzilla-Who: upfefferlein@gmail.com
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: bug_id short_desc product version
+ cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
+ priority component assigned_to reporter cf_regression attachments.created
+Message-ID: <bug-203317-13602@https.bugzilla.kernel.org/>
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
+MIME-Version: 1.0
+X-Virus-Scanned: ClamAV using ClamSMTP
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Hi,
+https://bugzilla.kernel.org/show_bug.cgi?id=203317
 
-On Mon, Apr 15, 2019 at 11:13 AM Alexei Starovoitov
-<alexei.starovoitov@gmail.com> wrote:
->
-> On Sun, Apr 14, 2019 at 2:15 AM Shyam Saini
-> <shyam.saini@amarulasolutions.com> wrote:
-> >
-> > Currently, there are 3 different macros, namely sizeof_field, SIZEOF_FIELD
-> > and FIELD_SIZEOF which are used to calculate the size of a member of
-> > structure, so to bring uniformity in entire kernel source tree lets use
-> > FIELD_SIZEOF and replace all occurrences of other two macros with this.
-> >
-> > For this purpose, redefine FIELD_SIZEOF in include/linux/stddef.h and
-> > tools/testing/selftests/bpf/bpf_util.h and remove its defination from
-> > include/linux/kernel.h
-> >
-> > Signed-off-by: Shyam Saini <shyam.saini@amarulasolutions.com>
-> > ---
-> >  arch/arm64/include/asm/processor.h                 | 10 +++++-----
-> >  arch/mips/cavium-octeon/executive/cvmx-bootmem.c   |  2 +-
-> >  drivers/gpu/drm/i915/gvt/scheduler.c               |  2 +-
-> >  drivers/net/ethernet/mellanox/mlxsw/spectrum_fid.c |  4 ++--
-> >  fs/befs/linuxvfs.c                                 |  2 +-
-> >  fs/ext2/super.c                                    |  2 +-
-> >  fs/ext4/super.c                                    |  2 +-
-> >  fs/freevxfs/vxfs_super.c                           |  2 +-
-> >  fs/orangefs/super.c                                |  2 +-
-> >  fs/ufs/super.c                                     |  2 +-
-> >  include/linux/kernel.h                             |  9 ---------
-> >  include/linux/slab.h                               |  2 +-
-> >  include/linux/stddef.h                             | 11 ++++++++++-
-> >  kernel/fork.c                                      |  2 +-
-> >  kernel/utsname.c                                   |  2 +-
-> >  net/caif/caif_socket.c                             |  2 +-
-> >  net/core/skbuff.c                                  |  2 +-
-> >  net/ipv4/raw.c                                     |  2 +-
-> >  net/ipv6/raw.c                                     |  2 +-
-> >  net/sctp/socket.c                                  |  4 ++--
-> >  tools/testing/selftests/bpf/bpf_util.h             | 11 ++++++++++-
->
-> tools/ directory is for user space pieces that don't include kernel's include.
-> I bet your pathes break the user space builds.
+            Bug ID: 203317
+           Summary: WARNING: CPU: 2 PID: 925 at fs/ext4/inode.c:3897
+                    ext4_set_page_dirty+0x39/0x50
+           Product: File System
+           Version: 2.5
+    Kernel Version: 4.19.23
+          Hardware: x86-64
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: upfefferlein@gmail.com
+        Regression: No
 
-I think it shouldn't because I haven't included any kernel header in
-tool/ files, instead
-I have introduced definition of macro in tool/ , so this patch doesn't
-create any dependency
-on kernel headers.
+Created attachment 282335
+  --> https://bugzilla.kernel.org/attachment.cgi?id=282335&action=edit
+kernel config
 
-Thanks a lot,
-Shyam
+I found #201631, but i am not on ppc-64 so creating a new ticket.
+
+Apr 12 17:00:37 localhost kernel: [28248.756299] WARNING: CPU: 2 PID: 925 at
+fs/ext4/inode.c:3897 ext4_set_page_dirty+0x39/0x50
+Apr 12 17:00:37 localhost kernel: [28248.756300] Modules linked in: vboxpci(O)
+vboxnetadp(O) vboxnetflt(O) vboxdrv(O) iwlmvm x86_pkg_temp_thermal iwlwifi
+Apr 12 17:00:37 localhost kernel: [28248.756309] CPU: 2 PID: 925 Comm: kswapd0
+Tainted: G           O      4.19.23-gentoo #1
+Apr 12 17:00:37 localhost kernel: [28248.756309] Hardware name: LENOVO
+20FB006BGE/20FB006BGE, BIOS N1FET44W (1.18 ) 09/01/2016
+Apr 12 17:00:37 localhost kernel: [28248.756312] RIP:
+0010:ext4_set_page_dirty+0x39/0x50
+Apr 12 17:00:37 localhost kernel: [28248.756313] Code: 48 8b 00 a8 01 75 16 48
+8b 57 08 48 8d 42 ff 83 e2 01 48 0f 44 c7 48 8b 00 a8 10 74 0d 48 8b 07 f6 c4
+10 74 0f e9 f7 8e f9 ff <0f> 0b 48 8b 07 f6 c4 10 75 f1 0f 0b e9 e6 8e f9 ff 66
+0f 1f 44 00
+Apr 12 17:00:37 localhost kernel: [28248.756314] RSP: 0018:ffffc9000331bb68
+EFLAGS: 00010246
+Apr 12 17:00:37 localhost kernel: [28248.756316] RAX: 020000000001006c RBX:
+00000000003b964e RCX: 0000000000000000
+Apr 12 17:00:37 localhost kernel: [28248.756317] RDX: 0000000000000000 RSI:
+00000002ae380000 RDI: ffffea000ee59380
+Apr 12 17:00:37 localhost kernel: [28248.756318] RBP: ffff8883ff6f1800 R08:
+0000000000000000 R09: 0000000000000000
+Apr 12 17:00:37 localhost kernel: [28248.756319] R10: 0000000000000000 R11:
+ffff888403f9c000 R12: ffffea000ee59380
+Apr 12 17:00:37 localhost kernel: [28248.756320] R13: ffff888073eed000 R14:
+ffff888074529a80 R15: 0000000000000000
+Apr 12 17:00:37 localhost kernel: [28248.756321] FS:  0000000000000000(0000)
+GS:ffff888411300000(0000) knlGS:0000000000000000
+Apr 12 17:00:37 localhost kernel: [28248.756322] CS:  0010 DS: 0000 ES: 0000
+CR0: 0000000080050033
+Apr 12 17:00:37 localhost kernel: [28248.756323] CR2: 00007f4f5ecb21f8 CR3:
+0000000003a0a006 CR4: 00000000003626e0
+Apr 12 17:00:37 localhost kernel: [28248.756324] DR0: 0000000000000000 DR1:
+0000000000000000 DR2: 0000000000000000
+Apr 12 17:00:37 localhost kernel: [28248.756325] DR3: 0000000000000000 DR6:
+00000000fffe0ff0 DR7: 0000000000000400
+Apr 12 17:00:37 localhost kernel: [28248.756325] Call Trace:
+Apr 12 17:00:37 localhost kernel: [28248.756330] 
+i915_gem_userptr_put_pages+0x144/0x180
+Apr 12 17:00:37 localhost kernel: [28248.756334] 
+__i915_gem_object_put_pages+0x61/0x70
+Apr 12 17:00:37 localhost kernel: [28248.756336]  i915_gem_shrink+0x2ab/0x4b0
+
+-- 
+You are receiving this mail because:
+You are watching the assignee of the bug.
