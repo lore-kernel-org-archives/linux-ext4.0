@@ -1,134 +1,116 @@
-Return-Path: <SRS0=CYDl=SQ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=3Woa=SR=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-3.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 09E2AC10F13
-	for <linux-ext4@archiver.kernel.org>; Sun, 14 Apr 2019 11:38:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E812C282CE
+	for <linux-ext4@archiver.kernel.org>; Mon, 15 Apr 2019 05:44:10 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D8C7C218D3
-	for <linux-ext4@archiver.kernel.org>; Sun, 14 Apr 2019 11:38:23 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E30742073F
+	for <linux-ext4@archiver.kernel.org>; Mon, 15 Apr 2019 05:44:09 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ioIki42a"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727245AbfDNLiX (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 14 Apr 2019 07:38:23 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:51016 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1727235AbfDNLiX (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 14 Apr 2019 07:38:23 -0400
-Received: from pps.filterd (m0098399.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x3EBYLP4091635
-        for <linux-ext4@vger.kernel.org>; Sun, 14 Apr 2019 07:38:22 -0400
-Received: from e15.ny.us.ibm.com (e15.ny.us.ibm.com [129.33.205.205])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2ruuvjcs3n-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Sun, 14 Apr 2019 07:38:22 -0400
-Received: from localhost
-        by e15.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
-        Sun, 14 Apr 2019 12:38:21 +0100
-Received: from b01cxnp23034.gho.pok.ibm.com (9.57.198.29)
-        by e15.ny.us.ibm.com (146.89.104.202) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
-        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Sun, 14 Apr 2019 12:38:17 +0100
-Received: from b01ledav001.gho.pok.ibm.com (b01ledav001.gho.pok.ibm.com [9.57.199.106])
-        by b01cxnp23034.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x3EBcHKv30736474
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 14 Apr 2019 11:38:17 GMT
-Received: from b01ledav001.gho.pok.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id E73F32805A;
-        Sun, 14 Apr 2019 11:38:16 +0000 (GMT)
-Received: from b01ledav001.gho.pok.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 3E9DB28058;
-        Sun, 14 Apr 2019 11:38:13 +0000 (GMT)
-Received: from localhost.localdomain.com (unknown [9.85.71.201])
-        by b01ledav001.gho.pok.ibm.com (Postfix) with ESMTP;
-        Sun, 14 Apr 2019 11:38:12 +0000 (GMT)
-From:   Chandan Rajendra <chandan@linux.ibm.com>
-To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org
-Cc:     Chandan Rajendra <chandan@linux.ibm.com>, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
-        yuchao0@huawei.com
-Subject: [RFC PATCH V2 14/14] ext4: Enable encryption for subpage-sized blocks
-Date:   Sun, 14 Apr 2019 17:08:04 +0530
-X-Mailer: git-send-email 2.19.1
-In-Reply-To: <20190414113804.26769-1-chandan@linux.ibm.com>
-References: <20190414113804.26769-1-chandan@linux.ibm.com>
+        id S1726057AbfDOFn7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 15 Apr 2019 01:43:59 -0400
+Received: from mail-lf1-f66.google.com ([209.85.167.66]:40982 "EHLO
+        mail-lf1-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1725816AbfDOFn7 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Apr 2019 01:43:59 -0400
+Received: by mail-lf1-f66.google.com with SMTP id t30so12027006lfd.8;
+        Sun, 14 Apr 2019 22:43:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=/c+Hw5+k/azU8PvnxKFqYmJEScc8yTKsIrOq90KcNSI=;
+        b=ioIki42aQJHfE8Z4YokPbljBrYNgoYz9Nf0Cc206GZusD6gjAIzI28wJbEZBUIKR0x
+         PsSFzKpzb9INhNuwNO+nBgVpGJ1uqna8NrizyAbxNfGbUI2LkkhlraXK3tnM/qpaKrzD
+         bGe8jQ9oRCQB5i+kZ/dwlOP62bXCQBJrNA021hAJJe78QJ/fwHvH9yf7NyGI5fPxBOty
+         oBdQz0JqexEk5ZAzaCVCmujySd0vzIT3mi6HCeFfv9ZFsJVqV/vs7BPjstAmOy5wMd59
+         wbKXEEvKPJ273T+F4phTZUAiqeRrVLAAICwnq8VmmoGODBWLXdq1ITD/CZVR5fjUsKkt
+         A+oA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=/c+Hw5+k/azU8PvnxKFqYmJEScc8yTKsIrOq90KcNSI=;
+        b=Poo36XdHiCWAT7JTmJv3cjGNctUbI3jh36ge3JMGLn2qftBtXf+ZcVAyxUV0xkEDqf
+         oP6SfYfZ7gZoSUY90HL2GSc2JXVgUQk7K3FC1WA1jkogEYXYJF+l8FHoujDSuadF3/0S
+         u7l+KgtFxtYCS5SB2VxUs3W7sh4A4booXaZSXwlBwcfCqrB0+46YweFzPUZ4RJdIL8oh
+         1qN/TjQkZcvX3Vl+ERkubdMYZHB9Cv9mDGGErLb8vhQwhMpkcRH77hBOjKhQXNcBMFdE
+         37y3TbW6qbJRfU9DdVXB0TRpDa3RzpCsbepN4nwUEqWeNXaLUhe/M7Cl5XQuPeWuNZIa
+         pgMw==
+X-Gm-Message-State: APjAAAWCggU093PIkzt617iL1vYvDIK216eOV3bQ+yMVwfJ0hcq+tEd5
+        4NHXP1EQf9JtawUTx1z4NG0FXgm9bnRMrNhPRRM=
+X-Google-Smtp-Source: APXvYqz5KJTKzNAp0YVyNvmQJpO1OyGfuUarw6cWCWeFUfRpXA51WDRxn5UL/u/lq4P5E+TmUPismgSWGwO2+n4/ick=
+X-Received: by 2002:ac2:59db:: with SMTP id x27mr32758509lfn.108.1555307036239;
+ Sun, 14 Apr 2019 22:43:56 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-TM-AS-GCONF: 00
-x-cbid: 19041411-0068-0000-0000-000003B4E121
-X-IBM-SpamModules-Scores: 
-X-IBM-SpamModules-Versions: BY=3.00010925; HX=3.00000242; KW=3.00000007;
- PH=3.00000004; SC=3.00000284; SDB=6.01188935; UDB=6.00622896; IPR=6.00969712;
- MB=3.00026436; MTD=3.00000008; XFM=3.00000015; UTC=2019-04-14 11:38:20
-X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19041411-0069-0000-0000-00004827D543
-Message-Id: <20190414113804.26769-15-chandan@linux.ibm.com>
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-04-14_03:,,
- signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
- malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
- clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
- mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.0.1-1810050000 definitions=main-1904140086
+References: <20190414091452.22275-1-shyam.saini@amarulasolutions.com>
+In-Reply-To: <20190414091452.22275-1-shyam.saini@amarulasolutions.com>
+From:   Alexei Starovoitov <alexei.starovoitov@gmail.com>
+Date:   Sun, 14 Apr 2019 22:43:44 -0700
+Message-ID: <CAADnVQKx5WrUYxr_gSc5ai=fJh2cM9e26NZL1mRPkoSVQxAd0Q@mail.gmail.com>
+Subject: Re: [PATCH 1/2] include: linux: Regularise the use of FIELD_SIZEOF macro
+To:     Shyam Saini <shyam.saini@amarulasolutions.com>
+Cc:     Kernel Hardening <kernel-hardening@lists.openwall.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Kees Cook <keescook@chromium.org>,
+        linux-arm-kernel@lists.infradead.org, linux-mips@vger.kernel.org,
+        intel-gvt-dev@lists.freedesktop.org,
+        intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        Network Development <netdev@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, devel@lists.orangefs.org,
+        linux-mm <linux-mm@kvack.org>, linux-sctp@vger.kernel.org,
+        bpf <bpf@vger.kernel.org>, kvm@vger.kernel.org,
+        mayhs11saini@gmail.com
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that we have the code to support encryption for subpage-sized
-blocks, this commit removes the conditional check in filesystem mount
-code.
+On Sun, Apr 14, 2019 at 2:15 AM Shyam Saini
+<shyam.saini@amarulasolutions.com> wrote:
+>
+> Currently, there are 3 different macros, namely sizeof_field, SIZEOF_FIELD
+> and FIELD_SIZEOF which are used to calculate the size of a member of
+> structure, so to bring uniformity in entire kernel source tree lets use
+> FIELD_SIZEOF and replace all occurrences of other two macros with this.
+>
+> For this purpose, redefine FIELD_SIZEOF in include/linux/stddef.h and
+> tools/testing/selftests/bpf/bpf_util.h and remove its defination from
+> include/linux/kernel.h
+>
+> Signed-off-by: Shyam Saini <shyam.saini@amarulasolutions.com>
+> ---
+>  arch/arm64/include/asm/processor.h                 | 10 +++++-----
+>  arch/mips/cavium-octeon/executive/cvmx-bootmem.c   |  2 +-
+>  drivers/gpu/drm/i915/gvt/scheduler.c               |  2 +-
+>  drivers/net/ethernet/mellanox/mlxsw/spectrum_fid.c |  4 ++--
+>  fs/befs/linuxvfs.c                                 |  2 +-
+>  fs/ext2/super.c                                    |  2 +-
+>  fs/ext4/super.c                                    |  2 +-
+>  fs/freevxfs/vxfs_super.c                           |  2 +-
+>  fs/orangefs/super.c                                |  2 +-
+>  fs/ufs/super.c                                     |  2 +-
+>  include/linux/kernel.h                             |  9 ---------
+>  include/linux/slab.h                               |  2 +-
+>  include/linux/stddef.h                             | 11 ++++++++++-
+>  kernel/fork.c                                      |  2 +-
+>  kernel/utsname.c                                   |  2 +-
+>  net/caif/caif_socket.c                             |  2 +-
+>  net/core/skbuff.c                                  |  2 +-
+>  net/ipv4/raw.c                                     |  2 +-
+>  net/ipv6/raw.c                                     |  2 +-
+>  net/sctp/socket.c                                  |  4 ++--
+>  tools/testing/selftests/bpf/bpf_util.h             | 11 ++++++++++-
 
-The commit also changes the support statement in
-Documentation/filesystems/fscrypt.rst to reflect the fact that
-encryption of filesystems with blocksize less than page size now works.
-
-Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
----
- Documentation/filesystems/fscrypt.rst | 4 ++--
- fs/ext4/super.c                       | 7 -------
- 2 files changed, 2 insertions(+), 9 deletions(-)
-
-diff --git a/Documentation/filesystems/fscrypt.rst b/Documentation/filesystems/fscrypt.rst
-index 08c23b60e016..ff2fea121da9 100644
---- a/Documentation/filesystems/fscrypt.rst
-+++ b/Documentation/filesystems/fscrypt.rst
-@@ -213,8 +213,8 @@ Contents encryption
- -------------------
- 
- For file contents, each filesystem block is encrypted independently.
--Currently, only the case where the filesystem block size is equal to
--the system's page size (usually 4096 bytes) is supported.
-+Starting from Linux kernel 5.3, encryption of filesystems with block
-+size less than system's page size is supported.
- 
- Each block's IV is set to the logical block number within the file as
- a little endian number, except that:
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index cadf50f9503f..549e5bec1aba 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -4433,13 +4433,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		}
- 	}
- 
--	if ((DUMMY_ENCRYPTION_ENABLED(sbi) || ext4_has_feature_encrypt(sb)) &&
--	    (blocksize != PAGE_SIZE)) {
--		ext4_msg(sb, KERN_ERR,
--			 "Unsupported blocksize for fs encryption");
--		goto failed_mount_wq;
--	}
--
- 	if (DUMMY_ENCRYPTION_ENABLED(sbi) && !sb_rdonly(sb) &&
- 	    !ext4_has_feature_encrypt(sb)) {
- 		ext4_set_feature_encrypt(sb);
--- 
-2.19.1
-
+tools/ directory is for user space pieces that don't include kernel's include.
+I bet your pathes break the user space builds.
