@@ -2,154 +2,96 @@ Return-Path: <SRS0=kK5Q=ST=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-3.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
-	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F7E4C282DA
-	for <linux-ext4@archiver.kernel.org>; Wed, 17 Apr 2019 17:54:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E727DC282DA
+	for <linux-ext4@archiver.kernel.org>; Wed, 17 Apr 2019 17:57:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id D836F2064B
-	for <linux-ext4@archiver.kernel.org>; Wed, 17 Apr 2019 17:54:41 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id B746120663
+	for <linux-ext4@archiver.kernel.org>; Wed, 17 Apr 2019 17:57:54 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="kSt3wdcK"
+	dkim=pass (2048-bit key) header.d=kernel-dk.20150623.gappssmtp.com header.i=@kernel-dk.20150623.gappssmtp.com header.b="t92AtvlR"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1733206AbfDQRxx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 17 Apr 2019 13:53:53 -0400
-Received: from mailout4.samsung.com ([203.254.224.34]:56111 "EHLO
-        mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1729446AbfDQRxx (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Apr 2019 13:53:53 -0400
-Received: from epcas2p3.samsung.com (unknown [182.195.41.55])
-        by mailout4.samsung.com (KnoxPortal) with ESMTP id 20190417175348epoutp0473c9211d8c57888de6d7dafc1ac4dc77~WVH_srMxE0246902469epoutp04y;
-        Wed, 17 Apr 2019 17:53:48 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout4.samsung.com 20190417175348epoutp0473c9211d8c57888de6d7dafc1ac4dc77~WVH_srMxE0246902469epoutp04y
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-        s=mail20170921; t=1555523628;
-        bh=HWF9wssniCzlufvKqNxRQobMFul7STeiB7FnbtGZJPw=;
-        h=From:To:Cc:Subject:Date:References:From;
-        b=kSt3wdcKUSLVAuDoe0LI+/rtzHTtw5R1Uch+xLP1hdvZH09dSn1J72SBs0PnI7jxQ
-         mMUZoITxsYWBn8ocBzxtKqiBqmnY57dhhRVPwoclXkGKjRK2AqSVMfuaNvF6YDVZ0D
-         oHDi5pSbnArNapYaSlgHkcHVl2eBPpgfnAVLdiBk=
-Received: from epsmges2p1.samsung.com (unknown [182.195.42.69]) by
-        epcas2p2.samsung.com (KnoxPortal) with ESMTP id
-        20190417175348epcas2p2ae85fa853d3455704af13e3e35b1516c~WVH_eU6RB2741727417epcas2p2w;
-        Wed, 17 Apr 2019 17:53:48 +0000 (GMT)
-Received: from epcas2p1.samsung.com ( [182.195.41.53]) by
-        epsmges2p1.samsung.com (Symantec Messaging Gateway) with SMTP id
-        AC.A3.04195.C2867BC5; Thu, 18 Apr 2019 02:53:48 +0900 (KST)
-Received: from epsmgms2p2new.samsung.com (unknown [182.195.42.143]) by
-        epcas2p4.samsung.com (KnoxPortal) with ESMTP id
-        20190417175347epcas2p41e4240ab83b46c9f07d237fc9494903a~WVH9-PMMS2024920249epcas2p4y;
-        Wed, 17 Apr 2019 17:53:47 +0000 (GMT)
-X-AuditID: b6c32a45-d47ff70000001063-0c-5cb7682cbb09
-Received: from epmmp1.local.host ( [203.254.227.16]) by
-        epsmgms2p2new.samsung.com (Symantec Messaging Gateway) with SMTP id
-        57.EF.03620.B2867BC5; Thu, 18 Apr 2019 02:53:47 +0900 (KST)
-Received: from test-PowerEdge-R720.sa.corp.samsungelectronics.net
-        ([107.108.221.212]) by mmp1.samsung.com (Oracle Communications Messaging
-        Server 7.0.5.31.0 64bit (built May  5 2014)) with ESMTPA id
-        <0PQ4006MF9PFCC30@mmp1.samsung.com>; Thu, 18 Apr 2019 02:53:47 +0900 (KST)
-From:   Kanchan Joshi <joshi.k@samsung.com>
-To:     linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-nvme@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org
-Cc:     prakash.v@samsung.com, Kanchan Joshi <joshi.k@samsung.com>
-Subject: [PATCH v4 0/7] Extend write-hint/stream infrastructure
-Date:   Wed, 17 Apr 2019 23:19:59 +0530
-Message-id: <1555523406-2380-1-git-send-email-joshi.k@samsung.com>
-X-Mailer: git-send-email 2.7.4
-X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFmpmkeLIzCtJLcpLzFFi42LZdljTVFcnY3uMwZYmUYuj/9+yWey9pW0x
-        c94dNos9e0+yWFzeNYfNYv6yp+wWV6YsYnZg99i8pN6jb8sqRo/Pm+QCmKO4bFJSczLLUov0
-        7RK4Mp5/aGAtOChacXf/MuYGxpX8XYycHBICJhIzns9h6WLk4hAS2MEoceDhXSYI5zujRPux
-        LjaYqnMzWhkhErsZJbZvvMYK4Uxnkuj/uIa9i5GDg01AU+LC5FKQuIjAHEaJZfumMYN0MwvY
-        Scz49poVpEZYwF6ia5cFSJhFQFXi1vEzYAt4BZwk5lx+xgqxTE7i5rlOZpA5EgIPWSVePz8C
-        dYWLxN5Dh6FsaYlnqzYyQtjFEr/uHIVq6GCUuN4wkwUiYS9xcc9fJogj+CQ6Dv8FO1RCgFei
-        o00IosRD4sy/CewgtpBArMTk16eYJjCKL2BkWMUollpQnJueWmxUYKhXnJhbXJqXrpecn7uJ
-        ERw1Wq47GGec8znEKMDBqMTDu0J1e4wQa2JZcWXuIUYJDmYlEV7HlC0xQrwpiZVVqUX58UWl
-        OanFhxilOViUxHkfSc+NFhJITyxJzU5NLUgtgskycXBKNTC+FD3gvuoXc5Cw2HJuNfkbemsb
-        9OqjVxk48KX0NZ1IeSm9PliomOn1r/lTAw7Pe/Fw0pbuYzG+zJ0SL03zshN5Fxpl5nkziTta
-        PFjN9oHJquuYaU+EwB6tr7ffcNZMqatoq1isKntKT9B7c/jd152Hk9LEzz3++f1q5a7iOpb0
-        +tkRLp47qpVYijMSDbWYi4oTASq1SliWAgAA
-X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFnrOJMWRmVeSWpSXmKPExsVy+t9jAV3tjO0xBiv2GVgc/f+WzWLvLW2L
-        mfPusFns2XuSxeLyrjlsFvOXPWW3uDJlEbMDu8fmJfUefVtWMXp83iQXwBzFZZOSmpNZllqk
-        b5fAlfH8QwNrwUHRirv7lzE3MK7k72Lk5JAQMJE4N6OVsYuRi0NIYCejxIKFz6CcmUwSvx7N
-        YO5i5OBgE9CUuDC5FCQuIjCHUaJn93pWkG5mATuJGd9es4LUCAvYS3TtsgAJswioStw6foYN
-        xOYVcJKYc/kZK8QyOYmb5zqZJzByLWBkWMUomVpQnJueW2xUYJSXWq5XnJhbXJqXrpecn7uJ
-        Eej9bYe1+ncwPl4Sf4hRgINRiYd3her2GCHWxLLiytxDjBIczEoivI4pW2KEeFMSK6tSi/Lj
-        i0pzUosPMUpzsCiJ8/LnH4sUEkhPLEnNTk0tSC2CyTJxcEo1MAYrZcWefKzbuS1rIjPPfJ2q
-        dzb5xk/Yd8hnPU27aS8ozim44ObxKz7nFDeflkjn25Ahccr4wL77vxKaYrgWZP0v3XqgZM60
-        B/lX5sgvatncdjZ6o09lJFv1t+ItuXw/eHZrqZVMUXE10Gi69K5ERemY+V/523frrl91yNy6
-        7qOO941red4c3kosxRmJhlrMRcWJAOalJMD6AQAA
-X-CMS-MailID: 20190417175347epcas2p41e4240ab83b46c9f07d237fc9494903a
-CMS-TYPE: 102P
-X-CMS-RootMailID: 20190417175347epcas2p41e4240ab83b46c9f07d237fc9494903a
-References: <CGME20190417175347epcas2p41e4240ab83b46c9f07d237fc9494903a@epcas2p4.samsung.com>
+        id S1733117AbfDQR5y (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 17 Apr 2019 13:57:54 -0400
+Received: from mail-io1-f65.google.com ([209.85.166.65]:38274 "EHLO
+        mail-io1-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1733113AbfDQR5x (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Apr 2019 13:57:53 -0400
+Received: by mail-io1-f65.google.com with SMTP id v4so21367013ioj.5
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Apr 2019 10:57:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=kernel-dk.20150623.gappssmtp.com; s=20150623;
+        h=subject:to:cc:references:from:message-id:date:user-agent
+         :mime-version:in-reply-to:content-language:content-transfer-encoding;
+        bh=R55o9kUXAJBh2tF+7lJ4JvdI2/7fbKVS3keHkBQuoNQ=;
+        b=t92AtvlR/3rv6myOl2qEMMrFqmL5j0URxSzPtqJ0hsuP5M2S1ZLU/myTKYV7zN6XRD
+         xl+SkL88CQctt26c/njZ9YlZ+w3p7jDh7xvxhSjj1mg+CGRnezVZcQFgX80j5Yrq24U9
+         qA9x83s5IJF/fAIfDW+7XOHyvihqjZgyzYoKbJBb90BzW4Sgm6xrOV4Jz0dC626BbJ96
+         hxU5+5EBmK2xI/y7MzhKSNqHQa/0psZSH5OkICMYwN4x4kuFrggbl1NzMjO7ohbmtBWk
+         E/2jU9aT1HwkQwRzrFXI+Vhj1FvTfT04H0Qkmxs5HQjU7tN133c/95tvJtjHERHb4YAH
+         Wlbg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:subject:to:cc:references:from:message-id:date
+         :user-agent:mime-version:in-reply-to:content-language
+         :content-transfer-encoding;
+        bh=R55o9kUXAJBh2tF+7lJ4JvdI2/7fbKVS3keHkBQuoNQ=;
+        b=lLjDy4NnJPmFBB+y3bTqerJZ1q68Zpc6snLURC6uWjGVMeiTYoC0hGbPKuTlw/FYm7
+         t5UiZwPSg2Yu01Bkmu8RHh+guHEkGtGO1plZ/5BpeXwdPNtC+Upg2lLiVZHtf8mBDujG
+         RiNE4sHL2OYecU56PZ/K2s/tnY6fSpNqLYrEYTbMSrgfvzS4cMEW/gOW9EocjYBXplsE
+         SM/0N0sklSWyhG2GeIV6+jORtMHTTqLotCQA/QRvnihz8+WL3nic5g9rnF1YlWL0xUg1
+         hsyXTirHLadmpdTPsvNQg36JTe2Qvl//UrNcF5lRj+dBAaPPSPuU4c9mWtkAEmY4Xn6J
+         ngCQ==
+X-Gm-Message-State: APjAAAUKhul3s6HgSCgm1BZ53Nvh5iuytebZ29UMR9Yy3SEHOEIL5TPe
+        lna2/EIEHps0w0M/Oh+baTRcZg==
+X-Google-Smtp-Source: APXvYqz9pczPxcJFDyzjPQrXKMuKkhGOqdKZhdX6tuSwnLL+/90o9NSkJ++zKmx0wuhuYOWclDBHnw==
+X-Received: by 2002:a6b:7417:: with SMTP id s23mr2709245iog.2.1555523873316;
+        Wed, 17 Apr 2019 10:57:53 -0700 (PDT)
+Received: from [192.168.1.158] ([216.160.245.98])
+        by smtp.gmail.com with ESMTPSA id e11sm19033013iob.48.2019.04.17.10.57.51
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 17 Apr 2019 10:57:51 -0700 (PDT)
+Subject: Re: [PATCH v4 4/7] block: introduce write-hint to stream-id
+ conversion
+To:     Kanchan Joshi <joshi.k@samsung.com>, linux-kernel@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-nvme@lists.infradead.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc:     prakash.v@samsung.com
+References: <1555523406-2380-1-git-send-email-joshi.k@samsung.com>
+ <CGME20190417175358epcas1p41a0a4e349dfe0a70bdcc244161c71604@epcas1p4.samsung.com>
+ <1555523406-2380-5-git-send-email-joshi.k@samsung.com>
+From:   Jens Axboe <axboe@kernel.dk>
+Message-ID: <6850a3ad-805f-4232-1bc7-f3249e1fba96@kernel.dk>
+Date:   Wed, 17 Apr 2019 11:57:50 -0600
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.6.1
+MIME-Version: 1.0
+In-Reply-To: <1555523406-2380-5-git-send-email-joshi.k@samsung.com>
+Content-Type: text/plain; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-V4 series, towards extending write-hint/streams infrastucture so that file-systems
-and other kernel-mode components can use write-hints which are separate from 
-user-space ones. Also this introduces support for sending write-hint with 
-Ext4/JBD2 journal.
+On 4/17/19 11:50 AM, Kanchan Joshi wrote:
+> This patch moves write-hint-to-stream-id conversion in block-layer.
+> Earlier this was done by driver (nvme). Current conversion is of the
+> form "streamid = write-hint - 1", for both user and kernel streams.
+> Conversion takes stream limit (maintained in request queue) into
+> account. Write-hints beyond the exposed limit turn to 0.
+> A new field 'streamid' has been added in request. While 'write-hint'
+> field continues to exist. It keeps original value passed from upper
+> layer, and used during merging checks.
 
-Here is the changelog/history -
-
-Changes since v3:                                                               
-- Correction in grouping related changes into patches
-- Rectification in commit text at places
-
-Changes since v2:                                                               
-- Introduce API in block layer so that drivers can register stream info. Added 
-new limit in request queue for this purpose.
-- Block layer does the conversion from write-hint to stream-id. 
-- Any write-hint beyond registered limit turn to 0.
-- New macro "WRITE_LIFE_KERN_MIN" can be used as base by kernel mode components.
-
-Changes since v1:                                                               
-- introduce four more hints for in-kernel use, as recommended by Dave chinner   
-  & Jens axboe. This isolates kernel-mode hints from user-mode ones.            
-- remove mount-option to specify write-hint, as recommended by Jan kara &       
-  Dave chinner. Rather, FS always sets write-hint for journal. This gets ignored
-  if device does not support stream.                                            
-- Removed code-redundancy for write_dirty_buffer (Jan kara's review comment) 
-
-V3 patch:
-https://marc.info/?l=linux-block&m=155384631909082&w=2
-
-V2 patch:
-https://patchwork.kernel.org/cover/10754405/
-
-V1 patch:
-https://marc.info/?l=linux-fsdevel&m=154444637519020&w=2  
-
-Kanchan Joshi (7):
-  fs: introduce write-hint start point for in-kernel hints
-  block: increase stream count for in-kernel use
-  block: introduce API to register stream information with block-layer
-  block: introduce write-hint to stream-id conversion
-  nvme: register stream info with block layer
-  fs: introduce APIs to enable passing write-hint with buffer-head
-  fs/ext4,jbd2: add support for sending write-hint with journal
-
- block/blk-core.c            | 20 ++++++++++++++++++++
- block/blk-settings.c        | 12 ++++++++++++
- drivers/nvme/host/core.c    | 23 ++++++-----------------
- fs/buffer.c                 | 18 ++++++++++++++++--
- fs/ext4/ext4_jbd2.h         |  1 +
- fs/ext4/super.c             |  2 ++
- fs/jbd2/commit.c            | 11 +++++++----
- fs/jbd2/journal.c           |  3 ++-
- fs/jbd2/revoke.c            |  3 ++-
- include/linux/blkdev.h      |  7 ++++++-
- include/linux/buffer_head.h |  3 +++
- include/linux/fs.h          |  2 ++
- include/linux/jbd2.h        |  8 ++++++++
- 13 files changed, 87 insertions(+), 26 deletions(-)
+Why not just use the bio write hint? We already disallow merging of
+dissimilar write hints, so req->bio->bi_write_hint is known to be
+identical with the rest of the bio's in that chain.
 
 -- 
-2.7.4
+Jens Axboe
 
