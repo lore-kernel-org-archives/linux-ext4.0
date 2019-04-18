@@ -2,118 +2,80 @@ Return-Path: <SRS0=ZWG9=SU=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-8.8 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,USER_AGENT_GIT autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A3E1C10F0B
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 06:27:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD6DDC10F0E
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 08:32:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 4483421479
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 06:27:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 8F9FF2183E
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 08:32:31 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (1024-bit key) header.d=163.com header.i=@163.com header.b="eFVSDnoo"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388011AbfDRG1D (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Apr 2019 02:27:03 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:59990 "EHLO mx1.redhat.com"
+        id S1733205AbfDRIc0 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Apr 2019 04:32:26 -0400
+Received: from m50-135.163.com ([123.125.50.135]:59006 "EHLO m50-135.163.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725864AbfDRG1D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Apr 2019 02:27:03 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A3BA6307D853;
-        Thu, 18 Apr 2019 06:27:02 +0000 (UTC)
-Received: from colo-mx.corp.redhat.com (colo-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.20])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 3C65F60BF7;
-        Thu, 18 Apr 2019 06:27:02 +0000 (UTC)
-Received: from zmail21.collab.prod.int.phx2.redhat.com (zmail21.collab.prod.int.phx2.redhat.com [10.5.83.24])
-        by colo-mx.corp.redhat.com (Postfix) with ESMTP id 1A4C3181AC43;
-        Thu, 18 Apr 2019 06:27:01 +0000 (UTC)
-Date:   Thu, 18 Apr 2019 02:27:00 -0400 (EDT)
-From:   Pankaj Gupta <pagupta@redhat.com>
-To:     Jeff Moyer <jmoyer@redhat.com>, Jan Kara <jack@suse.cz>,
-        Dan Williams <dan.j.williams@intel.com>
-Cc:     cohuck@redhat.com, KVM list <kvm@vger.kernel.org>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Jason Wang <jasowang@redhat.com>, david <david@fromorbit.com>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        virtualization@lists.linux-foundation.org,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Ross Zwisler <zwisler@kernel.org>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        Dave Jiang <dave.jiang@intel.com>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Vishal L Verma <vishal.l.verma@intel.com>,
-        David Hildenbrand <david@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        Len Brown <lenb@kernel.org>, kilobyte@angband.pl,
-        Rik van Riel <riel@surriel.com>,
-        yuval shaia <yuval.shaia@oracle.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Paolo Bonzini <pbonzini@redhat.com>, lcapitulino@redhat.com,
-        Kevin Wolf <kwolf@redhat.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Xiao Guangrong <xiaoguangrong.eric@gmail.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Igor Mammedov <imammedo@redhat.com>
-Message-ID: <695036448.22376013.1555568820649.JavaMail.zimbra@redhat.com>
-In-Reply-To: <x494l73z7th.fsf@segfault.boston.devel.redhat.com>
-References: <20190410040826.24371-1-pagupta@redhat.com> <20190410040826.24371-2-pagupta@redhat.com> <CAPcyv4i1FjBzfcWtzeCvj-giHa9xaX0dMQ==q4LZC_L8VEqkHg@mail.gmail.com> <20190412083230.GA29850@quack2.suse.cz> <x494l73z7th.fsf@segfault.boston.devel.redhat.com>
-Subject: Re: [Qemu-devel] [PATCH v5 1/6] libnvdimm: nd_region flush callback
- support
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [10.65.16.113, 10.4.195.14]
-Thread-Topic: libnvdimm: nd_region flush callback support
-Thread-Index: RQT8Mi0vbK6u7EvKBqBlDf90vecY1Q==
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.48]); Thu, 18 Apr 2019 06:27:03 +0000 (UTC)
+        id S1726162AbfDRIc0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Apr 2019 04:32:26 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=163.com;
+        s=s110527; h=From:Subject:Date:Message-Id; bh=Z3FcbH42f4xw6Z9GUm
+        qLeXJgANWBMj/tTbsd4TmaRzc=; b=eFVSDnooKzAg5mdVPIxQmx5wVoHsE+vOQL
+        3Iw4QH0lE4SSp+X3Xd7Dd6sGsksNNUEZrmU52vkGRbWV+brHMY0+nXqQ37pVKspu
+        VQA1Ux+jtYavRtKeYGlIft+5S3H8rSGxHRXCmwoVyyg3pwpk5qJRDQYn2x5EJeA6
+        obHSJcLMA=
+Received: from bp.localdomain (unknown [218.106.182.174])
+        by smtp5 (Coremail) with SMTP id D9GowAD3nEXXNbhcfaHTAQ--.2956S3;
+        Thu, 18 Apr 2019 16:31:21 +0800 (CST)
+From:   Pan Bian <bianpan2016@163.com>
+To:     "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Cc:     linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Pan Bian <bianpan2016@163.com>
+Subject: ext4: avoid drop reference to iloc.bh twice
+Date:   Thu, 18 Apr 2019 16:31:18 +0800
+Message-Id: <1555576278-3917-1-git-send-email-bianpan2016@163.com>
+X-Mailer: git-send-email 2.7.4
+X-CM-TRANSID: D9GowAD3nEXXNbhcfaHTAQ--.2956S3
+X-Coremail-Antispam: 1Uf129KBjvdXoW7Gw1fZrWUWrW7tw4Dtry8Grg_yoW3CFg_Wa
+        17Ja1xZrZ3Gr1fCFyxXF4rtr4SyFy8Ar45uF4Sq3Z8Way5t3yUZw1qqFZrCrnrWr4ay345
+        Cr1jq343GayrWjkaLaAFLSUrUUUUUb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
+        9fnUUvcSsGvfC2KfnxnUUI43ZEXa7IUjZjjPUUUUU==
+X-Originating-IP: [218.106.182.174]
+X-CM-SenderInfo: held01tdqsiiqw6rljoofrz/xtbBURqaclaD2Ivj0wAAsV
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+The reference to iloc.bh has been dropped in ext4_mark_iloc_dirty.
+However, the reference is dropped again if error occurs during
+ext4_handle_dirty_metadata, which may result in use-after-free bugs.
 
-Hello,
+Fixes: fb265c9cb49e("ext4: add ext4_sb_bread() to disambiguate ENOMEM
+cases")
 
-Thank you for the suggestions on this.
+Signed-off-by: Pan Bian <bianpan2016@163.com>
+---
+ fs/ext4/resize.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-> 
-> > On Thu 11-04-19 07:51:48, Dan Williams wrote:
-> >> On Tue, Apr 9, 2019 at 9:09 PM Pankaj Gupta <pagupta@redhat.com> wrote:
-> >> > +       } else {
-> >> > +               if (nd_region->flush(nd_region))
-> >> > +                       rc = -EIO;
-> >> 
-> >> Given the common case wants to be fast and synchronous I think we
-> >> should try to avoid retpoline overhead by default. So something like
-> >> this:
-> >> 
-> >> if (nd_region->flush == generic_nvdimm_flush)
-> >>     rc = generic_nvdimm_flush(...);
-> >
-> > I'd either add a comment about avoiding retpoline overhead here or just
-> > make ->flush == NULL mean generic_nvdimm_flush(). Just so that people don't
-> > get confused by the code.
-> 
-> Isn't this premature optimization?  I really don't like adding things
-> like this without some numbers to show it's worth it.
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index e7ae26e..4d5c0fc 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -874,6 +874,7 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
+ 	err = ext4_handle_dirty_metadata(handle, NULL, gdb_bh);
+ 	if (unlikely(err)) {
+ 		ext4_std_error(sb, err);
++		iloc.bh = NULL;
+ 		goto errout;
+ 	}
+ 	brelse(dind);
+-- 
+2.7.4
 
-Can we add the optimization after this version is merged.
 
-Best regards,
-Pankaj 
-
-> 
-> -Jeff
-> 
-> 
