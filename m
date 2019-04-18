@@ -2,173 +2,126 @@ Return-Path: <SRS0=ZWG9=SU=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-16.6 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
-	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT,
-	USER_IN_DEF_DKIM_WL autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,SPF_PASS
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B41DBC282DD
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 16:00:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 63BB3C10F14
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 16:05:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 8515E20663
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 16:00:11 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2A71320693
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 16:05:25 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="LE9q+cRz"
+	dkim=pass (2048-bit key) header.d=intel-com.20150623.gappssmtp.com header.i=@intel-com.20150623.gappssmtp.com header.b="ATWDxkO+"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2389702AbfDRQAK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Apr 2019 12:00:10 -0400
-Received: from mail-qt1-f201.google.com ([209.85.160.201]:51004 "EHLO
-        mail-qt1-f201.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2389443AbfDRQAK (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2019 12:00:10 -0400
-Received: by mail-qt1-f201.google.com with SMTP id g17so2385196qte.17
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Apr 2019 09:00:10 -0700 (PDT)
+        id S2389495AbfDRQFS (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Apr 2019 12:05:18 -0400
+Received: from mail-oi1-f194.google.com ([209.85.167.194]:42032 "EHLO
+        mail-oi1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2388819AbfDRQFS (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2019 12:05:18 -0400
+Received: by mail-oi1-f194.google.com with SMTP id w139so1997544oie.9
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Apr 2019 09:05:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20161025;
-        h=date:in-reply-to:message-id:mime-version:references:subject:from:to
+        d=intel-com.20150623.gappssmtp.com; s=20150623;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
          :cc;
-        bh=0aicKjl/VfmjaDcQcRF8XUkhFRkNGvY6NhvfXGsqHIE=;
-        b=LE9q+cRzg/FHUODL/GlmKIk4+enXVXYaMrfT8uHBc//DQlBZcgyYXYPcsCcU6m/Jo2
-         9Py7b+tVcoZRggCtcfCL0Q/+m7RtQo+vlTutkgh0pxqclALQbOplwKhpXLkoY2x0mg5v
-         /Z2TsZ/YQ0X07D1lYjnr+sGxrUUGeJ+f4fgij3bo/Yv1IK1Vl/0shcO3re/CBWxbgEl3
-         Q0j33O7kvOfx9Elq31tM/2Pa0F351DR+5/qbs7Dsf3Ueg1IAdAB6+MDSZUMDM+0RXwaQ
-         cF2jCwPLsxD2JxjoKoPzWUDUasV+jPCmwYIWY7qlbxJX+VqrdWzlt3sCR+a3VSK2Bh/4
-         DcNQ==
+        bh=9656FNKKp4cUVga3XUcreKMqWUBjOMnkCExkfsBvcE0=;
+        b=ATWDxkO+EzohN5YWedA5OnfOl7z0C5wosAmTrDF5hxxtYtjNdCK/9PHgnZhYETJJ8t
+         vacr+rHkJxxNGOmeI1vTif1Vl4SIwdCSz21szdtTalMtQ8a/1Obxe+VdKwZnY8xrFtd+
+         ciBIJxCm9FZlAQVPiOTKZr8Xdghbnp/hQTXS/ucudKTmB79U11kjETh4fqNlfW3T1gK0
+         Zu87he2RHQTC+AM19urSAzmn3PITVUqT2oXHTybHWlpO7u1bFfMxyXZLHVTzCvZ6mXjc
+         bD19cp4gsnL0R2s/7Y3bFqcAI2a5/xvDNGJEJYE3ed3iSmhC+ui2TozfrYHnQqDdah3m
+         ZD3A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:date:in-reply-to:message-id:mime-version
-         :references:subject:from:to:cc;
-        bh=0aicKjl/VfmjaDcQcRF8XUkhFRkNGvY6NhvfXGsqHIE=;
-        b=msHE+/ywLsFDfJzAO+hdynciFyY9V0CKbEkA6vvz6vx6cUJY8Nyt+s4raD+oK6G+Wc
-         JQ8sBiSHQbxviv4cBz48yd8yZ9UDYylzHOv8XwdeNE3vTbY7fvq5/W2fpw3jUq/bJjGi
-         m4ja02v37MQUNiUNnU2FUJUj/cjOArpBt/nhz12Q8dUeZIqv2cjXrn1rLwAmxGvihYcV
-         A1z9oaNTWplw/qU2XeN6Zrrvbalcdr5yH4ntMR6UpmEz6xFKVPdaJ7bJBdMPhJc2IbP6
-         fbZ/mSYKJpavkVacviMcoXufoS/qa5r5NXW4U4zcT2SWvEFR63NrKHp9h8Vf37kL8HBt
-         ahsw==
-X-Gm-Message-State: APjAAAXv5J2z1EXVw2lzIhR5NCQK1vWWNAW520RQM+7Qx/5FbXZ4RycH
-        LmxOmwOhlT4na65CISjyvSKMbrx0
-X-Google-Smtp-Source: APXvYqxvui4yPi+cuT1TNHqRffTf3USOAbSIa5K4hEOxZAY37I1faGnLV9s22qIWGFtd9ocLVlzpNgc+
-X-Received: by 2002:a0c:89a3:: with SMTP id 32mr76711622qvr.116.1555603209523;
- Thu, 18 Apr 2019 09:00:09 -0700 (PDT)
-Date:   Thu, 18 Apr 2019 11:59:37 -0400
-In-Reply-To: <20190415211945.27343-1-brho@google.com>
-Message-Id: <20190418155937.164947-1-brho@google.com>
-Mime-Version: 1.0
-References: <20190415211945.27343-1-brho@google.com>
-X-Mailer: git-send-email 2.21.0.392.gf8f6787159e-goog
-Subject: [PATCH v2] ext4: fix use-after-free race with debug_want_extra_isize
-From:   Barret Rhoden <brho@google.com>
-To:     "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>
-Cc:     syzbot+f584efa0ac7213c226b7@syzkaller.appspotmail.com,
-        Jan Kara <jack@suse.cz>, stable@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=9656FNKKp4cUVga3XUcreKMqWUBjOMnkCExkfsBvcE0=;
+        b=lcTZh0oggvTAnqhJNcCIZbAZRyayZ5uzRV7meUBHaaHkOxjGP1oO82c6GHBkY7ZRYI
+         cjvC5bnjWKNC80RX6BTGInAiZyretVh2qV1uo1HiHapi/R6MEt4e71rVKlYNX7JBYzJi
+         3iT4PLMbbMc+xBkfyXv9ooGzi2H2Q8+HOwnAb4HxEf7RoKvogrYqhNFtNXJ6MCz4zCEe
+         NU3RXKl5t4e9r1kRV6vNn8n0g13DnjM0LbADUBI4SYS9H44RAGByRThDTmAyJZWY5SpF
+         gRd7KeIDlZpsIRYBmAya5YqFfs28w0m9c4RM3ihxv1UvQBkd5jlJWPnOoXW906dyzcFx
+         qDfw==
+X-Gm-Message-State: APjAAAW5jwq2cXUAVOTZGbMMaSczx+TUyP8thWKBC9B7O3MKDkLJoRhg
+        Anv6d21IT41oIxBtv1rcn5+qhAeVfypHpAZVKntXuw==
+X-Google-Smtp-Source: APXvYqzTGVz9ejtUV0liyJEyYqaIHrUyuHEbCYPG5pgMNrA7E3qjZWVF7XUM3SvNiTSOlLSiE2pi4l5w04d9dnUuvxA=
+X-Received: by 2002:aca:ed88:: with SMTP id l130mr2422676oih.70.1555603517276;
+ Thu, 18 Apr 2019 09:05:17 -0700 (PDT)
+MIME-Version: 1.0
+References: <20190410040826.24371-1-pagupta@redhat.com> <20190410040826.24371-2-pagupta@redhat.com>
+ <CAPcyv4i1FjBzfcWtzeCvj-giHa9xaX0dMQ==q4LZC_L8VEqkHg@mail.gmail.com>
+ <20190412083230.GA29850@quack2.suse.cz> <x494l73z7th.fsf@segfault.boston.devel.redhat.com>
+In-Reply-To: <x494l73z7th.fsf@segfault.boston.devel.redhat.com>
+From:   Dan Williams <dan.j.williams@intel.com>
+Date:   Thu, 18 Apr 2019 09:05:05 -0700
+Message-ID: <CAPcyv4jrNHqW3FuGkeo==ZoJr7LKahCv4_esnokfy7enek8=2Q@mail.gmail.com>
+Subject: Re: [PATCH v5 1/6] libnvdimm: nd_region flush callback support
+To:     Jeff Moyer <jmoyer@redhat.com>
+Cc:     Jan Kara <jack@suse.cz>, Pankaj Gupta <pagupta@redhat.com>,
+        linux-nvdimm <linux-nvdimm@lists.01.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        virtualization@lists.linux-foundation.org,
+        KVM list <kvm@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux ACPI <linux-acpi@vger.kernel.org>,
+        Qemu Developers <qemu-devel@nongnu.org>,
+        linux-ext4 <linux-ext4@vger.kernel.org>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        Ross Zwisler <zwisler@kernel.org>,
+        Vishal L Verma <vishal.l.verma@intel.com>,
+        Dave Jiang <dave.jiang@intel.com>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Jason Wang <jasowang@redhat.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
+        Christoph Hellwig <hch@infradead.org>,
+        Len Brown <lenb@kernel.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        lcapitulino@redhat.com, Kevin Wolf <kwolf@redhat.com>,
+        Igor Mammedov <imammedo@redhat.com>,
+        Nitesh Narayan Lal <nilal@redhat.com>,
+        Rik van Riel <riel@surriel.com>,
+        Stefan Hajnoczi <stefanha@redhat.com>,
+        Andrea Arcangeli <aarcange@redhat.com>,
+        David Hildenbrand <david@redhat.com>,
+        david <david@fromorbit.com>, cohuck@redhat.com,
+        Xiao Guangrong <xiaoguangrong.eric@gmail.com>,
+        Paolo Bonzini <pbonzini@redhat.com>, kilobyte@angband.pl,
+        yuval shaia <yuval.shaia@oracle.com>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-When remounting with debug_want_extra_isize, we were not performing the
-same checks that we do during a normal mount.  That allowed us to set a
-value for s_want_extra_isize that reached outside the s_inode_size.
+On Fri, Apr 12, 2019 at 6:12 AM Jeff Moyer <jmoyer@redhat.com> wrote:
+>
+> Jan Kara <jack@suse.cz> writes:
+>
+> > On Thu 11-04-19 07:51:48, Dan Williams wrote:
+> >> On Tue, Apr 9, 2019 at 9:09 PM Pankaj Gupta <pagupta@redhat.com> wrote:
+> >> > +       } else {
+> >> > +               if (nd_region->flush(nd_region))
+> >> > +                       rc = -EIO;
+> >>
+> >> Given the common case wants to be fast and synchronous I think we
+> >> should try to avoid retpoline overhead by default. So something like
+> >> this:
+> >>
+> >> if (nd_region->flush == generic_nvdimm_flush)
+> >>     rc = generic_nvdimm_flush(...);
+> >
+> > I'd either add a comment about avoiding retpoline overhead here or just
+> > make ->flush == NULL mean generic_nvdimm_flush(). Just so that people don't
+> > get confused by the code.
+>
+> Isn't this premature optimization?  I really don't like adding things
+> like this without some numbers to show it's worth it.
 
-Reported-by: syzbot+f584efa0ac7213c226b7@syzkaller.appspotmail.com
-Reviewed-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Barret Rhoden <brho@google.com>
-Cc: stable@vger.kernel.org # 4.14.111
----
+I don't think it's premature given this optimization technique is
+already being deployed elsewhere, see:
 
-- Updated tags
-
-Thanks for the review!
-
- fs/ext4/super.c | 58 +++++++++++++++++++++++++++++--------------------
- 1 file changed, 34 insertions(+), 24 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6ed4eb81e674..184944d4d8d1 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3513,6 +3513,37 @@ int ext4_calculate_overhead(struct super_block *sb)
- 	return 0;
- }
- 
-+static void ext4_clamp_want_extra_isize(struct super_block *sb)
-+{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_super_block *es = sbi->s_es;
-+
-+	/* determine the minimum size of new large inodes, if present */
-+	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE &&
-+	    sbi->s_want_extra_isize == 0) {
-+		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
-+						     EXT4_GOOD_OLD_INODE_SIZE;
-+		if (ext4_has_feature_extra_isize(sb)) {
-+			if (sbi->s_want_extra_isize <
-+			    le16_to_cpu(es->s_want_extra_isize))
-+				sbi->s_want_extra_isize =
-+					le16_to_cpu(es->s_want_extra_isize);
-+			if (sbi->s_want_extra_isize <
-+			    le16_to_cpu(es->s_min_extra_isize))
-+				sbi->s_want_extra_isize =
-+					le16_to_cpu(es->s_min_extra_isize);
-+		}
-+	}
-+	/* Check if enough inode space is available */
-+	if (EXT4_GOOD_OLD_INODE_SIZE + sbi->s_want_extra_isize >
-+							sbi->s_inode_size) {
-+		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
-+						       EXT4_GOOD_OLD_INODE_SIZE;
-+		ext4_msg(sb, KERN_INFO,
-+			 "required extra inode space not available");
-+	}
-+}
-+
- static void ext4_set_resv_clusters(struct super_block *sb)
- {
- 	ext4_fsblk_t resv_clusters;
-@@ -4387,30 +4418,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	} else if (ret)
- 		goto failed_mount4a;
- 
--	/* determine the minimum size of new large inodes, if present */
--	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE &&
--	    sbi->s_want_extra_isize == 0) {
--		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
--						     EXT4_GOOD_OLD_INODE_SIZE;
--		if (ext4_has_feature_extra_isize(sb)) {
--			if (sbi->s_want_extra_isize <
--			    le16_to_cpu(es->s_want_extra_isize))
--				sbi->s_want_extra_isize =
--					le16_to_cpu(es->s_want_extra_isize);
--			if (sbi->s_want_extra_isize <
--			    le16_to_cpu(es->s_min_extra_isize))
--				sbi->s_want_extra_isize =
--					le16_to_cpu(es->s_min_extra_isize);
--		}
--	}
--	/* Check if enough inode space is available */
--	if (EXT4_GOOD_OLD_INODE_SIZE + sbi->s_want_extra_isize >
--							sbi->s_inode_size) {
--		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
--						       EXT4_GOOD_OLD_INODE_SIZE;
--		ext4_msg(sb, KERN_INFO, "required extra inode space not"
--			 "available");
--	}
-+	ext4_clamp_want_extra_isize(sb);
- 
- 	ext4_set_resv_clusters(sb);
- 
-@@ -5194,6 +5202,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 		goto restore_opts;
- 	}
- 
-+	ext4_clamp_want_extra_isize(sb);
-+
- 	if ((old_opts.s_mount_opt & EXT4_MOUNT_JOURNAL_CHECKSUM) ^
- 	    test_opt(sb, JOURNAL_CHECKSUM)) {
- 		ext4_msg(sb, KERN_ERR, "changing journal_checksum "
--- 
-2.21.0.392.gf8f6787159e-goog
-
+https://lwn.net/Articles/774347/
