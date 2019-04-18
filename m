@@ -2,244 +2,185 @@ Return-Path: <SRS0=ZWG9=SU=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
-	DKIM_VALID,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,
-	SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED autolearn=unavailable autolearn_force=no
+X-Spam-Status: No, score=-11.6 required=3.0 tests=DKIMWL_WL_MED,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,MAILING_LIST_MULTI,
+	SIGNED_OFF_BY,SPF_PASS,USER_IN_DEF_DKIM_WL autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C392C10F14
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 19:00:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8806AC10F0E
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 20:06:09 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 03437214DA
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 19:00:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 48559214DA
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 20:06:09 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (2048-bit key) header.d=dilger-ca.20150623.gappssmtp.com header.i=@dilger-ca.20150623.gappssmtp.com header.b="W93efR1l"
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="ab/J3/zi"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388389AbfDRTAv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Apr 2019 15:00:51 -0400
-Received: from mail-pl1-f195.google.com ([209.85.214.195]:33018 "EHLO
-        mail-pl1-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1728181AbfDRTAv (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2019 15:00:51 -0400
-Received: by mail-pl1-f195.google.com with SMTP id t16so1590266plo.0
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Apr 2019 12:00:51 -0700 (PDT)
+        id S2388389AbfDRUGJ (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Apr 2019 16:06:09 -0400
+Received: from mail-oi1-f193.google.com ([209.85.167.193]:34839 "EHLO
+        mail-oi1-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1729198AbfDRUGI (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Apr 2019 16:06:08 -0400
+Received: by mail-oi1-f193.google.com with SMTP id j132so2587667oib.2
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Apr 2019 13:06:08 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=dilger-ca.20150623.gappssmtp.com; s=20150623;
-        h=from:message-id:mime-version:subject:date:in-reply-to:cc:to
-         :references;
-        bh=yvLv+a4So/bNgLWhnFJWjs33SpdJg6fjzJeDLHpmXW8=;
-        b=W93efR1l/I0GFqD3ZSIsALuAPWM4I5KmSBmT3iyJpsV0EGPySL1UkbliAn5zOv7w/H
-         ZgwVcNvz+xZ3f0B/cpFq+pyQ1E8CTgnaEAmyFO69XM7XFPMojqGmZp4tXXmUzRr4rTWh
-         kPWb25eeqo/vhX6DZpK9cQE5AQ+b+UNTa6CwmNwwyve7T5epOVeVt6ODKDAM7tn3UuMu
-         vxOocCyV7j+t6Clk2eVctZ/ZA6cg/qnKV4fg2tJTyIqvS1RIQvew4XOle3E8IaBD8mRn
-         oc/1VhHDDyP6nZC3bjb5n00BBV7pQ0Px74hyAwOKsKd1HgkCY5e/+3jh7Z99mkcisG6+
-         28aQ==
+        d=google.com; s=20161025;
+        h=mime-version:references:in-reply-to:from:date:message-id:subject:to
+         :cc;
+        bh=eYVY8xUy275P6afs3lzaQMq2QB6cf+FsIkCoguEGNSY=;
+        b=ab/J3/ziVHGeK6AZ7ZI9U/D4FIcK5uHT3rtphl0e2TNACroS1dOdeoDeYm+sNXODUu
+         XKjrSQ84lOw3+m1Hg3dezwBcUCCDslxvu2LFBlNKpQX/BQ/1xSiP1TUDJA+J8HigzQ3K
+         5dq64bB818IJzyvEA6HaSfa6q6j823+gD6D4Jjz+JRoEx9DwX2v6BSZT/KYJBhnhzP47
+         NMQRQix3RKjBuU9JyR9ILLpcI4WVIIgcjXOnKDAIDBFL/s86ljQNBGxLhySzM1sRSEvh
+         oymj0rsHEp+HdxTvFpuqDRufMQMxqqsGmUnlUh8/HZ7FqzuWc9sQb8EUNpqzksju6jVo
+         YqGQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20161025;
-        h=x-gm-message-state:from:message-id:mime-version:subject:date
-         :in-reply-to:cc:to:references;
-        bh=yvLv+a4So/bNgLWhnFJWjs33SpdJg6fjzJeDLHpmXW8=;
-        b=NdgvXlqPpuB3oLpAH/Buw+m75L8Wmp3PG9WsI6o2Gq65aeFVbEJxPR7mfXp82h++OJ
-         UoiCKNTaxylh6j4LNumL7dE61NOoy5b07Gu4TYo9iFlTQkJSWP1gQn3FlYpjDpt3gPXR
-         XHww2DXhxNyFST/ELg+6sKT8zSzQBQ+d8og5JmdWzIU1z7o8kxkpzZw2kg8HlKSm5ys8
-         ju2GNCAxJFVet4YY1VX/Iy9+lS8aVQWb3nm01X/19YzJDXewahdIXZ/Yd0GwIy32jzlV
-         cbCftXOiExgg6n3O2aAZxma5KB0k/IU/rXQzZ1GHoLIM4vBBkrzXn3C5y30l/edVMshR
-         jkwA==
-X-Gm-Message-State: APjAAAWixX9V9/WaCivrAkknemTUEBQwruabpFY2zwALDYhmIrAM399z
-        tX06eBB50F6xxEiIhkLvYe5PUQ==
-X-Google-Smtp-Source: APXvYqz595pU89D9WpgBROwbrfTextSuNnkD7a5TOMl6WLh4nyY1Fh3tEWqla2QhrDLpT/tGvRPK6g==
-X-Received: by 2002:a17:902:8d89:: with SMTP id v9mr97228069plo.230.1555614050806;
-        Thu, 18 Apr 2019 12:00:50 -0700 (PDT)
-Received: from cabot-wlan.adilger.int (S0106a84e3fe4b223.cg.shawcable.net. [70.77.216.213])
-        by smtp.gmail.com with ESMTPSA id p7sm4070297pfp.70.2019.04.18.12.00.49
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 18 Apr 2019 12:00:50 -0700 (PDT)
-From:   Andreas Dilger <adilger@dilger.ca>
-Message-Id: <06E7E8DE-FA81-4764-B069-885C7963084E@dilger.ca>
-Content-Type: multipart/signed;
- boundary="Apple-Mail=_24C28EF9-7EEE-44A7-A639-108A9D3FC168";
- protocol="application/pgp-signature"; micalg=pgp-sha256
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH v2] ext4: fix use-after-free race with
- debug_want_extra_isize
-Date:   Thu, 18 Apr 2019 13:00:48 -0600
-In-Reply-To: <20190418155937.164947-1-brho@google.com>
-Cc:     Theodore Ts'o <tytso@mit.edu>,
-        syzbot+f584efa0ac7213c226b7@syzkaller.appspotmail.com,
-        Jan Kara <jack@suse.cz>, stable@vger.kernel.org,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        open list <linux-kernel@vger.kernel.org>
-To:     Barret Rhoden <brho@google.com>
-References: <20190415211945.27343-1-brho@google.com>
- <20190418155937.164947-1-brho@google.com>
-X-Mailer: Apple Mail (2.3273)
+        h=x-gm-message-state:mime-version:references:in-reply-to:from:date
+         :message-id:subject:to:cc;
+        bh=eYVY8xUy275P6afs3lzaQMq2QB6cf+FsIkCoguEGNSY=;
+        b=gqmQde9KwWm9w3ZsEW6DPOyOx0rWR0i7Iif1+kh62dp8eZSHFMTSHbC0cmHLnFglIB
+         s93E7OC4DyqpEssUmgMZqEaizFhtnTX30CzofiBxWJLtnPWOUkAKF6A8q/Z5o/5F6OFn
+         EwzicG6z+bxmT4aIpIP2ZeRkW7ekR0rgG54Nmj6FVa77cr8faD2mMb3EOlWimVkOacDo
+         f4Ph7tT5lnV3V2Pn7dixePidOZu5tfp4DLV0860vzLXl6bkAW8ITjRp4lgpboD7TPW8j
+         fzjB70yXJQWURwgjudCamqzZqoXx06xaOnJVAVCFZcKhns6Zzl4+9YV8PHu/NS9is9Wo
+         QyvA==
+X-Gm-Message-State: APjAAAXgv+KlReGAMNx2S+Yhk2zn/XP/9aJqb190uUrQNm8Yaguhn4Pu
+        GTToO0cyUS3TPeCUe6ZiNTt/HKDxUh7PynC6zkglBoaP
+X-Google-Smtp-Source: APXvYqyk4amR67SqzEPJyzNej8ggsRvFq0vQ+XpcnpCGh+Gt+LDcWGHGbOpTd0FBTt/m3DAZjGuclb1S5HSyLQEe1GA=
+X-Received: by 2002:aca:f20b:: with SMTP id q11mr3206032oih.4.1555617967313;
+ Thu, 18 Apr 2019 13:06:07 -0700 (PDT)
+MIME-Version: 1.0
+References: <20190416025934.115252-1-khazhy@google.com> <20190418115326.GE28541@quack2.suse.cz>
+In-Reply-To: <20190418115326.GE28541@quack2.suse.cz>
+From:   Khazhismel Kumykov <khazhy@google.com>
+Date:   Thu, 18 Apr 2019 13:05:56 -0700
+Message-ID: <CACGdZYLCi+Or=afmBK8hbP3Ay8x8Oaqnp0Yr+jf1PoQiMc7_DQ@mail.gmail.com>
+Subject: Re: [PATCH] ext4: add cond_resched() to ext4_mb_init_backend()
+To:     Jan Kara <jack@suse.cz>
+Cc:     "Theodore Ts'o" <tytso@mit.edu>, adilger.kernel@dilger.ca,
+        linux-ext4@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256;
+        boundary="0000000000006264b50586d38831"
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+--0000000000006264b50586d38831
+Content-Type: text/plain; charset="UTF-8"
 
---Apple-Mail=_24C28EF9-7EEE-44A7-A639-108A9D3FC168
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+On Thu, Apr 18, 2019 at 4:53 AM Jan Kara <jack@suse.cz> wrote:
+>
+> On Mon 15-04-19 19:59:34, Khazhismel Kumykov wrote:
+> > on non-preempt kernels for filesystems with large number of groups we
+> > may take a long time (>50 ticks) initializing all the groups.
+> >
+> > Signed-off-by: Khazhismel Kumykov <khazhy@google.com>
+>
+> Thanks for the patch. I'm not opposed to this but I'm just wondering: Has
+> this caused any real issues to you? Or how have you come across this
+> particular loop? Because I'd think we have more similar loops in ext4
+> codebase...
+>
+>                                                                 Honza
+>
 
-On Apr 18, 2019, at 9:59 AM, Barret Rhoden <brho@google.com> wrote:
->=20
-> When remounting with debug_want_extra_isize, we were not performing =
-the
-> same checks that we do during a normal mount.  That allowed us to set =
-a
-> value for s_want_extra_isize that reached outside the s_inode_size.
->=20
-> Reported-by: syzbot+f584efa0ac7213c226b7@syzkaller.appspotmail.com
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: Barret Rhoden <brho@google.com>
-> Cc: stable@vger.kernel.org # 4.14.111
+We have some instrumentation to warn for these longer periods without
+scheduling, which admittedly does trigger relatively frequently from
+various places. This particular loop just so happens to be during
+system startup where it caught my eye.
 
-Reviewed-by: Andreas Dilger <adilger@dilger.ca>
+--0000000000006264b50586d38831
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
 
-> ---
->=20
-> - Updated tags
->=20
-> Thanks for the review!
->=20
-> fs/ext4/super.c | 58 +++++++++++++++++++++++++++++--------------------
-> 1 file changed, 34 insertions(+), 24 deletions(-)
->=20
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 6ed4eb81e674..184944d4d8d1 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3513,6 +3513,37 @@ int ext4_calculate_overhead(struct super_block =
-*sb)
-> 	return 0;
-> }
->=20
-> +static void ext4_clamp_want_extra_isize(struct super_block *sb)
-> +{
-> +	struct ext4_sb_info *sbi =3D EXT4_SB(sb);
-> +	struct ext4_super_block *es =3D sbi->s_es;
-> +
-> +	/* determine the minimum size of new large inodes, if present */
-> +	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE &&
-> +	    sbi->s_want_extra_isize =3D=3D 0) {
-> +		sbi->s_want_extra_isize =3D sizeof(struct ext4_inode) -
-> +						     =
-EXT4_GOOD_OLD_INODE_SIZE;
-> +		if (ext4_has_feature_extra_isize(sb)) {
-> +			if (sbi->s_want_extra_isize <
-> +			    le16_to_cpu(es->s_want_extra_isize))
-> +				sbi->s_want_extra_isize =3D
-> +					=
-le16_to_cpu(es->s_want_extra_isize);
-> +			if (sbi->s_want_extra_isize <
-> +			    le16_to_cpu(es->s_min_extra_isize))
-> +				sbi->s_want_extra_isize =3D
-> +					=
-le16_to_cpu(es->s_min_extra_isize);
-> +		}
-> +	}
-> +	/* Check if enough inode space is available */
-> +	if (EXT4_GOOD_OLD_INODE_SIZE + sbi->s_want_extra_isize >
-> +							=
-sbi->s_inode_size) {
-> +		sbi->s_want_extra_isize =3D sizeof(struct ext4_inode) -
-> +						       =
-EXT4_GOOD_OLD_INODE_SIZE;
-> +		ext4_msg(sb, KERN_INFO,
-> +			 "required extra inode space not available");
-> +	}
-> +}
-> +
-> static void ext4_set_resv_clusters(struct super_block *sb)
-> {
-> 	ext4_fsblk_t resv_clusters;
-> @@ -4387,30 +4418,7 @@ static int ext4_fill_super(struct super_block =
-*sb, void *data, int silent)
-> 	} else if (ret)
-> 		goto failed_mount4a;
->=20
-> -	/* determine the minimum size of new large inodes, if present */
-> -	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE &&
-> -	    sbi->s_want_extra_isize =3D=3D 0) {
-> -		sbi->s_want_extra_isize =3D sizeof(struct ext4_inode) -
-> -						     =
-EXT4_GOOD_OLD_INODE_SIZE;
-> -		if (ext4_has_feature_extra_isize(sb)) {
-> -			if (sbi->s_want_extra_isize <
-> -			    le16_to_cpu(es->s_want_extra_isize))
-> -				sbi->s_want_extra_isize =3D
-> -					=
-le16_to_cpu(es->s_want_extra_isize);
-> -			if (sbi->s_want_extra_isize <
-> -			    le16_to_cpu(es->s_min_extra_isize))
-> -				sbi->s_want_extra_isize =3D
-> -					=
-le16_to_cpu(es->s_min_extra_isize);
-> -		}
-> -	}
-> -	/* Check if enough inode space is available */
-> -	if (EXT4_GOOD_OLD_INODE_SIZE + sbi->s_want_extra_isize >
-> -							=
-sbi->s_inode_size) {
-> -		sbi->s_want_extra_isize =3D sizeof(struct ext4_inode) -
-> -						       =
-EXT4_GOOD_OLD_INODE_SIZE;
-> -		ext4_msg(sb, KERN_INFO, "required extra inode space not"
-> -			 "available");
-> -	}
-> +	ext4_clamp_want_extra_isize(sb);
->=20
-> 	ext4_set_resv_clusters(sb);
->=20
-> @@ -5194,6 +5202,8 @@ static int ext4_remount(struct super_block *sb, =
-int *flags, char *data)
-> 		goto restore_opts;
-> 	}
->=20
-> +	ext4_clamp_want_extra_isize(sb);
-> +
-> 	if ((old_opts.s_mount_opt & EXT4_MOUNT_JOURNAL_CHECKSUM) ^
-> 	    test_opt(sb, JOURNAL_CHECKSUM)) {
-> 		ext4_msg(sb, KERN_ERR, "changing journal_checksum "
-> --
-> 2.21.0.392.gf8f6787159e-goog
->=20
-
-
-Cheers, Andreas
-
-
-
-
-
-
---Apple-Mail=_24C28EF9-7EEE-44A7-A639-108A9D3FC168
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIzBAEBCAAdFiEEDb73u6ZejP5ZMprvcqXauRfMH+AFAly4yWAACgkQcqXauRfM
-H+C/KQ/9HxxkbdQe8x03WKCj4+v4soN0xwekUzoW46BzMvyxGxVP5zPv9lFM1J8r
-uolBDrdCYW1gF6k0Y846L/Q95oOz/I9BPDg8o3C+5fpeYKuqQfEPDKAwdp9VR931
-vrWIF2dQzpIOhJ8XU27BSj/PUAXW5D51aENnxPix7VI023Ojvx9S66cXrVQ6LoRJ
-Av4mXwae/a9lIU2iKIlYYOfv605v6y4Br4mz+Vh70wbvU2Sr1qm1DDJ69/dSUvb8
-uoU15gnBcFeDssJs42EG/UvDA2Ql3fHZAyNG41qezfU1oGGMcIN4yVE4o3SG8/l2
-ZPAgtwFFoHFFVQHZJLjfADeeKnph2CXbwSfLfjfWY+jLxJc/Bmu5AwsMoFTwgaab
-kCYbXdm2nRSa+HmI+nD+kxXNrJMnK49s63/HuHQtsKe57kcehs8YnyPPGeKvnv5H
-9fC+tlJ/xI0yP9FEM+kNZeXiytCthkkoIdVu9y+Qsun8XsqxrOM/+8Dd4PUOw4rH
-nhb7JsmV693ZFb41f6vBqaRtUEGMgF2ZgJQLx1zPXkc3SmLVVl397fkh6zInXRnO
-/z8mXVoSigJPw5hy1Ls4iru6A/OFO6LbG0ROuQd5h37U2TtlLoH2YCtLw+ZefgKg
-ljzd8UH+jsc83/tanWC6XTRQnS9Hyl9Cm3U+gAn2TbqVL2XSpt4=
-=VKSu
------END PGP SIGNATURE-----
-
---Apple-Mail=_24C28EF9-7EEE-44A7-A639-108A9D3FC168--
+MIIS5wYJKoZIhvcNAQcCoIIS2DCCEtQCAQExDzANBglghkgBZQMEAgEFADALBgkqhkiG9w0BBwGg
+ghBNMIIEXDCCA0SgAwIBAgIOSBtqDm4P/739RPqw/wcwDQYJKoZIhvcNAQELBQAwZDELMAkGA1UE
+BhMCQkUxGTAXBgNVBAoTEEdsb2JhbFNpZ24gbnYtc2ExOjA4BgNVBAMTMUdsb2JhbFNpZ24gUGVy
+c29uYWxTaWduIFBhcnRuZXJzIENBIC0gU0hBMjU2IC0gRzIwHhcNMTYwNjE1MDAwMDAwWhcNMjEw
+NjE1MDAwMDAwWjBMMQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xvYmFsU2lnbiBudi1zYTEiMCAG
+A1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCC
+AQoCggEBALR23lKtjlZW/17kthzYcMHHKFgywfc4vLIjfq42NmMWbXkNUabIgS8KX4PnIFsTlD6F
+GO2fqnsTygvYPFBSMX4OCFtJXoikP2CQlEvO7WooyE94tqmqD+w0YtyP2IB5j4KvOIeNv1Gbnnes
+BIUWLFxs1ERvYDhmk+OrvW7Vd8ZfpRJj71Rb+QQsUpkyTySaqALXnyztTDp1L5d1bABJN/bJbEU3
+Hf5FLrANmognIu+Npty6GrA6p3yKELzTsilOFmYNWg7L838NS2JbFOndl+ce89gM36CW7vyhszi6
+6LqqzJL8MsmkP53GGhf11YMP9EkmawYouMDP/PwQYhIiUO0CAwEAAaOCASIwggEeMA4GA1UdDwEB
+/wQEAwIBBjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwQwEgYDVR0TAQH/BAgwBgEB/wIB
+ADAdBgNVHQ4EFgQUyzgSsMeZwHiSjLMhleb0JmLA4D8wHwYDVR0jBBgwFoAUJiSSix/TRK+xsBtt
+r+500ox4AAMwSwYDVR0fBEQwQjBAoD6gPIY6aHR0cDovL2NybC5nbG9iYWxzaWduLmNvbS9ncy9n
+c3BlcnNvbmFsc2lnbnB0bnJzc2hhMmcyLmNybDBMBgNVHSAERTBDMEEGCSsGAQQBoDIBKDA0MDIG
+CCsGAQUFBwIBFiZodHRwczovL3d3dy5nbG9iYWxzaWduLmNvbS9yZXBvc2l0b3J5LzANBgkqhkiG
+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
+BQUHMAKGNGh0dHA6Ly9zZWN1cmUuZ2xvYmFsc2lnbi5jb20vY2FjZXJ0L2dzaHZzbWltZWNhMS5j
+cnQwHQYDVR0OBBYEFKmLvcm3Ia5yfcpBAXvZPJQvNwYIMB8GA1UdIwQYMBaAFMs4ErDHmcB4koyz
+IZXm9CZiwOA/MEwGA1UdIARFMEMwQQYJKwYBBAGgMgEoMDQwMgYIKwYBBQUHAgEWJmh0dHBzOi8v
+d3d3Lmdsb2JhbHNpZ24uY29tL3JlcG9zaXRvcnkvMDsGA1UdHwQ0MDIwMKAuoCyGKmh0dHA6Ly9j
+cmwuZ2xvYmFsc2lnbi5jb20vZ3NodnNtaW1lY2ExLmNybDAOBgNVHQ8BAf8EBAMCBaAwHQYDVR0l
+BBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMA0GCSqGSIb3DQEBCwUAA4IBAQAV9Ke+xXuLkzE6liqU
+yHyMQ1P0LVYdCKlZOyJIcaM5FY+j+7C+dJwCvhVsEKAT+a7Fox5a2NbXOxyLFPN1QfaWFSefFYnN
+iGoWjodq6mD4b4jK87qup40DrYGHL8qRgeG66TGoBrpm4S46655OCQo8iU0OE/aXr3uP3QIhHz9G
+++2p88zFfj2bDwDx0E2Wd7ZxYbYZBH3dG9isCYexTn3gikT9Roj8FQwgrbv62Yklh9qIYaClGRvd
+e0FTck3j3QEozkqeiTX2ENxGzTejkwBNVSXNEcgl9QDKDadAy//DTYfTW3VrW6CQsj8UvKt0QOXc
+QnI3xjacoILpfqGbX4WCMYICXjCCAloCAQEwXDBMMQswCQYDVQQGEwJCRTEZMBcGA1UEChMQR2xv
+YmFsU2lnbiBudi1zYTEiMCAGA1UEAxMZR2xvYmFsU2lnbiBIViBTL01JTUUgQ0EgMQIMUqKgP3W+
+3hLte8EVMA0GCWCGSAFlAwQCAQUAoIHUMC8GCSqGSIb3DQEJBDEiBCBcWeEQEMygPjNR8QK665B+
+weM0unAKfZJBdJ0u9VVR+TAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEP
+Fw0xOTA0MTgyMDA2MDdaMGkGCSqGSIb3DQEJDzFcMFowCwYJYIZIAWUDBAEqMAsGCWCGSAFlAwQB
+FjALBglghkgBZQMEAQIwCgYIKoZIhvcNAwcwCwYJKoZIhvcNAQEKMAsGCSqGSIb3DQEBBzALBglg
+hkgBZQMEAgEwDQYJKoZIhvcNAQEBBQAEggEAndu0nlmMX4AaRSMIAyIDUiRkiSpODxJjutHJR8Xg
+u5e1yPWiXMmyK3IbOTYOchjWioHQIAqCCt5VFBNZhD10Eo1/VOt2hrO7DX4LXZJ3rzExgTMC2OXy
+Kc3yWeB4J56KOERL38qyxCPFJZABHJCiGoScEzWQQ+9aQbJr+Q8TMBGwKyDq0OK+RI7dQKIs5jtQ
+bgMoUuKd/i7e1ufbDokMndhM5X6E5FSaaq19D6wIcMy42b8IymXovy1I19hMjMrLRqSxNxAIqD6x
+BPcGF6hO/uVsMbkjkyv+iYxn7+62yoGqBUiToNW0M7SAG5kRv29WFIcRiOwIKA+zfCNrssmdlg==
+--0000000000006264b50586d38831--
