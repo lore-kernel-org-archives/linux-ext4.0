@@ -4,163 +4,83 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+	USER_AGENT_MUTT autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 21473C10F0E
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 11:55:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 419E3C10F14
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 11:59:45 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F20012083D
-	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 11:55:43 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 133402183E
+	for <linux-ext4@archiver.kernel.org>; Thu, 18 Apr 2019 11:59:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2388894AbfDRLzi (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 18 Apr 2019 07:55:38 -0400
-Received: from mx2.suse.de ([195.135.220.15]:46860 "EHLO mx1.suse.de"
+        id S2388895AbfDRL7o (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 18 Apr 2019 07:59:44 -0400
+Received: from mx2.suse.de ([195.135.220.15]:48104 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S2388716AbfDRLzi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 18 Apr 2019 07:55:38 -0400
+        id S2388344AbfDRL7o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 18 Apr 2019 07:59:44 -0400
 X-Virus-Scanned: by amavisd-new at test-mx.suse.de
 Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id 708C2AEBC;
-        Thu, 18 Apr 2019 11:55:36 +0000 (UTC)
+        by mx1.suse.de (Postfix) with ESMTP id 6DB88AECB;
+        Thu, 18 Apr 2019 11:59:43 +0000 (UTC)
 Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id 3DB1E1E15AE; Thu, 18 Apr 2019 13:55:34 +0200 (CEST)
-Date:   Thu, 18 Apr 2019 13:55:34 +0200
+        id EC51F1E15AE; Thu, 18 Apr 2019 13:59:40 +0200 (CEST)
+Date:   Thu, 18 Apr 2019 13:59:40 +0200
 From:   Jan Kara <jack@suse.cz>
-To:     Barret Rhoden <brho@google.com>
-Cc:     Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        syzbot+f584efa0ac7213c226b7@syzkaller.appspotmail.com,
-        stable@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] ext4: fix use-after-free race with debug_want_extra_isize
-Message-ID: <20190418115534.GF28541@quack2.suse.cz>
-References: <20190415211945.27343-1-brho@google.com>
+To:     Kirill Tkhai <ktkhai@virtuozzo.com>
+Cc:     tytso@mit.edu, adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org
+Subject: Re: [PATCH RFC] ext4: Actually request zeroing of inode table after
+ grow
+Message-ID: <20190418115940.GG28541@quack2.suse.cz>
+References: <155542964388.661.13244611252760297285.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20190415211945.27343-1-brho@google.com>
+In-Reply-To: <155542964388.661.13244611252760297285.stgit@localhost.localdomain>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Mon 15-04-19 17:19:45, Barret Rhoden wrote:
-> When remounting with debug_want_extra_isize, we were not performing the
-> same checks that we do during a normal mount.  That allowed us to set a
-> value for s_want_extra_isize that reached outside the s_inode_size.
+On Tue 16-04-19 18:53:12, Kirill Tkhai wrote:
+> [Hi!
+>  I occasionally found this place, and not familiar with ext4.
+>  But this place looks like doing the wrong thing.
+>  s_groups_count may only work, and there must be another sign.
+>  Please, take a look.
+> ]
 > 
-> Reported-by: syzbot+f584efa0ac7213c226b7@syzkaller.appspotmail.com
-> Signed-off-by: Barret Rhoden <brho@google.com>
-> Cc: stable@vger.kernel.org
+> It is never possible, that number of block groups decreases,
+> since only online grow is supported.
+> 
+> But after a growing occured, we have to zero inode tables
+> for just created new block groups.
+> 
+> Signed-off-by: Kirill Tkhai <ktkhai@virtuozzo.com>
+> ---
+>  fs/ext4/ioctl.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 
-The patch looks good to me. You can add:
+Thanks for the patch. Looks like a good catch. You can add:
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
-> ---
 > 
-> - In the current code, it looks like someone could mount with want_extra_isize
->   with some value > 0 but less than the minimums in the s_es.  If that's a bug,
->   I can submit a follow-on patch.
-> 
-> - Similarly, on a failed remount, sbi->s_want_extra_isize is changed to the
->   remounted value.  I can fix that too if it's a problem.
-> 
-> - Is it OK to remount with a smaller s_want_extra_isize than the previous mount?
->   I thought it was, but figured I'd ask while I'm looking at it.
-> 
-> 
->  fs/ext4/super.c | 58 +++++++++++++++++++++++++++++--------------------
->  1 file changed, 34 insertions(+), 24 deletions(-)
-> 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 6ed4eb81e674..184944d4d8d1 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -3513,6 +3513,37 @@ int ext4_calculate_overhead(struct super_block *sb)
->  	return 0;
->  }
->  
-> +static void ext4_clamp_want_extra_isize(struct super_block *sb)
-> +{
-> +	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> +	struct ext4_super_block *es = sbi->s_es;
-> +
-> +	/* determine the minimum size of new large inodes, if present */
-> +	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE &&
-> +	    sbi->s_want_extra_isize == 0) {
-> +		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
-> +						     EXT4_GOOD_OLD_INODE_SIZE;
-> +		if (ext4_has_feature_extra_isize(sb)) {
-> +			if (sbi->s_want_extra_isize <
-> +			    le16_to_cpu(es->s_want_extra_isize))
-> +				sbi->s_want_extra_isize =
-> +					le16_to_cpu(es->s_want_extra_isize);
-> +			if (sbi->s_want_extra_isize <
-> +			    le16_to_cpu(es->s_min_extra_isize))
-> +				sbi->s_want_extra_isize =
-> +					le16_to_cpu(es->s_min_extra_isize);
-> +		}
-> +	}
-> +	/* Check if enough inode space is available */
-> +	if (EXT4_GOOD_OLD_INODE_SIZE + sbi->s_want_extra_isize >
-> +							sbi->s_inode_size) {
-> +		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
-> +						       EXT4_GOOD_OLD_INODE_SIZE;
-> +		ext4_msg(sb, KERN_INFO,
-> +			 "required extra inode space not available");
-> +	}
-> +}
-> +
->  static void ext4_set_resv_clusters(struct super_block *sb)
->  {
->  	ext4_fsblk_t resv_clusters;
-> @@ -4387,30 +4418,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	} else if (ret)
->  		goto failed_mount4a;
->  
-> -	/* determine the minimum size of new large inodes, if present */
-> -	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE &&
-> -	    sbi->s_want_extra_isize == 0) {
-> -		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
-> -						     EXT4_GOOD_OLD_INODE_SIZE;
-> -		if (ext4_has_feature_extra_isize(sb)) {
-> -			if (sbi->s_want_extra_isize <
-> -			    le16_to_cpu(es->s_want_extra_isize))
-> -				sbi->s_want_extra_isize =
-> -					le16_to_cpu(es->s_want_extra_isize);
-> -			if (sbi->s_want_extra_isize <
-> -			    le16_to_cpu(es->s_min_extra_isize))
-> -				sbi->s_want_extra_isize =
-> -					le16_to_cpu(es->s_min_extra_isize);
-> -		}
-> -	}
-> -	/* Check if enough inode space is available */
-> -	if (EXT4_GOOD_OLD_INODE_SIZE + sbi->s_want_extra_isize >
-> -							sbi->s_inode_size) {
-> -		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
-> -						       EXT4_GOOD_OLD_INODE_SIZE;
-> -		ext4_msg(sb, KERN_INFO, "required extra inode space not"
-> -			 "available");
-> -	}
-> +	ext4_clamp_want_extra_isize(sb);
->  
->  	ext4_set_resv_clusters(sb);
->  
-> @@ -5194,6 +5202,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
->  		goto restore_opts;
->  	}
->  
-> +	ext4_clamp_want_extra_isize(sb);
-> +
->  	if ((old_opts.s_mount_opt & EXT4_MOUNT_JOURNAL_CHECKSUM) ^
->  	    test_opt(sb, JOURNAL_CHECKSUM)) {
->  		ext4_msg(sb, KERN_ERR, "changing journal_checksum "
-> -- 
-> 2.21.0.392.gf8f6787159e-goog
+> diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+> index bab3da4f1e0d..20faa6a69238 100644
+> --- a/fs/ext4/ioctl.c
+> +++ b/fs/ext4/ioctl.c
+> @@ -978,7 +978,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+>  		if (err == 0)
+>  			err = err2;
+>  		mnt_drop_write_file(filp);
+> -		if (!err && (o_group > EXT4_SB(sb)->s_groups_count) &&
+> +		if (!err && (o_group < EXT4_SB(sb)->s_groups_count) &&
+>  		    ext4_has_group_desc_csum(sb) &&
+>  		    test_opt(sb, INIT_INODE_TABLE))
+>  			err = ext4_register_li_request(sb, o_group);
 > 
 -- 
 Jan Kara <jack@suse.com>
