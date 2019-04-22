@@ -2,138 +2,78 @@ Return-Path: <SRS0=f4LO=SY=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
+X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
 	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D8B78C282CE
-	for <linux-ext4@archiver.kernel.org>; Mon, 22 Apr 2019 21:04:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 67227C10F11
+	for <linux-ext4@archiver.kernel.org>; Mon, 22 Apr 2019 21:08:57 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id AD29220896
-	for <linux-ext4@archiver.kernel.org>; Mon, 22 Apr 2019 21:04:12 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 2B373214AE
+	for <linux-ext4@archiver.kernel.org>; Mon, 22 Apr 2019 21:08:57 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=default; t=1555967337;
+	bh=1z1z1BdZ1zUkUm9CeEJfMh6RmQK/v/QBwx668zMxjgU=;
+	h=From:To:Cc:Subject:Date:List-ID:From;
+	b=l+i/yx7rAckKhDYSNZDcD1n+lGsAAcQPpm0M77mRhZr8Glu6O8q7D5gKKdESKORe5
+	 7Alg5IBzS/Fqe87PR2kTT2SodkCR8XUZMUqSMFYfhUf9LeQy4ZZvnNYXRCr1fAVS0s
+	 qPCiRU/TwgQKxhnl7XdL3vYgcVFQ80ekVpiB+Sl0=
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729120AbfDVVEE (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 22 Apr 2019 17:04:04 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:39908 "EHLO mx1.redhat.com"
+        id S1729057AbfDVVI4 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 22 Apr 2019 17:08:56 -0400
+Received: from mail.kernel.org ([198.145.29.99]:37388 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1728996AbfDVVEE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 22 Apr 2019 17:04:04 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        id S1728796AbfDVVI4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 22 Apr 2019 17:08:56 -0400
+Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 4E1C5882EA;
-        Mon, 22 Apr 2019 21:04:03 +0000 (UTC)
-Received: from segfault.boston.devel.redhat.com (segfault.boston.devel.redhat.com [10.19.60.26])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 1D7F260141;
-        Mon, 22 Apr 2019 21:03:51 +0000 (UTC)
-From:   Jeff Moyer <jmoyer@redhat.com>
-To:     Dan Williams <dan.j.williams@intel.com>
-Cc:     Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@suse.cz>,
-        Pankaj Gupta <pagupta@redhat.com>,
-        linux-nvdimm <linux-nvdimm@lists.01.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        virtualization@lists.linux-foundation.org,
-        KVM list <kvm@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux ACPI <linux-acpi@vger.kernel.org>,
-        Qemu Developers <qemu-devel@nongnu.org>,
-        linux-ext4 <linux-ext4@vger.kernel.org>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        Ross Zwisler <zwisler@kernel.org>,
-        Vishal L Verma <vishal.l.verma@intel.com>,
-        Dave Jiang <dave.jiang@intel.com>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Jason Wang <jasowang@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        "Rafael J. Wysocki" <rjw@rjwysocki.net>,
-        Len Brown <lenb@kernel.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        lcapitulino@redhat.com, Kevin Wolf <kwolf@redhat.com>,
-        Igor Mammedov <imammedo@redhat.com>,
-        Nitesh Narayan Lal <nilal@redhat.com>,
-        Rik van Riel <riel@surriel.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Andrea Arcangeli <aarcange@redhat.com>,
-        David Hildenbrand <david@redhat.com>,
-        david <david@fromorbit.com>, cohuck@redhat.com,
-        Xiao Guangrong <xiaoguangrong.eric@gmail.com>,
-        Paolo Bonzini <pbonzini@redhat.com>, kilobyte@angband.pl,
-        yuval shaia <yuval.shaia@oracle.com>
-Subject: Re: [PATCH v5 1/6] libnvdimm: nd_region flush callback support
-References: <20190410040826.24371-1-pagupta@redhat.com>
-        <20190410040826.24371-2-pagupta@redhat.com>
-        <CAPcyv4i1FjBzfcWtzeCvj-giHa9xaX0dMQ==q4LZC_L8VEqkHg@mail.gmail.com>
-        <20190412083230.GA29850@quack2.suse.cz>
-        <x494l73z7th.fsf@segfault.boston.devel.redhat.com>
-        <CAPcyv4jrNHqW3FuGkeo==ZoJr7LKahCv4_esnokfy7enek8=2Q@mail.gmail.com>
-        <20190418161833.GA22970@infradead.org>
-        <CAPcyv4jPOF_+R6U17J_+88+X8LC-LSPCugA6gbKxuphuuFB2gg@mail.gmail.com>
-        <x497ebm82d4.fsf@segfault.boston.devel.redhat.com>
-        <CAPcyv4gGmN2LLMPy6BzWpYhRyV7fFNVgh=xAWSAdnnAWu5APtg@mail.gmail.com>
-X-PGP-KeyID: 1F78E1B4
-X-PGP-CertKey: F6FE 280D 8293 F72C 65FD  5A58 1FF8 A7CA 1F78 E1B4
-Date:   Mon, 22 Apr 2019 17:03:50 -0400
-In-Reply-To: <CAPcyv4gGmN2LLMPy6BzWpYhRyV7fFNVgh=xAWSAdnnAWu5APtg@mail.gmail.com>
-        (Dan Williams's message of "Mon, 22 Apr 2019 12:44:21 -0700")
-Message-ID: <x49ef5t7nwp.fsf@segfault.boston.devel.redhat.com>
-User-Agent: Gnus/5.13 (Gnus v5.13) Emacs/26.1 (gnu/linux)
+        by mail.kernel.org (Postfix) with ESMTPSA id 18C0E20896;
+        Mon, 22 Apr 2019 21:08:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=default; t=1555967336;
+        bh=1z1z1BdZ1zUkUm9CeEJfMh6RmQK/v/QBwx668zMxjgU=;
+        h=From:To:Cc:Subject:Date:From;
+        b=Z/AHytqvuluf4BmC/FVT36M3iAIAI7HeLHwU9vpmUhqnQiLZ8l5KbuUSLCWJFR9hJ
+         ce8V9z6MP4+F5d8g1kV7V1Mtiu8x7kESrKGr2glL9ghcDxnZJYhime9E2J9qi2QbPx
+         gdAkWc2MV6V2Qtf0Qg9wlqiQjIZYsZ9Oj4CNAXUU=
+From:   Eric Biggers <ebiggers@kernel.org>
+To:     linux-ext4@vger.kernel.org
+Cc:     Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Subject: [PATCH] libext2fs: remove unused variable 'buff'
+Date:   Mon, 22 Apr 2019 14:08:43 -0700
+Message-Id: <20190422210843.185382-1-ebiggers@kernel.org>
+X-Mailer: git-send-email 2.21.0.593.g511ec345e18-goog
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.11
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.28]); Mon, 22 Apr 2019 21:04:04 +0000 (UTC)
+Content-Transfer-Encoding: 8bit
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Dan Williams <dan.j.williams@intel.com> writes:
+From: Eric Biggers <ebiggers@google.com>
 
-> On Mon, Apr 22, 2019 at 8:59 AM Jeff Moyer <jmoyer@redhat.com> wrote:
->>
->> Dan Williams <dan.j.williams@intel.com> writes:
->>
->> > On Thu, Apr 18, 2019 at 9:18 AM Christoph Hellwig <hch@infradead.org> wrote:
->> >>
->> >> On Thu, Apr 18, 2019 at 09:05:05AM -0700, Dan Williams wrote:
->> >> > > > I'd either add a comment about avoiding retpoline overhead here or just
->> >> > > > make ->flush == NULL mean generic_nvdimm_flush(). Just so that people don't
->> >> > > > get confused by the code.
->> >> > >
->> >> > > Isn't this premature optimization?  I really don't like adding things
->> >> > > like this without some numbers to show it's worth it.
->> >> >
->> >> > I don't think it's premature given this optimization technique is
->> >> > already being deployed elsewhere, see:
->> >> >
->> >> > https://lwn.net/Articles/774347/
->> >>
->> >> For one this one was backed by numbers, and second after feedback
->> >> from Linux we switched to the NULL pointer check instead.
->> >
->> > Ok I should have noticed the switch to NULL pointer check. However,
->> > the question still stands do we want everyone to run numbers to
->> > justify this optimization, or make it a new common kernel coding
->> > practice to do:
->> >
->> >     if (!object->op)
->> >         generic_op(object);
->> >     else
->> >         object->op(object);
->> >
->> > ...in hot paths?
->>
->> I don't think nvdimm_flush is a hot path.  Numbers of some
->> representative workload would prove one of us right.
->
-> I'd rather say that the if "if (!op) do_generic()" pattern is more
-> readable in the general case, saves grepping for who set the op in the
-> common case. The fact that it has the potential to be faster is gravy
-> at that point.
+In ext2fs_dirhash2(), the outer 'buff' variable is never used.
 
-If the primary motivation is performance, then I'd expect performance
-numbers to back it up.  If that isn't the primary motivation, then
-choose whichever way you feel is appropriate.
+Cc: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
+Signed-off-by: Eric Biggers <ebiggers@google.com>
+---
+ lib/ext2fs/dirhash.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-Cheers,
-Jeff
+diff --git a/lib/ext2fs/dirhash.c b/lib/ext2fs/dirhash.c
+index f1e7734d..97fd2431 100644
+--- a/lib/ext2fs/dirhash.c
++++ b/lib/ext2fs/dirhash.c
+@@ -279,7 +279,6 @@ errcode_t ext2fs_dirhash2(int version, const char *name, int len,
+ {
+ 	errcode_t r;
+ 	int dlen;
+-	unsigned char *buff;
+ 
+ 	if (len && charset) {
+ 		char buff[PATH_MAX];
+-- 
+2.21.0.593.g511ec345e18-goog
+
