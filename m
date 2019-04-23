@@ -1,76 +1,138 @@
-Return-Path: <SRS0=f4LO=SY=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=E3Xq=SZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
-	DKIM_VALID,DKIM_VALID_AU,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
-	SPF_PASS,USER_AGENT_GIT autolearn=ham autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-1.0 required=3.0 tests=MAILING_LIST_MULTI,SPF_PASS,
+	URIBL_BLOCKED autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A230C10F11
-	for <linux-ext4@archiver.kernel.org>; Mon, 22 Apr 2019 21:20:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0EB9DC10F14
+	for <linux-ext4@archiver.kernel.org>; Tue, 23 Apr 2019 03:22:35 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id C35972054F
-	for <linux-ext4@archiver.kernel.org>; Mon, 22 Apr 2019 21:20:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=default; t=1555968010;
-	bh=+mmdZUKOMxVhQJW5HXNQlu9PL8Z+ucPtUohcXt8Ex88=;
-	h=From:To:Subject:Date:List-ID:From;
-	b=UGfxIjbNRgs5iV8VmWv4jaLj7ixZBPH1bg6dwPe+VRY6fRWOY8W+6auMZTMcjlqcW
-	 Mt1RdNp16RBel9fTWas9iThyFlAy907N6ZoPGZ5TDGRrVKTqJuekSMautKdL9FZsKS
-	 H2vh+bPWonWbPhu+lwGpTq3uFzqwZOtJ1hL1kkfo=
+	by mail.kernel.org (Postfix) with ESMTP id DD8CF20B1F
+	for <linux-ext4@archiver.kernel.org>; Tue, 23 Apr 2019 03:22:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729617AbfDVVUK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Mon, 22 Apr 2019 17:20:10 -0400
-Received: from mail.kernel.org ([198.145.29.99]:44386 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1729275AbfDVVUK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Mon, 22 Apr 2019 17:20:10 -0400
-Received: from ebiggers-linuxstation.mtv.corp.google.com (unknown [104.132.1.77])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mail.kernel.org (Postfix) with ESMTPSA id A452B2054F
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Apr 2019 21:20:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=default; t=1555968009;
-        bh=+mmdZUKOMxVhQJW5HXNQlu9PL8Z+ucPtUohcXt8Ex88=;
-        h=From:To:Subject:Date:From;
-        b=e2vxHbKN56O7QAkAZzHvOs1uMj3EJcKvD40bKVLKspEqbcR0fC6iBjn7rUk40t5k7
-         ylFKxodrzN1u2GAYoeatGlaIFgGUqyLrrgIyPRNoUkjPP2LK5RdZmdh2EaQnoAD3na
-         YbDdST/mo+gEMbWzi+tkuA2tLa8OhJMYmUlBp5yU=
-From:   Eric Biggers <ebiggers@kernel.org>
+        id S1730924AbfDWDWe convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-ext4@archiver.kernel.org>);
+        Mon, 22 Apr 2019 23:22:34 -0400
+Received: from mail.wl.linuxfoundation.org ([198.145.29.98]:58908 "EHLO
+        mail.wl.linuxfoundation.org" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727995AbfDWDWe (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Mon, 22 Apr 2019 23:22:34 -0400
+Received: from mail.wl.linuxfoundation.org (localhost [127.0.0.1])
+        by mail.wl.linuxfoundation.org (Postfix) with ESMTP id C119228736
+        for <linux-ext4@vger.kernel.org>; Tue, 23 Apr 2019 03:22:32 +0000 (UTC)
+Received: by mail.wl.linuxfoundation.org (Postfix, from userid 486)
+        id B39B02873B; Tue, 23 Apr 2019 03:22:32 +0000 (UTC)
+From:   bugzilla-daemon@bugzilla.kernel.org
 To:     linux-ext4@vger.kernel.org
-Subject: [PATCH] debugfs: remove unused variable 'tmp_inode'
-Date:   Mon, 22 Apr 2019 14:19:50 -0700
-Message-Id: <20190422211950.196986-1-ebiggers@kernel.org>
-X-Mailer: git-send-email 2.21.0.593.g511ec345e18-goog
+Subject: [Bug 203391] New: Hit kernel panic when build linux-next with ubuntu
+ 18.04
+Date:   Tue, 23 Apr 2019 03:22:31 +0000
+X-Bugzilla-Reason: None
+X-Bugzilla-Type: new
+X-Bugzilla-Watch-Reason: AssignedTo fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: ext4
+X-Bugzilla-Version: 2.5
+X-Bugzilla-Keywords: 
+X-Bugzilla-Severity: blocking
+X-Bugzilla-Who: lilideng@outlook.com
+X-Bugzilla-Status: NEW
+X-Bugzilla-Resolution: 
+X-Bugzilla-Priority: P1
+X-Bugzilla-Assigned-To: fs_ext4@kernel-bugs.osdl.org
+X-Bugzilla-Flags: 
+X-Bugzilla-Changed-Fields: bug_id short_desc product version
+ cf_kernel_version rep_platform op_sys cf_tree bug_status bug_severity
+ priority component assigned_to reporter cf_regression attachments.created
+Message-ID: <bug-203391-13602@https.bugzilla.kernel.org/>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+X-Bugzilla-URL: https://bugzilla.kernel.org/
+Auto-Submitted: auto-generated
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-Virus-Scanned: ClamAV using ClamSMTP
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-From: Eric Biggers <ebiggers@google.com>
+https://bugzilla.kernel.org/show_bug.cgi?id=203391
 
-In parse_inode_csum(), the outer 'tmp_inode' variable is never used.
+            Bug ID: 203391
+           Summary: Hit kernel panic when build linux-next with ubuntu
+                    18.04
+           Product: File System
+           Version: 2.5
+    Kernel Version: 5.1.0-rc5-3f018f4a019a
+          Hardware: All
+                OS: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: blocking
+          Priority: P1
+         Component: ext4
+          Assignee: fs_ext4@kernel-bugs.osdl.org
+          Reporter: lilideng@outlook.com
+        Regression: No
 
-Signed-off-by: Eric Biggers <ebiggers@google.com>
----
- debugfs/set_fields.c | 1 -
- 1 file changed, 1 deletion(-)
+Created attachment 282463
+  --> https://bugzilla.kernel.org/attachment.cgi?id=282463&action=edit
+Serial console log
 
-diff --git a/debugfs/set_fields.c b/debugfs/set_fields.c
-index a7dd34f7..31356fd0 100644
---- a/debugfs/set_fields.c
-+++ b/debugfs/set_fields.c
-@@ -674,7 +674,6 @@ static errcode_t parse_inode_csum(struct field_set_info *info, char *field,
- 	errcode_t	retval = 0;
- 	__u32		crc;
- 	int		is_large_inode = 0;
--	struct ext2_inode_large *tmp_inode;
- 
- 	if (strcmp(arg, "calc") == 0) {
- 		size_t sz = EXT2_INODE_SIZE(current_fs->super);
+1 Create a Ubuntu 18.04
+2 Clone latest linux-next, build kernel successfully
+3 Reboot
+4 Hit kernel panic
+
+Begin: Running /scripts/init-premount ... done.
+Begin: Mounting root file system ... Begin: Running /scripts/local-top ...
+done.
+Begin: Running /scripts/local-premount ... [    9.150164] Btrfs loaded,
+crc32c=crc32c-intel
+Scanning for Btrfs filesystems
+done.
+Warning: fsck not present, so skipping root file system
+[    9.286671] EXT4-fs (sdb1): mounted filesystem with ordered data mode. Opts:
+(null)
+done.
+Begin: Running /scripts/local-bottom ... done.
+Begin: Running /scripts/init-bottom ... done.
+/sbin/init: error while loading shared libraries:
+/usr/lib/x86_64-linux-gnu/libip4tc.so.0: invalid ELF header
+[    9.424886] Kernel panic - not syncing: Attempted to kill init!
+exitcode=0x00007f00
+[    9.425715] CPU: 39 PID: 1 Comm: init Not tainted 5.1.0-rc5-3f018f4a019a #1
+[    9.425715] Hardware name: Microsoft Corporation Virtual Machine/Virtual
+Machine, BIOS 090007  06/02/2017
+[    9.425715] Call Trace:
+[    9.425715]  dump_stack+0x46/0x5b
+[    9.425715]  panic+0xf8/0x2c2
+[    9.425715]  do_exit+0xb8d/0xb90
+[    9.425715]  do_group_exit+0x3a/0xa0
+[    9.425715]  __x64_sys_exit_group+0x14/0x20
+[    9.425715]  do_syscall_64+0x4f/0x110
+[    9.425715]  entry_SYSCALL_64_after_hwframe+0x44/0xa9
+[    9.425715] RIP: 0033:0x7f5083940056
+[    9.425715] Code: Bad RIP value.
+[    9.425715] RSP: 002b:00007ffdb07cb888 EFLAGS: 00000206 ORIG_RAX:
+00000000000000e7
+[    9.425715] RAX: ffffffffffffffda RBX: 00007f5083946ce0 RCX:
+00007f5083940056
+[    9.425715] RDX: 000000000000007f RSI: 000000000000003c RDI:
+000000000000007f
+[    9.425715] RBP: 00007ffdb07cc380 R08: 00000000000000e7 R09:
+00007ffdb07cb344
+[    9.425715] R10: 0000000000000020 R11: 0000000000000206 R12:
+0000000000000011
+[    9.425715] R13: 00007f5083b3e010 R14: 00007f5083b3df80 R15:
+00007f5083b4c170
+[    9.425715] Kernel Offset: 0x1fc00000 from 0xffffffff81000000 (relocation
+range: 0xffffffff80000000-0xffffffffbfffffff)
+[    9.425715] ---[ end Kernel panic - not syncing: Attempted to kill init!
+exitcode=0x00007f00 ]---
+
 -- 
-2.21.0.593.g511ec345e18-goog
-
+You are receiving this mail because:
+You are watching the assignee of the bug.
