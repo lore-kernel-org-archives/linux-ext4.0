@@ -2,108 +2,119 @@ Return-Path: <SRS0=E3Xq=SZ=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
+	DKIM_VALID,DKIM_VALID_AU,HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E06A4C10F14
-	for <linux-ext4@archiver.kernel.org>; Tue, 23 Apr 2019 14:27:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 659B2C10F03
+	for <linux-ext4@archiver.kernel.org>; Tue, 23 Apr 2019 15:06:25 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id B8B3E21852
-	for <linux-ext4@archiver.kernel.org>; Tue, 23 Apr 2019 14:27:56 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 10011206BA
+	for <linux-ext4@archiver.kernel.org>; Tue, 23 Apr 2019 15:06:25 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=akamai.com header.i=@akamai.com header.b="ap+rHjm7"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728246AbfDWO1w (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 23 Apr 2019 10:27:52 -0400
-Received: from mx2.suse.de ([195.135.220.15]:43020 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1727839AbfDWO1v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 23 Apr 2019 10:27:51 -0400
-X-Virus-Scanned: by amavisd-new at test-mx.suse.de
-Received: from relay2.suse.de (unknown [195.135.220.254])
-        by mx1.suse.de (Postfix) with ESMTP id C1573AC44;
-        Tue, 23 Apr 2019 14:27:49 +0000 (UTC)
-Received: by quack2.suse.cz (Postfix, from userid 1000)
-        id AA27C1E15B7; Tue, 23 Apr 2019 16:27:48 +0200 (CEST)
-Date:   Tue, 23 Apr 2019 16:27:48 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Pankaj Gupta <pagupta@redhat.com>
-Cc:     linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org, kvm@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-acpi@vger.kernel.org,
-        qemu-devel@nongnu.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, dan.j.williams@intel.com,
-        zwisler@kernel.org, vishal.l.verma@intel.com, dave.jiang@intel.com,
-        mst@redhat.com, jasowang@redhat.com, willy@infradead.org,
-        rjw@rjwysocki.net, hch@infradead.org, lenb@kernel.org,
-        jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
-        darrick.wong@oracle.com, lcapitulino@redhat.com, kwolf@redhat.com,
-        imammedo@redhat.com, jmoyer@redhat.com, nilal@redhat.com,
-        riel@surriel.com, stefanha@redhat.com, aarcange@redhat.com,
-        david@redhat.com, david@fromorbit.com, cohuck@redhat.com,
-        xiaoguangrong.eric@gmail.com, pbonzini@redhat.com,
-        yuval.shaia@oracle.com, kilobyte@angband.pl
-Subject: Re: [PATCH v6 5/6] ext4: disable map_sync for async flush
-Message-ID: <20190423142748.GE9910@quack2.suse.cz>
-References: <20190423080612.15361-1-pagupta@redhat.com>
- <20190423080612.15361-6-pagupta@redhat.com>
+        id S1727762AbfDWPGY (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Tue, 23 Apr 2019 11:06:24 -0400
+Received: from mx0a-00190b01.pphosted.com ([67.231.149.131]:34990 "EHLO
+        mx0a-00190b01.pphosted.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1727673AbfDWPGY (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>);
+        Tue, 23 Apr 2019 11:06:24 -0400
+X-Greylist: delayed 1940 seconds by postgrey-1.27 at vger.kernel.org; Tue, 23 Apr 2019 11:06:23 EDT
+Received: from pps.filterd (m0122332.ppops.net [127.0.0.1])
+        by mx0a-00190b01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x3NEQxEO008326;
+        Tue, 23 Apr 2019 15:33:56 +0100
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=akamai.com; h=from : to : subject :
+ date : message-id : references : in-reply-to : content-type : content-id :
+ content-transfer-encoding : mime-version; s=jan2016.eng;
+ bh=arkhTlxL/xq6hHs8zOa3vPqV/+YR/QoM8F0pg/cukSE=;
+ b=ap+rHjm7bB9xDNr+gszLXDj9SMelEbJNQJ3GdyMufwrnX/llvzNLjBzeRV5QV5gKyzs5
+ XgMJ5u0s24EhjV5jblwgZlXMrJk03wvb03IiK+/SBKVmXwFzrMa4zguRdtF0KMFraOyz
+ 0hDRUeZp0nhMDLUL67twDp+liulr5I2PaBykIhA0n2D/Jpt7WVG+y2+MbFVmljwXPWco
+ LxUcquqqTbroNFw7F/2Gkj95eFgMcMEQIDjX3zQ/S4cWAGolureQf7GEG+KEFLagZL7P
+ QG1WkdpLU1m/YPv5IFYCNIl0ox7mPK2cx2xrV+1utEmVGtv8Uhth+00dwb87dujcJYBw 4A== 
+Received: from prod-mail-ppoint3 (prod-mail-ppoint3.akamai.com [96.6.114.86] (may be forged))
+        by mx0a-00190b01.pphosted.com with ESMTP id 2s22fk8h2p-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Tue, 23 Apr 2019 15:33:56 +0100
+Received: from pps.filterd (prod-mail-ppoint3.akamai.com [127.0.0.1])
+        by prod-mail-ppoint3.akamai.com (8.16.0.27/8.16.0.27) with SMTP id x3NEWDJd015195;
+        Tue, 23 Apr 2019 10:33:55 -0400
+Received: from email.msg.corp.akamai.com ([172.27.25.32])
+        by prod-mail-ppoint3.akamai.com with ESMTP id 2ryxrurcfe-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-SHA384 bits=256 verify=NOT);
+        Tue, 23 Apr 2019 10:33:55 -0400
+Received: from USTX2EX-DAG1MB2.msg.corp.akamai.com (172.27.27.102) by
+ ustx2ex-dag1mb3.msg.corp.akamai.com (172.27.27.103) with Microsoft SMTP
+ Server (TLS) id 15.0.1473.3; Tue, 23 Apr 2019 09:33:54 -0500
+Received: from USTX2EX-DAG1MB2.msg.corp.akamai.com ([172.27.6.132]) by
+ ustx2ex-dag1mb2.msg.corp.akamai.com ([172.27.6.132]) with mapi id
+ 15.00.1473.003; Tue, 23 Apr 2019 09:33:54 -0500
+From:   "Banerjee, Debabrata" <dbanerje@akamai.com>
+To:     Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        Dmitry Monakhov <dmonakhov@openvz.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] ext4: bad mount opts in no journal mode
+Thread-Topic: [PATCH] ext4: bad mount opts in no journal mode
+Thread-Index: AQHU8LB42sqXQo7D8EG2I+INPmkeGKZJ8oiA
+Date:   Tue, 23 Apr 2019 14:33:53 +0000
+Message-ID: <2C6C280A-9716-4F96-A999-CDFBD0153F61@akamai.com>
+References: <20190411214917.1899-1-dbanerje@akamai.com>
+In-Reply-To: <20190411214917.1899-1-dbanerje@akamai.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+user-agent: Microsoft-MacOutlook/10.18.0.190414
+x-ms-exchange-messagesentrepresentingtype: 1
+x-ms-exchange-transport-fromentityheader: Hosted
+x-originating-ip: [172.19.40.193]
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <95061BCC4913BC42A12E73C7F7B66B95@akamai.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190423080612.15361-6-pagupta@redhat.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-04-23_04:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 malwarescore=0
+ phishscore=0 bulkscore=0 spamscore=0 mlxscore=0 mlxlogscore=999
+ adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1810050000 definitions=main-1904230098
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-04-23_04:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 priorityscore=1501 malwarescore=0
+ suspectscore=0 phishscore=0 bulkscore=0 spamscore=0 clxscore=1015
+ lowpriorityscore=0 mlxscore=0 impostorscore=0 mlxlogscore=999 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.0.1-1810050000
+ definitions=main-1904230098
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue 23-04-19 13:36:11, Pankaj Gupta wrote:
-> Dont support 'MAP_SYNC' with non-DAX files and DAX files
-> with asynchronous dax_device. Virtio pmem provides 
-> asynchronous host page cache flush mechanism. We don't
-> support 'MAP_SYNC' with virtio pmem and ext4.
-> 
-> Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
-
-The patch looks good to me. You can add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
-
-> ---
->  fs/ext4/file.c | 11 ++++++-----
->  1 file changed, 6 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> index 69d65d49837b..4b2ccaf1932e 100644
-> --- a/fs/ext4/file.c
-> +++ b/fs/ext4/file.c
-> @@ -360,15 +360,16 @@ static const struct vm_operations_struct ext4_file_vm_ops = {
->  static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
->  {
->  	struct inode *inode = file->f_mapping->host;
-> +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> +	struct dax_device *dax_dev = sbi->s_daxdev;
->  
-> -	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
-> +	if (unlikely(ext4_forced_shutdown(sbi)))
->  		return -EIO;
->  
-> -	/*
-> -	 * We don't support synchronous mappings for non-DAX files. At least
-> -	 * until someone comes with a sensible use case.
-> +	/* We don't support synchronous mappings for non-DAX files and
-> +	 * for DAX files if underneath dax_device is not synchronous.
->  	 */
-> -	if (!IS_DAX(file_inode(file)) && (vma->vm_flags & VM_SYNC))
-> +	if (!daxdev_mapping_supported(vma, dax_dev))
->  		return -EOPNOTSUPP;
->  
->  	file_accessed(file);
-> -- 
-> 2.20.1
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+cGluZz8NCg0K77u/T24gNC8xMS8xOSwgNTo0OSBQTSwgIkRlYmFicmF0YSBCYW5lcmplZSIgPGRi
+YW5lcmplQGFrYW1haS5jb20+IHdyb3RlOg0KDQogICAgRml4ZXM6DQogICAgY29tbWl0IDFlMzgx
+ZjYwZGFkOSAoImV4dDQ6IGRvIG5vdCBhbGxvdyBqb3VybmFsX29wdHMgZm9yIGZzIHcvbyBqb3Vy
+bmFsIikNCiAgICANCiAgICBJbnN0ZWFkIG9mIHJlbW92aW5nIEVYVDRfTU9VTlRfSk9VUk5BTF9D
+SEVDS1NVTSBmcm9tIHNfZGVmX21vdW50X29wdCBhcw0KICAgIEkgYXNzdW1lIHdhcyBpbnRlbmRl
+ZCwgYWxsIG90aGVyIG9wdGlvbnMgd2VyZSBibG93biBhd2F5IGxlYWRpbmcgdG8NCiAgICBfZXh0
+NF9zaG93X29wdGlvbnMoKSBvdXRwdXQgYmVpbmcgaW5jb3JyZWN0LiBJIGRvbid0IHNlZSB3aHkg
+dGhpcyBvcg0KICAgIG90aGVyIGpvdXJuYWwgcmVsYXRlZCBmbGFncyBzaG91bGQgYmUgcmVtb3Zl
+ZCBmcm9tIHNfZGVmX21vdW50X29wdA0KICAgIHJlZ2FyZGxlc3MsIGl0IGlzIG9ubHkgdXNlZCBm
+b3IgY29tcGFyaXNvbiB0byBkaXNwbGF5IG9wdHMsIGFuZCB3ZQ0KICAgIGFscmVhZHkgbWFkZSBz
+dXJlIHRoZXkgY291bGRuJ3QgYmUgc2V0Lg0KICAgIA0KICAgIFNpZ25lZC1vZmYtYnk6IERlYmFi
+cmF0YSBCYW5lcmplZSA8ZGJhbmVyamVAYWthbWFpLmNvbT4NCiAgICAtLS0NCiAgICAgZnMvZXh0
+NC9zdXBlci5jIHwgMSAtDQogICAgIDEgZmlsZSBjaGFuZ2VkLCAxIGRlbGV0aW9uKC0pDQogICAg
+DQogICAgZGlmZiAtLWdpdCBhL2ZzL2V4dDQvc3VwZXIuYyBiL2ZzL2V4dDQvc3VwZXIuYw0KICAg
+IGluZGV4IDZlZDRlYjgxZTY3NC4uNjNlZWYyOTY2NmUwIDEwMDY0NA0KICAgIC0tLSBhL2ZzL2V4
+dDQvc3VwZXIuYw0KICAgICsrKyBiL2ZzL2V4dDQvc3VwZXIuYw0KICAgIEBAIC00MjM4LDcgKzQy
+MzgsNiBAQCBzdGF0aWMgaW50IGV4dDRfZmlsbF9zdXBlcihzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNi
+LCB2b2lkICpkYXRhLCBpbnQgc2lsZW50KQ0KICAgICAJCQkJICJkYXRhPSwgZnMgbW91bnRlZCB3
+L28gam91cm5hbCIpOw0KICAgICAJCQlnb3RvIGZhaWxlZF9tb3VudF93cTsNCiAgICAgCQl9DQog
+ICAgLQkJc2JpLT5zX2RlZl9tb3VudF9vcHQgJj0gRVhUNF9NT1VOVF9KT1VSTkFMX0NIRUNLU1VN
+Ow0KICAgICAJCWNsZWFyX29wdChzYiwgSk9VUk5BTF9DSEVDS1NVTSk7DQogICAgIAkJY2xlYXJf
+b3B0KHNiLCBEQVRBX0ZMQUdTKTsNCiAgICAgCQlzYmktPnNfam91cm5hbCA9IE5VTEw7DQogICAg
+LS0gDQogICAgMi4yMS4wDQogICAgDQogICAgDQoNCg==
