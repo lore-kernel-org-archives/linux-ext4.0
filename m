@@ -1,105 +1,118 @@
-Return-Path: <SRS0=E3Xq=SZ=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=cG1U=S2=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,
-	USER_AGENT_MUTT autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A0B0DC282DD
-	for <linux-ext4@archiver.kernel.org>; Tue, 23 Apr 2019 22:28:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ACBC0C10F11
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Apr 2019 04:36:56 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 7012C218D2
-	for <linux-ext4@archiver.kernel.org>; Tue, 23 Apr 2019 22:28:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E6EEC218DA
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Apr 2019 04:36:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728179AbfDWW2v (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Tue, 23 Apr 2019 18:28:51 -0400
-Received: from mail105.syd.optusnet.com.au ([211.29.132.249]:36421 "EHLO
-        mail105.syd.optusnet.com.au" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726325AbfDWW2v (ORCPT
+        id S1726092AbfDXEgy (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 24 Apr 2019 00:36:54 -0400
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:35058 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1725919AbfDXEgy (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Tue, 23 Apr 2019 18:28:51 -0400
-X-Greylist: delayed 1583 seconds by postgrey-1.27 at vger.kernel.org; Tue, 23 Apr 2019 18:28:49 EDT
-Received: from dread.disaster.area (pa49-180-172-16.pa.nsw.optusnet.com.au [49.180.172.16])
-        by mail105.syd.optusnet.com.au (Postfix) with ESMTPS id 613CD105EA0B;
-        Wed, 24 Apr 2019 08:02:18 +1000 (AEST)
-Received: from dave by dread.disaster.area with local (Exim 4.92)
-        (envelope-from <david@fromorbit.com>)
-        id 1hJ3UX-0002gQ-2Q; Wed, 24 Apr 2019 08:02:17 +1000
-Date:   Wed, 24 Apr 2019 08:02:17 +1000
-From:   Dave Chinner <david@fromorbit.com>
-To:     Pankaj Gupta <pagupta@redhat.com>
-Cc:     linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org, kvm@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-acpi@vger.kernel.org,
-        qemu-devel@nongnu.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, dan.j.williams@intel.com,
-        zwisler@kernel.org, vishal.l.verma@intel.com, dave.jiang@intel.com,
-        mst@redhat.com, jasowang@redhat.com, willy@infradead.org,
-        rjw@rjwysocki.net, hch@infradead.org, lenb@kernel.org,
-        jack@suse.cz, tytso@mit.edu, adilger.kernel@dilger.ca,
-        darrick.wong@oracle.com, lcapitulino@redhat.com, kwolf@redhat.com,
-        imammedo@redhat.com, jmoyer@redhat.com, nilal@redhat.com,
-        riel@surriel.com, stefanha@redhat.com, aarcange@redhat.com,
-        david@redhat.com, cohuck@redhat.com, xiaoguangrong.eric@gmail.com,
-        pbonzini@redhat.com, yuval.shaia@oracle.com, kilobyte@angband.pl
-Subject: Re: [PATCH v6 6/6] xfs: disable map_sync for async flush
-Message-ID: <20190423220217.GA29573@dread.disaster.area>
-References: <20190423080612.15361-1-pagupta@redhat.com>
- <20190423080612.15361-7-pagupta@redhat.com>
+        Wed, 24 Apr 2019 00:36:54 -0400
+Received: from pps.filterd (m0098417.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x3O4Y14o058061
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Apr 2019 00:36:52 -0400
+Received: from e13.ny.us.ibm.com (e13.ny.us.ibm.com [129.33.205.203])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2s2eq1vyts-1
+        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Apr 2019 00:36:52 -0400
+Received: from localhost
+        by e13.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
+        Wed, 24 Apr 2019 05:36:51 +0100
+Received: from b01cxnp23032.gho.pok.ibm.com (9.57.198.27)
+        by e13.ny.us.ibm.com (146.89.104.200) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
+        Wed, 24 Apr 2019 05:36:47 +0100
+Received: from b01ledav003.gho.pok.ibm.com (b01ledav003.gho.pok.ibm.com [9.57.199.108])
+        by b01cxnp23032.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x3O4akkV28049564
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 24 Apr 2019 04:36:46 GMT
+Received: from b01ledav003.gho.pok.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 6AE11B205F;
+        Wed, 24 Apr 2019 04:36:46 +0000 (GMT)
+Received: from b01ledav003.gho.pok.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 0D286B2064;
+        Wed, 24 Apr 2019 04:36:43 +0000 (GMT)
+Received: from localhost.localdomain.com (unknown [9.85.81.252])
+        by b01ledav003.gho.pok.ibm.com (Postfix) with ESMTP;
+        Wed, 24 Apr 2019 04:36:42 +0000 (GMT)
+From:   Chandan Rajendra <chandan@linux.ibm.com>
+To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net,
+        linux-fscrypt@vger.kernel.org
+Cc:     Chandan Rajendra <chandan@linux.ibm.com>, tytso@mit.edu,
+        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
+        yuchao0@huawei.com
+Subject: [PATCH V1 01/14] ext4: Clear BH_Uptodate flag on decryption error
+Date:   Wed, 24 Apr 2019 10:07:17 +0530
+X-Mailer: git-send-email 2.19.1
+In-Reply-To: <20190424043730.13683-1-chandan@linux.ibm.com>
+References: <20190424043730.13683-1-chandan@linux.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20190423080612.15361-7-pagupta@redhat.com>
-User-Agent: Mutt/1.10.1 (2018-07-13)
-X-Optus-CM-Score: 0
-X-Optus-CM-Analysis: v=2.2 cv=UJetJGXy c=1 sm=1 tr=0 cx=a_idp_d
-        a=P9M234EABmfYNCwpuVjnFw==:117 a=P9M234EABmfYNCwpuVjnFw==:17
-        a=jpOVt7BSZ2e4Z31A5e1TngXxSK0=:19 a=kj9zAlcOel0A:10 a=oexKYjalfGEA:10
-        a=20KFwNOVAAAA:8 a=7-415B0cAAAA:8 a=zOUUIwEDNWhzvqsACr4A:9
-        a=CjuIK1q_8ugA:10 a=biEYGPWJfzWAr4FL6Ov7:22
+Content-Transfer-Encoding: 8bit
+X-TM-AS-GCONF: 00
+x-cbid: 19042404-0064-0000-0000-000003D026C9
+X-IBM-SpamModules-Scores: 
+X-IBM-SpamModules-Versions: BY=3.00010984; HX=3.00000242; KW=3.00000007;
+ PH=3.00000004; SC=3.00000285; SDB=6.01193533; UDB=6.00625685; IPR=6.00974357;
+ MB=3.00026570; MTD=3.00000008; XFM=3.00000015; UTC=2019-04-24 04:36:50
+X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
+x-cbparentid: 19042404-0065-0000-0000-00003D2EF9C2
+Message-Id: <20190424043730.13683-2-chandan@linux.ibm.com>
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-04-24_02:,,
+ signatures=0
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
+ malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
+ clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
+ mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.0.1-1810050000 definitions=main-1904240038
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Apr 23, 2019 at 01:36:12PM +0530, Pankaj Gupta wrote:
-> Dont support 'MAP_SYNC' with non-DAX files and DAX files
-> with asynchronous dax_device. Virtio pmem provides
-> asynchronous host page cache flush mechanism. We don't
-> support 'MAP_SYNC' with virtio pmem and xfs.
-> 
-> Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
-> ---
->  fs/xfs/xfs_file.c | 10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> index 1f2e2845eb76..0e59be018511 100644
-> --- a/fs/xfs/xfs_file.c
-> +++ b/fs/xfs/xfs_file.c
-> @@ -1196,11 +1196,13 @@ xfs_file_mmap(
->  	struct file	*filp,
->  	struct vm_area_struct *vma)
->  {
-> -	/*
-> -	 * We don't support synchronous mappings for non-DAX files. At least
-> -	 * until someone comes with a sensible use case.
-> +	struct dax_device *dax_dev = xfs_find_daxdev_for_inode
-> +						(file_inode(filp));
-> +
-> +	/* We don't support synchronous mappings for non-DAX files and
-> +	 * for DAX files if underneath dax_device is not synchronous.
->  	 */
+On an error return from fscrypt_decrypt_page(), ext4_block_write_begin()
+can return with the page's buffer_head marked with BH_Uptodate
+flag. This commit clears the BH_Uptodate flag in such cases.
 
-	/*
-	 * This is the correct multi-line comment format. Please
-	 * update the patch to maintain the existing comment format.
-	 */
+Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
+---
+ fs/ext4/inode.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-Cheers,
-
-Dave.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 3c2e7f5a6c84..05b258db8673 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1225,11 +1225,15 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 		if (!buffer_uptodate(*wait_bh))
+ 			err = -EIO;
+ 	}
+-	if (unlikely(err))
++	if (unlikely(err)) {
+ 		page_zero_new_buffers(page, from, to);
+-	else if (decrypt)
++	} else if (decrypt) {
+ 		err = fscrypt_decrypt_page(page->mapping->host, page,
+ 				PAGE_SIZE, 0, page->index);
++		if (err)
++			clear_buffer_uptodate(*wait_bh);
++	}
++
+ 	return err;
+ }
+ #endif
 -- 
-Dave Chinner
-david@fromorbit.com
+2.19.1
+
