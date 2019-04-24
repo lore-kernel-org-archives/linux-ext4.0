@@ -4,49 +4,49 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 X-Spam-Level: 
 X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
-	autolearn=unavailable autolearn_force=no version=3.4.0
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C660C282CE
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Apr 2019 04:37:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1387FC282E1
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Apr 2019 04:37:22 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id F1404218D3
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Apr 2019 04:37:19 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CFB3C218D3
+	for <linux-ext4@archiver.kernel.org>; Wed, 24 Apr 2019 04:37:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728704AbfDXEhT (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 24 Apr 2019 00:37:19 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:50776 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1726458AbfDXEhS (ORCPT
+        id S1728915AbfDXEhV (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Wed, 24 Apr 2019 00:37:21 -0400
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:38878 "EHLO
+        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1728726AbfDXEhV (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 24 Apr 2019 00:37:18 -0400
-Received: from pps.filterd (m0098404.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x3O4Y0fH027373
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Apr 2019 00:37:17 -0400
-Received: from e14.ny.us.ibm.com (e14.ny.us.ibm.com [129.33.205.204])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2s2gn08njg-1
+        Wed, 24 Apr 2019 00:37:21 -0400
+Received: from pps.filterd (m0098417.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x3O4Y1kG058069
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Apr 2019 00:37:20 -0400
+Received: from e17.ny.us.ibm.com (e17.ny.us.ibm.com [129.33.205.207])
+        by mx0a-001b2d01.pphosted.com with ESMTP id 2s2eq1w0kc-1
         (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Apr 2019 00:37:17 -0400
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Apr 2019 00:37:20 -0400
 Received: from localhost
-        by e14.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+        by e17.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
         for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
-        Wed, 24 Apr 2019 05:37:16 +0100
-Received: from b01cxnp22033.gho.pok.ibm.com (9.57.198.23)
-        by e14.ny.us.ibm.com (146.89.104.201) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
+        Wed, 24 Apr 2019 05:37:19 +0100
+Received: from b01cxnp23032.gho.pok.ibm.com (9.57.198.27)
+        by e17.ny.us.ibm.com (146.89.104.204) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
         (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Wed, 24 Apr 2019 05:37:11 +0100
+        Wed, 24 Apr 2019 05:37:15 +0100
 Received: from b01ledav003.gho.pok.ibm.com (b01ledav003.gho.pok.ibm.com [9.57.199.108])
-        by b01cxnp22033.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x3O4bAih29622300
+        by b01cxnp23032.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x3O4bEFo35979416
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 24 Apr 2019 04:37:10 GMT
+        Wed, 24 Apr 2019 04:37:14 GMT
 Received: from b01ledav003.gho.pok.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 6155EB2068;
-        Wed, 24 Apr 2019 04:37:10 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 91B72B205F;
+        Wed, 24 Apr 2019 04:37:14 +0000 (GMT)
 Received: from b01ledav003.gho.pok.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id ACC62B2066;
-        Wed, 24 Apr 2019 04:37:06 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 02846B2065;
+        Wed, 24 Apr 2019 04:37:11 +0000 (GMT)
 Received: from localhost.localdomain.com (unknown [9.85.81.252])
         by b01ledav003.gho.pok.ibm.com (Postfix) with ESMTP;
-        Wed, 24 Apr 2019 04:37:06 +0000 (GMT)
+        Wed, 24 Apr 2019 04:37:10 +0000 (GMT)
 From:   Chandan Rajendra <chandan@linux.ibm.com>
 To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
@@ -54,26 +54,26 @@ To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 Cc:     Chandan Rajendra <chandan@linux.ibm.com>, tytso@mit.edu,
         adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
         yuchao0@huawei.com
-Subject: [PATCH V1 07/14] Remove the term "bio" from post read processing
-Date:   Wed, 24 Apr 2019 10:07:23 +0530
+Subject: [PATCH V1 08/14] Add decryption support for sub-pagesized blocks
+Date:   Wed, 24 Apr 2019 10:07:24 +0530
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20190424043730.13683-1-chandan@linux.ibm.com>
 References: <20190424043730.13683-1-chandan@linux.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-x-cbid: 19042404-0052-0000-0000-000003B02767
+x-cbid: 19042404-0040-0000-0000-000004E4D153
 X-IBM-SpamModules-Scores: 
 X-IBM-SpamModules-Versions: BY=3.00010984; HX=3.00000242; KW=3.00000007;
  PH=3.00000004; SC=3.00000285; SDB=6.01193533; UDB=6.00625685; IPR=6.00974357;
- MB=3.00026570; MTD=3.00000008; XFM=3.00000015; UTC=2019-04-24 04:37:14
+ MB=3.00026570; MTD=3.00000008; XFM=3.00000015; UTC=2019-04-24 04:37:18
 X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19042404-0053-0000-0000-0000609CFCA8
-Message-Id: <20190424043730.13683-8-chandan@linux.ibm.com>
+x-cbparentid: 19042404-0041-0000-0000-000008EFE0B7
+Message-Id: <20190424043730.13683-9-chandan@linux.ibm.com>
 X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-04-24_02:,,
  signatures=0
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
- malwarescore=0 suspectscore=2 phishscore=0 bulkscore=0 spamscore=0
+ malwarescore=0 suspectscore=0 phishscore=0 bulkscore=0 spamscore=0
  clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
  mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
  scancount=1 engine=8.0.1-1810050000 definitions=main-1904240038
@@ -82,303 +82,466 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-For block size < page size, apart from handling bios, post read
-processing needs to handle buffer heads. Hence this commit removes the
-term "bio" from the identifiers associated with post read processing.
+To support decryption of sub-pagesized blocks this commit adds code to,
+1. Track buffer head in "struct post_read_ctx".
+2. Pass buffer head argument to all "post read" processing functions.
+3. In the corresponding endio, loop across all the blocks mapped by the
+   page, decrypting each block in turn.
 
 Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
 ---
- fs/crypto/bio.c                   |  6 ++--
- fs/f2fs/data.c                    | 10 +++---
- fs/mpage.c                        | 10 +++---
- fs/post_read_process.c            | 56 +++++++++++++++----------------
- fs/verity/verify.c                |  6 ++--
- include/linux/post_read_process.h | 16 ++++-----
- 6 files changed, 52 insertions(+), 52 deletions(-)
+ fs/buffer.c                       | 83 +++++++++++++++++++++++--------
+ fs/crypto/bio.c                   | 50 +++++++++++++------
+ fs/crypto/crypto.c                | 19 ++++++-
+ fs/f2fs/data.c                    |  2 +-
+ fs/mpage.c                        |  2 +-
+ fs/post_read_process.c            | 53 +++++++++++++-------
+ include/linux/buffer_head.h       |  1 +
+ include/linux/post_read_process.h |  5 +-
+ 8 files changed, 154 insertions(+), 61 deletions(-)
 
-diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
-index 3e40d65ae6a8..bab48dfa3765 100644
---- a/fs/crypto/bio.c
-+++ b/fs/crypto/bio.c
-@@ -58,12 +58,12 @@ EXPORT_SYMBOL(fscrypt_decrypt_bio);
+diff --git a/fs/buffer.c b/fs/buffer.c
+index ce357602f471..5b693d1992dd 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -45,6 +45,7 @@
+ #include <linux/bit_spinlock.h>
+ #include <linux/pagevec.h>
+ #include <linux/sched/mm.h>
++#include <linux/post_read_process.h>
+ #include <trace/events/block.h>
  
- void fscrypt_decrypt_work(struct work_struct *work)
- {
--	struct bio_post_read_ctx *ctx =
--		container_of(work, struct bio_post_read_ctx, work);
-+	struct post_read_ctx *ctx =
-+		container_of(work, struct post_read_ctx, work);
- 
- 	fscrypt_decrypt_bio(ctx->bio);
- 
--	bio_post_read_processing(ctx);
-+	post_read_processing(ctx);
+ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
+@@ -245,11 +246,7 @@ __find_get_block_slow(struct block_device *bdev, sector_t block)
+ 	return ret;
  }
  
- void fscrypt_pullback_bio_page(struct page **page, bool restore)
+-/*
+- * I/O completion handler for block_read_full_page() - pages
+- * which come unlocked at the end of I/O.
+- */
+-static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
++void end_buffer_page_read(struct buffer_head *bh)
+ {
+ 	unsigned long flags;
+ 	struct buffer_head *first;
+@@ -257,17 +254,7 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
+ 	struct page *page;
+ 	int page_uptodate = 1;
+ 
+-	BUG_ON(!buffer_async_read(bh));
+-
+ 	page = bh->b_page;
+-	if (uptodate) {
+-		set_buffer_uptodate(bh);
+-	} else {
+-		clear_buffer_uptodate(bh);
+-		buffer_io_error(bh, ", async page read");
+-		SetPageError(page);
+-	}
+-
+ 	/*
+ 	 * Be _very_ careful from here on. Bad things can happen if
+ 	 * two buffer heads end IO at almost the same time and both
+@@ -305,6 +292,44 @@ static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
+ 	local_irq_restore(flags);
+ 	return;
+ }
++EXPORT_SYMBOL(end_buffer_page_read);
++
++/*
++ * I/O completion handler for block_read_full_page() - pages
++ * which come unlocked at the end of I/O.
++ */
++static void end_buffer_async_read(struct buffer_head *bh, int uptodate)
++{
++	struct page *page;
++
++	BUG_ON(!buffer_async_read(bh));
++
++#if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
++	if (uptodate && bh->b_private) {
++		struct post_read_ctx *ctx = bh->b_private;
++
++		post_read_processing(ctx);
++		return;
++	}
++
++	if (bh->b_private) {
++		struct post_read_ctx *ctx = bh->b_private;
++
++		WARN_ON(uptodate);
++		put_post_read_ctx(ctx);
++	}
++#endif
++	page = bh->b_page;
++	if (uptodate) {
++		set_buffer_uptodate(bh);
++	} else {
++		clear_buffer_uptodate(bh);
++		buffer_io_error(bh, ", async page read");
++		SetPageError(page);
++	}
++
++	end_buffer_page_read(bh);
++}
+ 
+ /*
+  * Completion handler for block_write_full_page() - pages which are unlocked
+@@ -2220,7 +2245,11 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
+ {
+ 	struct inode *inode = page->mapping->host;
+ 	sector_t iblock, lblock;
+-	struct buffer_head *bh, *head, *arr[MAX_BUF_PER_PAGE];
++	struct buffer_head *bh, *head;
++	struct {
++		sector_t blk_nr;
++		struct buffer_head *bh;
++	} arr[MAX_BUF_PER_PAGE];
+ 	unsigned int blocksize, bbits;
+ 	int nr, i;
+ 	int fully_mapped = 1;
+@@ -2262,7 +2291,9 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
+ 			if (buffer_uptodate(bh))
+ 				continue;
+ 		}
+-		arr[nr++] = bh;
++		arr[nr].blk_nr = iblock;
++		arr[nr].bh = bh;
++		++nr;
+ 	} while (i++, iblock++, (bh = bh->b_this_page) != head);
+ 
+ 	if (fully_mapped)
+@@ -2281,7 +2312,7 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
+ 
+ 	/* Stage two: lock the buffers */
+ 	for (i = 0; i < nr; i++) {
+-		bh = arr[i];
++		bh = arr[i].bh;
+ 		lock_buffer(bh);
+ 		mark_buffer_async_read(bh);
+ 	}
+@@ -2292,11 +2323,21 @@ int block_read_full_page(struct page *page, get_block_t *get_block)
+ 	 * the underlying blockdev brought it uptodate (the sct fix).
+ 	 */
+ 	for (i = 0; i < nr; i++) {
+-		bh = arr[i];
+-		if (buffer_uptodate(bh))
++		bh = arr[i].bh;
++		if (buffer_uptodate(bh)) {
+ 			end_buffer_async_read(bh, 1);
+-		else
++		} else {
++#if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
++			struct post_read_ctx *ctx;
++
++			ctx = get_post_read_ctx(inode, NULL, bh, arr[i].blk_nr);
++			if (WARN_ON(IS_ERR(ctx))) {
++				end_buffer_async_read(bh, 0);
++				continue;
++			}
++#endif
+ 			submit_bh(REQ_OP_READ, 0, bh);
++		}
+ 	}
+ 	return 0;
+ }
+diff --git a/fs/crypto/bio.c b/fs/crypto/bio.c
+index bab48dfa3765..1fd063082bbb 100644
+--- a/fs/crypto/bio.c
++++ b/fs/crypto/bio.c
+@@ -24,44 +24,62 @@
+ #include <linux/module.h>
+ #include <linux/bio.h>
+ #include <linux/namei.h>
++#include <linux/buffer_head.h>
+ #include <linux/post_read_process.h>
+ 
+ #include "fscrypt_private.h"
+ 
+-static void __fscrypt_decrypt_bio(struct bio *bio, bool done)
++static void fscrypt_decrypt(struct bio *bio, struct buffer_head *bh)
+ {
++	struct inode *inode;
++	struct page *page;
+ 	struct bio_vec *bv;
++	sector_t blk_nr;
++	int ret;
+ 	int i;
+ 	struct bvec_iter_all iter_all;
+ 
+-	bio_for_each_segment_all(bv, bio, i, iter_all) {
+-		struct page *page = bv->bv_page;
+-		int ret = fscrypt_decrypt_page(page->mapping->host, page,
+-				PAGE_SIZE, 0, page->index);
++	WARN_ON(!bh && !bio);
+ 
++	if (bh) {
++		page = bh->b_page;
++		inode = page->mapping->host;
++
++		blk_nr = page->index << (PAGE_SHIFT - inode->i_blkbits);
++		blk_nr += (bh_offset(bh) >> inode->i_blkbits);
++
++		ret = fscrypt_decrypt_page(inode, page, i_blocksize(inode),
++					bh_offset(bh), blk_nr);
+ 		if (ret) {
+ 			WARN_ON_ONCE(1);
+ 			SetPageError(page);
+-		} else if (done) {
+-			SetPageUptodate(page);
+ 		}
+-		if (done)
+-			unlock_page(page);
++	} else if (bio) {
++		bio_for_each_segment_all(bv, bio, i, iter_all) {
++			unsigned int blkbits;
++
++			page = bv->bv_page;
++			inode = page->mapping->host;
++			blkbits = inode->i_blkbits;
++			blk_nr = page->index << (PAGE_SHIFT - blkbits);
++			blk_nr += (bv->bv_offset >> blkbits);
++			ret = fscrypt_decrypt_page(page->mapping->host,
++						page, bv->bv_len,
++						bv->bv_offset, blk_nr);
++			if (ret) {
++				WARN_ON_ONCE(1);
++				SetPageError(page);
++			}
++		}
+ 	}
+ }
+ 
+-void fscrypt_decrypt_bio(struct bio *bio)
+-{
+-	__fscrypt_decrypt_bio(bio, false);
+-}
+-EXPORT_SYMBOL(fscrypt_decrypt_bio);
+-
+ void fscrypt_decrypt_work(struct work_struct *work)
+ {
+ 	struct post_read_ctx *ctx =
+ 		container_of(work, struct post_read_ctx, work);
+ 
+-	fscrypt_decrypt_bio(ctx->bio);
++	fscrypt_decrypt(ctx->bio, ctx->bh);
+ 
+ 	post_read_processing(ctx);
+ }
+diff --git a/fs/crypto/crypto.c b/fs/crypto/crypto.c
+index ffa9302a7351..4f0d832cae71 100644
+--- a/fs/crypto/crypto.c
++++ b/fs/crypto/crypto.c
+@@ -305,11 +305,26 @@ EXPORT_SYMBOL(fscrypt_encrypt_page);
+ int fscrypt_decrypt_page(const struct inode *inode, struct page *page,
+ 			unsigned int len, unsigned int offs, u64 lblk_num)
+ {
++	int i, page_nr_blks;
++	int err = 0;
++
+ 	if (!(inode->i_sb->s_cop->flags & FS_CFLG_OWN_PAGES))
+ 		BUG_ON(!PageLocked(page));
+ 
+-	return fscrypt_do_page_crypto(inode, FS_DECRYPT, lblk_num, page, page,
+-				      len, offs, GFP_NOFS);
++	page_nr_blks = len >> inode->i_blkbits;
++
++	for (i = 0; i < page_nr_blks; i++) {
++		err = fscrypt_do_page_crypto(inode, FS_DECRYPT, lblk_num,
++					page, page, i_blocksize(inode), offs,
++					GFP_NOFS);
++		if (err)
++			break;
++
++		++lblk_num;
++		offs += i_blocksize(inode);
++	}
++
++	return err;
+ }
+ EXPORT_SYMBOL(fscrypt_decrypt_page);
+ 
 diff --git a/fs/f2fs/data.c b/fs/f2fs/data.c
-index 2f62244f6d24..f00f018bed27 100644
+index f00f018bed27..933b28d5809e 100644
 --- a/fs/f2fs/data.c
 +++ b/fs/f2fs/data.c
-@@ -89,10 +89,10 @@ static void __read_end_io(struct bio *bio)
- 
- #if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
- 	if (bio->bi_private) {
--		struct bio_post_read_ctx *ctx;
-+		struct post_read_ctx *ctx;
- 
- 		ctx = bio->bi_private;
--		put_bio_post_read_ctx(ctx);
-+		put_post_read_ctx(ctx);
- 	}
- #endif
- 	bio_put(bio);
-@@ -108,7 +108,7 @@ static void f2fs_read_end_io(struct bio *bio)
- 
- #if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
- 	if (!bio->bi_status && bio->bi_private) {
--		bio_post_read_processing((struct bio_post_read_ctx *)(bio->bi_private));
-+		post_read_processing((struct post_read_ctx *)(bio->bi_private));
- 		return;
- 	}
- #endif
-@@ -514,7 +514,7 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
- 	struct f2fs_sb_info *sbi = F2FS_I_SB(inode);
- 	struct bio *bio;
- #if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
--	struct bio_post_read_ctx *ctx;
-+	struct post_read_ctx *ctx;
- #endif
- 	if (!f2fs_is_valid_blkaddr(sbi, blkaddr, DATA_GENERIC))
- 		return ERR_PTR(-EFAULT);
 @@ -527,7 +527,7 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
  	bio_set_op_attrs(bio, REQ_OP_READ, op_flag);
  
  #if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
--	ctx = get_bio_post_read_ctx(inode, bio, first_idx);
-+	ctx = get_post_read_ctx(inode, bio, first_idx);
+-	ctx = get_post_read_ctx(inode, bio, first_idx);
++	ctx = get_post_read_ctx(inode, bio, NULL, first_idx);
  	if (IS_ERR(ctx)) {
  		bio_put(bio);
  		return (struct bio *)ctx;
 diff --git a/fs/mpage.c b/fs/mpage.c
-index 9c291d6ddab6..938f00984ba1 100644
+index 938f00984ba1..53232862fd22 100644
 --- a/fs/mpage.c
 +++ b/fs/mpage.c
-@@ -56,16 +56,16 @@ static void mpage_end_io(struct bio *bio)
- 
- #if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
- 	if (!bio->bi_status && bio->bi_private) {
--		struct bio_post_read_ctx *ctx;
-+		struct post_read_ctx *ctx;
- 
- 		ctx = bio->bi_private;
- 
--		bio_post_read_processing(ctx);
-+		post_read_processing(ctx);
- 		return;
- 	}
- 
- 	if (bio->bi_private)
--		put_bio_post_read_ctx((struct bio_post_read_ctx *)(bio->bi_private));
-+		put_post_read_ctx((struct post_read_ctx *)(bio->bi_private));
- #endif
- 
- 	bio_for_each_segment_all(bv, bio, i, iter_all) {
-@@ -332,7 +332,7 @@ static struct bio *do_mpage_readpage(struct mpage_readpage_args *args)
- alloc_new:
- 	if (args->bio == NULL) {
- #if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
--		struct bio_post_read_ctx *ctx;
-+		struct post_read_ctx *ctx;
- #endif
- 		if (first_hole == blocks_per_page
- 			&& !(IS_ENCRYPTED(inode) || IS_VERITY(inode))) {
 @@ -348,7 +348,7 @@ static struct bio *do_mpage_readpage(struct mpage_readpage_args *args)
  			goto confused;
  
  #if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
--		ctx = get_bio_post_read_ctx(inode, args->bio, page->index);
-+		ctx = get_post_read_ctx(inode, args->bio, page->index);
+-		ctx = get_post_read_ctx(inode, args->bio, page->index);
++		ctx = get_post_read_ctx(inode, args->bio, NULL, page->index);
  		if (IS_ERR(ctx)) {
  			bio_put(args->bio);
  			args->bio = NULL;
 diff --git a/fs/post_read_process.c b/fs/post_read_process.c
-index b60be77c7217..a9ea0dca23bc 100644
+index a9ea0dca23bc..2ae054ee91a9 100644
 --- a/fs/post_read_process.c
 +++ b/fs/post_read_process.c
-@@ -14,17 +14,17 @@
- 
- #define NUM_PREALLOC_POST_READ_CTXS	128
- 
--static struct kmem_cache *bio_post_read_ctx_cache;
--static mempool_t *bio_post_read_ctx_pool;
-+static struct kmem_cache *post_read_ctx_cache;
-+static mempool_t *post_read_ctx_pool;
- 
- /* postprocessing steps for read bios */
--enum bio_post_read_step {
-+enum post_read_step {
- 	STEP_INITIAL = 0,
- 	STEP_DECRYPT,
+@@ -8,6 +8,7 @@
+ #include <linux/mm.h>
+ #include <linux/pagemap.h>
+ #include <linux/bio.h>
++#include <linux/buffer_head.h>
+ #include <linux/fscrypt.h>
+ #include <linux/fsverity.h>
+ #include <linux/post_read_process.h>
+@@ -24,26 +25,41 @@ enum post_read_step {
  	STEP_VERITY,
  };
  
--void end_bio_post_read_processing(struct bio *bio)
-+void end_post_read_processing(struct bio *bio)
+-void end_post_read_processing(struct bio *bio)
++void end_post_read_processing(struct bio *bio, struct buffer_head *bh)
  {
++	struct post_read_ctx *ctx;
  	struct page *page;
  	struct bio_vec *bv;
-@@ -42,12 +42,12 @@ void end_bio_post_read_processing(struct bio *bio)
- 		unlock_page(page);
- 	}
- 	if (bio->bi_private)
--		put_bio_post_read_ctx(bio->bi_private);
-+		put_post_read_ctx(bio->bi_private);
- 	bio_put(bio);
- }
--EXPORT_SYMBOL(end_bio_post_read_processing);
-+EXPORT_SYMBOL(end_post_read_processing);
+ 	int i;
+ 	struct bvec_iter_all iter_all;
  
--void bio_post_read_processing(struct bio_post_read_ctx *ctx)
-+void post_read_processing(struct post_read_ctx *ctx)
- {
- 	/*
- 	 * We use different work queues for decryption and for verity because
-@@ -70,17 +70,17 @@ void bio_post_read_processing(struct bio_post_read_ctx *ctx)
+-	bio_for_each_segment_all(bv, bio, i, iter_all) {
+-		page = bv->bv_page;
++	if (bh) {
++		if (!PageError(bh->b_page))
++			set_buffer_uptodate(bh);
+ 
+-		BUG_ON(bio->bi_status);
++		ctx = bh->b_private;
+ 
+-		if (!PageError(page))
+-			SetPageUptodate(page);
++		end_buffer_page_read(bh);
+ 
+-		unlock_page(page);
++		put_post_read_ctx(ctx);
++	} else if (bio) {
++		bio_for_each_segment_all(bv, bio, i, iter_all) {
++			page = bv->bv_page;
++
++			WARN_ON(bio->bi_status);
++
++			if (!PageError(page))
++				SetPageUptodate(page);
++
++			unlock_page(page);
++		}
++		WARN_ON(!bio->bi_private);
++
++		ctx = bio->bi_private;
++		put_post_read_ctx(ctx);
++
++		bio_put(bio);
+ 	}
+-	if (bio->bi_private)
+-		put_post_read_ctx(bio->bi_private);
+-	bio_put(bio);
+ }
+ EXPORT_SYMBOL(end_post_read_processing);
+ 
+@@ -70,18 +86,21 @@ void post_read_processing(struct post_read_ctx *ctx)
  		ctx->cur_step++;
  		/* fall-through */
  	default:
--		end_bio_post_read_processing(ctx->bio);
-+		end_post_read_processing(ctx->bio);
+-		end_post_read_processing(ctx->bio);
++		end_post_read_processing(ctx->bio, ctx->bh);
  	}
  }
--EXPORT_SYMBOL(bio_post_read_processing);
-+EXPORT_SYMBOL(post_read_processing);
+ EXPORT_SYMBOL(post_read_processing);
  
--struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
--						struct bio *bio,
--						pgoff_t index)
-+struct post_read_ctx *get_post_read_ctx(struct inode *inode,
-+					struct bio *bio,
-+					pgoff_t index)
+ struct post_read_ctx *get_post_read_ctx(struct inode *inode,
+ 					struct bio *bio,
++					struct buffer_head *bh,
+ 					pgoff_t index)
  {
  	unsigned int post_read_steps = 0;
--	struct bio_post_read_ctx *ctx = NULL;
-+	struct post_read_ctx *ctx = NULL;
+ 	struct post_read_ctx *ctx = NULL;
  
++	WARN_ON(!bh && !bio);
++
  	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
  		post_read_steps |= 1 << STEP_DECRYPT;
-@@ -92,7 +92,7 @@ struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
- 		post_read_steps |= 1 << STEP_VERITY;
- #endif
- 	if (post_read_steps) {
--		ctx = mempool_alloc(bio_post_read_ctx_pool, GFP_NOFS);
-+		ctx = mempool_alloc(post_read_ctx_pool, GFP_NOFS);
+ #ifdef CONFIG_FS_VERITY
+@@ -95,11 +114,15 @@ struct post_read_ctx *get_post_read_ctx(struct inode *inode,
+ 		ctx = mempool_alloc(post_read_ctx_pool, GFP_NOFS);
  		if (!ctx)
  			return ERR_PTR(-ENOMEM);
++		ctx->bh = bh;
  		ctx->bio = bio;
-@@ -103,36 +103,36 @@ struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
+ 		ctx->inode = inode;
+ 		ctx->enabled_steps = post_read_steps;
+ 		ctx->cur_step = STEP_INITIAL;
+-		bio->bi_private = ctx;
++		if (bio)
++			bio->bi_private = ctx;
++		else if (bh)
++			bh->b_private = ctx;
  	}
  	return ctx;
  }
--EXPORT_SYMBOL(get_bio_post_read_ctx);
-+EXPORT_SYMBOL(get_post_read_ctx);
- 
--void put_bio_post_read_ctx(struct bio_post_read_ctx *ctx)
-+void put_post_read_ctx(struct post_read_ctx *ctx)
- {
--	mempool_free(ctx, bio_post_read_ctx_pool);
-+	mempool_free(ctx, post_read_ctx_pool);
+@@ -111,12 +134,6 @@ void put_post_read_ctx(struct post_read_ctx *ctx)
  }
--EXPORT_SYMBOL(put_bio_post_read_ctx);
-+EXPORT_SYMBOL(put_post_read_ctx);
+ EXPORT_SYMBOL(put_post_read_ctx);
  
--bool bio_post_read_required(struct bio *bio)
-+bool post_read_required(struct bio *bio)
+-bool post_read_required(struct bio *bio)
+-{
+-	return bio->bi_private && !bio->bi_status;
+-}
+-EXPORT_SYMBOL(post_read_required);
+-
+ static int __init init_post_read_processing(void)
  {
- 	return bio->bi_private && !bio->bi_status;
- }
--EXPORT_SYMBOL(bio_post_read_required);
-+EXPORT_SYMBOL(post_read_required);
+ 	post_read_ctx_cache = KMEM_CACHE(post_read_ctx, 0);
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 7b73ef7f902d..782ed6350dfc 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -165,6 +165,7 @@ void create_empty_buffers(struct page *, unsigned long,
+ void end_buffer_read_sync(struct buffer_head *bh, int uptodate);
+ void end_buffer_write_sync(struct buffer_head *bh, int uptodate);
+ void end_buffer_async_write(struct buffer_head *bh, int uptodate);
++void end_buffer_page_read(struct buffer_head *bh);
  
--static int __init bio_init_post_read_processing(void)
-+static int __init init_post_read_processing(void)
- {
--	bio_post_read_ctx_cache = KMEM_CACHE(bio_post_read_ctx, 0);
--	if (!bio_post_read_ctx_cache)
-+	post_read_ctx_cache = KMEM_CACHE(post_read_ctx, 0);
-+	if (!post_read_ctx_cache)
- 		goto fail;
--	bio_post_read_ctx_pool =
-+	post_read_ctx_pool =
- 		mempool_create_slab_pool(NUM_PREALLOC_POST_READ_CTXS,
--					 bio_post_read_ctx_cache);
--	if (!bio_post_read_ctx_pool)
-+					 post_read_ctx_cache);
-+	if (!post_read_ctx_pool)
- 		goto fail_free_cache;
- 	return 0;
- 
- fail_free_cache:
--	kmem_cache_destroy(bio_post_read_ctx_cache);
-+	kmem_cache_destroy(post_read_ctx_cache);
- fail:
- 	return -ENOMEM;
- }
- 
--fs_initcall(bio_init_post_read_processing);
-+fs_initcall(init_post_read_processing);
-diff --git a/fs/verity/verify.c b/fs/verity/verify.c
-index f81d8ff847ec..6cb43c538a3c 100644
---- a/fs/verity/verify.c
-+++ b/fs/verity/verify.c
-@@ -287,12 +287,12 @@ EXPORT_SYMBOL_GPL(fsverity_verify_bio);
- 
- static void fsverity_verify_work(struct work_struct *work)
- {
--	struct bio_post_read_ctx *ctx =
--		container_of(work, struct bio_post_read_ctx, work);
-+	struct post_read_ctx *ctx =
-+		container_of(work, struct post_read_ctx, work);
- 
- 	fsverity_verify_bio(ctx->bio);
- 
--	bio_post_read_processing(ctx);
-+	post_read_processing(ctx);
- }
- 
- /**
+ /* Things to do with buffers at mapping->private_list */
+ void mark_buffer_dirty_inode(struct buffer_head *bh, struct inode *inode);
 diff --git a/include/linux/post_read_process.h b/include/linux/post_read_process.h
-index 09e52928f861..523bdecf9252 100644
+index 523bdecf9252..cb3e676aea64 100644
 --- a/include/linux/post_read_process.h
 +++ b/include/linux/post_read_process.h
-@@ -2,7 +2,7 @@
- #ifndef _POST_READ_PROCESS_H
+@@ -3,6 +3,7 @@
  #define _POST_READ_PROCESS_H
  
--struct bio_post_read_ctx {
-+struct post_read_ctx {
+ struct post_read_ctx {
++	struct buffer_head *bh;
  	struct bio *bio;
  	struct inode *inode;
  	struct work_struct work;
-@@ -10,12 +10,12 @@ struct bio_post_read_ctx {
+@@ -10,12 +11,12 @@ struct post_read_ctx {
  	unsigned int enabled_steps;
  };
  
--void end_bio_post_read_processing(struct bio *bio);
--void bio_post_read_processing(struct bio_post_read_ctx *ctx);
--struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
--						struct bio *bio,
--						pgoff_t index);
--void put_bio_post_read_ctx(struct bio_post_read_ctx *ctx);
--bool bio_post_read_required(struct bio *bio);
-+void end_post_read_processing(struct bio *bio);
-+void post_read_processing(struct post_read_ctx *ctx);
-+struct post_read_ctx *get_post_read_ctx(struct inode *inode,
-+					struct bio *bio,
-+					pgoff_t index);
-+void put_post_read_ctx(struct post_read_ctx *ctx);
-+bool post_read_required(struct bio *bio);
+-void end_post_read_processing(struct bio *bio);
++void end_post_read_processing(struct bio *bio, struct buffer_head *bh);
+ void post_read_processing(struct post_read_ctx *ctx);
+ struct post_read_ctx *get_post_read_ctx(struct inode *inode,
+ 					struct bio *bio,
++					struct buffer_head *bh,
+ 					pgoff_t index);
+ void put_post_read_ctx(struct post_read_ctx *ctx);
+-bool post_read_required(struct bio *bio);
  
  #endif	/* _POST_READ_PROCESS_H */
 -- 
