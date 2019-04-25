@@ -2,113 +2,90 @@ Return-Path: <SRS0=y8r3=S3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_MUTT
+	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8ED49C43218
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 15:45:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D897C43218
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 15:49:17 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id CDC03206C1
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 15:45:35 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id C46982077C
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 15:49:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1727682AbfDYPpa (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 Apr 2019 11:45:30 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:33948 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726358AbfDYPp3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 Apr 2019 11:45:29 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id BCBE01219B3;
-        Thu, 25 Apr 2019 15:45:29 +0000 (UTC)
-Received: from warthog.procyon.org.uk (ovpn-121-98.rdu2.redhat.com [10.10.121.98])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 4EAC660C64;
-        Thu, 25 Apr 2019 15:45:28 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <20190425151911.GR2217@ZenIV.linux.org.uk>
-References: <20190425151911.GR2217@ZenIV.linux.org.uk> <155620449631.4720.8762546550728087460.stgit@warthog.procyon.org.uk> <155620453168.4720.4510967359017466912.stgit@warthog.procyon.org.uk>
-To:     Al Viro <viro@zeniv.linux.org.uk>
-Cc:     dhowells@redhat.com, linux-afs@lists.infradead.org,
-        linux-ext4@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 3/6] vfs: Allow searching of the icache under RCU conditions [ver #2]
+        id S1727813AbfDYPtM (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 Apr 2019 11:49:12 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:42854 "EHLO
+        outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726402AbfDYPtM (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Apr 2019 11:49:12 -0400
+Received: from callcc.thunk.org (guestnat-104-133-0-109.corp.google.com [104.133.0.109] (may be forged))
+        (authenticated bits=0)
+        (User authenticated as tytso@ATHENA.MIT.EDU)
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x3PFmnsc002484
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 25 Apr 2019 11:48:51 -0400
+Received: by callcc.thunk.org (Postfix, from userid 15806)
+        id A496D420EEC; Thu, 25 Apr 2019 11:48:49 -0400 (EDT)
+Date:   Thu, 25 Apr 2019 11:48:49 -0400
+From:   "Theodore Ts'o" <tytso@mit.edu>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Pan Bian <bianpan2016@163.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: ext4: avoid drop reference to iloc.bh twice
+Message-ID: <20190425154849.GA4739@mit.edu>
+Mail-Followup-To: Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+        Pan Bian <bianpan2016@163.com>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+References: <1555576278-3917-1-git-send-email-bianpan2016@163.com>
+ <20190418123519.GJ28541@quack2.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <8104.1556207127.1@warthog.procyon.org.uk>
-Date:   Thu, 25 Apr 2019 16:45:27 +0100
-Message-ID: <8105.1556207127@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.38]); Thu, 25 Apr 2019 15:45:29 +0000 (UTC)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20190418123519.GJ28541@quack2.suse.cz>
+User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Al Viro <viro@zeniv.linux.org.uk> wrote:
+On Thu, Apr 18, 2019 at 02:35:19PM +0200, Jan Kara wrote:
+> On Thu 18-04-19 16:31:18, Pan Bian wrote:
+> > The reference to iloc.bh has been dropped in ext4_mark_iloc_dirty.
+> > However, the reference is dropped again if error occurs during
+> > ext4_handle_dirty_metadata, which may result in use-after-free bugs.
+> > 
+> > Fixes: fb265c9cb49e("ext4: add ext4_sb_bread() to disambiguate ENOMEM
+> > cases")
+> > 
+> > Signed-off-by: Pan Bian <bianpan2016@163.com>
+> 
+> Thanks for the patch! Good spotting. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-> Hmm...  Why do these stores to ->i_state need WRITE_ONCE, while an arseload
-> of similar in fs/fs-writeback.c does not?
+Applied, thanks.
 
-Because what matters in find_inode_rcu() are the I_WILL_FREE and I_FREEING
-flags - and there's a gap during iput_final() where neither is set.
+> I'm just wondering: Ted, shouldn't we make ext4_mark_iloc_dirty() clear the
+> iloc.bh pointer on it's own? I believe this is not the first time we had a
+> bug like this and it would also catch possible use-after-free issues in
+> case someone tried to use iloc.bh after the reference has been dropped.
+> 
+> Generally the scheme around ext4_get_inode_loc() and
+> ext4_mark_iloc_dirty() seems to be somewhat error prone. E.g. a quick audit
+> shows that there's bh leak in ext4_orphan_del() in one of the error paths.
+> I'll send patches.
 
-	if (!drop) {
-		inode->i_state |= I_WILL_FREE;
-		spin_unlock(&inode->i_lock);
-		write_inode_now(inode, 1);
-		spin_lock(&inode->i_lock);
-		WARN_ON(inode->i_state & I_NEW);
-		inode->i_state &= ~I_WILL_FREE;
- --->
-	}
+Good suggestion!
 
-	inode->i_state |= I_FREEING;
+I agree, the interface is error-prone.  Clearing inode.bh afterwards
+makes sense.
 
-It's normally covered by i_lock, but it's a problem if anyone looks at the
-pair without taking i_lock.
+After we do this, we should also scan the call sites, since there are
+some places where we have been calling get_bh(iloc.bh) before-hand, so
+that the brelse(iloc.bh) in the cleanup path will work.  Other call
+paths add iloc.bh = NULL afterwards so that the brelse() will work
+correctly.  So we'll be able to clean up all of this afterwards.
 
-Even flipping the order:
-
-	if (!drop) {
-		inode->i_state |= I_WILL_FREE;
-		spin_unlock(&inode->i_lock);
-		write_inode_now(inode, 1);
-		spin_lock(&inode->i_lock);
-		WARN_ON(inode->i_state & I_NEW);
-		inode->i_state |= I_FREEING;
-		inode->i_state &= ~I_WILL_FREE;
-	} else {
-		inode->i_state |= I_FREEING;
-	}
-
-isn't a guarantee of the order in which the compiler will do things AIUI.
-Maybe I've been listening to Paul McKenney too much.  So the WRITE_ONCE()
-should guarantee that both bits will change atomically.
-
-Note that ocfs2_drop_inode() looks a tad suspicious:
-
-	int ocfs2_drop_inode(struct inode *inode)
-	{
-		struct ocfs2_inode_info *oi = OCFS2_I(inode);
-
-		trace_ocfs2_drop_inode((unsigned long long)oi->ip_blkno,
-					inode->i_nlink, oi->ip_flags);
-
-		assert_spin_locked(&inode->i_lock);
-		inode->i_state |= I_WILL_FREE;
-		spin_unlock(&inode->i_lock);
-		write_inode_now(inode, 1);
-		spin_lock(&inode->i_lock);
-		WARN_ON(inode->i_state & I_NEW);
-		inode->i_state &= ~I_WILL_FREE;
-
-		return 1;
-	}
-
-David
+		       	     	     - Ted
