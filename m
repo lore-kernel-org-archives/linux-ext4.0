@@ -7,154 +7,215 @@ X-Spam-Status: No, score=-9.1 required=3.0 tests=DKIMWL_WL_HIGH,DKIM_SIGNED,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 959AFC282E1
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 11:24:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC22AC10F03
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 11:24:40 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 603D020645
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 11:24:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 821B220645
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 11:24:40 +0000 (UTC)
 Authentication-Results: mail.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="lW7KeMC3"
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="AAYrDUkT"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S2387646AbfDYLYK (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 Apr 2019 07:24:10 -0400
-Received: from mailout4.samsung.com ([203.254.224.34]:33282 "EHLO
-        mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2387580AbfDYLYI (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Apr 2019 07:24:08 -0400
-Received: from epcas1p3.samsung.com (unknown [182.195.41.47])
-        by mailout4.samsung.com (KnoxPortal) with ESMTP id 20190425112404epoutp045b25d253735467c4670790affac7533f~Ys9_TRUfL0936909369epoutp04j;
-        Thu, 25 Apr 2019 11:24:04 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout4.samsung.com 20190425112404epoutp045b25d253735467c4670790affac7533f~Ys9_TRUfL0936909369epoutp04j
+        id S2387776AbfDYLYf (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 Apr 2019 07:24:35 -0400
+Received: from mailout1.samsung.com ([203.254.224.24]:30678 "EHLO
+        mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S2387545AbfDYLYE (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Apr 2019 07:24:04 -0400
+Received: from epcas1p2.samsung.com (unknown [182.195.41.46])
+        by mailout1.samsung.com (KnoxPortal) with ESMTP id 20190425112401epoutp0154f3efce8b08a5c57f52a4872319583e~Ys976J_2g1904819048epoutp01f;
+        Thu, 25 Apr 2019 11:24:01 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.samsung.com 20190425112401epoutp0154f3efce8b08a5c57f52a4872319583e~Ys976J_2g1904819048epoutp01f
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-        s=mail20170921; t=1556191444;
-        bh=GkSqbdrDJV1STm2bKdKjWIfP93iOF5XNeEs045WX1h8=;
+        s=mail20170921; t=1556191441;
+        bh=4S6KChIBk/IqG41ydTdXRNYQIbozJTHYfmrQ7Y29Fy0=;
         h=From:To:Cc:Subject:Date:In-reply-to:References:From;
-        b=lW7KeMC3Idq49/+l6VZ1og8T2CThtWxP1qO9lDiZc77vtklVYQWVxw5Ngkhf8A90B
-         T0bwRVTBqjlBwY1TdHW2zlZb3pXIV2JlcOe1EmzhLkjIHKMmgmd3/1og5G8ZMN617I
-         BpmZQ+E1/jOzy+6oK0UrHb74h2R/wdYyBqq6UvRA=
+        b=AAYrDUkThUv+58pIWELgbqysEharMon4iX4btuzrVtKp++QDF6hYi4CWunIcsFtY/
+         CNqeYCEVVKIxChsSGsGf8P3WOJThjnRHs1NWJ4pPFigqo4GEaPR7uAYt8oR3skGl99
+         uLhEryKhRDC4G4GFbgAb+BIS+yEDk+j/28ZeXuMU=
 Received: from epsmges1p2.samsung.com (unknown [182.195.42.54]) by
-        epcas1p2.samsung.com (KnoxPortal) with ESMTP id
-        20190425112403epcas1p2e03bab8b9169e8cf575401bd63da598c~Ys9_CJ7Qg0216202162epcas1p2P;
-        Thu, 25 Apr 2019 11:24:03 +0000 (GMT)
-Received: from epcas1p4.samsung.com ( [182.195.41.48]) by
+        epcas1p4.samsung.com (KnoxPortal) with ESMTP id
+        20190425112400epcas1p468414a681f5575952ec05e4abb0f1f1b~Ys97bOP_X2380823808epcas1p4H;
+        Thu, 25 Apr 2019 11:24:00 +0000 (GMT)
+Received: from epcas1p1.samsung.com ( [182.195.41.45]) by
         epsmges1p2.samsung.com (Symantec Messaging Gateway) with SMTP id
-        E7.D7.04142.3D891CC5; Thu, 25 Apr 2019 20:24:03 +0900 (KST)
+        B5.D7.04142.0D891CC5; Thu, 25 Apr 2019 20:24:00 +0900 (KST)
 Received: from epsmgms2p1new.samsung.com (unknown [182.195.42.142]) by
-        epcas1p1.samsung.com (KnoxPortal) with ESMTP id
-        20190425112403epcas1p13006198cda351a08c8403c2b85c9f102~Ys99wKxS91172511725epcas1p1U;
-        Thu, 25 Apr 2019 11:24:03 +0000 (GMT)
-X-AuditID: b6c32a36-ce1ff7000000102e-85-5cc198d35208
+        epcas1p2.samsung.com (KnoxPortal) with ESMTP id
+        20190425112400epcas1p26e7634f95a185a83c31470006d291161~Ys97JOliC0718107181epcas1p22;
+        Thu, 25 Apr 2019 11:24:00 +0000 (GMT)
+X-AuditID: b6c32a36-ce1ff7000000102e-7d-5cc198d09ab8
 Received: from epmmp2 ( [203.254.227.17]) by epsmgms2p1new.samsung.com
-        (Symantec Messaging Gateway) with SMTP id CE.BF.03598.3D891CC5; Thu, 25 Apr
-        2019 20:24:03 +0900 (KST)
+        (Symantec Messaging Gateway) with SMTP id 1E.BF.03598.0D891CC5; Thu, 25 Apr
+        2019 20:24:00 +0900 (KST)
 Received: from test-PowerEdge-R720.sa.corp.samsungelectronics.net
         ([107.108.221.212]) by mmp2.samsung.com (Oracle Communications Messaging
         Server 7.0.5.31.0 64bit (built May  5 2014)) with ESMTPA id
-        <0PQI007Z2KZ7JR40@mmp2.samsung.com>; Thu, 25 Apr 2019 20:24:03 +0900 (KST)
+        <0PQI007Z2KZ7JR40@mmp2.samsung.com>; Thu, 25 Apr 2019 20:24:00 +0900 (KST)
 From:   Kanchan Joshi <joshi.k@samsung.com>
 To:     linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
         linux-nvme@lists.infradead.org, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org
 Cc:     prakash.v@samsung.com, anshul@samsung.com,
         Kanchan Joshi <joshi.k@samsung.com>
-Subject: [PATCH v5 5/7] nvme: register stream info with block layer
-Date:   Thu, 25 Apr 2019 16:50:00 +0530
-Message-id: <1556191202-3245-6-git-send-email-joshi.k@samsung.com>
+Subject: [PATCH v5 4/7] block: introduce write-hint to stream-id conversion
+Date:   Thu, 25 Apr 2019 16:49:59 +0530
+Message-id: <1556191202-3245-5-git-send-email-joshi.k@samsung.com>
 X-Mailer: git-send-email 2.7.4
 In-reply-to: <1556191202-3245-1-git-send-email-joshi.k@samsung.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFprEIsWRmVeSWpSXmKPExsWy7bCmge7lGQdjDDbd0bH4PX0Kq8XR/2/Z
+X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFprMIsWRmVeSWpSXmKPExsWy7bCmru6FGQdjDL59MLP4PX0Kq8XR/2/Z
         LPbe0raYOe8Om8WevSdZLC7vmsNmMX/ZU3aLK1MWMTtweGxeUu/Rt2UVo8fnTXIBzFFcNimp
-        OZllqUX6dglcGUdPbGAuuCZYsW3hFOYGxot8XYycHBICJhKzOp6ydTFycQgJ7GCUuNyxmxHC
-        +c4ocXzfRmaYqt1NWxlBbCGBDYwSU1/nQBRNZ5J4cHoKUIKDg01AU+LC5FKQuIjAHEaJZfum
-        gTUzC4RIrHiyigWkRljAWeLWTxOQMIuAqkT7wh2sIDavgJPE+7UrWCB2yUncPNcJ1soJVP7i
-        xzMmkJkSAo1sEgv+3GeCKHKReP/5LdheCQFpiUtHbSHCxRK/7hxlhqjvYJS43jATaqi9xMU9
-        f5kg7uGTePe1hxWil1eio00IwvSQ+Lk2C+KtaYwSs6dvZ5vAKLGAkWEVo1hqQXFuemqxYYGR
-        XnFibnFpXrpecn7uJkZwTGmZ7WBcdM7nEKMAB6MSD69C5IEYIdbEsuLK3EOMEhzMSiK86qYH
-        Y4R4UxIrq1KL8uOLSnNSiw8xSnOwKInzrndwjhESSE8sSc1OTS1ILYLJMnFwSjUwLnaeNrFi
-        79Hdz6bNkT28qjLX1N/rw/n9r61uT/Hbv4zLpfB2vPnPsHWHnf6qPznZ/7r4yWe3h1lL+sV2
-        nT7fkN+rvMn4+Jnrm/19KrVy1657dvO/0PwpZ/bmNhrtd3t1cF2s36Vfz+qXnFqdINOz//ya
-        /L/qX86uvt1mZ6kX7RAw+3SU/rwJJieVWIozEg21mIuKEwEy5fJypQIAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFmphluLIzCtJLcpLzFFi42I5/e+xoO7lGQdjDN5tlrD4PX0Kq8XR/2/Z
+        OZllqUX6dglcGa8n7GIpmKlYcfrde/YGxibpLkZODgkBE4nOh4dYuhi5OIQEdjBKXJn4Esr5
+        zijxq3suE0xVy+79bBCJDYwSX38vZwVJCAlMZ5I4dSyui5GDg01AU+LC5FKQGhGBOYwSy/ZN
+        YwapYRYIkVjxZBULiC0s4C2xec4vsDiLgKrEyZ4XbCC9vAJOEgs+CEPskpO4ea4TrIRTwFni
+        xY9nTCAzJQQ62CRer1/ADlHkIvHsWBsLSK+EgLTEpaO2EOFiiV93jjJD1TNKXG+YyQKRsJe4
+        uOcvE8Q9fBLvvvawQvTySnS0CUGUeEjsebedCeLHaYwS0961M05glFjAyLCKUSy1oDg3PbXY
+        sMBIrzgxt7g0L10vOT93EyM4qrTMdjAuOudziFGAg1GJh1ch8kCMEGtiWXFl7iFGCQ5mJRFe
+        ddODMUK8KYmVValF+fFFpTmpxYcYpTlYlMR51zs4xwgJpCeWpGanphakFsFkmTg4pRoYJYs/
+        XV3wPPi63bOZFcwnZgrMTlnqf+eej/9jmyX98jPbYlJX3H+6nOnSNYZNT3/dXy1SznjJ9NeH
+        Q4dv7md/svW6wJ5H3C6pP+c+7rnAOH8LTw9z9Y35S9jseR5aRFlKH90QvGP22/Jbakqvr235
+        J7r35+rl7zMOzll7carTmmdsJj8OrVyU/r9SiaU4I9FQi7moOBEAwGk3waYCAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAA+NgFmphluLIzCtJLcpLzFFi42I5/e+xoO6FGQdjDH7PV7X4PX0Kq8XR/2/Z
         LPbe0raYOe8Om8WevSdZLC7vmsNmMX/ZU3aLK1MWMTtweGxeUu/Rt2UVo8fnTXIBzFFcNimp
-        OZllqUX6dglcGUdPbGAuuCZYsW3hFOYGxot8XYycHBICJhK7m7YydjFycQgJrGOUaHkzjQnC
-        mckk8XnhFKAMBwebgKbEhcmlIHERgTmMEj2717OCdDMLhEjMevaYDaRGWMBZ4tZPE5Awi4Cq
-        RPvCHWAlvAJOEu/XrmCBWCYncfNcJzOIzQlU/uLHMyYQWwio5tq0TewTGHkWMDKsYpRMLSjO
-        Tc8tNiowzEst1ytOzC0uzUvXS87P3cQIDJtth7X6djDeXxJ/iFGAg1GJh/dC7IEYIdbEsuLK
-        3EOMEhzMSiK86qYHY4R4UxIrq1KL8uOLSnNSiw8xSnOwKInz3s47FikkkJ5YkpqdmlqQWgST
-        ZeLglGpg1L3sbJI267X39/MCkn5bolYdSOH3sgleo7r+eciBFdPKH7hu7PjP8laoNDGvKSm1
-        sc68gbeqprThqO2vtzcvf427w8X913pJiLN6Mn9SqPM6j7vLJwu+YJx+bffNKRmvne48OHnw
-        opbC4evLV168udA9e/XmuTqZ95fZm4QJPJ/w6VVf6eLri5RYijMSDbWYi4oTAWbZlXwXAgAA
-X-CMS-MailID: 20190425112403epcas1p13006198cda351a08c8403c2b85c9f102
+        OZllqUX6dglcGa8n7GIpmKlYcfrde/YGxibpLkZODgkBE4mW3fvZuhi5OIQE1jFKNM3dxQLh
+        zGSSePzzIVMXIwcHm4CmxIXJpSBxEYE5jBI9u9ezgnQzC4RIzHr2mA3EFhbwltg85xcziM0i
+        oCpxsucFG0gvr4CTxIIPwhDL5CRunusEK+EUcJZ48eMZE4gtBFRybdom9gmMPAsYGVYxSqYW
+        FOem5xYbFRjmpZbrFSfmFpfmpesl5+duYgSGzbbDWn07GO8viT/EKMDBqMTDeyH2QIwQa2JZ
+        cWXuIUYJDmYlEV5104MxQrwpiZVVqUX58UWlOanFhxilOViUxHlv5x2LFBJITyxJzU5NLUgt
+        gskycXBKNTBK35jqYRryorTJ/l/dC+mrZ36Z/1r234L5tnRJxmetrby97jvnGB7c9WJtVGQ2
+        x8mitqwisQNL2q+xy33qnNYkWD3fbueeaNvUprj3dZOPKW25t7Ioa8KpFw28yU2fTvx6Lv77
+        /YFZbdyaH+6V8x08tmP2JIncDQ6WzFVbvgXdeCpoZmvz4e0eJZbijERDLeai4kQA1T38wRcC
+        AAA=
+X-CMS-MailID: 20190425112400epcas1p26e7634f95a185a83c31470006d291161
 CMS-TYPE: 101P
-X-CMS-RootMailID: 20190425112403epcas1p13006198cda351a08c8403c2b85c9f102
+X-CMS-RootMailID: 20190425112400epcas1p26e7634f95a185a83c31470006d291161
 References: <1556191202-3245-1-git-send-email-joshi.k@samsung.com>
-        <CGME20190425112403epcas1p13006198cda351a08c8403c2b85c9f102@epcas1p1.samsung.com>
+        <CGME20190425112400epcas1p26e7634f95a185a83c31470006d291161@epcas1p2.samsung.com>
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Make nvme driver register number of streams with block layer. Block
-layer will use that for write-hint to stream-id conversion. Registration
-is done for each namespace. Since NVMe spec allow all available
-streams (within subsystem) to be used by all namespaces, no attempt
-has been made to add reservation at namespace level.
-Also driver no longer disables stream feature if device reported less
-than 4 streams. Any write-hint beyond exported number of streams will
-be mapped to 0 by block layer.
+This patch moves write-hint-to-stream-id conversion in block-layer.
+Earlier this was done by driver (nvme). For user write-hints, conversion
+is of the form "streamid = write-hint - 1". For kernel write-hints,
+streams are allocated in top-to-bottom fashion. This has the effect of
+mapping user-hints to lower range of stream-ids and kernel-hints to upper
+range of stream-ids.
+Conversion takes stream limit (maintained in request queue) into
+account. Write-hints beyond the exposed limit turn to 0.
+A new field 'streamid' has been added in request, while 'write-hint'
+field has been removed. For merging checks, 'bi_write_hint' (of bio) is
+used instead.
+
 Signed-off-by: Kanchan Joshi <joshi.k@samsung.com>
 ---
- drivers/nvme/host/core.c | 16 ++++------------
- 1 file changed, 4 insertions(+), 12 deletions(-)
+ block/blk-core.c         | 29 ++++++++++++++++++++++++++++-
+ block/blk-merge.c        |  4 ++--
+ drivers/nvme/host/core.c |  7 ++-----
+ include/linux/blkdev.h   |  2 +-
+ 4 files changed, 33 insertions(+), 9 deletions(-)
 
+diff --git a/block/blk-core.c b/block/blk-core.c
+index a55389b..0485c20 100644
+--- a/block/blk-core.c
++++ b/block/blk-core.c
+@@ -730,6 +730,33 @@ bool blk_attempt_plug_merge(struct request_queue *q, struct bio *bio,
+ 	return false;
+ }
+ 
++enum rw_hint blk_write_hint_to_streamid(struct request *req,
++					struct bio *bio)
++{
++	enum rw_hint streamid, write_hint, nr_streams;
++	struct request_queue *q = req->q;
++
++	nr_streams = q->limits.nr_streams;
++
++	write_hint = bio->bi_write_hint;
++
++	if (!nr_streams || write_hint == WRITE_LIFE_NOT_SET ||
++	    write_hint == WRITE_LIFE_NONE)
++		streamid = 0;
++	else if (write_hint < WRITE_LIFE_KERN_MIN) { /*user-space hints*/
++		streamid = write_hint - 1;
++		if (streamid > nr_streams)
++			streamid = 0;
++	} else { /* kernel hints */
++		streamid = write_hint - WRITE_LIFE_KERN_MIN + 1;
++		if (streamid > (nr_streams - BLK_MAX_USER_HINTS))
++			streamid = 0;
++		else
++			streamid = nr_streams - streamid + 1;
++	}
++	return streamid;
++}
++
+ void blk_init_request_from_bio(struct request *req, struct bio *bio)
+ {
+ 	if (bio->bi_opf & REQ_RAHEAD)
+@@ -737,7 +764,7 @@ void blk_init_request_from_bio(struct request *req, struct bio *bio)
+ 
+ 	req->__sector = bio->bi_iter.bi_sector;
+ 	req->ioprio = bio_prio(bio);
+-	req->write_hint = bio->bi_write_hint;
++	req->streamid = blk_write_hint_to_streamid(req, bio);
+ 	blk_rq_bio_prep(req->q, req, bio);
+ }
+ EXPORT_SYMBOL_GPL(blk_init_request_from_bio);
+diff --git a/block/blk-merge.c b/block/blk-merge.c
+index 1c9d4f0..1435634 100644
+--- a/block/blk-merge.c
++++ b/block/blk-merge.c
+@@ -832,7 +832,7 @@ static struct request *attempt_merge(struct request_queue *q,
+ 	 * Don't allow merge of different write hints, or for a hint with
+ 	 * non-hint IO.
+ 	 */
+-	if (req->write_hint != next->write_hint)
++	if (req->bio->bi_write_hint != next->bio->bi_write_hint)
+ 		return NULL;
+ 
+ 	if (req->ioprio != next->ioprio)
+@@ -964,7 +964,7 @@ bool blk_rq_merge_ok(struct request *rq, struct bio *bio)
+ 	 * Don't allow merge of different write hints, or for a hint with
+ 	 * non-hint IO.
+ 	 */
+-	if (rq->write_hint != bio->bi_write_hint)
++	if (rq->bio->bi_write_hint != bio->bi_write_hint)
+ 		return false;
+ 
+ 	if (rq->ioprio != bio_prio(bio))
 diff --git a/drivers/nvme/host/core.c b/drivers/nvme/host/core.c
-index f3000d9..81b86fa 100644
+index 2c43e12..f3000d9 100644
 --- a/drivers/nvme/host/core.c
 +++ b/drivers/nvme/host/core.c
-@@ -464,10 +464,6 @@ static int nvme_toggle_streams(struct nvme_ctrl *ctrl, bool enable)
- 	return nvme_submit_sync_cmd(ctrl->admin_q, &c, NULL, 0);
- }
- 
--static int nvme_disable_streams(struct nvme_ctrl *ctrl)
--{
--	return nvme_toggle_streams(ctrl, false);
--}
- 
- static int nvme_enable_streams(struct nvme_ctrl *ctrl)
+@@ -530,12 +530,9 @@ static void nvme_assign_write_stream(struct nvme_ctrl *ctrl,
+ 				     struct request *req, u16 *control,
+ 				     u32 *dsmgmt)
  {
-@@ -510,14 +506,7 @@ static int nvme_configure_directives(struct nvme_ctrl *ctrl)
- 		return ret;
+-	enum rw_hint streamid = req->write_hint;
++	enum rw_hint streamid = req->streamid;
  
- 	ctrl->nssa = le16_to_cpu(s.nssa);
--	if (ctrl->nssa < BLK_MAX_WRITE_HINTS - 1) {
--		dev_info(ctrl->device, "too few streams (%u) available\n",
--					ctrl->nssa);
--		nvme_disable_streams(ctrl);
--		return 0;
--	}
--
--	ctrl->nr_streams = min_t(unsigned, ctrl->nssa, BLK_MAX_WRITE_HINTS - 1);
-+	ctrl->nr_streams = ctrl->nssa;
- 	dev_info(ctrl->device, "Using %u streams\n", ctrl->nr_streams);
- 	return 0;
- }
-@@ -3186,6 +3175,7 @@ static int nvme_setup_streams_ns(struct nvme_ctrl *ctrl, struct nvme_ns *ns)
- {
- 	struct streams_directive_params s;
- 	int ret;
-+	u16 nr_streams;
+-	if (streamid == WRITE_LIFE_NOT_SET || streamid == WRITE_LIFE_NONE)
+-		streamid = 0;
+-	else {
+-		streamid--;
++	if (streamid != 0) {
+ 		if (WARN_ON_ONCE(streamid > ctrl->nr_streams))
+ 			return;
  
- 	if (!ctrl->nr_streams)
- 		return 0;
-@@ -3197,6 +3187,8 @@ static int nvme_setup_streams_ns(struct nvme_ctrl *ctrl, struct nvme_ns *ns)
- 	ns->sws = le32_to_cpu(s.sws);
- 	ns->sgs = le16_to_cpu(s.sgs);
+diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
+index 5b6cb9747..9cf8a40 100644
+--- a/include/linux/blkdev.h
++++ b/include/linux/blkdev.h
+@@ -216,7 +216,7 @@ struct request {
+ 	unsigned short nr_integrity_segments;
+ #endif
  
-+	nr_streams = min_t(unsigned, ctrl->nr_streams, BLK_MAX_WRITE_HINTS - 1);
-+	blk_queue_stream_limits(ns->queue, nr_streams);
- 	if (ns->sws) {
- 		unsigned int bs = 1 << ns->lba_shift;
+-	unsigned short write_hint;
++	unsigned short streamid;
+ 	unsigned short ioprio;
  
+ 	unsigned int extra_len;	/* length of alignment and padding */
 -- 
 2.7.4
 
