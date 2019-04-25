@@ -1,104 +1,67 @@
-Return-Path: <SRS0=cG1U=S2=vger.kernel.org=linux-ext4-owner@kernel.org>
+Return-Path: <SRS0=y8r3=S3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
-X-Spam-Level: 
-X-Spam-Status: No, score=-1.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,SPF_PASS autolearn=unavailable autolearn_force=no
-	version=3.4.0
+X-Spam-Level: *
+X-Spam-Status: No, score=1.8 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	MAILING_LIST_MULTI,SPF_PASS,UNWANTED_LANGUAGE_BODY,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9CA4FC282CE
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Apr 2019 14:58:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1FCC4C10F03
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 09:47:31 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 775CE2089F
-	for <linux-ext4@archiver.kernel.org>; Wed, 24 Apr 2019 14:58:32 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id E61362084F
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 09:47:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1732733AbfDXO6c (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Wed, 24 Apr 2019 10:58:32 -0400
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:51194 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1733105AbfDXO6Y (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>);
-        Wed, 24 Apr 2019 10:58:24 -0400
-Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x3OEsTwj123347
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Apr 2019 10:58:23 -0400
-Received: from e06smtp04.uk.ibm.com (e06smtp04.uk.ibm.com [195.75.94.100])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2s2s1puyf9-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Wed, 24 Apr 2019 10:58:23 -0400
-Received: from localhost
-        by e06smtp04.uk.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
-        Wed, 24 Apr 2019 15:58:21 +0100
-Received: from b06cxnps4076.portsmouth.uk.ibm.com (9.149.109.198)
-        by e06smtp04.uk.ibm.com (192.168.101.134) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
-        (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Wed, 24 Apr 2019 15:58:16 +0100
-Received: from d06av22.portsmouth.uk.ibm.com (d06av22.portsmouth.uk.ibm.com [9.149.105.58])
-        by b06cxnps4076.portsmouth.uk.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x3OEwFZG11206870
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 24 Apr 2019 14:58:15 GMT
-Received: from d06av22.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 8E3F34C058;
-        Wed, 24 Apr 2019 14:58:15 +0000 (GMT)
-Received: from d06av22.portsmouth.uk.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 5EABB4C040;
-        Wed, 24 Apr 2019 14:58:13 +0000 (GMT)
-Received: from localhost.localdomain (unknown [9.85.81.252])
-        by d06av22.portsmouth.uk.ibm.com (Postfix) with ESMTP;
-        Wed, 24 Apr 2019 14:58:13 +0000 (GMT)
-From:   Chandan Rajendra <chandan@linux.ibm.com>
-To:     Christoph Hellwig <hch@infradead.org>
-Cc:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net,
-        linux-fscrypt@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
-        yuchao0@huawei.com
-Subject: Re: [PATCH V1 02/14] Consolidate "post read processing" into a new file
-Date:   Wed, 24 Apr 2019 20:29:10 +0530
-Organization: IBM
-In-Reply-To: <20190424142423.GA12761@infradead.org>
-References: <20190424043730.13683-1-chandan@linux.ibm.com> <6353008.fQNhCuxumZ@localhost.localdomain> <20190424142423.GA12761@infradead.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7Bit
-Content-Type: text/plain; charset="us-ascii"
-X-TM-AS-GCONF: 00
-x-cbid: 19042414-0016-0000-0000-000002732725
-X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19042414-0017-0000-0000-000032CF99D4
-Message-Id: <7402364.ucYHGh3o57@localhost.localdomain>
-X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-04-24_09:,,
- signatures=0
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
- malwarescore=0 suspectscore=1 phishscore=0 bulkscore=0 spamscore=0
- clxscore=1015 lowpriorityscore=0 mlxscore=0 impostorscore=0
- mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.0.1-1810050000 definitions=main-1904240116
+        id S1728784AbfDYJra (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 Apr 2019 05:47:30 -0400
+Received: from host154-130-static.115-2-b.business.telecomitalia.it ([2.115.130.154]:34444
+        "EHLO dbt-direct.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1726302AbfDYJr3 (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Apr 2019 05:47:29 -0400
+X-Greylist: delayed 4244 seconds by postgrey-1.27 at vger.kernel.org; Thu, 25 Apr 2019 05:47:29 EDT
+To:     linux-ext4@vger.kernel.org
+From:   GC-Team <info@dbt-direct.net>
+Subject: FW: Neue Kunden
+Date:   Thu, 25 Apr 2019 11:47:29 +0200
+Message-ID: <20190425_094729_012920.info@dbt-direct.net>
+X-Mailer: WEBMAIL
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Mime-Version: 1.0
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wednesday, April 24, 2019 7:54:23 PM IST Christoph Hellwig wrote:
-> On Wed, Apr 24, 2019 at 03:34:17PM +0530, Chandan Rajendra wrote:
-> > To clarify, Are you suggesting that a new kconfig option (say
-> > CONFIG_FS_READ_CALLBACKS) be provided to the user so that the following could
-> > occur,
-> > 
-> > 1. User selects CONFIG_FS_ENCRYPTION and/or CONFIG_FS_VERITY and this causes
-> > CONFIG_FS_READ_CALLBACKS to be set to 'y'.
-> > 2. User selects CONFIG_FS_READ_CALLBACKS explicitly.
-> 
-> If you don't add a user description to a Kconfig entry it won't be
-> visible to users, but only selectable by other options.  That is what
-> I suggest.
-> 
-> 
+Sehr geehrte Damen und Herren,
 
-Thanks for the clarification. I will make the necessary changes.
+nach unserem Besuch Ihrer Homepage möchten wir Ihnen ein Angebot von Produkten vorstellen, das Ihnen ermöglichen wird, den Verkauf Ihrer Produkte sowie Dienstleistungen deutlich zu erhöhen.
 
--- 
-chandan
+Die Datenbanken der Firmen sind in für Sie interessante und relevante Zielgruppen untergliedert.
 
+Die Firmenangaben beinhalten: Name der Firma, Ansprechpartner, E-mail Adresse, Tel. + Fax-Nr., PLZ, Ort, Straße etc.
 
+--
+1. Gesamtpaket 2019 DE 1 Mio. Firmenadressen ( 1 457 620 ) - 190 EUR ( bis zum 25.04.2019 )
+ - http://www.dmkontakt.net/?lang=de&page=catalog
+
+2. Gesamtpaket 2019 DE,AT,CH ( 1 747 921 ) - 240 EUR ( bis zum 25.04.2019 )
+ - http://www.dmkontakt.net/?lang=de&page=catalog
+
+3. Schweiz 2019 ( 187 911 ) - 149 EUR ( bis zum 25.04.2019 )
+ - http://www.dmkontakt.net/?lang=ch&page=catalog
+
+4. Österreich 2019 ( 104 000 ) - 149 EUR ( bis zum 25.04.2019 )
+ - http://www.dmkontakt.net/?lang=at&page=catalog
+--
+
+Die Verwendungsmöglichkeiten der Datenbanken sind praktisch unbegrenzt und Sie können durch Verwendung der von uns entwickelten
+Programme des personalisierten Versendens von Angeboten u.ä. mittels E-mailing bzw. Fax effektive und sichere Werbekampagnen damit durchführen.
+
+Bitte informieren Sie sich über die weiteren Details einmal unverbindlich auf unseren Webseiten:
+
+http://www.dmkontakt.net/?p=1
+
+Mit freundlichen Grüßen
+GC-Team
 
