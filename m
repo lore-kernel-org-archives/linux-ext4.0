@@ -2,96 +2,161 @@ Return-Path: <SRS0=y8r3=S3=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-6.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	MAILING_LIST_MULTI,MENTIONS_GIT_HOSTING,SPF_PASS autolearn=unavailable
-	autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	autolearn=ham autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EBE71C4321A
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 15:01:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 288A5C43218
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 15:01:54 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 12A2120891
-	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 15:01:52 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 4E9102081C
+	for <linux-ext4@archiver.kernel.org>; Thu, 25 Apr 2019 15:01:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728035AbfDYPBq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Thu, 25 Apr 2019 11:01:46 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:43316 "EHLO mx1.redhat.com"
+        id S1728123AbfDYPBx (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Thu, 25 Apr 2019 11:01:53 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:17193 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726074AbfDYPBq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Thu, 25 Apr 2019 11:01:46 -0400
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        id S1726074AbfDYPBw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Thu, 25 Apr 2019 11:01:52 -0400
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 0EAF3301EA81;
-        Thu, 25 Apr 2019 15:01:43 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 6A585308A112;
+        Thu, 25 Apr 2019 15:01:52 +0000 (UTC)
 Received: from warthog.procyon.org.uk (ovpn-121-98.rdu2.redhat.com [10.10.121.98])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 67BC45DE82;
-        Thu, 25 Apr 2019 15:01:37 +0000 (UTC)
-Subject: [PATCH 0/6] vfs: Make icache searchable under RCU [ver #2]
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 1BE0960CAE;
+        Thu, 25 Apr 2019 15:01:48 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+ Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+ Kingdom.
+ Registered in England and Wales under Company Registration No. 3798903
+Subject: [PATCH 1/6] vfs,
+ coda: Fix the lack of locking in FID replacement inode rehashing
+ [ver #2]
 From:   David Howells <dhowells@redhat.com>
 To:     viro@zeniv.linux.org.uk
-Cc:     Jan Harkes <jaharkes@cs.cmu.edu>, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        codalist@coda.cs.cmu.edu, coda@cs.cmu.edu,
-        linux-ext4@vger.kernel.org, linux-afs@lists.infradead.org,
-        dhowells@redhat.com, linux-afs@lists.infradead.org,
-        linux-ext4@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+Cc:     Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu,
+        codalist@coda.cs.cmu.edu, dhowells@redhat.com,
+        linux-afs@lists.infradead.org, linux-ext4@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Thu, 25 Apr 2019 16:01:36 +0100
-Message-ID: <155620449631.4720.8762546550728087460.stgit@warthog.procyon.org.uk>
+Date:   Thu, 25 Apr 2019 16:01:48 +0100
+Message-ID: <155620450825.4720.10730742298364202166.stgit@warthog.procyon.org.uk>
+In-Reply-To: <155620449631.4720.8762546550728087460.stgit@warthog.procyon.org.uk>
+References: <155620449631.4720.8762546550728087460.stgit@warthog.procyon.org.uk>
 User-Agent: StGit/unknown-version
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.14
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Thu, 25 Apr 2019 15:01:45 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.44]); Thu, 25 Apr 2019 15:01:52 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
+When coda attempts to recover from disconnected operation, there exists the
+possibility of an file created during disconnected operation not being
+creatable on the server with the same file identifier (FID).  In such a
+case, coda_replace_fid() has to rehash the inode and move it between chains
+- but, as the comment notes, this really needs some locking.
 
-Hi Al
+Fix this by moving the core part of the code to fs/inode.c and providing it
+with a set() function akin to iget5().  We can then take the inode cache
+lock whilst performing the move.
 
-Here are some patches that make the icache searchable under RCU.  This
-benefits ext4 (which can use it to find an inode to update the timestamps on)
-and afs (which can use it to find a vnode to invalidate the callback promise
-on).
-
-It might also benefit NTFS, if its use ilookup5_nowait() can be substituted
-for.  I'm not sure whether it actually needs to wait for inodes that are
-undergoing deletion.
-
-The first patch in the series attempts to fix the non-use of locking in Coda
-when it moves an inode between buckets because it needs to update the search
-key.
-
-Changes:
-
- (v2)
-	Remove the old rehashing code from coda.
-	Use READ_ONCE() in ext4 to access i_state.
-	Minor fixes.
-
-The patches can also be found on the following branch:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=icache-rcu
-
-Thanks,
-David
+Reported-by: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Jan Harkes <jaharkes@cs.cmu.edu>
+cc: coda@cs.cmu.edu
+cc: codalist@coda.cs.cmu.edu
 ---
-David Howells (6):
-      vfs, coda: Fix the lack of locking in FID replacement inode rehashing
-      vfs: Change inode_hash_lock to a seqlock
-      vfs: Allow searching of the icache under RCU conditions
-      afs: Use RCU inode cache search for callback resolution
-      ext4: Search for an inode to update under the RCU lock if we can
-      vfs: Delete find_inode_nowait()
 
+ fs/coda/cnode.c    |   16 ++++++++++------
+ fs/inode.c         |   23 +++++++++++++++++++++++
+ include/linux/fs.h |    3 +++
+ 3 files changed, 36 insertions(+), 6 deletions(-)
 
- fs/afs/callback.c  |   12 ++
- fs/coda/cnode.c    |   16 ++-
- fs/ext4/inode.c    |   54 +++++----
- fs/inode.c         |  307 ++++++++++++++++++++++++++++++++++++----------------
- include/linux/fs.h |   11 +-
- 5 files changed, 264 insertions(+), 136 deletions(-)
+diff --git a/fs/coda/cnode.c b/fs/coda/cnode.c
+index 845b5a66952a..a7e9a1b4ba2f 100644
+--- a/fs/coda/cnode.c
++++ b/fs/coda/cnode.c
+@@ -107,6 +107,15 @@ struct inode *coda_cnode_make(struct CodaFid *fid, struct super_block *sb)
+ }
+ 
+ 
++static void coda_reset_inode(struct inode *inode, unsigned long hash, void *data)
++{
++	struct CodaFid *fid = (struct CodaFid *)data;
++	struct coda_inode_info *cii = ITOC(inode);
++
++	cii->c_fid = *fid;
++	inode->i_ino = hash;
++}
++
+ /* Although we treat Coda file identifiers as immutable, there is one
+  * special case for files created during a disconnection where they may
+  * not be globally unique. When an identifier collision is detected we
+@@ -123,12 +132,7 @@ void coda_replace_fid(struct inode *inode, struct CodaFid *oldfid,
+ 	
+ 	BUG_ON(!coda_fideq(&cii->c_fid, oldfid));
+ 
+-	/* replace fid and rehash inode */
+-	/* XXX we probably need to hold some lock here! */
+-	remove_inode_hash(inode);
+-	cii->c_fid = *newfid;
+-	inode->i_ino = hash;
+-	__insert_inode_hash(inode, hash);
++	rehash_inode(inode, hash, coda_reset_inode, newfid);
+ }
+ 
+ /* convert a fid to an inode. */
+diff --git a/fs/inode.c b/fs/inode.c
+index e9d97add2b36..00bb48ca3642 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -501,6 +501,29 @@ void __remove_inode_hash(struct inode *inode)
+ }
+ EXPORT_SYMBOL(__remove_inode_hash);
+ 
++/**
++ * rehash_inode - Relabel and rehash an inode
++ * @inode: Inode to rehash
++ * @hashval: New hash value (usually inode number) to get
++ * @reset: Callback used to relabel the inode
++ * @data: Opaque data pointer to pass to @reset
++ */
++void rehash_inode(struct inode *inode, unsigned long hashval,
++		  void (*reset)(struct inode *inode, unsigned long hashval, void *data),
++		  void *data)
++{
++	struct hlist_head *b = inode_hashtable + hash(inode->i_sb, hashval);
++
++	spin_lock(&inode_hash_lock);
++	spin_lock(&inode->i_lock);
++	hlist_del_init(&inode->i_hash);
++	reset(inode, hashval, data);
++	hlist_add_head(&inode->i_hash, b);
++	spin_unlock(&inode->i_lock);
++	spin_unlock(&inode_hash_lock);
++}
++EXPORT_SYMBOL(rehash_inode);
++
+ void clear_inode(struct inode *inode)
+ {
+ 	/*
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index dd28e7679089..6442ff08b28c 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -3019,6 +3019,9 @@ static inline void remove_inode_hash(struct inode *inode)
+ 		__remove_inode_hash(inode);
+ }
+ 
++extern void rehash_inode(struct inode *, unsigned long,
++			 void (*reset)(struct inode *, unsigned long, void *), void *);
++
+ extern void inode_sb_list_add(struct inode *inode);
+ 
+ #ifdef CONFIG_BLOCK
 
