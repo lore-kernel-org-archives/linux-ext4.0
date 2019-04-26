@@ -3,29 +3,29 @@ X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
 X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,URIBL_BLOCKED
+	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 775E2C43219
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 05:02:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 93C5AC43218
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 05:02:58 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 57DF1206C1
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 05:02:38 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 6B54D206C1
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 05:02:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1728765AbfDZFCc (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 Apr 2019 01:02:32 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:49986 "EHLO mx1.redhat.com"
+        id S1727789AbfDZFCv (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 26 Apr 2019 01:02:51 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:34964 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725993AbfDZFCc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 26 Apr 2019 01:02:32 -0400
+        id S1725950AbfDZFCv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 26 Apr 2019 01:02:51 -0400
 Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id C6ABE30A3AEC;
-        Fri, 26 Apr 2019 05:02:31 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 37134307D90E;
+        Fri, 26 Apr 2019 05:02:51 +0000 (UTC)
 Received: from dhcp201-121.englab.pnq.redhat.com (unknown [10.65.16.97])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id EA0D160856;
-        Fri, 26 Apr 2019 05:02:11 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 467A260856;
+        Fri, 26 Apr 2019 05:02:32 +0000 (UTC)
 From:   Pankaj Gupta <pagupta@redhat.com>
 To:     linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
         virtualization@lists.linux-foundation.org, kvm@vger.kernel.org,
@@ -43,66 +43,55 @@ Cc:     dan.j.williams@intel.com, zwisler@kernel.org,
         david@fromorbit.com, cohuck@redhat.com,
         xiaoguangrong.eric@gmail.com, pbonzini@redhat.com,
         kilobyte@angband.pl, yuval.shaia@oracle.com, pagupta@redhat.com
-Subject: [PATCH v7 4/6]  dax: check synchronous mapping is supported
-Date:   Fri, 26 Apr 2019 10:30:37 +0530
-Message-Id: <20190426050039.17460-5-pagupta@redhat.com>
+Subject: [PATCH v7 5/6] ext4: disable map_sync for async flush
+Date:   Fri, 26 Apr 2019 10:30:38 +0530
+Message-Id: <20190426050039.17460-6-pagupta@redhat.com>
 In-Reply-To: <20190426050039.17460-1-pagupta@redhat.com>
 References: <20190426050039.17460-1-pagupta@redhat.com>
 X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.43]); Fri, 26 Apr 2019 05:02:32 +0000 (UTC)
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.48]); Fri, 26 Apr 2019 05:02:51 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-This patch introduces 'daxdev_mapping_supported' helper
-which checks if 'MAP_SYNC' is supported with filesystem
-mapping. It also checks if corresponding dax_device is
-synchronous. Virtio pmem device is asynchronous and
-does not not support VM_SYNC. 
+Dont support 'MAP_SYNC' with non-DAX files and DAX files
+with asynchronous dax_device. Virtio pmem provides
+asynchronous host page cache flush mechanism. We don't
+support 'MAP_SYNC' with virtio pmem and ext4.
 
-Suggested-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
 Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- include/linux/dax.h | 17 +++++++++++++++++
- 1 file changed, 17 insertions(+)
+ fs/ext4/file.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/dax.h b/include/linux/dax.h
-index c97fc0cc7167..41b4a5db6305 100644
---- a/include/linux/dax.h
-+++ b/include/linux/dax.h
-@@ -41,6 +41,18 @@ void kill_dax(struct dax_device *dax_dev);
- void dax_write_cache(struct dax_device *dax_dev, bool wc);
- bool dax_write_cache_enabled(struct dax_device *dax_dev);
- bool dax_synchronous(struct dax_device *dax_dev);
-+/*
-+ * Check if given mapping is supported by the file / underlying device.
-+ */
-+static inline bool daxdev_mapping_supported(struct vm_area_struct *vma,
-+				struct dax_device *dax_dev)
-+{
-+	if (!(vma->vm_flags & VM_SYNC))
-+		return true;
-+	if (!IS_DAX(file_inode(vma->vm_file)))
-+		return false;
-+	return dax_synchronous(dax_dev);
-+}
- #else
- static inline struct dax_device *dax_get_by_host(const char *host)
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 98ec11f69cd4..dee549339e13 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -360,15 +360,17 @@ static const struct vm_operations_struct ext4_file_vm_ops = {
+ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
  {
-@@ -68,6 +80,11 @@ static inline bool dax_write_cache_enabled(struct dax_device *dax_dev)
- {
- 	return false;
- }
-+static inline bool daxdev_mapping_supported(struct vm_area_struct *vma,
-+				struct dax_device *dax_dev)
-+{
-+	return !(vma->flags & VM_SYNC);
-+}
- #endif
+ 	struct inode *inode = file->f_mapping->host;
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	struct dax_device *dax_dev = sbi->s_daxdev;
  
- struct writeback_control;
+-	if (unlikely(ext4_forced_shutdown(EXT4_SB(inode->i_sb))))
++	if (unlikely(ext4_forced_shutdown(sbi)))
+ 		return -EIO;
+ 
+ 	/*
+-	 * We don't support synchronous mappings for non-DAX files. At least
+-	 * until someone comes with a sensible use case.
++	 * We don't support synchronous mappings for non-DAX files and
++	 * for DAX files if underneath dax_device is not synchronous.
+ 	 */
+-	if (!IS_DAX(file_inode(file)) && (vma->vm_flags & VM_SYNC))
++	if (!daxdev_mapping_supported(vma, dax_dev))
+ 		return -EOPNOTSUPP;
+ 
+ 	file_accessed(file);
 -- 
 2.20.1
 
