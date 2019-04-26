@@ -6,76 +6,164 @@ X-Spam-Status: No, score=-8.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 84220C4321A
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 18:17:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 36B96C43218
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 18:18:06 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5C34D208CA
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 18:17:57 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 16526208CA
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 18:18:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726296AbfDZSRz (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 Apr 2019 14:17:55 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:44248 "EHLO mx1.redhat.com"
+        id S1726005AbfDZSSF (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 26 Apr 2019 14:18:05 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:57666 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1726005AbfDZSRz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 26 Apr 2019 14:17:55 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        id S1726053AbfDZSSE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+        Fri, 26 Apr 2019 14:18:04 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id F0FE4308A124;
-        Fri, 26 Apr 2019 18:17:54 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 93895753CB;
+        Fri, 26 Apr 2019 18:18:04 +0000 (UTC)
 Received: from bfoster (dhcp-41-2.bos.redhat.com [10.18.41.2])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 4B68C60BF3;
-        Fri, 26 Apr 2019 18:17:54 +0000 (UTC)
-Date:   Fri, 26 Apr 2019 14:17:52 -0400
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id DFC2A608AC;
+        Fri, 26 Apr 2019 18:18:03 +0000 (UTC)
+Date:   Fri, 26 Apr 2019 14:18:02 -0400
 From:   Brian Foster <bfoster@redhat.com>
 To:     "Darrick J. Wong" <darrick.wong@oracle.com>
 Cc:     linux-xfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
         linux-mm@kvack.org
-Subject: Re: [PATCH 2/8] xfs: unlock inode when xfs_ioctl_setattr_get_trans
- can't get transaction
-Message-ID: <20190426181749.GC34536@bfoster>
+Subject: Re: [PATCH 3/8] xfs: flush page mappings as part of setting immutable
+Message-ID: <20190426181759.GD34536@bfoster>
 References: <155552786671.20411.6442426840435740050.stgit@magnolia>
- <155552787973.20411.3438010430489882890.stgit@magnolia>
+ <155552788742.20411.8968554209133632884.stgit@magnolia>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <155552787973.20411.3438010430489882890.stgit@magnolia>
+In-Reply-To: <155552788742.20411.8968554209133632884.stgit@magnolia>
 User-Agent: Mutt/1.11.3 (2019-02-01)
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.12
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.44]); Fri, 26 Apr 2019 18:17:55 +0000 (UTC)
+X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
+X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.39]); Fri, 26 Apr 2019 18:18:04 +0000 (UTC)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Wed, Apr 17, 2019 at 12:04:39PM -0700, Darrick J. Wong wrote:
+On Wed, Apr 17, 2019 at 12:04:47PM -0700, Darrick J. Wong wrote:
 > From: Darrick J. Wong <darrick.wong@oracle.com>
 > 
-> We passed an inode into xfs_ioctl_setattr_get_trans with join_flags
-> indicating which locks are held on that inode.  If we can't allocate a
-> transaction then we need to unlock the inode before we bail out.
+> The chattr manpage has this to say about immutable files:
+> 
+> "A file with the 'i' attribute cannot be modified: it cannot be deleted
+> or renamed, no link can be created to this file, most of the file's
+> metadata can not be modified, and the file can not be opened in write
+> mode."
+> 
+> This means that we need to flush the page cache when setting the
+> immutable flag so that all mappings will become read-only again and
+> therefore programs cannot continue to write to writable mappings.
 > 
 > Signed-off-by: Darrick J. Wong <darrick.wong@oracle.com>
 > ---
-
-Reviewed-by: Brian Foster <bfoster@redhat.com>
-
->  fs/xfs/xfs_ioctl.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  fs/xfs/xfs_ioctl.c |   52 +++++++++++++++++++++++++++++++++++++++++++++-------
+>  1 file changed, 45 insertions(+), 7 deletions(-)
 > 
 > 
 > diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-> index ae615a79b266..21d6f433c375 100644
+> index 21d6f433c375..de35cf4469f6 100644
 > --- a/fs/xfs/xfs_ioctl.c
 > +++ b/fs/xfs/xfs_ioctl.c
-> @@ -1153,7 +1153,7 @@ xfs_ioctl_setattr_get_trans(
+> @@ -1009,6 +1009,31 @@ xfs_diflags_to_linux(
+>  #endif
+>  }
 >  
->  	error = xfs_trans_alloc(mp, &M_RES(mp)->tr_ichange, 0, 0, 0, &tp);
+> +/*
+> + * Lock the inode against file io and page faults, then flush all dirty pages
+> + * and wait for writeback and direct IO operations to finish.  Returns with
+> + * the relevant inode lock flags set in @join_flags.  Caller is responsible for
+> + * unlocking even on error return.
+> + */
+> +static int
+> +xfs_ioctl_setattr_flush(
+> +	struct xfs_inode	*ip,
+> +	int			*join_flags)
+> +{
+> +	struct inode		*inode = VFS_I(ip);
+> +
+> +	/* Already locked the inode from IO?  Assume we're done. */
+> +	if (((*join_flags) & (XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL)) ==
+> +			     (XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL))
+> +		return 0;
+> +
+
+Ok, so I take it this is because the xfs_setattr_path() can call down
+into here via dax_invalidate() and then subsequently via the immutable
+check. Instead of burying this down here, could we just check join_flags
+!= 0 prior to the second setattr_flush() call? Otherwise this looks Ok
+to me.
+
+Brian
+
+> +	/* Lock and flush all mappings and IO in preparation for flag change */
+> +	*join_flags = XFS_IOLOCK_EXCL | XFS_MMAPLOCK_EXCL;
+> +	xfs_ilock(ip, *join_flags);
+> +	inode_dio_wait(inode);
+> +	return filemap_write_and_wait(inode->i_mapping);
+> +}
+> +
+>  static int
+>  xfs_ioctl_setattr_xflags(
+>  	struct xfs_trans	*tp,
+> @@ -1103,25 +1128,22 @@ xfs_ioctl_setattr_dax_invalidate(
+>  	if (!(fa->fsx_xflags & FS_XFLAG_DAX) && !IS_DAX(inode))
+>  		return 0;
+>  
+> -	if (S_ISDIR(inode->i_mode))
+> +	if (!S_ISREG(inode->i_mode))
+>  		return 0;
+>  
+>  	/* lock, flush and invalidate mapping in preparation for flag change */
+> -	xfs_ilock(ip, XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL);
+> -	error = filemap_write_and_wait(inode->i_mapping);
+> +	error = xfs_ioctl_setattr_flush(ip, join_flags);
 >  	if (error)
-> -		return ERR_PTR(error);
-> +		goto out_unlock;
+>  		goto out_unlock;
+>  	error = invalidate_inode_pages2(inode->i_mapping);
+>  	if (error)
+>  		goto out_unlock;
+> -
+> -	*join_flags = XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL;
+>  	return 0;
 >  
->  	xfs_ilock(ip, XFS_ILOCK_EXCL);
->  	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL | join_flags);
+>  out_unlock:
+> -	xfs_iunlock(ip, XFS_MMAPLOCK_EXCL | XFS_IOLOCK_EXCL);
+> +	xfs_iunlock(ip, *join_flags);
+> +	*join_flags = 0;
+>  	return error;
+> -
+>  }
+>  
+>  /*
+> @@ -1367,6 +1389,22 @@ xfs_ioctl_setattr(
+>  	if (code)
+>  		goto error_free_dquots;
+>  
+> +	/*
+> +	 * Wait for all pending directio and then flush all the dirty pages
+> +	 * for this file.  The flush marks all the pages readonly, so any
+> +	 * subsequent attempt to write to the file (particularly mmap pages)
+> +	 * will come through the filesystem and fail.
+> +	 */
+> +	if (S_ISREG(VFS_I(ip)->i_mode) && !IS_IMMUTABLE(VFS_I(ip)) &&
+> +	    (fa->fsx_xflags & FS_XFLAG_IMMUTABLE)) {
+> +		code = xfs_ioctl_setattr_flush(ip, &join_flags);
+> +		if (code) {
+> +			xfs_iunlock(ip, join_flags);
+> +			join_flags = 0;
+> +			goto error_free_dquots;
+> +		}
+> +	}
+> +
+>  	tp = xfs_ioctl_setattr_get_trans(ip, join_flags);
+>  	if (IS_ERR(tp)) {
+>  		code = PTR_ERR(tp);
 > 
