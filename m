@@ -2,91 +2,173 @@ Return-Path: <SRS0=whOe=S4=vger.kernel.org=linux-ext4-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 X-Spam-Level: 
-X-Spam-Status: No, score=-7.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
-	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS
-	autolearn=unavailable autolearn_force=no version=3.4.0
+X-Spam-Status: No, score=-8.9 required=3.0 tests=DKIM_SIGNED,DKIM_VALID,
+	DKIM_VALID_AU,FREEMAIL_FORGED_FROMDOMAIN,FREEMAIL_FROM,
+	HEADER_FROM_DIFFERENT_DOMAINS,INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,
+	SPF_PASS,URIBL_BLOCKED,USER_AGENT_GIT autolearn=ham autolearn_force=no
+	version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 804ABC4321A
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 05:03:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF15CC43218
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 13:09:43 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 5E03F208C3
-	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 05:03:17 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 819832077B
+	for <linux-ext4@archiver.kernel.org>; Fri, 26 Apr 2019 13:09:43 +0000 (UTC)
+Authentication-Results: mail.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DASxXibD"
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1729198AbfDZFDL (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Fri, 26 Apr 2019 01:03:11 -0400
-Received: from mx1.redhat.com ([209.132.183.28]:39170 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1725950AbfDZFDL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-        Fri, 26 Apr 2019 01:03:11 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id B77F630ADBB4;
-        Fri, 26 Apr 2019 05:03:10 +0000 (UTC)
-Received: from dhcp201-121.englab.pnq.redhat.com (unknown [10.65.16.97])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id ACD3960856;
-        Fri, 26 Apr 2019 05:02:51 +0000 (UTC)
-From:   Pankaj Gupta <pagupta@redhat.com>
-To:     linux-nvdimm@lists.01.org, linux-kernel@vger.kernel.org,
-        virtualization@lists.linux-foundation.org, kvm@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-acpi@vger.kernel.org,
-        qemu-devel@nongnu.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Cc:     dan.j.williams@intel.com, zwisler@kernel.org,
-        vishal.l.verma@intel.com, dave.jiang@intel.com, mst@redhat.com,
-        jasowang@redhat.com, willy@infradead.org, rjw@rjwysocki.net,
-        hch@infradead.org, lenb@kernel.org, jack@suse.cz, tytso@mit.edu,
-        adilger.kernel@dilger.ca, darrick.wong@oracle.com,
-        lcapitulino@redhat.com, kwolf@redhat.com, imammedo@redhat.com,
-        jmoyer@redhat.com, nilal@redhat.com, riel@surriel.com,
-        stefanha@redhat.com, aarcange@redhat.com, david@redhat.com,
-        david@fromorbit.com, cohuck@redhat.com,
-        xiaoguangrong.eric@gmail.com, pbonzini@redhat.com,
-        kilobyte@angband.pl, yuval.shaia@oracle.com, pagupta@redhat.com
-Subject: [PATCH v7 6/6] xfs: disable map_sync for async flush
-Date:   Fri, 26 Apr 2019 10:30:39 +0530
-Message-Id: <20190426050039.17460-7-pagupta@redhat.com>
-In-Reply-To: <20190426050039.17460-1-pagupta@redhat.com>
-References: <20190426050039.17460-1-pagupta@redhat.com>
-X-Scanned-By: MIMEDefang 2.79 on 10.5.11.13
-X-Greylist: Sender IP whitelisted, not delayed by milter-greylist-4.5.16 (mx1.redhat.com [10.5.110.47]); Fri, 26 Apr 2019 05:03:11 +0000 (UTC)
+        id S1726068AbfDZNJn (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Fri, 26 Apr 2019 09:09:43 -0400
+Received: from mail-it1-f194.google.com ([209.85.166.194]:56104 "EHLO
+        mail-it1-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1726013AbfDZNJm (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Apr 2019 09:09:42 -0400
+Received: by mail-it1-f194.google.com with SMTP id y134so5697450itc.5
+        for <linux-ext4@vger.kernel.org>; Fri, 26 Apr 2019 06:09:42 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20161025;
+        h=from:to:cc:subject:date:message-id;
+        bh=Zf0Gch2ThL9QbjasfCYI0waaxxpAPURL3JxXbNjeGA4=;
+        b=DASxXibDuUKFiI6rSr7yUqm/0wVDODs5cPXhHnk9Wkqr/w7olJwIFd26vaCBExeG1V
+         DmPq+qPAQqWlYH5FsZvexTuLtbdcyUAeeFCa/FeZMb42bwQlSjQ7G1KLSGr/jLwtfxIh
+         qZmFHTqCWbXTKqc5EmsxlGHq3DbkH3q7nPC4ARV6nwCpFxYcFqikewPPvwX2jN96Ggpa
+         dFea3DVyVOUNjXABtR7xCeqc3EaTX2W5rgZYhdeeCEKsLqyzgEueT5sEaBeSxXDrJz9q
+         bOpLrFEXnEYiI3bz1VrkKN4X3q7TzjkPryJIpv92sEJ+ICB21xlVtxT211hFv4gGLuT9
+         29FQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20161025;
+        h=x-gm-message-state:from:to:cc:subject:date:message-id;
+        bh=Zf0Gch2ThL9QbjasfCYI0waaxxpAPURL3JxXbNjeGA4=;
+        b=NZeUDL3k4KRf3Nv+qO8M1/IHw1L8Nhp4L/8a9//+TVapJfMwWPeItIoJP1Bm0uP6Zo
+         NR0668uPb+ZA3+R0rlNrahAQv8LfzdD5wJBLH564XTHv4q1me5q397sJU5Gw9FPFxIRp
+         /HITkFaUpRgacVlKWn1DWtBgv+pKqT6DWYn+oqIFWBEXFWPmWQQNOySBdPHG7JZDETp6
+         q+eCiUSrlcd4wvlU1ZhrelPftHxzoDwIqNf0kBrGDQbFERskaf3s3TCEiH07MYu7CY8G
+         saaT0W+M9oDyIjP+KbMAcqi3GjeBnXxItOvM2cF3RPMu1cwi/KX66i0IMkjKfZ3AESSl
+         Odpg==
+X-Gm-Message-State: APjAAAWIHRur6QaiMtjXz4RX7JwZ1WieDcAkBpxANuyNrEUdmKv1a6t7
+        Ealwuy6RZPqCTR3Qmn8jJGAqJ/TLxqm8Qw==
+X-Google-Smtp-Source: APXvYqyINF7owZq9O6Cy93OGBbVaTPNTPOE7m4CrnuMIANHCoJzgslNN0q8utYAxEUI3aYr/wA9cCQ==
+X-Received: by 2002:a24:62c4:: with SMTP id d187mr1435314itc.175.1556284181530;
+        Fri, 26 Apr 2019 06:09:41 -0700 (PDT)
+Received: from C02TN4C6HTD6.us.cray.com (chippewa-nat.cray.com. [136.162.34.1])
+        by smtp.gmail.com with ESMTPSA id j10sm1310741iop.39.2019.04.26.06.09.39
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 26 Apr 2019 06:09:40 -0700 (PDT)
+From:   Artem Blagodarenko <artem.blagodarenko@gmail.com>
+X-Google-Original-From: Artem Blagodarenko <c17828@cray.com>
+To:     linux-ext4@vger.kernel.org
+Cc:     alexey.lyashkov@gmail.com, Alexey Lyashkov <c17817@cray.com>
+Subject: [PATCH] e2fsck: Do not to be quiet if verbose option used.
+Date:   Fri, 26 Apr 2019 16:09:13 +0300
+Message-Id: <20190426130913.9288-1-c17828@cray.com>
+X-Mailer: git-send-email 2.14.3
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Dont support 'MAP_SYNC' with non-DAX files and DAX files
-with asynchronous dax_device. Virtio pmem provides
-asynchronous host page cache flush mechanism. We don't
-support 'MAP_SYNC' with virtio pmem and xfs.
+From: Alexey Lyashkov <c17817@cray.com>
 
-Signed-off-by: Pankaj Gupta <pagupta@redhat.com>
+e2fsck don't print a message if 'p' option used and error can be fixed without
+user assistance,  but 'v' option asks to be more verbose, so user expect to
+see any output. But not.
+Fix this, by avoid message suppress with verbose option used.
+
+Change-Id: I358e9b04e44dd33fdb124c5663b2df0bf54ce370
+Signed-off-by: Alexey Lyashkov <c17817@cray.com>
+Cray-bug-id: LUS-6890
 ---
- fs/xfs/xfs_file.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+ e2fsck/e2fsck.h  |  1 +
+ e2fsck/problem.c |  3 ++-
+ e2fsck/unix.c    | 15 ++++++++-------
+ 3 files changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index a7ceae90110e..f17652cca5ff 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -1203,11 +1203,14 @@ xfs_file_mmap(
- 	struct file	*filp,
- 	struct vm_area_struct *vma)
- {
-+	struct dax_device 	*dax_dev;
-+
-+	dax_dev = xfs_find_daxdev_for_inode(file_inode(filp));
- 	/*
--	 * We don't support synchronous mappings for non-DAX files. At least
--	 * until someone comes with a sensible use case.
-+	 * We don't support synchronous mappings for non-DAX files and
-+	 * for DAX files if underneath dax_device is not synchronous.
- 	 */
--	if (!IS_DAX(file_inode(filp)) && (vma->vm_flags & VM_SYNC))
-+	if (!daxdev_mapping_supported(vma, dax_dev))
- 		return -EOPNOTSUPP;
+diff --git a/e2fsck/e2fsck.h b/e2fsck/e2fsck.h
+index 1c7a67cb..64140fc3 100644
+--- a/e2fsck/e2fsck.h
++++ b/e2fsck/e2fsck.h
+@@ -174,6 +174,7 @@ struct resource_track {
+ #define E2F_OPT_NOOPT_EXTENTS	0x10000 /* don't optimize extents */
+ #define E2F_OPT_ICOUNT_FULLMAP	0x20000 /* use an array for inode counts */
+ #define E2F_OPT_UNSHARE_BLOCKS  0x40000
++#define E2F_OPT_VERBOSE		0x80000 /* be verbose and PREEN_NOMSG ignore */
  
- 	file_accessed(filp);
+ /*
+  * E2fsck flags
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 0e6bacec..2576c9bb 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -2259,7 +2259,8 @@ int fix_problem(e2fsck_t ctx, problem_t code, struct problem_context *pctx)
+ 		if (ldesc->flags & PRL_SUPPRESS)
+ 			suppress++;
+ 	}
+-	if ((ptr->flags & PR_PREEN_NOMSG) &&
++	if (((ctx->options & E2F_OPT_VERBOSE) == 0) &&
++	    (ptr->flags & PR_PREEN_NOMSG) &&
+ 	    (ctx->options & E2F_OPT_PREEN))
+ 		suppress++;
+ 	if ((ptr->flags & PR_NO_NOMSG) &&
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index 5b3552ec..b073615e 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -60,7 +60,6 @@ extern int optind;
+ /* Command line options */
+ static int cflag;		/* check disk */
+ static int show_version_only;
+-static int verbose;
+ 
+ static int replace_bad_blocks;
+ static int keep_bad_blocks;
+@@ -133,7 +132,7 @@ static void show_stats(e2fsck_t	ctx)
+ 		frag_percent_total = (frag_percent_total + 5) / 10;
+ 	}
+ 
+-	if (!verbose) {
++	if ((ctx->options & E2F_OPT_VERBOSE) == 0) {
+ 		log_out(ctx, _("%s: %u/%u files (%0d.%d%% non-contiguous), "
+ 			       "%llu/%llu blocks\n"),
+ 			ctx->device_name, inodes_used, inodes,
+@@ -143,7 +142,7 @@ static void show_stats(e2fsck_t	ctx)
+ 	}
+ 	profile_get_boolean(ctx->profile, "options", "report_features", 0, 0,
+ 			    &i);
+-	if (verbose && i) {
++	if ((ctx->options & E2F_OPT_VERBOSE) && i) {
+ 		log_out(ctx, "\nFilesystem features:");
+ 		mask = &ctx->fs->super->s_feature_compat;
+ 		for (i = 0; i < 3; i++, mask++) {
+@@ -807,6 +806,7 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ 	char 		*jbd_debug;
+ #endif
+ 	unsigned long long phys_mem_kb;
++	int		verbose = 0;
+ 
+ 	retval = e2fsck_allocate_context(&ctx);
+ 	if (retval)
+@@ -1037,8 +1037,8 @@ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ 		ctx->options |= E2F_OPT_TIME | E2F_OPT_TIME2;
+ 	profile_get_boolean(ctx->profile, "options", "report_verbose", 0, 0,
+ 			    &c);
+-	if (c)
+-		verbose = 1;
++	if (c || verbose)
++		ctx->options |= E2F_OPT_VERBOSE;
+ 
+ 	profile_get_boolean(ctx->profile, "options", "no_optimize_extents",
+ 			    0, 0, &c);
+@@ -1231,8 +1231,9 @@ static errcode_t e2fsck_check_mmp(ext2_filsys fs, e2fsck_t ctx)
+ 	if (retval)
+ 		goto check_error;
+ 
+-	/* Print warning if e2fsck will wait for more than 20 secs. */
+-	if (verbose || wait_time > EXT4_MMP_MIN_CHECK_INTERVAL * 4) {
++	/* Print warning if e2fck will wait for more than 20 secs. */
++	if ((ctx->options & E2F_OPT_VERBOSE) ||
++	     wait_time > EXT4_MMP_MIN_CHECK_INTERVAL * 4) {
+ 		log_out(ctx, _("MMP interval is %u seconds and total wait "
+ 			       "time is %u seconds. Please wait...\n"),
+ 			mmp_check_interval, wait_time * 2);
 -- 
-2.20.1
+2.14.3
 
