@@ -6,47 +6,47 @@ X-Spam-Status: No, score=-9.0 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	INCLUDES_PATCH,MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_GIT
 	autolearn=unavailable autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B309C4321A
-	for <linux-ext4@archiver.kernel.org>; Sun, 28 Apr 2019 04:31:08 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 03F5BC4321A
+	for <linux-ext4@archiver.kernel.org>; Sun, 28 Apr 2019 04:31:16 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id 28D8A21473
-	for <linux-ext4@archiver.kernel.org>; Sun, 28 Apr 2019 04:31:08 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id CE9722075D
+	for <linux-ext4@archiver.kernel.org>; Sun, 28 Apr 2019 04:31:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726437AbfD1EbH (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 28 Apr 2019 00:31:07 -0400
-Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:47488 "EHLO
+        id S1726479AbfD1EbP (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 28 Apr 2019 00:31:15 -0400
+Received: from mx0b-001b2d01.pphosted.com ([148.163.158.5]:37104 "EHLO
         mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1726417AbfD1EbH (ORCPT
+        by vger.kernel.org with ESMTP id S1726483AbfD1EbO (ORCPT
         <rfc822;linux-ext4@vger.kernel.org>);
-        Sun, 28 Apr 2019 00:31:07 -0400
-Received: from pps.filterd (m0098417.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x3S4T8S2090210
-        for <linux-ext4@vger.kernel.org>; Sun, 28 Apr 2019 00:31:05 -0400
+        Sun, 28 Apr 2019 00:31:14 -0400
+Received: from pps.filterd (m0098414.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.16.0.27/8.16.0.27) with SMTP id x3S4TAcA094709
+        for <linux-ext4@vger.kernel.org>; Sun, 28 Apr 2019 00:31:13 -0400
 Received: from e12.ny.us.ibm.com (e12.ny.us.ibm.com [129.33.205.202])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2s54649eq3-1
+        by mx0b-001b2d01.pphosted.com with ESMTP id 2s54cgh54b-1
         (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-ext4@vger.kernel.org>; Sun, 28 Apr 2019 00:31:04 -0400
+        for <linux-ext4@vger.kernel.org>; Sun, 28 Apr 2019 00:31:13 -0400
 Received: from localhost
         by e12.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
         for <linux-ext4@vger.kernel.org> from <chandan@linux.ibm.com>;
-        Sun, 28 Apr 2019 05:31:04 +0100
-Received: from b01cxnp23033.gho.pok.ibm.com (9.57.198.28)
+        Sun, 28 Apr 2019 05:31:12 +0100
+Received: from b01cxnp22035.gho.pok.ibm.com (9.57.198.25)
         by e12.ny.us.ibm.com (146.89.104.199) with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted;
         (version=TLSv1/SSLv3 cipher=AES256-GCM-SHA384 bits=256/256)
-        Sun, 28 Apr 2019 05:30:59 +0100
+        Sun, 28 Apr 2019 05:31:08 +0100
 Received: from b01ledav004.gho.pok.ibm.com (b01ledav004.gho.pok.ibm.com [9.57.199.109])
-        by b01cxnp23033.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x3S4Uw1x31719548
+        by b01cxnp22035.gho.pok.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id x3S4V7Xb23199748
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Sun, 28 Apr 2019 04:30:58 GMT
+        Sun, 28 Apr 2019 04:31:07 GMT
 Received: from b01ledav004.gho.pok.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 8031A112063;
-        Sun, 28 Apr 2019 04:30:58 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 20886112064;
+        Sun, 28 Apr 2019 04:31:07 +0000 (GMT)
 Received: from b01ledav004.gho.pok.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 7CE54112061;
-        Sun, 28 Apr 2019 04:30:54 +0000 (GMT)
+        by IMSVA (Postfix) with ESMTP id 6AAB0112062;
+        Sun, 28 Apr 2019 04:31:03 +0000 (GMT)
 Received: from localhost.localdomain.com (unknown [9.85.75.21])
         by b01ledav004.gho.pok.ibm.com (Postfix) with ESMTP;
-        Sun, 28 Apr 2019 04:30:54 +0000 (GMT)
+        Sun, 28 Apr 2019 04:31:03 +0000 (GMT)
 From:   Chandan Rajendra <chandan@linux.ibm.com>
 To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net,
@@ -54,22 +54,22 @@ To:     linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 Cc:     Chandan Rajendra <chandan@linux.ibm.com>, tytso@mit.edu,
         adilger.kernel@dilger.ca, ebiggers@kernel.org, jaegeuk@kernel.org,
         yuchao0@huawei.com, hch@infradead.org
-Subject: [PATCH V2 06/13] ext4: Wire up ext4_readpage[s] to use mpage_readpage[s]
-Date:   Sun, 28 Apr 2019 10:01:14 +0530
+Subject: [PATCH V2 08/13] ext4: Decrypt all boundary blocks when doing buffered write
+Date:   Sun, 28 Apr 2019 10:01:16 +0530
 X-Mailer: git-send-email 2.19.1
 In-Reply-To: <20190428043121.30925-1-chandan@linux.ibm.com>
 References: <20190428043121.30925-1-chandan@linux.ibm.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-TM-AS-GCONF: 00
-x-cbid: 19042804-0060-0000-0000-0000033598F5
+x-cbid: 19042804-0060-0000-0000-0000033598F7
 X-IBM-SpamModules-Scores: 
 X-IBM-SpamModules-Versions: BY=3.00011008; HX=3.00000242; KW=3.00000007;
  PH=3.00000004; SC=3.00000285; SDB=6.01195431; UDB=6.00626836; IPR=6.00976273;
- MB=3.00026628; MTD=3.00000008; XFM=3.00000015; UTC=2019-04-28 04:31:02
+ MB=3.00026628; MTD=3.00000008; XFM=3.00000015; UTC=2019-04-28 04:31:11
 X-IBM-AV-DETECTION: SAVI=unused REMOTE=unused XFE=unused
-x-cbparentid: 19042804-0061-0000-0000-0000491F9D75
-Message-Id: <20190428043121.30925-7-chandan@linux.ibm.com>
+x-cbparentid: 19042804-0061-0000-0000-0000491F9D84
+Message-Id: <20190428043121.30925-9-chandan@linux.ibm.com>
 X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,, definitions=2019-04-28_03:,,
  signatures=0
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 priorityscore=1501
@@ -82,374 +82,81 @@ Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-Now that do_mpage_readpage() is "post read process" aware, this commit
-gets ext4_readpage[s] to use mpage_readpage[s] and deletes ext4's
-readpage.c since the associated functionality is not required anymore.
+With subpage sized blocks, ext4_block_write_begin() can have up to two
+blocks to decrypt. Hence this commit invokes fscrypt_decrypt_page() for
+each of those blocks.
 
 Signed-off-by: Chandan Rajendra <chandan@linux.ibm.com>
 ---
- fs/ext4/Makefile   |   2 +-
- fs/ext4/inode.c    |   5 +-
- fs/ext4/readpage.c | 314 ---------------------------------------------
- 3 files changed, 3 insertions(+), 318 deletions(-)
- delete mode 100644 fs/ext4/readpage.c
+ fs/ext4/inode.c | 33 +++++++++++++++++++++++----------
+ 1 file changed, 23 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index 8fdfcd3c3e04..7c38803a808d 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -8,7 +8,7 @@ obj-$(CONFIG_EXT4_FS) += ext4.o
- ext4-y	:= balloc.o bitmap.o block_validity.o dir.o ext4_jbd2.o extents.o \
- 		extents_status.o file.o fsmap.o fsync.o hash.o ialloc.o \
- 		indirect.o inline.o inode.o ioctl.o mballoc.o migrate.o \
--		mmp.o move_extent.o namei.o page-io.o readpage.o resize.o \
-+		mmp.o move_extent.o namei.o page-io.o resize.o \
- 		super.o symlink.o sysfs.o xattr.o xattr_trusted.o xattr_user.o
- 
- ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 05b258db8673..1327e04334df 100644
+index 1327e04334df..51744a3c3964 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3353,8 +3353,7 @@ static int ext4_readpage(struct file *file, struct page *page)
- 		ret = ext4_readpage_inline(inode, page);
+@@ -1156,12 +1156,14 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 	unsigned to = from + len;
+ 	struct inode *inode = page->mapping->host;
+ 	unsigned block_start, block_end;
+-	sector_t block;
++	sector_t block, page_blk_nr;
+ 	int err = 0;
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+ 	unsigned bbits;
+-	struct buffer_head *bh, *head, *wait[2], **wait_bh = wait;
++	struct buffer_head *bh, *head, *wait[2];
++	int nr_wait = 0;
+ 	bool decrypt = false;
++	int i;
  
- 	if (ret == -EAGAIN)
--		return ext4_mpage_readpages(page->mapping, NULL, page, 1,
--						false);
-+		return mpage_readpage(page, ext4_get_block);
+ 	BUG_ON(!PageLocked(page));
+ 	BUG_ON(from > PAGE_SIZE);
+@@ -1213,25 +1215,36 @@ static int ext4_block_write_begin(struct page *page, loff_t pos, unsigned len,
+ 		    !buffer_unwritten(bh) &&
+ 		    (block_start < from || block_end > to)) {
+ 			ll_rw_block(REQ_OP_READ, 0, 1, &bh);
+-			*wait_bh++ = bh;
++			wait[nr_wait++] = bh;
+ 			decrypt = IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode);
+ 		}
+ 	}
+ 	/*
+ 	 * If we issued read requests, let them complete.
+ 	 */
+-	while (wait_bh > wait) {
+-		wait_on_buffer(*--wait_bh);
+-		if (!buffer_uptodate(*wait_bh))
++	for (i = 0; i < nr_wait; i++) {
++		wait_on_buffer(wait[i]);
++		if (!buffer_uptodate(wait[i]))
+ 			err = -EIO;
+ 	}
+ 	if (unlikely(err)) {
+ 		page_zero_new_buffers(page, from, to);
+ 	} else if (decrypt) {
+-		err = fscrypt_decrypt_page(page->mapping->host, page,
+-				PAGE_SIZE, 0, page->index);
+-		if (err)
+-			clear_buffer_uptodate(*wait_bh);
++		page_blk_nr = (sector_t)page->index << (PAGE_SHIFT - bbits);
++
++		for (i = 0; i < nr_wait; i++) {
++			int err2;
++
++			block = page_blk_nr + (bh_offset(wait[i]) >> bbits);
++			err2 = fscrypt_decrypt_page(page->mapping->host, page,
++						wait[i]->b_size,
++						bh_offset(wait[i]),
++						block);
++			if (err2) {
++				clear_buffer_uptodate(wait[i]);
++				err = err2;
++			}
++		}
+ 	}
  
- 	return ret;
- }
-@@ -3369,7 +3368,7 @@ ext4_readpages(struct file *file, struct address_space *mapping,
- 	if (ext4_has_inline_data(inode))
- 		return 0;
- 
--	return ext4_mpage_readpages(mapping, pages, NULL, nr_pages, true);
-+	return mpage_readpages(mapping, pages, nr_pages, ext4_get_block);
- }
- 
- static void ext4_invalidatepage(struct page *page, unsigned int offset,
-diff --git a/fs/ext4/readpage.c b/fs/ext4/readpage.c
-deleted file mode 100644
-index e363dededc21..000000000000
---- a/fs/ext4/readpage.c
-+++ /dev/null
-@@ -1,314 +0,0 @@
--// SPDX-License-Identifier: GPL-2.0
--/*
-- * linux/fs/ext4/readpage.c
-- *
-- * Copyright (C) 2002, Linus Torvalds.
-- * Copyright (C) 2015, Google, Inc.
-- *
-- * This was originally taken from fs/mpage.c
-- *
-- * The intent is the ext4_mpage_readpages() function here is intended
-- * to replace mpage_readpages() in the general case, not just for
-- * encrypted files.  It has some limitations (see below), where it
-- * will fall back to read_block_full_page(), but these limitations
-- * should only be hit when page_size != block_size.
-- *
-- * This will allow us to attach a callback function to support ext4
-- * encryption.
-- *
-- * If anything unusual happens, such as:
-- *
-- * - encountering a page which has buffers
-- * - encountering a page which has a non-hole after a hole
-- * - encountering a page with non-contiguous blocks
-- *
-- * then this code just gives up and calls the buffer_head-based read function.
-- * It does handle a page which has holes at the end - that is a common case:
-- * the end-of-file on blocksize < PAGE_SIZE setups.
-- *
-- */
--
--#include <linux/kernel.h>
--#include <linux/export.h>
--#include <linux/mm.h>
--#include <linux/kdev_t.h>
--#include <linux/gfp.h>
--#include <linux/bio.h>
--#include <linux/fs.h>
--#include <linux/buffer_head.h>
--#include <linux/blkdev.h>
--#include <linux/highmem.h>
--#include <linux/prefetch.h>
--#include <linux/mpage.h>
--#include <linux/writeback.h>
--#include <linux/backing-dev.h>
--#include <linux/pagevec.h>
--#include <linux/cleancache.h>
--#include <linux/read_callbacks.h>
--
--#include "ext4.h"
--
--static inline bool ext4_bio_encrypted(struct bio *bio)
--{
--#ifdef CONFIG_FS_ENCRYPTION
--	return unlikely(bio->bi_private != NULL);
--#else
--	return false;
--#endif
--}
--
--/*
-- * I/O completion handler for multipage BIOs.
-- *
-- * The mpage code never puts partial pages into a BIO (except for end-of-file).
-- * If a page does not map to a contiguous run of blocks then it simply falls
-- * back to block_read_full_page().
-- *
-- * Why is this?  If a page's completion depends on a number of different BIOs
-- * which can complete in any order (or at the same time) then determining the
-- * status of that page is hard.  See end_buffer_async_read() for the details.
-- * There is no point in duplicating all that complexity.
-- */
--static void mpage_end_io(struct bio *bio)
--{
--	struct bio_vec *bv;
--	int i;
--	struct bvec_iter_all iter_all;
--#if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
--	if (read_callbacks_required(bio)) {
--		struct read_callbacks_ctx *ctx = bio->bi_private;
--
--		read_callbacks(ctx);
--		return;
--	}
--#endif
--	bio_for_each_segment_all(bv, bio, i, iter_all) {
--		struct page *page = bv->bv_page;
--
--		if (!bio->bi_status) {
--			SetPageUptodate(page);
--		} else {
--			ClearPageUptodate(page);
--			SetPageError(page);
--		}
--		unlock_page(page);
--	}
--
--	bio_put(bio);
--}
--
--static inline loff_t ext4_readpage_limit(struct inode *inode)
--{
--#ifdef CONFIG_FS_VERITY
--	if (IS_VERITY(inode)) {
--		if (inode->i_verity_info)
--			/* limit to end of metadata region */
--			return fsverity_full_i_size(inode);
--		/*
--		 * fsverity_info is currently being set up and no user reads are
--		 * allowed yet.  It's easiest to just not enforce a limit yet.
--		 */
--		return inode->i_sb->s_maxbytes;
--	}
--#endif
--	return i_size_read(inode);
--}
--
--int ext4_mpage_readpages(struct address_space *mapping,
--			 struct list_head *pages, struct page *page,
--			 unsigned nr_pages, bool is_readahead)
--{
--	struct bio *bio = NULL;
--	sector_t last_block_in_bio = 0;
--
--	struct inode *inode = mapping->host;
--	const unsigned blkbits = inode->i_blkbits;
--	const unsigned blocks_per_page = PAGE_SIZE >> blkbits;
--	const unsigned blocksize = 1 << blkbits;
--	sector_t block_in_file;
--	sector_t last_block;
--	sector_t last_block_in_file;
--	sector_t blocks[MAX_BUF_PER_PAGE];
--	unsigned page_block;
--	struct block_device *bdev = inode->i_sb->s_bdev;
--	int length;
--	unsigned relative_block = 0;
--	struct ext4_map_blocks map;
--
--	map.m_pblk = 0;
--	map.m_lblk = 0;
--	map.m_len = 0;
--	map.m_flags = 0;
--
--	for (; nr_pages; nr_pages--) {
--		int fully_mapped = 1;
--		unsigned first_hole = blocks_per_page;
--
--		prefetchw(&page->flags);
--		if (pages) {
--			page = lru_to_page(pages);
--			list_del(&page->lru);
--			if (add_to_page_cache_lru(page, mapping, page->index,
--				  readahead_gfp_mask(mapping)))
--				goto next_page;
--		}
--
--		if (page_has_buffers(page))
--			goto confused;
--
--		block_in_file = (sector_t)page->index << (PAGE_SHIFT - blkbits);
--		last_block = block_in_file + nr_pages * blocks_per_page;
--		last_block_in_file = (ext4_readpage_limit(inode) +
--				      blocksize - 1) >> blkbits;
--		if (last_block > last_block_in_file)
--			last_block = last_block_in_file;
--		page_block = 0;
--
--		/*
--		 * Map blocks using the previous result first.
--		 */
--		if ((map.m_flags & EXT4_MAP_MAPPED) &&
--		    block_in_file > map.m_lblk &&
--		    block_in_file < (map.m_lblk + map.m_len)) {
--			unsigned map_offset = block_in_file - map.m_lblk;
--			unsigned last = map.m_len - map_offset;
--
--			for (relative_block = 0; ; relative_block++) {
--				if (relative_block == last) {
--					/* needed? */
--					map.m_flags &= ~EXT4_MAP_MAPPED;
--					break;
--				}
--				if (page_block == blocks_per_page)
--					break;
--				blocks[page_block] = map.m_pblk + map_offset +
--					relative_block;
--				page_block++;
--				block_in_file++;
--			}
--		}
--
--		/*
--		 * Then do more ext4_map_blocks() calls until we are
--		 * done with this page.
--		 */
--		while (page_block < blocks_per_page) {
--			if (block_in_file < last_block) {
--				map.m_lblk = block_in_file;
--				map.m_len = last_block - block_in_file;
--
--				if (ext4_map_blocks(NULL, inode, &map, 0) < 0) {
--				set_error_page:
--					SetPageError(page);
--					zero_user_segment(page, 0,
--							  PAGE_SIZE);
--					unlock_page(page);
--					goto next_page;
--				}
--			}
--			if ((map.m_flags & EXT4_MAP_MAPPED) == 0) {
--				fully_mapped = 0;
--				if (first_hole == blocks_per_page)
--					first_hole = page_block;
--				page_block++;
--				block_in_file++;
--				continue;
--			}
--			if (first_hole != blocks_per_page)
--				goto confused;		/* hole -> non-hole */
--
--			/* Contiguous blocks? */
--			if (page_block && blocks[page_block-1] != map.m_pblk-1)
--				goto confused;
--			for (relative_block = 0; ; relative_block++) {
--				if (relative_block == map.m_len) {
--					/* needed? */
--					map.m_flags &= ~EXT4_MAP_MAPPED;
--					break;
--				} else if (page_block == blocks_per_page)
--					break;
--				blocks[page_block] = map.m_pblk+relative_block;
--				page_block++;
--				block_in_file++;
--			}
--		}
--		if (first_hole != blocks_per_page) {
--			zero_user_segment(page, first_hole << blkbits,
--					  PAGE_SIZE);
--			if (first_hole == 0) {
--				if (!fsverity_check_hole(inode, page))
--					goto set_error_page;
--				SetPageUptodate(page);
--				unlock_page(page);
--				goto next_page;
--			}
--		} else if (fully_mapped) {
--			SetPageMappedToDisk(page);
--		}
--		if (fully_mapped && blocks_per_page == 1 &&
--		    !PageUptodate(page) && cleancache_get_page(page) == 0) {
--			SetPageUptodate(page);
--			goto confused;
--		}
--
--		/*
--		 * This page will go to BIO.  Do we need to send this
--		 * BIO off first?
--		 */
--		if (bio && (last_block_in_bio != blocks[0] - 1)) {
--		submit_and_realloc:
--			submit_bio(bio);
--			bio = NULL;
--		}
--		if (bio == NULL) {
--			struct read_callbacks_ctx *ctx = NULL;
--
--			bio = bio_alloc(GFP_KERNEL,
--				min_t(int, nr_pages, BIO_MAX_PAGES));
--			if (!bio)
--				goto set_error_page;
--#if defined(CONFIG_FS_ENCRYPTION) || defined(CONFIG_FS_VERITY)
--			ctx = get_read_callbacks_ctx(inode, bio, page->index);
--			if (IS_ERR(ctx)) {
--				bio_put(bio);
--				goto set_error_page;
--			}
--#endif
--			bio_set_dev(bio, bdev);
--			bio->bi_iter.bi_sector = blocks[0] << (blkbits - 9);
--			bio->bi_end_io = mpage_end_io;
--			bio->bi_private = ctx;
--			bio_set_op_attrs(bio, REQ_OP_READ,
--						is_readahead ? REQ_RAHEAD : 0);
--		}
--
--		length = first_hole << blkbits;
--		if (bio_add_page(bio, page, length, 0) < length)
--			goto submit_and_realloc;
--
--		if (((map.m_flags & EXT4_MAP_BOUNDARY) &&
--		     (relative_block == map.m_len)) ||
--		    (first_hole != blocks_per_page)) {
--			submit_bio(bio);
--			bio = NULL;
--		} else
--			last_block_in_bio = blocks[blocks_per_page - 1];
--		goto next_page;
--	confused:
--		if (bio) {
--			submit_bio(bio);
--			bio = NULL;
--		}
--		if (!PageUptodate(page))
--			block_read_full_page(page, ext4_get_block);
--		else
--			unlock_page(page);
--	next_page:
--		if (pages)
--			put_page(page);
--	}
--	BUG_ON(pages && !list_empty(pages));
--	if (bio)
--		submit_bio(bio);
--	return 0;
--}
+ 	return err;
 -- 
 2.19.1
 
