@@ -6,56 +6,49 @@ X-Spam-Status: No, score=-5.5 required=3.0 tests=HEADER_FROM_DIFFERENT_DOMAINS,
 	MAILING_LIST_MULTI,SIGNED_OFF_BY,SPF_PASS,USER_AGENT_MUTT autolearn=ham
 	autolearn_force=no version=3.4.0
 Received: from mail.kernel.org (mail.kernel.org [198.145.29.99])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 136B8C43218
-	for <linux-ext4@archiver.kernel.org>; Mon, 29 Apr 2019 00:37:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B381C43219
+	for <linux-ext4@archiver.kernel.org>; Mon, 29 Apr 2019 00:37:47 +0000 (UTC)
 Received: from vger.kernel.org (vger.kernel.org [209.132.180.67])
-	by mail.kernel.org (Postfix) with ESMTP id DDC8320675
-	for <linux-ext4@archiver.kernel.org>; Mon, 29 Apr 2019 00:36:59 +0000 (UTC)
+	by mail.kernel.org (Postfix) with ESMTP id 3307D20656
+	for <linux-ext4@archiver.kernel.org>; Mon, 29 Apr 2019 00:37:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1726852AbfD2Ag7 (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
-        Sun, 28 Apr 2019 20:36:59 -0400
-Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:51909 "EHLO
+        id S1726869AbfD2Ahq (ORCPT <rfc822;linux-ext4@archiver.kernel.org>);
+        Sun, 28 Apr 2019 20:37:46 -0400
+Received: from outgoing-auth-1.mit.edu ([18.9.28.11]:52084 "EHLO
         outgoing.mit.edu" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1726223AbfD2Ag7 (ORCPT
-        <rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Apr 2019 20:36:59 -0400
+        with ESMTP id S1726223AbfD2Ahq (ORCPT
+        <rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Apr 2019 20:37:46 -0400
 Received: from callcc.thunk.org (adsl-173-228-226-134.prtc.net [173.228.226.134])
         (authenticated bits=0)
         (User authenticated as tytso@ATHENA.MIT.EDU)
-        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x3T0aquZ022129
+        by outgoing.mit.edu (8.14.7/8.12.4) with ESMTP id x3T0beWQ022366
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Sun, 28 Apr 2019 20:36:53 -0400
+        Sun, 28 Apr 2019 20:37:42 -0400
 Received: by callcc.thunk.org (Postfix, from userid 15806)
-        id B56C9420023; Sun, 28 Apr 2019 20:36:51 -0400 (EDT)
-Date:   Sun, 28 Apr 2019 20:36:51 -0400
+        id 4CDEA420023; Sun, 28 Apr 2019 20:37:40 -0400 (EDT)
+Date:   Sun, 28 Apr 2019 20:37:40 -0400
 From:   "Theodore Ts'o" <tytso@mit.edu>
-To:     Gabriel Krisman Bertazi <krisman@collabora.com>
-Cc:     Eric Biggers <ebiggers@kernel.org>, linux-ext4@vger.kernel.org,
-        Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-Subject: Re: [PATCH] libext2fs: remove unused variable 'buff'
-Message-ID: <20190429003651.GF3789@mit.edu>
-References: <20190422210843.185382-1-ebiggers@kernel.org>
- <85sgu9s6us.fsf@collabora.com>
+To:     Eric Biggers <ebiggers@kernel.org>
+Cc:     linux-ext4@vger.kernel.org
+Subject: Re: [PATCH] debugfs: remove unused variable 'tmp_inode'
+Message-ID: <20190429003740.GG3789@mit.edu>
+References: <20190422211950.196986-1-ebiggers@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <85sgu9s6us.fsf@collabora.com>
+In-Reply-To: <20190422211950.196986-1-ebiggers@kernel.org>
 User-Agent: Mutt/1.10.1 (2018-07-13)
 Sender: linux-ext4-owner@vger.kernel.org
 Precedence: bulk
 List-ID: <linux-ext4.vger.kernel.org>
 X-Mailing-List: linux-ext4@vger.kernel.org
 
-On Tue, Apr 23, 2019 at 12:06:35AM -0400, Gabriel Krisman Bertazi wrote:
-> Eric Biggers <ebiggers@kernel.org> writes:
+On Mon, Apr 22, 2019 at 02:19:50PM -0700, Eric Biggers wrote:
+> From: Eric Biggers <ebiggers@google.com>
 > 
-> > From: Eric Biggers <ebiggers@google.com>
-> >
-> > In ext2fs_dirhash2(), the outer 'buff' variable is never used.
-> >
-> > Cc: Gabriel Krisman Bertazi <krisman@collabora.co.uk>
-> > Signed-off-by: Eric Biggers <ebiggers@google.com>
+> In parse_inode_csum(), the outer 'tmp_inode' variable is never used.
 > 
-> Reviewed-by: Gabriel Krisman Bertazi <krisman@collabora.com>
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 
 Thanks, applied.
 
